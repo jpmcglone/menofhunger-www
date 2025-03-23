@@ -14,8 +14,13 @@ export default defineNuxtConfig({
     '@nuxt/ui'
   ],
   css: ['~/assets/css/main.css'],
-  ui: {
-    global: true,
-    icons: ['heroicons']
+  ssr: true,
+  colorMode: {
+    preference: 'dark',
+    fallback: 'dark',
+    classPrefix: '',
+    classSuffix: '',
+    storageKey: 'color-mode',
+    system: false
   }
 })
