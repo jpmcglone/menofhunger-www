@@ -16,10 +16,10 @@
 </template>
 
 <script setup>
-const SITE_URL = 'https://menofhunger.com/'
+const SITE_URL = 'https://menofhunger.com'
 const SITE_TITLE = "Men of Hunger - Coming soon"
 const SITE_DESCRIPTION = "Men of Hunger — an online and offline brotherhood for driven men. Ambition isn't a flaw — it's fuel. We rise. We build. We lead."
-const SOCIAL_IMAGE = '/images/logo-black-bg.png'
+const SOCIAL_IMAGE = `${SITE_URL}/images/logo-black-bg.png`
 const TWITTER_HANDLE = '@MenOfHunger'
 
 definePageMeta({
