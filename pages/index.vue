@@ -1,5 +1,5 @@
 <template>
-  <div class="flex items-center justify-center py-20">
+  <div class="min-h-[calc(100vh-8rem)] flex items-center justify-center py-4 sm:py-8 md:py-12 lg:py-20">
     <div class="text-center">
       <img 
         src='@/assets/images/logo-black-bg.png'
@@ -8,7 +8,7 @@
         draggable="false"
         style="-webkit-user-drag: none; user-select: none; -moz-user-select: none; -webkit-user-select: none; -ms-user-select: none;"
       >
-      <p class="mt-8 text-2xl font-medium tracking-wider text-gray-500 dark:text-gray-500">
+      <p class="mt-4 sm:mt-6 md:mt-8 text-2xl font-medium tracking-wider text-gray-500 dark:text-gray-500">
         <span class="text-gray-800 dark:text-gray-200">Coming soon</span>
       </p>
       <p class="mt-2 text-lg font-light tracking-widest text-gray-400 dark:text-gray-600">
