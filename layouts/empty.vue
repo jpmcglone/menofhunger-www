@@ -1,18 +1,23 @@
 <template>
-  <div class="min-h-screen flex flex-col">
-    <main class="flex-1 flex items-center justify-center">
+  <div class="min-h-screen flex flex-col bg-white dark:bg-black">
+    <main class="flex-1 flex items-center justify-center px-6">
       <slot />
     </main>
-    <footer class="py-2 text-center text-white">
-      <p class="text-sm">
-        {{ siteConfig.name }} &copy; {{ copyrightYear }} • Built by
-        <a
-          href="https://jpmcglone.com"
-          target="_blank"
-          rel="noopener noreferrer"
-          class="hover:underline"
-        >John McGlone</a>
-      </p>
+    <footer class="py-3 px-4">
+      <div class="mx-auto w-full max-w-4xl flex items-center justify-between gap-3">
+        <p class="text-sm text-gray-600 dark:text-gray-300">
+          {{ siteConfig.name }} &copy; {{ copyrightYear }} • Built by
+          <a
+            href="https://jpmcglone.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="text-gray-800 hover:underline dark:text-gray-200"
+          >John McGlone</a>
+        </p>
+        <ClientOnly>
+          <AppThemeModeMenu />
+        </ClientOnly>
+      </div>
     </footer>
   </div>
 </template>

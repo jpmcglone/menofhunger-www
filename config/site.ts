@@ -10,7 +10,7 @@ export const siteConfig = {
     twitter: '@MenOfHunger'
   },
   meta: {
-    title: 'Men of Hunger - Coming soon',
+    title: 'Men of Hunger',
     description: "Men of Hunger — an online and offline brotherhood for driven men. Ambition isn't a flaw — it's fuel. We rise. We build. We lead.",
     keywords: 'men of hunger, brotherhood, ambition, driven men, leadership, personal growth, vision, purpose, masculine excellence, achievement'
   }

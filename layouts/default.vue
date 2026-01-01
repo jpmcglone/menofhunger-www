@@ -14,12 +14,5 @@
 </template>
 
 <script setup>
-// Only need this for initial dark mode setting
-const colorMode = useColorMode()
-
-onMounted(() => {
-  if (colorMode.value !== 'dark' && colorMode.value !== 'light') {
-    colorMode.preference = 'dark'
-  }
-})
+// No-op: color mode is handled globally by @nuxtjs/color-mode (default: system)
 </script>
