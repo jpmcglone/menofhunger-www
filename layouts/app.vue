@@ -20,7 +20,9 @@
               :key="item.to"
               :to="item.to"
               :class="[
-                'group flex items-center justify-center gap-4 rounded-full p-3 text-gray-900 hover:bg-gray-100 dark:text-gray-50 dark:hover:bg-zinc-900 md:justify-start md:px-4 md:py-3',
+                // Thin mode: fixed rounded-square hit area with centered icon (like X).
+                // Wide mode (md+): pill-style row with icon + label.
+                'group mx-auto flex h-12 w-12 items-center justify-center gap-0 rounded-xl text-gray-900 hover:bg-gray-100 dark:text-gray-50 dark:hover:bg-zinc-900 md:mx-0 md:h-auto md:w-full md:justify-start md:gap-4 md:rounded-full md:px-4 md:py-3',
                 route.path === item.to ? 'bg-gray-100 font-semibold dark:bg-zinc-900' : 'font-medium'
               ]"
             >
@@ -36,7 +38,7 @@
               <!-- Ensure only ONE Post button ever renders (avoids CSS override issues). -->
               <Button
                 v-if="!isMdUp"
-                class="mx-auto h-11 w-11 rounded-full !border-0 !shadow-none !bg-black !text-white dark:!bg-white dark:!text-black"
+                class="mx-auto h-12 w-12 rounded-xl !border-0 !p-0 !shadow-none !bg-black !text-white dark:!bg-white dark:!text-black"
                 icon="pi pi-plus"
                 aria-label="Post"
               />
