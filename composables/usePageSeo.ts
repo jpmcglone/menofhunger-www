@@ -59,7 +59,8 @@ export function usePageSeo(options: PageSeoOptions = {}) {
     return toAbsoluteUrl(path)
   })
  
-  const image = computed(() => toAbsoluteUrl(options.image || '/images/logo-white-bg.png'))
+  // Default to dark/black logo for social previews unless a page overrides it.
+  const image = computed(() => toAbsoluteUrl(options.image || '/images/logo-black-bg.png'))
   const robots = computed(() =>
     options.noindex
       ? 'noindex,nofollow'
@@ -118,7 +119,7 @@ export function usePageSeo(options: PageSeoOptions = {}) {
           '@id': `${siteConfig.url}/#organization`,
           name: siteConfig.name,
           url: siteConfig.url,
-          logo: toAbsoluteUrl('/images/logo-white-bg.png'),
+          logo: toAbsoluteUrl('/images/logo-black-bg.png'),
           foundingDate: siteConfig.established,
           sameAs: [twitterProfileUrl(siteConfig.social.twitter)].filter(Boolean)
         }
