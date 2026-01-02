@@ -1,17 +1,21 @@
 <template>
   <!-- Single shared scroll container (like X): side rails are sticky INSIDE this scroller. -->
   <div class="h-dvh overflow-y-auto overscroll-y-none bg-white text-gray-900 dark:bg-black dark:text-gray-50">
-    <div class="mx-auto flex w-full max-w-5xl px-2 sm:px-4 xl:max-w-6xl">
+    <div class="mx-auto flex w-full max-w-6xl px-2 sm:px-4 xl:max-w-7xl">
       <!-- Left Nav -->
       <aside class="sticky top-0 h-dvh shrink-0 border-r border-gray-200 dark:border-zinc-800">
         <div class="flex h-full w-14 flex-col overflow-hidden px-1 py-4 transition-[width,padding] duration-200 ease-out md:w-64 md:px-3">
           <div class="mb-3 flex items-center justify-center md:justify-start">
-            <AppLogo :alt="siteConfig.name" :width="32" :height="32" imgClass="h-8 w-8 rounded" />
-            <span
-              class="ml-3 whitespace-nowrap overflow-hidden text-base font-semibold tracking-wide transition-[max-width,opacity] duration-200 ease-out max-w-0 opacity-0 md:max-w-[220px] md:opacity-100"
-            >
-              {{ siteConfig.name }}
-            </span>
+            <AppLogo
+              :alt="siteConfig.name"
+              as-link
+              to="/home"
+              :light-src="logoLightSmall"
+              :dark-src="logoDarkSmall"
+              :width="32"
+              :height="32"
+              imgClass="h-8 w-8 rounded"
+            />
           </div>
 
           <nav class="flex-1 space-y-1">
@@ -28,24 +32,22 @@
             >
               <i class="pi text-2xl md:text-xl" :class="item.icon" aria-hidden="true" />
               <span
-                class="whitespace-nowrap overflow-hidden text-xl md:text-base transition-[max-width,opacity] duration-200 ease-out max-w-0 opacity-0 md:max-w-[220px] md:opacity-100"
+                class="whitespace-nowrap overflow-hidden text-xl md:text-lg transition-[max-width,opacity] duration-200 ease-out max-w-0 opacity-0 md:max-w-[220px] md:opacity-100"
               >
                 {{ item.label }}
               </span>
             </NuxtLink>
 
             <div class="pt-2">
-              <!-- Ensure only ONE Post button ever renders (avoids CSS override issues). -->
+              <!-- Single button; responsive via CSS so it doesn't "swap" after hydration. -->
               <Button
-                v-if="!isMdUp"
-                class="mx-auto h-12 w-12 rounded-xl !border-0 !p-0 !shadow-none !bg-black !text-white dark:!bg-white dark:!text-black"
+                label="Post"
                 icon="pi pi-plus"
                 aria-label="Post"
-              />
-              <Button
-                v-else
-                class="w-full rounded-full !border-0 !shadow-none !bg-black !text-white dark:!bg-white dark:!text-black"
-                label="Post"
+                class="mx-auto h-12 w-12 rounded-xl !border-0 !p-0 !shadow-none !bg-black !text-white dark:!bg-white dark:!text-black
+                       [&_.p-button-label]:hidden md:[&_.p-button-label]:inline
+                       md:[&_.p-button-icon]:hidden
+                       md:mx-0 md:h-auto md:w-full md:rounded-full md:!px-4 md:!py-3"
               />
             </div>
           </nav>
@@ -62,7 +64,7 @@
       <main class="min-w-0 flex-1 border-r border-gray-200 dark:border-zinc-800">
         <div class="sticky top-0 z-10 border-b border-gray-200 bg-white/90 backdrop-blur dark:border-zinc-800 dark:bg-black/80">
           <div class="px-4 py-3">
-            <h1 class="text-lg font-semibold">{{ title }}</h1>
+            <h1 class="text-xl font-bold tracking-tight">{{ title }}</h1>
           </div>
         </div>
 
@@ -236,6 +238,8 @@
 
 <script setup lang="ts">
 import { siteConfig } from '~/config/site'
+import logoLightSmall from '~/assets/images/logo-white-bg-small.png'
+import logoDarkSmall from '~/assets/images/logo-black-bg-small.png'
 
 const route = useRoute()
 
@@ -255,18 +259,5 @@ const navItems = [
   { label: 'About', to: '/about', icon: 'pi-info-circle' },
   { label: 'Test', to: '/test', icon: 'pi-sliders-h' }
 ]
-
-const isMdUp = ref(false)
-
-onMounted(() => {
-  const mq = window.matchMedia('(min-width: 768px)')
-  const update = () => (isMdUp.value = mq.matches)
-  update()
-  mq.addEventListener?.('change', update)
-
-  onBeforeUnmount(() => {
-    mq.removeEventListener?.('change', update)
-  })
-})
 </script>
 

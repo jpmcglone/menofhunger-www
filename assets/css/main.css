@@ -1,6 +1,26 @@
 @import "tailwindcss";
 @import "@nuxt/ui";
 
+/* Typography baseline (X-like): modern system font, readable sizing, nice rendering */
+:root {
+  --moh-font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica,
+    Arial, "Apple Color Emoji", "Segoe UI Emoji";
+}
+
+html {
+  font-family: var(--moh-font-sans);
+  font-size: 16px;
+  line-height: 1.45;
+  -webkit-text-size-adjust: 100%;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  font-family: inherit;
+}
+
 html,
 body {
   background-color: #fff;

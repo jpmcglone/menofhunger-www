@@ -46,10 +46,13 @@
               {{ p.body }}
             </p>
 
-            <div class="mt-3 flex items-center justify-between text-gray-500 dark:text-gray-400">
-              <Button icon="pi pi-comment" text rounded severity="secondary" aria-label="Reply" />
-              <Button icon="pi pi-refresh" text rounded severity="secondary" aria-label="Repost" />
-              <Button icon="pi pi-heart" text rounded severity="secondary" aria-label="Like" />
+            <div class="mt-3 flex items-center text-gray-500 dark:text-gray-400">
+              <div class="flex items-center gap-6">
+                <Button icon="pi pi-comment" text rounded severity="secondary" aria-label="Reply" />
+                <Button icon="pi pi-refresh" text rounded severity="secondary" aria-label="Repost" />
+                <Button icon="pi pi-heart" text rounded severity="secondary" aria-label="Like" />
+              </div>
+              <div class="flex-1" />
               <Button icon="pi pi-share-alt" text rounded severity="secondary" aria-label="Share" />
             </div>
           </div>
@@ -64,6 +67,11 @@
 definePageMeta({
   layout: 'app',
   title: 'Home'
+})
+
+usePageSeo({
+  title: 'Home',
+  description: 'Your Men of Hunger wall — share wins, goals, and updates in simple chronological order.'
 })
 
 const { posts, addPost } = useWallPosts()

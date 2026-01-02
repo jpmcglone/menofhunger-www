@@ -16,5 +16,10 @@ definePageMeta({
   layout: 'app',
   title: 'Notifications'
 })
+
+usePageSeo({
+  title: 'Notifications',
+  description: 'Notifications for Men of Hunger — replies, follows, and updates from your network.'
+})
 </script>
 

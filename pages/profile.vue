@@ -16,5 +16,10 @@ definePageMeta({
   layout: 'app',
   title: 'Profile'
 })
+
+usePageSeo({
+  title: 'Profile',
+  description: 'Your Men of Hunger profile — your mission, your wins, and what you’re building.'
+})
 </script>
 

@@ -1,8 +1,19 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
+import { siteConfig } from './config/site'
 
 export default defineNuxtConfig({
   compatibilityDate: '2024-11-01',
   devtools: { enabled: true },
+  app: {
+    head: {
+      htmlAttrs: { lang: 'en' },
+      meta: [
+        { charset: 'utf-8' },
+        { name: 'viewport', content: 'width=device-width, initial-scale=1' }
+      ],
+      title: siteConfig.meta.title
+    }
+  },
   modules: [
     '@nuxt/content',
     '@nuxt/eslint',

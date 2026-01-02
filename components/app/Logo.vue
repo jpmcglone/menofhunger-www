@@ -1,9 +1,8 @@
 <template>
   <component :is="asLink ? NuxtLink : 'div'" :to="asLink ? to : undefined" :class="wrapperClass">
-    <!-- If user explicitly overrides (light/dark), render a single <img> to avoid any flash. -->
     <img
-      v-if="preference !== 'system'"
-      :src="preference === 'dark' ? darkSrc : lightSrc"
+      class="moh-logo--light"
+      :src="lightSrc"
       :alt="alt"
       :width="width"
       :height="height"
@@ -13,28 +12,22 @@
       loading="eager"
       draggable="false"
     >
-
-    <!-- System: use <picture> so browser picks correct asset before JS/CSS (no hard-reload flash). -->
-    <picture v-else>
-      <source :srcset="darkSrc" media="(prefers-color-scheme: dark)">
-      <img
-        :src="lightSrc"
-        :alt="alt"
-        :width="width"
-        :height="height"
-        :class="imgClass"
-        :style="imgStyle"
-        decoding="async"
-        loading="eager"
-        draggable="false"
-      >
-    </picture>
+    <img
+      class="moh-logo--dark"
+      :src="darkSrc"
+      :alt="alt"
+      :width="width"
+      :height="height"
+      :class="imgClass"
+      :style="imgStyle"
+      decoding="async"
+      loading="eager"
+      draggable="false"
+    >
   </component>
 </template>
 
 <script setup lang="ts">
-type ModePreference = 'system' | 'light' | 'dark'
-
 withDefaults(
   defineProps<{
     alt: string
@@ -54,8 +47,8 @@ withDefaults(
   {
     asLink: false,
     to: '/',
-    lightSrc: '/images/logo-white-bg.png',
-    darkSrc: '/images/logo-black-bg.png',
+    lightSrc: '/images/logo-white-bg-small.png',
+    darkSrc: '/images/logo-black-bg-small.png',
     width: 400,
     height: 400,
     wrapperClass: '',
@@ -64,9 +57,6 @@ withDefaults(
 )
 
 const NuxtLink = resolveComponent('NuxtLink')
-const colorMode = useColorMode()
-
-const preference = computed<ModePreference>(() => (colorMode.preference as ModePreference) || 'system')
 
 // Inline styles apply even before Tailwind loads.
 const imgStyle = computed(() => ({
@@ -77,3 +67,9 @@ const imgStyle = computed(() => ({
 }))
 </script>
 
+<style>
+/* Switch immediately based on Nuxt Color Mode's `.dark` class */
+.moh-logo--dark { display: none; }
+.dark .moh-logo--dark { display: block; }
+.dark .moh-logo--light { display: none; }
+</style>

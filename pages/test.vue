@@ -132,15 +132,15 @@
 </template>
 
 <script setup lang="ts">
-import { siteConfig } from '~/config/site'
-
 definePageMeta({
   layout: 'app',
   title: 'Test'
 })
 
-useHead({
-  title: `Test • ${siteConfig.name}`
+usePageSeo({
+  title: 'Test',
+  description: 'Internal PrimeVue component playground for Men of Hunger.',
+  noindex: true
 })
 
 const debugTab = ref<'state' | 'notes'>('state')

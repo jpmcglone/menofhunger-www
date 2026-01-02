@@ -16,5 +16,10 @@ definePageMeta({
   layout: 'app',
   title: 'Messages'
 })
+
+usePageSeo({
+  title: 'Messages',
+  description: 'Direct messages in Men of Hunger — keep conversations focused and intentional.'
+})
 </script>
 

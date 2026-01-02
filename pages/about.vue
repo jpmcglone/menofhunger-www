@@ -102,16 +102,15 @@
 </template>
 
 <script setup lang="ts">
-import { siteConfig } from '~/config/site'
-
 definePageMeta({
   layout: 'app',
   title: 'About'
 })
 
-useHead({
-  title: `About • ${siteConfig.name}`,
-  meta: [{ name: 'description', content: siteConfig.meta.description }]
+usePageSeo({
+  title: 'About',
+  description:
+    'Men of Hunger is a brotherhood for ambitious men who want more discipline, clarity, strength, and impact.'
 })
 </script>
 

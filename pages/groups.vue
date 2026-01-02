@@ -16,5 +16,10 @@ definePageMeta({
   layout: 'app',
   title: 'Groups'
 })
+
+usePageSeo({
+  title: 'Groups',
+  description: 'Groups in Men of Hunger — accountability circles, disciplines, and builders helping builders.'
+})
 </script>
 
