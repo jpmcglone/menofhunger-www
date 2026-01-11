@@ -2,11 +2,19 @@
   <div class="w-full flex flex-col items-center justify-center">
     <AppLogo
       :alt="siteConfig.name"
-      class="mb-8 rounded-lg"
+      class="mb-0 rounded-lg"
       :width="400"
       :height="400"
     />
-    <p class="mt-4 sm:mt-6 md:mt-8 text-2xl font-medium tracking-wider text-gray-500 dark:text-gray-500">
+
+    <!-- Place `public/images/banner.png` (served as /images/banner.png) -->
+    <img
+      src="/images/banner.png"
+      alt=""
+      aria-hidden="true"
+      class="pointer-events-none select-none block w-[min(90vw,520px)] -translate-y-[35px]"
+    />
+    <p class="mt-0 text-2xl font-medium tracking-wider text-gray-500 dark:text-gray-500">
       <span class="text-gray-800 dark:text-gray-200">Updates coming soon.</span>
     </p>
     <p class="mt-2 text-lg font-light tracking-widest text-gray-400 dark:text-gray-600">

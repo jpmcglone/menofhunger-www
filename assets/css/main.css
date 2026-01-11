@@ -37,13 +37,26 @@ body {
 /* Force custom hand cursor anywhere the UI is "clickable".
    We use !important to beat component-library styles that set cursor:pointer. */
 :where(
-  a[href],
+  /* Links (NuxtLink renders <a href>, but some UI libs use <a> without href) */
+  a,
   button,
   summary,
   [role="button"],
   [role="link"],
+  [role="menuitem"],
+  [role="menuitemcheckbox"],
+  [role="menuitemradio"],
+  [role="option"],
+  [role="tab"],
+  [role="switch"],
+  [role="checkbox"],
+  [role="radio"],
+  [aria-haspopup],
   input[type="button"],
   input[type="submit"],
+  /* PrimeVue */
+  .p-button,
+  .p-menuitem-link,
   .cursor-pointer,
   [style*="cursor:pointer"],
   [style*="cursor: pointer"]
