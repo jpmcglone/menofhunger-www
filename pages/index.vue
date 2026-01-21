@@ -144,6 +144,12 @@ definePageMeta({
   layout: 'empty'
 })
 
+useHead({
+  htmlAttrs: {
+    class: 'moh-landing'
+  }
+})
+
 const roanokeMeetupUrl = 'https://www.meetup.com/menofhunger/'
 const isRoanokeOpen = ref(false)
 
