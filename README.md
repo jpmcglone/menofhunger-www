@@ -20,6 +20,18 @@ yarn install
 bun install
 ```
 
+## Environment
+
+Create a local `.env` file:
+
+```bash
+cp env.example .env
+```
+
+Then set:
+
+- `NUXT_PUBLIC_API_BASE_URL`: Base URL for the API (example: `http://localhost:3001`)
+
 ## Development Server
 
 Start the development server on `http://localhost:3000`:

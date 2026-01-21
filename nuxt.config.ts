@@ -4,6 +4,13 @@ import { siteConfig } from './config/site'
 export default defineNuxtConfig({
   compatibilityDate: '2024-11-01',
   devtools: { enabled: true },
+  runtimeConfig: {
+    public: {
+      // Used by the website to call the API (e.g. health checks).
+      // Configure via `.env`: NUXT_PUBLIC_API_BASE_URL=http://localhost:3001
+      apiBaseUrl: process.env.NUXT_PUBLIC_API_BASE_URL || 'http://localhost:3001'
+    }
+  },
   app: {
     head: {
       htmlAttrs: { lang: 'en' },

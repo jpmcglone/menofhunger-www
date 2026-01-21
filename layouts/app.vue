@@ -263,6 +263,7 @@ const navItems = [
   { label: 'Groups', to: '/groups', icon: 'pi-users' },
   { label: 'Profile', to: '/profile', icon: 'pi-user' },
   { label: 'About', to: '/about', icon: 'pi-info-circle' },
+  { label: 'API Health', to: '/api-health', icon: 'pi-heart' },
   { label: 'Test', to: '/test', icon: 'pi-sliders-h' }
 ]
 
