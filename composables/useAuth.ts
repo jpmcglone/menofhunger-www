@@ -7,6 +7,8 @@ export type AuthUser = {
   bio?: string | null
 }
 
+type ApiResponse<T> = { data: T }
+
 function joinUrl(baseUrl: string, path: string) {
   const base = baseUrl.replace(/\/+$/, '')
   const p = path.replace(/^\/+/, '')
@@ -24,21 +26,21 @@ export function useAuth() {
 
     const headers = import.meta.server ? useRequestHeaders(['cookie']) : undefined
 
-    const result = await $fetch<{ user: AuthUser | null }>(url, {
+    const result = await $fetch<ApiResponse<{ user: AuthUser | null }>>(url, {
       method: 'GET',
       credentials: 'include',
       headers
     })
 
-    user.value = result.user
-    return result.user
+    user.value = result.data.user
+    return result.data.user
   }
 
   async function logout() {
     const url = joinUrl(apiBaseUrl, '/auth/logout')
     const headers = import.meta.server ? useRequestHeaders(['cookie']) : undefined
 
-    await $fetch(url, {
+    await $fetch<ApiResponse<{ ok: true }>>(url, {
       method: 'POST',
       credentials: 'include',
       headers

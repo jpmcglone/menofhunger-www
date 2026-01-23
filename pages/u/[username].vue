@@ -97,8 +97,8 @@ const headers = import.meta.server ? useRequestHeaders(['cookie']) : undefined
 
 const { data, error } = await useAsyncData(`public-profile:${normalizedUsername.value}`, async () => {
   const url = joinUrl(apiBaseUrl, `/users/${encodeURIComponent(normalizedUsername.value)}`)
-  const result = await $fetch<{ user: PublicProfile }>(url, { method: 'GET', credentials: 'include', headers })
-  return result.user
+  const result = await $fetch<{ data: { user: PublicProfile } }>(url, { method: 'GET', credentials: 'include', headers })
+  return result.data.user
 })
 
 const profile = computed(() => data.value ?? null)
@@ -135,7 +135,7 @@ async function saveProfile() {
   saving.value = true
   try {
     const url = joinUrl(apiBaseUrl, '/users/me/profile')
-    const result = await $fetch<{ ok: boolean; user?: any; error?: string }>(url, {
+    const result = await $fetch<{ data: { ok: boolean; user?: any; error?: string } }>(url, {
       method: 'PATCH',
       credentials: 'include',
       headers,
@@ -145,18 +145,18 @@ async function saveProfile() {
       }
     })
 
-    if (!result.ok) {
-      editError.value = result.error || 'Failed to save profile.'
+    if (!result.data.ok) {
+      editError.value = result.data.error || 'Failed to save profile.'
       return
     }
 
     // Update profile state (public view) and auth user state (self).
     data.value = {
       ...(data.value as PublicProfile),
-      name: result.user?.name ?? null,
-      bio: result.user?.bio ?? null
+      name: result.data.user?.name ?? null,
+      bio: result.data.user?.bio ?? null
     }
-    authUser.value = result.user ?? authUser.value
+    authUser.value = result.data.user ?? authUser.value
     editOpen.value = false
   } catch (e: unknown) {
     editError.value = e instanceof Error ? e.message : 'Failed to save profile.'

@@ -132,19 +132,19 @@ async function checkAvailability(username: string) {
   try {
     const headers = import.meta.server ? useRequestHeaders(['cookie']) : undefined
     const url = joinUrl(apiBaseUrl, '/users/username/available')
-    const result = await $fetch<{ available: boolean; normalized: string | null; error?: string }>(url, {
+    const result = await $fetch<{ data: { available: boolean; normalized: string | null; error?: string } }>(url, {
       method: 'GET',
       query: { username },
       credentials: 'include',
       headers
     })
 
-    if (result.available) {
+    if (result.data.available) {
       availability.value = 'available'
-      helperText.value = `Available: @${result.normalized}`
+      helperText.value = `Available: @${result.data.normalized}`
     } else {
-      availability.value = result.error ? 'invalid' : 'taken'
-      helperText.value = result.error || 'That username is taken.'
+      availability.value = result.data.error ? 'invalid' : 'taken'
+      helperText.value = result.data.error || 'That username is taken.'
     }
   } catch (e: unknown) {
     availability.value = 'unknown'
@@ -183,21 +183,21 @@ async function save() {
   try {
     const headers = import.meta.server ? useRequestHeaders(['cookie']) : undefined
     const url = joinUrl(apiBaseUrl, '/users/me/username')
-    const result = await $fetch<{ ok: boolean; user?: any; error?: string }>(url, {
+    const result = await $fetch<{ data: { ok: boolean; user?: any; error?: string } }>(url, {
       method: 'PATCH',
       body: { username },
       credentials: 'include',
       headers
     })
 
-    if (!result.ok) {
+    if (!result.data.ok) {
       availability.value = 'invalid'
-      helperText.value = result.error || 'Could not save username.'
+      helperText.value = result.data.error || 'Could not save username.'
       return
     }
 
     // Update client auth state with latest user data.
-    authUser.value = result.user ?? authUser.value
+    authUser.value = result.data.user ?? authUser.value
     saved.value = true
   } catch (e: unknown) {
     helperText.value = e instanceof Error ? e.message : 'Failed to save username.'

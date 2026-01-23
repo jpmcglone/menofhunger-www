@@ -189,7 +189,7 @@ async function submitPhone() {
   phoneSubmitting.value = true
   try {
     const url = joinUrl(apiBaseUrl, '/auth/phone/start')
-    const result = await $fetch<{ ok: true; retryAfterSeconds: number }>(url, {
+    const result = await $fetch<{ data: { ok: true; retryAfterSeconds: number } }>(url, {
       method: 'POST',
       body: { phone },
       credentials: 'include'
@@ -199,7 +199,7 @@ async function submitPhone() {
     step.value = 'code'
     codeInput.value = ''
 
-    startResendCountdown(result.retryAfterSeconds ?? 30)
+    startResendCountdown(result.data.retryAfterSeconds ?? 30)
   } catch (e: unknown) {
     inlineError.value = e instanceof Error ? e.message : 'Failed to send code.'
   } finally {
@@ -239,14 +239,14 @@ async function submitCode() {
   verifying.value = true
   try {
     const url = joinUrl(apiBaseUrl, '/auth/phone/verify')
-    const result = await $fetch<{ ok: boolean; error?: string }>(url, {
+    const result = await $fetch<{ data: { ok: boolean; error?: string } }>(url, {
       method: 'POST',
       body: { phone, code },
       credentials: 'include'
     })
 
-    if (!result.ok) {
-      inlineError.value = result.error || 'Invalid code.'
+    if (!result.data.ok) {
+      inlineError.value = result.data.error || 'Invalid code.'
       return
     }
 

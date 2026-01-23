@@ -17,7 +17,7 @@ export function useApiHealth() {
   // Store an ISO string to avoid SSR/client timezone hydration mismatches.
   const lastCheckedAtIso = ref<string | null>(null)
 
-  const { data, pending, error, refresh, status } = useFetch<ApiHealthResponse>(url, {
+  const { data, pending, error, refresh, status } = useFetch<{ data: ApiHealthResponse }>(url, {
     // Works on SSR and on client-side navigation.
     key: `api-health:${url}`
   })
@@ -30,12 +30,12 @@ export function useApiHealth() {
     { immediate: true }
   )
 
-  const isUp = computed(() => Boolean(data.value?.ok) && !error.value)
+  const isUp = computed(() => Boolean(data.value?.data?.ok) && !error.value)
 
   return {
     apiBaseUrl,
     url,
-    data,
+    data: computed(() => data.value?.data ?? null),
     pending,
     error,
     status,
