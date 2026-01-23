@@ -201,7 +201,10 @@ async function submitPhone() {
 
     startResendCountdown(result.data.retryAfterSeconds ?? 30)
   } catch (e: unknown) {
-    inlineError.value = e instanceof Error ? e.message : 'Failed to send code.'
+    // API errors are returned as { meta: { status, errors: [{ code, message, reason }] } }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const apiError = (e as any)?.data?.meta?.errors?.[0]
+    inlineError.value = apiError?.message || (e instanceof Error ? e.message : 'Failed to send code.')
   } finally {
     phoneSubmitting.value = false
   }
@@ -252,7 +255,9 @@ async function submitCode() {
 
     await navigateTo('/home')
   } catch (e: unknown) {
-    inlineError.value = e instanceof Error ? e.message : 'Failed to verify code.'
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const apiError = (e as any)?.data?.meta?.errors?.[0]
+    inlineError.value = apiError?.message || (e instanceof Error ? e.message : 'Failed to verify code.')
   } finally {
     verifying.value = false
   }
