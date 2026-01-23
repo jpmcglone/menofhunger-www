@@ -44,8 +44,7 @@ export default defineNuxtConfig({
   routeRules: {
     // Static where it makes sense (fast marketing pages), SSR everywhere else.
     '/': { prerender: true },
-    '/about': { prerender: true },
-    '/test': { prerender: true }
+    '/about': { prerender: true }
   },
   primevue: {
     options: {

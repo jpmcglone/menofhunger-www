@@ -5,58 +5,72 @@
   <div class="h-dvh overflow-hidden bg-white text-gray-900 dark:bg-black dark:text-gray-50">
     <div class="mx-auto flex h-full w-full max-w-6xl px-2 sm:px-4 xl:max-w-7xl">
       <!-- Left Nav (independent scroll) -->
-      <aside class="no-scrollbar shrink-0 h-full overflow-y-auto overscroll-y-none border-r border-gray-200 dark:border-zinc-800">
+      <aside class="no-scrollbar hidden sm:block shrink-0 h-full overflow-y-auto overscroll-y-none border-r border-gray-200 dark:border-zinc-800">
         <!-- IMPORTANT: no `h-full` + no `overflow-hidden` here, or the rail can't actually scroll -->
-        <div class="min-h-full w-14 px-1 py-4 transition-[width,padding] duration-200 ease-out md:w-64 md:px-3">
-          <div class="mb-3 flex items-center justify-center md:justify-start">
-            <AppLogo
-              :alt="siteConfig.name"
-              as-link
-              to="/home"
-              :light-src="logoLightSmall"
-              :dark-src="logoDarkSmall"
-              :width="32"
-              :height="32"
-              imgClass="h-8 w-8 rounded"
-            />
+        <div
+          :class="[
+            // Keep internal layout stable; only width changes between compact and wide.
+            'min-h-full w-14 px-1 py-4 transition-[width,padding] duration-200 ease-out flex flex-col',
+            // On desktop, match the right rail's padding (`px-4`) in both modes.
+            // When compact, increase rail width so the inner content can still fit `w-12`,
+            // while keeping the same right gutter to the divider as wide mode.
+            navCompactMode ? 'md:w-20 md:px-4' : 'md:w-64 md:px-4'
+          ]"
+        >
+          <div class="mb-3">
+            <div class="flex h-12 w-12 items-center justify-center">
+              <AppLogo
+                :alt="siteConfig.name"
+                as-link
+                to="/home"
+                :light-src="logoLightSmall"
+                :dark-src="logoDarkSmall"
+                :width="32"
+                :height="32"
+                imgClass="h-8 w-8 rounded"
+              />
+            </div>
           </div>
 
-          <nav class="space-y-1">
+          <nav class="space-y-1 flex-1">
             <NuxtLink
-              v-for="item in navItems"
-              :key="item.to"
+              v-for="item in leftNavItems"
+              :key="item.label"
               :to="item.to"
               :class="[
-                'group mx-auto flex h-12 w-12 items-center justify-center gap-0 rounded-xl text-gray-900 hover:bg-gray-100 dark:text-gray-50 dark:hover:bg-zinc-900 md:mx-0 md:h-auto md:w-full md:justify-start md:gap-4 md:rounded-full md:px-4 md:py-3',
+                'group flex h-12 items-center rounded-xl text-gray-900 hover:bg-gray-100 dark:text-gray-50 dark:hover:bg-zinc-900',
+                'w-full',
                 route.path === item.to ? 'bg-gray-100 font-semibold dark:bg-zinc-900' : 'font-medium'
               ]"
             >
-              <i class="pi text-2xl md:text-xl" :class="item.icon" aria-hidden="true" />
-              <span
-                class="whitespace-nowrap overflow-hidden text-xl md:text-lg transition-[max-width,opacity] duration-200 ease-out max-w-0 opacity-0 md:max-w-[220px] md:opacity-100"
-              >
+              <span class="flex h-12 w-12 shrink-0 items-center justify-center">
+                <i :class="['pi text-2xl', item.icon]" aria-hidden="true" />
+              </span>
+              <span v-if="!navCompactMode" class="hidden md:inline whitespace-nowrap overflow-hidden text-lg max-w-[220px]">
                 {{ item.label }}
               </span>
             </NuxtLink>
 
             <div class="pt-2">
-              <Button
-                label="Post"
-                icon="pi pi-plus"
+              <button
+                type="button"
                 aria-label="Post"
-                class="mx-auto h-12 w-12 rounded-xl !border-0 !p-0 !shadow-none !bg-black !text-white dark:!bg-white dark:!text-black
-                       [&_.p-button-label]:hidden md:[&_.p-button-label]:inline
-                       md:[&_.p-button-icon]:hidden
-                       md:mx-0 md:h-auto md:w-full md:rounded-full md:!px-4 md:!py-3"
-              />
+                :class="[
+                  'group flex h-12 items-center rounded-xl bg-black text-white hover:opacity-95 dark:bg-white dark:text-black',
+                  'w-full'
+                ]"
+                v-if="isAuthed"
+              >
+                <span class="flex h-12 w-12 shrink-0 items-center justify-center">
+                  <i class="pi pi-plus text-xl" aria-hidden="true" />
+                </span>
+                <span v-if="!navCompactMode" class="hidden md:inline text-base font-semibold">Post</span>
+              </button>
             </div>
 
-            <div class="pt-3 flex items-center justify-center md:justify-start md:px-2">
-              <ClientOnly>
-                <AppThemeModeMenu />
-              </ClientOnly>
-            </div>
           </nav>
+
+          <AppUserCard v-if="isAuthed" :compact="navCompactMode" />
         </div>
       </aside>
 
@@ -73,7 +87,7 @@
             </div>
           </div>
 
-          <div class="px-4 py-4">
+          <div class="px-4 py-4 pb-24 sm:pb-4">
             <slot />
           </div>
         </main>
@@ -240,6 +254,8 @@
       </div>
     </div>
   </div>
+
+  <AppTabBar :items="tabItems" />
 </template>
 
 <script setup lang="ts">
@@ -248,6 +264,35 @@ import logoLightSmall from '~/assets/images/logo-white-bg-small.png'
 import logoDarkSmall from '~/assets/images/logo-black-bg-small.png'
 
 const route = useRoute()
+const { user, me } = useAuth()
+const { isAuthed, leftItems: leftNavItems, tabItems } = useAppNav()
+
+// SSR: if a session cookie exists, hydrate auth state before rendering.
+// This prevents a “flash” of placeholder user UI on public pages like `/u/:username`.
+if (import.meta.server) {
+  const cookieHeader = useRequestHeaders(['cookie']).cookie
+  if (cookieHeader?.includes('moh_session=') && user.value === null) {
+    await me()
+  }
+} else {
+  // Client: best-effort hydration for public routes when user state isn't loaded yet.
+  onMounted(() => {
+    if (user.value === null) {
+      me().catch(() => {
+        // ignore
+      })
+    }
+  })
+}
+
+const isNavForcedCompact = computed(() => {
+  // Some routes need more horizontal space in the center column.
+  // Force the left nav to remain compact (even on desktop) for those routes.
+  const forced = ['/messages', '/test']
+  return forced.some((p) => route.path === p || route.path.startsWith(`${p}/`))
+})
+
+const navCompactMode = computed(() => isNavForcedCompact.value)
 
 const title = computed(() => {
   // Nuxt provides the current route's meta title via useRoute().meta in many cases.
@@ -255,17 +300,7 @@ const title = computed(() => {
   return (route.meta?.title as string) || 'Home'
 })
 
-const navItems = [
-  { label: 'Home', to: '/home', icon: 'pi-home' },
-  { label: 'Explore', to: '/explore', icon: 'pi-compass' },
-  { label: 'Notifications', to: '/notifications', icon: 'pi-bell' },
-  { label: 'Messages', to: '/messages', icon: 'pi-envelope' },
-  { label: 'Groups', to: '/groups', icon: 'pi-users' },
-  { label: 'Profile', to: '/profile', icon: 'pi-user' },
-  { label: 'About', to: '/about', icon: 'pi-info-circle' },
-  { label: 'API Health', to: '/api-health', icon: 'pi-heart' },
-  { label: 'Test', to: '/test', icon: 'pi-sliders-h' }
-]
+// nav items are provided by useAppNav() so mobile + desktop stay in sync
 
 const middleScrollerEl = ref<HTMLElement | null>(null)
 const rightScrollerEl = ref<HTMLElement | null>(null)

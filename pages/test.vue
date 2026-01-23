@@ -1,5 +1,5 @@
 <template>
-  <section class="mx-auto w-full max-w-2xl space-y-6">
+  <section class="w-full space-y-6">
     <header class="space-y-3">
       <div class="flex flex-wrap items-center gap-2">
         <Tag value="PrimeVue" severity="info" />

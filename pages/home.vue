@@ -2,16 +2,10 @@
   <div class="-mx-4">
     <!-- Composer -->
     <div class="border-b border-gray-200 px-4 py-4 dark:border-zinc-800">
-      <div class="flex gap-3">
+      <div v-if="isAuthed" class="flex gap-3">
         <div class="h-10 w-10 shrink-0 rounded-full bg-gray-200 dark:bg-zinc-800" aria-hidden="true" />
         <div class="min-w-0 flex-1">
-          <Textarea
-            v-model="draft"
-            autoResize
-            rows="3"
-            class="w-full"
-            placeholder="What’s happening?"
-          />
+          <Textarea v-model="draft" autoResize rows="3" class="w-full" placeholder="What’s happening?" />
           <div class="mt-3 flex items-center justify-between">
             <div class="flex items-center gap-2 text-gray-500 dark:text-gray-400">
               <Button icon="pi pi-image" text rounded severity="secondary" aria-label="Media" />
@@ -22,6 +16,23 @@
           </div>
         </div>
       </div>
+
+      <button
+        v-else
+        type="button"
+        class="w-full text-left rounded-xl border border-gray-200 bg-gray-50 px-4 py-4 hover:bg-gray-100 dark:border-zinc-800 dark:bg-zinc-950/40 dark:hover:bg-zinc-900/40"
+        @click="goLogin"
+      >
+        <div class="flex items-center justify-between gap-3">
+          <div class="space-y-1">
+            <div class="font-semibold text-gray-900 dark:text-gray-50">Log in to post</div>
+            <div class="text-sm text-gray-600 dark:text-gray-300">
+              Join the conversation and share updates with the brotherhood.
+            </div>
+          </div>
+          <i class="pi pi-angle-right text-gray-500 dark:text-gray-400" aria-hidden="true" />
+        </div>
+      </button>
     </div>
 
     <!-- Posts -->
@@ -76,10 +87,17 @@ usePageSeo({
 
 const { posts, addPost } = useWallPosts()
 const draft = ref('')
+const { user } = useAuth()
+const isAuthed = computed(() => Boolean(user.value?.id))
 
 const submit = () => {
   addPost(draft.value)
   draft.value = ''
+}
+
+const goLogin = () => {
+  const redirect = encodeURIComponent('/home')
+  return navigateTo(`/login?redirect=${redirect}`)
 }
 </script>
 

@@ -1,0 +1,32 @@
+export default defineNuxtRouteMiddleware(async (to) => {
+  const { user, me } = useAuth()
+
+  // Public routes (no auth check, SSR-safe/prerender-safe).
+  const publicPaths = new Set<string>(['/', '/about', '/api-health', '/test'])
+  if (publicPaths.has(to.path)) return
+  if (to.path.startsWith('/u/')) return
+  // Allow logged-out browsing of core feed/discovery for now.
+  if (to.path === '/home' || to.path === '/explore') return
+
+  // If visiting login and already authenticated, go to home.
+  if (to.path === '/login') {
+    if (user.value === null) await me()
+    if (user.value) {
+      const redirect = typeof to.query.redirect === 'string' ? to.query.redirect : null
+      if (redirect && redirect.startsWith('/')) return navigateTo(redirect)
+      return navigateTo('/home')
+    }
+    return
+  }
+
+  // Protect app-layout pages.
+  const requiresAuth = to.meta?.layout === 'app'
+  if (!requiresAuth) return
+
+  if (user.value === null) await me()
+  if (!user.value) {
+    const redirect = encodeURIComponent(to.fullPath)
+    return navigateTo(`/login?redirect=${redirect}`)
+  }
+})
+

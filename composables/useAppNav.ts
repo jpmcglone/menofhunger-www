@@ -1,0 +1,43 @@
+export type AppNavItem = {
+  key: string
+  label: string
+  to: string
+  icon?: string
+  requiresAuth?: boolean
+  showInLeft?: boolean
+  showInTabs?: boolean
+}
+
+export function useAppNav() {
+  const { user } = useAuth()
+  const isAuthed = computed(() => Boolean(user.value?.id))
+
+  const profileTo = computed(() => {
+    const u = user.value?.username
+    return u ? `/u/${u.toLowerCase()}` : '/settings'
+  })
+
+  const allItems = computed<AppNavItem[]>(() => [
+    { key: 'home', label: 'Home', to: '/home', icon: 'pi-home', showInLeft: true, showInTabs: true },
+    { key: 'explore', label: 'Explore', to: '/explore', icon: 'pi-compass', showInLeft: true, showInTabs: true },
+
+    // Authed-only core items
+    { key: 'notifications', label: 'Notifications', to: '/notifications', icon: 'pi-bell', requiresAuth: true, showInLeft: true, showInTabs: true },
+    { key: 'messages', label: 'Messages', to: '/messages', icon: 'pi-envelope', requiresAuth: true, showInLeft: true, showInTabs: true },
+    { key: 'groups', label: 'Groups', to: '/groups', icon: 'pi-users', requiresAuth: true, showInLeft: true, showInTabs: false },
+    { key: 'profile', label: 'Profile', to: profileTo.value, icon: 'pi-user', requiresAuth: true, showInLeft: true, showInTabs: true },
+
+    // Misc
+    { key: 'about', label: 'About', to: '/about', icon: 'pi-info-circle', showInLeft: true, showInTabs: false },
+    { key: 'api-health', label: 'API Health', to: '/api-health', icon: 'pi-heart', showInLeft: true, showInTabs: false },
+    { key: 'test', label: 'Test', to: '/test', icon: 'pi-sliders-h', showInLeft: true, showInTabs: false }
+  ])
+
+  const visible = (item: AppNavItem) => !item.requiresAuth || isAuthed.value
+
+  const leftItems = computed(() => allItems.value.filter((i) => i.showInLeft && visible(i)))
+  const tabItems = computed(() => allItems.value.filter((i) => i.showInTabs && visible(i)))
+
+  return { isAuthed, profileTo, leftItems, tabItems }
+}
+
