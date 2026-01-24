@@ -1,5 +1,9 @@
 <template>
   <div class="space-y-4">
+    <div>
+      <InputText class="w-full" placeholder="Search Explore…" />
+    </div>
+
     <Card>
       <template #title>Explore</template>
       <template #content>

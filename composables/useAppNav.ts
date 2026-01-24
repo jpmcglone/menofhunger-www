@@ -19,7 +19,7 @@ export function useAppNav() {
 
   const allItems = computed<AppNavItem[]>(() => [
     { key: 'home', label: 'Home', to: '/home', icon: 'pi-home', showInLeft: true, showInTabs: true },
-    { key: 'explore', label: 'Explore', to: '/explore', icon: 'pi-compass', showInLeft: true, showInTabs: true },
+    { key: 'explore', label: 'Explore', to: '/explore', icon: 'pi-search', showInLeft: true, showInTabs: true },
 
     // Authed-only core items
     { key: 'notifications', label: 'Notifications', to: '/notifications', icon: 'pi-bell', requiresAuth: true, showInLeft: true, showInTabs: true },

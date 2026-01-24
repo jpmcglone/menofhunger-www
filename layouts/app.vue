@@ -14,7 +14,8 @@
             // On desktop, match the right rail's padding (`px-4`) in both modes.
             // When compact, increase rail width so the inner content can still fit `w-12`,
             // while keeping the same right gutter to the divider as wide mode.
-            navCompactMode ? 'md:w-20 md:px-4' : 'md:w-20 md:px-4 lg:w-64 lg:px-4'
+            // Prefer: left collapses (xl) before right rail hides (lg).
+            navCompactMode ? 'md:w-20 md:px-4' : 'md:w-20 md:px-4 xl:w-64 xl:px-4'
           ]"
         >
           <div class="mb-3">
@@ -44,9 +45,9 @@
               ]"
             >
               <span class="flex h-12 w-12 shrink-0 items-center justify-center">
-                <i :class="['pi text-2xl', item.icon]" aria-hidden="true" />
+                <i :class="['pi text-4xl', item.icon]" aria-hidden="true" />
               </span>
-              <span v-if="!navCompactMode" class="hidden lg:inline whitespace-nowrap overflow-hidden text-lg max-w-[220px]">
+              <span v-if="!navCompactMode" class="hidden xl:inline whitespace-nowrap overflow-hidden text-lg max-w-[220px]">
                 {{ item.label }}
               </span>
             </NuxtLink>
@@ -62,9 +63,9 @@
                 v-if="isAuthed"
               >
                 <span class="flex h-12 w-12 shrink-0 items-center justify-center">
-                  <i class="pi pi-plus text-xl" aria-hidden="true" />
+                  <i class="pi pi-plus text-3xl" aria-hidden="true" />
                 </span>
-                <span v-if="!navCompactMode" class="hidden lg:inline text-base font-semibold">Post</span>
+                <span v-if="!navCompactMode" class="hidden xl:inline text-base font-semibold">Post</span>
               </button>
             </div>
 
@@ -92,14 +93,26 @@
           </div>
         </main>
 
-        <!-- Right rail (scroll zone #3). Visible on xl+. -->
+        <!-- Right rail (scroll zone #3). Visible on lg+. -->
         <aside
           ref="rightScrollerEl"
-          class="no-scrollbar hidden xl:block shrink-0 w-80 h-full overflow-y-auto overscroll-y-none px-4 py-4"
+          :class="[
+            'no-scrollbar shrink-0 w-80 h-full overflow-y-auto overscroll-y-none px-4 py-4',
+            isRightRailForcedHidden ? 'hidden' : 'hidden lg:block'
+          ]"
         >
-          <div class="space-y-4">
-            <InputText class="w-full" placeholder="Search…" />
+          <div>
+            <!-- On Explore, the search bar lives in the center column. Collapse it here. -->
+            <div
+              :class="[
+                'overflow-hidden transition-all duration-200 ease-out',
+                isRightRailSearchHidden ? 'max-h-0 opacity-0 mb-0 pointer-events-none' : 'max-h-16 opacity-100 mb-4'
+              ]"
+            >
+              <InputText class="w-full" placeholder="Search…" />
+            </div>
 
+            <div class="space-y-4 transition-[transform] duration-200 ease-out">
               <Card>
                 <template #title>Trends for you</template>
                 <template #content>
@@ -249,6 +262,7 @@
                 <span>·</span>
                 <span>&copy; {{ new Date().getFullYear() }} {{ siteConfig.name }}</span>
               </div>
+            </div>
           </div>
         </aside>
       </div>
@@ -294,6 +308,18 @@ const isNavForcedCompact = computed(() => {
 
 const navCompactMode = computed(() => isNavForcedCompact.value)
 
+const isRightRailForcedHidden = computed(() => {
+  // On messages we want the center column to be as wide as possible.
+  const forced = ['/messages']
+  return forced.some((p) => route.path === p || route.path.startsWith(`${p}/`))
+})
+
+const isRightRailSearchHidden = computed(() => {
+  // On Explore, the search UI is part of the center column.
+  const forced = ['/explore']
+  return forced.some((p) => route.path === p || route.path.startsWith(`${p}/`))
+})
+
 const title = computed(() => {
   // Nuxt provides the current route's meta title via useRoute().meta in many cases.
   // Keep a simple fallback.
@@ -325,7 +351,8 @@ function onCoupledWheel(e: WheelEvent) {
   const right = rightScrollerEl.value
   if (!middle || !right) return
 
-  // If the right rail is not visible (below xl), don't intercept scrolling.
+  // If the right rail is not visible (below lg), don't intercept scrolling.
+  if (isRightRailForcedHidden.value) return
   if (right.clientHeight === 0 || right.offsetParent === null) return
 
   const dy = normalizeWheelDeltaY(e, middle)

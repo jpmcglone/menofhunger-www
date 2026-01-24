@@ -5,9 +5,9 @@
       type="button"
       :class="[
         'group w-full rounded-xl hover:bg-gray-100 dark:hover:bg-zinc-900 text-left',
-        // Default to compact on smaller screens (rail is narrow until lg).
-        // `compact` forces compact even at lg+ (e.g. messages/test routes).
-        compact ? 'p-1' : 'p-1 lg:p-2'
+        // Default to compact on smaller screens (rail is narrow until xl).
+        // `compact` forces compact even at xl+ (e.g. messages/test routes).
+        compact ? 'p-1' : 'p-1 xl:p-2'
       ]"
       @click="toggleMenu"
     >
@@ -15,7 +15,7 @@
         <div
           :class="[
             'shrink-0 rounded-full bg-gray-200 dark:bg-zinc-800',
-            compact ? 'mx-auto h-10 w-10' : 'mx-auto lg:mx-0 h-10 w-10'
+            compact ? 'mx-auto h-10 w-10' : 'mx-auto xl:mx-0 h-10 w-10'
           ]"
           aria-hidden="true"
         />
@@ -23,7 +23,7 @@
         <div
           :class="[
             'min-w-0 flex-1',
-            compact ? 'hidden' : 'hidden lg:block'
+            compact ? 'hidden' : 'hidden xl:block'
           ]"
         >
           <div class="flex items-center justify-between gap-2">
