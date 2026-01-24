@@ -1,3 +1,4 @@
+/// <reference types="node" />
 // https://nuxt.com/docs/api/configuration/nuxt-config
 import { siteConfig } from './config/site'
 
@@ -65,7 +66,6 @@ export default defineNuxtConfig({
     fallback: 'dark',
     classPrefix: '',
     classSuffix: '',
-    storageKey: 'color-mode',
-    system: true
+    storageKey: 'color-mode'
   }
 })

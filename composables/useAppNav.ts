@@ -22,7 +22,8 @@ export function useAppNav() {
     { key: 'explore', label: 'Explore', to: '/explore', icon: 'pi-search', showInLeft: true, showInTabs: true },
 
     // Authed-only core items
-    { key: 'notifications', label: 'Notifications', to: '/notifications', icon: 'pi-bell', requiresAuth: true, showInLeft: true, showInTabs: true },
+    // Public for now (prod wants it visible/usable even if logged out).
+    { key: 'notifications', label: 'Notifications', to: '/notifications', icon: 'pi-bell', showInLeft: true, showInTabs: true },
     { key: 'messages', label: 'Messages', to: '/messages', icon: 'pi-envelope', requiresAuth: true, showInLeft: true, showInTabs: true },
     { key: 'groups', label: 'Groups', to: '/groups', icon: 'pi-users', requiresAuth: true, showInLeft: true, showInTabs: false },
     { key: 'profile', label: 'Profile', to: profileTo.value, icon: 'pi-user', requiresAuth: true, showInLeft: true, showInTabs: true },

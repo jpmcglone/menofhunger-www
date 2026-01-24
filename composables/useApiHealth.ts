@@ -1,23 +1,17 @@
 export type ApiHealthResponse = {
-  ok: boolean
+  status: string
 }
 
-function joinUrl(baseUrl: string, path: string) {
-  const base = baseUrl.replace(/\/+$/, '')
-  const p = path.replace(/^\/+/, '')
-  return `${base}/${p}`
-}
+import type { ApiEnvelope } from '~/types/api'
 
 export function useApiHealth() {
-  const config = useRuntimeConfig()
-  const apiBaseUrl = (config.public.apiBaseUrl as string) || ''
-
-  const url = joinUrl(apiBaseUrl, '/health')
+  const { apiBaseUrl, apiUrl } = useApiClient()
+  const url = apiUrl('/health')
 
   // Store an ISO string to avoid SSR/client timezone hydration mismatches.
   const lastCheckedAtIso = ref<string | null>(null)
 
-  const { data, pending, error, refresh, status } = useFetch<{ data: ApiHealthResponse }>(url, {
+  const { data, pending, error, refresh, status } = useFetch<ApiEnvelope<ApiHealthResponse>>(url, {
     // Works on SSR and on client-side navigation.
     key: `api-health:${url}`
   })
@@ -30,7 +24,7 @@ export function useApiHealth() {
     { immediate: true }
   )
 
-  const isUp = computed(() => Boolean(data.value?.data?.ok) && !error.value)
+  const isUp = computed(() => data.value?.data?.status === 'ok' && !error.value)
 
   return {
     apiBaseUrl,

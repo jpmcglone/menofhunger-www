@@ -28,6 +28,8 @@
 </template>
 
 <script setup lang="ts">
+import type { CSSProperties } from 'vue'
+
 withDefaults(
   defineProps<{
     alt: string
@@ -59,12 +61,15 @@ withDefaults(
 const NuxtLink = resolveComponent('NuxtLink')
 
 // Inline styles apply even before Tailwind loads.
-const imgStyle = computed(() => ({
-  maxWidth: '90vw',
-  height: 'auto',
-  userSelect: 'none',
-  WebkitUserDrag: 'none'
-}))
+const imgStyle = computed(() => {
+  return {
+    maxWidth: '90vw',
+    height: 'auto',
+    userSelect: 'none',
+    // Not part of standard CSSProperties in all TS lib versions.
+    WebkitUserDrag: 'none'
+  } as CSSProperties
+})
 </script>
 
 <style>

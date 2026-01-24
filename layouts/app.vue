@@ -278,140 +278,21 @@ import logoLightSmall from '~/assets/images/logo-white-bg-small.png'
 import logoDarkSmall from '~/assets/images/logo-black-bg-small.png'
 
 const route = useRoute()
-const { user, me } = useAuth()
+const { initAuth } = useAuth()
 const { isAuthed, leftItems: leftNavItems, tabItems } = useAppNav()
+const { navCompactMode, isRightRailForcedHidden, isRightRailSearchHidden, title } = useLayoutRules(route)
 
-// SSR: if a session cookie exists, hydrate auth state before rendering.
-// This prevents a “flash” of placeholder user UI on public pages like `/u/:username`.
-if (import.meta.server) {
-  const cookieHeader = useRequestHeaders(['cookie']).cookie
-  if (cookieHeader?.includes('moh_session=') && user.value === null) {
-    await me()
-  }
-} else {
-  // Client: best-effort hydration for public routes when user state isn't loaded yet.
-  onMounted(() => {
-    if (user.value === null) {
-      me().catch(() => {
-        // ignore
-      })
-    }
-  })
-}
-
-const isNavForcedCompact = computed(() => {
-  // Some routes need more horizontal space in the center column.
-  // Force the left nav to remain compact (even on desktop) for those routes.
-  const forced = ['/messages', '/test']
-  return forced.some((p) => route.path === p || route.path.startsWith(`${p}/`))
-})
-
-const navCompactMode = computed(() => isNavForcedCompact.value)
-
-const isRightRailForcedHidden = computed(() => {
-  // On messages we want the center column to be as wide as possible.
-  const forced = ['/messages']
-  return forced.some((p) => route.path === p || route.path.startsWith(`${p}/`))
-})
-
-const isRightRailSearchHidden = computed(() => {
-  // On Explore, the search UI is part of the center column.
-  const forced = ['/explore']
-  return forced.some((p) => route.path === p || route.path.startsWith(`${p}/`))
-})
-
-const title = computed(() => {
-  // Nuxt provides the current route's meta title via useRoute().meta in many cases.
-  // Keep a simple fallback.
-  return (route.meta?.title as string) || 'Home'
-})
-
+// Centralized auth hydration lives in `useAuth()`.
+await initAuth()
 // nav items are provided by useAppNav() so mobile + desktop stay in sync
 
 const middleScrollerEl = ref<HTMLElement | null>(null)
 const rightScrollerEl = ref<HTMLElement | null>(null)
 
-function normalizeWheelDeltaY(e: WheelEvent, container: HTMLElement) {
-  // deltaMode: 0=pixel, 1=line, 2=page
-  if (e.deltaMode === 1) return e.deltaY * 16
-  if (e.deltaMode === 2) return e.deltaY * container.clientHeight
-  return e.deltaY
-}
-
-function clamp(n: number, min: number, max: number) {
-  return Math.min(max, Math.max(min, n))
-}
-
-// Shared "virtual" scroll position for columns 2 + 3.
-// Each column renders this position clamped to its own scroll range.
-const coupledScrollY = ref(0)
-
-function onCoupledWheel(e: WheelEvent) {
-  const middle = middleScrollerEl.value
-  const right = rightScrollerEl.value
-  if (!middle || !right) return
-
-  // If the right rail is not visible (below lg), don't intercept scrolling.
-  if (isRightRailForcedHidden.value) return
-  if (right.clientHeight === 0 || right.offsetParent === null) return
-
-  const dy = normalizeWheelDeltaY(e, middle)
-  if (dy === 0) return
-
-  // We fully control the scroll so it behaves the same regardless of pointer zone.
-  e.preventDefault()
-
-  const maxMiddle = Math.max(0, middle.scrollHeight - middle.clientHeight)
-  const maxRight = Math.max(0, right.scrollHeight - right.clientHeight)
-  const maxCoupled = Math.max(maxMiddle, maxRight)
-
-  // Advance shared position (this is the "underlying scroll position").
-  coupledScrollY.value = clamp(coupledScrollY.value + dy, 0, maxCoupled)
-
-  // Apply it to each column.
-  middle.scrollTop = clamp(coupledScrollY.value, 0, maxMiddle)
-  right.scrollTop = clamp(coupledScrollY.value, 0, maxRight)
-}
-
-let middleWheelHandler: ((e: WheelEvent) => void) | null = null
-let rightWheelHandler: ((e: WheelEvent) => void) | null = null
-
-onMounted(() => {
-  if (!import.meta.client) return
-  if (!middleScrollerEl.value) return
-
-  // Initialize shared position from current scrollTop.
-  coupledScrollY.value = middleScrollerEl.value.scrollTop
-
-  middleWheelHandler = (e: WheelEvent) => onCoupledWheel(e)
-  middleScrollerEl.value.addEventListener('wheel', middleWheelHandler, { passive: false })
-
-  if (rightScrollerEl.value) {
-    // Keep shared position aligned if the right rail is manually scrolled (e.g. touch).
-    rightScrollerEl.value.addEventListener(
-      'scroll',
-      () => {
-        if (!rightScrollerEl.value) return
-        coupledScrollY.value = Math.max(coupledScrollY.value, rightScrollerEl.value.scrollTop)
-      },
-      { passive: true }
-    )
-
-    rightWheelHandler = (e: WheelEvent) => onCoupledWheel(e)
-    rightScrollerEl.value.addEventListener('wheel', rightWheelHandler, { passive: false })
-  }
-})
-
-onBeforeUnmount(() => {
-  if (!import.meta.client) return
-  if (middleScrollerEl.value && middleWheelHandler) {
-    middleScrollerEl.value.removeEventListener('wheel', middleWheelHandler)
-  }
-  if (rightScrollerEl.value && rightWheelHandler) {
-    rightScrollerEl.value.removeEventListener('wheel', rightWheelHandler)
-  }
-  middleWheelHandler = null
-  rightWheelHandler = null
+useCoupledScroll({
+  middle: middleScrollerEl,
+  right: rightScrollerEl,
+  enabled: computed(() => !isRightRailForcedHidden.value)
 })
 </script>
 

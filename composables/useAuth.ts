@@ -7,48 +7,70 @@ export type AuthUser = {
   bio?: string | null
 }
 
-type ApiResponse<T> = { data: T }
-
-function joinUrl(baseUrl: string, path: string) {
-  const base = baseUrl.replace(/\/+$/, '')
-  const p = path.replace(/^\/+/, '')
-  return `${base}/${p}`
-}
+let clientMePromise: Promise<AuthUser | null> | null = null
 
 export function useAuth() {
-  const config = useRuntimeConfig()
-  const apiBaseUrl = (config.public.apiBaseUrl as string) || ''
+  const { apiFetch } = useApiClient()
 
   const user = useState<AuthUser | null>('auth-user', () => null)
+  const didAttempt = useState<boolean>('auth-did-attempt', () => false)
+  const initDone = useState<boolean>('auth-init-done', () => false)
 
-  async function me() {
-    const url = joinUrl(apiBaseUrl, '/auth/me')
+  async function me(): Promise<AuthUser | null> {
+    try {
+      const result = await apiFetch<{ user: AuthUser | null }>('/auth/me', { method: 'GET' })
+      user.value = result.data.user
+      return result.data.user
+    } catch {
+      // If the API is unreachable, fail gracefully.
+      user.value = null
+      return null
+    } finally {
+      didAttempt.value = true
+    }
+  }
 
-    const headers = import.meta.server ? useRequestHeaders(['cookie']) : undefined
+  async function ensureLoaded(): Promise<AuthUser | null> {
+    if (didAttempt.value) return user.value
 
-    const result = await $fetch<ApiResponse<{ user: AuthUser | null }>>(url, {
-      method: 'GET',
-      credentials: 'include',
-      headers
+    if (import.meta.client) {
+      if (!clientMePromise) {
+        clientMePromise = me().finally(() => {
+          clientMePromise = null
+        })
+      }
+      return await clientMePromise
+    }
+
+    return await me()
+  }
+
+  async function initAuth(): Promise<void> {
+    if (initDone.value) return
+    initDone.value = true
+
+    if (import.meta.server) {
+      const cookieHeader = useRequestHeaders(['cookie']).cookie
+      if (!cookieHeader?.includes('moh_session=')) {
+        didAttempt.value = true
+        return
+      }
+      await ensureLoaded()
+      return
+    }
+
+    onMounted(() => {
+      void ensureLoaded()
     })
-
-    user.value = result.data.user
-    return result.data.user
   }
 
   async function logout() {
-    const url = joinUrl(apiBaseUrl, '/auth/logout')
-    const headers = import.meta.server ? useRequestHeaders(['cookie']) : undefined
-
-    await $fetch<ApiResponse<{ ok: true }>>(url, {
-      method: 'POST',
-      credentials: 'include',
-      headers
-    })
+    await apiFetch<{ success: true }>('/auth/logout', { method: 'POST' })
 
     user.value = null
+    didAttempt.value = true
   }
 
-  return { user, me, logout }
+  return { user, me, ensureLoaded, initAuth, logout }
 }
 

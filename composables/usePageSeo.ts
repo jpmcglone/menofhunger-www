@@ -142,7 +142,7 @@ export function usePageSeo(options: PageSeoOptions = {}) {
     script: [
       {
         type: 'application/ld+json',
-        children: JSON.stringify({ '@context': 'https://schema.org', '@graph': jsonLdGraph.value })
+        innerHTML: JSON.stringify({ '@context': 'https://schema.org', '@graph': jsonLdGraph.value })
       }
     ]
   })

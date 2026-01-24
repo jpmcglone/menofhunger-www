@@ -83,13 +83,12 @@
                 </div>
               </div>
 
-              <div v-if="inlineError" class="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800 dark:border-red-900/40 dark:bg-red-950/40 dark:text-red-200">
+              <AppInlineAlert v-if="inlineError" severity="danger">
                 {{ inlineError }}
-              </div>
+              </AppInlineAlert>
 
               <div class="flex items-center justify-between gap-3">
                 <Button
-                  v-if="step !== 'phone'"
                   label="Resend code"
                   icon="pi pi-refresh"
                   severity="secondary"
@@ -132,14 +131,8 @@ usePageSeo({
 
 type Step = 'phone' | 'code'
 
-const config = useRuntimeConfig()
-const apiBaseUrl = (config.public.apiBaseUrl as string) || ''
-
-function joinUrl(baseUrl: string, path: string) {
-  const base = baseUrl.replace(/\/+$/, '')
-  const p = path.replace(/^\/+/, '')
-  return `${base}/${p}`
-}
+const { apiFetchData } = useApiClient()
+import { getApiErrorMessage } from '~/utils/api-error'
 
 const step = ref<Step>('phone')
 
@@ -188,23 +181,18 @@ async function submitPhone() {
 
   phoneSubmitting.value = true
   try {
-    const url = joinUrl(apiBaseUrl, '/auth/phone/start')
-    const result = await $fetch<{ data: { ok: true; retryAfterSeconds: number } }>(url, {
+    const result = await apiFetchData<{ retryAfterSeconds: number }>('/auth/phone/start', {
       method: 'POST',
-      body: { phone },
-      credentials: 'include'
+      body: { phone }
     })
 
     phoneCommitted.value = phone
     step.value = 'code'
     codeInput.value = ''
 
-    startResendCountdown(result.data.retryAfterSeconds ?? 30)
+    startResendCountdown(result.retryAfterSeconds ?? 30)
   } catch (e: unknown) {
-    // API errors are returned as { meta: { status, errors: [{ code, message, reason }] } }
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const apiError = (e as any)?.data?.meta?.errors?.[0]
-    inlineError.value = apiError?.message || (e instanceof Error ? e.message : 'Failed to send code.')
+    inlineError.value = getApiErrorMessage(e) || 'Failed to send code.'
   } finally {
     phoneSubmitting.value = false
   }
@@ -241,23 +229,14 @@ async function submitCode() {
 
   verifying.value = true
   try {
-    const url = joinUrl(apiBaseUrl, '/auth/phone/verify')
-    const result = await $fetch<{ data: { ok: boolean; error?: string } }>(url, {
+    await apiFetchData<{ isNewUser: boolean; user: any; sessionId: string }>('/auth/phone/verify', {
       method: 'POST',
-      body: { phone, code },
-      credentials: 'include'
+      body: { phone, code }
     })
-
-    if (!result.data.ok) {
-      inlineError.value = result.data.error || 'Invalid code.'
-      return
-    }
 
     await navigateTo('/home')
   } catch (e: unknown) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const apiError = (e as any)?.data?.meta?.errors?.[0]
-    inlineError.value = apiError?.message || (e instanceof Error ? e.message : 'Failed to verify code.')
+    inlineError.value = getApiErrorMessage(e) || 'Failed to verify code.'
   } finally {
     verifying.value = false
   }

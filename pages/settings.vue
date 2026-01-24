@@ -1,25 +1,14 @@
 <template>
   <section class="w-full max-w-xl space-y-6">
-    <header class="space-y-2">
-      <div class="flex items-center gap-2">
-        <i class="pi pi-cog" aria-hidden="true" />
-        <h1 class="text-2xl font-semibold tracking-tight">Settings</h1>
-      </div>
-      <p class="text-sm text-gray-600 dark:text-gray-300">
-        Account settings for your profile.
-      </p>
-    </header>
+    <AppPageHeader title="Settings" icon="pi-cog" description="Account settings for your profile." />
 
     <Card>
       <template #title>Username</template>
       <template #content>
         <div class="space-y-4">
-          <div v-if="authUser?.usernameIsSet" class="rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm text-gray-700 dark:border-zinc-800 dark:bg-zinc-950/40 dark:text-gray-200">
-            <div class="font-semibold">Username already set</div>
-            <div class="mt-1">
-              Your username is <span class="font-mono">@{{ authUser.username }}</span>.
-            </div>
-          </div>
+          <AppInlineAlert v-if="authUser?.usernameIsSet" severity="info" title="Username already set">
+            Your username is <span class="font-mono">@{{ authUser.username }}</span>.
+          </AppInlineAlert>
 
           <div v-else class="space-y-3">
             <div class="space-y-2">
@@ -89,20 +78,10 @@ usePageSeo({
 
 type Availability = 'unknown' | 'checking' | 'available' | 'taken' | 'invalid'
 
-const { user: authUser, me } = useAuth()
-if (authUser.value === null) {
-  // Ensure we have user data for usernameIsSet display.
-  await me()
-}
+const { user: authUser } = useAuth()
 
-const config = useRuntimeConfig()
-const apiBaseUrl = (config.public.apiBaseUrl as string) || ''
-
-function joinUrl(baseUrl: string, path: string) {
-  const base = baseUrl.replace(/\/+$/, '')
-  const p = path.replace(/^\/+/, '')
-  return `${base}/${p}`
-}
+const { apiFetchData } = useApiClient()
+import { getApiErrorMessage } from '~/utils/api-error'
 
 const usernameInput = ref('')
 const availability = ref<Availability>('unknown')
@@ -130,25 +109,24 @@ async function checkAvailability(username: string) {
   helperText.value = null
 
   try {
-    const headers = import.meta.server ? useRequestHeaders(['cookie']) : undefined
-    const url = joinUrl(apiBaseUrl, '/users/username/available')
-    const result = await $fetch<{ data: { available: boolean; normalized: string | null; error?: string } }>(url, {
+    const result = await apiFetchData<{ available: boolean; normalized: string | null; error?: string }>(
+      '/users/username/available',
+      {
       method: 'GET',
-      query: { username },
-      credentials: 'include',
-      headers
-    })
+      query: { username }
+      }
+    )
 
-    if (result.data.available) {
+    if (result.available) {
       availability.value = 'available'
-      helperText.value = `Available: @${result.data.normalized}`
+      helperText.value = `Available: @${result.normalized}`
     } else {
-      availability.value = result.data.error ? 'invalid' : 'taken'
-      helperText.value = result.data.error || 'That username is taken.'
+      availability.value = result.error ? 'invalid' : 'taken'
+      helperText.value = result.error || 'That username is taken.'
     }
   } catch (e: unknown) {
     availability.value = 'unknown'
-    helperText.value = e instanceof Error ? e.message : 'Failed to check username.'
+    helperText.value = getApiErrorMessage(e) || 'Failed to check username.'
   }
 }
 
@@ -181,26 +159,16 @@ async function save() {
 
   saving.value = true
   try {
-    const headers = import.meta.server ? useRequestHeaders(['cookie']) : undefined
-    const url = joinUrl(apiBaseUrl, '/users/me/username')
-    const result = await $fetch<{ data: { ok: boolean; user?: any; error?: string } }>(url, {
+    const result = await apiFetchData<{ user: any }>('/users/me/username', {
       method: 'PATCH',
       body: { username },
-      credentials: 'include',
-      headers
     })
 
-    if (!result.data.ok) {
-      availability.value = 'invalid'
-      helperText.value = result.data.error || 'Could not save username.'
-      return
-    }
-
     // Update client auth state with latest user data.
-    authUser.value = result.data.user ?? authUser.value
+    authUser.value = result.user ?? authUser.value
     saved.value = true
   } catch (e: unknown) {
-    helperText.value = e instanceof Error ? e.message : 'Failed to save username.'
+    helperText.value = getApiErrorMessage(e) || 'Failed to save username.'
   } finally {
     saving.value = false
   }

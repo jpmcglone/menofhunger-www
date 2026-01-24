@@ -48,9 +48,9 @@
           </div>
         </div>
 
-        <div v-if="editError" class="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800 dark:border-red-900/40 dark:bg-red-950/40 dark:text-red-200">
+        <AppInlineAlert v-if="editError" severity="danger">
           {{ editError }}
-        </div>
+        </AppInlineAlert>
       </div>
 
       <template #footer>
@@ -84,30 +84,20 @@ const route = useRoute()
 const usernameParam = computed(() => String(route.params.username || ''))
 const normalizedUsername = computed(() => usernameParam.value.trim().toLowerCase())
 
-const config = useRuntimeConfig()
-const apiBaseUrl = (config.public.apiBaseUrl as string) || ''
-
-function joinUrl(baseUrl: string, path: string) {
-  const base = baseUrl.replace(/\/+$/, '')
-  const p = path.replace(/^\/+/, '')
-  return `${base}/${p}`
-}
-
-const headers = import.meta.server ? useRequestHeaders(['cookie']) : undefined
+const { apiFetchData } = useApiClient()
+import { getApiErrorMessage } from '~/utils/api-error'
 
 const { data, error } = await useAsyncData(`public-profile:${normalizedUsername.value}`, async () => {
-  const url = joinUrl(apiBaseUrl, `/users/${encodeURIComponent(normalizedUsername.value)}`)
-  const result = await $fetch<{ data: { user: PublicProfile } }>(url, { method: 'GET', credentials: 'include', headers })
-  return result.data.user
+  const result = await apiFetchData<{ user: PublicProfile }>(
+    `/users/${encodeURIComponent(normalizedUsername.value)}`,
+    { method: 'GET' }
+  )
+  return result.user
 })
 
 const profile = computed(() => data.value ?? null)
 
-const { user: authUser, me } = useAuth()
-if (authUser.value === null) {
-  // Optional: allows showing the edit button if you are logged in.
-  await me()
-}
+const { user: authUser } = useAuth()
 
 const isSelf = computed(() => Boolean(authUser.value?.id && profile.value?.id && authUser.value.id === profile.value.id))
 
@@ -134,32 +124,24 @@ async function saveProfile() {
   editError.value = null
   saving.value = true
   try {
-    const url = joinUrl(apiBaseUrl, '/users/me/profile')
-    const result = await $fetch<{ data: { ok: boolean; user?: any; error?: string } }>(url, {
+    const result = await apiFetchData<{ user: any }>('/users/me/profile', {
       method: 'PATCH',
-      credentials: 'include',
-      headers,
       body: {
         name: editName.value,
         bio: editBio.value
       }
     })
 
-    if (!result.data.ok) {
-      editError.value = result.data.error || 'Failed to save profile.'
-      return
-    }
-
     // Update profile state (public view) and auth user state (self).
     data.value = {
       ...(data.value as PublicProfile),
-      name: result.data.user?.name ?? null,
-      bio: result.data.user?.bio ?? null
+      name: result.user?.name ?? null,
+      bio: result.user?.bio ?? null
     }
-    authUser.value = result.data.user ?? authUser.value
+    authUser.value = result.user ?? authUser.value
     editOpen.value = false
   } catch (e: unknown) {
-    editError.value = e instanceof Error ? e.message : 'Failed to save profile.'
+    editError.value = getApiErrorMessage(e) || 'Failed to save profile.'
   } finally {
     saving.value = false
   }
