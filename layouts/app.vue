@@ -14,7 +14,7 @@
             // On desktop, match the right rail's padding (`px-4`) in both modes.
             // When compact, increase rail width so the inner content can still fit `w-12`,
             // while keeping the same right gutter to the divider as wide mode.
-            navCompactMode ? 'md:w-20 md:px-4' : 'md:w-64 md:px-4'
+            navCompactMode ? 'md:w-20 md:px-4' : 'md:w-20 md:px-4 lg:w-64 lg:px-4'
           ]"
         >
           <div class="mb-3">
@@ -46,7 +46,7 @@
               <span class="flex h-12 w-12 shrink-0 items-center justify-center">
                 <i :class="['pi text-2xl', item.icon]" aria-hidden="true" />
               </span>
-              <span v-if="!navCompactMode" class="hidden md:inline whitespace-nowrap overflow-hidden text-lg max-w-[220px]">
+              <span v-if="!navCompactMode" class="hidden lg:inline whitespace-nowrap overflow-hidden text-lg max-w-[220px]">
                 {{ item.label }}
               </span>
             </NuxtLink>
@@ -64,7 +64,7 @@
                 <span class="flex h-12 w-12 shrink-0 items-center justify-center">
                   <i class="pi pi-plus text-xl" aria-hidden="true" />
                 </span>
-                <span v-if="!navCompactMode" class="hidden md:inline text-base font-semibold">Post</span>
+                <span v-if="!navCompactMode" class="hidden lg:inline text-base font-semibold">Post</span>
               </button>
             </div>
 
