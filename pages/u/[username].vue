@@ -7,8 +7,11 @@
             <div class="h-20 w-20 shrink-0 rounded-full bg-gray-200 dark:bg-zinc-800" aria-hidden="true" />
 
             <div class="min-w-0">
-              <div class="text-xl font-bold text-gray-900 dark:text-gray-50">
-                {{ profileName }}
+              <div class="flex items-center gap-2">
+                <div class="text-xl font-bold text-gray-900 dark:text-gray-50">
+                  {{ profileName }}
+                </div>
+                <AppVerifiedBadge :status="profile?.verifiedStatus" />
               </div>
               <div class="text-sm text-gray-500 dark:text-gray-400">
                 @{{ profile?.username }}
@@ -78,6 +81,7 @@ type PublicProfile = {
   username: string | null
   name: string | null
   bio: string | null
+  verifiedStatus: 'none' | 'identity' | 'manual'
 }
 
 const route = useRoute()

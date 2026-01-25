@@ -6,13 +6,11 @@
       <template #title>Username</template>
       <template #content>
         <div class="space-y-4">
-          <AppInlineAlert v-if="authUser?.usernameIsSet" severity="info" title="Username already set">
-            Your username is <span class="font-mono">@{{ authUser.username }}</span>.
-          </AppInlineAlert>
-
-          <div v-else class="space-y-3">
+          <div class="space-y-3">
             <div class="space-y-2">
-              <label class="text-sm font-medium text-gray-700 dark:text-gray-200">Choose a username</label>
+              <label class="text-sm font-medium text-gray-700 dark:text-gray-200">
+                {{ authUser?.usernameIsSet ? 'Username (case change only)' : 'Choose a username' }}
+              </label>
 
               <div class="flex items-center gap-2">
                 <span class="text-sm text-gray-500 dark:text-gray-400">@</span>
@@ -27,12 +25,12 @@
                 <div class="shrink-0 w-8 flex items-center justify-center">
                   <i v-if="checking" class="pi pi-spin pi-spinner text-gray-500" aria-hidden="true" />
                   <i
-                    v-else-if="availability === 'available'"
+                    v-else-if="availability === 'available' || availability === 'same'"
                     class="pi pi-check text-green-600"
                     aria-hidden="true"
                   />
                   <i
-                    v-else-if="availability === 'taken'"
+                    v-else-if="availability === 'taken' || availability === 'invalid'"
                     class="pi pi-times text-red-600"
                     aria-hidden="true"
                   />
@@ -44,6 +42,9 @@
               </div>
               <div class="text-xs text-gray-500 dark:text-gray-400">
                 6–15 characters. Must start with a letter. Letters, numbers, underscores only.
+                <span v-if="authUser?.usernameIsSet" class="ml-1">
+                  You can only change capitalization of your current username.
+                </span>
               </div>
             </div>
 
@@ -52,7 +53,7 @@
                 label="Save"
                 icon="pi pi-check"
                 :loading="saving"
-                :disabled="saving || availability !== 'available'"
+                :disabled="saving || (authUser?.usernameIsSet ? availability !== 'same' : availability !== 'available')"
                 @click="save"
               />
               <div v-if="saved" class="text-sm text-green-700 dark:text-green-300">Saved.</div>
@@ -76,7 +77,7 @@ usePageSeo({
   noindex: true
 })
 
-type Availability = 'unknown' | 'checking' | 'available' | 'taken' | 'invalid'
+type Availability = 'unknown' | 'checking' | 'available' | 'taken' | 'invalid' | 'same'
 
 const { user: authUser } = useAuth()
 
@@ -88,7 +89,7 @@ const availability = ref<Availability>('unknown')
 const checking = computed(() => availability.value === 'checking')
 const helperText = ref<string | null>(null)
 const helperToneClass = computed(() => {
-  if (availability.value === 'available') return 'text-green-700 dark:text-green-300'
+  if (availability.value === 'available' || availability.value === 'same') return 'text-green-700 dark:text-green-300'
   if (availability.value === 'taken' || availability.value === 'invalid') return 'text-red-700 dark:text-red-300'
   return 'text-gray-600 dark:text-gray-300'
 })
@@ -139,6 +140,13 @@ watch(
     const trimmed = value.trim()
     if (!trimmed) return
 
+    const currentLower = (authUser.value?.username ?? '').trim().toLowerCase()
+    if (authUser.value?.usernameIsSet && currentLower && trimmed.toLowerCase() === currentLower) {
+      availability.value = 'same'
+      helperText.value = 'Unchanged (case-only edit).'
+      return
+    }
+
     debounceTimer = setTimeout(() => {
       void checkAvailability(trimmed)
     }, 500)
@@ -156,6 +164,15 @@ async function save() {
 
   const username = usernameInput.value.trim()
   if (!username) return
+
+  if (authUser.value?.usernameIsSet) {
+    const currentLower = (authUser.value?.username ?? '').trim().toLowerCase()
+    if (!currentLower || username.toLowerCase() !== currentLower) {
+      availability.value = 'invalid'
+      helperText.value = 'You can only change capitalization of your current username.'
+      return
+    }
+  }
 
   saving.value = true
   try {

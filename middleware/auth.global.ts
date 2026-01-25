@@ -5,6 +5,8 @@ export default defineNuxtRouteMiddleware(async (to) => {
   const publicPaths = new Set<string>(['/', '/about', '/api-health', '/test'])
   if (publicPaths.has(to.path)) return
   if (to.path.startsWith('/u/')) return
+  // Admin routes are protected by admin middleware (404 for non-admins).
+  if (to.path === '/admin' || to.path.startsWith('/admin/')) return
   // Allow logged-out browsing of core feed/discovery for now.
   if (to.path === '/home' || to.path === '/explore' || to.path === '/notifications') return
 

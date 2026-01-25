@@ -28,7 +28,10 @@
         >
           <div class="flex items-center justify-between gap-2">
             <div class="min-w-0">
-              <div class="font-semibold truncate">{{ displayName }}</div>
+              <div class="flex items-center gap-2 min-w-0">
+                <div class="font-semibold truncate">{{ displayName }}</div>
+                <AppVerifiedBadge :status="user?.verifiedStatus" />
+              </div>
               <div class="text-sm text-gray-500 dark:text-gray-400 truncate">{{ handle }}</div>
             </div>
             <i class="pi pi-ellipsis-h text-gray-500 dark:text-gray-400" aria-hidden="true" />
@@ -72,6 +75,16 @@ const buttonEl = ref<HTMLElement | null>(null)
 const confirmVisible = ref(false)
 
 const menuItems = computed<MenuItem[]>(() => [
+  ...(user.value?.siteAdmin
+    ? ([
+        {
+          label: 'Admin',
+          icon: 'pi pi-shield',
+          command: () => navigateTo('/admin')
+        },
+        { separator: true }
+      ] as MenuItem[])
+    : []),
   {
     label: 'Account settings',
     icon: 'pi pi-cog',

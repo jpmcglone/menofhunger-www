@@ -5,6 +5,10 @@ export type AuthUser = {
   usernameIsSet?: boolean
   name?: string | null
   bio?: string | null
+  siteAdmin?: boolean
+  verifiedStatus?: 'none' | 'identity' | 'manual'
+  verifiedAt?: string | null
+  unverifiedAt?: string | null
 }
 
 let clientMePromise: Promise<AuthUser | null> | null = null
