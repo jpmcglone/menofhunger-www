@@ -84,77 +84,83 @@
       </template>
 
       <div class="space-y-4">
-        <div class="overflow-hidden rounded-2xl border border-gray-200 bg-white dark:border-zinc-800 dark:bg-black/20">
-          <div class="relative">
-            <div class="aspect-[3/1] w-full bg-gray-200 dark:bg-zinc-900">
-              <img
-                v-if="editBannerPreviewUrl"
-                :src="editBannerPreviewUrl"
-                alt=""
-                class="h-full w-full object-cover"
-                loading="lazy"
-                decoding="async"
-              >
-            </div>
-
-            <div class="absolute right-3 top-3 flex items-center gap-2">
-              <Tag v-if="pendingBannerFile" value="Pending" severity="warning" />
-              <Button
-                icon="pi pi-camera"
-                rounded
-                severity="secondary"
-                aria-label="Edit banner"
-                :disabled="saving"
-                @click="openBannerPicker"
-              />
-              <Button
-                v-if="pendingBannerFile"
-                icon="pi pi-times"
-                rounded
-                text
-                severity="secondary"
-                aria-label="Remove banner change"
-                :disabled="saving"
-                @click="clearPendingBanner"
-              />
-            </div>
-
-            <div class="absolute left-4 bottom-0 translate-y-1/2">
-              <div class="relative h-28 w-28 overflow-hidden rounded-full bg-gray-200 ring-4 ring-white dark:bg-zinc-800 dark:ring-black/40">
+        <!-- Keep the banner clipped/rounded, but let the avatar overflow (like the real profile header). -->
+        <div class="relative rounded-2xl border border-gray-200 bg-white dark:border-zinc-800 dark:bg-black/20">
+          <div class="overflow-hidden rounded-2xl">
+            <div class="relative">
+              <div class="aspect-[3/1] w-full bg-gray-200 dark:bg-zinc-900">
                 <img
-                  v-if="editAvatarPreviewUrl"
-                  :src="editAvatarPreviewUrl"
+                  v-if="editBannerPreviewUrl"
+                  :src="editBannerPreviewUrl"
                   alt=""
                   class="h-full w-full object-cover"
                   loading="lazy"
                   decoding="async"
                 >
+              </div>
 
-                <div class="absolute inset-0 flex items-center justify-center gap-2">
-                  <Tag v-if="pendingAvatarFile" value="Pending" severity="warning" />
-                  <Button
-                    icon="pi pi-camera"
-                    rounded
-                    severity="secondary"
-                    aria-label="Edit avatar"
-                    :disabled="saving"
-                    @click="openAvatarPicker"
-                  />
-                  <Button
-                    v-if="pendingAvatarFile"
-                    icon="pi pi-times"
-                    rounded
-                    text
-                    severity="secondary"
-                    aria-label="Remove avatar change"
-                    :disabled="saving"
-                    @click="clearPendingAvatar"
-                  />
-                </div>
+              <div class="absolute right-3 top-3 flex items-center gap-2">
+                <Tag v-if="pendingBannerFile" value="Pending" severity="warning" />
+                <Button
+                  icon="pi pi-camera"
+                  rounded
+                  severity="secondary"
+                  aria-label="Edit banner"
+                  :disabled="saving"
+                  @click="openBannerPicker"
+                />
+                <Button
+                  v-if="pendingBannerFile"
+                  icon="pi pi-times"
+                  rounded
+                  text
+                  severity="secondary"
+                  aria-label="Remove banner change"
+                  :disabled="saving"
+                  @click="clearPendingBanner"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div class="absolute left-4 bottom-0 z-10 translate-y-1/2">
+            <div class="relative h-28 w-28 overflow-hidden rounded-full bg-gray-200 ring-4 ring-white dark:bg-zinc-800 dark:ring-black/40">
+              <img
+                v-if="editAvatarPreviewUrl"
+                :src="editAvatarPreviewUrl"
+                alt=""
+                class="h-full w-full object-cover"
+                loading="lazy"
+                decoding="async"
+              >
+
+              <div class="absolute inset-0 flex items-center justify-center gap-2">
+                <Tag v-if="pendingAvatarFile" value="Pending" severity="warning" />
+                <Button
+                  icon="pi pi-camera"
+                  rounded
+                  severity="secondary"
+                  aria-label="Edit avatar"
+                  :disabled="saving"
+                  @click="openAvatarPicker"
+                />
+                <Button
+                  v-if="pendingAvatarFile"
+                  icon="pi pi-times"
+                  rounded
+                  text
+                  severity="secondary"
+                  aria-label="Remove avatar change"
+                  :disabled="saving"
+                  @click="clearPendingAvatar"
+                />
               </div>
             </div>
           </div>
         </div>
+
+        <!-- Spacer so the form doesn't sit under the overhanging avatar -->
+        <div class="h-16" aria-hidden="true" />
 
         <input
           ref="bannerInputEl"
