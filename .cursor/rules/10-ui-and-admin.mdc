@@ -1,0 +1,24 @@
+---
+description: Nuanced UI/admin conventions for menofhunger-www.
+---
+
+## Admin UX expectations
+- Admin entry point should be **subtle but clear**, and only visible for admins.
+- `/admin` uses app layout but forces:
+  - compact left rail
+  - no right rail
+- Admin UI should show “read-only but important” details in a clear block:
+  - user id, joined time, username locked, site admin, verification status/timestamps
+
+## Verification badge
+- Use the shared verified badge component (`AppVerifiedBadge`) everywhere.
+- Tooltip must explain whether verification is **identity** or **manual**.
+- Badge should look like Twitter’s: blue circle + white check and work in dark mode.
+
+## Username editing conventions
+- Public username setting is stricter; enforce in Settings.
+- Allow “case-only” change for a user’s own username once set.
+- Admin edit can be looser, but must:
+  - show availability check state (spinner / check / x)
+  - disable save when invalid
+

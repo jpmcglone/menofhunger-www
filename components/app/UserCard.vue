@@ -14,11 +14,20 @@
       <div class="flex items-center gap-3">
         <div
           :class="[
-            'shrink-0 rounded-full bg-gray-200 dark:bg-zinc-800',
+            'shrink-0 overflow-hidden rounded-full bg-gray-200 dark:bg-zinc-800',
             compact ? 'mx-auto h-10 w-10' : 'mx-auto xl:mx-0 h-10 w-10'
           ]"
           aria-hidden="true"
-        />
+        >
+          <img
+            v-if="avatarUrl"
+            :src="avatarUrl"
+            alt=""
+            class="h-full w-full object-cover"
+            loading="lazy"
+            decoding="async"
+          >
+        </div>
 
         <div
           :class="[
@@ -62,6 +71,7 @@ const props = defineProps<{
 }>()
 
 const { user, logout } = useAuth()
+const { assetUrl } = useAssets()
 
 const displayName = computed(() => user.value?.name || 'Account')
 const handle = computed(() => {
@@ -69,6 +79,8 @@ const handle = computed(() => {
   const username = u?.username
   return username ? `@${username}` : '@—'
 })
+
+const avatarUrl = computed(() => assetUrl(user.value?.avatarKey))
 
 const menuRef = ref()
 const buttonEl = ref<HTMLElement | null>(null)

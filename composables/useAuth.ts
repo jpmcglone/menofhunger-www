@@ -1,5 +1,6 @@
 export type AuthUser = {
   id: string
+  createdAt?: string
   phone: string
   username?: string | null
   usernameIsSet?: boolean
@@ -9,6 +10,8 @@ export type AuthUser = {
   verifiedStatus?: 'none' | 'identity' | 'manual'
   verifiedAt?: string | null
   unverifiedAt?: string | null
+  avatarKey?: string | null
+  avatarUpdatedAt?: string | null
 }
 
 let clientMePromise: Promise<AuthUser | null> | null = null

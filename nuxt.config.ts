@@ -9,7 +9,10 @@ export default defineNuxtConfig({
     public: {
       // Used by the website to call the API (e.g. health checks).
       // Configure via `.env`: NUXT_PUBLIC_API_BASE_URL=http://localhost:3001
-      apiBaseUrl: process.env.NUXT_PUBLIC_API_BASE_URL || 'http://localhost:3001'
+      apiBaseUrl: process.env.NUXT_PUBLIC_API_BASE_URL || 'http://localhost:3001',
+      // Public base URL for assets (Cloudflare R2 public bucket / custom domain).
+      // Example: NUXT_PUBLIC_ASSETS_BASE_URL=https://moh-assets.<accountId>.r2.dev
+      assetsBaseUrl: process.env.NUXT_PUBLIC_ASSETS_BASE_URL || ''
     }
   },
   app: {
@@ -40,7 +43,7 @@ export default defineNuxtConfig({
     '@nuxt/ui',
     '@primevue/nuxt-module'
   ],
-  css: ['~/assets/css/main.css', 'primeicons/primeicons.css'],
+  css: ['~/assets/css/main.css', 'primeicons/primeicons.css', 'vue-advanced-cropper/dist/style.css'],
   ssr: true,
   routeRules: {
     // Static where it makes sense (fast marketing pages), SSR everywhere else.

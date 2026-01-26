@@ -1,0 +1,43 @@
+---
+description: Core engineering conventions for menofhunger-www (Nuxt + PrimeVue).
+---
+
+## Primary goals
+- Keep UI **consistent, composable, and responsive**.
+- Prefer **reusable primitives** (components + composables) over repeated inline patterns.
+- Keep client/server behavior predictable (SSR-safe where needed).
+
+## Data + API calling
+- All API calls must go through `useApiClient()` (no ad-hoc `apiBaseUrl`/`joinUrl`/`credentials` duplication).
+- Parse API errors via `getApiErrorMessage()`; show a helpful message inline.
+- Successful responses should assume `{ data: ... }` envelope.
+
+## Auth + routing
+- Cookie-based auth; always call with `credentials: include` (handled by `useApiClient()`).
+- Do not duplicate auth hydration logic:
+  - use `useAuth().initAuth()` / `ensureLoaded()` only.
+- Admin pages must be hidden from non-admins:
+  - use middleware that returns **404** for non-admins.
+
+## Layout rules
+- Route-based layout behavior belongs in `useLayoutRules()` (not inline in layouts/pages).
+- Complex scroll behavior belongs in a composable (`useCoupledScroll()`).
+- For master/detail pages (messages/admin):
+  - on tiny viewports show **one pane** at a time (list OR detail).
+
+## UI primitives
+- Prefer shared components for repeated patterns:
+  - alerts (`AppInlineAlert`)
+  - headers (`AppPageHeader`)
+  - verified badge (`AppVerifiedBadge`)
+- Keep badges/icons visually consistent across pages.
+
+## Styling
+- Tailwind utilities are fine, but avoid repeating long class strings across pages.
+- Prefer subtle animations and stable layout (avoid jumpy transitions).
+
+## Workflow expectations
+- After substantive changes, run:
+  - `npx nuxi typecheck`
+  - `npm run build` (when relevant)
+
