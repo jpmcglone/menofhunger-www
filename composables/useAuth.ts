@@ -12,6 +12,8 @@ export type AuthUser = {
   unverifiedAt?: string | null
   avatarKey?: string | null
   avatarUpdatedAt?: string | null
+  bannerKey?: string | null
+  bannerUpdatedAt?: string | null
 }
 
 let clientMePromise: Promise<AuthUser | null> | null = null

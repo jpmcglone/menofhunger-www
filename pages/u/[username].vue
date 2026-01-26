@@ -1,34 +1,47 @@
 <template>
-  <section class="w-full max-w-2xl space-y-6">
-    <Card>
-      <template #content>
-        <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div class="flex items-start gap-4">
-            <div class="h-20 w-20 shrink-0 overflow-hidden rounded-full bg-gray-200 dark:bg-zinc-800" aria-hidden="true">
-              <img
-                v-if="profileAvatarUrl"
-                :src="profileAvatarUrl"
-                alt=""
-                class="h-full w-full object-cover"
-                loading="lazy"
-                decoding="async"
-              >
-            </div>
+  <section class="w-full max-w-3xl space-y-6">
+    <div class="overflow-hidden rounded-2xl border border-gray-200 bg-white dark:border-zinc-800 dark:bg-black/20">
+      <div class="relative">
+        <div class="aspect-[3/1] w-full bg-gray-200 dark:bg-zinc-900">
+          <img
+            v-if="profileBannerUrl"
+            :src="profileBannerUrl"
+            alt=""
+            class="h-full w-full object-cover"
+            loading="lazy"
+            decoding="async"
+          >
+        </div>
 
-            <div class="min-w-0">
-              <div class="flex items-center gap-2">
-                <div class="text-xl font-bold text-gray-900 dark:text-gray-50">
-                  {{ profileName }}
-                </div>
-                <AppVerifiedBadge :status="profile?.verifiedStatus" />
+        <div class="absolute left-4 bottom-0 translate-y-1/2">
+          <div class="h-28 w-28 overflow-hidden rounded-full bg-gray-200 ring-4 ring-white dark:bg-zinc-800 dark:ring-black/40">
+            <img
+              v-if="profileAvatarUrl"
+              :src="profileAvatarUrl"
+              alt=""
+              class="h-full w-full object-cover"
+              loading="lazy"
+              decoding="async"
+            >
+          </div>
+        </div>
+      </div>
+
+      <div class="px-4 pb-5 pt-16">
+        <div class="flex items-start justify-between gap-4">
+          <div class="min-w-0">
+            <div class="flex items-center gap-2 min-w-0">
+              <div class="text-2xl font-bold text-gray-900 dark:text-gray-50 truncate">
+                {{ profileName }}
               </div>
-              <div class="text-sm text-gray-500 dark:text-gray-400">
-                @{{ profile?.username }}
-              </div>
+              <AppVerifiedBadge :status="profile?.verifiedStatus" />
+            </div>
+            <div class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+              @{{ profile?.username }}
             </div>
           </div>
 
-          <div v-if="isSelf" class="flex justify-end">
+          <div v-if="isSelf" class="shrink-0">
             <Button label="Edit profile" icon="pi pi-pencil" severity="secondary" @click="editOpen = true" />
           </div>
         </div>
@@ -39,21 +52,46 @@
         <div v-else class="mt-4 text-sm text-gray-500 dark:text-gray-400">
           No bio yet.
         </div>
+      </div>
+    </div>
+
+    <Dialog
+      v-model:visible="editOpen"
+      modal
+      :draggable="false"
+      :closable="false"
+      :style="{ width: 'min(46rem, 96vw)' }"
+    >
+      <template #header>
+        <div class="flex w-full items-center justify-between gap-3">
+          <Button
+            icon="pi pi-times"
+            text
+            severity="secondary"
+            aria-label="Close"
+            :disabled="saving"
+            @click="editOpen = false"
+          />
+          <div class="text-lg font-semibold text-gray-900 dark:text-gray-50">
+            Edit profile
+          </div>
+          <Button
+            label="Save"
+            severity="secondary"
+            :loading="saving"
+            :disabled="saving"
+            @click="saveProfile"
+          />
+        </div>
       </template>
-    </Card>
 
-    <Dialog v-model:visible="editOpen" modal header="Edit profile" :draggable="false" :style="{ width: '32rem' }">
       <div class="space-y-4">
-        <AppInlineAlert severity="info" title="Changes are staged">
-          Your avatar, name, and bio won’t update until you hit <span class="font-semibold">Save</span>.
-        </AppInlineAlert>
-
-        <div class="rounded-xl border border-gray-200 bg-white p-3 dark:border-zinc-800 dark:bg-black/20">
-          <div class="flex items-center gap-3">
-            <div class="h-14 w-14 shrink-0 overflow-hidden rounded-full bg-gray-200 dark:bg-zinc-800" aria-hidden="true">
+        <div class="overflow-hidden rounded-2xl border border-gray-200 bg-white dark:border-zinc-800 dark:bg-black/20">
+          <div class="relative">
+            <div class="aspect-[3/1] w-full bg-gray-200 dark:bg-zinc-900">
               <img
-                v-if="editAvatarPreviewUrl"
-                :src="editAvatarPreviewUrl"
+                v-if="editBannerPreviewUrl"
+                :src="editBannerPreviewUrl"
                 alt=""
                 class="h-full w-full object-cover"
                 loading="lazy"
@@ -61,45 +99,85 @@
               >
             </div>
 
-            <div class="min-w-0 flex-1">
-              <div class="text-sm font-medium text-gray-800 dark:text-gray-200">
-                Avatar
-              </div>
-              <div class="mt-1 flex flex-wrap items-center gap-2">
-                <FileUpload
-                  ref="avatarUploadRef"
-                  mode="basic"
-                  customUpload
-                  accept="image/png,image/jpeg,image/webp"
-                  :maxFileSize="5 * 1024 * 1024"
-                  chooseLabel="Choose image"
-                  :disabled="saving"
-                  severity="secondary"
-                  class="p-button-outlined"
-                  @select="onAvatarFileSelect"
-                />
+            <div class="absolute right-3 top-3 flex items-center gap-2">
+              <Tag v-if="pendingBannerFile" value="Pending" severity="warning" />
+              <Button
+                icon="pi pi-camera"
+                rounded
+                severity="secondary"
+                aria-label="Edit banner"
+                :disabled="saving"
+                @click="openBannerPicker"
+              />
+              <Button
+                v-if="pendingBannerFile"
+                icon="pi pi-times"
+                rounded
+                text
+                severity="secondary"
+                aria-label="Remove banner change"
+                :disabled="saving"
+                @click="clearPendingBanner"
+              />
+            </div>
 
-                <Button
-                  v-if="pendingAvatarFile"
-                  label="Remove"
-                  icon="pi pi-times"
-                  text
-                  severity="secondary"
-                  :disabled="saving"
-                  @click="clearPendingAvatar"
-                />
+            <div class="absolute left-4 bottom-0 translate-y-1/2">
+              <div class="relative h-28 w-28 overflow-hidden rounded-full bg-gray-200 ring-4 ring-white dark:bg-zinc-800 dark:ring-black/40">
+                <img
+                  v-if="editAvatarPreviewUrl"
+                  :src="editAvatarPreviewUrl"
+                  alt=""
+                  class="h-full w-full object-cover"
+                  loading="lazy"
+                  decoding="async"
+                >
 
-                <Tag v-if="pendingAvatarFile" value="Pending" severity="warning" />
-              </div>
-              <div class="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                JPG/PNG/WebP up to 5MB.
-                <span v-if="pendingAvatarFileName" class="ml-1">
-                  Selected: <span class="font-medium">{{ pendingAvatarFileName }}</span>
-                </span>
+                <div class="absolute -bottom-1 -right-1 flex items-center gap-2">
+                  <Tag v-if="pendingAvatarFile" value="Pending" severity="warning" />
+                  <Button
+                    icon="pi pi-camera"
+                    rounded
+                    severity="secondary"
+                    aria-label="Edit avatar"
+                    :disabled="saving"
+                    @click="openAvatarPicker"
+                  />
+                  <Button
+                    v-if="pendingAvatarFile"
+                    icon="pi pi-times"
+                    rounded
+                    text
+                    severity="secondary"
+                    aria-label="Remove avatar change"
+                    :disabled="saving"
+                    @click="clearPendingAvatar"
+                  />
+                </div>
               </div>
             </div>
           </div>
+
+          <div class="px-4 pb-4 pt-16">
+            <div class="text-xs text-gray-500 dark:text-gray-400">
+              Banner must be 3:1 (we save 1500×500). Avatar is a square (displayed as a circle).
+            </div>
+          </div>
         </div>
+
+        <input
+          ref="bannerInputEl"
+          type="file"
+          accept="image/png,image/jpeg,image/webp"
+          class="hidden"
+          @change="onBannerInputChange"
+        >
+        <input
+          ref="avatarInputEl"
+          type="file"
+          accept="image/png,image/jpeg,image/webp"
+          class="hidden"
+          @change="onAvatarInputChange"
+        >
 
         <Dialog v-model:visible="cropOpen" modal header="Crop avatar" :draggable="false" :style="{ width: 'min(60rem, 96vw)' }">
           <div class="grid gap-4 sm:grid-cols-[1fr_16rem]">
@@ -116,6 +194,7 @@
                   image-restriction="stencil"
                   :default-size="avatarDefaultSize"
                   :default-position="avatarDefaultPosition"
+                  @ready="onCropperReady"
                   @change="onCropChange"
                 />
               </ClientOnly>
@@ -128,6 +207,23 @@
               <div class="mx-auto h-32 w-32 overflow-hidden rounded-full bg-gray-200 dark:bg-zinc-800">
                 <img v-if="cropPreviewUrl" :src="cropPreviewUrl" alt="" class="h-full w-full object-cover" />
               </div>
+              <AppInlineAlert severity="info" title="Tip">
+                We recommend using <span class="font-semibold">Auto</span> to frame your face.
+              </AppInlineAlert>
+              <div class="flex justify-center">
+                <Button
+                  label="Auto (recommended)"
+                  icon="pi pi-bolt"
+                  severity="success"
+                  class="w-full"
+                  :loading="faceDetecting"
+                  :disabled="saving || !cropSrc || faceDetecting"
+                  @click="autoCropFace"
+                />
+              </div>
+              <AppInlineAlert v-if="faceDetectError" severity="warning">
+                {{ faceDetectError }}
+              </AppInlineAlert>
               <div class="text-xs text-gray-500 dark:text-gray-400">
                 This is how your avatar will appear. The saved image remains a square (best for future layouts), but it’s displayed as a circle.
               </div>
@@ -137,6 +233,36 @@
           <template #footer>
             <Button label="Cancel" text severity="secondary" :disabled="saving" @click="cancelCrop" />
             <Button label="Apply" icon="pi pi-check" severity="secondary" :disabled="!cropHasSelection || saving" @click="applyCrop" />
+          </template>
+        </Dialog>
+
+        <Dialog v-model:visible="bannerCropOpen" modal header="Crop banner" :draggable="false" :style="{ width: 'min(72rem, 96vw)' }">
+          <div class="space-y-3">
+            <div class="min-w-0 rounded-xl border border-gray-200 bg-white p-3 dark:border-zinc-800 dark:bg-black/20">
+              <ClientOnly>
+                <Cropper
+                  v-if="bannerCropSrc"
+                  ref="bannerCropperRef"
+                  class="h-[22rem] w-full min-w-0"
+                  :src="bannerCropSrc"
+                  :stencil-props="{ aspectRatio: 3 }"
+                  :canvas="{ width: 1500, height: 500 }"
+                  image-restriction="stencil"
+                  :default-size="bannerDefaultSize"
+                  :default-position="bannerDefaultPosition"
+                  @ready="onBannerCropperReady"
+                  @change="onBannerCropChange"
+                />
+              </ClientOnly>
+            </div>
+            <div class="text-xs text-gray-500 dark:text-gray-400">
+              Banners must be 3:1. We’ll save a 1500×500 image.
+            </div>
+          </div>
+
+          <template #footer>
+            <Button label="Cancel" text severity="secondary" :disabled="saving" @click="cancelBannerCrop" />
+            <Button label="Apply" icon="pi pi-check" severity="secondary" :disabled="!bannerCropHasSelection || saving" @click="applyBannerCrop" />
           </template>
         </Dialog>
 
@@ -160,11 +286,6 @@
           {{ editError }}
         </AppInlineAlert>
       </div>
-
-      <template #footer>
-        <Button label="Cancel" text severity="secondary" :disabled="saving" @click="editOpen = false" />
-        <Button label="Save" icon="pi pi-check" :loading="saving" :disabled="saving" @click="saveProfile" />
-      </template>
     </Dialog>
   </section>
 </template>
@@ -189,6 +310,8 @@ type PublicProfile = {
   verifiedStatus: 'none' | 'identity' | 'manual'
   avatarKey?: string | null
   avatarUpdatedAt?: string | null
+  bannerKey?: string | null
+  bannerUpdatedAt?: string | null
 }
 
 const route = useRoute()
@@ -215,6 +338,7 @@ const isSelf = computed(() => Boolean(authUser.value?.id && profile.value?.id &&
 
 const profileName = computed(() => profile.value?.name || profile.value?.username || 'User')
 const profileAvatarUrl = computed(() => assetUrl(profile.value?.avatarKey))
+const profileBannerUrl = computed(() => assetUrl(profile.value?.bannerKey))
 
 const editOpen = ref(false)
 const editName = ref('')
@@ -225,10 +349,14 @@ const saving = ref(false)
 import { Cropper, CircleStencil } from 'vue-advanced-cropper'
 
 // We stage avatar changes locally (preview) and only upload/commit when the user hits Save.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const avatarUploadRef = ref<any>(null)
+const avatarInputEl = ref<HTMLInputElement | null>(null)
 const pendingAvatarFile = ref<File | null>(null)
 const pendingAvatarPreviewUrl = ref<string | null>(null)
+
+// Banner staged upload
+const bannerInputEl = ref<HTMLInputElement | null>(null)
+const pendingBannerFile = ref<File | null>(null)
+const pendingBannerPreviewUrl = ref<string | null>(null)
 
 // Crop step (Twitter-like): choose file -> crop -> stage cropped file
 const cropOpen = ref(false)
@@ -239,6 +367,11 @@ const cropOriginalFile = ref<File | null>(null)
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const cropperRef = ref<any>(null)
 let cropPreviewRaf: number | null = null
+const autoFaceOnOpen = ref(true)
+
+const faceDetecting = ref(false)
+const faceDetectError = ref<string | null>(null)
+let faceDetector: any | null = null
 
 // Default crop: as large as possible and centered.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -256,6 +389,8 @@ const avatarDefaultPosition = ({ coordinates, imageSize }: any) => {
 
 const pendingAvatarFileName = computed(() => pendingAvatarFile.value?.name ?? null)
 const editAvatarPreviewUrl = computed(() => pendingAvatarPreviewUrl.value || profileAvatarUrl.value)
+const pendingBannerFileName = computed(() => pendingBannerFile.value?.name ?? null)
+const editBannerPreviewUrl = computed(() => pendingBannerPreviewUrl.value || profileBannerUrl.value)
 
 function clearPendingAvatar() {
   pendingAvatarFile.value = null
@@ -263,13 +398,24 @@ function clearPendingAvatar() {
     URL.revokeObjectURL(pendingAvatarPreviewUrl.value)
     pendingAvatarPreviewUrl.value = null
   }
-  avatarUploadRef.value?.clear?.()
+  if (avatarInputEl.value) avatarInputEl.value.value = ''
+}
+
+function clearPendingBanner() {
+  pendingBannerFile.value = null
+  if (pendingBannerPreviewUrl.value) {
+    URL.revokeObjectURL(pendingBannerPreviewUrl.value)
+    pendingBannerPreviewUrl.value = null
+  }
+  if (bannerInputEl.value) bannerInputEl.value.value = ''
 }
 
 function clearCropState() {
   cropOpen.value = false
   cropHasSelection.value = false
   cropOriginalFile.value = null
+  faceDetectError.value = null
+  autoFaceOnOpen.value = true
   if (cropPreviewRaf) {
     cancelAnimationFrame(cropPreviewRaf)
     cropPreviewRaf = null
@@ -292,19 +438,288 @@ function stageAvatarFile(file: File) {
   pendingAvatarPreviewUrl.value = URL.createObjectURL(file)
 }
 
+function stageBannerFile(file: File) {
+  if (pendingBannerPreviewUrl.value) URL.revokeObjectURL(pendingBannerPreviewUrl.value)
+  pendingBannerFile.value = file
+  pendingBannerPreviewUrl.value = URL.createObjectURL(file)
+}
+
+// Banner crop state
+const bannerCropOpen = ref(false)
+const bannerCropSrc = ref<string | null>(null)
+const bannerCropHasSelection = ref(false)
+const bannerCropOriginalFile = ref<File | null>(null)
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const bannerCropperRef = ref<any>(null)
+const bannerMaxOnOpen = ref(true)
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const bannerDefaultSize = ({ imageSize }: any) => {
+  // Use the largest possible 3:1 crop (max area), constrained by the image bounds.
+  const width = Number(imageSize?.width ?? 0)
+  const height = Number(imageSize?.height ?? 0)
+  if (!width || !height) return { width: 0, height: 0 }
+
+  // Maximum 3:1 rectangle that fits inside the image.
+  const w = Math.floor(Math.min(width, height * 3))
+  const h = Math.floor(w / 3)
+  return { width: w, height: h }
+}
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const bannerDefaultPosition = ({ coordinates, imageSize }: any) => {
+  return {
+    left: Math.round(imageSize.width / 2 - coordinates.width / 2),
+    top: Math.round(imageSize.height / 2 - coordinates.height / 2),
+  }
+}
+
+function clearBannerCropState() {
+  bannerCropOpen.value = false
+  bannerCropHasSelection.value = false
+  bannerCropOriginalFile.value = null
+  bannerMaxOnOpen.value = true
+  if (bannerCropSrc.value) {
+    URL.revokeObjectURL(bannerCropSrc.value)
+    bannerCropSrc.value = null
+  }
+  bannerCropperRef.value = null
+}
+
+function openBannerCropForFile(file: File) {
+  clearBannerCropState()
+  bannerCropOriginalFile.value = file
+  bannerCropSrc.value = URL.createObjectURL(file)
+  bannerCropOpen.value = true
+  bannerCropHasSelection.value = true
+  bannerMaxOnOpen.value = true
+}
+
+async function onBannerCropperReady() {
+  // Ensure the 3:1 crop starts at the absolute max size.
+  if (!bannerMaxOnOpen.value) return
+  bannerMaxOnOpen.value = false
+
+  const cropper = bannerCropperRef.value
+  if (!cropper?.setCoordinates) return
+
+  cropper.setCoordinates(({ imageSize, coordinates }: any) => {
+    const width = Number(imageSize?.width ?? 0)
+    const height = Number(imageSize?.height ?? 0)
+    if (!width || !height) return coordinates
+
+    // Maximum 3:1 rectangle inside the image.
+    const w = Math.floor(Math.min(width, height * 3))
+    const h = Math.floor(w / 3)
+    return {
+      width: w,
+      height: h,
+      left: Math.round(width / 2 - w / 2),
+      top: Math.round(height / 2 - h / 2),
+    }
+  })
+}
+
+function openBannerPicker() {
+  bannerInputEl.value?.click()
+}
+
+function onBannerInputChange(e: Event) {
+  const input = e.target as HTMLInputElement
+  const file = input.files?.[0] ?? null
+  if (!file) return
+  handleBannerSelectedFile(file)
+}
+
+function handleBannerSelectedFile(file: File) {
+  if (!isSelf.value) return
+
+  const allowed = new Set(['image/jpeg', 'image/png', 'image/webp'])
+  if (!allowed.has(file.type)) {
+    editError.value = 'Unsupported image type. Please upload a JPG, PNG, or WebP.'
+    clearPendingBanner()
+    return
+  }
+  if (file.size > 8 * 1024 * 1024) {
+    editError.value = 'Banner is too large (max 8MB).'
+    clearPendingBanner()
+    return
+  }
+
+  editError.value = null
+  openBannerCropForFile(file)
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function onBannerCropChange(e: any) {
+  const canvas: HTMLCanvasElement | null = e?.canvas ?? null
+  bannerCropHasSelection.value = Boolean(canvas)
+}
+
+function cancelBannerCrop() {
+  clearBannerCropState()
+  clearPendingBanner()
+}
+
+async function applyBannerCrop() {
+  if (!bannerCropHasSelection.value) return
+  const cropper = bannerCropperRef.value
+  const result = cropper?.getResult?.()
+  const canvas: HTMLCanvasElement | null = result?.canvas ?? null
+  if (!canvas) return
+
+  const original = bannerCropOriginalFile.value
+  const outType = (original?.type === 'image/png' || original?.type === 'image/webp') ? original.type : 'image/jpeg'
+
+  const blob: Blob | null = await new Promise((resolve) => {
+    canvas.toBlob((b) => resolve(b), outType, outType === 'image/jpeg' ? 0.9 : undefined)
+  })
+  if (!blob) {
+    editError.value = 'Failed to crop banner.'
+    return
+  }
+
+  const ext = outType === 'image/png' ? 'png' : outType === 'image/webp' ? 'webp' : 'jpg'
+  const filename = `banner.${ext}`
+  const croppedFile = new File([blob], filename, { type: outType })
+  stageBannerFile(croppedFile)
+  clearBannerCropState()
+}
+
 function openCropForFile(file: File) {
   clearCropState()
   cropOriginalFile.value = file
   cropSrc.value = URL.createObjectURL(file)
   cropOpen.value = true
   cropHasSelection.value = true
+  // Auto-face by default when opening.
+  autoFaceOnOpen.value = true
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function onAvatarFileSelect(e: any) {
-  if (!isSelf.value) return
-  const file: File | null = e?.files?.[0] ?? null
+async function ensureFaceDetector() {
+  if (faceDetector) return faceDetector
+  // Lazy-load on client only.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const mod: any = await import('@mediapipe/tasks-vision')
+  const FilesetResolver = mod.FilesetResolver
+  const FaceDetector = mod.FaceDetector
+
+  const vision = await FilesetResolver.forVisionTasks(
+    // WASM root
+    'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm'
+  )
+
+  // BlazeFace short range model hosted by Google. (Client-only; no server involvement.)
+  faceDetector = await FaceDetector.createFromOptions(vision, {
+    baseOptions: {
+      modelAssetPath:
+        'https://storage.googleapis.com/mediapipe-models/face_detector/blaze_face_short_range/float16/1/blaze_face_short_range.tflite',
+    },
+    runningMode: 'IMAGE',
+    minDetectionConfidence: 0.5,
+  })
+
+  return faceDetector
+}
+
+function clamp(n: number, min: number, max: number) {
+  return Math.max(min, Math.min(max, n))
+}
+
+async function onCropperReady() {
+  // When the cropper opens, default to smart face crop if possible.
+  if (!autoFaceOnOpen.value) return
+  autoFaceOnOpen.value = false
+  await autoCropFace()
+}
+
+async function autoCropFace() {
+  if (!cropSrc.value) return
+  if (!cropperRef.value?.setCoordinates) return
+
+  faceDetecting.value = true
+  faceDetectError.value = null
+  try {
+    const detector = await ensureFaceDetector()
+
+    // Load the selected image into an ImageBitmap for detection.
+    const srcFile = cropOriginalFile.value
+    if (!srcFile) {
+      faceDetectError.value = 'Auto crop is unavailable. You can still crop manually.'
+      return
+    }
+    const bitmap = await createImageBitmap(srcFile)
+
+    const res = detector.detect(bitmap)
+    // Pick the most confident face (fallback to largest if scores missing).
+    const detections = res?.detections ?? []
+    if (!detections.length) {
+      faceDetectError.value = 'No face detected. You can still crop manually.'
+      return
+    }
+
+    const best = detections
+      .slice()
+      .sort((a: any, b: any) => {
+        const sa = a?.categories?.[0]?.score ?? 0
+        const sb = b?.categories?.[0]?.score ?? 0
+        if (sb !== sa) return sb - sa
+        const ba = a?.boundingBox
+        const bb = b?.boundingBox
+        const aa = (ba?.width ?? 0) * (ba?.height ?? 0)
+        const ab = (bb?.width ?? 0) * (bb?.height ?? 0)
+        return ab - aa
+      })[0]
+
+    const bb = best?.boundingBox
+    const x = bb?.originX ?? bb?.origin_x ?? bb?.x ?? 0
+    const y = bb?.originY ?? bb?.origin_y ?? bb?.y ?? 0
+    const w = bb?.width ?? 0
+    const h = bb?.height ?? 0
+
+    if (!w || !h) {
+      faceDetectError.value = 'Face detected, but crop info was unavailable. You can still crop manually.'
+      return
+    }
+
+    // Build a square crop centered on the face, padded so it includes head/shoulders.
+    const cx = x + w / 2
+    const cy = y + h / 2
+    const padding = 2.2 // Twitter-ish: face + some context
+    let size = Math.max(w, h) * padding
+    size = Math.min(size, bitmap.width, bitmap.height)
+
+    let left = cx - size / 2
+    let top = cy - size / 2
+    left = clamp(left, 0, bitmap.width - size)
+    top = clamp(top, 0, bitmap.height - size)
+
+    cropperRef.value.setCoordinates({
+      width: Math.round(size),
+      height: Math.round(size),
+      left: Math.round(left),
+      top: Math.round(top),
+    })
+  } catch (e: unknown) {
+    faceDetectError.value =
+      'Auto crop is unavailable in this browser/session. You can still crop manually.'
+  } finally {
+    faceDetecting.value = false
+  }
+}
+
+function openAvatarPicker() {
+  avatarInputEl.value?.click()
+}
+
+function onAvatarInputChange(e: Event) {
+  const input = e.target as HTMLInputElement
+  const file = input.files?.[0] ?? null
   if (!file) return
+  handleAvatarSelectedFile(file)
+}
+
+function handleAvatarSelectedFile(file: File) {
+  if (!isSelf.value) return
 
   // Basic client-side checks (server also validates).
   const allowed = new Set(['image/jpeg', 'image/png', 'image/webp'])
@@ -391,14 +806,18 @@ watch(
   (open) => {
     if (!open) {
       clearCropState()
+      clearBannerCropState()
       clearPendingAvatar()
+      clearPendingBanner()
       return
     }
     editError.value = null
     editName.value = profile.value?.name || ''
     editBio.value = profile.value?.bio || ''
     clearCropState()
+    clearBannerCropState()
     clearPendingAvatar()
+    clearPendingBanner()
   }
 )
 
@@ -407,6 +826,38 @@ async function saveProfile() {
   editError.value = null
   saving.value = true
   try {
+    // If a banner is staged, upload + commit it first.
+    if (pendingBannerFile.value) {
+      const file = pendingBannerFile.value
+      const init = await apiFetchData<{ key: string; uploadUrl: string; headers: Record<string, string>; maxBytes?: number }>(
+        '/uploads/banner/init',
+        {
+          method: 'POST',
+          body: { contentType: file.type }
+        }
+      )
+
+      const putRes = await fetch(init.uploadUrl, {
+        method: 'PUT',
+        headers: init.headers,
+        body: file,
+      })
+      if (!putRes.ok) throw new Error('Failed to upload banner.')
+
+      const committed = await apiFetchData<{ user: any }>('/uploads/banner/commit', {
+        method: 'POST',
+        body: { key: init.key },
+      })
+
+      authUser.value = committed.user ?? authUser.value
+      data.value = {
+        ...(data.value as PublicProfile),
+        bannerKey: committed.user?.bannerKey ?? null,
+        bannerUpdatedAt: committed.user?.bannerUpdatedAt ?? null,
+      }
+      clearPendingBanner()
+    }
+
     // If an avatar is staged, upload + commit it first.
     if (pendingAvatarFile.value) {
       const file = pendingAvatarFile.value
@@ -465,7 +916,9 @@ async function saveProfile() {
 
 onBeforeUnmount(() => {
   clearCropState()
+  clearBannerCropState()
   if (pendingAvatarPreviewUrl.value) URL.revokeObjectURL(pendingAvatarPreviewUrl.value)
+  if (pendingBannerPreviewUrl.value) URL.revokeObjectURL(pendingBannerPreviewUrl.value)
 })
 </script>
 

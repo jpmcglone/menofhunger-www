@@ -133,6 +133,7 @@ type Step = 'phone' | 'code'
 
 const { apiFetchData } = useApiClient()
 import { getApiErrorMessage } from '~/utils/api-error'
+const route = useRoute()
 
 const step = ref<Step>('phone')
 
@@ -229,12 +230,22 @@ async function submitCode() {
 
   verifying.value = true
   try {
-    await apiFetchData<{ isNewUser: boolean; user: any; sessionId: string }>('/auth/phone/verify', {
+    const result = await apiFetchData<{ isNewUser: boolean; user: any; sessionId: string }>('/auth/phone/verify', {
       method: 'POST',
       body: { phone, code }
     })
 
-    await navigateTo('/home')
+    // Immediately hydrate auth state from the response so we don't look logged out
+    // until a full refresh (client-side navigation won't rerun SSR init).
+    const { user } = useAuth()
+    user.value = result.user ?? null
+
+    const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : null
+    if (redirect && redirect.startsWith('/')) {
+      await navigateTo(redirect)
+    } else {
+      await navigateTo('/home')
+    }
   } catch (e: unknown) {
     inlineError.value = getApiErrorMessage(e) || 'Failed to verify code.'
   } finally {
