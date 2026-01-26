@@ -4,14 +4,11 @@
       <InputText class="w-full" placeholder="Search Explore…" />
     </div>
 
-    <Card>
-      <template #title>Explore</template>
-      <template #content>
-        <p class="text-gray-700 dark:text-gray-300">
-          Placeholder for Explore (trending topics, discovery, groups, etc.).
-        </p>
-      </template>
-    </Card>
+    <div>
+      <p class="text-gray-700 dark:text-gray-300">
+        Placeholder for Explore (trending topics, discovery, groups, etc.).
+      </p>
+    </div>
   </div>
 </template>
 

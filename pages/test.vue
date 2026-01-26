@@ -13,9 +13,9 @@
       </p>
     </header>
 
-    <Card>
-      <template #title>Buttons, Tags, Badges</template>
-      <template #content>
+    <div class="space-y-6">
+      <div class="space-y-3">
+        <h2 class="text-xl font-semibold text-gray-900 dark:text-gray-50">Buttons, Tags, Badges</h2>
         <div class="flex flex-wrap items-center gap-3">
           <Button label="Primary" />
           <Button label="Secondary" severity="secondary" />
@@ -28,12 +28,10 @@
             <Badge value="NEW" />
           </span>
         </div>
-      </template>
-    </Card>
+      </div>
 
-    <Card>
-      <template #title>Inputs</template>
-      <template #content>
+      <div class="space-y-3">
+        <h2 class="text-xl font-semibold text-gray-900 dark:text-gray-50">Inputs</h2>
         <div class="space-y-4">
           <div class="space-y-2">
             <label class="text-sm font-medium text-gray-700 dark:text-gray-200">Name</label>
@@ -50,12 +48,10 @@
             <Textarea v-model="notes" rows="4" placeholder="Write something…" class="w-full" />
           </div>
         </div>
-      </template>
-    </Card>
+      </div>
 
-    <Card>
-      <template #title>Pickers & Toggles</template>
-      <template #content>
+      <div class="space-y-3">
+        <h2 class="text-xl font-semibold text-gray-900 dark:text-gray-50">Pickers & Toggles</h2>
         <div class="space-y-4">
           <div class="flex items-center gap-3">
             <Checkbox v-model="agree" binary inputId="agree" />
@@ -86,12 +82,10 @@
             />
           </div>
         </div>
-      </template>
-    </Card>
+      </div>
 
-    <Card>
-      <template #title>Slider + Progress</template>
-      <template #content>
+      <div class="space-y-3">
+        <h2 class="text-xl font-semibold text-gray-900 dark:text-gray-50">Slider + Progress</h2>
         <div class="space-y-4">
           <div class="flex items-center justify-between">
             <div class="text-sm text-gray-600 dark:text-gray-300">Intensity</div>
@@ -101,12 +95,10 @@
           <Slider v-model="intensity" :min="0" :max="100" class="w-full" />
           <ProgressBar :value="intensity" />
         </div>
-      </template>
-    </Card>
+      </div>
 
-    <Card>
-      <template #title>Debug</template>
-      <template #content>
+      <div class="space-y-3">
+        <h2 class="text-xl font-semibold text-gray-900 dark:text-gray-50">Debug</h2>
         <Tabs v-model:value="debugTab" :scrollable="false">
           <TabList>
             <Tab value="state">State</Tab>
@@ -121,13 +113,13 @@
                 <p>
                   This page exists just to validate PrimeVue components render correctly inside the narrow app rail.
                 </p>
-                <p class="text-sm text-gray-500 dark:text-gray-400">It’s safe to delete later.</p>
+                <p class="text-sm text-gray-500 dark:text-gray-400">It's safe to delete later.</p>
               </div>
             </TabPanel>
           </TabPanels>
         </Tabs>
-      </template>
-    </Card>
+      </div>
+    </div>
   </section>
 </template>
 
@@ -179,4 +171,3 @@ const stateDump = computed(() =>
   )
 )
 </script>
-

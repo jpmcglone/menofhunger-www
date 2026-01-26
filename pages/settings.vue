@@ -2,66 +2,52 @@
   <section class="w-full max-w-xl space-y-6">
     <AppPageHeader title="Settings" icon="pi-cog" description="Account settings for your profile." />
 
-    <Card>
-      <template #title>Username</template>
-      <template #content>
-        <div class="space-y-4">
-          <div class="space-y-3">
-            <div class="space-y-2">
-              <label class="text-sm font-medium text-gray-700 dark:text-gray-200">
-                {{ authUser?.usernameIsSet ? 'Username (case change only)' : 'Choose a username' }}
-              </label>
+    <div class="space-y-4">
+      <div class="space-y-3">
+        <div class="space-y-2">
+          <label class="text-sm font-medium text-gray-700 dark:text-gray-200">Username</label>
 
-              <div class="flex items-center gap-2">
-                <span class="text-sm text-gray-500 dark:text-gray-400">@</span>
-                <InputText
-                  v-model="usernameInput"
-                  class="w-full"
-                  placeholder="your_handle"
-                  autocomplete="off"
-                  :disabled="saving"
-                />
-
-                <div class="shrink-0 w-8 flex items-center justify-center">
-                  <i v-if="checking" class="pi pi-spin pi-spinner text-gray-500" aria-hidden="true" />
-                  <i
-                    v-else-if="availability === 'available' || availability === 'same'"
-                    class="pi pi-check text-green-600"
-                    aria-hidden="true"
-                  />
-                  <i
-                    v-else-if="availability === 'taken' || availability === 'invalid'"
-                    class="pi pi-times text-red-600"
-                    aria-hidden="true"
-                  />
-                </div>
-              </div>
-
-              <div v-if="helperText" class="text-sm" :class="helperToneClass">
-                {{ helperText }}
-              </div>
-              <div class="text-xs text-gray-500 dark:text-gray-400">
-                6–15 characters. Must start with a letter. Letters, numbers, underscores only.
-                <span v-if="authUser?.usernameIsSet" class="ml-1">
-                  You can only change capitalization of your current username.
-                </span>
-              </div>
-            </div>
-
-            <div class="flex items-center gap-3">
-              <Button
-                label="Save"
-                icon="pi pi-check"
-                :loading="saving"
-                :disabled="saving || (authUser?.usernameIsSet ? availability !== 'same' : availability !== 'available')"
-                @click="save"
+          <div class="relative">
+            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-500 dark:text-gray-400">@</span>
+            <InputText
+              v-model="usernameInput"
+              class="w-full pl-7"
+              placeholder="your_handle"
+              autocomplete="off"
+              :disabled="saving"
+            />
+            <div class="absolute right-3 top-1/2 -translate-y-1/2 flex items-center">
+              <i v-if="checking" class="pi pi-spin pi-spinner text-gray-500" aria-hidden="true" />
+              <i
+                v-else-if="availability === 'available' || availability === 'same'"
+                class="pi pi-check text-green-600"
+                aria-hidden="true"
               />
-              <div v-if="saved" class="text-sm text-green-700 dark:text-green-300">Saved.</div>
+              <i
+                v-else-if="availability === 'taken' || availability === 'invalid'"
+                class="pi pi-times text-red-600"
+                aria-hidden="true"
+              />
             </div>
           </div>
+
+          <div v-if="helperText && (availability === 'taken' || availability === 'invalid')" class="text-sm text-red-700 dark:text-red-300">
+            {{ helperText }}
+          </div>
         </div>
-      </template>
-    </Card>
+
+        <div class="flex items-center gap-3">
+          <Button
+            label="Save"
+            icon="pi pi-check"
+            :loading="saving"
+            :disabled="saving || (authUser?.usernameIsSet ? availability !== 'same' : availability !== 'available')"
+            @click="save"
+          />
+          <div v-if="saved" class="text-sm text-green-700 dark:text-green-300">Saved.</div>
+        </div>
+      </div>
+    </div>
   </section>
 </template>
 

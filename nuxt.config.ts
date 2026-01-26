@@ -4,7 +4,8 @@ import { siteConfig } from './config/site'
 
 export default defineNuxtConfig({
   compatibilityDate: '2024-11-01',
-  devtools: { enabled: true },
+  // Keep devtools off in production builds (reduces bundle + memory).
+  devtools: { enabled: process.env.NODE_ENV !== 'production' },
   runtimeConfig: {
     public: {
       // Used by the website to call the API (e.g. health checks).
@@ -39,12 +40,26 @@ export default defineNuxtConfig({
     '@nuxt/icon',
     '@nuxt/image',
     '@nuxt/scripts',
-    '@nuxt/test-utils',
     '@nuxt/ui',
     '@primevue/nuxt-module'
   ],
   css: ['~/assets/css/main.css', 'primeicons/primeicons.css', 'vue-advanced-cropper/dist/style.css'],
   ssr: true,
+  // Render builds can be memory-constrained; sourcemaps are a big multiplier.
+  vite: {
+    build: {
+      sourcemap: false
+    }
+  },
+  nitro: {
+    sourceMap: false,
+    prerender: {
+      // Avoid auto-prerendering internal content endpoints.
+      // Nitro treats ignore entries as exact strings or regex; regex is safest.
+      ignore: [/^\/__nuxt_content\//],
+      crawlLinks: false
+    }
+  },
   routeRules: {
     // Static where it makes sense (fast marketing pages), SSR everywhere else.
     '/': { prerender: true },

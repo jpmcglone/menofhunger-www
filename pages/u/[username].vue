@@ -1,57 +1,55 @@
 <template>
-  <section class="w-full max-w-3xl space-y-6">
-    <div class="overflow-hidden rounded-2xl border border-gray-200 bg-white dark:border-zinc-800 dark:bg-black/20">
-      <div class="relative">
-        <div class="aspect-[3/1] w-full bg-gray-200 dark:bg-zinc-900">
+  <div class="w-full">
+    <div class="relative">
+      <div class="aspect-[3/1] w-full bg-gray-200 dark:bg-zinc-900">
+        <img
+          v-if="profileBannerUrl"
+          :src="profileBannerUrl"
+          alt=""
+          class="h-full w-full object-cover"
+          loading="lazy"
+          decoding="async"
+        >
+      </div>
+
+      <div class="absolute left-4 bottom-0 translate-y-1/2">
+        <div class="h-28 w-28 overflow-hidden rounded-full bg-gray-200 ring-4 ring-white dark:bg-zinc-800 dark:ring-black/40">
           <img
-            v-if="profileBannerUrl"
-            :src="profileBannerUrl"
+            v-if="profileAvatarUrl"
+            :src="profileAvatarUrl"
             alt=""
             class="h-full w-full object-cover"
             loading="lazy"
             decoding="async"
           >
         </div>
+      </div>
+    </div>
 
-        <div class="absolute left-4 bottom-0 translate-y-1/2">
-          <div class="h-28 w-28 overflow-hidden rounded-full bg-gray-200 ring-4 ring-white dark:bg-zinc-800 dark:ring-black/40">
-            <img
-              v-if="profileAvatarUrl"
-              :src="profileAvatarUrl"
-              alt=""
-              class="h-full w-full object-cover"
-              loading="lazy"
-              decoding="async"
-            >
+    <div class="mx-auto max-w-3xl px-4 pb-5 pt-16">
+      <div class="flex items-start justify-between gap-4">
+        <div class="min-w-0">
+          <div class="flex items-center gap-2 min-w-0">
+            <div class="text-2xl font-bold text-gray-900 dark:text-gray-50 truncate">
+              {{ profileName }}
+            </div>
+            <AppVerifiedBadge :status="profile?.verifiedStatus" />
           </div>
+          <div class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+            @{{ profile?.username }}
+          </div>
+        </div>
+
+        <div v-if="isSelf" class="shrink-0">
+          <Button label="Edit profile" icon="pi pi-pencil" severity="secondary" @click="editOpen = true" />
         </div>
       </div>
 
-      <div class="px-4 pb-5 pt-16">
-        <div class="flex items-start justify-between gap-4">
-          <div class="min-w-0">
-            <div class="flex items-center gap-2 min-w-0">
-              <div class="text-2xl font-bold text-gray-900 dark:text-gray-50 truncate">
-                {{ profileName }}
-              </div>
-              <AppVerifiedBadge :status="profile?.verifiedStatus" />
-            </div>
-            <div class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-              @{{ profile?.username }}
-            </div>
-          </div>
-
-          <div v-if="isSelf" class="shrink-0">
-            <Button label="Edit profile" icon="pi pi-pencil" severity="secondary" @click="editOpen = true" />
-          </div>
-        </div>
-
-        <div v-if="profile?.bio" class="mt-4 whitespace-pre-wrap text-gray-800 dark:text-gray-200">
-          {{ profile.bio }}
-        </div>
-        <div v-else class="mt-4 text-sm text-gray-500 dark:text-gray-400">
-          No bio yet.
-        </div>
+      <div v-if="profile?.bio" class="mt-4 whitespace-pre-wrap text-gray-800 dark:text-gray-200">
+        {{ profile.bio }}
+      </div>
+      <div v-else class="mt-4 text-sm text-gray-500 dark:text-gray-400">
+        No bio yet.
       </div>
     </div>
 
@@ -132,7 +130,7 @@
                   decoding="async"
                 >
 
-                <div class="absolute -bottom-1 -right-1 flex items-center gap-2">
+                <div class="absolute inset-0 flex items-center justify-center gap-2">
                   <Tag v-if="pendingAvatarFile" value="Pending" severity="warning" />
                   <Button
                     icon="pi pi-camera"
@@ -154,12 +152,6 @@
                   />
                 </div>
               </div>
-            </div>
-          </div>
-
-          <div class="px-4 pb-4 pt-16">
-            <div class="text-xs text-gray-500 dark:text-gray-400">
-              Banner must be 3:1 (we save 1500×500). Avatar is a square (displayed as a circle).
             </div>
           </div>
         </div>
@@ -287,7 +279,7 @@
         </AppInlineAlert>
       </div>
     </Dialog>
-  </section>
+  </div>
 </template>
 
 <script setup lang="ts">

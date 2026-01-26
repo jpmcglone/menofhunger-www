@@ -35,6 +35,9 @@ description: Core engineering conventions for menofhunger-www (Nuxt + PrimeVue).
 ## Styling
 - Tailwind utilities are fine, but avoid repeating long class strings across pages.
 - Prefer subtle animations and stable layout (avoid jumpy transitions).
+- **Do not use Card components for page content** — pages should not be wrapped in cards unless explicitly requested.
+  - Use semantic HTML with appropriate headings (`h1`, `h2`, etc.) and spacing instead.
+  - For profile pages: banners should be full-width (no margin), while content below should have appropriate margins.
 
 ## Workflow expectations
 - After substantive changes, run:

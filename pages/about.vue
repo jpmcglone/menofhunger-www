@@ -18,85 +18,77 @@
 
     <Divider class="my-6" />
 
-    <div class="space-y-5">
-      <Card>
-        <template #title>What we’re about</template>
-        <template #content>
-          <div class="space-y-3 text-gray-700 dark:text-gray-300">
-            <p>
-              We don’t apologize for ambition — we aim it. This is a place to sharpen your mindset, build real habits,
-              and surround yourself with men who follow through.
-            </p>
-            <ul class="mt-3 space-y-2">
-              <li class="flex gap-2">
-                <i class="pi pi-check mt-1 text-sm text-gray-500 dark:text-gray-400" aria-hidden="true" />
-                <span><strong class="text-gray-900 dark:text-gray-100">Discipline</strong> over motivation.</span>
-              </li>
-              <li class="flex gap-2">
-                <i class="pi pi-check mt-1 text-sm text-gray-500 dark:text-gray-400" aria-hidden="true" />
-                <span><strong class="text-gray-900 dark:text-gray-100">Execution</strong> over excuses.</span>
-              </li>
-              <li class="flex gap-2">
-                <i class="pi pi-check mt-1 text-sm text-gray-500 dark:text-gray-400" aria-hidden="true" />
-                <span><strong class="text-gray-900 dark:text-gray-100">Brotherhood</strong> over isolation.</span>
-              </li>
-            </ul>
-          </div>
-        </template>
-      </Card>
+    <div class="space-y-6">
+      <div class="space-y-3">
+        <h2 class="text-xl font-semibold text-gray-900 dark:text-gray-50">What we're about</h2>
+        <div class="space-y-3 text-gray-700 dark:text-gray-300">
+          <p>
+            We don't apologize for ambition — we aim it. This is a place to sharpen your mindset, build real habits,
+            and surround yourself with men who follow through.
+          </p>
+          <ul class="mt-3 space-y-2">
+            <li class="flex gap-2">
+              <i class="pi pi-check mt-1 text-sm text-gray-500 dark:text-gray-400" aria-hidden="true" />
+              <span><strong class="text-gray-900 dark:text-gray-100">Discipline</strong> over motivation.</span>
+            </li>
+            <li class="flex gap-2">
+              <i class="pi pi-check mt-1 text-sm text-gray-500 dark:text-gray-400" aria-hidden="true" />
+              <span><strong class="text-gray-900 dark:text-gray-100">Execution</strong> over excuses.</span>
+            </li>
+            <li class="flex gap-2">
+              <i class="pi pi-check mt-1 text-sm text-gray-500 dark:text-gray-400" aria-hidden="true" />
+              <span><strong class="text-gray-900 dark:text-gray-100">Brotherhood</strong> over isolation.</span>
+            </li>
+          </ul>
+        </div>
+      </div>
 
-      <Card>
-        <template #title>Who it’s for</template>
-        <template #content>
-          <div class="space-y-3 text-gray-700 dark:text-gray-300">
-            <p>
-              If you’re building something — a career, a business, a family, a body, a mission — and you’re tired of
-              doing it alone, you’ll fit here.
-            </p>
-            <p class="text-sm text-gray-500 dark:text-gray-400">
-              Not a motivational feed. Not a pity party. Real accountability.
-            </p>
-          </div>
-        </template>
-      </Card>
+      <div class="space-y-3">
+        <h2 class="text-xl font-semibold text-gray-900 dark:text-gray-50">Who it's for</h2>
+        <div class="space-y-3 text-gray-700 dark:text-gray-300">
+          <p>
+            If you're building something — a career, a business, a family, a body, a mission — and you're tired of
+            doing it alone, you'll fit here.
+          </p>
+          <p class="text-sm text-gray-500 dark:text-gray-400">
+            Not a motivational feed. Not a pity party. Real accountability.
+          </p>
+        </div>
+      </div>
 
-      <Card>
-        <template #title>How it works (simple)</template>
-        <template #content>
-          <div class="space-y-3 text-gray-700 dark:text-gray-300">
-            <ol class="space-y-2">
-              <li class="flex gap-3">
-                <span class="mt-0.5 inline-flex h-6 w-6 items-center justify-center rounded-full bg-gray-100 text-sm font-semibold text-gray-800 dark:bg-zinc-900 dark:text-gray-200">1</span>
-                <span>Post your goals and wins on your wall.</span>
-              </li>
-              <li class="flex gap-3">
-                <span class="mt-0.5 inline-flex h-6 w-6 items-center justify-center rounded-full bg-gray-100 text-sm font-semibold text-gray-800 dark:bg-zinc-900 dark:text-gray-200">2</span>
-                <span>Follow men you respect. Keep it tight.</span>
-              </li>
-              <li class="flex gap-3">
-                <span class="mt-0.5 inline-flex h-6 w-6 items-center justify-center rounded-full bg-gray-100 text-sm font-semibold text-gray-800 dark:bg-zinc-900 dark:text-gray-200">3</span>
-                <span>Show up daily. Do the work. Repeat.</span>
-              </li>
-            </ol>
-          </div>
-        </template>
-      </Card>
+      <div class="space-y-3">
+        <h2 class="text-xl font-semibold text-gray-900 dark:text-gray-50">How it works (simple)</h2>
+        <div class="space-y-3 text-gray-700 dark:text-gray-300">
+          <ol class="space-y-2">
+            <li class="flex gap-3">
+              <span class="mt-0.5 inline-flex h-6 w-6 items-center justify-center rounded-full bg-gray-100 text-sm font-semibold text-gray-800 dark:bg-zinc-900 dark:text-gray-200">1</span>
+              <span>Post your goals and wins on your wall.</span>
+            </li>
+            <li class="flex gap-3">
+              <span class="mt-0.5 inline-flex h-6 w-6 items-center justify-center rounded-full bg-gray-100 text-sm font-semibold text-gray-800 dark:bg-zinc-900 dark:text-gray-200">2</span>
+              <span>Follow men you respect. Keep it tight.</span>
+            </li>
+            <li class="flex gap-3">
+              <span class="mt-0.5 inline-flex h-6 w-6 items-center justify-center rounded-full bg-gray-100 text-sm font-semibold text-gray-800 dark:bg-zinc-900 dark:text-gray-200">3</span>
+              <span>Show up daily. Do the work. Repeat.</span>
+            </li>
+          </ol>
+        </div>
+      </div>
 
-      <Card>
-        <template #title>Our promise</template>
-        <template #content>
-          <div class="space-y-3 text-gray-700 dark:text-gray-300">
-            <p>
-              Show up hungry. Do the work. Help the men beside you rise.
+      <div class="space-y-3">
+        <h2 class="text-xl font-semibold text-gray-900 dark:text-gray-50">Our promise</h2>
+        <div class="space-y-3 text-gray-700 dark:text-gray-300">
+          <p>
+            Show up hungry. Do the work. Help the men beside you rise.
+          </p>
+          <div class="rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-zinc-800 dark:bg-zinc-950/40">
+            <p class="font-semibold text-gray-900 dark:text-gray-100">
+              Stay tuned. Stay hungry.
             </p>
-            <div class="rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-zinc-800 dark:bg-zinc-950/40">
-              <p class="font-semibold text-gray-900 dark:text-gray-100">
-                Stay tuned. Stay hungry.
-              </p>
-            </div>
           </div>
-        </template>
-      </Card>
+        </div>
+      </div>
     </div>
   </section>
 </template>
@@ -113,4 +105,3 @@ usePageSeo({
     'Men of Hunger is a brotherhood for ambitious men who want more discipline, clarity, strength, and impact.'
 })
 </script>
-
