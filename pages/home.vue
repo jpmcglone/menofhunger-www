@@ -4,7 +4,7 @@
     <div class="border-b border-gray-200 px-4 py-4 dark:border-zinc-800">
       <div v-if="canPost" class="grid grid-cols-[2.5rem_minmax(0,1fr)] gap-x-3">
         <!-- Row 1: visibility picker (above, right-aligned) -->
-        <div class="col-start-2 flex justify-end mb-2">
+        <div class="col-start-2 flex justify-end items-end mb-3 sm:mb-2">
           <div ref="composerVisibilityWrapEl" class="relative">
             <button
               type="button"
@@ -65,7 +65,7 @@
         <NuxtLink
           v-if="myProfilePath"
           :to="myProfilePath"
-          class="row-start-2 col-start-1 group h-10 w-10 shrink-0 overflow-hidden rounded-full bg-gray-200 dark:bg-zinc-800 relative"
+          class="row-start-1 sm:row-start-2 col-start-1 mb-3 sm:mb-0 group h-8 w-8 sm:h-10 sm:w-10 shrink-0 overflow-hidden rounded-full bg-gray-200 dark:bg-zinc-800 relative"
           aria-label="View your profile"
         >
           <img
@@ -80,7 +80,7 @@
         </NuxtLink>
         <div
           v-else
-          class="row-start-2 col-start-1 h-10 w-10 shrink-0 overflow-hidden rounded-full bg-gray-200 dark:bg-zinc-800"
+          class="row-start-1 sm:row-start-2 col-start-1 mb-3 sm:mb-0 h-8 w-8 sm:h-10 sm:w-10 shrink-0 overflow-hidden rounded-full bg-gray-200 dark:bg-zinc-800"
           aria-hidden="true"
         >
           <img
@@ -93,7 +93,7 @@
           >
         </div>
 
-        <div class="row-start-2 col-start-2 min-w-0 moh-composer-tint">
+        <div :class="['row-start-2 col-span-2 sm:col-span-1 sm:col-start-2 min-w-0 moh-composer-tint', composerAccentClass]">
           <Textarea
             v-model="draft"
             autoResize
@@ -448,6 +448,12 @@ const composerTintCss = computed(() => {
 
 useHead({
   style: [{ key: 'moh-composer-tint', textContent: composerTintCss }],
+})
+
+const composerAccentClass = computed(() => {
+  if (visibility.value === 'verifiedOnly') return 'moh-composer-accent-verified'
+  if (visibility.value === 'premiumOnly') return 'moh-composer-accent-premium'
+  return 'moh-composer-accent-public'
 })
 const allowedComposerVisibilities = computed<PostVisibility[]>(() => {
   // Verified users can post public or verified-only. Premium-only is premium members only.

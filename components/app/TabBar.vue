@@ -16,9 +16,19 @@
           <div class="h-8 w-8 flex items-center justify-center">
             <div
               v-if="item.key === 'profile'"
-              class="h-7 w-7 rounded-full bg-gray-200 dark:bg-zinc-800"
-              aria-hidden="true"
-            />
+              class="h-7 w-7 overflow-hidden rounded-full bg-gray-200 dark:bg-zinc-800"
+              aria-label="Profile"
+            >
+              <img
+                v-if="meAvatarUrl"
+                :src="meAvatarUrl"
+                alt=""
+                class="h-full w-full object-cover"
+                loading="lazy"
+                decoding="async"
+              >
+              <div v-else class="h-full w-full" aria-hidden="true" />
+            </div>
             <i v-else class="pi text-xl" :class="item.icon" aria-hidden="true" />
           </div>
         </NuxtLink>
@@ -35,6 +45,15 @@ defineProps<{
 }>()
 
 const route = useRoute()
+const { user } = useAuth()
+const { assetUrl } = useAssets()
+
+const meAvatarUrl = computed(() => {
+  const base = assetUrl(user.value?.avatarKey)
+  if (!base) return null
+  const v = user.value?.avatarUpdatedAt || ''
+  return v ? `${base}?v=${encodeURIComponent(v)}` : base
+})
 
 function isActive(to: string) {
   if (to === '/home') return route.path === '/home'

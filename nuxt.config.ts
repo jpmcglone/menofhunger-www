@@ -43,6 +43,19 @@ export default defineNuxtConfig({
     '@nuxt/ui',
     '@primevue/nuxt-module'
   ],
+  fonts: {
+    // Social-app friendly: clean, modern sans with strong readability.
+    // Loaded with swap to avoid FOIT.
+    families: [
+      {
+        name: 'Inter',
+        provider: 'google',
+        weights: [400, 500, 600, 700],
+        styles: ['normal'],
+        subsets: ['latin'],
+      },
+    ],
+  },
   css: ['~/assets/css/main.css', 'primeicons/primeicons.css', 'vue-advanced-cropper/dist/style.css'],
   ssr: true,
   // Render builds can be memory-constrained; sourcemaps are a big multiplier.

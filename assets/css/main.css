@@ -3,7 +3,8 @@
 
 /* Typography baseline (X-like): modern system font, readable sizing, nice rendering */
 :root {
-  --moh-font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica,
+  /* Inter first, then system fallbacks (fast + consistent). */
+  --moh-font-sans: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica,
     Arial, "Apple Color Emoji", "Segoe UI Emoji";
 }
 
@@ -11,6 +12,8 @@ html {
   font-family: var(--moh-font-sans);
   font-size: 16px;
   line-height: 1.45;
+  font-kerning: normal;
+  font-optical-sizing: auto;
   -webkit-text-size-adjust: 100%;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -84,6 +87,8 @@ html.moh-landing.dark {
 .no-scrollbar {
   -ms-overflow-style: none; /* IE/old Edge */
   scrollbar-width: none; /* Firefox */
+  /* Momentum scrolling + rubber-band on iOS (where allowed) */
+  -webkit-overflow-scrolling: touch;
 }
 .no-scrollbar::-webkit-scrollbar {
   display: none; /* Chrome/Safari */
@@ -116,4 +121,22 @@ html.moh-landing.dark {
 .p-tooltip.moh-tooltip-tiny .p-tooltip-arrow {
   /* Hide arrow to avoid the little square artifact */
   display: none !important;
+}
+
+/* Home composer textarea focus tint (PrimeVue Textarea uses focus ring tokens that don't fully follow primary) */
+:where(.moh-composer-accent-verified) :where(.p-inputtextarea, textarea.p-inputtextarea):is(:focus, .p-focus) {
+  border-color: #1D9BF0 !important;
+  box-shadow: 0 0 0 1px rgba(29, 155, 240, 0.65) !important;
+}
+:where(.moh-composer-accent-premium) :where(.p-inputtextarea, textarea.p-inputtextarea):is(:focus, .p-focus) {
+  border-color: #F59E0B !important;
+  box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.65) !important;
+}
+html.dark :where(.moh-composer-accent-public) :where(.p-inputtextarea, textarea.p-inputtextarea):is(:focus, .p-focus) {
+  border-color: rgba(255, 255, 255, 0.75) !important;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.35) !important;
+}
+html:not(.dark) :where(.moh-composer-accent-public) :where(.p-inputtextarea, textarea.p-inputtextarea):is(:focus, .p-focus) {
+  border-color: rgba(0, 0, 0, 0.75) !important;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.25) !important;
 }

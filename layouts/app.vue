@@ -8,7 +8,7 @@
   <div class="h-dvh overflow-hidden bg-white text-gray-900 dark:bg-black dark:text-gray-50">
     <div class="mx-auto flex h-full w-full max-w-6xl px-2 sm:px-4 xl:max-w-7xl">
       <!-- Left Nav (independent scroll) -->
-      <aside class="no-scrollbar hidden sm:block shrink-0 h-full overflow-y-auto overscroll-y-none border-r border-gray-200 dark:border-zinc-800">
+      <aside class="no-scrollbar hidden sm:block shrink-0 h-full overflow-y-auto overscroll-y-auto border-r border-gray-200 dark:border-zinc-800">
         <!-- IMPORTANT: no `h-full` + no `overflow-hidden` here, or the rail can't actually scroll -->
         <div
           :class="[
@@ -83,7 +83,7 @@
         <!-- Middle / Feed (scroll zone #2) -->
         <main
           ref="middleScrollerEl"
-          class="no-scrollbar min-w-0 flex-1 overflow-y-auto overscroll-y-none border-r border-gray-200 dark:border-zinc-800"
+          class="no-scrollbar min-w-0 flex-1 overflow-y-auto overscroll-y-auto border-r border-gray-200 dark:border-zinc-800"
         >
           <div class="sticky top-0 z-10 border-b border-gray-200 bg-white/90 backdrop-blur dark:border-zinc-800 dark:bg-black/80">
             <div class="px-4 py-3 flex items-center justify-between gap-3">
@@ -113,7 +113,7 @@
         <aside
           ref="rightScrollerEl"
           :class="[
-            'no-scrollbar shrink-0 w-80 h-full overflow-y-auto overscroll-y-none px-4 py-4',
+            'no-scrollbar shrink-0 w-80 h-full overflow-y-auto overscroll-y-auto px-4 py-4',
             isRightRailForcedHidden ? 'hidden' : 'hidden lg:block'
           ]"
         >

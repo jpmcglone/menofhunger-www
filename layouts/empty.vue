@@ -32,8 +32,16 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { siteConfig, getCopyrightYear } from '~/config/site'
+import { primaryTintCssForUser } from '~/utils/theme-tint'
 
 const copyrightYear = getCopyrightYear(siteConfig.established)
+
+// Ensure PrimeVue tint matches auth status even on "empty" pages (e.g. Login).
+const { user } = useAuth()
+const primaryCssVars = computed(() => primaryTintCssForUser(user.value ?? null))
+useHead({
+  style: [{ key: 'moh-primary-tint', textContent: primaryCssVars }],
+})
 </script>

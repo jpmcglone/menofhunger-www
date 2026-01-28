@@ -1,5 +1,5 @@
 <template>
-  <div class="border-b border-gray-200/60 px-4 py-4 hover:bg-gray-50 dark:border-zinc-800/60 dark:hover:bg-white/5 dark:hover:shadow-[0_0_0_1px_rgba(255,255,255,0.06)] transition-colors">
+  <div class="border-b border-gray-200/60 px-3 py-4 hover:bg-gray-50 dark:border-zinc-800/60 dark:hover:bg-white/5 dark:hover:shadow-[0_0_0_1px_rgba(255,255,255,0.06)] transition-colors">
     <div class="flex gap-3">
       <NuxtLink
         v-if="authorProfilePath"
@@ -20,58 +20,79 @@
       <div v-else class="h-10 w-10 shrink-0 overflow-hidden rounded-full bg-gray-200 dark:bg-zinc-800" aria-hidden="true" />
 
       <div class="min-w-0 flex-1">
-        <div class="flex items-center gap-2">
-          <NuxtLink
-            v-if="authorProfilePath"
-            :to="authorProfilePath"
-            class="font-semibold truncate hover:underline underline-offset-2"
-          >
-            {{ post.author.name || post.author.username || 'User' }}
-          </NuxtLink>
-          <span v-else class="font-semibold truncate">
-            {{ post.author.name || post.author.username || 'User' }}
-          </span>
-          <NuxtLink
-            v-if="authorProfilePath"
-            :to="authorProfilePath"
-            class="inline-flex"
-            aria-label="View profile (verified badge)"
-          >
-            <AppVerifiedBadge :status="post.author.verifiedStatus" :premium="post.author.premium" />
-          </NuxtLink>
-          <AppVerifiedBadge v-else :status="post.author.verifiedStatus" :premium="post.author.premium" />
+        <div class="flex items-start justify-between gap-3">
+          <div class="min-w-0">
+            <!-- X-style header row: name (with badge) + @username + date on one line -->
+            <div class="flex min-w-0 items-center gap-2">
+              <NuxtLink
+                v-if="authorProfilePath"
+                :to="authorProfilePath"
+                class="min-w-0 inline-flex items-center gap-2 hover:underline underline-offset-2"
+                :aria-label="`View @${post.author.username} profile`"
+              >
+                <span class="font-semibold truncate max-w-[10rem] sm:max-w-[14rem]">
+                  {{ post.author.name || post.author.username || 'User' }}
+                </span>
+                <AppVerifiedBadge class="shrink-0" :status="post.author.verifiedStatus" :premium="post.author.premium" />
+              </NuxtLink>
+              <span v-else class="min-w-0 inline-flex items-center gap-2">
+                <span class="font-semibold truncate max-w-[10rem] sm:max-w-[14rem]">
+                  {{ post.author.name || post.author.username || 'User' }}
+                </span>
+                <AppVerifiedBadge class="shrink-0" :status="post.author.verifiedStatus" :premium="post.author.premium" />
+              </span>
 
-          <NuxtLink
-            v-if="authorProfilePath"
-            :to="authorProfilePath"
-            class="text-sm text-gray-500 dark:text-gray-400 truncate hover:underline underline-offset-2"
-            :aria-label="`View @${post.author.username} profile`"
-          >
-            @{{ post.author.username || '—' }}
-          </NuxtLink>
-          <span v-else class="text-sm text-gray-500 dark:text-gray-400 truncate">
-            @{{ post.author.username || '—' }}
-          </span>
+              <NuxtLink
+                v-if="authorProfilePath"
+                :to="authorProfilePath"
+                class="min-w-0 text-sm text-gray-500 dark:text-gray-400 truncate max-w-[8rem] sm:max-w-[12rem] hover:underline underline-offset-2"
+                :aria-label="`View @${post.author.username} profile`"
+              >
+                @{{ post.author.username || '—' }}
+              </NuxtLink>
+              <span v-else class="min-w-0 text-sm text-gray-500 dark:text-gray-400 truncate max-w-[8rem] sm:max-w-[12rem]">
+                @{{ post.author.username || '—' }}
+              </span>
+
+              <span class="text-sm text-gray-500 dark:text-gray-400 shrink-0" aria-hidden="true">·</span>
+              <NuxtLink
+                :to="postPermalink"
+                class="text-sm text-gray-500 dark:text-gray-400 shrink-0 whitespace-nowrap hover:underline underline-offset-2"
+                :aria-label="`View post ${post.id}`"
+                v-tooltip.bottom="createdAtTooltip"
+              >
+                {{ createdAtShort }}
+              </NuxtLink>
+            </div>
+          </div>
+
+          <div class="shrink-0">
+            <Button
+              icon="pi pi-ellipsis-h"
+              text
+              rounded
+              severity="secondary"
+              aria-label="More"
+              v-tooltip.bottom="moreTooltip"
+              @click="toggleMoreMenu"
+            />
+            <Menu ref="moreMenuRef" :model="moreMenuItems" popup />
+          </div>
+        </div>
+
+        <p class="mt-1 whitespace-pre-wrap text-gray-900 dark:text-gray-100">
+          {{ post.body }}
+        </p>
+
+        <div v-if="visibilityTag" class="mt-2">
           <span
-            v-if="visibilityTag"
-            class="ml-1 inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold border"
+            class="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold border cursor-default"
             :class="visibilityTagClass"
+            v-tooltip.bottom="visibilityTooltip"
           >
             {{ visibilityTag }}
           </span>
-          <span class="text-sm text-gray-500 dark:text-gray-400">·</span>
-          <NuxtLink
-            :to="postPermalink"
-            class="text-sm text-gray-500 dark:text-gray-400 hover:underline underline-offset-2"
-            :aria-label="`View post ${post.id}`"
-          >
-            {{ new Date(post.createdAt).toLocaleString() }}
-          </NuxtLink>
         </div>
-
-        <p class="mt-2 whitespace-pre-wrap text-gray-900 dark:text-gray-100">
-          {{ post.body }}
-        </p>
 
         <div class="mt-3 flex items-center justify-between text-gray-500 dark:text-gray-400">
           <div class="flex items-center gap-2">
@@ -157,19 +178,6 @@
           </div>
         </div>
       </div>
-
-      <div class="shrink-0">
-        <Button
-          icon="pi pi-ellipsis-h"
-          text
-          rounded
-          severity="secondary"
-          aria-label="More"
-          v-tooltip.bottom="moreTooltip"
-          @click="toggleMoreMenu"
-        />
-        <Menu ref="moreMenuRef" :model="moreMenuItems" popup />
-      </div>
     </div>
   </div>
 </template>
@@ -219,6 +227,12 @@ const visibilityTagClass = computed(() => {
   return visibilityTagClasses(post.value.visibility)
 })
 
+const visibilityTooltip = computed(() => {
+  if (post.value.visibility === 'verifiedOnly') return tinyTooltip('Visible to verified members')
+  if (post.value.visibility === 'premiumOnly') return tinyTooltip('Visible to premium members')
+  return null
+})
+
 const postPermalink = computed(() => `/p/${encodeURIComponent(post.value.id)}`)
 const postShareUrl = computed(() => `${siteConfig.url}${postPermalink.value}`)
 
@@ -228,6 +242,28 @@ function goToPost() {
 
 function noop() {
   // no-op for now (comments not implemented yet)
+}
+
+const createdAtDate = computed(() => new Date(post.value.createdAt))
+const createdAtShort = computed(() => formatShortDate(createdAtDate.value))
+const createdAtTooltip = computed(() => tinyTooltip(createdAtDate.value.toLocaleString()))
+
+function formatShortDate(d: Date): string {
+  const now = new Date()
+  const diffMs = now.getTime() - d.getTime()
+  const diffSec = Math.floor(diffMs / 1000)
+  if (diffSec < 60) return 'now'
+  const diffMin = Math.floor(diffSec / 60)
+  if (diffMin < 60) return `${diffMin}m`
+  const diffHr = Math.floor(diffMin / 60)
+  if (diffHr < 24) return `${diffHr}h`
+  const diffDay = Math.floor(diffHr / 24)
+  if (diffDay < 7) return `${diffDay}d`
+
+  const sameYear = now.getFullYear() === d.getFullYear()
+  const month = d.toLocaleString(undefined, { month: 'short' })
+  const day = d.getDate()
+  return sameYear ? `${month} ${day}` : `${month} ${day}, ${d.getFullYear()}`
 }
 
 const moreMenuRef = ref()

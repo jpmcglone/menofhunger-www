@@ -1,119 +1,115 @@
 <template>
   <section class="w-full max-w-md">
-    <Card class="shadow-sm">
-      <template #title>
-        <div class="flex items-center justify-between gap-3">
+    <div class="space-y-6">
+      <div class="space-y-2">
+        <div class="flex items-center gap-2 text-2xl font-semibold tracking-tight">
+          <i class="pi pi-sign-in" aria-hidden="true" />
+          <span>Login</span>
+        </div>
+      </div>
+
+      <!-- Step 1: Phone -->
+      <div class="space-y-2">
+        <label class="text-sm font-medium text-gray-700 dark:text-gray-200">Phone number</label>
+
+        <div v-if="step === 'phone'" class="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <InputText
+            v-model="phoneInput"
+            class="w-full"
+            placeholder="+1 (555) 555-5555"
+            autocomplete="tel"
+            inputmode="tel"
+            :disabled="phoneSubmitting"
+            @keydown.enter.prevent="submitPhone"
+          />
+          <button
+            type="button"
+            class="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-black text-white transition-opacity hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-white dark:text-black self-end sm:self-auto"
+            :disabled="phoneSubmitting || !phoneInput.trim()"
+            aria-label="Send"
+            @click="submitPhone"
+          >
+            <!-- Bold right arrow -->
+            <svg viewBox="0 0 24 24" class="h-5 w-5" aria-hidden="true">
+              <path fill="currentColor" d="M13.2 5.2L20 12l-6.8 6.8-1.6-1.6L15.6 13H4v-2h11.6l-4-4.2 1.6-1.6z" />
+            </svg>
+          </button>
+        </div>
+
+        <div v-else class="flex items-center justify-between gap-3 rounded-lg border border-gray-200 px-3 py-2 dark:border-zinc-800">
+          <div class="min-w-0">
+            <div class="text-xs text-gray-500 dark:text-gray-400">Using</div>
+            <div class="font-mono text-sm text-gray-900 dark:text-gray-50 truncate">{{ phoneCommitted }}</div>
+          </div>
+          <Button label="Change" text severity="secondary" @click="resetToPhone()" />
+        </div>
+      </div>
+
+      <template v-if="step !== 'phone'">
+        <hr class="border-gray-200 dark:border-zinc-800" />
+
+        <!-- Step 2: Code -->
+        <div class="space-y-2">
+          <div class="flex items-center justify-between gap-3">
+            <label class="text-sm font-medium text-gray-700 dark:text-gray-200">One-time code</label>
+            <div class="text-xs text-gray-500 dark:text-gray-400">
+              <span v-if="resendRemainingSeconds > 0">
+                Resend in {{ resendRemainingSeconds }}s
+              </span>
+            </div>
+          </div>
+
+          <div class="space-y-3">
           <div class="flex items-center gap-2">
-            <i class="pi pi-sign-in" aria-hidden="true" />
-            <span>Login</span>
-          </div>
-          <Tag value="Phone" severity="info" />
-        </div>
-      </template>
+            <InputText
+              v-model="codeInput"
+              class="w-full font-mono tracking-[0.25em] text-center"
+              placeholder="••••••"
+              autocomplete="one-time-code"
+              inputmode="numeric"
+              maxlength="6"
+              :disabled="verifying"
+            />
 
-      <template #content>
-        <div class="space-y-5">
-          <p class="text-sm text-gray-600 dark:text-gray-300">
-            Enter your phone number. We’ll text you a one-time code.
+            <div v-if="verifying" class="shrink-0 flex items-center justify-center w-12">
+              <ProgressSpinner style="width: 28px; height: 28px" strokeWidth="5" />
+            </div>
+          </div>
+
+          <AppInlineAlert v-if="inlineError" severity="danger">
+            {{ inlineError }}
+          </AppInlineAlert>
+
+          <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <Button
+              label="Resend code"
+              icon="pi pi-refresh"
+              rounded
+              severity="secondary"
+              class="w-full sm:w-auto"
+              :disabled="resendRemainingSeconds > 0 || phoneSubmitting"
+              :loading="phoneSubmitting"
+              @click="resend"
+            />
+            <div class="flex-1 hidden sm:block" />
+            <Button
+              label="Verify"
+              icon="pi pi-check"
+              rounded
+              class="w-full sm:w-auto"
+              :disabled="verifying || codeInput.replace(/\\D/g, '').length !== 6"
+              :loading="verifying"
+              @click="submitCode"
+            />
+          </div>
+
+          <p class="mt-4 text-center text-xs text-gray-500 dark:text-gray-400">
+            <b>Dev tip:</b> in development, the code <span class="font-mono">000000</span> always works after you’ve sent a code.
           </p>
-
-          <!-- Step 1: Phone -->
-          <div class="space-y-2">
-            <label class="text-sm font-medium text-gray-700 dark:text-gray-200">Phone number</label>
-
-            <div v-if="step === 'phone'" class="flex gap-2">
-              <InputText
-                v-model="phoneInput"
-                class="w-full"
-                placeholder="+1 (555) 555-5555"
-                autocomplete="tel"
-                inputmode="tel"
-                :disabled="phoneSubmitting"
-                @keydown.enter.prevent="submitPhone"
-              />
-              <Button
-                label="Send"
-                icon="pi pi-arrow-right"
-                :loading="phoneSubmitting"
-                :disabled="!phoneInput.trim()"
-                @click="submitPhone"
-              />
-            </div>
-
-            <div v-else class="flex items-center justify-between gap-3 rounded-lg border border-gray-200 px-3 py-2 dark:border-zinc-800">
-              <div class="min-w-0">
-                <div class="text-xs text-gray-500 dark:text-gray-400">Using</div>
-                <div class="font-mono text-sm text-gray-900 dark:text-gray-50 truncate">{{ phoneCommitted }}</div>
-              </div>
-              <Button label="Change" text severity="secondary" @click="resetToPhone()" />
-            </div>
-          </div>
-
-          <Divider />
-
-          <!-- Step 2: Code -->
-          <div class="space-y-2">
-            <div class="flex items-center justify-between gap-3">
-              <label class="text-sm font-medium text-gray-700 dark:text-gray-200">One-time code</label>
-              <div class="text-xs text-gray-500 dark:text-gray-400">
-                <span v-if="step !== 'phone' && resendRemainingSeconds > 0">
-                  Resend in {{ resendRemainingSeconds }}s
-                </span>
-              </div>
-            </div>
-
-            <div v-if="step === 'phone'" class="text-sm text-gray-500 dark:text-gray-400">
-              Send a code to continue.
-            </div>
-
-            <div v-else class="space-y-3">
-              <div class="flex items-center gap-2">
-                <InputText
-                  v-model="codeInput"
-                  class="w-full font-mono tracking-[0.25em] text-center"
-                  placeholder="••••••"
-                  autocomplete="one-time-code"
-                  inputmode="numeric"
-                  maxlength="6"
-                  :disabled="verifying"
-                />
-
-                <div v-if="verifying" class="shrink-0 flex items-center justify-center w-12">
-                  <ProgressSpinner style="width: 28px; height: 28px" strokeWidth="5" />
-                </div>
-              </div>
-
-              <AppInlineAlert v-if="inlineError" severity="danger">
-                {{ inlineError }}
-              </AppInlineAlert>
-
-              <div class="flex items-center justify-between gap-3">
-                <Button
-                  label="Resend code"
-                  icon="pi pi-refresh"
-                  severity="secondary"
-                  :disabled="resendRemainingSeconds > 0 || phoneSubmitting"
-                  :loading="phoneSubmitting"
-                  @click="resend"
-                />
-                <div class="flex-1" />
-                <Button
-                  label="Verify"
-                  icon="pi pi-check"
-                  :disabled="verifying || codeInput.replace(/\\D/g, '').length !== 6"
-                  :loading="verifying"
-                  @click="submitCode"
-                />
-              </div>
-
-              <p class="text-xs text-gray-500 dark:text-gray-400">
-                Dev tip: in development, the code <span class="font-mono">000000</span> always works after you’ve sent a code.
-              </p>
-            </div>
-          </div>
+        </div>
         </div>
       </template>
-    </Card>
+    </div>
   </section>
 </template>
 
