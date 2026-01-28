@@ -83,7 +83,7 @@
         <!-- Middle / Feed (scroll zone #2) -->
         <main
           ref="middleScrollerEl"
-          class="no-scrollbar min-w-0 flex-1 overflow-y-auto overscroll-y-auto border-r border-gray-200 dark:border-zinc-800"
+          class="no-scrollbar min-w-0 flex-1 overflow-y-auto overscroll-y-auto lg:border-r border-gray-200 dark:border-zinc-800"
         >
           <div class="sticky top-0 z-10 border-b border-gray-200 bg-white/90 backdrop-blur dark:border-zinc-800 dark:bg-black/80">
             <div class="px-4 py-3 flex items-center justify-between gap-3">

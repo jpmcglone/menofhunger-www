@@ -140,3 +140,18 @@ html:not(.dark) :where(.moh-composer-accent-public) :where(.p-inputtextarea, tex
   border-color: rgba(0, 0, 0, 0.75) !important;
   box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.25) !important;
 }
+
+/* Home composer: custom textarea with animated focus tint */
+.moh-composer-textarea {
+  /* Remove browser-native styling (esp. Safari/iOS) */
+  appearance: none;
+  -webkit-appearance: none;
+  outline: none;
+  box-shadow: none;
+  transition: border-color 180ms ease, box-shadow 180ms ease;
+}
+.moh-composer-textarea:is(:focus, :focus-visible) {
+  outline: none;
+  border-color: var(--moh-compose-accent);
+  box-shadow: 0 0 0 1px var(--moh-compose-ring);
+}

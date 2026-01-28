@@ -93,14 +93,16 @@
           >
         </div>
 
-        <div :class="['row-start-2 col-span-2 sm:col-span-1 sm:col-start-2 min-w-0 moh-composer-tint', composerAccentClass]">
-          <Textarea
+        <div class="row-start-2 col-span-2 sm:col-span-1 sm:col-start-2 min-w-0 moh-composer-tint">
+          <textarea
+            ref="composerTextareaEl"
             v-model="draft"
-            autoResize
             rows="3"
-            class="w-full"
+            class="moh-composer-textarea w-full resize-none overflow-hidden rounded-xl border border-gray-300 bg-transparent px-3 py-2 text-[15px] leading-6 text-gray-900 placeholder:text-gray-500 focus:outline-none dark:border-zinc-700 dark:text-gray-50 dark:placeholder:text-zinc-500"
+            :style="composerTextareaVars"
             placeholder="What’s happening?"
             :maxlength="postMaxLen"
+            @input="onComposerInput"
           />
           <div class="mt-3 flex items-center justify-between">
             <div class="flex items-center gap-2 text-gray-500 dark:text-gray-400">
@@ -450,10 +452,44 @@ useHead({
   style: [{ key: 'moh-composer-tint', textContent: composerTintCss }],
 })
 
-const composerAccentClass = computed(() => {
-  if (visibility.value === 'verifiedOnly') return 'moh-composer-accent-verified'
-  if (visibility.value === 'premiumOnly') return 'moh-composer-accent-premium'
-  return 'moh-composer-accent-public'
+const composerTextareaEl = ref<HTMLTextAreaElement | null>(null)
+
+function autosizeComposerTextarea() {
+  if (!import.meta.client) return
+  const el = composerTextareaEl.value
+  if (!el) return
+  el.style.height = 'auto'
+  el.style.height = `${el.scrollHeight}px`
+}
+
+function onComposerInput() {
+  autosizeComposerTextarea()
+}
+
+watch(draft, () => {
+  // Draft changes can come from submit/reset as well as typing.
+  queueMicrotask(() => autosizeComposerTextarea())
+})
+
+onMounted(() => autosizeComposerTextarea())
+
+const composerTextareaVars = computed<Record<string, string>>(() => {
+  if (visibility.value === 'verifiedOnly') {
+    return {
+      '--moh-compose-accent': '#1D9BF0',
+      '--moh-compose-ring': 'rgba(29, 155, 240, 0.45)',
+    }
+  }
+  if (visibility.value === 'premiumOnly') {
+    return {
+      '--moh-compose-accent': '#F59E0B',
+      '--moh-compose-ring': 'rgba(245, 158, 11, 0.45)',
+    }
+  }
+  // Public: neutral (text color per mode).
+  return isDarkMode.value
+    ? { '--moh-compose-accent': 'rgba(255, 255, 255, 0.85)', '--moh-compose-ring': 'rgba(255, 255, 255, 0.25)' }
+    : { '--moh-compose-accent': 'rgba(0, 0, 0, 0.85)', '--moh-compose-ring': 'rgba(0, 0, 0, 0.18)' }
 })
 const allowedComposerVisibilities = computed<PostVisibility[]>(() => {
   // Verified users can post public or verified-only. Premium-only is premium members only.

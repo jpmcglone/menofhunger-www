@@ -20,53 +20,61 @@
       <div v-else class="h-10 w-10 shrink-0 overflow-hidden rounded-full bg-gray-200 dark:bg-zinc-800" aria-hidden="true" />
 
       <div class="min-w-0 flex-1">
-        <div class="flex items-start justify-between gap-3">
-          <div class="min-w-0">
-            <!-- X-style header row: name (with badge) + @username + date on one line -->
-            <div class="flex min-w-0 items-center gap-2">
-              <NuxtLink
-                v-if="authorProfilePath"
-                :to="authorProfilePath"
-                class="min-w-0 inline-flex items-center gap-2 hover:underline underline-offset-2"
-                :aria-label="`View @${post.author.username} profile`"
-              >
-                <span class="font-semibold truncate max-w-[10rem] sm:max-w-[14rem]">
+        <div class="relative">
+          <div class="min-w-0 pr-10">
+            <!-- X-style header row: name + badge + @username + date on one line -->
+            <div class="flex min-w-0 items-baseline gap-2 leading-[1.15] flex-nowrap">
+              <div class="flex min-w-0 items-baseline gap-1.5 flex-nowrap">
+                <NuxtLink
+                  v-if="authorProfilePath"
+                  :to="authorProfilePath"
+                  class="min-w-0 font-bold truncate text-gray-900 dark:text-white hover:underline underline-offset-2"
+                  :aria-label="`View @${post.author.username} profile`"
+                >
+                  {{ post.author.name || post.author.username || 'User' }}
+                </NuxtLink>
+                <span v-else class="min-w-0 font-bold truncate text-gray-900 dark:text-white">
                   {{ post.author.name || post.author.username || 'User' }}
                 </span>
-                <AppVerifiedBadge class="shrink-0" :status="post.author.verifiedStatus" :premium="post.author.premium" />
-              </NuxtLink>
-              <span v-else class="min-w-0 inline-flex items-center gap-2">
-                <span class="font-semibold truncate max-w-[10rem] sm:max-w-[14rem]">
-                  {{ post.author.name || post.author.username || 'User' }}
+
+                <NuxtLink
+                  v-if="authorProfilePath"
+                  :to="authorProfilePath"
+                  class="inline-flex shrink-0"
+                  aria-label="View profile (verified badge)"
+                >
+                  <AppVerifiedBadge :status="post.author.verifiedStatus" :premium="post.author.premium" />
+                </NuxtLink>
+                <AppVerifiedBadge v-else class="shrink-0" :status="post.author.verifiedStatus" :premium="post.author.premium" />
+              </div>
+
+              <div class="flex min-w-0 items-baseline gap-1.5 flex-nowrap text-sm font-light text-gray-500 dark:text-gray-400">
+                <NuxtLink
+                  v-if="authorProfilePath"
+                  :to="authorProfilePath"
+                  class="min-w-0 truncate hover:underline underline-offset-2"
+                  :aria-label="`View @${post.author.username} profile`"
+                >
+                  @{{ post.author.username || '—' }}
+                </NuxtLink>
+                <span v-else class="min-w-0 truncate">
+                  @{{ post.author.username || '—' }}
                 </span>
-                <AppVerifiedBadge class="shrink-0" :status="post.author.verifiedStatus" :premium="post.author.premium" />
-              </span>
 
-              <NuxtLink
-                v-if="authorProfilePath"
-                :to="authorProfilePath"
-                class="min-w-0 text-sm text-gray-500 dark:text-gray-400 truncate max-w-[8rem] sm:max-w-[12rem] hover:underline underline-offset-2"
-                :aria-label="`View @${post.author.username} profile`"
-              >
-                @{{ post.author.username || '—' }}
-              </NuxtLink>
-              <span v-else class="min-w-0 text-sm text-gray-500 dark:text-gray-400 truncate max-w-[8rem] sm:max-w-[12rem]">
-                @{{ post.author.username || '—' }}
-              </span>
-
-              <span class="text-sm text-gray-500 dark:text-gray-400 shrink-0" aria-hidden="true">·</span>
-              <NuxtLink
-                :to="postPermalink"
-                class="text-sm text-gray-500 dark:text-gray-400 shrink-0 whitespace-nowrap hover:underline underline-offset-2"
-                :aria-label="`View post ${post.id}`"
-                v-tooltip.bottom="createdAtTooltip"
-              >
-                {{ createdAtShort }}
-              </NuxtLink>
+                <span class="shrink-0 text-base leading-none" aria-hidden="true">·</span>
+                <NuxtLink
+                  :to="postPermalink"
+                  class="shrink-0 whitespace-nowrap hover:underline underline-offset-2"
+                  :aria-label="`View post ${post.id}`"
+                  v-tooltip.bottom="createdAtTooltip"
+                >
+                  {{ createdAtShort }}
+                </NuxtLink>
+              </div>
             </div>
           </div>
 
-          <div class="shrink-0">
+          <div class="absolute right-0 top-0 shrink-0">
             <Button
               icon="pi pi-ellipsis-h"
               text
@@ -80,7 +88,7 @@
           </div>
         </div>
 
-        <p class="mt-1 whitespace-pre-wrap text-gray-900 dark:text-gray-100">
+        <p class="mt-0.5 whitespace-pre-wrap text-gray-900 dark:text-gray-100">
           {{ post.body }}
         </p>
 
