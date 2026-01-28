@@ -166,6 +166,18 @@
                     </div>
 
                     <div class="space-y-2">
+                      <label class="text-sm font-medium text-gray-700 dark:text-gray-200">Premium</label>
+                      <Select
+                        v-model="editPremium"
+                        :options="premiumOptions"
+                        optionLabel="label"
+                        optionValue="value"
+                        placeholder="Select…"
+                        class="w-full"
+                      />
+                    </div>
+
+                    <div class="space-y-2">
                       <label class="text-sm font-medium text-gray-700 dark:text-gray-200">Verified badge</label>
                       <Select
                         v-model="editVerifiedStatus"
@@ -199,6 +211,11 @@
                         <div class="text-xs text-gray-500 dark:text-gray-400">Site admin</div>
                         <div class="text-sm text-gray-800 dark:text-gray-200">
                           <Tag :value="editingUser?.siteAdmin ? 'Yes' : 'No'" :severity="editingUser?.siteAdmin ? 'success' : 'secondary'" class="!text-xs" />
+                        </div>
+
+                        <div class="text-xs text-gray-500 dark:text-gray-400">Premium</div>
+                        <div class="text-sm text-gray-800 dark:text-gray-200">
+                          <Tag :value="editingUser?.premium ? 'Yes' : 'No'" :severity="editingUser?.premium ? 'warning' : 'secondary'" class="!text-xs" />
                         </div>
 
                         <div class="text-xs text-gray-500 dark:text-gray-400">Status</div>
@@ -278,6 +295,7 @@ type AdminUser = {
   name: string | null
   bio: string | null
   siteAdmin: boolean
+  premium: boolean
   verifiedStatus: 'none' | 'identity' | 'manual'
   verifiedAt: string | null
   unverifiedAt: string | null
@@ -319,6 +337,7 @@ const editPhone = ref('')
 const editUsername = ref('')
 const editName = ref('')
 const editBio = ref('')
+const editPremium = ref(false)
 const editVerifiedStatus = ref<AdminUser['verifiedStatus']>('none')
 
 type UsernameAvailability = 'unknown' | 'checking' | 'available' | 'taken' | 'invalid' | 'same'
@@ -409,6 +428,11 @@ const verifiedOptions = [
   { label: 'Manually verified', value: 'manual' as const },
 ]
 
+const premiumOptions = [
+  { label: 'Not premium', value: false },
+  { label: 'Premium', value: true },
+]
+
 function formatIso(iso: string | null | undefined) {
   if (!iso) return '—'
   const d = new Date(iso)
@@ -452,6 +476,7 @@ function openEdit(u: AdminUser) {
   editUsername.value = u.username ?? ''
   editName.value = u.name ?? ''
   editBio.value = u.bio ?? ''
+  editPremium.value = Boolean(u.premium)
   editVerifiedStatus.value = u.verifiedStatus ?? 'none'
   resetUsernameCheck()
   editOpen.value = true
@@ -473,6 +498,7 @@ async function saveUser() {
         username: editUsername.value.trim() ? editUsername.value.trim() : null,
         name: editName.value.trim() ? editName.value.trim() : null,
         bio: editBio.value.trim() ? editBio.value.trim() : null,
+        premium: editPremium.value,
         verifiedStatus: editVerifiedStatus.value,
       },
     })

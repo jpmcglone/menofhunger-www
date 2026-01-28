@@ -1,59 +1,69 @@
-export type WallPost = {
-  id: string
-  body: string
-  createdAt: number
-}
-
-const STORAGE_KEY = 'moh.wall.posts.v1'
+import type { CreatePostResponse, FeedPost, GetPostsResponse, PostVisibility } from '~/types/api'
+import { getApiErrorMessage } from '~/utils/api-error'
 
 export function useWallPosts() {
-  const posts = useState<WallPost[]>('wall-posts', () => [
-    {
-      id: 'welcome',
-      body: 'Welcome. This is your wall — posts are shown in simple chronological order.',
-      createdAt: Date.now()
-    }
-  ])
+  const { apiFetchData } = useApiClient()
 
-  // Client-side persistence (keeps SSR safe and avoids hydration issues).
-  onMounted(() => {
+  const posts = useState<FeedPost[]>('wall-posts', () => [])
+  const nextCursor = useState<string | null>('wall-posts-next-cursor', () => null)
+  const loading = useState<boolean>('wall-posts-loading', () => false)
+  const error = useState<string | null>('wall-posts-error', () => null)
+
+  async function refresh() {
+    if (loading.value) return
+    loading.value = true
+    error.value = null
     try {
-      const raw = localStorage.getItem(STORAGE_KEY)
-      if (!raw) return
-      const parsed = JSON.parse(raw) as WallPost[]
-      if (Array.isArray(parsed)) {
-        posts.value = parsed
-      }
-    } catch {
-      // ignore
+      const res = await apiFetchData<GetPostsResponse>('/posts', {
+        method: 'GET',
+        query: { limit: 30 }
+      })
+      posts.value = res.posts
+      nextCursor.value = res.nextCursor
+    } catch (e: unknown) {
+      error.value = getApiErrorMessage(e) || 'Failed to load posts.'
+    } finally {
+      loading.value = false
     }
-  })
-
-  watch(
-    posts,
-    (value) => {
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(value))
-      } catch {
-        // ignore
-      }
-    },
-    { deep: true }
-  )
-
-  const addPost = (body: string) => {
-    const trimmed = body.trim()
-    if (!trimmed) return
-    posts.value = [
-      {
-        id: crypto?.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`,
-        body: trimmed,
-        createdAt: Date.now()
-      },
-      ...posts.value
-    ]
   }
 
-  return { posts, addPost }
+  async function loadMore() {
+    if (loading.value) return
+    if (!nextCursor.value) return
+    loading.value = true
+    error.value = null
+    try {
+      const res = await apiFetchData<GetPostsResponse>('/posts', {
+        method: 'GET',
+        query: { limit: 30, cursor: nextCursor.value }
+      })
+      posts.value = [...posts.value, ...res.posts]
+      nextCursor.value = res.nextCursor
+    } catch (e: unknown) {
+      error.value = getApiErrorMessage(e) || 'Failed to load more posts.'
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function addPost(body: string, visibility: PostVisibility) {
+    const trimmed = body.trim()
+    if (!trimmed) return
+
+    try {
+      const res = await apiFetchData<CreatePostResponse>('/posts', {
+        method: 'POST',
+        body: { body: trimmed, visibility }
+      })
+
+      // Newest-first: prepend.
+      posts.value = [res.post, ...posts.value]
+    } catch (e: unknown) {
+      error.value = getApiErrorMessage(e) || 'Failed to post.'
+      throw e
+    }
+  }
+
+  return { posts, nextCursor, loading, error, refresh, loadMore, addPost }
 }
 

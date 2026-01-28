@@ -7,6 +7,7 @@ export type AuthUser = {
   name?: string | null
   bio?: string | null
   siteAdmin?: boolean
+  premium?: boolean
   verifiedStatus?: 'none' | 'identity' | 'manual'
   verifiedAt?: string | null
   unverifiedAt?: string | null

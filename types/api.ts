@@ -13,3 +13,42 @@ export type ApiErrorEnvelope = {
   }
 }
 
+export type PostVisibility = 'public' | 'verifiedOnly' | 'premiumOnly'
+
+export type PostAuthor = {
+  id: string
+  username: string | null
+  name: string | null
+  verifiedStatus: 'none' | 'identity' | 'manual'
+  avatarKey: string | null
+  avatarUpdatedAt: string | null
+}
+
+export type FeedPost = {
+  id: string
+  createdAt: string
+  body: string
+  visibility: PostVisibility
+  author: PostAuthor
+}
+
+export type GetPostsResponse = {
+  posts: FeedPost[]
+  nextCursor: string | null
+}
+
+export type GetUserPostsResponse = {
+  posts: FeedPost[]
+  nextCursor: string | null
+  counts: {
+    all: number
+    public: number
+    verifiedOnly: number
+    premiumOnly: number
+  }
+}
+
+export type CreatePostResponse = {
+  post: FeedPost
+}
+

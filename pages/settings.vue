@@ -8,10 +8,10 @@
           <label class="text-sm font-medium text-gray-700 dark:text-gray-200">Username</label>
 
           <div class="relative">
-            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-500 dark:text-gray-400">@</span>
+            <span class="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-sm text-gray-500 dark:text-gray-400">@</span>
             <InputText
               v-model="usernameInput"
-              class="w-full pl-7"
+              class="w-full !pl-10"
               placeholder="your_handle"
               autocomplete="off"
               :disabled="saving"
