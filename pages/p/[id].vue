@@ -5,7 +5,7 @@
     </AppInlineAlert>
 
     <div v-else-if="post" class="-mx-0">
-      <AppPostRow :post="post" />
+      <AppPostRow :post="post" :clickable="false" @deleted="onDeleted" />
     </div>
   </div>
 </template>
@@ -30,6 +30,12 @@ const { apiFetchData } = useApiClient()
 
 const post = ref<FeedPost | null>(null)
 const errorText = ref<string | null>(null)
+function onDeleted() {
+  // Post is gone for this viewer; return to feed.
+  post.value = null
+  errorText.value = 'Post deleted.'
+  void navigateTo('/home')
+}
 
 const { data, error } = await useAsyncData(`post:${postId.value}`, async () => {
   if (!postId.value) throw new Error('Post not found.')

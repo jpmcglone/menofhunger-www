@@ -1,6 +1,6 @@
 <template>
   <div class="h-[calc(100dvh-9rem)] sm:h-[calc(100dvh-6.5rem)]">
-    <div class="grid h-full" :class="gridClass">
+    <div class="grid h-full" :class="isTinyViewport ? 'grid-cols-1' : ''" :style="gridStyle">
       <!-- Left column: thread list -->
       <section
         v-if="showListPane"
@@ -113,8 +113,6 @@
 </template>
 
 <script setup lang="ts">
-import { useWindowSize } from '@vueuse/core'
-
 definePageMeta({
   layout: 'app',
   title: 'Messages'
@@ -154,19 +152,11 @@ const threads = ref<FakeThread[]>([
 const selectedThreadId = ref<string | null>(null)
 const selectedThread = computed(() => threads.value.find((t) => t.id === selectedThreadId.value) ?? null)
 
-const { width, height } = useWindowSize()
-const isTinyViewport = computed(() => {
-  if (!import.meta.client) return false
-  // "Tiny" = narrow OR short. In this mode, never stack list+chat; show only one pane.
-  return width.value < 768 || height.value < 680
-})
-
-const showListPane = computed(() => (isTinyViewport.value ? !selectedThreadId.value : true))
-const showChatPane = computed(() => (isTinyViewport.value ? Boolean(selectedThreadId.value) : true))
-
-const gridClass = computed(() => {
-  if (isTinyViewport.value) return 'grid-cols-1'
-  return 'grid-cols-[22rem_1fr]'
+const { isTinyViewport, showListPane, showDetailPane: showChatPane, gridStyle } = useTwoPaneLayout(selectedThreadId, {
+  leftCols: '22rem',
+  // Messages should not collapse panes due to short viewport height.
+  // Only collapse when the viewport is actually narrow.
+  minHeight: 0,
 })
 </script>
 

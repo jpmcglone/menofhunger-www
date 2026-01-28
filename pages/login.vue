@@ -91,16 +91,6 @@
               :loading="phoneSubmitting"
               @click="resend"
             />
-            <div class="flex-1 hidden sm:block" />
-            <Button
-              label="Verify"
-              icon="pi pi-check"
-              rounded
-              class="w-full sm:w-auto"
-              :disabled="verifying || codeInput.replace(/\\D/g, '').length !== 6"
-              :loading="verifying"
-              @click="submitCode"
-            />
           </div>
 
           <p class="mt-4 text-center text-xs text-gray-500 dark:text-gray-400">
@@ -110,6 +100,48 @@
         </div>
       </template>
     </div>
+
+    <Dialog
+      v-model:visible="introOpen"
+      modal
+      header="Welcome to Men of Hunger"
+      :draggable="false"
+      class="w-[min(34rem,calc(100vw-2rem))]"
+      @hide="closeIntro"
+    >
+      <div class="space-y-4 text-sm text-gray-700 dark:text-gray-200">
+        <p>
+          You’re about to create a new account.
+          Men of Hunger is a men’s community — built for brotherhood, self-improvement, and real conversations.
+        </p>
+
+        <div class="space-y-2">
+          <div class="font-semibold text-gray-900 dark:text-gray-50">A few basic rules</div>
+          <ul class="list-disc pl-5 space-y-1 text-gray-700 dark:text-gray-200">
+            <li>Be respectful. No harassment, hate, or threats.</li>
+            <li>Keep it real. No impersonation or scams.</li>
+            <li>No spam. Don’t flood the feed or DM people unsolicited.</li>
+            <li>You must be 18+ to join.</li>
+          </ul>
+          <div class="text-xs text-gray-500 dark:text-gray-400">
+            You can browse right away. Posting and messaging require verification first.
+          </div>
+        </div>
+
+        <div v-if="introError" class="text-sm text-red-700 dark:text-red-300">{{ introError }}</div>
+
+        <div class="flex items-center justify-end gap-2 pt-1">
+          <Button label="Cancel" severity="secondary" text :disabled="introContinuing" @click="closeIntro" />
+          <Button
+            label="Continue"
+            icon="pi pi-arrow-right"
+            :loading="introContinuing"
+            :disabled="introContinuing"
+            @click="acceptIntroAndContinue"
+          />
+        </div>
+      </div>
+    </Dialog>
   </section>
 </template>
 
@@ -142,6 +174,11 @@ const verifying = ref(false)
 
 const inlineError = ref<string | null>(null)
 
+const introOpen = ref(false)
+const introPhone = ref<string | null>(null)
+const introError = ref<string | null>(null)
+const introContinuing = ref(false)
+
 const resendRemainingSeconds = ref(0)
 let resendTimer: ReturnType<typeof setInterval> | null = null
 
@@ -167,27 +204,58 @@ function resetToPhone() {
   phoneCommitted.value = ''
   codeInput.value = ''
   inlineError.value = null
+  introOpen.value = false
+  introPhone.value = null
+  introError.value = null
+  introContinuing.value = false
   verifying.value = false
   startResendCountdown(0)
 }
 
+function closeIntro() {
+  introOpen.value = false
+  introPhone.value = null
+  introError.value = null
+  introContinuing.value = false
+}
+
+async function startOtp(phone: string) {
+  const result = await apiFetchData<{ retryAfterSeconds: number }>('/auth/phone/start', {
+    method: 'POST',
+    body: { phone }
+  })
+
+  phoneCommitted.value = phone
+  step.value = 'code'
+  codeInput.value = ''
+
+  startResendCountdown(result.retryAfterSeconds ?? 30)
+}
+
 async function submitPhone() {
   inlineError.value = null
+  introError.value = null
   const phone = phoneInput.value.trim()
   if (!phone) return
 
+  if (phoneSubmitting.value) return
   phoneSubmitting.value = true
   try {
-    const result = await apiFetchData<{ retryAfterSeconds: number }>('/auth/phone/start', {
-      method: 'POST',
-      body: { phone }
+    const existsRes = await apiFetchData<{ exists: boolean }>('/auth/phone/exists', {
+      method: 'GET',
+      // ofetch supports `query`; ApiFetchOptions is inferred from $fetch
+      query: { phone }
     })
 
-    phoneCommitted.value = phone
-    step.value = 'code'
-    codeInput.value = ''
+    // First-time signup: show intro modal before we send a code.
+    if (!existsRes.exists) {
+      introPhone.value = phone
+      introOpen.value = true
+      return
+    }
 
-    startResendCountdown(result.retryAfterSeconds ?? 30)
+    // Existing account: behave exactly like login does today.
+    await startOtp(phone)
   } catch (e: unknown) {
     inlineError.value = getApiErrorMessage(e) || 'Failed to send code.'
   } finally {
@@ -197,8 +265,39 @@ async function submitPhone() {
 
 async function resend() {
   if (!phoneCommitted.value) return
-  phoneInput.value = phoneCommitted.value
-  await submitPhone()
+  inlineError.value = null
+  introError.value = null
+
+  if (phoneSubmitting.value) return
+  phoneSubmitting.value = true
+  try {
+    await startOtp(phoneCommitted.value)
+  } catch (e: unknown) {
+    inlineError.value = getApiErrorMessage(e) || 'Failed to resend code.'
+  } finally {
+    phoneSubmitting.value = false
+  }
+}
+
+async function acceptIntroAndContinue() {
+  const phone = (introPhone.value ?? '').trim()
+  if (!phone) {
+    closeIntro()
+    return
+  }
+  if (introContinuing.value) return
+
+  introContinuing.value = true
+  introError.value = null
+  inlineError.value = null
+  try {
+    await startOtp(phone)
+    closeIntro()
+  } catch (e: unknown) {
+    introError.value = getApiErrorMessage(e) || 'Failed to send code.'
+  } finally {
+    introContinuing.value = false
+  }
 }
 
 watch(

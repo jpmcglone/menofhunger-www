@@ -1,23 +1,34 @@
 <template>
-  <div class="border-b border-gray-200/60 px-3 py-4 hover:bg-gray-50 dark:border-zinc-800/60 dark:hover:bg-white/5 dark:hover:shadow-[0_0_0_1px_rgba(255,255,255,0.06)] transition-colors">
+  <div
+    :class="[
+      'border-b px-4 py-4 transition-colors moh-border',
+      clickable ? 'cursor-pointer moh-surface-hover dark:hover:shadow-[0_0_0_1px_rgba(255,255,255,0.06)]' : ''
+    ]"
+    @click="onRowClick"
+  >
     <div class="flex gap-3">
       <NuxtLink
         v-if="authorProfilePath"
         :to="authorProfilePath"
-        class="group h-10 w-10 shrink-0 overflow-hidden rounded-full bg-gray-200 dark:bg-zinc-800"
+        class="group shrink-0"
         :aria-label="`View @${post.author.username} profile`"
       >
-        <img
-          v-if="authorAvatarUrl"
+        <AppAvatarCircle
           :src="authorAvatarUrl"
-          alt=""
-          class="h-full w-full object-cover transition-opacity duration-200 group-hover:opacity-80"
-          loading="lazy"
-          decoding="async"
-        >
-        <div v-else class="h-full w-full" aria-hidden="true" />
+          :name="post.author.name"
+          :username="post.author.username"
+          size-class="h-10 w-10"
+          bg-class="moh-surface"
+        />
       </NuxtLink>
-      <div v-else class="h-10 w-10 shrink-0 overflow-hidden rounded-full bg-gray-200 dark:bg-zinc-800" aria-hidden="true" />
+      <AppAvatarCircle
+        v-else
+        :src="authorAvatarUrl"
+        :name="post.author.name"
+        :username="post.author.username"
+        size-class="h-10 w-10"
+        bg-class="moh-surface"
+      />
 
       <div class="min-w-0 flex-1">
         <div class="relative">
@@ -37,7 +48,7 @@
 
           <div class="absolute right-0 top-0 shrink-0">
             <Button
-              icon="pi pi-ellipsis-h"
+              icon="pi pi-ellipsis-v"
               text
               rounded
               severity="secondary"
@@ -49,7 +60,7 @@
           </div>
         </div>
 
-        <p class="mt-0.5 whitespace-pre-wrap text-gray-900 dark:text-gray-100">
+        <p class="mt-0.5 whitespace-pre-wrap moh-text">
           {{ post.body }}
         </p>
 
@@ -59,30 +70,32 @@
             :class="visibilityTagClass"
             v-tooltip.bottom="visibilityTooltip"
           >
+            <i v-if="post.visibility === 'onlyMe'" class="pi pi-lock mr-1 text-[10px]" aria-hidden="true" />
             {{ visibilityTag }}
           </span>
         </div>
 
-        <div class="mt-3 flex items-center justify-between text-gray-500 dark:text-gray-400">
+        <div class="mt-3 flex items-center justify-between moh-text-muted">
           <div class="flex items-center gap-2">
             <button
               type="button"
-              class="inline-flex h-9 w-9 items-center justify-center rounded-full transition-colors hover:bg-gray-100 dark:hover:bg-zinc-900 cursor-pointer"
+              class="inline-flex h-9 w-9 items-center justify-center rounded-full transition-colors moh-surface-hover"
+              :class="commentClickable ? 'cursor-pointer' : 'cursor-default opacity-60'"
               aria-label="Comment"
               v-tooltip.bottom="commentTooltip"
-              @click="noop"
+              @click.stop="onCommentClick"
             >
               <i class="pi pi-comment text-[18px]" aria-hidden="true" />
             </button>
 
             <button
+              v-if="!isOnlyMe"
               type="button"
-              class="inline-flex h-9 w-9 items-center justify-center rounded-full transition-colors hover:bg-gray-100 dark:hover:bg-zinc-900"
-              :class="isAuthed ? 'cursor-pointer' : 'cursor-default opacity-60'"
+              class="inline-flex h-9 w-9 items-center justify-center rounded-full transition-colors moh-surface-hover"
+              :class="boostClickable ? 'cursor-pointer' : 'cursor-default opacity-60'"
               :aria-label="isBoosted ? 'Remove upvote' : 'Upvote'"
-              :disabled="!isAuthed"
               v-tooltip.bottom="upvoteTooltip"
-              @click="toggleBoost"
+              @click.stop="onBoostClick"
             >
               <svg
                 viewBox="0 0 24 24"
@@ -108,13 +121,14 @@
             </button>
           </div>
 
-          <div class="relative flex items-center justify-end">
+          <div v-if="!isOnlyMe" class="relative flex items-center justify-end">
             <button
               type="button"
-              class="inline-flex h-9 w-9 items-center justify-center rounded-full transition-colors hover:bg-gray-100 dark:hover:bg-zinc-900 cursor-pointer"
+              class="inline-flex h-9 w-9 items-center justify-center rounded-full transition-colors moh-surface-hover"
+              :class="canShare ? 'cursor-pointer' : 'cursor-default opacity-60'"
               aria-label="Share"
               v-tooltip.bottom="shareTooltip"
-              @click="toggleShareMenu"
+              @click="canShare ? toggleShareMenu($event) : null"
             >
               <svg viewBox="0 0 24 24" class="h-5 w-5" aria-hidden="true">
                 <!-- Twitter-ish share: arrow up out of tray -->
@@ -149,6 +163,29 @@
       </div>
     </div>
   </div>
+
+  <Dialog
+    v-model:visible="deleteConfirmOpen"
+    modal
+    header="Delete post?"
+    :draggable="false"
+    class="w-[min(28rem,calc(100vw-2rem))]"
+  >
+    <div class="text-sm moh-text-muted">
+      This won’t show up anywhere once deleted.
+    </div>
+    <template #footer>
+      <Button label="Cancel" severity="secondary" text :disabled="deleting" @click="deleteConfirmOpen = false" />
+      <Button
+        label="Delete"
+        icon="pi pi-trash"
+        severity="danger"
+        :loading="deleting"
+        :disabled="deleting"
+        @click="deletePost"
+      />
+    </template>
+  </Dialog>
 </template>
 
 <script setup lang="ts">
@@ -157,24 +194,63 @@ import { visibilityTagClasses, visibilityTagLabel } from '~/utils/post-visibilit
 import type { MenuItem } from 'primevue/menuitem'
 import { siteConfig } from '~/config/site'
 import { tinyTooltip } from '~/utils/tiny-tooltip'
-import { useToast as usePrimeToast } from 'primevue/usetoast'
+import { getApiErrorMessage } from '~/utils/api-error'
 
 const props = defineProps<{
   post: FeedPost
+  clickable?: boolean
+}>()
+const emit = defineEmits<{
+  (e: 'deleted', id: string): void
 }>()
 
 const post = computed(() => props.post)
-const { assetUrl } = useAssets()
+const clickable = computed(() => props.clickable !== false)
 const { user } = useAuth()
 const isAuthed = computed(() => Boolean(user.value?.id))
+const viewerHasUsername = computed(() => Boolean(user.value?.usernameIsSet))
+const viewerIsVerified = computed(() => Boolean(user.value?.verifiedStatus && user.value.verifiedStatus !== 'none'))
+const isSelf = computed(() => Boolean(user.value?.id && user.value.id === post.value.author.id))
+const { apiFetchData } = useApiClient()
+const { show: showAuthActionModal } = useAuthActionModal()
+const isOnlyMe = computed(() => post.value.visibility === 'onlyMe')
+const viewerIsAdmin = computed(() => Boolean(user.value?.siteAdmin))
+const viewerCanInteract = computed(() => {
+  // Admin viewing someone else's Only-me post should be read-only.
+  if (isOnlyMe.value && viewerIsAdmin.value && !isSelf.value) return false
+  return true
+})
+const canBoost = computed(() => {
+  // Only-me posts don't need boosts.
+  if (isOnlyMe.value) return false
+  return viewerCanInteract.value && isAuthed.value && viewerHasUsername.value
+})
+const canComment = computed(() => viewerCanInteract.value && isAuthed.value && viewerIsVerified.value)
+const canShare = computed(() => {
+  // Sharing private posts is confusing; keep it read-only.
+  if (isOnlyMe.value) return false
+  return viewerCanInteract.value
+})
 
 const upvoteTooltip = computed(() => {
-  const text = isAuthed.value ? (isBoosted.value ? 'Unboost' : 'Boost') : 'Log in to boost'
+  if (isOnlyMe.value) return tinyTooltip('Boosts are not available for Only me posts')
+  if (!viewerCanInteract.value) return tinyTooltip('Boost')
+  if (!isAuthed.value) return tinyTooltip('Log in to boost')
+  if (!viewerHasUsername.value) return tinyTooltip('Set a username to boost')
+  const text = isBoosted.value ? 'Unboost' : 'Boost'
   return tinyTooltip(text)
 })
 const shareTooltip = computed(() => tinyTooltip('Share'))
 const moreTooltip = computed(() => tinyTooltip('More'))
-const commentTooltip = computed(() => tinyTooltip('Comment'))
+const commentTooltip = computed(() => {
+  if (!viewerCanInteract.value) return tinyTooltip('Comment')
+  if (!isAuthed.value) return tinyTooltip('Log in to comment')
+  if (!viewerIsVerified.value) return tinyTooltip('Verify to comment')
+  return tinyTooltip('Comment')
+})
+
+const boostClickable = computed(() => viewerCanInteract.value && (!isAuthed.value || viewerHasUsername.value))
+const commentClickable = computed(() => viewerCanInteract.value)
 
 const authorProfilePath = computed(() => {
   const username = (post.value.author.username ?? '').trim()
@@ -182,10 +258,7 @@ const authorProfilePath = computed(() => {
 })
 
 const authorAvatarUrl = computed(() => {
-  const base = assetUrl(post.value.author.avatarKey)
-  if (!base) return null
-  const v = post.value.author.avatarUpdatedAt || ''
-  return v ? `${base}?v=${encodeURIComponent(v)}` : base
+  return post.value.author.avatarUrl ?? null
 })
 
 const visibilityTag = computed(() => {
@@ -199,6 +272,7 @@ const visibilityTagClass = computed(() => {
 const visibilityTooltip = computed(() => {
   if (post.value.visibility === 'verifiedOnly') return tinyTooltip('Visible to verified members')
   if (post.value.visibility === 'premiumOnly') return tinyTooltip('Visible to premium members')
+  if (post.value.visibility === 'onlyMe') return tinyTooltip('Visible only to you')
   return null
 })
 
@@ -207,6 +281,32 @@ const postShareUrl = computed(() => `${siteConfig.url}${postPermalink.value}`)
 
 function goToPost() {
   return navigateTo(postPermalink.value)
+}
+
+function isInteractiveTarget(target: EventTarget | null): boolean {
+  const el = target as HTMLElement | null
+  if (!el) return false
+  // Ignore clicks on any interactive element inside the row.
+  return Boolean(
+    el.closest(
+      [
+        'a',
+        'button',
+        'input',
+        'textarea',
+        'select',
+        '[role="menu"]',
+        '[role="menuitem"]',
+        '[data-pc-section]',
+      ].join(','),
+    ),
+  )
+}
+
+function onRowClick(e: MouseEvent) {
+  if (!clickable.value) return
+  if (isInteractiveTarget(e.target)) return
+  void goToPost()
 }
 
 function noop() {
@@ -248,12 +348,24 @@ const moreMenuItems = computed<MenuItem[]>(() => {
     },
   ]
 
-  if (isAuthed.value) {
+  if (isAuthed.value && !isSelf.value) {
     items.push({
       label: 'Report post',
       icon: 'pi pi-flag',
       command: () => {
         // no-op for now
+      },
+    })
+  }
+
+  if (isSelf.value) {
+    items.push({ separator: true })
+    items.push({
+      label: 'Delete post',
+      icon: 'pi pi-trash',
+      class: 'text-red-600 dark:text-red-400',
+      command: () => {
+        deleteConfirmOpen.value = true
       },
     })
   }
@@ -267,16 +379,60 @@ function toggleMoreMenu(event: Event) {
   ;(moreMenuRef.value as any)?.toggle(event)
 }
 
-const toast = (import.meta.client ? usePrimeToast() : null) as ReturnType<typeof usePrimeToast> | null
+const toast = useAppToast()
+const deleteConfirmOpen = ref(false)
+const deleting = ref(false)
+
+async function deletePost() {
+  if (deleting.value) return
+  deleting.value = true
+  try {
+    await apiFetchData<{ success: true }>('/posts/' + encodeURIComponent(post.value.id), { method: 'DELETE' })
+    emit('deleted', post.value.id)
+    toast.push({ title: 'Post deleted', tone: 'success', durationMs: 1400 })
+  } catch (e: unknown) {
+    toast.push({ title: getApiErrorMessage(e) || 'Failed to delete post.', tone: 'error', durationMs: 2200 })
+  } finally {
+    deleting.value = false
+    deleteConfirmOpen.value = false
+  }
+}
 
 // Client-side "boosted" state (UI-only for now).
 const boosts = useState<Record<string, boolean>>('post-boosts', () => ({}))
 const isBoosted = computed(() => Boolean(boosts.value[post.value.id]))
 
 function toggleBoost() {
-  if (!isAuthed.value) return
   const id = post.value.id
   boosts.value = { ...boosts.value, [id]: !boosts.value[id] }
+}
+
+async function onBoostClick() {
+  if (!viewerCanInteract.value) return
+  if (!isAuthed.value) {
+    showAuthActionModal({ kind: 'login', action: 'boost' })
+    return
+  }
+  if (!viewerHasUsername.value) {
+    showAuthActionModal({ kind: 'setUsername', action: 'boost' })
+    return
+  }
+  toggleBoost()
+}
+
+async function onCommentClick() {
+  if (!viewerCanInteract.value) return
+  if (!isAuthed.value) {
+    showAuthActionModal({ kind: 'login', action: 'comment' })
+    return
+  }
+  if (!viewerIsVerified.value) {
+    showAuthActionModal({ kind: 'verify', action: 'comment' })
+    return
+  }
+
+  // Comments aren't implemented yet; bring them to the post page as the next best action.
+  await navigateTo(postPermalink.value)
 }
 
 async function copyToClipboard(text: string) {
@@ -305,9 +461,9 @@ const shareMenuItems = computed<MenuItem[]>(() => [
       if (!import.meta.client) return
       try {
         await copyToClipboard(postShareUrl.value)
-        toast?.add({ severity: 'success', summary: 'Link copied', life: 1400 })
+        toast.push({ title: 'Link copied', tone: 'success', durationMs: 1400 })
       } catch {
-        toast?.add({ severity: 'error', summary: 'Copy failed', life: 1600 })
+        toast.push({ title: 'Copy failed', tone: 'error', durationMs: 1800 })
       }
     },
   },

@@ -3,7 +3,7 @@ import { getApiErrorMessage } from '~/utils/api-error'
 
 type FeedFilter = 'all' | 'public' | PostVisibility
 
-export function usePostsFeed(options: { visibility?: Ref<FeedFilter> } = {}) {
+export function usePostsFeed(options: { visibility?: Ref<FeedFilter>; followingOnly?: Ref<boolean> } = {}) {
   const { apiFetchData } = useApiClient()
 
   const posts = useState<FeedPost[]>('posts-feed', () => [])
@@ -11,6 +11,7 @@ export function usePostsFeed(options: { visibility?: Ref<FeedFilter> } = {}) {
   const loading = useState<boolean>('posts-feed-loading', () => false)
   const error = useState<string | null>('posts-feed-error', () => null)
   const visibility = options.visibility ?? ref<FeedFilter>('all')
+  const followingOnly = options.followingOnly ?? ref(false)
 
   async function refresh() {
     if (loading.value) return
@@ -19,7 +20,11 @@ export function usePostsFeed(options: { visibility?: Ref<FeedFilter> } = {}) {
     try {
       const res = await apiFetchData<GetPostsResponse>('/posts', {
         method: 'GET',
-        query: { limit: 30, visibility: visibility.value }
+        query: {
+          limit: 30,
+          visibility: visibility.value,
+          ...(followingOnly.value ? { followingOnly: true } : {})
+        }
       })
       posts.value = res.posts
       nextCursor.value = res.nextCursor
@@ -38,7 +43,12 @@ export function usePostsFeed(options: { visibility?: Ref<FeedFilter> } = {}) {
     try {
       const res = await apiFetchData<GetPostsResponse>('/posts', {
         method: 'GET',
-        query: { limit: 30, cursor: nextCursor.value, visibility: visibility.value }
+        query: {
+          limit: 30,
+          cursor: nextCursor.value,
+          visibility: visibility.value,
+          ...(followingOnly.value ? { followingOnly: true } : {})
+        }
       })
       posts.value = [...posts.value, ...res.posts]
       nextCursor.value = res.nextCursor
@@ -49,9 +59,9 @@ export function usePostsFeed(options: { visibility?: Ref<FeedFilter> } = {}) {
     }
   }
 
-  async function addPost(body: string, visibility: PostVisibility) {
+  async function addPost(body: string, visibility: PostVisibility): Promise<FeedPost | null> {
     const trimmed = body.trim()
-    if (!trimmed) return
+    if (!trimmed) return null
 
     try {
       const res = await apiFetchData<CreatePostResponse>('/posts', {
@@ -59,14 +69,23 @@ export function usePostsFeed(options: { visibility?: Ref<FeedFilter> } = {}) {
         body: { body: trimmed, visibility }
       })
 
-      // Newest-first: prepend.
-      posts.value = [res.post, ...posts.value]
+      // Newest-first: prepend. "Only me" posts never appear in any feeds.
+      if (res.post.visibility !== 'onlyMe') {
+        posts.value = [res.post, ...posts.value]
+      }
+      return res.post
     } catch (e: unknown) {
       error.value = getApiErrorMessage(e) || 'Failed to post.'
       throw e
     }
   }
 
-  return { posts, nextCursor, loading, error, refresh, loadMore, addPost }
+  function removePost(id: string) {
+    const pid = (id ?? '').trim()
+    if (!pid) return
+    posts.value = posts.value.filter((p) => p.id !== pid)
+  }
+
+  return { posts, nextCursor, loading, error, refresh, loadMore, addPost, removePost }
 }
 

@@ -1,5 +1,18 @@
 <template>
-  <div class="-mx-4">
+  <div>
+    <!-- Feed scope -->
+    <div
+      v-if="isAuthed"
+      class="sticky top-0 z-20 bg-white/90 backdrop-blur pt-2 pb-0 dark:bg-black/80"
+    >
+      <Tabs v-model:value="feedScope" class="w-full">
+        <TabList class="w-full">
+          <Tab value="all">All</Tab>
+          <Tab value="following">Following</Tab>
+        </TabList>
+      </Tabs>
+    </div>
+
     <!-- Composer -->
     <div class="border-b border-gray-200 px-4 py-4 dark:border-zinc-800">
       <div v-if="canPost" class="grid grid-cols-[2.5rem_minmax(0,1fr)] gap-x-3">
@@ -13,8 +26,9 @@
               aria-label="Select post visibility"
               @click="toggleVisibilityPopover"
             >
+              <i v-if="visibility === 'onlyMe'" class="pi pi-lock mr-1 text-[10px] opacity-80" aria-hidden="true" />
               {{ composerVisibilityLabel }}
-              <i class="pi pi-chevron-down ml-1 text-[10px] opacity-80" aria-hidden="true" />
+              <i class="pi pi-chevron-down ml-1 text-[9px] opacity-80" aria-hidden="true" />
             </button>
 
             <!-- Custom visibility picker -->
@@ -57,6 +71,16 @@
                 Premium only
                 <span v-if="!isPremium" class="ml-2 font-mono text-[10px] opacity-80" aria-hidden="true">LOCKED</span>
               </button>
+
+              <button
+                type="button"
+                class="w-full text-left px-3 py-2 text-sm font-semibold transition-colors text-violet-800 hover:bg-violet-600 hover:text-white dark:text-violet-300 dark:hover:bg-violet-500"
+                role="menuitem"
+                @click="setComposerVisibility('onlyMe')"
+              >
+                <i class="pi pi-lock mr-2 text-[12px]" aria-hidden="true" />
+                Only me
+              </button>
             </div>
           </div>
         </div>
@@ -65,32 +89,25 @@
         <NuxtLink
           v-if="myProfilePath"
           :to="myProfilePath"
-          class="row-start-1 sm:row-start-2 col-start-1 mb-3 sm:mb-0 group h-8 w-8 sm:h-10 sm:w-10 shrink-0 overflow-hidden rounded-full bg-gray-200 dark:bg-zinc-800 relative"
+          class="row-start-1 sm:row-start-2 col-start-1 mb-3 sm:mb-0 group shrink-0"
           aria-label="View your profile"
         >
-          <img
-            v-if="meAvatarUrl"
-            :src="meAvatarUrl"
-            alt=""
-            class="h-full w-full object-cover transition-opacity duration-200 group-hover:opacity-80"
-            loading="lazy"
-            decoding="async"
-          >
-          <div v-else class="h-full w-full" aria-hidden="true" />
+          <div class="transition-opacity duration-200 group-hover:opacity-80">
+            <AppAvatarCircle
+              :src="meAvatarUrl"
+              :name="user?.name ?? null"
+              :username="user?.username ?? null"
+              size-class="h-8 w-8 sm:h-10 sm:w-10"
+            />
+          </div>
         </NuxtLink>
-        <div
-          v-else
-          class="row-start-1 sm:row-start-2 col-start-1 mb-3 sm:mb-0 h-8 w-8 sm:h-10 sm:w-10 shrink-0 overflow-hidden rounded-full bg-gray-200 dark:bg-zinc-800"
-          aria-hidden="true"
-        >
-          <img
-            v-if="meAvatarUrl"
+        <div v-else class="row-start-1 sm:row-start-2 col-start-1 mb-3 sm:mb-0 shrink-0" aria-hidden="true">
+          <AppAvatarCircle
             :src="meAvatarUrl"
-            alt=""
-            class="h-full w-full object-cover"
-            loading="lazy"
-            decoding="async"
-          >
+            :name="user?.name ?? null"
+            :username="user?.username ?? null"
+            size-class="h-8 w-8 sm:h-10 sm:w-10"
+          />
         </div>
 
         <div class="row-start-2 col-span-2 sm:col-span-1 sm:col-start-2 min-w-0 moh-composer-tint">
@@ -103,7 +120,11 @@
             placeholder="What’s happening?"
             :maxlength="postMaxLen"
             @input="onComposerInput"
+            @keydown="onComposerKeydown"
           />
+          <AppInlineAlert v-if="submitError" class="mt-3" severity="danger">
+            {{ submitError }}
+          </AppInlineAlert>
           <div class="mt-3 flex items-center justify-between">
             <div class="flex items-center gap-2 text-gray-500 dark:text-gray-400">
               <Button icon="pi pi-image" text rounded severity="secondary" aria-label="Media" v-tooltip.bottom="tinyTooltip('Media')" />
@@ -259,9 +280,32 @@
         </AppInlineAlert>
 
         <div v-else>
-          <div v-for="p in posts" :key="p.id">
-            <AppPostRow :post="p" />
+          <div
+            v-if="showFollowingEmptyState"
+            class="mx-4 mt-4 rounded-xl border border-gray-200 bg-gray-50 p-4 dark:border-zinc-800 dark:bg-zinc-950/40"
+          >
+            <div class="font-semibold text-gray-900 dark:text-gray-50">Nothing here yet</div>
+            <div class="mt-1 text-sm text-gray-600 dark:text-gray-300">
+              <template v-if="followingCount === 0">
+                Your Following feed shows posts from people you follow (plus you). Follow a few people to see posts here.
+              </template>
+              <template v-else-if="followingCount !== null">
+                You’re following people, but none of them have posted yet. Follow some more active accounts to fill your feed.
+              </template>
+              <template v-else>
+                Your Following feed shows posts from people you follow (plus you). Follow a few people to see posts here.
+              </template>
+            </div>
+            <div class="mt-3">
+              <Button label="Find people" severity="secondary" @click="navigateTo('/explore')" />
+            </div>
           </div>
+
+          <TransitionGroup name="moh-post" tag="div" class="relative">
+            <div v-for="p in posts" :key="p.id">
+              <AppPostRow :post="p" @deleted="removePost" />
+            </div>
+          </TransitionGroup>
         </div>
 
         <div v-if="nextCursor" class="px-4 py-6 flex justify-center">
@@ -285,10 +329,12 @@ import type { ProfilePostsFilter } from '~/utils/post-visibility'
 import { filterPillClasses } from '~/utils/post-visibility'
 import { PRIMARY_PREMIUM_ORANGE, PRIMARY_TEXT_DARK, PRIMARY_TEXT_LIGHT, PRIMARY_VERIFIED_BLUE, primaryPaletteToCssVars } from '~/utils/theme-tint'
 import { tinyTooltip } from '~/utils/tiny-tooltip'
+import { getApiErrorMessage } from '~/utils/api-error'
 
 definePageMeta({
   layout: 'app',
-  title: 'Home'
+  title: 'Home',
+  hideTopBar: true,
 })
 
 usePageSeo({
@@ -296,8 +342,19 @@ usePageSeo({
   description: 'Your Men of Hunger feed — posts are shown in simple chronological order.'
 })
 
+const { user } = useAuth()
+const isAuthed = computed(() => Boolean(user.value?.id))
+const { apiFetchData } = useApiClient()
+
 const feedFilter = useCookie<ProfilePostsFilter>('moh.feed.filter.v1', {
   default: () => 'all',
+  sameSite: 'lax',
+  path: '/',
+  maxAge: 60 * 60 * 24 * 365,
+})
+
+const feedScope = useCookie<'following' | 'all'>('moh.home.scope.v1', {
+  default: () => 'following',
   sameSite: 'lax',
   path: '/',
   maxAge: 60 * 60 * 24 * 365,
@@ -313,11 +370,50 @@ watch(
   { immediate: true }
 )
 
-const { posts, nextCursor, loading, error, refresh, loadMore, addPost } = usePostsFeed({ visibility: feedFilter })
+watch(
+  feedScope,
+  (v) => {
+    if (v === 'following' || v === 'all') return
+    feedScope.value = 'following'
+  },
+  { immediate: true }
+)
+
+const followingOnly = computed(() => Boolean(isAuthed.value && feedScope.value === 'following'))
+
+const { posts, nextCursor, loading, error, refresh, loadMore, addPost, removePost } = usePostsFeed({
+  visibility: feedFilter,
+  followingOnly,
+})
+
+const followingCount = ref<number | null>(null)
+const followingCountLoading = ref(false)
+const showFollowingEmptyState = computed(() => {
+  return Boolean(followingOnly.value && !loading.value && !error.value && posts.value.length === 0)
+})
+
+watchEffect(() => {
+  if (!import.meta.client) return
+  if (!isAuthed.value) return
+  if (!showFollowingEmptyState.value) return
+  if (followingCount.value !== null) return
+  if (followingCountLoading.value) return
+
+  followingCountLoading.value = true
+  void apiFetchData<{ followingCount: number }>('/follows/me/following-count')
+    .then((res) => {
+      const n = Number((res as { followingCount?: unknown } | null)?.followingCount ?? 0)
+      followingCount.value = Number.isFinite(n) ? Math.max(0, Math.floor(n)) : 0
+    })
+    .catch(() => {
+      // Fall back to generic copy.
+      followingCount.value = null
+    })
+    .finally(() => {
+      followingCountLoading.value = false
+    })
+})
 const draft = ref('')
-const { user } = useAuth()
-const { assetUrl } = useAssets()
-const isAuthed = computed(() => Boolean(user.value?.id))
 const isVerified = computed(() => user.value?.verifiedStatus && user.value.verifiedStatus !== 'none')
 const canPost = computed(() => Boolean(isAuthed.value && isVerified.value))
 const isPremium = computed(() => Boolean(user.value?.premium))
@@ -336,6 +432,15 @@ function setFeedFilter(next: ProfilePostsFilter) {
   if (feedCtaKind.value) return
   void refresh()
 }
+
+watch(
+  () => feedScope.value,
+  () => {
+    if (feedCtaKind.value) return
+    void refresh()
+  },
+  { flush: 'post' }
+)
 
 const feedFilterTagLabel = computed(() => {
   if (feedFilter.value === 'public') return 'Public'
@@ -406,10 +511,7 @@ const postMaxLen = computed(() => (isPremium.value ? 500 : 200))
 const postCharCount = computed(() => draft.value.length)
 
 const meAvatarUrl = computed(() => {
-  const base = assetUrl(user.value?.avatarKey)
-  if (!base) return null
-  const v = user.value?.avatarUpdatedAt || ''
-  return v ? `${base}?v=${encodeURIComponent(v)}` : base
+  return user.value?.avatarUrl ?? null
 })
 
 const visibility = useCookie<PostVisibility>('moh.post.visibility.v1', {
@@ -466,6 +568,16 @@ function onComposerInput() {
   autosizeComposerTextarea()
 }
 
+function onComposerKeydown(e: KeyboardEvent) {
+  // Cmd+Enter (macOS) / Ctrl+Enter (Windows/Linux) submits.
+  // Keep plain Enter behavior (new line) intact.
+  if (e.key !== 'Enter') return
+  if ((e as unknown as { isComposing?: boolean }).isComposing) return
+  if (!(e.metaKey || e.ctrlKey)) return
+  e.preventDefault()
+  void submit()
+}
+
 watch(draft, () => {
   // Draft changes can come from submit/reset as well as typing.
   queueMicrotask(() => autosizeComposerTextarea())
@@ -486,6 +598,12 @@ const composerTextareaVars = computed<Record<string, string>>(() => {
       '--moh-compose-ring': 'rgba(245, 158, 11, 0.45)',
     }
   }
+  if (visibility.value === 'onlyMe') {
+    return {
+      '--moh-compose-accent': '#7C3AED',
+      '--moh-compose-ring': 'rgba(124, 58, 237, 0.45)',
+    }
+  }
   // Public: neutral (text color per mode).
   return isDarkMode.value
     ? { '--moh-compose-accent': 'rgba(255, 255, 255, 0.85)', '--moh-compose-ring': 'rgba(255, 255, 255, 0.25)' }
@@ -493,7 +611,7 @@ const composerTextareaVars = computed<Record<string, string>>(() => {
 })
 const allowedComposerVisibilities = computed<PostVisibility[]>(() => {
   // Verified users can post public or verified-only. Premium-only is premium members only.
-  return isPremium.value ? ['public', 'verifiedOnly', 'premiumOnly'] : ['public', 'verifiedOnly']
+  return isPremium.value ? ['public', 'verifiedOnly', 'premiumOnly', 'onlyMe'] : ['public', 'verifiedOnly', 'onlyMe']
 })
 
 watch(
@@ -513,6 +631,9 @@ const postButtonClass = computed(() => {
   if (visibility.value === 'premiumOnly') {
     return '!border-amber-600 !bg-amber-600 !text-white hover:!bg-amber-700 hover:!border-amber-700 dark:!border-amber-500 dark:!bg-amber-500 dark:!text-black dark:hover:!bg-amber-400'
   }
+  if (visibility.value === 'onlyMe') {
+    return '!border-violet-600 !bg-violet-600 !text-white hover:!bg-violet-700 hover:!border-violet-700 dark:!border-violet-500 dark:!bg-violet-500 dark:!text-black dark:hover:!bg-violet-400'
+  }
   // public
   return '!border-gray-300 !text-gray-900 hover:!bg-gray-50 dark:!border-zinc-700 dark:!text-gray-50 dark:hover:!bg-zinc-900'
 })
@@ -520,13 +641,14 @@ const postButtonClass = computed(() => {
 const composerVisibilityLabel = computed(() => {
   if (visibility.value === 'verifiedOnly') return 'Verified'
   if (visibility.value === 'premiumOnly') return 'Premium'
+  if (visibility.value === 'onlyMe') return 'Only me'
   return 'Public'
 })
 
 const composerVisibilityPillClass = computed(() => {
-  // Reuse the same palette system as profile/home filters.
-  // (Public: neutral, Verified: blue, Premium: orange)
-  return filterPillClasses(visibility.value, true)
+  // Outline-only pill: colored text + border, clear background.
+  // Reuse existing palette mapping, but use the "inactive" style (no bg).
+  return `${filterPillClasses(visibility.value, false)} bg-transparent hover:bg-transparent dark:hover:bg-transparent`
 })
 
 const composerVisibilityWrapEl = ref<HTMLElement | null>(null)
@@ -578,6 +700,8 @@ watch(
 )
 
 const submitting = ref(false)
+const toast = useAppToast()
+const submitError = ref<string | null>(null)
 
 if (import.meta.server) {
   await refresh()
@@ -601,10 +725,44 @@ const submit = async () => {
   if (!canPost.value) return
   if (submitting.value) return
   if (postCharCount.value > postMaxLen.value) return
+  submitError.value = null
   submitting.value = true
   try {
-    await addPost(draft.value, visibility.value)
+    const created = await addPost(draft.value, visibility.value)
     draft.value = ''
+    if (created?.id) {
+      const to = `/p/${encodeURIComponent(created.id)}`
+      const tone =
+        visibility.value === 'premiumOnly'
+          ? 'premiumOnly'
+          : visibility.value === 'verifiedOnly'
+            ? 'verifiedOnly'
+            : visibility.value === 'onlyMe'
+              ? 'onlyMe'
+              : 'public'
+
+      const detail =
+        visibility.value === 'premiumOnly'
+          ? 'Premium-only post · Tap to view.'
+          : visibility.value === 'verifiedOnly'
+            ? 'Verified-only post · Tap to view.'
+            : visibility.value === 'onlyMe'
+              ? 'Only you can see this · Tap to view.'
+              : 'Tap to view.'
+
+      toast.push({
+        title: 'Posted',
+        message: detail,
+        tone,
+        to,
+        durationMs: 2600,
+      })
+    }
+  } catch (e: unknown) {
+    // If user is rate limited (posting too often), show a toast.
+    const msg = getApiErrorMessage(e) || 'Failed to post.'
+    submitError.value = msg
+    toast.push({ title: msg, tone: 'error', durationMs: 2500 })
   } finally {
     submitting.value = false
   }
@@ -615,4 +773,23 @@ const goLogin = () => {
   return navigateTo(`/login?redirect=${redirect}`)
 }
 </script>
+
+<style scoped>
+/* Make the PrimeVue Tabs bar flush + transparent (per design). */
+:deep(.p-tabs),
+:deep(.p-tablist) {
+  background: transparent;
+}
+:deep(.p-tablist) {
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  border-bottom: 0;
+}
+:deep(.p-tablist-tab-list) {
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+</style>
 

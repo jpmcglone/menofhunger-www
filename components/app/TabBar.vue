@@ -6,35 +6,59 @@
   >
     <div class="mx-auto w-full max-w-6xl px-2">
       <div class="grid grid-flow-col auto-cols-fr py-2">
-        <NuxtLink
-          v-for="item in items"
-          :key="item.key"
-          :to="item.to"
-          class="flex flex-col items-center justify-center py-1"
-          :class="isActive(item.to) ? 'text-gray-900 dark:text-gray-50' : 'text-gray-500 dark:text-gray-400'"
-        >
-          <div class="h-8 w-8 flex items-center justify-center">
-            <div
-              v-if="item.key === 'profile'"
-              class="h-7 w-7 overflow-hidden rounded-full bg-gray-200 dark:bg-zinc-800"
-              aria-label="Profile"
-            >
-              <img
-                v-if="meAvatarUrl"
+        <template v-for="item in items" :key="item.key">
+          <button
+            v-if="item.key === 'profile'"
+            type="button"
+            class="flex flex-col items-center justify-center py-1"
+            :class="isActive(item.to) ? 'text-gray-900 dark:text-gray-50' : 'text-gray-500 dark:text-gray-400'"
+            aria-label="Profile menu"
+            @click="toggleProfileMenu"
+          >
+            <div class="relative h-8 w-8 flex items-center justify-center">
+              <AppAvatarCircle
                 :src="meAvatarUrl"
-                alt=""
-                class="h-full w-full object-cover"
-                loading="lazy"
-                decoding="async"
-              >
-              <div v-else class="h-full w-full" aria-hidden="true" />
+                :name="user?.name ?? null"
+                :username="user?.username ?? null"
+                size-class="h-7 w-7"
+              />
             </div>
-            <i v-else class="pi text-xl" :class="item.icon" aria-hidden="true" />
-          </div>
-        </NuxtLink>
+          </button>
+
+          <NuxtLink
+            v-else
+            :to="item.to"
+            class="flex flex-col items-center justify-center py-1"
+            :class="isActive(item.to) ? 'text-gray-900 dark:text-gray-50' : 'text-gray-500 dark:text-gray-400'"
+          >
+            <div class="relative h-8 w-8 flex items-center justify-center">
+              <i class="pi text-xl" :class="item.icon" aria-hidden="true" />
+
+              <span
+                v-if="item.key === 'notifications' && notifBadge.show"
+                class="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold leading-[18px] text-center shadow-sm ring-2 ring-white dark:ring-black"
+                :class="notifBadge.toneClass"
+              >
+                {{ notifBadge.count }}
+              </span>
+            </div>
+          </NuxtLink>
+        </template>
       </div>
     </div>
   </nav>
+
+  <Menu ref="profileMenuRef" :model="menuItems" popup />
+
+  <Dialog v-model:visible="confirmVisible" modal header="Log out?" :style="{ width: '26rem' }">
+    <p class="text-sm text-gray-700 dark:text-gray-300">
+      Are you sure you want to log out?
+    </p>
+    <template #footer>
+      <Button label="Cancel" text severity="secondary" @click="confirmVisible = false" />
+      <Button label="Log out" severity="danger" @click="confirmLogout" />
+    </template>
+  </Dialog>
 </template>
 
 <script setup lang="ts">
@@ -46,18 +70,22 @@ defineProps<{
 
 const route = useRoute()
 const { user } = useAuth()
-const { assetUrl } = useAssets()
+const notifBadge = useNotificationsBadge()
+const { menuItems, confirmVisible, confirmLogout } = useUserMenu()
 
-const meAvatarUrl = computed(() => {
-  const base = assetUrl(user.value?.avatarKey)
-  if (!base) return null
-  const v = user.value?.avatarUpdatedAt || ''
-  return v ? `${base}?v=${encodeURIComponent(v)}` : base
-})
+const profileMenuRef = ref()
+
+const meAvatarUrl = computed(() => (user.value?.avatarUrl ?? null))
 
 function isActive(to: string) {
   if (to === '/home') return route.path === '/home'
   return route.path === to || route.path.startsWith(`${to}/`)
+}
+
+function toggleProfileMenu(event: Event) {
+  // PrimeVue Menu expects the click event to position the popup.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  ;(profileMenuRef.value as any)?.toggle(event)
 }
 </script>
 

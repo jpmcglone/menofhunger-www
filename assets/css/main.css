@@ -77,6 +77,51 @@ html.dark body {
   background-color: #000;
 }
 
+/* App color tokens (X-like neutrals). Keep these as CSS variables so every surface stays consistent. */
+:root {
+  --moh-bg: #ffffff;
+  --moh-surface: #f7f9f9; /* subtle card/hover surface */
+  --moh-surface-hover: #eff3f4; /* stronger hover */
+  --moh-border: #eff3f4;
+  --moh-text: #0f1419;
+  --moh-text-muted: #536471;
+  --moh-frosted: rgba(255, 255, 255, 0.9);
+}
+
+html.dark {
+  --moh-bg: #000000;
+  --moh-surface: #16181c;
+  --moh-surface-hover: rgba(255, 255, 255, 0.06);
+  --moh-border: #2f3336;
+  --moh-text: #e7e9ea;
+  --moh-text-muted: #71767b;
+  --moh-frosted: rgba(0, 0, 0, 0.8);
+}
+
+@layer utilities {
+  .moh-bg {
+    background-color: var(--moh-bg);
+  }
+  .moh-surface {
+    background-color: var(--moh-surface);
+  }
+  .moh-surface-hover:hover {
+    background-color: var(--moh-surface-hover);
+  }
+  .moh-border {
+    border-color: var(--moh-border);
+  }
+  .moh-text {
+    color: var(--moh-text);
+  }
+  .moh-text-muted {
+    color: var(--moh-text-muted);
+  }
+  .moh-frosted {
+    background-color: var(--moh-frosted);
+  }
+}
+
 /* Dark mode: swap to light cursor for contrast (landing page only) */
 html.moh-landing.dark {
   --moh-cursor-default: url("/cursors/cursor.svg") var(--moh-cursor-hotspot-x) var(--moh-cursor-hotspot-y), auto;
@@ -106,7 +151,8 @@ html.moh-landing.dark {
   border-radius: 10px;
 }
 .p-tooltip.moh-tooltip .p-tooltip-arrow {
-  border-color: #000 !important;
+  /* Hide arrow to avoid the little square artifact */
+  display: none !important;
 }
 
 /* Extra-small tooltip (X-like) for action icons */
@@ -154,4 +200,44 @@ html:not(.dark) :where(.moh-composer-accent-public) :where(.p-inputtextarea, tex
   outline: none;
   border-color: var(--moh-compose-accent);
   box-shadow: 0 0 0 1px var(--moh-compose-ring);
+}
+
+/* Avatar fallback initial (bold + thick stroke) */
+.moh-avatar-initial {
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  paint-order: stroke fill;
+  font-size: var(--moh-avatar-font-size, inherit);
+  -webkit-text-stroke-width: var(--moh-avatar-stroke-width, 3px);
+}
+html:not(.dark) .moh-avatar-initial {
+  color: #000;
+  -webkit-text-stroke-color: #fff;
+}
+html.dark .moh-avatar-initial {
+  color: #fff;
+  -webkit-text-stroke-color: #000;
+}
+
+/* Post list transitions: delete immediately, others slide into place (FLIP). */
+.moh-post-move {
+  transition: transform 220ms ease;
+}
+.moh-post-enter-active,
+.moh-post-leave-active {
+  transition: opacity 160ms ease, transform 220ms ease;
+}
+.moh-post-enter-from {
+  opacity: 0;
+  transform: translateY(6px);
+}
+.moh-post-leave-to {
+  opacity: 0;
+  transform: translateY(-6px);
+}
+/* Let the remaining rows move immediately while the removed one fades out. */
+.moh-post-leave-active {
+  position: absolute;
+  left: 0;
+  right: 0;
 }

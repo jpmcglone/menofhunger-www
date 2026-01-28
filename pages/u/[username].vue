@@ -44,20 +44,19 @@
           hideAvatarDuringBanner ? 'opacity-0 pointer-events-none' : 'opacity-100'
         ]"
       >
-        <div class="group relative h-28 w-28 overflow-hidden rounded-full bg-gray-200 ring-4 ring-white dark:bg-zinc-800 dark:ring-black">
-          <img
-            v-if="profileAvatarUrl"
+        <div class="group relative ring-4 ring-white dark:ring-black rounded-full">
+          <AppAvatarCircle
             v-show="!hideAvatarThumb"
             :src="profileAvatarUrl"
-            alt=""
-            class="h-full w-full object-cover"
-            loading="lazy"
-            decoding="async"
-          >
+            :name="profile?.name ?? null"
+            :username="profile?.username ?? null"
+            size-class="h-28 w-28"
+            bg-class="bg-gray-200 dark:bg-zinc-800"
+          />
           <div
             v-if="profileAvatarUrl"
             v-show="!hideAvatarThumb"
-            class="pointer-events-none absolute inset-0 bg-black/0 transition-colors duration-200 group-hover:bg-black/20"
+            class="pointer-events-none absolute inset-0 rounded-full bg-black/0 transition-colors duration-200 group-hover:bg-black/20"
             aria-hidden="true"
           />
           <button
@@ -76,19 +75,53 @@
       <div class="flex items-start justify-between gap-4">
         <div class="min-w-0">
           <div class="flex items-center gap-2 min-w-0">
-            <div class="text-2xl font-bold text-gray-900 dark:text-gray-50 truncate">
+            <div class="text-2xl font-bold leading-none text-gray-900 dark:text-gray-50 truncate">
               {{ profileName }}
             </div>
             <AppVerifiedBadge :status="profile?.verifiedStatus" :premium="profile?.premium" />
           </div>
-          <div class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-            @{{ profile?.username }}
+          <div class="mt-1 text-sm text-gray-500 dark:text-gray-400 flex items-center gap-2">
+            <div class="truncate">
+              @{{ profile?.username }}
+            </div>
+            <span
+              v-if="relationshipTagLabel"
+              class="shrink-0 inline-flex items-center rounded-md bg-gray-200/70 px-2.5 py-1 text-[10px] font-semibold leading-none text-gray-800 dark:bg-zinc-800/80 dark:text-zinc-200"
+            >
+              {{ relationshipTagLabel }}
+            </span>
           </div>
         </div>
 
-        <div v-if="isSelf" class="shrink-0">
-          <Button label="Edit profile" icon="pi pi-pencil" severity="secondary" rounded @click="editOpen = true" />
+        <div class="shrink-0">
+          <Button
+            v-if="isSelf"
+            label="Edit profile"
+            icon="pi pi-pencil"
+            severity="secondary"
+            rounded
+            @click="editOpen = true"
+          />
+          <AppFollowButton
+            v-else-if="profile?.id"
+            :user-id="profile.id"
+            :username="profile.username"
+            :initial-relationship="followRelationship"
+            @followed="onFollowed"
+            @unfollowed="onUnfollowed"
+          />
         </div>
+      </div>
+
+      <div v-if="showFollowCounts" class="mt-4 flex items-center gap-4 text-sm text-gray-600 dark:text-gray-300">
+        <button type="button" class="hover:underline" @click="openFollowers">
+          <span class="font-semibold text-gray-900 dark:text-gray-50 tabular-nums">{{ followSummary?.followerCount ?? 0 }}</span>
+          Followers
+        </button>
+        <button type="button" class="hover:underline" @click="openFollowing">
+          <span class="font-semibold text-gray-900 dark:text-gray-50 tabular-nums">{{ followSummary?.followingCount ?? 0 }}</span>
+          Following
+        </button>
       </div>
 
       <div v-if="profile?.bio" class="mt-4 whitespace-pre-wrap text-gray-800 dark:text-gray-200">
@@ -191,11 +224,73 @@
           No posts yet.
         </div>
 
-        <div v-else class="mt-3 -mx-4">
-          <AppPostRow v-for="p in userPosts.posts.value" :key="p.id" :post="p" />
-        </div>
+        <TransitionGroup v-else name="moh-post" tag="div" class="relative mt-3 -mx-4">
+          <div v-for="p in userPosts.posts.value" :key="p.id">
+            <AppPostRow :post="p" @deleted="userPosts.removePost" />
+          </div>
+        </TransitionGroup>
       </div>
     </div>
+
+    <Dialog v-model:visible="followersOpen" modal header="Followers" :draggable="false" :style="{ width: 'min(38rem, 96vw)' }">
+      <div class="space-y-3">
+        <AppInlineAlert v-if="followersError" severity="danger">
+          {{ followersError }}
+        </AppInlineAlert>
+
+        <div v-else-if="followersLoading && followers.length === 0" class="text-sm text-gray-600 dark:text-gray-300">
+          Loading…
+        </div>
+
+        <div v-else-if="followers.length === 0" class="text-sm text-gray-600 dark:text-gray-300">
+          No followers yet.
+        </div>
+
+        <div v-else class="-mx-4 divide-y divide-gray-200 dark:divide-zinc-800">
+          <AppUserRow v-for="u in followers" :key="u.id" :user="u" />
+        </div>
+
+        <div v-if="followersNextCursor" class="flex justify-center pt-2">
+          <Button
+            label="Load more"
+            severity="secondary"
+            :loading="followersLoading"
+            :disabled="followersLoading"
+            @click="loadMoreFollowers"
+          />
+        </div>
+      </div>
+    </Dialog>
+
+    <Dialog v-model:visible="followingOpen" modal header="Following" :draggable="false" :style="{ width: 'min(38rem, 96vw)' }">
+      <div class="space-y-3">
+        <AppInlineAlert v-if="followingError" severity="danger">
+          {{ followingError }}
+        </AppInlineAlert>
+
+        <div v-else-if="followingLoading && following.length === 0" class="text-sm text-gray-600 dark:text-gray-300">
+          Loading…
+        </div>
+
+        <div v-else-if="following.length === 0" class="text-sm text-gray-600 dark:text-gray-300">
+          Not following anyone yet.
+        </div>
+
+        <div v-else class="-mx-4 divide-y divide-gray-200 dark:divide-zinc-800">
+          <AppUserRow v-for="u in following" :key="u.id" :user="u" />
+        </div>
+
+        <div v-if="followingNextCursor" class="flex justify-center pt-2">
+          <Button
+            label="Load more"
+            severity="secondary"
+            :loading="followingLoading"
+            :disabled="followingLoading"
+            @click="loadMoreFollowing"
+          />
+        </div>
+      </div>
+    </Dialog>
 
     <Dialog
       v-model:visible="editOpen"
@@ -420,7 +515,14 @@
 
         <div class="space-y-2">
           <label class="text-sm font-medium text-gray-700 dark:text-gray-200">Bio</label>
-          <Textarea v-model="editBio" class="w-full" rows="4" autoResize :maxlength="160" />
+          <Textarea
+            v-model="editBio"
+            class="w-full"
+            rows="4"
+            autoResize
+            :maxlength="160"
+            placeholder="Tell people a bit about yourself…"
+          />
           <div class="text-xs text-gray-500 dark:text-gray-400 flex justify-end">
             {{ editBio.trim().length }}/160
           </div>
@@ -465,10 +567,8 @@ type PublicProfile = {
   bio: string | null
   premium: boolean
   verifiedStatus: 'none' | 'identity' | 'manual'
-  avatarKey?: string | null
-  avatarUpdatedAt?: string | null
-  bannerKey?: string | null
-  bannerUpdatedAt?: string | null
+  avatarUrl?: string | null
+  bannerUrl?: string | null
 }
 
 const route = useRoute()
@@ -476,6 +576,7 @@ const usernameParam = computed(() => String(route.params.username || ''))
 const normalizedUsername = computed(() => usernameParam.value.trim().toLowerCase())
 
 const { apiFetchData } = useApiClient()
+import type { FollowListUser, FollowRelationship, FollowSummaryResponse, GetFollowsListResponse } from '~/types/api'
 import { getApiErrorMessage } from '~/utils/api-error'
 import { filterPillClasses } from '~/utils/post-visibility'
 
@@ -497,9 +598,77 @@ const notFound = computed(() => {
 })
 
 const { user: authUser } = useAuth()
-const { assetUrl } = useAssets()
 
 const isSelf = computed(() => Boolean(authUser.value?.id && profile.value?.id && authUser.value.id === profile.value.id))
+
+const followState = useFollowState()
+
+const {
+  data: followSummaryData,
+  refresh: refreshFollowSummary,
+} = await useAsyncData(`follow-summary:${normalizedUsername.value}`, async () => {
+  // If profile doesn't exist, don't fetch follow summary.
+  if (notFound.value) return null
+  const res = await apiFetchData<FollowSummaryResponse>(`/follows/summary/${encodeURIComponent(normalizedUsername.value)}`, {
+    method: 'GET'
+  })
+  return res
+})
+
+watch(
+  () => authUser.value?.id ?? null,
+  () => {
+    // Follow summary is viewer-relative; refresh on login/logout.
+    void refreshFollowSummary()
+  },
+  { flush: 'post' }
+)
+
+const followSummary = computed(() => followSummaryData.value ?? null)
+const followRelationship = computed<FollowRelationship | null>(() => {
+  const s = followSummary.value
+  if (!s) return null
+  return { viewerFollowsUser: s.viewerFollowsUser, userFollowsViewer: s.userFollowsViewer }
+})
+
+const relationshipTagLabel = computed(() => {
+  if (isSelf.value) return null
+  const s = followSummary.value
+  if (!s) return null
+  if (s.userFollowsViewer && s.viewerFollowsUser) return 'You follow each other'
+  if (s.userFollowsViewer) return 'Follows you'
+  return null
+})
+
+// Keep the follow-state store in sync for the profile user (so buttons across the app match).
+watch(
+  [() => profile.value?.id, followRelationship],
+  ([id, rel]) => {
+    if (!id || !rel) return
+    followState.set(id, rel)
+  },
+  { immediate: true }
+)
+
+const showFollowCounts = computed(() => {
+  if (!profile.value?.id) return false
+  if (!followSummary.value) return false
+  return isSelf.value || followSummary.value.canView
+})
+
+function onFollowed() {
+  const s = followSummary.value
+  if (!s) return
+  if (s.followerCount === null) return
+  followSummaryData.value = { ...s, viewerFollowsUser: true, followerCount: s.followerCount + 1 }
+}
+
+function onUnfollowed() {
+  const s = followSummary.value
+  if (!s) return
+  if (s.followerCount === null) return
+  followSummaryData.value = { ...s, viewerFollowsUser: false, followerCount: Math.max(0, s.followerCount - 1) }
+}
 
 const userPosts = await useUserPosts(normalizedUsername, { enabled: computed(() => !notFound.value) })
 const { header: appHeader } = useAppHeader()
@@ -509,18 +678,8 @@ function filterButtonClass(kind: Parameters<typeof userPosts.setFilter>[0]) {
 }
 
 const profileName = computed(() => profile.value?.name || profile.value?.username || 'User')
-const profileAvatarUrl = computed(() => {
-  const base = assetUrl(profile.value?.avatarKey)
-  if (!base) return null
-  const v = profile.value?.avatarUpdatedAt || ''
-  return v ? `${base}?v=${encodeURIComponent(v)}` : base
-})
-const profileBannerUrl = computed(() => {
-  const base = assetUrl(profile.value?.bannerKey)
-  if (!base) return null
-  const v = profile.value?.bannerUpdatedAt || ''
-  return v ? `${base}?v=${encodeURIComponent(v)}` : base
-})
+const profileAvatarUrl = computed(() => profile.value?.avatarUrl ?? null)
+const profileBannerUrl = computed(() => profile.value?.bannerUrl ?? null)
 
 const viewer = useImageLightbox()
 const { openFromEvent } = viewer
@@ -528,6 +687,80 @@ const { openFromEvent } = viewer
 const hideBannerThumb = computed(() => viewer.visible.value && viewer.kind.value === 'banner')
 const hideAvatarThumb = computed(() => viewer.visible.value && viewer.kind.value === 'avatar')
 const hideAvatarDuringBanner = computed(() => viewer.visible.value && viewer.kind.value === 'banner')
+
+const followersOpen = ref(false)
+const followers = ref<FollowListUser[]>([])
+const followersNextCursor = ref<string | null>(null)
+const followersLoading = ref(false)
+const followersError = ref<string | null>(null)
+
+const followingOpen = ref(false)
+const following = ref<FollowListUser[]>([])
+const followingNextCursor = ref<string | null>(null)
+const followingLoading = ref(false)
+const followingError = ref<string | null>(null)
+
+async function loadFollowers(reset = false) {
+  if (followersLoading.value) return
+  followersLoading.value = true
+  followersError.value = null
+  try {
+    const cursor = reset ? null : followersNextCursor.value
+    const res = await apiFetchData<GetFollowsListResponse>(`/follows/${encodeURIComponent(normalizedUsername.value)}/followers`, {
+      method: 'GET',
+      query: { limit: 30, ...(cursor ? { cursor } : {}) }
+    })
+    followState.ingest(res.users)
+    if (reset) followers.value = res.users
+    else followers.value = [...followers.value, ...res.users]
+    followersNextCursor.value = res.nextCursor
+  } catch (e: unknown) {
+    followersError.value = getApiErrorMessage(e) || 'Failed to load followers.'
+  } finally {
+    followersLoading.value = false
+  }
+}
+
+async function loadFollowing(reset = false) {
+  if (followingLoading.value) return
+  followingLoading.value = true
+  followingError.value = null
+  try {
+    const cursor = reset ? null : followingNextCursor.value
+    const res = await apiFetchData<GetFollowsListResponse>(`/follows/${encodeURIComponent(normalizedUsername.value)}/following`, {
+      method: 'GET',
+      query: { limit: 30, ...(cursor ? { cursor } : {}) }
+    })
+    followState.ingest(res.users)
+    if (reset) following.value = res.users
+    else following.value = [...following.value, ...res.users]
+    followingNextCursor.value = res.nextCursor
+  } catch (e: unknown) {
+    followingError.value = getApiErrorMessage(e) || 'Failed to load following.'
+  } finally {
+    followingLoading.value = false
+  }
+}
+
+function openFollowers() {
+  followersOpen.value = true
+  if (followers.value.length === 0) void loadFollowers(true)
+}
+
+function openFollowing() {
+  followingOpen.value = true
+  if (following.value.length === 0) void loadFollowing(true)
+}
+
+function loadMoreFollowers() {
+  if (!followersNextCursor.value) return
+  void loadFollowers(false)
+}
+
+function loadMoreFollowing() {
+  if (!followingNextCursor.value) return
+  void loadFollowing(false)
+}
 
 watch(
   [notFound, profileName, () => profile.value?.verifiedStatus, () => profile.value?.premium, () => userPosts.counts.value.all],
@@ -1058,8 +1291,7 @@ async function saveProfile() {
       authUser.value = committed.user ?? authUser.value
       data.value = {
         ...(data.value as PublicProfile),
-        bannerKey: committed.user?.bannerKey ?? null,
-        bannerUpdatedAt: committed.user?.bannerUpdatedAt ?? null,
+        bannerUrl: committed.user?.bannerUrl ?? null,
       }
       clearPendingBanner()
     }
@@ -1090,8 +1322,7 @@ async function saveProfile() {
       authUser.value = committed.user ?? authUser.value
       data.value = {
         ...(data.value as PublicProfile),
-        avatarKey: committed.user?.avatarKey ?? null,
-        avatarUpdatedAt: committed.user?.avatarUpdatedAt ?? null,
+        avatarUrl: committed.user?.avatarUrl ?? null,
       }
       // Avatar is now persisted; clear staged state so UI reflects "applied".
       clearPendingAvatar()

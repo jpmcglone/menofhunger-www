@@ -26,6 +26,7 @@ export function useAppNav() {
     { key: 'notifications', label: 'Notifications', to: '/notifications', icon: 'pi-bell', showInLeft: true, showInTabs: true },
     { key: 'messages', label: 'Messages', to: '/messages', icon: 'pi-envelope', requiresAuth: true, showInLeft: true, showInTabs: true },
     { key: 'groups', label: 'Groups', to: '/groups', icon: 'pi-users', requiresAuth: true, showInLeft: true, showInTabs: false },
+    { key: 'only-me', label: 'Only me', to: '/only-me', icon: 'pi-lock', requiresAuth: true, showInLeft: true, showInTabs: false },
     { key: 'profile', label: 'Profile', to: profileTo.value, icon: 'pi-user', requiresAuth: true, showInLeft: true, showInTabs: true },
 
     // Misc

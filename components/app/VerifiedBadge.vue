@@ -1,31 +1,16 @@
 <template>
   <span
     v-if="isVerified"
-    :class="['inline-flex shrink-0 items-center justify-center rounded-full', sizeClass]"
-    :style="{ backgroundColor: badgeColor }"
+    :class="['inline-block shrink-0 align-middle', sizeClass]"
+    :style="iconStyle"
     v-tooltip="tooltip"
     aria-label="Verified"
-  >
-    <!-- Twitter-style check (white) -->
-    <svg viewBox="0 0 24 24" :class="['text-white', iconClass]" aria-hidden="true">
-      <!-- Outline stroke (darker than badge) -->
-      <path
-        :stroke="checkStrokeColor"
-        stroke-width="5.2"
-        stroke-linecap="round"
-        stroke-linejoin="round"
-        fill="none"
-        d="M9.00002 16.2L4.80002 12L3.40002 13.4L9.00002 19L21 7.00001L19.6 5.60001L9.00002 16.2Z"
-      />
-      <path
-        fill="currentColor"
-        d="M9.00002 16.2L4.80002 12L3.40002 13.4L9.00002 19L21 7.00001L19.6 5.60001L9.00002 16.2Z"
-      />
-    </svg>
-  </span>
+  />
 </template>
 
 <script setup lang="ts">
+import badgeUrl from '~/assets/images/verified-badge.png'
+
 type VerifiedStatus = 'none' | 'identity' | 'manual'
 type Size = 'sm' | 'md'
 
@@ -42,9 +27,6 @@ const props = withDefaults(
 const badgeBlue = '#1D9BF0'
 // Premium orange.
 const badgeOrange = '#F59E0B'
-// Darker strokes for the check outline (derived by eye).
-const badgeBlueStroke = '#0B6FBF'
-const badgeOrangeStroke = '#B45309'
 
 const isVerified = computed(() => Boolean(props.status && props.status !== 'none'))
 
@@ -52,22 +34,33 @@ const badgeColor = computed(() => {
   return isVerified.value && props.premium ? badgeOrange : badgeBlue
 })
 
-const checkStrokeColor = computed(() => {
-  return isVerified.value && props.premium ? badgeOrangeStroke : badgeBlueStroke
-})
-
 const tooltip = computed(() => {
   const text = props.status === 'identity' ? 'Identity verified' : props.status === 'manual' ? 'Manually verified' : ''
   if (!text) return null
-  return { value: text, class: 'moh-tooltip' }
+  // Centered under the badge, no arrow (handled by CSS).
+  return { value: text, class: 'moh-tooltip', position: 'bottom' as const }
 })
 
 const sizeClass = computed(() => {
-  return props.size === 'md' ? 'h-6 w-6' : 'h-5 w-5'
+  // Scale with surrounding text so it always "matches the font" it's next to.
+  // `md` is a touch larger (used in a few header contexts).
+  return props.size === 'md' ? 'h-[1.15em] w-[1.15em]' : 'h-[1em] w-[1em]'
 })
 
-const iconClass = computed(() => {
-  return props.size === 'md' ? 'h-4 w-4' : 'h-3.5 w-3.5'
+const iconStyle = computed<Record<string, string>>(() => {
+  // Treat the PNG as an alpha mask so we can tint it any color cleanly.
+  const url = `url(${badgeUrl})`
+  return {
+    backgroundColor: badgeColor.value,
+    WebkitMaskImage: url,
+    maskImage: url,
+    WebkitMaskRepeat: 'no-repeat',
+    maskRepeat: 'no-repeat',
+    WebkitMaskPosition: 'center',
+    maskPosition: 'center',
+    WebkitMaskSize: 'contain',
+    maskSize: 'contain',
+  }
 })
 </script>
 

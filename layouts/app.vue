@@ -3,12 +3,14 @@
        - Left rail (independent, only scrolls when pointer is over it)
        - Main scroller (center + right share scroll) -->
   <ClientOnly>
-    <Toast position="bottom-center" />
+    <AppToastStack />
   </ClientOnly>
-  <div class="h-dvh overflow-hidden bg-white text-gray-900 dark:bg-black dark:text-gray-50">
+  <AppOnboardingGate />
+  <AppAuthActionModal />
+  <div class="h-dvh overflow-hidden moh-bg moh-text">
     <div class="mx-auto flex h-full w-full max-w-6xl px-2 sm:px-4 xl:max-w-7xl">
       <!-- Left Nav (independent scroll) -->
-      <aside class="no-scrollbar hidden sm:block shrink-0 h-full overflow-y-auto overscroll-y-auto border-r border-gray-200 dark:border-zinc-800">
+      <aside class="no-scrollbar hidden sm:block shrink-0 h-full overflow-y-auto overscroll-y-auto border-r moh-border">
         <!-- IMPORTANT: no `h-full` + no `overflow-hidden` here, or the rail can't actually scroll -->
         <div
           :class="[
@@ -42,13 +44,20 @@
               :key="item.label"
               :to="item.to"
               :class="[
-                'group flex h-12 items-center rounded-xl text-gray-900 hover:bg-gray-100 dark:text-gray-50 dark:hover:bg-zinc-900',
+                'group flex h-12 items-center rounded-xl moh-text moh-surface-hover',
                 'w-full',
-                route.path === item.to ? 'bg-gray-100 font-semibold dark:bg-zinc-900' : 'font-medium'
+                route.path === item.to ? 'moh-surface font-semibold' : 'font-medium'
               ]"
             >
-              <span class="flex h-12 w-12 shrink-0 items-center justify-center">
+              <span class="relative flex h-12 w-12 shrink-0 items-center justify-center">
                 <i :class="['pi text-4xl', item.icon]" aria-hidden="true" />
+                <span
+                  v-if="item.key === 'notifications' && notifBadge.show"
+                  class="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold leading-[18px] text-center shadow-sm ring-2 ring-white dark:ring-black"
+                  :class="notifBadge.toneClass"
+                >
+                  {{ notifBadge.count }}
+                </span>
               </span>
               <span v-if="!navCompactMode" class="hidden xl:inline whitespace-nowrap overflow-hidden text-lg max-w-[220px]">
                 {{ item.label }}
@@ -83,9 +92,12 @@
         <!-- Middle / Feed (scroll zone #2) -->
         <main
           ref="middleScrollerEl"
-          class="no-scrollbar min-w-0 flex-1 overflow-y-auto overscroll-y-auto lg:border-r border-gray-200 dark:border-zinc-800"
+          class="no-scrollbar min-w-0 flex-1 overflow-y-auto overscroll-y-auto lg:border-r moh-border"
         >
-          <div class="sticky top-0 z-10 border-b border-gray-200 bg-white/90 backdrop-blur dark:border-zinc-800 dark:bg-black/80">
+          <div
+            v-if="!hideTopBar"
+            class="sticky top-0 z-10 border-b moh-border moh-frosted backdrop-blur"
+          >
             <div class="px-4 py-3 flex items-center justify-between gap-3">
               <div class="min-w-0 flex items-center gap-2">
                 <h1 class="min-w-0 truncate text-xl font-bold tracking-tight">
@@ -97,14 +109,14 @@
                   :premium="Boolean(appHeader?.premium)"
                 />
               </div>
-              <div v-if="typeof appHeader?.postCount === 'number'" class="shrink-0 text-sm text-gray-600 dark:text-gray-300">
+              <div v-if="typeof appHeader?.postCount === 'number'" class="shrink-0 text-sm moh-text-muted">
                 <span class="font-semibold tabular-nums">{{ formatCompactNumber(appHeader.postCount) }}</span>
                 <span class="ml-1">posts</span>
               </div>
             </div>
           </div>
 
-          <div class="px-4 py-4 pb-24 sm:pb-4">
+          <div :class="hideTopBar ? 'pb-24 sm:pb-4' : 'px-4 py-4 pb-24 sm:pb-4'">
             <slot />
           </div>
         </main>
@@ -156,11 +168,11 @@
               <Card>
                 <template #title>What’s happening</template>
                 <template #content>
-                  <div class="space-y-3 text-sm text-gray-700 dark:text-gray-300">
-                    <div class="rounded-lg border border-gray-200 p-3 dark:border-zinc-800">
+                  <div class="space-y-3 text-sm moh-text-muted">
+                    <div class="rounded-lg border moh-border p-3">
                       Placeholder card (could be announcements, promos, ads, etc.)
                     </div>
-                    <div class="rounded-lg border border-gray-200 p-3 dark:border-zinc-800">
+                    <div class="rounded-lg border moh-border p-3">
                       Another placeholder card
                     </div>
                   </div>
@@ -170,11 +182,11 @@
               <Card>
                 <template #title>Suggestions</template>
                 <template #content>
-                  <div class="space-y-3 text-sm text-gray-700 dark:text-gray-300">
+                  <div class="space-y-3 text-sm moh-text-muted">
                     <div class="flex items-center justify-between">
                       <div class="min-w-0">
                         <div class="font-medium">Men of Hunger</div>
-                        <div class="text-gray-500 dark:text-gray-400">@menofhunger</div>
+                        <div class="moh-text-muted">@menofhunger</div>
                       </div>
                       <Button label="Follow" severity="secondary" size="small" />
                     </div>
@@ -185,33 +197,33 @@
               <Card>
                 <template #title>Who to follow</template>
                 <template #content>
-                  <div class="space-y-4 text-sm text-gray-700 dark:text-gray-300">
+                  <div class="space-y-4 text-sm moh-text-muted">
                     <div class="flex items-center justify-between gap-3">
                       <div class="flex items-center gap-3 min-w-0">
-                        <div class="h-10 w-10 rounded-full bg-gray-200 dark:bg-zinc-800" aria-hidden="true" />
+                        <div class="h-10 w-10 rounded-full moh-surface" aria-hidden="true" />
                         <div class="min-w-0">
                           <div class="font-semibold truncate">Builder Weekly</div>
-                          <div class="text-gray-500 dark:text-gray-400 truncate">@builderweekly</div>
+                          <div class="moh-text-muted truncate">@builderweekly</div>
                         </div>
                       </div>
                       <Button label="Follow" severity="secondary" size="small" />
                     </div>
                     <div class="flex items-center justify-between gap-3">
                       <div class="flex items-center gap-3 min-w-0">
-                        <div class="h-10 w-10 rounded-full bg-gray-200 dark:bg-zinc-800" aria-hidden="true" />
+                        <div class="h-10 w-10 rounded-full moh-surface" aria-hidden="true" />
                         <div class="min-w-0">
                           <div class="font-semibold truncate">Strength Log</div>
-                          <div class="text-gray-500 dark:text-gray-400 truncate">@strengthlog</div>
+                          <div class="moh-text-muted truncate">@strengthlog</div>
                         </div>
                       </div>
                       <Button label="Follow" severity="secondary" size="small" />
                     </div>
                     <div class="flex items-center justify-between gap-3">
                       <div class="flex items-center gap-3 min-w-0">
-                        <div class="h-10 w-10 rounded-full bg-gray-200 dark:bg-zinc-800" aria-hidden="true" />
+                        <div class="h-10 w-10 rounded-full moh-surface" aria-hidden="true" />
                         <div class="min-w-0">
                           <div class="font-semibold truncate">Men’s Groups</div>
-                          <div class="text-gray-500 dark:text-gray-400 truncate">@mensgroups</div>
+                          <div class="moh-text-muted truncate">@mensgroups</div>
                         </div>
                       </div>
                       <Button label="Follow" severity="secondary" size="small" />
@@ -224,25 +236,25 @@
               <Card>
                 <template #title>Groups</template>
                 <template #content>
-                  <div class="space-y-3 text-sm text-gray-700 dark:text-gray-300">
+                  <div class="space-y-3 text-sm moh-text-muted">
                     <div class="flex items-start justify-between gap-3">
                       <div class="min-w-0">
                         <div class="font-semibold">Daily Discipline</div>
-                        <div class="text-xs text-gray-500 dark:text-gray-400">14 members · 3 new posts</div>
+                        <div class="text-xs moh-text-muted">14 members · 3 new posts</div>
                       </div>
                       <Tag value="New" severity="success" />
                     </div>
                     <div class="flex items-start justify-between gap-3">
                       <div class="min-w-0">
                         <div class="font-semibold">Business Builders</div>
-                        <div class="text-xs text-gray-500 dark:text-gray-400">62 members · 1 new post</div>
+                        <div class="text-xs moh-text-muted">62 members · 1 new post</div>
                       </div>
                       <Tag value="Active" severity="info" />
                     </div>
                     <div class="flex items-start justify-between gap-3">
                       <div class="min-w-0">
                         <div class="font-semibold">Strength & Conditioning</div>
-                        <div class="text-xs text-gray-500 dark:text-gray-400">28 members · 0 new posts</div>
+                        <div class="text-xs moh-text-muted">28 members · 0 new posts</div>
                       </div>
                       <Tag value="Open" severity="secondary" />
                     </div>
@@ -254,13 +266,13 @@
               <Card>
                 <template #title>Sponsored</template>
                 <template #content>
-                  <div class="space-y-3 text-sm text-gray-700 dark:text-gray-300">
-                    <div class="rounded-lg border border-gray-200 p-3 dark:border-zinc-800">
+                  <div class="space-y-3 text-sm moh-text-muted">
+                    <div class="rounded-lg border moh-border p-3">
                       <div class="flex items-center justify-between">
                         <div class="font-semibold">Ad slot</div>
                         <Tag value="Ad" severity="secondary" />
                       </div>
-                      <p class="mt-2 text-gray-600 dark:text-gray-300">
+                      <p class="mt-2 moh-text-muted">
                         Placeholder for a promoted card. Could be a course, sponsor, or affiliate link.
                       </p>
                       <Button label="Learn more" class="mt-3 w-full rounded-full" severity="secondary" />
@@ -269,12 +281,12 @@
                 </template>
               </Card>
 
-              <div class="px-2 text-xs text-gray-500 dark:text-gray-400 space-x-2">
+              <div class="px-2 text-xs moh-text-muted space-x-2">
                 <NuxtLink to="/about" class="hover:underline">About</NuxtLink>
                 <span>·</span>
-                <a href="#" class="hover:underline">Privacy</a>
+                <NuxtLink to="/privacy" class="hover:underline">Privacy</NuxtLink>
                 <span>·</span>
-                <a href="#" class="hover:underline">Terms</a>
+                <NuxtLink to="/terms" class="hover:underline">Terms</NuxtLink>
                 <span>·</span>
                 <span>&copy; {{ new Date().getFullYear() }} {{ siteConfig.name }}</span>
               </div>
@@ -297,8 +309,9 @@ import { primaryTintCssForUser } from '~/utils/theme-tint'
 const route = useRoute()
 const { initAuth, user } = useAuth()
 const { isAuthed, leftItems: leftNavItems, tabItems } = useAppNav()
-const { navCompactMode, isRightRailForcedHidden, isRightRailSearchHidden, title } = useLayoutRules(route)
+const { hideTopBar, navCompactMode, isRightRailForcedHidden, isRightRailSearchHidden, title } = useLayoutRules(route)
 const { header: appHeader } = useAppHeader()
+const notifBadge = useNotificationsBadge()
 
 const headerTitle = computed(() => {
   const t = (appHeader.value?.title ?? '').trim()

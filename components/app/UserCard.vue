@@ -4,7 +4,7 @@
       ref="buttonEl"
       type="button"
       :class="[
-        'group w-full rounded-xl hover:bg-gray-100 dark:hover:bg-zinc-900 text-left',
+        'group w-full rounded-xl border border-gray-200 bg-gray-50/80 text-left transition-colors hover:bg-gray-100 dark:border-zinc-800 dark:bg-zinc-950/40 dark:hover:bg-zinc-900',
         // Default to compact on smaller screens (rail is narrow until xl).
         // `compact` forces compact even at xl+ (e.g. messages/test routes).
         compact ? 'p-1' : 'p-1 xl:p-2'
@@ -12,22 +12,12 @@
       @click="toggleMenu"
     >
       <div class="flex items-center gap-3">
-        <div
-          :class="[
-            'shrink-0 overflow-hidden rounded-full bg-gray-200 dark:bg-zinc-800',
-            compact ? 'mx-auto h-10 w-10' : 'mx-auto xl:mx-0 h-10 w-10'
-          ]"
-          aria-hidden="true"
-        >
-          <img
-            v-if="avatarUrl"
-            :src="avatarUrl"
-            alt=""
-            class="h-full w-full object-cover"
-            loading="lazy"
-            decoding="async"
-          >
-        </div>
+        <AppAvatarCircle
+          :src="avatarUrl"
+          :name="user?.name ?? null"
+          :username="user?.username ?? null"
+          :size-class="compact ? 'mx-auto h-10 w-10' : 'mx-auto xl:mx-0 h-10 w-10'"
+        />
 
         <div
           :class="[
@@ -43,7 +33,7 @@
               </div>
               <div class="text-sm text-gray-500 dark:text-gray-400 truncate">{{ handle }}</div>
             </div>
-            <i class="pi pi-ellipsis-h text-gray-500 dark:text-gray-400" aria-hidden="true" />
+            <i class="pi pi-ellipsis-v text-gray-500 dark:text-gray-400" aria-hidden="true" />
           </div>
         </div>
       </div>
@@ -70,8 +60,8 @@ const props = defineProps<{
   compact: boolean
 }>()
 
-const { user, logout } = useAuth()
-const { assetUrl } = useAssets()
+const { user } = useAuth()
+const { menuItems, confirmVisible, confirmLogout } = useUserMenu()
 
 const displayName = computed(() => user.value?.name || 'Account')
 const handle = computed(() => {
@@ -80,47 +70,15 @@ const handle = computed(() => {
   return username ? `@${username}` : '@—'
 })
 
-const avatarUrl = computed(() => assetUrl(user.value?.avatarKey))
+const avatarUrl = computed(() => (user.value?.avatarUrl ?? null))
 
 const menuRef = ref()
 const buttonEl = ref<HTMLElement | null>(null)
-const confirmVisible = ref(false)
-
-const menuItems = computed<MenuItem[]>(() => [
-  ...(user.value?.siteAdmin
-    ? ([
-        {
-          label: 'Admin',
-          icon: 'pi pi-shield',
-          command: () => navigateTo('/admin')
-        },
-        { separator: true }
-      ] as MenuItem[])
-    : []),
-  {
-    label: 'Account settings',
-    icon: 'pi pi-cog',
-    command: () => navigateTo('/settings')
-  },
-  { separator: true },
-  {
-    label: 'Log out',
-    icon: 'pi pi-sign-out',
-    command: () => {
-      confirmVisible.value = true
-    }
-  }
-])
 
 function toggleMenu(event: Event) {
   // PrimeVue Menu expects the click event to position the popup.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   ;(menuRef.value as any)?.toggle(event)
-}
-
-async function confirmLogout() {
-  confirmVisible.value = false
-  await logout()
 }
 </script>
 

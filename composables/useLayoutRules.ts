@@ -1,14 +1,20 @@
 export function useLayoutRules(route = useRoute()) {
+  const hideTopBar = computed(() => {
+    // Prefer per-route meta for flexibility.
+    if (route.meta?.hideTopBar === true) return true
+    return false
+  })
+
   const navCompactMode = computed(() => {
     // Some routes need more horizontal space in the center column.
     // Force the left nav to remain compact (even on desktop) for those routes.
-    const forced = ['/messages', '/test', '/admin']
+    const forced: string[] = []
     return forced.some((p) => route.path === p || route.path.startsWith(`${p}/`))
   })
 
   const isRightRailForcedHidden = computed(() => {
     // On messages we want the center column to be as wide as possible.
-    const forced = ['/messages', '/admin']
+    const forced = ['/messages', '/admin', '/settings']
     return forced.some((p) => route.path === p || route.path.startsWith(`${p}/`))
   })
 
@@ -24,6 +30,6 @@ export function useLayoutRules(route = useRoute()) {
     return (route.meta?.title as string) || 'Home'
   })
 
-  return { navCompactMode, isRightRailForcedHidden, isRightRailSearchHidden, title }
+  return { hideTopBar, navCompactMode, isRightRailForcedHidden, isRightRailSearchHidden, title }
 }
 

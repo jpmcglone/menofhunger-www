@@ -3,6 +3,7 @@ export type TinyTooltipConfig =
   | {
       value: string
       class: string
+      position?: 'top' | 'bottom' | 'left' | 'right'
     }
 
 /**
@@ -13,6 +14,7 @@ export function tinyTooltip(text: string | null | undefined): TinyTooltipConfig 
   if (!import.meta.client) return null
   const value = (text ?? '').trim()
   if (!value) return null
-  return { value, class: 'moh-tooltip-tiny' }
+  // Keep these consistent everywhere: centered under the target, no arrow.
+  return { value, class: 'moh-tooltip-tiny', position: 'bottom' }
 }
 

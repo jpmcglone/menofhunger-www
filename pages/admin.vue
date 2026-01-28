@@ -12,6 +12,25 @@
         <div class="text-lg font-semibold">Admin</div>
 
         <div class="mt-4 space-y-2">
+          <button type="button" class="w-full text-left" @click="selectedArea = 'site'">
+            <div
+              :class="[
+                'w-full rounded-xl border p-3 transition-colors',
+                selectedArea === 'site'
+                  ? 'border-gray-300 bg-gray-50 dark:border-zinc-700 dark:bg-zinc-900'
+                  : 'border-gray-200 hover:bg-gray-50 dark:border-zinc-800 dark:hover:bg-zinc-900'
+              ]"
+            >
+              <div class="flex items-center gap-3">
+                <i class="pi pi-cog text-lg" aria-hidden="true" />
+                <div class="min-w-0 flex-1">
+                  <div class="font-semibold truncate">Site settings</div>
+                  <div class="text-sm text-gray-600 dark:text-gray-300 truncate">Configure post rate limits</div>
+                </div>
+              </div>
+            </div>
+          </button>
+
           <button type="button" class="w-full text-left" @click="selectedArea = 'users'">
             <div
               :class="[
@@ -49,7 +68,13 @@
                 />
                 <div class="min-w-0">
                   <div class="font-semibold truncate">
-                    {{ selectedArea === 'users' ? 'Users' : 'Select an admin area' }}
+                    {{
+                      selectedArea === 'users'
+                        ? 'Users'
+                        : selectedArea === 'site'
+                          ? 'Site settings'
+                          : 'Select an admin area'
+                    }}
                   </div>
                   <div class="text-xs text-gray-500 dark:text-gray-400 truncate">
                     Admin-only tools.
@@ -61,6 +86,45 @@
 
           <div class="flex-1 overflow-y-auto py-4">
             <div class="px-4">
+              <div v-if="selectedArea === 'site'" class="space-y-6">
+                <div class="space-y-2">
+                  <div class="text-sm font-semibold text-gray-900 dark:text-gray-50">Post rate limits</div>
+                  <div class="text-sm text-gray-600 dark:text-gray-300">
+                    Configure how frequently users can post.
+                  </div>
+                </div>
+
+                <div v-if="siteError" class="text-sm text-red-700 dark:text-red-300">
+                  {{ siteError }}
+                </div>
+
+                <div v-else class="grid gap-4 sm:grid-cols-2">
+                  <div class="space-y-2">
+                    <label class="text-sm font-medium text-gray-700 dark:text-gray-200">Posts</label>
+                    <InputNumber v-model="sitePostsPerWindow" :min="1" :max="100" class="w-full" />
+                    <div class="text-xs text-gray-500 dark:text-gray-400">Max posts in the window.</div>
+                  </div>
+
+                  <div class="space-y-2">
+                    <label class="text-sm font-medium text-gray-700 dark:text-gray-200">Window (minutes)</label>
+                    <InputNumber v-model="siteWindowMinutes" :min="1" :max="1440" class="w-full" />
+                    <div class="text-xs text-gray-500 dark:text-gray-400">Rolling window size.</div>
+                  </div>
+                </div>
+
+                <div class="flex items-center gap-3">
+                  <Button
+                    label="Save"
+                    icon="pi pi-check"
+                    severity="secondary"
+                    :loading="siteSaving"
+                    :disabled="siteSaving"
+                    @click="saveSiteConfig"
+                  />
+                  <div v-if="siteSaved" class="text-sm text-green-700 dark:text-green-300">Saved.</div>
+                </div>
+              </div>
+
               <div v-if="selectedArea === 'users'" class="space-y-4">
                 <div class="flex items-center gap-2">
                   <InputText
@@ -88,32 +152,55 @@
                 </div>
 
                 <div v-else class="divide-y divide-gray-200 dark:divide-zinc-800 -mx-4">
-                  <button
+                  <div
                     v-for="u in results"
                     :key="u.id"
-                    type="button"
-                    class="w-full text-left"
-                    @click="openEdit(u)"
+                    role="button"
+                    tabindex="0"
+                    class="px-4 py-3 hover:bg-gray-50 dark:hover:bg-zinc-900 transition-colors cursor-pointer"
+                    @click="onUserRowClick(u)"
+                    @keydown.enter.prevent="onUserRowClick(u)"
                   >
-                    <div class="px-4 py-3 hover:bg-gray-50 dark:hover:bg-zinc-900 transition-colors">
-                      <div class="flex items-start justify-between gap-3">
+                    <div class="flex items-start justify-between gap-3">
+                      <div class="flex min-w-0 items-start gap-3">
+                        <AppAvatarCircle
+                          :src="u.avatarUrl ?? null"
+                          :name="u.name"
+                          :username="u.username"
+                          size-class="h-10 w-10"
+                          bg-class="moh-surface"
+                        />
+
                         <div class="min-w-0">
-                          <div class="flex items-center gap-2 min-w-0">
-                            <div class="font-semibold truncate">
-                              {{ u.name || u.username || 'User' }}
+                          <template v-if="u.usernameIsSet && u.username">
+                            <div class="flex items-center gap-2 min-w-0">
+                              <div class="font-semibold truncate">
+                                {{ u.name || u.username }}
+                              </div>
+                              <AppVerifiedBadge :status="u.verifiedStatus" :premium="u.premium" />
                             </div>
-                            <AppVerifiedBadge :status="u.verifiedStatus" :premium="u.premium" />
-                          </div>
-                          <div class="text-sm text-gray-600 dark:text-gray-300 truncate">
-                            @{{ u.username || '—' }}
-                            <span class="mx-2 text-gray-400">·</span>
-                            <span class="font-mono">{{ u.phone }}</span>
-                          </div>
+                            <div class="text-sm text-gray-600 dark:text-gray-300 truncate">
+                              @{{ u.username }}
+                            </div>
+                          </template>
+                          <template v-else>
+                            <div class="font-semibold text-gray-900 dark:text-gray-50">
+                              Username not set
+                            </div>
+                          </template>
                         </div>
-                        <i class="pi pi-pencil text-gray-400" aria-hidden="true" />
                       </div>
+
+                      <button
+                        type="button"
+                        class="shrink-0 rounded-full p-2 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-zinc-800 dark:hover:text-gray-200"
+                        aria-label="Edit user"
+                        @click.stop="openEdit(u)"
+                      >
+                        <i class="pi pi-pencil" aria-hidden="true" />
+                      </button>
                     </div>
-                  </button>
+                  </div>
                 </div>
 
                 <Dialog
@@ -132,7 +219,7 @@
                     <div class="space-y-2">
                       <label class="text-sm font-medium text-gray-700 dark:text-gray-200">Username</label>
                       <div class="flex items-center gap-2">
-                        <InputText v-model="editUsername" class="w-full font-mono" placeholder="jpmcglone" />
+                        <InputText v-model="editUsername" class="w-full font-mono" placeholder="username" />
                         <div class="shrink-0 w-8 flex items-center justify-center">
                           <i v-if="usernameAvailability === 'checking'" class="pi pi-spin pi-spinner text-gray-500" aria-hidden="true" />
                           <i
@@ -162,7 +249,14 @@
 
                     <div class="space-y-2">
                       <label class="text-sm font-medium text-gray-700 dark:text-gray-200">Bio</label>
-                      <Textarea v-model="editBio" class="w-full" rows="4" autoResize :maxlength="160" />
+                      <Textarea
+                        v-model="editBio"
+                        class="w-full"
+                        rows="4"
+                        autoResize
+                        :maxlength="160"
+                        placeholder="Tell people a bit about yourself…"
+                      />
                     </div>
 
                     <div class="space-y-2">
@@ -282,9 +376,15 @@ usePageSeo({
   noindex: true,
 })
 
-type AdminArea = 'users'
+type AdminArea = 'users' | 'site'
 
 const selectedArea = ref<AdminArea | null>('users')
+
+type SiteConfig = {
+  id: number
+  postsPerWindow: number
+  windowSeconds: number
+}
 
 type AdminUser = {
   id: string
@@ -294,6 +394,7 @@ type AdminUser = {
   usernameIsSet: boolean
   name: string | null
   bio: string | null
+  avatarUrl?: string | null
   siteAdmin: boolean
   premium: boolean
   verifiedStatus: 'none' | 'identity' | 'manual'
@@ -303,6 +404,52 @@ type AdminUser = {
 
 const { apiFetchData } = useApiClient()
 import { getApiErrorMessage } from '~/utils/api-error'
+
+const siteCfg = ref<SiteConfig | null>(null)
+const siteSaving = ref(false)
+const siteSaved = ref(false)
+const siteError = ref<string | null>(null)
+const sitePostsPerWindow = ref<number>(5)
+const siteWindowMinutes = ref<number>(5)
+
+watch(
+  () => selectedArea.value,
+  async (area) => {
+    if (area !== 'site') return
+    if (siteCfg.value) return
+    siteError.value = null
+    try {
+      const res = await apiFetchData<{ config: SiteConfig }>('/admin/site-config', { method: 'GET' })
+      siteCfg.value = res.config
+      sitePostsPerWindow.value = res.config.postsPerWindow ?? 5
+      siteWindowMinutes.value = Math.max(1, Math.round((res.config.windowSeconds ?? 300) / 60))
+    } catch (e: unknown) {
+      siteError.value = getApiErrorMessage(e) || 'Failed to load site settings.'
+    }
+  },
+  { flush: 'post' },
+)
+
+async function saveSiteConfig() {
+  siteSaved.value = false
+  siteError.value = null
+  siteSaving.value = true
+  try {
+    const res = await apiFetchData<{ config: SiteConfig }>('/admin/site-config', {
+      method: 'PATCH',
+      body: {
+        postsPerWindow: sitePostsPerWindow.value,
+        windowSeconds: Math.max(10, Math.round(siteWindowMinutes.value * 60)),
+      },
+    })
+    siteCfg.value = res.config
+    siteSaved.value = true
+  } catch (e: unknown) {
+    siteError.value = getApiErrorMessage(e) || 'Failed to save site settings.'
+  } finally {
+    siteSaving.value = false
+  }
+}
 
 const userQuery = ref('')
 const searching = ref(false)
@@ -480,6 +627,17 @@ function openEdit(u: AdminUser) {
   editVerifiedStatus.value = u.verifiedStatus ?? 'none'
   resetUsernameCheck()
   editOpen.value = true
+}
+
+function onUserRowClick(u: AdminUser) {
+  // Row click: go to public profile when possible.
+  // If username isn't set, there is no public profile; open edit instead.
+  const username = (u.username ?? '').trim()
+  if (u.usernameIsSet && username) {
+    void navigateTo(`/u/${encodeURIComponent(username)}`)
+    return
+  }
+  openEdit(u)
 }
 
 async function saveUser() {

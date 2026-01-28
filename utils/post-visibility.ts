@@ -5,6 +5,7 @@ export type ProfilePostsFilter = 'all' | 'public' | PostVisibility
 export function visibilityTagLabel(v: PostVisibility): string | null {
   if (v === 'verifiedOnly') return 'Verified'
   if (v === 'premiumOnly') return 'Premium'
+  if (v === 'onlyMe') return 'Only me'
   return null
 }
 
@@ -14,6 +15,9 @@ export function visibilityTagClasses(v: PostVisibility): string {
   }
   if (v === 'premiumOnly') {
     return 'border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-300'
+  }
+  if (v === 'onlyMe') {
+    return 'border-violet-200 bg-violet-50 text-violet-800 dark:border-violet-800 dark:bg-violet-950/40 dark:text-violet-300'
   }
   return ''
 }
@@ -38,6 +42,13 @@ export function filterPillClasses(kind: ProfilePostsFilter, active: boolean): st
     return active
       ? 'border-sky-600 bg-sky-600 text-white dark:border-sky-500 dark:bg-sky-500 dark:text-black'
       : 'border-sky-200 text-sky-700 hover:bg-sky-50 dark:border-sky-800 dark:text-sky-300 dark:hover:bg-sky-950/40'
+  }
+
+  if (kind === 'onlyMe') {
+    // Only me: purple
+    return active
+      ? 'border-violet-600 bg-violet-600 text-white dark:border-violet-500 dark:bg-violet-500 dark:text-black'
+      : 'border-violet-200 text-violet-800 hover:bg-violet-50 dark:border-violet-800 dark:text-violet-300 dark:hover:bg-violet-950/40'
   }
 
   // Premium: orange

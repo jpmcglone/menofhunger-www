@@ -1,7 +1,7 @@
 <template>
   <!-- Single-line, X-style: Name (badge) @username · date -->
   <div class="flex min-w-0 items-baseline gap-2 leading-[1.15] flex-nowrap">
-    <div class="flex min-w-0 items-baseline gap-1.5 flex-nowrap">
+    <div class="flex min-w-0 items-center gap-1.5 flex-nowrap">
       <NuxtLink
         v-if="profilePath"
         :to="profilePath"
@@ -17,7 +17,7 @@
       <NuxtLink
         v-if="profilePath"
         :to="profilePath"
-        class="inline-flex shrink-0"
+        class="inline-flex shrink-0 items-center"
         aria-label="View profile (verified badge)"
       >
         <AppVerifiedBadge :status="verifiedStatus" :premium="premium" />

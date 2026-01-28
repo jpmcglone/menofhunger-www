@@ -70,6 +70,12 @@ export async function useUserPosts(usernameLower: Ref<string>, opts: { enabled?:
     void fetch(next)
   }
 
+  function removePost(id: string) {
+    const pid = (id ?? '').trim()
+    if (!pid) return
+    posts.value = posts.value.filter((p) => p.id !== pid)
+  }
+
   // Initial SSR-friendly load (All)
   if (enabled.value) {
     const { data: initial, error: initialErr } = await useAsyncData(
@@ -113,6 +119,6 @@ export async function useUserPosts(usernameLower: Ref<string>, opts: { enabled?:
     { flush: 'post' }
   )
 
-  return { filter, posts, counts, loading, error, viewerIsVerified, viewerIsPremium, ctaKind, setFilter }
+  return { filter, posts, counts, loading, error, viewerIsVerified, viewerIsPremium, ctaKind, setFilter, removePost }
 }
 

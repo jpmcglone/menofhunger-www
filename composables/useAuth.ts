@@ -2,19 +2,22 @@ export type AuthUser = {
   id: string
   createdAt?: string
   phone: string
+  email?: string | null
   username?: string | null
   usernameIsSet?: boolean
   name?: string | null
   bio?: string | null
+  birthdate?: string | null
+  interests?: string[]
+  menOnlyConfirmed?: boolean
   siteAdmin?: boolean
   premium?: boolean
+  followVisibility?: 'all' | 'verified' | 'premium' | 'none'
   verifiedStatus?: 'none' | 'identity' | 'manual'
   verifiedAt?: string | null
   unverifiedAt?: string | null
-  avatarKey?: string | null
-  avatarUpdatedAt?: string | null
-  bannerKey?: string | null
-  bannerUpdatedAt?: string | null
+  avatarUrl?: string | null
+  bannerUrl?: string | null
 }
 
 let clientMePromise: Promise<AuthUser | null> | null = null
@@ -79,6 +82,42 @@ export function useAuth() {
 
     user.value = null
     didAttempt.value = true
+
+    // Reset viewer-specific client caches so we never show stale authed-only data.
+    // (Safe even if these stores haven't been initialized yet.)
+    useState<Record<string, boolean>>('post-boosts', () => ({})).value = {}
+    useState<Record<string, import('~/types/api').FollowRelationship>>('follow-state', () => ({})).value = {}
+    useState<string | null>('follow-state-error', () => null).value = null
+
+    useState<import('~/types/api').FeedPost[]>('posts-feed', () => []).value = []
+    useState<string | null>('posts-feed-next-cursor', () => null).value = null
+    useState<boolean>('posts-feed-loading', () => false).value = false
+    useState<string | null>('posts-feed-error', () => null).value = null
+
+    useState<import('~/types/api').FeedPost[]>('posts-only-me', () => []).value = []
+    useState<string | null>('posts-only-me-next-cursor', () => null).value = null
+    useState<boolean>('posts-only-me-loading', () => false).value = false
+    useState<string | null>('posts-only-me-error', () => null).value = null
+
+    useState<import('~/composables/useAppHeader').AppHeaderState>('app-header', () => null).value = null
+
+    // Redirect away from pages that effectively require auth.
+    if (import.meta.client) {
+      const route = useRoute()
+      const path = String(route.path || '')
+      const layout = (route.meta as any)?.layout as string | undefined
+
+      const authAllowed = new Set(['/home', '/explore', '/notifications'])
+      const isAdmin = path === '/admin' || path.startsWith('/admin/')
+
+      const requiresAuth =
+        isAdmin ||
+        (layout === 'app' && !authAllowed.has(path))
+
+      if (requiresAuth && path !== '/home') {
+        await navigateTo('/home', { replace: true })
+      }
+    }
   }
 
   return { user, me, ensureLoaded, initAuth, logout }

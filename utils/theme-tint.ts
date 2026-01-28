@@ -107,16 +107,17 @@ export function primaryPaletteToCssVars(p: PrimaryPalette, selector: string, con
 
 export function primaryTintCssForUser(user: { verifiedStatus?: string | null; premium?: boolean | null } | null): string {
   if (user?.premium) {
-    // Light: white text; Dark: black text (matches our UI treatment).
+    // Premium gold works best with dark text in both modes.
     return (
-      primaryPaletteToCssVars(PRIMARY_PREMIUM_ORANGE, 'html', '#ffffff') +
-      primaryPaletteToCssVars(PRIMARY_PREMIUM_ORANGE, 'html.dark', '#000000')
+      primaryPaletteToCssVars(PRIMARY_PREMIUM_ORANGE, 'html', '#111827') +
+      primaryPaletteToCssVars(PRIMARY_PREMIUM_ORANGE, 'html.dark', '#111827')
     )
   }
   if (user?.verifiedStatus && user.verifiedStatus !== 'none') {
+    // Verified blue works best with white text in both modes (X-like).
     return (
       primaryPaletteToCssVars(PRIMARY_VERIFIED_BLUE, 'html', '#ffffff') +
-      primaryPaletteToCssVars(PRIMARY_VERIFIED_BLUE, 'html.dark', '#000000')
+      primaryPaletteToCssVars(PRIMARY_VERIFIED_BLUE, 'html.dark', '#ffffff')
     )
   }
   // Default: follow text color (light vs dark).

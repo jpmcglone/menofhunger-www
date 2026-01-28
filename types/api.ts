@@ -13,7 +13,7 @@ export type ApiErrorEnvelope = {
   }
 }
 
-export type PostVisibility = 'public' | 'verifiedOnly' | 'premiumOnly'
+export type PostVisibility = 'public' | 'verifiedOnly' | 'premiumOnly' | 'onlyMe'
 
 export type PostAuthor = {
   id: string
@@ -21,8 +21,7 @@ export type PostAuthor = {
   name: string | null
   premium: boolean
   verifiedStatus: 'none' | 'identity' | 'manual'
-  avatarKey: string | null
-  avatarUpdatedAt: string | null
+  avatarUrl: string | null
 }
 
 export type FeedPost = {
@@ -55,5 +54,33 @@ export type GetUserPostsResponse = {
 
 export type CreatePostResponse = {
   post: FeedPost
+}
+
+export type FollowVisibility = 'all' | 'verified' | 'premium' | 'none'
+
+export type FollowRelationship = {
+  viewerFollowsUser: boolean
+  userFollowsViewer: boolean
+}
+
+export type FollowSummaryResponse = FollowRelationship & {
+  canView: boolean
+  followerCount: number | null
+  followingCount: number | null
+}
+
+export type FollowListUser = {
+  id: string
+  username: string | null
+  name: string | null
+  premium: boolean
+  verifiedStatus: 'none' | 'identity' | 'manual'
+  avatarUrl: string | null
+  relationship: FollowRelationship
+}
+
+export type GetFollowsListResponse = {
+  users: FollowListUser[]
+  nextCursor: string | null
 }
 
