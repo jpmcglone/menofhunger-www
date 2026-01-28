@@ -2,6 +2,9 @@
   <!-- Two scrollers:
        - Left rail (independent, only scrolls when pointer is over it)
        - Main scroller (center + right share scroll) -->
+  <ClientOnly>
+    <Toast position="bottom-center" />
+  </ClientOnly>
   <div class="h-dvh overflow-hidden bg-white text-gray-900 dark:bg-black dark:text-gray-50">
     <div class="mx-auto flex h-full w-full max-w-6xl px-2 sm:px-4 xl:max-w-7xl">
       <!-- Left Nav (independent scroll) -->
@@ -83,8 +86,21 @@
           class="no-scrollbar min-w-0 flex-1 overflow-y-auto overscroll-y-none border-r border-gray-200 dark:border-zinc-800"
         >
           <div class="sticky top-0 z-10 border-b border-gray-200 bg-white/90 backdrop-blur dark:border-zinc-800 dark:bg-black/80">
-            <div class="px-4 py-3">
-              <h1 class="text-xl font-bold tracking-tight">{{ title }}</h1>
+            <div class="px-4 py-3 flex items-center justify-between gap-3">
+              <div class="min-w-0 flex items-center gap-2">
+                <h1 class="min-w-0 truncate text-xl font-bold tracking-tight">
+                  {{ headerTitle }}
+                </h1>
+                <AppVerifiedBadge
+                  v-if="appHeader?.verifiedStatus"
+                  :status="appHeader.verifiedStatus"
+                  :premium="Boolean(appHeader?.premium)"
+                />
+              </div>
+              <div v-if="typeof appHeader?.postCount === 'number'" class="shrink-0 text-sm text-gray-600 dark:text-gray-300">
+                <span class="font-semibold tabular-nums">{{ formatCompactNumber(appHeader.postCount) }}</span>
+                <span class="ml-1">posts</span>
+              </div>
             </div>
           </div>
 
@@ -276,15 +292,37 @@
 import { siteConfig } from '~/config/site'
 import logoLightSmall from '~/assets/images/logo-white-bg-small.png'
 import logoDarkSmall from '~/assets/images/logo-black-bg-small.png'
+import { primaryTintCssForUser } from '~/utils/theme-tint'
 
 const route = useRoute()
-const { initAuth } = useAuth()
+const { initAuth, user } = useAuth()
 const { isAuthed, leftItems: leftNavItems, tabItems } = useAppNav()
 const { navCompactMode, isRightRailForcedHidden, isRightRailSearchHidden, title } = useLayoutRules(route)
+const { header: appHeader } = useAppHeader()
+
+const headerTitle = computed(() => {
+  const t = (appHeader.value?.title ?? '').trim()
+  return t || title.value
+})
+
+function formatCompactNumber(n: number): string {
+  try {
+    return new Intl.NumberFormat(undefined, { notation: 'compact', maximumFractionDigits: 1 }).format(n)
+  } catch {
+    return String(n)
+  }
+}
 
 // Centralized auth hydration lives in `useAuth()`.
 await initAuth()
 // nav items are provided by useAppNav() so mobile + desktop stay in sync
+
+// Dynamic theme tint: default (orange) for logged out/unverified, verified = blue, premium = orange.
+// We override PrimeVue semantic primary tokens via CSS variables so the entire UI tint follows status.
+const primaryCssVars = computed(() => primaryTintCssForUser(user.value ?? null))
+useHead({
+  style: [{ key: 'moh-primary-tint', textContent: primaryCssVars }],
+})
 
 const middleScrollerEl = ref<HTMLElement | null>(null)
 const rightScrollerEl = ref<HTMLElement | null>(null)

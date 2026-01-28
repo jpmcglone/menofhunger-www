@@ -90,3 +90,30 @@ html.moh-landing.dark {
   width: 0;
   height: 0;
 }
+
+/* PrimeVue tooltip (used by verified badge): simple black + small white text */
+.p-tooltip.moh-tooltip .p-tooltip-text {
+  background: #000 !important;
+  color: #fff !important;
+  font-size: 11px;
+  line-height: 1.2;
+  padding: 6px 8px;
+  border-radius: 10px;
+}
+.p-tooltip.moh-tooltip .p-tooltip-arrow {
+  border-color: #000 !important;
+}
+
+/* Extra-small tooltip (X-like) for action icons */
+.p-tooltip.moh-tooltip-tiny .p-tooltip-text {
+  background: #000 !important;
+  color: #fff !important;
+  font-size: 10px;
+  line-height: 1.1;
+  padding: 5px 7px;
+  border-radius: 10px;
+}
+.p-tooltip.moh-tooltip-tiny .p-tooltip-arrow {
+  /* Hide arrow to avoid the little square artifact */
+  display: none !important;
+}

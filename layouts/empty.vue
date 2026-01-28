@@ -14,9 +14,19 @@
             class="text-gray-800 hover:underline dark:text-gray-200"
           >John McGlone</a>
         </p>
-        <ClientOnly>
-          <AppThemeModeMenu />
-        </ClientOnly>
+        <div class="flex items-center gap-3">
+          <a
+            :href="siteConfig.social.xUrl"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="text-sm text-gray-700 hover:underline dark:text-gray-300"
+          >
+            Follow on X
+          </a>
+          <ClientOnly>
+            <AppThemeModeMenu />
+          </ClientOnly>
+        </div>
       </div>
     </footer>
   </div>

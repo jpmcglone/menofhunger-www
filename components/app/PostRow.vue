@@ -1,5 +1,5 @@
 <template>
-  <div class="border-b border-gray-200/60 px-4 py-4 hover:bg-gray-50 dark:border-zinc-800/60 dark:hover:bg-zinc-950/40">
+  <div class="border-b border-gray-200/60 px-4 py-4 hover:bg-gray-50 dark:border-zinc-800/60 dark:hover:bg-white/5 dark:hover:shadow-[0_0_0_1px_rgba(255,255,255,0.06)] transition-colors">
     <div class="flex gap-3">
       <NuxtLink
         v-if="authorProfilePath"
@@ -31,8 +31,25 @@
           <span v-else class="font-semibold truncate">
             {{ post.author.name || post.author.username || 'User' }}
           </span>
-          <AppVerifiedBadge :status="post.author.verifiedStatus" />
-          <span class="text-sm text-gray-500 dark:text-gray-400 truncate">
+          <NuxtLink
+            v-if="authorProfilePath"
+            :to="authorProfilePath"
+            class="inline-flex"
+            aria-label="View profile (verified badge)"
+          >
+            <AppVerifiedBadge :status="post.author.verifiedStatus" :premium="post.author.premium" />
+          </NuxtLink>
+          <AppVerifiedBadge v-else :status="post.author.verifiedStatus" :premium="post.author.premium" />
+
+          <NuxtLink
+            v-if="authorProfilePath"
+            :to="authorProfilePath"
+            class="text-sm text-gray-500 dark:text-gray-400 truncate hover:underline underline-offset-2"
+            :aria-label="`View @${post.author.username} profile`"
+          >
+            @{{ post.author.username || '—' }}
+          </NuxtLink>
+          <span v-else class="text-sm text-gray-500 dark:text-gray-400 truncate">
             @{{ post.author.username || '—' }}
           </span>
           <span
@@ -43,33 +60,127 @@
             {{ visibilityTag }}
           </span>
           <span class="text-sm text-gray-500 dark:text-gray-400">·</span>
-          <span class="text-sm text-gray-500 dark:text-gray-400">
+          <NuxtLink
+            :to="postPermalink"
+            class="text-sm text-gray-500 dark:text-gray-400 hover:underline underline-offset-2"
+            :aria-label="`View post ${post.id}`"
+          >
             {{ new Date(post.createdAt).toLocaleString() }}
-          </span>
+          </NuxtLink>
         </div>
 
         <p class="mt-2 whitespace-pre-wrap text-gray-900 dark:text-gray-100">
           {{ post.body }}
         </p>
 
-        <div class="mt-3 flex items-center text-gray-500 dark:text-gray-400">
-          <div class="flex items-center gap-6">
-            <Button icon="pi pi-comment" text rounded severity="secondary" aria-label="Reply" />
-            <Button icon="pi pi-refresh" text rounded severity="secondary" aria-label="Repost" />
-            <Button icon="pi pi-heart" text rounded severity="secondary" aria-label="Like" />
+        <div class="mt-3 flex items-center justify-between text-gray-500 dark:text-gray-400">
+          <div class="flex items-center gap-2">
+            <button
+              type="button"
+              class="inline-flex h-9 w-9 items-center justify-center rounded-full transition-colors hover:bg-gray-100 dark:hover:bg-zinc-900 cursor-pointer"
+              aria-label="Comment"
+              v-tooltip.bottom="commentTooltip"
+              @click="noop"
+            >
+              <i class="pi pi-comment text-[18px]" aria-hidden="true" />
+            </button>
+
+            <button
+              type="button"
+              class="inline-flex h-9 w-9 items-center justify-center rounded-full transition-colors hover:bg-gray-100 dark:hover:bg-zinc-900"
+              :class="isAuthed ? 'cursor-pointer' : 'cursor-default opacity-60'"
+              :aria-label="isBoosted ? 'Remove upvote' : 'Upvote'"
+              :disabled="!isAuthed"
+              v-tooltip.bottom="upvoteTooltip"
+              @click="toggleBoost"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                class="h-5 w-5"
+                aria-hidden="true"
+                :style="isBoosted ? { color: 'var(--p-primary-color)' } : undefined"
+              >
+                <!-- Imgur-ish upvote: arrowhead + stem -->
+                <path
+                  v-if="isBoosted"
+                  fill="currentColor"
+                  d="M12 4.5L3.75 12.25h5.25V20h6V12.25h5.25L12 4.5z"
+                />
+                <path
+                  v-else
+                  d="M12 4.5L3.75 12.25h5.25V20h6V12.25h5.25L12 4.5z"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.9"
+                  stroke-linejoin="round"
+                />
+              </svg>
+            </button>
           </div>
-          <div class="flex-1" />
-          <Button icon="pi pi-share-alt" text rounded severity="secondary" aria-label="Share" />
+
+          <div class="relative flex items-center justify-end">
+            <button
+              type="button"
+              class="inline-flex h-9 w-9 items-center justify-center rounded-full transition-colors hover:bg-gray-100 dark:hover:bg-zinc-900 cursor-pointer"
+              aria-label="Share"
+              v-tooltip.bottom="shareTooltip"
+              @click="toggleShareMenu"
+            >
+              <svg viewBox="0 0 24 24" class="h-5 w-5" aria-hidden="true">
+                <!-- Twitter-ish share: arrow up out of tray -->
+                <path
+                  d="M12 3v10"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.9"
+                  stroke-linecap="round"
+                />
+                <path
+                  d="M7.5 7.5L12 3l4.5 4.5"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.9"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+                <path
+                  d="M5 11.5v7a1.5 1.5 0 0 0 1.5 1.5h11A1.5 1.5 0 0 0 19 18.5v-7"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.9"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+              </svg>
+            </button>
+            <Menu ref="shareMenuRef" :model="shareMenuItems" popup />
+          </div>
         </div>
       </div>
 
-      <Button icon="pi pi-ellipsis-h" text rounded severity="secondary" aria-label="More" />
+      <div class="shrink-0">
+        <Button
+          icon="pi pi-ellipsis-h"
+          text
+          rounded
+          severity="secondary"
+          aria-label="More"
+          v-tooltip.bottom="moreTooltip"
+          @click="toggleMoreMenu"
+        />
+        <Menu ref="moreMenuRef" :model="moreMenuItems" popup />
+      </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import type { FeedPost } from '~/types/api'
+import { visibilityTagClasses, visibilityTagLabel } from '~/utils/post-visibility'
+import type { MenuItem } from 'primevue/menuitem'
+import { siteConfig } from '~/config/site'
+import { tinyTooltip } from '~/utils/tiny-tooltip'
+import { useToast as usePrimeToast } from 'primevue/usetoast'
 
 const props = defineProps<{
   post: FeedPost
@@ -77,6 +188,16 @@ const props = defineProps<{
 
 const post = computed(() => props.post)
 const { assetUrl } = useAssets()
+const { user } = useAuth()
+const isAuthed = computed(() => Boolean(user.value?.id))
+
+const upvoteTooltip = computed(() => {
+  const text = isAuthed.value ? (isBoosted.value ? 'Unboost' : 'Boost') : 'Log in to boost'
+  return tinyTooltip(text)
+})
+const shareTooltip = computed(() => tinyTooltip('Share'))
+const moreTooltip = computed(() => tinyTooltip('More'))
+const commentTooltip = computed(() => tinyTooltip('Comment'))
 
 const authorProfilePath = computed(() => {
   const username = (post.value.author.username ?? '').trim()
@@ -91,19 +212,106 @@ const authorAvatarUrl = computed(() => {
 })
 
 const visibilityTag = computed(() => {
-  if (post.value.visibility === 'verifiedOnly') return 'Verified'
-  if (post.value.visibility === 'premiumOnly') return 'Premium'
-  return null
+  return visibilityTagLabel(post.value.visibility)
 })
 
 const visibilityTagClass = computed(() => {
-  if (post.value.visibility === 'verifiedOnly') {
-    return 'border-sky-200 bg-sky-50 text-sky-700 dark:border-sky-800 dark:bg-sky-950/40 dark:text-sky-300'
-  }
-  if (post.value.visibility === 'premiumOnly') {
-    return 'border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-300'
-  }
-  return ''
+  return visibilityTagClasses(post.value.visibility)
 })
+
+const postPermalink = computed(() => `/p/${encodeURIComponent(post.value.id)}`)
+const postShareUrl = computed(() => `${siteConfig.url}${postPermalink.value}`)
+
+function goToPost() {
+  return navigateTo(postPermalink.value)
+}
+
+function noop() {
+  // no-op for now (comments not implemented yet)
+}
+
+const moreMenuRef = ref()
+const moreMenuItems = computed<MenuItem[]>(() => {
+  const items: MenuItem[] = [
+    {
+      label: post.value.author.username ? `View @${post.value.author.username}` : 'View profile',
+      icon: 'pi pi-user',
+      command: () => {
+        if (!authorProfilePath.value) return
+        return navigateTo(authorProfilePath.value)
+      },
+    },
+  ]
+
+  if (isAuthed.value) {
+    items.push({
+      label: 'Report post',
+      icon: 'pi pi-flag',
+      command: () => {
+        // no-op for now
+      },
+    })
+  }
+
+  return items
+})
+
+function toggleMoreMenu(event: Event) {
+  // PrimeVue Menu expects the click event to position the popup.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  ;(moreMenuRef.value as any)?.toggle(event)
+}
+
+const toast = (import.meta.client ? usePrimeToast() : null) as ReturnType<typeof usePrimeToast> | null
+
+// Client-side "boosted" state (UI-only for now).
+const boosts = useState<Record<string, boolean>>('post-boosts', () => ({}))
+const isBoosted = computed(() => Boolean(boosts.value[post.value.id]))
+
+function toggleBoost() {
+  if (!isAuthed.value) return
+  const id = post.value.id
+  boosts.value = { ...boosts.value, [id]: !boosts.value[id] }
+}
+
+async function copyToClipboard(text: string) {
+  if (navigator?.clipboard?.writeText) {
+    await navigator.clipboard.writeText(text)
+    return
+  }
+  // Fallback
+  const ta = document.createElement('textarea')
+  ta.value = text
+  ta.setAttribute('readonly', 'true')
+  ta.style.position = 'fixed'
+  ta.style.opacity = '0'
+  document.body.appendChild(ta)
+  ta.select()
+  document.execCommand('copy')
+  document.body.removeChild(ta)
+}
+
+const shareMenuRef = ref()
+const shareMenuItems = computed<MenuItem[]>(() => [
+  {
+    label: 'Copy link',
+    icon: 'pi pi-link',
+    command: async () => {
+      if (!import.meta.client) return
+      try {
+        await copyToClipboard(postShareUrl.value)
+        toast?.add({ severity: 'success', summary: 'Link copied', life: 1400 })
+      } catch {
+        toast?.add({ severity: 'error', summary: 'Copy failed', life: 1600 })
+      }
+    },
+  },
+])
+
+function toggleShareMenu(event: Event) {
+  // PrimeVue Menu expects the click event to position the popup.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  ;(shareMenuRef.value as any)?.toggle(event)
+}
 </script>
 

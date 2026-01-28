@@ -19,6 +19,7 @@ export type PostAuthor = {
   id: string
   username: string | null
   name: string | null
+  premium: boolean
   verifiedStatus: 'none' | 'identity' | 'manual'
   avatarKey: string | null
   avatarUpdatedAt: string | null
@@ -37,6 +38,10 @@ export type GetPostsResponse = {
   nextCursor: string | null
 }
 
+export type GetPostResponse = {
+  post: FeedPost
+}
+
 export type GetUserPostsResponse = {
   posts: FeedPost[]
   nextCursor: string | null
@@ -45,7 +50,7 @@ export type GetUserPostsResponse = {
     public: number
     verifiedOnly: number
     premiumOnly: number
-  }
+  } | null
 }
 
 export type CreatePostResponse = {

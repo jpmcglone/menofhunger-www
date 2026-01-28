@@ -102,7 +102,7 @@
                             <div class="font-semibold truncate">
                               {{ u.name || u.username || 'User' }}
                             </div>
-                            <AppVerifiedBadge :status="u.verifiedStatus" />
+                            <AppVerifiedBadge :status="u.verifiedStatus" :premium="u.premium" />
                           </div>
                           <div class="text-sm text-gray-600 dark:text-gray-300 truncate">
                             @{{ u.username || '—' }}

@@ -7,7 +7,8 @@ export const siteConfig = {
     url: 'https://jpmcglone.com'
   },
   social: {
-    twitter: '@MenOfHunger'
+    twitter: '@MenOfHunger',
+    xUrl: 'https://x.com/menofhunger'
   },
   meta: {
     title: 'Men of Hunger',

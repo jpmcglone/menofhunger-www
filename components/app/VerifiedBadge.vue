@@ -2,12 +2,21 @@
   <span
     v-if="isVerified"
     :class="['inline-flex shrink-0 items-center justify-center rounded-full', sizeClass]"
-    :style="{ backgroundColor: badgeBlue }"
+    :style="{ backgroundColor: badgeColor }"
     v-tooltip="tooltip"
     aria-label="Verified"
   >
     <!-- Twitter-style check (white) -->
     <svg viewBox="0 0 24 24" :class="['text-white', iconClass]" aria-hidden="true">
+      <!-- Outline stroke (darker than badge) -->
+      <path
+        :stroke="checkStrokeColor"
+        stroke-width="5.2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        fill="none"
+        d="M9.00002 16.2L4.80002 12L3.40002 13.4L9.00002 19L21 7.00001L19.6 5.60001L9.00002 16.2Z"
+      />
       <path
         fill="currentColor"
         d="M9.00002 16.2L4.80002 12L3.40002 13.4L9.00002 19L21 7.00001L19.6 5.60001L9.00002 16.2Z"
@@ -23,20 +32,34 @@ type Size = 'sm' | 'md'
 const props = withDefaults(
   defineProps<{
     status?: VerifiedStatus | null
+    premium?: boolean
     size?: Size
   }>(),
-  { size: 'sm' }
+  { size: 'sm', premium: false }
 )
 
 // Twitter-ish blue; works on both light/dark.
 const badgeBlue = '#1D9BF0'
+// Premium orange.
+const badgeOrange = '#F59E0B'
+// Darker strokes for the check outline (derived by eye).
+const badgeBlueStroke = '#0B6FBF'
+const badgeOrangeStroke = '#B45309'
 
 const isVerified = computed(() => Boolean(props.status && props.status !== 'none'))
 
+const badgeColor = computed(() => {
+  return isVerified.value && props.premium ? badgeOrange : badgeBlue
+})
+
+const checkStrokeColor = computed(() => {
+  return isVerified.value && props.premium ? badgeOrangeStroke : badgeBlueStroke
+})
+
 const tooltip = computed(() => {
-  if (props.status === 'identity') return 'Identity verified'
-  if (props.status === 'manual') return 'Manually verified'
-  return ''
+  const text = props.status === 'identity' ? 'Identity verified' : props.status === 'manual' ? 'Manually verified' : ''
+  if (!text) return null
+  return { value: text, class: 'moh-tooltip' }
 })
 
 const sizeClass = computed(() => {

@@ -1,5 +1,15 @@
 <template>
   <div class="w-full">
+    <div v-if="notFound" class="mx-auto max-w-3xl py-10">
+      <div class="text-2xl font-bold tracking-tight text-gray-900 dark:text-gray-50">
+        This account doesn’t exist
+      </div>
+      <div class="mt-2 text-sm text-gray-600 dark:text-gray-300">
+        Check the username and try again.
+      </div>
+    </div>
+
+    <template v-else>
     <!-- Full-bleed profile header (cancel app layout padding) -->
     <div class="-mx-4 -mt-4 relative">
       <div class="group relative aspect-[3/1] w-full bg-gray-200 dark:bg-zinc-900">
@@ -24,7 +34,7 @@
           type="button"
           class="absolute inset-0 cursor-zoom-in"
           aria-label="View banner"
-          @click="openImageViewer($event, profileBannerUrl, 'Banner', 'banner')"
+          @click="openFromEvent($event, profileBannerUrl, 'Banner', 'banner')"
         />
       </div>
 
@@ -56,7 +66,7 @@
             type="button"
             class="absolute inset-0 cursor-zoom-in"
             aria-label="View avatar"
-            @click="openImageViewer($event, profileAvatarUrl, 'Avatar', 'avatar')"
+            @click="openFromEvent($event, profileAvatarUrl, 'Avatar', 'avatar')"
           />
         </div>
       </div>
@@ -69,7 +79,7 @@
             <div class="text-2xl font-bold text-gray-900 dark:text-gray-50 truncate">
               {{ profileName }}
             </div>
-            <AppVerifiedBadge :status="profile?.verifiedStatus" />
+            <AppVerifiedBadge :status="profile?.verifiedStatus" :premium="profile?.premium" />
           </div>
           <div class="mt-1 text-sm text-gray-500 dark:text-gray-400">
             @{{ profile?.username }}
@@ -77,7 +87,7 @@
         </div>
 
         <div v-if="isSelf" class="shrink-0">
-          <Button label="Edit profile" icon="pi pi-pencil" severity="secondary" @click="editOpen = true" />
+          <Button label="Edit profile" icon="pi pi-pencil" severity="secondary" rounded @click="editOpen = true" />
         </div>
       </div>
 
@@ -94,7 +104,7 @@
           <div class="text-sm font-semibold text-gray-900 dark:text-gray-50">
             Posts
             <span class="ml-2 text-xs font-medium text-gray-500 dark:text-gray-400">
-              {{ postCounts.all }}
+              {{ userPosts.counts.value.all }}
             </span>
           </div>
 
@@ -103,49 +113,61 @@
               type="button"
               class="rounded-full px-3 py-1 border transition-colors"
               :class="filterButtonClass('all')"
-              @click="setFilter('all')"
+              @click="userPosts.setFilter('all')"
             >
-              All <span class="ml-1 tabular-nums opacity-80">{{ postCounts.all }}</span>
+              All <span class="ml-1 tabular-nums opacity-80">{{ userPosts.counts.value.all }}</span>
             </button>
 
             <button
               type="button"
               class="rounded-full px-3 py-1 border transition-colors"
               :class="filterButtonClass('public')"
-              @click="setFilter('public')"
+              @click="userPosts.setFilter('public')"
             >
-              Public <span class="ml-1 tabular-nums opacity-80">{{ postCounts.public }}</span>
+              Public <span class="ml-1 tabular-nums opacity-80">{{ userPosts.counts.value.public }}</span>
             </button>
 
             <button
               type="button"
               class="rounded-full px-3 py-1 border transition-colors flex items-center gap-1"
               :class="filterButtonClass('verifiedOnly')"
-              @click="setFilter('verifiedOnly')"
+              @click="userPosts.setFilter('verifiedOnly')"
             >
               Verified
-              <span class="tabular-nums opacity-80">{{ postCounts.verifiedOnly }}</span>
-              <i v-if="!viewerIsVerified" class="pi pi-lock text-[0.75rem] text-gray-400" aria-hidden="true" />
+              <span class="tabular-nums opacity-80">{{ userPosts.counts.value.verifiedOnly }}</span>
+              <span
+                v-if="!userPosts.viewerIsVerified.value"
+                class="ml-1 font-mono text-[10px] leading-none opacity-80"
+                aria-hidden="true"
+              >
+                LOCKED
+              </span>
             </button>
 
             <button
               type="button"
               class="rounded-full px-3 py-1 border transition-colors flex items-center gap-1"
               :class="filterButtonClass('premiumOnly')"
-              @click="setFilter('premiumOnly')"
+              @click="userPosts.setFilter('premiumOnly')"
             >
               Premium
-              <span class="tabular-nums opacity-80">{{ postCounts.premiumOnly }}</span>
-              <i v-if="!viewerIsPremium" class="pi pi-lock text-[0.75rem] text-gray-400" aria-hidden="true" />
+              <span class="tabular-nums opacity-80">{{ userPosts.counts.value.premiumOnly }}</span>
+              <span
+                v-if="!userPosts.viewerIsPremium.value"
+                class="ml-1 font-mono text-[10px] leading-none opacity-80"
+                aria-hidden="true"
+              >
+                LOCKED
+              </span>
             </button>
           </div>
         </div>
 
-        <div v-if="postsError" class="mt-3 text-sm text-red-700 dark:text-red-300">
-          {{ postsError }}
+        <div v-if="userPosts.error.value" class="mt-3 text-sm text-red-700 dark:text-red-300">
+          {{ userPosts.error.value }}
         </div>
 
-        <div v-else-if="ctaKind === 'verify'" class="mt-4 rounded-xl border border-gray-200 bg-gray-50 p-4 dark:border-zinc-800 dark:bg-zinc-950/40">
+        <div v-else-if="userPosts.ctaKind.value === 'verify'" class="mt-4 rounded-xl border border-gray-200 bg-gray-50 p-4 dark:border-zinc-800 dark:bg-zinc-950/40">
           <div class="font-semibold text-gray-900 dark:text-gray-50">Verified members only</div>
           <div class="mt-1 text-sm text-gray-600 dark:text-gray-300">
             Verify your account to view verified-only posts.
@@ -155,7 +177,7 @@
           </div>
         </div>
 
-        <div v-else-if="ctaKind === 'premium'" class="mt-4 rounded-xl border border-gray-200 bg-gray-50 p-4 dark:border-zinc-800 dark:bg-zinc-950/40">
+        <div v-else-if="userPosts.ctaKind.value === 'premium'" class="mt-4 rounded-xl border border-gray-200 bg-gray-50 p-4 dark:border-zinc-800 dark:bg-zinc-950/40">
           <div class="font-semibold text-gray-900 dark:text-gray-50">Premium required</div>
           <div class="mt-1 text-sm text-gray-600 dark:text-gray-300">
             Upgrade to premium to view premium-only posts.
@@ -165,12 +187,12 @@
           </div>
         </div>
 
-        <div v-else-if="profilePosts.length === 0" class="mt-3 text-sm text-gray-500 dark:text-gray-400">
+        <div v-else-if="userPosts.posts.value.length === 0" class="mt-3 text-sm text-gray-500 dark:text-gray-400">
           No posts yet.
         </div>
 
         <div v-else class="mt-3 -mx-4">
-          <AppPostRow v-for="p in profilePosts" :key="p.id" :post="p" />
+          <AppPostRow v-for="p in userPosts.posts.value" :key="p.id" :post="p" />
         </div>
       </div>
     </div>
@@ -410,46 +432,17 @@
       </div>
     </Dialog>
 
-    <ClientOnly>
-      <Teleport to="body">
-        <div
-          v-if="viewerVisible && viewerSrc && viewerTarget"
-          class="fixed inset-0 z-[9999]"
-          role="dialog"
-          aria-modal="true"
-          :aria-label="viewerAlt"
-          @click="closeViewer"
-        >
-          <!-- Backdrop (fade in/out) -->
-          <div
-            class="absolute inset-0 bg-black/70 transition-opacity duration-200"
-            :class="viewerBackdropVisible ? 'opacity-100' : 'opacity-0'"
-            aria-hidden="true"
-          />
-
-          <button
-            type="button"
-            class="absolute right-4 top-4 z-10 rounded-full bg-black/45 p-2 text-white shadow-sm backdrop-blur-sm"
-            aria-label="Close"
-            @click.stop="closeViewer"
-          >
-            <i class="pi pi-times text-lg" aria-hidden="true" />
-          </button>
-
-          <div class="relative h-full w-full">
-            <img
-              :src="viewerSrc"
-              :alt="viewerAlt"
-              class="select-none object-cover will-change-transform"
-              :style="viewerImageStyle"
-              draggable="false"
-              @click.stop
-              @transitionend="onViewerTransitionEnd"
-            >
-          </div>
-        </div>
-      </Teleport>
-    </ClientOnly>
+    <AppImageLightbox
+      :visible="viewer.visible.value"
+      :backdrop-visible="viewer.backdropVisible.value"
+      :src="viewer.src.value"
+      :alt="viewer.alt.value"
+      :target="viewer.target.value"
+      :image-style="viewer.imageStyle.value"
+      :on-close="viewer.close"
+      :on-transition-end="viewer.onTransitionEnd"
+    />
+    </template>
   </div>
 </template>
 
@@ -470,6 +463,7 @@ type PublicProfile = {
   username: string | null
   name: string | null
   bio: string | null
+  premium: boolean
   verifiedStatus: 'none' | 'identity' | 'manual'
   avatarKey?: string | null
   avatarUpdatedAt?: string | null
@@ -483,6 +477,7 @@ const normalizedUsername = computed(() => usernameParam.value.trim().toLowerCase
 
 const { apiFetchData } = useApiClient()
 import { getApiErrorMessage } from '~/utils/api-error'
+import { filterPillClasses } from '~/utils/post-visibility'
 
 const { data, error } = await useAsyncData(`public-profile:${normalizedUsername.value}`, async () => {
   const result = await apiFetchData<{ user: PublicProfile }>(
@@ -493,111 +488,24 @@ const { data, error } = await useAsyncData(`public-profile:${normalizedUsername.
 })
 
 const profile = computed(() => data.value ?? null)
-
-import type { FeedPost, GetUserPostsResponse } from '~/types/api'
-
-type ProfilePostsFilter = 'all' | 'public' | 'verifiedOnly' | 'premiumOnly'
-
-const filter = ref<ProfilePostsFilter>('all')
-
-const emptyCounts: GetUserPostsResponse['counts'] = {
-  all: 0,
-  public: 0,
-  verifiedOnly: 0,
-  premiumOnly: 0,
-}
-
-const { data: initialPostsData, error: initialPostsErr } = await useAsyncData(
-  `profile-posts:${normalizedUsername.value}`,
-  async () => {
-    return await apiFetchData<GetUserPostsResponse>(
-      `/posts/user/${encodeURIComponent(normalizedUsername.value)}`,
-      { method: 'GET', query: { limit: 30, visibility: 'all' } }
-    )
-  }
-)
-
-const profilePosts = ref<FeedPost[]>(initialPostsData.value?.posts ?? [])
-const postCounts = ref<GetUserPostsResponse['counts']>(initialPostsData.value?.counts ?? emptyCounts)
-const postsError = ref<string | null>(
-  initialPostsErr.value ? (getApiErrorMessage(initialPostsErr.value) || 'Failed to load posts.') : null
-)
-const postsLoading = ref(false)
+const notFound = computed(() => {
+  const e: any = error.value
+  if (!e) return false
+  if (e?.statusCode === 404) return true
+  const msg = (getApiErrorMessage(e) || e?.message || '').toString()
+  return /not found/i.test(msg)
+})
 
 const { user: authUser } = useAuth()
 const { assetUrl } = useAssets()
 
 const isSelf = computed(() => Boolean(authUser.value?.id && profile.value?.id && authUser.value.id === profile.value.id))
 
-const viewerIsVerified = computed(() => Boolean(authUser.value?.verifiedStatus && authUser.value.verifiedStatus !== 'none'))
-const viewerIsPremium = computed(() => Boolean(authUser.value?.premium))
+const userPosts = await useUserPosts(normalizedUsername, { enabled: computed(() => !notFound.value) })
+const { header: appHeader } = useAppHeader()
 
-const ctaKind = computed<null | 'verify' | 'premium'>(() => {
-  if (filter.value === 'verifiedOnly' && !viewerIsVerified.value) return 'verify'
-  if (filter.value === 'premiumOnly' && !viewerIsPremium.value) return 'premium'
-  return null
-})
-
-async function fetchPosts(nextFilter: ProfilePostsFilter) {
-  if (postsLoading.value) return
-  postsError.value = null
-  if (nextFilter === 'verifiedOnly' && !viewerIsVerified.value) {
-    profilePosts.value = []
-    return
-  }
-  if (nextFilter === 'premiumOnly' && !viewerIsPremium.value) {
-    profilePosts.value = []
-    return
-  }
-
-  postsLoading.value = true
-  try {
-    const res = await apiFetchData<GetUserPostsResponse>(
-      `/posts/user/${encodeURIComponent(normalizedUsername.value)}`,
-      { method: 'GET', query: { limit: 30, visibility: nextFilter } }
-    )
-    profilePosts.value = res.posts
-    postCounts.value = res.counts
-  } catch (e: unknown) {
-    postsError.value = getApiErrorMessage(e) || 'Failed to load posts.'
-  } finally {
-    postsLoading.value = false
-  }
-}
-
-function setFilter(next: ProfilePostsFilter) {
-  filter.value = next
-  void fetchPosts(next)
-}
-
-function filterButtonClass(kind: ProfilePostsFilter) {
-  const isActive = filter.value === kind
-
-  // All: “inverted” chip
-  if (kind === 'all') {
-    return isActive
-      ? 'border-black bg-black text-white dark:border-white dark:bg-white dark:text-black'
-      : 'border-gray-200 text-gray-700 hover:bg-gray-50 dark:border-zinc-800 dark:text-gray-300 dark:hover:bg-zinc-900'
-  }
-
-  // Public: regular
-  if (kind === 'public') {
-    return isActive
-      ? 'border-gray-300 bg-gray-50 text-gray-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-gray-50'
-      : 'border-gray-200 text-gray-700 hover:bg-gray-50 dark:border-zinc-800 dark:text-gray-300 dark:hover:bg-zinc-900'
-  }
-
-  // Verified: blue
-  if (kind === 'verifiedOnly') {
-    return isActive
-      ? 'border-sky-600 bg-sky-600 text-white dark:border-sky-500 dark:bg-sky-500 dark:text-black'
-      : 'border-sky-200 text-sky-700 hover:bg-sky-50 dark:border-sky-800 dark:text-sky-300 dark:hover:bg-sky-950/40'
-  }
-
-  // Premium: orange
-  return isActive
-    ? 'border-amber-600 bg-amber-600 text-white dark:border-amber-500 dark:bg-amber-500 dark:text-black'
-    : 'border-amber-200 text-amber-800 hover:bg-amber-50 dark:border-amber-800 dark:text-amber-300 dark:hover:bg-amber-950/40'
+function filterButtonClass(kind: Parameters<typeof userPosts.setFilter>[0]) {
+  return filterPillClasses(kind, userPosts.filter.value === kind)
 }
 
 const profileName = computed(() => profile.value?.name || profile.value?.username || 'User')
@@ -614,222 +522,29 @@ const profileBannerUrl = computed(() => {
   return v ? `${base}?v=${encodeURIComponent(v)}` : base
 })
 
-type ViewerKind = 'avatar' | 'banner'
-type ViewerRect = { left: number; top: number; width: number; height: number }
+const viewer = useImageLightbox()
+const { openFromEvent } = viewer
 
-const viewerVisible = ref(false)
-const viewerBackdropVisible = ref(false)
-const viewerSrc = ref<string | null>(null)
-const viewerAlt = ref<string>('Image')
-const viewerKind = ref<ViewerKind>('banner')
-const viewerOrigin = ref<ViewerRect | null>(null)
-const viewerTarget = ref<ViewerRect | null>(null)
-const viewerTransform = ref<string>('translate(0px, 0px) scale(1, 1)')
-const viewerBorderRadius = ref<string>('0px')
-const viewerTransition = ref<string>('none')
-let viewerRequestId = 0
-
-function initialRadius(kind: ViewerKind) {
-  return kind === 'avatar' ? '9999px' : '0px'
-}
-
-function targetRadius(kind: ViewerKind) {
-  // Avatars should remain circular even in full-screen.
-  return kind === 'avatar' ? '9999px' : '0px'
-}
-
-const hideBannerThumb = computed(() => viewerVisible.value && viewerKind.value === 'banner')
-const hideAvatarThumb = computed(() => viewerVisible.value && viewerKind.value === 'avatar')
-const hideAvatarDuringBanner = computed(() => viewerVisible.value && viewerKind.value === 'banner')
-
-function calcTargetRect(aspect: number) {
-  const pad = 16 // px
-  const vw = window.innerWidth
-  const vh = window.innerHeight
-  const maxW = Math.max(1, vw - pad * 2)
-  const maxH = Math.max(1, vh - pad * 2)
-
-  let width = maxW
-  let height = width / aspect
-  if (height > maxH) {
-    height = maxH
-    width = height * aspect
-  }
-
-  const left = (vw - width) / 2
-  const top = (vh - height) / 2
-  return { left, top, width, height }
-}
-
-async function preloadAspect(src: string): Promise<number> {
-  if (!import.meta.client) return 1
-  return await new Promise((resolve) => {
-    const img = new Image()
-    img.decoding = 'async'
-    img.onload = () => {
-      const w = Number(img.naturalWidth || 0)
-      const h = Number(img.naturalHeight || 0)
-      resolve(w && h ? w / h : 1)
-    }
-    img.onerror = () => resolve(1)
-    img.src = src
-  })
-}
-
-async function openImageViewer(e: MouseEvent, src: string | null, label: string, kind: ViewerKind) {
-  if (!import.meta.client) return
-  if (!src) return
-
-  const el = e.currentTarget as HTMLElement | null
-  const rect = el?.getBoundingClientRect?.()
-  if (!rect) return
-
-  viewerRequestId += 1
-  const reqId = viewerRequestId
-
-  viewerKind.value = kind
-  viewerAlt.value = label
-  viewerSrc.value = src
-  viewerOrigin.value = { left: rect.left, top: rect.top, width: rect.width, height: rect.height }
-  viewerTarget.value = null
-
-  viewerVisible.value = true
-  viewerBackdropVisible.value = false
-  setScrollLocked(true)
-
-  const aspect = await preloadAspect(src)
-  if (reqId !== viewerRequestId) return
-
-  viewerTarget.value = calcTargetRect(aspect)
-  viewerBorderRadius.value = initialRadius(kind)
-  viewerTransition.value = 'none'
-
-  await nextTick()
-  startOpenAnimation()
-}
-
-function startOpenAnimation() {
-  if (!import.meta.client) return
-  const o = viewerOrigin.value
-  const t = viewerTarget.value
-  if (!o || !t) return
-
-  const ox = o.left + o.width / 2
-  const oy = o.top + o.height / 2
-  const tx = t.left + t.width / 2
-  const ty = t.top + t.height / 2
-
-  const dx = ox - tx
-  const dy = oy - ty
-  const sx = o.width / t.width
-  const sy = o.height / t.height
-
-  viewerTransform.value = `translate(${dx}px, ${dy}px) scale(${sx}, ${sy})`
-  viewerTransition.value = 'none'
-
-  requestAnimationFrame(() => {
-    viewerBackdropVisible.value = true
-    viewerTransition.value =
-      'transform 320ms cubic-bezier(0.22, 1, 0.36, 1), border-radius 320ms cubic-bezier(0.22, 1, 0.36, 1)'
-    viewerTransform.value = 'translate(0px, 0px) scale(1, 1)'
-    viewerBorderRadius.value = targetRadius(viewerKind.value)
-  })
-}
-
-function startCloseAnimation() {
-  if (!import.meta.client) return
-  const o = viewerOrigin.value
-  const t = viewerTarget.value
-  if (!o || !t) {
-    finalizeClose()
-    return
-  }
-
-  const ox = o.left + o.width / 2
-  const oy = o.top + o.height / 2
-  const tx = t.left + t.width / 2
-  const ty = t.top + t.height / 2
-
-  const dx = ox - tx
-  const dy = oy - ty
-  const sx = o.width / t.width
-  const sy = o.height / t.height
-
-  viewerBackdropVisible.value = false
-  viewerTransition.value =
-    'transform 220ms cubic-bezier(0.4, 0, 0.2, 1), border-radius 220ms cubic-bezier(0.4, 0, 0.2, 1)'
-  viewerTransform.value = `translate(${dx}px, ${dy}px) scale(${sx}, ${sy})`
-  viewerBorderRadius.value = initialRadius(viewerKind.value)
-}
-
-function closeViewer() {
-  // Cancel any in-flight open.
-  viewerRequestId += 1
-  if (!viewerVisible.value) return
-  startCloseAnimation()
-}
-
-function finalizeClose() {
-  viewerVisible.value = false
-  viewerBackdropVisible.value = false
-  viewerSrc.value = null
-  viewerAlt.value = 'Image'
-  viewerOrigin.value = null
-  viewerTarget.value = null
-  viewerTransition.value = 'none'
-  viewerTransform.value = 'translate(0px, 0px) scale(1, 1)'
-  viewerBorderRadius.value = '0px'
-  setScrollLocked(false)
-}
-
-function onViewerTransitionEnd(e: TransitionEvent) {
-  if (!import.meta.client) return
-  if (e.propertyName !== 'transform') return
-  if (viewerBackdropVisible.value) return // opening finished
-  // closing finished
-  finalizeClose()
-}
-
-function setScrollLocked(locked: boolean) {
-  if (!import.meta.client) return
-  document.documentElement.style.overflow = locked ? 'hidden' : ''
-  document.body.style.overflow = locked ? 'hidden' : ''
-}
-
-function onViewerKeydown(e: KeyboardEvent) {
-  if (e.key === 'Escape') closeViewer()
-}
-
-onBeforeUnmount(() => {
-  finalizeClose()
-  if (!import.meta.client) return
-  window.removeEventListener('keydown', onViewerKeydown)
-})
+const hideBannerThumb = computed(() => viewer.visible.value && viewer.kind.value === 'banner')
+const hideAvatarThumb = computed(() => viewer.visible.value && viewer.kind.value === 'avatar')
+const hideAvatarDuringBanner = computed(() => viewer.visible.value && viewer.kind.value === 'banner')
 
 watch(
-  viewerVisible,
-  (open) => {
-    if (!import.meta.client) return
-    if (open) window.addEventListener('keydown', onViewerKeydown)
-    else window.removeEventListener('keydown', onViewerKeydown)
+  [notFound, profileName, () => profile.value?.verifiedStatus, () => profile.value?.premium, () => userPosts.counts.value.all],
+  ([nf, name, status, premium, count]) => {
+    if (nf) {
+      appHeader.value = { title: 'Account not found', verifiedStatus: null, postCount: null }
+      return
+    }
+    appHeader.value = {
+      title: name,
+      verifiedStatus: status ?? null,
+      premium: premium ?? null,
+      postCount: typeof count === 'number' ? count : null,
+    }
   },
-  { flush: 'post' }
+  { immediate: true }
 )
-
-const viewerImageStyle = computed(() => {
-  const t = viewerTarget.value
-  if (!t) return {}
-  return {
-    position: 'fixed',
-    left: `${t.left}px`,
-    top: `${t.top}px`,
-    width: `${t.width}px`,
-    height: `${t.height}px`,
-    transform: viewerTransform.value,
-    transition: viewerTransition.value,
-    borderRadius: viewerBorderRadius.value,
-  } as const
-})
 
 const editOpen = ref(false)
 const editName = ref('')
@@ -1406,6 +1121,7 @@ async function saveProfile() {
 }
 
 onBeforeUnmount(() => {
+  if (appHeader.value?.title === profileName.value) appHeader.value = null
   clearCropState()
   clearBannerCropState()
   if (pendingAvatarPreviewUrl.value) URL.revokeObjectURL(pendingAvatarPreviewUrl.value)
