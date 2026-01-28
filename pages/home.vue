@@ -15,7 +15,7 @@
 
     <!-- Composer -->
     <div class="border-b border-gray-200 px-4 py-4 dark:border-zinc-800">
-      <div v-if="canPost" class="grid grid-cols-[2.5rem_minmax(0,1fr)] gap-x-3">
+      <div v-if="isAuthed" class="grid grid-cols-[2.5rem_minmax(0,1fr)] gap-x-3">
         <!-- Row 1: visibility picker (above, right-aligned) -->
         <div class="col-start-2 flex justify-end items-end mb-3 sm:mb-2">
           <div ref="composerVisibilityWrapEl" class="relative">
@@ -24,11 +24,12 @@
               class="inline-flex items-center rounded-full border px-2 py-1 text-[11px] font-semibold leading-none transition-colors"
               :class="composerVisibilityPillClass"
               aria-label="Select post visibility"
-              @click="toggleVisibilityPopover"
+              :disabled="!viewerIsVerified"
+              @click="viewerIsVerified ? toggleVisibilityPopover() : null"
             >
               <i v-if="visibility === 'onlyMe'" class="pi pi-lock mr-1 text-[10px] opacity-80" aria-hidden="true" />
               {{ composerVisibilityLabel }}
-              <i class="pi pi-chevron-down ml-1 text-[9px] opacity-80" aria-hidden="true" />
+              <i v-if="viewerIsVerified" class="pi pi-chevron-down ml-1 text-[9px] opacity-80" aria-hidden="true" />
             </button>
 
             <!-- Custom visibility picker -->
@@ -39,6 +40,7 @@
               aria-label="Post visibility"
             >
               <button
+                v-if="allowedComposerVisibilities.includes('public')"
                 type="button"
                 class="w-full text-left px-3 py-2 text-sm font-semibold transition-colors text-gray-900 hover:bg-gray-50 dark:text-gray-50 dark:hover:bg-zinc-900"
                 role="menuitem"
@@ -48,6 +50,7 @@
               </button>
 
               <button
+                v-if="allowedComposerVisibilities.includes('verifiedOnly')"
                 type="button"
                 class="w-full text-left px-3 py-2 text-sm font-semibold transition-colors text-sky-700 hover:bg-sky-600 hover:text-white dark:text-sky-300 dark:hover:bg-sky-500"
                 role="menuitem"
@@ -57,6 +60,7 @@
               </button>
 
               <button
+                v-if="allowedComposerVisibilities.includes('premiumOnly')"
                 type="button"
                 :disabled="!isPremium"
                 :class="[
@@ -73,6 +77,7 @@
               </button>
 
               <button
+                v-if="allowedComposerVisibilities.includes('onlyMe')"
                 type="button"
                 class="w-full text-left px-3 py-2 text-sm font-semibold transition-colors text-violet-800 hover:bg-violet-600 hover:text-white dark:text-violet-300 dark:hover:bg-violet-500"
                 role="menuitem"
@@ -141,19 +146,12 @@
                 :outlined="postButtonOutlined"
                 severity="secondary"
                 :class="postButtonClass"
-                :disabled="submitting || !draft.trim() || postCharCount > postMaxLen"
+                :disabled="submitting || !canPost || !draft.trim() || postCharCount > postMaxLen"
                 :loading="submitting"
                 @click="submit"
               />
             </div>
           </div>
-        </div>
-      </div>
-
-      <div v-else-if="isAuthed" class="rounded-xl border border-gray-200 bg-gray-50 px-4 py-4 dark:border-zinc-800 dark:bg-zinc-950/40">
-        <div class="font-semibold text-gray-900 dark:text-gray-50">Verified members only</div>
-        <div class="mt-1 text-sm text-gray-600 dark:text-gray-300">
-          You’ll be able to post once your account is verified.
         </div>
       </div>
 
@@ -414,12 +412,13 @@ watchEffect(() => {
     })
 })
 const draft = ref('')
-const isVerified = computed(() => user.value?.verifiedStatus && user.value.verifiedStatus !== 'none')
-const canPost = computed(() => Boolean(isAuthed.value && isVerified.value))
 const isPremium = computed(() => Boolean(user.value?.premium))
 
-const viewerIsVerified = computed(() => Boolean(isVerified.value))
+const viewerIsVerified = computed(() => Boolean(user.value?.verifiedStatus && user.value.verifiedStatus !== 'none'))
 const viewerIsPremium = computed(() => Boolean(isPremium.value))
+
+// Unverified users can only post to "Only me".
+const canPost = computed(() => Boolean(isAuthed.value && (viewerIsVerified.value || visibility.value === 'onlyMe')))
 
 const feedCtaKind = computed<null | 'verify' | 'premium'>(() => {
   if (feedFilter.value === 'verifiedOnly' && !viewerIsVerified.value) return 'verify'
@@ -610,7 +609,9 @@ const composerTextareaVars = computed<Record<string, string>>(() => {
     : { '--moh-compose-accent': 'rgba(0, 0, 0, 0.85)', '--moh-compose-ring': 'rgba(0, 0, 0, 0.18)' }
 })
 const allowedComposerVisibilities = computed<PostVisibility[]>(() => {
-  // Verified users can post public or verified-only. Premium-only is premium members only.
+  // Unverified: only-me only. Verified: public + verified-only (+ premium-only if premium).
+  if (!isAuthed.value) return ['public']
+  if (!viewerIsVerified.value) return ['onlyMe']
   return isPremium.value ? ['public', 'verifiedOnly', 'premiumOnly', 'onlyMe'] : ['public', 'verifiedOnly', 'onlyMe']
 })
 
@@ -618,7 +619,7 @@ watch(
   allowedComposerVisibilities,
   (allowed) => {
     const set = new Set(allowed)
-    if (!set.has(visibility.value)) visibility.value = 'public'
+    if (!set.has(visibility.value)) visibility.value = allowed[0] ?? 'public'
   },
   { immediate: true }
 )
