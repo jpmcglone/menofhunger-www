@@ -3,8 +3,8 @@
     <div class="group relative inline-block">
       <img
         :src="items[0]?.url"
-        class="block max-h-[28rem] max-w-full rounded-xl border moh-border object-contain bg-black/5 dark:bg-white/5 transition-opacity"
-        :class="hideThumbs ? 'opacity-0' : 'opacity-100'"
+        class="block max-h-[28rem] max-w-full rounded-xl border moh-border object-contain bg-black/5 dark:bg-white/5"
+        :class="hideThumbs ? 'opacity-0 transition-opacity duration-150' : 'opacity-100'"
         alt=""
         loading="lazy"
         decoding="async"
@@ -35,8 +35,8 @@
         >
           <img
             :src="m.url"
-            class="h-full w-full bg-black/5 dark:bg-white/5 transition-opacity"
-            :class="[imgClass(idx), hideThumbs ? 'opacity-0' : 'opacity-100']"
+            class="h-full w-full bg-black/5 dark:bg-white/5"
+            :class="[imgClass(idx), hideThumbs ? 'opacity-0 transition-opacity duration-150' : 'opacity-100']"
             alt=""
             loading="lazy"
             decoding="async"
@@ -61,7 +61,7 @@ const props = defineProps<{
 const viewer = useImageLightbox()
 
 const items = computed(() => (props.media ?? []).filter((m) => Boolean(m?.url)).slice(0, 4))
-const hideThumbs = computed(() => viewer.visible.value && viewer.kind.value === 'media')
+const hideThumbs = computed(() => viewer.kind.value === 'media' && viewer.hideOrigin.value)
 const urls = computed(() => items.value.map((m) => m.url))
 
 const gridClass = computed(() => {

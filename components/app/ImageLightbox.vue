@@ -55,28 +55,16 @@
         </div>
 
         <div class="relative h-full w-full">
-          <!-- Media: animate from cover (fill) -> contain (fit) via crossfade -->
-          <template v-if="kind === 'media'">
-            <img
-              :src="src"
-              :alt="alt"
-              class="select-none object-cover will-change-transform transition-opacity duration-200"
-              :class="mediaPhase === 'fit' ? 'opacity-0' : 'opacity-100'"
-              :style="imageStyle"
-              draggable="false"
-              @click.stop
-              @transitionend="onTransitionEnd"
-            >
-            <img
-              :src="src"
-              :alt="alt"
-              class="select-none object-contain will-change-transform transition-opacity duration-200"
-              :class="mediaPhase === 'fit' ? 'opacity-100' : 'opacity-0'"
-              :style="imageStyle"
-              draggable="false"
-              @click.stop
-            >
-          </template>
+          <img
+            v-if="kind === 'media'"
+            :src="src"
+            :alt="alt"
+            class="select-none object-contain will-change-transform"
+            :style="imageStyle"
+            draggable="false"
+            @click.stop
+            @transitionend="onTransitionEnd"
+          >
 
           <img
             v-else
@@ -103,7 +91,6 @@ defineProps<{
   src: string | null
   alt: string
   kind?: 'avatar' | 'banner' | 'media'
-  mediaPhase?: 'fill' | 'fit'
   target: unknown
   imageStyle: StyleValue
   showNav?: boolean

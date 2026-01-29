@@ -794,7 +794,7 @@ const giphyLoading = ref(false)
 const giphyError = ref<string | null>(null)
 const giphyItems = ref<GiphySearchResponse['items']>([])
 const giphyInputRef = ref<any>(null)
-const giphySession = ref(0)
+const giphyRequestId = ref(0)
 
 function resetGiphyPickerState() {
   giphyQuery.value = ''
@@ -896,7 +896,7 @@ function normalizeGiphyQuery(q: string): string {
 async function fetchTrendingGifs() {
   if (!isAuthed.value) return
   if (giphyLoading.value) return
-  const session = giphySession.value
+  const reqId = (giphyRequestId.value += 1)
   giphyLoading.value = true
   giphyError.value = null
   try {
@@ -904,15 +904,14 @@ async function fetchTrendingGifs() {
       method: 'GET',
       query: { limit: 24 },
     })
-    if (!giphyOpen.value || giphySession.value !== session) return
+    if (!giphyOpen.value || giphyRequestId.value !== reqId) return
     giphyItems.value = res.items ?? []
   } catch (e: unknown) {
-    if (!giphyOpen.value || giphySession.value !== session) return
+    if (!giphyOpen.value || giphyRequestId.value !== reqId) return
     giphyError.value = getApiErrorMessage(e) || 'Failed to load trending GIFs.'
     giphyItems.value = []
   } finally {
-    if (!giphyOpen.value || giphySession.value !== session) return
-    giphyLoading.value = false
+    if (giphyRequestId.value === reqId) giphyLoading.value = false
   }
 }
 
@@ -935,7 +934,7 @@ async function searchGiphy() {
     return
   }
   if (giphyLoading.value) return
-  const session = giphySession.value
+  const reqId = (giphyRequestId.value += 1)
   giphyLoading.value = true
   giphyError.value = null
   try {
@@ -943,15 +942,14 @@ async function searchGiphy() {
       method: 'GET',
       query: { q, limit: 24 },
     })
-    if (!giphyOpen.value || giphySession.value !== session) return
+    if (!giphyOpen.value || giphyRequestId.value !== reqId) return
     giphyItems.value = res.items ?? []
   } catch (e: unknown) {
-    if (!giphyOpen.value || giphySession.value !== session) return
+    if (!giphyOpen.value || giphyRequestId.value !== reqId) return
     giphyError.value = getApiErrorMessage(e) || 'Failed to search Giphy.'
     giphyItems.value = []
   } finally {
-    if (!giphyOpen.value || giphySession.value !== session) return
-    giphyLoading.value = false
+    if (giphyRequestId.value === reqId) giphyLoading.value = false
   }
 }
 
@@ -976,9 +974,9 @@ function selectGiphyGif(gif: GiphySearchResponse['items'][number]) {
 watch(
   giphyOpen,
   (open) => {
-    // Bump session so in-flight requests won't apply.
-    giphySession.value += 1
     if (!open) {
+      // Invalidate in-flight requests.
+      giphyRequestId.value += 1
       // When closed/used, don't keep state around.
       resetGiphyPickerState()
     }

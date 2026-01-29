@@ -10,10 +10,11 @@ export function useImageLightbox() {
   const src = useState<string | null>('moh.lightbox.src', () => null)
   const alt = useState<string>('moh.lightbox.alt', () => 'Image')
   const kind = useState<LightboxKind>('moh.lightbox.kind', () => 'banner')
+  // For media: controls whether the original thumbnail(s) are hidden underneath the lightbox copy.
+  const hideOrigin = useState<boolean>('moh.lightbox.hideOrigin', () => false)
 
   const items = useState<string[]>('moh.lightbox.items', () => [])
   const index = useState<number>('moh.lightbox.index', () => 0)
-  const mediaPhase = useState<'fill' | 'fit'>('moh.lightbox.mediaPhase', () => 'fit')
   const mediaAspect = useState<number>('moh.lightbox.mediaAspect', () => 1)
 
   const origin = useState<Rect | null>('moh.lightbox.origin', () => null)
@@ -44,11 +45,6 @@ export function useImageLightbox() {
     const maxW = Math.max(1, vw - pad * 2)
     const maxH = Math.max(1, vh - pad * 2)
 
-    // Media opens as aspect-fill (cropped), then settles to aspect-fit.
-    if (k === 'media' && mediaPhase.value === 'fill') {
-      return { left: pad, top: pad, width: maxW, height: maxH }
-    }
-
     let width = maxW
     let height = width / aspect
     if (height > maxH) {
@@ -59,6 +55,29 @@ export function useImageLightbox() {
     const left = (vw - width) / 2
     const top = (vh - height) / 2
     return { left, top, width, height }
+  }
+
+  function calcMediaStartRectFromOrigin(o: Rect, aspect: number): Rect {
+    const ox = o.left + o.width / 2
+    const oy = o.top + o.height / 2
+    const a = aspect && Number.isFinite(aspect) ? aspect : 1
+
+    // Option A: keep the clicked box width, compute height for aspect-fit.
+    const wFromWidth = Math.max(1, o.width)
+    const hFromWidth = Math.max(1, wFromWidth / a)
+
+    // Option B: keep the clicked box height, compute width for aspect-fit.
+    const hFromHeight = Math.max(1, o.height)
+    const wFromHeight = Math.max(1, hFromHeight * a)
+
+    // Choose the one that changes the other dimension less (looks more natural).
+    const relDeltaH = Math.abs(hFromWidth - o.height) / Math.max(1, o.height)
+    const relDeltaW = Math.abs(wFromHeight - o.width) / Math.max(1, o.width)
+    const useWidth = relDeltaH <= relDeltaW
+
+    const width = useWidth ? wFromWidth : wFromHeight
+    const height = useWidth ? hFromWidth : hFromHeight
+    return { left: ox - width / 2, top: oy - height / 2, width, height }
   }
 
   async function preloadAspect(url: string): Promise<number> {
@@ -81,6 +100,24 @@ export function useImageLightbox() {
     const o = origin.value
     const t = target.value
     if (!o || !t) return
+
+    // For post media, avoid non-uniform scaling (it can look like "stretching").
+    // Instead, keep transform identity and animate the fixed box rect (left/top/width/height).
+    if (kind.value === 'media') {
+      // Start from a rect anchored to the clicked box, but fit the real image aspect.
+      target.value = calcMediaStartRectFromOrigin(o, mediaAspect.value || 1)
+      transform.value = 'translate(0px, 0px) scale(1, 1)'
+      transition.value = 'none'
+      borderRadius.value = targetRadius(kind.value)
+
+      requestAnimationFrame(() => {
+        backdropVisible.value = true
+        transition.value =
+          'left 320ms cubic-bezier(0.22, 1, 0.36, 1), top 320ms cubic-bezier(0.22, 1, 0.36, 1), width 320ms cubic-bezier(0.22, 1, 0.36, 1), height 320ms cubic-bezier(0.22, 1, 0.36, 1)'
+        target.value = calcTargetRect(mediaAspect.value || 1, 'media')
+      })
+      return
+    }
 
     const ox = o.left + o.width / 2
     const oy = o.top + o.height / 2
@@ -110,6 +147,17 @@ export function useImageLightbox() {
     const t = target.value
     if (!o || !t) {
       finalizeClose()
+      return
+    }
+
+    if (kind.value === 'media') {
+      backdropVisible.value = false
+      transform.value = 'translate(0px, 0px) scale(1, 1)'
+      transition.value =
+        'left 220ms cubic-bezier(0.4, 0, 0.2, 1), top 220ms cubic-bezier(0.4, 0, 0.2, 1), width 220ms cubic-bezier(0.4, 0, 0.2, 1), height 220ms cubic-bezier(0.4, 0, 0.2, 1)'
+      // Return to the same "start rect" (aspect-fit anchored to the clicked box), then unmount + reveal original.
+      target.value = calcMediaStartRectFromOrigin(o, mediaAspect.value || 1)
+      borderRadius.value = initialRadius(kind.value)
       return
     }
 
@@ -146,7 +194,7 @@ export function useImageLightbox() {
     src.value = url
     items.value = [url]
     index.value = 0
-    mediaPhase.value = k === 'media' ? 'fill' : 'fit'
+    hideOrigin.value = k === 'media'
     origin.value = { left: rect.left, top: rect.top, width: rect.width, height: rect.height }
     target.value = null
 
@@ -158,9 +206,12 @@ export function useImageLightbox() {
     if (myId !== requestId) return
     mediaAspect.value = aspect
 
-    target.value = calcTargetRect(aspect, k)
+    // For media, we animate rect changes starting from origin (no scale distortion).
+    // For other kinds, we can keep the existing transform-based zoom.
+    target.value = k === 'media' ? calcMediaStartRectFromOrigin(origin.value as Rect, aspect) : calcTargetRect(aspect, k)
     borderRadius.value = initialRadius(k)
     transition.value = 'none'
+    transform.value = 'translate(0px, 0px) scale(1, 1)'
 
     await nextTick()
     startOpenAnimation()
@@ -195,7 +246,6 @@ export function useImageLightbox() {
     const aspect = await preloadAspect(url)
     if (myId !== requestId) return
     mediaAspect.value = aspect
-    if (kind.value === 'media') mediaPhase.value = 'fit'
     target.value = calcTargetRect(aspect, kind.value)
     // Keep it simple: no fancy crossfade, just re-layout to new aspect.
     transform.value = 'translate(0px, 0px) scale(1, 1)'
@@ -216,6 +266,8 @@ export function useImageLightbox() {
   function close() {
     requestId += 1
     if (!visible.value) return
+    // Reveal the original thumbnail(s) immediately (no animation), then let the lightbox copy disappear.
+    hideOrigin.value = false
     startCloseAnimation()
   }
 
@@ -226,8 +278,8 @@ export function useImageLightbox() {
     alt.value = 'Image'
     items.value = []
     index.value = 0
-    mediaPhase.value = 'fit'
     mediaAspect.value = 1
+    hideOrigin.value = false
     origin.value = null
     target.value = null
     transition.value = 'none'
@@ -238,18 +290,17 @@ export function useImageLightbox() {
 
   function onTransitionEnd(e: TransitionEvent) {
     if (!import.meta.client) return
+    if (kind.value === 'media') {
+      // Media animates left/top/width/height (no transform scaling).
+      if (e.propertyName !== 'width') return
+      if (backdropVisible.value) return
+      finalizeClose()
+      return
+    }
+
     if (e.propertyName !== 'transform') return
     if (backdropVisible.value) {
       // Opening finished.
-      if (kind.value === 'media' && mediaPhase.value === 'fill') {
-        // Animate the box from fill -> fit, and crossfade cover -> contain in the component.
-        requestAnimationFrame(() => {
-          transition.value =
-            'left 260ms cubic-bezier(0.22, 1, 0.36, 1), top 260ms cubic-bezier(0.22, 1, 0.36, 1), width 260ms cubic-bezier(0.22, 1, 0.36, 1), height 260ms cubic-bezier(0.22, 1, 0.36, 1)'
-          mediaPhase.value = 'fit'
-          target.value = calcTargetRect(mediaAspect.value || 1, 'media')
-        })
-      }
       return
     }
     finalizeClose()
@@ -316,9 +367,9 @@ export function useImageLightbox() {
     index,
     canPrev,
     canNext,
-    mediaPhase,
     target,
     imageStyle,
+    hideOrigin,
     openFromEvent,
     openGalleryFromEvent,
     prev,

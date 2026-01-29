@@ -314,7 +314,6 @@
     :src="lightbox.src.value"
     :alt="lightbox.alt.value"
     :kind="lightbox.kind.value"
-    :media-phase="lightbox.mediaPhase.value"
     :target="lightbox.target.value"
     :image-style="lightbox.imageStyle.value"
     :show-nav="lightbox.kind.value === 'media' && (lightbox.items.value?.length ?? 0) > 1"
