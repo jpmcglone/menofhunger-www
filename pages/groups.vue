@@ -16,7 +16,11 @@ definePageMeta({
 
 usePageSeo({
   title: 'Groups',
-  description: 'Groups in Men of Hunger — accountability circles, disciplines, and builders helping builders.'
+  description: 'Groups in Men of Hunger — accountability circles, disciplines, and builders helping builders.',
+  canonicalPath: '/groups',
+  noindex: true,
+  ogType: 'website',
+  image: '/images/banner.png',
 })
 </script>
 

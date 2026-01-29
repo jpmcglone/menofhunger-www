@@ -16,7 +16,9 @@ definePageMeta({
 
 usePageSeo({
   title: 'Profile',
-  description: 'Your Men of Hunger profile — your mission, your wins, and what you’re building.'
+  description: 'Your Men of Hunger profile — your mission, your wins, and what you’re building.',
+  canonicalPath: '/profile',
+  noindex: true,
 })
 </script>
 

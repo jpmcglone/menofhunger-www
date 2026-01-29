@@ -62,7 +62,9 @@ definePageMeta({
 
 usePageSeo({
   title: 'Notifications',
-  description: 'Notifications for Men of Hunger — replies, follows, and updates from your network.'
+  description: 'Notifications for Men of Hunger — replies, follows, and updates from your network.',
+  canonicalPath: '/notifications',
+  noindex: true,
 })
 
 type FakeNotification = {

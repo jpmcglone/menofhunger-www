@@ -154,6 +154,7 @@ definePageMeta({
 usePageSeo({
   title: 'Login',
   description: 'Login or sign up using your phone number.',
+  canonicalPath: '/login',
   noindex: true
 })
 

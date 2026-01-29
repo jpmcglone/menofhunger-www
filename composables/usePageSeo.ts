@@ -1,22 +1,25 @@
 import { siteConfig } from '~/config/site'
+import type { MaybeRef } from 'vue'
  
 type OgType = 'website' | 'article'
  
 export type PageSeoOptions = {
   /** Page title (without site suffix). Falls back to route meta title or site title. */
-  title?: string
+  title?: MaybeRef<string | undefined>
   /** Page description. Falls back to site description. */
-  description?: string
+  description?: MaybeRef<string | undefined>
   /** Absolute URL for OG/Twitter image. Defaults to site logo image. */
-  image?: string
+  image?: MaybeRef<string | undefined>
   /** Override canonical path (e.g. '/about'). Defaults to current route path. */
-  canonicalPath?: string
+  canonicalPath?: MaybeRef<string | undefined>
   /** OpenGraph type */
-  ogType?: OgType
+  ogType?: MaybeRef<OgType | undefined>
   /** Prevent indexing (e.g. internal tools pages). */
-  noindex?: boolean
+  noindex?: MaybeRef<boolean | undefined>
+  /** Optional author meta override (avoid for restricted content). */
+  author?: MaybeRef<string | undefined>
   /** Extra JSON-LD objects to add to @graph */
-  jsonLdGraph?: unknown[]
+  jsonLdGraph?: MaybeRef<unknown[] | undefined>
 }
  
 function toAbsoluteUrl(pathOrUrl: string) {
@@ -35,7 +38,7 @@ export function usePageSeo(options: PageSeoOptions = {}) {
   const route = useRoute()
  
   const title = computed(() => {
-    const t = options.title || (route.meta?.title as string | undefined)
+    const t = unref(options.title) || (route.meta?.title as string | undefined)
     return t?.trim() || siteConfig.meta.title
   })
 
@@ -50,28 +53,29 @@ export function usePageSeo(options: PageSeoOptions = {}) {
   })
  
   const description = computed(() => {
-    const d = options.description || (route.meta?.description as string | undefined)
+    const d = unref(options.description) || (route.meta?.description as string | undefined)
     return (d?.trim() || siteConfig.meta.description).slice(0, 300)
   })
  
   const canonical = computed(() => {
-    const path = options.canonicalPath || route.path || '/'
+    const path = unref(options.canonicalPath) || route.path || '/'
     return toAbsoluteUrl(path)
   })
  
   // Default to dark/black logo for social previews unless a page overrides it.
-  const image = computed(() => toAbsoluteUrl(options.image || '/images/logo-black-bg.png'))
+  const image = computed(() => toAbsoluteUrl(unref(options.image) || '/images/logo-black-bg.png'))
   const robots = computed(() =>
-    options.noindex
+    unref(options.noindex)
       ? 'noindex,nofollow'
       : 'index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1'
   )
+  const author = computed(() => (unref(options.author) || siteConfig.name).slice(0, 120))
  
   useSeoMeta({
     title: fullTitle,
     description,
  
-    ogType: options.ogType || 'website',
+    ogType: unref(options.ogType) || 'website',
     ogUrl: canonical,
     ogSiteName: siteConfig.name,
     ogLocale: 'en_US',
@@ -126,7 +130,7 @@ export function usePageSeo(options: PageSeoOptions = {}) {
       )
     }
  
-    return [...baseGraph, ...(options.jsonLdGraph || [])]
+    return [...baseGraph, ...(unref(options.jsonLdGraph) || [])]
   })
  
   useHead({
@@ -134,7 +138,7 @@ export function usePageSeo(options: PageSeoOptions = {}) {
     meta: [
       { name: 'robots', content: robots.value },
       { name: 'keywords', content: siteConfig.meta.keywords },
-      { name: 'author', content: siteConfig.name },
+      { name: 'author', content: author.value },
       // Helpful for link unfurlers; safe defaults for our OG image.
       { property: 'og:image:width', content: '1200' },
       { property: 'og:image:height', content: '630' }

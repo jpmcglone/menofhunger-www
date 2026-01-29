@@ -77,6 +77,7 @@ definePageMeta({
 usePageSeo({
   title: 'Only me',
   description: 'Private posts only you can see.',
+  canonicalPath: '/only-me',
   noindex: true,
 })
 

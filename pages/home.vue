@@ -362,7 +362,11 @@ definePageMeta({
 
 usePageSeo({
   title: 'Home',
-  description: 'Your Men of Hunger feed — posts are shown in simple chronological order.'
+  description: 'Your Men of Hunger feed — posts are shown in simple chronological order.',
+  canonicalPath: '/home',
+  noindex: true,
+  ogType: 'website',
+  image: '/images/banner.png',
 })
 
 const { user } = useAuth()

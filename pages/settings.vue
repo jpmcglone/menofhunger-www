@@ -220,6 +220,7 @@ definePageMeta({
 usePageSeo({
   title: 'Settings',
   description: 'Account settings.',
+  canonicalPath: '/settings',
   noindex: true
 })
 

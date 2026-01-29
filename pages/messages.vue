@@ -120,7 +120,9 @@ definePageMeta({
 
 usePageSeo({
   title: 'Messages',
-  description: 'Direct messages in Men of Hunger — keep conversations focused and intentional.'
+  description: 'Direct messages in Men of Hunger — keep conversations focused and intentional.',
+  canonicalPath: '/messages',
+  noindex: true,
 })
 
 type FakeMessage = {

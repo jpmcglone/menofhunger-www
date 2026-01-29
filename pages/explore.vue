@@ -20,7 +20,11 @@ definePageMeta({
 
 usePageSeo({
   title: 'Explore',
-  description: 'Explore Men of Hunger — trending topics, discovery, and new groups worth joining.'
+  description: 'Explore Men of Hunger — trending topics, discovery, and new groups worth joining.',
+  canonicalPath: '/explore',
+  noindex: true,
+  ogType: 'website',
+  image: '/images/banner.png',
 })
 </script>
 

@@ -30,7 +30,10 @@ definePageMeta({
 
 usePageSeo({
   title: 'Terms',
-  description: 'Terms for using Men of Hunger.'
+  description: 'Terms for using Men of Hunger.',
+  canonicalPath: '/terms',
+  ogType: 'website',
+  image: '/images/banner.png',
 })
 </script>
 

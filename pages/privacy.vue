@@ -30,7 +30,10 @@ definePageMeta({
 
 usePageSeo({
   title: 'Privacy',
-  description: 'Privacy information for Men of Hunger.'
+  description: 'Privacy information for Men of Hunger.',
+  canonicalPath: '/privacy',
+  ogType: 'website',
+  image: '/images/banner.png',
 })
 </script>
 

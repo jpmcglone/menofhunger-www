@@ -132,6 +132,7 @@ definePageMeta({
 usePageSeo({
   title: 'Test',
   description: 'Internal PrimeVue component playground for Men of Hunger.',
+  canonicalPath: '/test',
   noindex: true
 })
 

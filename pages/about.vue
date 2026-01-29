@@ -102,6 +102,9 @@ definePageMeta({
 usePageSeo({
   title: 'About',
   description:
-    'Men of Hunger is a brotherhood for ambitious men who want more discipline, clarity, strength, and impact.'
+    'Men of Hunger is a brotherhood for ambitious men who want more discipline, clarity, strength, and impact.',
+  canonicalPath: '/about',
+  ogType: 'website',
+  image: '/images/banner.png',
 })
 </script>

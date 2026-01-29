@@ -67,6 +67,7 @@ definePageMeta({
 usePageSeo({
   title: 'API Health',
   description: 'Checks reachability of the Men of Hunger API.',
+  canonicalPath: '/api-health',
   noindex: true
 })
 

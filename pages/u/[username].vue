@@ -549,15 +549,11 @@
 </template>
 
 <script setup lang="ts">
+import { siteConfig } from '~/config/site'
+
 definePageMeta({
   layout: 'app',
   title: 'Profile'
-})
-
-usePageSeo({
-  title: 'Profile',
-  description: 'User profile.',
-  noindex: true
 })
 
 type PublicProfile = {
@@ -595,6 +591,69 @@ const notFound = computed(() => {
   if (e?.statusCode === 404) return true
   const msg = (getApiErrorMessage(e) || e?.message || '').toString()
   return /not found/i.test(msg)
+})
+
+function normalizeForMeta(text: string) {
+  return text.replace(/\s+/g, ' ').trim()
+}
+
+function excerpt(text: string, maxLen: number) {
+  const t = normalizeForMeta(text)
+  if (t.length <= maxLen) return t
+  return `${t.slice(0, Math.max(0, maxLen - 1)).trimEnd()}…`
+}
+
+const canonicalPath = computed(() => `/u/${encodeURIComponent(normalizedUsername.value)}`)
+
+const seoTitle = computed(() => {
+  if (notFound.value) return 'User not found'
+  const u = (profile.value?.username ?? normalizedUsername.value).trim()
+  const name = (profile.value?.name ?? '').trim()
+  if (u && name) return `${name} (@${u})`
+  if (u) return `@${u}`
+  return 'Profile'
+})
+
+const seoDescription = computed(() => {
+  if (notFound.value) return 'This profile does not exist.'
+  const bio = (profile.value?.bio ?? '').trim()
+  if (bio) return excerpt(bio, 220)
+  const u = (profile.value?.username ?? normalizedUsername.value).trim()
+  return u ? `View @${u} on ${siteConfig.name}.` : `View a profile on ${siteConfig.name}.`
+})
+
+const seoImage = computed(() => {
+  if (!profile.value) return '/images/banner.png'
+  return profile.value.bannerUrl || profile.value.avatarUrl || '/images/banner.png'
+})
+
+const jsonLdGraph = computed(() => {
+  if (notFound.value || !profile.value?.username) return []
+
+  const u = profile.value.username.trim()
+  const url = `${siteConfig.url}/u/${encodeURIComponent(u)}`
+  const bio = (profile.value.bio ?? '').trim()
+
+  return [
+    {
+      '@type': 'Person',
+      '@id': `${url}#person`,
+      url,
+      name: (profile.value.name ?? `@${u}`).trim(),
+      description: bio ? excerpt(bio, 300) : undefined,
+      image: profile.value.avatarUrl || undefined,
+    }
+  ]
+})
+
+usePageSeo({
+  title: seoTitle,
+  description: seoDescription,
+  canonicalPath,
+  ogType: 'website',
+  image: seoImage,
+  noindex: computed(() => notFound.value),
+  jsonLdGraph,
 })
 
 const { user: authUser } = useAuth()

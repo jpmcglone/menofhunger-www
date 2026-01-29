@@ -71,6 +71,7 @@ definePageMeta({
 usePageSeo({
   title: 'Feedback',
   description: 'Send feedback to Men of Hunger.',
+  canonicalPath: '/feedback',
   noindex: true,
 })
 

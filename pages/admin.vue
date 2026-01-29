@@ -373,6 +373,7 @@ definePageMeta({
 usePageSeo({
   title: 'Admin',
   description: 'Admin tools for Men of Hunger.',
+  canonicalPath: '/admin',
   noindex: true,
 })
 
