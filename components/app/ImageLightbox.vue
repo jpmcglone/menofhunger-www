@@ -24,8 +24,62 @@
           <i class="pi pi-times text-lg" aria-hidden="true" />
         </button>
 
+        <button
+          v-if="showNav"
+          type="button"
+          class="absolute left-3 top-1/2 z-10 -translate-y-1/2 rounded-full bg-black/45 p-2 text-white shadow-sm disabled:opacity-40"
+          aria-label="Previous image"
+          :disabled="!canPrev"
+          @click.stop="onPrev"
+        >
+          <i class="pi pi-angle-left text-xl" aria-hidden="true" />
+        </button>
+
+        <button
+          v-if="showNav"
+          type="button"
+          class="absolute right-3 top-1/2 z-10 -translate-y-1/2 rounded-full bg-black/45 p-2 text-white shadow-sm disabled:opacity-40"
+          aria-label="Next image"
+          :disabled="!canNext"
+          @click.stop="onNext"
+        >
+          <i class="pi pi-angle-right text-xl" aria-hidden="true" />
+        </button>
+
+        <div
+          v-if="showNav && counterLabel"
+          class="absolute left-1/2 top-4 z-10 -translate-x-1/2 rounded-full bg-black/45 px-3 py-1 text-[11px] font-semibold text-white"
+          aria-hidden="true"
+        >
+          {{ counterLabel }}
+        </div>
+
         <div class="relative h-full w-full">
+          <!-- Media: animate from cover (fill) -> contain (fit) via crossfade -->
+          <template v-if="kind === 'media'">
+            <img
+              :src="src"
+              :alt="alt"
+              class="select-none object-cover will-change-transform transition-opacity duration-200"
+              :class="mediaPhase === 'fit' ? 'opacity-0' : 'opacity-100'"
+              :style="imageStyle"
+              draggable="false"
+              @click.stop
+              @transitionend="onTransitionEnd"
+            >
+            <img
+              :src="src"
+              :alt="alt"
+              class="select-none object-contain will-change-transform transition-opacity duration-200"
+              :class="mediaPhase === 'fit' ? 'opacity-100' : 'opacity-0'"
+              :style="imageStyle"
+              draggable="false"
+              @click.stop
+            >
+          </template>
+
           <img
+            v-else
             :src="src"
             :alt="alt"
             class="select-none object-cover will-change-transform"
@@ -48,8 +102,16 @@ defineProps<{
   backdropVisible: boolean
   src: string | null
   alt: string
+  kind?: 'avatar' | 'banner' | 'media'
+  mediaPhase?: 'fill' | 'fit'
   target: unknown
   imageStyle: StyleValue
+  showNav?: boolean
+  canPrev?: boolean
+  canNext?: boolean
+  counterLabel?: string | null
+  onPrev?: () => void
+  onNext?: () => void
   onClose: () => void
   onTransitionEnd: (e: TransitionEvent) => void
 }>()

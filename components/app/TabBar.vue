@@ -30,6 +30,7 @@
             :to="item.to"
             class="flex flex-col items-center justify-center py-1"
             :class="isActive(item.to) ? 'text-gray-900 dark:text-gray-50' : 'text-gray-500 dark:text-gray-400'"
+            @click="(e) => onNavClick(item.to, e)"
           >
             <div class="relative h-8 w-8 flex items-center justify-center">
               <i class="pi text-xl" :class="item.icon" aria-hidden="true" />
@@ -80,6 +81,14 @@ const meAvatarUrl = computed(() => (user.value?.avatarUrl ?? null))
 function isActive(to: string) {
   if (to === '/home') return route.path === '/home'
   return route.path === to || route.path.startsWith(`${to}/`)
+}
+
+function onNavClick(to: string, e: MouseEvent) {
+  if (!isActive(to)) return
+  e.preventDefault()
+  e.stopPropagation()
+  if (!import.meta.client) return
+  window.dispatchEvent(new CustomEvent('moh-scroll-top', { detail: { to } }))
 }
 
 function toggleProfileMenu(event: Event) {

@@ -15,6 +15,19 @@ export type ApiErrorEnvelope = {
 
 export type PostVisibility = 'public' | 'verifiedOnly' | 'premiumOnly' | 'onlyMe'
 
+export type PostMediaKind = 'image' | 'gif'
+export type PostMediaSource = 'upload' | 'giphy'
+
+export type PostMedia = {
+  id: string
+  kind: PostMediaKind
+  source: PostMediaSource
+  url: string
+  mp4Url: string | null
+  width: number | null
+  height: number | null
+}
+
 export type PostAuthor = {
   id: string
   username: string | null
@@ -30,6 +43,7 @@ export type FeedPost = {
   body: string
   visibility: PostVisibility
   boostCount: number
+  media: PostMedia[]
   viewerHasBoosted?: boolean
   internal?: {
     boostScore: number | null
@@ -60,6 +74,17 @@ export type GetUserPostsResponse = {
 
 export type CreatePostResponse = {
   post: FeedPost
+}
+
+export type GiphySearchResponse = {
+  items: Array<{
+    id: string
+    title: string
+    url: string
+    mp4Url: string | null
+    width: number | null
+    height: number | null
+  }>
 }
 
 export type FollowVisibility = 'all' | 'verified' | 'premium' | 'none'

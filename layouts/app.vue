@@ -56,6 +56,7 @@
                       : 'text-violet-700 hover:bg-violet-100 dark:text-violet-300 dark:hover:bg-violet-500/20')
                   : ''
               ]"
+              @click="(e) => onLeftNavClick(item.to, e)"
             >
               <span class="relative flex h-12 w-12 shrink-0 items-center justify-center">
                 <i :class="['pi text-[28px] font-semibold', item.icon]" aria-hidden="true" />
@@ -306,6 +307,29 @@
   </div>
 
   <AppTabBar :items="tabItems" />
+
+  <AppImageLightbox
+    :visible="lightbox.visible.value"
+    :backdrop-visible="lightbox.backdropVisible.value"
+    :src="lightbox.src.value"
+    :alt="lightbox.alt.value"
+    :kind="lightbox.kind.value"
+    :media-phase="lightbox.mediaPhase.value"
+    :target="lightbox.target.value"
+    :image-style="lightbox.imageStyle.value"
+    :show-nav="lightbox.kind.value === 'media' && (lightbox.items.value?.length ?? 0) > 1"
+    :can-prev="lightbox.canPrev.value"
+    :can-next="lightbox.canNext.value"
+    :counter-label="
+      lightbox.kind.value === 'media' && (lightbox.items.value?.length ?? 0) > 1
+        ? `${lightbox.index.value + 1} / ${lightbox.items.value.length}`
+        : null
+    "
+    :on-prev="lightbox.prev"
+    :on-next="lightbox.next"
+    :on-close="lightbox.close"
+    :on-transition-end="lightbox.onTransitionEnd"
+  />
 </template>
 
 <script setup lang="ts">
@@ -352,6 +376,42 @@ useCoupledScroll({
   middle: middleScrollerEl,
   right: rightScrollerEl,
   enabled: computed(() => !isRightRailForcedHidden.value)
+})
+
+const lightbox = useImageLightbox()
+
+function isActiveNav(to: string) {
+  if (to === '/home') return route.path === '/home'
+  return route.path === to || route.path.startsWith(`${to}/`)
+}
+
+function scrollMiddleToTop() {
+  const el = middleScrollerEl.value
+  if (!el) return
+  el.scrollTo({ top: 0, behavior: 'smooth' })
+}
+
+function onLeftNavClick(to: string, e: MouseEvent) {
+  if (!isActiveNav(to)) return
+  e.preventDefault()
+  e.stopPropagation()
+  scrollMiddleToTop()
+}
+
+function onScrollTopEvent(e: Event) {
+  const to = (e as CustomEvent<{ to?: string }>).detail?.to ?? null
+  if (to && !isActiveNav(to)) return
+  scrollMiddleToTop()
+}
+
+onMounted(() => {
+  if (!import.meta.client) return
+  window.addEventListener('moh-scroll-top', onScrollTopEvent as EventListener)
+})
+
+onBeforeUnmount(() => {
+  if (!import.meta.client) return
+  window.removeEventListener('moh-scroll-top', onScrollTopEvent as EventListener)
 })
 </script>
 

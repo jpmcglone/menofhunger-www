@@ -1,18 +1,5 @@
 <template>
   <div>
-    <!-- Feed scope -->
-    <div
-      v-if="isAuthed"
-      class="sticky top-0 z-20 bg-white/90 pt-2 pb-0 dark:bg-black/80"
-    >
-      <Tabs v-model:value="feedScope" class="w-full">
-        <TabList class="w-full">
-          <Tab value="all">All</Tab>
-          <Tab value="following">Following</Tab>
-        </TabList>
-      </Tabs>
-    </div>
-
     <!-- Composer -->
     <div class="border-b border-gray-200 px-4 py-4 dark:border-zinc-800">
       <div v-if="isAuthed" class="grid grid-cols-[2.5rem_minmax(0,1fr)] gap-x-3">
@@ -142,6 +129,15 @@
         </div>
 
         <div class="row-start-2 col-span-2 sm:col-span-1 sm:col-start-2 min-w-0 moh-composer-tint">
+          <input
+            ref="mediaFileInputEl"
+            type="file"
+            accept="image/*"
+            class="hidden"
+            multiple
+            @change="onMediaFilesSelected"
+          />
+
           <textarea
             ref="composerTextareaEl"
             v-model="draft"
@@ -155,11 +151,63 @@
           <AppInlineAlert v-if="submitError" class="mt-3" severity="danger">
             {{ submitError }}
           </AppInlineAlert>
+
+          <div v-if="composerMedia.length" class="mt-3 flex flex-wrap gap-2">
+            <div v-for="m in composerMedia" :key="m.localId" class="relative">
+              <img
+                :src="m.previewUrl"
+                class="h-20 w-20 rounded-lg border moh-border object-cover bg-black/5 dark:bg-white/5"
+                alt=""
+                loading="lazy"
+              />
+              <button
+                type="button"
+                class="absolute -right-2 -top-2 inline-flex h-6 w-6 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-700 shadow-sm transition-colors hover:bg-gray-50 dark:border-zinc-800 dark:bg-black dark:text-gray-200 dark:hover:bg-zinc-900"
+                aria-label="Remove media"
+                @click="removeComposerMedia(m.localId)"
+              >
+                <span class="text-[12px] leading-none" aria-hidden="true">×</span>
+              </button>
+              <div
+                v-if="m.uploading"
+                class="absolute inset-0 flex items-center justify-center rounded-lg bg-black/35 text-white"
+                aria-label="Uploading"
+              >
+                <i class="pi pi-spin pi-spinner text-[16px]" aria-hidden="true" />
+              </div>
+            </div>
+          </div>
+
           <div class="mt-3 flex items-center justify-between">
             <div class="flex items-center gap-2 text-gray-500 dark:text-gray-400">
-              <Button icon="pi pi-image" text rounded severity="secondary" aria-label="Media" v-tooltip.bottom="tinyTooltip('Media')" />
-              <Button icon="pi pi-face-smile" text rounded severity="secondary" aria-label="Emoji" v-tooltip.bottom="tinyTooltip('Emoji')" />
-              <Button icon="pi pi-map-marker" text rounded severity="secondary" aria-label="Location" v-tooltip.bottom="tinyTooltip('Location')" />
+              <Button
+                icon="pi pi-image"
+                text
+                rounded
+                severity="secondary"
+                aria-label="Add media"
+                :disabled="!canAddMoreMedia"
+                v-tooltip.bottom="tinyTooltip(canAddMoreMedia ? 'Add image/GIF' : 'Max 4 attachments')"
+                @click="openMediaPicker"
+              />
+              <Button
+                text
+                rounded
+                severity="secondary"
+                aria-label="Add GIF"
+                :disabled="!canAddMoreMedia"
+                v-tooltip.bottom="tinyTooltip(canAddMoreMedia ? 'Add GIF (Giphy)' : 'Max 4 attachments')"
+                @click="openGiphyPicker"
+              >
+                <template #icon>
+                  <span
+                    class="inline-flex items-center justify-center rounded-md border border-current/25 bg-transparent px-1.5 py-1 text-[10px] font-extrabold leading-none tracking-wide"
+                    aria-hidden="true"
+                  >
+                    GIF
+                  </span>
+                </template>
+              </Button>
             </div>
             <div class="flex items-center gap-2">
               <div class="text-xs text-gray-500 dark:text-gray-400 tabular-nums">
@@ -171,7 +219,7 @@
                 :outlined="postButtonOutlined"
                 severity="secondary"
                 :class="postButtonClass"
-                :disabled="submitting || !canPost || !draft.trim() || postCharCount > postMaxLen"
+                :disabled="submitting || !canPost || !draft.trim() || postCharCount > postMaxLen || composerUploading"
                 :loading="submitting"
                 @click="submit"
               />
@@ -200,77 +248,192 @@
 
     <!-- Posts -->
     <div>
-      <div class="mt-1 border-b border-gray-200 px-4 py-3 dark:border-zinc-800">
+      <div class="sticky top-0 z-20 mt-1 border-b border-gray-200 bg-white/90 px-4 py-3 backdrop-blur dark:border-zinc-800 dark:bg-black/80">
         <div class="flex items-center justify-end gap-2">
           <button
-            v-if="feedFilterTagLabel"
+            v-if="feedScope !== 'all' || feedFilter !== 'all' || feedSort !== 'new'"
             type="button"
             class="inline-flex h-6 w-6 items-center justify-center rounded-full border border-gray-200 text-gray-600 transition-colors hover:bg-gray-50 hover:text-gray-900 dark:border-zinc-800 dark:text-gray-300 dark:hover:bg-zinc-900 dark:hover:text-gray-50"
-            aria-label="Clear filter"
-            @click="setFeedFilter('all')"
+            aria-label="Reset feed to defaults"
+            @click="
+              () => {
+                feedScope = 'all'
+                setFeedFilter('all')
+                setFeedSort('new')
+              }
+            "
           >
             <span class="text-[10px] leading-none opacity-75" aria-hidden="true">×</span>
           </button>
-          <span
-            v-if="feedFilterTagLabel"
-            class="inline-flex items-center rounded-full border px-2 py-1 text-[11px] font-semibold leading-none"
-            :class="feedFilterTagClass"
-          >
-            {{ feedFilterTagLabel }}
-          </span>
 
-          <div ref="feedFilterWrapEl" class="relative">
-            <Button
-              icon="pi pi-sliders-h"
-              text
-              rounded
-              severity="secondary"
-              aria-label="Filter"
-              @click="toggleFeedFilterPopover"
-            />
+          <!-- Scope dropdown pill -->
+          <div ref="feedScopeWrapEl" class="relative">
+            <button
+              type="button"
+              class="inline-flex items-center gap-1.5 rounded-full border px-2 py-1 text-[11px] font-semibold leading-none transition-colors"
+              :class="feedScopePillClass"
+              aria-label="Change feed scope"
+              @click="toggleFeedScopePopover"
+            >
+              <i class="pi pi-users text-[10px] opacity-80" aria-hidden="true" />
+              <span>{{ feedScopeChipLabel }}</span>
+              <i class="pi pi-chevron-down text-[10px] opacity-70" aria-hidden="true" />
+            </button>
 
             <div
-              v-if="feedFilterPopoverOpen"
+              v-if="feedScopePopoverOpen"
               class="absolute right-0 top-full z-30 mt-2 w-56 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-lg dark:border-zinc-800 dark:bg-black"
               role="menu"
-              aria-label="Feed filter"
+              aria-label="Feed scope"
             >
+              <div class="px-3 pt-2 pb-1 text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                Scope
+              </div>
               <button
                 type="button"
                 class="w-full text-left px-3 py-2 text-sm font-semibold transition-colors text-gray-900 hover:bg-gray-50 dark:text-gray-50 dark:hover:bg-zinc-900"
                 role="menuitem"
-                @click="setFeedFilterFromPicker('all')"
+                @click="
+                  () => {
+                    feedScope = 'all'
+                    closeFeedScopePopover()
+                  }
+                "
               >
-                All
+                <span class="inline-flex items-center justify-between w-full">
+                  <span>All</span>
+                  <i v-if="feedScope === 'all'" class="pi pi-check text-[12px] opacity-70" aria-hidden="true" />
+                </span>
               </button>
 
               <button
                 type="button"
                 class="w-full text-left px-3 py-2 text-sm font-semibold transition-colors text-gray-900 hover:bg-gray-50 dark:text-gray-50 dark:hover:bg-zinc-900"
                 role="menuitem"
-                @click="setFeedFilterFromPicker('public')"
+                :disabled="!isAuthed"
+                :class="!isAuthed ? 'opacity-60 cursor-not-allowed' : ''"
+                @click="
+                  () => {
+                    if (!isAuthed) return
+                    feedScope = 'following'
+                    closeFeedScopePopover()
+                  }
+                "
               >
-                Public
+                <span class="inline-flex items-center justify-between w-full">
+                  <span>
+                    Following
+                    <span v-if="!isAuthed" class="ml-2 font-mono text-[10px] opacity-80" aria-hidden="true">LOGIN</span>
+                  </span>
+                  <i v-if="feedScope === 'following'" class="pi pi-check text-[12px] opacity-70" aria-hidden="true" />
+                </span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Sort dropdown pill -->
+          <div ref="feedSortWrapEl" class="relative">
+            <button
+              type="button"
+              class="inline-flex items-center gap-1.5 rounded-full border px-2 py-1 text-[11px] font-semibold leading-none transition-colors"
+              :class="feedSortPillClass"
+              aria-label="Change feed sort order"
+              @click="toggleFeedSortPopover"
+            >
+              <i :class="feedSortIconClass" class="text-[10px] opacity-80" aria-hidden="true" />
+              <span>{{ feedSortTagLabel }}</span>
+              <i class="pi pi-chevron-down text-[10px] opacity-70" aria-hidden="true" />
+            </button>
+
+            <div
+              v-if="feedSortPopoverOpen"
+              class="absolute right-0 top-full z-30 mt-2 w-56 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-lg dark:border-zinc-800 dark:bg-black"
+              role="menu"
+              aria-label="Feed sort"
+            >
+              <div class="px-3 pt-2 pb-1 text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                Order
+              </div>
+              <button
+                type="button"
+                class="w-full text-left px-3 py-2 text-sm font-semibold transition-colors text-gray-900 hover:bg-gray-50 dark:text-gray-50 dark:hover:bg-zinc-900"
+                role="menuitem"
+                @click="setFeedSortFromPicker('new')"
+              >
+                <span class="inline-flex items-center justify-between w-full">
+                  <span>Newest</span>
+                  <i v-if="feedSort === 'new'" class="pi pi-check text-[12px] opacity-70" aria-hidden="true" />
+                </span>
+              </button>
+
+              <button
+                type="button"
+                class="w-full text-left px-3 py-2 text-sm font-semibold transition-colors text-gray-900 hover:bg-gray-50 dark:text-gray-50 dark:hover:bg-zinc-900"
+                role="menuitem"
+                @click="setFeedSortFromPicker('trending')"
+              >
+                <span class="inline-flex items-center justify-between w-full">
+                  <span>Trending</span>
+                  <i v-if="feedSort === 'trending'" class="pi pi-check text-[12px] opacity-70" aria-hidden="true" />
+                </span>
+              </button>
+
+              <div class="my-1 border-t border-gray-200 dark:border-zinc-800" />
+              <div class="px-3 pt-2 pb-1 text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                Visibility
+              </div>
+              <button
+                type="button"
+                class="w-full text-left px-3 py-2 text-sm font-semibold transition-colors text-gray-900 hover:bg-gray-50 dark:text-gray-50 dark:hover:bg-zinc-900"
+                role="menuitem"
+                @click="setFeedFilterFromSortPicker('all')"
+              >
+                <span class="inline-flex items-center justify-between w-full">
+                  <span>All</span>
+                  <i v-if="feedFilter === 'all'" class="pi pi-check text-[12px] opacity-70" aria-hidden="true" />
+                </span>
+              </button>
+
+              <button
+                type="button"
+                class="w-full text-left px-3 py-2 text-sm font-semibold transition-colors text-gray-900 hover:bg-gray-50 dark:text-gray-50 dark:hover:bg-zinc-900"
+                role="menuitem"
+                @click="setFeedFilterFromSortPicker('public')"
+              >
+                <span class="inline-flex items-center justify-between w-full">
+                  <span>Public</span>
+                  <i v-if="feedFilter === 'public'" class="pi pi-check text-[12px] opacity-70" aria-hidden="true" />
+                </span>
               </button>
 
               <button
                 type="button"
                 class="w-full text-left px-3 py-2 text-sm font-semibold transition-colors text-sky-700 hover:bg-sky-600 hover:text-white dark:text-sky-300 dark:hover:bg-sky-500"
                 role="menuitem"
-                @click="setFeedFilterFromPicker('verifiedOnly')"
+                @click="setFeedFilterFromSortPicker('verifiedOnly')"
               >
-                Verified
-                <span v-if="!viewerIsVerified" class="ml-2 font-mono text-[10px] opacity-80" aria-hidden="true">LOCKED</span>
+                <span class="inline-flex items-center justify-between w-full">
+                  <span>
+                    Verified
+                    <span v-if="!viewerIsVerified" class="ml-2 font-mono text-[10px] opacity-80" aria-hidden="true">LOCKED</span>
+                  </span>
+                  <i v-if="feedFilter === 'verifiedOnly'" class="pi pi-check text-[12px] opacity-70" aria-hidden="true" />
+                </span>
               </button>
 
               <button
                 type="button"
                 class="w-full text-left px-3 py-2 text-sm font-semibold transition-colors text-amber-800 hover:bg-amber-600 hover:text-white dark:text-amber-300 dark:hover:bg-amber-500"
                 role="menuitem"
-                @click="setFeedFilterFromPicker('premiumOnly')"
+                @click="setFeedFilterFromSortPicker('premiumOnly')"
               >
-                Premium
-                <span v-if="!viewerIsPremium" class="ml-2 font-mono text-[10px] opacity-80" aria-hidden="true">LOCKED</span>
+                <span class="inline-flex items-center justify-between w-full">
+                  <span>
+                    Premium
+                    <span v-if="!viewerIsPremium" class="ml-2 font-mono text-[10px] opacity-80" aria-hidden="true">LOCKED</span>
+                  </span>
+                  <i v-if="feedFilter === 'premiumOnly'" class="pi pi-check text-[12px] opacity-70" aria-hidden="true" />
+                </span>
               </button>
             </div>
           </div>
@@ -344,10 +507,49 @@
       </template>
     </div>
   </div>
+
+  <Dialog
+    v-if="giphyOpen"
+    v-model:visible="giphyOpen"
+    modal
+    header="Add a GIF"
+    :draggable="false"
+    class="w-[min(44rem,calc(100vw-2rem))]"
+  >
+    <div class="flex items-center gap-2">
+      <InputText
+        ref="giphyInputRef"
+        v-model="giphyQuery"
+        class="w-full"
+        placeholder="Search Giphy…"
+        aria-label="Search Giphy"
+        @keydown.enter.prevent="searchGiphy"
+      />
+      <Button label="Search" severity="secondary" :loading="giphyLoading" :disabled="giphyLoading" @click="searchGiphy" />
+    </div>
+
+    <div v-if="giphyError" class="mt-3 text-sm text-red-600 dark:text-red-400">
+      {{ giphyError }}
+    </div>
+
+    <div class="mt-4 grid grid-cols-3 sm:grid-cols-4 gap-2">
+      <button
+        v-for="gif in giphyItems"
+        :key="gif.id"
+        type="button"
+        class="overflow-hidden rounded-lg border moh-border bg-black/5 dark:bg-white/5 hover:opacity-90 transition-opacity"
+        :disabled="!canAddMoreMedia"
+        :aria-label="`Add GIF ${gif.title || ''}`"
+        @click="selectGiphyGif(gif)"
+      >
+        <img :src="gif.url" class="h-24 w-full object-cover" alt="" loading="lazy" />
+      </button>
+    </div>
+  </Dialog>
 </template>
 
 <script setup lang="ts">
-import type { PostVisibility } from '~/types/api'
+import type { GiphySearchResponse, PostMediaKind, PostMediaSource, PostVisibility } from '~/types/api'
 import type { ProfilePostsFilter } from '~/utils/post-visibility'
 import { filterPillClasses } from '~/utils/post-visibility'
 import { PRIMARY_PREMIUM_ORANGE, PRIMARY_TEXT_DARK, PRIMARY_TEXT_LIGHT, PRIMARY_VERIFIED_BLUE, primaryPaletteToCssVars } from '~/utils/theme-tint'
@@ -372,6 +574,7 @@ usePageSeo({
 const { user } = useAuth()
 const isAuthed = computed(() => Boolean(user.value?.id))
 const { apiFetchData } = useApiClient()
+const toast = useAppToast()
 
 const feedFilter = useCookie<ProfilePostsFilter>('moh.feed.filter.v1', {
   default: () => 'all',
@@ -381,7 +584,14 @@ const feedFilter = useCookie<ProfilePostsFilter>('moh.feed.filter.v1', {
 })
 
 const feedScope = useCookie<'following' | 'all'>('moh.home.scope.v1', {
-  default: () => 'following',
+  default: () => 'all',
+  sameSite: 'lax',
+  path: '/',
+  maxAge: 60 * 60 * 24 * 365,
+})
+
+const feedSort = useCookie<'new' | 'trending'>('moh.home.sort.v1', {
+  default: () => 'new',
   sameSite: 'lax',
   path: '/',
   maxAge: 60 * 60 * 24 * 365,
@@ -401,7 +611,16 @@ watch(
   feedScope,
   (v) => {
     if (v === 'following' || v === 'all') return
-    feedScope.value = 'following'
+    feedScope.value = 'all'
+  },
+  { immediate: true }
+)
+
+watch(
+  feedSort,
+  (v) => {
+    if (v === 'new' || v === 'trending') return
+    feedSort.value = 'new'
   },
   { immediate: true }
 )
@@ -411,6 +630,7 @@ const followingOnly = computed(() => Boolean(isAuthed.value && feedScope.value =
 const { posts, nextCursor, loading, error, refresh, loadMore, addPost, removePost } = usePostsFeed({
   visibility: feedFilter,
   followingOnly,
+  sort: feedSort,
 })
 
 const followingCount = ref<number | null>(null)
@@ -443,6 +663,329 @@ watchEffect(() => {
 const draft = ref('')
 const isPremium = computed(() => Boolean(user.value?.premium))
 
+type ComposerMediaItem = {
+  localId: string
+  source: PostMediaSource
+  kind: PostMediaKind
+  // For UI preview (object URLs for uploads; direct URLs for Giphy).
+  previewUrl: string
+  // For API payload:
+  r2Key?: string
+  url?: string
+  mp4Url?: string | null
+  width?: number | null
+  height?: number | null
+  uploading?: boolean
+}
+
+const composerMedia = ref<ComposerMediaItem[]>([])
+const canAddMoreMedia = computed(() => composerMedia.value.length < 4)
+const composerUploading = computed(() => composerMedia.value.some((m) => Boolean(m.uploading)))
+
+const mediaFileInputEl = ref<HTMLInputElement | null>(null)
+
+function makeLocalId(): string {
+  try {
+    return crypto.randomUUID()
+  } catch {
+    return `m_${Date.now()}_${Math.random().toString(16).slice(2)}`
+  }
+}
+
+function openMediaPicker() {
+  if (!canAddMoreMedia.value) return
+  mediaFileInputEl.value?.click()
+}
+
+function removeComposerMedia(localId: string) {
+  const id = (localId ?? '').trim()
+  if (!id) return
+  const idx = composerMedia.value.findIndex((m) => m.localId === id)
+  if (idx < 0) return
+  const item = composerMedia.value[idx]
+  if (item?.source === 'upload' && item.previewUrl?.startsWith('blob:')) {
+    try {
+      URL.revokeObjectURL(item.previewUrl)
+    } catch {
+      // ignore
+    }
+  }
+  composerMedia.value.splice(idx, 1)
+}
+
+async function onMediaFilesSelected(e: Event) {
+  if (!import.meta.client) return
+  const input = e.target as HTMLInputElement | null
+  const files = Array.from(input?.files ?? [])
+  // reset so selecting the same file again triggers change
+  if (input) input.value = ''
+  if (!files.length) return
+
+  for (const file of files) {
+    if (!canAddMoreMedia.value) break
+    if (!file) continue
+    const ct = (file.type ?? '').toLowerCase()
+    if (!ct.startsWith('image/')) continue
+
+    const previewUrl = URL.createObjectURL(file)
+    const localId = makeLocalId()
+
+    const slot: ComposerMediaItem = {
+      localId,
+      source: 'upload',
+      kind: ct === 'image/gif' ? 'gif' : 'image',
+      previewUrl,
+      uploading: true,
+    }
+    composerMedia.value.push(slot)
+
+    try {
+      const init = await apiFetchData<{ key: string; uploadUrl: string; headers: Record<string, string>; maxBytes?: number }>(
+        '/uploads/post-media/init',
+        {
+          method: 'POST',
+          body: { contentType: file.type },
+        },
+      )
+
+      const maxBytes = typeof init.maxBytes === 'number' ? init.maxBytes : null
+      if (maxBytes && file.size > maxBytes) {
+        throw new Error('File is too large.')
+      }
+
+      const putRes = await fetch(init.uploadUrl, {
+        method: 'PUT',
+        headers: init.headers,
+        body: file,
+      })
+      if (!putRes.ok) throw new Error('Failed to upload.')
+
+      const committed = await apiFetchData<{ key: string; contentType: string; kind: PostMediaKind; width: number | null; height: number | null }>(
+        '/uploads/post-media/commit',
+        {
+          method: 'POST',
+          body: { key: init.key },
+        },
+      )
+
+      const idx = composerMedia.value.findIndex((m) => m.localId === localId)
+      if (idx >= 0) {
+        const existing = composerMedia.value[idx]
+        if (!existing) return
+        composerMedia.value[idx] = {
+          ...existing,
+          uploading: false,
+          kind: committed.kind,
+          r2Key: committed.key,
+          width: committed.width ?? null,
+          height: committed.height ?? null,
+        }
+      }
+    } catch (err: unknown) {
+      removeComposerMedia(localId)
+      toast.push({ title: getApiErrorMessage(err) || 'Failed to add media.', tone: 'error', durationMs: 2200 })
+    }
+  }
+}
+
+const giphyOpen = ref(false)
+const giphyQuery = ref('')
+const giphyLoading = ref(false)
+const giphyError = ref<string | null>(null)
+const giphyItems = ref<GiphySearchResponse['items']>([])
+const giphyInputRef = ref<any>(null)
+const giphySession = ref(0)
+
+function resetGiphyPickerState() {
+  giphyQuery.value = ''
+  giphyItems.value = []
+  giphyError.value = null
+  giphyLoading.value = false
+}
+
+function focusGiphyInput() {
+  if (!import.meta.client) return
+  try {
+    // PrimeVue InputText exposes the underlying input as its $el.
+    const root = (giphyInputRef.value?.$el ?? giphyInputRef.value) as HTMLElement | null
+    const input = (root?.tagName === 'INPUT' ? (root as HTMLInputElement) : (root?.querySelector?.('input') as HTMLInputElement | null)) ?? null
+    input?.focus()
+    input?.select?.()
+  } catch {
+    // ignore
+  }
+}
+
+function openGiphyPicker() {
+  if (!canAddMoreMedia.value) return
+  // Always start fresh (don't keep stale state around).
+  resetGiphyPickerState()
+
+  // Update the search field immediately (before the modal renders).
+  giphyQuery.value = deriveGiphyQueryFromDraft(draft.value) ?? ''
+  giphyOpen.value = true
+
+  // Focus immediately once mounted.
+  void nextTick().then(() => focusGiphyInput())
+
+  // Immediately show results (best UX): either trending, or the derived query.
+  void primeGiphyResults()
+}
+
+function deriveGiphyQueryFromDraft(text: string): string | null {
+  const rawOriginal = (text ?? '').toString().trim()
+  if (!rawOriginal) return null
+
+  // If it's already a short "hype phrase", keep it essentially as-is.
+  // This avoids weird transformations like "Let's" -> "Let".
+  const withoutUrls = rawOriginal.replace(/https?:\/\/\S+/g, ' ').replace(/\s+/g, ' ').trim()
+  if (withoutUrls && withoutUrls.length <= 28) {
+    // Trim trailing punctuation; keep contractions.
+    const cleaned = withoutUrls.replace(/[!?.,;:]+$/g, '').trim()
+    if (cleaned.length >= 2) return normalizeGiphyQuery(cleaned)
+  }
+
+  const raw = withoutUrls.toLowerCase()
+  // Heuristic: grab a few meaningful tokens from the end.
+  const stop = new Set([
+    'the',
+    'a',
+    'an',
+    'and',
+    'or',
+    'to',
+    'of',
+    'in',
+    'on',
+    'for',
+    'with',
+    'is',
+    'it',
+    'this',
+    'that',
+    'i',
+    'im',
+    "i'm",
+    'you',
+    'we',
+    'they',
+    'my',
+    'your',
+    'our',
+  ])
+  const tokens = raw
+    // Keep apostrophes inside words ("let's") so we don't lose meaning.
+    .match(/[\p{L}\p{N}]+(?:['’][\p{L}\p{N}]+)*/gu)
+    ?.map((t) => t.trim())
+    .filter((t) => t.length >= 2 && !stop.has(t)) ?? []
+  if (!tokens.length) return null
+  const picked = tokens.slice(-4)
+  const q = picked.join(' ').trim()
+  return q.length >= 2 ? normalizeGiphyQuery(q) : null
+}
+
+function normalizeGiphyQuery(q: string): string {
+  const s = (q ?? '').toString().trim()
+  if (!s) return ''
+  // Reduce extremely long repeated letters so searches stay sane (e.g. "goooo" -> "gooo").
+  // Keep at most 3 repeats.
+  const collapsed = s.replace(/([A-Za-z])\1{3,}/g, '$1$1$1')
+  return collapsed.replace(/\s+/g, ' ').trim()
+}
+
+async function fetchTrendingGifs() {
+  if (!isAuthed.value) return
+  if (giphyLoading.value) return
+  const session = giphySession.value
+  giphyLoading.value = true
+  giphyError.value = null
+  try {
+    const res = await apiFetchData<GiphySearchResponse>('/giphy/trending', {
+      method: 'GET',
+      query: { limit: 24 },
+    })
+    if (!giphyOpen.value || giphySession.value !== session) return
+    giphyItems.value = res.items ?? []
+  } catch (e: unknown) {
+    if (!giphyOpen.value || giphySession.value !== session) return
+    giphyError.value = getApiErrorMessage(e) || 'Failed to load trending GIFs.'
+    giphyItems.value = []
+  } finally {
+    if (!giphyOpen.value || giphySession.value !== session) return
+    giphyLoading.value = false
+  }
+}
+
+async function primeGiphyResults() {
+  if (!isAuthed.value) return
+  if (giphyLoading.value) return
+  const existing = giphyQuery.value.trim()
+  if (existing.length >= 2) {
+    await searchGiphy()
+    return
+  }
+  await fetchTrendingGifs()
+}
+
+async function searchGiphy() {
+  if (!isAuthed.value) return
+  const q = giphyQuery.value.trim()
+  if (q.length < 2) {
+    await fetchTrendingGifs()
+    return
+  }
+  if (giphyLoading.value) return
+  const session = giphySession.value
+  giphyLoading.value = true
+  giphyError.value = null
+  try {
+    const res = await apiFetchData<GiphySearchResponse>('/giphy/search', {
+      method: 'GET',
+      query: { q, limit: 24 },
+    })
+    if (!giphyOpen.value || giphySession.value !== session) return
+    giphyItems.value = res.items ?? []
+  } catch (e: unknown) {
+    if (!giphyOpen.value || giphySession.value !== session) return
+    giphyError.value = getApiErrorMessage(e) || 'Failed to search Giphy.'
+    giphyItems.value = []
+  } finally {
+    if (!giphyOpen.value || giphySession.value !== session) return
+    giphyLoading.value = false
+  }
+}
+
+function selectGiphyGif(gif: GiphySearchResponse['items'][number]) {
+  if (!canAddMoreMedia.value) return
+  const url = (gif?.url ?? '').trim()
+  if (!url) return
+  composerMedia.value.push({
+    localId: makeLocalId(),
+    source: 'giphy',
+    kind: 'gif',
+    previewUrl: url,
+    url,
+    mp4Url: gif.mp4Url ?? null,
+    width: gif.width ?? null,
+    height: gif.height ?? null,
+    uploading: false,
+  })
+  giphyOpen.value = false
+}
+
+watch(
+  giphyOpen,
+  (open) => {
+    // Bump session so in-flight requests won't apply.
+    giphySession.value += 1
+    if (!open) {
+      // When closed/used, don't keep state around.
+      resetGiphyPickerState()
+    }
+  },
+  { flush: 'post' },
+)
+
 const viewerIsVerified = computed(() => Boolean(user.value?.verifiedStatus && user.value.verifiedStatus !== 'none'))
 const viewerIsPremium = computed(() => Boolean(isPremium.value))
 
@@ -455,8 +998,22 @@ const feedCtaKind = computed<null | 'verify' | 'premium'>(() => {
   return null
 })
 
+function scrollFeedToTop() {
+  if (!import.meta.client) return
+  // `layouts/app.vue` owns the actual scroll container. Reuse the same event hook
+  // as "re-tap active nav item" so this stays centralized.
+  window.dispatchEvent(new CustomEvent('moh-scroll-top'))
+}
+
 function setFeedFilter(next: ProfilePostsFilter) {
   feedFilter.value = next
+  if (feedCtaKind.value) return
+  scrollFeedToTop()
+  void refresh()
+}
+
+function setFeedSort(next: 'new' | 'trending') {
+  feedSort.value = next
   if (feedCtaKind.value) return
   void refresh()
 }
@@ -470,49 +1027,132 @@ watch(
   { flush: 'post' }
 )
 
+watch(
+  () => feedSort.value,
+  () => {
+    if (feedCtaKind.value) return
+    void refresh()
+  },
+  { flush: 'post' }
+)
+
 const feedFilterTagLabel = computed(() => {
+  if (feedFilter.value === 'all') return 'All'
   if (feedFilter.value === 'public') return 'Public'
   if (feedFilter.value === 'verifiedOnly') return 'Verified'
   if (feedFilter.value === 'premiumOnly') return 'Premium'
-  return null
+  return 'All'
 })
 
-const feedFilterTagClass = computed(() => {
-  if (feedFilter.value === 'all') return ''
-  return filterPillClasses(feedFilter.value, true)
+const feedScopeLabel = computed(() => {
+  return feedScope.value === 'following' ? 'Following' : 'All'
 })
 
-const feedFilterWrapEl = ref<HTMLElement | null>(null)
-const feedFilterPopoverOpen = ref(false)
+const feedScopeChipLabel = computed(() => {
+  return feedScopeLabel.value
+})
 
-function closeFeedFilterPopover() {
-  feedFilterPopoverOpen.value = false
+const feedSortTagLabel = computed(() => {
+  const base = feedSort.value === 'trending' ? 'Trending' : 'Newest'
+  if (feedFilter.value === 'all') return base
+  return `${base} · ${feedFilterTagLabel.value}`
+})
+
+function setFeedSortFromPicker(next: 'new' | 'trending') {
+  setFeedSort(next)
+  closeFeedSortPopover()
 }
 
-function toggleFeedFilterPopover() {
-  feedFilterPopoverOpen.value = !feedFilterPopoverOpen.value
-}
+const feedScopePillClass = computed(() => {
+  return 'border-gray-200 text-gray-700 hover:bg-gray-50 dark:border-zinc-800 dark:text-gray-200 dark:hover:bg-zinc-900'
+})
 
-function setFeedFilterFromPicker(next: ProfilePostsFilter) {
+const feedSortPillClass = computed(() => {
+  // Color-coordinate with the selected visibility filter (subtle tint).
+  if (feedFilter.value === 'verifiedOnly') return filterPillClasses('verifiedOnly', false)
+  if (feedFilter.value === 'premiumOnly') return filterPillClasses('premiumOnly', false)
+  if (feedFilter.value === 'public') return filterPillClasses('public', false)
+  return filterPillClasses('all', false)
+})
+
+function setFeedFilterFromSortPicker(next: ProfilePostsFilter) {
   setFeedFilter(next)
-  closeFeedFilterPopover()
+  closeFeedSortPopover()
+}
+
+const feedScopeWrapEl = ref<HTMLElement | null>(null)
+const feedScopePopoverOpen = ref(false)
+
+function closeFeedScopePopover() {
+  feedScopePopoverOpen.value = false
+}
+
+function toggleFeedScopePopover() {
+  feedSortPopoverOpen.value = false
+  feedScopePopoverOpen.value = !feedScopePopoverOpen.value
 }
 
 watch(
-  feedFilterPopoverOpen,
+  feedScopePopoverOpen,
   (open) => {
     if (!import.meta.client) return
 
     const onPointerDown = (e: Event) => {
-      const el = feedFilterWrapEl.value
+      const el = feedScopeWrapEl.value
       const target = e.target as Node | null
       if (!el || !target) return
       if (el.contains(target)) return
-      closeFeedFilterPopover()
+      closeFeedScopePopover()
     }
 
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') closeFeedFilterPopover()
+      if (e.key === 'Escape') closeFeedScopePopover()
+    }
+
+    if (open) {
+      window.addEventListener('mousedown', onPointerDown, true)
+      window.addEventListener('touchstart', onPointerDown, true)
+      window.addEventListener('keydown', onKeyDown)
+    }
+
+    return () => {
+      window.removeEventListener('mousedown', onPointerDown, true)
+      window.removeEventListener('touchstart', onPointerDown, true)
+      window.removeEventListener('keydown', onKeyDown)
+    }
+  },
+  { flush: 'post' }
+)
+
+const feedSortIconClass = computed(() => (feedSort.value === 'trending' ? 'pi pi-bolt' : 'pi pi-clock'))
+
+const feedSortWrapEl = ref<HTMLElement | null>(null)
+const feedSortPopoverOpen = ref(false)
+
+function closeFeedSortPopover() {
+  feedSortPopoverOpen.value = false
+}
+
+function toggleFeedSortPopover() {
+  feedScopePopoverOpen.value = false
+  feedSortPopoverOpen.value = !feedSortPopoverOpen.value
+}
+
+watch(
+  feedSortPopoverOpen,
+  (open) => {
+    if (!import.meta.client) return
+
+    const onPointerDown = (e: Event) => {
+      const el = feedSortWrapEl.value
+      const target = e.target as Node | null
+      if (!el || !target) return
+      if (el.contains(target)) return
+      closeFeedSortPopover()
+    }
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') closeFeedSortPopover()
     }
 
     if (open) {
@@ -745,7 +1385,6 @@ watch(
 )
 
 const submitting = ref(false)
-const toast = useAppToast()
 const submitError = ref<string | null>(null)
 
 if (import.meta.server) {
@@ -770,11 +1409,49 @@ const submit = async () => {
   if (!canPost.value) return
   if (submitting.value) return
   if (postCharCount.value > postMaxLen.value) return
+  if (composerUploading.value) return
   submitError.value = null
   submitting.value = true
   try {
-    const created = await addPost(draft.value, visibility.value)
+    const mediaPayload = composerMedia.value
+      .map((m) => {
+        if (m.source === 'upload') {
+          const r2Key = (m.r2Key ?? '').trim()
+          if (!r2Key) return null
+          return {
+            source: 'upload' as const,
+            kind: m.kind,
+            r2Key,
+            width: m.width ?? null,
+            height: m.height ?? null,
+          }
+        }
+        const url = (m.url ?? '').trim()
+        if (!url) return null
+        return {
+          source: 'giphy' as const,
+          kind: 'gif' as const,
+          url,
+          mp4Url: m.mp4Url ?? null,
+          width: m.width ?? null,
+          height: m.height ?? null,
+        }
+      })
+      .filter((x): x is NonNullable<typeof x> => Boolean(x))
+
+    const created = await addPost(draft.value, visibility.value, mediaPayload)
     draft.value = ''
+    // Clear composer media (and release blob URLs) after successful post.
+    for (const m of composerMedia.value) {
+      if (m.source === 'upload' && m.previewUrl?.startsWith('blob:')) {
+        try {
+          URL.revokeObjectURL(m.previewUrl)
+        } catch {
+          // ignore
+        }
+      }
+    }
+    composerMedia.value = []
     if (created?.id) {
       const to = `/p/${encodeURIComponent(created.id)}`
       const tone =

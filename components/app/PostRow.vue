@@ -1,9 +1,11 @@
 <template>
   <div
+    ref="rowEl"
     :class="[
       'border-b px-4 py-4 transition-colors moh-border',
       clickable ? 'cursor-pointer moh-surface-hover dark:hover:shadow-[0_0_0_1px_rgba(255,255,255,0.06)]' : ''
     ]"
+    style="content-visibility: auto; contain-intrinsic-size: 240px;"
     @click="onRowClick"
   >
     <div class="flex gap-3">
@@ -60,12 +62,104 @@
           </div>
         </div>
 
-        <p class="mt-0.5 whitespace-pre-wrap moh-text pr-12">
-          {{ post.body }}
+        <p class="mt-0.5 whitespace-pre-wrap break-words moh-text pr-12">
+          <template v-for="(seg, idx) in displayBodySegments" :key="idx">
+            <a
+              v-if="seg.href"
+              :href="seg.href"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="underline decoration-gray-300 underline-offset-2 hover:decoration-gray-500 dark:decoration-zinc-700 dark:hover:decoration-zinc-500"
+              @click.stop
+            >
+              {{ seg.text }}
+            </a>
+            <span v-else>{{ seg.text }}</span>
+          </template>
         </p>
 
-        <div v-if="visibilityTag" class="mt-2">
+        <AppPostMediaGrid v-if="post.media?.length" :media="post.media" />
+
+        <div v-if="showLinkPreview && rowInView" class="mt-3 pr-12">
+          <!-- Video embeds (special cases) -->
+          <div
+            v-if="youtubeEmbedUrl || isPreviewLinkRumble"
+            class="overflow-hidden rounded-xl border moh-border bg-black/5 dark:bg-white/5"
+          >
+            <!-- YouTube: fixed 16:9. Rumble: use oEmbed dimensions (fallback 854x480). -->
+            <div
+              class="relative w-full"
+              ref="videoBoxEl"
+              :style="youtubeEmbedUrl ? undefined : { aspectRatio: rumbleAspectRatio }"
+              :class="youtubeEmbedUrl ? 'aspect-video' : ''"
+            >
+              <img
+                v-if="youtubePosterUrl || rumblePosterUrl"
+                :src="youtubePosterUrl || rumblePosterUrl || ''"
+                class="absolute inset-0 z-0 h-full w-full object-cover transition-opacity duration-250"
+                :class="desiredVideoSrc && videoIframeLoaded ? 'opacity-0' : 'opacity-90'"
+                alt=""
+                loading="lazy"
+                aria-hidden="true"
+              />
+              <iframe
+                :src="videoIframeSrc"
+                class="relative z-10 h-full w-full transition-opacity duration-250"
+                :class="desiredVideoSrc && videoIframeLoaded ? 'opacity-100' : 'opacity-0 pointer-events-none'"
+                title="Embedded video"
+                loading="lazy"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                allowfullscreen
+                @load="onVideoIframeLoad"
+              />
+            </div>
+          </div>
+
+          <!-- Generic link preview (last link only) -->
+          <a
+            v-else
+            :href="previewLink"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="block overflow-hidden rounded-xl border moh-border transition-colors moh-surface-hover"
+            aria-label="Open link"
+            @click.stop
+          >
+            <div class="flex gap-3 p-3">
+              <div
+                v-if="linkMeta?.imageUrl"
+                class="h-16 w-16 shrink-0 overflow-hidden rounded-lg bg-gray-100 dark:bg-zinc-900"
+                aria-hidden="true"
+              >
+                <img :src="linkMeta.imageUrl" class="h-full w-full object-cover" alt="" loading="lazy" />
+              </div>
+              <div class="min-w-0 flex-1">
+                <div class="text-sm font-semibold moh-text truncate">
+                  {{ linkMeta?.title || previewLinkHost || 'Link' }}
+                </div>
+                <div v-if="linkMeta?.description" class="mt-0.5 text-xs moh-text-muted overflow-hidden text-ellipsis">
+                  {{ linkMeta.description }}
+                </div>
+                <div class="mt-1 text-[11px] moh-text-muted truncate">
+                  {{ previewLinkDisplay }}
+                </div>
+              </div>
+              <div class="shrink-0 text-gray-400 dark:text-zinc-500" aria-hidden="true">
+                <i class="pi pi-external-link text-[12px]" />
+              </div>
+            </div>
+          </a>
+        </div>
+
+        <AppEmbeddedPostPreview
+          v-if="embeddedPostId"
+          :post-id="embeddedPostId"
+          :enabled="embeddedPreviewEnabled"
+        />
+
+        <div v-if="visibilityTag || isPreviewLinkRumble" class="mt-2 flex items-center justify-between gap-3 pr-12">
           <span
+            v-if="visibilityTag"
             class="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold border cursor-default"
             :class="visibilityTagClass"
             v-tooltip.bottom="visibilityTooltip"
@@ -73,6 +167,20 @@
             <i v-if="post.visibility === 'onlyMe'" class="pi pi-eye-slash mr-1 text-[10px]" aria-hidden="true" />
             {{ visibilityTag }}
           </span>
+          <span v-else aria-hidden="true" />
+
+          <a
+            v-if="isPreviewLinkRumble && previewLink"
+            :href="previewLink"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="text-[11px] font-semibold transition-colors"
+            style="color: #85c742;"
+            aria-label="Open on Rumble"
+            @click.stop
+          >
+            Open on Rumble
+          </a>
         </div>
 
         <div class="mt-3 flex items-center justify-between moh-text-muted">
@@ -204,6 +312,13 @@ import type { MenuItem } from 'primevue/menuitem'
 import { siteConfig } from '~/config/site'
 import { tinyTooltip } from '~/utils/tiny-tooltip'
 import { getApiErrorMessage } from '~/utils/api-error'
+import { extractLinksFromText, getYouTubeEmbedUrl, getYouTubePosterUrl, isRumbleUrl, safeUrlDisplay, safeUrlHostname } from '~/utils/link-utils'
+import LinkifyIt from 'linkify-it'
+import type { LinkMetadata } from '~/utils/link-metadata'
+import { getLinkMetadata } from '~/utils/link-metadata'
+import type { RumbleEmbedInfo } from '~/utils/rumble-embed'
+import { resolveRumbleEmbedInfo } from '~/utils/rumble-embed'
+import { useEmbeddedVideoManager } from '~/composables/useEmbeddedVideoManager'
 
 const props = defineProps<{
   post: FeedPost
@@ -215,6 +330,36 @@ const emit = defineEmits<{
 
 const post = computed(() => props.post)
 const clickable = computed(() => props.clickable !== false)
+
+// Resource preservation: only do heavy work (metadata fetch + embeds) when the row is near viewport.
+const rowEl = ref<HTMLElement | null>(null)
+const rowInView = ref(false)
+let rowObserver: IntersectionObserver | null = null
+
+onMounted(() => {
+  if (!import.meta.client) return
+  const el = rowEl.value
+  if (!el) return
+  rowObserver = new IntersectionObserver(
+    (entries) => {
+      const e = entries[0]
+      if (!e) return
+      if (e.isIntersecting) {
+        rowInView.value = true
+        // One-way: once it's been in view, keep it true.
+        rowObserver?.disconnect()
+        rowObserver = null
+      }
+    },
+    { root: null, rootMargin: '800px 0px', threshold: 0.01 },
+  )
+  rowObserver.observe(el)
+})
+
+onBeforeUnmount(() => {
+  rowObserver?.disconnect()
+  rowObserver = null
+})
 const { user } = useAuth()
 const isAuthed = computed(() => Boolean(user.value?.id))
 const viewerHasUsername = computed(() => Boolean(user.value?.usernameIsSet))
@@ -291,6 +436,229 @@ const visibilityTooltip = computed(() => {
 const postPermalink = computed(() => `/p/${encodeURIComponent(post.value.id)}`)
 const postShareUrl = computed(() => `${siteConfig.url}${postPermalink.value}`)
 
+type TextSegment = { text: string; href?: string }
+
+const linkify = new LinkifyIt()
+
+function isLocalHost(host: string, expected: string) {
+  const h = (host ?? '').trim().toLowerCase()
+  const e = (expected ?? '').trim().toLowerCase()
+  if (!h || !e) return false
+  return h === e || h === `www.${e}`
+}
+
+function tryExtractLocalPostId(url: string): string | null {
+  const raw = (url ?? '').trim()
+  if (!raw) return null
+  try {
+    const u = new URL(raw)
+    if (u.protocol !== 'http:' && u.protocol !== 'https:') return null
+
+    const allowedHosts = new Set<string>()
+    try {
+      const fromCfg = new URL(siteConfig.url)
+      if (fromCfg.hostname) allowedHosts.add(fromCfg.hostname.toLowerCase())
+    } catch {
+      // ignore
+    }
+    if (import.meta.client) {
+      const h = window.location.hostname
+      if (h) allowedHosts.add(h.toLowerCase())
+    }
+
+    const host = u.hostname.toLowerCase()
+    const ok = Array.from(allowedHosts).some((a) => isLocalHost(host, a))
+    if (!ok) return null
+
+    const parts = u.pathname.split('/').filter(Boolean)
+    if (parts.length !== 2) return null
+    if (parts[0] !== 'p') return null
+    const id = (parts[1] ?? '').trim()
+    return id || null
+  } catch {
+    return null
+  }
+}
+
+// Links (capture all, used for previews/embeds).
+const capturedLinks = computed(() => extractLinksFromText(post.value.body))
+
+const embeddedPostLink = computed(() => {
+  const xs = capturedLinks.value
+  for (let i = xs.length - 1; i >= 0; i--) {
+    const u = xs[i]
+    if (u && tryExtractLocalPostId(u)) return u
+  }
+  return null
+})
+
+const embeddedPostId = computed(() => (embeddedPostLink.value ? tryExtractLocalPostId(embeddedPostLink.value) : null))
+
+const previewLink = computed(() => {
+  const xs = capturedLinks.value
+  for (let i = xs.length - 1; i >= 0; i--) {
+    const u = xs[i]
+    if (!u) continue
+    if (tryExtractLocalPostId(u)) continue
+    return u
+  }
+  return null
+})
+
+const showLinkPreview = computed(() => Boolean(previewLink.value && !post.value.media?.length))
+
+function escapeRegExp(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+const tailLinkToStrip = computed(() => {
+  const xs = capturedLinks.value
+  const last = xs.length ? xs[xs.length - 1] : null
+  if (!last) return null
+  if (embeddedPostLink.value && last === embeddedPostLink.value) return embeddedPostLink.value
+  if (previewLink.value && last === previewLink.value && !post.value.media?.length) return previewLink.value
+  return null
+})
+
+const displayBody = computed(() => {
+  const body = (post.value.body ?? '').toString()
+  const last = (tailLinkToStrip.value ?? '').trim()
+  if (!last) return body
+
+  // If the last link is literally the last thing in the post (ignoring trailing whitespace),
+  // omit it from the rendered body. We still render the preview/embed below.
+  const re = new RegExp(String.raw`(?:\s*)${escapeRegExp(last)}\s*$`)
+  if (!re.test(body)) return body
+  return body.replace(re, '').replace(/\s+$/, '')
+})
+
+const previewLinkHost = computed(() => (previewLink.value ? safeUrlHostname(previewLink.value) : null))
+const previewLinkDisplay = computed(() => (previewLink.value ? safeUrlDisplay(previewLink.value) : ''))
+
+const youtubeEmbedUrl = computed(() => (previewLink.value ? getYouTubeEmbedUrl(previewLink.value) : null))
+const isPreviewLinkRumble = computed(() => Boolean(showLinkPreview.value && previewLink.value && isRumbleUrl(previewLink.value)))
+const rumbleEmbedInfo = ref<RumbleEmbedInfo | null>(null)
+const rumbleEmbedUrl = computed(() => rumbleEmbedInfo.value?.src ?? null)
+const rumbleAspectRatio = computed(() => {
+  const w = rumbleEmbedInfo.value?.width ?? 854
+  const h = rumbleEmbedInfo.value?.height ?? 480
+  return `${w} / ${h}`
+})
+const rumblePosterUrl = computed(() => rumbleEmbedInfo.value?.thumbnailUrl ?? null)
+const youtubePosterUrl = computed(() => (previewLink.value ? getYouTubePosterUrl(previewLink.value) : null))
+
+const { activePostId, register: registerEmbeddedVideo, unregister: unregisterEmbeddedVideo } = useEmbeddedVideoManager()
+const hasEmbeddedVideo = computed(() => Boolean(youtubeEmbedUrl.value || isPreviewLinkRumble.value))
+const videoBoxEl = ref<HTMLElement | null>(null)
+const videoIframeLoaded = ref(false)
+const desiredVideoSrc = computed(() => {
+  if (!rowInView.value) return null
+  if (!hasEmbeddedVideo.value) return null
+  if (activePostId.value !== post.value.id) return null
+  if (youtubeEmbedUrl.value) return youtubeEmbedUrl.value
+  if (isPreviewLinkRumble.value) return rumbleEmbedUrl.value
+  return null
+})
+
+const videoIframeSrc = computed(() => desiredVideoSrc.value ?? 'about:blank')
+
+let iframeLoadRaf: number | null = null
+function onVideoIframeLoad() {
+  if (!import.meta.client) return
+  // Ignore load events for about:blank
+  if (!desiredVideoSrc.value) return
+  if (iframeLoadRaf != null) cancelAnimationFrame(iframeLoadRaf)
+  // Wait a beat so the iframe has a chance to paint before we fade the poster out.
+  iframeLoadRaf = requestAnimationFrame(() => {
+    iframeLoadRaf = requestAnimationFrame(() => {
+      iframeLoadRaf = null
+      if (!desiredVideoSrc.value) return
+      videoIframeLoaded.value = true
+    })
+  })
+}
+
+watch(
+  desiredVideoSrc,
+  () => {
+    // Activation/deactivation should show poster immediately.
+    videoIframeLoaded.value = false
+  },
+  { immediate: true },
+)
+
+onBeforeUnmount(() => {
+  if (!import.meta.client) return
+  if (iframeLoadRaf != null) cancelAnimationFrame(iframeLoadRaf)
+  iframeLoadRaf = null
+})
+
+watchEffect((onCleanup) => {
+  if (!import.meta.client) return
+  if (!rowInView.value) return
+  if (!hasEmbeddedVideo.value) return
+  const el = videoBoxEl.value
+  if (!el) return
+
+  registerEmbeddedVideo(post.value.id, el)
+  onCleanup(() => unregisterEmbeddedVideo(post.value.id))
+})
+
+const linkMeta = ref<LinkMetadata | null>(null)
+watch(
+  [previewLink, rowInView, showLinkPreview],
+  async ([url, inView, canPreview]) => {
+    linkMeta.value = null
+    rumbleEmbedInfo.value = null
+    if (!import.meta.client) return
+    if (!canPreview) return
+    if (!inView) return
+    if (!url) return
+    // Special cases (embed) do not need metadata.
+    if (getYouTubeEmbedUrl(url)) return
+    if (isRumbleUrl(url)) {
+      rumbleEmbedInfo.value = await resolveRumbleEmbedInfo(url)
+      return
+    }
+    linkMeta.value = await getLinkMetadata(url)
+  },
+  { immediate: true },
+)
+
+const embeddedPreviewEnabled = computed(() => {
+  // Allow SSR to fetch embedded post previews on first paint.
+  if (import.meta.server) return true
+  return rowInView.value
+})
+
+const displayBodySegments = computed<TextSegment[]>(() => {
+  const input = (displayBody.value ?? '').toString()
+  if (!input) return [{ text: '' }]
+
+  const matches = linkify.match(input) ?? []
+  if (!matches.length) return [{ text: input }]
+
+  const out: TextSegment[] = []
+  let cursor = 0
+
+  for (const m of matches) {
+    const start = typeof (m as any).index === 'number' ? ((m as any).index as number) : -1
+    const end = typeof (m as any).lastIndex === 'number' ? ((m as any).lastIndex as number) : -1
+    if (start < 0 || end < 0 || end <= start) continue
+    if (start > cursor) out.push({ text: input.slice(cursor, start) })
+
+    const text = input.slice(start, end)
+    const href = (m.url ?? '').trim()
+    if (href && /^https?:\/\//i.test(href)) out.push({ text, href })
+    else out.push({ text })
+
+    cursor = end
+  }
+
+  if (cursor < input.length) out.push({ text: input.slice(cursor) })
+  return out.length ? out : [{ text: input }]
+})
+
 function goToPost() {
   return navigateTo(postPermalink.value)
 }
@@ -304,6 +672,7 @@ function isInteractiveTarget(target: EventTarget | null): boolean {
       [
         'a',
         'button',
+        'iframe',
         'input',
         'textarea',
         'select',

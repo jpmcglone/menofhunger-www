@@ -534,16 +534,6 @@
       </div>
     </Dialog>
 
-    <AppImageLightbox
-      :visible="viewer.visible.value"
-      :backdrop-visible="viewer.backdropVisible.value"
-      :src="viewer.src.value"
-      :alt="viewer.alt.value"
-      :target="viewer.target.value"
-      :image-style="viewer.imageStyle.value"
-      :on-close="viewer.close"
-      :on-transition-end="viewer.onTransitionEnd"
-    />
     </template>
   </div>
 </template>
