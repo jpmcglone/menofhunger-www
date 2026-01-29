@@ -624,7 +624,23 @@ const seoDescription = computed(() => {
 
 const seoImage = computed(() => {
   if (!profile.value) return '/images/banner.png'
-  return profile.value.bannerUrl || profile.value.avatarUrl || '/images/banner.png'
+  // Prefer avatar for "this is a person" previews.
+  return profile.value.avatarUrl || profile.value.bannerUrl || '/images/banner.png'
+})
+
+const seoImageAlt = computed(() => {
+  const u = (profile.value?.username ?? normalizedUsername.value).trim()
+  if (!u) return `Profile on ${siteConfig.name}`
+  const name = (profile.value?.name ?? '').trim()
+  return name ? `${name} (@${u})` : `@${u}`
+})
+
+const twitterCard = computed(() => {
+  // If we're using an avatar, use the square `summary` card (looks much better than stretching into 1200x630).
+  const img = (seoImage.value || '').toString()
+  const avatar = (profile.value?.avatarUrl ?? '').toString()
+  if (avatar && img === avatar) return 'summary' as const
+  return 'summary_large_image' as const
 })
 
 const jsonLdGraph = computed(() => {
@@ -650,10 +666,22 @@ usePageSeo({
   title: seoTitle,
   description: seoDescription,
   canonicalPath,
-  ogType: 'website',
+  ogType: 'profile',
   image: seoImage,
+  imageAlt: seoImageAlt,
+  twitterCard,
   noindex: computed(() => notFound.value),
   jsonLdGraph,
+})
+
+useHead({
+  meta: computed(() => {
+    if (notFound.value) return []
+    const u = (profile.value?.username ?? normalizedUsername.value).trim()
+    if (!u) return []
+    // OpenGraph "profile" hints (harmless if crawlers ignore it).
+    return [{ property: 'profile:username', content: u }]
+  }),
 })
 
 const { user: authUser } = useAuth()

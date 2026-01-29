@@ -1,7 +1,7 @@
 import { siteConfig } from '~/config/site'
 import type { MaybeRef } from 'vue'
  
-type OgType = 'website' | 'article'
+type OgType = 'website' | 'article' | 'profile'
  
 export type PageSeoOptions = {
   /** Page title (without site suffix). Falls back to route meta title or site title. */
@@ -16,6 +16,8 @@ export type PageSeoOptions = {
   canonicalPath?: MaybeRef<string | undefined>
   /** OpenGraph type */
   ogType?: MaybeRef<OgType | undefined>
+  /** Twitter card type */
+  twitterCard?: MaybeRef<'summary' | 'summary_large_image' | undefined>
   /** Prevent indexing (e.g. internal tools pages). */
   noindex?: MaybeRef<boolean | undefined>
   /** Optional author meta override (avoid for restricted content). */
@@ -67,6 +69,7 @@ export function usePageSeo(options: PageSeoOptions = {}) {
   // Default to dark/black logo for social previews unless a page overrides it.
   const image = computed(() => toAbsoluteUrl(unref(options.image) || '/images/logo-black-bg.png'))
   const imageAlt = computed(() => (unref(options.imageAlt) || `${siteConfig.name} logo`).slice(0, 200))
+  const twitterCard = computed(() => unref(options.twitterCard) || 'summary_large_image')
   const robots = computed(() =>
     unref(options.noindex)
       ? 'noindex,nofollow'
@@ -87,7 +90,7 @@ export function usePageSeo(options: PageSeoOptions = {}) {
     ogImage: image,
     ogImageAlt: imageAlt,
  
-    twitterCard: 'summary_large_image',
+    twitterCard,
     twitterTitle: fullTitle,
     twitterDescription: description,
     twitterImage: image,
