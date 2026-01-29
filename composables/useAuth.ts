@@ -87,6 +87,7 @@ export function useAuth() {
     // (Safe even if these stores haven't been initialized yet.)
     useState<Record<string, import('~/composables/useBoostState').BoostStateEntry>>('boost-state', () => ({})).value = {}
     useState<Record<string, boolean>>('boost-inflight', () => ({})).value = {}
+    useState<Record<string, boolean>>('boost-pending', () => ({})).value = {}
     useState<string | null>('boost-state-error', () => null).value = null
     useState<Record<string, import('~/types/api').FollowRelationship>>('follow-state', () => ({})).value = {}
     useState<Record<string, boolean>>('follow-inflight', () => ({})).value = {}

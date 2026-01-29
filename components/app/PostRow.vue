@@ -222,6 +222,7 @@ const viewerIsVerified = computed(() => Boolean(user.value?.verifiedStatus && us
 const isSelf = computed(() => Boolean(user.value?.id && user.value.id === post.value.author.id))
 const { apiFetchData } = useApiClient()
 const { show: showAuthActionModal } = useAuthActionModal()
+const boostState = useBoostState()
 const isOnlyMe = computed(() => post.value.visibility === 'onlyMe')
 const viewerIsAdmin = computed(() => Boolean(user.value?.siteAdmin))
 const viewerCanInteract = computed(() => {
@@ -258,7 +259,9 @@ const commentTooltip = computed(() => {
   return tinyTooltip('Comment')
 })
 
-const boostClickable = computed(() => viewerCanInteract.value && (!isAuthed.value || viewerHasUsername.value))
+const boostClickable = computed(() => {
+  return viewerCanInteract.value && (!isAuthed.value || viewerHasUsername.value)
+})
 const commentClickable = computed(() => viewerCanInteract.value)
 
 const authorProfilePath = computed(() => {
@@ -419,7 +422,6 @@ async function deletePost() {
   }
 }
 
-const boostState = useBoostState()
 const boostEntry = computed(() => boostState.get(post.value))
 const isBoosted = computed(() => boostEntry.value.viewerHasBoosted)
 const boostCount = computed(() => boostEntry.value.boostCount)
