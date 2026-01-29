@@ -1,5 +1,6 @@
 import type { FollowRelationship } from '~/types/api'
 import { getApiErrorMessage } from '~/utils/api-error'
+import { runOptimisticRequest } from '~/utils/optimistic-request'
 
 type FollowStateMap = Record<string, FollowRelationship>
 
@@ -7,6 +8,7 @@ export function useFollowState() {
   const { apiFetchData } = useApiClient()
 
   const state = useState<FollowStateMap>('follow-state', () => ({}))
+  const inflight = useState<Record<string, boolean>>('follow-inflight', () => ({}))
   const error = useState<string | null>('follow-state-error', () => null)
 
   function get(userId: string | null | undefined): FollowRelationship | null {
@@ -32,37 +34,57 @@ export function useFollowState() {
   async function follow(params: { userId: string; username: string }) {
     error.value = null
     const { userId, username } = params
-    // Optimistic.
-    upsert(userId, { viewerFollowsUser: true })
-    try {
-      await apiFetchData<{ success: true; viewerFollowsUser: true }>(`/follows/${encodeURIComponent(username)}`, {
-        method: 'POST'
-      })
-    } catch (e: unknown) {
-      // Revert.
-      upsert(userId, { viewerFollowsUser: false })
-      error.value = getApiErrorMessage(e) || 'Failed to follow.'
-      throw e
-    }
+    await runOptimisticRequest<{ prev: FollowRelationship | null }, { success: true; viewerFollowsUser: true }>({
+      key: `follow:${userId}`,
+      inflight,
+      apply: () => {
+        const prev = get(userId)
+        upsert(userId, { viewerFollowsUser: true })
+        return { prev }
+      },
+      request: async () => {
+        return await apiFetchData<{ success: true; viewerFollowsUser: true }>(`/follows/${encodeURIComponent(username)}`, {
+          method: 'POST'
+        })
+      },
+      rollback: (snapshot, e) => {
+        if (snapshot.prev) {
+          set(userId, snapshot.prev)
+        } else {
+          upsert(userId, { viewerFollowsUser: false })
+        }
+        error.value = getApiErrorMessage(e) || 'Failed to follow.'
+      }
+    })
   }
 
   async function unfollow(params: { userId: string; username: string }) {
     error.value = null
     const { userId, username } = params
-    // Optimistic.
-    upsert(userId, { viewerFollowsUser: false })
-    try {
-      await apiFetchData<{ success: true; viewerFollowsUser: false }>(`/follows/${encodeURIComponent(username)}`, {
-        method: 'DELETE'
-      })
-    } catch (e: unknown) {
-      // Revert.
-      upsert(userId, { viewerFollowsUser: true })
-      error.value = getApiErrorMessage(e) || 'Failed to unfollow.'
-      throw e
-    }
+    await runOptimisticRequest<{ prev: FollowRelationship | null }, { success: true; viewerFollowsUser: false }>({
+      key: `follow:${userId}`,
+      inflight,
+      apply: () => {
+        const prev = get(userId)
+        upsert(userId, { viewerFollowsUser: false })
+        return { prev }
+      },
+      request: async () => {
+        return await apiFetchData<{ success: true; viewerFollowsUser: false }>(`/follows/${encodeURIComponent(username)}`, {
+          method: 'DELETE'
+        })
+      },
+      rollback: (snapshot, e) => {
+        if (snapshot.prev) {
+          set(userId, snapshot.prev)
+        } else {
+          upsert(userId, { viewerFollowsUser: true })
+        }
+        error.value = getApiErrorMessage(e) || 'Failed to unfollow.'
+      }
+    })
   }
 
-  return { state, error, get, set, upsert, ingest, follow, unfollow }
+  return { state, inflight, error, get, set, upsert, ingest, follow, unfollow }
 }
 

@@ -6,7 +6,7 @@
         <div class="flex items-start justify-between gap-3">
           <div class="min-w-0">
             <div class="flex items-center gap-2">
-              <i class="pi pi-lock text-sm moh-text-muted" aria-hidden="true" />
+              <i class="pi pi-eye-slash text-sm moh-text-muted" aria-hidden="true" />
               <h1 class="text-lg font-semibold">Only me</h1>
             </div>
             <div class="mt-1 text-sm moh-text-muted">
@@ -44,7 +44,7 @@
         <div class="rounded-2xl border border-gray-200 bg-white/90 p-5 shadow-sm dark:border-zinc-800 dark:bg-black/70">
           <div class="flex items-start gap-3">
             <div class="mt-0.5 h-9 w-9 shrink-0 rounded-full bg-violet-600/15 text-violet-700 flex items-center justify-center dark:bg-violet-500/20 dark:text-violet-200">
-              <i class="pi pi-lock" aria-hidden="true" />
+              <i class="pi pi-eye-slash" aria-hidden="true" />
             </div>
             <div class="min-w-0">
               <div class="text-lg font-semibold text-gray-900 dark:text-gray-50">These posts are only for you</div>

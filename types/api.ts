@@ -29,6 +29,12 @@ export type FeedPost = {
   createdAt: string
   body: string
   visibility: PostVisibility
+  boostCount: number
+  viewerHasBoosted?: boolean
+  internal?: {
+    boostScore: number | null
+    boostScoreUpdatedAt: string | null
+  }
   author: PostAuthor
 }
 

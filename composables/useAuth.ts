@@ -85,8 +85,11 @@ export function useAuth() {
 
     // Reset viewer-specific client caches so we never show stale authed-only data.
     // (Safe even if these stores haven't been initialized yet.)
-    useState<Record<string, boolean>>('post-boosts', () => ({})).value = {}
+    useState<Record<string, import('~/composables/useBoostState').BoostStateEntry>>('boost-state', () => ({})).value = {}
+    useState<Record<string, boolean>>('boost-inflight', () => ({})).value = {}
+    useState<string | null>('boost-state-error', () => null).value = null
     useState<Record<string, import('~/types/api').FollowRelationship>>('follow-state', () => ({})).value = {}
+    useState<Record<string, boolean>>('follow-inflight', () => ({})).value = {}
     useState<string | null>('follow-state-error', () => null).value = null
 
     useState<import('~/types/api').FeedPost[]>('posts-feed', () => []).value = []

@@ -44,13 +44,21 @@
               :key="item.label"
               :to="item.to"
               :class="[
-                'group flex h-12 items-center rounded-xl moh-text moh-surface-hover',
+                // NOTE: Don't use `moh-text` here; it overrides per-item color accents (e.g. Only me).
+                'group flex h-12 items-center rounded-xl transition-colors',
                 'w-full',
-                route.path === item.to ? 'moh-surface font-semibold' : 'font-medium'
+                route.path === item.to ? 'moh-surface font-semibold' : 'font-semibold',
+                // Default nav tone
+                item.key !== 'only-me' ? 'text-gray-900 dark:text-gray-100 moh-surface-hover' : '',
+                item.key === 'only-me'
+                  ? (route.path === item.to
+                      ? 'bg-violet-100 text-violet-800 hover:bg-violet-200 dark:bg-violet-500/20 dark:text-violet-200 dark:hover:bg-violet-500/25'
+                      : 'text-violet-700 hover:bg-violet-100 dark:text-violet-300 dark:hover:bg-violet-500/20')
+                  : ''
               ]"
             >
               <span class="relative flex h-12 w-12 shrink-0 items-center justify-center">
-                <i :class="['pi text-4xl', item.icon]" aria-hidden="true" />
+                <i :class="['pi text-[28px] font-semibold', item.icon]" aria-hidden="true" />
                 <span
                   v-if="item.key === 'notifications' && notifBadge.show"
                   class="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold leading-[18px] text-center shadow-sm ring-2 ring-white dark:ring-black"
@@ -59,7 +67,7 @@
                   {{ notifBadge.count }}
                 </span>
               </span>
-              <span v-if="!navCompactMode" class="hidden xl:inline whitespace-nowrap overflow-hidden text-lg max-w-[220px]">
+              <span v-if="!navCompactMode" class="hidden xl:inline whitespace-nowrap overflow-hidden text-xl font-semibold max-w-[220px]">
                 {{ item.label }}
               </span>
             </NuxtLink>

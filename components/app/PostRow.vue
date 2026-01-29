@@ -70,7 +70,7 @@
             :class="visibilityTagClass"
             v-tooltip.bottom="visibilityTooltip"
           >
-            <i v-if="post.visibility === 'onlyMe'" class="pi pi-lock mr-1 text-[10px]" aria-hidden="true" />
+            <i v-if="post.visibility === 'onlyMe'" class="pi pi-eye-slash mr-1 text-[10px]" aria-hidden="true" />
             {{ visibilityTag }}
           </span>
         </div>
@@ -88,37 +88,45 @@
               <i class="pi pi-comment text-[18px]" aria-hidden="true" />
             </button>
 
-            <button
-              v-if="!isOnlyMe"
-              type="button"
-              class="inline-flex h-9 w-9 items-center justify-center rounded-full transition-colors moh-surface-hover"
-              :class="boostClickable ? 'cursor-pointer' : 'cursor-default opacity-60'"
-              :aria-label="isBoosted ? 'Remove upvote' : 'Upvote'"
-              v-tooltip.bottom="upvoteTooltip"
-              @click.stop="onBoostClick"
-            >
-              <svg
-                viewBox="0 0 24 24"
-                class="h-5 w-5"
-                aria-hidden="true"
-                :style="isBoosted ? { color: 'var(--p-primary-color)' } : undefined"
+            <div v-if="!isOnlyMe" class="inline-flex items-center">
+              <button
+                type="button"
+                class="inline-flex h-9 w-9 items-center justify-center rounded-full transition-colors moh-surface-hover"
+                :class="boostClickable ? 'cursor-pointer' : 'cursor-default opacity-60'"
+                :aria-label="isBoosted ? 'Remove upvote' : 'Upvote'"
+                v-tooltip.bottom="upvoteTooltip"
+                @click.stop="onBoostClick"
               >
-                <!-- Imgur-ish upvote: arrowhead + stem -->
-                <path
-                  v-if="isBoosted"
-                  fill="currentColor"
-                  d="M12 4.5L3.75 12.25h5.25V20h6V12.25h5.25L12 4.5z"
-                />
-                <path
-                  v-else
-                  d="M12 4.5L3.75 12.25h5.25V20h6V12.25h5.25L12 4.5z"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="1.9"
-                  stroke-linejoin="round"
-                />
-              </svg>
-            </button>
+                <svg
+                  viewBox="0 0 24 24"
+                  class="h-5 w-5"
+                  aria-hidden="true"
+                  :style="isBoosted ? { color: 'var(--p-primary-color)' } : undefined"
+                >
+                  <!-- Imgur-ish upvote: arrowhead + stem -->
+                  <path
+                    v-if="isBoosted"
+                    fill="currentColor"
+                    d="M12 4.5L3.75 12.25h5.25V20h6V12.25h5.25L12 4.5z"
+                  />
+                  <path
+                    v-else
+                    d="M12 4.5L3.75 12.25h5.25V20h6V12.25h5.25L12 4.5z"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.9"
+                    stroke-linejoin="round"
+                  />
+                </svg>
+              </button>
+              <span
+                v-if="boostCountLabel"
+                class="ml-1 select-none text-xs tabular-nums moh-text-muted"
+                aria-hidden="true"
+              >
+                {{ boostCountLabel }}
+              </span>
+            </div>
           </div>
 
           <div v-if="!isOnlyMe" class="relative flex items-center justify-end">
@@ -348,6 +356,15 @@ const moreMenuItems = computed<MenuItem[]>(() => {
     },
   ]
 
+  if (viewerIsAdmin.value) {
+    items.push({ separator: true })
+    items.push({
+      label: `Boost score: ${adminBoostScoreLabel.value ?? '—'}`,
+      icon: 'pi pi-chart-line',
+      disabled: true
+    })
+  }
+
   if (isAuthed.value && !isSelf.value) {
     items.push({
       label: 'Report post',
@@ -398,14 +415,21 @@ async function deletePost() {
   }
 }
 
-// Client-side "boosted" state (UI-only for now).
-const boosts = useState<Record<string, boolean>>('post-boosts', () => ({}))
-const isBoosted = computed(() => Boolean(boosts.value[post.value.id]))
-
-function toggleBoost() {
-  const id = post.value.id
-  boosts.value = { ...boosts.value, [id]: !boosts.value[id] }
-}
+const boostState = useBoostState()
+const boostEntry = computed(() => boostState.get(post.value))
+const isBoosted = computed(() => boostEntry.value.viewerHasBoosted)
+const boostCount = computed(() => boostEntry.value.boostCount)
+const boostCountLabel = computed(() => {
+  const n = boostCount.value
+  if (!n) return null
+  return String(n)
+})
+const adminBoostScoreLabel = computed(() => {
+  if (!viewerIsAdmin.value) return null
+  const score = post.value.internal?.boostScore
+  if (typeof score !== 'number') return '—'
+  return score.toFixed(2)
+})
 
 async function onBoostClick() {
   if (!viewerCanInteract.value) return
@@ -417,7 +441,11 @@ async function onBoostClick() {
     showAuthActionModal({ kind: 'setUsername', action: 'boost' })
     return
   }
-  toggleBoost()
+  try {
+    await boostState.toggleBoost(post.value)
+  } catch (e: unknown) {
+    toast.push({ title: getApiErrorMessage(e) || 'Failed to boost.', tone: 'error', durationMs: 2200 })
+  }
 }
 
 async function onCommentClick() {

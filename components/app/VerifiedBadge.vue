@@ -19,8 +19,9 @@ const props = withDefaults(
     status?: VerifiedStatus | null
     premium?: boolean
     size?: Size
+    showTooltip?: boolean
   }>(),
-  { size: 'sm', premium: false }
+  { size: 'sm', premium: false, showTooltip: true }
 )
 
 // Twitter-ish blue; works on both light/dark.
@@ -35,6 +36,7 @@ const badgeColor = computed(() => {
 })
 
 const tooltip = computed(() => {
+  if (!props.showTooltip) return null
   const text = props.status === 'identity' ? 'Identity verified' : props.status === 'manual' ? 'Manually verified' : ''
   if (!text) return null
   // Centered under the badge, no arrow (handled by CSS).

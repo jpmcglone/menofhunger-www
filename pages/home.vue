@@ -27,7 +27,22 @@
               :disabled="!viewerIsVerified"
               @click="viewerIsVerified ? toggleVisibilityPopover() : null"
             >
-              <i v-if="visibility === 'onlyMe'" class="pi pi-lock mr-1 text-[10px] opacity-80" aria-hidden="true" />
+              <i v-if="visibility === 'public'" class="pi pi-globe mr-1 text-[10px] opacity-80" aria-hidden="true" />
+              <AppVerifiedBadge
+                v-else-if="visibility === 'verifiedOnly'"
+                class="mr-1"
+                status="identity"
+                :premium="false"
+                :show-tooltip="false"
+              />
+              <AppVerifiedBadge
+                v-else-if="visibility === 'premiumOnly'"
+                class="mr-1"
+                status="identity"
+                :premium="true"
+                :show-tooltip="false"
+              />
+              <i v-else-if="visibility === 'onlyMe'" class="pi pi-eye-slash mr-1 text-[10px] opacity-80" aria-hidden="true" />
               {{ composerVisibilityLabel }}
               <i v-if="viewerIsVerified" class="pi pi-chevron-down ml-1 text-[9px] opacity-80" aria-hidden="true" />
             </button>
@@ -46,7 +61,10 @@
                 role="menuitem"
                 @click="setComposerVisibility('public')"
               >
-                Public
+                <span class="inline-flex items-center gap-2">
+                  <i class="pi pi-globe text-[12px] opacity-80" aria-hidden="true" />
+                  <span>Public</span>
+                </span>
               </button>
 
               <button
@@ -56,7 +74,10 @@
                 role="menuitem"
                 @click="setComposerVisibility('verifiedOnly')"
               >
-                Verified only
+                <span class="inline-flex items-center gap-2">
+                  <AppVerifiedBadge status="identity" :premium="false" :show-tooltip="false" />
+                  <span>Verified only</span>
+                </span>
               </button>
 
               <button
@@ -72,7 +93,10 @@
                 role="menuitem"
                 @click="isPremium ? setComposerVisibility('premiumOnly') : null"
               >
-                Premium only
+                <span class="inline-flex items-center gap-2">
+                  <AppVerifiedBadge status="identity" :premium="true" :show-tooltip="false" />
+                  <span>Premium only</span>
+                </span>
                 <span v-if="!isPremium" class="ml-2 font-mono text-[10px] opacity-80" aria-hidden="true">LOCKED</span>
               </button>
 
@@ -83,8 +107,10 @@
                 role="menuitem"
                 @click="setComposerVisibility('onlyMe')"
               >
-                <i class="pi pi-lock mr-2 text-[12px]" aria-hidden="true" />
-                Only me
+                <span class="inline-flex items-center gap-2">
+                  <i class="pi pi-eye-slash text-[12px]" aria-hidden="true" />
+                  <span>Only me</span>
+                </span>
               </button>
             </div>
           </div>
