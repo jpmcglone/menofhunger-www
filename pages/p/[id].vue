@@ -93,14 +93,39 @@ const seoAuthor = computed(() => {
   return username ? `@${username}` : siteConfig.name
 })
 
+const seoImage = computed(() => {
+  if (isRestricted.value) return '/images/logo-black-bg.png'
+  // Prefer the author's avatar for “who said it?” in link previews.
+  const avatar = (post.value?.author.avatarUrl ?? '').trim()
+  return avatar || '/images/banner.png'
+})
+
+const seoImageAlt = computed(() => {
+  if (isRestricted.value) return `${siteConfig.name} logo`
+  const username = (post.value?.author.username ?? '').trim()
+  return username ? `Post by @${username}` : `Post on ${siteConfig.name}`
+})
+
+function toAbs(pathOrUrl: string) {
+  if (/^https?:\/\//i.test(pathOrUrl)) return pathOrUrl
+  return `${siteConfig.url}${pathOrUrl.startsWith('/') ? '' : '/'}${pathOrUrl}`
+}
+
 const jsonLdGraph = computed(() => {
   if (!post.value || isRestricted.value) return []
 
   const username = (post.value.author.username ?? '').trim()
   const authorUrl = username ? `${siteConfig.url}/u/${encodeURIComponent(username)}` : null
   const authorId = authorUrl ? `${authorUrl}#person` : `${siteConfig.url}/#organization`
+  const avatarUrl = (post.value.author.avatarUrl ?? '').trim() || null
   const author: any = authorUrl
-    ? { '@type': 'Person', '@id': authorId, name: username ? `@${username}` : siteConfig.name, url: authorUrl }
+    ? {
+        '@type': 'Person',
+        '@id': authorId,
+        name: username ? `@${username}` : siteConfig.name,
+        url: authorUrl,
+        ...(avatarUrl ? { image: avatarUrl } : {})
+      }
     : { '@type': 'Organization', '@id': `${siteConfig.url}/#organization`, name: siteConfig.name, url: siteConfig.url }
 
   return [
@@ -115,6 +140,7 @@ const jsonLdGraph = computed(() => {
       dateModified: post.value.createdAt,
       author: { '@id': authorId },
       publisher: { '@id': `${siteConfig.url}/#organization` },
+      image: [toAbs('/images/banner.png'), avatarUrl].filter(Boolean),
       isAccessibleForFree: true,
     }
   ].filter(Boolean)
@@ -125,10 +151,25 @@ usePageSeo({
   description: seoDescription,
   canonicalPath,
   ogType: computed(() => (isRestricted.value ? 'website' : 'article')),
-  image: computed(() => (isRestricted.value ? '/images/logo-black-bg.png' : '/images/banner.png')),
+  image: seoImage,
+  imageAlt: seoImageAlt,
   noindex: computed(() => (post.value ? isRestricted.value : false)),
   author: seoAuthor,
   jsonLdGraph
+})
+
+// Extra share tags for article rich previews (public posts only).
+useHead({
+  meta: computed(() => {
+    if (!post.value || isRestricted.value) return []
+    const username = (post.value.author.username ?? '').trim()
+    const authorUrl = username ? `${siteConfig.url}/u/${encodeURIComponent(username)}` : null
+    return [
+      { property: 'article:published_time', content: post.value.createdAt },
+      { property: 'article:modified_time', content: post.value.createdAt },
+      ...(authorUrl ? [{ property: 'article:author', content: authorUrl }] : []),
+    ]
+  }),
 })
 </script>
 

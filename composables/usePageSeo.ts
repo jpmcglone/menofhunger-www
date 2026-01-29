@@ -10,6 +10,8 @@ export type PageSeoOptions = {
   description?: MaybeRef<string | undefined>
   /** Absolute URL for OG/Twitter image. Defaults to site logo image. */
   image?: MaybeRef<string | undefined>
+  /** Alt text for OG/Twitter image (avoid leaking restricted content). */
+  imageAlt?: MaybeRef<string | undefined>
   /** Override canonical path (e.g. '/about'). Defaults to current route path. */
   canonicalPath?: MaybeRef<string | undefined>
   /** OpenGraph type */
@@ -64,6 +66,7 @@ export function usePageSeo(options: PageSeoOptions = {}) {
  
   // Default to dark/black logo for social previews unless a page overrides it.
   const image = computed(() => toAbsoluteUrl(unref(options.image) || '/images/logo-black-bg.png'))
+  const imageAlt = computed(() => (unref(options.imageAlt) || `${siteConfig.name} logo`).slice(0, 200))
   const robots = computed(() =>
     unref(options.noindex)
       ? 'noindex,nofollow'
@@ -82,13 +85,13 @@ export function usePageSeo(options: PageSeoOptions = {}) {
     ogTitle: fullTitle,
     ogDescription: description,
     ogImage: image,
-    ogImageAlt: `${siteConfig.name} logo`,
+    ogImageAlt: imageAlt,
  
     twitterCard: 'summary_large_image',
     twitterTitle: fullTitle,
     twitterDescription: description,
     twitterImage: image,
-    twitterImageAlt: `${siteConfig.name} logo`,
+    twitterImageAlt: imageAlt,
     twitterSite: siteConfig.social.twitter,
     twitterCreator: siteConfig.social.twitter
   })
