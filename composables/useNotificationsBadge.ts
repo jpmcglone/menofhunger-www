@@ -1,23 +1,23 @@
 export function useNotificationsBadge() {
   const { user } = useAuth()
-  const colorMode = useColorMode()
 
   // Fake count for now.
   const count = computed(() => 5)
   const show = computed(() => count.value > 0)
 
-  const isAuthed = computed(() => Boolean(user.value?.id))
-  const isVerified = computed(() => Boolean(user.value?.verifiedStatus && user.value.verifiedStatus !== 'none'))
-  const isPremium = computed(() => Boolean(user.value?.premium))
-  const isDark = computed(() => (colorMode.value as string) === 'dark')
-
   const toneClass = computed(() => {
-    // Premium: orange. Verified: blue.
-    if (isAuthed.value && isPremium.value) return 'bg-amber-500 text-white'
-    if (isAuthed.value && isVerified.value) return 'bg-sky-500 text-white'
-    // Logged out or unverified: high-contrast.
-    return isDark.value ? 'bg-white text-black' : 'bg-black text-white'
+    // Always match the app's current theme tint (set in `layouts/app.vue` via `primaryTintCssForUser`):
+    // - premium => orange
+    // - verified => blue
+    // - default => near-black (light mode) / white (dark mode)
+    // Use a real CSS utility class so it works in production builds (Tailwind won't always
+    // generate arbitrary-value classes when they come from computed strings).
+    return 'moh-pill-primary'
   })
+
+  // Keep `user` referenced so this recomputes immediately when auth/flags change.
+  // eslint-disable-next-line @typescript-eslint/no-unused-expressions
+  user.value?.id
 
   return { count, show, toneClass }
 }

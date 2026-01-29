@@ -24,11 +24,11 @@
         No “Only me” posts yet.
       </div>
 
-      <TransitionGroup name="moh-post" tag="div" class="relative mt-2">
+      <div class="relative mt-2">
         <div v-for="p in posts" :key="p.id">
           <AppPostRow :post="p" @deleted="removePost" />
         </div>
-      </TransitionGroup>
+      </div>
 
       <div v-if="nextCursor" class="px-4 py-6 flex justify-center">
         <Button label="Load more" severity="secondary" :loading="loading" :disabled="loading" @click="loadMore" />
@@ -38,7 +38,7 @@
     <!-- Privacy gate (resets every visit) -->
     <div
       v-if="!revealed"
-      class="absolute inset-0 z-10 flex items-start justify-center bg-white/55 backdrop-blur-lg dark:bg-black/55"
+      class="absolute inset-0 z-10 flex items-start justify-center bg-white/55 dark:bg-black/55"
     >
       <div class="w-full max-w-md px-4 pt-10 sm:pt-14">
         <div class="rounded-2xl border border-gray-200 bg-white/90 p-5 shadow-sm dark:border-zinc-800 dark:bg-black/70">

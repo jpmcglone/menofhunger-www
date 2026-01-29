@@ -2,7 +2,7 @@
   <div class="w-full">
     <div
       ref="trackEl"
-      class="relative w-full select-none rounded-full border border-gray-300 bg-white/70 px-1 py-1 backdrop-blur dark:border-zinc-700 dark:bg-black/40"
+      class="relative w-full select-none rounded-full border border-gray-300 bg-white/70 px-1 py-1 dark:border-zinc-700 dark:bg-black/40"
       :aria-disabled="disabled ? 'true' : 'false'"
     >
       <div

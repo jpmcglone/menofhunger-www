@@ -1,6 +1,6 @@
 <template>
   <nav
-    class="fixed inset-x-0 bottom-0 z-50 border-t border-gray-200 bg-white/95 backdrop-blur dark:border-zinc-800 dark:bg-black/90 sm:hidden"
+    class="fixed inset-x-0 bottom-0 z-50 border-t border-gray-200 bg-white/95 dark:border-zinc-800 dark:bg-black/90 sm:hidden"
     style="padding-bottom: env(safe-area-inset-bottom)"
     aria-label="Primary"
   >

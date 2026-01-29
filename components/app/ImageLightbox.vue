@@ -17,7 +17,7 @@
 
         <button
           type="button"
-          class="absolute right-4 top-4 z-10 rounded-full bg-black/45 p-2 text-white shadow-sm backdrop-blur-sm"
+          class="absolute right-4 top-4 z-10 rounded-full bg-black/45 p-2 text-white shadow-sm"
           aria-label="Close"
           @click.stop="onClose"
         >

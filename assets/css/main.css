@@ -120,6 +120,12 @@ html.dark {
   .moh-frosted {
     background-color: var(--moh-frosted);
   }
+
+  /* Theme-tinted pill (uses current app primary tokens). */
+  .moh-pill-primary {
+    background-color: var(--p-primary-color, #111827);
+    color: var(--p-primary-contrast-color, #ffffff);
+  }
 }
 
 /* Dark mode: swap to light cursor for contrast (landing page only) */

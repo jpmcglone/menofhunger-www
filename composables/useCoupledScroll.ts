@@ -6,102 +6,92 @@ type Options = {
   enabled?: Ref<boolean>
 }
 
-function normalizeWheelDeltaY(e: WheelEvent, container: HTMLElement) {
-  // deltaMode: 0=pixel, 1=line, 2=page
-  if (e.deltaMode === 1) return e.deltaY * 16
-  if (e.deltaMode === 2) return e.deltaY * container.clientHeight
-  return e.deltaY
-}
-
-function clamp(n: number, min: number, max: number) {
-  return Math.min(max, Math.max(min, n))
-}
-
 export function useCoupledScroll({ middle, right, enabled }: Options) {
   const isEnabled = enabled ?? computed(() => true)
 
-  // Shared "virtual" scroll position for columns 2 + 3.
-  // Each column renders this position clamped to its own scroll range.
-  const coupledScrollY = ref(0)
+  // Performance note:
+  // We avoid intercepting wheel events (passive:false + preventDefault) since this can
+  // be very expensive on Safari and blocks native scrolling optimizations.
+  // Instead, we let each column scroll natively and mirror scrollTop to the other side
+  // on the next animation frame, with loop-avoidance guards.
 
-  function onCoupledWheel(e: WheelEvent) {
-    const middleEl = middle.value
-    const rightEl = right.value
-    if (!middleEl || !rightEl) return
+  let syncingFrom: 'middle' | 'right' | null = null
+  let rafId: number | null = null
+  let lastSource: 'middle' | 'right' | null = null
 
-    // If disabled (e.g. right rail hidden), don't intercept scrolling.
+  function scheduleSync(source: 'middle' | 'right') {
+    if (!import.meta.client) return
     if (!isEnabled.value) return
-    if (rightEl.clientHeight === 0 || rightEl.offsetParent === null) return
-
-    const dy = normalizeWheelDeltaY(e, middleEl)
-    if (dy === 0) return
-
-    // We fully control the scroll so it behaves the same regardless of pointer zone.
-    e.preventDefault()
-
-    const maxMiddle = Math.max(0, middleEl.scrollHeight - middleEl.clientHeight)
-    const maxRight = Math.max(0, rightEl.scrollHeight - rightEl.clientHeight)
-    const maxCoupled = Math.max(maxMiddle, maxRight)
-
-    // Advance shared position (this is the "underlying scroll position").
-    coupledScrollY.value = clamp(coupledScrollY.value + dy, 0, maxCoupled)
-
-    // Apply it to each column.
-    middleEl.scrollTop = clamp(coupledScrollY.value, 0, maxMiddle)
-    rightEl.scrollTop = clamp(coupledScrollY.value, 0, maxRight)
-  }
-
-  function onRightScroll() {
     const rightEl = right.value
-    if (!rightEl) return
-    coupledScrollY.value = Math.max(coupledScrollY.value, rightEl.scrollTop)
+    if (!rightEl || rightEl.clientHeight === 0 || rightEl.offsetParent === null) return
+
+    lastSource = source
+    if (rafId != null) return
+    rafId = requestAnimationFrame(() => {
+      rafId = null
+      const middleEl = middle.value
+      const rightEl2 = right.value
+      if (!middleEl || !rightEl2) return
+      if (!isEnabled.value) return
+      if (rightEl2.clientHeight === 0 || rightEl2.offsetParent === null) return
+
+      if (lastSource === 'middle') {
+        syncingFrom = 'middle'
+        rightEl2.scrollTop = middleEl.scrollTop
+        syncingFrom = null
+        return
+      }
+
+      syncingFrom = 'right'
+      middleEl.scrollTop = rightEl2.scrollTop
+      syncingFrom = null
+    })
   }
 
-  let middleWheelHandler: ((e: WheelEvent) => void) | null = null
-  let rightWheelHandler: ((e: WheelEvent) => void) | null = null
+  let middleScrollHandler: (() => void) | null = null
   let rightScrollHandler: (() => void) | null = null
 
-  function bindMiddle() {
-    const middleEl = middle.value
-    if (!middleEl || middleWheelHandler) return
-
-    // Initialize shared position from current scrollTop.
-    coupledScrollY.value = middleEl.scrollTop
-
-    middleWheelHandler = (e: WheelEvent) => onCoupledWheel(e)
-    middleEl.addEventListener('wheel', middleWheelHandler, { passive: false })
+  function bindMiddle(el: HTMLElement) {
+    if (middleScrollHandler) return
+    middleScrollHandler = () => {
+      if (syncingFrom === 'right') return
+      scheduleSync('middle')
+    }
+    el.addEventListener('scroll', middleScrollHandler, { passive: true })
   }
 
-  function unbindMiddle() {
-    const middleEl = middle.value
-    if (middleEl && middleWheelHandler) {
-      middleEl.removeEventListener('wheel', middleWheelHandler)
-    }
-    middleWheelHandler = null
+  function unbindMiddle(prev?: HTMLElement | null) {
+    const el = prev ?? middle.value
+    if (el && middleScrollHandler) el.removeEventListener('scroll', middleScrollHandler)
+    middleScrollHandler = null
   }
 
   function bindRight(el: HTMLElement) {
-    if (rightScrollHandler || rightWheelHandler) return
-
-    rightScrollHandler = () => onRightScroll()
+    if (rightScrollHandler) return
+    rightScrollHandler = () => {
+      if (syncingFrom === 'middle') return
+      scheduleSync('right')
+    }
     el.addEventListener('scroll', rightScrollHandler, { passive: true })
-
-    rightWheelHandler = (e: WheelEvent) => onCoupledWheel(e)
-    el.addEventListener('wheel', rightWheelHandler, { passive: false })
   }
 
   function unbindRight(prev?: HTMLElement | null) {
     const el = prev ?? right.value
     if (el && rightScrollHandler) el.removeEventListener('scroll', rightScrollHandler)
-    if (el && rightWheelHandler) el.removeEventListener('wheel', rightWheelHandler)
     rightScrollHandler = null
-    rightWheelHandler = null
   }
 
   onMounted(() => {
     if (!import.meta.client) return
 
-    bindMiddle()
+    watch(
+      () => middle.value,
+      (el, prev) => {
+        if (prev) unbindMiddle(prev)
+        if (el) bindMiddle(el)
+      },
+      { immediate: true }
+    )
 
     watch(
       () => right.value,
@@ -117,6 +107,8 @@ export function useCoupledScroll({ middle, right, enabled }: Options) {
     if (!import.meta.client) return
     unbindMiddle()
     unbindRight()
+    if (rafId != null) cancelAnimationFrame(rafId)
+    rafId = null
   })
 }
 

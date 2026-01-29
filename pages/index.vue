@@ -24,7 +24,7 @@
 
     <!-- Roanoke meetup: subtle "question card" that pops -->
     <div class="mt-10 w-full max-w-xl">
-      <div class="cursor-pointer rounded-2xl border border-orange-200/70 bg-orange-50/60 px-4 py-3 shadow-sm backdrop-blur dark:border-orange-500/20 dark:bg-orange-500/10">
+      <div class="cursor-pointer rounded-2xl border border-orange-200/70 bg-orange-50/60 px-4 py-3 shadow-sm dark:border-orange-500/20 dark:bg-orange-500/10">
         <button
           type="button"
           class="w-full text-left cursor-pointer"
@@ -85,7 +85,7 @@
           @click="isRoanokeOpen = false"
         >
           <div
-            class="w-full max-w-xl rounded-t-2xl border border-orange-200/70 bg-orange-50/60 shadow-2xl backdrop-blur dark:border-orange-500/20 dark:bg-orange-500/10"
+            class="w-full max-w-xl rounded-t-2xl border border-orange-200/70 bg-orange-50/60 shadow-2xl dark:border-orange-500/20 dark:bg-orange-500/10"
             @click.stop
           >
             <div class="flex items-center justify-between px-5 py-4">

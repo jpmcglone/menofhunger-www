@@ -104,7 +104,7 @@
         >
           <div
             v-if="!hideTopBar"
-            class="sticky top-0 z-10 border-b moh-border moh-frosted backdrop-blur"
+            class="sticky top-0 z-10 border-b moh-border moh-frosted"
           >
             <div class="px-4 py-3 flex items-center justify-between gap-3">
               <div class="min-w-0 flex items-center gap-2">

@@ -46,7 +46,7 @@
             />
           </div>
 
-          <div class="absolute right-0 top-0 shrink-0">
+          <div class="absolute -right-0.5 -top-0.5 shrink-0">
             <Button
               icon="pi pi-ellipsis-v"
               text
@@ -56,11 +56,11 @@
               v-tooltip.bottom="moreTooltip"
               @click="toggleMoreMenu"
             />
-            <Menu ref="moreMenuRef" :model="moreMenuItems" popup />
+            <Menu v-if="moreMenuMounted" ref="moreMenuRef" :model="moreMenuItems" popup />
           </div>
         </div>
 
-        <p class="mt-0.5 whitespace-pre-wrap moh-text">
+        <p class="mt-0.5 whitespace-pre-wrap moh-text pr-12">
           {{ post.body }}
         </p>
 
@@ -165,7 +165,7 @@
                 />
               </svg>
             </button>
-            <Menu ref="shareMenuRef" :model="shareMenuItems" popup />
+            <Menu v-if="shareMenuMounted" ref="shareMenuRef" :model="shareMenuItems" popup />
           </div>
         </div>
       </div>
@@ -173,6 +173,7 @@
   </div>
 
   <Dialog
+    v-if="deleteConfirmOpen"
     v-model:visible="deleteConfirmOpen"
     modal
     header="Delete post?"
@@ -344,6 +345,7 @@ function formatShortDate(d: Date): string {
 }
 
 const moreMenuRef = ref()
+const moreMenuMounted = ref(false)
 const moreMenuItems = computed<MenuItem[]>(() => {
   const items: MenuItem[] = [
     {
@@ -390,7 +392,9 @@ const moreMenuItems = computed<MenuItem[]>(() => {
   return items
 })
 
-function toggleMoreMenu(event: Event) {
+async function toggleMoreMenu(event: Event) {
+  moreMenuMounted.value = true
+  await nextTick()
   // PrimeVue Menu expects the click event to position the popup.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   ;(moreMenuRef.value as any)?.toggle(event)
@@ -481,6 +485,7 @@ async function copyToClipboard(text: string) {
 }
 
 const shareMenuRef = ref()
+const shareMenuMounted = ref(false)
 const shareMenuItems = computed<MenuItem[]>(() => [
   {
     label: 'Copy link',
@@ -497,7 +502,9 @@ const shareMenuItems = computed<MenuItem[]>(() => [
   },
 ])
 
-function toggleShareMenu(event: Event) {
+async function toggleShareMenu(event: Event) {
+  shareMenuMounted.value = true
+  await nextTick()
   // PrimeVue Menu expects the click event to position the popup.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   ;(shareMenuRef.value as any)?.toggle(event)

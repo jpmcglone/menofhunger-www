@@ -10,7 +10,7 @@
     >
       <div
         v-if="visible"
-        class="fixed inset-0 z-[1000] bg-black/40 backdrop-blur-[1px]"
+        class="fixed inset-0 z-[1000] bg-black/40"
         aria-hidden="true"
         @click="onMaskClick"
       />

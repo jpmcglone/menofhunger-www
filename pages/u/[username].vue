@@ -224,11 +224,11 @@
           No posts yet.
         </div>
 
-        <TransitionGroup v-else name="moh-post" tag="div" class="relative mt-3 -mx-4">
+        <div v-else class="relative mt-3 -mx-4">
           <div v-for="p in userPosts.posts.value" :key="p.id">
             <AppPostRow :post="p" @deleted="userPosts.removePost" />
           </div>
-        </TransitionGroup>
+        </div>
       </div>
     </div>
 
@@ -354,7 +354,7 @@
                 class="absolute inset-x-0 bottom-0 px-3 py-2"
               >
                 <div
-                  class="mx-auto w-fit rounded-lg bg-black/45 px-2.5 py-1 text-xs font-semibold text-white shadow-sm backdrop-blur-sm"
+                  class="mx-auto w-fit rounded-lg bg-black/45 px-2.5 py-1 text-xs font-semibold text-white shadow-sm"
                   style="text-shadow: 0 1px 2px rgba(0,0,0,.55);"
                 >
                   Pending
@@ -390,7 +390,7 @@
                 class="absolute inset-x-0 bottom-0 px-2 pb-2"
               >
                 <div
-                  class="mx-auto w-fit rounded-lg bg-black/45 px-2 py-0.5 text-[11px] font-semibold text-white shadow-sm backdrop-blur-sm"
+                  class="mx-auto w-fit rounded-lg bg-black/45 px-2 py-0.5 text-[11px] font-semibold text-white shadow-sm"
                   style="text-shadow: 0 1px 2px rgba(0,0,0,.55);"
                 >
                   Pending

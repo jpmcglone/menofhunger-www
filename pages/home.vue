@@ -3,7 +3,7 @@
     <!-- Feed scope -->
     <div
       v-if="isAuthed"
-      class="sticky top-0 z-20 bg-white/90 backdrop-blur pt-2 pb-0 dark:bg-black/80"
+      class="sticky top-0 z-20 bg-white/90 pt-2 pb-0 dark:bg-black/80"
     >
       <Tabs v-model:value="feedScope" class="w-full">
         <TabList class="w-full">
@@ -150,7 +150,6 @@
             :style="composerTextareaVars"
             placeholder="What’s happening?"
             :maxlength="postMaxLen"
-            @input="onComposerInput"
             @keydown="onComposerKeydown"
           />
           <AppInlineAlert v-if="submitError" class="mt-3" severity="danger">
@@ -325,11 +324,11 @@
             </div>
           </div>
 
-          <TransitionGroup name="moh-post" tag="div" class="relative">
+          <div class="relative">
             <div v-for="p in posts" :key="p.id">
               <AppPostRow :post="p" @deleted="removePost" />
             </div>
-          </TransitionGroup>
+          </div>
         </div>
 
         <div v-if="nextCursor" class="px-4 py-6 flex justify-center">
@@ -580,6 +579,7 @@ useHead({
 })
 
 const composerTextareaEl = ref<HTMLTextAreaElement | null>(null)
+let autosizeRaf: number | null = null
 
 function autosizeComposerTextarea() {
   if (!import.meta.client) return
@@ -589,8 +589,13 @@ function autosizeComposerTextarea() {
   el.style.height = `${el.scrollHeight}px`
 }
 
-function onComposerInput() {
-  autosizeComposerTextarea()
+function scheduleAutosize() {
+  if (!import.meta.client) return
+  if (autosizeRaf != null) return
+  autosizeRaf = requestAnimationFrame(() => {
+    autosizeRaf = null
+    autosizeComposerTextarea()
+  })
 }
 
 function onComposerKeydown(e: KeyboardEvent) {
@@ -603,12 +608,21 @@ function onComposerKeydown(e: KeyboardEvent) {
   void submit()
 }
 
-watch(draft, () => {
-  // Draft changes can come from submit/reset as well as typing.
-  queueMicrotask(() => autosizeComposerTextarea())
-})
+watch(
+  draft,
+  () => {
+    // Draft changes can come from submit/reset as well as typing.
+    scheduleAutosize()
+  },
+  { flush: 'post' }
+)
 
-onMounted(() => autosizeComposerTextarea())
+onMounted(() => scheduleAutosize())
+
+onBeforeUnmount(() => {
+  if (autosizeRaf != null) cancelAnimationFrame(autosizeRaf)
+  autosizeRaf = null
+})
 
 const composerTextareaVars = computed<Record<string, string>>(() => {
   if (visibility.value === 'verifiedOnly') {
