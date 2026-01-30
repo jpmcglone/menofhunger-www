@@ -6,7 +6,12 @@
     :aria-label="ariaLabel"
   >
     <!-- Active segment highlight (animates position + width) -->
-    <div class="moh-seg-highlight" :style="highlightStyle" aria-hidden="true" />
+    <div
+      class="moh-seg-highlight"
+      :class="{ 'moh-seg-highlight--animate': highlightAnimate, 'opacity-0': !highlightReady }"
+      :style="highlightStyle"
+      aria-hidden="true"
+    />
 
     <button
       v-for="(t, idx) in tabs"
@@ -51,6 +56,8 @@ const ariaLabel = computed(() => props.ariaLabel ?? 'Tabs')
 
 const wrapEl = ref<HTMLElement | null>(null)
 const tabEls = new Map<string, HTMLElement>()
+const highlightReady = ref(false)
+const highlightAnimate = ref(false)
 const highlightStyle = ref<Record<string, string>>({
   transform: 'translate3d(0px, 0, 0)',
   width: '0px',
@@ -106,7 +113,11 @@ function tabButtonClass(t: TabSelectorTab) {
     'transition-colors',
     'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/15 dark:focus-visible:ring-white/20',
     disabled ? 'opacity-55 cursor-not-allowed' : 'cursor-pointer',
-    active ? 'text-white' : 'bg-transparent moh-text-muted hover:moh-text',
+    active
+      ? highlightReady.value
+        ? 'text-white'
+        : 'text-white bg-[var(--p-primary-color,#f97316)]'
+      : 'bg-transparent moh-text-muted hover:moh-text',
   ]
 }
 
@@ -149,7 +160,17 @@ function onTabKeydown(e: KeyboardEvent, idx: number) {
 
 onMounted(() => {
   if (!import.meta.client) return
-  nextTick(updateHighlight)
+  // First paint: show the active segment immediately (no "entrance" animation).
+  // We do that by rendering the active button with a background until the highlight is measured.
+  highlightAnimate.value = false
+  nextTick(() => {
+    updateHighlight()
+    highlightReady.value = true
+    // Enable animation for subsequent tab changes.
+    requestAnimationFrame(() => {
+      highlightAnimate.value = true
+    })
+  })
 
   const onResize = () => updateHighlight()
   window.addEventListener('resize', onResize)
@@ -174,7 +195,10 @@ watch(
   left: 0;
   border-radius: 9999px;
   background: var(--p-primary-color, #f97316);
-  transition: transform 220ms ease, width 220ms ease, opacity 140ms ease;
   will-change: transform, width;
+}
+
+.moh-seg-highlight--animate {
+  transition: transform 220ms ease, width 220ms ease, opacity 140ms ease;
 }
 </style>
