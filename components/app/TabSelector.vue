@@ -116,7 +116,7 @@ function tabButtonClass(t: TabSelectorTab) {
     active
       ? highlightReady.value
         ? 'text-white'
-        : 'text-white bg-[var(--p-primary-color,#f97316)]'
+        : 'text-white moh-seg-fallback-active'
       : 'bg-transparent moh-text-muted hover:moh-text',
   ]
 }
@@ -194,8 +194,13 @@ watch(
   bottom: 4px;
   left: 0;
   border-radius: 9999px;
-  background: var(--p-primary-color, #f97316);
+  /* Boost-like orange (and stays consistent if the primary tint changes). */
+  background: linear-gradient(135deg, var(--p-primary-400, #f39b4f), var(--p-primary-600, #ad6815));
   will-change: transform, width;
+}
+
+.moh-seg-fallback-active {
+  background: linear-gradient(135deg, var(--p-primary-400, #f39b4f), var(--p-primary-600, #ad6815));
 }
 
 .moh-seg-highlight--animate {

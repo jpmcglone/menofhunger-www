@@ -144,6 +144,7 @@
         <div class="flex min-w-0 flex-1">
           <!-- Middle / Feed (scroll zone #2) -->
           <main
+            id="moh-middle-scroller"
             ref="middleScrollerEl"
             :class="[
               'no-scrollbar min-w-0 flex-1',

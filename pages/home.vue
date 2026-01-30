@@ -409,6 +409,7 @@ definePageMeta({
   layout: 'app',
   title: 'Home',
   hideTopBar: true,
+  keepalive: true,
 })
 
 usePageSeo({
