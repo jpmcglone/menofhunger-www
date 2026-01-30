@@ -141,59 +141,16 @@
             </span>
           </div>
 
-          <div class="flex items-center gap-2 text-xs">
-            <button
-              type="button"
-              class="rounded-full px-3 py-1 border transition-colors"
-              :class="filterButtonClass('all')"
-              @click="userPosts.setFilter('all')"
-            >
-              All <span class="ml-1 tabular-nums opacity-80">{{ userPosts.counts.value.all }}</span>
-            </button>
-
-            <button
-              type="button"
-              class="rounded-full px-3 py-1 border transition-colors"
-              :class="filterButtonClass('public')"
-              @click="userPosts.setFilter('public')"
-            >
-              Public <span class="ml-1 tabular-nums opacity-80">{{ userPosts.counts.value.public }}</span>
-            </button>
-
-            <button
-              type="button"
-              class="rounded-full px-3 py-1 border transition-colors flex items-center gap-1"
-              :class="filterButtonClass('verifiedOnly')"
-              @click="userPosts.setFilter('verifiedOnly')"
-            >
-              Verified
-              <span class="tabular-nums opacity-80">{{ userPosts.counts.value.verifiedOnly }}</span>
-              <span
-                v-if="!userPosts.viewerIsVerified.value"
-                class="ml-1 font-mono text-[10px] leading-none opacity-80"
-                aria-hidden="true"
-              >
-                LOCKED
-              </span>
-            </button>
-
-            <button
-              type="button"
-              class="rounded-full px-3 py-1 border transition-colors flex items-center gap-1"
-              :class="filterButtonClass('premiumOnly')"
-              @click="userPosts.setFilter('premiumOnly')"
-            >
-              Premium
-              <span class="tabular-nums opacity-80">{{ userPosts.counts.value.premiumOnly }}</span>
-              <span
-                v-if="!userPosts.viewerIsPremium.value"
-                class="ml-1 font-mono text-[10px] leading-none opacity-80"
-                aria-hidden="true"
-              >
-                LOCKED
-              </span>
-            </button>
-          </div>
+          <AppFeedFiltersBar
+            :sort="userPosts.sort.value"
+            :filter="userPosts.filter.value"
+            :viewer-is-verified="userPosts.viewerIsVerified.value"
+            :viewer-is-premium="userPosts.viewerIsPremium.value"
+            :show-reset="userPosts.filter.value !== 'all' || userPosts.sort.value !== 'new'"
+            @update:sort="onUserPostsSortChange"
+            @update:filter="onUserPostsFilterChange"
+            @reset="onUserPostsReset"
+          />
         </div>
 
         <div v-if="userPosts.error.value" class="mt-3 text-sm text-red-700 dark:text-red-300">
@@ -747,11 +704,47 @@ function onUnfollowed() {
   followSummaryData.value = { ...s, viewerFollowsUser: false, followerCount: Math.max(0, s.followerCount - 1) }
 }
 
-const userPosts = await useUserPosts(normalizedUsername, { enabled: computed(() => !notFound.value) })
+const userPosts = await useUserPosts(normalizedUsername, {
+  enabled: computed(() => !notFound.value),
+  defaultToNewestAndAll: true,
+})
 const { header: appHeader } = useAppHeader()
 
-function filterButtonClass(kind: Parameters<typeof userPosts.setFilter>[0]) {
-  return filterPillClasses(kind, userPosts.filter.value === kind)
+// Filter UI is handled by AppFeedFiltersBar (shared with Home).
+const middleScrollerEl = useMiddleScroller()
+
+async function preserveMiddleScrollAfter<T>(fn: () => Promise<T>): Promise<T> {
+  if (!import.meta.client) return await fn()
+  const scroller = middleScrollerEl.value
+  if (!scroller) return await fn()
+
+  const prevTop = scroller.scrollTop
+  const res = await fn()
+  await nextTick()
+
+  // If the content got shorter, clamp to the new max scrollTop.
+  const maxTop = Math.max(0, scroller.scrollHeight - scroller.clientHeight)
+  scroller.scrollTop = Math.min(prevTop, maxTop)
+  return res
+}
+
+async function onUserPostsSortChange(next: 'new' | 'trending') {
+  await preserveMiddleScrollAfter(async () => {
+    await userPosts.setSort(next)
+  })
+}
+
+async function onUserPostsFilterChange(next: Parameters<typeof userPosts.setFilter>[0]) {
+  await preserveMiddleScrollAfter(async () => {
+    await userPosts.setFilter(next)
+  })
+}
+
+async function onUserPostsReset() {
+  await preserveMiddleScrollAfter(async () => {
+    await userPosts.setFilter('all')
+    await userPosts.setSort('new')
+  })
 }
 
 const profileName = computed(() => profile.value?.name || profile.value?.username || 'User')

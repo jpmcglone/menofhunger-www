@@ -10,7 +10,12 @@
   <div class="h-dvh overflow-hidden moh-bg moh-text">
     <div class="mx-auto flex h-full w-full max-w-6xl px-2 sm:px-4 xl:max-w-7xl">
       <!-- Left Nav (independent scroll) -->
-      <aside class="no-scrollbar hidden sm:block shrink-0 h-full overflow-y-auto overscroll-y-auto border-r moh-border">
+      <aside
+        :class="[
+          'no-scrollbar hidden sm:block shrink-0 h-full border-r moh-border',
+          composerModalOpen ? 'overflow-hidden' : 'overflow-y-auto overscroll-y-auto'
+        ]"
+      >
         <!-- IMPORTANT: no `h-full` + no `overflow-hidden` here, or the rail can't actually scroll -->
         <div
           :class="[
@@ -71,7 +76,10 @@
                 <i v-else :class="['pi text-[28px] font-semibold', item.icon]" aria-hidden="true" />
                 <span
                   v-if="item.key === 'notifications' && notifBadge.show"
-                  class="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold leading-[18px] text-center shadow-sm ring-2 ring-white dark:ring-black bg-gray-900 text-white dark:bg-white dark:text-black"
+                  :class="[
+                    'absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold leading-[18px] text-center shadow-sm ring-2 ring-white dark:ring-black',
+                    notifBadge.toneClass.value,
+                  ]"
                 >
                   {{ notifBadge.count }}
                 </span>
@@ -89,7 +97,8 @@
                   'group flex h-12 items-center rounded-xl bg-black text-white hover:opacity-95 dark:bg-white dark:text-black',
                   'w-full'
                 ]"
-                v-if="isAuthed"
+                v-if="canOpenComposer"
+                @click="openComposerModal"
               >
                 <span class="flex h-12 w-12 shrink-0 items-center justify-center">
                   <i class="pi pi-plus text-3xl" aria-hidden="true" />
@@ -101,6 +110,20 @@
           </nav>
 
           <AppUserCard v-if="isAuthed" :compact="navCompactMode" />
+          <NuxtLink
+            v-else
+            to="/login"
+            aria-label="Log in"
+            :class="[
+              'group flex h-12 items-center rounded-xl bg-black text-white hover:opacity-95 dark:bg-white dark:text-black',
+              'w-full mt-2'
+            ]"
+          >
+            <span class="flex h-12 w-12 shrink-0 items-center justify-center">
+              <i class="pi pi-sign-in text-2xl" aria-hidden="true" />
+            </span>
+            <span v-if="!navCompactMode" class="hidden xl:inline text-base font-semibold">Log in</span>
+          </NuxtLink>
         </div>
       </aside>
 
@@ -109,7 +132,10 @@
         <!-- Middle / Feed (scroll zone #2) -->
         <main
           ref="middleScrollerEl"
-          class="no-scrollbar min-w-0 flex-1 overflow-y-auto overscroll-y-auto lg:border-r moh-border"
+          :class="[
+            'no-scrollbar min-w-0 flex-1 lg:border-r moh-border',
+            composerModalOpen ? 'overflow-hidden' : 'overflow-y-auto overscroll-y-auto'
+          ]"
         >
           <div
             v-if="!hideTopBar"
@@ -133,7 +159,10 @@
             </div>
           </div>
 
-          <div :class="hideTopBar ? 'pb-24 sm:pb-4' : 'px-4 py-4 pb-24 sm:pb-4'">
+          <div
+            ref="middleContentEl"
+            :class="hideTopBar ? 'pb-24 sm:pb-4' : 'px-4 py-4 pb-24 sm:pb-4'"
+          >
             <slot />
           </div>
         </main>
@@ -142,7 +171,8 @@
         <aside
           ref="rightScrollerEl"
           :class="[
-            'no-scrollbar shrink-0 w-80 h-full overflow-y-auto overscroll-y-auto px-4 py-4',
+            'no-scrollbar shrink-0 w-80 h-full px-4 py-4',
+            composerModalOpen ? 'overflow-hidden' : 'overflow-y-auto overscroll-y-auto',
             isRightRailForcedHidden ? 'hidden' : 'hidden lg:block'
           ]"
         >
@@ -316,6 +346,50 @@
 
   <AppTabBar :items="tabItems" />
 
+  <ClientOnly>
+    <Transition
+      enter-active-class="transition-opacity duration-200 ease-out"
+      enter-from-class="opacity-0"
+      enter-to-class="opacity-100"
+      leave-active-class="transition-opacity duration-150 ease-in"
+      leave-from-class="opacity-100"
+      leave-to-class="opacity-0"
+    >
+      <div
+        v-if="composerModalOpen"
+        class="fixed inset-0 z-[1000]"
+        aria-label="Post composer overlay"
+        role="dialog"
+        aria-modal="true"
+      >
+        <!-- Backdrop -->
+        <div
+          class="absolute inset-0 bg-black/55"
+          aria-hidden="true"
+          @click="closeComposerModal"
+        />
+
+        <!-- Composer sheet -->
+        <div
+          class="absolute top-20 sm:top-24"
+          :style="composerSheetStyle"
+        >
+          <div class="relative overflow-hidden rounded-2xl border border-gray-200 bg-white p-3 shadow-2xl dark:border-zinc-800 dark:bg-black">
+            <div
+              v-if="composerModalTintStyle"
+              class="pointer-events-none absolute inset-0"
+              :style="composerModalTintStyle"
+              aria-hidden="true"
+            />
+            <div class="relative z-10">
+              <AppPostComposer auto-focus :show-divider="false" @posted="onComposerPosted" />
+            </div>
+          </div>
+        </div>
+      </div>
+    </Transition>
+  </ClientOnly>
+
   <AppImageLightbox
     :visible="lightbox.visible.value"
     :backdrop-visible="lightbox.backdropVisible.value"
@@ -356,6 +430,97 @@ const notifBadge = useNotificationsBadge()
 const { totalCount: bookmarkTotalCount, ensureLoaded: ensureBookmarkCollectionsLoaded } = useBookmarkCollections()
 
 const hasBookmarks = computed(() => Math.max(0, Math.floor(bookmarkTotalCount.value ?? 0)) > 0)
+
+// Only show the nav Post button when onboarding is complete (user can actually post).
+const canOpenComposer = computed(() => {
+  const u = user.value
+  if (!u?.id) return false
+  if (!u.usernameIsSet) return false
+  if (!u.birthdate) return false
+  if (!u.menOnlyConfirmed) return false
+  if (!Array.isArray(u.interests) || u.interests.length < 1) return false
+  return true
+})
+
+const composerModalOpen = ref(false)
+const composerSheetStyle = ref<Record<string, string>>({ left: '0px', right: '0px', width: 'auto' })
+function openComposerModal() {
+  composerModalOpen.value = true
+}
+function closeComposerModal() {
+  composerModalOpen.value = false
+}
+function onComposerPosted() {
+  composerModalOpen.value = false
+}
+
+const composerVisibility = useCookie<'public' | 'verifiedOnly' | 'premiumOnly' | 'onlyMe'>('moh.post.visibility.v1', {
+  default: () => 'public',
+  sameSite: 'lax',
+  path: '/',
+  maxAge: 60 * 60 * 24 * 365,
+})
+
+const composerModalTintStyle = computed<Record<string, string> | null>(() => {
+  const v = composerVisibility.value
+  if (v === 'public') return null
+
+  const rgb =
+    v === 'verifiedOnly'
+      ? '29,155,240'
+      : v === 'premiumOnly'
+        ? '245,158,11'
+        : '139,92,246' // onlyMe
+
+  // Very subtle bottom-up wash (color at bottom fading to transparent).
+  return {
+    background: `linear-gradient(to top, rgba(${rgb}, 0.06) 0%, transparent 50%)`,
+  }
+})
+
+const middleContentEl = ref<HTMLElement | null>(null)
+
+function updateComposerSheetStyle() {
+  if (!import.meta.client) return
+  const el = middleContentEl.value ?? middleScrollerEl.value
+  if (!el) return
+  const r = el.getBoundingClientRect()
+
+  // Match the actual center-column content area so it lines up with posts/cards.
+  composerSheetStyle.value = {
+    left: `${Math.max(0, Math.floor(r.left))}px`,
+    width: `${Math.max(0, Math.floor(r.width))}px`,
+  }
+}
+
+watch(
+  composerModalOpen,
+  (open) => {
+    if (!import.meta.client) return
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') closeComposerModal()
+    }
+    if (open) window.addEventListener('keydown', onKeyDown)
+
+    // Lock scrolling while the overlay is open.
+    const prevOverflow = document.documentElement.style.overflow
+    if (open) document.documentElement.style.overflow = 'hidden'
+
+    if (open) {
+      // Ensure we measure after layout settles.
+      requestAnimationFrame(() => updateComposerSheetStyle())
+      window.addEventListener('resize', updateComposerSheetStyle)
+    }
+
+    return () => {
+      window.removeEventListener('keydown', onKeyDown)
+      window.removeEventListener('resize', updateComposerSheetStyle)
+      document.documentElement.style.overflow = prevOverflow
+    }
+  },
+  { flush: 'post' },
+)
 
 const headerTitle = computed(() => {
   const t = (appHeader.value?.title ?? '').trim()

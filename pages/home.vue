@@ -163,17 +163,34 @@
               <button
                 type="button"
                 class="absolute -right-2 -top-2 inline-flex h-6 w-6 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-700 shadow-sm transition-colors hover:bg-gray-50 dark:border-zinc-800 dark:bg-black dark:text-gray-200 dark:hover:bg-zinc-900"
-                aria-label="Remove media"
+                :aria-label="m.source === 'upload' && (m.uploadStatus === 'queued' || m.uploadStatus === 'uploading' || m.uploadStatus === 'processing') ? 'Cancel upload' : 'Remove media'"
                 @click="removeComposerMedia(m.localId)"
               >
                 <span class="text-[12px] leading-none" aria-hidden="true">×</span>
               </button>
               <div
-                v-if="m.uploading"
-                class="absolute inset-0 flex items-center justify-center rounded-lg bg-black/35 text-white"
-                aria-label="Uploading"
+                v-if="m.source === 'upload' && m.uploadStatus && m.uploadStatus !== 'done'"
+                class="absolute inset-0 flex flex-col items-center justify-center gap-1 rounded-lg bg-black/35 text-white"
+                :aria-label="composerUploadStatusLabel(m) ?? 'Uploading'"
               >
-                <i class="pi pi-spin pi-spinner text-[16px]" aria-hidden="true" />
+                <i
+                  v-if="m.uploadStatus === 'uploading' || m.uploadStatus === 'processing'"
+                  class="pi pi-spin pi-spinner text-[16px]"
+                  aria-hidden="true"
+                />
+                <span class="text-[10px] font-semibold tracking-wide opacity-95" aria-hidden="true">
+                  {{ composerUploadStatusLabel(m) }}
+                </span>
+                <span
+                  v-if="m.uploadStatus === 'uploading' && typeof m.uploadProgress === 'number'"
+                  class="text-[10px] font-mono tabular-nums opacity-90"
+                  aria-hidden="true"
+                >
+                  {{ Math.max(0, Math.min(100, Math.round(m.uploadProgress))) }}%
+                </span>
+                <span v-if="m.uploadStatus === 'error' && m.uploadError" class="px-2 text-center text-[10px] opacity-90">
+                  {{ m.uploadError }}
+                </span>
               </div>
             </div>
           </div>
@@ -201,7 +218,7 @@
               >
                 <template #icon>
                   <span
-                    class="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-current/25 bg-transparent text-[10px] font-extrabold leading-none tracking-wide"
+                    class="inline-flex h-[22px] w-[22px] items-center justify-center rounded-md border border-current/30 bg-transparent text-[10px] font-black leading-none"
                     aria-hidden="true"
                   >
                     GIF
@@ -249,194 +266,65 @@
     <!-- Posts -->
     <div>
       <div class="sticky top-0 z-20 mt-1 border-b border-gray-200 bg-white/90 px-4 py-3 backdrop-blur dark:border-zinc-800 dark:bg-black/80">
-        <div class="flex items-center justify-end gap-2">
-          <button
-            v-if="feedScope !== 'all' || feedFilter !== 'all' || feedSort !== 'new'"
-            type="button"
-            class="inline-flex h-6 w-6 items-center justify-center rounded-full border border-gray-200 text-gray-600 transition-colors hover:bg-gray-50 hover:text-gray-900 dark:border-zinc-800 dark:text-gray-300 dark:hover:bg-zinc-900 dark:hover:text-gray-50"
-            aria-label="Reset feed to defaults"
-            @click="
+        <div class="flex items-center justify-between gap-3">
+          <!-- Scope tabs (left-aligned) -->
+          <div class="-ml-2 flex items-center gap-1">
+            <button
+              type="button"
+              class="relative px-3 py-2 text-sm font-extrabold tracking-tight transition-colors"
+              :class="feedScope === 'all' ? 'text-gray-900 dark:text-gray-50' : 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50'"
+              aria-label="All posts"
+              @click="feedScope = 'all'"
+            >
+              All
+              <span
+                v-if="feedScope === 'all'"
+                class="absolute left-2 right-2 -bottom-1 h-0.5 rounded-full"
+                style="background: var(--p-primary-color, #ffffff)"
+                aria-hidden="true"
+              />
+            </button>
+
+            <button
+              type="button"
+              class="relative px-3 py-2 text-sm font-extrabold tracking-tight transition-colors"
+              :disabled="!isAuthed"
+              :class="
+                !isAuthed
+                  ? 'text-gray-400 dark:text-zinc-600 cursor-not-allowed'
+                  : feedScope === 'following'
+                    ? 'text-gray-900 dark:text-gray-50'
+                    : 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50'
+              "
+              aria-label="Following feed"
+              @click="isAuthed ? (feedScope = 'following') : null"
+            >
+              Following
+              <span
+                v-if="feedScope === 'following'"
+                class="absolute left-2 right-2 -bottom-1 h-0.5 rounded-full"
+                style="background: var(--p-primary-color, #ffffff)"
+                aria-hidden="true"
+              />
+            </button>
+          </div>
+
+          <!-- Controls (right-aligned) -->
+          <AppFeedFiltersBar
+            :sort="feedSort"
+            :filter="feedFilter"
+            :viewer-is-verified="viewerIsVerified"
+            :viewer-is-premium="viewerIsPremium"
+            :show-reset="feedFilter !== 'all' || feedSort !== 'new'"
+            @update:sort="setFeedSort"
+            @update:filter="setFeedFilter"
+            @reset="
               () => {
-                feedScope = 'all'
                 setFeedFilter('all')
                 setFeedSort('new')
               }
             "
-          >
-            <span class="text-[10px] leading-none opacity-75" aria-hidden="true">×</span>
-          </button>
-
-          <!-- Scope dropdown pill -->
-          <div ref="feedScopeWrapEl" class="relative">
-            <button
-              type="button"
-              class="inline-flex items-center gap-1.5 rounded-full border px-2 py-1 text-[11px] font-semibold leading-none transition-colors"
-              :class="feedScopePillClass"
-              aria-label="Change feed scope"
-              @click="toggleFeedScopePopover"
-            >
-              <i class="pi pi-users text-[10px] opacity-80" aria-hidden="true" />
-              <span>{{ feedScopeChipLabel }}</span>
-              <i class="pi pi-chevron-down text-[10px] opacity-70" aria-hidden="true" />
-            </button>
-
-            <div
-              v-if="feedScopePopoverOpen"
-              class="absolute right-0 top-full z-30 mt-2 w-56 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-lg dark:border-zinc-800 dark:bg-black"
-              role="menu"
-              aria-label="Feed scope"
-            >
-              <div class="px-3 pt-2 pb-1 text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
-                Scope
-              </div>
-              <button
-                type="button"
-                class="w-full text-left px-3 py-2 text-sm font-semibold transition-colors text-gray-900 hover:bg-gray-50 dark:text-gray-50 dark:hover:bg-zinc-900"
-                role="menuitem"
-                @click="
-                  () => {
-                    feedScope = 'all'
-                    closeFeedScopePopover()
-                  }
-                "
-              >
-                <span class="inline-flex items-center justify-between w-full">
-                  <span>All</span>
-                  <i v-if="feedScope === 'all'" class="pi pi-check text-[12px] opacity-70" aria-hidden="true" />
-                </span>
-              </button>
-
-              <button
-                type="button"
-                class="w-full text-left px-3 py-2 text-sm font-semibold transition-colors text-gray-900 hover:bg-gray-50 dark:text-gray-50 dark:hover:bg-zinc-900"
-                role="menuitem"
-                :disabled="!isAuthed"
-                :class="!isAuthed ? 'opacity-60 cursor-not-allowed' : ''"
-                @click="
-                  () => {
-                    if (!isAuthed) return
-                    feedScope = 'following'
-                    closeFeedScopePopover()
-                  }
-                "
-              >
-                <span class="inline-flex items-center justify-between w-full">
-                  <span>
-                    Following
-                    <span v-if="!isAuthed" class="ml-2 font-mono text-[10px] opacity-80" aria-hidden="true">LOGIN</span>
-                  </span>
-                  <i v-if="feedScope === 'following'" class="pi pi-check text-[12px] opacity-70" aria-hidden="true" />
-                </span>
-              </button>
-            </div>
-          </div>
-
-          <!-- Sort dropdown pill -->
-          <div ref="feedSortWrapEl" class="relative">
-            <button
-              type="button"
-              class="inline-flex items-center gap-1.5 rounded-full border px-2 py-1 text-[11px] font-semibold leading-none transition-colors"
-              :class="feedSortPillClass"
-              aria-label="Change feed sort order"
-              @click="toggleFeedSortPopover"
-            >
-              <i :class="feedSortIconClass" class="text-[10px] opacity-80" aria-hidden="true" />
-              <span>{{ feedSortTagLabel }}</span>
-              <i class="pi pi-chevron-down text-[10px] opacity-70" aria-hidden="true" />
-            </button>
-
-            <div
-              v-if="feedSortPopoverOpen"
-              class="absolute right-0 top-full z-30 mt-2 w-56 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-lg dark:border-zinc-800 dark:bg-black"
-              role="menu"
-              aria-label="Feed sort"
-            >
-              <div class="px-3 pt-2 pb-1 text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
-                Order
-              </div>
-              <button
-                type="button"
-                class="w-full text-left px-3 py-2 text-sm font-semibold transition-colors text-gray-900 hover:bg-gray-50 dark:text-gray-50 dark:hover:bg-zinc-900"
-                role="menuitem"
-                @click="setFeedSortFromPicker('new')"
-              >
-                <span class="inline-flex items-center justify-between w-full">
-                  <span>Newest</span>
-                  <i v-if="feedSort === 'new'" class="pi pi-check text-[12px] opacity-70" aria-hidden="true" />
-                </span>
-              </button>
-
-              <button
-                type="button"
-                class="w-full text-left px-3 py-2 text-sm font-semibold transition-colors text-gray-900 hover:bg-gray-50 dark:text-gray-50 dark:hover:bg-zinc-900"
-                role="menuitem"
-                @click="setFeedSortFromPicker('trending')"
-              >
-                <span class="inline-flex items-center justify-between w-full">
-                  <span>Trending</span>
-                  <i v-if="feedSort === 'trending'" class="pi pi-check text-[12px] opacity-70" aria-hidden="true" />
-                </span>
-              </button>
-
-              <div class="my-1 border-t border-gray-200 dark:border-zinc-800" />
-              <div class="px-3 pt-2 pb-1 text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
-                Visibility
-              </div>
-              <button
-                type="button"
-                class="w-full text-left px-3 py-2 text-sm font-semibold transition-colors text-gray-900 hover:bg-gray-50 dark:text-gray-50 dark:hover:bg-zinc-900"
-                role="menuitem"
-                @click="setFeedFilterFromSortPicker('all')"
-              >
-                <span class="inline-flex items-center justify-between w-full">
-                  <span>All</span>
-                  <i v-if="feedFilter === 'all'" class="pi pi-check text-[12px] opacity-70" aria-hidden="true" />
-                </span>
-              </button>
-
-              <button
-                type="button"
-                class="w-full text-left px-3 py-2 text-sm font-semibold transition-colors text-gray-900 hover:bg-gray-50 dark:text-gray-50 dark:hover:bg-zinc-900"
-                role="menuitem"
-                @click="setFeedFilterFromSortPicker('public')"
-              >
-                <span class="inline-flex items-center justify-between w-full">
-                  <span>Public</span>
-                  <i v-if="feedFilter === 'public'" class="pi pi-check text-[12px] opacity-70" aria-hidden="true" />
-                </span>
-              </button>
-
-              <button
-                type="button"
-                class="w-full text-left px-3 py-2 text-sm font-semibold transition-colors text-sky-700 hover:bg-sky-600 hover:text-white dark:text-sky-300 dark:hover:bg-sky-500"
-                role="menuitem"
-                @click="setFeedFilterFromSortPicker('verifiedOnly')"
-              >
-                <span class="inline-flex items-center justify-between w-full">
-                  <span>
-                    Verified
-                    <span v-if="!viewerIsVerified" class="ml-2 font-mono text-[10px] opacity-80" aria-hidden="true">LOCKED</span>
-                  </span>
-                  <i v-if="feedFilter === 'verifiedOnly'" class="pi pi-check text-[12px] opacity-70" aria-hidden="true" />
-                </span>
-              </button>
-
-              <button
-                type="button"
-                class="w-full text-left px-3 py-2 text-sm font-semibold transition-colors text-amber-800 hover:bg-amber-600 hover:text-white dark:text-amber-300 dark:hover:bg-amber-500"
-                role="menuitem"
-                @click="setFeedFilterFromSortPicker('premiumOnly')"
-              >
-                <span class="inline-flex items-center justify-between w-full">
-                  <span>
-                    Premium
-                    <span v-if="!viewerIsPremium" class="ml-2 font-mono text-[10px] opacity-80" aria-hidden="true">LOCKED</span>
-                  </span>
-                  <i v-if="feedFilter === 'premiumOnly'" class="pi pi-check text-[12px] opacity-70" aria-hidden="true" />
-                </span>
-              </button>
-            </div>
-          </div>
+          />
         </div>
       </div>
 
@@ -575,6 +463,7 @@ const { user } = useAuth()
 const isAuthed = computed(() => Boolean(user.value?.id))
 const { apiFetchData } = useApiClient()
 const toast = useAppToast()
+const middleScrollerEl = useMiddleScroller()
 
 const feedFilter = useCookie<ProfilePostsFilter>('moh.feed.filter.v1', {
   default: () => 'all',
@@ -666,6 +555,8 @@ watchEffect(() => {
 const draft = ref('')
 const isPremium = computed(() => Boolean(user.value?.premium))
 
+type UploadStatus = 'queued' | 'uploading' | 'processing' | 'done' | 'error'
+
 type ComposerMediaItem = {
   localId: string
   source: PostMediaSource
@@ -678,12 +569,23 @@ type ComposerMediaItem = {
   mp4Url?: string | null
   width?: number | null
   height?: number | null
-  uploading?: boolean
+  // Upload lifecycle (uploads only). Giphy items are always "done".
+  uploadStatus?: UploadStatus
+  uploadError?: string | null
+  // Only used for uploads: we keep the File around until commit succeeds.
+  file?: File | null
+  abortController?: AbortController | null
+  uploadProgress?: number | null
 }
 
 const composerMedia = ref<ComposerMediaItem[]>([])
 const canAddMoreMedia = computed(() => composerMedia.value.length < 4)
-const composerUploading = computed(() => composerMedia.value.some((m) => Boolean(m.uploading)))
+const composerUploading = computed(() => {
+  return composerMedia.value.some((m) => {
+    if (m.source !== 'upload') return false
+    return m.uploadStatus === 'queued' || m.uploadStatus === 'uploading' || m.uploadStatus === 'processing'
+  })
+})
 
 const mediaFileInputEl = ref<HTMLInputElement | null>(null)
 
@@ -706,6 +608,14 @@ function removeComposerMedia(localId: string) {
   const idx = composerMedia.value.findIndex((m) => m.localId === id)
   if (idx < 0) return
   const item = composerMedia.value[idx]
+
+  // Cancel any in-flight upload immediately.
+  try {
+    item?.abortController?.abort?.()
+  } catch {
+    // ignore
+  }
+
   if (item?.source === 'upload' && item.previewUrl?.startsWith('blob:')) {
     try {
       URL.revokeObjectURL(item.previewUrl)
@@ -716,6 +626,147 @@ function removeComposerMedia(localId: string) {
   composerMedia.value.splice(idx, 1)
 }
 
+function composerUploadStatusLabel(m: ComposerMediaItem): string | null {
+  if (m.source !== 'upload') return null
+  if (m.uploadStatus === 'queued') return 'Queued'
+  if (m.uploadStatus === 'uploading') return 'Uploading'
+  if (m.uploadStatus === 'processing') return 'Processing'
+  if (m.uploadStatus === 'error') return 'Failed'
+  return null
+}
+
+const uploadWorkerRunning = ref(false)
+const uploadInFlight = ref(0)
+const UPLOAD_CONCURRENCY = 3
+
+function patchComposerMedia(localId: string, patch: Partial<ComposerMediaItem>) {
+  const idx = composerMedia.value.findIndex((m) => m.localId === localId)
+  if (idx < 0) return
+  const cur = composerMedia.value[idx]
+  if (!cur) return
+  composerMedia.value[idx] = { ...cur, ...patch }
+}
+
+async function uploadOne(id: string) {
+  const next = composerMedia.value.find((m) => m.localId === id) ?? null
+  if (!next || next.source !== 'upload' || next.uploadStatus !== 'queued') return
+  const file = next.file
+  if (!file) {
+    patchComposerMedia(id, { uploadStatus: 'error', uploadError: 'Missing file.' })
+    return
+  }
+
+  const controller = new AbortController()
+  patchComposerMedia(id, { uploadStatus: 'uploading', uploadError: null, abortController: controller, uploadProgress: 0 })
+
+  try {
+    const init = await apiFetchData<{ key: string; uploadUrl: string; headers: Record<string, string>; maxBytes?: number }>(
+      '/uploads/post-media/init',
+      {
+        method: 'POST',
+        body: { contentType: file.type },
+        signal: controller.signal,
+      },
+    )
+
+    const maxBytes = typeof init.maxBytes === 'number' ? init.maxBytes : null
+    if (maxBytes && file.size > maxBytes) throw new Error('File is too large.')
+
+    await new Promise<void>((resolve, reject) => {
+      const xhr = new XMLHttpRequest()
+      xhr.open('PUT', init.uploadUrl)
+      for (const [k, v] of Object.entries(init.headers ?? {})) {
+        try {
+          xhr.setRequestHeader(k, v)
+        } catch {
+          // ignore
+        }
+      }
+      xhr.upload.onprogress = (e) => {
+        const total = e.total || file.size || 0
+        if (!total) return
+        const pct = Math.max(0, Math.min(100, (e.loaded / total) * 100))
+        patchComposerMedia(id, { uploadProgress: pct })
+      }
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) resolve()
+        else reject(new Error('Failed to upload.'))
+      }
+      xhr.onerror = () => reject(new Error('Failed to upload.'))
+      xhr.onabort = () => reject(Object.assign(new Error('Aborted'), { name: 'AbortError' }))
+      controller.signal.addEventListener(
+        'abort',
+        () => {
+          try {
+            xhr.abort()
+          } catch {
+            // ignore
+          }
+        },
+        { once: true },
+      )
+      xhr.send(file)
+    })
+
+    patchComposerMedia(id, { uploadStatus: 'processing', uploadProgress: 100 })
+
+    const committed = await apiFetchData<{
+      key: string
+      contentType: string
+      kind: PostMediaKind
+      width: number | null
+      height: number | null
+    }>('/uploads/post-media/commit', {
+      method: 'POST',
+      body: { key: init.key },
+      signal: controller.signal,
+    })
+
+    patchComposerMedia(id, {
+      uploadStatus: 'done',
+      abortController: null,
+      file: null,
+      uploadProgress: 100,
+      r2Key: committed.key,
+      kind: committed.kind,
+      width: committed.width ?? null,
+      height: committed.height ?? null,
+    })
+  } catch (err: unknown) {
+    if (controller.signal.aborted) return
+    const msg = String((err as Error)?.message ?? err) || 'Upload failed.'
+    patchComposerMedia(id, { uploadStatus: 'error', uploadError: msg, abortController: null })
+  }
+}
+
+function processComposerUploadQueue() {
+  if (uploadWorkerRunning.value) return
+  uploadWorkerRunning.value = true
+
+  const pump = () => {
+    while (uploadInFlight.value < UPLOAD_CONCURRENCY) {
+      const next = composerMedia.value.find((m) => m.source === 'upload' && m.uploadStatus === 'queued') ?? null
+      if (!next) break
+      uploadInFlight.value += 1
+      void uploadOne(next.localId)
+        .catch(() => {
+          // per-item error handling
+        })
+        .finally(() => {
+          uploadInFlight.value = Math.max(0, uploadInFlight.value - 1)
+          pump()
+        })
+    }
+
+    const queued = composerMedia.value.some((m) => m.source === 'upload' && m.uploadStatus === 'queued')
+    if (!queued && uploadInFlight.value === 0) {
+      uploadWorkerRunning.value = false
+    }
+  }
+
+  pump()
+}
+
 async function onMediaFilesSelected(e: Event) {
   if (!import.meta.client) return
   const input = e.target as HTMLInputElement | null
@@ -724,6 +775,7 @@ async function onMediaFilesSelected(e: Event) {
   if (input) input.value = ''
   if (!files.length) return
 
+  // Create all slots immediately (so multi-select feels instant), then upload sequentially in background.
   for (const file of files) {
     if (!canAddMoreMedia.value) break
     if (!file) continue
@@ -738,57 +790,17 @@ async function onMediaFilesSelected(e: Event) {
       source: 'upload',
       kind: ct === 'image/gif' ? 'gif' : 'image',
       previewUrl,
-      uploading: true,
+      uploadStatus: 'queued',
+      uploadError: null,
+      file,
+      abortController: null,
+      uploadProgress: 0,
     }
     composerMedia.value.push(slot)
-
-    try {
-      const init = await apiFetchData<{ key: string; uploadUrl: string; headers: Record<string, string>; maxBytes?: number }>(
-        '/uploads/post-media/init',
-        {
-          method: 'POST',
-          body: { contentType: file.type },
-        },
-      )
-
-      const maxBytes = typeof init.maxBytes === 'number' ? init.maxBytes : null
-      if (maxBytes && file.size > maxBytes) {
-        throw new Error('File is too large.')
-      }
-
-      const putRes = await fetch(init.uploadUrl, {
-        method: 'PUT',
-        headers: init.headers,
-        body: file,
-      })
-      if (!putRes.ok) throw new Error('Failed to upload.')
-
-      const committed = await apiFetchData<{ key: string; contentType: string; kind: PostMediaKind; width: number | null; height: number | null }>(
-        '/uploads/post-media/commit',
-        {
-          method: 'POST',
-          body: { key: init.key },
-        },
-      )
-
-      const idx = composerMedia.value.findIndex((m) => m.localId === localId)
-      if (idx >= 0) {
-        const existing = composerMedia.value[idx]
-        if (!existing) return
-        composerMedia.value[idx] = {
-          ...existing,
-          uploading: false,
-          kind: committed.kind,
-          r2Key: committed.key,
-          width: committed.width ?? null,
-          height: committed.height ?? null,
-        }
-      }
-    } catch (err: unknown) {
-      removeComposerMedia(localId)
-      toast.push({ title: getApiErrorMessage(err) || 'Failed to add media.', tone: 'error', durationMs: 2200 })
-    }
   }
+
+  // Kick off uploads (parallel with a small cap).
+  processComposerUploadQueue()
 }
 
 const giphyOpen = ref(false)
@@ -969,7 +981,10 @@ function selectGiphyGif(gif: GiphySearchResponse['items'][number]) {
     mp4Url: gif.mp4Url ?? null,
     width: gif.width ?? null,
     height: gif.height ?? null,
-    uploading: false,
+    uploadStatus: 'done',
+    uploadError: null,
+    file: null,
+    abortController: null,
   })
   giphyOpen.value = false
 }
@@ -999,24 +1014,31 @@ const feedCtaKind = computed<null | 'verify' | 'premium'>(() => {
   return null
 })
 
-function scrollFeedToTop() {
-  if (!import.meta.client) return
-  // `layouts/app.vue` owns the actual scroll container. Reuse the same event hook
-  // as "re-tap active nav item" so this stays centralized.
-  window.dispatchEvent(new CustomEvent('moh-scroll-top'))
+async function preserveMiddleScrollAfter<T>(fn: () => Promise<T>): Promise<T> {
+  if (!import.meta.client) return await fn()
+  const scroller = middleScrollerEl.value
+  if (!scroller) return await fn()
+
+  const prevTop = scroller.scrollTop
+  const res = await fn()
+  await nextTick()
+
+  // If the content got shorter, clamp to the new max scrollTop.
+  const maxTop = Math.max(0, scroller.scrollHeight - scroller.clientHeight)
+  scroller.scrollTop = Math.min(prevTop, maxTop)
+  return res
 }
 
-function setFeedFilter(next: ProfilePostsFilter) {
+async function setFeedFilter(next: ProfilePostsFilter) {
   feedFilter.value = next
   if (feedCtaKind.value) return
-  scrollFeedToTop()
-  void refresh()
+  await preserveMiddleScrollAfter(async () => await refresh())
 }
 
-function setFeedSort(next: 'new' | 'trending') {
+async function setFeedSort(next: 'new' | 'trending') {
   feedSort.value = next
   if (feedCtaKind.value) return
-  void refresh()
+  await preserveMiddleScrollAfter(async () => await refresh())
 }
 
 watch(
@@ -1028,148 +1050,13 @@ watch(
   { flush: 'post' }
 )
 
-watch(
-  () => feedSort.value,
-  () => {
-    if (feedCtaKind.value) return
-    void refresh()
-  },
-  { flush: 'post' }
-)
-
-const feedFilterTagLabel = computed(() => {
-  if (feedFilter.value === 'all') return 'All'
-  if (feedFilter.value === 'public') return 'Public'
-  if (feedFilter.value === 'verifiedOnly') return 'Verified'
-  if (feedFilter.value === 'premiumOnly') return 'Premium'
-  return 'All'
-})
+// Sort/filter changes are handled via setFeedSort / setFeedFilter.
 
 const feedScopeLabel = computed(() => {
   return feedScope.value === 'following' ? 'Following' : 'All'
 })
 
-const feedScopeChipLabel = computed(() => {
-  return feedScopeLabel.value
-})
-
-const feedSortTagLabel = computed(() => {
-  const base = feedSort.value === 'trending' ? 'Trending' : 'Newest'
-  if (feedFilter.value === 'all') return base
-  return `${base} · ${feedFilterTagLabel.value}`
-})
-
-function setFeedSortFromPicker(next: 'new' | 'trending') {
-  setFeedSort(next)
-  closeFeedSortPopover()
-}
-
-const feedScopePillClass = computed(() => {
-  return 'border-gray-200 text-gray-700 hover:bg-gray-50 dark:border-zinc-800 dark:text-gray-200 dark:hover:bg-zinc-900'
-})
-
-const feedSortPillClass = computed(() => {
-  // Color-coordinate with the selected visibility filter (subtle tint).
-  if (feedFilter.value === 'verifiedOnly') return filterPillClasses('verifiedOnly', false)
-  if (feedFilter.value === 'premiumOnly') return filterPillClasses('premiumOnly', false)
-  if (feedFilter.value === 'public') return filterPillClasses('public', false)
-  return filterPillClasses('all', false)
-})
-
-function setFeedFilterFromSortPicker(next: ProfilePostsFilter) {
-  setFeedFilter(next)
-  closeFeedSortPopover()
-}
-
-const feedScopeWrapEl = ref<HTMLElement | null>(null)
-const feedScopePopoverOpen = ref(false)
-
-function closeFeedScopePopover() {
-  feedScopePopoverOpen.value = false
-}
-
-function toggleFeedScopePopover() {
-  feedSortPopoverOpen.value = false
-  feedScopePopoverOpen.value = !feedScopePopoverOpen.value
-}
-
-watch(
-  feedScopePopoverOpen,
-  (open) => {
-    if (!import.meta.client) return
-
-    const onPointerDown = (e: Event) => {
-      const el = feedScopeWrapEl.value
-      const target = e.target as Node | null
-      if (!el || !target) return
-      if (el.contains(target)) return
-      closeFeedScopePopover()
-    }
-
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') closeFeedScopePopover()
-    }
-
-    if (open) {
-      window.addEventListener('mousedown', onPointerDown, true)
-      window.addEventListener('touchstart', onPointerDown, true)
-      window.addEventListener('keydown', onKeyDown)
-    }
-
-    return () => {
-      window.removeEventListener('mousedown', onPointerDown, true)
-      window.removeEventListener('touchstart', onPointerDown, true)
-      window.removeEventListener('keydown', onKeyDown)
-    }
-  },
-  { flush: 'post' }
-)
-
-const feedSortIconClass = computed(() => (feedSort.value === 'trending' ? 'pi pi-bolt' : 'pi pi-clock'))
-
-const feedSortWrapEl = ref<HTMLElement | null>(null)
-const feedSortPopoverOpen = ref(false)
-
-function closeFeedSortPopover() {
-  feedSortPopoverOpen.value = false
-}
-
-function toggleFeedSortPopover() {
-  feedScopePopoverOpen.value = false
-  feedSortPopoverOpen.value = !feedSortPopoverOpen.value
-}
-
-watch(
-  feedSortPopoverOpen,
-  (open) => {
-    if (!import.meta.client) return
-
-    const onPointerDown = (e: Event) => {
-      const el = feedSortWrapEl.value
-      const target = e.target as Node | null
-      if (!el || !target) return
-      if (el.contains(target)) return
-      closeFeedSortPopover()
-    }
-
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') closeFeedSortPopover()
-    }
-
-    if (open) {
-      window.addEventListener('mousedown', onPointerDown, true)
-      window.addEventListener('touchstart', onPointerDown, true)
-      window.addEventListener('keydown', onKeyDown)
-    }
-
-    return () => {
-      window.removeEventListener('mousedown', onPointerDown, true)
-      window.removeEventListener('touchstart', onPointerDown, true)
-      window.removeEventListener('keydown', onKeyDown)
-    }
-  },
-  { flush: 'post' }
-)
+// Feed filter UI is handled by AppFeedFiltersBar (shared with profile pages).
 
 const myProfilePath = computed(() => {
   const username = (user.value?.username ?? '').trim()

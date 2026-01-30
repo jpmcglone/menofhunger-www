@@ -2,7 +2,7 @@
   <div v-if="items.length === 1" class="mt-3 pr-12">
     <img
       :src="items[0]?.url"
-      class="block max-w-full max-h-[28rem] rounded-xl cursor-zoom-in select-none"
+      class="block w-auto max-w-full max-h-[18rem] rounded-xl cursor-zoom-in select-none"
       :class="hideThumbs ? 'opacity-0 transition-opacity duration-150' : 'opacity-100'"
       alt=""
       loading="lazy"
@@ -12,19 +12,20 @@
   </div>
 
   <div v-else-if="items.length > 1" class="mt-3 pr-12">
-    <div class="overflow-hidden rounded-xl border moh-border">
+    <div class="w-full overflow-hidden rounded-xl border moh-border">
       <div class="grid gap-px bg-gray-200 dark:bg-zinc-800" :class="gridClass" :style="gridStyle">
         <button
           v-for="(m, idx) in items"
           :key="m.id || idx"
           type="button"
-          class="relative cursor-zoom-in"
+          class="relative min-w-0 min-h-0 cursor-zoom-in overflow-hidden"
+          :class="itemClass(idx)"
           :aria-label="`View image ${idx + 1} of ${items.length}`"
           @click.stop="openAt($event, idx)"
         >
           <img
             :src="m.url"
-            class="h-full w-full bg-black/5 dark:bg-white/5"
+            class="block h-full w-full bg-black/5 dark:bg-white/5 object-cover object-center"
             :class="[imgClass(idx), hideThumbs ? 'opacity-0 transition-opacity duration-150' : 'opacity-100']"
             alt=""
             loading="lazy"
@@ -61,19 +62,22 @@ const gridClass = computed(() => {
   return 'grid-cols-2'
 })
 
-// Fixed overall height to keep the feed stable + match "max height" designs.
+// Fixed overall height so single + multi-media previews align.
 const gridStyle = computed(() => {
-  // Slightly taller on larger screens.
   return { height: '18rem' }
 })
+
+function itemClass(idx: number): string {
+  const n = items.value.length
+  // 3-up: left tile spans both rows; right tiles stack.
+  if (n === 3 && idx === 0) return 'row-span-2'
+  return ''
+}
 
 function imgClass(idx: number): string {
   const n = items.value.length
   if (n === 2) return 'object-cover'
-  if (n === 3) {
-    if (idx === 0) return 'row-span-2 object-cover'
-    return 'object-cover'
-  }
+  if (n === 3) return 'object-cover'
   if (n === 4) return 'object-cover'
   return 'object-cover'
 }

@@ -1,5 +1,20 @@
 export type ApiHealthResponse = {
-  status: string
+  status: 'ok' | 'degraded'
+  nowIso: string
+  uptimeSeconds: number
+  service: string
+  config: {
+    nodeEnv: 'development' | 'test' | 'production'
+    r2Configured: boolean
+    giphyConfigured: boolean
+    twilioConfigured: boolean
+    twilioDisabledInDev: boolean
+  }
+  db: {
+    status: 'ok' | 'down'
+    latencyMs: number
+    error?: string
+  }
 }
 
 import type { ApiEnvelope } from '~/types/api'
@@ -24,7 +39,7 @@ export function useApiHealth() {
     { immediate: true }
   )
 
-  const isUp = computed(() => data.value?.data?.status === 'ok' && !error.value)
+  const isUp = computed(() => data.value?.data?.status === 'ok' && data.value?.data?.db?.status === 'ok' && !error.value)
 
   return {
     apiBaseUrl,

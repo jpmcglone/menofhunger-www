@@ -58,19 +58,15 @@
               <div class="no-scrollbar overflow-x-auto overflow-y-hidden pointer-events-none">
                 <!-- Restore left padding only; right edge stays flush. -->
                 <div class="flex gap-2 pl-3 pr-0">
-                  <div
+                  <img
                     v-for="(m, idx) in mediaItems"
                     :key="m.id || idx"
-                    class="relative h-24 min-w-[6rem] shrink-0 overflow-hidden rounded-lg border moh-border bg-black/5 dark:bg-white/5"
-                  >
-                    <img
-                      :src="m.url"
-                      class="h-full w-auto max-w-none object-contain"
-                      alt=""
-                      loading="lazy"
-                      decoding="async"
-                    />
-                  </div>
+                    :src="m.url"
+                    class="h-24 w-auto shrink-0 rounded-lg object-cover bg-black/5 dark:bg-white/5"
+                    alt=""
+                    loading="lazy"
+                    decoding="async"
+                  />
                 </div>
               </div>
             </div>

@@ -185,19 +185,24 @@
         </div>
 
         <div class="mt-3 flex items-center justify-between moh-text-muted">
-          <div class="flex items-center gap-2">
-            <button
-              type="button"
-              class="inline-flex h-9 w-9 items-center justify-center rounded-full transition-colors moh-surface-hover"
-              :class="commentClickable ? 'cursor-pointer' : 'cursor-default opacity-60'"
-              aria-label="Comment"
-              v-tooltip.bottom="commentTooltip"
-              @click.stop="onCommentClick"
-            >
-              <i class="pi pi-comment text-[18px]" aria-hidden="true" />
-            </button>
+          <div class="flex items-center gap-1">
+            <!-- Fixed-width action slots: icon + up to 3-digit count -->
+            <div class="inline-flex w-16 items-center justify-start">
+              <button
+                type="button"
+                class="inline-flex h-9 w-9 items-center justify-center rounded-full transition-colors moh-surface-hover"
+                :class="commentClickable ? 'cursor-pointer' : 'cursor-default opacity-60'"
+                aria-label="Comment"
+                v-tooltip.bottom="commentTooltip"
+                @click.stop="onCommentClick"
+              >
+                <i class="pi pi-comment text-[18px]" aria-hidden="true" />
+              </button>
+              <!-- Comments not implemented yet; reserve space so layout stays consistent -->
+              <span class="ml-0 inline-block w-6 select-none text-left text-xs tabular-nums moh-text-muted" aria-hidden="true" />
+            </div>
 
-            <div v-if="!isOnlyMe" class="inline-flex items-center">
+            <div v-if="!isOnlyMe" class="inline-flex w-16 items-center justify-start">
               <button
                 type="button"
                 class="inline-flex h-9 w-9 items-center justify-center rounded-full transition-colors moh-surface-hover"
@@ -228,12 +233,8 @@
                   />
                 </svg>
               </button>
-              <span
-                v-if="boostCountLabel"
-                class="ml-1 select-none text-xs tabular-nums moh-text-muted"
-                aria-hidden="true"
-              >
-                {{ boostCountLabel }}
+              <span class="ml-0 inline-block w-6 select-none text-left text-xs tabular-nums moh-text-muted" aria-hidden="true">
+                {{ boostCountLabel ?? '' }}
               </span>
             </div>
           </div>

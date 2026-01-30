@@ -12,12 +12,32 @@ const EMPTY_COUNTS: PostCounts = {
   premiumOnly: 0,
 }
 
-export async function useUserPosts(usernameLower: Ref<string>, opts: { enabled?: Ref<boolean> } = {}) {
+export async function useUserPosts(
+  usernameLower: Ref<string>,
+  opts: { enabled?: Ref<boolean>; defaultToNewestAndAll?: boolean } = {},
+) {
   const { apiFetchData } = useApiClient()
   const { user: authUser } = useAuth()
   const enabled = opts.enabled ?? computed(() => true)
 
-  const filter = ref<UserPostsFilter>('all')
+  const filter = useCookie<UserPostsFilter>('moh.profile.posts.filter.v1', {
+    default: () => 'all',
+    sameSite: 'lax',
+    path: '/',
+    maxAge: 60 * 60 * 24 * 365,
+  })
+  const sort = useCookie<'new' | 'trending'>('moh.profile.posts.sort.v1', {
+    default: () => 'new',
+    sameSite: 'lax',
+    path: '/',
+    maxAge: 60 * 60 * 24 * 365,
+  })
+
+  // When visiting a profile, always default to Newest order and All visibility.
+  if (opts.defaultToNewestAndAll) {
+    filter.value = 'all'
+    sort.value = 'new'
+  }
   const posts = ref<FeedPost[]>([])
   const counts = ref<PostCounts>(EMPTY_COUNTS)
   const loading = ref(false)
@@ -32,7 +52,25 @@ export async function useUserPosts(usernameLower: Ref<string>, opts: { enabled?:
     return null
   })
 
-  async function fetch(nextFilter: UserPostsFilter) {
+  // Clamp cookies to allowed values (SSR-safe).
+  watch(
+    filter,
+    (v) => {
+      if (v === 'all' || v === 'public' || v === 'verifiedOnly' || v === 'premiumOnly') return
+      filter.value = 'all'
+    },
+    { immediate: true },
+  )
+  watch(
+    sort,
+    (v) => {
+      if (v === 'new' || v === 'trending') return
+      sort.value = 'new'
+    },
+    { immediate: true },
+  )
+
+  async function fetch(nextFilter: UserPostsFilter, nextSort: 'new' | 'trending') {
     if (!enabled.value) {
       posts.value = []
       error.value = null
@@ -54,7 +92,7 @@ export async function useUserPosts(usernameLower: Ref<string>, opts: { enabled?:
     try {
       const res = await apiFetchData<GetUserPostsResponse>(
         `/posts/user/${encodeURIComponent(usernameLower.value)}`,
-        { method: 'GET', query: { limit: 30, visibility: nextFilter } }
+        { method: 'GET', query: { limit: 30, visibility: nextFilter, sort: nextSort } }
       )
       posts.value = res.posts
       counts.value = res.counts ?? counts.value
@@ -65,9 +103,14 @@ export async function useUserPosts(usernameLower: Ref<string>, opts: { enabled?:
     }
   }
 
-  function setFilter(next: UserPostsFilter) {
+  async function setFilter(next: UserPostsFilter) {
     filter.value = next
-    void fetch(next)
+    await fetch(next, sort.value)
+  }
+
+  async function setSort(next: 'new' | 'trending') {
+    sort.value = next
+    await fetch(filter.value, next)
   }
 
   function removePost(id: string) {
@@ -83,7 +126,7 @@ export async function useUserPosts(usernameLower: Ref<string>, opts: { enabled?:
       async () => {
         return await apiFetchData<GetUserPostsResponse>(
           `/posts/user/${encodeURIComponent(usernameLower.value)}`,
-          { method: 'GET', query: { limit: 30, visibility: 'all' } }
+          { method: 'GET', query: { limit: 30, visibility: filter.value, sort: sort.value } }
         )
       }
     )
@@ -101,7 +144,8 @@ export async function useUserPosts(usernameLower: Ref<string>, opts: { enabled?:
     usernameLower,
     () => {
       filter.value = 'all'
-      void fetch('all')
+      sort.value = 'new'
+      void fetch('all', 'new')
     },
     { flush: 'post' }
   )
@@ -114,11 +158,11 @@ export async function useUserPosts(usernameLower: Ref<string>, opts: { enabled?:
         error.value = null
         return
       }
-      void fetch(filter.value)
+      void fetch(filter.value, sort.value)
     },
     { flush: 'post' }
   )
 
-  return { filter, posts, counts, loading, error, viewerIsVerified, viewerIsPremium, ctaKind, setFilter, removePost }
+  return { filter, sort, posts, counts, loading, error, viewerIsVerified, viewerIsPremium, ctaKind, setFilter, setSort, removePost }
 }
 

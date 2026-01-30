@@ -37,7 +37,10 @@
 
               <span
                 v-if="item.key === 'notifications' && notifBadge.show"
-                class="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold leading-[18px] text-center shadow-sm ring-2 ring-white dark:ring-black bg-gray-900 text-white dark:bg-white dark:text-black"
+                :class="[
+                  'absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold leading-[18px] text-center shadow-sm ring-2 ring-white dark:ring-black',
+                  notifBadge.toneClass.value,
+                ]"
               >
                 {{ notifBadge.count }}
               </span>

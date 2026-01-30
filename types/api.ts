@@ -43,6 +43,7 @@ export type FeedPost = {
   body: string
   visibility: PostVisibility
   boostCount: number
+  bookmarkCount: number
   media: PostMedia[]
   viewerHasBoosted?: boolean
   viewerHasBookmarked?: boolean
