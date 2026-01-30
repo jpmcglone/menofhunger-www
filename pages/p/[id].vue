@@ -33,6 +33,9 @@
 import type { FeedPost, GetPostResponse } from '~/types/api'
 import { getApiErrorMessage } from '~/utils/api-error'
 import { siteConfig } from '~/config/site'
+import { extractLinksFromText, safeUrlHostname } from '~/utils/link-utils'
+import type { LinkMetadata } from '~/utils/link-metadata'
+import { getLinkMetadata } from '~/utils/link-metadata'
 
 definePageMeta({
   layout: 'app',
@@ -103,6 +106,10 @@ function excerpt(text: string, maxLen: number) {
   return `${t.slice(0, Math.max(0, maxLen - 1)).trimEnd()}…`
 }
 
+function escapeRegExp(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
 const canonicalPath = computed(() => `/p/${encodeURIComponent(postId.value)}`)
 
 const isRestricted = computed(() => {
@@ -110,6 +117,157 @@ const isRestricted = computed(() => {
   if (v === 'verifiedOnly' || v === 'premiumOnly' || v === 'onlyMe') return true
   return accessHint.value !== 'none'
 })
+
+function isLocalHost(host: string, expected: string) {
+  const h = (host ?? '').trim().toLowerCase()
+  const e = (expected ?? '').trim().toLowerCase()
+  if (!h || !e) return false
+  return h === e || h === `www.${e}`
+}
+
+function tryExtractLocalPostId(url: string): string | null {
+  const raw = (url ?? '').trim()
+  if (!raw) return null
+  try {
+    const u = new URL(raw)
+    if (u.protocol !== 'http:' && u.protocol !== 'https:') return null
+
+    const allowedHosts = new Set<string>()
+    try {
+      const fromCfg = new URL(siteConfig.url)
+      if (fromCfg.hostname) allowedHosts.add(fromCfg.hostname.toLowerCase())
+    } catch {
+      // ignore
+    }
+    if (import.meta.client) {
+      const h = window.location.hostname
+      if (h) allowedHosts.add(h.toLowerCase())
+    }
+
+    const host = u.hostname.toLowerCase()
+    const ok = Array.from(allowedHosts).some((a) => isLocalHost(host, a))
+    if (!ok) return null
+
+    const parts = u.pathname.split('/').filter(Boolean)
+    if (parts.length !== 2) return null
+    if (parts[0] !== 'p') return null
+    const id = (parts[1] ?? '').trim()
+    return id || null
+  } catch {
+    return null
+  }
+}
+
+const capturedLinks = computed(() => {
+  if (!post.value || isRestricted.value) return []
+  return extractLinksFromText(post.value.body)
+})
+
+const previewLink = computed(() => {
+  if (!post.value || isRestricted.value) return null
+  if (post.value.media?.length) return null
+  const xs = capturedLinks.value
+  for (let i = xs.length - 1; i >= 0; i--) {
+    const u = xs[i]
+    if (!u) continue
+    if (tryExtractLocalPostId(u)) continue
+    return u
+  }
+  return null
+})
+
+const bodyTextSansLinks = computed(() => {
+  if (!post.value || isRestricted.value) return ''
+  let body = (post.value.body ?? '').toString()
+  for (const u of capturedLinks.value) {
+    const url = (u ?? '').trim()
+    if (!url) continue
+    const re = new RegExp(escapeRegExp(url), 'g')
+    body = body.replace(re, ' ')
+  }
+  return normalizeForMeta(body)
+})
+
+const usableMedia = computed(() => {
+  if (!post.value || isRestricted.value) return []
+  return (post.value.media ?? []).filter((m) => Boolean(m && !m.deletedAt && (m.url ?? '').trim()))
+})
+
+const primaryMedia = computed(() => {
+  const xs = usableMedia.value
+  if (!xs.length) return null
+  let best = xs[0]
+  let bestScore = -1
+  for (const m of xs) {
+    const w = typeof m.width === 'number' ? m.width : null
+    const h = typeof m.height === 'number' ? m.height : null
+    const score = w && h && w > 0 && h > 0 ? w * h : 0
+    if (score > bestScore) {
+      bestScore = score
+      best = m
+    }
+  }
+  return best
+})
+
+const extraOgMediaUrls = computed(() => {
+  const xs = usableMedia.value
+  const primaryUrl = (primaryMedia.value?.url ?? '').trim()
+  const out: string[] = []
+  for (const m of xs) {
+    const u = (m.url ?? '').trim()
+    if (!u) continue
+    if (primaryUrl && u === primaryUrl) continue
+    out.push(u)
+    if (out.length >= 3) break
+  }
+  return out
+})
+
+function isAbortError(e: unknown): boolean {
+  const name = (e as any)?.name
+  return name === 'AbortError' || name === 'TimeoutError'
+}
+
+async function getLinkMetadataWithTimeout(url: string, timeoutMs: number): Promise<LinkMetadata | null> {
+  if (!url) return null
+  const ms = Number(timeoutMs)
+  if (!ms || ms <= 0) return await getLinkMetadata(url)
+
+  const controller = new AbortController()
+  const t = setTimeout(() => controller.abort(), ms)
+  try {
+    return await getLinkMetadata(url, { signal: controller.signal })
+  } catch (e: unknown) {
+    if (isAbortError(e)) return null
+    return null
+  } finally {
+    clearTimeout(t)
+  }
+}
+
+const linkMetaKey = computed(() => {
+  const u = (previewLink.value ?? '').trim()
+  return `post:${postId.value}:linkmeta:${u || 'none'}`
+})
+
+const { data: linkMetaData } = await useAsyncData(
+  linkMetaKey,
+  async () => {
+    if (!post.value || isRestricted.value) return null
+    if (usableMedia.value.length) return null
+    const url = (previewLink.value ?? '').trim()
+    if (!url) return null
+    // Best-effort SSR unfurl for share previews (avoid long stalls).
+    return await getLinkMetadataWithTimeout(url, 2000)
+  },
+  {
+    server: true,
+    watch: [previewLink],
+  },
+)
+
+const linkMeta = computed<LinkMetadata | null>(() => (linkMetaData.value as LinkMetadata | null) ?? null)
 
 const restrictionLabel = computed(() => {
   const v = post.value?.visibility
@@ -144,9 +302,36 @@ const seoTitle = computed(() => {
   if (isRestricted.value) return restrictionLabel.value
 
   const username = (post.value.author.username ?? '').trim()
-  const body = (post.value.body ?? '').trim()
-  const bodySnippet = body ? excerpt(body, 56) : 'Post'
-  return username ? `${bodySnippet} — @${username}` : bodySnippet
+  const bodyText = (bodyTextSansLinks.value ?? '').trim()
+  const hasBodyText = Boolean(bodyText)
+
+  // Media post: preview the media.
+  if (primaryMedia.value) {
+    if (hasBodyText) {
+      const t = excerpt(bodyText, 56)
+      return username ? `${t} — @${username}` : t
+    }
+    const kind = primaryMedia.value.kind === 'gif' ? 'GIF' : 'Photo'
+    return username ? `${kind} by @${username}` : kind
+  }
+
+  // External link share: preview the link.
+  const external = (previewLink.value ?? '').trim()
+  if (external) {
+    const isLinkOnly = !hasBodyText
+    if (isLinkOnly) {
+      const linkTitle = (linkMeta.value?.title ?? '').trim()
+      const host = safeUrlHostname(external) ?? 'Link'
+      const t = linkTitle || host
+      return username ? `${t} — shared by @${username}` : t
+    }
+    const t = excerpt(bodyText, 56)
+    return username ? `${t} — @${username}` : t
+  }
+
+  // Text-only: identity-first.
+  const t = hasBodyText ? excerpt(bodyText, 56) : 'Post'
+  return username ? `${t} — @${username}` : t
 })
 
 const seoDescription = computed(() => {
@@ -157,8 +342,36 @@ const seoDescription = computed(() => {
   if (isRestricted.value) {
     return restrictionSeoDescription.value
   }
-  const body = (post.value.body ?? '').trim()
-  return body ? excerpt(body, 190) : 'Post.'
+
+  const username = (post.value.author.username ?? '').trim()
+  const bodyText = (bodyTextSansLinks.value ?? '').trim()
+  const hasBodyText = Boolean(bodyText)
+
+  if (primaryMedia.value) {
+    if (hasBodyText) return excerpt(bodyText, 190)
+    return username ? `Post by @${username}.` : 'Post.'
+  }
+
+  const external = (previewLink.value ?? '').trim()
+  if (external) {
+    const isLinkOnly = !hasBodyText
+    if (isLinkOnly) {
+      const d = (linkMeta.value?.description ?? '').trim()
+      if (d) return excerpt(d, 190)
+      const site = (linkMeta.value?.siteName ?? '').trim()
+      return site ? `From ${site}.` : 'Shared link.'
+    }
+
+    let d = excerpt(bodyText, 190)
+    const linkDesc = (linkMeta.value?.description ?? '').trim()
+    if (linkDesc && d.length < 130) {
+      const remaining = Math.max(0, 190 - d.length - 3)
+      if (remaining >= 24) d = `${d} — ${excerpt(linkDesc, remaining)}`
+    }
+    return d || 'Post.'
+  }
+
+  return hasBodyText ? excerpt(bodyText, 190) : 'Post.'
 })
 
 const seoAuthor = computed(() => {
@@ -169,7 +382,16 @@ const seoAuthor = computed(() => {
 
 const seoImage = computed(() => {
   if (isRestricted.value) return '/images/logo-black-bg.png'
-  // Prefer the author's avatar for “who said it?” in link previews.
+
+  // Content-first: media wins.
+  const mediaUrl = (primaryMedia.value?.url ?? '').trim()
+  if (mediaUrl) return mediaUrl
+
+  // External link unfurl image.
+  const linkImage = (linkMeta.value?.imageUrl ?? '').trim()
+  if (linkImage) return linkImage
+
+  // Identity-first baseline for text-only (and as fallback for link shares with no image).
   const avatar = (post.value?.author.avatarUrl ?? '').trim()
   return avatar || '/images/banner.png'
 })
@@ -177,6 +399,18 @@ const seoImage = computed(() => {
 const seoImageAlt = computed(() => {
   if (isRestricted.value) return `${siteConfig.name} logo`
   const username = (post.value?.author.username ?? '').trim()
+  const bodyText = (bodyTextSansLinks.value ?? '').trim()
+  const external = (previewLink.value ?? '').trim()
+
+  if (primaryMedia.value) {
+    if (bodyText) return excerpt(bodyText, 120)
+    const kind = primaryMedia.value.kind === 'gif' ? 'GIF' : 'Photo'
+    return username ? `${kind} by @${username}` : `${kind} on ${siteConfig.name}`
+  }
+  if (external) {
+    const t = (linkMeta.value?.title ?? '').trim()
+    return t ? `Shared link: ${t}` : username ? `Shared link by @${username}` : `Shared link on ${siteConfig.name}`
+  }
   return username ? `Post by @${username}` : `Post on ${siteConfig.name}`
 })
 
@@ -202,19 +436,29 @@ const jsonLdGraph = computed(() => {
       }
     : { '@type': 'Organization', '@id': `${siteConfig.url}/#organization`, name: siteConfig.name, url: siteConfig.url }
 
+  const images: string[] = []
+  const primaryUrl = (primaryMedia.value?.url ?? '').trim()
+  if (primaryUrl) images.push(toAbs(primaryUrl))
+  for (const u of extraOgMediaUrls.value) images.push(toAbs(u))
+  const linkImage = (linkMeta.value?.imageUrl ?? '').trim()
+  if (!images.length && linkImage) images.push(toAbs(linkImage))
+  if (!images.length && avatarUrl) images.push(toAbs(avatarUrl))
+  // Always include a site fallback at the end.
+  images.push(toAbs('/images/banner.png'))
+
   return [
     authorUrl ? author : null,
     {
       '@type': 'Article',
       '@id': `${siteConfig.url}${canonicalPath.value}#article`,
       mainEntityOfPage: { '@id': `${siteConfig.url}${canonicalPath.value}#webpage` },
-      headline: excerpt(post.value.body || 'Post', 90),
+      headline: excerpt(bodyTextSansLinks.value || 'Post', 90),
       description: seoDescription.value,
       datePublished: post.value.createdAt,
       dateModified: post.value.createdAt,
       author: { '@id': authorId },
       publisher: { '@id': `${siteConfig.url}/#organization` },
-      image: [toAbs('/images/banner.png'), avatarUrl].filter(Boolean),
+      image: Array.from(new Set(images)).filter(Boolean),
       isAccessibleForFree: true,
     }
   ].filter(Boolean)
@@ -242,6 +486,8 @@ useHead({
       { property: 'article:published_time', content: post.value.createdAt },
       { property: 'article:modified_time', content: post.value.createdAt },
       ...(authorUrl ? [{ property: 'article:author', content: authorUrl }] : []),
+      // Multiple images: add extra OG images so platforms can pick/rotate.
+      ...extraOgMediaUrls.value.map((u) => ({ property: 'og:image', content: toAbs(u) })),
     ]
   }),
 })

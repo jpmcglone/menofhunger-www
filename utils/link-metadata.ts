@@ -6,11 +6,20 @@ export type LinkMetadata = {
   siteName: string | null
 }
 
+export type GetLinkMetadataOptions = {
+  signal?: AbortSignal
+}
+
 const cache = new Map<string, LinkMetadata | null>()
 
 function normalizeText(v: string | null): string | null {
   const s = (v ?? '').trim()
   return s ? s : null
+}
+
+function isAbortError(e: unknown): boolean {
+  const name = (e as any)?.name
+  return name === 'AbortError' || name === 'TimeoutError'
 }
 
 type MicrolinkResponse = {
@@ -44,7 +53,7 @@ function parseJinaReaderFirstImage(md: string): string | null {
   return normalizeText(m?.[1] ?? null)
 }
 
-export async function getLinkMetadata(url: string): Promise<LinkMetadata | null> {
+export async function getLinkMetadata(url: string, opts: GetLinkMetadataOptions = {}): Promise<LinkMetadata | null> {
   const key = (url ?? '').trim()
   if (!key) return null
 
@@ -61,7 +70,7 @@ export async function getLinkMetadata(url: string): Promise<LinkMetadata | null>
     // 1) Try Microlink (popular metadata API; returns OG/Twitter reliably).
     // 2) Fallback to Jina Reader (gives us at least a title + some images for many sites).
     try {
-      const r = await fetch(microlinkEndpoint(u.toString()), { method: 'GET' })
+      const r = await fetch(microlinkEndpoint(u.toString()), { method: 'GET', signal: opts.signal })
       if (r.ok) {
         const json = (await r.json()) as MicrolinkResponse
         if (json?.status === 'success' && json.data) {
@@ -78,13 +87,17 @@ export async function getLinkMetadata(url: string): Promise<LinkMetadata | null>
           return meta
         }
       }
-    } catch {
+    } catch (e: unknown) {
+      if (isAbortError(e)) {
+        cache.delete(key)
+        return null
+      }
       // ignore and fallback
     }
 
     // Fallback: Jina Reader markdown.
     const proxied = `https://r.jina.ai/${u.toString()}`
-    const res = await fetch(proxied, { method: 'GET' })
+    const res = await fetch(proxied, { method: 'GET', signal: opts.signal })
     if (!res.ok) return null
     const md = await res.text()
 
@@ -101,7 +114,11 @@ export async function getLinkMetadata(url: string): Promise<LinkMetadata | null>
 
     cache.set(key, meta)
     return meta
-  } catch {
+  } catch (e: unknown) {
+    if (isAbortError(e)) {
+      cache.delete(key)
+      return null
+    }
     return null
   }
 }
