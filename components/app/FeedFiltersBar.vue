@@ -112,7 +112,7 @@
         </button>
         <button
           type="button"
-          class="w-full text-left px-3 py-2 text-sm font-semibold transition-colors text-sky-700 hover:bg-sky-600 hover:text-white dark:text-sky-300 dark:hover:bg-sky-500 flex items-center gap-2"
+          class="w-full text-left px-3 py-2 text-sm font-semibold transition-colors moh-menuitem-verified flex items-center gap-2"
           role="menuitem"
           @click="setFilter('verifiedOnly')"
         >
@@ -125,7 +125,7 @@
         </button>
         <button
           type="button"
-          class="w-full text-left px-3 py-2 text-sm font-semibold transition-colors text-amber-800 hover:bg-amber-600 hover:text-white dark:text-amber-300 dark:hover:bg-amber-500 flex items-center gap-2"
+          class="w-full text-left px-3 py-2 text-sm font-semibold transition-colors moh-menuitem-premium flex items-center gap-2"
           role="menuitem"
           @click="setFilter('premiumOnly')"
         >

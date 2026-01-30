@@ -734,9 +734,12 @@ async function onUserPostsSortChange(next: 'new' | 'trending') {
   })
 }
 
-async function onUserPostsFilterChange(next: Parameters<typeof userPosts.setFilter>[0]) {
+async function onUserPostsFilterChange(next: ProfilePostsFilter) {
+  // Profile feeds should not expose "Only me" (private) as a filter option.
+  // If it ever comes through (e.g. shared component typing), coerce to a safe default.
+  if (next === 'onlyMe') next = 'all'
   await preserveMiddleScrollAfter(async () => {
-    await userPosts.setFilter(next)
+    await userPosts.setFilter(next as Parameters<typeof userPosts.setFilter>[0])
   })
 }
 

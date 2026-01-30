@@ -37,11 +37,18 @@ function mergeHeaders(a?: HeadersInit, b?: HeadersInit): HeadersInit | undefined
 
 export function useApiClient() {
   const config = useRuntimeConfig()
-  const apiBaseUrl = String(config.public.apiBaseUrl || '').trim()
+  const serverApiBaseUrl = String(config.apiBaseUrl || '').trim()
+  const publicApiBaseUrl = String(config.public.apiBaseUrl || '').trim()
+
+  // On SSR, prefer server-only base URL (container/VM friendly).
+  // In browser, prefer public base URL.
+  const apiBaseUrl = (import.meta.server ? serverApiBaseUrl : publicApiBaseUrl) || publicApiBaseUrl || serverApiBaseUrl
 
   function apiUrl(path: string) {
     if (!apiBaseUrl) {
-      throw new Error('NUXT_PUBLIC_API_BASE_URL (runtimeConfig.public.apiBaseUrl) is not set')
+      throw new Error(
+        'API base URL is not set (runtimeConfig.apiBaseUrl or runtimeConfig.public.apiBaseUrl)'
+      )
     }
     return joinUrl(apiBaseUrl, path)
   }

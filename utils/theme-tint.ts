@@ -11,46 +11,60 @@ type PrimaryPalette = {
   900: string
 }
 
-// Default app brand (current PrimeVue preset): Tailwind orange.
+// Default app brand (PrimeVue preset orange).
 export const PRIMARY_ORANGE: PrimaryPalette = {
   50: '#fff7ed',
   100: '#ffedd5',
   200: '#fed7aa',
   300: '#fdba74',
-  400: '#fb923c',
-  500: '#f97316',
-  600: '#ea580c',
-  700: '#c2410c',
-  800: '#9a3412',
-  900: '#7c2d12',
+  400: '#f39b4f',
+  500: '#c77d1a',
+  600: '#ad6815',
+  700: '#8f5412',
+  800: '#6f400f',
+  900: '#53300c',
 }
 
 // Verified accent (X-style blue).
 export const PRIMARY_VERIFIED_BLUE: PrimaryPalette = {
   50: '#eff6ff',
-  100: '#dbeafe',
-  200: '#bfdbfe',
-  300: '#93c5fd',
-  400: '#60a5fa',
-  500: '#1D9BF0',
-  600: '#0B6FBF',
-  700: '#075985',
-  800: '#0c4a6e',
-  900: '#0b3b59',
+  100: '#dcecff',
+  200: '#b9dbff',
+  300: '#86c0f2',
+  400: '#4f9fd8',
+  500: '#2b7bb9',
+  600: '#23679c',
+  700: '#1f567f',
+  800: '#1a4767',
+  900: '#13354d',
 }
 
 // Premium accent (amber/orange).
 export const PRIMARY_PREMIUM_ORANGE: PrimaryPalette = {
-  50: '#fffbeb',
-  100: '#fef3c7',
-  200: '#fde68a',
-  300: '#fcd34d',
-  400: '#fbbf24',
-  500: '#F59E0B',
-  600: '#D97706',
-  700: '#B45309',
-  800: '#92400e',
-  900: '#78350f',
+  50: '#fff7ed',
+  100: '#ffedd5',
+  200: '#fed7aa',
+  300: '#fdba74',
+  400: '#f39b4f',
+  500: '#c77d1a',
+  600: '#ad6815',
+  700: '#8f5412',
+  800: '#6f400f',
+  900: '#53300c',
+}
+
+// Only-me accent (calmer violet).
+export const PRIMARY_ONLYME_PURPLE: PrimaryPalette = {
+  50: '#f3f1ff',
+  100: '#e7e3ff',
+  200: '#cfc6ff',
+  300: '#b3a3ff',
+  400: '#8f77f0',
+  500: '#6b4fd3',
+  600: '#5b3fb8',
+  700: '#4a3397',
+  800: '#3b2a78',
+  900: '#2b1f55',
 }
 
 // Logged out / not verified tint: match text color (near-black in light, near-white in dark).
@@ -60,22 +74,22 @@ export const PRIMARY_TEXT_LIGHT: PrimaryPalette = {
   200: '#e5e7eb',
   300: '#d1d5db',
   400: '#9ca3af',
-  500: '#111827',
-  600: '#0f172a',
-  700: '#0b1220',
-  800: '#060a12',
-  900: '#000000',
+  500: '#141210',
+  600: '#100f0d',
+  700: '#0d0b0a',
+  800: '#090807',
+  900: '#050403',
 }
 
 export const PRIMARY_TEXT_DARK: PrimaryPalette = {
-  50: '#09090b',
-  100: '#18181b',
-  200: '#27272a',
-  300: '#3f3f46',
-  400: '#52525b',
-  500: '#fafafa',
-  600: '#ffffff',
-  700: '#ffffff',
+  50: '#0b0d10',
+  100: '#14181d',
+  200: '#1b2128',
+  300: '#2a323d',
+  400: '#3a4555',
+  500: '#f1eee7',
+  600: '#f6f4ee',
+  700: '#fbfaf7',
   800: '#ffffff',
   900: '#ffffff',
 }

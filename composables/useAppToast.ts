@@ -1,4 +1,4 @@
-import { PRIMARY_PREMIUM_ORANGE, PRIMARY_VERIFIED_BLUE } from '~/utils/theme-tint'
+import { PRIMARY_ONLYME_PURPLE, PRIMARY_PREMIUM_ORANGE, PRIMARY_VERIFIED_BLUE } from '~/utils/theme-tint'
 
 export type AppToastTone = 'public' | 'verifiedOnly' | 'premiumOnly' | 'onlyMe' | 'success' | 'error'
 
@@ -74,7 +74,7 @@ export function pickTextColorForBg(bgHex: string): '#ffffff' | '#111827' {
 function toneToBg(tone: AppToastTone): string {
   if (tone === 'verifiedOnly') return PRIMARY_VERIFIED_BLUE[500]
   if (tone === 'premiumOnly') return PRIMARY_PREMIUM_ORANGE[500]
-  if (tone === 'onlyMe') return '#7C3AED'
+  if (tone === 'onlyMe') return PRIMARY_ONLYME_PURPLE[500]
   if (tone === 'success') return '#16A34A'
   if (tone === 'error') return '#DC2626'
   // public / default: deep neutral

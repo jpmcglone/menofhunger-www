@@ -69,33 +69,60 @@ body {
 
 html,
 body {
-  background-color: #fff;
+  background-color: var(--moh-bg);
 }
 
 html.dark,
 html.dark body {
-  background-color: #000;
+  background-color: var(--moh-bg);
 }
 
 /* App color tokens (X-like neutrals). Keep these as CSS variables so every surface stays consistent. */
 :root {
-  --moh-bg: #ffffff;
-  --moh-surface: #f7f9f9; /* subtle card/hover surface */
-  --moh-surface-hover: #eff3f4; /* stronger hover */
-  --moh-border: #eff3f4;
-  --moh-text: #0f1419;
-  --moh-text-muted: #536471;
-  --moh-frosted: rgba(255, 255, 255, 0.9);
+  /* Warm neutrals (\"private study\" vibe) */
+  --moh-bg: #fbfaf7; /* bone */
+  --moh-surface: #f2f0ea; /* warm paper */
+  --moh-surface-hover: #ebe7df; /* warm hover */
+  --moh-border: #e6e1d8; /* warm divider */
+  --moh-text: #141210; /* warm near-black */
+  --moh-text-muted: #5f5a55; /* warm muted */
+  --moh-frosted: rgba(251, 250, 247, 0.88);
+
+  /* Typography */
+  --moh-font-serif: Literata, ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
+
+  /* Small UI surfaces */
+  --moh-tooltip-bg: #141210;
+  --moh-tooltip-text: #fbfaf7;
+
+  /* Semantic accents (calmer, less "social app"-coded) */
+  --moh-verified: #2b7bb9;
+  --moh-verified-rgb: 43, 123, 185;
+  --moh-verified-ring: rgba(43, 123, 185, 0.38);
+  --moh-verified-soft: rgba(43, 123, 185, 0.12);
+
+  --moh-premium: #c77d1a;
+  --moh-premium-rgb: 199, 125, 26;
+  --moh-premium-ring: rgba(199, 125, 26, 0.34);
+  --moh-premium-soft: rgba(199, 125, 26, 0.12);
+
+  --moh-onlyme: #6b4fd3;
+  --moh-onlyme-rgb: 107, 79, 211;
+  --moh-onlyme-ring: rgba(107, 79, 211, 0.34);
+  --moh-onlyme-soft: rgba(107, 79, 211, 0.12);
 }
 
 html.dark {
-  --moh-bg: #000000;
-  --moh-surface: #16181c;
-  --moh-surface-hover: rgba(255, 255, 255, 0.06);
-  --moh-border: #2f3336;
-  --moh-text: #e7e9ea;
-  --moh-text-muted: #71767b;
-  --moh-frosted: rgba(0, 0, 0, 0.8);
+  --moh-bg: #0b0d10; /* charcoal */
+  --moh-surface: #14181d; /* controlled depth */
+  --moh-surface-hover: rgba(255, 255, 255, 0.05);
+  --moh-border: #2a3038;
+  --moh-text: #f1eee7; /* bone */
+  --moh-text-muted: #a49e95;
+  --moh-frosted: rgba(11, 13, 16, 0.82);
+
+  --moh-tooltip-bg: rgba(11, 13, 16, 0.96);
+  --moh-tooltip-text: #f1eee7;
 }
 
 @layer utilities {
@@ -121,10 +148,163 @@ html.dark {
     background-color: var(--moh-frosted);
   }
 
+  .moh-title {
+    font-family: var(--moh-font-serif);
+    letter-spacing: -0.01em;
+  }
+
   /* Theme-tinted pill (uses current app primary tokens). */
   .moh-pill-primary {
+    /* Fallback: solid fill */
     background-color: var(--p-primary-color, #111827);
     color: var(--p-primary-contrast-color, #ffffff);
+  }
+
+  /* Visibility + tone utilities (avoid Tailwind sky/amber/violet drift) */
+  .moh-pill-all-active {
+    border-color: var(--moh-text);
+    background-color: var(--moh-text);
+    color: var(--moh-bg);
+  }
+  .moh-pill-all {
+    border-color: var(--moh-border);
+    color: var(--moh-text-muted);
+  }
+  .moh-pill-public-active {
+    border-color: var(--moh-border);
+    background-color: var(--moh-surface);
+    color: var(--moh-text);
+  }
+  .moh-pill-public {
+    border-color: var(--moh-border);
+    color: var(--moh-text-muted);
+  }
+
+  .moh-pill-verified-active {
+    border-color: var(--moh-verified);
+    background-color: var(--moh-verified);
+    color: #ffffff;
+  }
+  .moh-pill-verified {
+    border-color: rgba(var(--moh-verified-rgb), 0.45);
+    color: var(--moh-verified);
+  }
+
+  .moh-pill-premium-active {
+    border-color: var(--moh-premium);
+    background-color: var(--moh-premium);
+    color: #ffffff;
+  }
+  .moh-pill-premium {
+    border-color: rgba(var(--moh-premium-rgb), 0.45);
+    color: var(--moh-premium);
+  }
+
+  .moh-pill-onlyme-active {
+    border-color: var(--moh-onlyme);
+    background-color: var(--moh-onlyme);
+    color: #ffffff;
+  }
+  .moh-pill-onlyme {
+    border-color: rgba(var(--moh-onlyme-rgb), 0.45);
+    color: var(--moh-onlyme);
+  }
+
+  .moh-tag-verified {
+    border-color: rgba(var(--moh-verified-rgb), 0.35);
+    background-color: rgba(var(--moh-verified-rgb), 0.10);
+    color: var(--moh-verified);
+  }
+  .moh-tag-premium {
+    border-color: rgba(var(--moh-premium-rgb), 0.35);
+    background-color: rgba(var(--moh-premium-rgb), 0.10);
+    color: var(--moh-premium);
+  }
+  .moh-tag-onlyme {
+    border-color: rgba(var(--moh-onlyme-rgb), 0.35);
+    background-color: rgba(var(--moh-onlyme-rgb), 0.10);
+    color: var(--moh-onlyme);
+  }
+
+  .moh-menuitem-verified {
+    color: var(--moh-verified);
+  }
+  .moh-menuitem-verified:hover {
+    background-color: var(--moh-verified-soft);
+    color: var(--moh-text);
+  }
+  .moh-menuitem-premium {
+    color: var(--moh-premium);
+  }
+  .moh-menuitem-premium:hover {
+    background-color: var(--moh-premium-soft);
+    color: var(--moh-text);
+  }
+  .moh-menuitem-onlyme {
+    color: var(--moh-onlyme);
+  }
+  .moh-menuitem-onlyme:hover {
+    background-color: var(--moh-onlyme-soft);
+    color: var(--moh-text);
+  }
+
+  .moh-nav-onlyme {
+    color: var(--moh-onlyme);
+  }
+  .moh-nav-onlyme:hover {
+    background-color: var(--moh-onlyme-soft);
+  }
+  .moh-nav-onlyme-active {
+    background-color: rgba(var(--moh-onlyme-rgb), 0.14);
+    color: var(--moh-onlyme);
+  }
+
+  .moh-onlyme-icon {
+    background-color: rgba(var(--moh-onlyme-rgb), 0.14);
+    color: var(--moh-onlyme);
+  }
+
+  .moh-btn-tone {
+    transition: opacity 140ms ease;
+  }
+  .moh-btn-tone:hover {
+    opacity: 0.93;
+  }
+
+  .moh-btn-public {
+    border-color: var(--moh-border) !important;
+    background-color: transparent !important;
+    color: var(--moh-text) !important;
+  }
+  .moh-btn-public:hover {
+    background-color: var(--moh-surface-hover) !important;
+  }
+
+  .moh-btn-verified {
+    border-color: var(--moh-verified) !important;
+    background-color: var(--moh-verified) !important;
+    color: #ffffff !important;
+  }
+  .moh-btn-premium {
+    border-color: var(--moh-premium) !important;
+    background-color: var(--moh-premium) !important;
+    color: #ffffff !important;
+  }
+  .moh-btn-onlyme {
+    border-color: var(--moh-onlyme) !important;
+    background-color: var(--moh-onlyme) !important;
+    color: #ffffff !important;
+  }
+}
+
+@supports (color: color-mix(in srgb, #000 50%, #fff)) {
+  @layer utilities {
+    /* Softer notification badge (still tied to current tint). */
+    .moh-pill-primary {
+      background-color: color-mix(in srgb, var(--p-primary-color, #111827) 22%, transparent);
+      border: 1px solid color-mix(in srgb, var(--p-primary-color, #111827) 55%, transparent);
+      color: var(--p-primary-color, #111827);
+    }
   }
 }
 
@@ -149,8 +329,8 @@ html.moh-landing.dark {
 
 /* PrimeVue tooltip (used by verified badge): simple black + small white text */
 .p-tooltip.moh-tooltip .p-tooltip-text {
-  background: #000 !important;
-  color: #fff !important;
+  background: var(--moh-tooltip-bg) !important;
+  color: var(--moh-tooltip-text) !important;
   font-size: 11px;
   line-height: 1.2;
   padding: 6px 8px;
@@ -163,8 +343,8 @@ html.moh-landing.dark {
 
 /* Extra-small tooltip (X-like) for action icons */
 .p-tooltip.moh-tooltip-tiny .p-tooltip-text {
-  background: #000 !important;
-  color: #fff !important;
+  background: var(--moh-tooltip-bg) !important;
+  color: var(--moh-tooltip-text) !important;
   font-size: 10px;
   line-height: 1.1;
   padding: 5px 7px;
@@ -177,12 +357,12 @@ html.moh-landing.dark {
 
 /* Home composer textarea focus tint (PrimeVue Textarea uses focus ring tokens that don't fully follow primary) */
 :where(.moh-composer-accent-verified) :where(.p-inputtextarea, textarea.p-inputtextarea):is(:focus, .p-focus) {
-  border-color: #1D9BF0 !important;
-  box-shadow: 0 0 0 1px rgba(29, 155, 240, 0.65) !important;
+  border-color: var(--moh-verified) !important;
+  box-shadow: 0 0 0 1px var(--moh-verified-ring) !important;
 }
 :where(.moh-composer-accent-premium) :where(.p-inputtextarea, textarea.p-inputtextarea):is(:focus, .p-focus) {
-  border-color: #F59E0B !important;
-  box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.65) !important;
+  border-color: var(--moh-premium) !important;
+  box-shadow: 0 0 0 1px var(--moh-premium-ring) !important;
 }
 html.dark :where(.moh-composer-accent-public) :where(.p-inputtextarea, textarea.p-inputtextarea):is(:focus, .p-focus) {
   border-color: rgba(255, 255, 255, 0.75) !important;
@@ -217,12 +397,12 @@ html:not(.dark) :where(.moh-composer-accent-public) :where(.p-inputtextarea, tex
   -webkit-text-stroke-width: var(--moh-avatar-stroke-width, 3px);
 }
 html:not(.dark) .moh-avatar-initial {
-  color: #000;
-  -webkit-text-stroke-color: #fff;
+  color: var(--moh-text);
+  -webkit-text-stroke-color: var(--moh-bg);
 }
 html.dark .moh-avatar-initial {
-  color: #fff;
-  -webkit-text-stroke-color: #000;
+  color: var(--moh-text);
+  -webkit-text-stroke-color: var(--moh-bg);
 }
 
 /* Post list transitions: delete immediately, others slide into place (FLIP). */

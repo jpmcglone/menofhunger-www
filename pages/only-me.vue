@@ -1,5 +1,5 @@
 <template>
-  <div class="relative">
+  <div class="relative -mx-4">
     <!-- Content (blurred until revealed) -->
     <div :class="revealed ? '' : 'blur-md pointer-events-none select-none'">
       <div class="px-4 py-4 border-b moh-border">
@@ -16,9 +16,11 @@
         </div>
       </div>
 
-      <AppInlineAlert v-if="error" class="mx-4 mt-4" severity="danger">
-        {{ error }}
-      </AppInlineAlert>
+      <div v-if="error" class="px-4 mt-4">
+        <AppInlineAlert severity="danger">
+          {{ error }}
+        </AppInlineAlert>
+      </div>
 
       <div v-if="!loading && posts.length === 0" class="px-4 py-6 text-sm moh-text-muted">
         No “Only me” posts yet.
@@ -43,7 +45,7 @@
       <div class="w-full max-w-md px-4 pt-10 sm:pt-14">
         <div class="rounded-2xl border border-gray-200 bg-white/90 p-5 shadow-sm dark:border-zinc-800 dark:bg-black/70">
           <div class="flex items-start gap-3">
-            <div class="mt-0.5 h-9 w-9 shrink-0 rounded-full bg-violet-600/15 text-violet-700 flex items-center justify-center dark:bg-violet-500/20 dark:text-violet-200">
+            <div class="mt-0.5 h-9 w-9 shrink-0 rounded-full flex items-center justify-center moh-onlyme-icon">
               <i class="pi pi-eye-slash" aria-hidden="true" />
             </div>
             <div class="min-w-0">

@@ -57,7 +57,7 @@
               <button
                 v-if="allowedComposerVisibilities.includes('verifiedOnly')"
                 type="button"
-                class="w-full text-left px-3 py-2 text-sm font-semibold transition-colors text-sky-700 hover:bg-sky-600 hover:text-white dark:text-sky-300 dark:hover:bg-sky-500"
+                class="w-full text-left px-3 py-2 text-sm font-semibold transition-colors moh-menuitem-verified"
                 role="menuitem"
                 @click="setComposerVisibility('verifiedOnly')"
               >
@@ -74,7 +74,7 @@
                 :class="[
                   'w-full text-left px-3 py-2 text-sm font-semibold transition-colors',
                   isPremium
-                    ? 'text-amber-800 hover:bg-amber-600 hover:text-white dark:text-amber-300 dark:hover:bg-amber-500'
+                    ? 'moh-menuitem-premium'
                     : 'text-gray-400 dark:text-zinc-600 cursor-not-allowed'
                 ]"
                 role="menuitem"
@@ -90,7 +90,7 @@
               <button
                 v-if="allowedComposerVisibilities.includes('onlyMe')"
                 type="button"
-                class="w-full text-left px-3 py-2 text-sm font-semibold transition-colors text-violet-800 hover:bg-violet-600 hover:text-white dark:text-violet-300 dark:hover:bg-violet-500"
+                class="w-full text-left px-3 py-2 text-sm font-semibold transition-colors moh-menuitem-onlyme"
                 role="menuitem"
                 @click="setComposerVisibility('onlyMe')"
               >
@@ -265,49 +265,10 @@
 
     <!-- Posts -->
     <div>
-      <div class="sticky top-0 z-20 mt-1 border-b border-gray-200 bg-white/90 px-4 py-3 backdrop-blur dark:border-zinc-800 dark:bg-black/80">
-        <div class="flex items-center justify-between gap-3">
+      <div class="sticky top-0 z-20 border-b moh-border moh-bg p-0">
+        <div class="moh-feed-header-inner flex items-stretch justify-between gap-3 px-4 py-2">
           <!-- Scope tabs (left-aligned) -->
-          <div class="-ml-2 flex items-center gap-1">
-            <button
-              type="button"
-              class="relative px-3 py-2 text-sm font-extrabold tracking-tight transition-colors"
-              :class="feedScope === 'all' ? 'text-gray-900 dark:text-gray-50' : 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50'"
-              aria-label="All posts"
-              @click="feedScope = 'all'"
-            >
-              All
-              <span
-                v-if="feedScope === 'all'"
-                class="absolute left-2 right-2 -bottom-1 h-0.5 rounded-full"
-                style="background: var(--p-primary-color, #ffffff)"
-                aria-hidden="true"
-              />
-            </button>
-
-            <button
-              type="button"
-              class="relative px-3 py-2 text-sm font-extrabold tracking-tight transition-colors"
-              :disabled="!isAuthed"
-              :class="
-                !isAuthed
-                  ? 'text-gray-400 dark:text-zinc-600 cursor-not-allowed'
-                  : feedScope === 'following'
-                    ? 'text-gray-900 dark:text-gray-50'
-                    : 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50'
-              "
-              aria-label="Following feed"
-              @click="isAuthed ? (feedScope = 'following') : null"
-            >
-              Following
-              <span
-                v-if="feedScope === 'following'"
-                class="absolute left-2 right-2 -bottom-1 h-0.5 rounded-full"
-                style="background: var(--p-primary-color, #ffffff)"
-                aria-hidden="true"
-              />
-            </button>
-          </div>
+          <AppTabSelector v-model="feedScope" aria-label="Feed scope" :tabs="scopeTabs" />
 
           <!-- Controls (right-aligned) -->
           <AppFeedFiltersBar
@@ -478,6 +439,11 @@ const feedScope = useCookie<'following' | 'all'>('moh.home.scope.v1', {
   path: '/',
   maxAge: 60 * 60 * 24 * 365,
 })
+
+const scopeTabs = computed(() => [
+  { key: 'all', label: 'All', disabled: false },
+  { key: 'following', label: 'Following', disabled: !isAuthed.value },
+])
 
 const feedSort = useCookie<'new' | 'trending'>('moh.home.sort.v1', {
   default: () => 'new',
@@ -1159,20 +1125,20 @@ onBeforeUnmount(() => {
 const composerTextareaVars = computed<Record<string, string>>(() => {
   if (visibility.value === 'verifiedOnly') {
     return {
-      '--moh-compose-accent': '#1D9BF0',
-      '--moh-compose-ring': 'rgba(29, 155, 240, 0.45)',
+      '--moh-compose-accent': 'var(--moh-verified)',
+      '--moh-compose-ring': 'var(--moh-verified-ring)',
     }
   }
   if (visibility.value === 'premiumOnly') {
     return {
-      '--moh-compose-accent': '#F59E0B',
-      '--moh-compose-ring': 'rgba(245, 158, 11, 0.45)',
+      '--moh-compose-accent': 'var(--moh-premium)',
+      '--moh-compose-ring': 'var(--moh-premium-ring)',
     }
   }
   if (visibility.value === 'onlyMe') {
     return {
-      '--moh-compose-accent': '#7C3AED',
-      '--moh-compose-ring': 'rgba(124, 58, 237, 0.45)',
+      '--moh-compose-accent': 'var(--moh-onlyme)',
+      '--moh-compose-ring': 'var(--moh-onlyme-ring)',
     }
   }
   // Public: neutral (text color per mode).
@@ -1198,17 +1164,10 @@ watch(
 
 const postButtonOutlined = computed(() => visibility.value === 'public')
 const postButtonClass = computed(() => {
-  if (visibility.value === 'verifiedOnly') {
-    return '!border-sky-600 !bg-sky-600 !text-white hover:!bg-sky-700 hover:!border-sky-700 dark:!border-sky-500 dark:!bg-sky-500 dark:!text-black dark:hover:!bg-sky-400'
-  }
-  if (visibility.value === 'premiumOnly') {
-    return '!border-amber-600 !bg-amber-600 !text-white hover:!bg-amber-700 hover:!border-amber-700 dark:!border-amber-500 dark:!bg-amber-500 dark:!text-black dark:hover:!bg-amber-400'
-  }
-  if (visibility.value === 'onlyMe') {
-    return '!border-violet-600 !bg-violet-600 !text-white hover:!bg-violet-700 hover:!border-violet-700 dark:!border-violet-500 dark:!bg-violet-500 dark:!text-black dark:hover:!bg-violet-400'
-  }
-  // public
-  return '!border-gray-300 !text-gray-900 hover:!bg-gray-50 dark:!border-zinc-700 dark:!text-gray-50 dark:hover:!bg-zinc-900'
+  if (visibility.value === 'verifiedOnly') return 'moh-btn-verified moh-btn-tone'
+  if (visibility.value === 'premiumOnly') return 'moh-btn-premium moh-btn-tone'
+  if (visibility.value === 'onlyMe') return 'moh-btn-onlyme moh-btn-tone'
+  return 'moh-btn-public'
 })
 
 const composerVisibilityLabel = computed(() => {
@@ -1384,23 +1343,4 @@ const goLogin = () => {
   return navigateTo(`/login?redirect=${redirect}`)
 }
 </script>
-
-<style scoped>
-/* Make the PrimeVue Tabs bar flush + transparent (per design). */
-:deep(.p-tabs),
-:deep(.p-tablist) {
-  background: transparent;
-}
-:deep(.p-tablist) {
-  padding-left: 0 !important;
-  padding-right: 0 !important;
-  margin-left: 0 !important;
-  margin-right: 0 !important;
-  border-bottom: 0;
-}
-:deep(.p-tablist-tab-list) {
-  padding-left: 0 !important;
-  padding-right: 0 !important;
-}
-</style>
 

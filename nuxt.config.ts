@@ -7,6 +7,10 @@ export default defineNuxtConfig({
   // Keep devtools off in production builds (reduces bundle + memory).
   devtools: { enabled: process.env.NODE_ENV !== 'production' },
   runtimeConfig: {
+    // Server-side base URL for calling the API during SSR.
+    // Useful when the web server runs in a container/VM where `localhost` differs from the browser.
+    // Configure via `.env`: NUXT_API_BASE_URL=http://api:3001
+    apiBaseUrl: process.env.NUXT_API_BASE_URL || process.env.NUXT_PUBLIC_API_BASE_URL || 'http://localhost:3001',
     public: {
       // Used by the website to call the API (e.g. health checks).
       // Configure via `.env`: NUXT_PUBLIC_API_BASE_URL=http://localhost:3001
@@ -54,6 +58,14 @@ export default defineNuxtConfig({
         styles: ['normal'],
         subsets: ['latin'],
       },
+      {
+        // Serif headings: quiet authority, long-form vibe.
+        name: 'Literata',
+        provider: 'google',
+        weights: [400, 600, 700],
+        styles: ['normal'],
+        subsets: ['latin'],
+      },
     ],
   },
   css: ['~/assets/css/main.css', 'primeicons/primeicons.css', 'vue-advanced-cropper/dist/style.css'],
@@ -76,7 +88,9 @@ export default defineNuxtConfig({
   routeRules: {
     // Static where it makes sense (fast marketing pages), SSR everywhere else.
     '/': { prerender: true },
-    '/about': { prerender: true }
+    '/about': { prerender: true },
+    // Ops-only page; avoid SSR to prevent backend connectivity quirks.
+    '/status': { ssr: false }
   },
   primevue: {
     options: {

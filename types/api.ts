@@ -26,6 +26,7 @@ export type PostMedia = {
   mp4Url: string | null
   width: number | null
   height: number | null
+  deletedAt: string | null
 }
 
 export type PostAuthor = {
@@ -123,6 +124,63 @@ export type GetUserPostsResponse = {
     verifiedOnly: number
     premiumOnly: number
   } | null
+}
+
+export type AdminImageReviewListItem = {
+  id: string
+  r2Key: string
+  lastModified: string
+  publicUrl: string | null
+  deletedAt: string | null
+  belongsToSummary: 'post' | 'user' | 'orphan'
+}
+
+export type AdminImageReviewListResponse = {
+  items: AdminImageReviewListItem[]
+  nextCursor: string | null
+}
+
+export type AdminImageReviewDetailResponse = {
+  asset: {
+    id: string
+    r2Key: string
+    lastModified: string
+    bytes: number | null
+    contentType: string | null
+    kind: PostMediaKind | null
+    width: number | null
+    height: number | null
+    deletedAt: string | null
+    deleteReason: string | null
+    r2DeletedAt: string | null
+    publicUrl: string | null
+  }
+  references: {
+    posts: Array<{
+      postMediaId: string
+      postId: string
+      postCreatedAt: string
+      postVisibility: PostVisibility
+      author: { id: string; username: string | null }
+      deletedAt: string | null
+    }>
+    users: Array<{
+      id: string
+      username: string | null
+      name: string | null
+      premium: boolean
+      verifiedStatus: 'none' | 'identity' | 'manual'
+    }>
+  }
+}
+
+export type AdminImageReviewDeleteResponse = {
+  success: true
+  alreadyDeleted?: boolean
+  r2Deleted?: boolean
+  error?: string
+  postMediaCount?: number
+  userCount?: number
 }
 
 export type CreatePostResponse = {

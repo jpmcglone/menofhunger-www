@@ -11,13 +11,13 @@ export function visibilityTagLabel(v: PostVisibility): string | null {
 
 export function visibilityTagClasses(v: PostVisibility): string {
   if (v === 'verifiedOnly') {
-    return 'border-sky-200 bg-sky-50 text-sky-700 dark:border-sky-800 dark:bg-sky-950/40 dark:text-sky-300'
+    return 'moh-tag-verified'
   }
   if (v === 'premiumOnly') {
-    return 'border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-300'
+    return 'moh-tag-premium'
   }
   if (v === 'onlyMe') {
-    return 'border-violet-200 bg-violet-50 text-violet-800 dark:border-violet-800 dark:bg-violet-950/40 dark:text-violet-300'
+    return 'moh-tag-onlyme'
   }
   return ''
 }
@@ -26,34 +26,34 @@ export function filterPillClasses(kind: ProfilePostsFilter, active: boolean): st
   if (kind === 'all') {
     // All: inverted
     return active
-      ? 'border-black bg-black text-white dark:border-white dark:bg-white dark:text-black'
-      : 'border-gray-200 text-gray-700 hover:bg-gray-50 dark:border-zinc-800 dark:text-gray-300 dark:hover:bg-zinc-900'
+      ? 'moh-pill-all-active'
+      : 'moh-pill-all'
   }
 
   if (kind === 'public') {
     // Public: regular
     return active
-      ? 'border-gray-300 bg-gray-50 text-gray-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-gray-50'
-      : 'border-gray-200 text-gray-700 hover:bg-gray-50 dark:border-zinc-800 dark:text-gray-300 dark:hover:bg-zinc-900'
+      ? 'moh-pill-public-active'
+      : 'moh-pill-public'
   }
 
   if (kind === 'verifiedOnly') {
     // Verified: blue
     return active
-      ? 'border-sky-600 bg-sky-600 text-white dark:border-sky-500 dark:bg-sky-500 dark:text-black'
-      : 'border-sky-200 text-sky-700 hover:bg-sky-50 dark:border-sky-800 dark:text-sky-300 dark:hover:bg-sky-950/40'
+      ? 'moh-pill-verified-active'
+      : 'moh-pill-verified'
   }
 
   if (kind === 'onlyMe') {
     // Only me: purple
     return active
-      ? 'border-violet-600 bg-violet-600 text-white dark:border-violet-500 dark:bg-violet-500 dark:text-black'
-      : 'border-violet-200 text-violet-800 hover:bg-violet-50 dark:border-violet-800 dark:text-violet-300 dark:hover:bg-violet-950/40'
+      ? 'moh-pill-onlyme-active'
+      : 'moh-pill-onlyme'
   }
 
   // Premium: orange
   return active
-    ? 'border-amber-600 bg-amber-600 text-white dark:border-amber-500 dark:bg-amber-500 dark:text-black'
-    : 'border-amber-200 text-amber-800 hover:bg-amber-50 dark:border-amber-800 dark:text-amber-300 dark:hover:bg-amber-950/40'
+    ? 'moh-pill-premium-active'
+    : 'moh-pill-premium'
 }
 

@@ -61,7 +61,7 @@
             <button
               v-if="allowedComposerVisibilities.includes('verifiedOnly')"
               type="button"
-              class="w-full text-left px-3 py-2 text-sm font-semibold transition-colors text-sky-700 hover:bg-sky-600 hover:text-white dark:text-sky-300 dark:hover:bg-sky-500"
+              class="w-full text-left px-3 py-2 text-sm font-semibold transition-colors moh-menuitem-verified"
               role="menuitem"
               @click="setComposerVisibility('verifiedOnly')"
             >
@@ -78,7 +78,7 @@
               :class="[
                 'w-full text-left px-3 py-2 text-sm font-semibold transition-colors',
                 isPremium
-                  ? 'text-amber-800 hover:bg-amber-600 hover:text-white dark:text-amber-300 dark:hover:bg-amber-500'
+                  ? 'moh-menuitem-premium'
                   : 'text-gray-400 dark:text-zinc-600 cursor-not-allowed'
               ]"
               role="menuitem"
@@ -94,7 +94,7 @@
             <button
               v-if="allowedComposerVisibilities.includes('onlyMe')"
               type="button"
-              class="w-full text-left px-3 py-2 text-sm font-semibold transition-colors text-violet-800 hover:bg-violet-600 hover:text-white dark:text-violet-300 dark:hover:bg-violet-500"
+              class="w-full text-left px-3 py-2 text-sm font-semibold transition-colors moh-menuitem-onlyme"
               role="menuitem"
               @click="setComposerVisibility('onlyMe')"
             >
@@ -321,7 +321,7 @@
         class="w-full"
         placeholder="Search Giphy…"
         aria-label="Search Giphy"
-        @keydown.enter.prevent="searchGiphy"
+        @keyup.enter.prevent="searchGiphy"
       />
       <Button label="Search" severity="secondary" :loading="giphyLoading" :disabled="giphyLoading" @click="searchGiphy" />
     </div>
@@ -460,7 +460,12 @@ const displaySlots = computed(() => {
   const slots: Array<{ key: string; index: number; empty: boolean; item?: ComposerMediaItem }> = []
   for (let i = 0; i < MEDIA_SLOTS; i++) {
     if (i < order.length) {
-      slots.push({ key: order[i].localId, index: i, empty: false, item: order[i] })
+      const item = order[i]
+      if (item) {
+        slots.push({ key: item.localId, index: i, empty: false, item })
+      } else {
+        slots.push({ key: `empty-${i}`, index: i, empty: true })
+      }
     } else {
       slots.push({ key: `empty-${i}`, index: i, empty: true })
     }
@@ -824,7 +829,9 @@ async function searchGiphy() {
   giphyLoading.value = true
   const reqId = ++giphyRequestId.value
   try {
-    const res = await apiFetchData<GiphySearchResponse>('/giphy/search', { method: 'GET', query: { q } as any })
+    // Important: omit `q` entirely when blank so the server can treat it as trending.
+    const query = q ? ({ q } as Record<string, string>) : ({} as Record<string, string>)
+    const res = await apiFetchData<GiphySearchResponse>('/giphy/search', { method: 'GET', query: query as any })
     if (!giphyOpen.value || giphyRequestId.value !== reqId) return
     giphyItems.value = res?.items ?? []
     giphyError.value = null
@@ -905,9 +912,9 @@ const composerVisibilityPillClass = computed(() => {
 
 // Upload bar fill color matches composer visibility: blue (verified), orange (premium), purple (only me), normal primary (public).
 const composerUploadBarColor = computed(() => {
-  if (visibility.value === 'verifiedOnly') return '#1D9BF0'
-  if (visibility.value === 'premiumOnly') return '#F59E0B'
-  if (visibility.value === 'onlyMe') return '#7C3AED'
+  if (visibility.value === 'verifiedOnly') return 'var(--moh-verified)'
+  if (visibility.value === 'premiumOnly') return 'var(--moh-premium)'
+  if (visibility.value === 'onlyMe') return 'var(--moh-onlyme)'
   return 'var(--p-primary-color)'
 })
 
@@ -960,9 +967,9 @@ watch(
 // Textarea styling
 const isDarkMode = computed(() => Boolean(useColorMode().value === 'dark'))
 const composerTextareaVars = computed<Record<string, string>>(() => {
-  if (visibility.value === 'verifiedOnly') return { '--moh-compose-accent': '#1D9BF0', '--moh-compose-ring': 'rgba(29, 155, 240, 0.45)' }
-  if (visibility.value === 'premiumOnly') return { '--moh-compose-accent': '#F59E0B', '--moh-compose-ring': 'rgba(245, 158, 11, 0.45)' }
-  if (visibility.value === 'onlyMe') return { '--moh-compose-accent': '#7C3AED', '--moh-compose-ring': 'rgba(124, 58, 237, 0.45)' }
+  if (visibility.value === 'verifiedOnly') return { '--moh-compose-accent': 'var(--moh-verified)', '--moh-compose-ring': 'var(--moh-verified-ring)' }
+  if (visibility.value === 'premiumOnly') return { '--moh-compose-accent': 'var(--moh-premium)', '--moh-compose-ring': 'var(--moh-premium-ring)' }
+  if (visibility.value === 'onlyMe') return { '--moh-compose-accent': 'var(--moh-onlyme)', '--moh-compose-ring': 'var(--moh-onlyme-ring)' }
   return isDarkMode.value
     ? { '--moh-compose-accent': 'rgba(255, 255, 255, 0.85)', '--moh-compose-ring': 'rgba(255, 255, 255, 0.25)' }
     : { '--moh-compose-accent': 'rgba(0, 0, 0, 0.85)', '--moh-compose-ring': 'rgba(0, 0, 0, 0.18)' }
@@ -975,16 +982,10 @@ const canPost = computed(() => Boolean(isAuthed.value && (viewerIsVerified.value
 
 const postButtonOutlined = computed(() => visibility.value === 'public')
 const postButtonClass = computed(() => {
-  if (visibility.value === 'verifiedOnly') {
-    return '!border-sky-600 !bg-sky-600 !text-white hover:!bg-sky-700 hover:!border-sky-700 dark:!border-sky-500 dark:!bg-sky-500 dark:!text-black dark:hover:!bg-sky-400'
-  }
-  if (visibility.value === 'premiumOnly') {
-    return '!border-amber-600 !bg-amber-600 !text-white hover:!bg-amber-700 hover:!border-amber-700 dark:!border-amber-500 dark:!bg-amber-500 dark:!text-black dark:hover:!bg-amber-400'
-  }
-  if (visibility.value === 'onlyMe') {
-    return '!border-violet-600 !bg-violet-600 !text-white hover:!bg-violet-700 hover:!border-violet-700 dark:!border-violet-500 dark:!bg-violet-500 dark:!text-black dark:hover:!bg-violet-400'
-  }
-  return '!border-gray-300 !text-gray-900 hover:!bg-gray-50 dark:!border-zinc-700 dark:!text-gray-50 dark:hover:!bg-zinc-900'
+  if (visibility.value === 'verifiedOnly') return 'moh-btn-verified moh-btn-tone'
+  if (visibility.value === 'premiumOnly') return 'moh-btn-premium moh-btn-tone'
+  if (visibility.value === 'onlyMe') return 'moh-btn-onlyme moh-btn-tone'
+  return 'moh-btn-public'
 })
 
 // Composer submit

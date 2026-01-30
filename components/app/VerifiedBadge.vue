@@ -24,10 +24,9 @@ const props = withDefaults(
   { size: 'sm', premium: false, showTooltip: true }
 )
 
-// Twitter-ish blue; works on both light/dark.
-const badgeBlue = '#1D9BF0'
-// Premium orange.
-const badgeOrange = '#F59E0B'
+// Use semantic CSS variables so the accent stays consistent across the app theme.
+const badgeBlue = 'var(--moh-verified)'
+const badgeOrange = 'var(--moh-premium)'
 
 const isVerified = computed(() => Boolean(props.status && props.status !== 'none'))
 

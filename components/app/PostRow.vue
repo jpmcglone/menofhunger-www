@@ -119,7 +119,7 @@
           <!-- Generic link preview (last link only) -->
           <a
             v-else
-            :href="previewLink"
+            :href="previewLink || undefined"
             target="_blank"
             rel="noopener noreferrer"
             class="block overflow-hidden rounded-xl border moh-border transition-colors moh-surface-hover"
@@ -172,7 +172,7 @@
 
           <a
             v-if="isPreviewLinkRumble && previewLink"
-            :href="previewLink"
+            :href="previewLink || undefined"
             target="_blank"
             rel="noopener noreferrer"
             class="text-[11px] font-semibold transition-colors"

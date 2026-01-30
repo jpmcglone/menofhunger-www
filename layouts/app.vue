@@ -2,20 +2,33 @@
   <!-- Two scrollers:
        - Left rail (independent, only scrolls when pointer is over it)
        - Main scroller (center + right share scroll) -->
-  <ClientOnly>
-    <AppToastStack />
-  </ClientOnly>
-  <AppOnboardingGate />
-  <AppAuthActionModal />
-  <div class="h-dvh overflow-hidden moh-bg moh-text">
-    <div class="mx-auto flex h-full w-full max-w-6xl px-2 sm:px-4 xl:max-w-7xl">
-      <!-- Left Nav (independent scroll) -->
-      <aside
-        :class="[
-          'no-scrollbar hidden sm:block shrink-0 h-full border-r moh-border',
-          composerModalOpen ? 'overflow-hidden' : 'overflow-y-auto overscroll-y-auto'
-        ]"
-      >
+  <Transition
+    appear
+    enter-active-class="transition-opacity duration-300 ease-out"
+    enter-from-class="opacity-0"
+    enter-to-class="opacity-100"
+    leave-active-class="transition-opacity duration-250 ease-in"
+    leave-from-class="opacity-100"
+    leave-to-class="opacity-0"
+  >
+    <div v-if="showStatusBg" class="moh-status-bg" aria-hidden="true" />
+  </Transition>
+
+  <div class="relative z-10">
+    <ClientOnly>
+      <AppToastStack />
+    </ClientOnly>
+    <AppOnboardingGate />
+    <AppAuthActionModal />
+    <div :class="['h-dvh overflow-hidden moh-bg moh-text', showStatusBg ? 'moh-status-tone' : '']">
+      <div class="mx-auto flex h-full w-full max-w-6xl px-2 sm:px-4 xl:max-w-7xl">
+        <!-- Left Nav (independent scroll) -->
+        <aside
+          :class="[
+            'no-scrollbar hidden sm:block shrink-0 h-full border-r moh-border',
+            composerModalOpen ? 'overflow-hidden' : 'overflow-y-auto overscroll-y-auto'
+          ]"
+        >
         <!-- IMPORTANT: no `h-full` + no `overflow-hidden` here, or the rail can't actually scroll -->
         <div
           :class="[
@@ -52,13 +65,13 @@
                 // NOTE: Don't use `moh-text` here; it overrides per-item color accents (e.g. Only me).
                 'group flex h-12 items-center rounded-xl transition-colors',
                 'w-full',
-                route.path === item.to ? 'moh-surface font-semibold' : 'font-semibold',
+                route.path === item.to
+                  ? (item.key === 'only-me' ? 'font-semibold' : 'moh-surface font-semibold')
+                  : 'font-semibold',
                 // Default nav tone
                 item.key !== 'only-me' ? 'text-gray-900 dark:text-gray-100 moh-surface-hover' : '',
                 item.key === 'only-me'
-                  ? (route.path === item.to
-                      ? 'bg-violet-100 text-violet-800 hover:bg-violet-200 dark:bg-violet-500/20 dark:text-violet-200 dark:hover:bg-violet-500/25'
-                      : 'text-violet-700 hover:bg-violet-100 dark:text-violet-300 dark:hover:bg-violet-500/20')
+                  ? (route.path === item.to ? 'moh-nav-onlyme-active' : 'moh-nav-onlyme')
                   : ''
               ]"
               @click="(e) => onLeftNavClick(item.to, e)"
@@ -125,25 +138,26 @@
             <span v-if="!navCompactMode" class="hidden xl:inline text-base font-semibold">Log in</span>
           </NuxtLink>
         </div>
-      </aside>
+        </aside>
 
-      <!-- Columns 2 + 3: separate scroll zones, but coupled wheel scrolling. -->
-      <div class="flex min-w-0 flex-1">
-        <!-- Middle / Feed (scroll zone #2) -->
-        <main
-          ref="middleScrollerEl"
-          :class="[
-            'no-scrollbar min-w-0 flex-1 lg:border-r moh-border',
-            composerModalOpen ? 'overflow-hidden' : 'overflow-y-auto overscroll-y-auto'
-          ]"
-        >
+        <!-- Columns 2 + 3: separate scroll zones, but coupled wheel scrolling. -->
+        <div class="flex min-w-0 flex-1">
+          <!-- Middle / Feed (scroll zone #2) -->
+          <main
+            ref="middleScrollerEl"
+            :class="[
+              'no-scrollbar min-w-0 flex-1',
+              'lg:border-r moh-border',
+              composerModalOpen ? 'overflow-hidden' : 'overflow-y-auto overscroll-y-auto'
+            ]"
+          >
           <div
             v-if="!hideTopBar"
             class="sticky top-0 z-10 border-b moh-border moh-frosted"
           >
             <div class="px-4 py-3 flex items-center justify-between gap-3">
               <div class="min-w-0 flex items-center gap-2">
-                <h1 class="min-w-0 truncate text-xl font-bold tracking-tight">
+                <h1 class="moh-title min-w-0 truncate text-xl font-bold tracking-tight">
                   {{ headerTitle }}
                 </h1>
                 <AppVerifiedBadge
@@ -159,23 +173,23 @@
             </div>
           </div>
 
-          <div
-            ref="middleContentEl"
-            :class="hideTopBar ? 'pb-24 sm:pb-4' : 'px-4 py-4 pb-24 sm:pb-4'"
-          >
-            <slot />
-          </div>
-        </main>
+            <div
+              ref="middleContentEl"
+              :class="hideTopBar ? 'pb-24 sm:pb-4' : 'px-4 py-4 pb-24 sm:pb-4'"
+            >
+              <slot />
+            </div>
+          </main>
 
-        <!-- Right rail (scroll zone #3). Visible on lg+. -->
-        <aside
-          ref="rightScrollerEl"
-          :class="[
-            'no-scrollbar shrink-0 w-80 h-full px-4 py-4',
-            composerModalOpen ? 'overflow-hidden' : 'overflow-y-auto overscroll-y-auto',
-            isRightRailForcedHidden ? 'hidden' : 'hidden lg:block'
-          ]"
-        >
+          <!-- Right rail (scroll zone #3). Visible on lg+. -->
+          <aside
+            ref="rightScrollerEl"
+            :class="[
+              'no-scrollbar shrink-0 w-80 h-full px-4 py-4',
+              composerModalOpen ? 'overflow-hidden' : 'overflow-y-auto overscroll-y-auto',
+              isRightRailForcedHidden ? 'hidden' : 'hidden lg:block'
+            ]"
+          >
           <div>
             <!-- On Explore, the search bar lives in the center column. Collapse it here. -->
             <div
@@ -339,78 +353,79 @@
               </div>
             </div>
           </div>
-        </aside>
+          </aside>
+        </div>
       </div>
     </div>
-  </div>
 
-  <AppTabBar :items="tabItems" />
+    <AppTabBar :items="tabItems" />
 
-  <ClientOnly>
-    <Transition
-      enter-active-class="transition-opacity duration-200 ease-out"
-      enter-from-class="opacity-0"
-      enter-to-class="opacity-100"
-      leave-active-class="transition-opacity duration-150 ease-in"
-      leave-from-class="opacity-100"
-      leave-to-class="opacity-0"
-    >
-      <div
-        v-if="composerModalOpen"
-        class="fixed inset-0 z-[1000]"
-        aria-label="Post composer overlay"
-        role="dialog"
-        aria-modal="true"
+    <ClientOnly>
+      <Transition
+        enter-active-class="transition-opacity duration-200 ease-out"
+        enter-from-class="opacity-0"
+        enter-to-class="opacity-100"
+        leave-active-class="transition-opacity duration-150 ease-in"
+        leave-from-class="opacity-100"
+        leave-to-class="opacity-0"
       >
-        <!-- Backdrop -->
         <div
-          class="absolute inset-0 bg-black/55"
-          aria-hidden="true"
-          @click="closeComposerModal"
-        />
-
-        <!-- Composer sheet -->
-        <div
-          class="absolute top-20 sm:top-24"
-          :style="composerSheetStyle"
+          v-if="composerModalOpen"
+          class="fixed inset-0 z-[1000]"
+          aria-label="Post composer overlay"
+          role="dialog"
+          aria-modal="true"
         >
-          <div class="relative overflow-hidden rounded-2xl border border-gray-200 bg-white p-3 shadow-2xl dark:border-zinc-800 dark:bg-black">
-            <div
-              v-if="composerModalTintStyle"
-              class="pointer-events-none absolute inset-0"
-              :style="composerModalTintStyle"
-              aria-hidden="true"
-            />
-            <div class="relative z-10">
-              <AppPostComposer auto-focus :show-divider="false" @posted="onComposerPosted" />
+          <!-- Backdrop -->
+          <div
+            class="absolute inset-0 bg-black/55"
+            aria-hidden="true"
+            @click="closeComposerModal"
+          />
+
+          <!-- Composer sheet -->
+          <div
+            class="absolute top-3"
+            :style="composerSheetStyle"
+          >
+            <div class="relative overflow-hidden rounded-2xl border border-gray-200 bg-white p-3 shadow-2xl dark:border-zinc-800 dark:bg-black">
+              <div
+                v-if="composerModalTintStyle"
+                class="pointer-events-none absolute inset-0"
+                :style="composerModalTintStyle"
+                aria-hidden="true"
+              />
+              <div class="relative z-10">
+                <AppPostComposer auto-focus :show-divider="false" @posted="onComposerPosted" />
+              </div>
             </div>
           </div>
         </div>
-      </div>
-    </Transition>
-  </ClientOnly>
+      </Transition>
+    </ClientOnly>
 
-  <AppImageLightbox
-    :visible="lightbox.visible.value"
-    :backdrop-visible="lightbox.backdropVisible.value"
-    :src="lightbox.src.value"
-    :alt="lightbox.alt.value"
-    :kind="lightbox.kind.value"
-    :target="lightbox.target.value"
-    :image-style="lightbox.imageStyle.value"
-    :show-nav="lightbox.kind.value === 'media' && (lightbox.items.value?.length ?? 0) > 1"
-    :can-prev="lightbox.canPrev.value"
-    :can-next="lightbox.canNext.value"
-    :counter-label="
-      lightbox.kind.value === 'media' && (lightbox.items.value?.length ?? 0) > 1
-        ? `${lightbox.index.value + 1} / ${lightbox.items.value.length}`
-        : null
-    "
-    :on-prev="lightbox.prev"
-    :on-next="lightbox.next"
-    :on-close="lightbox.close"
-    :on-transition-end="lightbox.onTransitionEnd"
-  />
+    <AppImageLightbox
+      :visible="lightbox.visible.value"
+      :backdrop-visible="lightbox.backdropVisible.value"
+      :src="lightbox.src.value"
+      :alt="lightbox.alt.value"
+      :kind="lightbox.kind.value"
+      :target="lightbox.target.value"
+      :image-style="lightbox.imageStyle.value"
+      :show-nav="lightbox.kind.value === 'media' && (lightbox.items.value?.length ?? 0) > 1"
+      :can-prev="lightbox.canPrev.value"
+      :can-next="lightbox.canNext.value"
+      :counter-label="
+        lightbox.kind.value === 'media' && (lightbox.items.value?.length ?? 0) > 1
+          ? `${lightbox.index.value + 1} / ${lightbox.items.value.length}`
+          : null
+      "
+      :on-prev="lightbox.prev"
+      :on-next="lightbox.next"
+      :on-close="lightbox.close"
+      :on-transition-end="lightbox.onTransitionEnd"
+    />
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -467,14 +482,14 @@ const composerModalTintStyle = computed<Record<string, string> | null>(() => {
 
   const rgb =
     v === 'verifiedOnly'
-      ? '29,155,240'
+      ? 'var(--moh-verified-rgb)'
       : v === 'premiumOnly'
-        ? '245,158,11'
-        : '139,92,246' // onlyMe
+        ? 'var(--moh-premium-rgb)'
+        : 'var(--moh-onlyme-rgb)'
 
   // Very subtle bottom-up wash (color at bottom fading to transparent).
   return {
-    background: `linear-gradient(to top, rgba(${rgb}, 0.06) 0%, transparent 50%)`,
+    background: `linear-gradient(to top, rgba(${rgb}, 0.10) 0%, transparent 55%)`,
   }
 })
 
@@ -565,6 +580,8 @@ useCoupledScroll({
 
 const lightbox = useImageLightbox()
 
+const showStatusBg = computed(() => route.path === '/status')
+
 function isActiveNav(to: string) {
   if (to === '/home') return route.path === '/home'
   return route.path === to || route.path.startsWith(`${to}/`)
@@ -599,4 +616,56 @@ onBeforeUnmount(() => {
   window.removeEventListener('moh-scroll-top', onScrollTopEvent as EventListener)
 })
 </script>
+
+<style>
+.moh-status-tone {
+  /* Force an "ops console" palette regardless of color mode. */
+  --moh-bg: #000;
+  --moh-surface: rgba(0, 0, 0, 0.55);
+  --moh-surface-hover: rgba(255, 255, 255, 0.06);
+  --moh-border: rgba(255, 255, 255, 0.12);
+  --moh-text: #e7e9ea;
+  --moh-text-muted: rgba(231, 233, 234, 0.68);
+  --moh-frosted: rgba(0, 0, 0, 0.55);
+}
+
+.moh-status-tone.moh-bg {
+  /* Let the `/status` background overlay show through. */
+  background-color: transparent !important;
+}
+
+.moh-status-tone :where(.text-gray-900) {
+  /* Many nav items use light-mode Tailwind text colors; force readable text on the status dark background. */
+  color: rgba(231, 233, 234, 0.92) !important;
+}
+
+.moh-status-tone :where(.text-gray-700) {
+  color: rgba(231, 233, 234, 0.78) !important;
+}
+
+.moh-status-tone :where(.text-gray-500) {
+  color: rgba(231, 233, 234, 0.62) !important;
+}
+
+.moh-status-bg {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+
+  /* “TV ops” vibe: deep black, faint grid + scanline */
+  background:
+    radial-gradient(1000px 600px at 20% 15%, rgba(29, 155, 240, 0.18), transparent 55%),
+    radial-gradient(900px 500px at 85% 20%, rgba(245, 158, 11, 0.12), transparent 55%),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.03), transparent 35%),
+    repeating-linear-gradient(
+      to bottom,
+      rgba(255, 255, 255, 0.04) 0px,
+      rgba(255, 255, 255, 0.04) 1px,
+      transparent 1px,
+      transparent 5px
+    ),
+    #000;
+}
+</style>
 

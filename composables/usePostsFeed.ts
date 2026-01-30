@@ -57,6 +57,7 @@ export function usePostsFeed(options: { visibility?: Ref<FeedFilter>; followingO
     }
     // Fallback to first row.
     const first = items[0]
+    if (!first) return null
     const id = (first?.dataset.postId ?? '').trim()
     if (!id) return null
     const r = first.getBoundingClientRect()

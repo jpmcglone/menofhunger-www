@@ -1,5 +1,5 @@
 <template>
-  <div class="-mx-4 sm:mx-0">
+  <div class="-mx-4">
     <div class="flex justify-end px-4 py-2">
       <Button label="Mark all read" text severity="secondary" />
     </div>
