@@ -1,5 +1,6 @@
 type LightboxKind = 'avatar' | 'banner' | 'media'
 type Rect = { left: number; top: number; width: number; height: number }
+type MediaStartMode = 'origin' | 'fitAnchored'
 
 let requestId = 0
 
@@ -12,6 +13,7 @@ export function useImageLightbox() {
   const kind = useState<LightboxKind>('moh.lightbox.kind', () => 'banner')
   // For media: controls whether the original thumbnail(s) are hidden underneath the lightbox copy.
   const hideOrigin = useState<boolean>('moh.lightbox.hideOrigin', () => false)
+  const mediaStartMode = useState<MediaStartMode>('moh.lightbox.mediaStartMode', () => 'fitAnchored')
 
   const items = useState<string[]>('moh.lightbox.items', () => [])
   const index = useState<number>('moh.lightbox.index', () => 0)
@@ -80,6 +82,10 @@ export function useImageLightbox() {
     return { left: ox - width / 2, top: oy - height / 2, width, height }
   }
 
+  function calcMediaStartRect(o: Rect, aspect: number): Rect {
+    return mediaStartMode.value === 'origin' ? { ...o } : calcMediaStartRectFromOrigin(o, aspect)
+  }
+
   async function preloadAspect(url: string): Promise<number> {
     if (!import.meta.client) return 1
     return await new Promise((resolve) => {
@@ -104,8 +110,8 @@ export function useImageLightbox() {
     // For post media, avoid non-uniform scaling (it can look like "stretching").
     // Instead, keep transform identity and animate the fixed box rect (left/top/width/height).
     if (kind.value === 'media') {
-      // Start from a rect anchored to the clicked box, but fit the real image aspect.
-      target.value = calcMediaStartRectFromOrigin(o, mediaAspect.value || 1)
+      // Start from either the exact clicked rect, or an aspect-fit anchored rect.
+      target.value = calcMediaStartRect(o, mediaAspect.value || 1)
       transform.value = 'translate(0px, 0px) scale(1, 1)'
       transition.value = 'none'
       borderRadius.value = targetRadius(kind.value)
@@ -155,8 +161,8 @@ export function useImageLightbox() {
       transform.value = 'translate(0px, 0px) scale(1, 1)'
       transition.value =
         'left 220ms cubic-bezier(0.4, 0, 0.2, 1), top 220ms cubic-bezier(0.4, 0, 0.2, 1), width 220ms cubic-bezier(0.4, 0, 0.2, 1), height 220ms cubic-bezier(0.4, 0, 0.2, 1)'
-      // Return to the same "start rect" (aspect-fit anchored to the clicked box), then unmount + reveal original.
-      target.value = calcMediaStartRectFromOrigin(o, mediaAspect.value || 1)
+      // Return to the same start rect, then unmount + reveal original.
+      target.value = calcMediaStartRect(o, mediaAspect.value || 1)
       borderRadius.value = initialRadius(kind.value)
       return
     }
@@ -178,7 +184,13 @@ export function useImageLightbox() {
     borderRadius.value = initialRadius(kind.value)
   }
 
-  async function openFromEvent(e: MouseEvent, url: string | null, label: string, k: LightboxKind) {
+  async function openFromEvent(
+    e: MouseEvent,
+    url: string | null,
+    label: string,
+    k: LightboxKind,
+    opts?: { mediaStartMode?: MediaStartMode },
+  ) {
     if (!import.meta.client) return
     if (!url) return
 
@@ -195,6 +207,7 @@ export function useImageLightbox() {
     items.value = [url]
     index.value = 0
     hideOrigin.value = k === 'media'
+    mediaStartMode.value = k === 'media' ? (opts?.mediaStartMode ?? 'fitAnchored') : 'fitAnchored'
     origin.value = { left: rect.left, top: rect.top, width: rect.width, height: rect.height }
     target.value = null
 
@@ -208,7 +221,7 @@ export function useImageLightbox() {
 
     // For media, we animate rect changes starting from origin (no scale distortion).
     // For other kinds, we can keep the existing transform-based zoom.
-    target.value = k === 'media' ? calcMediaStartRectFromOrigin(origin.value as Rect, aspect) : calcTargetRect(aspect, k)
+    target.value = k === 'media' ? calcMediaStartRect(origin.value as Rect, aspect) : calcTargetRect(aspect, k)
     borderRadius.value = initialRadius(k)
     transition.value = 'none'
     transform.value = 'translate(0px, 0px) scale(1, 1)'
@@ -217,14 +230,20 @@ export function useImageLightbox() {
     startOpenAnimation()
   }
 
-  async function openGalleryFromEvent(e: MouseEvent, urls: string[], startIndex: number, label: string) {
+  async function openGalleryFromEvent(
+    e: MouseEvent,
+    urls: string[],
+    startIndex: number,
+    label: string,
+    opts?: { mediaStartMode?: MediaStartMode },
+  ) {
     if (!import.meta.client) return
     const xs = (urls ?? []).map((u) => (u ?? '').trim()).filter(Boolean)
     if (xs.length === 0) return
     const i = Number.isFinite(startIndex) ? Math.max(0, Math.min(xs.length - 1, Math.floor(startIndex))) : 0
     items.value = xs
     index.value = i
-    await openFromEvent(e, xs[i] ?? null, label, 'media')
+    await openFromEvent(e, xs[i] ?? null, label, 'media', opts)
   }
 
   const canPrev = computed(() => index.value > 0)
@@ -280,6 +299,7 @@ export function useImageLightbox() {
     index.value = 0
     mediaAspect.value = 1
     hideOrigin.value = false
+    mediaStartMode.value = 'fitAnchored'
     origin.value = null
     target.value = null
     transition.value = 'none'

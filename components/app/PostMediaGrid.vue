@@ -1,25 +1,14 @@
 <template>
   <div v-if="items.length === 1" class="mt-3 pr-12">
-    <div class="group relative inline-block">
-      <img
-        :src="items[0]?.url"
-        class="block max-h-[28rem] max-w-full rounded-xl border moh-border object-contain bg-black/5 dark:bg-white/5"
-        :class="hideThumbs ? 'opacity-0 transition-opacity duration-150' : 'opacity-100'"
-        alt=""
-        loading="lazy"
-        decoding="async"
-      />
-      <div
-        class="pointer-events-none absolute inset-0 rounded-xl bg-black/0 transition-colors duration-200 group-hover:bg-black/10"
-        aria-hidden="true"
-      />
-      <button
-        type="button"
-        class="absolute inset-0 cursor-zoom-in"
-        aria-label="View image"
-        @click.stop="openAt($event, 0)"
-      />
-    </div>
+    <img
+      :src="items[0]?.url"
+      class="block max-w-full max-h-[28rem] rounded-xl cursor-zoom-in select-none"
+      :class="hideThumbs ? 'opacity-0 transition-opacity duration-150' : 'opacity-100'"
+      alt=""
+      loading="lazy"
+      decoding="async"
+      @click.stop="openAt($event, 0)"
+    />
   </div>
 
   <div v-else-if="items.length > 1" class="mt-3 pr-12">
@@ -92,7 +81,8 @@ function imgClass(idx: number): string {
 function openAt(e: MouseEvent, idx: number) {
   const xs = urls.value
   if (!xs.length) return
-  viewer.openGalleryFromEvent(e, xs, idx, 'Image')
+  const startMode = items.value.length > 1 ? 'origin' : 'fitAnchored'
+  viewer.openGalleryFromEvent(e, xs, idx, 'Image', { mediaStartMode: startMode })
 }
 </script>
 

@@ -192,8 +192,8 @@
               />
               <Button
                 text
-                rounded
                 severity="secondary"
+                class="!rounded-xl"
                 aria-label="Add GIF"
                 :disabled="!canAddMoreMedia"
                 v-tooltip.bottom="tinyTooltip(canAddMoreMedia ? 'Add GIF (Giphy)' : 'Max 4 attachments')"
@@ -201,7 +201,7 @@
               >
                 <template #icon>
                   <span
-                    class="inline-flex items-center justify-center rounded-md border border-current/25 bg-transparent px-1.5 py-1 text-[10px] font-extrabold leading-none tracking-wide"
+                    class="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-current/25 bg-transparent text-[10px] font-extrabold leading-none tracking-wide"
                     aria-hidden="true"
                   >
                     GIF
@@ -219,7 +219,7 @@
                 :outlined="postButtonOutlined"
                 severity="secondary"
                 :class="postButtonClass"
-                :disabled="submitting || !canPost || !draft.trim() || postCharCount > postMaxLen || composerUploading"
+                :disabled="submitting || !canPost || (!(draft.trim() || composerMedia.length) ) || postCharCount > postMaxLen || composerUploading"
                 :loading="submitting"
                 @click="submit"
               />
@@ -627,11 +627,14 @@ watch(
 
 const followingOnly = computed(() => Boolean(isAuthed.value && feedScope.value === 'following'))
 
-const { posts, nextCursor, loading, error, refresh, loadMore, addPost, removePost } = usePostsFeed({
+const { posts, nextCursor, loading, error, refresh, softRefreshNewer, startAutoSoftRefresh, loadMore, addPost, removePost } = usePostsFeed({
   visibility: feedFilter,
   followingOnly,
   sort: feedSort,
 })
+
+// Background “soft refresh” that preserves scroll position.
+onMounted(() => startAutoSoftRefresh({ everyMs: 10_000 }))
 
 const followingCount = ref<number | null>(null)
 const followingCountLoading = ref(false)
@@ -1406,6 +1409,7 @@ watch(
 const submit = async () => {
   if (!canPost.value) return
   if (submitting.value) return
+  if (!(draft.value.trim() || composerMedia.value.length)) return
   if (postCharCount.value > postMaxLen.value) return
   if (composerUploading.value) return
   submitError.value = null

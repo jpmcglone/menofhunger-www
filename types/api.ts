@@ -45,11 +45,63 @@ export type FeedPost = {
   boostCount: number
   media: PostMedia[]
   viewerHasBoosted?: boolean
+  viewerHasBookmarked?: boolean
+  viewerBookmarkCollectionId?: string | null
   internal?: {
     boostScore: number | null
     boostScoreUpdatedAt: string | null
   }
   author: PostAuthor
+}
+
+export type BookmarkCollection = {
+  id: string
+  name: string
+  bookmarkCount: number
+  createdAt: string
+  updatedAt: string
+}
+
+export type ListBookmarkCollectionsResponse = {
+  collections: BookmarkCollection[]
+  summary?: {
+    totalCount: number
+    unorganizedCount: number
+  }
+}
+
+export type CreateBookmarkCollectionResponse = {
+  collection: BookmarkCollection
+}
+
+export type RenameBookmarkCollectionResponse = {
+  collection: BookmarkCollection
+}
+
+export type DeleteBookmarkCollectionResponse = {
+  success: true
+}
+
+export type SetBookmarkResponse = {
+  success: true
+  bookmarked: true
+  bookmarkId: string
+  collectionId: string | null
+}
+
+export type RemoveBookmarkResponse = {
+  success: true
+  bookmarked: false
+}
+
+export type SearchBookmarksResponse = {
+  bookmarks: Array<{
+    bookmarkId: string
+    createdAt: string
+    collectionId: string | null
+    post: FeedPost
+  }>
+  nextCursor: string | null
 }
 
 export type GetPostsResponse = {

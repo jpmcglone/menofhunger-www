@@ -16,6 +16,8 @@
               <div class="h-3 w-10 rounded bg-gray-200 dark:bg-zinc-800 animate-pulse" aria-hidden="true" />
             </div>
             <div class="h-3 w-64 max-w-[85%] rounded bg-gray-200 dark:bg-zinc-800 animate-pulse" aria-hidden="true" />
+            <!-- Reserve space for media to avoid layout shift -->
+            <div class="mt-2 h-20 w-full rounded-lg bg-gray-200 dark:bg-zinc-800 animate-pulse" aria-hidden="true" />
           </div>
         </div>
 
@@ -44,6 +46,33 @@
 
             <div class="mt-2 text-sm moh-text whitespace-pre-wrap break-words">
               {{ bodyPreview }}
+            </div>
+
+            <!-- Compact media preview (up to 4) -->
+            <div
+              v-if="mediaItems.length"
+              class="mt-2 -mx-3"
+              aria-hidden="true"
+            >
+              <!-- Horizontal filmstrip; overflow clipped; no user scrolling. -->
+              <div class="no-scrollbar overflow-x-auto overflow-y-hidden pointer-events-none">
+                <!-- Restore left padding only; right edge stays flush. -->
+                <div class="flex gap-2 pl-3 pr-0">
+                  <div
+                    v-for="(m, idx) in mediaItems"
+                    :key="m.id || idx"
+                    class="relative h-24 min-w-[6rem] shrink-0 overflow-hidden rounded-lg border moh-border bg-black/5 dark:bg-white/5"
+                  >
+                    <img
+                      :src="m.url"
+                      class="h-full w-auto max-w-none object-contain"
+                      alt=""
+                      loading="lazy"
+                      decoding="async"
+                    />
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -105,7 +134,15 @@ const bodyPreview = computed(() => {
   return trimmed.slice(0, 180).replace(/\s+$/, '') + '…'
 })
 
+const mediaItems = computed(() => (post.value?.media ?? []).filter((m) => Boolean(m?.url)).slice(0, 4))
+
 const key = computed(() => `embedded-post:${id.value || 'none'}`)
+
+// SSR safety:
+// Our previous pattern (immediate:false + watch(refresh)) could render the skeleton on the server
+// while still delivering a hydrated post on the client, causing both DOM trees to coexist.
+// Fix: allow Nuxt to await the initial fetch on SSR by using immediate:true on the server.
+const immediate = computed(() => (import.meta.server ? true : enabled.value))
 
 const { data, pending, error, refresh } = useAsyncData(
   key,
@@ -118,7 +155,7 @@ const { data, pending, error, refresh } = useAsyncData(
   {
     server: true,
     lazy: true,
-    immediate: false,
+    immediate: immediate.value,
     watch: [id],
   },
 )
@@ -138,6 +175,8 @@ const showSkeleton = computed(() => {
 watch(
   [enabled, id],
   ([en, pid]) => {
+    // Avoid SSR/client hydration mismatch: SSR is handled by `immediate:true` above.
+    if (import.meta.server) return
     if (!pid) return
     if (!en) return
     if (post.value) return

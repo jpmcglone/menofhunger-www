@@ -1,6 +1,7 @@
 <template>
   <div
     ref="rowEl"
+    :data-post-id="post.id"
     :class="[
       'border-b px-4 py-4 transition-colors moh-border',
       clickable ? 'cursor-pointer moh-surface-hover dark:hover:shadow-[0_0_0_1px_rgba(255,255,255,0.06)]' : ''
@@ -241,6 +242,88 @@
             <button
               type="button"
               class="inline-flex h-9 w-9 items-center justify-center rounded-full transition-colors moh-surface-hover"
+              :class="bookmarkLoading ? 'cursor-default opacity-60' : 'cursor-pointer'"
+              :aria-label="viewerHasBookmarked ? 'Unsave post' : 'Save post'"
+              v-tooltip.bottom="bookmarkTooltip"
+              @click.stop="onBookmarkClick"
+            >
+              <i
+                :class="viewerHasBookmarked ? 'pi pi-bookmark-fill' : 'pi pi-bookmark'"
+                class="text-[18px]"
+                aria-hidden="true"
+                :style="viewerHasBookmarked ? { color: 'var(--p-primary-color)' } : undefined"
+              />
+            </button>
+
+            <Popover ref="bookmarkPopoverRef">
+              <div class="w-[min(20rem,calc(100vw-3rem))] p-2">
+                <div class="px-2 py-1 text-[11px] font-semibold moh-text-muted">Save to</div>
+
+                <button
+                  type="button"
+                  class="w-full rounded-lg px-2 py-2 text-left text-sm transition-colors moh-surface-hover"
+                  :class="bookmarkLoading ? 'cursor-default opacity-60' : 'cursor-pointer'"
+                  @click="saveBookmarkTo(null)"
+                >
+                  <div class="flex items-center justify-between gap-3">
+                    <div class="min-w-0 truncate">Unorganized</div>
+                    <i v-if="viewerHasBookmarked && viewerBookmarkCollectionId === null" class="pi pi-check text-xs" aria-hidden="true" />
+                  </div>
+                </button>
+
+                <div v-if="bookmarkCollectionsLoading" class="px-2 py-2 text-xs moh-text-muted">Loading folders…</div>
+
+                <button
+                  v-for="c in bookmarkCollections"
+                  :key="c.id"
+                  type="button"
+                  class="w-full rounded-lg px-2 py-2 text-left text-sm transition-colors moh-surface-hover"
+                  :class="bookmarkLoading ? 'cursor-default opacity-60' : 'cursor-pointer'"
+                  @click="saveBookmarkTo(c.id)"
+                >
+                  <div class="flex items-center justify-between gap-3">
+                    <div class="min-w-0 truncate">{{ c.name }}</div>
+                    <i
+                      v-if="viewerHasBookmarked && viewerBookmarkCollectionId === c.id"
+                      class="pi pi-check text-xs"
+                      aria-hidden="true"
+                    />
+                  </div>
+                </button>
+
+                <div class="mt-2 border-t moh-border pt-2">
+                  <div v-if="!bookmarkCreateOpen" class="px-1">
+                    <button
+                      type="button"
+                      class="w-full rounded-lg px-2 py-2 text-left text-sm font-semibold transition-colors moh-surface-hover"
+                      @click="bookmarkCreateOpen = true"
+                    >
+                      <i class="pi pi-plus mr-2 text-xs" aria-hidden="true" />
+                      Create folder
+                    </button>
+                  </div>
+                  <div v-else class="flex items-center gap-2 px-1">
+                    <InputText
+                      v-model="bookmarkCreateName"
+                      class="w-full"
+                      placeholder="Folder name"
+                      @keydown.enter.prevent="createFolderAndSave"
+                    />
+                    <Button
+                      label="Save"
+                      size="small"
+                      :loading="bookmarkCreating"
+                      :disabled="bookmarkCreating || !bookmarkCreateName.trim()"
+                      @click="createFolderAndSave"
+                    />
+                  </div>
+                </div>
+              </div>
+            </Popover>
+
+            <button
+              type="button"
+              class="inline-flex h-9 w-9 items-center justify-center rounded-full transition-colors moh-surface-hover"
               :class="canShare ? 'cursor-pointer' : 'cursor-default opacity-60'"
               aria-label="Share"
               v-tooltip.bottom="shareTooltip"
@@ -319,6 +402,7 @@ import { getLinkMetadata } from '~/utils/link-metadata'
 import type { RumbleEmbedInfo } from '~/utils/rumble-embed'
 import { resolveRumbleEmbedInfo } from '~/utils/rumble-embed'
 import { useEmbeddedVideoManager } from '~/composables/useEmbeddedVideoManager'
+import { useBookmarkCollections } from '~/composables/useBookmarkCollections'
 
 const props = defineProps<{
   post: FeedPost
@@ -368,6 +452,23 @@ const isSelf = computed(() => Boolean(user.value?.id && user.value.id === post.v
 const { apiFetchData } = useApiClient()
 const { show: showAuthActionModal } = useAuthActionModal()
 const boostState = useBoostState()
+const bookmarkLoading = ref(false)
+const viewerHasBookmarked = ref(Boolean((post.value as any)?.viewerHasBookmarked))
+const viewerBookmarkCollectionId = ref<string | null>(((post.value as any)?.viewerBookmarkCollectionId as string | null) ?? null)
+const bookmarkPopoverRef = ref<any>(null)
+const bookmarkCreateOpen = ref(false)
+const bookmarkCreateName = ref('')
+const bookmarkCreating = ref(false)
+
+const {
+  collections: bookmarkCollections,
+  loading: bookmarkCollectionsLoading,
+  nameById: bookmarkCollectionNameById,
+  ensureLoaded: ensureBookmarkCollectionsLoaded,
+  createCollection: createBookmarkCollection,
+  bumpCounts: bumpBookmarkCounts,
+} = useBookmarkCollections()
+
 const isOnlyMe = computed(() => post.value.visibility === 'onlyMe')
 const viewerIsAdmin = computed(() => Boolean(user.value?.siteAdmin))
 const viewerCanInteract = computed(() => {
@@ -396,6 +497,20 @@ const upvoteTooltip = computed(() => {
   return tinyTooltip(text)
 })
 const shareTooltip = computed(() => tinyTooltip('Share'))
+const bookmarkFolderLabel = computed(() => {
+  if (!viewerHasBookmarked.value) return null
+  const cid = viewerBookmarkCollectionId.value
+  if (!cid) return 'Unorganized'
+  return bookmarkCollectionNameById.value.get(cid) ?? 'Folder'
+})
+const bookmarkTooltip = computed(() => {
+  if (!isAuthed.value) return tinyTooltip('Log in to save')
+  if (viewerHasBookmarked.value) {
+    const label = bookmarkFolderLabel.value
+    return label ? tinyTooltip(`Bookmarked in '${label}'`) : tinyTooltip('Saved')
+  }
+  return tinyTooltip('Save')
+})
 const moreTooltip = computed(() => tinyTooltip('More'))
 const commentTooltip = computed(() => {
   if (!viewerCanInteract.value) return tinyTooltip('Comment')
@@ -403,6 +518,17 @@ const commentTooltip = computed(() => {
   if (!viewerIsVerified.value) return tinyTooltip('Verify to comment')
   return tinyTooltip('Comment')
 })
+
+watch(
+  [viewerHasBookmarked, viewerBookmarkCollectionId],
+  ([saved, cid]) => {
+    if (!import.meta.client) return
+    if (!saved) return
+    if (!cid) return // Unorganized doesn't need folder lookup
+    void ensureBookmarkCollectionsLoaded()
+  },
+  { immediate: true },
+)
 
 const boostClickable = computed(() => {
   return viewerCanInteract.value && (!isAuthed.value || viewerHasUsername.value)
@@ -521,7 +647,23 @@ const tailLinkToStrip = computed(() => {
 })
 
 const displayBody = computed(() => {
-  const body = (post.value.body ?? '').toString()
+  let body = (post.value.body ?? '').toString()
+
+  // If we are rendering an embedded local post preview, avoid showing the raw URL in the body
+  // when it appears as its own standalone line. (Prevents "URL + preview" duplication.)
+  const embedded = (embeddedPostLink.value ?? '').trim()
+  if (embedded) {
+    const reStandaloneLine = new RegExp(String.raw`(^|\n)[ \t]*${escapeRegExp(embedded)}[ \t]*(?=\n|$)`, 'g')
+    if (reStandaloneLine.test(body)) {
+      body = body
+        .replace(reStandaloneLine, '$1')
+        // tidy up whitespace after removing the line
+        .replace(/[ \t]+\n/g, '\n')
+        .replace(/\n{3,}/g, '\n\n')
+        .replace(/\s+$/, '')
+    }
+  }
+
   const last = (tailLinkToStrip.value ?? '').trim()
   if (!last) return body
 
@@ -692,6 +834,100 @@ function onRowClick(e: MouseEvent) {
 
 function noop() {
   // no-op for now (comments not implemented yet)
+}
+
+async function toggleBookmark() {
+  // Back-compat helper for any callers; saves to Unorganized.
+  if (!isAuthed.value) {
+    showAuthActionModal({ kind: 'login', action: 'boost' })
+    return
+  }
+  if (viewerHasBookmarked.value) return await removeBookmark()
+  return await saveBookmarkTo(null)
+}
+
+function openBookmarkPopover(event: Event) {
+  bookmarkCreateOpen.value = false
+  bookmarkCreateName.value = ''
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  ;(bookmarkPopoverRef.value as any)?.toggle(event)
+  if (import.meta.client) void ensureBookmarkCollectionsLoaded()
+}
+
+async function removeBookmark() {
+  if (bookmarkLoading.value) return
+  bookmarkLoading.value = true
+  const prevHas = viewerHasBookmarked.value
+  const prevCid = viewerBookmarkCollectionId.value
+  try {
+    await apiFetchData('/bookmarks/' + encodeURIComponent(post.value.id), { method: 'DELETE' })
+    viewerHasBookmarked.value = false
+    viewerBookmarkCollectionId.value = null
+    bumpBookmarkCounts({ prevHas, prevCollectionId: prevCid, nextHas: false, nextCollectionId: null })
+  } catch (e: unknown) {
+    toast.push({ title: getApiErrorMessage(e) || 'Failed to unsave post.', tone: 'error', durationMs: 2000 })
+  } finally {
+    bookmarkLoading.value = false
+  }
+}
+
+async function saveBookmarkTo(collectionId: string | null) {
+  if (bookmarkLoading.value) return
+  if (!isAuthed.value) return
+  bookmarkLoading.value = true
+  const prevHas = viewerHasBookmarked.value
+  const prevCid = viewerBookmarkCollectionId.value
+  try {
+    const res = await apiFetchData<{ collectionId: string | null }>(
+      '/bookmarks/' + encodeURIComponent(post.value.id),
+      { method: 'POST', body: { collectionId } },
+    )
+    viewerHasBookmarked.value = true
+    viewerBookmarkCollectionId.value = res?.collectionId ?? null
+    bumpBookmarkCounts({
+      prevHas,
+      prevCollectionId: prevCid,
+      nextHas: true,
+      nextCollectionId: viewerBookmarkCollectionId.value,
+    })
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ;(bookmarkPopoverRef.value as any)?.hide?.()
+  } catch (e: unknown) {
+    toast.push({ title: getApiErrorMessage(e) || 'Failed to save post.', tone: 'error', durationMs: 2000 })
+  } finally {
+    bookmarkLoading.value = false
+  }
+}
+
+async function createFolderAndSave() {
+  const name = bookmarkCreateName.value.trim()
+  if (!name) return
+  if (bookmarkCreating.value || bookmarkLoading.value) return
+  bookmarkCreating.value = true
+  try {
+    const created = await createBookmarkCollection(name)
+    if (!created?.id) throw new Error('Failed to create folder.')
+    await saveBookmarkTo(created.id)
+    bookmarkCreateOpen.value = false
+    bookmarkCreateName.value = ''
+  } catch (e: unknown) {
+    toast.push({ title: getApiErrorMessage(e) || 'Failed to create folder.', tone: 'error', durationMs: 2200 })
+  } finally {
+    bookmarkCreating.value = false
+  }
+}
+
+async function onBookmarkClick(event: Event) {
+  if (bookmarkLoading.value) return
+  if (!isAuthed.value) {
+    showAuthActionModal({ kind: 'login', action: 'boost' })
+    return
+  }
+  if (viewerHasBookmarked.value) {
+    await removeBookmark()
+    return
+  }
+  openBookmarkPopover(event)
 }
 
 const createdAtDate = computed(() => new Date(post.value.createdAt))

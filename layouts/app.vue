@@ -59,11 +59,19 @@
               @click="(e) => onLeftNavClick(item.to, e)"
             >
               <span class="relative flex h-12 w-12 shrink-0 items-center justify-center">
-                <i :class="['pi text-[28px] font-semibold', item.icon]" aria-hidden="true" />
+                <i
+                  v-if="item.key === 'bookmarks'"
+                  :class="[
+                    'pi text-[28px] font-semibold',
+                    hasBookmarks ? 'pi-bookmark-fill' : 'pi-bookmark'
+                  ]"
+                  :style="hasBookmarks ? { color: 'var(--p-primary-color)' } : undefined"
+                  aria-hidden="true"
+                />
+                <i v-else :class="['pi text-[28px] font-semibold', item.icon]" aria-hidden="true" />
                 <span
                   v-if="item.key === 'notifications' && notifBadge.show"
-                  class="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold leading-[18px] text-center shadow-sm ring-2 ring-white dark:ring-black"
-                  :class="notifBadge.toneClass"
+                  class="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold leading-[18px] text-center shadow-sm ring-2 ring-white dark:ring-black bg-gray-900 text-white dark:bg-white dark:text-black"
                 >
                   {{ notifBadge.count }}
                 </span>
@@ -336,6 +344,8 @@ import { siteConfig } from '~/config/site'
 import logoLightSmall from '~/assets/images/logo-white-bg-small.png'
 import logoDarkSmall from '~/assets/images/logo-black-bg-small.png'
 import { primaryTintCssForUser } from '~/utils/theme-tint'
+import { MOH_MIDDLE_SCROLLER_KEY } from '~/utils/injection-keys'
+import { useBookmarkCollections } from '~/composables/useBookmarkCollections'
 
 const route = useRoute()
 const { initAuth, user } = useAuth()
@@ -343,6 +353,9 @@ const { isAuthed, leftItems: leftNavItems, tabItems } = useAppNav()
 const { hideTopBar, navCompactMode, isRightRailForcedHidden, isRightRailSearchHidden, title } = useLayoutRules(route)
 const { header: appHeader } = useAppHeader()
 const notifBadge = useNotificationsBadge()
+const { totalCount: bookmarkTotalCount, ensureLoaded: ensureBookmarkCollectionsLoaded } = useBookmarkCollections()
+
+const hasBookmarks = computed(() => Math.max(0, Math.floor(bookmarkTotalCount.value ?? 0)) > 0)
 
 const headerTitle = computed(() => {
   const t = (appHeader.value?.title ?? '').trim()
@@ -361,6 +374,12 @@ function formatCompactNumber(n: number): string {
 await initAuth()
 // nav items are provided by useAppNav() so mobile + desktop stay in sync
 
+watchEffect(() => {
+  if (!import.meta.client) return
+  if (!isAuthed.value) return
+  void ensureBookmarkCollectionsLoaded()
+})
+
 // Dynamic theme tint: default (orange) for logged out/unverified, verified = blue, premium = orange.
 // We override PrimeVue semantic primary tokens via CSS variables so the entire UI tint follows status.
 const primaryCssVars = computed(() => primaryTintCssForUser(user.value ?? null))
@@ -370,6 +389,8 @@ useHead({
 
 const middleScrollerEl = ref<HTMLElement | null>(null)
 const rightScrollerEl = ref<HTMLElement | null>(null)
+
+provide(MOH_MIDDLE_SCROLLER_KEY, middleScrollerEl)
 
 useCoupledScroll({
   middle: middleScrollerEl,
