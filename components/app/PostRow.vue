@@ -20,7 +20,7 @@
       class="moh-post-row-hover-bg pointer-events-none absolute inset-0 z-0 rounded-lg"
       aria-hidden="true"
     />
-    <!-- Overlay: line from top edge down to avatar (reply in thread); overextends up to connect -->
+    <!-- Overlay: line from top down to just above avatar (gap); no overextend -->
     <div
       v-if="showThreadLineAboveAvatar"
       class="pointer-events-none absolute left-4 z-10 flex w-10 justify-center"
@@ -29,7 +29,7 @@
     >
       <div class="w-[2px] bg-gray-200 dark:bg-zinc-700" :style="{ height: threadLineAboveOverlayHeight }" />
     </div>
-    <!-- Overlay: line from bottom of avatar to bottom edge; overextends down to connect -->
+    <!-- Overlay: line from just below avatar (gap) to row bottom; no overextend -->
     <div
       v-if="showThreadLineBelowAvatar"
       class="pointer-events-none absolute left-4 z-10 flex w-10 justify-center"
@@ -38,7 +38,7 @@
     >
       <div class="w-[2px] h-full bg-gray-200 dark:bg-zinc-700" />
     </div>
-    <div class="flex gap-3">
+    <div class="flex gap-3" :class="{ 'mt-2': showThreadLineAboveAvatar && noPaddingTop }">
       <div class="shrink-0 flex flex-col w-10">
         <NuxtLink
           v-if="authorProfilePath"
@@ -253,19 +253,27 @@ const emit = defineEmits<{
 
 const post = computed(() => props.post)
 const clickable = computed(() => props.clickable !== false)
-// Thread line overlays: 2px thickness; run to row edges and overextend so segments connect.
-const THREAD_LINE_OVEREXTEND = 4
+// Thread line overlays: 2px; stay within row, gap between line and avatar (no overextend).
+const THREAD_LINE_GAP = 4
 const AVATAR_H = 40
-const threadLineAboveOverlayStyle = computed(() => ({
-  top: props.noPaddingTop ? `${-THREAD_LINE_OVEREXTEND}px` : '0',
-}))
+// When showThreadLineAboveAvatar && noPaddingTop we add mt-2 (8px) so avatar starts at 8; line above 0–4px, gap 4px.
+// When showThreadLineAboveAvatar && !noPaddingTop we have pt-3 (12px); line above 0–8px, gap 4px, avatar at 12.
+const threadLineAboveOverlayStyle = computed(() => ({ top: '0' }))
 const threadLineAboveOverlayHeight = computed(() =>
-  props.noPaddingTop ? `${THREAD_LINE_OVEREXTEND}px` : '12px',
+  props.noPaddingTop ? '4px' : '8px',
 )
-const threadLineBelowOverlayStyle = computed(() => ({
-  top: `${AVATAR_H}px`,
-  bottom: `${-THREAD_LINE_OVEREXTEND}px`,
-}))
+// Line below starts (avatar bottom + gap). Avatar top: 8 when line above + noPaddingTop (mt-2), 12 when line above + pt-3, 8/16 when no line above (py-2/py-4).
+const threadLineBelowOverlayStyle = computed(() => {
+  const avatarTop = props.showThreadLineAboveAvatar
+    ? props.noPaddingTop
+      ? 8
+      : 12
+    : props.compact
+      ? 8
+      : 16
+  const top = avatarTop + AVATAR_H + THREAD_LINE_GAP
+  return { top: `${top}px`, bottom: '0' }
+})
 const rowStyle = computed(() => ({
   contentVisibility: 'auto' as const,
   containIntrinsicSize: '240px',
