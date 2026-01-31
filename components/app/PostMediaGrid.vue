@@ -9,11 +9,11 @@
       aria-label="View image"
       @click.stop="openAt($event, 0)"
     >
-      <!-- Placeholder surface to reserve space pre-load -->
-      <div class="absolute inset-0 bg-black/3 dark:bg-white/3 rounded-xl" aria-hidden="true" />
+      <!-- Placeholder to reserve space pre-load (no visible box) -->
+      <div class="absolute inset-0" aria-hidden="true" />
       <img
         :src="items[0]?.url"
-        class="absolute inset-0 h-full w-full object-contain rounded-xl"
+        class="absolute inset-0 h-full w-full object-contain"
         :class="hideThumbs ? 'opacity-0 transition-opacity duration-150' : 'opacity-100'"
         :width="singleWidth ?? undefined"
         :height="singleHeight ?? undefined"
@@ -24,7 +24,7 @@
     </button>
     <div
       v-else
-      class="flex h-[18rem] w-full items-center justify-center rounded-xl border moh-border moh-surface"
+      class="moh-squircle flex h-[18rem] w-full items-center justify-center rounded-2xl border moh-border moh-surface"
       aria-label="Deleted media"
     >
       <div class="flex flex-col items-center gap-2 text-sm moh-text-muted select-none">
@@ -35,7 +35,7 @@
   </div>
 
   <div v-else-if="items.length > 1" class="mt-3">
-    <div class="w-full overflow-hidden rounded-xl border moh-border">
+    <div class="moh-squircle w-full overflow-hidden rounded-2xl border moh-border">
       <div class="grid gap-px bg-gray-200 dark:bg-zinc-800" :class="gridClass" :style="gridStyle">
         <template v-for="(m, idx) in items" :key="m.id || idx">
           <button
@@ -121,13 +121,14 @@ const singleBoxStyle = computed<CSSProperties>(() => {
 })
 const singleBoxClass = computed(() => {
   // Single image: fixed height, width only as needed, left-justified (parent has flex justify-start).
+  // - rounded-2xl: Apple-style corner radius (16px), same as 2/3/4-image containers.
   // - With dimensions: intrinsic width from aspect ratio; no letterboxing.
   // - Very wide: cap at 100% so it doesn't overflow.
   // - Missing dims: fallback to full-width 18rem box.
   if (!single.value) return ''
-  if (!singleWidth.value || !singleHeight.value) return 'relative overflow-hidden rounded-xl h-[18rem] w-full shrink-0'
-  if (singleIsVeryWide.value) return 'relative overflow-hidden rounded-xl w-full max-h-[18rem] shrink-0'
-  return 'relative overflow-hidden rounded-xl shrink-0'
+  if (!singleWidth.value || !singleHeight.value) return 'moh-squircle relative overflow-hidden rounded-2xl h-[18rem] w-full shrink-0 border moh-border'
+  if (singleIsVeryWide.value) return 'moh-squircle relative overflow-hidden rounded-2xl w-full max-h-[18rem] shrink-0 border moh-border'
+  return 'moh-squircle relative overflow-hidden rounded-2xl shrink-0 border moh-border'
 })
 
 const gridClass = computed(() => {

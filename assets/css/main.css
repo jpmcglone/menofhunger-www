@@ -125,7 +125,12 @@ html.dark {
   --moh-tooltip-text: #f1eee7;
 }
 
+/* Apple-style continuous corners (squircle). Fallback: browsers ignore corner-shape, keep border-radius. */
 @layer utilities {
+  .moh-squircle {
+    corner-shape: squircle;
+  }
+
   .moh-bg {
     background-color: var(--moh-bg);
   }
@@ -134,6 +139,19 @@ html.dark {
   }
   .moh-surface-hover:hover {
     background-color: var(--moh-surface-hover);
+  }
+
+  /* Post row hover: white layer, 0 by default, opacity up on hover (light = darken, dark = lighten) */
+  .moh-post-row-hover-bg {
+    background-color: #fff;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+  }
+  .group:hover .moh-post-row-hover-bg {
+    opacity: 0.5;
+  }
+  html.dark .group:hover .moh-post-row-hover-bg {
+    opacity: 0.14;
   }
   .moh-border {
     border-color: var(--moh-border);
@@ -403,6 +421,15 @@ html:not(.dark) .moh-avatar-initial {
 html.dark .moh-avatar-initial {
   color: var(--moh-text);
   -webkit-text-stroke-color: var(--moh-bg);
+}
+
+/* @mention links in post body: use app primary tint. */
+.moh-mention-link {
+  color: var(--p-primary-color, var(--moh-text));
+}
+.moh-mention-link:hover {
+  color: var(--p-primary-color, var(--moh-text));
+  opacity: 0.85;
 }
 
 /* Post list transitions: delete immediately, others slide into place (FLIP). */

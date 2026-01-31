@@ -3,38 +3,69 @@
     ref="rowEl"
     :data-post-id="post.id"
     :class="[
-      'border-b px-4 py-4 transition-colors moh-border',
-      clickable ? 'cursor-pointer moh-surface-hover dark:hover:shadow-[0_0_0_1px_rgba(255,255,255,0.06)]' : ''
+      'relative overflow-visible px-4 transition-colors',
+      compact ? 'py-2' : 'py-4',
+      noPaddingBottom ? 'pb-0' : '',
+      noPaddingTop ? 'pt-0' : '',
+      showThreadLineAboveAvatar && !noPaddingTop ? 'pt-3' : '',
+      noBorderBottom ? '' : 'border-b moh-border',
+      clickable ? 'cursor-pointer rounded-lg group' : ''
     ]"
-    style="content-visibility: auto; contain-intrinsic-size: 240px;"
+    :style="rowStyle"
     @click="onRowClick"
   >
+    <!-- Animated background: white at 0, opacity up on hover (main.css), back to 0 on mouse out -->
+    <div
+      v-if="clickable"
+      class="moh-post-row-hover-bg pointer-events-none absolute inset-0 z-0 rounded-lg"
+      aria-hidden="true"
+    />
+    <!-- Overlay: line from top edge down to avatar (reply in thread); overextends up to connect -->
+    <div
+      v-if="showThreadLineAboveAvatar"
+      class="pointer-events-none absolute left-4 z-10 flex w-10 justify-center"
+      :style="threadLineAboveOverlayStyle"
+      aria-hidden="true"
+    >
+      <div class="w-[2px] bg-gray-200 dark:bg-zinc-700" :style="{ height: threadLineAboveOverlayHeight }" />
+    </div>
+    <!-- Overlay: line from bottom of avatar to bottom edge; overextends down to connect -->
+    <div
+      v-if="showThreadLineBelowAvatar"
+      class="pointer-events-none absolute left-4 z-10 flex w-10 justify-center"
+      :style="threadLineBelowOverlayStyle"
+      aria-hidden="true"
+    >
+      <div class="w-[2px] h-full bg-gray-200 dark:bg-zinc-700" />
+    </div>
     <div class="flex gap-3">
-      <NuxtLink
-        v-if="authorProfilePath"
-        :to="authorProfilePath"
-        class="group shrink-0"
-        :aria-label="`View @${post.author.username} profile`"
-      >
+      <div class="shrink-0 flex flex-col w-10">
+        <NuxtLink
+          v-if="authorProfilePath"
+          :to="authorProfilePath"
+          class="group shrink-0"
+          :aria-label="`View @${post.author.username} profile`"
+        >
+          <AppAvatarCircle
+            :src="authorAvatarUrl"
+            :name="post.author.name"
+            :username="post.author.username"
+            size-class="h-10 w-10"
+            bg-class="moh-surface"
+          />
+        </NuxtLink>
         <AppAvatarCircle
+          v-else
           :src="authorAvatarUrl"
           :name="post.author.name"
           :username="post.author.username"
           size-class="h-10 w-10"
           bg-class="moh-surface"
         />
-      </NuxtLink>
-      <AppAvatarCircle
-        v-else
-        :src="authorAvatarUrl"
-        :name="post.author.name"
-        :username="post.author.username"
-        size-class="h-10 w-10"
-        bg-class="moh-surface"
-      />
+      </div>
 
-      <div class="min-w-0 flex-1">
-        <div class="relative">
+      <div class="relative z-10 min-w-0 flex-1" :class="{ 'pt-3': showThreadLineAboveAvatar }">
+        <div class="relative" @click.stop>
           <AppPostHeaderLine
             :display-name="post.author.name || post.author.username || 'User'"
             :username="post.author.username || ''"
@@ -50,7 +81,11 @@
           <AppPostRowMoreMenu :items="moreMenuItems" :tooltip="moreTooltip" />
         </div>
 
-        <AppPostRowBody :body="post.body" :has-media="Boolean(post.media?.length)" />
+        <AppPostRowBody
+          :body="post.body"
+          :has-media="Boolean(post.media?.length)"
+          :mentions="post.mentions"
+        />
 
         <AppPostMediaGrid v-if="post.media?.length" :media="post.media" />
 
@@ -74,10 +109,10 @@
           </span>
         </div>
 
-        <div class="mt-3 flex items-center justify-between moh-text-muted">
+          <div class="mt-3 flex items-center justify-between moh-text-muted">
           <div class="flex items-center gap-1">
-            <!-- Fixed-width action slots: icon + up to 3-digit count -->
-            <div class="inline-flex w-16 items-center justify-start">
+            <!-- Comment: hidden for only-me posts -->
+            <div v-if="!isOnlyMe" class="inline-flex w-16 items-center justify-start">
               <button
                 type="button"
                 class="inline-flex h-9 w-9 items-center justify-center rounded-full transition-colors moh-surface-hover"
@@ -88,8 +123,21 @@
               >
                 <i class="pi pi-comment text-[18px]" aria-hidden="true" />
               </button>
-              <!-- Comments not implemented yet; reserve space so layout stays consistent -->
-              <span class="ml-0 inline-block w-6 select-none text-left text-xs tabular-nums moh-text-muted" aria-hidden="true" />
+              <NuxtLink
+                v-if="displayedCommentCount > 0"
+                :to="postPermalink"
+                class="ml-0 inline-block min-w-[1.5rem] select-none text-left text-xs tabular-nums moh-text-muted hover:underline"
+                aria-label="View comments"
+              >
+                {{ commentCountLabel ?? '' }}
+              </NuxtLink>
+              <span
+                v-else
+                class="ml-0 inline-block w-6 select-none text-left text-xs tabular-nums moh-text-muted"
+                aria-hidden="true"
+              >
+                {{ commentCountLabel ?? '' }}
+              </span>
             </div>
 
             <div v-if="!isOnlyMe" class="inline-flex w-16 items-center justify-start">
@@ -176,14 +224,28 @@ import type { MenuItem } from 'primevue/menuitem'
 import { siteConfig } from '~/config/site'
 import { tinyTooltip } from '~/utils/tiny-tooltip'
 import { getApiErrorMessage } from '~/utils/api-error'
+import { formatShortCount } from '~/utils/text'
 import { useCopyToClipboard } from '~/composables/useCopyToClipboard'
+import { usePostCountBumps } from '~/composables/usePostCountBumps'
 import { useInViewOnce } from '~/composables/useInViewOnce'
 
 const props = defineProps<{
   post: FeedPost
   clickable?: boolean
+  /** When true, omit the bottom border (e.g. parent in a thread block). */
+  noBorderBottom?: boolean
+  /** When true, show a vertical line in the avatar column from the bottom of the avatar down (parent in a thread). */
+  showThreadLineBelowAvatar?: boolean
+  /** When true, show a vertical line from the top of the row down to the top of the avatar (reply in a thread). */
+  showThreadLineAboveAvatar?: boolean
+  /** When true, omit bottom padding (e.g. parent in a thread block). */
+  noPaddingBottom?: boolean
+  /** When true, omit top padding (e.g. reply in a thread so lines connect). */
+  noPaddingTop?: boolean
   /** When true, activate this post's video as soon as it's ready (e.g. newly posted). */
   activateVideoOnMount?: boolean
+  /** When true, use tighter vertical padding (e.g. in comment lists). */
+  compact?: boolean
 }>()
 const emit = defineEmits<{
   (e: 'deleted', id: string): void
@@ -191,6 +253,23 @@ const emit = defineEmits<{
 
 const post = computed(() => props.post)
 const clickable = computed(() => props.clickable !== false)
+// Thread line overlays: 2px thickness; run to row edges and overextend so segments connect.
+const THREAD_LINE_OVEREXTEND = 4
+const AVATAR_H = 40
+const threadLineAboveOverlayStyle = computed(() => ({
+  top: props.noPaddingTop ? `${-THREAD_LINE_OVEREXTEND}px` : '0',
+}))
+const threadLineAboveOverlayHeight = computed(() =>
+  props.noPaddingTop ? `${THREAD_LINE_OVEREXTEND}px` : '12px',
+)
+const threadLineBelowOverlayStyle = computed(() => ({
+  top: `${AVATAR_H}px`,
+  bottom: `${-THREAD_LINE_OVEREXTEND}px`,
+}))
+const rowStyle = computed(() => ({
+  contentVisibility: 'auto' as const,
+  containIntrinsicSize: '240px',
+}))
 
 // Resource preservation: only do heavy work (metadata fetch + embeds) when the row is near viewport.
 const rowEl = ref<HTMLElement | null>(null)
@@ -390,13 +469,33 @@ async function deletePost() {
   }
 }
 
+const { getCommentCountBump } = usePostCountBumps()
 const boostEntry = computed(() => boostState.get(post.value))
 const isBoosted = computed(() => boostEntry.value.viewerHasBoosted)
 const boostCount = computed(() => boostEntry.value.boostCount)
 const boostCountLabel = computed(() => {
   const n = boostCount.value
   if (!n) return null
-  return String(n)
+  return formatShortCount(n)
+})
+const displayedCommentCount = computed(
+  () => (post.value.commentCount ?? 0) + getCommentCountBump(post.value.id),
+)
+const commentCountLabel = computed(() => {
+  const n = displayedCommentCount.value
+  if (n === 0) return null
+  return formatShortCount(n)
+})
+const mentionsList = computed(() => {
+  const m = post.value.mentions
+  if (!m?.length) return []
+  return m.map((x) => x.username).filter(Boolean)
+})
+const mentionsLabel = computed(() => mentionsList.value.length > 0)
+const mentionsTooltip = computed(() => {
+  const list = mentionsList.value
+  if (!list.length) return null
+  return tinyTooltip(list.map((u) => `@${u}`).join(', '))
 })
 const adminBoostScoreLabel = computed(() => {
   if (!viewerIsAdmin.value) return null
@@ -422,7 +521,9 @@ async function onBoostClick() {
   }
 }
 
-async function onCommentClick() {
+const { show: showReplyModal } = useReplyModal()
+
+function onCommentClick() {
   if (!viewerCanInteract.value) return
   if (!isAuthed.value) {
     showAuthActionModal({ kind: 'login', action: 'comment' })
@@ -432,14 +533,7 @@ async function onCommentClick() {
     showAuthActionModal({ kind: 'verify', action: 'comment' })
     return
   }
-
-  // Comments aren't implemented yet; show not-yet message.
-  toast.push({
-    title: "Comments aren't available yet.",
-    message: "We're still building this.",
-    tone: 'public',
-    durationMs: 5000,
-  })
+  showReplyModal(post.value)
 }
 
 const { copyText: copyToClipboard } = useCopyToClipboard()

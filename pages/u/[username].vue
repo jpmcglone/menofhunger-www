@@ -72,7 +72,7 @@
 
         <div v-else class="relative mt-3 -mx-4">
           <div v-for="p in userPosts.posts.value" :key="p.id">
-            <AppPostRow :post="p" @deleted="userPosts.removePost" />
+            <AppFeedPostRow :post="p" @deleted="userPosts.removePost" />
           </div>
         </div>
       </div>

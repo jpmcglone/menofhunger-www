@@ -1,6 +1,7 @@
 import type { CreatePostResponse, FeedPost, GetPostsResponse, PostMediaKind, PostMediaSource, PostVisibility } from '~/types/api'
 import { getApiErrorMessage } from '~/utils/api-error'
 import { useMiddleScroller } from '~/composables/useMiddleScroller'
+import { usePostCountBumps } from '~/composables/usePostCountBumps'
 
 type FeedFilter = 'all' | 'public' | PostVisibility
 type FeedSort = 'new' | 'trending'
@@ -8,6 +9,7 @@ type FeedSort = 'new' | 'trending'
 export function usePostsFeed(options: { visibility?: Ref<FeedFilter>; followingOnly?: Ref<boolean>; sort?: Ref<FeedSort> } = {}) {
   const { apiFetchData } = useApiClient()
   const middleScrollerEl = useMiddleScroller()
+  const { clearBumpsForPostIds } = usePostCountBumps()
 
   const posts = useState<FeedPost[]>('posts-feed', () => [])
   const nextCursor = useState<string | null>('posts-feed-next-cursor', () => null)
@@ -35,6 +37,7 @@ export function usePostsFeed(options: { visibility?: Ref<FeedFilter>; followingO
       posts.value = res.posts
       nextCursor.value = res.nextCursor
       lastHardRefreshMs.value = Date.now()
+      clearBumpsForPostIds(res.posts.map((p) => p.id))
     } catch (e: unknown) {
       error.value = getApiErrorMessage(e) || 'Failed to load posts.'
     } finally {
@@ -156,6 +159,7 @@ export function usePostsFeed(options: { visibility?: Ref<FeedFilter>; followingO
       })
       posts.value = [...posts.value, ...res.posts]
       nextCursor.value = res.nextCursor
+      clearBumpsForPostIds(res.posts.map((p) => p.id))
     } catch (e: unknown) {
       error.value = getApiErrorMessage(e) || 'Failed to load more posts.'
     } finally {

@@ -38,6 +38,11 @@ export type PostAuthor = {
   avatarUrl: string | null
 }
 
+export type PostMention = {
+  id: string
+  username: string
+}
+
 export type FeedPost = {
   id: string
   createdAt: string
@@ -45,6 +50,11 @@ export type FeedPost = {
   visibility: PostVisibility
   boostCount: number
   bookmarkCount: number
+  commentCount?: number
+  parentId?: string | null
+  /** When present, this post is a reply and the parent is included for thread display. */
+  parent?: FeedPost
+  mentions?: PostMention[]
   media: PostMedia[]
   viewerHasBoosted?: boolean
   viewerHasBookmarked?: boolean
@@ -114,6 +124,15 @@ export type GetPostsResponse = {
 
 export type GetPostResponse = {
   post: FeedPost
+}
+
+export type GetPostCommentsResponse = {
+  comments: FeedPost[]
+  nextCursor: string | null
+}
+
+export type GetThreadParticipantsResponse = {
+  participants: Array<{ id: string; username: string }>
 }
 
 export type GetUserPostsResponse = {

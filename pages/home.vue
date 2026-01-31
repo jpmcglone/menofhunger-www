@@ -46,7 +46,7 @@
 
           <div class="relative">
             <div v-for="p in posts" :key="p.id">
-              <AppPostRow
+              <AppFeedPostRow
                 :post="p"
                 :activate-video-on-mount="p.id === newlyPostedVideoPostId"
                 @deleted="removePost"

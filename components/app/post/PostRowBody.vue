@@ -11,6 +11,14 @@
       >
         {{ seg.text }}
       </a>
+      <NuxtLink
+        v-else-if="seg.mentionUsername"
+        :to="`/u/${encodeURIComponent(seg.mentionUsername)}`"
+        class="font-medium underline underline-offset-2 decoration-2 moh-mention-link"
+        @click.stop
+      >
+        {{ seg.text }}
+      </NuxtLink>
       <span v-else>{{ seg.text }}</span>
     </template>
   </p>
@@ -21,11 +29,13 @@ import LinkifyIt from 'linkify-it'
 import { siteConfig } from '~/config/site'
 import { extractLinksFromText } from '~/utils/link-utils'
 
-type TextSegment = { text: string; href?: string }
+type TextSegment = { text: string; href?: string; mentionUsername?: string }
 
 const props = defineProps<{
   body: string
   hasMedia: boolean
+  /** Usernames from post.mentions; @username in body that match (case-insensitive) become profile links. */
+  mentions?: Array<{ id: string; username: string }>
 }>()
 
 const linkify = new LinkifyIt()
@@ -134,12 +144,41 @@ const displayBody = computed(() => {
   return body.replace(re, '').replace(/\s+$/, '')
 })
 
+const mentionUsernamesLower = computed(() => {
+  const list = props.mentions ?? []
+  return new Set(list.map((x) => x.username.toLowerCase()).filter(Boolean))
+})
+
+function splitByMentions(text: string): TextSegment[] {
+  const usernamesLower = mentionUsernamesLower.value
+  if (!usernamesLower.size) return [{ text }]
+  const out: TextSegment[] = []
+  const re = /@([a-zA-Z0-9_]{1,120})/g
+  let lastEnd = 0
+  let m: RegExpExecArray | null
+  while ((m = re.exec(text)) !== null) {
+    const username = m[1]
+    if (!username) continue
+    if (lastEnd < m.index) out.push({ text: text.slice(lastEnd, m.index) })
+    if (usernamesLower.has(username.toLowerCase())) {
+      out.push({ text: m[0], mentionUsername: username })
+    } else {
+      out.push({ text: m[0] })
+    }
+    lastEnd = m.index + m[0].length
+  }
+  if (lastEnd < text.length) out.push({ text: text.slice(lastEnd) })
+  return out.length ? out : [{ text }]
+}
+
 const displayBodySegments = computed<TextSegment[]>(() => {
   const input = (displayBody.value ?? '').toString()
   if (!input) return [{ text: '' }]
 
   const matches = linkify.match(input) ?? []
-  if (!matches.length) return [{ text: input }]
+  if (!matches.length) {
+    return splitByMentions(input)
+  }
 
   const out: TextSegment[] = []
   let cursor = 0
@@ -148,17 +187,25 @@ const displayBodySegments = computed<TextSegment[]>(() => {
     const start = typeof (m as any).index === 'number' ? ((m as any).index as number) : -1
     const end = typeof (m as any).lastIndex === 'number' ? ((m as any).lastIndex as number) : -1
     if (start < 0 || end < 0 || end <= start) continue
-    if (start > cursor) out.push({ text: input.slice(cursor, start) })
+    if (start > cursor) {
+      const plain = input.slice(cursor, start)
+      out.push(...splitByMentions(plain))
+    }
 
     const text = input.slice(start, end)
     const href = (m.url ?? '').trim()
-    if (href && /^https?:\/\//i.test(href)) out.push({ text, href })
-    else out.push({ text })
+    if (href && /^https?:\/\//i.test(href)) {
+      out.push({ text, href })
+    } else {
+      out.push(...splitByMentions(text))
+    }
 
     cursor = end
   }
 
-  if (cursor < input.length) out.push({ text: input.slice(cursor) })
+  if (cursor < input.length) {
+    out.push(...splitByMentions(input.slice(cursor)))
+  }
   return out.length ? out : [{ text: input }]
 })
 </script>

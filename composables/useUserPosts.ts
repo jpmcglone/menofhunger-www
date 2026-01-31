@@ -1,5 +1,6 @@
 import type { FeedPost, GetUserPostsResponse } from '~/types/api'
 import { getApiErrorMessage } from '~/utils/api-error'
+import { usePostCountBumps } from '~/composables/usePostCountBumps'
 
 export type UserPostsFilter = 'all' | 'public' | 'verifiedOnly' | 'premiumOnly'
 
@@ -14,19 +15,25 @@ const EMPTY_COUNTS: PostCounts = {
 
 export async function useUserPosts(
   usernameLower: Ref<string>,
-  opts: { enabled?: Ref<boolean>; defaultToNewestAndAll?: boolean } = {},
+  opts: {
+    enabled?: Ref<boolean>
+    defaultToNewestAndAll?: boolean
+    /** When set, use separate cookie keys (e.g. for permalink "more from author" so it doesn't share state with profile). */
+    cookieKeyPrefix?: string
+  } = {},
 ) {
   const { apiFetchData } = useApiClient()
   const { user: authUser } = useAuth()
   const enabled = opts.enabled ?? computed(() => true)
+  const prefix = opts.cookieKeyPrefix ?? 'moh.profile.posts'
 
-  const filter = useCookie<UserPostsFilter>('moh.profile.posts.filter.v1', {
+  const filter = useCookie<UserPostsFilter>(`${prefix}.filter.v1`, {
     default: () => 'all',
     sameSite: 'lax',
     path: '/',
     maxAge: 60 * 60 * 24 * 365,
   })
-  const sort = useCookie<'new' | 'trending'>('moh.profile.posts.sort.v1', {
+  const sort = useCookie<'new' | 'trending'>(`${prefix}.sort.v1`, {
     default: () => 'new',
     sameSite: 'lax',
     path: '/',
@@ -96,6 +103,7 @@ export async function useUserPosts(
       )
       posts.value = res.posts
       counts.value = res.counts ?? counts.value
+      clearBumpsForPostIds(res.posts.map((p) => p.id))
     } catch (e: unknown) {
       error.value = getApiErrorMessage(e) || 'Failed to load posts.'
     } finally {
@@ -122,7 +130,7 @@ export async function useUserPosts(
   // Initial SSR-friendly load (All)
   if (enabled.value) {
     const { data: initial, error: initialErr } = await useAsyncData(
-      () => `profile-posts:${usernameLower.value}`,
+      () => `user-posts:${prefix}:${usernameLower.value}`,
       async () => {
         return await apiFetchData<GetUserPostsResponse>(
           `/posts/user/${encodeURIComponent(usernameLower.value)}`,

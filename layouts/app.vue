@@ -20,6 +20,7 @@
     </ClientOnly>
     <AppOnboardingGate />
     <AppAuthActionModal />
+    <AppReplyModal />
     <div :class="['h-dvh overflow-hidden moh-bg moh-text', showStatusBg ? 'moh-status-tone' : '']">
       <div class="mx-auto flex h-full w-full max-w-6xl px-0 sm:px-4 xl:max-w-7xl">
         <!-- Left Nav (independent scroll) -->

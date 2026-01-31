@@ -7,8 +7,8 @@
     ]"
   >
     <div v-if="isAuthed" class="grid grid-cols-[2.5rem_minmax(0,1fr)] gap-x-3">
-      <!-- Row 1: visibility picker (above, right-aligned) -->
-      <div class="col-start-2 flex justify-end items-end mb-3 sm:mb-2">
+      <!-- Row 1: visibility picker (hidden in reply mode) -->
+      <div v-if="!replyTo" class="col-start-2 flex justify-end items-end mb-3 sm:mb-2">
         <AppComposerVisibilityPicker
           v-model="visibility"
           :allowed="allowedComposerVisibilities"
@@ -165,7 +165,7 @@
               {{ postCharCount }}/{{ postMaxLen }}
             </div>
             <Button
-              label="Post"
+              :label="replyTo ? 'Reply' : 'Post'"
               rounded
               :outlined="postButtonOutlined"
               severity="secondary"
@@ -228,6 +228,8 @@ const props = defineProps<{
   showDivider?: boolean
   // Optional override used on /home so the new post can be inserted optimistically.
   createPost?: (body: string, visibility: PostVisibility, media: CreateMediaPayload[]) => Promise<{ id: string } | null>
+  // When set, composer is in reply mode: visibility fixed to parent, parent_id + mentions sent.
+  replyTo?: { parentId: string; visibility: PostVisibility; mentionUsernames: string[] }
 }>()
 
 const route = useRoute()
@@ -353,6 +355,7 @@ const composerTextareaVars = computed<Record<string, string>>(() => {
 })
 
 const postMaxLen = computed(() => (isPremium.value ? 500 : 200))
+const composerPlaceholder = computed(() => (props.replyTo ? 'Post your reply…' : "What's happening?"))
 const postCharCount = computed(() => draft.value.length)
 
 const canPost = computed(() => Boolean(isAuthed.value && (viewerIsVerified.value || visibility.value === 'onlyMe')))
@@ -380,10 +383,24 @@ const submit = async () => {
   submitting.value = true
   try {
     const mediaPayload: CreateMediaPayload[] = toCreatePayload(composerMedia.value)
+    const effectiveVisibility = props.replyTo ? props.replyTo.visibility : visibility.value
 
-    const created =
-      (await props.createPost?.(draft.value, visibility.value, mediaPayload)) ??
-      (await apiFetchData<CreatePostResponse>('/posts', { method: 'POST', body: { body: draft.value, visibility: visibility.value, media: mediaPayload } })).post
+    const created = props.createPost
+      ? await props.createPost(draft.value, effectiveVisibility, mediaPayload)
+      : (
+          await apiFetchData<CreatePostResponse>('/posts', {
+            method: 'POST',
+            body: props.replyTo
+              ? {
+                  body: draft.value,
+                  visibility: effectiveVisibility,
+                  parent_id: props.replyTo.parentId,
+                  mentions: props.replyTo.mentionUsernames,
+                  media: mediaPayload,
+                }
+              : { body: draft.value, visibility: effectiveVisibility, media: mediaPayload },
+          })
+        ).post
 
     draft.value = ''
     clearAll()
@@ -391,23 +408,24 @@ const submit = async () => {
 
     const id = (created as any)?.id as string | undefined
     if (id) {
-      emit('posted', { id, visibility: visibility.value })
+      emit('posted', { id, visibility: effectiveVisibility })
+      const toneVisibility = effectiveVisibility
       toast.push({
-        title: 'Posted',
+        title: props.replyTo ? 'Reply posted' : 'Posted',
         message:
-          visibility.value === 'premiumOnly'
+          toneVisibility === 'premiumOnly'
             ? 'Premium-only post · Tap to view.'
-            : visibility.value === 'verifiedOnly'
+            : toneVisibility === 'verifiedOnly'
               ? 'Verified-only post · Tap to view.'
-              : visibility.value === 'onlyMe'
+              : toneVisibility === 'onlyMe'
                 ? 'Only you can see this · Tap to view.'
                 : 'Tap to view.',
         tone:
-          visibility.value === 'premiumOnly'
+          toneVisibility === 'premiumOnly'
             ? 'premiumOnly'
-            : visibility.value === 'verifiedOnly'
+            : toneVisibility === 'verifiedOnly'
               ? 'verifiedOnly'
-              : visibility.value === 'onlyMe'
+              : toneVisibility === 'onlyMe'
                 ? 'onlyMe'
                 : 'public',
         to: `/p/${encodeURIComponent(id)}`,

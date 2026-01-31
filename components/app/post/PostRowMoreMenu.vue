@@ -11,7 +11,7 @@
       @keydown.enter.stop.prevent="toggle($event)"
       @keydown.space.stop.prevent="toggle($event)"
     >
-      <i class="pi pi-ellipsis-v text-[18px]" aria-hidden="true" />
+      <i class="pi pi-ellipsis-h text-[18px]" aria-hidden="true" />
     </a>
     <Menu v-if="mounted" ref="menuRef" :model="items" popup />
   </div>

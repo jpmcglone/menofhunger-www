@@ -1,8 +1,10 @@
 import type { FeedPost, GetPostsResponse } from '~/types/api'
 import { getApiErrorMessage } from '~/utils/api-error'
+import { usePostCountBumps } from '~/composables/usePostCountBumps'
 
 export function useOnlyMePosts() {
   const { apiFetchData } = useApiClient()
+  const { clearBumpsForPostIds } = usePostCountBumps()
 
   const posts = useState<FeedPost[]>('posts-only-me', () => [])
   const nextCursor = useState<string | null>('posts-only-me-next-cursor', () => null)
@@ -39,6 +41,7 @@ export function useOnlyMePosts() {
       })
       posts.value = [...posts.value, ...res.posts]
       nextCursor.value = res.nextCursor
+      clearBumpsForPostIds(res.posts.map((p) => p.id))
     } catch (e: unknown) {
       error.value = getApiErrorMessage(e) || 'Failed to load more posts.'
     } finally {

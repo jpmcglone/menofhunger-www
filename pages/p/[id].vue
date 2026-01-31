@@ -25,12 +25,59 @@
 
     <div v-else-if="post" class="-mx-0">
       <AppPostRow :post="post" :clickable="false" @deleted="onDeleted" />
+
+      <template v-if="!isOnlyMe">
+        <div v-if="showReplyComposer" class="border-b border-gray-200 dark:border-zinc-800">
+          <AppPostComposer
+            v-if="replyContext"
+            :reply-to="replyContext"
+            auto-focus
+            :show-divider="false"
+            @posted="onReplyPosted"
+          />
+        </div>
+
+        <div v-if="comments.length > 0" class="border-b border-gray-200 dark:border-zinc-800">
+          <div class="px-4 py-2 text-sm font-medium moh-text-muted">
+            Comments
+          </div>
+          <div v-for="c in comments" :key="c.id">
+            <AppFeedPostRow
+              v-if="c.parent"
+              :post="c"
+              compact
+              @deleted="(id: string) => onCommentDeleted(id)"
+            />
+            <AppPostRow
+              v-else
+              :post="c"
+              compact
+              @deleted="onCommentDeleted"
+            />
+          </div>
+          <div v-if="commentsNextCursor" class="flex justify-center px-4 py-4">
+            <Button
+              label="Load more comments"
+              severity="secondary"
+              rounded
+              :loading="commentsLoading"
+              :disabled="commentsLoading"
+              @click="loadMoreComments"
+            />
+          </div>
+        </div>
+      </template>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import type { FeedPost, GetPostResponse } from '~/types/api'
+import type {
+  FeedPost,
+  GetPostCommentsResponse,
+  GetPostResponse,
+  GetThreadParticipantsResponse,
+} from '~/types/api'
 import { getApiErrorMessage } from '~/utils/api-error'
 import { siteConfig } from '~/config/site'
 import { extractLinksFromText, safeUrlHostname } from '~/utils/link-utils'
@@ -38,6 +85,7 @@ import type { LinkMetadata } from '~/utils/link-metadata'
 import { getLinkMetadata } from '~/utils/link-metadata'
 import { excerpt, normalizeForMeta } from '~/utils/text'
 import { usePostPermalinkSeo } from '~/composables/usePostPermalinkSeo'
+import { usePostCountBumps } from '~/composables/usePostCountBumps'
 
 definePageMeta({
   layout: 'app',
@@ -72,6 +120,95 @@ const { data, error } = await useAsyncData(`post:${postId.value}`, async () => {
 })
 
 post.value = data.value?.post ?? null
+
+const isOnlyMe = computed(() => post.value?.visibility === 'onlyMe')
+
+const routeQuery = computed(() => route.query)
+const showReplyComposer = computed(() => routeQuery.value?.reply === '1' && !isOnlyMe.value)
+
+const threadParticipants = ref<GetThreadParticipantsResponse['participants']>([])
+async function fetchThreadParticipants() {
+  if (!post.value?.id || isOnlyMe.value) return
+  try {
+    const res = await apiFetchData<GetThreadParticipantsResponse>(
+      `/posts/${encodeURIComponent(post.value.id)}/thread-participants`,
+      { method: 'GET' },
+    )
+    threadParticipants.value = res.participants ?? []
+  } catch {
+    threadParticipants.value = []
+  }
+}
+
+const replyContext = computed(() => {
+  if (!post.value || !showReplyComposer.value) return null
+  const usernames = threadParticipants.value.map((p) => p.username).filter(Boolean)
+  return {
+    parentId: post.value.id,
+    visibility: post.value.visibility,
+    mentionUsernames: usernames,
+  }
+})
+
+const comments = ref<FeedPost[]>([])
+const commentsNextCursor = ref<string | null>(null)
+const commentsLoading = ref(false)
+
+async function fetchComments(cursor: string | null = null) {
+  if (!post.value?.id || isOnlyMe.value) return
+  if (cursor === null) commentsLoading.value = true
+  try {
+    const path = `/posts/${encodeURIComponent(post.value.id)}/comments?limit=30${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''}`
+    const res = await apiFetchData<GetPostCommentsResponse>(path, { method: 'GET' })
+    if (cursor === null) {
+      comments.value = res.comments ?? []
+    } else {
+      comments.value = [...comments.value, ...(res.comments ?? [])]
+    }
+    commentsNextCursor.value = res.nextCursor ?? null
+  } catch {
+    if (cursor === null) comments.value = []
+    commentsNextCursor.value = null
+  } finally {
+    commentsLoading.value = false
+  }
+}
+
+function loadMoreComments() {
+  if (!commentsNextCursor.value || commentsLoading.value) return
+  void fetchComments(commentsNextCursor.value)
+}
+
+const { bumpCommentCount } = usePostCountBumps()
+
+function onReplyPosted() {
+  if (post.value?.id) {
+    bumpCommentCount(post.value.id)
+    post.value = { ...post.value, commentCount: (post.value.commentCount ?? 0) + 1 }
+  }
+  void fetchComments(null)
+  void fetchThreadParticipants()
+}
+
+function onCommentDeleted(commentId: string) {
+  comments.value = comments.value.filter((c) => c.id !== commentId)
+}
+
+watch(
+  () => [post.value?.id, isOnlyMe.value] as const,
+  ([id, onlyMe]) => {
+    if (id && !onlyMe) {
+      void fetchThreadParticipants()
+      void fetchComments(null)
+    } else {
+      comments.value = []
+      commentsNextCursor.value = null
+      threadParticipants.value = []
+    }
+  },
+  { immediate: true },
+)
+
 if (error.value) {
   // Nuxt error shapes vary across SSR/client; normalize to something useful.
   const e: any = error.value
