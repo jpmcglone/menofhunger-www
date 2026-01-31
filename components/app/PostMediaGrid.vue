@@ -1,15 +1,27 @@
 <template>
-  <div v-if="items.length === 1" class="mt-3 pr-12">
-    <img
+  <div v-if="items.length === 1" class="mt-3">
+    <button
       v-if="items[0]?.url"
-      :src="items[0]?.url"
-      class="block w-auto max-w-full max-h-[18rem] rounded-xl cursor-zoom-in select-none"
-      :class="hideThumbs ? 'opacity-0 transition-opacity duration-150' : 'opacity-100'"
-      alt=""
-      loading="lazy"
-      decoding="async"
+      type="button"
+      class="block cursor-zoom-in select-none text-left"
+      :class="singleBoxClass"
+      :style="singleBoxStyle"
+      aria-label="View image"
       @click.stop="openAt($event, 0)"
-    />
+    >
+      <!-- Placeholder surface to reserve space pre-load -->
+      <div class="absolute inset-0 bg-black/5 dark:bg-white/5" aria-hidden="true" />
+      <img
+        :src="items[0]?.url"
+        class="absolute inset-0 h-full w-full object-contain"
+        :class="hideThumbs ? 'opacity-0 transition-opacity duration-150' : 'opacity-100'"
+        :width="singleWidth ?? undefined"
+        :height="singleHeight ?? undefined"
+        alt=""
+        loading="lazy"
+        decoding="async"
+      />
+    </button>
     <div
       v-else
       class="flex h-[18rem] w-full items-center justify-center rounded-xl border moh-border moh-surface"
@@ -22,7 +34,7 @@
     </div>
   </div>
 
-  <div v-else-if="items.length > 1" class="mt-3 pr-12">
+  <div v-else-if="items.length > 1" class="mt-3">
     <div class="w-full overflow-hidden rounded-xl border moh-border">
       <div class="grid gap-px bg-gray-200 dark:bg-zinc-800" :class="gridClass" :style="gridStyle">
         <template v-for="(m, idx) in items" :key="m.id || idx">
@@ -76,6 +88,39 @@ const viewer = useImageLightbox()
 const items = computed(() => (props.media ?? []).filter((m) => Boolean(m?.url) || Boolean(m?.deletedAt)).slice(0, 4))
 const hideThumbs = computed(() => viewer.kind.value === 'media' && viewer.hideOrigin.value)
 const urls = computed(() => items.value.map((m) => m.url).filter(Boolean))
+
+const single = computed(() => (items.value.length === 1 ? (items.value[0] ?? null) : null))
+const singleWidth = computed(() => (typeof single.value?.width === 'number' ? single.value.width : null))
+const singleHeight = computed(() => (typeof single.value?.height === 'number' ? single.value.height : null))
+const singleAspectRatio = computed(() => {
+  const w = singleWidth.value ?? 0
+  const h = singleHeight.value ?? 0
+  if (!w || !h) return null
+  return w / h
+})
+// Treat only truly-wide images as "full width"; otherwise keep the 18rem height and let width shrink.
+const singleIsVeryWide = computed(() => {
+  const r = singleAspectRatio.value
+  if (!r) return false
+  return r >= 1.6
+})
+
+const singleBoxStyle = computed<Record<string, string>>(() => {
+  const w = singleWidth.value
+  const h = singleHeight.value
+  if (!w || !h) return {}
+  return { aspectRatio: `${w} / ${h}` }
+})
+const singleBoxClass = computed(() => {
+  // Goal: match multi-media max height (18rem) and avoid layout shift.
+  // - Very wide: take full width; height is derived from aspect ratio and naturally shorter.
+  // - Not very wide (including square-ish): lock height to 18rem and let width shrink to preserve aspect ratio.
+  // - Missing dims: fallback to fixed 18rem box.
+  if (!single.value) return ''
+  if (!singleWidth.value || !singleHeight.value) return 'relative overflow-hidden rounded-xl h-[18rem] w-full'
+  if (singleIsVeryWide.value) return 'relative overflow-hidden rounded-xl w-full max-h-[18rem]'
+  return 'relative overflow-hidden rounded-xl h-[18rem] w-auto max-w-full'
+})
 
 const gridClass = computed(() => {
   const n = items.value.length

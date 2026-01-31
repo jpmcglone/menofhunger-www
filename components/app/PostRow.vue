@@ -35,35 +35,37 @@
 
       <div class="min-w-0 flex-1">
         <div class="relative">
-          <div class="min-w-0 pr-10">
-            <AppPostHeaderLine
-              :display-name="post.author.name || post.author.username || 'User'"
-              :username="post.author.username || ''"
-              :verified-status="post.author.verifiedStatus"
-              :premium="post.author.premium"
-              :profile-path="authorProfilePath"
-              :post-id="post.id"
-              :post-permalink="postPermalink"
-              :created-at-short="createdAtShort"
-              :created-at-tooltip="createdAtTooltip"
-            />
-          </div>
+          <AppPostHeaderLine
+            :display-name="post.author.name || post.author.username || 'User'"
+            :username="post.author.username || ''"
+            :verified-status="post.author.verifiedStatus"
+            :premium="post.author.premium"
+            :profile-path="authorProfilePath"
+            :post-id="post.id"
+            :post-permalink="postPermalink"
+            :created-at-short="createdAtShort"
+            :created-at-tooltip="createdAtTooltip"
+          />
 
-          <div class="absolute -right-0.5 -top-0.5 shrink-0">
-            <Button
-              icon="pi pi-ellipsis-v"
-              text
-              rounded
-              severity="secondary"
+          <!-- Overlay: must not affect layout -->
+          <div class="absolute right-0 -top-2.5 z-20">
+            <a
+              role="button"
+              tabindex="0"
+              class="inline-flex h-9 w-9 items-center justify-center rounded-full transition-opacity hover:opacity-70"
               aria-label="More"
               v-tooltip.bottom="moreTooltip"
-              @click="toggleMoreMenu"
-            />
+              @click.stop="toggleMoreMenu($event)"
+              @keydown.enter.stop.prevent="toggleMoreMenu($event)"
+              @keydown.space.stop.prevent="toggleMoreMenu($event)"
+            >
+              <i class="pi pi-ellipsis-v text-[18px]" aria-hidden="true" />
+            </a>
             <Menu v-if="moreMenuMounted" ref="moreMenuRef" :model="moreMenuItems" popup />
           </div>
         </div>
 
-        <p class="mt-0.5 whitespace-pre-wrap break-words moh-text pr-12">
+        <p class="mt-0.5 whitespace-pre-wrap break-words moh-text">
           <template v-for="(seg, idx) in displayBodySegments" :key="idx">
             <a
               v-if="seg.href"
@@ -81,7 +83,7 @@
 
         <AppPostMediaGrid v-if="post.media?.length" :media="post.media" />
 
-        <div v-if="showLinkPreview && rowInView" class="mt-3 pr-12">
+        <div v-if="showLinkPreview && rowInView" class="mt-3">
           <!-- Video embeds (special cases) -->
           <div
             v-if="youtubeEmbedUrl || isPreviewLinkRumble"
@@ -158,7 +160,7 @@
           :enabled="embeddedPreviewEnabled"
         />
 
-        <div v-if="visibilityTag || isPreviewLinkRumble" class="mt-2 flex items-center justify-between gap-3 pr-12">
+        <div v-if="visibilityTag || isPreviewLinkRumble" class="mt-2 flex items-center justify-between gap-3">
           <span
             v-if="visibilityTag"
             class="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold border cursor-default"

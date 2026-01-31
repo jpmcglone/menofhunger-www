@@ -27,13 +27,6 @@ export default defineNuxtConfig({
         { charset: 'utf-8' },
         { name: 'viewport', content: 'width=device-width, initial-scale=1' }
       ],
-      link: [
-        // Preload custom cursors to avoid flicker (OS cursor showing briefly while assets load)
-        { rel: 'preload', as: 'image', href: '/cursors/cursor.svg', type: 'image/svg+xml' },
-        { rel: 'preload', as: 'image', href: '/cursors/cursor-hand.svg', type: 'image/svg+xml' },
-        { rel: 'preload', as: 'image', href: '/cursors/cursor-light.svg', type: 'image/svg+xml' },
-        { rel: 'preload', as: 'image', href: '/cursors/cursor-hand-light.svg', type: 'image/svg+xml' }
-      ],
       title: siteConfig.meta.title
     }
   },

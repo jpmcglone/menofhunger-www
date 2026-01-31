@@ -301,10 +301,10 @@ const detailsLoading = ref(false)
 const detailsError = ref<string | null>(null)
 const details = ref<AdminImageReviewDetailResponse | null>(null)
 
-watchEffect(() => {
-  if (!import.meta.client) return
-  // Load once on first view.
-  if (imgItems.value.length) return
+const didInitialLoad = ref(false)
+onMounted(() => {
+  if (didInitialLoad.value) return
+  didInitialLoad.value = true
   void loadImages(true)
 })
 

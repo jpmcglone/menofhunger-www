@@ -145,9 +145,19 @@ definePageMeta({
 })
 
 useHead({
-  htmlAttrs: {
-    class: 'moh-landing'
-  }
+  htmlAttrs: { class: 'moh-landing' },
+  link: [
+    // Preload custom cursors on landing page only (preloading globally causes warnings on other pages).
+    // Pick the correct pair based on current color mode so both are actually used.
+    ...(() => {
+      const mode = useColorMode()
+      const isDark = mode.value === 'dark'
+      const hrefs = isDark
+        ? ['/cursors/cursor.svg', '/cursors/cursor-hand.svg']
+        : ['/cursors/cursor-light.svg', '/cursors/cursor-hand-light.svg']
+      return hrefs.map((href) => ({ rel: 'preload', as: 'image', href, type: 'image/svg+xml' }))
+    })()
+  ]
 })
 
 const roanokeMeetupUrl = 'https://www.meetup.com/menofhunger/'

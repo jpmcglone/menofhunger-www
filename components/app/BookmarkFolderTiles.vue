@@ -6,20 +6,20 @@
       <button
         v-if="showScrollArrows && canScrollLeft"
         type="button"
-        class="absolute left-0 top-1/2 -translate-y-1/2 z-10 h-10 w-10 flex items-center justify-center rounded-full border moh-border moh-frosted pl-1"
+        class="absolute left-2 sm:left-0 top-1/2 -translate-y-1/2 z-10 h-10 w-10 flex items-center justify-center rounded-full border moh-border moh-frosted"
         aria-label="Scroll folders left"
         @click="scrollByAmount(-1)"
       >
-        <i class="pi pi-chevron-left text-sm moh-text" aria-hidden="true" />
+        <i class="pi pi-chevron-left text-sm moh-text -translate-x-px" aria-hidden="true" />
       </button>
       <button
         v-if="showScrollArrows && canScrollRight"
         type="button"
-        class="absolute right-0 top-1/2 -translate-y-1/2 z-10 h-10 w-10 flex items-center justify-center rounded-full border moh-border moh-frosted pr-1"
+        class="absolute right-2 sm:right-0 top-1/2 -translate-y-1/2 z-10 h-10 w-10 flex items-center justify-center rounded-full border moh-border moh-frosted"
         aria-label="Scroll folders right"
         @click="scrollByAmount(1)"
       >
-        <i class="pi pi-chevron-right text-sm moh-text" aria-hidden="true" />
+        <i class="pi pi-chevron-right text-sm moh-text translate-x-px" aria-hidden="true" />
       </button>
 
       <div

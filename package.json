@@ -11,29 +11,29 @@
   },
   "dependencies": {
     "@mediapipe/tasks-vision": "^0.10.32",
-    "@nuxt/content": "3.10.0",
-    "@nuxt/eslint": "1.12.1",
-    "@nuxt/fonts": "0.12.1",
-    "@nuxt/icon": "2.1.1",
+    "@nuxt/content": "3.11.0",
+    "@nuxt/eslint": "1.13.0",
+    "@nuxt/fonts": "0.13.0",
+    "@nuxt/icon": "2.2.1",
     "@nuxt/image": "2.0.0",
     "@nuxt/scripts": "0.13.2",
-    "@nuxt/test-utils": "3.21.0",
-    "@nuxt/ui": "^4.3.0",
+    "@nuxt/test-utils": "3.23.0",
+    "@nuxt/ui": "^4.4.0",
     "@primevue/nuxt-module": "^4.5.4",
     "@primevue/themes": "^4.5.4",
-    "@unhead/vue": "^2.1.1",
-    "better-sqlite3": "^12.5.0",
+    "@unhead/vue": "^2.1.2",
+    "better-sqlite3": "^12.6.2",
     "eslint": "^9.39.2",
     "linkify-it": "^5.0.0",
-    "nuxt": "^4.2.2",
+    "nuxt": "^4.3.0",
     "primeicons": "^7.0.0",
     "primevue": "^4.5.4",
     "typescript": "^5.9.3",
-    "vue": "^3.5.26",
+    "vue": "^3.5.27",
     "vue-advanced-cropper": "^2.8.9",
     "vue-router": "^4.6.4"
   },
   "devDependencies": {
-    "@types/node": "^25.0.10"
+    "@types/node": "^25.1.0"
   }
 }

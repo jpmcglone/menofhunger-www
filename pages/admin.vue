@@ -47,7 +47,11 @@
 
       <!-- Right: active admin route -->
       <main class="h-full overflow-y-auto">
-        <NuxtPage />
+        <!-- On desktop, the left pane is the "admin home"; keep the right pane empty on `/admin`. -->
+        <!-- On mobile, the left pane is hidden, so `/admin` should still render its contents. -->
+        <div :class="route.path === '/admin' ? 'md:hidden' : ''">
+          <NuxtPage />
+        </div>
       </main>
     </div>
   </div>
