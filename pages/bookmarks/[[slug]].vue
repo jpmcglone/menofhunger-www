@@ -1,5 +1,12 @@
 <template>
   <div>
+    <AppPageHeader
+      title="Bookmarks"
+      icon="pi-bookmark"
+      description="Saved posts and folders."
+      class="mb-4"
+    />
+
     <AppBookmarkFolderTiles
       :collections="collections"
       :active-slug="activeSlug"

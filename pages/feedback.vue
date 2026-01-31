@@ -1,13 +1,10 @@
 <template>
   <div class="mx-auto w-full max-w-2xl">
-    <div class="flex items-start justify-between gap-3">
-      <div class="min-w-0">
-        <h1 class="text-2xl font-bold tracking-tight">Feedback</h1>
-        <p class="mt-1 text-sm moh-text-muted">
-          Help us improve. Tell us what’s working, what’s broken, or what you want next.
-        </p>
-      </div>
-    </div>
+    <AppPageHeader
+      title="Feedback"
+      icon="pi-send"
+      description="Help us improve. Tell us what’s working, what’s broken, or what you want next."
+    />
 
     <div class="mt-6 space-y-4">
       <div class="rounded-xl border moh-border p-4">
@@ -38,14 +35,14 @@
 
           <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div class="text-xs moh-text-muted">
-              Feedback form is under construction. Submissions aren’t sent yet.
+              Submissions aren’t sent yet. Use the button to see the not-yet message.
             </div>
             <Button
               label="Submit"
               icon="pi pi-send"
               severity="secondary"
-              :disabled="true"
               v-tooltip.bottom="tinyTooltip('Coming soon')"
+              @click="onSubmit"
             />
           </div>
         </div>
@@ -86,5 +83,16 @@ const category = ref<Category>('feature')
 const email = ref('')
 const subject = ref('')
 const details = ref('')
+
+const { push: pushToast } = useAppToast()
+
+function onSubmit() {
+  pushToast({
+    title: 'Not available yet',
+    message: "We're still building this.",
+    tone: 'public',
+    durationMs: 5000,
+  })
+}
 </script>
 

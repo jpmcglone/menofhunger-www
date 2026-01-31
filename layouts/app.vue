@@ -203,7 +203,12 @@
                 isRightRailSearchHidden ? 'max-h-0 opacity-0 mb-0 pointer-events-none' : 'max-h-16 opacity-100 mb-4'
               ]"
             >
-              <InputText class="w-full" placeholder="Search…" />
+              <InputText
+                v-model="rightRailSearchQuery"
+                class="w-full"
+                placeholder="Search…"
+                @keydown.enter="goToExploreSearch"
+              />
             </div>
 
             <div class="space-y-4 transition-[transform] duration-200 ease-out">
@@ -230,6 +235,8 @@
                   </div>
                 </template>
               </Card>
+
+              <AppSupportDonateCard />
 
               <Card>
                 <template #title>What’s happening</template>
@@ -576,6 +583,12 @@ const primaryCssVars = computed(() => primaryTintCssForUser(user.value ?? null))
 useHead({
   style: [{ key: 'moh-primary-tint', textContent: primaryCssVars }],
 })
+
+const rightRailSearchQuery = ref('')
+function goToExploreSearch() {
+  const q = (rightRailSearchQuery.value ?? '').trim()
+  void navigateTo({ path: '/explore', query: q ? { q } : {} })
+}
 
 const middleScrollerEl = ref<HTMLElement | null>(null)
 const rightScrollerEl = ref<HTMLElement | null>(null)

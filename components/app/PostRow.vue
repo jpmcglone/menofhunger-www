@@ -303,10 +303,6 @@ function onRowClick(e: MouseEvent) {
   void goToPost()
 }
 
-function noop() {
-  // no-op for now (comments not implemented yet)
-}
-
 const createdAtDate = computed(() => new Date(post.value.createdAt))
 const createdAtShort = computed(() => formatShortDate(createdAtDate.value))
 const createdAtTooltip = computed(() => tinyTooltip(createdAtDate.value.toLocaleString()))
@@ -437,8 +433,13 @@ async function onCommentClick() {
     return
   }
 
-  // Comments aren't implemented yet; bring them to the post page as the next best action.
-  await navigateTo(postPermalink.value)
+  // Comments aren't implemented yet; show not-yet message.
+  toast.push({
+    title: "Comments aren't available yet.",
+    message: "We're still building this.",
+    tone: 'public',
+    durationMs: 5000,
+  })
 }
 
 const { copyText: copyToClipboard } = useCopyToClipboard()

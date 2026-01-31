@@ -1,6 +1,13 @@
 <template>
-  <div class="h-[calc(100dvh-9rem)] sm:h-[calc(100dvh-6.5rem)]">
-    <div class="grid h-full" :class="isTinyViewport ? 'grid-cols-1' : ''" :style="gridStyle">
+  <div class="flex h-[calc(100dvh-9rem)] flex-col sm:h-[calc(100dvh-6.5rem)]">
+    <AppPageHeader
+      title="Messages"
+      icon="pi-envelope"
+      description="Direct conversations. Coming soon."
+      class="mb-4 shrink-0"
+    />
+
+    <div class="grid min-h-0 flex-1" :class="isTinyViewport ? 'grid-cols-1' : ''" :style="gridStyle">
       <!-- Left column: thread list -->
       <section
         v-if="showListPane"
