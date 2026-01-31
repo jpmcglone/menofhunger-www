@@ -3,7 +3,7 @@
     :visible="dialogVisible"
     modal
     :draggable="false"
-    :closable="true"
+    :closable="false"
     :dismissable-mask="true"
     :style="{ width: 'min(36rem, calc(100vw - 2rem))', maxHeight: '90vh' }"
     class="reply-modal overflow-hidden flex flex-col"
@@ -26,37 +26,16 @@
     </template>
 
     <div v-if="parentPost" class="flex flex-col overflow-hidden">
-      <!-- Parent post (message you're commenting to) -->
-      <div class="border-b moh-border shrink-0">
-        <AppPostRow :post="parentPost" :clickable="false" />
+      <div class="px-4 pt-2 pb-2 shrink-0">
+        <AppReplyParentPreview :post="parentPost" />
       </div>
-
-      <!-- Replying to @username + thread line + composer -->
-      <div class="flex min-h-0">
-        <!-- Thread line: vertical bar connecting parent to reply -->
-        <div class="w-10 shrink-0 flex flex-col items-center">
-          <div class="w-px flex-1 min-h-[2rem] bg-gray-200 dark:bg-zinc-700" aria-hidden="true" />
-        </div>
-
-        <div class="flex-1 min-w-0 flex flex-col border-b moh-border">
-          <NuxtLink
-            :to="parentProfilePath"
-            class="inline-flex items-center gap-1 px-4 pt-2 pb-1 text-sm moh-text-muted hover:underline w-fit"
-          >
-            Replying to
-            <span class="font-medium moh-mention-link">@{{ parentPost.author?.username ?? '' }}</span>
-          </NuxtLink>
-          <div class="px-0 pb-0">
-            <AppPostComposer
-              v-if="replyContext"
-              :reply-to="replyContext"
-              auto-focus
-              :show-divider="false"
-              @posted="onReplyPosted"
-            />
-          </div>
-        </div>
-      </div>
+      <AppPostComposer
+        v-if="replyContext"
+        :reply-to="replyContext"
+        auto-focus
+        :show-divider="false"
+        @posted="onReplyPosted"
+      />
     </div>
   </Dialog>
 </template>
@@ -87,10 +66,9 @@ function close() {
   replyModal.hide()
 }
 
-const parentProfilePath = computed(() => {
-  const u = parentPost.value?.author?.username?.trim()
-  return u ? `/u/${encodeURIComponent(u)}` : '#'
-})
+const replyPlaceholder = computed(
+  () => `Reply to @${parentPost.value?.author?.username ?? 'post'}…`,
+)
 
 const threadParticipants = ref<GetThreadParticipantsResponse['participants']>([])
 

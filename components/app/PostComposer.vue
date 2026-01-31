@@ -7,14 +7,25 @@
     ]"
   >
     <div v-if="isAuthed" class="grid grid-cols-[2.5rem_minmax(0,1fr)] gap-x-3">
-      <!-- Row 1: visibility picker (hidden in reply mode) -->
-      <div v-if="!replyTo" class="col-start-2 flex justify-end items-end mb-3 sm:mb-2">
+      <!-- Row 1: visibility picker, or read-only scope tag in reply mode -->
+      <div class="col-start-2 flex justify-end items-end mb-3 sm:mb-2">
         <AppComposerVisibilityPicker
+          v-if="!replyTo"
           v-model="visibility"
           :allowed="allowedComposerVisibilities"
           :viewer-is-verified="viewerIsVerified"
           :is-premium="isPremium"
         />
+        <span
+          v-else
+          class="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold border cursor-default"
+          :class="scopeTagClass ? scopeTagClass : 'moh-text-muted border-gray-300 dark:border-zinc-600'"
+          v-tooltip.bottom="scopeTagTooltip"
+          aria-label="Reply visibility"
+        >
+          <i v-if="effectiveVisibility === 'onlyMe'" class="pi pi-eye-slash mr-1 text-[10px]" aria-hidden="true" />
+          {{ scopeTagLabel }}
+        </span>
       </div>
 
       <!-- Row 2: avatar + textarea start aligned -->
@@ -69,7 +80,7 @@
               rows="3"
               class="moh-composer-textarea w-full resize-none overflow-hidden rounded-xl border border-gray-300 bg-transparent px-3 py-2 text-[15px] leading-6 text-gray-900 placeholder:text-gray-500 focus:outline-none dark:border-zinc-700 dark:text-gray-50 dark:placeholder:text-zinc-500"
               :style="composerTextareaVars"
-              placeholder="What’s happening?"
+              :placeholder="composerPlaceholder"
               :maxlength="postMaxLen"
               @input="resizeComposerTextarea"
               @keydown="onComposerKeydown"
@@ -217,6 +228,7 @@ import type { CreatePostResponse, PostVisibility } from '~/types/api'
 import type { CreateMediaPayload } from '~/composables/useComposerMedia'
 import { PRIMARY_ONLYME_PURPLE, PRIMARY_PREMIUM_ORANGE, PRIMARY_TEXT_DARK, PRIMARY_TEXT_LIGHT, PRIMARY_VERIFIED_BLUE, primaryPaletteToCssVars } from '~/utils/theme-tint'
 import { tinyTooltip } from '~/utils/tiny-tooltip'
+import { visibilityTagClasses, visibilityTagLabel } from '~/utils/post-visibility'
 import { getApiErrorMessage } from '~/utils/api-error'
 
 const emit = defineEmits<{
@@ -226,6 +238,8 @@ const emit = defineEmits<{
 const props = defineProps<{
   autoFocus?: boolean
   showDivider?: boolean
+  /** Override textarea placeholder (e.g. "Reply to @john…" in reply modal). */
+  placeholder?: string
   // Optional override used on /home so the new post can be inserted optimistically.
   createPost?: (body: string, visibility: PostVisibility, media: CreateMediaPayload[]) => Promise<{ id: string } | null>
   // When set, composer is in reply mode: visibility fixed to parent, parent_id + mentions sent.
@@ -318,6 +332,21 @@ watch(
   { immediate: true },
 )
 
+const effectiveVisibility = computed(() =>
+  props.replyTo ? props.replyTo.visibility : visibility.value,
+)
+const scopeTagLabel = computed(
+  () => visibilityTagLabel(effectiveVisibility.value) ?? 'Public',
+)
+const scopeTagClass = computed(() => visibilityTagClasses(effectiveVisibility.value))
+const scopeTagTooltip = computed(() => {
+  const v = effectiveVisibility.value
+  if (v === 'verifiedOnly') return tinyTooltip('Visible to verified members')
+  if (v === 'premiumOnly') return tinyTooltip('Visible to premium members')
+  if (v === 'onlyMe') return tinyTooltip('Visible only to you')
+  return tinyTooltip('Visible to everyone')
+})
+
 // Upload bar fill color matches composer visibility: blue (verified), orange (premium), purple (only me), normal primary (public).
 const composerUploadBarColor = computed(() => {
   if (visibility.value === 'verifiedOnly') return 'var(--moh-verified)'
@@ -355,7 +384,11 @@ const composerTextareaVars = computed<Record<string, string>>(() => {
 })
 
 const postMaxLen = computed(() => (isPremium.value ? 500 : 200))
-const composerPlaceholder = computed(() => (props.replyTo ? 'Post your reply…' : "What's happening?"))
+const composerPlaceholder = computed(
+  () =>
+    props.placeholder ??
+    (props.replyTo ? 'Post your reply…' : "What's happening?"),
+)
 const postCharCount = computed(() => draft.value.length)
 
 const canPost = computed(() => Boolean(isAuthed.value && (viewerIsVerified.value || visibility.value === 'onlyMe')))
@@ -383,22 +416,22 @@ const submit = async () => {
   submitting.value = true
   try {
     const mediaPayload: CreateMediaPayload[] = toCreatePayload(composerMedia.value)
-    const effectiveVisibility = props.replyTo ? props.replyTo.visibility : visibility.value
+    const vis = effectiveVisibility.value
 
     const created = props.createPost
-      ? await props.createPost(draft.value, effectiveVisibility, mediaPayload)
+      ? await props.createPost(draft.value, vis, mediaPayload)
       : (
           await apiFetchData<CreatePostResponse>('/posts', {
             method: 'POST',
             body: props.replyTo
               ? {
                   body: draft.value,
-                  visibility: effectiveVisibility,
+                  visibility: vis,
                   parent_id: props.replyTo.parentId,
                   mentions: props.replyTo.mentionUsernames,
                   media: mediaPayload,
                 }
-              : { body: draft.value, visibility: effectiveVisibility, media: mediaPayload },
+              : { body: draft.value, visibility: vis, media: mediaPayload },
           })
         ).post
 
@@ -408,8 +441,8 @@ const submit = async () => {
 
     const id = (created as any)?.id as string | undefined
     if (id) {
-      emit('posted', { id, visibility: effectiveVisibility })
-      const toneVisibility = effectiveVisibility
+      emit('posted', { id, visibility: vis })
+      const toneVisibility = vis
       toast.push({
         title: props.replyTo ? 'Reply posted' : 'Posted',
         message:
