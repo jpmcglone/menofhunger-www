@@ -95,6 +95,7 @@
               ref="videoBoxEl"
               :style="youtubeEmbedUrl ? undefined : { aspectRatio: rumbleAspectRatio }"
               :class="youtubeEmbedUrl ? 'aspect-video' : ''"
+              @click.stop="activateEmbeddedVideo"
             >
               <img
                 v-if="youtubePosterUrl || rumblePosterUrl"
@@ -422,6 +423,7 @@ import type { RumbleEmbedInfo } from '~/utils/rumble-embed'
 import { resolveRumbleEmbedInfo } from '~/utils/rumble-embed'
 import { useEmbeddedVideoManager } from '~/composables/useEmbeddedVideoManager'
 import { useBookmarkCollections } from '~/composables/useBookmarkCollections'
+import { useInViewOnce } from '~/composables/useInViewOnce'
 
 const props = defineProps<{
   post: FeedPost
@@ -436,33 +438,7 @@ const clickable = computed(() => props.clickable !== false)
 
 // Resource preservation: only do heavy work (metadata fetch + embeds) when the row is near viewport.
 const rowEl = ref<HTMLElement | null>(null)
-const rowInView = ref(false)
-let rowObserver: IntersectionObserver | null = null
-
-onMounted(() => {
-  if (!import.meta.client) return
-  const el = rowEl.value
-  if (!el) return
-  rowObserver = new IntersectionObserver(
-    (entries) => {
-      const e = entries[0]
-      if (!e) return
-      if (e.isIntersecting) {
-        rowInView.value = true
-        // One-way: once it's been in view, keep it true.
-        rowObserver?.disconnect()
-        rowObserver = null
-      }
-    },
-    { root: null, rootMargin: '800px 0px', threshold: 0.01 },
-  )
-  rowObserver.observe(el)
-})
-
-onBeforeUnmount(() => {
-  rowObserver?.disconnect()
-  rowObserver = null
-})
+const { inView: rowInView } = useInViewOnce(rowEl, { root: null, rootMargin: '800px 0px', threshold: 0.01 })
 const { user } = useAuth()
 const isAuthed = computed(() => Boolean(user.value?.id))
 const viewerHasUsername = computed(() => Boolean(user.value?.usernameIsSet))
@@ -710,7 +686,8 @@ const rumbleAspectRatio = computed(() => {
 const rumblePosterUrl = computed(() => rumbleEmbedInfo.value?.thumbnailUrl ?? null)
 const youtubePosterUrl = computed(() => (previewLink.value ? getYouTubePosterUrl(previewLink.value) : null))
 
-const { activePostId, register: registerEmbeddedVideo, unregister: unregisterEmbeddedVideo } = useEmbeddedVideoManager()
+const { activePostId, register: registerEmbeddedVideo, unregister: unregisterEmbeddedVideo, activate: activateEmbeddedVideoById } =
+  useEmbeddedVideoManager()
 const hasEmbeddedVideo = computed(() => Boolean(youtubeEmbedUrl.value || isPreviewLinkRumble.value))
 const videoBoxEl = ref<HTMLElement | null>(null)
 const videoIframeLoaded = ref(false)
@@ -766,6 +743,12 @@ watchEffect((onCleanup) => {
   registerEmbeddedVideo(post.value.id, el)
   onCleanup(() => unregisterEmbeddedVideo(post.value.id))
 })
+
+function activateEmbeddedVideo() {
+  if (!import.meta.client) return
+  if (!hasEmbeddedVideo.value) return
+  activateEmbeddedVideoById(post.value.id)
+}
 
 const linkMeta = ref<LinkMetadata | null>(null)
 watch(

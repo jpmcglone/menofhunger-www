@@ -6,6 +6,7 @@
     "build": "NODE_OPTIONS=--max-old-space-size=4096 nuxt build",
     "dev": "nuxt dev",
     "generate": "nuxt generate",
+    "loc": "node ./scripts/loc.mjs",
     "preview": "nuxt preview",
     "postinstall": "nuxt prepare"
   },

@@ -193,10 +193,24 @@ export function useEmbeddedVideoManager() {
     scheduleCompute()
   }
 
+  // Explicit activation (e.g. user clicked an embed that isn't currently "center-most").
+  function activate(postId: string) {
+    const id = (postId ?? '').trim()
+    if (!id) return
+    if (import.meta.server) return
+    ensureListeners()
+    activePostId.value = id
+    if (runtime) {
+      runtime.pendingId = null
+      runtime.pendingSinceMs = 0
+      runtime.lastSwitchMs = Date.now()
+    }
+  }
+
   function stopAll() {
     activePostId.value = null
   }
 
-  return { activePostId, register, unregister, stopAll }
+  return { activePostId, register, unregister, activate, stopAll }
 }
 
