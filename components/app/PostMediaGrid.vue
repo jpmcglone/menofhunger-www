@@ -10,7 +10,7 @@
       @click.stop="openAt($event, 0)"
     >
       <!-- Placeholder surface to reserve space pre-load -->
-      <div class="absolute inset-0 bg-black/5 dark:bg-white/5" aria-hidden="true" />
+      <div class="absolute inset-0 bg-black/3 dark:bg-white/3" aria-hidden="true" />
       <img
         :src="items[0]?.url"
         class="absolute inset-0 h-full w-full object-contain"
@@ -48,7 +48,7 @@
           >
             <img
               :src="m.url"
-              class="block h-full w-full bg-black/5 dark:bg-white/5 object-cover object-center"
+              class="block h-full w-full bg-black/3 dark:bg-white/3 object-cover object-center"
               :class="[imgClass(idx), hideThumbs ? 'opacity-0 transition-opacity duration-150' : 'opacity-100']"
               alt=""
               loading="lazy"

@@ -1,267 +1,6 @@
 <template>
   <div>
-    <!-- Composer -->
-    <div class="border-b border-gray-200 px-4 py-4 dark:border-zinc-800">
-      <div v-if="isAuthed" class="grid grid-cols-[2.5rem_minmax(0,1fr)] gap-x-3">
-        <!-- Row 1: visibility picker (above, right-aligned) -->
-        <div class="col-start-2 flex justify-end items-end mb-3 sm:mb-2">
-          <div ref="composerVisibilityWrapEl" class="relative">
-            <button
-              type="button"
-              class="inline-flex items-center rounded-full border px-2 py-1 text-[11px] font-semibold leading-none transition-colors"
-              :class="composerVisibilityPillClass"
-              aria-label="Select post visibility"
-              :disabled="!viewerIsVerified"
-              @click="viewerIsVerified ? toggleVisibilityPopover() : null"
-            >
-              <i v-if="visibility === 'public'" class="pi pi-globe mr-1 text-[10px] opacity-80" aria-hidden="true" />
-              <AppVerifiedBadge
-                v-else-if="visibility === 'verifiedOnly'"
-                class="mr-1"
-                status="identity"
-                :premium="false"
-                :show-tooltip="false"
-              />
-              <AppVerifiedBadge
-                v-else-if="visibility === 'premiumOnly'"
-                class="mr-1"
-                status="identity"
-                :premium="true"
-                :show-tooltip="false"
-              />
-              <i v-else-if="visibility === 'onlyMe'" class="pi pi-eye-slash mr-1 text-[10px] opacity-80" aria-hidden="true" />
-              {{ composerVisibilityLabel }}
-              <i v-if="viewerIsVerified" class="pi pi-chevron-down ml-1 text-[9px] opacity-80" aria-hidden="true" />
-            </button>
-
-            <!-- Custom visibility picker -->
-            <div
-              v-if="composerVisibilityPopoverOpen"
-              class="absolute right-0 top-full z-30 mt-2 w-56 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-lg dark:border-zinc-800 dark:bg-black"
-              role="menu"
-              aria-label="Post visibility"
-            >
-              <button
-                v-if="allowedComposerVisibilities.includes('public')"
-                type="button"
-                class="w-full text-left px-3 py-2 text-sm font-semibold transition-colors text-gray-900 hover:bg-gray-50 dark:text-gray-50 dark:hover:bg-zinc-900"
-                role="menuitem"
-                @click="setComposerVisibility('public')"
-              >
-                <span class="inline-flex items-center gap-2">
-                  <i class="pi pi-globe text-[12px] opacity-80" aria-hidden="true" />
-                  <span>Public</span>
-                </span>
-              </button>
-
-              <button
-                v-if="allowedComposerVisibilities.includes('verifiedOnly')"
-                type="button"
-                class="w-full text-left px-3 py-2 text-sm font-semibold transition-colors moh-menuitem-verified"
-                role="menuitem"
-                @click="setComposerVisibility('verifiedOnly')"
-              >
-                <span class="inline-flex items-center gap-2">
-                  <AppVerifiedBadge status="identity" :premium="false" :show-tooltip="false" />
-                  <span>Verified only</span>
-                </span>
-              </button>
-
-              <button
-                v-if="allowedComposerVisibilities.includes('premiumOnly')"
-                type="button"
-                :disabled="!isPremium"
-                :class="[
-                  'w-full text-left px-3 py-2 text-sm font-semibold transition-colors',
-                  isPremium
-                    ? 'moh-menuitem-premium'
-                    : 'text-gray-400 dark:text-zinc-600 cursor-not-allowed'
-                ]"
-                role="menuitem"
-                @click="isPremium ? setComposerVisibility('premiumOnly') : null"
-              >
-                <span class="inline-flex items-center gap-2">
-                  <AppVerifiedBadge status="identity" :premium="true" :show-tooltip="false" />
-                  <span>Premium only</span>
-                </span>
-                <span v-if="!isPremium" class="ml-2 font-mono text-[10px] opacity-80" aria-hidden="true">LOCKED</span>
-              </button>
-
-              <button
-                v-if="allowedComposerVisibilities.includes('onlyMe')"
-                type="button"
-                class="w-full text-left px-3 py-2 text-sm font-semibold transition-colors moh-menuitem-onlyme"
-                role="menuitem"
-                @click="setComposerVisibility('onlyMe')"
-              >
-                <span class="inline-flex items-center gap-2">
-                  <i class="pi pi-eye-slash text-[12px]" aria-hidden="true" />
-                  <span>Only me</span>
-                </span>
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <!-- Row 2: avatar + textarea start aligned -->
-        <NuxtLink
-          v-if="myProfilePath"
-          :to="myProfilePath"
-          class="row-start-1 sm:row-start-2 col-start-1 mb-3 sm:mb-0 group shrink-0"
-          aria-label="View your profile"
-        >
-          <div class="transition-opacity duration-200 group-hover:opacity-80">
-            <AppAvatarCircle
-              :src="meAvatarUrl"
-              :name="user?.name ?? null"
-              :username="user?.username ?? null"
-              size-class="h-8 w-8 sm:h-10 sm:w-10"
-            />
-          </div>
-        </NuxtLink>
-        <div v-else class="row-start-1 sm:row-start-2 col-start-1 mb-3 sm:mb-0 shrink-0" aria-hidden="true">
-          <AppAvatarCircle
-            :src="meAvatarUrl"
-            :name="user?.name ?? null"
-            :username="user?.username ?? null"
-            size-class="h-8 w-8 sm:h-10 sm:w-10"
-          />
-        </div>
-
-        <div class="row-start-2 col-span-2 sm:col-span-1 sm:col-start-2 min-w-0 moh-composer-tint">
-          <input
-            ref="mediaFileInputEl"
-            type="file"
-            accept="image/*"
-            class="hidden"
-            multiple
-            @change="onMediaFilesSelected"
-          />
-
-          <textarea
-            ref="composerTextareaEl"
-            v-model="draft"
-            rows="3"
-            class="moh-composer-textarea w-full resize-none overflow-hidden rounded-xl border border-gray-300 bg-transparent px-3 py-2 text-[15px] leading-6 text-gray-900 placeholder:text-gray-500 focus:outline-none dark:border-zinc-700 dark:text-gray-50 dark:placeholder:text-zinc-500"
-            :style="composerTextareaVars"
-            placeholder="What’s happening?"
-            :maxlength="postMaxLen"
-            @keydown="onComposerKeydown"
-          />
-          <AppInlineAlert v-if="submitError" class="mt-3" severity="danger">
-            {{ submitError }}
-          </AppInlineAlert>
-
-          <div v-if="composerMedia.length" class="mt-3 flex flex-wrap gap-2">
-            <div v-for="m in composerMedia" :key="m.localId" class="relative">
-              <img
-                :src="m.previewUrl"
-                class="h-20 w-20 rounded-lg border moh-border object-cover bg-black/5 dark:bg-white/5"
-                alt=""
-                loading="lazy"
-              />
-              <button
-                type="button"
-                class="absolute -right-2 -top-2 inline-flex h-6 w-6 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-700 shadow-sm transition-colors hover:bg-gray-50 dark:border-zinc-800 dark:bg-black dark:text-gray-200 dark:hover:bg-zinc-900"
-                :aria-label="m.source === 'upload' && (m.uploadStatus === 'queued' || m.uploadStatus === 'uploading' || m.uploadStatus === 'processing') ? 'Cancel upload' : 'Remove media'"
-                @click="removeComposerMedia(m.localId)"
-              >
-                <span class="text-[12px] leading-none" aria-hidden="true">×</span>
-              </button>
-              <div
-                v-if="m.source === 'upload' && m.uploadStatus && m.uploadStatus !== 'done'"
-                class="absolute inset-0 flex flex-col items-center justify-center gap-1 rounded-lg bg-black/35 text-white"
-                :aria-label="composerUploadStatusLabel(m) ?? 'Uploading'"
-              >
-                <i
-                  v-if="m.uploadStatus === 'uploading' || m.uploadStatus === 'processing'"
-                  class="pi pi-spin pi-spinner text-[16px]"
-                  aria-hidden="true"
-                />
-                <span class="text-[10px] font-semibold tracking-wide opacity-95" aria-hidden="true">
-                  {{ composerUploadStatusLabel(m) }}
-                </span>
-                <span
-                  v-if="m.uploadStatus === 'uploading' && typeof m.uploadProgress === 'number'"
-                  class="text-[10px] font-mono tabular-nums opacity-90"
-                  aria-hidden="true"
-                >
-                  {{ Math.max(0, Math.min(100, Math.round(m.uploadProgress))) }}%
-                </span>
-                <span v-if="m.uploadStatus === 'error' && m.uploadError" class="px-2 text-center text-[10px] opacity-90">
-                  {{ m.uploadError }}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          <div class="mt-3 flex items-center justify-between">
-            <div class="flex items-center gap-2 text-gray-500 dark:text-gray-400">
-              <Button
-                icon="pi pi-image"
-                text
-                rounded
-                severity="secondary"
-                aria-label="Add media"
-                :disabled="!canAddMoreMedia"
-                v-tooltip.bottom="tinyTooltip(canAddMoreMedia ? 'Add image/GIF' : 'Max 4 attachments')"
-                @click="openMediaPicker"
-              />
-              <Button
-                text
-                severity="secondary"
-                class="!rounded-xl"
-                aria-label="Add GIF"
-                :disabled="!canAddMoreMedia"
-                v-tooltip.bottom="tinyTooltip(canAddMoreMedia ? 'Add GIF (Giphy)' : 'Max 4 attachments')"
-                @click="openGiphyPicker"
-              >
-                <template #icon>
-                  <span
-                    class="inline-flex h-[22px] w-[22px] items-center justify-center rounded-md border border-current/30 bg-transparent text-[10px] font-black leading-none"
-                    aria-hidden="true"
-                  >
-                    GIF
-                  </span>
-                </template>
-              </Button>
-            </div>
-            <div class="flex items-center gap-2">
-              <div class="text-xs text-gray-500 dark:text-gray-400 tabular-nums">
-                {{ postCharCount }}/{{ postMaxLen }}
-              </div>
-              <Button
-                label="Post"
-                rounded
-                :outlined="postButtonOutlined"
-                severity="secondary"
-                :class="postButtonClass"
-                :disabled="submitting || !canPost || (!(draft.trim() || composerMedia.length) ) || postCharCount > postMaxLen || composerUploading"
-                :loading="submitting"
-                @click="submit"
-              />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <button
-        v-else
-        type="button"
-        class="w-full text-left rounded-xl border border-gray-200 bg-gray-50 px-4 py-4 hover:bg-gray-100 dark:border-zinc-800 dark:bg-zinc-950/40 dark:hover:bg-zinc-900/40"
-        @click="goLogin"
-      >
-        <div class="flex items-center justify-between gap-3">
-          <div class="space-y-1">
-            <div class="font-semibold text-gray-900 dark:text-gray-50">Log in to post</div>
-            <div class="text-sm text-gray-600 dark:text-gray-300">
-              Join the conversation and share updates with the brotherhood.
-            </div>
-          </div>
-          <i class="pi pi-angle-right text-gray-500 dark:text-gray-400" aria-hidden="true" />
-        </div>
-      </button>
-    </div>
+    <AppPostComposer :create-post="createPostViaFeed" />
 
     <!-- Posts -->
     <div>
@@ -357,44 +96,6 @@
     </div>
   </div>
 
-  <Dialog
-    v-if="giphyOpen"
-    v-model:visible="giphyOpen"
-    modal
-    header="Add a GIF"
-    :draggable="false"
-    class="w-[min(44rem,calc(100vw-2rem))]"
-  >
-    <div class="flex items-center gap-2">
-      <InputText
-        ref="giphyInputRef"
-        v-model="giphyQuery"
-        class="w-full"
-        placeholder="Search Giphy…"
-        aria-label="Search Giphy"
-        @keydown.enter.prevent="searchGiphy"
-      />
-      <Button label="Search" severity="secondary" :loading="giphyLoading" :disabled="giphyLoading" @click="searchGiphy" />
-    </div>
-
-    <div v-if="giphyError" class="mt-3 text-sm text-red-600 dark:text-red-400">
-      {{ giphyError }}
-    </div>
-
-    <div class="mt-4 grid grid-cols-3 sm:grid-cols-4 gap-2">
-      <button
-        v-for="gif in giphyItems"
-        :key="gif.id"
-        type="button"
-        class="overflow-hidden rounded-lg border moh-border bg-black/5 dark:bg-white/5 hover:opacity-90 transition-opacity"
-        :disabled="!canAddMoreMedia"
-        :aria-label="`Add GIF ${gif.title || ''}`"
-        @click="selectGiphyGif(gif)"
-      >
-        <img :src="gif.url" class="h-24 w-full object-cover" alt="" loading="lazy" />
-      </button>
-    </div>
-  </Dialog>
 </template>
 
 <script setup lang="ts">
@@ -488,6 +189,23 @@ const { posts, nextCursor, loading, error, refresh, softRefreshNewer, startAutoS
   followingOnly,
   sort: feedSort,
 })
+
+async function createPostViaFeed(
+  body: string,
+  visibility: PostVisibility,
+  media?: Array<{
+    source: PostMediaSource
+    kind: PostMediaKind
+    r2Key?: string
+    url?: string
+    mp4Url?: string | null
+    width?: number | null
+    height?: number | null
+  }> | null,
+): Promise<{ id: string } | null> {
+  const created = await addPost(body, visibility, media ?? null)
+  return created?.id ? { id: created.id } : null
+}
 
 // Background “soft refresh” that preserves scroll position.
 onMounted(() => startAutoSoftRefresh({ everyMs: 10_000 }))

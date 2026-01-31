@@ -142,90 +142,160 @@
           @change="onMediaFilesSelected"
         />
 
-        <textarea
-          ref="composerTextareaEl"
-          v-model="draft"
-          rows="3"
-          class="moh-composer-textarea w-full resize-none overflow-hidden rounded-xl border border-gray-300 bg-transparent px-3 py-2 text-[15px] leading-6 text-gray-900 placeholder:text-gray-500 focus:outline-none dark:border-zinc-700 dark:text-gray-50 dark:placeholder:text-zinc-500"
+        <!-- Drop zone: textarea + attachments -->
+        <div
+          class="relative"
           :style="composerTextareaVars"
-          placeholder="What’s happening?"
-          :maxlength="postMaxLen"
-          @keydown="onComposerKeydown"
-        />
-        <AppInlineAlert v-if="submitError" class="mt-3" severity="danger">
-          {{ submitError }}
-        </AppInlineAlert>
-
-        <TransitionGroup
-          v-if="composerMedia.length"
-          name="composer-media"
-          tag="div"
-          class="mt-3 flex flex-wrap gap-2"
+          @dragenter="onComposerAreaDragEnter"
+          @dragover="onComposerAreaDragOver"
+          @dragleave="onComposerAreaDragLeave"
+          @drop.prevent="onComposerDrop"
         >
-          <div
-            v-for="slot in displaySlots"
-            :key="slot.key"
-            class="composer-media-slot"
-            :data-composer-slot-index="slot.index"
-          >
-            <div
-              v-if="slot.empty"
-              class="h-20 w-20 rounded-lg border-2 border-dashed border-gray-300 bg-gray-100/50 dark:border-zinc-600 dark:bg-zinc-800/50"
-              aria-hidden="true"
+          <!-- Textarea wrapper so the empty-state overlay only hugs the field -->
+          <div class="relative">
+            <textarea
+              ref="composerTextareaEl"
+              v-model="draft"
+              rows="3"
+              class="moh-composer-textarea w-full resize-none overflow-hidden rounded-xl border border-gray-300 bg-transparent px-3 py-2 text-[15px] leading-6 text-gray-900 placeholder:text-gray-500 focus:outline-none dark:border-zinc-700 dark:text-gray-50 dark:placeholder:text-zinc-500"
+              :style="composerTextareaVars"
+              placeholder="What’s happening?"
+              :maxlength="postMaxLen"
+              @keydown="onComposerKeydown"
+              @paste="onComposerPaste"
             />
+
+            <!-- Drag overlay (no media): hug just the textarea -->
             <div
-              v-else
-              class="relative touch-none select-none cursor-grab active:cursor-grabbing rounded-lg"
-              :class="draggingMediaId === slot.item!.localId ? 'opacity-0 pointer-events-none' : ''"
-              :data-composer-media-id="slot.item!.localId"
-              @pointerdown="onMediaTilePointerDown(slot.item!.localId, $event)"
+              v-if="dropOverlayVisible && !composerMedia.length"
+              class="pointer-events-none absolute -inset-2 z-20 rounded-2xl"
+              aria-hidden="true"
             >
-              <img
-                :src="slot.item!.previewUrl"
-                class="h-20 w-20 rounded-lg border moh-border object-cover bg-black/5 dark:bg-white/5 pointer-events-none"
-                alt=""
-                loading="lazy"
-                draggable="false"
-              />
-              <button
-                type="button"
-                class="absolute -right-2 -top-2 inline-flex h-6 w-6 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-700 shadow-sm transition-colors hover:bg-gray-50 dark:border-zinc-800 dark:bg-black dark:text-gray-200 dark:hover:bg-zinc-900"
-                :aria-label="slot.item!.source === 'upload' && (slot.item!.uploadStatus === 'queued' || slot.item!.uploadStatus === 'uploading' || slot.item!.uploadStatus === 'processing') ? 'Cancel upload' : 'Remove media'"
-                @click.stop="removeComposerMedia(slot.item!.localId)"
-              >
-                <span class="text-[12px] leading-none" aria-hidden="true">×</span>
-              </button>
               <div
-                v-if="slot.item!.source === 'upload' && slot.item!.uploadStatus && slot.item!.uploadStatus !== 'done'"
-                class="pointer-events-none absolute inset-0 flex items-center justify-center"
-                :aria-label="composerUploadStatusLabel(slot.item!) ?? 'Uploading'"
-              >
-                <div class="relative h-1.5 w-14 overflow-hidden rounded-full bg-black/25">
-                  <div
-                    v-if="slot.item!.uploadStatus === 'uploading' && typeof slot.item!.uploadProgress === 'number'"
-                    class="h-full rounded-full transition-[width] duration-150 ease-out"
-                    :style="{
-                      width: `${Math.max(0, Math.min(100, Math.round(slot.item!.uploadProgress ?? 0)))}%`,
-                      backgroundColor: composerUploadBarColor,
-                    }"
-                    aria-hidden="true"
-                  />
-                  <div
-                    v-else-if="slot.item!.uploadStatus === 'error'"
-                    class="h-full w-full rounded-full bg-red-500/90"
-                    aria-hidden="true"
-                  />
-                  <div
-                    v-else
-                    class="moh-upload-indeterminate absolute inset-y-0 left-0 w-1/2 rounded-full"
-                    :style="{ backgroundColor: composerUploadBarColor }"
-                    aria-hidden="true"
-                  />
+                class="absolute inset-0 rounded-2xl border-2 border-dashed opacity-70"
+                :style="{ borderColor: 'var(--moh-compose-accent)' }"
+              />
+              <div class="absolute inset-0 rounded-2xl bg-black/10 dark:bg-white/5" />
+              <div class="absolute inset-0 flex items-center justify-center">
+                <div class="rounded-xl border moh-border moh-frosted px-4 py-3 text-center">
+                  <div class="text-sm font-semibold moh-text">Drop images to attach</div>
+                  <div class="mt-0.5 text-xs moh-text-muted">
+                    <template v-if="remainingMediaSlots > 0">Up to {{ remainingMediaSlots }} more (max 4)</template>
+                    <template v-else>Max 4 images</template>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
-        </TransitionGroup>
+
+          <AppInlineAlert v-if="submitError" class="mt-3" severity="danger">
+            {{ submitError }}
+          </AppInlineAlert>
+
+          <!-- Media slots: always 4 once any media exists (avoid layout/animation weirdness) -->
+          <div v-if="composerMedia.length" class="mt-3 flex flex-wrap gap-2">
+            <div
+              v-for="slot in displaySlots"
+              :key="slot.index"
+              class="composer-media-slot"
+              :data-composer-slot-index="slot.index"
+            >
+              <Transition name="composer-slot" mode="out-in">
+                <div :key="slot.empty ? `empty-${slot.index}` : slot.item!.localId">
+                  <button
+                    v-if="slot.empty && firstEmptySlotIndex === slot.index"
+                    type="button"
+                    class="h-20 w-20 rounded-lg border-2 border-dashed border-gray-300 bg-gray-100/50 text-gray-500 transition-colors hover:bg-gray-100 dark:border-zinc-600 dark:bg-zinc-800/50 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                    :class="canAddMoreMedia ? 'cursor-pointer' : 'cursor-not-allowed opacity-60'"
+                    :disabled="!canAddMoreMedia"
+                    aria-label="Add image"
+                    @click.stop="openMediaPicker"
+                  >
+                    <span class="text-2xl leading-none font-semibold" aria-hidden="true">+</span>
+                  </button>
+                  <div
+                    v-else-if="slot.empty"
+                    class="h-20 w-20 rounded-lg border-2 border-dashed border-gray-300 bg-gray-100/40 dark:border-zinc-700 dark:bg-zinc-800/30 opacity-40"
+                    aria-hidden="true"
+                  />
+                  <div
+                    v-else
+                    class="relative touch-none select-none cursor-grab active:cursor-grabbing rounded-lg"
+                    :class="draggingMediaId === slot.item!.localId ? 'opacity-0 pointer-events-none' : ''"
+                    :data-composer-media-id="slot.item!.localId"
+                    @pointerdown="onMediaTilePointerDown(slot.item!.localId, $event)"
+                  >
+                    <img
+                      :src="slot.item!.previewUrl"
+                      class="h-20 w-20 rounded-lg border moh-border object-cover bg-black/5 dark:bg-white/5 pointer-events-none"
+                      alt=""
+                      loading="lazy"
+                      draggable="false"
+                    />
+                    <button
+                      type="button"
+                      class="absolute -right-2 -top-2 inline-flex h-6 w-6 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-700 shadow-sm transition-colors hover:bg-gray-50 dark:border-zinc-800 dark:bg-black dark:text-gray-200 dark:hover:bg-zinc-900"
+                      :aria-label="slot.item!.source === 'upload' && (slot.item!.uploadStatus === 'queued' || slot.item!.uploadStatus === 'uploading' || slot.item!.uploadStatus === 'processing') ? 'Cancel upload' : 'Remove media'"
+                      @click.stop="removeComposerMedia(slot.item!.localId)"
+                    >
+                      <span class="text-[12px] leading-none" aria-hidden="true">×</span>
+                    </button>
+                    <div
+                      v-if="slot.item!.source === 'upload' && slot.item!.uploadStatus && slot.item!.uploadStatus !== 'done'"
+                      class="pointer-events-none absolute inset-0 flex items-center justify-center"
+                      :aria-label="composerUploadStatusLabel(slot.item!) ?? 'Uploading'"
+                    >
+                      <div class="relative h-1.5 w-14 overflow-hidden rounded-full bg-black/25">
+                        <div
+                          v-if="slot.item!.uploadStatus === 'uploading' && typeof slot.item!.uploadProgress === 'number'"
+                          class="h-full rounded-full transition-[width] duration-150 ease-out"
+                          :style="{
+                            width: `${Math.max(0, Math.min(100, Math.round(slot.item!.uploadProgress ?? 0)))}%`,
+                            backgroundColor: composerUploadBarColor,
+                          }"
+                          aria-hidden="true"
+                        />
+                        <div
+                          v-else-if="slot.item!.uploadStatus === 'error'"
+                          class="h-full w-full rounded-full bg-red-500/90"
+                          aria-hidden="true"
+                        />
+                        <div
+                          v-else
+                          class="moh-upload-indeterminate absolute inset-y-0 left-0 w-1/2 rounded-full"
+                          :style="{ backgroundColor: composerUploadBarColor }"
+                          aria-hidden="true"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </Transition>
+            </div>
+          </div>
+
+          <!-- Drag overlay (with media): hug textarea + slots -->
+          <div
+            v-if="dropOverlayVisible && composerMedia.length"
+            class="pointer-events-none absolute -inset-2 z-20 rounded-2xl"
+            aria-hidden="true"
+          >
+            <div
+              class="absolute inset-0 rounded-2xl border-2 border-dashed opacity-70"
+              :style="{ borderColor: 'var(--moh-compose-accent)' }"
+            />
+            <div class="absolute inset-0 rounded-2xl bg-black/10 dark:bg-white/5" />
+            <div class="absolute inset-0 flex items-center justify-center">
+              <div class="rounded-xl border moh-border moh-frosted px-4 py-3 text-center">
+                <div class="text-sm font-semibold moh-text">Drop images to attach</div>
+                <div class="mt-0.5 text-xs moh-text-muted">
+                  <template v-if="remainingMediaSlots > 0">Up to {{ remainingMediaSlots }} more (max 4)</template>
+                  <template v-else>Max 4 images</template>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
 
         <ClientOnly>
           <Teleport to="body">
@@ -483,6 +553,23 @@ const composerUploading = computed(() => {
 const mediaFileInputEl = ref<HTMLInputElement | null>(null)
 const composerTextareaEl = ref<HTMLTextAreaElement | null>(null)
 
+const remainingMediaSlots = computed(() => Math.max(0, MEDIA_SLOTS - composerMedia.value.length))
+const firstEmptySlotIndex = computed(() => {
+  const idx = displaySlots.value.findIndex((s) => s.empty)
+  return idx >= 0 ? idx : null
+})
+const dragOverDepth = ref(0)
+const dropOverlayVisible = ref(false)
+
+function dataTransferHasImages(dt: DataTransfer | null): boolean {
+  if (!dt) return false
+  const items = Array.from(dt.items ?? [])
+  if (items.some((it) => it.kind === 'file' && (it.type ?? '').toLowerCase().startsWith('image/'))) return true
+  const files = Array.from(dt.files ?? [])
+  if (files.some((f) => ((f.type ?? '').toLowerCase().startsWith('image/')))) return true
+  return false
+}
+
 function makeLocalId(): string {
   try {
     return crypto.randomUUID()
@@ -494,6 +581,142 @@ function makeLocalId(): string {
 function openMediaPicker() {
   if (!canAddMoreMedia.value) return
   mediaFileInputEl.value?.click()
+}
+
+function addImageFiles(files: File[], source: 'picker' | 'drop' | 'paste') {
+  if (!import.meta.client) return
+  if (!files.length) return
+
+  const remaining = Math.max(0, MEDIA_SLOTS - composerMedia.value.length)
+  if (remaining <= 0) {
+    toast.push({ title: 'You can attach up to 4 images.', tone: 'neutral', durationMs: 1600 })
+    return
+  }
+
+  const imageFiles = files
+    .filter(Boolean)
+    .filter((f) => ((f.type ?? '').toLowerCase().startsWith('image/')))
+    .slice(0, remaining)
+
+  if (!imageFiles.length) return
+
+  for (const file of imageFiles) {
+    const ct = (file.type ?? '').toLowerCase()
+    const previewUrl = URL.createObjectURL(file)
+    const localId = makeLocalId()
+
+    const slot: ComposerMediaItem = {
+      localId,
+      source: 'upload',
+      kind: ct === 'image/gif' ? 'gif' : 'image',
+      previewUrl,
+      uploadStatus: 'queued',
+      uploadError: null,
+      file,
+      abortController: null,
+      uploadProgress: 0,
+    }
+    composerMedia.value.push(slot)
+  }
+
+  if (files.length > imageFiles.length) {
+    const skipped = files.length - imageFiles.length
+    // Only message for drop/paste; picker already visually indicates count.
+    if (source !== 'picker') {
+      toast.push({
+        title: `Added ${imageFiles.length} image${imageFiles.length === 1 ? '' : 's'}.`,
+        message: skipped > 0 ? `Ignored ${skipped} extra (max 4).` : undefined,
+        tone: 'neutral',
+        durationMs: 1600,
+      })
+    }
+  }
+
+  processComposerUploadQueue()
+}
+
+function onComposerDrop(e: DragEvent) {
+  if (!import.meta.client) return
+  const dt = e.dataTransfer
+  if (!dt) return
+  const files = Array.from(dt.files ?? [])
+  if (!files.length) return
+  addImageFiles(files, 'drop')
+  // Keep focus in composer for a smooth flow.
+  composerTextareaEl.value?.focus()
+  dragOverDepth.value = 0
+  dropOverlayVisible.value = false
+}
+
+function onComposerAreaDragEnter(e: DragEvent) {
+  if (!import.meta.client) return
+  const dt = e.dataTransfer
+  if (!dataTransferHasImages(dt)) return
+  dragOverDepth.value += 1
+  dropOverlayVisible.value = true
+}
+
+function onComposerAreaDragOver(e: DragEvent) {
+  if (!import.meta.client) return
+  const dt = e.dataTransfer
+  if (!dataTransferHasImages(dt)) {
+    dropOverlayVisible.value = false
+    return
+  }
+  try {
+    e.preventDefault()
+  } catch {
+    // ignore
+  }
+  // Show overlay even if full; message will communicate the limit.
+  dropOverlayVisible.value = true
+  try {
+    dt.dropEffect = remainingMediaSlots.value > 0 ? 'copy' : 'none'
+  } catch {
+    // ignore
+  }
+}
+
+function onComposerAreaDragLeave(e: DragEvent) {
+  if (!import.meta.client) return
+  const dt = e.dataTransfer
+  if (!dataTransferHasImages(dt)) return
+  dragOverDepth.value = Math.max(0, dragOverDepth.value - 1)
+  if (dragOverDepth.value === 0) dropOverlayVisible.value = false
+}
+
+function onComposerPaste(e: ClipboardEvent) {
+  if (!import.meta.client) return
+  const cd = e.clipboardData
+  if (!cd) return
+
+  const out: File[] = []
+
+  // Prefer items API (supports multiple images).
+  const items = Array.from(cd.items ?? [])
+  for (const it of items) {
+    if (it.kind !== 'file') continue
+    const type = (it.type ?? '').toLowerCase()
+    if (!type.startsWith('image/')) continue
+    const f = it.getAsFile()
+    if (f) out.push(f)
+  }
+
+  // Fallback: some browsers populate files list.
+  if (!out.length) {
+    out.push(...Array.from(cd.files ?? []).filter(Boolean))
+  }
+
+  const hasImage = out.some((f) => ((f.type ?? '').toLowerCase().startsWith('image/')))
+  if (!hasImage) return
+
+  // Prevent default paste (otherwise the image may paste as text/blank).
+  try {
+    e.preventDefault()
+  } catch {
+    // ignore
+  }
+  addImageFiles(out, 'paste')
 }
 
 function patchComposerMedia(localId: string, patch: Partial<ComposerMediaItem>) {
@@ -755,31 +978,7 @@ async function onMediaFilesSelected(e: Event) {
   const files = Array.from(input?.files ?? [])
   if (input) input.value = ''
   if (!files.length) return
-
-  for (const file of files) {
-    if (!canAddMoreMedia.value) break
-    if (!file) continue
-    const ct = (file.type ?? '').toLowerCase()
-    if (!ct.startsWith('image/')) continue
-
-    const previewUrl = URL.createObjectURL(file)
-    const localId = makeLocalId()
-
-    const slot: ComposerMediaItem = {
-      localId,
-      source: 'upload',
-      kind: ct === 'image/gif' ? 'gif' : 'image',
-      previewUrl,
-      uploadStatus: 'queued',
-      uploadError: null,
-      file,
-      abortController: null,
-      uploadProgress: 0,
-    }
-    composerMedia.value.push(slot)
-  }
-
-  processComposerUploadQueue()
+  addImageFiles(files, 'picker')
 }
 
 // Giphy picker
@@ -1101,6 +1300,16 @@ onMounted(() => {
 .composer-media-leave-to {
   opacity: 0;
   transform: scale(0.95);
+}
+
+.composer-slot-enter-active,
+.composer-slot-leave-active {
+  transition: opacity 0.14s ease, transform 0.18s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+.composer-slot-enter-from,
+.composer-slot-leave-to {
+  opacity: 0;
+  transform: scale(0.96);
 }
 
 .moh-drag-ghost {
