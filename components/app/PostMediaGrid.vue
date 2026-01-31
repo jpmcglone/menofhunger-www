@@ -1,19 +1,19 @@
 <template>
-  <div v-if="items.length === 1" class="mt-3">
+  <div v-if="items.length === 1" class="mt-3 flex justify-start">
     <button
       v-if="items[0]?.url"
       type="button"
-      class="block cursor-zoom-in select-none text-left"
+      class="cursor-zoom-in select-none text-left"
       :class="singleBoxClass"
       :style="singleBoxStyle"
       aria-label="View image"
       @click.stop="openAt($event, 0)"
     >
       <!-- Placeholder surface to reserve space pre-load -->
-      <div class="absolute inset-0 bg-black/3 dark:bg-white/3" aria-hidden="true" />
+      <div class="absolute inset-0 bg-black/3 dark:bg-white/3 rounded-xl" aria-hidden="true" />
       <img
         :src="items[0]?.url"
-        class="absolute inset-0 h-full w-full object-contain"
+        class="absolute inset-0 h-full w-full object-contain rounded-xl"
         :class="hideThumbs ? 'opacity-0 transition-opacity duration-150' : 'opacity-100'"
         :width="singleWidth ?? undefined"
         :height="singleHeight ?? undefined"
@@ -106,21 +106,28 @@ const singleIsVeryWide = computed(() => {
   return r >= 1.6
 })
 
+const FIXED_HEIGHT_REM = 18
 const singleBoxStyle = computed<CSSProperties>(() => {
   const w = singleWidth.value
   const h = singleHeight.value
   if (!w || !h) return {}
-  return { aspectRatio: `${w} / ${h}` }
+  // Fixed height; width from aspect ratio so image is only as wide as needed (no letterboxing).
+  const aspectRatio = w / h
+  return {
+    aspectRatio: `${w} / ${h}`,
+    height: `${FIXED_HEIGHT_REM}rem`,
+    width: `min(${FIXED_HEIGHT_REM * aspectRatio}rem, 100%)`,
+  }
 })
 const singleBoxClass = computed(() => {
-  // Goal: match multi-media max height (18rem) and avoid layout shift.
-  // - Very wide: take full width; height is derived from aspect ratio and naturally shorter.
-  // - Not very wide (including square-ish): lock height to 18rem and let width shrink to preserve aspect ratio.
-  // - Missing dims: fallback to fixed 18rem box.
+  // Single image: fixed height, width only as needed, left-justified (parent has flex justify-start).
+  // - With dimensions: intrinsic width from aspect ratio; no letterboxing.
+  // - Very wide: cap at 100% so it doesn't overflow.
+  // - Missing dims: fallback to full-width 18rem box.
   if (!single.value) return ''
-  if (!singleWidth.value || !singleHeight.value) return 'relative overflow-hidden rounded-xl h-[18rem] w-full'
-  if (singleIsVeryWide.value) return 'relative overflow-hidden rounded-xl w-full max-h-[18rem]'
-  return 'relative overflow-hidden rounded-xl h-[18rem] w-auto max-w-full'
+  if (!singleWidth.value || !singleHeight.value) return 'relative overflow-hidden rounded-xl h-[18rem] w-full shrink-0'
+  if (singleIsVeryWide.value) return 'relative overflow-hidden rounded-xl w-full max-h-[18rem] shrink-0'
+  return 'relative overflow-hidden rounded-xl shrink-0'
 })
 
 const gridClass = computed(() => {
