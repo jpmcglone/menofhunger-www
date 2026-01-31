@@ -3,7 +3,7 @@
     <AppPageHeader
       title="Groups"
       icon="pi-users"
-      description="Brotherhood circles, local chapters, and challenges. This feature isn’t ready yet."
+      description="Brotherhood circles, local chapters, and challenges. This feature isn't ready yet."
     />
 
     <div
@@ -16,10 +16,10 @@
         <i class="pi pi-users text-5xl" aria-hidden="true" />
       </div>
       <p class="mt-6 max-w-sm text-sm font-medium text-gray-700 dark:text-gray-300">
-        Groups aren’t ready yet. We’re building accountability circles, disciplines, and builders helping builders.
+        Groups aren't ready yet. We're building accountability circles, disciplines, and builders helping builders.
       </p>
       <p class="mt-2 text-xs moh-text-muted">
-        Check back later or contact John if you’d like to help shape this feature.
+        Check back later.
       </p>
     </div>
   </div>
