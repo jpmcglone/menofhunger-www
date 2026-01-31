@@ -32,10 +32,17 @@
             bg-class="moh-surface"
           />
           <div class="min-w-0 flex-1">
-            <div class="flex items-center justify-between gap-3">
-              <div class="min-w-0">
-                <div class="text-sm font-semibold moh-text truncate">
-                  {{ post.author.name || post.author.username || 'User' }}
+            <div class="flex items-start justify-between gap-3">
+              <div class="min-w-0 flex-1">
+                <div class="flex min-w-0 items-center gap-1.5 flex-nowrap">
+                  <span class="text-sm font-semibold moh-text truncate">
+                    {{ post.author.name || post.author.username || 'User' }}
+                  </span>
+                  <AppVerifiedBadge
+                    class="shrink-0"
+                    :status="post.author.verifiedStatus ?? 'none'"
+                    :premium="post.author.premium ?? false"
+                  />
                 </div>
                 <div class="text-[11px] moh-text-muted truncate">@{{ post.author.username || 'user' }}</div>
               </div>

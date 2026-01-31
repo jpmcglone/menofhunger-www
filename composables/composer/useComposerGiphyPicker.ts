@@ -39,9 +39,11 @@ export function useComposerGiphyPicker(opts: {
     }
   }
 
-  function openGiphyPicker() {
+  function openGiphyPicker(initialQuery?: string) {
     if (!opts.canAddMoreMedia.value) return
     resetState()
+    const initial = (initialQuery ?? '').trim().slice(0, 120)
+    if (initial) giphyQuery.value = initial
     giphyOpen.value = true
     void nextTick().then(() => focusInput())
     void searchGiphy()
@@ -53,14 +55,15 @@ export function useComposerGiphyPicker(opts: {
     giphyLoading.value = true
     const reqId = ++giphyRequestId.value
     try {
-      const query = q ? ({ q } as Record<string, string>) : ({} as Record<string, string>)
-      const res = await opts.apiFetchData<GiphySearchResponse>('/giphy/search', { method: 'GET', query: query as any })
+      const res = q
+        ? await opts.apiFetchData<GiphySearchResponse>('/giphy/search', { method: 'GET', query: { q } as any })
+        : await opts.apiFetchData<GiphySearchResponse>('/giphy/trending', { method: 'GET', query: { limit: '24' } as any })
       if (!giphyOpen.value || giphyRequestId.value !== reqId) return
       giphyItems.value = res?.items ?? []
       giphyError.value = null
     } catch (e: unknown) {
       if (!giphyOpen.value || giphyRequestId.value !== reqId) return
-      giphyError.value = getApiErrorMessage(e) || 'Failed to search Giphy.'
+      giphyError.value = getApiErrorMessage(e) || (q ? 'Failed to search Giphy.' : 'Failed to load trending GIFs.')
       giphyItems.value = []
     } finally {
       if (giphyRequestId.value === reqId) giphyLoading.value = false

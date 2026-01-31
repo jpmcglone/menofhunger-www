@@ -148,7 +148,7 @@
               aria-label="Add GIF"
               :disabled="!canAddMoreMedia"
               v-tooltip.bottom="tinyTooltip(canAddMoreMedia ? 'Add GIF (Giphy)' : 'Max 4 attachments')"
-              @click="openGiphyPicker"
+              @click="openGiphyPicker((draft || '').trim().slice(0, 120))"
             >
               <template #icon>
                 <span

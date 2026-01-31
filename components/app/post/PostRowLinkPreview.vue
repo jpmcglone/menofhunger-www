@@ -1,5 +1,5 @@
 <template>
-  <div v-if="showAny && rowInView" class="mt-3">
+  <div v-if="showAny" class="mt-3">
     <!-- Video embeds (special cases) -->
     <div
       v-if="youtubeEmbedUrl || isPreviewLinkRumble"
@@ -308,6 +308,8 @@ const embeddedPreviewEnabled = computed(() => {
   return rowInView.value
 })
 
-const showAny = computed(() => Boolean((showLinkPreview.value && rowInView.value) || embeddedPostId.value))
+// Embedded MOH post: always show block so SSR can fetch and render the preview before first paint.
+// External link preview: only show when row is in view (avoid metadata fetch for off-screen rows).
+const showAny = computed(() => Boolean(embeddedPostId.value || (showLinkPreview.value && rowInView.value)))
 </script>
 
