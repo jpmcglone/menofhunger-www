@@ -98,12 +98,24 @@ export function isRumbleUrl(url: string): boolean {
   }
 }
 
+export function isRumbleShortsUrl(url: string): boolean {
+  try {
+    const u = new URL(url)
+    const host = u.hostname.replace(/^www\./i, '').toLowerCase()
+    if ((u.protocol !== 'http:' && u.protocol !== 'https:') || host !== 'rumble.com') return false
+    // Rumble shorts URLs look like: https://rumble.com/shorts/<id>...
+    return u.pathname.toLowerCase().startsWith('/shorts/')
+  } catch {
+    return false
+  }
+}
+
 /** True if the post body (with no media) would show a video embed (YouTube or Rumble). */
 export function postBodyHasVideoEmbed(body: string, hasMedia: boolean): boolean {
   if (hasMedia) return false
   const links = extractLinksFromText(body)
   const last = links[links.length - 1]
   if (!last) return false
-  return Boolean(getYouTubeEmbedUrl(last) || isRumbleUrl(last))
+  return Boolean(getYouTubeEmbedUrl(last) || (isRumbleUrl(last) && !isRumbleShortsUrl(last)))
 }
 

@@ -78,6 +78,7 @@
 
 <script setup lang="ts">
 import type { PostMedia } from '~/types/api'
+import type { CSSProperties } from 'vue'
 
 const props = defineProps<{
   media: PostMedia[]
@@ -105,7 +106,7 @@ const singleIsVeryWide = computed(() => {
   return r >= 1.6
 })
 
-const singleBoxStyle = computed<Record<string, string>>(() => {
+const singleBoxStyle = computed<CSSProperties>(() => {
   const w = singleWidth.value
   const h = singleHeight.value
   if (!w || !h) return {}

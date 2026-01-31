@@ -72,35 +72,17 @@
           <div class="flex-1 overflow-y-auto py-4">
             <div class="px-4">
               <div v-if="selectedSection === 'account'" class="space-y-6">
-                <div class="space-y-2">
-                  <label class="text-sm font-medium text-gray-700 dark:text-gray-200">Username</label>
-                  <div class="relative">
-                    <span class="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-sm text-gray-500 dark:text-gray-400">@</span>
-                    <InputText
-                      v-model="usernameInput"
-                      class="w-full !pl-10"
-                      placeholder="your_handle"
-                      autocomplete="off"
-                      :disabled="saving"
-                    />
-                    <div class="absolute right-3 top-1/2 -translate-y-1/2 flex items-center">
-                      <i v-if="checking" class="pi pi-spin pi-spinner text-gray-500" aria-hidden="true" />
-                      <i
-                        v-else-if="availability === 'available' || availability === 'same'"
-                        class="pi pi-check text-green-600"
-                        aria-hidden="true"
-                      />
-                      <i
-                        v-else-if="availability === 'taken' || availability === 'invalid'"
-                        class="pi pi-times text-red-600"
-                        aria-hidden="true"
-                      />
-                    </div>
-                  </div>
-                  <div v-if="helperText" class="text-sm" :class="helperToneClass">
-                    {{ helperText }}
-                  </div>
-                </div>
+                <AppUsernameField
+                  v-model="usernameInput"
+                  :status="usernameStatus"
+                  :helper-text="usernameHelperText"
+                  :disabled="saving"
+                  placeholder="your_handle"
+                >
+                  <template #label>
+                    <label class="text-sm font-medium text-gray-700 dark:text-gray-200">Username</label>
+                  </template>
+                </AppUsernameField>
 
                 <div class="flex items-center gap-3">
                   <Button
@@ -224,7 +206,6 @@ usePageSeo({
   noindex: true
 })
 
-type Availability = 'unknown' | 'checking' | 'available' | 'taken' | 'invalid' | 'same'
 type FollowVisibility = 'all' | 'verified' | 'premium' | 'none'
 type SettingsSection = 'account' | 'privacy' | 'links'
 
@@ -236,7 +217,6 @@ await ensureLoaded()
 const { apiFetchData } = useApiClient()
 import { getApiErrorMessage } from '~/utils/api-error'
 import { siteConfig } from '~/config/site'
-const { check: checkUsername } = useUsernameAvailability()
 
 const selectedSection = ref<SettingsSection | null>(null)
 const sectionQuery = ref('')
@@ -289,13 +269,19 @@ const selectedSectionDescription = computed(
 
 const usernameInput = ref('')
 const emailInput = ref('')
-const availability = ref<Availability>('unknown')
-const checking = computed(() => availability.value === 'checking')
-const helperText = ref<string | null>(null)
-const helperToneClass = computed(() => {
-  if (availability.value === 'available' || availability.value === 'same') return 'text-green-700 dark:text-green-300'
-  if (availability.value === 'taken' || availability.value === 'invalid') return 'text-red-700 dark:text-red-300'
-  return 'text-gray-600 dark:text-gray-300'
+const currentUsername = computed(() => (authUser.value?.username ?? '').trim())
+const usernameIsSet = computed(() => Boolean(authUser.value?.usernameIsSet))
+const {
+  status: usernameStatus,
+  helperText: usernameHelperText,
+  isCaseOnlyChange,
+} = useUsernameField({
+  value: usernameInput,
+  currentUsername: currentUsername,
+  usernameIsSet,
+  debounceMs: 500,
+  lockedInvalidMessage: 'Only capitalization changes are allowed for your username.',
+  caseOnlyMessage: 'Only capitalization changes are allowed (this change is OK).',
 })
 
 const saving = ref(false)
@@ -326,15 +312,6 @@ const emailDirty = computed(() => {
   return current !== desired
 })
 
-const currentUsernameLower = computed(() => (authUser.value?.username ?? '').trim().toLowerCase())
-const desiredUsernameLower = computed(() => usernameInput.value.trim().toLowerCase())
-const isCaseOnlyChange = computed(() => {
-  const current = currentUsernameLower.value
-  const desired = desiredUsernameLower.value
-  if (!current || !desired) return false
-  return current === desired
-})
-
 // Prefill input with current username (if any) once, so "case-only" edits are obvious.
 watch(
   () => authUser.value?.username ?? null,
@@ -353,7 +330,7 @@ const canSaveUsername = computed(() => {
   if (isCaseOnlyChange.value) return true
   // If username is set, only capitalization is allowed.
   if (authUser.value?.usernameIsSet) return false
-  return availability.value === 'available'
+  return usernameStatus.value === 'available'
 })
 
 const followVisibilityOptions: Array<{ label: string; value: FollowVisibility }> = [
@@ -379,70 +356,21 @@ watch(
 
 const privacyDirty = computed(() => (authUser.value?.followVisibility || 'all') !== followVisibilityInput.value)
 
-let debounceTimer: ReturnType<typeof setTimeout> | null = null
-
-function resetHelper() {
-  helperText.value = null
-  availability.value = 'unknown'
+watch(usernameInput, () => {
+  // Clear "Saved" when they edit the field.
   saved.value = false
-}
-
-async function checkAvailability(username: string) {
-  availability.value = 'checking'
-  helperText.value = null
-
-  const result = await checkUsername(username)
-  availability.value = result.status
-  helperText.value = result.message
-}
-
-watch(
-  usernameInput,
-  (value) => {
-    if (debounceTimer) clearTimeout(debounceTimer)
-    resetHelper()
-
-    const trimmed = value.trim()
-    if (!trimmed) return
-
-    const currentLower = currentUsernameLower.value
-    const desiredLower = trimmed.toLowerCase()
-
-    // Capitalization-only change is always allowed (even for legacy/special-case usernames).
-    if (currentLower && desiredLower === currentLower) {
-      availability.value = 'same'
-      helperText.value = 'Only capitalization changes are allowed (this change is OK).'
-      return
-    }
-
-    // If username is already set, disallow non-cap changes and tell the user explicitly.
-    if (authUser.value?.usernameIsSet) {
-      availability.value = 'invalid'
-      helperText.value = 'Only capitalization changes are allowed for your username.'
-      return
-    }
-
-    debounceTimer = setTimeout(() => {
-      void checkAvailability(trimmed)
-    }, 500)
-  },
-  { flush: 'post' }
-)
-
-onBeforeUnmount(() => {
-  if (debounceTimer) clearTimeout(debounceTimer)
 })
 
 async function save() {
   saved.value = false
-  helperText.value = null
+  usernameHelperText.value = null
 
   const username = usernameInput.value.trim()
   if (!username) return
 
   if (authUser.value?.usernameIsSet && !isCaseOnlyChange.value) {
-    availability.value = 'invalid'
-    helperText.value = 'Only capitalization changes are allowed for your username.'
+    usernameStatus.value = 'invalid'
+    usernameHelperText.value = 'Only capitalization changes are allowed for your username.'
     return
   }
 
@@ -457,7 +385,7 @@ async function save() {
     authUser.value = result.user ?? authUser.value
     saved.value = true
   } catch (e: unknown) {
-    helperText.value = getApiErrorMessage(e) || 'Failed to save username.'
+    usernameHelperText.value = getApiErrorMessage(e) || 'Failed to save username.'
   } finally {
     saving.value = false
   }

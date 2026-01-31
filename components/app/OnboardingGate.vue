@@ -15,29 +15,20 @@
         </div>
 
         <div class="mt-5 space-y-4">
-          <div class="space-y-2">
-            <label class="text-sm font-medium moh-text">
-              Username<span class="ml-0.5">*</span>
-            </label>
-            <div class="relative">
-              <span class="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-sm moh-text-muted">@</span>
-              <InputText
-                v-model="usernameInput"
-                class="w-full !pl-10"
-                placeholder="username"
-                autocomplete="off"
-                :disabled="submitting"
-              />
-              <div class="absolute right-3 top-1/2 -translate-y-1/2 flex items-center">
-                <i v-if="checkingUsername" class="pi pi-spin pi-spinner moh-text-muted" aria-hidden="true" />
-                <i v-else-if="usernameStatus === 'available'" class="pi pi-check text-green-600" aria-hidden="true" />
-                <i v-else-if="usernameStatus === 'taken' || usernameStatus === 'invalid'" class="pi pi-times text-red-600" aria-hidden="true" />
-              </div>
-            </div>
-            <div v-if="usernameHelp" class="text-sm" :class="usernameHelpToneClass">
-              {{ usernameHelp }}
-            </div>
-          </div>
+          <AppUsernameField
+            v-model="usernameInput"
+            tone="moh"
+            :status="usernameStatus"
+            :helper-text="usernameHelp"
+            :disabled="submitting"
+            placeholder="username"
+          >
+            <template #label>
+              <label class="text-sm font-medium moh-text">
+                Username<span class="ml-0.5">*</span>
+              </label>
+            </template>
+          </AppUsernameField>
 
           <div class="space-y-2">
             <label class="text-sm font-medium moh-text">Display name <span class="font-normal moh-text-muted">(Optional)</span></label>
@@ -206,11 +197,8 @@
 import { getApiErrorMessage } from '~/utils/api-error'
 import { interestOptions } from '~/config/interests'
 
-type UsernameStatus = 'unknown' | 'checking' | 'available' | 'taken' | 'invalid'
-
 const { user, ensureLoaded } = useAuth()
 const { apiFetchData } = useApiClient()
-const { check } = useUsernameAvailability()
 
 await ensureLoaded()
 
@@ -263,14 +251,6 @@ const birthdateLocked = computed(() => Boolean(user.value?.birthdate))
 const menConfirmLocked = computed(() => Boolean(user.value?.menOnlyConfirmed))
 
 const currentUsername = computed(() => (user.value?.username ?? '').trim())
-const currentUsernameLower = computed(() => currentUsername.value.toLowerCase())
-const desiredUsernameLower = computed(() => usernameInput.value.trim().toLowerCase())
-const usernameIsCaseOnly = computed(() => {
-  const cur = currentUsernameLower.value
-  const desired = desiredUsernameLower.value
-  if (!cur || !desired) return false
-  return cur === desired
-})
 
 const birthdatePretty = computed(() => {
   const raw = (user.value?.birthdate ?? '').slice(0, 10)
@@ -345,71 +325,24 @@ watch(
   { immediate: true, deep: true },
 )
 
-const usernameStatus = ref<UsernameStatus>('unknown')
-const usernameHelp = ref<string | null>(null)
+const {
+  status: usernameStatus,
+  helperText: usernameHelp,
+  isCaseOnlyChange: usernameIsCaseOnly,
+} = useUsernameField({
+  value: usernameInput,
+  currentUsername,
+  usernameIsSet: usernameLocked,
+  debounceMs: 450,
+  lockedInvalidMessage: 'Username can’t be changed here. Only capitalization is allowed.',
+  caseOnlyMessage: () => {
+    const trimmed = usernameInput.value.trim()
+    return trimmed === currentUsername.value ? 'Username is set.' : 'Only capitalization changes are allowed (this change is OK).'
+  },
+})
+
 const error = ref<string | null>(null)
 const submitting = ref(false)
-
-const checkingUsername = computed(() => usernameStatus.value === 'checking')
-const usernameHelpToneClass = computed(() => {
-  if (usernameStatus.value === 'available') return 'text-green-700 dark:text-green-300'
-  if (usernameStatus.value === 'taken' || usernameStatus.value === 'invalid') return 'text-red-700 dark:text-red-300'
-  return 'moh-text-muted'
-})
-
-let debounceTimer: ReturnType<typeof setTimeout> | null = null
-
-async function checkUsernameAvailability(username: string) {
-  usernameStatus.value = 'checking'
-  usernameHelp.value = null
-  const res = await check(username)
-  usernameStatus.value = res.status
-  usernameHelp.value = res.message
-}
-
-watch(
-  usernameInput,
-  (v) => {
-    if (debounceTimer) clearTimeout(debounceTimer)
-    usernameHelp.value = null
-    usernameStatus.value = 'unknown'
-    error.value = null
-
-    const trimmed = v.trim()
-    if (!trimmed) return
-
-    // If username is already set, only allow capitalization changes.
-    if (usernameLocked.value) {
-      if (!currentUsernameLower.value) {
-        // Shouldn't happen if usernameIsSet=true, but be safe.
-        usernameStatus.value = 'invalid'
-        usernameHelp.value = 'Username is required.'
-        return
-      }
-
-      if (!usernameIsCaseOnly.value) {
-        usernameStatus.value = 'invalid'
-        usernameHelp.value = 'Username can’t be changed here. Only capitalization is allowed.'
-        return
-      }
-
-      // Case-only is OK. If they changed capitalization, we’ll save it on submit.
-      usernameStatus.value = 'available'
-      usernameHelp.value =
-        trimmed === currentUsername.value
-          ? 'Username is set.'
-          : 'Only capitalization changes are allowed (this change is OK).'
-      return
-    }
-
-    debounceTimer = setTimeout(() => void checkUsernameAvailability(trimmed), 450)
-  },
-  { flush: 'post' },
-)
-
-onBeforeUnmount(() => {
-  if (debounceTimer) clearTimeout(debounceTimer)
-})
 
 const canSubmit = computed(() => {
   if (!menConfirmLocked.value && menOnlyConfirmed.value !== true) return false

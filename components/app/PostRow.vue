@@ -47,132 +47,22 @@
             :created-at-tooltip="createdAtTooltip"
           />
 
-          <!-- Overlay: must not affect layout -->
-          <div class="absolute right-0 -top-2.5 z-20">
-            <a
-              role="button"
-              tabindex="0"
-              class="inline-flex h-9 w-9 items-center justify-center rounded-full transition-opacity hover:opacity-70"
-              aria-label="More"
-              v-tooltip.bottom="moreTooltip"
-              @click.stop="toggleMoreMenu($event)"
-              @keydown.enter.stop.prevent="toggleMoreMenu($event)"
-              @keydown.space.stop.prevent="toggleMoreMenu($event)"
-            >
-              <i class="pi pi-ellipsis-v text-[18px]" aria-hidden="true" />
-            </a>
-            <Menu v-if="moreMenuMounted" ref="moreMenuRef" :model="moreMenuItems" popup />
-          </div>
+          <AppPostRowMoreMenu :items="moreMenuItems" :tooltip="moreTooltip" />
         </div>
 
-        <p class="mt-0.5 whitespace-pre-wrap break-words moh-text">
-          <template v-for="(seg, idx) in displayBodySegments" :key="idx">
-            <a
-              v-if="seg.href"
-              :href="seg.href"
-              target="_blank"
-              rel="noopener noreferrer"
-              class="underline decoration-gray-300 underline-offset-2 hover:decoration-gray-500 dark:decoration-zinc-700 dark:hover:decoration-zinc-500"
-              @click.stop
-            >
-              {{ seg.text }}
-            </a>
-            <span v-else>{{ seg.text }}</span>
-          </template>
-        </p>
+        <AppPostRowBody :body="post.body" :has-media="Boolean(post.media?.length)" />
 
         <AppPostMediaGrid v-if="post.media?.length" :media="post.media" />
 
-        <div v-if="showLinkPreview && rowInView" class="mt-3">
-          <!-- Video embeds (special cases) -->
-          <div
-            v-if="youtubeEmbedUrl || isPreviewLinkRumble"
-            class="overflow-hidden rounded-xl border moh-border bg-black/5 dark:bg-white/5"
-          >
-            <!-- YouTube: fixed 16:9. Rumble: use oEmbed dimensions (fallback 854x480). -->
-            <div
-              class="relative w-full"
-              ref="videoBoxEl"
-              :style="youtubeEmbedUrl ? undefined : { aspectRatio: rumbleAspectRatio }"
-              :class="youtubeEmbedUrl ? 'aspect-video' : ''"
-              @click.stop="activateEmbeddedVideo"
-            >
-              <img
-                v-if="youtubePosterUrl || rumblePosterUrl"
-                :src="youtubePosterUrl || rumblePosterUrl || ''"
-                class="absolute inset-0 z-0 h-full w-full object-cover transition-opacity duration-250"
-                :class="desiredVideoSrc && videoIframeLoaded ? 'opacity-0' : 'opacity-90'"
-                alt=""
-                loading="lazy"
-                aria-hidden="true"
-              />
-              <iframe
-                :src="videoIframeSrc"
-                class="relative z-10 h-full w-full transition-opacity duration-250"
-                :class="desiredVideoSrc && videoIframeLoaded ? 'opacity-100' : 'opacity-0 pointer-events-none'"
-                title="Embedded video"
-                loading="lazy"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                allowfullscreen
-                @load="onVideoIframeLoad"
-              />
-              <!-- Thin black film + click-to-play when video is not yet active -->
-              <div
-                v-if="hasEmbeddedVideo && !videoIsPlayable"
-                class="absolute inset-0 z-20 flex cursor-pointer items-center justify-center bg-black/45 transition-opacity duration-200"
-                aria-hidden="true"
-              >
-                <div class="flex flex-col items-center gap-2 rounded-full bg-black/50 px-4 py-3">
-                  <i class="pi pi-play text-2xl text-white" aria-hidden="true" />
-                  <span class="text-xs font-medium text-white/90">Click to play</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Generic link preview (last link only) -->
-          <a
-            v-else
-            :href="previewLink || undefined"
-            target="_blank"
-            rel="noopener noreferrer"
-            class="block overflow-hidden rounded-xl border moh-border transition-colors moh-surface-hover"
-            aria-label="Open link"
-            @click.stop
-          >
-            <div class="flex gap-3 p-3">
-              <div
-                v-if="linkMeta?.imageUrl"
-                class="h-16 w-16 shrink-0 overflow-hidden rounded-lg bg-gray-100 dark:bg-zinc-900"
-                aria-hidden="true"
-              >
-                <img :src="linkMeta.imageUrl" class="h-full w-full object-cover" alt="" loading="lazy" />
-              </div>
-              <div class="min-w-0 flex-1">
-                <div class="text-sm font-semibold moh-text truncate">
-                  {{ linkMeta?.title || previewLinkHost || 'Link' }}
-                </div>
-                <div v-if="linkMeta?.description" class="mt-0.5 text-xs moh-text-muted overflow-hidden text-ellipsis">
-                  {{ linkMeta.description }}
-                </div>
-                <div class="mt-1 text-[11px] moh-text-muted truncate">
-                  {{ previewLinkDisplay }}
-                </div>
-              </div>
-              <div class="shrink-0 text-gray-400 dark:text-zinc-500" aria-hidden="true">
-                <i class="pi pi-external-link text-[12px]" />
-              </div>
-            </div>
-          </a>
-        </div>
-
-        <AppEmbeddedPostPreview
-          v-if="embeddedPostId"
-          :post-id="embeddedPostId"
-          :enabled="embeddedPreviewEnabled"
+        <AppPostRowLinkPreview
+          :post-id="post.id"
+          :body="post.body"
+          :has-media="Boolean(post.media?.length)"
+          :row-in-view="rowInView"
+          :activate-video-on-mount="activateVideoOnMount"
         />
 
-        <div v-if="visibilityTag || isPreviewLinkRumble" class="mt-2 flex items-center justify-between gap-3">
+        <div v-if="visibilityTag" class="mt-2 flex items-center justify-between gap-3">
           <span
             v-if="visibilityTag"
             class="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold border cursor-default"
@@ -182,20 +72,6 @@
             <i v-if="post.visibility === 'onlyMe'" class="pi pi-eye-slash mr-1 text-[10px]" aria-hidden="true" />
             {{ visibilityTag }}
           </span>
-          <span v-else aria-hidden="true" />
-
-          <a
-            v-if="isPreviewLinkRumble && previewLink"
-            :href="previewLink || undefined"
-            target="_blank"
-            rel="noopener noreferrer"
-            class="text-[11px] font-semibold transition-colors"
-            style="color: #85c742;"
-            aria-label="Open on Rumble"
-            @click.stop
-          >
-            Open on Rumble
-          </a>
         </div>
 
         <div class="mt-3 flex items-center justify-between moh-text-muted">
@@ -254,140 +130,14 @@
           </div>
 
           <div v-if="!isOnlyMe" class="relative flex items-center justify-end">
-            <button
-              type="button"
-              class="inline-flex h-9 w-9 items-center justify-center rounded-full transition-colors moh-surface-hover"
-              :class="bookmarkLoading ? 'cursor-default opacity-60' : 'cursor-pointer'"
-              :aria-label="viewerHasBookmarked ? 'Edit bookmark' : 'Save post'"
-              v-tooltip.bottom="bookmarkTooltip"
-              @click.stop="onBookmarkClick"
-            >
-              <i
-                :class="viewerHasBookmarked ? 'pi pi-bookmark-fill' : 'pi pi-bookmark'"
-                class="text-[18px]"
-                aria-hidden="true"
-                :style="viewerHasBookmarked ? { color: 'var(--p-primary-color)' } : undefined"
-              />
-            </button>
+            <AppPostRowBookmarkButton
+              :post-id="post.id"
+              :viewer-can-interact="viewerCanInteract"
+              :initial-has-bookmarked="Boolean((post as any)?.viewerHasBookmarked)"
+              :initial-collection-ids="((((post as any)?.viewerBookmarkCollectionIds as string[]) ?? []).filter(Boolean))"
+            />
 
-            <Popover ref="bookmarkPopoverRef">
-              <div class="w-[min(20rem,calc(100vw-3rem))] p-2">
-                <div class="px-2 py-1 text-[11px] font-semibold moh-text-muted">Folders</div>
-
-                <button
-                  type="button"
-                  class="w-full rounded-lg px-2 py-2 text-left text-sm transition-colors moh-surface-hover"
-                  :class="bookmarkLoading ? 'cursor-default opacity-60' : 'cursor-pointer'"
-                  @click="setBookmarkFolderIds([])"
-                >
-                  <div class="flex items-center justify-between gap-3">
-                    <div class="min-w-0 truncate">Unorganized</div>
-                    <i
-                      v-if="viewerHasBookmarked && viewerBookmarkCollectionIds.length === 0"
-                      class="pi pi-check text-xs"
-                      aria-hidden="true"
-                    />
-                  </div>
-                </button>
-
-                <div v-if="bookmarkCollectionsLoading" class="px-2 py-2 text-xs moh-text-muted">Loading folders…</div>
-
-                <button
-                  v-for="c in bookmarkCollections"
-                  :key="c.id"
-                  type="button"
-                  class="w-full rounded-lg px-2 py-2 text-left text-sm transition-colors moh-surface-hover"
-                  :class="bookmarkLoading ? 'cursor-default opacity-60' : 'cursor-pointer'"
-                  @click="toggleFolder(c.id)"
-                >
-                  <div class="flex items-center justify-between gap-3">
-                    <div class="min-w-0 truncate">{{ c.name }}</div>
-                    <i
-                      v-if="viewerHasBookmarked && viewerBookmarkCollectionIds.includes(c.id)"
-                      class="pi pi-check text-xs"
-                      aria-hidden="true"
-                    />
-                  </div>
-                </button>
-
-                <div v-if="viewerHasBookmarked" class="mt-2 border-t moh-border pt-2 px-1">
-                  <button
-                    type="button"
-                    class="w-full rounded-lg px-2 py-2 text-left text-sm font-semibold transition-colors moh-surface-hover text-red-600 dark:text-red-400"
-                    :class="bookmarkLoading ? 'cursor-default opacity-60' : 'cursor-pointer'"
-                    @click="removeBookmark()"
-                  >
-                    <i class="pi pi-trash mr-2 text-xs" aria-hidden="true" />
-                    Remove bookmark
-                  </button>
-                </div>
-
-                <div class="mt-2 border-t moh-border pt-2">
-                  <div v-if="!bookmarkCreateOpen" class="px-1">
-                    <button
-                      type="button"
-                      class="w-full rounded-lg px-2 py-2 text-left text-sm font-semibold transition-colors moh-surface-hover"
-                      @click="bookmarkCreateOpen = true"
-                    >
-                      <i class="pi pi-plus mr-2 text-xs" aria-hidden="true" />
-                      Create folder
-                    </button>
-                  </div>
-                  <div v-else class="flex items-center gap-2 px-1">
-                    <InputText
-                      v-model="bookmarkCreateName"
-                      class="w-full"
-                      placeholder="Folder name"
-                      @keydown.enter.prevent="createFolderAndSave"
-                    />
-                    <Button
-                      label="Save"
-                      size="small"
-                      :loading="bookmarkCreating"
-                      :disabled="bookmarkCreating || !bookmarkCreateName.trim()"
-                      @click="createFolderAndSave"
-                    />
-                  </div>
-                </div>
-              </div>
-            </Popover>
-
-            <button
-              type="button"
-              class="inline-flex h-9 w-9 items-center justify-center rounded-full transition-colors moh-surface-hover"
-              :class="canShare ? 'cursor-pointer' : 'cursor-default opacity-60'"
-              aria-label="Share"
-              v-tooltip.bottom="shareTooltip"
-              @click="canShare ? toggleShareMenu($event) : null"
-            >
-              <svg viewBox="0 0 24 24" class="h-5 w-5" aria-hidden="true">
-                <!-- Twitter-ish share: arrow up out of tray -->
-                <path
-                  d="M12 3v10"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="1.9"
-                  stroke-linecap="round"
-                />
-                <path
-                  d="M7.5 7.5L12 3l4.5 4.5"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="1.9"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                />
-                <path
-                  d="M5 11.5v7a1.5 1.5 0 0 0 1.5 1.5h11A1.5 1.5 0 0 0 19 18.5v-7"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="1.9"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                />
-              </svg>
-            </button>
-            <Menu v-if="shareMenuMounted" ref="shareMenuRef" :model="shareMenuItems" popup />
+            <AppPostRowShareMenu :can-share="canShare" :tooltip="shareTooltip" :items="shareMenuItems" />
           </div>
         </div>
       </div>
@@ -426,14 +176,7 @@ import type { MenuItem } from 'primevue/menuitem'
 import { siteConfig } from '~/config/site'
 import { tinyTooltip } from '~/utils/tiny-tooltip'
 import { getApiErrorMessage } from '~/utils/api-error'
-import { extractLinksFromText, getYouTubeEmbedUrl, getYouTubePosterUrl, isRumbleUrl, safeUrlDisplay, safeUrlHostname } from '~/utils/link-utils'
-import LinkifyIt from 'linkify-it'
-import type { LinkMetadata } from '~/utils/link-metadata'
-import { getLinkMetadata } from '~/utils/link-metadata'
-import type { RumbleEmbedInfo } from '~/utils/rumble-embed'
-import { resolveRumbleEmbedInfo } from '~/utils/rumble-embed'
-import { useEmbeddedVideoManager } from '~/composables/useEmbeddedVideoManager'
-import { useBookmarkCollections } from '~/composables/useBookmarkCollections'
+import { useCopyToClipboard } from '~/composables/useCopyToClipboard'
 import { useInViewOnce } from '~/composables/useInViewOnce'
 
 const props = defineProps<{
@@ -460,22 +203,6 @@ const isSelf = computed(() => Boolean(user.value?.id && user.value.id === post.v
 const { apiFetchData } = useApiClient()
 const { show: showAuthActionModal } = useAuthActionModal()
 const boostState = useBoostState()
-const bookmarkLoading = ref(false)
-const viewerHasBookmarked = ref(Boolean((post.value as any)?.viewerHasBookmarked))
-const viewerBookmarkCollectionIds = ref<string[]>((((post.value as any)?.viewerBookmarkCollectionIds as string[]) ?? []).filter(Boolean))
-const bookmarkPopoverRef = ref<any>(null)
-const bookmarkCreateOpen = ref(false)
-const bookmarkCreateName = ref('')
-const bookmarkCreating = ref(false)
-
-const {
-  collections: bookmarkCollections,
-  loading: bookmarkCollectionsLoading,
-  nameById: bookmarkCollectionNameById,
-  ensureLoaded: ensureBookmarkCollectionsLoaded,
-  createCollection: createBookmarkCollection,
-  bumpCounts: bumpBookmarkCounts,
-} = useBookmarkCollections()
 
 const isOnlyMe = computed(() => post.value.visibility === 'onlyMe')
 const viewerIsAdmin = computed(() => Boolean(user.value?.siteAdmin))
@@ -505,22 +232,6 @@ const upvoteTooltip = computed(() => {
   return tinyTooltip(text)
 })
 const shareTooltip = computed(() => tinyTooltip('Share'))
-const bookmarkFolderLabel = computed(() => {
-  if (!viewerHasBookmarked.value) return null
-  const ids = viewerBookmarkCollectionIds.value
-  if (!ids.length) return 'Unorganized'
-  if (ids.length === 1) return bookmarkCollectionNameById.value.get(ids[0]!) ?? 'Folder'
-  return `${ids.length} folders`
-})
-const bookmarkTooltip = computed(() => {
-  if (!isAuthed.value) return tinyTooltip('Log in to save')
-  if (viewerHasBookmarked.value) {
-    const label = bookmarkFolderLabel.value
-    if (label === 'Unorganized') return tinyTooltip('Saved (no folder)')
-    return label ? tinyTooltip(`Saved in ${label === `${viewerBookmarkCollectionIds.value.length} folders` ? label : `'${label}'`}`) : tinyTooltip('Saved')
-  }
-  return tinyTooltip('Save')
-})
 const moreTooltip = computed(() => tinyTooltip('More'))
 const commentTooltip = computed(() => {
   if (!viewerCanInteract.value) return tinyTooltip('Comment')
@@ -528,17 +239,6 @@ const commentTooltip = computed(() => {
   if (!viewerIsVerified.value) return tinyTooltip('Verify to comment')
   return tinyTooltip('Comment')
 })
-
-watch(
-  [viewerHasBookmarked, viewerBookmarkCollectionIds],
-  ([saved, ids]) => {
-    if (!import.meta.client) return
-    if (!saved) return
-    if (!Array.isArray(ids) || ids.length === 0) return // Unorganized doesn't need folder lookup
-    void ensureBookmarkCollectionsLoaded()
-  },
-  { immediate: true },
-)
 
 const boostClickable = computed(() => {
   return viewerCanInteract.value && (!isAuthed.value || viewerHasUsername.value)
@@ -571,258 +271,6 @@ const visibilityTooltip = computed(() => {
 
 const postPermalink = computed(() => `/p/${encodeURIComponent(post.value.id)}`)
 const postShareUrl = computed(() => `${siteConfig.url}${postPermalink.value}`)
-
-type TextSegment = { text: string; href?: string }
-
-const linkify = new LinkifyIt()
-
-function isLocalHost(host: string, expected: string) {
-  const h = (host ?? '').trim().toLowerCase()
-  const e = (expected ?? '').trim().toLowerCase()
-  if (!h || !e) return false
-  return h === e || h === `www.${e}`
-}
-
-function tryExtractLocalPostId(url: string): string | null {
-  const raw = (url ?? '').trim()
-  if (!raw) return null
-  try {
-    const u = new URL(raw)
-    if (u.protocol !== 'http:' && u.protocol !== 'https:') return null
-
-    const allowedHosts = new Set<string>()
-    try {
-      const fromCfg = new URL(siteConfig.url)
-      if (fromCfg.hostname) allowedHosts.add(fromCfg.hostname.toLowerCase())
-    } catch {
-      // ignore
-    }
-    if (import.meta.client) {
-      const h = window.location.hostname
-      if (h) allowedHosts.add(h.toLowerCase())
-    }
-
-    const host = u.hostname.toLowerCase()
-    const ok = Array.from(allowedHosts).some((a) => isLocalHost(host, a))
-    if (!ok) return null
-
-    const parts = u.pathname.split('/').filter(Boolean)
-    if (parts.length !== 2) return null
-    if (parts[0] !== 'p') return null
-    const id = (parts[1] ?? '').trim()
-    return id || null
-  } catch {
-    return null
-  }
-}
-
-// Links (capture all, used for previews/embeds).
-const capturedLinks = computed(() => extractLinksFromText(post.value.body))
-
-const embeddedPostLink = computed(() => {
-  const xs = capturedLinks.value
-  for (let i = xs.length - 1; i >= 0; i--) {
-    const u = xs[i]
-    if (u && tryExtractLocalPostId(u)) return u
-  }
-  return null
-})
-
-const embeddedPostId = computed(() => (embeddedPostLink.value ? tryExtractLocalPostId(embeddedPostLink.value) : null))
-
-const previewLink = computed(() => {
-  const xs = capturedLinks.value
-  for (let i = xs.length - 1; i >= 0; i--) {
-    const u = xs[i]
-    if (!u) continue
-    if (tryExtractLocalPostId(u)) continue
-    return u
-  }
-  return null
-})
-
-const showLinkPreview = computed(() => Boolean(previewLink.value && !post.value.media?.length))
-
-function escapeRegExp(s: string): string {
-  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-}
-
-const tailLinkToStrip = computed(() => {
-  const xs = capturedLinks.value
-  const last = xs.length ? xs[xs.length - 1] : null
-  if (!last) return null
-  if (embeddedPostLink.value && last === embeddedPostLink.value) return embeddedPostLink.value
-  if (previewLink.value && last === previewLink.value && !post.value.media?.length) return previewLink.value
-  return null
-})
-
-const displayBody = computed(() => {
-  let body = (post.value.body ?? '').toString()
-
-  // If we are rendering an embedded local post preview, avoid showing the raw URL in the body
-  // when it appears as its own standalone line. (Prevents "URL + preview" duplication.)
-  const embedded = (embeddedPostLink.value ?? '').trim()
-  if (embedded) {
-    const reStandaloneLine = new RegExp(String.raw`(^|\n)[ \t]*${escapeRegExp(embedded)}[ \t]*(?=\n|$)`, 'g')
-    if (reStandaloneLine.test(body)) {
-      body = body
-        .replace(reStandaloneLine, '$1')
-        // tidy up whitespace after removing the line
-        .replace(/[ \t]+\n/g, '\n')
-        .replace(/\n{3,}/g, '\n\n')
-        .replace(/\s+$/, '')
-    }
-  }
-
-  const last = (tailLinkToStrip.value ?? '').trim()
-  if (!last) return body
-
-  // If the last link is literally the last thing in the post (ignoring trailing whitespace),
-  // omit it from the rendered body. We still render the preview/embed below.
-  const re = new RegExp(String.raw`(?:\s*)${escapeRegExp(last)}\s*$`)
-  if (!re.test(body)) return body
-  return body.replace(re, '').replace(/\s+$/, '')
-})
-
-const previewLinkHost = computed(() => (previewLink.value ? safeUrlHostname(previewLink.value) : null))
-const previewLinkDisplay = computed(() => (previewLink.value ? safeUrlDisplay(previewLink.value) : ''))
-
-const youtubeEmbedUrl = computed(() => (previewLink.value ? getYouTubeEmbedUrl(previewLink.value) : null))
-const isPreviewLinkRumble = computed(() => Boolean(showLinkPreview.value && previewLink.value && isRumbleUrl(previewLink.value)))
-const rumbleEmbedInfo = ref<RumbleEmbedInfo | null>(null)
-const rumbleEmbedUrl = computed(() => rumbleEmbedInfo.value?.src ?? null)
-const rumbleAspectRatio = computed(() => {
-  const w = rumbleEmbedInfo.value?.width ?? 854
-  const h = rumbleEmbedInfo.value?.height ?? 480
-  return `${w} / ${h}`
-})
-const rumblePosterUrl = computed(() => rumbleEmbedInfo.value?.thumbnailUrl ?? null)
-const youtubePosterUrl = computed(() => (previewLink.value ? getYouTubePosterUrl(previewLink.value) : null))
-
-const { activePostId, register: registerEmbeddedVideo, unregister: unregisterEmbeddedVideo, activate: activateEmbeddedVideoById } =
-  useEmbeddedVideoManager()
-const hasEmbeddedVideo = computed(() => Boolean(youtubeEmbedUrl.value || isPreviewLinkRumble.value))
-const videoIsPlayable = computed(
-  () => hasEmbeddedVideo.value && rowInView.value && activePostId.value === post.value.id,
-)
-const videoBoxEl = ref<HTMLElement | null>(null)
-const videoIframeLoaded = ref(false)
-const desiredVideoSrc = computed(() => {
-  if (!rowInView.value) return null
-  if (!hasEmbeddedVideo.value) return null
-  if (activePostId.value !== post.value.id) return null
-  if (youtubeEmbedUrl.value) return youtubeEmbedUrl.value
-  if (isPreviewLinkRumble.value) return rumbleEmbedUrl.value
-  return null
-})
-
-const videoIframeSrc = computed(() => desiredVideoSrc.value ?? 'about:blank')
-
-let iframeLoadRaf: number | null = null
-function onVideoIframeLoad() {
-  if (!import.meta.client) return
-  // Ignore load events for about:blank
-  if (!desiredVideoSrc.value) return
-  if (iframeLoadRaf != null) cancelAnimationFrame(iframeLoadRaf)
-  // Wait a beat so the iframe has a chance to paint before we fade the poster out.
-  iframeLoadRaf = requestAnimationFrame(() => {
-    iframeLoadRaf = requestAnimationFrame(() => {
-      iframeLoadRaf = null
-      if (!desiredVideoSrc.value) return
-      videoIframeLoaded.value = true
-    })
-  })
-}
-
-watch(
-  desiredVideoSrc,
-  () => {
-    // Activation/deactivation should show poster immediately.
-    videoIframeLoaded.value = false
-  },
-  { immediate: true },
-)
-
-onBeforeUnmount(() => {
-  if (!import.meta.client) return
-  if (iframeLoadRaf != null) cancelAnimationFrame(iframeLoadRaf)
-  iframeLoadRaf = null
-})
-
-watchEffect((onCleanup) => {
-  if (!import.meta.client) return
-  if (!rowInView.value) return
-  if (!hasEmbeddedVideo.value) return
-  const el = videoBoxEl.value
-  if (!el) return
-
-  registerEmbeddedVideo(post.value.id, el)
-  if (props.activateVideoOnMount) {
-    activateEmbeddedVideoById(post.value.id)
-  }
-  onCleanup(() => unregisterEmbeddedVideo(post.value.id))
-})
-
-function activateEmbeddedVideo() {
-  if (!import.meta.client) return
-  if (!hasEmbeddedVideo.value) return
-  activateEmbeddedVideoById(post.value.id)
-}
-
-const linkMeta = ref<LinkMetadata | null>(null)
-watch(
-  [previewLink, rowInView, showLinkPreview],
-  async ([url, inView, canPreview]) => {
-    linkMeta.value = null
-    rumbleEmbedInfo.value = null
-    if (!import.meta.client) return
-    if (!canPreview) return
-    if (!inView) return
-    if (!url) return
-    // Special cases (embed) do not need metadata.
-    if (getYouTubeEmbedUrl(url)) return
-    if (isRumbleUrl(url)) {
-      rumbleEmbedInfo.value = await resolveRumbleEmbedInfo(url)
-      return
-    }
-    linkMeta.value = await getLinkMetadata(url)
-  },
-  { immediate: true },
-)
-
-const embeddedPreviewEnabled = computed(() => {
-  // Allow SSR to fetch embedded post previews on first paint.
-  if (import.meta.server) return true
-  return rowInView.value
-})
-
-const displayBodySegments = computed<TextSegment[]>(() => {
-  const input = (displayBody.value ?? '').toString()
-  if (!input) return [{ text: '' }]
-
-  const matches = linkify.match(input) ?? []
-  if (!matches.length) return [{ text: input }]
-
-  const out: TextSegment[] = []
-  let cursor = 0
-
-  for (const m of matches) {
-    const start = typeof (m as any).index === 'number' ? ((m as any).index as number) : -1
-    const end = typeof (m as any).lastIndex === 'number' ? ((m as any).lastIndex as number) : -1
-    if (start < 0 || end < 0 || end <= start) continue
-    if (start > cursor) out.push({ text: input.slice(cursor, start) })
-
-    const text = input.slice(start, end)
-    const href = (m.url ?? '').trim()
-    if (href && /^https?:\/\//i.test(href)) out.push({ text, href })
-    else out.push({ text })
-
-    cursor = end
-  }
-
-  if (cursor < input.length) out.push({ text: input.slice(cursor) })
-  return out.length ? out : [{ text: input }]
-})
 
 function goToPost() {
   return navigateTo(postPermalink.value)
@@ -859,104 +307,6 @@ function noop() {
   // no-op for now (comments not implemented yet)
 }
 
-async function toggleBookmark() {
-  // Back-compat helper for any callers; saves to Unorganized.
-  if (!isAuthed.value) {
-    showAuthActionModal({ kind: 'login', action: 'boost' })
-    return
-  }
-  if (viewerHasBookmarked.value) return await removeBookmark()
-  return await setBookmarkFolderIds([])
-}
-
-function openBookmarkPopover(event: Event) {
-  bookmarkCreateOpen.value = false
-  bookmarkCreateName.value = ''
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  ;(bookmarkPopoverRef.value as any)?.toggle(event)
-  if (import.meta.client) void ensureBookmarkCollectionsLoaded()
-}
-
-async function removeBookmark() {
-  if (bookmarkLoading.value) return
-  bookmarkLoading.value = true
-  const prevHas = viewerHasBookmarked.value
-  const prevCids = viewerBookmarkCollectionIds.value.slice()
-  try {
-    await apiFetchData('/bookmarks/' + encodeURIComponent(post.value.id), { method: 'DELETE' })
-    viewerHasBookmarked.value = false
-    viewerBookmarkCollectionIds.value = []
-    bumpBookmarkCounts({ prevHas, prevCollectionIds: prevCids, nextHas: false, nextCollectionIds: [] })
-  } catch (e: unknown) {
-    toast.push({ title: getApiErrorMessage(e) || 'Failed to unsave post.', tone: 'error', durationMs: 2000 })
-  } finally {
-    bookmarkLoading.value = false
-  }
-}
-
-async function setBookmarkFolderIds(collectionIds: string[]) {
-  if (bookmarkLoading.value) return
-  if (!isAuthed.value) return
-  bookmarkLoading.value = true
-  const prevHas = viewerHasBookmarked.value
-  const prevCids = viewerBookmarkCollectionIds.value.slice()
-  try {
-    const res = await apiFetchData<{ collectionIds: string[] }>(
-      '/bookmarks/' + encodeURIComponent(post.value.id),
-      { method: 'POST', body: { collectionIds } },
-    )
-    viewerHasBookmarked.value = true
-    viewerBookmarkCollectionIds.value = (res?.collectionIds ?? []).filter(Boolean)
-    bumpBookmarkCounts({
-      prevHas,
-      prevCollectionIds: prevCids,
-      nextHas: true,
-      nextCollectionIds: viewerBookmarkCollectionIds.value.slice(),
-    })
-  } catch (e: unknown) {
-    toast.push({ title: getApiErrorMessage(e) || 'Failed to save post.', tone: 'error', durationMs: 2000 })
-  } finally {
-    bookmarkLoading.value = false
-  }
-}
-
-async function toggleFolder(collectionId: string) {
-  if (!collectionId) return
-  const set = new Set(viewerBookmarkCollectionIds.value)
-  if (set.has(collectionId)) set.delete(collectionId)
-  else set.add(collectionId)
-  await setBookmarkFolderIds(Array.from(set))
-}
-
-async function createFolderAndSave() {
-  const name = bookmarkCreateName.value.trim()
-  if (!name) return
-  if (bookmarkCreating.value || bookmarkLoading.value) return
-  bookmarkCreating.value = true
-  try {
-    const created = await createBookmarkCollection(name)
-    if (!created?.id) throw new Error('Failed to create folder.')
-    const next = new Set(viewerBookmarkCollectionIds.value)
-    next.add(created.id)
-    await setBookmarkFolderIds(Array.from(next))
-    bookmarkCreateOpen.value = false
-    bookmarkCreateName.value = ''
-  } catch (e: unknown) {
-    toast.push({ title: getApiErrorMessage(e) || 'Failed to create folder.', tone: 'error', durationMs: 2200 })
-  } finally {
-    bookmarkCreating.value = false
-  }
-}
-
-async function onBookmarkClick(event: Event) {
-  if (bookmarkLoading.value) return
-  if (!isAuthed.value) {
-    showAuthActionModal({ kind: 'login', action: 'boost' })
-    return
-  }
-  openBookmarkPopover(event)
-}
-
 const createdAtDate = computed(() => new Date(post.value.createdAt))
 const createdAtShort = computed(() => formatShortDate(createdAtDate.value))
 const createdAtTooltip = computed(() => tinyTooltip(createdAtDate.value.toLocaleString()))
@@ -979,8 +329,6 @@ function formatShortDate(d: Date): string {
   return sameYear ? `${month} ${day}` : `${month} ${day}, ${d.getFullYear()}`
 }
 
-const moreMenuRef = ref()
-const moreMenuMounted = ref(false)
 const moreMenuItems = computed<MenuItem[]>(() => {
   const items: MenuItem[] = [
     {
@@ -1026,14 +374,6 @@ const moreMenuItems = computed<MenuItem[]>(() => {
 
   return items
 })
-
-async function toggleMoreMenu(event: Event) {
-  moreMenuMounted.value = true
-  await nextTick()
-  // PrimeVue Menu expects the click event to position the popup.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  ;(moreMenuRef.value as any)?.toggle(event)
-}
 
 const toast = useAppToast()
 const deleteConfirmOpen = ref(false)
@@ -1101,25 +441,7 @@ async function onCommentClick() {
   await navigateTo(postPermalink.value)
 }
 
-async function copyToClipboard(text: string) {
-  if (navigator?.clipboard?.writeText) {
-    await navigator.clipboard.writeText(text)
-    return
-  }
-  // Fallback
-  const ta = document.createElement('textarea')
-  ta.value = text
-  ta.setAttribute('readonly', 'true')
-  ta.style.position = 'fixed'
-  ta.style.opacity = '0'
-  document.body.appendChild(ta)
-  ta.select()
-  document.execCommand('copy')
-  document.body.removeChild(ta)
-}
-
-const shareMenuRef = ref()
-const shareMenuMounted = ref(false)
+const { copyText: copyToClipboard } = useCopyToClipboard()
 const shareMenuItems = computed<MenuItem[]>(() => [
   {
     label: 'Copy link',
@@ -1135,13 +457,5 @@ const shareMenuItems = computed<MenuItem[]>(() => [
     },
   },
 ])
-
-async function toggleShareMenu(event: Event) {
-  shareMenuMounted.value = true
-  await nextTick()
-  // PrimeVue Menu expects the click event to position the popup.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  ;(shareMenuRef.value as any)?.toggle(event)
-}
 </script>
 

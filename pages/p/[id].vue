@@ -36,6 +36,8 @@ import { siteConfig } from '~/config/site'
 import { extractLinksFromText, safeUrlHostname } from '~/utils/link-utils'
 import type { LinkMetadata } from '~/utils/link-metadata'
 import { getLinkMetadata } from '~/utils/link-metadata'
+import { excerpt, normalizeForMeta } from '~/utils/text'
+import { usePostPermalinkSeo } from '~/composables/usePostPermalinkSeo'
 
 definePageMeta({
   layout: 'app',
@@ -94,16 +96,6 @@ if (error.value) {
   }
 } else {
   errorText.value = null
-}
-
-function normalizeForMeta(text: string) {
-  return text.replace(/\s+/g, ' ').trim()
-}
-
-function excerpt(text: string, maxLen: number) {
-  const t = normalizeForMeta(text)
-  if (t.length <= maxLen) return t
-  return `${t.slice(0, Math.max(0, maxLen - 1)).trimEnd()}…`
 }
 
 function escapeRegExp(s: string): string {
@@ -297,199 +289,18 @@ const restrictionSeoDescription = computed(() => {
   return 'Post.'
 })
 
-const seoTitle = computed(() => {
-  if (!post.value) return isRestricted.value ? restrictionLabel.value : 'Post'
-  if (isRestricted.value) return restrictionLabel.value
-
-  const username = (post.value.author.username ?? '').trim()
-  const bodyText = (bodyTextSansLinks.value ?? '').trim()
-  const hasBodyText = Boolean(bodyText)
-
-  // Media post: preview the media.
-  if (primaryMedia.value) {
-    if (hasBodyText) {
-      const t = excerpt(bodyText, 56)
-      return username ? `${t} — @${username}` : t
-    }
-    const kind = primaryMedia.value.kind === 'gif' ? 'GIF' : 'Photo'
-    return username ? `${kind} by @${username}` : kind
-  }
-
-  // External link share: preview the link.
-  const external = (previewLink.value ?? '').trim()
-  if (external) {
-    const isLinkOnly = !hasBodyText
-    if (isLinkOnly) {
-      const linkTitle = (linkMeta.value?.title ?? '').trim()
-      const host = safeUrlHostname(external) ?? 'Link'
-      const t = linkTitle || host
-      return username ? `${t} — shared by @${username}` : t
-    }
-    const t = excerpt(bodyText, 56)
-    return username ? `${t} — @${username}` : t
-  }
-
-  // Text-only: identity-first.
-  const t = hasBodyText ? excerpt(bodyText, 56) : 'Post'
-  return username ? `${t} — @${username}` : t
-})
-
-const seoDescription = computed(() => {
-  if (!post.value) {
-    if (!isRestricted.value) return 'Post.'
-    return restrictionSeoDescription.value
-  }
-  if (isRestricted.value) {
-    return restrictionSeoDescription.value
-  }
-
-  const username = (post.value.author.username ?? '').trim()
-  const bodyText = (bodyTextSansLinks.value ?? '').trim()
-  const hasBodyText = Boolean(bodyText)
-
-  if (primaryMedia.value) {
-    if (hasBodyText) return excerpt(bodyText, 190)
-    return username ? `Post by @${username}.` : 'Post.'
-  }
-
-  const external = (previewLink.value ?? '').trim()
-  if (external) {
-    const isLinkOnly = !hasBodyText
-    if (isLinkOnly) {
-      const d = (linkMeta.value?.description ?? '').trim()
-      if (d) return excerpt(d, 190)
-      const site = (linkMeta.value?.siteName ?? '').trim()
-      return site ? `From ${site}.` : 'Shared link.'
-    }
-
-    let d = excerpt(bodyText, 190)
-    const linkDesc = (linkMeta.value?.description ?? '').trim()
-    if (linkDesc && d.length < 130) {
-      const remaining = Math.max(0, 190 - d.length - 3)
-      if (remaining >= 24) d = `${d} — ${excerpt(linkDesc, remaining)}`
-    }
-    return d || 'Post.'
-  }
-
-  return hasBodyText ? excerpt(bodyText, 190) : 'Post.'
-})
-
-const seoAuthor = computed(() => {
-  if (!post.value || isRestricted.value) return siteConfig.name
-  const username = (post.value.author.username ?? '').trim()
-  return username ? `@${username}` : siteConfig.name
-})
-
-const seoImage = computed(() => {
-  if (isRestricted.value) return '/images/logo-black-bg.png'
-
-  // Content-first: media wins.
-  const mediaUrl = (primaryMedia.value?.url ?? '').trim()
-  if (mediaUrl) return mediaUrl
-
-  // External link unfurl image.
-  const linkImage = (linkMeta.value?.imageUrl ?? '').trim()
-  if (linkImage) return linkImage
-
-  // Identity-first baseline for text-only (and as fallback for link shares with no image).
-  const avatar = (post.value?.author.avatarUrl ?? '').trim()
-  return avatar || '/images/banner.png'
-})
-
-const seoImageAlt = computed(() => {
-  if (isRestricted.value) return `${siteConfig.name} logo`
-  const username = (post.value?.author.username ?? '').trim()
-  const bodyText = (bodyTextSansLinks.value ?? '').trim()
-  const external = (previewLink.value ?? '').trim()
-
-  if (primaryMedia.value) {
-    if (bodyText) return excerpt(bodyText, 120)
-    const kind = primaryMedia.value.kind === 'gif' ? 'GIF' : 'Photo'
-    return username ? `${kind} by @${username}` : `${kind} on ${siteConfig.name}`
-  }
-  if (external) {
-    const t = (linkMeta.value?.title ?? '').trim()
-    return t ? `Shared link: ${t}` : username ? `Shared link by @${username}` : `Shared link on ${siteConfig.name}`
-  }
-  return username ? `Post by @${username}` : `Post on ${siteConfig.name}`
-})
-
-function toAbs(pathOrUrl: string) {
-  if (/^https?:\/\//i.test(pathOrUrl)) return pathOrUrl
-  return `${siteConfig.url}${pathOrUrl.startsWith('/') ? '' : '/'}${pathOrUrl}`
-}
-
-const jsonLdGraph = computed(() => {
-  if (!post.value || isRestricted.value) return []
-
-  const username = (post.value.author.username ?? '').trim()
-  const authorUrl = username ? `${siteConfig.url}/u/${encodeURIComponent(username)}` : null
-  const authorId = authorUrl ? `${authorUrl}#person` : `${siteConfig.url}/#organization`
-  const avatarUrl = (post.value.author.avatarUrl ?? '').trim() || null
-  const author: any = authorUrl
-    ? {
-        '@type': 'Person',
-        '@id': authorId,
-        name: username ? `@${username}` : siteConfig.name,
-        url: authorUrl,
-        ...(avatarUrl ? { image: avatarUrl } : {})
-      }
-    : { '@type': 'Organization', '@id': `${siteConfig.url}/#organization`, name: siteConfig.name, url: siteConfig.url }
-
-  const images: string[] = []
-  const primaryUrl = (primaryMedia.value?.url ?? '').trim()
-  if (primaryUrl) images.push(toAbs(primaryUrl))
-  for (const u of extraOgMediaUrls.value) images.push(toAbs(u))
-  const linkImage = (linkMeta.value?.imageUrl ?? '').trim()
-  if (!images.length && linkImage) images.push(toAbs(linkImage))
-  if (!images.length && avatarUrl) images.push(toAbs(avatarUrl))
-  // Always include a site fallback at the end.
-  images.push(toAbs('/images/banner.png'))
-
-  return [
-    authorUrl ? author : null,
-    {
-      '@type': 'Article',
-      '@id': `${siteConfig.url}${canonicalPath.value}#article`,
-      mainEntityOfPage: { '@id': `${siteConfig.url}${canonicalPath.value}#webpage` },
-      headline: excerpt(bodyTextSansLinks.value || 'Post', 90),
-      description: seoDescription.value,
-      datePublished: post.value.createdAt,
-      dateModified: post.value.createdAt,
-      author: { '@id': authorId },
-      publisher: { '@id': `${siteConfig.url}/#organization` },
-      image: Array.from(new Set(images)).filter(Boolean),
-      isAccessibleForFree: true,
-    }
-  ].filter(Boolean)
-})
-
-usePageSeo({
-  title: seoTitle,
-  description: seoDescription,
-  canonicalPath,
-  ogType: computed(() => (isRestricted.value ? 'website' : 'article')),
-  image: seoImage,
-  imageAlt: seoImageAlt,
-  noindex: computed(() => isRestricted.value || Boolean(errorText.value)),
-  author: seoAuthor,
-  jsonLdGraph
-})
-
-// Extra share tags for article rich previews (public posts only).
-useHead({
-  meta: computed(() => {
-    if (!post.value || isRestricted.value) return []
-    const username = (post.value.author.username ?? '').trim()
-    const authorUrl = username ? `${siteConfig.url}/u/${encodeURIComponent(username)}` : null
-    return [
-      { property: 'article:published_time', content: post.value.createdAt },
-      { property: 'article:modified_time', content: post.value.createdAt },
-      ...(authorUrl ? [{ property: 'article:author', content: authorUrl }] : []),
-      // Multiple images: add extra OG images so platforms can pick/rotate.
-      ...extraOgMediaUrls.value.map((u) => ({ property: 'og:image', content: toAbs(u) })),
-    ]
-  }),
+usePostPermalinkSeo({
+  postId,
+  post,
+  errorText,
+  isRestricted,
+  restrictionLabel,
+  restrictionSeoDescription,
+  previewLink,
+  linkMeta,
+  primaryMedia,
+  extraOgMediaUrls,
+  bodyTextSansLinks,
 })
 
 const showLoginCta = computed(() => {
