@@ -45,3 +45,13 @@ npm run preview
 ```
 
 Check out the [deployment documentation](https://nuxt.com/docs/getting-started/deployment) for more information.
+
+## Deploy to Render
+
+This project uses **npm** (not Bun). If Render shows `bun install` in the build log:
+
+1. Go to **Dashboard → your service → Settings → Build & Deploy**
+2. Set **Build Command** to: `npm ci && npm run build`
+3. Save and redeploy
+
+The `render.yaml` Blueprint spec defines the correct build; if your service was created manually, sync the Blueprint or update the build command as above.
