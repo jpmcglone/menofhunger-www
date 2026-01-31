@@ -21,7 +21,7 @@
     <AppOnboardingGate />
     <AppAuthActionModal />
     <div :class="['h-dvh overflow-hidden moh-bg moh-text', showStatusBg ? 'moh-status-tone' : '']">
-      <div class="mx-auto flex h-full w-full max-w-6xl px-2 sm:px-4 xl:max-w-7xl">
+      <div class="mx-auto flex h-full w-full max-w-6xl px-0 sm:px-4 xl:max-w-7xl">
         <!-- Left Nav (independent scroll) -->
         <aside
           :class="[
@@ -77,15 +77,19 @@
               @click="(e) => onLeftNavClick(item.to, e)"
             >
               <span class="relative flex h-12 w-12 shrink-0 items-center justify-center">
-                <i
-                  v-if="item.key === 'bookmarks'"
-                  :class="[
-                    'pi text-[28px] font-semibold',
-                    hasBookmarks ? 'pi-bookmark-fill' : 'pi-bookmark'
-                  ]"
-                  :style="hasBookmarks ? { color: 'var(--p-primary-color)' } : undefined"
-                  aria-hidden="true"
-                />
+                <ClientOnly v-if="item.key === 'bookmarks'">
+                  <i
+                    :class="[
+                      'pi text-[28px] font-semibold',
+                      hasBookmarks ? 'pi-bookmark-fill' : 'pi-bookmark'
+                    ]"
+                    :style="hasBookmarks ? { color: 'var(--p-primary-color)' } : undefined"
+                    aria-hidden="true"
+                  />
+                  <template #fallback>
+                    <i class="pi text-[28px] font-semibold pi-bookmark" aria-hidden="true" />
+                  </template>
+                </ClientOnly>
                 <i v-else :class="['pi text-[28px] font-semibold', item.icon]" aria-hidden="true" />
                 <span
                   v-if="item.key === 'notifications' && notifBadge.show"

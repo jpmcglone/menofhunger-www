@@ -48,7 +48,7 @@ export type FeedPost = {
   media: PostMedia[]
   viewerHasBoosted?: boolean
   viewerHasBookmarked?: boolean
-  viewerBookmarkCollectionId?: string | null
+  viewerBookmarkCollectionIds?: string[]
   internal?: {
     boostScore: number | null
     boostScoreUpdatedAt: string | null
@@ -59,6 +59,7 @@ export type FeedPost = {
 export type BookmarkCollection = {
   id: string
   name: string
+  slug: string
   bookmarkCount: number
   createdAt: string
   updatedAt: string
@@ -88,7 +89,7 @@ export type SetBookmarkResponse = {
   success: true
   bookmarked: true
   bookmarkId: string
-  collectionId: string | null
+  collectionIds: string[]
 }
 
 export type RemoveBookmarkResponse = {
@@ -100,7 +101,7 @@ export type SearchBookmarksResponse = {
   bookmarks: Array<{
     bookmarkId: string
     createdAt: string
-    collectionId: string | null
+    collectionIds: string[]
     post: FeedPost
   }>
   nextCursor: string | null

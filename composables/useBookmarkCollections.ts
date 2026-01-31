@@ -48,14 +48,14 @@ export function useBookmarkCollections() {
 
   function bumpCounts(params: {
     prevHas: boolean
-    prevCollectionId: string | null
+    prevCollectionIds: string[]
     nextHas: boolean
-    nextCollectionId: string | null
+    nextCollectionIds: string[]
   }) {
     const prevHas = Boolean(params.prevHas)
     const nextHas = Boolean(params.nextHas)
-    const prevCid = params.prevCollectionId ?? null
-    const nextCid = params.nextCollectionId ?? null
+    const prevCids = Array.isArray(params.prevCollectionIds) ? params.prevCollectionIds : []
+    const nextCids = Array.isArray(params.nextCollectionIds) ? params.nextCollectionIds : []
 
     const bumpCollection = (cid: string, delta: number) => {
       const idx = collections.value.findIndex((c) => c.id === cid)
@@ -66,26 +66,36 @@ export function useBookmarkCollections() {
       collections.value[idx] = { ...cur, bookmarkCount: next }
     }
 
+    const prevSet = new Set(prevCids.filter(Boolean))
+    const nextSet = new Set(nextCids.filter(Boolean))
+    const prevEmpty = prevSet.size === 0
+    const nextEmpty = nextSet.size === 0
+
     // Create / delete
     if (!prevHas && nextHas) {
       totalCount.value = Math.max(0, totalCount.value + 1)
-      if (!nextCid) unorganizedCount.value = Math.max(0, unorganizedCount.value + 1)
-      else bumpCollection(nextCid, +1)
+      if (nextEmpty) unorganizedCount.value = Math.max(0, unorganizedCount.value + 1)
+      for (const cid of nextSet) bumpCollection(cid, +1)
       return
     }
     if (prevHas && !nextHas) {
       totalCount.value = Math.max(0, totalCount.value - 1)
-      if (!prevCid) unorganizedCount.value = Math.max(0, unorganizedCount.value - 1)
-      else bumpCollection(prevCid, -1)
+      if (prevEmpty) unorganizedCount.value = Math.max(0, unorganizedCount.value - 1)
+      for (const cid of prevSet) bumpCollection(cid, -1)
       return
     }
 
-    // Move between folders/unorganized (no total change)
-    if (prevHas && nextHas && prevCid !== nextCid) {
-      if (!prevCid) unorganizedCount.value = Math.max(0, unorganizedCount.value - 1)
-      else bumpCollection(prevCid, -1)
-      if (!nextCid) unorganizedCount.value = Math.max(0, unorganizedCount.value + 1)
-      else bumpCollection(nextCid, +1)
+    // Update folder membership (no total change)
+    if (prevHas && nextHas) {
+      if (prevEmpty && !nextEmpty) unorganizedCount.value = Math.max(0, unorganizedCount.value - 1)
+      if (!prevEmpty && nextEmpty) unorganizedCount.value = Math.max(0, unorganizedCount.value + 1)
+
+      for (const cid of prevSet) {
+        if (!nextSet.has(cid)) bumpCollection(cid, -1)
+      }
+      for (const cid of nextSet) {
+        if (!prevSet.has(cid)) bumpCollection(cid, +1)
+      }
     }
   }
 

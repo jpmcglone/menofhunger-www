@@ -37,7 +37,9 @@ function mergeHeaders(a?: HeadersInit, b?: HeadersInit): HeadersInit | undefined
 
 export function useApiClient() {
   const config = useRuntimeConfig()
-  const serverApiBaseUrl = String(config.apiBaseUrl || '').trim()
+  // IMPORTANT: On the client, only `public` + `app` runtime config keys are accessible.
+  // Accessing server-only keys on the client triggers a Nuxt warning.
+  const serverApiBaseUrl = import.meta.server ? String(config.apiBaseUrl || '').trim() : ''
   const publicApiBaseUrl = String(config.public.apiBaseUrl || '').trim()
 
   // On SSR, prefer server-only base URL (container/VM friendly).
