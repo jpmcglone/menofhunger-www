@@ -98,3 +98,12 @@ export function isRumbleUrl(url: string): boolean {
   }
 }
 
+/** True if the post body (with no media) would show a video embed (YouTube or Rumble). */
+export function postBodyHasVideoEmbed(body: string, hasMedia: boolean): boolean {
+  if (hasMedia) return false
+  const links = extractLinksFromText(body)
+  const last = links[links.length - 1]
+  if (!last) return false
+  return Boolean(getYouTubeEmbedUrl(last) || isRumbleUrl(last))
+}
+

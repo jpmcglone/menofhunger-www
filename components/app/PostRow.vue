@@ -116,6 +116,17 @@
                 allowfullscreen
                 @load="onVideoIframeLoad"
               />
+              <!-- Thin black film + click-to-play when video is not yet active -->
+              <div
+                v-if="hasEmbeddedVideo && !videoIsPlayable"
+                class="absolute inset-0 z-20 flex cursor-pointer items-center justify-center bg-black/45 transition-opacity duration-200"
+                aria-hidden="true"
+              >
+                <div class="flex flex-col items-center gap-2 rounded-full bg-black/50 px-4 py-3">
+                  <i class="pi pi-play text-2xl text-white" aria-hidden="true" />
+                  <span class="text-xs font-medium text-white/90">Click to play</span>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -428,6 +439,8 @@ import { useInViewOnce } from '~/composables/useInViewOnce'
 const props = defineProps<{
   post: FeedPost
   clickable?: boolean
+  /** When true, activate this post's video as soon as it's ready (e.g. newly posted). */
+  activateVideoOnMount?: boolean
 }>()
 const emit = defineEmits<{
   (e: 'deleted', id: string): void
@@ -689,6 +702,9 @@ const youtubePosterUrl = computed(() => (previewLink.value ? getYouTubePosterUrl
 const { activePostId, register: registerEmbeddedVideo, unregister: unregisterEmbeddedVideo, activate: activateEmbeddedVideoById } =
   useEmbeddedVideoManager()
 const hasEmbeddedVideo = computed(() => Boolean(youtubeEmbedUrl.value || isPreviewLinkRumble.value))
+const videoIsPlayable = computed(
+  () => hasEmbeddedVideo.value && rowInView.value && activePostId.value === post.value.id,
+)
 const videoBoxEl = ref<HTMLElement | null>(null)
 const videoIframeLoaded = ref(false)
 const desiredVideoSrc = computed(() => {
@@ -741,6 +757,9 @@ watchEffect((onCleanup) => {
   if (!el) return
 
   registerEmbeddedVideo(post.value.id, el)
+  if (props.activateVideoOnMount) {
+    activateEmbeddedVideoById(post.value.id)
+  }
   onCleanup(() => unregisterEmbeddedVideo(post.value.id))
 })
 

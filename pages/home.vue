@@ -77,7 +77,11 @@
 
           <div class="relative">
             <div v-for="p in posts" :key="p.id">
-              <AppPostRow :post="p" @deleted="removePost" />
+              <AppPostRow
+              :post="p"
+              :activate-video-on-mount="p.id === newlyPostedVideoPostId"
+              @deleted="removePost"
+            />
             </div>
           </div>
         </div>
@@ -102,6 +106,7 @@
 import type { GiphySearchResponse, PostMediaKind, PostMediaSource, PostVisibility } from '~/types/api'
 import type { ProfilePostsFilter } from '~/utils/post-visibility'
 import { filterPillClasses } from '~/utils/post-visibility'
+import { postBodyHasVideoEmbed } from '~/utils/link-utils'
 import { PRIMARY_PREMIUM_ORANGE, PRIMARY_TEXT_DARK, PRIMARY_TEXT_LIGHT, PRIMARY_VERIFIED_BLUE, primaryPaletteToCssVars } from '~/utils/theme-tint'
 import { tinyTooltip } from '~/utils/tiny-tooltip'
 import { getApiErrorMessage } from '~/utils/api-error'
@@ -184,6 +189,7 @@ watch(
 
 const followingOnly = computed(() => Boolean(isAuthed.value && feedScope.value === 'following'))
 
+const newlyPostedVideoPostId = ref<string | null>(null)
 const { posts, nextCursor, loading, error, refresh, softRefreshNewer, startAutoSoftRefresh, loadMore, addPost, removePost } = usePostsFeed({
   visibility: feedFilter,
   followingOnly,
@@ -204,6 +210,12 @@ async function createPostViaFeed(
   }> | null,
 ): Promise<{ id: string } | null> {
   const created = await addPost(body, visibility, media ?? null)
+  if (created?.id && postBodyHasVideoEmbed(created.body ?? '', Boolean(created.media?.length))) {
+    newlyPostedVideoPostId.value = created.id
+    if (import.meta.client) {
+      setTimeout(() => { newlyPostedVideoPostId.value = null }, 800)
+    }
+  }
   return created?.id ? { id: created.id } : null
 }
 
