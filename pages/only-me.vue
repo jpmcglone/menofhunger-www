@@ -13,6 +13,16 @@
               Private posts that only you can see. These never appear in feeds.
             </div>
           </div>
+          <Button
+            v-if="canPost"
+            label="Post"
+            icon="pi pi-plus"
+            severity="secondary"
+            rounded
+            class="moh-btn-onlyme moh-btn-tone"
+            aria-label="New only-me post"
+            @click="openComposerOnlyMe"
+          />
         </div>
       </div>
 
@@ -71,6 +81,8 @@
 </template>
 
 <script setup lang="ts">
+import { MOH_OPEN_COMPOSER_KEY } from '~/utils/injection-keys'
+
 definePageMeta({
   layout: 'app',
   title: 'Only me',
@@ -84,6 +96,16 @@ usePageSeo({
 })
 
 const revealed = ref(false)
+const openComposer = inject(MOH_OPEN_COMPOSER_KEY)
+const { user } = useAuth()
+const canPost = computed(() => {
+  const u = user.value
+  if (!u?.id) return false
+  return Boolean(u.usernameIsSet && u.birthdate && u.menOnlyConfirmed && Array.isArray(u.interests) && u.interests.length >= 1)
+})
+function openComposerOnlyMe() {
+  openComposer?.('onlyMe')
+}
 
 const { posts, nextCursor, loading, error, refresh, loadMore, removePost } = useOnlyMePosts()
 

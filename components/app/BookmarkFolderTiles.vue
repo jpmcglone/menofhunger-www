@@ -1,30 +1,64 @@
 <template>
-  <div class="mt-4">
-    <!-- Mobile: bleed to edges so the horizontal scroll feels off-screen -->
-    <div class="-mx-4 sm:mx-0 relative">
-      <!-- Desktop scroll arrows -->
-      <button
-        v-if="showScrollArrows && canScrollLeft"
-        type="button"
-        class="absolute left-2 sm:left-0 top-1/2 -translate-y-1/2 z-10 h-10 w-10 flex items-center justify-center rounded-full border moh-border moh-frosted"
-        aria-label="Scroll folders left"
-        @click="scrollByAmount(-1)"
-      >
-        <i class="pi pi-chevron-left text-sm moh-text -translate-x-px" aria-hidden="true" />
-      </button>
-      <button
-        v-if="showScrollArrows && canScrollRight"
-        type="button"
-        class="absolute right-2 sm:right-0 top-1/2 -translate-y-1/2 z-10 h-10 w-10 flex items-center justify-center rounded-full border moh-border moh-frosted"
-        aria-label="Scroll folders right"
-        @click="scrollByAmount(1)"
-      >
-        <i class="pi pi-chevron-right text-sm moh-text translate-x-px" aria-hidden="true" />
-      </button>
+  <div class="mt-4 flex items-center">
+    <!-- Add folder button (circle +) -->
+    <button
+      type="button"
+      class="shrink-0 h-10 w-10 flex items-center justify-center rounded-full border moh-border moh-surface hover:moh-surface-hover moh-text"
+      aria-label="New folder"
+      @click="$emit('new-folder')"
+    >
+      <i class="pi pi-plus text-base" aria-hidden="true" />
+    </button>
 
+    <!-- Vertical divider -->
+    <div class="shrink-0 w-px h-8 mx-2 bg-gray-200 dark:bg-zinc-700" aria-hidden="true" />
+
+    <!-- Mobile: bleed to edges so the horizontal scroll feels off-screen -->
+    <div class="-mx-4 sm:mx-0 relative flex-1 min-w-0">
+      <!-- Desktop scroll arrows -->
+      <Transition
+        enter-active-class="transition-opacity duration-200 ease-out"
+        leave-active-class="transition-opacity duration-150 ease-in"
+        enter-from-class="opacity-0"
+        enter-to-class="opacity-100"
+        leave-from-class="opacity-100"
+        leave-to-class="opacity-0"
+      >
+        <button
+          v-if="showScrollArrows && canScrollLeft"
+          key="left"
+          type="button"
+          class="absolute left-2 sm:left-0 top-1/2 -translate-y-1/2 z-10 h-10 w-10 flex items-center justify-center rounded-full border moh-border moh-frosted"
+          aria-label="Scroll folders left"
+          @click="scrollByAmount(-1)"
+        >
+          <i class="pi pi-chevron-left text-sm moh-text -translate-x-px" aria-hidden="true" />
+        </button>
+      </Transition>
+      <Transition
+        enter-active-class="transition-opacity duration-200 ease-out"
+        leave-active-class="transition-opacity duration-150 ease-in"
+        enter-from-class="opacity-0"
+        enter-to-class="opacity-100"
+        leave-from-class="opacity-100"
+        leave-to-class="opacity-0"
+      >
+        <button
+          v-if="showScrollArrows && canScrollRight"
+          key="right"
+          type="button"
+          class="absolute right-2 sm:right-0 top-1/2 -translate-y-1/2 z-10 h-10 w-10 flex items-center justify-center rounded-full border moh-border moh-frosted"
+          aria-label="Scroll folders right"
+          @click="scrollByAmount(1)"
+        >
+          <i class="pi pi-chevron-right text-sm moh-text translate-x-px" aria-hidden="true" />
+        </button>
+      </Transition>
+
+      <!-- Scrollview: no margins, folders have spacing at edges -->
       <div
         ref="scrollerEl"
-        class="flex gap-3 overflow-x-auto no-scrollbar py-1 px-4 sm:px-0"
+        class="flex gap-3 overflow-x-auto no-scrollbar py-1 pl-2 pr-4 sm:pl-2 sm:pr-2"
         @scroll.passive="onScroll"
       >
       <NuxtLink
@@ -108,6 +142,10 @@ const props = defineProps<{
   /** null = All saved page */
   activeSlug: string | null
   unorganizedCount: number
+}>()
+
+defineEmits<{
+  (e: 'new-folder'): void
 }>()
 
 const scrollerEl = ref<HTMLElement | null>(null)

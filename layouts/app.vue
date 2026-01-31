@@ -438,7 +438,7 @@ import { siteConfig } from '~/config/site'
 import logoLightSmall from '~/assets/images/logo-white-bg-small.png'
 import logoDarkSmall from '~/assets/images/logo-black-bg-small.png'
 import { primaryTintCssForUser } from '~/utils/theme-tint'
-import { MOH_MIDDLE_SCROLLER_KEY } from '~/utils/injection-keys'
+import { MOH_MIDDLE_SCROLLER_KEY, MOH_OPEN_COMPOSER_KEY, type ComposerVisibility } from '~/utils/injection-keys'
 import { useBookmarkCollections } from '~/composables/useBookmarkCollections'
 
 const route = useRoute()
@@ -464,22 +464,27 @@ const canOpenComposer = computed(() => {
 
 const composerModalOpen = ref(false)
 const composerSheetStyle = ref<Record<string, string>>({ left: '0px', right: '0px', width: 'auto' })
-function openComposerModal() {
-  composerModalOpen.value = true
-}
-function closeComposerModal() {
-  composerModalOpen.value = false
-}
-function onComposerPosted() {
-  composerModalOpen.value = false
-}
-
 const composerVisibility = useCookie<'public' | 'verifiedOnly' | 'premiumOnly' | 'onlyMe'>('moh.post.visibility.v1', {
   default: () => 'public',
   sameSite: 'lax',
   path: '/',
   maxAge: 60 * 60 * 24 * 365,
 })
+
+function openComposerModal() {
+  composerModalOpen.value = true
+}
+function openComposerWithVisibility(visibility?: ComposerVisibility) {
+  if (visibility) composerVisibility.value = visibility
+  composerModalOpen.value = true
+}
+provide(MOH_OPEN_COMPOSER_KEY, openComposerWithVisibility)
+function closeComposerModal() {
+  composerModalOpen.value = false
+}
+function onComposerPosted() {
+  composerModalOpen.value = false
+}
 
 const composerModalTintStyle = computed<Record<string, string> | null>(() => {
   const v = composerVisibility.value

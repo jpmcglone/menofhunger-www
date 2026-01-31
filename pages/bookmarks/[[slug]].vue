@@ -1,19 +1,10 @@
 <template>
   <div>
-    <div class="flex items-center justify-end gap-3">
-      <Button
-        label="New folder"
-        icon="pi pi-plus"
-        severity="secondary"
-        rounded
-        @click="newFolderOpen = true"
-      />
-    </div>
-
     <AppBookmarkFolderTiles
       :collections="collections"
       :active-slug="activeSlug"
       :unorganized-count="unorganizedCount"
+      @new-folder="newFolderOpen = true"
     />
 
     <div class="mt-4 flex flex-col gap-3 sm:flex-row sm:items-stretch">

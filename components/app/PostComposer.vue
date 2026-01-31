@@ -71,6 +71,7 @@
               :style="composerTextareaVars"
               placeholder="What’s happening?"
               :maxlength="postMaxLen"
+              @input="resizeComposerTextarea"
               @keydown="onComposerKeydown"
               @paste="onComposerPaste"
             />
@@ -248,6 +249,15 @@ const meAvatarUrl = computed(() => user.value?.avatarUrl ?? null)
 const draft = ref('')
 const composerTextareaEl = ref<HTMLTextAreaElement | null>(null)
 
+function resizeComposerTextarea() {
+  if (!import.meta.client) return
+  const el = composerTextareaEl.value
+  if (!el) return
+  // Auto-grow: reset to auto, then fit content height.
+  el.style.height = 'auto'
+  el.style.height = `${Math.max(el.scrollHeight, 0)}px`
+}
+
 const {
   composerMedia,
   canAddMoreMedia,
@@ -377,6 +387,7 @@ const submit = async () => {
 
     draft.value = ''
     clearAll()
+    void nextTick().then(() => resizeComposerTextarea())
 
     const id = (created as any)?.id as string | undefined
     if (id) {
@@ -426,8 +437,20 @@ const goLogin = () => {
 
 onMounted(() => {
   if (!props.autoFocus) return
-  void nextTick().then(() => composerTextareaEl.value?.focus?.())
+  void nextTick().then(() => {
+    resizeComposerTextarea()
+    composerTextareaEl.value?.focus?.()
+  })
 })
+
+watch(
+  draft,
+  () => {
+    // Keep height in sync with content changes (typing, paste, programmatic clears).
+    void nextTick().then(() => resizeComposerTextarea())
+  },
+  { flush: 'post' },
+)
 </script>
 
 <style scoped>

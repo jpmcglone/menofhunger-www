@@ -13,8 +13,7 @@
       <div class="rounded-xl border moh-border p-4">
         <div class="space-y-3">
           <div class="grid gap-3 sm:grid-cols-2">
-            <div class="space-y-1.5">
-              <label class="text-sm font-medium moh-text">Category</label>
+            <AppFormField label="Category">
               <Select
                 v-model="category"
                 class="w-full"
@@ -23,22 +22,19 @@
                 optionValue="value"
                 placeholder="Select…"
               />
-            </div>
-            <div class="space-y-1.5">
-              <label class="text-sm font-medium moh-text">Email (optional)</label>
+            </AppFormField>
+            <AppFormField label="Email" optional>
               <InputText v-model="email" class="w-full" placeholder="you@example.com" autocomplete="email" />
-            </div>
+            </AppFormField>
           </div>
 
-          <div class="space-y-1.5">
-            <label class="text-sm font-medium moh-text">Subject</label>
+          <AppFormField label="Subject">
             <InputText v-model="subject" class="w-full" placeholder="Short summary…" />
-          </div>
+          </AppFormField>
 
-          <div class="space-y-1.5">
-            <label class="text-sm font-medium moh-text">Details</label>
+          <AppFormField label="Details">
             <Textarea v-model="details" autoResize rows="6" class="w-full" placeholder="What happened? What did you expect?" />
-          </div>
+          </AppFormField>
 
           <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div class="text-xs moh-text-muted">

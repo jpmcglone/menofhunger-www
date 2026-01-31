@@ -95,10 +95,12 @@
                   <div v-if="saved" class="text-sm text-green-700 dark:text-green-300">Saved.</div>
                 </div>
 
-                <div class="space-y-2 pt-2">
-                  <label class="text-sm font-medium text-gray-700 dark:text-gray-200">
-                    Email <span class="text-gray-500 dark:text-gray-400 font-normal">(Optional)</span>
-                  </label>
+                <AppFormField
+                  label="Email"
+                  optional
+                  :helper="emailHelperText ?? (emailSaved ? 'Saved.' : undefined)"
+                  :helper-tone="emailSaved ? 'success' : emailHelperText ? 'error' : 'default'"
+                >
                   <InputText
                     v-model="emailInput"
                     class="w-full"
@@ -106,20 +108,16 @@
                     autocomplete="email"
                     :disabled="emailSaving"
                   />
-                  <div v-if="emailHelperText" class="text-sm" :class="emailHelperToneClass">
-                    {{ emailHelperText }}
-                  </div>
-                  <div class="flex items-center gap-3">
-                    <Button
-                      label="Save email"
-                      icon="pi pi-check"
-                      severity="secondary"
-                      :loading="emailSaving"
-                      :disabled="emailSaving || !emailDirty"
-                      @click="saveEmail"
-                    />
-                    <div v-if="emailSaved" class="text-sm text-green-700 dark:text-green-300">Saved.</div>
-                  </div>
+                </AppFormField>
+                <div class="flex items-center gap-3">
+                  <Button
+                    label="Save email"
+                    icon="pi pi-check"
+                    severity="secondary"
+                    :loading="emailSaving"
+                    :disabled="emailSaving || !emailDirty"
+                    @click="saveEmail"
+                  />
                 </div>
               </div>
 
@@ -290,12 +288,6 @@ const saved = ref(false)
 const emailSaving = ref(false)
 const emailSaved = ref(false)
 const emailHelperText = ref<string | null>(null)
-const emailHelperToneClass = computed(() => {
-  if (emailSaved.value) return 'text-green-700 dark:text-green-300'
-  if (emailHelperText.value) return 'text-red-700 dark:text-red-300'
-  return 'text-gray-600 dark:text-gray-300'
-})
-
 watch(
   () => authUser.value?.email ?? null,
   (v) => {

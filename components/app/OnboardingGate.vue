@@ -30,16 +30,13 @@
             </template>
           </AppUsernameField>
 
-          <div class="space-y-2">
-            <label class="text-sm font-medium moh-text">Display name <span class="font-normal moh-text-muted">(Optional)</span></label>
+          <AppFormField label="Display name" optional tone="moh">
             <InputText v-model="name" class="w-full" placeholder="Name" :disabled="submitting" />
-          </div>
+          </AppFormField>
 
-          <div class="space-y-2">
-            <label class="text-sm font-medium moh-text">Email <span class="font-normal moh-text-muted">(Optional)</span></label>
+          <AppFormField label="Email" optional tone="moh" helper="Optional. Helps us reach you for account support.">
             <InputText v-model="email" type="email" class="w-full" placeholder="you@example.com" autocomplete="email" :disabled="submitting" />
-            <div class="text-xs moh-text-muted">Optional. Helps us reach you for account support.</div>
-          </div>
+          </AppFormField>
 
           <div class="space-y-2">
             <label class="text-sm font-medium moh-text">
