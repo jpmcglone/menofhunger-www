@@ -22,7 +22,9 @@
     </div>
 
     <div v-else class="mt-4 px-4">
-      <div v-if="loading && !items.length" class="moh-text-muted text-sm">Loading…</div>
+      <div v-if="loading && !items.length" class="flex justify-center pt-12 pb-8">
+        <ProgressSpinner style="width: 48px; height: 48px" strokeWidth="4" />
+      </div>
 
       <div v-else-if="folderNotFound" class="moh-text-muted text-sm">
         Folder not found.

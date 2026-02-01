@@ -50,6 +50,31 @@ export function useComposerDragReorder(opts: { composerMedia: Ref<ComposerMediaI
     return idx >= 0 ? idx : null
   })
 
+  // Store current drag listeners so we can remove them on unmount if user navigates away during drag.
+  let currentOnMove: ((ev: PointerEvent) => void) | null = null
+  let currentOnUpOrCancel: ((ev: PointerEvent) => void) | null = null
+
+  function removePointerListeners() {
+    if (currentOnMove) {
+      window.removeEventListener('pointermove', currentOnMove)
+      currentOnMove = null
+    }
+    if (currentOnUpOrCancel) {
+      window.removeEventListener('pointerup', currentOnUpOrCancel)
+      window.removeEventListener('pointercancel', currentOnUpOrCancel)
+      currentOnUpOrCancel = null
+    }
+    draggingMediaId.value = null
+    draggingPointerId.value = null
+    dragFromSlotIndex.value = null
+    dropTargetSlotIndex.value = null
+    dragGhost.value = null
+  }
+
+  onBeforeUnmount(() => {
+    removePointerListeners()
+  })
+
   function onMediaTilePointerDown(id: string, e: PointerEvent) {
     const target = e.target as HTMLElement | null
     if (target?.closest('button')) return
@@ -117,23 +142,16 @@ export function useComposerDragReorder(opts: { composerMedia: Ref<ComposerMediaI
 
     const onUpOrCancel = (ev: PointerEvent) => {
       if (draggingPointerId.value !== ev.pointerId) return
-      window.removeEventListener('pointermove', onMove)
-      window.removeEventListener('pointerup', onUpOrCancel)
-      window.removeEventListener('pointercancel', onUpOrCancel)
-
       const from = dragFromSlotIndex.value
       const to = dropTargetSlotIndex.value
+      removePointerListeners()
       if (from != null && to != null && from !== to) {
         opts.composerMedia.value = reorderInsertAt(opts.composerMedia.value, from, to)
       }
-
-      draggingMediaId.value = null
-      draggingPointerId.value = null
-      dragFromSlotIndex.value = null
-      dropTargetSlotIndex.value = null
-      dragGhost.value = null
     }
 
+    currentOnMove = onMove
+    currentOnUpOrCancel = onUpOrCancel
     window.addEventListener('pointermove', onMove)
     window.addEventListener('pointerup', onUpOrCancel)
     window.addEventListener('pointercancel', onUpOrCancel)

@@ -65,7 +65,7 @@
         <input
           ref="mediaFileInputEl"
           type="file"
-          accept="image/*"
+          :accept="composerAcceptTypes"
           class="hidden"
           multiple
           @change="onMediaFilesSelected"
@@ -148,7 +148,8 @@
           </Teleport>
         </ClientOnly>
 
-        <div class="mt-3 flex items-center justify-between">
+        <div class="mt-3 flex flex-col gap-1">
+          <div class="flex items-center justify-between">
           <div class="flex items-center gap-2 text-gray-500 dark:text-gray-400">
             <Button
               icon="pi pi-image"
@@ -189,11 +190,20 @@
               :outlined="postButtonOutlined"
               severity="secondary"
               :class="[postButtonClass, '!min-h-0 !py-1.5 !px-5 !text-sm !font-semibold']"
-              :disabled="submitting || !canPost || (!(draft.trim() || composerMedia.length) ) || postCharCount > postMaxLen || composerUploading"
+              :disabled="submitting || !canPost || (!(draft.trim() || composerMedia.length) ) || postCharCount > postMaxLen || composerUploading || composerHasFailedMedia"
+              :title="composerHasFailedMedia ? 'Remove failed items to post' : undefined"
               :loading="submitting"
               @click="submit"
             />
           </div>
+          </div>
+          <p
+            v-if="composerHasFailedMedia"
+            class="text-xs text-amber-600 dark:text-amber-400"
+            role="status"
+          >
+            Remove failed items to post.
+          </p>
         </div>
       </div>
     </div>
@@ -317,7 +327,14 @@ const {
   selectGiphyGif,
   toCreatePayload,
   clearAll,
-} = useComposerMedia({ textareaEl: composerTextareaEl, maxSlots: 4 })
+} = useComposerMedia({
+  textareaEl: composerTextareaEl,
+  maxSlots: 4,
+  canAcceptVideo: isPremium,
+  onVideoRejectedNeedPremium: () => usePremiumVideoModal().show(),
+})
+
+const composerAcceptTypes = computed(() => 'image/*,video/mp4')
 
 // Visibility + rules
 const visibility = useCookie<PostVisibility>('moh.post.visibility.v1', {
@@ -412,6 +429,11 @@ defineExpose({ hasUnsavedContent })
 
 const canPost = computed(() => Boolean(isAuthed.value && (viewerIsVerified.value || effectiveVisibility.value === 'onlyMe')))
 
+/** True when any upload slot is in error state; user must remove before posting. */
+const composerHasFailedMedia = computed(
+  () => composerMedia.value?.some((m) => m.source === 'upload' && m.uploadStatus === 'error') ?? false,
+)
+
 const postButtonOutlined = computed(() => effectiveVisibility.value === 'public')
 const postButtonClass = computed(() => {
   const v = effectiveVisibility.value
@@ -431,6 +453,7 @@ const submit = async () => {
   if (!(draft.value.trim() || composerMedia.value.length)) return
   if (postCharCount.value > postMaxLen.value) return
   if (composerUploading.value) return
+  if (composerHasFailedMedia.value) return
 
   submitError.value = null
   submitting.value = true

@@ -1,26 +1,53 @@
 <template>
   <div class="pt-3">
-    <button
-      ref="buttonEl"
-      type="button"
-      :class="[
-        'group w-full rounded-xl border border-gray-200 bg-gray-50/80 text-left transition-colors hover:bg-gray-100 dark:border-zinc-800 dark:bg-zinc-950/40 dark:hover:bg-zinc-900',
-        // Default to compact on smaller screens (rail is narrow until xl).
-        // `compact` forces compact even at xl+ (e.g. messages route).
-        compact ? 'p-1' : 'p-1 xl:p-2'
-      ]"
-      @click="toggleMenu"
+    <NuxtLink
+      v-if="hideMenu && (linkToHome || user?.username)"
+      :to="linkToHome ? '/home' : `/u/${user!.username}`"
+      :class="cardClass"
     >
       <div class="flex items-center gap-3">
         <AppUserAvatar
           :user="user"
-          :size-class="compact ? 'mx-auto h-10 w-10' : 'mx-auto xl:mx-0 h-10 w-10'"
+          :presence-status-override="currentUserPresenceStatus"
+          :size-class="props.compact ? 'mx-auto h-10 w-10' : 'mx-auto xl:mx-0 h-10 w-10'"
         />
 
         <div
           :class="[
             'min-w-0 flex-1',
-            compact ? 'hidden' : 'hidden xl:block'
+            props.compact ? 'hidden' : 'hidden xl:block'
+          ]"
+        >
+          <div class="flex items-center justify-between gap-2">
+            <div class="min-w-0">
+              <div class="flex items-center gap-2 min-w-0">
+                <div class="font-semibold truncate">{{ displayName }}</div>
+                <AppVerifiedBadge :status="user?.verifiedStatus" :premium="user?.premium" />
+              </div>
+              <div class="text-sm text-gray-500 dark:text-gray-400 truncate">{{ handle }}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </NuxtLink>
+    <button
+      v-else
+      ref="buttonEl"
+      type="button"
+      :class="cardClass"
+      @click="toggleMenu"
+    >
+      <div class="flex items-center gap-3">
+        <AppUserAvatar
+          :user="user"
+          :presence-status-override="currentUserPresenceStatus"
+          :size-class="props.compact ? 'mx-auto h-10 w-10' : 'mx-auto xl:mx-0 h-10 w-10'"
+        />
+
+        <div
+          :class="[
+            'min-w-0 flex-1',
+            props.compact ? 'hidden' : 'hidden xl:block'
           ]"
         >
           <div class="flex items-center justify-between gap-2">
@@ -37,9 +64,9 @@
       </div>
     </button>
 
-    <Menu ref="menuRef" :model="menuItems" popup />
+    <Menu v-if="!hideMenu" ref="menuRef" :model="menuItems" popup />
 
-    <Dialog v-model:visible="confirmVisible" modal header="Log out?" :style="{ width: '26rem' }">
+    <Dialog v-if="!hideMenu" v-model:visible="confirmVisible" modal header="Log out?" :style="{ width: '26rem' }">
       <p class="text-sm text-gray-700 dark:text-gray-300">
         Are you sure you want to log out?
       </p>
@@ -54,12 +81,32 @@
 <script setup lang="ts">
 import type { MenuItem } from 'primevue/menuitem'
 
-const props = defineProps<{
-  compact: boolean
-}>()
+const props = withDefaults(
+  defineProps<{
+    compact: boolean
+    /** When true, show card as link to profile with no menu button. */
+    hideMenu?: boolean
+    /** When true with hideMenu, link goes to /home instead of profile. */
+    linkToHome?: boolean
+  }>(),
+  { hideMenu: false, linkToHome: false }
+)
+
+const cardClass = computed(() => [
+  'group block w-full rounded-xl border border-gray-200 bg-gray-50/80 text-left transition-colors hover:bg-gray-100 dark:border-zinc-800 dark:bg-zinc-950/40 dark:hover:bg-zinc-900',
+  props.compact ? 'p-1' : 'p-1 xl:p-2'
+])
 
 const { user } = useAuth()
+const { getPresenceStatus, isSocketConnecting } = usePresence()
 const { menuItems, confirmVisible, confirmLogout } = useUserMenu()
+
+const currentUserPresenceStatus = computed(() => {
+  const u = user.value
+  if (!u?.id) return 'offline' as const
+  if (isSocketConnecting.value) return 'connecting' as const
+  return getPresenceStatus(u.id)
+})
 
 const displayName = computed(() => user.value?.name || 'Account')
 const handle = computed(() => {

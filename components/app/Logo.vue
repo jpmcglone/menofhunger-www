@@ -77,4 +77,8 @@ const imgStyle = computed(() => {
 .moh-logo--dark { display: none; }
 .dark .moh-logo--dark { display: block; }
 .dark .moh-logo--light { display: none; }
+
+/* Light mode: white in logo becomes transparent (multiply). Dark mode: black becomes transparent (screen). */
+.moh-logo--light { mix-blend-mode: multiply; }
+.moh-logo--dark { mix-blend-mode: screen; }
 </style>

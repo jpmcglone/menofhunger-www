@@ -80,9 +80,22 @@ onMounted(() => {
   window.addEventListener('resize', measure)
 })
 
+// Store current drag listeners so we can remove them on unmount if user navigates away during drag.
+let activePointerOnMove: ((ev: PointerEvent) => void) | null = null
+let activePointerOnUp: ((ev: PointerEvent) => void) | null = null
+
 onBeforeUnmount(() => {
   if (!import.meta.client) return
   window.removeEventListener('resize', measure)
+  if (activePointerOnMove) {
+    window.removeEventListener('pointermove', activePointerOnMove)
+    activePointerOnMove = null
+  }
+  if (activePointerOnUp) {
+    window.removeEventListener('pointerup', activePointerOnUp)
+    window.removeEventListener('pointercancel', activePointerOnUp)
+    activePointerOnUp = null
+  }
 })
 
 function reset() {
@@ -126,6 +139,8 @@ function onPointerDown(e: PointerEvent) {
     window.removeEventListener('pointermove', onMove)
     window.removeEventListener('pointerup', onUp)
     window.removeEventListener('pointercancel', onUp)
+    activePointerOnMove = null
+    activePointerOnUp = null
 
     if (progress.value >= 0.92) {
       complete()
@@ -136,6 +151,8 @@ function onPointerDown(e: PointerEvent) {
     x.value = 0
   }
 
+  activePointerOnMove = onMove
+  activePointerOnUp = onUp
   window.addEventListener('pointermove', onMove)
   window.addEventListener('pointerup', onUp)
   window.addEventListener('pointercancel', onUp)

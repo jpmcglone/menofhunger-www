@@ -126,6 +126,8 @@ export function useAuth() {
     }
   }
 
-  return { user, me, ensureLoaded, initAuth, logout }
+  const isAuthed = computed(() => Boolean(user.value?.id))
+
+  return { user, me, ensureLoaded, initAuth, logout, isAuthed }
 }
 

@@ -11,6 +11,15 @@ export type CreateMediaPayload =
       height: number | null
     }
   | {
+      source: 'upload'
+      kind: 'video'
+      r2Key: string
+      thumbnailR2Key?: string | null
+      width: number | null
+      height: number | null
+      durationSeconds: number | null
+    }
+  | {
       source: 'giphy'
       kind: 'gif'
       url: string
@@ -25,13 +34,17 @@ export type ComposerMediaItem = {
   kind: PostMediaKind
   previewUrl: string
   r2Key?: string
+  thumbnailR2Key?: string | null
   url?: string
   mp4Url?: string | null
   width?: number | null
   height?: number | null
+  durationSeconds?: number | null
   uploadStatus?: UploadStatus
   uploadError?: string | null
   file?: File | null
+  /** Video first-frame thumbnail blob for upload (not persisted after commit). */
+  thumbnailBlob?: Blob | null
   abortController?: AbortController | null
   uploadProgress?: number | null
 }
@@ -50,6 +63,17 @@ export function dataTransferHasImages(dt: DataTransfer | null): boolean {
   if (items.some((it) => it.kind === 'file' && (it.type ?? '').toLowerCase().startsWith('image/'))) return true
   const files = Array.from(dt.files ?? [])
   if (files.some((f) => ((f.type ?? '').toLowerCase().startsWith('image/')))) return true
+  return false
+}
+
+export function dataTransferHasMedia(dt: DataTransfer | null, includeVideo: boolean): boolean {
+  if (!dt) return false
+  const items = Array.from(dt.items ?? [])
+  if (items.some((it) => it.kind === 'file' && (it.type ?? '').toLowerCase().startsWith('image/'))) return true
+  if (includeVideo && items.some((it) => it.kind === 'file' && (it.type ?? '').toLowerCase() === 'video/mp4')) return true
+  const files = Array.from(dt.files ?? [])
+  if (files.some((f) => ((f.type ?? '').toLowerCase().startsWith('image/')))) return true
+  if (includeVideo && files.some((f) => ((f.type ?? '').toLowerCase() === 'video/mp4'))) return true
   return false
 }
 

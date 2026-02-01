@@ -1,6 +1,7 @@
-import type { Ref } from 'vue'
+import { computed, type Ref } from 'vue'
 import type { ComposerMediaItem } from './types'
-import { dataTransferHasImages, makeLocalId } from './types'
+import { dataTransferHasMedia, makeLocalId } from './types'
+import { appConfig } from '~/config/app'
 
 export function useComposerImageIngest(opts: {
   maxSlots: number
@@ -11,8 +12,15 @@ export function useComposerImageIngest(opts: {
   textareaEl?: Ref<HTMLTextAreaElement | null>
   toast: ReturnType<typeof useAppToast>
   processUploadQueue: () => void
+  /** Patch a composer media item by localId (used to update slot during upload). */
+  patchComposerMedia: (localId: string, patch: Partial<ComposerMediaItem>) => void
+  /** When true, also accept video/mp4 (premium-only). */
+  canAcceptVideo?: Ref<boolean>
+  /** Called when user tries to add video but is not premium; show modal and reject. */
+  onVideoRejectedNeedPremium?: () => void
 }) {
   const MEDIA_SLOTS = Math.max(1, Math.floor(opts.maxSlots))
+  const canAcceptVideo = opts.canAcceptVideo ?? computed(() => false)
 
   function openMediaPicker() {
     if (!opts.canAddMoreMedia.value) return
@@ -25,7 +33,7 @@ export function useComposerImageIngest(opts: {
 
     const remaining = Math.max(0, MEDIA_SLOTS - opts.composerMedia.value.length)
     if (remaining <= 0) {
-      opts.toast.push({ title: `You can attach up to ${MEDIA_SLOTS} images.`, tone: 'public', durationMs: 1600 })
+      opts.toast.push({ title: `You can attach up to ${MEDIA_SLOTS} images or videos.`, tone: 'public', durationMs: 1600 })
       return
     }
 
@@ -34,7 +42,18 @@ export function useComposerImageIngest(opts: {
       .filter((f) => ((f.type ?? '').toLowerCase().startsWith('image/')))
       .slice(0, remaining)
 
-    if (!imageFiles.length) return
+    const rawVideoFiles = files
+      .filter(Boolean)
+      .filter((f) => ((f.type ?? '').toLowerCase() === 'video/mp4'))
+      .slice(0, remaining - imageFiles.length)
+
+    if (rawVideoFiles.length > 0 && !canAcceptVideo.value) {
+      opts.onVideoRejectedNeedPremium?.()
+    }
+
+    const videoFiles = canAcceptVideo.value ? rawVideoFiles : []
+
+    const added: Promise<void>[] = []
 
     for (const file of imageFiles) {
       const ct = (file.type ?? '').toLowerCase()
@@ -55,19 +74,149 @@ export function useComposerImageIngest(opts: {
       opts.composerMedia.value.push(slot)
     }
 
-    if (files.length > imageFiles.length) {
-      const skipped = files.length - imageFiles.length
-      if (source !== 'picker') {
+    for (const file of videoFiles) {
+      if (opts.composerMedia.value.length >= MEDIA_SLOTS) break
+      const p = addVideoFile(file, source)
+      added.push(p)
+    }
+
+    if (added.length) {
+      void Promise.all(added).then(() => opts.processUploadQueue())
+    } else {
+      opts.processUploadQueue()
+    }
+
+    if (imageFiles.length || videoFiles.length) {
+      const skipped = files.length - imageFiles.length - videoFiles.length
+      if (source !== 'picker' && skipped > 0) {
         opts.toast.push({
-          title: `Added ${imageFiles.length} image${imageFiles.length === 1 ? '' : 's'}.`,
+          title: `Added ${imageFiles.length + videoFiles.length} item${imageFiles.length + videoFiles.length === 1 ? '' : 's'}.`,
           message: skipped > 0 ? `Ignored ${skipped} extra (max ${MEDIA_SLOTS}).` : undefined,
           tone: 'public',
           durationMs: 1600,
         })
       }
     }
+  }
 
-    opts.processUploadQueue()
+  async function addVideoFile(file: File, _source: 'picker' | 'drop' | 'paste') {
+    const { maxDurationSeconds, maxWidth, maxHeight, maxBytes } = appConfig.video
+    if (file.size > maxBytes) {
+      opts.toast.push({ title: 'Video is too large (max 25MB).', tone: 'error', durationMs: 2200 })
+      return
+    }
+
+    const meta = await getVideoMetadata(file)
+    if (!meta) {
+      opts.toast.push({ title: 'Could not read video.', tone: 'error', durationMs: 2200 })
+      return
+    }
+    if (meta.durationSeconds > maxDurationSeconds) {
+      const limitLabel = maxDurationSeconds >= 60 ? `${Math.round(maxDurationSeconds / 60)} minutes or shorter` : `${maxDurationSeconds}s or shorter`
+      opts.toast.push({ title: `Video must be ${limitLabel}.`, tone: 'error', durationMs: 2200 })
+      return
+    }
+    if ((meta.width ?? 0) > maxWidth || (meta.height ?? 0) > maxHeight) {
+      opts.toast.push({ title: 'Video must be 1080p or smaller.', tone: 'error', durationMs: 2200 })
+      return
+    }
+
+    const localId = makeLocalId()
+    const previewUrl = meta.posterBlobUrl ?? URL.createObjectURL(file)
+    const slot: ComposerMediaItem = {
+      localId,
+      source: 'upload',
+      kind: 'video',
+      previewUrl,
+      uploadStatus: 'queued',
+      uploadError: null,
+      file,
+      thumbnailBlob: meta.posterBlob ?? null,
+      abortController: null,
+      uploadProgress: 0,
+      width: meta.width ?? null,
+      height: meta.height ?? null,
+      durationSeconds: meta.durationSeconds ?? null,
+    }
+    opts.composerMedia.value.push(slot)
+  }
+
+  function getVideoMetadata(file: File): Promise<{ width: number; height: number; durationSeconds: number; posterBlobUrl?: string; posterBlob?: Blob } | null> {
+    return new Promise((resolve) => {
+      const url = URL.createObjectURL(file)
+      const video = document.createElement('video')
+      video.preload = 'metadata'
+      video.muted = true
+      video.playsInline = true
+
+      const cleanup = () => {
+        video.src = ''
+        URL.revokeObjectURL(url)
+      }
+
+      function onSeeked() {
+        try {
+          const canvas = document.createElement('canvas')
+          canvas.width = video.videoWidth
+          canvas.height = video.videoHeight
+          const ctx = canvas.getContext('2d')
+          if (ctx) {
+            ctx.drawImage(video, 0, 0)
+            canvas.toBlob(
+              (blob) => {
+                const posterBlobUrl = blob ? URL.createObjectURL(blob) : undefined
+                resolve({
+                  width: video.videoWidth,
+                  height: video.videoHeight,
+                  durationSeconds: Math.floor(video.duration),
+                  posterBlobUrl,
+                  posterBlob: blob ?? undefined,
+                })
+                cleanup()
+              },
+              'image/jpeg',
+              0.85,
+            )
+          } else {
+            resolve({
+              width: video.videoWidth,
+              height: video.videoHeight,
+              durationSeconds: Math.floor(video.duration),
+            })
+            cleanup()
+          }
+        } catch {
+          resolve({
+            width: video.videoWidth,
+            height: video.videoHeight,
+            durationSeconds: Math.floor(video.duration),
+          })
+          cleanup()
+        }
+      }
+
+      video.addEventListener('seeked', onSeeked, { once: true })
+
+      function onMeta() {
+        const w = video.videoWidth || 0
+        const h = video.videoHeight || 0
+        if (!w || !h) {
+          resolve(null)
+          cleanup()
+          return
+        }
+        video.currentTime = 0
+      }
+
+      function onErr() {
+        resolve(null)
+        cleanup()
+      }
+
+      video.addEventListener('loadedmetadata', onMeta, { once: true })
+      video.addEventListener('error', onErr, { once: true })
+      video.src = url
+    })
   }
 
   async function onMediaFilesSelected(e: Event) {
@@ -98,7 +247,7 @@ export function useComposerImageIngest(opts: {
   function onComposerAreaDragEnter(e: DragEvent) {
     if (!import.meta.client) return
     const dt = e.dataTransfer
-    if (!dataTransferHasImages(dt)) return
+    if (!dataTransferHasMedia(dt, canAcceptVideo.value)) return
     dragOverDepth.value += 1
     dropOverlayVisible.value = true
   }
@@ -110,7 +259,7 @@ export function useComposerImageIngest(opts: {
       dropOverlayVisible.value = false
       return
     }
-    if (!dataTransferHasImages(dt)) {
+    if (!dataTransferHasMedia(dt, canAcceptVideo.value)) {
       dropOverlayVisible.value = false
       return
     }
@@ -130,7 +279,7 @@ export function useComposerImageIngest(opts: {
   function onComposerAreaDragLeave(e: DragEvent) {
     if (!import.meta.client) return
     const dt = e.dataTransfer
-    if (!dataTransferHasImages(dt)) return
+    if (!dataTransferHasMedia(dt, canAcceptVideo.value)) return
     dragOverDepth.value = Math.max(0, dragOverDepth.value - 1)
     if (dragOverDepth.value === 0) dropOverlayVisible.value = false
   }
@@ -145,7 +294,7 @@ export function useComposerImageIngest(opts: {
     for (const it of items) {
       if (it.kind !== 'file') continue
       const type = (it.type ?? '').toLowerCase()
-      if (!type.startsWith('image/')) continue
+      if (!type.startsWith('image/') && !(canAcceptVideo.value && type === 'video/mp4')) continue
       const f = it.getAsFile()
       if (f) out.push(f)
     }
@@ -155,7 +304,8 @@ export function useComposerImageIngest(opts: {
     }
 
     const hasImage = out.some((f) => ((f.type ?? '').toLowerCase().startsWith('image/')))
-    if (!hasImage) return
+    const hasVideo = canAcceptVideo.value && out.some((f) => ((f.type ?? '').toLowerCase() === 'video/mp4'))
+    if (!hasImage && !hasVideo) return
 
     try {
       e.preventDefault()

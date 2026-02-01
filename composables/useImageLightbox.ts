@@ -2,6 +2,15 @@ type LightboxKind = 'avatar' | 'banner' | 'media'
 type Rect = { left: number; top: number; width: number; height: number }
 type MediaStartMode = 'origin' | 'fitAnchored'
 
+export type LightboxMediaItem = {
+  url: string
+  kind: 'image' | 'video'
+  posterUrl?: string | null
+  durationSeconds?: number | null
+  width?: number | null
+  height?: number | null
+}
+
 let requestId = 0
 
 export function useImageLightbox() {
@@ -16,6 +25,8 @@ export function useImageLightbox() {
   const mediaStartMode = useState<MediaStartMode>('moh.lightbox.mediaStartMode', () => 'fitAnchored')
 
   const items = useState<string[]>('moh.lightbox.items', () => [])
+  const mediaItems = useState<LightboxMediaItem[]>('moh.lightbox.mediaItems', () => [])
+  const mediaPostId = useState<string | null>('moh.lightbox.mediaPostId', () => null)
   const index = useState<number>('moh.lightbox.index', () => 0)
   const mediaAspect = useState<number>('moh.lightbox.mediaAspect', () => 1)
 
@@ -204,8 +215,11 @@ export function useImageLightbox() {
     kind.value = k
     alt.value = label
     src.value = url
-    items.value = [url]
-    index.value = 0
+    // When opening from a gallery (openGalleryFromMediaItems), items/mediaItems/index are already set; don't overwrite or the wrong item (e.g. video) won't show.
+    if (k !== 'media' || (mediaItems.value.length <= 1 && items.value.length <= 1)) {
+      items.value = [url]
+      index.value = 0
+    }
     hideOrigin.value = k === 'media'
     mediaStartMode.value = k === 'media' ? (opts?.mediaStartMode ?? 'fitAnchored') : 'fitAnchored'
     origin.value = { left: rect.left, top: rect.top, width: rect.width, height: rect.height }
@@ -215,7 +229,12 @@ export function useImageLightbox() {
     backdropVisible.value = false
     setScrollLocked(true)
 
-    const aspect = await preloadAspect(url)
+    const list = mediaItems.value
+    const cur = list[index.value]
+    const aspect =
+      k === 'media' && cur?.kind === 'video' && typeof cur.width === 'number' && typeof cur.height === 'number' && cur.height > 0
+        ? cur.width / cur.height
+        : await preloadAspect(url)
     if (myId !== requestId) return
     mediaAspect.value = aspect
 
@@ -242,9 +261,41 @@ export function useImageLightbox() {
     if (xs.length === 0) return
     const i = Number.isFinite(startIndex) ? Math.max(0, Math.min(xs.length - 1, Math.floor(startIndex))) : 0
     items.value = xs
+    mediaItems.value = xs.map((url) => ({ url, kind: 'image' as const }))
+    mediaPostId.value = null
     index.value = i
     await openFromEvent(e, xs[i] ?? null, label, 'media', opts)
   }
+
+  async function openGalleryFromMediaItems(
+    e: MouseEvent,
+    itemsList: LightboxMediaItem[],
+    startIndex: number,
+    label: string,
+    opts?: { mediaStartMode?: MediaStartMode; postId?: string | null },
+  ) {
+    if (!import.meta.client) return
+    const list = (itemsList ?? []).filter((m) => m?.url?.trim())
+    if (list.length === 0) return
+    const i = Number.isFinite(startIndex) ? Math.max(0, Math.min(list.length - 1, Math.floor(startIndex))) : 0
+    const url = list[i]?.url ?? null
+    if (!url) return
+    items.value = list.map((m) => m.url)
+    mediaItems.value = list
+    mediaPostId.value = opts?.postId ?? null
+    index.value = i
+    const { activate, stopAll } = useEmbeddedVideoManager()
+    if (list[i]?.kind === 'video' && opts?.postId) activate(opts.postId)
+    else stopAll()
+    await openFromEvent(e, url, label, 'media', opts)
+  }
+
+  const currentMediaItem = computed((): LightboxMediaItem | null => {
+    const list = mediaItems.value
+    const i = index.value
+    if (!list?.length || i < 0 || i >= list.length) return null
+    return list[i] ?? null
+  })
 
   const canPrev = computed(() => index.value > 0)
   const canNext = computed(() => index.value < (items.value.length || 0) - 1)
@@ -258,11 +309,23 @@ export function useImageLightbox() {
     requestId += 1
     const myId = requestId
 
+    const list = mediaItems.value
+    const nextItem = list[i]
+    const { activate, stopAll } = useEmbeddedVideoManager()
+    if (nextItem?.kind === 'video' && mediaPostId.value) activate(mediaPostId.value)
+    else stopAll()
+
     index.value = i
     const url = xs[i] ?? null
     src.value = url
     if (!url) return
-    const aspect = await preloadAspect(url)
+    const aspect =
+      nextItem?.kind === 'video' &&
+      typeof nextItem.width === 'number' &&
+      typeof nextItem.height === 'number' &&
+      nextItem.height > 0
+        ? nextItem.width / nextItem.height
+        : await preloadAspect(url)
     if (myId !== requestId) return
     mediaAspect.value = aspect
     target.value = calcTargetRect(aspect, kind.value)
@@ -384,6 +447,8 @@ export function useImageLightbox() {
     alt,
     kind,
     items,
+    mediaItems,
+    currentMediaItem,
     index,
     canPrev,
     canNext,
@@ -392,6 +457,7 @@ export function useImageLightbox() {
     hideOrigin,
     openFromEvent,
     openGalleryFromEvent,
+    openGalleryFromMediaItems,
     prev,
     next,
     close,

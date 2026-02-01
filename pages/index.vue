@@ -7,19 +7,23 @@
       :height="400"
     />
 
-    <!-- Place `public/images/banner.png` (served as /images/banner.png) -->
-    <img
-      src="/images/banner.png"
-      alt=""
-      aria-hidden="true"
-      class="pointer-events-none select-none block w-[min(90vw,520px)] -translate-y-[35px]"
-    />
-    <p class="mt-0 text-2xl font-medium tracking-wider text-gray-500 dark:text-gray-500">
-      <span class="text-gray-800 dark:text-gray-200">Updates coming soon.</span>
-    </p>
-    <p class="mt-2 text-lg font-light tracking-widest text-gray-400 dark:text-gray-600">
-      Stay tuned. Stay hungry.
-    </p>
+    <!-- Logged-in: profile card (click goes to /home) -->
+    <template v-if="isAuthed">
+      <div class="w-[min(90vw,360px)] -translate-y-2">
+        <AppUserCard :compact="false" hide-menu link-to-home />
+      </div>
+      <p class="mt-0 text-lg font-light tracking-widest text-gray-400 dark:text-gray-600">
+        Stay hungry.
+      </p>
+    </template>
+    <template v-else>
+      <p class="mt-0 text-2xl font-medium tracking-wider text-gray-500 dark:text-gray-500">
+        <span class="text-gray-800 dark:text-gray-200">Updates coming soon.</span>
+      </p>
+      <p class="mt-2 text-lg font-light tracking-widest text-gray-400 dark:text-gray-600">
+        Stay tuned. Stay hungry.
+      </p>
+    </template>
     <div class="mt-6 h-[1px] w-32 mx-auto bg-gradient-to-r from-transparent via-gray-400 dark:via-gray-600 to-transparent"/>
 
     <!-- Roanoke meetup: subtle "question card" that pops -->
@@ -140,24 +144,17 @@
 import { siteConfig } from '~/config/site'
 import logoDark from '~/assets/images/logo-black-bg.png'
 
+const { initAuth, isAuthed } = useAuth()
+
 definePageMeta({
   layout: 'empty'
 })
 
+// Hydrate auth on landing so logged-in users see the profile card (app layout doesn't run here).
+await initAuth()
+
 useHead({
-  htmlAttrs: { class: 'moh-landing' },
-  link: [
-    // Preload custom cursors on landing page only (preloading globally causes warnings on other pages).
-    // Pick the correct pair based on current color mode so both are actually used.
-    ...(() => {
-      const mode = useColorMode()
-      const isDark = mode.value === 'dark'
-      const hrefs = isDark
-        ? ['/cursors/cursor.svg', '/cursors/cursor-hand.svg']
-        : ['/cursors/cursor-light.svg', '/cursors/cursor-hand-light.svg']
-      return hrefs.map((href) => ({ rel: 'preload', as: 'image', href, type: 'image/svg+xml' }))
-    })()
-  ]
+  htmlAttrs: { class: 'moh-landing' }
 })
 
 const roanokeMeetupUrl = 'https://www.meetup.com/menofhunger/'

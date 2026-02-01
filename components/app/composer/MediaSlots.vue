@@ -49,15 +49,21 @@
 
             <div
               v-if="slot.item!.source === 'upload' && slot.item!.uploadStatus && slot.item!.uploadStatus !== 'done'"
-              class="pointer-events-none absolute inset-0 flex items-center justify-center"
+              class="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-1.5"
               :aria-label="uploadStatusLabel?.(slot.item!) ?? 'Uploading'"
             >
+              <span
+                v-if="uploadStatusLabel?.(slot.item!)"
+                class="text-[10px] font-medium text-white drop-shadow-sm"
+              >
+                {{ uploadStatusLabel(slot.item!) }}
+              </span>
               <div class="relative h-1.5 w-14 overflow-hidden rounded-full bg-black/25">
                 <div
                   v-if="slot.item!.uploadStatus === 'uploading' && typeof slot.item!.uploadProgress === 'number'"
-                  class="h-full rounded-full transition-[width] duration-150 ease-out"
+                  class="h-full rounded-full transition-[width] duration-300 ease-out"
                   :style="{
-                    width: `${Math.max(0, Math.min(100, Math.round(slot.item!.uploadProgress ?? 0)))}%`,
+                    width: `${Math.max(0, Math.min(100, slot.item!.uploadProgress ?? 0))}%`,
                     backgroundColor: uploadBarColor,
                   }"
                   aria-hidden="true"

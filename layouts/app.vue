@@ -17,29 +17,28 @@
   <div class="relative z-10">
     <ClientOnly>
       <AppToastStack />
-      <!-- Full-screen overlay: shown while waiting for presence WebSocket. Fades to 0 opacity when done (stays in DOM, pointer-events-none so touches pass through). Min 0.5s display + 0.2s fade-out. -->
-      <div
-        class="fixed inset-0 z-[9999] flex items-center justify-center bg-white dark:bg-black transition-opacity duration-200"
-        :class="showConnectingOverlay ? 'opacity-100' : 'opacity-0 pointer-events-none'"
-        :aria-busy="showConnectingOverlay"
-        aria-live="polite"
-        aria-label="Loading"
-        role="status"
-      >
-        <div class="moh-loading-logo-pulse">
-          <AppLogo
-            :light-src="logoLightSmall"
-            :dark-src="logoDarkSmall"
-            :alt="`${siteConfig.name} logo`"
-            :width="64"
-            :height="64"
-            img-class="h-16 w-16"
-          />
-        </div>
-      </div>
     </ClientOnly>
+    <Transition
+      enter-active-class="transition-all duration-200 ease-out"
+      enter-from-class="opacity-0 -translate-y-2"
+      enter-to-class="opacity-100 translate-y-0"
+      leave-active-class="transition-all duration-150 ease-in"
+      leave-from-class="opacity-100 translate-y-0"
+      leave-to-class="opacity-0 -translate-y-2"
+    >
+      <div
+        v-if="isAuthed && disconnectedDueToIdle"
+        class="fixed left-0 right-0 top-0 z-50 flex items-center justify-center border-b moh-border bg-white/95 px-4 py-2.5 text-center text-sm moh-text backdrop-blur-sm dark:bg-zinc-900/95"
+        role="status"
+        aria-live="polite"
+      >
+        <span class="moh-text-muted">You've been disconnected.</span>
+        <span class="ml-1.5">Scroll or tap anywhere to reconnect.</span>
+      </div>
+    </Transition>
     <AppOnboardingGate />
     <AppAuthActionModal />
+    <AppPremiumVideoModal />
     <AppReplyModal />
     <div :class="['h-dvh overflow-hidden moh-bg moh-text moh-texture', showStatusBg ? 'moh-status-tone' : '']">
       <div class="mx-auto flex h-full w-full max-w-6xl px-0 sm:px-4 xl:max-w-7xl">
@@ -67,7 +66,7 @@
               :to="'/home'"
               :class="[
                 'flex items-center',
-                isAuthed && (user?.premium || (user?.verifiedStatus && user.verifiedStatus !== 'none')) && !navCompactMode ? 'gap-4' : 'gap-2'
+                isAuthed && (user?.premium || (user?.verifiedStatus && user.verifiedStatus !== 'none')) && !navCompactMode ? 'gap-1.5' : 'gap-2'
               ]"
               aria-label="Home"
             >
@@ -502,6 +501,7 @@
       :src="lightbox.src.value"
       :alt="lightbox.alt.value"
       :kind="lightbox.kind.value"
+      :current-media-item="lightbox.currentMediaItem.value"
       :target="lightbox.target.value"
       :image-style="lightbox.imageStyle.value"
       :show-nav="lightbox.kind.value === 'media' && (lightbox.items.value?.length ?? 0) > 1"
@@ -531,48 +531,15 @@ import {
   MOH_OPEN_COMPOSER_KEY,
   type ComposerVisibility,
 } from '~/utils/injection-keys'
-import { FULLSCREEN_LOAD_MIN_MS } from '~/utils/fullscreen-load'
 import { useBookmarkCollections } from '~/composables/useBookmarkCollections'
 import { useOnlyMePosts } from '~/composables/useOnlyMePosts'
 import { useReplyModal } from '~/composables/useReplyModal'
 
 const route = useRoute()
 const { initAuth, user } = useAuth()
-const { isSocketConnected } = usePresence()
 const { isAuthed, leftItems: leftNavItems, tabItems } = useAppNav()
+const { disconnectedDueToIdle } = usePresence()
 
-const showConnectingOverlay = ref(false)
-const overlayShownAt = ref<number>(0)
-
-function hideConnectingOverlayAfterMinDisplay() {
-  const elapsed = Date.now() - overlayShownAt.value
-  const remaining = Math.max(0, FULLSCREEN_LOAD_MIN_MS - elapsed)
-  if (remaining > 0) {
-    setTimeout(() => {
-      showConnectingOverlay.value = false
-    }, remaining)
-  } else {
-    showConnectingOverlay.value = false
-  }
-}
-
-onMounted(() => {
-  if (!import.meta.client) return
-  if (!isAuthed.value) return
-  if (isSocketConnected.value) return
-  showConnectingOverlay.value = true
-  overlayShownAt.value = Date.now()
-  const timer = setTimeout(() => {
-    hideConnectingOverlayAfterMinDisplay()
-  }, 8000)
-  const stop = watch(isSocketConnected, (connected) => {
-    if (connected) {
-      clearTimeout(timer)
-      stop()
-      hideConnectingOverlayAfterMinDisplay()
-    }
-  }, { immediate: true })
-})
 const { hideTopBar, navCompactMode, isRightRailForcedHidden, isRightRailSearchHidden, title } = useLayoutRules(route)
 const isPostPage = computed(() => /^\/p\/[^/]+$/.test(route.path))
 const isBookmarksPage = computed(() => route.path === '/bookmarks' || route.path.startsWith('/bookmarks/'))
@@ -834,15 +801,6 @@ onBeforeUnmount(() => {
 </script>
 
 <style>
-/* Full-screen loading: logo with slow pulse */
-@keyframes moh-loading-pulse {
-  0%, 100% { opacity: 1 }
-  50% { opacity: 0.55 }
-}
-.moh-loading-logo-pulse {
-  animation: moh-loading-pulse 2.5s ease-in-out infinite;
-}
-
 .moh-status-tone {
   /* Force an "ops console" palette regardless of color mode. */
   --moh-bg: #000;

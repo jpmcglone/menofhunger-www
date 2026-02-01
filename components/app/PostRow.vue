@@ -92,7 +92,7 @@
           :mentions="post.mentions"
         />
 
-        <AppPostMediaGrid v-if="post.media?.length" :media="post.media" />
+        <AppPostMediaGrid v-if="post.media?.length" :media="post.media" :post-id="post.id" :row-in-view="rowInView" />
 
         <AppPostRowLinkPreview
           :post-id="post.id"

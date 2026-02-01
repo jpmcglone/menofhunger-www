@@ -60,6 +60,7 @@ const {
   addInterest,
   removeInterest,
   addOnlineIdsFromRest,
+  addIdleFromRest,
   whenSocketConnected,
 } = usePresence()
 
@@ -106,6 +107,8 @@ const feedCallback: {
       users.value = next.sort(sortByRecent)
       const ids = next.map((x) => x.id).filter(Boolean)
       addOnlineIdsFromRest(ids)
+      const idleIds = (snap as OnlineUser[]).filter((x) => x.idle && x.id).map((x) => x.id)
+      if (idleIds.length) addIdleFromRest(idleIds)
       addInterest(ids)
     }
     if (typeof payload?.totalOnline === 'number') totalOnline.value = payload.totalOnline
@@ -138,8 +141,11 @@ async function mergeUserFromRefetch(userId: string) {
       if (typeof res?.totalOnline === 'number') totalOnline.value = res.totalOnline
       if (next.length !== users.value.length) {
         users.value = next.sort(sortByRecent)
-        addOnlineIdsFromRest(next.map((u) => u.id).filter(Boolean))
-        addInterest(next.map((u) => u.id).filter(Boolean))
+        const ids = next.map((u) => u.id).filter(Boolean)
+        addOnlineIdsFromRest(ids)
+        const idleIds = next.filter((u) => u.idle && u.id).map((u) => u.id)
+        if (idleIds.length) addIdleFromRest(idleIds)
+        addInterest(ids)
       }
     } catch {
       // Ignore refetch errors
@@ -157,6 +163,8 @@ async function fetchOnline() {
     if (users.value.length > 0) {
       const ids = users.value.map((u) => u.id).filter(Boolean)
       addOnlineIdsFromRest(ids)
+      const idleIds = users.value.filter((u) => u.idle && u.id).map((u) => u.id)
+      if (idleIds.length) addIdleFromRest(idleIds)
       addInterest(ids)
     }
   } catch (e: unknown) {

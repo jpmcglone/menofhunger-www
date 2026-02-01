@@ -55,8 +55,22 @@
         </div>
 
         <div class="relative h-full w-full">
+          <video
+            v-if="kind === 'media' && currentMediaItem?.kind === 'video'"
+            :src="src"
+            :poster="currentMediaItem?.posterUrl ?? undefined"
+            class="select-none object-contain will-change-transform"
+            :style="imageStyle"
+            controls
+            playsinline
+            autoplay
+            :muted="!appWideSoundOn"
+            @click.stop
+            @volumechange="onLightboxVideoVolumeChange"
+            @transitionend="onTransitionEnd"
+          />
           <img
-            v-if="kind === 'media'"
+            v-else-if="kind === 'media'"
             :src="src"
             :alt="alt"
             class="select-none object-contain will-change-transform"
@@ -65,7 +79,6 @@
             @click.stop
             @transitionend="onTransitionEnd"
           >
-
           <img
             v-else
             :src="src"
@@ -83,6 +96,7 @@
 </template>
 
 <script setup lang="ts">
+import type { LightboxMediaItem } from '~/composables/useImageLightbox'
 import type { StyleValue } from 'vue'
 
 defineProps<{
@@ -91,6 +105,7 @@ defineProps<{
   src: string | null
   alt: string
   kind?: 'avatar' | 'banner' | 'media'
+  currentMediaItem?: LightboxMediaItem | null
   target: unknown
   imageStyle: StyleValue
   showNav?: boolean
@@ -102,5 +117,12 @@ defineProps<{
   onClose: () => void
   onTransitionEnd: (e: TransitionEvent) => void
 }>()
+
+const { appWideSoundOn } = useEmbeddedVideoManager()
+
+function onLightboxVideoVolumeChange(e: Event) {
+  const el = (e.target as HTMLVideoElement)
+  if (el) appWideSoundOn.value = !el.muted
+}
 </script>
 

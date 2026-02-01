@@ -20,49 +20,6 @@ html {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Custom cursor — ONLY on landing page (html.moh-landing). */
-html.moh-landing {
-  /* Cursor tokens (keeps rules consistent + easy to tweak hotspot) */
-  --moh-cursor-hotspot-x: 2;
-  --moh-cursor-hotspot-y: 2;
-  /* Light mode: use darker cursor for contrast */
-  --moh-cursor-default: url("/cursors/cursor-light.svg") var(--moh-cursor-hotspot-x) var(--moh-cursor-hotspot-y), auto;
-  --moh-cursor-hand: url("/cursors/cursor-hand-light.svg") var(--moh-cursor-hotspot-x) var(--moh-cursor-hotspot-y), pointer;
-}
-
-html.moh-landing,
-html.moh-landing body {
-  cursor: var(--moh-cursor-default);
-}
-
-/* Force custom hand cursor anywhere the landing UI is "clickable". */
-html.moh-landing :where(
-  a,
-  button,
-  summary,
-  [role="button"],
-  [role="link"],
-  [role="menuitem"],
-  [role="menuitemcheckbox"],
-  [role="menuitemradio"],
-  [role="option"],
-  [role="tab"],
-  [role="switch"],
-  [role="checkbox"],
-  [role="radio"],
-  [aria-haspopup],
-  input[type="button"],
-  input[type="submit"],
-  /* PrimeVue */
-  .p-button,
-  .p-menuitem-link,
-  .cursor-pointer,
-  [style*="cursor:pointer"],
-  [style*="cursor: pointer"]
-) {
-  cursor: var(--moh-cursor-hand) !important;
-}
-
 body {
   font-family: inherit;
 }
@@ -417,12 +374,6 @@ html.dark {
       color: var(--p-primary-color, #111827);
     }
   }
-}
-
-/* Dark mode: swap to light cursor for contrast (landing page only) */
-html.moh-landing.dark {
-  --moh-cursor-default: url("/cursors/cursor.svg") var(--moh-cursor-hotspot-x) var(--moh-cursor-hotspot-y), auto;
-  --moh-cursor-hand: url("/cursors/cursor-hand.svg") var(--moh-cursor-hotspot-x) var(--moh-cursor-hotspot-y), pointer;
 }
 
 /* Hide scrollbars (keep scroll functional) */

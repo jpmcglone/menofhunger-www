@@ -2,6 +2,13 @@ export function useEmbeddedVideoManager() {
   // Global (per-app) active embedded video. Only one at a time.
   const activePostId = useState<string | null>('moh.active-embedded-video-post-id', () => null)
 
+  /** App-wide sound: when true, new videos start unmuted. Unmute sets true; mute or pause sets false. */
+  const appWideSoundOn = useState<boolean>('moh.app-video-sound-on', () => false)
+
+  /** When user pauses a video that was unmuted, we remember so unpausing the SAME video keeps it unmuted. */
+  const lastPausedPostId = useState<string | null>('moh.video-last-paused-post-id', () => null)
+  const lastPausedWasUnmuted = useState<boolean>('moh.video-last-paused-was-unmuted', () => false)
+
   // NOTE: We intentionally keep DOM elements out of `useState()` (SSR-safe).
   // This registry is client-only.
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -173,6 +180,15 @@ export function useEmbeddedVideoManager() {
     window.addEventListener('resize', scheduleCompute, true)
   }
 
+  function removeListeners() {
+    if (import.meta.server) return
+    if (!runtime) return
+    if (!runtime.listening) return
+    runtime.listening = false
+    window.removeEventListener('scroll', scheduleCompute, true)
+    window.removeEventListener('resize', scheduleCompute, true)
+  }
+
   function register(postId: string, el: HTMLElement) {
     const id = (postId ?? '').trim()
     if (!id) return
@@ -190,7 +206,16 @@ export function useEmbeddedVideoManager() {
     if (import.meta.server) return
     if (!registry) return
     registry.delete(id)
-    scheduleCompute()
+    if (registry.size === 0) {
+      removeListeners()
+      if (runtime) {
+        runtime.pendingId = null
+        runtime.pendingSinceMs = 0
+      }
+      activePostId.value = null
+    } else {
+      scheduleCompute()
+    }
   }
 
   // Explicit activation (e.g. user clicked an embed that isn't currently "center-most").
@@ -211,6 +236,36 @@ export function useEmbeddedVideoManager() {
     activePostId.value = null
   }
 
-  return { activePostId, register, unregister, activate, stopAll }
+  /** Call when user pauses a video. Next time they unpause THIS video it stays unmuted; other videos use appWideSoundOn. */
+  function setPausedWithSound(postId: string, wasUnmuted: boolean) {
+    const id = (postId ?? '').trim()
+    if (!id) return
+    appWideSoundOn.value = false
+    lastPausedPostId.value = id
+    lastPausedWasUnmuted.value = wasUnmuted
+  }
+
+  /** When activating/playing a video, call this. If this is the same video they just paused (while unmuted), returns true and clears the stored state. */
+  function getShouldStartUnmuted(postId: string): boolean {
+    const id = (postId ?? '').trim()
+    if (!id) return appWideSoundOn.value
+    if (lastPausedPostId.value === id && lastPausedWasUnmuted.value) {
+      lastPausedPostId.value = null
+      lastPausedWasUnmuted.value = false
+      return true
+    }
+    return appWideSoundOn.value
+  }
+
+  return {
+    activePostId,
+    appWideSoundOn,
+    register,
+    unregister,
+    activate,
+    stopAll,
+    setPausedWithSound,
+    getShouldStartUnmuted,
+  }
 }
 

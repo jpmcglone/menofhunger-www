@@ -9,6 +9,10 @@ import { useComposerGiphyPicker } from '~/composables/composer/useComposerGiphyP
 export function useComposerMedia(opts?: {
   maxSlots?: number
   textareaEl?: Ref<HTMLTextAreaElement | null>
+  /** When true, file picker and drop/paste accept video/mp4 (premium-only). */
+  canAcceptVideo?: Ref<boolean>
+  /** Called when non-premium user tries to add video; show premium-required modal. */
+  onVideoRejectedNeedPremium?: () => void
 }) {
   const { apiFetchData } = useApiClient()
   const toast = useAppToast()
@@ -30,10 +34,19 @@ export function useComposerMedia(opts?: {
 
   function patchComposerMedia(localId: string, patch: Partial<ComposerMediaItem>) {
     const idx = composerMedia.value.findIndex((m) => m.localId === localId)
-    if (idx < 0) return
+    if (import.meta.dev) {
+      console.log('[moh:video] patchComposerMedia', { localId, idx, patchKeys: Object.keys(patch ?? {}) })
+    }
+    if (idx < 0) {
+      if (import.meta.dev) console.warn('[moh:video] patchComposerMedia: slot not found', { localId })
+      return
+    }
     const cur = composerMedia.value[idx]
     if (!cur) return
-    composerMedia.value[idx] = { ...cur, ...patch }
+    // Replace array so Vue ref reactivity triggers (in-place mutation doesn't)
+    composerMedia.value = composerMedia.value.map((m, i) =>
+      i === idx ? { ...m, ...patch } : m,
+    )
   }
 
   function removeComposerMedia(localId: string) {
@@ -63,7 +76,6 @@ export function useComposerMedia(opts?: {
   function composerUploadStatusLabel(m: ComposerMediaItem): string | null {
     if (m.source !== 'upload') return null
     if (m.uploadStatus === 'error') return 'Failed'
-    // Only ever expose "Uploading" for loading states (queued/uploading/processing) – no "Processing" text.
     if (m.uploadStatus === 'queued' || m.uploadStatus === 'uploading' || m.uploadStatus === 'processing') return 'Uploading'
     return null
   }
@@ -80,6 +92,9 @@ export function useComposerMedia(opts?: {
     textareaEl: opts?.textareaEl,
     toast,
     processUploadQueue,
+    patchComposerMedia,
+    canAcceptVideo: opts?.canAcceptVideo,
+    onVideoRejectedNeedPremium: opts?.onVideoRejectedNeedPremium,
   })
 
   const giphy = useComposerGiphyPicker({ composerMedia, canAddMoreMedia, apiFetchData })
@@ -88,14 +103,27 @@ export function useComposerMedia(opts?: {
     const out: CreateMediaPayload[] = []
     for (const m of media) {
       if (m.source === 'upload') {
+        // Only include uploads that completed successfully (have r2Key). Skip failed/rejected (e.g. video when not premium).
         if (!m.r2Key) continue
-        out.push({
-          source: 'upload',
-          kind: m.kind === 'gif' ? 'gif' : 'image',
-          r2Key: m.r2Key,
-          width: typeof m.width === 'number' ? m.width : null,
-          height: typeof m.height === 'number' ? m.height : null,
-        })
+        if (m.kind === 'video') {
+          out.push({
+            source: 'upload',
+            kind: 'video',
+            r2Key: m.r2Key,
+            thumbnailR2Key: m.thumbnailR2Key ?? undefined,
+            width: typeof m.width === 'number' ? m.width : null,
+            height: typeof m.height === 'number' ? m.height : null,
+            durationSeconds: typeof m.durationSeconds === 'number' ? m.durationSeconds : null,
+          })
+        } else {
+          out.push({
+            source: 'upload',
+            kind: m.kind === 'gif' ? 'gif' : 'image',
+            r2Key: m.r2Key,
+            width: typeof m.width === 'number' ? m.width : null,
+            height: typeof m.height === 'number' ? m.height : null,
+          })
+        }
       } else if (m.source === 'giphy') {
         if (!m.url) continue
         out.push({

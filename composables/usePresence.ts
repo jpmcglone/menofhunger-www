@@ -1,12 +1,13 @@
 import { io, type Socket } from 'socket.io-client'
+import { appConfig } from '~/config/app'
 
 const PRESENCE_STATE_KEY = 'presence-online-ids'
 const PRESENCE_RECENTLY_DISCONNECTED_KEY = 'presence-recently-disconnected'
+const PRESENCE_IDLE_IDS_KEY = 'presence-idle-ids'
 const PRESENCE_SOCKET_KEY = 'presence-socket'
 const PRESENCE_ONLINE_FEED_SUBSCRIBED_KEY = 'presence-online-feed-subscribed'
 const PRESENCE_INTEREST_KEY = 'presence-interest-refs'
-const MAX_INTEREST = 100
-const RECENT_DISCONNECT_MS = 6 * 60 * 1000
+const PRESENCE_DISCONNECTED_DUE_TO_IDLE_KEY = 'presence-disconnected-due-to-idle'
 
 type FollowListUser = {
   id: string
@@ -18,10 +19,10 @@ type FollowListUser = {
   relationship: { viewerFollowsUser: boolean; userFollowsViewer: boolean }
 }
 
-export type PresenceOnlinePayload = { userId: string; user?: FollowListUser; lastConnectAt?: number }
+export type PresenceOnlinePayload = { userId: string; user?: FollowListUser; lastConnectAt?: number; idle?: boolean }
 export type PresenceOfflinePayload = { userId: string }
 export type PresenceRecentlyDisconnectedPayload = { userId: string; disconnectAt: number }
-export type PresenceOnlineFeedSnapshotPayload = { users: Array<FollowListUser & { lastConnectAt?: number }>; totalOnline?: number }
+export type PresenceOnlineFeedSnapshotPayload = { users: Array<FollowListUser & { lastConnectAt?: number; idle?: boolean }>; totalOnline?: number }
 export type OnlineFeedCallback = {
   onOnline?: (payload: PresenceOnlinePayload) => void
   onOffline?: (payload: PresenceOfflinePayload) => void
@@ -42,12 +43,15 @@ function apiBaseUrlToWsUrl(apiBaseUrl: string): string {
 export function usePresence() {
   const onlineUserIds = useState<string[]>(PRESENCE_STATE_KEY, () => [])
   const recentlyDisconnectedMap = useState<Record<string, number>>(PRESENCE_RECENTLY_DISCONNECTED_KEY, () => ({}))
+  const idleUserIds = useState<Set<string>>(PRESENCE_IDLE_IDS_KEY, () => new Set())
   const recentDisconnectTimers = new Map<string, ReturnType<typeof setTimeout>>()
   const socketRef = useState<Socket | null>(PRESENCE_SOCKET_KEY, () => null)
   const interestRefs = useState<Map<string, number>>(PRESENCE_INTEREST_KEY, () => new Map())
   const onlineFeedCallbacks = useState<Set<OnlineFeedCallback>>('presence-online-feed-callbacks', () => new Set())
   const onlineFeedSubscribed = useState(PRESENCE_ONLINE_FEED_SUBSCRIBED_KEY, () => false)
+  const disconnectedDueToIdle = useState<boolean>(PRESENCE_DISCONNECTED_DUE_TO_IDLE_KEY, () => false)
   const isSocketConnected = ref(false)
+  const isSocketConnecting = ref(false)
 
   function isOnline(userId: string): boolean {
     return onlineUserIds.value.includes(userId)
@@ -57,8 +61,24 @@ export function usePresence() {
     return userId in recentlyDisconnectedMap.value
   }
 
-  function getPresenceStatus(userId: string): 'online' | 'recently-disconnected' | 'offline' {
-    if (isOnline(userId)) return 'online'
+  function isUserIdle(userId: string): boolean {
+    return idleUserIds.value.has(userId)
+  }
+
+  function setUserIdle(userId: string) {
+    if (idleUserIds.value.has(userId)) return
+    idleUserIds.value = new Set([...idleUserIds.value, userId])
+  }
+
+  function setUserActive(userId: string) {
+    if (!idleUserIds.value.has(userId)) return
+    const next = new Set(idleUserIds.value)
+    next.delete(userId)
+    idleUserIds.value = next
+  }
+
+  function getPresenceStatus(userId: string): 'online' | 'idle' | 'recently-disconnected' | 'offline' {
+    if (isOnline(userId)) return isUserIdle(userId) ? 'idle' : 'online'
     if (isRecentlyDisconnected(userId)) return 'recently-disconnected'
     return 'offline'
   }
@@ -73,7 +93,7 @@ export function usePresence() {
 
   function addRecentlyDisconnected(userId: string, disconnectAt: number) {
     clearRecentDisconnectTimer(userId)
-    const remaining = disconnectAt + RECENT_DISCONNECT_MS - Date.now()
+    const remaining = disconnectAt + appConfig.presenceRecentDisconnectMs - Date.now()
     if (remaining <= 0) return
     recentlyDisconnectedMap.value = { ...recentlyDisconnectedMap.value, [userId]: disconnectAt }
     const t = setTimeout(() => {
@@ -94,6 +114,7 @@ export function usePresence() {
   }
 
   const { user } = useAuth()
+  const route = useRoute()
   const { apiBaseUrl } = useApiClient()
 
   function emitSubscribe(userIds: string[]) {
@@ -142,7 +163,7 @@ export function usePresence() {
   }
 
   function trimInterestIfNeeded(refs: Map<string, number>) {
-    if (refs.size <= MAX_INTEREST) return
+    if (refs.size <= appConfig.presenceMaxInterest) return
     const entries = [...refs.entries()].sort((a, b) => a[1] - b[1])
     let removed = 0
     for (const [uid, count] of entries) {
@@ -185,6 +206,16 @@ export function usePresence() {
     onlineUserIds.value = next
   }
 
+  /** Seed idle state from REST /presence/online (users with idle: true). So avatars and online page show clock immediately. */
+  function addIdleFromRest(userIds: string[]) {
+    if (!userIds.length) return
+    const next = new Set(idleUserIds.value)
+    for (const id of userIds) {
+      if (id) next.add(id)
+    }
+    idleUserIds.value = next
+  }
+
   /** Resolve when socket is connected, or after timeout. Returns true if connected, false if timed out. */
   function whenSocketConnected(timeoutMs = 10000): Promise<boolean> {
     const socket = socketRef.value
@@ -209,6 +240,7 @@ export function usePresence() {
     // Don't replace a socket that's still connecting (avoids "closed before connection" when multiple components mount).
     if (socketRef.value && !socketRef.value.connected) return
 
+    isSocketConnecting.value = true
     const wsUrl = apiBaseUrlToWsUrl(apiBaseUrl)
     const socket = io(wsUrl, {
       path: '/socket.io',
@@ -227,26 +259,31 @@ export function usePresence() {
       // Do not clear onlineUserIds; init can race with presence:subscribed and wipe good state.
     })
 
-    socket.on('presence:subscribed', (data: { users?: Array<{ userId: string; online: boolean; disconnectAt?: number }> }) => {
+    socket.on('presence:subscribed', (data: { users?: Array<{ userId: string; online: boolean; disconnectAt?: number; idle?: boolean }> }) => {
       console.log('[presence] SUBSCRIBED_IN', data)
       const users = Array.isArray(data?.users) ? data.users : []
       const next = [...onlineUserIds.value]
+      const nextIdle = new Set(idleUserIds.value)
       for (const u of users) {
         const id = u?.userId
         if (!id) continue
         if (u.online) {
           if (!next.includes(id)) next.push(id)
           removeRecentlyDisconnected(id)
+          if (u.idle) nextIdle.add(id)
+          else nextIdle.delete(id)
         } else {
           const i = next.indexOf(id)
           if (i >= 0) next.splice(i, 1)
+          nextIdle.delete(id)
           const disconnectAt = u.disconnectAt
-          if (disconnectAt != null && disconnectAt + RECENT_DISCONNECT_MS > Date.now()) {
+          if (disconnectAt != null && disconnectAt + appConfig.presenceRecentDisconnectMs > Date.now()) {
             addRecentlyDisconnected(id, disconnectAt)
           }
         }
       }
       onlineUserIds.value = next
+      idleUserIds.value = nextIdle
     })
 
     socket.on('presence:online', (data: PresenceOnlinePayload) => {
@@ -257,6 +294,10 @@ export function usePresence() {
         if (!onlineUserIds.value.includes(id)) {
           onlineUserIds.value = [...onlineUserIds.value, id]
         }
+        const nextIdle = new Set(idleUserIds.value)
+        if (data.idle) nextIdle.add(id)
+        else nextIdle.delete(id)
+        idleUserIds.value = nextIdle
       }
       if (onlineFeedSubscribed.value && onlineFeedCallbacks.value.size > 0) {
         for (const cb of onlineFeedCallbacks.value) {
@@ -283,12 +324,18 @@ export function usePresence() {
     socket.on('presence:onlineFeedSnapshot', (data: PresenceOnlineFeedSnapshotPayload) => {
       console.log('[presence] ONLINE_FEED_SNAPSHOT_IN', { usersCount: data?.users?.length, totalOnline: data?.totalOnline })
       const users = Array.isArray(data?.users) ? data.users : []
+      const nextIdle = new Set(idleUserIds.value)
       for (const u of users) {
         const id = u?.id
-        if (id && !onlineUserIds.value.includes(id)) {
-          onlineUserIds.value = [...onlineUserIds.value, id]
+        if (id) {
+          if (!onlineUserIds.value.includes(id)) {
+            onlineUserIds.value = [...onlineUserIds.value, id]
+          }
+          if (u.idle) nextIdle.add(id)
+          else nextIdle.delete(id)
         }
       }
+      idleUserIds.value = nextIdle
       if (onlineFeedSubscribed.value && onlineFeedCallbacks.value.size > 0) {
         for (const cb of onlineFeedCallbacks.value) {
           cb.onSnapshot?.(data)
@@ -301,12 +348,29 @@ export function usePresence() {
       if (id) {
         removeRecentlyDisconnected(id)
         onlineUserIds.value = onlineUserIds.value.filter((x) => x !== id)
+        const nextIdle = new Set(idleUserIds.value)
+        nextIdle.delete(id)
+        idleUserIds.value = nextIdle
       }
       if (onlineFeedSubscribed.value && onlineFeedCallbacks.value.size > 0) {
         for (const cb of onlineFeedCallbacks.value) {
           cb.onOffline?.(data)
         }
       }
+    })
+
+    socket.on('presence:idle', (data: { userId?: string }) => {
+      const id = data?.userId
+      if (id) setUserIdle(id)
+    })
+
+    socket.on('presence:active', (data: { userId?: string }) => {
+      const id = data?.userId
+      if (id) setUserActive(id)
+    })
+
+    socket.on('presence:idleDisconnected', () => {
+      disconnectedDueToIdle.value = true
     })
 
     function syncSubscriptions() {
@@ -322,14 +386,17 @@ export function usePresence() {
     socket.on('connect', () => {
       console.log('[presence] socket CONNECTED', socket.id)
       isSocketConnected.value = true
+      isSocketConnecting.value = false
       syncSubscriptions()
     })
     socket.on('disconnect', (reason) => {
       console.log('[presence] socket DISCONNECTED', reason)
       isSocketConnected.value = false
+      isSocketConnecting.value = false
     })
     if (socket.connected) {
       isSocketConnected.value = true
+      isSocketConnecting.value = false
       syncSubscriptions()
     }
 
@@ -349,11 +416,23 @@ export function usePresence() {
       socket.disconnect()
       socketRef.value = null
     }
+    isSocketConnecting.value = false
+    disconnectedDueToIdle.value = false
     onlineUserIds.value = []
     recentlyDisconnectedMap.value = {}
+    idleUserIds.value = new Set()
     for (const t of recentDisconnectTimers.values()) clearTimeout(t)
     recentDisconnectTimers.clear()
     onlineFeedSubscribed.value = false
+  }
+
+  /** Reconnect presence socket (e.g. after being disconnected due to idle). */
+  function reconnect() {
+    const socket = socketRef.value
+    if (socket && !socket.connected) {
+      disconnectedDueToIdle.value = false
+      socket.connect()
+    }
   }
 
   if (import.meta.client) {
@@ -365,6 +444,73 @@ export function usePresence() {
       },
       { immediate: true },
     )
+
+    // Idle detector: after IDLE_AFTER_MS with no activity, mark self idle (clock); on activity mark active again.
+    let idleTimer: ReturnType<typeof setTimeout> | null = null
+    let lastActivityAt = 0
+
+    function scheduleIdleTimer() {
+      if (idleTimer != null) clearTimeout(idleTimer)
+      idleTimer = setTimeout(() => {
+        idleTimer = null
+        const uid = user.value?.id
+        const socket = socketRef.value
+        if (!uid || !socket?.connected) return
+        socket.emit('presence:idle')
+        setUserIdle(uid)
+      }, appConfig.presenceIdleAfterMs)
+    }
+
+    function onActivity() {
+      lastActivityAt = Date.now()
+      const uid = user.value?.id
+      const socket = socketRef.value
+      if (!uid || !socket?.connected) return
+      if (idleUserIds.value.has(uid)) {
+        socket.emit('presence:active')
+        setUserActive(uid)
+      }
+      scheduleIdleTimer()
+    }
+
+    watch(
+      () => [isSocketConnected.value, user.value?.id ?? null] as const,
+      ([connected, userId]) => {
+        if (idleTimer != null) {
+          clearTimeout(idleTimer)
+          idleTimer = null
+        }
+        if (!connected || !userId) return
+        lastActivityAt = Date.now()
+        scheduleIdleTimer()
+        const opts = { passive: true, capture: true }
+        document.addEventListener('mousemove', onActivity, opts)
+        document.addEventListener('mousedown', onActivity, opts)
+        document.addEventListener('keydown', onActivity, opts)
+        document.addEventListener('scroll', onActivity, opts)
+        document.addEventListener('touchstart', onActivity, opts)
+
+        const stopRoute = watch(
+          () => route.path,
+          () => onActivity(),
+          { flush: 'sync' },
+        )
+
+        return () => {
+          document.removeEventListener('mousemove', onActivity, opts)
+          document.removeEventListener('mousedown', onActivity, opts)
+          document.removeEventListener('keydown', onActivity, opts)
+          document.removeEventListener('scroll', onActivity, opts)
+          document.removeEventListener('touchstart', onActivity, opts)
+          stopRoute()
+          if (idleTimer != null) {
+            clearTimeout(idleTimer)
+            idleTimer = null
+          }
+        }
+      },
+      { immediate: true },
+    )
   }
 
   return {
@@ -373,9 +519,13 @@ export function usePresence() {
     isRecentlyDisconnected,
     getPresenceStatus,
     isSocketConnected: readonly(isSocketConnected),
+    isSocketConnecting: readonly(isSocketConnecting),
+    disconnectedDueToIdle: readonly(disconnectedDueToIdle),
+    reconnect,
     addInterest,
     removeInterest,
     addOnlineIdsFromRest,
+    addIdleFromRest,
     whenSocketConnected,
     subscribeOnlineFeed,
     unsubscribeOnlineFeed,

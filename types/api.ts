@@ -15,7 +15,7 @@ export type ApiErrorEnvelope = {
 
 export type PostVisibility = 'public' | 'verifiedOnly' | 'premiumOnly' | 'onlyMe'
 
-export type PostMediaKind = 'image' | 'gif'
+export type PostMediaKind = 'image' | 'gif' | 'video'
 export type PostMediaSource = 'upload' | 'giphy'
 
 export type PostMedia = {
@@ -24,8 +24,12 @@ export type PostMedia = {
   source: PostMediaSource
   url: string
   mp4Url: string | null
+  /** Video poster image URL (from thumbnailR2Key). */
+  thumbnailUrl?: string | null
   width: number | null
   height: number | null
+  /** Video duration in seconds. */
+  durationSeconds?: number | null
   deletedAt: string | null
 }
 
@@ -256,7 +260,7 @@ export type GetFollowsListResponse = {
   nextCursor: string | null
 }
 
-export type OnlineUser = FollowListUser & { lastConnectAt?: number }
+export type OnlineUser = FollowListUser & { lastConnectAt?: number; idle?: boolean }
 
 export type GetPresenceOnlineResponse = {
   users: OnlineUser[]

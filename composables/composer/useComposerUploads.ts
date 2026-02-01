@@ -2,6 +2,15 @@ import type { Ref } from 'vue'
 import type { PostMediaKind } from '~/types/api'
 import type { ComposerMediaItem } from './types'
 
+const CHUNK_SIZE = 256 * 1024 // 256KB for hash chunks
+
+async function computeFileSha256(file: File): Promise<string> {
+  const buffer = await file.arrayBuffer()
+  const hashBuffer = await crypto.subtle.digest('SHA-256', buffer)
+  const hashArray = Array.from(new Uint8Array(hashBuffer))
+  return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('')
+}
+
 export function useComposerUploads(opts: {
   composerMedia: Ref<ComposerMediaItem[]>
   patchComposerMedia: (localId: string, patch: Partial<ComposerMediaItem>) => void
@@ -25,65 +34,127 @@ export function useComposerUploads(opts: {
     opts.patchComposerMedia(id, { uploadStatus: 'uploading', uploadError: null, abortController: controller, uploadProgress: 0 })
 
     try {
-      const init = await opts.apiFetchData<{ key: string; uploadUrl: string; headers: Record<string, string>; maxBytes?: number }>(
-        '/uploads/post-media/init',
-        {
-          method: 'POST',
-          body: { contentType: file.type },
-          signal: controller.signal,
-        },
-      )
+      let thumbnailKey: string | undefined
+      if (next.kind === 'video' && next.thumbnailBlob) {
+        const thumbInit = await opts.apiFetchData<{ key: string; uploadUrl?: string; headers: Record<string, string> }>(
+          '/uploads/post-media/init',
+          {
+            method: 'POST',
+            body: { contentType: 'image/jpeg', purpose: 'thumbnail' },
+            signal: controller.signal,
+          },
+        )
+        if (thumbInit.uploadUrl) {
+          await new Promise<void>((resolve, reject) => {
+            const xhr = new XMLHttpRequest()
+            xhr.open('PUT', thumbInit.uploadUrl!)
+            for (const [k, v] of Object.entries(thumbInit.headers ?? {})) {
+              try {
+                xhr.setRequestHeader(k, v)
+              } catch {
+                // ignore
+              }
+            }
+            xhr.onload = () => {
+              if (xhr.status >= 200 && xhr.status < 300) resolve()
+              else reject(new Error('Thumbnail upload failed.'))
+            }
+            xhr.onerror = () => reject(new Error('Thumbnail upload failed.'))
+            xhr.onabort = () => reject(Object.assign(new Error('Aborted'), { name: 'AbortError' }))
+            controller.signal.addEventListener('abort', () => { try { xhr.abort() } catch { /* ignore */ } }, { once: true })
+            xhr.send(next.thumbnailBlob!)
+          })
+        }
+        thumbnailKey = thumbInit.key
+      }
+
+      const contentHash = await computeFileSha256(file)
+      const initBody: { contentType: string; contentHash?: string; purpose?: 'post' | 'thumbnail' } = {
+        contentType: file.type,
+        contentHash,
+      }
+      const init = await opts.apiFetchData<{
+        key: string
+        uploadUrl?: string
+        headers: Record<string, string>
+        maxBytes?: number
+        skipUpload?: boolean
+      }>('/uploads/post-media/init', {
+        method: 'POST',
+        body: initBody,
+        signal: controller.signal,
+      })
 
       const maxBytes = typeof init.maxBytes === 'number' ? init.maxBytes : null
       if (maxBytes && file.size > maxBytes) throw new Error('File is too large.')
 
-      await new Promise<void>((resolve, reject) => {
-        const xhr = new XMLHttpRequest()
-        xhr.open('PUT', init.uploadUrl)
-        for (const [k, v] of Object.entries(init.headers ?? {})) {
-          try {
-            xhr.setRequestHeader(k, v)
-          } catch {
-            // ignore
-          }
-        }
-        xhr.upload.onprogress = (e) => {
-          const total = e.total || file.size || 0
-          if (!total) return
-          const pct = Math.max(0, Math.min(100, (e.loaded / total) * 100))
-          opts.patchComposerMedia(id, { uploadProgress: pct })
-        }
-        xhr.onload = () => {
-          if (xhr.status >= 200 && xhr.status < 300) resolve()
-          else reject(new Error('Failed to upload.'))
-        }
-        xhr.onerror = () => reject(new Error('Failed to upload.'))
-        xhr.onabort = () => reject(Object.assign(new Error('Aborted'), { name: 'AbortError' }))
-        controller.signal.addEventListener(
-          'abort',
-          () => {
+      if (!init.skipUpload && init.uploadUrl) {
+        await new Promise<void>((resolve, reject) => {
+          const xhr = new XMLHttpRequest()
+          xhr.open('PUT', init.uploadUrl!)
+          for (const [k, v] of Object.entries(init.headers ?? {})) {
             try {
-              xhr.abort()
+              xhr.setRequestHeader(k, v)
             } catch {
               // ignore
             }
-          },
-          { once: true },
-        )
-        xhr.send(file)
-      })
+          }
+          xhr.upload.onprogress = (e) => {
+            const total = e.total || file.size || 0
+            if (!total) return
+            const pct = Math.max(0, Math.min(100, (e.loaded / total) * 100))
+            opts.patchComposerMedia(id, { uploadProgress: pct })
+          }
+          xhr.onload = () => {
+            if (xhr.status >= 200 && xhr.status < 300) resolve()
+            else reject(new Error('Failed to upload.'))
+          }
+          xhr.onerror = () => reject(new Error('Failed to upload.'))
+          xhr.onabort = () => reject(Object.assign(new Error('Aborted'), { name: 'AbortError' }))
+          controller.signal.addEventListener(
+            'abort',
+            () => {
+              try {
+                xhr.abort()
+              } catch {
+                // ignore
+              }
+            },
+            { once: true },
+          )
+          xhr.send(file)
+        })
+      } else {
+        opts.patchComposerMedia(id, { uploadProgress: 100 })
+      }
 
       opts.patchComposerMedia(id, { uploadStatus: 'processing', uploadProgress: 100 })
+
+      const commitBody: {
+        key: string
+        contentHash?: string
+        thumbnailKey?: string
+        width?: number
+        height?: number
+        durationSeconds?: number
+      } = { key: init.key, contentHash }
+      if (thumbnailKey) commitBody.thumbnailKey = thumbnailKey
+      else if (next.thumbnailR2Key) commitBody.thumbnailKey = next.thumbnailR2Key
+      if (typeof next.width === 'number') commitBody.width = next.width
+      if (typeof next.height === 'number') commitBody.height = next.height
+      if (typeof next.durationSeconds === 'number') commitBody.durationSeconds = next.durationSeconds
 
       const committed = await opts.apiFetchData<{
         key: string
         contentType: string
         kind: PostMediaKind
-        width: number | null
-        height: number | null
+        width?: number | null
+        height?: number | null
+        durationSeconds?: number | null
+        thumbnailKey?: string | null
       }>('/uploads/post-media/commit', {
         method: 'POST',
-        body: { key: init.key },
+        body: commitBody,
         signal: controller.signal,
       })
 
@@ -91,11 +162,14 @@ export function useComposerUploads(opts: {
         uploadStatus: 'done',
         abortController: null,
         file: null,
+        thumbnailBlob: null,
         uploadProgress: 100,
         r2Key: committed.key,
         kind: committed.kind,
         width: committed.width ?? null,
         height: committed.height ?? null,
+        durationSeconds: committed.durationSeconds ?? null,
+        thumbnailR2Key: committed.thumbnailKey ?? null,
       })
     } catch (err: unknown) {
       if (controller.signal.aborted) return

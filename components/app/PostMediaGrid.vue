@@ -1,7 +1,39 @@
 <template>
+  <!-- Single media -->
   <div v-if="items.length === 1" class="mt-3 flex justify-start">
+    <!-- Single video: inline media player (ready to play when row in view); one playing globally -->
+    <div
+      v-if="items[0]?.kind === 'video'"
+      ref="singleVideoContainerRef"
+      :class="singleBoxClass"
+      :style="singleBoxStyle"
+      class="moh-squircle relative overflow-hidden rounded-2xl border moh-border bg-black"
+    >
+      <video
+        v-if="items[0]?.url"
+        ref="singleVideoEl"
+        :src="singleVideoSrc"
+        :poster="posterFor(items[0])"
+        class="absolute inset-0 h-full w-full object-contain"
+        :class="hideThumbs ? 'opacity-0 transition-opacity duration-150' : 'opacity-100'"
+        controls
+        playsinline
+        muted
+        loop
+        aria-label="Video"
+        @play="onSingleVideoPlay"
+      />
+      <span
+        v-if="items[0]?.durationSeconds != null && items[0].durationSeconds > 0"
+        class="pointer-events-none absolute right-2 bottom-2 rounded bg-black/65 px-1.5 py-0.5 text-[11px] font-semibold tabular-nums text-white"
+        aria-hidden="true"
+      >
+        {{ formatDuration(items[0].durationSeconds) }}
+      </span>
+    </div>
+    <!-- Single image -->
     <button
-      v-if="items[0]?.url"
+      v-else-if="items[0]?.url"
       type="button"
       class="cursor-zoom-in select-none text-left"
       :class="singleBoxClass"
@@ -9,7 +41,6 @@
       aria-label="View image"
       @click.stop="openAt($event, 0)"
     >
-      <!-- Placeholder to reserve space pre-load (no visible box) -->
       <div class="absolute inset-0" aria-hidden="true" />
       <img
         :src="items[0]?.url"
@@ -47,10 +78,11 @@
             type="button"
             class="relative min-w-0 min-h-0 cursor-zoom-in overflow-hidden"
             :class="itemClass(idx)"
-            :aria-label="`View image ${idx + 1} of ${items.length}`"
+            :aria-label="m.kind === 'video' ? `View video ${idx + 1} of ${items.length}` : `View image ${idx + 1} of ${items.length}`"
             @click.stop="openAt($event, idx)"
           >
             <img
+              v-if="m.kind !== 'video'"
               :src="m.url"
               class="block h-full w-full bg-black/3 dark:bg-white/3 object-cover object-center"
               :class="[imgClass(idx), hideThumbs ? 'opacity-0 transition-opacity duration-150' : 'opacity-100']"
@@ -58,6 +90,19 @@
               loading="lazy"
               decoding="async"
             />
+            <template v-else>
+              <img
+                :src="posterFor(m) || m.url"
+                class="block h-full w-full bg-black/3 dark:bg-white/3 object-cover object-center"
+                :class="[imgClass(idx), hideThumbs ? 'opacity-0 transition-opacity duration-150' : 'opacity-100']"
+                alt=""
+                loading="lazy"
+                decoding="async"
+              />
+              <div class="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/20" aria-hidden="true">
+                <i class="pi pi-play text-2xl text-white drop-shadow" aria-hidden="true" />
+              </div>
+            </template>
             <div
               class="pointer-events-none absolute inset-0 bg-black/0 transition-colors duration-200 hover:bg-black/10"
               aria-hidden="true"
@@ -82,18 +127,119 @@
 
 <script setup lang="ts">
 import type { PostMedia } from '~/types/api'
+import type { LightboxMediaItem } from '~/composables/useImageLightbox'
 import type { CSSProperties } from 'vue'
 
 const props = withDefaults(
   defineProps<{
     media: PostMedia[]
+    /** Post id (for single-video inline + lightbox "one playing globally"). */
+    postId?: string | null
+    /** When true, row is in view — single video loads src and is ready to play. */
+    rowInView?: boolean
     /** When true, use smaller max height and cap aspect ratio at 4:6 (h:w). */
     compact?: boolean
   }>(),
-  { compact: false }
+  { compact: false, postId: null, rowInView: true }
 )
 
 const viewer = useImageLightbox()
+const videoManager = useEmbeddedVideoManager()
+const { activePostId, appWideSoundOn, setPausedWithSound, getShouldStartUnmuted } = videoManager
+
+const singleVideoContainerRef = ref<HTMLElement | null>(null)
+const singleVideoEl = ref<HTMLVideoElement | null>(null)
+const singleVideoActive = computed(() => Boolean(props.postId && activePostId.value === props.postId))
+/** Set when row is in view so the inline player is ready to play. */
+const singleVideoSrc = computed(() =>
+  props.rowInView !== false && items.value[0]?.kind === 'video' && items.value[0]?.url
+    ? items.value[0].url
+    : undefined,
+)
+
+/** Placeholder when video has no thumbnail (img src=video URL doesn't render). */
+const VIDEO_NO_THUMB_PLACEHOLDER =
+  'data:image/svg+xml,' +
+  encodeURIComponent(
+    '<svg xmlns="http://www.w3.org/2000/svg" width="320" height="180" viewBox="0 0 320 180"><rect fill="%23374151" width="320" height="180"/></svg>',
+  )
+
+function posterFor(m: PostMedia): string {
+  if (m.kind === 'video') {
+    const thumb = (m as { thumbnailUrl?: string | null }).thumbnailUrl
+    if (thumb) return thumb
+    return VIDEO_NO_THUMB_PLACEHOLDER
+  }
+  return m.url ?? ''
+}
+
+function formatDuration(seconds: number): string {
+  const m = Math.floor(seconds / 60)
+  const s = Math.floor(seconds % 60)
+  return m > 0 ? `${m}:${s.toString().padStart(2, '0')}` : `0:${s.toString().padStart(2, '0')}`
+}
+
+function onSingleVideoPlay() {
+  if (props.postId) videoManager.activate(props.postId)
+}
+
+function onSingleVideoPause() {
+  // User paused: next videos start muted; but unpausing THIS same video stays unmuted.
+  if (singleVideoActive.value && props.postId) {
+    const el = singleVideoEl.value
+    setPausedWithSound(props.postId, el ? !el.muted : false)
+  }
+}
+
+function onSingleVideoVolumeChange() {
+  const el = singleVideoEl.value
+  if (!el) return
+  // Unmute → remember so next videos are unmuted. Mute → remember muted.
+  appWideSoundOn.value = !el.muted
+}
+
+function toLightboxItems(): LightboxMediaItem[] {
+  return items.value.map((m) => ({
+    url: m.url ?? '',
+    kind: (m.kind === 'video' ? 'video' : 'image') as 'image' | 'video',
+    posterUrl: (m as { thumbnailUrl?: string | null }).thumbnailUrl ?? null,
+    durationSeconds: (m as { durationSeconds?: number | null }).durationSeconds ?? null,
+    width: (m as { width?: number | null }).width ?? null,
+    height: (m as { height?: number | null }).height ?? null,
+  }))
+}
+
+onMounted(() => {
+  if (import.meta.client && props.postId && singleVideoContainerRef.value && items.value.length === 1 && items.value[0]?.kind === 'video') {
+    videoManager.register(props.postId, singleVideoContainerRef.value)
+  }
+})
+
+onBeforeUnmount(() => {
+  if (props.postId) videoManager.unregister(props.postId)
+})
+
+watch(singleVideoActive, (active) => {
+  const el = singleVideoEl.value
+  if (!el) return
+  if (active) {
+    // New video or resuming same video: start unmuted if appWideSoundOn or "resume same unmuted".
+    if (props.postId) {
+      const shouldUnmute = getShouldStartUnmuted(props.postId)
+      el.muted = !shouldUnmute
+    }
+    el.play().catch(() => {})
+  } else {
+    el.pause()
+  }
+})
+
+// When user mutes/unmutes one player, sync all others to the same state.
+watch(appWideSoundOn, (soundOn) => {
+  const el = singleVideoEl.value
+  if (!el) return
+  el.muted = !soundOn
+})
 
 const items = computed(() => (props.media ?? []).filter((m) => Boolean(m?.url) || Boolean(m?.deletedAt)).slice(0, 4))
 const hideThumbs = computed(() => viewer.kind.value === 'media' && viewer.hideOrigin.value)
@@ -190,10 +336,8 @@ function imgClass(idx: number): string {
 }
 
 function openAt(e: MouseEvent, idx: number) {
-  // Only open real URLs (deleted placeholders are not interactive).
   const xs = urls.value
   if (!xs.length) return
-  // Map the clicked item index to the corresponding URL index (skipping deleted placeholders).
   const urlIndex = Math.max(
     0,
     Math.min(
@@ -202,7 +346,14 @@ function openAt(e: MouseEvent, idx: number) {
     ),
   )
   const startMode = items.value.length > 1 ? 'origin' : 'fitAnchored'
-  viewer.openGalleryFromEvent(e, xs, urlIndex, 'Image', { mediaStartMode: startMode })
+  if (props.postId) {
+    viewer.openGalleryFromMediaItems(e, toLightboxItems(), urlIndex, 'Media', {
+      mediaStartMode: startMode,
+      postId: props.postId,
+    })
+  } else {
+    viewer.openGalleryFromEvent(e, xs, urlIndex, 'Image', { mediaStartMode: startMode })
+  }
 }
 </script>
 

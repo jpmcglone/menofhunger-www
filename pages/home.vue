@@ -39,6 +39,10 @@
           {{ error }}
         </AppInlineAlert>
 
+        <div v-else-if="loading && !posts.length" class="flex justify-center pt-12 pb-8">
+          <ProgressSpinner style="width: 48px; height: 48px" strokeWidth="4" />
+        </div>
+
         <div v-else>
           <AppFeedFollowingEmptyState
             v-if="showFollowingEmptyState"

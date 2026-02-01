@@ -5,7 +5,7 @@
     :username="username"
     :size-class="sizeClass"
     :bg-class="bgClass"
-    :presence-status="user?.id ? getPresenceStatus(user.id) : 'offline'"
+    :presence-status="presenceStatus"
     :presence-scale="props.presenceScale"
     :presence-inset-ratio="props.presenceInsetRatio"
   />
@@ -28,6 +28,8 @@ const props = withDefaults(
     user: UserAvatarUser | null | undefined
     sizeClass?: string
     bgClass?: string
+    /** Override presence (e.g. 'connecting' for current user while socket is connecting). */
+    presenceStatusOverride?: 'online' | 'idle' | 'connecting' | 'recently-disconnected' | 'offline'
     /** Presence dot size as fraction of avatar diameter (default 0.25). Use smaller for large avatars. */
     presenceScale?: number
     /** How far the dot extends outside the avatar (0.5 = half out, 0.25 = closer). Default 0.5. */
@@ -46,4 +48,9 @@ const { getPresenceStatus } = usePresence()
 const avatarUrl = computed(() => props.user?.avatarUrl ?? null)
 const name = computed(() => props.user?.name ?? null)
 const username = computed(() => props.user?.username ?? null)
+
+const presenceStatus = computed(() => {
+  if (props.presenceStatusOverride !== undefined) return props.presenceStatusOverride
+  return props.user?.id ? getPresenceStatus(props.user.id) : 'offline'
+})
 </script>

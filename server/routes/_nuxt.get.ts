@@ -1,8 +1,8 @@
 /**
  * Handle GET /_nuxt (no chunk filename).
- * Prevents Nitro from logging these as unhandled 404s.
+ * Return 204 so the dev server doesn't log a request error; nothing serves this path.
  */
 export default defineEventHandler((event) => {
-  setResponseStatus(event, 404)
-  return 'Not Found'
+  setResponseStatus(event, 204)
+  return null
 })
