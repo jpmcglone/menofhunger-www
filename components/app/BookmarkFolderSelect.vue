@@ -11,7 +11,9 @@
           'shrink-0 text-base',
           activeSlug === null
             ? 'pi pi-bookmark-fill text-[var(--p-primary-color)]'
-            : 'pi pi-folder text-[var(--p-primary-color)]',
+            : activeSlug === 'unorganized'
+              ? 'pi pi-inbox text-[var(--p-primary-color)]'
+              : 'pi pi-folder text-[var(--p-primary-color)]',
         ]"
         aria-hidden="true"
       />
@@ -50,7 +52,7 @@
         <i
           :class="[
             'text-base shrink-0',
-            activeSlug === 'unorganized' ? 'pi pi-folder text-[var(--p-primary-color)]' : 'pi pi-folder-open moh-text',
+            activeSlug === 'unorganized' ? 'pi pi-inbox text-[var(--p-primary-color)]' : 'pi pi-inbox moh-text',
           ]"
           aria-hidden="true"
         />
