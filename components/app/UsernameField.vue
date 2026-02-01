@@ -60,9 +60,7 @@ const atPrefixClass = computed(() => {
   return tone.value === 'moh' ? 'moh-text-muted' : 'text-gray-500 dark:text-gray-400'
 })
 
-const spinnerClass = computed(() => {
-  return tone.value === 'moh' ? 'pi pi-spin pi-spinner moh-text-muted' : 'pi pi-spin pi-spinner text-gray-500'
-})
+const spinnerClass = computed(() => 'pi pi-spin pi-spinner moh-loading-spinner')
 
 const helperToneClass = computed(() => {
   if (props.status === 'available' || props.status === 'same') return 'text-green-700 dark:text-green-300'

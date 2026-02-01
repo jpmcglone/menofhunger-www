@@ -3,10 +3,8 @@
     <div class="flex items-center justify-between gap-3">
       <button type="button" class="min-w-0 flex-1 text-left" @click="goToProfile">
         <div class="flex items-center gap-3 min-w-0">
-          <AppAvatarCircle
-            :src="avatarUrl"
-            :name="user.name"
-            :username="user.username"
+          <AppUserAvatar
+            :user="user"
             size-class="h-10 w-10"
           />
 
@@ -46,10 +44,16 @@ const props = defineProps<{
 
 const showFollowButton = computed(() => props.showFollowButton !== false)
 
-const avatarUrl = computed(() => (props.user.avatarUrl ?? null))
-
 const displayName = computed(() => props.user.name || props.user.username || 'User')
 const handle = computed(() => (props.user.username ? `@${props.user.username}` : '@—'))
+
+const { addInterest, removeInterest } = usePresence()
+onMounted(() => {
+  if (props.user?.id) addInterest([props.user.id])
+})
+onBeforeUnmount(() => {
+  if (props.user?.id) removeInterest([props.user.id])
+})
 
 function goToProfile() {
   if (!props.user.username) return

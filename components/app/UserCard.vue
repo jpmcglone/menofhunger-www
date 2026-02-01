@@ -12,10 +12,8 @@
       @click="toggleMenu"
     >
       <div class="flex items-center gap-3">
-        <AppAvatarCircle
-          :src="avatarUrl"
-          :name="user?.name ?? null"
-          :username="user?.username ?? null"
+        <AppUserAvatar
+          :user="user"
           :size-class="compact ? 'mx-auto h-10 w-10' : 'mx-auto xl:mx-0 h-10 w-10'"
         />
 
@@ -69,8 +67,6 @@ const handle = computed(() => {
   const username = u?.username
   return username ? `@${username}` : '@—'
 })
-
-const avatarUrl = computed(() => (user.value?.avatarUrl ?? null))
 
 const menuRef = ref()
 const buttonEl = ref<HTMLElement | null>(null)

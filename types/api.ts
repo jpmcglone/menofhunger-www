@@ -64,6 +64,8 @@ export type FeedPost = {
   internal?: {
     boostScore: number | null
     boostScoreUpdatedAt: string | null
+    /** Overall popularity score (from popular feed). Admin only. */
+    score?: number | null
   }
   author: PostAuthor
 }
@@ -252,5 +254,12 @@ export type FollowListUser = {
 export type GetFollowsListResponse = {
   users: FollowListUser[]
   nextCursor: string | null
+}
+
+export type OnlineUser = FollowListUser & { lastConnectAt?: number }
+
+export type GetPresenceOnlineResponse = {
+  users: OnlineUser[]
+  totalOnline?: number
 }
 

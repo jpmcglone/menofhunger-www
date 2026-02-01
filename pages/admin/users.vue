@@ -43,10 +43,8 @@
       >
         <div class="flex items-start justify-between gap-3">
           <div class="flex min-w-0 items-start gap-3">
-            <AppAvatarCircle
-              :src="u.avatarUrl ?? null"
-              :name="u.name"
-              :username="u.username"
+            <AppUserAvatar
+              :user="u"
               size-class="h-10 w-10"
               bg-class="moh-surface"
             />
@@ -101,7 +99,7 @@
           <div class="flex items-center gap-2">
             <InputText v-model="editUsername" class="w-full font-mono" placeholder="username" />
             <div class="shrink-0 w-8 flex items-center justify-center">
-              <i v-if="usernameAvailability === 'checking'" class="pi pi-spin pi-spinner text-gray-500" aria-hidden="true" />
+              <i v-if="usernameAvailability === 'checking'" class="pi pi-spin pi-spinner moh-loading-spinner" aria-hidden="true" />
               <i
                 v-else-if="usernameAvailability === 'available' || usernameAvailability === 'same'"
                 class="pi pi-check text-green-600"

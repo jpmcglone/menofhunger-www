@@ -7,7 +7,7 @@
   >
     <!-- Active segment highlight (animates position + width) -->
     <div
-      class="moh-seg-highlight"
+      class="moh-seg-highlight moh-texture"
       :class="{ 'moh-seg-highlight--animate': highlightAnimate, 'opacity-0': !highlightReady }"
       :style="highlightStyle"
       aria-hidden="true"
@@ -194,13 +194,12 @@ watch(
   bottom: 4px;
   left: 0;
   border-radius: 9999px;
-  /* Boost-like orange (and stays consistent if the primary tint changes). */
-  background: linear-gradient(135deg, var(--p-primary-400, #f39b4f), var(--p-primary-600, #ad6815));
+  background: var(--p-primary-500, #c77d1a);
   will-change: transform, width;
 }
 
 .moh-seg-fallback-active {
-  background: linear-gradient(135deg, var(--p-primary-400, #f39b4f), var(--p-primary-600, #ad6815));
+  background: var(--p-primary-500, #c77d1a);
 }
 
 .moh-seg-highlight--animate {

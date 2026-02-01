@@ -79,11 +79,29 @@ export default defineNuxtConfig({
     }
   },
   routeRules: {
-    // Static where it makes sense (fast marketing pages), SSR everywhere else.
+    // Static landing page (no app layout, no presence).
     '/': { prerender: true },
-    '/about': { prerender: true },
-    // Ops-only page; avoid SSR to prevent backend connectivity quirks.
-    '/status': { ssr: false }
+
+    // App-layout routes: client-only so presence/WebSocket state is correct on fresh launch.
+    '/home': { ssr: false },
+    '/explore': { ssr: false },
+    '/notifications': { ssr: false },
+    '/messages': { ssr: false },
+    '/bookmarks': { ssr: false },
+    '/bookmarks/**': { ssr: false },
+    '/groups': { ssr: false },
+    '/only-me': { ssr: false },
+    '/online': { ssr: false },
+    '/p/**': { ssr: false },
+    '/u/**': { ssr: false },
+    '/settings': { ssr: false },
+    '/feedback': { ssr: false },
+    '/terms': { ssr: false },
+    '/privacy': { ssr: false },
+    '/about': { ssr: false },
+    '/admin': { ssr: false },
+    '/admin/**': { ssr: false },
+    '/status': { ssr: false },
   },
   primevue: {
     options: {

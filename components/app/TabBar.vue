@@ -16,10 +16,8 @@
             @click="toggleProfileMenu"
           >
             <div class="relative h-8 w-8 flex items-center justify-center">
-              <AppAvatarCircle
-                :src="meAvatarUrl"
-                :name="user?.name ?? null"
-                :username="user?.username ?? null"
+              <AppUserAvatar
+                :user="user"
                 size-class="h-7 w-7"
               />
             </div>
@@ -77,8 +75,6 @@ const notifBadge = useNotificationsBadge()
 const { menuItems, confirmVisible, confirmLogout } = useUserMenu()
 
 const profileMenuRef = ref()
-
-const meAvatarUrl = computed(() => (user.value?.avatarUrl ?? null))
 
 function isActive(to: string) {
   if (to === '/home') return route.path === '/home'

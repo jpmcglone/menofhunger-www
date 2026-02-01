@@ -1,10 +1,8 @@
 <template>
   <div class="flex gap-3">
     <div v-if="!contentOnly" class="shrink-0" aria-hidden="true">
-      <AppAvatarCircle
-        :src="post.author?.avatarUrl ?? null"
-        :name="post.author?.name ?? null"
-        :username="post.author?.username ?? null"
+      <AppUserAvatar
+        :user="post.author"
         size-class="h-10 w-10"
         bg-class="moh-surface"
       />
@@ -40,7 +38,7 @@
         <span v-else class="text-sm moh-text-muted truncate">@{{ post.author?.username ?? '—' }}</span>
         <span class="shrink-0 text-sm moh-text-muted" aria-hidden="true">·</span>
         <NuxtLink
-          v-if="post.id"
+          v-if="post.id && postPermalink"
           :to="postPermalink"
           class="shrink-0 text-sm moh-text-muted whitespace-nowrap hover:underline underline-offset-2"
           :aria-label="`View post`"
@@ -83,6 +81,17 @@ const authorProfilePath = computed(() => {
 const postPermalink = computed(() =>
   props.post?.id ? `/p/${encodeURIComponent(props.post.id)}` : null
 )
+
+const { addInterest, removeInterest } = usePresence()
+const authorId = computed(() => props.post?.author?.id ?? null)
+onMounted(() => {
+  const id = authorId.value
+  if (id) addInterest([id])
+})
+onBeforeUnmount(() => {
+  const id = authorId.value
+  if (id) removeInterest([id])
+})
 
 const createdAtShort = computed(() => {
   const d = new Date(props.post.createdAt)

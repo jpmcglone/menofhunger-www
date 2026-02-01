@@ -119,6 +119,13 @@ export function primaryPaletteToCssVars(p: PrimaryPalette, selector: string, con
   ].join('')
 }
 
+/** Returns the primary-500 hex for loading indicators etc. */
+export function primaryColor500ForUser(user: { verifiedStatus?: string | null; premium?: boolean | null } | null): string {
+  if (user?.premium) return PRIMARY_PREMIUM_ORANGE[500]
+  if (user?.verifiedStatus && user.verifiedStatus !== 'none') return PRIMARY_VERIFIED_BLUE[500]
+  return PRIMARY_ORANGE[500]
+}
+
 export function primaryTintCssForUser(user: { verifiedStatus?: string | null; premium?: boolean | null } | null): string {
   if (user?.premium) {
     // Premium gold works best with dark text in both modes.

@@ -41,19 +41,15 @@
           aria-label="View your profile"
         >
           <div class="transition-opacity duration-200 group-hover:opacity-80">
-            <AppAvatarCircle
-              :src="meAvatarUrl"
-              :name="user?.name ?? null"
-              :username="user?.username ?? null"
+            <AppUserAvatar
+              :user="user"
               size-class="h-8 w-8 sm:h-10 sm:w-10"
             />
           </div>
         </NuxtLink>
         <div v-else class="row-start-1 sm:row-start-2 col-start-1 mb-3 sm:mb-0 shrink-0" aria-hidden="true">
-          <AppAvatarCircle
-            :src="meAvatarUrl"
-            :name="user?.name ?? null"
-            :username="user?.username ?? null"
+          <AppUserAvatar
+            :user="user"
             size-class="h-8 w-8 sm:h-10 sm:w-10"
           />
         </div>
@@ -276,8 +272,6 @@ const myProfilePath = computed(() => {
   const username = (user.value?.username ?? '').trim()
   return username ? `/u/${encodeURIComponent(username)}` : null
 })
-const meAvatarUrl = computed(() => user.value?.avatarUrl ?? null)
-
 const draft = ref('')
 const composerTextareaEl = ref<HTMLTextAreaElement | null>(null)
 

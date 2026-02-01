@@ -17,6 +17,26 @@
   <div class="relative z-10">
     <ClientOnly>
       <AppToastStack />
+      <!-- Full-screen overlay: shown while waiting for presence WebSocket. Fades to 0 opacity when done (stays in DOM, pointer-events-none so touches pass through). Min 0.5s display + 0.2s fade-out. -->
+      <div
+        class="fixed inset-0 z-[9999] flex items-center justify-center bg-white dark:bg-black transition-opacity duration-200"
+        :class="showConnectingOverlay ? 'opacity-100' : 'opacity-0 pointer-events-none'"
+        :aria-busy="showConnectingOverlay"
+        aria-live="polite"
+        aria-label="Loading"
+        role="status"
+      >
+        <div class="moh-loading-logo-pulse">
+          <AppLogo
+            :light-src="logoLightSmall"
+            :dark-src="logoDarkSmall"
+            :alt="`${siteConfig.name} logo`"
+            :width="64"
+            :height="64"
+            img-class="h-16 w-16"
+          />
+        </div>
+      </div>
     </ClientOnly>
     <AppOnboardingGate />
     <AppAuthActionModal />
@@ -511,13 +531,48 @@ import {
   MOH_OPEN_COMPOSER_KEY,
   type ComposerVisibility,
 } from '~/utils/injection-keys'
+import { FULLSCREEN_LOAD_MIN_MS } from '~/utils/fullscreen-load'
 import { useBookmarkCollections } from '~/composables/useBookmarkCollections'
 import { useOnlyMePosts } from '~/composables/useOnlyMePosts'
 import { useReplyModal } from '~/composables/useReplyModal'
 
 const route = useRoute()
 const { initAuth, user } = useAuth()
+const { isSocketConnected } = usePresence()
 const { isAuthed, leftItems: leftNavItems, tabItems } = useAppNav()
+
+const showConnectingOverlay = ref(false)
+const overlayShownAt = ref<number>(0)
+
+function hideConnectingOverlayAfterMinDisplay() {
+  const elapsed = Date.now() - overlayShownAt.value
+  const remaining = Math.max(0, FULLSCREEN_LOAD_MIN_MS - elapsed)
+  if (remaining > 0) {
+    setTimeout(() => {
+      showConnectingOverlay.value = false
+    }, remaining)
+  } else {
+    showConnectingOverlay.value = false
+  }
+}
+
+onMounted(() => {
+  if (!import.meta.client) return
+  if (!isAuthed.value) return
+  if (isSocketConnected.value) return
+  showConnectingOverlay.value = true
+  overlayShownAt.value = Date.now()
+  const timer = setTimeout(() => {
+    hideConnectingOverlayAfterMinDisplay()
+  }, 8000)
+  const stop = watch(isSocketConnected, (connected) => {
+    if (connected) {
+      clearTimeout(timer)
+      stop()
+      hideConnectingOverlayAfterMinDisplay()
+    }
+  }, { immediate: true })
+})
 const { hideTopBar, navCompactMode, isRightRailForcedHidden, isRightRailSearchHidden, title } = useLayoutRules(route)
 const isPostPage = computed(() => /^\/p\/[^/]+$/.test(route.path))
 const isBookmarksPage = computed(() => route.path === '/bookmarks' || route.path.startsWith('/bookmarks/'))
@@ -779,6 +834,15 @@ onBeforeUnmount(() => {
 </script>
 
 <style>
+/* Full-screen loading: logo with slow pulse */
+@keyframes moh-loading-pulse {
+  0%, 100% { opacity: 1 }
+  50% { opacity: 0.55 }
+}
+.moh-loading-logo-pulse {
+  animation: moh-loading-pulse 2.5s ease-in-out infinite;
+}
+
 .moh-status-tone {
   /* Force an "ops console" palette regardless of color mode. */
   --moh-bg: #000;

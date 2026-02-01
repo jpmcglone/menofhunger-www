@@ -24,10 +24,8 @@
         <div v-else-if="errorMessage" class="text-sm text-red-600 dark:text-red-400">{{ errorMessage }}</div>
 
         <div v-else-if="post" class="flex gap-3">
-          <AppAvatarCircle
-            :src="post.author.avatarUrl ?? null"
-            :name="post.author.name"
-            :username="post.author.username"
+          <AppUserAvatar
+            :user="post.author"
             size-class="h-9 w-9"
             bg-class="moh-surface"
           />
@@ -188,5 +186,23 @@ watch(
   },
   { immediate: true },
 )
+
+const { addInterest, removeInterest } = usePresence()
+const lastAuthorId = ref<string | null>(null)
+watch(
+  () => post.value?.author?.id ?? null,
+  (authorId) => {
+    if (!import.meta.client) return
+    const prev = lastAuthorId.value
+    if (prev && prev !== authorId) removeInterest([prev])
+    lastAuthorId.value = authorId ?? null
+    if (authorId) addInterest([authorId])
+  },
+  { immediate: true },
+)
+onBeforeUnmount(() => {
+  const id = lastAuthorId.value
+  if (id) removeInterest([id])
+})
 </script>
 

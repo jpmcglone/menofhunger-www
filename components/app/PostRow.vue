@@ -55,19 +55,15 @@
           class="group shrink-0"
           :aria-label="`View @${post.author.username} profile`"
         >
-          <AppAvatarCircle
-            :src="authorAvatarUrl"
-            :name="post.author.name"
-            :username="post.author.username"
+          <AppUserAvatar
+            :user="post.author"
             size-class="h-10 w-10"
             bg-class="moh-surface"
           />
         </NuxtLink>
-        <AppAvatarCircle
+        <AppUserAvatar
           v-else
-          :src="authorAvatarUrl"
-          :name="post.author.name"
-          :username="post.author.username"
+          :user="post.author"
           size-class="h-10 w-10"
           bg-class="moh-surface"
         />
@@ -369,10 +365,6 @@ const authorProfilePath = computed(() => {
   return username ? `/u/${encodeURIComponent(username)}` : null
 })
 
-const authorAvatarUrl = computed(() => {
-  return post.value.author.avatarUrl ?? null
-})
-
 const visibilityTag = computed(() => {
   return visibilityTagLabel(post.value.visibility)
 })
@@ -459,7 +451,7 @@ const moreMenuItems = computed<MenuItem[]>(() => {
   if (viewerIsAdmin.value) {
     items.push({ separator: true })
     items.push({
-      label: `Boost score: ${adminBoostScoreLabel.value ?? '—'}`,
+      label: adminScoreLabel.value ?? '—',
       icon: 'pi pi-chart-line',
       disabled: true
     })
@@ -470,7 +462,12 @@ const moreMenuItems = computed<MenuItem[]>(() => {
       label: 'Report post',
       icon: 'pi pi-flag',
       command: () => {
-        // no-op for now
+        toast.push({
+          title: 'Not available yet',
+          message: "We're still building this.",
+          tone: 'public',
+          durationMs: 5000,
+        })
       },
     })
   }
@@ -537,11 +534,16 @@ const mentionsTooltip = computed(() => {
   if (!list.length) return null
   return tinyTooltip(list.map((u) => `@${u}`).join(', '))
 })
-const adminBoostScoreLabel = computed(() => {
+const adminScoreLabel = computed(() => {
   if (!viewerIsAdmin.value) return null
-  const score = post.value.internal?.boostScore
-  if (typeof score !== 'number') return '—'
-  return score.toFixed(2)
+  const overall = post.value.internal?.score
+  const boost = post.value.internal?.boostScore
+  const hasOverall = typeof overall === 'number'
+  const hasBoost = typeof boost === 'number'
+  if (hasOverall && hasBoost) return `Score: ${overall.toFixed(2)} (boost: ${boost.toFixed(2)})`
+  if (hasOverall) return `Score: ${overall.toFixed(2)}`
+  if (hasBoost) return `Boost score: ${boost.toFixed(2)}`
+  return '—'
 })
 
 async function onBoostClick() {
@@ -575,6 +577,17 @@ function onCommentClick() {
   }
   showReplyModal(post.value)
 }
+
+const { addInterest, removeInterest } = usePresence()
+const authorId = computed(() => props.post?.author?.id)
+onMounted(() => {
+  const id = authorId.value
+  if (id) addInterest([id])
+})
+onBeforeUnmount(() => {
+  const id = authorId.value
+  if (id) removeInterest([id])
+})
 
 const { copyText: copyToClipboard } = useCopyToClipboard()
 const shareMenuItems = computed<MenuItem[]>(() => [

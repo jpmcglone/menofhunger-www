@@ -1,27 +1,38 @@
 <template>
   <div
     ref="wrapEl"
-    :class="[
-      'shrink-0 overflow-hidden rounded-full',
-      bgClass,
-      sizeClass,
-    ]"
+    :class="['relative shrink-0', sizeClass]"
     aria-hidden="true"
   >
-    <img
-      v-if="src"
-      :src="src"
-      alt=""
-      class="h-full w-full object-cover"
-      loading="lazy"
-      decoding="async"
+    <!-- Avatar (clipped to circle) -->
+    <div
+      :class="['h-full w-full overflow-hidden rounded-full', bgClass]"
     >
-    <div v-else class="h-full w-full flex items-center justify-center">
-      <span
-        class="moh-avatar-initial leading-none"
-        :style="initialStyle"
-      >{{ initial }}</span>
+      <img
+        v-if="src"
+        :src="src"
+        alt=""
+        class="h-full w-full object-cover"
+        loading="lazy"
+        decoding="async"
+      >
+      <div v-else class="h-full w-full flex items-center justify-center">
+        <span
+          class="moh-avatar-initial leading-none"
+          :style="initialStyle"
+        >{{ initial }}</span>
+      </div>
     </div>
+    <!-- Presence: green (online) or red (recently disconnected) dot; overlays bottom-right corner -->
+    <span
+      :class="[
+        'absolute rounded-full border-2 transition-opacity duration-200',
+        presenceStatus === 'online' ? 'border-white bg-green-500 dark:border-zinc-900 dark:bg-green-500' : '',
+        presenceStatus === 'recently-disconnected' ? 'border-white bg-red-500 dark:border-zinc-900 dark:bg-red-500' : '',
+        presenceStatus !== 'offline' ? '' : 'pointer-events-none'
+      ]"
+      :style="presenceDotFullStyle"
+    />
   </div>
 </template>
 
@@ -33,6 +44,12 @@ const props = withDefaults(
     username?: string | null
     sizeClass?: string
     bgClass?: string
+    /** Presence state: green (online), red (recently disconnected), or hidden (offline). */
+    presenceStatus?: 'online' | 'recently-disconnected' | 'offline'
+    /** Presence dot size as fraction of avatar diameter (default 0.25). Use smaller (e.g. 0.15) for large avatars. */
+    presenceScale?: number
+    /** How far the dot extends outside the avatar (0.5 = half out, 0.25 = closer). Default 0.5. */
+    presenceInsetRatio?: number
   }>(),
   {
     src: null,
@@ -40,6 +57,9 @@ const props = withDefaults(
     username: null,
     sizeClass: 'h-10 w-10',
     bgClass: 'bg-gray-200 dark:bg-zinc-800',
+    presenceStatus: 'offline',
+    presenceScale: 0.25,
+    presenceInsetRatio: 0.5,
   },
 )
 
@@ -81,6 +101,22 @@ const initial = computed(() => {
   const raw = (props.name ?? props.username ?? '').trim()
   if (!raw) return '?'
   return raw.slice(0, 1).toUpperCase()
+})
+
+// Presence dot: sits outside avatar at bottom-right, overlaying the corner
+const presenceDotFullStyle = computed<Record<string, string | number>>(() => {
+  const d = diameterPx.value
+  const scale = Math.max(0.1, Math.min(0.5, props.presenceScale ?? 0.25))
+  const size = Math.max(6, Math.round(d * scale))
+  const ratio = Math.max(0.1, Math.min(0.5, props.presenceInsetRatio ?? 0.5))
+  const inset = Math.round(-size * ratio)
+  return {
+    width: `${size}px`,
+    height: `${size}px`,
+    bottom: `${inset}px`,
+    right: `${inset}px`,
+    opacity: props.presenceStatus !== 'offline' ? 1 : 0,
+  }
 })
 </script>
 

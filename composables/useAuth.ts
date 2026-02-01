@@ -78,6 +78,8 @@ export function useAuth() {
   }
 
   async function logout() {
+    const { emitLogout } = usePresence()
+    emitLogout()
     await apiFetch<{ success: true }>('/auth/logout', { method: 'POST' })
 
     user.value = null

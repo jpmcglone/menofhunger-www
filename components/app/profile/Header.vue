@@ -35,13 +35,13 @@
         ]"
       >
         <div class="group relative ring-4 ring-white dark:ring-black rounded-full">
-          <AppAvatarCircle
+          <AppUserAvatar
             v-show="!hideAvatarThumb"
-            :src="profileAvatarUrl"
-            :name="profile?.name ?? null"
-            :username="profile?.username ?? null"
+            :user="profile"
             size-class="h-28 w-28"
             bg-class="bg-gray-200 dark:bg-zinc-800"
+            :presence-scale="0.15"
+            :presence-inset-ratio="0.25"
           />
           <div
             v-if="profileAvatarUrl"
@@ -62,7 +62,7 @@
     </div>
 
     <div class="mx-auto max-w-3xl pb-5 pt-16">
-      <div class="flex items-start justify-between gap-4">
+      <div class="flex items-start justify-between gap-4 mt-1">
         <div class="min-w-0">
           <div class="flex items-center gap-2 min-w-0">
             <div class="text-2xl font-bold leading-none text-gray-900 dark:text-gray-50 truncate">
@@ -176,5 +176,23 @@ const followingCount = computed(() => props.followingCount ?? null)
 const hideBannerThumb = computed(() => Boolean(props.hideBannerThumb))
 const hideAvatarThumb = computed(() => Boolean(props.hideAvatarThumb))
 const hideAvatarDuringBanner = computed(() => Boolean(props.hideAvatarDuringBanner))
+
+const { addInterest, removeInterest } = usePresence()
+const lastProfileId = ref<string | null>(null)
+watch(
+  () => profile.value?.id ?? null,
+  (profileId) => {
+    if (!import.meta.client) return
+    const prev = lastProfileId.value
+    if (prev && prev !== profileId) removeInterest([prev])
+    lastProfileId.value = profileId ?? null
+    if (profileId) addInterest([profileId])
+  },
+  { immediate: true },
+)
+onBeforeUnmount(() => {
+  const id = lastProfileId.value
+  if (id) removeInterest([id])
+})
 </script>
 

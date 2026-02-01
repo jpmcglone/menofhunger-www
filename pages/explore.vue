@@ -18,14 +18,29 @@
         Searching for: <span class="font-semibold">{{ searchQueryTrimmed }}</span>
       </p>
       <p class="mt-2 text-sm moh-text-muted">
-        Search is in progress. We don’t have a backend yet — results will appear here when it’s ready.
+        Search is in progress. We don't have a backend yet — results will appear here when it's ready.
       </p>
     </div>
 
-    <div v-else class="rounded-xl border moh-border px-4 py-6 text-center">
-      <p class="text-sm moh-text-muted">
-        Type something above and press Enter (or use the right column search and press Enter) to go to Explore with your query. Search results aren’t wired up yet.
-      </p>
+    <div v-else class="space-y-6">
+      <div class="rounded-xl border moh-border px-4 py-6 text-center">
+        <p class="text-sm moh-text-muted">
+          This page isn't working yet.
+        </p>
+        <p class="mt-3 text-sm moh-text-muted">
+          You can see who's online now by
+          <NuxtLink
+            to="/online"
+            class="inline-flex items-center gap-2 rounded-lg px-3 py-1.5 font-semibold text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-950/40 hover:text-green-700 dark:hover:text-green-300 transition-colors"
+          >
+            <span class="relative flex h-2 w-2 shrink-0" aria-hidden="true">
+              <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-500 opacity-75" />
+              <span class="relative inline-flex h-2 w-2 rounded-full bg-green-500" />
+            </span>
+            Online now
+          </NuxtLink>
+        </p>
+      </div>
     </div>
   </div>
 </template>
