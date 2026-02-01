@@ -240,13 +240,14 @@ html.dark {
     border-color: rgba(var(--moh-onlyme-rgb), 0.4);
   }
 
-  /* Post row highlight (e.g. the post being viewed on /p/:id). Color matches visibility tier. */
+  /* Post row highlight (e.g. the post being viewed on /p/:id). Color matches post visibility, not viewer tier. */
   .moh-post-highlight {
-    box-shadow: inset 3px 0 0 0 var(--p-primary-color, #111827);
-    background-color: color-mix(in srgb, var(--p-primary-color, #111827) 6%, transparent);
+    /* Public: neutral bar + tint so highlight does not inherit viewer's theme. */
+    box-shadow: inset 3px 0 0 0 var(--moh-border);
+    background-color: color-mix(in srgb, var(--moh-border) 12%, transparent);
   }
   html.dark .moh-post-highlight {
-    background-color: color-mix(in srgb, var(--p-primary-color, #111827) 8%, transparent);
+    background-color: color-mix(in srgb, var(--moh-border) 18%, transparent);
   }
   .moh-post-highlight-verified {
     box-shadow: inset 3px 0 0 0 var(--moh-verified);
