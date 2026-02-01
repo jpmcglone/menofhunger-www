@@ -6,7 +6,7 @@
       :class="[
         'group w-full rounded-xl border border-gray-200 bg-gray-50/80 text-left transition-colors hover:bg-gray-100 dark:border-zinc-800 dark:bg-zinc-950/40 dark:hover:bg-zinc-900',
         // Default to compact on smaller screens (rail is narrow until xl).
-        // `compact` forces compact even at xl+ (e.g. messages/test routes).
+        // `compact` forces compact even at xl+ (e.g. messages route).
         compact ? 'p-1' : 'p-1 xl:p-2'
       ]"
       @click="toggleMenu"

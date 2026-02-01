@@ -2,28 +2,16 @@
   <div class="relative -mx-4">
     <!-- Content (blurred until revealed) -->
     <div :class="revealed ? '' : 'blur-md pointer-events-none select-none'">
-      <div class="px-4 py-4 border-b moh-border">
-        <div class="flex items-start justify-between gap-3">
-          <div class="min-w-0">
-            <div class="flex items-center gap-2">
-              <i class="pi pi-eye-slash text-sm moh-text-muted" aria-hidden="true" />
-              <h1 class="text-lg font-semibold">Only me</h1>
-            </div>
-            <div class="mt-1 text-sm moh-text-muted">
-              Private posts that only you can see. These never appear in feeds.
-            </div>
-          </div>
-          <Button
-            v-if="canPost"
-            label="Post"
-            icon="pi pi-plus"
-            severity="secondary"
-            rounded
-            class="moh-btn-onlyme moh-btn-tone"
-            aria-label="New only-me post"
-            @click="openComposerOnlyMe"
-          />
-        </div>
+      <div v-if="canPost" class="px-4 py-3 border-b moh-border flex justify-end">
+        <Button
+          label="Post"
+          icon="pi pi-plus"
+          severity="secondary"
+          rounded
+          class="moh-btn-onlyme moh-btn-tone"
+          aria-label="New only-me post"
+          @click="openComposerOnlyMe"
+        />
       </div>
 
       <div v-if="error" class="px-4 mt-4">
@@ -107,12 +95,20 @@ function openComposerOnlyMe() {
   openComposer?.('onlyMe')
 }
 
+const route = useRoute()
 const { posts, nextCursor, loading, error, refresh, loadMore, removePost } = useOnlyMePosts()
 
 if (import.meta.server) {
   await refresh()
 } else {
-  onMounted(() => void refresh())
+  onMounted(() => {
+    // After posting only-me from another page we navigate here with ?posted=1 and prepend; skip refresh to avoid flash.
+    if (route.query.posted === '1') {
+      navigateTo('/only-me', { replace: true })
+      return
+    }
+    void refresh()
+  })
 }
 
 onMounted(() => {

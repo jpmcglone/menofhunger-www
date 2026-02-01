@@ -1,7 +1,9 @@
 <template>
   <div>
-    <!-- Layout: Composer at top, feed below -->
-    <AppPostComposer :create-post="createPostViaFeed" />
+    <!-- Layout: Composer at top, feed below. Wrapper ref used to detect when composer is in view (hides mobile FAB). -->
+    <div ref="homeComposerEl" class="min-h-0">
+      <AppPostComposer :create-post="createPostViaFeed" />
+    </div>
 
     <!-- Feed: header + content -->
     <div>
@@ -73,6 +75,8 @@
 <script setup lang="ts">
 import type { PostMediaKind, PostMediaSource, PostVisibility } from '~/types/api'
 import { postBodyHasVideoEmbed } from '~/utils/link-utils'
+import { MOH_HOME_COMPOSER_IN_VIEW_KEY } from '~/utils/injection-keys'
+import { useMiddleScroller } from '~/composables/useMiddleScroller'
 
 definePageMeta({
   layout: 'app',
@@ -90,6 +94,30 @@ usePageSeo({
   image: '/images/banner.png',
 })
 
+const homeComposerEl = ref<HTMLElement | null>(null)
+const homeComposerInViewRef = inject(MOH_HOME_COMPOSER_IN_VIEW_KEY)
+
+const middleScrollerRef = useMiddleScroller()
+
+onMounted(() => {
+  if (!import.meta.client) return
+  const el = homeComposerEl.value
+  const root = middleScrollerRef.value
+  if (!el || !root || !homeComposerInViewRef) return
+  const obs = new IntersectionObserver(
+    (entries) => {
+      const e = entries[0]
+      if (e) homeComposerInViewRef.value = e.isIntersecting
+    },
+    { root, rootMargin: '0px', threshold: 0 },
+  )
+  obs.observe(el)
+  onBeforeUnmount(() => {
+    obs.disconnect()
+    homeComposerInViewRef.value = false
+  })
+})
+
 const newlyPostedVideoPostId = ref<string | null>(null)
 const {
   feedScope,
@@ -103,6 +131,7 @@ const {
   refresh,
   loadMore,
   addPost,
+  addReply,
   removePost,
   followingCount,
   showFollowingEmptyState,
@@ -112,6 +141,19 @@ const {
   setFeedFilter,
   setFeedSort,
 } = useHomeFeed()
+
+const replyModal = useReplyModal()
+onActivated(() => {
+  if (!import.meta.client) return
+  replyModal.registerOnReplyPosted((payload) => {
+    const parent = replyModal.parentPost.value
+    if (!parent?.id || !payload.post) return
+    addReply(parent.id, payload.post, parent)
+  })
+})
+onDeactivated(() => {
+  replyModal.unregisterOnReplyPosted()
+})
 
 async function createPostViaFeed(
   body: string,

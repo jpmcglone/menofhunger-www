@@ -21,13 +21,13 @@
     <AppOnboardingGate />
     <AppAuthActionModal />
     <AppReplyModal />
-    <div :class="['h-dvh overflow-hidden moh-bg moh-text', showStatusBg ? 'moh-status-tone' : '']">
+    <div :class="['h-dvh overflow-hidden moh-bg moh-text moh-texture', showStatusBg ? 'moh-status-tone' : '']">
       <div class="mx-auto flex h-full w-full max-w-6xl px-0 sm:px-4 xl:max-w-7xl">
         <!-- Left Nav (independent scroll) -->
         <aside
           :class="[
-            'no-scrollbar hidden sm:block shrink-0 h-full border-r moh-border',
-            composerModalOpen ? 'overflow-hidden' : 'overflow-y-auto overscroll-y-auto'
+            'no-scrollbar hidden sm:block shrink-0 h-full border-r moh-border moh-texture',
+            anyOverlayOpen ? 'overflow-hidden' : 'overflow-y-auto overscroll-y-auto'
           ]"
         >
         <!-- IMPORTANT: no `h-full` + no `overflow-hidden` here, or the rail can't actually scroll -->
@@ -43,18 +43,37 @@
           ]"
         >
           <div class="mb-3">
-            <div class="flex h-12 w-12 items-center justify-center">
-              <AppLogo
-                :alt="siteConfig.name"
-                as-link
-                to="/home"
-                :light-src="logoLightSmall"
-                :dark-src="logoDarkSmall"
-                :width="32"
-                :height="32"
-                imgClass="h-8 w-8 rounded"
-              />
-            </div>
+            <NuxtLink
+              :to="'/home'"
+              :class="[
+                'flex items-center',
+                isAuthed && (user?.premium || (user?.verifiedStatus && user.verifiedStatus !== 'none')) && !navCompactMode ? 'gap-4' : 'gap-2'
+              ]"
+              aria-label="Home"
+            >
+              <div class="flex h-12 w-12 shrink-0 items-center justify-center">
+                <AppLogo
+                  :alt="siteConfig.name"
+                  :light-src="logoLightSmall"
+                  :dark-src="logoDarkSmall"
+                  :width="32"
+                  :height="32"
+                  imgClass="h-8 w-8 rounded"
+                />
+              </div>
+              <span
+                v-if="isAuthed && user?.premium && !navCompactMode"
+                class="hidden xl:inline text-[10px] font-bold tracking-[0.2em] text-[var(--moh-premium)] uppercase"
+              >
+                PREMIUM
+              </span>
+              <span
+                v-else-if="isAuthed && user?.verifiedStatus && user.verifiedStatus !== 'none' && !navCompactMode"
+                class="hidden xl:inline text-[10px] font-bold tracking-[0.2em] text-[var(--moh-verified)] uppercase"
+              >
+                VERIFIED
+              </span>
+            </NuxtLink>
           </div>
 
           <nav class="space-y-1 flex-1">
@@ -95,14 +114,14 @@
                 <span
                   v-if="item.key === 'notifications' && notifBadge.show"
                   :class="[
-                    'absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold leading-[18px] text-center shadow-sm ring-2 ring-white dark:ring-black',
+                    'absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold leading-[18px] text-center',
                     notifBadge.toneClass.value,
                   ]"
                 >
                   {{ notifBadge.count }}
                 </span>
               </span>
-              <span v-if="!navCompactMode" class="hidden xl:inline whitespace-nowrap overflow-hidden text-xl font-semibold max-w-[220px]">
+              <span v-if="!navCompactMode" class="hidden xl:inline whitespace-nowrap overflow-hidden text-xl font-bold max-w-[220px]">
                 {{ item.label }}
               </span>
             </NuxtLink>
@@ -112,9 +131,10 @@
                 type="button"
                 aria-label="Post"
                 :class="[
-                  'group flex h-12 items-center rounded-xl bg-black text-white hover:opacity-95 dark:bg-white dark:text-black',
-                  'w-full'
+                  'group flex h-12 items-center rounded-xl text-white hover:opacity-95 w-full',
+                  fabButtonClass,
                 ]"
+                :style="fabButtonStyle"
                 v-if="canOpenComposer"
                 @click="openComposerModal"
               >
@@ -154,34 +174,56 @@
             :class="[
               'no-scrollbar min-w-0 flex-1',
               'lg:border-r moh-border',
-              composerModalOpen ? 'overflow-hidden' : 'overflow-y-auto overscroll-y-auto'
+              anyOverlayOpen ? 'overflow-hidden' : 'overflow-y-auto overscroll-y-auto'
             ]"
+            :style="
+              !hideTopBar
+                ? { scrollPaddingTop: 'var(--moh-title-bar-height, 4rem)' }
+                : undefined
+            "
           >
           <div
             v-if="!hideTopBar"
-            class="sticky top-0 z-10 border-b moh-border moh-frosted"
+            ref="titleBarEl"
+            class="sticky top-0 z-10 shrink-0 border-b moh-border moh-frosted"
           >
-            <div class="px-4 py-3 flex items-center justify-between gap-3">
-              <div class="min-w-0 flex items-center gap-2">
-                <h1 class="moh-title min-w-0 truncate text-xl font-bold tracking-tight">
-                  {{ headerTitle }}
-                </h1>
-                <AppVerifiedBadge
-                  v-if="appHeader?.verifiedStatus"
-                  :status="appHeader.verifiedStatus"
-                  :premium="Boolean(appHeader?.premium)"
-                />
+            <div class="px-4 py-3 space-y-1">
+              <div class="flex items-center justify-between gap-3">
+                <div class="min-w-0 flex items-center gap-2">
+                  <i v-if="headerIcon" :class="['pi', headerIcon]" class="text-xl shrink-0 opacity-80" aria-hidden="true" />
+                  <h1 class="moh-title min-w-0 truncate text-xl font-bold tracking-tight">
+                    {{ headerTitle }}
+                  </h1>
+                  <AppVerifiedBadge
+                    v-if="appHeader?.verifiedStatus"
+                    :status="appHeader.verifiedStatus"
+                    :premium="Boolean(appHeader?.premium)"
+                  />
+                </div>
+                <div v-if="typeof appHeader?.postCount === 'number'" class="shrink-0 text-sm moh-text-muted">
+                  <span class="font-semibold tabular-nums">{{ formatCompactNumber(appHeader.postCount) }}</span>
+                  <span class="ml-1">posts</span>
+                </div>
               </div>
-              <div v-if="typeof appHeader?.postCount === 'number'" class="shrink-0 text-sm moh-text-muted">
-                <span class="font-semibold tabular-nums">{{ formatCompactNumber(appHeader.postCount) }}</span>
-                <span class="ml-1">posts</span>
-              </div>
+              <p v-if="headerDescription" class="text-sm moh-text-muted">
+                {{ headerDescription }}
+              </p>
             </div>
           </div>
 
             <div
               ref="middleContentEl"
-              :class="hideTopBar ? 'pb-24 sm:pb-4' : 'px-4 py-4 pb-24 sm:pb-4'"
+              :class="
+                hideTopBar
+                  ? 'pb-24 sm:pb-4'
+                  : isBookmarksPage
+                    ? 'pt-0 pb-24 sm:pb-4'
+                    : isPostPage
+                      ? 'px-4 pt-4 pb-24 sm:pb-4'
+                      : isNotificationsPage || isOnlyMePage
+                        ? 'px-4 pt-0 pb-24 sm:pb-4'
+                        : 'px-4 py-4 pb-24 sm:pb-4'
+              "
             >
               <slot />
             </div>
@@ -191,8 +233,8 @@
           <aside
             ref="rightScrollerEl"
             :class="[
-              'no-scrollbar shrink-0 w-80 h-full px-4 py-4',
-              composerModalOpen ? 'overflow-hidden' : 'overflow-y-auto overscroll-y-auto',
+              'no-scrollbar shrink-0 w-80 h-full px-4 py-4 moh-texture',
+              anyOverlayOpen ? 'overflow-hidden' : 'overflow-y-auto overscroll-y-auto',
               isRightRailForcedHidden ? 'hidden' : 'hidden lg:block'
             ]"
           >
@@ -362,6 +404,8 @@
                 <span>·</span>
                 <NuxtLink to="/terms" class="hover:underline">Terms</NuxtLink>
                 <span>·</span>
+                <NuxtLink to="/status" class="hover:underline">Status</NuxtLink>
+                <span>·</span>
                 <span>&copy; {{ new Date().getFullYear() }} {{ siteConfig.name }}</span>
               </div>
             </div>
@@ -370,6 +414,22 @@
         </div>
       </div>
     </div>
+
+    <!-- Mobile FAB: open post composer (visible when tab bar is). Hidden when home page composer is on screen. -->
+    <button
+      v-if="canOpenComposer && !hideFabForHomeComposer"
+      type="button"
+      aria-label="New post"
+      :class="[
+        'sm:hidden fixed right-4 z-40 flex h-12 w-12 items-center justify-center rounded-xl text-white shadow-lg hover:opacity-95 active:scale-95',
+        fabButtonClass,
+      ]"
+      :style="fabButtonStyle"
+      style="bottom: calc(4rem + env(safe-area-inset-bottom, 0px));"
+      @click="openComposerModal"
+    >
+      <i class="pi pi-plus text-3xl" aria-hidden="true" />
+    </button>
 
     <AppTabBar :items="tabItems" />
 
@@ -401,13 +461,12 @@
             class="absolute top-3"
             :style="composerSheetStyle"
           >
-            <div class="relative overflow-hidden rounded-2xl border border-gray-200 bg-white p-3 shadow-2xl dark:border-zinc-800 dark:bg-black">
-              <div
-                v-if="composerModalTintStyle"
-                class="pointer-events-none absolute inset-0"
-                :style="composerModalTintStyle"
-                aria-hidden="true"
-              />
+            <div
+              :class="[
+                'relative overflow-hidden rounded-2xl border bg-white p-3 moh-card-matte dark:bg-black',
+                composerModalBorderClass,
+              ]"
+            >
               <div class="relative z-10">
                 <AppPostComposer auto-focus :show-divider="false" @posted="onComposerPosted" />
               </div>
@@ -446,18 +505,36 @@ import { siteConfig } from '~/config/site'
 import logoLightSmall from '~/assets/images/logo-white-bg-small.png'
 import logoDarkSmall from '~/assets/images/logo-black-bg-small.png'
 import { primaryTintCssForUser } from '~/utils/theme-tint'
-import { MOH_MIDDLE_SCROLLER_KEY, MOH_OPEN_COMPOSER_KEY, type ComposerVisibility } from '~/utils/injection-keys'
+import {
+  MOH_HOME_COMPOSER_IN_VIEW_KEY,
+  MOH_MIDDLE_SCROLLER_KEY,
+  MOH_OPEN_COMPOSER_KEY,
+  type ComposerVisibility,
+} from '~/utils/injection-keys'
 import { useBookmarkCollections } from '~/composables/useBookmarkCollections'
+import { useOnlyMePosts } from '~/composables/useOnlyMePosts'
+import { useReplyModal } from '~/composables/useReplyModal'
 
 const route = useRoute()
 const { initAuth, user } = useAuth()
 const { isAuthed, leftItems: leftNavItems, tabItems } = useAppNav()
 const { hideTopBar, navCompactMode, isRightRailForcedHidden, isRightRailSearchHidden, title } = useLayoutRules(route)
+const isPostPage = computed(() => /^\/p\/[^/]+$/.test(route.path))
+const isBookmarksPage = computed(() => route.path === '/bookmarks' || route.path.startsWith('/bookmarks/'))
+const isNotificationsPage = computed(() => route.path === '/notifications')
+const isOnlyMePage = computed(() => route.path === '/only-me')
 const { header: appHeader } = useAppHeader()
 const notifBadge = useNotificationsBadge()
 const { totalCount: bookmarkTotalCount, ensureLoaded: ensureBookmarkCollectionsLoaded } = useBookmarkCollections()
 
 const hasBookmarks = computed(() => Math.max(0, Math.floor(bookmarkTotalCount.value ?? 0)) > 0)
+
+// Ref owned by layout; home page injects and updates it when its composer is in view (so we can hide the FAB).
+const homeComposerInViewRef = ref(false)
+provide(MOH_HOME_COMPOSER_IN_VIEW_KEY, homeComposerInViewRef)
+const hideFabForHomeComposer = computed(
+  () => route.path === '/home' && homeComposerInViewRef.value,
+)
 
 // Only show the nav Post button when onboarding is complete (user can actually post).
 const canOpenComposer = computed(() => {
@@ -471,6 +548,11 @@ const canOpenComposer = computed(() => {
 })
 
 const composerModalOpen = ref(false)
+const { open: replyModalOpenRef } = useReplyModal()
+const replyModalOpen = computed(() => Boolean(replyModalOpenRef.value))
+const anyOverlayOpen = computed(() => composerModalOpen.value || replyModalOpen.value)
+
+useScrollLock(anyOverlayOpen)
 const composerSheetStyle = ref<Record<string, string>>({ left: '0px', right: '0px', width: 'auto' })
 const composerVisibility = useCookie<'public' | 'verifiedOnly' | 'premiumOnly' | 'onlyMe'>('moh.post.visibility.v1', {
   default: () => 'public',
@@ -490,26 +572,35 @@ provide(MOH_OPEN_COMPOSER_KEY, openComposerWithVisibility)
 function closeComposerModal() {
   composerModalOpen.value = false
 }
-function onComposerPosted() {
+
+const { prependPost: prependOnlyMePost } = useOnlyMePosts()
+function onComposerPosted(payload: { id: string; visibility: string; post?: import('~/types/api').FeedPost }) {
   composerModalOpen.value = false
+  if (payload.visibility === 'onlyMe' && payload.post) {
+    prependOnlyMePost(payload.post)
+    if (route.path !== '/only-me') {
+      navigateTo('/only-me?posted=1')
+    }
+  }
 }
 
-const composerModalTintStyle = computed<Record<string, string> | null>(() => {
+const composerModalBorderClass = computed(() => {
   const v = composerVisibility.value
-  if (v === 'public') return null
-
-  const rgb =
-    v === 'verifiedOnly'
-      ? 'var(--moh-verified-rgb)'
-      : v === 'premiumOnly'
-        ? 'var(--moh-premium-rgb)'
-        : 'var(--moh-onlyme-rgb)'
-
-  // Very subtle bottom-up wash (color at bottom fading to transparent).
-  return {
-    background: `linear-gradient(to top, rgba(${rgb}, 0.10) 0%, transparent 55%)`,
-  }
+  if (v === 'verifiedOnly') return 'moh-thread-verified'
+  if (v === 'premiumOnly') return 'moh-thread-premium'
+  if (v === 'onlyMe') return 'moh-thread-onlyme'
+  return 'border-gray-200 dark:border-zinc-800'
 })
+
+// Post button (FAB + left nav): color matches composer scope. Public = black/white (light) or white/black (dark).
+const fabButtonClass = computed(() => {
+  const v = composerVisibility.value
+  if (v === 'verifiedOnly') return 'moh-btn-verified moh-btn-tone'
+  if (v === 'premiumOnly') return 'moh-btn-premium moh-btn-tone'
+  if (v === 'onlyMe') return 'moh-btn-onlyme moh-btn-tone'
+  return 'bg-black text-white dark:bg-white dark:text-black'
+})
+const fabButtonStyle = computed(() => ({}))
 
 const middleContentEl = ref<HTMLElement | null>(null)
 
@@ -536,12 +627,7 @@ watch(
     }
     if (open) window.addEventListener('keydown', onKeyDown)
 
-    // Lock scrolling while the overlay is open.
-    const prevOverflow = document.documentElement.style.overflow
-    if (open) document.documentElement.style.overflow = 'hidden'
-
     if (open) {
-      // Ensure we measure after layout settles.
       requestAnimationFrame(() => updateComposerSheetStyle())
       window.addEventListener('resize', updateComposerSheetStyle)
     }
@@ -549,7 +635,6 @@ watch(
     return () => {
       window.removeEventListener('keydown', onKeyDown)
       window.removeEventListener('resize', updateComposerSheetStyle)
-      document.documentElement.style.overflow = prevOverflow
     }
   },
   { flush: 'post' },
@@ -558,6 +643,21 @@ watch(
 const headerTitle = computed(() => {
   const t = (appHeader.value?.title ?? '').trim()
   return t || title.value
+})
+
+const headerIcon = computed(() => appHeader.value?.icon ?? routeHeaderDefaults.icon)
+const headerDescription = computed(() => appHeader.value?.description ?? routeHeaderDefaults.description)
+
+const routeHeaderDefaults = computed(() => {
+  const p = route.path
+  if (p === '/notifications') return { icon: 'pi-bell', description: 'Replies, follows, and updates from your network.' }
+  if (p === '/messages') return { icon: 'pi-envelope', description: 'Direct conversations. Coming soon.' }
+  if (p.startsWith('/bookmarks')) return { icon: 'pi-bookmark', description: 'Saved posts and folders.' }
+  if (p === '/explore') return { icon: 'pi-search', description: 'Search and discover.' }
+  if (p === '/groups') return { icon: 'pi-users', description: 'Brotherhood circles and challenges. Coming soon.' }
+  if (p === '/feedback') return { icon: 'pi-send', description: 'Help us improve.' }
+  if (p === '/only-me') return { icon: undefined, description: 'Private posts that only you can see. These never appear in feeds.' }
+  return { icon: undefined, description: undefined }
 })
 
 function formatCompactNumber(n: number): string {
@@ -593,8 +693,45 @@ function goToExploreSearch() {
 
 const middleScrollerEl = ref<HTMLElement | null>(null)
 const rightScrollerEl = ref<HTMLElement | null>(null)
+const titleBarEl = ref<HTMLElement | null>(null)
 
 provide(MOH_MIDDLE_SCROLLER_KEY, middleScrollerEl)
+
+function updateTitleBarHeightVar() {
+  if (!import.meta.client) return
+  const main = middleScrollerEl.value
+  const bar = titleBarEl.value
+  if (!main || !bar) return
+  main.style.setProperty('--moh-title-bar-height', `${bar.offsetHeight}px`)
+}
+watch([titleBarEl, hideTopBar], () => {
+  if (!hideTopBar.value && titleBarEl.value) {
+    nextTick(() => updateTitleBarHeightVar())
+  }
+}, { immediate: true })
+
+let titleBarRo: ResizeObserver | null = null
+watch(
+  titleBarEl,
+  (el) => {
+    if (!import.meta.client) return
+    titleBarRo?.disconnect()
+    titleBarRo = null
+    if (!el) return
+    updateTitleBarHeightVar()
+    titleBarRo = new ResizeObserver(() => updateTitleBarHeightVar())
+    titleBarRo.observe(el)
+  },
+  { immediate: true },
+)
+onMounted(() => {
+  if (!import.meta.client) return
+  updateTitleBarHeightVar()
+})
+onBeforeUnmount(() => {
+  titleBarRo?.disconnect()
+  titleBarRo = null
+})
 
 useCoupledScroll({
   middle: middleScrollerEl,

@@ -55,6 +55,11 @@ export function useOnlyMePosts() {
     posts.value = posts.value.filter((p) => p.id !== pid)
   }
 
-  return { posts, nextCursor, loading, error, refresh, loadMore, removePost }
+  function prependPost(post: FeedPost) {
+    if (!post?.id) return
+    posts.value = [post, ...posts.value]
+  }
+
+  return { posts, nextCursor, loading, error, refresh, loadMore, removePost, prependPost }
 }
 

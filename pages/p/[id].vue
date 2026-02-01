@@ -24,36 +24,64 @@
     </div>
 
     <div v-else-if="post" class="-mx-0">
-      <AppPostRow :post="post" :clickable="false" @deleted="onDeleted" />
+      <div ref="highlightedPostRef" class="scroll-mt-0">
+        <AppFeedPostRow
+          v-if="post.parent"
+          :post="post"
+          :highlighted-post-id="post.id"
+          :clickable="false"
+          activate-video-on-mount
+          @deleted="onDeleted"
+        />
+        <AppPostRow
+          v-else
+          :post="post"
+          :highlight="true"
+          :clickable="false"
+          @deleted="onDeleted"
+        />
+      </div>
 
       <template v-if="!isOnlyMe">
         <div v-if="showReplyComposer" class="border-b border-gray-200 dark:border-zinc-800">
           <AppPostComposer
             v-if="replyContext"
             :reply-to="replyContext"
+            :create-post="createComment"
             auto-focus
             :show-divider="false"
             @posted="onReplyPosted"
           />
         </div>
 
-        <div v-if="comments.length > 0" class="border-b border-gray-200 dark:border-zinc-800">
-          <div class="px-4 py-2 text-sm font-medium moh-text-muted">
-            Comments
+        <div class="border-b border-gray-200 dark:border-zinc-800">
+          <div class="px-4 py-3 flex flex-wrap items-center justify-between gap-3 border-b border-gray-200 dark:border-zinc-800">
+            <div class="text-sm font-semibold moh-text">
+              Comments
+              <span class="ml-2 text-xs font-medium text-gray-500 dark:text-gray-400">
+                {{ commentCountDisplay }}
+              </span>
+            </div>
+            <AppFeedFiltersBar
+              :sort="commentsSort"
+              :filter="'all'"
+              :viewer-is-verified="viewerIsVerified"
+              :viewer-is-premium="viewerIsPremium"
+              :show-reset="commentsSort !== 'new'"
+              :show-visibility-filter="false"
+              @update:sort="onCommentsSortChange"
+              @reset="onCommentsFilterReset"
+            />
           </div>
+          <div v-if="commentsLoading && !comments.length" class="px-4 py-6 text-sm moh-text-muted">
+            Loading…
+          </div>
+          <div v-else-if="!comments.length" class="px-4 py-6 text-sm moh-text-muted">
+            No comments yet.
+          </div>
+          <template v-else>
           <div v-for="c in comments" :key="c.id">
-            <AppFeedPostRow
-              v-if="c.parent"
-              :post="c"
-              compact
-              @deleted="(id: string) => onCommentDeleted(id)"
-            />
-            <AppPostRow
-              v-else
-              :post="c"
-              compact
-              @deleted="onCommentDeleted"
-            />
+            <AppPostRow :post="c" @deleted="onCommentDeleted" />
           </div>
           <div v-if="commentsNextCursor" class="flex justify-center px-4 py-4">
             <Button
@@ -65,8 +93,12 @@
               @click="loadMoreComments"
             />
           </div>
+          </template>
         </div>
       </template>
+
+      <!-- Spacer so we can scroll the highlighted post to the top even on short pages -->
+      <div class="min-h-[80dvh] shrink-0" aria-hidden="true" />
     </div>
   </div>
 </template>
@@ -86,15 +118,20 @@ import { getLinkMetadata } from '~/utils/link-metadata'
 import { excerpt, normalizeForMeta } from '~/utils/text'
 import { usePostPermalinkSeo } from '~/composables/usePostPermalinkSeo'
 import { usePostCountBumps } from '~/composables/usePostCountBumps'
+import { useReplyModal } from '~/composables/useReplyModal'
+import { useMiddleScroller } from '~/composables/useMiddleScroller'
 
 definePageMeta({
   layout: 'app',
-  title: 'Post'
+  title: 'Post',
 })
 
 const route = useRoute()
+const requestURL = useRequestURL()
 const postId = computed(() => String(route.params.id || '').trim())
 const { apiFetchData } = useApiClient()
+const middleScrollerRef = useMiddleScroller()
+const highlightedPostRef = ref<HTMLElement | null>(null)
 
 const { user, ensureLoaded } = useAuth()
 // Ensure SSR/initial loads know whether viewer is logged in.
@@ -104,22 +141,29 @@ const isAuthed = computed(() => Boolean(user.value?.id))
 const viewerIsVerified = computed(() => Boolean(user.value?.verifiedStatus && user.value.verifiedStatus !== 'none'))
 const viewerIsPremium = computed(() => Boolean(user.value?.premium))
 
-const post = ref<FeedPost | null>(null)
 const errorText = ref<string | null>(null)
 const accessHint = ref<'none' | 'verifiedOnly' | 'premiumOnly' | 'private'>('none')
+const isDeleted = ref(false)
+
+const { data, error } = await useAsyncData(
+  () => `post:${postId.value}`,
+  () => {
+    if (!postId.value) throw new Error('Post not found.')
+    return apiFetchData<GetPostResponse>(`/posts/${encodeURIComponent(postId.value)}`, { method: 'GET' })
+  },
+  { watch: [postId], server: true },
+)
+
+const post = computed(() => {
+  if (isDeleted.value) return null
+  return data.value?.post ?? null
+})
+
 function onDeleted() {
-  // Post is gone for this viewer; return to feed.
-  post.value = null
+  isDeleted.value = true
   errorText.value = 'Post deleted.'
   void navigateTo('/home')
 }
-
-const { data, error } = await useAsyncData(`post:${postId.value}`, async () => {
-  if (!postId.value) throw new Error('Post not found.')
-  return await apiFetchData<GetPostResponse>(`/posts/${encodeURIComponent(postId.value)}`, { method: 'GET' })
-})
-
-post.value = data.value?.post ?? null
 
 const isOnlyMe = computed(() => post.value?.visibility === 'onlyMe')
 
@@ -153,19 +197,42 @@ const replyContext = computed(() => {
 const comments = ref<FeedPost[]>([])
 const commentsNextCursor = ref<string | null>(null)
 const commentsLoading = ref(false)
+const commentsCounts = ref<GetPostCommentsResponse['counts']>(null)
+
+const commentsSort = useCookie<'new' | 'trending'>('moh.post.comments.sort.v1', {
+  default: () => 'new',
+  sameSite: 'lax',
+  path: '/',
+  maxAge: 60 * 60 * 24 * 365,
+})
+
+// Comments inherit parent post visibility, so we always show total count.
+const commentCountDisplay = computed(() => {
+  const c = commentsCounts.value
+  return c ? c.all : (post.value?.commentCount ?? 0)
+})
 
 async function fetchComments(cursor: string | null = null) {
   if (!post.value?.id || isOnlyMe.value) return
   if (cursor === null) commentsLoading.value = true
   try {
-    const path = `/posts/${encodeURIComponent(post.value.id)}/comments?limit=30${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''}`
-    const res = await apiFetchData<GetPostCommentsResponse>(path, { method: 'GET' })
+    const params = new URLSearchParams({
+      limit: '30',
+      visibility: 'all',
+      sort: commentsSort.value,
+    })
+    if (cursor) params.set('cursor', cursor)
+    const res = await apiFetchData<GetPostCommentsResponse>(
+      `/posts/${encodeURIComponent(post.value.id)}/comments?${params.toString()}`,
+      { method: 'GET' }
+    )
     if (cursor === null) {
       comments.value = res.comments ?? []
     } else {
       comments.value = [...comments.value, ...(res.comments ?? [])]
     }
     commentsNextCursor.value = res.nextCursor ?? null
+    commentsCounts.value = res.counts ?? null
   } catch {
     if (cursor === null) comments.value = []
     commentsNextCursor.value = null
@@ -179,20 +246,128 @@ function loadMoreComments() {
   void fetchComments(commentsNextCursor.value)
 }
 
+async function onCommentsSortChange(next: 'new' | 'trending') {
+  commentsSort.value = next
+  commentsNextCursor.value = null
+  await fetchComments(null)
+}
+
+async function onCommentsFilterReset() {
+  commentsSort.value = 'new'
+  commentsNextCursor.value = null
+  await fetchComments(null)
+}
+
 const { bumpCommentCount } = usePostCountBumps()
 
-function onReplyPosted() {
-  if (post.value?.id) {
-    bumpCommentCount(post.value.id)
-    post.value = { ...post.value, commentCount: (post.value.commentCount ?? 0) + 1 }
+async function createComment(
+  body: string,
+  visibility: import('~/types/api').PostVisibility,
+  media: import('~/composables/composer/types').CreateMediaPayload[],
+): Promise<FeedPost | null> {
+  if (!post.value?.id) return null
+  const res = await apiFetchData<{ post: FeedPost }>('/posts', {
+    method: 'POST',
+    body: {
+      body,
+      visibility,
+      parent_id: post.value.id,
+      mentions: replyContext.value?.mentionUsernames,
+      media,
+    },
+  })
+  return res?.post ?? null
+}
+
+function onReplyPosted(payload: { id: string; post?: FeedPost }) {
+  const p = post.value
+  if (p?.id) {
+    bumpCommentCount(p.id)
+    if (data.value?.post) {
+      data.value = {
+        ...data.value,
+        post: { ...data.value.post, commentCount: (data.value.post.commentCount ?? 0) + 1 },
+      }
+    }
   }
-  void fetchComments(null)
+  if (payload.post) {
+    comments.value = [payload.post, ...comments.value]
+    if (commentsCounts.value) {
+      commentsCounts.value = { ...commentsCounts.value, all: commentsCounts.value.all + 1 }
+    }
+  } else {
+    void fetchComments(null)
+  }
   void fetchThreadParticipants()
 }
 
 function onCommentDeleted(commentId: string) {
   comments.value = comments.value.filter((c) => c.id !== commentId)
+  if (commentsCounts.value) {
+    commentsCounts.value = { ...commentsCounts.value, all: Math.max(0, commentsCounts.value.all - 1) }
+  }
 }
+
+const { registerOnReplyPosted, unregisterOnReplyPosted } = useReplyModal()
+onMounted(() => {
+  if (!import.meta.client) return
+  registerOnReplyPosted((payload) => {
+    if (payload.post?.parentId === post.value?.id) {
+      onReplyPosted(payload)
+    }
+  })
+})
+onBeforeUnmount(() => {
+  unregisterOnReplyPosted()
+})
+
+watch(postId, () => {
+  isDeleted.value = false
+})
+
+// Scroll so the top of the highlighted post aligns with the top of the middle column (top-level posts only).
+// Run after the page has loaded so layout is settled.
+function scrollHighlightedPostToTop() {
+  if (!import.meta.client) return
+  if (post.value?.parent) return
+  const scroller = middleScrollerRef.value
+  const postEl = highlightedPostRef.value
+  if (!scroller || !postEl) return
+  const apply = () => {
+    const scrollerRect = scroller.getBoundingClientRect()
+    const postRect = postEl.getBoundingClientRect()
+    const titleBarHeight =
+      parseInt(getComputedStyle(scroller).getPropertyValue('--moh-title-bar-height') || '0', 10) || 0
+    const targetTop = scrollerRect.top + titleBarHeight
+    const delta = postRect.top - targetTop
+    if (Math.abs(delta) < 2) return
+    scroller.scrollTop += delta
+  }
+  nextTick(() => {
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => apply())
+    })
+  })
+}
+
+// When post and ref are ready, scroll after load (idle or next frame).
+watch(
+  () => [post.value?.id, highlightedPostRef.value] as const,
+  ([id, el]) => {
+    if (!id || !el || post.value?.parent) return
+    const schedule = () => {
+      if (typeof requestIdleCallback !== 'undefined') {
+        requestIdleCallback(() => scrollHighlightedPostToTop(), { timeout: 100 })
+      } else {
+        setTimeout(() => scrollHighlightedPostToTop(), 0)
+      }
+    }
+    nextTick(() => {
+      requestAnimationFrame(() => schedule())
+    })
+  },
+  { flush: 'post' },
+)
 
 watch(
   () => [post.value?.id, isOnlyMe.value] as const,
@@ -268,10 +443,8 @@ function tryExtractLocalPostId(url: string): string | null {
     } catch {
       // ignore
     }
-    if (import.meta.client) {
-      const h = window.location.hostname
-      if (h) allowedHosts.add(h.toLowerCase())
-    }
+    const requestHost = requestURL?.hostname ?? (import.meta.client ? window.location.hostname : '')
+    if (requestHost) allowedHosts.add(requestHost.toLowerCase())
 
     const host = u.hostname.toLowerCase()
     const ok = Array.from(allowedHosts).some((a) => isLocalHost(host, a))

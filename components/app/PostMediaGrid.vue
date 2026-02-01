@@ -24,7 +24,11 @@
     </button>
     <div
       v-else
-      class="moh-squircle flex h-[18rem] w-full items-center justify-center rounded-2xl border moh-border moh-surface"
+      :style="{
+        height: `${FIXED_HEIGHT_REM}rem`,
+        maxWidth: MAX_WIDTH_REM != null ? `${MAX_WIDTH_REM}rem` : undefined,
+      }"
+      class="moh-squircle flex w-full shrink-0 items-center justify-center rounded-2xl border moh-border moh-surface"
       aria-label="Deleted media"
     >
       <div class="flex flex-col items-center gap-2 text-sm moh-text-muted select-none">
@@ -35,7 +39,7 @@
   </div>
 
   <div v-else-if="items.length > 1" class="mt-3">
-    <div class="moh-squircle w-full overflow-hidden rounded-2xl border moh-border">
+    <div class="moh-squircle w-full overflow-hidden rounded-2xl border moh-border" :style="gridWrapperStyle">
       <div class="grid gap-px bg-gray-200 dark:bg-zinc-800" :class="gridClass" :style="gridStyle">
         <template v-for="(m, idx) in items" :key="m.id || idx">
           <button
@@ -80,15 +84,25 @@
 import type { PostMedia } from '~/types/api'
 import type { CSSProperties } from 'vue'
 
-const props = defineProps<{
-  media: PostMedia[]
-}>()
+const props = withDefaults(
+  defineProps<{
+    media: PostMedia[]
+    /** When true, use smaller max height and cap aspect ratio at 4:6 (h:w). */
+    compact?: boolean
+  }>(),
+  { compact: false }
+)
 
 const viewer = useImageLightbox()
 
 const items = computed(() => (props.media ?? []).filter((m) => Boolean(m?.url) || Boolean(m?.deletedAt)).slice(0, 4))
 const hideThumbs = computed(() => viewer.kind.value === 'media' && viewer.hideOrigin.value)
 const urls = computed(() => items.value.map((m) => m.url).filter(Boolean))
+
+// Compact: 10rem height, max 6:4 (w:h) → max-width 15rem
+const FIXED_HEIGHT_REM = computed(() => (props.compact ? 10 : 18))
+const MAX_WIDTH_REM = computed(() => (props.compact ? 15 : undefined))
+const MAX_RATIO = 6 / 4 // width/height max
 
 const single = computed(() => (items.value.length === 1 ? (items.value[0] ?? null) : null))
 const singleWidth = computed(() => (typeof single.value?.width === 'number' ? single.value.width : null))
@@ -99,35 +113,45 @@ const singleAspectRatio = computed(() => {
   if (!w || !h) return null
   return w / h
 })
-// Treat only truly-wide images as "full width"; otherwise keep the 18rem height and let width shrink.
+// Treat only truly-wide images as "full width"; otherwise keep fixed height and let width shrink.
 const singleIsVeryWide = computed(() => {
   const r = singleAspectRatio.value
   if (!r) return false
   return r >= 1.6
 })
 
-const FIXED_HEIGHT_REM = 18
 const singleBoxStyle = computed<CSSProperties>(() => {
   const w = singleWidth.value
   const h = singleHeight.value
-  if (!w || !h) return {}
-  // Fixed height; width from aspect ratio so image is only as wide as needed (no letterboxing).
+  const heightRem = FIXED_HEIGHT_REM.value
+  const maxW = MAX_WIDTH_REM.value
+  if (!w || !h) {
+    const base: CSSProperties = { height: `${heightRem}rem`, width: '100%' }
+    if (maxW != null) base.maxWidth = `${maxW}rem`
+    return base
+  }
+  // Fixed height; width from aspect ratio, capped by max ratio (4:6 h:w) when compact.
   const aspectRatio = w / h
+  const cappedRatio = maxW != null ? Math.min(aspectRatio, MAX_RATIO) : aspectRatio
   return {
     aspectRatio: `${w} / ${h}`,
-    height: `${FIXED_HEIGHT_REM}rem`,
-    width: `min(${FIXED_HEIGHT_REM * aspectRatio}rem, 100%)`,
+    height: `${heightRem}rem`,
+    width: maxW != null
+      ? `min(${heightRem * cappedRatio}rem, ${maxW}rem, 100%)`
+      : `min(${heightRem * aspectRatio}rem, 100%)`,
   }
 })
 const singleBoxClass = computed(() => {
-  // Single image: fixed height, width only as needed, left-justified (parent has flex justify-start).
-  // - rounded-2xl: Apple-style corner radius (16px), same as 2/3/4-image containers.
-  // - With dimensions: intrinsic width from aspect ratio; no letterboxing.
-  // - Very wide: cap at 100% so it doesn't overflow.
-  // - Missing dims: fallback to full-width 18rem box.
+  const heightRem = FIXED_HEIGHT_REM.value
+  const maxW = MAX_WIDTH_REM.value
   if (!single.value) return ''
-  if (!singleWidth.value || !singleHeight.value) return 'moh-squircle relative overflow-hidden rounded-2xl h-[18rem] w-full shrink-0 border moh-border'
-  if (singleIsVeryWide.value) return 'moh-squircle relative overflow-hidden rounded-2xl w-full max-h-[18rem] shrink-0 border moh-border'
+  if (!singleWidth.value || !singleHeight.value) {
+    // Fallback: use style for dynamic dimensions
+    return 'moh-squircle relative overflow-hidden rounded-2xl w-full shrink-0 border moh-border'
+  }
+  if (singleIsVeryWide.value) {
+    return 'moh-squircle relative overflow-hidden rounded-2xl w-full shrink-0 border moh-border'
+  }
   return 'moh-squircle relative overflow-hidden rounded-2xl shrink-0 border moh-border'
 })
 
@@ -140,8 +164,14 @@ const gridClass = computed(() => {
 })
 
 // Fixed overall height so single + multi-media previews align.
-const gridStyle = computed(() => {
-  return { height: '18rem' }
+const gridStyle = computed(() => ({
+  height: `${FIXED_HEIGHT_REM.value}rem`,
+}))
+
+const gridWrapperStyle = computed<CSSProperties>(() => {
+  const maxW = MAX_WIDTH_REM.value
+  if (maxW == null) return {}
+  return { maxWidth: `${maxW}rem` }
 })
 
 function itemClass(idx: number): string {

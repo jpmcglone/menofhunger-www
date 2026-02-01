@@ -60,12 +60,14 @@ export default defineNuxtPlugin((nuxtApp) => {
   })
 
   // Override router scroll behavior for the custom middle scroller.
-  router.options.scrollBehavior = (to, _from, savedPosition) => {
+  router.options.scrollBehavior = (to, from, savedPosition) => {
     if (!import.meta.client) return false as const
+
+    const isBookmarksNav =
+      to.path.startsWith('/bookmarks') && from.path.startsWith('/bookmarks') && from.path !== to.path
 
     // Wait until the page has finished rendering so the scroll container exists.
     return new Promise<false>((resolve) => {
-      // Nuxt exposes typed hooks on `nuxtApp.hooks`.
       ;(nuxtApp as { hooks: { hookOnce: (name: string, cb: () => void) => void } }).hooks.hookOnce('page:finish', () => {
         const el = getMiddleScroller()
         if (!el) return resolve(false)
@@ -76,6 +78,16 @@ export default defineNuxtPlugin((nuxtApp) => {
           const top = stored ?? 0
           const maxTop = Math.max(0, el.scrollHeight - el.clientHeight)
           el.scrollTop = clamp(top, 0, maxTop)
+          return resolve(false)
+        }
+
+        // Switching bookmark folders: preserve scroll (content updates, scroll stays).
+        if (isBookmarksNav) {
+          const stored = readStoredTop(from.fullPath)
+          if (stored != null) {
+            const maxTop = Math.max(0, el.scrollHeight - el.clientHeight)
+            el.scrollTop = clamp(stored, 0, maxTop)
+          }
           return resolve(false)
         }
 

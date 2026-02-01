@@ -10,6 +10,7 @@ export function usePostsFeed(options: { visibility?: Ref<FeedFilter>; followingO
   const { apiFetchData } = useApiClient()
   const middleScrollerEl = useMiddleScroller()
   const { clearBumpsForPostIds } = usePostCountBumps()
+  const loadingIndicator = useLoadingIndicator()
 
   const posts = useState<FeedPost[]>('posts-feed', () => [])
   const nextCursor = useState<string | null>('posts-feed-next-cursor', () => null)
@@ -24,6 +25,7 @@ export function usePostsFeed(options: { visibility?: Ref<FeedFilter>; followingO
     if (loading.value) return
     loading.value = true
     error.value = null
+    loadingIndicator.start()
     try {
       const res = await apiFetchData<GetPostsResponse>('/posts', {
         method: 'GET',
@@ -42,6 +44,7 @@ export function usePostsFeed(options: { visibility?: Ref<FeedFilter>; followingO
       error.value = getApiErrorMessage(e) || 'Failed to load posts.'
     } finally {
       loading.value = false
+      loadingIndicator.finish()
     }
   }
 
@@ -146,6 +149,7 @@ export function usePostsFeed(options: { visibility?: Ref<FeedFilter>; followingO
     if (!nextCursor.value) return
     loading.value = true
     error.value = null
+    loadingIndicator.start()
     try {
       const res = await apiFetchData<GetPostsResponse>('/posts', {
         method: 'GET',
@@ -164,6 +168,7 @@ export function usePostsFeed(options: { visibility?: Ref<FeedFilter>; followingO
       error.value = getApiErrorMessage(e) || 'Failed to load more posts.'
     } finally {
       loading.value = false
+      loadingIndicator.finish()
     }
   }
 
@@ -211,6 +216,19 @@ export function usePostsFeed(options: { visibility?: Ref<FeedFilter>; followingO
     posts.value = posts.value.filter((p) => p.id !== pid)
   }
 
-  return { posts, nextCursor, loading, error, refresh, softRefreshNewer, startAutoSoftRefresh, loadMore, addPost, removePost }
+  /**
+   * Insert a reply into the feed under its parent. Replaces the parent with the reply
+   * (reply has parent set, so FeedPostRow shows the chain).
+   */
+  function addReply(parentId: string, replyPost: FeedPost, parentPostFromFeed: FeedPost) {
+    const pid = (parentId ?? '').trim()
+    if (!pid) return
+    const idx = posts.value.findIndex((p) => p.id === pid)
+    if (idx < 0) return
+    const replyWithParent: FeedPost = { ...replyPost, parent: parentPostFromFeed }
+    posts.value = [...posts.value.slice(0, idx), replyWithParent, ...posts.value.slice(idx + 1)]
+  }
+
+  return { posts, nextCursor, loading, error, refresh, softRefreshNewer, startAutoSoftRefresh, loadMore, addPost, addReply, removePost }
 }
 

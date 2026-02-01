@@ -2,7 +2,7 @@ export default defineNuxtRouteMiddleware(async (to) => {
   const { user, ensureLoaded } = useAuth()
 
   // Public routes (no auth check, SSR-safe/prerender-safe).
-  const publicPaths = new Set<string>(['/', '/about', '/status', '/test'])
+  const publicPaths = new Set<string>(['/', '/about', '/status'])
   if (publicPaths.has(to.path)) return
   if (to.path.startsWith('/u/')) return
   // Post permalinks should never force login; show access reasons on the page instead.

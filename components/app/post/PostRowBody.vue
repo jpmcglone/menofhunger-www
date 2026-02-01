@@ -14,7 +14,7 @@
       <NuxtLink
         v-else-if="seg.mentionUsername"
         :to="`/u/${encodeURIComponent(seg.mentionUsername)}`"
-        class="font-medium underline underline-offset-2 decoration-2 moh-mention-link"
+        :class="mentionLinkClass(seg.mentionTier)"
         @click.stop
       >
         {{ seg.text }}
@@ -29,14 +29,22 @@ import LinkifyIt from 'linkify-it'
 import { siteConfig } from '~/config/site'
 import { extractLinksFromText } from '~/utils/link-utils'
 
-type TextSegment = { text: string; href?: string; mentionUsername?: string }
+type MentionTier = 'normal' | 'verified' | 'premium'
+type TextSegment = { text: string; href?: string; mentionUsername?: string; mentionTier?: MentionTier }
 
 const props = defineProps<{
   body: string
   hasMedia: boolean
   /** Usernames from post.mentions; @username in body that match (case-insensitive) become profile links. */
-  mentions?: Array<{ id: string; username: string }>
+  mentions?: Array<{ id: string; username: string; verifiedStatus?: string; premium?: boolean }>
 }>()
+
+function mentionLinkClass(tier: MentionTier | undefined): string {
+  const base = 'font-bold no-underline hover:underline'
+  if (tier === 'premium') return `${base} text-[var(--moh-premium)]`
+  if (tier === 'verified') return `${base} text-[var(--moh-verified)]`
+  return base
+}
 
 const linkify = new LinkifyIt()
 const hasMedia = computed(() => Boolean(props.hasMedia))
@@ -144,14 +152,21 @@ const displayBody = computed(() => {
   return body.replace(re, '').replace(/\s+$/, '')
 })
 
-const mentionUsernamesLower = computed(() => {
+const mentionByUsernameLower = computed(() => {
   const list = props.mentions ?? []
-  return new Set(list.map((x) => x.username.toLowerCase()).filter(Boolean))
+  const map = new Map<string, { username: string; tier: MentionTier }>()
+  for (const m of list) {
+    const lower = m.username?.toLowerCase()
+    if (!lower) continue
+    const tier: MentionTier = m.premium ? 'premium' : (m.verifiedStatus && m.verifiedStatus !== 'none') ? 'verified' : 'normal'
+    map.set(lower, { username: m.username, tier })
+  }
+  return map
 })
 
 function splitByMentions(text: string): TextSegment[] {
-  const usernamesLower = mentionUsernamesLower.value
-  if (!usernamesLower.size) return [{ text }]
+  const mentionMap = mentionByUsernameLower.value
+  if (!mentionMap.size) return [{ text }]
   const out: TextSegment[] = []
   const re = /@([a-zA-Z0-9_]{1,120})/g
   let lastEnd = 0
@@ -160,8 +175,9 @@ function splitByMentions(text: string): TextSegment[] {
     const username = m[1]
     if (!username) continue
     if (lastEnd < m.index) out.push({ text: text.slice(lastEnd, m.index) })
-    if (usernamesLower.has(username.toLowerCase())) {
-      out.push({ text: m[0], mentionUsername: username })
+    const entry = mentionMap.get(username.toLowerCase())
+    if (entry) {
+      out.push({ text: m[0], mentionUsername: entry.username, mentionTier: entry.tier })
     } else {
       out.push({ text: m[0] })
     }

@@ -1,11 +1,5 @@
 <template>
   <div class="mx-auto w-full max-w-2xl">
-    <AppPageHeader
-      title="Feedback"
-      icon="pi-send"
-      description="Help us improve. Tell us what’s working, what’s broken, or what you want next."
-    />
-
     <div class="mt-6 space-y-4">
       <div class="rounded-xl border moh-border p-4">
         <div class="space-y-3">

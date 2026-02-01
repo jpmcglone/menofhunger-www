@@ -77,6 +77,22 @@ html.dark body {
   background-color: var(--moh-bg);
 }
 
+/* Micro-texture: fine grain (1–2%) — machined, not grunge */
+.moh-texture {
+  position: relative;
+}
+.moh-texture::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.015;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+html.dark .moh-texture::before {
+  opacity: 0.02;
+}
+
 /* App color tokens (X-like neutrals). Keep these as CSS variables so every surface stays consistent. */
 :root {
   /* Warm neutrals (\"private study\" vibe) */
@@ -113,16 +129,17 @@ html.dark body {
 }
 
 html.dark {
-  --moh-bg: #0b0d10; /* charcoal */
-  --moh-surface: #14181d; /* controlled depth */
+  /* Serious, machined palette — not cozy */
+  --moh-bg: #0F1113; /* Charcoal */
+  --moh-surface: #2A2F35; /* Steel */
   --moh-surface-hover: rgba(255, 255, 255, 0.05);
-  --moh-border: #2a3038;
-  --moh-text: #f1eee7; /* bone */
-  --moh-text-muted: #a49e95;
-  --moh-frosted: rgba(11, 13, 16, 0.82);
+  --moh-border: #2A2F35; /* Steel, aligned with surface */
+  --moh-text: #f4f4f5; /* Slightly brighter body for confidence */
+  --moh-text-muted: #8A9099; /* Slate — clearly dimmer metadata */
+  --moh-frosted: rgba(15, 17, 19, 0.92);
 
-  --moh-tooltip-bg: rgba(11, 13, 16, 0.96);
-  --moh-tooltip-text: #f1eee7;
+  --moh-tooltip-bg: rgba(15, 17, 19, 0.96);
+  --moh-tooltip-text: #f4f4f5;
 }
 
 /* Apple-style continuous corners (squircle). Fallback: browsers ignore corner-shape, keep border-radius. */
@@ -178,6 +195,28 @@ html.dark {
     color: var(--p-primary-contrast-color, #ffffff);
   }
 
+  /* Notification badge: solid colors. Text: black in dark mode, white in light mode. */
+  .moh-notif-badge-verified {
+    background-color: var(--moh-verified);
+    color: #ffffff;
+  }
+  .moh-notif-badge-premium {
+    background-color: #e08b1a;
+    color: #ffffff;
+  }
+  .moh-notif-badge-normal {
+    background-color: #0f1113;
+    color: #ffffff;
+  }
+  html.dark .moh-notif-badge-verified,
+  html.dark .moh-notif-badge-premium,
+  html.dark .moh-notif-badge-normal {
+    color: #0f1113;
+  }
+  html.dark .moh-notif-badge-normal {
+    background-color: #ffffff;
+  }
+
   /* Visibility + tone utilities (avoid Tailwind sky/amber/violet drift) */
   .moh-pill-all-active {
     border-color: var(--moh-text);
@@ -226,6 +265,47 @@ html.dark {
   .moh-pill-onlyme {
     border-color: rgba(var(--moh-onlyme-rgb), 0.45);
     color: var(--moh-onlyme);
+  }
+
+  /* Thread block (post + replies): tier-colored border. Also used for modals. */
+  .moh-thread-verified {
+    border-color: rgba(var(--moh-verified-rgb), 0.4);
+  }
+  .moh-thread-premium {
+    border-color: rgba(var(--moh-premium-rgb), 0.4);
+  }
+  .moh-thread-onlyme {
+    border-color: rgba(var(--moh-onlyme-rgb), 0.4);
+  }
+
+  /* Post row highlight (e.g. the post being viewed on /p/:id). Color matches visibility tier. */
+  .moh-post-highlight {
+    box-shadow: inset 3px 0 0 0 var(--p-primary-color, #111827);
+    background-color: color-mix(in srgb, var(--p-primary-color, #111827) 6%, transparent);
+  }
+  html.dark .moh-post-highlight {
+    background-color: color-mix(in srgb, var(--p-primary-color, #111827) 8%, transparent);
+  }
+  .moh-post-highlight-verified {
+    box-shadow: inset 3px 0 0 0 var(--moh-verified);
+    background-color: rgba(var(--moh-verified-rgb), 0.08);
+  }
+  html.dark .moh-post-highlight-verified {
+    background-color: rgba(var(--moh-verified-rgb), 0.12);
+  }
+  .moh-post-highlight-premium {
+    box-shadow: inset 3px 0 0 0 var(--moh-premium);
+    background-color: rgba(var(--moh-premium-rgb), 0.08);
+  }
+  html.dark .moh-post-highlight-premium {
+    background-color: rgba(var(--moh-premium-rgb), 0.12);
+  }
+  .moh-post-highlight-onlyme {
+    box-shadow: inset 3px 0 0 0 var(--moh-onlyme);
+    background-color: rgba(var(--moh-onlyme-rgb), 0.08);
+  }
+  html.dark .moh-post-highlight-onlyme {
+    background-color: rgba(var(--moh-onlyme-rgb), 0.12);
   }
 
   .moh-tag-verified {
@@ -312,6 +392,14 @@ html.dark {
     border-color: var(--moh-onlyme) !important;
     background-color: var(--moh-onlyme) !important;
     color: #ffffff !important;
+  }
+
+  /* Matte depth: inner shadow instead of glossy highlights */
+  .moh-card-matte {
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.06);
+  }
+  html.dark .moh-card-matte {
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.25);
   }
 }
 

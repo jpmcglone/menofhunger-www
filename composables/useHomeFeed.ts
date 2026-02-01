@@ -61,7 +61,7 @@ export function useHomeFeed() {
 
   const followingOnly = computed(() => Boolean(isAuthed.value && feedScope.value === 'following'))
 
-  const { posts, nextCursor, loading, error, refresh, startAutoSoftRefresh, loadMore, addPost, removePost } = usePostsFeed({
+  const { posts, nextCursor, loading, error, refresh, startAutoSoftRefresh, loadMore, addPost, addReply, removePost } = usePostsFeed({
     visibility: feedFilter,
     followingOnly,
     sort: feedSort,
@@ -160,6 +160,7 @@ export function useHomeFeed() {
     refresh,
     loadMore,
     addPost,
+    addReply,
     removePost,
     followingCount,
     showFollowingEmptyState,

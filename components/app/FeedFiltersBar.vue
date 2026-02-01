@@ -11,7 +11,7 @@
     </button>
     <span v-if="showReset" class="h-6 w-px bg-gray-200 dark:bg-zinc-800" aria-hidden="true" />
 
-    <!-- Order -->
+    <!-- Order (sort) -->
     <div ref="sortWrapEl" class="relative">
       <button
         type="button"
@@ -56,8 +56,8 @@
       </div>
     </div>
 
-    <!-- Visibility -->
-    <div ref="filterWrapEl" class="relative">
+    <!-- Visibility (optional: e.g. comments inherit parent post visibility) -->
+    <div v-if="showVisibilityFilter" ref="filterWrapEl" class="relative">
       <button
         type="button"
         class="inline-flex items-center gap-1.5 rounded-full border px-2 py-1 text-[11px] font-semibold leading-none transition-colors"
@@ -145,13 +145,18 @@
 import type { ProfilePostsFilter } from '~/utils/post-visibility'
 import { filterPillClasses } from '~/utils/post-visibility'
 
-const props = defineProps<{
-  sort: 'new' | 'trending'
-  filter: ProfilePostsFilter
-  viewerIsVerified: boolean
-  viewerIsPremium: boolean
-  showReset: boolean
-}>()
+const props = withDefaults(
+  defineProps<{
+    sort: 'new' | 'trending'
+    filter: ProfilePostsFilter
+    viewerIsVerified: boolean
+    viewerIsPremium: boolean
+    showReset: boolean
+    /** When false, hide visibility filter (e.g. for comments that inherit parent post visibility). */
+    showVisibilityFilter?: boolean
+  }>(),
+  { showVisibilityFilter: true },
+)
 
 const emit = defineEmits<{
   (e: 'update:sort', v: 'new' | 'trending'): void

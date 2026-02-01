@@ -1,11 +1,5 @@
 <template>
   <div class="space-y-6">
-    <AppPageHeader
-      title="Groups"
-      icon="pi-users"
-      description="Brotherhood circles, local chapters, and challenges. This feature isn't ready yet."
-    />
-
     <div
       class="flex min-h-[min(50vh,24rem)] flex-col items-center justify-center rounded-xl border moh-border bg-gray-50/50 dark:bg-zinc-900/30 px-6 py-12 text-center"
     >

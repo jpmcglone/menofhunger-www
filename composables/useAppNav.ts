@@ -32,8 +32,7 @@ export function useAppNav() {
 
     // Misc
     { key: 'about', label: 'About', to: '/about', icon: 'pi-info-circle', showInLeft: true, showInTabs: false },
-    { key: 'status', label: 'Status', to: '/status', icon: 'pi-bolt', showInLeft: true, showInTabs: false },
-    { key: 'test', label: 'Test', to: '/test', icon: 'pi-sliders-h', showInLeft: true, showInTabs: false }
+    { key: 'status', label: 'Status', to: '/status', icon: 'pi-bolt', showInLeft: false, showInTabs: false }
   ])
 
   const visible = (item: AppNavItem) => !item.requiresAuth || isAuthed.value

@@ -9,48 +9,29 @@
           :style="{ backgroundColor: bgFor(t), color: fgFor(t) }"
           role="status"
         >
-          <button
-            v-if="t.to"
-            type="button"
-            class="block w-full text-left"
-            :aria-label="t.title"
-            @click="onToastClick(t)"
-          >
-            <div class="px-4 py-3">
-              <div class="flex items-start justify-between gap-3">
-                <div class="min-w-0">
-                  <div class="text-lg font-semibold leading-tight truncate">{{ t.title }}</div>
-                  <div v-if="t.message" class="mt-0.5 text-sm opacity-95">{{ t.message }}</div>
-                </div>
-                <button
-                  type="button"
-                  class="shrink-0 rounded-full p-1 transition-colors"
-                  :style="{ backgroundColor: fgFor(t) === '#ffffff' ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.08)' }"
-                  aria-label="Dismiss"
-                  @click.stop="dismiss(t.id)"
-                >
-                  <i class="pi pi-times text-sm opacity-90" aria-hidden="true" />
-                </button>
-              </div>
-            </div>
-          </button>
-
-          <div v-else class="px-4 py-3">
-            <div class="flex items-start justify-between gap-3">
-              <div class="min-w-0">
-                <div class="text-lg font-semibold leading-tight truncate">{{ t.title }}</div>
-                <div v-if="t.message" class="mt-0.5 text-sm opacity-95">{{ t.message }}</div>
-              </div>
-              <button
-                type="button"
-                class="shrink-0 rounded-full p-1 transition-colors"
-                :style="{ backgroundColor: fgFor(t) === '#ffffff' ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.08)' }"
-                aria-label="Dismiss"
-                @click="dismiss(t.id)"
-              >
-                <i class="pi pi-times text-sm opacity-90" aria-hidden="true" />
-              </button>
-            </div>
+          <div class="relative px-4 py-3 pr-8">
+            <button
+              v-if="t.to"
+              type="button"
+              class="block w-full text-left"
+              :aria-label="t.title"
+              @click="onToastClick(t)"
+            >
+              <div class="text-lg font-semibold leading-tight truncate">{{ t.title }}</div>
+              <div v-if="t.message" class="mt-0.5 text-sm opacity-95">{{ t.message }}</div>
+            </button>
+            <template v-else>
+              <div class="text-lg font-semibold leading-tight truncate">{{ t.title }}</div>
+              <div v-if="t.message" class="mt-0.5 text-sm opacity-95">{{ t.message }}</div>
+            </template>
+            <button
+              type="button"
+              class="absolute top-3 right-3 font-semibold opacity-80 hover:opacity-100 transition-opacity"
+              aria-label="Dismiss"
+              @click.stop="dismiss(t.id)"
+            >
+              ×
+            </button>
           </div>
         </div>
       </TransitionGroup>

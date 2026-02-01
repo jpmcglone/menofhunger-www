@@ -1,11 +1,5 @@
 <template>
   <div class="space-y-4">
-    <AppPageHeader
-      title="Explore"
-      icon="pi-search"
-      description="Search and discover. Backend search is in progress."
-    />
-
     <div class="flex flex-col gap-3 sm:flex-row sm:items-stretch">
       <IconField iconPosition="left" class="w-full sm:max-w-md">
         <InputIcon class="pi pi-search" />

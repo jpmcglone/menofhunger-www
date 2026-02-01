@@ -1,33 +1,27 @@
 <template>
   <div>
-    <AppPageHeader
-      title="Bookmarks"
-      icon="pi-bookmark"
-      description="Saved posts and folders."
-      class="mb-4"
-    />
-
-    <AppBookmarkFolderTiles
-      :collections="collections"
-      :active-slug="activeSlug"
-      :unorganized-count="unorganizedCount"
-      @new-folder="newFolderOpen = true"
-    />
-
-    <div class="mt-4 flex flex-col gap-3 sm:flex-row sm:items-stretch">
-      <IconField iconPosition="left" class="w-full">
-        <InputIcon class="pi pi-search" />
-        <InputText v-model="q" class="w-full" :placeholder="searchPlaceholder" />
-      </IconField>
+    <div class="sticky z-10 shrink-0 moh-bg border-b moh-border px-4 pt-4 pb-3" style="top: var(--moh-title-bar-height, 4rem);">
+      <div class="flex flex-col gap-3 sm:flex-row sm:items-stretch">
+        <IconField iconPosition="left" class="flex-1 min-w-0 moh-bg rounded">
+          <InputIcon class="pi pi-search" />
+          <InputText v-model="q" class="w-full" :placeholder="searchPlaceholder" />
+        </IconField>
+        <AppBookmarkFolderSelect
+          :collections="collections"
+          :active-slug="activeSlug"
+          :unorganized-count="unorganizedCount"
+          @new-folder="newFolderOpen = true"
+        />
+      </div>
     </div>
 
-    <div v-if="error" class="mt-4">
+    <div v-if="error" class="mt-4 px-4">
       <AppInlineAlert severity="danger">
         {{ error }}
       </AppInlineAlert>
     </div>
 
-    <div v-else class="mt-4">
+    <div v-else class="mt-4 px-4">
       <div v-if="loading && !items.length" class="moh-text-muted text-sm">Loading…</div>
 
       <div v-else-if="folderNotFound" class="moh-text-muted text-sm">
@@ -36,7 +30,7 @@
 
       <div v-else-if="!items.length" class="moh-text-muted text-sm">No saved posts yet.</div>
 
-      <div v-else class="space-y-0">
+      <div v-else class="space-y-0 -mx-4">
         <div v-for="b in items" :key="b.bookmarkId">
           <AppPostRow :post="b.post" />
         </div>

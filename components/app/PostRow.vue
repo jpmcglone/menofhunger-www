@@ -9,7 +9,8 @@
       noPaddingTop ? 'pt-0' : '',
       showThreadLineAboveAvatar && !noPaddingTop ? 'pt-3' : '',
       noBorderBottom ? '' : 'border-b moh-border',
-      clickable ? 'cursor-pointer rounded-lg group' : ''
+      clickable ? 'cursor-pointer rounded-lg group' : '',
+      highlight ? highlightClass : ''
     ]"
     :style="rowStyle"
     @click="onRowClick"
@@ -27,7 +28,11 @@
       :style="threadLineAboveOverlayStyle"
       aria-hidden="true"
     >
-      <div class="w-[2px] bg-gray-200 dark:bg-zinc-700" :style="{ height: threadLineAboveOverlayHeight }" />
+      <div
+        class="w-[2px]"
+        :class="threadLineTint ? '' : 'bg-gray-200 dark:bg-zinc-700'"
+        :style="threadLineAboveStyle"
+      />
     </div>
     <!-- Overlay: line from just below avatar (gap) to row bottom; no overextend -->
     <div
@@ -36,7 +41,11 @@
       :style="threadLineBelowOverlayStyle"
       aria-hidden="true"
     >
-      <div class="w-[2px] h-full bg-gray-200 dark:bg-zinc-700" />
+      <div
+        class="w-[2px] h-full"
+        :class="threadLineTint ? '' : 'bg-gray-200 dark:bg-zinc-700'"
+        :style="threadLineBelowStyle"
+      />
     </div>
     <div class="flex gap-3" :class="{ 'mt-2': showThreadLineAboveAvatar && noPaddingTop }">
       <div class="shrink-0 flex flex-col w-10">
@@ -232,6 +241,8 @@ import { useInViewOnce } from '~/composables/useInViewOnce'
 const props = defineProps<{
   post: FeedPost
   clickable?: boolean
+  /** When true, visually highlight this row (e.g. the post being viewed on /p/:id). */
+  highlight?: boolean
   /** When true, omit the bottom border (e.g. parent in a thread block). */
   noBorderBottom?: boolean
   /** When true, show a vertical line in the avatar column from the bottom of the avatar down (parent in a thread). */
@@ -246,6 +257,8 @@ const props = defineProps<{
   activateVideoOnMount?: boolean
   /** When true, use tighter vertical padding (e.g. in comment lists). */
   compact?: boolean
+  /** When set, color the thread line by root post visibility (e.g. blue for verified, orange for premium). */
+  threadLineTint?: 'verified' | 'premium' | null
 }>()
 const emit = defineEmits<{
   (e: 'deleted', id: string): void
@@ -253,6 +266,14 @@ const emit = defineEmits<{
 
 const post = computed(() => props.post)
 const clickable = computed(() => props.clickable !== false)
+const highlightClass = computed(() => {
+  if (!props.highlight) return ''
+  const v = props.post.visibility
+  if (v === 'verifiedOnly') return 'moh-post-highlight moh-post-highlight-verified'
+  if (v === 'premiumOnly') return 'moh-post-highlight moh-post-highlight-premium'
+  if (v === 'onlyMe') return 'moh-post-highlight moh-post-highlight-onlyme'
+  return 'moh-post-highlight'
+})
 // Thread line overlays: 2px; stay within row, gap between line and avatar (no overextend).
 const THREAD_LINE_GAP = 4
 const AVATAR_H = 40
@@ -262,6 +283,17 @@ const threadLineAboveOverlayStyle = computed(() => ({ top: '0' }))
 const threadLineAboveOverlayHeight = computed(() =>
   props.noPaddingTop ? '4px' : '8px',
 )
+const threadLineAboveStyle = computed(() => {
+  const base = { height: threadLineAboveOverlayHeight.value }
+  if (props.threadLineTint === 'verified') return { ...base, backgroundColor: 'var(--moh-verified)' }
+  if (props.threadLineTint === 'premium') return { ...base, backgroundColor: 'var(--moh-premium)' }
+  return base
+})
+const threadLineBelowStyle = computed(() => {
+  if (props.threadLineTint === 'verified') return { backgroundColor: 'var(--moh-verified)' }
+  if (props.threadLineTint === 'premium') return { backgroundColor: 'var(--moh-premium)' }
+  return undefined
+})
 // Line below starts (avatar bottom + gap). Avatar top: 8 when line above + noPaddingTop (mt-2), 12 when line above + pt-3, 8/16 when no line above (py-2/py-4).
 const threadLineBelowOverlayStyle = computed(() => {
   const avatarTop = props.showThreadLineAboveAvatar
@@ -468,7 +500,7 @@ async function deletePost() {
   try {
     await apiFetchData<{ success: true }>('/posts/' + encodeURIComponent(post.value.id), { method: 'DELETE' })
     emit('deleted', post.value.id)
-    toast.push({ title: 'Post deleted', tone: 'success', durationMs: 1400 })
+    toast.push({ title: 'Post deleted', tone: post.value.visibility, durationMs: 1400 })
   } catch (e: unknown) {
     toast.push({ title: getApiErrorMessage(e) || 'Failed to delete post.', tone: 'error', durationMs: 2200 })
   } finally {

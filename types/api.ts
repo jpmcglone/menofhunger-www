@@ -41,6 +41,8 @@ export type PostAuthor = {
 export type PostMention = {
   id: string
   username: string
+  verifiedStatus?: 'none' | 'identity' | 'manual'
+  premium?: boolean
 }
 
 export type FeedPost = {
@@ -129,6 +131,12 @@ export type GetPostResponse = {
 export type GetPostCommentsResponse = {
   comments: FeedPost[]
   nextCursor: string | null
+  counts?: {
+    all: number
+    public: number
+    verifiedOnly: number
+    premiumOnly: number
+  } | null
 }
 
 export type GetThreadParticipantsResponse = {

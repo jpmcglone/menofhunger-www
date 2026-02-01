@@ -1,12 +1,6 @@
 <template>
   <div class="-mx-4">
-    <AppPageHeader
-      title="Notifications"
-      icon="pi-bell"
-      description="Replies, follows, and updates from your network."
-    />
-
-    <div class="mt-4 flex justify-end px-4 py-2">
+    <div class="flex justify-end px-4 py-2">
       <Button label="Mark all read" text severity="secondary" />
     </div>
 
