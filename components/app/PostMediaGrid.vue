@@ -78,10 +78,12 @@
     <div
       v-else
       :style="{
-        height: `${FIXED_HEIGHT_REM}rem`,
+        maxHeight: `${FIXED_HEIGHT_REM}rem`,
+        minHeight: '6rem',
+        width: '100%',
         maxWidth: MAX_WIDTH_REM != null ? `${MAX_WIDTH_REM}rem` : undefined,
       }"
-      class="moh-squircle flex w-full shrink-0 items-center justify-center rounded-2xl border moh-border moh-surface"
+      class="moh-squircle flex shrink-0 items-center justify-center rounded-2xl border moh-border moh-surface"
       aria-label="Deleted media"
     >
       <div class="flex flex-col items-center gap-2 text-sm moh-text-muted select-none">
@@ -314,16 +316,21 @@ const singleBoxStyle = computed<CSSProperties>(() => {
   const heightRem = FIXED_HEIGHT_REM.value
   const maxW = MAX_WIDTH_REM.value
   if (!w || !h) {
-    const base: CSSProperties = { height: `${heightRem}rem`, width: '100%' }
+    // No dimensions: use max-height so it can shrink on small viewports; default aspect keeps a reasonable size.
+    const base: CSSProperties = {
+      aspectRatio: '16 / 9',
+      maxHeight: `${heightRem}rem`,
+      width: '100%',
+    }
     if (maxW != null) base.maxWidth = `${maxW}rem`
     return base
   }
-  // Fixed height; width from aspect ratio, capped by max ratio (4:6 h:w) when compact.
+  // Max height so media can be smaller on narrow viewports; width from aspect ratio, capped when compact.
   const aspectRatio = w / h
   const cappedRatio = maxW != null ? Math.min(aspectRatio, MAX_RATIO) : aspectRatio
   return {
     aspectRatio: `${w} / ${h}`,
-    height: `${heightRem}rem`,
+    maxHeight: `${heightRem}rem`,
     width: maxW != null
       ? `min(${heightRem * cappedRatio}rem, ${maxW}rem, 100%)`
       : `min(${heightRem * aspectRatio}rem, 100%)`,
@@ -351,15 +358,21 @@ const gridClass = computed(() => {
   return 'grid-cols-2'
 })
 
-// Fixed overall height so single + multi-media previews align.
+// Max height so grid can be smaller on narrow viewports; aspect-ratio gives height from width (2/1 = two rows of square-ish cells).
 const gridStyle = computed(() => ({
-  height: `${FIXED_HEIGHT_REM.value}rem`,
+  height: '100%',
 }))
 
 const gridWrapperStyle = computed<CSSProperties>(() => {
+  const heightRem = FIXED_HEIGHT_REM.value
   const maxW = MAX_WIDTH_REM.value
-  if (maxW == null) return {}
-  return { maxWidth: `${maxW}rem` }
+  const base: CSSProperties = {
+    aspectRatio: '2 / 1',
+    maxHeight: `${heightRem}rem`,
+    width: '100%',
+  }
+  if (maxW != null) base.maxWidth = `${maxW}rem`
+  return base
 })
 
 function itemClass(idx: number): string {

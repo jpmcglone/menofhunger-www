@@ -22,6 +22,7 @@
           () => {
             setFeedFilter('all')
             setFeedSort('new')
+            void refresh()
           }
         "
       />

@@ -56,14 +56,6 @@ export function useUserPosts(
   const error = ref<string | null>(null)
   const hasLoadedOnce = ref(false)
 
-  // #region agent log
-  const _log = (location: string, message: string, data: Record<string, unknown>, hypothesisId: string) => {
-    if (typeof globalThis.fetch !== 'undefined') {
-      globalThis.fetch('http://127.0.0.1:7242/ingest/49a04c9a-7793-45e2-935d-a6adda90157a', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location, message, data: { ...data, username: usernameLower.value }, timestamp: Date.now(), sessionId: 'debug-profile-posts', hypothesisId }) }).catch(() => {})
-    }
-  }
-  // #endregion
-
   const viewerIsVerified = computed(() => Boolean(authUser.value?.verifiedStatus && authUser.value.verifiedStatus !== 'none'))
   const viewerIsPremium = computed(() => Boolean(authUser.value?.premium))
 
@@ -92,9 +84,6 @@ export function useUserPosts(
   )
 
   async function fetch(nextFilter: UserPostsFilter, nextSort: 'new' | 'trending') {
-    // #region agent log
-    _log('useUserPosts.ts:fetch:entry', 'fetch() called', { nextFilter, nextSort, enabled: enabled.value, client: import.meta.client }, 'H1,H5')
-    // #endregion
     if (!enabled.value) {
       posts.value = []
       postsState.value = []
@@ -117,29 +106,17 @@ export function useUserPosts(
 
     loading.value = true
     try {
-      // #region agent log
-      _log('useUserPosts.ts:fetch:beforeApi', 'before apiFetch', { username: usernameLower.value }, 'H2')
-      // #endregion
       const res = await apiFetch<GetUserPostsData>(
         `/posts/user/${encodeURIComponent(usernameLower.value)}`,
         { method: 'GET', query: { limit: 30, visibility: nextFilter, sort: nextSort } }
       )
-      // #region agent log
-      _log('useUserPosts.ts:fetch:afterApi', 'after apiFetch', { isArray: Array.isArray(res?.data), dataLen: Array.isArray(res?.data) ? res.data.length : -1, resKeys: res ? Object.keys(res) : [] }, 'H2')
-      // #endregion
       const data = res.data ?? []
       posts.value = data
       postsState.value = data
       counts.value = res.pagination?.counts ?? counts.value
       clearBumpsForPostIds(data.map((p) => p.id))
-      // #region agent log
-      _log('useUserPosts.ts:fetch:afterAssign', 'after assign', { postsLength: posts.value.length, loading: loading.value, error: error.value, ctaKind: ctaKind.value, postsKey }, 'H3,H4')
-      // #endregion
     } catch (e: unknown) {
       error.value = getApiErrorMessage(e) || 'Failed to load posts.'
-      // #region agent log
-      _log('useUserPosts.ts:fetch:catch', 'fetch error', { errMsg: getApiErrorMessage(e) || String(e) }, 'H2')
-      // #endregion
     } finally {
       loading.value = false
       hasLoadedOnce.value = true
@@ -184,9 +161,6 @@ export function useUserPosts(
   watch(
     enabled,
     (on) => {
-      // #region agent log
-      _log('useUserPosts.ts:enabledWatch', 'enabled watch', { on, client: import.meta.client }, 'H1,H5')
-      // #endregion
       if (!on) {
         posts.value = []
         postsState.value = []
@@ -201,10 +175,6 @@ export function useUserPosts(
 
   // Ensure we fetch on the client after mount; the enabled watch may only run during SSR (we return early there).
   onMounted(() => {
-    // #region agent log
-    const willFetch = import.meta.client && enabled.value && posts.value.length === 0
-    _log('useUserPosts.ts:onMounted', 'onMounted', { client: import.meta.client, enabled: enabled.value, postsLength: posts.value.length, willFetch }, 'H1,H5')
-    // #endregion
     if (import.meta.client && enabled.value && posts.value.length === 0) {
       void fetch(filter.value, sort.value)
     }

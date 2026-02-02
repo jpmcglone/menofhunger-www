@@ -21,25 +21,41 @@ export function usePostsFeed(options: { visibility?: Ref<FeedFilter>; followingO
   const followingOnly = options.followingOnly ?? ref(false)
   const sort = options.sort ?? ref<FeedSort>('new')
 
-  async function refresh() {
+  // Refetch when visibility, sort, or scope (All/Following) change so the feed list updates.
+  // Parent (e.g. useHomeFeed) may also call refresh(); refresh() no-ops when already loading.
+  watch(
+    [visibility, sort, followingOnly],
+    () => {
+      if (!import.meta.client) return
+      void refresh()
+    },
+    { flush: 'post', immediate: false }
+  )
+
+  type RefreshOverrides = { visibility?: FeedFilter; sort?: FeedSort } | void
+
+  async function refresh(overrides?: RefreshOverrides) {
     if (loading.value) return
     loading.value = true
     error.value = null
     loadingIndicator.start()
+    const vis = overrides?.visibility ?? visibility.value
+    const sortVal = overrides?.sort ?? sort.value
     try {
       const res = await apiFetch<GetPostsData>('/posts', {
         method: 'GET',
         query: {
           limit: 30,
-          visibility: visibility.value,
+          visibility: vis,
           ...(followingOnly.value ? { followingOnly: true } : {}),
-          ...(sort.value === 'trending' ? { sort: 'trending' } : {}),
+          ...(sortVal === 'trending' ? { sort: 'trending' } : {}),
         }
       })
-      posts.value = res.data ?? []
+      const data = res.data ?? []
+      posts.value = data.length ? [...data] : []
       nextCursor.value = res.pagination?.nextCursor ?? null
       lastHardRefreshMs.value = Date.now()
-      clearBumpsForPostIds((res.data ?? []).map((p) => p.id))
+      clearBumpsForPostIds(data.map((p) => p.id))
     } catch (e: unknown) {
       error.value = getApiErrorMessage(e) || 'Failed to load posts.'
     } finally {

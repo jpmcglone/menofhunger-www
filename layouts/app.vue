@@ -779,34 +779,11 @@ function isActiveNav(to: string) {
   return route.path === to || route.path.startsWith(`${to}/`)
 }
 
-function scrollMiddleToTop() {
-  const el = middleScrollerEl.value
-  if (!el) return
-  el.scrollTo({ top: 0, behavior: 'smooth' })
-}
-
 function onLeftNavClick(to: string, e: MouseEvent) {
   if (!isActiveNav(to)) return
   e.preventDefault()
   e.stopPropagation()
-  scrollMiddleToTop()
 }
-
-function onScrollTopEvent(e: Event) {
-  const to = (e as CustomEvent<{ to?: string }>).detail?.to ?? null
-  if (to && !isActiveNav(to)) return
-  scrollMiddleToTop()
-}
-
-onMounted(() => {
-  if (!import.meta.client) return
-  window.addEventListener('moh-scroll-top', onScrollTopEvent as EventListener)
-})
-
-onBeforeUnmount(() => {
-  if (!import.meta.client) return
-  window.removeEventListener('moh-scroll-top', onScrollTopEvent as EventListener)
-})
 </script>
 
 <style>

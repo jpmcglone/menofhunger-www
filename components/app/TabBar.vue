@@ -85,8 +85,6 @@ function onNavClick(to: string, e: MouseEvent) {
   if (!isActive(to)) return
   e.preventDefault()
   e.stopPropagation()
-  if (!import.meta.client) return
-  window.dispatchEvent(new CustomEvent('moh-scroll-top', { detail: { to } }))
 }
 
 function toggleProfileMenu(event: Event) {

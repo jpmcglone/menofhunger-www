@@ -121,20 +121,17 @@ export function useHomeFeed() {
 
   async function setFeedFilter(next: ProfilePostsFilter) {
     feedFilter.value = next
-    if (feedCtaKind.value) return
-    await preserveMiddleScrollAfter(async () => await refresh())
+    await preserveMiddleScrollAfter(async () => await refresh({ visibility: next }))
   }
 
   async function setFeedSort(next: 'new' | 'trending') {
     feedSort.value = next
-    if (feedCtaKind.value) return
-    await preserveMiddleScrollAfter(async () => await refresh())
+    await preserveMiddleScrollAfter(async () => await refresh({ sort: next }))
   }
 
   watch(
     () => feedScope.value,
     () => {
-      if (feedCtaKind.value) return
       void refresh()
     },
     { flush: 'post' },

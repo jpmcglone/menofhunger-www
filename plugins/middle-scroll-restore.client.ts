@@ -1,3 +1,9 @@
+/**
+ * Restores the middle scroller position on back/forward (e.g. scroll home feed, navigate away, hit back → same place).
+ * Saves scrollTop per route in sessionStorage. We detect back/forward via popstate because Vue Router's savedPosition
+ * is only set when scrollBehavior returns a position (we use a custom scroll container, so we don't).
+ */
+
 const KEY_PREFIX = 'moh.middleScroll.v1:'
 
 function clamp(n: number, min: number, max: number) {
@@ -24,7 +30,7 @@ function writeStoredTop(path: string, top: number) {
   try {
     sessionStorage.setItem(`${KEY_PREFIX}${path}`, String(Math.max(0, Math.floor(top))))
   } catch {
-    // ignore (storage may be disabled)
+    // ignore
   }
 }
 
@@ -34,7 +40,14 @@ export default defineNuxtPlugin((nuxtApp) => {
   const router = useRouter()
   const route = useRoute()
 
-  // Track scrollTop for the current route so Back/Forward can restore it.
+  // Detect back/forward: Vue Router's savedPosition is only set when we return a position from scrollBehavior.
+  // We use a custom scroll container, so we never return one — detect popstate instead.
+  let isPopStateNavigation = false
+  window.addEventListener('popstate', () => {
+    isPopStateNavigation = true
+  })
+
+  // Track scrollTop for the current route so back/forward can restore it.
   nuxtApp.hook('app:mounted', () => {
     const el = getMiddleScroller()
     if (!el) return
@@ -59,43 +72,55 @@ export default defineNuxtPlugin((nuxtApp) => {
     return true
   })
 
-  // Override router scroll behavior for the custom middle scroller.
-  router.options.scrollBehavior = (to, from, savedPosition) => {
+  // Restore middle scroller on back/forward; scroll to top on normal navigation.
+  router.options.scrollBehavior = (to, from) => {
     if (!import.meta.client) return false as const
 
     const isBookmarksNav =
       to.path.startsWith('/bookmarks') && from.path.startsWith('/bookmarks') && from.path !== to.path
 
-    // Wait until the page has finished rendering so the scroll container exists.
+    const shouldRestoreFromStorage = isPopStateNavigation
+    if (isPopStateNavigation) isPopStateNavigation = false
+
     return new Promise<false>((resolve) => {
       ;(nuxtApp as { hooks: { hookOnce: (name: string, cb: () => void) => void } }).hooks.hookOnce('page:finish', () => {
-        const el = getMiddleScroller()
-        if (!el) return resolve(false)
+        // Defer so layout and async content (e.g. feed) have a chance to render; otherwise scrollHeight can be 0.
+        const run = () => {
+          const el = getMiddleScroller()
+          if (!el) return resolve(false)
 
-        // Back/forward navigation: restore the last known scrollTop for this route.
-        if (savedPosition) {
-          const stored = readStoredTop(to.fullPath)
-          const top = stored ?? 0
-          const maxTop = Math.max(0, el.scrollHeight - el.clientHeight)
-          el.scrollTop = clamp(top, 0, maxTop)
-          return resolve(false)
-        }
-
-        // Switching bookmark folders: preserve scroll (content updates, scroll stays).
-        if (isBookmarksNav) {
-          const stored = readStoredTop(from.fullPath)
-          if (stored != null) {
-            const maxTop = Math.max(0, el.scrollHeight - el.clientHeight)
-            el.scrollTop = clamp(stored, 0, maxTop)
+          if (shouldRestoreFromStorage) {
+            const stored = readStoredTop(to.fullPath)
+            if (stored != null) {
+              const maxTop = Math.max(0, el.scrollHeight - el.clientHeight)
+              el.scrollTop = clamp(stored, 0, maxTop)
+              // Feed content is often loaded async; re-apply once it has rendered so we don't stay at a clamped value.
+              setTimeout(() => {
+                const el2 = getMiddleScroller()
+                if (el2) {
+                  const maxTop2 = Math.max(0, el2.scrollHeight - el2.clientHeight)
+                  el2.scrollTop = clamp(stored, 0, maxTop2)
+                }
+              }, 200)
+            }
+            return resolve(false)
           }
+
+          if (isBookmarksNav) {
+            const stored = readStoredTop(from.fullPath)
+            if (stored != null) {
+              const maxTop = Math.max(0, el.scrollHeight - el.clientHeight)
+              el.scrollTop = clamp(stored, 0, maxTop)
+            }
+            return resolve(false)
+          }
+
+          el.scrollTop = 0
           return resolve(false)
         }
 
-        // Normal navigation: reset the middle scroller to top.
-        el.scrollTop = 0
-        return resolve(false)
+        requestAnimationFrame(() => requestAnimationFrame(run))
       })
     })
   }
 })
-
