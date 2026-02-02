@@ -2,12 +2,12 @@
   <div class="px-4 py-4 space-y-4">
     <div class="flex items-start justify-between gap-3">
       <div class="min-w-0">
-        <div class="text-sm moh-text-muted">Image review</div>
+        <div class="text-sm moh-text-muted">Media review</div>
         <div class="font-semibold moh-text truncate">Asset</div>
         <div class="mt-1 text-xs font-mono moh-text-muted break-all">{{ data?.asset.r2Key ?? '—' }}</div>
       </div>
       <div class="shrink-0 flex items-center gap-2">
-        <Button label="Back" severity="secondary" text icon="pi pi-arrow-left" @click="navigateTo('/admin/image-review')" />
+        <Button label="Back" severity="secondary" text icon="pi pi-arrow-left" @click="navigateTo('/admin/media-review')" />
         <Button
           label="Delete"
           icon="pi pi-trash"
@@ -27,8 +27,17 @@
     <div v-else-if="data" class="grid gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
       <div class="space-y-3">
         <div class="overflow-hidden rounded-2xl border moh-border moh-surface">
+          <video
+            v-if="data.asset.kind === 'video' && data.asset.publicUrl"
+            :src="data.asset.publicUrl"
+            class="block w-full max-h-[70vh] object-contain bg-black"
+            controls
+            playsinline
+            preload="metadata"
+            aria-label="Video"
+          />
           <img
-            v-if="data.asset.publicUrl"
+            v-else-if="data.asset.publicUrl"
             :src="data.asset.publicUrl"
             class="block w-full max-h-[70vh] object-contain bg-black/5 dark:bg-white/5"
             alt=""
@@ -37,7 +46,7 @@
           />
           <div v-else class="flex items-center justify-center h-[22rem]">
             <div class="text-center text-sm moh-text-muted">
-              <i class="pi pi-image text-3xl opacity-70" aria-hidden="true" />
+              <i :class="data.asset.kind === 'video' ? 'pi pi-video' : 'pi pi-image'" class="text-3xl opacity-70" aria-hidden="true" />
               <div class="mt-2 font-semibold">{{ data.asset.deletedAt ? 'Deleted' : 'No preview' }}</div>
             </div>
           </div>
@@ -60,6 +69,10 @@
                     <div class="min-w-0">
                       <div class="text-xs moh-text-muted">Post</div>
                       <div class="font-mono text-xs truncate">{{ p.postId }}</div>
+                      <div class="mt-1 text-xs moh-text-muted truncate">
+                        <span v-if="p.author.username">@{{ p.author.username }}</span>
+                        <span v-else class="font-mono">{{ p.author.id }}</span>
+                      </div>
                     </div>
                     <div class="text-xs moh-text-muted shrink-0">{{ p.postVisibility }}</div>
                   </div>
@@ -68,7 +81,7 @@
             </div>
 
             <div class="pt-2 border-t moh-border">
-              <div class="font-semibold">Users</div>
+              <div class="font-semibold">Profiles</div>
               <div v-if="data.references.users.length === 0" class="moh-text-muted">None</div>
               <div v-else class="mt-1 space-y-1">
                 <NuxtLink
@@ -90,6 +103,10 @@
         <div class="rounded-2xl border moh-border p-3 moh-surface">
           <div class="text-xs font-semibold moh-text-muted">Metadata</div>
           <div class="mt-2 space-y-2 text-sm">
+            <div class="flex items-center justify-between gap-2">
+              <div class="moh-text-muted">Kind</div>
+              <div class="font-mono text-xs">{{ data.asset.kind ?? '—' }}</div>
+            </div>
             <div class="flex items-center justify-between gap-2">
               <div class="moh-text-muted">Last modified</div>
               <div class="font-mono text-xs">{{ data.asset.lastModified }}</div>
@@ -118,7 +135,7 @@
 
   <Dialog v-model:visible="openDelete" modal header="Delete from storage?" :draggable="false" class="w-[min(32rem,calc(100vw-2rem))]">
     <div class="text-sm moh-text-muted">
-      This will hard-delete the object from Cloudflare R2. If the image is referenced by a post, the post will show a “Deleted” placeholder.
+      This will hard-delete the object from Cloudflare R2. If the media is referenced by a post, the post will show a “Deleted” placeholder.
     </div>
 
     <div class="mt-4 space-y-2">
@@ -151,7 +168,14 @@ import type { AdminImageReviewDeleteResponse, AdminImageReviewDetailResponse } f
 import { getApiErrorMessage } from '~/utils/api-error'
 
 definePageMeta({
-  title: 'Image review',
+  title: 'Media review',
+})
+
+usePageSeo({
+  title: 'Media review',
+  description: 'Admin media review.',
+  canonicalPath: '/admin/media-review',
+  noindex: true,
 })
 
 const route = useRoute()
@@ -169,9 +193,9 @@ async function load() {
   loading.value = true
   error.value = null
   try {
-    data.value = await apiFetchData<AdminImageReviewDetailResponse>('/admin/image-review/' + encodeURIComponent(assetId), { method: 'GET' })
+    data.value = await apiFetchData<AdminImageReviewDetailResponse>('/admin/media-review/' + encodeURIComponent(assetId), { method: 'GET' })
   } catch (e: unknown) {
-    error.value = getApiErrorMessage(e) || 'Failed to load image.'
+    error.value = getApiErrorMessage(e) || 'Failed to load media.'
   } finally {
     loading.value = false
   }
@@ -190,14 +214,13 @@ async function doDelete() {
   if (!assetId) return
   deleting.value = true
   try {
-    const res = await apiFetchData<AdminImageReviewDeleteResponse>('/admin/image-review/' + encodeURIComponent(assetId), {
+    const res = await apiFetchData<AdminImageReviewDeleteResponse>('/admin/media-review/' + encodeURIComponent(assetId), {
       method: 'DELETE',
       body: { reason: deleteReason.value.trim() },
     })
     toast.push({ title: res.r2Deleted === false ? 'Deleted (R2 failed)' : 'Deleted', tone: res.r2Deleted === false ? 'error' : 'success', durationMs: 2200 })
     openDelete.value = false
     deleteConfirm.value = ''
-    // Refresh details to show tombstone state.
     await load()
   } catch (e: unknown) {
     toast.push({ title: getApiErrorMessage(e) || 'Delete failed.', tone: 'error', durationMs: 2600 })
@@ -206,4 +229,3 @@ async function doDelete() {
   }
 }
 </script>
-

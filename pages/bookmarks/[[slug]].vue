@@ -70,7 +70,7 @@
 </template>
 
 <script setup lang="ts">
-import type { SearchBookmarksResponse } from '~/types/api'
+import type { ApiEnvelope, SearchBookmarkItem } from '~/types/api'
 import { getApiErrorMessage } from '~/utils/api-error'
 
 definePageMeta({
@@ -82,7 +82,7 @@ const route = useRoute()
 const slug = computed(() => String(route.params.slug || '').trim())
 const activeSlug = computed(() => (slug.value ? slug.value : null))
 
-const { apiFetchData } = useApiClient()
+const { apiFetch } = useApiClient()
 const toast = useAppToast()
 
 const { collections, unorganizedCount, ensureLoaded: ensureCollectionsLoaded, createCollection } = useBookmarkCollections()
@@ -143,7 +143,7 @@ onBeforeUnmount(() => {
   qTimer = null
 })
 
-const items = ref<SearchBookmarksResponse['bookmarks']>([])
+const items = ref<SearchBookmarkItem[]>([])
 const nextCursor = ref<string | null>(null)
 const loading = ref(false)
 const error = ref<string | null>(null)
@@ -163,7 +163,7 @@ async function fetchPage(params: { cursor: string | null; append: boolean }) {
     const isUnorganized = slug.value === 'unorganized'
     const cid = folder.value?.id ?? null
 
-    const res = await apiFetchData<SearchBookmarksResponse>('/search', {
+    const res = await apiFetch<SearchBookmarkItem[]>('/search', {
       method: 'GET',
       query: {
         type: 'bookmarks',
@@ -175,10 +175,10 @@ async function fetchPage(params: { cursor: string | null; append: boolean }) {
       },
     })
 
-    const rows = res.bookmarks ?? []
+    const rows = res.data ?? []
     if (params.append) items.value = [...items.value, ...rows]
     else items.value = rows
-    nextCursor.value = res.nextCursor ?? null
+    nextCursor.value = res.pagination?.nextCursor ?? null
   } catch (e: unknown) {
     error.value = getApiErrorMessage(e) || 'Failed to load bookmarks.'
     if (!params.append) items.value = []

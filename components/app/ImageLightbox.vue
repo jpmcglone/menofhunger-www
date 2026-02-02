@@ -57,6 +57,7 @@
         <div class="relative h-full w-full">
           <video
             v-if="kind === 'media' && currentMediaItem?.kind === 'video'"
+            ref="lightboxVideoEl"
             :src="src"
             :poster="currentMediaItem?.posterUrl ?? undefined"
             class="select-none object-contain will-change-transform"
@@ -64,11 +65,30 @@
             controls
             playsinline
             autoplay
-            :muted="!appWideSoundOn"
+            :muted="lightboxVideoMuted"
             @click.stop
             @volumechange="onLightboxVideoVolumeChange"
             @transitionend="onTransitionEnd"
           />
+          <!-- Small corner controls only (no dimming). Safari requires user gesture to unmute. -->
+          <button
+            v-if="kind === 'media' && currentMediaItem?.kind === 'video' && lightboxVideoMuted"
+            type="button"
+            class="absolute right-4 top-14 z-[5] flex h-10 w-10 items-center justify-center rounded-full bg-black/50 text-white hover:bg-black/70"
+            aria-label="Tap for sound"
+            @click.stop="onLightboxTapUnmute"
+          >
+            <i class="pi pi-volume-off text-xl" aria-hidden="true" />
+          </button>
+          <button
+            v-else-if="kind === 'media' && currentMediaItem?.kind === 'video' && !lightboxVideoMuted"
+            type="button"
+            class="absolute right-4 top-14 z-[5] flex h-10 w-10 items-center justify-center rounded-full bg-black/50 text-white hover:bg-black/70"
+            aria-label="Mute"
+            @click.stop="onLightboxTapMute"
+          >
+            <i class="pi pi-volume-up text-xl" aria-hidden="true" />
+          </button>
           <img
             v-else-if="kind === 'media'"
             :src="src"
@@ -99,7 +119,7 @@
 import type { LightboxMediaItem } from '~/composables/useImageLightbox'
 import type { StyleValue } from 'vue'
 
-defineProps<{
+const props = defineProps<{
   visible: boolean
   backdropVisible: boolean
   src: string | null
@@ -119,10 +139,44 @@ defineProps<{
 }>()
 
 const { appWideSoundOn } = useEmbeddedVideoManager()
+const lightboxVideoEl = ref<HTMLVideoElement | null>(null)
+/** Lightbox video always starts muted; unmute only on user tap (Safari). */
+const lightboxVideoMuted = ref(true)
+
+watch(
+  () => [props.currentMediaItem?.kind, props.src] as const,
+  () => {
+    if (props.kind === 'media' && props.currentMediaItem?.kind === 'video') {
+      lightboxVideoMuted.value = true
+    }
+  },
+)
 
 function onLightboxVideoVolumeChange(e: Event) {
-  const el = (e.target as HTMLVideoElement)
-  if (el) appWideSoundOn.value = !el.muted
+  const el = e.target as HTMLVideoElement
+  if (el) {
+    lightboxVideoMuted.value = el.muted
+    appWideSoundOn.value = !el.muted
+  }
+}
+
+function onLightboxTapUnmute() {
+  const el = lightboxVideoEl.value
+  if (el) {
+    el.muted = false
+    lightboxVideoMuted.value = false
+    appWideSoundOn.value = true
+    el.play().catch(() => {})
+  }
+}
+
+function onLightboxTapMute() {
+  const el = lightboxVideoEl.value
+  if (el) {
+    el.muted = true
+    lightboxVideoMuted.value = true
+    appWideSoundOn.value = false
+  }
 }
 </script>
 

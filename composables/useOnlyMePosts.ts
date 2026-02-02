@@ -1,9 +1,9 @@
-import type { FeedPost, GetPostsResponse } from '~/types/api'
+import type { FeedPost, GetPostsData } from '~/types/api'
 import { getApiErrorMessage } from '~/utils/api-error'
 import { usePostCountBumps } from '~/composables/usePostCountBumps'
 
 export function useOnlyMePosts() {
-  const { apiFetchData } = useApiClient()
+  const { apiFetch } = useApiClient()
   const { clearBumpsForPostIds } = usePostCountBumps()
 
   const posts = useState<FeedPost[]>('posts-only-me', () => [])
@@ -16,12 +16,12 @@ export function useOnlyMePosts() {
     loading.value = true
     error.value = null
     try {
-      const res = await apiFetchData<GetPostsResponse>('/posts/me/only-me', {
+      const res = await apiFetch<GetPostsData>('/posts/me/only-me', {
         method: 'GET',
         query: { limit: 30 },
       })
-      posts.value = res.posts
-      nextCursor.value = res.nextCursor
+      posts.value = res.data ?? []
+      nextCursor.value = res.pagination?.nextCursor ?? null
     } catch (e: unknown) {
       error.value = getApiErrorMessage(e) || 'Failed to load posts.'
     } finally {
@@ -35,13 +35,13 @@ export function useOnlyMePosts() {
     loading.value = true
     error.value = null
     try {
-      const res = await apiFetchData<GetPostsResponse>('/posts/me/only-me', {
+      const res = await apiFetch<GetPostsData>('/posts/me/only-me', {
         method: 'GET',
         query: { limit: 30, cursor: nextCursor.value },
       })
-      posts.value = [...posts.value, ...res.posts]
-      nextCursor.value = res.nextCursor
-      clearBumpsForPostIds(res.posts.map((p) => p.id))
+      posts.value = [...posts.value, ...(res.data ?? [])]
+      nextCursor.value = res.pagination?.nextCursor ?? null
+      clearBumpsForPostIds((res.data ?? []).map((p) => p.id))
     } catch (e: unknown) {
       error.value = getApiErrorMessage(e) || 'Failed to load more posts.'
     } finally {

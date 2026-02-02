@@ -310,7 +310,7 @@ const rowStyle = computed(() => ({
 // Resource preservation: only do heavy work (metadata fetch + embeds) when the row is near viewport.
 const rowEl = ref<HTMLElement | null>(null)
 const { inView: rowInView } = useInViewOnce(rowEl, { root: null, rootMargin: '800px 0px', threshold: 0.01 })
-const { user } = useAuth()
+const { user, me: refetchMe } = useAuth()
 const isAuthed = computed(() => Boolean(user.value?.id))
 const viewerHasUsername = computed(() => Boolean(user.value?.usernameIsSet))
 const viewerIsVerified = computed(() => Boolean(user.value?.verifiedStatus && user.value.verifiedStatus !== 'none'))
@@ -474,6 +474,13 @@ const moreMenuItems = computed<MenuItem[]>(() => {
 
   if (isSelf.value) {
     items.push({ separator: true })
+    const pinnedPostId = user.value?.pinnedPostId ?? null
+    const isPinned = pinnedPostId === post.value.id
+    items.push({
+      label: isPinned ? 'Unpin from profile' : 'Pin to profile',
+      icon: isPinned ? 'pi pi-times' : 'pi pi-thumbtack',
+      command: () => (isPinned ? unpinFromProfile() : pinToProfile()),
+    })
     items.push({
       label: 'Delete post',
       icon: 'pi pi-trash',
@@ -490,6 +497,29 @@ const moreMenuItems = computed<MenuItem[]>(() => {
 const toast = useAppToast()
 const deleteConfirmOpen = ref(false)
 const deleting = ref(false)
+
+async function pinToProfile() {
+  try {
+    await apiFetchData<{ pinnedPostId: string }>('/users/me/pinned-post', {
+      method: 'PUT',
+      body: { postId: post.value.id },
+    })
+    await refetchMe()
+    toast.push({ title: 'Pinned to profile', tone: 'success', durationMs: 1400 })
+  } catch (e: unknown) {
+    toast.push({ title: getApiErrorMessage(e) || 'Failed to pin.', tone: 'error', durationMs: 2200 })
+  }
+}
+
+async function unpinFromProfile() {
+  try {
+    await apiFetchData<{ pinnedPostId: null }>('/users/me/pinned-post', { method: 'DELETE' })
+    await refetchMe()
+    toast.push({ title: 'Unpinned from profile', tone: 'success', durationMs: 1400 })
+  } catch (e: unknown) {
+    toast.push({ title: getApiErrorMessage(e) || 'Failed to unpin.', tone: 'error', durationMs: 2200 })
+  }
+}
 
 async function deletePost() {
   if (deleting.value) return

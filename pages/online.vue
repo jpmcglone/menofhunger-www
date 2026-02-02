@@ -36,7 +36,7 @@
 
 <script setup lang="ts">
 import type { OnlineUser } from '~/types/api'
-import type { GetPresenceOnlineResponse } from '~/types/api'
+import type { ApiEnvelope, GetPresenceOnlineData } from '~/types/api'
 import { getApiErrorMessage } from '~/utils/api-error'
 
 definePageMeta({
@@ -51,7 +51,7 @@ usePageSeo({
   noindex: true,
 })
 
-const { apiFetchData } = useApiClient()
+const { apiFetch, apiFetchData } = useApiClient()
 const {
   subscribeOnlineFeed,
   unsubscribeOnlineFeed,
@@ -130,15 +130,15 @@ async function mergeUserFromRefetch(userId: string) {
   mergeRefetchTimeout = setTimeout(async () => {
     mergeRefetchTimeout = null
     try {
-      const res = await apiFetchData<GetPresenceOnlineResponse>('/presence/online', { method: 'GET' })
-      const fromApi = res?.users ?? []
+      const res = await apiFetch<GetPresenceOnlineData>('/presence/online', { method: 'GET' })
+      const fromApi = res?.data ?? []
       const next = [...users.value]
       for (const u of fromApi) {
         if (u.id && !next.some((x) => x.id === u.id)) {
           next.push(u)
         }
       }
-      if (typeof res?.totalOnline === 'number') totalOnline.value = res.totalOnline
+      if (typeof res?.pagination?.totalOnline === 'number') totalOnline.value = res.pagination.totalOnline
       if (next.length !== users.value.length) {
         users.value = next.sort(sortByRecent)
         const ids = next.map((u) => u.id).filter(Boolean)
@@ -157,9 +157,9 @@ async function fetchOnline() {
   loading.value = true
   error.value = null
   try {
-    const res = await apiFetchData<GetPresenceOnlineResponse>('/presence/online', { method: 'GET' })
-    users.value = (res?.users ?? []).sort(sortByRecent)
-    totalOnline.value = typeof res?.totalOnline === 'number' ? res.totalOnline : users.value.length
+    const res = await apiFetch<GetPresenceOnlineData>('/presence/online', { method: 'GET' })
+    users.value = (res?.data ?? []).sort(sortByRecent)
+    totalOnline.value = typeof res?.pagination?.totalOnline === 'number' ? res.pagination.totalOnline : users.value.length
     if (users.value.length > 0) {
       const ids = users.value.map((u) => u.id).filter(Boolean)
       addOnlineIdsFromRest(ids)

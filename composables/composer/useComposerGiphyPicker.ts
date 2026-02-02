@@ -1,5 +1,5 @@
 import type { Ref } from 'vue'
-import type { GiphySearchResponse } from '~/types/api'
+import type { GiphyItem, GiphySearchResponse } from '~/types/api'
 import { getApiErrorMessage } from '~/utils/api-error'
 import type { ComposerMediaItem } from './types'
 import { makeLocalId } from './types'
@@ -13,7 +13,7 @@ export function useComposerGiphyPicker(opts: {
   const giphyQuery = ref('')
   const giphyLoading = ref(false)
   const giphyError = ref<string | null>(null)
-  const giphyItems = ref<GiphySearchResponse['items']>([])
+  const giphyItems = ref<GiphySearchResponse>([])
   const giphyInputRef = ref<any>(null)
   const giphyRequestId = ref(0)
 
@@ -59,7 +59,7 @@ export function useComposerGiphyPicker(opts: {
         ? await opts.apiFetchData<GiphySearchResponse>('/giphy/search', { method: 'GET', query: { q } as any })
         : await opts.apiFetchData<GiphySearchResponse>('/giphy/trending', { method: 'GET', query: { limit: '24' } as any })
       if (!giphyOpen.value || giphyRequestId.value !== reqId) return
-      giphyItems.value = res?.items ?? []
+      giphyItems.value = Array.isArray(res) ? res : []
       giphyError.value = null
     } catch (e: unknown) {
       if (!giphyOpen.value || giphyRequestId.value !== reqId) return
@@ -70,7 +70,7 @@ export function useComposerGiphyPicker(opts: {
     }
   }
 
-  function selectGiphyGif(gif: GiphySearchResponse['items'][number]) {
+  function selectGiphyGif(gif: GiphyItem) {
     if (!opts.canAddMoreMedia.value) return
     const url = (gif?.url ?? '').trim()
     if (!url) return

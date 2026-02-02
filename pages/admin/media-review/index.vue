@@ -1,20 +1,28 @@
 <template>
   <div class="px-4 py-4 space-y-4">
-    <AppPageHeader title="Image review" icon="pi-images" description="Review and delete uploaded images.">
+    <AppPageHeader title="Media review" icon="pi-images" description="Review and delete uploaded images and videos.">
       <template #actions>
         <Button label="Back" severity="secondary" text icon="pi pi-arrow-left" @click="navigateTo('/admin')" />
       </template>
     </AppPageHeader>
 
     <div class="flex flex-wrap items-center gap-2">
-      <InputText v-model="imgQuery" class="w-full sm:w-72" placeholder="Search by key…" @keydown.enter.prevent="loadImages(true)" />
+      <Select
+        v-model="mediaKindFilter"
+        :options="kindOptions"
+        option-label="label"
+        option-value="value"
+        placeholder="Filter by type"
+        class="w-[8.5rem]"
+      />
+      <InputText v-model="mediaQuery" class="w-full sm:w-72" placeholder="Search by key…" @keydown.enter.prevent="loadMedia(true)" />
       <div class="flex items-center gap-2">
         <label class="inline-flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
-          <input v-model="imgShowDeleted" type="checkbox" class="accent-current" />
+          <input v-model="mediaShowDeleted" type="checkbox" class="accent-current" />
           Show deleted
         </label>
         <label class="inline-flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
-          <input v-model="imgOnlyOrphans" type="checkbox" class="accent-current" />
+          <input v-model="mediaOnlyOrphans" type="checkbox" class="accent-current" />
           Orphans only
         </label>
       </div>
@@ -22,79 +30,127 @@
         label="Search"
         icon="pi pi-search"
         severity="secondary"
-        :loading="imgLoading"
-        :disabled="imgLoading"
-        @click="loadImages(true)"
+        :loading="mediaLoading"
+        :disabled="mediaLoading"
+        @click="loadMedia(true)"
       />
       <Button
         label="Sync"
         icon="pi pi-refresh"
         text
         severity="secondary"
-        :loading="imgSyncing"
-        :disabled="imgLoading || imgSyncing"
+        :loading="mediaSyncing"
+        :disabled="mediaLoading || mediaSyncing"
         v-tooltip.bottom="{ value: 'Index recent objects from storage', class: 'moh-tooltip-tiny', position: 'bottom' }"
-        @click="syncImages()"
+        @click="syncMedia()"
       />
     </div>
 
-    <AppInlineAlert v-if="imgError" severity="danger">
-      {{ imgError }}
+    <AppInlineAlert v-if="mediaError" severity="danger">
+      {{ mediaError }}
     </AppInlineAlert>
 
     <div v-else class="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
       <button
-        v-for="it in imgItems"
+        v-for="it in mediaItems"
         :key="it.id"
         type="button"
         class="group relative aspect-square overflow-hidden rounded-xl border moh-border moh-surface hover:opacity-95 transition-opacity"
-        :aria-label="`View image ${it.id}`"
+        :aria-label="`View ${it.kind === 'video' ? 'video' : 'media'} ${it.id}`"
         @click="openDetails(it.id)"
       >
-        <img
-          v-if="it.publicUrl"
-          :src="it.publicUrl"
-          class="absolute inset-0 h-full w-full object-cover"
-          alt=""
-          loading="lazy"
-          decoding="async"
-        />
-        <div
-          v-else
-          class="absolute inset-0 flex items-center justify-center"
-          aria-hidden="true"
-        >
-          <div class="text-center text-xs moh-text-muted px-3">
-            <i class="pi pi-image text-xl opacity-70" aria-hidden="true" />
-            <div class="mt-2 font-semibold">No preview</div>
-          </div>
-        </div>
-
-        <div class="pointer-events-none absolute inset-x-0 bottom-0 flex items-center justify-between gap-2 p-2">
-          <span class="inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold moh-border moh-bg moh-text">
-            {{ it.belongsToSummary }}
-          </span>
-          <span
-            v-if="it.deletedAt"
-            class="inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold moh-border moh-bg moh-text"
+        <template v-if="it.kind === 'video'">
+          <video
+            v-if="it.publicUrl"
+            :src="it.publicUrl"
+            class="absolute inset-0 h-full w-full object-cover"
+            muted
+            playsinline
+            preload="metadata"
+            aria-hidden="true"
+          />
+          <div
+            v-else
+            class="absolute inset-0 flex items-center justify-center bg-black/30"
+            aria-hidden="true"
           >
-            Deleted
-          </span>
+            <i class="pi pi-video text-2xl text-white opacity-80" aria-hidden="true" />
+          </div>
+          <div class="pointer-events-none absolute inset-0 flex items-center justify-center">
+            <i class="pi pi-play text-2xl text-white drop-shadow" aria-hidden="true" />
+          </div>
+        </template>
+        <template v-else>
+          <img
+            v-if="it.publicUrl"
+            :src="it.publicUrl"
+            class="absolute inset-0 h-full w-full object-cover"
+            alt=""
+            loading="lazy"
+            decoding="async"
+          />
+          <div
+            v-else
+            class="absolute inset-0 flex items-center justify-center"
+            aria-hidden="true"
+          >
+            <div class="text-center text-xs moh-text-muted px-3">
+              <i class="pi pi-image text-xl opacity-70" aria-hidden="true" />
+              <div class="mt-2 font-semibold">No preview</div>
+            </div>
+          </div>
+        </template>
+
+        <div class="absolute inset-x-0 bottom-0 flex flex-col gap-1 p-2">
+          <div class="pointer-events-none flex items-center justify-between gap-2">
+            <span class="inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold moh-border moh-bg moh-text">
+              {{ it.belongsToSummary }}
+            </span>
+            <span v-if="it.kind" class="inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold moh-border moh-bg moh-text">
+              {{ it.kind }}
+            </span>
+            <span
+              v-if="it.deletedAt"
+              class="inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold moh-border moh-bg moh-text"
+            >
+              Deleted
+            </span>
+          </div>
+          <div
+            v-if="(it.postId && it.authorUsername) || it.profileUsername"
+            class="flex flex-wrap gap-1 text-[10px] moh-text-muted truncate pointer-events-auto"
+            @click.stop
+          >
+            <NuxtLink
+              v-if="it.postId && it.authorUsername"
+              :to="`/p/${encodeURIComponent(it.postId)}`"
+              class="hover:underline shrink-0"
+            >
+              Post by @{{ it.authorUsername }}
+            </NuxtLink>
+            <NuxtLink
+              v-if="it.profileUsername"
+              :to="`/u/${encodeURIComponent(it.profileUsername)}`"
+              class="hover:underline shrink-0"
+            >
+              Profile @{{ it.profileUsername }}
+            </NuxtLink>
+          </div>
         </div>
       </button>
     </div>
 
     <div class="flex items-center justify-center pt-2">
       <Button
-        v-if="imgNextCursor"
+        v-if="mediaNextCursor"
         label="Load more"
         severity="secondary"
-        :loading="imgLoadingMore"
-        :disabled="imgLoading || imgLoadingMore"
-        @click="loadMoreImages()"
+        :loading="mediaLoadingMore"
+        :disabled="mediaLoading || mediaLoadingMore"
+        @click="loadMoreMedia()"
       />
-      <div v-else-if="!imgLoading && imgItems.length === 0" class="text-sm moh-text-muted">
-        No images found.
+      <div v-else-if="!mediaLoading && mediaItems.length === 0" class="text-sm moh-text-muted">
+        No media found.
       </div>
     </div>
   </div>
@@ -102,7 +158,7 @@
   <Dialog
     v-model:visible="detailsOpen"
     modal
-    header="Image details"
+    header="Media details"
     :draggable="false"
     class="w-[min(72rem,calc(100vw-2rem))]"
     @hide="onDetailsClosed"
@@ -122,7 +178,7 @@
             text
             severity="secondary"
             icon="pi pi-external-link"
-            @click="navigateTo(`/admin/image-review/${encodeURIComponent(details.asset.id)}`)"
+            @click="navigateTo(`/admin/media-review/${encodeURIComponent(details.asset.id)}`)"
           />
         </div>
       </div>
@@ -136,8 +192,17 @@
       <div v-else-if="details" class="grid gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
         <div class="space-y-3">
           <div class="overflow-hidden rounded-2xl border moh-border moh-surface">
+            <video
+              v-if="details.asset.kind === 'video' && details.asset.publicUrl"
+              :src="details.asset.publicUrl"
+              class="block w-full max-h-[70vh] object-contain bg-black"
+              controls
+              playsinline
+              preload="metadata"
+              aria-label="Video"
+            />
             <img
-              v-if="details.asset.publicUrl"
+              v-else-if="details.asset.publicUrl"
               :src="details.asset.publicUrl"
               class="block w-full max-h-[70vh] object-contain bg-black/5 dark:bg-white/5"
               alt=""
@@ -146,7 +211,7 @@
             />
             <div v-else class="flex items-center justify-center h-[22rem]">
               <div class="text-center text-sm moh-text-muted">
-                <i class="pi pi-image text-3xl opacity-70" aria-hidden="true" />
+                <i :class="details.asset.kind === 'video' ? 'pi pi-video' : 'pi pi-image'" class="text-3xl opacity-70" aria-hidden="true" />
                 <div class="mt-2 font-semibold">{{ details.asset.deletedAt ? 'Deleted' : 'No preview' }}</div>
               </div>
             </div>
@@ -188,7 +253,7 @@
               </div>
 
               <div class="pt-2 border-t moh-border">
-                <div class="font-semibold">Users</div>
+                <div class="font-semibold">Profiles</div>
                 <div v-if="details.references.users.length === 0" class="moh-text-muted">None</div>
                 <div v-else class="mt-1 space-y-1">
                   <NuxtLink
@@ -219,6 +284,10 @@
             <div class="text-xs font-semibold moh-text-muted">Metadata</div>
             <div class="mt-2 space-y-2 text-sm">
               <div class="flex items-center justify-between gap-2">
+                <div class="moh-text-muted">Kind</div>
+                <div class="font-mono text-xs">{{ details.asset.kind ?? '—' }}</div>
+              </div>
+              <div class="flex items-center justify-between gap-2">
                 <div class="moh-text-muted">Last modified</div>
                 <div class="font-mono text-xs">{{ details.asset.lastModified }}</div>
               </div>
@@ -229,10 +298,6 @@
               <div class="flex items-center justify-between gap-2">
                 <div class="moh-text-muted">Content-Type</div>
                 <div class="font-mono text-xs">{{ details.asset.contentType ?? '—' }}</div>
-              </div>
-              <div class="flex items-center justify-between gap-2">
-                <div class="moh-text-muted">Kind</div>
-                <div class="font-mono text-xs">{{ details.asset.kind ?? '—' }}</div>
               </div>
               <div class="flex items-center justify-between gap-2">
                 <div class="moh-text-muted">Dimensions</div>
@@ -270,31 +335,37 @@
 
 <script setup lang="ts">
 definePageMeta({
-  title: 'Image review',
+  title: 'Media review',
 })
 
 usePageSeo({
-  title: 'Image review',
-  description: 'Admin image review.',
-  canonicalPath: '/admin/image-review',
+  title: 'Media review',
+  description: 'Admin media review.',
+  canonicalPath: '/admin/media-review',
   noindex: true,
 })
 
-const { apiFetchData } = useApiClient()
+const { apiFetch, apiFetchData } = useApiClient()
 import { getApiErrorMessage } from '~/utils/api-error'
-import type { AdminImageReviewDetailResponse, AdminImageReviewListItem, AdminImageReviewListResponse } from '~/types/api'
+import type { AdminImageReviewDetailResponse, AdminImageReviewListItem, AdminImageReviewListData } from '~/types/api'
 
-const imgQuery = ref('')
-const imgShowDeleted = ref(false)
-const imgOnlyOrphans = ref(false)
-const imgItems = ref<AdminImageReviewListItem[]>([])
-const imgNextCursor = ref<string | null>(null)
-const imgLoading = ref(false)
-const imgLoadingMore = ref(false)
-const imgSyncing = ref(false)
-const imgError = ref<string | null>(null)
+const kindOptions = [
+  { label: 'All', value: 'all' },
+  { label: 'Images', value: 'image' },
+  { label: 'Videos', value: 'video' },
+]
 
-// Details modal
+const mediaKindFilter = ref<'all' | 'image' | 'video'>('all')
+const mediaQuery = ref('')
+const mediaShowDeleted = ref(false)
+const mediaOnlyOrphans = ref(false)
+const mediaItems = ref<AdminImageReviewListItem[]>([])
+const mediaNextCursor = ref<string | null>(null)
+const mediaLoading = ref(false)
+const mediaLoadingMore = ref(false)
+const mediaSyncing = ref(false)
+const mediaError = ref<string | null>(null)
+
 const detailsOpen = ref(false)
 const detailsId = ref<string | null>(null)
 const detailsLoading = ref(false)
@@ -305,8 +376,10 @@ const didInitialLoad = ref(false)
 onMounted(() => {
   if (didInitialLoad.value) return
   didInitialLoad.value = true
-  void loadImages(true)
+  void loadMedia(true)
 })
+
+watch(mediaKindFilter, () => void loadMedia(true))
 
 watch(
   () => detailsId.value,
@@ -316,55 +389,56 @@ watch(
   },
 )
 
-async function loadImages(reset: boolean) {
-  if (imgLoading.value) return
-  imgError.value = null
-  imgLoading.value = true
-  try {
-    if (reset) {
-      imgItems.value = []
-      imgNextCursor.value = null
-    }
-    const res = await apiFetchData<AdminImageReviewListResponse>('/admin/image-review', {
-      method: 'GET',
-      query: {
-        limit: 60,
-        cursor: reset ? null : imgNextCursor.value,
-        q: imgQuery.value.trim() || undefined,
-        showDeleted: imgShowDeleted.value ? '1' : undefined,
-        onlyOrphans: imgOnlyOrphans.value ? '1' : undefined,
-      } as any,
-    })
-    imgItems.value = reset ? (res.items ?? []) : [...imgItems.value, ...(res.items ?? [])]
-    imgNextCursor.value = res.nextCursor ?? null
-  } catch (e: unknown) {
-    imgError.value = getApiErrorMessage(e) || 'Failed to load images.'
-  } finally {
-    imgLoading.value = false
+function queryParams(reset: boolean) {
+  return {
+    limit: 60,
+    cursor: reset ? undefined : mediaNextCursor.value ?? undefined,
+    q: mediaQuery.value.trim() || undefined,
+    showDeleted: mediaShowDeleted.value ? '1' : undefined,
+    onlyOrphans: mediaOnlyOrphans.value ? '1' : undefined,
+    kind: mediaKindFilter.value,
   }
 }
 
-async function loadMoreImages() {
-  if (!imgNextCursor.value) return
-  if (imgLoadingMore.value || imgLoading.value) return
-  imgLoadingMore.value = true
+async function loadMedia(reset: boolean) {
+  if (mediaLoading.value) return
+  mediaError.value = null
+  mediaLoading.value = true
   try {
-    const res = await apiFetchData<AdminImageReviewListResponse>('/admin/image-review', {
+    if (reset) {
+      mediaItems.value = []
+      mediaNextCursor.value = null
+    }
+    const res = await apiFetch<AdminImageReviewListData>('/admin/media-review', {
       method: 'GET',
-      query: {
-        limit: 60,
-        cursor: imgNextCursor.value,
-        q: imgQuery.value.trim() || undefined,
-        showDeleted: imgShowDeleted.value ? '1' : undefined,
-        onlyOrphans: imgOnlyOrphans.value ? '1' : undefined,
-      } as any,
+      query: queryParams(reset) as Record<string, string | number | undefined>,
     })
-    imgItems.value = [...imgItems.value, ...(res.items ?? [])]
-    imgNextCursor.value = res.nextCursor ?? null
+    const list = res.data ?? []
+    mediaItems.value = reset ? list : [...mediaItems.value, ...list]
+    mediaNextCursor.value = res.pagination?.nextCursor ?? null
   } catch (e: unknown) {
-    imgError.value = getApiErrorMessage(e) || 'Failed to load more images.'
+    mediaError.value = getApiErrorMessage(e) || 'Failed to load media.'
   } finally {
-    imgLoadingMore.value = false
+    mediaLoading.value = false
+  }
+}
+
+async function loadMoreMedia() {
+  if (!mediaNextCursor.value) return
+  if (mediaLoadingMore.value || mediaLoading.value) return
+  mediaLoadingMore.value = true
+  try {
+    const res = await apiFetch<AdminImageReviewListData>('/admin/media-review', {
+      method: 'GET',
+      query: queryParams(false) as Record<string, string | number | undefined>,
+    })
+    const list = res.data ?? []
+    mediaItems.value = [...mediaItems.value, ...list]
+    mediaNextCursor.value = res.pagination?.nextCursor ?? null
+  } catch (e: unknown) {
+    mediaError.value = getApiErrorMessage(e) || 'Failed to load more media.'
+  } finally {
+    mediaLoadingMore.value = false
   }
 }
 
@@ -390,9 +464,9 @@ async function loadDetails() {
   detailsLoading.value = true
   detailsError.value = null
   try {
-    details.value = await apiFetchData<AdminImageReviewDetailResponse>('/admin/image-review/' + encodeURIComponent(id), { method: 'GET' })
+    details.value = await apiFetchData<AdminImageReviewDetailResponse>('/admin/media-review/' + encodeURIComponent(id), { method: 'GET' })
   } catch (e: unknown) {
-    detailsError.value = getApiErrorMessage(e) || 'Failed to load image.'
+    detailsError.value = getApiErrorMessage(e) || 'Failed to load media.'
   } finally {
     detailsLoading.value = false
   }
@@ -407,29 +481,21 @@ function formatIso(iso: string | null | undefined) {
   return `${date} · ${time}`
 }
 
-async function syncImages() {
-  if (imgSyncing.value) return
-  imgSyncing.value = true
-  imgError.value = null
+async function syncMedia() {
+  if (mediaSyncing.value) return
+  mediaSyncing.value = true
+  mediaError.value = null
   try {
-    const res = await apiFetchData<AdminImageReviewListResponse>('/admin/image-review', {
+    const res = await apiFetch<AdminImageReviewListData>('/admin/media-review', {
       method: 'GET',
-      query: {
-        limit: 60,
-        cursor: null,
-        q: imgQuery.value.trim() || undefined,
-        showDeleted: imgShowDeleted.value ? '1' : undefined,
-        onlyOrphans: imgOnlyOrphans.value ? '1' : undefined,
-        sync: '1',
-      } as any,
+      query: { ...queryParams(true), sync: '1' } as Record<string, string | number | undefined>,
     })
-    imgItems.value = res.items ?? []
-    imgNextCursor.value = res.nextCursor ?? null
+    mediaItems.value = res.data ?? []
+    mediaNextCursor.value = res.pagination?.nextCursor ?? null
   } catch (e: unknown) {
-    imgError.value = getApiErrorMessage(e) || 'Sync failed.'
+    mediaError.value = getApiErrorMessage(e) || 'Sync failed.'
   } finally {
-    imgSyncing.value = false
+    mediaSyncing.value = false
   }
 }
 </script>
-

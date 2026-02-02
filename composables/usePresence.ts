@@ -1,5 +1,6 @@
 import { io, type Socket } from 'socket.io-client'
 import { appConfig } from '~/config/app'
+import type { FollowListUser } from '~/types/api'
 
 const PRESENCE_STATE_KEY = 'presence-online-ids'
 const PRESENCE_RECENTLY_DISCONNECTED_KEY = 'presence-recently-disconnected'
@@ -8,16 +9,6 @@ const PRESENCE_SOCKET_KEY = 'presence-socket'
 const PRESENCE_ONLINE_FEED_SUBSCRIBED_KEY = 'presence-online-feed-subscribed'
 const PRESENCE_INTEREST_KEY = 'presence-interest-refs'
 const PRESENCE_DISCONNECTED_DUE_TO_IDLE_KEY = 'presence-disconnected-due-to-idle'
-
-type FollowListUser = {
-  id: string
-  username: string | null
-  name: string | null
-  premium: boolean
-  verifiedStatus: string
-  avatarUrl: string | null
-  relationship: { viewerFollowsUser: boolean; userFollowsViewer: boolean }
-}
 
 export type PresenceOnlinePayload = { userId: string; user?: FollowListUser; lastConnectAt?: number; idle?: boolean }
 export type PresenceOfflinePayload = { userId: string }
@@ -167,7 +158,7 @@ export function usePresence() {
     const entries = [...refs.entries()].sort((a, b) => a[1] - b[1])
     let removed = 0
     for (const [uid, count] of entries) {
-      if (refs.size - removed <= MAX_INTEREST) break
+      if (refs.size - removed <= appConfig.presenceMaxInterest) break
       refs.delete(uid)
       removed++
       emitUnsubscribe([uid])

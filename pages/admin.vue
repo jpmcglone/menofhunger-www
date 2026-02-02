@@ -30,13 +30,13 @@
               </div>
             </NuxtLink>
 
-            <NuxtLink to="/admin/image-review" class="block">
-              <div :class="areaCardClass('image-review')">
+            <NuxtLink to="/admin/media-review" class="block">
+              <div :class="areaCardClass('media-review')">
                 <div class="flex items-center gap-3">
                   <i class="pi pi-images text-lg" aria-hidden="true" />
                   <div class="min-w-0 flex-1">
-                    <div class="font-semibold truncate">Image review</div>
-                    <div class="text-sm text-gray-600 dark:text-gray-300 truncate">Review and delete uploaded images</div>
+                    <div class="font-semibold truncate">Media review</div>
+                    <div class="text-sm text-gray-600 dark:text-gray-300 truncate">Review and delete uploaded images and videos</div>
                   </div>
                 </div>
               </div>
@@ -65,15 +65,15 @@ definePageMeta({
 
 const route = useRoute()
 
-function isActiveArea(key: 'site-settings' | 'users' | 'image-review') {
+function isActiveArea(key: 'site-settings' | 'users' | 'media-review') {
   const p = route.path
   if (key === 'site-settings') return p === '/admin/site-settings'
   if (key === 'users') return p === '/admin/users'
-  if (key === 'image-review') return p === '/admin/image-review' || p.startsWith('/admin/image-review/')
+  if (key === 'media-review') return p === '/admin/media-review' || p.startsWith('/admin/media-review/')
   return false
 }
 
-function areaCardClass(key: 'site-settings' | 'users' | 'image-review') {
+function areaCardClass(key: 'site-settings' | 'users' | 'media-review') {
   const active = isActiveArea(key)
   return [
     'w-full rounded-xl border p-3 transition-colors',

@@ -383,13 +383,13 @@ async function saveProfile() {
       })
       if (!putRes.ok) throw new Error('Failed to upload banner.')
 
-      const committed = await apiFetchData<{ user: any }>('/uploads/banner/commit', {
+      const committed = await apiFetchData<any>('/uploads/banner/commit', {
         method: 'POST',
         body: { key: init.key },
       })
 
-      authUser.value = committed.user ?? authUser.value
-      emit('patchProfile', { bannerUrl: committed.user?.bannerUrl ?? null })
+      authUser.value = committed ?? authUser.value
+      emit('patchProfile', { bannerUrl: committed?.bannerUrl ?? null })
       clearPendingBanner()
     }
 
@@ -422,7 +422,7 @@ async function saveProfile() {
       clearPendingAvatar()
     }
 
-    const result = await apiFetchData<{ user: any }>('/users/me/profile', {
+    const result = await apiFetchData<any>('/users/me/profile', {
       method: 'PATCH',
       body: {
         name: editName.value,
@@ -431,8 +431,8 @@ async function saveProfile() {
     })
 
     // Update profile state (public view) and auth user state (self).
-    emit('patchProfile', { name: result.user?.name ?? null, bio: result.user?.bio ?? null })
-    authUser.value = result.user ?? authUser.value
+    emit('patchProfile', { name: result?.name ?? null, bio: result?.bio ?? null })
+    authUser.value = result ?? authUser.value
     emit('update:modelValue', false)
   } catch (e: unknown) {
     editError.value = getApiErrorMessage(e) || 'Failed to save profile.'

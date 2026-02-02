@@ -57,7 +57,7 @@
                       Replying to
                       <NuxtLink
                         v-if="parentAuthorUsername"
-                        :to="parentAuthorProfilePath"
+                        :to="parentAuthorProfilePath ?? undefined"
                         class="font-semibold hover:underline underline-offset-2"
                         :class="parentAuthorLinkClass"
                         :aria-label="`View @${parentAuthorUsername} profile`"
@@ -78,7 +78,7 @@
 </template>
 
 <script setup lang="ts">
-import type { FeedPost, GetThreadParticipantsResponse } from '~/types/api'
+import type { FeedPost, GetThreadParticipantsData } from '~/types/api'
 import type { ReplyPostedPayload } from '~/composables/useReplyModal'
 import { useReplyModal } from '~/composables/useReplyModal'
 import { useApiClient } from '~/composables/useApiClient'
@@ -149,7 +149,7 @@ async function onSheetClick(event: MouseEvent) {
   }
 }
 
-const threadParticipants = ref<GetThreadParticipantsResponse['participants']>([])
+const threadParticipants = ref<GetThreadParticipantsData>([])
 
 async function fetchThreadParticipants() {
   const post = parentPost.value
@@ -158,11 +158,11 @@ async function fetchThreadParticipants() {
     return
   }
   try {
-    const res = await apiFetchData<GetThreadParticipantsResponse>(
+    const res = await apiFetchData<GetThreadParticipantsData>(
       `/posts/${encodeURIComponent(post.id)}/thread-participants`,
       { method: 'GET' },
     )
-    threadParticipants.value = res.participants ?? []
+    threadParticipants.value = Array.isArray(res) ? res : []
   } catch {
     threadParticipants.value = []
   }

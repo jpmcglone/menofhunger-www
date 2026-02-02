@@ -18,6 +18,7 @@ export type AuthUser = {
   unverifiedAt?: string | null
   avatarUrl?: string | null
   bannerUrl?: string | null
+  pinnedPostId?: string | null
 }
 
 let clientMePromise: Promise<AuthUser | null> | null = null
@@ -31,9 +32,9 @@ export function useAuth() {
 
   async function me(): Promise<AuthUser | null> {
     try {
-      const result = await apiFetch<{ user: AuthUser | null }>('/auth/me', { method: 'GET' })
-      user.value = result.data.user
-      return result.data.user
+      const result = await apiFetch<AuthUser | null>('/auth/me', { method: 'GET' })
+      user.value = result.data
+      return result.data
     } catch {
       // If the API is unreachable, fail gracefully.
       user.value = null

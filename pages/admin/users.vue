@@ -258,7 +258,7 @@ type AdminUser = {
   unverifiedAt: string | null
 }
 
-const { apiFetchData } = useApiClient()
+const { apiFetch, apiFetchData } = useApiClient()
 import { getApiErrorMessage } from '~/utils/api-error'
 
 const userQuery = ref('')
@@ -273,11 +273,11 @@ async function runUserSearch() {
   searchedOnce.value = true
   searching.value = true
   try {
-    const res = await apiFetchData<{ users: AdminUser[]; nextCursor: string | null }>('/admin/users/search', {
+    const res = await apiFetch<AdminUser[]>('/admin/users/search', {
       method: 'GET',
       query: { q: userQuery.value.trim(), limit: 25 },
     })
-    results.value = res.users
+    results.value = res.data ?? []
   } catch (e: unknown) {
     searchError.value = getApiErrorMessage(e) || 'Failed to search users.'
   } finally {
@@ -459,7 +459,7 @@ async function saveUser() {
   editError.value = null
 
   try {
-    const res = await apiFetchData<{ user: AdminUser }>(`/admin/users/${encodeURIComponent(u.id)}/profile`, {
+    const updated = await apiFetchData<AdminUser>(`/admin/users/${encodeURIComponent(u.id)}/profile`, {
       method: 'PATCH',
       body: {
         phone: editPhone.value.trim(),
@@ -472,8 +472,8 @@ async function saveUser() {
     })
 
     // Update results list in-place.
-    results.value = results.value.map((x) => (x.id === u.id ? res.user : x))
-    editingUser.value = res.user
+    results.value = results.value.map((x) => (x.id === u.id ? updated : x))
+    editingUser.value = updated
     editOpen.value = false
   } catch (e: unknown) {
     editError.value = getApiErrorMessage(e) || 'Failed to save user.'

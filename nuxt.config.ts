@@ -92,13 +92,13 @@ export default defineNuxtConfig({
     '/groups': { ssr: false },
     '/only-me': { ssr: false },
     '/online': { ssr: false },
-    '/p/**': { ssr: false },
-    '/u/**': { ssr: false },
+    // Profile pages: SSR so shared links get og:image/title in initial HTML (no ssr: false).
+    // Static pages: prerender for fast, indexable HTML.
+    '/terms': { prerender: true },
+    '/privacy': { prerender: true },
+    '/about': { prerender: true },
     '/settings': { ssr: false },
     '/feedback': { ssr: false },
-    '/terms': { ssr: false },
-    '/privacy': { ssr: false },
-    '/about': { ssr: false },
     '/admin': { ssr: false },
     '/admin/**': { ssr: false },
     '/status': { ssr: false },

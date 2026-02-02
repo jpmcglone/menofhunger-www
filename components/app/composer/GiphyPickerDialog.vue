@@ -34,14 +34,14 @@
 </template>
 
 <script setup lang="ts">
-import type { GiphySearchResponse } from '~/types/api'
+import type { GiphyItem, GiphySearchResponse } from '~/types/api'
 
 const props = defineProps<{
   open: boolean
   query: string
   loading: boolean
   error: string | null
-  items: GiphySearchResponse['items']
+  items: GiphySearchResponse
   canAddMore: boolean
 }>()
 
@@ -49,7 +49,7 @@ const emit = defineEmits<{
   (e: 'update:open', v: boolean): void
   (e: 'update:query', v: string): void
   (e: 'search'): void
-  (e: 'select', gif: GiphySearchResponse['items'][number]): void
+  (e: 'select', gif: GiphyItem): void
 }>()
 
 const open = computed(() => Boolean(props.open))

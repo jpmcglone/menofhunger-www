@@ -22,6 +22,14 @@ export function visibilityTagClasses(v: PostVisibility): string {
   return ''
 }
 
+/** Post row / pinned block highlight classes (left border + tint) by visibility. */
+export function postHighlightClasses(v: PostVisibility): string {
+  if (v === 'verifiedOnly') return 'moh-post-highlight moh-post-highlight-verified'
+  if (v === 'premiumOnly') return 'moh-post-highlight moh-post-highlight-premium'
+  if (v === 'onlyMe') return 'moh-post-highlight moh-post-highlight-onlyme'
+  return 'moh-post-highlight'
+}
+
 export function filterPillClasses(kind: ProfilePostsFilter, active: boolean): string {
   if (kind === 'all') {
     // All: inverted

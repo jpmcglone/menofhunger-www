@@ -10,7 +10,7 @@ description: Core engineering conventions for menofhunger-www (Nuxt + PrimeVue).
 ## Data + API calling
 - All API calls must go through `useApiClient()` (no ad-hoc `apiBaseUrl`/`joinUrl`/`credentials` duplication).
 - Parse API errors via `getApiErrorMessage()`; show a helpful message inline.
-- Successful responses should assume `{ data: ... }` envelope.
+- API success responses are `{ data: T }` with optional `pagination` (e.g. `nextCursor`, `counts`, `totalOnline`). Use `apiFetchData<T>()` when only the payload is needed; use `apiFetch<ApiEnvelope<T>>()` and read `res.data` and `res.pagination` for paginated lists.
 
 ## Auth + routing
 - Cookie-based auth; always call with `credentials: include` (handled by `useApiClient()`).

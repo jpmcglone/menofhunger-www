@@ -97,7 +97,6 @@
         </div>
       </template>
 
-      <!-- Spacer so we can scroll the highlighted post to the top even on short pages -->
       <div class="min-h-[80dvh] shrink-0" aria-hidden="true" />
     </div>
   </div>
@@ -105,10 +104,12 @@
 
 <script setup lang="ts">
 import type {
+  ApiEnvelope,
+  ApiPagination,
   FeedPost,
-  GetPostCommentsResponse,
-  GetPostResponse,
-  GetThreadParticipantsResponse,
+  GetPostCommentsData,
+  GetPostData,
+  GetThreadParticipantsData,
 } from '~/types/api'
 import { getApiErrorMessage } from '~/utils/api-error'
 import { siteConfig } from '~/config/site'
@@ -129,8 +130,7 @@ definePageMeta({
 const route = useRoute()
 const requestURL = useRequestURL()
 const postId = computed(() => String(route.params.id || '').trim())
-const { apiFetchData } = useApiClient()
-const middleScrollerRef = useMiddleScroller()
+const { apiFetch, apiFetchData } = useApiClient()
 const highlightedPostRef = ref<HTMLElement | null>(null)
 
 const { user, ensureLoaded } = useAuth()
@@ -149,14 +149,14 @@ const { data, error } = await useAsyncData(
   () => `post:${postId.value}`,
   () => {
     if (!postId.value) throw new Error('Post not found.')
-    return apiFetchData<GetPostResponse>(`/posts/${encodeURIComponent(postId.value)}`, { method: 'GET' })
+    return apiFetchData<GetPostData>(`/posts/${encodeURIComponent(postId.value)}`, { method: 'GET' })
   },
   { watch: [postId], server: true },
 )
 
 const post = computed(() => {
   if (isDeleted.value) return null
-  return data.value?.post ?? null
+  return data.value ?? null
 })
 
 function onDeleted() {
@@ -170,15 +170,15 @@ const isOnlyMe = computed(() => post.value?.visibility === 'onlyMe')
 const routeQuery = computed(() => route.query)
 const showReplyComposer = computed(() => routeQuery.value?.reply === '1' && !isOnlyMe.value)
 
-const threadParticipants = ref<GetThreadParticipantsResponse['participants']>([])
+const threadParticipants = ref<GetThreadParticipantsData>([])
 async function fetchThreadParticipants() {
   if (!post.value?.id || isOnlyMe.value) return
   try {
-    const res = await apiFetchData<GetThreadParticipantsResponse>(
+    const res = await apiFetchData<GetThreadParticipantsData>(
       `/posts/${encodeURIComponent(post.value.id)}/thread-participants`,
       { method: 'GET' },
     )
-    threadParticipants.value = res.participants ?? []
+    threadParticipants.value = Array.isArray(res) ? res : []
   } catch {
     threadParticipants.value = []
   }
@@ -197,7 +197,7 @@ const replyContext = computed(() => {
 const comments = ref<FeedPost[]>([])
 const commentsNextCursor = ref<string | null>(null)
 const commentsLoading = ref(false)
-const commentsCounts = ref<GetPostCommentsResponse['counts']>(null)
+const commentsCounts = ref<ApiPagination['counts']>(null)
 
 const commentsSort = useCookie<'new' | 'trending'>('moh.post.comments.sort.v1', {
   default: () => 'new',
@@ -222,17 +222,18 @@ async function fetchComments(cursor: string | null = null) {
       sort: commentsSort.value,
     })
     if (cursor) params.set('cursor', cursor)
-    const res = await apiFetchData<GetPostCommentsResponse>(
+    const res = await apiFetch<GetPostCommentsData>(
       `/posts/${encodeURIComponent(post.value.id)}/comments?${params.toString()}`,
       { method: 'GET' }
     )
+    const list = res.data ?? []
     if (cursor === null) {
-      comments.value = res.comments ?? []
+      comments.value = list
     } else {
-      comments.value = [...comments.value, ...(res.comments ?? [])]
+      comments.value = [...comments.value, ...list]
     }
-    commentsNextCursor.value = res.nextCursor ?? null
-    commentsCounts.value = res.counts ?? null
+    commentsNextCursor.value = res.pagination?.nextCursor ?? null
+    commentsCounts.value = res.pagination?.counts ?? null
   } catch {
     if (cursor === null) comments.value = []
     commentsNextCursor.value = null
@@ -283,11 +284,8 @@ function onReplyPosted(payload: { id: string; post?: FeedPost }) {
   const p = post.value
   if (p?.id) {
     bumpCommentCount(p.id)
-    if (data.value?.post) {
-      data.value = {
-        ...data.value,
-        post: { ...data.value.post, commentCount: (data.value.post.commentCount ?? 0) + 1 },
-      }
+    if (data.value) {
+      data.value = { ...data.value, commentCount: (data.value.commentCount ?? 0) + 1 }
     }
   }
   if (payload.post) {
@@ -324,50 +322,6 @@ onBeforeUnmount(() => {
 watch(postId, () => {
   isDeleted.value = false
 })
-
-// Scroll so the top of the highlighted post aligns with the top of the middle column (top-level posts only).
-// Run after the page has loaded so layout is settled.
-function scrollHighlightedPostToTop() {
-  if (!import.meta.client) return
-  if (post.value?.parent) return
-  const scroller = middleScrollerRef.value
-  const postEl = highlightedPostRef.value
-  if (!scroller || !postEl) return
-  const apply = () => {
-    const scrollerRect = scroller.getBoundingClientRect()
-    const postRect = postEl.getBoundingClientRect()
-    const titleBarHeight =
-      parseInt(getComputedStyle(scroller).getPropertyValue('--moh-title-bar-height') || '0', 10) || 0
-    const targetTop = scrollerRect.top + titleBarHeight
-    const delta = postRect.top - targetTop
-    if (Math.abs(delta) < 2) return
-    scroller.scrollTop += delta
-  }
-  nextTick(() => {
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => apply())
-    })
-  })
-}
-
-// When post and ref are ready, scroll after load (idle or next frame).
-watch(
-  () => [post.value?.id, highlightedPostRef.value] as const,
-  ([id, el]) => {
-    if (!id || !el || post.value?.parent) return
-    const schedule = () => {
-      if (typeof requestIdleCallback !== 'undefined') {
-        requestIdleCallback(() => scrollHighlightedPostToTop(), { timeout: 100 })
-      } else {
-        setTimeout(() => scrollHighlightedPostToTop(), 0)
-      }
-    }
-    nextTick(() => {
-      requestAnimationFrame(() => schedule())
-    })
-  },
-  { flush: 'post' },
-)
 
 watch(
   () => [post.value?.id, isOnlyMe.value] as const,
@@ -495,6 +449,7 @@ const usableMedia = computed(() => {
   return (post.value.media ?? []).filter((m) => Boolean(m && !m.deletedAt && (m.url ?? '').trim()))
 })
 
+// Best media by size (width*height) for og:image; expose thumbnailUrl for video poster, dimensions for og:image:width/height.
 const primaryMedia = computed(() => {
   const xs = usableMedia.value
   if (!xs.length) return null
@@ -509,19 +464,42 @@ const primaryMedia = computed(() => {
       best = m
     }
   }
-  return best
+  const b = best
+  if (!b) return null
+  return {
+    url: b.url ?? null,
+    thumbnailUrl: b.kind === 'video' ? (b.thumbnailUrl ?? null) : null,
+    kind: b.kind ?? null,
+    width: b.width ?? null,
+    height: b.height ?? null,
+  }
 })
 
+// First video in post media for og:video / twitter:player.
+const primaryVideo = computed(() => {
+  const first = usableMedia.value.find((m) => m.kind === 'video')
+  if (!first || !(first.url ?? '').trim()) return null
+  return {
+    url: (first.url ?? '').trim(),
+    mp4Url: first.mp4Url ?? null,
+    width: first.width ?? null,
+    height: first.height ?? null,
+  }
+})
+
+// Extra og:image URLs (other images, GIFs, video thumbnails) so platforms can pick/rotate; cap to avoid huge payloads.
 const extraOgMediaUrls = computed(() => {
   const xs = usableMedia.value
   const primaryUrl = (primaryMedia.value?.url ?? '').trim()
+  const primaryThumb = (primaryMedia.value?.thumbnailUrl ?? '').trim()
   const out: string[] = []
   for (const m of xs) {
     const u = (m.url ?? '').trim()
     if (!u) continue
     if (primaryUrl && u === primaryUrl) continue
+    if (primaryThumb && u === primaryThumb) continue
     out.push(u)
-    if (out.length >= 3) break
+    if (out.length >= 4) break
   }
   return out
 })
@@ -610,6 +588,7 @@ usePostPermalinkSeo({
   linkMeta,
   primaryMedia,
   extraOgMediaUrls,
+  primaryVideo,
   bodyTextSansLinks,
 })
 

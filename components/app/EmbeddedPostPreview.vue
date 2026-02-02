@@ -84,7 +84,7 @@
 </template>
 
 <script setup lang="ts">
-import type { FeedPost, GetPostResponse } from '~/types/api'
+import type { FeedPost, GetPostData } from '~/types/api'
 import { getApiErrorMessage } from '~/utils/api-error'
 
 const props = defineProps<{
@@ -150,8 +150,8 @@ const { data, pending, error, refresh } = useAsyncData(
   async () => {
     const pid = id.value
     if (!pid) return null
-    const res = await apiFetchData<GetPostResponse>('/posts/' + encodeURIComponent(pid), { method: 'GET' })
-    return res?.post ?? null
+    const res = await apiFetchData<GetPostData>('/posts/' + encodeURIComponent(pid), { method: 'GET' })
+    return res ?? null
   },
   {
     server: true,

@@ -1,10 +1,10 @@
-import type { FeedPost, GetUserPostsResponse } from '~/types/api'
+import type { ApiPagination, FeedPost, GetUserPostsData } from '~/types/api'
 import { getApiErrorMessage } from '~/utils/api-error'
 import { usePostCountBumps } from '~/composables/usePostCountBumps'
 
 export type UserPostsFilter = 'all' | 'public' | 'verifiedOnly' | 'premiumOnly'
 
-type PostCounts = NonNullable<GetUserPostsResponse['counts']>
+type PostCounts = NonNullable<ApiPagination['counts']>
 
 const EMPTY_COUNTS: PostCounts = {
   all: 0,
@@ -13,7 +13,7 @@ const EMPTY_COUNTS: PostCounts = {
   premiumOnly: 0,
 }
 
-export async function useUserPosts(
+export function useUserPosts(
   usernameLower: Ref<string>,
   opts: {
     enabled?: Ref<boolean>
@@ -22,8 +22,9 @@ export async function useUserPosts(
     cookieKeyPrefix?: string
   } = {},
 ) {
-  const { apiFetchData } = useApiClient()
+  const { apiFetch } = useApiClient()
   const { user: authUser } = useAuth()
+  const { clearBumpsForPostIds } = usePostCountBumps()
   const enabled = opts.enabled ?? computed(() => true)
   const prefix = opts.cookieKeyPrefix ?? 'moh.profile.posts'
 
@@ -45,10 +46,23 @@ export async function useUserPosts(
     filter.value = 'all'
     sort.value = 'new'
   }
-  const posts = ref<FeedPost[]>([])
+  // Use shared state keyed by username so SSR/hydration and client navigation see the same list.
+  const postsKey = `user-posts-list:${prefix}:${usernameLower.value}`
+  const postsState = useState<FeedPost[]>(postsKey, () => [])
+  // Local ref for display so template reactivity is reliable; kept in sync with postsState.
+  const posts = ref<FeedPost[]>([...postsState.value])
   const counts = ref<PostCounts>(EMPTY_COUNTS)
   const loading = ref(false)
   const error = ref<string | null>(null)
+  const hasLoadedOnce = ref(false)
+
+  // #region agent log
+  const _log = (location: string, message: string, data: Record<string, unknown>, hypothesisId: string) => {
+    if (typeof globalThis.fetch !== 'undefined') {
+      globalThis.fetch('http://127.0.0.1:7242/ingest/49a04c9a-7793-45e2-935d-a6adda90157a', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location, message, data: { ...data, username: usernameLower.value }, timestamp: Date.now(), sessionId: 'debug-profile-posts', hypothesisId }) }).catch(() => {})
+    }
+  }
+  // #endregion
 
   const viewerIsVerified = computed(() => Boolean(authUser.value?.verifiedStatus && authUser.value.verifiedStatus !== 'none'))
   const viewerIsPremium = computed(() => Boolean(authUser.value?.premium))
@@ -78,8 +92,12 @@ export async function useUserPosts(
   )
 
   async function fetch(nextFilter: UserPostsFilter, nextSort: 'new' | 'trending') {
+    // #region agent log
+    _log('useUserPosts.ts:fetch:entry', 'fetch() called', { nextFilter, nextSort, enabled: enabled.value, client: import.meta.client }, 'H1,H5')
+    // #endregion
     if (!enabled.value) {
       posts.value = []
+      postsState.value = []
       error.value = null
       return
     }
@@ -88,26 +106,43 @@ export async function useUserPosts(
 
     if (nextFilter === 'verifiedOnly' && !viewerIsVerified.value) {
       posts.value = []
+      postsState.value = []
       return
     }
     if (nextFilter === 'premiumOnly' && !viewerIsPremium.value) {
       posts.value = []
+      postsState.value = []
       return
     }
 
     loading.value = true
     try {
-      const res = await apiFetchData<GetUserPostsResponse>(
+      // #region agent log
+      _log('useUserPosts.ts:fetch:beforeApi', 'before apiFetch', { username: usernameLower.value }, 'H2')
+      // #endregion
+      const res = await apiFetch<GetUserPostsData>(
         `/posts/user/${encodeURIComponent(usernameLower.value)}`,
         { method: 'GET', query: { limit: 30, visibility: nextFilter, sort: nextSort } }
       )
-      posts.value = res.posts
-      counts.value = res.counts ?? counts.value
-      clearBumpsForPostIds(res.posts.map((p) => p.id))
+      // #region agent log
+      _log('useUserPosts.ts:fetch:afterApi', 'after apiFetch', { isArray: Array.isArray(res?.data), dataLen: Array.isArray(res?.data) ? res.data.length : -1, resKeys: res ? Object.keys(res) : [] }, 'H2')
+      // #endregion
+      const data = res.data ?? []
+      posts.value = data
+      postsState.value = data
+      counts.value = res.pagination?.counts ?? counts.value
+      clearBumpsForPostIds(data.map((p) => p.id))
+      // #region agent log
+      _log('useUserPosts.ts:fetch:afterAssign', 'after assign', { postsLength: posts.value.length, loading: loading.value, error: error.value, ctaKind: ctaKind.value, postsKey }, 'H3,H4')
+      // #endregion
     } catch (e: unknown) {
       error.value = getApiErrorMessage(e) || 'Failed to load posts.'
+      // #region agent log
+      _log('useUserPosts.ts:fetch:catch', 'fetch error', { errMsg: getApiErrorMessage(e) || String(e) }, 'H2')
+      // #endregion
     } finally {
       loading.value = false
+      hasLoadedOnce.value = true
     }
   }
 
@@ -125,25 +160,13 @@ export async function useUserPosts(
     const pid = (id ?? '').trim()
     if (!pid) return
     posts.value = posts.value.filter((p) => p.id !== pid)
+    postsState.value = posts.value
   }
 
-  // Initial SSR-friendly load (All)
-  if (enabled.value) {
-    const { data: initial, error: initialErr } = await useAsyncData(
-      () => `user-posts:${prefix}:${usernameLower.value}`,
-      async () => {
-        return await apiFetchData<GetUserPostsResponse>(
-          `/posts/user/${encodeURIComponent(usernameLower.value)}`,
-          { method: 'GET', query: { limit: 30, visibility: filter.value, sort: sort.value } }
-        )
-      }
-    )
-
-    posts.value = initial.value?.posts ?? []
-    counts.value = initial.value?.counts ?? EMPTY_COUNTS
-    error.value = initialErr.value ? (getApiErrorMessage(initialErr.value) || 'Failed to load posts.') : null
-  } else {
+  // Load posts after the page (client-only). Profile metadata is SSR-only and does not include posts.
+  if (!enabled.value) {
     posts.value = []
+    postsState.value = []
     counts.value = EMPTY_COUNTS
     error.value = null
   }
@@ -161,16 +184,32 @@ export async function useUserPosts(
   watch(
     enabled,
     (on) => {
+      // #region agent log
+      _log('useUserPosts.ts:enabledWatch', 'enabled watch', { on, client: import.meta.client }, 'H1,H5')
+      // #endregion
       if (!on) {
         posts.value = []
+        postsState.value = []
         error.value = null
         return
       }
+      if (!import.meta.client) return
       void fetch(filter.value, sort.value)
     },
-    { flush: 'post' }
+    { flush: 'post', immediate: true }
   )
 
-  return { filter, sort, posts, counts, loading, error, viewerIsVerified, viewerIsPremium, ctaKind, setFilter, setSort, removePost }
+  // Ensure we fetch on the client after mount; the enabled watch may only run during SSR (we return early there).
+  onMounted(() => {
+    // #region agent log
+    const willFetch = import.meta.client && enabled.value && posts.value.length === 0
+    _log('useUserPosts.ts:onMounted', 'onMounted', { client: import.meta.client, enabled: enabled.value, postsLength: posts.value.length, willFetch }, 'H1,H5')
+    // #endregion
+    if (import.meta.client && enabled.value && posts.value.length === 0) {
+      void fetch(filter.value, sort.value)
+    }
+  })
+
+  return { filter, sort, posts, counts, loading, error, hasLoadedOnce, viewerIsVerified, viewerIsPremium, ctaKind, setFilter, setSort, removePost }
 }
 

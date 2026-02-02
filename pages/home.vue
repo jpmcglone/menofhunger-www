@@ -40,7 +40,9 @@
         </AppInlineAlert>
 
         <div v-else-if="loading && !posts.length" class="flex justify-center pt-12 pb-8">
-          <ProgressSpinner style="width: 48px; height: 48px" strokeWidth="4" />
+          <div class="moh-loading-spinner">
+            <ProgressSpinner style="width: 48px; height: 48px" strokeWidth="4" />
+          </div>
         </div>
 
         <div v-else>
@@ -173,13 +175,17 @@ async function createPostViaFeed(
   }> | null,
 ): Promise<{ id: string } | null> {
   const created = await addPost(body, visibility, media ?? null)
-  if (created?.id && postBodyHasVideoEmbed(created.body ?? '', Boolean(created.media?.length))) {
-    newlyPostedVideoPostId.value = created.id
-    if (import.meta.client) {
-      setTimeout(() => {
-        newlyPostedVideoPostId.value = null
-      }, 800)
+  if (created?.id) {
+    if (postBodyHasVideoEmbed(created.body ?? '', Boolean(created.media?.length))) {
+      newlyPostedVideoPostId.value = created.id
+      if (import.meta.client) {
+        setTimeout(() => {
+          newlyPostedVideoPostId.value = null
+        }, 800)
+      }
     }
+    // Refetch feed so the new post is guaranteed to appear at the top (syncs server state).
+    void refresh()
   }
   return created?.id ? { id: created.id } : null
 }

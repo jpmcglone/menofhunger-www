@@ -29,13 +29,13 @@
         </div>
       </NuxtLink>
 
-      <NuxtLink to="/admin/image-review" class="block">
+      <NuxtLink to="/admin/media-review" class="block">
         <div class="w-full rounded-xl border border-gray-200 p-3 transition-colors hover:bg-gray-50 dark:border-zinc-800 dark:hover:bg-zinc-900">
           <div class="flex items-center gap-3">
             <i class="pi pi-images text-lg" aria-hidden="true" />
             <div class="min-w-0 flex-1">
-              <div class="font-semibold truncate">Image review</div>
-              <div class="text-sm text-gray-600 dark:text-gray-300 truncate">Review and delete uploaded images</div>
+              <div class="font-semibold truncate">Media review</div>
+              <div class="text-sm text-gray-600 dark:text-gray-300 truncate">Review and delete uploaded images and videos</div>
             </div>
             <i class="pi pi-angle-right text-gray-400" aria-hidden="true" />
           </div>

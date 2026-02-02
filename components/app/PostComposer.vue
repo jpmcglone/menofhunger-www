@@ -86,6 +86,8 @@
               ref="composerTextareaEl"
               v-model="draft"
               rows="3"
+              enterkeyhint="enter"
+              inputmode="text"
               class="moh-composer-textarea w-full resize-none overflow-hidden rounded-xl border border-gray-300 bg-transparent px-3 py-2 text-[15px] leading-6 text-gray-900 placeholder:text-gray-500 focus:outline-none dark:border-zinc-700 dark:text-gray-50 dark:placeholder:text-zinc-500"
               :style="composerTextareaVars"
               :placeholder="composerPlaceholder"
@@ -242,7 +244,7 @@
 </template>
 
 <script setup lang="ts">
-import type { CreatePostResponse, PostVisibility } from '~/types/api'
+import type { CreatePostData, PostVisibility } from '~/types/api'
 import type { CreateMediaPayload } from '~/composables/useComposerMedia'
 import { PRIMARY_ONLYME_PURPLE, PRIMARY_PREMIUM_ORANGE, PRIMARY_TEXT_DARK, PRIMARY_TEXT_LIGHT, PRIMARY_VERIFIED_BLUE, primaryPaletteToCssVars } from '~/utils/theme-tint'
 import { tinyTooltip } from '~/utils/tiny-tooltip'
@@ -463,20 +465,18 @@ const submit = async () => {
 
     const created = props.createPost
       ? await props.createPost(draft.value, vis, mediaPayload)
-      : (
-          await apiFetchData<CreatePostResponse>('/posts', {
-            method: 'POST',
-            body: props.replyTo
-              ? {
-                  body: draft.value,
-                  visibility: vis,
-                  parent_id: props.replyTo.parentId,
-                  mentions: props.replyTo.mentionUsernames,
-                  media: mediaPayload,
-                }
-              : { body: draft.value, visibility: vis, media: mediaPayload },
-          })
-        ).post
+      : await apiFetchData<CreatePostData>('/posts', {
+          method: 'POST',
+          body: props.replyTo
+            ? {
+                body: draft.value,
+                visibility: vis,
+                parent_id: props.replyTo.parentId,
+                mentions: props.replyTo.mentionUsernames,
+                media: mediaPayload,
+              }
+            : { body: draft.value, visibility: vis, media: mediaPayload },
+        })
 
     draft.value = ''
     clearAll()

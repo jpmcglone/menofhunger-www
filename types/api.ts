@@ -1,4 +1,16 @@
-export type ApiEnvelope<T> = { data: T }
+/** Success envelope: payload in `data`, optional cursor/counts in `pagination`. */
+export type ApiEnvelope<T> = { data: T; pagination?: ApiPagination }
+
+export type ApiPagination = {
+  nextCursor?: string | null
+  counts?: {
+    all: number
+    public: number
+    verifiedOnly: number
+    premiumOnly: number
+  } | null
+  totalOnline?: number
+}
 
 export type ApiMetaError = {
   code: number
@@ -115,24 +127,36 @@ export type RemoveBookmarkResponse = {
   bookmarked: false
 }
 
+/** Single bookmark item (search/bookmarks list); pagination in envelope. */
+export type SearchBookmarkItem = {
+  bookmarkId: string
+  createdAt: string
+  collectionIds: string[]
+  post: FeedPost
+}
+
 export type SearchBookmarksResponse = {
-  bookmarks: Array<{
-    bookmarkId: string
-    createdAt: string
-    collectionIds: string[]
-    post: FeedPost
-  }>
+  bookmarks: SearchBookmarkItem[]
   nextCursor: string | null
 }
+
+/** Data type for GET /posts (array); pagination in envelope. */
+export type GetPostsData = FeedPost[]
 
 export type GetPostsResponse = {
   posts: FeedPost[]
   nextCursor: string | null
 }
 
+/** Data type for GET /posts/:id (single post). */
+export type GetPostData = FeedPost
+
 export type GetPostResponse = {
   post: FeedPost
 }
+
+/** Data type for GET /posts/:id/comments (array); pagination in envelope. */
+export type GetPostCommentsData = FeedPost[]
 
 export type GetPostCommentsResponse = {
   comments: FeedPost[]
@@ -145,9 +169,15 @@ export type GetPostCommentsResponse = {
   } | null
 }
 
+/** Data type for GET /posts/:id/thread-participants (array). */
+export type GetThreadParticipantsData = Array<{ id: string; username: string }>
+
 export type GetThreadParticipantsResponse = {
-  participants: Array<{ id: string; username: string }>
+  participants: GetThreadParticipantsData
 }
+
+/** Data type for GET /posts/user/:username (array); pagination in envelope. */
+export type GetUserPostsData = FeedPost[]
 
 export type GetUserPostsResponse = {
   posts: FeedPost[]
@@ -163,17 +193,21 @@ export type GetUserPostsResponse = {
 export type AdminImageReviewListItem = {
   id: string
   r2Key: string
+  kind: PostMediaKind | null
   lastModified: string
   publicUrl: string | null
   deletedAt: string | null
   belongsToSummary: 'post' | 'user' | 'orphan'
+  postId: string | null
+  authorUsername: string | null
+  userId: string | null
+  profileUsername: string | null
 }
 
-export type AdminImageReviewListResponse = {
-  items: AdminImageReviewListItem[]
-  nextCursor: string | null
-}
+/** Data type for GET /admin/media-review (array); pagination in envelope. */
+export type AdminImageReviewListData = AdminImageReviewListItem[]
 
+/** Data type for GET /admin/media-review/:id (asset + references). */
 export type AdminImageReviewDetailResponse = {
   asset: {
     id: string
@@ -217,20 +251,20 @@ export type AdminImageReviewDeleteResponse = {
   userCount?: number
 }
 
-export type CreatePostResponse = {
-  post: FeedPost
+/** Data type for POST /posts (created post). */
+export type CreatePostData = FeedPost
+
+export type GiphyItem = {
+  id: string
+  title: string
+  url: string
+  mp4Url: string | null
+  width: number | null
+  height: number | null
 }
 
-export type GiphySearchResponse = {
-  items: Array<{
-    id: string
-    title: string
-    url: string
-    mp4Url: string | null
-    width: number | null
-    height: number | null
-  }>
-}
+/** Data type for GET /giphy/search and /giphy/trending (array). */
+export type GiphySearchResponse = GiphyItem[]
 
 export type FollowVisibility = 'all' | 'verified' | 'premium' | 'none'
 
@@ -255,15 +289,11 @@ export type FollowListUser = {
   relationship: FollowRelationship
 }
 
-export type GetFollowsListResponse = {
-  users: FollowListUser[]
-  nextCursor: string | null
-}
+/** Data type for GET /follows/:username/followers and /following (array); pagination in envelope. */
+export type GetFollowsListData = FollowListUser[]
 
 export type OnlineUser = FollowListUser & { lastConnectAt?: number; idle?: boolean }
 
-export type GetPresenceOnlineResponse = {
-  users: OnlineUser[]
-  totalOnline?: number
-}
+/** Data type for GET /presence/online (array); totalOnline in pagination. */
+export type GetPresenceOnlineData = OnlineUser[]
 

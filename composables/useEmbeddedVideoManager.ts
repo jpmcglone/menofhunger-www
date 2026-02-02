@@ -2,12 +2,8 @@ export function useEmbeddedVideoManager() {
   // Global (per-app) active embedded video. Only one at a time.
   const activePostId = useState<string | null>('moh.active-embedded-video-post-id', () => null)
 
-  /** App-wide sound: when true, new videos start unmuted. Unmute sets true; mute or pause sets false. */
+  /** When user unmutes a video (via tap), we set true so other players sync to unmuted. Mute sets false. Never set unmuted programmatically (Safari requires user gesture). */
   const appWideSoundOn = useState<boolean>('moh.app-video-sound-on', () => false)
-
-  /** When user pauses a video that was unmuted, we remember so unpausing the SAME video keeps it unmuted. */
-  const lastPausedPostId = useState<string | null>('moh.video-last-paused-post-id', () => null)
-  const lastPausedWasUnmuted = useState<boolean>('moh.video-last-paused-was-unmuted', () => false)
 
   // NOTE: We intentionally keep DOM elements out of `useState()` (SSR-safe).
   // This registry is client-only.
@@ -236,27 +232,6 @@ export function useEmbeddedVideoManager() {
     activePostId.value = null
   }
 
-  /** Call when user pauses a video. Next time they unpause THIS video it stays unmuted; other videos use appWideSoundOn. */
-  function setPausedWithSound(postId: string, wasUnmuted: boolean) {
-    const id = (postId ?? '').trim()
-    if (!id) return
-    appWideSoundOn.value = false
-    lastPausedPostId.value = id
-    lastPausedWasUnmuted.value = wasUnmuted
-  }
-
-  /** When activating/playing a video, call this. If this is the same video they just paused (while unmuted), returns true and clears the stored state. */
-  function getShouldStartUnmuted(postId: string): boolean {
-    const id = (postId ?? '').trim()
-    if (!id) return appWideSoundOn.value
-    if (lastPausedPostId.value === id && lastPausedWasUnmuted.value) {
-      lastPausedPostId.value = null
-      lastPausedWasUnmuted.value = false
-      return true
-    }
-    return appWideSoundOn.value
-  }
-
   return {
     activePostId,
     appWideSoundOn,
@@ -264,8 +239,6 @@ export function useEmbeddedVideoManager() {
     unregister,
     activate,
     stopAll,
-    setPausedWithSound,
-    getShouldStartUnmuted,
   }
 }
 

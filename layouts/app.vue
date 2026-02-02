@@ -214,12 +214,12 @@
                     {{ headerTitle }}
                   </h1>
                   <AppVerifiedBadge
-                    v-if="appHeader?.verifiedStatus"
+                    v-if="hydrated && appHeader?.verifiedStatus"
                     :status="appHeader.verifiedStatus"
                     :premium="Boolean(appHeader?.premium)"
                   />
                 </div>
-                <div v-if="typeof appHeader?.postCount === 'number'" class="shrink-0 text-sm moh-text-muted">
+                <div v-if="hydrated && typeof appHeader?.postCount === 'number'" class="shrink-0 text-sm moh-text-muted">
                   <span class="font-semibold tabular-nums">{{ formatCompactNumber(appHeader.postCount) }}</span>
                   <span class="ml-1">posts</span>
                 </div>
@@ -546,6 +546,11 @@ const isBookmarksPage = computed(() => route.path === '/bookmarks' || route.path
 const isNotificationsPage = computed(() => route.path === '/notifications')
 const isOnlyMePage = computed(() => route.path === '/only-me')
 const { header: appHeader } = useAppHeader()
+// Prevent SSR hydration mismatches: render route meta during hydration, then swap to appHeader after mount.
+const hydrated = ref(false)
+onMounted(() => {
+  hydrated.value = true
+})
 const notifBadge = useNotificationsBadge()
 const { totalCount: bookmarkTotalCount, ensureLoaded: ensureBookmarkCollectionsLoaded } = useBookmarkCollections()
 
@@ -663,12 +668,16 @@ watch(
 )
 
 const headerTitle = computed(() => {
+  // During SSR + initial hydration, prefer route meta title for stable markup.
+  if (!hydrated.value) return title.value
   const t = (appHeader.value?.title ?? '').trim()
   return t || title.value
 })
 
-const headerIcon = computed(() => appHeader.value?.icon ?? routeHeaderDefaults.icon)
-const headerDescription = computed(() => appHeader.value?.description ?? routeHeaderDefaults.description)
+const headerIcon = computed(() => (hydrated.value ? (appHeader.value?.icon ?? routeHeaderDefaults.value.icon) : routeHeaderDefaults.value.icon))
+const headerDescription = computed(() =>
+  hydrated.value ? (appHeader.value?.description ?? routeHeaderDefaults.value.description) : routeHeaderDefaults.value.description
+)
 
 const routeHeaderDefaults = computed(() => {
   const p = route.path

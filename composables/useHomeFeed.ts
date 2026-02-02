@@ -83,9 +83,9 @@ export function useHomeFeed() {
     if (followingCountLoading.value) return
 
     followingCountLoading.value = true
-    void apiFetchData<{ followingCount: number }>('/follows/me/following-count')
+    void apiFetchData<number>('/follows/me/following-count')
       .then((res) => {
-        const n = Number((res as { followingCount?: unknown } | null)?.followingCount ?? 0)
+        const n = Number(res ?? 0)
         followingCount.value = Number.isFinite(n) ? Math.max(0, Math.floor(n)) : 0
       })
       .catch(() => {

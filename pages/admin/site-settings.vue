@@ -77,10 +77,10 @@ async function loadSiteConfig() {
   if (siteCfg.value) return
   siteError.value = null
   try {
-    const res = await apiFetchData<{ config: SiteConfig }>('/admin/site-config', { method: 'GET' })
-    siteCfg.value = res.config
-    sitePostsPerWindow.value = res.config.postsPerWindow ?? 5
-    siteWindowMinutes.value = Math.max(1, Math.round((res.config.windowSeconds ?? 300) / 60))
+    const cfg = await apiFetchData<SiteConfig>('/admin/site-config', { method: 'GET' })
+    siteCfg.value = cfg
+    sitePostsPerWindow.value = cfg.postsPerWindow ?? 5
+    siteWindowMinutes.value = Math.max(1, Math.round((cfg.windowSeconds ?? 300) / 60))
   } catch (e: unknown) {
     siteError.value = getApiErrorMessage(e) || 'Failed to load site settings.'
   }
@@ -96,14 +96,14 @@ async function saveSiteConfig() {
   siteError.value = null
   siteSaving.value = true
   try {
-    const res = await apiFetchData<{ config: SiteConfig }>('/admin/site-config', {
+    const updated = await apiFetchData<SiteConfig>('/admin/site-config', {
       method: 'PATCH',
       body: {
         postsPerWindow: sitePostsPerWindow.value,
         windowSeconds: Math.max(10, Math.round(siteWindowMinutes.value * 60)),
       },
     })
-    siteCfg.value = res.config
+    siteCfg.value = updated
     siteSaved.value = true
   } catch (e: unknown) {
     siteError.value = getApiErrorMessage(e) || 'Failed to save site settings.'

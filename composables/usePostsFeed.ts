@@ -1,4 +1,4 @@
-import type { CreatePostResponse, FeedPost, GetPostsResponse, PostMediaKind, PostMediaSource, PostVisibility } from '~/types/api'
+import type { FeedPost, GetPostsData, CreatePostData, PostMediaKind, PostMediaSource, PostVisibility } from '~/types/api'
 import { getApiErrorMessage } from '~/utils/api-error'
 import { useMiddleScroller } from '~/composables/useMiddleScroller'
 import { usePostCountBumps } from '~/composables/usePostCountBumps'
@@ -7,7 +7,7 @@ type FeedFilter = 'all' | 'public' | PostVisibility
 type FeedSort = 'new' | 'trending'
 
 export function usePostsFeed(options: { visibility?: Ref<FeedFilter>; followingOnly?: Ref<boolean>; sort?: Ref<FeedSort> } = {}) {
-  const { apiFetchData } = useApiClient()
+  const { apiFetch, apiFetchData } = useApiClient()
   const middleScrollerEl = useMiddleScroller()
   const { clearBumpsForPostIds } = usePostCountBumps()
   const loadingIndicator = useLoadingIndicator()
@@ -27,7 +27,7 @@ export function usePostsFeed(options: { visibility?: Ref<FeedFilter>; followingO
     error.value = null
     loadingIndicator.start()
     try {
-      const res = await apiFetchData<GetPostsResponse>('/posts', {
+      const res = await apiFetch<GetPostsData>('/posts', {
         method: 'GET',
         query: {
           limit: 30,
@@ -36,10 +36,10 @@ export function usePostsFeed(options: { visibility?: Ref<FeedFilter>; followingO
           ...(sort.value === 'trending' ? { sort: 'trending' } : {}),
         }
       })
-      posts.value = res.posts
-      nextCursor.value = res.nextCursor
+      posts.value = res.data ?? []
+      nextCursor.value = res.pagination?.nextCursor ?? null
       lastHardRefreshMs.value = Date.now()
-      clearBumpsForPostIds(res.posts.map((p) => p.id))
+      clearBumpsForPostIds((res.data ?? []).map((p) => p.id))
     } catch (e: unknown) {
       error.value = getApiErrorMessage(e) || 'Failed to load posts.'
     } finally {
@@ -95,7 +95,7 @@ export function usePostsFeed(options: { visibility?: Ref<FeedFilter>; followingO
     const anchor = pickAnchor(scroller)
 
     try {
-      const res = await apiFetchData<GetPostsResponse>('/posts', {
+      const res = await apiFetch<GetPostsData>('/posts', {
         method: 'GET',
         query: {
           limit: 30,
@@ -104,15 +104,15 @@ export function usePostsFeed(options: { visibility?: Ref<FeedFilter>; followingO
           ...(sort.value === 'trending' ? { sort: 'trending' } : {}),
         },
       })
-      const fresh = res.posts ?? []
+      const fresh = res.data ?? []
       if (!fresh.length) return
 
-      const idx = fresh.findIndex((p) => p.id === headId)
+      const idx = fresh.findIndex((p: FeedPost) => p.id === headId)
       const candidates = idx >= 0 ? fresh.slice(0, idx) : fresh
       if (!candidates.length) return
 
-      const seen = new Set(existing.map((p) => p.id))
-      const newOnes = candidates.filter((p) => !seen.has(p.id))
+      const seen = new Set(existing.map((p: FeedPost) => p.id))
+      const newOnes = candidates.filter((p: FeedPost) => !seen.has(p.id))
       if (!newOnes.length) return
 
       posts.value = [...newOnes, ...existing]
@@ -151,7 +151,7 @@ export function usePostsFeed(options: { visibility?: Ref<FeedFilter>; followingO
     error.value = null
     loadingIndicator.start()
     try {
-      const res = await apiFetchData<GetPostsResponse>('/posts', {
+      const res = await apiFetch<GetPostsData>('/posts', {
         method: 'GET',
         query: {
           limit: 30,
@@ -161,9 +161,10 @@ export function usePostsFeed(options: { visibility?: Ref<FeedFilter>; followingO
           ...(sort.value === 'trending' ? { sort: 'trending' } : {}),
         }
       })
-      posts.value = [...posts.value, ...res.posts]
-      nextCursor.value = res.nextCursor
-      clearBumpsForPostIds(res.posts.map((p) => p.id))
+      const more = res.data ?? []
+      posts.value = [...posts.value, ...more]
+      nextCursor.value = res.pagination?.nextCursor ?? null
+      clearBumpsForPostIds(more.map((p) => p.id))
     } catch (e: unknown) {
       error.value = getApiErrorMessage(e) || 'Failed to load more posts.'
     } finally {
@@ -190,7 +191,7 @@ export function usePostsFeed(options: { visibility?: Ref<FeedFilter>; followingO
     if (!trimmed && !hasMedia) return null
 
     try {
-      const res = await apiFetchData<CreatePostResponse>('/posts', {
+      const post = await apiFetchData<CreatePostData>('/posts', {
         method: 'POST',
         body: {
           body: trimmed || '',
@@ -199,11 +200,12 @@ export function usePostsFeed(options: { visibility?: Ref<FeedFilter>; followingO
         }
       })
 
-      // Newest-first: prepend. "Only me" posts never appear in any feeds.
-      if (res.post.visibility !== 'onlyMe') {
-        posts.value = [res.post, ...posts.value]
+      // Newest-first: prepend so the new post shows immediately. "Only me" posts never appear in any feeds.
+      if (post.visibility !== 'onlyMe') {
+        posts.value = [post, ...posts.value]
+        await nextTick()
       }
-      return res.post
+      return post
     } catch (e: unknown) {
       error.value = getApiErrorMessage(e) || 'Failed to post.'
       throw e

@@ -14,6 +14,7 @@
         ref="singleVideoEl"
         :src="singleVideoSrc"
         :poster="posterFor(items[0])"
+        :preload="singleVideoPreload"
         class="absolute inset-0 h-full w-full object-contain"
         :class="hideThumbs ? 'opacity-0 transition-opacity duration-150' : 'opacity-100'"
         controls
@@ -22,7 +23,28 @@
         loop
         aria-label="Video"
         @play="onSingleVideoPlay"
+        @pause="onSingleVideoPause"
+        @volumechange="onSingleVideoVolumeChange"
       />
+      <!-- Small corner controls only (no dimming). Safari requires user gesture to unmute. -->
+      <button
+        v-if="singleVideoActive && singleVideoMuted"
+        type="button"
+        class="absolute right-2 top-2 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-black/50 text-white hover:bg-black/70"
+        aria-label="Tap for sound"
+        @click.stop="onTapUnmute"
+      >
+        <i class="pi pi-volume-off text-base" aria-hidden="true" />
+      </button>
+      <button
+        v-else-if="singleVideoActive && !singleVideoMuted"
+        type="button"
+        class="absolute right-2 top-2 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-black/50 text-white hover:bg-black/70"
+        aria-label="Mute"
+        @click.stop="onTapMute"
+      >
+        <i class="pi pi-volume-up text-base" aria-hidden="true" />
+      </button>
       <span
         v-if="items[0]?.durationSeconds != null && items[0].durationSeconds > 0"
         class="pointer-events-none absolute right-2 bottom-2 rounded bg-black/65 px-1.5 py-0.5 text-[11px] font-semibold tabular-nums text-white"
@@ -145,10 +167,11 @@ const props = withDefaults(
 
 const viewer = useImageLightbox()
 const videoManager = useEmbeddedVideoManager()
-const { activePostId, appWideSoundOn, setPausedWithSound, getShouldStartUnmuted } = videoManager
+const { activePostId, appWideSoundOn } = videoManager
 
 const singleVideoContainerRef = ref<HTMLElement | null>(null)
 const singleVideoEl = ref<HTMLVideoElement | null>(null)
+const singleVideoMuted = ref(true)
 const singleVideoActive = computed(() => Boolean(props.postId && activePostId.value === props.postId))
 /** Set when row is in view so the inline player is ready to play. */
 const singleVideoSrc = computed(() =>
@@ -156,6 +179,9 @@ const singleVideoSrc = computed(() =>
     ? items.value[0].url
     : undefined,
 )
+
+/** Off-screen videos don't load; in-view load metadata only (poster/duration) until play. */
+const singleVideoPreload = computed(() => (props.rowInView !== false ? 'metadata' : 'none'))
 
 /** Placeholder when video has no thumbnail (img src=video URL doesn't render). */
 const VIDEO_NO_THUMB_PLACEHOLDER =
@@ -184,18 +210,33 @@ function onSingleVideoPlay() {
 }
 
 function onSingleVideoPause() {
-  // User paused: next videos start muted; but unpausing THIS same video stays unmuted.
-  if (singleVideoActive.value && props.postId) {
-    const el = singleVideoEl.value
-    setPausedWithSound(props.postId, el ? !el.muted : false)
-  }
+  // When user pauses, treat as mute preference so other players stay muted.
+  appWideSoundOn.value = false
 }
 
 function onSingleVideoVolumeChange() {
   const el = singleVideoEl.value
   if (!el) return
-  // Unmute → remember so next videos are unmuted. Mute → remember muted.
+  singleVideoMuted.value = el.muted
   appWideSoundOn.value = !el.muted
+}
+
+/** Unmute in response to user tap (required on Safari). */
+function onTapUnmute() {
+  const el = singleVideoEl.value
+  if (!el) return
+  el.muted = false
+  singleVideoMuted.value = false
+  appWideSoundOn.value = true
+  el.play().catch(() => {})
+}
+
+function onTapMute() {
+  const el = singleVideoEl.value
+  if (!el) return
+  el.muted = true
+  singleVideoMuted.value = true
+  appWideSoundOn.value = false
 }
 
 function toLightboxItems(): LightboxMediaItem[] {
@@ -223,22 +264,23 @@ watch(singleVideoActive, (active) => {
   const el = singleVideoEl.value
   if (!el) return
   if (active) {
-    // New video or resuming same video: start unmuted if appWideSoundOn or "resume same unmuted".
-    if (props.postId) {
-      const shouldUnmute = getShouldStartUnmuted(props.postId)
-      el.muted = !shouldUnmute
-    }
+    // Always start muted (Safari requires user gesture to unmute; tap overlay to unmute).
+    el.muted = true
+    singleVideoMuted.value = true
     el.play().catch(() => {})
   } else {
     el.pause()
   }
 })
 
-// When user mutes/unmutes one player, sync all others to the same state.
+// When user mutes one player, sync others to muted.
 watch(appWideSoundOn, (soundOn) => {
   const el = singleVideoEl.value
   if (!el) return
-  el.muted = !soundOn
+  if (!soundOn) {
+    el.muted = true
+    singleVideoMuted.value = true
+  }
 })
 
 const items = computed(() => (props.media ?? []).filter((m) => Boolean(m?.url) || Boolean(m?.deletedAt)).slice(0, 4))

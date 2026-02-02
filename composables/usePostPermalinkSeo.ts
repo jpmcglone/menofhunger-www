@@ -5,6 +5,21 @@ import { siteConfig } from '~/config/site'
 import { safeUrlHostname } from '~/utils/link-utils'
 import { excerpt } from '~/utils/text'
 
+export type PostPermalinkPrimaryMedia = {
+  url?: string | null
+  thumbnailUrl?: string | null
+  kind?: string | null
+  width?: number | null
+  height?: number | null
+}
+
+export type PostPermalinkPrimaryVideo = {
+  url: string
+  mp4Url?: string | null
+  width?: number | null
+  height?: number | null
+}
+
 export function usePostPermalinkSeo(opts: {
   postId: ComputedRef<string>
   post: Ref<FeedPost | null>
@@ -14,8 +29,10 @@ export function usePostPermalinkSeo(opts: {
   restrictionSeoDescription: ComputedRef<string>
   previewLink: ComputedRef<string | null>
   linkMeta: ComputedRef<LinkMetadata | null>
-  primaryMedia: ComputedRef<{ url?: string | null; kind?: string | null } | null | undefined>
+  primaryMedia: ComputedRef<PostPermalinkPrimaryMedia | null | undefined>
   extraOgMediaUrls: ComputedRef<string[]>
+  /** Primary video for og:video / twitter:player (first video in post media). */
+  primaryVideo?: ComputedRef<PostPermalinkPrimaryVideo | null>
   bodyTextSansLinks: ComputedRef<string>
 }) {
   const canonicalPath = computed(() => `/p/${encodeURIComponent(opts.postId.value)}`)
@@ -34,7 +51,7 @@ export function usePostPermalinkSeo(opts: {
         const t = excerpt(bodyText, 56)
         return username ? `${t} — @${username}` : t
       }
-      const kind = opts.primaryMedia.value.kind === 'gif' ? 'GIF' : 'Photo'
+      const kind = opts.primaryMedia.value.kind === 'gif' ? 'GIF' : opts.primaryMedia.value.kind === 'video' ? 'Video' : 'Photo'
       return username ? `${kind} by @${username}` : kind
     }
 
@@ -106,8 +123,11 @@ export function usePostPermalinkSeo(opts: {
   const seoImage = computed(() => {
     if (opts.isRestricted.value) return '/images/logo-black-bg.png'
 
-    // Content-first: media wins.
-    const mediaUrl = (opts.primaryMedia.value?.url ?? '').trim()
+    // Content-first: for video use thumbnail (poster) so og:image is an image; else use media url.
+    const primary = opts.primaryMedia.value
+    const posterUrl = (primary?.thumbnailUrl ?? '').trim()
+    const mediaUrl = (primary?.url ?? '').trim()
+    if (posterUrl) return posterUrl
     if (mediaUrl) return mediaUrl
 
     // External link unfurl image.
@@ -127,7 +147,7 @@ export function usePostPermalinkSeo(opts: {
 
     if (opts.primaryMedia.value) {
       if (bodyText) return excerpt(bodyText, 120)
-      const kind = opts.primaryMedia.value.kind === 'gif' ? 'GIF' : 'Photo'
+      const kind = opts.primaryMedia.value.kind === 'gif' ? 'GIF' : opts.primaryMedia.value.kind === 'video' ? 'Video' : 'Photo'
       return username ? `${kind} by @${username}` : `${kind} on ${siteConfig.name}`
     }
     if (external) {
@@ -160,8 +180,11 @@ export function usePostPermalinkSeo(opts: {
       : { '@type': 'Organization', '@id': `${siteConfig.url}/#organization`, name: siteConfig.name, url: siteConfig.url }
 
     const images: string[] = []
-    const primaryUrl = (opts.primaryMedia.value?.url ?? '').trim()
-    if (primaryUrl) images.push(toAbs(primaryUrl))
+    const primary = opts.primaryMedia.value
+    const primaryImgUrl = (primary?.thumbnailUrl ?? primary?.url ?? '').trim()
+    if (primaryImgUrl) images.push(toAbs(primaryImgUrl))
+    const primaryMediaUrl = (primary?.url ?? '').trim()
+    if (primaryMediaUrl && primaryMediaUrl !== primaryImgUrl) images.push(toAbs(primaryMediaUrl))
     for (const u of opts.extraOgMediaUrls.value) images.push(toAbs(u))
     const linkImage = (opts.linkMeta.value?.imageUrl ?? '').trim()
     if (!images.length && linkImage) images.push(toAbs(linkImage))
@@ -169,22 +192,32 @@ export function usePostPermalinkSeo(opts: {
     // Always include a site fallback at the end.
     images.push(toAbs('/images/banner.png'))
 
-    return [
-      authorUrl ? author : null,
-      {
-        '@type': 'Article',
-        '@id': `${siteConfig.url}${canonicalPath.value}#article`,
-        mainEntityOfPage: { '@id': `${siteConfig.url}${canonicalPath.value}#webpage` },
-        headline: excerpt(opts.bodyTextSansLinks.value || 'Post', 90),
-        description: seoDescription.value,
-        datePublished: opts.post.value.createdAt,
-        dateModified: opts.post.value.createdAt,
-        author: { '@id': authorId },
-        publisher: { '@id': `${siteConfig.url}/#organization` },
-        image: Array.from(new Set(images)).filter(Boolean),
-        isAccessibleForFree: true,
+    const article: any = {
+      '@type': 'Article',
+      '@id': `${siteConfig.url}${canonicalPath.value}#article`,
+      mainEntityOfPage: { '@id': `${siteConfig.url}${canonicalPath.value}#webpage` },
+      headline: excerpt(opts.bodyTextSansLinks.value || 'Post', 90),
+      description: seoDescription.value,
+      datePublished: opts.post.value.createdAt,
+      dateModified: opts.post.value.createdAt,
+      author: { '@id': authorId },
+      publisher: { '@id': `${siteConfig.url}/#organization` },
+      image: Array.from(new Set(images)).filter(Boolean),
+      isAccessibleForFree: true,
+    }
+    const video = opts.primaryVideo?.value
+    if (video) {
+      const videoUrl = toAbs((video.url ?? '').trim())
+      if (videoUrl) {
+        article.video = {
+          '@type': 'VideoObject',
+          contentUrl: video.mp4Url ? toAbs(video.mp4Url) : videoUrl,
+          url: videoUrl,
+          ...(video.width != null && video.height != null ? { width: video.width, height: video.height } : {}),
+        }
       }
-    ].filter(Boolean)
+    }
+    return [authorUrl ? author : null, article].filter(Boolean)
   })
 
   usePageSeo({
@@ -199,19 +232,47 @@ export function usePostPermalinkSeo(opts: {
     jsonLdGraph
   })
 
-  // Extra share tags for article rich previews (public posts only).
+  // Extra share tags for article rich previews (public posts only): article meta, og:image dimensions, og:video, twitter:player.
   useHead({
     meta: computed(() => {
       if (!opts.post.value || opts.isRestricted.value) return []
       const username = (opts.post.value.author.username ?? '').trim()
       const authorUrl = username ? `${siteConfig.url}/u/${encodeURIComponent(username)}` : null
-      return [
+      const meta: Array<{ property?: string; name?: string; content: string }> = [
         { property: 'article:published_time', content: opts.post.value.createdAt },
         { property: 'article:modified_time', content: opts.post.value.createdAt },
         ...(authorUrl ? [{ property: 'article:author', content: authorUrl }] : []),
-        // Multiple images: add extra OG images so platforms can pick/rotate.
+        // Multiple images: add extra OG images so platforms can pick/rotate (images, GIFs).
         ...opts.extraOgMediaUrls.value.map((u) => ({ property: 'og:image', content: toAbs(u) })),
       ]
+      // Actual image dimensions when available (better than generic 1200x630).
+      const w = opts.primaryMedia.value?.width
+      const h = opts.primaryMedia.value?.height
+      if (typeof w === 'number' && w > 0 && typeof h === 'number' && h > 0) {
+        meta.push({ property: 'og:image:width', content: String(w) })
+        meta.push({ property: 'og:image:height', content: String(h) })
+      }
+      // Video: og:video and twitter:player for rich video previews.
+      const video = opts.primaryVideo?.value
+      if (video) {
+        const videoUrl = (video.url ?? '').trim()
+        if (videoUrl) {
+          const absVideoUrl = toAbs(videoUrl)
+          meta.push({ property: 'og:video', content: absVideoUrl })
+          meta.push({ property: 'og:video:url', content: absVideoUrl })
+          meta.push({ property: 'og:video:type', content: 'video/mp4' })
+          if (video.width != null && video.width > 0 && video.height != null && video.height > 0) {
+            meta.push({ property: 'og:video:width', content: String(video.width) })
+            meta.push({ property: 'og:video:height', content: String(video.height) })
+          }
+          meta.push({ name: 'twitter:player', content: absVideoUrl })
+          if (video.width != null && video.height != null) {
+            meta.push({ name: 'twitter:player:width', content: String(video.width) })
+            meta.push({ name: 'twitter:player:height', content: String(video.height) })
+          }
+        }
+      }
+      return meta
     }),
   })
 }
