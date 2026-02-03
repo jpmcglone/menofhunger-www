@@ -1,86 +1,49 @@
 <template>
   <div class="relative w-full min-h-full flex flex-col items-center justify-center">
-    <!-- Loader overlay: full-screen, same background as layout. Fades out when ready. -->
-    <Transition
-      enter-active-class="transition-opacity duration-150"
-      enter-from-class="opacity-0"
-      enter-to-class="opacity-100"
-      leave-active-class="transition-opacity duration-200 ease-out"
-      leave-from-class="opacity-100"
-      leave-to-class="opacity-0"
-    >
-      <div
-        v-show="showLoader"
-        class="fixed inset-0 z-50 flex items-center justify-center moh-bg moh-texture"
-        aria-hidden="true"
-      >
-        <AppLogo
-          :alt="siteConfig.name"
-          class="rounded-lg"
-          :width="400"
-          :height="400"
-        />
-      </div>
-    </Transition>
+    <div class="w-full flex flex-col items-center justify-center">
+      <AppLogo
+        :alt="siteConfig.name"
+        class="mb-0 rounded-lg"
+        :width="400"
+        :height="400"
+      />
 
-    <!-- Landing content: hidden until ready and not redirecting -->
-    <Transition
-      enter-active-class="transition-opacity duration-300 ease-out"
-      enter-from-class="opacity-0"
-      enter-to-class="opacity-100"
-      leave-active-class="transition-opacity duration-150"
-      leave-from-class="opacity-100"
-      leave-to-class="opacity-0"
-    >
-      <div
-        v-show="showContent"
-        class="w-full flex flex-col items-center justify-center"
-      >
-        <AppLogo
-          :alt="siteConfig.name"
-          class="mb-0 rounded-lg"
-          :width="400"
-          :height="400"
-        />
+      <p class="mt-0 text-2xl font-medium tracking-wider text-gray-500 dark:text-gray-500">
+        <span class="text-gray-800 dark:text-gray-200">Updates coming soon.</span>
+      </p>
+      <p class="mt-2 text-lg font-light tracking-widest text-gray-400 dark:text-gray-600">
+        Stay tuned. Stay hungry.
+      </p>
+      <div class="mt-6 h-[1px] w-32 mx-auto bg-gradient-to-r from-transparent via-gray-400 dark:via-gray-600 to-transparent" />
 
-        <!-- Anonymous: "Updates coming soon" + Roanoke card -->
-        <p class="mt-0 text-2xl font-medium tracking-wider text-gray-500 dark:text-gray-500">
-          <span class="text-gray-800 dark:text-gray-200">Updates coming soon.</span>
-        </p>
-        <p class="mt-2 text-lg font-light tracking-widest text-gray-400 dark:text-gray-600">
-          Stay tuned. Stay hungry.
-        </p>
-        <div class="mt-6 h-[1px] w-32 mx-auto bg-gradient-to-r from-transparent via-gray-400 dark:via-gray-600 to-transparent" />
-
-        <!-- Roanoke meetup: subtle "question card" that pops -->
-        <div class="mt-10 w-full max-w-xl">
-          <div class="cursor-pointer rounded-2xl border border-orange-200/70 bg-orange-50/60 px-4 py-3 shadow-sm dark:border-orange-500/20 dark:bg-orange-500/10">
-            <button
-              type="button"
-              class="w-full text-left cursor-pointer"
-              @click="isRoanokeOpen = true"
-            >
-              <div class="flex items-center gap-3">
-                <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-white/70 text-orange-700 ring-1 ring-orange-200/70 dark:bg-zinc-950/40 dark:text-orange-300 dark:ring-orange-500/20">
-                  <i class="pi pi-map-marker" aria-hidden="true" />
+      <!-- Roanoke meetup card -->
+      <div class="mt-10 w-full max-w-xl">
+        <div class="cursor-pointer rounded-2xl border border-orange-200/70 bg-orange-50/60 px-4 py-3 shadow-sm dark:border-orange-500/20 dark:bg-orange-500/10">
+          <button
+            type="button"
+            class="w-full text-left cursor-pointer"
+            @click="isRoanokeOpen = true"
+          >
+            <div class="flex items-center gap-3">
+              <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-white/70 text-orange-700 ring-1 ring-orange-200/70 dark:bg-zinc-950/40 dark:text-orange-300 dark:ring-orange-500/20">
+                <i class="pi pi-map-marker" aria-hidden="true" />
+              </div>
+              <div class="min-w-0 flex-1">
+                <div class="text-sm font-semibold text-gray-900 dark:text-gray-50">
+                  Looking for the Roanoke, VA meetup?
                 </div>
-                <div class="min-w-0 flex-1">
-                  <div class="text-sm font-semibold text-gray-900 dark:text-gray-50">
-                    Looking for the Roanoke, VA meetup?
-                  </div>
-                  <div class="mt-0.5 text-xs text-gray-600 dark:text-gray-300">
-                    Tap to open details + the Meetup link.
-                  </div>
-                </div>
-                <div class="text-orange-700 dark:text-orange-300">
-                  <i class="pi pi-angle-right" aria-hidden="true" />
+                <div class="mt-0.5 text-xs text-gray-600 dark:text-gray-300">
+                  Tap to open details + the Meetup link.
                 </div>
               </div>
-            </button>
-          </div>
+              <div class="text-orange-700 dark:text-orange-300">
+                <i class="pi pi-angle-right" aria-hidden="true" />
+              </div>
+            </div>
+          </button>
         </div>
       </div>
-    </Transition>
+    </div>
 
     <!-- Roanoke bottom sheet (teleported) -->
     <Teleport to="body">
@@ -178,26 +141,7 @@ definePageMeta({
   layout: 'empty'
 })
 
-// Client-side auth check: loader shows until we know. Then redirect or reveal.
-const showLoader = ref(true)
-const showContent = ref(false)
-
-onMounted(async () => {
-  const { ensureLoaded, user } = useAuth()
-  await ensureLoaded()
-
-  if (user.value) {
-    // Logged in: fade out loader, then redirect to /home
-    showLoader.value = false
-    await new Promise(resolve => setTimeout(resolve, 180))
-    await navigateTo('/home')
-  } else {
-    // Anonymous: fade out loader, reveal landing
-    showLoader.value = false
-    showContent.value = true
-  }
-})
-
+// Auth redirect handled in middleware (SSR + client). If we render, user is anonymous.
 useHead({
   htmlAttrs: { class: 'moh-landing' }
 })

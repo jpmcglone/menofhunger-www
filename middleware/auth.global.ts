@@ -1,9 +1,12 @@
 export default defineNuxtRouteMiddleware(async (to) => {
   const { user, ensureLoaded } = useAuth()
 
-  // / handles redirect client-side (loader → auth check → /home or reveal landing).
-  // This allows SWR caching of the / shell.
-  if (to.path === '/') return
+  // /: redirect logged-in users to /home (SSR + client). Anonymous see landing.
+  if (to.path === '/') {
+    await ensureLoaded()
+    if (user.value) return navigateTo('/home')
+    return
+  }
 
   // Public routes (no auth check, SSR-safe/prerender-safe).
   const publicPaths = new Set<string>(['/about', '/status'])

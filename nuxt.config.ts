@@ -110,7 +110,7 @@ export default defineNuxtConfig({
     //   need correct client state (presence, WebSocket) and are not shared as links.
 
     // Public shareable: SSR so link unfurls and crawlers get correct og:image, title, description.
-    // / uses client-side auth redirect (loader → /home or landing).
+    // /: middleware redirects logged-in users to /home (SSR); anonymous see landing.
     // SWR disabled: Nitro serves cached response before Nuxt cookie hooks run, causing
     // "Cannot append headers after they are sent" when useCookie writes Set-Cookie.
     '/': { ssr: true },
