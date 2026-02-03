@@ -293,7 +293,7 @@ async function sendPushTest() {
     })
     const data = res?.data
     if (data?.sent) {
-      pushTestMessage.value = 'Test sent. If you don’t see a notification, refresh the page and try again (the service worker may need to update).'
+      pushTestMessage.value = 'Test sent.'
     } else {
       pushTestMessage.value = data?.message ?? 'Could not send test.'
     }
