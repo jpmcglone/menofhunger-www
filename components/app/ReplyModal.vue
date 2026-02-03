@@ -42,7 +42,7 @@
                 <div class="pt-2 pb-2 pl-4">
                   <AppReplyParentPreview :post="parentPost" />
                 </div>
-                <!-- Compose (Replying to @username injected via slot above textarea) -->
+                <!-- Compose (Replying to @userA, @userB injected via slot above textarea) -->
                 <div>
                   <AppPostComposer
                     v-if="replyContext"
@@ -54,17 +54,20 @@
                     @posted="onReplyPosted"
                   >
                     <template #above-textarea>
-                      Replying to
-                      <NuxtLink
-                        v-if="parentAuthorUsername"
-                        :to="parentAuthorProfilePath ?? undefined"
-                        class="font-semibold hover:underline underline-offset-2"
-                        :class="parentAuthorLinkClass"
-                        :aria-label="`View @${parentAuthorUsername} profile`"
-                      >
-                        @{{ parentAuthorUsername }}
-                      </NuxtLink>
-                      <span v-else class="font-semibold">@—</span>
+                      <span v-if="replyingToDisplay.length">
+                        Replying to
+                        <template v-for="(p, i) in replyingToDisplay" :key="p.id">
+                          <NuxtLink
+                            :to="`/u/${encodeURIComponent(p.username)}`"
+                            class="font-semibold hover:underline underline-offset-2"
+                            :class="participantLinkClass(p)"
+                            :aria-label="`View @${p.username} profile`"
+                          >
+                            @{{ p.username }}
+                          </NuxtLink>
+                          <span v-if="i < replyingToDisplay.length - 1" class="moh-text-muted">, </span>
+                        </template>
+                      </span>
                     </template>
                   </AppPostComposer>
                 </div>
@@ -103,6 +106,19 @@ const parentAuthorLinkClass = computed(() => {
   if (author.verifiedStatus && author.verifiedStatus !== 'none') return 'text-[var(--moh-verified)]'
   return ''
 })
+
+/** Thread participants to show as "Replying to @userA, @userB" (exclude self). */
+const replyingToDisplay = computed(() => {
+  const myUsername = user.value?.username
+  if (!myUsername) return threadParticipants.value
+  return threadParticipants.value.filter((p) => p.username?.toLowerCase() !== myUsername.toLowerCase())
+})
+
+function participantLinkClass(p: { id: string; username: string }): string {
+  const author = parentPost.value?.author
+  if (author?.id === p.id) return parentAuthorLinkClass.value
+  return ''
+}
 
 const replySheetStyle = ref<Record<string, string>>({ left: '0px', width: 'auto' })
 

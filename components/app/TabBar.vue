@@ -32,26 +32,7 @@
           >
             <div class="relative h-8 w-8 flex items-center justify-center">
               <i class="pi text-xl" :class="item.icon" aria-hidden="true" />
-
-              <Transition
-                v-if="item.key === 'notifications'"
-                enter-active-class="transition-opacity duration-200 ease-out"
-                enter-from-class="opacity-0"
-                enter-to-class="opacity-100"
-                leave-active-class="transition-opacity duration-150 ease-in"
-                leave-from-class="opacity-100"
-                leave-to-class="opacity-0"
-              >
-                <span
-                  v-if="notifBadge.show && notifBadge.count > 0"
-                  :class="[
-                    'absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold leading-[18px] text-center',
-                    notifBadge.toneClass.value,
-                  ]"
-                >
-                  {{ notifBadge.count }}
-                </span>
-              </Transition>
+              <AppNotificationBadge v-if="item.key === 'notifications'" />
             </div>
           </NuxtLink>
         </template>
@@ -81,7 +62,6 @@ defineProps<{
 
 const route = useRoute()
 const { user } = useAuth()
-const notifBadge = useNotificationsBadge()
 const { menuItems, confirmVisible, confirmLogout } = useUserMenu()
 
 const profileMenuRef = ref()

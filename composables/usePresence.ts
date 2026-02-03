@@ -295,8 +295,8 @@ export function usePresence() {
     })
 
     socket.on('notifications:updated', (data: { undeliveredCount?: number }) => {
-      const count = typeof data?.undeliveredCount === 'number' ? data.undeliveredCount : 0
-      notificationUndeliveredCount.value = count
+      const raw = typeof data?.undeliveredCount === 'number' ? data.undeliveredCount : 0
+      notificationUndeliveredCount.value = Math.max(0, Math.floor(raw))
     })
 
     function syncSubscriptions() {
@@ -440,7 +440,8 @@ export function usePresence() {
     connectionBarJustConnected: readonly(connectionBarJustConnected),
     notificationUndeliveredCount: readonly(notificationUndeliveredCount),
     setNotificationUndeliveredCount(count: number) {
-      notificationUndeliveredCount.value = count
+      const c = Math.max(0, Math.floor(Number(count)) || 0)
+      notificationUndeliveredCount.value = c
     },
     reconnect,
     addInterest,

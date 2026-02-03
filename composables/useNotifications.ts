@@ -5,6 +5,13 @@ type NotificationsListResponse = {
   pagination?: GetNotificationsResponse['pagination']
 }
 
+/**
+ * Seen vs Read semantics:
+ * - Unseen = deliveredAt === null (user has not opened the notifications page since it arrived)
+ * - Unread = readAt === null (user has not clicked through or marked as read)
+ * - New = both null (neither seen nor read)
+ * Row highlight uses unseen; dot shows only for unread. When read: no dot, no highlight.
+ */
 export function useNotifications() {
   const { apiFetch } = useApiClient()
   const route = useRoute()
@@ -14,10 +21,11 @@ export function useNotifications() {
   const loading = ref(false)
   const isNotificationsPage = computed(() => route.path === '/notifications')
 
-  async function fetchList(opts?: { cursor?: string | null; limit?: number }) {
+  async function fetchList(opts?: { cursor?: string | null; limit?: number; forceRefresh?: boolean }) {
     const cursor = opts?.cursor ?? null
     const limit = opts?.limit ?? 30
-    if (!cursor && notifications.value.length > 0 && !opts) return
+    const forceRefresh = opts?.forceRefresh ?? false
+    if (!forceRefresh && !cursor && notifications.value.length > 0 && !opts) return
     loading.value = true
     try {
       const q = new URLSearchParams()
@@ -80,9 +88,9 @@ export function useNotifications() {
     return ''
   }
 
-  /** Row highlight class when notification is unseen (deliveredAt null): subject tier color as left border + subtle bg. */
+  /** Row highlight when unseen (deliveredAt null) and unread (readAt null). When read: no highlight. */
   function subjectTierRowClass(n: Notification): string {
-    if (n.deliveredAt) return ''
+    if (n.readAt || n.deliveredAt) return ''
     const t = n.subjectTier ?? null
     if (t === 'premium') return 'border-l-2 border-[var(--moh-premium)] bg-[var(--moh-premium)]/5 dark:bg-[var(--moh-premium)]/10'
     if (t === 'verified') return 'border-l-2 border-[var(--moh-verified)] bg-[var(--moh-verified)]/5 dark:bg-[var(--moh-verified)]/10'
@@ -103,6 +111,24 @@ export function useNotifications() {
         return n.title ?? 'Notification'
       default:
         return 'Notification'
+    }
+  }
+
+  /** Icon class for notification kind (PrimeIcons). */
+  function notificationIcon(n: Notification): string {
+    switch (n.kind) {
+      case 'comment':
+        return 'pi-comment'
+      case 'boost':
+        return '' // Custom SVG
+      case 'follow':
+        return 'pi-user-plus'
+      case 'mention':
+        return 'pi-at'
+      case 'generic':
+        return 'pi-bell'
+      default:
+        return 'pi-bell'
     }
   }
 
@@ -162,6 +188,7 @@ export function useNotifications() {
     titleSuffix,
     notificationTitle,
     notificationContext,
+    notificationIcon,
     formatWhen,
     rowHref,
   }

@@ -152,25 +152,7 @@
                   </template>
                 </ClientOnly>
                 <i v-else :class="['pi text-[28px] font-semibold', item.icon]" aria-hidden="true" />
-                <Transition
-                  v-if="item.key === 'notifications'"
-                  enter-active-class="transition-opacity duration-200 ease-out"
-                  enter-from-class="opacity-0"
-                  enter-to-class="opacity-100"
-                  leave-active-class="transition-opacity duration-150 ease-in"
-                  leave-from-class="opacity-100"
-                  leave-to-class="opacity-0"
-                >
-                  <span
-                    v-if="notifBadge.show && notifBadge.count > 0"
-                    :class="[
-                      'absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold leading-[18px] text-center',
-                      notifBadge.toneClass.value,
-                    ]"
-                  >
-                    {{ notifBadge.count }}
-                  </span>
-                </Transition>
+                <AppNotificationBadge v-if="item.key === 'notifications'" />
               </span>
               <span v-if="!navCompactMode" class="hidden xl:inline whitespace-nowrap overflow-hidden text-xl font-bold max-w-[220px]">
                 {{ item.label }}
@@ -626,7 +608,6 @@ const hydrated = ref(false)
 onMounted(() => {
   hydrated.value = true
 })
-const notifBadge = useNotificationsBadge()
 const { totalCount: bookmarkTotalCount, ensureLoaded: ensureBookmarkCollectionsLoaded } = useBookmarkCollections()
 
 const hasBookmarks = computed(() => Math.max(0, Math.floor(bookmarkTotalCount.value ?? 0)) > 0)

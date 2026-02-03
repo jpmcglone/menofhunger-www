@@ -51,7 +51,24 @@
             auto-focus
             :show-divider="false"
             @posted="onReplyPosted"
-          />
+          >
+            <template #above-textarea>
+              <span v-if="replyingToDisplay.length">
+                Replying to
+                <template v-for="(p, i) in replyingToDisplay" :key="p.id">
+                  <NuxtLink
+                    :to="`/u/${encodeURIComponent(p.username)}`"
+                    class="font-semibold hover:underline underline-offset-2 moh-text"
+                    :class="participantLinkClass(p)"
+                    :aria-label="`View @${p.username} profile`"
+                  >
+                    @{{ p.username }}
+                  </NuxtLink>
+                  <span v-if="i < replyingToDisplay.length - 1" class="moh-text-muted">, </span>
+                </template>
+              </span>
+            </template>
+          </AppPostComposer>
         </div>
 
         <div class="border-b border-gray-200 dark:border-zinc-800">
@@ -203,6 +220,20 @@ const replyContext = computed(() => {
     mentionUsernames: usernames,
   }
 })
+
+/** Thread participants to show as "Replying to @userA, @userB" (exclude self). */
+const replyingToDisplay = computed(() => {
+  const myUsername = user.value?.username
+  if (!myUsername) return threadParticipants.value
+  return threadParticipants.value.filter((p) => p.username?.toLowerCase() !== myUsername.toLowerCase())
+})
+
+function participantLinkClass(p: { id: string; username: string }): string {
+  const author = post.value?.author
+  if (author?.id === p.id && author?.premium) return '!text-[var(--moh-premium)]'
+  if (author?.id === p.id && author?.verifiedStatus && author.verifiedStatus !== 'none') return '!text-[var(--moh-verified)]'
+  return ''
+}
 
 const comments = ref<FeedPost[]>([])
 const commentsNextCursor = ref<string | null>(null)
