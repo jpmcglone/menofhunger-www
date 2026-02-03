@@ -1,6 +1,8 @@
+# Nitro SSR in node mode. Standard plan: 2GB RAM / 1 CPU.
 services:
   - type: web
     name: menofhunger-www
+    plan: standard
     runtime: node
     buildCommand: npm ci && npm run build
     startCommand: node .output/server/index.mjs

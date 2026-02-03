@@ -41,6 +41,18 @@
                 </div>
               </div>
             </NuxtLink>
+
+            <NuxtLink to="/admin/search" class="block">
+              <div :class="areaCardClass('search')">
+                <div class="flex items-center gap-3">
+                  <i class="pi pi-search text-lg" aria-hidden="true" />
+                  <div class="min-w-0 flex-1">
+                    <div class="font-semibold truncate">Search</div>
+                    <div class="text-sm text-gray-600 dark:text-gray-300 truncate">Recent user searches</div>
+                  </div>
+                </div>
+              </div>
+            </NuxtLink>
           </div>
         </div>
       </aside>
@@ -65,15 +77,16 @@ definePageMeta({
 
 const route = useRoute()
 
-function isActiveArea(key: 'site-settings' | 'users' | 'media-review') {
+function isActiveArea(key: 'site-settings' | 'users' | 'media-review' | 'search') {
   const p = route.path
   if (key === 'site-settings') return p === '/admin/site-settings'
   if (key === 'users') return p === '/admin/users'
   if (key === 'media-review') return p === '/admin/media-review' || p.startsWith('/admin/media-review/')
+  if (key === 'search') return p === '/admin/search'
   return false
 }
 
-function areaCardClass(key: 'site-settings' | 'users' | 'media-review') {
+function areaCardClass(key: 'site-settings' | 'users' | 'media-review' | 'search') {
   const active = isActiveArea(key)
   return [
     'w-full rounded-xl border p-3 transition-colors',

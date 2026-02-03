@@ -72,7 +72,7 @@
             />
 
             <div v-if="verifying" class="shrink-0 flex items-center justify-center w-12">
-              <ProgressSpinner style="width: 28px; height: 28px" strokeWidth="5" />
+              <AppLogoLoader :size="28" />
             </div>
           </div>
 

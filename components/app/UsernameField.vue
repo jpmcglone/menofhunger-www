@@ -22,7 +22,7 @@
         @update:model-value="(v) => emit('update:modelValue', String(v ?? ''))"
       />
       <div class="absolute right-3 top-1/2 -translate-y-1/2 flex items-center">
-        <i v-if="status === 'checking'" :class="spinnerClass" aria-hidden="true" />
+        <AppLogoLoader v-if="status === 'checking'" :size="20" class="shrink-0" />
         <i v-else-if="status === 'available' || status === 'same'" class="pi pi-check text-green-600" aria-hidden="true" />
         <i v-else-if="status === 'taken' || status === 'invalid'" class="pi pi-times text-red-600" aria-hidden="true" />
       </div>
@@ -59,8 +59,6 @@ const tone = computed(() => props.tone ?? 'default')
 const atPrefixClass = computed(() => {
   return tone.value === 'moh' ? 'moh-text-muted' : 'text-gray-500 dark:text-gray-400'
 })
-
-const spinnerClass = computed(() => 'pi pi-spin pi-spinner moh-loading-spinner')
 
 const helperToneClass = computed(() => {
   if (props.status === 'available' || props.status === 'same') return 'text-green-700 dark:text-green-300'

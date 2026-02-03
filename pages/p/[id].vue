@@ -20,6 +20,18 @@
             You’ll be returned here after logging in.
           </div>
         </div>
+        <div v-else-if="showServerErrorCta" class="mt-4 flex flex-wrap items-center gap-3">
+          <NuxtLink to="/status" class="text-sm font-medium moh-text underline underline-offset-2">
+            Check status
+          </NuxtLink>
+          <button
+            type="button"
+            class="text-sm font-medium moh-text-muted hover:opacity-90 underline underline-offset-2"
+            @click="() => window.location.reload()"
+          >
+            Try again
+          </button>
+        </div>
       </div>
     </div>
 
@@ -130,9 +142,8 @@ import type {
 } from '~/types/api'
 import { getApiErrorMessage } from '~/utils/api-error'
 import { siteConfig } from '~/config/site'
-import { extractLinksFromText, safeUrlHostname } from '~/utils/link-utils'
+import { extractLinksFromText } from '~/utils/link-utils'
 import type { LinkMetadata } from '~/utils/link-metadata'
-import { getLinkMetadata } from '~/utils/link-metadata'
 import { excerpt, normalizeForMeta } from '~/utils/text'
 import { usePostPermalinkSeo } from '~/composables/usePostPermalinkSeo'
 import { usePostCountBumps } from '~/composables/usePostCountBumps'
@@ -401,9 +412,26 @@ if (error.value) {
   } else {
     errorText.value = msg
   }
+
+  // Set response status for server/network errors so crawlers get 5xx.
+  if (import.meta.server && (status >= 500 || status === 0)) {
+    const event = useRequestEvent()
+    if (event) setResponseStatus(event, 503)
+  }
 } else {
   errorText.value = null
 }
+
+const apiErrorStatus = computed(() => {
+  const e: any = error.value
+  return Number(e?.statusCode ?? e?.status ?? e?.response?.status ?? 0)
+})
+const showServerErrorCta = computed(
+  () =>
+    Boolean(errorText.value) &&
+    accessHint.value === 'none' &&
+    (apiErrorStatus.value >= 500 || apiErrorStatus.value === 0),
+)
 
 function escapeRegExp(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
@@ -545,28 +573,6 @@ const extraOgMediaUrls = computed(() => {
   return out
 })
 
-function isAbortError(e: unknown): boolean {
-  const name = (e as any)?.name
-  return name === 'AbortError' || name === 'TimeoutError'
-}
-
-async function getLinkMetadataWithTimeout(url: string, timeoutMs: number): Promise<LinkMetadata | null> {
-  if (!url) return null
-  const ms = Number(timeoutMs)
-  if (!ms || ms <= 0) return await getLinkMetadata(url)
-
-  const controller = new AbortController()
-  const t = setTimeout(() => controller.abort(), ms)
-  try {
-    return await getLinkMetadata(url, { signal: controller.signal })
-  } catch (e: unknown) {
-    if (isAbortError(e)) return null
-    return null
-  } finally {
-    clearTimeout(t)
-  }
-}
-
 const linkMetaKey = computed(() => {
   const u = (previewLink.value ?? '').trim()
   return `post:${postId.value}:linkmeta:${u || 'none'}`
@@ -579,8 +585,15 @@ const { data: linkMetaData } = await useAsyncData(
     if (usableMedia.value.length) return null
     const url = (previewLink.value ?? '').trim()
     if (!url) return null
-    // Best-effort SSR unfurl for share previews (avoid long stalls).
-    return await getLinkMetadataWithTimeout(url, 2000)
+    try {
+      return await apiFetchData<LinkMetadata | null>('/link-metadata', {
+        method: 'GET',
+        query: { url },
+        timeout: 3000,
+      })
+    } catch {
+      return null
+    }
   },
   {
     server: true,

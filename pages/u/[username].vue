@@ -9,6 +9,27 @@
       </div>
     </div>
 
+    <div v-else-if="apiError" class="mx-auto max-w-3xl py-10">
+      <div class="text-2xl font-bold tracking-tight text-gray-900 dark:text-gray-50">
+        Something went wrong
+      </div>
+      <div class="mt-2 text-sm text-gray-600 dark:text-gray-300">
+        We couldn’t load this profile. Please try again.
+      </div>
+      <div class="mt-4 flex flex-wrap items-center gap-3">
+        <NuxtLink to="/status" class="text-sm font-medium moh-text underline underline-offset-2">
+          Check status
+        </NuxtLink>
+        <button
+          type="button"
+          class="text-sm font-medium moh-text-muted hover:opacity-90 underline underline-offset-2"
+          @click="() => window.location.reload()"
+        >
+          Try again
+        </button>
+      </div>
+    </div>
+
     <div v-else>
       <AppProfileHeader
         :profile="profile"
@@ -93,9 +114,7 @@
           <template #fallback>
             <!-- Match loader markup so SSR and first client paint are identical (avoids hydration mismatch). -->
             <div class="flex justify-center pt-12 pb-8">
-              <div class="moh-loading-spinner">
-                <ProgressSpinner style="width: 48px; height: 48px" strokeWidth="4" />
-              </div>
+              <AppLogoLoader />
             </div>
           </template>
           <div>
@@ -112,9 +131,7 @@
             </div>
 
             <div v-else-if="profileLoading && profilePosts.length === 0" class="flex justify-center pt-12 pb-8">
-              <div class="moh-loading-spinner">
-                <ProgressSpinner style="width: 48px; height: 48px" strokeWidth="4" />
-              </div>
+              <AppLogoLoader />
             </div>
 
             <div v-else-if="profileHasLoadedOnce && profilePosts.length === 0 && !pinnedPost" class="mt-3 text-sm text-gray-500 dark:text-gray-400">
@@ -210,6 +227,21 @@ const notFound = computed(() => {
   const msg = (getApiErrorMessage(e) || e?.message || '').toString()
   return /not found/i.test(msg)
 })
+
+const apiError = computed(() => {
+  if (!error.value) return false
+  if (notFound.value) return false
+  return true
+})
+
+if (import.meta.server && error.value && !notFound.value) {
+  const e: any = error.value
+  const status = Number(e?.statusCode ?? e?.status ?? e?.response?.status ?? 0)
+  if (status >= 500 || status === 0) {
+    const event = useRequestEvent()
+    if (event) setResponseStatus(event, 503)
+  }
+}
 
 const { header: appHeader } = useAppHeader()
 const profileName = computed(() => profile.value?.name || profile.value?.username || 'User')

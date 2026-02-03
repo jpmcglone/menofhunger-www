@@ -1,1 +1,6 @@
+User-agent: *
+Allow: /
 
+# Admin and app-shell routes are not useful for crawlers.
+Disallow: /admin
+Disallow: /admin/

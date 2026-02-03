@@ -152,15 +152,6 @@ html.dark {
     color: var(--p-primary-contrast-color, #ffffff);
   }
 
-  /* Loading spinners: use tier primary color */
-  .moh-loading-spinner {
-    color: var(--p-primary-500, var(--p-primary-color, #c77d1a));
-  }
-  /* PrimeVue ProgressSpinner: stroke uses currentColor so wrapper .moh-loading-spinner tints it */
-  .moh-loading-spinner .p-progressspinner circle {
-    stroke: currentColor;
-  }
-
   /* Notification badge: solid colors. Text: black in dark mode, white in light mode. */
   .moh-notif-badge-verified {
     background-color: var(--moh-verified);

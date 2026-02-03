@@ -108,9 +108,10 @@ export default defineNuxtConfig({
     //   need correct client state (presence, WebSocket) and are not shared as links.
 
     // Public shareable: SSR so link unfurls and crawlers get correct og:image, title, description.
-    '/': { ssr: true },
-    '/u/**': { ssr: true },
-    '/p/**': { ssr: true },
+    // SWR caches the HTML response to cut SSR CPU/memory on repeat requests (crawlers, unfurls).
+    '/': { ssr: true, swr: 60 },
+    '/u/**': { ssr: true, swr: 300 },
+    '/p/**': { ssr: true, swr: 120 },
 
     // Static content: prerender for fast, cacheable, indexable HTML.
     '/terms': { prerender: true },
@@ -132,6 +133,24 @@ export default defineNuxtConfig({
     '/admin': { ssr: false },
     '/admin/**': { ssr: false },
     '/status': { ssr: false },
+
+    // ——— CDN / edge caching: reduce bandwidth and request load on www ———
+    // Nitro build output + public assets. Use s-maxage so CDN caches; browsers use max-age.
+    '/_nuxt/**': {
+      headers: {
+        'cache-control': 'public, max-age=31536000, immutable',
+      },
+    },
+    '/images/**': {
+      headers: {
+        'cache-control': 'public, max-age=86400, stale-while-revalidate=86400',
+      },
+    },
+    '/sounds/**': {
+      headers: {
+        'cache-control': 'public, max-age=86400, stale-while-revalidate=86400',
+      },
+    },
   },
   primevue: {
     options: {

@@ -129,6 +129,13 @@ export function useHomeFeed() {
     await preserveMiddleScrollAfter(async () => await refresh({ sort: next }))
   }
 
+  /** Set both filter and sort to default and refresh once (so reset matches manually selecting All + Newest). */
+  async function resetFilters() {
+    feedFilter.value = 'all'
+    feedSort.value = 'new'
+    await preserveMiddleScrollAfter(async () => await refresh({ visibility: 'all', sort: 'new' }))
+  }
+
   watch(
     () => feedScope.value,
     () => {
@@ -166,5 +173,6 @@ export function useHomeFeed() {
     feedCtaKind,
     setFeedFilter,
     setFeedSort,
+    resetFilters,
   }
 }

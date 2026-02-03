@@ -789,6 +789,15 @@ function goToExploreSearch() {
   const q = (rightRailSearchQuery.value ?? '').trim()
   void navigateTo({ path: '/explore', query: q ? { q } : {} })
 }
+watch(
+  [() => route.path, () => route.query.q],
+  () => {
+    if (route.path === '/explore' && route.query.q != null) {
+      rightRailSearchQuery.value = String(route.query.q).trim()
+    }
+  },
+  { immediate: true },
+)
 
 const middleScrollerEl = ref<HTMLElement | null>(null)
 const rightScrollerEl = ref<HTMLElement | null>(null)

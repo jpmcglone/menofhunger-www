@@ -21,7 +21,7 @@
       </div>
 
       <div v-if="loading && posts.length === 0" class="flex justify-center pt-12 pb-8">
-        <ProgressSpinner style="width: 48px; height: 48px" strokeWidth="4" />
+        <AppLogoLoader />
       </div>
 
       <div v-else-if="!loading && posts.length === 0" class="px-4 py-6 text-sm moh-text-muted">

@@ -18,13 +18,7 @@
         @update:scope="onFeedScopeChange"
         @update:sort="setFeedSort"
         @update:filter="setFeedFilter"
-        @reset="
-          () => {
-            setFeedFilter('all')
-            setFeedSort('new')
-            void refresh()
-          }
-        "
+        @reset="() => void resetFilters()"
       />
 
       <div v-if="feedCtaKind === 'verify'" class="mx-4 mt-4">
@@ -41,9 +35,7 @@
         </AppInlineAlert>
 
         <div v-else-if="loading && !posts.length" class="flex justify-center pt-12 pb-8">
-          <div class="moh-loading-spinner">
-            <ProgressSpinner style="width: 48px; height: 48px" strokeWidth="4" />
-          </div>
+          <AppLogoLoader />
         </div>
 
         <div v-else>
@@ -147,6 +139,7 @@ const {
   feedCtaKind,
   setFeedFilter,
   setFeedSort,
+  resetFilters,
 } = useHomeFeed()
 
 const replyModal = useReplyModal()

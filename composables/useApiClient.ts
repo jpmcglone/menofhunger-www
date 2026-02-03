@@ -55,16 +55,30 @@ export function useApiClient() {
     return joinUrl(apiBaseUrl, path)
   }
 
+  /** Default timeout (ms) so a slow or stuck API does not hang SSR. Override via options.timeout. */
+  const defaultTimeoutMs = 15_000
+
   async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): Promise<ApiEnvelope<T>> {
     const url = apiUrl(path)
 
-    const ssrHeaders = import.meta.server ? useRequestHeaders(['cookie']) : undefined
+    let ssrHeaders: HeadersInit | undefined
+    if (import.meta.server) {
+      ssrHeaders = useRequestHeaders(['cookie'])
+      const event = useRequestEvent()
+      const requestId = (event?.context as { requestId?: string } | undefined)?.requestId
+      if (requestId) {
+        ssrHeaders = mergeHeaders(ssrHeaders, { 'x-request-id': requestId })
+      }
+    }
     const headers = mergeHeaders(ssrHeaders, options.headers)
+
+    const timeout = options.timeout ?? defaultTimeoutMs
 
     return await $fetch<ApiEnvelope<T>>(url, {
       ...options,
       credentials: options.credentials ?? 'include',
-      headers
+      headers,
+      timeout
     })
   }
 

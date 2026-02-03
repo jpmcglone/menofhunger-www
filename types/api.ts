@@ -289,6 +289,27 @@ export type FollowListUser = {
   relationship: FollowRelationship
 }
 
+/** Search user result (FollowListUser + createdAt for interleaving). */
+export type SearchUserResult = FollowListUser & { createdAt?: string }
+
+/** Mixed search result: users + posts. */
+export type SearchMixedResult = {
+  users: SearchUserResult[]
+  posts: FeedPost[]
+}
+
+/** Pagination for mixed search (two cursors). */
+export type SearchMixedPagination = {
+  nextUserCursor?: string | null
+  nextPostCursor?: string | null
+}
+
+/** Data type for GET /search?type=all. */
+export type SearchMixedResponse = {
+  data: SearchMixedResult
+  pagination?: SearchMixedPagination
+}
+
 /** Data type for GET /follows/:username/followers and /following (array); pagination in envelope. */
 export type GetFollowsListData = FollowListUser[]
 

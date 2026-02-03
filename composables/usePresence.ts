@@ -83,7 +83,6 @@ export function usePresence() {
   function emitSubscribe(userIds: string[]) {
     const socket = socketRef.value
     if (socket?.connected && userIds.length > 0) {
-      console.log('[presence] SUBSCRIBE_OUT', { userIds, socketId: socket.id })
       socket.emit('presence:subscribe', { userIds })
     }
   }
@@ -91,7 +90,6 @@ export function usePresence() {
   function emitUnsubscribe(userIds: string[]) {
     const socket = socketRef.value
     if (socket?.connected && userIds.length > 0) {
-      console.log('[presence] UNSUBSCRIBE_OUT', { userIds, socketId: socket.id })
       socket.emit('presence:unsubscribe', { userIds })
     }
   }
@@ -238,7 +236,6 @@ export function usePresence() {
     }
 
     socket.on('presence:subscribed', (data: { users?: Array<{ userId: string; online: boolean; idle?: boolean }> }) => {
-      console.log('[presence] SUBSCRIBED_IN', data)
       const users = Array.isArray(data?.users) ? data.users : []
       for (const u of users) {
         const id = u?.userId
@@ -248,7 +245,6 @@ export function usePresence() {
     })
 
     socket.on('presence:online', (data: PresenceOnlinePayload) => {
-      console.log('[presence] ONLINE_IN', { userId: data?.userId, onlineFeedSubscribed: onlineFeedSubscribed.value, callbacksCount: onlineFeedCallbacks.value.size })
       const id = data?.userId
       if (id) {
         applyUserPresence(id, true, data.idle ?? false)
@@ -261,7 +257,6 @@ export function usePresence() {
     })
 
     socket.on('presence:onlineFeedSnapshot', (data: PresenceOnlineFeedSnapshotPayload) => {
-      console.log('[presence] ONLINE_FEED_SNAPSHOT_IN', { usersCount: data?.users?.length, totalOnline: data?.totalOnline })
       const users = Array.isArray(data?.users) ? data.users : []
       for (const u of users) {
         const id = u?.id
@@ -327,7 +322,6 @@ export function usePresence() {
 
     function syncSubscriptions() {
       const refs = interestRefs.value
-      console.log('[presence] syncSubscriptions', { interests: refs.size, onlineFeedSubscribed: onlineFeedSubscribed.value, socketId: socket.id })
       if (refs.size > 0) {
         emitSubscribe([...refs.keys()])
       }
@@ -336,7 +330,6 @@ export function usePresence() {
       }
     }
     socket.on('connect', () => {
-      console.log('[presence] socket CONNECTED', socket.id)
       isSocketConnected.value = true
       isSocketConnecting.value = false
       if (disconnectedDueToIdle.value) {
@@ -350,8 +343,7 @@ export function usePresence() {
       }
       syncSubscriptions()
     })
-    socket.on('disconnect', (reason) => {
-      console.log('[presence] socket DISCONNECTED', reason)
+    socket.on('disconnect', () => {
       isSocketConnected.value = false
       isSocketConnecting.value = false
     })

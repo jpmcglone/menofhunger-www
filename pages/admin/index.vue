@@ -41,6 +41,19 @@
           </div>
         </div>
       </NuxtLink>
+
+      <NuxtLink to="/admin/search" class="block">
+        <div class="w-full rounded-xl border border-gray-200 p-3 transition-colors hover:bg-gray-50 dark:border-zinc-800 dark:hover:bg-zinc-900">
+          <div class="flex items-center gap-3">
+            <i class="pi pi-search text-lg" aria-hidden="true" />
+            <div class="min-w-0 flex-1">
+              <div class="font-semibold truncate">Search</div>
+              <div class="text-sm text-gray-600 dark:text-gray-300 truncate">Recent user searches</div>
+            </div>
+            <i class="pi pi-angle-right text-gray-400" aria-hidden="true" />
+          </div>
+        </div>
+      </NuxtLink>
     </div>
   </div>
 </template>
