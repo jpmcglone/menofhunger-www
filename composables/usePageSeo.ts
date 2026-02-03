@@ -129,9 +129,13 @@ export function usePageSeo(options: PageSeoOptions = {}) {
           '@id': `${siteConfig.url}/#organization`,
           name: siteConfig.name,
           url: siteConfig.url,
+          description: siteConfig.meta.description,
           logo: toAbsoluteUrl('/images/logo-black-bg.png'),
-          foundingDate: siteConfig.established,
-          sameAs: [twitterProfileUrl(siteConfig.social.twitter)].filter(Boolean)
+          foundingDate: String(siteConfig.established),
+          sameAs: [
+            twitterProfileUrl(siteConfig.social.twitter),
+            (siteConfig.social as { meetup?: string })?.meetup
+          ].filter(Boolean)
         }
       )
     }

@@ -157,7 +157,7 @@ useHead({
   htmlAttrs: { class: 'moh-landing' }
 })
 
-const roanokeMeetupUrl = 'https://www.meetup.com/menofhunger/'
+const roanokeMeetupUrl = siteConfig.social.meetup
 const isRoanokeOpen = ref(false)
 
 watch(isRoanokeOpen, (open) => {
@@ -169,8 +169,9 @@ watch(isRoanokeOpen, (open) => {
 
 usePageSeo({
   title: siteConfig.meta.title,
-  description:
-    'Men of Hunger is a brotherhood for ambitious builders and growth-minded men. Updates coming soon — stay tuned. Stay hungry.',
-  canonicalPath: '/'
+  description: siteConfig.meta.description,
+  canonicalPath: '/',
+  ogType: 'website',
+  twitterCard: 'summary_large_image'
 })
 </script>

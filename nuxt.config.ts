@@ -98,10 +98,26 @@ export default defineNuxtConfig({
     }
   },
   routeRules: {
-    // Static landing page (no app layout, no presence).
-    '/': { prerender: true },
+    // ——— SEO: SSR vs prerender ———
+    // • SSR (ssr: true): Page is rendered on the server per request. Crawlers and link unfurlers
+    //   get full HTML with correct <title>, og:*, and meta in the initial response. Use for any
+    //   public or shareable page where meta depends on the URL (profiles, posts, landing).
+    // • prerender: Page is rendered at build time and served as static HTML. Use only for
+    //   truly static content (terms, privacy, about). Do not use for /u/* or /p/* (infinite set).
+    // • ssr: false: Client-only; no meta in initial HTML. Use only for app-shell routes that
+    //   need correct client state (presence, WebSocket) and are not shared as links.
 
-    // App-layout routes: client-only so presence/WebSocket state is correct on fresh launch.
+    // Public shareable: SSR so link unfurls and crawlers get correct og:image, title, description.
+    '/': { ssr: true },
+    '/u/**': { ssr: true },
+    '/p/**': { ssr: true },
+
+    // Static content: prerender for fast, cacheable, indexable HTML.
+    '/terms': { prerender: true },
+    '/privacy': { prerender: true },
+    '/about': { prerender: true },
+
+    // App-shell: client-only so presence/WebSocket state is correct on fresh load.
     '/home': { ssr: false },
     '/explore': { ssr: false },
     '/notifications': { ssr: false },
@@ -111,11 +127,6 @@ export default defineNuxtConfig({
     '/groups': { ssr: false },
     '/only-me': { ssr: false },
     '/online': { ssr: false },
-    // Profile pages: SSR so shared links get og:image/title in initial HTML (no ssr: false).
-    // Static pages: prerender for fast, indexable HTML.
-    '/terms': { prerender: true },
-    '/privacy': { prerender: true },
-    '/about': { prerender: true },
     '/settings': { ssr: false },
     '/feedback': { ssr: false },
     '/admin': { ssr: false },

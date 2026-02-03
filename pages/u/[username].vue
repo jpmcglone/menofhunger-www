@@ -237,9 +237,16 @@ const seoTitle = computed(() => {
 const seoDescription = computed(() => {
   if (notFound.value) return 'This profile does not exist.'
   const bio = (profile.value?.bio ?? '').trim()
-  if (bio) return excerpt(bio, 220)
   const u = (profile.value?.username ?? normalizedUsername.value).trim()
-  return u ? `View @${u} on ${siteConfig.name}.` : `View a profile on ${siteConfig.name}.`
+  const verified = profile.value?.verifiedStatus && profile.value.verifiedStatus !== 'none'
+  const premium = profile.value?.premium === true
+  const badges: string[] = []
+  if (verified) badges.push('Verified')
+  if (premium) badges.push('Premium')
+  const badgeSuffix = badges.length ? ` ${badges.join(' · ')}.` : ''
+  if (bio) return `${excerpt(bio, 220)}${badgeSuffix}`
+  if (u) return `View @${u} on ${siteConfig.name}.${badgeSuffix}`
+  return `View a profile on ${siteConfig.name}.${badgeSuffix}`
 })
 
 const seoImage = computed(() => {

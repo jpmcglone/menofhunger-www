@@ -8,7 +8,8 @@ export const siteConfig = {
   },
   social: {
     twitter: '@MenOfHunger',
-    xUrl: 'https://x.com/menofhunger'
+    xUrl: 'https://x.com/menofhunger',
+    meetup: 'https://www.meetup.com/menofhunger/'
   },
   meta: {
     title: 'Men of Hunger',
