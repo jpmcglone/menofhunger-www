@@ -1,12 +1,7 @@
 import type { ApiEnvelope } from '~/types/api'
+import { joinUrl } from '~/utils/url'
 
 type ApiFetchOptions = Parameters<typeof $fetch>[1]
-
-function joinUrl(baseUrl: string, path: string) {
-  const base = baseUrl.replace(/\/+$/, '')
-  const p = path.replace(/^\/+/, '')
-  return `${base}/${p}`
-}
 
 function mergeHeaders(a?: HeadersInit, b?: HeadersInit): HeadersInit | undefined {
   if (!a && !b) return undefined

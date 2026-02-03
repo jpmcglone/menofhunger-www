@@ -1,8 +1,4 @@
-function joinUrl(baseUrl: string, path: string) {
-  const base = baseUrl.replace(/\/+$/, '')
-  const p = path.replace(/^\/+/, '')
-  return `${base}/${p}`
-}
+import { joinUrl } from '~/utils/url'
 
 export function useAssets() {
   const config = useRuntimeConfig()
