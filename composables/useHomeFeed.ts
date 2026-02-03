@@ -1,4 +1,6 @@
 import type { ProfilePostsFilter } from '~/utils/post-visibility'
+import type { FeedVisibilityFilter } from '~/composables/useFeedFilters'
+import { useFeedFilters } from '~/composables/useFeedFilters'
 
 export function useHomeFeed() {
   const { user } = useAuth()
@@ -6,11 +8,9 @@ export function useHomeFeed() {
   const { apiFetchData } = useApiClient()
   const middleScrollerEl = useMiddleScroller()
 
-  const feedFilter = useCookie<ProfilePostsFilter>('moh.feed.filter.v1', {
-    default: () => 'all',
-    sameSite: 'lax',
-    path: '/',
-    maxAge: 60 * 60 * 24 * 365,
+  const { filter: feedFilter, sort: feedSort, viewerIsVerified, viewerIsPremium, ctaKind: feedCtaKind } = useFeedFilters({
+    filterCookieKey: 'moh.feed.filter.v1',
+    sortCookieKey: 'moh.home.sort.v1',
   })
 
   const feedScope = useCookie<'following' | 'all'>('moh.home.scope.v1', {
@@ -25,36 +25,11 @@ export function useHomeFeed() {
     { key: 'following', label: 'Following', disabled: !isAuthed.value },
   ])
 
-  const feedSort = useCookie<'new' | 'trending'>('moh.home.sort.v1', {
-    default: () => 'new',
-    sameSite: 'lax',
-    path: '/',
-    maxAge: 60 * 60 * 24 * 365,
-  })
-
-  watch(
-    feedFilter,
-    (v) => {
-      if (v === 'all' || v === 'public' || v === 'verifiedOnly' || v === 'premiumOnly') return
-      feedFilter.value = 'all'
-    },
-    { immediate: true },
-  )
-
   watch(
     feedScope,
     (v) => {
       if (v === 'following' || v === 'all') return
       feedScope.value = 'all'
-    },
-    { immediate: true },
-  )
-
-  watch(
-    feedSort,
-    (v) => {
-      if (v === 'new' || v === 'trending') return
-      feedSort.value = 'new'
     },
     { immediate: true },
   )
@@ -96,15 +71,6 @@ export function useHomeFeed() {
       })
   })
 
-  const viewerIsVerified = computed(() => Boolean(user.value?.verifiedStatus && user.value.verifiedStatus !== 'none'))
-  const viewerIsPremium = computed(() => Boolean(user.value?.premium))
-
-  const feedCtaKind = computed<null | 'verify' | 'premium'>(() => {
-    if (feedFilter.value === 'verifiedOnly' && !viewerIsVerified.value) return 'verify'
-    if (feedFilter.value === 'premiumOnly' && !viewerIsPremium.value) return 'premium'
-    return null
-  })
-
   async function preserveMiddleScrollAfter<T>(fn: () => Promise<T>): Promise<T> {
     if (!import.meta.client) return await fn()
     const scroller = middleScrollerEl.value
@@ -120,8 +86,9 @@ export function useHomeFeed() {
   }
 
   async function setFeedFilter(next: ProfilePostsFilter) {
-    feedFilter.value = next
-    await preserveMiddleScrollAfter(async () => await refresh({ visibility: next }))
+    const safe = next === 'onlyMe' ? 'all' : (next as FeedVisibilityFilter)
+    feedFilter.value = safe
+    await preserveMiddleScrollAfter(async () => await refresh({ visibility: safe }))
   }
 
   async function setFeedSort(next: 'new' | 'trending') {

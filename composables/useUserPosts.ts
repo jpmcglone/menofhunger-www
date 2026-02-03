@@ -1,8 +1,9 @@
 import type { ApiPagination, FeedPost, GetUserPostsData } from '~/types/api'
 import { getApiErrorMessage } from '~/utils/api-error'
 import { usePostCountBumps } from '~/composables/usePostCountBumps'
+import { useFeedFilters, type FeedVisibilityFilter } from '~/composables/useFeedFilters'
 
-export type UserPostsFilter = 'all' | 'public' | 'verifiedOnly' | 'premiumOnly'
+export type UserPostsFilter = FeedVisibilityFilter
 
 type PostCounts = NonNullable<ApiPagination['counts']>
 
@@ -23,23 +24,11 @@ export function useUserPosts(
   } = {},
 ) {
   const { apiFetch } = useApiClient()
-  const { user: authUser } = useAuth()
   const { clearBumpsForPostIds } = usePostCountBumps()
   const enabled = opts.enabled ?? computed(() => true)
   const prefix = opts.cookieKeyPrefix ?? 'moh.profile.posts'
 
-  const filter = useCookie<UserPostsFilter>(`${prefix}.filter.v1`, {
-    default: () => 'all',
-    sameSite: 'lax',
-    path: '/',
-    maxAge: 60 * 60 * 24 * 365,
-  })
-  const sort = useCookie<'new' | 'trending'>(`${prefix}.sort.v1`, {
-    default: () => 'new',
-    sameSite: 'lax',
-    path: '/',
-    maxAge: 60 * 60 * 24 * 365,
-  })
+  const { filter, sort, viewerIsVerified, viewerIsPremium, ctaKind } = useFeedFilters({ cookieKeyPrefix: prefix })
 
   // When visiting a profile, always default to Newest order and All visibility.
   if (opts.defaultToNewestAndAll) {
@@ -49,39 +38,11 @@ export function useUserPosts(
   // Use shared state keyed by username so SSR/hydration and client navigation see the same list.
   const postsKey = `user-posts-list:${prefix}:${usernameLower.value}`
   const postsState = useState<FeedPost[]>(postsKey, () => [])
-  // Local ref for display so template reactivity is reliable; kept in sync with postsState.
   const posts = ref<FeedPost[]>([...postsState.value])
   const counts = ref<PostCounts>(EMPTY_COUNTS)
   const loading = ref(false)
   const error = ref<string | null>(null)
   const hasLoadedOnce = ref(false)
-
-  const viewerIsVerified = computed(() => Boolean(authUser.value?.verifiedStatus && authUser.value.verifiedStatus !== 'none'))
-  const viewerIsPremium = computed(() => Boolean(authUser.value?.premium))
-
-  const ctaKind = computed<null | 'verify' | 'premium'>(() => {
-    if (filter.value === 'verifiedOnly' && !viewerIsVerified.value) return 'verify'
-    if (filter.value === 'premiumOnly' && !viewerIsPremium.value) return 'premium'
-    return null
-  })
-
-  // Clamp cookies to allowed values (SSR-safe).
-  watch(
-    filter,
-    (v) => {
-      if (v === 'all' || v === 'public' || v === 'verifiedOnly' || v === 'premiumOnly') return
-      filter.value = 'all'
-    },
-    { immediate: true },
-  )
-  watch(
-    sort,
-    (v) => {
-      if (v === 'new' || v === 'trending') return
-      sort.value = 'new'
-    },
-    { immediate: true },
-  )
 
   async function fetch(nextFilter: UserPostsFilter, nextSort: 'new' | 'trending') {
     if (!enabled.value) {
