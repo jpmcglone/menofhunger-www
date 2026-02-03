@@ -10,6 +10,9 @@ const PRESENCE_INTEREST_KEY = 'presence-interest-refs'
 const PRESENCE_DISCONNECTED_DUE_TO_IDLE_KEY = 'presence-disconnected-due-to-idle'
 const NOTIFICATIONS_UNDELIVERED_COUNT_KEY = 'notifications-undelivered-count'
 const NOTIFICATION_SOUND_PATH = '/sounds/notification.mp3'
+/** Min ms between plays so we don't ding repeatedly (e.g. multiple sockets on mobile or burst of events). */
+const NOTIFICATION_SOUND_COOLDOWN_MS = 3000
+const NOTIFICATION_AUDIO_UNLOCKED_KEY = 'presence-notification-audio-unlocked'
 
 export type PresenceOnlinePayload = { userId: string; user?: FollowListUser; lastConnectAt?: number; idle?: boolean }
 export type PresenceOfflinePayload = { userId: string }
@@ -297,13 +300,22 @@ export function usePresence() {
       disconnectedDueToIdle.value = true
     })
 
+    let lastNotificationSoundPlayedAt = 0
     socket.on('notifications:updated', (data: { undeliveredCount?: number }) => {
       const raw = typeof data?.undeliveredCount === 'number' ? data.undeliveredCount : 0
       const newCount = Math.max(0, Math.floor(raw))
       const prev = previousNotificationCountRef.value ?? 0
       notificationUndeliveredCount.value = newCount
-      if (newCount > prev && typeof document !== 'undefined' && document.visibilityState === 'visible') {
+      const now = Date.now()
+      const withinCooldown = now - lastNotificationSoundPlayedAt < NOTIFICATION_SOUND_COOLDOWN_MS
+      if (
+        newCount > prev &&
+        !withinCooldown &&
+        typeof document !== 'undefined' &&
+        document.visibilityState === 'visible'
+      ) {
         try {
+          lastNotificationSoundPlayedAt = now
           const audio = new Audio(NOTIFICATION_SOUND_PATH)
           void audio.play().catch(() => {})
         } catch {
@@ -397,11 +409,12 @@ export function usePresence() {
     )
 
     // Unlock audio on first user interaction so the first notification sound can play (browsers block play() until then).
-    let audioUnlocked = false
-    let unlockListenersAdded = false
+    // Use shared state so we only add one set of listeners and play once globally (usePresence() is called from many components).
+    const audioUnlocked = useState<boolean>(NOTIFICATION_AUDIO_UNLOCKED_KEY, () => false)
+    const unlockListenersAdded = useState<boolean>(`${NOTIFICATION_AUDIO_UNLOCKED_KEY}-listeners`, () => false)
     function unlockNotificationAudio() {
-      if (audioUnlocked) return
-      audioUnlocked = true
+      if (audioUnlocked.value) return
+      audioUnlocked.value = true
       try {
         const a = new Audio(NOTIFICATION_SOUND_PATH)
         a.volume = 0
@@ -413,8 +426,8 @@ export function usePresence() {
     watch(
       () => user.value?.id ?? null,
       (userId) => {
-        if (!userId || unlockListenersAdded) return
-        unlockListenersAdded = true
+        if (!userId || unlockListenersAdded.value) return
+        unlockListenersAdded.value = true
         document.addEventListener('click', unlockNotificationAudio, { once: true, passive: true })
         document.addEventListener('keydown', unlockNotificationAudio, { once: true, passive: true })
         document.addEventListener('touchstart', unlockNotificationAudio, { once: true, passive: true })
