@@ -288,7 +288,7 @@ async function sendPushTest() {
   pushTestMessage.value = ''
   pushTestSending.value = true
   try {
-    const res = await apiFetch<{ data: { sent: boolean; message?: string } }>('/notifications/push-test', {
+    const res = await apiFetch<{ sent: boolean; message?: string }>('/notifications/push-test', {
       method: 'POST'
     })
     const data = res?.data
@@ -461,13 +461,13 @@ async function save() {
 
   saving.value = true
   try {
-    const result = await apiFetchData<any>('/users/me/username', {
+    const result = await apiFetchData<{ user: import('~/composables/useAuth').AuthUser }>('/users/me/username', {
       method: 'PATCH',
       body: { username },
     })
 
     // Update client auth state with latest user data.
-    authUser.value = result ?? authUser.value
+    authUser.value = result.user ?? authUser.value
     saved.value = true
   } catch (e: unknown) {
     usernameHelperText.value = getApiErrorMessage(e) || 'Failed to save username.'
@@ -484,7 +484,7 @@ async function saveEmail() {
   try {
     const raw = emailInput.value.trim()
     const body = { email: raw ? raw : '' }
-    const result = await apiFetchData<{ user: any }>('/users/me/profile', {
+    const result = await apiFetchData<{ user: import('~/composables/useAuth').AuthUser }>('/users/me/profile', {
       method: 'PATCH',
       body,
     })
@@ -502,11 +502,11 @@ async function savePrivacy() {
   privacyError.value = null
   privacySaving.value = true
   try {
-    const result = await apiFetchData<any>('/users/me/settings', {
+    const result = await apiFetchData<{ user: import('~/composables/useAuth').AuthUser }>('/users/me/settings', {
       method: 'PATCH',
       body: { followVisibility: followVisibilityInput.value }
     })
-    authUser.value = result ?? authUser.value
+    authUser.value = result.user ?? authUser.value
     privacySaved.value = true
   } catch (e: unknown) {
     privacyError.value = getApiErrorMessage(e) || 'Failed to save privacy.'

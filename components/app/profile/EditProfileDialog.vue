@@ -383,7 +383,7 @@ async function saveProfile() {
       })
       if (!putRes.ok) throw new Error('Failed to upload banner.')
 
-      const committed = await apiFetchData<{ user: { bannerUrl?: string | null } }>('/uploads/banner/commit', {
+      const committed = await apiFetchData<{ user: import('~/composables/useAuth').AuthUser }>('/uploads/banner/commit', {
         method: 'POST',
         body: { key: init.key },
       })
@@ -411,7 +411,7 @@ async function saveProfile() {
       })
       if (!putRes.ok) throw new Error('Failed to upload avatar.')
 
-      const committed = await apiFetchData<{ user: any }>('/uploads/avatar/commit', {
+      const committed = await apiFetchData<{ user: import('~/composables/useAuth').AuthUser }>('/uploads/avatar/commit', {
         method: 'POST',
         body: { key: init.key },
       })
@@ -422,7 +422,7 @@ async function saveProfile() {
       clearPendingAvatar()
     }
 
-    const result = await apiFetchData<any>('/users/me/profile', {
+    const result = await apiFetchData<{ user: import('~/composables/useAuth').AuthUser }>('/users/me/profile', {
       method: 'PATCH',
       body: {
         name: editName.value,
@@ -431,8 +431,9 @@ async function saveProfile() {
     })
 
     // Update profile state (public view) and auth user state (self).
-    emit('patchProfile', { name: result?.name ?? null, bio: result?.bio ?? null })
-    authUser.value = result ?? authUser.value
+    const u = result.user
+    emit('patchProfile', { name: u?.name ?? null, bio: u?.bio ?? null })
+    authUser.value = u ?? authUser.value
     emit('update:modelValue', false)
   } catch (e: unknown) {
     editError.value = getApiErrorMessage(e) || 'Failed to save profile.'

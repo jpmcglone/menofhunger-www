@@ -382,11 +382,11 @@ async function submit() {
     // If username is already set and they changed only capitalization, save it via the username endpoint.
     const trimmedUsername = usernameInput.value.trim()
     if (usernameLocked.value && trimmedUsername && trimmedUsername !== currentUsername.value && usernameIsCaseOnly.value) {
-      const ures = await apiFetchData<any>('/users/me/username', {
+      const ures = await apiFetchData<{ user: import('~/composables/useAuth').AuthUser }>('/users/me/username', {
         method: 'PATCH',
         body: { username: trimmedUsername },
       })
-      user.value = ures ?? user.value
+      user.value = ures.user ?? user.value
     }
 
     const payload: Record<string, unknown> = {
@@ -398,11 +398,11 @@ async function submit() {
     if (!birthdateLocked.value) payload.birthdate = birthdate.value
     if (!menConfirmLocked.value) payload.menOnlyConfirmed = Boolean(menOnlyConfirmed.value)
 
-    const res = await apiFetchData<any>('/users/me/onboarding', {
+    const res = await apiFetchData<{ user: import('~/composables/useAuth').AuthUser }>('/users/me/onboarding', {
       method: 'PATCH',
       body: payload,
     })
-    user.value = res ?? user.value
+    user.value = res.user ?? user.value
   } catch (e: unknown) {
     error.value = getApiErrorMessage(e) || 'Failed to save. Please try again.'
   } finally {

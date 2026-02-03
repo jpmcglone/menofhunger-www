@@ -32,9 +32,9 @@ export function useAuth() {
 
   async function me(): Promise<AuthUser | null> {
     try {
-      const result = await apiFetch<AuthUser | null>('/auth/me', { method: 'GET' })
-      user.value = result.data
-      return result.data
+      const result = await apiFetch<{ user: AuthUser | null }>('/auth/me', { method: 'GET' })
+      user.value = result.data.user
+      return result.data.user
     } catch {
       // If the API is unreachable, fail gracefully.
       user.value = null
