@@ -759,6 +759,18 @@ function formatCompactNumber(n: number): string {
 await initAuth()
 // nav items are provided by useAppNav() so mobile + desktop stay in sync
 
+// Auto-prompt for browser notifications once when user is logged in and permission is still "ask".
+watch(
+  () => isAuthed.value,
+  (authed) => {
+    if (!authed || !import.meta.client) return
+    const push = usePushNotifications()
+    push.tryAutoPrompt()
+    void push.ensureSubscribedWhenGranted()
+  },
+  { immediate: true },
+)
+
 watchEffect(() => {
   if (!import.meta.client) return
   if (!isAuthed.value) return

@@ -1,7 +1,17 @@
 /**
  * Push-only Service Worker. Shows OS notification only when no app tab has visibilityState === 'visible'.
+ * Test payloads (payload.test === true or title "Test notification") are always shown.
  * On notification click: focus existing app window and navigate, or open a new window.
  */
+
+self.addEventListener('install', function () {
+  self.skipWaiting()
+})
+
+self.addEventListener('activate', function (event) {
+  event.waitUntil(self.clients.claim())
+})
+
 self.addEventListener('push', function (event) {
   if (!event.data) return
   let payload
@@ -15,18 +25,21 @@ self.addEventListener('push', function (event) {
   const tag = payload.tag || 'notification'
   const url = payload.url || '/notifications'
   const icon = payload.icon || '/android-chrome-192x192.png'
+  const isTest = payload.test === true || title === 'Test notification'
 
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function (clients) {
       const hasVisibleWindow = clients.some(function (client) {
         return client.visibilityState === 'visible'
       })
-      if (hasVisibleWindow) return
+      if (!isTest && hasVisibleWindow) return
       return self.registration.showNotification(title, {
         body,
         tag,
         icon,
         data: { url }
+      }).catch(function (err) {
+        console.error('[sw-push] showNotification failed', err)
       })
     })
   )

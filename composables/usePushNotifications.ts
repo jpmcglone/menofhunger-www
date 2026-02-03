@@ -1,9 +1,12 @@
 /**
  * Web Push: request permission, subscribe with VAPID, and send subscription to the API.
- * Register the push SW when subscribing; on logout or disable, unsubscribe and remove from API.
+ * The browser's native "Allow/Block notifications" prompt is triggered by Notification.requestPermission().
+ * We auto-prompt when the user is logged in and permission is still "ask" (default); otherwise
+ * the user can enable via Settings → Notifications. On logout or disable, unsubscribe and remove from API.
  */
 
 const SW_PUSH_PATH = '/sw-push.js'
+const PUSH_HAS_AUTO_PROMPTED_KEY = 'push-has-auto-prompted'
 
 function arrayBufferToBase64Url(buffer: ArrayBuffer): string {
   const bytes = new Uint8Array(buffer)
@@ -24,6 +27,7 @@ export function usePushNotifications() {
   const isSubscribed = ref(false)
   const isRegistering = ref(false)
   const errorMessage = ref<string | null>(null)
+  const hasAutoPrompted = useState<boolean>(PUSH_HAS_AUTO_PROMPTED_KEY, () => false)
 
   async function registerSw(): Promise<ServiceWorkerRegistration | null> {
     if (typeof navigator === 'undefined' || !('serviceWorker' in navigator)) return null
@@ -106,7 +110,7 @@ export function usePushNotifications() {
     if (!import.meta.client || !('serviceWorker' in navigator)) return
     errorMessage.value = null
     try {
-      const reg = await navigator.serviceWorker.getRegistration()
+      const reg = await registerSw()
       const sub = reg?.pushManager ? await reg.pushManager.getSubscription() : null
       if (sub) {
         const endpoint = sub.endpoint
@@ -129,11 +133,40 @@ export function usePushNotifications() {
     permission.value = typeof Notification !== 'undefined' ? Notification.permission : 'unsupported'
   }
 
-  /** Re-check subscription state (e.g. on app load when logged in). */
+  /**
+   * Auto-prompt once per session when user is logged in and permission is still "ask".
+   * Call from app layout (or similar) when auth is ready.
+   */
+  function tryAutoPrompt(): void {
+    if (!import.meta.client || !user.value?.id) return
+    if (!vapidPublicKey?.trim()) return
+    if (typeof Notification === 'undefined' || Notification.permission !== 'default') return
+    if (hasAutoPrompted.value) return
+    hasAutoPrompted.value = true
+    void subscribe()
+  }
+
+  /**
+   * When logged in on any app page: refresh subscription state and, if permission is already
+   * granted but we're not subscribed, register (e.g. after enabling in browser settings or after
+   * subscription was lost). Call liberally from app layout when auth is ready.
+   */
+  async function ensureSubscribedWhenGranted(): Promise<void> {
+    if (!import.meta.client || !user.value?.id || !vapidPublicKey?.trim()) return
+    if (typeof Notification === 'undefined' || !('PushManager' in self)) return
+    if (Notification.permission !== 'granted') return
+    if (isRegistering.value) return
+    await refreshSubscriptionState()
+    if (isSubscribed.value) return
+    void subscribe()
+  }
+
+  /** Re-check subscription state (e.g. on app load when logged in). Also triggers SW update so latest sw-push.js is used. */
   async function refreshSubscriptionState(): Promise<void> {
     if (!import.meta.client || !('serviceWorker' in navigator) || !user.value?.id) return
     try {
-      const reg = await navigator.serviceWorker.getRegistration(SW_PUSH_PATH)
+      const reg = await registerSw()
+      if (reg) void reg.update()
       const sub = reg?.pushManager ? await reg.pushManager.getSubscription() : null
       isSubscribed.value = !!sub
       permission.value = typeof Notification !== 'undefined' ? Notification.permission : 'unsupported'
@@ -150,6 +183,8 @@ export function usePushNotifications() {
     subscribe,
     unsubscribe,
     onLogout,
+    tryAutoPrompt,
+    ensureSubscribedWhenGranted,
     refreshSubscriptionState,
     vapidConfigured: !!vapidPublicKey?.trim()
   }

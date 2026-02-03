@@ -60,10 +60,9 @@ export function useAuth() {
   }
 
   async function initAuth(): Promise<void> {
-    if (initDone.value) return
-    initDone.value = true
-
     if (import.meta.server) {
+      if (initDone.value) return
+      initDone.value = true
       const cookieHeader = useRequestHeaders(['cookie']).cookie
       if (!cookieHeader?.includes('moh_session=')) {
         didAttempt.value = true
@@ -73,6 +72,12 @@ export function useAuth() {
       return
     }
 
+    // Client: always try to load user on mount if not yet loaded (fixes profile card on prod when SSR had no cookie).
+    onMounted(() => {
+      if (!user.value) void ensureLoaded()
+    })
+    if (initDone.value) return
+    initDone.value = true
     onMounted(() => {
       void ensureLoaded()
     })

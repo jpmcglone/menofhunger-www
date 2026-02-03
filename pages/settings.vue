@@ -187,11 +187,23 @@
                     severity="secondary"
                     @click="pushUnsubscribe"
                   />
+                  <Button
+                    v-if="push.isSubscribed"
+                    label="Send test notification"
+                    icon="pi pi-send"
+                    severity="secondary"
+                    :loading="pushTestSending"
+                    :disabled="pushTestSending"
+                    @click="sendPushTest"
+                  />
                   <span v-else-if="push.permission === 'denied'" class="text-sm text-gray-600 dark:text-gray-400">
                     Notifications were denied. Enable them in your browser settings for this site to try again.
                   </span>
                   <span v-if="push.errorMessage" class="text-sm text-red-700 dark:text-red-300">
                     {{ push.errorMessage }}
+                  </span>
+                  <span v-if="pushTestMessage" class="text-sm text-gray-600 dark:text-gray-400">
+                    {{ pushTestMessage }}
                   </span>
                 </div>
               </div>
@@ -252,11 +264,13 @@ const { user: authUser, ensureLoaded } = useAuth()
 // Ensure we have the current user (so inputs can prefill immediately).
 await ensureLoaded()
 
-const { apiFetchData } = useApiClient()
+const { apiFetch, apiFetchData } = useApiClient()
 import { getApiErrorMessage } from '~/utils/api-error'
 import { siteConfig } from '~/config/site'
 
 const push = usePushNotifications()
+const pushTestSending = ref(false)
+const pushTestMessage = ref('')
 
 onMounted(() => {
   void push.refreshSubscriptionState()
@@ -268,6 +282,26 @@ async function pushSubscribe() {
 
 async function pushUnsubscribe() {
   await push.unsubscribe()
+}
+
+async function sendPushTest() {
+  pushTestMessage.value = ''
+  pushTestSending.value = true
+  try {
+    const res = await apiFetch<{ data: { sent: boolean; message?: string } }>('/notifications/push-test', {
+      method: 'POST'
+    })
+    const data = res?.data
+    if (data?.sent) {
+      pushTestMessage.value = 'Test sent. If you don’t see a notification, refresh the page and try again (the service worker may need to update).'
+    } else {
+      pushTestMessage.value = data?.message ?? 'Could not send test.'
+    }
+  } catch (e) {
+    pushTestMessage.value = getApiErrorMessage(e) ?? 'Failed to send test.'
+  } finally {
+    pushTestSending.value = false
+  }
 }
 
 const selectedSection = ref<SettingsSection | null>(null)
