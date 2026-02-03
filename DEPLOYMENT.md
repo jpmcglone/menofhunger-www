@@ -27,3 +27,19 @@ The app already sets appropriate headers via [nuxt.config.ts](nuxt.config.ts) ro
 | `/sounds/**` | `public, max-age=86400, stale-while-revalidate=86400` |
 
 `/_nuxt/*` assets (JS, CSS) are long-lived and immutable. Static assets under `/images` and `/sounds` use 24h cache with stale-while-revalidate.
+
+## Link previews (Facebook / Messenger)
+
+### SSR timing
+
+SSR for `/p/[id]` does: fetch post from API, optional auth check, and (for link-only posts) fetch link metadata from API. On cache miss, the API may call Microlink/Jina (up to ~2s). If total response time exceeds ~5–10 seconds, Facebook’s crawler can time out and cache an incomplete page.
+
+**Mitigations:** CDN in front of www, SSR response caching (e.g. Nitro routeRules `cache` for `/p/**`), and API-side link metadata caching (LinkMetadata table + cron backfill). Those reduce latency for repeat requests.
+
+### Messenger-specific behavior
+
+Facebook Messenger can show minimal previews (URL + domain only) even when the Sharing Debugger validates og: tags. Reported as a platform quirk; workarounds:
+
+1. Use [Sharing Debugger](https://developers.facebook.com/tools/debug/) and **Scrape Again** for the URL.
+2. Ensure `fb:app_id` is set (fixes the “Missing Properties” warning).
+3. Ensure `og:image` is absolute, ideally 1200×630 for the fallback logo.

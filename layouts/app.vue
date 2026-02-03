@@ -91,6 +91,7 @@
                 isAuthed && (user?.premium || (user?.verifiedStatus && user.verifiedStatus !== 'none')) && !navCompactMode ? 'gap-1.5' : 'gap-2'
               ]"
               aria-label="Home"
+              @click="onHomeClick"
             >
               <div class="flex h-12 w-12 shrink-0 items-center justify-center">
                 <AppLogo
@@ -856,10 +857,23 @@ function isActiveNav(to: string) {
   return route.path === to || route.path.startsWith(`${to}/`)
 }
 
+function scrollMiddleToTop() {
+  const el = middleScrollerEl.value
+  if (el) el.scrollTo({ top: 0, behavior: 'smooth' })
+}
+
+function onHomeClick(e: MouseEvent) {
+  if (route.path === '/home') {
+    e.preventDefault()
+    scrollMiddleToTop()
+  }
+}
+
 function onLeftNavClick(to: string, e: MouseEvent) {
   if (!isActiveNav(to)) return
   e.preventDefault()
   e.stopPropagation()
+  if (to === '/home') scrollMiddleToTop()
 }
 </script>
 

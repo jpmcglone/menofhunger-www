@@ -220,6 +220,9 @@ export function usePostPermalinkSeo(opts: {
     return [authorUrl ? author : null, article].filter(Boolean)
   })
 
+  const seoImageWidth = computed(() => opts.primaryMedia.value?.width ?? undefined)
+  const seoImageHeight = computed(() => opts.primaryMedia.value?.height ?? undefined)
+
   usePageSeo({
     title: seoTitle,
     description: seoDescription,
@@ -227,6 +230,8 @@ export function usePostPermalinkSeo(opts: {
     ogType: computed(() => (opts.isRestricted.value ? 'website' : 'article')),
     image: seoImage,
     imageAlt: seoImageAlt,
+    imageWidth: seoImageWidth,
+    imageHeight: seoImageHeight,
     noindex: computed(() => opts.isRestricted.value || Boolean(opts.errorText.value)),
     author: seoAuthor,
     jsonLdGraph
@@ -245,13 +250,6 @@ export function usePostPermalinkSeo(opts: {
         // Multiple images: add extra OG images so platforms can pick/rotate (images, GIFs).
         ...opts.extraOgMediaUrls.value.map((u) => ({ property: 'og:image', content: toAbs(u) })),
       ]
-      // Actual image dimensions when available (better than generic 1200x630).
-      const w = opts.primaryMedia.value?.width
-      const h = opts.primaryMedia.value?.height
-      if (typeof w === 'number' && w > 0 && typeof h === 'number' && h > 0) {
-        meta.push({ property: 'og:image:width', content: String(w) })
-        meta.push({ property: 'og:image:height', content: String(h) })
-      }
       // Video: og:video and twitter:player for rich video previews.
       const video = opts.primaryVideo?.value
       if (video) {

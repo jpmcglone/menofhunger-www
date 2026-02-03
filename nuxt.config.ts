@@ -19,7 +19,9 @@ export default defineNuxtConfig({
       // Example: NUXT_PUBLIC_ASSETS_BASE_URL=https://moh-assets.<accountId>.r2.dev
       assetsBaseUrl: process.env.NUXT_PUBLIC_ASSETS_BASE_URL || '',
       // VAPID public key for Web Push (must match API VAPID_PUBLIC_KEY).
-      vapidPublicKey: process.env.NUXT_PUBLIC_VAPID_PUBLIC_KEY || ''
+      vapidPublicKey: process.env.NUXT_PUBLIC_VAPID_PUBLIC_KEY || '',
+      // Facebook App ID for og:fb:app_id (fixes Sharing Debugger warning; improves link previews).
+      facebookAppId: process.env.NUXT_PUBLIC_FACEBOOK_APP_ID || ''
     }
   },
   app: {
@@ -108,10 +110,12 @@ export default defineNuxtConfig({
     //   need correct client state (presence, WebSocket) and are not shared as links.
 
     // Public shareable: SSR so link unfurls and crawlers get correct og:image, title, description.
-    // SWR caches the HTML response to cut SSR CPU/memory on repeat requests (crawlers, unfurls).
-    '/': { ssr: true, swr: 60 },
-    '/u/**': { ssr: true, swr: 300 },
-    '/p/**': { ssr: true, swr: 120 },
+    // / uses client-side auth redirect (loader → /home or landing).
+    // SWR disabled: Nitro serves cached response before Nuxt cookie hooks run, causing
+    // "Cannot append headers after they are sent" when useCookie writes Set-Cookie.
+    '/': { ssr: true },
+    '/u/**': { ssr: true },
+    '/p/**': { ssr: true },
 
     // Static content: prerender for fast, cacheable, indexable HTML.
     '/terms': { prerender: true },

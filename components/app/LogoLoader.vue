@@ -1,13 +1,25 @@
 <template>
-  <div
-    class="moh-double-spinner"
-    :style="{ width: sizePx, height: sizePx }"
+  <svg
+    class="moh-spinner"
+    :class="{ 'moh-spinner--compact': compact }"
+    :width="sizeNum"
+    :height="sizeNum"
+    viewBox="0 0 40 40"
     role="status"
     aria-label="Loading"
   >
-    <div class="moh-double-spinner-outer" />
-    <div class="moh-double-spinner-inner" />
-  </div>
+    <!-- Stroke ~75% of circle, gap ~25% -->
+    <circle
+      cx="20"
+      cy="20"
+      r="16"
+      fill="none"
+      stroke="var(--moh-spinner)"
+      :stroke-width="compact ? 4 : 6"
+      stroke-dasharray="75 25"
+      stroke-linecap="round"
+    />
+  </svg>
 </template>
 
 <script setup lang="ts">
@@ -15,58 +27,38 @@ const props = withDefaults(
   defineProps<{
     /** Size in pixels (width and height). */
     size?: number
+    /** Compact: smaller size (for inline/feed loaders). */
+    compact?: boolean
   }>(),
-  { size: 48 }
+  { size: 36, compact: false }
 )
 
-const sizePx = computed(() => `${props.size}px`)
+const sizeNum = computed(() => (props.compact ? 20 : props.size))
 </script>
 
 <style scoped>
-.moh-double-spinner {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+.moh-spinner {
+  display: inline-block;
+  filter: var(--moh-spinner-shadow);
+  animation: moh-spin 0.7s linear infinite;
+  animation-play-state: running;
+  will-change: transform;
 }
 
-.moh-double-spinner-outer,
-.moh-double-spinner-inner {
-  position: absolute;
-  border-radius: 50%;
-  border-style: solid;
-  border-width: 2px;
-  border-bottom-color: transparent;
-}
-
-.moh-double-spinner-outer {
-  inset: 0;
-  border-color: var(--p-primary-500, var(--p-primary-color, #c77d1a));
-  animation: moh-spin-cw 0.9s linear infinite;
-}
-
-.moh-double-spinner-inner {
-  inset: 22%;
-  border-color: #141210;
-  border-bottom-color: transparent;
-  animation: moh-spin-ccw 0.7s linear infinite;
-}
-
-@keyframes moh-spin-cw {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
-
-@keyframes moh-spin-ccw {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(-360deg); }
+@keyframes moh-spin {
+  from { transform: rotate(0deg) translateZ(0); }
+  to { transform: rotate(360deg) translateZ(0); }
 }
 </style>
 
-<!-- Inner ring contrast: light in dark mode (unscoped so html.dark applies) -->
+<!-- Light: white stroke + black shadow. Dark: slightly brighter than bg. -->
 <style>
-html.dark .moh-double-spinner-inner {
-  border-color: #f1eee7;
-  border-bottom-color: transparent;
+:root {
+  --moh-spinner: #fff;
+  --moh-spinner-shadow: drop-shadow(0 0 2px rgba(0, 0, 0, 0.06));
+}
+html.dark {
+  --moh-spinner: #2a2f35;
+  --moh-spinner-shadow: drop-shadow(0 0 2px rgba(0, 0, 0, 0.06));
 }
 </style>

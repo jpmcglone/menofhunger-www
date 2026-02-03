@@ -34,37 +34,53 @@
           {{ error }}
         </AppInlineAlert>
 
-        <div v-else-if="loading && !posts.length" class="flex justify-center pt-12 pb-8">
-          <AppLogoLoader />
-        </div>
+        <div class="relative">
+          <!-- Loader: always in DOM, opacity 0/1, z-0 (below feed). Visible when loading and no posts. -->
+          <div
+            class="absolute inset-x-0 top-0 flex justify-center items-center min-h-[240px] transition-opacity duration-150 z-0"
+            :class="showMainLoader ? 'opacity-100' : 'opacity-0 pointer-events-none'"
+            aria-hidden="!showMainLoader"
+          >
+            <AppLogoLoader />
+          </div>
 
-        <div v-else>
-          <AppFeedFollowingEmptyState
-            v-if="showFollowingEmptyState"
-            :following-count="followingCount"
-            @find-people="navigateTo('/explore')"
-          />
+          <!-- Feed: always in flow (no movement), z-10 so above loader. Hidden when loader visible. -->
+          <div
+            class="relative z-10"
+            :class="showMainLoader ? 'opacity-0 pointer-events-none' : 'opacity-100'"
+          >
+            <AppFeedFollowingEmptyState
+              v-if="showFollowingEmptyState"
+              :following-count="followingCount"
+              @find-people="navigateTo('/explore')"
+            />
 
-          <div class="relative">
-            <div v-for="p in posts" :key="p.id">
-              <AppFeedPostRow
-                :post="p"
-                :activate-video-on-mount="p.id === newlyPostedVideoPostId"
-                @deleted="removePost"
+            <div class="relative">
+              <div v-for="p in posts" :key="p.id">
+                <AppFeedPostRow
+                  :post="p"
+                  :activate-video-on-mount="p.id === newlyPostedVideoPostId"
+                  @deleted="removePost"
+                />
+              </div>
+            </div>
+
+            <!-- Lazy-load sentinel + loader -->
+            <div v-if="nextCursor" class="relative flex justify-center items-center px-4 py-6 min-h-12">
+              <div
+                ref="loadMoreSentinelEl"
+                class="absolute bottom-0 left-0 right-0 h-px"
+                aria-hidden="true"
               />
+              <div
+                class="transition-opacity duration-150"
+                :class="loading ? 'opacity-100' : 'opacity-0 pointer-events-none'"
+                aria-hidden="!loading"
+              >
+                <AppLogoLoader compact />
+              </div>
             </div>
           </div>
-        </div>
-
-        <div v-if="nextCursor" class="flex justify-center px-4 py-6">
-          <Button
-            label="Load more"
-            severity="secondary"
-            rounded
-            :loading="loading"
-            :disabled="loading"
-            @click="loadMore"
-          />
         </div>
       </template>
     </div>
@@ -94,6 +110,7 @@ usePageSeo({
 })
 
 const homeComposerEl = ref<HTMLElement | null>(null)
+const loadMoreSentinelEl = ref<HTMLElement | null>(null)
 const homeComposerInViewRef = inject(MOH_HOME_COMPOSER_IN_VIEW_KEY)
 
 const middleScrollerRef = useMiddleScroller()
@@ -142,9 +159,38 @@ const {
   resetFilters,
 } = useHomeFeed()
 
+// Lazy-load more posts when sentinel nears bottom of scroll area
+let loadMoreObs: IntersectionObserver | null = null
+watch(
+  [loadMoreSentinelEl, middleScrollerRef, nextCursor],
+  ([sentinel, scrollRoot]) => {
+    if (!import.meta.client) return
+    loadMoreObs?.disconnect()
+    loadMoreObs = null
+    const el = sentinel as HTMLElement | null
+    const root = scrollRoot as HTMLElement | null
+    if (!el || !root || !nextCursor.value) return
+    loadMoreObs = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) loadMore()
+      },
+      { root, rootMargin: '400px', threshold: 0 },
+    )
+    loadMoreObs.observe(el)
+  },
+  { immediate: true, flush: 'post' },
+)
+onBeforeUnmount(() => {
+  loadMoreObs?.disconnect()
+  loadMoreObs = null
+})
+
+const showMainLoader = computed(() => loading.value && !posts.value.length)
+
 const replyModal = useReplyModal()
 onActivated(() => {
   if (!import.meta.client) return
+  void refresh()
   replyModal.registerOnReplyPosted((payload) => {
     const parent = replyModal.parentPost.value
     if (!parent?.id || !payload.post) return
@@ -188,9 +234,5 @@ function onFeedScopeChange(v: 'following' | 'all') {
   feedScope.value = v
 }
 
-if (import.meta.server) {
-  await refresh()
-} else {
-  onMounted(() => void refresh())
-}
+if (import.meta.server) await refresh()
 </script>

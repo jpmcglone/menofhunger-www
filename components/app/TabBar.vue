@@ -63,6 +63,7 @@ defineProps<{
 const route = useRoute()
 const { user } = useAuth()
 const { menuItems, confirmVisible, confirmLogout } = useUserMenu()
+const middleScrollerRef = useMiddleScroller()
 
 const profileMenuRef = ref()
 
@@ -75,6 +76,10 @@ function onNavClick(to: string, e: MouseEvent) {
   if (!isActive(to)) return
   e.preventDefault()
   e.stopPropagation()
+  if (to === '/home') {
+    const el = middleScrollerRef.value
+    if (el) el.scrollTo({ top: 0, behavior: 'smooth' })
+  }
 }
 
 function toggleProfileMenu(event: Event) {

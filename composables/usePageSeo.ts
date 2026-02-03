@@ -12,6 +12,10 @@ export type PageSeoOptions = {
   image?: MaybeRef<string | undefined>
   /** Alt text for OG/Twitter image (avoid leaking restricted content). */
   imageAlt?: MaybeRef<string | undefined>
+  /** OG image width (default 1200). Set when image dimensions are known for better unfurls. */
+  imageWidth?: MaybeRef<number | undefined>
+  /** OG image height (default 630). Set when image dimensions are known for better unfurls. */
+  imageHeight?: MaybeRef<number | undefined>
   /** Override canonical path (e.g. '/about'). Defaults to current route path. */
   canonicalPath?: MaybeRef<string | undefined>
   /** OpenGraph type */
@@ -76,7 +80,9 @@ export function usePageSeo(options: PageSeoOptions = {}) {
       : 'index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1'
   )
   const author = computed(() => (unref(options.author) || siteConfig.name).slice(0, 120))
- 
+  const config = useRuntimeConfig()
+  const facebookAppId = computed(() => String(config.public.facebookAppId || '').trim())
+
   useSeoMeta({
     title: fullTitle,
     description,
@@ -143,16 +149,30 @@ export function usePageSeo(options: PageSeoOptions = {}) {
     return [...baseGraph, ...(unref(options.jsonLdGraph) || [])]
   })
  
+  const imageWidth = computed(() => {
+    const w = unref(options.imageWidth)
+    return typeof w === 'number' && w > 0 ? String(w) : '1200'
+  })
+  const imageHeight = computed(() => {
+    const h = unref(options.imageHeight)
+    return typeof h === 'number' && h > 0 ? String(h) : '630'
+  })
+
   useHead({
     link: [{ rel: 'canonical', href: canonical.value }],
-    meta: [
-      { name: 'robots', content: robots.value },
-      { name: 'keywords', content: siteConfig.meta.keywords },
-      { name: 'author', content: author.value },
-      // Helpful for link unfurlers; safe defaults for our OG image.
-      { property: 'og:image:width', content: '1200' },
-      { property: 'og:image:height', content: '630' }
-    ],
+    meta: computed(() => {
+      const meta: Array<{ property?: string; name?: string; content: string }> = [
+        { name: 'robots', content: robots.value },
+        { name: 'keywords', content: siteConfig.meta.keywords },
+        { name: 'author', content: author.value },
+        { property: 'og:image:width', content: imageWidth.value },
+        { property: 'og:image:height', content: imageHeight.value }
+      ]
+      if (facebookAppId.value) {
+        meta.push({ property: 'fb:app_id', content: facebookAppId.value })
+      }
+      return meta
+    }),
     script: [
       {
         type: 'application/ld+json',

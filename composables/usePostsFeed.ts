@@ -21,16 +21,8 @@ export function usePostsFeed(options: { visibility?: Ref<FeedFilter>; followingO
   const followingOnly = options.followingOnly ?? ref(false)
   const sort = options.sort ?? ref<FeedSort>('new')
 
-  // Refetch when visibility, sort, or scope (All/Following) change so the feed list updates.
-  // Parent (e.g. useHomeFeed) may also call refresh(); refresh() no-ops when already loading.
-  watch(
-    [visibility, sort, followingOnly],
-    () => {
-      if (!import.meta.client) return
-      void refresh()
-    },
-    { flush: 'post', immediate: false }
-  )
+  // Parent (useHomeFeed) calls refresh() when filter/sort/scope change — no watcher here
+  // to avoid duplicate fetches (setters update refs and call refresh explicitly).
 
   type RefreshOverrides = { visibility?: FeedFilter; sort?: FeedSort } | void
 
@@ -38,6 +30,8 @@ export function usePostsFeed(options: { visibility?: Ref<FeedFilter>; followingO
     if (loading.value) return
     loading.value = true
     error.value = null
+    posts.value = []
+    nextCursor.value = null
     loadingIndicator.start()
     const vis = overrides?.visibility ?? visibility.value
     const sortVal = overrides?.sort ?? sort.value
@@ -60,7 +54,7 @@ export function usePostsFeed(options: { visibility?: Ref<FeedFilter>; followingO
       error.value = getApiErrorMessage(e) || 'Failed to load posts.'
     } finally {
       loading.value = false
-      loadingIndicator.finish()
+      queueMicrotask(() => loadingIndicator.finish())
     }
   }
 
