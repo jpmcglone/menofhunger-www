@@ -8,16 +8,16 @@
     @submit="saveProfile"
   >
     <div class="space-y-4">
-      <!-- Keep the banner clipped/rounded, but let the avatar overflow (like the real profile header). -->
-      <div class="relative rounded-2xl border border-gray-200 bg-white dark:border-zinc-800 dark:bg-black/20">
-        <div class="overflow-hidden rounded-2xl">
+      <!-- Banner: edge-to-edge, no corner radius. Avatar overflows below. -->
+      <div class="-mx-6 relative shrink-0 border-0 border-b border-gray-200 bg-white dark:border-zinc-800 dark:bg-black/20">
+        <div class="overflow-hidden">
           <div class="relative">
-            <div class="aspect-[3/1] w-full bg-gray-200 dark:bg-zinc-900">
+            <div class="aspect-[3/1] w-full min-h-0 shrink-0 overflow-hidden bg-gray-200 dark:bg-zinc-900">
               <img
                 v-if="editBannerPreviewUrl"
                 :src="editBannerPreviewUrl"
                 alt=""
-                class="h-full w-full object-cover"
+                class="h-full w-full object-contain"
                 loading="lazy"
                 decoding="async"
               >
@@ -383,13 +383,13 @@ async function saveProfile() {
       })
       if (!putRes.ok) throw new Error('Failed to upload banner.')
 
-      const committed = await apiFetchData<any>('/uploads/banner/commit', {
+      const committed = await apiFetchData<{ user: { bannerUrl?: string | null } }>('/uploads/banner/commit', {
         method: 'POST',
         body: { key: init.key },
       })
 
-      authUser.value = committed ?? authUser.value
-      emit('patchProfile', { bannerUrl: committed?.bannerUrl ?? null })
+      authUser.value = committed?.user ?? authUser.value
+      emit('patchProfile', { bannerUrl: committed?.user?.bannerUrl ?? null })
       clearPendingBanner()
     }
 
