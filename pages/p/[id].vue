@@ -159,6 +159,16 @@ const post = computed(() => {
   return data.value ?? null
 })
 
+// Mark notifications whose subject is this post as read (fire-and-forget)
+const { markReadBySubject } = useNotifications()
+watch(
+  () => [post.value?.id, user.value?.id] as const,
+  ([pid, uid]) => {
+    if (pid && uid) markReadBySubject({ post_id: pid })
+  },
+  { immediate: true },
+)
+
 function onDeleted() {
   isDeleted.value = true
   errorText.value = 'Post deleted.'
@@ -267,7 +277,7 @@ async function createComment(
   media: import('~/composables/composer/types').CreateMediaPayload[],
 ): Promise<FeedPost | null> {
   if (!post.value?.id) return null
-  const res = await apiFetchData<{ post: FeedPost }>('/posts', {
+  const res = await apiFetchData<FeedPost>('/posts', {
     method: 'POST',
     body: {
       body,
@@ -277,7 +287,7 @@ async function createComment(
       media,
     },
   })
-  return res?.post ?? null
+  return res ?? null
 }
 
 function onReplyPosted(payload: { id: string; post?: FeedPost }) {

@@ -27,13 +27,35 @@
       leave-to-class="opacity-0 -translate-y-2"
     >
       <div
-        v-if="isAuthed && disconnectedDueToIdle"
-        class="fixed left-0 right-0 top-0 z-50 flex items-center justify-center border-b moh-border bg-white/95 px-4 py-2.5 text-center text-sm moh-text backdrop-blur-sm dark:bg-zinc-900/95"
+        v-if="isAuthed && (disconnectedDueToIdle || connectionBarJustConnected)"
+        :class="[
+          'fixed left-0 right-0 top-0 z-50 flex items-center justify-center gap-3 border-b px-4 py-2.5 text-center text-sm backdrop-blur-sm',
+          connectionBarJustConnected
+            ? 'border-green-500/60 bg-green-100/95 text-green-900 dark:border-green-500/50 dark:bg-green-900/30 dark:text-green-100'
+            : isSocketConnecting
+              ? 'border-amber-400/70 bg-amber-50/95 text-amber-900 dark:border-amber-500/50 dark:bg-amber-900/25 dark:text-amber-100'
+              : 'border-red-500/60 bg-red-100/95 text-red-900 dark:border-red-500/50 dark:bg-red-900/30 dark:text-red-100'
+        ]"
         role="status"
         aria-live="polite"
       >
-        <span class="moh-text-muted">You've been disconnected.</span>
-        <span class="ml-1.5">Scroll or tap anywhere to reconnect.</span>
+        <template v-if="connectionBarJustConnected">
+          <span>Reconnected.</span>
+        </template>
+        <template v-else-if="isSocketConnecting">
+          <span>Reconnecting…</span>
+        </template>
+        <template v-else>
+          <span>You've been disconnected.</span>
+          <span class="ml-1.5">Scroll or tap anywhere to reconnect.</span>
+          <Button
+            label="Reconnect"
+            size="small"
+            severity="secondary"
+            class="ml-2 !bg-white/80 dark:!bg-zinc-800/80"
+            @click="onReconnectClick"
+          />
+        </template>
       </div>
     </Transition>
     <AppOnboardingGate />
@@ -130,15 +152,25 @@
                   </template>
                 </ClientOnly>
                 <i v-else :class="['pi text-[28px] font-semibold', item.icon]" aria-hidden="true" />
-                <span
-                  v-if="item.key === 'notifications' && notifBadge.show"
-                  :class="[
-                    'absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold leading-[18px] text-center',
-                    notifBadge.toneClass.value,
-                  ]"
+                <Transition
+                  v-if="item.key === 'notifications'"
+                  enter-active-class="transition-opacity duration-200 ease-out"
+                  enter-from-class="opacity-0"
+                  enter-to-class="opacity-100"
+                  leave-active-class="transition-opacity duration-150 ease-in"
+                  leave-from-class="opacity-100"
+                  leave-to-class="opacity-0"
                 >
-                  {{ notifBadge.count }}
-                </span>
+                  <span
+                    v-if="notifBadge.show && notifBadge.count > 0"
+                    :class="[
+                      'absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold leading-[18px] text-center',
+                      notifBadge.toneClass.value,
+                    ]"
+                  >
+                    {{ notifBadge.count }}
+                  </span>
+                </Transition>
               </span>
               <span v-if="!navCompactMode" class="hidden xl:inline whitespace-nowrap overflow-hidden text-xl font-bold max-w-[220px]">
                 {{ item.label }}
@@ -538,7 +570,50 @@ import { useReplyModal } from '~/composables/useReplyModal'
 const route = useRoute()
 const { initAuth, user } = useAuth()
 const { isAuthed, leftItems: leftNavItems, tabItems } = useAppNav()
-const { disconnectedDueToIdle } = usePresence()
+const {
+  disconnectedDueToIdle,
+  connectionBarJustConnected,
+  isSocketConnecting,
+  reconnect,
+} = usePresence()
+
+function onReconnectClick() {
+  reconnect()
+}
+
+// When disconnected bar is visible, scroll or tap anywhere should reconnect.
+function onScrollOrTapReconnect() {
+  if (disconnectedDueToIdle.value && !isSocketConnecting.value) reconnect()
+}
+
+let connectionBarRemoveListeners: (() => void) | null = null
+watch(
+  () => isAuthed && disconnectedDueToIdle.value,
+  (shouldListen) => {
+    if (import.meta.client && connectionBarRemoveListeners) {
+      connectionBarRemoveListeners()
+      connectionBarRemoveListeners = null
+    }
+    if (import.meta.client && shouldListen) {
+      const opts = { capture: true }
+      document.addEventListener('scroll', onScrollOrTapReconnect, opts)
+      document.addEventListener('click', onScrollOrTapReconnect, opts)
+      document.addEventListener('touchstart', onScrollOrTapReconnect, opts)
+      document.addEventListener('keydown', onScrollOrTapReconnect, opts)
+      connectionBarRemoveListeners = () => {
+        document.removeEventListener('scroll', onScrollOrTapReconnect, opts)
+        document.removeEventListener('click', onScrollOrTapReconnect, opts)
+        document.removeEventListener('touchstart', onScrollOrTapReconnect, opts)
+        document.removeEventListener('keydown', onScrollOrTapReconnect, opts)
+        connectionBarRemoveListeners = null
+      }
+    }
+  },
+  { immediate: true },
+)
+onBeforeUnmount(() => {
+  if (connectionBarRemoveListeners) connectionBarRemoveListeners()
+})
 
 const { hideTopBar, navCompactMode, isRightRailForcedHidden, isRightRailSearchHidden, title } = useLayoutRules(route)
 const isPostPage = computed(() => /^\/p\/[^/]+$/.test(route.path))

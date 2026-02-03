@@ -14,7 +14,7 @@
 <script setup lang="ts">
 /**
  * User avatar with presence: takes a user (id + avatar fields) and shows
- * AvatarCircle + green dot (online) or red dot (recently disconnected). Callers don't need usePresence().
+ * AvatarCircle + green dot (online), clock (idle), or offline. Callers don't need usePresence().
  */
 export type UserAvatarUser = {
   id: string
@@ -29,7 +29,7 @@ const props = withDefaults(
     sizeClass?: string
     bgClass?: string
     /** Override presence (e.g. 'connecting' for current user while socket is connecting). */
-    presenceStatusOverride?: 'online' | 'idle' | 'connecting' | 'recently-disconnected' | 'offline'
+    presenceStatusOverride?: 'online' | 'idle' | 'connecting' | 'offline'
     /** Presence dot size as fraction of avatar diameter (default 0.25). Use smaller for large avatars. */
     presenceScale?: number
     /** How far the dot extends outside the avatar (0.5 = half out, 0.25 = closer). Default 0.5. */

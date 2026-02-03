@@ -297,3 +297,52 @@ export type OnlineUser = FollowListUser & { lastConnectAt?: number; idle?: boole
 /** Data type for GET /presence/online (array); totalOnline in pagination. */
 export type GetPresenceOnlineData = OnlineUser[]
 
+export type NotificationKind = 'comment' | 'boost' | 'follow' | 'mention' | 'generic'
+
+export type NotificationActor = {
+  id: string
+  username: string | null
+  name: string | null
+  avatarUrl: string | null
+  premium?: boolean
+  verifiedStatus?: string | null
+}
+
+export type SubjectPostPreview = {
+  bodySnippet: string | null
+  media: Array<{ url: string; thumbnailUrl: string | null; kind: string }>
+}
+
+/** Tier of the notification subject (post visibility or user tier) for unseen row highlight. */
+export type SubjectTier = 'premium' | 'verified' | null
+
+export type Notification = {
+  id: string
+  createdAt: string
+  kind: NotificationKind
+  deliveredAt: string | null
+  readAt: string | null
+  actor: NotificationActor | null
+  subjectPostId: string | null
+  subjectUserId: string | null
+  title: string | null
+  body: string | null
+  subjectPostPreview?: SubjectPostPreview | null
+  /** Tier of subject (post or user) for unseen row highlight. */
+  subjectTier?: SubjectTier
+}
+
+export type GetNotificationsData = Notification[]
+
+export type GetNotificationsResponse = {
+  data: Notification[]
+  pagination: {
+    nextCursor: string | null
+    undeliveredCount: number
+  }
+}
+
+export type GetNotificationsUnreadCountResponse = {
+  data: { count: number }
+}
+

@@ -289,8 +289,8 @@ const items = computed(() => (props.media ?? []).filter((m) => Boolean(m?.url) |
 const hideThumbs = computed(() => viewer.kind.value === 'media' && viewer.hideOrigin.value)
 const urls = computed(() => items.value.map((m) => m.url).filter(Boolean))
 
-// Compact: 10rem height, max 6:4 (w:h) → max-width 15rem
-const FIXED_HEIGHT_REM = computed(() => (props.compact ? 10 : 18))
+// Compact: 10rem height, max 6:4 (w:h) → max-width 15rem. Default: 36rem max height for single/grid media.
+const FIXED_HEIGHT_REM = computed(() => (props.compact ? 10 : 36))
 const MAX_WIDTH_REM = computed(() => (props.compact ? 15 : undefined))
 const MAX_RATIO = 6 / 4 // width/height max
 

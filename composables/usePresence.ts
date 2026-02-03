@@ -3,16 +3,15 @@ import { appConfig } from '~/config/app'
 import type { FollowListUser } from '~/types/api'
 
 const PRESENCE_STATE_KEY = 'presence-online-ids'
-const PRESENCE_RECENTLY_DISCONNECTED_KEY = 'presence-recently-disconnected'
 const PRESENCE_IDLE_IDS_KEY = 'presence-idle-ids'
 const PRESENCE_SOCKET_KEY = 'presence-socket'
 const PRESENCE_ONLINE_FEED_SUBSCRIBED_KEY = 'presence-online-feed-subscribed'
 const PRESENCE_INTEREST_KEY = 'presence-interest-refs'
 const PRESENCE_DISCONNECTED_DUE_TO_IDLE_KEY = 'presence-disconnected-due-to-idle'
+const NOTIFICATIONS_UNDELIVERED_COUNT_KEY = 'notifications-undelivered-count'
 
 export type PresenceOnlinePayload = { userId: string; user?: FollowListUser; lastConnectAt?: number; idle?: boolean }
 export type PresenceOfflinePayload = { userId: string }
-export type PresenceRecentlyDisconnectedPayload = { userId: string; disconnectAt: number }
 export type PresenceOnlineFeedSnapshotPayload = { users: Array<FollowListUser & { lastConnectAt?: number; idle?: boolean }>; totalOnline?: number }
 export type OnlineFeedCallback = {
   onOnline?: (payload: PresenceOnlinePayload) => void
@@ -33,23 +32,21 @@ function apiBaseUrlToWsUrl(apiBaseUrl: string): string {
  */
 export function usePresence() {
   const onlineUserIds = useState<string[]>(PRESENCE_STATE_KEY, () => [])
-  const recentlyDisconnectedMap = useState<Record<string, number>>(PRESENCE_RECENTLY_DISCONNECTED_KEY, () => ({}))
   const idleUserIds = useState<Set<string>>(PRESENCE_IDLE_IDS_KEY, () => new Set())
-  const recentDisconnectTimers = new Map<string, ReturnType<typeof setTimeout>>()
   const socketRef = useState<Socket | null>(PRESENCE_SOCKET_KEY, () => null)
   const interestRefs = useState<Map<string, number>>(PRESENCE_INTEREST_KEY, () => new Map())
   const onlineFeedCallbacks = useState<Set<OnlineFeedCallback>>('presence-online-feed-callbacks', () => new Set())
   const onlineFeedSubscribed = useState(PRESENCE_ONLINE_FEED_SUBSCRIBED_KEY, () => false)
   const disconnectedDueToIdle = useState<boolean>(PRESENCE_DISCONNECTED_DUE_TO_IDLE_KEY, () => false)
+  const notificationUndeliveredCount = useState<number>(NOTIFICATIONS_UNDELIVERED_COUNT_KEY, () => 0)
   const isSocketConnected = ref(false)
   const isSocketConnecting = ref(false)
+  /** Brief "just reconnected" state for connection bar green flash before hide. */
+  const connectionBarJustConnected = ref(false)
+  let connectionBarJustConnectedTimer: ReturnType<typeof setTimeout> | null = null
 
   function isOnline(userId: string): boolean {
     return onlineUserIds.value.includes(userId)
-  }
-
-  function isRecentlyDisconnected(userId: string): boolean {
-    return userId in recentlyDisconnectedMap.value
   }
 
   function isUserIdle(userId: string): boolean {
@@ -68,40 +65,9 @@ export function usePresence() {
     idleUserIds.value = next
   }
 
-  function getPresenceStatus(userId: string): 'online' | 'idle' | 'recently-disconnected' | 'offline' {
+  function getPresenceStatus(userId: string): 'online' | 'idle' | 'offline' {
     if (isOnline(userId)) return isUserIdle(userId) ? 'idle' : 'online'
-    if (isRecentlyDisconnected(userId)) return 'recently-disconnected'
     return 'offline'
-  }
-
-  function clearRecentDisconnectTimer(userId: string) {
-    const t = recentDisconnectTimers.get(userId)
-    if (t) {
-      clearTimeout(t)
-      recentDisconnectTimers.delete(userId)
-    }
-  }
-
-  function addRecentlyDisconnected(userId: string, disconnectAt: number) {
-    clearRecentDisconnectTimer(userId)
-    const remaining = disconnectAt + appConfig.presenceRecentDisconnectMs - Date.now()
-    if (remaining <= 0) return
-    recentlyDisconnectedMap.value = { ...recentlyDisconnectedMap.value, [userId]: disconnectAt }
-    const t = setTimeout(() => {
-      recentDisconnectTimers.delete(userId)
-      const next = { ...recentlyDisconnectedMap.value }
-      delete next[userId]
-      recentlyDisconnectedMap.value = next
-    }, remaining)
-    recentDisconnectTimers.set(userId, t)
-  }
-
-  function removeRecentlyDisconnected(userId: string) {
-    clearRecentDisconnectTimer(userId)
-    if (!(userId in recentlyDisconnectedMap.value)) return
-    const next = { ...recentlyDisconnectedMap.value }
-    delete next[userId]
-    recentlyDisconnectedMap.value = next
   }
 
   const { user } = useAuth()
@@ -162,6 +128,9 @@ export function usePresence() {
       refs.delete(uid)
       removed++
       emitUnsubscribe([uid])
+    }
+    if (removed > 0) {
+      interestRefs.value = new Map(refs)
     }
   }
 
@@ -246,49 +215,37 @@ export function usePresence() {
       timeout: 20000,
     })
 
-    socket.on('presence:init', (_data: { onlineUserIds?: string[] }) => {
-      // Do not clear onlineUserIds; init can race with presence:subscribed and wipe good state.
-    })
-
-    socket.on('presence:subscribed', (data: { users?: Array<{ userId: string; online: boolean; disconnectAt?: number; idle?: boolean }> }) => {
-      console.log('[presence] SUBSCRIBED_IN', data)
-      const users = Array.isArray(data?.users) ? data.users : []
+    function applyUserPresence(userId: string, online: boolean, idle: boolean) {
       const next = [...onlineUserIds.value]
       const nextIdle = new Set(idleUserIds.value)
-      for (const u of users) {
-        const id = u?.userId
-        if (!id) continue
-        if (u.online) {
-          if (!next.includes(id)) next.push(id)
-          removeRecentlyDisconnected(id)
-          if (u.idle) nextIdle.add(id)
-          else nextIdle.delete(id)
-        } else {
-          const i = next.indexOf(id)
-          if (i >= 0) next.splice(i, 1)
-          nextIdle.delete(id)
-          const disconnectAt = u.disconnectAt
-          if (disconnectAt != null && disconnectAt + appConfig.presenceRecentDisconnectMs > Date.now()) {
-            addRecentlyDisconnected(id, disconnectAt)
-          }
-        }
+      if (online) {
+        if (!next.includes(userId)) next.push(userId)
+        if (idle) nextIdle.add(userId)
+        else nextIdle.delete(userId)
+      } else {
+        const i = next.indexOf(userId)
+        if (i >= 0) next.splice(i, 1)
+        nextIdle.delete(userId)
       }
       onlineUserIds.value = next
       idleUserIds.value = nextIdle
+    }
+
+    socket.on('presence:subscribed', (data: { users?: Array<{ userId: string; online: boolean; idle?: boolean }> }) => {
+      console.log('[presence] SUBSCRIBED_IN', data)
+      const users = Array.isArray(data?.users) ? data.users : []
+      for (const u of users) {
+        const id = u?.userId
+        if (!id) continue
+        applyUserPresence(id, u.online, u.idle ?? false)
+      }
     })
 
     socket.on('presence:online', (data: PresenceOnlinePayload) => {
       console.log('[presence] ONLINE_IN', { userId: data?.userId, onlineFeedSubscribed: onlineFeedSubscribed.value, callbacksCount: onlineFeedCallbacks.value.size })
       const id = data?.userId
       if (id) {
-        removeRecentlyDisconnected(id)
-        if (!onlineUserIds.value.includes(id)) {
-          onlineUserIds.value = [...onlineUserIds.value, id]
-        }
-        const nextIdle = new Set(idleUserIds.value)
-        if (data.idle) nextIdle.add(id)
-        else nextIdle.delete(id)
-        idleUserIds.value = nextIdle
+        applyUserPresence(id, true, data.idle ?? false)
       }
       if (onlineFeedSubscribed.value && onlineFeedCallbacks.value.size > 0) {
         for (const cb of onlineFeedCallbacks.value) {
@@ -297,36 +254,13 @@ export function usePresence() {
       }
     })
 
-    socket.on('presence:recentlyDisconnected', (data: PresenceRecentlyDisconnectedPayload) => {
-      console.log('[presence] RECENTLY_DISCONNECTED_IN', data)
-      const id = data?.userId
-      const disconnectAt = data?.disconnectAt
-      if (id) {
-        onlineUserIds.value = onlineUserIds.value.filter((x) => x !== id)
-        if (disconnectAt != null) addRecentlyDisconnected(id, disconnectAt)
-        if (onlineFeedSubscribed.value && onlineFeedCallbacks.value.size > 0) {
-          for (const cb of onlineFeedCallbacks.value) {
-            cb.onOffline?.({ userId: id })
-          }
-        }
-      }
-    })
-
     socket.on('presence:onlineFeedSnapshot', (data: PresenceOnlineFeedSnapshotPayload) => {
       console.log('[presence] ONLINE_FEED_SNAPSHOT_IN', { usersCount: data?.users?.length, totalOnline: data?.totalOnline })
       const users = Array.isArray(data?.users) ? data.users : []
-      const nextIdle = new Set(idleUserIds.value)
       for (const u of users) {
         const id = u?.id
-        if (id) {
-          if (!onlineUserIds.value.includes(id)) {
-            onlineUserIds.value = [...onlineUserIds.value, id]
-          }
-          if (u.idle) nextIdle.add(id)
-          else nextIdle.delete(id)
-        }
+        if (id) applyUserPresence(id, true, u.idle ?? false)
       }
-      idleUserIds.value = nextIdle
       if (onlineFeedSubscribed.value && onlineFeedCallbacks.value.size > 0) {
         for (const cb of onlineFeedCallbacks.value) {
           cb.onSnapshot?.(data)
@@ -337,11 +271,7 @@ export function usePresence() {
     socket.on('presence:offline', (data: PresenceOfflinePayload) => {
       const id = data?.userId
       if (id) {
-        removeRecentlyDisconnected(id)
-        onlineUserIds.value = onlineUserIds.value.filter((x) => x !== id)
-        const nextIdle = new Set(idleUserIds.value)
-        nextIdle.delete(id)
-        idleUserIds.value = nextIdle
+        applyUserPresence(id, false, false)
       }
       if (onlineFeedSubscribed.value && onlineFeedCallbacks.value.size > 0) {
         for (const cb of onlineFeedCallbacks.value) {
@@ -364,6 +294,11 @@ export function usePresence() {
       disconnectedDueToIdle.value = true
     })
 
+    socket.on('notifications:updated', (data: { undeliveredCount?: number }) => {
+      const count = typeof data?.undeliveredCount === 'number' ? data.undeliveredCount : 0
+      notificationUndeliveredCount.value = count
+    })
+
     function syncSubscriptions() {
       const refs = interestRefs.value
       console.log('[presence] syncSubscriptions', { interests: refs.size, onlineFeedSubscribed: onlineFeedSubscribed.value, socketId: socket.id })
@@ -378,6 +313,15 @@ export function usePresence() {
       console.log('[presence] socket CONNECTED', socket.id)
       isSocketConnected.value = true
       isSocketConnecting.value = false
+      if (disconnectedDueToIdle.value) {
+        disconnectedDueToIdle.value = false
+        connectionBarJustConnected.value = true
+        if (connectionBarJustConnectedTimer) clearTimeout(connectionBarJustConnectedTimer)
+        connectionBarJustConnectedTimer = setTimeout(() => {
+          connectionBarJustConnected.value = false
+          connectionBarJustConnectedTimer = null
+        }, 1500)
+      }
       syncSubscriptions()
     })
     socket.on('disconnect', (reason) => {
@@ -409,11 +353,13 @@ export function usePresence() {
     }
     isSocketConnecting.value = false
     disconnectedDueToIdle.value = false
+    connectionBarJustConnected.value = false
+    if (connectionBarJustConnectedTimer) {
+      clearTimeout(connectionBarJustConnectedTimer)
+      connectionBarJustConnectedTimer = null
+    }
     onlineUserIds.value = []
-    recentlyDisconnectedMap.value = {}
     idleUserIds.value = new Set()
-    for (const t of recentDisconnectTimers.values()) clearTimeout(t)
-    recentDisconnectTimers.clear()
     onlineFeedSubscribed.value = false
   }
 
@@ -421,7 +367,7 @@ export function usePresence() {
   function reconnect() {
     const socket = socketRef.value
     if (socket && !socket.connected) {
-      disconnectedDueToIdle.value = false
+      isSocketConnecting.value = true
       socket.connect()
     }
   }
@@ -436,44 +382,28 @@ export function usePresence() {
       { immediate: true },
     )
 
-    // Idle detector: after IDLE_AFTER_MS with no activity, mark self idle (clock); on activity mark active again.
-    let idleTimer: ReturnType<typeof setTimeout> | null = null
-    let lastActivityAt = 0
-
-    function scheduleIdleTimer() {
-      if (idleTimer != null) clearTimeout(idleTimer)
-      idleTimer = setTimeout(() => {
-        idleTimer = null
-        const uid = user.value?.id
-        const socket = socketRef.value
-        if (!uid || !socket?.connected) return
-        socket.emit('presence:idle')
-        setUserIdle(uid)
-      }, appConfig.presenceIdleAfterMs)
-    }
+    // Activity: send presence:active (fire-and-forget ping), throttled unless clearing idle. Idle is server-driven (3 min no pings).
+    let lastActivityPingAt = 0
 
     function onActivity() {
-      lastActivityAt = Date.now()
       const uid = user.value?.id
       const socket = socketRef.value
       if (!uid || !socket?.connected) return
-      if (idleUserIds.value.has(uid)) {
+      const now = Date.now()
+      const throttleMs = appConfig.presenceActivityThrottleMs ?? 30_000
+      const isIdle = idleUserIds.value.has(uid)
+      const shouldPing = isIdle || now - lastActivityPingAt >= throttleMs
+      if (shouldPing) {
+        lastActivityPingAt = now
         socket.emit('presence:active')
-        setUserActive(uid)
+        if (isIdle) setUserActive(uid)
       }
-      scheduleIdleTimer()
     }
 
     watch(
       () => [isSocketConnected.value, user.value?.id ?? null] as const,
       ([connected, userId]) => {
-        if (idleTimer != null) {
-          clearTimeout(idleTimer)
-          idleTimer = null
-        }
         if (!connected || !userId) return
-        lastActivityAt = Date.now()
-        scheduleIdleTimer()
         const opts = { passive: true, capture: true }
         document.addEventListener('mousemove', onActivity, opts)
         document.addEventListener('mousedown', onActivity, opts)
@@ -494,10 +424,6 @@ export function usePresence() {
           document.removeEventListener('scroll', onActivity, opts)
           document.removeEventListener('touchstart', onActivity, opts)
           stopRoute()
-          if (idleTimer != null) {
-            clearTimeout(idleTimer)
-            idleTimer = null
-          }
         }
       },
       { immediate: true },
@@ -507,11 +433,15 @@ export function usePresence() {
   return {
     onlineUserIds: readonly(onlineUserIds),
     isOnline,
-    isRecentlyDisconnected,
     getPresenceStatus,
     isSocketConnected: readonly(isSocketConnected),
     isSocketConnecting: readonly(isSocketConnecting),
     disconnectedDueToIdle: readonly(disconnectedDueToIdle),
+    connectionBarJustConnected: readonly(connectionBarJustConnected),
+    notificationUndeliveredCount: readonly(notificationUndeliveredCount),
+    setNotificationUndeliveredCount(count: number) {
+      notificationUndeliveredCount.value = count
+    },
     reconnect,
     addInterest,
     removeInterest,

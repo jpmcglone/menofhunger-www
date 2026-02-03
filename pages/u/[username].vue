@@ -306,6 +306,16 @@ useHead({
 
 const { user: authUser, me: refetchMe } = useAuth()
 
+// Mark notifications whose subject is this user as read (fire-and-forget)
+const { markReadBySubject } = useNotifications()
+watch(
+  () => [profile.value?.id, authUser.value?.id] as const,
+  ([profileId, uid]) => {
+    if (profileId && uid) markReadBySubject({ user_id: profileId })
+  },
+  { immediate: true },
+)
+
 const isSelf = computed(() => Boolean(authUser.value?.id && profile.value?.id && authUser.value.id === profile.value.id))
 
 // Pinned post: use auth user's value when viewing own profile (so pin/unpin updates without refetch).

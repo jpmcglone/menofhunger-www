@@ -1,16 +1,13 @@
 /**
  * App-wide tunables (no DB). Tweak timing, limits, and UI behavior here.
- * Idle = hasn't interacted with anything (mouse, key, scroll, touch, navigation) for the given time.
+ * Idle = no activity ping for presenceIdleAfterMs; server marks idle after 3 min (aligned with API).
  */
 export const appConfig = {
-  /** Presence: after this many ms with no interaction, user is marked idle (still online, show clock). */
-  presenceIdleAfterMs: 5 * 60 * 1000,
+  /** Presence: after this many ms with no interaction, client sends presence:idle (server also marks idle after 3 min). */
+  presenceIdleAfterMs: 3 * 60 * 1000,
 
-  /**
-   * Presence: how long to show "recently disconnected" (red dot) after disconnect.
-   * Should align with API presenceRecentDisconnectMinutes; used client-side for timer/display.
-   */
-  presenceRecentDisconnectMs: 6 * 60 * 1000,
+  /** Throttle activity pings: send presence:active at most this often (ms), unless clearing idle. */
+  presenceActivityThrottleMs: 30 * 1000,
 
   /** Max user IDs to subscribe to per socket (presence interest cap). */
   presenceMaxInterest: 100,

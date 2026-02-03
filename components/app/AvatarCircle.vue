@@ -23,7 +23,7 @@
         >{{ initial }}</span>
       </div>
     </div>
-    <!-- Presence: green (online), clock (idle), yellow (connecting), or red (recently disconnected); overlays bottom-right corner -->
+    <!-- Presence: green (online), clock (idle), yellow (connecting); overlays bottom-right corner -->
     <span
       v-if="presenceStatus === 'idle'"
       class="absolute flex items-center justify-center rounded-full border-2 border-white text-white dark:border-zinc-900 dark:text-gray-400"
@@ -54,7 +54,6 @@
         'absolute rounded-full border-2 transition-opacity duration-200',
         presenceStatus === 'online' ? 'border-white bg-green-500 dark:border-zinc-900 dark:bg-green-500' : '',
         presenceStatus === 'connecting' ? 'border-white bg-yellow-500 dark:border-zinc-900 dark:bg-yellow-500' : '',
-        presenceStatus === 'recently-disconnected' ? 'border-white bg-red-500 dark:border-zinc-900 dark:bg-red-500' : '',
         presenceStatus !== 'offline' ? '' : 'pointer-events-none'
       ]"
       :style="presenceDotFullStyle"
@@ -70,8 +69,8 @@ const props = withDefaults(
     username?: string | null
     sizeClass?: string
     bgClass?: string
-    /** Presence state: green (online), clock (idle), yellow (connecting), red (recently disconnected), or hidden (offline). */
-    presenceStatus?: 'online' | 'idle' | 'connecting' | 'recently-disconnected' | 'offline'
+    /** Presence state: green (online), clock (idle), yellow (connecting), or hidden (offline). */
+    presenceStatus?: 'online' | 'idle' | 'connecting' | 'offline'
     /** Presence dot size as fraction of avatar diameter (default 0.25). Use smaller (e.g. 0.15) for large avatars. */
     presenceScale?: number
     /** How far the dot extends outside the avatar (0.5 = half out, 0.25 = closer). Default 0.5. */
