@@ -103,11 +103,11 @@ export function usePushNotifications() {
   }
 
   async function unsubscribe(): Promise<void> {
-    if (!import.meta.client) return
+    if (!import.meta.client || !('serviceWorker' in navigator)) return
     errorMessage.value = null
     try {
-      const reg = await navigator.serviceWorker.ready
-      const sub = await reg.pushManager.getSubscription()
+      const reg = await navigator.serviceWorker.getRegistration()
+      const sub = reg?.pushManager ? await reg.pushManager.getSubscription() : null
       if (sub) {
         const endpoint = sub.endpoint
         try {

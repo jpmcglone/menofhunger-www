@@ -163,8 +163,13 @@
                     Get notified when you're not on the site (e.g. tab closed or in the background).
                   </div>
                 </div>
-                <div v-if="!push.vapidConfigured" class="text-sm text-amber-700 dark:text-amber-300">
-                  Push notifications are not configured for this site.
+                <div v-if="!push.vapidConfigured" class="space-y-2">
+                  <p class="text-sm text-amber-700 dark:text-amber-300">
+                    Push notifications are not configured. To enable them (e.g. on localhost), add the same VAPID public key used by the API to the www app.
+                  </p>
+                  <p class="text-xs text-gray-600 dark:text-gray-400">
+                    In <code class="rounded bg-gray-200 px-1 dark:bg-gray-700">menofhunger-www/.env</code> set <code class="rounded bg-gray-200 px-1 dark:bg-gray-700">NUXT_PUBLIC_VAPID_PUBLIC_KEY</code> to the value of <code class="rounded bg-gray-200 px-1 dark:bg-gray-700">VAPID_PUBLIC_KEY</code> from <code class="rounded bg-gray-200 px-1 dark:bg-gray-700">menofhunger-api/.env</code>, then restart the dev server.
+                  </p>
                 </div>
                 <div v-else class="flex flex-wrap items-center gap-3">
                   <Button
@@ -180,7 +185,6 @@
                     label="Disable browser notifications"
                     icon="pi pi-bell-slash"
                     severity="secondary"
-                    :disabled="push.isRegistering"
                     @click="pushUnsubscribe"
                   />
                   <span v-else-if="push.permission === 'denied'" class="text-sm text-gray-600 dark:text-gray-400">
