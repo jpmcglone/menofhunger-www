@@ -51,6 +51,8 @@ export function useUserMenu() {
 
   async function confirmLogout() {
     confirmVisible.value = false
+    const { onLogout } = usePushNotifications()
+    await onLogout()
     await logout()
   }
 

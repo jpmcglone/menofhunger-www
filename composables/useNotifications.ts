@@ -88,6 +88,14 @@ export function useNotifications() {
     return ''
   }
 
+  /** Background color for notification type icon based on sender (actor) tier, not notification kind. */
+  function actorTierIconBgClass(n: Notification): string {
+    const a = n.actor
+    if (a?.premium) return 'bg-[var(--moh-premium)]'
+    if (a?.verifiedStatus && a.verifiedStatus !== 'none') return 'bg-[var(--moh-verified)]'
+    return 'bg-gray-500'
+  }
+
   /** Row highlight when unseen (deliveredAt null) and unread (readAt null). When read: no highlight. */
   function subjectTierRowClass(n: Notification): string {
     if (n.readAt || n.deliveredAt) return ''
@@ -184,6 +192,7 @@ export function useNotifications() {
     markAllRead,
     actorDisplay,
     actorTierClass,
+    actorTierIconBgClass,
     subjectTierRowClass,
     titleSuffix,
     notificationTitle,

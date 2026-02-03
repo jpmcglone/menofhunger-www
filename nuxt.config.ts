@@ -17,7 +17,9 @@ export default defineNuxtConfig({
       apiBaseUrl: process.env.NUXT_PUBLIC_API_BASE_URL || 'http://localhost:3001',
       // Public base URL for assets (Cloudflare R2 public bucket / custom domain).
       // Example: NUXT_PUBLIC_ASSETS_BASE_URL=https://moh-assets.<accountId>.r2.dev
-      assetsBaseUrl: process.env.NUXT_PUBLIC_ASSETS_BASE_URL || ''
+      assetsBaseUrl: process.env.NUXT_PUBLIC_ASSETS_BASE_URL || '',
+      // VAPID public key for Web Push (must match API VAPID_PUBLIC_KEY).
+      vapidPublicKey: process.env.NUXT_PUBLIC_VAPID_PUBLIC_KEY || ''
     }
   },
   app: {
@@ -67,7 +69,24 @@ export default defineNuxtConfig({
   vite: {
     build: {
       sourcemap: false
-    }
+    },
+    plugins: [
+      {
+        name: 'nuxt-path-no-404',
+        enforce: 'pre',
+        configureServer(server) {
+          server.middlewares.use((req, res, next) => {
+            const path = req.url?.split('?')[0] ?? ''
+            if (req.method === 'GET' && (path === '/_nuxt/' || path === '/_nuxt')) {
+              res.statusCode = 204
+              res.end()
+              return
+            }
+            next()
+          })
+        }
+      }
+    ]
   },
   nitro: {
     sourceMap: false,

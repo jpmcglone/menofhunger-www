@@ -9,6 +9,7 @@ const PRESENCE_ONLINE_FEED_SUBSCRIBED_KEY = 'presence-online-feed-subscribed'
 const PRESENCE_INTEREST_KEY = 'presence-interest-refs'
 const PRESENCE_DISCONNECTED_DUE_TO_IDLE_KEY = 'presence-disconnected-due-to-idle'
 const NOTIFICATIONS_UNDELIVERED_COUNT_KEY = 'notifications-undelivered-count'
+const NOTIFICATION_SOUND_PATH = '/sounds/notification.mp3'
 
 export type PresenceOnlinePayload = { userId: string; user?: FollowListUser; lastConnectAt?: number; idle?: boolean }
 export type PresenceOfflinePayload = { userId: string }
@@ -39,6 +40,8 @@ export function usePresence() {
   const onlineFeedSubscribed = useState(PRESENCE_ONLINE_FEED_SUBSCRIBED_KEY, () => false)
   const disconnectedDueToIdle = useState<boolean>(PRESENCE_DISCONNECTED_DUE_TO_IDLE_KEY, () => false)
   const notificationUndeliveredCount = useState<number>(NOTIFICATIONS_UNDELIVERED_COUNT_KEY, () => 0)
+  /** Previous undelivered count so we only play in-app sound when count increases (not on load or mark-read). */
+  const previousNotificationCountRef = ref<number | null>(null)
   const isSocketConnected = ref(false)
   const isSocketConnecting = ref(false)
   /** Brief "just reconnected" state for connection bar green flash before hide. */
@@ -296,7 +299,18 @@ export function usePresence() {
 
     socket.on('notifications:updated', (data: { undeliveredCount?: number }) => {
       const raw = typeof data?.undeliveredCount === 'number' ? data.undeliveredCount : 0
-      notificationUndeliveredCount.value = Math.max(0, Math.floor(raw))
+      const newCount = Math.max(0, Math.floor(raw))
+      const prev = previousNotificationCountRef.value ?? 0
+      notificationUndeliveredCount.value = newCount
+      if (newCount > prev && typeof document !== 'undefined' && document.visibilityState === 'visible') {
+        try {
+          const audio = new Audio(NOTIFICATION_SOUND_PATH)
+          void audio.play().catch(() => {})
+        } catch {
+          // no-op if sound missing or play fails
+        }
+      }
+      previousNotificationCountRef.value = newCount
     })
 
     function syncSubscriptions() {
@@ -378,6 +392,32 @@ export function usePresence() {
       (userId) => {
         if (userId) connect()
         else disconnect()
+      },
+      { immediate: true },
+    )
+
+    // Unlock audio on first user interaction so the first notification sound can play (browsers block play() until then).
+    let audioUnlocked = false
+    let unlockListenersAdded = false
+    function unlockNotificationAudio() {
+      if (audioUnlocked) return
+      audioUnlocked = true
+      try {
+        const a = new Audio(NOTIFICATION_SOUND_PATH)
+        a.volume = 0
+        void a.play().then(() => a.pause()).catch(() => {})
+      } catch {
+        // ignore
+      }
+    }
+    watch(
+      () => user.value?.id ?? null,
+      (userId) => {
+        if (!userId || unlockListenersAdded) return
+        unlockListenersAdded = true
+        document.addEventListener('click', unlockNotificationAudio, { once: true, passive: true })
+        document.addEventListener('keydown', unlockNotificationAudio, { once: true, passive: true })
+        document.addEventListener('touchstart', unlockNotificationAudio, { once: true, passive: true })
       },
       { immediate: true },
     )

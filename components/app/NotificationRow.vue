@@ -35,10 +35,10 @@
           class="h-10 w-10 rounded-full bg-gray-200 dark:bg-zinc-800"
           aria-hidden="true"
         />
-        <!-- Notification type icon: bottom-left of avatar, outside it -->
+        <!-- Notification type icon: background color = sender (actor) tier -->
         <div
           class="absolute -bottom-3 -left-2 flex h-7 w-7 items-center justify-center rounded-full border-2 border-white dark:border-black shadow-sm"
-          :class="notificationIconBgClass(notification)"
+          :class="actorTierIconBgClass(notification)"
           aria-hidden="true"
         >
           <!-- Boost icon (custom SVG) -->
@@ -112,6 +112,7 @@ import type { Notification } from '~/types/api'
 const {
   actorDisplay,
   actorTierClass,
+  actorTierIconBgClass,
   subjectTierRowClass,
   titleSuffix,
   notificationContext,
@@ -122,22 +123,4 @@ const {
 defineProps<{
   notification: Notification
 }>()
-
-/** Background color for notification icon based on kind */
-function notificationIconBgClass(n: Notification): string {
-  switch (n.kind) {
-    case 'comment':
-      return 'bg-blue-500'
-    case 'boost':
-      return 'bg-gradient-to-br from-orange-500 to-pink-500'
-    case 'follow':
-      return 'bg-green-500'
-    case 'mention':
-      return 'bg-purple-500'
-    case 'generic':
-      return 'bg-gray-500'
-    default:
-      return 'bg-gray-500'
-  }
-}
 </script>

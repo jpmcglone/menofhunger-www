@@ -12,26 +12,6 @@
 </template>
 
 <script setup lang="ts">
-const { user } = useAuth()
-const { notificationUndeliveredCount } = usePresence()
-
-/** Numeric count, clamped to non-negative integer. Source of truth for visibility. */
-const badgeCount = computed(() => {
-  const raw = notificationUndeliveredCount.value
-  const n = Number(raw)
-  if (!Number.isFinite(n) || n < 0) return 0
-  return Math.floor(n)
-})
-
-/** Display string: never "0" (component doesn't render when badgeCount is 0). */
-const badgeText = computed(() =>
-  badgeCount.value >= 99 ? '99+' : String(badgeCount.value),
-)
-
-const toneClass = computed(() => {
-  const u = user.value
-  if (u?.premium) return 'moh-notif-badge-premium'
-  if (u?.verifiedStatus && u.verifiedStatus !== 'none') return 'moh-notif-badge-verified'
-  return 'moh-notif-badge-normal'
-})
+// Run composable so count is fetched on load / socket connect / tab visible (badge is in layout + TabBar).
+const { count: badgeCount, displayCount: badgeText, toneClass } = useNotificationsBadge()
 </script>

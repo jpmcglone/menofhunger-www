@@ -23,6 +23,7 @@
     "@primevue/nuxt-module": "^4.5.4",
     "@primevue/themes": "^4.5.4",
     "@unhead/vue": "^2.1.2",
+    "@vite-pwa/nuxt": "^1.1.0",
     "better-sqlite3": "^12.6.2",
     "eslint": "^9.39.2",
     "linkify-it": "^5.0.0",

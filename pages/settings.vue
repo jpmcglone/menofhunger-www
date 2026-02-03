@@ -156,6 +156,42 @@
                 </div>
               </div>
 
+              <div v-else-if="selectedSection === 'notifications'" class="space-y-6">
+                <div class="space-y-2">
+                  <div class="text-sm font-semibold text-gray-900 dark:text-gray-50">Browser notifications</div>
+                  <div class="text-sm text-gray-600 dark:text-gray-300">
+                    Get notified when you're not on the site (e.g. tab closed or in the background).
+                  </div>
+                </div>
+                <div v-if="!push.vapidConfigured" class="text-sm text-amber-700 dark:text-amber-300">
+                  Push notifications are not configured for this site.
+                </div>
+                <div v-else class="flex flex-wrap items-center gap-3">
+                  <Button
+                    v-if="!push.isSubscribed && push.permission !== 'denied'"
+                    label="Enable browser notifications"
+                    icon="pi pi-bell"
+                    :loading="push.isRegistering"
+                    :disabled="push.isRegistering"
+                    @click="pushSubscribe"
+                  />
+                  <Button
+                    v-else-if="push.isSubscribed"
+                    label="Disable browser notifications"
+                    icon="pi pi-bell-slash"
+                    severity="secondary"
+                    :disabled="push.isRegistering"
+                    @click="pushUnsubscribe"
+                  />
+                  <span v-else-if="push.permission === 'denied'" class="text-sm text-gray-600 dark:text-gray-400">
+                    Notifications were denied. Enable them in your browser settings for this site to try again.
+                  </span>
+                  <span v-if="push.errorMessage" class="text-sm text-red-700 dark:text-red-300">
+                    {{ push.errorMessage }}
+                  </span>
+                </div>
+              </div>
+
               <div v-else-if="selectedSection === 'links'" class="space-y-4">
                 <div class="flex flex-col gap-3">
                   <NuxtLink to="/about" class="inline-flex items-center gap-3 text-gray-800 hover:underline dark:text-gray-200">
@@ -205,7 +241,7 @@ usePageSeo({
 })
 
 type FollowVisibility = 'all' | 'verified' | 'premium' | 'none'
-type SettingsSection = 'account' | 'privacy' | 'links'
+type SettingsSection = 'account' | 'privacy' | 'notifications' | 'links'
 
 const { user: authUser, ensureLoaded } = useAuth()
 
@@ -215,6 +251,20 @@ await ensureLoaded()
 const { apiFetchData } = useApiClient()
 import { getApiErrorMessage } from '~/utils/api-error'
 import { siteConfig } from '~/config/site'
+
+const push = usePushNotifications()
+
+onMounted(() => {
+  void push.refreshSubscriptionState()
+})
+
+async function pushSubscribe() {
+  await push.subscribe()
+}
+
+async function pushUnsubscribe() {
+  await push.unsubscribe()
+}
 
 const selectedSection = ref<SettingsSection | null>(null)
 const sectionQuery = ref('')
@@ -229,6 +279,11 @@ const sections = computed(() => [
     key: 'privacy' as const,
     label: 'Privacy',
     description: 'Who can see your follower info.'
+  },
+  {
+    key: 'notifications' as const,
+    label: 'Notifications',
+    description: 'Browser and in-app alerts.'
   },
   {
     key: 'links' as const,
