@@ -295,6 +295,7 @@ const MAX_WIDTH_REM = computed(() => (props.compact ? 15 : undefined))
 const MAX_RATIO = 6 / 4 // width/height max
 
 const single = computed(() => (items.value.length === 1 ? (items.value[0] ?? null) : null))
+const singleIsImageLike = computed(() => Boolean(single.value && single.value.kind !== 'video'))
 const singleWidth = computed(() => (typeof single.value?.width === 'number' ? single.value.width : null))
 const singleHeight = computed(() => (typeof single.value?.height === 'number' ? single.value.height : null))
 const singleAspectRatio = computed(() => {
@@ -328,12 +329,14 @@ const singleBoxStyle = computed<CSSProperties>(() => {
   // Max height so media can be smaller on narrow viewports; width from aspect ratio, capped when compact.
   const aspectRatio = w / h
   const cappedRatio = maxW != null ? Math.min(aspectRatio, MAX_RATIO) : aspectRatio
+  const pxCap = singleIsImageLike.value ? `${w}px` : undefined
+  const heightCap = singleIsImageLike.value ? `${h}px` : undefined
   return {
     aspectRatio: `${w} / ${h}`,
-    maxHeight: `${heightRem}rem`,
+    maxHeight: heightCap ? `min(${heightRem}rem, ${heightCap})` : `${heightRem}rem`,
     width: maxW != null
-      ? `min(${heightRem * cappedRatio}rem, ${maxW}rem, 100%)`
-      : `min(${heightRem * aspectRatio}rem, 100%)`,
+      ? `min(${heightRem * cappedRatio}rem, ${maxW}rem, 100%${pxCap ? `, ${pxCap}` : ''})`
+      : `min(${heightRem * aspectRatio}rem, 100%${pxCap ? `, ${pxCap}` : ''})`,
   }
 })
 const singleBoxClass = computed(() => {

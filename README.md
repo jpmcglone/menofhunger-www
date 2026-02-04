@@ -30,6 +30,17 @@ Start the development server on `http://localhost:3000`:
 npm run dev
 ```
 
+## Troubleshooting
+
+### Port already in use (3000)
+
+If the dev server fails to start or is stale:
+
+```bash
+npm run dev:check
+npm run dev:kill
+```
+
 ## Production
 
 Build the application for production:

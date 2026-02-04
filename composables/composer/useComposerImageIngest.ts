@@ -22,6 +22,14 @@ export function useComposerImageIngest(opts: {
   const MEDIA_SLOTS = Math.max(1, Math.floor(opts.maxSlots))
   const canAcceptVideo = opts.canAcceptVideo ?? computed(() => false)
 
+  function defaultAltFromFilename(name: string | null | undefined): string | null {
+    const raw = (name ?? '').trim()
+    if (!raw) return null
+    const withoutExt = raw.replace(/\.[a-z0-9]+$/i, '')
+    const cleaned = withoutExt.replace(/[_-]+/g, ' ').replace(/\s+/g, ' ').trim()
+    return cleaned || null
+  }
+
   function openMediaPicker() {
     if (!opts.canAddMoreMedia.value) return
     opts.mediaFileInputEl.value?.click()
@@ -65,7 +73,7 @@ export function useComposerImageIngest(opts: {
         source: 'upload',
         kind: ct === 'image/gif' ? 'gif' : 'image',
         previewUrl,
-        altText: null,
+        altText: defaultAltFromFilename(file.name),
         uploadStatus: 'queued',
         uploadError: null,
         file,
@@ -129,7 +137,7 @@ export function useComposerImageIngest(opts: {
       source: 'upload',
       kind: 'video',
       previewUrl,
-      altText: null,
+      altText: defaultAltFromFilename(file.name),
       uploadStatus: 'queued',
       uploadError: null,
       file,

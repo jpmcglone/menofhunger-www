@@ -48,11 +48,11 @@
               </button>
               <button
                 type="button"
-                class="absolute left-1 bottom-1 rounded-md bg-black/55 px-1.5 py-0.5 text-[10px] font-semibold text-white shadow-sm hover:bg-black/70"
+                class="absolute left-1 bottom-1 rounded-md bg-black/55 px-1.5 py-0.5 text-[10px] font-semibold text-white shadow-sm hover:bg-black/70 max-w-[70px] truncate"
                 aria-label="Edit alt text"
-                @click.stop="toggleAltEditor(slot.item!.localId)"
+                @click.stop="openAltModal(slot.item!)"
               >
-                Alt
+                {{ altLabel(slot.item!) }}
               </button>
 
               <div
@@ -90,23 +90,45 @@
                 </div>
               </div>
             </div>
-            <div v-if="editingAltId === slot.item!.localId">
-              <input
-                type="text"
-                class="w-full rounded-md border border-gray-300 bg-white px-2 py-1 text-[11px] text-gray-900 placeholder:text-gray-400 focus:outline-none dark:border-zinc-700 dark:bg-zinc-900 dark:text-gray-100 dark:placeholder:text-zinc-500"
-                :value="slot.item!.altText ?? ''"
-                maxlength="500"
-                placeholder="Alt text"
-                :aria-label="`Alt text for media ${slot.index + 1}`"
-                @input="onAltInput(slot.item!.localId, $event)"
-                @blur="editingAltId = null"
-              />
-            </div>
           </div>
         </div>
       </Transition>
     </div>
   </div>
+
+  <AppFormModal
+    v-model="altModalOpen"
+    title="Alt text"
+    :show-submit="true"
+    submit-label="Save"
+    :can-submit="true"
+    @submit="saveAltText"
+  >
+    <div class="flex flex-col gap-4">
+      <div class="flex items-center justify-center rounded-xl border moh-border bg-black/5 dark:bg-white/5">
+        <img
+          v-if="altModalPreviewUrl"
+          :src="altModalPreviewUrl"
+          alt=""
+          class="max-h-64 w-auto object-contain"
+          loading="lazy"
+          decoding="async"
+        >
+      </div>
+      <div>
+        <label class="mb-1 block text-sm font-semibold text-gray-900 dark:text-gray-100">
+          Alt text (optional)
+        </label>
+        <input
+          v-model="altModalValue"
+          type="text"
+          class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none dark:border-zinc-700 dark:bg-zinc-900 dark:text-gray-100 dark:placeholder:text-zinc-500"
+          maxlength="500"
+          placeholder="Describe the image for screen readers"
+        >
+      </div>
+    </div>
+  </AppFormModal>
 </template>
 
 <script setup lang="ts">
@@ -136,7 +158,10 @@ const canAddMore = computed(() => Boolean(props.canAddMore))
 const draggingMediaId = computed(() => props.draggingMediaId ?? null)
 const uploadBarColor = computed(() => props.uploadBarColor)
 const uploadStatusLabel = computed(() => props.uploadStatusLabel)
-const editingAltId = ref<string | null>(null)
+const altModalOpen = ref(false)
+const altModalId = ref<string | null>(null)
+const altModalPreviewUrl = ref<string | null>(null)
+const altModalValue = ref('')
 
 function removeLabelFor(item: ComposerMediaItem): string {
   if (item.source === 'upload' && (item.uploadStatus === 'queued' || item.uploadStatus === 'uploading' || item.uploadStatus === 'processing')) {
@@ -145,13 +170,23 @@ function removeLabelFor(item: ComposerMediaItem): string {
   return 'Remove media'
 }
 
-function toggleAltEditor(localId: string) {
-  editingAltId.value = editingAltId.value === localId ? null : localId
+function altLabel(item: ComposerMediaItem): string {
+  const text = (item.altText ?? '').trim()
+  if (!text) return 'Alt'
+  return text.length > 16 ? `${text.slice(0, 16)}…` : text
 }
 
-function onAltInput(localId: string, event: Event) {
-  const value = (event.target as HTMLInputElement | null)?.value ?? ''
-  emit('update-alt', localId, value)
+function openAltModal(item: ComposerMediaItem) {
+  altModalId.value = item.localId
+  altModalPreviewUrl.value = item.previewUrl
+  altModalValue.value = item.altText ?? ''
+  altModalOpen.value = true
+}
+
+function saveAltText() {
+  if (!altModalId.value) return
+  emit('update-alt', altModalId.value, altModalValue.value)
+  altModalOpen.value = false
 }
 </script>
 

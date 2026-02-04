@@ -5,6 +5,9 @@
   "scripts": {
     "build": "NODE_OPTIONS=--max-old-space-size=4096 nuxt build",
     "dev": "nuxt dev",
+    "dev:check": "node scripts/check-port.mjs",
+    "dev:kill": "node scripts/kill-port.mjs",
+    "dev:clean": "npm run dev:kill && npm run dev",
     "generate": "nuxt generate",
     "loc": "node ./scripts/loc.mjs",
     "preview": "nuxt preview",

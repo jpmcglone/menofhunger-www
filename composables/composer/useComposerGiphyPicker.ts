@@ -74,12 +74,13 @@ export function useComposerGiphyPicker(opts: {
     if (!opts.canAddMoreMedia.value) return
     const url = (gif?.url ?? '').trim()
     if (!url) return
+    const title = (gif?.title ?? '').trim()
     opts.composerMedia.value.push({
       localId: makeLocalId(),
       source: 'giphy',
       kind: 'gif',
       previewUrl: url,
-      altText: null,
+      altText: title || null,
       url,
       mp4Url: gif.mp4Url ?? null,
       width: gif.width ?? null,
