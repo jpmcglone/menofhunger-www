@@ -27,7 +27,7 @@
       leave-to-class="opacity-0 -translate-y-2"
     >
       <div
-        v-if="isAuthed && (disconnectedDueToIdle || connectionBarJustConnected)"
+        v-if="isAuthed && (disconnectedDueToIdle || connectionBarJustConnected || (wasSocketConnectedOnce && !isSocketConnected))"
         :class="[
           'fixed left-0 right-0 top-0 z-50 flex items-center justify-center gap-3 border-b px-4 py-2.5 text-center text-sm backdrop-blur-sm',
           connectionBarJustConnected
@@ -555,6 +555,8 @@ const { initAuth, user } = useAuth()
 const { isAuthed, leftItems: leftNavItems, tabItems } = useAppNav()
 const {
   disconnectedDueToIdle,
+  wasSocketConnectedOnce,
+  isSocketConnected,
   connectionBarJustConnected,
   isSocketConnecting,
   reconnect,
@@ -566,12 +568,13 @@ function onReconnectClick() {
 
 // When disconnected bar is visible, scroll or tap anywhere should reconnect.
 function onScrollOrTapReconnect() {
-  if (disconnectedDueToIdle.value && !isSocketConnecting.value) reconnect()
+  const showBanner = disconnectedDueToIdle.value || (wasSocketConnectedOnce.value && !isSocketConnected.value)
+  if (showBanner && !isSocketConnecting.value) reconnect()
 }
 
 let connectionBarRemoveListeners: (() => void) | null = null
 watch(
-  () => isAuthed && disconnectedDueToIdle.value,
+  () => isAuthed && (disconnectedDueToIdle.value || (wasSocketConnectedOnce.value && !isSocketConnected.value)),
   (shouldListen) => {
     if (import.meta.client && connectionBarRemoveListeners) {
       connectionBarRemoveListeners()

@@ -52,6 +52,8 @@ export function usePresence() {
   /** Brief "just reconnected" state for connection bar green flash before hide. */
   const connectionBarJustConnected = ref(false)
   let connectionBarJustConnectedTimer: ReturnType<typeof setTimeout> | null = null
+  /** True after first successful connect; used to show "disconnected" banner only after a real disconnect (not on initial load). */
+  const wasSocketConnectedOnce = useState<boolean>('presence-was-socket-connected-once', () => false)
 
   function isOnline(userId: string): boolean {
     return onlineUserIds.value.includes(userId)
@@ -332,12 +334,14 @@ export function usePresence() {
       }
     }
     socket.on('connect', () => {
+      const isReconnect = wasSocketConnectedOnce.value
+      wasSocketConnectedOnce.value = true
       isSocketConnected.value = true
       isSocketConnecting.value = false
       // Show current user as online immediately (avatar / status) until server sends real presence
       const me = user.value?.id
       if (me) applyUserPresence(me, true, false)
-      if (disconnectedDueToIdle.value) {
+      if (disconnectedDueToIdle.value || isReconnect) {
         disconnectedDueToIdle.value = false
         connectionBarJustConnected.value = true
         if (connectionBarJustConnectedTimer) clearTimeout(connectionBarJustConnectedTimer)
@@ -356,6 +360,7 @@ export function usePresence() {
       idleUserIds.value = new Set()
     })
     if (socket.connected) {
+      wasSocketConnectedOnce.value = true
       isSocketConnected.value = true
       isSocketConnecting.value = false
       const me = user.value?.id
@@ -379,6 +384,7 @@ export function usePresence() {
       socket.disconnect()
       socketRef.value = null
     }
+    wasSocketConnectedOnce.value = false
     isSocketConnecting.value = false
     disconnectedDueToIdle.value = false
     connectionBarJustConnected.value = false
@@ -492,6 +498,7 @@ export function usePresence() {
     isSocketConnected: readonly(isSocketConnected),
     isSocketConnecting: readonly(isSocketConnecting),
     disconnectedDueToIdle: readonly(disconnectedDueToIdle),
+    wasSocketConnectedOnce: readonly(wasSocketConnectedOnce),
     connectionBarJustConnected: readonly(connectionBarJustConnected),
     notificationUndeliveredCount: readonly(notificationUndeliveredCount),
     setNotificationUndeliveredCount(count: number) {
