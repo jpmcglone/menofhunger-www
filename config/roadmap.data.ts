@@ -59,7 +59,7 @@ export const roadmapPhases: RoadmapPhase[] = [
           '**Landing & onboarding** — Clear homepage and signup; smooth onboarding so you can post and follow in your first session.',
           '**Discover / non-empty feed** — When you have zero follows, a “Discover” or “For you” feed (trending or recent public posts) so your home feed is never empty.',
           '**Suggested users / who to follow** — Real “who to follow” (by interests or activity) so you fill your feed fast and see content that matters.',
-          '**Invite a friend** — Shareable signup or invite link (“Join me on Men of Hunger”) so you can bring friends and grow the circle.'
+          '**Invite a friend** — Shareable signup or invite link (“Join me on Men of Hunger”) so you can bring friends and grow the circle. **Premium members:** when someone you invite verifies, they get **a free month of premium**.'
         ]
       },
       {
@@ -106,7 +106,8 @@ export const roadmapPhases: RoadmapPhase[] = [
         title: 'Content & premium',
         items: [
           'Edit post — Fix your post text, visibility, or media without deleting.',
-          'Manage subscription — Stripe customer portal (manage or cancel); optional annual plan or one-off support; Contact/Help in settings.'
+          'Manage subscription — Stripe customer portal (manage or cancel); optional annual plan or one-off support; Contact/Help in settings.',
+          '**Gift premium** — Pay for someone else’s subscription; send them a month (or more) of premium as a gift.'
         ]
       },
       {
@@ -159,8 +160,7 @@ export const roadmapPhases: RoadmapPhase[] = [
       {
         title: 'Mobile apps',
         items: [
-          'PWA polish — If not fully done in March: installable, app-like experience on mobile (icon, splash, offline where useful).',
-          'Native iOS / Android — Native apps in the app stores so you get a first-class experience on your phone.'
+          'PWA polish — If not fully done in March: installable, app-like experience on mobile (icon, splash, offline where useful).'
         ]
       },
       {
@@ -203,6 +203,7 @@ export const roadmapBacklog: RoadmapBacklog = {
     {
       title: 'Mobile & platform',
       items: [
+        'Native iOS / Android — Native apps in the app stores so you get a first-class experience on your phone.',
         'Deep linking (open a post or profile from a link in the app); app store optimization when native apps ship.'
       ]
     },
@@ -210,6 +211,15 @@ export const roadmapBacklog: RoadmapBacklog = {
       title: 'Notifications',
       items: [
         'Email notifications (e.g. “Email me when someone replies” or digest).'
+      ]
+    },
+    {
+      title: 'Customization, badges & fun',
+      items: [
+        '**Purchasable customizations** — Themes, profile accents, or other app/profile customizations you can buy to personalize your experience.',
+        '**Profile badges** — Badges and achievements (e.g. early supporter, verified, streak, top contributor) that show on your profile and in the app.',
+        '**Simple games** — Lightweight games for logged-in users to play with one another (e.g. quick challenges or mini-games in-app).',
+        'Tip or support a creator — One-time payment to another member (optional).'
       ]
     }
   ]
