@@ -1,7 +1,8 @@
 <template>
   <div
     v-if="visible"
-    class="pointer-events-none absolute -inset-2 z-20 rounded-2xl"
+    class="pointer-events-none absolute z-20 rounded-2xl -inset-x-2 -top-2"
+    :class="tightBottom ? '-bottom-1' : '-bottom-2'"
     aria-hidden="true"
   >
     <div
@@ -27,6 +28,8 @@ const props = defineProps<{
   remainingSlots: number
   maxSlots: number
   accentBorderColor?: string
+  /** When true, use less bottom inset (e.g. textarea-only overlay to avoid extra padding at bottom). */
+  tightBottom?: boolean
 }>()
 
 const visible = computed(() => Boolean(props.visible))

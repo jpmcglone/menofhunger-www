@@ -160,17 +160,23 @@ function onTabKeydown(e: KeyboardEvent, idx: number) {
 
 onMounted(() => {
   if (!import.meta.client) return
-  // First paint: show the active segment immediately (no "entrance" animation).
-  // We do that by rendering the active button with a background until the highlight is measured.
+  // Never animate the highlight on first paint: set final position while hidden, then show.
   highlightAnimate.value = false
-  nextTick(() => {
+  function showHighlightWhenReady(retries = 0) {
     updateHighlight()
-    highlightReady.value = true
-    // Enable animation for subsequent tab changes.
+    const activeEl = tabEls.get(String(props.modelValue))
+    if (!activeEl && retries < 5) {
+      requestAnimationFrame(() => showHighlightWhenReady(retries + 1))
+      return
+    }
     requestAnimationFrame(() => {
-      highlightAnimate.value = true
+      highlightReady.value = true
+      requestAnimationFrame(() => {
+        highlightAnimate.value = true
+      })
     })
-  })
+  }
+  nextTick(() => requestAnimationFrame(() => showHighlightWhenReady(0)))
 
   const onResize = () => updateHighlight()
   window.addEventListener('resize', onResize)

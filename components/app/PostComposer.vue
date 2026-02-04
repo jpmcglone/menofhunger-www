@@ -97,11 +97,12 @@
               @paste="onComposerPaste"
             />
 
-            <!-- Drag overlay (no media): hug just the textarea -->
+            <!-- Drag overlay (no media): hug just the textarea, less bottom inset to avoid extra padding -->
             <AppComposerDropOverlay
               :visible="dropOverlayVisible && !composerMedia.length"
               :remaining-slots="remainingMediaSlots"
               :max-slots="4"
+              tight-bottom
             />
           </div>
 
@@ -150,7 +151,7 @@
           </Teleport>
         </ClientOnly>
 
-        <div class="mt-3 flex flex-col gap-1">
+        <div :class="composerMedia.length ? 'mt-5' : 'mt-3'" class="flex flex-col gap-1">
           <div class="flex items-center justify-between">
           <div class="flex items-center gap-2 text-gray-500 dark:text-gray-400">
             <Button
