@@ -26,7 +26,7 @@
           </div>
         </header>
 
-        <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <!-- WEB -->
           <div class="moh-panel">
             <div class="moh-panel-h">
@@ -71,6 +71,44 @@
               <div v-else-if="dbError" class="moh-mini font-mono moh-error">err={{ dbError }}</div>
             </div>
           </div>
+
+          <!-- WebSocket (presence) -->
+          <div class="moh-panel">
+            <div class="moh-panel-h">
+              <div class="moh-panel-k">WS</div>
+              <div
+                class="moh-panel-v"
+                :class="
+                  wsStatus === 'connected'
+                    ? 'moh-ok'
+                    : wsStatus === 'connecting'
+                      ? 'moh-warn'
+                      : wsStatus === 'na'
+                        ? 'moh-na'
+                        : 'moh-bad'
+                "
+              >
+                {{ wsStatus === 'connected' ? 'UP' : wsStatus === 'connecting' ? '…' : wsStatus === 'na' ? 'N/A' : 'DOWN' }}
+              </div>
+            </div>
+            <div class="moh-panel-b">
+              <div
+                class="moh-big"
+                :class="
+                  wsStatus === 'connected'
+                    ? 'moh-ok'
+                    : wsStatus === 'connecting'
+                      ? 'moh-warn'
+                      : wsStatus === 'na'
+                        ? 'moh-na'
+                        : 'moh-bad'
+                "
+              >
+                {{ wsStatusLabel }}
+              </div>
+              <div class="moh-mini font-mono moh-muted">presence (when signed in)</div>
+            </div>
+          </div>
         </div>
 
         <footer class="pt-1">
@@ -95,6 +133,8 @@ usePageSeo({
 })
 
 const { data, pending, isUp, lastCheckedAtIso, refresh } = useApiHealth()
+const { user } = useAuth()
+const { isSocketConnected, isSocketConnecting } = usePresence()
 
 const apiOk = computed(() => Boolean(data.value?.status === 'ok'))
 const dbOk = computed(() => Boolean(data.value?.db?.status === 'ok'))
@@ -104,6 +144,26 @@ const dbLatencyMsLabel = computed(() => {
   return `${Math.max(0, Math.floor(ms))}ms`
 })
 const dbError = computed(() => (data.value?.db?.error ?? '').trim() || null)
+
+/** 'connected' | 'connecting' | 'disconnected' | 'na' (not signed in) */
+const wsStatus = computed(() => {
+  if (!user.value?.id) return 'na'
+  if (isSocketConnected.value) return 'connected'
+  if (isSocketConnecting.value) return 'connecting'
+  return 'disconnected'
+})
+const wsStatusLabel = computed(() => {
+  switch (wsStatus.value) {
+    case 'connected':
+      return 'CONNECTED'
+    case 'connecting':
+      return 'CONNECTING…'
+    case 'na':
+      return 'NOT SIGNED IN'
+    default:
+      return 'DISCONNECTED'
+  }
+})
 
 onMounted(() => {
   const t = window.setInterval(() => {
@@ -208,6 +268,12 @@ onMounted(() => {
 }
 .moh-bad {
   color: #ef4444;
+}
+.moh-warn {
+  color: #eab308;
+}
+.moh-na {
+  color: rgba(231, 233, 234, 0.5);
 }
 .moh-panel-b {
   padding: 14px;

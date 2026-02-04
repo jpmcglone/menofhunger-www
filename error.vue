@@ -34,11 +34,24 @@
 </template>
 
 <script setup lang="ts">
+import { siteConfig } from '~/config/site'
 const props = defineProps<{
   error: { statusCode?: number; message?: string } | null
 }>()
 
 const is404 = computed(() => props.error?.statusCode === 404)
+
+// SEO: clear title + noindex so 404/error pages don't get indexed
+const pageTitle = computed(() =>
+  props.error?.statusCode === 404 ? 'Page not found' : 'Something went wrong'
+)
+useHead({
+  title: () => `${pageTitle.value} | ${siteConfig.name}`,
+  meta: [
+    { name: 'robots', content: 'noindex, nofollow' },
+    { name: 'description', content: is404.value ? 'The page you’re looking for doesn’t exist or was moved.' : 'An unexpected error occurred.' },
+  ],
+})
 
 function handleTryAgain() {
   clearError({ redirect: '/' })

@@ -8,6 +8,8 @@ const PRESENCE_SOCKET_KEY = 'presence-socket'
 const PRESENCE_ONLINE_FEED_SUBSCRIBED_KEY = 'presence-online-feed-subscribed'
 const PRESENCE_INTEREST_KEY = 'presence-interest-refs'
 const PRESENCE_DISCONNECTED_DUE_TO_IDLE_KEY = 'presence-disconnected-due-to-idle'
+const PRESENCE_SOCKET_CONNECTED_KEY = 'presence-socket-connected'
+const PRESENCE_SOCKET_CONNECTING_KEY = 'presence-socket-connecting'
 const NOTIFICATIONS_UNDELIVERED_COUNT_KEY = 'notifications-undelivered-count'
 const NOTIFICATION_SOUND_PATH = '/sounds/notification.mp3'
 /** Min ms between plays so we don't ding repeatedly (e.g. multiple sockets on mobile or burst of events). */
@@ -45,8 +47,8 @@ export function usePresence() {
   const notificationUndeliveredCount = useState<number>(NOTIFICATIONS_UNDELIVERED_COUNT_KEY, () => 0)
   /** Previous undelivered count so we only play in-app sound when count increases (not on load or mark-read). */
   const previousNotificationCountRef = ref<number | null>(null)
-  const isSocketConnected = ref(false)
-  const isSocketConnecting = ref(false)
+  const isSocketConnected = useState(PRESENCE_SOCKET_CONNECTED_KEY, () => false)
+  const isSocketConnecting = useState(PRESENCE_SOCKET_CONNECTING_KEY, () => false)
   /** Brief "just reconnected" state for connection bar green flash before hide. */
   const connectionBarJustConnected = ref(false)
   let connectionBarJustConnectedTimer: ReturnType<typeof setTimeout> | null = null
@@ -332,6 +334,9 @@ export function usePresence() {
     socket.on('connect', () => {
       isSocketConnected.value = true
       isSocketConnecting.value = false
+      // Show current user as online immediately (avatar / status) until server sends real presence
+      const me = user.value?.id
+      if (me) applyUserPresence(me, true, false)
       if (disconnectedDueToIdle.value) {
         disconnectedDueToIdle.value = false
         connectionBarJustConnected.value = true
@@ -346,10 +351,15 @@ export function usePresence() {
     socket.on('disconnect', () => {
       isSocketConnected.value = false
       isSocketConnecting.value = false
+      // Clear presence state so UI (e.g. avatar green dot, status page) doesn't show stale "online"
+      onlineUserIds.value = []
+      idleUserIds.value = new Set()
     })
     if (socket.connected) {
       isSocketConnected.value = true
       isSocketConnecting.value = false
+      const me = user.value?.id
+      if (me) applyUserPresence(me, true, false)
       syncSubscriptions()
     }
 

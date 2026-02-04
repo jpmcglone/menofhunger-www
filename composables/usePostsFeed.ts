@@ -1,5 +1,6 @@
 import type { FeedPost, GetPostsData, CreatePostData, PostMediaKind, PostMediaSource, PostVisibility } from '~/types/api'
 import { getApiErrorMessage } from '~/utils/api-error'
+import { useCursorFeed } from '~/composables/useCursorFeed'
 import { useMiddleScroller } from '~/composables/useMiddleScroller'
 import { usePostCountBumps } from '~/composables/usePostCountBumps'
 
@@ -12,57 +13,47 @@ export function usePostsFeed(options: { visibility?: Ref<FeedFilter>; followingO
   const { clearBumpsForPostIds } = usePostCountBumps()
   const loadingIndicator = useLoadingIndicator()
 
-  const posts = useState<FeedPost[]>('posts-feed', () => [])
-  const nextCursor = useState<string | null>('posts-feed-next-cursor', () => null)
-  const loading = useState<boolean>('posts-feed-loading', () => false)
-  const error = useState<string | null>('posts-feed-error', () => null)
-  const lastHardRefreshMs = useState<number>('posts-feed-last-hard-refresh-ms', () => 0)
   const visibility = options.visibility ?? ref<FeedFilter>('all')
   const followingOnly = options.followingOnly ?? ref(false)
   const sort = options.sort ?? ref<FeedSort>('new')
+  const lastHardRefreshMs = useState<number>('posts-feed-last-hard-refresh-ms', () => 0)
 
-  // Parent (useHomeFeed) calls refresh() when filter/sort/scope change — no watcher here
-  // to avoid duplicate fetches (setters update refs and call refresh explicitly).
+  const feed = useCursorFeed<FeedPost>({
+    stateKey: 'posts-feed',
+    buildRequest: (cursor) => ({
+      path: '/posts',
+      query: {
+        limit: 30,
+        visibility: visibility.value,
+        ...(followingOnly.value ? { followingOnly: true } : {}),
+        ...(sort.value === 'trending' ? { sort: 'trending' } : {}),
+        ...(cursor ? { cursor } : {}),
+      },
+    }),
+    defaultErrorMessage: 'Failed to load posts.',
+    loadMoreErrorMessage: 'Failed to load more posts.',
+    onDataLoaded: (data) => clearBumpsForPostIds(data.map((p) => p.id)),
+  })
+
+  const posts = feed.items
+  const { nextCursor, loading, error, refresh: feedRefresh, loadMore: feedLoadMore } = feed
 
   type RefreshOverrides = { visibility?: FeedFilter; sort?: FeedSort } | void
 
   async function refresh(overrides?: RefreshOverrides) {
     if (loading.value) return
-    loading.value = true
-    error.value = null
-    posts.value = []
-    nextCursor.value = null
+    if (overrides?.visibility !== undefined) visibility.value = overrides.visibility
+    if (overrides?.sort !== undefined) sort.value = overrides.sort
     loadingIndicator.start()
-    const vis = overrides?.visibility ?? visibility.value
-    const sortVal = overrides?.sort ?? sort.value
-    try {
-      const res = await apiFetch<GetPostsData>('/posts', {
-        method: 'GET',
-        query: {
-          limit: 30,
-          visibility: vis,
-          ...(followingOnly.value ? { followingOnly: true } : {}),
-          ...(sortVal === 'trending' ? { sort: 'trending' } : {}),
-        }
-      })
-      const data = res.data ?? []
-      posts.value = data.length ? [...data] : []
-      nextCursor.value = res.pagination?.nextCursor ?? null
-      lastHardRefreshMs.value = Date.now()
-      clearBumpsForPostIds(data.map((p) => p.id))
-    } catch (e: unknown) {
-      error.value = getApiErrorMessage(e) || 'Failed to load posts.'
-    } finally {
-      loading.value = false
-      queueMicrotask(() => loadingIndicator.finish())
-    }
+    await feedRefresh()
+    lastHardRefreshMs.value = Date.now()
+    queueMicrotask(() => loadingIndicator.finish())
   }
 
   function pickAnchor(scroller: HTMLElement): { postId: string; offsetTop: number } | null {
     const items = Array.from(scroller.querySelectorAll<HTMLElement>('[data-post-id]'))
     if (!items.length) return null
     const scRect = scroller.getBoundingClientRect()
-    // Choose the first element that intersects the viewport of the scroller.
     for (const el of items) {
       const r = el.getBoundingClientRect()
       if (r.bottom <= scRect.top + 1) continue
@@ -71,7 +62,6 @@ export function usePostsFeed(options: { visibility?: Ref<FeedFilter>; followingO
       if (!id) continue
       return { postId: id, offsetTop: r.top - scRect.top }
     }
-    // Fallback to first row.
     const first = items[0]
     if (!first) return null
     const id = (first?.dataset.postId ?? '').trim()
@@ -140,7 +130,6 @@ export function usePostsFeed(options: { visibility?: Ref<FeedFilter>; followingO
       if (timer != null) return
       timer = window.setInterval(() => {
         if (document.visibilityState !== 'visible') return
-        // Only do this if we've had at least one hard refresh (initial load).
         if (!lastHardRefreshMs.value) return
         void softRefreshNewer()
       }, everyMs)
@@ -157,30 +146,9 @@ export function usePostsFeed(options: { visibility?: Ref<FeedFilter>; followingO
   async function loadMore() {
     if (loading.value) return
     if (!nextCursor.value) return
-    loading.value = true
-    error.value = null
     loadingIndicator.start()
-    try {
-      const res = await apiFetch<GetPostsData>('/posts', {
-        method: 'GET',
-        query: {
-          limit: 30,
-          cursor: nextCursor.value,
-          visibility: visibility.value,
-          ...(followingOnly.value ? { followingOnly: true } : {}),
-          ...(sort.value === 'trending' ? { sort: 'trending' } : {}),
-        }
-      })
-      const more = res.data ?? []
-      posts.value = [...posts.value, ...more]
-      nextCursor.value = res.pagination?.nextCursor ?? null
-      clearBumpsForPostIds(more.map((p) => p.id))
-    } catch (e: unknown) {
-      error.value = getApiErrorMessage(e) || 'Failed to load more posts.'
-    } finally {
-      loading.value = false
-      loadingIndicator.finish()
-    }
+    await feedLoadMore()
+    loadingIndicator.finish()
   }
 
   async function addPost(
@@ -210,14 +178,13 @@ export function usePostsFeed(options: { visibility?: Ref<FeedFilter>; followingO
         }
       })
 
-      // Newest-first: prepend so the new post shows immediately. "Only me" posts never appear in any feeds.
       if (post.visibility !== 'onlyMe') {
         posts.value = [post, ...posts.value]
         await nextTick()
       }
       return post
     } catch (e: unknown) {
-      error.value = getApiErrorMessage(e) || 'Failed to post.'
+      feed.error.value = getApiErrorMessage(e) || 'Failed to post.'
       throw e
     }
   }
@@ -228,10 +195,6 @@ export function usePostsFeed(options: { visibility?: Ref<FeedFilter>; followingO
     posts.value = posts.value.filter((p) => p.id !== pid)
   }
 
-  /**
-   * Insert a reply into the feed under its parent. Replaces the parent with the reply
-   * (reply has parent set, so FeedPostRow shows the chain).
-   */
   function addReply(parentId: string, replyPost: FeedPost, parentPostFromFeed: FeedPost) {
     const pid = (parentId ?? '').trim()
     if (!pid) return
@@ -243,4 +206,3 @@ export function usePostsFeed(options: { visibility?: Ref<FeedFilter>; followingO
 
   return { posts, nextCursor, loading, error, refresh, softRefreshNewer, startAutoSoftRefresh, loadMore, addPost, addReply, removePost }
 }
-

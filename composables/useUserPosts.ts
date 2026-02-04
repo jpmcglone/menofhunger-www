@@ -1,5 +1,5 @@
-import type { ApiPagination, FeedPost, GetUserPostsData } from '~/types/api'
-import { getApiErrorMessage } from '~/utils/api-error'
+import type { ApiPagination, FeedPost } from '~/types/api'
+import { useCursorFeed } from '~/composables/useCursorFeed'
 import { usePostCountBumps } from '~/composables/usePostCountBumps'
 import { useFeedFilters, type FeedVisibilityFilter } from '~/composables/useFeedFilters'
 
@@ -23,65 +23,60 @@ export function useUserPosts(
     cookieKeyPrefix?: string
   } = {},
 ) {
-  const { apiFetch } = useApiClient()
   const { clearBumpsForPostIds } = usePostCountBumps()
   const enabled = opts.enabled ?? computed(() => true)
   const prefix = opts.cookieKeyPrefix ?? 'moh.profile.posts'
 
   const { filter, sort, viewerIsVerified, viewerIsPremium, ctaKind } = useFeedFilters({ cookieKeyPrefix: prefix })
 
-  // When visiting a profile, always default to Newest order and All visibility.
   if (opts.defaultToNewestAndAll) {
     filter.value = 'all'
     sort.value = 'new'
   }
-  // Use shared state keyed by username so SSR/hydration and client navigation see the same list.
+
   const postsKey = `user-posts-list:${prefix}:${usernameLower.value}`
-  const postsState = useState<FeedPost[]>(postsKey, () => [])
-  const posts = ref<FeedPost[]>([...postsState.value])
   const counts = ref<PostCounts>(EMPTY_COUNTS)
-  const loading = ref(false)
-  const error = ref<string | null>(null)
   const hasLoadedOnce = ref(false)
+
+  const feed = useCursorFeed<FeedPost>({
+    stateKey: postsKey,
+    buildRequest: (cursor) => ({
+      path: `/posts/user/${encodeURIComponent(usernameLower.value)}`,
+      query: { limit: 30, visibility: filter.value, sort: sort.value, ...(cursor ? { cursor } : {}) },
+    }),
+    defaultErrorMessage: 'Failed to load posts.',
+    onDataLoaded: (data) => clearBumpsForPostIds(data.map((p) => p.id)),
+    onResponse: (res) => {
+      counts.value = res.pagination?.counts ?? counts.value
+      hasLoadedOnce.value = true
+    },
+  })
+
+  const posts = feed.items
+  const { loading, error, refresh, loadMore } = feed
 
   async function fetch(nextFilter: UserPostsFilter, nextSort: 'new' | 'trending') {
     if (!enabled.value) {
       posts.value = []
-      postsState.value = []
-      error.value = null
+      feed.nextCursor.value = null
+      feed.error.value = null
       return
     }
-    if (loading.value) return
-    error.value = null
+    if (feed.loading.value) return
+    feed.error.value = null
 
     if (nextFilter === 'verifiedOnly' && !viewerIsVerified.value) {
       posts.value = []
-      postsState.value = []
       return
     }
     if (nextFilter === 'premiumOnly' && !viewerIsPremium.value) {
       posts.value = []
-      postsState.value = []
       return
     }
 
-    loading.value = true
-    try {
-      const res = await apiFetch<GetUserPostsData>(
-        `/posts/user/${encodeURIComponent(usernameLower.value)}`,
-        { method: 'GET', query: { limit: 30, visibility: nextFilter, sort: nextSort } }
-      )
-      const data = res.data ?? []
-      posts.value = data
-      postsState.value = data
-      counts.value = res.pagination?.counts ?? counts.value
-      clearBumpsForPostIds(data.map((p) => p.id))
-    } catch (e: unknown) {
-      error.value = getApiErrorMessage(e) || 'Failed to load posts.'
-    } finally {
-      loading.value = false
-      hasLoadedOnce.value = true
-    }
+    filter.value = nextFilter
+    sort.value = nextSort
+    await refresh()
   }
 
   async function setFilter(next: UserPostsFilter) {
@@ -98,15 +93,13 @@ export function useUserPosts(
     const pid = (id ?? '').trim()
     if (!pid) return
     posts.value = posts.value.filter((p) => p.id !== pid)
-    postsState.value = posts.value
   }
 
-  // Load posts after the page (client-only). Profile metadata is SSR-only and does not include posts.
   if (!enabled.value) {
     posts.value = []
-    postsState.value = []
+    feed.nextCursor.value = null
     counts.value = EMPTY_COUNTS
-    error.value = null
+    feed.error.value = null
   }
 
   watch(
@@ -124,8 +117,8 @@ export function useUserPosts(
     (on) => {
       if (!on) {
         posts.value = []
-        postsState.value = []
-        error.value = null
+        feed.nextCursor.value = null
+        feed.error.value = null
         return
       }
       if (!import.meta.client) return
@@ -134,13 +127,25 @@ export function useUserPosts(
     { flush: 'post', immediate: true }
   )
 
-  // Ensure we fetch on the client after mount; the enabled watch may only run during SSR (we return early there).
   onMounted(() => {
     if (import.meta.client && enabled.value && posts.value.length === 0) {
       void fetch(filter.value, sort.value)
     }
   })
 
-  return { filter, sort, posts, counts, loading, error, hasLoadedOnce, viewerIsVerified, viewerIsPremium, ctaKind, setFilter, setSort, removePost }
+  return {
+    filter,
+    sort,
+    posts,
+    counts,
+    loading: feed.loading,
+    error: feed.error,
+    hasLoadedOnce,
+    viewerIsVerified,
+    viewerIsPremium,
+    ctaKind,
+    setFilter,
+    setSort,
+    removePost,
+  }
 }
-

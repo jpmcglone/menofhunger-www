@@ -70,8 +70,9 @@
 </template>
 
 <script setup lang="ts">
-import type { ApiEnvelope, SearchBookmarkItem } from '~/types/api'
+import type { SearchBookmarkItem } from '~/types/api'
 import { getApiErrorMessage } from '~/utils/api-error'
+import { useCursorFeed } from '~/composables/useCursorFeed'
 
 definePageMeta({
   layout: 'app',
@@ -82,7 +83,6 @@ const route = useRoute()
 const slug = computed(() => String(route.params.slug || '').trim())
 const activeSlug = computed(() => (slug.value ? slug.value : null))
 
-const { apiFetch } = useApiClient()
 const toast = useAppToast()
 
 const { collections, unorganizedCount, ensureLoaded: ensureCollectionsLoaded, createCollection } = useBookmarkCollections()
@@ -143,59 +143,44 @@ onBeforeUnmount(() => {
   qTimer = null
 })
 
-const items = ref<SearchBookmarkItem[]>([])
-const nextCursor = ref<string | null>(null)
-const loading = ref(false)
-const error = ref<string | null>(null)
-
-async function fetchPage(params: { cursor: string | null; append: boolean }) {
-  if (loading.value) return
-  loading.value = true
-  error.value = null
-  try {
-    // If slug is present but doesn't map to a folder, don't fetch the wrong feed.
-    if (folderNotFound.value) {
-      if (!params.append) items.value = []
-      nextCursor.value = null
-      return
-    }
-
+const feed = useCursorFeed<SearchBookmarkItem>({
+  stateKey: 'bookmarks-feed',
+  buildRequest: (cursor) => {
     const isUnorganized = slug.value === 'unorganized'
     const cid = folder.value?.id ?? null
-
-    const res = await apiFetch<SearchBookmarkItem[]>('/search', {
-      method: 'GET',
+    return {
+      path: '/search',
       query: {
         type: 'bookmarks',
         q: (debouncedQ.value ?? '').trim() || undefined,
         ...(isUnorganized ? { unorganized: '1' } : {}),
         ...(!isUnorganized && cid ? { collectionId: cid } : {}),
         limit: 20,
-        cursor: params.cursor ?? undefined,
+        ...(cursor ? { cursor } : {}),
       },
-    })
+    }
+  },
+  defaultErrorMessage: 'Failed to load bookmarks.',
+})
 
-    const rows = res.data ?? []
-    if (params.append) items.value = [...items.value, ...rows]
-    else items.value = rows
-    nextCursor.value = res.pagination?.nextCursor ?? null
-  } catch (e: unknown) {
-    error.value = getApiErrorMessage(e) || 'Failed to load bookmarks.'
-    if (!params.append) items.value = []
-    nextCursor.value = null
-  } finally {
-    loading.value = false
-  }
-}
+const items = feed.items
+const nextCursor = feed.nextCursor
+const loading = feed.loading
+const error = feed.error
 
 async function refresh() {
-  nextCursor.value = null
-  await fetchPage({ cursor: null, append: false })
+  if (folderNotFound.value) {
+    items.value = []
+    nextCursor.value = null
+    error.value = null
+    return
+  }
+  await feed.refresh()
 }
 
 async function loadMore() {
   if (!nextCursor.value) return
-  await fetchPage({ cursor: nextCursor.value, append: true })
+  await feed.loadMore()
 }
 
 watch([debouncedQ, folder, slug], () => void refresh(), { flush: 'post' })

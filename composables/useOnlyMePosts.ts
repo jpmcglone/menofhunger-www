@@ -1,53 +1,22 @@
-import type { FeedPost, GetPostsData } from '~/types/api'
-import { getApiErrorMessage } from '~/utils/api-error'
+import type { FeedPost } from '~/types/api'
+import { useCursorFeed } from '~/composables/useCursorFeed'
 import { usePostCountBumps } from '~/composables/usePostCountBumps'
 
 export function useOnlyMePosts() {
-  const { apiFetch } = useApiClient()
   const { clearBumpsForPostIds } = usePostCountBumps()
+  const feed = useCursorFeed<FeedPost>({
+    stateKey: 'posts-only-me',
+    buildRequest: (cursor) => ({
+      path: '/posts/me/only-me',
+      query: { limit: 30, ...(cursor ? { cursor } : {}) },
+    }),
+    defaultErrorMessage: 'Failed to load posts.',
+    loadMoreErrorMessage: 'Failed to load more posts.',
+    onDataLoaded: (data) => clearBumpsForPostIds(data.map((p) => p.id)),
+  })
 
-  const posts = useState<FeedPost[]>('posts-only-me', () => [])
-  const nextCursor = useState<string | null>('posts-only-me-next-cursor', () => null)
-  const loading = useState<boolean>('posts-only-me-loading', () => false)
-  const error = useState<string | null>('posts-only-me-error', () => null)
-
-  async function refresh() {
-    if (loading.value) return
-    loading.value = true
-    error.value = null
-    try {
-      const res = await apiFetch<GetPostsData>('/posts/me/only-me', {
-        method: 'GET',
-        query: { limit: 30 },
-      })
-      posts.value = res.data ?? []
-      nextCursor.value = res.pagination?.nextCursor ?? null
-    } catch (e: unknown) {
-      error.value = getApiErrorMessage(e) || 'Failed to load posts.'
-    } finally {
-      loading.value = false
-    }
-  }
-
-  async function loadMore() {
-    if (loading.value) return
-    if (!nextCursor.value) return
-    loading.value = true
-    error.value = null
-    try {
-      const res = await apiFetch<GetPostsData>('/posts/me/only-me', {
-        method: 'GET',
-        query: { limit: 30, cursor: nextCursor.value },
-      })
-      posts.value = [...posts.value, ...(res.data ?? [])]
-      nextCursor.value = res.pagination?.nextCursor ?? null
-      clearBumpsForPostIds((res.data ?? []).map((p) => p.id))
-    } catch (e: unknown) {
-      error.value = getApiErrorMessage(e) || 'Failed to load more posts.'
-    } finally {
-      loading.value = false
-    }
-  }
+  const posts = feed.items
+  const { nextCursor, loading, error, refresh, loadMore } = feed
 
   function removePost(id: string) {
     const pid = (id ?? '').trim()
@@ -62,4 +31,3 @@ export function useOnlyMePosts() {
 
   return { posts, nextCursor, loading, error, refresh, loadMore, removePost, prependPost }
 }
-
