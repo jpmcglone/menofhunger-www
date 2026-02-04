@@ -174,13 +174,17 @@
                 <div v-else-if="!push.isSupported" class="text-sm text-gray-600 dark:text-gray-400">
                   Push notifications are not supported in this browser.
                 </div>
-                <div v-else class="flex flex-wrap items-center gap-3">
+                <div v-else class="flex flex-col items-start gap-3">
+                  <div v-if="push.requiresInstall" class="text-sm text-gray-600 dark:text-gray-400">
+                    On iOS Safari, install this site to your Home Screen to enable notifications. Tap Share → Add to Home Screen, then reopen the app.
+                  </div>
+                  <div class="flex flex-wrap items-center gap-3">
                   <Button
                     v-if="!push.isSubscribed && push.permission !== 'denied'"
                     label="Enable browser notifications"
                     icon="pi pi-bell"
                     :loading="push.isRegistering"
-                    :disabled="push.isRegistering"
+                    :disabled="push.isRegistering || push.requiresInstall"
                     @click="pushSubscribe"
                   />
                   <Button
@@ -208,6 +212,7 @@
                   <span v-if="pushTestMessage" class="text-sm text-gray-600 dark:text-gray-400">
                     {{ pushTestMessage }}
                   </span>
+                  </div>
                 </div>
               </div>
 

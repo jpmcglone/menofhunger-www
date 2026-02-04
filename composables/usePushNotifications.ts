@@ -8,6 +8,28 @@
 const SW_PUSH_PATH = '/sw-push.js'
 const PUSH_HAS_AUTO_PROMPTED_KEY = 'push-has-auto-prompted'
 
+function isIosDevice(): boolean {
+  if (typeof navigator === 'undefined') return false
+  const ua = navigator.userAgent
+  return /iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+}
+
+function isSafariBrowser(): boolean {
+  if (typeof navigator === 'undefined') return false
+  const ua = navigator.userAgent
+  const isSafari = /Safari/.test(ua) && !/Chrome|Chromium|Edg|OPR|Brave/.test(ua)
+  const isIosAlt = /CriOS|FxiOS|EdgiOS/.test(ua)
+  return isSafari && !isIosAlt
+}
+
+function isStandaloneDisplay(): boolean {
+  if (!import.meta.client) return false
+  return (
+    window.matchMedia('(display-mode: standalone)').matches ||
+    (typeof navigator !== 'undefined' && (navigator as Navigator & { standalone?: boolean }).standalone === true)
+  )
+}
+
 function arrayBufferToBase64Url(buffer: ArrayBuffer): string {
   const bytes = new Uint8Array(buffer)
   let binary = ''
@@ -35,6 +57,8 @@ export function usePushNotifications() {
       typeof Notification !== 'undefined' &&
       'PushManager' in self
   )
+  const isIosSafari = computed(() => import.meta.client && isIosDevice() && isSafariBrowser())
+  const requiresInstall = computed(() => isIosSafari.value && !isStandaloneDisplay())
 
   async function registerSw(): Promise<ServiceWorkerRegistration | null> {
     if (typeof navigator === 'undefined' || !('serviceWorker' in navigator)) return null
@@ -52,6 +76,10 @@ export function usePushNotifications() {
     if (!import.meta.client || !user.value?.id) return false
     if (!vapidPublicKey?.trim()) {
       errorMessage.value = 'Push notifications are not configured.'
+      return false
+    }
+    if (requiresInstall.value) {
+      errorMessage.value = 'Install this site to your Home Screen to enable notifications on iOS Safari.'
       return false
     }
     if (typeof Notification === 'undefined' || !('PushManager' in self)) {
@@ -147,6 +175,7 @@ export function usePushNotifications() {
   function tryAutoPrompt(): void {
     if (!import.meta.client || !user.value?.id) return
     if (!vapidPublicKey?.trim()) return
+    if (requiresInstall.value) return
     if (typeof Notification === 'undefined' || Notification.permission !== 'default') return
     if (hasAutoPrompted.value) return
     hasAutoPrompted.value = true
@@ -188,6 +217,8 @@ export function usePushNotifications() {
     isRegistering: readonly(isRegistering),
     errorMessage: readonly(errorMessage),
     isSupported: readonly(isSupported),
+    isIosSafari: readonly(isIosSafari),
+    requiresInstall: readonly(requiresInstall),
     subscribe,
     unsubscribe,
     onLogout,
