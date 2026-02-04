@@ -772,6 +772,7 @@ watch(
   (authed) => {
     if (!authed || !import.meta.client) return
     const push = usePushNotifications()
+    push.tryAutoPrompt()
     void push.ensureSubscribedWhenGranted()
   },
   { immediate: true },

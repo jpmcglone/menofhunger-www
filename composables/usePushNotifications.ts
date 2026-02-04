@@ -50,6 +50,7 @@ export function usePushNotifications() {
   const isRegistering = ref(false)
   const errorMessage = ref<string | null>(null)
   const hasAutoPrompted = useState<boolean>(PUSH_HAS_AUTO_PROMPTED_KEY, () => false)
+  const hasPermissionWatcher = useState<boolean>('push-has-permission-watcher', () => false)
 
   const isSupported = computed(
     () =>
@@ -190,9 +191,9 @@ export function usePushNotifications() {
   async function ensureSubscribedWhenGranted(): Promise<void> {
     if (!import.meta.client || !user.value?.id || !vapidPublicKey?.trim()) return
     if (typeof Notification === 'undefined' || !('PushManager' in self)) return
-    if (Notification.permission !== 'granted') return
     if (isRegistering.value) return
     await refreshSubscriptionState()
+    if (Notification.permission !== 'granted') return
     if (isSubscribed.value) return
     void subscribe()
   }
@@ -210,6 +211,27 @@ export function usePushNotifications() {
       isSubscribed.value = false
     }
   }
+
+  async function watchPermissionChanges(): Promise<void> {
+    if (!import.meta.client || hasPermissionWatcher.value) return
+    if (typeof navigator === 'undefined' || !('permissions' in navigator)) return
+    hasPermissionWatcher.value = true
+    try {
+      const status = await navigator.permissions.query({ name: 'notifications' as PermissionName })
+      status.onchange = () => {
+        permission.value = typeof Notification !== 'undefined' ? Notification.permission : 'unsupported'
+        if (permission.value === 'granted') {
+          void ensureSubscribedWhenGranted()
+          return
+        }
+        void refreshSubscriptionState()
+      }
+    } catch (e) {
+      console.warn('[push] permission watcher failed', e)
+    }
+  }
+
+  void watchPermissionChanges()
 
   return {
     permission: readonly(permission),
