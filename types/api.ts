@@ -25,6 +25,9 @@ export type ApiErrorEnvelope = {
   }
 }
 
+export type FeedbackCategory = 'bug' | 'feature' | 'account' | 'other'
+export type FeedbackStatus = 'new' | 'triaged' | 'resolved'
+
 export type PostVisibility = 'public' | 'verifiedOnly' | 'premiumOnly' | 'onlyMe'
 
 export type PostMediaKind = 'image' | 'gif' | 'video'
@@ -203,6 +206,25 @@ export type AdminImageReviewListItem = {
   userId: string | null
   profileUsername: string | null
 }
+
+export type FeedbackItem = {
+  id: string
+  createdAt: string
+  updatedAt: string
+  category: FeedbackCategory
+  status: FeedbackStatus
+  email: string | null
+  subject: string
+  details: string
+}
+
+export type AdminFeedbackItem = FeedbackItem & {
+  adminNote: string | null
+  user: { id: string; username: string | null; name: string | null } | null
+}
+
+/** Data type for GET /admin/feedback (array); pagination in envelope. */
+export type AdminFeedbackListData = AdminFeedbackItem[]
 
 /** Data type for GET /admin/media-review (array); pagination in envelope. */
 export type AdminImageReviewListData = AdminImageReviewListItem[]

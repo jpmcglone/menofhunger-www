@@ -29,16 +29,20 @@
 
           <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div class="text-xs moh-text-muted">
-              Submissions aren’t sent yet. Use the button to see the not-yet message.
+              We read every note. Share as much detail as you can.
             </div>
             <Button
               label="Submit"
               icon="pi pi-send"
               severity="secondary"
-              v-tooltip.bottom="tinyTooltip('Coming soon')"
+              :loading="submitting"
+              :disabled="submitting"
               @click="onSubmit"
             />
           </div>
+          <AppInlineAlert v-if="submitError" severity="danger">
+            {{ submitError }}
+          </AppInlineAlert>
         </div>
       </div>
 
@@ -62,31 +66,55 @@ usePageSeo({
   noindex: true,
 })
 
-import { tinyTooltip } from '~/utils/tiny-tooltip'
+import { getApiErrorMessage } from '~/utils/api-error'
+import type { FeedbackItem, FeedbackCategory } from '~/types/api'
 
-type Category = 'bug' | 'feature' | 'account' | 'other'
-
-const categories: Array<{ label: string; value: Category }> = [
+const categories: Array<{ label: string; value: FeedbackCategory }> = [
   { label: 'Bug', value: 'bug' },
   { label: 'Feature request', value: 'feature' },
   { label: 'Account', value: 'account' },
   { label: 'Other', value: 'other' },
 ]
 
-const category = ref<Category>('feature')
+const category = ref<FeedbackCategory>('feature')
 const email = ref('')
 const subject = ref('')
 const details = ref('')
 
+const { apiFetchData } = useApiClient()
 const { push: pushToast } = useAppToast()
+const submitting = ref(false)
+const submitError = ref<string | null>(null)
 
-function onSubmit() {
-  pushToast({
-    title: 'Not available yet',
-    message: "We're still building this.",
-    tone: 'public',
-    durationMs: 5000,
-  })
+async function onSubmit() {
+  if (submitting.value) return
+  submitError.value = null
+  submitting.value = true
+
+  try {
+    await apiFetchData<FeedbackItem>('/feedback', {
+      method: 'POST',
+      body: {
+        category: category.value,
+        email: email.value.trim() ? email.value.trim() : null,
+        subject: subject.value.trim(),
+        details: details.value.trim(),
+      },
+    })
+
+    subject.value = ''
+    details.value = ''
+    pushToast({
+      title: 'Thanks for the feedback',
+      message: 'We received your note.',
+      tone: 'public',
+      durationMs: 5000,
+    })
+  } catch (e: unknown) {
+    submitError.value = getApiErrorMessage(e) || 'Failed to send feedback.'
+  } finally {
+    submitting.value = false
+  }
 }
 </script>
 

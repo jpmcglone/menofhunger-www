@@ -42,6 +42,18 @@
               </div>
             </NuxtLink>
 
+            <NuxtLink to="/admin/feedback" class="block">
+              <div :class="areaCardClass('feedback')">
+                <div class="flex items-center gap-3">
+                  <i class="pi pi-inbox text-lg" aria-hidden="true" />
+                  <div class="min-w-0 flex-1">
+                    <div class="font-semibold truncate">Feedback</div>
+                    <div class="text-sm text-gray-600 dark:text-gray-300 truncate">Triaged feedback from users</div>
+                  </div>
+                </div>
+              </div>
+            </NuxtLink>
+
             <NuxtLink to="/admin/search" class="block">
               <div :class="areaCardClass('search')">
                 <div class="flex items-center gap-3">
@@ -77,16 +89,17 @@ definePageMeta({
 
 const route = useRoute()
 
-function isActiveArea(key: 'site-settings' | 'users' | 'media-review' | 'search') {
+function isActiveArea(key: 'site-settings' | 'users' | 'media-review' | 'feedback' | 'search') {
   const p = route.path
   if (key === 'site-settings') return p === '/admin/site-settings'
   if (key === 'users') return p === '/admin/users'
   if (key === 'media-review') return p === '/admin/media-review' || p.startsWith('/admin/media-review/')
+  if (key === 'feedback') return p === '/admin/feedback'
   if (key === 'search') return p === '/admin/search'
   return false
 }
 
-function areaCardClass(key: 'site-settings' | 'users' | 'media-review' | 'search') {
+function areaCardClass(key: 'site-settings' | 'users' | 'media-review' | 'feedback' | 'search') {
   const active = isActiveArea(key)
   return [
     'w-full rounded-xl border p-3 transition-colors',
