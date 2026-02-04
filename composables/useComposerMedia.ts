@@ -114,6 +114,7 @@ export function useComposerMedia(opts?: {
             width: typeof m.width === 'number' ? m.width : null,
             height: typeof m.height === 'number' ? m.height : null,
             durationSeconds: typeof m.durationSeconds === 'number' ? m.durationSeconds : null,
+            alt: (m.altText ?? '').trim() || null,
           })
         } else {
           out.push({
@@ -122,6 +123,7 @@ export function useComposerMedia(opts?: {
             r2Key: m.r2Key,
             width: typeof m.width === 'number' ? m.width : null,
             height: typeof m.height === 'number' ? m.height : null,
+            alt: (m.altText ?? '').trim() || null,
           })
         }
       } else if (m.source === 'giphy') {
@@ -133,6 +135,7 @@ export function useComposerMedia(opts?: {
           mp4Url: m.mp4Url ?? null,
           width: typeof m.width === 'number' ? m.width : null,
           height: typeof m.height === 'number' ? m.height : null,
+          alt: (m.altText ?? '').trim() || null,
         })
       }
     }
@@ -171,6 +174,7 @@ export function useComposerMedia(opts?: {
     openMediaPicker: ingest.openMediaPicker,
     onMediaFilesSelected: ingest.onMediaFilesSelected,
     removeComposerMedia,
+    patchComposerMedia,
     draggingMediaId: drag.draggingMediaId,
     dragGhost: drag.dragGhost,
     dragGhostStyle: drag.dragGhostStyle,

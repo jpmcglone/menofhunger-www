@@ -79,6 +79,7 @@ export function useComposerGiphyPicker(opts: {
       source: 'giphy',
       kind: 'gif',
       previewUrl: url,
+      altText: null,
       url,
       mp4Url: gif.mp4Url ?? null,
       width: gif.width ?? null,

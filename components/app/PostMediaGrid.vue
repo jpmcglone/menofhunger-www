@@ -70,7 +70,7 @@
         :class="hideThumbs ? 'opacity-0 transition-opacity duration-150' : 'opacity-100'"
         :width="singleWidth ?? undefined"
         :height="singleHeight ?? undefined"
-        alt=""
+        :alt="items[0]?.alt ?? ''"
         loading="lazy"
         decoding="async"
       />
@@ -110,7 +110,7 @@
               :src="m.url"
               class="block h-full w-full bg-black/3 dark:bg-white/3 object-cover object-center"
               :class="[imgClass(idx), hideThumbs ? 'opacity-0 transition-opacity duration-150' : 'opacity-100']"
-              alt=""
+              :alt="m.alt ?? ''"
               loading="lazy"
               decoding="async"
             />
@@ -119,7 +119,7 @@
                 :src="posterFor(m) || m.url"
                 class="block h-full w-full bg-black/3 dark:bg-white/3 object-cover object-center"
                 :class="[imgClass(idx), hideThumbs ? 'opacity-0 transition-opacity duration-150' : 'opacity-100']"
-                alt=""
+                :alt="m.alt ?? ''"
                 loading="lazy"
                 decoding="async"
               />

@@ -122,6 +122,7 @@
               @add="openMediaPicker"
               @remove="removeComposerMedia"
               @pointerdown="onMediaTilePointerDown"
+            @update-alt="onUpdateAltText"
             />
           </div>
 
@@ -309,6 +310,7 @@ const {
   openMediaPicker,
   onMediaFilesSelected,
   removeComposerMedia,
+  patchComposerMedia,
   draggingMediaId,
   dragGhost,
   dragGhostStyle,
@@ -423,6 +425,10 @@ const composerPlaceholder = computed(
     (props.replyTo ? 'Post your reply…' : "What's happening?"),
 )
 const postCharCount = computed(() => draft.value.length)
+
+function onUpdateAltText(localId: string, value: string) {
+  patchComposerMedia(localId, { altText: value })
+}
 
 /** True when the composer has draft text or media (for "discard?" confirm before link nav). */
 const hasUnsavedContent = computed(

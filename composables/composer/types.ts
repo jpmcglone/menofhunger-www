@@ -9,6 +9,7 @@ export type CreateMediaPayload =
       r2Key: string
       width: number | null
       height: number | null
+      alt?: string | null
     }
   | {
       source: 'upload'
@@ -18,6 +19,7 @@ export type CreateMediaPayload =
       width: number | null
       height: number | null
       durationSeconds: number | null
+      alt?: string | null
     }
   | {
       source: 'giphy'
@@ -26,6 +28,7 @@ export type CreateMediaPayload =
       mp4Url: string | null
       width: number | null
       height: number | null
+      alt?: string | null
     }
 
 export type ComposerMediaItem = {
@@ -40,6 +43,7 @@ export type ComposerMediaItem = {
   width?: number | null
   height?: number | null
   durationSeconds?: number | null
+  altText?: string | null
   uploadStatus?: UploadStatus
   uploadError?: string | null
   file?: File | null

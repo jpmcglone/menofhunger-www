@@ -45,6 +45,8 @@ export type PostMedia = {
   height: number | null
   /** Video duration in seconds. */
   durationSeconds?: number | null
+  /** Optional alt text for accessibility. */
+  alt: string | null
   deletedAt: string | null
 }
 
