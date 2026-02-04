@@ -19,7 +19,7 @@ export default defineNuxtConfig({
       // Example: NUXT_PUBLIC_ASSETS_BASE_URL=https://moh-assets.<accountId>.r2.dev
       assetsBaseUrl: process.env.NUXT_PUBLIC_ASSETS_BASE_URL || '',
       // VAPID public key for Web Push (must match API VAPID_PUBLIC_KEY).
-      vapidPublicKey: process.env.NUXT_PUBLIC_VAPID_PUBLIC_KEY || '',
+      vapidPublicKey: (process.env.NUXT_PUBLIC_VAPID_PUBLIC_KEY || '').trim(),
       // Facebook App ID for og:fb:app_id (fixes Sharing Debugger warning; improves link previews).
       facebookAppId: process.env.NUXT_PUBLIC_FACEBOOK_APP_ID || ''
     }

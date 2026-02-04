@@ -171,6 +171,9 @@
                     In <code class="rounded bg-gray-200 px-1 dark:bg-gray-700">menofhunger-www/.env</code> set <code class="rounded bg-gray-200 px-1 dark:bg-gray-700">NUXT_PUBLIC_VAPID_PUBLIC_KEY</code> to the value of <code class="rounded bg-gray-200 px-1 dark:bg-gray-700">VAPID_PUBLIC_KEY</code> from <code class="rounded bg-gray-200 px-1 dark:bg-gray-700">menofhunger-api/.env</code>, then restart the dev server.
                   </p>
                 </div>
+                <div v-else-if="!push.isSupported" class="text-sm text-gray-600 dark:text-gray-400">
+                  Push notifications are not supported in this browser.
+                </div>
                 <div v-else class="flex flex-wrap items-center gap-3">
                   <Button
                     v-if="!push.isSubscribed && push.permission !== 'denied'"

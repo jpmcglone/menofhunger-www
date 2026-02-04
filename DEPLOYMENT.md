@@ -28,6 +28,10 @@ The app already sets appropriate headers via [nuxt.config.ts](nuxt.config.ts) ro
 
 `/_nuxt/*` assets (JS, CSS) are long-lived and immutable. Static assets under `/images` and `/sounds` use 24h cache with stale-while-revalidate.
 
+### Service Worker (push notifications)
+
+The push-only service worker is served at `/sw-push.js` (from `public/sw-push.js`). **Do not cache this file long-term.** If a CDN or reverse proxy caches it aggressively (e.g. long `max-age`), users can stay on an old SW and miss updates. Use a short `max-age` or `no-store` for `/sw-push.js` so deployments take effect. Nuxt’s default for `public/` is usually fine; override only if your CDN long-caches by path.
+
 ## Link previews (Facebook / Messenger)
 
 ### SSR timing

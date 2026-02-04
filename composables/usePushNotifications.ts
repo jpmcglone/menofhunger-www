@@ -29,6 +29,13 @@ export function usePushNotifications() {
   const errorMessage = ref<string | null>(null)
   const hasAutoPrompted = useState<boolean>(PUSH_HAS_AUTO_PROMPTED_KEY, () => false)
 
+  const isSupported = computed(
+    () =>
+      import.meta.client &&
+      typeof Notification !== 'undefined' &&
+      'PushManager' in self
+  )
+
   async function registerSw(): Promise<ServiceWorkerRegistration | null> {
     if (typeof navigator === 'undefined' || !('serviceWorker' in navigator)) return null
     try {
@@ -180,6 +187,7 @@ export function usePushNotifications() {
     isSubscribed: readonly(isSubscribed),
     isRegistering: readonly(isRegistering),
     errorMessage: readonly(errorMessage),
+    isSupported: readonly(isSupported),
     subscribe,
     unsubscribe,
     onLogout,
