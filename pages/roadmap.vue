@@ -144,6 +144,7 @@ import {
   roadmapPhases,
   roadmapBacklog,
   roadmapFooterDisclaimer,
+  roadmapMetaDescription,
   getRoadmapSeoDescription,
   getRoadmapJsonLd
 } from '~/config/roadmap.data'
@@ -154,14 +155,14 @@ definePageMeta({
 })
 
 const canonicalPath = '/roadmap'
-const seoDescription = getRoadmapSeoDescription()
 const roadmapJsonLd = getRoadmapJsonLd(`${siteConfig.url}${canonicalPath}`)
 
 usePageSeo({
   title: 'Roadmap',
-  description: seoDescription,
+  description: roadmapMetaDescription,
   canonicalPath,
   ogType: 'website',
+  image: '/images/logo-black-bg.png',
   jsonLdGraph: [roadmapJsonLd],
 })
 

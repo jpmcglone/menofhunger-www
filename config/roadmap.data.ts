@@ -228,7 +228,11 @@ export const roadmapBacklog: RoadmapBacklog = {
 export const roadmapFooterDisclaimer =
   "Dates are targets, not promises. We'll update this page as we lock in or shift milestones."
 
-/** Build a short description for SEO from the roadmap (used in meta description and JSON-LD). */
+/** Brief meta description for link previews and og:description (keep short for unfurls). */
+export const roadmapMetaDescription =
+  "See what we're building and when. Men of Hunger product roadmap — upcoming features and milestones."
+
+/** Build a longer description for SEO/JSON-LD from the roadmap. */
 export function getRoadmapSeoDescription(): string {
   const phaseSummaries = roadmapPhases.map((p) => `${p.date}: ${p.title}`).join('. ')
   return `Men of Hunger product roadmap (as of ${roadmapAsOfDate}). ${phaseSummaries}. ${roadmapBacklog.title} for future features.`
