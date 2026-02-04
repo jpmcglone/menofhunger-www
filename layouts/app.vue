@@ -745,6 +745,7 @@ const routeHeaderDefaults = computed(() => {
   if (p === '/groups') return { icon: 'pi-users', description: 'Brotherhood circles and challenges. Coming soon.' }
   if (p === '/feedback') return { icon: 'pi-send', description: 'Help us improve.' }
   if (p === '/only-me') return { icon: undefined, description: 'Private posts that only you can see. These never appear in feeds.' }
+  if (p === '/roadmap') return { icon: 'pi-map', description: 'What we’re building and when.' }
   return { icon: undefined, description: undefined }
 })
 

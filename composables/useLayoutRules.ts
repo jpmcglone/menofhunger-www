@@ -13,8 +13,8 @@ export function useLayoutRules(route = useRoute()) {
   })
 
   const isRightRailForcedHidden = computed(() => {
-    // On messages we want the center column to be as wide as possible.
-    const forced = ['/messages', '/admin', '/settings']
+    // On these routes we want the center column to be as wide as possible.
+    const forced = ['/messages', '/admin', '/settings', '/roadmap']
     return forced.some((p) => route.path === p || route.path.startsWith(`${p}/`))
   })
 
