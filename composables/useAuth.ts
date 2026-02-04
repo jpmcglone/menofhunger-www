@@ -119,7 +119,7 @@ export function useAuth() {
       const path = String(route.path || '')
       const layout = (route.meta as any)?.layout as string | undefined
 
-      const authAllowed = new Set(['/home', '/explore', '/notifications', '/roadmap'])
+      const authAllowed = new Set(['/home', '/explore', '/notifications', '/roadmap', '/tiers'])
       const isAdmin = path === '/admin' || path.startsWith('/admin/')
 
       const requiresAuth =

@@ -746,6 +746,7 @@ const routeHeaderDefaults = computed(() => {
   if (p === '/feedback') return { icon: 'pi-send', description: 'Help us improve.' }
   if (p === '/only-me') return { icon: undefined, description: 'Private posts that only you can see. These never appear in feeds.' }
   if (p === '/roadmap') return { icon: 'pi-map', description: 'What we’re building and when.' }
+  if (p === '/tiers') return { icon: 'pi-tags', description: 'Unverified, Verified, and Premium — what you get with each tier.' }
   return { icon: undefined, description: undefined }
 })
 

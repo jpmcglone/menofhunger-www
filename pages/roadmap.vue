@@ -122,6 +122,9 @@
         <NuxtLink to="/about" class="font-medium text-gray-700 hover:underline dark:text-gray-300">
           About
         </NuxtLink>
+        <NuxtLink to="/tiers" class="font-medium text-gray-700 hover:underline dark:text-gray-300">
+          Tiers
+        </NuxtLink>
         <NuxtLink to="/feedback" class="font-medium text-gray-700 hover:underline dark:text-gray-300">
           Feedback
         </NuxtLink>
