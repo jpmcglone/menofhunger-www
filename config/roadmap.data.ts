@@ -7,7 +7,12 @@ import roadmapData from './roadmap.data.json'
 
 export type RoadmapChunk = {
   title: string
-  items: string[]
+  items: RoadmapItem[]
+}
+
+export type RoadmapItem = {
+  text: string
+  done?: boolean
 }
 
 export type RoadmapPhase = {

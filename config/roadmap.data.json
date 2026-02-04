@@ -18,37 +18,61 @@
         {
           "title": "Premium",
           "items": [
-            "**Stripe subscriptions** — Subscribe with a card; premium unlocks longer posts, video uploads, and premium-only content. Not live yet."
+            {
+              "text": "**Stripe subscriptions** — Subscribe with a card; premium unlocks longer posts, video uploads, and premium-only content. Not live yet."
+            }
           ]
         },
         {
           "title": "Getting started & discovery",
           "items": [
-            "**Landing & onboarding** — Clear homepage and signup; smooth onboarding so you can post and follow in your first session.",
-            "**Discover / non-empty feed** — When you have zero follows, a “Discover” or “For you” feed (trending or recent public posts) so your home feed is never empty.",
-            "**Suggested users / who to follow** — Real “who to follow” (by interests or activity) so you fill your feed fast and see content that matters.",
-            "**Invite a friend** — Shareable signup or invite link (“Join me on Men of Hunger”) so you can bring friends and grow the circle. **Premium members:** when someone you invite verifies, they get **a free month of premium**."
+            {
+              "text": "**Landing & onboarding** — Clear homepage and signup; smooth onboarding so you can post and follow in your first session."
+            },
+            {
+              "text": "**Discover / non-empty feed** — When you have zero follows, a “Discover” or “For you” feed (trending or recent public posts) so your home feed is never empty."
+            },
+            {
+              "text": "**Suggested users / who to follow** — Real “who to follow” (by interests or activity) so you fill your feed fast and see content that matters."
+            },
+            {
+              "text": "**Invite a friend** — Shareable signup or invite link (“Join me on Men of Hunger”) so you can bring friends and grow the circle. **Premium members:** when someone you invite verifies, they get **a free month of premium**."
+            }
           ]
         },
         {
           "title": "Staying in the loop",
           "items": [
-            "**Push notifications** — Reply, follow, and boost notifications so you never miss a beat.",
-            "**Email re-engagement** — “X new posts from people you follow” or a digest; or “You have new notifications” if you’ve been away. So you stay connected.",
-            "**PWA / Add to home screen** — Install the app on your phone (icon, splash, offline where useful) for an app-like experience without the app store."
+            {
+              "text": "**Push notifications** — Reply, follow, and boost notifications so you never miss a beat."
+            },
+            {
+              "text": "**Email re-engagement** — “X new posts from people you follow” or a digest; or “You have new notifications” if you’ve been away. So you stay connected."
+            },
+            {
+              "text": "**PWA / Add to home screen** — Install the app on your phone (icon, splash, offline where useful) for an app-like experience without the app store.",
+              "done": true
+            }
           ]
         },
         {
           "title": "Reporting (minimal for launch)",
           "items": [
-            "**Report post / Report user** — “Report” in the post menu and on profiles; pick a reason and add details; we store and triage. A full report queue and resolution flow follows in April."
+            {
+              "text": "**Report post / Report user** — “Report” in the post menu and on profiles; pick a reason and add details; we store and triage. A full report queue and resolution flow follows in April."
+            }
           ]
         },
         {
           "title": "Feedback & reliability",
           "items": [
-            "**Feedback** — Send us bugs and ideas; we store and triage so we can improve.",
-            "**Reliability** — Rate limits and clear “try again later” when needed; we test sign up → onboard → post → upgrade so the core flow works."
+            {
+              "text": "**Feedback** — Send us bugs and ideas; we store and triage so we can improve.",
+              "done": true
+            },
+            {
+              "text": "**Reliability** — Rate limits and clear “try again later” when needed; we test sign up → onboard → post → upgrade so the core flow works."
+            }
           ]
         }
       ]
@@ -65,29 +89,45 @@
         {
           "title": "Discovery",
           "items": [
-            "Explore / trending with real data — Trending or popular posts and “who to follow” in Explore or the right rail, so discovery feels alive.",
-            "Optional: hashtags or topics on posts so you can find and follow themes that matter to you."
+            {
+              "text": "Explore / trending with real data — Trending or popular posts and “who to follow” in Explore or the right rail, so discovery feels alive."
+            },
+            {
+              "text": "Optional: hashtags or topics on posts so you can find and follow themes that matter to you."
+            }
           ]
         },
         {
           "title": "Content & premium",
           "items": [
-            "Edit post — Fix your post text, visibility, or media without deleting.",
-            "Manage subscription — Stripe customer portal (manage or cancel); optional annual plan or one-off support; Contact/Help in settings.",
-            "**Gift premium** — Pay for someone else’s subscription; send them a month (or more) of premium as a gift."
+            {
+              "text": "Edit post — Fix your post text, visibility, or media without deleting."
+            },
+            {
+              "text": "Manage subscription — Stripe customer portal (manage or cancel); optional annual plan or one-off support; Contact/Help in settings."
+            },
+            {
+              "text": "**Gift premium** — Pay for someone else’s subscription; send them a month (or more) of premium as a gift."
+            }
           ]
         },
         {
           "title": "Reporting system (full)",
           "items": [
-            "Report queue — We list reports with filters (post vs user, category); resolution states (pending, dismissed, action taken).",
-            "Optional: we notify you when we’ve taken action, or you can check report status in-app, so you know we’re on it."
+            {
+              "text": "Report queue — We list reports with filters (post vs user, category); resolution states (pending, dismissed, action taken)."
+            },
+            {
+              "text": "Optional: we notify you when we’ve taken action, or you can check report status in-app, so you know we’re on it."
+            }
           ]
         },
         {
           "title": "Notifications",
           "items": [
-            "Notification preferences — Choose what you get: mute replies, only DMs, no boost notifications, etc.; per type or global."
+            {
+              "text": "Notification preferences — Choose what you get: mute replies, only DMs, no boost notifications, etc.; per type or global."
+            }
           ]
         }
       ]
@@ -104,35 +144,53 @@
         {
           "title": "Community depth",
           "items": [
-            "Groups (v1) — Create and join groups; group feed or group-scoped posts so you have pockets of accountability and conversation.",
-            "Direct messages — Real DMs: list conversations, send and receive, mark read; only you and the other person see the thread."
+            {
+              "text": "Groups (v1) — Create and join groups; group feed or group-scoped posts so you have pockets of accountability and conversation."
+            },
+            {
+              "text": "Direct messages — Real DMs: list conversations, send and receive, mark read; only you and the other person see the thread."
+            }
           ]
         },
         {
           "title": "Safety & control",
           "items": [
-            "Block user — Block so they can’t see your posts, DM you, or appear in your feed; manage your block list in settings.",
-            "Mute user — “See less”; hide their posts in your feed without unfollowing."
+            {
+              "text": "Block user — Block so they can’t see your posts, DM you, or appear in your feed; manage your block list in settings."
+            },
+            {
+              "text": "Mute user — “See less”; hide their posts in your feed without unfollowing."
+            }
           ]
         },
         {
           "title": "Account & data",
           "items": [
-            "Delete / deactivate account — “Delete my account” in settings; we soft-delete or fully erase and revoke sessions.",
-            "Download my data — Export your posts, profile, and bookmarks so you own your data.",
-            "Active sessions / devices — See where you’re logged in and revoke other sessions in settings."
+            {
+              "text": "Delete / deactivate account — “Delete my account” in settings; we soft-delete or fully erase and revoke sessions."
+            },
+            {
+              "text": "Download my data — Export your posts, profile, and bookmarks so you own your data."
+            },
+            {
+              "text": "Active sessions / devices — See where you’re logged in and revoke other sessions in settings."
+            }
           ]
         },
         {
           "title": "Mobile apps",
           "items": [
-            "PWA polish — If not fully done in March: installable, app-like experience on mobile (icon, splash, offline where useful)."
+            {
+              "text": "PWA polish — If not fully done in March: installable, app-like experience on mobile (icon, splash, offline where useful)."
+            }
           ]
         },
         {
           "title": "Status & support",
           "items": [
-            "Public status page or link so you can check uptime; in-app Help/Contact so you can reach us."
+            {
+              "text": "Public status page or link so you can check uptime; in-app Help/Contact so you can reach us."
+            }
           ]
         }
       ]
@@ -146,45 +204,74 @@
       {
         "title": "Account & auth",
         "items": [
-          "Change phone number (add new number, verify, make primary).",
-          "Email as second factor or account recovery.",
-          "\"Remember me\" / longer sessions; list connected devices with revoke."
+          {
+            "text": "Change phone number (add new number, verify, make primary)."
+          },
+          {
+            "text": "Email as second factor or account recovery."
+          },
+          {
+            "text": "\"Remember me\" / longer sessions; list connected devices with revoke."
+          }
         ]
       },
       {
         "title": "Content",
         "items": [
-          "Post drafts — save as draft and resume later.",
-          "Alt text for images (accessibility and screen readers)."
+          {
+            "text": "Post drafts — save as draft and resume later."
+          },
+          {
+            "text": "Alt text for images (accessibility and screen readers).",
+            "done": true
+          }
         ]
       },
       {
         "title": "Discovery & engagement",
         "items": [
-          "Hashtags or topics on posts; topic-based discovery.",
-          "Share to Twitter/X or other apps."
+          {
+            "text": "Hashtags or topics on posts; topic-based discovery."
+          },
+          {
+            "text": "Share to Twitter/X or other apps."
+          }
         ]
       },
       {
         "title": "Mobile & platform",
         "items": [
-          "Native iOS / Android — Native apps in the app stores so you get a first-class experience on your phone.",
-          "Deep linking (open a post or profile from a link in the app); app store optimization when native apps ship."
+          {
+            "text": "Native iOS / Android — Native apps in the app stores so you get a first-class experience on your phone."
+          },
+          {
+            "text": "Deep linking (open a post or profile from a link in the app); app store optimization when native apps ship."
+          }
         ]
       },
       {
         "title": "Notifications",
         "items": [
-          "Email notifications (e.g. “Email me when someone replies” or digest)."
+          {
+            "text": "Email notifications (e.g. “Email me when someone replies” or digest)."
+          }
         ]
       },
       {
         "title": "Customization, badges & fun",
         "items": [
-          "**Purchasable customizations** — Themes, profile accents, or other app/profile customizations you can buy to personalize your experience.",
-          "**Profile badges** — Badges and achievements (e.g. early supporter, verified, streak, top contributor) that show on your profile and in the app.",
-          "**Simple games** — Lightweight games for logged-in users to play with one another (e.g. quick challenges or mini-games in-app).",
-          "Tip or support a creator — One-time payment to another member (optional)."
+          {
+            "text": "**Purchasable customizations** — Themes, profile accents, or other app/profile customizations you can buy to personalize your experience."
+          },
+          {
+            "text": "**Profile badges** — Badges and achievements (e.g. early supporter, verified, streak, top contributor) that show on your profile and in the app."
+          },
+          {
+            "text": "**Simple games** — Lightweight games for logged-in users to play with one another (e.g. quick challenges or mini-games in-app)."
+          },
+          {
+            "text": "Tip or support a creator — One-time payment to another member (optional)."
+          }
         ]
       }
     ]

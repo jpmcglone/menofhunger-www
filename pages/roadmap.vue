@@ -61,10 +61,22 @@
                 >
                   <span
                     class="mt-0.5 h-1 w-1 shrink-0 rounded-full"
-                    :class="phase.isHighlight ? 'bg-[var(--moh-premium)]' : 'border-2 border-gray-400 bg-transparent dark:border-zinc-500'"
+                    :class="item.done
+                      ? 'bg-emerald-500'
+                      : (phase.isHighlight ? 'bg-[var(--moh-premium)]' : 'border-2 border-gray-400 bg-transparent dark:border-zinc-500')"
                     aria-hidden="true"
                   />
-                  <span v-html="formatItem(item)" />
+                  <span
+                    class="flex-1"
+                    :class="item.done ? 'line-through text-gray-500 dark:text-gray-500' : ''"
+                    v-html="formatItem(item)"
+                  />
+                  <span
+                    v-if="item.done"
+                    class="inline-flex shrink-0 self-start items-center rounded-full border border-emerald-400/40 bg-emerald-500/10 px-2 py-0.5 text-[11px] font-semibold leading-none text-emerald-600 dark:border-emerald-400/30 dark:text-emerald-300"
+                  >
+                    Done
+                  </span>
                 </li>
               </ul>
             </div>
@@ -105,7 +117,17 @@
                     class="mt-0.5 h-1 w-1 shrink-0 rounded-full border border-gray-300 bg-transparent dark:border-zinc-600"
                     aria-hidden="true"
                   />
-                  <span v-html="formatItem(item)" />
+                  <span
+                    class="flex-1"
+                    :class="item.done ? 'line-through text-gray-500 dark:text-gray-500' : ''"
+                    v-html="formatItem(item)"
+                  />
+                  <span
+                    v-if="item.done"
+                    class="inline-flex shrink-0 self-start items-center rounded-full border border-emerald-400/40 bg-emerald-500/10 px-2 py-0.5 text-[11px] font-semibold leading-none text-emerald-600 dark:border-emerald-400/30 dark:text-emerald-300"
+                  >
+                    Done
+                  </span>
                 </li>
               </ul>
             </div>
@@ -176,7 +198,7 @@ useHead({
 })
 
 /** Turn **bold** in item text into <strong> for display. */
-function formatItem(text: string): string {
-  return text.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+function formatItem(item: { text: string }): string {
+  return item.text.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
 }
 </script>

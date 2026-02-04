@@ -106,9 +106,10 @@ export function useNotifications() {
   }
 
   function titleSuffix(n: Notification): string {
+    if (n.title) return n.title
     switch (n.kind) {
       case 'comment':
-        return n.title ?? 'commented on your post'
+        return 'commented on your post'
       case 'boost':
         return 'boosted your post'
       case 'follow':
@@ -116,7 +117,7 @@ export function useNotifications() {
       case 'mention':
         return 'mentioned you'
       case 'generic':
-        return n.title ?? 'Notification'
+        return 'Notification'
       default:
         return 'Notification'
     }
