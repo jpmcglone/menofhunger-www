@@ -86,7 +86,7 @@
         <div class="border-b border-gray-200 dark:border-zinc-800">
           <div class="px-4 py-3 flex flex-wrap items-center justify-between gap-3 border-b border-gray-200 dark:border-zinc-800">
             <div class="text-sm font-semibold moh-text">
-              Comments
+              Replies
               <span class="ml-2 text-xs font-medium text-gray-500 dark:text-gray-400">
                 {{ commentCountDisplay }}
               </span>
@@ -96,6 +96,8 @@
               :filter="'all'"
               :viewer-is-verified="viewerIsVerified"
               :viewer-is-premium="viewerIsPremium"
+              :sort-noun="{ singular: 'reply', plural: 'replies' }"
+              :sort-count="commentCountDisplay"
               :show-reset="commentsSort !== 'new'"
               :show-visibility-filter="false"
               @update:sort="onCommentsSortChange"
@@ -106,7 +108,7 @@
             Loading…
           </div>
           <div v-else-if="!comments.length" class="px-4 py-6 text-sm moh-text-muted">
-            No comments yet.
+            No replies yet.
           </div>
           <template v-else>
           <div v-for="c in comments" :key="c.id">
@@ -114,7 +116,7 @@
           </div>
           <div v-if="commentsNextCursor" class="flex justify-center px-4 py-4">
             <Button
-              label="Load more comments"
+              label="Load more replies"
               severity="secondary"
               rounded
               :loading="commentsLoading"
@@ -179,13 +181,19 @@ watch(
 )
 
 function onDeleted() {
-  isDeleted.value = true
-  errorText.value = 'Post deleted.'
-  void navigateTo('/home')
+  if (data.value) {
+    data.value = {
+      ...data.value,
+      deletedAt: new Date().toISOString(),
+      body: '',
+      media: [],
+      mentions: [],
+    }
+  }
 }
 
 const routeQuery = computed(() => route.query)
-const showReplyComposer = computed(() => routeQuery.value?.reply === '1' && !isOnlyMe.value)
+const showReplyComposer = computed(() => routeQuery.value?.reply === '1' && !isOnlyMe.value && !isDeleted.value)
 
 const {
   threadParticipants,

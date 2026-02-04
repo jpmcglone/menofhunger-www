@@ -553,6 +553,7 @@ import { useReplyModal } from '~/composables/useReplyModal'
 const route = useRoute()
 const { initAuth, user } = useAuth()
 const { isAuthed, leftItems: leftNavItems, tabItems } = useAppNav()
+const notifBadge = useNotificationsBadge()
 const {
   disconnectedDueToIdle,
   wasSocketConnectedOnce,
@@ -781,6 +782,15 @@ watchEffect(() => {
   if (!isAuthed.value) return
   void ensureBookmarkCollectionsLoaded()
 })
+
+if (import.meta.client) {
+  watchEffect(() => {
+    const prefix = notifBadge.show.value ? `(${notifBadge.displayCount.value}) ` : ''
+    useHead({
+      titleTemplate: (title) => `${prefix}${title || siteConfig.meta.title}`,
+    })
+  })
+}
 
 // Dynamic theme tint: default (orange) for logged out/unverified, verified = blue, premium = orange.
 // We override PrimeVue semantic primary tokens via CSS variables so the entire UI tint follows status.

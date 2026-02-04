@@ -8,10 +8,25 @@
       :post="post"
       :highlight="highlightedPostId === post.id"
       :no-padding-top="noPaddingTop"
+      :no-border-bottom="showCollapsedFooter"
       :activate-video-on-mount="activateVideoOnMount"
       v-bind="$attrs"
-      @deleted="$emit('deleted', $event)"
+        @deleted="$emit('deleted', $event)"
     />
+    <div
+      v-if="showCollapsedFooter"
+      class="border-b moh-border px-4 pb-3 pt-1"
+    >
+      <div class="pl-[3.25rem]">
+        <NuxtLink
+          :to="`/p/${encodeURIComponent(directParentId!)}`"
+          class="inline-flex items-center gap-2 rounded-lg px-2 py-1 text-sm font-semibold text-gray-700 transition-colors moh-surface-hover dark:text-gray-200"
+        >
+          <i class="pi pi-comments text-[14px] opacity-70" aria-hidden="true" />
+          {{ collapsedRepliesLabel }}
+        </NuxtLink>
+      </div>
+    </div>
   </div>
 
   <!-- Reply chain A -> B -> C: overlays on each row connect with no gap -->
@@ -24,7 +39,7 @@
       <AppPostRow
         :post="item"
         :highlight="highlightedPostId === item.id"
-        :no-border-bottom="i < chain.length - 1"
+        :no-border-bottom="i < chain.length - 1 || (i === chain.length - 1 && showCollapsedFooter)"
         :no-padding-top="noPaddingTop || i > 0"
         :no-padding-bottom="i < chain.length - 1"
         :show-thread-line-above-avatar="i > 0"
@@ -32,8 +47,22 @@
         :thread-line-tint="threadLineTint"
         :activate-video-on-mount="i === chain.length - 1 ? activateVideoOnMount : undefined"
         v-bind="$attrs"
-        @deleted="$emit('deleted', leafId)"
+        @deleted="$emit('deleted', $event)"
       />
+    </div>
+    <div
+      v-if="showCollapsedFooter"
+      class="border-b moh-border px-4 pb-3 pt-1"
+    >
+      <div class="pl-[3.25rem]">
+        <NuxtLink
+          :to="`/p/${encodeURIComponent(directParentId!)}`"
+          class="inline-flex items-center gap-2 rounded-lg px-2 py-1 text-sm font-semibold text-gray-700 transition-colors moh-surface-hover dark:text-gray-200"
+        >
+          <i class="pi pi-comments text-[14px] opacity-70" aria-hidden="true" />
+          {{ collapsedRepliesLabel }}
+        </NuxtLink>
+      </div>
     </div>
   </div>
 </template>
@@ -45,12 +74,15 @@ const props = withDefaults(
   defineProps<{
     post: FeedPost
     activateVideoOnMount?: boolean
+    collapsedSiblingRepliesCount?: number
+    /** Sort context for the collapsed replies footer label ("more new/trending replies"). */
+    repliesSort?: 'new' | 'trending' | null
     /** When set, the post with this id is highlighted (e.g. the post being viewed on /p/:id). */
     highlightedPostId?: string | null
     /** Remove top padding from the first row (e.g. on post permalink page). */
     noPaddingTop?: boolean
   }>(),
-  { highlightedPostId: null, noPaddingTop: false },
+  { highlightedPostId: null, noPaddingTop: false, collapsedSiblingRepliesCount: 0, repliesSort: null },
 )
 
 defineEmits<{
@@ -68,8 +100,16 @@ const chain = computed(() => {
   return out
 })
 
-/** Leaf post id (the feed item we represent); emit this when any row in the block is deleted. */
-const leafId = computed(() => props.post.id)
+const collapsedSiblingRepliesCount = computed(() => Math.max(0, Math.floor(props.collapsedSiblingRepliesCount ?? 0)))
+const directParentId = computed(() => (props.post.parentId ?? '').trim() || null)
+const showCollapsedFooter = computed(() => Boolean(collapsedSiblingRepliesCount.value > 0 && directParentId.value))
+
+const collapsedRepliesLabel = computed(() => {
+  const n = collapsedSiblingRepliesCount.value
+  const noun = n === 1 ? 'reply' : 'replies'
+  const qualifier = props.repliesSort === 'trending' ? 'trending' : (props.repliesSort === 'new' ? 'new' : null)
+  return `View ${n} more${qualifier ? ` ${qualifier}` : ''} ${noun}`
+})
 
 /** Root post visibility (primary post in the thread) for tier-based styling. */
 const rootVisibility = computed(() => chain.value[0]?.visibility)

@@ -22,18 +22,18 @@ const { open, kind, action, hide } = useAuthActionModal()
 
 const title = computed(() => {
   if (kind.value === 'login') return 'Log in to continue'
-  if (kind.value === 'verify') return 'Verify to comment'
+  if (kind.value === 'verify') return 'Verify to reply'
   if (kind.value === 'setUsername') return 'Set a username to boost'
   return 'Continue'
 })
 
 const message = computed(() => {
   if (kind.value === 'login') {
-    if (action.value === 'comment') return 'You need to log in to comment.'
+    if (action.value === 'comment') return 'You need to log in to reply.'
     return 'You need to log in to boost posts.'
   }
   if (kind.value === 'verify') {
-    return 'Commenting is for verified members. Verify your account to comment.'
+    return 'Replying is for verified members. Verify your account to reply.'
   }
   // setUsername
   return 'Boosting is available once you’ve set your username.'

@@ -70,6 +70,7 @@ export type FeedPost = {
   id: string
   createdAt: string
   body: string
+  deletedAt: string | null
   visibility: PostVisibility
   boostCount: number
   bookmarkCount: number

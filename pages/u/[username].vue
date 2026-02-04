@@ -137,9 +137,14 @@
               No posts yet.
             </div>
 
-            <div v-else class="relative mt-3 -mx-4">
+              <div v-else class="relative mt-3 -mx-4">
               <div v-for="p in postsWithoutPinned" :key="p.id">
-                <AppFeedPostRow :post="p" @deleted="profileRemovePost" />
+                <AppFeedPostRow
+                  :post="p"
+                  :collapsed-sibling-replies-count="profileCollapsedSiblingReplyCountFor(p)"
+                  :replies-sort="profileSort ?? 'new'"
+                  @deleted="profileRemovePost"
+                />
               </div>
             </div>
           </div>
@@ -232,6 +237,8 @@ const effectivePinnedPostId = computed(() => {
 
 const {
   posts: profilePosts,
+  displayPosts: profileDisplayPosts,
+  collapsedSiblingReplyCountFor: profileCollapsedSiblingReplyCountFor,
   counts: profileCounts,
   loading: profileLoading,
   error: profileError,
@@ -258,7 +265,7 @@ const {
 } = useProfilePinnedPost({ normalizedUsername, effectivePinnedPostId, profilePosts })
 
 const postsWithoutPinned = computed(() => {
-  const list = profilePosts.value ?? []
+  const list = profileDisplayPosts.value ?? []
   const pid = effectivePinnedPostId.value
   if (!pid) return list
   return list.filter((p) => p.id !== pid)

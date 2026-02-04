@@ -18,11 +18,8 @@ export async function usePostPermalink(postId: Ref<string>) {
     { watch: [postId], server: true }
   )
 
-  const isDeleted = ref(false)
-  const post = computed(() => {
-    if (isDeleted.value) return null
-    return data.value ?? null
-  })
+  const post = computed(() => data.value ?? null)
+  const isDeleted = computed(() => Boolean((data.value as FeedPost | null)?.deletedAt))
 
   const errorText = ref<string | null>(null)
   const accessHint = ref<'none' | 'verifiedOnly' | 'premiumOnly' | 'private'>('none')

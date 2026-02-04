@@ -86,15 +86,23 @@
           <AppPostRowMoreMenu :items="moreMenuItems" :tooltip="moreTooltip" />
         </div>
 
+        <div
+          v-if="isDeletedPost"
+          class="mt-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm font-semibold text-gray-700 dark:border-zinc-800 dark:bg-black dark:text-white"
+        >
+          Post deleted.
+        </div>
         <AppPostRowBody
+          v-else
           :body="post.body"
           :has-media="Boolean(post.media?.length)"
           :mentions="post.mentions"
         />
 
-        <AppPostMediaGrid v-if="post.media?.length" :media="post.media" :post-id="post.id" :row-in-view="rowInView" />
+        <AppPostMediaGrid v-if="!isDeletedPost && post.media?.length" :media="post.media" :post-id="post.id" :row-in-view="rowInView" />
 
         <AppPostRowLinkPreview
+          v-if="!isDeletedPost"
           :post-id="post.id"
           :body="post.body"
           :has-media="Boolean(post.media?.length)"
@@ -102,7 +110,7 @@
           :activate-video-on-mount="activateVideoOnMount"
         />
 
-        <div v-if="visibilityTag" class="mt-2 flex items-center justify-between gap-3">
+        <div v-if="!isDeletedPost && visibilityTag" class="mt-2 flex items-center justify-between gap-3">
           <span
             v-if="visibilityTag"
             class="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold border cursor-default"
@@ -114,15 +122,15 @@
           </span>
         </div>
 
-          <div class="mt-3 flex items-center justify-between moh-text-muted">
+          <div v-if="!isDeletedPost" class="mt-3 flex items-center justify-between moh-text-muted">
           <div class="flex items-center gap-1">
-            <!-- Comment: hidden for only-me posts -->
+            <!-- Reply: hidden for only-me posts -->
             <div v-if="!isOnlyMe" class="inline-flex w-16 items-center justify-start">
               <button
                 type="button"
                 class="inline-flex h-9 w-9 items-center justify-center rounded-full transition-colors moh-surface-hover"
                 :class="commentClickable ? 'cursor-pointer' : 'cursor-default opacity-60'"
-                aria-label="Comment"
+                aria-label="Reply"
                 v-tooltip.bottom="commentTooltip"
                 @click.stop="onCommentClick"
               >
@@ -132,7 +140,7 @@
                 v-if="displayedCommentCount > 0"
                 :to="postPermalink"
                 class="ml-0 inline-block min-w-[1.5rem] select-none text-left text-xs tabular-nums moh-text-muted hover:underline"
-                aria-label="View comments"
+                aria-label="View replies"
               >
                 {{ commentCountLabel ?? '' }}
               </NuxtLink>
@@ -206,7 +214,7 @@
     class="w-[min(28rem,calc(100vw-2rem))]"
   >
     <div class="text-sm moh-text-muted">
-      This won’t show up anywhere once deleted.
+      This post will show as deleted, but replies will remain visible.
     </div>
     <template #footer>
       <Button label="Cancel" severity="secondary" text :disabled="deleting" @click="deleteConfirmOpen = false" />
@@ -251,7 +259,7 @@ const props = defineProps<{
   noPaddingTop?: boolean
   /** When true, activate this post's video as soon as it's ready (e.g. newly posted). */
   activateVideoOnMount?: boolean
-  /** When true, use tighter vertical padding (e.g. in comment lists). */
+  /** When true, use tighter vertical padding (e.g. in reply lists). */
   compact?: boolean
   /** When set, color the thread line by root post visibility (e.g. blue for verified, orange for premium). */
   threadLineTint?: 'verified' | 'premium' | null
@@ -261,6 +269,7 @@ const emit = defineEmits<{
 }>()
 
 const post = computed(() => props.post)
+const isDeletedPost = computed(() => Boolean(post.value.deletedAt))
 const clickable = computed(() => props.clickable !== false)
 const highlightClass = computed(() => {
   if (!props.highlight) return ''
@@ -322,6 +331,7 @@ const boostState = useBoostState()
 const isOnlyMe = computed(() => post.value.visibility === 'onlyMe')
 const viewerIsAdmin = computed(() => Boolean(user.value?.siteAdmin))
 const viewerCanInteract = computed(() => {
+  if (isDeletedPost.value) return false
   // Admin viewing someone else's Only-me post should be read-only.
   if (isOnlyMe.value && viewerIsAdmin.value && !isSelf.value) return false
   return true
@@ -349,10 +359,10 @@ const upvoteTooltip = computed(() => {
 const shareTooltip = computed(() => tinyTooltip('Share'))
 const moreTooltip = computed(() => tinyTooltip('More'))
 const commentTooltip = computed(() => {
-  if (!viewerCanInteract.value) return tinyTooltip('Comment')
-  if (!isAuthed.value) return tinyTooltip('Log in to comment')
-  if (!viewerIsVerified.value) return tinyTooltip('Verify to comment')
-  return tinyTooltip('Comment')
+  if (!viewerCanInteract.value) return tinyTooltip('Reply')
+  if (!isAuthed.value) return tinyTooltip('Log in to reply')
+  if (!viewerIsVerified.value) return tinyTooltip('Verify to reply')
+  return tinyTooltip('Reply')
 })
 
 const boostClickable = computed(() => {
@@ -447,6 +457,10 @@ const moreMenuItems = computed<MenuItem[]>(() => {
       },
     },
   ]
+
+  if (isDeletedPost.value) {
+    return items
+  }
 
   if (viewerIsAdmin.value) {
     items.push({ separator: true })

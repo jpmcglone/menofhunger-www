@@ -40,7 +40,7 @@
           @click="setSort('new')"
         >
           <i class="pi pi-clock text-[14px] opacity-70 shrink-0" aria-hidden="true" />
-          <span class="flex-1 text-left">Newest</span>
+          <span class="flex-1 text-left">{{ formatSortLabel('new') }}</span>
           <i v-if="sort === 'new'" class="pi pi-check text-[12px] opacity-70 shrink-0" aria-hidden="true" />
         </button>
         <button
@@ -50,13 +50,13 @@
           @click="setSort('trending')"
         >
           <i class="pi pi-bolt text-[14px] opacity-70 shrink-0" aria-hidden="true" />
-          <span class="flex-1 text-left">Trending</span>
+          <span class="flex-1 text-left">{{ formatSortLabel('trending') }}</span>
           <i v-if="sort === 'trending'" class="pi pi-check text-[12px] opacity-70 shrink-0" aria-hidden="true" />
         </button>
       </div>
     </div>
 
-    <!-- Visibility (optional: e.g. comments inherit parent post visibility) -->
+    <!-- Visibility (optional: e.g. replies inherit parent post visibility) -->
     <div v-if="showVisibilityFilter" ref="filterWrapEl" class="relative">
       <button
         type="button"
@@ -152,7 +152,14 @@ const props = withDefaults(
     viewerIsVerified: boolean
     viewerIsPremium: boolean
     showReset: boolean
-    /** When false, hide visibility filter (e.g. for comments that inherit parent post visibility). */
+    /**
+     * Optional noun to include in the sort label (e.g. "reply/replies").
+     * When provided, label becomes "Newest reply/replies" or "Trending reply/replies" based on `sortCount`.
+     */
+    sortNoun?: { singular: string; plural: string }
+    /** Optional count used to pick singular vs plural form for `sortNoun`. */
+    sortCount?: number | null
+    /** When false, hide visibility filter (e.g. for replies that inherit parent post visibility). */
     showVisibilityFilter?: boolean
   }>(),
   { showVisibilityFilter: true },
@@ -174,7 +181,16 @@ const filter = computed(() => props.filter)
 const viewerIsVerified = computed(() => Boolean(props.viewerIsVerified))
 const viewerIsPremium = computed(() => Boolean(props.viewerIsPremium))
 
-const sortLabel = computed(() => (sort.value === 'trending' ? 'Trending' : 'Newest'))
+function formatSortLabel(v: 'new' | 'trending'): string {
+  const base = v === 'trending' ? 'Trending' : 'Newest'
+  const noun = props.sortNoun
+  if (!noun) return base
+  const c = props.sortCount
+  const word = c === 1 ? noun.singular : noun.plural
+  return `${base} ${word}`
+}
+
+const sortLabel = computed(() => formatSortLabel(sort.value))
 const sortIconClass = computed(() => (sort.value === 'trending' ? 'pi pi-bolt' : 'pi pi-clock'))
 
 const filterLabel = computed(() => {

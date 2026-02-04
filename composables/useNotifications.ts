@@ -109,7 +109,7 @@ export function useNotifications() {
     if (n.title) return n.title
     switch (n.kind) {
       case 'comment':
-        return 'commented on your post'
+        return 'replied to your post'
       case 'boost':
         return 'boosted your post'
       case 'follow':
@@ -149,7 +149,7 @@ export function useNotifications() {
     if (n.kind === 'generic' && n.body) return n.body
     switch (n.kind) {
       case 'comment':
-        return 'Comment'
+        return 'Reply'
       case 'boost':
         return 'Boost'
       case 'follow':

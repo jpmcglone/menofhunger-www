@@ -55,6 +55,42 @@ export function useUserPosts(
   const posts = feed.items
   const { loading, error, refresh, loadMore } = feed
 
+  const collapsedSiblingReplyCountByParentId = computed(() => {
+    const totals = new Map<string, number>()
+    for (const p of posts.value) {
+      const pid = (p.parentId ?? '').trim()
+      if (!pid) continue
+      totals.set(pid, (totals.get(pid) ?? 0) + 1)
+    }
+    const out = new Map<string, number>()
+    for (const [pid, n] of totals) {
+      if (n > 1) out.set(pid, n - 1)
+    }
+    return out
+  })
+
+  const displayPosts = computed(() => {
+    const seenParentIds = new Set<string>()
+    const out: FeedPost[] = []
+    for (const p of posts.value) {
+      const pid = (p.parentId ?? '').trim()
+      if (!pid) {
+        out.push(p)
+        continue
+      }
+      if (seenParentIds.has(pid)) continue
+      seenParentIds.add(pid)
+      out.push(p)
+    }
+    return out
+  })
+
+  function collapsedSiblingReplyCountFor(post: FeedPost): number {
+    const pid = (post.parentId ?? '').trim()
+    if (!pid) return 0
+    return collapsedSiblingReplyCountByParentId.value.get(pid) ?? 0
+  }
+
   async function fetch(nextFilter: UserPostsFilter, nextSort: 'new' | 'trending') {
     if (!enabled.value) {
       posts.value = []
@@ -92,7 +128,36 @@ export function useUserPosts(
   function removePost(id: string) {
     const pid = (id ?? '').trim()
     if (!pid) return
-    posts.value = posts.value.filter((p) => p.id !== pid)
+    const tombstone = (p: FeedPost): FeedPost => ({
+      ...p,
+      deletedAt: new Date().toISOString(),
+      body: '',
+      media: [],
+      mentions: [],
+    })
+    const chainHasId = (p: FeedPost | undefined, targetId: string): boolean => {
+      let cur = p?.parent
+      while (cur) {
+        if (cur.id === targetId) return true
+        cur = cur.parent
+      }
+      return false
+    }
+    const hasChildInSection = posts.value.some((p) => chainHasId(p, pid))
+
+    posts.value = posts.value
+      .map((p) => {
+        const updateChain = (node: FeedPost): FeedPost => {
+          const updatedParent = node.parent ? updateChain(node.parent) : undefined
+          let next = updatedParent !== node.parent ? { ...node, parent: updatedParent } : node
+          if (node.id === pid) next = tombstone(next)
+          return next
+        }
+        const next = updateChain(p)
+        if (next.id === pid && !hasChildInSection) return null
+        return next
+      })
+      .filter((p): p is FeedPost => Boolean(p))
   }
 
   if (!enabled.value) {
@@ -137,6 +202,8 @@ export function useUserPosts(
     filter,
     sort,
     posts,
+    displayPosts,
+    collapsedSiblingReplyCountFor,
     counts,
     loading: feed.loading,
     error: feed.error,

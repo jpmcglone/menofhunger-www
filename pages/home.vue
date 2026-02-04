@@ -56,10 +56,12 @@
             />
 
             <div class="relative">
-              <div v-for="p in posts" :key="p.id">
+              <div v-for="p in displayPosts" :key="p.id">
                 <AppFeedPostRow
                   :post="p"
                   :activate-video-on-mount="p.id === newlyPostedVideoPostId"
+                  :collapsed-sibling-replies-count="collapsedSiblingReplyCountFor(p)"
+                  :replies-sort="feedSort"
                   @deleted="removePost"
                 />
               </div>
@@ -141,6 +143,8 @@ const {
   feedSort,
   scopeTabs,
   posts,
+  displayPosts,
+  collapsedSiblingReplyCountFor,
   nextCursor,
   loading,
   error,
