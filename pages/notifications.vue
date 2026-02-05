@@ -1,14 +1,19 @@
 <template>
-  <div class="-mx-4">
-    <div class="flex justify-end px-4 py-2">
-      <Button
-        v-if="notifications.length > 0"
-        label="Mark all as read"
-        text
-        severity="secondary"
-        :disabled="loading || markingAllRead"
-        @click="onMarkAllRead"
-      />
+  <div class="w-full">
+    <div class="sticky top-0 z-10 border-b moh-border moh-frosted">
+      <div class="flex items-center justify-between gap-3 px-4 py-3">
+        <div class="min-w-0">
+          <div class="text-lg font-semibold">Notifications</div>
+        </div>
+        <Button
+          v-if="notifications.length > 0"
+          label="Mark all as read"
+          text
+          severity="secondary"
+          :disabled="loading || markingAllRead"
+          @click="onMarkAllRead"
+        />
+      </div>
     </div>
 
     <div v-if="loading && !notifications.length" class="px-4 py-8 text-center text-sm text-gray-500 dark:text-gray-400">
@@ -53,7 +58,8 @@
 <script setup lang="ts">
 definePageMeta({
   layout: 'app',
-  title: 'Notifications'
+  title: 'Notifications',
+  hideTopBar: true,
 })
 
 usePageSeo({

@@ -27,6 +27,9 @@ body {
 html,
 body {
   background-color: var(--moh-bg);
+  /* Prevent tiny horizontal overflow causing sideways "panning" on mobile. */
+  overflow-x: hidden;
+  overscroll-behavior-x: none;
 }
 
 html.dark,

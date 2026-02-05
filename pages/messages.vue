@@ -5,64 +5,68 @@
       <section
         v-if="showListPane"
         :class="[
-          'h-full overflow-y-auto border-b border-gray-200 dark:border-zinc-800 px-4 pt-4',
+          'h-full overflow-y-auto border-b border-gray-200 dark:border-zinc-800',
           // When both panes are visible, add the divider between them.
-          !isTinyViewport ? 'border-b-0 border-r pr-4' : ''
+          !isTinyViewport ? 'border-b-0 border-r' : ''
         ]"
       >
-        <div class="flex items-center justify-between gap-3">
-          <div class="text-lg font-semibold">Chat</div>
-          <div class="flex items-center gap-2">
-            <Button label="New" icon="pi pi-plus" size="small" severity="secondary" @click="openNewDialog" />
-            <Button label="Blocked" icon="pi pi-ban" size="small" text severity="secondary" @click="openBlocksDialog" />
+        <div class="sticky top-0 z-10 border-b moh-border moh-frosted">
+          <div class="px-4 pt-4 pb-3">
+            <div class="flex items-center justify-between gap-3">
+              <div class="text-lg font-semibold">Chat</div>
+              <div class="flex items-center gap-2">
+                <Button label="New" icon="pi pi-plus" size="small" severity="secondary" @click="openNewDialog" />
+                <Button label="Blocked" icon="pi pi-ban" size="small" text severity="secondary" @click="openBlocksDialog" />
+              </div>
+            </div>
+
+            <div class="mt-3 flex items-center gap-2">
+              <button
+                type="button"
+                :class="[
+                  'rounded-full px-3 py-1 text-sm font-semibold',
+                  activeTab === 'primary'
+                    ? 'bg-gray-900 text-white dark:bg-white dark:text-black'
+                    : 'bg-gray-100 text-gray-700 dark:bg-zinc-900 dark:text-gray-300'
+                ]"
+                @click="setTab('primary')"
+              >
+                Chats
+              </button>
+              <button
+                type="button"
+                :class="[
+                  'relative rounded-full px-3 py-1 text-sm font-semibold',
+                  activeTab === 'requests'
+                    ? 'bg-gray-900 text-white dark:bg-white dark:text-black'
+                    : 'bg-gray-100 text-gray-700 dark:bg-zinc-900 dark:text-gray-300'
+                ]"
+                @click="setTab('requests')"
+              >
+                Chat requests
+                <span
+                  v-if="showRequestsBadge"
+                  :class="[
+                    'ml-2 inline-flex min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold leading-[18px] text-center align-middle',
+                    badgeToneClass,
+                  ]"
+                >
+                  {{ requestsBadgeText }}
+                </span>
+              </button>
+            </div>
           </div>
         </div>
 
-        <div class="mt-3 flex items-center gap-2">
-          <button
-            type="button"
-            :class="[
-              'rounded-full px-3 py-1 text-sm font-semibold',
-              activeTab === 'primary'
-                ? 'bg-gray-900 text-white dark:bg-white dark:text-black'
-                : 'bg-gray-100 text-gray-700 dark:bg-zinc-900 dark:text-gray-300'
-            ]"
-            @click="setTab('primary')"
-          >
-            Chats
-          </button>
-          <button
-            type="button"
-            :class="[
-              'relative rounded-full px-3 py-1 text-sm font-semibold',
-              activeTab === 'requests'
-                ? 'bg-gray-900 text-white dark:bg-white dark:text-black'
-                : 'bg-gray-100 text-gray-700 dark:bg-zinc-900 dark:text-gray-300'
-            ]"
-            @click="setTab('requests')"
-          >
-            Chat requests
-            <span
-              v-if="showRequestsBadge"
-              :class="[
-                'ml-2 inline-flex min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold leading-[18px] text-center align-middle',
-                badgeToneClass,
-              ]"
-            >
-              {{ requestsBadgeText }}
-            </span>
-          </button>
-        </div>
-
-        <div v-if="listLoading" class="mt-4 text-sm text-gray-500 dark:text-gray-400">
+        <div v-if="listLoading" class="px-4 pt-2 pb-4 text-sm text-gray-500 dark:text-gray-400">
           Loading…
         </div>
 
-        <div v-else-if="activeList.length === 0" class="mt-4 text-sm text-gray-500 dark:text-gray-400">
+        <div v-else-if="activeList.length === 0" class="px-4 pt-2 pb-4 text-sm text-gray-500 dark:text-gray-400">
           {{ activeTab === 'requests' ? 'No chat requests yet.' : 'No chats yet.' }}
         </div>
 
-        <div v-else class="mt-4 space-y-2">
+        <div v-else class="divide-y divide-gray-200 dark:divide-zinc-800">
           <button
             v-for="c in activeList"
             :key="c.id"
@@ -72,10 +76,10 @@
           >
             <div
               :class="[
-                'w-full rounded-xl border p-3 transition-colors',
+                'w-full px-4 py-3 transition-colors',
                 selectedConversationId === c.id
-                  ? 'border-gray-300 bg-gray-50 dark:border-zinc-700 dark:bg-zinc-900'
-                  : 'border-gray-200 hover:bg-gray-50 dark:border-zinc-800 dark:hover:bg-zinc-900'
+                  ? 'bg-gray-50 dark:bg-zinc-900'
+                  : 'hover:bg-gray-50 dark:hover:bg-zinc-900'
               ]"
             >
               <div class="flex items-center gap-3">
@@ -104,7 +108,7 @@
             </div>
           </button>
 
-          <div v-if="nextCursor" class="pt-2">
+          <div v-if="nextCursor" class="px-4 py-3">
             <Button label="Load more" text size="small" severity="secondary" :loading="loadingMore" @click="loadMoreConversations" />
           </div>
         </div>
@@ -146,6 +150,14 @@
                             ? (draftRecipients.length === 1 ? (draftRecipients[0]?.username ? `@${draftRecipients[0].username}` : 'New chat') : `${draftRecipients.length} recipients`)
                             : 'Pick a conversation from the left.'
                       }}
+                    </div>
+                    <div
+                      v-if="typingLabel"
+                      class="text-xs text-gray-500 dark:text-gray-400 truncate"
+                      role="status"
+                      aria-live="polite"
+                    >
+                      {{ typingLabel }}
                     </div>
                   </div>
                 </div>
@@ -349,7 +361,7 @@ const { apiFetch, apiFetchData } = useApiClient()
 const route = useRoute()
 const router = useRouter()
 const { user: me } = useAuth()
-const { addInterest, removeInterest, addMessagesCallback, removeMessagesCallback } = usePresence()
+const { addInterest, removeInterest, addMessagesCallback, removeMessagesCallback, emitMessagesTyping } = usePresence()
 const { showRequests, displayRequests, toneClass } = useMessagesBadge()
 
 const activeTab = ref<'primary' | 'requests'>('primary')
@@ -388,6 +400,32 @@ const messagesScroller = ref<HTMLElement | null>(null)
 const messagesReady = ref(false)
 const pendingNewCount = ref(0)
 const pendingNewTier = ref<'premium' | 'verified' | 'normal'>('normal')
+
+// Remote typing indicator (per selected conversation).
+const typingByUserId = ref<Map<string, number>>(new Map())
+const typingSweepTimer = ref<ReturnType<typeof setInterval> | null>(null)
+const TYPING_TTL_MS = 3500
+const typingLabel = computed(() => {
+  if (!selectedConversationId.value) return null
+  const m = typingByUserId.value
+  if (!m.size) return null
+  const ids = [...m.keys()]
+  if (!ids.length) return null
+  // Resolve username(s) from selectedConversation participants (best-effort).
+  const convo = selectedConversation.value
+  const names: string[] = []
+  for (const uid of ids) {
+    if (uid === me.value?.id) continue
+    const p = convo?.participants?.find((pp) => pp.user?.id === uid)
+    const u = p?.user
+    const label = (u?.username ?? '').trim()
+    if (label) names.push(`@${label}`)
+  }
+  if (names.length === 0) return null
+  if (names.length === 1) return `${names[0]} is typing…`
+  if (names.length === 2) return `${names[0]} and ${names[1]} are typing…`
+  return `${names[0]} and others are typing…`
+})
 
 const newDialogVisible = ref(false)
 const recipientQuery = ref('')
@@ -643,6 +681,7 @@ async function selectConversation(id: string, opts?: { replace?: boolean }) {
     else await router.push({ query: nextQuery })
   }
   messagesLoading.value = true
+  typingByUserId.value = new Map()
   try {
     const res = await apiFetch<{ conversation: MessageConversation; messages: Message[] }>(
       `/messages/conversations/${id}`,
@@ -672,6 +711,7 @@ async function clearSelection(opts?: { replace?: boolean; preserveDraft?: boolea
   messagesNextCursor.value = null
   messagesReady.value = false
   resetPendingNew()
+  typingByUserId.value = new Map()
   const replace = opts?.replace ?? false
   const q = { ...route.query } as Record<string, any>
   delete q.c
@@ -779,6 +819,12 @@ async function sendCurrentMessage() {
     }
 
     if (!selectedConversationId.value) return
+    // Stop typing immediately when sending.
+    try {
+      emitMessagesTyping(selectedConversationId.value, false)
+    } catch {
+      // ignore
+    }
     const res = await apiFetchData<SendMessageResponse['data']>(
       `/messages/conversations/${selectedConversationId.value}/messages`,
       {
@@ -808,6 +854,69 @@ async function sendCurrentMessage() {
     sending.value = false
   }
 }
+
+function sweepTypingTtl() {
+  const now = Date.now()
+  const m = typingByUserId.value
+  if (!m.size) return
+  let changed = false
+  const next = new Map(m)
+  for (const [uid, exp] of next.entries()) {
+    if (now > exp) {
+      next.delete(uid)
+      changed = true
+    }
+  }
+  if (changed) typingByUserId.value = next
+}
+
+let typingStartTimer: ReturnType<typeof setTimeout> | null = null
+let typingStopTimer: ReturnType<typeof setTimeout> | null = null
+watch(
+  [composerText, selectedConversationId],
+  ([text, convoId], [prevText, prevConvoId]) => {
+    // Conversation switched: ensure we stop typing in the old one.
+    if (prevConvoId && prevConvoId !== convoId) {
+      if (typingStartTimer) clearTimeout(typingStartTimer)
+      if (typingStopTimer) clearTimeout(typingStopTimer)
+      typingStartTimer = null
+      typingStopTimer = null
+      try {
+        emitMessagesTyping(prevConvoId, false)
+      } catch {
+        // ignore
+      }
+      return
+    }
+    if (!convoId) return
+
+    const has = Boolean((text ?? '').trim().length > 0)
+    // If user cleared input, stop typing quickly.
+    if (!has) {
+      if (typingStartTimer) clearTimeout(typingStartTimer)
+      typingStartTimer = null
+      if (typingStopTimer) clearTimeout(typingStopTimer)
+      typingStopTimer = setTimeout(() => {
+        typingStopTimer = null
+        emitMessagesTyping(convoId, false)
+      }, 120)
+      return
+    }
+
+    // Debounced "typing: true" emit, then extend stop timer on every keystroke.
+    if (!typingStartTimer) {
+      typingStartTimer = setTimeout(() => {
+        typingStartTimer = null
+        emitMessagesTyping(convoId, true)
+      }, 220)
+    }
+    if (typingStopTimer) clearTimeout(typingStopTimer)
+    typingStopTimer = setTimeout(() => {
+      typingStopTimer = null
+      emitMessagesTyping(convoId, false)
+    }, 1600)
+  },
+)
 
 async function acceptSelectedConversation() {
   if (!selectedConversationId.value) return
@@ -987,10 +1096,26 @@ const messageCallback = {
       }
     }
   },
+  onTyping: (payload: { conversationId?: string; userId?: string; typing?: boolean }) => {
+    const convoId = payload?.conversationId ?? null
+    const userId = payload?.userId ?? null
+    if (!convoId || !userId) return
+    if (!selectedConversationId.value || convoId !== selectedConversationId.value) return
+    if (userId === me.value?.id) return
+    const now = Date.now()
+    const next = new Map(typingByUserId.value)
+    if (payload?.typing === false) {
+      next.delete(userId)
+    } else {
+      next.set(userId, now + TYPING_TTL_MS)
+    }
+    typingByUserId.value = next
+  },
 }
 
 onMounted(() => {
   addMessagesCallback(messageCallback)
+  typingSweepTimer.value = setInterval(sweepTypingTtl, 500)
   void fetchConversations('primary')
   if (selectedConversationId.value) {
     void selectConversation(selectedConversationId.value, { replace: true })
@@ -999,6 +1124,12 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   removeMessagesCallback(messageCallback)
+  if (typingSweepTimer.value) {
+    clearInterval(typingSweepTimer.value)
+    typingSweepTimer.value = null
+  }
+  if (typingStartTimer) clearTimeout(typingStartTimer)
+  if (typingStopTimer) clearTimeout(typingStopTimer)
 })
 
 watch(

@@ -9,7 +9,7 @@
       :placeholder="placeholder"
       :disabled="disabled"
       rows="1"
-      class="dm-composer-input min-h-[44px] w-full resize-none border-0 bg-transparent py-3 pl-4 pr-12 text-sm text-[var(--moh-text)] placeholder:text-[var(--moh-text-muted)] focus:outline-none focus:ring-0 disabled:opacity-60"
+      class="dm-composer-input min-h-[44px] w-full resize-none border-0 bg-transparent py-3 pl-4 pr-12 text-[16px] text-[var(--moh-text)] placeholder:text-[var(--moh-text-muted)] focus:outline-none focus:ring-0 disabled:opacity-60"
       @input="onInput"
       @keydown="onKeydown"
     />

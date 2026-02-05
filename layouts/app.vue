@@ -176,8 +176,8 @@
                   fabButtonClass,
                 ]"
                 :style="fabButtonStyle"
-                v-if="canOpenComposer"
-                @click="openComposerModal"
+                v-if="canOpenComposer && isComposerEntrypointRoute"
+                @click="openComposerModal()"
               >
                 <span class="flex h-12 w-12 shrink-0 items-center justify-center">
                   <i class="pi pi-plus text-3xl" aria-hidden="true" />
@@ -213,7 +213,7 @@
             id="moh-middle-scroller"
             ref="middleScrollerEl"
             :class="[
-              'no-scrollbar min-w-0 flex-1',
+              'no-scrollbar min-w-0 flex-1 overflow-x-hidden',
               'lg:border-r moh-border',
               anyOverlayOpen || (isMessagesPage && hideTopBar) ? 'overflow-hidden' : 'overflow-y-auto overscroll-y-auto'
             ]"
@@ -256,7 +256,7 @@
               ref="middleContentEl"
               :class="[
                 hideTopBar
-                  ? (isMessagesPage ? 'flex h-full min-h-0 flex-col pb-24 sm:pb-0' : 'pb-24 sm:pb-4')
+                  ? (isMessagesPage ? 'flex h-full min-h-0 flex-col pb-[calc(4rem+env(safe-area-inset-bottom,0px))] sm:pb-0' : 'pb-24 sm:pb-4')
                   : isBookmarksPage
                     ? 'pt-0 pb-24 sm:pb-4'
                     : isPostPage
@@ -459,7 +459,7 @@
 
     <!-- Mobile FAB: open post composer (visible when tab bar is). Hidden when home page composer is on screen. -->
     <button
-      v-if="canOpenComposer && !hideFabForHomeComposer"
+      v-if="canOpenComposer && isComposerEntrypointRoute && !hideFabForHomeComposer"
       type="button"
       aria-label="New post"
       :class="[
@@ -468,7 +468,7 @@
       ]"
       :style="fabButtonStyle"
       style="bottom: calc(4rem + env(safe-area-inset-bottom, 0px));"
-      @click="openComposerModal"
+      @click="openComposerModal()"
     >
       <i class="pi pi-plus text-3xl" aria-hidden="true" />
     </button>
@@ -510,7 +510,12 @@
               ]"
             >
               <div class="relative z-10">
-                <AppPostComposer auto-focus :show-divider="false" @posted="onComposerPosted" />
+                <AppPostComposer
+                  auto-focus
+                  :show-divider="false"
+                  :initial-text="composerInitialText ?? undefined"
+                  @posted="onComposerPosted"
+                />
               </div>
             </div>
           </div>
@@ -560,7 +565,7 @@ import { useReplyModal } from '~/composables/useReplyModal'
 
 const route = useRoute()
 const { initAuth, user } = useAuth()
-const { isAuthed, leftItems: leftNavItems, tabItems } = useAppNav()
+const { isAuthed, profileTo, leftItems: leftNavItems, tabItems } = useAppNav()
 const notifBadge = useNotificationsBadge()
 const {
   disconnectedDueToIdle,
@@ -616,6 +621,21 @@ const isBookmarksPage = computed(() => route.path === '/bookmarks' || route.path
 const isNotificationsPage = computed(() => route.path === '/notifications')
 const isMessagesPage = computed(() => route.path === '/messages')
 const isOnlyMePage = computed(() => route.path === '/only-me')
+
+// Post entrypoints (left-nav button + mobile FAB): only render on these routes.
+const isComposerEntrypointRoute = computed(() => {
+  const p = route.path
+  if (p === '/home') return true
+  if (p === '/explore') return true
+  if (p === '/notifications') return true
+  // Reserved route (future-proof): treat current user profile as /profile if it ever exists.
+  if (p === '/profile') return true
+  // Current user profile route today is /u/:username via useAppNav().
+  if (profileTo.value && p === profileTo.value) return true
+  // Any user profile page.
+  if (/^\/u\/[^/]+$/.test(p)) return true
+  return false
+})
 const { header: appHeader } = useAppHeader()
 // Prevent SSR hydration mismatches: render route meta during hydration, then swap to appHeader after mount.
 const hydrated = ref(false)
@@ -645,6 +665,7 @@ const canOpenComposer = computed(() => {
 })
 
 const composerModalOpen = ref(false)
+const composerInitialText = ref<string | null>(null)
 const { open: replyModalOpenRef } = useReplyModal()
 const replyModalOpen = computed(() => Boolean(replyModalOpenRef.value))
 const anyOverlayOpen = computed(() => composerModalOpen.value || replyModalOpen.value)
@@ -658,21 +679,36 @@ const composerVisibility = useCookie<'public' | 'verifiedOnly' | 'premiumOnly' |
   maxAge: 60 * 60 * 24 * 365,
 })
 
-function openComposerModal() {
+function defaultComposerInitialTextForRoute(): string | null {
+  // On /u/:username, prefill @username unless it’s the current user.
+  const m = route.path.match(/^\/u\/([^/]+)$/)
+  if (!m?.[1]) return null
+  const profileUsername = decodeURIComponent(m[1]).trim()
+  if (!profileUsername) return null
+  const myUsername = (user.value?.username ?? '').trim()
+  if (myUsername && profileUsername.toLowerCase() === myUsername.toLowerCase()) return null
+  return `@${profileUsername} `
+}
+
+function openComposerModal(initialText?: string | null) {
+  composerInitialText.value = (initialText ?? defaultComposerInitialTextForRoute()) || null
   composerModalOpen.value = true
 }
-function openComposerWithVisibility(visibility?: ComposerVisibility) {
+function openComposerWithVisibility(visibility?: ComposerVisibility, initialText?: string | null) {
   if (visibility) composerVisibility.value = visibility
+  composerInitialText.value = (initialText ?? defaultComposerInitialTextForRoute()) || null
   composerModalOpen.value = true
 }
 provide(MOH_OPEN_COMPOSER_KEY, openComposerWithVisibility)
 function closeComposerModal() {
   composerModalOpen.value = false
+  composerInitialText.value = null
 }
 
 const { prependPost: prependOnlyMePost } = useOnlyMePosts()
 function onComposerPosted(payload: { id: string; visibility: string; post?: import('~/types/api').FeedPost }) {
   composerModalOpen.value = false
+  composerInitialText.value = null
   if (payload.visibility === 'onlyMe' && payload.post) {
     prependOnlyMePost(payload.post)
     if (route.path !== '/only-me') {

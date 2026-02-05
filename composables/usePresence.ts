@@ -28,6 +28,7 @@ export type OnlineFeedCallback = {
 
 export type MessagesCallback = {
   onMessage?: (payload: { conversationId?: string; message?: unknown }) => void
+  onTyping?: (payload: { conversationId?: string; userId?: string; typing?: boolean }) => void
 }
 
 function apiBaseUrlToWsUrl(apiBaseUrl: string): string {
@@ -358,6 +359,13 @@ export function usePresence() {
       }
     })
 
+    socket.on('messages:typing', (data: { conversationId?: string; userId?: string; typing?: boolean }) => {
+      if (!messagesCallbacks.value.size) return
+      for (const cb of messagesCallbacks.value) {
+        cb.onTyping?.(data)
+      }
+    })
+
     socket.on('messages:updated', (data: { primaryUnreadCount?: number; requestUnreadCount?: number }) => {
       const primaryRaw = typeof data?.primaryUnreadCount === 'number' ? data.primaryUnreadCount : 0
       const requestRaw = typeof data?.requestUnreadCount === 'number' ? data.requestUnreadCount : 0
@@ -566,6 +574,12 @@ export function usePresence() {
     removeOnlineFeedCallback,
     addMessagesCallback,
     removeMessagesCallback,
+    emitMessagesTyping(conversationId: string, typing: boolean) {
+      const socket = socketRef.value
+      const id = (conversationId ?? '').trim()
+      if (!socket?.connected || !id) return
+      socket.emit('messages:typing', { conversationId: id, typing: Boolean(typing) })
+    },
     connect,
     disconnect,
     emitLogout,

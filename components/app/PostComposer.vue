@@ -88,7 +88,7 @@
               rows="3"
               enterkeyhint="enter"
               inputmode="text"
-              class="moh-composer-textarea w-full resize-none overflow-hidden rounded-xl border border-gray-300 bg-transparent px-3 py-2 text-[15px] leading-6 text-gray-900 placeholder:text-gray-500 focus:outline-none dark:border-zinc-700 dark:text-gray-50 dark:placeholder:text-zinc-500"
+              class="moh-composer-textarea w-full resize-none overflow-hidden rounded-xl border border-gray-300 bg-transparent px-3 py-2 text-[16px] leading-6 text-gray-900 placeholder:text-gray-500 focus:outline-none dark:border-zinc-700 dark:text-gray-50 dark:placeholder:text-zinc-500"
               :style="composerTextareaVars"
               :placeholder="composerPlaceholder"
               :maxlength="postMaxLen"
@@ -262,6 +262,8 @@ const props = defineProps<{
   showDivider?: boolean
   /** Override textarea placeholder (e.g. "Reply to @john…" in reply modal). */
   placeholder?: string
+  /** Optional initial draft text (e.g. "@username "). Applied once per mount/open. */
+  initialText?: string
   // Optional override. Return full FeedPost for replies (so it can be rendered immediately).
   createPost?: (body: string, visibility: PostVisibility, media: CreateMediaPayload[]) => Promise<{ id: string } | import('~/types/api').FeedPost | null>
   // When set, composer is in reply mode: visibility fixed to parent, parent_id + mentions sent.
@@ -288,6 +290,7 @@ const myProfilePath = computed(() => {
 })
 const draft = ref('')
 const composerTextareaEl = ref<HTMLTextAreaElement | null>(null)
+const initialTextApplied = ref(false)
 
 function resizeComposerTextarea() {
   if (!import.meta.client) return
@@ -542,13 +545,44 @@ const goLogin = () => {
   return navigateTo(`/login?redirect=${redirect}`)
 }
 
+function applyInitialTextIfNeeded() {
+  if (initialTextApplied.value) return
+  const t = (props.initialText ?? '').toString()
+  if (!t.trim()) {
+    initialTextApplied.value = true
+    return
+  }
+  // Only prefill into an empty composer to avoid clobbering user input.
+  if (!draft.value) {
+    draft.value = t
+  }
+  initialTextApplied.value = true
+}
+
 onMounted(() => {
+  applyInitialTextIfNeeded()
   if (!props.autoFocus) return
   void nextTick().then(() => {
     resizeComposerTextarea()
-    composerTextareaEl.value?.focus?.()
+    const el = composerTextareaEl.value
+    el?.focus?.()
+    // Place caret at end (useful for "@username " prefills).
+    try {
+      const end = (el?.value ?? '').length
+      el?.setSelectionRange?.(end, end)
+    } catch {
+      // ignore
+    }
   })
 })
+
+watch(
+  () => props.initialText,
+  () => {
+    // If the composer instance is reused and initialText is provided later, apply once.
+    applyInitialTextIfNeeded()
+  },
+)
 
 watch(
   draft,

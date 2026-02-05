@@ -1,16 +1,23 @@
 <template>
-  <div class="space-y-4">
-    <div class="flex flex-col gap-3 sm:flex-row sm:items-stretch">
-      <IconField iconPosition="left" class="w-full min-w-0 flex-1">
-        <InputIcon class="pi pi-search" />
-        <InputText
-          v-model="searchQuery"
-          class="w-full"
-          placeholder="Search…"
-          @keydown.enter="flushDebounceAndSearch"
-        />
-      </IconField>
+  <div class="w-full">
+    <!-- Sticky search bar (replaces layout title bar) -->
+    <div class="sticky top-0 z-10 border-b moh-border moh-frosted">
+      <div class="px-4 py-3">
+        <div class="flex flex-col gap-3 sm:flex-row sm:items-stretch">
+          <IconField iconPosition="left" class="w-full min-w-0 flex-1">
+            <InputIcon class="pi pi-search" />
+            <InputText
+              v-model="searchQuery"
+              class="w-full"
+              placeholder="Search…"
+              @keydown.enter="flushDebounceAndSearch"
+            />
+          </IconField>
+        </div>
+      </div>
     </div>
+
+    <div class="px-4 py-4 space-y-4">
 
     <!-- Min length hint -->
     <div
@@ -82,6 +89,7 @@
     <p v-else class="text-sm moh-text-muted">
       Type in the search bar to search.
     </p>
+    </div>
   </div>
 </template>
 
@@ -92,6 +100,7 @@ import { getApiErrorMessage } from '~/utils/api-error'
 definePageMeta({
   layout: 'app',
   title: 'Explore',
+  hideTopBar: true,
 })
 
 usePageSeo({
