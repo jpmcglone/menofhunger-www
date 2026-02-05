@@ -96,7 +96,16 @@
             </div>
             <div class="min-w-0 flex-1">
               <div class="flex items-center justify-between gap-2">
-                <div class="font-semibold truncate">{{ getConversationTitle(c) }}</div>
+                <div class="min-w-0 flex items-center gap-2">
+                  <div class="font-semibold truncate">
+                    {{ getConversationTitle(c) }}
+                  </div>
+                  <AppVerifiedBadge
+                    v-if="c.type === 'direct' && getDirectUser(c)"
+                    :status="getDirectUser(c)!.verifiedStatus"
+                    :premium="Boolean(getDirectUser(c)!.premium)"
+                  />
+                </div>
                 <div class="text-xs text-gray-500 dark:text-gray-400">
                   {{ formatListTime(c.lastMessageAt || c.updatedAt) }}
                 </div>

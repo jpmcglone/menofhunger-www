@@ -338,6 +338,12 @@ export type SearchMixedResponse = {
 /** Data type for GET /follows/:username/followers and /following (array); pagination in envelope. */
 export type GetFollowsListData = FollowListUser[]
 
+/** Data type for GET /follows/recommendations (array). */
+export type GetFollowRecommendationsData = FollowListUser[]
+
+/** Data type for GET /users/newest (array). */
+export type GetNewestUsersData = FollowListUser[]
+
 export type OnlineUser = FollowListUser & { lastConnectAt?: number; idle?: boolean }
 
 /** Data type for GET /presence/online (array); totalOnline in pagination. */

@@ -80,7 +80,7 @@
             // When compact, increase rail width so the inner content can still fit `w-12`,
             // while keeping the same right gutter to the divider as wide mode.
             // Prefer: left collapses (xl) before right rail hides (lg).
-            navCompactMode ? 'md:w-20 md:px-4' : 'md:w-20 md:px-4 xl:w-64 xl:px-4'
+            navCompactMode ? 'md:w-20 md:px-4' : 'md:w-20 md:px-4 xl:w-56 xl:px-4'
           ]"
         >
           <div class="mb-3">
@@ -293,7 +293,7 @@
           <aside
             ref="rightScrollerEl"
             :class="[
-              'no-scrollbar shrink-0 w-80 h-full px-4 py-4 moh-texture',
+              'no-scrollbar shrink-0 w-80 xl:w-88 h-full px-4 py-4 moh-texture',
               anyOverlayOpen ? 'overflow-hidden' : 'overflow-y-auto overscroll-y-auto',
               isRightRailForcedHidden ? 'hidden' : 'hidden lg:block'
             ]"
@@ -315,6 +315,41 @@
             </div>
 
             <div class="space-y-4 transition-[transform] duration-200 ease-out">
+              <!-- Who to follow (real data) -->
+              <Card>
+                <template #title>Who to follow</template>
+                <template #content>
+                  <div v-if="whoToFollowLoading && whoToFollowUsers.length === 0" class="flex justify-center py-4">
+                    <AppLogoLoader />
+                  </div>
+
+                  <div v-else-if="whoToFollowUsers.length > 0" class="-mx-4">
+                    <div class="px-4">
+                      <AppWhoToFollowCompactRow
+                        v-for="u in whoToFollowUsers"
+                        :key="u.id"
+                        :user="u"
+                      />
+                    </div>
+                    <NuxtLink
+                      to="/who-to-follow"
+                      class="inline-block px-4 pt-3 text-sm font-medium hover:underline underline-offset-2"
+                      :class="tierCtaTextClass"
+                    >
+                      Show more
+                    </NuxtLink>
+                  </div>
+
+                  <div v-else class="text-sm moh-text-muted">
+                    <p v-if="whoToFollowError">{{ whoToFollowError }}</p>
+                    <p v-else>No suggestions yet.</p>
+                    <NuxtLink to="/explore" class="inline-block mt-2 font-medium hover:underline">
+                      Explore people
+                    </NuxtLink>
+                  </div>
+                </template>
+              </Card>
+
               <Card>
                 <template #title>Trends for you</template>
                 <template #content>
@@ -366,45 +401,6 @@
                       </div>
                       <Button label="Follow" severity="secondary" size="small" />
                     </div>
-                  </div>
-                </template>
-              </Card>
-
-              <Card>
-                <template #title>Who to follow</template>
-                <template #content>
-                  <div class="space-y-4 text-sm moh-text-muted">
-                    <div class="flex items-center justify-between gap-3">
-                      <div class="flex items-center gap-3 min-w-0">
-                        <div class="h-10 w-10 rounded-full moh-surface" aria-hidden="true" />
-                        <div class="min-w-0">
-                          <div class="font-semibold truncate">Builder Weekly</div>
-                          <div class="moh-text-muted truncate">@builderweekly</div>
-                        </div>
-                      </div>
-                      <Button label="Follow" severity="secondary" size="small" />
-                    </div>
-                    <div class="flex items-center justify-between gap-3">
-                      <div class="flex items-center gap-3 min-w-0">
-                        <div class="h-10 w-10 rounded-full moh-surface" aria-hidden="true" />
-                        <div class="min-w-0">
-                          <div class="font-semibold truncate">Strength Log</div>
-                          <div class="moh-text-muted truncate">@strengthlog</div>
-                        </div>
-                      </div>
-                      <Button label="Follow" severity="secondary" size="small" />
-                    </div>
-                    <div class="flex items-center justify-between gap-3">
-                      <div class="flex items-center gap-3 min-w-0">
-                        <div class="h-10 w-10 rounded-full moh-surface" aria-hidden="true" />
-                        <div class="min-w-0">
-                          <div class="font-semibold truncate">Men’s Groups</div>
-                          <div class="moh-text-muted truncate">@mensgroups</div>
-                        </div>
-                      </div>
-                      <Button label="Follow" severity="secondary" size="small" />
-                    </div>
-                    <Button label="Show more" text severity="secondary" class="w-full justify-center" />
                   </div>
                 </template>
               </Card>
@@ -940,6 +936,23 @@ useCoupledScroll({
 const lightbox = useImageLightbox()
 
 const showStatusBg = computed(() => route.path === '/status')
+
+const {
+  users: whoToFollowUsers,
+  loading: whoToFollowLoading,
+  error: whoToFollowError,
+  refresh: refreshWhoToFollow,
+} = useWhoToFollow({
+  enabled: computed(() => !isRightRailForcedHidden.value),
+  defaultLimit: 3,
+})
+
+const tierCtaTextClass = computed(() => {
+  const u = user.value
+  if (u?.premium) return 'text-[var(--moh-premium)]'
+  if (u?.verifiedStatus && u.verifiedStatus !== 'none') return 'text-[var(--moh-verified)]'
+  return 'text-gray-700 dark:text-gray-200'
+})
 
 function isActiveNav(to: string) {
   if (to === '/home') return route.path === '/home'

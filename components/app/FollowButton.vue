@@ -6,7 +6,9 @@
       :severity="buttonSeverity"
       :rounded="rounded"
       :text="text"
-      :icon="buttonIcon"
+      :size="props.size"
+      :class="['!rounded-full !font-semibold', props.buttonClass]"
+      :icon="props.showIcon === false ? undefined : buttonIcon"
       @mouseenter="hovering = true"
       @mouseleave="hovering = false"
       @click="onClick"
@@ -33,6 +35,12 @@ const props = defineProps<{
   initialRelationship?: FollowRelationship | null
   rounded?: boolean
   text?: boolean
+  /** PrimeVue Button size (e.g. 'small'). */
+  size?: 'small' | 'large' | undefined
+  /** Optional class overrides for the underlying PrimeVue Button. */
+  buttonClass?: string
+  /** When false, hide the leading icon (e.g. compact rails). */
+  showIcon?: boolean
 }>()
 
 const emit = defineEmits<{

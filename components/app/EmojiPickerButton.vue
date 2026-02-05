@@ -108,6 +108,22 @@ function updatePanelPosition() {
   }
 }
 
+function focusEmojiSearch(attempt = 0) {
+  if (!import.meta.client) return
+  const panel = panelEl.value
+  if (!panel) return
+  const picker = panel.querySelector('emoji-picker') as HTMLElement | null
+  const searchInput = (picker?.shadowRoot?.querySelector('input[type="search"]') ??
+    picker?.shadowRoot?.querySelector('input')) as HTMLInputElement | null
+  if (searchInput) {
+    searchInput.focus()
+    return
+  }
+  if (attempt < 6) {
+    setTimeout(() => focusEmojiSearch(attempt + 1), 60)
+  }
+}
+
 function close() {
   open.value = false
 }
@@ -120,6 +136,7 @@ function toggle() {
     void nextTick().then(() => {
       updatePanelPosition()
       requestAnimationFrame(() => updatePanelPosition())
+      focusEmojiSearch()
     })
   }
 }

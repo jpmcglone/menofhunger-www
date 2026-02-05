@@ -19,76 +19,189 @@
 
     <div class="px-4 py-4 space-y-4">
 
-    <!-- Min length hint -->
-    <div
-      v-if="searchQueryTrimmed && searchQueryTrimmed.length < 2"
-      class="rounded-xl border moh-border bg-gray-50/50 dark:bg-zinc-900/30 px-4 py-4"
-    >
-      <p class="text-sm moh-text-muted">
-        Enter at least 2 characters to search.
-      </p>
-    </div>
-
-    <!-- Error -->
-    <AppInlineAlert v-else-if="searchQueryTrimmed.length >= 2 && searchError" severity="danger">
-      {{ searchError }}
-    </AppInlineAlert>
-
-    <!-- Loading -->
-    <div
-      v-else-if="searchQueryTrimmed.length >= 2 && loading && interleaved.length === 0"
-      class="flex justify-center py-12"
-    >
-      <AppLogoLoader />
-    </div>
-
-    <!-- Results: list edge to edge (no margin) -->
-    <template v-else-if="searchQueryTrimmed.length >= 2">
-      <div v-if="interleaved.length > 0" class="space-y-0 -mx-4">
-        <p class="mb-3 px-4 text-sm font-medium text-gray-700 dark:text-gray-300">
-          Searching for: <span class="font-semibold">{{ searchQueryTrimmed }}</span>
-        </p>
-        <div class="space-y-0">
-          <template v-for="item in interleaved" :key="item.kind === 'user' ? `u-${item.user.id}` : `p-${item.post.id}`">
-            <AppUserRow
-              v-if="item.kind === 'user'"
-              :user="item.user"
-              :show-follow-button="true"
-            />
-            <AppFeedPostRow
-              v-else
-              :post="item.post"
-            />
-          </template>
-        </div>
-        <div v-if="loadingMore" class="flex justify-center py-6 px-4">
-          <AppLogoLoader />
-        </div>
-        <div v-else-if="hasMore" class="flex justify-center py-4 px-4">
-          <Button
-            label="Load more"
-            severity="secondary"
-            :loading="loadingMore"
-            :disabled="loadingMore"
-            @click="loadMore"
-          />
-        </div>
-      </div>
-
+      <!-- Min length hint -->
       <div
-        v-else-if="searchedOnce && !loading"
-        class="rounded-xl border moh-border bg-gray-50/50 dark:bg-zinc-900/30 px-4 py-6 text-center"
+        v-if="searchQueryTrimmed && searchQueryTrimmed.length < 2"
+        class="rounded-xl border moh-border bg-gray-50/50 dark:bg-zinc-900/30 px-4 py-4"
       >
         <p class="text-sm moh-text-muted">
-          No people or posts found for “{{ searchQueryTrimmed }}”.
+          Enter at least 2 characters to search.
         </p>
       </div>
-    </template>
 
-    <!-- No search query: placeholder -->
-    <p v-else class="text-sm moh-text-muted">
-      Type in the search bar to search.
-    </p>
+      <!-- Search results -->
+      <template v-if="isSearching">
+        <AppInlineAlert v-if="searchError" severity="danger">
+          {{ searchError }}
+        </AppInlineAlert>
+
+        <div
+          v-else-if="loading && interleaved.length === 0"
+          class="flex justify-center py-12"
+        >
+          <AppLogoLoader />
+        </div>
+
+        <!-- Results: list edge to edge (no margin) -->
+        <div v-else-if="interleaved.length > 0" class="space-y-0 -mx-4">
+          <p class="mb-3 px-4 text-sm font-medium text-gray-700 dark:text-gray-300">
+            Searching for: <span class="font-semibold">{{ searchQueryTrimmed }}</span>
+          </p>
+          <div class="space-y-0">
+            <template v-for="item in interleaved" :key="item.kind === 'user' ? `u-${item.user.id}` : `p-${item.post.id}`">
+              <AppUserRow
+                v-if="item.kind === 'user'"
+                :user="item.user"
+                :show-follow-button="true"
+              />
+              <AppFeedPostRow
+                v-else
+                :post="item.post"
+              />
+            </template>
+          </div>
+          <div v-if="loadingMore" class="flex justify-center py-6 px-4">
+            <AppLogoLoader />
+          </div>
+          <div v-else-if="hasMore" class="flex justify-center py-4 px-4">
+            <Button
+              label="Load more"
+              severity="secondary"
+              :loading="loadingMore"
+              :disabled="loadingMore"
+              @click="loadMore"
+            />
+          </div>
+        </div>
+
+        <div
+          v-else-if="searchedOnce && !loading"
+          class="rounded-xl border moh-border bg-gray-50/50 dark:bg-zinc-900/30 px-4 py-6 text-center"
+        >
+          <p class="text-sm moh-text-muted">
+            No people or posts found for “{{ searchQueryTrimmed }}”.
+          </p>
+        </div>
+      </template>
+
+      <!-- No (valid) search query: discovery sections -->
+      <template v-else>
+        <AppInlineAlert v-if="discoverError" severity="warning">
+          {{ discoverError }}
+        </AppInlineAlert>
+
+        <!-- People to follow -->
+        <section class="space-y-3">
+          <div class="flex items-center justify-between gap-3">
+            <h2 class="text-sm font-semibold text-gray-900 dark:text-gray-50">
+              People to follow
+            </h2>
+            <Button
+              label="Refresh"
+              text
+              severity="secondary"
+              :loading="discoverLoading"
+              :disabled="discoverLoading"
+              @click="refreshDiscover"
+            />
+          </div>
+
+          <div v-if="discoverLoading && recommendedUsers.length === 0" class="flex justify-center py-6">
+            <AppLogoLoader />
+          </div>
+
+          <div v-else-if="recommendedUsers.length > 0" class="-mx-4">
+            <AppHorizontalScroller scroller-class="px-4">
+              <div class="flex gap-3 pb-2">
+                <AppUserMiniCard
+                  v-for="u in recommendedUsers"
+                  :key="u.id"
+                  :user="u"
+                  @followed="removeDiscoverUser(u.id)"
+                />
+              </div>
+            </AppHorizontalScroller>
+          </div>
+
+          <p v-else class="text-sm moh-text-muted">
+            No recommendations yet — try searching for people.
+          </p>
+        </section>
+
+        <!-- Trending from recommended -->
+        <section class="space-y-3">
+          <h2 class="text-sm font-semibold text-gray-900 dark:text-gray-50">
+            Trending from people you might like
+          </h2>
+
+          <div v-if="discoverLoading && trendingPosts.length === 0" class="flex justify-center py-6">
+            <AppLogoLoader />
+          </div>
+
+          <div v-else-if="trendingPosts.length > 0" class="space-y-0 -mx-4">
+            <div class="space-y-0">
+              <AppFeedPostRow
+                v-for="p in trendingBefore"
+                :key="p.id"
+                :post="p"
+              />
+            </div>
+
+            <div v-if="shouldInlineNewUsers && newestUsers.length > 0" class="px-4 py-3">
+              <div class="flex items-center justify-between gap-3">
+                <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-50">
+                  New users
+                </h3>
+              </div>
+              <AppHorizontalScroller scroller-class="mt-3">
+                <div class="flex gap-3 pb-2">
+                  <AppUserMiniCard
+                    v-for="u in newestUsers"
+                    :key="u.id"
+                    :user="u"
+                    @followed="removeDiscoverUser(u.id)"
+                  />
+                </div>
+              </AppHorizontalScroller>
+            </div>
+
+            <div class="space-y-0">
+              <AppFeedPostRow
+                v-for="p in trendingAfter"
+                :key="p.id"
+                :post="p"
+              />
+            </div>
+          </div>
+
+          <p v-else class="text-sm moh-text-muted">
+            No trending posts yet.
+          </p>
+        </section>
+
+        <!-- New users (standalone when we can’t inline) -->
+        <section v-if="!shouldInlineNewUsers && newestUsers.length > 0" class="space-y-3">
+          <h2 class="text-sm font-semibold text-gray-900 dark:text-gray-50">
+            New users
+          </h2>
+          <div class="-mx-4">
+            <AppHorizontalScroller scroller-class="px-4">
+              <div class="flex gap-3 pb-2">
+                <AppUserMiniCard
+                  v-for="u in newestUsers"
+                  :key="u.id"
+                  :user="u"
+                  @followed="removeDiscoverUser(u.id)"
+                />
+              </div>
+            </AppHorizontalScroller>
+          </div>
+        </section>
+
+        <p class="text-sm moh-text-muted">
+          Or type in the search bar to search.
+        </p>
+      </template>
     </div>
   </div>
 </template>
@@ -117,6 +230,24 @@ const { apiFetch } = useApiClient()
 
 const searchQuery = ref(String(route.query.q ?? '').trim())
 const searchQueryTrimmed = computed(() => searchQuery.value.trim())
+const isSearching = computed(() => searchQueryTrimmed.value.length >= 2)
+
+const {
+  recommendedUsers,
+  newestUsers,
+  trendingPosts,
+  loading: discoverLoading,
+  error: discoverError,
+  refresh: refreshDiscover,
+  removeUserById: removeDiscoverUser,
+} = useExploreRecommendations({
+  enabled: computed(() => !isSearching.value),
+})
+
+const TRENDING_INLINE_NEW_USERS_AFTER = 6
+const shouldInlineNewUsers = computed(() => trendingPosts.value.length >= 4)
+const trendingBefore = computed(() => trendingPosts.value.slice(0, TRENDING_INLINE_NEW_USERS_AFTER))
+const trendingAfter = computed(() => trendingPosts.value.slice(TRENDING_INLINE_NEW_USERS_AFTER))
 
 watch(
   () => route.query.q,

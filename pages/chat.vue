@@ -14,134 +14,146 @@
       </div>
     </div>
 
-    <div v-else class="grid min-h-0 flex-1" :class="isTinyViewport ? 'grid-cols-1' : ''" :style="gridStyle">
-      <!-- Left column: thread list -->
-      <ChatConversationList
-        v-if="showListPane"
-        :is-tiny-viewport="isTinyViewport"
-        :active-tab="activeTab"
-        :active-list="activeList"
-        :list-loading="listLoading"
-        :show-requests-badge="showRequestsBadge"
-        :requests-badge-text="requestsBadgeText"
-        :badge-tone-class="badgeToneClass"
-        :selected-conversation-id="selectedConversationId"
-        :next-cursor="nextCursor"
-        :loading-more="loadingMore"
-        :typing-users-by-conversation-id="typingUsersByConversationId"
-        :format-list-time="formatListTime"
-        :get-conversation-title="getConversationTitle"
-        :get-conversation-preview="getConversationPreview"
-        :get-direct-user="getDirectUser"
-        :typing-name-class="typingNameClass"
-        :conversation-unread-highlight-class="conversationUnreadHighlightClass"
-        :conversation-dot-class="conversationDotClass"
-        @select="selectConversation"
-        @set-tab="setTab"
-        @open-new="openNewDialog"
-        @open-blocks="openBlocksDialog"
-        @load-more="loadMoreConversations"
-      />
+    <div v-else class="min-h-0 flex-1">
+      <!-- Data-first: fetch before showing the chat screen to avoid UI jumps. -->
+      <div v-if="!chatScreenReady" class="flex min-h-0 flex-1 items-center justify-center px-4 py-12">
+        <AppLogoLoader />
+      </div>
 
-      <!-- Right column: chat for selected thread (edge-to-edge column, consistent content margins) -->
-      <section v-if="showChatPane" class="h-full overflow-hidden">
-        <div class="flex h-full min-h-0 flex-col">
-          <div class="shrink-0 border-b border-gray-200 px-4 py-3 dark:border-zinc-800">
-            <div class="flex items-center justify-between gap-3">
-              <div class="flex min-w-0 items-start gap-2">
-                <Button
-                  v-if="isTinyViewport && selectedChatKey"
-                  icon="pi pi-arrow-left"
-                  text
-                  severity="secondary"
-                  aria-label="Back"
-                  @click="clearSelection({ replace: true })"
-                />
-                <div class="flex items-center gap-3 min-w-0">
-                  <button
-                    v-if="headerAvatarUser"
-                    type="button"
-                    class="rounded-full cursor-pointer transition-opacity hover:opacity-90"
-                    :aria-label="headerAvatarUser.username ? `View @${headerAvatarUser.username}` : 'View profile'"
-                    @click="goToProfile(headerAvatarUser)"
-                  >
-                    <AppUserAvatar :user="headerAvatarUser" size-class="h-10 w-10" />
-                  </button>
-                  <div class="min-w-0">
-                    <div class="font-semibold min-w-0 flex items-center gap-2">
-                      <template v-if="selectedConversation?.type === 'direct' && headerDirectUser">
-                        <button
-                          type="button"
-                          class="min-w-0 truncate hover:underline cursor-pointer text-left"
-                          :aria-label="headerDirectUser.username ? `View @${headerDirectUser.username}` : 'View profile'"
-                          @click="goToProfile(headerDirectUser)"
-                        >
-                          {{ headerDirectUser.name || headerDirectUser.username || 'User' }}
-                        </button>
-                        <AppVerifiedBadge :status="headerDirectUser.verifiedStatus" :premium="headerDirectUser.premium" />
-                      </template>
-                      <template v-else>
-                        <span class="min-w-0 truncate">
-                          {{
-                            selectedConversation
-                              ? getConversationTitle(selectedConversation)
-                            : isDraftChat
-                              ? (draftRecipients.length === 1
-                                  ? (draftRecipients[0]?.name || draftRecipients[0]?.username || 'User')
-                                : draftGroupTitle)
-                                : 'Select a conversation'
-                          }}
-                        </span>
-                      </template>
+      <Transition name="moh-fade">
+        <div
+          v-if="chatScreenReady"
+          class="grid min-h-0 flex-1"
+          :class="isTinyViewport ? 'grid-cols-1' : ''"
+          :style="gridStyle"
+        >
+          <!-- Left column: thread list -->
+          <ChatConversationList
+            v-if="showListPane"
+            :is-tiny-viewport="isTinyViewport"
+            :active-tab="activeTab"
+            :active-list="activeList"
+            :list-loading="listLoading"
+            :show-requests-badge="showRequestsBadge"
+            :requests-badge-text="requestsBadgeText"
+            :badge-tone-class="badgeToneClass"
+            :selected-conversation-id="selectedConversationId"
+            :next-cursor="nextCursor"
+            :loading-more="loadingMore"
+            :typing-users-by-conversation-id="typingUsersByConversationId"
+            :format-list-time="formatListTime"
+            :get-conversation-title="getConversationTitle"
+            :get-conversation-preview="getConversationPreview"
+            :get-direct-user="getDirectUser"
+            :typing-name-class="typingNameClass"
+            :conversation-unread-highlight-class="conversationUnreadHighlightClass"
+            :conversation-dot-class="conversationDotClass"
+            @select="selectConversation"
+            @set-tab="setTab"
+            @open-new="openNewDialog"
+            @open-blocks="openBlocksDialog"
+            @load-more="loadMoreConversations"
+          />
+
+          <!-- Right column: chat for selected thread (edge-to-edge column, consistent content margins) -->
+          <section v-if="showChatPane" class="h-full overflow-hidden">
+            <div class="flex h-full min-h-0 flex-col">
+              <div class="shrink-0 border-b border-gray-200 px-4 py-3 dark:border-zinc-800">
+                <div class="flex items-center justify-between gap-3">
+                  <div class="flex min-w-0 items-start gap-2">
+                    <Button
+                      v-if="isTinyViewport && selectedChatKey"
+                      icon="pi pi-arrow-left"
+                      text
+                      severity="secondary"
+                      aria-label="Back"
+                      @click="clearSelection({ replace: true })"
+                    />
+                    <div class="flex items-center gap-3 min-w-0">
+                      <button
+                        v-if="headerAvatarUser"
+                        type="button"
+                        class="rounded-full cursor-pointer transition-opacity hover:opacity-90"
+                        :aria-label="headerAvatarUser.username ? `View @${headerAvatarUser.username}` : 'View profile'"
+                        @click="goToProfile(headerAvatarUser)"
+                      >
+                        <AppUserAvatar :user="headerAvatarUser" size-class="h-10 w-10" />
+                      </button>
+                      <div class="min-w-0">
+                        <div class="font-semibold min-w-0 flex items-center gap-2">
+                          <template v-if="selectedConversation?.type === 'direct' && headerDirectUser">
+                            <button
+                              type="button"
+                              class="min-w-0 truncate hover:underline cursor-pointer text-left"
+                              :aria-label="headerDirectUser.username ? `View @${headerDirectUser.username}` : 'View profile'"
+                              @click="goToProfile(headerDirectUser)"
+                            >
+                              {{ headerDirectUser.name || headerDirectUser.username || 'User' }}
+                            </button>
+                            <AppVerifiedBadge :status="headerDirectUser.verifiedStatus" :premium="headerDirectUser.premium" />
+                          </template>
+                          <template v-else>
+                            <span class="min-w-0 truncate">
+                              {{
+                                selectedConversation
+                                  ? getConversationTitle(selectedConversation)
+                                : isDraftChat
+                                  ? (draftRecipients.length === 1
+                                      ? (draftRecipients[0]?.name || draftRecipients[0]?.username || 'User')
+                                    : draftGroupTitle)
+                                    : 'Select a conversation'
+                              }}
+                            </span>
+                          </template>
+                        </div>
+                        <div class="text-xs text-gray-500 dark:text-gray-400 truncate">
+                          <template v-if="selectedConversation?.type === 'group'">
+                            <span>{{ headerMemberCountLabel }}</span>
+                            <span v-if="headerMembers.length"> · </span>
+                            <template v-for="(member, index) in headerMembers" :key="member.id">
+                              <button
+                                type="button"
+                                class="font-semibold hover:underline cursor-pointer"
+                                :class="member.toneClass"
+                                :aria-label="member.username ? `View @${member.username}` : 'View profile'"
+                                @click="goToProfile(member.user)"
+                              >
+                                {{ member.label }}
+                              </button>
+                              <span v-if="index < headerMembers.length - 1">, </span>
+                            </template>
+                          </template>
+                          <template v-else-if="selectedConversation?.type === 'direct'">
+                            <button
+                              v-if="headerDirectUser?.username"
+                              type="button"
+                              class="hover:underline cursor-pointer"
+                              :aria-label="`View @${headerDirectUser.username}`"
+                              @click="goToProfile(headerDirectUser)"
+                            >
+                              @{{ headerDirectUser.username }}
+                            </button>
+                            <span v-else>Chat</span>
+                          </template>
+                          <template v-else-if="isDraftChat">
+                            {{
+                              draftRecipients.length === 1
+                                ? (draftRecipients[0]?.username ? `@${draftRecipients[0].username}` : 'New chat')
+                                : `${draftRecipients.length} recipients`
+                            }}
+                          </template>
+                          <template v-else>
+                            Pick a conversation from the left.
+                          </template>
+                        </div>
+                      </div>
                     </div>
-                    <div class="text-xs text-gray-500 dark:text-gray-400 truncate">
-                      <template v-if="selectedConversation?.type === 'group'">
-                        <span>{{ headerMemberCountLabel }}</span>
-                        <span v-if="headerMembers.length"> · </span>
-                        <template v-for="(member, index) in headerMembers" :key="member.id">
-                          <button
-                            type="button"
-                            class="font-semibold hover:underline cursor-pointer"
-                            :class="member.toneClass"
-                            :aria-label="member.username ? `View @${member.username}` : 'View profile'"
-                            @click="goToProfile(member.user)"
-                          >
-                            {{ member.label }}
-                          </button>
-                          <span v-if="index < headerMembers.length - 1">, </span>
-                        </template>
-                      </template>
-                      <template v-else-if="selectedConversation?.type === 'direct'">
-                        <button
-                          v-if="headerDirectUser?.username"
-                          type="button"
-                          class="hover:underline cursor-pointer"
-                          :aria-label="`View @${headerDirectUser.username}`"
-                          @click="goToProfile(headerDirectUser)"
-                        >
-                          @{{ headerDirectUser.username }}
-                        </button>
-                        <span v-else>Chat</span>
-                      </template>
-                      <template v-else-if="isDraftChat">
-                        {{
-                          draftRecipients.length === 1
-                            ? (draftRecipients[0]?.username ? `@${draftRecipients[0].username}` : 'New chat')
-                            : `${draftRecipients.length} recipients`
-                        }}
-                      </template>
-                      <template v-else>
-                        Pick a conversation from the left.
-                      </template>
-                    </div>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <Button icon="pi pi-ellipsis-h" text severity="secondary" />
                   </div>
                 </div>
               </div>
-              <div class="flex items-center gap-2">
-                <Button icon="pi pi-ellipsis-h" text severity="secondary" />
-              </div>
-            </div>
-          </div>
 
           <div v-if="selectedChatKey" class="relative flex-1 min-h-0">
             <Transition name="moh-fade" mode="out-in" @before-enter="onMessagesScrollerBeforeEnter">
@@ -182,8 +194,8 @@
                   @load-older="loadOlderMessages"
                 />
               </div>
-              <div v-else key="loading" class="h-full px-4 py-4 text-sm text-gray-500 dark:text-gray-400">
-                Loading chat…
+              <div v-else key="loading" class="h-full flex items-center justify-center">
+                <AppLogoLoader />
               </div>
             </Transition>
             <!-- Custom thin pill scrollbar (native scrollbar hidden) -->
@@ -261,6 +273,8 @@
           </div>
         </div>
       </section>
+        </div>
+      </Transition>
     </div>
 
     <Dialog
@@ -383,6 +397,7 @@ const route = useRoute()
 const router = useRouter()
 const { user: me } = useAuth()
 const viewerIsVerified = computed(() => (me.value?.verifiedStatus ?? 'none') !== 'none')
+const chatScreenReady = ref(false)
 const {
   addInterest,
   removeInterest,
@@ -1417,10 +1432,20 @@ onMounted(() => {
   if (!viewerIsVerified.value) return
   addMessagesCallback(messageCallback)
   emitMessagesScreen(true)
-  void fetchConversations('primary')
-  if (selectedConversationId.value) {
-    void selectConversation(selectedConversationId.value, { replace: true })
-  }
+  ;(async () => {
+    try {
+      await fetchConversations('primary', { forceRefresh: true })
+      if (selectedConversationId.value) {
+        await selectConversation(selectedConversationId.value, { replace: true })
+      }
+      chatScreenReady.value = true
+      // Prefetch requests tab in background.
+      void fetchConversations('requests')
+    } catch {
+      // Even if fetch fails, show the screen so errors/empty states can render.
+      chatScreenReady.value = true
+    }
+  })()
 })
 
 onBeforeUnmount(() => {

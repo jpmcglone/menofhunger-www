@@ -12,7 +12,7 @@
 import badgeUrl from '~/assets/images/verified-badge.png'
 
 type VerifiedStatus = 'none' | 'identity' | 'manual'
-type Size = 'sm' | 'md'
+type Size = 'xs' | 'sm' | 'md'
 
 const props = withDefaults(
   defineProps<{
@@ -45,7 +45,9 @@ const tooltip = computed(() => {
 const sizeClass = computed(() => {
   // Scale with surrounding text so it always "matches the font" it's next to.
   // `md` is a touch larger (used in a few header contexts).
-  return props.size === 'md' ? 'h-[1.15em] w-[1.15em]' : 'h-[1em] w-[1em]'
+  if (props.size === 'xs') return 'h-[0.85em] w-[0.85em]'
+  if (props.size === 'md') return 'h-[1.15em] w-[1.15em]'
+  return 'h-[1em] w-[1em]'
 })
 
 const iconStyle = computed<Record<string, string>>(() => {
