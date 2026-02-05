@@ -240,7 +240,7 @@
                           <span v-if="p.author.username">@{{ p.author.username }}</span>
                           <span v-else class="font-mono">{{ p.author.id }}</span>
                           <span class="mx-2">·</span>
-                          <span class="font-mono">{{ formatIso(p.postCreatedAt) }}</span>
+                          <span class="font-mono">{{ formatDateTime(p.postCreatedAt) }}</span>
                         </div>
                       </div>
                       <div class="shrink-0 text-right">
@@ -347,6 +347,7 @@ usePageSeo({
 
 const { apiFetch, apiFetchData } = useApiClient()
 import { getApiErrorMessage } from '~/utils/api-error'
+import { formatDateTime } from '~/utils/time-format'
 import type { AdminImageReviewDetailResponse, AdminImageReviewListItem, AdminImageReviewListData } from '~/types/api'
 
 const kindOptions = [
@@ -472,14 +473,6 @@ async function loadDetails() {
   }
 }
 
-function formatIso(iso: string | null | undefined) {
-  if (!iso) return '—'
-  const d = new Date(iso)
-  if (Number.isNaN(d.getTime())) return iso
-  const date = new Intl.DateTimeFormat(undefined, { year: 'numeric', month: 'short', day: '2-digit' }).format(d)
-  const time = new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit' }).format(d)
-  return `${date} · ${time}`
-}
 
 async function syncMedia() {
   if (mediaSyncing.value) return

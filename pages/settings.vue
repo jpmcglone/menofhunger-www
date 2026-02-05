@@ -274,6 +274,7 @@ await ensureLoaded()
 
 const { apiFetch, apiFetchData } = useApiClient()
 import { getApiErrorMessage } from '~/utils/api-error'
+import { useFormSave } from '~/composables/useFormSave'
 import { siteConfig } from '~/config/site'
 
 const push = usePushNotifications()
@@ -383,11 +384,6 @@ const {
   caseOnlyMessage: 'Only capitalization changes are allowed (this change is OK).',
 })
 
-const saving = ref(false)
-const saved = ref(false)
-
-const emailSaving = ref(false)
-const emailSaved = ref(false)
 const emailHelperText = ref<string | null>(null)
 watch(
   () => authUser.value?.email ?? null,
@@ -404,6 +400,24 @@ const emailDirty = computed(() => {
   const desired = emailInput.value.trim().toLowerCase()
   return current !== desired
 })
+
+const { save: saveEmailRequest, saving: emailSaving, saved: emailSaved } = useFormSave(
+  async () => {
+    const raw = emailInput.value.trim()
+    const body = { email: raw ? raw : '' }
+    const result = await apiFetchData<{ user: import('~/composables/useAuth').AuthUser }>('/users/me/profile', {
+      method: 'PATCH',
+      body,
+    })
+    authUser.value = result.user ?? authUser.value
+  },
+  {
+    defaultError: 'Failed to save email.',
+    onError: (message) => {
+      emailHelperText.value = message
+    },
+  },
+)
 
 // Prefill input with current username (if any) once, so "case-only" edits are obvious.
 watch(
@@ -426,6 +440,25 @@ const canSaveUsername = computed(() => {
   return usernameStatus.value === 'available'
 })
 
+const { save: saveUsernameRequest, saving, saved } = useFormSave(
+  async () => {
+    const username = usernameInput.value.trim()
+    const result = await apiFetchData<{ user: import('~/composables/useAuth').AuthUser }>('/users/me/username', {
+      method: 'PATCH',
+      body: { username },
+    })
+
+    // Update client auth state with latest user data.
+    authUser.value = result.user ?? authUser.value
+  },
+  {
+    defaultError: 'Failed to save username.',
+    onError: (message) => {
+      usernameHelperText.value = message
+    },
+  },
+)
+
 const followVisibilityOptions: Array<{ label: string; value: FollowVisibility }> = [
   { label: 'Public (anyone)', value: 'all' },
   { label: 'Verified members', value: 'verified' },
@@ -434,8 +467,6 @@ const followVisibilityOptions: Array<{ label: string; value: FollowVisibility }>
 ]
 
 const followVisibilityInput = ref<FollowVisibility>('all')
-const privacySaving = ref(false)
-const privacySaved = ref(false)
 const privacyError = ref<string | null>(null)
 
 watch(
@@ -449,13 +480,28 @@ watch(
 
 const privacyDirty = computed(() => (authUser.value?.followVisibility || 'all') !== followVisibilityInput.value)
 
+const { save: savePrivacyRequest, saving: privacySaving, saved: privacySaved } = useFormSave(
+  async () => {
+    const result = await apiFetchData<{ user: import('~/composables/useAuth').AuthUser }>('/users/me/settings', {
+      method: 'PATCH',
+      body: { followVisibility: followVisibilityInput.value }
+    })
+    authUser.value = result.user ?? authUser.value
+  },
+  {
+    defaultError: 'Failed to save privacy.',
+    onError: (message) => {
+      privacyError.value = message
+    },
+  },
+)
+
 watch(usernameInput, () => {
   // Clear "Saved" when they edit the field.
   saved.value = false
 })
 
 async function save() {
-  saved.value = false
   usernameHelperText.value = null
 
   const username = usernameInput.value.trim()
@@ -467,60 +513,20 @@ async function save() {
     return
   }
 
-  saving.value = true
-  try {
-    const result = await apiFetchData<{ user: import('~/composables/useAuth').AuthUser }>('/users/me/username', {
-      method: 'PATCH',
-      body: { username },
-    })
-
-    // Update client auth state with latest user data.
-    authUser.value = result.user ?? authUser.value
-    saved.value = true
-  } catch (e: unknown) {
-    usernameHelperText.value = getApiErrorMessage(e) || 'Failed to save username.'
-  } finally {
-    saving.value = false
-  }
+  saved.value = false
+  await saveUsernameRequest()
 }
 
 async function saveEmail() {
-  if (emailSaving.value) return
-  emailSaved.value = false
   emailHelperText.value = null
-  emailSaving.value = true
-  try {
-    const raw = emailInput.value.trim()
-    const body = { email: raw ? raw : '' }
-    const result = await apiFetchData<{ user: import('~/composables/useAuth').AuthUser }>('/users/me/profile', {
-      method: 'PATCH',
-      body,
-    })
-    authUser.value = result.user ?? authUser.value
-    emailSaved.value = true
-  } catch (e: unknown) {
-    emailHelperText.value = getApiErrorMessage(e) || 'Failed to save email.'
-  } finally {
-    emailSaving.value = false
-  }
+  emailSaved.value = false
+  await saveEmailRequest()
 }
 
 async function savePrivacy() {
-  privacySaved.value = false
   privacyError.value = null
-  privacySaving.value = true
-  try {
-    const result = await apiFetchData<{ user: import('~/composables/useAuth').AuthUser }>('/users/me/settings', {
-      method: 'PATCH',
-      body: { followVisibility: followVisibilityInput.value }
-    })
-    authUser.value = result.user ?? authUser.value
-    privacySaved.value = true
-  } catch (e: unknown) {
-    privacyError.value = getApiErrorMessage(e) || 'Failed to save privacy.'
-  } finally {
-    privacySaving.value = false
-  }
+  privacySaved.value = false
+  await savePrivacyRequest()
 }
 
 function sendFeedback() {

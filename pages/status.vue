@@ -128,6 +128,8 @@
 </template>
 
 <script setup lang="ts">
+import { formatRelativeTime } from '~/utils/time-format'
+
 definePageMeta({
   layout: 'app',
   title: 'Status',
@@ -172,24 +174,6 @@ const wsStatusLabel = computed(() => {
       return 'Disconnected'
   }
 })
-
-function formatRelativeTime(iso: string | null): string {
-  if (!iso?.trim()) return 'Never'
-  const date = new Date(iso)
-  if (Number.isNaN(date.getTime())) return 'Unknown'
-  const now = Date.now()
-  const diffMs = now - date.getTime()
-  const diffSec = Math.floor(diffMs / 1000)
-  const diffMin = Math.floor(diffSec / 60)
-  if (diffSec < 10) return 'Just now'
-  if (diffSec < 60) return `${diffSec} seconds ago`
-  if (diffMin === 1) return '1 minute ago'
-  if (diffMin < 60) return `${diffMin} minutes ago`
-  const diffHr = Math.floor(diffMin / 60)
-  if (diffHr === 1) return '1 hour ago'
-  if (diffHr < 24) return `${diffHr} hours ago`
-  return date.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
-}
 
 const lastCheckedHuman = computed(() => {
   const iso = lastCheckedAtIso.value

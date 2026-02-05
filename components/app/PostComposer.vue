@@ -256,7 +256,7 @@ import type { CreateMediaPayload } from '~/composables/useComposerMedia'
 import { PRIMARY_ONLYME_PURPLE, PRIMARY_PREMIUM_ORANGE, PRIMARY_TEXT_DARK, PRIMARY_TEXT_LIGHT, PRIMARY_VERIFIED_BLUE, primaryPaletteToCssVars } from '~/utils/theme-tint'
 import { tinyTooltip } from '~/utils/tiny-tooltip'
 import { visibilityTagClasses, visibilityTagLabel } from '~/utils/post-visibility'
-import { getApiErrorMessage } from '~/utils/api-error'
+import { useFormSubmit } from '~/composables/useFormSubmit'
 
 const emit = defineEmits<{
   (e: 'posted', payload: { id: string; visibility: PostVisibility; post?: import('~/types/api').FeedPost }): void
@@ -495,20 +495,8 @@ const postButtonClass = computed(() => {
 })
 
 // Composer submit
-const submitting = ref(false)
-const submitError = ref<string | null>(null)
-
-const submit = async () => {
-  if (!canPost.value) return
-  if (submitting.value) return
-  if (!(draft.value.trim() || composerMedia.value.length)) return
-  if (postCharCount.value > postMaxLen.value) return
-  if (composerUploading.value) return
-  if (composerHasFailedMedia.value) return
-
-  submitError.value = null
-  submitting.value = true
-  try {
+const { submit: submitPost, submitting, submitError } = useFormSubmit(
+  async () => {
     const mediaPayload: CreateMediaPayload[] = toCreatePayload(composerMedia.value)
     const vis = effectiveVisibility.value
 
@@ -563,13 +551,24 @@ const submit = async () => {
         durationMs: 2600,
       })
     }
-  } catch (e: unknown) {
-    const msg = getApiErrorMessage(e) || 'Failed to post.'
-    submitError.value = msg
-    toast.push({ title: msg, tone: 'error', durationMs: 2500 })
-  } finally {
-    submitting.value = false
-  }
+  },
+  {
+    defaultError: 'Failed to post.',
+    onError: (message) => {
+      toast.push({ title: message, tone: 'error', durationMs: 2500 })
+    },
+  },
+)
+
+const submit = async () => {
+  if (!canPost.value) return
+  if (!(draft.value.trim() || composerMedia.value.length)) return
+  if (postCharCount.value > postMaxLen.value) return
+  if (composerUploading.value) return
+  if (composerHasFailedMedia.value) return
+
+  submitError.value = null
+  await submitPost()
 }
 
 function onComposerKeydown(e: KeyboardEvent) {

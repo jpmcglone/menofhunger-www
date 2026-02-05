@@ -66,7 +66,7 @@ usePageSeo({
   noindex: true,
 })
 
-import { getApiErrorMessage } from '~/utils/api-error'
+import { useFormSubmit } from '~/composables/useFormSubmit'
 import type { FeedbackItem, FeedbackCategory } from '~/types/api'
 
 const categories: Array<{ label: string; value: FeedbackCategory }> = [
@@ -83,15 +83,8 @@ const details = ref('')
 
 const { apiFetchData } = useApiClient()
 const { push: pushToast } = useAppToast()
-const submitting = ref(false)
-const submitError = ref<string | null>(null)
-
-async function onSubmit() {
-  if (submitting.value) return
-  submitError.value = null
-  submitting.value = true
-
-  try {
+const { submit: onSubmit, submitting, submitError } = useFormSubmit(
+  async () => {
     await apiFetchData<FeedbackItem>('/feedback', {
       method: 'POST',
       body: {
@@ -101,20 +94,20 @@ async function onSubmit() {
         details: details.value.trim(),
       },
     })
-
-    subject.value = ''
-    details.value = ''
-    pushToast({
-      title: 'Thanks for the feedback',
-      message: 'We received your note.',
-      tone: 'public',
-      durationMs: 5000,
-    })
-  } catch (e: unknown) {
-    submitError.value = getApiErrorMessage(e) || 'Failed to send feedback.'
-  } finally {
-    submitting.value = false
-  }
-}
+  },
+  {
+    defaultError: 'Failed to send feedback.',
+    onSuccess: () => {
+      subject.value = ''
+      details.value = ''
+      pushToast({
+        title: 'Thanks for the feedback',
+        message: 'We received your note.',
+        tone: 'public',
+        durationMs: 5000,
+      })
+    },
+  },
+)
 </script>
 

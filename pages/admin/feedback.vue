@@ -61,7 +61,7 @@
               <Tag :value="categoryLabel(item.category)" severity="secondary" class="!text-xs" />
             </div>
             <div class="text-xs moh-text-muted">
-              {{ formatIso(item.createdAt) }}
+              {{ formatDateTime(item.createdAt) }}
               <span class="mx-2">·</span>
               <span v-if="item.user?.username">@{{ item.user.username }}</span>
               <span v-else-if="item.user?.name">{{ item.user.name }}</span>
@@ -108,7 +108,7 @@
         </div>
         <div class="flex items-center justify-between gap-2">
           <div class="moh-text-muted">Submitted</div>
-          <div class="font-mono text-xs">{{ formatIso(selected.createdAt) }}</div>
+          <div class="font-mono text-xs">{{ formatDateTime(selected.createdAt) }}</div>
         </div>
         <div class="flex items-center justify-between gap-2">
           <div class="moh-text-muted">User</div>
@@ -168,6 +168,8 @@ usePageSeo({
 
 const { apiFetch, apiFetchData } = useApiClient()
 import { getApiErrorMessage } from '~/utils/api-error'
+import { formatDateTime } from '~/utils/time-format'
+import { useFormSubmit } from '~/composables/useFormSubmit'
 import type { AdminFeedbackItem, AdminFeedbackListData, FeedbackCategory, FeedbackStatus } from '~/types/api'
 
 const statusOptions = [
@@ -198,7 +200,6 @@ const detailsOpen = ref(false)
 const selected = ref<AdminFeedbackItem | null>(null)
 const editStatus = ref<FeedbackStatus>('new')
 const editAdminNote = ref('')
-const saving = ref(false)
 const detailsError = ref<string | null>(null)
 
 const canSave = computed(() => {
@@ -277,11 +278,10 @@ function openDetails(item: AdminFeedbackItem) {
   detailsOpen.value = true
 }
 
-async function saveDetails() {
-  if (!selected.value || saving.value) return
-  saving.value = true
-  detailsError.value = null
-  try {
+const { submit: saveDetails, submitting: saving } = useFormSubmit(
+  async () => {
+    if (!selected.value) return
+    detailsError.value = null
     const updated = await apiFetchData<AdminFeedbackItem>(`/admin/feedback/${encodeURIComponent(selected.value.id)}`, {
       method: 'PATCH',
       body: {
@@ -292,12 +292,14 @@ async function saveDetails() {
 
     items.value = items.value.map((item) => (item.id === updated.id ? updated : item))
     selected.value = updated
-  } catch (e: unknown) {
-    detailsError.value = getApiErrorMessage(e) || 'Failed to save feedback.'
-  } finally {
-    saving.value = false
-  }
-}
+  },
+  {
+    defaultError: 'Failed to save feedback.',
+    onError: (message) => {
+      detailsError.value = message
+    },
+  },
+)
 
 function statusLabel(status: FeedbackStatus) {
   if (status === 'triaged') return 'Triaged'
@@ -318,12 +320,4 @@ function categoryLabel(category: FeedbackCategory) {
   return 'Bug'
 }
 
-function formatIso(iso: string | null | undefined) {
-  if (!iso) return '—'
-  const d = new Date(iso)
-  if (Number.isNaN(d.getTime())) return iso
-  const date = new Intl.DateTimeFormat(undefined, { year: 'numeric', month: 'short', day: '2-digit' }).format(d)
-  const time = new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit' }).format(d)
-  return `${date} · ${time}`
-}
 </script>

@@ -192,6 +192,7 @@
 
 <script setup lang="ts">
 import { getApiErrorMessage } from '~/utils/api-error'
+import { formatDateOnly } from '~/utils/time-format'
 import { interestOptions } from '~/config/interests'
 
 const { user, ensureLoaded } = useAuth()
@@ -252,12 +253,10 @@ const currentUsername = computed(() => (user.value?.username ?? '').trim())
 const birthdatePretty = computed(() => {
   const raw = (user.value?.birthdate ?? '').slice(0, 10)
   if (!raw) return '—'
-  try {
-    const d = new Date(`${raw}T00:00:00.000Z`)
-    return new Intl.DateTimeFormat(undefined, { year: 'numeric', month: 'long', day: 'numeric' }).format(d)
-  } catch {
-    return raw
-  }
+  return formatDateOnly(`${raw}T00:00:00.000Z`, {
+    dateOptions: { year: 'numeric', month: 'long', day: 'numeric' },
+    fallback: raw,
+  })
 })
 
 const interestLabelMap = computed(() => {

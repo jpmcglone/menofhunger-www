@@ -161,24 +161,21 @@ usePageSeo({
 type Step = 'phone' | 'code'
 
 const { apiFetchData } = useApiClient()
-import { getApiErrorMessage } from '~/utils/api-error'
+import { useFormSubmit } from '~/composables/useFormSubmit'
 const route = useRoute()
 
 const step = ref<Step>('phone')
 
 const phoneInput = ref('')
 const phoneCommitted = ref('')
-const phoneSubmitting = ref(false)
 
 const codeInput = ref('')
-const verifying = ref(false)
 
 const inlineError = ref<string | null>(null)
 
 const introOpen = ref(false)
 const introPhone = ref<string | null>(null)
 const introError = ref<string | null>(null)
-const introContinuing = ref(false)
 
 const resendRemainingSeconds = ref(0)
 let resendTimer: ReturnType<typeof setInterval> | null = null
@@ -233,15 +230,13 @@ async function startOtp(phone: string) {
   startResendCountdown(result.retryAfterSeconds ?? 30)
 }
 
-async function submitPhone() {
-  inlineError.value = null
-  introError.value = null
-  const phone = phoneInput.value.trim()
-  if (!phone) return
+const { submit: submitPhone, submitting: submitPhoneSubmitting } = useFormSubmit(
+  async () => {
+    inlineError.value = null
+    introError.value = null
+    const phone = phoneInput.value.trim()
+    if (!phone) return
 
-  if (phoneSubmitting.value) return
-  phoneSubmitting.value = true
-  try {
     const existsRes = await apiFetchData<{ exists: boolean }>('/auth/phone/exists', {
       method: 'GET',
       // ofetch supports `query`; ApiFetchOptions is inferred from $fetch
@@ -257,49 +252,51 @@ async function submitPhone() {
 
     // Existing account: behave exactly like login does today.
     await startOtp(phone)
-  } catch (e: unknown) {
-    inlineError.value = getApiErrorMessage(e) || 'Failed to send code.'
-  } finally {
-    phoneSubmitting.value = false
-  }
-}
+  },
+  {
+    defaultError: 'Failed to send code.',
+    onError: (message) => {
+      inlineError.value = message
+    },
+  },
+)
 
-async function resend() {
-  if (!phoneCommitted.value) return
-  inlineError.value = null
-  introError.value = null
-
-  if (phoneSubmitting.value) return
-  phoneSubmitting.value = true
-  try {
+const { submit: resend, submitting: resendSubmitting } = useFormSubmit(
+  async () => {
+    inlineError.value = null
+    introError.value = null
+    if (!phoneCommitted.value) return
     await startOtp(phoneCommitted.value)
-  } catch (e: unknown) {
-    inlineError.value = getApiErrorMessage(e) || 'Failed to resend code.'
-  } finally {
-    phoneSubmitting.value = false
-  }
-}
+  },
+  {
+    defaultError: 'Failed to resend code.',
+    onError: (message) => {
+      inlineError.value = message
+    },
+  },
+)
 
-async function acceptIntroAndContinue() {
-  const phone = (introPhone.value ?? '').trim()
-  if (!phone) {
-    closeIntro()
-    return
-  }
-  if (introContinuing.value) return
+const phoneSubmitting = computed(() => submitPhoneSubmitting.value || resendSubmitting.value)
 
-  introContinuing.value = true
-  introError.value = null
-  inlineError.value = null
-  try {
+const { submit: acceptIntroAndContinue, submitting: introContinuing } = useFormSubmit(
+  async () => {
+    const phone = (introPhone.value ?? '').trim()
+    if (!phone) {
+      closeIntro()
+      return
+    }
+    introError.value = null
+    inlineError.value = null
     await startOtp(phone)
     closeIntro()
-  } catch (e: unknown) {
-    introError.value = getApiErrorMessage(e) || 'Failed to send code.'
-  } finally {
-    introContinuing.value = false
-  }
-}
+  },
+  {
+    defaultError: 'Failed to send code.',
+    onError: (message) => {
+      introError.value = message
+    },
+  },
+)
 
 watch(
   codeInput,
@@ -316,16 +313,14 @@ watch(
   { flush: 'sync' }
 )
 
-async function submitCode() {
-  if (verifying.value) return
-  inlineError.value = null
+const { submit: submitCode, submitting: verifying } = useFormSubmit(
+  async () => {
+    inlineError.value = null
 
-  const phone = phoneCommitted.value.trim()
-  const code = codeInput.value.replace(/\D/g, '').slice(0, 6)
-  if (!phone || code.length !== 6) return
+    const phone = phoneCommitted.value.trim()
+    const code = codeInput.value.replace(/\D/g, '').slice(0, 6)
+    if (!phone || code.length !== 6) return
 
-  verifying.value = true
-  try {
     const result = await apiFetchData<{ isNewUser: boolean; user: any; sessionId: string }>('/auth/phone/verify', {
       method: 'POST',
       body: { phone, code }
@@ -342,11 +337,13 @@ async function submitCode() {
     } else {
       await navigateTo('/home')
     }
-  } catch (e: unknown) {
-    inlineError.value = getApiErrorMessage(e) || 'Failed to verify code.'
-  } finally {
-    verifying.value = false
-  }
-}
+  },
+  {
+    defaultError: 'Failed to verify code.',
+    onError: (message) => {
+      inlineError.value = message
+    },
+  },
+)
 </script>
 

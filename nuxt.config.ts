@@ -32,6 +32,7 @@ export default defineNuxtConfig({
         { name: 'viewport', content: 'width=device-width, initial-scale=1' },
         // PWA + add-to-home meta
         { name: 'theme-color', content: '#ffffff' },
+        { name: 'mobile-web-app-capable', content: 'yes' },
         { name: 'apple-mobile-web-app-capable', content: 'yes' },
         { name: 'apple-mobile-web-app-status-bar-style', content: 'black-translucent' },
         { name: 'apple-mobile-web-app-title', content: siteConfig.name }
@@ -56,6 +57,11 @@ export default defineNuxtConfig({
     '@nuxt/ui',
     '@primevue/nuxt-module'
   ],
+  vue: {
+    compilerOptions: {
+      isCustomElement: (tag) => tag === 'emoji-picker',
+    },
+  },
   fonts: {
     // Social-app friendly: clean, modern sans with strong readability.
     // Loaded with swap to avoid FOIT.

@@ -147,7 +147,7 @@
 
 <script setup lang="ts">
 import { Cropper, CircleStencil } from 'vue-advanced-cropper'
-import { getApiErrorMessage } from '~/utils/api-error'
+import { useFormSubmit } from '~/composables/useFormSubmit'
 
 type PublicProfile = {
   id: string
@@ -185,7 +185,6 @@ const editBio = ref('')
 const nameCharCount = useFormCharCount(editName, 50)
 const bioCharCount = useFormCharCount(editBio, 160)
 const editError = ref<string | null>(null)
-const saving = ref(false)
 
 // We stage avatar changes locally (preview) and only upload/commit when the user hits Save.
 const avatarInputEl = ref<HTMLInputElement | null>(null)
@@ -360,11 +359,11 @@ watch(
   }
 )
 
-async function saveProfile() {
-  if (!isSelf.value) return
-  editError.value = null
-  saving.value = true
-  try {
+const { submit: saveProfile, submitting: saving } = useFormSubmit(
+  async () => {
+    if (!isSelf.value) return
+    editError.value = null
+
     // If a banner is staged, upload + commit it first.
     if (pendingBannerFile.value) {
       const file = pendingBannerFile.value
@@ -435,12 +434,14 @@ async function saveProfile() {
     emit('patchProfile', { name: u?.name ?? null, bio: u?.bio ?? null })
     authUser.value = u ?? authUser.value
     emit('update:modelValue', false)
-  } catch (e: unknown) {
-    editError.value = getApiErrorMessage(e) || 'Failed to save profile.'
-  } finally {
-    saving.value = false
-  }
-}
+  },
+  {
+    defaultError: 'Failed to save profile.',
+    onError: (message) => {
+      editError.value = message
+    },
+  },
+)
 
 onBeforeUnmount(() => {
   clearAvatarCropState()

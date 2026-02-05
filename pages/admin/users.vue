@@ -260,6 +260,8 @@ type AdminUser = {
 
 const { apiFetch, apiFetchData } = useApiClient()
 import { getApiErrorMessage } from '~/utils/api-error'
+import { formatDateTime } from '~/utils/time-format'
+import { useFormSubmit } from '~/composables/useFormSubmit'
 
 const userQuery = ref('')
 const searching = ref(false)
@@ -287,7 +289,6 @@ async function runUserSearch() {
 
 const editOpen = ref(false)
 const editingUser = ref<AdminUser | null>(null)
-const saving = ref(false)
 const editError = ref<string | null>(null)
 
 const editPhone = ref('')
@@ -390,25 +391,6 @@ const premiumOptions = [
   { label: 'Premium', value: true },
 ]
 
-function formatIso(iso: string | null | undefined) {
-  if (!iso) return '—'
-  const d = new Date(iso)
-  if (Number.isNaN(d.getTime())) return iso
-  // Example: "Jan 24, 2026 · 6:55 PM"
-  const date = new Intl.DateTimeFormat(undefined, {
-    year: 'numeric',
-    month: 'short',
-    day: '2-digit',
-  }).format(d)
-
-  const time = new Intl.DateTimeFormat(undefined, {
-    hour: 'numeric',
-    minute: '2-digit',
-  }).format(d)
-
-  return `${date} · ${time}`
-}
-
 const verificationStatusLabel = computed(() => {
   const s = editingUser.value?.verifiedStatus
   if (s === 'identity') return 'Identity verified'
@@ -422,9 +404,9 @@ const verificationStatusSeverity = computed(() => {
   return 'secondary'
 })
 
-const verificationVerifiedAtLabel = computed(() => formatIso(editingUser.value?.verifiedAt))
-const verificationUnverifiedAtLabel = computed(() => formatIso(editingUser.value?.unverifiedAt))
-const joinedAtLabel = computed(() => formatIso(editingUser.value?.createdAt))
+const verificationVerifiedAtLabel = computed(() => formatDateTime(editingUser.value?.verifiedAt))
+const verificationUnverifiedAtLabel = computed(() => formatDateTime(editingUser.value?.unverifiedAt))
+const joinedAtLabel = computed(() => formatDateTime(editingUser.value?.createdAt))
 
 function openEdit(u: AdminUser) {
   editingUser.value = u
@@ -450,15 +432,12 @@ function onUserRowClick(u: AdminUser) {
   openEdit(u)
 }
 
-async function saveUser() {
-  const u = editingUser.value
-  if (!u) return
-  if (saving.value) return
+const { submit: saveUser, submitting: saving } = useFormSubmit(
+  async () => {
+    const u = editingUser.value
+    if (!u) return
+    editError.value = null
 
-  saving.value = true
-  editError.value = null
-
-  try {
     const updated = await apiFetchData<AdminUser>(`/admin/users/${encodeURIComponent(u.id)}/profile`, {
       method: 'PATCH',
       body: {
@@ -475,11 +454,13 @@ async function saveUser() {
     results.value = results.value.map((x) => (x.id === u.id ? updated : x))
     editingUser.value = updated
     editOpen.value = false
-  } catch (e: unknown) {
-    editError.value = getApiErrorMessage(e) || 'Failed to save user.'
-  } finally {
-    saving.value = false
-  }
-}
+  },
+  {
+    defaultError: 'Failed to save user.',
+    onError: (message) => {
+      editError.value = message
+    },
+  },
+)
 </script>
 

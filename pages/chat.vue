@@ -2,152 +2,32 @@
   <div class="flex min-h-0 flex-1 flex-col">
     <div class="grid min-h-0 flex-1" :class="isTinyViewport ? 'grid-cols-1' : ''" :style="gridStyle">
       <!-- Left column: thread list -->
-      <section
+      <ChatConversationList
         v-if="showListPane"
-        :class="[
-          'h-full overflow-y-auto border-b border-gray-200 dark:border-zinc-800',
-          // When both panes are visible, add the divider between them.
-          !isTinyViewport ? 'border-b-0 border-r' : ''
-        ]"
-      >
-        <div class="sticky top-0 z-10 border-b moh-border moh-frosted">
-          <div class="px-4 pt-4 pb-3">
-            <div class="flex items-center justify-between gap-3">
-              <div class="text-lg font-semibold">Chat</div>
-              <div class="flex items-center gap-2">
-                <Button label="New" icon="pi pi-plus" size="small" severity="secondary" @click="openNewDialog" />
-                <Button label="Blocked" icon="pi pi-ban" size="small" text severity="secondary" @click="openBlocksDialog" />
-              </div>
-            </div>
-
-            <div class="mt-3 flex items-center gap-2">
-              <button
-                type="button"
-                :class="[
-                  'rounded-full px-3 py-1 text-sm font-semibold',
-                  activeTab === 'primary'
-                    ? 'bg-gray-900 text-white dark:bg-white dark:text-black'
-                    : 'bg-gray-100 text-gray-700 dark:bg-zinc-900 dark:text-gray-300'
-                ]"
-                @click="setTab('primary')"
-              >
-                Chats
-              </button>
-              <button
-                type="button"
-                :class="[
-                  'relative rounded-full px-3 py-1 text-sm font-semibold',
-                  activeTab === 'requests'
-                    ? 'bg-gray-900 text-white dark:bg-white dark:text-black'
-                    : 'bg-gray-100 text-gray-700 dark:bg-zinc-900 dark:text-gray-300'
-                ]"
-                @click="setTab('requests')"
-              >
-                Chat requests
-                <span
-                  v-if="showRequestsBadge"
-                  :class="[
-                    'ml-2 inline-flex min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold leading-[18px] text-center align-middle',
-                    badgeToneClass,
-                  ]"
-                >
-                  {{ requestsBadgeText }}
-                </span>
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <div v-if="listLoading" class="px-4 pt-2 pb-4 text-sm text-gray-500 dark:text-gray-400">
-          Loading…
-        </div>
-
-        <div v-else-if="activeList.length === 0" class="px-4 pt-2 pb-4 text-sm text-gray-500 dark:text-gray-400">
-          {{ activeTab === 'requests' ? 'No chat requests yet.' : 'No chats yet.' }}
-        </div>
-
-        <TransitionGroup
-          v-else
-          name="moh-chat-row"
-          tag="div"
-          class="divide-y divide-gray-200 dark:divide-zinc-800"
-        >
-          <button
-            v-for="c in activeList"
-            :key="c.id"
-            type="button"
-            class="w-full text-left"
-            @click="selectConversation(c.id)"
-          >
-            <div
-              :class="[
-                'moh-chat-row-surface w-full px-4 py-3 transition-colors',
-                selectedConversationId === c.id
-                  ? 'bg-gray-50 dark:bg-zinc-900'
-                  : 'hover:bg-gray-50 dark:hover:bg-zinc-900',
-                c.unreadCount > 0 ? conversationUnreadHighlightClass(c) : '',
-              ]"
-            >
-              <div class="flex items-center gap-3">
-                <div v-if="c.type === 'direct'">
-                  <AppUserAvatar :user="getDirectUser(c)" size-class="h-10 w-10" />
-                </div>
-                <div
-                  v-else
-                  class="flex h-10 w-10 items-center justify-center rounded-full bg-gray-200 text-gray-600 dark:bg-zinc-800 dark:text-gray-300"
-                >
-                  <i class="pi pi-users text-sm" aria-hidden="true" />
-                </div>
-                <div class="min-w-0 flex-1">
-                  <div class="flex items-center justify-between gap-2">
-                    <div class="font-semibold truncate">{{ getConversationTitle(c) }}</div>
-                    <div class="text-xs text-gray-500 dark:text-gray-400">
-                      {{ formatListTime(c.lastMessageAt || c.updatedAt) }}
-                    </div>
-                  </div>
-                  <div class="text-sm text-gray-600 dark:text-gray-300 truncate">
-                    <Transition name="moh-fade" mode="out-in">
-                      <div v-if="typingUsersByConversationId[c.id]?.length" :key="`typing-${c.id}`" class="truncate">
-                        <template v-if="typingUsersByConversationId[c.id]?.length === 1">
-                          <span class="font-semibold" :class="typingNameClass(typingUsersByConversationId[c.id]![0]!)">
-                            @{{ typingUsersByConversationId[c.id]![0]!.username }}
-                          </span>
-                          <span class="ml-1">is typing…</span>
-                        </template>
-                        <template v-else>
-                          <span class="font-semibold" :class="typingNameClass(typingUsersByConversationId[c.id]![0]!)">
-                            @{{ typingUsersByConversationId[c.id]![0]!.username }}
-                          </span>
-                          <span class="mx-1">and</span>
-                          <span class="font-semibold" :class="typingNameClass(typingUsersByConversationId[c.id]![1]!)">
-                            @{{ typingUsersByConversationId[c.id]![1]!.username }}
-                          </span>
-                          <span v-if="typingUsersByConversationId[c.id]!.length > 2" class="ml-1">and others</span>
-                          <span class="ml-1">are typing…</span>
-                        </template>
-                      </div>
-                      <div v-else :key="`preview-${c.id}`" class="truncate">
-                        {{ getConversationPreview(c) }}
-                      </div>
-                    </Transition>
-                  </div>
-                </div>
-                <Transition name="moh-dot">
-                  <span
-                    v-if="c.unreadCount > 0"
-                    class="moh-chat-row-dot h-2 w-2 rounded-full"
-                    :class="conversationDotClass(c)"
-                  />
-                </Transition>
-              </div>
-            </div>
-          </button>
-
-          <div v-if="nextCursor" key="load-more" class="px-4 py-3">
-            <Button label="Load more" text size="small" severity="secondary" :loading="loadingMore" @click="loadMoreConversations" />
-          </div>
-        </TransitionGroup>
-      </section>
+        :is-tiny-viewport="isTinyViewport"
+        :active-tab="activeTab"
+        :active-list="activeList"
+        :list-loading="listLoading"
+        :show-requests-badge="showRequestsBadge"
+        :requests-badge-text="requestsBadgeText"
+        :badge-tone-class="badgeToneClass"
+        :selected-conversation-id="selectedConversationId"
+        :next-cursor="nextCursor"
+        :loading-more="loadingMore"
+        :typing-users-by-conversation-id="typingUsersByConversationId"
+        :format-list-time="formatListTime"
+        :get-conversation-title="getConversationTitle"
+        :get-conversation-preview="getConversationPreview"
+        :get-direct-user="getDirectUser"
+        :typing-name-class="typingNameClass"
+        :conversation-unread-highlight-class="conversationUnreadHighlightClass"
+        :conversation-dot-class="conversationDotClass"
+        @select="selectConversation"
+        @set-tab="setTab"
+        @open-new="openNewDialog"
+        @open-blocks="openBlocksDialog"
+        @load-more="loadMoreConversations"
+      />
 
       <!-- Right column: chat for selected thread (edge-to-edge column, consistent content margins) -->
       <section v-if="showChatPane" class="h-full overflow-hidden">
@@ -186,13 +66,45 @@
                       }}
                     </div>
                     <div class="text-xs text-gray-500 dark:text-gray-400 truncate">
-                      {{
-                        selectedConversation
-                          ? getConversationSubtitle(selectedConversation)
-                          : isDraftChat
-                            ? (draftRecipients.length === 1 ? (draftRecipients[0]?.username ? `@${draftRecipients[0].username}` : 'New chat') : `${draftRecipients.length} recipients`)
-                            : 'Pick a conversation from the left.'
-                      }}
+                      <template v-if="selectedConversation?.type === 'group'">
+                        <span>{{ headerMemberCountLabel }}</span>
+                        <span v-if="headerMembers.length"> · </span>
+                        <template v-for="(member, index) in headerMembers" :key="member.id">
+                          <button
+                            type="button"
+                            class="font-semibold hover:underline cursor-pointer"
+                            :class="member.toneClass"
+                            :aria-label="member.username ? `View @${member.username}` : 'View profile'"
+                            @click="goToProfile(member.user)"
+                          >
+                            {{ member.label }}
+                          </button>
+                          <span v-if="index < headerMembers.length - 1">, </span>
+                        </template>
+                      </template>
+                      <template v-else-if="selectedConversation?.type === 'direct'">
+                        <button
+                          v-if="headerDirectUser?.username"
+                          type="button"
+                          class="font-semibold hover:underline cursor-pointer"
+                          :class="userToneClass(headerDirectUser)"
+                          :aria-label="`View @${headerDirectUser.username}`"
+                          @click="goToProfile(headerDirectUser)"
+                        >
+                          @{{ headerDirectUser.username }}
+                        </button>
+                        <span v-else>Chat</span>
+                      </template>
+                      <template v-else-if="isDraftChat">
+                        {{
+                          draftRecipients.length === 1
+                            ? (draftRecipients[0]?.username ? `@${draftRecipients[0].username}` : 'New chat')
+                            : `${draftRecipients.length} recipients`
+                        }}
+                      </template>
+                      <template v-else>
+                        Pick a conversation from the left.
+                      </template>
                     </div>
                   </div>
                 </div>
@@ -204,87 +116,42 @@
           </div>
 
           <div v-if="selectedChatKey" class="relative flex-1 min-h-0">
-            <div
-              ref="messagesScroller"
-              class="h-full overflow-y-auto py-4"
-              @scroll="onMessagesScroll"
-            >
-            <div v-show="messagesReady" class="w-full px-4">
-              <div v-if="messagesLoading" class="text-sm text-gray-500 dark:text-gray-400">Loading chat…</div>
-              <div v-else-if="messagesNextCursor" class="pb-2">
-                <Button label="Load older" text size="small" severity="secondary" :loading="loadingOlder" @click="loadOlderMessages" />
-              </div>
-              <div v-else-if="isDraftChat && messages.length === 0" class="py-6 text-sm text-gray-500 dark:text-gray-400">
-                Send your first chat to start the conversation.
-              </div>
-
+            <Transition name="moh-fade" mode="out-in" @before-enter="onMessagesScrollerBeforeEnter">
               <div
-                v-if="stickyDividerLabel"
-                class="sticky -top-4 z-10 -mx-4 flex items-center moh-bg moh-texture px-4 py-2 pointer-events-none"
-                style="position: sticky;"
+                v-if="renderedChatKey"
+                :key="renderedChatKey"
+                ref="messagesScroller"
+                class="h-full overflow-y-auto py-4"
+                @scroll="onMessagesScroll"
               >
-                <div class="flex-1 border-t border-gray-200 dark:border-zinc-800" />
-                <div class="mx-3 shrink-0 rounded-full bg-white px-2 text-[11px] font-semibold text-gray-500 shadow-sm dark:bg-zinc-900 dark:text-gray-400">
-                  {{ stickyDividerLabel }}
-                </div>
-                <div class="flex-1 border-t border-gray-200 dark:border-zinc-800" />
+                <ChatMessageList
+                  :messages-ready="messagesReady"
+                  :messages-loading="messagesLoading"
+                  :messages-next-cursor="messagesNextCursor"
+                  :loading-older="loadingOlder"
+                  :is-draft-chat="isDraftChat"
+                  :messages-count="messages.length"
+                  :messages-with-dividers="messagesWithDividers"
+                  :sticky-divider-label="stickyDividerLabel"
+                  :recent-animated-message-ids="recentAnimatedMessageIds"
+                  :animate-rows="animateMessageList"
+                  :is-group-chat="isGroupChat"
+                  :me-id="me?.id ?? null"
+                  :format-message-time="formatMessageTime"
+                  :format-message-time-full="formatMessageTimeFull"
+                  :bubble-shape-class="bubbleShapeClass"
+                  :bubble-class="bubbleClass"
+                  :register-divider-el="registerDividerEl"
+                  :register-bubble-el="registerBubbleEl"
+                  :should-show-incoming-avatar="shouldShowIncomingAvatar"
+                  :go-to-profile="goToProfile"
+                  @load-older="loadOlderMessages"
+                />
               </div>
-
-              <TransitionGroup name="moh-chat-list" tag="div" class="space-y-3">
-                <template v-for="item in messagesWithDividers" :key="item.key">
-                  <div
-                    v-if="item.type === 'divider'"
-                    :ref="(el) => registerDividerEl(item.dayKey, item.label, el)"
-                    class="relative -mx-4 flex items-center px-4 py-2"
-                  >
-                    <div class="flex-1 border-t border-gray-200 dark:border-zinc-800" />
-                    <div class="mx-3 shrink-0 rounded-full bg-white px-2 text-[11px] font-semibold text-gray-500 shadow-sm dark:bg-zinc-900 dark:text-gray-400">
-                      {{ item.label }}
-                    </div>
-                    <div class="flex-1 border-t border-gray-200 dark:border-zinc-800" />
-                  </div>
-                  <div
-                    v-else
-                    :class="[
-                      recentAnimatedMessageIds.has(item.message.id) ? 'moh-chat-item-enter' : '',
-                      'relative flex w-full',
-                      item.message.sender.id === me?.id ? 'justify-end' : 'justify-start',
-                      isGroupChat && item.message.sender.id !== me?.id ? 'pl-10' : ''
-                    ]"
-                  >
-                    <button
-                      v-if="shouldShowIncomingAvatar(item.message, item.index)"
-                      type="button"
-                      class="absolute left-0 bottom-0 translate-y-[-6px] rounded-full cursor-pointer transition-opacity hover:opacity-90"
-                      :aria-label="item.message.sender.username ? `View @${item.message.sender.username}` : 'View profile'"
-                      @click="goToProfile(item.message.sender)"
-                    >
-                      <AppUserAvatar :user="item.message.sender" size-class="h-7 w-7" />
-                    </button>
-                    <div
-                      :ref="(el) => registerBubbleEl(item.message.id, el)"
-                      :class="[
-                        'max-w-[85%] text-sm',
-                        bubbleShapeClass(item.message.id),
-                        bubbleClass(item.message)
-                      ]"
-                    >
-                      <div class="flex flex-wrap items-end gap-x-2 gap-y-1">
-                        <span class="min-w-0 flex-[1_1_auto] whitespace-pre-wrap break-words">{{ item.message.body }}</span>
-                        <time
-                          :datetime="item.message.createdAt"
-                          :title="formatMessageTimeFull(item.message.createdAt)"
-                          class="ml-auto shrink-0 text-xs opacity-75 whitespace-nowrap"
-                        >
-                          {{ formatMessageTime(item.message.createdAt) }}
-                        </time>
-                      </div>
-                    </div>
-                  </div>
-                </template>
-              </TransitionGroup>
-            </div>
-            </div>
+              <div v-else key="loading" class="h-full px-4 py-4 text-sm text-gray-500 dark:text-gray-400">
+                Loading chat…
+              </div>
+            </Transition>
             <Transition name="moh-fade">
               <button
                 v-if="pendingNewCount > 0"
@@ -460,6 +327,11 @@ import type {
   CreateMessageConversationResponse,
 } from '~/types/api'
 import { getApiErrorMessage } from '~/utils/api-error'
+import { useChatBubbleShape } from '~/composables/chat/useChatBubbleShape'
+import { useChatTimeFormatting } from '~/composables/chat/useChatTimeFormatting'
+import { useChatTyping } from '~/composables/chat/useChatTyping'
+import ChatConversationList from '~/components/app/chat/ChatConversationList.vue'
+import ChatMessageList from '~/components/app/chat/ChatMessageList.vue'
 
 const { apiFetch, apiFetchData } = useApiClient()
 const route = useRoute()
@@ -495,6 +367,7 @@ const selectedConversation = computed(() =>
 const isDraftChat = computed(() => selectedChatKey.value === 'draft')
 
 const messages = ref<Message[]>([])
+const { buildMessagesWithDividers, formatListTime, formatMessageTime, formatMessageTimeFull } = useChatTimeFormatting()
 const messagesWithDividers = computed(() => buildMessagesWithDividers(messages.value))
 const stickyDividerLabel = ref<string | null>(null)
 const messagesNextCursor = ref<string | null>(null)
@@ -514,6 +387,8 @@ const messagesScroller = ref<HTMLElement | null>(null)
 const messagesReady = ref(false)
 const pendingNewCount = ref(0)
 const pendingNewTier = ref<'premium' | 'verified' | 'normal'>('normal')
+const animateMessageList = ref(true)
+const renderedChatKey = ref<string | null>(null)
 
 // Track recently-added messages so we can animate them reliably (even if scroll-to-bottom happens same frame).
 const recentAnimatedMessageIds = ref<Set<string>>(new Set())
@@ -535,121 +410,23 @@ function markMessageAnimated(id: string) {
   }, 420))
 }
 
-// Bubble shape (pill for single-line, rounded rect for multi-line), measured from DOM.
-const bubbleShapeById = ref<Map<string, 'pill' | 'rect'>>(new Map())
-const bubbleEls = new Map<string, HTMLElement>()
-let bubbleRo: ResizeObserver | null = null
+const { bubbleShapeClass, registerBubbleEl } = useChatBubbleShape()
 
-function computeBubbleShapeFor(id: string, el: HTMLElement) {
-  const h = Math.max(0, Math.floor(el.getBoundingClientRect().height))
-  const current = bubbleShapeById.value.get(id) ?? 'rect'
-  // Heuristics based on current styles:
-  // - rect uses p-3 (12px top/bottom) + text-sm (~20px line height) => ~44px for 1 line
-  // - 2 lines => ~64px. Use hysteresis to avoid flip-flop near boundary.
-  const toPillThreshold = 46
-  const toRectThreshold = 54
-  const next =
-    current === 'pill'
-      ? (h > toRectThreshold ? 'rect' : 'pill')
-      : (h < toPillThreshold ? 'pill' : 'rect')
-  if (next === current) return
-  const m = new Map(bubbleShapeById.value)
-  m.set(id, next)
-  bubbleShapeById.value = m
-}
-
-function ensureBubbleObserver() {
-  if (!import.meta.client) return
-  if (bubbleRo) return
-  bubbleRo = new ResizeObserver((entries) => {
-    for (const entry of entries) {
-      const el = entry.target as HTMLElement
-      const id = el?.dataset?.mohBubbleId
-      if (!id) continue
-      computeBubbleShapeFor(id, el)
-    }
-  })
-}
-
-function registerBubbleEl(id: string, el: unknown) {
-  if (!import.meta.client) return
-  const mid = (id ?? '').trim()
-  if (!mid) return
-  ensureBubbleObserver()
-  const prev = bubbleEls.get(mid) ?? null
-  if (prev && bubbleRo) {
-    bubbleRo.unobserve(prev)
-  }
-  if (!el || !(el instanceof HTMLElement)) {
-    bubbleEls.delete(mid)
-    const m = new Map(bubbleShapeById.value)
-    m.delete(mid)
-    bubbleShapeById.value = m
-    return
-  }
-  const htmlEl = el
-  htmlEl.dataset.mohBubbleId = mid
-  bubbleEls.set(mid, htmlEl)
-  bubbleRo?.observe(htmlEl)
-  // Compute once immediately.
-  computeBubbleShapeFor(mid, htmlEl)
-}
-
-function bubbleShapeClass(id: string) {
-  const shape = bubbleShapeById.value.get(id) ?? 'rect'
-  // Pill should be a bit tighter vertically and more horizontal padding.
-  return shape === 'pill' ? 'rounded-full px-4 py-2' : 'rounded-2xl p-3'
-}
-
-// Remote typing indicator (per conversation).
-const typingByConversationId = ref<Map<string, Map<string, number>>>(new Map())
-const typingSweepTimer = ref<ReturnType<typeof setInterval> | null>(null)
-const TYPING_TTL_MS = 3500
-type TypingUserDisplay = {
-  userId: string
-  username: string
-  tier: 'premium' | 'verified' | 'normal'
-}
-
-function getTypingUsersForConversation(conversation: MessageConversation | null): TypingUserDisplay[] {
-  if (!conversation?.id) return []
-  const typingMap = typingByConversationId.value.get(conversation.id)
-  if (!typingMap) return []
-  const ids = [...typingMap.keys()].filter((id) => id && id !== me.value?.id)
-  if (!ids.length) return []
-
-  const result: TypingUserDisplay[] = []
-  for (const uid of ids) {
-    const p = conversation.participants?.find((pp) => pp.user?.id === uid)
-    const u = p?.user
-    const username = (u?.username ?? '').trim()
-    if (!username) continue
-    const tier: TypingUserDisplay['tier'] =
-      u?.premium ? 'premium' : u?.verifiedStatus && u.verifiedStatus !== 'none' ? 'verified' : 'normal'
-    result.push({ userId: uid, username, tier })
-  }
-  return result
-}
-
-const typingUsersAll = computed<TypingUserDisplay[]>(() => getTypingUsersForConversation(selectedConversation.value))
-
-const typingUsersTotalCount = computed(() => typingUsersAll.value.length)
-const typingUsersForDisplay = computed(() => typingUsersAll.value.slice(0, 2))
-const typingUsersByConversationId = computed<Record<string, TypingUserDisplay[]>>(() => {
-  const result: Record<string, TypingUserDisplay[]> = {}
-  const all = [...conversations.value.primary, ...conversations.value.requests]
-  for (const convo of all) {
-    const users = getTypingUsersForConversation(convo)
-    if (users.length) result[convo.id] = users
-  }
-  return result
+const {
+  resetTyping,
+  setRemoteTyping,
+  typingNameClass,
+  typingUsersByConversationId,
+  typingUsersForDisplay,
+  typingUsersTotalCount,
+} = useChatTyping({
+  me,
+  conversations,
+  selectedConversation,
+  selectedConversationId,
+  composerText,
+  emitMessagesTyping,
 })
-
-function typingNameClass(u: TypingUserDisplay): string {
-  if (u.tier === 'premium') return 'text-[var(--moh-premium)]'
-  if (u.tier === 'verified') return 'text-[var(--moh-verified)]'
-  return 'text-gray-700 dark:text-gray-200'
-}
 
 const newDialogVisible = ref(false)
 const recipientQuery = ref('')
@@ -705,6 +482,41 @@ const headerAvatarUser = computed(() => {
   return null
 })
 
+const headerDirectUser = computed(() => {
+  if (selectedConversation?.value?.type === 'direct') {
+    return getDirectUser(selectedConversation.value)
+  }
+  return null
+})
+
+function userToneClass(u: MessageUser | null | undefined): string {
+  if (u?.premium) return 'text-[var(--moh-premium)]'
+  if (u?.verifiedStatus && u.verifiedStatus !== 'none') return 'text-[var(--moh-verified)]'
+  return 'text-gray-700 dark:text-gray-200'
+}
+
+const headerMemberCountLabel = computed(() => {
+  if (selectedConversation.value?.type !== 'group') return ''
+  return `${selectedConversation.value.participants.length} members`
+})
+
+const headerMembers = computed(() => {
+  if (selectedConversation.value?.type !== 'group') return []
+  return selectedConversation.value.participants
+    .map((p) => p.user ?? null)
+    .filter((u): u is MessageUser => Boolean(u))
+    .map((u) => {
+    const label = u.name || u.username || 'User'
+    return {
+      id: u.id,
+      label,
+      username: u.username ?? '',
+      user: u,
+      toneClass: userToneClass(u),
+    }
+    })
+})
+
 const isGroupChat = computed(() => {
   if (selectedConversation.value?.type === 'group') {
     return (selectedConversation.value.participants?.length ?? 0) >= 3
@@ -740,6 +552,18 @@ function scrollToBottom(behavior: ScrollBehavior = 'auto') {
     if (prefersReduced) nextBehavior = 'auto'
   }
   el.scrollTo({ top: el.scrollHeight, behavior: nextBehavior })
+}
+
+function onMessagesScrollerBeforeEnter(el: Element) {
+  const scroller = el as HTMLElement
+  // Force instant jump regardless of any global scroll-behavior.
+  scroller.scrollTop = scroller.scrollHeight
+  requestAnimationFrame(() => {
+    scroller.scrollTop = scroller.scrollHeight
+    updateStickyDivider()
+    // Re-enable per-row animations after the container is mounted.
+    animateMessageList.value = true
+  })
 }
 
 function resetPendingNew() {
@@ -783,109 +607,6 @@ function shouldShowIncomingAvatar(message: Message, index: number) {
   return next.sender.id !== message.sender.id
 }
 
-function formatListTime(iso: string | null) {
-  if (!iso) return '—'
-  const date = new Date(iso)
-  if (Number.isNaN(date.getTime())) return '—'
-  const diffMs = Date.now() - date.getTime()
-  const diffMin = Math.floor(diffMs / 60000)
-  if (diffMin < 1) return 'now'
-  if (diffMin < 60) return `${diffMin}m`
-  const diffHr = Math.floor(diffMin / 60)
-  if (diffHr < 24) return `${diffHr}h`
-  const diffDay = Math.floor(diffHr / 24)
-  if (diffDay < 7) return `${diffDay}d`
-  return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
-}
-
-function formatMessageTime(iso: string) {
-  const date = new Date(iso)
-  if (Number.isNaN(date.getTime())) return ''
-  const now = new Date()
-  const diffMs = now.getTime() - date.getTime()
-  const diffMin = Math.floor(diffMs / 60000)
-  const diffHr = Math.floor(diffMin / 60)
-  const diffDay = Math.floor(diffHr / 24)
-
-  if (diffMin < 1) return 'Just now'
-  if (diffMin < 60) return `${diffMin}m`
-  if (date.getFullYear() === now.getFullYear() && date.getMonth() === now.getMonth() && date.getDate() === now.getDate()) {
-    return date.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
-  }
-  if (diffDay < 6) {
-    return date.toLocaleDateString(undefined, { weekday: 'short', hour: 'numeric', minute: '2-digit' })
-  }
-
-  const showYear = diffDay >= 364
-  return date.toLocaleDateString(undefined, {
-    month: 'short',
-    day: 'numeric',
-    year: showYear ? 'numeric' : undefined,
-    hour: 'numeric',
-    minute: '2-digit',
-  })
-}
-
-function formatMessageTimeFull(iso: string) {
-  const date = new Date(iso)
-  if (Number.isNaN(date.getTime())) return ''
-  return date.toLocaleString(undefined, {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  })
-}
-
-type ChatListDivider = { type: 'divider'; key: string; dayKey: string; label: string }
-type ChatListMessage = { type: 'message'; key: string; message: Message; index: number }
-type ChatListItem = ChatListDivider | ChatListMessage
-
-function getDayKey(iso: string) {
-  const date = new Date(iso)
-  if (Number.isNaN(date.getTime())) return 'unknown'
-  const y = date.getFullYear()
-  const m = `${date.getMonth() + 1}`.padStart(2, '0')
-  const d = `${date.getDate()}`.padStart(2, '0')
-  return `${y}-${m}-${d}`
-}
-
-function formatDayDividerLabel(iso: string) {
-  const date = new Date(iso)
-  if (Number.isNaN(date.getTime())) return 'Earlier'
-  const now = new Date()
-  const sameDay =
-    date.getFullYear() === now.getFullYear() &&
-    date.getMonth() === now.getMonth() &&
-    date.getDate() === now.getDate()
-  if (sameDay) return 'Today'
-  const yday = new Date(now)
-  yday.setDate(now.getDate() - 1)
-  const isYesterday =
-    date.getFullYear() === yday.getFullYear() &&
-    date.getMonth() === yday.getMonth() &&
-    date.getDate() === yday.getDate()
-  if (isYesterday) return 'Yesterday'
-  return date.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })
-}
-
-function buildMessagesWithDividers(list: Message[]) {
-  const output: ChatListItem[] = []
-  let lastDayKey: string | null = null
-  list.forEach((message, index) => {
-    const key = getDayKey(message.createdAt)
-    if (key !== lastDayKey) {
-      output.push({
-        type: 'divider',
-        key: `divider-${key}-${message.id}`,
-        dayKey: key,
-        label: formatDayDividerLabel(message.createdAt),
-      })
-      lastDayKey = key
-    }
-    output.push({ type: 'message', key: message.id, message, index })
-  })
-  return output
-}
-
 const dividerEls = new Map<string, { label: string; el: HTMLElement }>()
 
 function registerDividerEl(dayKey: string, label: string, el: unknown) {
@@ -922,15 +643,6 @@ function getConversationTitle(conversation: MessageConversation) {
   }
   const other = getDirectUser(conversation)
   return other?.name || other?.username || 'Chat'
-}
-
-function getConversationSubtitle(conversation: MessageConversation) {
-  if (conversation.type === 'group') {
-    const names = conversation.participants.map((p) => p.user.name || (p.user.username ? `@${p.user.username}` : 'User'))
-    return `${conversation.participants.length} members · ${names.join(', ')}`
-  }
-  const other = getDirectUser(conversation)
-  return other?.username ? `@${other.username}` : 'Chat'
 }
 
 function getConversationPreview(conversation: MessageConversation) {
@@ -1027,6 +739,8 @@ async function selectConversation(id: string, opts?: { replace?: boolean }) {
   // Leaving draft mode (if any)
   draftRecipients.value = []
   messagesReady.value = false
+  animateMessageList.value = false
+  renderedChatKey.value = null
   resetPendingNew()
   const replace = opts?.replace ?? false
   const currentC = typeof route.query.c === 'string' ? route.query.c : null
@@ -1036,7 +750,7 @@ async function selectConversation(id: string, opts?: { replace?: boolean }) {
     else await router.push({ query: nextQuery })
   }
   messagesLoading.value = true
-  typingByConversationId.value = new Map()
+  resetTyping()
   try {
     const res = await apiFetch<{ conversation: MessageConversation; messages: Message[] }>(
       `/messages/conversations/${id}`,
@@ -1048,8 +762,8 @@ async function selectConversation(id: string, opts?: { replace?: boolean }) {
     await apiFetch('/messages/conversations/' + id + '/mark-read', { method: 'POST' })
     updateConversationUnread(id, 0)
     messagesReady.value = true
-    await nextTick()
-    scrollToBottom('auto')
+    messagesLoading.value = false
+    renderedChatKey.value = id
   } finally {
     messagesLoading.value = false
     if (!messagesReady.value) messagesReady.value = true
@@ -1065,8 +779,10 @@ async function clearSelection(opts?: { replace?: boolean; preserveDraft?: boolea
   messages.value = []
   messagesNextCursor.value = null
   messagesReady.value = false
+  animateMessageList.value = false
+  renderedChatKey.value = null
   resetPendingNew()
-  typingByConversationId.value = new Map()
+  resetTyping()
   const replace = opts?.replace ?? false
   const q = { ...route.query } as Record<string, any>
   delete q.c
@@ -1211,79 +927,6 @@ async function sendCurrentMessage() {
   }
 }
 
-function sweepTypingTtl() {
-  const now = Date.now()
-  const m = typingByConversationId.value
-  if (!m.size) return
-  let changed = false
-  const next = new Map<string, Map<string, number>>()
-  for (const [convoId, inner] of m.entries()) {
-    const innerNext = new Map(inner)
-    let innerChanged = false
-    for (const [uid, exp] of innerNext.entries()) {
-      if (now > exp) {
-        innerNext.delete(uid)
-        innerChanged = true
-      }
-    }
-    if (innerNext.size > 0) {
-      next.set(convoId, innerNext)
-      if (innerChanged) changed = true
-    } else if (inner.size > 0) {
-      changed = true
-    }
-  }
-  if (changed) typingByConversationId.value = next
-}
-
-let typingStartTimer: ReturnType<typeof setTimeout> | null = null
-let typingStopTimer: ReturnType<typeof setTimeout> | null = null
-watch(
-  [composerText, selectedConversationId],
-  ([text, convoId], [prevText, prevConvoId]) => {
-    // Conversation switched: ensure we stop typing in the old one.
-    if (prevConvoId && prevConvoId !== convoId) {
-      if (typingStartTimer) clearTimeout(typingStartTimer)
-      if (typingStopTimer) clearTimeout(typingStopTimer)
-      typingStartTimer = null
-      typingStopTimer = null
-      try {
-        emitMessagesTyping(prevConvoId, false)
-      } catch {
-        // ignore
-      }
-      return
-    }
-    if (!convoId) return
-
-    const has = Boolean((text ?? '').trim().length > 0)
-    // If user cleared input, stop typing quickly.
-    if (!has) {
-      if (typingStartTimer) clearTimeout(typingStartTimer)
-      typingStartTimer = null
-      if (typingStopTimer) clearTimeout(typingStopTimer)
-      typingStopTimer = setTimeout(() => {
-        typingStopTimer = null
-        emitMessagesTyping(convoId, false)
-      }, 120)
-      return
-    }
-
-    // Debounced "typing: true" emit, then extend stop timer on every keystroke.
-    if (!typingStartTimer) {
-      typingStartTimer = setTimeout(() => {
-        typingStartTimer = null
-        emitMessagesTyping(convoId, true)
-      }, 220)
-    }
-    if (typingStopTimer) clearTimeout(typingStopTimer)
-    typingStopTimer = setTimeout(() => {
-      typingStopTimer = null
-      emitMessagesTyping(convoId, false)
-    }, 1600)
-  },
-)
-
 async function acceptSelectedConversation() {
   if (!selectedConversationId.value) return
   await apiFetch(`/messages/conversations/${selectedConversationId.value}/accept`, { method: 'POST' })
@@ -1366,8 +1009,8 @@ async function createConversation() {
     await clearSelection({ replace: true, preserveDraft: true })
     selectedChatKey.value = 'draft'
     messagesReady.value = true
-    await nextTick()
-    scrollToBottom('auto')
+    animateMessageList.value = false
+    renderedChatKey.value = 'draft'
   } catch (e) {
     newConversationError.value = getApiErrorMessage(e) || 'Failed to send message.'
   } finally {
@@ -1473,23 +1116,12 @@ const messageCallback = {
     if (!convoId || !userId) return
     if (route.path !== '/chat') return
     if (userId === me.value?.id) return
-    const now = Date.now()
-    const next = new Map(typingByConversationId.value)
-    const inner = new Map(next.get(convoId) ?? [])
-    if (payload?.typing === false) {
-      inner.delete(userId)
-    } else {
-      inner.set(userId, now + TYPING_TTL_MS)
-    }
-    if (inner.size > 0) next.set(convoId, inner)
-    else next.delete(convoId)
-    typingByConversationId.value = next
+    setRemoteTyping(convoId, userId, payload?.typing)
   },
 }
 
 onMounted(() => {
   addMessagesCallback(messageCallback)
-  typingSweepTimer.value = setInterval(sweepTypingTtl, 500)
   emitMessagesScreen(true)
   void fetchConversations('primary')
   if (selectedConversationId.value) {
@@ -1502,18 +1134,6 @@ onBeforeUnmount(() => {
   emitMessagesScreen(false)
   for (const t of recentAnimatedTimers.value.values()) clearTimeout(t)
   recentAnimatedTimers.value.clear()
-  if (bubbleRo) {
-    for (const el of bubbleEls.values()) bubbleRo.unobserve(el)
-    bubbleEls.clear()
-    bubbleRo.disconnect()
-    bubbleRo = null
-  }
-  if (typingSweepTimer.value) {
-    clearInterval(typingSweepTimer.value)
-    typingSweepTimer.value = null
-  }
-  if (typingStartTimer) clearTimeout(typingStartTimer)
-  if (typingStopTimer) clearTimeout(typingStopTimer)
 })
 
 watch(isSocketConnected, (connected) => {

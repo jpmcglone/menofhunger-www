@@ -52,7 +52,7 @@
           </NuxtLink>
         </div>
         <div class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-          {{ formatDate(row.createdAt) }}
+          {{ formatSearchDate(row.createdAt) }}
         </div>
       </div>
     </div>
@@ -71,6 +71,7 @@
 
 <script setup lang="ts">
 import { getApiErrorMessage } from '~/utils/api-error'
+import { formatDateTime } from '~/utils/time-format'
 
 definePageMeta({
   title: 'Search',
@@ -100,13 +101,8 @@ const error = ref<string | null>(null)
 const items = ref<AdminSearchItem[]>([])
 const nextCursor = ref<string | null>(null)
 
-function formatDate(iso: string) {
-  try {
-    const d = new Date(iso)
-    return d.toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' })
-  } catch {
-    return iso
-  }
+function formatSearchDate(iso: string) {
+  return formatDateTime(iso, { dateStyle: 'short', timeStyle: 'short', fallback: iso })
 }
 
 async function fetchPage(params: { cursor: string | null; append: boolean }) {
