@@ -54,7 +54,7 @@
     </p>
     <template #footer>
       <Button label="Cancel" text severity="secondary" @click="confirmVisible = false" />
-      <Button label="Log out" severity="danger" @click="confirmLogout" />
+      <Button label="Log out" icon="pi pi-sign-out" severity="danger" rounded @click="confirmLogout" />
     </template>
   </Dialog>
 </template>

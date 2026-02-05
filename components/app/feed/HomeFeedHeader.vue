@@ -1,22 +1,29 @@
 <template>
   <div class="sticky top-0 z-20 border-b moh-border moh-bg p-0">
     <div class="moh-feed-header-inner flex items-stretch justify-between gap-3 px-4 py-2">
-      <AppTabSelector
-        :model-value="scope"
-        aria-label="Feed scope"
-        :tabs="scopeTabs"
-        @update:model-value="$emit('update:scope', $event as 'following' | 'all')"
-      />
-      <AppFeedFiltersBar
-        :sort="sort"
-        :filter="filter"
-        :viewer-is-verified="viewerIsVerified"
-        :viewer-is-premium="viewerIsPremium"
-        :show-reset="showReset"
-        @update:sort="$emit('update:sort', $event)"
-        @update:filter="$emit('update:filter', $event)"
-        @reset="$emit('reset')"
-      />
+      <template v-if="scopeTabs.length > 1">
+        <AppTabSelector
+          :model-value="scope"
+          aria-label="Feed scope"
+          :tabs="scopeTabs"
+          @update:model-value="$emit('update:scope', $event as 'following' | 'all')"
+        />
+      </template>
+      <!-- Keep filters pinned to the far right even when scope tabs are hidden. -->
+      <div v-else class="flex-1" aria-hidden="true" />
+
+      <div class="ml-auto">
+        <AppFeedFiltersBar
+          :sort="sort"
+          :filter="filter"
+          :viewer-is-verified="viewerIsVerified"
+          :viewer-is-premium="viewerIsPremium"
+          :show-reset="showReset"
+          @update:sort="$emit('update:sort', $event)"
+          @update:filter="$emit('update:filter', $event)"
+          @reset="$emit('reset')"
+        />
+      </div>
     </div>
   </div>
 </template>

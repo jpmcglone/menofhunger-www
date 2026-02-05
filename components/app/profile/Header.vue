@@ -93,7 +93,7 @@
             @click="emit('edit')"
           />
           <AppFollowButton
-            v-else-if="profile?.id"
+            v-else-if="isAuthed && profile?.id"
             :user-id="profile.id"
             :username="profile.username"
             :initial-relationship="followRelationship"
@@ -176,6 +176,9 @@ const followingCount = computed(() => props.followingCount ?? null)
 const hideBannerThumb = computed(() => Boolean(props.hideBannerThumb))
 const hideAvatarThumb = computed(() => Boolean(props.hideAvatarThumb))
 const hideAvatarDuringBanner = computed(() => Boolean(props.hideAvatarDuringBanner))
+
+const { user: authUser } = useAuth()
+const isAuthed = computed(() => Boolean(authUser.value?.id))
 
 const { addInterest, removeInterest } = usePresence()
 const lastProfileId = ref<string | null>(null)

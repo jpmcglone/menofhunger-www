@@ -10,7 +10,7 @@
     "dev:clean": "npm run dev:kill && npm run dev",
     "generate": "nuxt generate",
     "loc": "node ./scripts/loc.mjs",
-    "preview": "nuxt preview",
+    "preview": "node .output/server/index.mjs",
     "postinstall": "nuxt prepare",
     "validate-api-types": "node scripts/validate-api-types.mjs"
   },

@@ -20,16 +20,30 @@ export function useHomeFeed() {
     maxAge: 60 * 60 * 24 * 365,
   })
 
-  const scopeTabs = computed(() => [
-    { key: 'all', label: 'All', disabled: false },
-    { key: 'following', label: 'Following', disabled: !isAuthed.value },
-  ])
+  const scopeTabs = computed(() => {
+    // When signed out, remove the Following toggle entirely.
+    if (!isAuthed.value) return [{ key: 'all', label: 'All', disabled: false }]
+    return [
+      { key: 'all', label: 'All', disabled: false },
+      { key: 'following', label: 'Following', disabled: false },
+    ]
+  })
 
   watch(
     feedScope,
     (v) => {
       if (v === 'following' || v === 'all') return
       feedScope.value = 'all'
+    },
+    { immediate: true },
+  )
+
+  watch(
+    isAuthed,
+    (authed) => {
+      if (authed) return
+      // If a signed-out user had the cookie set to following, force back to all so UI + state match.
+      if (feedScope.value === 'following') feedScope.value = 'all'
     },
     { immediate: true },
   )

@@ -7,6 +7,7 @@ export type AppNavItem = {
   /** Optional Iconify name for active state (filled/solid variant). */
   iconActive?: string
   requiresAuth?: boolean
+  requiresVerified?: boolean
   showInLeft?: boolean
   showInTabs?: boolean
 }
@@ -14,10 +15,12 @@ export type AppNavItem = {
 export function useAppNav() {
   const { user } = useAuth()
   const isAuthed = computed(() => Boolean(user.value?.id))
+  const isVerified = computed(() => (user.value?.verifiedStatus ?? 'none') !== 'none')
 
   const profileTo = computed(() => {
     const u = user.value?.username
-    return u ? `/u/${u.toLowerCase()}` : '/settings'
+    // Preserve capitalization in the profile path.
+    return u ? `/u/${encodeURIComponent(u)}` : '/settings'
   })
 
   const allItems = computed<AppNavItem[]>(() => [
@@ -25,9 +28,8 @@ export function useAppNav() {
     { key: 'explore', label: 'Explore', to: '/explore', icon: 'tabler:compass', iconActive: 'tabler:compass-filled', showInLeft: true, showInTabs: true },
 
     // Authed-only core items
-    // Public for now (prod wants it visible/usable even if logged out).
-    { key: 'notifications', label: 'Notifications', to: '/notifications', icon: 'tabler:bell', iconActive: 'tabler:bell-filled', showInLeft: true, showInTabs: true },
-    { key: 'messages', label: 'Chat', to: '/chat', icon: 'tabler:message-circle', iconActive: 'tabler:message-circle-filled', requiresAuth: true, showInLeft: true, showInTabs: true },
+    { key: 'notifications', label: 'Notifications', to: '/notifications', icon: 'tabler:bell', iconActive: 'tabler:bell-filled', requiresAuth: true, showInLeft: true, showInTabs: true },
+    { key: 'messages', label: 'Chat', to: '/chat', icon: 'tabler:message-circle', iconActive: 'tabler:message-circle-filled', requiresAuth: true, requiresVerified: true, showInLeft: true, showInTabs: true },
     { key: 'bookmarks', label: 'Bookmarks', to: '/bookmarks', icon: 'tabler:bookmark', iconActive: 'tabler:bookmark-filled', requiresAuth: true, showInLeft: true, showInTabs: false },
     { key: 'groups', label: 'Groups', to: '/groups', icon: 'heroicons-outline:user-group', iconActive: 'heroicons-solid:user-group', requiresAuth: true, showInLeft: true, showInTabs: false },
     // Keep these as the Heroicons pair (you preferred the filled/outline look here).
@@ -39,7 +41,11 @@ export function useAppNav() {
     { key: 'status', label: 'Status', to: '/status', icon: 'tabler:bolt', iconActive: 'tabler:bolt', showInLeft: false, showInTabs: false }
   ])
 
-  const visible = (item: AppNavItem) => !item.requiresAuth || isAuthed.value
+  const visible = (item: AppNavItem) => {
+    if (item.requiresAuth && !isAuthed.value) return false
+    if (item.requiresVerified && !isVerified.value) return false
+    return true
+  }
 
   const leftItems = computed(() => allItems.value.filter((i) => i.showInLeft && visible(i)))
   const tabItems = computed(() => allItems.value.filter((i) => i.showInTabs && visible(i)))

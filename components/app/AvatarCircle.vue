@@ -25,7 +25,7 @@
     </div>
     <!-- Presence: green (online), clock (idle), yellow (connecting); overlays bottom-right corner -->
     <span
-      v-if="presenceStatus === 'idle'"
+      v-if="effectivePresenceStatus === 'idle'"
       class="absolute flex items-center justify-center rounded-full border-2 border-white text-white dark:border-zinc-900 dark:text-gray-400"
       :style="idleDotStyle"
       aria-hidden="true"
@@ -52,9 +52,9 @@
       v-else
       :class="[
         'absolute rounded-full border-2 transition-opacity duration-200',
-        presenceStatus === 'online' ? 'border-white bg-green-500 dark:border-zinc-900 dark:bg-green-500' : '',
-        presenceStatus === 'connecting' ? 'border-white bg-yellow-500 dark:border-zinc-900 dark:bg-yellow-500' : '',
-        presenceStatus !== 'offline' ? '' : 'pointer-events-none'
+        effectivePresenceStatus === 'online' ? 'border-white bg-green-500 dark:border-zinc-900 dark:bg-green-500' : '',
+        effectivePresenceStatus === 'connecting' ? 'border-white bg-yellow-500 dark:border-zinc-900 dark:bg-yellow-500' : '',
+        effectivePresenceStatus !== 'offline' ? '' : 'pointer-events-none'
       ]"
       :style="presenceDotFullStyle"
     />
@@ -87,6 +87,16 @@ const props = withDefaults(
     presenceInsetRatio: 0.5,
   },
 )
+
+// Hydration safety: presence can change immediately on the client (socket connecting/online),
+// which causes SSR/client class/style mismatches. Keep SSR + initial hydration stable, then
+// apply live presence after mount.
+const hydrated = ref(false)
+onMounted(() => {
+  hydrated.value = true
+})
+
+const effectivePresenceStatus = computed(() => (hydrated.value ? props.presenceStatus : 'offline'))
 
 const wrapEl = ref<HTMLElement | null>(null)
 const diameterPx = ref<number>(40)
@@ -141,7 +151,7 @@ const presenceDotFullStyle = computed<Record<string, string | number>>(() => {
     height: `${size}px`,
     bottom: `${inset}px`,
     right: `${inset}px`,
-    opacity: props.presenceStatus !== 'offline' ? 1 : 0,
+    opacity: effectivePresenceStatus.value !== 'offline' ? 1 : 0,
   }
 })
 

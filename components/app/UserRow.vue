@@ -42,7 +42,11 @@ const props = defineProps<{
   showFollowButton?: boolean
 }>()
 
-const showFollowButton = computed(() => props.showFollowButton !== false)
+const { user: authUser } = useAuth()
+const isAuthed = computed(() => Boolean(authUser.value?.id))
+
+// When signed out, never show follow controls anywhere.
+const showFollowButton = computed(() => isAuthed.value && props.showFollowButton !== false)
 
 const displayName = computed(() => props.user.name || props.user.username || 'User')
 const handle = computed(() => (props.user.username ? `@${props.user.username}` : '@—'))

@@ -51,12 +51,14 @@ const props = withDefaults(
     placeholder?: string
     loading?: boolean
     disabled?: boolean
+    autoFocus?: boolean
   }>(),
   {
     placeholder: 'Type a chat…',
     loading: false,
     disabled: false,
     user: null,
+    autoFocus: false,
   },
 )
 
@@ -68,6 +70,10 @@ const emit = defineEmits<{
 const textareaEl = ref<HTMLTextAreaElement | null>(null)
 
 const hasText = computed(() => props.modelValue.trim().length > 0)
+
+function focus() {
+  textareaEl.value?.focus?.()
+}
 
 const userTier = computed<'premium' | 'verified' | 'normal'>(() => {
   const u = props.user
@@ -152,10 +158,15 @@ function emitSend() {
 
 onMounted(() => {
   nextTick(resizeTextarea)
+  if (props.autoFocus) {
+    nextTick(() => focus())
+  }
 })
 
 watch(
   () => props.modelValue,
   () => nextTick(resizeTextarea),
 )
+
+defineExpose({ focus })
 </script>

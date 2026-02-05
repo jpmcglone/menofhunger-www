@@ -228,8 +228,7 @@ async function createPostViaFeed(
         }, 800)
       }
     }
-    // Refetch feed so the new post is guaranteed to appear at the top (syncs server state).
-    void refresh()
+    // Do not hard-refresh the whole feed after posting; `addPost` already prepends.
   }
   return created?.id ? { id: created.id } : null
 }

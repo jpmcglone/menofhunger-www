@@ -197,6 +197,7 @@ import { interestOptions } from '~/config/interests'
 
 const { user, ensureLoaded } = useAuth()
 const { apiFetchData } = useApiClient()
+const route = useRoute()
 
 await ensureLoaded()
 
@@ -402,6 +403,14 @@ async function submit() {
       body: payload,
     })
     user.value = res.user ?? user.value
+
+    // Post-signup: once onboarding is complete, send them to their profile (preserve capitalization).
+    if (route.query.welcome === '1') {
+      const username = (user.value?.username ?? '').trim()
+      if (username) {
+        await navigateTo(`/u/${encodeURIComponent(username)}`)
+      }
+    }
   } catch (e: unknown) {
     error.value = getApiErrorMessage(e) || 'Failed to save. Please try again.'
   } finally {

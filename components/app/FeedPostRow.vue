@@ -36,10 +36,25 @@
       :key="item.id"
       :ref="item.id === highlightedPostId ? setHighlightedRef : undefined"
     >
+      <!-- For reply chains, show the collapsed replies row one row above the leaf reply. -->
+      <div
+        v-if="showCollapsedFooter && i === chain.length - 1"
+        class="px-4 pb-2 pt-1"
+      >
+        <div class="pl-[3.25rem]">
+          <NuxtLink
+            :to="`/p/${encodeURIComponent(directParentId!)}`"
+            class="inline-flex items-center gap-2 rounded-lg px-2 py-1 text-sm font-semibold text-gray-700 transition-colors moh-surface-hover dark:text-gray-200"
+          >
+            <i class="pi pi-comments text-[14px] opacity-70" aria-hidden="true" />
+            {{ collapsedRepliesLabel }}
+          </NuxtLink>
+        </div>
+      </div>
       <AppPostRow
         :post="item"
         :highlight="highlightedPostId === item.id"
-        :no-border-bottom="i < chain.length - 1 || (i === chain.length - 1 && showCollapsedFooter)"
+        :no-border-bottom="false"
         :no-padding-top="noPaddingTop || i > 0"
         :no-padding-bottom="i < chain.length - 1"
         :show-thread-line-above-avatar="i > 0"
@@ -49,20 +64,6 @@
         v-bind="$attrs"
         @deleted="$emit('deleted', $event)"
       />
-    </div>
-    <div
-      v-if="showCollapsedFooter"
-      class="border-b moh-border px-4 pb-3 pt-1"
-    >
-      <div class="pl-[3.25rem]">
-        <NuxtLink
-          :to="`/p/${encodeURIComponent(directParentId!)}`"
-          class="inline-flex items-center gap-2 rounded-lg px-2 py-1 text-sm font-semibold text-gray-700 transition-colors moh-surface-hover dark:text-gray-200"
-        >
-          <i class="pi pi-comments text-[14px] opacity-70" aria-hidden="true" />
-          {{ collapsedRepliesLabel }}
-        </NuxtLink>
-      </div>
     </div>
   </div>
 </template>

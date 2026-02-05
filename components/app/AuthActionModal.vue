@@ -12,7 +12,13 @@
 
     <template #footer>
       <Button label="Not now" severity="secondary" text @click="hide" />
-      <Button :label="primaryLabel" @click="onPrimary" />
+      <Button
+        :label="primaryLabel"
+        :icon="primaryIcon"
+        severity="secondary"
+        rounded
+        @click="onPrimary"
+      />
     </template>
   </Dialog>
 </template>
@@ -30,6 +36,7 @@ const title = computed(() => {
 const message = computed(() => {
   if (kind.value === 'login') {
     if (action.value === 'comment') return 'You need to log in to reply.'
+    if (action.value === 'bookmark') return 'You need to log in to save posts.'
     return 'You need to log in to boost posts.'
   }
   if (kind.value === 'verify') {
@@ -44,6 +51,13 @@ const primaryLabel = computed(() => {
   if (kind.value === 'verify') return 'Go to settings'
   if (kind.value === 'setUsername') return 'Go to settings'
   return 'Continue'
+})
+
+const primaryIcon = computed(() => {
+  if (kind.value === 'login') return 'pi pi-sign-in'
+  if (kind.value === 'verify') return 'pi pi-cog'
+  if (kind.value === 'setUsername') return 'pi pi-cog'
+  return undefined
 })
 
 async function onPrimary() {

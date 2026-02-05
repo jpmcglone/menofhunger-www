@@ -220,17 +220,37 @@
     <button
       v-else
       type="button"
-      class="w-full text-left rounded-xl border border-gray-200 bg-gray-50 px-4 py-4 hover:bg-gray-100 dark:border-zinc-800 dark:bg-zinc-950/40 dark:hover:bg-zinc-900/40"
+      class="w-full text-left rounded-2xl border px-5 py-5 shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-black/10
+             border-gray-200 bg-white hover:bg-gray-50
+             dark:border-white dark:bg-transparent dark:hover:bg-white/5 dark:focus:ring-white/20"
       @click="goLogin"
     >
-      <div class="flex items-center justify-between gap-3">
-        <div class="space-y-1">
-          <div class="font-semibold text-gray-900 dark:text-gray-50">Log in to post</div>
-          <div class="text-sm text-gray-600 dark:text-gray-300">
-            Join the conversation and share updates with the brotherhood.
+      <div class="flex items-center justify-between gap-4">
+        <div class="flex min-w-0 items-start gap-4">
+          <div
+            class="mt-0.5 inline-flex h-11 w-11 shrink-0 items-center justify-center text-gray-900 dark:text-white"
+            aria-hidden="true"
+          >
+            <i class="pi pi-sign-in text-[18px]" />
+          </div>
+          <div class="min-w-0 space-y-1">
+            <div class="text-[15px] font-semibold text-gray-900 dark:text-white">Log in to post</div>
+            <div class="text-sm text-gray-700 dark:text-white/80">
+              Join the conversation and share updates with the brotherhood.
+            </div>
           </div>
         </div>
-        <i class="pi pi-angle-right text-gray-500 dark:text-gray-400" aria-hidden="true" />
+
+        <!-- Visual CTA button (same click target as the card). -->
+        <div
+          class="shrink-0 inline-flex items-center rounded-xl px-5 py-2.5 text-sm font-bold tracking-tight
+                 shadow-sm ring-1 ring-black/5
+                 bg-gray-900 text-white
+                 dark:bg-white dark:text-black dark:ring-white/15"
+          aria-hidden="true"
+        >
+          <span>Log in</span>
+        </div>
       </div>
     </button>
   </div>

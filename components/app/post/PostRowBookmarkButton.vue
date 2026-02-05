@@ -117,6 +117,12 @@ const viewerCanInteract = computed(() => Boolean(props.viewerCanInteract))
 
 const { user } = useAuth()
 const isAuthed = computed(() => Boolean(user.value?.id))
+const viewerToastTone = computed(() => {
+  const u = user.value
+  if (u?.premium) return 'premiumOnly' as const
+  if ((u?.verifiedStatus ?? 'none') !== 'none') return 'verifiedOnly' as const
+  return 'public' as const
+})
 const { show: showAuthActionModal } = useAuthActionModal()
 const { apiFetchData } = useApiClient()
 const toast = useAppToast()
@@ -267,9 +273,21 @@ async function onClick(event: Event) {
   if (loading.value) return
   if (!viewerCanInteract.value) return
   if (!isAuthed.value) {
-    showAuthActionModal({ kind: 'login', action: 'boost' })
+    showAuthActionModal({ kind: 'login', action: 'bookmark' })
     return
   }
+
+  // First press: save instantly to Unorganized (no picker).
+  // Second press (already saved): open the picker to move/remove.
+  if (!hasBookmarked.value) {
+    await setBookmarkFolderIds([])
+    if (hasBookmarked.value) {
+      // Friendly feedback; the tooltip will also update to "Saved (no folder)".
+      toast.push({ title: 'Saved', message: 'Unorganized', tone: viewerToastTone.value, durationMs: 1400 })
+    }
+    return
+  }
+
   openPopover(event)
 }
 </script>

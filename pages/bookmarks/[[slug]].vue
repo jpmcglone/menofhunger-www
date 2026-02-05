@@ -12,6 +12,15 @@
           :unorganized-count="unorganizedCount"
           @new-folder="newFolderOpen = true"
         />
+        <Button
+          v-if="folder"
+          icon="pi pi-cog"
+          severity="secondary"
+          outlined
+          aria-label="Manage folder"
+          v-tooltip.bottom="'Manage folder'"
+          @click="openManageFolder"
+        />
       </div>
     </div>
 
@@ -66,6 +75,50 @@
         <Button label="Create" :loading="creatingFolder" :disabled="creatingFolder" @click="createFolder" />
       </template>
     </Dialog>
+
+    <Dialog
+      v-model:visible="manageFolderOpen"
+      modal
+      header="Manage folder"
+      :draggable="false"
+      class="w-[min(34rem,calc(100vw-2rem))]"
+    >
+      <div class="space-y-4">
+        <div class="space-y-2">
+          <div class="text-sm font-semibold moh-text">Rename</div>
+          <InputText v-model="manageFolderName" class="w-full" placeholder="Folder name" />
+        </div>
+
+        <div class="rounded-xl border border-red-200 bg-red-50 p-3 dark:border-red-900/40 dark:bg-red-950/25">
+          <div class="text-sm font-semibold text-red-800 dark:text-red-200">Delete folder</div>
+          <div class="mt-1 text-sm text-red-700 dark:text-red-300">
+            Saved posts in this folder will remain bookmarked, but will become unorganized.
+          </div>
+          <div class="mt-3 flex justify-end">
+            <Button
+              label="Delete folder"
+              icon="pi pi-trash"
+              severity="danger"
+              :loading="deletingFolder"
+              :disabled="deletingFolder"
+              @click="deleteFolder"
+            />
+          </div>
+        </div>
+      </div>
+
+      <template #footer>
+        <Button label="Cancel" severity="secondary" text :disabled="renamingFolder || deletingFolder" @click="manageFolderOpen = false" />
+        <Button
+          label="Save"
+          icon="pi pi-check"
+          severity="secondary"
+          :loading="renamingFolder"
+          :disabled="renamingFolder || deletingFolder || !manageFolderName.trim()"
+          @click="renameFolder"
+        />
+      </template>
+    </Dialog>
   </div>
 </template>
 
@@ -85,7 +138,14 @@ const activeSlug = computed(() => (slug.value ? slug.value : null))
 
 const toast = useAppToast()
 
-const { collections, unorganizedCount, ensureLoaded: ensureCollectionsLoaded, createCollection } = useBookmarkCollections()
+const {
+  collections,
+  unorganizedCount,
+  ensureLoaded: ensureCollectionsLoaded,
+  createCollection,
+  renameCollection,
+  deleteCollection,
+} = useBookmarkCollections()
 
 const folder = computed(() => {
   const s = slug.value
@@ -189,6 +249,17 @@ const newFolderOpen = ref(false)
 const newFolderName = ref('')
 const creatingFolder = ref(false)
 
+const manageFolderOpen = ref(false)
+const manageFolderName = ref('')
+const renamingFolder = ref(false)
+const deletingFolder = ref(false)
+
+function openManageFolder() {
+  if (!folder.value) return
+  manageFolderName.value = folder.value.name ?? ''
+  manageFolderOpen.value = true
+}
+
 async function createFolder() {
   const name = newFolderName.value.trim()
   if (!name) return
@@ -204,6 +275,47 @@ async function createFolder() {
     toast.push({ title: getApiErrorMessage(e) || 'Failed to create folder.', tone: 'error', durationMs: 2200 })
   } finally {
     creatingFolder.value = false
+  }
+}
+
+async function renameFolder() {
+  const f = folder.value
+  if (!f?.id) return
+  const name = manageFolderName.value.trim()
+  if (!name) return
+  if (renamingFolder.value) return
+  renamingFolder.value = true
+  try {
+    const updated = await renameCollection(f.id, name)
+    if (!updated?.id) throw new Error('Failed to rename folder.')
+    await ensureCollectionsLoaded({ force: true })
+    // If slug changed, move to the new route.
+    if (updated.slug && updated.slug !== slug.value) {
+      await navigateTo(`/bookmarks/${encodeURIComponent(updated.slug)}`)
+    }
+    manageFolderOpen.value = false
+  } catch (e: unknown) {
+    toast.push({ title: getApiErrorMessage(e) || 'Failed to rename folder.', tone: 'error', durationMs: 2200 })
+  } finally {
+    renamingFolder.value = false
+  }
+}
+
+async function deleteFolder() {
+  const f = folder.value
+  if (!f?.id) return
+  if (deletingFolder.value) return
+  deletingFolder.value = true
+  try {
+    const ok = await deleteCollection(f.id)
+    if (!ok) throw new Error('Failed to delete folder.')
+    await ensureCollectionsLoaded({ force: true })
+    manageFolderOpen.value = false
+    await navigateTo('/bookmarks')
+  } catch (e: unknown) {
+    toast.push({ title: getApiErrorMessage(e) || 'Failed to delete folder.', tone: 'error', durationMs: 2200 })
+  } finally {
+    deletingFolder.value = false
   }
 }
 

@@ -143,7 +143,7 @@
               <span class="relative flex h-12 w-12 shrink-0 items-center justify-center">
                 <ClientOnly v-if="item.key === 'bookmarks'">
                   <Icon
-                    :name="hasBookmarks ? 'tabler:bookmark-filled' : (isActiveNav(item.to) ? (item.iconActive || item.icon) : item.icon)"
+                    :name="hasBookmarks ? 'tabler:bookmark-filled' : 'tabler:bookmark'"
                     size="28"
                     class="opacity-90"
                     :style="hasBookmarks ? { color: 'var(--p-primary-color)' } : undefined"
@@ -210,12 +210,14 @@
             to="/login"
             aria-label="Log in"
             :class="[
+              // Match the Post button shape/style (rounded rect).
               'group flex h-12 items-center rounded-xl bg-black text-white hover:opacity-95 dark:bg-white dark:text-black',
-              'w-full mt-2'
+              navCompactMode ? 'w-12 mx-auto justify-center' : 'w-full',
+              'mt-2'
             ]"
           >
             <span class="flex h-12 w-12 shrink-0 items-center justify-center">
-              <Icon name="tabler:login" size="22" class="opacity-95" aria-hidden="true" />
+              <i class="pi pi-sign-in text-[22px] opacity-95" aria-hidden="true" />
             </span>
             <span v-if="!navCompactMode" class="hidden xl:inline text-base font-semibold">Log in</span>
           </NuxtLink>

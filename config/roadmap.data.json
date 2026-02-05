@@ -41,7 +41,8 @@
           "title": "Getting started & discovery",
           "items": [
             {
-              "text": "**Landing & onboarding** — Clear homepage and signup; smooth onboarding so you can post and follow in your first session."
+              "text": "**Landing & onboarding** — Clear homepage and signup; smooth onboarding so you can post and follow in your first session.",
+              "inProgress": true
             },
             {
               "text": "**Discover / non-empty feed** — When you have zero follows, a “Discover” or “For you” feed (trending or recent public posts) so your home feed is never empty."

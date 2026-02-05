@@ -3,15 +3,16 @@
     <div class="w-full flex flex-col items-center justify-center">
       <AppLogo
         :alt="siteConfig.name"
-        class="mb-0 rounded-lg"
+        :dark-src="landingLogoDark"
+        class="mb-0 rounded-none overflow-hidden dark:rounded-3xl"
         :width="400"
         :height="400"
       />
 
-      <p class="mt-0 text-2xl font-medium tracking-wider text-gray-500 dark:text-gray-500">
+      <p class="mt-0 text-2xl font-medium tracking-wider text-gray-500 dark:hidden">
         <span class="text-gray-800 dark:text-gray-200">Updates coming soon.</span>
       </p>
-      <p class="mt-2 text-lg font-light tracking-widest text-gray-400 dark:text-gray-600">
+      <p class="mt-2 text-lg font-light tracking-widest text-gray-400 dark:hidden">
         Stay tuned. Stay hungry.
       </p>
       <div class="mt-6 h-[1px] w-32 mx-auto bg-gradient-to-r from-transparent via-gray-400 dark:via-gray-600 to-transparent" />
@@ -136,6 +137,9 @@
 <script setup>
 import { siteConfig } from '~/config/site'
 import logoDark from '~/assets/images/logo-black-bg.png'
+
+const landingLogoDark =
+  'https://pub-f876bdbbcdbd49ee97057fe5ba8471e6.r2.dev/uploads/cmkq6cw1b00019rssnl1pm85t/images/8f011f19-54a9-44d0-aa70-df7c47efa2c0.png'
 
 definePageMeta({
   layout: 'empty'

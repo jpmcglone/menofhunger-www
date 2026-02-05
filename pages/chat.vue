@@ -1,6 +1,20 @@
 <template>
   <div class="flex min-h-0 flex-1 flex-col">
-    <div class="grid min-h-0 flex-1" :class="isTinyViewport ? 'grid-cols-1' : ''" :style="gridStyle">
+    <div v-if="!viewerIsVerified" class="flex min-h-0 flex-1 items-center justify-center px-4 py-12">
+      <div class="w-full max-w-md">
+        <div class="rounded-2xl border moh-border moh-bg p-5 shadow-sm">
+          <div class="text-lg font-semibold moh-text">Verify to use chat</div>
+          <div class="mt-1 text-sm moh-text-muted">
+            Chat is only available for verified members.
+          </div>
+          <div class="mt-4 flex items-center justify-end">
+            <Button label="View tiers" severity="secondary" @click="navigateTo('/tiers')" />
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div v-else class="grid min-h-0 flex-1" :class="isTinyViewport ? 'grid-cols-1' : ''" :style="gridStyle">
       <!-- Left column: thread list -->
       <ChatConversationList
         v-if="showListPane"
@@ -236,10 +250,12 @@
               </div>
             </div>
             <AppDmComposer
+              ref="dmComposerRef"
               v-model="composerText"
               :user="composerUser"
               placeholder="Type a chat…"
               :loading="sending"
+              auto-focus
               @send="sendCurrentMessage"
             />
           </div>
@@ -366,6 +382,7 @@ const { apiFetch, apiFetchData } = useApiClient()
 const route = useRoute()
 const router = useRouter()
 const { user: me } = useAuth()
+const viewerIsVerified = computed(() => (me.value?.verifiedStatus ?? 'none') !== 'none')
 const {
   addInterest,
   removeInterest,
@@ -414,6 +431,7 @@ const composerUser = computed(() =>
     : null,
 )
 const messagesScroller = ref<HTMLElement | null>(null)
+const dmComposerRef = ref<{ focus?: () => void } | null>(null)
 const messagesReady = ref(false)
 const pendingNewCount = ref(0)
 const pendingNewTier = ref<'premium' | 'verified' | 'normal'>('normal')
@@ -1381,6 +1399,7 @@ const messageCallback = {
 }
 
 onMounted(() => {
+  if (!viewerIsVerified.value) return
   addMessagesCallback(messageCallback)
   emitMessagesScreen(true)
   void fetchConversations('primary')
@@ -1397,6 +1416,7 @@ onBeforeUnmount(() => {
 })
 
 watch(isSocketConnected, (connected) => {
+  if (!viewerIsVerified.value) return
   if (connected && route.path === '/chat') emitMessagesScreen(true)
 })
 
@@ -1405,6 +1425,17 @@ watch(
   () => {
     syncSelectedFromRoute()
   },
+)
+
+watch(
+  () => selectedChatKey.value,
+  () => {
+    if (!import.meta.client) return
+    if (!viewerIsVerified.value) return
+    // Keep focus on the chat composer when switching threads.
+    void nextTick(() => dmComposerRef.value?.focus?.())
+  },
+  { flush: 'post' },
 )
 </script>
 

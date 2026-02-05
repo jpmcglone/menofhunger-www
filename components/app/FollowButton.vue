@@ -66,7 +66,10 @@ const userFollowsViewer = computed(() => Boolean(relationship.value?.userFollows
 const hovering = ref(false)
 const confirmOpen = ref(false)
 
-const showButton = computed(() => Boolean(props.username) && props.userId !== authUser.value?.id)
+// When signed out, never show follow controls anywhere.
+const showButton = computed(
+  () => isAuthed.value && Boolean(props.username) && props.userId !== authUser.value?.id
+)
 const username = computed(() => props.username || '')
 
 const buttonLabel = computed(() => {

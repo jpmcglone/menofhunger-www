@@ -63,10 +63,12 @@
             class="select-none object-contain will-change-transform"
             :style="imageStyle"
             controls
+            controlsList="nodownload"
             playsinline
             autoplay
             :muted="lightboxVideoMuted"
             @click.stop
+            @contextmenu.prevent
             @volumechange="onLightboxVideoVolumeChange"
             @transitionend="onTransitionEnd"
           />

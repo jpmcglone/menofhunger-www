@@ -18,10 +18,12 @@
         class="absolute inset-0 h-full w-full object-contain"
         :class="hideThumbs ? 'opacity-0 transition-opacity duration-150' : 'opacity-100'"
         controls
+        controlsList="nodownload"
         playsinline
         muted
         loop
         aria-label="Video"
+        @contextmenu.prevent
         @play="onSingleVideoPlay"
         @pause="onSingleVideoPause"
         @volumechange="onSingleVideoVolumeChange"

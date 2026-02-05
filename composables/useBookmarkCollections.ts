@@ -1,4 +1,10 @@
-import type { BookmarkCollection, CreateBookmarkCollectionResponse, ListBookmarkCollectionsResponse } from '~/types/api'
+import type {
+  BookmarkCollection,
+  CreateBookmarkCollectionResponse,
+  DeleteBookmarkCollectionResponse,
+  ListBookmarkCollectionsResponse,
+  RenameBookmarkCollectionResponse,
+} from '~/types/api'
 
 export function useBookmarkCollections() {
   const { apiFetchData } = useApiClient()
@@ -44,6 +50,35 @@ export function useBookmarkCollections() {
       loaded.value = true
     }
     return created ?? null
+  }
+
+  async function renameCollection(id: string, name: string) {
+    const cid = (id ?? '').trim()
+    if (!cid) return null
+    const res = await apiFetchData<RenameBookmarkCollectionResponse>(`/bookmarks/collections/${encodeURIComponent(cid)}`, {
+      method: 'PATCH',
+      body: { name },
+    })
+    const updated = res?.collection ?? null
+    if (updated?.id) {
+      collections.value = collections.value.map((c) => (c.id === updated.id ? updated : c))
+      loaded.value = true
+    }
+    return updated
+  }
+
+  async function deleteCollection(id: string) {
+    const cid = (id ?? '').trim()
+    if (!cid) return false
+    const res = await apiFetchData<DeleteBookmarkCollectionResponse>(`/bookmarks/collections/${encodeURIComponent(cid)}`, {
+      method: 'DELETE',
+    })
+    if (res?.success) {
+      collections.value = collections.value.filter((c) => c.id !== cid)
+      loaded.value = true
+      return true
+    }
+    return false
   }
 
   function bumpCounts(params: {
@@ -99,6 +134,18 @@ export function useBookmarkCollections() {
     }
   }
 
-  return { collections, totalCount, unorganizedCount, loaded, loading, nameById, ensureLoaded, createCollection, bumpCounts }
+  return {
+    collections,
+    totalCount,
+    unorganizedCount,
+    loaded,
+    loading,
+    nameById,
+    ensureLoaded,
+    createCollection,
+    renameCollection,
+    deleteCollection,
+    bumpCounts,
+  }
 }
 

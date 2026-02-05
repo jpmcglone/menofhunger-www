@@ -441,15 +441,30 @@ html.dark {
 /* Chat list enter/leave + FLIP move (Vue <TransitionGroup name="moh-chat-list">) */
 .moh-chat-list-enter-active,
 .moh-chat-list-leave-active {
-  transition: opacity 180ms ease, transform 180ms ease;
+  /* Avoid double-transform with `.moh-chat-item-enter` (new messages) and scroll-to-bottom. */
+  transition: opacity 180ms ease;
 }
 .moh-chat-list-enter-from,
 .moh-chat-list-leave-to {
   opacity: 0;
-  transform: translateY(6px);
+  transform: none;
 }
 .moh-chat-list-move {
   transition: transform 200ms ease;
+}
+
+/* Chat conversation list enter/leave + FLIP move (Vue <TransitionGroup name="moh-chat-row">) */
+.moh-chat-row-enter-active,
+.moh-chat-row-leave-active {
+  transition: opacity 180ms ease, transform 180ms ease;
+}
+.moh-chat-row-enter-from,
+.moh-chat-row-leave-to {
+  opacity: 0;
+  transform: translateY(6px);
+}
+.moh-chat-row-move {
+  transition: transform 220ms ease;
 }
 
 /* Extra reliability: explicitly animate newly-added chat rows. */
