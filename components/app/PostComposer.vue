@@ -317,7 +317,17 @@ function insertEmoji(emoji: string) {
       }
     })
   } else {
-    draft.value = value + e
+    const next = value + e
+    draft.value = next
+    void nextTick().then(() => {
+      el?.focus?.()
+      try {
+        const pos = next.length
+        el?.setSelectionRange?.(pos, pos)
+      } catch {
+        // ignore
+      }
+    })
   }
 }
 

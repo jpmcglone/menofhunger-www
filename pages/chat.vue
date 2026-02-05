@@ -66,7 +66,12 @@
           {{ activeTab === 'requests' ? 'No chat requests yet.' : 'No chats yet.' }}
         </div>
 
-        <div v-else class="divide-y divide-gray-200 dark:divide-zinc-800">
+        <TransitionGroup
+          v-else
+          name="moh-chat-row"
+          tag="div"
+          class="divide-y divide-gray-200 dark:divide-zinc-800"
+        >
           <button
             v-for="c in activeList"
             :key="c.id"
@@ -76,10 +81,11 @@
           >
             <div
               :class="[
-                'w-full px-4 py-3 transition-colors',
+                'moh-chat-row-surface w-full px-4 py-3 transition-colors',
                 selectedConversationId === c.id
                   ? 'bg-gray-50 dark:bg-zinc-900'
-                  : 'hover:bg-gray-50 dark:hover:bg-zinc-900'
+                  : 'hover:bg-gray-50 dark:hover:bg-zinc-900',
+                c.unreadCount > 0 ? conversationUnreadHighlightClass(c) : '',
               ]"
             >
               <div class="flex items-center gap-3">
@@ -126,15 +132,21 @@
                     </Transition>
                   </div>
                 </div>
-                <span v-if="c.unreadCount > 0" class="h-2 w-2 rounded-full bg-[var(--moh-verified)]" />
+                <Transition name="moh-dot">
+                  <span
+                    v-if="c.unreadCount > 0"
+                    class="moh-chat-row-dot h-2 w-2 rounded-full"
+                    :class="conversationDotClass(c)"
+                  />
+                </Transition>
               </div>
             </div>
           </button>
 
-          <div v-if="nextCursor" class="px-4 py-3">
+          <div v-if="nextCursor" key="load-more" class="px-4 py-3">
             <Button label="Load more" text size="small" severity="secondary" :loading="loadingMore" @click="loadMoreConversations" />
           </div>
-        </div>
+        </TransitionGroup>
       </section>
 
       <!-- Right column: chat for selected thread (edge-to-edge column, consistent content margins) -->
@@ -152,7 +164,15 @@
                   @click="clearSelection({ replace: true })"
                 />
                 <div class="flex items-center gap-3 min-w-0">
-                  <AppUserAvatar v-if="headerAvatarUser" :user="headerAvatarUser" size-class="h-10 w-10" />
+                  <button
+                    v-if="headerAvatarUser"
+                    type="button"
+                    class="rounded-full cursor-pointer transition-opacity hover:opacity-90"
+                    :aria-label="headerAvatarUser.username ? `View @${headerAvatarUser.username}` : 'View profile'"
+                    @click="goToProfile(headerAvatarUser)"
+                  >
+                    <AppUserAvatar :user="headerAvatarUser" size-class="h-10 w-10" />
+                  </button>
                   <div class="min-w-0">
                     <div class="font-semibold truncate">
                       {{
@@ -198,40 +218,70 @@
                 Send your first chat to start the conversation.
               </div>
 
+              <div
+                v-if="stickyDividerLabel"
+                class="sticky -top-4 z-10 -mx-4 flex items-center moh-bg moh-texture px-4 py-2 pointer-events-none"
+                style="position: sticky;"
+              >
+                <div class="flex-1 border-t border-gray-200 dark:border-zinc-800" />
+                <div class="mx-3 shrink-0 rounded-full bg-white px-2 text-[11px] font-semibold text-gray-500 shadow-sm dark:bg-zinc-900 dark:text-gray-400">
+                  {{ stickyDividerLabel }}
+                </div>
+                <div class="flex-1 border-t border-gray-200 dark:border-zinc-800" />
+              </div>
+
               <TransitionGroup name="moh-chat-list" tag="div" class="space-y-3">
-                <div
-                  v-for="(m, index) in messages"
-                  :key="m.id"
-                  :class="[
-                    recentAnimatedMessageIds.has(m.id) ? 'moh-chat-item-enter' : '',
-                    'relative flex w-full',
-                    m.sender.id === me?.id ? 'justify-end' : 'justify-start',
-                    isGroupChat && m.sender.id !== me?.id ? 'pl-10' : ''
-                  ]"
-                >
-                  <div v-if="shouldShowIncomingAvatar(m, index)" class="absolute left-0 bottom-0">
-                    <AppUserAvatar :user="m.sender" size-class="h-7 w-7" />
+                <template v-for="item in messagesWithDividers" :key="item.key">
+                  <div
+                    v-if="item.type === 'divider'"
+                    :ref="(el) => registerDividerEl(item.dayKey, item.label, el)"
+                    class="relative -mx-4 flex items-center px-4 py-2"
+                  >
+                    <div class="flex-1 border-t border-gray-200 dark:border-zinc-800" />
+                    <div class="mx-3 shrink-0 rounded-full bg-white px-2 text-[11px] font-semibold text-gray-500 shadow-sm dark:bg-zinc-900 dark:text-gray-400">
+                      {{ item.label }}
+                    </div>
+                    <div class="flex-1 border-t border-gray-200 dark:border-zinc-800" />
                   </div>
                   <div
-                    :ref="(el) => registerBubbleEl(m.id, el)"
+                    v-else
                     :class="[
-                      'max-w-[85%] text-sm',
-                      bubbleShapeClass(m.id),
-                      bubbleClass(m)
+                      recentAnimatedMessageIds.has(item.message.id) ? 'moh-chat-item-enter' : '',
+                      'relative flex w-full',
+                      item.message.sender.id === me?.id ? 'justify-end' : 'justify-start',
+                      isGroupChat && item.message.sender.id !== me?.id ? 'pl-10' : ''
                     ]"
                   >
-                    <div class="flex flex-wrap items-end gap-x-2 gap-y-1">
-                      <span class="min-w-0 flex-[1_1_auto] whitespace-pre-wrap break-words">{{ m.body }}</span>
-                      <time
-                        :datetime="m.createdAt"
-                        :title="formatMessageTimeFull(m.createdAt)"
-                        class="ml-auto shrink-0 text-xs opacity-75 whitespace-nowrap"
-                      >
-                        {{ formatMessageTime(m.createdAt) }}
-                      </time>
+                    <button
+                      v-if="shouldShowIncomingAvatar(item.message, item.index)"
+                      type="button"
+                      class="absolute left-0 bottom-0 translate-y-[-6px] rounded-full cursor-pointer transition-opacity hover:opacity-90"
+                      :aria-label="item.message.sender.username ? `View @${item.message.sender.username}` : 'View profile'"
+                      @click="goToProfile(item.message.sender)"
+                    >
+                      <AppUserAvatar :user="item.message.sender" size-class="h-7 w-7" />
+                    </button>
+                    <div
+                      :ref="(el) => registerBubbleEl(item.message.id, el)"
+                      :class="[
+                        'max-w-[85%] text-sm',
+                        bubbleShapeClass(item.message.id),
+                        bubbleClass(item.message)
+                      ]"
+                    >
+                      <div class="flex flex-wrap items-end gap-x-2 gap-y-1">
+                        <span class="min-w-0 flex-[1_1_auto] whitespace-pre-wrap break-words">{{ item.message.body }}</span>
+                        <time
+                          :datetime="item.message.createdAt"
+                          :title="formatMessageTimeFull(item.message.createdAt)"
+                          class="ml-auto shrink-0 text-xs opacity-75 whitespace-nowrap"
+                        >
+                          {{ formatMessageTime(item.message.createdAt) }}
+                        </time>
+                      </div>
                     </div>
                   </div>
-                </div>
+                </template>
               </TransitionGroup>
             </div>
             </div>
@@ -403,6 +453,7 @@ import type {
   GetMessagesResponse,
   LookupMessageConversationResponse,
   Message,
+  MessageUser,
   MessageBlockListItem,
   MessageConversation,
   SendMessageResponse,
@@ -444,6 +495,8 @@ const selectedConversation = computed(() =>
 const isDraftChat = computed(() => selectedChatKey.value === 'draft')
 
 const messages = ref<Message[]>([])
+const messagesWithDividers = computed(() => buildMessagesWithDividers(messages.value))
+const stickyDividerLabel = ref<string | null>(null)
 const messagesNextCursor = ref<string | null>(null)
 const messagesLoading = ref(false)
 const loadingOlder = ref(false)
@@ -681,7 +734,12 @@ function isAtBottom() {
 function scrollToBottom(behavior: ScrollBehavior = 'auto') {
   const el = messagesScroller.value
   if (!el) return
-  el.scrollTo({ top: el.scrollHeight, behavior })
+  let nextBehavior = behavior
+  if (behavior === 'smooth' && typeof window !== 'undefined') {
+    const prefersReduced = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches
+    if (prefersReduced) nextBehavior = 'auto'
+  }
+  el.scrollTo({ top: el.scrollHeight, behavior: nextBehavior })
 }
 
 function resetPendingNew() {
@@ -705,7 +763,12 @@ function maybeUpgradePendingTier(message: Message) {
 
 function onMessagesScroll() {
   if (isAtBottom()) resetPendingNew()
+  updateStickyDivider()
 }
+
+watch(messages, () => {
+  void nextTick().then(() => updateStickyDivider())
+})
 
 function onPendingButtonClick() {
   scrollToBottom('smooth')
@@ -746,19 +809,21 @@ function formatMessageTime(iso: string) {
 
   if (diffMin < 1) return 'Just now'
   if (diffMin < 60) return `${diffMin}m`
-  if (diffHr < 24 && date.getDate() === now.getDate()) {
+  if (date.getFullYear() === now.getFullYear() && date.getMonth() === now.getMonth() && date.getDate() === now.getDate()) {
     return date.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
   }
-  if (diffDay === 1) {
-    return `Yesterday ${date.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}`
-  }
-  if (diffDay < 7) {
+  if (diffDay < 6) {
     return date.toLocaleDateString(undefined, { weekday: 'short', hour: 'numeric', minute: '2-digit' })
   }
-  if (date.getFullYear() === now.getFullYear()) {
-    return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
-  }
-  return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
+
+  const showYear = diffDay >= 364
+  return date.toLocaleDateString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    year: showYear ? 'numeric' : undefined,
+    hour: 'numeric',
+    minute: '2-digit',
+  })
 }
 
 function formatMessageTimeFull(iso: string) {
@@ -768,6 +833,83 @@ function formatMessageTimeFull(iso: string) {
     dateStyle: 'medium',
     timeStyle: 'short',
   })
+}
+
+type ChatListDivider = { type: 'divider'; key: string; dayKey: string; label: string }
+type ChatListMessage = { type: 'message'; key: string; message: Message; index: number }
+type ChatListItem = ChatListDivider | ChatListMessage
+
+function getDayKey(iso: string) {
+  const date = new Date(iso)
+  if (Number.isNaN(date.getTime())) return 'unknown'
+  const y = date.getFullYear()
+  const m = `${date.getMonth() + 1}`.padStart(2, '0')
+  const d = `${date.getDate()}`.padStart(2, '0')
+  return `${y}-${m}-${d}`
+}
+
+function formatDayDividerLabel(iso: string) {
+  const date = new Date(iso)
+  if (Number.isNaN(date.getTime())) return 'Earlier'
+  const now = new Date()
+  const sameDay =
+    date.getFullYear() === now.getFullYear() &&
+    date.getMonth() === now.getMonth() &&
+    date.getDate() === now.getDate()
+  if (sameDay) return 'Today'
+  const yday = new Date(now)
+  yday.setDate(now.getDate() - 1)
+  const isYesterday =
+    date.getFullYear() === yday.getFullYear() &&
+    date.getMonth() === yday.getMonth() &&
+    date.getDate() === yday.getDate()
+  if (isYesterday) return 'Yesterday'
+  return date.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })
+}
+
+function buildMessagesWithDividers(list: Message[]) {
+  const output: ChatListItem[] = []
+  let lastDayKey: string | null = null
+  list.forEach((message, index) => {
+    const key = getDayKey(message.createdAt)
+    if (key !== lastDayKey) {
+      output.push({
+        type: 'divider',
+        key: `divider-${key}-${message.id}`,
+        dayKey: key,
+        label: formatDayDividerLabel(message.createdAt),
+      })
+      lastDayKey = key
+    }
+    output.push({ type: 'message', key: message.id, message, index })
+  })
+  return output
+}
+
+const dividerEls = new Map<string, { label: string; el: HTMLElement }>()
+
+function registerDividerEl(dayKey: string, label: string, el: unknown) {
+  if (!dayKey) return
+  if (!el || !(el instanceof HTMLElement)) {
+    dividerEls.delete(dayKey)
+    return
+  }
+  dividerEls.set(dayKey, { label, el })
+}
+
+function updateStickyDivider() {
+  if (!import.meta.client) return
+  const scroller = messagesScroller.value
+  if (!scroller) return
+  const target = scroller.scrollTop + 1
+  let active: { label: string; top: number } | null = null
+  for (const { label, el } of dividerEls.values()) {
+    const top = el.offsetTop
+    if (top <= target && (!active || top > active.top)) {
+      active = { label, top }
+    }
+  }
+  stickyDividerLabel.value = active?.label ?? null
 }
 
 function getDirectUser(conversation: MessageConversation) {
@@ -793,6 +935,39 @@ function getConversationSubtitle(conversation: MessageConversation) {
 
 function getConversationPreview(conversation: MessageConversation) {
   return conversation.lastMessage?.body || 'No chats yet.'
+}
+
+function goToProfile(user: MessageUser | null | undefined) {
+  const username = (user?.username ?? '').trim()
+  if (!username) return
+  void navigateTo(`/u/${username}`)
+}
+
+function getConversationLastMessageTier(conversation: MessageConversation): 'premium' | 'verified' | 'normal' {
+  const senderId = conversation.lastMessage?.senderId ?? null
+  if (!senderId) return 'normal'
+  const sender = conversation.participants.find((p) => p.user.id === senderId)?.user
+  if (sender?.premium) return 'premium'
+  if (sender?.verifiedStatus && sender.verifiedStatus !== 'none') return 'verified'
+  return 'normal'
+}
+
+function conversationDotClass(conversation: MessageConversation): string {
+  const tier = getConversationLastMessageTier(conversation)
+  if (tier === 'premium') return 'bg-[var(--moh-premium)]'
+  if (tier === 'verified') return 'bg-[var(--moh-verified)]'
+  return 'bg-gray-300 dark:bg-white'
+}
+
+function conversationUnreadHighlightClass(conversation: MessageConversation): string {
+  const tier = getConversationLastMessageTier(conversation)
+  if (tier === 'premium') {
+    return 'bg-[rgba(var(--moh-premium-rgb),0.06)] dark:bg-[rgba(var(--moh-premium-rgb),0.09)]'
+  }
+  if (tier === 'verified') {
+    return 'bg-[rgba(var(--moh-verified-rgb),0.06)] dark:bg-[rgba(var(--moh-verified-rgb),0.09)]'
+  }
+  return 'bg-gray-100/40 dark:bg-white/6'
 }
 
 function bubbleClass(m: Message) {
@@ -1278,10 +1453,9 @@ const messageCallback = {
       }
       if (shouldStick) {
         void nextTick().then(() => {
-          // Use auto to keep the list pinned (no repeated smooth animations).
-          scrollToBottom('auto')
+          scrollToBottom('smooth')
           // One more frame to handle any layout updates (e.g. typing row enter/leave).
-          requestAnimationFrame(() => scrollToBottom('auto'))
+          requestAnimationFrame(() => scrollToBottom('smooth'))
         })
       } else if (msg.sender.id !== me.value?.id) {
         pendingNewCount.value += 1
@@ -1353,4 +1527,28 @@ watch(
   },
 )
 </script>
+
+<style scoped>
+.moh-chat-row-surface {
+  transition: background-color 180ms ease, color 180ms ease;
+}
+
+.moh-chat-row-dot {
+  transition: opacity 180ms ease;
+}
+
+.moh-dot-enter-active,
+.moh-dot-leave-active {
+  transition: opacity 180ms ease;
+}
+
+.moh-dot-enter-from,
+.moh-dot-leave-to {
+  opacity: 0;
+}
+
+.moh-chat-row-move {
+  transition: transform 220ms ease;
+}
+</style>
 

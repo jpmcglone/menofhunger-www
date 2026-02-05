@@ -117,7 +117,17 @@ function insertEmoji(emoji: string) {
       }
     })
   } else {
-    emit('update:modelValue', value + e)
+    const next = value + e
+    emit('update:modelValue', next)
+    void nextTick().then(() => {
+      el?.focus?.()
+      try {
+        const pos = next.length
+        el?.setSelectionRange?.(pos, pos)
+      } catch {
+        // ignore
+      }
+    })
   }
 }
 
