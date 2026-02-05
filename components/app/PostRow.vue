@@ -490,11 +490,14 @@ const moreMenuItems = computed<MenuItem[]>(() => {
     items.push({ separator: true })
     const pinnedPostId = user.value?.pinnedPostId ?? null
     const isPinned = pinnedPostId === post.value.id
-    items.push({
-      label: isPinned ? 'Unpin from profile' : 'Pin to profile',
-      icon: isPinned ? 'pi pi-times' : 'pi pi-thumbtack',
-      command: () => (isPinned ? unpinFromProfile() : pinToProfile()),
-    })
+    const canPin = post.value.visibility !== 'onlyMe'
+    if (isPinned || canPin) {
+      items.push({
+        label: isPinned ? 'Unpin from profile' : 'Pin to profile',
+        icon: isPinned ? 'pi pi-times' : 'pi pi-thumbtack',
+        command: () => (isPinned ? unpinFromProfile() : pinToProfile()),
+      })
+    }
     items.push({
       label: 'Delete post',
       icon: 'pi pi-trash',
@@ -513,6 +516,10 @@ const deleteConfirmOpen = ref(false)
 const deleting = ref(false)
 
 async function pinToProfile() {
+  if (post.value.visibility === 'onlyMe') {
+    toast.push({ title: 'Only-me posts cannot be pinned', tone: 'error', durationMs: 2200 })
+    return
+  }
   try {
     await apiFetchData<{ pinnedPostId: string }>('/users/me/pinned-post', {
       method: 'PUT',
