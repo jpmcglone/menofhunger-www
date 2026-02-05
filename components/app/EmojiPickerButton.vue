@@ -1,7 +1,6 @@
 <template>
-  <div class="inline-flex">
+  <span ref="anchorWrapEl" class="inline-flex">
     <Button
-      ref="anchorEl"
       :icon="icon"
       text
       rounded
@@ -11,22 +10,23 @@
       v-tooltip.bottom="tinyTooltip(tooltip)"
       @click="toggle"
     />
-  </div>
+  </span>
 
   <Teleport to="body">
     <Transition name="moh-fade">
       <div
         v-if="open"
         ref="panelEl"
-        class="fixed z-[1100] w-[min(92vw,22rem)] rounded-xl border moh-border bg-white shadow-2xl dark:bg-zinc-950"
+        class="moh-emoji-popover fixed z-[1100] w-fit max-w-[92vw] border moh-border bg-white shadow-2xl dark:bg-zinc-950"
         :style="panelStyle"
         role="dialog"
         aria-label="Emoji picker"
+        :data-placement="panelPlacement"
       >
         <ClientOnly>
           <div class="moh-emoji-picker">
             <!-- emoji-picker-element web component -->
-            <emoji-picker @emoji-click="onEmojiClick" />
+            <emoji-picker class="moh-emoji-el" @emoji-click="onEmojiClick" />
           </div>
         </ClientOnly>
       </div>
@@ -57,9 +57,10 @@ const emit = defineEmits<{
 }>()
 
 const open = ref(false)
-const anchorEl = ref<HTMLElement | null>(null)
+const anchorWrapEl = ref<HTMLElement | null>(null)
 const panelEl = ref<HTMLElement | null>(null)
 const panelStyle = ref<Record<string, string>>({})
+const panelPlacement = ref<'top' | 'bottom'>('bottom')
 
 onMounted(async () => {
   // Registers the <emoji-picker> custom element on the client.
@@ -68,7 +69,7 @@ onMounted(async () => {
 
 function updatePanelPosition() {
   if (!import.meta.client) return
-  const anchor = anchorEl.value
+  const anchor = anchorWrapEl.value
   const panel = panelEl.value
   if (!anchor || !panel) return
 
@@ -77,10 +78,10 @@ function updatePanelPosition() {
   const vw = window.innerWidth || 0
   const vh = window.innerHeight || 0
 
-  // Prefer below-left, clamp to viewport.
   const panelW = panel.offsetWidth || 0
   const panelH = panel.offsetHeight || 0
 
+  // Prefer aligning panel's left with anchor's left, clamp to viewport.
   let left = Math.floor(r.left)
   left = Math.max(margin, Math.min(left, vw - margin - panelW))
 
@@ -88,12 +89,23 @@ function updatePanelPosition() {
   const belowTop = Math.floor(r.bottom + margin)
   const aboveTop = Math.floor(r.top - margin - panelH)
   let top = belowTop
+  let placement: 'top' | 'bottom' = 'bottom'
   if (belowTop + panelH > vh - margin && aboveTop >= margin) {
     top = aboveTop
+    placement = 'top'
   }
   top = Math.max(margin, Math.min(top, vh - margin - panelH))
 
-  panelStyle.value = { left: `${left}px`, top: `${top}px` }
+  // Caret should point at the center of the anchor.
+  const anchorCenterX = r.left + r.width / 2
+  const caretLeft = Math.max(14, Math.min(panelW - 14, Math.floor(anchorCenterX - left)))
+
+  panelPlacement.value = placement
+  panelStyle.value = {
+    left: `${left}px`,
+    top: `${top}px`,
+    '--moh-caret-left': `${caretLeft}px`,
+  }
 }
 
 function close() {
@@ -104,8 +116,8 @@ function toggle() {
   if (props.disabled) return
   open.value = !open.value
   if (open.value) {
-    // Wait for panel mount + measure.
-    requestAnimationFrame(() => {
+    // Wait for mount + measure.
+    void nextTick().then(() => {
       updatePanelPosition()
       requestAnimationFrame(() => updatePanelPosition())
     })
@@ -115,7 +127,7 @@ function toggle() {
 function onDocPointerDown(e: Event) {
   if (!open.value) return
   const t = e.target as Node | null
-  const anchor = anchorEl.value
+  const anchor = anchorWrapEl.value
   const panel = panelEl.value
   if (!t || !anchor || !panel) return
   if (panel.contains(t) || anchor.contains(t)) return
@@ -126,18 +138,20 @@ function onKeydown(e: KeyboardEvent) {
   if (e.key === 'Escape' && open.value) close()
 }
 
+const scrollOpts = { passive: true, capture: true } as const
+const pointerOpts = { capture: true } as const
 watch(open, (v) => {
   if (!import.meta.client) return
   if (v) {
     window.addEventListener('resize', updatePanelPosition, { passive: true })
-    window.addEventListener('scroll', updatePanelPosition, { passive: true, capture: true })
-    document.addEventListener('pointerdown', onDocPointerDown, { capture: true })
-    document.addEventListener('keydown', onKeydown, { capture: true })
+    window.addEventListener('scroll', updatePanelPosition, scrollOpts)
+    document.addEventListener('pointerdown', onDocPointerDown, pointerOpts)
+    document.addEventListener('keydown', onKeydown, pointerOpts)
   } else {
     window.removeEventListener('resize', updatePanelPosition)
-    window.removeEventListener('scroll', updatePanelPosition, true as any)
-    document.removeEventListener('pointerdown', onDocPointerDown, true as any)
-    document.removeEventListener('keydown', onKeydown, true as any)
+    window.removeEventListener('scroll', updatePanelPosition, scrollOpts)
+    document.removeEventListener('pointerdown', onDocPointerDown, pointerOpts)
+    document.removeEventListener('keydown', onKeydown, pointerOpts)
   }
 })
 
@@ -162,6 +176,39 @@ function onEmojiClick(e: unknown) {
   --input-font-color: var(--moh-text);
   --input-placeholder-color: var(--moh-text-muted);
   --outline-color: rgba(43, 123, 185, 0.35);
+}
+
+.moh-emoji-popover {
+  border-radius: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+.moh-emoji-el {
+  display: block;
+  width: 100%;
+  margin: 0;
+}
+
+.moh-emoji-popover::before {
+  content: '';
+  position: absolute;
+  left: var(--moh-caret-left, 20px);
+  width: 10px;
+  height: 10px;
+  transform: translateX(-50%) rotate(45deg);
+  background: inherit;
+  border-left: 1px solid var(--moh-border);
+  border-top: 1px solid var(--moh-border);
+}
+
+.moh-emoji-popover[data-placement='bottom']::before {
+  top: -6px;
+}
+
+.moh-emoji-popover[data-placement='top']::before {
+  bottom: -6px;
+  transform: translateX(-50%) rotate(225deg);
 }
 </style>
 

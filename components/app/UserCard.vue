@@ -93,8 +93,11 @@ const props = withDefaults(
 )
 
 const cardClass = computed(() => [
-  'group block w-full rounded-xl border border-gray-200 bg-gray-50/80 text-left transition-colors hover:bg-gray-100 dark:border-zinc-800 dark:bg-zinc-950/40 dark:hover:bg-zinc-900',
-  props.compact ? 'p-1' : 'p-1 xl:p-2'
+  props.compact
+    ? // Compact left rail: avatar only (no card chrome).
+      'group block w-full p-0 bg-transparent border-0 rounded-none text-left'
+    : 'group block w-full rounded-xl border border-gray-200 bg-gray-50/80 text-left transition-colors hover:bg-gray-100 dark:border-zinc-800 dark:bg-zinc-950/40 dark:hover:bg-zinc-900',
+  props.compact ? 'p-0' : 'p-1 xl:p-2'
 ])
 
 const { user } = useAuth()
