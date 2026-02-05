@@ -135,8 +135,31 @@ export default defineNuxtConfig({
     // SWR disabled: Nitro serves cached response before Nuxt cookie hooks run, causing
     // "Cannot append headers after they are sent" when useCookie writes Set-Cookie.
     '/': { ssr: true },
-    '/u/**': { ssr: true },
-    '/p/**': { ssr: true },
+    // Cache SSR HTML for anonymous visitors only. Logged-in SSR can be personalized (cookies forwarded to API),
+    // so bypass cache when `moh_session` cookie is present to avoid leaking viewer-specific state.
+    '/u/**': {
+      ssr: true,
+      cache: {
+        maxAge: 60,
+        // IMPORTANT: keep SWR off. Nuxt may write Set-Cookie during render; SWR revalidation runs after
+        // the cached response is sent and would trigger "Cannot append headers after they are sent".
+        swr: false,
+        // Avoid leaking viewer-specific SSR HTML by keying cache entries by Cookie.
+        // This effectively makes anonymous users share one cache entry (cookie often empty),
+        // while authenticated users get per-session cache keys.
+        varies: ['cookie'],
+      },
+    },
+    // Link preview + crawler hot path: cache SSR HTML for anonymous visitors (no session cookie).
+    '/p/**': {
+      ssr: true,
+      cache: {
+        maxAge: 60,
+        // IMPORTANT: keep SWR off (see note above).
+        swr: false,
+        varies: ['cookie'],
+      },
+    },
 
     // Static content: prerender for fast, cacheable, indexable HTML.
     '/terms': { prerender: true },

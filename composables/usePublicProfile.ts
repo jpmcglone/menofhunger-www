@@ -23,6 +23,11 @@ export async function usePublicProfile(normalizedUsername: Ref<string>) {
         `/users/${encodeURIComponent(normalizedUsername.value)}`,
         { method: 'GET' }
       )
+    },
+    {
+      watch: [normalizedUsername],
+      // Reuse SSR payload during hydration to avoid a duplicate client fetch.
+      getCachedData: (key, nuxtApp) => nuxtApp.payload.data[key] ?? nuxtApp.static.data[key],
     }
   )
 

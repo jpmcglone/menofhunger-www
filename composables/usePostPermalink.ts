@@ -15,7 +15,12 @@ export async function usePostPermalink(postId: Ref<string>) {
       if (!postId.value) throw new Error('Post not found.')
       return apiFetchData<GetPostData>(`/posts/${encodeURIComponent(postId.value)}`, { method: 'GET' })
     },
-    { watch: [postId], server: true }
+    {
+      watch: [postId],
+      server: true,
+      // Reuse SSR payload during hydration to avoid a duplicate client fetch.
+      getCachedData: (key, nuxtApp) => nuxtApp.payload.data[key] ?? nuxtApp.static.data[key],
+    }
   )
 
   const post = computed(() => data.value ?? null)

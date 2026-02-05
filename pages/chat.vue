@@ -14,7 +14,7 @@
       </div>
     </div>
 
-    <div v-else class="min-h-0 flex-1">
+    <div v-else class="flex min-h-0 flex-1 flex-col">
       <!-- Data-first: fetch before showing the chat screen to avoid UI jumps. -->
       <div v-if="!chatScreenReady" class="flex min-h-0 flex-1 items-center justify-center px-4 py-12">
         <AppLogoLoader />
