@@ -24,7 +24,7 @@ export function useAppNav() {
     // Authed-only core items
     // Public for now (prod wants it visible/usable even if logged out).
     { key: 'notifications', label: 'Notifications', to: '/notifications', icon: 'pi-bell', showInLeft: true, showInTabs: true },
-    { key: 'messages', label: 'Chat', to: '/messages', icon: 'pi-envelope', requiresAuth: true, showInLeft: true, showInTabs: true },
+    { key: 'messages', label: 'Chat', to: '/chat', icon: 'pi-envelope', requiresAuth: true, showInLeft: true, showInTabs: true },
     { key: 'bookmarks', label: 'Bookmarks', to: '/bookmarks', icon: 'pi-bookmark', requiresAuth: true, showInLeft: true, showInTabs: false },
     { key: 'groups', label: 'Groups', to: '/groups', icon: 'pi-users', requiresAuth: true, showInLeft: true, showInTabs: false },
     { key: 'only-me', label: 'Only me', to: '/only-me', icon: 'pi-eye-slash', requiresAuth: true, showInLeft: true, showInTabs: false },

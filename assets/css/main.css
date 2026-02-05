@@ -143,6 +143,40 @@ html.dark {
     background-color: var(--moh-frosted);
   }
 
+  .moh-typing-bar {
+    position: relative;
+    overflow: hidden;
+  }
+  .moh-typing-bar::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 1;
+    transition: opacity 200ms ease;
+    background-image: repeating-linear-gradient(
+      135deg,
+      rgba(0, 0, 0, 0.02) 0,
+      rgba(0, 0, 0, 0.02) 3px,
+      rgba(0, 0, 0, 0) 3px,
+      rgba(0, 0, 0, 0) 9px
+    );
+  }
+  html.dark .moh-typing-bar {
+  }
+  html.dark .moh-typing-bar::before {
+    background-image: repeating-linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.03) 0,
+      rgba(255, 255, 255, 0.03) 3px,
+      rgba(255, 255, 255, 0) 3px,
+      rgba(255, 255, 255, 0) 9px
+    );
+  }
+  .moh-typing-bar.moh-typing-bar--active::before {
+    opacity: 0;
+  }
+
   .moh-title {
     font-family: var(--moh-font-serif);
     letter-spacing: -0.01em;

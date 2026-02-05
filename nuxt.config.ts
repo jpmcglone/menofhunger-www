@@ -138,7 +138,7 @@ export default defineNuxtConfig({
     '/home': { ssr: false },
     '/explore': { ssr: false },
     '/notifications': { ssr: false },
-    '/messages': { ssr: false },
+    '/chat': { ssr: false },
     '/bookmarks': { ssr: false },
     '/bookmarks/**': { ssr: false },
     '/groups': { ssr: false },

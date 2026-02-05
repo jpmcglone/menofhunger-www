@@ -574,6 +574,11 @@ export function usePresence() {
     removeOnlineFeedCallback,
     addMessagesCallback,
     removeMessagesCallback,
+    emitMessagesScreen(active: boolean) {
+      const socket = socketRef.value
+      if (!socket?.connected) return
+      socket.emit('messages:screen', { active: Boolean(active) })
+    },
     emitMessagesTyping(conversationId: string, typing: boolean) {
       const socket = socketRef.value
       const id = (conversationId ?? '').trim()

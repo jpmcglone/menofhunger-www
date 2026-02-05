@@ -619,7 +619,7 @@ const { hideTopBar, navCompactMode, isRightRailForcedHidden, isRightRailSearchHi
 const isPostPage = computed(() => /^\/p\/[^/]+$/.test(route.path))
 const isBookmarksPage = computed(() => route.path === '/bookmarks' || route.path.startsWith('/bookmarks/'))
 const isNotificationsPage = computed(() => route.path === '/notifications')
-const isMessagesPage = computed(() => route.path === '/messages')
+const isMessagesPage = computed(() => route.path === '/chat')
 const isOnlyMePage = computed(() => route.path === '/only-me')
 
 // Post entrypoints (left-nav button + mobile FAB): only render on these routes.
@@ -788,7 +788,7 @@ const headerDescription = computed(() =>
 const routeHeaderDefaults = computed(() => {
   const p = route.path
   if (p === '/notifications') return { icon: 'pi-bell', description: 'Replies, follows, and updates from your network.' }
-  if (p === '/messages') return { icon: 'pi-envelope', description: 'Chat conversations and chat requests.' }
+  if (p === '/chat') return { icon: 'pi-envelope', description: 'Chat conversations and chat requests.' }
   if (p.startsWith('/bookmarks')) return { icon: 'pi-bookmark', description: 'Saved posts and folders.' }
   if (p === '/explore') return { icon: 'pi-search', description: 'Search and discover.' }
   if (p === '/groups') return { icon: 'pi-users', description: 'Brotherhood circles and challenges. Coming soon.' }

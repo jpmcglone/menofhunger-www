@@ -100,7 +100,30 @@
                     </div>
                   </div>
                   <div class="text-sm text-gray-600 dark:text-gray-300 truncate">
-                    {{ getConversationPreview(c) }}
+                    <Transition name="moh-fade" mode="out-in">
+                      <div v-if="typingUsersByConversationId[c.id]?.length" :key="`typing-${c.id}`" class="truncate">
+                        <template v-if="typingUsersByConversationId[c.id]?.length === 1">
+                          <span class="font-semibold" :class="typingNameClass(typingUsersByConversationId[c.id]![0]!)">
+                            @{{ typingUsersByConversationId[c.id]![0]!.username }}
+                          </span>
+                          <span class="ml-1">is typing…</span>
+                        </template>
+                        <template v-else>
+                          <span class="font-semibold" :class="typingNameClass(typingUsersByConversationId[c.id]![0]!)">
+                            @{{ typingUsersByConversationId[c.id]![0]!.username }}
+                          </span>
+                          <span class="mx-1">and</span>
+                          <span class="font-semibold" :class="typingNameClass(typingUsersByConversationId[c.id]![1]!)">
+                            @{{ typingUsersByConversationId[c.id]![1]!.username }}
+                          </span>
+                          <span v-if="typingUsersByConversationId[c.id]!.length > 2" class="ml-1">and others</span>
+                          <span class="ml-1">are typing…</span>
+                        </template>
+                      </div>
+                      <div v-else :key="`preview-${c.id}`" class="truncate">
+                        {{ getConversationPreview(c) }}
+                      </div>
+                    </Transition>
                   </div>
                 </div>
                 <span v-if="c.unreadCount > 0" class="h-2 w-2 rounded-full bg-[var(--moh-verified)]" />
@@ -235,32 +258,36 @@
               </div>
             </div>
             <!-- Typing bar: always present (blank when nobody is typing) -->
-            <div
-              class="mb-2.5 flex min-h-[28px] items-center rounded-lg border border-gray-200 px-3 py-1 text-sm leading-5 text-gray-500 dark:border-zinc-800 dark:text-gray-400"
-              role="status"
-              aria-live="polite"
-            >
-              <Transition name="moh-fade">
-                <div v-if="typingUsersTotalCount > 0" class="truncate">
-                  <template v-if="typingUsersTotalCount === 1">
-                    <span class="font-semibold" :class="typingNameClass(typingUsersForDisplay[0]!)">
-                      @{{ typingUsersForDisplay[0]!.username }}
-                    </span>
-                    <span class="ml-1">is typing…</span>
-                  </template>
-                  <template v-else>
-                    <span class="font-semibold" :class="typingNameClass(typingUsersForDisplay[0]!)">
-                      @{{ typingUsersForDisplay[0]!.username }}
-                    </span>
-                    <span class="mx-1">and</span>
-                    <span class="font-semibold" :class="typingNameClass(typingUsersForDisplay[1]!)">
-                      @{{ typingUsersForDisplay[1]!.username }}
-                    </span>
-                    <span v-if="typingUsersTotalCount > 2" class="ml-1">and others</span>
-                    <span class="ml-1">are typing…</span>
-                  </template>
-                </div>
-              </Transition>
+            <div class="mb-2.5 flex w-full items-center gap-2">
+              <div class="h-9 w-9 shrink-0" aria-hidden="true" />
+              <div
+                class="moh-typing-bar flex min-h-[28px] w-full items-center rounded-full border border-gray-200 px-3 py-1 text-sm leading-5 text-gray-500 dark:border-zinc-800 dark:text-gray-400"
+                :class="typingUsersTotalCount > 0 ? 'moh-typing-bar--active' : ''"
+                role="status"
+                aria-live="polite"
+              >
+                <Transition name="moh-fade">
+                  <div v-if="typingUsersTotalCount > 0" class="truncate">
+                    <template v-if="typingUsersTotalCount === 1">
+                      <span class="font-semibold" :class="typingNameClass(typingUsersForDisplay[0]!)">
+                        @{{ typingUsersForDisplay[0]!.username }}
+                      </span>
+                      <span class="ml-1">is typing…</span>
+                    </template>
+                    <template v-else>
+                      <span class="font-semibold" :class="typingNameClass(typingUsersForDisplay[0]!)">
+                        @{{ typingUsersForDisplay[0]!.username }}
+                      </span>
+                      <span class="mx-1">and</span>
+                      <span class="font-semibold" :class="typingNameClass(typingUsersForDisplay[1]!)">
+                        @{{ typingUsersForDisplay[1]!.username }}
+                      </span>
+                      <span v-if="typingUsersTotalCount > 2" class="ml-1">and others</span>
+                      <span class="ml-1">are typing…</span>
+                    </template>
+                  </div>
+                </Transition>
+              </div>
             </div>
             <AppDmComposer
               v-model="composerText"
@@ -364,7 +391,7 @@ definePageMeta({
 usePageSeo({
   title: 'Chat',
   description: 'Chat in Men of Hunger — keep conversations focused and intentional.',
-  canonicalPath: '/messages',
+  canonicalPath: '/chat',
   noindex: true,
 })
 
@@ -387,7 +414,15 @@ const { apiFetch, apiFetchData } = useApiClient()
 const route = useRoute()
 const router = useRouter()
 const { user: me } = useAuth()
-const { addInterest, removeInterest, addMessagesCallback, removeMessagesCallback, emitMessagesTyping } = usePresence()
+const {
+  addInterest,
+  removeInterest,
+  addMessagesCallback,
+  removeMessagesCallback,
+  emitMessagesTyping,
+  emitMessagesScreen,
+  isSocketConnected,
+} = usePresence()
 const { showRequests, displayRequests, toneClass } = useMessagesBadge()
 
 const activeTab = ref<'primary' | 'requests'>('primary')
@@ -513,8 +548,8 @@ function bubbleShapeClass(id: string) {
   return shape === 'pill' ? 'rounded-full px-4 py-2' : 'rounded-2xl p-3'
 }
 
-// Remote typing indicator (per selected conversation).
-const typingByUserId = ref<Map<string, number>>(new Map())
+// Remote typing indicator (per conversation).
+const typingByConversationId = ref<Map<string, Map<string, number>>>(new Map())
 const typingSweepTimer = ref<ReturnType<typeof setInterval> | null>(null)
 const TYPING_TTL_MS = 3500
 type TypingUserDisplay = {
@@ -523,15 +558,16 @@ type TypingUserDisplay = {
   tier: 'premium' | 'verified' | 'normal'
 }
 
-const typingUsersAll = computed<TypingUserDisplay[]>(() => {
-  if (!selectedConversationId.value) return []
-  const ids = [...typingByUserId.value.keys()].filter((id) => id && id !== me.value?.id)
+function getTypingUsersForConversation(conversation: MessageConversation | null): TypingUserDisplay[] {
+  if (!conversation?.id) return []
+  const typingMap = typingByConversationId.value.get(conversation.id)
+  if (!typingMap) return []
+  const ids = [...typingMap.keys()].filter((id) => id && id !== me.value?.id)
   if (!ids.length) return []
 
-  const convo = selectedConversation.value
   const result: TypingUserDisplay[] = []
   for (const uid of ids) {
-    const p = convo?.participants?.find((pp) => pp.user?.id === uid)
+    const p = conversation.participants?.find((pp) => pp.user?.id === uid)
     const u = p?.user
     const username = (u?.username ?? '').trim()
     if (!username) continue
@@ -540,10 +576,21 @@ const typingUsersAll = computed<TypingUserDisplay[]>(() => {
     result.push({ userId: uid, username, tier })
   }
   return result
-})
+}
+
+const typingUsersAll = computed<TypingUserDisplay[]>(() => getTypingUsersForConversation(selectedConversation.value))
 
 const typingUsersTotalCount = computed(() => typingUsersAll.value.length)
 const typingUsersForDisplay = computed(() => typingUsersAll.value.slice(0, 2))
+const typingUsersByConversationId = computed<Record<string, TypingUserDisplay[]>>(() => {
+  const result: Record<string, TypingUserDisplay[]> = {}
+  const all = [...conversations.value.primary, ...conversations.value.requests]
+  for (const convo of all) {
+    const users = getTypingUsersForConversation(convo)
+    if (users.length) result[convo.id] = users
+  }
+  return result
+})
 
 function typingNameClass(u: TypingUserDisplay): string {
   if (u.tier === 'premium') return 'text-[var(--moh-premium)]'
@@ -586,9 +633,9 @@ const pendingNewLabel = computed(() => {
 })
 
 const { isTinyViewport, showListPane, showDetailPane: showChatPane, gridStyle } = useTwoPaneLayout(selectedChatKey, {
-  // Keep list pane <= 1/3 of chat pane (1:3 ratio) on wide screens.
-  leftCols: '1fr',
-  rightCols: '3fr',
+  // Keep list pane thinner than chat, but not overly narrow.
+  leftCols: '1.5fr',
+  rightCols: '2.5fr',
   minWidth: 1024,
   // Messages should not collapse panes due to short viewport height.
   // Only collapse when the viewport is actually narrow.
@@ -814,7 +861,7 @@ async function selectConversation(id: string, opts?: { replace?: boolean }) {
     else await router.push({ query: nextQuery })
   }
   messagesLoading.value = true
-  typingByUserId.value = new Map()
+  typingByConversationId.value = new Map()
   try {
     const res = await apiFetch<{ conversation: MessageConversation; messages: Message[] }>(
       `/messages/conversations/${id}`,
@@ -844,7 +891,7 @@ async function clearSelection(opts?: { replace?: boolean; preserveDraft?: boolea
   messagesNextCursor.value = null
   messagesReady.value = false
   resetPendingNew()
-  typingByUserId.value = new Map()
+  typingByConversationId.value = new Map()
   const replace = opts?.replace ?? false
   const q = { ...route.query } as Record<string, any>
   delete q.c
@@ -991,17 +1038,27 @@ async function sendCurrentMessage() {
 
 function sweepTypingTtl() {
   const now = Date.now()
-  const m = typingByUserId.value
+  const m = typingByConversationId.value
   if (!m.size) return
   let changed = false
-  const next = new Map(m)
-  for (const [uid, exp] of next.entries()) {
-    if (now > exp) {
-      next.delete(uid)
+  const next = new Map<string, Map<string, number>>()
+  for (const [convoId, inner] of m.entries()) {
+    const innerNext = new Map(inner)
+    let innerChanged = false
+    for (const [uid, exp] of innerNext.entries()) {
+      if (now > exp) {
+        innerNext.delete(uid)
+        innerChanged = true
+      }
+    }
+    if (innerNext.size > 0) {
+      next.set(convoId, innerNext)
+      if (innerChanged) changed = true
+    } else if (inner.size > 0) {
       changed = true
     }
   }
-  if (changed) typingByUserId.value = next
+  if (changed) typingByConversationId.value = next
 }
 
 let typingStartTimer: ReturnType<typeof setTimeout> | null = null
@@ -1240,22 +1297,26 @@ const messageCallback = {
     const convoId = payload?.conversationId ?? null
     const userId = payload?.userId ?? null
     if (!convoId || !userId) return
-    if (!selectedConversationId.value || convoId !== selectedConversationId.value) return
+    if (route.path !== '/chat') return
     if (userId === me.value?.id) return
     const now = Date.now()
-    const next = new Map(typingByUserId.value)
+    const next = new Map(typingByConversationId.value)
+    const inner = new Map(next.get(convoId) ?? [])
     if (payload?.typing === false) {
-      next.delete(userId)
+      inner.delete(userId)
     } else {
-      next.set(userId, now + TYPING_TTL_MS)
+      inner.set(userId, now + TYPING_TTL_MS)
     }
-    typingByUserId.value = next
+    if (inner.size > 0) next.set(convoId, inner)
+    else next.delete(convoId)
+    typingByConversationId.value = next
   },
 }
 
 onMounted(() => {
   addMessagesCallback(messageCallback)
   typingSweepTimer.value = setInterval(sweepTypingTtl, 500)
+  emitMessagesScreen(true)
   void fetchConversations('primary')
   if (selectedConversationId.value) {
     void selectConversation(selectedConversationId.value, { replace: true })
@@ -1264,6 +1325,7 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   removeMessagesCallback(messageCallback)
+  emitMessagesScreen(false)
   for (const t of recentAnimatedTimers.value.values()) clearTimeout(t)
   recentAnimatedTimers.value.clear()
   if (bubbleRo) {
@@ -1278,6 +1340,10 @@ onBeforeUnmount(() => {
   }
   if (typingStartTimer) clearTimeout(typingStartTimer)
   if (typingStopTimer) clearTimeout(typingStopTimer)
+})
+
+watch(isSocketConnected, (connected) => {
+  if (connected && route.path === '/chat') emitMessagesScreen(true)
 })
 
 watch(
