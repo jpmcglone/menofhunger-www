@@ -63,7 +63,9 @@
                     class="mt-0.5 h-1 w-1 shrink-0 rounded-full"
                     :class="item.done
                       ? 'bg-emerald-500'
-                      : (phase.isHighlight ? 'bg-[var(--moh-premium)]' : 'border-2 border-gray-400 bg-transparent dark:border-zinc-500')"
+                      : item.inProgress
+                        ? 'bg-amber-500'
+                        : (phase.isHighlight ? 'bg-[var(--moh-premium)]' : 'border-2 border-gray-400 bg-transparent dark:border-zinc-500')"
                     aria-hidden="true"
                   />
                   <span
@@ -72,7 +74,13 @@
                     v-html="formatItem(item)"
                   />
                   <span
-                    v-if="item.done"
+                    v-if="item.inProgress"
+                    class="inline-flex shrink-0 self-start items-center rounded-full border border-amber-400/40 bg-amber-500/10 px-2 py-0.5 text-[11px] font-semibold leading-none text-amber-600 dark:border-amber-400/30 dark:text-amber-400"
+                  >
+                    In progress
+                  </span>
+                  <span
+                    v-else-if="item.done"
                     class="inline-flex shrink-0 self-start items-center rounded-full border border-emerald-400/40 bg-emerald-500/10 px-2 py-0.5 text-[11px] font-semibold leading-none text-emerald-600 dark:border-emerald-400/30 dark:text-emerald-300"
                   >
                     Done
@@ -114,7 +122,8 @@
                   class="flex gap-3"
                 >
                   <span
-                    class="mt-0.5 h-1 w-1 shrink-0 rounded-full border border-gray-300 bg-transparent dark:border-zinc-600"
+                    class="mt-0.5 h-1 w-1 shrink-0 rounded-full"
+                    :class="item.done ? 'bg-emerald-500' : item.inProgress ? 'bg-amber-500' : 'border border-gray-300 bg-transparent dark:border-zinc-600'"
                     aria-hidden="true"
                   />
                   <span
@@ -123,7 +132,13 @@
                     v-html="formatItem(item)"
                   />
                   <span
-                    v-if="item.done"
+                    v-if="item.inProgress"
+                    class="inline-flex shrink-0 self-start items-center rounded-full border border-amber-400/40 bg-amber-500/10 px-2 py-0.5 text-[11px] font-semibold leading-none text-amber-600 dark:border-amber-400/30 dark:text-amber-400"
+                  >
+                    In progress
+                  </span>
+                  <span
+                    v-else-if="item.done"
                     class="inline-flex shrink-0 self-start items-center rounded-full border border-emerald-400/40 bg-emerald-500/10 px-2 py-0.5 text-[11px] font-semibold leading-none text-emerald-600 dark:border-emerald-400/30 dark:text-emerald-300"
                   >
                     Done

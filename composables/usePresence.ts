@@ -11,6 +11,7 @@ const PRESENCE_DISCONNECTED_DUE_TO_IDLE_KEY = 'presence-disconnected-due-to-idle
 const PRESENCE_SOCKET_CONNECTED_KEY = 'presence-socket-connected'
 const PRESENCE_SOCKET_CONNECTING_KEY = 'presence-socket-connecting'
 const NOTIFICATIONS_UNDELIVERED_COUNT_KEY = 'notifications-undelivered-count'
+const MESSAGES_UNREAD_COUNTS_KEY = 'messages-unread-counts'
 const NOTIFICATION_SOUND_PATH = '/sounds/notification.mp3'
 /** Min ms between plays so we don't ding repeatedly (e.g. multiple sockets on mobile or burst of events). */
 const NOTIFICATION_SOUND_COOLDOWN_MS = 3000
@@ -23,6 +24,10 @@ export type OnlineFeedCallback = {
   onOnline?: (payload: PresenceOnlinePayload) => void
   onOffline?: (payload: PresenceOfflinePayload) => void
   onSnapshot?: (payload: PresenceOnlineFeedSnapshotPayload) => void
+}
+
+export type MessagesCallback = {
+  onMessage?: (payload: { conversationId?: string; message?: unknown }) => void
 }
 
 function apiBaseUrlToWsUrl(apiBaseUrl: string): string {
@@ -42,9 +47,14 @@ export function usePresence() {
   const socketRef = useState<Socket | null>(PRESENCE_SOCKET_KEY, () => null)
   const interestRefs = useState<Map<string, number>>(PRESENCE_INTEREST_KEY, () => new Map())
   const onlineFeedCallbacks = useState<Set<OnlineFeedCallback>>('presence-online-feed-callbacks', () => new Set())
+  const messagesCallbacks = useState<Set<MessagesCallback>>('presence-messages-callbacks', () => new Set())
   const onlineFeedSubscribed = useState(PRESENCE_ONLINE_FEED_SUBSCRIBED_KEY, () => false)
   const disconnectedDueToIdle = useState<boolean>(PRESENCE_DISCONNECTED_DUE_TO_IDLE_KEY, () => false)
   const notificationUndeliveredCount = useState<number>(NOTIFICATIONS_UNDELIVERED_COUNT_KEY, () => 0)
+  const messageUnreadCounts = useState<{ primary: number; requests: number }>(MESSAGES_UNREAD_COUNTS_KEY, () => ({
+    primary: 0,
+    requests: 0,
+  }))
   /** Previous undelivered count so we only play in-app sound when count increases (not on load or mark-read). */
   const previousNotificationCountRef = ref<number | null>(null)
   const isSocketConnected = useState(PRESENCE_SOCKET_CONNECTED_KEY, () => false)
@@ -164,6 +174,14 @@ export function usePresence() {
 
   function removeOnlineFeedCallback(cb: OnlineFeedCallback) {
     onlineFeedCallbacks.value.delete(cb)
+  }
+
+  function addMessagesCallback(cb: MessagesCallback) {
+    messagesCallbacks.value.add(cb)
+  }
+
+  function removeMessagesCallback(cb: MessagesCallback) {
+    messagesCallbacks.value.delete(cb)
   }
 
   function addOnlineIdsFromRest(userIds: string[]) {
@@ -322,6 +340,31 @@ export function usePresence() {
         }
       }
       previousNotificationCountRef.value = newCount
+    })
+
+    socket.on('messages:updated', (data: { primaryUnreadCount?: number; requestUnreadCount?: number }) => {
+      const primaryRaw = typeof data?.primaryUnreadCount === 'number' ? data.primaryUnreadCount : 0
+      const requestRaw = typeof data?.requestUnreadCount === 'number' ? data.requestUnreadCount : 0
+      messageUnreadCounts.value = {
+        primary: Math.max(0, Math.floor(primaryRaw)),
+        requests: Math.max(0, Math.floor(requestRaw)),
+      }
+    })
+
+    socket.on('messages:new', (data: { conversationId?: string; message?: unknown }) => {
+      if (!messagesCallbacks.value.size) return
+      for (const cb of messagesCallbacks.value) {
+        cb.onMessage?.(data)
+      }
+    })
+
+    socket.on('messages:updated', (data: { primaryUnreadCount?: number; requestUnreadCount?: number }) => {
+      const primaryRaw = typeof data?.primaryUnreadCount === 'number' ? data.primaryUnreadCount : 0
+      const requestRaw = typeof data?.requestUnreadCount === 'number' ? data.requestUnreadCount : 0
+      messageUnreadCounts.value = {
+        primary: Math.max(0, Math.floor(primaryRaw)),
+        requests: Math.max(0, Math.floor(requestRaw)),
+      }
     })
 
     function syncSubscriptions() {
@@ -501,9 +544,15 @@ export function usePresence() {
     wasSocketConnectedOnce: readonly(wasSocketConnectedOnce),
     connectionBarJustConnected: readonly(connectionBarJustConnected),
     notificationUndeliveredCount: readonly(notificationUndeliveredCount),
+    messageUnreadCounts: readonly(messageUnreadCounts),
     setNotificationUndeliveredCount(count: number) {
       const c = Math.max(0, Math.floor(Number(count)) || 0)
       notificationUndeliveredCount.value = c
+    },
+    setMessageUnreadCounts(counts: { primary?: number; requests?: number }) {
+      const nextPrimary = Math.max(0, Math.floor(Number(counts.primary)) || 0)
+      const nextRequests = Math.max(0, Math.floor(Number(counts.requests)) || 0)
+      messageUnreadCounts.value = { primary: nextPrimary, requests: nextRequests }
     },
     reconnect,
     addInterest,
@@ -515,6 +564,8 @@ export function usePresence() {
     unsubscribeOnlineFeed,
     addOnlineFeedCallback,
     removeOnlineFeedCallback,
+    addMessagesCallback,
+    removeMessagesCallback,
     connect,
     disconnect,
     emitLogout,

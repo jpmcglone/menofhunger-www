@@ -128,7 +128,7 @@
                 'group flex h-12 items-center rounded-xl transition-colors',
                 'w-full',
                 route.path === item.to
-                  ? (item.key === 'only-me' ? 'font-semibold' : 'moh-surface font-semibold')
+                  ? (item.key === 'only-me' ? 'font-bold' : 'moh-surface font-bold')
                   : 'font-semibold',
                 // Default nav tone
                 item.key !== 'only-me' ? 'text-gray-900 dark:text-gray-100 moh-surface-hover' : '',
@@ -142,20 +142,27 @@
                 <ClientOnly v-if="item.key === 'bookmarks'">
                   <i
                     :class="[
-                      'pi text-[28px] font-semibold',
+                      'pi text-[32px] font-semibold',
                       hasBookmarks ? 'pi-bookmark-fill' : 'pi-bookmark'
                     ]"
                     :style="hasBookmarks ? { color: 'var(--p-primary-color)' } : undefined"
                     aria-hidden="true"
                   />
                   <template #fallback>
-                    <i class="pi text-[28px] font-semibold pi-bookmark" aria-hidden="true" />
+                    <i class="pi text-[32px] font-semibold pi-bookmark" aria-hidden="true" />
                   </template>
                 </ClientOnly>
-                <i v-else :class="['pi text-[28px] font-semibold', item.icon]" aria-hidden="true" />
+                <i v-else :class="['pi text-[32px] font-semibold', item.icon]" aria-hidden="true" />
                 <AppNotificationBadge v-if="item.key === 'notifications'" />
+                <AppMessagesBadge v-if="item.key === 'messages'" />
               </span>
-              <span v-if="!navCompactMode" class="hidden xl:inline whitespace-nowrap overflow-hidden text-xl font-bold max-w-[220px]">
+              <span
+                v-if="!navCompactMode"
+                :class="[
+                  'hidden xl:inline whitespace-nowrap overflow-hidden text-xl max-w-[220px]',
+                  route.path === item.to ? 'font-bold' : 'font-semibold'
+                ]"
+              >
                 {{ item.label }}
               </span>
             </NuxtLink>
@@ -208,7 +215,7 @@
             :class="[
               'no-scrollbar min-w-0 flex-1',
               'lg:border-r moh-border',
-              anyOverlayOpen ? 'overflow-hidden' : 'overflow-y-auto overscroll-y-auto'
+              anyOverlayOpen || (isMessagesPage && hideTopBar) ? 'overflow-hidden' : 'overflow-y-auto overscroll-y-auto'
             ]"
             :style="
               !hideTopBar
@@ -247,17 +254,18 @@
 
             <div
               ref="middleContentEl"
-              :class="
+              :class="[
                 hideTopBar
-                  ? 'pb-24 sm:pb-4'
+                  ? (isMessagesPage ? 'flex h-full min-h-0 flex-col pb-24 sm:pb-0' : 'pb-24 sm:pb-4')
                   : isBookmarksPage
                     ? 'pt-0 pb-24 sm:pb-4'
                     : isPostPage
                       ? 'px-4 pt-4 pb-24 sm:pb-4'
                       : isNotificationsPage || isOnlyMePage
                         ? 'px-4 pt-0 pb-24 sm:pb-4'
-                        : 'px-4 py-4 pb-24 sm:pb-4'
-              "
+                        : 'px-4 py-4 pb-24 sm:pb-4',
+                isMessagesPage && hideTopBar ? 'overflow-hidden' : ''
+              ]"
             >
               <slot />
             </div>
@@ -606,6 +614,7 @@ const { hideTopBar, navCompactMode, isRightRailForcedHidden, isRightRailSearchHi
 const isPostPage = computed(() => /^\/p\/[^/]+$/.test(route.path))
 const isBookmarksPage = computed(() => route.path === '/bookmarks' || route.path.startsWith('/bookmarks/'))
 const isNotificationsPage = computed(() => route.path === '/notifications')
+const isMessagesPage = computed(() => route.path === '/messages')
 const isOnlyMePage = computed(() => route.path === '/only-me')
 const { header: appHeader } = useAppHeader()
 // Prevent SSR hydration mismatches: render route meta during hydration, then swap to appHeader after mount.
@@ -743,7 +752,7 @@ const headerDescription = computed(() =>
 const routeHeaderDefaults = computed(() => {
   const p = route.path
   if (p === '/notifications') return { icon: 'pi-bell', description: 'Replies, follows, and updates from your network.' }
-  if (p === '/messages') return { icon: 'pi-envelope', description: 'Direct conversations. Coming soon.' }
+  if (p === '/messages') return { icon: 'pi-envelope', description: 'Chat conversations and chat requests.' }
   if (p.startsWith('/bookmarks')) return { icon: 'pi-bookmark', description: 'Saved posts and folders.' }
   if (p === '/explore') return { icon: 'pi-search', description: 'Search and discover.' }
   if (p === '/groups') return { icon: 'pi-users', description: 'Brotherhood circles and challenges. Coming soon.' }

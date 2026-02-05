@@ -392,3 +392,87 @@ export type GetNotificationsUnreadCountResponse = {
   data: { count: number }
 }
 
+export type MessageConversationType = 'direct' | 'group'
+export type MessageParticipantStatus = 'pending' | 'accepted'
+export type MessageParticipantRole = 'owner' | 'member'
+
+export type MessageUser = {
+  id: string
+  username: string | null
+  name: string | null
+  premium: boolean
+  verifiedStatus: 'none' | 'identity' | 'manual'
+  avatarUrl: string | null
+}
+
+export type MessageParticipant = {
+  user: MessageUser
+  status: MessageParticipantStatus
+  role: MessageParticipantRole
+  acceptedAt: string | null
+  lastReadAt: string | null
+}
+
+export type Message = {
+  id: string
+  createdAt: string
+  body: string
+  conversationId: string
+  sender: MessageUser
+}
+
+export type MessageConversation = {
+  id: string
+  type: MessageConversationType
+  title: string | null
+  createdAt: string
+  updatedAt: string
+  lastMessageAt: string | null
+  lastMessage: { id: string; body: string; createdAt: string; senderId: string } | null
+  participants: MessageParticipant[]
+  viewerStatus: MessageParticipantStatus
+  unreadCount: number
+}
+
+export type GetMessageConversationsData = MessageConversation[]
+
+export type GetMessageConversationsResponse = {
+  data: MessageConversation[]
+  pagination: { nextCursor: string | null }
+}
+
+export type GetMessageConversationResponse = {
+  data: { conversation: MessageConversation; messages: Message[] }
+  pagination: { nextCursor: string | null }
+}
+
+export type GetMessagesResponse = {
+  data: Message[]
+  pagination: { nextCursor: string | null }
+}
+
+export type CreateMessageConversationResponse = {
+  data: { conversationId: string; message: Message }
+}
+
+export type SendMessageResponse = {
+  data: { message: Message }
+}
+
+export type GetMessagesUnreadCountResponse = {
+  data: { primary: number; requests: number }
+}
+
+export type LookupMessageConversationResponse = {
+  data: { conversationId: string | null }
+}
+
+export type MessageBlockListItem = {
+  blocked: MessageUser
+  createdAt: string
+}
+
+export type GetMessageBlocksResponse = {
+  data: MessageBlockListItem[]
+}
+

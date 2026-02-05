@@ -33,6 +33,7 @@
             <div class="relative h-8 w-8 flex items-center justify-center">
               <i class="pi text-xl" :class="item.icon" aria-hidden="true" />
               <AppNotificationBadge v-if="item.key === 'notifications'" />
+              <AppMessagesBadge v-if="item.key === 'messages'" />
             </div>
           </NuxtLink>
         </template>

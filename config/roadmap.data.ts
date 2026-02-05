@@ -13,6 +13,7 @@ export type RoadmapChunk = {
 export type RoadmapItem = {
   text: string
   done?: boolean
+  inProgress?: boolean
 }
 
 export type RoadmapPhase = {

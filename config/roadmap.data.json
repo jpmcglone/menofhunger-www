@@ -44,7 +44,8 @@
           "title": "Staying in the loop",
           "items": [
             {
-              "text": "**Push notifications** — Reply, follow, and boost notifications so you never miss a beat."
+              "text": "**Push notifications** — Reply, follow, and boost notifications so you never miss a beat.",
+              "done": true
             },
             {
               "text": "**Email re-engagement** — “X new posts from people you follow” or a digest; or “You have new notifications” if you’ve been away. So you stay connected."
@@ -126,7 +127,7 @@
           "title": "Notifications",
           "items": [
             {
-              "text": "Notification preferences — Choose what you get: mute replies, only DMs, no boost notifications, etc.; per type or global."
+              "text": "Notification preferences — Choose what you get: mute replies, only chats, no boost notifications, etc.; per type or global."
             }
           ]
         }
@@ -137,8 +138,8 @@
       "date": "May 1, 2026",
       "datetime": "2026-05-01",
       "badge": "Phase 2 — Depth & trust",
-      "title": "Groups, DMs, safety & data",
-      "description": "Groups and direct messages so you have circles and private conversations. Block and mute so you control who you see. Delete your account or download your data whenever you want. Mobile apps so you can take the community with you.",
+      "title": "Groups, Chat, safety & data",
+      "description": "Groups and chat so you have circles and private conversations. Block and mute so you control who you see. Delete your account or download your data whenever you want. Mobile apps so you can take the community with you.",
       "isHighlight": false,
       "chunks": [
         {
@@ -148,7 +149,8 @@
               "text": "Groups (v1) — Create and join groups; group feed or group-scoped posts so you have pockets of accountability and conversation."
             },
             {
-              "text": "Direct messages — Real DMs: list conversations, send and receive, mark read; only you and the other person see the thread."
+              "text": "Chat — Real chats: list conversations, send and receive, mark read; only you and the other person see the thread.",
+              "inProgress": true
             }
           ]
         },
@@ -156,7 +158,7 @@
           "title": "Safety & control",
           "items": [
             {
-              "text": "Block user — Block so they can’t see your posts, DM you, or appear in your feed; manage your block list in settings."
+              "text": "Block user — Block so they can’t see your posts, chat you, or appear in your feed; manage your block list in settings."
             },
             {
               "text": "Mute user — “See less”; hide their posts in your feed without unfollowing."
@@ -189,7 +191,8 @@
           "title": "Status & support",
           "items": [
             {
-              "text": "Public status page or link so you can check uptime; in-app Help/Contact so you can reach us."
+              "text": "Public status page or link so you can check uptime; in-app Help/Contact so you can reach us.",
+              "done": true
             }
           ]
         }
