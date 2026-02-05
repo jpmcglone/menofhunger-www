@@ -126,6 +126,8 @@
               :class="[
                 // NOTE: Don't use `moh-text` here; it overrides per-item color accents (e.g. Only me).
                 'group flex h-12 items-center rounded-xl transition-colors',
+                // Add breathing room between icon and label (label only shows in wide mode).
+                !navCompactMode ? 'gap-2' : '',
                 'w-full',
                 route.path === item.to
                   ? (item.key === 'only-me' ? 'font-bold' : 'moh-surface font-bold')
@@ -140,26 +142,31 @@
             >
               <span class="relative flex h-12 w-12 shrink-0 items-center justify-center">
                 <ClientOnly v-if="item.key === 'bookmarks'">
-                  <i
-                    :class="[
-                      'pi text-[32px] font-semibold',
-                      hasBookmarks ? 'pi-bookmark-fill' : 'pi-bookmark'
-                    ]"
+                  <Icon
+                    :name="hasBookmarks ? 'tabler:bookmark-filled' : (isActiveNav(item.to) ? (item.iconActive || item.icon) : item.icon)"
+                    size="28"
+                    class="opacity-90"
                     :style="hasBookmarks ? { color: 'var(--p-primary-color)' } : undefined"
                     aria-hidden="true"
                   />
                   <template #fallback>
-                    <i class="pi text-[32px] font-semibold pi-bookmark" aria-hidden="true" />
+                    <Icon name="tabler:bookmark" size="28" class="opacity-90" aria-hidden="true" />
                   </template>
                 </ClientOnly>
-                <i v-else :class="['pi text-[32px] font-semibold', item.icon]" aria-hidden="true" />
+                <Icon
+                  v-else
+                  :name="isActiveNav(item.to) ? (item.iconActive || item.icon) : item.icon"
+                  size="28"
+                  class="opacity-90"
+                  aria-hidden="true"
+                />
                 <AppNotificationBadge v-if="item.key === 'notifications'" />
                 <AppMessagesBadge v-if="item.key === 'messages'" />
               </span>
               <span
                 v-if="!navCompactMode"
                 :class="[
-                  'hidden xl:inline whitespace-nowrap overflow-hidden text-xl max-w-[220px]',
+                  'hidden xl:inline whitespace-nowrap overflow-hidden text-lg max-w-[220px]',
                   route.path === item.to ? 'font-bold' : 'font-semibold'
                 ]"
               >
@@ -168,22 +175,31 @@
             </NuxtLink>
 
             <div class="pt-2">
-              <button
-                type="button"
-                aria-label="Post"
-                :class="[
-                  'group flex h-12 items-center rounded-xl text-white hover:opacity-95 w-full',
-                  fabButtonClass,
-                ]"
-                :style="fabButtonStyle"
-                v-if="canOpenComposer && isComposerEntrypointRoute"
-                @click="openComposerModal()"
+              <Transition
+                enter-active-class="transition-opacity duration-150 ease-out"
+                enter-from-class="opacity-0"
+                enter-to-class="opacity-100"
+                leave-active-class="transition-opacity duration-150 ease-in"
+                leave-from-class="opacity-100"
+                leave-to-class="opacity-0"
               >
-                <span class="flex h-12 w-12 shrink-0 items-center justify-center">
-                  <i class="pi pi-plus text-3xl" aria-hidden="true" />
-                </span>
-                <span v-if="!navCompactMode" class="hidden xl:inline text-base font-semibold">Post</span>
-              </button>
+                <button
+                  v-if="canOpenComposer && isComposerEntrypointRoute"
+                  type="button"
+                  aria-label="Post"
+                  :class="[
+                    'group flex h-12 items-center rounded-xl text-white hover:opacity-95 w-full',
+                    fabButtonClass,
+                  ]"
+                  :style="fabButtonStyle"
+                  @click="openComposerForCurrentRoute()"
+                >
+                  <span class="flex h-12 w-12 shrink-0 items-center justify-center">
+                    <Icon name="tabler:plus" size="26" class="opacity-95" aria-hidden="true" />
+                  </span>
+                  <span v-if="!navCompactMode" class="hidden xl:inline text-base font-semibold">Post</span>
+                </button>
+              </Transition>
             </div>
 
           </nav>
@@ -199,7 +215,7 @@
             ]"
           >
             <span class="flex h-12 w-12 shrink-0 items-center justify-center">
-              <i class="pi pi-sign-in text-2xl" aria-hidden="true" />
+              <Icon name="tabler:login" size="22" class="opacity-95" aria-hidden="true" />
             </span>
             <span v-if="!navCompactMode" class="hidden xl:inline text-base font-semibold">Log in</span>
           </NuxtLink>
@@ -468,7 +484,7 @@
       ]"
       :style="fabButtonStyle"
       style="bottom: calc(4rem + env(safe-area-inset-bottom, 0px));"
-      @click="openComposerModal()"
+      @click="openComposerForCurrentRoute()"
     >
       <i class="pi pi-plus text-3xl" aria-hidden="true" />
     </button>
@@ -628,6 +644,7 @@ const isComposerEntrypointRoute = computed(() => {
   if (p === '/home') return true
   if (p === '/explore') return true
   if (p === '/notifications') return true
+  if (p === '/only-me') return true
   // Reserved route (future-proof): treat current user profile as /profile if it ever exists.
   if (p === '/profile') return true
   // Current user profile route today is /u/:username via useAppNav().
@@ -699,6 +716,13 @@ function openComposerWithVisibility(visibility?: ComposerVisibility, initialText
   composerInitialText.value = (initialText ?? defaultComposerInitialTextForRoute()) || null
   composerModalOpen.value = true
 }
+function openComposerForCurrentRoute(initialText?: string | null) {
+  if (isOnlyMePage.value) {
+    openComposerWithVisibility('onlyMe', initialText)
+    return
+  }
+  openComposerModal(initialText)
+}
 provide(MOH_OPEN_COMPOSER_KEY, openComposerWithVisibility)
 function closeComposerModal() {
   composerModalOpen.value = false
@@ -727,6 +751,9 @@ const composerModalBorderClass = computed(() => {
 
 // Post button (FAB + left nav): color matches composer scope. Public = black/white (light) or white/black (dark).
 const fabButtonClass = computed(() => {
+  // On /only-me, always present the "Only me" purple button and default the composer to onlyMe.
+  // (We don't permanently change the cookie just by visiting the page.)
+  if (isOnlyMePage.value) return 'moh-btn-onlyme moh-btn-tone'
   const v = composerVisibility.value
   if (v === 'verifiedOnly') return 'moh-btn-verified moh-btn-tone'
   if (v === 'premiumOnly') return 'moh-btn-premium moh-btn-tone'

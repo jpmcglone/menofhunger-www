@@ -163,7 +163,7 @@
                     Get notified when you're not on the site (e.g. tab closed or in the background).
                   </div>
                 </div>
-                <div v-if="!push.vapidConfigured" class="space-y-2">
+                <div v-if="!pushVapidConfigured" class="space-y-2">
                   <p class="text-sm text-amber-700 dark:text-amber-300">
                     Push notifications are not configured. To enable them (e.g. on localhost), add the same VAPID public key used by the API to the www app.
                   </p>
@@ -171,31 +171,31 @@
                     In <code class="rounded bg-gray-200 px-1 dark:bg-gray-700">menofhunger-www/.env</code> set <code class="rounded bg-gray-200 px-1 dark:bg-gray-700">NUXT_PUBLIC_VAPID_PUBLIC_KEY</code> to the value of <code class="rounded bg-gray-200 px-1 dark:bg-gray-700">VAPID_PUBLIC_KEY</code> from <code class="rounded bg-gray-200 px-1 dark:bg-gray-700">menofhunger-api/.env</code>, then restart the dev server.
                   </p>
                 </div>
-                <div v-else-if="!push.isSupported" class="text-sm text-gray-600 dark:text-gray-400">
+                <div v-else-if="!pushIsSupported" class="text-sm text-gray-600 dark:text-gray-400">
                   Push notifications are not supported in this browser.
                 </div>
                 <div v-else class="flex flex-col items-start gap-3">
-                  <div v-if="push.requiresInstall" class="text-sm text-gray-600 dark:text-gray-400">
+                  <div v-if="pushRequiresInstall" class="text-sm text-gray-600 dark:text-gray-400">
                     On iOS Safari, install this site to your Home Screen to enable notifications. Tap Share → Add to Home Screen, then reopen the app.
                   </div>
                   <div class="flex flex-wrap items-center gap-3">
                   <Button
-                    v-if="!push.isSubscribed && push.permission !== 'denied'"
+                    v-if="!pushIsSubscribed && pushPermission !== 'denied'"
                     label="Enable browser notifications"
                     icon="pi pi-bell"
-                    :loading="push.isRegistering"
-                    :disabled="push.isRegistering || push.requiresInstall"
+                    :loading="pushIsRegistering"
+                    :disabled="pushIsRegistering || pushRequiresInstall"
                     @click="pushSubscribe"
                   />
                   <Button
-                    v-else-if="push.isSubscribed"
+                    v-else-if="pushIsSubscribed"
                     label="Disable browser notifications"
                     icon="pi pi-bell-slash"
                     severity="secondary"
                     @click="pushUnsubscribe"
                   />
                   <Button
-                    v-if="push.isSubscribed"
+                    v-if="pushIsSubscribed"
                     label="Send test notification"
                     icon="pi pi-send"
                     severity="secondary"
@@ -203,11 +203,11 @@
                     :disabled="pushTestSending"
                     @click="sendPushTest"
                   />
-                  <span v-else-if="push.permission === 'denied'" class="text-sm text-gray-600 dark:text-gray-400">
+                  <span v-else-if="pushPermission === 'denied'" class="text-sm text-gray-600 dark:text-gray-400">
                     Notifications were denied. Enable them in your browser settings for this site to try again.
                   </span>
-                  <span v-if="push.errorMessage" class="text-sm text-red-700 dark:text-red-300">
-                    {{ push.errorMessage }}
+                  <span v-if="pushErrorMessage" class="text-sm text-red-700 dark:text-red-300">
+                    {{ pushErrorMessage }}
                   </span>
                   <span v-if="pushTestMessage" class="text-sm text-gray-600 dark:text-gray-400">
                     {{ pushTestMessage }}
@@ -277,20 +277,31 @@ import { getApiErrorMessage } from '~/utils/api-error'
 import { useFormSave } from '~/composables/useFormSave'
 import { siteConfig } from '~/config/site'
 
-const push = usePushNotifications()
+const {
+  permission: pushPermission,
+  isSubscribed: pushIsSubscribed,
+  isRegistering: pushIsRegistering,
+  errorMessage: pushErrorMessage,
+  isSupported: pushIsSupported,
+  requiresInstall: pushRequiresInstall,
+  vapidConfigured: pushVapidConfigured,
+  refreshSubscriptionState,
+  subscribe,
+  unsubscribe,
+} = usePushNotifications()
 const pushTestSending = ref(false)
 const pushTestMessage = ref('')
 
 onMounted(() => {
-  void push.refreshSubscriptionState()
+  void refreshSubscriptionState()
 })
 
 async function pushSubscribe() {
-  await push.subscribe()
+  await subscribe()
 }
 
 async function pushUnsubscribe() {
-  await push.unsubscribe()
+  await unsubscribe()
 }
 
 async function sendPushTest() {

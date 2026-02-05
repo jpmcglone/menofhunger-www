@@ -102,7 +102,8 @@ export function formatMessageTime(iso: string) {
   const diffHr = Math.floor(diffMin / 60)
   const diffDay = Math.floor(diffHr / 24)
 
-  if (diffMin < 1) return 'Just now'
+  // In chat, always prefer a clock time over "Just now".
+  if (diffMin < 1) return date.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
   if (diffMin < 60) return `${diffMin}m`
   if (date.getFullYear() === now.getFullYear() && date.getMonth() === now.getMonth() && date.getDate() === now.getDate()) {
     return date.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })

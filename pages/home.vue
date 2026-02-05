@@ -39,7 +39,7 @@
           <div
             class="absolute inset-x-0 top-0 flex justify-center items-center min-h-[240px] transition-opacity duration-150 z-0"
             :class="showMainLoader ? 'opacity-100' : 'opacity-0 pointer-events-none'"
-            aria-hidden="!showMainLoader"
+            :aria-hidden="!showMainLoader"
           >
             <AppLogoLoader />
           </div>
@@ -77,7 +77,7 @@
               <div
                 class="transition-opacity duration-150"
                 :class="loading ? 'opacity-100' : 'opacity-0 pointer-events-none'"
-                aria-hidden="!loading"
+                :aria-hidden="!loading"
               >
                 <AppLogoLoader compact />
               </div>

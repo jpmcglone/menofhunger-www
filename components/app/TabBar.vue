@@ -31,7 +31,12 @@
             @click="(e) => onNavClick(item.to, e)"
           >
             <div class="relative h-8 w-8 flex items-center justify-center">
-              <i class="pi text-xl" :class="item.icon" aria-hidden="true" />
+              <Icon
+                :name="isActive(item.to) ? (item.iconActive || item.icon) : item.icon"
+                size="22"
+                class="opacity-90"
+                aria-hidden="true"
+              />
               <AppNotificationBadge v-if="item.key === 'notifications'" />
               <AppMessagesBadge v-if="item.key === 'messages'" />
             </div>

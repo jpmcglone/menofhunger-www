@@ -54,16 +54,31 @@
                     <AppUserAvatar :user="headerAvatarUser" size-class="h-10 w-10" />
                   </button>
                   <div class="min-w-0">
-                    <div class="font-semibold truncate">
-                      {{
-                        selectedConversation
-                          ? getConversationTitle(selectedConversation)
-                        : isDraftChat
-                          ? (draftRecipients.length === 1
-                              ? (draftRecipients[0]?.name || draftRecipients[0]?.username || 'User')
-                            : draftGroupTitle)
-                            : 'Select a conversation'
-                      }}
+                    <div class="font-semibold min-w-0 flex items-center gap-2">
+                      <template v-if="selectedConversation?.type === 'direct' && headerDirectUser">
+                        <button
+                          type="button"
+                          class="min-w-0 truncate hover:underline cursor-pointer text-left"
+                          :aria-label="headerDirectUser.username ? `View @${headerDirectUser.username}` : 'View profile'"
+                          @click="goToProfile(headerDirectUser)"
+                        >
+                          {{ headerDirectUser.name || headerDirectUser.username || 'User' }}
+                        </button>
+                        <AppVerifiedBadge :status="headerDirectUser.verifiedStatus" :premium="headerDirectUser.premium" />
+                      </template>
+                      <template v-else>
+                        <span class="min-w-0 truncate">
+                          {{
+                            selectedConversation
+                              ? getConversationTitle(selectedConversation)
+                            : isDraftChat
+                              ? (draftRecipients.length === 1
+                                  ? (draftRecipients[0]?.name || draftRecipients[0]?.username || 'User')
+                                : draftGroupTitle)
+                                : 'Select a conversation'
+                          }}
+                        </span>
+                      </template>
                     </div>
                     <div class="text-xs text-gray-500 dark:text-gray-400 truncate">
                       <template v-if="selectedConversation?.type === 'group'">
@@ -86,8 +101,7 @@
                         <button
                           v-if="headerDirectUser?.username"
                           type="button"
-                          class="font-semibold hover:underline cursor-pointer"
-                          :class="userToneClass(headerDirectUser)"
+                          class="hover:underline cursor-pointer"
                           :aria-label="`View @${headerDirectUser.username}`"
                           @click="goToProfile(headerDirectUser)"
                         >
@@ -121,8 +135,12 @@
                 v-if="renderedChatKey"
                 :key="renderedChatKey"
                 ref="messagesScroller"
-                class="h-full overflow-y-auto py-4"
+                data-chat-scroller="1"
+                class="h-full overflow-y-auto py-4 moh-chat-scroll-hide"
                 @scroll="onMessagesScroll"
+                @wheel.passive="markUserScrollIntent"
+                @touchstart.passive="markUserScrollIntent"
+                @touchmove.passive="markUserScrollIntent"
               >
                 <ChatMessageList
                   :messages-ready="messagesReady"
@@ -134,6 +152,8 @@
                   :messages-with-dividers="messagesWithDividers"
                   :sticky-divider-label="stickyDividerLabel"
                   :recent-animated-message-ids="recentAnimatedMessageIds"
+                  :sending-message-ids="sendingMessageIds"
+                  :latest-my-message-id="latestMyMessageId"
                   :animate-rows="animateMessageList"
                   :is-group-chat="isGroupChat"
                   :me-id="me?.id ?? null"
@@ -152,9 +172,18 @@
                 Loading chat…
               </div>
             </Transition>
+            <!-- Custom thin pill scrollbar (native scrollbar hidden) -->
+            <div
+              v-if="renderedChatKey && scrollPillNeeded"
+              class="pointer-events-none absolute right-1 top-2 bottom-2 z-10 w-[4px] transition-opacity duration-200 ease-out"
+              :class="scrollPillVisible ? 'opacity-90' : 'opacity-0'"
+              aria-hidden="true"
+            >
+              <div class="w-full rounded-full" :style="scrollPillThumbStyle" />
+            </div>
             <Transition name="moh-fade">
               <button
-                v-if="pendingNewCount > 0"
+                v-if="showScrollToBottomButton"
                 type="button"
                 class="absolute left-1/2 bottom-4 z-10 flex -translate-x-1/2 items-center gap-2 rounded-full px-4 py-2 text-xs font-semibold shadow-lg cursor-pointer"
                 :class="pendingButtonClass"
@@ -366,7 +395,8 @@ const selectedConversation = computed(() =>
 )
 const isDraftChat = computed(() => selectedChatKey.value === 'draft')
 
-const messages = ref<Message[]>([])
+type ChatMessage = Message & { __localStatus?: 'sending' }
+const messages = ref<ChatMessage[]>([])
 const { buildMessagesWithDividers, formatListTime, formatMessageTime, formatMessageTimeFull } = useChatTimeFormatting()
 const messagesWithDividers = computed(() => buildMessagesWithDividers(messages.value))
 const stickyDividerLabel = ref<string | null>(null)
@@ -389,10 +419,65 @@ const pendingNewCount = ref(0)
 const pendingNewTier = ref<'premium' | 'verified' | 'normal'>('normal')
 const animateMessageList = ref(true)
 const renderedChatKey = ref<string | null>(null)
+const atBottom = ref(true)
+const scrollPillTopPx = ref(0)
+const scrollPillHeightPx = ref(0)
+const scrollPillVisible = ref(false)
+let scrollPillHideTimer: ReturnType<typeof setTimeout> | null = null
+let lastUserScrollIntentAt = 0
+const USER_SCROLL_GRACE_MS = 2000
 
 // Track recently-added messages so we can animate them reliably (even if scroll-to-bottom happens same frame).
 const recentAnimatedMessageIds = ref<Set<string>>(new Set())
 const recentAnimatedTimers = ref<Map<string, ReturnType<typeof setTimeout>>>(new Map())
+const sendingMessageIds = ref<Set<string>>(new Set())
+const latestMyMessageId = computed<string | null>(() => {
+  const myId = me.value?.id ?? null
+  if (!myId) return null
+  for (let i = messages.value.length - 1; i >= 0; i--) {
+    const m = messages.value[i]!
+    if (m.sender.id === myId) return m.id
+  }
+  return null
+})
+
+function reconcileOptimisticSend(serverMsg: Message): boolean {
+  const myId = me.value?.id ?? null
+  if (!myId) return false
+  if (serverMsg.sender.id !== myId) return false
+  if (!serverMsg.conversationId) return false
+  const sendingIds = sendingMessageIds.value
+  if (!sendingIds.size) return false
+
+  const list = messages.value
+  for (let i = list.length - 1; i >= 0; i--) {
+    const m = list[i]!
+    if (!sendingIds.has(m.id)) continue
+    if (!m.id.startsWith('local-')) continue
+    if (m.conversationId !== serverMsg.conversationId) continue
+    if (m.body !== serverMsg.body) continue
+
+    const localId = m.id
+    const next = [...list]
+    next[i] = serverMsg
+    // Guard: if the server message already exists elsewhere, drop duplicates.
+    const deduped: ChatMessage[] = []
+    for (let j = 0; j < next.length; j++) {
+      const cur = next[j]!
+      if (j !== i && cur.id === serverMsg.id) continue
+      deduped.push(cur)
+    }
+    messages.value = deduped
+
+    const sendingNext = new Set(sendingIds)
+    sendingNext.delete(localId)
+    sendingMessageIds.value = sendingNext
+
+    markMessageAnimated(serverMsg.id)
+    return true
+  }
+  return false
+}
 function markMessageAnimated(id: string) {
   const mid = (id ?? '').trim()
   if (!mid) return
@@ -452,15 +537,23 @@ const badgeToneClass = computed(() => toneClass.value)
 const canStartDraft = computed(() => selectedRecipients.value.length > 0)
 
 const pendingButtonClass = computed(() => {
-  if (pendingNewTier.value === 'premium') return 'bg-[var(--moh-premium)] text-white'
-  if (pendingNewTier.value === 'verified') return 'bg-[var(--moh-verified)] text-white'
-  return 'bg-gray-900 text-white dark:bg-white dark:text-gray-900'
+  // When there are unread/new messages below, keep the tier color treatment.
+  if (pendingNewCount.value > 0) {
+    if (pendingNewTier.value === 'premium') return 'bg-[var(--moh-premium)] text-white'
+    if (pendingNewTier.value === 'verified') return 'bg-[var(--moh-verified)] text-white'
+    return 'bg-gray-900 text-white dark:bg-white dark:text-gray-900'
+  }
+  // Otherwise, offer a neutral "scroll to bottom" affordance.
+  return 'bg-gray-100 text-gray-700 border border-gray-200 dark:bg-zinc-900 dark:text-gray-200 dark:border-zinc-700'
 })
 
 const pendingNewLabel = computed(() => {
   const n = Math.max(0, Math.floor(Number(pendingNewCount.value) || 0))
-  return `${n} New ${n === 1 ? 'Message' : 'Messages'}`
+  if (n > 0) return `${n} New ${n === 1 ? 'Message' : 'Messages'}`
+  return 'Scroll to bottom'
 })
+
+const showScrollToBottomButton = computed(() => Boolean(selectedChatKey.value) && !atBottom.value)
 
 const { isTinyViewport, showListPane, showDetailPane: showChatPane, gridStyle } = useTwoPaneLayout(selectedChatKey, {
   // Keep list pane thinner than chat, but not overly narrow.
@@ -561,10 +654,105 @@ function onMessagesScrollerBeforeEnter(el: Element) {
   requestAnimationFrame(() => {
     scroller.scrollTop = scroller.scrollHeight
     updateStickyDivider()
+    updateScrollPill()
+    atBottom.value = true
     // Re-enable per-row animations after the container is mounted.
     animateMessageList.value = true
   })
 }
+
+const scrollPillNeeded = computed(() => {
+  const el = messagesScroller.value
+  if (!el) return false
+  return el.scrollHeight > el.clientHeight + 1
+})
+
+const scrollPillColor = computed(() => {
+  const u = me.value
+  if (u?.premium) return 'var(--moh-premium)'
+  if (u?.verifiedStatus && u.verifiedStatus !== 'none') return 'var(--moh-verified)'
+  return 'rgba(148, 163, 184, 0.9)' // neutral
+})
+
+const scrollPillThumbStyle = computed<Record<string, string>>(() => {
+  const h = Math.max(0, Math.floor(scrollPillHeightPx.value))
+  const y = Math.max(0, Math.floor(scrollPillTopPx.value))
+  return {
+    height: `${h}px`,
+    transform: `translateY(${y}px)`,
+    background: scrollPillColor.value,
+  }
+})
+
+function updateScrollPill() {
+  const el = messagesScroller.value
+  if (!el) return
+  // Overlay track is `top-2 bottom-2` => 8px inset each side.
+  const insetPx = 8
+  const trackH = Math.max(0, el.clientHeight - insetPx * 2)
+  const scrollable = Math.max(1, el.scrollHeight - el.clientHeight)
+  if (trackH <= 0 || el.scrollHeight <= el.clientHeight + 1) {
+    scrollPillHeightPx.value = 0
+    scrollPillTopPx.value = 0
+    scrollPillVisible.value = false
+    return
+  }
+  const ratio = el.clientHeight / el.scrollHeight
+  const minThumb = 18
+  const thumbH = Math.min(trackH, Math.max(minThumb, Math.floor(trackH * ratio)))
+  const maxTop = Math.max(0, trackH - thumbH)
+  const scrollRatio = el.scrollTop / scrollable
+  scrollPillHeightPx.value = thumbH
+  scrollPillTopPx.value = Math.floor(maxTop * scrollRatio)
+}
+
+function kickScrollPillVisibility() {
+  if (!scrollPillNeeded.value) {
+    scrollPillVisible.value = false
+    return
+  }
+  scrollPillVisible.value = true
+  if (scrollPillHideTimer) clearTimeout(scrollPillHideTimer)
+  // Best-practice-ish: keep visible briefly after interaction.
+  scrollPillHideTimer = setTimeout(() => {
+    scrollPillHideTimer = null
+    scrollPillVisible.value = false
+  }, 1200)
+}
+
+function markUserScrollIntent() {
+  if (!import.meta.client) return
+  lastUserScrollIntentAt = Date.now()
+  kickScrollPillVisibility()
+}
+
+let scrollPillRo: ResizeObserver | null = null
+watch(
+  messagesScroller,
+  (el, prev) => {
+    if (!import.meta.client) return
+    if (!scrollPillRo) scrollPillRo = new ResizeObserver(() => updateScrollPill())
+    if (prev) scrollPillRo.unobserve(prev)
+    if (el) {
+      scrollPillRo.observe(el)
+      requestAnimationFrame(() => {
+        updateScrollPill()
+      })
+    }
+  },
+  { flush: 'post' },
+)
+
+onBeforeUnmount(() => {
+  if (scrollPillHideTimer) {
+    clearTimeout(scrollPillHideTimer)
+    scrollPillHideTimer = null
+  }
+  if (scrollPillRo) {
+    scrollPillRo.disconnect()
+    scrollPillRo = null
+  }
+})
 
 function resetPendingNew() {
   pendingNewCount.value = 0
@@ -586,8 +774,15 @@ function maybeUpgradePendingTier(message: Message) {
 }
 
 function onMessagesScroll() {
-  if (isAtBottom()) resetPendingNew()
+  const bottom = isAtBottom()
+  atBottom.value = bottom
+  if (bottom) resetPendingNew()
   updateStickyDivider()
+  updateScrollPill()
+  // Only show pill for user-driven scrolling (programmatic scrolls shouldn't surface it).
+  if (import.meta.client && Date.now() - lastUserScrollIntentAt < USER_SCROLL_GRACE_MS) {
+    kickScrollPillVisibility()
+  }
 }
 
 watch(messages, () => {
@@ -596,6 +791,7 @@ watch(messages, () => {
 
 function onPendingButtonClick() {
   scrollToBottom('smooth')
+  atBottom.value = true
   resetPendingNew()
 }
 
@@ -741,6 +937,7 @@ async function selectConversation(id: string, opts?: { replace?: boolean }) {
   messagesReady.value = false
   animateMessageList.value = false
   renderedChatKey.value = null
+  atBottom.value = true
   resetPendingNew()
   const replace = opts?.replace ?? false
   const currentC = typeof route.query.c === 'string' ? route.query.c : null
@@ -751,6 +948,7 @@ async function selectConversation(id: string, opts?: { replace?: boolean }) {
   }
   messagesLoading.value = true
   resetTyping()
+  sendingMessageIds.value = new Set()
   try {
     const res = await apiFetch<{ conversation: MessageConversation; messages: Message[] }>(
       `/messages/conversations/${id}`,
@@ -781,8 +979,10 @@ async function clearSelection(opts?: { replace?: boolean; preserveDraft?: boolea
   messagesReady.value = false
   animateMessageList.value = false
   renderedChatKey.value = null
+  atBottom.value = true
   resetPendingNew()
   resetTyping()
+  sendingMessageIds.value = new Set()
   const replace = opts?.replace ?? false
   const q = { ...route.query } as Record<string, any>
   delete q.c
@@ -861,6 +1061,8 @@ function updateConversationForMessage(message: Message) {
 
 async function sendCurrentMessage() {
   if (!composerText.value.trim() || sending.value) return
+  let body = composerText.value
+  let localId: string | null = null
   sending.value = true
   try {
     // Draft chat: first send creates the conversation.
@@ -890,38 +1092,93 @@ async function sendCurrentMessage() {
     }
 
     if (!selectedConversationId.value) return
+    const my = me.value
+    if (!my) return
     // Stop typing immediately when sending.
     try {
       emitMessagesTyping(selectedConversationId.value, false)
     } catch {
       // ignore
     }
+
+    // Optimistic message row (shows "Sending").
+    body = composerText.value
+    localId = `local-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+    const optimisticSender: MessageUser = {
+      id: my.id,
+      username: my.username ?? null,
+      name: my.name ?? null,
+      premium: Boolean(my.premium),
+      verifiedStatus: (my.verifiedStatus ?? 'none') as 'none' | 'identity' | 'manual',
+      avatarUrl: my.avatarUrl ?? null,
+    }
+    const optimistic: Message = {
+      id: localId,
+      createdAt: new Date().toISOString(),
+      body,
+      conversationId: selectedConversationId.value,
+      sender: optimisticSender,
+    }
+    messages.value = [...messages.value, optimistic]
+    sendingMessageIds.value = new Set([...sendingMessageIds.value, localId])
+    composerText.value = ''
+    await nextTick()
+    scrollToBottom('smooth')
+
     const res = await apiFetchData<SendMessageResponse['data']>(
       `/messages/conversations/${selectedConversationId.value}/messages`,
       {
         method: 'POST',
-        body: { body: composerText.value },
+        body: { body },
       },
     )
     const msg = res?.message
     if (msg) {
-      const exists = messages.value.some((m) => m.id === msg.id)
-      if (!exists) {
-        messages.value = [...messages.value, msg]
-        markMessageAnimated(msg.id)
+      // Replace optimistic row (or append if missing).
+      const next = [...messages.value]
+      const optimisticIdx = next.findIndex((m) => m.id === localId)
+      const existingIdx = next.findIndex((m) => m.id === msg.id)
+      if (optimisticIdx !== -1) {
+        // If websocket already delivered the server message, drop the optimistic row.
+        if (existingIdx !== -1) next.splice(optimisticIdx, 1)
+        else next[optimisticIdx] = msg
+      } else if (existingIdx === -1) {
+        next.push(msg)
       }
+      messages.value = next
+      markMessageAnimated(msg.id)
+
+      // Clear sending state.
+      const sendingNext = new Set(sendingMessageIds.value)
+      sendingNext.delete(localId)
+      sendingMessageIds.value = sendingNext
+
       updateConversationForMessage(msg)
       await nextTick()
       scrollToBottom('smooth')
       resetPendingNew()
     }
-    composerText.value = ''
+    // Ensure optimistic row doesn't linger if API returned no message.
+    if (!msg) {
+      messages.value = messages.value.filter((m) => m.id !== localId)
+      const sendingNext = new Set(sendingMessageIds.value)
+      sendingNext.delete(localId)
+      sendingMessageIds.value = sendingNext
+      composerText.value = body
+    }
     if (selectedConversation.value?.viewerStatus === 'pending') {
       await fetchConversations('primary', { forceRefresh: true })
       await fetchConversations('requests', { forceRefresh: true })
     }
   } catch (e) {
-    // ignore; composer should keep text
+    // Remove optimistic row and restore composer text.
+    if (localId) {
+      messages.value = messages.value.filter((m) => m.id !== localId)
+      const sendingNext = new Set(sendingMessageIds.value)
+      sendingNext.delete(localId)
+      sendingMessageIds.value = sendingNext
+    }
+    if (body && !composerText.value.trim()) composerText.value = body
   } finally {
     sending.value = false
   }
@@ -1089,6 +1346,9 @@ const messageCallback = {
     updateConversationForMessage(msg)
     if (selectedConversationId.value === msg.conversationId) {
       const shouldStick = isAtBottom()
+      atBottom.value = shouldStick
+      // If this is our own sent message, prefer reconciling it into an optimistic local row.
+      reconcileOptimisticSend(msg)
       const exists = messages.value.some((m) => m.id === msg.id)
       if (!exists) {
         messages.value = [...messages.value, msg]
@@ -1169,6 +1429,17 @@ watch(
 
 .moh-chat-row-move {
   transition: transform 220ms ease;
+}
+
+.moh-chat-scroll-hide {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE/Edge legacy */
+}
+
+:deep(.moh-chat-scroll-hide::-webkit-scrollbar) {
+  width: 0;
+  height: 0;
+  display: none;
 }
 </style>
 

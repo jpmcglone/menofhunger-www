@@ -291,10 +291,6 @@ onBeforeUnmount(() => {
   unregisterOnReplyPosted()
 })
 
-watch(postId, () => {
-  isDeleted.value = false
-})
-
 const isRestricted = computed(() => {
   const v = post.value?.visibility
   if (v === 'verifiedOnly' || v === 'premiumOnly' || v === 'onlyMe') return true
