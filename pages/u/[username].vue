@@ -142,6 +142,7 @@
                 <AppFeedPostRow
                   :post="p"
                   :collapsed-sibling-replies-count="profileCollapsedSiblingReplyCountFor(p)"
+                  :reply-count-for-parent-id="profileReplyCountForParentId"
                   :replies-sort="profileSort ?? 'new'"
                   @deleted="profileRemovePost"
                 />
@@ -239,6 +240,7 @@ const {
   posts: profilePosts,
   displayPosts: profileDisplayPosts,
   collapsedSiblingReplyCountFor: profileCollapsedSiblingReplyCountFor,
+  replyCountForParentId: profileReplyCountForParentId,
   counts: profileCounts,
   loading: profileLoading,
   error: profileError,

@@ -61,6 +61,7 @@
                   :post="p"
                   :activate-video-on-mount="p.id === newlyPostedVideoPostId"
                   :collapsed-sibling-replies-count="collapsedSiblingReplyCountFor(p)"
+                  :reply-count-for-parent-id="replyCountForParentId"
                   :replies-sort="feedSort"
                   @deleted="removePost"
                 />
@@ -145,6 +146,7 @@ const {
   posts,
   displayPosts,
   collapsedSiblingReplyCountFor,
+  replyCountForParentId,
   nextCursor,
   loading,
   error,

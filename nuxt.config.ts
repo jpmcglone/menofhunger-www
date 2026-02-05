@@ -88,7 +88,10 @@ export default defineNuxtConfig({
   // Render builds can be memory-constrained; sourcemaps are a big multiplier.
   vite: {
     build: {
-      sourcemap: false
+      sourcemap: false,
+      // CI warning noise: Nuxt/Vite warns at 500kB, but our largest client chunk is ~520kB minified.
+      // Keep the warning meaningful without spamming logs.
+      chunkSizeWarningLimit: 600,
     },
     plugins: [
       {

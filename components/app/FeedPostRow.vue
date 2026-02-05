@@ -8,25 +8,21 @@
       :post="post"
       :highlight="highlightedPostId === post.id"
       :no-padding-top="noPaddingTop"
-      :no-border-bottom="showCollapsedFooter"
+      :no-border-bottom="false"
       :activate-video-on-mount="activateVideoOnMount"
       v-bind="$attrs"
         @deleted="$emit('deleted', $event)"
-    />
-    <div
-      v-if="showCollapsedFooter"
-      class="border-b moh-border px-4 pb-3 pt-1"
     >
-      <div class="pl-[3.25rem]">
+      <template v-if="showCollapsedFooter" #threadFooter>
         <NuxtLink
-          :to="`/p/${encodeURIComponent(directParentId!)}`"
+          :to="`/p/${encodeURIComponent(rootPostId!)}`"
           class="inline-flex items-center gap-2 rounded-lg px-2 py-1 text-sm font-semibold text-gray-700 transition-colors moh-surface-hover dark:text-gray-200"
         >
           <i class="pi pi-comments text-[14px] opacity-70" aria-hidden="true" />
-          {{ collapsedRepliesLabel }}
+          {{ collapsedRepliesLabelFor(collapsedSiblingRepliesCount) }}
         </NuxtLink>
-      </div>
-    </div>
+      </template>
+    </AppPostRow>
   </div>
 
   <!-- Reply chain A -> B -> C: overlays on each row connect with no gap -->
@@ -36,25 +32,10 @@
       :key="item.id"
       :ref="item.id === highlightedPostId ? setHighlightedRef : undefined"
     >
-      <!-- For reply chains, show the collapsed replies row one row above the leaf reply. -->
-      <div
-        v-if="showCollapsedFooter && i === chain.length - 1"
-        class="px-4 pb-2 pt-1"
-      >
-        <div class="pl-[3.25rem]">
-          <NuxtLink
-            :to="`/p/${encodeURIComponent(directParentId!)}`"
-            class="inline-flex items-center gap-2 rounded-lg px-2 py-1 text-sm font-semibold text-gray-700 transition-colors moh-surface-hover dark:text-gray-200"
-          >
-            <i class="pi pi-comments text-[14px] opacity-70" aria-hidden="true" />
-            {{ collapsedRepliesLabel }}
-          </NuxtLink>
-        </div>
-      </div>
       <AppPostRow
         :post="item"
         :highlight="highlightedPostId === item.id"
-        :no-border-bottom="false"
+        :no-border-bottom="i < chain.length - 1"
         :no-padding-top="noPaddingTop || i > 0"
         :no-padding-bottom="i < chain.length - 1"
         :show-thread-line-above-avatar="i > 0"
@@ -63,7 +44,17 @@
         :activate-video-on-mount="i === chain.length - 1 ? activateVideoOnMount : undefined"
         v-bind="$attrs"
         @deleted="$emit('deleted', $event)"
-      />
+      >
+        <template v-if="hiddenRepliesForIndex(i) > 0" #threadFooter>
+          <NuxtLink
+            :to="`/p/${encodeURIComponent(chain[i]!.id)}`"
+            class="inline-flex items-center gap-2 rounded-lg px-2 py-1 text-sm font-semibold text-gray-700 transition-colors moh-surface-hover dark:text-gray-200"
+          >
+            <i class="pi pi-comments text-[14px] opacity-70" aria-hidden="true" />
+            {{ collapsedRepliesLabelFor(hiddenRepliesForIndex(i)) }}
+          </NuxtLink>
+        </template>
+      </AppPostRow>
     </div>
   </div>
 </template>
@@ -76,6 +67,8 @@ const props = withDefaults(
     post: FeedPost
     activateVideoOnMount?: boolean
     collapsedSiblingRepliesCount?: number
+    /** Total replies in this feed page by direct parent id (for per-row "View X more" footers). */
+    replyCountForParentId?: (parentId: string) => number
     /** Sort context for the collapsed replies footer label ("more new/trending replies"). */
     repliesSort?: 'new' | 'trending' | null
     /** When set, the post with this id is highlighted (e.g. the post being viewed on /p/:id). */
@@ -102,15 +95,26 @@ const chain = computed(() => {
 })
 
 const collapsedSiblingRepliesCount = computed(() => Math.max(0, Math.floor(props.collapsedSiblingRepliesCount ?? 0)))
-const directParentId = computed(() => (props.post.parentId ?? '').trim() || null)
-const showCollapsedFooter = computed(() => Boolean(collapsedSiblingRepliesCount.value > 0 && directParentId.value))
+const rootPostId = computed(() => chain.value[0]?.id ?? null)
+const showCollapsedFooter = computed(() => Boolean(collapsedSiblingRepliesCount.value > 0 && rootPostId.value))
 
-const collapsedRepliesLabel = computed(() => {
-  const n = collapsedSiblingRepliesCount.value
+function collapsedRepliesLabelFor(n: number) {
   const noun = n === 1 ? 'reply' : 'replies'
   const qualifier = props.repliesSort === 'trending' ? 'trending' : (props.repliesSort === 'new' ? 'new' : null)
   return `View ${n} more${qualifier ? ` ${qualifier}` : ''} ${noun}`
-})
+}
+
+// Back-compat with older render/hot-reload output: some clients may still reference
+// `collapsedRepliesLabel` during HMR. Keep it defined to avoid runtime warnings.
+const collapsedRepliesLabel = computed(() => collapsedRepliesLabelFor(collapsedSiblingRepliesCount.value))
+
+function hiddenRepliesForIndex(i: number): number {
+  const node = chain.value[i]
+  if (!node?.id) return 0
+  const total = props.replyCountForParentId?.(node.id) ?? 0
+  const hasVisibleChild = i < chain.value.length - 1
+  return Math.max(0, total - (hasVisibleChild ? 1 : 0))
+}
 
 /** Root post visibility (primary post in the thread) for tier-based styling. */
 const rootVisibility = computed(() => chain.value[0]?.visibility)

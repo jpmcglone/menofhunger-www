@@ -412,7 +412,7 @@ const selectedConversation = computed(() =>
 )
 const isDraftChat = computed(() => selectedChatKey.value === 'draft')
 
-type ChatMessage = Message & { __localStatus?: 'sending' }
+type ChatMessage = Message & { __localStatus?: 'sending'; __clientKey?: string }
 const messages = ref<ChatMessage[]>([])
 const { buildMessagesWithDividers, formatListTime, formatMessageTime, formatMessageTimeFull } = useChatTimeFormatting()
 const messagesWithDividers = computed(() => buildMessagesWithDividers(messages.value))
@@ -477,7 +477,8 @@ function reconcileOptimisticSend(serverMsg: Message): boolean {
 
     const localId = m.id
     const next = [...list]
-    next[i] = serverMsg
+    // Keep the row's key stable (localId) and only swap the message content/metadata.
+    next[i] = { ...serverMsg, __clientKey: localId } as ChatMessage
     // Guard: if the server message already exists elsewhere, drop duplicates.
     const deduped: ChatMessage[] = []
     for (let j = 0; j < next.length; j++) {
@@ -491,10 +492,28 @@ function reconcileOptimisticSend(serverMsg: Message): boolean {
     sendingNext.delete(localId)
     sendingMessageIds.value = sendingNext
 
-    markMessageAnimated(serverMsg.id)
     return true
   }
   return false
+}
+
+function mergeServerMessageIntoOptimistic(localId: string, serverMsg: Message): boolean {
+  const list = messages.value
+  const idx = list.findIndex((m) => m.id === localId)
+  if (idx === -1) return false
+
+  const next = [...list]
+  next[idx] = { ...serverMsg, __clientKey: localId } as ChatMessage
+
+  // Guard: if the server message already exists elsewhere, drop duplicates (keep the optimistic row).
+  const deduped: ChatMessage[] = []
+  for (let j = 0; j < next.length; j++) {
+    const cur = next[j]!
+    if (j !== idx && cur.id === serverMsg.id) continue
+    deduped.push(cur)
+  }
+  messages.value = deduped
+  return true
 }
 function markMessageAnimated(id: string) {
   const mid = (id ?? '').trim()
@@ -1137,7 +1156,7 @@ async function sendCurrentMessage() {
       conversationId: selectedConversationId.value,
       sender: optimisticSender,
     }
-    messages.value = [...messages.value, optimistic]
+    messages.value = [...messages.value, ({ ...optimistic, __clientKey: localId } as ChatMessage)]
     sendingMessageIds.value = new Set([...sendingMessageIds.value, localId])
     composerText.value = ''
     await nextTick()
@@ -1152,19 +1171,15 @@ async function sendCurrentMessage() {
     )
     const msg = res?.message
     if (msg) {
-      // Replace optimistic row (or append if missing).
-      const next = [...messages.value]
-      const optimisticIdx = next.findIndex((m) => m.id === localId)
-      const existingIdx = next.findIndex((m) => m.id === msg.id)
-      if (optimisticIdx !== -1) {
-        // If websocket already delivered the server message, drop the optimistic row.
-        if (existingIdx !== -1) next.splice(optimisticIdx, 1)
-        else next[optimisticIdx] = msg
-      } else if (existingIdx === -1) {
-        next.push(msg)
+      // Replace optimistic row content in-place (stable row key), or append if missing.
+      const merged = localId ? mergeServerMessageIntoOptimistic(localId, msg) : false
+      if (!merged) {
+        const exists = messages.value.some((m) => m.id === msg.id)
+        if (!exists) {
+          messages.value = [...messages.value, msg]
+          markMessageAnimated(msg.id)
+        }
       }
-      messages.value = next
-      markMessageAnimated(msg.id)
 
       // Clear sending state.
       const sendingNext = new Set(sendingMessageIds.value)

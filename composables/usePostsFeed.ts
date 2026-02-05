@@ -38,40 +38,60 @@ export function usePostsFeed(options: { visibility?: Ref<FeedFilter>; followingO
   const posts = feed.items
   const { nextCursor, loading, error, refresh: feedRefresh, loadMore: feedLoadMore } = feed
 
-  const collapsedSiblingReplyCountByParentId = computed(() => {
+  function rootIdFor(p: FeedPost): string {
+    let cur: FeedPost | undefined = p
+    while (cur?.parent) cur = cur.parent
+    return (cur?.id ?? p.id ?? '').trim()
+  }
+
+  const replyCountByRootId = computed(() => {
+    const totals = new Map<string, number>()
+    for (const p of posts.value) {
+      // Count reply items (not root posts) by thread root.
+      const isReply = Boolean((p.parentId ?? '').trim())
+      if (!isReply) continue
+      const rootId = rootIdFor(p)
+      if (!rootId) continue
+      totals.set(rootId, (totals.get(rootId) ?? 0) + 1)
+    }
+    return totals
+  })
+
+  const replyCountByParentId = computed(() => {
     const totals = new Map<string, number>()
     for (const p of posts.value) {
       const pid = (p.parentId ?? '').trim()
       if (!pid) continue
       totals.set(pid, (totals.get(pid) ?? 0) + 1)
     }
-    const out = new Map<string, number>()
-    for (const [pid, n] of totals) {
-      if (n > 1) out.set(pid, n - 1)
-    }
-    return out
+    return totals
   })
 
+  function replyCountForParentId(parentId: string): number {
+    const pid = (parentId ?? '').trim()
+    if (!pid) return 0
+    return replyCountByParentId.value.get(pid) ?? 0
+  }
+
   const displayPosts = computed(() => {
-    const seenParentIds = new Set<string>()
+    const seenRootIds = new Set<string>()
     const out: FeedPost[] = []
     for (const p of posts.value) {
-      const pid = (p.parentId ?? '').trim()
-      if (!pid) {
-        out.push(p)
-        continue
-      }
-      if (seenParentIds.has(pid)) continue
-      seenParentIds.add(pid)
+      const rootId = rootIdFor(p)
+      if (!rootId) continue
+      if (seenRootIds.has(rootId)) continue
+      seenRootIds.add(rootId)
       out.push(p)
     }
     return out
   })
 
   function collapsedSiblingReplyCountFor(post: FeedPost): number {
-    const pid = (post.parentId ?? '').trim()
-    if (!pid) return 0
-    return collapsedSiblingReplyCountByParentId.value.get(pid) ?? 0
+    const rootId = rootIdFor(post)
+    if (!rootId) return 0
+    const totalReplies = replyCountByRootId.value.get(rootId) ?? 0
+    const visibleReplyCount = Boolean((post.parentId ?? '').trim()) ? 1 : 0
+    return Math.max(0, totalReplies - visibleReplyCount)
   }
 
   type RefreshOverrides = { visibility?: FeedFilter; sort?: FeedSort } | void
@@ -167,6 +187,7 @@ export function usePostsFeed(options: { visibility?: Ref<FeedFilter>; followingO
       timer = window.setInterval(() => {
         if (document.visibilityState !== 'visible') return
         if (!lastHardRefreshMs.value) return
+        if (Date.now() - lastHardRefreshMs.value < everyMs) return
         void softRefreshNewer()
       }, everyMs)
     }
@@ -272,8 +293,8 @@ export function usePostsFeed(options: { visibility?: Ref<FeedFilter>; followingO
   return {
     posts,
     displayPosts,
-    collapsedSiblingReplyCountByParentId,
     collapsedSiblingReplyCountFor,
+    replyCountForParentId,
     nextCursor,
     loading,
     error,

@@ -201,6 +201,11 @@
             <AppPostRowShareMenu :can-share="canShare" :tooltip="shareTooltip" :items="shareMenuItems" />
           </div>
         </div>
+
+        <!-- Thread footer content (e.g. "View X more replies") -->
+        <div v-if="$slots.threadFooter" class="mt-1" @click.stop>
+          <slot name="threadFooter" />
+        </div>
       </div>
     </div>
   </div>
