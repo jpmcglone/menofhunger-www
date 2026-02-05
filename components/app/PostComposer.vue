@@ -183,6 +183,11 @@
                 </span>
               </template>
             </Button>
+            <AppEmojiPickerButton
+              tooltip="Emoji"
+              aria-label="Insert emoji"
+              @select="insertEmoji"
+            />
           </div>
           <div class="flex items-center gap-2">
             <div class="text-xs text-gray-500 dark:text-gray-400 tabular-nums">
@@ -291,6 +296,30 @@ const myProfilePath = computed(() => {
 const draft = ref('')
 const composerTextareaEl = ref<HTMLTextAreaElement | null>(null)
 const initialTextApplied = ref(false)
+
+function insertEmoji(emoji: string) {
+  const e = (emoji ?? '').trim()
+  if (!e) return
+  const el = composerTextareaEl.value
+  const value = draft.value ?? ''
+  if (el && typeof el.selectionStart === 'number' && typeof el.selectionEnd === 'number') {
+    const start = el.selectionStart
+    const end = el.selectionEnd
+    const next = value.slice(0, start) + e + value.slice(end)
+    draft.value = next
+    void nextTick().then(() => {
+      el.focus?.()
+      try {
+        const pos = start + e.length
+        el.setSelectionRange?.(pos, pos)
+      } catch {
+        // ignore
+      }
+    })
+  } else {
+    draft.value = value + e
+  }
+}
 
 function resizeComposerTextarea() {
   if (!import.meta.client) return

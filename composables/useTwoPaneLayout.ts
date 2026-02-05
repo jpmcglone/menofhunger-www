@@ -1,10 +1,14 @@
 import { useWindowSize } from '@vueuse/core'
 
-export function useTwoPaneLayout<T>(selected: Ref<T | null>, options: { minWidth?: number; minHeight?: number; leftCols?: string } = {}) {
+export function useTwoPaneLayout<T>(
+  selected: Ref<T | null>,
+  options: { minWidth?: number; minHeight?: number; leftCols?: string; rightCols?: string } = {}
+) {
   const { width, height } = useWindowSize()
   const minWidth = options.minWidth ?? 768
   const minHeight = options.minHeight ?? 680
   const leftCols = options.leftCols ?? '22rem'
+  const rightCols = options.rightCols ?? '1fr'
 
   const isTinyViewport = computed(() => {
     if (!import.meta.client) return false
@@ -19,7 +23,7 @@ export function useTwoPaneLayout<T>(selected: Ref<T | null>, options: { minWidth
   // use inline gridTemplateColumns instead.
   const gridStyle = computed(() => {
     if (isTinyViewport.value) return {}
-    return { gridTemplateColumns: `${leftCols} 1fr` }
+    return { gridTemplateColumns: `${leftCols} ${rightCols}` }
   })
 
   return { isTinyViewport, showListPane, showDetailPane, gridStyle }

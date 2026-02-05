@@ -388,6 +388,56 @@ html.dark {
   height: 0;
 }
 
+/* Simple fade transition (Vue <Transition name="moh-fade">) */
+.moh-fade-enter-active,
+.moh-fade-leave-active {
+  transition: opacity 160ms ease, transform 160ms ease;
+}
+.moh-fade-enter-from,
+.moh-fade-leave-to {
+  opacity: 0;
+  transform: translateY(2px);
+}
+.moh-fade-enter-to,
+.moh-fade-leave-from {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Chat list enter/leave + FLIP move (Vue <TransitionGroup name="moh-chat-list">) */
+.moh-chat-list-enter-active,
+.moh-chat-list-leave-active {
+  transition: opacity 180ms ease, transform 180ms ease;
+}
+.moh-chat-list-enter-from,
+.moh-chat-list-leave-to {
+  opacity: 0;
+  transform: translateY(6px);
+}
+.moh-chat-list-move {
+  transition: transform 200ms ease;
+}
+
+/* Extra reliability: explicitly animate newly-added chat rows. */
+.moh-chat-item-enter {
+  animation: moh-chat-item-enter 220ms ease-out both;
+}
+@keyframes moh-chat-item-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .moh-chat-item-enter {
+    animation: none;
+  }
+}
+
 /* PrimeVue tooltip (used by verified badge): simple black + small white text */
 .p-tooltip.moh-tooltip .p-tooltip-text {
   background: var(--moh-tooltip-bg) !important;

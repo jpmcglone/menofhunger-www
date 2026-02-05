@@ -151,14 +151,6 @@
                             : 'Pick a conversation from the left.'
                       }}
                     </div>
-                    <div
-                      v-if="typingLabel"
-                      class="text-xs text-gray-500 dark:text-gray-400 truncate"
-                      role="status"
-                      aria-live="polite"
-                    >
-                      {{ typingLabel }}
-                    </div>
                   </div>
                 </div>
               </div>
@@ -174,7 +166,7 @@
               class="h-full overflow-y-auto py-4"
               @scroll="onMessagesScroll"
             >
-              <div v-show="messagesReady" class="w-full space-y-3 px-4">
+            <div v-show="messagesReady" class="w-full px-4">
               <div v-if="messagesLoading" class="text-sm text-gray-500 dark:text-gray-400">Loading chat…</div>
               <div v-else-if="messagesNextCursor" class="pb-2">
                 <Button label="Load older" text size="small" severity="secondary" :loading="loadingOlder" @click="loadOlderMessages" />
@@ -182,59 +174,93 @@
               <div v-else-if="isDraftChat && messages.length === 0" class="py-6 text-sm text-gray-500 dark:text-gray-400">
                 Send your first chat to start the conversation.
               </div>
-              <div
-                v-for="(m, index) in messages"
-                :key="m.id"
-                :class="[
-                  'relative flex w-full',
-                  m.sender.id === me?.id ? 'justify-end' : 'justify-start',
-                  isGroupChat && m.sender.id !== me?.id ? 'pl-10' : ''
-                ]"
-              >
-                <div v-if="shouldShowIncomingAvatar(m, index)" class="absolute left-0 bottom-0">
-                  <AppUserAvatar :user="m.sender" size-class="h-7 w-7" />
-                </div>
+
+              <TransitionGroup name="moh-chat-list" tag="div" class="space-y-3">
                 <div
+                  v-for="(m, index) in messages"
+                  :key="m.id"
                   :class="[
-                    'max-w-[85%] rounded-2xl p-3 text-sm',
-                    bubbleClass(m)
+                    recentAnimatedMessageIds.has(m.id) ? 'moh-chat-item-enter' : '',
+                    'relative flex w-full',
+                    m.sender.id === me?.id ? 'justify-end' : 'justify-start',
+                    isGroupChat && m.sender.id !== me?.id ? 'pl-10' : ''
                   ]"
                 >
-                  <div class="flex flex-wrap items-end gap-x-2 gap-y-1">
-                    <span class="min-w-0 flex-[1_1_auto] whitespace-pre-wrap break-words">{{ m.body }}</span>
-                    <time
-                      :datetime="m.createdAt"
-                      :title="formatMessageTimeFull(m.createdAt)"
-                      class="ml-auto shrink-0 text-xs opacity-75 whitespace-nowrap"
-                    >
-                      {{ formatMessageTime(m.createdAt) }}
-                    </time>
+                  <div v-if="shouldShowIncomingAvatar(m, index)" class="absolute left-0 bottom-0">
+                    <AppUserAvatar :user="m.sender" size-class="h-7 w-7" />
+                  </div>
+                  <div
+                    :ref="(el) => registerBubbleEl(m.id, el)"
+                    :class="[
+                      'max-w-[85%] text-sm',
+                      bubbleShapeClass(m.id),
+                      bubbleClass(m)
+                    ]"
+                  >
+                    <div class="flex flex-wrap items-end gap-x-2 gap-y-1">
+                      <span class="min-w-0 flex-[1_1_auto] whitespace-pre-wrap break-words">{{ m.body }}</span>
+                      <time
+                        :datetime="m.createdAt"
+                        :title="formatMessageTimeFull(m.createdAt)"
+                        class="ml-auto shrink-0 text-xs opacity-75 whitespace-nowrap"
+                      >
+                        {{ formatMessageTime(m.createdAt) }}
+                      </time>
+                    </div>
                   </div>
                 </div>
-              </div>
+              </TransitionGroup>
             </div>
             </div>
             <Transition name="moh-fade">
               <button
                 v-if="pendingNewCount > 0"
                 type="button"
-                class="absolute left-1/2 bottom-4 z-10 flex -translate-x-1/2 items-center gap-2 rounded-full px-4 py-2 text-xs font-semibold shadow-lg"
+                class="absolute left-1/2 bottom-4 z-10 flex -translate-x-1/2 items-center gap-2 rounded-full px-4 py-2 text-xs font-semibold shadow-lg cursor-pointer"
                 :class="pendingButtonClass"
                 @click="onPendingButtonClick"
               >
                 <i class="pi pi-arrow-down text-xs" aria-hidden="true" />
-                <span>New chats · {{ pendingNewCount }}</span>
+                <span>{{ pendingNewLabel }}</span>
               </button>
             </Transition>
           </div>
           <div v-else class="flex-1" />
 
-          <div v-if="selectedChatKey" class="shrink-0 border-t border-gray-200 px-4 py-3 dark:border-zinc-800">
+          <div v-if="selectedChatKey" class="shrink-0 border-t border-gray-200 px-4 py-2.5 dark:border-zinc-800">
             <div v-if="selectedConversation?.viewerStatus === 'pending'" class="mb-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-200">
               This is a chat request. Replying accepts it and moves it to your inbox.
               <div class="mt-2">
                 <Button label="Accept" size="small" severity="secondary" @click="acceptSelectedConversation" />
               </div>
+            </div>
+            <!-- Typing bar: always present (blank when nobody is typing) -->
+            <div
+              class="mb-2.5 flex min-h-[28px] items-center rounded-lg border border-gray-200 px-3 py-1 text-sm leading-5 text-gray-500 dark:border-zinc-800 dark:text-gray-400"
+              role="status"
+              aria-live="polite"
+            >
+              <Transition name="moh-fade">
+                <div v-if="typingUsersTotalCount > 0" class="truncate">
+                  <template v-if="typingUsersTotalCount === 1">
+                    <span class="font-semibold" :class="typingNameClass(typingUsersForDisplay[0]!)">
+                      @{{ typingUsersForDisplay[0]!.username }}
+                    </span>
+                    <span class="ml-1">is typing…</span>
+                  </template>
+                  <template v-else>
+                    <span class="font-semibold" :class="typingNameClass(typingUsersForDisplay[0]!)">
+                      @{{ typingUsersForDisplay[0]!.username }}
+                    </span>
+                    <span class="mx-1">and</span>
+                    <span class="font-semibold" :class="typingNameClass(typingUsersForDisplay[1]!)">
+                      @{{ typingUsersForDisplay[1]!.username }}
+                    </span>
+                    <span v-if="typingUsersTotalCount > 2" class="ml-1">and others</span>
+                    <span class="ml-1">are typing…</span>
+                  </template>
+                </div>
+              </Transition>
             </div>
             <AppDmComposer
               v-model="composerText"
@@ -401,31 +427,129 @@ const messagesReady = ref(false)
 const pendingNewCount = ref(0)
 const pendingNewTier = ref<'premium' | 'verified' | 'normal'>('normal')
 
+// Track recently-added messages so we can animate them reliably (even if scroll-to-bottom happens same frame).
+const recentAnimatedMessageIds = ref<Set<string>>(new Set())
+const recentAnimatedTimers = ref<Map<string, ReturnType<typeof setTimeout>>>(new Map())
+function markMessageAnimated(id: string) {
+  const mid = (id ?? '').trim()
+  if (!mid) return
+  const next = new Set(recentAnimatedMessageIds.value)
+  next.add(mid)
+  recentAnimatedMessageIds.value = next
+  const timers = recentAnimatedTimers.value
+  const existing = timers.get(mid)
+  if (existing) clearTimeout(existing)
+  timers.set(mid, setTimeout(() => {
+    const n = new Set(recentAnimatedMessageIds.value)
+    n.delete(mid)
+    recentAnimatedMessageIds.value = n
+    timers.delete(mid)
+  }, 420))
+}
+
+// Bubble shape (pill for single-line, rounded rect for multi-line), measured from DOM.
+const bubbleShapeById = ref<Map<string, 'pill' | 'rect'>>(new Map())
+const bubbleEls = new Map<string, HTMLElement>()
+let bubbleRo: ResizeObserver | null = null
+
+function computeBubbleShapeFor(id: string, el: HTMLElement) {
+  const h = Math.max(0, Math.floor(el.getBoundingClientRect().height))
+  const current = bubbleShapeById.value.get(id) ?? 'rect'
+  // Heuristics based on current styles:
+  // - rect uses p-3 (12px top/bottom) + text-sm (~20px line height) => ~44px for 1 line
+  // - 2 lines => ~64px. Use hysteresis to avoid flip-flop near boundary.
+  const toPillThreshold = 46
+  const toRectThreshold = 54
+  const next =
+    current === 'pill'
+      ? (h > toRectThreshold ? 'rect' : 'pill')
+      : (h < toPillThreshold ? 'pill' : 'rect')
+  if (next === current) return
+  const m = new Map(bubbleShapeById.value)
+  m.set(id, next)
+  bubbleShapeById.value = m
+}
+
+function ensureBubbleObserver() {
+  if (!import.meta.client) return
+  if (bubbleRo) return
+  bubbleRo = new ResizeObserver((entries) => {
+    for (const entry of entries) {
+      const el = entry.target as HTMLElement
+      const id = el?.dataset?.mohBubbleId
+      if (!id) continue
+      computeBubbleShapeFor(id, el)
+    }
+  })
+}
+
+function registerBubbleEl(id: string, el: unknown) {
+  if (!import.meta.client) return
+  const mid = (id ?? '').trim()
+  if (!mid) return
+  ensureBubbleObserver()
+  const prev = bubbleEls.get(mid) ?? null
+  if (prev && bubbleRo) {
+    bubbleRo.unobserve(prev)
+  }
+  if (!el || !(el instanceof HTMLElement)) {
+    bubbleEls.delete(mid)
+    const m = new Map(bubbleShapeById.value)
+    m.delete(mid)
+    bubbleShapeById.value = m
+    return
+  }
+  const htmlEl = el
+  htmlEl.dataset.mohBubbleId = mid
+  bubbleEls.set(mid, htmlEl)
+  bubbleRo?.observe(htmlEl)
+  // Compute once immediately.
+  computeBubbleShapeFor(mid, htmlEl)
+}
+
+function bubbleShapeClass(id: string) {
+  const shape = bubbleShapeById.value.get(id) ?? 'rect'
+  // Pill should be a bit tighter vertically and more horizontal padding.
+  return shape === 'pill' ? 'rounded-full px-4 py-2' : 'rounded-2xl p-3'
+}
+
 // Remote typing indicator (per selected conversation).
 const typingByUserId = ref<Map<string, number>>(new Map())
 const typingSweepTimer = ref<ReturnType<typeof setInterval> | null>(null)
 const TYPING_TTL_MS = 3500
-const typingLabel = computed(() => {
-  if (!selectedConversationId.value) return null
-  const m = typingByUserId.value
-  if (!m.size) return null
-  const ids = [...m.keys()]
-  if (!ids.length) return null
-  // Resolve username(s) from selectedConversation participants (best-effort).
+type TypingUserDisplay = {
+  userId: string
+  username: string
+  tier: 'premium' | 'verified' | 'normal'
+}
+
+const typingUsersAll = computed<TypingUserDisplay[]>(() => {
+  if (!selectedConversationId.value) return []
+  const ids = [...typingByUserId.value.keys()].filter((id) => id && id !== me.value?.id)
+  if (!ids.length) return []
+
   const convo = selectedConversation.value
-  const names: string[] = []
+  const result: TypingUserDisplay[] = []
   for (const uid of ids) {
-    if (uid === me.value?.id) continue
     const p = convo?.participants?.find((pp) => pp.user?.id === uid)
     const u = p?.user
-    const label = (u?.username ?? '').trim()
-    if (label) names.push(`@${label}`)
+    const username = (u?.username ?? '').trim()
+    if (!username) continue
+    const tier: TypingUserDisplay['tier'] =
+      u?.premium ? 'premium' : u?.verifiedStatus && u.verifiedStatus !== 'none' ? 'verified' : 'normal'
+    result.push({ userId: uid, username, tier })
   }
-  if (names.length === 0) return null
-  if (names.length === 1) return `${names[0]} is typing…`
-  if (names.length === 2) return `${names[0]} and ${names[1]} are typing…`
-  return `${names[0]} and others are typing…`
+  return result
 })
+
+const typingUsersTotalCount = computed(() => typingUsersAll.value.length)
+const typingUsersForDisplay = computed(() => typingUsersAll.value.slice(0, 2))
+
+function typingNameClass(u: TypingUserDisplay): string {
+  if (u.tier === 'premium') return 'text-[var(--moh-premium)]'
+  if (u.tier === 'verified') return 'text-[var(--moh-verified)]'
+  return 'text-gray-700 dark:text-gray-200'
+}
 
 const newDialogVisible = ref(false)
 const recipientQuery = ref('')
@@ -456,8 +580,16 @@ const pendingButtonClass = computed(() => {
   return 'bg-gray-900 text-white dark:bg-white dark:text-gray-900'
 })
 
+const pendingNewLabel = computed(() => {
+  const n = Math.max(0, Math.floor(Number(pendingNewCount.value) || 0))
+  return `${n} New ${n === 1 ? 'Message' : 'Messages'}`
+})
+
 const { isTinyViewport, showListPane, showDetailPane: showChatPane, gridStyle } = useTwoPaneLayout(selectedChatKey, {
-  leftCols: '22rem',
+  // Keep list pane <= 1/3 of chat pane (1:3 ratio) on wide screens.
+  leftCols: '1fr',
+  rightCols: '3fr',
+  minWidth: 1024,
   // Messages should not collapse panes due to short viewport height.
   // Only collapse when the viewport is actually narrow.
   minHeight: 0,
@@ -490,7 +622,8 @@ const draftGroupTitle = computed(() => {
   return `${first}, ${second}, and ${rest.length} others`
 })
 
-const BOTTOM_THRESHOLD = 24
+// Treat user as "at bottom" even if a few pixels off (mobile scroll rounding, safe-area, etc).
+const BOTTOM_THRESHOLD = 96
 
 function isAtBottom() {
   const el = messagesScroller.value
@@ -633,9 +766,9 @@ function bubbleClass(m: Message) {
   }
 
   // Incoming: outlined bubble (X-like).
-  if (tier === 'premium') return 'bg-transparent border border-[var(--moh-premium)] text-gray-900 dark:text-gray-100'
-  if (tier === 'verified') return 'bg-transparent border border-[var(--moh-verified)] text-gray-900 dark:text-gray-100'
-  return 'bg-transparent border border-gray-300 text-gray-900 dark:border-zinc-700 dark:text-gray-100'
+  if (tier === 'premium') return 'bg-transparent border border-[rgba(var(--moh-premium-rgb),0.55)] text-gray-900 dark:text-gray-100'
+  if (tier === 'verified') return 'bg-transparent border border-[rgba(var(--moh-verified-rgb),0.55)] text-gray-900 dark:text-gray-100'
+  return 'bg-transparent border border-gray-200 text-gray-900 dark:border-zinc-600 dark:text-gray-100'
 }
 
 async function fetchConversations(tab: 'primary' | 'requests', opts?: { cursor?: string | null; forceRefresh?: boolean }) {
@@ -837,6 +970,7 @@ async function sendCurrentMessage() {
       const exists = messages.value.some((m) => m.id === msg.id)
       if (!exists) {
         messages.value = [...messages.value, msg]
+        markMessageAnimated(msg.id)
       }
       updateConversationForMessage(msg)
       await nextTick()
@@ -1083,9 +1217,15 @@ const messageCallback = {
       const exists = messages.value.some((m) => m.id === msg.id)
       if (!exists) {
         messages.value = [...messages.value, msg]
+        markMessageAnimated(msg.id)
       }
       if (shouldStick) {
-        void nextTick().then(() => scrollToBottom('smooth'))
+        void nextTick().then(() => {
+          // Use auto to keep the list pinned (no repeated smooth animations).
+          scrollToBottom('auto')
+          // One more frame to handle any layout updates (e.g. typing row enter/leave).
+          requestAnimationFrame(() => scrollToBottom('auto'))
+        })
       } else if (msg.sender.id !== me.value?.id) {
         pendingNewCount.value += 1
         maybeUpgradePendingTier(msg)
@@ -1124,6 +1264,14 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   removeMessagesCallback(messageCallback)
+  for (const t of recentAnimatedTimers.value.values()) clearTimeout(t)
+  recentAnimatedTimers.value.clear()
+  if (bubbleRo) {
+    for (const el of bubbleEls.values()) bubbleRo.unobserve(el)
+    bubbleEls.clear()
+    bubbleRo.disconnect()
+    bubbleRo = null
+  }
   if (typingSweepTimer.value) {
     clearInterval(typingSweepTimer.value)
     typingSweepTimer.value = null

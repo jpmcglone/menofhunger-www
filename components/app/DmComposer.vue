@@ -1,32 +1,43 @@
 <template>
-  <div
-    class="relative flex w-full items-center overflow-hidden"
-    :class="outlineClass"
-  >
-    <textarea
-      ref="textareaEl"
-      :value="modelValue"
-      :placeholder="placeholder"
+  <div class="flex w-full items-end gap-2">
+    <!-- Emoji button: outside the pill, left side -->
+    <AppEmojiPickerButton
+      tooltip="Emoji"
+      aria-label="Insert emoji"
       :disabled="disabled"
-      rows="1"
-      class="dm-composer-input min-h-[44px] w-full resize-none border-0 bg-transparent py-3 pl-4 pr-12 text-[16px] text-[var(--moh-text)] placeholder:text-[var(--moh-text-muted)] focus:outline-none focus:ring-0 disabled:opacity-60"
-      @input="onInput"
-      @keydown="onKeydown"
+      @select="insertEmoji"
     />
-    <Transition name="moh-fade">
-      <button
-        v-if="hasText"
-        type="button"
-        aria-label="Send"
-        :disabled="loading"
-        class="absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full transition-colors disabled:opacity-50"
-        :class="sendButtonClass"
-        @click="emitSend"
-      >
-        <i v-if="loading" class="pi pi-spinner pi-spin text-sm" aria-hidden="true" />
-        <i v-else class="pi pi-arrow-up text-sm" aria-hidden="true" />
-      </button>
-    </Transition>
+
+    <!-- Text pill -->
+    <div
+      class="relative flex w-full items-center overflow-hidden"
+      :class="outlineClass"
+    >
+      <textarea
+        ref="textareaEl"
+        :value="modelValue"
+        :placeholder="placeholder"
+        :disabled="disabled"
+        rows="1"
+        class="dm-composer-input min-h-[44px] w-full resize-none border-0 bg-transparent py-3 pl-4 pr-12 text-[16px] text-[var(--moh-text)] placeholder:text-[var(--moh-text-muted)] focus:outline-none focus:ring-0 disabled:opacity-60"
+        @input="onInput"
+        @keydown="onKeydown"
+      />
+      <Transition name="moh-fade">
+        <button
+          v-if="hasText"
+          type="button"
+          aria-label="Send"
+          :disabled="loading"
+          class="absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full transition-colors disabled:opacity-50"
+          :class="sendButtonClass"
+          @click="emitSend"
+        >
+          <i v-if="loading" class="pi pi-spinner pi-spin text-sm" aria-hidden="true" />
+          <i v-else class="pi pi-arrow-up text-sm" aria-hidden="true" />
+        </button>
+      </Transition>
+    </div>
   </div>
 </template>
 
@@ -84,6 +95,30 @@ function resizeTextarea() {
   if (!el) return
   el.style.height = 'auto'
   el.style.height = `${Math.max(el.scrollHeight, 44)}px`
+}
+
+function insertEmoji(emoji: string) {
+  const e = (emoji ?? '').trim()
+  if (!e) return
+  const el = textareaEl.value
+  const value = props.modelValue ?? ''
+  if (el && typeof el.selectionStart === 'number' && typeof el.selectionEnd === 'number') {
+    const start = el.selectionStart
+    const end = el.selectionEnd
+    const next = value.slice(0, start) + e + value.slice(end)
+    emit('update:modelValue', next)
+    void nextTick().then(() => {
+      el.focus?.()
+      try {
+        const pos = start + e.length
+        el.setSelectionRange?.(pos, pos)
+      } catch {
+        // ignore
+      }
+    })
+  } else {
+    emit('update:modelValue', value + e)
+  }
 }
 
 function onInput(e: Event) {

@@ -29,6 +29,7 @@
     "@unhead/vue": "^2.1.2",
     "@vite-pwa/nuxt": "^1.1.0",
     "better-sqlite3": "^12.6.2",
+    "emoji-picker-element": "^1.28.1",
     "eslint": "^9.39.2",
     "linkify-it": "^5.0.0",
     "nuxt": "^4.3.0",
