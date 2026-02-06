@@ -225,13 +225,14 @@
         </aside>
 
         <!-- Columns 2 + 3: separate scroll zones, but coupled wheel scrolling. -->
-        <div class="flex min-w-0 flex-1">
+        <div :class="['flex min-w-0 flex-1', shouldCapMiddleColumn ? 'lg:justify-center' : '']">
           <!-- Middle / Feed (scroll zone #2) -->
           <main
             id="moh-middle-scroller"
             ref="middleScrollerEl"
             :class="[
               'no-scrollbar min-w-0 flex-1 overflow-x-hidden flex flex-col',
+              shouldCapMiddleColumn ? 'lg:max-w-[720px]' : '',
               'lg:border-r moh-border',
               anyOverlayOpen || (isMessagesPage && hideTopBar) ? 'overflow-hidden' : 'overflow-y-auto overscroll-y-auto'
             ]"
@@ -297,7 +298,7 @@
             ref="rightScrollerEl"
             :class="[
               // Layout should not add padding; right-rail content owns its gutters.
-              'no-scrollbar shrink-0 w-80 xl:w-88 h-full moh-texture',
+              'no-scrollbar shrink-0 w-[clamp(20rem,22vw,23.75rem)] h-full moh-texture',
               anyOverlayOpen ? 'overflow-hidden' : 'overflow-y-auto overscroll-y-auto',
               isRightRailForcedHidden ? 'hidden' : 'hidden lg:block'
             ]"
@@ -374,6 +375,10 @@
 
               <AppWebsters1828WordOfDayCard />
 
+              <AppSupportDonateCard />
+
+              <AppAdSlot placement="rail" />
+
               <Card>
                 <template #title>Trends for you</template>
                 <template #content>
@@ -394,37 +399,6 @@
                       <div class="text-xs text-gray-500 dark:text-gray-400">8,002 posts</div>
                     </div>
                     <Button label="Show more" text severity="secondary" class="w-full justify-center" />
-                  </div>
-                </template>
-              </Card>
-
-              <AppSupportDonateCard />
-
-              <Card>
-                <template #title>What’s happening</template>
-                <template #content>
-                  <div class="space-y-3 text-sm moh-text-muted">
-                    <div class="rounded-lg border moh-border p-3">
-                      Placeholder card (could be announcements, promos, ads, etc.)
-                    </div>
-                    <div class="rounded-lg border moh-border p-3">
-                      Another placeholder card
-                    </div>
-                  </div>
-                </template>
-              </Card>
-
-              <Card>
-                <template #title>Suggestions</template>
-                <template #content>
-                  <div class="space-y-3 text-sm moh-text-muted">
-                    <div class="flex items-center justify-between">
-                      <div class="min-w-0">
-                        <div class="font-medium">Men of Hunger</div>
-                        <div class="moh-text-muted">@menofhunger</div>
-                      </div>
-                      <Button label="Follow" severity="secondary" size="small" />
-                    </div>
                   </div>
                 </template>
               </Card>
@@ -454,25 +428,13 @@
                       </div>
                       <Tag value="Open" severity="secondary" />
                     </div>
-                    <Button label="Browse groups" text severity="secondary" class="w-full justify-center" />
-                  </div>
-                </template>
-              </Card>
-
-              <Card>
-                <template #title>Sponsored</template>
-                <template #content>
-                  <div class="space-y-3 text-sm moh-text-muted">
-                    <div class="rounded-lg border moh-border p-3">
-                      <div class="flex items-center justify-between">
-                        <div class="font-semibold">Ad slot</div>
-                        <Tag value="Ad" severity="secondary" />
-                      </div>
-                      <p class="mt-2 moh-text-muted">
-                        Placeholder for a promoted card. Could be a course, sponsor, or affiliate link.
-                      </p>
-                      <Button label="Learn more" class="mt-3 w-full rounded-full" severity="secondary" />
-                    </div>
+                    <Button
+                      label="Browse groups"
+                      text
+                      severity="secondary"
+                      class="w-full justify-center"
+                      @click="navigateTo('/groups')"
+                    />
                   </div>
                 </template>
               </Card>
@@ -661,6 +623,7 @@ const isBookmarksPage = computed(() => route.path === '/bookmarks' || route.path
 const isNotificationsPage = computed(() => route.path === '/notifications')
 const isMessagesPage = computed(() => route.path === '/chat')
 const isOnlyMePage = computed(() => route.path === '/only-me')
+const shouldCapMiddleColumn = computed(() => !isMessagesPage.value && !route.path.startsWith('/admin'))
 
 // Post entrypoints (left-nav button + mobile FAB): only render on these routes.
 const isComposerEntrypointRoute = computed(() => {

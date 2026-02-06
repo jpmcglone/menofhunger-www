@@ -21,7 +21,17 @@ export default defineNuxtConfig({
       // VAPID public key for Web Push (must match API VAPID_PUBLIC_KEY).
       vapidPublicKey: (process.env.NUXT_PUBLIC_VAPID_PUBLIC_KEY || '').trim(),
       // Facebook App ID for og:fb:app_id (fixes Sharing Debugger warning; improves link previews).
-      facebookAppId: process.env.NUXT_PUBLIC_FACEBOOK_APP_ID || ''
+      facebookAppId: process.env.NUXT_PUBLIC_FACEBOOK_APP_ID || '',
+      adsense: {
+        enabled: String(process.env.NUXT_PUBLIC_ADSENSE_ENABLED || '').trim() === 'true',
+        // Example: ca-pub-1234567890123456
+        client: String(process.env.NUXT_PUBLIC_ADSENSE_CLIENT || '').trim(),
+        // Example: 1234567890 (numeric string)
+        railSlot: String(process.env.NUXT_PUBLIC_ADSENSE_RAIL_SLOT || '').trim(),
+        feedSlot: String(process.env.NUXT_PUBLIC_ADSENSE_FEED_SLOT || '').trim(),
+        // DEV ONLY: set to true to request test ads (AdSense supports data-adtest="on").
+        adtest: String(process.env.NUXT_PUBLIC_ADSENSE_ADTEST || '').trim() === 'true',
+      },
     }
   },
   app: {
@@ -30,6 +40,10 @@ export default defineNuxtConfig({
       meta: [
         { charset: 'utf-8' },
         { name: 'viewport', content: 'width=device-width, initial-scale=1' },
+        // AdSense site verification (safe even for Premium; does not render ads by itself).
+        ...(String(process.env.NUXT_PUBLIC_ADSENSE_CLIENT || '').trim()
+          ? [{ name: 'google-adsense-account', content: String(process.env.NUXT_PUBLIC_ADSENSE_CLIENT || '').trim() }]
+          : []),
         // PWA + add-to-home meta
         { name: 'theme-color', content: '#ffffff' },
         { name: 'mobile-web-app-capable', content: 'yes' },
@@ -37,6 +51,18 @@ export default defineNuxtConfig({
         { name: 'apple-mobile-web-app-status-bar-style', content: 'black-translucent' },
         { name: 'apple-mobile-web-app-title', content: siteConfig.name }
       ],
+      // AdSense loader in initial HTML (helps site verification + avoids relying on client JS timing).
+      script: String(process.env.NUXT_PUBLIC_ADSENSE_CLIENT || '').trim()
+        ? [
+            {
+              async: true,
+              src: `https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${encodeURIComponent(
+                String(process.env.NUXT_PUBLIC_ADSENSE_CLIENT || '').trim(),
+              )}`,
+              crossorigin: 'anonymous',
+            },
+          ]
+        : [],
       link: [
         { rel: 'manifest', href: '/site.webmanifest' },
         { rel: 'apple-touch-icon', href: '/apple-touch-icon.png' },

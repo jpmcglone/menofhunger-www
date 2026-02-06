@@ -140,16 +140,18 @@
               No posts yet.
             </div>
 
-              <div v-else class="relative mt-3">
-              <div v-for="p in postsWithoutPinned" :key="p.id">
+            <div v-else class="relative mt-3">
+              <template v-for="item in itemsWithoutPinned" :key="item.kind === 'ad' ? item.key : item.post.id">
+                <AppFeedFakeAdRow v-if="item.kind === 'ad'" />
                 <AppFeedPostRow
-                  :post="p"
-                  :collapsed-sibling-replies-count="profileCollapsedSiblingReplyCountFor(p)"
+                  v-else
+                  :post="item.post"
+                  :collapsed-sibling-replies-count="profileCollapsedSiblingReplyCountFor(item.post)"
                   :reply-count-for-parent-id="profileReplyCountForParentId"
                   :replies-sort="profileSort ?? 'new'"
                   @deleted="profileRemovePost"
                 />
-              </div>
+              </template>
             </div>
           </div>
         </ClientOnly>
@@ -239,9 +241,12 @@ const effectivePinnedPostId = computed(() => {
   return profilePid
 })
 
+const showAds = computed(() => !authUser.value?.premium)
+
 const {
   posts: profilePosts,
   displayPosts: profileDisplayPosts,
+  displayItems: profileDisplayItems,
   collapsedSiblingReplyCountFor: profileCollapsedSiblingReplyCountFor,
   replyCountForParentId: profileReplyCountForParentId,
   counts: profileCounts,
@@ -259,6 +264,7 @@ const {
 } = useUserPosts(normalizedUsername, {
   enabled: computed(() => !notFound.value),
   defaultToNewestAndAll: true,
+  showAds,
 })
 
 const {
@@ -269,11 +275,11 @@ const {
   refreshPinnedPost,
 } = useProfilePinnedPost({ normalizedUsername, effectivePinnedPostId, profilePosts })
 
-const postsWithoutPinned = computed(() => {
-  const list = profileDisplayPosts.value ?? []
+const itemsWithoutPinned = computed(() => {
+  const list = profileDisplayItems.value ?? []
   const pid = effectivePinnedPostId.value
   if (!pid) return list
-  return list.filter((p) => p.id !== pid)
+  return list.filter((item) => item.kind !== 'post' || item.post.id !== pid)
 })
 
 function pinnedBadgeClasses(visibility: import('~/types/api').PostVisibility): string {

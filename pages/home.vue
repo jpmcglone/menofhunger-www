@@ -56,16 +56,18 @@
             />
 
             <div class="relative">
-              <div v-for="p in displayPosts" :key="p.id">
+              <template v-for="item in displayItems" :key="item.kind === 'ad' ? item.key : item.post.id">
+                <AppFeedFakeAdRow v-if="item.kind === 'ad'" />
                 <AppFeedPostRow
-                  :post="p"
-                  :activate-video-on-mount="p.id === newlyPostedVideoPostId"
-                  :collapsed-sibling-replies-count="collapsedSiblingReplyCountFor(p)"
+                  v-else
+                  :post="item.post"
+                  :activate-video-on-mount="item.post.id === newlyPostedVideoPostId"
+                  :collapsed-sibling-replies-count="collapsedSiblingReplyCountFor(item.post)"
                   :reply-count-for-parent-id="replyCountForParentId"
                   :replies-sort="feedSort"
                   @deleted="removePost"
                 />
-              </div>
+              </template>
             </div>
 
             <!-- Lazy-load sentinel + loader -->
@@ -160,6 +162,7 @@ const {
   viewerIsVerified,
   viewerIsPremium,
   feedCtaKind,
+  displayItems,
   setFeedFilter,
   setFeedSort,
   resetFilters,

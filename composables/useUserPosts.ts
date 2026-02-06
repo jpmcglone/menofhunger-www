@@ -7,6 +7,10 @@ export type UserPostsFilter = FeedVisibilityFilter
 
 type PostCounts = NonNullable<ApiPagination['counts']>
 
+export type UserPostsDisplayItem =
+  | { kind: 'post'; post: FeedPost }
+  | { kind: 'ad'; key: string }
+
 const EMPTY_COUNTS: PostCounts = {
   all: 0,
   public: 0,
@@ -19,12 +23,15 @@ export function useUserPosts(
   opts: {
     enabled?: Ref<boolean>
     defaultToNewestAndAll?: boolean
+    /** When false, do not insert in-feed ad items. */
+    showAds?: Ref<boolean>
     /** When set, use separate cookie keys (e.g. for permalink "more from author" so it doesn't share state with profile). */
     cookieKeyPrefix?: string
   } = {},
 ) {
   const { clearBumpsForPostIds } = usePostCountBumps()
   const enabled = opts.enabled ?? computed(() => true)
+  const showAds = opts.showAds ?? computed(() => true)
   const prefix = opts.cookieKeyPrefix ?? 'moh.profile.posts'
 
   const { filter, sort, viewerIsVerified, viewerIsPremium, ctaKind } = useFeedFilters({ cookieKeyPrefix: prefix })
@@ -99,6 +106,26 @@ export function useUserPosts(
       if (seenRootIds.has(rootId)) continue
       seenRootIds.add(rootId)
       out.push(p)
+    }
+    return out
+  })
+
+  const displayItems = computed<UserPostsDisplayItem[]>(() => {
+    const out: UserPostsDisplayItem[] = []
+    let rootPostCount = 0
+    for (const p of displayPosts.value) {
+      out.push({ kind: 'post', post: p })
+
+      if (!showAds.value) continue
+
+      const isRootPost = !String(p.parentId ?? '').trim()
+      if (!isRootPost) continue
+
+      rootPostCount += 1
+      if (rootPostCount % 10 !== 0) continue
+
+      const rootId = rootIdFor(p)
+      out.push({ kind: 'ad', key: `ad-after-${rootId || p.id}` })
     }
     return out
   })
@@ -223,6 +250,7 @@ export function useUserPosts(
     sort,
     posts,
     displayPosts,
+    displayItems,
     collapsedSiblingReplyCountFor,
     replyCountForParentId,
     counts,

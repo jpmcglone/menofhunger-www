@@ -244,7 +244,7 @@
                   <div v-if="pushRequiresInstall" class="text-sm text-gray-600 dark:text-gray-400">
                     On iOS Safari, install this site to your Home Screen to enable notifications. Tap Share → Add to Home Screen, then reopen the app.
                   </div>
-                  <div class="flex flex-wrap items-center gap-3">
+                  <div v-if="pushInitialStateChecked" class="flex flex-wrap items-center gap-3">
                     <Button
                       v-if="!pushIsSubscribed && pushPermission !== 'denied'"
                       label="Enable browser notifications"
@@ -278,6 +278,9 @@
                     <span v-if="pushTestMessage" class="text-sm text-gray-600 dark:text-gray-400">
                       {{ pushTestMessage }}
                     </span>
+                  </div>
+                  <div v-else class="text-sm text-gray-600 dark:text-gray-400">
+                    Checking notification settings…
                   </div>
                 </div>
               </div>
@@ -361,9 +364,15 @@ const {
 } = usePushNotifications()
 const pushTestSending = ref(false)
 const pushTestMessage = ref('')
+const pushInitialStateChecked = ref(false)
 
 onMounted(() => {
+  pushInitialStateChecked.value = false
   void refreshSubscriptionState()
+    .catch(() => {})
+    .finally(() => {
+      pushInitialStateChecked.value = true
+    })
 })
 
 async function pushSubscribe() {

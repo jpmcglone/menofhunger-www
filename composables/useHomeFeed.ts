@@ -49,10 +49,12 @@ export function useHomeFeed() {
   )
 
   const followingOnly = computed(() => Boolean(isAuthed.value && feedScope.value === 'following'))
+  const showAds = computed(() => !user.value?.premium)
 
   const {
     posts,
     displayPosts,
+    displayItems,
     collapsedSiblingReplyCountFor,
     replyCountForParentId,
     nextCursor,
@@ -68,6 +70,7 @@ export function useHomeFeed() {
     visibility: feedFilter,
     followingOnly,
     sort: feedSort,
+    showAds,
   })
 
   onMounted(() => startAutoSoftRefresh({ everyMs: 10_000 }))
@@ -154,6 +157,7 @@ export function useHomeFeed() {
     scopeTabs,
     posts,
     displayPosts,
+    displayItems,
     collapsedSiblingReplyCountFor,
     replyCountForParentId,
     nextCursor,

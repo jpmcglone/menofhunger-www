@@ -7,7 +7,11 @@ import { usePostCountBumps } from '~/composables/usePostCountBumps'
 type FeedFilter = 'all' | 'public' | PostVisibility
 type FeedSort = 'new' | 'trending'
 
-export function usePostsFeed(options: { visibility?: Ref<FeedFilter>; followingOnly?: Ref<boolean>; sort?: Ref<FeedSort> } = {}) {
+export type PostsFeedDisplayItem =
+  | { kind: 'post'; post: FeedPost }
+  | { kind: 'ad'; key: string }
+
+export function usePostsFeed(options: { visibility?: Ref<FeedFilter>; followingOnly?: Ref<boolean>; sort?: Ref<FeedSort>; showAds?: Ref<boolean> } = {}) {
   const { apiFetch, apiFetchData } = useApiClient()
   const middleScrollerEl = useMiddleScroller()
   const { clearBumpsForPostIds } = usePostCountBumps()
@@ -16,6 +20,7 @@ export function usePostsFeed(options: { visibility?: Ref<FeedFilter>; followingO
   const visibility = options.visibility ?? ref<FeedFilter>('all')
   const followingOnly = options.followingOnly ?? ref(false)
   const sort = options.sort ?? ref<FeedSort>('new')
+  const showAds = options.showAds ?? computed(() => true)
   const lastHardRefreshMs = useState<number>('posts-feed-last-hard-refresh-ms', () => 0)
 
   const feed = useCursorFeed<FeedPost>({
@@ -82,6 +87,28 @@ export function usePostsFeed(options: { visibility?: Ref<FeedFilter>; followingO
       if (seenRootIds.has(rootId)) continue
       seenRootIds.add(rootId)
       out.push(p)
+    }
+    return out
+  })
+
+  const displayItems = computed<PostsFeedDisplayItem[]>(() => {
+    const out: PostsFeedDisplayItem[] = []
+    let rootPostCount = 0
+    for (const p of displayPosts.value) {
+      out.push({ kind: 'post', post: p })
+
+      if (!showAds.value) continue
+
+      // Only count root posts (no parent). Never count replies/comments.
+      const isRootPost = !String(p.parentId ?? '').trim()
+      if (!isRootPost) continue
+
+      rootPostCount += 1
+      if (rootPostCount % 10 !== 0) continue
+
+      // Insert only *between* feed rows (never inside a thread).
+      const rootId = rootIdFor(p)
+      out.push({ kind: 'ad', key: `ad-after-${rootId || p.id}` })
     }
     return out
   })
@@ -293,6 +320,7 @@ export function usePostsFeed(options: { visibility?: Ref<FeedFilter>; followingO
   return {
     posts,
     displayPosts,
+    displayItems,
     collapsedSiblingReplyCountFor,
     replyCountForParentId,
     nextCursor,
