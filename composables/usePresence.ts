@@ -28,7 +28,11 @@ export type OnlineFeedCallback = {
 }
 
 export type RadioListenersPayload = { stationId: string; listeners: RadioListener[] }
-export type RadioCallback = { onListeners?: (payload: RadioListenersPayload) => void }
+export type RadioCallback = {
+  onListeners?: (payload: RadioListenersPayload) => void
+  /** Called when this tab's radio was closed because the user started playing in another tab. */
+  onReplaced?: () => void
+}
 
 export type MessagesCallback = {
   onMessage?: (payload: { conversationId?: string; message?: unknown }) => void
@@ -393,6 +397,12 @@ export function usePresence() {
       const listeners = Array.isArray(data?.listeners) ? data.listeners : []
       for (const cb of radioCallbacks.value) {
         cb.onListeners?.({ stationId, listeners })
+      }
+    })
+
+    socket.on('radio:replaced', () => {
+      for (const cb of radioCallbacks.value) {
+        cb.onReplaced?.()
       }
     })
 

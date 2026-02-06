@@ -6,7 +6,6 @@ const RADIO_IS_PLAYING_KEY = 'radio-is-playing'
 const RADIO_IS_BUFFERING_KEY = 'radio-is-buffering'
 const RADIO_ERROR_KEY = 'radio-error'
 const RADIO_LISTENERS_KEY = 'radio-listeners'
-
 const DEFAULT_RADIO_STATIONS: RadioStation[] = Array.isArray(radioStationsFallback)
   ? (radioStationsFallback as RadioStation[])
   : []
@@ -59,6 +58,16 @@ export function useRadioPlayer() {
       if (payload.stationId !== stationId.value) return
       // API emits {id, username, avatarUrl} (matches RadioListener shape)
       listeners.value = (payload.listeners ?? []) as RadioListener[]
+    },
+    onReplaced: () => {
+      stop()
+      const { push } = useAppToast()
+      push({
+        title: 'Radio stopped',
+        message: 'You started playing in another tab.',
+        color: '#000000',
+        durationMs: 3500,
+      })
     },
   }
 
