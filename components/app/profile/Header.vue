@@ -90,7 +90,7 @@
           </div>
         </div>
 
-        <div class="shrink-0 text-right">
+        <div class="shrink-0 flex items-center gap-2">
           <Button
             v-if="isSelf"
             label="Edit profile"
@@ -106,6 +106,16 @@
             :initial-relationship="followRelationship"
             @followed="emit('followed')"
             @unfollowed="emit('unfollowed')"
+          />
+          <Button
+            v-if="canOpenMenu"
+            type="button"
+            icon="pi pi-ellipsis-v"
+            severity="secondary"
+            rounded
+            text
+            aria-label="More"
+            @click="toggleMenu"
           />
         </div>
       </div>
@@ -129,12 +139,23 @@
       </div>
     </div>
   </div>
+
+  <Menu v-if="canOpenMenu" ref="menuRef" :model="menuItems" popup />
+
+  <AppReportDialog
+    v-model:visible="reportOpen"
+    target-type="user"
+    :subject-user-id="profile?.id ?? null"
+    :subject-label="profile?.username ? `@${profile.username}` : 'User'"
+    @submitted="onReportSubmitted"
+  />
 </template>
 
 <script setup lang="ts">
 import type { FollowRelationship, PublicProfile } from '~/types/api'
 import { formatDateTime, formatListTime } from '~/utils/time-format'
 import { tinyTooltip } from '~/utils/tiny-tooltip'
+import type { MenuItem } from 'primevue/menuitem'
 
 const props = defineProps<{
   profile: PublicProfile | null
@@ -177,6 +198,38 @@ const hideAvatarDuringBanner = computed(() => Boolean(props.hideAvatarDuringBann
 
 const { user: authUser } = useAuth()
 const isAuthed = computed(() => Boolean(authUser.value?.id))
+
+const canOpenMenu = computed(() => {
+  if (!isAuthed.value) return false
+  if (isSelf.value) return false
+  return Boolean(profile.value?.id)
+})
+
+const reportOpen = ref(false)
+const menuRef = ref()
+
+const menuItems = computed<MenuItem[]>(() => {
+  if (!canOpenMenu.value) return []
+  return [
+    {
+      label: 'Report user',
+      icon: 'pi pi-flag',
+      command: () => {
+        reportOpen.value = true
+      },
+    },
+  ]
+})
+
+function toggleMenu(event: Event) {
+  // PrimeVue Menu expects the click event to position the popup.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  ;(menuRef.value as any)?.toggle(event)
+}
+
+function onReportSubmitted() {
+  // toast + close handled in dialog
+}
 
 const { addInterest, removeInterest, getPresenceStatus, isPresenceKnown } = usePresence()
 const lastProfileId = ref<string | null>(null)

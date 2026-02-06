@@ -57,6 +57,16 @@
               </div>
             </NuxtLink>
 
+            <NuxtLink to="/admin/reports" :class="areaRowClass('reports')">
+              <div class="flex items-center gap-3">
+                <i class="pi pi-flag text-lg" aria-hidden="true" />
+                <div class="min-w-0 flex-1">
+                  <div class="font-semibold truncate">Reports</div>
+                  <div class="text-sm text-gray-600 dark:text-gray-300 truncate">Review reported posts and users</div>
+                </div>
+              </div>
+            </NuxtLink>
+
             <NuxtLink to="/admin/search" :class="areaRowClass('search')">
               <div class="flex items-center gap-3">
                 <i class="pi pi-search text-lg" aria-hidden="true" />
@@ -90,18 +100,19 @@ definePageMeta({
 
 const route = useRoute()
 
-function isActiveArea(key: 'site-settings' | 'users' | 'verification' | 'media-review' | 'feedback' | 'search') {
+function isActiveArea(key: 'site-settings' | 'users' | 'verification' | 'media-review' | 'feedback' | 'reports' | 'search') {
   const p = route.path
   if (key === 'site-settings') return p === '/admin/site-settings'
   if (key === 'users') return p === '/admin/users'
   if (key === 'verification') return p === '/admin/verification'
   if (key === 'media-review') return p === '/admin/media-review' || p.startsWith('/admin/media-review/')
   if (key === 'feedback') return p === '/admin/feedback'
+  if (key === 'reports') return p === '/admin/reports'
   if (key === 'search') return p === '/admin/search'
   return false
 }
 
-function areaRowClass(key: 'site-settings' | 'users' | 'verification' | 'media-review' | 'feedback' | 'search') {
+function areaRowClass(key: 'site-settings' | 'users' | 'verification' | 'media-review' | 'feedback' | 'reports' | 'search') {
   const active = isActiveArea(key)
   return [
     'block px-4 py-3 transition-colors',

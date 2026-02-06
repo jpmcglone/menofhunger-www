@@ -2,7 +2,10 @@
   <div>
     <!-- Layout: Composer at top, feed below. Wrapper ref used to detect when composer is in view (hides mobile FAB). -->
     <div ref="homeComposerEl" class="min-h-0">
-      <AppPostComposer :create-post="createPostViaFeed" />
+      <AppPostComposer
+        :create-post="createPostViaFeed"
+        :allowed-visibilities="['public', 'verifiedOnly', 'premiumOnly']"
+      />
     </div>
 
     <!-- Feed: header + content -->

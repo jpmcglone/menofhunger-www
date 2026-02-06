@@ -45,10 +45,12 @@
               "inProgress": true
             },
             {
-              "text": "**Discover / non-empty feed** — When you have zero follows, a “Discover” or “For you” feed (trending or recent public posts) so your home feed is never empty."
+              "text": "**Discover / non-empty feed** — When you have zero follows, a “Discover” or “For you” feed (trending or recent public posts) so your home feed is never empty.",
+              "done": true
             },
             {
-              "text": "**Suggested users / who to follow** — Real “who to follow” (by interests or activity) so you fill your feed fast and see content that matters."
+              "text": "**Suggested users / who to follow** — Real “who to follow” (by interests or activity) so you fill your feed fast and see content that matters.",
+              "done": true
             },
             {
               "text": "**Invite a friend** — Shareable signup or invite link (“Join me on Men of Hunger”) so you can bring friends and grow the circle. **Premium members:** when someone you invite verifies, they get **a free month of premium**."
@@ -87,7 +89,8 @@
               "done": true
             },
             {
-              "text": "**Reliability** — Rate limits and clear “try again later” when needed; we test sign up → onboard → post → upgrade so the core flow works."
+              "text": "**Reliability** — Rate limits and clear “try again later” when needed; we test sign up → onboard → post → upgrade so the core flow works.",
+              "done": true
             },
             {
               "text": "**Sentry** — Error tracking for both the API and the web app, so we catch regressions early and can respond fast."
@@ -113,7 +116,7 @@
           "items": [
             {
               "text": "Explore / trending with real data — Trending or popular posts and “who to follow” in Explore or the right rail, so discovery feels alive.",
-              "inProgress": true
+              "done": true
             },
             {
               "text": "Hashtags & topics (v1) — Add hashtags to posts and simple topic pages so you can find and follow themes that matter to you."

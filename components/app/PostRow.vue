@@ -233,6 +233,14 @@
       />
     </template>
   </Dialog>
+
+  <AppReportDialog
+    v-model:visible="reportOpen"
+    target-type="post"
+    :subject-post-id="post.id"
+    :subject-label="`@${post.author.username || 'user'}`"
+    @submitted="onReportSubmitted"
+  />
 </template>
 
 <script setup lang="ts">
@@ -481,12 +489,7 @@ const moreMenuItems = computed<MenuItem[]>(() => {
       label: 'Report post',
       icon: 'pi pi-flag',
       command: () => {
-        toast.push({
-          title: 'Not available yet',
-          message: "We're still building this.",
-          tone: 'public',
-          durationMs: 5000,
-        })
+        reportOpen.value = true
       },
     })
   }
@@ -519,6 +522,11 @@ const moreMenuItems = computed<MenuItem[]>(() => {
 const toast = useAppToast()
 const deleteConfirmOpen = ref(false)
 const deleting = ref(false)
+const reportOpen = ref(false)
+
+function onReportSubmitted() {
+  // toast + close handled in dialog
+}
 
 async function pinToProfile() {
   if (post.value.visibility === 'onlyMe') {

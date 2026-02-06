@@ -49,6 +49,10 @@ export type Websters1828WordOfDay = {
 export type FeedbackCategory = 'bug' | 'feature' | 'account' | 'other'
 export type FeedbackStatus = 'new' | 'triaged' | 'resolved'
 
+export type ReportTargetType = 'post' | 'user'
+export type ReportReason = 'spam' | 'harassment' | 'hate' | 'sexual' | 'violence' | 'illegal' | 'other'
+export type ReportStatus = 'pending' | 'dismissed' | 'actionTaken'
+
 export type PostVisibility = 'public' | 'verifiedOnly' | 'premiumOnly' | 'onlyMe'
 
 export type PostMediaKind = 'image' | 'gif' | 'video'
@@ -263,6 +267,36 @@ export type AdminFeedbackItem = FeedbackItem & {
 
 /** Data type for GET /admin/feedback (array); pagination in envelope. */
 export type AdminFeedbackListData = AdminFeedbackItem[]
+
+export type ReportItem = {
+  id: string
+  createdAt: string
+  updatedAt: string
+  targetType: ReportTargetType
+  reason: ReportReason
+  details: string | null
+  status: ReportStatus
+  subjectUserId: string | null
+  subjectPostId: string | null
+}
+
+export type AdminReportItem = ReportItem & {
+  adminNote: string | null
+  resolvedAt: string | null
+  reporter: { id: string; username: string | null; name: string | null }
+  subjectUser: { id: string; username: string | null; name: string | null } | null
+  subjectPost: {
+    id: string
+    createdAt: string
+    body: string
+    deletedAt: string | null
+    user: { id: string; username: string | null; name: string | null }
+  } | null
+  resolvedByAdmin: { id: string; username: string | null; name: string | null } | null
+}
+
+/** Data type for GET /admin/reports (array); pagination in envelope. */
+export type AdminReportListData = AdminReportItem[]
 
 export type VerificationRequestStatus = 'pending' | 'approved' | 'rejected' | 'cancelled'
 

@@ -14,7 +14,7 @@
         :class="omitAvatar ? 'flex justify-end' : 'col-start-2 flex justify-end items-end mb-3 sm:mb-2'"
       >
         <AppComposerVisibilityPicker
-          v-if="!replyTo"
+          v-if="showVisibilityPicker"
           v-model="visibility"
           :allowed="allowedComposerVisibilities"
           :viewer-is-verified="viewerIsVerified"
@@ -289,6 +289,12 @@ const props = defineProps<{
   placeholder?: string
   /** Optional initial draft text (e.g. "@username "). Applied once per mount/open. */
   initialText?: string
+  /** Optional override for allowed visibilities (intersected with account tier rules). */
+  allowedVisibilities?: PostVisibility[]
+  /** When set, composer visibility is forced to this value (cannot be changed). */
+  lockedVisibility?: PostVisibility
+  /** Hide the visibility picker (useful with lockedVisibility). */
+  hideVisibilityPicker?: boolean
   // Optional override. Return full FeedPost for replies (so it can be rendered immediately).
   createPost?: (body: string, visibility: PostVisibility, media: CreateMediaPayload[]) => Promise<{ id: string } | import('~/types/api').FeedPost | null>
   // When set, composer is in reply mode: visibility fixed to parent, parent_id + mentions sent.
@@ -411,15 +417,32 @@ const visibility = useCookie<PostVisibility>('moh.post.visibility.v1', {
   maxAge: 60 * 60 * 24 * 365,
 })
 
+const lockedVisibility = computed<PostVisibility | null>(() => props.lockedVisibility ?? null)
+
 const allowedComposerVisibilities = computed<PostVisibility[]>(() => {
   if (!isAuthed.value) return ['public']
-  if (!viewerIsVerified.value) return ['onlyMe']
-  return isPremium.value ? ['public', 'verifiedOnly', 'premiumOnly', 'onlyMe'] : ['public', 'verifiedOnly', 'onlyMe']
+  if (lockedVisibility.value) return [lockedVisibility.value]
+
+  const tierAllowed: PostVisibility[] = !viewerIsVerified.value
+    ? ['onlyMe']
+    : (isPremium.value ? ['public', 'verifiedOnly', 'premiumOnly', 'onlyMe'] : ['public', 'verifiedOnly', 'onlyMe'])
+
+  const propAllowed = Array.isArray(props.allowedVisibilities) ? props.allowedVisibilities : null
+  if (!propAllowed) return tierAllowed
+
+  const propSet = new Set(propAllowed)
+  const intersected = tierAllowed.filter((v) => propSet.has(v))
+  // If the parent passes a restrictive list that removes all allowed visibilities,
+  // fall back to the first requested option (or public) so state stays valid (posting will be disabled by `canPost`).
+  if (!intersected.length) return [propAllowed[0] ?? 'public']
+  return intersected
 })
 
 watch(
   allowedComposerVisibilities,
   (allowed) => {
+    // In locked mode, effective visibility is forced and we should not mutate the user's cookie.
+    if (lockedVisibility.value) return
     const set = new Set(allowed)
     if (!set.has(visibility.value)) visibility.value = allowed[0] ?? 'public'
   },
@@ -427,8 +450,15 @@ watch(
 )
 
 const effectiveVisibility = computed(() =>
-  props.replyTo ? props.replyTo.visibility : visibility.value,
+  props.replyTo ? props.replyTo.visibility : (lockedVisibility.value ?? visibility.value),
 )
+
+const showVisibilityPicker = computed(() => {
+  if (props.replyTo) return false
+  if (props.hideVisibilityPicker) return false
+  if (lockedVisibility.value) return false
+  return true
+})
 const scopeTagLabel = computed(
   () => visibilityTagLabel(effectiveVisibility.value) ?? 'Public',
 )
