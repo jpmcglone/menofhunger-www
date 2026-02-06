@@ -231,7 +231,7 @@
             id="moh-middle-scroller"
             ref="middleScrollerEl"
             :class="[
-              'no-scrollbar min-w-0 flex-1 overflow-x-hidden',
+              'no-scrollbar min-w-0 flex-1 overflow-x-hidden flex flex-col',
               'lg:border-r moh-border',
               anyOverlayOpen || (isMessagesPage && hideTopBar) ? 'overflow-hidden' : 'overflow-y-auto overscroll-y-auto'
             ]"
@@ -250,7 +250,7 @@
               <div class="flex items-center justify-between gap-3">
                 <div class="min-w-0 flex items-center gap-2">
                   <i v-if="headerIcon" :class="['pi', headerIcon]" class="text-xl shrink-0 opacity-80" aria-hidden="true" />
-                  <h1 class="moh-title min-w-0 truncate text-xl font-bold tracking-tight">
+                  <h1 class="min-w-0 truncate text-xl font-bold leading-none">
                     {{ headerTitle }}
                   </h1>
                   <AppVerifiedBadge
@@ -273,15 +273,18 @@
             <div
               ref="middleContentEl"
               :class="[
+                // Always stretch to bottom so two-pane pages can fill height.
+                'flex-1 min-h-0',
+                // Layout should not add horizontal padding; pages/columns own their gutters.
                 hideTopBar
                   ? (isMessagesPage ? 'flex h-full min-h-0 flex-col pb-[calc(4rem+env(safe-area-inset-bottom,0px))] sm:pb-0' : 'pb-24 sm:pb-4')
                   : isBookmarksPage
                     ? 'pt-0 pb-24 sm:pb-4'
                     : isPostPage
-                      ? 'px-4 pt-4 pb-24 sm:pb-4'
+                      ? 'pt-4 pb-24 sm:pb-4'
                       : isNotificationsPage || isOnlyMePage
-                        ? 'px-4 pt-0 pb-24 sm:pb-4'
-                        : 'px-4 py-4 pb-24 sm:pb-4',
+                        ? 'pt-0 pb-24 sm:pb-4'
+                        : 'py-4 pb-24 sm:pb-4',
                 isMessagesPage && hideTopBar ? 'overflow-hidden' : ''
               ]"
             >
@@ -293,12 +296,13 @@
           <aside
             ref="rightScrollerEl"
             :class="[
-              'no-scrollbar shrink-0 w-80 xl:w-88 h-full px-4 py-4 moh-texture',
+              // Layout should not add padding; right-rail content owns its gutters.
+              'no-scrollbar shrink-0 w-80 xl:w-88 h-full moh-texture',
               anyOverlayOpen ? 'overflow-hidden' : 'overflow-y-auto overscroll-y-auto',
               isRightRailForcedHidden ? 'hidden' : 'hidden lg:block'
             ]"
           >
-          <div>
+          <div class="px-4 py-4">
             <!-- On Explore, the search bar lives in the center column. Collapse it here. -->
             <div
               :class="[
@@ -306,12 +310,32 @@
                 isRightRailSearchHidden ? 'max-h-0 opacity-0 mb-0 pointer-events-none' : 'max-h-16 opacity-100 mb-4'
               ]"
             >
-              <InputText
-                v-model="rightRailSearchQuery"
-                class="w-full"
-                placeholder="Search…"
-                @keydown.enter="goToExploreSearch"
-              />
+              <IconField iconPosition="left" class="w-full">
+                <InputIcon class="pi pi-search" />
+                <InputText
+                  v-model="rightRailSearchQuery"
+                  class="w-full h-11 !rounded-full"
+                  placeholder="Search…"
+                  @keydown.enter="goToExploreSearch"
+                />
+              </IconField>
+            </div>
+
+            <div
+              v-if="dailyQuote"
+              class="mt-2 mb-5 px-4 py-4 text-center text-sm leading-relaxed text-gray-700 dark:text-gray-200"
+            >
+              <figure>
+                <blockquote class="italic">
+                  “{{ dailyQuote.text }}”
+                </blockquote>
+                <figcaption class="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                  <span class="font-semibold">
+                    {{ dailyQuoteAttribution }}
+                  </span>
+                  <span v-if="dailyQuote.isParaphrase" class="ml-1">(paraphrase)</span>
+                </figcaption>
+              </figure>
             </div>
 
             <div class="space-y-4 transition-[transform] duration-200 ease-out">
@@ -323,17 +347,15 @@
                     <AppLogoLoader />
                   </div>
 
-                  <div v-else-if="whoToFollowUsers.length > 0" class="-mx-4">
-                    <div class="px-4">
-                      <AppWhoToFollowCompactRow
-                        v-for="u in whoToFollowUsers"
-                        :key="u.id"
-                        :user="u"
-                      />
-                    </div>
+                  <div v-else-if="whoToFollowUsers.length > 0">
+                    <AppWhoToFollowCompactRow
+                      v-for="u in whoToFollowUsers"
+                      :key="u.id"
+                      :user="u"
+                    />
                     <NuxtLink
                       to="/who-to-follow"
-                      class="inline-block px-4 pt-3 text-sm font-medium hover:underline underline-offset-2"
+                      class="inline-block pt-3 text-sm font-medium hover:underline underline-offset-2"
                       :class="tierCtaTextClass"
                     >
                       Show more
@@ -349,6 +371,8 @@
                   </div>
                 </template>
               </Card>
+
+              <AppWebsters1828WordOfDayCard />
 
               <Card>
                 <template #title>Trends for you</template>
@@ -453,7 +477,7 @@
                 </template>
               </Card>
 
-              <div class="px-2 text-xs moh-text-muted space-x-2">
+              <div class="px-2 pb-6 text-xs moh-text-muted space-x-2">
                 <NuxtLink to="/about" class="hover:underline">About</NuxtLink>
                 <span>·</span>
                 <NuxtLink to="/privacy" class="hover:underline">Privacy</NuxtLink>
@@ -567,6 +591,8 @@ import { siteConfig } from '~/config/site'
 import logoLightSmall from '~/assets/images/logo-white-bg-small.png'
 import logoDarkSmall from '~/assets/images/logo-black-bg-small.png'
 import { primaryTintCssForUser } from '~/utils/theme-tint'
+import dailyQuotes from '~/config/daily-quotes.json'
+import { formatDailyQuoteAttribution, getDailyQuote, type DailyQuote } from '~/utils/daily-quote'
 import {
   MOH_HOME_COMPOSER_IN_VIEW_KEY,
   MOH_MIDDLE_SCROLLER_KEY,
@@ -936,6 +962,12 @@ useCoupledScroll({
 const lightbox = useImageLightbox()
 
 const showStatusBg = computed(() => route.path === '/status')
+
+const dailyQuote = computed(() => {
+  const { quote } = getDailyQuote(dailyQuotes as unknown as DailyQuote[])
+  return quote
+})
+const dailyQuoteAttribution = computed(() => (dailyQuote.value ? formatDailyQuoteAttribution(dailyQuote.value) : ''))
 
 const {
   users: whoToFollowUsers,

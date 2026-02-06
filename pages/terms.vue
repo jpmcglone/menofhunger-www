@@ -1,5 +1,5 @@
 <template>
-  <section class="mx-auto w-full max-w-2xl space-y-6">
+  <section class="mx-auto w-full max-w-2xl px-4 space-y-6">
     <header class="space-y-2">
       <h1 class="text-2xl sm:text-3xl font-semibold tracking-tight text-gray-900 dark:text-gray-50">
         Terms

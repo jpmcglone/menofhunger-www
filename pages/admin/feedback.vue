@@ -1,12 +1,21 @@
 <template>
-  <div class="px-4 py-4 space-y-4">
-    <AppPageHeader title="Feedback" icon="pi-inbox" description="Review and triage user feedback.">
-      <template #actions>
-        <Button label="Back" severity="secondary" text icon="pi pi-arrow-left" @click="navigateTo('/admin')" />
+  <div class="py-4 space-y-4">
+    <div class="px-4">
+      <AppPageHeader title="Feedback" icon="pi-inbox" description="Review and triage user feedback.">
+      <template #leading>
+        <Button
+          class="md:hidden"
+          text
+          severity="secondary"
+          icon="pi pi-chevron-left"
+          aria-label="Back"
+          @click="navigateTo('/admin')"
+        />
       </template>
-    </AppPageHeader>
+      </AppPageHeader>
+    </div>
 
-    <div class="flex flex-wrap items-center gap-2">
+    <div class="px-4 flex flex-wrap items-center gap-2">
       <Select
         v-model="statusFilter"
         :options="statusOptions"
@@ -39,15 +48,17 @@
       />
     </div>
 
-    <AppInlineAlert v-if="error" severity="danger">
-      {{ error }}
-    </AppInlineAlert>
+    <div v-if="error" class="px-4">
+      <AppInlineAlert severity="danger">
+        {{ error }}
+      </AppInlineAlert>
+    </div>
 
-    <div v-if="!loading && items.length === 0" class="text-sm moh-text-muted">
+    <div v-if="!loading && items.length === 0" class="px-4 text-sm moh-text-muted">
       No feedback yet.
     </div>
 
-    <div v-else class="divide-y divide-gray-200 dark:divide-zinc-800 -mx-4">
+    <div v-else class="divide-y divide-gray-200 dark:divide-zinc-800">
       <div
         v-for="item in items"
         :key="item.id"
@@ -78,7 +89,7 @@
       </div>
     </div>
 
-    <div class="flex items-center justify-center pt-2">
+    <div class="flex items-center justify-center pt-2 px-4">
       <Button
         v-if="nextCursor"
         label="Load more"
@@ -156,7 +167,9 @@
 
 <script setup lang="ts">
 definePageMeta({
+  layout: 'app',
   title: 'Feedback',
+  middleware: 'admin',
 })
 
 usePageSeo({

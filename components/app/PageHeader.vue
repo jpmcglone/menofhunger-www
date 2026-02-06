@@ -5,9 +5,10 @@
     </div>
 
     <div class="flex flex-wrap items-center justify-between gap-3">
-      <div class="flex items-center gap-2">
+      <div class="flex min-w-0 items-center gap-2">
+        <slot name="leading" />
         <i v-if="icon" :class="['pi', icon]" aria-hidden="true" />
-        <h1 class="moh-title text-2xl font-semibold tracking-tight">{{ title }}</h1>
+        <h1 class="moh-title min-w-0 truncate text-2xl font-semibold tracking-tight">{{ title }}</h1>
       </div>
 
       <slot name="actions" />

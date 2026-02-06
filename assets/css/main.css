@@ -178,7 +178,8 @@ html.dark {
   }
 
   .moh-title {
-    font-family: var(--moh-font-serif);
+    /* Use the same display font as profile names (sans). */
+    font-family: var(--moh-font-sans);
     letter-spacing: -0.01em;
   }
 

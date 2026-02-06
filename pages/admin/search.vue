@@ -1,12 +1,21 @@
 <template>
-  <div class="px-4 py-4 space-y-4">
-    <AppPageHeader title="Search" icon="pi-search" description="Recent user searches.">
-      <template #actions>
-        <Button label="Back" severity="secondary" text icon="pi pi-arrow-left" @click="navigateTo('/admin')" />
+  <div class="py-4 space-y-4">
+    <div class="px-4">
+      <AppPageHeader title="Search" icon="pi-search" description="Recent user searches.">
+      <template #leading>
+        <Button
+          class="md:hidden"
+          text
+          severity="secondary"
+          icon="pi pi-chevron-left"
+          aria-label="Back"
+          @click="navigateTo('/admin')"
+        />
       </template>
-    </AppPageHeader>
+      </AppPageHeader>
+    </div>
 
-    <div class="flex items-center gap-2">
+    <div class="px-4 flex items-center gap-2">
       <InputText
         v-model="filterQuery"
         class="w-full"
@@ -23,15 +32,17 @@
       />
     </div>
 
-    <AppInlineAlert v-if="error" severity="danger">
-      {{ error }}
-    </AppInlineAlert>
+    <div v-if="error" class="px-4">
+      <AppInlineAlert severity="danger">
+        {{ error }}
+      </AppInlineAlert>
+    </div>
 
-    <div v-if="searchedOnce && items.length === 0" class="text-sm text-gray-600 dark:text-gray-300">
+    <div v-if="searchedOnce && items.length === 0" class="px-4 text-sm text-gray-600 dark:text-gray-300">
       No searches found.
     </div>
 
-    <div v-else class="divide-y divide-gray-200 dark:divide-zinc-800 -mx-4">
+    <div v-else class="divide-y divide-gray-200 dark:divide-zinc-800">
       <div
         v-for="row in items"
         :key="row.id"
@@ -57,7 +68,7 @@
       </div>
     </div>
 
-    <div v-if="nextCursor" class="flex justify-center py-4">
+    <div v-if="nextCursor" class="flex justify-center py-4 px-4">
       <Button
         label="Load more"
         severity="secondary"
@@ -74,7 +85,9 @@ import { getApiErrorMessage } from '~/utils/api-error'
 import { formatDateTime } from '~/utils/time-format'
 
 definePageMeta({
+  layout: 'app',
   title: 'Search',
+  middleware: 'admin',
 })
 
 usePageSeo({

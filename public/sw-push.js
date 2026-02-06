@@ -4,13 +4,26 @@
  * On notification click: focus existing app window and navigate, or open a new window.
  */
 
-self.__MOH_SW_VERSION = 'moh-sw-v1'
+// IMPORTANT: bump this whenever caching logic changes so old caches are purged.
+self.__MOH_SW_VERSION = 'moh-sw-v2'
 const CACHE_PREFIX = 'moh-sw'
 const NUxT_ASSETS_CACHE = `${CACHE_PREFIX}:nuxt:${self.__MOH_SW_VERSION}`
 const STATIC_ASSETS_CACHE = `${CACHE_PREFIX}:static:${self.__MOH_SW_VERSION}`
 
 function isCacheablePath(pathname) {
-  if (pathname.startsWith('/_nuxt/')) return { cacheName: NUxT_ASSETS_CACHE }
+  // DEV SAFETY:
+  // Never cache Nuxt dev-server assets on localhost. Vite/Nuxt rewrites and dependency
+  // re-optimization can change what a given URL returns between reloads; cache-first can
+  // accidentally serve CSS for a JS module (or vice versa), triggering strict MIME errors.
+  const host = self.location?.hostname || ''
+  const isLocalhost =
+    host === 'localhost' ||
+    host === '127.0.0.1' ||
+    host === '0.0.0.0' ||
+    host === '::1' ||
+    host.endsWith('.local')
+
+  if (!isLocalhost && pathname.startsWith('/_nuxt/')) return { cacheName: NUxT_ASSETS_CACHE }
   if (pathname.startsWith('/images/')) return { cacheName: STATIC_ASSETS_CACHE }
   if (pathname.startsWith('/sounds/')) return { cacheName: STATIC_ASSETS_CACHE }
   if (pathname.startsWith('/cursors/')) return { cacheName: STATIC_ASSETS_CACHE }

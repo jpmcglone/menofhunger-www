@@ -1,0 +1,19 @@
+---
+description: Always use menofhunger-api (Nest) — never Nuxt server/api
+alwaysApply: true
+---
+
+# No Nuxt API routes (use menofhunger-api)
+
+- **Do not** create or use Nuxt server API routes in `menofhunger-www` (e.g. `server/api/**`) for product features.
+- **Always** implement backend endpoints in the Nest app: `menofhunger-api`.
+- In Nuxt, call the backend via `useApiClient()` (never ad-hoc fetch/base URLs).
+
+## Contract reminders
+
+- API success responses are always the envelope: `{ data: T }` (and optional `pagination` for lists).
+- When you add/change an API response:
+  - update the API DTOs in `menofhunger-api/src/common/dto/**`
+  - update the corresponding type in `menofhunger-www/types/api.ts`
+  - run `npx nuxi typecheck` + `node scripts/validate-api-types.mjs`
+

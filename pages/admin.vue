@@ -1,67 +1,68 @@
 <template>
-  <div class="h-[calc(100dvh-9rem)] sm:h-[calc(100dvh-6.5rem)]">
-    <div class="grid h-full grid-cols-1 md:grid-cols-[18rem_1fr]">
+  <div class="h-full min-h-0">
+    <div class="grid h-full min-h-0 grid-cols-1 md:grid-cols-[22rem_1fr]">
       <!-- Left: admin areas -->
-      <aside class="hidden md:block h-full overflow-y-auto border-r moh-border pr-4">
-        <div class="px-4 py-4">
-          <div class="text-lg font-semibold">Admin</div>
-          <div class="mt-4 space-y-2">
-            <NuxtLink to="/admin/site-settings" class="block">
-              <div :class="areaCardClass('site-settings')">
-                <div class="flex items-center gap-3">
-                  <i class="pi pi-cog text-lg" aria-hidden="true" />
-                  <div class="min-w-0 flex-1">
-                    <div class="font-semibold truncate">Site settings</div>
-                    <div class="text-sm text-gray-600 dark:text-gray-300 truncate">Configure post rate limits</div>
-                  </div>
+      <aside class="hidden md:block h-full overflow-y-auto border-r moh-border">
+        <div class="py-4">
+          <div class="px-4 text-lg font-semibold">Admin</div>
+          <div class="mt-4 divide-y divide-gray-200 dark:divide-zinc-800">
+            <NuxtLink to="/admin/site-settings" :class="areaRowClass('site-settings')">
+              <div class="flex items-center gap-3">
+                <i class="pi pi-cog text-lg" aria-hidden="true" />
+                <div class="min-w-0 flex-1">
+                  <div class="font-semibold truncate">Site settings</div>
+                  <div class="text-sm text-gray-600 dark:text-gray-300 truncate">Configure post rate limits</div>
                 </div>
               </div>
             </NuxtLink>
 
-            <NuxtLink to="/admin/users" class="block">
-              <div :class="areaCardClass('users')">
-                <div class="flex items-center gap-3">
-                  <i class="pi pi-users text-lg" aria-hidden="true" />
-                  <div class="min-w-0 flex-1">
-                    <div class="font-semibold truncate">Users</div>
-                    <div class="text-sm text-gray-600 dark:text-gray-300 truncate">Search and edit users</div>
-                  </div>
+            <NuxtLink to="/admin/users" :class="areaRowClass('users')">
+              <div class="flex items-center gap-3">
+                <i class="pi pi-users text-lg" aria-hidden="true" />
+                <div class="min-w-0 flex-1">
+                  <div class="font-semibold truncate">Users</div>
+                  <div class="text-sm text-gray-600 dark:text-gray-300 truncate">Search and edit users</div>
                 </div>
               </div>
             </NuxtLink>
 
-            <NuxtLink to="/admin/media-review" class="block">
-              <div :class="areaCardClass('media-review')">
-                <div class="flex items-center gap-3">
-                  <i class="pi pi-images text-lg" aria-hidden="true" />
-                  <div class="min-w-0 flex-1">
-                    <div class="font-semibold truncate">Media review</div>
-                    <div class="text-sm text-gray-600 dark:text-gray-300 truncate">Review and delete uploaded images and videos</div>
-                  </div>
+            <NuxtLink to="/admin/verification" :class="areaRowClass('verification')">
+              <div class="flex items-center gap-3">
+                <!-- primeicons@7: `pi-shield-check` is not present; use a real icon -->
+                <i class="pi pi-verified text-lg" aria-hidden="true" />
+                <div class="min-w-0 flex-1">
+                  <div class="font-semibold truncate">Verification</div>
+                  <div class="text-sm text-gray-600 dark:text-gray-300 truncate">Review pending verification requests</div>
                 </div>
               </div>
             </NuxtLink>
 
-            <NuxtLink to="/admin/feedback" class="block">
-              <div :class="areaCardClass('feedback')">
-                <div class="flex items-center gap-3">
-                  <i class="pi pi-inbox text-lg" aria-hidden="true" />
-                  <div class="min-w-0 flex-1">
-                    <div class="font-semibold truncate">Feedback</div>
-                    <div class="text-sm text-gray-600 dark:text-gray-300 truncate">Triaged feedback from users</div>
-                  </div>
+            <NuxtLink to="/admin/media-review" :class="areaRowClass('media-review')">
+              <div class="flex items-center gap-3">
+                <i class="pi pi-images text-lg" aria-hidden="true" />
+                <div class="min-w-0 flex-1">
+                  <div class="font-semibold truncate">Media review</div>
+                  <div class="text-sm text-gray-600 dark:text-gray-300 truncate">Review and delete uploaded images and videos</div>
                 </div>
               </div>
             </NuxtLink>
 
-            <NuxtLink to="/admin/search" class="block">
-              <div :class="areaCardClass('search')">
-                <div class="flex items-center gap-3">
-                  <i class="pi pi-search text-lg" aria-hidden="true" />
-                  <div class="min-w-0 flex-1">
-                    <div class="font-semibold truncate">Search</div>
-                    <div class="text-sm text-gray-600 dark:text-gray-300 truncate">Recent user searches</div>
-                  </div>
+            <NuxtLink to="/admin/feedback" :class="areaRowClass('feedback')">
+              <div class="flex items-center gap-3">
+                <i class="pi pi-inbox text-lg" aria-hidden="true" />
+                <div class="min-w-0 flex-1">
+                  <div class="font-semibold truncate">Feedback</div>
+                  <div class="text-sm text-gray-600 dark:text-gray-300 truncate">Triaged feedback from users</div>
+                </div>
+              </div>
+            </NuxtLink>
+
+            <NuxtLink to="/admin/search" :class="areaRowClass('search')">
+              <div class="flex items-center gap-3">
+                <i class="pi pi-search text-lg" aria-hidden="true" />
+                <div class="min-w-0 flex-1">
+                  <div class="font-semibold truncate">Search</div>
+                  <div class="text-sm text-gray-600 dark:text-gray-300 truncate">Recent user searches</div>
                 </div>
               </div>
             </NuxtLink>
@@ -89,23 +90,24 @@ definePageMeta({
 
 const route = useRoute()
 
-function isActiveArea(key: 'site-settings' | 'users' | 'media-review' | 'feedback' | 'search') {
+function isActiveArea(key: 'site-settings' | 'users' | 'verification' | 'media-review' | 'feedback' | 'search') {
   const p = route.path
   if (key === 'site-settings') return p === '/admin/site-settings'
   if (key === 'users') return p === '/admin/users'
+  if (key === 'verification') return p === '/admin/verification'
   if (key === 'media-review') return p === '/admin/media-review' || p.startsWith('/admin/media-review/')
   if (key === 'feedback') return p === '/admin/feedback'
   if (key === 'search') return p === '/admin/search'
   return false
 }
 
-function areaCardClass(key: 'site-settings' | 'users' | 'media-review' | 'feedback' | 'search') {
+function areaRowClass(key: 'site-settings' | 'users' | 'verification' | 'media-review' | 'feedback' | 'search') {
   const active = isActiveArea(key)
   return [
-    'w-full rounded-xl border p-3 transition-colors',
+    'block px-4 py-3 transition-colors',
     active
-      ? 'border-gray-300 bg-gray-50 dark:border-zinc-700 dark:bg-zinc-900'
-      : 'border-gray-200 hover:bg-gray-50 dark:border-zinc-800 dark:hover:bg-zinc-900',
+      ? 'bg-gray-50 dark:bg-zinc-900'
+      : 'hover:bg-gray-50 dark:hover:bg-zinc-900',
   ]
 }
 </script>

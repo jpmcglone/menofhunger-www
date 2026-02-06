@@ -5,34 +5,35 @@
     :header="header"
     :draggable="false"
     :style="{ width: 'min(38rem, 96vw)' }"
+    contentClass="p-0"
     @update:visible="(v) => emit('update:modelValue', Boolean(v))"
   >
-    <div class="space-y-3">
-      <AppInlineAlert v-if="error" severity="danger">
+    <div v-if="error" class="p-4">
+      <AppInlineAlert severity="danger">
         {{ error }}
       </AppInlineAlert>
+    </div>
 
-      <div v-else-if="loading && users.length === 0" class="text-sm text-gray-600 dark:text-gray-300">
-        Loading…
-      </div>
+    <div v-else-if="loading && users.length === 0" class="p-4 text-sm text-gray-600 dark:text-gray-300">
+      Loading…
+    </div>
 
-      <div v-else-if="users.length === 0" class="text-sm text-gray-600 dark:text-gray-300">
-        {{ emptyText }}
-      </div>
+    <div v-else-if="users.length === 0" class="p-4 text-sm text-gray-600 dark:text-gray-300">
+      {{ emptyText }}
+    </div>
 
-      <div v-else class="-mx-4 divide-y divide-gray-200 dark:divide-zinc-800">
-        <AppUserRow v-for="u in users" :key="u.id" :user="u" />
-      </div>
+    <div v-else class="divide-y divide-gray-200 dark:divide-zinc-800">
+      <AppUserRow v-for="u in users" :key="u.id" :user="u" />
+    </div>
 
-      <div v-if="nextCursor" class="flex justify-center pt-2">
-        <Button
-          label="Load more"
-          severity="secondary"
-          :loading="loading"
-          :disabled="loading"
-          @click="emit('loadMore')"
-        />
-      </div>
+    <div v-if="nextCursor" class="p-4 pt-2 flex justify-center">
+      <Button
+        label="Load more"
+        severity="secondary"
+        :loading="loading"
+        :disabled="loading"
+        @click="emit('loadMore')"
+      />
     </div>
   </Dialog>
 </template>

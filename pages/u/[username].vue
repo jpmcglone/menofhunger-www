@@ -1,6 +1,7 @@
 <template>
+  <!-- Profile pages use the app-standard gutter (px-4). Banner cancels it for full-bleed. -->
   <div class="w-full">
-    <div v-if="notFound" class="mx-auto max-w-3xl py-10">
+    <div v-if="notFound" class="px-4 mx-auto max-w-3xl py-10">
       <div class="text-2xl font-bold tracking-tight text-gray-900 dark:text-gray-50">
         This account doesn't exist
       </div>
@@ -9,7 +10,7 @@
       </div>
     </div>
 
-    <div v-else-if="apiError" class="mx-auto max-w-3xl py-10">
+    <div v-else-if="apiError" class="px-4 mx-auto max-w-3xl py-10">
       <div class="text-2xl font-bold tracking-tight text-gray-900 dark:text-gray-50">
         Something went wrong
       </div>
@@ -54,14 +55,14 @@
       />
 
       <!-- Pinned post -->
-      <div class="-mx-4 mt-3 mb-4">
+      <div class="mt-3 mb-4">
         <ClientOnly>
           <template #fallback>
             <div class="min-h-0" aria-hidden="true" />
           </template>
           <template v-if="pinnedPostForDisplay">
             <div class="flex flex-col gap-0">
-              <div class="flex flex-wrap items-center justify-between gap-2 pl-4 pr-1 pt-0 pb-1">
+              <div class="flex flex-wrap items-center justify-between gap-2 px-4 pt-0 pb-1">
                 <NuxtLink
                   v-if="pinnedReplyToUsername"
                   :to="`/p/${pinnedPostForDisplay.id}`"
@@ -90,24 +91,26 @@
 
       <!-- Posts -->
       <div class="mx-auto max-w-3xl pb-5">
-        <div class="flex flex-wrap items-end justify-between gap-3">
-          <div class="text-sm font-semibold text-gray-900 dark:text-gray-50">
-            Posts
-            <span v-if="profileHasLoadedOnce" class="ml-2 text-xs font-medium text-gray-500 dark:text-gray-400">
-              {{ profileCounts?.all ?? 0 }}
-            </span>
-          </div>
+        <div class="px-4">
+          <div class="flex flex-wrap items-end justify-between gap-3">
+            <div class="text-sm font-semibold text-gray-900 dark:text-gray-50">
+              Posts
+              <span v-if="profileHasLoadedOnce" class="ml-2 text-xs font-medium text-gray-500 dark:text-gray-400">
+                {{ profileCounts?.all ?? 0 }}
+              </span>
+            </div>
 
-          <AppFeedFiltersBar
-            :sort="profileSort ?? 'new'"
-            :filter="profileFilter ?? 'all'"
-            :viewer-is-verified="profileViewerIsVerified ?? false"
-            :viewer-is-premium="profileViewerIsPremium ?? false"
-            :show-reset="(profileFilter ?? 'all') !== 'all' || (profileSort ?? 'new') !== 'new'"
-            @update:sort="onUserPostsSortChange"
-            @update:filter="onUserPostsFilterChange"
-            @reset="onUserPostsReset"
-          />
+            <AppFeedFiltersBar
+              :sort="profileSort ?? 'new'"
+              :filter="profileFilter ?? 'all'"
+              :viewer-is-verified="profileViewerIsVerified ?? false"
+              :viewer-is-premium="profileViewerIsPremium ?? false"
+              :show-reset="(profileFilter ?? 'all') !== 'all' || (profileSort ?? 'new') !== 'new'"
+              @update:sort="onUserPostsSortChange"
+              @update:filter="onUserPostsFilterChange"
+              @reset="onUserPostsReset"
+            />
+          </div>
         </div>
 
         <ClientOnly>
@@ -117,15 +120,15 @@
             </div>
           </template>
           <div>
-            <div v-if="profileError" class="mt-3 text-sm text-red-700 dark:text-red-300">
+            <div v-if="profileError" class="px-4 mt-3 text-sm text-red-700 dark:text-red-300">
               {{ profileError }}
             </div>
 
-            <div v-else-if="profileCtaKind === 'verify'" class="mt-4">
+            <div v-else-if="profileCtaKind === 'verify'" class="px-4 mt-4">
               <AppAccessGateCard kind="verify" />
             </div>
 
-            <div v-else-if="profileCtaKind === 'premium'" class="mt-4">
+            <div v-else-if="profileCtaKind === 'premium'" class="px-4 mt-4">
               <AppAccessGateCard kind="premium" />
             </div>
 
@@ -133,11 +136,11 @@
               <AppLogoLoader />
             </div>
 
-            <div v-else-if="profileHasLoadedOnce && profilePosts.length === 0 && !pinnedPost" class="mt-3 text-sm text-gray-500 dark:text-gray-400">
+            <div v-else-if="profileHasLoadedOnce && profilePosts.length === 0 && !pinnedPost" class="px-4 mt-3 text-sm text-gray-500 dark:text-gray-400">
               No posts yet.
             </div>
 
-              <div v-else class="relative mt-3 -mx-4">
+              <div v-else class="relative mt-3">
               <div v-for="p in postsWithoutPinned" :key="p.id">
                 <AppFeedPostRow
                   :post="p"

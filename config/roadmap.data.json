@@ -112,7 +112,8 @@
           "title": "Discovery",
           "items": [
             {
-              "text": "Explore / trending with real data — Trending or popular posts and “who to follow” in Explore or the right rail, so discovery feels alive."
+              "text": "Explore / trending with real data — Trending or popular posts and “who to follow” in Explore or the right rail, so discovery feels alive.",
+              "inProgress": true
             },
             {
               "text": "Hashtags & topics (v1) — Add hashtags to posts and simple topic pages so you can find and follow themes that matter to you."

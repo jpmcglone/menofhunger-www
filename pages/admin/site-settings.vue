@@ -1,8 +1,15 @@
 <template>
   <div class="px-4 py-4 space-y-6">
     <AppPageHeader title="Site settings" icon="pi-cog" description="Admin-only configuration for the site.">
-      <template #actions>
-        <Button label="Back" severity="secondary" text icon="pi pi-arrow-left" @click="navigateTo('/admin')" />
+      <template #leading>
+        <Button
+          class="md:hidden"
+          text
+          severity="secondary"
+          icon="pi pi-chevron-left"
+          aria-label="Back"
+          @click="navigateTo('/admin')"
+        />
       </template>
     </AppPageHeader>
 
@@ -47,7 +54,9 @@
 
 <script setup lang="ts">
 definePageMeta({
+  layout: 'app',
   title: 'Site settings',
+  middleware: 'admin',
 })
 
 usePageSeo({

@@ -2,6 +2,9 @@ export function useLayoutRules(route = useRoute()) {
   const hideTopBar = computed(() => {
     // Prefer per-route meta for flexibility.
     if (route.meta?.hideTopBar === true) return true
+    // Admin/settings pages render their own in-page headers; the global title bar is redundant.
+    if (route.path === '/admin' || route.path.startsWith('/admin/')) return true
+    if (route.path === '/settings' || route.path.startsWith('/settings/')) return true
     return false
   })
 

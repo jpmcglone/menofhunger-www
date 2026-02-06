@@ -7,7 +7,14 @@
         <div class="mt-1 text-xs font-mono moh-text-muted break-all">{{ data?.asset.r2Key ?? '—' }}</div>
       </div>
       <div class="shrink-0 flex items-center gap-2">
-        <Button label="Back" severity="secondary" text icon="pi pi-arrow-left" @click="navigateTo('/admin/media-review')" />
+        <Button
+          class="md:hidden"
+          text
+          severity="secondary"
+          icon="pi pi-chevron-left"
+          aria-label="Back"
+          @click="navigateTo('/admin/media-review')"
+        />
         <Button
           label="Delete"
           icon="pi pi-trash"
@@ -168,7 +175,9 @@ import type { AdminImageReviewDeleteResponse, AdminImageReviewDetailResponse } f
 import { getApiErrorMessage } from '~/utils/api-error'
 
 definePageMeta({
+  layout: 'app',
   title: 'Media review',
+  middleware: 'admin',
 })
 
 usePageSeo({

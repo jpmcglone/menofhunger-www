@@ -1,7 +1,5 @@
 <template>
   <div class="w-full">
-    <AppPageHeader title="Who to follow" />
-
     <div class="py-4 space-y-4">
       <div class="px-4 flex items-center justify-between gap-3">
         <p class="text-sm moh-text-muted">
@@ -27,8 +25,8 @@
         <AppLogoLoader />
       </div>
 
-      <!-- Edge-to-edge list (cancel layout padding). -->
-      <div v-else-if="users.length > 0" class="space-y-0 -mx-4">
+      <!-- Edge-to-edge list -->
+      <div v-else-if="users.length > 0" class="space-y-0">
         <div class="space-y-0">
           <AppUserRow
             v-for="u in users"
@@ -39,17 +37,16 @@
         </div>
       </div>
 
-      <div
-        v-else
-        class="mx-4 rounded-xl border moh-border bg-gray-50/50 dark:bg-zinc-900/30 px-4 py-6 text-center"
-      >
-        <p class="text-sm moh-text-muted">
-          No suggestions yet — try following a few people first.
-        </p>
-        <div class="mt-3">
-          <NuxtLink to="/explore" class="font-medium hover:underline">
-            Explore
-          </NuxtLink>
+      <div v-else class="px-4">
+        <div class="rounded-xl border moh-border bg-gray-50/50 dark:bg-zinc-900/30 px-4 py-6 text-center">
+          <p class="text-sm moh-text-muted">
+            No suggestions yet — try following a few people first.
+          </p>
+          <div class="mt-3">
+            <NuxtLink to="/explore" class="font-medium hover:underline">
+              Explore
+            </NuxtLink>
+          </div>
         </div>
       </div>
     </div>

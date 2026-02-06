@@ -124,6 +124,8 @@ export function useAppToast() {
   function fgFor(toast: AppToast): string {
     // Brand preference: premium orange should always be white text.
     if (toast.tone === 'premiumOnly') return '#ffffff'
+    // Verified blue reads best with white text.
+    if (toast.tone === 'verifiedOnly') return '#ffffff'
     const bg = bgFor(toast)
     return pickTextColorForBg(bg)
   }

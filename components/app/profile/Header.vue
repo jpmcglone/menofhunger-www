@@ -1,7 +1,7 @@
 <template>
   <div>
     <!-- Full-bleed profile header (cancel app layout padding) -->
-    <div class="-mx-4 -mt-4 relative">
+    <div class="relative">
       <div class="group relative aspect-[3/1] w-full bg-gray-200 dark:bg-zinc-900">
         <img
           v-if="profileBannerUrl"
@@ -61,7 +61,7 @@
       </div>
     </div>
 
-    <div class="mx-auto max-w-3xl pb-5 pt-16">
+    <div class="mx-auto max-w-3xl px-4 pb-5 pt-16">
       <div class="flex items-start justify-between gap-4 mt-1">
         <div class="min-w-0">
           <div class="flex items-center gap-2 min-w-0">

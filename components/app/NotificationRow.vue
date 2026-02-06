@@ -6,13 +6,12 @@
     ]"
   >
     <!-- Left: status dot (only when unread) + avatar with notification type icon -->
-    <div class="flex shrink-0 items-start gap-2">
+    <div class="relative flex shrink-0 items-start">
       <span
         v-if="!notification.readAt"
-        class="mt-3 h-2 w-2 shrink-0 rounded-full bg-blue-500"
+        class="absolute -left-1 top-3 h-2 w-2 rounded-full bg-blue-500"
         aria-hidden="true"
       />
-      <span v-else class="mt-3 h-2 w-2 shrink-0" aria-hidden="true" />
       <div class="relative shrink-0" @click.stop>
         <NuxtLink
           v-if="notification.actor?.id"

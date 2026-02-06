@@ -15,18 +15,23 @@
     </div>
 
     <div v-else class="flex min-h-0 flex-1 flex-col">
-      <!-- Data-first: fetch before showing the chat screen to avoid UI jumps. -->
-      <div v-if="!chatScreenReady" class="flex min-h-0 flex-1 items-center justify-center px-4 py-12">
+      <!-- Data-first: don't mount the chat screen until initial data is ready.
+           When ready, fade OUT the loading screen, then mount the chat screen (no chat animation). -->
+      <div
+        v-if="chatBootState !== 'ready'"
+        class="flex min-h-0 flex-1 items-center justify-center px-4 py-12 transition-opacity ease-out"
+        :class="chatBootState === 'fading' ? 'opacity-0' : 'opacity-100'"
+        :style="{ transitionDuration: `${CHAT_BOOT_FADE_MS}ms` }"
+      >
         <AppLogoLoader />
       </div>
 
-      <Transition name="moh-fade">
-        <div
-          v-if="chatScreenReady"
-          class="grid min-h-0 flex-1"
-          :class="isTinyViewport ? 'grid-cols-1' : ''"
-          :style="gridStyle"
-        >
+      <div
+        v-else
+        class="grid min-h-0 flex-1"
+        :class="isTinyViewport ? 'grid-cols-1' : ''"
+        :style="gridStyle"
+      >
           <!-- Left column: thread list -->
           <ChatConversationList
             v-if="showListPane"
@@ -63,7 +68,7 @@
                   <div class="flex min-w-0 items-start gap-2">
                     <Button
                       v-if="isTinyViewport && selectedChatKey"
-                      icon="pi pi-arrow-left"
+                      icon="pi pi-chevron-left"
                       text
                       severity="secondary"
                       aria-label="Back"
@@ -156,48 +161,52 @@
               </div>
 
           <div v-if="selectedChatKey" class="relative flex-1 min-h-0">
-            <Transition name="moh-fade" mode="out-in" @before-enter="onMessagesScrollerBeforeEnter">
-              <div
-                v-if="renderedChatKey"
-                :key="renderedChatKey"
-                ref="messagesScroller"
-                data-chat-scroller="1"
-                class="h-full overflow-y-auto py-4 moh-chat-scroll-hide"
-                @scroll="onMessagesScroll"
-                @wheel.passive="markUserScrollIntent"
-                @touchstart.passive="markUserScrollIntent"
-                @touchmove.passive="markUserScrollIntent"
-              >
-                <ChatMessageList
-                  :messages-ready="messagesReady"
-                  :messages-loading="messagesLoading"
-                  :messages-next-cursor="messagesNextCursor"
-                  :loading-older="loadingOlder"
-                  :is-draft-chat="isDraftChat"
-                  :messages-count="messages.length"
-                  :messages-with-dividers="messagesWithDividers"
-                  :sticky-divider-label="stickyDividerLabel"
-                  :recent-animated-message-ids="recentAnimatedMessageIds"
-                  :sending-message-ids="sendingMessageIds"
-                  :latest-my-message-id="latestMyMessageId"
-                  :animate-rows="animateMessageList"
-                  :is-group-chat="isGroupChat"
-                  :me-id="me?.id ?? null"
-                  :format-message-time="formatMessageTime"
-                  :format-message-time-full="formatMessageTimeFull"
-                  :bubble-shape-class="bubbleShapeClass"
-                  :bubble-class="bubbleClass"
-                  :register-divider-el="registerDividerEl"
-                  :register-bubble-el="registerBubbleEl"
-                  :should-show-incoming-avatar="shouldShowIncomingAvatar"
-                  :go-to-profile="goToProfile"
-                  @load-older="loadOlderMessages"
-                />
-              </div>
-              <div v-else key="loading" class="h-full flex items-center justify-center">
-                <AppLogoLoader />
-              </div>
-            </Transition>
+            <div
+              v-if="renderedChatKey"
+              :key="renderedChatKey"
+              ref="messagesScroller"
+              data-chat-scroller="1"
+              class="h-full overflow-y-auto py-4 moh-chat-scroll-hide"
+              @scroll="onMessagesScroll"
+              @wheel.passive="markUserScrollIntent"
+              @touchstart.passive="markUserScrollIntent"
+              @touchmove.passive="markUserScrollIntent"
+            >
+              <ChatMessageList
+                :messages-ready="messagesReady"
+                :messages-loading="messagesLoading"
+                :messages-next-cursor="messagesNextCursor"
+                :loading-older="loadingOlder"
+                :is-draft-chat="isDraftChat"
+                :messages-count="messages.length"
+                :messages-with-dividers="messagesWithDividers"
+                :sticky-divider-label="stickyDividerLabel"
+                :recent-animated-message-ids="recentAnimatedMessageIds"
+                :sending-message-ids="sendingMessageIds"
+                :latest-my-message-id="latestMyMessageId"
+                :animate-rows="animateMessageList"
+                :is-group-chat="isGroupChat"
+                :me-id="me?.id ?? null"
+                :format-message-time="formatMessageTime"
+                :format-message-time-full="formatMessageTimeFull"
+                :bubble-shape-class="bubbleShapeClass"
+                :bubble-class="bubbleClass"
+                :register-divider-el="registerDividerEl"
+                :register-bubble-el="registerBubbleEl"
+                :should-show-incoming-avatar="shouldShowIncomingAvatar"
+                :go-to-profile="goToProfile"
+                @load-older="loadOlderMessages"
+              />
+            </div>
+            <div
+              v-else
+              key="loading"
+              class="h-full flex items-center justify-center transition-opacity ease-out"
+              :class="messagesPaneState === 'fading' ? 'opacity-0' : 'opacity-100'"
+              :style="{ transitionDuration: `${MESSAGES_PANE_FADE_MS}ms` }"
+            >
+              <AppLogoLoader />
+            </div>
             <!-- Custom thin pill scrollbar (native scrollbar hidden) -->
             <div
               v-if="renderedChatKey && scrollPillNeeded"
@@ -273,8 +282,6 @@
           </div>
         </div>
       </section>
-        </div>
-      </Transition>
     </div>
 
     <Dialog
@@ -355,6 +362,7 @@
       </div>
     </Dialog>
   </div>
+</div>
 </template>
 
 <script setup lang="ts">
@@ -397,7 +405,54 @@ const route = useRoute()
 const router = useRouter()
 const { user: me } = useAuth()
 const viewerIsVerified = computed(() => (me.value?.verifiedStatus ?? 'none') !== 'none')
-const chatScreenReady = ref(false)
+const CHAT_BOOT_FADE_MS = 160
+const MESSAGES_PANE_FADE_MS = 160
+const prefersReducedMotion = ref(false)
+const chatBootState = ref<'loading' | 'fading' | 'ready'>('loading')
+const messagesPaneState = ref<'loading' | 'fading' | 'ready'>('loading')
+let chatBootTimer: ReturnType<typeof setTimeout> | null = null
+let messagesPaneTimer: ReturnType<typeof setTimeout> | null = null
+
+function clearChatBootTimer() {
+  if (!chatBootTimer) return
+  clearTimeout(chatBootTimer)
+  chatBootTimer = null
+}
+function clearMessagesPaneTimer() {
+  if (!messagesPaneTimer) return
+  clearTimeout(messagesPaneTimer)
+  messagesPaneTimer = null
+}
+
+function revealChatScreenAfterFade() {
+  if (chatBootState.value === 'ready') return
+  if (prefersReducedMotion.value) {
+    chatBootState.value = 'ready'
+    return
+  }
+  chatBootState.value = 'fading'
+  clearChatBootTimer()
+  chatBootTimer = setTimeout(() => {
+    chatBootTimer = null
+    chatBootState.value = 'ready'
+  }, CHAT_BOOT_FADE_MS)
+}
+
+function revealMessagesPaneAfterFade(key: string) {
+  // Mount the messages scroller only after the loader has faded out.
+  if (prefersReducedMotion.value) {
+    messagesPaneState.value = 'ready'
+    renderedChatKey.value = key
+    return
+  }
+  messagesPaneState.value = 'fading'
+  clearMessagesPaneTimer()
+  messagesPaneTimer = setTimeout(() => {
+    messagesPaneTimer = null
+    messagesPaneState.value = 'ready'
+    renderedChatKey.value = key
+  }, MESSAGES_PANE_FADE_MS)
+}
 const {
   addInterest,
   removeInterest,
@@ -608,9 +663,9 @@ const pendingNewLabel = computed(() => {
 const showScrollToBottomButton = computed(() => Boolean(selectedChatKey.value) && !atBottom.value)
 
 const { isTinyViewport, showListPane, showDetailPane: showChatPane, gridStyle } = useTwoPaneLayout(selectedChatKey, {
-  // Keep list pane thinner than chat, but not overly narrow.
-  leftCols: '1.5fr',
-  rightCols: '2.5fr',
+  // Keep left pane consistent with Admin/Settings.
+  leftCols: '22rem',
+  rightCols: '1fr',
   minWidth: 1024,
   // Messages should not collapse panes due to short viewport height.
   // Only collapse when the viewport is actually narrow.
@@ -699,8 +754,7 @@ function scrollToBottom(behavior: ScrollBehavior = 'auto') {
   el.scrollTo({ top: el.scrollHeight, behavior: nextBehavior })
 }
 
-function onMessagesScrollerBeforeEnter(el: Element) {
-  const scroller = el as HTMLElement
+function onMessagesScrollerMounted(scroller: HTMLElement) {
   // Force instant jump regardless of any global scroll-behavior.
   scroller.scrollTop = scroller.scrollHeight
   requestAnimationFrame(() => {
@@ -982,6 +1036,7 @@ async function loadMoreConversations() {
 }
 
 async function selectConversation(id: string, opts?: { replace?: boolean }) {
+  clearMessagesPaneTimer()
   selectedConversationId.value = id
   selectedChatKey.value = id
   // Leaving draft mode (if any)
@@ -989,6 +1044,7 @@ async function selectConversation(id: string, opts?: { replace?: boolean }) {
   messagesReady.value = false
   animateMessageList.value = false
   renderedChatKey.value = null
+  messagesPaneState.value = 'loading'
   atBottom.value = true
   resetPendingNew()
   const replace = opts?.replace ?? false
@@ -1013,7 +1069,10 @@ async function selectConversation(id: string, opts?: { replace?: boolean }) {
     updateConversationUnread(id, 0)
     messagesReady.value = true
     messagesLoading.value = false
-    renderedChatKey.value = id
+    // If the user switched threads mid-request, don't mount the wrong scroller.
+    if (selectedChatKey.value === id) {
+      revealMessagesPaneAfterFade(id)
+    }
   } finally {
     messagesLoading.value = false
     if (!messagesReady.value) messagesReady.value = true
@@ -1021,6 +1080,7 @@ async function selectConversation(id: string, opts?: { replace?: boolean }) {
 }
 
 async function clearSelection(opts?: { replace?: boolean; preserveDraft?: boolean }) {
+  clearMessagesPaneTimer()
   selectedConversationId.value = null
   selectedChatKey.value = null
   if (!opts?.preserveDraft) {
@@ -1031,6 +1091,7 @@ async function clearSelection(opts?: { replace?: boolean; preserveDraft?: boolea
   messagesReady.value = false
   animateMessageList.value = false
   renderedChatKey.value = null
+  messagesPaneState.value = 'loading'
   atBottom.value = true
   resetPendingNew()
   resetTyping()
@@ -1315,6 +1376,7 @@ async function createConversation() {
     selectedChatKey.value = 'draft'
     messagesReady.value = true
     animateMessageList.value = false
+    messagesPaneState.value = 'ready'
     renderedChatKey.value = 'draft'
   } catch (e) {
     newConversationError.value = getApiErrorMessage(e) || 'Failed to send message.'
@@ -1430,6 +1492,11 @@ const messageCallback = {
 
 onMounted(() => {
   if (!viewerIsVerified.value) return
+  try {
+    prefersReducedMotion.value = Boolean(window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches)
+  } catch {
+    // ignore
+  }
   addMessagesCallback(messageCallback)
   emitMessagesScreen(true)
   ;(async () => {
@@ -1438,17 +1505,19 @@ onMounted(() => {
       if (selectedConversationId.value) {
         await selectConversation(selectedConversationId.value, { replace: true })
       }
-      chatScreenReady.value = true
+      revealChatScreenAfterFade()
       // Prefetch requests tab in background.
       void fetchConversations('requests')
     } catch {
       // Even if fetch fails, show the screen so errors/empty states can render.
-      chatScreenReady.value = true
+      revealChatScreenAfterFade()
     }
   })()
 })
 
 onBeforeUnmount(() => {
+  clearChatBootTimer()
+  clearMessagesPaneTimer()
   removeMessagesCallback(messageCallback)
   emitMessagesScreen(false)
   for (const t of recentAnimatedTimers.value.values()) clearTimeout(t)
@@ -1474,6 +1543,19 @@ watch(
     if (!viewerIsVerified.value) return
     // Keep focus on the chat composer when switching threads.
     void nextTick(() => dmComposerRef.value?.focus?.())
+  },
+  { flush: 'post' },
+)
+
+watch(
+  renderedChatKey,
+  (key) => {
+    if (!import.meta.client) return
+    if (!key) return
+    void nextTick().then(() => {
+      const el = messagesScroller.value
+      if (el) onMessagesScrollerMounted(el)
+    })
   },
   { flush: 'post' },
 )

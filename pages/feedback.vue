@@ -1,53 +1,63 @@
 <template>
-  <div class="mx-auto w-full max-w-2xl">
-    <div class="mt-6 space-y-4">
-      <div class="rounded-xl border moh-border p-4">
-        <div class="space-y-3">
-          <div class="grid gap-3 sm:grid-cols-2">
-            <AppFormField label="Category">
-              <Select
-                v-model="category"
-                class="w-full"
-                :options="categories"
-                optionLabel="label"
-                optionValue="value"
-                placeholder="Select…"
-              />
-            </AppFormField>
-            <AppFormField label="Email" optional>
-              <InputText v-model="email" class="w-full" placeholder="you@example.com" autocomplete="email" />
-            </AppFormField>
-          </div>
+  <div class="mx-auto w-full max-w-3xl px-4 py-8 space-y-8">
+    <AppPageHeader title="Feedback" icon="pi-comment" description="Send a note — bugs, feature requests, or anything else." />
 
-          <AppFormField label="Subject">
-            <InputText v-model="subject" class="w-full" placeholder="Short summary…" />
-          </AppFormField>
-
-          <AppFormField label="Details">
-            <Textarea v-model="details" autoResize rows="6" class="w-full" placeholder="What happened? What did you expect?" />
-          </AppFormField>
-
-          <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <div class="text-xs moh-text-muted">
-              We read every note. Share as much detail as you can.
-            </div>
-            <Button
-              label="Submit"
-              icon="pi pi-send"
-              severity="secondary"
-              :loading="submitting"
-              :disabled="submitting"
-              @click="onSubmit"
-            />
-          </div>
-          <AppInlineAlert v-if="submitError" severity="danger">
-            {{ submitError }}
-          </AppInlineAlert>
-        </div>
+    <div class="space-y-6">
+      <div class="text-sm moh-text-muted">
+        We read every note. If you include your email, we’ll reply when there’s a follow-up or fix.
       </div>
 
+      <div class="grid gap-4 sm:grid-cols-2">
+        <AppFormField label="Category">
+          <Select
+            v-model="category"
+            class="w-full"
+            :options="categories"
+            optionLabel="label"
+            optionValue="value"
+            placeholder="Select…"
+          />
+        </AppFormField>
+        <AppFormField label="Email" optional>
+          <InputText v-model="email" class="w-full" placeholder="you@example.com" autocomplete="email" />
+        </AppFormField>
+      </div>
+
+      <AppFormField label="Subject">
+        <InputText v-model="subject" class="w-full" placeholder="Short summary…" />
+      </AppFormField>
+
+      <AppFormField label="Details">
+        <Textarea
+          v-model="details"
+          autoResize
+          rows="8"
+          class="w-full"
+          placeholder="What happened? What did you expect? Steps to reproduce?"
+        />
+      </AppFormField>
+
+      <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between pt-2 border-t moh-border">
+        <div class="text-xs moh-text-muted">
+          Best reports include device + browser, what you clicked, and what you expected.
+        </div>
+        <Button
+          label="Submit"
+          icon="pi pi-send"
+          severity="secondary"
+          class="w-full sm:w-auto justify-center"
+          :loading="submitting"
+          :disabled="submitting"
+          @click="onSubmit"
+        />
+      </div>
+
+      <AppInlineAlert v-if="submitError" severity="danger">
+        {{ submitError }}
+      </AppInlineAlert>
+
       <div class="text-xs moh-text-muted">
-        Tip: include your device and what you were trying to do.
+        Tip: include screenshots when helpful.
       </div>
     </div>
   </div>
@@ -57,6 +67,7 @@
 definePageMeta({
   layout: 'app',
   title: 'Feedback',
+  hideTopBar: true,
 })
 
 usePageSeo({

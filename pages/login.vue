@@ -20,6 +20,7 @@
             autocomplete="tel"
             inputmode="tel"
             :disabled="phoneSubmitting"
+            @input="onPhoneInput"
             @keydown.enter.prevent="submitPhone"
           />
           <button
@@ -162,12 +163,14 @@ type Step = 'phone' | 'code'
 
 const { apiFetchData } = useApiClient()
 import { useFormSubmit } from '~/composables/useFormSubmit'
+import { countDigitsBeforeIndex, formatPhoneAsYouType, indexFromDigitCount, normalizePhoneForApi } from '~/utils/phone'
 const route = useRoute()
 
 const step = ref<Step>('phone')
 
 const phoneInput = ref('')
 const phoneCommitted = ref('')
+const phoneCommittedNormalized = ref('')
 
 const codeInput = ref('')
 
@@ -200,6 +203,7 @@ onBeforeUnmount(() => {
 function resetToPhone() {
   step.value = 'phone'
   phoneCommitted.value = ''
+  phoneCommittedNormalized.value = ''
   codeInput.value = ''
   inlineError.value = null
   introOpen.value = false
@@ -223,18 +227,46 @@ async function startOtp(phone: string) {
     body: { phone }
   })
 
-  phoneCommitted.value = phone
+  phoneCommitted.value = formatPhoneAsYouType(phoneInput.value.trim()) || phone
+  phoneCommittedNormalized.value = phone
   step.value = 'code'
   codeInput.value = ''
 
   startResendCountdown(result.retryAfterSeconds ?? 30)
 }
 
+let isPhoneFormatting = false
+function onPhoneInput(e: Event) {
+  if (isPhoneFormatting) return
+  const el = e.target as HTMLInputElement | null
+  if (!el) return
+
+  const raw = el.value ?? ''
+  const selectionStart = el.selectionStart ?? raw.length
+  const digitsBefore = countDigitsBeforeIndex(raw, selectionStart)
+
+  const formatted = formatPhoneAsYouType(raw)
+  if (formatted === raw) return
+
+  isPhoneFormatting = true
+  phoneInput.value = formatted
+
+  // Restore caret position based on digit count (prevents "cursor jumps to end" while typing).
+  requestAnimationFrame(() => {
+    try {
+      const nextPos = indexFromDigitCount(formatted, digitsBefore)
+      el.setSelectionRange(nextPos, nextPos)
+    } finally {
+      isPhoneFormatting = false
+    }
+  })
+}
+
 const { submit: submitPhone, submitting: submitPhoneSubmitting } = useFormSubmit(
   async () => {
     inlineError.value = null
     introError.value = null
-    const phone = phoneInput.value.trim()
+    const phone = normalizePhoneForApi(phoneInput.value)
     if (!phone) return
 
     const existsRes = await apiFetchData<{ exists: boolean }>('/auth/phone/exists', {
@@ -265,8 +297,8 @@ const { submit: resend, submitting: resendSubmitting } = useFormSubmit(
   async () => {
     inlineError.value = null
     introError.value = null
-    if (!phoneCommitted.value) return
-    await startOtp(phoneCommitted.value)
+    if (!phoneCommittedNormalized.value) return
+    await startOtp(phoneCommittedNormalized.value)
   },
   {
     defaultError: 'Failed to resend code.',
@@ -317,7 +349,7 @@ const { submit: submitCode, submitting: verifying } = useFormSubmit(
   async () => {
     inlineError.value = null
 
-    const phone = phoneCommitted.value.trim()
+    const phone = phoneCommittedNormalized.value.trim()
     const code = codeInput.value.replace(/\D/g, '').slice(0, 6)
     if (!phone || code.length !== 6) return
 

@@ -30,18 +30,18 @@
       </AppInlineAlert>
     </div>
 
-    <div v-else class="mt-4 px-4">
+    <div v-else class="mt-4">
       <div v-if="loading && !items.length" class="flex justify-center pt-12 pb-8">
         <AppLogoLoader />
       </div>
 
-      <div v-else-if="folderNotFound" class="moh-text-muted text-sm">
+      <div v-else-if="folderNotFound" class="px-4 moh-text-muted text-sm">
         Folder not found.
       </div>
 
-      <div v-else-if="!items.length" class="moh-text-muted text-sm">No saved posts yet.</div>
+      <div v-else-if="!items.length" class="px-4 moh-text-muted text-sm">No saved posts yet.</div>
 
-      <div v-else class="space-y-0 -mx-4">
+      <div v-else class="space-y-0">
         <div v-for="b in items" :key="b.bookmarkId">
           <AppPostRow :post="b.post" />
         </div>

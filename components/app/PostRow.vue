@@ -646,6 +646,13 @@ onBeforeUnmount(() => {
 })
 
 const { copyText: copyToClipboard } = useCopyToClipboard()
+function toastToneForPostVisibility(): import('~/composables/useAppToast').AppToastTone {
+  const v = post.value.visibility
+  if (v === 'verifiedOnly') return 'verifiedOnly'
+  if (v === 'premiumOnly') return 'premiumOnly'
+  if (v === 'onlyMe') return 'onlyMe'
+  return 'public'
+}
 const shareMenuItems = computed<MenuItem[]>(() => [
   {
     label: 'Copy link',
@@ -654,7 +661,7 @@ const shareMenuItems = computed<MenuItem[]>(() => [
       if (!import.meta.client) return
       try {
         await copyToClipboard(postShareUrl.value)
-        toast.push({ title: 'Link copied', tone: 'success', durationMs: 1400 })
+        toast.push({ title: 'Post link copied', tone: toastToneForPostVisibility(), durationMs: 1400 })
       } catch {
         toast.push({ title: 'Copy failed', tone: 'error', durationMs: 1800 })
       }

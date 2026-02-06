@@ -1,35 +1,27 @@
 <template>
-  <div class="h-[calc(100dvh-9rem)] sm:h-[calc(100dvh-6.5rem)]">
-    <div class="grid h-full" :class="isTinyViewport ? 'grid-cols-1' : ''" :style="gridStyle">
+  <div class="h-full min-h-0">
+    <div class="grid h-full min-h-0" :class="isTinyViewport ? 'grid-cols-1' : ''" :style="gridStyle">
       <!-- Left column: section list -->
       <section
         v-if="showListPane"
         :class="[
           'h-full overflow-y-auto border-b border-gray-200 dark:border-zinc-800',
-          !isTinyViewport ? 'border-b-0 border-r pr-4' : 'pr-0'
+          !isTinyViewport ? 'border-b-0 border-r' : ''
         ]"
       >
-        <div class="text-lg font-semibold">Settings</div>
+        <div class="py-4">
+          <div class="px-4 text-lg font-semibold">Settings</div>
 
-        <div class="mt-3">
-          <InputText v-model="sectionQuery" class="w-full" placeholder="Search settings…" />
-        </div>
+          <div class="mt-3 px-4">
+            <InputText v-model="sectionQuery" class="w-full h-11 !rounded-full" placeholder="Search settings…" />
+          </div>
 
-        <div class="mt-4 space-y-2">
-          <button
-            v-for="s in filteredSections"
-            :key="s.key"
-            type="button"
-            class="w-full text-left"
-            @click="selectedSection = s.key"
-          >
-            <div
-              :class="[
-                'w-full rounded-xl border p-3 transition-colors',
-                selectedSection === s.key
-                  ? 'border-gray-300 bg-gray-50 dark:border-zinc-700 dark:bg-zinc-900'
-                  : 'border-gray-200 hover:bg-gray-50 dark:border-zinc-800 dark:hover:bg-zinc-900'
-              ]"
+          <div class="mt-4 divide-y divide-gray-200 dark:divide-zinc-800">
+            <NuxtLink
+              v-for="s in filteredSections"
+              :key="s.key"
+              :to="`/settings/${s.key}`"
+              :class="sectionRowClass(s.key)"
             >
               <div class="flex items-center justify-between gap-3">
                 <div class="min-w-0">
@@ -38,8 +30,8 @@
                 </div>
                 <i class="pi pi-angle-right text-gray-400" aria-hidden="true" />
               </div>
-            </div>
-          </button>
+            </NuxtLink>
+          </div>
         </div>
       </section>
 
@@ -50,12 +42,12 @@
             <div class="flex items-center justify-between gap-3">
               <div class="flex min-w-0 items-start gap-2">
                 <Button
-                  v-if="isTinyViewport && selectedSection"
-                  icon="pi pi-arrow-left"
+                  v-if="selectedSection"
+                  icon="pi pi-chevron-left"
                   text
                   severity="secondary"
                   aria-label="Back"
-                  @click="selectedSection = null"
+                  @click="navigateTo('/settings')"
                 />
                 <div class="min-w-0">
                   <div class="font-semibold truncate">
@@ -121,6 +113,80 @@
                 </div>
               </div>
 
+              <div v-else-if="selectedSection === 'verification'" class="space-y-6">
+                <div class="rounded-xl border moh-border p-3 moh-surface space-y-2 text-sm">
+                  <div class="flex items-center justify-between gap-3">
+                    <div class="font-semibold text-gray-900 dark:text-gray-50">Your verification</div>
+                    <AppVerifiedBadge :status="authUser?.verifiedStatus ?? 'none'" :premium="Boolean(authUser?.premium)" />
+                  </div>
+
+                  <div class="flex items-center justify-between gap-3">
+                    <div class="moh-text-muted">Status</div>
+                    <div class="text-sm">
+                      <Tag :value="verificationStatusLabel" :severity="verificationStatusSeverity" class="!text-xs" />
+                    </div>
+                  </div>
+
+                  <div class="flex items-center justify-between gap-3">
+                    <div class="moh-text-muted">Verified at</div>
+                    <div class="font-mono text-xs">{{ verifiedAtLabel }}</div>
+                  </div>
+
+                  <div v-if="verificationLatestRequest" class="pt-2 space-y-2">
+                    <div class="text-xs moh-text-muted">Latest request</div>
+
+                    <div class="flex items-center justify-between gap-3">
+                      <div class="moh-text-muted">Request status</div>
+                      <Tag :value="requestStatusLabel" :severity="requestStatusSeverity" class="!text-xs" />
+                    </div>
+
+                    <div class="flex items-center justify-between gap-3">
+                      <div class="moh-text-muted">Submitted</div>
+                      <div class="font-mono text-xs">{{ requestSubmittedAtLabel }}</div>
+                    </div>
+
+                    <div v-if="verificationLatestRequest.reviewedAt" class="flex items-center justify-between gap-3">
+                      <div class="moh-text-muted">Reviewed</div>
+                      <div class="font-mono text-xs">{{ requestReviewedAtLabel }}</div>
+                    </div>
+
+                    <div v-if="verificationLatestRequest.rejectionReason" class="space-y-1">
+                      <div class="text-xs moh-text-muted">Reason</div>
+                      <div class="text-sm moh-text">{{ verificationLatestRequest.rejectionReason }}</div>
+                    </div>
+                  </div>
+                </div>
+
+                <AppInlineAlert v-if="verificationError" severity="danger">
+                  {{ verificationError }}
+                </AppInlineAlert>
+
+                <div class="flex flex-wrap items-center gap-3">
+                  <Button
+                    label="Start verification"
+                    icon="pi pi-id-card"
+                    :loading="verificationStarting"
+                    :disabled="verificationStarting || verificationStartDisabled"
+                    @click="startVerification()"
+                  />
+                  <Button
+                    label="Refresh"
+                    icon="pi pi-refresh"
+                    severity="secondary"
+                    :loading="verificationRefreshing"
+                    :disabled="verificationRefreshing"
+                    @click="refreshVerification()"
+                  />
+                  <div v-if="verificationStartDisabledReason" class="text-sm moh-text-muted">
+                    {{ verificationStartDisabledReason }}
+                  </div>
+                </div>
+
+                <div class="text-xs moh-text-muted">
+                  Provider integration isn’t live yet. For now, your request will show as pending until an admin manually reviews it.
+                </div>
+              </div>
+
               <div v-else-if="selectedSection === 'privacy'" class="space-y-6">
                 <div class="space-y-2">
                   <div class="text-sm font-semibold text-gray-900 dark:text-gray-50">Follow visibility</div>
@@ -179,39 +245,39 @@
                     On iOS Safari, install this site to your Home Screen to enable notifications. Tap Share → Add to Home Screen, then reopen the app.
                   </div>
                   <div class="flex flex-wrap items-center gap-3">
-                  <Button
-                    v-if="!pushIsSubscribed && pushPermission !== 'denied'"
-                    label="Enable browser notifications"
-                    icon="pi pi-bell"
-                    :loading="pushIsRegistering"
-                    :disabled="pushIsRegistering || pushRequiresInstall"
-                    @click="pushSubscribe"
-                  />
-                  <Button
-                    v-else-if="pushIsSubscribed"
-                    label="Disable browser notifications"
-                    icon="pi pi-bell-slash"
-                    severity="secondary"
-                    @click="pushUnsubscribe"
-                  />
-                  <Button
-                    v-if="pushIsSubscribed"
-                    label="Send test notification"
-                    icon="pi pi-send"
-                    severity="secondary"
-                    :loading="pushTestSending"
-                    :disabled="pushTestSending"
-                    @click="sendPushTest"
-                  />
-                  <span v-else-if="pushPermission === 'denied'" class="text-sm text-gray-600 dark:text-gray-400">
-                    Notifications were denied. Enable them in your browser settings for this site to try again.
-                  </span>
-                  <span v-if="pushErrorMessage" class="text-sm text-red-700 dark:text-red-300">
-                    {{ pushErrorMessage }}
-                  </span>
-                  <span v-if="pushTestMessage" class="text-sm text-gray-600 dark:text-gray-400">
-                    {{ pushTestMessage }}
-                  </span>
+                    <Button
+                      v-if="!pushIsSubscribed && pushPermission !== 'denied'"
+                      label="Enable browser notifications"
+                      icon="pi pi-bell"
+                      :loading="pushIsRegistering"
+                      :disabled="pushIsRegistering || pushRequiresInstall"
+                      @click="pushSubscribe"
+                    />
+                    <Button
+                      v-else-if="pushIsSubscribed"
+                      label="Disable browser notifications"
+                      icon="pi pi-bell-slash"
+                      severity="secondary"
+                      @click="pushUnsubscribe"
+                    />
+                    <Button
+                      v-if="pushIsSubscribed"
+                      label="Send test notification"
+                      icon="pi pi-send"
+                      severity="secondary"
+                      :loading="pushTestSending"
+                      :disabled="pushTestSending"
+                      @click="sendPushTest"
+                    />
+                    <span v-else-if="pushPermission === 'denied'" class="text-sm text-gray-600 dark:text-gray-400">
+                      Notifications were denied. Enable them in your browser settings for this site to try again.
+                    </span>
+                    <span v-if="pushErrorMessage" class="text-sm text-red-700 dark:text-red-300">
+                      {{ pushErrorMessage }}
+                    </span>
+                    <span v-if="pushTestMessage" class="text-sm text-gray-600 dark:text-gray-400">
+                      {{ pushTestMessage }}
+                    </span>
                   </div>
                 </div>
               </div>
@@ -265,9 +331,10 @@ usePageSeo({
 })
 
 type FollowVisibility = 'all' | 'verified' | 'premium' | 'none'
-type SettingsSection = 'account' | 'privacy' | 'notifications' | 'links'
+type SettingsSection = 'account' | 'verification' | 'privacy' | 'notifications' | 'links'
 
 const { user: authUser, ensureLoaded } = useAuth()
+const route = useRoute()
 
 // Ensure we have the current user (so inputs can prefill immediately).
 await ensureLoaded()
@@ -275,6 +342,9 @@ await ensureLoaded()
 const { apiFetch, apiFetchData } = useApiClient()
 import { getApiErrorMessage } from '~/utils/api-error'
 import { useFormSave } from '~/composables/useFormSave'
+import { useFormSubmit } from '~/composables/useFormSubmit'
+import { formatDateTime } from '~/utils/time-format'
+import type { MyVerificationStatus, VerificationRequestPublic } from '~/types/api'
 import { siteConfig } from '~/config/site'
 
 const {
@@ -324,7 +394,34 @@ async function sendPushTest() {
   }
 }
 
-const selectedSection = ref<SettingsSection | null>(null)
+const allowedSections: SettingsSection[] = ['account', 'verification', 'privacy', 'notifications', 'links']
+
+const routeSection = computed<SettingsSection | null>(() => {
+  const raw = typeof route.params.section === 'string' ? route.params.section : null
+  if (!raw) return null
+  return allowedSections.includes(raw as SettingsSection) ? (raw as SettingsSection) : null
+})
+
+// Legacy support: /settings?section=links -> /settings/links
+const legacySection = computed<SettingsSection | null>(() => {
+  const raw = typeof route.query.section === 'string' ? route.query.section : null
+  if (!raw) return null
+  return allowedSections.includes(raw as SettingsSection) ? (raw as SettingsSection) : null
+})
+
+if (!routeSection.value && legacySection.value) {
+  await navigateTo(`/settings/${legacySection.value}`, { replace: true })
+}
+
+const selectedSection = ref<SettingsSection | null>(routeSection.value)
+watch(
+  routeSection,
+  (s) => {
+    selectedSection.value = s
+  },
+  { immediate: true }
+)
+
 const sectionQuery = ref('')
 
 const sections = computed(() => [
@@ -332,6 +429,11 @@ const sections = computed(() => [
     key: 'account' as const,
     label: 'Your account',
     description: 'Username and profile basics.'
+  },
+  {
+    key: 'verification' as const,
+    label: 'Verification',
+    description: 'Start verification and check your status.'
   },
   {
     key: 'privacy' as const,
@@ -356,19 +458,25 @@ const filteredSections = computed(() => {
   return sections.value.filter((s) => (s.label + ' ' + s.description).toLowerCase().includes(q))
 })
 
+function sectionRowClass(key: SettingsSection) {
+  const active = selectedSection.value === key
+  return [
+    'block px-4 py-3 transition-colors',
+    active ? 'bg-gray-50 dark:bg-zinc-900' : 'hover:bg-gray-50 dark:hover:bg-zinc-900',
+  ]
+}
+
 const { isTinyViewport, showListPane, showDetailPane, gridStyle } = useTwoPaneLayout(selectedSection, {
   leftCols: '22rem',
 })
 
 watch(
   isTinyViewport,
-  (tiny) => {
-    // On tiny viewports, default to list view. On desktop, default to first section.
-    if (tiny) {
-      selectedSection.value = null
-      return
+  async (tiny) => {
+    // On desktop, default to first section by route (so URL reflects selection).
+    if (!tiny && !routeSection.value) {
+      await navigateTo('/settings/account', { replace: true })
     }
-    if (!selectedSection.value) selectedSection.value = 'account'
   },
   { immediate: true }
 )
@@ -377,6 +485,98 @@ const selectedSectionLabel = computed(() => sections.value.find((s) => s.key ===
 const selectedSectionDescription = computed(
   () => sections.value.find((s) => s.key === selectedSection.value)?.description || 'Choose a section.'
 )
+
+const verificationRefreshing = ref(false)
+const verificationError = ref<string | null>(null)
+const verificationLatestRequest = ref<VerificationRequestPublic | null>(null)
+
+async function refreshVerification() {
+  if (verificationRefreshing.value) return
+  verificationRefreshing.value = true
+  verificationError.value = null
+  try {
+    const res = await apiFetchData<MyVerificationStatus>('/verification/me', { method: 'GET' })
+    verificationLatestRequest.value = res.latestRequest ?? null
+
+    // Keep auth state fresh (useful right after manual approval).
+    if (authUser.value) {
+      authUser.value = {
+        ...authUser.value,
+        verifiedStatus: res.verifiedStatus,
+        verifiedAt: res.verifiedAt,
+        unverifiedAt: res.unverifiedAt,
+      }
+    }
+  } catch (e: unknown) {
+    verificationError.value = getApiErrorMessage(e) || 'Failed to load verification status.'
+  } finally {
+    verificationRefreshing.value = false
+  }
+}
+
+onMounted(() => {
+  void refreshVerification()
+})
+
+const { submit: startVerification, submitting: verificationStarting } = useFormSubmit(
+  async () => {
+    verificationError.value = null
+    const req = await apiFetchData<VerificationRequestPublic>('/verification/request', {
+      method: 'POST',
+      body: {},
+    })
+    verificationLatestRequest.value = req
+  },
+  {
+    defaultError: 'Failed to start verification.',
+    onError: (message) => {
+      verificationError.value = message
+    },
+  },
+)
+
+const verificationStatusLabel = computed(() => {
+  const s = authUser.value?.verifiedStatus ?? 'none'
+  if (s === 'identity') return 'Identity verified'
+  if (s === 'manual') return 'Manually verified'
+  return 'Not verified'
+})
+
+const verificationStatusSeverity = computed(() => {
+  const s = authUser.value?.verifiedStatus ?? 'none'
+  if (s === 'identity' || s === 'manual') return 'info'
+  return 'secondary'
+})
+
+const verifiedAtLabel = computed(() => formatDateTime(authUser.value?.verifiedAt, { fallback: '—' }))
+
+const requestStatusLabel = computed(() => {
+  const s = verificationLatestRequest.value?.status
+  if (s === 'approved') return 'Approved'
+  if (s === 'rejected') return 'Rejected'
+  if (s === 'cancelled') return 'Cancelled'
+  return 'Pending'
+})
+
+const requestStatusSeverity = computed(() => {
+  const s = verificationLatestRequest.value?.status
+  if (s === 'approved') return 'success'
+  if (s === 'rejected') return 'danger'
+  if (s === 'cancelled') return 'secondary'
+  return 'warning'
+})
+
+const requestSubmittedAtLabel = computed(() => formatDateTime(verificationLatestRequest.value?.createdAt, { fallback: '—' }))
+const requestReviewedAtLabel = computed(() => formatDateTime(verificationLatestRequest.value?.reviewedAt, { fallback: '—' }))
+
+const verificationStartDisabledReason = computed(() => {
+  const verified = (authUser.value?.verifiedStatus ?? 'none') !== 'none'
+  if (verified) return 'You’re already verified.'
+  if (verificationLatestRequest.value?.status === 'pending') return 'Your request is pending review.'
+  return ''
+})
+
+const verificationStartDisabled = computed(() => Boolean(verificationStartDisabledReason.value))
 
 const usernameInput = ref('')
 const emailInput = ref('')

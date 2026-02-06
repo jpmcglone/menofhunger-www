@@ -25,6 +25,12 @@ export type ApiErrorEnvelope = {
   }
 }
 
+export type Websters1828WordOfDay = {
+  word: string
+  dictionaryUrl: string
+  fetchedAt: string
+}
+
 export type FeedbackCategory = 'bug' | 'feature' | 'account' | 'other'
 export type FeedbackStatus = 'new' | 'triaged' | 'resolved'
 
@@ -228,6 +234,51 @@ export type AdminFeedbackItem = FeedbackItem & {
 
 /** Data type for GET /admin/feedback (array); pagination in envelope. */
 export type AdminFeedbackListData = AdminFeedbackItem[]
+
+export type VerificationRequestStatus = 'pending' | 'approved' | 'rejected' | 'cancelled'
+
+export type VerificationRequestPublic = {
+  id: string
+  createdAt: string
+  updatedAt: string
+  status: VerificationRequestStatus
+  provider: string | null
+  providerRequestId: string | null
+  reviewedAt: string | null
+  rejectionReason: string | null
+}
+
+/** Data type for GET /verification/me. */
+export type MyVerificationStatus = {
+  verifiedStatus: 'none' | 'identity' | 'manual'
+  verifiedAt: string | null
+  unverifiedAt: string | null
+  latestRequest: VerificationRequestPublic | null
+}
+
+export type AdminVerificationUser = {
+  id: string
+  createdAt: string
+  phone: string
+  email: string | null
+  username: string | null
+  usernameIsSet: boolean
+  name: string | null
+  siteAdmin: boolean
+  premium: boolean
+  verifiedStatus: 'none' | 'identity' | 'manual'
+  verifiedAt: string | null
+  unverifiedAt: string | null
+}
+
+export type AdminVerificationRequest = VerificationRequestPublic & {
+  adminNote: string | null
+  reviewedByAdmin: { id: string; username: string | null; name: string | null } | null
+  user: AdminVerificationUser
+}
+
+/** Data type for GET /admin/verification (array); pagination in envelope. */
+export type AdminVerificationListData = AdminVerificationRequest[]
 
 /** Data type for GET /admin/media-review (array); pagination in envelope. */
 export type AdminImageReviewListData = AdminImageReviewListItem[]

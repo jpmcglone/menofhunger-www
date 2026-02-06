@@ -10,7 +10,7 @@
 
     <div
       v-if="stickyDividerLabel"
-      class="sticky -top-4 z-10 -mx-4 flex items-center moh-bg moh-texture px-4 py-2 pointer-events-none"
+      class="sticky -top-4 z-10 flex items-center moh-bg moh-texture py-2 pointer-events-none"
       style="position: sticky;"
     >
       <div class="flex-1 border-t border-gray-200 dark:border-zinc-800" />
@@ -25,7 +25,7 @@
         <div
           v-if="item.type === 'divider'"
           :ref="(el) => registerDividerEl(item.dayKey, item.label, el)"
-          class="relative -mx-4 flex items-center px-4 py-2"
+          class="relative flex items-center py-2"
         >
           <div class="flex-1 border-t border-gray-200 dark:border-zinc-800" />
           <div class="mx-3 shrink-0 rounded-full bg-white px-2 text-[11px] font-semibold text-gray-500 shadow-sm dark:bg-zinc-900 dark:text-gray-400">

@@ -28,7 +28,7 @@
       No one online right now.
     </div>
 
-    <div v-else class="-mx-4 divide-y divide-gray-200 dark:divide-zinc-800">
+    <div v-else class="divide-y divide-gray-200 dark:divide-zinc-800">
       <AppUserRow v-for="u in users" :key="u.id" :user="u" :show-follow-button="true" />
     </div>
   </div>

@@ -9,7 +9,7 @@
   >
     <div class="space-y-4">
       <!-- Banner: edge-to-edge, no corner radius. Avatar overflows below. -->
-      <div class="-mx-6 relative shrink-0 border-0 border-b border-gray-200 bg-white dark:border-zinc-800 dark:bg-black/20">
+      <div class="relative shrink-0 border-0 border-b border-gray-200 bg-white dark:border-zinc-800 dark:bg-black/20">
         <div class="overflow-hidden">
           <div class="relative">
             <div class="aspect-[3/1] w-full min-h-0 shrink-0 overflow-hidden bg-gray-200 dark:bg-zinc-900">

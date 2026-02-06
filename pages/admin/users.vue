@@ -1,12 +1,22 @@
 <template>
-  <div class="px-4 py-4 space-y-4">
-    <AppPageHeader title="Users" icon="pi-users" description="Search and edit users.">
-      <template #actions>
-        <Button label="Back" severity="secondary" text icon="pi pi-arrow-left" @click="navigateTo('/admin')" />
+  <div class="py-4 space-y-4">
+    <div class="px-4">
+      <AppPageHeader title="Users" icon="pi-users" description="Search and edit users.">
+      <template #leading>
+        <!-- Only show back on mobile; desktop has the admin left pane. -->
+        <Button
+          class="md:hidden"
+          text
+          severity="secondary"
+          icon="pi pi-chevron-left"
+          aria-label="Back"
+          @click="navigateTo('/admin')"
+        />
       </template>
-    </AppPageHeader>
+      </AppPageHeader>
+    </div>
 
-    <div class="flex items-center gap-2">
+    <div class="px-4 flex items-center gap-2">
       <InputText
         v-model="userQuery"
         class="w-full"
@@ -23,15 +33,17 @@
       />
     </div>
 
-    <AppInlineAlert v-if="searchError" severity="danger">
-      {{ searchError }}
-    </AppInlineAlert>
+    <div v-if="searchError" class="px-4">
+      <AppInlineAlert severity="danger">
+        {{ searchError }}
+      </AppInlineAlert>
+    </div>
 
-    <div v-if="searchedOnce && results.length === 0" class="text-sm text-gray-600 dark:text-gray-300">
+    <div v-if="searchedOnce && results.length === 0" class="px-4 text-sm text-gray-600 dark:text-gray-300">
       No users found.
     </div>
 
-    <div v-else class="divide-y divide-gray-200 dark:divide-zinc-800 -mx-4">
+    <div v-else class="divide-y divide-gray-200 dark:divide-zinc-800">
       <div
         v-for="u in results"
         :key="u.id"
@@ -232,7 +244,9 @@
 
 <script setup lang="ts">
 definePageMeta({
+  layout: 'app',
   title: 'Users',
+  middleware: 'admin',
 })
 
 usePageSeo({

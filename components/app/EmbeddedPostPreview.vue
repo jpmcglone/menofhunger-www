@@ -56,13 +56,12 @@
             <!-- Compact media preview (up to 4) -->
             <div
               v-if="mediaItems.length"
-              class="mt-2 -mx-3"
+              class="mt-2"
               aria-hidden="true"
             >
               <!-- Horizontal filmstrip; overflow clipped; no user scrolling. -->
               <div class="no-scrollbar overflow-x-auto overflow-y-hidden pointer-events-none">
-                <!-- Restore left padding only; right edge stays flush. -->
-                <div class="flex gap-2 pl-3 pr-0">
+                <div class="flex gap-2 px-0">
                   <img
                     v-for="(m, idx) in mediaItems"
                     :key="m.id || idx"

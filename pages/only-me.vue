@@ -1,5 +1,5 @@
 <template>
-  <div class="relative -mx-4">
+  <div class="relative">
     <!-- Content (blurred until revealed) -->
     <div :class="revealed ? '' : 'blur-md pointer-events-none select-none'">
       <div v-if="canPost" class="px-4 py-3 border-b moh-border flex justify-end">

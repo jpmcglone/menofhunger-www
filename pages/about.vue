@@ -1,5 +1,5 @@
 <template>
-  <section class="mx-auto w-full max-w-2xl">
+  <section class="mx-auto w-full max-w-2xl px-4">
     <header class="space-y-3">
       <div class="flex flex-wrap items-center gap-2">
         <Tag value="About" severity="secondary" />

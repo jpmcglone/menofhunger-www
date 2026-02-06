@@ -8,7 +8,7 @@
             <InputIcon class="pi pi-search" />
             <InputText
               v-model="searchQuery"
-              class="w-full"
+              class="w-full h-11 !rounded-full"
               placeholder="Search…"
               @keydown.enter="flushDebounceAndSearch"
             />
@@ -17,23 +17,24 @@
       </div>
     </div>
 
-    <div class="px-4 py-4 space-y-4">
+    <div class="py-4 space-y-4">
 
       <!-- Min length hint -->
-      <div
-        v-if="searchQueryTrimmed && searchQueryTrimmed.length < 2"
-        class="rounded-xl border moh-border bg-gray-50/50 dark:bg-zinc-900/30 px-4 py-4"
-      >
-        <p class="text-sm moh-text-muted">
-          Enter at least 2 characters to search.
-        </p>
+      <div v-if="searchQueryTrimmed && searchQueryTrimmed.length < 2" class="px-4">
+        <div class="rounded-xl border moh-border bg-gray-50/50 dark:bg-zinc-900/30 p-4">
+          <p class="text-sm moh-text-muted">
+            Enter at least 2 characters to search.
+          </p>
+        </div>
       </div>
 
       <!-- Search results -->
       <template v-if="isSearching">
-        <AppInlineAlert v-if="searchError" severity="danger">
-          {{ searchError }}
-        </AppInlineAlert>
+        <div v-if="searchError" class="px-4">
+          <AppInlineAlert severity="danger">
+            {{ searchError }}
+          </AppInlineAlert>
+        </div>
 
         <div
           v-else-if="loading && interleaved.length === 0"
@@ -43,7 +44,7 @@
         </div>
 
         <!-- Results: list edge to edge (no margin) -->
-        <div v-else-if="interleaved.length > 0" class="space-y-0 -mx-4">
+        <div v-else-if="interleaved.length > 0" class="space-y-0">
           <p class="mb-3 px-4 text-sm font-medium text-gray-700 dark:text-gray-300">
             Searching for: <span class="font-semibold">{{ searchQueryTrimmed }}</span>
           </p>
@@ -74,25 +75,26 @@
           </div>
         </div>
 
-        <div
-          v-else-if="searchedOnce && !loading"
-          class="rounded-xl border moh-border bg-gray-50/50 dark:bg-zinc-900/30 px-4 py-6 text-center"
-        >
-          <p class="text-sm moh-text-muted">
-            No people or posts found for “{{ searchQueryTrimmed }}”.
-          </p>
+        <div v-else-if="searchedOnce && !loading" class="px-4">
+          <div class="rounded-xl border moh-border bg-gray-50/50 dark:bg-zinc-900/30 px-4 py-6 text-center">
+            <p class="text-sm moh-text-muted">
+              No people or posts found for “{{ searchQueryTrimmed }}”.
+            </p>
+          </div>
         </div>
       </template>
 
       <!-- No (valid) search query: discovery sections -->
       <template v-else>
-        <AppInlineAlert v-if="discoverError" severity="warning">
-          {{ discoverError }}
-        </AppInlineAlert>
+        <div v-if="discoverError" class="px-4">
+          <AppInlineAlert severity="warning">
+            {{ discoverError }}
+          </AppInlineAlert>
+        </div>
 
         <!-- People to follow -->
         <section class="space-y-3">
-          <div class="flex items-center justify-between gap-3">
+          <div class="px-4 flex items-center justify-between gap-3">
             <h2 class="text-sm font-semibold text-gray-900 dark:text-gray-50">
               People to follow
             </h2>
@@ -110,27 +112,25 @@
             <AppLogoLoader />
           </div>
 
-          <div v-else-if="recommendedUsers.length > 0" class="-mx-4">
-            <AppHorizontalScroller scroller-class="px-4">
-              <div class="flex gap-3 pb-2">
-                <AppUserMiniCard
-                  v-for="u in recommendedUsers"
-                  :key="u.id"
-                  :user="u"
-                  @followed="removeDiscoverUser(u.id)"
-                />
-              </div>
-            </AppHorizontalScroller>
-          </div>
+          <AppHorizontalScroller v-else-if="recommendedUsers.length > 0" scroller-class="no-scrollbar px-4">
+            <div class="flex gap-3 pb-2">
+              <AppUserMiniCard
+                v-for="u in recommendedUsers"
+                :key="u.id"
+                :user="u"
+                @followed="removeDiscoverUser(u.id)"
+              />
+            </div>
+          </AppHorizontalScroller>
 
-          <p v-else class="text-sm moh-text-muted">
+          <p v-else class="px-4 text-sm moh-text-muted">
             No recommendations yet — try searching for people.
           </p>
         </section>
 
         <!-- Trending from recommended -->
         <section class="space-y-3">
-          <h2 class="text-sm font-semibold text-gray-900 dark:text-gray-50">
+          <h2 class="px-4 text-sm font-semibold text-gray-900 dark:text-gray-50">
             Trending from people you might like
           </h2>
 
@@ -138,7 +138,7 @@
             <AppLogoLoader />
           </div>
 
-          <div v-else-if="trendingPosts.length > 0" class="space-y-0 -mx-4">
+          <div v-else-if="trendingPosts.length > 0" class="space-y-0">
             <div class="space-y-0">
               <AppFeedPostRow
                 v-for="p in trendingBefore"
@@ -153,7 +153,7 @@
                   New users
                 </h3>
               </div>
-              <AppHorizontalScroller scroller-class="mt-3">
+              <AppHorizontalScroller scroller-class="no-scrollbar mt-3">
                 <div class="flex gap-3 pb-2">
                   <AppUserMiniCard
                     v-for="u in newestUsers"
@@ -174,31 +174,29 @@
             </div>
           </div>
 
-          <p v-else class="text-sm moh-text-muted">
+          <p v-else class="px-4 text-sm moh-text-muted">
             No trending posts yet.
           </p>
         </section>
 
         <!-- New users (standalone when we can’t inline) -->
         <section v-if="!shouldInlineNewUsers && newestUsers.length > 0" class="space-y-3">
-          <h2 class="text-sm font-semibold text-gray-900 dark:text-gray-50">
+          <h2 class="px-4 text-sm font-semibold text-gray-900 dark:text-gray-50">
             New users
           </h2>
-          <div class="-mx-4">
-            <AppHorizontalScroller scroller-class="px-4">
-              <div class="flex gap-3 pb-2">
-                <AppUserMiniCard
-                  v-for="u in newestUsers"
-                  :key="u.id"
-                  :user="u"
-                  @followed="removeDiscoverUser(u.id)"
-                />
-              </div>
-            </AppHorizontalScroller>
-          </div>
+          <AppHorizontalScroller scroller-class="no-scrollbar px-4">
+            <div class="flex gap-3 pb-2">
+              <AppUserMiniCard
+                v-for="u in newestUsers"
+                :key="u.id"
+                :user="u"
+                @followed="removeDiscoverUser(u.id)"
+              />
+            </div>
+          </AppHorizontalScroller>
         </section>
 
-        <p class="text-sm moh-text-muted">
+        <p class="px-4 text-sm moh-text-muted">
           Or type in the search bar to search.
         </p>
       </template>

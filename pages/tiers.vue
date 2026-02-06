@@ -1,5 +1,5 @@
 <template>
-  <section class="mx-auto w-full max-w-4xl">
+  <section class="mx-auto w-full max-w-4xl px-4">
     <header class="mb-10 text-center">
       <p class="text-sm font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">
         Membership

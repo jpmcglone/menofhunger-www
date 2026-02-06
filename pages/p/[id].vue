@@ -1,6 +1,6 @@
 <template>
-  <div class="-mx-4">
-    <div v-if="errorText" class="mx-4 mt-4">
+  <div class="w-full">
+    <div v-if="errorText" class="px-4 mt-4">
       <div class="rounded-xl border border-gray-200 bg-gray-50 p-4 dark:border-zinc-800 dark:bg-zinc-950/40">
         <div class="text-lg font-semibold text-gray-900 dark:text-gray-50">
           {{ errorTitle }}
@@ -35,7 +35,7 @@
       </div>
     </div>
 
-    <div v-else-if="post" class="-mx-0">
+    <div v-else-if="post">
       <div ref="highlightedPostRef" class="scroll-mt-0">
         <AppFeedPostRow
           v-if="post.parent"

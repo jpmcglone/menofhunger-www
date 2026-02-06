@@ -1,8 +1,15 @@
 <template>
   <div class="px-4 py-4 space-y-4">
     <AppPageHeader title="Media review" icon="pi-images" description="Review and delete uploaded images and videos.">
-      <template #actions>
-        <Button label="Back" severity="secondary" text icon="pi pi-arrow-left" @click="navigateTo('/admin')" />
+      <template #leading>
+        <Button
+          class="md:hidden"
+          text
+          severity="secondary"
+          icon="pi pi-chevron-left"
+          aria-label="Back"
+          @click="navigateTo('/admin')"
+        />
       </template>
     </AppPageHeader>
 
@@ -335,7 +342,9 @@
 
 <script setup lang="ts">
 definePageMeta({
+  layout: 'app',
   title: 'Media review',
+  middleware: 'admin',
 })
 
 usePageSeo({
