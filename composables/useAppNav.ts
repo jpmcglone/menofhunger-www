@@ -6,6 +6,8 @@ export type AppNavItem = {
   icon: string
   /** Optional Iconify name for active state (filled/solid variant). */
   iconActive?: string
+  /** Optional extra class for the icon element. */
+  iconClass?: string
   requiresAuth?: boolean
   requiresVerified?: boolean
   showInLeft?: boolean
@@ -16,6 +18,8 @@ export function useAppNav() {
   const { user } = useAuth()
   const isAuthed = computed(() => Boolean(user.value?.id))
   const isVerified = computed(() => (user.value?.verifiedStatus ?? 'none') !== 'none')
+  const { stationId: radioStationId, isPlaying: radioIsPlaying } = useRadioPlayer()
+  const hasRadioSelected = computed(() => Boolean(radioStationId.value))
 
   const profileTo = computed(() => {
     const u = user.value?.username
@@ -33,9 +37,20 @@ export function useAppNav() {
     { key: 'messages', label: 'Chat', to: '/chat', icon: 'tabler:message-circle', iconActive: 'tabler:message-circle-filled', requiresAuth: true, requiresVerified: true, showInLeft: true, showInTabs: true },
     { key: 'bookmarks', label: 'Bookmarks', to: '/bookmarks', icon: 'tabler:bookmark', iconActive: 'tabler:bookmark-filled', requiresAuth: true, showInLeft: true, showInTabs: false },
     { key: 'groups', label: 'Groups', to: '/groups', icon: 'heroicons-outline:user-group', iconActive: 'heroicons-solid:user-group', requiresAuth: true, showInLeft: true, showInTabs: false },
+    {
+      key: 'radio',
+      label: 'Radio',
+      to: '/radio',
+      icon: hasRadioSelected.value ? 'tabler:music' : 'tabler:radio',
+      iconActive: hasRadioSelected.value ? 'tabler:music' : 'tabler:radio',
+      iconClass: radioIsPlaying.value ? 'moh-slow-bounce' : undefined,
+      requiresAuth: true,
+      showInLeft: true,
+      showInTabs: false,
+    },
     // Keep these as the Heroicons pair (you preferred the filled/outline look here).
-    { key: 'only-me', label: 'Only me', to: '/only-me', icon: 'heroicons-outline:eye-slash', iconActive: 'heroicons-solid:eye-slash', requiresAuth: true, showInLeft: true, showInTabs: false },
     { key: 'profile', label: 'Profile', to: profileTo.value, icon: 'heroicons-outline:user-circle', iconActive: 'heroicons-solid:user-circle', requiresAuth: true, showInLeft: true, showInTabs: true },
+    { key: 'only-me', label: 'Only me', to: '/only-me', icon: 'heroicons-outline:eye-slash', iconActive: 'heroicons-solid:eye-slash', requiresAuth: true, showInLeft: true, showInTabs: false },
 
     // Misc
     { key: 'about', label: 'About', to: '/about', icon: 'tabler:info-circle', iconActive: 'tabler:info-circle-filled', showInLeft: false, showInTabs: false },

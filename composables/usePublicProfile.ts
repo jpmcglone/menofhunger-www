@@ -1,17 +1,8 @@
 import type { Ref } from 'vue'
 import { getApiErrorMessage } from '~/utils/api-error'
 
-export type PublicProfile = {
-  id: string
-  username: string | null
-  name: string | null
-  bio: string | null
-  premium: boolean
-  verifiedStatus: 'none' | 'identity' | 'manual'
-  avatarUrl?: string | null
-  bannerUrl?: string | null
-  pinnedPostId?: string | null
-}
+export type { PublicProfile } from '~/types/api'
+import type { PublicProfile } from '~/types/api'
 
 export async function usePublicProfile(normalizedUsername: Ref<string>) {
   const { apiFetchData } = useApiClient()

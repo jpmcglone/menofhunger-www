@@ -1,12 +1,13 @@
 import { io, type Socket } from 'socket.io-client'
 import { appConfig } from '~/config/app'
-import type { FollowListUser } from '~/types/api'
+import type { FollowListUser, RadioListener } from '~/types/api'
 
 const PRESENCE_STATE_KEY = 'presence-online-ids'
 const PRESENCE_IDLE_IDS_KEY = 'presence-idle-ids'
 const PRESENCE_SOCKET_KEY = 'presence-socket'
 const PRESENCE_ONLINE_FEED_SUBSCRIBED_KEY = 'presence-online-feed-subscribed'
 const PRESENCE_INTEREST_KEY = 'presence-interest-refs'
+const PRESENCE_KNOWN_IDS_KEY = 'presence-known-ids'
 const PRESENCE_DISCONNECTED_DUE_TO_IDLE_KEY = 'presence-disconnected-due-to-idle'
 const PRESENCE_SOCKET_CONNECTED_KEY = 'presence-socket-connected'
 const PRESENCE_SOCKET_CONNECTING_KEY = 'presence-socket-connecting'
@@ -25,6 +26,9 @@ export type OnlineFeedCallback = {
   onOffline?: (payload: PresenceOfflinePayload) => void
   onSnapshot?: (payload: PresenceOnlineFeedSnapshotPayload) => void
 }
+
+export type RadioListenersPayload = { stationId: string; listeners: RadioListener[] }
+export type RadioCallback = { onListeners?: (payload: RadioListenersPayload) => void }
 
 export type MessagesCallback = {
   onMessage?: (payload: { conversationId?: string; message?: unknown }) => void
@@ -47,8 +51,11 @@ export function usePresence() {
   const idleUserIds = useState<Set<string>>(PRESENCE_IDLE_IDS_KEY, () => new Set())
   const socketRef = useState<Socket | null>(PRESENCE_SOCKET_KEY, () => null)
   const interestRefs = useState<Map<string, number>>(PRESENCE_INTEREST_KEY, () => new Map())
+  /** User IDs we've received at least one presence update for (subscribed/online/offline). Used to avoid showing "last online" until status is known. */
+  const presenceKnownUserIds = useState<Set<string>>(PRESENCE_KNOWN_IDS_KEY, () => new Set())
   const onlineFeedCallbacks = useState<Set<OnlineFeedCallback>>('presence-online-feed-callbacks', () => new Set())
   const messagesCallbacks = useState<Set<MessagesCallback>>('presence-messages-callbacks', () => new Set())
+  const radioCallbacks = useState<Set<RadioCallback>>('presence-radio-callbacks', () => new Set())
   const onlineFeedSubscribed = useState(PRESENCE_ONLINE_FEED_SUBSCRIBED_KEY, () => false)
   const disconnectedDueToIdle = useState<boolean>(PRESENCE_DISCONNECTED_DUE_TO_IDLE_KEY, () => false)
   const notificationUndeliveredCount = useState<number>(NOTIFICATIONS_UNDELIVERED_COUNT_KEY, () => 0)
@@ -89,6 +96,16 @@ export function usePresence() {
   function getPresenceStatus(userId: string): 'online' | 'idle' | 'offline' {
     if (isOnline(userId)) return isUserIdle(userId) ? 'idle' : 'online'
     return 'offline'
+  }
+
+  function markPresenceKnown(userId: string): void {
+    if (!userId) return
+    if (presenceKnownUserIds.value.has(userId)) return
+    presenceKnownUserIds.value = new Set([...presenceKnownUserIds.value, userId])
+  }
+
+  function isPresenceKnown(userId: string): boolean {
+    return Boolean(userId && presenceKnownUserIds.value.has(userId))
   }
 
   const { user } = useAuth()
@@ -185,6 +202,14 @@ export function usePresence() {
     messagesCallbacks.value.delete(cb)
   }
 
+  function addRadioCallback(cb: RadioCallback) {
+    radioCallbacks.value.add(cb)
+  }
+
+  function removeRadioCallback(cb: RadioCallback) {
+    radioCallbacks.value.delete(cb)
+  }
+
   function addOnlineIdsFromRest(userIds: string[]) {
     const next = [...onlineUserIds.value]
     for (const id of userIds) {
@@ -263,6 +288,7 @@ export function usePresence() {
       for (const u of users) {
         const id = u?.userId
         if (!id) continue
+        markPresenceKnown(id)
         applyUserPresence(id, u.online, u.idle ?? false)
       }
     })
@@ -270,6 +296,7 @@ export function usePresence() {
     socket.on('presence:online', (data: PresenceOnlinePayload) => {
       const id = data?.userId
       if (id) {
+        markPresenceKnown(id)
         applyUserPresence(id, true, data.idle ?? false)
       }
       if (onlineFeedSubscribed.value && onlineFeedCallbacks.value.size > 0) {
@@ -295,6 +322,7 @@ export function usePresence() {
     socket.on('presence:offline', (data: PresenceOfflinePayload) => {
       const id = data?.userId
       if (id) {
+        markPresenceKnown(id)
         applyUserPresence(id, false, false)
       }
       if (onlineFeedSubscribed.value && onlineFeedCallbacks.value.size > 0) {
@@ -359,6 +387,15 @@ export function usePresence() {
       }
     })
 
+    socket.on('radio:listeners', (data: { stationId?: string; listeners?: RadioListener[] }) => {
+      if (!radioCallbacks.value.size) return
+      const stationId = String(data?.stationId ?? '').trim()
+      const listeners = Array.isArray(data?.listeners) ? data.listeners : []
+      for (const cb of radioCallbacks.value) {
+        cb.onListeners?.({ stationId, listeners })
+      }
+    })
+
     socket.on('messages:typing', (data: { conversationId?: string; userId?: string; typing?: boolean }) => {
       if (!messagesCallbacks.value.size) return
       for (const cb of messagesCallbacks.value) {
@@ -409,6 +446,7 @@ export function usePresence() {
       // Clear presence state so UI (e.g. avatar green dot, status page) doesn't show stale "online"
       onlineUserIds.value = []
       idleUserIds.value = new Set()
+      presenceKnownUserIds.value = new Set()
     })
     if (socket.connected) {
       wasSocketConnectedOnce.value = true
@@ -445,6 +483,7 @@ export function usePresence() {
     }
     onlineUserIds.value = []
     idleUserIds.value = new Set()
+    presenceKnownUserIds.value = new Set()
     onlineFeedSubscribed.value = false
   }
 
@@ -546,6 +585,7 @@ export function usePresence() {
     onlineUserIds: readonly(onlineUserIds),
     isOnline,
     getPresenceStatus,
+    isPresenceKnown,
     isSocketConnected: readonly(isSocketConnected),
     isSocketConnecting: readonly(isSocketConnecting),
     disconnectedDueToIdle: readonly(disconnectedDueToIdle),
@@ -574,6 +614,30 @@ export function usePresence() {
     removeOnlineFeedCallback,
     addMessagesCallback,
     removeMessagesCallback,
+    addRadioCallback,
+    removeRadioCallback,
+    emitRadioJoin(stationId: string) {
+      const socket = socketRef.value
+      const id = (stationId ?? '').trim()
+      if (!socket?.connected || !id) return
+      socket.emit('radio:join', { stationId: id })
+    },
+    emitRadioWatch(stationId: string) {
+      const socket = socketRef.value
+      const id = (stationId ?? '').trim()
+      if (!socket?.connected || !id) return
+      socket.emit('radio:watch', { stationId: id })
+    },
+    emitRadioPause() {
+      const socket = socketRef.value
+      if (!socket?.connected) return
+      socket.emit('radio:pause', {})
+    },
+    emitRadioLeave() {
+      const socket = socketRef.value
+      if (!socket?.connected) return
+      socket.emit('radio:leave', {})
+    },
     emitMessagesScreen(active: boolean) {
       const socket = socketRef.value
       if (!socket?.connected) return

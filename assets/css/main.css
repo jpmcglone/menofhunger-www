@@ -108,6 +108,33 @@ html.dark {
     corner-shape: squircle;
   }
 
+  /* Pause icon on listener avatars: plain icon, white with shadow for readability on photos */
+  .moh-avatar-pause .pi {
+    color: #fff;
+    font-size: 14px;
+    filter: drop-shadow(0 0 2px rgba(0, 0, 0, 1)) drop-shadow(0 1px 3px rgba(0, 0, 0, 0.85));
+  }
+  .moh-avatar-pause-sm .pi {
+    font-size: 12px;
+  }
+
+  /* Fade in/out when pause overlay appears or disappears on avatar */
+  .moh-avatar-pause-fade-enter-active,
+  .moh-avatar-pause-fade-leave-active {
+    transition: opacity 0.18s ease;
+  }
+  .moh-avatar-pause-fade-enter-from,
+  .moh-avatar-pause-fade-leave-to {
+    opacity: 0;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .moh-avatar-pause-fade-enter-active,
+    .moh-avatar-pause-fade-leave-active {
+      transition: none;
+    }
+  }
+
   .moh-bg {
     background-color: var(--moh-bg);
   }

@@ -26,6 +26,13 @@
           aria-label="View banner"
           @click="emit('openImage', { event: $event, url: profileBannerUrl, title: 'Banner', kind: 'banner' })"
         />
+        <div
+          v-if="showLastOnline"
+          v-tooltip.bottom="tinyTooltip(lastOnlineTooltip)"
+          class="absolute right-4 bottom-0 translate-y-[36px] rounded-full bg-white/70 px-2 py-0.5 text-[11px] text-gray-600 shadow-sm backdrop-blur-sm dark:bg-black/60 dark:text-gray-400 tabular-nums"
+        >
+          Last online {{ lastOnlineShort }}
+        </div>
       </div>
 
       <div
@@ -83,7 +90,7 @@
           </div>
         </div>
 
-        <div class="shrink-0">
+        <div class="shrink-0 text-right">
           <Button
             v-if="isSelf"
             label="Edit profile"
@@ -125,18 +132,9 @@
 </template>
 
 <script setup lang="ts">
-import type { FollowRelationship } from '~/types/api'
-
-type PublicProfile = {
-  id: string
-  username: string | null
-  name: string | null
-  bio: string | null
-  premium: boolean
-  verifiedStatus: 'none' | 'identity' | 'manual'
-  avatarUrl?: string | null
-  bannerUrl?: string | null
-}
+import type { FollowRelationship, PublicProfile } from '~/types/api'
+import { formatDateTime, formatListTime } from '~/utils/time-format'
+import { tinyTooltip } from '~/utils/tiny-tooltip'
 
 const props = defineProps<{
   profile: PublicProfile | null
@@ -180,7 +178,7 @@ const hideAvatarDuringBanner = computed(() => Boolean(props.hideAvatarDuringBann
 const { user: authUser } = useAuth()
 const isAuthed = computed(() => Boolean(authUser.value?.id))
 
-const { addInterest, removeInterest } = usePresence()
+const { addInterest, removeInterest, getPresenceStatus, isPresenceKnown } = usePresence()
 const lastProfileId = ref<string | null>(null)
 watch(
   () => profile.value?.id ?? null,
@@ -196,6 +194,32 @@ watch(
 onBeforeUnmount(() => {
   const id = lastProfileId.value
   if (id) removeInterest([id])
+})
+
+const presenceStatus = computed(() => {
+  const id = profile.value?.id
+  if (!id) return 'offline'
+  return getPresenceStatus(id)
+})
+
+const showLastOnline = computed(() => {
+  if (presenceStatus.value !== 'offline') return false
+  if (!profile.value?.id || !isPresenceKnown(profile.value.id)) return false
+  return Boolean(profile.value?.lastOnlineAt)
+})
+
+const lastOnlineShort = computed(() => {
+  const iso = profile.value?.lastOnlineAt ?? null
+  const t = formatListTime(iso)
+  if (t === 'now') return '<1m ago'
+  if (/^\d+[mhd]$/.test(t)) return `${t} ago`
+  return t
+})
+
+const lastOnlineTooltip = computed(() => {
+  const iso = profile.value?.lastOnlineAt ?? null
+  if (!iso) return null
+  return formatDateTime(iso, { dateStyle: 'medium', timeStyle: 'short' })
 })
 </script>
 

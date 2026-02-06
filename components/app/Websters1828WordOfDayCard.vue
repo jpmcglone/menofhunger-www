@@ -14,34 +14,39 @@
         </div>
       </div>
 
-      <div v-if="pending" class="mt-4 text-sm moh-text-muted">
-        Loading…
-      </div>
-      <div v-else-if="error" class="mt-4 text-sm text-red-700 dark:text-red-300">
-        Couldn’t load the word of the day.
-      </div>
-      <div v-else-if="data?.word" class="mt-5 flex items-end gap-3">
-        <!-- Vertical pill marker -->
-        <div class="h-9 w-1.5 rounded-full bg-gray-900 dark:bg-white opacity-20 shrink-0 translate-y-[1px]" aria-hidden="true" />
-        <div
-          class="text-3xl font-semibold tracking-tight text-gray-900 dark:text-gray-50"
-          style="font-family: var(--moh-font-serif);"
-        >
-          {{ data.word }}
+      <ClientOnly>
+        <div v-if="pending" class="mt-4 text-sm moh-text-muted">
+          Loading…
         </div>
-      </div>
+        <div v-else-if="error" class="mt-4 text-sm text-red-700 dark:text-red-300">
+          Couldn’t load the word of the day.
+        </div>
+        <div v-else-if="data?.word" class="mt-5 flex items-end gap-3">
+          <!-- Vertical pill marker -->
+          <div class="h-9 w-1.5 rounded-full bg-gray-900 dark:bg-white opacity-20 shrink-0 translate-y-[1px]" aria-hidden="true" />
+          <div
+            class="text-3xl font-semibold tracking-tight text-gray-900 dark:text-gray-50"
+            style="font-family: var(--moh-font-serif);"
+          >
+            {{ data.word }}
+          </div>
+        </div>
 
-      <div v-if="data?.dictionaryUrl" class="mt-3 flex justify-end">
-        <a
-          :href="data.dictionaryUrl"
-          target="_blank"
-          rel="noopener noreferrer"
-          class="inline-flex items-center gap-1.5 text-[11px] font-medium text-gray-500 hover:underline underline-offset-2 dark:text-gray-400"
-        >
-          View definition
-          <i class="pi pi-external-link text-[11px] opacity-70" aria-hidden="true" />
-        </a>
-      </div>
+        <div v-if="data?.dictionaryUrl" class="mt-3 flex justify-end">
+          <a
+            :href="data.dictionaryUrl"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="inline-flex items-center gap-1.5 text-[11px] font-medium text-gray-500 hover:underline underline-offset-2 dark:text-gray-400"
+          >
+            View definition
+            <i class="pi pi-external-link text-[11px] opacity-70" aria-hidden="true" />
+          </a>
+        </div>
+        <template #fallback>
+          <div class="mt-4 text-sm moh-text-muted">Loading…</div>
+        </template>
+      </ClientOnly>
     </template>
   </Card>
 </template>

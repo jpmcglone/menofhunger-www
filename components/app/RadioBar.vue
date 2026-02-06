@@ -1,0 +1,143 @@
+<template>
+  <div v-if="currentStation" class="w-full">
+    <div class="mx-auto flex items-center justify-between gap-3">
+      <button
+        type="button"
+        class="min-w-0 flex-1 text-left"
+        @click="navigateTo('/radio')"
+      >
+        <div class="flex items-center gap-2 min-w-0">
+          <i class="pi pi-volume-up text-[14px] opacity-80" aria-hidden="true" />
+          <div class="min-w-0">
+            <div class="text-sm font-semibold truncate">
+              {{ currentStation.name }}
+            </div>
+            <div class="text-[11px] text-gray-500 dark:text-white/70">
+              <span v-if="isPlaying">Playing</span>
+              <span v-else-if="!isBuffering">Paused</span>
+              <span v-if="listenersCount !== null" class="ml-2 tabular-nums">· {{ listenersCount }}</span>
+            </div>
+          </div>
+        </div>
+      </button>
+
+      <div v-if="showListenerStack" class="pointer-events-none hidden sm:flex items-center gap-2">
+        <TransitionGroup
+          name="moh-radio-stack"
+          tag="div"
+          class="relative flex items-center -space-x-2"
+        >
+          <NuxtLink
+            v-for="u in listenerStack"
+            :key="u.id"
+            :to="listenerProfileTo(u)"
+            class="relative pointer-events-auto cursor-pointer"
+            v-tooltip.bottom="tinyTooltip(u.username ? `@${u.username}` : 'User')"
+          >
+            <AppUserAvatar
+              :user="{ id: u.id, username: u.username, avatarUrl: u.avatarUrl }"
+              size-class="h-6 w-6"
+              bg-class="moh-surface dark:bg-black"
+              :show-presence="false"
+            />
+            <Transition name="moh-avatar-pause-fade">
+              <div
+                v-if="u.paused"
+                class="absolute inset-0 rounded-full bg-black/30 flex items-center justify-center moh-avatar-pause moh-avatar-pause-sm"
+                aria-hidden="true"
+              >
+                <i class="pi pi-pause" aria-hidden="true" />
+              </div>
+            </Transition>
+          </NuxtLink>
+        </TransitionGroup>
+        <div v-if="listenerOverflowCount > 0" class="text-xs font-semibold tabular-nums text-gray-500 dark:text-white/80">
+          +{{ listenerOverflowCount }}
+        </div>
+      </div>
+
+      <div
+        v-if="isBuffering"
+        class="h-8 w-8 flex items-center justify-center"
+        aria-label="Loading"
+        role="status"
+      >
+        <i class="pi pi-spinner pi-spin opacity-80" aria-hidden="true" />
+      </div>
+      <Button
+        v-else
+        :aria-label="isPlaying ? 'Pause radio' : 'Play radio'"
+        :icon="isPlaying ? 'pi pi-pause' : 'pi pi-play'"
+        severity="secondary"
+        rounded
+        text
+        size="small"
+        class="hover:!bg-black/5 dark:!text-white dark:hover:!bg-white/10"
+        @click="toggle"
+      />
+
+      <Button
+        aria-label="Close radio"
+        icon="pi pi-times"
+        severity="secondary"
+        rounded
+        text
+        size="small"
+        class="hover:!bg-black/5 dark:!text-white dark:hover:!bg-white/10"
+        @click="stop"
+      />
+    </div>
+  </div>
+</template>
+
+<script setup lang="ts">
+import type { RadioListener } from '~/types/api'
+import { tinyTooltip } from '~/utils/tiny-tooltip'
+
+function listenerProfileTo(u: { id: string; username?: string | null }): string {
+  return u.username ? `/u/${encodeURIComponent(u.username)}` : `/u/id/${u.id}`
+}
+
+const { currentStation, isPlaying, isBuffering, listeners, toggle, stop } = useRadioPlayer()
+const listenersCount = computed(() => (currentStation.value ? listeners.value.length : null))
+
+const listenerStack = computed<RadioListener[]>(() => {
+  if (!currentStation.value) return []
+  return (listeners.value ?? []).slice(0, 5)
+})
+const listenerOverflowCount = computed(() => {
+  if (!currentStation.value) return 0
+  return Math.max(0, (listeners.value?.length ?? 0) - listenerStack.value.length)
+})
+const showListenerStack = computed(() => listenersCount.value !== null && listenersCount.value > 0)
+</script>
+
+<style scoped>
+.moh-radio-stack-move {
+  transition: transform 260ms ease;
+}
+.moh-radio-stack-enter-active,
+.moh-radio-stack-leave-active {
+  transition:
+    opacity 180ms ease,
+    transform 180ms ease;
+}
+.moh-radio-stack-enter-from,
+.moh-radio-stack-leave-to {
+  opacity: 0;
+  transform: translateY(2px) scale(0.98);
+}
+.moh-radio-stack-leave-active {
+  position: absolute;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .moh-radio-stack-move,
+  .moh-radio-stack-enter-active,
+  .moh-radio-stack-leave-active {
+    transition: none !important;
+  }
+}
+</style>
+

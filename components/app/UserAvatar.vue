@@ -5,6 +5,7 @@
     :username="username"
     :size-class="sizeClass"
     :bg-class="bgClass"
+    :show-presence="showPresence"
     :presence-status="presenceStatus"
     :presence-scale="props.presenceScale"
     :presence-inset-ratio="props.presenceInsetRatio"
@@ -28,6 +29,8 @@ const props = withDefaults(
     user: UserAvatarUser | null | undefined
     sizeClass?: string
     bgClass?: string
+    /** When false, hide the presence indicator (e.g. radio bar listener avatars). Default true. */
+    showPresence?: boolean
     /** Override presence (e.g. 'connecting' for current user while socket is connecting). */
     presenceStatusOverride?: 'online' | 'idle' | 'connecting' | 'offline'
     /** Presence dot size as fraction of avatar diameter (default 0.25). Use smaller for large avatars. */
@@ -38,6 +41,7 @@ const props = withDefaults(
   {
     sizeClass: 'h-10 w-10',
     bgClass: 'bg-gray-200 dark:bg-zinc-800',
+    showPresence: true,
     presenceScale: 0.25,
     presenceInsetRatio: 0.5,
   },
@@ -48,6 +52,8 @@ const { getPresenceStatus } = usePresence()
 const avatarUrl = computed(() => props.user?.avatarUrl ?? null)
 const name = computed(() => props.user?.name ?? null)
 const username = computed(() => props.user?.username ?? null)
+
+const showPresence = computed(() => props.showPresence ?? true)
 
 const presenceStatus = computed(() => {
   if (props.presenceStatusOverride !== undefined) return props.presenceStatusOverride

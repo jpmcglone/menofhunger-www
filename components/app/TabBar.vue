@@ -34,7 +34,7 @@
               <Icon
                 :name="isActive(item.to) ? (item.iconActive || item.icon) : item.icon"
                 size="22"
-                class="opacity-90"
+                :class="['opacity-90', item.iconClass]"
                 aria-hidden="true"
               />
               <AppNotificationBadge v-if="item.key === 'notifications'" />

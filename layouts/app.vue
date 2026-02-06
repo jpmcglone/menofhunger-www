@@ -157,7 +157,7 @@
                   v-else
                   :name="isActiveNav(item.to) ? (item.iconActive || item.icon) : item.icon"
                   size="28"
-                  class="opacity-90"
+                  :class="['opacity-90', item.iconClass]"
                   aria-hidden="true"
                 />
                 <AppNotificationBadge v-if="item.key === 'notifications'" />
@@ -228,48 +228,49 @@
         <div :class="['flex min-w-0 flex-1', shouldCapMiddleColumn ? 'lg:justify-center' : '']">
           <!-- Middle / Feed (scroll zone #2) -->
           <main
-            id="moh-middle-scroller"
-            ref="middleScrollerEl"
             :class="[
-              'no-scrollbar min-w-0 flex-1 overflow-x-hidden flex flex-col',
+              'min-w-0 flex-1 overflow-x-hidden flex flex-col',
               shouldCapMiddleColumn ? 'lg:max-w-[720px]' : '',
-              'lg:border-r moh-border',
-              anyOverlayOpen || (isMessagesPage && hideTopBar) ? 'overflow-hidden' : 'overflow-y-auto overscroll-y-auto'
+              !isRightRailForcedHidden ? 'lg:border-r moh-border' : '',
             ]"
-            :style="
-              !hideTopBar
-                ? { scrollPaddingTop: 'var(--moh-title-bar-height, 4rem)' }
-                : undefined
-            "
           >
-          <div
-            v-if="!hideTopBar"
-            ref="titleBarEl"
-            class="sticky top-0 z-10 shrink-0 border-b moh-border moh-frosted"
-          >
-            <div class="px-4 py-3 space-y-1">
-              <div class="flex items-center justify-between gap-3">
-                <div class="min-w-0 flex items-center gap-2">
-                  <i v-if="headerIcon" :class="['pi', headerIcon]" class="text-xl shrink-0 opacity-80" aria-hidden="true" />
-                  <h1 class="min-w-0 truncate text-xl font-bold leading-none">
-                    {{ headerTitle }}
-                  </h1>
-                  <AppVerifiedBadge
-                    v-if="hydrated && appHeader?.verifiedStatus"
-                    :status="appHeader.verifiedStatus"
-                    :premium="Boolean(appHeader?.premium)"
-                  />
-                </div>
-                <div v-if="hydrated && typeof appHeader?.postCount === 'number'" class="shrink-0 text-sm moh-text-muted">
-                  <span class="font-semibold tabular-nums">{{ formatCompactNumber(appHeader.postCount) }}</span>
-                  <span class="ml-1">posts</span>
+            <div
+              id="moh-middle-scroller"
+              ref="middleScrollerEl"
+              :class="[
+                'no-scrollbar min-w-0 flex-1 overflow-x-hidden flex flex-col',
+                anyOverlayOpen || (isMessagesPage && hideTopBar) ? 'overflow-hidden' : 'overflow-y-auto overscroll-y-auto'
+              ]"
+              :style="!hideTopBar ? { scrollPaddingTop: 'var(--moh-title-bar-height, 4rem)' } : undefined"
+            >
+              <div
+                v-if="!hideTopBar"
+                ref="titleBarEl"
+                class="sticky top-0 z-10 shrink-0 border-b moh-border moh-frosted"
+              >
+                <div class="px-4 py-3 space-y-1">
+                  <div class="flex items-center justify-between gap-3">
+                    <div class="min-w-0 flex items-center gap-2">
+                      <i v-if="headerIcon" :class="['pi', headerIcon]" class="text-xl shrink-0 opacity-80" aria-hidden="true" />
+                      <h1 class="min-w-0 truncate text-xl font-bold leading-none">
+                        {{ headerTitle }}
+                      </h1>
+                      <AppVerifiedBadge
+                        v-if="hydrated && appHeader?.verifiedStatus"
+                        :status="appHeader.verifiedStatus"
+                        :premium="Boolean(appHeader?.premium)"
+                      />
+                    </div>
+                    <div v-if="hydrated && typeof appHeader?.postCount === 'number'" class="shrink-0 text-sm moh-text-muted">
+                      <span class="font-semibold tabular-nums">{{ formatCompactNumber(appHeader.postCount) }}</span>
+                      <span class="ml-1">posts</span>
+                    </div>
+                  </div>
+                  <p v-if="headerDescription" class="text-sm moh-text-muted">
+                    {{ headerDescription }}
+                  </p>
                 </div>
               </div>
-              <p v-if="headerDescription" class="text-sm moh-text-muted">
-                {{ headerDescription }}
-              </p>
-            </div>
-          </div>
 
             <div
               ref="middleContentEl"
@@ -278,18 +279,27 @@
                 'flex-1 min-h-0',
                 // Layout should not add horizontal padding; pages/columns own their gutters.
                 hideTopBar
-                  ? (isMessagesPage ? 'flex h-full min-h-0 flex-col pb-[calc(4rem+env(safe-area-inset-bottom,0px))] sm:pb-0' : 'pb-24 sm:pb-4')
+                  ? (isMessagesPage ? messagesMiddleBottomPadClass : standardMiddleBottomPadClass)
                   : isBookmarksPage
-                    ? 'pt-0 pb-24 sm:pb-4'
+                    ? ['pt-0', standardMiddleBottomPadClass]
                     : isPostPage
-                      ? 'pt-4 pb-24 sm:pb-4'
+                      ? ['pt-4', standardMiddleBottomPadClass]
                       : isNotificationsPage || isOnlyMePage
-                        ? 'pt-0 pb-24 sm:pb-4'
-                        : 'py-4 pb-24 sm:pb-4',
+                        ? ['pt-0', standardMiddleBottomPadClass]
+                        : ['py-4', standardMiddleBottomPadClass],
                 isMessagesPage && hideTopBar ? 'overflow-hidden' : ''
               ]"
             >
               <slot />
+            </div>
+            </div>
+
+            <!-- Radio player row: bottom of the middle column (not floating). -->
+            <div
+              v-if="showRadioBar"
+              class="shrink-0 border-t moh-border bg-white dark:bg-black text-gray-900 dark:text-white px-4 py-3 pb-[calc(4rem+env(safe-area-inset-bottom,0px))] sm:pb-3"
+            >
+              <AppRadioBar />
             </div>
           </main>
 
@@ -623,7 +633,13 @@ const isBookmarksPage = computed(() => route.path === '/bookmarks' || route.path
 const isNotificationsPage = computed(() => route.path === '/notifications')
 const isMessagesPage = computed(() => route.path === '/chat')
 const isOnlyMePage = computed(() => route.path === '/only-me')
-const shouldCapMiddleColumn = computed(() => !isMessagesPage.value && !route.path.startsWith('/admin'))
+const shouldCapMiddleColumn = computed(() => {
+  if (isMessagesPage.value) return false
+  if (route.path.startsWith('/admin')) return false
+  if (route.path === '/radio') return false
+  if (route.path === '/settings' || route.path.startsWith('/settings/')) return false
+  return true
+})
 
 // Post entrypoints (left-nav button + mobile FAB): only render on these routes.
 const isComposerEntrypointRoute = computed(() => {
@@ -751,6 +767,13 @@ const fabButtonStyle = computed(() => ({}))
 
 const middleContentEl = ref<HTMLElement | null>(null)
 
+const { currentStation: currentRadioStation } = useRadioPlayer()
+const showRadioBar = computed(() => Boolean(currentRadioStation.value))
+const standardMiddleBottomPadClass = computed(() => (showRadioBar.value ? 'pb-0 sm:pb-0' : 'pb-24 sm:pb-4'))
+const messagesMiddleBottomPadClass = computed(() =>
+  showRadioBar.value ? 'flex h-full min-h-0 flex-col pb-0 sm:pb-0' : 'flex h-full min-h-0 flex-col pb-[calc(4rem+env(safe-area-inset-bottom,0px))] sm:pb-0',
+)
+
 function updateComposerSheetStyle() {
   if (!import.meta.client) return
   const el = middleContentEl.value ?? middleScrollerEl.value
@@ -786,6 +809,10 @@ watch(
   },
   { flush: 'post' },
 )
+
+onMounted(() => {
+  if (!import.meta.client) return
+})
 
 const headerTitle = computed(() => {
   // During SSR + initial hydration, prefer route meta title for stable markup.
@@ -1002,6 +1029,21 @@ function onLeftNavClick(to: string, e: MouseEvent) {
 
 .moh-status-tone :where(.text-gray-500) {
   color: rgba(231, 233, 234, 0.62) !important;
+}
+
+.moh-slow-bounce {
+  animation: mohSlowBounce 2.2s ease-in-out infinite;
+  will-change: transform;
+}
+
+@keyframes mohSlowBounce {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-3px);
+  }
 }
 
 .moh-status-bg {

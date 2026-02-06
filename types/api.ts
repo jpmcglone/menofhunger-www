@@ -25,6 +25,21 @@ export type ApiErrorEnvelope = {
   }
 }
 
+export type RadioStation = {
+  id: string
+  name: string
+  streamUrl: string
+  attributionName: string | null
+  attributionUrl: string | null
+}
+
+export type RadioListener = {
+  id: string
+  username: string | null
+  avatarUrl: string | null
+  paused?: boolean
+}
+
 export type Websters1828WordOfDay = {
   word: string
   dictionaryUrl: string
@@ -70,6 +85,20 @@ export type PostMention = {
   username: string
   verifiedStatus?: 'none' | 'identity' | 'manual'
   premium?: boolean
+}
+
+/** Public profile payload from GET /users/:username */
+export type PublicProfile = {
+  id: string
+  username: string | null
+  name: string | null
+  bio: string | null
+  premium: boolean
+  verifiedStatus: 'none' | 'identity' | 'manual'
+  avatarUrl: string | null
+  bannerUrl: string | null
+  pinnedPostId: string | null
+  lastOnlineAt: string | null
 }
 
 export type FeedPost = {

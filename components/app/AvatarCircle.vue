@@ -24,6 +24,7 @@
       </div>
     </div>
     <!-- Presence: green (online), clock (idle), yellow (connecting); overlays bottom-right corner -->
+    <template v-if="showPresence">
     <span
       v-if="effectivePresenceStatus === 'idle'"
       class="absolute flex items-center justify-center rounded-full border-2 border-white text-white dark:border-zinc-900 dark:text-gray-400"
@@ -58,6 +59,7 @@
       ]"
       :style="presenceDotFullStyle"
     />
+    </template>
   </div>
 </template>
 
@@ -69,6 +71,8 @@ const props = withDefaults(
     username?: string | null
     sizeClass?: string
     bgClass?: string
+    /** When false, do not show the presence dot (e.g. radio bar listener avatars). */
+    showPresence?: boolean
     /** Presence state: green (online), clock (idle), yellow (connecting), or hidden (offline). */
     presenceStatus?: 'online' | 'idle' | 'connecting' | 'offline'
     /** Presence dot size as fraction of avatar diameter (default 0.25). Use smaller (e.g. 0.15) for large avatars. */
@@ -82,6 +86,7 @@ const props = withDefaults(
     username: null,
     sizeClass: 'h-10 w-10',
     bgClass: 'bg-gray-200 dark:bg-zinc-800',
+    showPresence: true,
     presenceStatus: 'offline',
     presenceScale: 0.25,
     presenceInsetRatio: 0.5,
