@@ -184,6 +184,12 @@ export default defineNuxtConfig({
 
     // ——— CDN / edge caching: reduce bandwidth and request load on www ———
     // Nitro build output + public assets. Use s-maxage so CDN caches; browsers use max-age.
+    '/sw-push.js': {
+      headers: {
+        // Service worker updates should propagate immediately (avoids “stuck” SW caching bugs).
+        'cache-control': 'no-store, no-cache, must-revalidate',
+      },
+    },
     '/_nuxt/**': {
       headers: {
         'cache-control': 'public, max-age=31536000, immutable',

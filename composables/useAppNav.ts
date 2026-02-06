@@ -25,7 +25,8 @@ export function useAppNav() {
 
   const allItems = computed<AppNavItem[]>(() => [
     { key: 'home', label: 'Home', to: '/home', icon: 'tabler:home', iconActive: 'tabler:home-filled', showInLeft: true, showInTabs: true },
-    { key: 'explore', label: 'Explore', to: '/explore', icon: 'tabler:compass', iconActive: 'tabler:compass-filled', showInLeft: true, showInTabs: true },
+    // Use Tabler magnifying glass for Explore (Tabler doesn't provide a filled variant for search).
+    { key: 'explore', label: 'Explore', to: '/explore', icon: 'tabler:search', iconActive: 'tabler:search', showInLeft: true, showInTabs: true },
 
     // Authed-only core items
     { key: 'notifications', label: 'Notifications', to: '/notifications', icon: 'tabler:bell', iconActive: 'tabler:bell-filled', requiresAuth: true, showInLeft: true, showInTabs: true },

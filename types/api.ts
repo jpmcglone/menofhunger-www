@@ -380,6 +380,8 @@ export type Notification = {
   title: string | null
   body: string | null
   subjectPostPreview?: SubjectPostPreview | null
+  /** When subject is a post, its visibility (used for UI tinting). */
+  subjectPostVisibility?: PostVisibility | null
   /** Tier of subject (post or user) for unseen row highlight. */
   subjectTier?: SubjectTier
 }

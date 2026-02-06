@@ -4,12 +4,88 @@
  * On notification click: focus existing app window and navigate, or open a new window.
  */
 
+self.__MOH_SW_VERSION = 'moh-sw-v1'
+const CACHE_PREFIX = 'moh-sw'
+const NUxT_ASSETS_CACHE = `${CACHE_PREFIX}:nuxt:${self.__MOH_SW_VERSION}`
+const STATIC_ASSETS_CACHE = `${CACHE_PREFIX}:static:${self.__MOH_SW_VERSION}`
+
+function isCacheablePath(pathname) {
+  if (pathname.startsWith('/_nuxt/')) return { cacheName: NUxT_ASSETS_CACHE }
+  if (pathname.startsWith('/images/')) return { cacheName: STATIC_ASSETS_CACHE }
+  if (pathname.startsWith('/sounds/')) return { cacheName: STATIC_ASSETS_CACHE }
+  if (pathname.startsWith('/cursors/')) return { cacheName: STATIC_ASSETS_CACHE }
+
+  // Icons/manifest
+  if (pathname === '/site.webmanifest') return { cacheName: STATIC_ASSETS_CACHE }
+  if (pathname.startsWith('/android-chrome-')) return { cacheName: STATIC_ASSETS_CACHE }
+  if (pathname.startsWith('/apple-touch-icon')) return { cacheName: STATIC_ASSETS_CACHE }
+  if (pathname.startsWith('/favicon')) return { cacheName: STATIC_ASSETS_CACHE }
+
+  return null
+}
+
+async function cacheFirst(request, cacheName) {
+  const cache = await caches.open(cacheName)
+  const cached = await cache.match(request)
+  if (cached) return cached
+
+  const res = await fetch(request)
+  // Only cache successful same-origin GETs.
+  if (res && res.ok) {
+    cache.put(request, res.clone()).catch(function () {})
+  }
+  return res
+}
+
 self.addEventListener('install', function () {
   self.skipWaiting()
 })
 
 self.addEventListener('activate', function (event) {
-  event.waitUntil(self.clients.claim())
+  event.waitUntil(
+    Promise.resolve()
+      .then(function () {
+        // Clean up old caches (best-effort).
+        return caches.keys().then(function (keys) {
+          return Promise.all(
+            keys
+              .filter(function (k) {
+                return k.startsWith(CACHE_PREFIX) && k !== NUxT_ASSETS_CACHE && k !== STATIC_ASSETS_CACHE
+              })
+              .map(function (k) {
+                return caches.delete(k)
+              })
+          )
+        })
+      })
+      .then(function () {
+        return self.clients.claim()
+      })
+  )
+})
+
+self.addEventListener('fetch', function (event) {
+  const req = event.request
+  if (!req || req.method !== 'GET') return
+
+  const url = new URL(req.url)
+
+  // Never cache the service worker itself; updates must propagate quickly.
+  if (url.origin === self.location.origin && url.pathname === '/sw-push.js') return
+
+  // Never cache API requests (cookie-auth + personalized responses).
+  if (url.origin === self.location.origin && url.pathname.startsWith('/api/')) return
+
+  // If cookies are present, bypass cache to avoid leaking personalized responses.
+  if (req.headers.get('cookie')) return
+
+  // Only cache same-origin static assets.
+  if (url.origin !== self.location.origin) return
+
+  const cacheInfo = isCacheablePath(url.pathname)
+  if (!cacheInfo) return
+
+  event.respondWith(cacheFirst(req, cacheInfo.cacheName))
 })
 
 self.addEventListener('push', function (event) {

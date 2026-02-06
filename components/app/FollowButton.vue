@@ -7,7 +7,13 @@
       :rounded="rounded"
       :text="text"
       :size="props.size"
-      :class="['!rounded-full !font-semibold', props.buttonClass]"
+      :class="[
+        '!rounded-full !font-semibold',
+        // Dark mode: always show follow controls as a white pill with black text (even on hover/unfollow state).
+        // Keep `!` so this wins over PrimeVue severity classes.
+        'dark:!bg-white dark:!text-black dark:!border dark:!border-solid dark:!border-white dark:hover:!bg-white dark:hover:!text-black dark:hover:!border-white',
+        props.buttonClass,
+      ]"
       :icon="props.showIcon === false ? undefined : buttonIcon"
       @mouseenter="hovering = true"
       @mouseleave="hovering = false"

@@ -944,7 +944,7 @@ const {
   refresh: refreshWhoToFollow,
 } = useWhoToFollow({
   enabled: computed(() => !isRightRailForcedHidden.value),
-  defaultLimit: 3,
+  defaultLimit: 4,
 })
 
 const tierCtaTextClass = computed(() => {

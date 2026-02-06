@@ -35,10 +35,10 @@
           class="h-10 w-10 rounded-full bg-gray-200 dark:bg-zinc-800"
           aria-hidden="true"
         />
-        <!-- Notification type icon: background color = sender (actor) tier -->
+        <!-- Notification type icon: mention = viewer tier; otherwise actor tier -->
         <div
           class="absolute -bottom-3 -left-2 flex h-7 w-7 items-center justify-center rounded-full border-2 border-white dark:border-black shadow-sm"
-          :class="actorTierIconBgClass(notification)"
+          :class="notificationTypeIconBgClass(notification)"
           aria-hidden="true"
         >
           <!-- Boost icon (custom SVG) -->
@@ -67,7 +67,17 @@
         <div class="min-w-0 flex-1">
           <!-- Title + quoted message: up to 2 lines with truncation -->
           <div :class="['min-w-0 max-w-full line-clamp-2 text-sm', notification.readAt ? 'font-medium' : 'font-semibold']">
-            <span :class="actorTierClass(notification)">{{ actorDisplay(notification) }}</span> {{ titleSuffix(notification) }}<template v-if="(notification.kind === 'comment' || notification.kind === 'mention') && notification.body"> <span class="italic text-gray-600 dark:text-gray-300">"{{ notification.body }}"</span></template>
+            <span :class="actorTierClass(notification)">{{ actorDisplay(notification) }}</span>
+            <template v-if="notification.kind === 'comment'">
+              <span class="ml-1">replied to your</span>
+              <span class="ml-1" :class="subjectPostVisibilityTextClass(notification)">post</span>
+            </template>
+            <template v-else>
+              <span class="ml-1">{{ titleSuffix(notification) }}</span>
+            </template>
+            <template v-if="(notification.kind === 'comment' || notification.kind === 'mention') && notification.body">
+              <span class="ml-1 italic text-gray-600 dark:text-gray-300">"{{ notification.body }}"</span>
+            </template>
           </div>
           <!-- Fallback for other kinds with body -->
           <div
@@ -112,7 +122,8 @@ import type { Notification } from '~/types/api'
 const {
   actorDisplay,
   actorTierClass,
-  actorTierIconBgClass,
+  notificationTypeIconBgClass,
+  subjectPostVisibilityTextClass,
   subjectTierRowClass,
   titleSuffix,
   notificationContext,

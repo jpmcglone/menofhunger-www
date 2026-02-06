@@ -15,6 +15,7 @@ type NotificationsListResponse = {
 export function useNotifications() {
   const { apiFetch } = useApiClient()
   const route = useRoute()
+  const { user: me } = useAuth()
 
   const notifications = ref<Notification[]>([])
   const nextCursor = ref<string | null>(null)
@@ -94,6 +95,35 @@ export function useNotifications() {
     if (a?.premium) return 'bg-[var(--moh-premium)]'
     if (a?.verifiedStatus && a.verifiedStatus !== 'none') return 'bg-[var(--moh-verified)]'
     return 'bg-gray-500'
+  }
+
+  /** Background color for mention icon based on *viewer* tier (your account). */
+  function viewerTierIconBgClass(): string {
+    const u = me.value
+    if (u?.premium) return 'bg-[var(--moh-premium)]'
+    if (u?.verifiedStatus && u.verifiedStatus !== 'none') return 'bg-[var(--moh-verified)]'
+    return 'bg-gray-500'
+  }
+
+  /** Inline text color class for the subject post's visibility (used for the word \"post\" in comment notifications). */
+  function subjectPostVisibilityTextClass(n: Notification): string {
+    const v = n.subjectPostVisibility ?? null
+    if (v === 'premiumOnly') return '!text-[var(--moh-premium)]'
+    if (v === 'verifiedOnly') return '!text-[var(--moh-verified)]'
+    if (v === 'onlyMe') return '!text-[var(--moh-onlyme)]'
+    return ''
+  }
+
+  /**
+   * Notification type icon background tint:
+   * - Mention: color by viewer tier (your account)
+   * - Generic: always normal/neutral
+   * - Everything else (comment/boost/follow): color by actor tier (who did it)
+   */
+  function notificationTypeIconBgClass(n: Notification): string {
+    if (n.kind === 'mention') return viewerTierIconBgClass()
+    if (n.kind === 'generic') return 'bg-gray-500'
+    return actorTierIconBgClass(n)
   }
 
   /** Row highlight when unseen (deliveredAt null) and unread (readAt null). When read: no highlight. */
@@ -194,6 +224,8 @@ export function useNotifications() {
     actorDisplay,
     actorTierClass,
     actorTierIconBgClass,
+    notificationTypeIconBgClass,
+    subjectPostVisibilityTextClass,
     subjectTierRowClass,
     titleSuffix,
     notificationTitle,
