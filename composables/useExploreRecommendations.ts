@@ -44,7 +44,7 @@ export function useExploreRecommendations(options?: { enabled?: Ref<boolean>, is
 
     try {
       const baseCalls = await Promise.allSettled([
-        apiFetch<GetPostsData>('/posts', { method: 'GET', query: { limit: 10, sort: 'featured', visibility: 'all' } }),
+        apiFetch<GetPostsData>('/posts', { method: 'GET', query: { limit: 3, sort: 'featured', visibility: 'all' } }),
         apiFetch<GetTopicsData>('/topics', { method: 'GET', query: { limit: 50 } }),
         apiFetch<GetPresenceOnlineData>('/presence/online', { method: 'GET' }),
       ])
@@ -53,7 +53,7 @@ export function useExploreRecommendations(options?: { enabled?: Ref<boolean>, is
       const topicsRes = baseCalls[1].status === 'fulfilled' ? baseCalls[1].value : null
       const onlineRes = baseCalls[2].status === 'fulfilled' ? baseCalls[2].value : null
 
-      featuredPosts.value = ((featuredRes?.data ?? []) as FeedPost[]) ?? []
+      featuredPosts.value = (((featuredRes?.data ?? []) as FeedPost[]) ?? []).slice(0, 3)
       topics.value = ((topicsRes?.data ?? []) as Topic[]) ?? []
       onlineUsers.value = ((onlineRes?.data ?? []) as OnlineUser[]) ?? []
 

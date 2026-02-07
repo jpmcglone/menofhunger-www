@@ -2,16 +2,9 @@
   <div
     ref="wrapEl"
     :class="['relative shrink-0 rounded-full', sizeClass, wrapClass]"
-    :style="wrapStyle"
+    :style="effectiveWrapStyle"
     aria-hidden="true"
   >
-    <!-- Premium+ glow: behind the avatar, no border ring -->
-    <span
-      v-if="premiumPlusGlow"
-      class="absolute inset-0 -z-10 rounded-full"
-      :style="premiumPlusGlowStyle"
-      aria-hidden="true"
-    />
     <!-- Avatar (clipped to circle) -->
     <div
       :class="['h-full w-full overflow-hidden rounded-full', bgClass]"
@@ -169,6 +162,15 @@ const premiumPlusGlowStyle = computed<Record<string, string>>(() => {
   const glowPx2 = Math.max(glowPx + 8, Math.round(glowPx * 1.65))
   return {
     boxShadow: `0 0 ${glowPx}px rgba(var(--moh-premium-rgb), 0.28), 0 0 ${glowPx2}px rgba(var(--moh-premium-rgb), 0.14)`,
+  }
+})
+
+const effectiveWrapStyle = computed<Record<string, string>>(() => {
+  // Apply Premium+ glow on the wrapper itself so we don't need any internal z-index layering.
+  // Also respects any caller-provided wrapStyle (rings, etc).
+  return {
+    ...(props.wrapStyle ?? {}),
+    ...(props.premiumPlusGlow ? premiumPlusGlowStyle.value : {}),
   }
 })
 

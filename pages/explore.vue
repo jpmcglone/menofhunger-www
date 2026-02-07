@@ -171,7 +171,7 @@
         </section>
 
         <!-- Featured -->
-        <section class="space-y-3">
+        <section v-if="discoverLoading || featuredPosts.length > 0" class="space-y-3">
           <div class="px-4 flex items-center justify-between gap-3">
             <h2 class="text-sm font-semibold text-gray-900 dark:text-gray-50">
               Featured
@@ -197,10 +197,6 @@
               :post="p"
             />
           </div>
-
-          <p v-else class="px-4 text-sm moh-text-muted">
-            Nothing featured yet.
-          </p>
         </section>
 
         <!-- Online now -->
@@ -222,7 +218,7 @@
 
         <template v-if="isAuthed">
           <!-- People to follow -->
-          <section class="space-y-3">
+          <section v-if="discoverLoading || recommendedUsers.length > 0" class="space-y-3">
             <div class="px-4 flex items-center justify-between gap-3">
               <h2 class="text-sm font-semibold text-gray-900 dark:text-gray-50">
                 People to follow
@@ -251,14 +247,10 @@
                 />
               </div>
             </AppHorizontalScroller>
-
-            <p v-else class="px-4 text-sm moh-text-muted">
-              No recommendations yet — try searching for people.
-            </p>
           </section>
 
           <!-- Trending from recommended -->
-          <section class="space-y-3">
+          <section v-if="discoverLoading || trendingPosts.length > 0" class="space-y-3">
             <h2 class="px-4 text-sm font-semibold text-gray-900 dark:text-gray-50">
               Trending from people you might like
             </h2>
@@ -302,10 +294,6 @@
                 />
               </div>
             </div>
-
-            <p v-else class="px-4 text-sm moh-text-muted">
-              No trending posts yet.
-            </p>
           </section>
 
           <!-- New users (standalone when we can’t inline) -->
@@ -335,7 +323,7 @@
           <div class="px-4">
             <div class="rounded-xl border moh-border bg-gray-50/50 dark:bg-zinc-900/30 p-4">
               <p class="text-sm moh-text-muted">
-                Browse Featured and Topics above, or use the search bar to find people and posts.
+                Use the search bar to find people and posts.
               </p>
             </div>
           </div>

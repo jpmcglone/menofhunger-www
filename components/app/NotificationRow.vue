@@ -2,7 +2,7 @@
   <div
     :class="[
       'relative flex gap-4 py-4 pr-4 transition-colors',
-      notification.readAt ? 'pl-4' : 'pl-6',
+      notification.readAt ? 'pl-6' : 'pl-8',
       shouldAnimate ? 'transition-all duration-150 ease-out' : '',
       subjectTierRowClass(notification),
     ]"
@@ -44,7 +44,7 @@
         />
         <!-- Notification type icon: mention = viewer tier; otherwise actor tier -->
         <div
-          class="absolute -bottom-3 -left-2 flex h-7 w-7 items-center justify-center rounded-full border-2 border-white dark:border-black shadow-sm"
+          class="absolute -bottom-3 -left-2 z-10 flex h-7 w-7 items-center justify-center rounded-full border-2 border-white dark:border-black shadow-sm"
           :class="notificationTypeIconBgClass(notification)"
           aria-hidden="true"
         >

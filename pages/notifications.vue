@@ -1,7 +1,7 @@
 <template>
   <div class="w-full">
-    <div class="sticky top-0 z-10 border-b moh-border moh-frosted">
-      <div class="flex items-center justify-between gap-3 px-4 py-3">
+    <div class="sticky top-0 z-20 border-b moh-border moh-frosted moh-texture overflow-hidden">
+      <div class="relative z-10 flex items-center justify-between gap-3 px-4 py-3">
         <div class="min-w-0">
           <div class="text-lg font-semibold">Notifications</div>
         </div>
@@ -25,7 +25,7 @@
     >
       No notifications yet.
     </div>
-    <div v-else class="divide-y divide-gray-200 dark:divide-zinc-800">
+    <div v-else class="relative z-0 divide-y divide-gray-200 dark:divide-zinc-800">
       <template v-for="n in notifications" :key="n.id">
         <NuxtLink
           v-if="rowHref(n)"
