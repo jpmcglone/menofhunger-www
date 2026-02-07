@@ -1,7 +1,14 @@
 <template>
   <div class="px-4 py-3 hover:bg-gray-50 dark:hover:bg-zinc-900 transition-colors">
     <div class="flex items-center justify-between gap-3">
-      <button type="button" class="min-w-0 flex-1 text-left" @click="goToProfile">
+      <button
+        type="button"
+        class="min-w-0 flex-1 text-left"
+        @click="goToProfile"
+        @mouseenter="onEnter"
+        @mousemove="onMove"
+        @mouseleave="onLeave"
+      >
         <div class="flex items-center gap-3 min-w-0">
           <AppUserAvatar
             :user="user"
@@ -58,6 +65,19 @@ onMounted(() => {
 onBeforeUnmount(() => {
   if (props.user?.id) removeInterest([props.user.id])
 })
+
+const pop = useUserPreviewPopover()
+function onEnter(e: MouseEvent) {
+  const u = (props.user.username ?? '').trim()
+  if (!u) return
+  pop.onTriggerEnter({ username: u, event: e })
+}
+function onMove(e: MouseEvent) {
+  pop.onTriggerMove(e)
+}
+function onLeave() {
+  pop.onTriggerLeave()
+}
 
 function goToProfile() {
   if (!props.user.username) return

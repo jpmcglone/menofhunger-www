@@ -121,13 +121,13 @@
       </div>
 
       <div v-if="showFollowCounts" class="mt-4 flex items-center gap-4 text-sm text-gray-600 dark:text-gray-300">
-        <button type="button" class="hover:underline" @click="emit('openFollowers')">
-          <span class="font-semibold text-gray-900 dark:text-gray-50 tabular-nums">{{ followerCount ?? 0 }}</span>
-          Followers
-        </button>
         <button type="button" class="hover:underline" @click="emit('openFollowing')">
           <span class="font-semibold text-gray-900 dark:text-gray-50 tabular-nums">{{ followingCount ?? 0 }}</span>
-          Following
+          <span class="ml-1 text-gray-600 dark:text-gray-400">Following</span>
+        </button>
+        <button type="button" class="hover:underline" @click="emit('openFollowers')">
+          <span class="font-semibold text-gray-900 dark:text-gray-50 tabular-nums">{{ followerCountN }}</span>
+          <span class="ml-1 text-gray-600 dark:text-gray-400">{{ followerLabel }}</span>
         </button>
       </div>
 
@@ -195,6 +195,9 @@ const followingCount = computed(() => props.followingCount ?? null)
 const hideBannerThumb = computed(() => Boolean(props.hideBannerThumb))
 const hideAvatarThumb = computed(() => Boolean(props.hideAvatarThumb))
 const hideAvatarDuringBanner = computed(() => Boolean(props.hideAvatarDuringBanner))
+
+const followerCountN = computed(() => Math.max(0, Math.floor(props.followerCount ?? 0)))
+const followerLabel = computed(() => (followerCountN.value === 1 ? 'Follower' : 'Followers'))
 
 const { user: authUser } = useAuth()
 const isAuthed = computed(() => Boolean(authUser.value?.id))

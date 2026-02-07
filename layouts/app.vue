@@ -17,6 +17,7 @@
   <div class="relative z-10">
     <ClientOnly>
       <AppToastStack />
+      <AppUserPreviewPopover />
     </ClientOnly>
     <Transition
       enter-active-class="transition-all duration-200 ease-out"

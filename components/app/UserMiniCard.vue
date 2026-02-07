@@ -1,7 +1,14 @@
 <template>
   <div class="shrink-0 w-56 rounded-xl border moh-border bg-gray-50/50 dark:bg-zinc-900/30 p-3">
     <div class="flex items-start justify-between gap-2">
-      <button type="button" class="min-w-0 flex items-center gap-3 text-left" @click="goToProfile">
+      <button
+        type="button"
+        class="min-w-0 flex items-center gap-3 text-left"
+        @click="goToProfile"
+        @mouseenter="onEnter"
+        @mousemove="onMove"
+        @mouseleave="onLeave"
+      >
         <AppUserAvatar :user="user" size-class="h-10 w-10" />
         <div class="min-w-0">
           <div class="flex items-center gap-2 min-w-0">
@@ -53,6 +60,19 @@ const showFollowButton = computed(() => isAuthed.value && props.showFollowButton
 
 const displayName = computed(() => props.user.name || props.user.username || 'User')
 const handle = computed(() => (props.user.username ? `@${props.user.username}` : '@—'))
+
+const pop = useUserPreviewPopover()
+function onEnter(e: MouseEvent) {
+  const u = (props.user.username ?? '').trim()
+  if (!u) return
+  pop.onTriggerEnter({ username: u, event: e })
+}
+function onMove(e: MouseEvent) {
+  pop.onTriggerMove(e)
+}
+function onLeave() {
+  pop.onTriggerLeave()
+}
 
 function goToProfile() {
   if (!props.user.username) return

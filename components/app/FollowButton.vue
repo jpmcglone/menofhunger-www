@@ -52,6 +52,8 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: 'followed'): void
   (e: 'unfollowed'): void
+  (e: 'confirm-opened'): void
+  (e: 'confirm-closed'): void
 }>()
 
 const rounded = computed(() => props.rounded !== false)
@@ -79,6 +81,14 @@ const userFollowsViewer = computed(() => Boolean(relationship.value?.userFollows
 
 const hovering = ref(false)
 const confirmOpen = ref(false)
+
+watch(
+  confirmOpen,
+  (open) => {
+    if (open) emit('confirm-opened')
+    else emit('confirm-closed')
+  },
+)
 
 // When signed out, never show follow controls anywhere.
 const showButton = computed(

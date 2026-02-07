@@ -14,10 +14,19 @@
           :to="authorProfilePath"
           class="font-bold truncate moh-text hover:underline underline-offset-2"
           :aria-label="`View @${post.author?.username ?? ''} profile`"
+          @mouseenter="onEnter"
+          @mousemove="onMove"
+          @mouseleave="onLeave"
         >
           {{ displayName }}
         </NuxtLink>
-        <span v-else class="font-bold truncate moh-text">{{ displayName }}</span>
+        <span
+          v-else
+          class="font-bold truncate moh-text"
+          @mouseenter="onEnter"
+          @mousemove="onMove"
+          @mouseleave="onLeave"
+        >{{ displayName }}</span>
         <NuxtLink
           v-if="authorProfilePath"
           :to="authorProfilePath"
@@ -32,10 +41,19 @@
           :to="authorProfilePath"
           class="text-sm moh-text-muted truncate hover:underline underline-offset-2"
           :aria-label="`View @${post.author?.username ?? ''} profile`"
+          @mouseenter="onEnter"
+          @mousemove="onMove"
+          @mouseleave="onLeave"
         >
           @{{ post.author?.username ?? '—' }}
         </NuxtLink>
-        <span v-else class="text-sm moh-text-muted truncate">@{{ post.author?.username ?? '—' }}</span>
+        <span
+          v-else
+          class="text-sm moh-text-muted truncate"
+          @mouseenter="onEnter"
+          @mousemove="onMove"
+          @mouseleave="onLeave"
+        >@{{ post.author?.username ?? '—' }}</span>
         <span class="shrink-0 text-sm moh-text-muted" aria-hidden="true">·</span>
         <NuxtLink
           v-if="post.id && postPermalink"
@@ -81,6 +99,19 @@ const authorProfilePath = computed(() => {
 const postPermalink = computed(() =>
   props.post?.id ? `/p/${encodeURIComponent(props.post.id)}` : null
 )
+
+const pop = useUserPreviewPopover()
+function onEnter(e: MouseEvent) {
+  const u = (props.post.author?.username ?? '').trim()
+  if (!u) return
+  pop.onTriggerEnter({ username: u, event: e })
+}
+function onMove(e: MouseEvent) {
+  pop.onTriggerMove(e)
+}
+function onLeave() {
+  pop.onTriggerLeave()
+}
 
 const { addInterest, removeInterest } = usePresence()
 const authorId = computed(() => props.post?.author?.id ?? null)

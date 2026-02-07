@@ -48,8 +48,8 @@
         :following-count="followSummary?.followingCount ?? 0"
         @open-image="(p) => openFromEvent(p.event, p.url, p.title, p.kind)"
         @edit="editOpen = true"
-        @open-followers="openFollowers"
-        @open-following="openFollowing"
+        @open-followers="goToFollowers"
+        @open-following="goToFollowing"
         @followed="onFollowed"
         @unfollowed="onUnfollowed"
       />
@@ -165,6 +165,7 @@
         :error="followersError"
         empty-text="No followers yet."
         :next-cursor="followersNextCursor"
+        :expected-total-count="showFollowCounts ? (followSummary?.followerCount ?? null) : null"
         @load-more="loadMoreFollowers"
       />
 
@@ -176,6 +177,7 @@
         :error="followingError"
         empty-text="Not following anyone yet."
         :next-cursor="followingNextCursor"
+        :expected-total-count="showFollowCounts ? (followSummary?.followingCount ?? null) : null"
         @load-more="loadMoreFollowing"
       />
 
@@ -206,6 +208,9 @@ definePageMeta({
 const route = useRoute()
 const usernameParam = computed(() => String(route.params.username || ''))
 const normalizedUsername = computed(() => usernameParam.value.trim().toLowerCase())
+const baseProfilePath = computed(() => `/u/${encodeURIComponent(usernameParam.value)}`)
+const isFollowersRoute = computed(() => /\/followers\/?$/.test(route.path))
+const isFollowingRoute = computed(() => /\/following\/?$/.test(route.path))
 
 const { profile, data, notFound, apiError } = await usePublicProfile(normalizedUsername)
 useProfileSeo({ profile, normalizedUsername, notFound })
@@ -379,6 +384,51 @@ const {
   loadMoreFollowers,
   loadMoreFollowing,
 } = useProfileFollowDialogs(normalizedUsername)
+
+function goToFollowers() {
+  void navigateTo(`${baseProfilePath.value}/followers`)
+}
+function goToFollowing() {
+  void navigateTo(`${baseProfilePath.value}/following`)
+}
+
+// Route-driven modal state:
+// - Visiting /u/:username/followers or /following opens the correct modal immediately.
+// - Closing the modal navigates back to /u/:username.
+watch(
+  [isFollowersRoute, isFollowingRoute],
+  ([followersRoute, followingRoute]) => {
+    if (followersRoute) {
+      followingOpen.value = false
+      openFollowers()
+      return
+    }
+    if (followingRoute) {
+      followersOpen.value = false
+      openFollowing()
+      return
+    }
+    // Base route: ensure both are closed.
+    followersOpen.value = false
+    followingOpen.value = false
+  },
+  { immediate: true },
+)
+
+watch(
+  followersOpen,
+  (open) => {
+    if (open) return
+    if (isFollowersRoute.value) void navigateTo(baseProfilePath.value)
+  },
+)
+watch(
+  followingOpen,
+  (open) => {
+    if (open) return
+    if (isFollowingRoute.value) void navigateTo(baseProfilePath.value)
+  },
+)
 
 const middleScrollerEl = useMiddleScroller()
 async function preserveMiddleScrollAfter<T>(fn: () => Promise<T>): Promise<T> {

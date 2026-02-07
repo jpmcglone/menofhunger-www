@@ -105,6 +105,21 @@ export type PublicProfile = {
   lastOnlineAt: string | null
 }
 
+/** Hover preview payload from GET /users/:username/preview */
+export type UserPreview = {
+  id: string
+  username: string | null
+  name: string | null
+  bio: string | null
+  premium: boolean
+  verifiedStatus: 'none' | 'identity' | 'manual'
+  avatarUrl: string | null
+  bannerUrl: string | null
+  relationship: FollowRelationship
+  followerCount: number | null
+  followingCount: number | null
+}
+
 export type FeedPost = {
   id: string
   createdAt: string

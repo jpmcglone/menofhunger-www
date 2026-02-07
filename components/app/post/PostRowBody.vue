@@ -17,6 +17,9 @@
         :class="mentionLinkClass(seg.mentionTier)"
         :style="mentionTierToStyle(seg.mentionTier)"
         @click.stop
+        @mouseenter="(e) => onMentionEnter(seg.mentionUsername!, e)"
+        @mousemove="onMove"
+        @mouseleave="onLeave"
       >
         {{ seg.text }}
       </NuxtLink>
@@ -41,6 +44,19 @@ const props = defineProps<{
   /** Usernames from post.mentions; @username in body that match (case-insensitive) become profile links. */
   mentions?: Array<{ id: string; username: string; verifiedStatus?: string; premium?: boolean }>
 }>()
+
+const pop = useUserPreviewPopover()
+function onMentionEnter(u: string, e: MouseEvent) {
+  const username = (u ?? '').trim()
+  if (!username) return
+  pop.onTriggerEnter({ username, event: e })
+}
+function onMove(e: MouseEvent) {
+  pop.onTriggerMove(e)
+}
+function onLeave() {
+  pop.onTriggerLeave()
+}
 
 function mentionLinkClass(tier: MentionTier | undefined): string {
   // Keep Tailwind classes static-ish; use inline style for tier color

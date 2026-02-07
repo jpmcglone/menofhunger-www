@@ -5,6 +5,9 @@
       :to="`/u/${encodeURIComponent(user.username)}`"
       class="min-w-0 flex items-center gap-2.5 hover:opacity-95"
       :aria-label="`View @${user.username} profile`"
+      @mouseenter="onEnter"
+      @mousemove="onMove"
+      @mouseleave="onLeave"
     >
       <AppUserAvatar :user="user" size-class="h-9 w-9" />
       <div class="min-w-0">
@@ -64,6 +67,19 @@ const emit = defineEmits<{
 
 const displayName = computed(() => props.user.name || props.user.username || 'User')
 const handle = computed(() => (props.user.username ? `@${props.user.username}` : '@—'))
+
+const pop = useUserPreviewPopover()
+function onEnter(e: MouseEvent) {
+  const u = (props.user.username ?? '').trim()
+  if (!u) return
+  pop.onTriggerEnter({ username: u, event: e })
+}
+function onMove(e: MouseEvent) {
+  pop.onTriggerMove(e)
+}
+function onLeave() {
+  pop.onTriggerLeave()
+}
 
 // X-like pill button: dark mode = white pill, light mode = dark pill.
 const followButtonClass =
