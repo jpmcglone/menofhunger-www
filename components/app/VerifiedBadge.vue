@@ -1,10 +1,12 @@
 <template>
   <span
     v-if="isVerified"
+    ref="el"
     :class="['inline-block shrink-0 align-middle', sizeClass]"
     :style="iconStyle"
     v-tooltip="tooltip"
     :aria-label="ariaLabel"
+    @mouseenter="updateTooltipPlacement"
   />
 </template>
 
@@ -40,6 +42,35 @@ const verificationText = computed(() => {
   return props.status === 'identity' ? 'Identity verified' : props.status === 'manual' ? 'Manually verified' : ''
 })
 
+const tooltipPlacement = ref<'right' | 'left'>('right')
+const el = ref<HTMLElement | null>(null)
+
+function estimateTooltipWidthPx(text: string): number {
+  // Rough estimate: 7px per char + padding, capped.
+  // Good enough to decide left/right without measuring DOM tooltip.
+  const len = (text ?? '').length
+  return Math.min(320, Math.max(140, Math.round(len * 7 + 24)))
+}
+
+function updateTooltipPlacement() {
+  if (!import.meta.client) return
+  const node = el.value
+  if (!node) return
+  const base = verificationText.value
+  if (!base) return
+  const text = props.premiumPlus ? `Premium+ member · ${base}` : props.premium ? `Premium member · ${base}` : base
+
+  const rect = node.getBoundingClientRect()
+  const margin = 12
+  const est = estimateTooltipWidthPx(text)
+  const rightSpace = window.innerWidth - rect.right - margin
+  const leftSpace = rect.left - margin
+
+  if (rightSpace >= est) tooltipPlacement.value = 'right'
+  else if (leftSpace >= est) tooltipPlacement.value = 'left'
+  else tooltipPlacement.value = rightSpace >= leftSpace ? 'right' : 'left'
+}
+
 const tooltip = computed(() => {
   if (!props.showTooltip) return null
   const base = verificationText.value
@@ -47,8 +78,8 @@ const tooltip = computed(() => {
 
   // Premium badge should explicitly call out premium status.
   const text = props.premiumPlus ? `Premium+ member · ${base}` : props.premium ? `Premium member · ${base}` : base
-  // Centered under the badge, no arrow (handled by CSS).
-  return { value: text, class: 'moh-tooltip', position: 'bottom' as const }
+  // Prefer right, flip to left when needed. No arrow (handled by CSS).
+  return { value: text, class: 'moh-tooltip', position: tooltipPlacement.value }
 })
 
 const ariaLabel = computed(() => {

@@ -111,6 +111,31 @@
                     @click="saveEmail"
                   />
                 </div>
+
+                <div class="space-y-3">
+                  <AppInterestsPicker
+                    v-model="interestsInput"
+                    :disabled="interestsSaving"
+                    label="Interests"
+                    helper-right="Pick at least 1"
+                    helper-bottom="Used for discovery and recommendations."
+                    description="Search, pick from suggestions, or add your own."
+                  />
+                  <div class="flex items-center gap-3">
+                    <Button
+                      label="Save interests"
+                      icon="pi pi-check"
+                      severity="secondary"
+                      :loading="interestsSaving"
+                      :disabled="interestsSaving || !interestsDirty"
+                      @click="saveInterests"
+                    />
+                    <div v-if="interestsSaved" class="text-sm text-green-700 dark:text-green-300">Saved.</div>
+                  </div>
+                  <div v-if="interestsHelperText" class="text-sm text-red-700 dark:text-red-300">
+                    {{ interestsHelperText }}
+                  </div>
+                </div>
               </div>
 
               <div v-else-if="selectedSection === 'verification'" class="space-y-6">
@@ -643,6 +668,54 @@ const { save: saveEmailRequest, saving: emailSaving, saved: emailSaved } = useFo
   },
 )
 
+const interestsHelperText = ref<string | null>(null)
+const interestsInput = ref<string[]>([])
+
+function normalizeInterests(vals: string[]): string[] {
+  return (vals ?? [])
+    .map((s) => String(s ?? '').trim())
+    .filter(Boolean)
+    .slice(0, 30)
+    .sort((a, b) => a.localeCompare(b))
+}
+
+watch(
+  () => authUser.value?.interests ?? null,
+  (v) => {
+    if (interestsInput.value.length > 0) return
+    if (!Array.isArray(v) || v.length === 0) return
+    interestsInput.value = [...v]
+  },
+  { immediate: true },
+)
+
+const interestsDirty = computed(() => {
+  const current = normalizeInterests((authUser.value?.interests ?? []) as string[])
+  const desired = normalizeInterests(interestsInput.value)
+  if (current.length !== desired.length) return true
+  for (let i = 0; i < current.length; i++) {
+    if (current[i] !== desired[i]) return true
+  }
+  return false
+})
+
+const { save: saveInterestsRequest, saving: interestsSaving, saved: interestsSaved } = useFormSave(
+  async () => {
+    const body = { interests: interestsInput.value }
+    const result = await apiFetchData<{ user: import('~/composables/useAuth').AuthUser }>('/users/me/profile', {
+      method: 'PATCH',
+      body,
+    })
+    authUser.value = result.user ?? authUser.value
+  },
+  {
+    defaultError: 'Failed to save interests.',
+    onError: (message) => {
+      interestsHelperText.value = message
+    },
+  },
+)
+
 // Prefill input with current username (if any) once, so "case-only" edits are obvious.
 watch(
   () => authUser.value?.username ?? null,
@@ -745,6 +818,12 @@ async function saveEmail() {
   emailHelperText.value = null
   emailSaved.value = false
   await saveEmailRequest()
+}
+
+async function saveInterests() {
+  interestsHelperText.value = null
+  interestsSaved.value = false
+  await saveInterestsRequest()
 }
 
 async function savePrivacy() {

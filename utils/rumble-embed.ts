@@ -34,6 +34,21 @@ function extractIframeSrc(html: string): string | null {
 }
 
 async function fetchTextWithFallback(url: string): Promise<string | null> {
+  // Rumble oEmbed is blocked by CORS in browsers, so avoid a noisy failing request.
+  // Use a best-effort public CORS proxy first.
+  try {
+    const u = new URL(url)
+    const host = normalizeRumbleHost(u.hostname)
+    if (host === 'rumble.com') {
+      const proxied = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`
+      const r0 = await fetch(proxied, { method: 'GET' })
+      if (r0.ok) return await r0.text()
+      // If proxy fails, fall through to direct fetch (may still fail, but worth a try).
+    }
+  } catch {
+    // ignore
+  }
+
   try {
     const r = await fetch(url, { method: 'GET' })
     if (!r.ok) return null

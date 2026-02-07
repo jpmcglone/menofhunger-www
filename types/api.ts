@@ -130,6 +130,7 @@ export type FeedPost = {
   body: string
   deletedAt: string | null
   visibility: PostVisibility
+  topics?: string[]
   boostCount: number
   bookmarkCount: number
   commentCount?: number
@@ -484,6 +485,19 @@ export type OnlineUser = FollowListUser & { lastConnectAt?: number; idle?: boole
 
 /** Data type for GET /presence/online (array); totalOnline in pagination. */
 export type GetPresenceOnlineData = OnlineUser[]
+
+export type Topic = {
+  topic: string
+  score: number
+  interestCount: number
+  postCount: number
+}
+
+/** Data type for GET /topics (array). */
+export type GetTopicsData = Topic[]
+
+/** Data type for GET /topics/:topic/posts (array); pagination in envelope. */
+export type GetTopicPostsData = FeedPost[]
 
 export type NotificationKind = 'comment' | 'boost' | 'follow' | 'mention' | 'generic'
 

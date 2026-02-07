@@ -62,36 +62,14 @@
               </label>
               <div class="text-xs moh-text-muted">Pick at least 1</div>
             </div>
-            <button
-              type="button"
-              class="w-full rounded-xl border moh-border p-3 text-left transition-colors moh-surface-hover"
+            <AppInterestsPicker
+              v-model="interests"
               :disabled="submitting"
-              @click="openInterestsDialog"
-            >
-              <div class="flex items-center justify-between gap-3">
-                <div class="min-w-0">
-                  <div class="text-sm font-semibold moh-text">
-                    {{ interests.length > 0 ? `${interests.length} selected` : 'Select interests' }}
-                  </div>
-                  <div class="mt-1 text-xs moh-text-muted">
-                    Search and pick tags that describe what you’re into. (Pick at least one.)
-                  </div>
-                </div>
-                <i class="pi pi-angle-right moh-text-muted" aria-hidden="true" />
-              </div>
-
-              <div v-if="interests.length > 0" class="mt-3 flex flex-wrap gap-2">
-                <span
-                  v-for="v in interests"
-                  :key="v"
-                  class="inline-flex items-center rounded-full border px-2.5 py-1 text-[12px] font-semibold leading-none"
-                  :style="interestChipStyle(v)"
-                >
-                  {{ interestLabel(v) }}
-                </span>
-              </div>
-            </button>
-            <div class="text-xs moh-text-muted">We’ll use these later to personalize your experience.</div>
+              label=""
+              helper-right=""
+              helper-bottom=""
+              description="Search, pick from suggestions, or add your own."
+            />
           </div>
 
           <div class="space-y-2">
@@ -129,76 +107,12 @@
     </div>
     </div>
 
-    <Dialog
-      v-model:visible="interestsDialogOpen"
-      modal
-      header="Select interests"
-      :dismissableMask="true"
-      class="w-[min(680px,calc(100vw-2rem))]"
-    >
-      <div class="space-y-3">
-        <div class="text-sm moh-text-muted">
-          Pick tags you’d want other guys to find you by. You can change these later.
-        </div>
-
-        <InputText v-model="interestQuery" class="w-full" placeholder="Search interests…" />
-
-        <!-- Keep dialog height stable while filtering by reserving full-list space. -->
-        <div class="pt-1">
-          <div class="relative max-h-[45vh] overflow-y-auto">
-            <!-- Ghost layer (in normal flow) preserves height; invisible + non-interactive. -->
-            <div aria-hidden="true" class="flex flex-wrap justify-center gap-2 opacity-0 pointer-events-none select-none">
-              <span
-                v-for="opt in interestOptions"
-                :key="`ghost-${opt.value}`"
-                class="inline-flex items-center rounded-full border px-3 py-1.5 text-sm font-semibold"
-              >
-                <span>{{ opt.label }}</span>
-              </span>
-            </div>
-
-            <!-- Real layer (absolute) renders filtered + animated tags. -->
-            <div class="absolute inset-0">
-              <TransitionGroup name="moh-interest" tag="div" class="flex flex-wrap justify-center gap-2">
-                <button
-                  v-for="opt in filteredInterestOptions"
-                  :key="opt.value"
-                  type="button"
-                  class="inline-flex items-center rounded-full border px-3 py-1.5 text-sm font-semibold transition-colors"
-                  :class="draftInterests.includes(opt.value) ? 'bg-transparent' : 'moh-surface-hover'"
-                  :style="
-                    draftInterests.includes(opt.value)
-                      ? { borderColor: 'var(--p-primary-color)', color: 'var(--p-primary-color)' }
-                      : { borderColor: 'var(--moh-border)', color: 'var(--moh-text)' }
-                  "
-                  @click="toggleInterest(opt.value)"
-                >
-                  <span>{{ opt.label }}</span>
-                </button>
-              </TransitionGroup>
-            </div>
-          </div>
-        </div>
-
-        <div class="flex items-center justify-between gap-3 pt-2">
-          <div class="text-xs moh-text-muted">
-            {{ draftInterests.length }} selected
-            <span v-if="draftInterests.length === 0"> · pick at least one</span>
-          </div>
-          <div class="flex items-center gap-2">
-            <Button label="Cancel" severity="secondary" text @click="closeInterestsDialog" />
-            <Button label="Done" icon="pi pi-check" :disabled="draftInterests.length < 1" @click="commitInterestsDialog" />
-          </div>
-        </div>
-      </div>
-    </Dialog>
   </div>
 </template>
 
 <script setup lang="ts">
 import { getApiErrorMessage } from '~/utils/api-error'
 import { formatDateOnly } from '~/utils/time-format'
-import { interestOptions } from '~/config/interests'
 
 const { user, ensureLoaded } = useAuth()
 const { apiFetchData } = useApiClient()
@@ -246,9 +160,6 @@ const interests = ref<string[]>([])
 const name = ref('')
 const email = ref('')
 const menOnlyConfirmed = ref(false)
-const interestsDialogOpen = ref(false)
-const interestQuery = ref('')
-const draftInterests = ref<string[]>([])
 
 const usernameLocked = computed(() => Boolean(user.value?.usernameIsSet))
 const birthdateLocked = computed(() => Boolean(user.value?.birthdate))
@@ -264,54 +175,6 @@ const birthdatePretty = computed(() => {
     fallback: raw,
   })
 })
-
-const interestLabelMap = computed(() => {
-  const m = new Map<string, string>()
-  for (const opt of interestOptions) m.set(opt.value, opt.label)
-  return m
-})
-
-function interestLabel(value: string): string {
-  return interestLabelMap.value.get(value) ?? value
-}
-
-function interestChipStyle(value: string): Record<string, string> {
-  // Keep chips consistent with current primary tint (verified/premium/default).
-  // Clear background; colored border/text for a subtle tag look.
-  if (!value) {
-    return { borderColor: 'var(--moh-border)', color: 'var(--moh-text)' }
-  }
-  return { borderColor: 'var(--p-primary-color)', color: 'var(--p-primary-color)', backgroundColor: 'transparent' }
-}
-
-const filteredInterestOptions = computed(() => {
-  const q = interestQuery.value.trim().toLowerCase()
-  if (!q) return interestOptions
-  return interestOptions.filter((o) => o.label.toLowerCase().includes(q) || o.value.toLowerCase().includes(q))
-})
-
-function toggleInterest(value: string) {
-  const next = new Set(draftInterests.value)
-  if (next.has(value)) next.delete(value)
-  else next.add(value)
-  draftInterests.value = Array.from(next)
-}
-
-function openInterestsDialog() {
-  if (submitting.value) return
-  interestQuery.value = ''
-  draftInterests.value = [...interests.value]
-  interestsDialogOpen.value = true
-}
-
-function closeInterestsDialog() {
-  interestsDialogOpen.value = false
-}
-
-function commitInterestsDialog() {
-  interests.value = [...draftInterests.value]
-  closeInterestsDialog()
-}
 
 watch(
   () => user.value,
@@ -423,24 +286,3 @@ async function submit() {
   }
 }
 </script>
-
-<style scoped>
-.moh-interest-enter-active,
-.moh-interest-leave-active {
-  transition: all 160ms ease;
-}
-.moh-interest-move {
-  /* FLIP transition for reordering within <TransitionGroup> */
-  transition: transform 160ms ease;
-}
-.moh-interest-leave-active {
-  /* Prevent layout snapping while items leave */
-  position: absolute;
-}
-.moh-interest-enter-from,
-.moh-interest-leave-to {
-  opacity: 0;
-  transform: translateY(4px);
-}
-</style>
-
