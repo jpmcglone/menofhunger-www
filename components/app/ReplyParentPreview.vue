@@ -100,18 +100,9 @@ const postPermalink = computed(() =>
   props.post?.id ? `/p/${encodeURIComponent(props.post.id)}` : null
 )
 
-const pop = useUserPreviewPopover()
-function onEnter(e: MouseEvent) {
-  const u = (props.post.author?.username ?? '').trim()
-  if (!u) return
-  pop.onTriggerEnter({ username: u, event: e })
-}
-function onMove(e: MouseEvent) {
-  pop.onTriggerMove(e)
-}
-function onLeave() {
-  pop.onTriggerLeave()
-}
+const { onEnter, onMove, onLeave } = useUserPreviewTrigger({
+  username: computed(() => props.post.author?.username ?? ''),
+})
 
 const { addInterest, removeInterest } = usePresence()
 const authorId = computed(() => props.post?.author?.id ?? null)

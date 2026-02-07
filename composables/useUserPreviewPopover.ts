@@ -21,6 +21,8 @@ const HIDE_DELAY_MS = 500
 let showTimer: ReturnType<typeof setTimeout> | null = null
 let hideTimer: ReturnType<typeof setTimeout> | null = null
 let token = 0
+let inflightAbort: AbortController | null = null
+let routerHookInstalled = false
 
 function clearTimer(t: ReturnType<typeof setTimeout> | null) {
   if (t) clearTimeout(t)
@@ -42,9 +44,23 @@ export function useUserPreviewPopover() {
 
   const { fetchUserPreview } = useUserPreview()
 
+  function abortInflight() {
+    if (inflightAbort) inflightAbort.abort()
+    inflightAbort = null
+  }
+
   function setMousePos(e: MouseEvent) {
     state.value.x = Math.floor(e.clientX)
     state.value.y = Math.floor(e.clientY)
+  }
+
+  function cancelPending() {
+    // Cancels any pending “show” work; does not force-close an open card.
+    token++
+    clearTimer(showTimer)
+    showTimer = null
+    abortInflight()
+    state.value.hoveringTrigger = false
   }
 
   function close() {
@@ -59,6 +75,17 @@ export function useUserPreviewPopover() {
     clearTimer(hideTimer)
     showTimer = null
     hideTimer = null
+    abortInflight()
+  }
+
+  // Ensure a click+navigate can never “leak” a delayed popover into the next page.
+  if (import.meta.client && !routerHookInstalled) {
+    routerHookInstalled = true
+    const router = useRouter()
+    router.beforeEach(() => {
+      close()
+      return true
+    })
   }
 
   function lock() {
@@ -103,6 +130,10 @@ export function useUserPreviewPopover() {
       state.value.hoveringTrigger = true
       clearTimer(hideTimer)
       hideTimer = null
+      // Re-anchor to the newly-hovered trigger location (e.g. avatar -> name),
+      // but keep the same preview open (cached data is already present).
+      state.value.anchorX = state.value.x
+      state.value.anchorY = state.value.y
       return
     }
 
@@ -123,7 +154,10 @@ export function useUserPreviewPopover() {
       if (!state.value.hoveringTrigger) return
 
       try {
-        const preview = await fetchUserPreview(username)
+        abortInflight()
+        const ac = new AbortController()
+        inflightAbort = ac
+        const preview = await fetchUserPreview(username, { signal: ac.signal })
         if (myToken !== token) return
         if (!state.value.hoveringTrigger) return
 
@@ -135,6 +169,9 @@ export function useUserPreviewPopover() {
         state.value.open = true
       } catch {
         // No loaders; if fetch fails, just don't show anything.
+      } finally {
+        // Best-effort: once the attempt finishes, allow future abort controllers.
+        inflightAbort = null
       }
     }, SHOW_DELAY_MS)
   }
@@ -170,6 +207,7 @@ export function useUserPreviewPopover() {
     close,
     lock,
     unlock,
+    cancelPending,
     onTriggerEnter,
     onTriggerMove,
     onTriggerLeave,

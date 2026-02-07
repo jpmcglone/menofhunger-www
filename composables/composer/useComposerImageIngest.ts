@@ -14,13 +14,25 @@ export function useComposerImageIngest(opts: {
   processUploadQueue: () => void
   /** Patch a composer media item by localId (used to update slot during upload). */
   patchComposerMedia: (localId: string, patch: Partial<ComposerMediaItem>) => void
-  /** When true, also accept video/mp4 (premium-only). */
+  /** When true, also accept videos (premium-only). */
   canAcceptVideo?: Ref<boolean>
   /** Called when user tries to add video but is not premium; show modal and reject. */
   onVideoRejectedNeedPremium?: () => void
 }) {
   const MEDIA_SLOTS = Math.max(1, Math.floor(opts.maxSlots))
   const canAcceptVideo = opts.canAcceptVideo ?? computed(() => false)
+
+  const isAllowedVideoType = (t: string | null | undefined) => {
+    const ct = (t ?? '').toLowerCase().trim()
+    return ct === 'video/mp4' || ct === 'video/quicktime' || ct === 'video/webm' || ct === 'video/x-m4v'
+  }
+
+  const formatBytes = (n: number) => {
+    const bytes = Math.max(0, Math.floor(n || 0))
+    const mb = bytes / (1024 * 1024)
+    if (mb < 1024) return `${Math.round(mb)}MB`
+    return `${(mb / 1024).toFixed(1)}GB`
+  }
 
   function defaultAltFromFilename(name: string | null | undefined): string | null {
     const raw = (name ?? '').trim()
@@ -52,7 +64,7 @@ export function useComposerImageIngest(opts: {
 
     const rawVideoFiles = files
       .filter(Boolean)
-      .filter((f) => ((f.type ?? '').toLowerCase() === 'video/mp4'))
+      .filter((f) => isAllowedVideoType(f.type))
       .slice(0, remaining - imageFiles.length)
 
     if (rawVideoFiles.length > 0 && !canAcceptVideo.value) {
@@ -111,7 +123,7 @@ export function useComposerImageIngest(opts: {
   async function addVideoFile(file: File, _source: 'picker' | 'drop' | 'paste') {
     const { maxDurationSeconds, maxWidth, maxHeight, maxBytes } = appConfig.video
     if (file.size > maxBytes) {
-      opts.toast.push({ title: 'Video is too large (max 25MB).', tone: 'error', durationMs: 2200 })
+      opts.toast.push({ title: `Video is too large (max ${formatBytes(maxBytes)}).`, tone: 'error', durationMs: 2200 })
       return
     }
 

@@ -46,16 +46,11 @@ const props = defineProps<{
 }>()
 
 const pop = useUserPreviewPopover()
+const { onMove, onLeave } = useUserPreviewTrigger({ username: '' })
 function onMentionEnter(u: string, e: MouseEvent) {
   const username = (u ?? '').trim()
   if (!username) return
   pop.onTriggerEnter({ username, event: e })
-}
-function onMove(e: MouseEvent) {
-  pop.onTriggerMove(e)
-}
-function onLeave() {
-  pop.onTriggerLeave()
 }
 
 function mentionLinkClass(tier: MentionTier | undefined): string {

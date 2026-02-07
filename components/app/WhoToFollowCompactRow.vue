@@ -68,18 +68,9 @@ const emit = defineEmits<{
 const displayName = computed(() => props.user.name || props.user.username || 'User')
 const handle = computed(() => (props.user.username ? `@${props.user.username}` : '@—'))
 
-const pop = useUserPreviewPopover()
-function onEnter(e: MouseEvent) {
-  const u = (props.user.username ?? '').trim()
-  if (!u) return
-  pop.onTriggerEnter({ username: u, event: e })
-}
-function onMove(e: MouseEvent) {
-  pop.onTriggerMove(e)
-}
-function onLeave() {
-  pop.onTriggerLeave()
-}
+const { onEnter, onMove, onLeave } = useUserPreviewTrigger({
+  username: computed(() => props.user.username ?? ''),
+})
 
 // X-like pill button: dark mode = white pill, light mode = dark pill.
 const followButtonClass =

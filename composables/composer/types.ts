@@ -72,12 +72,18 @@ export function dataTransferHasImages(dt: DataTransfer | null): boolean {
 
 export function dataTransferHasMedia(dt: DataTransfer | null, includeVideo: boolean): boolean {
   if (!dt) return false
+
+  const isAllowedVideoType = (t: string | null | undefined) => {
+    const ct = (t ?? '').toLowerCase().trim()
+    return ct === 'video/mp4' || ct === 'video/quicktime' || ct === 'video/webm' || ct === 'video/x-m4v'
+  }
+
   const items = Array.from(dt.items ?? [])
   if (items.some((it) => it.kind === 'file' && (it.type ?? '').toLowerCase().startsWith('image/'))) return true
-  if (includeVideo && items.some((it) => it.kind === 'file' && (it.type ?? '').toLowerCase() === 'video/mp4')) return true
+  if (includeVideo && items.some((it) => it.kind === 'file' && isAllowedVideoType(it.type))) return true
   const files = Array.from(dt.files ?? [])
   if (files.some((f) => ((f.type ?? '').toLowerCase().startsWith('image/')))) return true
-  if (includeVideo && files.some((f) => ((f.type ?? '').toLowerCase() === 'video/mp4'))) return true
+  if (includeVideo && files.some((f) => isAllowedVideoType(f.type))) return true
   return false
 }
 

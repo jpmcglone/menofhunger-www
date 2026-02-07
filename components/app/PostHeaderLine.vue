@@ -89,17 +89,6 @@ const props = defineProps<{
 const displayName = computed(() => props.displayName || props.username || 'User')
 const username = computed(() => props.username || '')
 
-const pop = useUserPreviewPopover()
-function onEnter(e: MouseEvent) {
-  const u = username.value.trim()
-  if (!u) return
-  pop.onTriggerEnter({ username: u, event: e })
-}
-function onMove(e: MouseEvent) {
-  pop.onTriggerMove(e)
-}
-function onLeave() {
-  pop.onTriggerLeave()
-}
+const { onEnter, onMove, onLeave } = useUserPreviewTrigger({ username })
 </script>
 

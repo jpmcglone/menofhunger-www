@@ -23,6 +23,7 @@ export const appConfig = {
     maxDurationSeconds: 5 * 60, // 5 minutes
     maxWidth: 2560,
     maxHeight: 1440,
-    maxBytes: 25 * 1024 * 1024,
+    // Phone videos are commonly much larger than 25MB even under 5 minutes.
+    maxBytes: 300 * 1024 * 1024,
   },
 } as const

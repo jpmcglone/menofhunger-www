@@ -6,6 +6,7 @@ type FollowStateMap = Record<string, FollowRelationship>
 
 export function useFollowState() {
   const { apiFetchData } = useApiClient()
+  const { invalidateUserPreviewCache } = useUserPreview()
 
   const state = useState<FollowStateMap>('follow-state', () => ({}))
   const inflight = useState<Record<string, boolean>>('follow-inflight', () => ({}))
@@ -56,6 +57,7 @@ export function useFollowState() {
         error.value = getApiErrorMessage(e) || 'Failed to follow.'
       }
     })
+    invalidateUserPreviewCache(username)
   }
 
   async function unfollow(params: { userId: string; username: string }) {
@@ -83,6 +85,7 @@ export function useFollowState() {
         error.value = getApiErrorMessage(e) || 'Failed to unfollow.'
       }
     })
+    invalidateUserPreviewCache(username)
   }
 
   return { state, inflight, error, get, set, upsert, ingest, follow, unfollow }

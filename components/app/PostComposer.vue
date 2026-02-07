@@ -466,7 +466,9 @@ const {
   onVideoRejectedNeedPremium: () => usePremiumVideoModal().show(),
 })
 
-const composerAcceptTypes = computed(() => 'image/*,video/mp4')
+const composerAcceptTypes = computed(
+  () => 'image/*,video/mp4,video/quicktime,video/webm,video/x-m4v',
+)
 
 // Visibility + rules
 const visibility = useCookie<PostVisibility>('moh.post.visibility.v1', {

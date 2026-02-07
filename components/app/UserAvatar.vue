@@ -68,18 +68,8 @@ const presenceStatus = computed(() => {
   return props.user?.id ? getPresenceStatus(props.user.id) : 'offline'
 })
 
-const pop = useUserPreviewPopover()
-function onEnter(e: MouseEvent) {
-  if (!enablePreview.value) return
-  if (!previewUsername.value) return
-  pop.onTriggerEnter({ username: previewUsername.value, event: e })
-}
-function onMove(e: MouseEvent) {
-  if (!enablePreview.value) return
-  pop.onTriggerMove(e)
-}
-function onLeave() {
-  if (!enablePreview.value) return
-  pop.onTriggerLeave()
-}
+const { onEnter, onMove, onLeave } = useUserPreviewTrigger({
+  username: previewUsername,
+  enabled: enablePreview,
+})
 </script>

@@ -8,6 +8,12 @@ type MohCacheOptions =
   | {
       /** Cache duration (ms). Client-only. */
       ttlMs: number
+      /**
+       * Optional stale-while-revalidate window (ms). Client-only.
+       * When a cached value is stale but within this window, return it immediately
+       * and refresh in the background.
+       */
+      staleWhileRevalidateMs?: number
       /** Optional override key (defaults to method+url). */
       key?: string
     }
@@ -20,7 +26,23 @@ type MohApiFetchOptions = ApiFetchOptions & {
 }
 
 const inflight = new Map<string, Promise<unknown>>()
-const responseCache = new Map<string, { expiresAt: number; value: unknown }>()
+const responseCache = new Map<string, { expiresAt: number; staleUntil?: number; value: unknown }>()
+
+/**
+ * Invalidate MenOfHunger client response cache entries.
+ * Client-only. Safe to call on server (no-op).
+ */
+export function invalidateMohCache(params: { prefix?: string; exact?: string }) {
+  if (!import.meta.client) return
+  const exact = (params.exact ?? '').trim()
+  const prefix = (params.prefix ?? '').trim()
+  if (!exact && !prefix) return
+
+  for (const k of responseCache.keys()) {
+    if (exact && k === exact) responseCache.delete(k)
+    else if (prefix && k.startsWith(prefix)) responseCache.delete(k)
+  }
+}
 
 function mergeHeaders(a?: HeadersInit, b?: HeadersInit): HeadersInit | undefined {
   if (!a && !b) return undefined
@@ -105,6 +127,40 @@ export function useApiClient() {
         const cacheKey = cacheOpt.key ?? baseKey
         const hit = responseCache.get(cacheKey)
         if (hit && hit.expiresAt > now) return hit.value as ApiEnvelope<T>
+
+        const swrMs = Math.max(0, Math.floor(cacheOpt.staleWhileRevalidateMs ?? 0))
+        if (hit && swrMs > 0) {
+          const staleUntil = hit.staleUntil ?? hit.expiresAt + swrMs
+          if (staleUntil > now) {
+            // Return stale immediately, and refresh in background.
+            const refreshKey = `${inflightKey}:swr:${cacheKey}`
+            if (!inflight.get(refreshKey)) {
+              const refresh = $fetch<ApiEnvelope<T>>(url, {
+                ...fetchOptions,
+                credentials: fetchOptions.credentials ?? 'include',
+                headers,
+                timeout,
+              })
+                .then((env) => {
+                  responseCache.set(cacheKey, {
+                    value: env,
+                    expiresAt: Date.now() + cacheOpt.ttlMs,
+                    staleUntil: Date.now() + cacheOpt.ttlMs + swrMs,
+                  })
+                  return env
+                })
+                .catch(() => undefined)
+                .finally(() => {
+                  inflight.delete(refreshKey)
+                })
+
+              inflight.set(refreshKey, refresh as Promise<unknown>)
+            }
+
+            return hit.value as ApiEnvelope<T>
+          }
+        }
+
         if (hit) responseCache.delete(cacheKey)
       }
 
@@ -123,7 +179,12 @@ export function useApiClient() {
           if (import.meta.client && cacheOpt && typeof cacheOpt === 'object' && cacheOpt.ttlMs > 0) {
             const baseKey2 = `${method}:${url}`
             const cacheKey = cacheOpt.key ?? baseKey2
-            responseCache.set(cacheKey, { value: env, expiresAt: Date.now() + cacheOpt.ttlMs })
+            const swrMs = Math.max(0, Math.floor(cacheOpt.staleWhileRevalidateMs ?? 0))
+            responseCache.set(cacheKey, {
+              value: env,
+              expiresAt: Date.now() + cacheOpt.ttlMs,
+              staleUntil: swrMs > 0 ? Date.now() + cacheOpt.ttlMs + swrMs : undefined,
+            })
           }
           return env
         })

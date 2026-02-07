@@ -66,18 +66,9 @@ onBeforeUnmount(() => {
   if (props.user?.id) removeInterest([props.user.id])
 })
 
-const pop = useUserPreviewPopover()
-function onEnter(e: MouseEvent) {
-  const u = (props.user.username ?? '').trim()
-  if (!u) return
-  pop.onTriggerEnter({ username: u, event: e })
-}
-function onMove(e: MouseEvent) {
-  pop.onTriggerMove(e)
-}
-function onLeave() {
-  pop.onTriggerLeave()
-}
+const { onEnter, onMove, onLeave } = useUserPreviewTrigger({
+  username: computed(() => props.user.username ?? ''),
+})
 
 function goToProfile() {
   if (!props.user.username) return

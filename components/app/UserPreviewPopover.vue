@@ -11,7 +11,7 @@
       <div
         v-if="open && preview"
         ref="cardEl"
-        class="fixed z-[1100] w-[340px] max-w-[calc(100vw-24px)]"
+        class="fixed z-[1100] w-[340px] max-w-[calc(100vw-24px)] transition-[left,top] duration-150 ease-out motion-reduce:transition-none will-change-[left,top]"
         :style="posStyle"
         @mouseenter="onCardEnter"
         @mouseleave="onCardLeave"
@@ -23,8 +23,6 @@
 </template>
 
 <script setup lang="ts">
-import type { CSSProperties } from 'vue'
-
 const pop = useUserPreviewPopover()
 const { state } = pop
 
@@ -32,48 +30,16 @@ const open = computed(() => Boolean(state.value.open))
 const preview = computed(() => state.value.preview)
 
 const cardEl = ref<HTMLElement | null>(null)
-const measured = ref<{ w: number; h: number } | null>(null)
 
-function clamp(n: number, min: number, max: number) {
-  return Math.max(min, Math.min(max, n))
-}
-
-function measureAndClamp() {
-  if (!import.meta.client) return
-  const el = cardEl.value
-  if (!el) return
-  const r = el.getBoundingClientRect()
-  measured.value = { w: r.width, h: r.height }
-}
-
-watch(
-  () => [open.value, state.value.x, state.value.y, preview.value?.id],
-  async () => {
-    if (!import.meta.client) return
-    if (!open.value) return
-    await nextTick()
-    measureAndClamp()
-  },
-  { flush: 'post' },
-)
-
-const posStyle = computed<CSSProperties>(() => {
-  const x = state.value.anchorX
-  const y = state.value.anchorY
-
-  const margin = 8
-  // Smaller offset reduces the “gap” when moving into the card.
-  const offset = 8
-  const w = measured.value?.w ?? 340
-  const h = measured.value?.h ?? 200
-
-  const maxLeft = Math.max(margin, window.innerWidth - w - margin)
-  const maxTop = Math.max(margin, window.innerHeight - h - margin)
-
-  const left = clamp(x + offset, margin, maxLeft)
-  const top = clamp(y + offset, margin, maxTop)
-
-  return { left: `${Math.floor(left)}px`, top: `${Math.floor(top)}px` }
+const { style: posStyle } = useAnchoredPopoverPosition({
+  open,
+  anchorX: computed(() => state.value.anchorX),
+  anchorY: computed(() => state.value.anchorY),
+  el: cardEl,
+  defaultWidth: 340,
+  defaultHeight: 200,
+  margin: 8,
+  offset: 8,
 })
 
 function onCardEnter() {
@@ -85,6 +51,8 @@ function onCardLeave() {
 
 onMounted(() => {
   const onPointerDown = (e: PointerEvent) => {
+    // If a delayed preview is pending, cancel it so it can't show after a click+navigate.
+    pop.cancelPending()
     if (!state.value.open) return
     const el = cardEl.value
     if (!el) return
