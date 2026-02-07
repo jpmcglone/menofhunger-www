@@ -1,20 +1,23 @@
 <template>
   <div
     v-if="show"
-    class="fixed inset-0 z-[60] flex items-center justify-center bg-white/95 dark:bg-black/90"
+    class="fixed inset-0 z-[60] bg-white/95 dark:bg-black/90"
   >
-    <div class="w-full max-w-xl px-4">
-      <div class="rounded-2xl border moh-border moh-bg p-5 shadow-sm">
-        <div class="flex items-start justify-between gap-3">
-          <div class="min-w-0">
-            <div class="text-xl font-bold tracking-tight">Finish setting up your profile</div>
-            <div class="mt-1 text-sm moh-text-muted">
-              {{ subtitle }}
+    <!-- Scroll container so small screens can complete onboarding -->
+    <div class="h-full w-full overflow-y-auto">
+      <div class="min-h-full flex items-start sm:items-center justify-center p-4 sm:py-8">
+        <div class="w-full max-w-xl">
+          <div class="rounded-2xl border moh-border moh-bg p-5 shadow-sm flex flex-col max-h-[calc(100dvh-2rem)] sm:max-h-[calc(100dvh-4rem)]">
+            <div class="shrink-0 flex items-start justify-between gap-3">
+              <div class="min-w-0">
+                <div class="text-xl font-bold tracking-tight">Finish setting up your profile</div>
+                <div class="mt-1 text-sm moh-text-muted">
+                  {{ subtitle }}
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
 
-        <div class="mt-5 space-y-4">
+            <div class="mt-5 space-y-4 overflow-y-auto min-h-0 pr-1 -mr-1">
           <AppUsernameField
             v-model="usernameInput"
             tone="moh"
@@ -122,6 +125,8 @@
           </div>
         </div>
       </div>
+    </div>
+    </div>
     </div>
 
     <Dialog

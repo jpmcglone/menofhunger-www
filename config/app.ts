@@ -18,11 +18,11 @@ export const appConfig = {
     fadeMs: 200,
   },
 
-  /** Video upload (premium): max duration (seconds), resolution (1080p), and file size. */
+  /** Video upload (premium): max duration (seconds), resolution (1440p or less), and file size. */
   video: {
     maxDurationSeconds: 5 * 60, // 5 minutes
-    maxWidth: 1920,
-    maxHeight: 1080,
+    maxWidth: 2560,
+    maxHeight: 1440,
     maxBytes: 25 * 1024 * 1024,
   },
 } as const

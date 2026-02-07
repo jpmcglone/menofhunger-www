@@ -2,7 +2,7 @@
   <div class="w-full">
     <div
       ref="trackEl"
-      class="relative w-full select-none rounded-full border border-gray-300 bg-white/70 px-1 py-1 dark:border-zinc-700 dark:bg-black/40"
+      class="moh-slide-track relative w-full select-none rounded-full border border-gray-300 bg-white/70 px-1 py-1 dark:border-zinc-700 dark:bg-black/40"
       :aria-disabled="disabled ? 'true' : 'false'"
     >
       <div
@@ -14,7 +14,7 @@
       <button
         ref="handleEl"
         type="button"
-        class="relative z-10 flex h-10 w-10 items-center justify-center rounded-full border bg-white shadow-sm transition-colors dark:border-zinc-700 dark:bg-black"
+        class="moh-slide-handle relative z-10 flex h-10 w-10 items-center justify-center rounded-full border bg-white shadow-sm transition-colors dark:border-zinc-700 dark:bg-black"
         :class="disabled ? 'opacity-60 cursor-not-allowed' : 'cursor-grab active:cursor-grabbing'"
         :style="{ transform: `translateX(${x}px)` }"
         :disabled="disabled"
@@ -24,6 +24,7 @@
         :aria-valuemax="100"
         :aria-valuenow="Math.round(progress * 100)"
         @pointerdown="onPointerDown"
+        @dragstart.prevent
         @keydown="onKeyDown"
       >
         <i class="pi pi-angle-right text-lg text-gray-700 dark:text-gray-200" aria-hidden="true" />
@@ -80,6 +81,17 @@ onMounted(() => {
   window.addEventListener('resize', measure)
 })
 
+let ro: ResizeObserver | null = null
+watch([trackEl, handleEl], ([track, handle]) => {
+  if (!import.meta.client) return
+  ro?.disconnect()
+  ro = null
+  if (!track || !handle) return
+  ro = new ResizeObserver(() => measure())
+  ro.observe(track)
+  ro.observe(handle)
+}, { immediate: true })
+
 // Store current drag listeners so we can remove them on unmount if user navigates away during drag.
 let activePointerOnMove: ((ev: PointerEvent) => void) | null = null
 let activePointerOnUp: ((ev: PointerEvent) => void) | null = null
@@ -87,6 +99,8 @@ let activePointerOnUp: ((ev: PointerEvent) => void) | null = null
 onBeforeUnmount(() => {
   if (!import.meta.client) return
   window.removeEventListener('resize', measure)
+  ro?.disconnect()
+  ro = null
   if (activePointerOnMove) {
     window.removeEventListener('pointermove', activePointerOnMove)
     activePointerOnMove = null
@@ -114,23 +128,46 @@ function complete() {
 function onPointerDown(e: PointerEvent) {
   if (props.disabled) return
   if (completed.value) return
+  // Only primary pointer + left click.
+  if (e.isPrimary === false) return
+  if (typeof e.button === 'number' && e.button !== 0) return
+
   const handle = handleEl.value as HTMLElement | null
   const track = trackEl.value as HTMLElement | null
   if (!handle || !track) return
 
+  // Prevent scroll/selection glitches on mobile while dragging.
+  try {
+    e.preventDefault()
+  } catch {
+    // ignore
+  }
+
   measure()
-  handle.setPointerCapture(e.pointerId)
+  const pointerId = e.pointerId
+  try {
+    handle.setPointerCapture(pointerId)
+  } catch {
+    // Some browsers can throw; dragging still works via window listeners.
+  }
 
   const trackRect = track.getBoundingClientRect()
   const handleRect = handle.getBoundingClientRect()
   const offsetInHandle = e.clientX - handleRect.left
 
   const onMove = (ev: PointerEvent) => {
+    if (ev.pointerId !== pointerId) return
+    try {
+      ev.preventDefault()
+    } catch {
+      // ignore
+    }
     const raw = ev.clientX - trackRect.left - offsetInHandle
     x.value = Math.max(0, Math.min(maxX.value, raw))
   }
 
   const onUp = (ev: PointerEvent) => {
+    if (ev.pointerId !== pointerId) return
     try {
       handle.releasePointerCapture(ev.pointerId)
     } catch {
@@ -153,9 +190,9 @@ function onPointerDown(e: PointerEvent) {
 
   activePointerOnMove = onMove
   activePointerOnUp = onUp
-  window.addEventListener('pointermove', onMove)
-  window.addEventListener('pointerup', onUp)
-  window.addEventListener('pointercancel', onUp)
+  window.addEventListener('pointermove', onMove, { passive: false })
+  window.addEventListener('pointerup', onUp, { passive: true })
+  window.addEventListener('pointercancel', onUp, { passive: true })
 }
 
 function onKeyDown(e: KeyboardEvent) {
@@ -191,6 +228,12 @@ function onKeyDown(e: KeyboardEvent) {
 <style scoped>
 button {
   transition: transform 140ms ease;
+}
+
+.moh-slide-track,
+.moh-slide-handle {
+  /* Critical for mobile Safari: prevent page scroll during drag. */
+  touch-action: none;
 }
 
 </style>

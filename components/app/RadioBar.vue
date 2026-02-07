@@ -7,7 +7,6 @@
         @click="navigateTo('/radio')"
       >
         <div class="flex items-center gap-2 min-w-0">
-          <i class="pi pi-volume-up text-[14px] opacity-80" aria-hidden="true" />
           <div class="min-w-0">
             <div class="text-sm font-semibold truncate">
               {{ currentStation.name }}
@@ -56,6 +55,24 @@
         </div>
       </div>
 
+      <!-- Volume (smaller + to the right of avatars) -->
+      <div :class="['flex items-center gap-1.5 shrink-0', showListenerStack ? 'ml-2 sm:ml-3' : '']">
+        <i
+          :class="volumeIcon"
+          class="pi text-[13px] opacity-80"
+          aria-hidden="true"
+        />
+        <input
+          v-model.number="volumePercent"
+          type="range"
+          min="0"
+          max="100"
+          step="1"
+          class="w-12 sm:w-16 accent-black dark:accent-white"
+          aria-label="Radio volume"
+        >
+      </div>
+
       <div
         v-if="isBuffering"
         class="h-8 w-8 flex items-center justify-center"
@@ -98,8 +115,26 @@ function listenerProfileTo(u: { id: string; username?: string | null }): string 
   return u.username ? `/u/${encodeURIComponent(u.username)}` : `/u/id/${u.id}`
 }
 
-const { currentStation, isPlaying, isBuffering, listeners, toggle, stop } = useRadioPlayer()
+const { currentStation, isPlaying, isBuffering, listeners, toggle, stop, volume, setVolume } = useRadioPlayer()
 const listenersCount = computed(() => (currentStation.value ? listeners.value.length : null))
+
+const volumePercent = computed<number>({
+  get() {
+    return Math.round((volume.value ?? 0.5) * 100)
+  },
+  set(v) {
+    const n = Number(v)
+    if (!Number.isFinite(n)) return
+    setVolume(Math.max(0, Math.min(1, n / 100)))
+  },
+})
+
+const volumeIcon = computed(() => {
+  const v = volume.value ?? 0.5
+  if (v <= 0.001) return 'pi-volume-off'
+  if (v < 0.5) return 'pi-volume-down'
+  return 'pi-volume-up'
+})
 
 const listenerStack = computed<RadioListener[]>(() => {
   if (!currentStation.value) return []

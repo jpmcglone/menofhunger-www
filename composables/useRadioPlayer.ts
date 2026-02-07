@@ -6,6 +6,8 @@ const RADIO_IS_PLAYING_KEY = 'radio-is-playing'
 const RADIO_IS_BUFFERING_KEY = 'radio-is-buffering'
 const RADIO_ERROR_KEY = 'radio-error'
 const RADIO_LISTENERS_KEY = 'radio-listeners'
+// Bump version when changing default behavior so existing cookies don't lock old defaults.
+const RADIO_VOLUME_KEY = 'moh.radio.volume.v2'
 const DEFAULT_RADIO_STATIONS: RadioStation[] = Array.isArray(radioStationsFallback)
   ? (radioStationsFallback as RadioStation[])
   : []
@@ -22,12 +24,25 @@ function ensureAudio(): HTMLAudioElement | null {
   return audioEl
 }
 
+function clamp01(n: number): number {
+  if (!Number.isFinite(n)) return 0.5
+  return Math.max(0, Math.min(1, n))
+}
+
 export function useRadioPlayer() {
   const stationId = useState<string | null>(RADIO_STATION_ID_KEY, () => null)
   const isPlaying = useState<boolean>(RADIO_IS_PLAYING_KEY, () => false)
   const isBuffering = useState<boolean>(RADIO_IS_BUFFERING_KEY, () => false)
   const error = useState<string | null>(RADIO_ERROR_KEY, () => null)
   const listeners = useState<RadioListener[]>(RADIO_LISTENERS_KEY, () => [])
+  const volumeCookie = useCookie<number>(RADIO_VOLUME_KEY, {
+    // Default requested: start at 25%.
+    default: () => 0.25,
+    sameSite: 'lax',
+    path: '/',
+    maxAge: 60 * 60 * 24 * 365,
+  })
+  const volume = useState<number>('radio-volume', () => clamp01(volumeCookie.value ?? 0.25))
 
   const { ensureLoaded, user } = useAuth()
   const { apiFetchData } = useApiClient()
@@ -106,6 +121,20 @@ export function useRadioPlayer() {
     a.addEventListener('error', onError)
   }
 
+  function syncAudioVolume() {
+    if (!import.meta.client) return
+    const a = ensureAudio()
+    if (!a) return
+    a.volume = clamp01(volume.value)
+  }
+
+  function setVolume(next: number) {
+    const v = clamp01(next)
+    volume.value = v
+    volumeCookie.value = v
+    syncAudioVolume()
+  }
+
   async function play(station: RadioStation) {
     if (!import.meta.client) return
     await ensureLoaded()
@@ -114,6 +143,7 @@ export function useRadioPlayer() {
     const a = ensureAudio()
     if (!a) return
     bindAudioEvents()
+    syncAudioVolume()
 
     const url = String(station?.streamUrl ?? '').trim()
     if (!url) return
@@ -207,6 +237,7 @@ export function useRadioPlayer() {
 
   onMounted(() => {
     void loadStations()
+    syncAudioVolume()
   })
 
   return {
@@ -219,6 +250,8 @@ export function useRadioPlayer() {
     isBuffering: readonly(isBuffering),
     error: readonly(error),
     listeners: readonly(listeners),
+    volume: readonly(volume),
+    setVolume,
     play,
     pause,
     stop,

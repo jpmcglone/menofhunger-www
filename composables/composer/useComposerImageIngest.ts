@@ -126,7 +126,7 @@ export function useComposerImageIngest(opts: {
       return
     }
     if ((meta.width ?? 0) > maxWidth || (meta.height ?? 0) > maxHeight) {
-      opts.toast.push({ title: 'Video must be 1080p or smaller.', tone: 'error', durationMs: 2200 })
+      opts.toast.push({ title: 'Video must be 1440p or smaller.', tone: 'error', durationMs: 2200 })
       return
     }
 

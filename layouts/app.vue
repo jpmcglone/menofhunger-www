@@ -965,7 +965,7 @@ const {
   error: whoToFollowError,
   refresh: refreshWhoToFollow,
 } = useWhoToFollow({
-  enabled: computed(() => !isRightRailForcedHidden.value),
+  enabled: computed(() => isAuthed.value && !isRightRailForcedHidden.value),
   defaultLimit: 4,
 })
 

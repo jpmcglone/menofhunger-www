@@ -4,7 +4,7 @@
     :class="['inline-block shrink-0 align-middle', sizeClass]"
     :style="iconStyle"
     v-tooltip="tooltip"
-    aria-label="Verified"
+    :aria-label="ariaLabel"
   />
 </template>
 
@@ -34,12 +34,25 @@ const badgeColor = computed(() => {
   return isVerified.value && props.premium ? badgeOrange : badgeBlue
 })
 
+const verificationText = computed(() => {
+  return props.status === 'identity' ? 'Identity verified' : props.status === 'manual' ? 'Manually verified' : ''
+})
+
 const tooltip = computed(() => {
   if (!props.showTooltip) return null
-  const text = props.status === 'identity' ? 'Identity verified' : props.status === 'manual' ? 'Manually verified' : ''
-  if (!text) return null
+  const base = verificationText.value
+  if (!base) return null
+
+  // Premium badge should explicitly call out premium status.
+  const text = props.premium ? `Premium member · ${base}` : base
   // Centered under the badge, no arrow (handled by CSS).
   return { value: text, class: 'moh-tooltip', position: 'bottom' as const }
+})
+
+const ariaLabel = computed(() => {
+  const base = verificationText.value
+  if (!base) return 'Verified'
+  return props.premium ? `Premium member, ${base}` : base
 })
 
 const sizeClass = computed(() => {

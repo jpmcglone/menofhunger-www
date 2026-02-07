@@ -86,119 +86,132 @@
 
       <!-- No (valid) search query: discovery sections -->
       <template v-else>
-        <div v-if="discoverError" class="px-4">
-          <AppInlineAlert severity="warning">
-            {{ discoverError }}
-          </AppInlineAlert>
-        </div>
-
-        <!-- People to follow -->
-        <section class="space-y-3">
-          <div class="px-4 flex items-center justify-between gap-3">
-            <h2 class="text-sm font-semibold text-gray-900 dark:text-gray-50">
-              People to follow
-            </h2>
-            <Button
-              label="Refresh"
-              text
-              severity="secondary"
-              :loading="discoverLoading"
-              :disabled="discoverLoading"
-              @click="refreshDiscover"
-            />
+        <template v-if="isAuthed">
+          <div v-if="discoverError" class="px-4">
+            <AppInlineAlert severity="warning">
+              {{ discoverError }}
+            </AppInlineAlert>
           </div>
 
-          <div v-if="discoverLoading && recommendedUsers.length === 0" class="flex justify-center py-6">
-            <AppLogoLoader />
-          </div>
-
-          <AppHorizontalScroller v-else-if="recommendedUsers.length > 0" scroller-class="no-scrollbar px-4">
-            <div class="flex gap-3 pb-2">
-              <AppUserMiniCard
-                v-for="u in recommendedUsers"
-                :key="u.id"
-                :user="u"
-                @followed="removeDiscoverUser(u.id)"
-              />
-            </div>
-          </AppHorizontalScroller>
-
-          <p v-else class="px-4 text-sm moh-text-muted">
-            No recommendations yet — try searching for people.
-          </p>
-        </section>
-
-        <!-- Trending from recommended -->
-        <section class="space-y-3">
-          <h2 class="px-4 text-sm font-semibold text-gray-900 dark:text-gray-50">
-            Trending from people you might like
-          </h2>
-
-          <div v-if="discoverLoading && trendingPosts.length === 0" class="flex justify-center py-6">
-            <AppLogoLoader />
-          </div>
-
-          <div v-else-if="trendingPosts.length > 0" class="space-y-0">
-            <div class="space-y-0">
-              <AppFeedPostRow
-                v-for="p in trendingBefore"
-                :key="p.id"
-                :post="p"
+          <!-- People to follow -->
+          <section class="space-y-3">
+            <div class="px-4 flex items-center justify-between gap-3">
+              <h2 class="text-sm font-semibold text-gray-900 dark:text-gray-50">
+                People to follow
+              </h2>
+              <Button
+                label="Refresh"
+                text
+                severity="secondary"
+                :loading="discoverLoading"
+                :disabled="discoverLoading"
+                @click="refreshDiscover"
               />
             </div>
 
-            <div v-if="shouldInlineNewUsers && newestUsers.length > 0" class="px-4 py-3">
-              <div class="flex items-center justify-between gap-3">
-                <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-50">
-                  New users
-                </h3>
+            <div v-if="discoverLoading && recommendedUsers.length === 0" class="flex justify-center py-6">
+              <AppLogoLoader />
+            </div>
+
+            <AppHorizontalScroller v-else-if="recommendedUsers.length > 0" scroller-class="no-scrollbar px-4">
+              <div class="flex gap-3 pb-2">
+                <AppUserMiniCard
+                  v-for="u in recommendedUsers"
+                  :key="u.id"
+                  :user="u"
+                  @followed="removeDiscoverUser(u.id)"
+                />
               </div>
-              <AppHorizontalScroller scroller-class="no-scrollbar mt-3">
-                <div class="flex gap-3 pb-2">
-                  <AppUserMiniCard
-                    v-for="u in newestUsers"
-                    :key="u.id"
-                    :user="u"
-                    @followed="removeDiscoverUser(u.id)"
-                  />
-                </div>
-              </AppHorizontalScroller>
+            </AppHorizontalScroller>
+
+            <p v-else class="px-4 text-sm moh-text-muted">
+              No recommendations yet — try searching for people.
+            </p>
+          </section>
+
+          <!-- Trending from recommended -->
+          <section class="space-y-3">
+            <h2 class="px-4 text-sm font-semibold text-gray-900 dark:text-gray-50">
+              Trending from people you might like
+            </h2>
+
+            <div v-if="discoverLoading && trendingPosts.length === 0" class="flex justify-center py-6">
+              <AppLogoLoader />
             </div>
 
-            <div class="space-y-0">
-              <AppFeedPostRow
-                v-for="p in trendingAfter"
-                :key="p.id"
-                :post="p"
-              />
+            <div v-else-if="trendingPosts.length > 0" class="space-y-0">
+              <div class="space-y-0">
+                <AppFeedPostRow
+                  v-for="p in trendingBefore"
+                  :key="p.id"
+                  :post="p"
+                />
+              </div>
+
+              <div v-if="shouldInlineNewUsers && newestUsers.length > 0" class="px-4 py-3">
+                <div class="flex items-center justify-between gap-3">
+                  <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-50">
+                    New users
+                  </h3>
+                </div>
+                <AppHorizontalScroller scroller-class="no-scrollbar mt-3">
+                  <div class="flex gap-3 pb-2">
+                    <AppUserMiniCard
+                      v-for="u in newestUsers"
+                      :key="u.id"
+                      :user="u"
+                      @followed="removeDiscoverUser(u.id)"
+                    />
+                  </div>
+                </AppHorizontalScroller>
+              </div>
+
+              <div class="space-y-0">
+                <AppFeedPostRow
+                  v-for="p in trendingAfter"
+                  :key="p.id"
+                  :post="p"
+                />
+              </div>
+            </div>
+
+            <p v-else class="px-4 text-sm moh-text-muted">
+              No trending posts yet.
+            </p>
+          </section>
+
+          <!-- New users (standalone when we can’t inline) -->
+          <section v-if="!shouldInlineNewUsers && newestUsers.length > 0" class="space-y-3">
+            <h2 class="px-4 text-sm font-semibold text-gray-900 dark:text-gray-50">
+              New users
+            </h2>
+            <AppHorizontalScroller scroller-class="no-scrollbar px-4">
+              <div class="flex gap-3 pb-2">
+                <AppUserMiniCard
+                  v-for="u in newestUsers"
+                  :key="u.id"
+                  :user="u"
+                  @followed="removeDiscoverUser(u.id)"
+                />
+              </div>
+            </AppHorizontalScroller>
+          </section>
+
+          <p class="px-4 text-sm moh-text-muted">
+            Or type in the search bar to search.
+          </p>
+        </template>
+
+        <!-- Logged out: simple search-only Explore -->
+        <template v-else>
+          <div class="px-4">
+            <div class="rounded-xl border moh-border bg-gray-50/50 dark:bg-zinc-900/30 p-4">
+              <p class="text-sm moh-text-muted">
+                Use the search bar above to find people and posts.
+              </p>
             </div>
           </div>
-
-          <p v-else class="px-4 text-sm moh-text-muted">
-            No trending posts yet.
-          </p>
-        </section>
-
-        <!-- New users (standalone when we can’t inline) -->
-        <section v-if="!shouldInlineNewUsers && newestUsers.length > 0" class="space-y-3">
-          <h2 class="px-4 text-sm font-semibold text-gray-900 dark:text-gray-50">
-            New users
-          </h2>
-          <AppHorizontalScroller scroller-class="no-scrollbar px-4">
-            <div class="flex gap-3 pb-2">
-              <AppUserMiniCard
-                v-for="u in newestUsers"
-                :key="u.id"
-                :user="u"
-                @followed="removeDiscoverUser(u.id)"
-              />
-            </div>
-          </AppHorizontalScroller>
-        </section>
-
-        <p class="px-4 text-sm moh-text-muted">
-          Or type in the search bar to search.
-        </p>
+        </template>
       </template>
     </div>
   </div>
@@ -224,9 +237,19 @@ usePageSeo({
 })
 
 const route = useRoute()
+const router = useRouter()
 const { apiFetch } = useApiClient()
+const { isAuthed } = useAuth()
 
-const searchQuery = ref(String(route.query.q ?? '').trim())
+function normalizeQueryParam(v: unknown): string {
+  return String(v ?? '').trim()
+}
+
+function getRouteQ(): string {
+  return normalizeQueryParam(route.query.q)
+}
+
+const searchQuery = ref(getRouteQ())
 const searchQueryTrimmed = computed(() => searchQuery.value.trim())
 const isSearching = computed(() => searchQueryTrimmed.value.length >= 2)
 
@@ -239,7 +262,8 @@ const {
   refresh: refreshDiscover,
   removeUserById: removeDiscoverUser,
 } = useExploreRecommendations({
-  enabled: computed(() => !isSearching.value),
+  // Logged out Explore should not attempt any discovery calls.
+  enabled: computed(() => isAuthed.value && !isSearching.value),
 })
 
 const TRENDING_INLINE_NEW_USERS_AFTER = 6
@@ -247,16 +271,37 @@ const shouldInlineNewUsers = computed(() => trendingPosts.value.length >= 4)
 const trendingBefore = computed(() => trendingPosts.value.slice(0, TRENDING_INLINE_NEW_USERS_AFTER))
 const trendingAfter = computed(() => trendingPosts.value.slice(TRENDING_INLINE_NEW_USERS_AFTER))
 
-watch(
-  () => route.query.q,
-  (q) => {
-    searchQuery.value = String(q ?? '').trim()
-  },
-  { immediate: true },
-)
-
 const DEBOUNCE_MS = 400
 let debounceTimer: ReturnType<typeof setTimeout> | null = null
+let isUpdatingRouteFromInput = false
+
+function clearSearchResults() {
+  users.value = []
+  posts.value = []
+  nextUserCursor.value = null
+  nextPostCursor.value = null
+  searchError.value = null
+  searchedOnce.value = false
+}
+
+function setRouteQueryQ(nextQ: string) {
+  const trimmed = nextQ.trim()
+  const current = getRouteQ()
+  if (trimmed === current) return
+
+  const nextQuery: Record<string, any> = { ...route.query }
+  if (trimmed) nextQuery.q = trimmed
+  else delete nextQuery.q
+
+  isUpdatingRouteFromInput = true
+  Promise.resolve(router.replace({ path: route.path, query: nextQuery }))
+    .catch(() => {
+      // ignore: route updates should never break typing
+    })
+    .finally(() => {
+      isUpdatingRouteFromInput = false
+    })
+}
 
 function flushDebounceAndSearch() {
   if (debounceTimer != null) {
@@ -265,15 +310,10 @@ function flushDebounceAndSearch() {
   }
   const q = searchQueryTrimmed.value
   if (q.length >= 2) {
-    void navigateTo({ path: '/explore', query: { q } })
+    setRouteQueryQ(q)
   } else {
-    void navigateTo({ path: '/explore', query: q ? { q } : {} })
-    users.value = []
-    posts.value = []
-    nextUserCursor.value = null
-    nextPostCursor.value = null
-    searchError.value = null
-    searchedOnce.value = false
+    setRouteQueryQ(q)
+    clearSearchResults()
   }
 }
 
@@ -284,16 +324,11 @@ function scheduleDebouncedSearch() {
   if (trimmed.length >= 2) {
     debounceTimer = setTimeout(() => {
       debounceTimer = null
-      void navigateTo({ path: '/explore', query: { q: trimmed } })
+      setRouteQueryQ(trimmed)
     }, DEBOUNCE_MS)
   } else {
-    void navigateTo({ path: '/explore', query: trimmed ? { q: trimmed } : {} })
-    users.value = []
-    posts.value = []
-    nextUserCursor.value = null
-    nextPostCursor.value = null
-    searchError.value = null
-    searchedOnce.value = false
+    setRouteQueryQ(trimmed)
+    clearSearchResults()
   }
 }
 
@@ -381,17 +416,17 @@ async function loadMore() {
 watch(
   () => route.query.q,
   (q) => {
-    searchQuery.value = String(q ?? '').trim()
-    const trimmed = String(q ?? '').trim()
+    const trimmed = normalizeQueryParam(q)
+    // Only sync route -> input when the user didn't just type it.
+    // This keeps the input stable while results update under it.
+    if (!isUpdatingRouteFromInput && trimmed !== searchQueryTrimmed.value) {
+      searchQuery.value = trimmed
+    }
+
     if (trimmed.length >= 2) {
       void fetchPage({ append: false })
     } else {
-      users.value = []
-      posts.value = []
-      nextUserCursor.value = null
-      nextPostCursor.value = null
-      searchError.value = null
-      searchedOnce.value = false
+      clearSearchResults()
     }
   },
   { immediate: true },
@@ -399,7 +434,7 @@ watch(
 
 watch(searchQuery, () => {
   const trimmed = searchQueryTrimmed.value
-  const fromRoute = String(route.query.q ?? '').trim()
+  const fromRoute = getRouteQ()
   if (trimmed !== fromRoute) scheduleDebouncedSearch()
 })
 
