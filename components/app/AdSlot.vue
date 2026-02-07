@@ -58,6 +58,15 @@ const isConfigured = computed(() => Boolean(adsenseEnabled.value && adsenseClien
 const insEl = ref<HTMLElement | null>(null)
 const showPlaceholder = ref(true)
 
+let pollTimeoutId: ReturnType<typeof setTimeout> | null = null
+let pollDisposed = false
+function clearPollTimeout() {
+  if (pollTimeoutId != null) {
+    clearTimeout(pollTimeoutId)
+    pollTimeoutId = null
+  }
+}
+
 function ensureAdsenseScriptLoaded(client: string): Promise<void> {
   if (!import.meta.client) return Promise.resolve()
   const w = window as unknown as { adsbygoogle?: unknown[] }
@@ -91,6 +100,9 @@ async function requestAd() {
   if (!shouldShowAd.value) return
   if (!isConfigured.value) return
 
+  // Ensure no prior poll chain continues after re-render / prop changes.
+  clearPollTimeout()
+
   try {
     await ensureAdsenseScriptLoaded(adsenseClient.value)
   } catch {
@@ -112,12 +124,14 @@ async function requestAd() {
   const start = Date.now()
   const poll = () => {
     if (!import.meta.client) return
+    if (pollDisposed) return
     if (looksFilled(insEl.value)) {
       showPlaceholder.value = false
       return
     }
     if (Date.now() - start > 10_000) return
-    setTimeout(poll, 250)
+    clearPollTimeout()
+    pollTimeoutId = setTimeout(poll, 250)
   }
   poll()
 }
@@ -132,6 +146,11 @@ watch([shouldShowAd, slot, adsenseClient, adsenseEnabled], () => {
   showPlaceholder.value = true
   if (!import.meta.client) return
   void requestAd()
+})
+
+onBeforeUnmount(() => {
+  pollDisposed = true
+  clearPollTimeout()
 })
 </script>
 

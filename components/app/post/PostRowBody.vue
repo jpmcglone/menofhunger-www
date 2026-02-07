@@ -15,6 +15,7 @@
         v-else-if="seg.mentionUsername"
         :to="`/u/${encodeURIComponent(seg.mentionUsername)}`"
         :class="mentionLinkClass(seg.mentionTier)"
+        :style="mentionTierToStyle(seg.mentionTier)"
         @click.stop
       >
         {{ seg.text }}
@@ -28,6 +29,8 @@
 import LinkifyIt from 'linkify-it'
 import { siteConfig } from '~/config/site'
 import { extractLinksFromText } from '~/utils/link-utils'
+import { splitTextByMentionsDisplay } from '~/utils/mention-autocomplete'
+import { mentionTierToStyle } from '~/utils/mention-tier-style'
 
 type MentionTier = 'normal' | 'verified' | 'premium'
 type TextSegment = { text: string; href?: string; mentionUsername?: string; mentionTier?: MentionTier }
@@ -40,10 +43,9 @@ const props = defineProps<{
 }>()
 
 function mentionLinkClass(tier: MentionTier | undefined): string {
-  const base = 'font-bold no-underline hover:underline'
-  if (tier === 'premium') return `${base} text-[var(--moh-premium)]`
-  if (tier === 'verified') return `${base} text-[var(--moh-verified)]`
-  return base
+  // Keep Tailwind classes static-ish; use inline style for tier color
+  // so Tailwind doesn't need to detect dynamic class strings.
+  return 'font-semibold no-underline hover:underline'
 }
 
 const linkify = new LinkifyIt()
@@ -166,25 +168,14 @@ const mentionByUsernameLower = computed(() => {
 
 function splitByMentions(text: string): TextSegment[] {
   const mentionMap = mentionByUsernameLower.value
-  if (!mentionMap.size) return [{ text }]
-  const out: TextSegment[] = []
-  const re = /@([a-zA-Z0-9_]{1,120})/g
-  let lastEnd = 0
-  let m: RegExpExecArray | null
-  while ((m = re.exec(text)) !== null) {
-    const username = m[1]
-    if (!username) continue
-    if (lastEnd < m.index) out.push({ text: text.slice(lastEnd, m.index) })
-    const entry = mentionMap.get(username.toLowerCase())
-    if (entry) {
-      out.push({ text: m[0], mentionUsername: entry.username, mentionTier: entry.tier })
-    } else {
-      out.push({ text: m[0] })
-    }
-    lastEnd = m.index + m[0].length
-  }
-  if (lastEnd < text.length) out.push({ text: text.slice(lastEnd) })
-  return out.length ? out : [{ text }]
+  const base = splitTextByMentionsDisplay(text)
+  return base.map((seg) => {
+    const m = seg.mention
+    if (!m) return { text: seg.text }
+    const entry = mentionMap.get(m.usernameLower)
+    if (!entry) return { text: seg.text }
+    return { text: seg.text, mentionUsername: entry.username, mentionTier: entry.tier }
+  })
 }
 
 const displayBodySegments = computed<TextSegment[]>(() => {

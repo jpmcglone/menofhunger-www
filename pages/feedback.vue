@@ -28,13 +28,21 @@
       </AppFormField>
 
       <AppFormField label="Details">
-        <Textarea
-          v-model="details"
-          autoResize
-          rows="8"
-          class="w-full"
-          placeholder="What happened? What did you expect? Steps to reproduce?"
-        />
+        <div ref="detailsTextareaWrapEl" class="relative">
+          <Textarea
+            v-model="details"
+            autoResize
+            rows="8"
+            class="w-full"
+            placeholder="What happened? What did you expect? Steps to reproduce?"
+          />
+          <AppMentionAutocompletePopover
+            v-bind="detailsMention.popoverProps"
+            @select="detailsMention.onSelect"
+            @highlight="detailsMention.onHighlight"
+            @requestClose="detailsMention.onRequestClose"
+          />
+        </div>
       </AppFormField>
 
       <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between pt-2 border-t moh-border">
@@ -79,6 +87,7 @@ usePageSeo({
 
 import { useFormSubmit } from '~/composables/useFormSubmit'
 import type { FeedbackItem, FeedbackCategory } from '~/types/api'
+import { useMentionAutocomplete } from '~/composables/useMentionAutocomplete'
 
 const categories: Array<{ label: string; value: FeedbackCategory }> = [
   { label: 'Bug', value: 'bug' },
@@ -91,6 +100,24 @@ const category = ref<FeedbackCategory>('feature')
 const email = ref('')
 const subject = ref('')
 const details = ref('')
+
+const detailsTextareaWrapEl = ref<HTMLElement | null>(null)
+const detailsTextareaEl = ref<HTMLTextAreaElement | null>(null)
+const detailsMention = useMentionAutocomplete({
+  el: detailsTextareaEl,
+  getText: () => details.value,
+  setText: (next) => {
+    details.value = next
+  },
+  debounceMs: 200,
+  limit: 10,
+})
+
+onMounted(() => {
+  void nextTick().then(() => {
+    detailsTextareaEl.value = (detailsTextareaWrapEl.value?.querySelector('textarea') as HTMLTextAreaElement | null) ?? null
+  })
+})
 
 const { apiFetchData } = useApiClient()
 const { push: pushToast } = useAppToast()

@@ -131,7 +131,7 @@
         </button>
       </div>
 
-      <div v-if="profile?.bio" class="mt-4 whitespace-pre-wrap text-gray-800 dark:text-gray-200">
+      <div v-if="profile?.bio" class="mt-4 whitespace-pre-wrap break-words text-gray-800 dark:text-gray-200">
         {{ profile.bio }}
       </div>
       <div v-else class="mt-4 text-sm text-gray-500 dark:text-gray-400">

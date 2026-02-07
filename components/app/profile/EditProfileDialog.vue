@@ -356,6 +356,7 @@ watch(
     clearBannerCropState()
     clearPendingAvatar()
     clearPendingBanner()
+
   }
 )
 

@@ -149,7 +149,15 @@
         </div>
         <div class="space-y-2">
           <label class="text-sm font-medium text-gray-700 dark:text-gray-200">Admin note</label>
-          <Textarea v-model="editAdminNote" class="w-full" rows="3" autoResize placeholder="Optional internal note…" />
+          <div ref="adminNoteTextareaWrapEl" class="relative">
+            <Textarea v-model="editAdminNote" class="w-full" rows="3" autoResize placeholder="Optional internal note…" />
+            <AppMentionAutocompletePopover
+              v-bind="adminNoteMention.popoverProps"
+              @select="adminNoteMention.onSelect"
+              @highlight="adminNoteMention.onHighlight"
+              @requestClose="adminNoteMention.onRequestClose"
+            />
+          </div>
         </div>
       </div>
 
@@ -184,6 +192,7 @@ import { getApiErrorMessage } from '~/utils/api-error'
 import { formatDateTime } from '~/utils/time-format'
 import { useFormSubmit } from '~/composables/useFormSubmit'
 import type { AdminFeedbackItem, AdminFeedbackListData, FeedbackCategory, FeedbackStatus } from '~/types/api'
+import { useMentionAutocomplete } from '~/composables/useMentionAutocomplete'
 
 const statusOptions = [
   { label: 'All', value: 'all' as const },
@@ -214,6 +223,18 @@ const selected = ref<AdminFeedbackItem | null>(null)
 const editStatus = ref<FeedbackStatus>('new')
 const editAdminNote = ref('')
 const detailsError = ref<string | null>(null)
+
+const adminNoteTextareaWrapEl = ref<HTMLElement | null>(null)
+const adminNoteTextareaEl = ref<HTMLTextAreaElement | null>(null)
+const adminNoteMention = useMentionAutocomplete({
+  el: adminNoteTextareaEl,
+  getText: () => editAdminNote.value,
+  setText: (next) => {
+    editAdminNote.value = next
+  },
+  debounceMs: 200,
+  limit: 10,
+})
 
 const canSave = computed(() => {
   if (!selected.value) return false
@@ -289,6 +310,9 @@ function openDetails(item: AdminFeedbackItem) {
   editAdminNote.value = item.adminNote ?? ''
   detailsError.value = null
   detailsOpen.value = true
+  void nextTick().then(() => {
+    adminNoteTextareaEl.value = (adminNoteTextareaWrapEl.value?.querySelector('textarea') as HTMLTextAreaElement | null) ?? null
+  })
 }
 
 const { submit: saveDetails, submitting: saving } = useFormSubmit(

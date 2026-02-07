@@ -80,21 +80,41 @@
           @dragleave="onComposerAreaDragLeave"
           @drop.prevent="onComposerDrop"
         >
-          <!-- Textarea wrapper so the empty-state overlay only hugs the field -->
+          <!-- Textarea wrapper: mirror shows @mentions styled; textarea on top with transparent text -->
           <div class="relative">
+            <div
+              ref="composerMirrorEl"
+              class="pointer-events-none absolute inset-0 overflow-x-hidden overflow-y-auto rounded-xl border border-transparent px-3 py-2 text-[16px] leading-6 whitespace-pre-wrap break-words text-gray-900 dark:text-gray-50"
+              :style="composerTextareaVars"
+              aria-hidden="true"
+            >
+              <template v-for="(seg, i) in composerBodySegments" :key="i">
+                <!-- IMPORTANT: avoid font-weight changes in mirror; it desyncs caret alignment vs textarea -->
+                <span v-if="seg.type === 'mention'" :style="mentionTierToStyle(seg.tier)">{{ seg.value }}</span>
+                <span v-else>{{ seg.value }}</span>
+              </template>
+            </div>
             <textarea
               ref="composerTextareaEl"
               v-model="draft"
               rows="3"
               enterkeyhint="enter"
               inputmode="text"
-              class="moh-composer-textarea w-full resize-none overflow-hidden rounded-xl border border-gray-300 bg-transparent px-3 py-2 text-[16px] leading-6 text-gray-900 placeholder:text-gray-500 focus:outline-none dark:border-zinc-700 dark:text-gray-50 dark:placeholder:text-zinc-500"
+              class="moh-composer-textarea relative z-10 w-full resize-none overflow-hidden rounded-xl border border-gray-300 bg-transparent px-3 py-2 text-[16px] leading-6 text-transparent caret-gray-900 placeholder:text-gray-500 focus:outline-none dark:border-zinc-700 dark:caret-gray-50 dark:placeholder:text-zinc-500"
               :style="composerTextareaVars"
               :placeholder="composerPlaceholder"
               :maxlength="postMaxLen"
-              @input="resizeComposerTextarea"
+              @input="onComposerInput"
               @keydown="onComposerKeydown"
               @paste="onComposerPaste"
+              @scroll="syncComposerMirrorScroll"
+            />
+
+            <AppMentionAutocompletePopover
+              v-bind="mention.popoverProps"
+              @select="mention.onSelect"
+              @highlight="mention.onHighlight"
+              @requestClose="mention.onRequestClose"
             />
 
             <!-- Drag overlay (no media): hug just the textarea, less bottom inset to avoid extra padding -->
@@ -277,6 +297,9 @@ import { PRIMARY_ONLYME_PURPLE, PRIMARY_PREMIUM_ORANGE, PRIMARY_TEXT_DARK, PRIMA
 import { tinyTooltip } from '~/utils/tiny-tooltip'
 import { visibilityTagClasses, visibilityTagLabel } from '~/utils/post-visibility'
 import { useFormSubmit } from '~/composables/useFormSubmit'
+import { useMentionAutocomplete } from '~/composables/useMentionAutocomplete'
+import { segmentComposerBodyWithMentionTiers } from '~/utils/mention-composer-segments'
+import { mentionTierToStyle } from '~/utils/mention-tier-style'
 
 const emit = defineEmits<{
   (e: 'posted', payload: { id: string; visibility: PostVisibility; post?: import('~/types/api').FeedPost }): void
@@ -321,7 +344,37 @@ const myProfilePath = computed(() => {
 })
 const draft = ref('')
 const composerTextareaEl = ref<HTMLTextAreaElement | null>(null)
+const composerMirrorEl = ref<HTMLDivElement | null>(null)
 const initialTextApplied = ref(false)
+
+const mention = useMentionAutocomplete({
+  el: composerTextareaEl,
+  getText: () => draft.value,
+  setText: (next) => {
+    draft.value = next
+    void nextTick().then(() => resizeComposerTextarea())
+  },
+  contextUsernames: computed(() => props.replyTo?.mentionUsernames ?? []),
+  debounceMs: 200,
+  limit: 10,
+})
+
+/** Segments with tier for mirror: use highlightedUser tier while arrowing, mentionTiers after selection. */
+const composerBodySegments = computed(() => {
+  const highlightedUser = mention.highlightedUser.value
+  return segmentComposerBodyWithMentionTiers({
+    text: draft.value ?? '',
+    mentionTiers: mention.mentionTiers.value,
+    activeAtIndex: mention.active.value?.atIndex ?? null,
+    highlightedTier: highlightedUser ? tierFromMentionUser(highlightedUser) : null,
+  })
+})
+
+function syncComposerMirrorScroll() {
+  const ta = composerTextareaEl.value
+  const mirror = composerMirrorEl.value
+  if (ta && mirror) mirror.scrollTop = ta.scrollTop
+}
 
 function insertEmoji(emoji: string) {
   const e = (emoji ?? '').trim()
@@ -364,6 +417,12 @@ function resizeComposerTextarea() {
   // Auto-grow: reset to auto, then fit content height.
   el.style.height = 'auto'
   el.style.height = `${Math.max(el.scrollHeight, 0)}px`
+}
+
+function onComposerInput() {
+  // Keep height in sync and recompute mention suggestions based on caret.
+  resizeComposerTextarea()
+  mention.recompute()
 }
 
 const {

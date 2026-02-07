@@ -157,18 +157,26 @@ function onKeydown(e: KeyboardEvent) {
 
 const scrollOpts = { passive: true, capture: true } as const
 const pointerOpts = { capture: true } as const
-watch(open, (v) => {
+watch(open, (v, _old, onCleanup) => {
   if (!import.meta.client) return
+
+  const teardown = () => {
+    window.removeEventListener('resize', updatePanelPosition)
+    window.removeEventListener('scroll', updatePanelPosition, scrollOpts)
+    document.removeEventListener('pointerdown', onDocPointerDown, pointerOpts)
+    document.removeEventListener('keydown', onKeydown, pointerOpts)
+  }
+
+  // Ensure cleanup runs on unmount even if `open` stays true.
+  onCleanup(() => teardown())
+
   if (v) {
     window.addEventListener('resize', updatePanelPosition, { passive: true })
     window.addEventListener('scroll', updatePanelPosition, scrollOpts)
     document.addEventListener('pointerdown', onDocPointerDown, pointerOpts)
     document.addEventListener('keydown', onKeydown, pointerOpts)
   } else {
-    window.removeEventListener('resize', updatePanelPosition)
-    window.removeEventListener('scroll', updatePanelPosition, scrollOpts)
-    document.removeEventListener('pointerdown', onDocPointerDown, pointerOpts)
-    document.removeEventListener('keydown', onKeydown, pointerOpts)
+    teardown()
   }
 })
 

@@ -25,13 +25,21 @@
 
       <div class="space-y-2">
         <label class="text-sm font-medium text-gray-700 dark:text-gray-200">Details (optional)</label>
-        <Textarea
-          v-model="details"
-          class="w-full"
-          rows="4"
-          autoResize
-          placeholder="Add context (what happened, why it’s harmful, etc.)"
-        />
+        <div ref="detailsTextareaWrapEl" class="relative">
+          <Textarea
+            v-model="details"
+            class="w-full"
+            rows="4"
+            autoResize
+            placeholder="Add context (what happened, why it’s harmful, etc.)"
+          />
+          <AppMentionAutocompletePopover
+            v-bind="detailsMention.popoverProps"
+            @select="detailsMention.onSelect"
+            @highlight="detailsMention.onHighlight"
+            @requestClose="detailsMention.onRequestClose"
+          />
+        </div>
       </div>
 
       <AppInlineAlert v-if="error" severity="danger">
@@ -55,6 +63,7 @@
 <script setup lang="ts">
 import { getApiErrorMessage } from '~/utils/api-error'
 import type { ReportItem, ReportReason, ReportTargetType } from '~/types/api'
+import { useMentionAutocomplete } from '~/composables/useMentionAutocomplete'
 
 const props = withDefaults(
   defineProps<{
@@ -98,6 +107,18 @@ const details = ref('')
 const error = ref<string | null>(null)
 const submitting = ref(false)
 
+const detailsTextareaWrapEl = ref<HTMLElement | null>(null)
+const detailsTextareaEl = ref<HTMLTextAreaElement | null>(null)
+const detailsMention = useMentionAutocomplete({
+  el: detailsTextareaEl,
+  getText: () => details.value,
+  setText: (next) => {
+    details.value = next
+  },
+  debounceMs: 200,
+  limit: 10,
+})
+
 const canSubmit = computed(() => Boolean(reason.value))
 
 const toast = useAppToast()
@@ -112,6 +133,9 @@ watch(
     details.value = ''
     error.value = null
     submitting.value = false
+    void nextTick().then(() => {
+      detailsTextareaEl.value = (detailsTextareaWrapEl.value?.querySelector('textarea') as HTMLTextAreaElement | null) ?? null
+    })
   }
 )
 

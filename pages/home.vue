@@ -143,6 +143,7 @@ onMounted(() => {
 })
 
 const newlyPostedVideoPostId = ref<string | null>(null)
+let newlyPostedVideoPostTimer: ReturnType<typeof setTimeout> | null = null
 const {
   feedScope,
   feedFilter,
@@ -195,6 +196,10 @@ watch(
 onBeforeUnmount(() => {
   loadMoreObs?.disconnect()
   loadMoreObs = null
+  if (newlyPostedVideoPostTimer) {
+    clearTimeout(newlyPostedVideoPostTimer)
+    newlyPostedVideoPostTimer = null
+  }
 })
 
 const showMainLoader = computed(() => loading.value && !posts.value.length)
@@ -231,8 +236,10 @@ async function createPostViaFeed(
     if (postBodyHasVideoEmbed(created.body ?? '', Boolean(created.media?.length))) {
       newlyPostedVideoPostId.value = created.id
       if (import.meta.client) {
-        setTimeout(() => {
+        if (newlyPostedVideoPostTimer) clearTimeout(newlyPostedVideoPostTimer)
+        newlyPostedVideoPostTimer = setTimeout(() => {
           newlyPostedVideoPostId.value = null
+          newlyPostedVideoPostTimer = null
         }, 800)
       }
     }

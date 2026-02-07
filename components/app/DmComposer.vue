@@ -10,7 +10,7 @@
 
     <!-- Text pill -->
     <div
-      class="relative flex w-full items-center overflow-hidden"
+      class="relative flex w-full items-stretch overflow-hidden"
       :class="outlineClass"
     >
       <textarea
@@ -22,6 +22,12 @@
         class="dm-composer-input min-h-[44px] w-full resize-none border-0 bg-transparent py-3 pl-4 pr-12 text-[16px] text-[var(--moh-text)] placeholder:text-[var(--moh-text-muted)] focus:outline-none focus:ring-0 disabled:opacity-60"
         @input="onInput"
         @keydown="onKeydown"
+      />
+      <AppMentionAutocompletePopover
+        v-bind="mention.popoverProps"
+        @select="mention.onSelect"
+        @highlight="mention.onHighlight"
+        @requestClose="mention.onRequestClose"
       />
       <Transition name="moh-fade">
         <button
@@ -43,6 +49,7 @@
 
 <script setup lang="ts">
 import type { FollowListUser } from '~/types/api'
+import { useMentionAutocomplete } from '~/composables/useMentionAutocomplete'
 
 const props = withDefaults(
   defineProps<{
@@ -68,6 +75,14 @@ const emit = defineEmits<{
 }>()
 
 const textareaEl = ref<HTMLTextAreaElement | null>(null)
+
+const mention = useMentionAutocomplete({
+  el: textareaEl,
+  getText: () => props.modelValue ?? '',
+  setText: (next) => emit('update:modelValue', next),
+  debounceMs: 200,
+  limit: 10,
+})
 
 const hasText = computed(() => props.modelValue.trim().length > 0)
 
@@ -142,9 +157,13 @@ function onInput(e: Event) {
   const val = target.value
   emit('update:modelValue', val)
   nextTick(resizeTextarea)
+  mention.recompute()
 }
 
 function onKeydown(e: KeyboardEvent) {
+  // Mention autocomplete binds keydown directly on the textarea.
+  // If it already handled this key, don't also send the message.
+  if (e.defaultPrevented) return
   if (e.key !== 'Enter') return
   if (e.shiftKey) return
   e.preventDefault()
