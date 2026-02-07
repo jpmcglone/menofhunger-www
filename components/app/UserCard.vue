@@ -22,7 +22,7 @@
             <div class="min-w-0">
               <div class="flex items-center gap-2 min-w-0">
                 <div class="font-semibold truncate">{{ displayName }}</div>
-                <AppVerifiedBadge :status="user?.verifiedStatus" :premium="user?.premium" />
+                <AppVerifiedBadge :status="user?.verifiedStatus" :premium="user?.premium" :premium-plus="user?.premiumPlus" />
               </div>
               <div class="text-sm text-gray-500 dark:text-gray-400 truncate">{{ handle }}</div>
             </div>
@@ -54,7 +54,7 @@
             <div class="min-w-0">
               <div class="flex items-center gap-2 min-w-0">
                 <div class="font-semibold truncate">{{ displayName }}</div>
-                <AppVerifiedBadge :status="user?.verifiedStatus" :premium="user?.premium" />
+                <AppVerifiedBadge :status="user?.verifiedStatus" :premium="user?.premium" :premium-plus="user?.premiumPlus" />
               </div>
               <div class="text-sm text-gray-500 dark:text-gray-400 truncate">{{ handle }}</div>
             </div>

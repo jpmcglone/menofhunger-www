@@ -10,7 +10,7 @@ type NotificationsListResponse = {
  * - Unseen = deliveredAt === null (user has not opened the notifications page since it arrived)
  * - Unread = readAt === null (user has not clicked through or marked as read)
  * - New = both null (neither seen nor read)
- * Row highlight uses unseen; dot shows only for unread. When read: no dot, no highlight.
+ * Row highlight and the left bar reflect unread. When read: no bar, no highlight.
  */
 export function useNotifications() {
   const { apiFetch } = useApiClient()
@@ -126,9 +126,9 @@ export function useNotifications() {
     return actorTierIconBgClass(n)
   }
 
-  /** Row highlight when unseen (deliveredAt null) and unread (readAt null). When read: no highlight. */
+  /** Row highlight when unread. When read: no highlight. */
   function subjectTierRowClass(n: Notification): string {
-    if (n.readAt || n.deliveredAt) return ''
+    if (n.readAt) return ''
     const t = n.subjectTier ?? null
     if (t === 'premium') return 'border-l-2 border-[var(--moh-premium)] bg-[var(--moh-premium)]/5 dark:bg-[var(--moh-premium)]/10'
     if (t === 'verified') return 'border-l-2 border-[var(--moh-verified)] bg-[var(--moh-verified)]/5 dark:bg-[var(--moh-verified)]/10'

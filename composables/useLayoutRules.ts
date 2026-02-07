@@ -11,7 +11,7 @@ export function useLayoutRules(route = useRoute()) {
   const navCompactMode = computed(() => {
     // Some routes need more horizontal space in the center column.
     // Force the left nav to remain compact (even on desktop) for those routes.
-    const forced: string[] = []
+    const forced: string[] = ['/tiers']
     return forced.some((p) => route.path === p || route.path.startsWith(`${p}/`))
   })
 

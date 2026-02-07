@@ -1,17 +1,25 @@
 <template>
   <div
     :class="[
-      'flex gap-4 px-4 py-4 transition-colors',
+      'relative flex gap-4 py-4 pr-4 transition-colors',
+      notification.readAt ? 'pl-4' : 'pl-6',
+      shouldAnimate ? 'transition-all duration-150 ease-out' : '',
       subjectTierRowClass(notification),
     ]"
   >
-    <!-- Left: status dot (only when unread) + avatar with notification type icon -->
+    <!-- Unread indicator: left vertical bar -->
+    <span
+      :class="[
+        'absolute left-0 top-0 h-full w-1 origin-left transform',
+        notification.readAt ? 'scale-x-0 opacity-0' : 'scale-x-100 opacity-100',
+        shouldAnimate ? 'transition-transform transition-opacity duration-150 ease-out' : '',
+        actorTierIconBgClass(notification),
+      ]"
+      aria-hidden="true"
+    />
+
+    <!-- Left: avatar with notification type icon -->
     <div class="relative flex shrink-0 items-start">
-      <span
-        v-if="!notification.readAt"
-        class="absolute -left-1 top-3 h-2 w-2 rounded-full bg-blue-500"
-        aria-hidden="true"
-      />
       <div class="relative shrink-0" @click.stop>
         <NuxtLink
           v-if="notification.actor?.id"
@@ -122,6 +130,7 @@ const {
   actorDisplay,
   actorTierClass,
   notificationTypeIconBgClass,
+  actorTierIconBgClass,
   subjectPostVisibilityTextClass,
   subjectTierRowClass,
   titleSuffix,
@@ -129,6 +138,14 @@ const {
   notificationIcon,
   formatWhen,
 } = useNotifications()
+
+const shouldAnimate = ref(false)
+
+onMounted(() => {
+  requestAnimationFrame(() => {
+    shouldAnimate.value = true
+  })
+})
 
 defineProps<{
   notification: Notification

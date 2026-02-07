@@ -59,7 +59,7 @@
             <div v-else class="min-w-0 font-bold text-gray-900 dark:text-gray-50 truncate">
               {{ displayName }}
             </div>
-            <AppVerifiedBadge :status="user.verifiedStatus" :premium="user.premium" />
+            <AppVerifiedBadge :status="user.verifiedStatus" :premium="user.premium" :premium-plus="user.premiumPlus" />
           </div>
 
           <NuxtLink

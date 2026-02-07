@@ -30,6 +30,7 @@
         <NuxtLink
           v-if="rowHref(n)"
           :to="rowHref(n)!"
+          :prefetch="false"
           class="block w-full text-left hover:bg-gray-50 dark:hover:bg-zinc-900 cursor-pointer"
         >
           <AppNotificationRow :notification="n" />
@@ -139,15 +140,11 @@ async function loadMore() {
 onMounted(async () => {
   await markDelivered()
   setNotificationUndeliveredCount(0)
-  const pagination = await fetchList()
-  if (typeof pagination?.undeliveredCount === 'number') {
-    setNotificationUndeliveredCount(pagination.undeliveredCount)
-  }
-  await notifBadge.fetchUnreadCount?.()
+  await fetchList()
 })
 
 onUnmounted(() => {
-  notifBadge.fetchUnreadCount?.()
+  notifBadge.fetchUndeliveredCount?.()
 })
 
 // Refetch list when socket says new notifications arrived (count increased).
@@ -155,10 +152,9 @@ onUnmounted(() => {
 const { notificationUndeliveredCount } = usePresence()
 watch(notificationUndeliveredCount, async (newVal, oldVal) => {
   if (typeof newVal === 'number' && typeof oldVal === 'number' && newVal > oldVal) {
-    const pagination = await fetchList({ forceRefresh: true })
-    if (typeof pagination?.undeliveredCount === 'number') {
-      setNotificationUndeliveredCount(pagination.undeliveredCount)
-    }
+    await markDelivered()
+    setNotificationUndeliveredCount(0)
+    await fetchList({ forceRefresh: true })
   }
 })
 </script>

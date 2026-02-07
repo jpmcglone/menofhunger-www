@@ -33,9 +33,18 @@
           class="inline-flex shrink-0 items-center"
           aria-label="View profile (verified badge)"
         >
-          <AppVerifiedBadge :status="post.author?.verifiedStatus ?? 'none'" :premium="post.author?.premium ?? false" />
+          <AppVerifiedBadge
+            :status="post.author?.verifiedStatus ?? 'none'"
+            :premium="post.author?.premium ?? false"
+            :premium-plus="post.author?.premiumPlus ?? false"
+          />
         </NuxtLink>
-        <AppVerifiedBadge v-else :status="post.author?.verifiedStatus ?? 'none'" :premium="post.author?.premium ?? false" />
+        <AppVerifiedBadge
+          v-else
+          :status="post.author?.verifiedStatus ?? 'none'"
+          :premium="post.author?.premium ?? false"
+          :premium-plus="post.author?.premiumPlus ?? false"
+        />
         <NuxtLink
           v-if="authorProfilePath"
           :to="authorProfilePath"

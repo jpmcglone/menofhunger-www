@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div class="-mt-4">
     <!-- Full-bleed profile header (cancel app layout padding) -->
     <div class="relative">
       <div class="group relative aspect-[3/1] w-full bg-gray-200 dark:bg-zinc-900">
@@ -75,7 +75,11 @@
             <div class="text-2xl font-bold leading-none text-gray-900 dark:text-gray-50 truncate">
               {{ profileName }}
             </div>
-            <AppVerifiedBadge :status="profile?.verifiedStatus" :premium="profile?.premium" />
+            <AppVerifiedBadge
+              :status="profile?.verifiedStatus"
+              :premium="profile?.premium"
+              :premium-plus="profile?.premiumPlus"
+            />
           </div>
           <div class="mt-1 text-sm text-gray-500 dark:text-gray-400 flex items-center gap-2">
             <div class="truncate">

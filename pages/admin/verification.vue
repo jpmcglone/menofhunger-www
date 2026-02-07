@@ -74,7 +74,11 @@
                   {{ item.user.name || item.user.username || 'User' }}
                 </div>
                 <Tag :value="statusLabel(item.status)" :severity="statusSeverity(item.status)" class="!text-xs" />
-                <AppVerifiedBadge :status="item.user.verifiedStatus" :premium="Boolean(item.user.premium)" />
+                <AppVerifiedBadge
+                  :status="item.user.verifiedStatus"
+                  :premium="Boolean(item.user.premium)"
+                  :premium-plus="Boolean(item.user.premiumPlus)"
+                />
               </div>
 
               <div class="text-sm truncate">

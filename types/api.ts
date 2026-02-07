@@ -80,6 +80,7 @@ export type PostAuthor = {
   username: string | null
   name: string | null
   premium: boolean
+  premiumPlus: boolean
   verifiedStatus: 'none' | 'identity' | 'manual'
   avatarUrl: string | null
 }
@@ -89,6 +90,7 @@ export type PostMention = {
   username: string
   verifiedStatus?: 'none' | 'identity' | 'manual'
   premium?: boolean
+  premiumPlus?: boolean
 }
 
 /** Public profile payload from GET /users/:username */
@@ -98,6 +100,7 @@ export type PublicProfile = {
   name: string | null
   bio: string | null
   premium: boolean
+  premiumPlus: boolean
   verifiedStatus: 'none' | 'identity' | 'manual'
   avatarUrl: string | null
   bannerUrl: string | null
@@ -112,6 +115,7 @@ export type UserPreview = {
   name: string | null
   bio: string | null
   premium: boolean
+  premiumPlus: boolean
   verifiedStatus: 'none' | 'identity' | 'manual'
   avatarUrl: string | null
   bannerUrl: string | null
@@ -344,6 +348,7 @@ export type AdminVerificationUser = {
   name: string | null
   siteAdmin: boolean
   premium: boolean
+  premiumPlus: boolean
   verifiedStatus: 'none' | 'identity' | 'manual'
   verifiedAt: string | null
   unverifiedAt: string | null
@@ -391,6 +396,7 @@ export type AdminImageReviewDetailResponse = {
       username: string | null
       name: string | null
       premium: boolean
+      premiumPlus: boolean
       verifiedStatus: 'none' | 'identity' | 'manual'
     }>
   }
@@ -438,6 +444,7 @@ export type FollowListUser = {
   username: string | null
   name: string | null
   premium: boolean
+  premiumPlus: boolean
   verifiedStatus: 'none' | 'identity' | 'manual'
   avatarUrl: string | null
   relationship: FollowRelationship
@@ -538,6 +545,7 @@ export type MessageUser = {
   username: string | null
   name: string | null
   premium: boolean
+  premiumPlus: boolean
   verifiedStatus: 'none' | 'identity' | 'manual'
   avatarUrl: string | null
 }

@@ -29,9 +29,9 @@
         class="inline-flex shrink-0 items-center"
         aria-label="View profile (verified badge)"
       >
-        <AppVerifiedBadge :status="verifiedStatus" :premium="premium" />
+        <AppVerifiedBadge :status="verifiedStatus" :premium="premium" :premium-plus="premiumPlus" />
       </NuxtLink>
-      <AppVerifiedBadge v-else class="shrink-0" :status="verifiedStatus" :premium="premium" />
+      <AppVerifiedBadge v-else class="shrink-0" :status="verifiedStatus" :premium="premium" :premium-plus="premiumPlus" />
     </div>
 
     <div class="flex min-w-0 items-baseline gap-1.5 flex-nowrap text-sm font-light text-gray-500 dark:text-gray-400">
@@ -77,6 +77,7 @@ const props = defineProps<{
   username: string
   verifiedStatus?: VerifiedStatus | null
   premium?: boolean
+  premiumPlus?: boolean
   profilePath: string | null
   postId: string
   postPermalink: string

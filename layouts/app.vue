@@ -105,10 +105,10 @@
                 />
               </div>
               <span
-                v-if="isAuthed && user?.premium && !navCompactMode"
+                v-if="isAuthed && (user?.premiumPlus || user?.premium) && !navCompactMode"
                 class="hidden xl:inline text-[10px] font-bold tracking-[0.2em] text-[var(--moh-premium)] uppercase"
               >
-                PREMIUM
+                {{ user?.premiumPlus ? 'PREMIUM+' : 'PREMIUM' }}
               </span>
               <span
                 v-else-if="isAuthed && user?.verifiedStatus && user.verifiedStatus !== 'none' && !navCompactMode"
@@ -638,6 +638,7 @@ const shouldCapMiddleColumn = computed(() => {
   if (isMessagesPage.value) return false
   if (route.path.startsWith('/admin')) return false
   if (route.path === '/radio') return false
+  if (route.path === '/tiers' || route.path.startsWith('/tiers/')) return false
   if (route.path === '/settings' || route.path.startsWith('/settings/')) return false
   return true
 })
@@ -972,7 +973,7 @@ const {
 
 const tierCtaTextClass = computed(() => {
   const u = user.value
-  if (u?.premium) return 'text-[var(--moh-premium)]'
+  if (u?.premiumPlus || u?.premium) return 'text-[var(--moh-premium)]'
   if (u?.verifiedStatus && u.verifiedStatus !== 'none') return 'text-[var(--moh-verified)]'
   return 'text-gray-700 dark:text-gray-200'
 })

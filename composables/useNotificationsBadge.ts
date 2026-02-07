@@ -1,8 +1,8 @@
-import type { GetNotificationsUnreadCountResponse } from '~/types/api'
+import type { GetNotificationsResponse, Notification } from '~/types/api'
 
 export function useNotificationsBadge() {
   const { user } = useAuth()
-  const { apiFetchData } = useApiClient()
+  const { apiFetch } = useApiClient()
   const { notificationUndeliveredCount, setNotificationUndeliveredCount, isSocketConnected } = usePresence()
 
   const count = computed(() => Math.max(0, Number(notificationUndeliveredCount.value) || 0))
@@ -21,15 +21,15 @@ export function useNotificationsBadge() {
     return 'moh-notif-badge-normal'
   })
 
-  async function fetchUnreadCount() {
+  async function fetchUndeliveredCount() {
     if (!user.value?.id) return
     try {
-      const res = await apiFetchData<GetNotificationsUnreadCountResponse['data']>(
-        '/notifications/unread-count',
-      )
-      const raw = res?.count ?? 0
-      const c = Math.max(0, Number(raw) || 0)
-      setNotificationUndeliveredCount(c)
+      const res = await apiFetch<Notification[]>('/notifications?limit=1') as {
+        data: Notification[]
+        pagination?: GetNotificationsResponse['pagination']
+      }
+      const raw = res?.pagination?.undeliveredCount ?? 0
+      setNotificationUndeliveredCount(raw)
     } catch {
       // Ignore; badge will update on next socket event or page load
     }
@@ -38,7 +38,7 @@ export function useNotificationsBadge() {
   watch(
     () => user.value?.id,
     (userId) => {
-      if (userId) fetchUnreadCount()
+      if (userId) fetchUndeliveredCount()
       else setNotificationUndeliveredCount(0)
     },
     { immediate: true },
@@ -46,17 +46,17 @@ export function useNotificationsBadge() {
 
   // Refetch when socket connects/reconnects (catches missed events)
   watch(isSocketConnected, (connected) => {
-    if (connected && user.value?.id) void fetchUnreadCount()
+    if (connected && user.value?.id) void fetchUndeliveredCount()
   })
 
   // Refetch when tab becomes visible (recovers from missed socket events)
   if (import.meta.client) {
     const onVisible = () => {
-      if (document.visibilityState === 'visible' && user.value?.id) void fetchUnreadCount()
+      if (document.visibilityState === 'visible' && user.value?.id) void fetchUndeliveredCount()
     }
     onMounted(() => document.addEventListener('visibilitychange', onVisible))
     onBeforeUnmount(() => document.removeEventListener('visibilitychange', onVisible))
   }
 
-  return { count, show, displayCount, toneClass, fetchUnreadCount }
+  return { count, show, displayCount, toneClass, fetchUndeliveredCount }
 }

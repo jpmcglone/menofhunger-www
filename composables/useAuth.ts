@@ -12,6 +12,7 @@ export type AuthUser = {
   menOnlyConfirmed?: boolean
   siteAdmin?: boolean
   premium?: boolean
+  premiumPlus?: boolean
   followVisibility?: 'all' | 'verified' | 'premium' | 'none'
   verifiedStatus?: 'none' | 'identity' | 'manual'
   verifiedAt?: string | null

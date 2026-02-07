@@ -5,6 +5,7 @@
     :username="username"
     :size-class="sizeClass"
     :bg-class="bgClass"
+    :premium-plus-glow="isPremiumPlus"
     :show-presence="showPresence"
     :presence-status="presenceStatus"
     :presence-scale="props.presenceScale"
@@ -25,6 +26,7 @@ export type UserAvatarUser = {
   avatarUrl?: string | null
   name?: string | null
   username?: string | null
+  premiumPlus?: boolean
 }
 
 const props = withDefaults(
@@ -58,6 +60,7 @@ const { getPresenceStatus } = usePresence()
 const avatarUrl = computed(() => props.user?.avatarUrl ?? null)
 const name = computed(() => props.user?.name ?? null)
 const username = computed(() => props.user?.username ?? null)
+const isPremiumPlus = computed(() => Boolean(props.user?.premiumPlus))
 const previewUsername = computed(() => (props.user?.username ?? '').trim())
 const enablePreview = computed(() => props.enablePreview !== false)
 

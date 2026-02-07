@@ -166,6 +166,31 @@ export function useMentionAutocomplete(opts: {
     recent.value = next
   }
 
+  function syncMentionTiersFromText(text: string) {
+    const usernames = extractMentionedUsernames(text)
+    if (!usernames.length) return
+    const lookup = new Map<string, MentionUser>()
+    for (const u of items.value) {
+      const un = (u.username ?? '').trim().toLowerCase()
+      if (un) lookup.set(un, u)
+    }
+    for (const u of recent.value) {
+      const un = (u.username ?? '').trim().toLowerCase()
+      if (un && !lookup.has(un)) lookup.set(un, u)
+    }
+
+    const current = mentionTiers.value
+    let next: Record<string, MentionTier> | null = null
+    for (const un of usernames) {
+      if (current[un]) continue
+      const match = lookup.get(un)
+      if (!match) continue
+      if (!next) next = { ...current }
+      next[un] = tierFromMentionUser(match)
+    }
+    if (next) mentionTiers.value = next
+  }
+
   function getBestCached(qNorm: string): MentionUser[] | null {
     const now = Date.now()
     for (let i = qNorm.length; i >= 1; i--) {
@@ -257,6 +282,7 @@ export function useMentionAutocomplete(opts: {
     setActive(next)
     if (!next) return
     scheduleFetch()
+    syncMentionTiersFromText(text)
   }
 
   function highlightNext(delta: number) {
@@ -462,6 +488,18 @@ export function useMentionAutocomplete(opts: {
     popoverProps.highlightedIndex = highlightedIndex.value
     popoverProps.anchor = anchor.value
     popoverProps.listboxId = listboxId
+  })
+
+  watch(
+    () => opts.getText(),
+    (text) => {
+      syncMentionTiersFromText(text ?? '')
+    },
+    { immediate: true },
+  )
+
+  watch([items, recent], () => {
+    syncMentionTiersFromText(opts.getText())
   })
 
   const highlightedUser = computed(() => items.value[highlightedIndex.value] ?? null)

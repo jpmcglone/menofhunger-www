@@ -3,11 +3,12 @@
     <button
       v-if="showReset"
       type="button"
-      class="inline-flex h-6 w-6 items-center justify-center rounded-full border border-gray-200 text-gray-600 transition-colors hover:bg-gray-50 hover:text-gray-900 dark:border-zinc-800 dark:text-gray-300 dark:hover:bg-zinc-900 dark:hover:text-gray-50"
+      :class="resetButtonClass"
+      :style="resetButtonStyle"
       aria-label="Reset feed filters"
       @click="onResetClick"
     >
-      <span class="text-[10px] leading-none opacity-75" aria-hidden="true">×</span>
+      <span class="inline-flex h-4 w-4 items-center justify-center text-[14px] font-bold leading-none" aria-hidden="true">×</span>
     </button>
     <span v-if="showReset" class="h-6 w-px bg-gray-200 dark:bg-zinc-800" aria-hidden="true" />
 
@@ -203,6 +204,32 @@ const filterLabel = computed(() => {
 const filterPillClass = computed(() => {
   // Color-coordinate with the selected visibility filter (subtle tint).
   return `${filterPillClasses(filter.value, false)} bg-transparent hover:bg-transparent dark:hover:bg-transparent`
+})
+
+const resetTone = computed<'normal' | 'verified' | 'premium'>(() => {
+  if (filter.value === 'verifiedOnly') return 'verified'
+  if (filter.value === 'premiumOnly') return 'premium'
+  return 'normal'
+})
+
+const resetButtonStyle = computed<Record<string, string> | undefined>(() => {
+  if (resetTone.value === 'verified') {
+    return { backgroundColor: 'var(--moh-verified)', borderColor: 'var(--moh-verified)' }
+  }
+  if (resetTone.value === 'premium') {
+    // Premium+ is also orange; use the same premium theme color.
+    return { backgroundColor: 'var(--moh-premium)', borderColor: 'var(--moh-premium)' }
+  }
+  return undefined
+})
+
+const resetButtonClass = computed(() => {
+  const base = 'inline-flex h-6 w-6 items-center justify-center rounded-full border transition-colors'
+  if (resetTone.value === 'verified' || resetTone.value === 'premium') {
+    return `${base} text-white hover:opacity-95`
+  }
+  // Normal: in dark mode, white background + black text (matches app contrast).
+  return `${base} bg-gray-50 border-gray-200 text-gray-900 hover:bg-gray-100 dark:bg-white dark:text-black dark:border-zinc-800 dark:hover:bg-gray-100`
 })
 
 function closeSortPopover() {

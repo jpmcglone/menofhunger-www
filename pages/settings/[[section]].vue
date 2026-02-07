@@ -117,7 +117,11 @@
                 <div class="rounded-xl border moh-border p-3 moh-surface space-y-2 text-sm">
                   <div class="flex items-center justify-between gap-3">
                     <div class="font-semibold text-gray-900 dark:text-gray-50">Your verification</div>
-                    <AppVerifiedBadge :status="authUser?.verifiedStatus ?? 'none'" :premium="Boolean(authUser?.premium)" />
+                    <AppVerifiedBadge
+                      :status="authUser?.verifiedStatus ?? 'none'"
+                      :premium="Boolean(authUser?.premium)"
+                      :premium-plus="Boolean(authUser?.premiumPlus)"
+                    />
                   </div>
 
                   <div class="flex items-center justify-between gap-3">

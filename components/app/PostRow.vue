@@ -76,6 +76,7 @@
             :username="post.author.username || ''"
             :verified-status="post.author.verifiedStatus"
             :premium="post.author.premium"
+            :premium-plus="post.author.premiumPlus"
             :profile-path="authorProfilePath"
             :post-id="post.id"
             :post-permalink="postPermalink"

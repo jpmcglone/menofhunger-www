@@ -18,10 +18,11 @@ const props = withDefaults(
   defineProps<{
     status?: VerifiedStatus | null
     premium?: boolean
+    premiumPlus?: boolean
     size?: Size
     showTooltip?: boolean
   }>(),
-  { size: 'sm', premium: false, showTooltip: true }
+  { size: 'sm', premium: false, premiumPlus: false, showTooltip: true }
 )
 
 // Use semantic CSS variables so the accent stays consistent across the app theme.
@@ -29,9 +30,10 @@ const badgeBlue = 'var(--moh-verified)'
 const badgeOrange = 'var(--moh-premium)'
 
 const isVerified = computed(() => Boolean(props.status && props.status !== 'none'))
+const isPremium = computed(() => Boolean(props.premium || props.premiumPlus))
 
 const badgeColor = computed(() => {
-  return isVerified.value && props.premium ? badgeOrange : badgeBlue
+  return isVerified.value && isPremium.value ? badgeOrange : badgeBlue
 })
 
 const verificationText = computed(() => {
@@ -44,7 +46,7 @@ const tooltip = computed(() => {
   if (!base) return null
 
   // Premium badge should explicitly call out premium status.
-  const text = props.premium ? `Premium member · ${base}` : base
+  const text = props.premiumPlus ? `Premium+ member · ${base}` : props.premium ? `Premium member · ${base}` : base
   // Centered under the badge, no arrow (handled by CSS).
   return { value: text, class: 'moh-tooltip', position: 'bottom' as const }
 })
@@ -52,6 +54,7 @@ const tooltip = computed(() => {
 const ariaLabel = computed(() => {
   const base = verificationText.value
   if (!base) return 'Verified'
+  if (props.premiumPlus) return `Premium+ member, ${base}`
   return props.premium ? `Premium member, ${base}` : base
 })
 

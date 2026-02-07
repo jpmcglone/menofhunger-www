@@ -67,7 +67,7 @@
                   <div class="font-semibold truncate">
                     {{ u.name || u.username }}
                   </div>
-                  <AppVerifiedBadge :status="u.verifiedStatus" :premium="u.premium" />
+                  <AppVerifiedBadge :status="u.verifiedStatus" :premium="u.premium" :premium-plus="u.premiumPlus" />
                 </div>
                 <div class="text-sm text-gray-600 dark:text-gray-300 truncate">
                   @{{ u.username }}
@@ -150,15 +150,18 @@
         </div>
 
         <div class="space-y-2">
-          <label class="text-sm font-medium text-gray-700 dark:text-gray-200">Premium</label>
+          <label class="text-sm font-medium text-gray-700 dark:text-gray-200">Membership</label>
           <Select
-            v-model="editPremium"
-            :options="premiumOptions"
+            v-model="editMembership"
+            :options="membershipOptions"
             optionLabel="label"
             optionValue="value"
             placeholder="Select…"
             class="w-full"
           />
+          <div v-if="membershipPrereqError" class="text-sm text-red-700 dark:text-red-300">
+            {{ membershipPrereqError }}
+          </div>
         </div>
 
         <div class="space-y-2">
@@ -197,9 +200,9 @@
               <Tag :value="editingUser?.siteAdmin ? 'Yes' : 'No'" :severity="editingUser?.siteAdmin ? 'success' : 'secondary'" class="!text-xs" />
             </div>
 
-            <div class="text-xs text-gray-500 dark:text-gray-400">Premium</div>
+            <div class="text-xs text-gray-500 dark:text-gray-400">Membership</div>
             <div class="text-sm text-gray-800 dark:text-gray-200">
-              <Tag :value="editingUser?.premium ? 'Yes' : 'No'" :severity="editingUser?.premium ? 'warning' : 'secondary'" class="!text-xs" />
+              <Tag :value="membershipLabel" :severity="membershipSeverity" class="!text-xs" />
             </div>
 
             <div class="text-xs text-gray-500 dark:text-gray-400">Status</div>
@@ -267,6 +270,7 @@ type AdminUser = {
   avatarUrl?: string | null
   siteAdmin: boolean
   premium: boolean
+  premiumPlus: boolean
   verifiedStatus: 'none' | 'identity' | 'manual'
   verifiedAt: string | null
   unverifiedAt: string | null
@@ -309,7 +313,8 @@ const editPhone = ref('')
 const editUsername = ref('')
 const editName = ref('')
 const editBio = ref('')
-const editPremium = ref(false)
+type MembershipTier = 'none' | 'premium' | 'premiumPlus'
+const editMembership = ref<MembershipTier>('none')
 const editVerifiedStatus = ref<AdminUser['verifiedStatus']>('none')
 
 type UsernameAvailability = 'unknown' | 'checking' | 'available' | 'taken' | 'invalid' | 'same'
@@ -355,8 +360,14 @@ async function checkUsernameAvailability(username: string) {
 }
 
 const currentUsernameLower = computed(() => (editingUser.value?.username ?? '').trim().toLowerCase())
+const membershipPrereqError = computed(() => {
+  if (editMembership.value === 'none') return null
+  if (editVerifiedStatus.value === 'none') return 'User must be verified before enabling Premium or Premium+.'
+  return null
+})
 const canSave = computed(() => {
   if (!editingUser.value) return false
+  if (membershipPrereqError.value) return false
   const desired = editUsername.value.trim()
   if (!desired) return true // clearing is allowed
   const desiredLower = desired.toLowerCase()
@@ -400,10 +411,27 @@ const verifiedOptions = [
   { label: 'Manually verified', value: 'manual' as const },
 ]
 
-const premiumOptions = [
-  { label: 'Not premium', value: false },
-  { label: 'Premium', value: true },
+const membershipOptions = [
+  { label: 'None', value: 'none' as const },
+  { label: 'Premium', value: 'premium' as const },
+  { label: 'Premium+', value: 'premiumPlus' as const },
 ]
+
+const membershipLabel = computed(() => {
+  const u = editingUser.value
+  if (!u) return '—'
+  if (u.premiumPlus) return 'Premium+'
+  if (u.premium) return 'Premium'
+  return 'None'
+})
+
+const membershipSeverity = computed(() => {
+  const u = editingUser.value
+  if (!u) return 'secondary'
+  if (u.premiumPlus) return 'warning'
+  if (u.premium) return 'warning'
+  return 'secondary'
+})
 
 const verificationStatusLabel = computed(() => {
   const s = editingUser.value?.verifiedStatus
@@ -429,7 +457,7 @@ function openEdit(u: AdminUser) {
   editUsername.value = u.username ?? ''
   editName.value = u.name ?? ''
   editBio.value = u.bio ?? ''
-  editPremium.value = Boolean(u.premium)
+  editMembership.value = u.premiumPlus ? 'premiumPlus' : u.premium ? 'premium' : 'none'
   editVerifiedStatus.value = u.verifiedStatus ?? 'none'
   resetUsernameCheck()
   editOpen.value = true
@@ -459,7 +487,8 @@ const { submit: saveUser, submitting: saving } = useFormSubmit(
         username: editUsername.value.trim() ? editUsername.value.trim() : null,
         name: editName.value.trim() ? editName.value.trim() : null,
         bio: editBio.value.trim() ? editBio.value.trim() : null,
-        premium: editPremium.value,
+        premium: editMembership.value === 'premium' || editMembership.value === 'premiumPlus',
+        premiumPlus: editMembership.value === 'premiumPlus',
         verifiedStatus: editVerifiedStatus.value,
       },
     })

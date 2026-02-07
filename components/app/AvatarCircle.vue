@@ -1,9 +1,17 @@
 <template>
   <div
     ref="wrapEl"
-    :class="['relative shrink-0', sizeClass]"
+    :class="['relative shrink-0 rounded-full', sizeClass, wrapClass]"
+    :style="wrapStyle"
     aria-hidden="true"
   >
+    <!-- Premium+ glow: behind the avatar, no border ring -->
+    <span
+      v-if="premiumPlusGlow"
+      class="absolute inset-0 -z-10 rounded-full"
+      :style="premiumPlusGlowStyle"
+      aria-hidden="true"
+    />
     <!-- Avatar (clipped to circle) -->
     <div
       :class="['h-full w-full overflow-hidden rounded-full', bgClass]"
@@ -71,6 +79,12 @@ const props = withDefaults(
     username?: string | null
     sizeClass?: string
     bgClass?: string
+    /** Optional wrapper class for rings/glow. */
+    wrapClass?: string
+    /** Optional wrapper style for rings/glow. */
+    wrapStyle?: Record<string, string>
+    /** Premium+ users get an orange glow around the avatar. */
+    premiumPlusGlow?: boolean
     /** When false, do not show the presence dot (e.g. radio bar listener avatars). */
     showPresence?: boolean
     /** Presence state: green (online), clock (idle), yellow (connecting), or hidden (offline). */
@@ -86,6 +100,9 @@ const props = withDefaults(
     username: null,
     sizeClass: 'h-10 w-10',
     bgClass: 'bg-gray-200 dark:bg-zinc-800',
+    wrapClass: '',
+    wrapStyle: () => ({}),
+    premiumPlusGlow: false,
     showPresence: true,
     presenceStatus: 'offline',
     presenceScale: 0.25,
@@ -142,6 +159,17 @@ const initial = computed(() => {
   const raw = (props.name ?? props.username ?? '').trim()
   if (!raw) return '?'
   return raw.slice(0, 1).toUpperCase()
+})
+
+const premiumPlusGlowStyle = computed<Record<string, string>>(() => {
+  if (!props.premiumPlusGlow) return {} as Record<string, string>
+  const d = diameterPx.value
+  // Scale glow with avatar size.
+  const glowPx = Math.max(12, Math.round(d * 0.42))
+  const glowPx2 = Math.max(glowPx + 8, Math.round(glowPx * 1.65))
+  return {
+    boxShadow: `0 0 ${glowPx}px rgba(var(--moh-premium-rgb), 0.28), 0 0 ${glowPx2}px rgba(var(--moh-premium-rgb), 0.14)`,
+  }
 })
 
 // Presence dot: sits outside avatar at bottom-right, overlaying the corner

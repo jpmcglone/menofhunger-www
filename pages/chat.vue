@@ -95,7 +95,11 @@
                             >
                               {{ headerDirectUser.name || headerDirectUser.username || 'User' }}
                             </button>
-                            <AppVerifiedBadge :status="headerDirectUser.verifiedStatus" :premium="headerDirectUser.premium" />
+                            <AppVerifiedBadge
+                              :status="headerDirectUser.verifiedStatus"
+                              :premium="headerDirectUser.premium"
+                              :premium-plus="headerDirectUser.premiumPlus"
+                            />
                           </template>
                           <template v-else>
                             <span class="min-w-0 truncate">
@@ -1222,6 +1226,7 @@ async function sendCurrentMessage() {
       username: my.username ?? null,
       name: my.name ?? null,
       premium: Boolean(my.premium),
+      premiumPlus: Boolean(my.premiumPlus),
       verifiedStatus: (my.verifiedStatus ?? 'none') as 'none' | 'identity' | 'manual',
       avatarUrl: my.avatarUrl ?? null,
     }
