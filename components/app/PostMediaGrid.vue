@@ -59,7 +59,7 @@
     <button
       v-else-if="items[0]?.url"
       type="button"
-      class="moh-tap cursor-zoom-in select-none text-left"
+      class="moh-tap cursor-zoom-in select-none text-left focus:outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20 dark:focus-visible:ring-white/20"
       :class="singleBoxClass"
       :style="singleBoxStyle"
       aria-label="View image"
@@ -103,7 +103,7 @@
           <button
             v-if="m.url"
             type="button"
-            class="moh-tap relative min-w-0 min-h-0 cursor-zoom-in overflow-hidden"
+            class="moh-tap relative min-w-0 min-h-0 cursor-zoom-in overflow-hidden focus:outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20 dark:focus-visible:ring-white/20"
             :class="itemClass(idx)"
             :aria-label="m.kind === 'video' ? `View video ${idx + 1} of ${items.length}` : `View image ${idx + 1} of ${items.length}`"
             @click.stop="openAt($event, idx)"
@@ -402,6 +402,12 @@ function imgClass(idx: number): string {
 function openAt(e: MouseEvent, idx: number) {
   const xs = urls.value
   if (!xs.length) return
+
+  // Prevent the browser's default focus outline from lingering after closing the lightbox
+  // when the user clicked/tapped (pointer). Keep keyboard focus behavior intact.
+  const el = e.currentTarget as HTMLElement | null
+  if (el && typeof e.detail === 'number' && e.detail > 0) el.blur()
+
   const urlIndex = Math.max(
     0,
     Math.min(

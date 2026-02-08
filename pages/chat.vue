@@ -1,5 +1,5 @@
 <template>
-  <div class="flex min-h-0 flex-1 flex-col">
+  <AppPageContent class="flex min-h-0 flex-1 flex-col" bottom="standard">
     <div v-if="!viewerIsVerified" class="flex min-h-0 flex-1 items-center justify-center px-4 py-12">
       <div class="w-full max-w-md">
         <div class="rounded-2xl border moh-border moh-bg p-5 shadow-sm">
@@ -164,13 +164,13 @@
                 </div>
               </div>
 
-          <div v-if="selectedChatKey" class="relative flex-1 min-h-0">
+          <div v-if="selectedChatKey" class="relative flex-1 min-h-0 flex flex-col">
             <div
               v-if="renderedChatKey"
               :key="renderedChatKey"
               ref="messagesScroller"
               data-chat-scroller="1"
-              class="h-full overflow-y-auto py-4 moh-chat-scroll-hide"
+              class="min-h-0 flex-1 overflow-y-auto py-4 moh-chat-scroll-hide"
               @scroll="onMessagesScroll"
               @wheel.passive="markUserScrollIntent"
               @touchstart.passive="markUserScrollIntent"
@@ -367,7 +367,7 @@
       </div>
     </Dialog>
   </div>
-</div>
+</AppPageContent>
 </template>
 
 <script setup lang="ts">

@@ -1,4 +1,6 @@
 # Nitro SSR in node mode. Standard plan: 2GB RAM / 1 CPU.
+# Pipeline minutes: use "npm ci" for reproducible installs. To reduce build time (use Render's
+# node_modules cache), you can switch to: buildCommand: npm install --prefer-offline --no-audit && npm run build
 services:
   - type: web
     name: menofhunger-www

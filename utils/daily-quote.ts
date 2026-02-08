@@ -1,3 +1,5 @@
+import { ET_ZONE } from './eastern-time'
+
 export type DailyQuoteKind = 'scripture' | 'quote' | 'paraphrase'
 
 export type DailyQuote = {
@@ -11,8 +13,6 @@ export type DailyQuote = {
   note?: string
   sourceUrl?: string
 }
-
-const ET_ZONE = 'America/New_York'
 
 /** Day number for the calendar day in Eastern Time (quote changes at midnight ET). */
 function dayIndexEastern(d: Date): number {

@@ -1,6 +1,6 @@
 <template>
   <div class="sticky top-0 z-20 border-b moh-border moh-bg p-0">
-    <div class="moh-feed-header-inner flex items-stretch justify-between gap-3 px-4 py-2">
+    <div class="moh-feed-header-inner flex items-center justify-between gap-3 px-4 py-2">
       <template v-if="scopeTabs.length > 1">
         <AppTabSelector
           :model-value="scope"

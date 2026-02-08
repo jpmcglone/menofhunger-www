@@ -70,26 +70,16 @@
       :class="['overflow-hidden moh-bg moh-text moh-texture', showStatusBg ? 'moh-status-tone' : '']"
       :style="appViewportStyle"
     >
-      <div class="mx-auto flex h-full w-full max-w-6xl px-0 sm:px-4 xl:max-w-7xl">
+      <div class="mx-auto flex h-full w-full max-w-6xl xl:max-w-7xl">
         <!-- Left Nav (independent scroll) -->
         <aside
           :class="[
             'no-scrollbar hidden sm:block shrink-0 h-full border-r moh-border moh-texture',
-            anyOverlayOpen ? 'overflow-hidden' : 'overflow-y-auto overscroll-y-auto'
+            anyOverlayOpen ? 'overflow-hidden' : 'overflow-y-auto overscroll-y-contain'
           ]"
         >
         <!-- IMPORTANT: no `h-full` + no `overflow-hidden` here, or the rail can't actually scroll -->
-        <div
-          :class="[
-            // Keep internal layout stable; only width changes between compact and wide.
-            'min-h-full w-14 px-1 py-4 transition-[width,padding] duration-200 ease-out flex flex-col',
-            // On desktop, match the right rail's padding (`px-4`) in both modes.
-            // When compact, increase rail width so the inner content can still fit `w-12`,
-            // while keeping the same right gutter to the divider as wide mode.
-            // Prefer: left collapses (xl) before right rail hides (lg).
-            navCompactMode ? 'md:w-20 md:px-4' : 'md:w-20 md:px-4 xl:w-56 xl:px-4'
-          ]"
-        >
+        <AppLeftRailContent :compact="navCompactMode">
           <div class="mb-3">
             <NuxtLink
               :to="'/home'"
@@ -150,7 +140,7 @@
               <span class="relative flex h-12 w-12 shrink-0 items-center justify-center">
                 <ClientOnly v-if="item.key === 'bookmarks'">
                   <Icon
-                    :name="hasBookmarks ? 'tabler:bookmark-filled' : 'tabler:bookmark'"
+                    :name="hasBookmarks || isActiveNav(item.to) ? 'tabler:bookmark-filled' : 'tabler:bookmark'"
                     size="28"
                     class="opacity-90"
                     :style="hasBookmarks ? { color: 'var(--p-primary-color)' } : undefined"
@@ -228,15 +218,16 @@
             </span>
             <span v-if="!navCompactMode" class="hidden xl:inline text-base font-semibold">Log in</span>
           </NuxtLink>
-        </div>
+        </AppLeftRailContent>
         </aside>
 
-        <!-- Columns 2 + 3: separate scroll zones, but coupled wheel scrolling. -->
-        <div :class="['flex min-w-0 flex-1', shouldCapMiddleColumn ? 'lg:justify-center' : '']">
+        <!-- Columns 2 + 3: separate scroll zones (independent). -->
+        <div :class="['flex min-w-0 flex-1 min-h-0', shouldCapMiddleColumn ? 'lg:justify-center' : '']">
           <!-- Middle / Feed (scroll zone #2) -->
           <main
             :class="[
-              'min-w-0 flex-1 overflow-x-hidden flex flex-col',
+              // `min-h-0` is critical so inner scroll containers can actually scroll (flexbox default min-height:auto can block it).
+              'min-w-0 min-h-0 flex-1 overflow-x-hidden flex flex-col',
               shouldCapMiddleColumn ? 'lg:max-w-[720px]' : '',
               !isRightRailForcedHidden ? 'lg:border-r moh-border' : '',
             ]"
@@ -246,7 +237,7 @@
               ref="middleScrollerEl"
               :class="[
                 'no-scrollbar min-w-0 flex-1 overflow-x-hidden flex flex-col',
-                anyOverlayOpen || (isMessagesPage && hideTopBar) ? 'overflow-hidden' : 'overflow-y-auto overscroll-y-auto'
+                anyOverlayOpen || (isMessagesPage && hideTopBar) ? 'overflow-hidden' : 'overflow-y-auto overscroll-y-contain'
               ]"
               :style="!hideTopBar ? { scrollPaddingTop: 'var(--moh-title-bar-height, 4rem)' } : undefined"
             >
@@ -255,7 +246,7 @@
                 ref="titleBarEl"
                 class="sticky top-0 z-10 shrink-0 border-b moh-border moh-frosted"
               >
-                <div class="px-4 py-3 space-y-1">
+                <AppTitleBar>
                   <div class="flex items-center justify-between gap-3">
                     <div class="min-w-0 flex items-center gap-2">
                       <i v-if="headerIcon" :class="['pi', headerIcon]" class="text-xl shrink-0 opacity-80" aria-hidden="true" />
@@ -276,7 +267,7 @@
                   <p v-if="headerDescription" class="text-sm moh-text-muted">
                     {{ headerDescription }}
                   </p>
-                </div>
+                </AppTitleBar>
               </div>
 
             <div
@@ -284,17 +275,8 @@
               :class="[
                 // Always stretch to bottom so two-pane pages can fill height.
                 'flex-1 min-h-0',
-                // Layout should not add horizontal padding; pages/columns own their gutters.
-                hideTopBar
-                  ? (isMessagesPage ? messagesMiddleBottomPadClass : standardMiddleBottomPadClass)
-                  : isBookmarksPage
-                    ? ['pt-0', standardMiddleBottomPadClass]
-                    : isPostPage
-                      ? ['pt-4', standardMiddleBottomPadClass]
-                      : isNotificationsPage || isOnlyMePage
-                        ? ['pt-0', standardMiddleBottomPadClass]
-                        : ['py-4', standardMiddleBottomPadClass],
-                isMessagesPage && hideTopBar ? 'overflow-hidden' : ''
+                // Layout containers should not add padding. Pages/components own gutters and spacing.
+                isMessagesPage && hideTopBar ? 'flex h-full min-h-0 flex-col overflow-hidden' : '',
               ]"
             >
               <slot />
@@ -304,7 +286,7 @@
             <!-- Radio player row: bottom of the middle column on desktop only. -->
             <div
               v-if="showRadioBar"
-              class="hidden sm:block shrink-0 border-t border-gray-200 bg-white dark:border-zinc-800 dark:bg-black text-gray-900 dark:text-white px-4 py-2"
+              class="hidden sm:block shrink-0 border-t border-gray-200 bg-white dark:border-zinc-800 dark:bg-black text-gray-900 dark:text-white"
             >
               <AppRadioBar />
             </div>
@@ -312,164 +294,184 @@
 
           <!-- Right rail (scroll zone #3). Visible on lg+. -->
           <aside
-            ref="rightScrollerEl"
             :class="[
               // Layout should not add padding; right-rail content owns its gutters.
-              'no-scrollbar shrink-0 w-[clamp(20rem,22vw,23.75rem)] h-full moh-texture',
-              anyOverlayOpen ? 'overflow-hidden' : 'overflow-y-auto overscroll-y-auto',
+              'relative no-scrollbar shrink-0 w-[clamp(20rem,22vw,23.75rem)] h-full moh-texture',
+              // Single native scroller: the rail itself scrolls; search floats above the entire layout.
+              // IMPORTANT: `min-h-0` is required so the rail can scroll in a flex row.
+              'min-h-0',
+              anyOverlayOpen ? 'overflow-hidden' : 'overflow-y-auto overscroll-y-contain',
               isRightRailForcedHidden ? 'hidden' : 'hidden lg:block'
             ]"
           >
-          <div class="px-4 py-4">
-            <!-- On Explore, the search bar lives in the center column. Collapse it here. -->
+            <!-- Offset the scroller content so it doesn't sit under the floating search bar. -->
             <div
               :class="[
-                'overflow-hidden transition-all duration-200 ease-out',
-                isRightRailSearchHidden ? 'max-h-0 opacity-0 mb-0 pointer-events-none' : 'max-h-16 opacity-100 mb-4'
+                'transition-all duration-200 ease-out',
+                isRightRailSearchHidden ? 'pt-0' : 'pt-16'
               ]"
             >
-              <IconField iconPosition="left" class="w-full">
-                <InputIcon class="pi pi-search" />
-                <InputText
-                  v-model="rightRailSearchQuery"
-                  class="w-full h-11 !rounded-full"
-                  placeholder="Search…"
-                  @keydown.enter="goToExploreSearch"
-                />
-              </IconField>
-            </div>
-
-            <div
-              v-if="dailyQuote"
-              class="mt-2 mb-5 px-4 py-4 text-center text-sm leading-relaxed text-gray-700 dark:text-gray-200"
-            >
-              <figure>
-                <blockquote class="italic">
-                  “{{ dailyQuote.text }}”
-                </blockquote>
-                <figcaption class="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                  <span class="font-semibold">
-                    {{ dailyQuoteAttribution }}
-                  </span>
-                  <span v-if="dailyQuote.isParaphrase" class="ml-1">(paraphrase)</span>
-                </figcaption>
-              </figure>
-            </div>
-
-            <div class="space-y-4 transition-[transform] duration-200 ease-out">
-              <!-- Who to follow (real data) -->
-              <Card>
-                <template #title>Who to follow</template>
-                <template #content>
-                  <div v-if="whoToFollowLoading && whoToFollowUsers.length === 0" class="flex justify-center py-4">
-                    <AppLogoLoader />
+              <AppRightRailContent>
+                  <div
+                    v-if="dailyQuote"
+                    class="my-8 py-2 text-center text-sm leading-relaxed text-gray-700 dark:text-gray-200"
+                  >
+                    <figure>
+                      <blockquote class="italic">
+                        “{{ dailyQuote.text }}”
+                      </blockquote>
+                      <figcaption class="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                        <span class="font-semibold">
+                          {{ dailyQuoteAttribution }}
+                        </span>
+                        <span v-if="dailyQuote.isParaphrase" class="ml-1">(paraphrase)</span>
+                      </figcaption>
+                    </figure>
                   </div>
 
-                  <div v-else-if="whoToFollowUsers.length > 0">
-                    <AppWhoToFollowCompactRow
-                      v-for="u in whoToFollowUsers"
-                      :key="u.id"
-                      :user="u"
-                    />
-                    <NuxtLink
-                      to="/who-to-follow"
-                      class="inline-block pt-3 text-sm font-medium hover:underline underline-offset-2"
-                      :class="tierCtaTextClass"
-                    >
-                      Show more
-                    </NuxtLink>
-                  </div>
-
-                  <div v-else class="text-sm moh-text-muted">
-                    <p v-if="whoToFollowError">{{ whoToFollowError }}</p>
-                    <p v-else>No suggestions yet.</p>
-                    <NuxtLink to="/explore" class="inline-block mt-2 font-medium hover:underline">
-                      Explore people
-                    </NuxtLink>
-                  </div>
-                </template>
-              </Card>
-
-              <AppWebsters1828WordOfDayCard />
-
-              <AppSupportDonateCard />
-
-              <AppAdSlot placement="rail" />
-
-              <Card>
-                <template #title>Trends for you</template>
-                <template #content>
-                  <div class="space-y-3 text-sm text-gray-700 dark:text-gray-300">
-                    <div class="space-y-1">
-                      <div class="text-xs text-gray-500 dark:text-gray-400">Trending</div>
-                      <div class="font-semibold">Discipline</div>
-                      <div class="text-xs text-gray-500 dark:text-gray-400">12.4K posts</div>
-                    </div>
-                    <div class="space-y-1">
-                      <div class="text-xs text-gray-500 dark:text-gray-400">Trending in Fitness</div>
-                      <div class="font-semibold">Cold plunge</div>
-                      <div class="text-xs text-gray-500 dark:text-gray-400">3,219 posts</div>
-                    </div>
-                    <div class="space-y-1">
-                      <div class="text-xs text-gray-500 dark:text-gray-400">Trending</div>
-                      <div class="font-semibold">Brotherhood</div>
-                      <div class="text-xs text-gray-500 dark:text-gray-400">8,002 posts</div>
-                    </div>
-                    <Button label="Show more" text severity="secondary" class="w-full justify-center" />
-                  </div>
-                </template>
-              </Card>
-
-              <Card>
-                <template #title>Groups</template>
-                <template #content>
-                  <div class="space-y-3 text-sm moh-text-muted">
-                    <div class="flex items-start justify-between gap-3">
-                      <div class="min-w-0">
-                        <div class="font-semibold">Daily Discipline</div>
-                        <div class="text-xs moh-text-muted">14 members · 3 new posts</div>
+                  <div class="space-y-4 transition-[transform] duration-200 ease-out">
+                  <!-- Who to follow (real data) -->
+                  <Card>
+                    <template #title>Who to follow</template>
+                    <template #content>
+                      <div v-if="whoToFollowLoading && whoToFollowUsers.length === 0" class="flex justify-center py-4">
+                        <AppLogoLoader />
                       </div>
-                      <Tag value="New" severity="success" />
-                    </div>
-                    <div class="flex items-start justify-between gap-3">
-                      <div class="min-w-0">
-                        <div class="font-semibold">Business Builders</div>
-                        <div class="text-xs moh-text-muted">62 members · 1 new post</div>
-                      </div>
-                      <Tag value="Active" severity="info" />
-                    </div>
-                    <div class="flex items-start justify-between gap-3">
-                      <div class="min-w-0">
-                        <div class="font-semibold">Strength & Conditioning</div>
-                        <div class="text-xs moh-text-muted">28 members · 0 new posts</div>
-                      </div>
-                      <Tag value="Open" severity="secondary" />
-                    </div>
-                    <Button
-                      label="Browse groups"
-                      text
-                      severity="secondary"
-                      class="w-full justify-center"
-                      @click="navigateTo('/groups')"
-                    />
-                  </div>
-                </template>
-              </Card>
 
-              <div class="px-2 pb-6 text-xs moh-text-muted space-x-2">
-                <NuxtLink to="/about" class="hover:underline">About</NuxtLink>
-                <span>·</span>
-                <NuxtLink to="/privacy" class="hover:underline">Privacy</NuxtLink>
-                <span>·</span>
-                <NuxtLink to="/terms" class="hover:underline">Terms</NuxtLink>
-                <span>·</span>
-                <NuxtLink to="/status" class="hover:underline">Status</NuxtLink>
-                <span>·</span>
-                <span>&copy; {{ new Date().getFullYear() }} {{ siteConfig.name }}</span>
-              </div>
+                      <div v-else-if="whoToFollowUsers.length > 0">
+                        <AppWhoToFollowCompactRow
+                          v-for="u in whoToFollowUsers"
+                          :key="u.id"
+                          :user="u"
+                        />
+                        <NuxtLink
+                          to="/who-to-follow"
+                          class="inline-block pt-3 text-sm font-medium hover:underline underline-offset-2"
+                          :class="tierCtaTextClass"
+                        >
+                          Show more
+                        </NuxtLink>
+                      </div>
+
+                      <div v-else class="text-sm moh-text-muted">
+                        <p v-if="whoToFollowError">{{ whoToFollowError }}</p>
+                        <p v-else>No suggestions yet.</p>
+                        <NuxtLink to="/explore" class="inline-block mt-2 font-medium hover:underline">
+                          Explore people
+                        </NuxtLink>
+                      </div>
+                    </template>
+                  </Card>
+
+                  <AppWebsters1828WordOfDayCard />
+
+                  <AppSupportDonateCard />
+
+                  <AppAdSlot placement="rail" />
+
+                  <Card>
+                    <template #title>Trends for you</template>
+                    <template #content>
+                      <div class="space-y-3 text-sm text-gray-700 dark:text-gray-300">
+                        <div class="space-y-1">
+                          <div class="text-xs text-gray-500 dark:text-gray-400">Trending</div>
+                          <div class="font-semibold">Discipline</div>
+                          <div class="text-xs text-gray-500 dark:text-gray-400">12.4K posts</div>
+                        </div>
+                        <div class="space-y-1">
+                          <div class="text-xs text-gray-500 dark:text-gray-400">Trending in Fitness</div>
+                          <div class="font-semibold">Cold plunge</div>
+                          <div class="text-xs text-gray-500 dark:text-gray-400">3,219 posts</div>
+                        </div>
+                        <div class="space-y-1">
+                          <div class="text-xs text-gray-500 dark:text-gray-400">Trending</div>
+                          <div class="font-semibold">Brotherhood</div>
+                          <div class="text-xs text-gray-500 dark:text-gray-400">8,002 posts</div>
+                        </div>
+                        <Button label="Show more" text severity="secondary" class="w-full justify-center" />
+                      </div>
+                    </template>
+                  </Card>
+
+                  <Card>
+                    <template #title>Groups</template>
+                    <template #content>
+                      <div class="space-y-3 text-sm moh-text-muted">
+                        <div class="flex items-start justify-between gap-3">
+                          <div class="min-w-0">
+                            <div class="font-semibold">Daily Discipline</div>
+                            <div class="text-xs moh-text-muted">14 members · 3 new posts</div>
+                          </div>
+                          <Tag value="New" severity="success" />
+                        </div>
+                        <div class="flex items-start justify-between gap-3">
+                          <div class="min-w-0">
+                            <div class="font-semibold">Business Builders</div>
+                            <div class="text-xs moh-text-muted">62 members · 1 new post</div>
+                          </div>
+                          <Tag value="Active" severity="info" />
+                        </div>
+                        <div class="flex items-start justify-between gap-3">
+                          <div class="min-w-0">
+                            <div class="font-semibold">Strength & Conditioning</div>
+                            <div class="text-xs moh-text-muted">28 members · 0 new posts</div>
+                          </div>
+                          <Tag value="Open" severity="secondary" />
+                        </div>
+                        <Button
+                          label="Browse groups"
+                          text
+                          severity="secondary"
+                          class="w-full justify-center"
+                          @click="navigateTo('/groups')"
+                        />
+                      </div>
+                    </template>
+                  </Card>
+
+                  <div class="px-2 pb-6 text-xs moh-text-muted space-x-2">
+                    <NuxtLink to="/about" class="hover:underline">About</NuxtLink>
+                    <span>·</span>
+                    <NuxtLink to="/privacy" class="hover:underline">Privacy</NuxtLink>
+                    <span>·</span>
+                    <NuxtLink to="/terms" class="hover:underline">Terms</NuxtLink>
+                    <span>·</span>
+                    <NuxtLink to="/status" class="hover:underline">Status</NuxtLink>
+                    <span>·</span>
+                    <span>&copy; {{ new Date().getFullYear() }} {{ siteConfig.name }}</span>
+                  </div>
+                </div>
+              </AppRightRailContent>
             </div>
-          </div>
           </aside>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right-rail search (collapses on Explore). Floating over the entire layout (desktop only). -->
+    <div
+      v-if="!isRightRailForcedHidden"
+      aria-label="Right rail search"
+      :class="[
+        // Fixed overlay aligned with the same max-width container as the columns.
+        'hidden md:block fixed left-0 right-0 top-0 z-40 pointer-events-none',
+        'transition-opacity duration-200 ease-out',
+        isRightRailSearchHidden ? 'opacity-0 pointer-events-none' : 'opacity-100'
+      ]"
+    >
+      <div class="mx-auto w-full max-w-6xl xl:max-w-7xl flex justify-end">
+        <div class="pointer-events-auto w-[clamp(20rem,22vw,23.75rem)] border-b moh-border moh-bg moh-texture">
+          <div class="px-4 h-16 flex items-center">
+            <IconField iconPosition="left" class="w-full">
+              <InputIcon class="pi pi-search" />
+              <InputText
+                v-model="rightRailSearchQuery"
+                class="w-full h-11 !rounded-full"
+                placeholder="Search…"
+                @keydown.enter="goToExploreSearch"
+              />
+            </IconField>
+          </div>
         </div>
       </div>
     </div>
@@ -480,7 +482,7 @@
       class="sm:hidden fixed inset-x-0 z-30 flex items-center border-t border-gray-200 bg-white dark:border-zinc-800 dark:bg-black text-gray-900 dark:text-white"
       :style="{ bottom: 'calc(var(--moh-tabbar-height, 4rem) + var(--moh-safe-bottom, 0px))', minHeight: 'var(--moh-radio-bar-height, 4rem)' }"
     >
-      <div class="w-full px-4">
+      <div class="w-full">
         <AppRadioBar />
       </div>
     </div>
@@ -582,6 +584,7 @@ import logoDarkSmall from '~/assets/images/logo-black-bg-small.png'
 import { primaryTintCssForUser } from '~/utils/theme-tint'
 import dailyQuotes from '~/config/daily-quotes.json'
 import { formatDailyQuoteAttribution, getDailyQuote, type DailyQuote } from '~/utils/daily-quote'
+import { msUntilNextEasternMidnight } from '~/utils/eastern-time'
 import {
   MOH_HOME_COMPOSER_IN_VIEW_KEY,
   MOH_MIDDLE_SCROLLER_KEY,
@@ -653,9 +656,6 @@ onBeforeUnmount(() => {
 })
 
 const { hideTopBar, navCompactMode, isRightRailForcedHidden, isRightRailSearchHidden, title } = useLayoutRules(route)
-const isPostPage = computed(() => /^\/p\/[^/]+$/.test(route.path))
-const isBookmarksPage = computed(() => route.path === '/bookmarks' || route.path.startsWith('/bookmarks/'))
-const isNotificationsPage = computed(() => route.path === '/notifications')
 const isMessagesPage = computed(() => route.path === '/chat')
 const isOnlyMePage = computed(() => route.path === '/only-me')
 const shouldCapMiddleColumn = computed(() => {
@@ -728,11 +728,16 @@ onMounted(() => {
 const mobileBottomBarVisible = computed(() => !isSmUp.value && !anyOverlayOpen.value)
 
 const appViewportStyle = computed<Record<string, string>>(() => {
-  if (!mobileBottomBarVisible.value) return { height: '100vh' }
+  if (!mobileBottomBarVisible.value) return { height: 'var(--moh-viewport-h, 100vh)' }
   if (showRadioBar.value) {
-    return { height: 'calc(100vh - var(--moh-tabbar-height, 4rem) - var(--moh-radio-bar-height, 4rem) - var(--moh-safe-bottom, 0px))' }
+    return {
+      height:
+        'calc(var(--moh-viewport-h, 100vh) - var(--moh-tabbar-height, 4rem) - var(--moh-radio-bar-height, 4rem) - var(--moh-safe-bottom, 0px))',
+    }
   }
-  return { height: 'calc(100vh - var(--moh-tabbar-height, 4rem) - var(--moh-safe-bottom, 0px))' }
+  return {
+    height: 'calc(var(--moh-viewport-h, 100vh) - var(--moh-tabbar-height, 4rem) - var(--moh-safe-bottom, 0px))',
+  }
 })
 
 const composerSheetPlacementStyle = computed<Record<string, string>>(() => {
@@ -815,9 +820,13 @@ const fabButtonClass = computed(() => {
 const fabButtonStyle = computed(() => ({}))
 // FAB sits above tab bar, and above radio bar too when it’s visible (mobile only).
 const fabBottomStyle = computed<Record<string, string>>(() => {
-  const base = 'calc(var(--moh-tabbar-height, 4rem) + var(--moh-safe-bottom, 0px))'
+  // Match the horizontal inset (`right-4`) with a bottom inset too.
+  const inset = '1rem'
+  const base = `calc(var(--moh-tabbar-height, 4rem) + var(--moh-safe-bottom, 0px) + ${inset})`
   if (showRadioBar.value) {
-    return { bottom: 'calc(var(--moh-tabbar-height, 4rem) + var(--moh-radio-bar-height, 4rem) + var(--moh-safe-bottom, 0px))' }
+    return {
+      bottom: `calc(var(--moh-tabbar-height, 4rem) + var(--moh-radio-bar-height, 4rem) + var(--moh-safe-bottom, 0px) + ${inset})`,
+    }
   }
   return { bottom: base }
 })
@@ -826,16 +835,6 @@ const middleContentEl = ref<HTMLElement | null>(null)
 
 const { currentStation: currentRadioStation } = useRadioPlayer()
 const showRadioBar = computed(() => Boolean(currentRadioStation.value))
-const standardMiddleBottomPadClass = computed(() => {
-  if (mobileBottomBarVisible.value) return 'pb-0 sm:pb-4'
-  return showRadioBar.value ? 'pb-0 sm:pb-0' : 'pb-24 sm:pb-4'
-})
-const messagesMiddleBottomPadClass = computed(() => {
-  if (mobileBottomBarVisible.value) return 'flex h-full min-h-0 flex-col pb-0 sm:pb-0'
-  return showRadioBar.value
-    ? 'flex h-full min-h-0 flex-col pb-0 sm:pb-0'
-    : 'flex h-full min-h-0 flex-col pb-[calc(var(--moh-tabbar-height,4rem)+var(--moh-safe-bottom,0px))] sm:pb-0'
-})
 
 function updateComposerSheetStyle() {
   if (!import.meta.client) return
@@ -965,7 +964,6 @@ watch(
 )
 
 const middleScrollerEl = ref<HTMLElement | null>(null)
-const rightScrollerEl = ref<HTMLElement | null>(null)
 const titleBarEl = ref<HTMLElement | null>(null)
 
 provide(MOH_MIDDLE_SCROLLER_KEY, middleScrollerEl)
@@ -1006,21 +1004,33 @@ onBeforeUnmount(() => {
   titleBarRo = null
 })
 
-useCoupledScroll({
-  middle: middleScrollerEl,
-  right: rightScrollerEl,
-  enabled: computed(() => !isRightRailForcedHidden.value)
-})
-
 const lightbox = useImageLightbox()
 
 const showStatusBg = computed(() => route.path === '/status')
 
+const dailyQuoteNow = ref(new Date())
 const dailyQuote = computed(() => {
-  const { quote } = getDailyQuote(dailyQuotes as unknown as DailyQuote[])
+  const { quote } = getDailyQuote(dailyQuotes as unknown as DailyQuote[], dailyQuoteNow.value)
   return quote
 })
 const dailyQuoteAttribution = computed(() => (dailyQuote.value ? formatDailyQuoteAttribution(dailyQuote.value) : ''))
+
+let dailyQuoteTimer: ReturnType<typeof setTimeout> | null = null
+function scheduleDailyQuoteRollover() {
+  if (!import.meta.client) return
+  dailyQuoteTimer && clearTimeout(dailyQuoteTimer)
+  const ms = msUntilNextEasternMidnight(new Date())
+  // Nudge a bit after midnight so we reliably cross the boundary.
+  dailyQuoteTimer = setTimeout(() => {
+    dailyQuoteNow.value = new Date()
+    scheduleDailyQuoteRollover()
+  }, Math.max(1000, ms + 2000))
+}
+onMounted(() => scheduleDailyQuoteRollover())
+onBeforeUnmount(() => {
+  dailyQuoteTimer && clearTimeout(dailyQuoteTimer)
+  dailyQuoteTimer = null
+})
 
 const {
   users: whoToFollowUsers,

@@ -1,4 +1,5 @@
 <template>
+  <AppPageContent bottom="standard">
   <div class="mx-auto w-full max-w-3xl px-4 py-8 space-y-8">
     <AppPageHeader title="Feedback" icon="pi-comment" description="Send a note — bugs, feature requests, or anything else." />
 
@@ -69,6 +70,7 @@
       </div>
     </div>
   </div>
+  </AppPageContent>
 </template>
 
 <script setup lang="ts">

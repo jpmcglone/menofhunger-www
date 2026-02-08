@@ -1,4 +1,5 @@
 <template>
+  <AppPageContent top="standard" bottom="standard">
   <div class="w-full">
     <div v-if="errorText" class="px-4 mt-4">
       <div class="rounded-xl border border-gray-200 bg-gray-50 p-4 dark:border-zinc-800 dark:bg-zinc-950/40">
@@ -131,6 +132,7 @@
       <div class="min-h-[80dvh] shrink-0" aria-hidden="true" />
     </div>
   </div>
+  </AppPageContent>
 </template>
 
 <script setup lang="ts">

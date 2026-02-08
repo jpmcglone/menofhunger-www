@@ -1,5 +1,6 @@
 <template>
   <!-- Profile pages use the app-standard gutter (px-4). Banner cancels it for full-bleed. -->
+  <AppPageContent bottom="standard">
   <div class="w-full">
     <div v-if="notFound" class="px-4 mx-auto max-w-3xl py-10">
       <div class="text-2xl font-bold tracking-tight text-gray-900 dark:text-gray-50">
@@ -207,6 +208,7 @@
       />
     </div>
   </div>
+  </AppPageContent>
 </template>
 
 <script setup lang="ts">

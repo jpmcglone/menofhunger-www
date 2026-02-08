@@ -4,6 +4,15 @@
 
 The www service runs Nitro SSR in Node mode. See [render.yaml](render.yaml) for the Blueprint.
 
+### Pipeline minutes
+
+Render’s free tier includes 500 pipeline minutes/month. To reduce usage:
+
+- **Fewer deploys:** Deploy only from `main` when needed; avoid branch/preview deploys if not required.
+- **Faster www builds:** Your build is already tuned (no production source maps in [nuxt.config.ts](nuxt.config.ts)). To use Render’s cache and speed up installs, you can set `buildCommand: npm install --prefer-offline --no-audit && npm run build` in [render.yaml](render.yaml). Tradeoff: `npm install` is less strict than `npm ci` (lockfile still pins versions).
+- **API:** The API Dockerfile uses SWC for fast compilation and a lean runner stage; dependency and build layers are cached between builds when `package*.json` and source don’t change.
+- **Spend control:** In Render dashboard you can set a custom pipeline minute limit so builds pause instead of incurring overage.
+
 - **Plan:** Standard (2GB RAM / 1 CPU) — recommended for SSR at ~1k DAU.
 - **Build:** `npm ci && npm run build`
 - **Start:** `node .output/server/index.mjs`
@@ -23,10 +32,11 @@ The app already sets appropriate headers via [nuxt.config.ts](nuxt.config.ts) ro
 | Path       | Cache-Control                                           |
 | ---------- | ------------------------------------------------------- |
 | `/_nuxt/**`| `public, max-age=31536000, immutable`                   |
-| `/images/**` | `public, max-age=86400, stale-while-revalidate=86400` |
+| `/_ipx/**` | `public, max-age=86400, stale-while-revalidate=86400` |
 | `/sounds/**` | `public, max-age=86400, stale-while-revalidate=86400` |
 
 `/_nuxt/*` assets (JS, CSS) are long-lived and immutable. Static assets under `/images` and `/sounds` use 24h cache with stale-while-revalidate.
+Nuxt Image transformations are served under `/_ipx/**` (IPX); those URLs are safe to cache for 24h.
 
 ### Service Worker (push notifications)
 

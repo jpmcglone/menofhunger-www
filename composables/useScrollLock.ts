@@ -20,10 +20,54 @@ type RestoreState = {
 let lockCount = 0
 let restoreState: RestoreState | null = null
 
+function clearScrollLockStylesIfPresent() {
+  if (!import.meta.client) return
+  // Only clear when we *believe* nothing is locked.
+  if (lockCount !== 0) return
+
+  const html = document.documentElement
+  const body = document.body
+
+  // If the app was backgrounded/killed while locked, iOS standalone can restore the page with
+  // `position: fixed` still applied on <body>, which shifts the entire UI on next launch.
+  const looksLocked =
+    html.style.overflow === 'hidden' ||
+    body.style.overflow === 'hidden' ||
+    body.style.position === 'fixed' ||
+    (body.style.top ?? '').trim() !== ''
+
+  if (!looksLocked) return
+
+  html.style.overflow = ''
+  body.style.overflow = ''
+  body.style.position = ''
+  body.style.top = ''
+  body.style.left = ''
+  body.style.right = ''
+  body.style.width = ''
+  body.style.paddingRight = ''
+}
+
+let didInitScrollLockFailsafe = false
+if (import.meta.client && !didInitScrollLockFailsafe) {
+  didInitScrollLockFailsafe = true
+  window.addEventListener('pageshow', () => clearScrollLockStylesIfPresent(), { passive: true })
+  document.addEventListener(
+    'visibilitychange',
+    () => {
+      if (document.visibilityState === 'visible') clearScrollLockStylesIfPresent()
+    },
+    { passive: true },
+  )
+}
+
 export function lockBodyScroll() {
   if (!import.meta.client) return
   lockCount += 1
   if (lockCount > 1) return
+
+  // Defensive: ensure we aren't starting from a stuck locked state.
+  clearScrollLockStylesIfPresent()
 
   const html = document.documentElement
   const body = document.body

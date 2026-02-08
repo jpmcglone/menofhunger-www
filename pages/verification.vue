@@ -1,5 +1,5 @@
 <template>
-  <div />
+  <AppPageContent />
 </template>
 
 <script setup lang="ts">

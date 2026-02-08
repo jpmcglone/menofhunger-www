@@ -1,4 +1,5 @@
 <template>
+  <AppPageContent bottom="standard">
   <div class="py-4 space-y-4">
     <div class="px-4">
       <AppPageHeader title="Search" icon="pi-search" description="Recent user searches.">
@@ -78,6 +79,7 @@
       />
     </div>
   </div>
+  </AppPageContent>
 </template>
 
 <script setup lang="ts">

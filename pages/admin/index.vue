@@ -1,4 +1,5 @@
 <template>
+  <AppPageContent bottom="standard">
   <div class="space-y-6">
     <div class="px-4 pt-4">
       <AppPageHeader title="Admin" icon="pi-shield" description="Admin-only tools." />
@@ -83,6 +84,7 @@
       </NuxtLink>
     </div>
   </div>
+  </AppPageContent>
 </template>
 
 <script setup lang="ts">

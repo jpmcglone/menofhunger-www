@@ -1,4 +1,5 @@
 <template>
+  <AppPageContent bottom="standard">
   <div class="px-4 py-6">
     <div class="mx-auto w-full max-w-2xl">
       <AppPageHeader
@@ -23,6 +24,7 @@
       </div>
     </div>
   </div>
+  </AppPageContent>
 </template>
 
 <script setup lang="ts">

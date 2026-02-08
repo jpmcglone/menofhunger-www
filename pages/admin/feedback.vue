@@ -1,4 +1,5 @@
 <template>
+  <AppPageContent bottom="standard">
   <div class="py-4 space-y-4">
     <div class="px-4">
       <AppPageHeader title="Feedback" icon="pi-inbox" description="Review and triage user feedback.">
@@ -171,6 +172,7 @@
       <Button label="Save" icon="pi pi-check" :loading="saving" :disabled="saving || !canSave" @click="saveDetails()" />
     </template>
   </Dialog>
+  </AppPageContent>
 </template>
 
 <script setup lang="ts">

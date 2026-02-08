@@ -1,4 +1,5 @@
 <template>
+  <AppPageContent class="h-full min-h-0" bottom="standard">
   <div class="h-full min-h-0">
     <div class="grid h-full min-h-0 grid-cols-1 md:grid-cols-[22rem_1fr]">
       <!-- Left: admin areas -->
@@ -90,6 +91,7 @@
       </main>
     </div>
   </div>
+  </AppPageContent>
 </template>
 
 <script setup lang="ts">

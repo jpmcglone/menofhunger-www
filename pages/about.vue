@@ -1,4 +1,5 @@
 <template>
+  <AppPageContent top="standard" bottom="standard">
   <section class="mx-auto w-full max-w-2xl px-4 pb-10 sm:pb-14 space-y-6">
     <header class="space-y-3">
       <div class="flex flex-wrap items-center gap-2">
@@ -89,6 +90,7 @@
       </div>
     </div>
   </section>
+  </AppPageContent>
 </template>
 
 <script setup lang="ts">

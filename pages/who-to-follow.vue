@@ -1,4 +1,5 @@
 <template>
+  <AppPageContent bottom="standard">
   <div class="w-full">
     <div class="py-4 space-y-4">
       <div class="px-4 flex items-center justify-between gap-3">
@@ -51,6 +52,7 @@
       </div>
     </div>
   </div>
+  </AppPageContent>
 </template>
 
 <script setup lang="ts">

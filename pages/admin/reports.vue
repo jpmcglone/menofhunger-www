@@ -1,4 +1,5 @@
 <template>
+  <AppPageContent bottom="standard">
   <div class="py-4 space-y-4">
     <div class="px-4">
       <AppPageHeader title="Reports" icon="pi-flag" description="Review and triage reported posts and users.">
@@ -197,6 +198,7 @@
       <Button label="Save" icon="pi pi-check" :loading="saving" :disabled="saving || !canSave" @click="saveDetails()" />
     </template>
   </Dialog>
+  </AppPageContent>
 </template>
 
 <script setup lang="ts">

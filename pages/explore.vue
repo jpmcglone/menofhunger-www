@@ -1,4 +1,5 @@
 <template>
+  <AppPageContent bottom="standard">
   <div class="w-full">
     <!-- Sticky search bar (replaces layout title bar) -->
     <div class="sticky top-0 z-10 border-b moh-border moh-frosted">
@@ -331,6 +332,7 @@
       </template>
     </div>
   </div>
+  </AppPageContent>
 </template>
 
 <script setup lang="ts">

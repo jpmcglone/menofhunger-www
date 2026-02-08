@@ -1,4 +1,5 @@
 <template>
+  <AppPageContent bottom="standard">
   <div class="relative">
     <!-- Content (blurred until revealed) -->
     <div :class="revealed ? '' : 'blur-md pointer-events-none select-none'">
@@ -67,6 +68,7 @@
       </div>
     </div>
   </div>
+  </AppPageContent>
 </template>
 
 <script setup lang="ts">

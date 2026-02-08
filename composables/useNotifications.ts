@@ -130,9 +130,9 @@ export function useNotifications() {
   function subjectTierRowClass(n: Notification): string {
     if (n.readAt) return ''
     const t = n.subjectTier ?? null
-    if (t === 'premium') return 'border-l-2 border-[var(--moh-premium)] bg-[var(--moh-premium)]/5 dark:bg-[var(--moh-premium)]/10'
-    if (t === 'verified') return 'border-l-2 border-[var(--moh-verified)] bg-[var(--moh-verified)]/5 dark:bg-[var(--moh-verified)]/10'
-    return 'border-l-2 border-gray-300 dark:border-zinc-600 bg-gray-50/80 dark:bg-zinc-900/40'
+    if (t === 'premium') return 'bg-[var(--moh-premium)]/5 dark:bg-[var(--moh-premium)]/10'
+    if (t === 'verified') return 'bg-[var(--moh-verified)]/5 dark:bg-[var(--moh-verified)]/10'
+    return 'bg-gray-50/80 dark:bg-zinc-900/40'
   }
 
   function titleSuffix(n: Notification): string {

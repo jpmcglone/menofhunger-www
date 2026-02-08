@@ -1,6 +1,6 @@
 <template>
   <div class="relative w-full min-h-full flex flex-col items-center justify-center">
-    <div class="w-full flex flex-col items-center justify-center">
+    <div class="w-full px-6 flex flex-col items-center justify-center">
       <AppLogo
         :alt="siteConfig.name"
         :dark-src="landingLogoDark"

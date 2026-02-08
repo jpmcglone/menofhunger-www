@@ -53,15 +53,33 @@
 
 <script setup lang="ts">
 import type { Websters1828WordOfDay } from '~/types/api'
+import { msUntilNextEasternMidnight } from '~/utils/eastern-time'
 
 const { apiFetchData } = useApiClient()
 
-const { data, pending, error } = useAsyncData<Websters1828WordOfDay>(
+const { data, pending, error, refresh } = useAsyncData<Websters1828WordOfDay>(
   'websters1828:wotd',
   async () => {
     return await apiFetchData<Websters1828WordOfDay>('/meta/websters1828/wotd', { method: 'GET' })
   },
   { server: false, lazy: true },
 )
+
+let rolloverTimer: ReturnType<typeof setTimeout> | null = null
+function scheduleRollover() {
+  if (!import.meta.client) return
+  rolloverTimer && clearTimeout(rolloverTimer)
+  const ms = msUntilNextEasternMidnight(new Date())
+  // Nudge a bit after midnight to avoid boundary weirdness.
+  rolloverTimer = setTimeout(async () => {
+    await refresh()
+    scheduleRollover()
+  }, Math.max(1000, ms + 2000))
+}
+onMounted(() => scheduleRollover())
+onBeforeUnmount(() => {
+  rolloverTimer && clearTimeout(rolloverTimer)
+  rolloverTimer = null
+})
 </script>
 

@@ -1,4 +1,5 @@
 <template>
+  <AppPageContent bottom="standard">
   <div class="w-full">
     <div class="sticky top-0 z-20 border-b moh-border moh-frosted moh-texture overflow-hidden">
       <div class="relative z-10 flex items-center justify-between gap-3 px-4 py-3">
@@ -54,6 +55,7 @@
       </div>
     </div>
   </div>
+  </AppPageContent>
 </template>
 
 <script setup lang="ts">

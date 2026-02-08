@@ -1,4 +1,5 @@
 <template>
+  <AppPageContent bottom="standard">
   <div class="px-4 py-4 space-y-6">
     <AppPageHeader title="Site settings" icon="pi-cog" description="Admin-only configuration for the site.">
       <template #leading>
@@ -50,6 +51,7 @@
       <div v-if="siteSaved" class="text-sm text-green-700 dark:text-green-300">Saved.</div>
     </div>
   </div>
+  </AppPageContent>
 </template>
 
 <script setup lang="ts">

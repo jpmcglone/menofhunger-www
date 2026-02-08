@@ -1,4 +1,5 @@
 <template>
+  <AppPageContent top="standard" bottom="standard">
   <section class="mx-auto w-full max-w-2xl px-4">
     <header class="space-y-4">
       <p class="text-sm font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">
@@ -171,6 +172,7 @@
       </div>
     </footer>
   </section>
+  </AppPageContent>
 </template>
 
 <script setup lang="ts">

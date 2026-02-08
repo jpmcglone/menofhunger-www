@@ -49,7 +49,10 @@ export default defineNuxtConfig({
       htmlAttrs: { lang: 'en' },
       meta: [
         { charset: 'utf-8' },
-        { name: 'viewport', content: 'width=device-width, initial-scale=1, viewport-fit=cover' },
+        // NOTE: Avoid iOS standalone (Add to Home Screen) full-bleed viewport behavior.
+        // `viewport-fit=cover` + translucent status bar can cause content to render under the status bar
+        // and appear shifted/clipped. Let iOS manage safe areas instead.
+        { name: 'viewport', content: 'width=device-width, initial-scale=1' },
         // Hint to the browser that we support both schemes (affects UA surfaces + form controls).
         { name: 'color-scheme', content: 'light dark' },
         // iOS: avoid auto-linking phone numbers in app-like UI.
@@ -63,7 +66,8 @@ export default defineNuxtConfig({
         { name: 'theme-color', content: '#ffffff' },
         { name: 'mobile-web-app-capable', content: 'yes' },
         { name: 'apple-mobile-web-app-capable', content: 'yes' },
-        { name: 'apple-mobile-web-app-status-bar-style', content: 'black-translucent' },
+        // Prefer default status bar behavior in iOS standalone.
+        { name: 'apple-mobile-web-app-status-bar-style', content: 'default' },
         { name: 'apple-mobile-web-app-title', content: siteConfig.name }
       ],
       // AdSense loader in initial HTML (helps site verification + avoids relying on client JS timing).
@@ -208,31 +212,11 @@ export default defineNuxtConfig({
     // SWR disabled: Nitro serves cached response before Nuxt cookie hooks run, causing
     // "Cannot append headers after they are sent" when useCookie writes Set-Cookie.
     '/': { ssr: true },
-    // Cache SSR HTML for anonymous visitors only. Logged-in SSR can be personalized (cookies forwarded to API),
-    // so bypass cache when `moh_session` cookie is present to avoid leaking viewer-specific state.
-    '/u/**': {
-      ssr: true,
-      cache: {
-        maxAge: 60,
-        // IMPORTANT: keep SWR off. Nuxt may write Set-Cookie during render; SWR revalidation runs after
-        // the cached response is sent and would trigger "Cannot append headers after they are sent".
-        swr: false,
-        // Avoid leaking viewer-specific SSR HTML by keying cache entries by Cookie.
-        // This effectively makes anonymous users share one cache entry (cookie often empty),
-        // while authenticated users get per-session cache keys.
-        varies: ['cookie'],
-      },
-    },
-    // Link preview + crawler hot path: cache SSR HTML for anonymous visitors (no session cookie).
-    '/p/**': {
-      ssr: true,
-      cache: {
-        maxAge: 60,
-        // IMPORTANT: keep SWR off (see note above).
-        swr: false,
-        varies: ['cookie'],
-      },
-    },
+    // Public shareable: SSR for crawlers/link unfurls.
+    // NOTE: We intentionally avoid Nitro's in-memory route cache here. It fragments by Cookie easily and can
+    // increase memory churn on Render. Prefer CDN caching if/when Cloudflare is in front.
+    '/u/**': { ssr: true },
+    '/p/**': { ssr: true },
 
     // Static content: prerender for fast, cacheable, indexable HTML.
     '/terms': { prerender: true },
@@ -268,7 +252,8 @@ export default defineNuxtConfig({
         'cache-control': 'public, max-age=31536000, immutable',
       },
     },
-    '/images/**': {
+    // Nuxt Image (IPX) transformation output. Safe to cache at the edge (URLs include params).
+    '/_ipx/**': {
       headers: {
         'cache-control': 'public, max-age=86400, stale-while-revalidate=86400',
       },

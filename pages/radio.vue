@@ -1,4 +1,5 @@
 <template>
+  <AppPageContent bottom="standard">
   <div class="px-4 py-5 space-y-6 min-h-full dark:bg-black">
     <div class="flex items-end justify-between gap-3">
       <div class="min-w-0">
@@ -110,6 +111,7 @@
       </div>
     </div>
   </div>
+  </AppPageContent>
 </template>
 
 <script setup lang="ts">

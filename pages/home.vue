@@ -1,5 +1,6 @@
 <template>
-  <div>
+  <!-- hideTopBar page: no top padding here -->
+  <AppPageContent bottom="standard">
     <!-- Layout: Composer at top, feed below. Wrapper ref used to detect when composer is in view (hides mobile FAB). -->
     <div ref="homeComposerEl" class="min-h-0">
       <AppPostComposer
@@ -92,7 +93,7 @@
         </div>
       </template>
     </div>
-  </div>
+  </AppPageContent>
 </template>
 
 <script setup lang="ts">

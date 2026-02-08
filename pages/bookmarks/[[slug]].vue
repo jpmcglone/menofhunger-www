@@ -1,4 +1,5 @@
 <template>
+  <AppPageContent bottom="standard">
   <div>
     <div class="sticky z-10 shrink-0 moh-bg border-b moh-border px-4 pt-4 pb-3" style="top: var(--moh-title-bar-height, 4rem);">
       <div class="flex flex-col gap-3 sm:flex-row sm:items-stretch">
@@ -120,6 +121,7 @@
       </template>
     </Dialog>
   </div>
+  </AppPageContent>
 </template>
 
 <script setup lang="ts">

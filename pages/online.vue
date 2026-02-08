@@ -1,4 +1,5 @@
 <template>
+  <AppPageContent bottom="standard">
   <div class="w-full">
     <div class="px-4 pt-4 pb-0 sm:pb-6">
       <h1 class="flex items-center gap-2 text-xl font-bold tracking-tight text-green-600 dark:text-green-400">
@@ -32,6 +33,7 @@
       <AppUserRow v-for="u in users" :key="u.id" :user="u" :show-follow-button="true" />
     </div>
   </div>
+  </AppPageContent>
 </template>
 
 <script setup lang="ts">

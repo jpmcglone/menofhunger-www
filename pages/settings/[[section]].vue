@@ -1,5 +1,5 @@
 <template>
-  <div class="h-full min-h-0">
+  <AppPageContent class="h-full min-h-0" bottom="standard">
     <div class="grid h-full min-h-0" :class="isTinyViewport ? 'grid-cols-1' : ''" :style="gridStyle">
       <!-- Left column: section list -->
       <section
@@ -346,7 +346,7 @@
         </div>
       </section>
     </div>
-  </div>
+  </AppPageContent>
 </template>
 
 <script setup lang="ts">

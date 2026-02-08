@@ -1,5 +1,5 @@
 <template>
-  <section class="w-full max-w-md">
+  <section class="w-full max-w-md px-6">
     <div class="space-y-6">
       <div class="space-y-2">
         <div class="flex items-center gap-2 text-2xl font-semibold tracking-tight">

@@ -1,4 +1,5 @@
 <template>
+  <AppPageContent bottom="standard">
   <div class="px-4 py-4 space-y-4">
     <div class="flex items-start justify-between gap-3">
       <div class="min-w-0">
@@ -168,6 +169,7 @@
       />
     </template>
   </Dialog>
+  </AppPageContent>
 </template>
 
 <script setup lang="ts">

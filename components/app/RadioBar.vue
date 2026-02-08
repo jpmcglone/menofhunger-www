@@ -1,5 +1,7 @@
 <template>
-  <div v-if="currentStation" class="mx-auto flex w-full items-center justify-between gap-3">
+  <!-- Own padding so layout containers can stay padding-free. -->
+  <div v-if="currentStation" class="w-full px-4 py-2">
+    <div class="flex w-full items-center justify-between gap-3">
     <button
       type="button"
       class="min-w-0 flex-1 text-left"
@@ -105,6 +107,7 @@
       class="hover:!bg-black/5 dark:!text-white dark:hover:!bg-white/10"
       @click="stop"
     />
+    </div>
   </div>
 </template>
 

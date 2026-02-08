@@ -4,7 +4,7 @@
     <AppHeader />
 
     <!-- Main Content Area -->
-    <main class="flex-1 p-6 mt-16">
+    <main class="flex-1">
       <slot />
     </main>
 

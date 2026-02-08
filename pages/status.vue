@@ -1,4 +1,5 @@
 <template>
+  <AppPageContent top="standard" bottom="standard">
   <section class="moh-status min-h-[calc(100dvh-0px)] w-full px-4 pt-0 pb-8">
     <div class="mx-auto w-full max-w-5xl">
       <div class="flex flex-col gap-4">
@@ -125,6 +126,7 @@
       </div>
     </div>
   </section>
+  </AppPageContent>
 </template>
 
 <script setup lang="ts">

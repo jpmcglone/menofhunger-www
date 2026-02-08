@@ -1,10 +1,10 @@
 <template>
   <div class="min-h-screen flex flex-col moh-bg moh-texture moh-text">
-    <main class="flex-1 flex items-center justify-center px-6">
+    <main class="flex-1 flex items-center justify-center">
       <slot />
     </main>
-    <footer class="py-3 px-4">
-      <div class="mx-auto w-full max-w-4xl flex items-center justify-between gap-3">
+    <footer>
+      <div class="mx-auto w-full max-w-4xl px-4 py-3 flex items-center justify-between gap-3">
         <p class="text-sm text-gray-600 dark:text-gray-300">
           {{ siteConfig.name }} &copy; {{ copyrightYear }} • Built by
           <a

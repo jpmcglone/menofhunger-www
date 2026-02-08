@@ -1,5 +1,5 @@
 <template>
-  <div class="px-4 py-4 space-y-4">
+  <AppPageContent bottom="standard" class="px-4 py-4 space-y-4">
     <AppPageHeader title="Media review" icon="pi-images" description="Review and delete uploaded images and videos.">
       <template #leading>
         <Button
@@ -160,7 +160,6 @@
         No media found.
       </div>
     </div>
-  </div>
 
   <Dialog
     v-model:visible="detailsOpen"
@@ -338,6 +337,7 @@
       <Button label="Close" severity="secondary" @click="detailsOpen = false" />
     </template>
   </Dialog>
+  </AppPageContent>
 </template>
 
 <script setup lang="ts">
