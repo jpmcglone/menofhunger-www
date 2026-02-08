@@ -715,12 +715,11 @@ const isSmUp = useMediaQuery('(min-width: 640px)')
 const mobileBottomBarVisible = computed(() => !isSmUp.value && !keyboardOpen.value && !anyOverlayOpen.value)
 
 const appViewportStyle = computed<Record<string, string>>(() => {
-  // When the mobile tab bar is present, reserve its space so content ends at the TOP of the bar
-  // (instead of scrolling underneath it).
+  // Prefer stable `vh` units on mobile web apps (avoid `dvh` quirks).
   if (mobileBottomBarVisible.value) {
-    return { height: 'calc(100dvh - var(--moh-tabbar-height, 4rem) - var(--moh-safe-bottom, 0px))' }
+    return { height: 'calc(100vh - var(--moh-tabbar-height, 4rem) - var(--moh-safe-bottom, 0px))' }
   }
-  return { height: '100dvh' }
+  return { height: '100vh' }
 })
 
 const composerSheetPlacementStyle = computed<Record<string, string>>(() => {
