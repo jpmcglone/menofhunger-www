@@ -15,7 +15,10 @@
         ref="handleEl"
         type="button"
         class="moh-slide-handle relative z-10 flex h-10 w-10 items-center justify-center rounded-full border bg-white shadow-sm transition-colors dark:border-zinc-700 dark:bg-black"
-        :class="disabled ? 'opacity-60 cursor-not-allowed' : 'cursor-grab active:cursor-grabbing'"
+        :class="[
+          disabled ? 'opacity-60 cursor-not-allowed' : 'cursor-grab active:cursor-grabbing',
+          dragging ? 'moh-slide-handle--dragging' : ''
+        ]"
         :style="{ transform: `translateX(${x}px)` }"
         :disabled="disabled"
         role="slider"
@@ -65,6 +68,7 @@ const maxX = ref(1)
 const handleWidth = ref(40)
 const completed = ref(false)
 const progress = computed(() => (maxX.value > 0 ? x.value / maxX.value : 0))
+const dragging = ref(false)
 
 function measure() {
   const track = trackEl.value?.getBoundingClientRect()
@@ -101,6 +105,7 @@ onBeforeUnmount(() => {
   window.removeEventListener('resize', measure)
   ro?.disconnect()
   ro = null
+  dragging.value = false
   if (activePointerOnMove) {
     window.removeEventListener('pointermove', activePointerOnMove)
     activePointerOnMove = null
@@ -143,6 +148,7 @@ function onPointerDown(e: PointerEvent) {
     // ignore
   }
 
+  dragging.value = true
   measure()
   const pointerId = e.pointerId
   try {
@@ -168,6 +174,7 @@ function onPointerDown(e: PointerEvent) {
 
   const onUp = (ev: PointerEvent) => {
     if (ev.pointerId !== pointerId) return
+    dragging.value = false
     try {
       handle.releasePointerCapture(ev.pointerId)
     } catch {
@@ -226,8 +233,14 @@ function onKeyDown(e: KeyboardEvent) {
 </script>
 
 <style scoped>
-button {
+/* Safari: avoid animating transform during drag (causes jitter/lag). */
+.moh-slide-handle {
   transition: transform 140ms ease;
+  will-change: transform;
+}
+
+.moh-slide-handle--dragging {
+  transition: none !important;
 }
 
 .moh-slide-track,
