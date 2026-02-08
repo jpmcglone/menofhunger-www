@@ -53,7 +53,6 @@
 
 <script setup lang="ts">
 import type { Websters1828WordOfDay } from '~/types/api'
-import { easternDateKey, msUntilNextEasternMidnight } from '~/utils/eastern-time'
 
 const { apiFetchData } = useApiClient()
 
@@ -65,42 +64,15 @@ const { data, pending, error, refresh } = useAsyncData<Websters1828WordOfDay>(
   { server: false, lazy: true },
 )
 
-let rolloverTimer: ReturnType<typeof setTimeout> | null = null
-const lastDayKey = ref(easternDateKey(new Date()))
-
-async function maybeRefreshForNewEasternDay() {
-  if (!import.meta.client) return
-  const k = easternDateKey(new Date())
-  if (k === lastDayKey.value) return
-  lastDayKey.value = k
-  await refresh()
-}
-
-function scheduleRollover() {
-  if (!import.meta.client) return
-  rolloverTimer && clearTimeout(rolloverTimer)
-  const ms = msUntilNextEasternMidnight(new Date())
-  // Nudge a bit after midnight to avoid boundary weirdness.
-  rolloverTimer = setTimeout(async () => {
-    await maybeRefreshForNewEasternDay()
-    scheduleRollover()
-  }, Math.max(1000, ms + 2000))
-}
-function onVisibilityOrFocus() {
-  // If the device slept or timers were throttled, snap to the correct day on return.
-  maybeRefreshForNewEasternDay()
-}
-
-onMounted(() => {
-  scheduleRollover()
-  window.addEventListener('focus', onVisibilityOrFocus)
-  document.addEventListener('visibilitychange', onVisibilityOrFocus)
-})
-onBeforeUnmount(() => {
-  rolloverTimer && clearTimeout(rolloverTimer)
-  rolloverTimer = null
-  window.removeEventListener('focus', onVisibilityOrFocus)
-  document.removeEventListener('visibilitychange', onVisibilityOrFocus)
-})
+const { dayKey } = useEasternMidnightRollover()
+watch(
+  () => dayKey.value,
+  async (next, prev) => {
+    if (!import.meta.client) return
+    if (!prev) return
+    if (next === prev) return
+    await refresh()
+  }
+)
 </script>
 

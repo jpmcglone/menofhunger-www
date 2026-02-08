@@ -586,7 +586,6 @@ import logoDarkSmall from '~/assets/images/logo-black-bg-small.png'
 import { primaryTintCssForUser } from '~/utils/theme-tint'
 import dailyQuotes from '~/config/daily-quotes.json'
 import { formatDailyQuoteAttribution, getDailyQuote, type DailyQuote } from '~/utils/daily-quote'
-import { msUntilNextEasternMidnight } from '~/utils/eastern-time'
 import {
   MOH_HOME_COMPOSER_IN_VIEW_KEY,
   MOH_MIDDLE_SCROLLER_KEY,
@@ -1009,40 +1008,12 @@ const lightbox = useImageLightbox()
 
 const showStatusBg = computed(() => route.path === '/status')
 
-const dailyQuoteNow = ref(new Date())
+const { now: easternNow } = useEasternMidnightRollover()
 const dailyQuote = computed(() => {
-  const { quote } = getDailyQuote(dailyQuotes as unknown as DailyQuote[], dailyQuoteNow.value)
+  const { quote } = getDailyQuote(dailyQuotes as unknown as DailyQuote[], easternNow.value)
   return quote
 })
 const dailyQuoteAttribution = computed(() => (dailyQuote.value ? formatDailyQuoteAttribution(dailyQuote.value) : ''))
-
-let dailyQuoteTimer: ReturnType<typeof setTimeout> | null = null
-function scheduleDailyQuoteRollover() {
-  if (!import.meta.client) return
-  dailyQuoteTimer && clearTimeout(dailyQuoteTimer)
-  const ms = msUntilNextEasternMidnight(new Date())
-  // Nudge a bit after midnight so we reliably cross the boundary.
-  dailyQuoteTimer = setTimeout(() => {
-    dailyQuoteNow.value = new Date()
-    scheduleDailyQuoteRollover()
-  }, Math.max(1000, ms + 2000))
-}
-function onDailyQuoteVisibilityOrFocus() {
-  // If the device slept or timers were throttled, snap to correct day on return.
-  dailyQuoteNow.value = new Date()
-}
-
-onMounted(() => {
-  scheduleDailyQuoteRollover()
-  window.addEventListener('focus', onDailyQuoteVisibilityOrFocus)
-  document.addEventListener('visibilitychange', onDailyQuoteVisibilityOrFocus)
-})
-onBeforeUnmount(() => {
-  dailyQuoteTimer && clearTimeout(dailyQuoteTimer)
-  dailyQuoteTimer = null
-  window.removeEventListener('focus', onDailyQuoteVisibilityOrFocus)
-  document.removeEventListener('visibilitychange', onDailyQuoteVisibilityOrFocus)
-})
 
 const {
   users: whoToFollowUsers,
