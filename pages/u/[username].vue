@@ -90,7 +90,7 @@
       </div>
 
       <!-- Posts -->
-      <div class="mx-auto max-w-3xl pb-5">
+      <div class="mx-auto max-w-3xl">
         <div class="px-4">
           <div class="flex flex-wrap items-end justify-between gap-3">
             <div class="text-sm font-semibold text-gray-900 dark:text-gray-50">
@@ -152,6 +152,22 @@
                   @deleted="profileRemovePost"
                 />
               </template>
+
+              <!-- Load more when sentinel nears bottom of scroll area -->
+              <div v-if="profileNextCursor" class="relative flex justify-center items-center px-4 py-6 min-h-12">
+                <div
+                  ref="profileLoadMoreSentinelEl"
+                  class="absolute bottom-0 left-0 right-0 h-px"
+                  aria-hidden="true"
+                />
+                <div
+                  class="transition-opacity duration-150"
+                  :class="profileLoading ? 'opacity-100' : 'opacity-0 pointer-events-none'"
+                  :aria-hidden="!profileLoading"
+                >
+                  <AppLogoLoader compact />
+                </div>
+              </div>
             </div>
           </div>
         </ClientOnly>
@@ -266,6 +282,8 @@ const {
   setSort: profileSetSort,
   removePost: profileRemovePost,
   hasLoadedOnce: profileHasLoadedOnce,
+  nextCursor: profileNextCursor,
+  loadMore: profileLoadMore,
 } = useUserPosts(normalizedUsername, {
   enabled: computed(() => !notFound.value),
   defaultToNewestAndAll: true,
@@ -431,6 +449,33 @@ watch(
 )
 
 const middleScrollerEl = useMiddleScroller()
+const profileLoadMoreSentinelEl = ref<HTMLElement | null>(null)
+
+let profileLoadMoreObs: IntersectionObserver | null = null
+watch(
+  [profileLoadMoreSentinelEl, middleScrollerEl, () => profileNextCursor.value],
+  ([sentinel, scrollRoot]) => {
+    if (!import.meta.client) return
+    profileLoadMoreObs?.disconnect()
+    profileLoadMoreObs = null
+    const el = sentinel as HTMLElement | null
+    const root = scrollRoot as HTMLElement | null
+    if (!el || !root || !profileNextCursor.value) return
+    profileLoadMoreObs = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) profileLoadMore()
+      },
+      { root, rootMargin: '400px', threshold: 0 },
+    )
+    profileLoadMoreObs.observe(el)
+  },
+  { immediate: true, flush: 'post' },
+)
+onBeforeUnmount(() => {
+  profileLoadMoreObs?.disconnect()
+  profileLoadMoreObs = null
+})
+
 async function preserveMiddleScrollAfter<T>(fn: () => Promise<T>): Promise<T> {
   if (!import.meta.client) return await fn()
   const scroller = middleScrollerEl.value

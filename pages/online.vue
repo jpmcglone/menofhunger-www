@@ -1,6 +1,6 @@
 <template>
   <div class="w-full">
-    <div class="px-4 pt-4 pb-6">
+    <div class="px-4 pt-4 pb-0 sm:pb-6">
       <h1 class="flex items-center gap-2 text-xl font-bold tracking-tight text-green-600 dark:text-green-400">
         <span class="relative flex h-3 w-3 shrink-0" aria-hidden="true">
           <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-500 opacity-75" />

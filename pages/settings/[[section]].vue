@@ -61,7 +61,7 @@
             </div>
           </div>
 
-          <div class="flex-1 overflow-y-auto py-4">
+          <div class="flex-1 overflow-y-auto pt-4 pb-0 sm:pb-4">
             <div class="px-4">
               <div v-if="selectedSection === 'account'" class="space-y-6">
                 <AppUsernameField

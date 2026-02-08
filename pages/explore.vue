@@ -17,7 +17,7 @@
       </div>
     </div>
 
-    <div class="py-4 space-y-4">
+    <div class="pt-4 pb-0 sm:pb-4 space-y-4">
 
       <!-- Min length hint -->
       <div v-if="searchQueryTrimmed && searchQueryTrimmed.length < 2" class="px-4">

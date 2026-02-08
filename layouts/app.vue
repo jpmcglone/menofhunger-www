@@ -301,10 +301,10 @@
             </div>
             </div>
 
-            <!-- Radio player row: bottom of the middle column (not floating). -->
+            <!-- Radio player row: bottom of the middle column on desktop only. -->
             <div
               v-if="showRadioBar"
-              class="shrink-0 border-t moh-border bg-white dark:bg-black text-gray-900 dark:text-white px-4 py-3 pb-3"
+              class="hidden sm:block shrink-0 border-t border-gray-200 bg-white dark:border-zinc-800 dark:bg-black text-gray-900 dark:text-white px-4 py-2"
             >
               <AppRadioBar />
             </div>
@@ -474,23 +474,33 @@
       </div>
     </div>
 
-    <!-- Mobile FAB: open post composer (visible when tab bar is). Hidden when home page composer is on screen. -->
+    <!-- Mobile: radio bar fixed flush above tab bar; fill height so bar is solid (no gap). -->
+    <div
+      v-if="showRadioBar"
+      class="sm:hidden fixed inset-x-0 z-30 flex items-center border-t border-gray-200 bg-white dark:border-zinc-800 dark:bg-black text-gray-900 dark:text-white"
+      :style="{ bottom: 'calc(var(--moh-tabbar-height, 4rem) + var(--moh-safe-bottom, 0px))', minHeight: 'var(--moh-radio-bar-height, 4rem)' }"
+    >
+      <div class="w-full px-4">
+        <AppRadioBar />
+      </div>
+    </div>
+
+    <!-- Mobile FAB: above tab bar and radio (when radio is up). -->
     <button
-      v-if="canOpenComposer && isComposerEntrypointRoute && !hideFabForHomeComposer && !keyboardOpen && !anyOverlayOpen"
+      v-if="canOpenComposer && isComposerEntrypointRoute && !hideFabForHomeComposer && !anyOverlayOpen"
       type="button"
       aria-label="New post"
       :class="[
         'sm:hidden fixed right-4 z-40 flex h-12 w-12 items-center justify-center rounded-xl text-white shadow-lg hover:opacity-95 active:scale-95',
         fabButtonClass,
       ]"
-      :style="fabButtonStyle"
-      style="bottom: calc(var(--moh-tabbar-height, 4rem) + var(--moh-safe-bottom, 0px));"
+      :style="fabBottomStyle"
       @click="openComposerForCurrentRoute()"
     >
       <i class="pi pi-plus text-3xl" aria-hidden="true" />
     </button>
 
-    <AppTabBar v-if="!keyboardOpen && !anyOverlayOpen" :items="tabItems" />
+    <AppTabBar v-if="!anyOverlayOpen" :items="tabItems" />
 
     <ClientOnly>
       <Transition
@@ -566,7 +576,6 @@
 </template>
 
 <script setup lang="ts">
-import { useMediaQuery } from '@vueuse/core'
 import { siteConfig } from '~/config/site'
 import logoLightSmall from '~/assets/images/logo-white-bg-small.png'
 import logoDarkSmall from '~/assets/images/logo-black-bg-small.png'
@@ -708,25 +717,29 @@ const replyModalOpen = computed(() => Boolean(replyModalOpenRef.value))
 const anyOverlayOpen = computed(() => composerModalOpen.value || replyModalOpen.value)
 
 useScrollLock(anyOverlayOpen)
-const insets = useMobileInsets()
-const keyboardOpen = insets.keyboardOpen
 const composerSheetStyle = ref<Record<string, string>>({ left: '0px', right: '0px', width: 'auto' })
-const isSmUp = useMediaQuery('(min-width: 640px)')
-const mobileBottomBarVisible = computed(() => !isSmUp.value && !keyboardOpen.value && !anyOverlayOpen.value)
+// SSR-safe: assume mobile so server and first client paint match; update after mount to avoid hydration mismatch.
+const isSmUp = ref(false)
+onMounted(() => {
+  if (import.meta.client && typeof window !== 'undefined') {
+    isSmUp.value = window.matchMedia('(min-width: 640px)').matches
+  }
+})
+const mobileBottomBarVisible = computed(() => !isSmUp.value && !anyOverlayOpen.value)
 
 const appViewportStyle = computed<Record<string, string>>(() => {
-  // Prefer stable `vh` units on mobile web apps (avoid `dvh` quirks).
-  if (mobileBottomBarVisible.value) {
-    return { height: 'calc(100vh - var(--moh-tabbar-height, 4rem) - var(--moh-safe-bottom, 0px))' }
+  if (!mobileBottomBarVisible.value) return { height: '100vh' }
+  if (showRadioBar.value) {
+    return { height: 'calc(100vh - var(--moh-tabbar-height, 4rem) - var(--moh-radio-bar-height, 4rem) - var(--moh-safe-bottom, 0px))' }
   }
-  return { height: '100vh' }
+  return { height: 'calc(100vh - var(--moh-tabbar-height, 4rem) - var(--moh-safe-bottom, 0px))' }
 })
 
 const composerSheetPlacementStyle = computed<Record<string, string>>(() => {
   // Desktop/tablet: align with the center column near the top.
   if (isSmUp.value) return { top: '0.75rem', bottom: 'auto' }
-  // Mobile: behave like a bottom sheet and sit above the virtual keyboard.
-  return { top: 'auto', bottom: insets.bottomInsetCss(12) }
+  // Mobile: bottom sheet above safe area.
+  return { top: 'auto', bottom: 'calc(env(safe-area-inset-bottom, 0px) + 12px)' }
 })
 const composerVisibility = useCookie<'public' | 'verifiedOnly' | 'premiumOnly' | 'onlyMe'>('moh.post.visibility.v1', {
   default: () => 'public',
@@ -800,22 +813,25 @@ const fabButtonClass = computed(() => {
   return 'bg-black text-white dark:bg-white dark:text-black'
 })
 const fabButtonStyle = computed(() => ({}))
+// FAB sits above tab bar, and above radio bar too when it’s visible (mobile only).
+const fabBottomStyle = computed<Record<string, string>>(() => {
+  const base = 'calc(var(--moh-tabbar-height, 4rem) + var(--moh-safe-bottom, 0px))'
+  if (showRadioBar.value) {
+    return { bottom: 'calc(var(--moh-tabbar-height, 4rem) + var(--moh-radio-bar-height, 4rem) + var(--moh-safe-bottom, 0px))' }
+  }
+  return { bottom: base }
+})
 
 const middleContentEl = ref<HTMLElement | null>(null)
 
 const { currentStation: currentRadioStation } = useRadioPlayer()
 const showRadioBar = computed(() => Boolean(currentRadioStation.value))
 const standardMiddleBottomPadClass = computed(() => {
-  // When typing on mobile, hide fixed bottom UI and reclaim space.
-  if (keyboardOpen.value) return 'pb-4 sm:pb-4'
-  // When the tab bar is visible and space is reserved at the layout level, keep only a little breathing room.
-  if (mobileBottomBarVisible.value) return 'pb-4 sm:pb-4'
+  if (mobileBottomBarVisible.value) return 'pb-0 sm:pb-4'
   return showRadioBar.value ? 'pb-0 sm:pb-0' : 'pb-24 sm:pb-4'
 })
 const messagesMiddleBottomPadClass = computed(() => {
-  // Messages pages use a flex column layout; keep it stable but avoid wasting space when keyboard is up.
-  if (keyboardOpen.value) return 'flex h-full min-h-0 flex-col pb-4 sm:pb-0'
-  if (mobileBottomBarVisible.value) return 'flex h-full min-h-0 flex-col pb-4 sm:pb-0'
+  if (mobileBottomBarVisible.value) return 'flex h-full min-h-0 flex-col pb-0 sm:pb-0'
   return showRadioBar.value
     ? 'flex h-full min-h-0 flex-col pb-0 sm:pb-0'
     : 'flex h-full min-h-0 flex-col pb-[calc(var(--moh-tabbar-height,4rem)+var(--moh-safe-bottom,0px))] sm:pb-0'

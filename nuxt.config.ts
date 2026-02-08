@@ -148,8 +148,23 @@ export default defineNuxtConfig({
     build: {
       sourcemap: false,
       // CI warning noise: Nuxt/Vite warns at 500kB, but our largest client chunk is ~520kB minified.
-      // Keep the warning meaningful without spamming logs.
       chunkSizeWarningLimit: 600,
+    },
+    // Smoother dev: pre-bundle heavy deps so Vite doesn't re-transform them on every request.
+    optimizeDeps: {
+      include: [
+        'vue',
+        'vue-router',
+        '@vueuse/core',
+        'primevue',
+        'socket.io-client',
+        'vue-advanced-cropper',
+        'emoji-picker-element',
+      ],
+    },
+    css: {
+      // Slightly faster CSS HMR in dev (no source map for CSS).
+      devSourcemap: false,
     },
     plugins: [
       {

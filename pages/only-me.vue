@@ -31,7 +31,7 @@
         </div>
       </div>
 
-      <div v-if="nextCursor" class="px-4 py-6 flex justify-center">
+      <div v-if="nextCursor" class="px-4 pt-6 pb-0 sm:pb-6 flex justify-center">
         <Button label="Load more" severity="secondary" :loading="loading" :disabled="loading" @click="loadMore" />
       </div>
     </div>

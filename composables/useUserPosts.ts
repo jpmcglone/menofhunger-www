@@ -257,6 +257,8 @@ export function useUserPosts(
     loading: feed.loading,
     error: feed.error,
     hasLoadedOnce,
+    nextCursor: feed.nextCursor,
+    loadMore: feed.loadMore,
     viewerIsVerified,
     viewerIsPremium,
     ctaKind,

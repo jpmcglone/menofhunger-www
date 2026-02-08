@@ -1,24 +1,19 @@
 <template>
-  <div v-if="currentStation" class="w-full">
-    <div class="mx-auto flex items-center justify-between gap-3">
-      <button
-        type="button"
-        class="min-w-0 flex-1 text-left"
-        @click="navigateTo('/radio')"
-      >
-        <div class="flex items-center gap-2 min-w-0">
-          <div class="min-w-0">
-            <div class="text-sm font-semibold truncate">
-              {{ currentStation.name }}
-            </div>
-            <div class="text-[11px] text-gray-500 dark:text-white/70">
-              <span v-if="isPlaying">Playing</span>
-              <span v-else-if="!isBuffering">Paused</span>
-              <span v-if="listenersCount !== null" class="ml-2 tabular-nums">· {{ listenersCount }}</span>
-            </div>
-          </div>
+  <div v-if="currentStation" class="mx-auto flex w-full items-center justify-between gap-3">
+    <button
+      type="button"
+      class="min-w-0 flex-1 text-left"
+      @click="navigateTo('/radio')"
+    >
+      <div class="min-w-0">
+        <div class="text-sm font-semibold truncate">{{ currentStation.name }}</div>
+        <div class="text-[11px] text-gray-500 dark:text-white/70">
+          <span v-if="isPlaying">Playing</span>
+          <span v-else-if="!isBuffering">Paused</span>
+          <span v-if="listenersCount !== null" class="ml-2 tabular-nums">· {{ listenersCount }}</span>
         </div>
-      </button>
+      </div>
+    </button>
 
       <div v-if="showListenerStack" class="pointer-events-none hidden sm:flex items-center gap-2">
         <TransitionGroup
@@ -57,11 +52,18 @@
 
       <!-- Volume (smaller + to the right of avatars) -->
       <div :class="['flex items-center gap-1.5 shrink-0', showListenerStack ? 'ml-2 sm:ml-3' : '']">
-        <i
-          :class="volumeIcon"
-          class="pi text-[13px] opacity-80"
-          aria-hidden="true"
-        />
+        <button
+          type="button"
+          class="p-0.5 -m-0.5 rounded touch-manipulation"
+          :aria-label="isMuted ? 'Unmute radio' : 'Mute radio'"
+          @click="toggleMute"
+        >
+          <i
+            :class="volumeIcon"
+            class="pi text-[13px] opacity-80"
+            aria-hidden="true"
+          />
+        </button>
         <input
           v-model.number="volumePercent"
           type="range"
@@ -93,17 +95,16 @@
         @click="toggle"
       />
 
-      <Button
-        aria-label="Close radio"
-        icon="pi pi-times"
-        severity="secondary"
-        rounded
-        text
-        size="small"
-        class="hover:!bg-black/5 dark:!text-white dark:hover:!bg-white/10"
-        @click="stop"
-      />
-    </div>
+    <Button
+      aria-label="Close radio"
+      icon="pi pi-times"
+      severity="secondary"
+      rounded
+      text
+      size="small"
+      class="hover:!bg-black/5 dark:!text-white dark:hover:!bg-white/10"
+      @click="stop"
+    />
   </div>
 </template>
 
@@ -118,6 +119,8 @@ function listenerProfileTo(u: { id: string; username?: string | null }): string 
 const { currentStation, isPlaying, isBuffering, listeners, toggle, stop, volume, setVolume } = useRadioPlayer()
 const listenersCount = computed(() => (currentStation.value ? listeners.value.length : null))
 
+const preMuteVolume = ref<number | null>(null)
+
 const volumePercent = computed<number>({
   get() {
     return Math.round((volume.value ?? 0.5) * 100)
@@ -126,8 +129,22 @@ const volumePercent = computed<number>({
     const n = Number(v)
     if (!Number.isFinite(n)) return
     setVolume(Math.max(0, Math.min(1, n / 100)))
+    if (n > 0) preMuteVolume.value = null
   },
 })
+
+const isMuted = computed(() => (volume.value ?? 0.5) <= 0.001)
+
+function toggleMute() {
+  const v = volume.value ?? 0.5
+  if (v <= 0.001) {
+    setVolume(preMuteVolume.value ?? 0.5)
+    preMuteVolume.value = null
+  } else {
+    preMuteVolume.value = v
+    setVolume(0)
+  }
+}
 
 const volumeIcon = computed(() => {
   const v = volume.value ?? 0.5

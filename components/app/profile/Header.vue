@@ -3,16 +3,15 @@
     <!-- Full-bleed profile header (cancel app layout padding) -->
     <div class="relative">
       <div class="group relative aspect-[3/1] w-full bg-gray-200 dark:bg-zinc-900">
-        <AppImg
+        <img
           v-if="profileBannerUrl"
           v-show="!hideBannerThumb"
           :src="profileBannerUrl"
           alt=""
           class="h-full w-full object-cover"
-          sizes="100vw"
           loading="lazy"
           decoding="async"
-        />
+        >
         <div
           v-if="profileBannerUrl"
           v-show="!hideBannerThumb"

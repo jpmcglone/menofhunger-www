@@ -1,11 +1,11 @@
 <template>
   <nav
     class="fixed inset-x-0 bottom-0 z-50 border-t border-gray-200 bg-white dark:border-zinc-800 dark:bg-black sm:hidden"
-    style="padding-bottom: var(--moh-safe-bottom)"
+    style="min-height: calc(var(--moh-tabbar-height, 4.5rem) + env(safe-area-inset-bottom, 0px)); padding-bottom: env(safe-area-inset-bottom, 0px);"
     aria-label="Primary"
   >
-    <div class="mx-auto w-full max-w-6xl px-2">
-      <div class="grid grid-flow-col auto-cols-fr py-2.5">
+    <div class="mx-auto w-full max-w-6xl px-2 py-2">
+      <div class="grid grid-flow-col auto-cols-fr">
         <template v-for="item in items" :key="item.key">
           <button
             v-if="item.key === 'profile'"

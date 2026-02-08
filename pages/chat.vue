@@ -410,7 +410,6 @@ const route = useRoute()
 const router = useRouter()
 const { user: me } = useAuth()
 const viewerIsVerified = computed(() => (me.value?.verifiedStatus ?? 'none') !== 'none')
-const insets = useMobileInsets()
 const CHAT_BOOT_FADE_MS = 160
 const MESSAGES_PANE_FADE_MS = 160
 const prefersReducedMotion = ref(false)
@@ -420,12 +419,10 @@ let chatBootTimer: ReturnType<typeof setTimeout> | null = null
 let messagesPaneTimer: ReturnType<typeof setTimeout> | null = null
 
 const composerBarStyle = computed<Record<string, string>>(() => ({
-  // Keep the composer accessible above the virtual keyboard + safe area.
-  paddingBottom: insets.bottomInsetCss(10),
+  paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 10px)',
 }))
 const scrollToBottomButtonStyle = computed<Record<string, string>>(() => ({
-  // Prevent the button from sitting behind the keyboard on mobile.
-  bottom: insets.bottomInsetCss('1rem'),
+  bottom: 'calc(env(safe-area-inset-bottom, 0px) + 1rem)',
 }))
 
 function clearChatBootTimer() {
@@ -1544,18 +1541,6 @@ watch(isSocketConnected, (connected) => {
   if (!viewerIsVerified.value) return
   if (connected && route.path === '/chat') emitMessagesScreen(true)
 })
-
-watch(
-  () => insets.keyboardOpen.value,
-  (open) => {
-    if (!import.meta.client) return
-    if (!open) return
-    // If the user is already at the bottom, keep them there when the keyboard opens.
-    if (!selectedChatKey.value) return
-    if (!atBottom.value) return
-    requestAnimationFrame(() => scrollToBottom('auto'))
-  },
-)
 
 watch(
   () => route.query.c,

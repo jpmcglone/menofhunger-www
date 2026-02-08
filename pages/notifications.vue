@@ -40,7 +40,7 @@
         </div>
       </template>
 
-      <div v-if="nextCursor && !loading" class="px-4 py-3 text-center">
+      <div v-if="nextCursor && !loading" class="px-4 pt-3 pb-0 sm:pb-3 text-center">
         <Button
           label="Load more"
           text
@@ -49,7 +49,7 @@
           @click="loadMore"
         />
       </div>
-      <div v-else-if="loadingMore" class="px-4 py-3 text-center text-sm text-gray-500 dark:text-gray-400">
+      <div v-else-if="loadingMore" class="px-4 pt-3 pb-0 sm:pb-3 text-center text-sm text-gray-500 dark:text-gray-400">
         Loading…
       </div>
     </div>
