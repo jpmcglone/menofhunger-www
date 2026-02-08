@@ -16,7 +16,6 @@ const MESSAGES_UNREAD_COUNTS_KEY = 'messages-unread-counts'
 const NOTIFICATION_SOUND_PATH = '/sounds/notification.mp3'
 /** Min ms between plays so we don't ding repeatedly (e.g. multiple sockets on mobile or burst of events). */
 const NOTIFICATION_SOUND_COOLDOWN_MS = 3000
-const NOTIFICATION_AUDIO_UNLOCKED_KEY = 'presence-notification-audio-unlocked'
 
 export type PresenceOnlinePayload = { userId: string; user?: FollowListUser; lastConnectAt?: number; idle?: boolean }
 export type PresenceOfflinePayload = { userId: string }
@@ -115,6 +114,7 @@ export function usePresence() {
   const { user } = useAuth()
   const route = useRoute()
   const { apiBaseUrl } = useApiClient()
+  const sfx = useSfx()
 
   function emitSubscribe(userIds: string[]) {
     const socket = socketRef.value
@@ -364,13 +364,8 @@ export function usePresence() {
         typeof document !== 'undefined' &&
         document.visibilityState === 'visible'
       ) {
-        try {
-          lastNotificationSoundPlayedAt = now
-          const audio = new Audio(NOTIFICATION_SOUND_PATH)
-          void audio.play().catch(() => {})
-        } catch {
-          // no-op if sound missing or play fails
-        }
+        lastNotificationSoundPlayedAt = now
+        void sfx.playUrl(NOTIFICATION_SOUND_PATH, { volume: 0.9 })
       }
       previousNotificationCountRef.value = newCount
     })
@@ -512,33 +507,6 @@ export function usePresence() {
       (userId) => {
         if (userId) connect()
         else disconnect()
-      },
-      { immediate: true },
-    )
-
-    // Unlock audio on first user interaction so the first notification sound can play (browsers block play() until then).
-    // Use shared state so we only add one set of listeners and play once globally (usePresence() is called from many components).
-    const audioUnlocked = useState<boolean>(NOTIFICATION_AUDIO_UNLOCKED_KEY, () => false)
-    const unlockListenersAdded = useState<boolean>(`${NOTIFICATION_AUDIO_UNLOCKED_KEY}-listeners`, () => false)
-    function unlockNotificationAudio() {
-      if (audioUnlocked.value) return
-      audioUnlocked.value = true
-      try {
-        const a = new Audio(NOTIFICATION_SOUND_PATH)
-        a.volume = 0
-        void a.play().then(() => a.pause()).catch(() => {})
-      } catch {
-        // ignore
-      }
-    }
-    watch(
-      () => user.value?.id ?? null,
-      (userId) => {
-        if (!userId || unlockListenersAdded.value) return
-        unlockListenersAdded.value = true
-        document.addEventListener('click', unlockNotificationAudio, { once: true, passive: true })
-        document.addEventListener('keydown', unlockNotificationAudio, { once: true, passive: true })
-        document.addEventListener('touchstart', unlockNotificationAudio, { once: true, passive: true })
       },
       { immediate: true },
     )

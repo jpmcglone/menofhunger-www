@@ -226,6 +226,7 @@
                 type="button"
                 class="absolute left-1/2 bottom-4 z-10 flex -translate-x-1/2 items-center gap-2 rounded-full px-4 py-2 text-xs font-semibold shadow-lg cursor-pointer"
                 :class="pendingButtonClass"
+                :style="scrollToBottomButtonStyle"
                 @click="onPendingButtonClick"
               >
                 <i class="pi pi-arrow-down text-xs" aria-hidden="true" />
@@ -235,7 +236,7 @@
           </div>
           <div v-else class="flex-1" />
 
-          <div v-if="selectedChatKey" class="shrink-0 border-t border-gray-200 px-4 py-2.5 dark:border-zinc-800">
+          <div v-if="selectedChatKey" class="shrink-0 border-t border-gray-200 px-4 py-2.5 dark:border-zinc-800" :style="composerBarStyle">
             <div v-if="selectedConversation?.viewerStatus === 'pending'" class="mb-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-200">
               This is a chat request. Replying accepts it and moves it to your inbox.
               <div class="mt-2">
@@ -409,6 +410,7 @@ const route = useRoute()
 const router = useRouter()
 const { user: me } = useAuth()
 const viewerIsVerified = computed(() => (me.value?.verifiedStatus ?? 'none') !== 'none')
+const insets = useMobileInsets()
 const CHAT_BOOT_FADE_MS = 160
 const MESSAGES_PANE_FADE_MS = 160
 const prefersReducedMotion = ref(false)
@@ -416,6 +418,15 @@ const chatBootState = ref<'loading' | 'fading' | 'ready'>('loading')
 const messagesPaneState = ref<'loading' | 'fading' | 'ready'>('loading')
 let chatBootTimer: ReturnType<typeof setTimeout> | null = null
 let messagesPaneTimer: ReturnType<typeof setTimeout> | null = null
+
+const composerBarStyle = computed<Record<string, string>>(() => ({
+  // Keep the composer accessible above the virtual keyboard + safe area.
+  paddingBottom: insets.bottomInsetCss(10),
+}))
+const scrollToBottomButtonStyle = computed<Record<string, string>>(() => ({
+  // Prevent the button from sitting behind the keyboard on mobile.
+  bottom: insets.bottomInsetCss('1rem'),
+}))
 
 function clearChatBootTimer() {
   if (!chatBootTimer) return
@@ -1533,6 +1544,18 @@ watch(isSocketConnected, (connected) => {
   if (!viewerIsVerified.value) return
   if (connected && route.path === '/chat') emitMessagesScreen(true)
 })
+
+watch(
+  () => insets.keyboardOpen.value,
+  (open) => {
+    if (!import.meta.client) return
+    if (!open) return
+    // If the user is already at the bottom, keep them there when the keyboard opens.
+    if (!selectedChatKey.value) return
+    if (!atBottom.value) return
+    requestAnimationFrame(() => scrollToBottom('auto'))
+  },
+)
 
 watch(
   () => route.query.c,

@@ -12,6 +12,8 @@ export type LightboxMediaItem = {
 }
 
 let requestId = 0
+let didInitScrollLock = false
+let didInitKeydown = false
 
 export function useImageLightbox() {
   // Singleton state (shared across the app).
@@ -36,10 +38,11 @@ export function useImageLightbox() {
   const borderRadius = useState<string>('moh.lightbox.borderRadius', () => '0px')
   const transition = useState<string>('moh.lightbox.transition', () => 'none')
 
-  function setScrollLocked(locked: boolean) {
-    if (!import.meta.client) return
-    document.documentElement.style.overflow = locked ? 'hidden' : ''
-    document.body.style.overflow = locked ? 'hidden' : ''
+  // Ensure global side-effects (scroll lock, keydown listener) are registered once,
+  // even though many components call this composable.
+  if (import.meta.client && !didInitScrollLock) {
+    didInitScrollLock = true
+    useScrollLock(visible)
   }
 
   function initialRadius(k: LightboxKind) {
@@ -227,7 +230,6 @@ export function useImageLightbox() {
 
     visible.value = true
     backdropVisible.value = false
-    setScrollLocked(true)
 
     const list = mediaItems.value
     const cur = list[index.value]
@@ -368,7 +370,6 @@ export function useImageLightbox() {
     transition.value = 'none'
     transform.value = 'translate(0px, 0px) scale(1, 1)'
     borderRadius.value = '0px'
-    setScrollLocked(false)
   }
 
   function onTransitionEnd(e: TransitionEvent) {
@@ -409,15 +410,17 @@ export function useImageLightbox() {
     }
   }
 
-  watch(
-    visible,
-    (open) => {
-      if (!import.meta.client) return
-      if (open) window.addEventListener('keydown', onKeydown)
-      else window.removeEventListener('keydown', onKeydown)
-    },
-    { flush: 'post' }
-  )
+  if (import.meta.client && !didInitKeydown) {
+    didInitKeydown = true
+    watch(
+      visible,
+      (open) => {
+        if (open) window.addEventListener('keydown', onKeydown)
+        else window.removeEventListener('keydown', onKeydown)
+      },
+      { flush: 'post' }
+    )
+  }
 
   onBeforeUnmount(() => {
     finalizeClose()

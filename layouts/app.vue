@@ -14,6 +14,9 @@
     <div v-if="showStatusBg" class="moh-status-bg" aria-hidden="true" />
   </Transition>
 
+  <!-- Full-viewport background so safe areas get the app texture. -->
+  <div class="fixed inset-0 z-0 moh-bg moh-texture" aria-hidden="true" />
+
   <div class="relative z-10">
     <ClientOnly>
       <AppToastStack />
@@ -30,7 +33,7 @@
       <div
         v-if="isAuthed && (disconnectedDueToIdle || connectionBarJustConnected || (wasSocketConnectedOnce && !isSocketConnected))"
         :class="[
-          'fixed left-0 right-0 top-0 z-50 flex items-center justify-center gap-3 border-b px-4 py-2.5 text-center text-sm backdrop-blur-sm',
+          'fixed left-0 right-0 top-0 z-50 flex items-center justify-center gap-3 border-b px-4 pb-2.5 pt-[calc(0.625rem+var(--moh-safe-top,0px))] text-center text-sm backdrop-blur-sm',
           connectionBarJustConnected
             ? 'border-green-500/60 bg-green-100/95 text-green-900 dark:border-green-500/50 dark:bg-green-900/30 dark:text-green-100'
             : isSocketConnecting
@@ -63,7 +66,10 @@
     <AppAuthActionModal />
     <AppPremiumVideoModal />
     <AppReplyModal />
-    <div :class="['h-dvh overflow-hidden moh-bg moh-text moh-texture', showStatusBg ? 'moh-status-tone' : '']">
+    <div
+      :class="['overflow-hidden moh-bg moh-text moh-texture', showStatusBg ? 'moh-status-tone' : '']"
+      :style="appViewportStyle"
+    >
       <div class="mx-auto flex h-full w-full max-w-6xl px-0 sm:px-4 xl:max-w-7xl">
         <!-- Left Nav (independent scroll) -->
         <aside
@@ -298,7 +304,7 @@
             <!-- Radio player row: bottom of the middle column (not floating). -->
             <div
               v-if="showRadioBar"
-              class="shrink-0 border-t moh-border bg-white dark:bg-black text-gray-900 dark:text-white px-4 py-3 pb-[calc(4rem+env(safe-area-inset-bottom,0px))] sm:pb-3"
+              class="shrink-0 border-t moh-border bg-white dark:bg-black text-gray-900 dark:text-white px-4 py-3 pb-3"
             >
               <AppRadioBar />
             </div>
@@ -470,7 +476,7 @@
 
     <!-- Mobile FAB: open post composer (visible when tab bar is). Hidden when home page composer is on screen. -->
     <button
-      v-if="canOpenComposer && isComposerEntrypointRoute && !hideFabForHomeComposer"
+      v-if="canOpenComposer && isComposerEntrypointRoute && !hideFabForHomeComposer && !keyboardOpen && !anyOverlayOpen"
       type="button"
       aria-label="New post"
       :class="[
@@ -478,13 +484,13 @@
         fabButtonClass,
       ]"
       :style="fabButtonStyle"
-      style="bottom: calc(4rem + env(safe-area-inset-bottom, 0px));"
+      style="bottom: calc(var(--moh-tabbar-height, 4rem) + var(--moh-safe-bottom, 0px));"
       @click="openComposerForCurrentRoute()"
     >
       <i class="pi pi-plus text-3xl" aria-hidden="true" />
     </button>
 
-    <AppTabBar :items="tabItems" />
+    <AppTabBar v-if="!keyboardOpen && !anyOverlayOpen" :items="tabItems" />
 
     <ClientOnly>
       <Transition
@@ -511,8 +517,8 @@
 
           <!-- Composer sheet -->
           <div
-            class="absolute top-3"
-            :style="composerSheetStyle"
+            class="absolute"
+            :style="[composerSheetStyle, composerSheetPlacementStyle]"
           >
             <div
               :class="[
@@ -560,6 +566,7 @@
 </template>
 
 <script setup lang="ts">
+import { useMediaQuery } from '@vueuse/core'
 import { siteConfig } from '~/config/site'
 import logoLightSmall from '~/assets/images/logo-white-bg-small.png'
 import logoDarkSmall from '~/assets/images/logo-black-bg-small.png'
@@ -577,6 +584,14 @@ import { useOnlyMePosts } from '~/composables/useOnlyMePosts'
 import { useReplyModal } from '~/composables/useReplyModal'
 
 const route = useRoute()
+const colorMode = useColorMode()
+
+// Keep Safari iOS browser chrome (top/bottom bars) aligned with our in-app theme toggle.
+// This is the main fix for the “white bar” in dark mode while scrolling.
+const safariThemeColor = computed(() => (colorMode.value === 'dark' ? '#0F1113' : '#ffffff'))
+useHead({
+  meta: [{ key: 'moh-theme-color', name: 'theme-color', content: safariThemeColor }],
+})
 const { initAuth, user } = useAuth()
 const { isAuthed, profileTo, leftItems: leftNavItems, tabItems } = useAppNav()
 const notifBadge = useNotificationsBadge()
@@ -693,7 +708,27 @@ const replyModalOpen = computed(() => Boolean(replyModalOpenRef.value))
 const anyOverlayOpen = computed(() => composerModalOpen.value || replyModalOpen.value)
 
 useScrollLock(anyOverlayOpen)
+const insets = useMobileInsets()
+const keyboardOpen = insets.keyboardOpen
 const composerSheetStyle = ref<Record<string, string>>({ left: '0px', right: '0px', width: 'auto' })
+const isSmUp = useMediaQuery('(min-width: 640px)')
+const mobileBottomBarVisible = computed(() => !isSmUp.value && !keyboardOpen.value && !anyOverlayOpen.value)
+
+const appViewportStyle = computed<Record<string, string>>(() => {
+  // When the mobile tab bar is present, reserve its space so content ends at the TOP of the bar
+  // (instead of scrolling underneath it).
+  if (mobileBottomBarVisible.value) {
+    return { height: 'calc(100dvh - var(--moh-tabbar-height, 4rem) - var(--moh-safe-bottom, 0px))' }
+  }
+  return { height: '100dvh' }
+})
+
+const composerSheetPlacementStyle = computed<Record<string, string>>(() => {
+  // Desktop/tablet: align with the center column near the top.
+  if (isSmUp.value) return { top: '0.75rem', bottom: 'auto' }
+  // Mobile: behave like a bottom sheet and sit above the virtual keyboard.
+  return { top: 'auto', bottom: insets.bottomInsetCss(12) }
+})
 const composerVisibility = useCookie<'public' | 'verifiedOnly' | 'premiumOnly' | 'onlyMe'>('moh.post.visibility.v1', {
   default: () => 'public',
   sameSite: 'lax',
@@ -771,10 +806,21 @@ const middleContentEl = ref<HTMLElement | null>(null)
 
 const { currentStation: currentRadioStation } = useRadioPlayer()
 const showRadioBar = computed(() => Boolean(currentRadioStation.value))
-const standardMiddleBottomPadClass = computed(() => (showRadioBar.value ? 'pb-0 sm:pb-0' : 'pb-24 sm:pb-4'))
-const messagesMiddleBottomPadClass = computed(() =>
-  showRadioBar.value ? 'flex h-full min-h-0 flex-col pb-0 sm:pb-0' : 'flex h-full min-h-0 flex-col pb-[calc(4rem+env(safe-area-inset-bottom,0px))] sm:pb-0',
-)
+const standardMiddleBottomPadClass = computed(() => {
+  // When typing on mobile, hide fixed bottom UI and reclaim space.
+  if (keyboardOpen.value) return 'pb-4 sm:pb-4'
+  // When the tab bar is visible and space is reserved at the layout level, keep only a little breathing room.
+  if (mobileBottomBarVisible.value) return 'pb-4 sm:pb-4'
+  return showRadioBar.value ? 'pb-0 sm:pb-0' : 'pb-24 sm:pb-4'
+})
+const messagesMiddleBottomPadClass = computed(() => {
+  // Messages pages use a flex column layout; keep it stable but avoid wasting space when keyboard is up.
+  if (keyboardOpen.value) return 'flex h-full min-h-0 flex-col pb-4 sm:pb-0'
+  if (mobileBottomBarVisible.value) return 'flex h-full min-h-0 flex-col pb-4 sm:pb-0'
+  return showRadioBar.value
+    ? 'flex h-full min-h-0 flex-col pb-0 sm:pb-0'
+    : 'flex h-full min-h-0 flex-col pb-[calc(var(--moh-tabbar-height,4rem)+var(--moh-safe-bottom,0px))] sm:pb-0'
+})
 
 function updateComposerSheetStyle() {
   if (!import.meta.client) return

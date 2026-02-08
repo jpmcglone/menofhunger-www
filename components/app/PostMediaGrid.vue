@@ -59,20 +59,21 @@
     <button
       v-else-if="items[0]?.url"
       type="button"
-      class="cursor-zoom-in select-none text-left"
+      class="moh-tap cursor-zoom-in select-none text-left"
       :class="singleBoxClass"
       :style="singleBoxStyle"
       aria-label="View image"
       @click.stop="openAt($event, 0)"
     >
       <div class="absolute inset-0" aria-hidden="true" />
-      <img
+      <AppImg
         :src="items[0]?.url"
         class="absolute inset-0 h-full w-full object-contain"
         :class="hideThumbs ? 'opacity-0 transition-opacity duration-150' : 'opacity-100'"
         :width="singleWidth ?? undefined"
         :height="singleHeight ?? undefined"
         :alt="items[0]?.alt ?? ''"
+        sizes="(max-width: 640px) 100vw, 720px"
         loading="lazy"
         decoding="async"
       />
@@ -102,26 +103,28 @@
           <button
             v-if="m.url"
             type="button"
-            class="relative min-w-0 min-h-0 cursor-zoom-in overflow-hidden"
+            class="moh-tap relative min-w-0 min-h-0 cursor-zoom-in overflow-hidden"
             :class="itemClass(idx)"
             :aria-label="m.kind === 'video' ? `View video ${idx + 1} of ${items.length}` : `View image ${idx + 1} of ${items.length}`"
             @click.stop="openAt($event, idx)"
           >
-            <img
+            <AppImg
               v-if="m.kind !== 'video'"
               :src="m.url"
               class="block h-full w-full bg-black/3 dark:bg-white/3 object-cover object-center"
               :class="[imgClass(idx), hideThumbs ? 'opacity-0 transition-opacity duration-150' : 'opacity-100']"
               :alt="m.alt ?? ''"
+              sizes="(max-width: 640px) 50vw, 360px"
               loading="lazy"
               decoding="async"
             />
             <template v-else>
-              <img
+              <AppImg
                 :src="posterFor(m) || m.url"
                 class="block h-full w-full bg-black/3 dark:bg-white/3 object-cover object-center"
                 :class="[imgClass(idx), hideThumbs ? 'opacity-0 transition-opacity duration-150' : 'opacity-100']"
                 :alt="m.alt ?? ''"
+                sizes="(max-width: 640px) 50vw, 360px"
                 loading="lazy"
                 decoding="async"
               />
@@ -152,6 +155,7 @@
 </template>
 
 <script setup lang="ts">
+import AppImg from '~/components/app/AppImg.vue'
 import type { PostMedia } from '~/types/api'
 import type { LightboxMediaItem } from '~/composables/useImageLightbox'
 import type { CSSProperties } from 'vue'

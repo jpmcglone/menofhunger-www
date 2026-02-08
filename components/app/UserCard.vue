@@ -10,6 +10,7 @@
           :user="user"
           :presence-status-override="currentUserPresenceStatus"
           :size-class="props.compact ? 'mx-auto h-10 w-10' : 'mx-auto xl:mx-0 h-10 w-10'"
+          :enable-preview="false"
         />
 
         <div
@@ -42,6 +43,7 @@
           :user="user"
           :presence-status-override="currentUserPresenceStatus"
           :size-class="props.compact ? 'mx-auto h-10 w-10' : 'mx-auto xl:mx-0 h-10 w-10'"
+          :enable-preview="false"
         />
 
         <div

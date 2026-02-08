@@ -44,7 +44,23 @@ export function useComposerImageIngest(opts: {
 
   function openMediaPicker() {
     if (!opts.canAddMoreMedia.value) return
-    opts.mediaFileInputEl.value?.click()
+    const input = opts.mediaFileInputEl.value
+    if (!input) return
+
+    // iOS Safari shows the "prev/next/done" accessory bar when multiple form inputs exist.
+    // Keeping the file input disabled except during an actual picker open reduces that noise.
+    input.disabled = false
+    input.click()
+
+    // When the picker closes (cancel or select), focus returns to the page; disable the input again.
+    const disable = () => {
+      try {
+        input.disabled = true
+      } catch {
+        // ignore
+      }
+    }
+    window.addEventListener('focus', disable, { once: true })
   }
 
   function addImageFiles(files: File[], source: 'picker' | 'drop' | 'paste') {
@@ -245,7 +261,11 @@ export function useComposerImageIngest(opts: {
     if (!import.meta.client) return
     const input = e.target as HTMLInputElement | null
     const files = Array.from(input?.files ?? [])
-    if (input) input.value = ''
+    if (input) {
+      input.value = ''
+      // Restore disabled state (see openMediaPicker()).
+      input.disabled = true
+    }
     if (!files.length) return
     addImageFiles(files, 'picker')
   }

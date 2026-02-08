@@ -68,6 +68,9 @@
           :accept="composerAcceptTypes"
           class="hidden"
           multiple
+          tabindex="-1"
+          aria-hidden="true"
+          disabled
           @change="onMediaFilesSelected"
         />
 

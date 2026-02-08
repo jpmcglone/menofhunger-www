@@ -42,7 +42,7 @@
                 <button
                   v-if="showClose"
                   type="button"
-                  class="inline-flex h-9 w-9 items-center justify-center rounded-full text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-zinc-900 dark:hover:text-gray-50 disabled:opacity-50"
+                  class="moh-tap inline-flex h-9 w-9 items-center justify-center rounded-full text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-zinc-900 dark:hover:text-gray-50 disabled:opacity-50"
                   aria-label="Close"
                   :disabled="disableClose"
                   @click="close"
@@ -71,6 +71,7 @@
 </template>
 
 <script setup lang="ts">
+import { useEventListener } from '@vueuse/core'
 import type { CSSProperties } from 'vue'
 
 const props = withDefaults(
@@ -122,8 +123,7 @@ function onKeyDown(e: KeyboardEvent) {
   if (e.key === 'Escape') close()
 }
 
-onMounted(() => window.addEventListener('keydown', onKeyDown))
-onBeforeUnmount(() => window.removeEventListener('keydown', onKeyDown))
+useEventListener(window, 'keydown', onKeyDown)
 
 const panelStyle = computed<CSSProperties>(() => ({
   maxHeight: props.maxHeight,

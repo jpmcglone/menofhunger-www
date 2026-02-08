@@ -1,24 +1,25 @@
 <template>
   <nav
-    class="fixed inset-x-0 bottom-0 z-50 border-t border-gray-200 bg-white/95 dark:border-zinc-800 dark:bg-black/90 sm:hidden"
-    style="padding-bottom: env(safe-area-inset-bottom)"
+    class="fixed inset-x-0 bottom-0 z-50 border-t border-gray-200 bg-white dark:border-zinc-800 dark:bg-black sm:hidden"
+    style="padding-bottom: var(--moh-safe-bottom)"
     aria-label="Primary"
   >
     <div class="mx-auto w-full max-w-6xl px-2">
-      <div class="grid grid-flow-col auto-cols-fr py-2">
+      <div class="grid grid-flow-col auto-cols-fr py-2.5">
         <template v-for="item in items" :key="item.key">
           <button
             v-if="item.key === 'profile'"
             type="button"
-            class="flex flex-col items-center justify-center py-1"
+            class="flex flex-col items-center justify-center py-1 min-h-[44px] w-full touch-manipulation transition-transform duration-100 active:scale-[0.98]"
             :class="isActive(item.to) ? 'text-gray-900 dark:text-gray-50' : 'text-gray-500 dark:text-gray-400'"
             aria-label="Profile menu"
-            @click="toggleProfileMenu"
+            @click="(e) => { haptics.tap(); toggleProfileMenu(e) }"
           >
-            <div class="relative h-8 w-8 flex items-center justify-center">
+            <div class="relative h-9 w-9 flex items-center justify-center">
               <AppUserAvatar
                 :user="user"
-                size-class="h-7 w-7"
+                size-class="h-8 w-8"
+                :enable-preview="false"
               />
             </div>
           </button>
@@ -26,14 +27,14 @@
           <NuxtLink
             v-else
             :to="item.to"
-            class="flex flex-col items-center justify-center py-1"
+            class="flex flex-col items-center justify-center py-1 min-h-[44px] w-full touch-manipulation transition-transform duration-100 active:scale-[0.98]"
             :class="isActive(item.to) ? 'text-gray-900 dark:text-gray-50' : 'text-gray-500 dark:text-gray-400'"
-            @click="(e) => onNavClick(item.to, e)"
+            @click="(e) => { haptics.tap(); onNavClick(item.to, e) }"
           >
-            <div class="relative h-8 w-8 flex items-center justify-center">
+            <div class="relative h-9 w-9 flex items-center justify-center">
               <Icon
                 :name="isActive(item.to) ? (item.iconActive || item.icon) : item.icon"
-                size="22"
+                size="24"
                 :class="['opacity-90', item.iconClass]"
                 aria-hidden="true"
               />
@@ -46,9 +47,9 @@
     </div>
   </nav>
 
-  <Menu ref="profileMenuRef" :model="menuItems" popup />
+  <Menu ref="profileMenuRef" :model="menuItems" popup appendTo="body" />
 
-  <Dialog v-model:visible="confirmVisible" modal header="Log out?" :style="{ width: '26rem' }">
+  <Dialog v-model:visible="confirmVisible" modal header="Log out?" :style="{ width: '26rem', maxWidth: '92vw' }">
     <p class="text-sm text-gray-700 dark:text-gray-300">
       Are you sure you want to log out?
     </p>
@@ -70,6 +71,7 @@ const route = useRoute()
 const { user } = useAuth()
 const { menuItems, confirmVisible, confirmLogout } = useUserMenu()
 const middleScrollerRef = useMiddleScroller()
+const haptics = useHaptics()
 
 const profileMenuRef = ref()
 

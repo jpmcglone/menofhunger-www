@@ -2,6 +2,16 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
 import { siteConfig } from './config/site'
 
+function hostFromUrl(raw: string | undefined | null): string | null {
+  const s = String(raw || '').trim()
+  if (!s) return null
+  try {
+    return new URL(s).hostname
+  } catch {
+    return null
+  }
+}
+
 export default defineNuxtConfig({
   compatibilityDate: '2024-11-01',
   // Keep devtools off in production builds (reduces bundle + memory).
@@ -39,12 +49,17 @@ export default defineNuxtConfig({
       htmlAttrs: { lang: 'en' },
       meta: [
         { charset: 'utf-8' },
-        { name: 'viewport', content: 'width=device-width, initial-scale=1' },
+        { name: 'viewport', content: 'width=device-width, initial-scale=1, viewport-fit=cover' },
+        // Hint to the browser that we support both schemes (affects UA surfaces + form controls).
+        { name: 'color-scheme', content: 'light dark' },
+        // iOS: avoid auto-linking phone numbers in app-like UI.
+        { name: 'format-detection', content: 'telephone=no' },
         // AdSense site verification (safe even for Premium; does not render ads by itself).
         ...(String(process.env.NUXT_PUBLIC_ADSENSE_CLIENT || '').trim()
           ? [{ name: 'google-adsense-account', content: String(process.env.NUXT_PUBLIC_ADSENSE_CLIENT || '').trim() }]
           : []),
         // PWA + add-to-home meta
+        // Default theme-color (overridden at runtime to match in-app dark mode toggle).
         { name: 'theme-color', content: '#ffffff' },
         { name: 'mobile-web-app-capable', content: 'yes' },
         { name: 'apple-mobile-web-app-capable', content: 'yes' },
@@ -65,8 +80,10 @@ export default defineNuxtConfig({
         : [],
       link: [
         { rel: 'manifest', href: '/site.webmanifest' },
-        { rel: 'apple-touch-icon', href: '/apple-touch-icon.png' },
-        { rel: 'apple-touch-icon-precomposed', href: '/apple-touch-icon-precomposed.png' },
+        { rel: 'apple-touch-icon', sizes: '180x180', href: '/apple-touch-icon.png' },
+        { rel: 'apple-touch-icon-precomposed', sizes: '180x180', href: '/apple-touch-icon-precomposed.png' },
+        { rel: 'icon', type: 'image/png', sizes: '192x192', href: '/android-chrome-192x192.png' },
+        { rel: 'icon', type: 'image/png', sizes: '512x512', href: '/android-chrome-512x512.png' },
         { rel: 'icon', type: 'image/png', sizes: '32x32', href: '/favicon-32x32.png' },
         { rel: 'icon', type: 'image/png', sizes: '16x16', href: '/favicon-16x16.png' }
       ],
@@ -111,6 +128,21 @@ export default defineNuxtConfig({
   },
   css: ['~/assets/css/main.css', 'primeicons/primeicons.css', 'vue-advanced-cropper/dist/style.css'],
   ssr: true,
+  image: {
+    // Allow NuxtImg/IPX to optimize images from our asset host + API host.
+    domains: Array.from(
+      new Set(
+        [
+          hostFromUrl(process.env.NUXT_PUBLIC_ASSETS_BASE_URL),
+          hostFromUrl(process.env.NUXT_API_BASE_URL),
+          hostFromUrl(process.env.NUXT_PUBLIC_API_BASE_URL),
+          hostFromUrl(siteConfig.url),
+          'localhost',
+          '127.0.0.1',
+        ].filter(Boolean) as string[],
+      ),
+    ),
+  },
   // Render builds can be memory-constrained; sourcemaps are a big multiplier.
   vite: {
     build: {

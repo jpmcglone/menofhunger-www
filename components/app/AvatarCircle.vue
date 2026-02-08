@@ -9,14 +9,17 @@
     <div
       :class="['h-full w-full overflow-hidden rounded-full', bgClass]"
     >
-      <img
+      <AppImg
         v-if="src"
         :src="src"
         alt=""
         class="h-full w-full object-cover"
+        :width="imgSizePx"
+        :height="imgSizePx"
+        :sizes="`${imgSizePx}px`"
         loading="lazy"
         decoding="async"
-      >
+      />
       <div v-else class="h-full w-full flex items-center justify-center">
         <span
           class="moh-avatar-initial leading-none"
@@ -65,6 +68,7 @@
 </template>
 
 <script setup lang="ts">
+import AppImg from '~/components/app/AppImg.vue'
 const props = withDefaults(
   defineProps<{
     src?: string | null
@@ -116,6 +120,8 @@ const effectivePresenceStatus = computed(() => (hydrated.value ? props.presenceS
 const wrapEl = ref<HTMLElement | null>(null)
 const diameterPx = ref<number>(40)
 const idleClockMaskId = `idle-clock-mask-${Math.random().toString(36).slice(2, 9)}`
+
+const imgSizePx = computed(() => Math.max(16, Math.floor(diameterPx.value || 40)))
 
 function measure() {
   const el = wrapEl.value
