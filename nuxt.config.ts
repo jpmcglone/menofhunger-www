@@ -130,7 +130,7 @@ export default defineNuxtConfig({
       },
     ],
   },
-  css: ['~/assets/css/main.css', 'primeicons/primeicons.css', 'vue-advanced-cropper/dist/style.css'],
+  css: ['~/assets/css/main.css'],
   ssr: true,
   image: {
     // Allow NuxtImg/IPX to optimize images from our asset host + API host.

@@ -741,10 +741,9 @@ const appViewportStyle = computed<Record<string, string>>(() => {
 })
 
 const composerSheetPlacementStyle = computed<Record<string, string>>(() => {
-  // Desktop/tablet: align with the center column near the top.
-  if (isSmUp.value) return { top: '0.75rem', bottom: 'auto' }
-  // Mobile: bottom sheet above safe area.
-  return { top: 'auto', bottom: 'calc(env(safe-area-inset-bottom, 0px) + 12px)' }
+  // Keep composer placement consistent across breakpoints:
+  // always a top-of-screen modal aligned with the center column.
+  return { top: '0.75rem', bottom: 'auto' }
 })
 const composerVisibility = useCookie<'public' | 'verifiedOnly' | 'premiumOnly' | 'onlyMe'>('moh.post.visibility.v1', {
   default: () => 'public',

@@ -5,17 +5,17 @@
     aria-label="Primary"
   >
     <AppTabBarContent>
-      <div class="grid grid-flow-col auto-cols-fr">
+      <div class="grid h-full w-full grid-flow-col auto-cols-fr">
         <template v-for="item in items" :key="item.key">
           <button
             v-if="item.key === 'profile'"
             type="button"
-            class="flex flex-col items-center justify-center py-1 min-h-[44px] w-full touch-manipulation transition-transform duration-100 active:scale-[0.98]"
+            class="flex h-full w-full flex-col items-center justify-center touch-manipulation transition-transform duration-100 active:scale-[0.98]"
             :class="isActive(item.to) ? 'text-gray-900 dark:text-gray-50' : 'text-gray-500 dark:text-gray-400'"
             aria-label="Profile menu"
             @click="(e) => { haptics.tap(); toggleProfileMenu(e) }"
           >
-            <div class="relative h-9 w-9 flex items-center justify-center">
+            <div class="relative h-10 w-10 flex items-center justify-center">
               <AppUserAvatar
                 :user="user"
                 size-class="h-8 w-8"
@@ -27,11 +27,11 @@
           <NuxtLink
             v-else
             :to="item.to"
-            class="flex flex-col items-center justify-center py-1 min-h-[44px] w-full touch-manipulation transition-transform duration-100 active:scale-[0.98]"
+            class="flex h-full w-full flex-col items-center justify-center touch-manipulation transition-transform duration-100 active:scale-[0.98]"
             :class="isActive(item.to) ? 'text-gray-900 dark:text-gray-50' : 'text-gray-500 dark:text-gray-400'"
             @click="(e) => { haptics.tap(); onNavClick(item.to, e) }"
           >
-            <div class="relative h-9 w-9 flex items-center justify-center">
+            <div class="relative h-10 w-10 flex items-center justify-center">
               <Icon
                 :name="isActive(item.to) ? (item.iconActive || item.icon) : item.icon"
                 size="24"

@@ -281,7 +281,7 @@
               :user="composerUser"
               placeholder="Type a chat…"
               :loading="sending"
-              auto-focus
+              :auto-focus="!isTinyViewport"
               @send="sendCurrentMessage"
             />
           </div>
@@ -1554,7 +1554,9 @@ watch(
   () => {
     if (!import.meta.client) return
     if (!viewerIsVerified.value) return
-    // Keep focus on the chat composer when switching threads.
+    // Desktop: keep focus on the chat composer when switching threads.
+    // Mobile: avoid auto-focus so the keyboard doesn't pop when selecting a chat.
+    if (isTinyViewport.value) return
     void nextTick(() => dmComposerRef.value?.focus?.())
   },
   { flush: 'post' },
