@@ -56,6 +56,49 @@
       </Button>
       <div v-if="siteSaved" class="text-sm text-green-700 dark:text-green-300">Saved.</div>
     </div>
+
+    <div class="pt-2 border-t moh-border" />
+
+    <div class="space-y-2">
+      <div class="text-sm font-semibold text-gray-900 dark:text-gray-50">Hashtag backfill</div>
+      <div class="text-sm text-gray-600 dark:text-gray-300">
+        Rebuilds `Post.hashtags` and hashtag counts from existing post bodies.
+      </div>
+    </div>
+
+    <div v-if="hashtagError" class="text-sm text-red-700 dark:text-red-300">
+      {{ hashtagError }}
+    </div>
+
+    <div v-else-if="hashtagStatus" class="grid gap-4 sm:grid-cols-2">
+      <div class="space-y-1 rounded-xl border moh-border moh-bg p-4">
+        <div class="text-xs moh-text-muted">Status</div>
+        <div class="text-sm font-semibold moh-text">{{ hashtagStatus.status }}</div>
+      </div>
+      <div class="space-y-1 rounded-xl border moh-border moh-bg p-4">
+        <div class="text-xs moh-text-muted">Processed / Updated</div>
+        <div class="text-sm font-semibold moh-text">
+          {{ hashtagStatus.processedPosts }} / {{ hashtagStatus.updatedPosts }}
+        </div>
+      </div>
+    </div>
+
+    <div class="flex flex-wrap items-center gap-3">
+      <Button
+        label="Start backfill (reset + rebuild)"
+        :loading="hashtagRunning"
+        :disabled="hashtagRunning"
+        @click="startHashtagBackfill"
+      />
+      <Button
+        label="Refresh status"
+        text
+        severity="secondary"
+        :loading="hashtagLoadingStatus"
+        :disabled="hashtagLoadingStatus"
+        @click="refreshHashtagStatus"
+      />
+    </div>
   </div>
   </AppPageContent>
 </template>
@@ -64,6 +107,7 @@
 definePageMeta({
   layout: 'app',
   title: 'Site settings',
+  hideTopBar: true,
   middleware: 'admin',
 })
 
@@ -83,12 +127,31 @@ type SiteConfig = {
 const { apiFetchData } = useApiClient()
 import { getApiErrorMessage } from '~/utils/api-error'
 
+type BackfillStatus = {
+  id: string
+  status: string
+  cursor: string | null
+  processedPosts: number
+  updatedPosts: number
+  resetDone: boolean
+  startedAt: string
+  finishedAt: string | null
+  lastError: string | null
+  updatedAt: string
+}
+
 const siteCfg = ref<SiteConfig | null>(null)
 const siteSaving = ref(false)
 const siteSaved = ref(false)
 const siteError = ref<string | null>(null)
 const sitePostsPerWindow = ref<number>(5)
 const siteWindowMinutes = ref<number>(5)
+
+const { apiFetch, apiFetchData: apiFetchData2 } = useApiClient()
+const hashtagStatus = ref<BackfillStatus | null>(null)
+const hashtagLoadingStatus = ref(false)
+const hashtagRunning = ref(false)
+const hashtagError = ref<string | null>(null)
 
 async function loadSiteConfig() {
   if (siteCfg.value) return
@@ -128,5 +191,35 @@ async function saveSiteConfig() {
     siteSaving.value = false
   }
 }
+
+async function refreshHashtagStatus() {
+  hashtagLoadingStatus.value = true
+  hashtagError.value = null
+  try {
+    const res = await apiFetch<{ id: string } | null>('/admin/hashtags/backfill', { method: 'GET' })
+    hashtagStatus.value = (res.data ?? null) as any
+  } catch (e: unknown) {
+    hashtagError.value = getApiErrorMessage(e) || 'Failed to load hashtag backfill status.'
+  } finally {
+    hashtagLoadingStatus.value = false
+  }
+}
+
+async function startHashtagBackfill() {
+  hashtagRunning.value = true
+  hashtagError.value = null
+  try {
+    await apiFetchData2('/admin/hashtags/backfill', { method: 'POST', body: { batchSize: 500, reset: true } })
+    await refreshHashtagStatus()
+  } catch (e: unknown) {
+    hashtagError.value = getApiErrorMessage(e) || 'Hashtag backfill failed.'
+  } finally {
+    hashtagRunning.value = false
+  }
+}
+
+onMounted(() => {
+  void refreshHashtagStatus()
+})
 </script>
 

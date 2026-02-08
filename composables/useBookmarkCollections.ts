@@ -14,6 +14,7 @@ export function useBookmarkCollections() {
   const unorganizedCount = useState<number>('bookmark-unorganized-count', () => 0)
   const loaded = useState<boolean>('bookmark-collections-loaded', () => false)
   const loading = useState<boolean>('bookmark-collections-loading', () => false)
+  const errorMessage = useState<string | null>('bookmark-collections-error', () => null)
 
   const nameById = computed(() => {
     const m = new Map<string, string>()
@@ -28,15 +29,28 @@ export function useBookmarkCollections() {
     if (loaded.value && !force) return
     if (loading.value) return
     loading.value = true
+    errorMessage.value = null
     try {
       const res = await apiFetchData<ListBookmarkCollectionsResponse>('/bookmarks/collections', { method: 'GET' })
       collections.value = res?.collections ?? []
       totalCount.value = Math.max(0, Math.floor(res?.summary?.totalCount ?? totalCount.value ?? 0))
       unorganizedCount.value = Math.max(0, Math.floor(res?.summary?.unorganizedCount ?? unorganizedCount.value ?? 0))
       loaded.value = true
+    } catch (e: unknown) {
+      // Keep `loaded=false` so callers can retry (e.g. after auth finishes).
+      errorMessage.value = e instanceof Error ? e.message : 'Failed to load bookmarks.'
     } finally {
       loading.value = false
     }
+  }
+
+  function reset() {
+    collections.value = []
+    totalCount.value = 0
+    unorganizedCount.value = 0
+    loaded.value = false
+    loading.value = false
+    errorMessage.value = null
   }
 
   async function createCollection(name: string) {
@@ -140,8 +154,10 @@ export function useBookmarkCollections() {
     unorganizedCount,
     loaded,
     loading,
+    errorMessage,
     nameById,
     ensureLoaded,
+    reset,
     createCollection,
     renameCollection,
     deleteCollection,

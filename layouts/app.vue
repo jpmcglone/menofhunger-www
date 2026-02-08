@@ -140,10 +140,10 @@
               <span class="relative flex h-12 w-12 shrink-0 items-center justify-center">
                 <ClientOnly v-if="item.key === 'bookmarks'">
                   <Icon
-                    :name="hasBookmarks || isActiveNav(item.to) ? 'tabler:bookmark-filled' : 'tabler:bookmark'"
+                    :name="(bookmarksLoaded && (hasBookmarks || isActiveNav(item.to))) ? 'tabler:bookmark-filled' : 'tabler:bookmark'"
                     size="28"
                     class="opacity-90"
-                    :style="hasBookmarks ? { color: 'var(--p-primary-color)' } : undefined"
+                    :style="(bookmarksLoaded && hasBookmarks) ? { color: 'var(--p-primary-color)' } : undefined"
                     aria-hidden="true"
                   />
                   <template #fallback>
@@ -369,29 +369,7 @@
 
                   <AppAdSlot placement="rail" />
 
-                  <Card>
-                    <template #title>Trends for you</template>
-                    <template #content>
-                      <div class="space-y-3 text-sm text-gray-700 dark:text-gray-300">
-                        <div class="space-y-1">
-                          <div class="text-xs text-gray-500 dark:text-gray-400">Trending</div>
-                          <div class="font-semibold">Discipline</div>
-                          <div class="text-xs text-gray-500 dark:text-gray-400">12.4K posts</div>
-                        </div>
-                        <div class="space-y-1">
-                          <div class="text-xs text-gray-500 dark:text-gray-400">Trending in Fitness</div>
-                          <div class="font-semibold">Cold plunge</div>
-                          <div class="text-xs text-gray-500 dark:text-gray-400">3,219 posts</div>
-                        </div>
-                        <div class="space-y-1">
-                          <div class="text-xs text-gray-500 dark:text-gray-400">Trending</div>
-                          <div class="font-semibold">Brotherhood</div>
-                          <div class="text-xs text-gray-500 dark:text-gray-400">8,002 posts</div>
-                        </div>
-                        <Button label="Show more" text severity="secondary" class="w-full justify-center" />
-                      </div>
-                    </template>
-                  </Card>
+                  <AppTrendingHashtagsCard />
 
                   <Card>
                     <template #title>Groups</template>
@@ -689,7 +667,13 @@ const hydrated = ref(false)
 onMounted(() => {
   hydrated.value = true
 })
-const { totalCount: bookmarkTotalCount, ensureLoaded: ensureBookmarkCollectionsLoaded } = useBookmarkCollections()
+const {
+  totalCount: bookmarkTotalCount,
+  loaded: bookmarksLoaded,
+  loading: bookmarksLoading,
+  errorMessage: bookmarksErrorMessage,
+  ensureLoaded: ensureBookmarkCollectionsLoaded,
+} = useBookmarkCollections()
 
 const hasBookmarks = computed(() => Math.max(0, Math.floor(bookmarkTotalCount.value ?? 0)) > 0)
 
@@ -930,6 +914,35 @@ watchEffect(() => {
   if (!import.meta.client) return
   if (!isAuthed.value) return
   void ensureBookmarkCollectionsLoaded()
+})
+
+function maybeRetryBookmarkCollections() {
+  if (!import.meta.client) return
+  if (!isAuthed.value) return
+  // If we haven't loaded yet (or last attempt errored), retry.
+  if (!bookmarksLoaded.value && !bookmarksLoading.value) {
+    void ensureBookmarkCollectionsLoaded({ force: true })
+  }
+}
+
+watch(
+  () => isAuthed.value,
+  (authed) => {
+    if (!import.meta.client) return
+    if (!authed) return
+    // Force once on authed to avoid “missed” load on hard reload.
+    void ensureBookmarkCollectionsLoaded({ force: true })
+  },
+  { immediate: true },
+)
+
+onMounted(() => {
+  window.addEventListener('focus', maybeRetryBookmarkCollections)
+  document.addEventListener('visibilitychange', maybeRetryBookmarkCollections)
+})
+onBeforeUnmount(() => {
+  window.removeEventListener('focus', maybeRetryBookmarkCollections)
+  document.removeEventListener('visibilitychange', maybeRetryBookmarkCollections)
 })
 
 if (import.meta.client) {

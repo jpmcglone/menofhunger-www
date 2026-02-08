@@ -131,6 +131,8 @@ export type FeedPost = {
   deletedAt: string | null
   visibility: PostVisibility
   topics?: string[]
+  /** User-created hashtags parsed from body text (lowercase, without '#'). */
+  hashtags?: string[]
   boostCount: number
   bookmarkCount: number
   commentCount?: number
@@ -454,6 +456,14 @@ export type FollowListUser = {
 /** Search user result (FollowListUser + createdAt for interleaving). */
 export type SearchUserResult = FollowListUser & { createdAt?: string }
 
+export type HashtagResult = {
+  /** Canonical lowercase tag value (no '#'). */
+  value: string
+  /** Display label (most common casing). */
+  label: string
+  usageCount: number
+}
+
 /** Mixed search result: users + posts. */
 export type SearchMixedResult = {
   users: SearchUserResult[]
@@ -498,6 +508,9 @@ export type GetTopicsData = Topic[]
 
 /** Data type for GET /topics/:topic/posts (array); pagination in envelope. */
 export type GetTopicPostsData = FeedPost[]
+
+/** Data type for GET /hashtags/trending (array); pagination in envelope. */
+export type GetTrendingHashtagsData = HashtagResult[]
 
 export type NotificationKind = 'comment' | 'boost' | 'follow' | 'mention' | 'generic'
 

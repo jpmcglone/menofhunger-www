@@ -23,6 +23,15 @@
       >
         {{ seg.text }}
       </NuxtLink>
+      <NuxtLink
+        v-else-if="seg.hashtagTag"
+        :to="{ path: '/explore', query: { q: `#${seg.hashtagTag}` } }"
+        :class="hashtagLinkClass(seg.hashtagTier)"
+        :style="mentionTierToStyle(seg.hashtagTier)"
+        @click.stop
+      >
+        {{ seg.text }}
+      </NuxtLink>
       <span v-else>{{ seg.text }}</span>
     </template>
   </p>
@@ -33,16 +42,18 @@ import LinkifyIt from 'linkify-it'
 import { siteConfig } from '~/config/site'
 import { extractLinksFromText } from '~/utils/link-utils'
 import { splitTextByMentionsDisplay } from '~/utils/mention-autocomplete'
+import { splitTextByHashtagsDisplay } from '~/utils/hashtag-autocomplete'
 import { mentionTierToStyle } from '~/utils/mention-tier-style'
 
 type MentionTier = 'normal' | 'verified' | 'premium'
-type TextSegment = { text: string; href?: string; mentionUsername?: string; mentionTier?: MentionTier }
+type TextSegment = { text: string; href?: string; mentionUsername?: string; mentionTier?: MentionTier; hashtagTag?: string; hashtagTier?: MentionTier }
 
 const props = defineProps<{
   body: string
   hasMedia: boolean
   /** Usernames from post.mentions; @username in body that match (case-insensitive) become profile links. */
   mentions?: Array<{ id: string; username: string; verifiedStatus?: string; premium?: boolean }>
+  visibility?: import('~/types/api').PostVisibility
 }>()
 
 const pop = useUserPreviewPopover()
@@ -58,6 +69,18 @@ function mentionLinkClass(tier: MentionTier | undefined): string {
   // so Tailwind doesn't need to detect dynamic class strings.
   return 'font-semibold no-underline hover:underline'
 }
+
+function hashtagLinkClass(tier: MentionTier | undefined): string {
+  void tier
+  return 'font-medium no-underline hover:underline'
+}
+
+const postTier = computed<MentionTier>(() => {
+  const v = props.visibility
+  if (v === 'premiumOnly') return 'premium'
+  if (v === 'verifiedOnly') return 'verified'
+  return 'normal'
+})
 
 const linkify = new LinkifyIt()
 const hasMedia = computed(() => Boolean(props.hasMedia))
@@ -180,13 +203,25 @@ const mentionByUsernameLower = computed(() => {
 function splitByMentions(text: string): TextSegment[] {
   const mentionMap = mentionByUsernameLower.value
   const base = splitTextByMentionsDisplay(text)
-  return base.map((seg) => {
+  const out: TextSegment[] = []
+  for (const seg of base) {
     const m = seg.mention
-    if (!m) return { text: seg.text }
-    const entry = mentionMap.get(m.usernameLower)
-    if (!entry) return { text: seg.text }
-    return { text: seg.text, mentionUsername: entry.username, mentionTier: entry.tier }
-  })
+    if (m) {
+      const entry = mentionMap.get(m.usernameLower)
+      if (entry) {
+        out.push({ text: seg.text, mentionUsername: entry.username, mentionTier: entry.tier })
+        continue
+      }
+    }
+    // Plain text: further split by hashtags.
+    const hs = splitTextByHashtagsDisplay(seg.text)
+    for (const hseg of hs) {
+      const h = hseg.hashtag
+      if (!h) out.push({ text: hseg.text })
+      else out.push({ text: hseg.text, hashtagTag: h.tagLower, hashtagTier: postTier.value })
+    }
+  }
+  return out
 }
 
 const displayBodySegments = computed<TextSegment[]>(() => {

@@ -29,6 +29,12 @@
         @highlight="mention.onHighlight"
         @requestClose="mention.onRequestClose"
       />
+      <AppHashtagAutocompletePopover
+        v-bind="hashtag.popoverProps"
+        @select="hashtag.onSelect"
+        @highlight="hashtag.onHighlight"
+        @requestClose="hashtag.onRequestClose"
+      />
       <Transition name="moh-fade">
         <button
           v-if="hasText"
@@ -50,6 +56,7 @@
 <script setup lang="ts">
 import type { FollowListUser } from '~/types/api'
 import { useMentionAutocomplete } from '~/composables/useMentionAutocomplete'
+import { useHashtagAutocomplete } from '~/composables/useHashtagAutocomplete'
 
 const props = withDefaults(
   defineProps<{
@@ -77,6 +84,14 @@ const emit = defineEmits<{
 const textareaEl = ref<HTMLTextAreaElement | null>(null)
 
 const mention = useMentionAutocomplete({
+  el: textareaEl,
+  getText: () => props.modelValue ?? '',
+  setText: (next) => emit('update:modelValue', next),
+  debounceMs: 200,
+  limit: 10,
+})
+
+const hashtag = useHashtagAutocomplete({
   el: textareaEl,
   getText: () => props.modelValue ?? '',
   setText: (next) => emit('update:modelValue', next),
@@ -158,6 +173,7 @@ function onInput(e: Event) {
   emit('update:modelValue', val)
   nextTick(resizeTextarea)
   mention.recompute()
+  hashtag.recompute()
 }
 
 function onKeydown(e: KeyboardEvent) {

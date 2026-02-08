@@ -98,6 +98,7 @@
           :body="post.body"
           :has-media="Boolean(post.media?.length)"
           :mentions="post.mentions"
+          :visibility="post.visibility"
         />
 
         <AppPostMediaGrid v-if="!isDeletedPost && post.media?.length" :media="post.media" :post-id="post.id" :row-in-view="rowInView" />

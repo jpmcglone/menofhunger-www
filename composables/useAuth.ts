@@ -94,6 +94,13 @@ export function useAuth() {
 
     // Reset viewer-specific client caches so we never show stale authed-only data.
     // (Safe even if these stores haven't been initialized yet.)
+    useState<import('~/types/api').BookmarkCollection[]>('bookmark-collections', () => []).value = []
+    useState<number>('bookmark-total-count', () => 0).value = 0
+    useState<number>('bookmark-unorganized-count', () => 0).value = 0
+    useState<boolean>('bookmark-collections-loaded', () => false).value = false
+    useState<boolean>('bookmark-collections-loading', () => false).value = false
+    useState<string | null>('bookmark-collections-error', () => null).value = null
+
     useState<Record<string, import('~/composables/useBoostState').BoostStateEntry>>('boost-state', () => ({})).value = {}
     useState<Record<string, boolean>>('boost-inflight', () => ({})).value = {}
     useState<Record<string, boolean>>('boost-pending', () => ({})).value = {}

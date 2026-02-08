@@ -51,7 +51,7 @@
           <p class="mb-3 px-4 text-sm font-medium text-gray-700 dark:text-gray-300">
             Searching for: <span class="font-semibold">{{ searchQueryTrimmed }}</span>
           </p>
-          <div class="space-y-0">
+          <TransitionGroup name="moh-post" tag="div" class="space-y-0">
             <template v-for="item in interleaved" :key="item.kind === 'user' ? `u-${item.user.id}` : `p-${item.post.id}`">
               <AppUserRow
                 v-if="item.kind === 'user'"
@@ -61,9 +61,10 @@
               <AppFeedPostRow
                 v-else
                 :post="item.post"
+                @deleted="onSearchPostDeleted"
               />
             </template>
-          </div>
+          </TransitionGroup>
           <div v-if="loadingMore" class="flex justify-center py-6 px-4">
             <AppLogoLoader />
           </div>
@@ -522,6 +523,25 @@ const interleaved = computed(() => {
   return [...userItems, ...postItems]
 })
 
+function dedupeById<T extends { id?: string | null }>(list: T[]): T[] {
+  const out: T[] = []
+  const seen = new Set<string>()
+  for (const item of list) {
+    const id = String(item?.id ?? '').trim()
+    if (!id || seen.has(id)) continue
+    seen.add(id)
+    out.push(item)
+  }
+  return out
+}
+
+function onSearchPostDeleted(id: string) {
+  const pid = String(id ?? '').trim()
+  if (!pid) return
+  // Immediately remove from search results so the list feels responsive.
+  posts.value = posts.value.filter((p) => p.id !== pid)
+}
+
 async function fetchPage(params: { append: boolean }) {
   const q = searchQueryTrimmed.value
   if (q.length < 2) return
@@ -555,11 +575,11 @@ async function fetchPage(params: { append: boolean }) {
     const newPosts = data.posts ?? []
 
     if (isAppend) {
-      users.value = [...users.value, ...newUsers]
-      posts.value = [...posts.value, ...newPosts]
+      users.value = dedupeById([...users.value, ...newUsers])
+      posts.value = dedupeById([...posts.value, ...newPosts])
     } else {
-      users.value = newUsers
-      posts.value = newPosts
+      users.value = dedupeById(newUsers)
+      posts.value = dedupeById(newPosts)
     }
 
     nextUserCursor.value = pagination?.nextUserCursor ?? null

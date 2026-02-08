@@ -93,7 +93,14 @@
             >
               <template v-for="(seg, i) in composerBodySegments" :key="i">
                 <!-- IMPORTANT: avoid font-weight changes in mirror; it desyncs caret alignment vs textarea -->
-                <span v-if="seg.type === 'mention'" :style="mentionTierToStyle(seg.tier)">{{ seg.value }}</span>
+                <span
+                  v-if="seg.type === 'mention'"
+                  :style="mentionTierToStyle(seg.tier)"
+                >{{ seg.value }}</span>
+                <span
+                  v-else-if="seg.type === 'hashtag'"
+                  :style="{ ...(mentionTierToStyle(seg.tier) ?? {}), opacity: '0.9' }"
+                >{{ seg.value }}</span>
                 <span v-else>{{ seg.value }}</span>
               </template>
             </div>
@@ -118,6 +125,13 @@
               @select="mention.onSelect"
               @highlight="mention.onHighlight"
               @requestClose="mention.onRequestClose"
+            />
+
+            <AppHashtagAutocompletePopover
+              v-bind="hashtag.popoverProps"
+              @select="hashtag.onSelect"
+              @highlight="hashtag.onHighlight"
+              @requestClose="hashtag.onRequestClose"
             />
 
             <!-- Drag overlay (no media): hug just the textarea, less bottom inset to avoid extra padding -->
@@ -304,7 +318,8 @@ import { tinyTooltip } from '~/utils/tiny-tooltip'
 import { visibilityTagClasses, visibilityTagLabel } from '~/utils/post-visibility'
 import { useFormSubmit } from '~/composables/useFormSubmit'
 import { useMentionAutocomplete } from '~/composables/useMentionAutocomplete'
-import { segmentComposerBodyWithMentionTiers } from '~/utils/mention-composer-segments'
+import { useHashtagAutocomplete } from '~/composables/useHashtagAutocomplete'
+import { segmentComposerBodyWithMentionAndHashtagTiers } from '~/utils/mention-composer-segments'
 import { mentionTierToStyle } from '~/utils/mention-tier-style'
 
 const emit = defineEmits<{
@@ -365,14 +380,28 @@ const mention = useMentionAutocomplete({
   limit: 10,
 })
 
+const hashtag = useHashtagAutocomplete({
+  el: composerTextareaEl,
+  getText: () => draft.value,
+  setText: (next) => {
+    draft.value = next
+    void nextTick().then(() => resizeComposerTextarea())
+  },
+  debounceMs: 200,
+  limit: 10,
+})
+
 /** Segments with tier for mirror: use highlightedUser tier while arrowing, mentionTiers after selection. */
 const composerBodySegments = computed(() => {
   const highlightedUser = mention.highlightedUser.value
-  return segmentComposerBodyWithMentionTiers({
+  const vis = effectiveVisibility.value
+  const hashtagTier = vis === 'premiumOnly' ? 'premium' : vis === 'verifiedOnly' ? 'verified' : 'normal'
+  return segmentComposerBodyWithMentionAndHashtagTiers({
     text: draft.value ?? '',
     mentionTiers: mention.mentionTiers.value,
     activeAtIndex: mention.active.value?.atIndex ?? null,
     highlightedTier: highlightedUser ? tierFromMentionUser(highlightedUser) : null,
+    hashtagTier,
   })
 })
 
@@ -429,6 +458,7 @@ function onComposerInput() {
   // Keep height in sync and recompute mention suggestions based on caret.
   resizeComposerTextarea()
   mention.recompute()
+  hashtag.recompute()
 }
 
 const {

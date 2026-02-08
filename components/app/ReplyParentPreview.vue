@@ -78,6 +78,7 @@
         :body="post.body"
         :has-media="Boolean(post.media?.length)"
         :mentions="post.mentions"
+        :visibility="post.visibility"
       />
       <AppPostMediaGrid
         v-if="post.media?.length"
