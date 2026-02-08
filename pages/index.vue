@@ -27,7 +27,7 @@
           >
             <div class="flex items-center gap-3">
               <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-white/70 text-orange-700 ring-1 ring-orange-200/70 dark:bg-zinc-950/40 dark:text-orange-300 dark:ring-orange-500/20">
-                <i class="pi pi-map-marker" aria-hidden="true" />
+                <Icon name="tabler:map-pin" aria-hidden="true" />
               </div>
               <div class="min-w-0 flex-1">
                 <div class="text-sm font-semibold text-gray-900 dark:text-gray-50">
@@ -38,7 +38,7 @@
                 </div>
               </div>
               <div class="text-orange-700 dark:text-orange-300">
-                <i class="pi pi-angle-right" aria-hidden="true" />
+                <Icon name="tabler:chevron-right" aria-hidden="true" />
               </div>
             </div>
           </button>
@@ -104,7 +104,7 @@
                 aria-label="Close"
                 @click="isRoanokeOpen = false"
               >
-                <i class="pi pi-times" aria-hidden="true" />
+                <Icon name="tabler:x" aria-hidden="true" />
               </button>
             </div>
 
@@ -122,7 +122,12 @@
 
                 <div class="flex flex-col gap-2">
                   <a :href="roanokeMeetupUrl" target="_blank" rel="noopener noreferrer" class="inline-flex w-full">
-                    <Button label="Open on meetup.com" icon="pi pi-external-link" icon-pos="right" class="w-full rounded-full" />
+                    <Button class="w-full rounded-full">
+                      <span class="flex w-full items-center justify-center gap-2">
+                        <span>Open on meetup.com</span>
+                        <Icon name="tabler:external-link" class="opacity-80" aria-hidden="true" />
+                      </span>
+                    </Button>
                   </a>
                 </div>
               </div>

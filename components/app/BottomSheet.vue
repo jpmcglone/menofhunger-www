@@ -44,7 +44,7 @@
             aria-label="Close"
             @click="close"
           >
-            <i class="pi pi-times" aria-hidden="true" />
+            <Icon name="tabler:x" aria-hidden="true" />
           </button>
         </header>
 

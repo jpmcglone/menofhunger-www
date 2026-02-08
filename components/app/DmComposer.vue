@@ -39,8 +39,8 @@
           :class="sendButtonClass"
           @click="emitSend"
         >
-          <i v-if="loading" class="pi pi-spinner pi-spin text-sm" aria-hidden="true" />
-          <i v-else class="pi pi-arrow-up text-sm" aria-hidden="true" />
+          <Icon v-if="loading" name="tabler:loader" class="text-sm animate-spin" aria-hidden="true" />
+          <Icon v-else name="tabler:arrow-up" class="text-sm" aria-hidden="true" />
         </button>
       </Transition>
     </div>

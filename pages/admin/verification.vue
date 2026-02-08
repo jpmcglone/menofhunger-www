@@ -4,7 +4,7 @@
     <div class="px-4">
       <AppPageHeader
         title="Verification"
-        icon="pi-verified"
+        icon="tabler:rosette-discount-check"
         description="Review and approve pending verification requests."
       >
         <template #leading>
@@ -12,10 +12,13 @@
             class="md:hidden"
             text
             severity="secondary"
-            icon="pi pi-chevron-left"
             aria-label="Back"
             @click="navigateTo('/admin')"
-          />
+          >
+            <template #icon>
+              <Icon name="tabler:chevron-left" aria-hidden="true" />
+            </template>
+          </Button>
         </template>
       </AppPageHeader>
     </div>
@@ -37,12 +40,15 @@
       />
       <Button
         label="Search"
-        icon="pi pi-search"
         severity="secondary"
         :loading="loading"
         :disabled="loading"
         @click="loadRequests(true)"
-      />
+      >
+        <template #icon>
+          <Icon name="tabler:search" aria-hidden="true" />
+        </template>
+      </Button>
     </div>
 
     <div v-if="error" class="px-4">
@@ -103,7 +109,11 @@
               </div>
             </div>
           </div>
-          <Button label="Review" text severity="secondary" icon="pi pi-eye" @click="openDetails(item)" />
+          <Button label="Review" text severity="secondary" @click="openDetails(item)">
+            <template #icon>
+              <Icon name="tabler:eye" aria-hidden="true" />
+            </template>
+          </Button>
         </div>
       </div>
     </div>
@@ -221,19 +231,25 @@
       <Button label="Close" severity="secondary" text :disabled="saving" @click="detailsOpen = false" />
       <Button
         label="Reject"
-        icon="pi pi-times"
         severity="danger"
         :loading="rejecting"
         :disabled="saving || !canReject"
         @click="reject()"
-      />
+      >
+        <template #icon>
+          <Icon name="tabler:x" aria-hidden="true" />
+        </template>
+      </Button>
       <Button
         label="Approve (manual)"
-        icon="pi pi-check"
         :loading="approving"
         :disabled="saving || !canApprove"
         @click="approve()"
-      />
+      >
+        <template #icon>
+          <Icon name="tabler:check" aria-hidden="true" />
+        </template>
+      </Button>
     </template>
   </Dialog>
   </AppPageContent>

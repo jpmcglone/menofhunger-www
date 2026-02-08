@@ -20,9 +20,9 @@
         aria-label="Change feed sort order"
         @click="toggleSortPopover"
       >
-        <i :class="sortIconClass" class="text-[10px] opacity-80" aria-hidden="true" />
+        <Icon :name="sortIconName" class="text-[10px] opacity-80" aria-hidden="true" />
         <span>{{ sortLabel }}</span>
-        <i class="pi pi-chevron-down text-[10px] opacity-70" aria-hidden="true" />
+        <Icon name="tabler:chevron-down" class="text-[10px] opacity-70" aria-hidden="true" />
       </button>
 
       <div
@@ -40,9 +40,9 @@
           role="menuitem"
           @click="setSort('new')"
         >
-          <i class="pi pi-clock text-[14px] opacity-70 shrink-0" aria-hidden="true" />
+          <Icon name="tabler:clock" class="text-[14px] opacity-70 shrink-0" aria-hidden="true" />
           <span class="flex-1 text-left">{{ formatSortLabel('new') }}</span>
-          <i v-if="sort === 'new'" class="pi pi-check text-[12px] opacity-70 shrink-0" aria-hidden="true" />
+          <Icon v-if="sort === 'new'" name="tabler:check" class="text-[12px] opacity-70 shrink-0" aria-hidden="true" />
         </button>
         <button
           type="button"
@@ -50,9 +50,9 @@
           role="menuitem"
           @click="setSort('trending')"
         >
-          <i class="pi pi-bolt text-[14px] opacity-70 shrink-0" aria-hidden="true" />
+          <Icon name="tabler:bolt" class="text-[14px] opacity-70 shrink-0" aria-hidden="true" />
           <span class="flex-1 text-left">{{ formatSortLabel('trending') }}</span>
-          <i v-if="sort === 'trending'" class="pi pi-check text-[12px] opacity-70 shrink-0" aria-hidden="true" />
+          <Icon v-if="sort === 'trending'" name="tabler:check" class="text-[12px] opacity-70 shrink-0" aria-hidden="true" />
         </button>
       </div>
     </div>
@@ -67,10 +67,10 @@
         @click="toggleFilterPopover"
       >
         <template v-if="filter === 'all'">
-          <i class="pi pi-th-large text-[10px] opacity-80" aria-hidden="true" />
+          <Icon name="tabler:layout-grid" class="text-[10px] opacity-80" aria-hidden="true" />
         </template>
         <template v-else-if="filter === 'public'">
-          <i class="pi pi-globe text-[10px] opacity-80" aria-hidden="true" />
+          <Icon name="tabler:globe" class="text-[10px] opacity-80" aria-hidden="true" />
         </template>
         <template v-else-if="filter === 'verifiedOnly'">
           <AppVerifiedBadge status="identity" :premium="false" :show-tooltip="false" />
@@ -79,7 +79,7 @@
           <AppVerifiedBadge status="identity" :premium="true" :show-tooltip="false" />
         </template>
         <span>{{ filterLabel }}</span>
-        <i class="pi pi-chevron-down text-[10px] opacity-70" aria-hidden="true" />
+        <Icon name="tabler:chevron-down" class="text-[10px] opacity-70" aria-hidden="true" />
       </button>
 
       <div
@@ -97,9 +97,9 @@
           role="menuitem"
           @click="setFilter('all')"
         >
-          <i class="pi pi-th-large text-[14px] opacity-70 shrink-0" aria-hidden="true" />
+          <Icon name="tabler:layout-grid" class="text-[14px] opacity-70 shrink-0" aria-hidden="true" />
           <span class="flex-1 text-left">All</span>
-          <i v-if="filter === 'all'" class="pi pi-check text-[12px] opacity-70 shrink-0" aria-hidden="true" />
+          <Icon v-if="filter === 'all'" name="tabler:check" class="text-[12px] opacity-70 shrink-0" aria-hidden="true" />
         </button>
         <button
           type="button"
@@ -107,9 +107,9 @@
           role="menuitem"
           @click="setFilter('public')"
         >
-          <i class="pi pi-globe text-[14px] opacity-70 shrink-0" aria-hidden="true" />
+          <Icon name="tabler:globe" class="text-[14px] opacity-70 shrink-0" aria-hidden="true" />
           <span class="flex-1 text-left">Public</span>
-          <i v-if="filter === 'public'" class="pi pi-check text-[12px] opacity-70 shrink-0" aria-hidden="true" />
+          <Icon v-if="filter === 'public'" name="tabler:check" class="text-[12px] opacity-70 shrink-0" aria-hidden="true" />
         </button>
         <button
           type="button"
@@ -122,7 +122,7 @@
             Verified
             <span v-if="!viewerIsVerified" class="ml-2 font-mono text-[10px] opacity-80" aria-hidden="true">LOCKED</span>
           </span>
-          <i v-if="filter === 'verifiedOnly'" class="pi pi-check text-[12px] opacity-70 shrink-0" aria-hidden="true" />
+          <Icon v-if="filter === 'verifiedOnly'" name="tabler:check" class="text-[12px] opacity-70 shrink-0" aria-hidden="true" />
         </button>
         <button
           type="button"
@@ -135,7 +135,7 @@
             Premium
             <span v-if="!viewerIsPremium" class="ml-2 font-mono text-[10px] opacity-80" aria-hidden="true">LOCKED</span>
           </span>
-          <i v-if="filter === 'premiumOnly'" class="pi pi-check text-[12px] opacity-70 shrink-0" aria-hidden="true" />
+          <Icon v-if="filter === 'premiumOnly'" name="tabler:check" class="text-[12px] opacity-70 shrink-0" aria-hidden="true" />
         </button>
       </div>
     </div>
@@ -192,7 +192,7 @@ function formatSortLabel(v: 'new' | 'trending'): string {
 }
 
 const sortLabel = computed(() => formatSortLabel(sort.value))
-const sortIconClass = computed(() => (sort.value === 'trending' ? 'pi pi-bolt' : 'pi pi-clock'))
+const sortIconName = computed(() => (sort.value === 'trending' ? 'tabler:bolt' : 'tabler:clock'))
 
 const filterLabel = computed(() => {
   if (filter.value === 'public') return 'Public'

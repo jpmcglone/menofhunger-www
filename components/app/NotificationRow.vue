@@ -73,10 +73,11 @@
                 d="M12 4.5L3.75 12.25h5.25V20h6V12.25h5.25L12 4.5z"
               />
             </svg>
-            <!-- PrimeIcon for other types -->
-            <i
+            <Icon
               v-else
-              :class="['pi text-xs text-white', notificationIcon(notification)]"
+              :name="notificationIconName(notification)"
+              class="text-xs text-white"
+              aria-hidden="true"
             />
           </div>
         </div>
@@ -155,7 +156,7 @@ const {
   subjectTierRowClass,
   titleSuffix,
   notificationContext,
-  notificationIcon,
+  notificationIconName,
   formatWhen,
 } = useNotifications()
 

@@ -32,7 +32,11 @@
 
     <template #footer>
       <Button label="Cancel" text severity="secondary" :disabled="disabled" @click="cancelCrop" />
-      <Button label="Apply" icon="pi pi-check" severity="secondary" :disabled="disabled || !cropHasSelection" @click="applyCrop" />
+      <Button label="Apply" severity="secondary" :disabled="disabled || !cropHasSelection" @click="applyCrop">
+        <template #icon>
+          <Icon name="tabler:check" aria-hidden="true" />
+        </template>
+      </Button>
     </template>
   </Dialog>
 </template>

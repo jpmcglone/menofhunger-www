@@ -14,11 +14,14 @@
         'dark:!bg-white dark:!text-black dark:!border dark:!border-solid dark:!border-white dark:hover:!bg-white dark:hover:!text-black dark:hover:!border-white',
         props.buttonClass,
       ]"
-      :icon="props.showIcon === false ? undefined : buttonIcon"
       @mouseenter="hovering = true"
       @mouseleave="hovering = false"
       @click="onClick"
-    />
+    >
+      <template v-if="props.showIcon !== false" #icon>
+        <Icon :name="buttonIconName" aria-hidden="true" />
+      </template>
+    </Button>
 
     <Dialog v-model:visible="confirmOpen" modal header="Unfollow?" :style="{ width: '26rem' }" :draggable="false">
       <p class="text-sm text-gray-700 dark:text-gray-300">
@@ -108,10 +111,10 @@ const buttonSeverity = computed(() => {
   return 'secondary'
 })
 
-const buttonIcon = computed(() => {
-  if (!viewerFollowsUser.value) return 'pi pi-plus'
-  if (hovering.value) return 'pi pi-times'
-  return 'pi pi-check'
+const buttonIconName = computed(() => {
+  if (!viewerFollowsUser.value) return 'tabler:plus'
+  if (hovering.value) return 'tabler:x'
+  return 'tabler:check'
 })
 
 async function onClick() {

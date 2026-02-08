@@ -8,7 +8,7 @@
       :disabled="!viewerIsVerified"
       @click="viewerIsVerified ? toggle() : null"
     >
-      <i v-if="modelValue === 'public'" class="pi pi-globe mr-1 text-[10px] opacity-80" aria-hidden="true" />
+      <Icon v-if="modelValue === 'public'" name="tabler:globe" class="mr-1 text-[10px] opacity-80" aria-hidden="true" />
       <AppVerifiedBadge
         v-else-if="modelValue === 'verifiedOnly'"
         class="mr-1"
@@ -23,9 +23,9 @@
         :premium="true"
         :show-tooltip="false"
       />
-      <i v-else-if="modelValue === 'onlyMe'" class="pi pi-eye-slash mr-1 text-[10px] opacity-80" aria-hidden="true" />
+      <Icon v-else-if="modelValue === 'onlyMe'" name="tabler:eye-off" class="mr-1 text-[10px] opacity-80" aria-hidden="true" />
       {{ label }}
-      <i v-if="viewerIsVerified" class="pi pi-chevron-down ml-1 text-[9px] opacity-80" aria-hidden="true" />
+      <Icon v-if="viewerIsVerified" name="tabler:chevron-down" class="ml-1 text-[9px] opacity-80" aria-hidden="true" />
     </button>
 
     <div
@@ -42,7 +42,7 @@
         @click="set('public')"
       >
         <span class="inline-flex items-center gap-2">
-          <i class="pi pi-globe text-[12px] opacity-80" aria-hidden="true" />
+          <Icon name="tabler:globe" class="text-[12px] opacity-80" aria-hidden="true" />
           <span>Public</span>
         </span>
       </button>
@@ -86,7 +86,7 @@
         @click="set('onlyMe')"
       >
         <span class="inline-flex items-center gap-2">
-          <i class="pi pi-eye-slash text-[12px]" aria-hidden="true" />
+          <Icon name="tabler:eye-off" class="text-[12px]" aria-hidden="true" />
           <span>Only me</span>
         </span>
       </button>

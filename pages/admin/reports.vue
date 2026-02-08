@@ -2,16 +2,19 @@
   <AppPageContent bottom="standard">
   <div class="py-4 space-y-4">
     <div class="px-4">
-      <AppPageHeader title="Reports" icon="pi-flag" description="Review and triage reported posts and users.">
+      <AppPageHeader title="Reports" icon="tabler:flag" description="Review and triage reported posts and users.">
         <template #leading>
           <Button
             class="md:hidden"
             text
             severity="secondary"
-            icon="pi pi-chevron-left"
             aria-label="Back"
             @click="navigateTo('/admin')"
-          />
+          >
+            <template #icon>
+              <Icon name="tabler:chevron-left" aria-hidden="true" />
+            </template>
+          </Button>
         </template>
       </AppPageHeader>
     </div>
@@ -49,12 +52,15 @@
       />
       <Button
         label="Search"
-        icon="pi pi-search"
         severity="secondary"
         :loading="loading"
         :disabled="loading"
         @click="loadReports(true)"
-      />
+      >
+        <template #icon>
+          <Icon name="tabler:search" aria-hidden="true" />
+        </template>
+      </Button>
     </div>
 
     <div v-if="error" class="px-4">
@@ -91,7 +97,11 @@
               <span v-else class="font-mono">{{ item.reporter.id }}</span>
             </div>
           </div>
-          <Button label="Review" text severity="secondary" icon="pi pi-eye" @click="openDetails(item)" />
+          <Button label="Review" text severity="secondary" @click="openDetails(item)">
+            <template #icon>
+              <Icon name="tabler:eye" aria-hidden="true" />
+            </template>
+          </Button>
         </div>
 
         <div v-if="item.details" class="text-sm moh-text-muted line-clamp-2">
@@ -195,7 +205,11 @@
 
     <template #footer>
       <Button label="Close" severity="secondary" text :disabled="saving" @click="detailsOpen = false" />
-      <Button label="Save" icon="pi pi-check" :loading="saving" :disabled="saving || !canSave" @click="saveDetails()" />
+      <Button label="Save" :loading="saving" :disabled="saving || !canSave" @click="saveDetails()">
+        <template #icon>
+          <Icon name="tabler:check" aria-hidden="true" />
+        </template>
+      </Button>
     </template>
   </Dialog>
   </AppPageContent>

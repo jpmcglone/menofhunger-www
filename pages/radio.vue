@@ -45,18 +45,24 @@
             aria-label="Loading"
             role="status"
           >
-            <i class="pi pi-spinner pi-spin opacity-80" aria-hidden="true" />
+            <Icon name="tabler:loader" class="opacity-80 animate-spin" aria-hidden="true" />
           </div>
           <Button
             v-else
-            :icon="stationId === s.id && isPlaying ? 'pi pi-pause' : 'pi pi-play'"
             severity="secondary"
             rounded
             text
             size="small"
             :aria-label="stationId === s.id && isPlaying ? 'Pause' : 'Play'"
             @click="onPlayPauseClick(s)"
-          />
+          >
+            <template #icon>
+              <Icon
+                :name="stationId === s.id && isPlaying ? 'tabler:player-pause' : 'tabler:player-play'"
+                aria-hidden="true"
+              />
+            </template>
+          </Button>
         </div>
       </div>
     </div>
@@ -103,7 +109,7 @@
                 class="absolute inset-0 rounded-full bg-black/30 flex items-center justify-center moh-avatar-pause"
                 aria-hidden="true"
               >
-                <i class="pi pi-pause" aria-hidden="true" />
+                <Icon name="tabler:player-pause" aria-hidden="true" />
               </div>
             </Transition>
           </NuxtLink>

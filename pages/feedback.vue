@@ -1,7 +1,7 @@
 <template>
   <AppPageContent bottom="standard">
   <div class="mx-auto w-full max-w-3xl px-4 py-8 space-y-8">
-    <AppPageHeader title="Feedback" icon="pi-comment" description="Send a note — bugs, feature requests, or anything else." />
+    <AppPageHeader title="Feedback" icon="tabler:message-circle" description="Send a note — bugs, feature requests, or anything else." />
 
     <div class="space-y-6">
       <div class="text-sm moh-text-muted">
@@ -52,13 +52,16 @@
         </div>
         <Button
           label="Submit"
-          icon="pi pi-send"
           severity="secondary"
           class="w-full sm:w-auto justify-center"
           :loading="submitting"
           :disabled="submitting"
           @click="onSubmit"
-        />
+        >
+          <template #icon>
+            <Icon name="tabler:send" aria-hidden="true" />
+          </template>
+        </Button>
       </div>
 
       <AppInlineAlert v-if="submitError" severity="danger">

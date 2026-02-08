@@ -42,7 +42,7 @@
                 class="absolute inset-0 rounded-full bg-black/30 flex items-center justify-center moh-avatar-pause moh-avatar-pause-sm"
                 aria-hidden="true"
               >
-                <i class="pi pi-pause" aria-hidden="true" />
+                <Icon name="tabler:player-pause" aria-hidden="true" />
               </div>
             </Transition>
           </NuxtLink>
@@ -60,11 +60,7 @@
           :aria-label="isMuted ? 'Unmute radio' : 'Mute radio'"
           @click="toggleMute"
         >
-          <i
-            :class="volumeIcon"
-            class="pi text-[13px] opacity-80"
-            aria-hidden="true"
-          />
+          <Icon :name="volumeIconName" class="text-[13px] opacity-80" aria-hidden="true" />
         </button>
         <input
           v-model.number="volumePercent"
@@ -83,30 +79,36 @@
         aria-label="Loading"
         role="status"
       >
-        <i class="pi pi-spinner pi-spin opacity-80" aria-hidden="true" />
+        <Icon name="tabler:loader" class="opacity-80 animate-spin" aria-hidden="true" />
       </div>
       <Button
         v-else
         :aria-label="isPlaying ? 'Pause radio' : 'Play radio'"
-        :icon="isPlaying ? 'pi pi-pause' : 'pi pi-play'"
         severity="secondary"
         rounded
         text
         size="small"
         class="hover:!bg-black/5 dark:!text-white dark:hover:!bg-white/10"
         @click="toggle"
-      />
+      >
+        <template #icon>
+          <Icon :name="isPlaying ? 'tabler:player-pause' : 'tabler:player-play'" aria-hidden="true" />
+        </template>
+      </Button>
 
     <Button
       aria-label="Close radio"
-      icon="pi pi-times"
       severity="secondary"
       rounded
       text
       size="small"
       class="hover:!bg-black/5 dark:!text-white dark:hover:!bg-white/10"
       @click="stop"
-    />
+    >
+      <template #icon>
+        <Icon name="tabler:x" aria-hidden="true" />
+      </template>
+    </Button>
     </div>
   </div>
 </template>
@@ -149,11 +151,11 @@ function toggleMute() {
   }
 }
 
-const volumeIcon = computed(() => {
+const volumeIconName = computed(() => {
   const v = volume.value ?? 0.5
-  if (v <= 0.001) return 'pi-volume-off'
-  if (v < 0.5) return 'pi-volume-down'
-  return 'pi-volume-up'
+  if (v <= 0.001) return 'tabler:volume-off'
+  if (v < 0.5) return 'tabler:volume-2'
+  return 'tabler:volume'
 })
 
 const listenerStack = computed<RadioListener[]>(() => {

@@ -46,7 +46,7 @@
         <div class="rounded-2xl border border-gray-200 bg-white/90 p-5 shadow-sm dark:border-zinc-800 dark:bg-black/70">
           <div class="flex items-start gap-3">
             <div class="mt-0.5 h-9 w-9 shrink-0 rounded-full flex items-center justify-center moh-onlyme-icon">
-              <i class="pi pi-eye-slash" aria-hidden="true" />
+              <Icon name="tabler:eye-off" aria-hidden="true" />
             </div>
             <div class="min-w-0">
               <div class="text-lg font-semibold text-gray-900 dark:text-gray-50">These posts are only for you</div>

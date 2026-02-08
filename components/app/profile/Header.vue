@@ -98,11 +98,14 @@
           <Button
             v-if="isSelf"
             label="Edit profile"
-            icon="pi pi-pencil"
             severity="secondary"
             rounded
             @click="emit('edit')"
-          />
+          >
+            <template #icon>
+              <Icon name="tabler:pencil" aria-hidden="true" />
+            </template>
+          </Button>
           <AppFollowButton
             v-else-if="isAuthed && profile?.id"
             :user-id="profile.id"
@@ -114,13 +117,16 @@
           <Button
             v-if="canOpenMenu"
             type="button"
-            icon="pi pi-ellipsis-v"
             severity="secondary"
             rounded
             text
             aria-label="More"
             @click="toggleMenu"
-          />
+          >
+            <template #icon>
+              <Icon name="tabler:dots-vertical" aria-hidden="true" />
+            </template>
+          </Button>
         </div>
       </div>
 
@@ -144,7 +150,14 @@
     </div>
   </div>
 
-  <Menu v-if="canOpenMenu" ref="menuRef" :model="menuItems" popup />
+  <Menu v-if="canOpenMenu" ref="menuRef" :model="menuItems" popup>
+    <template #item="{ item, props }">
+      <a v-bind="props.action" class="flex items-center gap-2">
+        <Icon v-if="item.iconName" :name="item.iconName" aria-hidden="true" />
+        <span v-bind="props.label">{{ item.label }}</span>
+      </a>
+    </template>
+  </Menu>
 
   <AppReportDialog
     v-model:visible="reportOpen"
@@ -216,12 +229,14 @@ const canOpenMenu = computed(() => {
 const reportOpen = ref(false)
 const menuRef = ref()
 
-const menuItems = computed<MenuItem[]>(() => {
+type MenuItemWithIcon = MenuItem & { iconName?: string }
+
+const menuItems = computed<MenuItemWithIcon[]>(() => {
   if (!canOpenMenu.value) return []
   return [
     {
       label: 'Report user',
-      icon: 'pi pi-flag',
+      iconName: 'tabler:flag',
       command: () => {
         reportOpen.value = true
       },

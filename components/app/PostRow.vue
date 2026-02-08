@@ -118,7 +118,7 @@
             :class="visibilityTagClass"
             v-tooltip.bottom="visibilityTooltip"
           >
-            <i v-if="post.visibility === 'onlyMe'" class="pi pi-eye-slash mr-1 text-[10px]" aria-hidden="true" />
+            <Icon v-if="post.visibility === 'onlyMe'" name="tabler:eye-off" class="mr-1 text-[10px]" aria-hidden="true" />
             {{ visibilityTag }}
           </span>
         </div>
@@ -135,7 +135,7 @@
                 v-tooltip.bottom="commentTooltip"
                 @click.stop="onCommentClick"
               >
-                <i class="pi pi-comment text-[18px]" aria-hidden="true" />
+                <Icon name="tabler:message-circle" class="text-[18px]" aria-hidden="true" />
               </button>
               <NuxtLink
                 v-if="displayedCommentCount > 0"
@@ -226,12 +226,15 @@
       <Button label="Cancel" severity="secondary" text :disabled="deleting" @click="deleteConfirmOpen = false" />
       <Button
         label="Delete"
-        icon="pi pi-trash"
         severity="danger"
         :loading="deleting"
         :disabled="deleting"
         @click="deletePost"
-      />
+      >
+        <template #icon>
+          <Icon name="tabler:trash" aria-hidden="true" />
+        </template>
+      </Button>
     </template>
   </Dialog>
 
@@ -460,11 +463,13 @@ function formatShortDate(d: Date): string {
   return sameYear ? `${month} ${day}` : `${month} ${day}, ${d.getFullYear()}`
 }
 
-const moreMenuItems = computed<MenuItem[]>(() => {
-  const items: MenuItem[] = [
+type MenuItemWithIcon = MenuItem & { iconName?: string }
+
+const moreMenuItems = computed<MenuItemWithIcon[]>(() => {
+  const items: MenuItemWithIcon[] = [
     {
       label: post.value.author.username ? `View @${post.value.author.username}` : 'View profile',
-      icon: 'pi pi-user',
+      iconName: 'tabler:user',
       command: () => {
         if (!authorProfilePath.value) return
         return navigateTo(authorProfilePath.value)
@@ -480,7 +485,7 @@ const moreMenuItems = computed<MenuItem[]>(() => {
     items.push({ separator: true })
     items.push({
       label: adminScoreLabel.value ?? '—',
-      icon: 'pi pi-chart-line',
+      iconName: 'tabler:chart-line',
       disabled: true
     })
   }
@@ -488,7 +493,7 @@ const moreMenuItems = computed<MenuItem[]>(() => {
   if (isAuthed.value && !isSelf.value) {
     items.push({
       label: 'Report post',
-      icon: 'pi pi-flag',
+      iconName: 'tabler:flag',
       command: () => {
         reportOpen.value = true
       },
@@ -503,13 +508,13 @@ const moreMenuItems = computed<MenuItem[]>(() => {
     if (isPinned || canPin) {
       items.push({
         label: isPinned ? 'Unpin from profile' : 'Pin to profile',
-        icon: isPinned ? 'pi pi-times' : 'pi pi-thumbtack',
+        iconName: isPinned ? 'tabler:x' : 'tabler:pin',
         command: () => (isPinned ? unpinFromProfile() : pinToProfile()),
       })
     }
     items.push({
       label: 'Delete post',
-      icon: 'pi pi-trash',
+      iconName: 'tabler:trash',
       class: 'text-red-600 dark:text-red-400',
       command: () => {
         deleteConfirmOpen.value = true
@@ -662,10 +667,10 @@ function toastToneForPostVisibility(): import('~/composables/useAppToast').AppTo
   if (v === 'onlyMe') return 'onlyMe'
   return 'public'
 }
-const shareMenuItems = computed<MenuItem[]>(() => [
+const shareMenuItems = computed<MenuItemWithIcon[]>(() => [
   {
     label: 'Copy link',
-    icon: 'pi pi-link',
+    iconName: 'tabler:link',
     command: async () => {
       if (!import.meta.client) return
       try {

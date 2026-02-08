@@ -1,6 +1,5 @@
 @import "tailwindcss";
 @import "@nuxt/ui";
-@import "primeicons/primeicons.css";
 @import "vue-advanced-cropper/dist/style.css";
 
 /* Typography baseline (X-like): modern system font, readable sizing, nice rendering */

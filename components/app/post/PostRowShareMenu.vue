@@ -35,7 +35,14 @@
         />
       </svg>
     </button>
-    <Menu v-if="mounted" ref="menuRef" :model="items" popup />
+    <Menu v-if="mounted" ref="menuRef" :model="items" popup>
+      <template #item="{ item, props }">
+        <a v-bind="props.action" class="flex items-center gap-2">
+          <Icon v-if="item.iconName" :name="item.iconName" aria-hidden="true" />
+          <span v-bind="props.label">{{ item.label }}</span>
+        </a>
+      </template>
+    </Menu>
   </div>
 </template>
 

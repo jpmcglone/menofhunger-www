@@ -12,37 +12,39 @@ export function useUserMenu() {
     return navigateTo('/settings')
   }
 
-  const menuItems = computed<MenuItem[]>(() => [
+  type MenuItemWithIcon = MenuItem & { iconName?: string }
+
+  const menuItems = computed<MenuItemWithIcon[]>(() => [
     ...(user.value?.siteAdmin
       ? ([
           {
             label: 'Admin',
-            icon: 'pi pi-shield',
+            iconName: 'tabler:shield',
             command: () => navigateTo('/admin'),
           },
           { separator: true },
-        ] as MenuItem[])
+        ] as MenuItemWithIcon[])
       : []),
     {
       label: 'View profile',
-      icon: 'pi pi-user',
+      iconName: 'tabler:user',
       command: () => viewProfile(),
     },
     { separator: true },
     {
       label: 'Settings & privacy',
-      icon: 'pi pi-cog',
+      iconName: 'tabler:settings',
       command: () => navigateTo('/settings'),
     },
     {
       label: 'Send feedback',
-      icon: 'pi pi-comment',
+      iconName: 'tabler:message-circle',
       command: () => navigateTo('/feedback'),
     },
     { separator: true },
     {
       label: 'Log out',
-      icon: 'pi pi-sign-out',
+      iconName: 'tabler:logout',
       command: () => {
         confirmVisible.value = true
       },

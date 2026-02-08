@@ -36,7 +36,7 @@
         aria-label="Tap for sound"
         @click.stop="onTapUnmute"
       >
-        <i class="pi pi-volume-off text-base" aria-hidden="true" />
+        <Icon name="tabler:volume-off" class="text-base" aria-hidden="true" />
       </button>
       <button
         v-else-if="singleVideoActive && !singleVideoMuted"
@@ -45,7 +45,7 @@
         aria-label="Mute"
         @click.stop="onTapMute"
       >
-        <i class="pi pi-volume-up text-base" aria-hidden="true" />
+        <Icon name="tabler:volume" class="text-base" aria-hidden="true" />
       </button>
       <span
         v-if="items[0]?.durationSeconds != null && items[0].durationSeconds > 0"
@@ -90,7 +90,7 @@
       aria-label="Deleted media"
     >
       <div class="flex flex-col items-center gap-2 text-sm moh-text-muted select-none">
-        <i class="pi pi-image text-2xl opacity-70" aria-hidden="true" />
+        <Icon name="tabler:photo" class="text-2xl opacity-70" aria-hidden="true" />
         <div class="font-semibold">Deleted</div>
       </div>
     </div>
@@ -129,7 +129,7 @@
                 decoding="async"
               />
               <div class="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/20" aria-hidden="true">
-                <i class="pi pi-play text-2xl text-white drop-shadow" aria-hidden="true" />
+                <Icon name="tabler:play" class="text-2xl text-white drop-shadow" aria-hidden="true" />
               </div>
             </template>
             <div
@@ -144,7 +144,7 @@
             aria-label="Deleted media"
           >
             <div class="flex flex-col items-center gap-1 text-[12px] moh-text-muted select-none">
-              <i class="pi pi-image text-xl opacity-70" aria-hidden="true" />
+              <Icon name="tabler:photo" class="text-xl opacity-70" aria-hidden="true" />
               <div class="font-semibold">Deleted</div>
             </div>
           </div>

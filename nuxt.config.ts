@@ -104,6 +104,13 @@ export default defineNuxtConfig({
     '@nuxt/ui',
     '@primevue/nuxt-module'
   ],
+  icon: {
+    // Prefer local Iconify collections (more reliable + faster than remote).
+    // Install the collections you use (e.g. `@iconify-json/tabler`) so they can be served from the Nuxt server bundle.
+    serverBundle: 'local',
+    // If an icon collection isn't installed, fail loudly rather than silently hitting the public Iconify API.
+    fallbackToApi: false,
+  },
   vue: {
     compilerOptions: {
       isCustomElement: (tag) => tag === 'emoji-picker',

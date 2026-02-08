@@ -39,7 +39,7 @@
           aria-hidden="true"
         >
           <div class="flex flex-col items-center gap-2 rounded-full bg-black/50 px-4 py-3">
-            <i class="pi pi-play text-2xl text-white" aria-hidden="true" />
+            <Icon name="tabler:play" class="text-2xl text-white" aria-hidden="true" />
             <span class="text-xs font-medium text-white/90">Click to play</span>
           </div>
         </div>
@@ -76,7 +76,7 @@
           </div>
         </div>
         <div class="shrink-0 text-gray-400 dark:text-zinc-500" aria-hidden="true">
-          <i class="pi pi-external-link text-[12px]" />
+          <Icon name="tabler:external-link" class="text-[12px]" aria-hidden="true" />
         </div>
       </div>
     </a>

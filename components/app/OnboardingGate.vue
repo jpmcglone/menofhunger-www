@@ -95,11 +95,14 @@
             <div class="text-xs moh-text-muted">Profile setup is required to continue.</div>
             <Button
               label="Continue"
-              icon="pi pi-check"
               :loading="submitting"
               :disabled="submitting || !canSubmit"
               @click="submit"
-            />
+            >
+              <template #icon>
+                <Icon name="tabler:check" aria-hidden="true" />
+              </template>
+            </Button>
           </div>
         </div>
       </div>

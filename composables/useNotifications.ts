@@ -153,21 +153,21 @@ export function useNotifications() {
     }
   }
 
-  /** Icon class for notification kind (PrimeIcons). */
-  function notificationIcon(n: Notification): string {
+  /** Icon name for notification kind (Iconify). */
+  function notificationIconName(n: Notification): string {
     switch (n.kind) {
       case 'comment':
-        return 'pi-comment'
+        return 'tabler:message-circle'
       case 'boost':
         return '' // Custom SVG
       case 'follow':
-        return 'pi-user-plus'
+        return 'tabler:user-plus'
       case 'mention':
-        return 'pi-at'
+        return 'tabler:at'
       case 'generic':
-        return 'pi-bell'
+        return 'tabler:bell'
       default:
-        return 'pi-bell'
+        return 'tabler:bell'
     }
   }
 
@@ -230,7 +230,7 @@ export function useNotifications() {
     titleSuffix,
     notificationTitle,
     notificationContext,
-    notificationIcon,
+    notificationIconName,
     formatWhen,
     rowHref,
   }

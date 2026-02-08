@@ -6,19 +6,13 @@
       :aria-label="`Folder: ${folderLabel}`"
       @click="open = !open"
     >
-      <i
-        :class="[
-          'shrink-0 text-base',
-          activeSlug === null
-            ? 'pi pi-bookmark-fill text-[var(--p-primary-color)]'
-            : activeSlug === 'unorganized'
-              ? 'pi pi-inbox text-[var(--p-primary-color)]'
-              : 'pi pi-folder text-[var(--p-primary-color)]',
-        ]"
+      <Icon
+        :name="activeSlug === null ? 'tabler:bookmark-filled' : activeSlug === 'unorganized' ? 'tabler:inbox' : 'tabler:folder'"
+        class="shrink-0 text-base text-[var(--p-primary-color)]"
         aria-hidden="true"
       />
       <span class="truncate max-w-[8rem] sm:max-w-[12rem]">{{ folderLabel }}</span>
-      <i class="pi pi-chevron-down text-xs opacity-70 shrink-0" aria-hidden="true" />
+      <Icon name="tabler:chevron-down" class="text-xs opacity-70 shrink-0" aria-hidden="true" />
     </button>
 
     <div
@@ -33,15 +27,13 @@
         role="menuitem"
         @click="goTo('')"
       >
-        <i
-          :class="[
-            'text-base shrink-0',
-            activeSlug === null ? 'pi pi-bookmark-fill text-[var(--p-primary-color)]' : 'pi pi-bookmark moh-text',
-          ]"
+        <Icon
+          :name="activeSlug === null ? 'tabler:bookmark-filled' : 'tabler:bookmark'"
+          :class="['text-base shrink-0', activeSlug === null ? 'text-[var(--p-primary-color)]' : 'moh-text']"
           aria-hidden="true"
         />
         <span class="flex-1">All</span>
-        <i v-if="activeSlug === null" class="pi pi-check text-xs shrink-0" aria-hidden="true" />
+        <Icon v-if="activeSlug === null" name="tabler:check" class="text-xs shrink-0" aria-hidden="true" />
       </button>
       <button
         type="button"
@@ -49,15 +41,13 @@
         role="menuitem"
         @click="goTo('unorganized')"
       >
-        <i
-          :class="[
-            'text-base shrink-0',
-            activeSlug === 'unorganized' ? 'pi pi-inbox text-[var(--p-primary-color)]' : 'pi pi-inbox moh-text',
-          ]"
+        <Icon
+          name="tabler:inbox"
+          :class="['text-base shrink-0', activeSlug === 'unorganized' ? 'text-[var(--p-primary-color)]' : 'moh-text']"
           aria-hidden="true"
         />
         <span class="flex-1 truncate">Unorganized</span>
-        <i v-if="activeSlug === 'unorganized'" class="pi pi-check text-xs shrink-0" aria-hidden="true" />
+        <Icon v-if="activeSlug === 'unorganized'" name="tabler:check" class="text-xs shrink-0" aria-hidden="true" />
       </button>
       <template v-for="c in collections" :key="c.id">
         <button
@@ -66,21 +56,16 @@
           role="menuitem"
           @click="goTo(c.slug)"
         >
-          <i
+          <Icon
+            :name="c.bookmarkCount > 0 ? 'tabler:folder' : 'tabler:folder-open'"
             :class="[
               'text-base shrink-0',
-              activeSlug === c.slug
-                ? c.bookmarkCount > 0
-                  ? 'pi pi-folder text-[var(--p-primary-color)]'
-                  : 'pi pi-folder-open text-[var(--p-primary-color)]'
-                : c.bookmarkCount > 0
-                  ? 'pi pi-folder moh-text'
-                  : 'pi pi-folder-open moh-text',
+              activeSlug === c.slug ? 'text-[var(--p-primary-color)]' : 'moh-text',
             ]"
             aria-hidden="true"
           />
           <span class="flex-1 truncate">{{ c.name }}</span>
-          <i v-if="activeSlug === c.slug" class="pi pi-check text-xs shrink-0" aria-hidden="true" />
+          <Icon v-if="activeSlug === c.slug" name="tabler:check" class="text-xs shrink-0" aria-hidden="true" />
         </button>
       </template>
       <div class="border-t moh-border px-2 py-1">
@@ -90,7 +75,7 @@
           role="menuitem"
           @click="onNewFolder"
         >
-          <i class="pi pi-plus text-sm shrink-0" aria-hidden="true" />
+          <Icon name="tabler:plus" class="text-sm shrink-0" aria-hidden="true" />
           <span>New folder</span>
         </button>
       </div>

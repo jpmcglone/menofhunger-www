@@ -3,7 +3,7 @@
     <div class="space-y-6">
       <div class="space-y-2">
         <div class="flex items-center gap-2 text-2xl font-semibold tracking-tight">
-          <i class="pi pi-sign-in" aria-hidden="true" />
+          <Icon name="tabler:login" aria-hidden="true" />
           <span>Login</span>
         </div>
       </div>
@@ -84,14 +84,17 @@
           <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <Button
               label="Resend code"
-              icon="pi pi-refresh"
               rounded
               severity="secondary"
               class="w-full sm:w-auto"
               :disabled="resendRemainingSeconds > 0 || phoneSubmitting"
               :loading="phoneSubmitting"
               @click="resend"
-            />
+            >
+              <template #icon>
+                <Icon name="tabler:refresh" aria-hidden="true" />
+              </template>
+            </Button>
           </div>
 
           <p class="mt-4 text-center text-xs text-gray-500 dark:text-gray-400">
@@ -135,11 +138,14 @@
           <Button label="Cancel" severity="secondary" text :disabled="introContinuing" @click="closeIntro" />
           <Button
             label="Continue"
-            icon="pi pi-arrow-right"
             :loading="introContinuing"
             :disabled="introContinuing"
             @click="acceptIntroAndContinue"
-          />
+          >
+            <template #icon>
+              <Icon name="tabler:arrow-right" aria-hidden="true" />
+            </template>
+          </Button>
         </div>
       </div>
     </Dialog>

@@ -23,8 +23,8 @@
       />
       <div class="absolute right-3 top-1/2 -translate-y-1/2 flex items-center">
         <AppLogoLoader v-if="status === 'checking'" :size="20" class="shrink-0" />
-        <i v-else-if="status === 'available' || status === 'same'" class="pi pi-check text-green-600" aria-hidden="true" />
-        <i v-else-if="status === 'taken' || status === 'invalid'" class="pi pi-times text-red-600" aria-hidden="true" />
+        <Icon v-else-if="status === 'available' || status === 'same'" name="tabler:check" class="text-green-600" aria-hidden="true" />
+        <Icon v-else-if="status === 'taken' || status === 'invalid'" name="tabler:x" class="text-red-600" aria-hidden="true" />
       </div>
     </div>
 

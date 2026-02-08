@@ -12,17 +12,23 @@
           class="md:hidden"
           text
           severity="secondary"
-          icon="pi pi-chevron-left"
           aria-label="Back"
           @click="navigateTo('/admin/media-review')"
-        />
+        >
+          <template #icon>
+            <Icon name="tabler:chevron-left" aria-hidden="true" />
+          </template>
+        </Button>
         <Button
           label="Delete"
-          icon="pi pi-trash"
           severity="danger"
           :disabled="Boolean(data?.asset.deletedAt) || loading"
           @click="openDelete = true"
-        />
+        >
+          <template #icon>
+            <Icon name="tabler:trash" aria-hidden="true" />
+          </template>
+        </Button>
       </div>
     </div>
 
@@ -54,7 +60,11 @@
           />
           <div v-else class="flex items-center justify-center h-[22rem]">
             <div class="text-center text-sm moh-text-muted">
-              <i :class="data.asset.kind === 'video' ? 'pi pi-video' : 'pi pi-image'" class="text-3xl opacity-70" aria-hidden="true" />
+              <Icon
+                :name="data.asset.kind === 'video' ? 'tabler:video' : 'tabler:photo'"
+                class="text-3xl opacity-70"
+                aria-hidden="true"
+              />
               <div class="mt-2 font-semibold">{{ data.asset.deletedAt ? 'Deleted' : 'No preview' }}</div>
             </div>
           </div>
@@ -161,12 +171,15 @@
       <Button label="Cancel" text severity="secondary" :disabled="deleting" @click="openDelete = false" />
       <Button
         label="Delete"
-        icon="pi pi-trash"
         severity="danger"
         :loading="deleting"
         :disabled="deleting || deleteConfirm.trim() !== 'DELETE' || !deleteReason.trim()"
         @click="doDelete"
-      />
+      >
+        <template #icon>
+          <Icon name="tabler:trash" aria-hidden="true" />
+        </template>
+      </Button>
     </template>
   </Dialog>
   </AppPageContent>

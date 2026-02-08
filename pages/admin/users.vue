@@ -2,17 +2,20 @@
   <AppPageContent bottom="standard">
   <div class="py-4 space-y-4">
     <div class="px-4">
-      <AppPageHeader title="Users" icon="pi-users" description="Search and edit users.">
+      <AppPageHeader title="Users" icon="tabler:users" description="Search and edit users.">
       <template #leading>
         <!-- Only show back on mobile; desktop has the admin left pane. -->
         <Button
           class="md:hidden"
           text
           severity="secondary"
-          icon="pi pi-chevron-left"
           aria-label="Back"
           @click="navigateTo('/admin')"
-        />
+        >
+          <template #icon>
+            <Icon name="tabler:chevron-left" aria-hidden="true" />
+          </template>
+        </Button>
       </template>
       </AppPageHeader>
     </div>
@@ -26,12 +29,15 @@
       />
       <Button
         label="Search"
-        icon="pi pi-search"
         severity="secondary"
         :loading="searching"
         :disabled="searching"
         @click="runUserSearch()"
-      />
+      >
+        <template #icon>
+          <Icon name="tabler:search" aria-hidden="true" />
+        </template>
+      </Button>
     </div>
 
     <div v-if="searchError" class="px-4">
@@ -88,7 +94,7 @@
             aria-label="Edit user"
             @click.stop="openEdit(u)"
           >
-            <i class="pi pi-pencil" aria-hidden="true" />
+            <Icon name="tabler:pencil" aria-hidden="true" />
           </button>
         </div>
       </div>
@@ -113,14 +119,16 @@
             <InputText v-model="editUsername" class="w-full font-mono" placeholder="username" />
             <div class="shrink-0 w-8 flex items-center justify-center">
               <AppLogoLoader v-if="usernameAvailability === 'checking'" :size="24" class="shrink-0" />
-              <i
+              <Icon
                 v-else-if="usernameAvailability === 'available' || usernameAvailability === 'same'"
-                class="pi pi-check text-green-600"
+                name="tabler:check"
+                class="text-green-600"
                 aria-hidden="true"
               />
-              <i
+              <Icon
                 v-else-if="usernameAvailability === 'taken' || usernameAvailability === 'invalid'"
-                class="pi pi-times text-red-600"
+                name="tabler:x"
+                class="text-red-600"
                 aria-hidden="true"
               />
             </div>
@@ -236,11 +244,14 @@
         <Button label="Cancel" text severity="secondary" :disabled="saving" @click="editOpen = false" />
         <Button
           label="Save"
-          icon="pi pi-check"
           :loading="saving"
           :disabled="saving || !editingUser || !canSave"
           @click="saveUser()"
-        />
+        >
+          <template #icon>
+            <Icon name="tabler:check" aria-hidden="true" />
+          </template>
+        </Button>
       </template>
     </Dialog>
   </div>

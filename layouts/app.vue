@@ -214,7 +214,7 @@
             ]"
           >
             <span class="flex h-12 w-12 shrink-0 items-center justify-center">
-              <i class="pi pi-sign-in text-[22px] opacity-95" aria-hidden="true" />
+              <Icon name="tabler:login" class="text-[22px] opacity-95" aria-hidden="true" />
             </span>
             <span v-if="!navCompactMode" class="hidden xl:inline text-base font-semibold">Log in</span>
           </NuxtLink>
@@ -249,7 +249,7 @@
                 <AppTitleBar>
                   <div class="flex items-center justify-between gap-3">
                     <div class="min-w-0 flex items-center gap-2">
-                      <i v-if="headerIcon" :class="['pi', headerIcon]" class="text-xl shrink-0 opacity-80" aria-hidden="true" />
+                      <Icon v-if="headerIcon" :name="headerIcon" class="text-xl shrink-0 opacity-80" aria-hidden="true" />
                       <h1 class="min-w-0 truncate text-xl font-bold leading-none">
                         {{ headerTitle }}
                       </h1>
@@ -463,7 +463,9 @@
         <div class="pointer-events-auto w-[clamp(20rem,22vw,23.75rem)] border-b moh-border moh-bg moh-texture">
           <div class="px-4 h-16 flex items-center">
             <IconField iconPosition="left" class="w-full">
-              <InputIcon class="pi pi-search" />
+              <InputIcon>
+                <Icon name="tabler:search" class="text-lg opacity-70" aria-hidden="true" />
+              </InputIcon>
               <InputText
                 v-model="rightRailSearchQuery"
                 class="w-full h-11 !rounded-full"
@@ -499,7 +501,7 @@
       :style="fabBottomStyle"
       @click="openComposerForCurrentRoute()"
     >
-      <i class="pi pi-plus text-3xl" aria-hidden="true" />
+      <Icon name="tabler:plus" class="text-3xl" aria-hidden="true" />
     </button>
 
     <AppTabBar v-if="!anyOverlayOpen" :items="tabItems" />
@@ -889,15 +891,15 @@ const headerDescription = computed(() =>
 
 const routeHeaderDefaults = computed(() => {
   const p = route.path
-  if (p === '/notifications') return { icon: 'pi-bell', description: 'Replies, follows, and updates from your network.' }
-  if (p === '/chat') return { icon: 'pi-envelope', description: 'Chat conversations and chat requests.' }
-  if (p.startsWith('/bookmarks')) return { icon: 'pi-bookmark', description: 'Saved posts and folders.' }
-  if (p === '/explore') return { icon: 'pi-search', description: 'Search and discover.' }
-  if (p === '/groups') return { icon: 'pi-users', description: 'Brotherhood circles and challenges. Coming soon.' }
-  if (p === '/feedback') return { icon: 'pi-send', description: 'Help us improve.' }
+  if (p === '/notifications') return { icon: 'tabler:bell', description: 'Replies, follows, and updates from your network.' }
+  if (p === '/chat') return { icon: 'tabler:mail', description: 'Chat conversations and chat requests.' }
+  if (p.startsWith('/bookmarks')) return { icon: 'tabler:bookmark', description: 'Saved posts and folders.' }
+  if (p === '/explore') return { icon: 'tabler:search', description: 'Search and discover.' }
+  if (p === '/groups') return { icon: 'tabler:users', description: 'Brotherhood circles and challenges. Coming soon.' }
+  if (p === '/feedback') return { icon: 'tabler:send', description: 'Help us improve.' }
   if (p === '/only-me') return { icon: undefined, description: 'Private posts that only you can see. These never appear in feeds.' }
-  if (p === '/roadmap') return { icon: 'pi-map', description: 'What we’re building and when.' }
-  if (p === '/tiers') return { icon: 'pi-tags', description: 'Unverified, Verified, and Premium — what you get with each tier.' }
+  if (p === '/roadmap') return { icon: 'tabler:map', description: 'What we’re building and when.' }
+  if (p === '/tiers') return { icon: 'tabler:tags', description: 'Unverified, Verified, and Premium — what you get with each tier.' }
   return { icon: undefined, description: undefined }
 })
 
@@ -1025,10 +1027,21 @@ function scheduleDailyQuoteRollover() {
     scheduleDailyQuoteRollover()
   }, Math.max(1000, ms + 2000))
 }
-onMounted(() => scheduleDailyQuoteRollover())
+function onDailyQuoteVisibilityOrFocus() {
+  // If the device slept or timers were throttled, snap to correct day on return.
+  dailyQuoteNow.value = new Date()
+}
+
+onMounted(() => {
+  scheduleDailyQuoteRollover()
+  window.addEventListener('focus', onDailyQuoteVisibilityOrFocus)
+  document.addEventListener('visibilitychange', onDailyQuoteVisibilityOrFocus)
+})
 onBeforeUnmount(() => {
   dailyQuoteTimer && clearTimeout(dailyQuoteTimer)
   dailyQuoteTimer = null
+  window.removeEventListener('focus', onDailyQuoteVisibilityOrFocus)
+  document.removeEventListener('visibilitychange', onDailyQuoteVisibilityOrFocus)
 })
 
 const {

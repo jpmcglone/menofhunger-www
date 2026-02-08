@@ -6,7 +6,9 @@
       <div class="px-4 py-3">
         <div class="flex flex-col gap-3 sm:flex-row sm:items-stretch">
           <IconField iconPosition="left" class="w-full min-w-0 flex-1">
-            <InputIcon class="pi pi-search" />
+            <InputIcon>
+              <Icon name="tabler:search" class="text-lg opacity-70" aria-hidden="true" />
+            </InputIcon>
             <InputText
               v-model="searchQuery"
               class="w-full h-11 !rounded-full"

@@ -27,7 +27,7 @@
           v-tooltip.bottom="scopeTagTooltip"
           aria-label="Reply visibility"
         >
-          <i v-if="effectiveVisibility === 'onlyMe'" class="pi pi-eye-slash mr-1 text-[10px]" aria-hidden="true" />
+          <Icon v-if="effectiveVisibility === 'onlyMe'" name="tabler:eye-off" class="mr-1 text-[10px]" aria-hidden="true" />
           {{ scopeTagLabel }}
         </span>
       </div>
@@ -179,7 +179,6 @@
           <div class="flex items-center justify-between">
           <div class="flex items-center gap-2 text-gray-500 dark:text-gray-400">
             <Button
-              icon="pi pi-image"
               text
               rounded
               severity="secondary"
@@ -187,7 +186,11 @@
               :disabled="!canAddMoreMedia"
               v-tooltip.bottom="tinyTooltip(canAddMoreMedia ? 'Add image/GIF' : 'Max 4 attachments')"
               @click="openMediaPicker"
-            />
+            >
+              <template #icon>
+                <Icon name="tabler:photo" aria-hidden="true" />
+              </template>
+            </Button>
             <Button
               text
               severity="secondary"
@@ -254,7 +257,7 @@
             class="mt-0.5 inline-flex h-11 w-11 shrink-0 items-center justify-center text-gray-900 dark:text-white"
             aria-hidden="true"
           >
-            <i class="pi pi-sign-in text-[18px]" />
+            <Icon name="tabler:login" class="text-[18px]" aria-hidden="true" />
           </div>
           <div class="min-w-0 space-y-1">
             <div class="text-[15px] font-semibold text-gray-900 dark:text-white">Log in to post</div>

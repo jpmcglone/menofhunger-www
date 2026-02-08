@@ -28,7 +28,7 @@
                   <div class="font-semibold truncate text-gray-900 dark:text-gray-50">{{ s.label }}</div>
                   <div class="text-sm text-gray-600 dark:text-gray-300 truncate">{{ s.description }}</div>
                 </div>
-                <i class="pi pi-angle-right text-gray-400" aria-hidden="true" />
+                <Icon name="tabler:chevron-right" class="text-gray-400" aria-hidden="true" />
               </div>
             </NuxtLink>
           </div>
@@ -43,12 +43,15 @@
               <div class="flex min-w-0 items-start gap-2">
                 <Button
                   v-if="selectedSection"
-                  icon="pi pi-chevron-left"
                   text
                   severity="secondary"
                   aria-label="Back"
                   @click="navigateTo('/settings')"
-                />
+                >
+                  <template #icon>
+                    <Icon name="tabler:chevron-left" aria-hidden="true" />
+                  </template>
+                </Button>
                 <div class="min-w-0">
                   <div class="font-semibold truncate">
                     {{ selectedSectionLabel }}
@@ -79,11 +82,14 @@
                 <div class="flex items-center gap-3">
                   <Button
                     label="Save"
-                    icon="pi pi-check"
                     :loading="saving"
                     :disabled="saving || !canSaveUsername"
                     @click="save"
-                  />
+                  >
+                    <template #icon>
+                      <Icon name="tabler:check" aria-hidden="true" />
+                    </template>
+                  </Button>
                   <div v-if="saved" class="text-sm text-green-700 dark:text-green-300">Saved.</div>
                 </div>
 
@@ -104,12 +110,15 @@
                 <div class="flex items-center gap-3">
                   <Button
                     label="Save email"
-                    icon="pi pi-check"
                     severity="secondary"
                     :loading="emailSaving"
                     :disabled="emailSaving || !emailDirty"
                     @click="saveEmail"
-                  />
+                  >
+                    <template #icon>
+                      <Icon name="tabler:check" aria-hidden="true" />
+                    </template>
+                  </Button>
                 </div>
 
                 <div class="space-y-3">
@@ -124,12 +133,15 @@
                   <div class="flex items-center gap-3">
                     <Button
                       label="Save interests"
-                      icon="pi pi-check"
                       severity="secondary"
                       :loading="interestsSaving"
                       :disabled="interestsSaving || !interestsDirty"
                       @click="saveInterests"
-                    />
+                    >
+                      <template #icon>
+                        <Icon name="tabler:check" aria-hidden="true" />
+                      </template>
+                    </Button>
                     <div v-if="interestsSaved" class="text-sm text-green-700 dark:text-green-300">Saved.</div>
                   </div>
                   <div v-if="interestsHelperText" class="text-sm text-red-700 dark:text-red-300">
@@ -193,19 +205,25 @@
                 <div class="flex flex-wrap items-center gap-3">
                   <Button
                     label="Start verification"
-                    icon="pi pi-id-card"
                     :loading="verificationStarting"
                     :disabled="verificationStarting || verificationStartDisabled"
                     @click="startVerification()"
-                  />
+                  >
+                    <template #icon>
+                      <Icon name="tabler:id-badge" aria-hidden="true" />
+                    </template>
+                  </Button>
                   <Button
                     label="Refresh"
-                    icon="pi pi-refresh"
                     severity="secondary"
                     :loading="verificationRefreshing"
                     :disabled="verificationRefreshing"
                     @click="refreshVerification()"
-                  />
+                  >
+                    <template #icon>
+                      <Icon name="tabler:refresh" aria-hidden="true" />
+                    </template>
+                  </Button>
                   <div v-if="verificationStartDisabledReason" class="text-sm moh-text-muted">
                     {{ verificationStartDisabledReason }}
                   </div>
@@ -237,12 +255,15 @@
                 <div class="flex items-center gap-3">
                   <Button
                     label="Save"
-                    icon="pi pi-check"
                     severity="secondary"
                     :loading="privacySaving"
                     :disabled="privacySaving || !privacyDirty"
                     @click="savePrivacy"
-                  />
+                  >
+                    <template #icon>
+                      <Icon name="tabler:check" aria-hidden="true" />
+                    </template>
+                  </Button>
                   <div v-if="privacySaved" class="text-sm text-green-700 dark:text-green-300">Saved.</div>
                 </div>
 
@@ -277,27 +298,36 @@
                     <Button
                       v-if="!pushIsSubscribed && pushPermission !== 'denied'"
                       label="Enable browser notifications"
-                      icon="pi pi-bell"
                       :loading="pushIsRegistering"
                       :disabled="pushIsRegistering || pushRequiresInstall"
                       @click="pushSubscribe"
-                    />
+                    >
+                      <template #icon>
+                        <Icon name="tabler:bell" aria-hidden="true" />
+                      </template>
+                    </Button>
                     <Button
                       v-else-if="pushIsSubscribed"
                       label="Disable browser notifications"
-                      icon="pi pi-bell-slash"
                       severity="secondary"
                       @click="pushUnsubscribe"
-                    />
+                    >
+                      <template #icon>
+                        <Icon name="tabler:bell-off" aria-hidden="true" />
+                      </template>
+                    </Button>
                     <Button
                       v-if="pushIsSubscribed"
                       label="Send test notification"
-                      icon="pi pi-send"
                       severity="secondary"
                       :loading="pushTestSending"
                       :disabled="pushTestSending"
                       @click="sendPushTest"
-                    />
+                    >
+                      <template #icon>
+                        <Icon name="tabler:send" aria-hidden="true" />
+                      </template>
+                    </Button>
                     <span v-else-if="pushPermission === 'denied'" class="text-sm text-gray-600 dark:text-gray-400">
                       Notifications were denied. Enable them in your browser settings for this site to try again.
                     </span>
@@ -317,19 +347,19 @@
               <div v-else-if="selectedSection === 'links'" class="space-y-4">
                 <div class="flex flex-col gap-3">
                   <NuxtLink to="/about" class="inline-flex items-center gap-3 text-gray-800 hover:underline dark:text-gray-200">
-                    <i class="pi pi-info-circle text-gray-500 dark:text-gray-400" aria-hidden="true" />
+                    <Icon name="tabler:info-circle" class="text-gray-500 dark:text-gray-400" aria-hidden="true" />
                     <span class="font-medium">About</span>
                   </NuxtLink>
                   <NuxtLink to="/privacy" class="inline-flex items-center gap-3 text-gray-800 hover:underline dark:text-gray-200">
-                    <i class="pi pi-lock text-gray-500 dark:text-gray-400" aria-hidden="true" />
+                    <Icon name="tabler:lock" class="text-gray-500 dark:text-gray-400" aria-hidden="true" />
                     <span class="font-medium">Privacy</span>
                   </NuxtLink>
                   <NuxtLink to="/terms" class="inline-flex items-center gap-3 text-gray-800 hover:underline dark:text-gray-200">
-                    <i class="pi pi-file text-gray-500 dark:text-gray-400" aria-hidden="true" />
+                    <Icon name="tabler:file-text" class="text-gray-500 dark:text-gray-400" aria-hidden="true" />
                     <span class="font-medium">Terms</span>
                   </NuxtLink>
                   <NuxtLink to="/feedback" class="inline-flex items-center gap-3 text-gray-800 hover:underline dark:text-gray-200">
-                    <i class="pi pi-comment text-gray-500 dark:text-gray-400" aria-hidden="true" />
+                    <Icon name="tabler:message-circle" class="text-gray-500 dark:text-gray-400" aria-hidden="true" />
                     <span class="font-medium">Send feedback</span>
                   </NuxtLink>
                 </div>

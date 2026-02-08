@@ -8,8 +8,8 @@
       v-tooltip.bottom="bookmarkTooltip"
       @click.stop="onClick"
     >
-      <i
-        :class="hasBookmarked ? 'pi pi-bookmark-fill' : 'pi pi-bookmark'"
+      <Icon
+        :name="hasBookmarked ? 'tabler:bookmark-filled' : 'tabler:bookmark'"
         class="text-[18px]"
         aria-hidden="true"
         :style="hasBookmarked ? { color: 'var(--p-primary-color)' } : undefined"
@@ -28,9 +28,10 @@
         >
           <div class="flex items-center justify-between gap-3">
             <div class="min-w-0 truncate">Unorganized</div>
-            <i
+            <Icon
               v-if="hasBookmarked && collectionIds.length === 0"
-              class="pi pi-check text-xs"
+              name="tabler:check"
+              class="text-xs"
               aria-hidden="true"
             />
           </div>
@@ -48,9 +49,10 @@
         >
           <div class="flex items-center justify-between gap-3">
             <div class="min-w-0 truncate">{{ c.name }}</div>
-            <i
+            <Icon
               v-if="hasBookmarked && collectionIds.includes(c.id)"
-              class="pi pi-check text-xs"
+              name="tabler:check"
+              class="text-xs"
               aria-hidden="true"
             />
           </div>
@@ -63,7 +65,7 @@
             :class="loading ? 'cursor-default opacity-60' : 'cursor-pointer'"
             @click="removeBookmark"
           >
-            <i class="pi pi-trash mr-2 text-xs" aria-hidden="true" />
+            <Icon name="tabler:trash" class="mr-2 text-xs" aria-hidden="true" />
             Remove bookmark
           </button>
         </div>
@@ -75,7 +77,7 @@
               class="w-full rounded-lg px-2 py-2 text-left text-sm font-semibold transition-colors moh-surface-hover"
               @click="createOpen = true"
             >
-              <i class="pi pi-plus mr-2 text-xs" aria-hidden="true" />
+              <Icon name="tabler:plus" class="mr-2 text-xs" aria-hidden="true" />
               Create folder
             </button>
           </div>

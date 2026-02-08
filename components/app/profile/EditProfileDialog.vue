@@ -25,13 +25,16 @@
 
             <div class="absolute right-3 top-3">
               <Button
-                :icon="pendingBannerFile ? 'pi pi-times' : 'pi pi-camera'"
                 rounded
                 severity="secondary"
                 :aria-label="pendingBannerFile ? 'Reset banner change' : 'Edit banner'"
                 :disabled="saving || !isSelf"
                 @click="pendingBannerFile ? clearPendingBanner() : openBannerPicker()"
-              />
+              >
+                <template #icon>
+                  <Icon :name="pendingBannerFile ? 'tabler:x' : 'tabler:camera'" aria-hidden="true" />
+                </template>
+              </Button>
             </div>
 
             <div
@@ -61,13 +64,16 @@
 
             <div class="absolute inset-0 flex items-center justify-center">
               <Button
-                :icon="pendingAvatarFile ? 'pi pi-times' : 'pi pi-camera'"
                 rounded
                 severity="secondary"
                 :aria-label="pendingAvatarFile ? 'Reset avatar change' : 'Edit avatar'"
                 :disabled="saving || !isSelf"
                 @click="pendingAvatarFile ? clearPendingAvatar() : openAvatarPicker()"
-              />
+              >
+                <template #icon>
+                  <Icon :name="pendingAvatarFile ? 'tabler:x' : 'tabler:camera'" aria-hidden="true" />
+                </template>
+              </Button>
             </div>
 
             <div

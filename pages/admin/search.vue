@@ -2,16 +2,19 @@
   <AppPageContent bottom="standard">
   <div class="py-4 space-y-4">
     <div class="px-4">
-      <AppPageHeader title="Search" icon="pi-search" description="Recent user searches.">
+      <AppPageHeader title="Search" icon="tabler:search" description="Recent user searches.">
       <template #leading>
         <Button
           class="md:hidden"
           text
           severity="secondary"
-          icon="pi pi-chevron-left"
           aria-label="Back"
           @click="navigateTo('/admin')"
-        />
+        >
+          <template #icon>
+            <Icon name="tabler:chevron-left" aria-hidden="true" />
+          </template>
+        </Button>
       </template>
       </AppPageHeader>
     </div>
@@ -25,12 +28,15 @@
       />
       <Button
         label="Search"
-        icon="pi pi-search"
         severity="secondary"
         :loading="loading"
         :disabled="loading"
         @click="runFilter"
-      />
+      >
+        <template #icon>
+          <Icon name="tabler:search" aria-hidden="true" />
+        </template>
+      </Button>
     </div>
 
     <div v-if="error" class="px-4">

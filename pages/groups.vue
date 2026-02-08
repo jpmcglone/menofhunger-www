@@ -4,7 +4,7 @@
     <div class="mx-auto w-full max-w-2xl">
       <AppPageHeader
         title="Groups"
-        icon="pi-users"
+        icon="tabler:users"
         description="Accountability circles, disciplines, and builders helping builders."
       />
 
@@ -13,7 +13,7 @@
           class="flex h-24 w-24 shrink-0 items-center justify-center rounded-full bg-gray-200/80 dark:bg-zinc-800/80 text-gray-500 dark:text-zinc-400"
           aria-hidden="true"
         >
-          <i class="pi pi-users text-6xl" aria-hidden="true" />
+          <Icon name="tabler:users" class="text-6xl" aria-hidden="true" />
         </div>
         <p class="mt-5 max-w-sm text-sm font-medium text-gray-700 dark:text-gray-300">
           Groups aren't ready yet. We're building accountability circles, disciplines, and builders helping builders.

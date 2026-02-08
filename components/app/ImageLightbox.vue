@@ -22,7 +22,7 @@
           aria-label="Close"
           @click.stop="onClose"
         >
-          <i class="pi pi-times text-lg" aria-hidden="true" />
+          <Icon name="tabler:x" class="text-lg" aria-hidden="true" />
         </button>
 
         <button
@@ -33,7 +33,7 @@
           :disabled="!canPrev"
           @click.stop="onPrev"
         >
-          <i class="pi pi-angle-left text-xl" aria-hidden="true" />
+          <Icon name="tabler:chevron-left" class="text-xl" aria-hidden="true" />
         </button>
 
         <button
@@ -44,7 +44,7 @@
           :disabled="!canNext"
           @click.stop="onNext"
         >
-          <i class="pi pi-angle-right text-xl" aria-hidden="true" />
+          <Icon name="tabler:chevron-right" class="text-xl" aria-hidden="true" />
         </button>
 
         <div
@@ -81,7 +81,7 @@
             aria-label="Tap for sound"
             @click.stop="onLightboxTapUnmute"
           >
-            <i class="pi pi-volume-off text-xl" aria-hidden="true" />
+            <Icon name="tabler:volume-off" class="text-xl" aria-hidden="true" />
           </button>
           <button
             v-else-if="kind === 'media' && currentMediaItem?.kind === 'video' && !lightboxVideoMuted"
@@ -90,7 +90,7 @@
             aria-label="Mute"
             @click.stop="onLightboxTapMute"
           >
-            <i class="pi pi-volume-up text-xl" aria-hidden="true" />
+            <Icon name="tabler:volume" class="text-xl" aria-hidden="true" />
           </button>
           <img
             v-else-if="kind === 'media'"

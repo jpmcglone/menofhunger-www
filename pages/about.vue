@@ -28,15 +28,15 @@
         </p>
         <ul class="mt-3 space-y-2">
           <li class="flex gap-2">
-            <i class="pi pi-check mt-1 text-sm text-gray-500 dark:text-gray-400" aria-hidden="true" />
+            <Icon name="tabler:check" class="mt-1 text-sm text-gray-500 dark:text-gray-400" aria-hidden="true" />
             <span><strong class="text-gray-900 dark:text-gray-100">Discipline</strong> over motivation.</span>
           </li>
           <li class="flex gap-2">
-            <i class="pi pi-check mt-1 text-sm text-gray-500 dark:text-gray-400" aria-hidden="true" />
+            <Icon name="tabler:check" class="mt-1 text-sm text-gray-500 dark:text-gray-400" aria-hidden="true" />
             <span><strong class="text-gray-900 dark:text-gray-100">Execution</strong> over excuses.</span>
           </li>
           <li class="flex gap-2">
-            <i class="pi pi-check mt-1 text-sm text-gray-500 dark:text-gray-400" aria-hidden="true" />
+            <Icon name="tabler:check" class="mt-1 text-sm text-gray-500 dark:text-gray-400" aria-hidden="true" />
             <span><strong class="text-gray-900 dark:text-gray-100">Brotherhood</strong> over isolation.</span>
           </li>
         </ul>

@@ -60,13 +60,20 @@
               </div>
               <div class="text-sm text-gray-500 dark:text-gray-400 truncate">{{ handle }}</div>
             </div>
-            <i class="pi pi-ellipsis-v text-gray-500 dark:text-gray-400" aria-hidden="true" />
+            <Icon name="tabler:dots-vertical" class="text-gray-500 dark:text-gray-400" aria-hidden="true" />
           </div>
         </div>
       </div>
     </button>
 
-    <Menu v-if="!hideMenu" ref="menuRef" :model="menuItems" popup />
+    <Menu v-if="!hideMenu" ref="menuRef" :model="menuItems" popup>
+      <template #item="{ item, props }">
+        <a v-bind="props.action" class="flex items-center gap-2">
+          <Icon v-if="item.iconName" :name="item.iconName" aria-hidden="true" />
+          <span v-bind="props.label">{{ item.label }}</span>
+        </a>
+      </template>
+    </Menu>
 
     <Dialog v-if="!hideMenu" v-model:visible="confirmVisible" modal header="Log out?" :style="{ width: '26rem' }">
       <p class="text-sm text-gray-700 dark:text-gray-300">
@@ -74,7 +81,11 @@
       </p>
       <template #footer>
         <Button label="Cancel" text severity="secondary" @click="confirmVisible = false" />
-        <Button label="Log out" icon="pi pi-sign-out" severity="danger" rounded @click="confirmLogout" />
+        <Button label="Log out" severity="danger" rounded @click="confirmLogout">
+          <template #icon>
+            <Icon name="tabler:logout" aria-hidden="true" />
+          </template>
+        </Button>
       </template>
     </Dialog>
   </div>

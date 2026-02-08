@@ -7,7 +7,7 @@
     <div class="flex flex-wrap items-center justify-between gap-3">
       <div class="flex min-w-0 items-center gap-2">
         <slot name="leading" />
-        <i v-if="icon" :class="['pi', icon]" aria-hidden="true" />
+        <Icon v-if="icon" :name="icon" class="text-xl opacity-80" aria-hidden="true" />
         <h1 class="moh-title min-w-0 truncate text-2xl font-semibold tracking-tight">{{ title }}</h1>
       </div>
 

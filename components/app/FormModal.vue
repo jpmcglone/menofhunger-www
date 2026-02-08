@@ -10,13 +10,16 @@
     <template #header>
       <div class="flex w-full items-center justify-between gap-3">
         <Button
-          icon="pi pi-times"
           text
           severity="secondary"
           aria-label="Close"
           :disabled="saving"
           @click="$emit('update:modelValue', false)"
-        />
+        >
+          <template #icon>
+            <Icon name="tabler:x" aria-hidden="true" />
+          </template>
+        </Button>
         <div class="text-lg font-semibold text-gray-900 dark:text-gray-50">
           {{ title }}
         </div>

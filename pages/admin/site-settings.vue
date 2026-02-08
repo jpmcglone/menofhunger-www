@@ -1,16 +1,19 @@
 <template>
   <AppPageContent bottom="standard">
   <div class="px-4 py-4 space-y-6">
-    <AppPageHeader title="Site settings" icon="pi-cog" description="Admin-only configuration for the site.">
+    <AppPageHeader title="Site settings" icon="tabler:settings" description="Admin-only configuration for the site.">
       <template #leading>
         <Button
           class="md:hidden"
           text
           severity="secondary"
-          icon="pi pi-chevron-left"
           aria-label="Back"
           @click="navigateTo('/admin')"
-        />
+        >
+          <template #icon>
+            <Icon name="tabler:chevron-left" aria-hidden="true" />
+          </template>
+        </Button>
       </template>
     </AppPageHeader>
 
@@ -42,12 +45,15 @@
     <div class="flex items-center gap-3">
       <Button
         label="Save"
-        icon="pi pi-check"
         severity="secondary"
         :loading="siteSaving"
         :disabled="siteSaving"
         @click="saveSiteConfig"
-      />
+      >
+        <template #icon>
+          <Icon name="tabler:check" aria-hidden="true" />
+        </template>
+      </Button>
       <div v-if="siteSaved" class="text-sm text-green-700 dark:text-green-300">Saved.</div>
     </div>
   </div>

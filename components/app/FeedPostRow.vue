@@ -18,7 +18,7 @@
           :to="`/p/${encodeURIComponent(rootPostId!)}`"
           class="inline-flex items-center gap-2 rounded-lg px-2 py-1 text-sm font-semibold text-gray-700 transition-colors moh-surface-hover dark:text-gray-200"
         >
-          <i class="pi pi-comments text-[14px] opacity-70" aria-hidden="true" />
+          <Icon name="tabler:message-circle" class="text-[14px] opacity-70" aria-hidden="true" />
           {{ collapsedRepliesLabelFor(collapsedSiblingRepliesCount) }}
         </NuxtLink>
       </template>
@@ -50,7 +50,7 @@
             :to="`/p/${encodeURIComponent(chain[i]!.id)}`"
             class="inline-flex items-center gap-2 rounded-lg px-2 py-1 text-sm font-semibold text-gray-700 transition-colors moh-surface-hover dark:text-gray-200"
           >
-            <i class="pi pi-comments text-[14px] opacity-70" aria-hidden="true" />
+            <Icon name="tabler:message-circle" class="text-[14px] opacity-70" aria-hidden="true" />
             {{ collapsedRepliesLabelFor(hiddenRepliesForIndex(i)) }}
           </NuxtLink>
         </template>

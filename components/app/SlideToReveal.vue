@@ -30,7 +30,7 @@
         @dragstart.prevent
         @keydown="onKeyDown"
       >
-        <i class="pi pi-angle-right text-lg text-gray-700 dark:text-gray-200" aria-hidden="true" />
+        <Icon name="tabler:chevron-right" class="text-lg text-gray-700 dark:text-gray-200" aria-hidden="true" />
       </button>
     </div>
 

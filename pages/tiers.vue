@@ -41,7 +41,7 @@
             :key="i"
             class="flex gap-3"
           >
-            <i class="pi pi-check mt-0.5 shrink-0 text-gray-500 dark:text-gray-400" aria-hidden="true" />
+            <Icon name="tabler:check" class="mt-0.5 shrink-0 text-gray-500 dark:text-gray-400" aria-hidden="true" />
             <span>{{ item }}</span>
           </li>
         </ul>
@@ -85,7 +85,7 @@
           </div>
         <ul class="flex-1 space-y-3 px-6 py-5 text-sm text-gray-700 dark:text-gray-300">
           <li class="flex gap-3">
-            <i class="pi pi-check mt-0.5 shrink-0" style="color: var(--moh-verified);" aria-hidden="true" />
+            <Icon name="tabler:check" class="mt-0.5 shrink-0" style="color: var(--moh-verified);" aria-hidden="true" />
             <span>Everything in Unverified</span>
           </li>
           <li
@@ -93,7 +93,7 @@
             :key="i"
             class="flex gap-3"
           >
-            <i class="pi pi-check mt-0.5 shrink-0" style="color: var(--moh-verified);" aria-hidden="true" />
+            <Icon name="tabler:check" class="mt-0.5 shrink-0" style="color: var(--moh-verified);" aria-hidden="true" />
             <span v-html="item.html ? item.html : escapeHtml(item.text)" />
           </li>
         </ul>
@@ -127,7 +127,7 @@
           </p>
           <ul class="mt-3 space-y-2 text-sm text-gray-600 dark:text-gray-300">
             <li v-for="(t, i) in comingSoonVerified" :key="i" class="flex gap-3">
-              <i class="pi pi-clock mt-0.5 shrink-0 opacity-70" style="color: var(--moh-verified);" aria-hidden="true" />
+              <Icon name="tabler:clock" class="mt-0.5 shrink-0 opacity-70" style="color: var(--moh-verified);" aria-hidden="true" />
               <span>{{ t }}</span>
             </li>
           </ul>
@@ -166,7 +166,7 @@
           </div>
         <ul class="flex-1 space-y-3 px-6 py-5 text-sm text-gray-700 dark:text-gray-300">
           <li class="flex gap-3">
-            <i class="pi pi-check mt-0.5 shrink-0" style="color: var(--moh-premium);" aria-hidden="true" />
+            <Icon name="tabler:check" class="mt-0.5 shrink-0" style="color: var(--moh-premium);" aria-hidden="true" />
             <span>Everything in Verified</span>
           </li>
           <li
@@ -174,7 +174,7 @@
             :key="i"
             class="flex gap-3"
           >
-            <i class="pi pi-check mt-0.5 shrink-0" style="color: var(--moh-premium);" aria-hidden="true" />
+            <Icon name="tabler:check" class="mt-0.5 shrink-0" style="color: var(--moh-premium);" aria-hidden="true" />
             <span v-html="item.html ? item.html : escapeHtml(item.text)" />
           </li>
         </ul>
@@ -205,7 +205,7 @@
           </p>
           <ul class="mt-3 space-y-2 text-sm text-gray-600 dark:text-gray-300">
             <li v-for="(t, i) in comingSoonPremium" :key="i" class="flex gap-3">
-              <i class="pi pi-clock mt-0.5 shrink-0 opacity-70" style="color: var(--moh-premium);" aria-hidden="true" />
+              <Icon name="tabler:clock" class="mt-0.5 shrink-0 opacity-70" style="color: var(--moh-premium);" aria-hidden="true" />
               <span>{{ t }}</span>
             </li>
           </ul>
@@ -258,7 +258,7 @@
             :key="i"
             class="flex gap-3"
           >
-            <i class="pi pi-check mt-0.5 shrink-0" style="color: var(--moh-premium);" aria-hidden="true" />
+            <Icon name="tabler:check" class="mt-0.5 shrink-0" style="color: var(--moh-premium);" aria-hidden="true" />
             <span v-html="item.html ? item.html : escapeHtml(item.text)" />
           </li>
         </ul>
@@ -289,7 +289,7 @@
           </p>
           <ul class="mt-3 space-y-2 text-sm text-gray-600 dark:text-gray-300">
             <li v-for="(t, i) in comingSoonPremiumPlus" :key="i" class="flex gap-3">
-              <i class="pi pi-clock mt-0.5 shrink-0 opacity-70" style="color: var(--moh-premium);" aria-hidden="true" />
+              <Icon name="tabler:clock" class="mt-0.5 shrink-0 opacity-70" style="color: var(--moh-premium);" aria-hidden="true" />
               <span>{{ t }}</span>
             </li>
           </ul>

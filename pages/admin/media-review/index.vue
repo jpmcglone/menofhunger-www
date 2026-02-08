@@ -1,15 +1,18 @@
 <template>
   <AppPageContent bottom="standard" class="px-4 py-4 space-y-4">
-    <AppPageHeader title="Media review" icon="pi-images" description="Review and delete uploaded images and videos.">
+    <AppPageHeader title="Media review" icon="tabler:photo" description="Review and delete uploaded images and videos.">
       <template #leading>
         <Button
           class="md:hidden"
           text
           severity="secondary"
-          icon="pi pi-chevron-left"
           aria-label="Back"
           @click="navigateTo('/admin')"
-        />
+        >
+          <template #icon>
+            <Icon name="tabler:chevron-left" aria-hidden="true" />
+          </template>
+        </Button>
       </template>
     </AppPageHeader>
 
@@ -35,22 +38,28 @@
       </div>
       <Button
         label="Search"
-        icon="pi pi-search"
         severity="secondary"
         :loading="mediaLoading"
         :disabled="mediaLoading"
         @click="loadMedia(true)"
-      />
+      >
+        <template #icon>
+          <Icon name="tabler:search" aria-hidden="true" />
+        </template>
+      </Button>
       <Button
         label="Sync"
-        icon="pi pi-refresh"
         text
         severity="secondary"
         :loading="mediaSyncing"
         :disabled="mediaLoading || mediaSyncing"
         v-tooltip.bottom="{ value: 'Index recent objects from storage', class: 'moh-tooltip-tiny', position: 'bottom' }"
         @click="syncMedia()"
-      />
+      >
+        <template #icon>
+          <Icon name="tabler:refresh" aria-hidden="true" />
+        </template>
+      </Button>
     </div>
 
     <AppInlineAlert v-if="mediaError" severity="danger">
@@ -81,10 +90,10 @@
             class="absolute inset-0 flex items-center justify-center bg-black/30"
             aria-hidden="true"
           >
-            <i class="pi pi-video text-2xl text-white opacity-80" aria-hidden="true" />
+            <Icon name="tabler:video" class="text-2xl text-white opacity-80" aria-hidden="true" />
           </div>
           <div class="pointer-events-none absolute inset-0 flex items-center justify-center">
-            <i class="pi pi-play text-2xl text-white drop-shadow" aria-hidden="true" />
+            <Icon name="tabler:play" class="text-2xl text-white drop-shadow" aria-hidden="true" />
           </div>
         </template>
         <template v-else>
@@ -102,7 +111,7 @@
             aria-hidden="true"
           >
             <div class="text-center text-xs moh-text-muted px-3">
-              <i class="pi pi-image text-xl opacity-70" aria-hidden="true" />
+              <Icon name="tabler:photo" class="text-xl opacity-70" aria-hidden="true" />
               <div class="mt-2 font-semibold">No preview</div>
             </div>
           </div>
@@ -183,9 +192,12 @@
             label="Open page"
             text
             severity="secondary"
-            icon="pi pi-external-link"
             @click="navigateTo(`/admin/media-review/${encodeURIComponent(details.asset.id)}`)"
-          />
+          >
+            <template #icon>
+              <Icon name="tabler:external-link" aria-hidden="true" />
+            </template>
+          </Button>
         </div>
       </div>
 
@@ -217,7 +229,11 @@
             />
             <div v-else class="flex items-center justify-center h-[22rem]">
               <div class="text-center text-sm moh-text-muted">
-                <i :class="details.asset.kind === 'video' ? 'pi pi-video' : 'pi pi-image'" class="text-3xl opacity-70" aria-hidden="true" />
+                <Icon
+                  :name="details.asset.kind === 'video' ? 'tabler:video' : 'tabler:photo'"
+                  class="text-3xl opacity-70"
+                  aria-hidden="true"
+                />
                 <div class="mt-2 font-semibold">{{ details.asset.deletedAt ? 'Deleted' : 'No preview' }}</div>
               </div>
             </div>

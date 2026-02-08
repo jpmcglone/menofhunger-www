@@ -4,7 +4,9 @@
     <div class="sticky z-10 shrink-0 moh-bg border-b moh-border px-4 pt-4 pb-3" style="top: var(--moh-title-bar-height, 4rem);">
       <div class="flex flex-col gap-3 sm:flex-row sm:items-stretch">
         <IconField iconPosition="left" class="flex-1 min-w-0 moh-bg rounded">
-          <InputIcon class="pi pi-search" />
+          <InputIcon>
+            <Icon name="tabler:search" class="text-lg opacity-70" aria-hidden="true" />
+          </InputIcon>
           <InputText v-model="q" class="w-full" :placeholder="searchPlaceholder" />
         </IconField>
         <AppBookmarkFolderSelect
@@ -15,13 +17,16 @@
         />
         <Button
           v-if="folder"
-          icon="pi pi-cog"
           severity="secondary"
           outlined
           aria-label="Manage folder"
           v-tooltip.bottom="'Manage folder'"
           @click="openManageFolder"
-        />
+        >
+          <template #icon>
+            <Icon name="tabler:settings" aria-hidden="true" />
+          </template>
+        </Button>
       </div>
     </div>
 
@@ -98,12 +103,15 @@
           <div class="mt-3 flex justify-end">
             <Button
               label="Delete folder"
-              icon="pi pi-trash"
               severity="danger"
               :loading="deletingFolder"
               :disabled="deletingFolder"
               @click="deleteFolder"
-            />
+            >
+              <template #icon>
+                <Icon name="tabler:trash" aria-hidden="true" />
+              </template>
+            </Button>
           </div>
         </div>
       </div>
@@ -112,12 +120,15 @@
         <Button label="Cancel" severity="secondary" text :disabled="renamingFolder || deletingFolder" @click="manageFolderOpen = false" />
         <Button
           label="Save"
-          icon="pi pi-check"
           severity="secondary"
           :loading="renamingFolder"
           :disabled="renamingFolder || deletingFolder || !manageFolderName.trim()"
           @click="renameFolder"
-        />
+        >
+          <template #icon>
+            <Icon name="tabler:check" aria-hidden="true" />
+          </template>
+        </Button>
       </template>
     </Dialog>
   </div>

@@ -5,7 +5,7 @@
  */
 
 // IMPORTANT: bump this whenever caching logic changes so old caches are purged.
-self.__MOH_SW_VERSION = 'moh-sw-v2'
+self.__MOH_SW_VERSION = 'moh-sw-v3'
 const CACHE_PREFIX = 'moh-sw'
 const NUxT_ASSETS_CACHE = `${CACHE_PREFIX}:nuxt:${self.__MOH_SW_VERSION}`
 const STATIC_ASSETS_CACHE = `${CACHE_PREFIX}:static:${self.__MOH_SW_VERSION}`
@@ -29,10 +29,15 @@ function isCacheablePath(pathname) {
   if (pathname.startsWith('/cursors/')) return { cacheName: STATIC_ASSETS_CACHE }
 
   // Icons/manifest
-  if (pathname === '/site.webmanifest') return { cacheName: STATIC_ASSETS_CACHE }
-  if (pathname.startsWith('/android-chrome-')) return { cacheName: STATIC_ASSETS_CACHE }
-  if (pathname.startsWith('/apple-touch-icon')) return { cacheName: STATIC_ASSETS_CACHE }
-  if (pathname.startsWith('/favicon')) return { cacheName: STATIC_ASSETS_CACHE }
+  // DEV SAFETY:
+  // Avoid caching these on localhost because browsers can request favicons in surprising ways
+  // (and "hard reload" semantics differ from normal reload), leading to confusing stale icons.
+  if (!isLocalhost) {
+    if (pathname === '/site.webmanifest') return { cacheName: STATIC_ASSETS_CACHE }
+    if (pathname.startsWith('/android-chrome-')) return { cacheName: STATIC_ASSETS_CACHE }
+    if (pathname.startsWith('/apple-touch-icon')) return { cacheName: STATIC_ASSETS_CACHE }
+    if (pathname.startsWith('/favicon')) return { cacheName: STATIC_ASSETS_CACHE }
+  }
 
   return null
 }

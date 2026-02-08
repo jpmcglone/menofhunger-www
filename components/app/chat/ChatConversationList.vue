@@ -11,8 +11,16 @@
         <div class="flex items-center justify-between gap-3">
           <div class="text-lg font-semibold">Chat</div>
           <div class="flex items-center gap-2">
-            <Button label="New" icon="pi pi-plus" size="small" severity="secondary" @click="emit('open-new')" />
-            <Button label="Blocked" icon="pi pi-ban" size="small" text severity="secondary" @click="emit('open-blocks')" />
+            <Button label="New" size="small" severity="secondary" @click="emit('open-new')">
+              <template #icon>
+                <Icon name="tabler:plus" aria-hidden="true" />
+              </template>
+            </Button>
+            <Button label="Blocked" size="small" text severity="secondary" @click="emit('open-blocks')">
+              <template #icon>
+                <Icon name="tabler:ban" aria-hidden="true" />
+              </template>
+            </Button>
           </div>
         </div>
 
@@ -92,7 +100,7 @@
               v-else
               class="flex h-10 w-10 items-center justify-center rounded-full bg-gray-200 text-gray-600 dark:bg-zinc-800 dark:text-gray-300"
             >
-              <i class="pi pi-users text-sm" aria-hidden="true" />
+              <Icon name="tabler:users" class="text-sm" aria-hidden="true" />
             </div>
             <div class="min-w-0 flex-1">
               <div class="flex items-center justify-between gap-2">

@@ -16,7 +16,7 @@
       aria-label="Scroll left"
       @click="pageLeft"
     >
-      <i class="pi pi-chevron-left text-gray-800 dark:text-gray-100" aria-hidden="true" />
+      <Icon name="tabler:chevron-left" class="text-gray-800 dark:text-gray-100" aria-hidden="true" />
     </button>
 
     <button
@@ -26,7 +26,7 @@
       aria-label="Scroll right"
       @click="pageRight"
     >
-      <i class="pi pi-chevron-right text-gray-800 dark:text-gray-100" aria-hidden="true" />
+      <Icon name="tabler:chevron-right" class="text-gray-800 dark:text-gray-100" aria-hidden="true" />
     </button>
   </div>
 </template>

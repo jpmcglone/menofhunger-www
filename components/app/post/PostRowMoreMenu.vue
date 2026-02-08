@@ -11,9 +11,16 @@
       @keydown.enter.stop.prevent="toggle($event)"
       @keydown.space.stop.prevent="toggle($event)"
     >
-      <i class="pi pi-ellipsis-h text-[18px]" aria-hidden="true" />
+      <Icon name="tabler:dots" class="text-[18px]" aria-hidden="true" />
     </a>
-    <Menu v-if="mounted" ref="menuRef" :model="items" popup />
+    <Menu v-if="mounted" ref="menuRef" :model="items" popup>
+      <template #item="{ item, props }">
+        <a v-bind="props.action" class="flex items-center gap-2">
+          <Icon v-if="item.iconName" :name="item.iconName" aria-hidden="true" />
+          <span v-bind="props.label">{{ item.label }}</span>
+        </a>
+      </template>
+    </Menu>
   </div>
 </template>
 

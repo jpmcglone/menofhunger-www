@@ -14,11 +14,14 @@
       <Button label="Not now" severity="secondary" text @click="hide" />
       <Button
         :label="primaryLabel"
-        :icon="primaryIcon"
         severity="secondary"
         rounded
         @click="onPrimary"
-      />
+      >
+        <template v-if="primaryIconName" #icon>
+          <Icon :name="primaryIconName" aria-hidden="true" />
+        </template>
+      </Button>
     </template>
   </Dialog>
 </template>
@@ -53,10 +56,10 @@ const primaryLabel = computed(() => {
   return 'Continue'
 })
 
-const primaryIcon = computed(() => {
-  if (kind.value === 'login') return 'pi pi-sign-in'
-  if (kind.value === 'verify') return 'pi pi-cog'
-  if (kind.value === 'setUsername') return 'pi pi-cog'
+const primaryIconName = computed(() => {
+  if (kind.value === 'login') return 'tabler:login'
+  if (kind.value === 'verify') return 'tabler:settings'
+  if (kind.value === 'setUsername') return 'tabler:settings'
   return undefined
 })
 

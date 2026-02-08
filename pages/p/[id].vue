@@ -13,10 +13,13 @@
         <div v-if="showLoginCta" class="mt-4 flex flex-wrap items-center gap-2">
           <Button
             label="Log in"
-            icon="pi pi-sign-in"
             rounded
             @click="goToLogin"
-          />
+          >
+            <template #icon>
+              <Icon name="tabler:login" aria-hidden="true" />
+            </template>
+          </Button>
           <div class="text-xs text-gray-500 dark:text-gray-400">
             You'll be returned here after logging in.
           </div>

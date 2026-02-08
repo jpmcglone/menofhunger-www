@@ -25,7 +25,7 @@
             {{ description }}
           </div>
         </div>
-        <i class="pi pi-angle-right moh-text-muted" aria-hidden="true" />
+        <Icon name="tabler:chevron-right" class="moh-text-muted" aria-hidden="true" />
       </div>
 
       <div v-if="selected.length > 0 && showSelectedChips" class="mt-3 flex flex-wrap gap-2">
@@ -85,12 +85,15 @@
               <Button
                 v-if="allowCustom && canAddCustom"
                 :label="`Add “${queryTrimmed}”`"
-                icon="pi pi-plus"
                 severity="secondary"
                 text
                 :disabled="disabled || draft.length >= max"
                 @click="tryAddFromQuery()"
-              />
+              >
+                <template #icon>
+                  <Icon name="tabler:plus" aria-hidden="true" />
+                </template>
+              </Button>
             </div>
           </div>
         </div>
@@ -167,10 +170,13 @@
             <Button label="Cancel" severity="secondary" text :disabled="disabled" @click="closeDialog" />
             <Button
               label="Done"
-              icon="pi pi-check"
               :disabled="(required && draft.length < min) || disabled"
               @click="commit"
-            />
+            >
+              <template #icon>
+                <Icon name="tabler:check" aria-hidden="true" />
+              </template>
+            </Button>
           </div>
         </div>
       </template>

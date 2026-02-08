@@ -40,7 +40,7 @@
             class="inline-flex items-center gap-1.5 text-[11px] font-medium text-gray-500 hover:underline underline-offset-2 dark:text-gray-400"
           >
             View definition
-            <i class="pi pi-external-link text-[11px] opacity-70" aria-hidden="true" />
+            <Icon name="tabler:external-link" class="text-[11px] opacity-70" aria-hidden="true" />
           </a>
         </div>
         <template #fallback>
@@ -53,7 +53,7 @@
 
 <script setup lang="ts">
 import type { Websters1828WordOfDay } from '~/types/api'
-import { msUntilNextEasternMidnight } from '~/utils/eastern-time'
+import { easternDateKey, msUntilNextEasternMidnight } from '~/utils/eastern-time'
 
 const { apiFetchData } = useApiClient()
 
@@ -66,20 +66,41 @@ const { data, pending, error, refresh } = useAsyncData<Websters1828WordOfDay>(
 )
 
 let rolloverTimer: ReturnType<typeof setTimeout> | null = null
+const lastDayKey = ref(easternDateKey(new Date()))
+
+async function maybeRefreshForNewEasternDay() {
+  if (!import.meta.client) return
+  const k = easternDateKey(new Date())
+  if (k === lastDayKey.value) return
+  lastDayKey.value = k
+  await refresh()
+}
+
 function scheduleRollover() {
   if (!import.meta.client) return
   rolloverTimer && clearTimeout(rolloverTimer)
   const ms = msUntilNextEasternMidnight(new Date())
   // Nudge a bit after midnight to avoid boundary weirdness.
   rolloverTimer = setTimeout(async () => {
-    await refresh()
+    await maybeRefreshForNewEasternDay()
     scheduleRollover()
   }, Math.max(1000, ms + 2000))
 }
-onMounted(() => scheduleRollover())
+function onVisibilityOrFocus() {
+  // If the device slept or timers were throttled, snap to the correct day on return.
+  maybeRefreshForNewEasternDay()
+}
+
+onMounted(() => {
+  scheduleRollover()
+  window.addEventListener('focus', onVisibilityOrFocus)
+  document.addEventListener('visibilitychange', onVisibilityOrFocus)
+})
 onBeforeUnmount(() => {
   rolloverTimer && clearTimeout(rolloverTimer)
   rolloverTimer = null
+  window.removeEventListener('focus', onVisibilityOrFocus)
+  document.removeEventListener('visibilitychange', onVisibilityOrFocus)
 })
 </script>
 

@@ -68,12 +68,15 @@
                   <div class="flex min-w-0 items-start gap-2">
                     <Button
                       v-if="isTinyViewport && selectedChatKey"
-                      icon="pi pi-chevron-left"
                       text
                       severity="secondary"
                       aria-label="Back"
                       @click="clearSelection({ replace: true })"
-                    />
+                    >
+                      <template #icon>
+                        <Icon name="tabler:chevron-left" aria-hidden="true" />
+                      </template>
+                    </Button>
                     <div class="flex items-center gap-3 min-w-0">
                       <button
                         v-if="headerAvatarUser"
@@ -159,7 +162,11 @@
                     </div>
                   </div>
                   <div class="flex items-center gap-2">
-                    <Button icon="pi pi-ellipsis-h" text severity="secondary" />
+                    <Button text severity="secondary" aria-label="Conversation options">
+                      <template #icon>
+                        <Icon name="tabler:dots" aria-hidden="true" />
+                      </template>
+                    </Button>
                   </div>
                 </div>
               </div>
@@ -229,7 +236,7 @@
                 :style="scrollToBottomButtonStyle"
                 @click="onPendingButtonClick"
               >
-                <i class="pi pi-arrow-down text-xs" aria-hidden="true" />
+                <Icon name="tabler:arrow-down" class="text-xs" aria-hidden="true" />
                 <span>{{ pendingNewLabel }}</span>
               </button>
             </Transition>
@@ -325,7 +332,7 @@
             <AppUserAvatar :user="u" size-class="h-5 w-5" />
             <span>@{{ u.username }}</span>
             <button type="button" class="text-gray-500 hover:text-gray-700 dark:hover:text-gray-200" @click="removeRecipient(u.id)">
-              <i class="pi pi-times" aria-hidden="true" />
+              <Icon name="tabler:x" aria-hidden="true" />
             </button>
           </span>
         </div>
@@ -335,10 +342,13 @@
         <Button label="Cancel" text severity="secondary" @click="newDialogVisible = false" />
         <Button
           label="Start chat"
-          icon="pi pi-arrow-right"
           :disabled="!canStartDraft"
           @click="createConversation"
-        />
+        >
+          <template #icon>
+            <Icon name="tabler:arrow-right" aria-hidden="true" />
+          </template>
+        </Button>
       </template>
     </Dialog>
 

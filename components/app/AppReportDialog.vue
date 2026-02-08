@@ -51,11 +51,14 @@
       <Button label="Cancel" severity="secondary" text :disabled="submitting" @click="close()" />
       <Button
         label="Submit report"
-        icon="pi pi-flag"
         :loading="submitting"
         :disabled="submitting || !canSubmit"
         @click="submit()"
-      />
+      >
+        <template #icon>
+          <Icon name="tabler:flag" aria-hidden="true" />
+        </template>
+      </Button>
     </template>
   </Dialog>
 </template>

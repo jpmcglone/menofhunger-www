@@ -1,7 +1,6 @@
 <template>
   <span ref="anchorWrapEl" class="inline-flex">
     <Button
-      :icon="icon"
       text
       rounded
       severity="secondary"
@@ -9,7 +8,11 @@
       :disabled="disabled"
       v-tooltip.bottom="tinyTooltip(tooltip)"
       @click="toggle"
-    />
+    >
+      <template #icon>
+        <Icon :name="icon" aria-hidden="true" />
+      </template>
+    </Button>
   </span>
 
   <Teleport to="body">
@@ -47,7 +50,7 @@ const props = withDefaults(
   {
     tooltip: 'Emoji',
     ariaLabel: 'Insert emoji',
-    icon: 'pi pi-face-smile',
+    icon: 'tabler:mood-smile',
     disabled: false,
   },
 )
