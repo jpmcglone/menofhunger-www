@@ -101,10 +101,8 @@ export function useAppToast() {
       to: input.to ?? null,
     }
 
-    console.log('[useAppToast] push - toast:', toast, 'toasts count before:', toasts.value.length)
     // Keep the stack small.
     toasts.value = [...toasts.value.slice(-2), toast]
-    console.log('[useAppToast] push - toasts count after:', toasts.value.length)
     return id
   }
 

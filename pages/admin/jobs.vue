@@ -136,6 +136,13 @@
               :disabled="Boolean(runningKey)"
               @click="runJob('notifications', 'Notifications cleanup', '/admin/jobs/notifications-cleanup')"
             />
+            <Button
+              label="Notifications orphan cleanup"
+              severity="secondary"
+              :loading="runningKey === 'notificationsOrphans'"
+              :disabled="Boolean(runningKey)"
+              @click="runJob('notificationsOrphans', 'Notifications orphan cleanup', '/admin/jobs/notifications-orphan-cleanup')"
+            />
           </div>
         </div>
 
@@ -212,6 +219,7 @@ type JobKey =
   | 'auth'
   | 'search'
   | 'notifications'
+  | 'notificationsOrphans'
   | 'hashtagsCleanup'
   | 'topics'
   | 'links'

@@ -4,6 +4,12 @@ export type UploadStatus = 'queued' | 'uploading' | 'processing' | 'done' | 'err
 
 export type CreateMediaPayload =
   | {
+      /** Reference existing media from an only-me source post (publish-from-only-me flow). */
+      source: 'existing'
+      id: string
+      alt?: string | null
+    }
+  | {
       source: 'upload'
       kind: 'image' | 'gif'
       r2Key: string
@@ -36,6 +42,8 @@ export type ComposerMediaItem = {
   source: PostMediaSource
   kind: PostMediaKind
   previewUrl: string
+  /** When present, this media is an existing item from a source post (e.g. only-me draft). */
+  existingId?: string
   r2Key?: string
   thumbnailR2Key?: string | null
   url?: string
@@ -70,7 +78,10 @@ export function dataTransferHasImages(dt: DataTransfer | null): boolean {
   return false
 }
 
-export function dataTransferHasMedia(dt: DataTransfer | null, includeVideo: boolean): boolean {
+export function dataTransferHasMedia(
+  dt: DataTransfer | null,
+  opts: { includeImages: boolean; includeVideo: boolean },
+): boolean {
   if (!dt) return false
 
   const isAllowedVideoType = (t: string | null | undefined) => {
@@ -79,11 +90,11 @@ export function dataTransferHasMedia(dt: DataTransfer | null, includeVideo: bool
   }
 
   const items = Array.from(dt.items ?? [])
-  if (items.some((it) => it.kind === 'file' && (it.type ?? '').toLowerCase().startsWith('image/'))) return true
-  if (includeVideo && items.some((it) => it.kind === 'file' && isAllowedVideoType(it.type))) return true
+  if (opts.includeImages && items.some((it) => it.kind === 'file' && (it.type ?? '').toLowerCase().startsWith('image/'))) return true
+  if (opts.includeVideo && items.some((it) => it.kind === 'file' && isAllowedVideoType(it.type))) return true
   const files = Array.from(dt.files ?? [])
-  if (files.some((f) => ((f.type ?? '').toLowerCase().startsWith('image/')))) return true
-  if (includeVideo && files.some((f) => isAllowedVideoType(f.type))) return true
+  if (opts.includeImages && files.some((f) => ((f.type ?? '').toLowerCase().startsWith('image/')))) return true
+  if (opts.includeVideo && files.some((f) => isAllowedVideoType(f.type))) return true
   return false
 }
 

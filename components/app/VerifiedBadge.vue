@@ -1,13 +1,23 @@
 <template>
-  <span
-    v-if="isVerified"
-    ref="el"
-    :class="['inline-block shrink-0 align-middle', sizeClass]"
-    :style="iconStyle"
-    v-tooltip="tooltip"
-    :aria-label="ariaLabel"
-    @mouseenter="updateTooltipPlacement"
-  />
+  <span v-if="isVerified || showSteward" class="inline-flex shrink-0 align-middle items-center gap-1">
+    <span
+      v-if="isVerified"
+      ref="verifiedEl"
+      :class="['inline-block', sizeClass]"
+      :style="iconStyle"
+      v-tooltip="tooltip"
+      :aria-label="ariaLabel"
+      @mouseenter="updateTooltipPlacement"
+    />
+    <span
+      v-if="showSteward"
+      :class="['inline-flex items-center justify-center text-[var(--moh-premium)]', sizeClass]"
+      v-tooltip="stewardTooltip"
+      aria-label="Steward (Premium+)"
+    >
+      <Icon name="tabler:shield-star" class="h-full w-full" aria-hidden="true" />
+    </span>
+  </span>
 </template>
 
 <script setup lang="ts">
@@ -21,10 +31,11 @@ const props = withDefaults(
     status?: VerifiedStatus | null
     premium?: boolean
     premiumPlus?: boolean
+    stewardBadgeEnabled?: boolean
     size?: Size
     showTooltip?: boolean
   }>(),
-  { size: 'sm', premium: false, premiumPlus: false, showTooltip: true }
+  { size: 'sm', premium: false, premiumPlus: false, stewardBadgeEnabled: true, showTooltip: true }
 )
 
 // Use semantic CSS variables so the accent stays consistent across the app theme.
@@ -33,6 +44,7 @@ const badgeOrange = 'var(--moh-premium)'
 
 const isVerified = computed(() => Boolean(props.status && props.status !== 'none'))
 const isPremium = computed(() => Boolean(props.premium || props.premiumPlus))
+const showSteward = computed(() => Boolean(props.premiumPlus) && props.stewardBadgeEnabled !== false)
 
 const badgeColor = computed(() => {
   return isVerified.value && isPremium.value ? badgeOrange : badgeBlue
@@ -43,7 +55,7 @@ const verificationText = computed(() => {
 })
 
 const tooltipPlacement = ref<'right' | 'left'>('right')
-const el = ref<HTMLElement | null>(null)
+const verifiedEl = ref<HTMLElement | null>(null)
 
 function estimateTooltipWidthPx(text: string): number {
   // Rough estimate: 7px per char + padding, capped.
@@ -54,7 +66,7 @@ function estimateTooltipWidthPx(text: string): number {
 
 function updateTooltipPlacement() {
   if (!import.meta.client) return
-  const node = el.value
+  const node = verifiedEl.value
   if (!node) return
   const base = verificationText.value
   if (!base) return
@@ -80,6 +92,12 @@ const tooltip = computed(() => {
   const text = props.premiumPlus ? `Premium+ member · ${base}` : props.premium ? `Premium member · ${base}` : base
   // Prefer right, flip to left when needed. No arrow (handled by CSS).
   return { value: text, class: 'moh-tooltip', position: tooltipPlacement.value }
+})
+
+const stewardTooltip = computed(() => {
+  if (!props.showTooltip) return null
+  if (!showSteward.value) return null
+  return { value: 'Steward (Premium+)', class: 'moh-tooltip', position: 'right' as const }
 })
 
 const ariaLabel = computed(() => {

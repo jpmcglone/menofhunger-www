@@ -40,6 +40,8 @@
                     class="shrink-0"
                     :status="author?.verifiedStatus ?? 'none'"
                     :premium="author?.premium ?? false"
+                    :premium-plus="author?.premiumPlus ?? false"
+                    :steward-badge-enabled="author?.stewardBadgeEnabled ?? true"
                   />
                 </div>
                 <div class="text-[11px] moh-text-muted truncate">@{{ author?.username || 'user' }}</div>

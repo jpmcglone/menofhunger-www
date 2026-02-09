@@ -20,7 +20,12 @@
               <div class="font-semibold truncate text-gray-900 dark:text-gray-50">
                 {{ displayName }}
               </div>
-              <AppVerifiedBadge :status="user.verifiedStatus" :premium="user.premium" :premium-plus="user.premiumPlus" />
+              <AppVerifiedBadge
+                :status="user.verifiedStatus"
+                :premium="user.premium"
+                :premium-plus="user.premiumPlus"
+                :steward-badge-enabled="user.stewardBadgeEnabled ?? true"
+              />
             </div>
             <div class="text-sm text-gray-600 dark:text-gray-300 truncate">
               {{ handle }}

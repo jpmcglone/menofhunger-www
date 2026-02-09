@@ -5,7 +5,7 @@
  */
 
 // IMPORTANT: bump this whenever caching logic changes so old caches are purged.
-self.__MOH_SW_VERSION = 'moh-sw-v3'
+self.__MOH_SW_VERSION = 'moh-sw-v4'
 const CACHE_PREFIX = 'moh-sw'
 const NUxT_ASSETS_CACHE = `${CACHE_PREFIX}:nuxt:${self.__MOH_SW_VERSION}`
 const STATIC_ASSETS_CACHE = `${CACHE_PREFIX}:static:${self.__MOH_SW_VERSION}`
@@ -25,7 +25,8 @@ function isCacheablePath(pathname) {
 
   if (!isLocalhost && pathname.startsWith('/_nuxt/')) return { cacheName: NUxT_ASSETS_CACHE }
   if (pathname.startsWith('/images/')) return { cacheName: STATIC_ASSETS_CACHE }
-  if (pathname.startsWith('/sounds/')) return { cacheName: STATIC_ASSETS_CACHE }
+  // DEV SAFETY: don't cache sounds on localhost (otherwise edits can appear "stuck" due to SW cache).
+  if (!isLocalhost && pathname.startsWith('/sounds/')) return { cacheName: STATIC_ASSETS_CACHE }
   if (pathname.startsWith('/cursors/')) return { cacheName: STATIC_ASSETS_CACHE }
 
   // Icons/manifest

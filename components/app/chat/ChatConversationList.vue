@@ -119,6 +119,8 @@
                     v-if="c.type === 'direct' && getDirectUserOverlay(c)"
                     :status="getDirectUserOverlay(c)!.verifiedStatus"
                     :premium="Boolean(getDirectUserOverlay(c)!.premium)"
+                    :premium-plus="Boolean(getDirectUserOverlay(c)!.premiumPlus)"
+                    :steward-badge-enabled="getDirectUserOverlay(c)!.stewardBadgeEnabled ?? true"
                   />
                 </div>
                 <div class="text-xs text-gray-500 dark:text-gray-400">
@@ -152,13 +154,20 @@
                 </Transition>
               </div>
             </div>
-            <Transition name="moh-dot">
+            <!-- Keep wrapper mounted so removal animates (fade + slide/shrink), and siblings shift smoothly. -->
+            <span
+              class="moh-chat-row-badge-wrap overflow-hidden transition-[max-width,opacity,transform,margin-left] duration-180 ease-out"
+              :class="c.unreadCount > 0 ? 'ml-2 max-w-[3.25rem] opacity-100 translate-x-0' : 'ml-0 max-w-0 opacity-0 -translate-x-1'"
+              aria-hidden="true"
+            >
               <span
-                v-if="c.unreadCount > 0"
-                class="moh-chat-row-dot h-2 w-2 rounded-full"
+                class="inline-flex min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold leading-[18px] justify-center text-center"
                 :class="conversationDotClass(c)"
-              />
-            </Transition>
+                aria-label="Unread messages"
+              >
+                {{ c.unreadCount > 99 ? '99+' : c.unreadCount }}
+              </span>
+            </span>
           </div>
         </div>
       </button>

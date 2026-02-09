@@ -14,12 +14,15 @@ export function useComposerImageIngest(opts: {
   processUploadQueue: () => void
   /** Patch a composer media item by localId (used to update slot during upload). */
   patchComposerMedia: (localId: string, patch: Partial<ComposerMediaItem>) => void
+  /** When true, accept images/GIFs (premium-only in our product rules). */
+  canAcceptImages?: Ref<boolean>
   /** When true, also accept videos (premium-only). */
   canAcceptVideo?: Ref<boolean>
-  /** Called when user tries to add video but is not premium; show modal and reject. */
-  onVideoRejectedNeedPremium?: () => void
+  /** Called when user tries to add media but is not premium; show modal and reject. */
+  onMediaRejectedNeedPremium?: () => void
 }) {
   const MEDIA_SLOTS = Math.max(1, Math.floor(opts.maxSlots))
+  const canAcceptImages = opts.canAcceptImages ?? computed(() => true)
   const canAcceptVideo = opts.canAcceptVideo ?? computed(() => false)
 
   const isAllowedVideoType = (t: string | null | undefined) => {
@@ -44,6 +47,10 @@ export function useComposerImageIngest(opts: {
 
   function openMediaPicker() {
     if (!opts.canAddMoreMedia.value) return
+    if (!canAcceptImages.value && !canAcceptVideo.value) {
+      opts.onMediaRejectedNeedPremium?.()
+      return
+    }
     const input = opts.mediaFileInputEl.value
     if (!input) return
 
@@ -83,15 +90,19 @@ export function useComposerImageIngest(opts: {
       .filter((f) => isAllowedVideoType(f.type))
       .slice(0, remaining - imageFiles.length)
 
+    if (imageFiles.length > 0 && !canAcceptImages.value) {
+      opts.onMediaRejectedNeedPremium?.()
+    }
     if (rawVideoFiles.length > 0 && !canAcceptVideo.value) {
-      opts.onVideoRejectedNeedPremium?.()
+      opts.onMediaRejectedNeedPremium?.()
     }
 
+    const allowedImages = canAcceptImages.value ? imageFiles : []
     const videoFiles = canAcceptVideo.value ? rawVideoFiles : []
 
     const added: Promise<void>[] = []
 
-    for (const file of imageFiles) {
+    for (const file of allowedImages) {
       const ct = (file.type ?? '').toLowerCase()
       const previewUrl = URL.createObjectURL(file)
       const localId = makeLocalId()
@@ -289,7 +300,7 @@ export function useComposerImageIngest(opts: {
   function onComposerAreaDragEnter(e: DragEvent) {
     if (!import.meta.client) return
     const dt = e.dataTransfer
-    if (!dataTransferHasMedia(dt, canAcceptVideo.value)) return
+    if (!dataTransferHasMedia(dt, { includeImages: canAcceptImages.value, includeVideo: canAcceptVideo.value })) return
     dragOverDepth.value += 1
     dropOverlayVisible.value = true
   }
@@ -301,7 +312,7 @@ export function useComposerImageIngest(opts: {
       dropOverlayVisible.value = false
       return
     }
-    if (!dataTransferHasMedia(dt, canAcceptVideo.value)) {
+    if (!dataTransferHasMedia(dt, { includeImages: canAcceptImages.value, includeVideo: canAcceptVideo.value })) {
       dropOverlayVisible.value = false
       return
     }
@@ -321,7 +332,7 @@ export function useComposerImageIngest(opts: {
   function onComposerAreaDragLeave(e: DragEvent) {
     if (!import.meta.client) return
     const dt = e.dataTransfer
-    if (!dataTransferHasMedia(dt, canAcceptVideo.value)) return
+    if (!dataTransferHasMedia(dt, { includeImages: canAcceptImages.value, includeVideo: canAcceptVideo.value })) return
     dragOverDepth.value = Math.max(0, dragOverDepth.value - 1)
     if (dragOverDepth.value === 0) dropOverlayVisible.value = false
   }
@@ -332,13 +343,22 @@ export function useComposerImageIngest(opts: {
     if (!cd) return
 
     const out: File[] = []
+    let rejectedNeedPremium = false
     const items = Array.from(cd.items ?? [])
     for (const it of items) {
       if (it.kind !== 'file') continue
       const type = (it.type ?? '').toLowerCase()
+      if (type.startsWith('image/') && !canAcceptImages.value) {
+        rejectedNeedPremium = true
+        continue
+      }
       if (!type.startsWith('image/') && !(canAcceptVideo.value && type === 'video/mp4')) continue
       const f = it.getAsFile()
       if (f) out.push(f)
+    }
+    if (rejectedNeedPremium) {
+      opts.onMediaRejectedNeedPremium?.()
+      return
     }
 
     if (!out.length) {

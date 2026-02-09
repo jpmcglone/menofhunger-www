@@ -9,10 +9,12 @@ import { useComposerGiphyPicker } from '~/composables/composer/useComposerGiphyP
 export function useComposerMedia(opts?: {
   maxSlots?: number
   textareaEl?: Ref<HTMLTextAreaElement | null>
+  /** When true, file picker and drop/paste accept images/GIFs (premium-only). */
+  canAcceptImages?: Ref<boolean>
   /** When true, file picker and drop/paste accept video/mp4 (premium-only). */
   canAcceptVideo?: Ref<boolean>
-  /** Called when non-premium user tries to add video; show premium-required modal. */
-  onVideoRejectedNeedPremium?: () => void
+  /** Called when non-premium user tries to add media; show premium-required modal. */
+  onMediaRejectedNeedPremium?: () => void
 }) {
   const { apiFetchData } = useApiClient()
   const toast = useAppToast()
@@ -93,8 +95,9 @@ export function useComposerMedia(opts?: {
     toast,
     processUploadQueue,
     patchComposerMedia,
+    canAcceptImages: opts?.canAcceptImages,
     canAcceptVideo: opts?.canAcceptVideo,
-    onVideoRejectedNeedPremium: opts?.onVideoRejectedNeedPremium,
+    onMediaRejectedNeedPremium: opts?.onMediaRejectedNeedPremium,
   })
 
   const giphy = useComposerGiphyPicker({ composerMedia, canAddMoreMedia, apiFetchData })
@@ -102,6 +105,15 @@ export function useComposerMedia(opts?: {
   function toCreatePayload(media: ComposerMediaItem[]): CreateMediaPayload[] {
     const out: CreateMediaPayload[] = []
     for (const m of media) {
+      // Existing media reference (only-me publish flow): keep order and allow alt edits.
+      if (m.existingId) {
+        out.push({
+          source: 'existing',
+          id: m.existingId,
+          alt: (m.altText ?? '').trim() || null,
+        })
+        continue
+      }
       if (m.source === 'upload') {
         // Only include uploads that completed successfully (have r2Key). Skip failed/rejected (e.g. video when not premium).
         if (!m.r2Key) continue

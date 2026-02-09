@@ -291,7 +291,12 @@
                         <div class="text-xs moh-text-muted truncate">@{{ u.username || '—' }}</div>
                       </div>
                       <div class="shrink-0 flex items-center gap-2">
-                        <AppVerifiedBadge :status="u.verifiedStatus" :premium="u.premium" :premium-plus="u.premiumPlus" />
+                        <AppVerifiedBadge
+                          :status="u.verifiedStatus"
+                          :premium="u.premium"
+                          :premium-plus="u.premiumPlus"
+                          :steward-badge-enabled="u.stewardBadgeEnabled ?? true"
+                        />
                       </div>
                     </div>
                   </NuxtLink>

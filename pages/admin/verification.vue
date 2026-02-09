@@ -85,6 +85,7 @@
                   :status="item.user.verifiedStatus"
                   :premium="Boolean(item.user.premium)"
                   :premium-plus="Boolean(item.user.premiumPlus)"
+                  :steward-badge-enabled="item.user.stewardBadgeEnabled ?? true"
                 />
               </div>
 

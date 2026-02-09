@@ -81,6 +81,7 @@ export type PostAuthor = {
   name: string | null
   premium: boolean
   premiumPlus: boolean
+  stewardBadgeEnabled: boolean
   verifiedStatus: 'none' | 'identity' | 'manual'
   avatarUrl: string | null
 }
@@ -91,6 +92,7 @@ export type PostMention = {
   verifiedStatus?: 'none' | 'identity' | 'manual'
   premium?: boolean
   premiumPlus?: boolean
+  stewardBadgeEnabled?: boolean
 }
 
 /** Public profile payload from GET /users/:username */
@@ -101,6 +103,7 @@ export type PublicProfile = {
   bio: string | null
   premium: boolean
   premiumPlus: boolean
+  stewardBadgeEnabled: boolean
   verifiedStatus: 'none' | 'identity' | 'manual'
   avatarUrl: string | null
   bannerUrl: string | null
@@ -116,6 +119,7 @@ export type UserPreview = {
   bio: string | null
   premium: boolean
   premiumPlus: boolean
+  stewardBadgeEnabled: boolean
   verifiedStatus: 'none' | 'identity' | 'manual'
   avatarUrl: string | null
   bannerUrl: string | null
@@ -127,9 +131,12 @@ export type UserPreview = {
 export type FeedPost = {
   id: string
   createdAt: string
+  editedAt?: string | null
+  editCount?: number
   body: string
   deletedAt: string | null
   visibility: PostVisibility
+  isDraft?: boolean
   topics?: string[]
   /** User-created hashtags parsed from body text (lowercase, without '#'). */
   hashtags?: string[]
@@ -352,6 +359,7 @@ export type AdminVerificationUser = {
   siteAdmin: boolean
   premium: boolean
   premiumPlus: boolean
+  stewardBadgeEnabled: boolean
   verifiedStatus: 'none' | 'identity' | 'manual'
   verifiedAt: string | null
   unverifiedAt: string | null
@@ -400,6 +408,7 @@ export type AdminImageReviewDetailResponse = {
       name: string | null
       premium: boolean
       premiumPlus: boolean
+      stewardBadgeEnabled: boolean
       verifiedStatus: 'none' | 'identity' | 'manual'
     }>
   }
@@ -448,6 +457,7 @@ export type FollowListUser = {
   name: string | null
   premium: boolean
   premiumPlus: boolean
+  stewardBadgeEnabled: boolean
   verifiedStatus: 'none' | 'identity' | 'manual'
   avatarUrl: string | null
   relationship: FollowRelationship
@@ -501,10 +511,14 @@ export type Topic = {
   score: number
   interestCount: number
   postCount: number
+  viewerFollows?: boolean
 }
 
 /** Data type for GET /topics (array). */
 export type GetTopicsData = Topic[]
+
+/** Data type for GET /topics/followed (array). */
+export type GetFollowedTopicsData = Topic[]
 
 /** Data type for GET /topics/:topic/posts (array); pagination in envelope. */
 export type GetTopicPostsData = FeedPost[]
@@ -512,7 +526,7 @@ export type GetTopicPostsData = FeedPost[]
 /** Data type for GET /hashtags/trending (array); pagination in envelope. */
 export type GetTrendingHashtagsData = HashtagResult[]
 
-export type NotificationKind = 'comment' | 'boost' | 'follow' | 'mention' | 'generic'
+export type NotificationKind = 'comment' | 'boost' | 'follow' | 'followed_post' | 'mention' | 'generic'
 
 export type NotificationActor = {
   id: string
@@ -538,6 +552,8 @@ export type Notification = {
   deliveredAt: string | null
   readAt: string | null
   actor: NotificationActor | null
+  /** The post that caused this notification (e.g. a reply or mention post). */
+  actorPostId: string | null
   subjectPostId: string | null
   subjectUserId: string | null
   title: string | null
@@ -573,6 +589,7 @@ export type MessageUser = {
   name: string | null
   premium: boolean
   premiumPlus: boolean
+  stewardBadgeEnabled: boolean
   verifiedStatus: 'none' | 'identity' | 'manual'
   avatarUrl: string | null
 }
@@ -652,6 +669,10 @@ export type GetMessageBlocksResponse = {
 
 export type WsNotificationsNewPayload = {
   notification: Notification
+}
+
+export type WsNotificationsDeletedPayload = {
+  notificationIds: string[]
 }
 
 export type WsMessagesReadPayload = {

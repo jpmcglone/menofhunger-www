@@ -26,6 +26,7 @@ let audioCtx: AudioContext | null = null
 let decodeAudioDataFn: DecodeAudioData | null = null
 let unlockListenersAdded = false
 const bufferCache = new Map<string, AudioBuffer>()
+const arrayBufferCache = new Map<string, ArrayBuffer>()
 
 function getAudioContext(): AudioContext | null {
   if (!import.meta.client) return null
@@ -66,6 +67,22 @@ function addUnlockListenersOnce() {
   document.addEventListener('keydown', unlock, { once: true, passive: true })
 }
 
+async function fetchArrayBuffer(url: string): Promise<ArrayBuffer | null> {
+  const u = (url ?? '').trim()
+  if (!u) return null
+  const cached = arrayBufferCache.get(u)
+  if (cached) return cached
+  try {
+    const res = await fetch(u, { cache: 'force-cache' })
+    if (!res.ok) return null
+    const buf = await res.arrayBuffer()
+    arrayBufferCache.set(u, buf)
+    return buf
+  } catch {
+    return null
+  }
+}
+
 async function loadBuffer(url: string): Promise<AudioBuffer | null> {
   const u = (url ?? '').trim()
   if (!u) return null
@@ -77,9 +94,9 @@ async function loadBuffer(url: string): Promise<AudioBuffer | null> {
   if (!ctx || !decode) return null
 
   try {
-    const res = await fetch(u, { cache: 'force-cache' })
-    if (!res.ok) return null
-    const buf = await decode(await res.arrayBuffer())
+    const raw = await fetchArrayBuffer(u)
+    if (!raw) return null
+    const buf = await decode(raw.slice(0))
     bufferCache.set(u, buf)
     return buf
   } catch {
@@ -88,6 +105,20 @@ async function loadBuffer(url: string): Promise<AudioBuffer | null> {
 }
 
 export function useSfx() {
+  async function preloadUrl(url: string) {
+    if (!import.meta.client) return
+    addUnlockListenersOnce()
+    // Fetch into cache immediately; decode best-effort if AudioContext is available.
+    await fetchArrayBuffer(url)
+    void loadBuffer(url)
+  }
+
+  async function preloadUrls(urls: string[]) {
+    if (!import.meta.client) return
+    const list = Array.isArray(urls) ? urls : []
+    await Promise.allSettled(list.map((u) => preloadUrl(u)))
+  }
+
   async function playUrl(url: string, opts?: { volume?: number }) {
     if (!import.meta.client) return
     addUnlockListenersOnce()
@@ -123,6 +154,6 @@ export function useSfx() {
     }
   }
 
-  return { playUrl }
+  return { playUrl, preloadUrl, preloadUrls }
 }
 

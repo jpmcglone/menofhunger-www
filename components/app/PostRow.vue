@@ -77,6 +77,8 @@
             :verified-status="author.verifiedStatus"
             :premium="author.premium"
             :premium-plus="author.premiumPlus"
+            :steward-badge-enabled="author.stewardBadgeEnabled ?? true"
+            :edited-at="post.editedAt ?? null"
             :profile-path="authorProfilePath"
             :post-id="post.id"
             :post-permalink="postPermalink"
@@ -239,6 +241,29 @@
     </template>
   </Dialog>
 
+  <Dialog
+    v-if="editOpen"
+    v-model:visible="editOpen"
+    modal
+    header="Edit post"
+    :draggable="false"
+    class="w-[min(40rem,calc(100vw-2rem))]"
+  >
+    <AppPostComposer
+      auto-focus
+      :show-divider="false"
+      placeholder="Edit your post…"
+      :initial-text="post.body"
+      :locked-visibility="post.visibility"
+      hide-visibility-picker
+      disable-media
+      :register-unsaved-guard="false"
+      mode="edit"
+      :edit-post-id="post.id"
+      @edited="onEdited"
+    />
+  </Dialog>
+
   <AppReportDialog
     v-model:visible="reportOpen"
     target-type="post"
@@ -249,6 +274,7 @@
 </template>
 
 <script setup lang="ts">
+import { inject } from 'vue'
 import type { FeedPost } from '~/types/api'
 import { visibilityTagClasses, visibilityTagLabel } from '~/utils/post-visibility'
 import type { MenuItem } from 'primevue/menuitem'
@@ -260,6 +286,7 @@ import { useCopyToClipboard } from '~/composables/useCopyToClipboard'
 import { usePostCountBumps } from '~/composables/usePostCountBumps'
 import { useInViewOnce } from '~/composables/useInViewOnce'
 import { useUserOverlay } from '~/composables/useUserOverlay'
+import { MOH_OPEN_COMPOSER_FROM_ONLYME_KEY } from '~/utils/injection-keys'
 
 const props = defineProps<{
   post: FeedPost
@@ -287,13 +314,20 @@ const emit = defineEmits<{
   (e: 'deleted', id: string): void
 }>()
 
-const post = computed(() => props.post)
+const postState = ref(props.post)
+watch(
+  () => props.post,
+  (p) => {
+    postState.value = p
+  },
+)
+const post = computed(() => postState.value)
 const { user: author } = useUserOverlay(computed(() => post.value.author))
 const isDeletedPost = computed(() => Boolean(post.value.deletedAt))
 const clickable = computed(() => props.clickable !== false)
 const highlightClass = computed(() => {
   if (!props.highlight) return ''
-  const v = props.post.visibility
+  const v = post.value.visibility
   if (v === 'verifiedOnly') return 'moh-post-highlight moh-post-highlight-verified'
   if (v === 'premiumOnly') return 'moh-post-highlight moh-post-highlight-premium'
   if (v === 'onlyMe') return 'moh-post-highlight moh-post-highlight-onlyme'
@@ -468,6 +502,8 @@ function formatShortDate(d: Date): string {
 
 type MenuItemWithIcon = MenuItem & { iconName?: string }
 
+const openComposerFromOnlyMe = inject(MOH_OPEN_COMPOSER_FROM_ONLYME_KEY, null)
+
 const moreMenuItems = computed<MenuItemWithIcon[]>(() => {
   const items: MenuItemWithIcon[] = [
     {
@@ -505,6 +541,37 @@ const moreMenuItems = computed<MenuItemWithIcon[]>(() => {
 
   if (isSelf.value) {
     items.push({ separator: true })
+    if (!isDeletedPost.value && post.value.visibility === 'onlyMe') {
+      items.push({
+        label: 'Use as draft',
+        iconName: 'tabler:copy',
+        command: () => {
+          if (!viewerIsVerified.value) {
+            showAuthActionModal({ kind: 'verify', action: 'useAsDraft' })
+            return
+          }
+          if (openComposerFromOnlyMe) {
+            openComposerFromOnlyMe(post.value)
+            return
+          }
+          toast.push({
+            title: 'Could not open draft composer',
+            message: 'Please try again from the Only me page.',
+            tone: 'error',
+            durationMs: 2400,
+          })
+        },
+      })
+    }
+    if (canEditPost.value) {
+      items.push({
+        label: 'Edit post',
+        iconName: 'tabler:edit',
+        command: () => {
+          editOpen.value = true
+        },
+      })
+    }
     const pinnedPostId = user.value?.pinnedPostId ?? null
     const isPinned = pinnedPostId === post.value.id
     const canPin = post.value.visibility !== 'onlyMe'
@@ -529,9 +596,28 @@ const moreMenuItems = computed<MenuItemWithIcon[]>(() => {
 })
 
 const toast = useAppToast()
+const editOpen = ref(false)
+
+const canEditPost = computed(() => {
+  if (!isSelf.value) return false
+  if (isDeletedPost.value) return false
+  if (post.value.visibility === 'onlyMe') return false
+  if (post.value.parentId) return false
+  const createdAt = new Date(post.value.createdAt)
+  const ageMs = Date.now() - createdAt.getTime()
+  if (!Number.isFinite(ageMs) || ageMs > 30 * 60 * 1000) return false
+  const editCount = typeof (post.value as any).editCount === 'number' ? ((post.value as any).editCount as number) : 0
+  return editCount < 3
+})
 const deleteConfirmOpen = ref(false)
 const deleting = ref(false)
 const reportOpen = ref(false)
+
+function onEdited(payload: { id: string; post: FeedPost }) {
+  if (payload?.id !== post.value.id) return
+  postState.value = payload.post
+  editOpen.value = false
+}
 
 function onReportSubmitted() {
   // toast + close handled in dialog

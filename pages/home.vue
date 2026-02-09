@@ -6,6 +6,8 @@
       <AppPostComposer
         :create-post="createPostViaFeed"
         :allowed-visibilities="['public', 'verifiedOnly', 'premiumOnly']"
+        persist-key="home"
+        :register-unsaved-guard="false"
       />
     </div>
 
@@ -97,7 +99,8 @@
 </template>
 
 <script setup lang="ts">
-import type { PostMediaKind, PostMediaSource, PostVisibility } from '~/types/api'
+import type { PostVisibility } from '~/types/api'
+import type { CreateMediaPayload } from '~/composables/useComposerMedia'
 import { postBodyHasVideoEmbed } from '~/utils/link-utils'
 import { MOH_HOME_COMPOSER_IN_VIEW_KEY } from '~/utils/injection-keys'
 import { useMiddleScroller } from '~/composables/useMiddleScroller'
@@ -222,17 +225,11 @@ onDeactivated(() => {
 async function createPostViaFeed(
   body: string,
   visibility: PostVisibility,
-  media?: Array<{
-    source: PostMediaSource
-    kind: PostMediaKind
-    r2Key?: string
-    url?: string
-    mp4Url?: string | null
-    width?: number | null
-    height?: number | null
-  }> | null,
+  media?: CreateMediaPayload[] | null,
 ): Promise<{ id: string } | null> {
-  const created = await addPost(body, visibility, media ?? null)
+  // Home composer should never pass 'existing' media references, but ignore safely if it ever does.
+  const filtered = (media ?? []).filter((m) => (m as any)?.source !== 'existing') as any
+  const created = await addPost(body, visibility, filtered.length ? filtered : null)
   if (created?.id) {
     if (postBodyHasVideoEmbed(created.body ?? '', Boolean(created.media?.length))) {
       newlyPostedVideoPostId.value = created.id

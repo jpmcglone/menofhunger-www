@@ -99,12 +99,23 @@
               Showing posts matching this topic.
             </div>
           </div>
-          <Button
-            label="Clear"
-            text
-            severity="secondary"
-            @click="clearTopic"
-          />
+          <div class="shrink-0 flex items-center gap-2">
+            <Button
+              v-if="isAuthed"
+              :label="isActiveTopicFollowed ? 'Unfollow' : 'Follow'"
+              :severity="isActiveTopicFollowed ? 'secondary' : 'primary'"
+              text
+              :loading="followBusy"
+              :disabled="followBusy"
+              @click="toggleFollowActiveTopic"
+            />
+            <Button
+              label="Clear"
+              text
+              severity="secondary"
+              @click="clearTopic"
+            />
+          </div>
         </div>
 
         <div v-if="topicError" class="px-4">
@@ -153,6 +164,26 @@
             {{ discoverError }}
           </AppInlineAlert>
         </div>
+
+        <!-- Followed topics -->
+        <section v-if="isAuthed && followedTopicsUi.length > 0" class="space-y-3">
+          <h2 class="px-4 text-sm font-semibold text-gray-900 dark:text-gray-50">
+            Followed topics
+          </h2>
+          <AppHorizontalScroller scroller-class="no-scrollbar px-4">
+            <div class="flex gap-2 pb-2">
+              <button
+                v-for="t in followedTopicsUi"
+                :key="`ft-${t.value}`"
+                type="button"
+                class="h-9 px-3 shrink-0 rounded-full border moh-border bg-white/60 dark:bg-zinc-900/40 text-sm text-gray-800 dark:text-gray-100 hover:bg-white dark:hover:bg-zinc-900 transition whitespace-nowrap"
+                @click="selectTopic(t.value)"
+              >
+                {{ t.label }}
+              </button>
+            </div>
+          </AppHorizontalScroller>
+        </section>
 
         <!-- Topics -->
         <section v-if="displayTopics.length > 0" class="space-y-3">
@@ -380,6 +411,7 @@ const activeTopic = computed(() => normalizeQueryParam(route.query.topic))
 const {
   featuredPosts,
   topics,
+  followedTopics,
   onlineUsers,
   recommendedUsers,
   newestUsers,
@@ -426,6 +458,45 @@ const displayTopics = computed(() => {
 
   return mapped.slice(0, 20)
 })
+
+const followedTopicsUi = computed(() => {
+  const raw = (followedTopics.value ?? []) as Topic[]
+  const mapped = raw
+    .map((t) => ({
+      value: t.topic,
+      label: topicLabelByValue.value.get(t.topic) ?? t.topic,
+      score: t.score ?? 0,
+    }))
+    .filter((t) => Boolean(t.value))
+  mapped.sort((a, b) => (b.score ?? 0) - (a.score ?? 0) || a.label.localeCompare(b.label))
+  return mapped.slice(0, 20)
+})
+
+const isActiveTopicFollowed = computed(() => {
+  const t = activeTopic.value
+  if (!t) return false
+  return Boolean((followedTopics.value ?? []).some((x) => x.topic === t))
+})
+
+const followBusy = ref(false)
+async function toggleFollowActiveTopic() {
+  const t = activeTopic.value
+  if (!t || followBusy.value) return
+  followBusy.value = true
+  try {
+    if (isActiveTopicFollowed.value) {
+      await apiFetch(`/topics/${encodeURIComponent(t)}/follow`, { method: 'DELETE' })
+    } else {
+      await apiFetch(`/topics/${encodeURIComponent(t)}/follow`, { method: 'POST' })
+    }
+    // Refresh discovery topics + followed list (cheap enough; keeps viewerFollows accurate).
+    void refreshDiscover()
+  } catch {
+    // Soft-fail: ignore (user can retry; explore should not hard error).
+  } finally {
+    followBusy.value = false
+  }
+}
 
 const TRENDING_INLINE_NEW_USERS_AFTER = 6
 const shouldInlineNewUsers = computed(() => trendingPosts.value.length >= 4)

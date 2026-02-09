@@ -103,6 +103,7 @@
                               :status="headerDirectUser.verifiedStatus"
                               :premium="headerDirectUser.premium"
                               :premium-plus="headerDirectUser.premiumPlus"
+                              :steward-badge-enabled="headerDirectUser.stewardBadgeEnabled ?? true"
                             />
                           </template>
                           <template v-else>
@@ -1007,6 +1008,10 @@ function goPremium() {
 }
 
 function getConversationLastMessageTier(conversation: MessageConversation): 'premium' | 'verified' | 'normal' {
+  // If there are unread messages and we've tracked the last incoming tier, prefer it for unread indicators.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const tracked = (conversation as any)?.unreadTone as 'premium' | 'verified' | 'normal' | undefined
+  if (conversation.unreadCount > 0 && tracked) return tracked
   const senderId = conversation.lastMessage?.senderId ?? null
   if (!senderId) return 'normal'
   const sender = conversation.participants.find((p) => p.user.id === senderId)?.user
@@ -1017,9 +1022,9 @@ function getConversationLastMessageTier(conversation: MessageConversation): 'pre
 
 function conversationDotClass(conversation: MessageConversation): string {
   const tier = getConversationLastMessageTier(conversation)
-  if (tier === 'premium') return 'bg-[var(--moh-premium)]'
-  if (tier === 'verified') return 'bg-[var(--moh-verified)]'
-  return 'bg-gray-300 dark:bg-white'
+  if (tier === 'premium') return 'bg-[var(--moh-premium)] text-white'
+  if (tier === 'verified') return 'bg-[var(--moh-verified)] text-white'
+  return 'bg-gray-700 text-white dark:bg-white dark:text-black'
 }
 
 function conversationUnreadHighlightClass(conversation: MessageConversation): string {
@@ -1186,7 +1191,13 @@ function updateConversationUnread(conversationId: string, unreadCount: number) {
     if (idx === -1) return
     const next = [...conversations.value[tab]]
     const existing = next[idx]!
-    next[idx] = { ...existing, unreadCount }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const nextRow: any = { ...existing, unreadCount }
+    if (unreadCount <= 0) {
+      // Clear any tracked unread tone when conversation is marked read.
+      delete nextRow.unreadTone
+    }
+    next[idx] = nextRow
     conversations.value[tab] = next
   }
   update('primary')
@@ -1200,6 +1211,13 @@ function updateConversationForMessage(message: Message) {
     const next = [...conversations.value[tab]]
     const existing = next[idx]!
     const unreadInc = message.sender.id === me.value?.id ? 0 : 1
+    const isUnreadIncoming = unreadInc === 1 && selectedConversationId.value !== message.conversationId
+    const incomingTier =
+      message.sender.premium
+        ? 'premium'
+        : message.sender.verifiedStatus && message.sender.verifiedStatus !== 'none'
+          ? 'verified'
+          : 'normal'
     const updated: MessageConversation = {
       ...existing,
       lastMessageAt: message.createdAt,
@@ -1207,8 +1225,12 @@ function updateConversationForMessage(message: Message) {
       lastMessage: { id: message.id, body: message.body, createdAt: message.createdAt, senderId: message.sender.id },
       unreadCount: selectedConversationId.value === message.conversationId ? 0 : existing.unreadCount + unreadInc,
     }
+    // Track the tier of the last incoming unread message for indicator tinting.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const updatedWithTone: any = updated
+    if (isUnreadIncoming) updatedWithTone.unreadTone = incomingTier
     next.splice(idx, 1)
-    next.unshift(updated)
+    next.unshift(updatedWithTone)
     conversations.value[tab] = next
     return true
   }
@@ -1276,6 +1298,7 @@ async function sendCurrentMessage() {
       name: my.name ?? null,
       premium: Boolean(my.premium),
       premiumPlus: Boolean(my.premiumPlus),
+      stewardBadgeEnabled: my.stewardBadgeEnabled ?? true,
       verifiedStatus: (my.verifiedStatus ?? 'none') as 'none' | 'identity' | 'manual',
       avatarUrl: my.avatarUrl ?? null,
     }

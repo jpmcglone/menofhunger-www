@@ -36,6 +36,13 @@ export function useNotifications() {
       const without = existing.filter((x) => x.id !== n.id)
       notifications.value = [n, ...without]
     },
+    onDeleted: (payload) => {
+      const ids = Array.isArray(payload?.notificationIds) ? payload.notificationIds : []
+      if (ids.length === 0) return
+      const idSet = new Set(ids.filter((x) => typeof x === 'string' && x))
+      if (!idSet.size) return
+      notifications.value = notifications.value.filter((n) => !idSet.has(n.id))
+    },
   }
   if (import.meta.client) {
     onMounted(() => addNotificationsCallback(notificationsCb))
@@ -164,6 +171,8 @@ export function useNotifications() {
         return 'boosted your post'
       case 'follow':
         return 'followed you'
+      case 'followed_post':
+        return 'shared a post'
       case 'mention':
         return 'mentioned you'
       case 'generic':
@@ -182,6 +191,8 @@ export function useNotifications() {
         return '' // Custom SVG
       case 'follow':
         return 'tabler:user-plus'
+      case 'followed_post':
+        return 'tabler:file-text'
       case 'mention':
         return 'tabler:at'
       case 'generic':
@@ -204,6 +215,8 @@ export function useNotifications() {
         return 'Boost'
       case 'follow':
         return 'New follower'
+      case 'followed_post':
+        return 'New post'
       case 'mention':
         return 'Mention'
       default:

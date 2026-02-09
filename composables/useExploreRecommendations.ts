@@ -2,6 +2,7 @@ import type {
   FeedPost,
   FollowListUser,
   GetFollowRecommendationsData,
+  GetFollowedTopicsData,
   GetNewestUsersData,
   GetPostsData,
   GetPresenceOnlineData,
@@ -19,6 +20,7 @@ export function useExploreRecommendations(options?: { enabled?: Ref<boolean>, is
 
   const featuredPosts = ref<FeedPost[]>([])
   const topics = ref<Topic[]>([])
+  const followedTopics = ref<Topic[]>([])
   const onlineUsers = ref<OnlineUser[]>([])
 
   const recommendedUsers = ref<FollowListUser[]>([])
@@ -47,15 +49,19 @@ export function useExploreRecommendations(options?: { enabled?: Ref<boolean>, is
         apiFetch<GetPostsData>('/posts', { method: 'GET', query: { limit: 3, sort: 'featured', visibility: 'all' } }),
         apiFetch<GetTopicsData>('/topics', { method: 'GET', query: { limit: 50 } }),
         apiFetch<GetPresenceOnlineData>('/presence/online', { method: 'GET' }),
+        ...(isAuthed.value ? [apiFetch<GetFollowedTopicsData>('/topics/followed', { method: 'GET', query: { limit: 50 } })] : []),
       ])
 
       const featuredRes = baseCalls[0].status === 'fulfilled' ? baseCalls[0].value : null
       const topicsRes = baseCalls[1].status === 'fulfilled' ? baseCalls[1].value : null
       const onlineRes = baseCalls[2].status === 'fulfilled' ? baseCalls[2].value : null
+      const followedTopicsRes =
+        isAuthed.value && baseCalls[3] && baseCalls[3].status === 'fulfilled' ? baseCalls[3].value : null
 
       featuredPosts.value = (((featuredRes?.data ?? []) as FeedPost[]) ?? []).slice(0, 3)
       topics.value = ((topicsRes?.data ?? []) as Topic[]) ?? []
       onlineUsers.value = ((onlineRes?.data ?? []) as OnlineUser[]) ?? []
+      followedTopics.value = isAuthed.value ? (((followedTopicsRes?.data ?? []) as Topic[]) ?? []) : []
 
       if (isAuthed.value) {
         const recRes = await apiFetch<GetFollowRecommendationsData>('/follows/recommendations', {
@@ -98,6 +104,7 @@ export function useExploreRecommendations(options?: { enabled?: Ref<boolean>, is
       featuredPosts.value = []
       topics.value = []
       onlineUsers.value = []
+      followedTopics.value = []
       recommendedUsers.value = []
       newestUsers.value = []
       trendingPosts.value = []
@@ -117,6 +124,7 @@ export function useExploreRecommendations(options?: { enabled?: Ref<boolean>, is
   return {
     featuredPosts,
     topics,
+    followedTopics,
     onlineUsers,
     recommendedUsers,
     newestUsers,

@@ -240,6 +240,8 @@ if (!notFound.value && profile.value) {
     title: profileName.value,
     verifiedStatus: profile.value.verifiedStatus ?? null,
     premium: profile.value.premium ?? null,
+    premiumPlus: profile.value.premiumPlus ?? null,
+    stewardBadgeEnabled: profile.value.stewardBadgeEnabled ?? null,
     postCount: null,
   }
 }

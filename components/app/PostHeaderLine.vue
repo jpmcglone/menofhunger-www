@@ -29,9 +29,21 @@
         class="inline-flex shrink-0 items-center"
         aria-label="View profile (verified badge)"
       >
-        <AppVerifiedBadge :status="verifiedStatus" :premium="premium" :premium-plus="premiumPlus" />
+        <AppVerifiedBadge
+          :status="verifiedStatus"
+          :premium="premium"
+          :premium-plus="premiumPlus"
+          :steward-badge-enabled="stewardBadgeEnabled"
+        />
       </NuxtLink>
-      <AppVerifiedBadge v-else class="shrink-0" :status="verifiedStatus" :premium="premium" :premium-plus="premiumPlus" />
+      <AppVerifiedBadge
+        v-else
+        class="shrink-0"
+        :status="verifiedStatus"
+        :premium="premium"
+        :premium-plus="premiumPlus"
+        :steward-badge-enabled="stewardBadgeEnabled"
+      />
     </div>
 
     <div class="flex min-w-0 items-baseline gap-1.5 flex-nowrap text-sm font-light text-gray-500 dark:text-gray-400">
@@ -64,6 +76,13 @@
         v-tooltip.bottom="createdAtTooltip"
       >
         {{ createdAtShort }}
+        <span
+          v-if="isEdited"
+          class="ml-1 text-[11px] font-semibold opacity-80"
+          aria-label="Edited"
+        >
+          edited
+        </span>
       </NuxtLink>
     </div>
   </div>
@@ -78,6 +97,8 @@ const props = defineProps<{
   verifiedStatus?: VerifiedStatus | null
   premium?: boolean
   premiumPlus?: boolean
+  stewardBadgeEnabled?: boolean
+  editedAt?: string | null
   profilePath: string | null
   postId: string
   postPermalink: string
@@ -89,6 +110,8 @@ const props = defineProps<{
 
 const displayName = computed(() => props.displayName || props.username || 'User')
 const username = computed(() => props.username || '')
+const stewardBadgeEnabled = computed(() => props.stewardBadgeEnabled ?? true)
+const isEdited = computed(() => Boolean(props.editedAt))
 
 const { onEnter, onMove, onLeave } = useUserPreviewTrigger({ username })
 </script>

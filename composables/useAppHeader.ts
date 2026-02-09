@@ -6,6 +6,8 @@ export type AppHeaderState =
       description?: string
       verifiedStatus?: 'none' | 'identity' | 'manual' | null
       premium?: boolean | null
+      premiumPlus?: boolean | null
+      stewardBadgeEnabled?: boolean | null
       postCount?: number | null
     }
 

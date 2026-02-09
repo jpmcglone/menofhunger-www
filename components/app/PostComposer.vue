@@ -191,55 +191,64 @@
 
         <div :class="composerMedia.length ? 'mt-5' : 'mt-3'" class="flex flex-col gap-1">
           <div class="flex items-center justify-between">
-          <div class="flex items-center gap-2 text-gray-500 dark:text-gray-400">
-            <Button
-              text
-              rounded
-              severity="secondary"
-              aria-label="Add media"
-              :disabled="!canAddMoreMedia"
-              v-tooltip.bottom="tinyTooltip(canAddMoreMedia ? 'Add image/GIF' : 'Max 4 attachments')"
-              @click="openMediaPicker"
-            >
-              <template #icon>
-                <Icon name="tabler:photo" aria-hidden="true" />
-              </template>
-            </Button>
-            <Button
-              text
-              severity="secondary"
-              class="!rounded-xl"
-              aria-label="Add GIF"
-              :disabled="!canAddMoreMedia"
-              v-tooltip.bottom="tinyTooltip(canAddMoreMedia ? 'Add GIF (Giphy)' : 'Max 4 attachments')"
-              @click="openGiphyPicker((draft || '').trim().slice(0, 120))"
-            >
-              <template #icon>
-                <span
-                  class="inline-flex h-[22px] w-[22px] items-center justify-center rounded-md border border-current/30 bg-transparent text-[10px] font-black leading-none"
-                  aria-hidden="true"
+            <div class="flex items-center gap-2 text-gray-500 dark:text-gray-400">
+              <template v-if="!disableMedia">
+                <Button
+                  text
+                  rounded
+                  severity="secondary"
+                  aria-label="Add media"
+                  :disabled="!canAddMoreMedia"
+                  v-tooltip.bottom="tinyTooltip(canAddMoreMedia ? 'Add image/GIF' : 'Max 4 attachments')"
+                  @click="onClickAddMedia"
                 >
-                  GIF
-                </span>
+                  <template #icon>
+                    <Icon name="tabler:photo" aria-hidden="true" />
+                  </template>
+                </Button>
+                <Button
+                  text
+                  severity="secondary"
+                  class="!rounded-xl"
+                  aria-label="Add GIF"
+                  :disabled="!canAddMoreMedia"
+                  v-tooltip.bottom="tinyTooltip(canAddMoreMedia ? 'Add GIF (Giphy)' : 'Max 4 attachments')"
+                  @click="onClickAddGiphy"
+                >
+                  <template #icon>
+                    <span
+                      class="inline-flex h-[22px] w-[22px] items-center justify-center rounded-md border border-current/30 bg-transparent text-[10px] font-black leading-none"
+                      aria-hidden="true"
+                    >
+                      GIF
+                    </span>
+                  </template>
+                </Button>
               </template>
-            </Button>
-            <AppEmojiPickerButton
-              tooltip="Emoji"
-              aria-label="Insert emoji"
-              @select="insertEmoji"
-            />
-          </div>
-          <div class="flex items-center gap-2">
+              <AppEmojiPickerButton
+                tooltip="Emoji"
+                aria-label="Insert emoji"
+                @select="insertEmoji"
+              />
+            </div>
+            <div class="flex items-center gap-2">
             <div class="text-xs text-gray-500 dark:text-gray-400 tabular-nums">
               {{ postCharCount }}/{{ postMaxLen }}
             </div>
             <Button
-              :label="replyTo ? 'Reply' : 'Post'"
+              :label="mode === 'edit' ? 'Save' : (replyTo ? 'Reply' : 'Post')"
               rounded
               :outlined="postButtonOutlined"
               severity="secondary"
               :class="[postButtonClass, '!min-h-0 !py-1.5 !px-5 !text-sm !font-semibold']"
-              :disabled="submitting || !canPost || (!(draft.trim() || composerMedia.length) ) || postCharCount > postMaxLen || composerUploading || composerHasFailedMedia"
+              :disabled="
+                submitting ||
+                !canPost ||
+                (mode === 'edit' ? !draft.trim() : (!(draft.trim() || composerMedia.length))) ||
+                postCharCount > postMaxLen ||
+                composerUploading ||
+                composerHasFailedMedia
+              "
               :title="composerHasFailedMedia ? 'Remove failed items to post' : undefined"
               :loading="submitting"
               @click="submit"
@@ -311,6 +320,7 @@
 </template>
 
 <script setup lang="ts">
+import { makeLocalId } from '~/composables/composer/types'
 import type { CreatePostData, PostVisibility } from '~/types/api'
 import type { CreateMediaPayload } from '~/composables/useComposerMedia'
 import { PRIMARY_ONLYME_PURPLE, PRIMARY_PREMIUM_ORANGE, PRIMARY_TEXT_DARK, PRIMARY_TEXT_LIGHT, PRIMARY_VERIFIED_BLUE, primaryPaletteToCssVars } from '~/utils/theme-tint'
@@ -322,8 +332,19 @@ import { useHashtagAutocomplete } from '~/composables/useHashtagAutocomplete'
 import { segmentComposerBodyWithMentionAndHashtagTiers } from '~/utils/mention-composer-segments'
 import { mentionTierToStyle } from '~/utils/mention-tier-style'
 
+// In-memory draft cache (survives SPA navigation, not a full reload).
+// Keep module-scoped so it persists across route changes.
+type CachedComposerDraft = {
+  body: string
+  // Keep as-is (may include non-serializable objects); never SSR-serialized.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  media: any[]
+}
+const COMPOSER_DRAFT_CACHE = new Map<string, CachedComposerDraft>()
+
 const emit = defineEmits<{
   (e: 'posted', payload: { id: string; visibility: PostVisibility; post?: import('~/types/api').FeedPost }): void
+  (e: 'edited', payload: { id: string; post: import('~/types/api').FeedPost }): void
 }>()
 
 const props = defineProps<{
@@ -333,6 +354,8 @@ const props = defineProps<{
   placeholder?: string
   /** Optional initial draft text (e.g. "@username "). Applied once per mount/open. */
   initialText?: string
+  /** Optional initial media (used for publishing from only-me drafts). */
+  initialMedia?: import('~/types/api').PostMedia[]
   /** Optional override for allowed visibilities (intersected with account tier rules). */
   allowedVisibilities?: PostVisibility[]
   /** When set, composer visibility is forced to this value (cannot be changed). */
@@ -347,6 +370,21 @@ const props = defineProps<{
   inReplyThread?: boolean
   /** When true, omit the avatar (used when parent renders avatar in shared thread column). */
   omitAvatar?: boolean
+  /** When set, composer is in edit mode (PATCH post). */
+  mode?: 'create' | 'edit'
+  /** Required when mode is edit. */
+  editPostId?: string
+  /** When true, hide/disable all media capabilities (used for v1 post editing). */
+  disableMedia?: boolean
+  /** When false, success toast will not link to the new post. */
+  successToPermalink?: boolean
+  /** When false, do not register with the global unsaved-draft guard. */
+  registerUnsavedGuard?: boolean
+  /**
+   * When set, persist this composer draft (text + media) in-memory across SPA navigation.
+   * This survives route changes and modal open/close, but NOT a browser refresh.
+   */
+  persistKey?: string
 }>()
 
 const route = useRoute()
@@ -354,10 +392,22 @@ const { user } = useAuth()
 const { apiFetchData } = useApiClient()
 const toast = useAppToast()
 
+const mode = computed(() => props.mode ?? 'create')
+const editPostId = computed(() => (props.editPostId ?? '').trim() || null)
+const disableMedia = computed(() => Boolean(props.disableMedia) || mode.value === 'edit')
+
 const isAuthed = computed(() => Boolean(user.value?.id))
 const isPremium = computed(() => Boolean(user.value?.premium))
 const viewerIsVerified = computed(() => (user.value?.verifiedStatus ?? 'none') !== 'none')
 const showDivider = computed(() => props.showDivider !== false)
+
+const persistKey = computed(() => {
+  if (!import.meta.client) return null
+  const raw = (props.persistKey ?? '').trim()
+  if (!raw) return null
+  const uid = (user.value?.id ?? 'anon').trim() || 'anon'
+  return `composer-draft:${raw}:${uid}`
+})
 
 const myProfilePath = computed(() => {
   const username = (user.value?.username ?? '').trim()
@@ -498,9 +548,57 @@ const {
 } = useComposerMedia({
   textareaEl: composerTextareaEl,
   maxSlots: 4,
-  canAcceptVideo: isPremium,
-  onVideoRejectedNeedPremium: () => usePremiumVideoModal().show(),
+  canAcceptImages: computed(() => Boolean(isPremium.value && !disableMedia.value)),
+  canAcceptVideo: computed(() => Boolean(isPremium.value && !disableMedia.value)),
+  onMediaRejectedNeedPremium: () => {
+    if (disableMedia.value) return
+    usePremiumMediaModal().show()
+  },
 })
+
+function seedInitialMediaIfNeeded() {
+  if (disableMedia.value) return
+  const items = Array.isArray(props.initialMedia) ? props.initialMedia : null
+  if (!items || items.length === 0) return
+  // Only seed into an empty composer to avoid clobbering user changes.
+  if ((composerMedia.value?.length ?? 0) > 0) return
+
+  const seeded = items
+    .filter((m) => m && !m.deletedAt)
+    .slice(0, 4)
+    .map((m) => {
+      const isVideo = m.kind === 'video'
+      const previewUrl = isVideo ? (m.thumbnailUrl || m.url) : m.url
+      return {
+        localId: makeLocalId(),
+        source: m.source,
+        kind: m.kind,
+        previewUrl,
+        url: m.source === 'giphy' ? m.url : undefined,
+        mp4Url: m.mp4Url ?? undefined,
+        width: m.width ?? null,
+        height: m.height ?? null,
+        durationSeconds: (m as any).durationSeconds ?? null,
+        altText: m.alt ?? null,
+        existingId: m.id,
+        uploadStatus: 'done',
+      }
+    })
+
+  composerMedia.value = seeded as any
+}
+
+function onClickAddMedia() {
+  if (disableMedia.value) return
+  if (!isPremium.value) return usePremiumMediaModal().show()
+  openMediaPicker()
+}
+
+function onClickAddGiphy() {
+  if (disableMedia.value) return
+  if (!isPremium.value) return usePremiumMediaModal().show()
+  openGiphyPicker((draft.value || '').trim().slice(0, 120))
+}
 
 const composerAcceptTypes = computed(
   () => 'image/*,video/mp4,video/quicktime,video/webm,video/x-m4v',
@@ -623,7 +721,102 @@ function onUpdateAltText(localId: string, value: string) {
 const hasUnsavedContent = computed(
   () => (draft.value?.trim() ?? '') !== '' || (composerMedia.value?.length ?? 0) > 0,
 )
-defineExpose({ hasUnsavedContent })
+
+function draftSnapshot(): import('~/composables/useUnsavedDraftGuard').UnsavedDraftSnapshot {
+  return {
+    body: String(draft.value ?? ''),
+    media: toCreatePayload(composerMedia.value ?? []),
+  }
+}
+
+function clearComposer() {
+  draft.value = ''
+  clearAll()
+  void nextTick().then(() => resizeComposerTextarea())
+}
+
+defineExpose({ hasUnsavedContent, draftSnapshot, clearComposer })
+
+const shouldRegisterUnsavedGuard = computed(() =>
+  // Register for create + reply composers so refresh/close warns about losing work.
+  props.registerUnsavedGuard !== false && mode.value === 'create',
+)
+
+let unregisterUnsavedGuard: (() => void) | null = null
+const unsavedGuardId =
+  typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+    ? `composer:${crypto.randomUUID()}`
+    : `composer:${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`
+
+function registerUnsavedGuardIfNeeded() {
+  if (!import.meta.client) return
+  if (!shouldRegisterUnsavedGuard.value) return
+  if (unregisterUnsavedGuard) return
+  const { register } = useUnsavedDraftGuard()
+  unregisterUnsavedGuard = register({
+    id: unsavedGuardId,
+    hasUnsaved: () => Boolean(hasUnsavedContent.value),
+    snapshot: () => draftSnapshot(),
+    clear: () => clearComposer(),
+  })
+}
+
+onMounted(() => {
+  registerUnsavedGuardIfNeeded()
+})
+
+onActivated(() => {
+  // Keepalive pages can deactivate/activate; ensure guard stays registered.
+  registerUnsavedGuardIfNeeded()
+  // If the component was kept alive and re-activated, ensure we rehydrate from cache if needed.
+  restoreDraftFromCacheIfNeeded()
+})
+
+onBeforeUnmount(() => {
+  unregisterUnsavedGuard?.()
+  unregisterUnsavedGuard = null
+})
+
+function restoreDraftFromCacheIfNeeded() {
+  if (!import.meta.client) return
+  const key = persistKey.value
+  if (!key) return
+
+  const cached = COMPOSER_DRAFT_CACHE.get(key)
+  if (!cached) return
+
+  // Only restore into an empty composer to avoid clobbering.
+  const hasAny = Boolean((draft.value?.trim() ?? '') !== '' || (composerMedia.value?.length ?? 0) > 0)
+  if (hasAny) return
+
+  draft.value = String(cached.body ?? '')
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  composerMedia.value = (cached.media ?? []) as any
+}
+
+watch(
+  [draft, composerMedia, persistKey],
+  () => {
+    if (!import.meta.client) return
+    const key = persistKey.value
+    if (!key) return
+    COMPOSER_DRAFT_CACHE.set(key, {
+      body: String(draft.value ?? ''),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      media: (composerMedia.value ?? []) as any,
+    })
+  },
+  { deep: true },
+)
+
+// If auth finishes after mount (persistKey changes from anon → userId), try a restore once.
+watch(
+  persistKey,
+  () => {
+    restoreDraftFromCacheIfNeeded()
+  },
+  { flush: 'post' },
+)
 
 const canPost = computed(() => Boolean(isAuthed.value && (viewerIsVerified.value || effectiveVisibility.value === 'onlyMe')))
 
@@ -644,6 +837,18 @@ const postButtonClass = computed(() => {
 // Composer submit
 const { submit: submitPost, submitting, submitError } = useFormSubmit(
   async () => {
+    if (mode.value === 'edit') {
+      const id = editPostId.value
+      if (!id) throw new Error('Missing editPostId.')
+      const updatedPost = await apiFetchData<import('~/types/api').FeedPost>(`/posts/${encodeURIComponent(id)}`, {
+        method: 'PATCH',
+        body: { body: draft.value },
+      })
+      emit('edited', { id, post: updatedPost })
+      toast.push({ title: 'Saved', tone: 'success', durationMs: 1600 })
+      return
+    }
+
     const mediaPayload: CreateMediaPayload[] = toCreatePayload(composerMedia.value)
     const vis = effectiveVisibility.value
 
@@ -680,12 +885,12 @@ const { submit: submitPost, submitting, submitError } = useFormSubmit(
         title: props.replyTo ? 'Reply posted' : 'Posted',
         message:
           toneVisibility === 'premiumOnly'
-            ? 'Premium-only post · Tap to view.'
+            ? 'Premium-only · Tap to view'
             : toneVisibility === 'verifiedOnly'
-              ? 'Verified-only post · Tap to view.'
+              ? 'Verified-only · Tap to view'
               : toneVisibility === 'onlyMe'
-                ? 'Only you can see this · Tap to view.'
-                : 'Tap to view.',
+                ? 'Only you can see this · Tap to view'
+                : 'Tap to view',
         tone:
           toneVisibility === 'premiumOnly'
             ? 'premiumOnly'
@@ -694,13 +899,14 @@ const { submit: submitPost, submitting, submitError } = useFormSubmit(
               : toneVisibility === 'onlyMe'
                 ? 'onlyMe'
                 : 'public',
+        // Always deep-link successful posts to their permalink.
         to: `/p/${encodeURIComponent(id)}`,
         durationMs: 2600,
       })
     }
   },
   {
-    defaultError: 'Failed to post.',
+    defaultError: mode.value === 'edit' ? 'Failed to save.' : 'Failed to post.',
     onError: (message) => {
       toast.push({ title: message, tone: 'error', durationMs: 2500 })
     },
@@ -709,7 +915,11 @@ const { submit: submitPost, submitting, submitError } = useFormSubmit(
 
 const submit = async () => {
   if (!canPost.value) return
-  if (!(draft.value.trim() || composerMedia.value.length)) return
+  if (mode.value === 'edit') {
+    if (!draft.value.trim()) return
+  } else {
+    if (!(draft.value.trim() || composerMedia.value.length)) return
+  }
   if (postCharCount.value > postMaxLen.value) return
   if (composerUploading.value) return
   if (composerHasFailedMedia.value) return
@@ -745,7 +955,9 @@ function applyInitialTextIfNeeded() {
 }
 
 onMounted(() => {
+  restoreDraftFromCacheIfNeeded()
   applyInitialTextIfNeeded()
+  seedInitialMediaIfNeeded()
   if (!props.autoFocus) return
   void nextTick().then(() => {
     resizeComposerTextarea()
@@ -766,6 +978,14 @@ watch(
   () => {
     // If the composer instance is reused and initialText is provided later, apply once.
     applyInitialTextIfNeeded()
+  },
+)
+
+watch(
+  () => props.initialMedia,
+  () => {
+    // If initial media is provided later (e.g. overlay open), seed once.
+    seedInitialMediaIfNeeded()
   },
 )
 

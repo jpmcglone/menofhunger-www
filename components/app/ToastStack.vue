@@ -1,32 +1,33 @@
 <template>
   <div class="pointer-events-none fixed inset-x-0 z-[1000]" :style="stackStyle" aria-live="polite" aria-relevant="additions">
-    <div class="mx-auto w-full max-w-lg px-3">
+    <div class="mx-auto w-full max-w-md px-3">
       <TransitionGroup name="moh-toast" tag="div" class="space-y-2">
         <div
           v-for="t in toasts"
           :key="t.id"
-          class="pointer-events-auto overflow-hidden rounded-2xl shadow-lg ring-1 ring-black/10 dark:ring-white/10"
+          class="pointer-events-auto overflow-hidden rounded-full shadow-lg ring-1 ring-black/10 dark:ring-white/10"
           :style="{ backgroundColor: bgFor(t), color: fgFor(t) }"
           role="status"
         >
-          <div class="relative px-4 py-3 pr-8">
+          <div class="flex min-h-12 items-center gap-3 px-4 py-2">
             <button
               v-if="t.to"
               type="button"
-              class="block w-full text-left"
+              class="flex min-w-0 flex-1 items-center gap-2 text-left"
               :aria-label="t.title"
               @click="onToastClick(t)"
             >
-              <div class="text-lg font-semibold leading-tight truncate">{{ t.title }}</div>
-              <div v-if="t.message" class="mt-0.5 text-sm opacity-95">{{ t.message }}</div>
+              <span class="truncate text-sm font-semibold leading-none">{{ t.title }}</span>
+              <span v-if="t.message" class="truncate text-sm opacity-90 leading-none">{{ t.message }}</span>
             </button>
-            <template v-else>
-              <div class="text-lg font-semibold leading-tight truncate">{{ t.title }}</div>
-              <div v-if="t.message" class="mt-0.5 text-sm opacity-95">{{ t.message }}</div>
-            </template>
+            <div v-else class="flex min-w-0 flex-1 items-center gap-2">
+              <span class="truncate text-sm font-semibold leading-none">{{ t.title }}</span>
+              <span v-if="t.message" class="truncate text-sm opacity-90 leading-none">{{ t.message }}</span>
+            </div>
+
             <button
               type="button"
-              class="absolute top-3 right-3 font-semibold opacity-80 hover:opacity-100 transition-opacity"
+              class="shrink-0 inline-flex h-8 w-8 items-center justify-center rounded-full font-semibold opacity-80 hover:opacity-100 transition-opacity"
               aria-label="Dismiss"
               @click.stop="dismiss(t.id)"
             >

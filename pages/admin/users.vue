@@ -74,7 +74,12 @@
                   <div class="font-semibold truncate">
                     {{ u.name || u.username }}
                   </div>
-                  <AppVerifiedBadge :status="u.verifiedStatus" :premium="u.premium" :premium-plus="u.premiumPlus" />
+                  <AppVerifiedBadge
+                    :status="u.verifiedStatus"
+                    :premium="u.premium"
+                    :premium-plus="u.premiumPlus"
+                    :steward-badge-enabled="u.stewardBadgeEnabled ?? true"
+                  />
                 </div>
                 <div class="text-sm text-gray-600 dark:text-gray-300 truncate">
                   @{{ u.username }}
@@ -284,6 +289,7 @@ type AdminUser = {
   siteAdmin: boolean
   premium: boolean
   premiumPlus: boolean
+  stewardBadgeEnabled: boolean
   verifiedStatus: 'none' | 'identity' | 'manual'
   verifiedAt: string | null
   unverifiedAt: string | null

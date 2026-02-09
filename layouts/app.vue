@@ -65,7 +65,8 @@
     </Transition>
     <AppOnboardingGate />
     <AppAuthActionModal />
-    <AppPremiumVideoModal />
+    <AppPremiumMediaModal />
+    <AppUnsavedDraftPromptModal />
     <AppReplyModal />
     <div
       :class="['overflow-hidden moh-bg moh-text moh-texture', showStatusBg ? 'moh-status-tone' : '']"
@@ -258,6 +259,8 @@
                         v-if="hydrated && appHeader?.verifiedStatus"
                         :status="appHeader.verifiedStatus"
                         :premium="Boolean(appHeader?.premium)"
+                        :premium-plus="Boolean(appHeader?.premiumPlus)"
+                        :steward-badge-enabled="appHeader?.stewardBadgeEnabled ?? true"
                       />
                     </div>
                     <div v-if="hydrated && typeof appHeader?.postCount === 'number'" class="shrink-0 text-sm moh-text-muted">
@@ -546,6 +549,11 @@
                   auto-focus
                   :show-divider="false"
                   :initial-text="composerInitialText ?? undefined"
+                  :initial-media="composerIsFromOnlyMe ? (composerSourceOnlyMePost?.media ?? []) : undefined"
+                  :allowed-visibilities="composerAllowedVisibilities ?? undefined"
+                  :create-post="composerIsFromOnlyMe ? createPostFromOnlyMeDraft : undefined"
+                  persist-key="post-modal"
+                  :register-unsaved-guard="false"
                   @posted="onComposerPosted"
                 />
               </div>
@@ -591,12 +599,13 @@ import {
   MOH_HOME_COMPOSER_IN_VIEW_KEY,
   MOH_MIDDLE_SCROLLER_KEY,
   MOH_OPEN_COMPOSER_KEY,
+  MOH_OPEN_COMPOSER_FROM_ONLYME_KEY,
   type ComposerVisibility,
 } from '~/utils/injection-keys'
 import { useBookmarkCollections } from '~/composables/useBookmarkCollections'
 import { useOnlyMePosts } from '~/composables/useOnlyMePosts'
 import { useReplyModal } from '~/composables/useReplyModal'
-import type { GetPresenceOnlineData } from '~/types/api'
+import type { FeedPost, GetPresenceOnlineData, PostVisibility } from '~/types/api'
 
 const route = useRoute()
 const colorMode = useColorMode()
@@ -723,6 +732,9 @@ const canOpenComposer = computed(() => {
 
 const composerModalOpen = ref(false)
 const composerInitialText = ref<string | null>(null)
+const composerSourceOnlyMePost = ref<FeedPost | null>(null)
+const composerIsFromOnlyMe = computed(() => Boolean(composerSourceOnlyMePost.value?.id))
+
 const { open: replyModalOpenRef } = useReplyModal()
 const replyModalOpen = computed(() => Boolean(replyModalOpenRef.value))
 const anyOverlayOpen = computed(() => composerModalOpen.value || replyModalOpen.value)
@@ -763,6 +775,35 @@ const composerVisibility = useCookie<'public' | 'verifiedOnly' | 'premiumOnly' |
   maxAge: 60 * 60 * 24 * 365,
 })
 
+// Persist the last non-onlyMe posting visibility so "publish from drafts" never defaults to onlyMe.
+const composerNonOnlyMeVisibility = useCookie<'public' | 'verifiedOnly' | 'premiumOnly'>('moh.post.visibility.feed.v1', {
+  default: () => 'public',
+  sameSite: 'lax',
+  path: '/',
+  maxAge: 60 * 60 * 24 * 365,
+})
+watch(
+  composerVisibility,
+  (v) => {
+    if (v && v !== 'onlyMe') composerNonOnlyMeVisibility.value = v
+  },
+  { immediate: true },
+)
+
+const composerAllowedVisibilities = computed<PostVisibility[] | null>(() => {
+  return composerIsFromOnlyMe.value ? ['public', 'verifiedOnly', 'premiumOnly'] : null
+})
+
+const { apiFetchData } = useApiClient()
+async function createPostFromOnlyMeDraft(body: string, visibility: PostVisibility, media: import('~/composables/useComposerMedia').CreateMediaPayload[]) {
+  const sourceId = composerSourceOnlyMePost.value?.id
+  if (!sourceId) throw new Error('Missing source post.')
+  return await apiFetchData<FeedPost>(`/posts/${encodeURIComponent(sourceId)}/publish-from-only-me`, {
+    method: 'POST',
+    body: { body, visibility, media },
+  })
+}
+
 function defaultComposerInitialTextForRoute(): string | null {
   // On /u/:username, prefill @username unless it’s the current user.
   const m = route.path.match(/^\/u\/([^/]+)$/)
@@ -791,15 +832,27 @@ function openComposerForCurrentRoute(initialText?: string | null) {
   openComposerModal(initialText)
 }
 provide(MOH_OPEN_COMPOSER_KEY, openComposerWithVisibility)
+
+function openComposerFromOnlyMe(post: FeedPost) {
+  composerSourceOnlyMePost.value = post
+  // Publishing from only-me should never use onlyMe visibility. Use last non-onlyMe (or public).
+  if (composerVisibility.value === 'onlyMe') composerVisibility.value = composerNonOnlyMeVisibility.value ?? 'public'
+  composerInitialText.value = (post?.body ?? '').trim() || null
+  composerModalOpen.value = true
+}
+provide(MOH_OPEN_COMPOSER_FROM_ONLYME_KEY, openComposerFromOnlyMe)
+
 function closeComposerModal() {
   composerModalOpen.value = false
   composerInitialText.value = null
+  composerSourceOnlyMePost.value = null
 }
 
 const { prependPost: prependOnlyMePost } = useOnlyMePosts()
 function onComposerPosted(payload: { id: string; visibility: string; post?: import('~/types/api').FeedPost }) {
   composerModalOpen.value = false
   composerInitialText.value = null
+  composerSourceOnlyMePost.value = null
   if (payload.visibility === 'onlyMe' && payload.post) {
     prependOnlyMePost(payload.post)
     if (route.path !== '/only-me') {

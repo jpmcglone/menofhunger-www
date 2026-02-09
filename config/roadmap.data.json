@@ -1,5 +1,5 @@
 {
-  "asOfDate": "Feb. 8, 2026",
+  "asOfDate": "Feb. 9, 2026",
   "intro": {
     "label": "Product roadmap",
     "title": "Where we're headed",
@@ -35,15 +35,15 @@
           "title": "Tier access (v1)",
           "items": [
             {
-              "text": "**Unverified read-only** — Read public posts and longform, follow, bookmark, and manage profile basics; no posting, replies, or reactions.",
+              "text": "**Unverified read-only (plus private notes)** — Read public posts and longform, follow, bookmark, and manage profile basics; can create **Only me** private notes/drafts; no public posting, replies, or reactions.",
               "inProgress": true
             },
             {
-              "text": "**Verified participation limits** — React and post within limits, limited replies in public threads, men-only read areas; no dialogues or DMs.",
+              "text": "**Verified participation limits** — React, post, and reply within limits (rate limits may be lower than Premium; configurable by admins); **text + links only** (no images/GIFs/video); men-only read areas; no dialogues; can reply to DMs started with them but cannot start new DMs.",
               "inProgress": true
             },
             {
-              "text": "**Premium baseline access** — Full posting and replies, member-only areas, DMs between members; paid tiers are neutral (no boosted reach).",
+              "text": "**Premium baseline access** — Full posting and replies, member-only areas, can start DMs, and can post with media; Premium is baseline (unverified/verified may be slightly suppressed); paid tiers are neutral (no boosted reach).",
               "inProgress": true
             }
           ]
@@ -380,7 +380,11 @@
         "title": "Steward tier (Premium+)",
         "items": [
           {
-            "text": "Stewards-only forum and subtle badge (opt-in)."
+            "text": "Subtle Steward badge (opt-in).",
+            "done": true
+          },
+          {
+            "text": "Stewards-only forum."
           },
           {
             "text": "Founder updates and quarterly Steward calls (strategy, philosophy, Q&A)."

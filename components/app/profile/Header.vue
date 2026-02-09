@@ -79,6 +79,7 @@
               :status="profile?.verifiedStatus"
               :premium="profile?.premium"
               :premium-plus="profile?.premiumPlus"
+              :steward-badge-enabled="profile?.stewardBadgeEnabled ?? true"
             />
           </div>
           <div class="mt-1 text-sm text-gray-500 dark:text-gray-400 flex items-center gap-2">

@@ -5,6 +5,7 @@ import type {
   RadioListener,
   WsAdminUpdatedPayload,
   WsFollowsChangedPayload,
+  WsNotificationsDeletedPayload,
   WsNotificationsNewPayload,
   WsPostsInteractionPayload,
   WsUsersSelfUpdatedPayload,
@@ -23,8 +24,10 @@ const PRESENCE_SOCKET_CONNECTING_KEY = 'presence-socket-connecting'
 const NOTIFICATIONS_UNDELIVERED_COUNT_KEY = 'notifications-undelivered-count'
 const MESSAGES_UNREAD_COUNTS_KEY = 'messages-unread-counts'
 const NOTIFICATION_SOUND_PATH = '/sounds/notification.mp3'
+const MESSAGE_SOUND_PATH = '/sounds/new-message.mp3'
 /** Min ms between plays so we don't ding repeatedly (e.g. multiple sockets on mobile or burst of events). */
 const NOTIFICATION_SOUND_COOLDOWN_MS = 3000
+const MESSAGE_SOUND_COOLDOWN_MS = 1800
 
 export type PresenceOnlinePayload = { userId: string; user?: FollowListUser; lastConnectAt?: number; idle?: boolean }
 export type PresenceOfflinePayload = { userId: string }
@@ -50,6 +53,7 @@ export type MessagesCallback = {
 
 export type NotificationsCallback = {
   onNew?: (payload: WsNotificationsNewPayload) => void
+  onDeleted?: (payload: WsNotificationsDeletedPayload) => void
 }
 
 export type FollowsCallback = {
@@ -104,6 +108,8 @@ export function usePresence() {
   }))
   /** Previous undelivered count so we only play in-app sound when count increases (not on load or mark-read). */
   const previousNotificationCountRef = ref<number | null>(null)
+  /** Suppress sounds during initial sync after (re)connect. */
+  let suppressSoundsUntilMs = 0
   const isSocketConnected = useState(PRESENCE_SOCKET_CONNECTED_KEY, () => false)
   const isSocketConnecting = useState(PRESENCE_SOCKET_CONNECTING_KEY, () => false)
   /** Brief "just reconnected" state for connection bar green flash before hide. */
@@ -427,29 +433,47 @@ export function usePresence() {
     })
 
     let lastNotificationSoundPlayedAt = 0
+    let lastMessageSoundPlayedAt = 0
+    function maybePlayNotificationSound() {
+      const now = Date.now()
+      if (now < suppressSoundsUntilMs) return
+      const withinCooldown = now - lastNotificationSoundPlayedAt < NOTIFICATION_SOUND_COOLDOWN_MS
+      if (withinCooldown) return
+      if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return
+      lastNotificationSoundPlayedAt = now
+      void sfx.playUrl(NOTIFICATION_SOUND_PATH, { volume: 0.9 })
+    }
+    function maybePlayMessageSound() {
+      const now = Date.now()
+      if (now < suppressSoundsUntilMs) return
+      const withinCooldown = now - lastMessageSoundPlayedAt < MESSAGE_SOUND_COOLDOWN_MS
+      if (withinCooldown) return
+      if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return
+      lastMessageSoundPlayedAt = now
+      void sfx.playUrl(MESSAGE_SOUND_PATH, { volume: 0.5 })
+    }
+
     socket.on('notifications:updated', (data: { undeliveredCount?: number }) => {
       const raw = typeof data?.undeliveredCount === 'number' ? data.undeliveredCount : 0
       const newCount = Math.max(0, Math.floor(raw))
-      const prev = previousNotificationCountRef.value ?? 0
       notificationUndeliveredCount.value = newCount
-      const now = Date.now()
-      const withinCooldown = now - lastNotificationSoundPlayedAt < NOTIFICATION_SOUND_COOLDOWN_MS
-      if (
-        newCount > prev &&
-        !withinCooldown &&
-        typeof document !== 'undefined' &&
-        document.visibilityState === 'visible'
-      ) {
-        lastNotificationSoundPlayedAt = now
-        void sfx.playUrl(NOTIFICATION_SOUND_PATH, { volume: 0.9 })
-      }
       previousNotificationCountRef.value = newCount
     })
 
     socket.on('notifications:new', (data: WsNotificationsNewPayload) => {
+      // Play sound for realtime arrivals, even if viewer is on /notifications.
+      // (Count updates can be suppressed if the page marks delivered immediately.)
+      maybePlayNotificationSound()
       if (!notificationsCallbacks.value.size) return
       for (const cb of notificationsCallbacks.value) {
         cb.onNew?.(data)
+      }
+    })
+
+    socket.on('notifications:deleted', (data: WsNotificationsDeletedPayload) => {
+      if (!notificationsCallbacks.value.size) return
+      for (const cb of notificationsCallbacks.value) {
+        cb.onDeleted?.(data)
       }
     })
 
@@ -463,6 +487,13 @@ export function usePresence() {
     })
 
     socket.on('messages:new', (data: { conversationId?: string; message?: unknown }) => {
+      // Play sound only for realtime deliveries (not initial unread count sync).
+      // Avoid playing for your own sent message when sender id is present.
+      const meId = user.value?.id ?? null
+      const senderId = (data as any)?.message?.sender?.id ?? null
+      if (!meId || !senderId || senderId !== meId) {
+        maybePlayMessageSound()
+      }
       if (!messagesCallbacks.value.size) return
       for (const cb of messagesCallbacks.value) {
         cb.onMessage?.(data)
@@ -542,6 +573,10 @@ export function usePresence() {
       wasSocketConnectedOnce.value = true
       isSocketConnected.value = true
       isSocketConnecting.value = false
+      // Prevent dings on initial load/reconnect while the server syncs unread counts / backlog.
+      suppressSoundsUntilMs = Date.now() + 1500
+      // Preload notification + message sounds for low-latency playback (best-effort).
+      void sfx.preloadUrls([NOTIFICATION_SOUND_PATH, MESSAGE_SOUND_PATH])
       // Show current user as online immediately (avatar / status) until server sends real presence
       const me = user.value?.id
       if (me) applyUserPresence(me, true, false)

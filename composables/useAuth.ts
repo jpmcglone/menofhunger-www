@@ -16,6 +16,7 @@ export type AuthUser = {
   siteAdmin?: boolean
   premium?: boolean
   premiumPlus?: boolean
+  stewardBadgeEnabled?: boolean
   followVisibility?: 'all' | 'verified' | 'premium' | 'none'
   verifiedStatus?: 'none' | 'identity' | 'manual'
   verifiedAt?: string | null
@@ -61,6 +62,7 @@ export function useAuth() {
               bio: u.bio,
               premium: u.premium,
               premiumPlus: u.premiumPlus,
+              stewardBadgeEnabled: u.stewardBadgeEnabled,
               verifiedStatus: u.verifiedStatus as any,
               avatarUrl: u.avatarUrl,
               bannerUrl: u.bannerUrl,

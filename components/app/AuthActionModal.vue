@@ -31,7 +31,10 @@ const { open, kind, action, hide } = useAuthActionModal()
 
 const title = computed(() => {
   if (kind.value === 'login') return 'Log in to continue'
-  if (kind.value === 'verify') return 'Verify to reply'
+  if (kind.value === 'verify') {
+    if (action.value === 'useAsDraft') return 'Verify to use drafts'
+    return 'Verify to reply'
+  }
   if (kind.value === 'setUsername') return 'Set a username to boost'
   return 'Continue'
 })
@@ -43,6 +46,9 @@ const message = computed(() => {
     return 'You need to log in to boost posts.'
   }
   if (kind.value === 'verify') {
+    if (action.value === 'useAsDraft') {
+      return 'Using “Use as draft” is available once your account is verified. Verify your account to continue.'
+    }
     return 'Replying is for verified members. Verify your account to reply.'
   }
   // setUsername

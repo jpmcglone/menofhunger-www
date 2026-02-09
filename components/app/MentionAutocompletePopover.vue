@@ -40,6 +40,8 @@
                   v-if="u.verifiedStatus && u.verifiedStatus !== 'none'"
                   :status="u.verifiedStatus"
                   :premium="Boolean(u.premium)"
+                  :premium-plus="Boolean(u.premiumPlus)"
+                  :steward-badge-enabled="u.stewardBadgeEnabled ?? true"
                   size="xs"
                 />
               </div>

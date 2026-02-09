@@ -98,6 +98,10 @@
               <span class="ml-1">boosted your</span>
               <span class="ml-1" :class="subjectPostVisibilityTextClass(notification)">post</span>
             </template>
+            <template v-else-if="notification.kind === 'followed_post'">
+              <span class="ml-1">shared a</span>
+              <span class="ml-1 font-semibold" :class="subjectPostVisibilityTextClass(notification)">post</span>
+            </template>
               <template v-else>
                 <span class="ml-1">{{ titleSuffix(notification) }}</span>
               </template>

@@ -15,7 +15,13 @@
           <div class="text-sm font-semibold truncate text-gray-900 dark:text-gray-50">
             {{ displayName }}
           </div>
-          <AppVerifiedBadge :status="user.verifiedStatus" :premium="user.premium" :premium-plus="user.premiumPlus" size="xs" />
+          <AppVerifiedBadge
+            :status="user.verifiedStatus"
+            :premium="user.premium"
+            :premium-plus="user.premiumPlus"
+            :steward-badge-enabled="user.stewardBadgeEnabled ?? true"
+            size="xs"
+          />
         </div>
         <div class="text-xs text-gray-600 dark:text-gray-300 truncate">
           {{ handle }}
@@ -30,7 +36,13 @@
           <div class="text-sm font-semibold truncate text-gray-900 dark:text-gray-50">
             {{ displayName }}
           </div>
-          <AppVerifiedBadge :status="user.verifiedStatus" :premium="user.premium" :premium-plus="user.premiumPlus" size="xs" />
+          <AppVerifiedBadge
+            :status="user.verifiedStatus"
+            :premium="user.premium"
+            :premium-plus="user.premiumPlus"
+            :steward-badge-enabled="user.stewardBadgeEnabled ?? true"
+            size="xs"
+          />
         </div>
         <div class="text-xs text-gray-600 dark:text-gray-300 truncate">
           {{ handle }}

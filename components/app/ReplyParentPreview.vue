@@ -37,6 +37,7 @@
             :status="author?.verifiedStatus ?? 'none'"
             :premium="author?.premium ?? false"
             :premium-plus="author?.premiumPlus ?? false"
+            :steward-badge-enabled="author?.stewardBadgeEnabled ?? true"
           />
         </NuxtLink>
         <AppVerifiedBadge
@@ -44,6 +45,7 @@
           :status="author?.verifiedStatus ?? 'none'"
           :premium="author?.premium ?? false"
           :premium-plus="author?.premiumPlus ?? false"
+          :steward-badge-enabled="author?.stewardBadgeEnabled ?? true"
         />
         <NuxtLink
           v-if="authorProfilePath"

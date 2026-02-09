@@ -1,46 +1,22 @@
 ---
-description: Core engineering conventions for menofhunger-www (Nuxt + PrimeVue).
+description: menofhunger-www core conventions (Nuxt + PrimeVue)
+alwaysApply: true
 ---
 
-## Primary goals
-- Keep UI **consistent, composable, and responsive**.
-- Prefer **reusable primitives** (components + composables) over repeated inline patterns.
-- Keep client/server behavior predictable (SSR-safe where needed).
+## Backend + API calling
+- **No Nuxt server API** for product features (`server/api/**`): use `menofhunger-api`
+- Call the backend via `useApiClient()` (no ad-hoc fetch/base URLs)
+- Success envelope: `{ data: T }` (+ optional `pagination` for lists)
 
-## Data + API calling
-- All API calls must go through `useApiClient()` (no ad-hoc `apiBaseUrl`/`joinUrl`/`credentials` duplication).
-- Parse API errors via `getApiErrorMessage()`; show a helpful message inline.
-- API success responses are `{ data: T }` with optional `pagination` (e.g. `nextCursor`, `counts`, `totalOnline`). Use `apiFetchData<T>()` when only the payload is needed; use `apiFetch<ApiEnvelope<T>>()` and read `res.data` and `res.pagination` for paginated lists.
+## When you add/change an API response
+- Update API DTOs: `menofhunger-api/src/common/dto/**`
+- Update web types: `menofhunger-www/types/api.ts`
+- Run `npx nuxi typecheck` + `node scripts/validate-api-types.mjs`
 
-## Auth + routing
-- Cookie-based auth; always call with `credentials: include` (handled by `useApiClient()`).
-- Do not duplicate auth hydration logic:
-  - use `useAuth().initAuth()` / `ensureLoaded()` only.
-- Admin pages must be hidden from non-admins:
-  - use middleware that returns **404** for non-admins.
+## Layout rule (pick one)
+- Never show both the layout title bar **and** an in-page header
+- If you need an in-page header, set route meta to hide the top bar (e.g. `hideTopBar: true`)
 
-## Layout rules
-- Route-based layout behavior belongs in `useLayoutRules()` (not inline in layouts/pages).
-- Complex scroll behavior belongs in a composable (`useCoupledScroll()`).
-- For master/detail pages (messages/admin):
-  - on tiny viewports show **one pane** at a time (list OR detail).
-
-## UI primitives
-- Prefer shared components for repeated patterns:
-  - alerts (`AppInlineAlert`)
-  - headers (`AppPageHeader`)
-  - verified badge (`AppVerifiedBadge`)
-- Keep badges/icons visually consistent across pages.
-
-## Styling
-- Tailwind utilities are fine, but avoid repeating long class strings across pages.
-- Prefer subtle animations and stable layout (avoid jumpy transitions).
-- **Do not use Card components for page content** — pages should not be wrapped in cards unless explicitly requested.
-  - Use semantic HTML with appropriate headings (`h1`, `h2`, etc.) and spacing instead.
-  - For profile pages: banners should be full-width (no margin), while content below should have appropriate margins.
-
-## Workflow expectations
-- After substantive changes, run:
-  - `npx nuxi typecheck`
-  - `npm run build` (when relevant)
+## Admin
+- Hide admin pages from non-admins (**404** in middleware)
 

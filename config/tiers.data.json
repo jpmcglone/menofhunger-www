@@ -4,7 +4,7 @@
     "title": "Unverified, Verified, Premium, and Premium+ - how the tiers work.",
     "description": "Unverified: read. Verified: real, but limited. Premium: speak and build. Premium+: steward and support."
   },
-  "metaDescription": "Men of Hunger tiers: Unverified (read), Verified (real but limited), Premium (speak and build), Premium+ (steward and support).",
+  "metaDescription": "Men of Hunger tiers: Unverified (read + private notes), Verified (real but limited), Premium (participate fully), Premium+ (steward and support).",
   "tiers": [
     {
       "id": "unverified",
@@ -18,11 +18,12 @@
         { "text": "Read public posts and longform" },
         { "text": "Follow accounts" },
         { "text": "Save / bookmark posts" },
+        { "text": "Create private notes (Only me posts / drafts)" },
         { "text": "Manage profile basics (name, bio, avatar)" },
         { "text": "See public metrics (boosts, replies count)" }
       ],
       "cannot": [
-        { "text": "Post" },
+        { "text": "Post publicly" },
         { "text": "Reply" },
         { "text": "React meaningfully" },
         { "text": "Join men-only areas" },
@@ -48,8 +49,10 @@
       "can": [
         { "text": "Everything Unverified can do" },
         { "text": "React (boosts / acknowledgments)" },
-        { "text": "Limited posting (short posts only)" },
-        { "text": "Limited replies in public threads (no dialogues)", "comingSoon": true },
+        { "text": "Post in public threads (within rate limits; may be lower than Premium)" },
+        { "text": "Reply in public threads (no dialogues)" },
+        { "text": "Reply to DMs started with them (cannot start new DMs)" },
+        { "text": "Text + links only (no images/GIFs/video)" },
         { "text": "Access men-only read areas", "comingSoon": true },
         { "text": "Join groups with limited participation", "comingSoon": true }
       ],
@@ -58,7 +61,7 @@
         { "text": "Start dialogues" },
         { "text": "Longform publishing" },
         { "text": "Create groups" },
-        { "text": "DM freely" },
+        { "text": "Start new DMs freely" },
         { "text": "Access subscriber-only areas" },
         { "text": "Monetize or promote content" }
       ],
@@ -87,10 +90,10 @@
         { "text": "Full replies everywhere allowed" },
         { "text": "Access men-only + subscriber-only areas" },
         { "text": "DM other members" },
-        { "text": "Be algorithmically neutral (not boosted, not suppressed)" },
+        { "text": "Baseline ranking (unverified/verified may be slightly suppressed)" },
         { "text": "Start and participate in Dialogues", "comingSoon": true },
         { "text": "Publish longform articles", "comingSoon": true },
-        { "text": "Create posts with media", "comingSoon": true },
+        { "text": "Create posts with media (images, GIFs, video)" },
         { "text": "Participate fully in groups", "comingSoon": true },
         { "text": "See no ads in member areas", "comingSoon": true },
         { "text": "Edit posts within a reasonable window", "comingSoon": true }
@@ -124,7 +127,7 @@
       "who": "Patrons, builders, long-term supporters. Not elites.",
       "can": [
         { "text": "Everything Premium can do" },
-        { "text": "Subtle Steward badge (opt-in)", "comingSoon": true },
+        { "text": "Subtle Steward badge (opt-in)" },
         { "text": "Access to Stewards-only forum", "comingSoon": true },
         { "text": "Quarterly Steward Call (strategy, philosophy, Q&A)", "comingSoon": true },
         { "text": "Monthly written founder update", "comingSoon": true },

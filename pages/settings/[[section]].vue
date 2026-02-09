@@ -158,6 +158,7 @@
                       :status="authUser?.verifiedStatus ?? 'none'"
                       :premium="Boolean(authUser?.premium)"
                       :premium-plus="Boolean(authUser?.premiumPlus)"
+                      :steward-badge-enabled="authUser?.stewardBadgeEnabled ?? true"
                     />
                   </div>
 
@@ -231,6 +232,43 @@
 
                 <div class="text-xs moh-text-muted">
                   Provider integration isn’t live yet. For now, your request will show as pending until an admin manually reviews it.
+                </div>
+
+                <div
+                  v-if="authUser?.premiumPlus"
+                  class="rounded-xl border moh-border p-3 moh-surface space-y-3 text-sm"
+                >
+                  <div class="flex items-start justify-between gap-4">
+                    <div class="space-y-1">
+                      <div class="font-semibold text-gray-900 dark:text-gray-50">Steward badge</div>
+                      <div class="text-xs moh-text-muted">
+                        Show a Steward (Premium+) badge next to your verified badge across the app.
+                      </div>
+                    </div>
+                    <Checkbox
+                      v-model="stewardBadgeEnabledInput"
+                      binary
+                      inputId="moh-steward-badge-enabled"
+                      :disabled="stewardBadgeSaving"
+                    />
+                  </div>
+
+                  <div class="flex flex-wrap items-center gap-3">
+                    <Button
+                      label="Save"
+                      severity="secondary"
+                      :loading="stewardBadgeSaving"
+                      :disabled="stewardBadgeSaving || !stewardBadgeDirty"
+                      @click="saveStewardBadge"
+                    >
+                      <template #icon>
+                        <Icon name="tabler:check" aria-hidden="true" />
+                      </template>
+                    </Button>
+                    <div v-if="stewardBadgeSaved" class="text-sm text-green-700 dark:text-green-300">Saved.</div>
+                  </div>
+
+                  <AppInlineAlert v-if="stewardBadgeError" severity="danger">{{ stewardBadgeError }}</AppInlineAlert>
                 </div>
               </div>
 
@@ -823,6 +861,37 @@ const { save: savePrivacyRequest, saving: privacySaving, saved: privacySaved } =
   },
 )
 
+// Premium+ steward badge toggle
+const stewardBadgeEnabledInput = ref<boolean>(true)
+const stewardBadgeError = ref<string | null>(null)
+
+watch(
+  () => authUser.value?.stewardBadgeEnabled,
+  (v) => {
+    // ON by default when field is missing (defensive).
+    stewardBadgeEnabledInput.value = v !== false
+  },
+  { immediate: true },
+)
+
+const stewardBadgeDirty = computed(() => (authUser.value?.stewardBadgeEnabled ?? true) !== stewardBadgeEnabledInput.value)
+
+const { save: saveStewardBadgeRequest, saving: stewardBadgeSaving, saved: stewardBadgeSaved } = useFormSave(
+  async () => {
+    const result = await apiFetchData<{ user: import('~/composables/useAuth').AuthUser }>('/users/me/settings', {
+      method: 'PATCH',
+      body: { stewardBadgeEnabled: stewardBadgeEnabledInput.value }
+    })
+    authUser.value = result.user ?? authUser.value
+  },
+  {
+    defaultError: 'Failed to save steward badge.',
+    onError: (message) => {
+      stewardBadgeError.value = message
+    },
+  },
+)
+
 watch(usernameInput, () => {
   // Clear "Saved" when they edit the field.
   saved.value = false
@@ -860,6 +929,12 @@ async function savePrivacy() {
   privacyError.value = null
   privacySaved.value = false
   await savePrivacyRequest()
+}
+
+async function saveStewardBadge() {
+  stewardBadgeError.value = null
+  stewardBadgeSaved.value = false
+  await saveStewardBadgeRequest()
 }
 
 function sendFeedback() {
