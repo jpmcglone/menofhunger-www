@@ -29,16 +29,17 @@
     </div>
     <!-- Presence: green (online), clock (idle), yellow (connecting); overlays bottom-right corner -->
     <template v-if="showPresence">
+    <!-- Idle: show only the clock (no extra outer circle), same size as the online dot -->
     <span
       v-if="effectivePresenceStatus === 'idle'"
-      class="absolute flex items-center justify-center rounded-full border-2 border-white text-white dark:border-zinc-900 dark:text-gray-400"
-      :style="idleDotStyle"
+      class="absolute text-white"
+      :style="presenceDotFullStyle"
       aria-hidden="true"
     >
-      <!-- Filled clock with see-through hands (single shape, no extra circle behind) -->
+      <!-- Filled clock with see-through hands -->
       <svg
         viewBox="0 0 24 24"
-        class="h-full w-full p-[15%]"
+        class="h-full w-full p-[10%]"
         fill="currentColor"
         aria-hidden="true"
       >
@@ -193,22 +194,6 @@ const presenceDotFullStyle = computed<Record<string, string | number>>(() => {
     bottom: `${inset}px`,
     right: `${inset}px`,
     opacity: effectivePresenceStatus.value !== 'offline' ? 1 : 0,
-  }
-})
-
-// Idle dot: slightly larger than the green/other presence dots; no background so only the SVG clock shows
-const idleDotStyle = computed<Record<string, string | number>>(() => {
-  const d = diameterPx.value
-  const baseScale = props.presenceScale ?? 0.25
-  const scale = Math.max(0.1, Math.min(0.5, baseScale * 1.15))
-  const size = Math.max(6, Math.round(d * scale))
-  const ratio = Math.max(0.1, Math.min(0.5, props.presenceInsetRatio ?? 0.5))
-  const inset = Math.round(-size * ratio)
-  return {
-    width: `${size}px`,
-    height: `${size}px`,
-    bottom: `${inset}px`,
-    right: `${inset}px`,
   }
 })
 </script>

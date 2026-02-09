@@ -220,7 +220,7 @@ import { visibilityTagClasses, postHighlightClasses } from '~/utils/post-visibil
 
 definePageMeta({
   layout: 'app',
-  title: 'Profile'
+  title: 'Profile',
 })
 
 const route = useRoute()

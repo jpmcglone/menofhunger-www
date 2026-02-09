@@ -1,0 +1,167 @@
+{
+  "intro": {
+    "label": "Membership",
+    "title": "Unverified, Verified, Premium, and Premium+ - how the tiers work.",
+    "description": "Unverified: read. Verified: real, but limited. Premium: speak and build. Premium+: steward and support."
+  },
+  "metaDescription": "Men of Hunger tiers: Unverified (read), Verified (real but limited), Premium (speak and build), Premium+ (steward and support).",
+  "tiers": [
+    {
+      "id": "unverified",
+      "name": "Unverified",
+      "subtitle": "Free, logged in",
+      "price": {
+        "label": "Free"
+      },
+      "who": "Curious men. Lurkers. Readers. Zero trust assumed.",
+      "can": [
+        { "text": "Read public posts and longform" },
+        { "text": "Follow accounts" },
+        { "text": "Save / bookmark posts" },
+        { "text": "Manage profile basics (name, bio, avatar)" },
+        { "text": "See public metrics (boosts, replies count)" }
+      ],
+      "cannot": [
+        { "text": "Post" },
+        { "text": "Reply" },
+        { "text": "React meaningfully" },
+        { "text": "Join men-only areas" },
+        { "text": "DM anyone" },
+        { "text": "Create groups" },
+        { "text": "Participate in dialogues" }
+      ],
+      "why": [
+        "Keeps the funnel wide",
+        "Preserves public visibility",
+        "Allows observation without contamination",
+        "This tier produces attention, not culture."
+      ]
+    },
+    {
+      "id": "verified",
+      "name": "Verified",
+      "subtitle": "Free, identity-verified",
+      "price": {
+        "label": "Free"
+      },
+      "who": "Real men who've proven identity but haven't committed financially.",
+      "can": [
+        { "text": "Everything Unverified can do" },
+        { "text": "React (boosts / acknowledgments)" },
+        { "text": "Limited posting (short posts only)" },
+        { "text": "Limited replies in public threads (no dialogues)", "comingSoon": true },
+        { "text": "Access men-only read areas", "comingSoon": true },
+        { "text": "Join groups with limited participation", "comingSoon": true }
+      ],
+      "cannot": [
+        { "text": "Full posting freedom" },
+        { "text": "Start dialogues" },
+        { "text": "Longform publishing" },
+        { "text": "Create groups" },
+        { "text": "DM freely" },
+        { "text": "Access subscriber-only areas" },
+        { "text": "Monetize or promote content" }
+      ],
+      "why": [
+        "Establishes real-human baseline",
+        "Improves tone vs anonymous internet",
+        "Creates a clear upgrade moment",
+        "This tier proves who you are, not that you're invested."
+      ],
+      "cta": {
+        "label": "Verify"
+      }
+    },
+    {
+      "id": "premium",
+      "name": "Premium",
+      "subtitle": "Member",
+      "price": {
+        "amount": "$25",
+        "interval": "/ month"
+      },
+      "who": "Committed participants. This is the real community.",
+      "can": [
+        { "text": "Everything Verified can do" },
+        { "text": "Unlimited posting (within rate limits)" },
+        { "text": "Full replies everywhere allowed" },
+        { "text": "Access men-only + subscriber-only areas" },
+        { "text": "DM other members" },
+        { "text": "Be algorithmically neutral (not boosted, not suppressed)" },
+        { "text": "Start and participate in Dialogues", "comingSoon": true },
+        { "text": "Publish longform articles", "comingSoon": true },
+        { "text": "Create posts with media", "comingSoon": true },
+        { "text": "Participate fully in groups", "comingSoon": true },
+        { "text": "See no ads in member areas", "comingSoon": true },
+        { "text": "Edit posts within a reasonable window", "comingSoon": true }
+      ],
+      "cannot": [
+        { "text": "Override moderation" },
+        { "text": "Influence ranking" },
+        { "text": "Bypass rules" },
+        { "text": "Control product direction" },
+        { "text": "Access steward-only spaces" }
+      ],
+      "why": [
+        "This is the economic engine",
+        "This is where culture lives",
+        "This is where trust compounds",
+        "If you can speak here, you've paid the price to care."
+      ],
+      "cta": {
+        "label": "Get Premium"
+      }
+    },
+    {
+      "id": "premiumPlus",
+      "name": "Premium+",
+      "subtitle": "Steward",
+      "price": {
+        "amount": "$75",
+        "interval": "/ month"
+      },
+      "badge": "Best perks",
+      "who": "Patrons, builders, long-term supporters. Not elites.",
+      "can": [
+        { "text": "Everything Premium can do" },
+        { "text": "Subtle Steward badge (opt-in)", "comingSoon": true },
+        { "text": "Access to Stewards-only forum", "comingSoon": true },
+        { "text": "Quarterly Steward Call (strategy, philosophy, Q&A)", "comingSoon": true },
+        { "text": "Monthly written founder update", "comingSoon": true },
+        { "text": "Early access to new features / betas", "comingSoon": true },
+        { "text": "No ads anywhere while logged in", "comingSoon": true },
+        { "text": "Better feed defaults (verified + subscribed first)", "comingSoon": true },
+        { "text": "Advanced mute / filter controls", "comingSoon": true },
+        { "text": "Better longform reading & writing tools", "comingSoon": true },
+        { "text": "Higher media limits (size / quality)", "comingSoon": true },
+        { "text": "Extended edit window", "comingSoon": true },
+        { "text": "More saved drafts", "comingSoon": true },
+        { "text": "Priority support inbox", "comingSoon": true },
+        { "text": "Faster moderation review on reports (not different outcomes)", "comingSoon": true },
+        { "text": "Priority account recovery", "comingSoon": true },
+        { "text": "Concierge onboarding (optional / limited)", "comingSoon": true },
+        { "text": "Ability to create one private group", "comingSoon": true },
+        { "text": "Higher group member caps", "comingSoon": true },
+        { "text": "Event / RSVP tools (later phase)", "comingSoon": true }
+      ],
+      "cannot": [
+        { "text": "No boosted reach" },
+        { "text": "No special ranking" },
+        { "text": "No moderation immunity" },
+        { "text": "No veto power" },
+        { "text": "No control over others" },
+        { "text": "No influence over who gets heard" }
+      ],
+      "why": [
+        "Funds moderation, legal, and hiring",
+        "Creates aligned patrons, not power users",
+        "Keeps control with the founder",
+        "Premium+ supports the house. Premium lives in the house."
+      ],
+      "cta": {
+        "label": "Get Premium+"
+      }
+    }
+  ],
+  "footerNote": "Verification is free and required to post publicly. Premium and Premium+ are paid subscriptions - pricing and billing in Settings."
+}

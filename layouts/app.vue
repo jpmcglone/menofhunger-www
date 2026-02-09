@@ -667,6 +667,8 @@ const shouldCapMiddleColumn = computed(() => {
   if (route.path === '/radio') return false
   if (route.path === '/tiers' || route.path.startsWith('/tiers/')) return false
   if (route.path === '/settings' || route.path.startsWith('/settings/')) return false
+  // Comparison page is designed to use the full center column width.
+  if (route.path === '/comparison' || route.path.startsWith('/comparison/')) return false
   return true
 })
 

@@ -1,9 +1,9 @@
 {
-  "asOfDate": "Feb. 5, 2026",
+  "asOfDate": "Feb. 8, 2026",
   "intro": {
     "label": "Product roadmap",
     "title": "Where we're headed",
-    "description": "We’re building in phases, but the order is driven by a simple rule: the easiest things that are also essential ship first. That means trust and safety (identity + account states + reporting) come early, then content depth and discovery, then bigger bets like longform publishing and unified monetization."
+    "description": "We’re building in phases, but the order is driven by a simple rule: the easiest things that are also essential ship first. That means trust, tier access, and safety come early, then content depth and discovery, then deeper community and stewardship."
   },
   "phases": [
     {
@@ -12,7 +12,7 @@
       "datetime": "2026-03-01",
       "badge": "Phase 1 — Trust-first Beta",
       "title": "Early Beta: join, verify, and participate safely",
-      "description": "Make it easy to join and start posting, but keep the community safe from day one: account states (suspension/ban), identity verification (provider-agnostic), and reporting with admin triage. Ship lightweight ops (Sentry) and analytics early so we can learn and fix quickly. Premium subscriptions start only once verification is in place (premium requires verified).",
+      "description": "Make it easy to join and read, verify for trust, and gate participation by tier. Ship account states, reporting, and paid membership with enforced entitlements.",
       "isHighlight": true,
       "chunks": [
         {
@@ -22,18 +22,37 @@
               "text": "**Account states** — Active / suspended / banned with consistent enforcement (posting, messaging, uploads, and real-time connections)."
             },
             {
-              "text": "**Identity verification (provider-agnostic)** — We submit verification requests to an external provider, trust the response, and store a simple status lifecycle (**pending → verified → revoked**) with timestamps and reason codes."
+              "text": "**Identity verification (provider-agnostic)** — We submit verification requests to an external provider, trust the response, and store a simple status lifecycle (**pending → verified → revoked**) with timestamps and reason codes.",
+              "done": true
             },
             {
-              "text": "**Premium requires verified** — You can’t subscribe to (or keep) premium unless you’re verified. This is enforced in upgrade flow and in premium-only actions (premium-only visibility, video, etc.)."
+              "text": "**Premium requires verified** — You can’t subscribe to (or keep) premium unless you’re verified. This is enforced in upgrade flow and in premium-only actions (member areas, media, etc.).",
+              "done": true
             }
           ]
         },
         {
-          "title": "Premium",
+          "title": "Tier access (v1)",
           "items": [
             {
-              "text": "**Stripe subscriptions** — Subscribe with a card; premium unlocks longer posts, video uploads, and premium-only content. Launch is gated on identity verification (premium requires verified). Not live yet."
+              "text": "**Unverified read-only** — Read public posts and longform, follow, bookmark, and manage profile basics; no posting, replies, or reactions.",
+              "inProgress": true
+            },
+            {
+              "text": "**Verified participation limits** — React and post within limits, limited replies in public threads, men-only read areas; no dialogues or DMs.",
+              "inProgress": true
+            },
+            {
+              "text": "**Premium baseline access** — Full posting and replies, member-only areas, DMs between members; paid tiers are neutral (no boosted reach).",
+              "inProgress": true
+            }
+          ]
+        },
+        {
+          "title": "Premium membership (launch)",
+          "items": [
+            {
+              "text": "**Stripe subscriptions** — Premium ($25/mo) and Premium+ ($75/mo) billing with verification gating; entitlements are enforced in the upgrade flow and settings. Premium+ is a supporter tier with no special power."
             }
           ]
         },
@@ -77,7 +96,8 @@
           "title": "Reporting (minimal for launch)",
           "items": [
             {
-              "text": "**Report post / Report user** — “Report” in the post menu and on profiles; pick a reason and add details; we store it and admins can triage. A fuller queue and resolution flow follows in April."
+              "text": "**Report post / Report user** — “Report” in the post menu and on profiles; pick a reason and add details; we store it and admins can triage. A fuller queue and resolution flow follows in April.",
+              "done": true
             }
           ]
         },
@@ -119,12 +139,13 @@
               "done": true
             },
             {
-              "text": "Hashtags & topics (v1) — Add hashtags to posts and simple topic pages so you can find and follow themes that matter to you."
+              "text": "Hashtags & topics (v1) — Add hashtags to posts and simple topic pages so you can find and follow themes that matter to you.",
+              "done": true
             }
           ]
         },
         {
-          "title": "Content & premium",
+          "title": "Content & member experience",
           "items": [
             {
               "text": "**Edit post (with limits + history)** — You can edit up to **3 times in 30 minutes**; posts show an **edited** label; we keep previous versions so we can review changes."
@@ -134,6 +155,9 @@
             },
             {
               "text": "**Admin-only restore** — Restore soft-deleted posts (admin-only for now)."
+            },
+            {
+              "text": "**Member experience (v1)** — No ads in member areas; paid tiers remain neutral (no boosted reach)."
             },
             {
               "text": "Manage subscription — Stripe customer portal (manage or cancel); optional annual plan or one-off support; Contact/Help in settings."
@@ -147,7 +171,8 @@
           "title": "Reporting system (stronger admin triage)",
           "items": [
             {
-              "text": "**Report queue** — Admin list with filters (post vs user, category) and resolution states (pending, dismissed, action taken)."
+              "text": "**Report queue** — Admin list with filters (post vs user, category) and resolution states (pending, dismissed, action taken).",
+              "done": true
             },
             {
               "text": "Optional: we notify you when we’ve taken action (or you can check report status in-app), so you know we’re on it."
@@ -164,7 +189,8 @@
               "text": "**Sitemap** — A sitemap for public profiles and public posts only; restricted tiers never appear."
             },
             {
-              "text": "**Canonical + share previews** — Canonical URLs everywhere; share previews never leak restricted content. Premium content also respects the rule: **premium requires verified**."
+              "text": "**Canonical + share previews** — Canonical URLs everywhere; share previews never leak restricted content. Premium content also respects the rule: **premium requires verified**.",
+              "inProgress": true
             }
           ]
         },
@@ -192,7 +218,7 @@
       "datetime": "2026-05-01",
       "badge": "Phase 2 — Depth & trust",
       "title": "Groups, Chat, safety & data",
-      "description": "Ship deeper ways to connect (groups + chat), strengthen safety controls, and add the first longform publishing path (articles). Add real-time post-thread updates so conversations feel alive. Keep compliance minimal but real (delete/export).",
+      "description": "Ship deeper ways to connect (groups, dialogues, chat), strengthen safety controls, and add the first longform publishing path (articles). Add real-time post-thread updates so conversations feel alive. Keep compliance minimal but real (delete/export).",
       "isHighlight": false,
       "chunks": [
         {
@@ -202,8 +228,11 @@
               "text": "Groups (v1) — Create and join groups; group feed or group-scoped posts so you have pockets of accountability and conversation."
             },
             {
+              "text": "Dialogues (v1) — Start and participate in structured dialogues (premium required)."
+            },
+            {
               "text": "Chat — Real chats: list conversations, send and receive, mark read; only you and the other person see the thread.",
-              "inProgress": true
+              "done": true
             }
           ]
         },
@@ -227,7 +256,8 @@
           "title": "Safety & control",
           "items": [
             {
-              "text": "Block user — Block so they can’t see your posts, chat you, or appear in your feed; manage your block list in settings."
+              "text": "Block user — Block so they can’t see your posts, chat you, or appear in your feed; manage your block list in settings.",
+              "inProgress": true
             },
             {
               "text": "Mute user — “See less”; hide their posts in your feed without unfollowing."
@@ -252,7 +282,8 @@
           "title": "Mobile apps",
           "items": [
             {
-              "text": "PWA polish — If not fully done in March: installable, app-like experience on mobile (icon, splash, offline where useful)."
+              "text": "PWA polish — If not fully done in March: installable, app-like experience on mobile (icon, splash, offline where useful).",
+              "done": true
             }
           ]
         },
@@ -346,6 +377,32 @@
         ]
       },
       {
+        "title": "Steward tier (Premium+)",
+        "items": [
+          {
+            "text": "Stewards-only forum and subtle badge (opt-in)."
+          },
+          {
+            "text": "Founder updates and quarterly Steward calls (strategy, philosophy, Q&A)."
+          },
+          {
+            "text": "Early access to new features / betas."
+          },
+          {
+            "text": "Priority support, faster moderation review (same outcomes), and priority account recovery."
+          },
+          {
+            "text": "Experience upgrades — no ads anywhere while logged in, better feed defaults, advanced mute / filter controls."
+          },
+          {
+            "text": "Higher limits — media size/quality, drafts, and extended edit windows."
+          },
+          {
+            "text": "Community tools — one private group, higher member caps, and event / RSVP tools."
+          }
+        ]
+      },
+      {
         "title": "Customization, badges & fun",
         "items": [
           {
@@ -365,5 +422,5 @@
     ]
   },
   "footerDisclaimer": "Dates are targets, not promises. We'll update this page as we lock in or shift milestones.",
-  "metaDescription": "See what we're building and when. Men of Hunger product roadmap — upcoming features and milestones."
+  "metaDescription": "See what we're building and when. Men of Hunger product roadmap — trust, tiers, and community features."
 }

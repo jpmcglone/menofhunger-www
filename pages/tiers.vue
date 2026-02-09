@@ -3,13 +3,13 @@
   <section class="mx-auto w-full px-4">
     <header class="mb-10 text-center">
       <p class="text-sm font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">
-        Membership
+        {{ tiersIntro.label }}
       </p>
       <h1 class="mt-2 text-2xl font-bold tracking-tight text-gray-900 dark:text-gray-50 sm:text-3xl">
-        Unverified, Verified, Premium, and Premium+ — what you get with each tier.
+        {{ tiersIntro.title }}
       </h1>
       <p class="mx-auto mt-3 max-w-xl text-base text-gray-600 dark:text-gray-300">
-        Everyone gets the core experience. Verify to post publicly and build trust. Go Premium for longer posts, video uploads, and premium-only visibility. Upgrade to Premium+ to support the mission — higher limits and perks are coming soon.
+        {{ tiersIntro.description }}
       </p>
     </header>
 
@@ -29,30 +29,70 @@
               Unverified
             </h2>
             <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
-              New or not yet verified
+              {{ unverifiedTier.subtitle }}
             </p>
             <div class="mt-4">
-              <span class="text-2xl font-bold text-gray-900 dark:text-gray-50">Free</span>
+              <span class="text-2xl font-bold text-gray-900 dark:text-gray-50">
+                {{ unverifiedTier.price.label }}
+              </span>
             </div>
           </div>
-        <ul class="flex-1 space-y-3 px-6 py-5 text-sm text-gray-700 dark:text-gray-300">
-          <li
-            v-for="(item, i) in unverifiedItems"
-            :key="i"
-            class="flex gap-3"
-          >
-            <Icon name="tabler:check" class="mt-0.5 shrink-0 text-gray-500 dark:text-gray-400" aria-hidden="true" />
-            <span>{{ item }}</span>
-          </li>
-        </ul>
-        <div class="border-t border-gray-200 px-6 py-4 dark:border-zinc-700">
-          <p class="text-xs font-medium text-gray-500 dark:text-gray-400">
-            For this tier
+        <div class="px-6 py-5">
+          <p class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+            Who this is for
           </p>
-          <p class="mt-1 text-sm text-gray-600 dark:text-gray-300">
-            You cannot post to the public feed until you verify. You can still read and boost public posts.
+          <p class="mt-2 text-sm text-gray-600 dark:text-gray-300">
+            {{ unverifiedTier.who }}
           </p>
         </div>
+        <div class="border-t border-gray-200 px-6 py-5 text-sm text-gray-700 dark:text-gray-300">
+          <p class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+            Can do
+          </p>
+          <ul class="mt-3 space-y-2">
+            <li
+              v-for="(item, i) in unverifiedTier.can"
+              :key="i"
+              class="flex gap-3"
+            >
+              <Icon name="tabler:check" class="mt-0.5 shrink-0 text-gray-500 dark:text-gray-400" aria-hidden="true" />
+              <span class="flex-1">
+                {{ item.text }} <span
+                  v-if="item.comingSoon"
+                  class="inline-flex h-5 items-center rounded-full border border-gray-300/70 bg-gray-100 px-2 text-[11px] font-semibold text-gray-600 dark:border-zinc-600 dark:bg-zinc-900/60 dark:text-gray-400"
+                >
+                  Coming soon
+                </span>
+              </span>
+            </li>
+          </ul>
+        </div>
+        <div class="border-t border-gray-200 px-6 py-5 text-sm text-gray-700 dark:text-gray-300">
+          <p class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+            Cannot do
+          </p>
+          <ul class="mt-3 space-y-2">
+            <li
+              v-for="(item, i) in unverifiedTier.cannot"
+              :key="i"
+              class="flex gap-3"
+            >
+              <Icon name="tabler:x" class="mt-0.5 shrink-0 text-rose-500/70" aria-hidden="true" />
+              <span class="flex-1">{{ item.text }}</span>
+            </li>
+          </ul>
+        </div>
+        <details class="border-t border-gray-200 px-6 py-5 text-sm text-gray-600 dark:text-gray-400">
+          <summary class="cursor-pointer text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+            Why this tier exists
+          </summary>
+          <ul class="mt-3 space-y-2">
+            <li v-for="(reason, i) in unverifiedTier.why" :key="i" class="flex gap-3">
+              <span class="mt-2 h-1 w-1 shrink-0 rounded-full bg-gray-400 dark:bg-gray-500" aria-hidden="true" />
+              <span>{{ reason }}</span>
+            </li>
+          </ul>
+        </details>
         </div>
         <p
           v-if="currentTier === 'unverified'"
@@ -77,60 +117,82 @@
               Verified
             </h2>
             <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
-              Trust + credibility
+              {{ verifiedTier.subtitle }}
             </p>
             <div class="mt-4">
-              <span class="text-2xl font-bold text-gray-900 dark:text-gray-50">Free</span>
+              <span class="text-2xl font-bold text-gray-900 dark:text-gray-50">
+                {{ verifiedTier.price.label }}
+              </span>
             </div>
           </div>
-        <ul class="flex-1 space-y-3 px-6 py-5 text-sm text-gray-700 dark:text-gray-300">
-          <li class="flex gap-3">
-            <Icon name="tabler:check" class="mt-0.5 shrink-0" style="color: var(--moh-verified);" aria-hidden="true" />
-            <span>Everything in Unverified</span>
-          </li>
-          <li
-            v-for="(item, i) in verifiedAddOns"
-            :key="i"
-            class="flex gap-3"
-          >
-            <Icon name="tabler:check" class="mt-0.5 shrink-0" style="color: var(--moh-verified);" aria-hidden="true" />
-            <span v-html="item.html ? item.html : escapeHtml(item.text)" />
-          </li>
-        </ul>
-        <div
-          class="border-t px-6 py-4 dark:border-zinc-700"
-          style="border-color: rgba(var(--moh-verified-rgb), 0.2);"
-        >
-          <p class="text-xs font-medium text-gray-500 dark:text-gray-400" style="color: var(--moh-verified);">
-            For this tier
-          </p>
-          <p class="mt-1 text-sm text-gray-600 dark:text-gray-300">
-            Verification is free. Once verified, you can post publicly and your profile earns stronger trust signals in the community.
-          </p>
-          <NuxtLink
-            v-if="!isVerified"
-            to="/settings"
-            class="mt-3 inline-flex w-full items-center justify-center rounded-xl px-4 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-95"
-            style="background-color: var(--moh-verified);"
-          >
-            Verify
-          </NuxtLink>
-        </div>
-
-        <div
-          v-if="comingSoonVerified.length"
-          class="border-t px-6 py-4 dark:border-zinc-700"
-          style="border-color: rgba(var(--moh-verified-rgb), 0.2);"
-        >
+        <div class="px-6 py-5">
           <p class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
-            Coming soon
+            Who this is for
           </p>
-          <ul class="mt-3 space-y-2 text-sm text-gray-600 dark:text-gray-300">
-            <li v-for="(t, i) in comingSoonVerified" :key="i" class="flex gap-3">
-              <Icon name="tabler:clock" class="mt-0.5 shrink-0 opacity-70" style="color: var(--moh-verified);" aria-hidden="true" />
-              <span>{{ t }}</span>
+          <p class="mt-2 text-sm text-gray-600 dark:text-gray-300">
+            {{ verifiedTier.who }}
+          </p>
+        </div>
+        <div class="border-t px-6 py-5 text-sm text-gray-700 dark:text-gray-300" style="border-color: rgba(var(--moh-verified-rgb), 0.2);">
+          <p class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400" style="color: var(--moh-verified);">
+            Can do
+          </p>
+          <ul class="mt-3 space-y-2">
+            <li
+              v-for="(item, i) in verifiedTier.can"
+              :key="i"
+              class="flex gap-3"
+            >
+              <Icon name="tabler:check" class="mt-0.5 shrink-0" style="color: var(--moh-verified);" aria-hidden="true" />
+              <span class="flex-1">
+                {{ item.text }} <span
+                  v-if="item.comingSoon"
+                  class="inline-flex h-5 items-center rounded-full border border-[var(--moh-verified)]/20 bg-[var(--moh-verified)]/10 px-2 text-[11px] font-semibold text-[var(--moh-verified)]"
+                >
+                  Coming soon
+                </span>
+              </span>
             </li>
           </ul>
+        </div>
+        <div class="border-t px-6 py-5 text-sm text-gray-700 dark:text-gray-300" style="border-color: rgba(var(--moh-verified-rgb), 0.2);">
+          <p class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400" style="color: var(--moh-verified);">
+            Cannot do
+          </p>
+          <ul class="mt-3 space-y-2">
+            <li
+              v-for="(item, i) in verifiedTier.cannot"
+              :key="i"
+              class="flex gap-3"
+            >
+              <Icon name="tabler:x" class="mt-0.5 shrink-0 text-rose-500/70" aria-hidden="true" />
+              <span class="flex-1">{{ item.text }}</span>
+            </li>
+          </ul>
+        </div>
+        <details class="border-t px-6 py-5 text-sm text-gray-600 dark:text-gray-400" style="border-color: rgba(var(--moh-verified-rgb), 0.2);">
+          <summary class="cursor-pointer text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400" style="color: var(--moh-verified);">
+            Why this tier exists
+          </summary>
+          <ul class="mt-3 space-y-2">
+            <li v-for="(reason, i) in verifiedTier.why" :key="i" class="flex gap-3">
+              <span class="mt-2 h-1 w-1 shrink-0 rounded-full bg-[var(--moh-verified)]/70" aria-hidden="true" />
+              <span>{{ reason }}</span>
+            </li>
+          </ul>
+        </details>
+        <div
+          v-if="verifiedTier.cta && !isVerified"
+          class="border-t px-6 py-4 dark:border-zinc-700"
+          style="border-color: rgba(var(--moh-verified-rgb), 0.2);"
+        >
+          <NuxtLink
+            to="/settings"
+            class="inline-flex w-full items-center justify-center rounded-xl px-4 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-95"
+            style="background-color: var(--moh-verified);"
+          >
+            {{ verifiedTier.cta.label }}
+          </NuxtLink>
         </div>
         </div>
         <p
@@ -157,58 +219,82 @@
               Premium
             </h2>
             <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
-              Builder tier
+              {{ premiumTier.subtitle }}
             </p>
             <div class="mt-4">
-              <span class="text-2xl font-bold text-gray-900 dark:text-gray-50">$19.99</span>
-              <span class="ml-1 text-sm font-medium text-gray-600 dark:text-gray-300">/ month</span>
+              <span class="text-2xl font-bold text-gray-900 dark:text-gray-50">
+                {{ premiumTier.price.amount }}
+              </span>
+              <span class="ml-1 text-sm font-medium text-gray-600 dark:text-gray-300">
+                {{ premiumTier.price.interval }}
+              </span>
             </div>
           </div>
-        <ul class="flex-1 space-y-3 px-6 py-5 text-sm text-gray-700 dark:text-gray-300">
-          <li class="flex gap-3">
-            <Icon name="tabler:check" class="mt-0.5 shrink-0" style="color: var(--moh-premium);" aria-hidden="true" />
-            <span>Everything in Verified</span>
-          </li>
-          <li
-            v-for="(item, i) in premiumAddOns"
-            :key="i"
-            class="flex gap-3"
-          >
-            <Icon name="tabler:check" class="mt-0.5 shrink-0" style="color: var(--moh-premium);" aria-hidden="true" />
-            <span v-html="item.html ? item.html : escapeHtml(item.text)" />
-          </li>
-        </ul>
-        <div class="border-t px-6 py-4 dark:border-zinc-700" style="border-color: rgba(var(--moh-premium-rgb), 0.2);">
-          <p class="text-xs font-medium text-gray-500 dark:text-gray-400" style="color: var(--moh-premium);">
-            For this tier
-          </p>
-          <p class="mt-1 text-sm text-gray-600 dark:text-gray-300">
-            For creators who want more: longer posts, video uploads, and premium-only visibility.
-          </p>
-          <NuxtLink
-            v-if="!isPremium"
-            to="/settings"
-            class="mt-3 inline-flex w-full items-center justify-center rounded-xl px-4 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-95"
-            style="background-color: var(--moh-premium);"
-          >
-            Get Premium
-          </NuxtLink>
-        </div>
-
-        <div
-          v-if="comingSoonPremium.length"
-          class="border-t px-6 py-4 dark:border-zinc-700"
-          style="border-color: rgba(var(--moh-premium-rgb), 0.2);"
-        >
+        <div class="px-6 py-5">
           <p class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
-            Coming soon
+            Who this is for
           </p>
-          <ul class="mt-3 space-y-2 text-sm text-gray-600 dark:text-gray-300">
-            <li v-for="(t, i) in comingSoonPremium" :key="i" class="flex gap-3">
-              <Icon name="tabler:clock" class="mt-0.5 shrink-0 opacity-70" style="color: var(--moh-premium);" aria-hidden="true" />
-              <span>{{ t }}</span>
+          <p class="mt-2 text-sm text-gray-600 dark:text-gray-300">
+            {{ premiumTier.who }}
+          </p>
+        </div>
+        <div class="border-t px-6 py-5 text-sm text-gray-700 dark:text-gray-300" style="border-color: rgba(var(--moh-premium-rgb), 0.2);">
+          <p class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400" style="color: var(--moh-premium);">
+            Can do
+          </p>
+          <ul class="mt-3 space-y-2">
+            <li
+              v-for="(item, i) in premiumTier.can"
+              :key="i"
+              class="flex gap-3"
+            >
+              <Icon name="tabler:check" class="mt-0.5 shrink-0" style="color: var(--moh-premium);" aria-hidden="true" />
+              <span class="flex-1">
+                {{ item.text }} <span
+                  v-if="item.comingSoon"
+                  class="inline-flex h-5 items-center rounded-full border border-[var(--moh-premium)]/20 bg-[var(--moh-premium)]/10 px-2 text-[11px] font-semibold text-[var(--moh-premium)]"
+                >
+                  Coming soon
+                </span>
+              </span>
             </li>
           </ul>
+        </div>
+        <div class="border-t px-6 py-5 text-sm text-gray-700 dark:text-gray-300" style="border-color: rgba(var(--moh-premium-rgb), 0.2);">
+          <p class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400" style="color: var(--moh-premium);">
+            Cannot do
+          </p>
+          <ul class="mt-3 space-y-2">
+            <li
+              v-for="(item, i) in premiumTier.cannot"
+              :key="i"
+              class="flex gap-3"
+            >
+              <Icon name="tabler:x" class="mt-0.5 shrink-0 text-rose-500/70" aria-hidden="true" />
+              <span class="flex-1">{{ item.text }}</span>
+            </li>
+          </ul>
+        </div>
+        <details class="border-t px-6 py-5 text-sm text-gray-600 dark:text-gray-400" style="border-color: rgba(var(--moh-premium-rgb), 0.2);">
+          <summary class="cursor-pointer text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400" style="color: var(--moh-premium);">
+            Why this tier exists
+          </summary>
+          <ul class="mt-3 space-y-2">
+            <li v-for="(reason, i) in premiumTier.why" :key="i" class="flex gap-3">
+              <span class="mt-2 h-1 w-1 shrink-0 rounded-full bg-[var(--moh-premium)]/70" aria-hidden="true" />
+              <span>{{ reason }}</span>
+            </li>
+          </ul>
+        </details>
+        <div class="border-t px-6 py-4 dark:border-zinc-700" style="border-color: rgba(var(--moh-premium-rgb), 0.2);">
+          <NuxtLink
+            v-if="premiumTier.cta && !isPremium"
+            to="/settings"
+            class="inline-flex w-full items-center justify-center rounded-xl px-4 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-95"
+            style="background-color: var(--moh-premium);"
+          >
+            {{ premiumTier.cta.label }}
+          </NuxtLink>
         </div>
         </div>
         <p
@@ -234,65 +320,94 @@
             <div class="flex items-start justify-between gap-3">
               <div>
                 <h2 class="text-lg font-bold" style="color: var(--moh-premium);">
-                  Premium+
+                  {{ premiumPlusTier.name }}
                 </h2>
                 <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
-                  Supporters tier
+                  {{ premiumPlusTier.subtitle }}
                 </p>
               </div>
               <span
+                v-if="premiumPlusTier.badge"
                 class="shrink-0 rounded-full border px-2 py-0.5 text-[11px] font-semibold"
                 style="border-color: var(--moh-premium); background: rgba(var(--moh-premium-rgb), 0.08); color: var(--moh-premium);"
               >
-                Best perks
+                {{ premiumPlusTier.badge }}
               </span>
             </div>
             <div class="mt-4">
-              <span class="text-2xl font-bold text-gray-900 dark:text-gray-50">$49.99</span>
-              <span class="ml-1 text-sm font-medium text-gray-600 dark:text-gray-300">/ month</span>
+              <span class="text-2xl font-bold text-gray-900 dark:text-gray-50">
+                {{ premiumPlusTier.price.amount }}
+              </span>
+              <span class="ml-1 text-sm font-medium text-gray-600 dark:text-gray-300">
+                {{ premiumPlusTier.price.interval }}
+              </span>
             </div>
           </div>
-        <ul class="flex-1 space-y-3 px-6 py-5 text-sm text-gray-700 dark:text-gray-300">
-          <li
-            v-for="(item, i) in premiumPlusAddOns"
-            :key="i"
-            class="flex gap-3"
-          >
-            <Icon name="tabler:check" class="mt-0.5 shrink-0" style="color: var(--moh-premium);" aria-hidden="true" />
-            <span v-html="item.html ? item.html : escapeHtml(item.text)" />
-          </li>
-        </ul>
-        <div class="border-t px-6 py-4 dark:border-zinc-700" style="border-color: rgba(var(--moh-premium-rgb), 0.2);">
-          <p class="text-xs font-medium text-gray-500 dark:text-gray-400" style="color: var(--moh-premium);">
-            For this tier
-          </p>
-          <p class="mt-1 text-sm text-gray-600 dark:text-gray-300">
-            For supporters who want to go all-in: a Premium+ member designation, with higher limits and perks coming soon.
-          </p>
-          <NuxtLink
-            v-if="!isPremiumPlus"
-            to="/settings"
-            class="mt-3 inline-flex w-full items-center justify-center rounded-xl px-4 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-95"
-            style="background-color: var(--moh-premium);"
-          >
-            Get Premium+
-          </NuxtLink>
-        </div>
-
-        <div
-          v-if="comingSoonPremiumPlus.length"
-          class="border-t px-6 py-4 dark:border-zinc-700"
-          style="border-color: rgba(var(--moh-premium-rgb), 0.2);"
-        >
+        <div class="px-6 py-5">
           <p class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
-            Coming soon
+            Who this is for
           </p>
-          <ul class="mt-3 space-y-2 text-sm text-gray-600 dark:text-gray-300">
-            <li v-for="(t, i) in comingSoonPremiumPlus" :key="i" class="flex gap-3">
-              <Icon name="tabler:clock" class="mt-0.5 shrink-0 opacity-70" style="color: var(--moh-premium);" aria-hidden="true" />
-              <span>{{ t }}</span>
+          <p class="mt-2 text-sm text-gray-600 dark:text-gray-300">
+            {{ premiumPlusTier.who }}
+          </p>
+        </div>
+        <div class="border-t px-6 py-5 text-sm text-gray-700 dark:text-gray-300" style="border-color: rgba(var(--moh-premium-rgb), 0.2);">
+          <p class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400" style="color: var(--moh-premium);">
+            Can do
+          </p>
+          <ul class="mt-3 space-y-2">
+            <li
+              v-for="(item, i) in premiumPlusTier.can"
+              :key="i"
+              class="flex gap-3"
+            >
+              <Icon name="tabler:check" class="mt-0.5 shrink-0" style="color: var(--moh-premium);" aria-hidden="true" />
+              <span class="flex-1">
+                {{ item.text }} <span
+                  v-if="item.comingSoon"
+                  class="inline-flex h-5 items-center rounded-full border border-[var(--moh-premium)]/20 bg-[var(--moh-premium)]/10 px-2 text-[11px] font-semibold text-[var(--moh-premium)]"
+                >
+                  Coming soon
+                </span>
+              </span>
             </li>
           </ul>
+        </div>
+        <div class="border-t px-6 py-5 text-sm text-gray-700 dark:text-gray-300" style="border-color: rgba(var(--moh-premium-rgb), 0.2);">
+          <p class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400" style="color: var(--moh-premium);">
+            Cannot do
+          </p>
+          <ul class="mt-3 space-y-2">
+            <li
+              v-for="(item, i) in premiumPlusTier.cannot"
+              :key="i"
+              class="flex gap-3"
+            >
+              <Icon name="tabler:x" class="mt-0.5 shrink-0 text-rose-500/70" aria-hidden="true" />
+              <span class="flex-1">{{ item.text }}</span>
+            </li>
+          </ul>
+        </div>
+        <details class="border-t px-6 py-5 text-sm text-gray-600 dark:text-gray-400" style="border-color: rgba(var(--moh-premium-rgb), 0.2);">
+          <summary class="cursor-pointer text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400" style="color: var(--moh-premium);">
+            Why this tier exists
+          </summary>
+          <ul class="mt-3 space-y-2">
+            <li v-for="(reason, i) in premiumPlusTier.why" :key="i" class="flex gap-3">
+              <span class="mt-2 h-1 w-1 shrink-0 rounded-full bg-[var(--moh-premium)]/70" aria-hidden="true" />
+              <span>{{ reason }}</span>
+            </li>
+          </ul>
+        </details>
+        <div class="border-t px-6 py-4 dark:border-zinc-700" style="border-color: rgba(var(--moh-premium-rgb), 0.2);">
+          <NuxtLink
+            v-if="premiumPlusTier.cta && !isPremiumPlus"
+            to="/settings"
+            class="inline-flex w-full items-center justify-center rounded-xl px-4 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-95"
+            style="background-color: var(--moh-premium);"
+          >
+            {{ premiumPlusTier.cta.label }}
+          </NuxtLink>
         </div>
         </div>
         <p
@@ -307,7 +422,7 @@
 
     <footer class="mt-10 border-t border-gray-200 pt-6 dark:border-zinc-800">
       <p class="text-center text-sm text-gray-500 dark:text-gray-400">
-        Verification is free and required to post publicly. Premium and Premium+ are paid subscriptions — pricing and billing in Settings.
+        {{ tiersFooterNote }}
       </p>
       <div class="mt-4 flex flex-wrap justify-center gap-x-6 gap-y-1 text-sm">
         <NuxtLink to="/about" class="font-medium text-gray-700 hover:underline dark:text-gray-300">
@@ -326,6 +441,7 @@
 </template>
 
 <script setup lang="ts">
+import { tiers, tiersFooterNote, tiersIntro, tiersMetaDescription, type Tier, type TierId } from '~/config/tiers.data'
 definePageMeta({
   layout: 'app',
   title: 'Tiers',
@@ -334,7 +450,7 @@ definePageMeta({
 usePageSeo({
   title: 'Tiers',
   description:
-    'Men of Hunger membership tiers: Unverified (free), Verified (free, build trust + post publicly), Premium ($19.99/mo, longer posts + video + premium-only visibility), Premium+ ($49.99/mo, supporters tier; higher limits/perks coming soon).',
+    tiersMetaDescription,
   canonicalPath: '/tiers',
   ogType: 'website',
 })
@@ -357,57 +473,9 @@ const currentTier = computed(() =>
     : null
 )
 
-function escapeHtml(s: string): string {
-  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
-}
-
-// Unverified: full list
-const unverifiedItems: string[] = [
-  'Home feed, Explore, Profile',
-  'Follow people, Bookmarks, Notifications',
-  'Read and boost public posts',
-  'Post Only me (private)',
-]
-
-// Verified: only list what's truly honored today.
-const verifiedAddOns: { text: string; html?: string }[] = [
-  { text: 'Post Public, Verified only, or Only me', html: '<strong>Post Public, Verified only, or Only me</strong>' },
-  { text: 'Verified badge on profile and posts' },
-  { text: 'See verified-only posts' },
-  { text: 'Verified-only chat (DMs) with block list controls' },
-  { text: '200 characters per post' },
-]
-
-// Premium: only list what's truly honored today.
-const premiumAddOns: { text: string; html?: string }[] = [
-  { text: '500 characters per post', html: '<strong>500 characters per post</strong>' },
-  { text: 'Video uploads', html: '<strong>Video uploads</strong>' },
-  { text: 'Premium badge on profile and posts', html: '<strong>Premium badge on profile and posts</strong>' },
-  { text: 'Post to Premium only and see premium-only posts' },
-]
-
-// Premium+: currently the same feature set as Premium (higher limits/perks are coming soon).
-const premiumPlusAddOns: { text: string; html?: string }[] = [
-  { text: 'Everything in Premium' },
-  { text: 'Premium+ member designation on badge hover', html: '<strong>Premium+ member designation on badge hover</strong>' },
-]
-
-const comingSoonVerified: string[] = [
-  'Stronger trust signals (manual/identity verification polish)',
-  'Impersonation protection + priority review',
-  'Enhanced safety controls (muting + reply controls)',
-]
-
-const comingSoonPremium: string[] = [
-  'Better reach and distribution surfaces',
-  'Creation tools (drafts, edit window, scheduling)',
-  'Community tools (groups/circles, profile highlights, featured links)',
-  'Safety + quality filters (keyword filters, advanced controls)',
-]
-
-const comingSoonPremiumPlus: string[] = [
-  'Highest limits for creators (uploads and usage caps)',
-  'Priority support + early access',
-  'Additional reach tools and perks',
-]
+const tierMap = Object.fromEntries(tiers.map((tier) => [tier.id, tier])) as Record<TierId, Tier>
+const unverifiedTier = tierMap.unverified
+const verifiedTier = tierMap.verified
+const premiumTier = tierMap.premium
+const premiumPlusTier = tierMap.premiumPlus
 </script>
