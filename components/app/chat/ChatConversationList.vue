@@ -24,6 +24,13 @@
           </div>
         </div>
 
+        <div
+          v-if="!canStartNew"
+          class="mt-3 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-700 dark:border-zinc-800 dark:bg-zinc-900/40 dark:text-gray-300"
+        >
+          Verified members can reply to chats started with them. Premium members can start new chats.
+        </div>
+
         <div class="mt-3 flex items-center gap-2">
           <button
             type="button"
@@ -171,6 +178,7 @@ import { useUsersStore } from '~/composables/useUsersStore'
 
 const props = defineProps({
   isTinyViewport: { type: Boolean, required: true },
+  canStartNew: { type: Boolean, required: true },
   activeTab: { type: String as PropType<'primary' | 'requests'>, required: true },
   activeList: { type: Array as PropType<MessageConversation[]>, required: true },
   listLoading: { type: Boolean, required: true },

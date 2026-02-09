@@ -36,6 +36,7 @@
           <ChatConversationList
             v-if="showListPane"
             :is-tiny-viewport="isTinyViewport"
+            :can-start-new="viewerCanStartChats"
             :active-tab="activeTab"
             :active-list="activeList"
             :list-loading="listLoading"
@@ -297,6 +298,26 @@
     </div>
 
     <Dialog
+      v-model:visible="startChatInfoVisible"
+      modal
+      header="Starting new chats"
+      :style="{ width: '28rem', maxWidth: '92vw' }"
+    >
+      <div class="space-y-3 text-sm text-gray-700 dark:text-gray-300">
+        <p>
+          As a verified member, you can chat when someone starts a conversation with you.
+        </p>
+        <p>
+          To start new chats yourself, upgrade to Premium.
+        </p>
+      </div>
+      <template #footer>
+        <Button label="Not now" text severity="secondary" @click="startChatInfoVisible = false" />
+        <Button label="View tiers" severity="secondary" @click="goPremium" />
+      </template>
+    </Dialog>
+
+    <Dialog
       v-model:visible="newDialogVisible"
       modal
       header="New chat"
@@ -342,7 +363,7 @@
         <Button label="Cancel" text severity="secondary" @click="newDialogVisible = false" />
         <Button
           label="Start chat"
-          :disabled="!canStartDraft"
+          :disabled="!viewerCanStartChats || !canStartDraft"
           @click="createConversation"
         >
           <template #icon>
@@ -420,6 +441,7 @@ const route = useRoute()
 const router = useRouter()
 const { user: me } = useAuth()
 const viewerIsVerified = computed(() => (me.value?.verifiedStatus ?? 'none') !== 'none')
+const viewerCanStartChats = computed(() => Boolean(me.value?.premium || me.value?.premiumPlus))
 const CHAT_BOOT_FADE_MS = 160
 const MESSAGES_PANE_FADE_MS = 160
 const prefersReducedMotion = ref(false)
@@ -643,6 +665,7 @@ const {
 })
 
 const newDialogVisible = ref(false)
+const startChatInfoVisible = ref(false)
 const recipientQuery = ref('')
 const recipientResults = ref<FollowListUser[]>([])
 const recipientLoading = ref(false)
@@ -979,6 +1002,10 @@ function goToProfile(user: MessageUser | null | undefined) {
   void navigateTo(`/u/${username}`)
 }
 
+function goPremium() {
+  return navigateTo('/tiers')
+}
+
 function getConversationLastMessageTier(conversation: MessageConversation): 'premium' | 'verified' | 'normal' {
   const senderId = conversation.lastMessage?.senderId ?? null
   if (!senderId) return 'normal'
@@ -1202,6 +1229,10 @@ async function sendCurrentMessage() {
   try {
     // Draft chat: first send creates the conversation.
     if (!selectedConversationId.value && isDraftChat.value) {
+      if (!viewerCanStartChats.value) {
+        startChatInfoVisible.value = true
+        return
+      }
       const res = await apiFetchData<CreateMessageConversationResponse['data']>('/messages/conversations', {
         method: 'POST',
         body: {
@@ -1329,6 +1360,10 @@ function setTab(tab: 'primary' | 'requests') {
 }
 
 function openNewDialog() {
+  if (!viewerCanStartChats.value) {
+    startChatInfoVisible.value = true
+    return
+  }
   newDialogVisible.value = true
   recipientQuery.value = ''
   recipientResults.value = []
@@ -1380,6 +1415,10 @@ function removeRecipient(userId: string) {
 async function createConversation() {
   // Start a draft chat or jump to an existing conversation.
   if (!canStartDraft.value) return
+  if (!viewerCanStartChats.value) {
+    startChatInfoVisible.value = true
+    return
+  }
   newConversationError.value = null
   try {
     newDialogVisible.value = false
