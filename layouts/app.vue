@@ -21,6 +21,7 @@
     <ClientOnly>
       <AppToastStack />
       <AppUserPreviewPopover />
+      <AppOnlineCountPopover />
     </ClientOnly>
     <Transition
       enter-active-class="transition-all duration-200 ease-out"
@@ -327,41 +328,63 @@
                         <span v-if="dailyQuote.isParaphrase" class="ml-1">(paraphrase)</span>
                       </figcaption>
                     </figure>
+                    <div class="mt-8 h-[1px] w-32 mx-auto bg-gradient-to-r from-transparent via-gray-400 dark:via-gray-600 to-transparent" />
                   </div>
 
                   <div class="space-y-4 transition-[transform] duration-200 ease-out">
-                  <!-- Who to follow (real data) -->
-                  <Card>
-                    <template #title>Who to follow</template>
-                    <template #content>
-                      <div v-if="whoToFollowLoading && whoToFollowUsers.length === 0" class="flex justify-center py-4">
-                        <AppLogoLoader />
-                      </div>
+                  <div class="space-y-1">
+                    <div class="flex justify-end px-2">
+                      <NuxtLink
+                        to="/online"
+                        class="inline-flex items-center gap-1 text-sm hover:underline underline-offset-2"
+                        @mouseenter="onOnlineLinkEnter"
+                        @mousemove="onOnlineLinkMove"
+                        @mouseleave="onOnlineLinkLeave"
+                        @click="onOnlineLinkClick"
+                      >
+                        <template v-if="typeof onlineCount === 'number'">
+                          <span class="font-semibold text-gray-900 dark:text-white tabular-nums">{{ onlineCount }}</span>
+                          <span class="moh-text-muted">online</span>
+                        </template>
+                        <template v-else>
+                          <span class="moh-text-muted">Online</span>
+                        </template>
+                      </NuxtLink>
+                    </div>
 
-                      <div v-else-if="whoToFollowUsers.length > 0">
-                        <AppWhoToFollowCompactRow
-                          v-for="u in whoToFollowUsers"
-                          :key="u.id"
-                          :user="u"
-                        />
-                        <NuxtLink
-                          to="/who-to-follow"
-                          class="inline-block pt-3 text-sm font-medium hover:underline underline-offset-2"
-                          :class="tierCtaTextClass"
-                        >
-                          Show more
-                        </NuxtLink>
-                      </div>
+                    <!-- Who to follow (real data) -->
+                    <Card>
+                      <template #title>Who to follow</template>
+                      <template #content>
+                        <div v-if="whoToFollowLoading && whoToFollowUsers.length === 0" class="flex justify-center py-4">
+                          <AppLogoLoader />
+                        </div>
 
-                      <div v-else class="text-sm moh-text-muted">
-                        <p v-if="whoToFollowError">{{ whoToFollowError }}</p>
-                        <p v-else>No suggestions yet.</p>
-                        <NuxtLink to="/explore" class="inline-block mt-2 font-medium hover:underline">
-                          Explore people
-                        </NuxtLink>
-                      </div>
-                    </template>
-                  </Card>
+                        <div v-else-if="whoToFollowUsers.length > 0">
+                          <AppWhoToFollowCompactRow
+                            v-for="u in whoToFollowUsers"
+                            :key="u.id"
+                            :user="u"
+                          />
+                          <NuxtLink
+                            to="/who-to-follow"
+                            class="inline-block pt-3 text-sm font-medium hover:underline underline-offset-2"
+                            :class="tierCtaTextClass"
+                          >
+                            Show more
+                          </NuxtLink>
+                        </div>
+
+                        <div v-else class="text-sm moh-text-muted">
+                          <p v-if="whoToFollowError">{{ whoToFollowError }}</p>
+                          <p v-else>No suggestions yet.</p>
+                          <NuxtLink to="/explore" class="inline-block mt-2 font-medium hover:underline">
+                            Explore people
+                          </NuxtLink>
+                        </div>
+                      </template>
+                    </Card>
+                  </div>
 
                   <AppWebsters1828WordOfDayCard />
 
@@ -573,6 +596,7 @@ import {
 import { useBookmarkCollections } from '~/composables/useBookmarkCollections'
 import { useOnlyMePosts } from '~/composables/useOnlyMePosts'
 import { useReplyModal } from '~/composables/useReplyModal'
+import type { GetPresenceOnlineData } from '~/types/api'
 
 const route = useRoute()
 const colorMode = useColorMode()
@@ -1036,6 +1060,83 @@ const {
 } = useWhoToFollow({
   enabled: computed(() => isAuthed.value && !isRightRailForcedHidden.value),
   defaultLimit: 4,
+})
+
+const { apiFetch } = useApiClient()
+const onlineCount = ref<number | null>(null)
+const onlineCountPopover = useOnlineCountPopover()
+
+let onlinePollTimer: ReturnType<typeof setInterval> | null = null
+async function refreshOnlineCount() {
+  try {
+    const res = await apiFetch<GetPresenceOnlineData>('/presence/online', {
+      method: 'GET',
+      query: { includeSelf: '1' },
+      timeout: 8000,
+    })
+    const n =
+      typeof res?.pagination?.totalOnline === 'number'
+        ? res.pagination.totalOnline
+        : Array.isArray(res?.data)
+          ? res.data.length
+          : null
+    onlineCount.value = typeof n === 'number' ? Math.max(0, Math.floor(n)) : null
+
+    // Breakdown for hover popover (tier order: Premium+, Premium, Verified, Unverified).
+    const users = Array.isArray(res?.data) ? res.data : []
+    let premiumPlus = 0
+    let premium = 0
+    let verified = 0
+    let unverified = 0
+    for (const u of users) {
+      if (u.premiumPlus) premiumPlus += 1
+      else if (u.premium) premium += 1
+      else if (u.verifiedStatus && u.verifiedStatus !== 'none') verified += 1
+      else unverified += 1
+    }
+    const rows = []
+    if (premiumPlus > 0) rows.push({ key: 'premiumPlus', label: 'Premium+', count: premiumPlus, tone: 'premium' } as const)
+    if (premium > 0) rows.push({ key: 'premium', label: 'Premium', count: premium, tone: 'premium' } as const)
+    if (verified > 0) rows.push({ key: 'verified', label: 'Verified', count: verified, tone: 'verified' } as const)
+    if (unverified > 0) rows.push({ key: 'unverified', label: 'Unverified', count: unverified, tone: 'unverified' } as const)
+    onlineCountPopover.setRows(rows)
+  } catch {
+    // Best-effort: keep prior value.
+  }
+}
+
+function onOnlineLinkEnter(e: MouseEvent) {
+  onlineCountPopover.onTriggerEnter(e)
+}
+function onOnlineLinkMove(e: MouseEvent) {
+  onlineCountPopover.onTriggerMove(e)
+}
+function onOnlineLinkLeave() {
+  onlineCountPopover.onTriggerLeave()
+}
+function onOnlineLinkClick() {
+  onlineCountPopover.close()
+}
+
+watch(
+  () => isRightRailForcedHidden.value,
+  (hidden) => {
+    if (!import.meta.client) return
+    if (onlinePollTimer) {
+      clearInterval(onlinePollTimer)
+      onlinePollTimer = null
+    }
+    if (hidden) return
+    void refreshOnlineCount()
+    onlinePollTimer = setInterval(() => void refreshOnlineCount(), 30_000)
+  },
+  { immediate: true },
+)
+onBeforeUnmount(() => {
+  if (onlinePollTimer) {
+    clearInterval(onlinePollTimer)
+    onlinePollTimer = null
+  }
 })
 
 const tierCtaTextClass = computed(() => {

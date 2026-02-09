@@ -18,6 +18,8 @@ export function useAnchoredPopoverPosition(params: {
   el: Ref<HTMLElement | null>
   defaultWidth: number
   defaultHeight: number
+  /** Prefer placing the popover to the left of the anchor point. Default false (right). */
+  preferLeft?: boolean
   margin?: number
   offset?: number
 }) {
@@ -54,7 +56,9 @@ export function useAnchoredPopoverPosition(params: {
     const maxLeft = Math.max(margin, window.innerWidth - w - margin)
     const maxTop = Math.max(margin, window.innerHeight - h - margin)
 
-    const left = clamp(x + offset, margin, maxLeft)
+    const left = params.preferLeft
+      ? clamp(x - offset - w, margin, maxLeft)
+      : clamp(x + offset, margin, maxLeft)
     const top = clamp(y + offset, margin, maxTop)
 
     return { left: `${Math.floor(left)}px`, top: `${Math.floor(top)}px` }

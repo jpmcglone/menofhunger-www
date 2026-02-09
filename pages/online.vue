@@ -132,7 +132,7 @@ async function mergeUserFromRefetch(userId: string) {
   mergeRefetchTimeout = setTimeout(async () => {
     mergeRefetchTimeout = null
     try {
-      const res = await apiFetch<GetPresenceOnlineData>('/presence/online', { method: 'GET' })
+      const res = await apiFetch<GetPresenceOnlineData>('/presence/online', { method: 'GET', query: { includeSelf: '1' } })
       const fromApi = res?.data ?? []
       const next = [...users.value]
       for (const u of fromApi) {
@@ -159,7 +159,7 @@ async function fetchOnline() {
   loading.value = true
   error.value = null
   try {
-    const res = await apiFetch<GetPresenceOnlineData>('/presence/online', { method: 'GET' })
+    const res = await apiFetch<GetPresenceOnlineData>('/presence/online', { method: 'GET', query: { includeSelf: '1' } })
     users.value = (res?.data ?? []).sort(sortByRecent)
     totalOnline.value = typeof res?.pagination?.totalOnline === 'number' ? res.pagination.totalOnline : users.value.length
     if (users.value.length > 0) {
