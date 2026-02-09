@@ -144,14 +144,20 @@
           <div class="text-xs moh-text-muted">
             Jobs that scan existing data and compute missing cached fields.
           </div>
-          <div class="flex flex-wrap gap-2">
+          <div class="flex flex-wrap items-center gap-2">
             <Button
               label="Posts topics backfill"
               severity="secondary"
               :loading="runningKey === 'topics'"
               :disabled="Boolean(runningKey)"
-              @click="runJob('topics', 'Posts topics backfill', '/admin/jobs/posts-topics-backfill')"
+              @click="runJob('topics', 'Posts topics backfill', '/admin/jobs/posts-topics-backfill', { wipeExisting: topicsWipeExisting })"
             />
+            <div class="flex items-center gap-2 pl-1">
+              <Checkbox v-model="topicsWipeExisting" binary inputId="moh-topics-wipe" />
+              <label for="moh-topics-wipe" class="text-xs moh-text-muted select-none">
+                Wipe & rebuild
+              </label>
+            </div>
             <Button
               label="Link metadata backfill"
               severity="secondary"
@@ -241,10 +247,10 @@ const hashtagCanContinue = computed(() => {
   return Boolean(hashtagBackfillStatus.value.cursor)
 })
 
-async function runJob(key: JobKey, label: string, path: string) {
+async function runJob(key: JobKey, label: string, path: string, body?: Record<string, any>) {
   runningKey.value = key
   try {
-    await apiFetchData<{ ok: true }>(path, { method: 'POST' })
+    await apiFetchData<{ ok: true }>(path, body ? { method: 'POST', body } : { method: 'POST' })
     toast.push({ title: label, tone: 'success', durationMs: 1600 })
   } catch (e: unknown) {
     toast.push({ title: getApiErrorMessage(e) || `${label} failed.`, tone: 'error', durationMs: 2600 })
@@ -252,6 +258,8 @@ async function runJob(key: JobKey, label: string, path: string) {
     runningKey.value = null
   }
 }
+
+const topicsWipeExisting = ref(false)
 
 async function refreshHashtagBackfillStatus() {
   hashtagBackfillLoading.value = true
