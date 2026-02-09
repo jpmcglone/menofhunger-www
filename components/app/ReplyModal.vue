@@ -87,6 +87,7 @@ import { useReplyModal } from '~/composables/useReplyModal'
 import { useApiClient } from '~/composables/useApiClient'
 import { usePostCountBumps } from '~/composables/usePostCountBumps'
 import { useMiddleScroller } from '~/composables/useMiddleScroller'
+import { useUserOverlay } from '~/composables/useUserOverlay'
 
 const replyModal = useReplyModal()
 const { apiFetchData } = useApiClient()
@@ -94,13 +95,14 @@ const { user } = useAuth()
 const middleScrollerRef = useMiddleScroller()
 
 const parentPost = computed(() => replyModal.parentPost.value)
+const { user: parentAuthor } = useUserOverlay(computed(() => parentPost.value?.author ?? null))
 
-const parentAuthorUsername = computed(() => parentPost.value?.author?.username ?? null)
+const parentAuthorUsername = computed(() => parentAuthor.value?.username ?? null)
 const parentAuthorProfilePath = computed(() =>
   parentAuthorUsername.value ? `/u/${encodeURIComponent(parentAuthorUsername.value)}` : null
 )
 const parentAuthorLinkClass = computed(() => {
-  const author = parentPost.value?.author
+  const author = parentAuthor.value
   if (!author) return ''
   if (author.premium) return 'text-[var(--moh-premium)]'
   if (author.verifiedStatus && author.verifiedStatus !== 'none') return 'text-[var(--moh-verified)]'

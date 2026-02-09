@@ -1,4 +1,6 @@
 import type { GetNotificationsResponse, Notification } from '~/types/api'
+import type { NotificationsCallback } from '~/composables/usePresence'
+import { useUsersStore } from '~/composables/useUsersStore'
 
 type NotificationsListResponse = {
   data: Notification[]
@@ -16,11 +18,29 @@ export function useNotifications() {
   const { apiFetch } = useApiClient()
   const route = useRoute()
   const { user: me } = useAuth()
+  const usersStore = useUsersStore()
+  const { addNotificationsCallback, removeNotificationsCallback } = usePresence()
 
   const notifications = ref<Notification[]>([])
   const nextCursor = ref<string | null>(null)
   const loading = ref(false)
   const isNotificationsPage = computed(() => route.path === '/notifications')
+
+  // Realtime: insert new/updated notifications without a full refetch.
+  const notificationsCb: NotificationsCallback = {
+    onNew: (payload) => {
+      const n = payload?.notification
+      if (!n?.id) return
+      // Dedupe and keep newest at top.
+      const existing = notifications.value
+      const without = existing.filter((x) => x.id !== n.id)
+      notifications.value = [n, ...without]
+    },
+  }
+  if (import.meta.client) {
+    onMounted(() => addNotificationsCallback(notificationsCb))
+    onBeforeUnmount(() => removeNotificationsCallback(notificationsCb))
+  }
 
   async function fetchList(opts?: { cursor?: string | null; limit?: number; forceRefresh?: boolean }) {
     const cursor = opts?.cursor ?? null
@@ -77,13 +97,13 @@ export function useNotifications() {
   }
 
   function actorDisplay(n: Notification): string {
-    const actor = n.actor
+    const actor = n.actor?.id ? (usersStore.overlay(n.actor as any) as any) : n.actor
     return actor?.username ? `@${actor.username}` : (actor?.name ?? 'Someone')
   }
 
   /** Tailwind class for actor username by tier (premium > verified > default). Use ! so it wins over layout text color. */
   function actorTierClass(n: Notification): string {
-    const a = n.actor
+    const a = n.actor?.id ? (usersStore.overlay(n.actor as any) as any) : n.actor
     if (a?.premium) return '!text-[var(--moh-premium)]'
     if (a?.verifiedStatus && a.verifiedStatus !== 'none') return '!text-[var(--moh-verified)]'
     return ''
@@ -91,7 +111,7 @@ export function useNotifications() {
 
   /** Background color for notification type icon based on sender (actor) tier, not notification kind. */
   function actorTierIconBgClass(n: Notification): string {
-    const a = n.actor
+    const a = n.actor?.id ? (usersStore.overlay(n.actor as any) as any) : n.actor
     if (a?.premium) return 'bg-[var(--moh-premium)]'
     if (a?.verifiedStatus && a.verifiedStatus !== 'none') return 'bg-[var(--moh-verified)]'
     return 'bg-gray-500'

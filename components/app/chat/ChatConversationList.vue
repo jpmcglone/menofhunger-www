@@ -94,7 +94,7 @@
         >
           <div class="flex items-center gap-3">
             <div v-if="c.type === 'direct'">
-              <AppUserAvatar :user="getDirectUser(c)" size-class="h-10 w-10" />
+              <AppUserAvatar :user="getDirectUserOverlay(c)" size-class="h-10 w-10" />
             </div>
             <div
               v-else
@@ -109,9 +109,9 @@
                     {{ getConversationTitle(c) }}
                   </div>
                   <AppVerifiedBadge
-                    v-if="c.type === 'direct' && getDirectUser(c)"
-                    :status="getDirectUser(c)!.verifiedStatus"
-                    :premium="Boolean(getDirectUser(c)!.premium)"
+                    v-if="c.type === 'direct' && getDirectUserOverlay(c)"
+                    :status="getDirectUserOverlay(c)!.verifiedStatus"
+                    :premium="Boolean(getDirectUserOverlay(c)!.premium)"
                   />
                 </div>
                 <div class="text-xs text-gray-500 dark:text-gray-400">
@@ -167,8 +167,9 @@
 import type { PropType } from 'vue'
 import type { MessageConversation, MessageUser } from '~/types/api'
 import type { TypingUserDisplay } from '~/composables/chat/useChatTyping'
+import { useUsersStore } from '~/composables/useUsersStore'
 
-defineProps({
+const props = defineProps({
   isTinyViewport: { type: Boolean, required: true },
   activeTab: { type: String as PropType<'primary' | 'requests'>, required: true },
   activeList: { type: Array as PropType<MessageConversation[]>, required: true },
@@ -196,4 +197,11 @@ const emit = defineEmits<{
   (e: 'open-blocks'): void
   (e: 'load-more'): void
 }>()
+
+const usersStore = useUsersStore()
+function getDirectUserOverlay(c: MessageConversation): MessageUser | null {
+  const base = props.getDirectUser(c)
+  if (!base?.id) return base
+  return usersStore.overlay(base as any) as any
+}
 </script>

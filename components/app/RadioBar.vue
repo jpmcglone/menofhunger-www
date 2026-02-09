@@ -116,12 +116,14 @@
 <script setup lang="ts">
 import type { RadioListener } from '~/types/api'
 import { tinyTooltip } from '~/utils/tiny-tooltip'
+import { useUsersStore } from '~/composables/useUsersStore'
 
 function listenerProfileTo(u: { id: string; username?: string | null }): string {
   return u.username ? `/u/${encodeURIComponent(u.username)}` : `/u/id/${u.id}`
 }
 
 const { currentStation, isPlaying, isBuffering, listeners, toggle, stop, volume, setVolume } = useRadioPlayer()
+const usersStore = useUsersStore()
 const listenersCount = computed(() => (currentStation.value ? listeners.value.length : null))
 
 const preMuteVolume = ref<number | null>(null)
@@ -160,7 +162,7 @@ const volumeIconName = computed(() => {
 
 const listenerStack = computed<RadioListener[]>(() => {
   if (!currentStation.value) return []
-  return (listeners.value ?? []).slice(0, 5)
+  return (listeners.value ?? []).slice(0, 5).map((u) => (u?.id ? (usersStore.overlay(u as any) as any) : u))
 })
 const listenerOverflowCount = computed(() => {
   if (!currentStation.value) return 0

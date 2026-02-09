@@ -204,11 +204,13 @@ usePageSeo({
 })
 
 const { apiFetch, apiFetchData } = useApiClient()
+const { addAdminCallback, removeAdminCallback } = usePresence()
 import { getApiErrorMessage } from '~/utils/api-error'
 import { formatDateTime } from '~/utils/time-format'
 import { useFormSubmit } from '~/composables/useFormSubmit'
 import type { AdminFeedbackItem, AdminFeedbackListData, FeedbackCategory, FeedbackStatus } from '~/types/api'
 import { useMentionAutocomplete } from '~/composables/useMentionAutocomplete'
+import type { AdminCallback } from '~/composables/usePresence'
 
 const statusOptions = [
   { label: 'All', value: 'all' as const },
@@ -260,10 +262,21 @@ const canSave = computed(() => {
 })
 
 const didInitialLoad = ref(false)
+const adminCb: AdminCallback = {
+  onUpdated: (payload) => {
+    if (payload?.kind !== 'feedback') return
+    void loadFeedback(true)
+  },
+}
 onMounted(() => {
   if (didInitialLoad.value) return
   didInitialLoad.value = true
   void loadFeedback(true)
+  addAdminCallback(adminCb)
+})
+
+onBeforeUnmount(() => {
+  removeAdminCallback(adminCb)
 })
 
 watch([statusFilter, categoryFilter], () => void loadFeedback(true))

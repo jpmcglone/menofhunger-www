@@ -174,6 +174,7 @@ import type { FollowRelationship, PublicProfile } from '~/types/api'
 import { formatDateTime, formatListTime } from '~/utils/time-format'
 import { tinyTooltip } from '~/utils/tiny-tooltip'
 import type { MenuItem } from 'primevue/menuitem'
+import { useUserOverlay } from '~/composables/useUserOverlay'
 
 const props = defineProps<{
   profile: PublicProfile | null
@@ -200,7 +201,7 @@ const emit = defineEmits<{
   (e: 'openFollowing'): void
 }>()
 
-const profile = computed(() => props.profile ?? null)
+const { user: profile } = useUserOverlay(computed(() => props.profile ?? null))
 const profileName = computed(() => props.profileName)
 const profileAvatarUrl = computed(() => props.profileAvatarUrl ?? null)
 const profileBannerUrl = computed(() => props.profileBannerUrl ?? null)

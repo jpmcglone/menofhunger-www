@@ -65,6 +65,7 @@
 
 <script setup lang="ts">
 import type { FollowListUser } from '~/types/api'
+import { useUsersStore } from '~/composables/useUsersStore'
 
 const props = defineProps<{
   open: boolean
@@ -73,6 +74,9 @@ const props = defineProps<{
   anchor: { left: number; top: number; height: number } | null
   listboxId?: string
 }>()
+
+const usersStore = useUsersStore()
+const items = computed(() => props.items.map((u) => (u?.id ? (usersStore.overlay(u as any) as any) : u)))
 
 const emit = defineEmits<{
   (e: 'select', user: FollowListUser): void

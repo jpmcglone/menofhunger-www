@@ -25,7 +25,7 @@
 
         <div v-else-if="post" class="flex gap-3">
           <AppUserAvatar
-            :user="post.author"
+            :user="author"
             size-class="h-9 w-9"
             bg-class="moh-surface"
           />
@@ -34,15 +34,15 @@
               <div class="min-w-0 flex-1">
                 <div class="flex min-w-0 items-center gap-1.5 flex-nowrap">
                   <span class="text-sm font-semibold moh-text truncate">
-                    {{ post.author.name || post.author.username || 'User' }}
+                    {{ author?.name || author?.username || 'User' }}
                   </span>
                   <AppVerifiedBadge
                     class="shrink-0"
-                    :status="post.author.verifiedStatus ?? 'none'"
-                    :premium="post.author.premium ?? false"
+                    :status="author?.verifiedStatus ?? 'none'"
+                    :premium="author?.premium ?? false"
                   />
                 </div>
-                <div class="text-[11px] moh-text-muted truncate">@{{ post.author.username || 'user' }}</div>
+                <div class="text-[11px] moh-text-muted truncate">@{{ author?.username || 'user' }}</div>
               </div>
               <div class="text-[11px] moh-text-muted shrink-0">
                 {{ createdAtShort }}
@@ -85,6 +85,7 @@
 <script setup lang="ts">
 import type { FeedPost, GetPostData } from '~/types/api'
 import { getApiErrorMessage } from '~/utils/api-error'
+import { useUserOverlay } from '~/composables/useUserOverlay'
 
 const props = defineProps<{
   postId: string
@@ -161,6 +162,7 @@ const { data, pending, error, refresh } = useAsyncData(
 )
 
 const post = computed<FeedPost | null>(() => (data.value as FeedPost | null) ?? null)
+const { user: author } = useUserOverlay(computed(() => post.value?.author ?? null))
 const errorMessage = computed(() => (error.value ? getApiErrorMessage(error.value) || 'Failed to load embedded post.' : null))
 
 const showSkeleton = computed(() => {

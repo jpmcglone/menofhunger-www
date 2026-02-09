@@ -53,17 +53,17 @@
           v-if="authorProfilePath"
           :to="authorProfilePath"
           class="group shrink-0"
-          :aria-label="`View @${post.author.username} profile`"
+          :aria-label="`View @${author.username} profile`"
         >
           <AppUserAvatar
-            :user="post.author"
+            :user="author"
             size-class="h-10 w-10"
             bg-class="moh-surface"
           />
         </NuxtLink>
         <AppUserAvatar
           v-else
-          :user="post.author"
+          :user="author"
           size-class="h-10 w-10"
           bg-class="moh-surface"
         />
@@ -72,11 +72,11 @@
       <div class="relative z-10 min-w-0 flex-1" :class="{ 'pt-3': showThreadLineAboveAvatar }">
         <div class="relative" @click.stop>
           <AppPostHeaderLine
-            :display-name="post.author.name || post.author.username || 'User'"
-            :username="post.author.username || ''"
-            :verified-status="post.author.verifiedStatus"
-            :premium="post.author.premium"
-            :premium-plus="post.author.premiumPlus"
+            :display-name="author.name || author.username || 'User'"
+            :username="author.username || ''"
+            :verified-status="author.verifiedStatus"
+            :premium="author.premium"
+            :premium-plus="author.premiumPlus"
             :profile-path="authorProfilePath"
             :post-id="post.id"
             :post-permalink="postPermalink"
@@ -243,7 +243,7 @@
     v-model:visible="reportOpen"
     target-type="post"
     :subject-post-id="post.id"
-    :subject-label="`@${post.author.username || 'user'}`"
+    :subject-label="`@${author.username || 'user'}`"
     @submitted="onReportSubmitted"
   />
 </template>
@@ -259,6 +259,7 @@ import { formatShortCount } from '~/utils/text'
 import { useCopyToClipboard } from '~/composables/useCopyToClipboard'
 import { usePostCountBumps } from '~/composables/usePostCountBumps'
 import { useInViewOnce } from '~/composables/useInViewOnce'
+import { useUserOverlay } from '~/composables/useUserOverlay'
 
 const props = defineProps<{
   post: FeedPost
@@ -287,6 +288,7 @@ const emit = defineEmits<{
 }>()
 
 const post = computed(() => props.post)
+const { user: author } = useUserOverlay(computed(() => post.value.author))
 const isDeletedPost = computed(() => Boolean(post.value.deletedAt))
 const clickable = computed(() => props.clickable !== false)
 const highlightClass = computed(() => {
@@ -341,7 +343,7 @@ const { user, me: refetchMe } = useAuth()
 const isAuthed = computed(() => Boolean(user.value?.id))
 const viewerHasUsername = computed(() => Boolean(user.value?.usernameIsSet))
 const viewerIsVerified = computed(() => Boolean(user.value?.verifiedStatus && user.value.verifiedStatus !== 'none'))
-const isSelf = computed(() => Boolean(user.value?.id && user.value.id === post.value.author.id))
+const isSelf = computed(() => Boolean(user.value?.id && user.value.id === (author.value?.id ?? post.value.author.id)))
 const { apiFetchData } = useApiClient()
 const { show: showAuthActionModal } = useAuthActionModal()
 const boostState = useBoostState()

@@ -136,12 +136,13 @@
 
 <script setup lang="ts">
 import type { UserPreview } from '~/types/api'
+import { useUserOverlay } from '~/composables/useUserOverlay'
 
 const props = defineProps<{
   user: UserPreview
 }>()
 
-const user = computed(() => props.user)
+const { user } = useUserOverlay(computed(() => props.user))
 
 const profilePath = computed(() => {
   const u = (user.value.username ?? '').trim()

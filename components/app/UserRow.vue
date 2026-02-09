@@ -43,11 +43,14 @@
 
 <script setup lang="ts">
 import type { FollowListUser } from '~/types/api'
+import { useUserOverlay } from '~/composables/useUserOverlay'
 
 const props = defineProps<{
   user: FollowListUser
   showFollowButton?: boolean
 }>()
+
+const { user } = useUserOverlay(computed(() => props.user))
 
 const { user: authUser } = useAuth()
 const isAuthed = computed(() => Boolean(authUser.value?.id))
@@ -55,24 +58,24 @@ const isAuthed = computed(() => Boolean(authUser.value?.id))
 // When signed out, never show follow controls anywhere.
 const showFollowButton = computed(() => isAuthed.value && props.showFollowButton !== false)
 
-const displayName = computed(() => props.user.name || props.user.username || 'User')
-const handle = computed(() => (props.user.username ? `@${props.user.username}` : '@—'))
+const displayName = computed(() => user.value?.name || user.value?.username || 'User')
+const handle = computed(() => (user.value?.username ? `@${user.value.username}` : '@—'))
 
 const { addInterest, removeInterest } = usePresence()
 onMounted(() => {
-  if (props.user?.id) addInterest([props.user.id])
+  if (user.value?.id) addInterest([user.value.id])
 })
 onBeforeUnmount(() => {
-  if (props.user?.id) removeInterest([props.user.id])
+  if (user.value?.id) removeInterest([user.value.id])
 })
 
 const { onEnter, onMove, onLeave } = useUserPreviewTrigger({
-  username: computed(() => props.user.username ?? ''),
+  username: computed(() => user.value?.username ?? ''),
 })
 
 function goToProfile() {
-  if (!props.user.username) return
-  void navigateTo(`/u/${encodeURIComponent(props.user.username)}`)
+  if (!user.value?.username) return
+  void navigateTo(`/u/${encodeURIComponent(user.value.username)}`)
 }
 </script>
 

@@ -3,6 +3,7 @@ import { getApiErrorMessage } from '~/utils/api-error'
 import { useCursorFeed } from '~/composables/useCursorFeed'
 import { useMiddleScroller } from '~/composables/useMiddleScroller'
 import { usePostCountBumps } from '~/composables/usePostCountBumps'
+import type { PostsCallback } from '~/composables/usePresence'
 
 type FeedFilter = 'all' | 'public' | PostVisibility
 type FeedSort = 'new' | 'trending'
@@ -16,6 +17,9 @@ export function usePostsFeed(options: { visibility?: Ref<FeedFilter>; followingO
   const middleScrollerEl = useMiddleScroller()
   const { clearBumpsForPostIds } = usePostCountBumps()
   const loadingIndicator = useLoadingIndicator()
+  const { user: me } = useAuth()
+  const { addPostsCallback, removePostsCallback } = usePresence()
+  const boostState = useBoostState()
 
   const visibility = options.visibility ?? ref<FeedFilter>('all')
   const followingOnly = options.followingOnly ?? ref(false)
@@ -42,6 +46,54 @@ export function usePostsFeed(options: { visibility?: Ref<FeedFilter>; followingO
 
   const posts = feed.items
   const { nextCursor, loading, error, refresh: feedRefresh, loadMore: feedLoadMore } = feed
+
+  // Realtime: patch post interaction counts in-place for visible feeds.
+  const postsCb: PostsCallback = {
+    onInteraction: (payload) => {
+      const postId = String(payload?.postId ?? '').trim()
+      if (!postId) return
+      const kind = payload?.kind
+      const active = Boolean(payload?.active)
+      const actorId = String(payload?.actorUserId ?? '').trim()
+      const isMe = Boolean(actorId && actorId === me.value?.id)
+
+      const patchOne = (p: FeedPost): FeedPost => {
+        const next: FeedPost = { ...p }
+        if (next.id === postId) {
+          if (kind === 'boost' && typeof payload?.boostCount === 'number') {
+            next.boostCount = Math.max(0, Math.floor(payload.boostCount))
+            if (isMe) next.viewerHasBoosted = active
+            if (isMe) boostState.set(postId, { viewerHasBoosted: active, boostCount: next.boostCount })
+          }
+          if (kind === 'bookmark' && typeof payload?.bookmarkCount === 'number') {
+            next.bookmarkCount = Math.max(0, Math.floor(payload.bookmarkCount))
+            if (isMe) next.viewerHasBookmarked = active
+          }
+        }
+        if (next.parent) {
+          next.parent = patchOne(next.parent)
+        }
+        return next
+      }
+
+      // Only update if we actually have the post in this feed.
+      // Note: post might appear deep in a parent chain, so check recursively.
+      const containsId = (p: FeedPost | undefined, id: string): boolean => {
+        let cur: FeedPost | undefined = p
+        while (cur) {
+          if (cur.id === id) return true
+          cur = cur.parent
+        }
+        return false
+      }
+      if (!posts.value.some((p) => containsId(p, postId))) return
+      posts.value = posts.value.map(patchOne)
+    },
+  }
+  if (import.meta.client) {
+    onMounted(() => addPostsCallback(postsCb))
+    onBeforeUnmount(() => removePostsCallback(postsCb))
+  }
 
   function rootIdFor(p: FeedPost): string {
     let cur: FeedPost | undefined = p

@@ -272,11 +272,13 @@ usePageSeo({
 type VerifiedStatus = 'none' | 'identity' | 'manual'
 
 const { apiFetch, apiFetchData } = useApiClient()
+const { addAdminCallback, removeAdminCallback } = usePresence()
 import { getApiErrorMessage } from '~/utils/api-error'
 import { formatDateTime } from '~/utils/time-format'
 import { useFormSubmit } from '~/composables/useFormSubmit'
 import type { AdminVerificationListData, AdminVerificationRequest, VerificationRequestStatus } from '~/types/api'
 import type { AdminVerificationUser } from '~/types/api'
+import type { AdminCallback } from '~/composables/usePresence'
 
 const statusOptions = [
   { label: 'All', value: 'all' as const },
@@ -304,10 +306,21 @@ const editRejectionReason = ref('')
 const saving = computed(() => Boolean(approving.value || rejecting.value))
 
 const didInitialLoad = ref(false)
+const adminCb: AdminCallback = {
+  onUpdated: (payload) => {
+    if (payload?.kind !== 'verification') return
+    void loadRequests(true)
+  },
+}
 onMounted(() => {
   if (didInitialLoad.value) return
   didInitialLoad.value = true
   void loadRequests(true)
+  addAdminCallback(adminCb)
+})
+
+onBeforeUnmount(() => {
+  removeAdminCallback(adminCb)
 })
 
 watch(statusFilter, () => void loadRequests(true))

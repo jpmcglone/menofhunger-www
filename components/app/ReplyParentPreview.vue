@@ -2,7 +2,7 @@
   <div class="flex gap-3">
     <div v-if="!contentOnly" class="shrink-0" aria-hidden="true">
       <AppUserAvatar
-        :user="post.author"
+        :user="author"
         size-class="h-10 w-10"
         bg-class="moh-surface"
       />
@@ -13,7 +13,7 @@
           v-if="authorProfilePath"
           :to="authorProfilePath"
           class="font-bold truncate moh-text hover:underline underline-offset-2"
-          :aria-label="`View @${post.author?.username ?? ''} profile`"
+          :aria-label="`View @${author?.username ?? ''} profile`"
           @mouseenter="onEnter"
           @mousemove="onMove"
           @mouseleave="onLeave"
@@ -34,27 +34,27 @@
           aria-label="View profile (verified badge)"
         >
           <AppVerifiedBadge
-            :status="post.author?.verifiedStatus ?? 'none'"
-            :premium="post.author?.premium ?? false"
-            :premium-plus="post.author?.premiumPlus ?? false"
+            :status="author?.verifiedStatus ?? 'none'"
+            :premium="author?.premium ?? false"
+            :premium-plus="author?.premiumPlus ?? false"
           />
         </NuxtLink>
         <AppVerifiedBadge
           v-else
-          :status="post.author?.verifiedStatus ?? 'none'"
-          :premium="post.author?.premium ?? false"
-          :premium-plus="post.author?.premiumPlus ?? false"
+          :status="author?.verifiedStatus ?? 'none'"
+          :premium="author?.premium ?? false"
+          :premium-plus="author?.premiumPlus ?? false"
         />
         <NuxtLink
           v-if="authorProfilePath"
           :to="authorProfilePath"
           class="text-sm moh-text-muted truncate hover:underline underline-offset-2"
-          :aria-label="`View @${post.author?.username ?? ''} profile`"
+          :aria-label="`View @${author?.username ?? ''} profile`"
           @mouseenter="onEnter"
           @mousemove="onMove"
           @mouseleave="onLeave"
         >
-          @{{ post.author?.username ?? '—' }}
+          @{{ author?.username ?? '—' }}
         </NuxtLink>
         <span
           v-else
@@ -62,7 +62,7 @@
           @mouseenter="onEnter"
           @mousemove="onMove"
           @mouseleave="onLeave"
-        >@{{ post.author?.username ?? '—' }}</span>
+        >@{{ author?.username ?? '—' }}</span>
         <span class="shrink-0 text-sm moh-text-muted" aria-hidden="true">·</span>
         <NuxtLink
           v-if="post.id && postPermalink"
@@ -91,6 +91,7 @@
 
 <script setup lang="ts">
 import type { FeedPost } from '~/types/api'
+import { useUserOverlay } from '~/composables/useUserOverlay'
 
 const props = withDefaults(
   defineProps<{
@@ -101,9 +102,10 @@ const props = withDefaults(
   { contentOnly: false }
 )
 
-const displayName = computed(() => props.post.author?.name || props.post.author?.username || 'User')
+const { user: author } = useUserOverlay(computed(() => props.post.author))
+const displayName = computed(() => author.value?.name || author.value?.username || 'User')
 const authorProfilePath = computed(() => {
-  const u = props.post.author?.username
+  const u = author.value?.username
   return u ? `/u/${encodeURIComponent(u)}` : null
 })
 const postPermalink = computed(() =>
@@ -111,7 +113,7 @@ const postPermalink = computed(() =>
 )
 
 const { onEnter, onMove, onLeave } = useUserPreviewTrigger({
-  username: computed(() => props.post.author?.username ?? ''),
+  username: computed(() => author.value?.username ?? ''),
 })
 
 const { addInterest, removeInterest } = usePresence()

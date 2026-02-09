@@ -233,8 +233,10 @@ import { getApiErrorMessage } from '~/utils/api-error'
 import { formatDateTime } from '~/utils/time-format'
 import { useFormSubmit } from '~/composables/useFormSubmit'
 import type { AdminReportItem, AdminReportListData, ReportReason, ReportStatus, ReportTargetType } from '~/types/api'
+import type { AdminCallback } from '~/composables/usePresence'
 
 const { apiFetch, apiFetchData } = useApiClient()
+const { addAdminCallback, removeAdminCallback } = usePresence()
 
 const statusOptions = [
   { label: 'All', value: 'all' as const },
@@ -285,10 +287,21 @@ const canSave = computed(() => {
 })
 
 const didInitialLoad = ref(false)
+const adminCb: AdminCallback = {
+  onUpdated: (payload) => {
+    if (payload?.kind !== 'reports') return
+    void loadReports(true)
+  },
+}
 onMounted(() => {
   if (didInitialLoad.value) return
   didInitialLoad.value = true
   void loadReports(true)
+  addAdminCallback(adminCb)
+})
+
+onBeforeUnmount(() => {
+  removeAdminCallback(adminCb)
 })
 
 watch([statusFilter, targetFilter, reasonFilter], () => void loadReports(true))

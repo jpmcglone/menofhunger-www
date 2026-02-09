@@ -17,7 +17,7 @@
           >
             <div class="relative h-10 w-10 flex items-center justify-center">
               <AppUserAvatar
-                :user="user"
+                :user="displayUser"
                 size-class="h-8 w-8"
                 :enable-preview="false"
               />
@@ -74,6 +74,7 @@
 
 <script setup lang="ts">
 import type { AppNavItem } from '~/composables/useAppNav'
+import { useUserOverlay } from '~/composables/useUserOverlay'
 
 defineProps<{
   items: AppNavItem[]
@@ -81,6 +82,7 @@ defineProps<{
 
 const route = useRoute()
 const { user } = useAuth()
+const { user: displayUser } = useUserOverlay(user)
 const { menuItems, confirmVisible, confirmLogout } = useUserMenu()
 const middleScrollerRef = useMiddleScroller()
 const haptics = useHaptics()

@@ -49,7 +49,7 @@
             :aria-label="item.message.sender.username ? `View @${item.message.sender.username}` : 'View profile'"
             @click="goToProfile(item.message.sender)"
           >
-            <AppUserAvatar :user="item.message.sender" size-class="h-7 w-7" />
+            <AppUserAvatar :user="senderOverlay(item.message.sender)" size-class="h-7 w-7" />
           </button>
           <div
             :ref="(el) => registerBubbleEl(item.message.id, el)"
@@ -98,6 +98,7 @@
 import type { PropType } from 'vue'
 import type { Message, MessageUser } from '~/types/api'
 import type { ChatListItem } from '~/composables/chat/useChatTimeFormatting'
+import { useUsersStore } from '~/composables/useUsersStore'
 
 const props = defineProps({
   messagesReady: { type: Boolean, required: true },
@@ -125,6 +126,12 @@ const props = defineProps({
 })
 
 const CLUSTER_GAP_MS = 5 * 60 * 1000
+const usersStore = useUsersStore()
+
+function senderOverlay(u: MessageUser | null | undefined): MessageUser | null {
+  if (!u?.id) return u ?? null
+  return usersStore.overlay(u as any) as any
+}
 
 function parseMs(iso: string): number {
   const t = Date.parse(iso)

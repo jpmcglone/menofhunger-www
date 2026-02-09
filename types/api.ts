@@ -648,3 +648,43 @@ export type GetMessageBlocksResponse = {
   data: MessageBlockListItem[]
 }
 
+// --- Websocket (Socket.IO) payload types ---
+
+export type WsNotificationsNewPayload = {
+  notification: Notification
+}
+
+export type WsMessagesReadPayload = {
+  conversationId: string
+  userId: string
+  lastReadAt: string
+}
+
+export type WsFollowsChangedPayload = {
+  actorUserId: string
+  targetUserId: string
+  viewerFollowsUser: boolean
+}
+
+export type WsPostInteractionKind = 'boost' | 'bookmark'
+export type WsPostsInteractionPayload = {
+  postId: string
+  actorUserId: string
+  kind: WsPostInteractionKind
+  active: boolean
+  boostCount?: number
+  bookmarkCount?: number
+}
+
+export type WsAdminUpdateKind = 'reports' | 'verification' | 'feedback'
+export type WsAdminUpdateAction = 'created' | 'updated' | 'deleted' | 'resolved' | 'reviewed' | 'other'
+export type WsAdminUpdatedPayload = {
+  kind: WsAdminUpdateKind
+  action: WsAdminUpdateAction
+  id?: string
+}
+
+export type WsUsersSelfUpdatedPayload = {
+  user: PublicProfile
+}
+

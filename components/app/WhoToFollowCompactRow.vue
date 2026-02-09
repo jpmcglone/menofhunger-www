@@ -55,21 +55,24 @@
 
 <script setup lang="ts">
 import type { FollowListUser } from '~/types/api'
+import { useUserOverlay } from '~/composables/useUserOverlay'
 
 const props = defineProps<{
   user: FollowListUser
 }>()
+
+const { user } = useUserOverlay(computed(() => props.user))
 
 const emit = defineEmits<{
   (e: 'followed'): void
   (e: 'unfollowed'): void
 }>()
 
-const displayName = computed(() => props.user.name || props.user.username || 'User')
-const handle = computed(() => (props.user.username ? `@${props.user.username}` : '@—'))
+const displayName = computed(() => user.value?.name || user.value?.username || 'User')
+const handle = computed(() => (user.value?.username ? `@${user.value.username}` : '@—'))
 
 const { onEnter, onMove, onLeave } = useUserPreviewTrigger({
-  username: computed(() => props.user.username ?? ''),
+  username: computed(() => user.value?.username ?? ''),
 })
 
 // X-like pill button: dark mode = white pill, light mode = dark pill.

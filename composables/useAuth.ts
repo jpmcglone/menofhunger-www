@@ -1,3 +1,6 @@
+import type { UsersCallback } from '~/composables/usePresence'
+import { useUsersStore } from '~/composables/useUsersStore'
+
 export type AuthUser = {
   id: string
   createdAt?: string
@@ -26,10 +29,49 @@ let clientMePromise: Promise<AuthUser | null> | null = null
 
 export function useAuth() {
   const { apiFetch } = useApiClient()
+  const usersStore = useUsersStore()
 
   const user = useState<AuthUser | null>('auth-user', () => null)
   const didAttempt = useState<boolean>('auth-did-attempt', () => false)
   const initDone = useState<boolean>('auth-init-done', () => false)
+
+  // Realtime: keep user tier/profile in sync across tabs/devices.
+  const wsHooked = useState<boolean>('auth-ws-users-self-updated-hooked', () => false)
+  if (import.meta.client && !wsHooked.value) {
+    wsHooked.value = true
+    // Defer socket hookups to app mount so middleware doesn't indirectly call useRoute via usePresence().
+    // NOTE: useAuth() is used in middleware, so we can't use Vue lifecycle hooks here.
+    const nuxtApp = useNuxtApp()
+    ;(nuxtApp as { hooks: { hookOnce: (name: string, cb: () => void) => void } }).hooks.hookOnce('app:mounted', () => {
+      const { addUsersCallback } = usePresence()
+      const { invalidateUserPreviewCache } = useUserPreview()
+      const cb: UsersCallback = {
+        onSelfUpdated: (payload: { user?: import('~/types/api').PublicProfile }) => {
+          const u = payload?.user ?? null
+          if (!u?.id) return
+          usersStore.upsert(u as any)
+          if (u.username) invalidateUserPreviewCache(u.username)
+
+          // If this update is about *me*, patch my auth user object.
+          if (u.id === user.value?.id) {
+            user.value = {
+              ...(user.value ?? ({ id: u.id } as AuthUser)),
+              username: u.username,
+              name: u.name,
+              bio: u.bio,
+              premium: u.premium,
+              premiumPlus: u.premiumPlus,
+              verifiedStatus: u.verifiedStatus as any,
+              avatarUrl: u.avatarUrl,
+              bannerUrl: u.bannerUrl,
+              pinnedPostId: u.pinnedPostId,
+            }
+          }
+        },
+      }
+      addUsersCallback(cb)
+    })
+  }
 
   async function me(): Promise<AuthUser | null> {
     try {

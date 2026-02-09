@@ -1,6 +1,15 @@
 import { io, type Socket } from 'socket.io-client'
 import { appConfig } from '~/config/app'
-import type { FollowListUser, RadioListener } from '~/types/api'
+import type {
+  FollowListUser,
+  RadioListener,
+  WsAdminUpdatedPayload,
+  WsFollowsChangedPayload,
+  WsNotificationsNewPayload,
+  WsPostsInteractionPayload,
+  WsUsersSelfUpdatedPayload,
+} from '~/types/api'
+import { useUsersStore } from '~/composables/useUsersStore'
 
 const PRESENCE_STATE_KEY = 'presence-online-ids'
 const PRESENCE_IDLE_IDS_KEY = 'presence-idle-ids'
@@ -36,6 +45,27 @@ export type RadioCallback = {
 export type MessagesCallback = {
   onMessage?: (payload: { conversationId?: string; message?: unknown }) => void
   onTyping?: (payload: { conversationId?: string; userId?: string; typing?: boolean }) => void
+  onRead?: (payload: { conversationId?: string; userId?: string; lastReadAt?: string }) => void
+}
+
+export type NotificationsCallback = {
+  onNew?: (payload: WsNotificationsNewPayload) => void
+}
+
+export type FollowsCallback = {
+  onChanged?: (payload: WsFollowsChangedPayload) => void
+}
+
+export type PostsCallback = {
+  onInteraction?: (payload: WsPostsInteractionPayload) => void
+}
+
+export type AdminCallback = {
+  onUpdated?: (payload: WsAdminUpdatedPayload) => void
+}
+
+export type UsersCallback = {
+  onSelfUpdated?: (payload: WsUsersSelfUpdatedPayload) => void
 }
 
 function apiBaseUrlToWsUrl(apiBaseUrl: string): string {
@@ -50,6 +80,7 @@ function apiBaseUrlToWsUrl(apiBaseUrl: string): string {
  * Call from layout when authenticated.
  */
 export function usePresence() {
+  const usersStore = useUsersStore()
   const onlineUserIds = useState<string[]>(PRESENCE_STATE_KEY, () => [])
   const idleUserIds = useState<Set<string>>(PRESENCE_IDLE_IDS_KEY, () => new Set())
   const socketRef = useState<Socket | null>(PRESENCE_SOCKET_KEY, () => null)
@@ -59,6 +90,11 @@ export function usePresence() {
   const onlineFeedCallbacks = useState<Set<OnlineFeedCallback>>('presence-online-feed-callbacks', () => new Set())
   const messagesCallbacks = useState<Set<MessagesCallback>>('presence-messages-callbacks', () => new Set())
   const radioCallbacks = useState<Set<RadioCallback>>('presence-radio-callbacks', () => new Set())
+  const notificationsCallbacks = useState<Set<NotificationsCallback>>('presence-notifications-callbacks', () => new Set())
+  const followsCallbacks = useState<Set<FollowsCallback>>('presence-follows-callbacks', () => new Set())
+  const postsCallbacks = useState<Set<PostsCallback>>('presence-posts-callbacks', () => new Set())
+  const adminCallbacks = useState<Set<AdminCallback>>('presence-admin-callbacks', () => new Set())
+  const usersCallbacks = useState<Set<UsersCallback>>('presence-users-callbacks', () => new Set())
   const onlineFeedSubscribed = useState(PRESENCE_ONLINE_FEED_SUBSCRIBED_KEY, () => false)
   const disconnectedDueToIdle = useState<boolean>(PRESENCE_DISCONNECTED_DUE_TO_IDLE_KEY, () => false)
   const notificationUndeliveredCount = useState<number>(NOTIFICATIONS_UNDELIVERED_COUNT_KEY, () => 0)
@@ -212,6 +248,46 @@ export function usePresence() {
 
   function removeRadioCallback(cb: RadioCallback) {
     radioCallbacks.value.delete(cb)
+  }
+
+  function addNotificationsCallback(cb: NotificationsCallback) {
+    notificationsCallbacks.value.add(cb)
+  }
+
+  function removeNotificationsCallback(cb: NotificationsCallback) {
+    notificationsCallbacks.value.delete(cb)
+  }
+
+  function addFollowsCallback(cb: FollowsCallback) {
+    followsCallbacks.value.add(cb)
+  }
+
+  function removeFollowsCallback(cb: FollowsCallback) {
+    followsCallbacks.value.delete(cb)
+  }
+
+  function addPostsCallback(cb: PostsCallback) {
+    postsCallbacks.value.add(cb)
+  }
+
+  function removePostsCallback(cb: PostsCallback) {
+    postsCallbacks.value.delete(cb)
+  }
+
+  function addAdminCallback(cb: AdminCallback) {
+    adminCallbacks.value.add(cb)
+  }
+
+  function removeAdminCallback(cb: AdminCallback) {
+    adminCallbacks.value.delete(cb)
+  }
+
+  function addUsersCallback(cb: UsersCallback) {
+    usersCallbacks.value.add(cb)
+  }
+
+  function removeUsersCallback(cb: UsersCallback) {
+    usersCallbacks.value.delete(cb)
   }
 
   function addOnlineIdsFromRest(userIds: string[]) {
@@ -370,6 +446,13 @@ export function usePresence() {
       previousNotificationCountRef.value = newCount
     })
 
+    socket.on('notifications:new', (data: WsNotificationsNewPayload) => {
+      if (!notificationsCallbacks.value.size) return
+      for (const cb of notificationsCallbacks.value) {
+        cb.onNew?.(data)
+      }
+    })
+
     socket.on('messages:updated', (data: { primaryUnreadCount?: number; requestUnreadCount?: number }) => {
       const primaryRaw = typeof data?.primaryUnreadCount === 'number' ? data.primaryUnreadCount : 0
       const requestRaw = typeof data?.requestUnreadCount === 'number' ? data.requestUnreadCount : 0
@@ -408,12 +491,40 @@ export function usePresence() {
       }
     })
 
-    socket.on('messages:updated', (data: { primaryUnreadCount?: number; requestUnreadCount?: number }) => {
-      const primaryRaw = typeof data?.primaryUnreadCount === 'number' ? data.primaryUnreadCount : 0
-      const requestRaw = typeof data?.requestUnreadCount === 'number' ? data.requestUnreadCount : 0
-      messageUnreadCounts.value = {
-        primary: Math.max(0, Math.floor(primaryRaw)),
-        requests: Math.max(0, Math.floor(requestRaw)),
+    socket.on('messages:read', (data: { conversationId?: string; userId?: string; lastReadAt?: string }) => {
+      if (!messagesCallbacks.value.size) return
+      for (const cb of messagesCallbacks.value) {
+        cb.onRead?.(data)
+      }
+    })
+
+    socket.on('follows:changed', (data: WsFollowsChangedPayload) => {
+      if (!followsCallbacks.value.size) return
+      for (const cb of followsCallbacks.value) {
+        cb.onChanged?.(data)
+      }
+    })
+
+    socket.on('posts:interaction', (data: WsPostsInteractionPayload) => {
+      if (!postsCallbacks.value.size) return
+      for (const cb of postsCallbacks.value) {
+        cb.onInteraction?.(data)
+      }
+    })
+
+    socket.on('admin:updated', (data: WsAdminUpdatedPayload) => {
+      if (!adminCallbacks.value.size) return
+      for (const cb of adminCallbacks.value) {
+        cb.onUpdated?.(data)
+      }
+    })
+
+    socket.on('users:selfUpdated', (data: WsUsersSelfUpdatedPayload) => {
+      // Normalize immediately so any UI referencing this user updates everywhere.
+      if (data?.user?.id) usersStore.upsert(data.user as any)
+      if (!usersCallbacks.value.size) return
+      for (const cb of usersCallbacks.value) {
+        cb.onSelfUpdated?.(data)
       }
     })
 
@@ -594,6 +705,16 @@ export function usePresence() {
     removeMessagesCallback,
     addRadioCallback,
     removeRadioCallback,
+    addNotificationsCallback,
+    removeNotificationsCallback,
+    addFollowsCallback,
+    removeFollowsCallback,
+    addPostsCallback,
+    removePostsCallback,
+    addAdminCallback,
+    removeAdminCallback,
+    addUsersCallback,
+    removeUsersCallback,
     emitRadioJoin(stationId: string) {
       const socket = socketRef.value
       const id = (stationId ?? '').trim()

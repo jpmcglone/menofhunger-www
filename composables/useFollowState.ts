@@ -1,16 +1,35 @@
 import type { FollowRelationship } from '~/types/api'
 import { getApiErrorMessage } from '~/utils/api-error'
 import { runOptimisticRequest } from '~/utils/optimistic-request'
+import type { FollowsCallback } from '~/composables/usePresence'
 
 type FollowStateMap = Record<string, FollowRelationship>
 
 export function useFollowState() {
   const { apiFetchData } = useApiClient()
   const { invalidateUserPreviewCache } = useUserPreview()
+  const { user: me } = useAuth()
+  const { addFollowsCallback } = usePresence()
 
   const state = useState<FollowStateMap>('follow-state', () => ({}))
   const inflight = useState<Record<string, boolean>>('follow-inflight', () => ({}))
   const error = useState<string | null>('follow-state-error', () => null)
+
+  // Realtime: cross-tab/device sync for follow/unfollow (self only).
+  const wsHooked = useState<boolean>('follow-state-ws-hooked', () => false)
+  if (import.meta.client && !wsHooked.value) {
+    wsHooked.value = true
+    const cb: FollowsCallback = {
+      onChanged: (payload) => {
+        const actorId = payload?.actorUserId ?? null
+        const targetId = payload?.targetUserId ?? null
+        if (!actorId || !targetId) return
+        if (actorId !== me.value?.id) return
+        upsert(targetId, { viewerFollowsUser: Boolean(payload.viewerFollowsUser) })
+      },
+    }
+    addFollowsCallback(cb)
+  }
 
   function get(userId: string | null | undefined): FollowRelationship | null {
     if (!userId) return null

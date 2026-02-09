@@ -1511,6 +1511,16 @@ const messageCallback = {
     if (userId === me.value?.id) return
     setRemoteTyping(convoId, userId, payload?.typing)
   },
+  onRead: (payload: { conversationId?: string; userId?: string; lastReadAt?: string }) => {
+    const convoId = String(payload?.conversationId ?? '').trim()
+    if (!convoId) return
+    // Self-only event: another tab/device marked this conversation read.
+    updateConversationUnread(convoId, 0)
+    // If we currently have this conversation open, ensure UI stays consistent.
+    if (selectedConversationId.value === convoId) {
+      pendingNewCount.value = 0
+    }
+  },
 }
 
 onMounted(() => {

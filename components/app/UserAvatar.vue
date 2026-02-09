@@ -21,6 +21,8 @@
  * User avatar with presence: takes a user (id + avatar fields) and shows
  * AvatarCircle + green dot (online), clock (idle), or offline. Callers don't need usePresence().
  */
+import { useUserOverlay } from '~/composables/useUserOverlay'
+
 export type UserAvatarUser = {
   id: string
   avatarUrl?: string | null
@@ -56,19 +58,20 @@ const props = withDefaults(
 )
 
 const { getPresenceStatus } = usePresence()
+const { user: u } = useUserOverlay(computed(() => props.user))
 
-const avatarUrl = computed(() => props.user?.avatarUrl ?? null)
-const name = computed(() => props.user?.name ?? null)
-const username = computed(() => props.user?.username ?? null)
-const isPremiumPlus = computed(() => Boolean(props.user?.premiumPlus))
-const previewUsername = computed(() => (props.user?.username ?? '').trim())
+const avatarUrl = computed(() => u.value?.avatarUrl ?? null)
+const name = computed(() => u.value?.name ?? null)
+const username = computed(() => u.value?.username ?? null)
+const isPremiumPlus = computed(() => Boolean(u.value?.premiumPlus))
+const previewUsername = computed(() => (u.value?.username ?? '').trim())
 const enablePreview = computed(() => props.enablePreview !== false)
 
 const showPresence = computed(() => props.showPresence ?? true)
 
 const presenceStatus = computed(() => {
   if (props.presenceStatusOverride !== undefined) return props.presenceStatusOverride
-  return props.user?.id ? getPresenceStatus(props.user.id) : 'offline'
+  return u.value?.id ? getPresenceStatus(u.value.id) : 'offline'
 })
 
 const { onEnter, onMove, onLeave } = useUserPreviewTrigger({
