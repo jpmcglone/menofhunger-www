@@ -14,6 +14,7 @@ import { getApiErrorMessage } from '~/utils/api-error'
 
 export function useExploreRecommendations(options?: { enabled?: Ref<boolean>, isAuthed?: Ref<boolean> }) {
   const { apiFetch } = useApiClient()
+  const { user: authUser } = useAuth()
 
   const enabled = options?.enabled ?? ref(true)
   const isAuthed = options?.isAuthed ?? ref(false)
@@ -46,7 +47,8 @@ export function useExploreRecommendations(options?: { enabled?: Ref<boolean>, is
 
     try {
       const baseCalls = await Promise.allSettled([
-        apiFetch<GetPostsData>('/posts', { method: 'GET', query: { limit: 3, sort: 'featured', visibility: 'all' } }),
+        // Over-fetch so we can still show up to 3 after excluding the viewer's own posts.
+        apiFetch<GetPostsData>('/posts', { method: 'GET', query: { limit: 6, sort: 'featured', visibility: 'all' } }),
         apiFetch<GetTopicsData>('/topics', { method: 'GET', query: { limit: 50 } }),
         apiFetch<GetPresenceOnlineData>('/presence/online', { method: 'GET' }),
         ...(isAuthed.value ? [apiFetch<GetFollowedTopicsData>('/topics/followed', { method: 'GET', query: { limit: 50 } })] : []),
@@ -58,7 +60,10 @@ export function useExploreRecommendations(options?: { enabled?: Ref<boolean>, is
       const followedTopicsRes =
         isAuthed.value && baseCalls[3] && baseCalls[3].status === 'fulfilled' ? baseCalls[3].value : null
 
-      featuredPosts.value = (((featuredRes?.data ?? []) as FeedPost[]) ?? []).slice(0, 3)
+      const viewerId = String(authUser.value?.id ?? '').trim()
+      const featuredRaw = ((featuredRes?.data ?? []) as FeedPost[]) ?? []
+      const featuredFiltered = viewerId ? featuredRaw.filter((p) => p.author?.id !== viewerId) : featuredRaw
+      featuredPosts.value = featuredFiltered.slice(0, 3)
       topics.value = ((topicsRes?.data ?? []) as Topic[]) ?? []
       onlineUsers.value = ((onlineRes?.data ?? []) as OnlineUser[]) ?? []
       followedTopics.value = isAuthed.value ? (((followedTopicsRes?.data ?? []) as Topic[]) ?? []) : []

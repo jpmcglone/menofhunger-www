@@ -1,4 +1,4 @@
-import type { GetNotificationsResponse, Notification } from '~/types/api'
+import type { GetNotificationsResponse, NotificationFeedItem } from '~/types/api'
 
 export function useNotificationsBadge() {
   const { user } = useAuth()
@@ -24,8 +24,8 @@ export function useNotificationsBadge() {
   async function fetchUndeliveredCount() {
     if (!user.value?.id) return
     try {
-      const res = await apiFetch<Notification[]>('/notifications?limit=1') as {
-        data: Notification[]
+      const res = await apiFetch<NotificationFeedItem[]>('/notifications?limit=1') as {
+        data: NotificationFeedItem[]
         pagination?: GetNotificationsResponse['pagination']
       }
       const raw = res?.pagination?.undeliveredCount ?? 0

@@ -27,17 +27,19 @@
       No notifications yet.
     </div>
     <div v-else class="relative z-0 divide-y divide-gray-200 dark:divide-zinc-800">
-      <template v-for="n in notifications" :key="n.id">
+      <template v-for="item in notifications" :key="item.type === 'single' ? item.notification.id : item.group.id">
         <NuxtLink
-          v-if="rowHref(n)"
-          :to="rowHref(n)!"
+          v-if="itemHref(item)"
+          :to="itemHref(item)!"
           :prefetch="false"
           class="block w-full text-left hover:bg-gray-50 dark:hover:bg-zinc-900 cursor-pointer"
         >
-          <AppNotificationRow :notification="n" />
+          <AppNotificationRow v-if="item.type === 'single'" :notification="item.notification" />
+          <AppNotificationGroupRow v-else :group="item.group" />
         </NuxtLink>
         <div v-else class="block w-full text-left">
-          <AppNotificationRow :notification="n" />
+          <AppNotificationRow v-if="item.type === 'single'" :notification="item.notification" />
+          <AppNotificationGroupRow v-else :group="item.group" />
         </div>
       </template>
 
@@ -79,7 +81,7 @@ const {
   fetchList,
   markDelivered,
   markAllRead,
-  rowHref,
+  itemHref,
 } = useNotifications()
 
 const notifBadge = useNotificationsBadge()
@@ -90,9 +92,16 @@ const markingAllRead = ref(false)
 // Presence: subscribe to notification actors so avatars show online/offline (works after hard refresh).
 const notificationActorIds = computed(() => {
   const ids = new Set<string>()
-  for (const n of notifications.value) {
-    const id = n.actor?.id
-    if (id) ids.add(id)
+  for (const item of notifications.value) {
+    if (item.type === 'single') {
+      const id = item.notification.actor?.id
+      if (id) ids.add(id)
+      continue
+    }
+    for (const a of item.group.actors ?? []) {
+      const id = a?.id
+      if (id) ids.add(id)
+    }
   }
   return [...ids]
 })
@@ -123,7 +132,13 @@ async function onMarkAllRead() {
   markingAllRead.value = true
   try {
     await markAllRead()
-    notifications.value = notifications.value.map((n) => ({ ...n, readAt: new Date().toISOString() }))
+    const now = new Date().toISOString()
+    notifications.value = notifications.value.map((item) => {
+      if (item.type === 'single') {
+        return { ...item, notification: { ...item.notification, readAt: now } }
+      }
+      return { ...item, group: { ...item.group, readAt: now } }
+    })
   } finally {
     markingAllRead.value = false
   }
@@ -143,6 +158,12 @@ onMounted(async () => {
   await markDelivered()
   setNotificationUndeliveredCount(0)
   await fetchList()
+})
+
+onActivated(async () => {
+  await markDelivered()
+  setNotificationUndeliveredCount(0)
+  await fetchList({ forceRefresh: true })
 })
 
 onUnmounted(() => {

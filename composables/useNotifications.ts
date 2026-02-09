@@ -1,9 +1,9 @@
-import type { GetNotificationsResponse, Notification } from '~/types/api'
+import type { GetNotificationsResponse, Notification, NotificationFeedItem, NotificationGroup } from '~/types/api'
 import type { NotificationsCallback } from '~/composables/usePresence'
 import { useUsersStore } from '~/composables/useUsersStore'
 
 type NotificationsListResponse = {
-  data: Notification[]
+  data: NotificationFeedItem[]
   pagination?: GetNotificationsResponse['pagination']
 }
 
@@ -21,27 +21,26 @@ export function useNotifications() {
   const usersStore = useUsersStore()
   const { addNotificationsCallback, removeNotificationsCallback } = usePresence()
 
-  const notifications = ref<Notification[]>([])
+  const notifications = ref<NotificationFeedItem[]>([])
   const nextCursor = ref<string | null>(null)
   const loading = ref(false)
   const isNotificationsPage = computed(() => route.path === '/notifications')
 
-  // Realtime: insert new/updated notifications without a full refetch.
+  // Realtime: the API now returns grouped feed items, so we refetch when relevant events arrive.
   const notificationsCb: NotificationsCallback = {
     onNew: (payload) => {
-      const n = payload?.notification
-      if (!n?.id) return
-      // Dedupe and keep newest at top.
-      const existing = notifications.value
-      const without = existing.filter((x) => x.id !== n.id)
-      notifications.value = [n, ...without]
+      if (!payload?.notification?.id) return
+      if (!isNotificationsPage.value) return
+      if (loading.value) return
+      // Best-effort: refresh to keep grouping consistent (also covers boost upserts that don't change undeliveredCount).
+      void fetchList({ forceRefresh: true })
     },
     onDeleted: (payload) => {
       const ids = Array.isArray(payload?.notificationIds) ? payload.notificationIds : []
       if (ids.length === 0) return
-      const idSet = new Set(ids.filter((x) => typeof x === 'string' && x))
-      if (!idSet.size) return
-      notifications.value = notifications.value.filter((n) => !idSet.has(n.id))
+      if (!isNotificationsPage.value) return
+      if (loading.value) return
+      void fetchList({ forceRefresh: true })
     },
   }
   if (import.meta.client) {
@@ -60,7 +59,7 @@ export function useNotifications() {
       if (limit) q.set('limit', String(limit))
       if (cursor) q.set('cursor', cursor)
       const path = `/notifications?${q.toString()}`
-      const res = await apiFetch<Notification[]>(path) as NotificationsListResponse
+      const res = await apiFetch<NotificationFeedItem[]>(path) as NotificationsListResponse
       const list = res.data ?? []
       const pagination = res.pagination
       if (cursor) {
@@ -245,6 +244,24 @@ export function useNotifications() {
     return null
   }
 
+  function groupHref(g: NotificationGroup): string | null {
+    if (g.kind === 'followed_post') {
+      const first = g.actors?.[0] ?? null
+      if (first?.username) return `/u/${first.username}`
+      if (first?.id) return `/u/id/${first.id}`
+      if (g.subjectUserId) return `/u/id/${g.subjectUserId}`
+      return null
+    }
+    if (g.subjectPostId) return `/p/${g.subjectPostId}`
+    if (g.subjectUserId) return `/u/id/${g.subjectUserId}`
+    return null
+  }
+
+  function itemHref(item: NotificationFeedItem): string | null {
+    if (item.type === 'single') return rowHref(item.notification)
+    return groupHref(item.group)
+  }
+
   return {
     notifications,
     nextCursor,
@@ -266,5 +283,7 @@ export function useNotifications() {
     notificationIconName,
     formatWhen,
     rowHref,
+    groupHref,
+    itemHref,
   }
 }

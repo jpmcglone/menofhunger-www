@@ -506,6 +506,18 @@ export type OnlineUser = FollowListUser & { lastConnectAt?: number; idle?: boole
 /** Data type for GET /presence/online (array); totalOnline in pagination. */
 export type GetPresenceOnlineData = OnlineUser[]
 
+export type ActiveUsersMetrics = {
+  dau: number
+  mau: number
+  dauWindowDays: number
+  mauWindowDays: number
+  /** ISO timestamp of when the metric was computed. */
+  asOf: string
+}
+
+/** Data type for GET /metrics/active-users. */
+export type GetActiveUsersMetricsData = ActiveUsersMetrics
+
 export type Topic = {
   topic: string
   score: number
@@ -527,6 +539,8 @@ export type GetTopicPostsData = FeedPost[]
 export type GetTrendingHashtagsData = HashtagResult[]
 
 export type NotificationKind = 'comment' | 'boost' | 'follow' | 'followed_post' | 'mention' | 'generic'
+
+export type NotificationGroupKind = 'comment' | 'boost' | 'follow' | 'followed_post'
 
 export type NotificationActor = {
   id: string
@@ -565,10 +579,31 @@ export type Notification = {
   subjectTier?: SubjectTier
 }
 
-export type GetNotificationsData = Notification[]
+export type NotificationGroup = {
+  id: string
+  kind: NotificationGroupKind
+  createdAt: string
+  deliveredAt: string | null
+  readAt: string | null
+  subjectPostId: string | null
+  subjectUserId: string | null
+  actors: NotificationActor[]
+  actorCount: number
+  count: number
+  latestBody: string | null
+  latestSubjectPostPreview: SubjectPostPreview | null
+  subjectPostVisibility: PostVisibility | null
+  subjectTier: SubjectTier
+}
+
+export type NotificationFeedItem =
+  | { type: 'single'; notification: Notification }
+  | { type: 'group'; group: NotificationGroup }
+
+export type GetNotificationsData = NotificationFeedItem[]
 
 export type GetNotificationsResponse = {
-  data: Notification[]
+  data: NotificationFeedItem[]
   pagination: {
     nextCursor: string | null
     undeliveredCount: number

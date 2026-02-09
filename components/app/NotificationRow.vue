@@ -132,7 +132,7 @@
                   v-if="(m.kind === 'video' ? m.thumbnailUrl : m.url)"
                   :src="m.kind === 'video' ? (m.thumbnailUrl || m.url) : m.url"
                   :alt="''"
-                  class="h-8 w-8 shrink-0 rounded border border-gray-200 object-cover dark:border-zinc-700"
+                  class="h-8 w-8 shrink-0 rounded border border-gray-200 object-cover dark:border-zinc-700 bg-black"
                   loading="lazy"
                 >
               </template>

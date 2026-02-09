@@ -224,13 +224,12 @@
         </aside>
 
         <!-- Columns 2 + 3: separate scroll zones (independent). -->
-        <div :class="['flex min-w-0 flex-1 min-h-0', shouldCapMiddleColumn ? 'lg:justify-center' : '']">
+        <div class="flex min-w-0 flex-1 min-h-0">
           <!-- Middle / Feed (scroll zone #2) -->
           <main
             :class="[
               // `min-h-0` is critical so inner scroll containers can actually scroll (flexbox default min-height:auto can block it).
               'min-w-0 min-h-0 flex-1 overflow-x-hidden flex flex-col',
-              shouldCapMiddleColumn ? 'lg:max-w-[720px]' : '',
               !isRightRailForcedHidden ? 'lg:border-r moh-border' : '',
             ]"
           >
@@ -670,16 +669,6 @@ onBeforeUnmount(() => {
 const { hideTopBar, navCompactMode, isRightRailForcedHidden, isRightRailSearchHidden, title } = useLayoutRules(route)
 const isMessagesPage = computed(() => route.path === '/chat')
 const isOnlyMePage = computed(() => route.path === '/only-me')
-const shouldCapMiddleColumn = computed(() => {
-  if (isMessagesPage.value) return false
-  if (route.path.startsWith('/admin')) return false
-  if (route.path === '/radio') return false
-  if (route.path === '/tiers' || route.path.startsWith('/tiers/')) return false
-  if (route.path === '/settings' || route.path.startsWith('/settings/')) return false
-  // Comparison page is designed to use the full center column width.
-  if (route.path === '/comparison' || route.path.startsWith('/comparison/')) return false
-  return true
-})
 
 // Post entrypoints (left-nav button + mobile FAB): only render on these routes.
 const isComposerEntrypointRoute = computed(() => {
