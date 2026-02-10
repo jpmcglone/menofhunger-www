@@ -1,5 +1,6 @@
 {
-  "asOfDate": "Feb. 9, 2026",
+  "asOfDate": "Feb. 10, 2026",
+  "originalAsOfDate": "Feb. 3, 2026",
   "intro": {
     "label": "Product roadmap",
     "title": "Where we're headed",
@@ -52,7 +53,8 @@
           "title": "Premium membership (launch)",
           "items": [
             {
-              "text": "**Stripe subscriptions** — Premium ($25/mo) and Premium+ ($75/mo) billing with verification gating; entitlements are enforced in the upgrade flow and settings. Premium+ is a supporter tier with no special power."
+              "text": "**Stripe subscriptions** — Premium ($25/mo) and Premium+ ($75/mo) billing with verification gating; entitlements are enforced in the upgrade flow and settings. Premium+ is a supporter tier with no special power.",
+              "done": true
             }
           ]
         },
@@ -84,7 +86,8 @@
               "done": true
             },
             {
-              "text": "**Email re-engagement (v1 digest)** — A simple weekly digest and “you have new notifications” emails so you stay connected (provider: Mailgun or SES; we’ll pick the cheapest option that still delivers well)."
+              "text": "**Email re-engagement (v1 digest)** — A simple weekly digest and “you have new notifications” emails so you stay connected (provider: Mailgun or SES; we’ll pick the cheapest option that still delivers well).",
+              "done": true
             },
             {
               "text": "**PWA / Add to home screen** — Install the app on your phone (icon, splash, offline where useful) for an app-like experience without the app store.",
@@ -113,7 +116,8 @@
               "done": true
             },
             {
-              "text": "**Sentry** — Error tracking for both the API and the web app, so we catch regressions early and can respond fast."
+              "text": "**Sentry** — Error tracking for both the API and the web app, so we catch regressions early and can respond fast.",
+              "inProgress": true
             },
             {
               "text": "**Third-party analytics (minimal)** — Track the key funnel events (join, verify submitted/approved, first post, follow, upgrade) so we can measure what’s working."
@@ -140,7 +144,7 @@
             },
             {
               "text": "Hashtags & topics (v1) — Add hashtags to posts and simple topic pages so you can find and follow themes that matter to you.",
-              "inProgress": true
+              "done": true
             }
           ]
         },
@@ -186,14 +190,14 @@
           "items": [
             {
               "text": "**Robots control** — Keep private/restricted surfaces out of search; environment-aware rules.",
-              "inProgress": true
+              "done": true
             },
             {
               "text": "**Sitemap** — A sitemap for public profiles and public posts only; restricted tiers never appear."
             },
             {
               "text": "**Canonical + share previews** — Canonical URLs everywhere; share previews never leak restricted content. Premium content also respects the rule: **premium requires verified**.",
-              "inProgress": true
+              "done": true
             }
           ]
         },
@@ -209,7 +213,8 @@
           "title": "Notifications",
           "items": [
             {
-              "text": "Notification preferences — Choose what you get: mute replies, only chats, no boost notifications, etc.; per type or global."
+              "text": "Notification preferences — Choose what you get: mute replies, only chats, no boost notifications, etc.; per type or global.",
+              "done": true
             }
           ]
         }

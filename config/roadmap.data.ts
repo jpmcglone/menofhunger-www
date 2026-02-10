@@ -37,6 +37,8 @@ export type RoadmapBacklog = {
 
 type RoadmapData = {
   asOfDate: string
+  /** When the roadmap page first went live (optional display context). */
+  originalAsOfDate?: string
   intro: {
     label: string
     title: string
@@ -51,6 +53,7 @@ type RoadmapData = {
 const roadmapSource = roadmapData as RoadmapData
 
 export const roadmapAsOfDate = roadmapSource.asOfDate
+export const roadmapOriginalAsOfDate = roadmapSource.originalAsOfDate
 export const roadmapIntro = roadmapSource.intro
 export const roadmapPhases = roadmapSource.phases
 export const roadmapBacklog = roadmapSource.backlog
@@ -62,7 +65,8 @@ export const roadmapMetaDescription = roadmapSource.metaDescription
 /** Build a longer description for SEO/JSON-LD from the roadmap. */
 export function getRoadmapSeoDescription(): string {
   const phaseSummaries = roadmapPhases.map((p) => `${p.date}: ${p.title}`).join('. ')
-  return `Men of Hunger product roadmap (as of ${roadmapAsOfDate}). ${phaseSummaries}. ${roadmapBacklog.title} for future features.`
+  const original = roadmapOriginalAsOfDate ? ` (originally published ${roadmapOriginalAsOfDate})` : ''
+  return `Men of Hunger product roadmap (as of ${roadmapAsOfDate}${original}). ${phaseSummaries}. ${roadmapBacklog.title} for future features.`
 }
 
 /** Build JSON-LD ItemList for the roadmap milestones (for SEO). */

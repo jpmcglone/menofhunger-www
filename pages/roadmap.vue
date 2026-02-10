@@ -4,7 +4,12 @@
     <header class="space-y-4">
       <p class="text-sm font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">
         {{ roadmapIntro.label }}
-        <span class="ml-2 font-normal normal-case tracking-normal">— as of {{ roadmapAsOfDate }}</span>
+        <span class="ml-2 font-normal normal-case tracking-normal">
+          — as of {{ roadmapAsOfDate }}
+          <template v-if="roadmapOriginalAsOfDate">
+            <span class="text-gray-400 dark:text-gray-500"> (originally {{ roadmapOriginalAsOfDate }})</span>
+          </template>
+        </span>
       </p>
       <h1 class="text-2xl font-bold tracking-tight text-gray-900 dark:text-gray-50 sm:text-3xl">
         {{ roadmapIntro.title }}
@@ -179,6 +184,7 @@
 import { siteConfig } from '~/config/site'
 import {
   roadmapAsOfDate,
+  roadmapOriginalAsOfDate,
   roadmapIntro,
   roadmapPhases,
   roadmapBacklog,
