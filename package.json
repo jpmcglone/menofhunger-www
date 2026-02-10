@@ -2,6 +2,9 @@
   "name": "nuxt-app",
   "private": true,
   "type": "module",
+  "engines": {
+    "node": ">=20.19.0"
+  },
   "scripts": {
     "build": "NODE_OPTIONS=--max-old-space-size=4096 nuxt build",
     "dev": "NODE_OPTIONS=--max-old-space-size=4096 nuxt dev",
@@ -53,8 +56,5 @@
     "@vue/test-utils": "^2.4.6",
     "happy-dom": "^20.5.0",
     "vitest": "^3.2.4"
-  },
-  "overrides": {
-    "@vercel/nft": "^0.27.4"
   }
 }

@@ -6,5 +6,9 @@ services:
     name: menofhunger-www
     plan: standard
     runtime: node
+    envVars:
+      # Nitro 2.13.1 requires Node ^20.19.0 or >=22.12.0.
+      - key: NODE_VERSION
+        value: 20.19.0
     buildCommand: npm ci && npm run build
     startCommand: node .output/server/index.mjs
