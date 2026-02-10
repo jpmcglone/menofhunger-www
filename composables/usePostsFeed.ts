@@ -180,9 +180,13 @@ export function usePostsFeed(options: { visibility?: Ref<FeedFilter>; followingO
     if (overrides?.visibility !== undefined) visibility.value = overrides.visibility
     if (overrides?.sort !== undefined) sort.value = overrides.sort
     loadingIndicator.start()
-    await feedRefresh()
-    lastHardRefreshMs.value = Date.now()
-    queueMicrotask(() => loadingIndicator.finish())
+    try {
+      await feedRefresh()
+      lastHardRefreshMs.value = Date.now()
+    } finally {
+      // Ensure the indicator always finishes (even on errors/throws).
+      queueMicrotask(() => loadingIndicator.finish())
+    }
   }
 
   function pickAnchor(scroller: HTMLElement): { postId: string; offsetTop: number } | null {
@@ -283,8 +287,12 @@ export function usePostsFeed(options: { visibility?: Ref<FeedFilter>; followingO
     if (loading.value) return
     if (!nextCursor.value) return
     loadingIndicator.start()
-    await feedLoadMore()
-    loadingIndicator.finish()
+    try {
+      await feedLoadMore()
+    } finally {
+      // Ensure the indicator always finishes (even on errors/throws).
+      loadingIndicator.finish()
+    }
   }
 
   async function addPost(

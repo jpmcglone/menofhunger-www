@@ -16,7 +16,7 @@
     <div ref="sortWrapEl" class="relative">
       <button
         type="button"
-        class="inline-flex items-center gap-1.5 rounded-full border px-2 py-1 text-[11px] font-semibold leading-none transition-colors border-gray-200 text-gray-700 hover:bg-gray-50 dark:border-zinc-800 dark:text-gray-200 dark:hover:bg-zinc-900"
+        class="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1.5 text-[12px] font-semibold leading-none transition-colors border-gray-200 text-gray-700 hover:bg-gray-50 dark:border-zinc-800 dark:text-gray-200 dark:hover:bg-zinc-900"
         aria-label="Change feed sort order"
         @click="toggleSortPopover"
       >
@@ -61,7 +61,7 @@
     <div v-if="showVisibilityFilter" ref="filterWrapEl" class="relative">
       <button
         type="button"
-        class="inline-flex items-center gap-1.5 rounded-full border px-2 py-1 text-[11px] font-semibold leading-none transition-colors"
+        class="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1.5 text-[12px] font-semibold leading-none transition-colors"
         :class="filterPillClass"
         aria-label="Change feed visibility"
         @click="toggleFilterPopover"

@@ -208,6 +208,14 @@ watch(
   background: var(--p-primary-500, #c77d1a);
 }
 
+/* In dark mode, use a darker active pill (unverified/default should not be a light/white fill). */
+:global(html.dark) .moh-seg-highlight {
+  background: var(--moh-bg);
+}
+:global(html.dark) .moh-seg-fallback-active {
+  background: var(--moh-bg);
+}
+
 .moh-seg-highlight--animate {
   transition: transform 220ms ease, width 220ms ease, opacity 140ms ease;
 }

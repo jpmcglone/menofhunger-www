@@ -25,8 +25,17 @@ function getDecodeAudioData(ctx: AudioContext): DecodeAudioData {
 let audioCtx: AudioContext | null = null
 let decodeAudioDataFn: DecodeAudioData | null = null
 let unlockListenersAdded = false
+let sawUserGesture = false
 const bufferCache = new Map<string, AudioBuffer>()
 const arrayBufferCache = new Map<string, ArrayBuffer>()
+
+function hasUserActivation(): boolean {
+  if (!import.meta.client) return false
+  // Chrome/Edge/Safari: user activation API (not universally supported).
+  const ua = (navigator as any)?.userActivation
+  if (ua && typeof ua.hasBeenActive === 'boolean') return Boolean(ua.hasBeenActive)
+  return sawUserGesture
+}
 
 function getAudioContext(): AudioContext | null {
   if (!import.meta.client) return null
@@ -43,6 +52,8 @@ async function ensureUnlocked(): Promise<boolean> {
   if (!ctx) return false
   const state = ((ctx as any).state ?? '') as string
   if (state === 'running') return true
+  // Avoid calling `resume()` before a user gesture; Chrome will log a warning even if we catch.
+  if (!hasUserActivation()) return false
   try {
     await ctx.resume()
   } catch {
@@ -58,6 +69,7 @@ function addUnlockListenersOnce() {
   unlockListenersAdded = true
 
   const unlock = () => {
+    sawUserGesture = true
     void ensureUnlocked()
   }
 

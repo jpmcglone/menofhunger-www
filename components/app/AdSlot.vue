@@ -12,7 +12,7 @@
       class="pointer-events-none absolute inset-0 flex items-center justify-center text-xs font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500"
       aria-hidden="true"
     >
-      Ad
+      AD
     </div>
 
     <!-- AdSense unit -->
@@ -53,7 +53,17 @@ const adsenseAdtest = computed(() => Boolean(config.public.adsense?.adtest))
 const slot = computed(() => (props.placement === 'rail' ? adsenseRailSlot.value : adsenseFeedSlot.value))
 
 const shouldShowAd = computed(() => !isPremiumViewer.value)
-const isConfigured = computed(() => Boolean(adsenseEnabled.value && adsenseClient.value && slot.value))
+function isValidAdsenseClient(v: string): boolean {
+  // AdSense client format: ca-pub-1234567890123456
+  return /^ca-pub-\d+$/.test((v ?? '').trim())
+}
+function isValidAdsenseSlot(v: string): boolean {
+  // Slot format: numeric string
+  return /^\d+$/.test((v ?? '').trim())
+}
+const isConfigured = computed(() =>
+  Boolean(adsenseEnabled.value && isValidAdsenseClient(adsenseClient.value) && isValidAdsenseSlot(slot.value)),
+)
 
 const insEl = ref<HTMLElement | null>(null)
 const showPlaceholder = ref(true)

@@ -724,9 +724,21 @@ const composerInitialText = ref<string | null>(null)
 const composerSourceOnlyMePost = ref<FeedPost | null>(null)
 const composerIsFromOnlyMe = computed(() => Boolean(composerSourceOnlyMePost.value?.id))
 
-const { open: replyModalOpenRef } = useReplyModal()
-const replyModalOpen = computed(() => Boolean(replyModalOpenRef.value))
-const anyOverlayOpen = computed(() => composerModalOpen.value || replyModalOpen.value)
+const replyModal = useReplyModal()
+const replyModalOpen = computed(() => Boolean(replyModal.open.value))
+const replyModalHasParent = computed(() => Boolean(replyModal.parentPost.value?.id))
+
+// Failsafe: if reply modal is "open" without a parent post, it will lock scrolling
+// (via `anyOverlayOpen`) while rendering nothing. Auto-heal this inconsistent state.
+watch(
+  () => [replyModalOpen.value, replyModalHasParent.value] as const,
+  ([open, hasParent]) => {
+    if (open && !hasParent) replyModal.hide()
+  },
+  { immediate: true },
+)
+
+const anyOverlayOpen = computed(() => composerModalOpen.value || (replyModalOpen.value && replyModalHasParent.value))
 
 useScrollLock(anyOverlayOpen)
 const composerSheetStyle = ref<Record<string, string>>({ left: '0px', right: '0px', width: 'auto' })

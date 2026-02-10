@@ -46,6 +46,8 @@ export default defineNuxtConfig({
   },
   app: {
     head: {
+      // Keep AdSense loader off unless actually enabled + configured.
+      // (Avoids noisy 400s in dev/staging when placeholders are present.)
       htmlAttrs: { lang: 'en' },
       meta: [
         { charset: 'utf-8' },
@@ -57,9 +59,15 @@ export default defineNuxtConfig({
         { name: 'color-scheme', content: 'light dark' },
         // iOS: avoid auto-linking phone numbers in app-like UI.
         { name: 'format-detection', content: 'telephone=no' },
-        // AdSense site verification (safe even for Premium; does not render ads by itself).
-        ...(String(process.env.NUXT_PUBLIC_ADSENSE_CLIENT || '').trim()
-          ? [{ name: 'google-adsense-account', content: String(process.env.NUXT_PUBLIC_ADSENSE_CLIENT || '').trim() }]
+        // AdSense site verification (safe; does not render ads by itself).
+        ...(String(process.env.NUXT_PUBLIC_ADSENSE_ENABLED || '').trim() === 'true' &&
+        /^ca-pub-\d+$/.test(String(process.env.NUXT_PUBLIC_ADSENSE_CLIENT || '').trim())
+          ? [
+              {
+                name: 'google-adsense-account',
+                content: String(process.env.NUXT_PUBLIC_ADSENSE_CLIENT || '').trim(),
+              },
+            ]
           : []),
         // PWA + add-to-home meta
         // Default theme-color (overridden at runtime to match in-app dark mode toggle).
@@ -70,8 +78,10 @@ export default defineNuxtConfig({
         { name: 'apple-mobile-web-app-status-bar-style', content: 'default' },
         { name: 'apple-mobile-web-app-title', content: siteConfig.name }
       ],
-      // AdSense loader in initial HTML (helps site verification + avoids relying on client JS timing).
-      script: String(process.env.NUXT_PUBLIC_ADSENSE_CLIENT || '').trim()
+      // AdSense loader in initial HTML (only when enabled + client looks real).
+      script:
+        String(process.env.NUXT_PUBLIC_ADSENSE_ENABLED || '').trim() === 'true' &&
+        /^ca-pub-\d+$/.test(String(process.env.NUXT_PUBLIC_ADSENSE_CLIENT || '').trim())
         ? [
             {
               async: true,
