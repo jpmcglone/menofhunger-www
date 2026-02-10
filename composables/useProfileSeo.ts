@@ -37,8 +37,14 @@ export function useProfileSeo(options: {
   })
 
   const seoImage = computed(() => {
-    if (!profile.value) return '/images/banner.png'
-    return profile.value.avatarUrl || profile.value.bannerUrl || '/images/banner.png'
+    // Social previews: prefer banner (big, identity-rich), then avatar, then a safe default, then logo.
+    // A > B > C > LOGO
+    if (notFound.value) return '/images/logo-black-bg.png'
+    const banner = (profile.value?.bannerUrl ?? '').trim()
+    const avatar = (profile.value?.avatarUrl ?? '').trim()
+    const fallbackDefault = '/images/banner.png'
+    const fallbackLogo = '/images/logo-black-bg.png'
+    return banner || avatar || fallbackDefault || fallbackLogo
   })
 
   const seoImageAlt = computed(() => {

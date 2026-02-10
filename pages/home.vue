@@ -123,7 +123,8 @@ usePageSeo({
   canonicalPath: '/home',
   noindex: true,
   ogType: 'website',
-  image: '/images/banner.png',
+  // When sharing /home, always use the Men of Hunger logo (avoid scrapers picking a random in-feed image).
+  image: '/images/logo-black-bg.png',
 })
 
 const homeComposerEl = ref<HTMLElement | null>(null)
