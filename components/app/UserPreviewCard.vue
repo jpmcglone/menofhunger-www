@@ -10,23 +10,6 @@
           loading="lazy"
           decoding="async"
         >
-        <div
-          v-if="showOnlineNow || showLastOnline"
-          v-tooltip.bottom="showLastOnline ? tinyTooltip(lastOnlineTooltip) : undefined"
-          class="absolute right-3 bottom-3 rounded-full px-2 py-0.5 text-[11px] shadow-sm backdrop-blur-sm"
-          :class="
-            showOnlineNow
-              ? 'bg-green-600/90 text-white dark:bg-green-500/20 dark:text-green-200'
-              : 'bg-white/70 text-gray-600 dark:bg-black/60 dark:text-gray-400 tabular-nums'
-          "
-        >
-          <template v-if="showOnlineNow">
-            Online now
-          </template>
-          <template v-else>
-            Last online {{ lastOnlineShort }}
-          </template>
-        </div>
       </div>
 
       <div class="absolute left-4 bottom-0 translate-y-1/2">
@@ -61,6 +44,26 @@
     </div>
 
     <div class="px-4 pb-4 pt-12">
+      <!-- Online / last-online pill: right below the banner -->
+      <div v-if="user.id && (showOnlineNow || showLastOnline)" class="flex justify-end -mt-10 mb-3">
+        <div
+          v-tooltip.bottom="showLastOnline ? tinyTooltip(lastOnlineTooltip) : undefined"
+          class="rounded-full px-2 py-0.5 text-[11px] shadow-sm backdrop-blur-sm"
+          :class="
+            showOnlineNow
+              ? 'bg-green-600/90 text-white dark:bg-green-500/20 dark:text-green-200'
+              : 'bg-white/70 text-gray-600 dark:bg-black/60 dark:text-gray-400 tabular-nums'
+          "
+        >
+          <template v-if="showOnlineNow">
+            Online now
+          </template>
+          <template v-else>
+            Last online {{ lastOnlineShort }}
+          </template>
+        </div>
+      </div>
+
       <div class="flex items-start justify-between gap-3">
         <div class="min-w-0">
           <div class="flex items-center gap-2 min-w-0">
@@ -98,7 +101,7 @@
           </div>
         </div>
 
-        <div class="shrink-0 pt-0.5">
+        <div class="shrink-0 pt-0.5 flex flex-col items-end">
           <AppFollowButton
             v-if="user.id"
             size="small"
