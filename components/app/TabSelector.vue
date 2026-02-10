@@ -115,8 +115,8 @@ function tabButtonClass(t: TabSelectorTab) {
     disabled ? 'opacity-55 cursor-not-allowed' : 'cursor-pointer',
     active
       ? highlightReady.value
-        ? 'text-white'
-        : 'text-white moh-seg-fallback-active'
+        ? 'text-white dark:text-black'
+        : 'text-white dark:text-black moh-seg-fallback-active'
       : 'bg-transparent moh-text-muted hover:moh-text',
   ]
 }
