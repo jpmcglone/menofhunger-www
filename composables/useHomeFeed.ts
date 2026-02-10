@@ -80,6 +80,9 @@ export function useHomeFeed() {
   const showFollowingEmptyState = computed(
     () => Boolean(followingOnly.value && !loading.value && !error.value && posts.value.length === 0),
   )
+  const showAllEmptyState = computed(
+    () => Boolean(!followingOnly.value && !loading.value && !error.value && posts.value.length === 0),
+  )
 
   watchEffect(() => {
     if (!import.meta.client) return
@@ -170,6 +173,7 @@ export function useHomeFeed() {
     removePost,
     followingCount,
     showFollowingEmptyState,
+    showAllEmptyState,
     viewerIsVerified,
     viewerIsPremium,
     feedCtaKind,

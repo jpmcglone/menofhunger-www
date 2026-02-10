@@ -1,7 +1,7 @@
 <template>
   <nav
     class="fixed inset-x-0 bottom-0 z-50 border-t border-gray-200 bg-white dark:border-zinc-800 dark:bg-black sm:hidden"
-    style="min-height: calc(var(--moh-tabbar-height, 4.5rem) + env(safe-area-inset-bottom, 0px)); padding-bottom: env(safe-area-inset-bottom, 0px);"
+    style="min-height: calc(var(--moh-tabbar-height, 4.5rem) + var(--moh-safe-bottom, 0px)); padding-bottom: var(--moh-safe-bottom, 0px);"
     aria-label="Primary"
   >
     <AppTabBarContent>

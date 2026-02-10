@@ -82,6 +82,7 @@ const emit = defineEmits<{
 }>()
 
 const textareaEl = ref<HTMLTextAreaElement | null>(null)
+const isMultiline = ref(false)
 
 const mention = useMentionAutocomplete({
   el: textareaEl,
@@ -113,7 +114,8 @@ const userTier = computed<'premium' | 'verified' | 'normal'>(() => {
 })
 
 const outlineClass = computed(() => {
-  const base = 'rounded-full border'
+  const radius = isMultiline.value ? 'rounded-2xl' : 'rounded-full'
+  const base = `${radius} border`
   if (userTier.value === 'premium') return `${base} border-[var(--moh-premium)]`
   if (userTier.value === 'verified') return `${base} border-[var(--moh-verified)]`
   return `${base} border-gray-300 dark:border-zinc-600`
@@ -130,7 +132,21 @@ function resizeTextarea() {
   const el = textareaEl.value
   if (!el) return
   el.style.height = 'auto'
-  el.style.height = `${Math.max(el.scrollHeight, 44)}px`
+  const nextH = Math.max(el.scrollHeight, 44)
+  el.style.height = `${nextH}px`
+
+  // Switch from "pill" to rounded-rect when it grows to 2+ lines.
+  try {
+    const cs = window.getComputedStyle(el)
+    const lh = Number.parseFloat(cs.lineHeight || '') || 20
+    const pt = Number.parseFloat(cs.paddingTop || '') || 0
+    const pb = Number.parseFloat(cs.paddingBottom || '') || 0
+    const contentH = Math.max(0, el.scrollHeight - pt - pb)
+    const lines = lh > 0 ? Math.round(contentH / lh) : 1
+    isMultiline.value = lines >= 2
+  } catch {
+    isMultiline.value = nextH > 44
+  }
 }
 
 function insertEmoji(emoji: string) {

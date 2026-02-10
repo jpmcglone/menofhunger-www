@@ -25,6 +25,35 @@ export type ApiErrorEnvelope = {
   }
 }
 
+export type BillingTier = 'premium' | 'premiumPlus'
+
+export type BillingMe = {
+  premium: boolean
+  premiumPlus: boolean
+  verified: boolean
+  subscriptionStatus: string | null
+  cancelAtPeriodEnd: boolean
+  currentPeriodEnd: string | null
+}
+
+export type BillingCheckoutSession = {
+  url: string
+}
+
+export type BillingPortalSession = {
+  url: string
+}
+
+export type NotificationPreferences = {
+  pushComment: boolean
+  pushBoost: boolean
+  pushFollow: boolean
+  pushMention: boolean
+  pushMessage: boolean
+  emailDigestWeekly: boolean
+  emailNewNotifications: boolean
+}
+
 export type RadioStation = {
   id: string
   name: string

@@ -96,7 +96,7 @@
         { "text": "Create posts with media (images, GIFs, video)" },
         { "text": "Participate fully in groups", "comingSoon": true },
         { "text": "See no ads in member areas", "comingSoon": true },
-        { "text": "Edit posts within a reasonable window", "comingSoon": true }
+        { "text": "Edit posts within a reasonable window" }
       ],
       "cannot": [
         { "text": "Override moderation" },

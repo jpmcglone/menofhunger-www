@@ -45,7 +45,7 @@ const { toasts, dismiss, bgFor, fgFor } = useAppToast()
 
 const stackStyle = computed<Record<string, string>>(() => {
   // Keep a little clearance from device safe area.
-  return { bottom: 'calc(env(safe-area-inset-bottom) + 1rem)' }
+  return { bottom: 'calc(var(--moh-safe-bottom, 0px) + 1rem)' }
 })
 
 function onToastClick(t: { id: string; to?: string | null }) {

@@ -30,7 +30,7 @@
         role="dialog"
         aria-modal="true"
         :aria-labelledby="titleId"
-        :style="{ paddingBottom: `calc(env(safe-area-inset-bottom) + 0.75rem)` }"
+        :style="{ paddingBottom: `calc(var(--moh-safe-bottom, 0px) + 0.75rem)` }"
       >
         <header class="flex items-center justify-between gap-3 px-5 pt-4">
           <div class="min-w-0">

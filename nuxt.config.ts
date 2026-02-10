@@ -14,8 +14,10 @@ function hostFromUrl(raw: string | undefined | null): string | null {
 
 export default defineNuxtConfig({
   compatibilityDate: '2024-11-01',
+
   // Keep devtools off in production builds (reduces bundle + memory).
   devtools: { enabled: process.env.NODE_ENV !== 'production' },
+
   runtimeConfig: {
     // Server-side base URL for calling the API during SSR.
     // Useful when the web server runs in a container/VM where `localhost` differs from the browser.
@@ -25,6 +27,12 @@ export default defineNuxtConfig({
       // Used by the website to call the API (e.g. health checks).
       // Configure via `.env`: NUXT_PUBLIC_API_BASE_URL=http://localhost:3001
       apiBaseUrl: process.env.NUXT_PUBLIC_API_BASE_URL || 'http://localhost:3001',
+      sentry: {
+        // DSN is safe to be public; Render should set this in prod.
+        // Local dev can omit it to disable Sentry, or set it to test.
+        dsn: (process.env.NUXT_PUBLIC_SENTRY_DSN || '').trim(),
+        environment: (process.env.SENTRY_ENVIRONMENT || process.env.NODE_ENV || 'development').trim(),
+      },
       // Public base URL for assets (Cloudflare R2 public bucket / custom domain).
       // Example: NUXT_PUBLIC_ASSETS_BASE_URL=https://moh-assets.<accountId>.r2.dev
       assetsBaseUrl: process.env.NUXT_PUBLIC_ASSETS_BASE_URL || '',
@@ -44,6 +52,7 @@ export default defineNuxtConfig({
       },
     }
   },
+
   app: {
     head: {
       // Keep AdSense loader off unless actually enabled + configured.
@@ -104,6 +113,7 @@ export default defineNuxtConfig({
       title: siteConfig.meta.title
     }
   },
+
   modules: [
     '@nuxt/content',
     '@nuxt/eslint',
@@ -112,8 +122,10 @@ export default defineNuxtConfig({
     '@nuxt/image',
     '@nuxt/scripts',
     '@nuxt/ui',
-    '@primevue/nuxt-module'
+    '@primevue/nuxt-module',
+    '@sentry/nuxt/module'
   ],
+
   icon: {
     // Prefer local Iconify collections (more reliable + faster than remote).
     // Install the collections you use (e.g. `@iconify-json/tabler`) so they can be served from the Nuxt server bundle.
@@ -121,11 +133,13 @@ export default defineNuxtConfig({
     // If an icon collection isn't installed, fail loudly rather than silently hitting the public Iconify API.
     fallbackToApi: false,
   },
+
   vue: {
     compilerOptions: {
       isCustomElement: (tag) => tag === 'emoji-picker',
     },
   },
+
   fonts: {
     // Social-app friendly: clean, modern sans with strong readability.
     // Loaded with swap to avoid FOIT.
@@ -147,8 +161,10 @@ export default defineNuxtConfig({
       },
     ],
   },
+
   css: ['~/assets/css/main.css'],
   ssr: true,
+
   image: {
     // Allow NuxtImg/IPX to optimize images from our asset host + API host.
     domains: Array.from(
@@ -164,6 +180,7 @@ export default defineNuxtConfig({
       ),
     ),
   },
+
   // Render builds can be memory-constrained; sourcemaps are a big multiplier.
   vite: {
     build: {
@@ -205,6 +222,7 @@ export default defineNuxtConfig({
       }
     ]
   },
+
   nitro: {
     sourceMap: false,
     prerender: {
@@ -214,6 +232,7 @@ export default defineNuxtConfig({
       crawlLinks: false
     }
   },
+
   routeRules: {
     // ——— SEO: SSR vs prerender ———
     // • SSR (ssr: true): Page is rendered on the server per request. Crawlers and link unfurlers
@@ -281,6 +300,7 @@ export default defineNuxtConfig({
       },
     },
   },
+
   primevue: {
     options: {
       ripple: true
@@ -294,6 +314,7 @@ export default defineNuxtConfig({
       exclude: ['useToast']
     }
   },
+
   colorMode: {
     // Default to dark for first-time visitors; users can still choose system/light/dark and it persists via storageKey.
     preference: 'dark',
@@ -301,5 +322,14 @@ export default defineNuxtConfig({
     classPrefix: '',
     classSuffix: '',
     storageKey: 'color-mode'
+  },
+
+  sentry: {
+    org: 'jp-mcglone',
+    project: 'menofhunger-www'
+  },
+
+  sourcemap: {
+    client: 'hidden'
   }
 })

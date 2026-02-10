@@ -60,6 +60,11 @@
               :following-count="followingCount"
               @find-people="navigateTo('/explore')"
             />
+            <AppFeedAllEmptyState
+              v-else-if="showAllEmptyState"
+              @explore="navigateTo('/explore')"
+              @who-to-follow="navigateTo('/who-to-follow')"
+            />
 
             <div class="relative">
               <template v-for="item in displayItems" :key="item.kind === 'ad' ? item.key : item.post.id">
@@ -167,6 +172,7 @@ const {
   removePost,
   followingCount,
   showFollowingEmptyState,
+  showAllEmptyState,
   viewerIsVerified,
   viewerIsPremium,
   feedCtaKind,

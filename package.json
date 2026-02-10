@@ -16,10 +16,10 @@
     "validate-api-types": "node scripts/validate-api-types.mjs"
   },
   "dependencies": {
-    "@mediapipe/tasks-vision": "^0.10.32",
     "@iconify-json/heroicons-outline": "^1.2.1",
     "@iconify-json/heroicons-solid": "^1.2.1",
     "@iconify-json/tabler": "^1.2.26",
+    "@mediapipe/tasks-vision": "^0.10.32",
     "@nuxt/content": "3.11.2",
     "@nuxt/eslint": "1.14.0",
     "@nuxt/fonts": "0.13.0",
@@ -30,6 +30,7 @@
     "@nuxt/ui": "^4.4.0",
     "@primevue/nuxt-module": "^4.5.4",
     "@primevue/themes": "^4.5.4",
+    "@sentry/nuxt": "^10.38.0",
     "@unhead/vue": "^2.1.4",
     "@use-gesture/vanilla": "^10.3.1",
     "@vite-pwa/nuxt": "^1.1.1",
@@ -52,5 +53,8 @@
     "@vue/test-utils": "^2.4.6",
     "happy-dom": "^20.5.0",
     "vitest": "^3.2.4"
+  },
+  "overrides": {
+    "@vercel/nft": "^0.27.4"
   }
 }

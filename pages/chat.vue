@@ -243,7 +243,34 @@
               </button>
             </Transition>
           </div>
-          <div v-else class="flex-1" />
+          <div v-else class="flex-1 flex items-center justify-center px-4 py-12">
+            <div class="w-full max-w-lg">
+              <div
+                v-if="viewerIsVerified && !viewerCanStartChats"
+                class="rounded-2xl border moh-border moh-bg p-5 shadow-sm"
+              >
+                <div class="text-lg font-semibold moh-text">Start chats with Premium</div>
+                <div class="mt-1 text-sm moh-text-muted">
+                  As a verified member, you can reply to chats started with you. To start new chats yourself, upgrade to Premium.
+                </div>
+                <div class="mt-4 flex flex-wrap items-center justify-end gap-2">
+                  <Button label="View tiers" severity="secondary" @click="navigateTo('/tiers')" />
+                  <Button
+                    label="Get Premium"
+                    class="!border-[var(--moh-premium)] !bg-[var(--moh-premium)] !text-white hover:opacity-95"
+                    @click="navigateTo('/settings/billing')"
+                  />
+                </div>
+              </div>
+
+              <div v-else class="rounded-2xl border moh-border moh-bg p-5 shadow-sm">
+                <div class="text-lg font-semibold moh-text">Select a conversation</div>
+                <div class="mt-1 text-sm moh-text-muted">
+                  Pick a conversation from the left.
+                </div>
+              </div>
+            </div>
+          </div>
 
           <div v-if="selectedChatKey" class="shrink-0 border-t border-gray-200 px-4 py-2.5 dark:border-zinc-800" :style="composerBarStyle">
             <div v-if="selectedConversation?.viewerStatus === 'pending'" class="mb-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-200">
@@ -452,10 +479,10 @@ let chatBootTimer: ReturnType<typeof setTimeout> | null = null
 let messagesPaneTimer: ReturnType<typeof setTimeout> | null = null
 
 const composerBarStyle = computed<Record<string, string>>(() => ({
-  paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 10px)',
+  paddingBottom: 'calc(var(--moh-safe-bottom, 0px) + 10px)',
 }))
 const scrollToBottomButtonStyle = computed<Record<string, string>>(() => ({
-  bottom: 'calc(env(safe-area-inset-bottom, 0px) + 1rem)',
+  bottom: 'calc(var(--moh-safe-bottom, 0px) + 1rem)',
 }))
 
 function clearChatBootTimer() {

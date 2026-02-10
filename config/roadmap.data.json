@@ -36,15 +36,15 @@
           "items": [
             {
               "text": "**Unverified read-only (plus private notes)** — Read public posts and longform, follow, bookmark, and manage profile basics; can create **Only me** private notes/drafts; no public posting, replies, or reactions.",
-              "inProgress": true
+              "done": true
             },
             {
               "text": "**Verified participation limits** — React, post, and reply within limits (rate limits may be lower than Premium; configurable by admins); **text + links only** (no images/GIFs/video); men-only read areas; no dialogues; can reply to DMs started with them but cannot start new DMs.",
-              "inProgress": true
+              "done": true
             },
             {
               "text": "**Premium baseline access** — Full posting and replies, member-only areas, can start DMs, and can post with media; Premium is baseline (unverified/verified may be slightly suppressed); paid tiers are neutral (no boosted reach).",
-              "inProgress": true
+              "done": true
             }
           ]
         },
@@ -140,7 +140,7 @@
             },
             {
               "text": "Hashtags & topics (v1) — Add hashtags to posts and simple topic pages so you can find and follow themes that matter to you.",
-              "done": true
+              "inProgress": true
             }
           ]
         },
@@ -148,10 +148,12 @@
           "title": "Content & member experience",
           "items": [
             {
-              "text": "**Edit post (with limits + history)** — You can edit up to **3 times in 30 minutes**; posts show an **edited** label; we keep previous versions so we can review changes."
+              "text": "**Edit post (with limits + history)** — You can edit up to **3 times in 30 minutes**; posts show an **edited** label; we keep previous versions so we can review changes.",
+              "done": true
             },
             {
-              "text": "**Drafts + autosave (posts)** — Save drafts automatically and resume across devices so you don’t lose work."
+              "text": "**Drafts + autosave (posts)** — Save drafts automatically and resume across devices so you don’t lose work.",
+              "inProgress": true
             },
             {
               "text": "**Admin-only restore** — Restore soft-deleted posts (admin-only for now)."
@@ -183,7 +185,8 @@
           "title": "SEO & sharing boundaries (trust-preserving)",
           "items": [
             {
-              "text": "**Robots control** — Keep private/restricted surfaces out of search; environment-aware rules."
+              "text": "**Robots control** — Keep private/restricted surfaces out of search; environment-aware rules.",
+              "inProgress": true
             },
             {
               "text": "**Sitemap** — A sitemap for public profiles and public posts only; restricted tiers never appear."
@@ -257,7 +260,7 @@
           "items": [
             {
               "text": "Block user — Block so they can’t see your posts, chat you, or appear in your feed; manage your block list in settings.",
-              "inProgress": true
+              "done": true
             },
             {
               "text": "Mute user — “See less”; hide their posts in your feed without unfollowing."

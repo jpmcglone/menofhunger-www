@@ -142,10 +142,10 @@
               <span class="relative flex h-12 w-12 shrink-0 items-center justify-center">
                 <ClientOnly v-if="item.key === 'bookmarks'">
                   <Icon
-                    :name="(bookmarksLoaded && (hasBookmarks || isActiveNav(item.to))) ? 'tabler:bookmark-filled' : 'tabler:bookmark'"
+                    :name="(hasBookmarks || isActiveNav(item.to)) ? 'tabler:bookmark-filled' : 'tabler:bookmark'"
                     size="28"
                     class="opacity-90"
-                    :style="(bookmarksLoaded && hasBookmarks) ? { color: 'var(--p-primary-color)' } : undefined"
+                    :style="hasBookmarks ? { color: 'var(--p-primary-color)' } : undefined"
                     aria-hidden="true"
                   />
                   <template #fallback>

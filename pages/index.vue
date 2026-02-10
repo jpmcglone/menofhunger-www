@@ -74,7 +74,7 @@
       >
         <div
           v-if="isRoanokeOpen"
-          class="fixed inset-x-0 bottom-0 z-[101] flex justify-center px-3 pb-[env(safe-area-inset-bottom)]"
+          class="fixed inset-x-0 bottom-0 z-[101] flex justify-center px-3 pb-[var(--moh-safe-bottom,0px)]"
           role="dialog"
           aria-modal="true"
           aria-label="Roanoke meetup"

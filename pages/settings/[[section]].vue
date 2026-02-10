@@ -272,6 +272,81 @@
                 </div>
               </div>
 
+            <div v-else-if="selectedSection === 'billing'" class="space-y-6">
+              <div class="space-y-2">
+                <div class="text-sm font-semibold text-gray-900 dark:text-gray-50">Billing</div>
+                <div class="text-sm text-gray-600 dark:text-gray-300">
+                  Manage Premium and Premium+.
+                </div>
+              </div>
+
+              <div class="rounded-xl border moh-border p-3 moh-surface space-y-2 text-sm">
+                <div class="flex items-center justify-between gap-3">
+                  <div class="moh-text-muted">Your tier</div>
+                  <div class="font-semibold text-gray-900 dark:text-gray-50">
+                    <span v-if="billingMe?.premiumPlus">Premium+</span>
+                    <span v-else-if="billingMe?.premium">Premium</span>
+                    <span v-else>Free</span>
+                  </div>
+                </div>
+                <div class="flex items-center justify-between gap-3">
+                  <div class="moh-text-muted">Verified</div>
+                  <div class="font-semibold">
+                    <span v-if="billingMe?.verified">Yes</span>
+                    <span v-else>No</span>
+                  </div>
+                </div>
+                <div v-if="billingMe?.subscriptionStatus" class="flex items-center justify-between gap-3">
+                  <div class="moh-text-muted">Subscription</div>
+                  <div class="font-mono text-xs">{{ billingMe.subscriptionStatus }}</div>
+                </div>
+                <div v-if="billingMe?.currentPeriodEnd" class="flex items-center justify-between gap-3">
+                  <div class="moh-text-muted">Renews</div>
+                  <div class="font-mono text-xs">{{ formatDateTime(billingMe.currentPeriodEnd) }}</div>
+                </div>
+                <div v-if="billingMe?.cancelAtPeriodEnd" class="text-xs text-amber-700 dark:text-amber-300">
+                  Canceling at period end.
+                </div>
+              </div>
+
+              <AppInlineAlert v-if="billingError" severity="danger">{{ billingError }}</AppInlineAlert>
+
+              <div class="flex flex-wrap items-center gap-3">
+                <Button
+                  v-if="billingMe?.verified && !billingMe?.premium"
+                  label="Get Premium"
+                  :loading="checkoutLoading === 'premium'"
+                  :disabled="Boolean(checkoutLoading)"
+                  @click="startCheckout('premium')"
+                />
+                <Button
+                  v-if="billingMe?.verified && !billingMe?.premiumPlus"
+                  label="Get Premium+"
+                  severity="secondary"
+                  :loading="checkoutLoading === 'premiumPlus'"
+                  :disabled="Boolean(checkoutLoading)"
+                  @click="startCheckout('premiumPlus')"
+                />
+                <Button
+                  v-if="billingMe?.verified && (billingMe?.premium || billingMe?.premiumPlus)"
+                  label="Manage subscription"
+                  severity="secondary"
+                  :loading="portalLoading"
+                  :disabled="portalLoading"
+                  @click="openPortal"
+                />
+                <NuxtLink
+                  v-if="billingMe && !billingMe.verified"
+                  to="/settings/verification"
+                  class="text-sm font-medium text-gray-700 hover:underline dark:text-gray-300"
+                >
+                  Verify to subscribe
+                </NuxtLink>
+              </div>
+
+              <div v-if="billingLoading" class="text-sm moh-text-muted">Loading billing…</div>
+            </div>
+
               <div v-else-if="selectedSection === 'privacy'" class="space-y-6">
                 <div class="space-y-2">
                   <div class="text-sm font-semibold text-gray-900 dark:text-gray-50">Follow visibility</div>
@@ -380,6 +455,99 @@
                     Checking notification settings…
                   </div>
                 </div>
+
+                <div class="rounded-xl border moh-border p-3 moh-surface space-y-4">
+                  <div class="space-y-1">
+                    <div class="font-semibold text-gray-900 dark:text-gray-50">Notification preferences</div>
+                    <div class="text-xs moh-text-muted">
+                      These control what we send as browser notifications and emails.
+                    </div>
+                  </div>
+
+                  <div v-if="notifPrefsLoading" class="text-sm moh-text-muted">Loading preferences…</div>
+                  <AppInlineAlert v-else-if="notifPrefsError" severity="danger">{{ notifPrefsError }}</AppInlineAlert>
+
+                  <div v-else-if="notifPrefs" class="space-y-4">
+                    <div class="space-y-2">
+                      <div class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                        Browser notifications (push)
+                      </div>
+                      <div class="grid gap-3">
+                        <div class="flex items-start justify-between gap-4">
+                          <div>
+                            <div class="font-medium">Replies</div>
+                            <div class="text-xs moh-text-muted">When someone replies to you.</div>
+                          </div>
+                          <Checkbox v-model="notifPrefs.pushComment" binary :disabled="notifPrefsSaving" />
+                        </div>
+                        <div class="flex items-start justify-between gap-4">
+                          <div>
+                            <div class="font-medium">Boosts</div>
+                            <div class="text-xs moh-text-muted">When someone boosts your post.</div>
+                          </div>
+                          <Checkbox v-model="notifPrefs.pushBoost" binary :disabled="notifPrefsSaving" />
+                        </div>
+                        <div class="flex items-start justify-between gap-4">
+                          <div>
+                            <div class="font-medium">Follows</div>
+                            <div class="text-xs moh-text-muted">When someone follows you.</div>
+                          </div>
+                          <Checkbox v-model="notifPrefs.pushFollow" binary :disabled="notifPrefsSaving" />
+                        </div>
+                        <div class="flex items-start justify-between gap-4">
+                          <div>
+                            <div class="font-medium">Mentions</div>
+                            <div class="text-xs moh-text-muted">When someone mentions you.</div>
+                          </div>
+                          <Checkbox v-model="notifPrefs.pushMention" binary :disabled="notifPrefsSaving" />
+                        </div>
+                        <div class="flex items-start justify-between gap-4">
+                          <div>
+                            <div class="font-medium">Messages</div>
+                            <div class="text-xs moh-text-muted">Direct messages.</div>
+                          </div>
+                          <Checkbox v-model="notifPrefs.pushMessage" binary :disabled="notifPrefsSaving" />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="space-y-2">
+                      <div class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                        Email
+                      </div>
+                      <div v-if="!authUser?.email" class="text-sm text-gray-600 dark:text-gray-300">
+                        Add an email in <NuxtLink to="/settings/account" class="font-medium hover:underline">Your account</NuxtLink> to enable email notifications.
+                      </div>
+                      <div v-else class="grid gap-3">
+                        <div class="flex items-start justify-between gap-4">
+                          <div>
+                            <div class="font-medium">Weekly digest</div>
+                            <div class="text-xs moh-text-muted">A weekly recap email.</div>
+                          </div>
+                          <Checkbox v-model="notifPrefs.emailDigestWeekly" binary :disabled="notifPrefsSaving" />
+                        </div>
+                        <div class="flex items-start justify-between gap-4">
+                          <div>
+                            <div class="font-medium">New notifications</div>
+                            <div class="text-xs moh-text-muted">A nudge when you have unread notifications.</div>
+                          </div>
+                          <Checkbox v-model="notifPrefs.emailNewNotifications" binary :disabled="notifPrefsSaving" />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="flex flex-wrap items-center gap-3">
+                      <Button
+                        label="Save preferences"
+                        severity="secondary"
+                        :loading="notifPrefsSaving"
+                        :disabled="notifPrefsSaving || !notifPrefsDirty"
+                        @click="saveNotifPrefs"
+                      />
+                      <div v-if="notifPrefsSaved" class="text-sm text-green-700 dark:text-green-300">Saved.</div>
+                    </div>
+                  </div>
+                </div>
               </div>
 
               <div v-else-if="selectedSection === 'links'" class="space-y-4">
@@ -431,7 +599,7 @@ usePageSeo({
 })
 
 type FollowVisibility = 'all' | 'verified' | 'premium' | 'none'
-type SettingsSection = 'account' | 'verification' | 'privacy' | 'notifications' | 'links'
+type SettingsSection = 'account' | 'verification' | 'billing' | 'privacy' | 'notifications' | 'links'
 
 const { user: authUser, ensureLoaded } = useAuth()
 const route = useRoute()
@@ -444,7 +612,15 @@ import { getApiErrorMessage } from '~/utils/api-error'
 import { useFormSave } from '~/composables/useFormSave'
 import { useFormSubmit } from '~/composables/useFormSubmit'
 import { formatDateTime } from '~/utils/time-format'
-import type { MyVerificationStatus, VerificationRequestPublic } from '~/types/api'
+import type {
+  BillingCheckoutSession,
+  BillingMe,
+  BillingPortalSession,
+  BillingTier,
+  MyVerificationStatus,
+  NotificationPreferences,
+  VerificationRequestPublic
+} from '~/types/api'
 import { siteConfig } from '~/config/site'
 
 const {
@@ -500,7 +676,7 @@ async function sendPushTest() {
   }
 }
 
-const allowedSections: SettingsSection[] = ['account', 'verification', 'privacy', 'notifications', 'links']
+const allowedSections: SettingsSection[] = ['account', 'verification', 'billing', 'privacy', 'notifications', 'links']
 
 const routeSection = computed<SettingsSection | null>(() => {
   const raw = typeof route.params.section === 'string' ? route.params.section : null
@@ -540,6 +716,11 @@ const sections = computed(() => [
     key: 'verification' as const,
     label: 'Verification',
     description: 'Start verification and check your status.'
+  },
+  {
+    key: 'billing' as const,
+    label: 'Billing',
+    description: 'Premium and Premium+ subscriptions.'
   },
   {
     key: 'privacy' as const,
@@ -591,6 +772,127 @@ const selectedSectionLabel = computed(() => sections.value.find((s) => s.key ===
 const selectedSectionDescription = computed(
   () => sections.value.find((s) => s.key === selectedSection.value)?.description || 'Choose a section.'
 )
+
+const billingMe = ref<BillingMe | null>(null)
+const billingLoading = ref(false)
+const billingError = ref<string | null>(null)
+const checkoutLoading = ref<BillingTier | null>(null)
+const portalLoading = ref(false)
+
+async function refreshBilling() {
+  billingLoading.value = true
+  billingError.value = null
+  try {
+    billingMe.value = await apiFetchData<BillingMe>('/billing/me', { method: 'GET' })
+  } catch (e: unknown) {
+    billingError.value = getApiErrorMessage(e) || 'Failed to load billing.'
+  } finally {
+    billingLoading.value = false
+  }
+}
+
+watch(
+  selectedSection,
+  (s) => {
+    if (s === 'billing') void refreshBilling()
+  },
+  { immediate: true }
+)
+
+async function startCheckout(tier: BillingTier) {
+  if (checkoutLoading.value) return
+  checkoutLoading.value = tier
+  billingError.value = null
+  try {
+    const res = await apiFetchData<BillingCheckoutSession>('/billing/checkout-session', {
+      method: 'POST',
+      body: { tier }
+    })
+    const url = (res?.url ?? '').trim()
+    if (!url) throw new Error('Missing checkout URL.')
+    await navigateTo(url, { external: true })
+  } catch (e: unknown) {
+    billingError.value = getApiErrorMessage(e) || 'Failed to start checkout.'
+  } finally {
+    checkoutLoading.value = null
+  }
+}
+
+async function openPortal() {
+  if (portalLoading.value) return
+  portalLoading.value = true
+  billingError.value = null
+  try {
+    const res = await apiFetchData<BillingPortalSession>('/billing/portal-session', {
+      method: 'POST'
+    })
+    const url = (res?.url ?? '').trim()
+    if (!url) throw new Error('Missing portal URL.')
+    await navigateTo(url, { external: true })
+  } catch (e: unknown) {
+    billingError.value = getApiErrorMessage(e) || 'Failed to open billing portal.'
+  } finally {
+    portalLoading.value = false
+  }
+}
+
+const notifPrefs = ref<NotificationPreferences | null>(null)
+const notifPrefsInitial = ref<string>('')
+const notifPrefsLoading = ref(false)
+const notifPrefsSaving = ref(false)
+const notifPrefsSaved = ref(false)
+const notifPrefsError = ref<string | null>(null)
+
+const notifPrefsDirty = computed(() => {
+  if (!notifPrefs.value) return false
+  return JSON.stringify(notifPrefs.value) !== notifPrefsInitial.value
+})
+
+async function loadNotifPrefs() {
+  notifPrefsLoading.value = true
+  notifPrefsError.value = null
+  notifPrefsSaved.value = false
+  try {
+    const res = await apiFetchData<NotificationPreferences>('/notifications/preferences', { method: 'GET' })
+    notifPrefs.value = res
+    notifPrefsInitial.value = JSON.stringify(res)
+  } catch (e: unknown) {
+    notifPrefsError.value = getApiErrorMessage(e) || 'Failed to load preferences.'
+  } finally {
+    notifPrefsLoading.value = false
+  }
+}
+
+watch(
+  selectedSection,
+  (s) => {
+    if (s === 'notifications') void loadNotifPrefs()
+  },
+  { immediate: true }
+)
+
+async function saveNotifPrefs() {
+  if (!notifPrefs.value || notifPrefsSaving.value) return
+  notifPrefsSaving.value = true
+  notifPrefsError.value = null
+  notifPrefsSaved.value = false
+  try {
+    const res = await apiFetchData<NotificationPreferences>('/notifications/preferences', {
+      method: 'PATCH',
+      body: notifPrefs.value,
+    })
+    notifPrefs.value = res
+    notifPrefsInitial.value = JSON.stringify(res)
+    notifPrefsSaved.value = true
+    setTimeout(() => {
+      notifPrefsSaved.value = false
+    }, 1500)
+  } catch (e: unknown) {
+    notifPrefsError.value = getApiErrorMessage(e) || 'Failed to save preferences.'
+  } finally {
+    notifPrefsSaving.value = false
+  }
+}
 
 const verificationRefreshing = ref(false)
 const verificationError = ref<string | null>(null)
