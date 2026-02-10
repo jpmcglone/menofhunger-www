@@ -17,7 +17,8 @@
               </div>
             </div>
 
-            <div class="mt-5 space-y-4 overflow-y-auto min-h-0 pr-1 -mr-1">
+            <!-- Add bottom padding so iOS safe-area doesn't cover the action row -->
+            <div class="mt-5 space-y-4 overflow-y-auto min-h-0 pr-1 -mr-1 pb-[calc(1rem+env(safe-area-inset-bottom))]">
           <AppUsernameField
             v-model="usernameInput"
             tone="moh"
@@ -76,15 +77,28 @@
             <label class="text-sm font-medium moh-text">
               Community<span v-if="!menConfirmLocked" class="ml-0.5">*</span>
             </label>
-            <div class="flex items-start gap-3">
-              <Checkbox v-model="menOnlyConfirmed" binary inputId="moh-men-only" :disabled="submitting || menConfirmLocked" />
-              <label for="moh-men-only" class="text-sm moh-text leading-snug">
+            <!-- Make the whole row tappable (fixes iOS delayed visual updates). -->
+            <button
+              type="button"
+              class="flex w-full items-start gap-3 text-left"
+              :disabled="submitting || menConfirmLocked"
+              @click="toggleMenOnlyConfirmed"
+            >
+              <Checkbox
+                :modelValue="menOnlyConfirmed"
+                binary
+                inputId="moh-men-only"
+                :disabled="submitting || menConfirmLocked"
+                @click.stop
+                @update:modelValue="(v) => (menOnlyConfirmed = Boolean(v))"
+              />
+              <div class="text-sm moh-text leading-snug">
                 I understand Men of Hunger is a men’s community, and I’m joining as a man.
                 <div class="mt-1 text-xs moh-text-muted">
                   You can browse right away. Posting and messaging require verification first.
                 </div>
-              </label>
-            </div>
+              </div>
+            </button>
           </div>
 
           <div v-if="error" class="text-sm text-red-700 dark:text-red-300">
@@ -239,6 +253,11 @@ function isBirthdate18Plus(yyyyMmDd: string): boolean {
   const todayUtc = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()))
   const cutoff = new Date(Date.UTC(todayUtc.getUTCFullYear() - 18, todayUtc.getUTCMonth(), todayUtc.getUTCDate()))
   return d.getTime() <= cutoff.getTime()
+}
+
+function toggleMenOnlyConfirmed() {
+  if (submitting.value || menConfirmLocked.value) return
+  menOnlyConfirmed.value = !menOnlyConfirmed.value
 }
 
 async function submit() {

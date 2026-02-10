@@ -555,6 +555,14 @@ export type RecentlyOnlineUser = FollowListUser & { lastOnlineAt: string | null 
 /** Data type for GET /presence/recent (array); nextCursor in pagination. */
 export type GetPresenceRecentData = RecentlyOnlineUser[]
 
+export type PresenceOnlinePage = {
+  online: OnlineUser[]
+  recent: RecentlyOnlineUser[]
+}
+
+/** Data type for GET /presence/online-page (object); totalOnline + recentNextCursor in pagination. */
+export type GetPresenceOnlinePageData = PresenceOnlinePage
+
 export type ActiveUsersMetrics = {
   dau: number
   mau: number

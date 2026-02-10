@@ -84,7 +84,7 @@
 </template>
 
 <script setup lang="ts">
-import type { GetPresenceOnlineData, GetPresenceRecentData, OnlineUser, RecentlyOnlineUser } from '~/types/api'
+import type { GetPresenceOnlineData, GetPresenceOnlinePageData, GetPresenceRecentData, OnlineUser, RecentlyOnlineUser } from '~/types/api'
 import { getApiErrorMessage } from '~/utils/api-error'
 import { formatListTime } from '~/utils/time-format'
 
@@ -249,6 +249,55 @@ async function fetchOnline() {
   }
 }
 
+async function fetchOnlinePage() {
+  loading.value = true
+  error.value = null
+  // If the viewer can see "recent", we fetch it in the same call to keep the snapshot consistent.
+  if (!viewerCanSeeLastOnline.value) {
+    recentUsers.value = []
+    recentNextCursor.value = null
+  }
+  try {
+    const res = await apiFetch<GetPresenceOnlinePageData>('/presence/online-page', {
+      method: 'GET',
+      query: {
+        includeSelf: '1',
+        ...(viewerCanSeeLastOnline.value ? { recentLimit: 30 } : {}),
+      },
+    })
+    const online = (res?.data?.online ?? []) as OnlineUser[]
+    users.value = online.sort(sortByRecent)
+    totalOnline.value =
+      typeof res?.pagination?.totalOnline === 'number' ? res.pagination.totalOnline : users.value.length
+
+    if (users.value.length > 0) {
+      const ids = users.value.map((u) => u.id).filter(Boolean)
+      addOnlineIdsFromRest(ids)
+      const idleIds = users.value.filter((u) => u.idle && u.id).map((u) => u.id)
+      if (idleIds.length) addIdleFromRest(idleIds)
+      addInterest(ids)
+    }
+
+    if (viewerCanSeeLastOnline.value) {
+      const recent = (res?.data?.recent ?? []) as RecentlyOnlineUser[]
+      const next = (res as any)?.pagination?.recentNextCursor ?? null
+      recentUsers.value = recent
+      recentNextCursor.value = typeof next === 'string' && next.trim() ? next : null
+    }
+  } catch (e: unknown) {
+    error.value = getApiErrorMessage(e) || 'Failed to load online users.'
+    users.value = []
+    totalOnline.value = null
+    // Keep "recently online" from becoming stale if this call fails.
+    if (viewerCanSeeLastOnline.value) {
+      recentUsers.value = []
+      recentNextCursor.value = null
+    }
+  } finally {
+    loading.value = false
+  }
+}
+
 async function fetchRecent(params?: { cursor?: string | null }) {
   if (!viewerCanSeeLastOnline.value) return
   recentLoading.value = true
@@ -306,13 +355,8 @@ onMounted(async () => {
   // Always refetch after socket connect.
   // Reason: presence is tracked in-memory on the API and the viewer may not be counted as "online"
   // until their socket connection is established. SSR can undercount (often showing 0 when only you are online).
-  await fetchOnline()
-  if (
-    viewerCanSeeLastOnline.value &&
-    !(nuxtApp.isHydrating && (recentUsers.value.length > 0 || recentLoading.value))
-  ) {
-    await fetchRecent()
-  }
+  await fetchOnlinePage()
+  // If the combined call didn't include recent (or viewer can't see it), keep the existing recent fetch path for load-more only.
   console.log('[presence] online page: fetch complete, users=', users.value.length)
 })
 

@@ -1209,6 +1209,20 @@ watch(
   },
   { immediate: true },
 )
+
+// If the first poll happens before the viewer's socket is connected, /presence/online can undercount (often 0 when only you are online).
+// Refresh once right after presence connects so the right-rail "X online" matches the /online page count.
+watch(
+  () => isSocketConnected.value,
+  (connected) => {
+    if (!import.meta.client) return
+    if (!connected) return
+    if (!isAuthed.value) return
+    if (isRightRailForcedHidden.value) return
+    void Promise.resolve(refreshOnlineCount()).catch(() => undefined)
+  },
+  { immediate: true },
+)
 onBeforeUnmount(() => {
   if (onlinePollTimer) {
     clearInterval(onlinePollTimer)

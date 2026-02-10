@@ -58,7 +58,7 @@
 
               <footer
                 v-if="$slots.footer"
-                class="moh-gutter-x py-3 border-t moh-border"
+                class="moh-gutter-x border-t moh-border pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]"
               >
                 <slot name="footer" />
               </footer>
@@ -129,7 +129,8 @@ const panelStyle = computed<CSSProperties>(() => ({
   maxHeight: props.maxHeight,
 }))
 const bodyStyle = computed<CSSProperties>(() => ({
-  maxHeight: `calc(${props.maxHeight} - 3.25rem${hasFooter.value ? ' - 3.25rem' : ''})`,
+  // Subtract header + footer heights; footer also includes iOS safe-area padding.
+  maxHeight: `calc(${props.maxHeight} - 3.25rem${hasFooter.value ? ' - (3.25rem + env(safe-area-inset-bottom))' : ''})`,
 }))
 
 const hasFooter = computed(() => Boolean(useSlots().footer))
