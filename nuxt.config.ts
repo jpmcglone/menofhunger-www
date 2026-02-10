@@ -132,6 +132,51 @@ export default defineNuxtConfig({
     serverBundle: 'local',
     // If an icon collection isn't installed, fail loudly rather than silently hitting the public Iconify API.
     fallbackToApi: false,
+    // Speed up first paint: bundle common icons into the client so we don't need the
+    // runtime /api/_nuxt_icon/* request waterfall for navigation + core UI.
+    //
+    // We keep serverBundle enabled so any non-bundled/dynamic icons still work.
+    clientBundle: {
+      // Scan app files for static icon usages.
+      scan: {
+        globInclude: [
+          'components/**/*.{vue,ts}',
+          'layouts/**/*.vue',
+          'pages/**/*.vue',
+          'composables/**/*.ts',
+          'utils/**/*.ts',
+        ],
+        globExclude: ['node_modules', '.nuxt', '.output'],
+      },
+      // Explicitly include core nav icons (these are selected from TS objects, so scanning may miss them).
+      icons: [
+        // Primary nav (useAppNav)
+        'tabler:home',
+        'tabler:home-filled',
+        'tabler:search',
+        'tabler:bell',
+        'tabler:bell-filled',
+        'tabler:message-circle',
+        'tabler:message-circle-filled',
+        'tabler:bookmark',
+        'tabler:bookmark-filled',
+        'tabler:radio',
+        'tabler:music',
+        'heroicons-outline:user-group',
+        'heroicons-solid:user-group',
+        'heroicons-outline:user-circle',
+        'heroicons-solid:user-circle',
+        'heroicons-outline:eye-slash',
+        'heroicons-solid:eye-slash',
+        // Common core actions
+        'tabler:plus',
+        'tabler:login',
+        'tabler:logout',
+      ],
+      // Guardrail: keep the icon client bundle from growing unbounded.
+      // (Uncompressed size; the shipped gzip/brotli is much smaller.)
+      sizeLimitKb: 512,
+    },
   },
 
   vue: {
