@@ -292,7 +292,7 @@ onMounted(async () => {
   console.log('[presence] online page: socket ready, subscribing to feed')
   subscribeOnlineFeed()
 
-  // If we already have an SSR-hydrated list, ensure presence store is warmed up without refetching.
+  // If we already have an SSR-hydrated list, ensure presence store is warmed up.
   if (users.value.length > 0) {
     const ids = users.value.map((u) => u.id).filter(Boolean)
     if (ids.length) {
@@ -303,10 +303,10 @@ onMounted(async () => {
     }
   }
 
-  // If we SSR-rendered the initial lists, avoid re-fetching during hydration.
-  if (!(nuxtApp.isHydrating && (users.value.length > 0 || totalOnline.value !== null || loading.value))) {
-    await fetchOnline()
-  }
+  // Always refetch after socket connect.
+  // Reason: presence is tracked in-memory on the API and the viewer may not be counted as "online"
+  // until their socket connection is established. SSR can undercount (often showing 0 when only you are online).
+  await fetchOnline()
   if (
     viewerCanSeeLastOnline.value &&
     !(nuxtApp.isHydrating && (recentUsers.value.length > 0 || recentLoading.value))
@@ -318,7 +318,6 @@ onMounted(async () => {
 
 // SSR: prefetch lists so the first HTML paint contains real data (reduces flicker).
 if (import.meta.server) {
-  await fetchOnline()
   if (viewerCanSeeLastOnline.value) {
     await fetchRecent()
   }
