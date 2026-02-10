@@ -10,6 +10,23 @@
           loading="lazy"
           decoding="async"
         >
+        <div
+          v-if="showOnlineNow || showLastOnline"
+          v-tooltip.bottom="showLastOnline ? tinyTooltip(lastOnlineTooltip) : undefined"
+          class="absolute right-3 bottom-3 rounded-full px-2 py-0.5 text-[11px] shadow-sm backdrop-blur-sm"
+          :class="
+            showOnlineNow
+              ? 'bg-green-600/90 text-white dark:bg-green-500/20 dark:text-green-200'
+              : 'bg-white/70 text-gray-600 dark:bg-black/60 dark:text-gray-400 tabular-nums'
+          "
+        >
+          <template v-if="showOnlineNow">
+            Online now
+          </template>
+          <template v-else>
+            Last online {{ lastOnlineShort }}
+          </template>
+        </div>
       </div>
 
       <div class="absolute left-4 bottom-0 translate-y-1/2">
@@ -142,12 +159,64 @@
 <script setup lang="ts">
 import type { UserPreview } from '~/types/api'
 import { useUserOverlay } from '~/composables/useUserOverlay'
+import { formatDateTime, formatListTime } from '~/utils/time-format'
+import { tinyTooltip } from '~/utils/tiny-tooltip'
 
 const props = defineProps<{
   user: UserPreview
 }>()
 
 const { user } = useUserOverlay(computed(() => props.user))
+
+const { addInterest, removeInterest, getPresenceStatus, isPresenceKnown } = usePresence()
+const lastUserId = ref<string | null>(null)
+watch(
+  () => user.value.id ?? null,
+  (nextId) => {
+    if (!import.meta.client) return
+    const prev = lastUserId.value
+    if (prev && prev !== nextId) removeInterest([prev])
+    lastUserId.value = nextId ?? null
+    if (nextId) addInterest([nextId])
+  },
+  { immediate: true },
+)
+onBeforeUnmount(() => {
+  const id = lastUserId.value
+  if (id) removeInterest([id])
+})
+
+const presenceStatus = computed(() => {
+  const id = user.value.id
+  if (!id) return 'offline'
+  return getPresenceStatus(id)
+})
+const showOnlineNow = computed(() => presenceStatus.value !== 'offline')
+
+const { user: authUser } = useAuth()
+const viewerCanSeeLastOnline = computed(() => {
+  const status = authUser.value?.verifiedStatus ?? 'none'
+  return Boolean(authUser.value?.siteAdmin) || (typeof status === 'string' && status !== 'none')
+})
+
+const showLastOnline = computed(() => {
+  if (!viewerCanSeeLastOnline.value) return false
+  if (presenceStatus.value !== 'offline') return false
+  if (!user.value.id || !isPresenceKnown(user.value.id)) return false
+  return Boolean(user.value.lastOnlineAt)
+})
+const lastOnlineShort = computed(() => {
+  const iso = user.value.lastOnlineAt ?? null
+  const t = formatListTime(iso)
+  if (t === 'now') return '<1m ago'
+  if (/^\d+[mhd]$/.test(t)) return `${t} ago`
+  return t
+})
+const lastOnlineTooltip = computed(() => {
+  const iso = user.value.lastOnlineAt ?? null
+  if (!iso) return null
+  return formatDateTime(iso, { dateStyle: 'medium', timeStyle: 'short' })
+})
 
 const profilePath = computed(() => {
   const u = (user.value.username ?? '').trim()

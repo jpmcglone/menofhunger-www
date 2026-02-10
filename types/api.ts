@@ -152,6 +152,7 @@ export type UserPreview = {
   verifiedStatus: 'none' | 'identity' | 'manual'
   avatarUrl: string | null
   bannerUrl: string | null
+  lastOnlineAt: string | null
   relationship: FollowRelationship
   followerCount: number | null
   followingCount: number | null
@@ -534,6 +535,11 @@ export type OnlineUser = FollowListUser & { lastConnectAt?: number; idle?: boole
 
 /** Data type for GET /presence/online (array); totalOnline in pagination. */
 export type GetPresenceOnlineData = OnlineUser[]
+
+export type RecentlyOnlineUser = FollowListUser & { lastOnlineAt: string | null }
+
+/** Data type for GET /presence/recent (array); nextCursor in pagination. */
+export type GetPresenceRecentData = RecentlyOnlineUser[]
 
 export type ActiveUsersMetrics = {
   dau: number

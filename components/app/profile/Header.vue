@@ -27,11 +27,21 @@
           @click="emit('openImage', { event: $event, url: profileBannerUrl, title: 'Banner', kind: 'banner' })"
         />
         <div
-          v-if="showLastOnline"
-          v-tooltip.bottom="tinyTooltip(lastOnlineTooltip)"
-          class="absolute right-4 bottom-0 translate-y-[36px] rounded-full bg-white/70 px-2 py-0.5 text-[11px] text-gray-600 shadow-sm backdrop-blur-sm dark:bg-black/60 dark:text-gray-400 tabular-nums"
+          v-if="showOnlineNow || showLastOnline"
+          v-tooltip.bottom="showLastOnline ? tinyTooltip(lastOnlineTooltip) : undefined"
+          class="absolute right-4 bottom-0 translate-y-[36px] rounded-full px-2 py-0.5 text-[11px] shadow-sm backdrop-blur-sm"
+          :class="
+            showOnlineNow
+              ? 'bg-green-600/90 text-white dark:bg-green-500/20 dark:text-green-200'
+              : 'bg-white/70 text-gray-600 dark:bg-black/60 dark:text-gray-400 tabular-nums'
+          "
         >
-          Last online {{ lastOnlineShort }}
+          <template v-if="showOnlineNow">
+            Online now
+          </template>
+          <template v-else>
+            Last online {{ lastOnlineShort }}
+          </template>
         </div>
       </div>
 
@@ -280,7 +290,15 @@ const presenceStatus = computed(() => {
   return getPresenceStatus(id)
 })
 
+const showOnlineNow = computed(() => presenceStatus.value !== 'offline')
+
+const viewerCanSeeLastOnline = computed(() => {
+  const status = authUser.value?.verifiedStatus ?? 'none'
+  return Boolean(authUser.value?.siteAdmin) || (typeof status === 'string' && status !== 'none')
+})
+
 const showLastOnline = computed(() => {
+  if (!viewerCanSeeLastOnline.value) return false
   if (presenceStatus.value !== 'offline') return false
   if (!profile.value?.id || !isPresenceKnown(profile.value.id)) return false
   return Boolean(profile.value?.lastOnlineAt)

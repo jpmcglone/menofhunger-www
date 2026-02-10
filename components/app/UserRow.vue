@@ -26,6 +26,12 @@
                 :premium-plus="user.premiumPlus"
                 :steward-badge-enabled="user.stewardBadgeEnabled ?? true"
               />
+              <div
+                v-if="nameMeta"
+                class="shrink-0 text-xs text-gray-500 dark:text-gray-400 tabular-nums"
+              >
+                {{ nameMeta }}
+              </div>
             </div>
             <div class="text-sm text-gray-600 dark:text-gray-300 truncate">
               {{ handle }}
@@ -53,6 +59,8 @@ import { useUserOverlay } from '~/composables/useUserOverlay'
 const props = defineProps<{
   user: FollowListUser
   showFollowButton?: boolean
+  /** Optional label displayed inline next to name + badges. */
+  nameMeta?: string | null
 }>()
 
 const { user } = useUserOverlay(computed(() => props.user))
@@ -65,6 +73,8 @@ const showFollowButton = computed(() => isAuthed.value && props.showFollowButton
 
 const displayName = computed(() => user.value?.name || user.value?.username || 'User')
 const handle = computed(() => (user.value?.username ? `@${user.value.username}` : '@—'))
+
+const nameMeta = computed(() => (props.nameMeta ?? '').trim() || null)
 
 const { addInterest, removeInterest } = usePresence()
 onMounted(() => {

@@ -304,21 +304,22 @@ export default defineNuxtConfig({
     '/privacy': { prerender: true },
     '/about': { prerender: true },
 
-    // App-shell: client-only so presence/WebSocket state is correct on fresh load.
-    '/home': { ssr: false },
-    '/explore': { ssr: false },
-    '/notifications': { ssr: false },
+    // App-shell: enable SSR to reduce client-side "data flicker" on first paint.
+    // These pages already gate browser-only logic behind onMounted/import.meta.client.
+    '/home': { ssr: true },
+    '/explore': { ssr: true },
+    '/notifications': { ssr: true },
     '/chat': { ssr: false },
     '/bookmarks': { ssr: false },
     '/bookmarks/**': { ssr: false },
     '/groups': { ssr: false },
     '/only-me': { ssr: false },
-    '/online': { ssr: false },
+    '/online': { ssr: true },
     '/settings': { ssr: false },
     '/feedback': { ssr: false },
     '/admin': { ssr: false },
     '/admin/**': { ssr: false },
-    '/status': { ssr: false },
+    '/status': { ssr: true },
 
     // ——— CDN / edge caching: reduce bandwidth and request load on www ———
     // Nitro build output + public assets. Use s-maxage so CDN caches; browsers use max-age.

@@ -113,7 +113,6 @@
               class="moh-composer-textarea relative z-10 w-full resize-none overflow-hidden rounded-xl border border-gray-300 bg-transparent px-3 py-2 text-[16px] leading-6 text-transparent caret-gray-900 placeholder:text-gray-500 focus:outline-none dark:border-zinc-700 dark:caret-gray-50 dark:placeholder:text-zinc-500"
               :style="composerTextareaVars"
               :placeholder="composerPlaceholder"
-              :maxlength="postMaxLen"
               @input="onComposerInput"
               @keydown="onComposerKeydown"
               @paste="onComposerPaste"
@@ -232,7 +231,14 @@
               />
             </div>
             <div class="flex items-center gap-2">
-            <div class="text-xs text-gray-500 dark:text-gray-400 tabular-nums">
+            <div
+              class="text-xs tabular-nums"
+              :class="
+                postCharCount > postMaxLen
+                  ? 'text-red-600 dark:text-red-400 font-semibold'
+                  : 'text-gray-500 dark:text-gray-400'
+              "
+            >
               {{ postCharCount }}/{{ postMaxLen }}
             </div>
             <Button
@@ -705,7 +711,7 @@ const composerTextareaVars = computed<Record<string, string>>(() => {
     : { '--moh-compose-accent': 'rgba(0, 0, 0, 0.85)', '--moh-compose-ring': 'rgba(0, 0, 0, 0.18)' }
 })
 
-const postMaxLen = computed(() => (isPremium.value ? 500 : 200))
+const postMaxLen = computed(() => (isPremium.value ? 1000 : 200))
 const composerPlaceholder = computed(
   () =>
     props.placeholder ??

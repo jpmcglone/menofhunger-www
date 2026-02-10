@@ -32,14 +32,62 @@
     <div v-else class="divide-y divide-gray-200 dark:divide-zinc-800">
       <AppUserRow v-for="u in users" :key="u.id" :user="u" :show-follow-button="true" />
     </div>
+
+    <!-- Recently online (verified viewers only) -->
+    <template v-if="viewerCanSeeLastOnline">
+      <div class="px-4 pt-8 pb-2">
+        <h2 class="text-base font-bold tracking-tight text-gray-900 dark:text-gray-50">
+          Recently online
+        </h2>
+        <p class="mt-1 text-sm text-gray-600 dark:text-gray-300">
+          Most recent first.
+        </p>
+      </div>
+
+      <div v-if="recentError" class="px-4 pb-4">
+        <AppInlineAlert severity="danger">
+          {{ recentError }}
+        </AppInlineAlert>
+      </div>
+
+      <div v-else-if="recentLoading && recentUsers.length === 0" class="px-4 py-6 text-sm text-gray-500 dark:text-gray-400">
+        Loading…
+      </div>
+
+      <div v-else-if="recentUsers.length === 0" class="px-4 py-6 text-sm text-gray-500 dark:text-gray-400">
+        No one recently online.
+      </div>
+
+      <div v-else class="divide-y divide-gray-200 dark:divide-zinc-800">
+        <AppUserRow
+          v-for="u in recentUsers"
+          :key="u.id"
+          :user="u"
+          :show-follow-button="true"
+          :name-meta="recentLastOnlineLabel(u.lastOnlineAt)"
+        />
+        <div class="py-4 flex justify-center">
+          <Button
+            v-if="recentNextCursor"
+            label="Load more"
+            severity="secondary"
+            rounded
+            :loading="recentLoading"
+            :disabled="recentLoading"
+            @click="loadMoreRecent"
+          />
+        </div>
+      </div>
+    </template>
   </div>
   </AppPageContent>
 </template>
 
 <script setup lang="ts">
-import type { OnlineUser } from '~/types/api'
-import type { ApiEnvelope, GetPresenceOnlineData } from '~/types/api'
+import type { OnlineUser, RecentlyOnlineUser } from '~/types/api'
+import type { GetPresenceOnlineData, GetPresenceRecentData } from '~/types/api'
 import { getApiErrorMessage } from '~/utils/api-error'
+import { formatListTime } from '~/utils/time-format'
 
 definePageMeta({
   layout: 'app',
@@ -66,10 +114,33 @@ const {
   whenSocketConnected,
 } = usePresence()
 
-const users = ref<OnlineUser[]>([])
-const totalOnline = ref<number | null>(null)
-const loading = ref(true)
-const error = ref<string | null>(null)
+// IMPORTANT: these must be `useState` (not local refs) because this page SSR-renders.
+// Otherwise the client will re-initialize them during hydration and Vue will warn about mismatches.
+const users = useState<OnlineUser[]>('online-page-users', () => [])
+const totalOnline = useState<number | null>('online-page-total-online', () => null)
+const loading = useState<boolean>('online-page-loading', () => true)
+const error = useState<string | null>('online-page-error', () => null)
+
+const recentUsers = useState<RecentlyOnlineUser[]>('online-page-recent-users', () => [])
+const recentNextCursor = useState<string | null>('online-page-recent-next-cursor', () => null)
+const recentLoading = useState<boolean>('online-page-recent-loading', () => false)
+const recentError = useState<string | null>('online-page-recent-error', () => null)
+const nuxtApp = useNuxtApp()
+
+const { user: authUser } = useAuth()
+const viewerCanSeeLastOnline = computed(() => {
+  const status = authUser.value?.verifiedStatus ?? 'none'
+  return Boolean(authUser.value?.siteAdmin) || (typeof status === 'string' && status !== 'none')
+})
+
+function recentLastOnlineLabel(lastOnlineAt: string | null) {
+  if (!viewerCanSeeLastOnline.value) return null
+  const t = formatListTime(lastOnlineAt)
+  if (!t || t === '—') return null
+  if (t === 'now') return '· <1m ago'
+  if (/^\d+[mhd]$/.test(t)) return `· ${t} ago`
+  return `· ${t}`
+}
 
 const feedCallback: {
   onOnline?: (p: { userId: string; user?: OnlineUser; lastConnectAt?: number }) => void
@@ -178,6 +249,41 @@ async function fetchOnline() {
   }
 }
 
+async function fetchRecent(params?: { cursor?: string | null }) {
+  if (!viewerCanSeeLastOnline.value) return
+  recentLoading.value = true
+  recentError.value = null
+  try {
+    const res = await apiFetch<GetPresenceRecentData>('/presence/recent', {
+      method: 'GET',
+      query: {
+        limit: '30',
+        ...(params?.cursor ? { cursor: params.cursor } : {}),
+      },
+    })
+    const data = Array.isArray(res?.data) ? (res.data as RecentlyOnlineUser[]) : []
+    const next = (res as any)?.pagination?.nextCursor ?? null
+    if (params?.cursor) recentUsers.value = [...recentUsers.value, ...data]
+    else recentUsers.value = data
+    recentNextCursor.value = typeof next === 'string' && next.trim() ? next : null
+  } catch (e: unknown) {
+    recentError.value = getApiErrorMessage(e) || 'Failed to load recently online.'
+    if (!params?.cursor) {
+      recentUsers.value = []
+      recentNextCursor.value = null
+    }
+  } finally {
+    recentLoading.value = false
+  }
+}
+
+async function loadMoreRecent() {
+  if (!viewerCanSeeLastOnline.value) return
+  if (!recentNextCursor.value) return
+  if (recentLoading.value) return
+  await fetchRecent({ cursor: recentNextCursor.value })
+}
+
 onMounted(async () => {
   console.log('[presence] online page MOUNTED')
   addOnlineFeedCallback(feedCallback)
@@ -185,9 +291,38 @@ onMounted(async () => {
   await whenSocketConnected(12000)
   console.log('[presence] online page: socket ready, subscribing to feed')
   subscribeOnlineFeed()
-  await fetchOnline()
+
+  // If we already have an SSR-hydrated list, ensure presence store is warmed up without refetching.
+  if (users.value.length > 0) {
+    const ids = users.value.map((u) => u.id).filter(Boolean)
+    if (ids.length) {
+      addOnlineIdsFromRest(ids)
+      const idleIds = users.value.filter((u) => u.idle && u.id).map((u) => u.id)
+      if (idleIds.length) addIdleFromRest(idleIds)
+      addInterest(ids)
+    }
+  }
+
+  // If we SSR-rendered the initial lists, avoid re-fetching during hydration.
+  if (!(nuxtApp.isHydrating && (users.value.length > 0 || totalOnline.value !== null || loading.value))) {
+    await fetchOnline()
+  }
+  if (
+    viewerCanSeeLastOnline.value &&
+    !(nuxtApp.isHydrating && (recentUsers.value.length > 0 || recentLoading.value))
+  ) {
+    await fetchRecent()
+  }
   console.log('[presence] online page: fetch complete, users=', users.value.length)
 })
+
+// SSR: prefetch lists so the first HTML paint contains real data (reduces flicker).
+if (import.meta.server) {
+  await fetchOnline()
+  if (viewerCanSeeLastOnline.value) {
+    await fetchRecent()
+  }
+}
 
 onBeforeUnmount(() => {
   console.log('[presence] online page UNMOUNTING')

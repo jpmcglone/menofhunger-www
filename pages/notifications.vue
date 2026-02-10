@@ -88,6 +88,7 @@ const notifBadge = useNotificationsBadge()
 const { setNotificationUndeliveredCount, addInterest, removeInterest } = usePresence()
 const loadingMore = ref(false)
 const markingAllRead = ref(false)
+const nuxtApp = useNuxtApp()
 
 // Presence: subscribe to notification actors so avatars show online/offline (works after hard refresh).
 const notificationActorIds = computed(() => {
@@ -157,7 +158,10 @@ async function loadMore() {
 onMounted(async () => {
   await markDelivered()
   setNotificationUndeliveredCount(0)
-  await fetchList()
+  // If this is the initial SSR hydration and we already have the list, avoid a duplicate fetch.
+  if (!(nuxtApp.isHydrating && (notifications.value.length > 0 || loading.value))) {
+    await fetchList()
+  }
 })
 
 onActivated(async () => {
@@ -180,4 +184,9 @@ watch(notificationUndeliveredCount, async (newVal, oldVal) => {
     await fetchList({ forceRefresh: true })
   }
 })
+
+// SSR: fetch initial list so the first HTML paint includes real content (reduces flicker).
+if (import.meta.server) {
+  await fetchList()
+}
 </script>
