@@ -16,12 +16,21 @@ export function useComposerGiphyPicker(opts: {
   const giphyItems = ref<GiphySearchResponse>([])
   const giphyInputRef = ref<any>(null)
   const giphyRequestId = ref(0)
+  let giphyInflight: AbortController | null = null
 
   function resetState() {
     giphyQuery.value = ''
     giphyItems.value = []
     giphyError.value = null
     giphyLoading.value = false
+    if (giphyInflight) {
+      try {
+        giphyInflight.abort()
+      } catch {
+        // ignore
+      }
+      giphyInflight = null
+    }
   }
 
   function focusInput() {
@@ -50,22 +59,33 @@ export function useComposerGiphyPicker(opts: {
   }
 
   async function searchGiphy() {
-    if (giphyLoading.value) return
     const q = giphyQuery.value.trim()
     giphyLoading.value = true
     const reqId = ++giphyRequestId.value
+    if (giphyInflight) {
+      try {
+        giphyInflight.abort()
+      } catch {
+        // ignore
+      }
+      giphyInflight = null
+    }
+    const controller = new AbortController()
+    giphyInflight = controller
     try {
       const res = q
-        ? await opts.apiFetchData<GiphySearchResponse>('/giphy/search', { method: 'GET', query: { q } as any })
-        : await opts.apiFetchData<GiphySearchResponse>('/giphy/trending', { method: 'GET', query: { limit: '24' } as any })
+        ? await opts.apiFetchData<GiphySearchResponse>('/giphy/search', { method: 'GET', query: { q }, signal: controller.signal })
+        : await opts.apiFetchData<GiphySearchResponse>('/giphy/trending', { method: 'GET', query: { limit: 24 }, signal: controller.signal })
       if (!giphyOpen.value || giphyRequestId.value !== reqId) return
       giphyItems.value = Array.isArray(res) ? res : []
       giphyError.value = null
     } catch (e: unknown) {
+      if ((e as any)?.name === 'AbortError') return
       if (!giphyOpen.value || giphyRequestId.value !== reqId) return
       giphyError.value = getApiErrorMessage(e) || (q ? 'Failed to search Giphy.' : 'Failed to load trending GIFs.')
       giphyItems.value = []
     } finally {
+      if (giphyInflight === controller) giphyInflight = null
       if (giphyRequestId.value === reqId) giphyLoading.value = false
     }
   }

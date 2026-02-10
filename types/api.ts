@@ -321,7 +321,7 @@ export type FeedbackItem = {
 
 export type AdminFeedbackItem = FeedbackItem & {
   adminNote: string | null
-  user: { id: string; username: string | null; name: string | null } | null
+  user: { id: string; username: string | null; name: string | null; avatarUrl: string | null } | null
 }
 
 /** Data type for GET /admin/feedback (array); pagination in envelope. */
@@ -451,6 +451,20 @@ export type AdminImageReviewDeleteResponse = {
   error?: string
   postMediaCount?: number
   userCount?: number
+}
+
+/** Status payload for GET /admin/jobs/hashtags/backfill. */
+export type AdminHashtagBackfillStatus = {
+  id: string
+  status: string
+  cursor: string | null
+  processedPosts: number
+  updatedPosts: number
+  resetDone: boolean
+  startedAt: string
+  finishedAt: string | null
+  lastError: string | null
+  updatedAt: string
 }
 
 /** Data type for POST /posts (created post). */

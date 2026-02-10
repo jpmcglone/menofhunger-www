@@ -1,7 +1,8 @@
 import type { ApiEnvelope } from '~/types/api'
 import { getApiErrorMessage } from '~/utils/api-error'
+import type { MohApiQuery } from '~/composables/useApiClient'
 
-export type CursorFeedBuildRequest = (cursor: string | null) => { path: string; query?: Record<string, unknown> }
+export type CursorFeedBuildRequest = (cursor: string | null) => { path: string; query?: MohApiQuery }
 
 export type UseCursorFeedOptions<T> = {
   /** Unique key for useState (and related keys for nextCursor, loading, error). */
@@ -10,6 +11,8 @@ export type UseCursorFeedOptions<T> = {
   buildRequest: CursorFeedBuildRequest
   defaultErrorMessage?: string
   loadMoreErrorMessage?: string
+  /** Optional stable ID getter used to dedupe appended pages (prevents cursor-boundary overlap duplicates). */
+  getItemId?: (item: T) => string | number | null | undefined
   /** Called after a successful fetch (refresh or loadMore) with the new chunk of data. */
   onDataLoaded?: (data: T[]) => void
   /** Called after a successful fetch with the full envelope (e.g. to read pagination.counts). */
@@ -30,6 +33,26 @@ export function useCursorFeed<T>(options: UseCursorFeedOptions<T>) {
 
   const defaultError = options.defaultErrorMessage ?? 'Failed to load.'
   const loadMoreError = options.loadMoreErrorMessage ?? 'Failed to load more.'
+
+  function mergeUnique(existing: T[], incoming: T[]): T[] {
+    const getId = options.getItemId
+    if (!getId) return [...existing, ...incoming]
+    const seen = new Set<string | number>()
+    for (const it of existing) {
+      const id = getId(it)
+      if (typeof id === 'string' || typeof id === 'number') seen.add(id)
+    }
+    const out = [...existing]
+    for (const it of incoming) {
+      const id = getId(it)
+      if (typeof id === 'string' || typeof id === 'number') {
+        if (seen.has(id)) continue
+        seen.add(id)
+      }
+      out.push(it)
+    }
+    return out
+  }
 
   async function refresh() {
     if (loading.value) return
@@ -61,7 +84,7 @@ export function useCursorFeed<T>(options: UseCursorFeedOptions<T>) {
       const { path, query } = options.buildRequest(nextCursor.value)
       const res = await apiFetch<T[]>(path, { method: 'GET', query })
       const data = res.data ?? []
-      items.value = [...items.value, ...data]
+      items.value = mergeUnique(items.value, data)
       nextCursor.value = res.pagination?.nextCursor ?? null
       options.onDataLoaded?.(data)
       options.onResponse?.(res)

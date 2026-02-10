@@ -5,6 +5,7 @@ import type {
   ListBookmarkCollectionsResponse,
   RenameBookmarkCollectionResponse,
 } from '~/types/api'
+import { getApiErrorMessage } from '~/utils/api-error'
 
 const MOH_BOOKMARKS_SUMMARY_STORAGE_KEY = 'moh.bookmarks.summary.v1'
 
@@ -105,7 +106,7 @@ export function useBookmarkCollections() {
       writePersistedSummary({ totalCount: totalCount.value, unorganizedCount: unorganizedCount.value })
     } catch (e: unknown) {
       // Keep `loaded=false` so callers can retry (e.g. after auth finishes).
-      errorMessage.value = e instanceof Error ? e.message : 'Failed to load bookmarks.'
+      errorMessage.value = getApiErrorMessage(e) || 'Failed to load bookmarks.'
     } finally {
       loading.value = false
     }

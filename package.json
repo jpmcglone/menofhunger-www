@@ -12,6 +12,7 @@
     "dev:kill": "node scripts/kill-port.mjs",
     "dev:clean": "node scripts/bump-sw-version.mjs && npm run dev:kill && npm run dev",
     "generate": "nuxt generate",
+    "lint": "eslint .",
     "loc": "node ./scripts/loc.mjs",
     "preview": "node .output/server/index.mjs",
     "postinstall": "nuxt prepare",

@@ -7,6 +7,7 @@ type SearchCacheEntry = { expiresAt: number; items: HashtagResult[] }
 
 const CACHE_TTL_MS = 30_000
 const DEFAULT_LIMIT = 10
+const MAX_CACHE_ENTRIES = 200
 
 let hashtagAutocompleteIdSeq = 0
 
@@ -51,11 +52,21 @@ export function useHashtagAutocomplete(opts: {
 
   const cache = globalHashtagCache
   let debounceTimer: ReturnType<typeof setTimeout> | null = null
+  let blurCloseTimer: ReturnType<typeof setTimeout> | null = null
   let inflight: AbortController | null = null
   let requestSeq = 0
   let activeRequestId = 0
   let lastQueryNorm: string | null = null
   let caretApplySeq = 0
+
+  function pruneCache() {
+    // Remove oldest entries when the cache grows unbounded.
+    while (cache.size > MAX_CACHE_ENTRIES) {
+      const firstKey = cache.keys().next().value as string | undefined
+      if (!firstKey) break
+      cache.delete(firstKey)
+    }
+  }
 
   function close() {
     open.value = false
@@ -63,6 +74,10 @@ export function useHashtagAutocomplete(opts: {
     anchor.value = null
     items.value = []
     highlightedIndex.value = 0
+    if (blurCloseTimer) {
+      clearTimeout(blurCloseTimer)
+      blurCloseTimer = null
+    }
     if (debounceTimer) {
       clearTimeout(debounceTimer)
       debounceTimer = null
@@ -161,7 +176,7 @@ export function useHashtagAutocomplete(opts: {
     try {
       const res = await apiFetchData<HashtagResult[]>('/search', {
         method: 'GET',
-        query: { type: 'hashtags', q, limit } as any,
+        query: { type: 'hashtags', q, limit },
         // Autocomplete should revalidate often; bypass HTTP caches so counts can update quickly.
         cache: 'no-store',
         headers: { 'Cache-Control': 'no-cache' },
@@ -184,6 +199,7 @@ export function useHashtagAutocomplete(opts: {
       if (activeRequestId !== requestId) return
       buildSections(q, next)
       cache.set(qNorm, { expiresAt: now + CACHE_TTL_MS, items: next })
+      pruneCache()
     } catch (e: unknown) {
       // Abort is expected during rapid typing.
       if ((e as any)?.name === 'AbortError') return
@@ -335,7 +351,9 @@ export function useHashtagAutocomplete(opts: {
       onKeydown(evt as KeyboardEvent)
     }
     const onBlur = () => {
-      setTimeout(() => {
+      if (blurCloseTimer) clearTimeout(blurCloseTimer)
+      blurCloseTimer = setTimeout(() => {
+        blurCloseTimer = null
         if (!document.activeElement || document.activeElement !== el) close()
       }, 80)
     }

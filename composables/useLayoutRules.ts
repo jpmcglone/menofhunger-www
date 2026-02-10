@@ -1,30 +1,25 @@
+import { isRightRailForcedHiddenPath, isRightRailSearchHiddenPath, isAdminPath, isSettingsPath, navCompactModePath } from '~/config/routes'
+
 export function useLayoutRules(route = useRoute()) {
   const hideTopBar = computed(() => {
     // Prefer per-route meta for flexibility.
     if (route.meta?.hideTopBar === true) return true
     // Admin/settings pages render their own in-page headers; the global title bar is redundant.
-    if (route.path === '/admin' || route.path.startsWith('/admin/')) return true
-    if (route.path === '/settings' || route.path.startsWith('/settings/')) return true
+    if (isAdminPath(route.path)) return true
+    if (isSettingsPath(route.path)) return true
     return false
   })
 
   const navCompactMode = computed(() => {
-    // Some routes need more horizontal space in the center column.
-    // Force the left nav to remain compact (even on desktop) for those routes.
-    const forced: string[] = ['/tiers']
-    return forced.some((p) => route.path === p || route.path.startsWith(`${p}/`))
+    return navCompactModePath(route.path)
   })
 
   const isRightRailForcedHidden = computed(() => {
-    // On these routes we want the center column to be as wide as possible.
-    const forced = ['/chat', '/admin', '/settings', '/roadmap', '/tiers', '/radio', '/comparison']
-    return forced.some((p) => route.path === p || route.path.startsWith(`${p}/`))
+    return isRightRailForcedHiddenPath(route.path)
   })
 
   const isRightRailSearchHidden = computed(() => {
-    // On Explore, the search UI is part of the center column.
-    const forced = ['/explore']
-    return forced.some((p) => route.path === p || route.path.startsWith(`${p}/`))
+    return isRightRailSearchHiddenPath(route.path)
   })
 
   const title = computed(() => {

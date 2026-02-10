@@ -6,6 +6,15 @@ Feel free to delete this file.
 <script setup>
   import * as Sentry from '@sentry/nuxt'
 
+  definePageMeta({
+    layout: 'empty',
+    middleware: 'admin',
+  })
+
+  useHead({
+    title: 'Sentry Onboarding',
+  })
+
   class SentryExampleFrontendError extends Error {
     constructor(message) {
       super(message)
@@ -20,7 +29,7 @@ Feel free to delete this file.
     try {
       const result = await Sentry.diagnoseSdkConnectivity()
       isConnected.value = result !== 'sentry-unreachable'
-    } catch (error) {
+    } catch {
       isConnected.value = false
     }
   });
@@ -35,7 +44,6 @@ Feel free to delete this file.
 </script>
 
 <template>
-  <title>Sentry Onboarding</title>
   <div>
     <main>
       <div class="flex-spacer" />

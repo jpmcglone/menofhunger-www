@@ -61,6 +61,7 @@ import { getApiErrorMessage } from '~/utils/api-error'
 definePageMeta({
   layout: 'app',
   title: 'Trending hashtags',
+  hideTopBar: true,
 })
 
 usePageSeo({
@@ -89,11 +90,11 @@ function formatCount(n: number): string {
 async function fetchPage(cursor: string | null) {
   const res = await apiFetch<GetTrendingHashtagsData>('/hashtags/trending', {
     method: 'GET',
-    query: { limit: 30, cursor } as any,
+    query: { limit: 30, cursor },
   })
   return {
-    items: (res.data ?? []) as HashtagResult[],
-    next: (res.pagination?.nextCursor ?? null) as string | null,
+    items: res.data ?? [],
+    next: res.pagination?.nextCursor ?? null,
   }
 }
 
@@ -134,7 +135,8 @@ async function loadMore() {
 
 if (import.meta.server) await refresh()
 onMounted(() => {
-  if (import.meta.client) void refresh()
+  // Avoid duplicate fetch after SSR/hydration; only refetch if we have no data.
+  if (tags.value.length === 0 && !loading.value) void refresh()
 })
 </script>
 

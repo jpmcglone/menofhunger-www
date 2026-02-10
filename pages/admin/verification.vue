@@ -257,6 +257,12 @@
 </template>
 
 <script setup lang="ts">
+import { getApiErrorMessage } from '~/utils/api-error'
+import { formatDateTime } from '~/utils/time-format'
+import { useFormSubmit } from '~/composables/useFormSubmit'
+import type { AdminVerificationListData, AdminVerificationRequest, AdminVerificationUser, VerificationRequestStatus } from '~/types/api'
+import type { AdminCallback } from '~/composables/usePresence'
+
 definePageMeta({
   layout: 'app',
   title: 'Verification',
@@ -274,12 +280,6 @@ type VerifiedStatus = 'none' | 'identity' | 'manual'
 
 const { apiFetch, apiFetchData } = useApiClient()
 const { addAdminCallback, removeAdminCallback } = usePresence()
-import { getApiErrorMessage } from '~/utils/api-error'
-import { formatDateTime } from '~/utils/time-format'
-import { useFormSubmit } from '~/composables/useFormSubmit'
-import type { AdminVerificationListData, AdminVerificationRequest, VerificationRequestStatus } from '~/types/api'
-import type { AdminVerificationUser } from '~/types/api'
-import type { AdminCallback } from '~/composables/usePresence'
 
 const statusOptions = [
   { label: 'All', value: 'all' as const },

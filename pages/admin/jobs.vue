@@ -201,6 +201,7 @@
 
 <script setup lang="ts">
 import { getApiErrorMessage } from '~/utils/api-error'
+import type { AdminHashtagBackfillStatus } from '~/types/api'
 
 definePageMeta({
   layout: 'app',
@@ -226,26 +227,13 @@ type JobKey =
   | 'popular'
   | 'trending'
 
-type HashtagBackfillStatus = {
-  id: string
-  status: string
-  cursor: string | null
-  processedPosts: number
-  updatedPosts: number
-  resetDone: boolean
-  startedAt: string
-  finishedAt: string | null
-  lastError: string | null
-  updatedAt: string
-}
-
 const { apiFetch, apiFetchData } = useApiClient()
 const toast = useAppToast()
 
 const runningKey = ref<JobKey | null>(null)
 
 const hashtagBatchSize = ref(500)
-const hashtagBackfillStatus = ref<HashtagBackfillStatus | null>(null)
+const hashtagBackfillStatus = ref<AdminHashtagBackfillStatus | null>(null)
 const hashtagBackfillLoading = ref(false)
 const hashtagBackfillRunning = ref(false)
 
@@ -272,8 +260,8 @@ const topicsWipeExisting = ref(false)
 async function refreshHashtagBackfillStatus() {
   hashtagBackfillLoading.value = true
   try {
-    const res = await apiFetch<{ id: string } | null>('/admin/jobs/hashtags/backfill', { method: 'GET' })
-    hashtagBackfillStatus.value = (res.data ?? null) as any
+    const res = await apiFetch<AdminHashtagBackfillStatus | null>('/admin/jobs/hashtags/backfill', { method: 'GET' })
+    hashtagBackfillStatus.value = res.data ?? null
   } catch (e: unknown) {
     toast.push({ title: getApiErrorMessage(e) || 'Failed to load hashtag backfill status.', tone: 'error', durationMs: 2600 })
   } finally {

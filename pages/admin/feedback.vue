@@ -72,7 +72,15 @@
         class="px-4 py-3 space-y-2 hover:bg-gray-50 dark:hover:bg-zinc-900 transition-colors"
       >
         <div class="flex items-start justify-between gap-3">
-          <div class="min-w-0 space-y-1">
+          <div class="flex items-start gap-3 min-w-0">
+            <AppUserAvatar
+              v-if="item.user"
+              :user="item.user"
+              size-class="h-8 w-8"
+              :enable-preview="false"
+              :show-presence="false"
+            />
+            <div class="min-w-0 space-y-1">
             <div class="flex flex-wrap items-center gap-2">
               <div class="font-semibold truncate">{{ item.subject }}</div>
               <Tag :value="statusLabel(item.status)" :severity="statusSeverity(item.status)" class="!text-xs" />
@@ -86,6 +94,7 @@
               <span v-else>Anonymous</span>
               <span v-if="item.email" class="mx-2">·</span>
               <span v-if="item.email">{{ item.email }}</span>
+            </div>
             </div>
           </div>
           <Button label="Review" text severity="secondary" @click="openDetails(item)">
@@ -112,7 +121,13 @@
     </div>
   </div>
 
-  <Dialog v-model:visible="detailsOpen" modal header="Feedback details" :draggable="false" class="w-[min(44rem,calc(100vw-2rem))]">
+  <AppModal
+    v-model="detailsOpen"
+    title="Feedback details"
+    max-width-class="max-w-[44rem]"
+    body-class="p-4"
+    :disable-close="saving"
+  >
     <div v-if="selected" class="space-y-4">
       <div class="space-y-1">
         <div class="text-xs moh-text-muted">Subject</div>
@@ -134,10 +149,18 @@
         </div>
         <div class="flex items-center justify-between gap-2">
           <div class="moh-text-muted">User</div>
-          <div>
-            <span v-if="selected.user?.username">@{{ selected.user.username }}</span>
-            <span v-else-if="selected.user?.name">{{ selected.user.name }}</span>
-            <span v-else>Anonymous</span>
+          <div class="flex items-center gap-2">
+            <AppUserAvatar
+              v-if="selected.user"
+              :user="selected.user"
+              size-class="h-6 w-6"
+              :show-presence="false"
+            />
+            <span>
+              <span v-if="selected.user?.username">@{{ selected.user.username }}</span>
+              <span v-else-if="selected.user?.name">{{ selected.user.name }}</span>
+              <span v-else>Anonymous</span>
+            </span>
           </div>
         </div>
         <div v-if="selected.email" class="flex items-center justify-between gap-2">
@@ -178,14 +201,16 @@
     </div>
 
     <template #footer>
-      <Button label="Close" severity="secondary" text :disabled="saving" @click="detailsOpen = false" />
-      <Button label="Save" :loading="saving" :disabled="saving || !canSave" @click="saveDetails()">
-        <template #icon>
-          <Icon name="tabler:check" aria-hidden="true" />
-        </template>
-      </Button>
+      <div class="flex items-center justify-end gap-2">
+        <Button label="Close" severity="secondary" text :disabled="saving" @click="detailsOpen = false" />
+        <Button label="Save" :loading="saving" :disabled="saving || !canSave" @click="saveDetails()">
+          <template #icon>
+            <Icon name="tabler:check" aria-hidden="true" />
+          </template>
+        </Button>
+      </div>
     </template>
-  </Dialog>
+  </AppModal>
   </AppPageContent>
 </template>
 

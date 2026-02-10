@@ -177,10 +177,14 @@ onUnmounted(() => {
 // Refetch list when socket says new notifications arrived (count increased).
 // Use forceRefresh so we refetch even when we already have data (user is on the page).
 const { notificationUndeliveredCount } = usePresence()
+let undeliveredSeq = 0
 watch(notificationUndeliveredCount, async (newVal, oldVal) => {
   if (typeof newVal === 'number' && typeof oldVal === 'number' && newVal > oldVal) {
+    const seq = ++undeliveredSeq
     await markDelivered()
+    if (seq !== undeliveredSeq) return
     setNotificationUndeliveredCount(0)
+    if (seq !== undeliveredSeq) return
     await fetchList({ forceRefresh: true })
   }
 })

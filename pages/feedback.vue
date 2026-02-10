@@ -85,7 +85,8 @@ definePageMeta({
 
 usePageSeo({
   title: 'Feedback',
-  description: 'Send feedback to Men of Hunger.',
+  // Utility/support page: keep it out of search results, but ensure clean OG/Twitter previews.
+  description: 'Report bugs, request features, or share suggestions with the Men of Hunger team.',
   canonicalPath: '/feedback',
   noindex: true,
 })

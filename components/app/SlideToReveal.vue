@@ -99,6 +99,7 @@ watch([trackEl, handleEl], ([track, handle]) => {
 // Store current drag listeners so we can remove them on unmount if user navigates away during drag.
 let activePointerOnMove: ((ev: PointerEvent) => void) | null = null
 let activePointerOnUp: ((ev: PointerEvent) => void) | null = null
+let revealTimer: number | null = null
 
 onBeforeUnmount(() => {
   if (!import.meta.client) return
@@ -106,6 +107,10 @@ onBeforeUnmount(() => {
   ro?.disconnect()
   ro = null
   dragging.value = false
+  if (revealTimer != null) {
+    window.clearTimeout(revealTimer)
+    revealTimer = null
+  }
   if (activePointerOnMove) {
     window.removeEventListener('pointermove', activePointerOnMove)
     activePointerOnMove = null
@@ -127,7 +132,11 @@ function complete() {
   completed.value = true
   x.value = maxX.value
   // Small delay so the UI reaches the end before we reveal the screen.
-  window.setTimeout(() => emit('revealed'), 120)
+  if (revealTimer != null) window.clearTimeout(revealTimer)
+  revealTimer = window.setTimeout(() => {
+    revealTimer = null
+    emit('revealed')
+  }, 120)
 }
 
 function onPointerDown(e: PointerEvent) {

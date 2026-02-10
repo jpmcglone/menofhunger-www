@@ -1,3 +1,5 @@
+import { isAdminPath, isLoggedOutAllowedPath, isPostPermalinkPath, isPublicPath, isUserProfilePath } from '~/config/routes'
+
 export default defineNuxtRouteMiddleware(async (to) => {
   const { user, ensureLoaded } = useAuth()
 
@@ -9,15 +11,14 @@ export default defineNuxtRouteMiddleware(async (to) => {
   }
 
   // Public routes (no auth check, SSR-safe/prerender-safe).
-  const publicPaths = new Set<string>(['/about', '/status', '/roadmap', '/tiers'])
-  if (publicPaths.has(to.path)) return
-  if (to.path.startsWith('/u/')) return
+  if (isPublicPath(to.path)) return
+  if (isUserProfilePath(to.path)) return
   // Post permalinks should never force login; show access reasons on the page instead.
-  if (to.path.startsWith('/p/')) return
+  if (isPostPermalinkPath(to.path)) return
   // Admin routes are protected by admin middleware (404 for non-admins).
-  if (to.path === '/admin' || to.path.startsWith('/admin/')) return
+  if (isAdminPath(to.path)) return
   // Allow logged-out browsing of core feed/discovery for now.
-  if (to.path === '/home' || to.path === '/explore' || to.path === '/notifications') return
+  if (isLoggedOutAllowedPath(to.path)) return
 
   // If visiting login and already authenticated, go to home.
   if (to.path === '/login') {

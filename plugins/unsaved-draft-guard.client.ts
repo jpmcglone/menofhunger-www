@@ -3,6 +3,7 @@ import { useUnsavedDraftGuard } from '~/composables/useUnsavedDraftGuard'
 import { useApiClient } from '~/composables/useApiClient'
 import { useAppToast } from '~/composables/useAppToast'
 import type { UnsavedDraftSnapshot } from '~/composables/useUnsavedDraftGuard'
+import { getApiErrorMessage } from '~/utils/api-error'
 
 export default defineNuxtPlugin((nuxtApp) => {
   if (!import.meta.client) return
@@ -55,7 +56,30 @@ export default defineNuxtPlugin((nuxtApp) => {
         toast.push({ title: 'Draft saved', tone: 'success', durationMs: 1600 })
         return true
       } catch (e: unknown) {
-        toast.push({ title: 'Failed to save draft', message: 'Please try again.', tone: 'error', durationMs: 2600 })
+        toast.push({ title: 'Failed to save draft', message: getApiErrorMessage(e) || 'Please try again.', tone: 'error', durationMs: 2600 })
+        // Avoid a navigation soft-lock: give the user an immediate chance to discard and continue.
+        const secondChoice = await promptUnsavedDraft(entry.snapshot())
+        if (secondChoice === 'discard') {
+          entry.clear()
+          return true
+        }
+        if (secondChoice === 'save') {
+          // One best-effort retry.
+          try {
+            await saveSnapshot(entry.snapshot())
+            entry.clear()
+            toast.push({ title: 'Draft saved', tone: 'success', durationMs: 1600 })
+            return true
+          } catch (e2: unknown) {
+            toast.push({
+              title: 'Still failed to save draft',
+              message: getApiErrorMessage(e2) || 'Please try again.',
+              tone: 'error',
+              durationMs: 2600,
+            })
+            return false
+          }
+        }
         return false
       }
     } finally {

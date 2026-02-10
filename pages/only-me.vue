@@ -163,6 +163,7 @@
 <script setup lang="ts">
 import type { FeedPost } from '~/types/api'
 import { MOH_OPEN_COMPOSER_FROM_ONLYME_KEY } from '~/utils/injection-keys'
+import { getApiErrorMessage } from '~/utils/api-error'
 
 definePageMeta({
   layout: 'app',
@@ -318,7 +319,7 @@ async function saveDraftNow() {
     draftSavedAt.value = new Date()
     draftDirty.value = false
   } catch (e: unknown) {
-    draftSaveError.value = 'Save failed.'
+    draftSaveError.value = getApiErrorMessage(e) || 'Save failed.'
   } finally {
     draftSaving.value = false
   }

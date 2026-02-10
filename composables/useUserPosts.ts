@@ -41,12 +41,12 @@ export function useUserPosts(
     sort.value = 'new'
   }
 
-  const postsKey = `user-posts-list:${prefix}:${usernameLower.value}`
+  const postsKey = computed(() => `user-posts-list:${prefix}:${usernameLower.value}`)
   const counts = ref<PostCounts>(EMPTY_COUNTS)
   const hasLoadedOnce = ref(false)
 
-  const feed = useCursorFeed<FeedPost>({
-    stateKey: postsKey,
+  const feedRef = shallowRef(useCursorFeed<FeedPost>({
+    stateKey: postsKey.value,
     buildRequest: (cursor) => ({
       path: `/posts/user/${encodeURIComponent(usernameLower.value)}`,
       query: { limit: 30, visibility: filter.value, sort: sort.value, ...(cursor ? { cursor } : {}) },
@@ -57,10 +57,35 @@ export function useUserPosts(
       counts.value = res.pagination?.counts ?? counts.value
       hasLoadedOnce.value = true
     },
+  }))
+
+  const posts = computed<FeedPost[]>({
+    get: () => feedRef.value.items.value,
+    set: (v) => {
+      feedRef.value.items.value = v
+    },
+  })
+  const nextCursor = computed<string | null>({
+    get: () => feedRef.value.nextCursor.value,
+    set: (v) => {
+      feedRef.value.nextCursor.value = v
+    },
+  })
+  const loading = computed(() => feedRef.value.loading.value)
+  const error = computed<string | null>({
+    get: () => feedRef.value.error.value,
+    set: (v) => {
+      feedRef.value.error.value = v
+    },
   })
 
-  const posts = feed.items
-  const { loading, error, refresh, loadMore } = feed
+  async function refresh() {
+    return await feedRef.value.refresh()
+  }
+
+  async function loadMore() {
+    return await feedRef.value.loadMore()
+  }
 
   function rootIdFor(p: FeedPost): string {
     let cur: FeedPost | undefined = p
@@ -141,12 +166,12 @@ export function useUserPosts(
   async function fetch(nextFilter: UserPostsFilter, nextSort: 'new' | 'trending') {
     if (!enabled.value) {
       posts.value = []
-      feed.nextCursor.value = null
-      feed.error.value = null
+      nextCursor.value = null
+      error.value = null
       return
     }
-    if (feed.loading.value) return
-    feed.error.value = null
+    if (loading.value) return
+    error.value = null
 
     if (nextFilter === 'verifiedOnly' && !viewerIsVerified.value) {
       posts.value = []
@@ -209,14 +234,28 @@ export function useUserPosts(
 
   if (!enabled.value) {
     posts.value = []
-    feed.nextCursor.value = null
+    nextCursor.value = null
     counts.value = EMPTY_COUNTS
-    feed.error.value = null
+    error.value = null
   }
 
   watch(
     usernameLower,
     () => {
+      // IMPORTANT: ensure state keys follow username changes (route reuse /u/a -> /u/b).
+      feedRef.value = useCursorFeed<FeedPost>({
+        stateKey: postsKey.value,
+        buildRequest: (cursor) => ({
+          path: `/posts/user/${encodeURIComponent(usernameLower.value)}`,
+          query: { limit: 30, visibility: filter.value, sort: sort.value, ...(cursor ? { cursor } : {}) },
+        }),
+        defaultErrorMessage: 'Failed to load posts.',
+        onDataLoaded: (data) => clearBumpsForPostIds(data.map((p) => p.id)),
+        onResponse: (res) => {
+          counts.value = res.pagination?.counts ?? counts.value
+          hasLoadedOnce.value = true
+        },
+      })
       filter.value = 'all'
       sort.value = 'new'
       void fetch('all', 'new')
@@ -229,8 +268,8 @@ export function useUserPosts(
     (on) => {
       if (!on) {
         posts.value = []
-        feed.nextCursor.value = null
-        feed.error.value = null
+        nextCursor.value = null
+        error.value = null
         return
       }
       if (!import.meta.client) return
@@ -254,11 +293,11 @@ export function useUserPosts(
     collapsedSiblingReplyCountFor,
     replyCountForParentId,
     counts,
-    loading: feed.loading,
-    error: feed.error,
+    loading,
+    error,
     hasLoadedOnce,
-    nextCursor: feed.nextCursor,
-    loadMore: feed.loadMore,
+    nextCursor,
+    loadMore,
     viewerIsVerified,
     viewerIsPremium,
     ctaKind,

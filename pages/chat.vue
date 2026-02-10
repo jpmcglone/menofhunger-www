@@ -311,6 +311,7 @@
                 </Transition>
               </div>
             </div>
+            <AppInlineAlert v-if="sendError" class="mb-2" severity="danger">{{ sendError }}</AppInlineAlert>
             <AppDmComposer
               ref="dmComposerRef"
               v-model="composerText"
@@ -407,6 +408,7 @@
       header="Blocked users"
       :style="{ width: '32rem', maxWidth: '92vw', minHeight: '18rem' }"
     >
+      <AppInlineAlert v-if="blocksError" severity="danger" class="mb-3">{{ blocksError }}</AppInlineAlert>
       <div v-if="blocksLoading" class="text-sm text-gray-500 dark:text-gray-400">Loading…</div>
       <div v-else-if="blocks.length === 0" class="text-sm text-gray-500 dark:text-gray-400">No blocked users.</div>
       <div v-else class="space-y-2">
@@ -445,14 +447,9 @@ usePageSeo({
 
 import type {
   FollowListUser,
-  GetMessageBlocksResponse,
-  GetMessageConversationResponse,
-  GetMessageConversationsResponse,
-  GetMessagesResponse,
   LookupMessageConversationResponse,
   Message,
   MessageUser,
-  MessageBlockListItem,
   MessageConversation,
   SendMessageResponse,
   CreateMessageConversationResponse,
@@ -461,6 +458,7 @@ import { getApiErrorMessage } from '~/utils/api-error'
 import { useChatBubbleShape } from '~/composables/chat/useChatBubbleShape'
 import { useChatTimeFormatting } from '~/composables/chat/useChatTimeFormatting'
 import { useChatTyping } from '~/composables/chat/useChatTyping'
+import { useChatBlocks } from '~/composables/chat/useChatBlocks'
 import ChatConversationList from '~/components/app/chat/ChatConversationList.vue'
 import ChatMessageList from '~/components/app/chat/ChatMessageList.vue'
 
@@ -537,7 +535,10 @@ const {
 const { showRequests, displayRequests, toneClass } = useMessagesBadge()
 
 const activeTab = ref<'primary' | 'requests'>('primary')
-const conversations = ref<{ primary: MessageConversation[]; requests: MessageConversation[] }>({
+type MessageTone = 'premium' | 'verified' | 'normal'
+type MessageConversationWithTone = MessageConversation & { unreadTone?: MessageTone }
+
+const conversations = ref<{ primary: MessageConversationWithTone[]; requests: MessageConversationWithTone[] }>({
   primary: [],
   requests: [],
 })
@@ -564,6 +565,7 @@ const messagesLoading = ref(false)
 const loadingOlder = ref(false)
 const sending = ref(false)
 const composerText = ref('')
+const sendError = ref<string | null>(null)
 const composerUser = computed(() =>
   me.value
     ? {
@@ -703,9 +705,11 @@ const newConversationError = ref<string | null>(null)
 
 const draftRecipients = ref<FollowListUser[]>([])
 
-const blocksDialogVisible = ref(false)
-const blocks = ref<MessageBlockListItem[]>([])
-const blocksLoading = ref(false)
+const { blocksDialogVisible, blocks, blocksLoading, blocksError, fetchBlocks, blockUser, unblockUser } = useChatBlocks({
+  apiFetch,
+  clearSelection,
+  fetchConversations,
+})
 
 const activeList = computed(() => conversations.value[activeTab.value])
 const nextCursor = computed(() => nextCursorByTab.value[activeTab.value])
@@ -1034,10 +1038,9 @@ function goPremium() {
   return navigateTo('/tiers')
 }
 
-function getConversationLastMessageTier(conversation: MessageConversation): 'premium' | 'verified' | 'normal' {
+function getConversationLastMessageTier(conversation: MessageConversationWithTone): MessageTone {
   // If there are unread messages and we've tracked the last incoming tier, prefer it for unread indicators.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const tracked = (conversation as any)?.unreadTone as 'premium' | 'verified' | 'normal' | undefined
+  const tracked = conversation.unreadTone
   if (conversation.unreadCount > 0 && tracked) return tracked
   const senderId = conversation.lastMessage?.senderId ?? null
   if (!senderId) return 'normal'
@@ -1094,9 +1097,9 @@ async function fetchConversations(tab: 'primary' | 'requests', opts?: { cursor?:
   if (!forceRefresh && !cursor && conversations.value[tab].length > 0) return
   listLoadingByTab.value = { ...listLoadingByTab.value, [tab]: true }
   try {
-    const res = await apiFetch<MessageConversation[]>('/messages/conversations', {
+    const res = await apiFetch<MessageConversationWithTone[]>('/messages/conversations', {
       query: { tab, cursor: cursor || undefined },
-    }) as GetMessageConversationsResponse
+    })
     const list = res.data ?? []
     if (cursor) conversations.value[tab] = [...conversations.value[tab], ...list]
     else conversations.value[tab] = list
@@ -1105,6 +1108,9 @@ async function fetchConversations(tab: 'primary' | 'requests', opts?: { cursor?:
     listLoadingByTab.value = { ...listLoadingByTab.value, [tab]: false }
   }
 }
+
+let selectConversationReqSeq = 0
+let loadOlderReqSeq = 0
 
 async function loadMoreConversations() {
   if (!nextCursor.value || loadingMore.value) return
@@ -1117,7 +1123,9 @@ async function loadMoreConversations() {
 }
 
 async function selectConversation(id: string, opts?: { replace?: boolean }) {
+  const reqSeq = ++selectConversationReqSeq
   clearMessagesPaneTimer()
+  dividerEls.clear()
   selectedConversationId.value = id
   selectedChatKey.value = id
   // Leaving draft mode (if any)
@@ -1128,6 +1136,8 @@ async function selectConversation(id: string, opts?: { replace?: boolean }) {
   messagesPaneState.value = 'loading'
   atBottom.value = true
   resetPendingNew()
+  // If an older-messages request is in flight, ensure a thread switch doesn't get blocked by it.
+  loadingOlder.value = false
   const replace = opts?.replace ?? false
   const currentC = typeof route.query.c === 'string' ? route.query.c : null
   if (currentC !== id) {
@@ -1142,12 +1152,20 @@ async function selectConversation(id: string, opts?: { replace?: boolean }) {
     const res = await apiFetch<{ conversation: MessageConversation; messages: Message[] }>(
       `/messages/conversations/${id}`,
       { query: { limit: 50 } },
-    ) as GetMessageConversationResponse
+    )
+    // If the user switched threads mid-request, ignore this response.
+    if (reqSeq !== selectConversationReqSeq || selectedConversationId.value !== id) return
     const list = res.data?.messages ?? []
     messages.value = [...list].reverse()
     messagesNextCursor.value = res.pagination?.nextCursor ?? null
-    await apiFetch('/messages/conversations/' + id + '/mark-read', { method: 'POST' })
-    updateConversationUnread(id, 0)
+    try {
+      await apiFetch('/messages/conversations/' + id + '/mark-read', { method: 'POST' })
+      // If the user switched threads mid-request, don't mutate list state.
+      if (reqSeq !== selectConversationReqSeq || selectedConversationId.value !== id) return
+      updateConversationUnread(id, 0)
+    } catch {
+      // Non-fatal: keep showing messages even if mark-read fails.
+    }
     messagesReady.value = true
     messagesLoading.value = false
     // If the user switched threads mid-request, don't mount the wrong scroller.
@@ -1155,13 +1173,20 @@ async function selectConversation(id: string, opts?: { replace?: boolean }) {
       revealMessagesPaneAfterFade(id)
     }
   } finally {
-    messagesLoading.value = false
-    if (!messagesReady.value) messagesReady.value = true
+    // Only finalize loading flags for the latest request.
+    if (reqSeq === selectConversationReqSeq) {
+      messagesLoading.value = false
+      if (!messagesReady.value) messagesReady.value = true
+    }
   }
 }
 
 async function clearSelection(opts?: { replace?: boolean; preserveDraft?: boolean }) {
+  // Invalidate any in-flight selection request so late responses can't mutate state.
+  selectConversationReqSeq++
+  loadingOlder.value = false
   clearMessagesPaneTimer()
+  dividerEls.clear()
   selectedConversationId.value = null
   selectedChatKey.value = null
   if (!opts?.preserveDraft) {
@@ -1177,6 +1202,7 @@ async function clearSelection(opts?: { replace?: boolean; preserveDraft?: boolea
   resetPendingNew()
   resetTyping()
   sendingMessageIds.value = new Set()
+  messagesLoading.value = false
   const replace = opts?.replace ?? false
   const q = { ...route.query } as Record<string, any>
   delete q.c
@@ -1191,24 +1217,28 @@ function syncSelectedFromRoute() {
     return
   }
   if (!c && selectedConversationId.value) {
-    selectedConversationId.value = null
-    selectedChatKey.value = null
+    void clearSelection({ replace: true })
   }
 }
 
 async function loadOlderMessages() {
   if (!selectedConversationId.value || !messagesNextCursor.value || loadingOlder.value) return
+  const reqSeq = ++loadOlderReqSeq
+  const conversationId = selectedConversationId.value
+  const cursor = messagesNextCursor.value
   loadingOlder.value = true
   try {
-    const res = await apiFetch<Message[]>(`/messages/conversations/${selectedConversationId.value}/messages`, {
-      query: { cursor: messagesNextCursor.value, limit: 50 },
-    }) as GetMessagesResponse
+    const res = await apiFetch<Message[]>(`/messages/conversations/${conversationId}/messages`, {
+      query: { cursor, limit: 50 },
+    })
+    // If the user switched threads (or another newer older-messages request ran), ignore this response.
+    if (reqSeq !== loadOlderReqSeq || selectedConversationId.value !== conversationId) return
     const list = res.data ?? []
     const ordered = [...list].reverse()
     messages.value = [...ordered, ...messages.value]
     messagesNextCursor.value = res.pagination?.nextCursor ?? null
   } finally {
-    loadingOlder.value = false
+    if (reqSeq === loadOlderReqSeq) loadingOlder.value = false
   }
 }
 
@@ -1218,11 +1248,10 @@ function updateConversationUnread(conversationId: string, unreadCount: number) {
     if (idx === -1) return
     const next = [...conversations.value[tab]]
     const existing = next[idx]!
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const nextRow: any = { ...existing, unreadCount }
+    const nextRow: MessageConversationWithTone = { ...existing, unreadCount }
     if (unreadCount <= 0) {
       // Clear any tracked unread tone when conversation is marked read.
-      delete nextRow.unreadTone
+      nextRow.unreadTone = undefined
     }
     next[idx] = nextRow
     conversations.value[tab] = next
@@ -1253,8 +1282,7 @@ function updateConversationForMessage(message: Message) {
       unreadCount: selectedConversationId.value === message.conversationId ? 0 : existing.unreadCount + unreadInc,
     }
     // Track the tier of the last incoming unread message for indicator tinting.
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const updatedWithTone: any = updated
+    const updatedWithTone: MessageConversationWithTone = updated
     if (isUnreadIncoming) updatedWithTone.unreadTone = incomingTier
     next.splice(idx, 1)
     next.unshift(updatedWithTone)
@@ -1274,6 +1302,7 @@ async function sendCurrentMessage() {
   if (!composerText.value.trim() || sending.value) return
   let body = composerText.value
   let localId: string | null = null
+  sendError.value = null
   sending.value = true
   try {
     // Draft chat: first send creates the conversation.
@@ -1392,6 +1421,7 @@ async function sendCurrentMessage() {
       sendingMessageIds.value = sendingNext
     }
     if (body && !composerText.value.trim()) composerText.value = body
+    sendError.value = getApiErrorMessage(e) || 'Failed to send message.'
   } finally {
     sending.value = false
   }
@@ -1451,6 +1481,13 @@ watch(recipientQuery, (val) => {
   }, 250)
 })
 
+onBeforeUnmount(() => {
+  if (recipientSearchTimer) {
+    clearTimeout(recipientSearchTimer)
+    recipientSearchTimer = null
+  }
+})
+
 function addRecipient(user: FollowListUser) {
   if (selectedRecipients.value.find((u) => u.id === user.id)) return
   selectedRecipients.value = [...selectedRecipients.value, user]
@@ -1495,31 +1532,6 @@ async function createConversation() {
   } finally {
     // no-op
   }
-}
-
-async function fetchBlocks() {
-  blocksLoading.value = true
-  try {
-    const res = await apiFetch<MessageBlockListItem[]>('/messages/blocks') as GetMessageBlocksResponse
-    blocks.value = res.data ?? []
-  } finally {
-    blocksLoading.value = false
-  }
-}
-
-async function blockUser(userId: string) {
-  await apiFetch('/messages/blocks', { method: 'POST', body: { user_id: userId } })
-  await fetchBlocks()
-  await clearSelection({ replace: true })
-  await fetchConversations('primary', { forceRefresh: true })
-  await fetchConversations('requests', { forceRefresh: true })
-}
-
-async function unblockUser(userId: string) {
-  await apiFetch(`/messages/blocks/${userId}`, { method: 'DELETE' })
-  await fetchBlocks()
-  await fetchConversations('primary', { forceRefresh: true })
-  await fetchConversations('requests', { forceRefresh: true })
 }
 
 async function blockDirectUser() {

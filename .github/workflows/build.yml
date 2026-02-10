@@ -19,7 +19,11 @@ jobs:
 
       - run: npm ci
 
+      - run: npm run lint
+
       - run: npx nuxi typecheck
+
+      - run: npm run validate-api-types
 
       - run: npm test
 

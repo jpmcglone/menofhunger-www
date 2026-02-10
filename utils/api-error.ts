@@ -2,12 +2,15 @@ import type { ApiErrorEnvelope } from '~/types/api'
 
 type MaybeFetchError = {
   data?: unknown
+  response?: { _data?: unknown } | null
   message?: string
 }
 
 export function getApiErrorMessage(e: unknown): string | null {
   const maybe = e as MaybeFetchError | null | undefined
-  const data = maybe?.data as ApiErrorEnvelope | undefined
+  const data =
+    (maybe?.data as ApiErrorEnvelope | undefined) ??
+    (maybe?.response?._data as ApiErrorEnvelope | undefined)
 
   const first = data?.meta?.errors?.[0]
   if (first?.message) return first.message

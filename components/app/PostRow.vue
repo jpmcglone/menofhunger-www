@@ -1,7 +1,7 @@
 <template>
   <div
     ref="rowEl"
-    :data-post-id="post.id"
+    :data-post-id="postView.id"
     :class="[
       'relative overflow-visible px-4 transition-colors',
       compact ? 'py-2' : 'py-4',
@@ -78,9 +78,9 @@
             :premium="author.premium"
             :premium-plus="author.premiumPlus"
             :steward-badge-enabled="author.stewardBadgeEnabled ?? true"
-            :edited-at="post.editedAt ?? null"
+            :edited-at="postView.editedAt ?? null"
             :profile-path="authorProfilePath"
-            :post-id="post.id"
+            :post-id="postView.id"
             :post-permalink="postPermalink"
             :created-at-short="createdAtShort"
             :created-at-tooltip="createdAtTooltip"
@@ -97,19 +97,19 @@
         </div>
         <AppPostRowBody
           v-else
-          :body="post.body"
-          :has-media="Boolean(post.media?.length)"
-          :mentions="post.mentions"
-          :visibility="post.visibility"
+          :body="postView.body"
+          :has-media="Boolean(postView.media?.length)"
+          :mentions="postView.mentions"
+          :visibility="postView.visibility"
         />
 
-        <AppPostMediaGrid v-if="!isDeletedPost && post.media?.length" :media="post.media" :post-id="post.id" :row-in-view="rowInView" />
+        <AppPostMediaGrid v-if="!isDeletedPost && postView.media?.length" :media="postView.media" :post-id="postView.id" :row-in-view="rowInView" />
 
         <AppPostRowLinkPreview
           v-if="!isDeletedPost"
-          :post-id="post.id"
-          :body="post.body"
-          :has-media="Boolean(post.media?.length)"
+          :post-id="postView.id"
+          :body="postView.body"
+          :has-media="Boolean(postView.media?.length)"
           :row-in-view="rowInView"
           :activate-video-on-mount="activateVideoOnMount"
         />
@@ -121,7 +121,7 @@
             :class="visibilityTagClass"
             v-tooltip.bottom="visibilityTooltip"
           >
-            <Icon v-if="post.visibility === 'onlyMe'" name="tabler:eye-off" class="mr-1 text-[10px]" aria-hidden="true" />
+            <Icon v-if="postView.visibility === 'onlyMe'" name="tabler:eye-off" class="mr-1 text-[10px]" aria-hidden="true" />
             {{ visibilityTag }}
           </span>
         </div>
@@ -195,11 +195,15 @@
           </div>
 
           <div v-if="!isOnlyMe" class="relative flex items-center justify-end">
+            <span class="mr-0 inline-block w-6 select-none text-right text-xs tabular-nums moh-text-muted" aria-hidden="true">
+              {{ bookmarkCountLabel ?? '' }}
+            </span>
             <AppPostRowBookmarkButton
-              :post-id="post.id"
+              :post-id="postView.id"
               :viewer-can-interact="viewerCanInteract"
-              :initial-has-bookmarked="Boolean((post as any)?.viewerHasBookmarked)"
-              :initial-collection-ids="((((post as any)?.viewerBookmarkCollectionIds as string[]) ?? []).filter(Boolean))"
+              :initial-has-bookmarked="Boolean(postView.viewerHasBookmarked)"
+              :initial-collection-ids="(postView.viewerBookmarkCollectionIds ?? []).filter(Boolean)"
+              @bookmark-count-delta="onBookmarkCountDelta"
             />
 
             <AppPostRowShareMenu :can-share="canShare" :tooltip="shareTooltip" :items="shareMenuItems" />
@@ -253,13 +257,13 @@
       auto-focus
       :show-divider="false"
       placeholder="Edit your post…"
-      :initial-text="post.body"
-      :locked-visibility="post.visibility"
+      :initial-text="postView.body"
+      :locked-visibility="postView.visibility"
       hide-visibility-picker
       disable-media
       :register-unsaved-guard="false"
       mode="edit"
-      :edit-post-id="post.id"
+      :edit-post-id="postView.id"
       @edited="onEdited"
     />
   </Dialog>
@@ -267,7 +271,7 @@
   <AppReportDialog
     v-model:visible="reportOpen"
     target-type="post"
-    :subject-post-id="post.id"
+    :subject-post-id="postView.id"
     :subject-label="`@${author.username || 'user'}`"
     @submitted="onReportSubmitted"
   />
@@ -321,13 +325,13 @@ watch(
     postState.value = p
   },
 )
-const post = computed(() => postState.value)
-const { user: author } = useUserOverlay(computed(() => post.value.author))
-const isDeletedPost = computed(() => Boolean(post.value.deletedAt))
+const postView = computed(() => postState.value)
+const { user: author } = useUserOverlay(computed(() => postView.value.author))
+const isDeletedPost = computed(() => Boolean(postView.value.deletedAt))
 const clickable = computed(() => props.clickable !== false)
 const highlightClass = computed(() => {
   if (!props.highlight) return ''
-  const v = post.value.visibility
+  const v = postView.value.visibility
   if (v === 'verifiedOnly') return 'moh-post-highlight moh-post-highlight-verified'
   if (v === 'premiumOnly') return 'moh-post-highlight moh-post-highlight-premium'
   if (v === 'onlyMe') return 'moh-post-highlight moh-post-highlight-onlyme'
@@ -377,12 +381,12 @@ const { user, me: refetchMe } = useAuth()
 const isAuthed = computed(() => Boolean(user.value?.id))
 const viewerHasUsername = computed(() => Boolean(user.value?.usernameIsSet))
 const viewerIsVerified = computed(() => Boolean(user.value?.verifiedStatus && user.value.verifiedStatus !== 'none'))
-const isSelf = computed(() => Boolean(user.value?.id && user.value.id === (author.value?.id ?? post.value.author.id)))
+const isSelf = computed(() => Boolean(user.value?.id && user.value.id === (author.value?.id ?? postView.value.author.id)))
 const { apiFetchData } = useApiClient()
 const { show: showAuthActionModal } = useAuthActionModal()
 const boostState = useBoostState()
 
-const isOnlyMe = computed(() => post.value.visibility === 'onlyMe')
+const isOnlyMe = computed(() => postView.value.visibility === 'onlyMe')
 const viewerIsAdmin = computed(() => Boolean(user.value?.siteAdmin))
 const viewerCanInteract = computed(() => {
   if (isDeletedPost.value) return false
@@ -425,26 +429,26 @@ const boostClickable = computed(() => {
 const commentClickable = computed(() => viewerCanInteract.value)
 
 const authorProfilePath = computed(() => {
-  const username = (post.value.author.username ?? '').trim()
+  const username = (postView.value.author.username ?? '').trim()
   return username ? `/u/${encodeURIComponent(username)}` : null
 })
 
 const visibilityTag = computed(() => {
-  return visibilityTagLabel(post.value.visibility)
+  return visibilityTagLabel(postView.value.visibility)
 })
 
 const visibilityTagClass = computed(() => {
-  return visibilityTagClasses(post.value.visibility)
+  return visibilityTagClasses(postView.value.visibility)
 })
 
 const visibilityTooltip = computed(() => {
-  if (post.value.visibility === 'verifiedOnly') return tinyTooltip('Visible to verified members')
-  if (post.value.visibility === 'premiumOnly') return tinyTooltip('Visible to premium members')
-  if (post.value.visibility === 'onlyMe') return tinyTooltip('Visible only to you')
+  if (postView.value.visibility === 'verifiedOnly') return tinyTooltip('Visible to verified members')
+  if (postView.value.visibility === 'premiumOnly') return tinyTooltip('Visible to premium members')
+  if (postView.value.visibility === 'onlyMe') return tinyTooltip('Visible only to you')
   return null
 })
 
-const postPermalink = computed(() => `/p/${encodeURIComponent(post.value.id)}`)
+const postPermalink = computed(() => `/p/${encodeURIComponent(postView.value.id)}`)
 const postShareUrl = computed(() => `${siteConfig.url}${postPermalink.value}`)
 
 function goToPost() {
@@ -478,7 +482,7 @@ function onRowClick(e: MouseEvent) {
   void goToPost()
 }
 
-const createdAtDate = computed(() => new Date(post.value.createdAt))
+const createdAtDate = computed(() => new Date(postView.value.createdAt))
 const createdAtShort = computed(() => formatShortDate(createdAtDate.value))
 const createdAtTooltip = computed(() => tinyTooltip(createdAtDate.value.toLocaleString()))
 
@@ -507,7 +511,7 @@ const openComposerFromOnlyMe = inject(MOH_OPEN_COMPOSER_FROM_ONLYME_KEY, null)
 const moreMenuItems = computed<MenuItemWithIcon[]>(() => {
   const items: MenuItemWithIcon[] = [
     {
-      label: post.value.author.username ? `View @${post.value.author.username}` : 'View profile',
+      label: postView.value.author.username ? `View @${postView.value.author.username}` : 'View profile',
       iconName: 'tabler:user',
       command: () => {
         if (!authorProfilePath.value) return
@@ -541,7 +545,7 @@ const moreMenuItems = computed<MenuItemWithIcon[]>(() => {
 
   if (isSelf.value) {
     items.push({ separator: true })
-    if (!isDeletedPost.value && post.value.visibility === 'onlyMe') {
+    if (!isDeletedPost.value && postView.value.visibility === 'onlyMe') {
       items.push({
         label: 'Use as draft',
         iconName: 'tabler:copy',
@@ -551,7 +555,7 @@ const moreMenuItems = computed<MenuItemWithIcon[]>(() => {
             return
           }
           if (openComposerFromOnlyMe) {
-            openComposerFromOnlyMe(post.value)
+            openComposerFromOnlyMe(postView.value)
             return
           }
           toast.push({
@@ -573,8 +577,8 @@ const moreMenuItems = computed<MenuItemWithIcon[]>(() => {
       })
     }
     const pinnedPostId = user.value?.pinnedPostId ?? null
-    const isPinned = pinnedPostId === post.value.id
-    const canPin = post.value.visibility !== 'onlyMe'
+    const isPinned = pinnedPostId === postView.value.id
+    const canPin = postView.value.visibility !== 'onlyMe'
     if (isPinned || canPin) {
       items.push({
         label: isPinned ? 'Unpin from profile' : 'Pin to profile',
@@ -601,12 +605,12 @@ const editOpen = ref(false)
 const canEditPost = computed(() => {
   if (!isSelf.value) return false
   if (isDeletedPost.value) return false
-  if (post.value.visibility === 'onlyMe') return false
-  if (post.value.parentId) return false
-  const createdAt = new Date(post.value.createdAt)
+  if (postView.value.visibility === 'onlyMe') return false
+  if (postView.value.parentId) return false
+  const createdAt = new Date(postView.value.createdAt)
   const ageMs = Date.now() - createdAt.getTime()
   if (!Number.isFinite(ageMs) || ageMs > 30 * 60 * 1000) return false
-  const editCount = typeof (post.value as any).editCount === 'number' ? ((post.value as any).editCount as number) : 0
+  const editCount = Math.max(0, Math.floor(postView.value.editCount ?? 0))
   return editCount < 3
 })
 const deleteConfirmOpen = ref(false)
@@ -614,7 +618,7 @@ const deleting = ref(false)
 const reportOpen = ref(false)
 
 function onEdited(payload: { id: string; post: FeedPost }) {
-  if (payload?.id !== post.value.id) return
+  if (payload?.id !== postView.value.id) return
   postState.value = payload.post
   editOpen.value = false
 }
@@ -624,14 +628,14 @@ function onReportSubmitted() {
 }
 
 async function pinToProfile() {
-  if (post.value.visibility === 'onlyMe') {
+  if (postView.value.visibility === 'onlyMe') {
     toast.push({ title: 'Only-me posts cannot be pinned', tone: 'error', durationMs: 2200 })
     return
   }
   try {
     await apiFetchData<{ pinnedPostId: string }>('/users/me/pinned-post', {
       method: 'PUT',
-      body: { postId: post.value.id },
+      body: { postId: postView.value.id },
     })
     await refetchMe()
     toast.push({ title: 'Pinned to profile', tone: 'success', durationMs: 1400 })
@@ -654,9 +658,9 @@ async function deletePost() {
   if (deleting.value) return
   deleting.value = true
   try {
-    await apiFetchData<{ success: true }>('/posts/' + encodeURIComponent(post.value.id), { method: 'DELETE' })
-    emit('deleted', post.value.id)
-    toast.push({ title: 'Post deleted', tone: post.value.visibility, durationMs: 1400 })
+    await apiFetchData<{ success: true }>('/posts/' + encodeURIComponent(postView.value.id), { method: 'DELETE' })
+    emit('deleted', postView.value.id)
+    toast.push({ title: 'Post deleted', tone: postView.value.visibility, durationMs: 1400 })
   } catch (e: unknown) {
     toast.push({ title: getApiErrorMessage(e) || 'Failed to delete post.', tone: 'error', durationMs: 2200 })
   } finally {
@@ -666,7 +670,7 @@ async function deletePost() {
 }
 
 const { getCommentCountBump } = usePostCountBumps()
-const boostEntry = computed(() => boostState.get(post.value))
+const boostEntry = computed(() => boostState.get(postView.value))
 const isBoosted = computed(() => boostEntry.value.viewerHasBoosted)
 const boostCount = computed(() => boostEntry.value.boostCount)
 const boostCountLabel = computed(() => {
@@ -674,8 +678,21 @@ const boostCountLabel = computed(() => {
   if (!n) return null
   return formatShortCount(n)
 })
+
+const bookmarkCountLabel = computed(() => {
+  const n = Math.max(0, Math.floor(Number(postView.value.bookmarkCount ?? 0)))
+  if (!n) return null
+  return formatShortCount(n)
+})
+
+function onBookmarkCountDelta(delta: number) {
+  const d = Math.trunc(Number(delta) || 0)
+  if (!d) return
+  const next = Math.max(0, Math.floor(Number(postState.value.bookmarkCount ?? 0)) + d)
+  postState.value = { ...postState.value, bookmarkCount: next }
+}
 const displayedCommentCount = computed(
-  () => (post.value.commentCount ?? 0) + getCommentCountBump(post.value.id),
+  () => (postView.value.commentCount ?? 0) + getCommentCountBump(postView.value.id),
 )
 const commentCountLabel = computed(() => {
   const n = displayedCommentCount.value
@@ -683,7 +700,7 @@ const commentCountLabel = computed(() => {
   return formatShortCount(n)
 })
 const mentionsList = computed(() => {
-  const m = post.value.mentions
+  const m = postView.value.mentions
   if (!m?.length) return []
   return m.map((x) => x.username).filter(Boolean)
 })
@@ -695,8 +712,8 @@ const mentionsTooltip = computed(() => {
 })
 const adminScoreLabel = computed(() => {
   if (!viewerIsAdmin.value) return null
-  const overall = post.value.internal?.score
-  const boost = post.value.internal?.boostScore
+  const overall = postView.value.internal?.score
+  const boost = postView.value.internal?.boostScore
   const hasOverall = typeof overall === 'number'
   const hasBoost = typeof boost === 'number'
   if (hasOverall && hasBoost) return `Score: ${overall.toFixed(2)} (boost: ${boost.toFixed(2)})`
@@ -716,7 +733,7 @@ async function onBoostClick() {
     return
   }
   try {
-    await boostState.toggleBoost(post.value)
+    await boostState.toggleBoost(postView.value)
   } catch (e: unknown) {
     toast.push({ title: getApiErrorMessage(e) || 'Failed to boost.', tone: 'error', durationMs: 2200 })
   }
@@ -734,23 +751,31 @@ function onCommentClick() {
     showAuthActionModal({ kind: 'verify', action: 'comment' })
     return
   }
-  showReplyModal(post.value)
+  showReplyModal(postView.value)
 }
 
 const { addInterest, removeInterest } = usePresence()
 const authorId = computed(() => props.post?.author?.id)
-onMounted(() => {
-  const id = authorId.value
-  if (id) addInterest([id])
-})
+watch(
+  authorId,
+  (next, prev) => {
+    if (!import.meta.client) return
+    const prevId = typeof prev === 'string' ? prev : null
+    const nextId = typeof next === 'string' ? next : null
+    if (prevId && prevId !== nextId) removeInterest([prevId])
+    if (nextId && nextId !== prevId) addInterest([nextId])
+  },
+  { immediate: true },
+)
 onBeforeUnmount(() => {
+  if (!import.meta.client) return
   const id = authorId.value
   if (id) removeInterest([id])
 })
 
 const { copyText: copyToClipboard } = useCopyToClipboard()
 function toastToneForPostVisibility(): import('~/composables/useAppToast').AppToastTone {
-  const v = post.value.visibility
+  const v = postView.value.visibility
   if (v === 'verifiedOnly') return 'verifiedOnly'
   if (v === 'premiumOnly') return 'premiumOnly'
   if (v === 'onlyMe') return 'onlyMe'

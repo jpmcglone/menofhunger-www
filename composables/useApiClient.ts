@@ -1,7 +1,11 @@
 import type { ApiEnvelope } from '~/types/api'
+import { clearAuthClientState } from '~/composables/auth/authState'
 import { joinUrl } from '~/utils/url'
+import { isAdminPath, isLoggedOutAllowedPath, isPostPermalinkPath, isPublicPath, isUserProfilePath } from '~/config/routes'
 
-type ApiFetchOptions = Parameters<typeof $fetch>[1]
+type ApiFetchOptions = NonNullable<Parameters<typeof $fetch>[1]>
+
+export type MohApiQuery = Record<string, string | number | boolean | null | undefined>
 
 type MohCacheOptions =
   | false
@@ -18,7 +22,9 @@ type MohCacheOptions =
       key?: string
     }
 
-type MohApiFetchOptions = ApiFetchOptions & {
+export type MohApiFetchOptions = Omit<ApiFetchOptions, 'query'> & {
+  /** Querystring params (typed to avoid `as any` at callsites). */
+  query?: MohApiQuery
   /** Optional MenOfHunger response cache (client-only). */
   mohCache?: MohCacheOptions
   /** Deduplicate identical in-flight GETs (default true). */
@@ -27,6 +33,20 @@ type MohApiFetchOptions = ApiFetchOptions & {
 
 const inflight = new Map<string, Promise<unknown>>()
 const responseCache = new Map<string, { expiresAt: number; staleUntil?: number; value: unknown }>()
+
+function stableQueryKey(query: unknown): string {
+  const q = query as Record<string, unknown> | null | undefined
+  if (!q) return ''
+  const keys = Object.keys(q).sort()
+  const parts: string[] = []
+  for (const k of keys) {
+    const v = q[k]
+    if (v === undefined || v === null) continue
+    const s = typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean' ? String(v) : JSON.stringify(v)
+    parts.push(`${encodeURIComponent(k)}=${encodeURIComponent(s)}`)
+  }
+  return parts.length ? `?${parts.join('&')}` : ''
+}
 
 /**
  * Invalidate MenOfHunger client response cache entries.
@@ -94,6 +114,50 @@ export function useApiClient() {
   /** Default timeout (ms) so a slow or stuck API does not hang SSR. Override via options.timeout. */
   const defaultTimeoutMs = 15_000
 
+  function getErrorStatus(e: unknown): number | null {
+    const anyErr = e as any
+    const status =
+      (typeof anyErr?.status === 'number' ? anyErr.status : null) ??
+      (typeof anyErr?.statusCode === 'number' ? anyErr.statusCode : null) ??
+      (typeof anyErr?.response?.status === 'number' ? anyErr.response.status : null) ??
+      (typeof anyErr?.data?.meta?.status === 'number' ? anyErr.data.meta.status : null)
+    return typeof status === 'number' ? status : null
+  }
+
+  function shouldRedirectToLogin(path: string, layout: unknown): boolean {
+    if (path === '/login') return false
+    // Match the global auth middleware’s protection rules.
+    if (isPublicPath(path)) return false
+    if (isUserProfilePath(path)) return false
+    if (isPostPermalinkPath(path)) return false
+    if (isAdminPath(path)) return false
+    if (isLoggedOutAllowedPath(path)) return false
+    return layout === 'app'
+  }
+
+  function handleUnauthorizedClientSide() {
+    clearAuthClientState({ resetViewerCaches: true })
+    if (!import.meta.client) return
+    const route = useRoute()
+    const path = String(route.path || '')
+    const layout = route.meta?.layout
+    if (!shouldRedirectToLogin(path, layout)) return
+    const redirect = encodeURIComponent(route.fullPath || path)
+    // `navigateTo` can return non-Promise values in some Nuxt contexts; normalize.
+    void Promise.resolve(navigateTo(`/login?redirect=${redirect}`)).catch(() => undefined)
+  }
+
+  async function runFetch<T>(url: string, fetchOptions: ApiFetchOptions): Promise<ApiEnvelope<T>> {
+    try {
+      return await $fetch<ApiEnvelope<T>>(url, fetchOptions)
+    } catch (e) {
+      if (getErrorStatus(e) === 401) {
+        handleUnauthorizedClientSide()
+      }
+      throw e
+    }
+  }
+
   async function apiFetch<T>(path: string, options: MohApiFetchOptions = {}): Promise<ApiEnvelope<T>> {
     const url = apiUrl(path)
 
@@ -114,11 +178,12 @@ export function useApiClient() {
     const method = String(fetchOptions.method || 'GET').toUpperCase()
     const dedupe = mohDedupe !== false
     const cacheOpt = mohCache ?? false
+    const queryKey = stableQueryKey((fetchOptions as any)?.query)
 
     // Only support caching/dedupe for GET requests.
     if (method === 'GET') {
       const cookieForKey = import.meta.server ? String((ssrHeaders as Record<string, string> | undefined)?.cookie ?? '') : ''
-      const baseKey = `${method}:${url}`
+      const baseKey = `${method}:${url}${queryKey}`
       const inflightKey = import.meta.server ? `${baseKey}:cookie=${cookieForKey}` : baseKey
 
       // Client-only response cache (never cache across server requests).
@@ -135,7 +200,7 @@ export function useApiClient() {
             // Return stale immediately, and refresh in background.
             const refreshKey = `${inflightKey}:swr:${cacheKey}`
             if (!inflight.get(refreshKey)) {
-              const refresh = $fetch<ApiEnvelope<T>>(url, {
+              const refresh = runFetch<T>(url, {
                 ...fetchOptions,
                 credentials: fetchOptions.credentials ?? 'include',
                 headers,
@@ -149,7 +214,16 @@ export function useApiClient() {
                   })
                   return env
                 })
-                .catch(() => undefined)
+                .catch((e) => {
+                  // Best-effort: keep serving stale data. On 401, the fetch wrapper
+                  // already cleared auth state + redirected when appropriate.
+                  const status = getErrorStatus(e)
+                  if (import.meta.dev && status !== 401) {
+                    // Avoid noisy production logging; dev-only visibility.
+                    console.warn('[moh] SWR refresh failed', { url, status })
+                  }
+                  return undefined
+                })
                 .finally(() => {
                   inflight.delete(refreshKey)
                 })
@@ -169,7 +243,7 @@ export function useApiClient() {
         if (existing) return (await existing) as ApiEnvelope<T>
       }
 
-      const p = $fetch<ApiEnvelope<T>>(url, {
+      const p = runFetch<T>(url, {
         ...fetchOptions,
         credentials: fetchOptions.credentials ?? 'include',
         headers,
@@ -177,7 +251,7 @@ export function useApiClient() {
       })
         .then((env) => {
           if (import.meta.client && cacheOpt && typeof cacheOpt === 'object' && cacheOpt.ttlMs > 0) {
-            const baseKey2 = `${method}:${url}`
+            const baseKey2 = `${method}:${url}${queryKey}`
             const cacheKey = cacheOpt.key ?? baseKey2
             const swrMs = Math.max(0, Math.floor(cacheOpt.staleWhileRevalidateMs ?? 0))
             responseCache.set(cacheKey, {
@@ -196,7 +270,7 @@ export function useApiClient() {
       return await p
     }
 
-    return await $fetch<ApiEnvelope<T>>(url, {
+    return await runFetch<T>(url, {
       ...fetchOptions,
       credentials: fetchOptions.credentials ?? 'include',
       headers,

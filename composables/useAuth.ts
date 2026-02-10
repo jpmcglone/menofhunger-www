@@ -1,5 +1,7 @@
 import type { UsersCallback } from '~/composables/usePresence'
 import { useUsersStore } from '~/composables/useUsersStore'
+import { clearAuthClientState } from '~/composables/auth/authState'
+import { isAdminPath, isAuthAllowedAfterLogoutPath } from '~/config/routes'
 
 export type AuthUser = {
   id: string
@@ -27,6 +29,7 @@ export type AuthUser = {
 }
 
 let clientMePromise: Promise<AuthUser | null> | null = null
+let authGeneration = 0
 
 export function useAuth() {
   const { apiFetch } = useApiClient()
@@ -76,16 +79,19 @@ export function useAuth() {
   }
 
   async function me(): Promise<AuthUser | null> {
+    const gen = authGeneration
     try {
       const result = await apiFetch<{ user: AuthUser | null }>('/auth/me', { method: 'GET' })
+      // If auth state was reset while this request was in flight (logout/401), ignore.
+      if (gen !== authGeneration) return null
       user.value = result.data.user
       return result.data.user
     } catch {
       // If the API is unreachable, fail gracefully.
-      user.value = null
+      if (gen === authGeneration) user.value = null
       return null
     } finally {
-      didAttempt.value = true
+      if (gen === authGeneration) didAttempt.value = true
     }
   }
 
@@ -117,66 +123,44 @@ export function useAuth() {
       return
     }
 
-    // Client: always try to load user on mount if not yet loaded (fixes profile card on prod when SSR had no cookie).
-    onMounted(() => {
-      if (!user.value) void ensureLoaded()
-    })
     if (initDone.value) return
     initDone.value = true
+    // Client: always try to load user on mount if not yet loaded (fixes profile card on prod when SSR had no cookie).
     onMounted(() => {
       void ensureLoaded()
     })
   }
 
+  function handleUnauthorized() {
+    authGeneration += 1
+    clientMePromise = null
+    clearAuthClientState({ resetViewerCaches: true })
+    // Keep local refs in sync with the shared state.
+    user.value = null
+    didAttempt.value = true
+  }
+
   async function logout() {
+    authGeneration += 1
+    clientMePromise = null
     const { emitLogout } = usePresence()
     emitLogout()
     await apiFetch<{ success: true }>('/auth/logout', { method: 'POST' })
 
+    clearAuthClientState({ resetViewerCaches: true })
     user.value = null
     didAttempt.value = true
-
-    // Reset viewer-specific client caches so we never show stale authed-only data.
-    // (Safe even if these stores haven't been initialized yet.)
-    useState<import('~/types/api').BookmarkCollection[]>('bookmark-collections', () => []).value = []
-    useState<number>('bookmark-total-count', () => 0).value = 0
-    useState<number>('bookmark-unorganized-count', () => 0).value = 0
-    useState<boolean>('bookmark-collections-loaded', () => false).value = false
-    useState<boolean>('bookmark-collections-loading', () => false).value = false
-    useState<string | null>('bookmark-collections-error', () => null).value = null
-
-    useState<Record<string, import('~/composables/useBoostState').BoostStateEntry>>('boost-state', () => ({})).value = {}
-    useState<Record<string, boolean>>('boost-inflight', () => ({})).value = {}
-    useState<Record<string, boolean>>('boost-pending', () => ({})).value = {}
-    useState<string | null>('boost-state-error', () => null).value = null
-    useState<Record<string, import('~/types/api').FollowRelationship>>('follow-state', () => ({})).value = {}
-    useState<Record<string, boolean>>('follow-inflight', () => ({})).value = {}
-    useState<string | null>('follow-state-error', () => null).value = null
-
-    useState<import('~/types/api').FeedPost[]>('posts-feed', () => []).value = []
-    useState<string | null>('posts-feed-next-cursor', () => null).value = null
-    useState<boolean>('posts-feed-loading', () => false).value = false
-    useState<string | null>('posts-feed-error', () => null).value = null
-
-    useState<import('~/types/api').FeedPost[]>('posts-only-me', () => []).value = []
-    useState<string | null>('posts-only-me-next-cursor', () => null).value = null
-    useState<boolean>('posts-only-me-loading', () => false).value = false
-    useState<string | null>('posts-only-me-error', () => null).value = null
-
-    useState<import('~/composables/useAppHeader').AppHeaderState>('app-header', () => null).value = null
 
     // Redirect away from pages that effectively require auth.
     if (import.meta.client) {
       const route = useRoute()
       const path = String(route.path || '')
-      const layout = (route.meta as any)?.layout as string | undefined
-
-      const authAllowed = new Set(['/home', '/explore', '/notifications', '/roadmap', '/tiers'])
-      const isAdmin = path === '/admin' || path.startsWith('/admin/')
+      const layout = route.meta?.layout
+      const isAdmin = isAdminPath(path)
 
       const requiresAuth =
         isAdmin ||
-        (layout === 'app' && !authAllowed.has(path))
+        (layout === 'app' && !isAuthAllowedAfterLogoutPath(path))
 
       if (requiresAuth && path !== '/home') {
         await navigateTo('/home', { replace: true })
@@ -186,6 +170,6 @@ export function useAuth() {
 
   const isAuthed = computed(() => Boolean(user.value?.id))
 
-  return { user, me, ensureLoaded, initAuth, logout, isAuthed }
+  return { user, me, ensureLoaded, initAuth, logout, handleUnauthorized, isAuthed }
 }
 

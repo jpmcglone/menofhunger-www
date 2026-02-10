@@ -9,6 +9,7 @@ type SearchCacheEntry = { expiresAt: number; items: MentionUser[] }
 
 const CACHE_TTL_MS = 30_000
 const DEFAULT_LIMIT = 10
+const MAX_CACHE_ENTRIES = 200
 
 let mentionAutocompleteIdSeq = 0
 
@@ -88,6 +89,7 @@ export function useMentionAutocomplete(opts: {
 
   const cache = globalMentionCache
   let debounceTimer: ReturnType<typeof setTimeout> | null = null
+  let blurCloseTimer: ReturnType<typeof setTimeout> | null = null
   let inflight: AbortController | null = null
   let requestSeq = 0
   let activeRequestId = 0
@@ -98,12 +100,24 @@ export function useMentionAutocomplete(opts: {
   /** Username (lowercase) -> tier for mentions the user has selected in this session. */
   const mentionTiers = ref<Record<string, MentionTier>>({})
 
+  function pruneCache() {
+    while (cache.size > MAX_CACHE_ENTRIES) {
+      const firstKey = cache.keys().next().value as string | undefined
+      if (!firstKey) break
+      cache.delete(firstKey)
+    }
+  }
+
   function close() {
     open.value = false
     active.value = null
     anchor.value = null
     items.value = []
     highlightedIndex.value = 0
+    if (blurCloseTimer) {
+      clearTimeout(blurCloseTimer)
+      blurCloseTimer = null
+    }
     if (debounceTimer) {
       clearTimeout(debounceTimer)
       debounceTimer = null
@@ -229,7 +243,7 @@ export function useMentionAutocomplete(opts: {
     try {
       const res = await apiFetchData<MentionUser[]>('/search', {
         method: 'GET',
-        query: { type: 'users', q, limit } as any,
+        query: { type: 'users', q, limit },
         // Autocomplete should revalidate often; bypass HTTP caches so results update quickly.
         cache: 'no-store',
         headers: { 'Cache-Control': 'no-cache' },
@@ -240,7 +254,10 @@ export function useMentionAutocomplete(opts: {
       const ranked = rerank(mentionable, q)
       if (activeRequestId !== requestId) return
       setItems(ranked)
-      if (qNorm) cache.set(qNorm, { expiresAt: now + CACHE_TTL_MS, items: ranked })
+      if (qNorm) {
+        cache.set(qNorm, { expiresAt: now + CACHE_TTL_MS, items: ranked })
+        pruneCache()
+      }
     } catch (e: unknown) {
       // Abort is expected during rapid typing.
       if ((e as any)?.name === 'AbortError') return
@@ -414,7 +431,9 @@ export function useMentionAutocomplete(opts: {
     }
     const onBlur = () => {
       // Delay so clicking a suggestion (which prevents mousedown) doesn’t immediately close before select.
-      setTimeout(() => {
+      if (blurCloseTimer) clearTimeout(blurCloseTimer)
+      blurCloseTimer = setTimeout(() => {
+        blurCloseTimer = null
         if (!document.activeElement || document.activeElement !== el) close()
       }, 80)
     }

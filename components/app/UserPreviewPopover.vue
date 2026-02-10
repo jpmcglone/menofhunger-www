@@ -11,7 +11,7 @@
       <div
         v-if="open && preview"
         ref="cardEl"
-        class="fixed z-[1100] w-[340px] max-w-[calc(100vw-24px)] transition-[left,top] duration-150 ease-out motion-reduce:transition-none will-change-[left,top]"
+        class="fixed z-[1300] w-[340px] max-w-[calc(100vw-24px)] transition-[left,top] duration-150 ease-out motion-reduce:transition-none will-change-[left,top]"
         :style="posStyle"
         @mouseenter="onCardEnter"
         @mouseleave="onCardLeave"

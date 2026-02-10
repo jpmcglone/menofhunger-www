@@ -84,14 +84,14 @@
 </template>
 
 <script setup lang="ts">
-import type { OnlineUser, RecentlyOnlineUser } from '~/types/api'
-import type { GetPresenceOnlineData, GetPresenceRecentData } from '~/types/api'
+import type { GetPresenceOnlineData, GetPresenceRecentData, OnlineUser, RecentlyOnlineUser } from '~/types/api'
 import { getApiErrorMessage } from '~/utils/api-error'
 import { formatListTime } from '~/utils/time-format'
 
 definePageMeta({
   layout: 'app',
   title: 'Online',
+  hideTopBar: true,
 })
 
 usePageSeo({
@@ -257,12 +257,12 @@ async function fetchRecent(params?: { cursor?: string | null }) {
     const res = await apiFetch<GetPresenceRecentData>('/presence/recent', {
       method: 'GET',
       query: {
-        limit: '30',
+        limit: 30,
         ...(params?.cursor ? { cursor: params.cursor } : {}),
       },
     })
-    const data = Array.isArray(res?.data) ? (res.data as RecentlyOnlineUser[]) : []
-    const next = (res as any)?.pagination?.nextCursor ?? null
+    const data = res.data ?? []
+    const next = res.pagination?.nextCursor ?? null
     if (params?.cursor) recentUsers.value = [...recentUsers.value, ...data]
     else recentUsers.value = data
     recentNextCursor.value = typeof next === 'string' && next.trim() ? next : null

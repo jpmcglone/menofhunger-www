@@ -81,6 +81,7 @@ defineProps<{
 }>()
 
 const route = useRoute()
+const { isActive } = useRouteMatch(route)
 const { user } = useAuth()
 const { user: displayUser } = useUserOverlay(user)
 const { menuItems, confirmVisible, confirmLogout } = useUserMenu()
@@ -88,11 +89,6 @@ const middleScrollerRef = useMiddleScroller()
 const haptics = useHaptics()
 
 const profileMenuRef = ref()
-
-function isActive(to: string) {
-  if (to === '/home') return route.path === '/home'
-  return route.path === to || route.path.startsWith(`${to}/`)
-}
 
 function onNavClick(to: string, e: MouseEvent) {
   if (!isActive(to)) return

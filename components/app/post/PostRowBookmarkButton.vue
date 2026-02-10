@@ -114,6 +114,14 @@ const props = defineProps<{
   initialCollectionIds: string[]
 }>()
 
+const emit = defineEmits<{
+  /**
+   * +1 when a bookmark is created (was not bookmarked -> bookmarked).
+   * -1 when a bookmark is removed (was bookmarked -> not bookmarked).
+   */
+  (e: 'bookmarkCountDelta', delta: number): void
+}>()
+
 const postId = computed(() => props.postId)
 const viewerCanInteract = computed(() => Boolean(props.viewerCanInteract))
 
@@ -210,6 +218,7 @@ async function removeBookmark() {
     hasBookmarked.value = false
     collectionIds.value = []
     bumpCounts({ prevHas, prevCollectionIds: prevIds, nextHas: false, nextCollectionIds: [] })
+    if (prevHas) emit('bookmarkCountDelta', -1)
   } catch (e: unknown) {
     toast.push({ title: getApiErrorMessage(e) || 'Failed to unsave post.', tone: 'error', durationMs: 2000 })
   } finally {
@@ -236,6 +245,7 @@ async function setBookmarkFolderIds(nextIds: string[]) {
       nextHas: true,
       nextCollectionIds: collectionIds.value.slice(),
     })
+    if (!prevHas) emit('bookmarkCountDelta', 1)
   } catch (e: unknown) {
     toast.push({ title: getApiErrorMessage(e) || 'Failed to save post.', tone: 'error', durationMs: 2000 })
   } finally {

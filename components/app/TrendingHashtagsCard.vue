@@ -16,8 +16,8 @@
 
       <div v-else class="space-y-2">
         <NuxtLink
-          v-for="t in tags"
-          :key="t.value"
+          v-for="(t, i) in tags"
+          :key="`${t.value}-${i}`"
           :to="{ path: '/explore', query: { q: `#${t.value}` } }"
           class="flex items-center justify-between gap-3 rounded-lg px-2 py-1.5 transition-colors hover:bg-black/5 dark:hover:bg-white/10"
         >
@@ -67,9 +67,9 @@ async function refresh() {
   try {
     const res = await apiFetch<GetTrendingHashtagsData>('/hashtags/trending', {
       method: 'GET',
-      query: { limit: 8 } as any,
+      query: { limit: 8 },
     })
-    tags.value = ((res.data ?? []) as HashtagResult[]).slice(0, 8)
+    tags.value = (res.data ?? []).slice(0, 8)
   } catch (e: unknown) {
     error.value = getApiErrorMessage(e) || 'Failed to load trending hashtags.'
     tags.value = []

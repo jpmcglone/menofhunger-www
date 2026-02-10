@@ -386,75 +386,21 @@
               </div>
 
               <div v-else-if="selectedSection === 'notifications'" class="space-y-6">
-                <div class="space-y-2">
-                  <div class="text-sm font-semibold text-gray-900 dark:text-gray-50">Browser notifications</div>
-                  <div class="text-sm text-gray-600 dark:text-gray-300">
-                    Get notified when you're not on the site (e.g. tab closed or in the background).
-                  </div>
-                </div>
-                <div v-if="!pushVapidConfigured" class="space-y-2">
-                  <p class="text-sm text-amber-700 dark:text-amber-300">
-                    Push notifications are not configured. To enable them (e.g. on localhost), add the same VAPID public key used by the API to the www app.
-                  </p>
-                  <p class="text-xs text-gray-600 dark:text-gray-400">
-                    In <code class="rounded bg-gray-200 px-1 dark:bg-gray-700">menofhunger-www/.env</code> set <code class="rounded bg-gray-200 px-1 dark:bg-gray-700">NUXT_PUBLIC_VAPID_PUBLIC_KEY</code> to the value of <code class="rounded bg-gray-200 px-1 dark:bg-gray-700">VAPID_PUBLIC_KEY</code> from <code class="rounded bg-gray-200 px-1 dark:bg-gray-700">menofhunger-api/.env</code>, then restart the dev server.
-                  </p>
-                </div>
-                <div v-else-if="!pushIsSupported" class="text-sm text-gray-600 dark:text-gray-400">
-                  Push notifications are not supported in this browser.
-                </div>
-                <div v-else class="flex flex-col items-start gap-3">
-                  <div v-if="pushRequiresInstall" class="text-sm text-gray-600 dark:text-gray-400">
-                    On iOS Safari, install this site to your Home Screen to enable notifications. Tap Share → Add to Home Screen, then reopen the app.
-                  </div>
-                  <div v-if="pushInitialStateChecked" class="flex flex-wrap items-center gap-3">
-                    <Button
-                      v-if="!pushIsSubscribed && pushPermission !== 'denied'"
-                      label="Enable browser notifications"
-                      :loading="pushIsRegistering"
-                      :disabled="pushIsRegistering || pushRequiresInstall"
-                      @click="pushSubscribe"
-                    >
-                      <template #icon>
-                        <Icon name="tabler:bell" aria-hidden="true" />
-                      </template>
-                    </Button>
-                    <Button
-                      v-else-if="pushIsSubscribed"
-                      label="Disable browser notifications"
-                      severity="secondary"
-                      @click="pushUnsubscribe"
-                    >
-                      <template #icon>
-                        <Icon name="tabler:bell-off" aria-hidden="true" />
-                      </template>
-                    </Button>
-                    <Button
-                      v-if="pushIsSubscribed"
-                      label="Send test notification"
-                      severity="secondary"
-                      :loading="pushTestSending"
-                      :disabled="pushTestSending"
-                      @click="sendPushTest"
-                    >
-                      <template #icon>
-                        <Icon name="tabler:send" aria-hidden="true" />
-                      </template>
-                    </Button>
-                    <span v-else-if="pushPermission === 'denied'" class="text-sm text-gray-600 dark:text-gray-400">
-                      Notifications were denied. Enable them in your browser settings for this site to try again.
-                    </span>
-                    <span v-if="pushErrorMessage" class="text-sm text-red-700 dark:text-red-300">
-                      {{ pushErrorMessage }}
-                    </span>
-                    <span v-if="pushTestMessage" class="text-sm text-gray-600 dark:text-gray-400">
-                      {{ pushTestMessage }}
-                    </span>
-                  </div>
-                  <div v-else class="text-sm text-gray-600 dark:text-gray-400">
-                    Checking notification settings…
-                  </div>
-                </div>
+                <SettingsBrowserNotificationsSection
+                  :push-vapid-configured="pushVapidConfigured"
+                  :push-is-supported="pushIsSupported"
+                  :push-requires-install="pushRequiresInstall"
+                  :push-initial-state-checked="pushInitialStateChecked"
+                  :push-is-subscribed="pushIsSubscribed"
+                  :push-permission="pushPermission"
+                  :push-is-registering="pushIsRegistering"
+                  :push-subscribe="pushSubscribe"
+                  :push-unsubscribe="pushUnsubscribe"
+                  :push-test-sending="pushTestSending"
+                  :send-push-test="sendPushTest"
+                  :push-error-message="pushErrorMessage"
+                  :push-test-message="pushTestMessage"
+                />
 
                 <div class="rounded-xl border moh-border p-3 moh-surface space-y-4">
                   <div class="space-y-1">
@@ -551,27 +497,7 @@
               </div>
 
               <div v-else-if="selectedSection === 'links'" class="space-y-4">
-                <div class="flex flex-col gap-3">
-                  <NuxtLink to="/about" class="inline-flex items-center gap-3 text-gray-800 hover:underline dark:text-gray-200">
-                    <Icon name="tabler:info-circle" class="text-gray-500 dark:text-gray-400" aria-hidden="true" />
-                    <span class="font-medium">About</span>
-                  </NuxtLink>
-                  <NuxtLink to="/privacy" class="inline-flex items-center gap-3 text-gray-800 hover:underline dark:text-gray-200">
-                    <Icon name="tabler:lock" class="text-gray-500 dark:text-gray-400" aria-hidden="true" />
-                    <span class="font-medium">Privacy</span>
-                  </NuxtLink>
-                  <NuxtLink to="/terms" class="inline-flex items-center gap-3 text-gray-800 hover:underline dark:text-gray-200">
-                    <Icon name="tabler:file-text" class="text-gray-500 dark:text-gray-400" aria-hidden="true" />
-                    <span class="font-medium">Terms</span>
-                  </NuxtLink>
-                  <NuxtLink to="/feedback" class="inline-flex items-center gap-3 text-gray-800 hover:underline dark:text-gray-200">
-                    <Icon name="tabler:message-circle" class="text-gray-500 dark:text-gray-400" aria-hidden="true" />
-                    <span class="font-medium">Send feedback</span>
-                  </NuxtLink>
-                </div>
-                <div class="text-xs moh-text-muted">
-                  We’re building this out. Submissions aren’t sent yet.
-                </div>
+                <SettingsLinksSection />
               </div>
 
               <div v-else class="text-sm text-gray-600 dark:text-gray-300">
@@ -842,6 +768,7 @@ const notifPrefsLoading = ref(false)
 const notifPrefsSaving = ref(false)
 const notifPrefsSaved = ref(false)
 const notifPrefsError = ref<string | null>(null)
+let notifPrefsSavedTimer: ReturnType<typeof setTimeout> | null = null
 
 const notifPrefsDirty = computed(() => {
   if (!notifPrefs.value) return false
@@ -884,7 +811,9 @@ async function saveNotifPrefs() {
     notifPrefs.value = res
     notifPrefsInitial.value = JSON.stringify(res)
     notifPrefsSaved.value = true
-    setTimeout(() => {
+    if (notifPrefsSavedTimer) clearTimeout(notifPrefsSavedTimer)
+    notifPrefsSavedTimer = setTimeout(() => {
+      notifPrefsSavedTimer = null
       notifPrefsSaved.value = false
     }, 1500)
   } catch (e: unknown) {
@@ -893,6 +822,13 @@ async function saveNotifPrefs() {
     notifPrefsSaving.value = false
   }
 }
+
+onBeforeUnmount(() => {
+  if (notifPrefsSavedTimer) {
+    clearTimeout(notifPrefsSavedTimer)
+    notifPrefsSavedTimer = null
+  }
+})
 
 const verificationRefreshing = ref(false)
 const verificationError = ref<string | null>(null)

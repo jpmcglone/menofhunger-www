@@ -605,8 +605,10 @@ import { useBookmarkCollections } from '~/composables/useBookmarkCollections'
 import { useOnlyMePosts } from '~/composables/useOnlyMePosts'
 import { useReplyModal } from '~/composables/useReplyModal'
 import type { FeedPost, GetPresenceOnlineData, PostVisibility } from '~/types/api'
+import { isComposerEntrypointPath, routeHeaderDefaultsFor } from '~/config/routes'
 
 const route = useRoute()
+const { isActive: isActiveNav } = useRouteMatch(route)
 const colorMode = useColorMode()
 
 // Keep Safari iOS browser chrome (top/bottom bars) aligned with our in-app theme toggle.
@@ -672,18 +674,7 @@ const isOnlyMePage = computed(() => route.path === '/only-me')
 
 // Post entrypoints (left-nav button + mobile FAB): only render on these routes.
 const isComposerEntrypointRoute = computed(() => {
-  const p = route.path
-  if (p === '/home') return true
-  if (p === '/explore') return true
-  if (p === '/notifications') return true
-  if (p === '/only-me') return true
-  // Reserved route (future-proof): treat current user profile as /profile if it ever exists.
-  if (p === '/profile') return true
-  // Current user profile route today is /u/:username via useAppNav().
-  if (profileTo.value && p === profileTo.value) return true
-  // Any user profile page.
-  if (/^\/u\/[^/]+$/.test(p)) return true
-  return false
+  return isComposerEntrypointPath({ path: route.path, profileTo: profileTo.value })
 })
 const { header: appHeader } = useAppHeader()
 // Prevent SSR hydration mismatches: render route meta during hydration, then swap to appHeader after mount.
@@ -953,17 +944,7 @@ const headerDescription = computed(() =>
 )
 
 const routeHeaderDefaults = computed(() => {
-  const p = route.path
-  if (p === '/notifications') return { icon: 'tabler:bell', description: 'Replies, follows, and updates from your network.' }
-  if (p === '/chat') return { icon: 'tabler:mail', description: 'Chat conversations and chat requests.' }
-  if (p.startsWith('/bookmarks')) return { icon: 'tabler:bookmark', description: 'Saved posts and folders.' }
-  if (p === '/explore') return { icon: 'tabler:search', description: 'Search and discover.' }
-  if (p === '/groups') return { icon: 'tabler:users', description: 'Brotherhood circles and challenges. Coming soon.' }
-  if (p === '/feedback') return { icon: 'tabler:send', description: 'Help us improve.' }
-  if (p === '/only-me') return { icon: undefined, description: 'Private posts that only you can see. These never appear in feeds.' }
-  if (p === '/roadmap') return { icon: 'tabler:map', description: 'What we’re building and when.' }
-  if (p === '/tiers') return { icon: 'tabler:tags', description: 'Unverified, Verified, and Premium — what you get with each tier.' }
-  return { icon: undefined, description: undefined }
+  return routeHeaderDefaultsFor(route.path)
 })
 
 function formatCompactNumber(n: number): string {
@@ -1183,8 +1164,10 @@ watch(
       onlinePollTimer = null
     }
     if (hidden) return
-    void refreshOnlineCount()
-    onlinePollTimer = setInterval(() => void refreshOnlineCount(), 30_000)
+    void Promise.resolve(refreshOnlineCount()).catch(() => undefined)
+    onlinePollTimer = setInterval(() => {
+      void Promise.resolve(refreshOnlineCount()).catch(() => undefined)
+    }, 30_000)
   },
   { immediate: true },
 )
@@ -1201,11 +1184,6 @@ const tierCtaTextClass = computed(() => {
   if (u?.verifiedStatus && u.verifiedStatus !== 'none') return 'text-[var(--moh-verified)]'
   return 'text-gray-700 dark:text-gray-200'
 })
-
-function isActiveNav(to: string) {
-  if (to === '/home') return route.path === '/home'
-  return route.path === to || route.path.startsWith(`${to}/`)
-}
 
 function scrollMiddleToTop() {
   const el = middleScrollerEl.value

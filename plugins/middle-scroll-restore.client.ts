@@ -49,11 +49,11 @@ export default defineNuxtPlugin((nuxtApp) => {
 
   // Track scrollTop for the current route so back/forward can restore it.
   nuxtApp.hook('app:mounted', () => {
-    const el = getMiddleScroller()
-    if (!el) return
-
+    let currentEl: HTMLElement | null = null
     let rafId: number | null = null
     const onScroll = () => {
+      const el = currentEl
+      if (!el) return
       if (rafId != null) return
       rafId = requestAnimationFrame(() => {
         rafId = null
@@ -61,7 +61,25 @@ export default defineNuxtPlugin((nuxtApp) => {
       })
     }
 
-    el.addEventListener('scroll', onScroll, { passive: true })
+    const ensureScrollListener = () => {
+      const next = getMiddleScroller()
+      if (next === currentEl) return
+      if (currentEl) currentEl.removeEventListener('scroll', onScroll as any)
+      currentEl = next
+      if (currentEl) currentEl.addEventListener('scroll', onScroll as any, { passive: true })
+    }
+
+    // Initial attach, plus reattach on layout swaps / scroller replacement.
+    ensureScrollListener()
+    nuxtApp.hook('page:finish', () => ensureScrollListener())
+
+    // Best-effort cleanup for HMR / teardown.
+    if ((import.meta as any).hot) {
+      ;(import.meta as any).hot.dispose(() => {
+        if (currentEl) currentEl.removeEventListener('scroll', onScroll as any)
+        currentEl = null
+      })
+    }
   })
 
   // Snapshot the outgoing route's scroll position before navigating away.
