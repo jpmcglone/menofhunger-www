@@ -213,13 +213,26 @@ async function removeBookmark() {
   loading.value = true
   const prevHas = hasBookmarked.value
   const prevIds = collectionIds.value.slice()
-  try {
-    await apiFetchData('/bookmarks/' + encodeURIComponent(postId.value), { method: 'DELETE' })
+  // Optimistic: update UI + counts immediately; ignore success to avoid double-bumps
+  // when realtime interaction events also patch counts.
+  if (prevHas) {
     hasBookmarked.value = false
     collectionIds.value = []
     bumpCounts({ prevHas, prevCollectionIds: prevIds, nextHas: false, nextCollectionIds: [] })
-    if (prevHas) emit('bookmarkCountDelta', -1)
+    emit('bookmarkCountDelta', -1)
+  }
+  try {
+    await apiFetchData('/bookmarks/' + encodeURIComponent(postId.value), { method: 'DELETE' })
   } catch (e: unknown) {
+    // Rollback optimistic change.
+    if (prevHas) {
+      const curHas = false
+      const curIds: string[] = []
+      hasBookmarked.value = true
+      collectionIds.value = prevIds.slice()
+      bumpCounts({ prevHas: curHas, prevCollectionIds: curIds, nextHas: prevHas, nextCollectionIds: prevIds })
+      emit('bookmarkCountDelta', 1)
+    }
     toast.push({ title: getApiErrorMessage(e) || 'Failed to unsave post.', tone: 'error', durationMs: 2000 })
   } finally {
     loading.value = false
@@ -232,21 +245,48 @@ async function setBookmarkFolderIds(nextIds: string[]) {
   loading.value = true
   const prevHas = hasBookmarked.value
   const prevCids = collectionIds.value.slice()
+  const optimisticIds = (nextIds ?? []).filter(Boolean)
+  const didCreate = !prevHas
+  // Optimistic: reflect saved state immediately; ignore success to avoid double-bumps
+  // when realtime interaction events also patch counts.
+  hasBookmarked.value = true
+  collectionIds.value = optimisticIds.slice()
+  bumpCounts({
+    prevHas,
+    prevCollectionIds: prevCids,
+    nextHas: true,
+    nextCollectionIds: optimisticIds.slice(),
+  })
+  if (didCreate) emit('bookmarkCountDelta', 1)
   try {
     const res = await apiFetchData<{ collectionIds: string[] }>(
       '/bookmarks/' + encodeURIComponent(postId.value),
       { method: 'POST', body: { collectionIds: nextIds } },
     )
-    hasBookmarked.value = true
-    collectionIds.value = (res?.collectionIds ?? []).filter(Boolean)
-    bumpCounts({
-      prevHas,
-      prevCollectionIds: prevCids,
-      nextHas: true,
-      nextCollectionIds: collectionIds.value.slice(),
-    })
-    if (!prevHas) emit('bookmarkCountDelta', 1)
+    // Reconcile optimistic folder ids with server result (no count bump here).
+    const serverIds = (res?.collectionIds ?? []).filter(Boolean)
+    if (serverIds.join('|') !== optimisticIds.join('|')) {
+      bumpCounts({
+        prevHas: true,
+        prevCollectionIds: optimisticIds.slice(),
+        nextHas: true,
+        nextCollectionIds: serverIds.slice(),
+      })
+      collectionIds.value = serverIds
+    }
   } catch (e: unknown) {
+    // Rollback optimistic change.
+    const curHas = true
+    const curIds = optimisticIds.slice()
+    hasBookmarked.value = Boolean(prevHas)
+    collectionIds.value = prevCids.slice()
+    bumpCounts({
+      prevHas: curHas,
+      prevCollectionIds: curIds,
+      nextHas: prevHas,
+      nextCollectionIds: prevCids,
+    })
+    if (didCreate) emit('bookmarkCountDelta', -1)
     toast.push({ title: getApiErrorMessage(e) || 'Failed to save post.', tone: 'error', durationMs: 2000 })
   } finally {
     loading.value = false

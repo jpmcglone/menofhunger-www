@@ -5,7 +5,7 @@
       <NuxtLink
         v-if="profilePath"
         :to="profilePath"
-        class="min-w-0 font-bold truncate text-gray-900 dark:text-white hover:underline underline-offset-2"
+        class="min-w-0 truncate font-bold moh-text hover:underline underline-offset-2"
         :aria-label="`View @${username} profile`"
         @mouseenter="onEnter"
         @mousemove="onMove"
@@ -15,7 +15,7 @@
       </NuxtLink>
       <span
         v-else
-        class="min-w-0 font-bold truncate text-gray-900 dark:text-white"
+        class="min-w-0 truncate font-bold moh-text"
         @mouseenter="onEnter"
         @mousemove="onMove"
         @mouseleave="onLeave"
@@ -46,7 +46,7 @@
       />
     </div>
 
-    <div class="flex min-w-0 items-baseline gap-1.5 flex-nowrap text-sm font-light text-gray-500 dark:text-gray-400">
+    <div class="moh-meta flex min-w-0 items-baseline gap-1.5 flex-nowrap font-light">
       <NuxtLink
         v-if="profilePath"
         :to="profilePath"

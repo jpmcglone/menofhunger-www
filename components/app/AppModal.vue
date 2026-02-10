@@ -27,22 +27,22 @@
           <div class="absolute inset-0 flex items-center justify-center p-3 sm:p-4">
             <section
               :class="[
-                'relative w-full overflow-hidden rounded-2xl border bg-white shadow-2xl moh-card-matte dark:bg-black dark:border-zinc-800',
+                'relative w-full overflow-hidden rounded-2xl moh-popover moh-card-matte',
                 maxWidthClass,
               ]"
               :style="panelStyle"
               @click.stop
             >
-              <header class="flex items-center justify-between gap-3 px-4 py-3 border-b border-gray-200 dark:border-zinc-800">
+              <header class="flex items-center justify-between gap-3 moh-gutter-x py-3 border-b moh-border">
                 <div class="min-w-0">
-                  <div class="truncate text-lg font-semibold text-gray-900 dark:text-gray-50">
+                  <div class="truncate moh-h2">
                     {{ title }}
                   </div>
                 </div>
                 <button
                   v-if="showClose"
                   type="button"
-                  class="moh-tap inline-flex h-9 w-9 items-center justify-center rounded-full text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-zinc-900 dark:hover:text-gray-50 disabled:opacity-50"
+                  class="moh-tap moh-focus inline-flex h-9 w-9 items-center justify-center rounded-full moh-text-muted hover:moh-text moh-surface-hover disabled:opacity-50"
                   aria-label="Close"
                   :disabled="disableClose"
                   @click="close"
@@ -58,7 +58,7 @@
 
               <footer
                 v-if="$slots.footer"
-                class="px-4 py-3 border-t border-gray-200 dark:border-zinc-800"
+                class="moh-gutter-x py-3 border-t moh-border"
               >
                 <slot name="footer" />
               </footer>

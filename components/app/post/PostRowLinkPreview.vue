@@ -52,19 +52,21 @@
       :href="previewLink || undefined"
       target="_blank"
       rel="noopener noreferrer"
-      class="block overflow-hidden rounded-xl border moh-border transition-colors moh-surface-hover"
+      class="group block overflow-hidden rounded-xl border moh-border transition-colors moh-surface-hover moh-focus"
       aria-label="Open link"
       @click.stop
     >
-      <div class="flex gap-3 p-3">
+      <div class="relative flex gap-3 p-3">
+        <!-- Slight brightness wash behind content -->
+        <div class="pointer-events-none absolute inset-0 bg-white/10" aria-hidden="true" />
         <div
           v-if="linkMeta?.imageUrl"
-          class="h-16 w-16 shrink-0 overflow-hidden rounded-lg bg-gray-100 dark:bg-zinc-900"
+          class="relative z-10 h-16 w-16 shrink-0 overflow-hidden rounded-lg bg-gray-100 dark:bg-zinc-900"
           aria-hidden="true"
         >
           <img :src="linkMeta.imageUrl" class="h-full w-full object-cover" alt="" loading="lazy" />
         </div>
-        <div class="min-w-0 flex-1">
+        <div class="relative z-10 min-w-0 flex-1">
           <div class="text-sm font-semibold moh-text truncate">
             {{ linkMeta?.title || previewLinkHost || 'Link' }}
           </div>
@@ -75,7 +77,7 @@
             {{ previewLinkDisplay }}
           </div>
         </div>
-        <div class="shrink-0 text-gray-400 dark:text-zinc-500" aria-hidden="true">
+        <div class="relative z-10 shrink-0 text-gray-400 dark:text-zinc-500" aria-hidden="true">
           <Icon name="tabler:external-link" class="text-[12px]" aria-hidden="true" />
         </div>
       </div>

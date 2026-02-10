@@ -3,7 +3,7 @@
     ref="rowEl"
     :data-post-id="postView.id"
     :class="[
-      'relative overflow-visible px-4 transition-colors',
+      'relative overflow-visible moh-gutter-x transition-colors',
       compact ? 'py-2' : 'py-4',
       noPaddingBottom ? 'pb-0' : '',
       noPaddingTop ? 'pt-0' : '',
@@ -24,7 +24,7 @@
     <!-- Overlay: line from top down to just above avatar (gap); no overextend -->
     <div
       v-if="showThreadLineAboveAvatar"
-      class="pointer-events-none absolute left-4 z-10 flex w-10 justify-center"
+      class="pointer-events-none absolute left-[var(--moh-gutter-x)] z-10 flex w-10 justify-center"
       :style="threadLineAboveOverlayStyle"
       aria-hidden="true"
     >
@@ -37,7 +37,7 @@
     <!-- Overlay: line from just below avatar (gap) to row bottom; no overextend -->
     <div
       v-if="showThreadLineBelowAvatar"
-      class="pointer-events-none absolute left-4 z-10 flex w-10 justify-center"
+      class="pointer-events-none absolute left-[var(--moh-gutter-x)] z-10 flex w-10 justify-center"
       :style="threadLineBelowOverlayStyle"
       aria-hidden="true"
     >

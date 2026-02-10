@@ -86,7 +86,7 @@
             <NuxtLink
               :to="'/home'"
               :class="[
-                'flex items-center',
+                'flex items-center moh-focus',
                 isAuthed && (user?.premium || (user?.verifiedStatus && user.verifiedStatus !== 'none')) && !navCompactMode ? 'gap-1.5' : 'gap-2'
               ]"
               aria-label="Home"
@@ -124,7 +124,7 @@
               :to="item.to"
               :class="[
                 // NOTE: Don't use `moh-text` here; it overrides per-item color accents (e.g. Only me).
-                'group flex h-12 items-center rounded-xl transition-colors',
+                'group flex h-12 items-center rounded-xl transition-colors moh-focus',
                 // Add breathing room between icon and label (label only shows in wide mode).
                 !navCompactMode ? 'gap-2' : '',
                 'w-full',
@@ -187,7 +187,7 @@
                   type="button"
                   aria-label="Post"
                   :class="[
-                    'group flex h-12 items-center rounded-xl text-white hover:opacity-95 w-full',
+                    'group flex h-12 items-center rounded-xl text-white hover:opacity-95 w-full moh-focus',
                     fabButtonClass,
                   ]"
                   :style="fabButtonStyle"
@@ -210,7 +210,7 @@
             aria-label="Log in"
             :class="[
               // Match the Post button shape/style (rounded rect).
-              'group flex h-12 items-center rounded-xl bg-black text-white hover:opacity-95 dark:bg-white dark:text-black',
+              'group flex h-12 items-center rounded-xl bg-black text-white hover:opacity-95 dark:bg-white dark:text-black moh-focus',
               navCompactMode ? 'w-12 mx-auto justify-center' : 'w-full',
               'mt-2'
             ]"
@@ -229,7 +229,7 @@
           <main
             :class="[
               // `min-h-0` is critical so inner scroll containers can actually scroll (flexbox default min-height:auto can block it).
-              'min-w-0 min-h-0 flex-1 overflow-x-hidden flex flex-col',
+              'min-w-0 min-h-0 flex-1 overflow-x-hidden flex flex-col moh-surface-1 moh-texture',
               !isRightRailForcedHidden ? 'lg:border-r moh-border' : '',
             ]"
           >
@@ -251,7 +251,7 @@
                   <div class="flex items-center justify-between gap-3">
                     <div class="min-w-0 flex items-center gap-2">
                       <Icon v-if="headerIcon" :name="headerIcon" class="text-xl shrink-0 opacity-80" aria-hidden="true" />
-                      <h1 class="min-w-0 truncate text-xl font-bold leading-none">
+                      <h1 class="min-w-0 truncate moh-h1">
                         {{ headerTitle }}
                       </h1>
                       <AppVerifiedBadge
@@ -262,12 +262,12 @@
                         :steward-badge-enabled="appHeader?.stewardBadgeEnabled ?? true"
                       />
                     </div>
-                    <div v-if="hydrated && typeof appHeader?.postCount === 'number'" class="shrink-0 text-sm moh-text-muted">
+                    <div v-if="hydrated && typeof appHeader?.postCount === 'number'" class="shrink-0 moh-meta">
                       <span class="font-semibold tabular-nums">{{ formatCompactNumber(appHeader.postCount) }}</span>
                       <span class="ml-1">posts</span>
                     </div>
                   </div>
-                  <p v-if="headerDescription" class="text-sm moh-text-muted">
+                  <p v-if="headerDescription" class="moh-meta">
                     {{ headerDescription }}
                   </p>
                 </AppTitleBar>
@@ -355,8 +355,10 @@
                     </div>
 
                     <!-- Who to follow (real data) -->
-                    <Card>
-                      <template #title>Who to follow</template>
+                    <Card class="moh-card moh-card-matte !rounded-2xl">
+                      <template #title>
+                        <span class="moh-h2">Who to follow</span>
+                      </template>
                       <template #content>
                         <div v-if="whoToFollowLoading && whoToFollowUsers.length === 0" class="flex justify-center py-4">
                           <AppLogoLoader />
@@ -396,8 +398,10 @@
 
                   <AppTrendingHashtagsCard />
 
-                  <Card>
-                    <template #title>Groups</template>
+                  <Card class="moh-card moh-card-matte !rounded-2xl">
+                    <template #title>
+                      <span class="moh-h2">Groups</span>
+                    </template>
                     <template #content>
                       <div class="space-y-3 text-sm moh-text-muted">
                         <div class="flex items-start justify-between gap-3">
@@ -457,21 +461,22 @@
       aria-label="Right rail search"
       :class="[
         // Fixed overlay aligned with the same max-width container as the columns.
-        'hidden md:block fixed left-0 right-0 top-0 z-40 pointer-events-none',
+        // Match the right rail breakpoint (right rail is hidden below lg).
+        'hidden lg:block fixed left-0 right-0 top-0 z-40 pointer-events-none',
         'transition-opacity duration-200 ease-out',
         isRightRailSearchHidden ? 'opacity-0 pointer-events-none' : 'opacity-100'
       ]"
     >
       <div class="mx-auto w-full max-w-6xl xl:max-w-7xl flex justify-end">
         <div class="pointer-events-auto w-[clamp(20rem,22vw,23.75rem)] border-b moh-border moh-bg moh-texture">
-          <div class="px-4 h-16 flex items-center">
+          <div class="moh-gutter-x h-16 flex items-center">
             <IconField iconPosition="left" class="w-full">
               <InputIcon>
                 <Icon name="tabler:search" class="text-lg opacity-70" aria-hidden="true" />
               </InputIcon>
               <InputText
                 v-model="rightRailSearchQuery"
-                class="w-full h-11 !rounded-full"
+                class="w-full h-11 !rounded-full moh-focus"
                 placeholder="Search…"
                 @keydown.enter="goToExploreSearch"
               />
@@ -498,7 +503,7 @@
       type="button"
       aria-label="New post"
       :class="[
-        'sm:hidden fixed right-4 z-40 flex h-12 w-12 items-center justify-center rounded-xl text-white shadow-lg hover:opacity-95 active:scale-95',
+        'sm:hidden fixed right-4 z-40 flex h-12 w-12 items-center justify-center rounded-xl text-white shadow-lg hover:opacity-95 active:scale-95 moh-focus-strong',
         fabButtonClass,
       ]"
       :style="fabBottomStyle"

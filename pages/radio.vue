@@ -1,122 +1,173 @@
 <template>
   <AppPageContent bottom="standard">
-  <div class="px-4 py-5 space-y-6 min-h-full dark:bg-black">
-    <div class="flex items-end justify-between gap-3">
-      <div class="min-w-0">
-        <div class="text-xl font-bold tracking-tight text-gray-900 dark:text-gray-50">
-          Radio
-        </div>
-        <div class="mt-1 text-sm moh-text-muted">
-          Choose a station and listen while you build.
-        </div>
-      </div>
-    </div>
-
-    <!-- Stations -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-      <div
-        v-for="s in stations"
-        :key="s.id"
-        :class="[
-          'rounded-2xl border moh-border p-4 flex items-start justify-between gap-3 transition-colors',
-          stationId === s.id
-            ? 'bg-black/5 dark:bg-white/5 ring-2 ring-[var(--p-primary-color)] border-transparent'
-            : 'moh-surface-hover'
-        ]"
-      >
-        <button
-          type="button"
-          class="min-w-0 flex-1 text-left"
-          :aria-label="`Play ${s.name}`"
-          @click="onStationRowClick(s)"
-        >
-          <div class="font-semibold text-gray-900 dark:text-gray-50 leading-snug">
-            {{ s.name }}
-          </div>
-          <div v-if="s.attributionName" class="mt-1 text-xs text-gray-500 dark:text-gray-400 truncate">
-            {{ s.attributionName }}
-          </div>
-        </button>
-
-        <div class="shrink-0 pt-0.5">
-          <div
-            v-if="stationId === s.id && isBuffering"
-            class="h-8 w-8 flex items-center justify-center"
-            aria-label="Loading"
-            role="status"
-          >
-            <Icon name="tabler:loader" class="opacity-80 animate-spin" aria-hidden="true" />
-          </div>
-          <Button
-            v-else
-            severity="secondary"
-            rounded
-            text
-            size="small"
-            :aria-label="stationId === s.id && isPlaying ? 'Pause' : 'Play'"
-            @click="onPlayPauseClick(s)"
-          >
-            <template #icon>
-              <Icon
-                :name="stationId === s.id && isPlaying ? 'tabler:player-pause' : 'tabler:player-play'"
-                aria-hidden="true"
-              />
-            </template>
-          </Button>
-        </div>
-      </div>
-    </div>
-
-    <div v-if="stationsLoading" class="text-xs moh-text-muted">
-      Refreshing station list…
-    </div>
-
-    <div v-if="error" class="text-sm text-red-700 dark:text-red-300">
-      {{ error }}
-    </div>
-
-    <!-- Listening now -->
-    <div v-if="currentStation" class="space-y-3">
-      <div class="text-sm text-gray-900 dark:text-gray-50">
-        Listening now to <span class="font-bold">{{ currentStation.name }}</span>
+    <div class="w-full">
+      <div class="moh-gutter-x pt-4 pb-3">
+        <h1 class="moh-h1">Radio</h1>
+        <p class="mt-1 moh-meta">Choose a station and listen while you build.</p>
       </div>
 
-      <div>
-        <div v-if="listeners.length === 0" class="text-sm moh-text-muted">
-          Nobody else is listening right now.
-        </div>
-        <TransitionGroup
-          v-else
-          name="moh-radio-avatars"
-          tag="div"
-          class="relative flex flex-wrap gap-2"
-        >
-          <NuxtLink
-            v-for="u in listeners"
-            :key="u.id"
-            :to="listenerProfileTo(u)"
-            class="relative block shrink-0 cursor-pointer"
-            v-tooltip.bottom="tinyTooltip(u.username ? `@${u.username}` : 'User')"
-          >
-            <AppUserAvatar
-              :user="{ id: u.id, username: u.username, name: null, avatarUrl: u.avatarUrl }"
-              size-class="h-9 w-9"
-              bg-class="moh-surface"
-            />
-            <Transition name="moh-avatar-pause-fade">
+      <div class="moh-gutter-x pb-6 space-y-4">
+        <!-- Stations -->
+        <section class="moh-card moh-card-matte !rounded-2xl overflow-hidden">
+          <div class="px-4 py-3 border-b moh-border-subtle flex items-center justify-between gap-3">
+            <div class="moh-h2">Stations</div>
+            <div v-if="stationsLoading" class="moh-meta">Refreshing…</div>
+          </div>
+
+          <div v-if="error" class="px-4 py-3">
+            <AppInlineAlert severity="danger">
+              {{ error }}
+            </AppInlineAlert>
+          </div>
+
+          <div v-else class="p-3">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               <div
-                v-if="u.paused"
-                class="absolute inset-0 rounded-full bg-black/30 flex items-center justify-center moh-avatar-pause"
-                aria-hidden="true"
+                v-for="s in stations"
+                :key="s.id"
+                :class="[
+                  'relative rounded-2xl border p-3 flex items-start justify-between gap-3 transition-colors',
+                  stationId === s.id
+                    ? 'border-transparent ring-2 ring-[var(--p-primary-color)] bg-black/5 dark:bg-white/5'
+                    : 'border-[var(--moh-border-subtle)] hover:bg-black/5 dark:hover:bg-white/5'
+                ]"
               >
-                <Icon name="tabler:player-pause" aria-hidden="true" />
+                <button
+                  type="button"
+                  class="min-w-0 flex-1 text-left moh-focus"
+                  :aria-label="`Play ${s.name}`"
+                  @click="onStationRowClick(s)"
+                >
+                  <div class="font-semibold moh-text leading-snug">
+                    {{ s.name }}
+                  </div>
+                  <div v-if="s.attributionName" class="mt-0.5 moh-meta truncate">
+                    {{ s.attributionName }}
+                  </div>
+                </button>
+
+                <div class="shrink-0 pt-0.5">
+                  <div
+                    v-if="stationId === s.id && isBuffering"
+                    class="h-8 w-8 flex items-center justify-center"
+                    aria-label="Loading"
+                    role="status"
+                  >
+                    <Icon name="tabler:loader" class="opacity-80 animate-spin" aria-hidden="true" />
+                  </div>
+                  <Button
+                    v-else
+                    severity="secondary"
+                    rounded
+                    text
+                    size="small"
+                    class="moh-focus"
+                    :aria-label="stationId === s.id && isPlaying ? 'Pause' : 'Play'"
+                    @click="onPlayPauseClick(s)"
+                  >
+                    <template #icon>
+                      <Icon
+                        :name="stationId === s.id && isPlaying ? 'tabler:player-pause' : 'tabler:player-play'"
+                        aria-hidden="true"
+                      />
+                    </template>
+                  </Button>
+                </div>
               </div>
-            </Transition>
-          </NuxtLink>
-        </TransitionGroup>
+            </div>
+
+            <div v-if="stations.length === 0" class="px-1 py-2 moh-meta">
+              No stations available.
+            </div>
+          </div>
+        </section>
+
+        <!-- Now playing -->
+        <section v-if="currentStation" class="moh-card moh-card-matte !rounded-2xl overflow-hidden">
+          <div class="px-4 py-3 border-b moh-border-subtle flex items-center justify-between gap-3">
+            <div class="moh-h2">Now playing</div>
+            <div class="moh-meta tabular-nums">
+              {{ listeners.length }} listening
+            </div>
+          </div>
+
+          <div class="px-4 py-4 space-y-3">
+            <div class="flex items-start justify-between gap-3">
+              <div class="min-w-0">
+                <div class="font-semibold moh-text truncate">
+                  {{ currentStation.name }}
+                </div>
+                <div class="mt-0.5 moh-meta">
+                  <span v-if="isBuffering">Buffering…</span>
+                  <span v-else-if="isPlaying">Playing</span>
+                  <span v-else>Paused</span>
+                </div>
+              </div>
+
+              <div class="shrink-0 flex items-center gap-1">
+                <Button
+                  severity="secondary"
+                  rounded
+                  text
+                  size="small"
+                  class="moh-focus"
+                  :aria-label="isPlaying ? 'Pause radio' : 'Play radio'"
+                  @click="isPlaying ? pause() : play(currentStation)"
+                >
+                  <template #icon>
+                    <Icon :name="isPlaying ? 'tabler:player-pause' : 'tabler:player-play'" aria-hidden="true" />
+                  </template>
+                </Button>
+              </div>
+            </div>
+
+            <div>
+              <div v-if="listeners.length === 0" class="moh-meta">
+                Nobody else is listening right now.
+              </div>
+              <TransitionGroup
+                v-else
+                name="moh-radio-avatars"
+                tag="div"
+                class="relative flex flex-wrap gap-2"
+              >
+                <NuxtLink
+                  v-for="u in listeners"
+                  :key="u.id"
+                  :to="listenerProfileTo(u)"
+                  class="relative block shrink-0 cursor-pointer moh-focus rounded-full"
+                  v-tooltip.bottom="tinyTooltip(u.username ? `@${u.username}` : 'User')"
+                >
+                  <AppUserAvatar
+                    :user="{ id: u.id, username: u.username, name: null, avatarUrl: u.avatarUrl }"
+                    size-class="h-9 w-9"
+                    bg-class="moh-surface"
+                  />
+                  <Transition name="moh-avatar-pause-fade">
+                    <div
+                      v-if="u.paused"
+                      class="absolute inset-0 rounded-full bg-black/30 flex items-center justify-center moh-avatar-pause"
+                      aria-hidden="true"
+                    >
+                      <Icon name="tabler:player-pause" aria-hidden="true" />
+                    </div>
+                  </Transition>
+                </NuxtLink>
+              </TransitionGroup>
+            </div>
+          </div>
+        </section>
+
+        <section v-else class="moh-card moh-card-matte !rounded-2xl overflow-hidden">
+          <div class="px-4 py-3 border-b moh-border-subtle">
+            <div class="moh-h2">Now playing</div>
+          </div>
+          <div class="px-4 py-4 moh-meta">
+            Select a station to start listening.
+          </div>
+        </section>
       </div>
     </div>
-  </div>
   </AppPageContent>
 </template>
 

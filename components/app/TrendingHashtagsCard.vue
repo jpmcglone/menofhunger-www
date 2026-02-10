@@ -1,6 +1,8 @@
 <template>
-  <Card>
-    <template #title>Trending hashtags</template>
+  <Card class="moh-card moh-card-matte !rounded-2xl">
+    <template #title>
+      <span class="moh-h2">Trending hashtags</span>
+    </template>
     <template #content>
       <div v-if="loading && tags.length === 0" class="flex justify-center py-4">
         <AppLogoLoader />
@@ -19,13 +21,13 @@
           v-for="(t, i) in tags"
           :key="`${t.value}-${i}`"
           :to="{ path: '/explore', query: { q: `#${t.value}` } }"
-          class="flex items-center justify-between gap-3 rounded-lg px-2 py-1.5 transition-colors hover:bg-black/5 dark:hover:bg-white/10"
+          class="flex items-center justify-between gap-3 rounded-lg px-2 py-1.5 transition-colors hover:bg-black/5 dark:hover:bg-white/10 moh-focus"
         >
           <div class="min-w-0">
-            <div class="font-semibold text-sm text-gray-900 dark:text-gray-50 truncate">
+            <div class="font-semibold text-sm moh-text truncate">
               #{{ t.label }}
             </div>
-            <div class="text-xs moh-text-muted">
+            <div class="moh-meta">
               {{ formatCount(t.usageCount) }} posts lately
             </div>
           </div>
@@ -34,7 +36,7 @@
 
         <NuxtLink
           to="/hashtags/trending"
-          class="inline-block pt-2 text-sm font-medium hover:underline underline-offset-2 text-[var(--p-primary-color)]"
+          class="inline-block pt-2 text-sm font-medium hover:underline underline-offset-2 text-[var(--p-primary-color)] moh-focus"
         >
           Show more
         </NuxtLink>

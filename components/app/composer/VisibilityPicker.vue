@@ -8,7 +8,7 @@
       :disabled="!viewerIsVerified"
       @click="viewerIsVerified ? toggle() : null"
     >
-      <Icon v-if="modelValue === 'public'" name="tabler:globe" class="mr-1 text-[10px] opacity-80" aria-hidden="true" />
+      <Icon v-if="modelValue === 'public'" name="tabler:world" class="mr-1 text-[10px] opacity-80" aria-hidden="true" />
       <AppVerifiedBadge
         v-else-if="modelValue === 'verifiedOnly'"
         class="mr-1"
@@ -42,7 +42,7 @@
         @click="set('public')"
       >
         <span class="inline-flex items-center gap-2">
-          <Icon name="tabler:globe" class="text-[12px] opacity-80" aria-hidden="true" />
+          <Icon name="tabler:world" class="text-[12px] opacity-80" aria-hidden="true" />
           <span>Public</span>
         </span>
       </button>

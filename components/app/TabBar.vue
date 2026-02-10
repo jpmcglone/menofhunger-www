@@ -1,6 +1,6 @@
 <template>
   <nav
-    class="fixed inset-x-0 bottom-0 z-50 border-t border-gray-200 bg-white dark:border-zinc-800 dark:bg-black sm:hidden"
+    class="fixed inset-x-0 bottom-0 z-50 border-t moh-border moh-surface-1 moh-texture sm:hidden"
     style="min-height: calc(var(--moh-tabbar-height, 4.5rem) + var(--moh-safe-bottom, 0px)); padding-bottom: var(--moh-safe-bottom, 0px);"
     aria-label="Primary"
   >
@@ -10,8 +10,8 @@
           <button
             v-if="item.key === 'profile'"
             type="button"
-            class="flex h-full w-full flex-col items-center justify-center touch-manipulation transition-transform duration-100 active:scale-[0.98]"
-            :class="isActive(item.to) ? 'text-gray-900 dark:text-gray-50' : 'text-gray-500 dark:text-gray-400'"
+            class="flex h-full w-full flex-col items-center justify-center touch-manipulation transition-transform duration-100 active:scale-[0.98] moh-focus"
+            :class="isActive(item.to) ? 'moh-text' : 'moh-text-muted'"
             aria-label="Profile menu"
             @click="(e) => { haptics.tap(); toggleProfileMenu(e) }"
           >
@@ -27,8 +27,8 @@
           <NuxtLink
             v-else
             :to="item.to"
-            class="flex h-full w-full flex-col items-center justify-center touch-manipulation transition-transform duration-100 active:scale-[0.98]"
-            :class="isActive(item.to) ? 'text-gray-900 dark:text-gray-50' : 'text-gray-500 dark:text-gray-400'"
+            class="flex h-full w-full flex-col items-center justify-center touch-manipulation transition-transform duration-100 active:scale-[0.98] moh-focus"
+            :class="isActive(item.to) ? 'moh-text' : 'moh-text-muted'"
             @click="(e) => { haptics.tap(); onNavClick(item.to, e) }"
           >
             <div class="relative h-10 w-10 flex items-center justify-center">

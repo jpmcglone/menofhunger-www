@@ -22,6 +22,9 @@
   --moh-safe-left: env(safe-area-inset-left, 0px);
   --moh-tabbar-height: 4.5rem;
   --moh-radio-bar-height: 4rem;
+
+  /* App-wide gutters (single source of truth for horizontal padding) */
+  --moh-gutter-x: 1rem;
 }
 
 @supports (height: 100dvh) {
@@ -79,13 +82,37 @@ html.dark .moh-texture::before {
 /* App color tokens (X-like neutrals). Keep these as CSS variables so every surface stays consistent. */
 :root {
   /* Warm neutrals (\"private study\" vibe) */
-  --moh-bg: #fbfaf7; /* bone */
-  --moh-surface: #f2f0ea; /* warm paper */
+  /* Surface levels */
+  --moh-surface-0: #fbfaf7; /* page bg (bone) */
+  --moh-surface-1: #f2f0ea; /* primary surface (warm paper) */
+  --moh-surface-2: #ffffff; /* elevated card surface */
+  --moh-surface-3: #ffffff; /* popovers/dialogs */
+
+  /* Back-compat aliases (used throughout the app) */
+  --moh-bg: var(--moh-surface-0);
+  --moh-surface: var(--moh-surface-1);
   --moh-surface-hover: #ebe7df; /* warm hover */
-  --moh-border: #e6e1d8; /* warm divider */
+
+  /* Borders */
+  --moh-border-subtle: #eee9e1;
+  --moh-border: #e6e1d8; /* warm divider (alias) */
+  --moh-border-strong: #d7cfc3;
+
+  /* Text */
   --moh-text: #141210; /* warm near-black */
   --moh-text-muted: #5f5a55; /* warm muted */
-  --moh-frosted: rgba(251, 250, 247, 0.88);
+  --moh-text-soft: #7a746e; /* tertiary */
+
+  /* Focus (AA-visible) */
+  --moh-focus-ring: rgba(20, 18, 16, 0.26);
+  --moh-focus-ring-strong: rgba(20, 18, 16, 0.44);
+
+  /* Shadows (light mode only; dark uses borders) */
+  --moh-shadow-1: 0 1px 1px rgba(20, 18, 16, 0.04), 0 8px 24px rgba(20, 18, 16, 0.06);
+  --moh-shadow-2: 0 2px 2px rgba(20, 18, 16, 0.06), 0 18px 46px rgba(20, 18, 16, 0.10);
+
+  /* Frosted surfaces (used for sticky title bars) */
+  --moh-frosted: rgba(242, 240, 234, 0.88);
 
   /* Typography */
   --moh-font-serif: Literata, ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
@@ -113,13 +140,36 @@ html.dark .moh-texture::before {
 
 html.dark {
   /* Serious, machined palette — not cozy */
-  --moh-bg: #0F1113; /* Charcoal */
-  --moh-surface: #2A2F35; /* Steel */
+  /* Surface levels */
+  --moh-surface-0: #0F1113; /* page bg (charcoal) */
+  --moh-surface-1: #14181C; /* primary surface */
+  --moh-surface-2: #1B2127; /* elevated card surface */
+  --moh-surface-3: #232B33; /* popovers/dialogs */
+
+  /* Back-compat aliases */
+  --moh-bg: var(--moh-surface-0);
+  --moh-surface: var(--moh-surface-1);
   --moh-surface-hover: rgba(255, 255, 255, 0.05);
-  --moh-border: #2A2F35; /* Steel, aligned with surface */
+
+  /* Borders: opacity-based to stay consistent across surfaces */
+  --moh-border-subtle: rgba(255, 255, 255, 0.08);
+  --moh-border: rgba(255, 255, 255, 0.10);
+  --moh-border-strong: rgba(255, 255, 255, 0.16);
+
+  /* Text */
   --moh-text: #f4f4f5; /* Slightly brighter body for confidence */
-  --moh-text-muted: #8A9099; /* Slate — clearly dimmer metadata */
-  --moh-frosted: rgba(15, 17, 19, 0.92);
+  --moh-text-muted: #A3AAB4; /* metadata */
+  --moh-text-soft: #7f8792; /* tertiary */
+
+  /* Focus (AA-visible) */
+  --moh-focus-ring: rgba(244, 244, 245, 0.24);
+  --moh-focus-ring-strong: rgba(244, 244, 245, 0.38);
+
+  /* Shadows: keep minimal in dark (borders do the work) */
+  --moh-shadow-1: none;
+  --moh-shadow-2: none;
+
+  --moh-frosted: rgba(20, 24, 28, 0.92);
 
   --moh-tooltip-bg: rgba(15, 17, 19, 0.96);
   --moh-tooltip-text: #f4f4f5;
@@ -131,6 +181,43 @@ html.dark {
   .moh-tap {
     touch-action: manipulation;
     -webkit-tap-highlight-color: transparent;
+  }
+
+  .moh-gutter-x {
+    padding-left: var(--moh-gutter-x);
+    padding-right: var(--moh-gutter-x);
+  }
+
+  /* Typography roles (bolder hierarchy, still compact like X) */
+  .moh-h1 {
+    font-size: 1.25rem;
+    line-height: 1.15;
+    font-weight: 800;
+    letter-spacing: -0.015em;
+    color: var(--moh-text);
+  }
+  .moh-h2 {
+    font-size: 1.05rem;
+    line-height: 1.2;
+    font-weight: 800;
+    letter-spacing: -0.01em;
+    color: var(--moh-text);
+  }
+  .moh-body {
+    font-size: 0.95rem;
+    line-height: 1.45;
+    color: var(--moh-text);
+  }
+  .moh-meta {
+    font-size: 0.8125rem;
+    line-height: 1.25;
+    color: var(--moh-text-muted);
+  }
+  .moh-meta-strong {
+    font-size: 0.8125rem;
+    line-height: 1.25;
+    font-weight: 650;
+    color: var(--moh-text-muted);
   }
 
   .moh-squircle {
@@ -170,6 +257,18 @@ html.dark {
   .moh-surface {
     background-color: var(--moh-surface);
   }
+  .moh-surface-0 {
+    background-color: var(--moh-surface-0);
+  }
+  .moh-surface-1 {
+    background-color: var(--moh-surface-1);
+  }
+  .moh-surface-2 {
+    background-color: var(--moh-surface-2);
+  }
+  .moh-surface-3 {
+    background-color: var(--moh-surface-3);
+  }
   .moh-surface-hover:hover {
     background-color: var(--moh-surface-hover);
   }
@@ -189,14 +288,51 @@ html.dark {
   .moh-border {
     border-color: var(--moh-border);
   }
+  .moh-border-subtle {
+    border-color: var(--moh-border-subtle);
+  }
+  .moh-border-strong {
+    border-color: var(--moh-border-strong);
+  }
   .moh-text {
     color: var(--moh-text);
   }
   .moh-text-muted {
     color: var(--moh-text-muted);
   }
+  .moh-text-soft {
+    color: var(--moh-text-soft);
+  }
   .moh-frosted {
     background-color: var(--moh-frosted);
+  }
+
+  /* Cohesive “card” + “popover” surfaces */
+  .moh-card {
+    background-color: var(--moh-surface-2);
+    border: 1px solid var(--moh-border-subtle);
+    box-shadow: var(--moh-shadow-1);
+  }
+  html.dark .moh-card {
+    box-shadow: none;
+  }
+  .moh-popover {
+    background-color: var(--moh-surface-3);
+    border: 1px solid var(--moh-border-subtle);
+    box-shadow: var(--moh-shadow-2);
+  }
+  html.dark .moh-popover {
+    box-shadow: none;
+  }
+
+  /* AA-visible focus ring (use on interactive elements) */
+  .moh-focus:focus-visible {
+    outline: 2px solid var(--moh-focus-ring);
+    outline-offset: 2px;
+  }
+  .moh-focus-strong:focus-visible {
+    outline: 2px solid var(--moh-focus-ring-strong);
+    outline-offset: 2px;
   }
 
   .moh-typing-bar {

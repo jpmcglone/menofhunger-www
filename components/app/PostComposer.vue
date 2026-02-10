@@ -3,9 +3,9 @@
   <div
     :class="[
       'pb-4',
-      omitAvatar ? 'pr-4' : 'px-4',
+      omitAvatar ? 'pr-[var(--moh-gutter-x)]' : 'moh-gutter-x',
       inReplyThread ? 'pt-2' : 'pt-4',
-      showDivider ? 'border-b border-gray-200 dark:border-zinc-800' : ''
+      showDivider ? 'border-b moh-border' : ''
     ]"
   >
     <div v-if="isAuthed" :class="omitAvatar ? 'flex flex-col gap-2' : 'grid grid-cols-[2.5rem_minmax(0,1fr)] gap-x-3 items-start'">
@@ -87,7 +87,7 @@
           <div class="relative">
             <div
               ref="composerMirrorEl"
-              class="pointer-events-none absolute inset-0 overflow-x-hidden overflow-y-auto rounded-xl border border-transparent px-3 py-2 text-[16px] leading-6 whitespace-pre-wrap break-words text-gray-900 dark:text-gray-50"
+              class="pointer-events-none absolute inset-0 overflow-x-hidden overflow-y-auto rounded-xl border moh-border-subtle moh-surface-2 px-3 py-2 text-[16px] leading-6 whitespace-pre-wrap break-words moh-text"
               :style="composerTextareaVars"
               aria-hidden="true"
             >
@@ -110,7 +110,7 @@
               rows="3"
               enterkeyhint="enter"
               inputmode="text"
-              class="moh-composer-textarea relative z-10 w-full resize-none overflow-hidden rounded-xl border border-gray-300 bg-transparent px-3 py-2 text-[16px] leading-6 text-transparent caret-gray-900 placeholder:text-gray-500 focus:outline-none dark:border-zinc-700 dark:caret-gray-50 dark:placeholder:text-zinc-500"
+              class="moh-composer-textarea relative z-10 w-full resize-none overflow-hidden rounded-xl border border-transparent bg-transparent px-3 py-2 text-[16px] leading-6 text-transparent caret-[color:var(--moh-text)] placeholder:text-[color:var(--moh-text-muted)] placeholder:opacity-70 focus:outline-none"
               :style="composerTextareaVars"
               :placeholder="composerPlaceholder"
               @input="onComposerInput"
@@ -198,6 +198,7 @@
                   severity="secondary"
                   aria-label="Add media"
                   :disabled="!canAddMoreMedia"
+                  class="moh-focus"
                   v-tooltip.bottom="tinyTooltip(canAddMoreMedia ? 'Add image/GIF' : 'Max 4 attachments')"
                   @click="onClickAddMedia"
                 >
@@ -207,8 +208,9 @@
                 </Button>
                 <Button
                   text
+                  rounded
                   severity="secondary"
-                  class="!rounded-xl"
+                  class="moh-focus"
                   aria-label="Add GIF"
                   :disabled="!canAddMoreMedia"
                   v-tooltip.bottom="tinyTooltip(canAddMoreMedia ? 'Add GIF (Giphy)' : 'Max 4 attachments')"
@@ -232,11 +234,11 @@
             </div>
             <div class="flex items-center gap-2">
             <div
-              class="text-xs tabular-nums"
+              class="moh-meta tabular-nums"
               :class="
                 postCharCount > postMaxLen
                   ? 'text-red-600 dark:text-red-400 font-semibold'
-                  : 'text-gray-500 dark:text-gray-400'
+                  : ''
               "
             >
               {{ postCharCount }}/{{ postMaxLen }}
@@ -275,9 +277,7 @@
     <button
       v-else
       type="button"
-      class="w-full text-left rounded-2xl border px-5 py-5 shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-black/10
-             border-gray-200 bg-white hover:bg-gray-50
-             dark:border-white dark:bg-transparent dark:hover:bg-white/5 dark:focus:ring-white/20"
+      class="w-full text-left rounded-2xl px-5 py-5 transition-colors moh-card hover:opacity-[0.985] active:scale-[0.995] moh-focus"
       @click="goLogin"
     >
       <div class="flex items-center justify-between gap-4">

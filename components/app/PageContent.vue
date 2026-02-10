@@ -25,7 +25,7 @@ const props = withDefaults(
 
 const wrapperClass = computed(() => [
   'w-full',
-  props.gutter === 'standard' ? 'px-4' : '',
+  props.gutter === 'standard' ? 'moh-gutter-x' : '',
   props.top === 'standard' ? 'pt-4' : '',
   // Match prior layout behavior: no extra bottom padding on mobile (viewport is already shortened),
   // light breathing room on sm+.

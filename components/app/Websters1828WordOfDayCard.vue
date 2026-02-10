@@ -1,5 +1,5 @@
 <template>
-  <Card class="border moh-border moh-card-matte !bg-white/95 dark:!bg-zinc-900/80">
+  <Card class="moh-card moh-card-matte !rounded-2xl">
     <template #content>
       <div class="flex items-center justify-between gap-3">
         <div class="flex items-center gap-0.5">
@@ -25,7 +25,7 @@
           <!-- Vertical pill marker -->
           <div class="h-9 w-1.5 rounded-full bg-gray-900 dark:bg-white opacity-20 shrink-0 translate-y-[1px]" aria-hidden="true" />
           <div
-            class="text-3xl font-semibold tracking-tight text-gray-900 dark:text-gray-50"
+            class="text-3xl font-semibold tracking-tight moh-text"
             style="font-family: var(--moh-font-serif);"
           >
             {{ data.word }}
@@ -37,7 +37,7 @@
             :href="data.dictionaryUrl"
             target="_blank"
             rel="noopener noreferrer"
-            class="inline-flex items-center gap-1.5 text-[11px] font-medium text-gray-500 hover:underline underline-offset-2 dark:text-gray-400"
+            class="inline-flex items-center gap-1.5 text-[11px] font-medium moh-text-muted hover:underline underline-offset-2"
           >
             View definition
             <Icon name="tabler:external-link" class="text-[11px] opacity-70" aria-hidden="true" />

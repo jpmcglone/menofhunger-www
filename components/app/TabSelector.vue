@@ -111,7 +111,7 @@ function tabButtonClass(t: TabSelectorTab) {
     'px-3 py-1.5',
     'text-[14px] font-bold tracking-tight leading-none',
     'transition-colors',
-    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/15 dark:focus-visible:ring-white/20',
+    'moh-focus',
     disabled ? 'opacity-55 cursor-not-allowed' : 'cursor-pointer',
     active
       ? highlightReady.value

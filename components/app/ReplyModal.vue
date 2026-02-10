@@ -29,17 +29,17 @@
         >
           <div
             :class="[
-              'relative overflow-hidden rounded-2xl border bg-white moh-card-matte dark:bg-black',
+              'relative overflow-hidden rounded-2xl moh-popover moh-card-matte',
               replyModalBorderClass,
             ]"
           >
             <div class="relative z-10 flex flex-col max-h-[min(90vh,40rem)]">
               <div
-                class="overflow-y-auto overflow-x-hidden flex flex-col px-4 pt-4 pb-4"
+                class="overflow-y-auto overflow-x-hidden flex flex-col moh-gutter-x pt-4 pb-4"
                 @click.capture="onSheetClick"
               >
                 <!-- Parent post you're replying to (same padding as compose: pl-4 aligns with composer content) -->
-                <div class="pt-2 pb-2 pl-4">
+                <div class="pt-2 pb-2 pl-[var(--moh-gutter-x)]">
                   <AppReplyParentPreview :post="parentPost" />
                 </div>
                 <!-- Compose (Replying to @userA, @userB injected via slot above textarea) -->
@@ -140,7 +140,7 @@ const replyModalBorderClass = computed(() => {
   if (v === 'verifiedOnly') return 'moh-thread-verified'
   if (v === 'premiumOnly') return 'moh-thread-premium'
   if (v === 'onlyMe') return 'moh-thread-onlyme'
-  return 'border-gray-200 dark:border-zinc-800'
+  return 'moh-border'
 })
 
 function close() {

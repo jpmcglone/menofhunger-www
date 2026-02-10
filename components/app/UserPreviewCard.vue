@@ -1,7 +1,7 @@
 <template>
-  <div class="overflow-hidden rounded-2xl border bg-white shadow-xl moh-card-matte dark:bg-black dark:border-zinc-800">
+  <div class="overflow-hidden rounded-2xl moh-popover moh-card-matte">
     <div class="relative">
-      <div class="relative aspect-[3/1] w-full bg-gray-200 dark:bg-zinc-900">
+      <div class="relative aspect-[3/1] w-full moh-surface">
         <img
           v-if="user.bannerUrl"
           :src="user.bannerUrl"
@@ -13,18 +13,18 @@
       </div>
 
       <div class="absolute left-4 bottom-0 translate-y-1/2">
-        <div class="rounded-full ring-4 ring-white dark:ring-black">
+        <div class="rounded-full ring-4 ring-[color:var(--moh-surface-3)]">
           <NuxtLink
             v-if="profilePath"
             :to="profilePath"
             :aria-label="`View @${user.username} profile`"
-            class="block"
+            class="block moh-focus rounded-full"
             @click="onNavigate"
           >
             <AppUserAvatar
               :user="user"
               size-class="h-16 w-16"
-              bg-class="bg-gray-200 dark:bg-zinc-800"
+              bg-class="moh-surface"
               :enable-preview="false"
               :presence-scale="0.22"
               :presence-inset-ratio="0.4"
@@ -34,7 +34,7 @@
             v-else
             :user="user"
             size-class="h-16 w-16"
-            bg-class="bg-gray-200 dark:bg-zinc-800"
+            bg-class="moh-surface"
             :enable-preview="false"
             :presence-scale="0.22"
             :presence-inset-ratio="0.4"
@@ -70,13 +70,13 @@
             <NuxtLink
               v-if="profilePath"
               :to="profilePath"
-              class="min-w-0 font-bold text-gray-900 dark:text-gray-50 truncate hover:underline underline-offset-2"
+              class="min-w-0 truncate hover:underline underline-offset-2 font-bold moh-text moh-focus"
               :aria-label="`View @${user.username} profile`"
               @click="onNavigate"
             >
               {{ displayName }}
             </NuxtLink>
-            <div v-else class="min-w-0 font-bold text-gray-900 dark:text-gray-50 truncate">
+            <div v-else class="min-w-0 font-bold moh-text truncate">
               {{ displayName }}
             </div>
             <AppVerifiedBadge
@@ -90,13 +90,13 @@
           <NuxtLink
             v-if="profilePath"
             :to="profilePath"
-            class="mt-0.5 block text-sm text-gray-500 dark:text-gray-400 truncate hover:underline underline-offset-2"
+            class="mt-0.5 block moh-meta truncate hover:underline underline-offset-2 moh-focus"
             :aria-label="`View @${user.username} profile`"
             @click="onNavigate"
           >
             @{{ user.username }}
           </NuxtLink>
-          <div v-else class="mt-0.5 text-sm text-gray-500 dark:text-gray-400 truncate">
+          <div v-else class="mt-0.5 moh-meta truncate">
             @{{ user.username }}
           </div>
         </div>
@@ -116,7 +116,7 @@
 
       <div
         v-if="user.bio"
-        class="mt-3 text-sm whitespace-pre-wrap break-words text-gray-800 dark:text-gray-200 max-h-[4.5rem] overflow-hidden"
+        class="mt-3 moh-body whitespace-pre-wrap break-words max-h-[4.5rem] overflow-hidden"
       >
         {{ user.bio }}
       </div>
