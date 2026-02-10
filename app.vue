@@ -1,6 +1,7 @@
 <template>
   <div>
-    <NuxtLoadingIndicator :color="loadingIndicatorColor" :height="4" />
+    <!-- Keep SSR/client first paint stable: loading bar tint can update after hydration via CSS vars. -->
+    <NuxtLoadingIndicator color="var(--p-primary-color)" :height="4" />
     <NuxtLayout>
       <NuxtPage />
     </NuxtLayout>
@@ -8,8 +9,6 @@
 </template>
 
 <script setup lang="ts">
-import { primaryColor500ForUser } from '~/utils/theme-tint'
-
-const { user } = useAuth()
-const loadingIndicatorColor = computed(() => primaryColor500ForUser(user.value ?? null))
+// Intentionally do not compute loading indicator color from authed user:
+// it creates hydration mismatches when SSR can't know the viewer yet.
 </script>

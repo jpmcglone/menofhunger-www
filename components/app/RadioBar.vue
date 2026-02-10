@@ -56,11 +56,11 @@
       <div :class="['flex items-center gap-1.5 shrink-0', showListenerStack ? 'ml-2 sm:ml-3' : '']">
         <button
           type="button"
-          class="p-0.5 -m-0.5 rounded touch-manipulation"
+          class="moh-tap moh-focus inline-flex h-9 w-9 items-center justify-center rounded-full transition-colors moh-surface-hover"
           :aria-label="isMuted ? 'Unmute radio' : 'Mute radio'"
           @click="toggleMute"
         >
-          <Icon :name="volumeIconName" class="text-[13px] opacity-80" aria-hidden="true" />
+          <Icon :name="volumeIconName" class="text-[18px] opacity-80" aria-hidden="true" />
         </button>
         <input
           v-model.number="volumePercent"
@@ -79,36 +79,26 @@
         aria-label="Loading"
         role="status"
       >
-        <Icon name="tabler:loader" class="opacity-80 animate-spin" aria-hidden="true" />
+        <Icon name="tabler:loader" class="text-[18px] opacity-80 animate-spin" aria-hidden="true" />
       </div>
-      <Button
+      <button
         v-else
+        type="button"
+        class="moh-tap moh-focus inline-flex h-9 w-9 items-center justify-center rounded-full transition-colors moh-surface-hover"
         :aria-label="isPlaying ? 'Pause radio' : 'Play radio'"
-        severity="secondary"
-        rounded
-        text
-        size="small"
-        class="hover:!bg-black/5 dark:!text-white dark:hover:!bg-white/10"
         @click="toggle"
       >
-        <template #icon>
-          <Icon :name="isPlaying ? 'tabler:player-pause' : 'tabler:player-play'" aria-hidden="true" />
-        </template>
-      </Button>
+        <Icon :name="isPlaying ? 'tabler:player-pause' : 'tabler:player-play'" class="text-[18px] opacity-90" aria-hidden="true" />
+      </button>
 
-    <Button
-      aria-label="Close radio"
-      severity="secondary"
-      rounded
-      text
-      size="small"
-      class="hover:!bg-black/5 dark:!text-white dark:hover:!bg-white/10"
-      @click="stop"
-    >
-      <template #icon>
-        <Icon name="tabler:x" aria-hidden="true" />
-      </template>
-    </Button>
+      <button
+        type="button"
+        class="moh-tap moh-focus inline-flex h-9 w-9 items-center justify-center rounded-full transition-colors moh-surface-hover"
+        aria-label="Close radio"
+        @click="stop"
+      >
+        <Icon name="tabler:x" class="text-[18px] opacity-90" aria-hidden="true" />
+      </button>
     </div>
   </div>
 </template>

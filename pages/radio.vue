@@ -53,25 +53,21 @@
                     aria-label="Loading"
                     role="status"
                   >
-                    <Icon name="tabler:loader" class="opacity-80 animate-spin" aria-hidden="true" />
+                    <Icon name="tabler:loader" class="text-[18px] opacity-80 animate-spin" aria-hidden="true" />
                   </div>
-                  <Button
+                  <button
                     v-else
-                    severity="secondary"
-                    rounded
-                    text
-                    size="small"
-                    class="moh-focus"
+                    type="button"
+                    class="moh-tap moh-focus inline-flex h-9 w-9 items-center justify-center rounded-full transition-colors moh-surface-hover"
                     :aria-label="stationId === s.id && isPlaying ? 'Pause' : 'Play'"
                     @click="onPlayPauseClick(s)"
                   >
-                    <template #icon>
-                      <Icon
-                        :name="stationId === s.id && isPlaying ? 'tabler:player-pause' : 'tabler:player-play'"
-                        aria-hidden="true"
-                      />
-                    </template>
-                  </Button>
+                    <Icon
+                      :name="stationId === s.id && isPlaying ? 'tabler:player-pause' : 'tabler:player-play'"
+                      class="text-[18px] opacity-90"
+                      aria-hidden="true"
+                    />
+                  </button>
                 </div>
               </div>
             </div>
@@ -105,19 +101,18 @@
               </div>
 
               <div class="shrink-0 flex items-center gap-1">
-                <Button
-                  severity="secondary"
-                  rounded
-                  text
-                  size="small"
-                  class="moh-focus"
+                <button
+                  type="button"
+                  class="moh-tap moh-focus inline-flex h-9 w-9 items-center justify-center rounded-full transition-colors moh-surface-hover"
                   :aria-label="isPlaying ? 'Pause radio' : 'Play radio'"
                   @click="isPlaying ? pause() : play(currentStation)"
                 >
-                  <template #icon>
-                    <Icon :name="isPlaying ? 'tabler:player-pause' : 'tabler:player-play'" aria-hidden="true" />
-                  </template>
-                </Button>
+                  <Icon
+                    :name="isPlaying ? 'tabler:player-pause' : 'tabler:player-play'"
+                    class="text-[18px] opacity-90"
+                    aria-hidden="true"
+                  />
+                </button>
               </div>
             </div>
 

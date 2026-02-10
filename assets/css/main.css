@@ -25,6 +25,9 @@
 
   /* App-wide gutters (single source of truth for horizontal padding) */
   --moh-gutter-x: 1rem;
+
+  /* Layout sizing */
+  --moh-right-rail-w: 20rem;
 }
 
 @supports (height: 100dvh) {

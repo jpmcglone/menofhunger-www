@@ -230,7 +230,8 @@
             :class="[
               // `min-h-0` is critical so inner scroll containers can actually scroll (flexbox default min-height:auto can block it).
               'min-w-0 min-h-0 flex-1 overflow-x-hidden flex flex-col moh-surface-1 moh-texture',
-              !isRightRailForcedHidden ? 'lg:border-r moh-border' : '',
+              // Right rail appears at a custom breakpoint between md and lg (~962px)
+              !isRightRailForcedHidden ? 'min-[962px]:border-r moh-border' : '',
             ]"
           >
             <div
@@ -295,16 +296,16 @@
             </div>
           </main>
 
-          <!-- Right rail (scroll zone #3). Visible on lg+. -->
+          <!-- Right rail (scroll zone #3). Visible on a custom breakpoint (~962px). -->
           <aside
             :class="[
               // Layout should not add padding; right-rail content owns its gutters.
-              'relative no-scrollbar shrink-0 w-[clamp(20rem,22vw,23.75rem)] h-full moh-texture',
+              'relative no-scrollbar shrink-0 w-[var(--moh-right-rail-w)] h-full moh-texture',
               // Single native scroller: the rail itself scrolls; search floats above the entire layout.
               // IMPORTANT: `min-h-0` is required so the rail can scroll in a flex row.
               'min-h-0',
               anyOverlayOpen ? 'overflow-hidden' : 'overflow-y-auto overscroll-y-contain',
-              isRightRailForcedHidden ? 'hidden' : 'hidden lg:block'
+              isRightRailForcedHidden ? 'hidden' : 'hidden min-[962px]:block'
             ]"
           >
             <!-- Offset the scroller content so it doesn't sit under the floating search bar. -->
@@ -461,14 +462,14 @@
       aria-label="Right rail search"
       :class="[
         // Fixed overlay aligned with the same max-width container as the columns.
-        // Match the right rail breakpoint (right rail is hidden below lg).
-        'hidden lg:block fixed left-0 right-0 top-0 z-40 pointer-events-none',
+        // Match the right rail breakpoint (right rail is hidden below ~962px).
+        'hidden min-[962px]:block fixed left-0 right-0 top-0 z-40 pointer-events-none',
         'transition-opacity duration-200 ease-out',
         isRightRailSearchHidden ? 'opacity-0 pointer-events-none' : 'opacity-100'
       ]"
     >
       <div class="mx-auto w-full max-w-6xl xl:max-w-7xl flex justify-end">
-        <div class="pointer-events-auto w-[clamp(20rem,22vw,23.75rem)] border-b moh-border moh-bg moh-texture">
+        <div class="pointer-events-auto w-[var(--moh-right-rail-w)] border-b moh-border moh-bg moh-texture">
           <div class="moh-gutter-x h-16 flex items-center">
             <IconField iconPosition="left" class="w-full">
               <InputIcon>
@@ -738,12 +739,43 @@ const anyOverlayOpen = computed(() => composerModalOpen.value || (replyModalOpen
 
 useScrollLock(anyOverlayOpen)
 const composerSheetStyle = ref<Record<string, string>>({ left: '0px', right: '0px', width: 'auto' })
-// SSR-safe: assume mobile so server and first client paint match; update after mount to avoid hydration mismatch.
+// SSR-safe: assume mobile so server and first client paint match.
+// IMPORTANT: keep this reactive to viewport changes; if it gets "stuck" false on desktop,
+// the layout will subtract the mobile tab bar height and create a big blank gap at the bottom.
 const isSmUp = ref(false)
+function updateIsSmUp() {
+  if (!import.meta.client || typeof window === 'undefined') return
+  isSmUp.value = window.matchMedia('(min-width: 640px)').matches
+}
+let smMql: MediaQueryList | null = null
+function onSmMqlChange() {
+  updateIsSmUp()
+}
 onMounted(() => {
-  if (import.meta.client && typeof window !== 'undefined') {
-    isSmUp.value = window.matchMedia('(min-width: 640px)').matches
+  updateIsSmUp()
+  if (!import.meta.client || typeof window === 'undefined') return
+
+  // Keep in sync on breakpoint changes (and as a fallback, on resize).
+  try {
+    smMql = window.matchMedia('(min-width: 640px)')
+    if (typeof smMql.addEventListener === 'function') smMql.addEventListener('change', onSmMqlChange)
+    // Safari < 14
+    // eslint-disable-next-line deprecation/deprecation
+    else if (typeof (smMql as any).addListener === 'function') (smMql as any).addListener(onSmMqlChange)
+  } catch {
+    smMql = null
   }
+  window.addEventListener('resize', updateIsSmUp, { passive: true })
+})
+onBeforeUnmount(() => {
+  if (!import.meta.client || typeof window === 'undefined') return
+  window.removeEventListener('resize', updateIsSmUp as any)
+  if (smMql) {
+    if (typeof smMql.removeEventListener === 'function') smMql.removeEventListener('change', onSmMqlChange)
+    // eslint-disable-next-line deprecation/deprecation
+    else if (typeof (smMql as any).removeListener === 'function') (smMql as any).removeListener(onSmMqlChange)
+  }
+  smMql = null
 })
 const mobileBottomBarVisible = computed(() => !isSmUp.value && !anyOverlayOpen.value)
 
@@ -1085,7 +1117,8 @@ onBeforeUnmount(() => {
 
 const lightbox = useImageLightbox()
 
-const showStatusBg = computed(() => route.path === '/status')
+// Status page uses a custom “ops” background only in dark mode.
+const showStatusBg = computed(() => route.path === '/status' && colorMode.value === 'dark')
 
 const { now: easternNow } = useEasternMidnightRollover()
 const dailyQuote = computed(() => {
@@ -1213,13 +1246,27 @@ function onLeftNavClick(to: string, e: MouseEvent) {
 <style>
 .moh-status-tone {
   /* Force an "ops console" palette regardless of color mode. */
-  --moh-bg: #000;
-  --moh-surface: rgba(0, 0, 0, 0.55);
+  --moh-surface-0: #000;
+  --moh-surface-1: rgba(0, 0, 0, 0.55);
+  --moh-surface-2: rgba(0, 0, 0, 0.62);
+  --moh-surface-3: rgba(0, 0, 0, 0.72);
+
+  --moh-bg: var(--moh-surface-0);
+  --moh-surface: var(--moh-surface-1);
   --moh-surface-hover: rgba(255, 255, 255, 0.06);
+
+  --moh-border-subtle: rgba(255, 255, 255, 0.08);
   --moh-border: rgba(255, 255, 255, 0.12);
+  --moh-border-strong: rgba(255, 255, 255, 0.18);
+
   --moh-text: #e7e9ea;
   --moh-text-muted: rgba(231, 233, 234, 0.68);
+  --moh-text-soft: rgba(231, 233, 234, 0.54);
+
   --moh-frosted: rgba(0, 0, 0, 0.55);
+
+  --moh-shadow-1: none;
+  --moh-shadow-2: none;
 }
 
 .moh-status-tone.moh-bg {
