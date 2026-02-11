@@ -54,6 +54,7 @@
         @open-following="goToFollowing"
         @followed="onFollowed"
         @unfollowed="onUnfollowed"
+        @nudge-updated="onNudgeUpdated"
       />
 
       <!-- Pinned post -->
@@ -424,6 +425,14 @@ function onUnfollowed() {
   const s = followSummary.value
   if (!s || s.followerCount === null) return
   followSummaryData.value = { ...s, viewerFollowsUser: false, followerCount: Math.max(0, s.followerCount - 1) }
+}
+
+function onNudgeUpdated(next: import('~/types/api').NudgeState | null) {
+  const s = followSummaryData.value
+  if (!s) return
+  followSummaryData.value = { ...s, nudge: next }
+  // Reconcile with server state (cooldowns / inbound IDs) without a visible flicker.
+  void refreshFollowSummary()
 }
 
 const {

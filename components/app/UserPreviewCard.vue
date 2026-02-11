@@ -11,7 +11,7 @@
           size="small"
           label="Nudge back"
           severity="secondary"
-          class="!rounded-none !border-0"
+          class="!rounded-none !border-0 !text-xs"
           :disabled="nudgeInflight || ignoreInflight"
           @click.stop.prevent="onNudgeBack"
         />
@@ -19,7 +19,7 @@
           size="small"
           type="button"
           severity="secondary"
-          class="!rounded-none !border-0 !px-2"
+          class="!rounded-none !border-0 !px-2 !text-xs"
           aria-label="More nudge actions"
           aria-haspopup="true"
           :disabled="nudgeInflight || ignoreInflight"
@@ -56,6 +56,7 @@
         :label="nudgePrimaryLabel"
         severity="secondary"
         rounded
+        class="!text-xs"
         :disabled="nudgePrimaryDisabled"
         @click.stop.prevent="onNudgePrimary"
       />
@@ -305,7 +306,7 @@ async function onNudgeGotIt() {
   if (!id) return
   ignoreInflight.value = true
   try {
-    await ackNudge(id)
+    await ackNudge(id, { username: user.value.username ?? null })
     nudgeState.value = {
       outboundPending: Boolean(nudgeState.value?.outboundPending),
       inboundPending: false,
@@ -323,7 +324,7 @@ async function onNudgeIgnore() {
   if (!id) return
   ignoreInflight.value = true
   try {
-    await ignoreNudge(id)
+    await ignoreNudge(id, { username: user.value.username ?? null })
     nudgeState.value = {
       outboundPending: Boolean(nudgeState.value?.outboundPending),
       inboundPending: false,
@@ -343,7 +344,7 @@ async function onNudgeBack() {
 
   nudgeInflight.value = true
   try {
-    await markNudgeNudgedBackById(inboundId).catch(() => {})
+    await markNudgeNudgedBackById(inboundId, { username }).catch(() => {})
     const res = await nudgeUser(username)
     nudgeState.value = {
       outboundPending: true,

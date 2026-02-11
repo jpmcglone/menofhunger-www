@@ -133,15 +133,17 @@
             >
               <Button
                 label="Nudge back"
+                size="small"
                 severity="secondary"
-                class="!rounded-none !border-0"
+                class="!rounded-none !border-0 !text-xs"
                 :disabled="nudgeInflight || ignoreInflight"
                 @click="onNudgeBack"
               />
               <Button
                 type="button"
+                size="small"
                 severity="secondary"
-                class="!rounded-none !border-0 !px-2"
+                class="!rounded-none !border-0 !px-2 !text-xs"
                 aria-label="More nudge actions"
                 aria-haspopup="true"
                 :disabled="nudgeInflight || ignoreInflight"
@@ -177,8 +179,10 @@
             <Button
               v-else
               :label="nudgePrimaryLabel"
+              size="small"
               severity="secondary"
               rounded
+              class="!text-xs"
               :disabled="nudgePrimaryDisabled"
               @click="onNudgePrimary"
             />
@@ -269,6 +273,7 @@ const emit = defineEmits<{
   (e: 'unfollowed'): void
   (e: 'openFollowers'): void
   (e: 'openFollowing'): void
+  (e: 'nudge-updated', payload: NudgeState | null): void
 }>()
 
 const { user: profile } = useUserOverlay(computed(() => props.profile ?? null))
@@ -366,13 +371,14 @@ async function onNudgeGotIt() {
   if (!id) return
   ignoreInflight.value = true
   try {
-    await ackNudge(id)
+    await ackNudge(id, { username: profile.value?.username ?? null })
     nudgeState.value = {
       outboundPending: Boolean(nudgeState.value?.outboundPending),
       inboundPending: false,
       inboundNotificationId: null,
       outboundExpiresAt: nudgeState.value?.outboundExpiresAt ?? null,
     }
+    emit('nudge-updated', nudgeState.value)
     pushToast({ title: 'Got it', tone: 'success' })
   } finally {
     ignoreInflight.value = false
@@ -384,13 +390,14 @@ async function onNudgeIgnore() {
   if (!id) return
   ignoreInflight.value = true
   try {
-    await ignoreNudge(id)
+    await ignoreNudge(id, { username: profile.value?.username ?? null })
     nudgeState.value = {
       outboundPending: Boolean(nudgeState.value?.outboundPending),
       inboundPending: false,
       inboundNotificationId: null,
       outboundExpiresAt: nudgeState.value?.outboundExpiresAt ?? null,
     }
+    emit('nudge-updated', nudgeState.value)
     pushToast({ title: 'Ignored', tone: 'success' })
   } finally {
     ignoreInflight.value = false
@@ -405,7 +412,7 @@ async function onNudgeBack() {
   nudgeInflight.value = true
   try {
     // Mark "nudged back" on the inbound notification (best-effort), then send our nudge.
-    await markNudgeNudgedBackById(inboundId).catch(() => {})
+    await markNudgeNudgedBackById(inboundId, { username }).catch(() => {})
     const res = await nudgeUser(username)
     nudgeState.value = {
       outboundPending: true,
@@ -413,6 +420,7 @@ async function onNudgeBack() {
       inboundNotificationId: null,
       outboundExpiresAt: res.nextAllowedAt ?? null,
     }
+    emit('nudge-updated', nudgeState.value)
     pushToast({ title: 'Nudged back', tone: 'success' })
   } finally {
     nudgeInflight.value = false
@@ -432,6 +440,7 @@ async function onNudgePrimary() {
       inboundNotificationId: null,
       outboundExpiresAt: res.nextAllowedAt ?? null,
     }
+    emit('nudge-updated', nudgeState.value)
   } finally {
     nudgeInflight.value = false
   }

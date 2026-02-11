@@ -180,7 +180,7 @@
                     size="small"
                     label="Nudge back"
                     severity="secondary"
-                    class="!rounded-none !border-0"
+                    class="!rounded-none !border-0 !text-xs"
                     :disabled="nudgeInflight || ignoreInflight"
                     @click.stop.prevent="onNudgeBack"
                   />
@@ -188,7 +188,7 @@
                     size="small"
                     type="button"
                     severity="secondary"
-                    class="!rounded-none !border-0"
+                    class="!rounded-none !border-0 !text-xs"
                     :class="canShowNudgeBack ? '!px-2' : ''"
                     aria-label="More nudge actions"
                     aria-haspopup="true"
@@ -363,9 +363,10 @@ onMounted(async () => {
 
 async function onIgnore() {
   const id = notification.value.id
+  const username = notification.value.actor?.username ?? null
   ignoreInflight.value = true
   try {
-    await ignoreNudge(id)
+    await ignoreNudge(id, { username })
     // Update local row state so the highlight clears immediately.
     localReadAt.value = new Date().toISOString()
     nudgeActionState.value = 'ignored'
@@ -377,9 +378,10 @@ async function onIgnore() {
 
 async function onGotIt() {
   const id = notification.value.id
+  const username = notification.value.actor?.username ?? null
   ignoreInflight.value = true
   try {
-    await ackNudge(id)
+    await ackNudge(id, { username })
     localReadAt.value = new Date().toISOString()
     nudgeActionState.value = 'gotit'
     pushToast({ title: 'Got it', tone: 'success' })
@@ -394,7 +396,7 @@ async function onNudgeBack() {
   nudgeInflight.value = true
   try {
     // Persist "you nudged back" on this notification, then send our nudge.
-    await markNudgeNudgedBackById(notification.value.id).catch(() => {})
+    await markNudgeNudgedBackById(notification.value.id, { username }).catch(() => {})
     await nudgeUser(username)
     localReadAt.value = new Date().toISOString()
     nudgeActionState.value = 'nudged'

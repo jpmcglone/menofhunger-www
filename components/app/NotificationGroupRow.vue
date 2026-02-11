@@ -130,7 +130,7 @@
                     size="small"
                     label="Nudge back"
                     severity="secondary"
-                    class="!rounded-none !border-0"
+                    class="!rounded-none !border-0 !text-xs"
                     :disabled="nudgeInflight || ignoreInflight"
                     @click.stop.prevent="onNudgeBack"
                   />
@@ -138,7 +138,7 @@
                     size="small"
                     type="button"
                     severity="secondary"
-                    class="!rounded-none !border-0"
+                    class="!rounded-none !border-0 !text-xs"
                     :class="canShowNudgeBack ? '!px-2' : ''"
                     aria-label="More nudge actions"
                     aria-haspopup="true"
@@ -259,10 +259,11 @@ onMounted(async () => {
 
 async function onIgnore() {
   const actorId = group.value.actors?.[0]?.id ?? null
+  const username = group.value.actors?.[0]?.username ?? null
   if (!actorId) return
   ignoreInflight.value = true
   try {
-    await ignoreNudgesByActor(actorId)
+    await ignoreNudgesByActor(actorId, { username })
     localReadAt.value = new Date().toISOString()
     nudgeActionState.value = 'ignored'
     pushToast({ title: 'Ignored', tone: 'success' })
@@ -273,10 +274,11 @@ async function onIgnore() {
 
 async function onGotIt() {
   const actorId = group.value.actors?.[0]?.id ?? null
+  const username = group.value.actors?.[0]?.username ?? null
   if (!actorId) return
   ignoreInflight.value = true
   try {
-    await markNudgesReadByActor(actorId)
+    await markNudgesReadByActor(actorId, { username })
     localReadAt.value = new Date().toISOString()
     nudgeActionState.value = 'gotit'
     pushToast({ title: 'Got it', tone: 'success' })
@@ -292,7 +294,7 @@ async function onNudgeBack() {
   nudgeInflight.value = true
   try {
     // Persist "you nudged back" for this actor's nudges, then send our nudge.
-    await markNudgesNudgedBackByActor(actorId).catch(() => {})
+    await markNudgesNudgedBackByActor(actorId, { username }).catch(() => {})
     await nudgeUser(username)
     localReadAt.value = new Date().toISOString()
     nudgeActionState.value = 'nudged'
