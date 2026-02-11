@@ -27,7 +27,7 @@
       No notifications yet.
     </div>
     <div v-else class="relative z-0 divide-y divide-gray-200 dark:divide-zinc-800">
-      <template v-for="item in notifications" :key="item.type === 'single' ? item.notification.id : item.group.id">
+      <template v-for="(item, idx) in notifications" :key="item.type === 'single' ? item.notification.id : item.group.id">
         <NuxtLink
           v-if="itemHref(item)"
           :to="itemHref(item)!"
@@ -44,13 +44,29 @@
             @keydown.enter.prevent="() => navigate()"
             @keydown.space.prevent="() => navigate()"
           >
-            <AppNotificationRow v-if="item.type === 'single'" :notification="item.notification" />
-            <AppNotificationGroupRow v-else :group="item.group" />
+            <AppNotificationRow
+              v-if="item.type === 'single'"
+              :notification="item.notification"
+              :nudge-is-topmost="nudgeIsTopmostByIndex[idx] ?? false"
+            />
+            <AppNotificationGroupRow
+              v-else
+              :group="item.group"
+              :nudge-is-topmost="nudgeIsTopmostByIndex[idx] ?? false"
+            />
           </div>
         </NuxtLink>
         <div v-else class="block w-full text-left">
-          <AppNotificationRow v-if="item.type === 'single'" :notification="item.notification" />
-          <AppNotificationGroupRow v-else :group="item.group" />
+          <AppNotificationRow
+            v-if="item.type === 'single'"
+            :notification="item.notification"
+            :nudge-is-topmost="nudgeIsTopmostByIndex[idx] ?? false"
+          />
+          <AppNotificationGroupRow
+            v-else
+            :group="item.group"
+            :nudge-is-topmost="nudgeIsTopmostByIndex[idx] ?? false"
+          />
         </div>
       </template>
 
@@ -100,6 +116,27 @@ const { setNotificationUndeliveredCount, addInterest, removeInterest } = usePres
 const loadingMore = ref(false)
 const markingAllRead = ref(false)
 const nuxtApp = useNuxtApp()
+
+function nudgeActorIdForItem(item: (typeof notifications.value)[number]): string | null {
+  if (item.type === 'single') {
+    if (item.notification.kind !== 'nudge') return null
+    return item.notification.actor?.id ?? null
+  }
+  if (item.group.kind !== 'nudge') return null
+  return item.group.actors?.[0]?.id ?? null
+}
+
+// Only show the "Nudge back" action on the newest nudge row/group per actor.
+const nudgeIsTopmostByIndex = computed(() => {
+  const seen = new Set<string>()
+  return notifications.value.map((item) => {
+    const actorId = nudgeActorIdForItem(item)
+    if (!actorId) return false
+    if (seen.has(actorId)) return false
+    seen.add(actorId)
+    return true
+  })
+})
 
 // Presence: subscribe to notification actors so avatars show online/offline (works after hard refresh).
 const notificationActorIds = computed(() => {

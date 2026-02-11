@@ -162,7 +162,7 @@
                 Got it
               </span>
               <span
-                v-if="notification.ignoredAt || nudgeActionState === 'ignored'"
+                v-else-if="notification.ignoredAt || nudgeActionState === 'ignored'"
                 class="text-sm font-semibold text-gray-600 dark:text-gray-300 whitespace-nowrap"
               >
                 Ignored
@@ -173,13 +173,10 @@
               >
                 Nudged back
               </span>
-              <template v-else-if="!notification.readAt">
-                <div
-                  v-if="canShowNudgeBack"
-                  class="inline-flex overflow-hidden rounded-xl border moh-border"
-                  @click.stop.prevent
-                >
+              <template v-else-if="nudgeIsTopmost && (canShowNudgeBack || !notification.readAt)">
+                <div class="inline-flex overflow-hidden rounded-xl border moh-border" @click.stop.prevent>
                   <Button
+                    v-if="canShowNudgeBack"
                     size="small"
                     label="Nudge back"
                     severity="secondary"
@@ -191,7 +188,8 @@
                     size="small"
                     type="button"
                     severity="secondary"
-                    class="!rounded-none !border-0 !px-2"
+                    class="!rounded-none !border-0"
+                    :class="canShowNudgeBack ? '!px-2' : ''"
                     aria-label="More nudge actions"
                     aria-haspopup="true"
                     :disabled="nudgeInflight || ignoreInflight"
@@ -200,22 +198,7 @@
                     <template #icon>
                       <Icon name="tabler:chevron-down" aria-hidden="true" />
                     </template>
-                  </Button>
-                </div>
-                <div v-else class="inline-flex" @click.stop.prevent>
-                  <Button
-                    size="small"
-                    type="button"
-                    severity="secondary"
-                    rounded
-                    aria-label="Nudge actions"
-                    :disabled="ignoreInflight"
-                    @click.stop.prevent="toggleNudgeMenu"
-                  >
-                    <template #icon>
-                      <Icon name="tabler:chevron-down" aria-hidden="true" />
-                    </template>
-                    <span class="ml-1">Actions</span>
+                    <span v-if="!canShowNudgeBack" class="ml-1">Actions</span>
                   </Button>
                 </div>
                 <Menu v-if="nudgeMenuMounted" ref="nudgeMenuRef" :model="nudgeMenuItems" popup>
@@ -304,12 +287,13 @@ onMounted(() => {
   })
 })
 
-const props = defineProps<{ notification: Notification }>()
+const props = defineProps<{ notification: Notification; nudgeIsTopmost?: boolean }>()
 const localReadAt = ref<string | null>(null)
 const notification = computed<Notification>(() => {
   if (!localReadAt.value) return props.notification
   return { ...props.notification, readAt: localReadAt.value }
 })
+const nudgeIsTopmost = computed(() => props.nudgeIsTopmost !== false)
 
 const { nudgeUser, ignoreNudge, ackNudge, markNudgeNudgedBackById } = useNudge()
 const { apiFetchData } = useApiClient()
