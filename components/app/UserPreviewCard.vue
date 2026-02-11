@@ -1,5 +1,66 @@
 <template>
-  <div class="overflow-hidden rounded-2xl moh-popover moh-card-matte">
+  <div class="relative overflow-hidden rounded-2xl moh-popover moh-card-matte">
+    <!-- Nudge overlay (top-right) -->
+    <div v-if="showNudge" class="absolute top-3 right-3 z-20">
+      <div
+        v-if="nudgeState?.inboundPending"
+        class="inline-flex overflow-hidden rounded-xl border moh-border"
+        @click.stop.prevent
+      >
+        <Button
+          size="small"
+          label="Nudge back"
+          severity="secondary"
+          class="!rounded-none !border-0"
+          :disabled="nudgeInflight || ignoreInflight"
+          @click.stop.prevent="onNudgeBack"
+        />
+        <Button
+          size="small"
+          type="button"
+          severity="secondary"
+          class="!rounded-none !border-0 !px-2"
+          aria-label="More nudge actions"
+          aria-haspopup="true"
+          :disabled="nudgeInflight || ignoreInflight"
+          @click.stop.prevent="toggleNudgeMenu"
+        >
+          <template #icon>
+            <Icon name="tabler:chevron-down" aria-hidden="true" />
+          </template>
+        </Button>
+        <Menu ref="nudgeMenuRef" :model="nudgeMenuItems" popup>
+          <template #item="{ item, props }">
+            <a v-bind="props.action" class="flex items-center gap-2">
+              <Icon v-if="item.iconName" :name="item.iconName" aria-hidden="true" />
+              <span
+                v-bind="props.label"
+                class="flex-1"
+                v-tooltip.bottom="
+                  item.value === 'ignore'
+                    ? tinyTooltip(ignoreNudgeTooltip)
+                    : item.value === 'gotit'
+                      ? tinyTooltip(gotItNudgeTooltip)
+                      : undefined
+                "
+              >
+                {{ item.label }}
+              </span>
+            </a>
+          </template>
+        </Menu>
+      </div>
+      <Button
+        v-else
+        size="small"
+        :label="nudgePrimaryLabel"
+        severity="secondary"
+        rounded
+        :disabled="nudgePrimaryDisabled"
+        @click.stop.prevent="onNudgePrimary"
+      />
+    </div>
+
     <div class="relative">
       <div class="relative aspect-[3/1] w-full moh-surface">
         <img
@@ -164,12 +225,155 @@ import type { UserPreview } from '~/types/api'
 import { useUserOverlay } from '~/composables/useUserOverlay'
 import { formatDateTime, formatListTime } from '~/utils/time-format'
 import { tinyTooltip } from '~/utils/tiny-tooltip'
+import type { MenuItem } from 'primevue/menuitem'
 
 const props = defineProps<{
   user: UserPreview
 }>()
 
 const { user } = useUserOverlay(computed(() => props.user))
+
+const { user: authUser } = useAuth()
+const isAuthed = computed(() => Boolean(authUser.value?.id))
+const isSelf = computed(() => Boolean(authUser.value?.id && user.value.id && authUser.value.id === user.value.id))
+
+const isMutualFollow = computed(() => {
+  const rel = user.value.relationship
+  return Boolean(rel?.viewerFollowsUser && rel?.userFollowsViewer)
+})
+
+const showNudge = computed(() => {
+  if (!isAuthed.value) return false
+  if (isSelf.value) return false
+  if (!user.value.id || !user.value.username) return false
+  return isMutualFollow.value
+})
+
+const nudgeState = ref(user.value.nudge ?? null)
+watch(
+  () => user.value.nudge ?? null,
+  (next) => {
+    nudgeState.value = next ?? null
+  },
+  { immediate: true },
+)
+
+const nudgeInflight = ref(false)
+const ignoreInflight = ref(false)
+const { nudgeUser, ackNudge, ignoreNudge, markNudgeNudgedBackById } = useNudge()
+const { push: pushToast } = useAppToast()
+
+const nudgePrimaryLabel = computed(() => {
+  const s = nudgeState.value
+  if (s?.inboundPending) return 'Nudge back'
+  if (s?.outboundPending) return 'Nudged'
+  return 'Nudge'
+})
+
+const nudgePrimaryDisabled = computed(() => {
+  const s = nudgeState.value
+  if (nudgeInflight.value) return true
+  if (s?.outboundPending && !s?.inboundPending) return true
+  return false
+})
+
+type MenuItemWithIcon = MenuItem & { iconName?: string; value?: 'gotit' | 'ignore' }
+const gotItNudgeTooltip = 'Accepts the nudge. They can nudge you again without you nudging back.'
+const ignoreNudgeTooltip = 'Dismisses it, but they still can’t nudge you again for 24 hours (unless you nudge them back).'
+const nudgeMenuRef = ref<{ toggle: (event: Event) => void } | null>(null)
+const nudgeMenuItems = computed<MenuItemWithIcon[]>(() => [
+  {
+    label: 'Got it',
+    iconName: 'tabler:check',
+    value: 'gotit',
+    command: () => void onNudgeGotIt(),
+  },
+  {
+    label: 'Ignore',
+    iconName: 'tabler:ban',
+    value: 'ignore',
+    command: () => void onNudgeIgnore(),
+  },
+])
+
+function toggleNudgeMenu(event: Event) {
+  nudgeMenuRef.value?.toggle(event)
+}
+
+async function onNudgeGotIt() {
+  const id = nudgeState.value?.inboundNotificationId ?? null
+  if (!id) return
+  ignoreInflight.value = true
+  try {
+    await ackNudge(id)
+    nudgeState.value = {
+      outboundPending: Boolean(nudgeState.value?.outboundPending),
+      inboundPending: false,
+      inboundNotificationId: null,
+      outboundExpiresAt: nudgeState.value?.outboundExpiresAt ?? null,
+    }
+    pushToast({ title: 'Got it', tone: 'success' })
+  } finally {
+    ignoreInflight.value = false
+  }
+}
+
+async function onNudgeIgnore() {
+  const id = nudgeState.value?.inboundNotificationId ?? null
+  if (!id) return
+  ignoreInflight.value = true
+  try {
+    await ignoreNudge(id)
+    nudgeState.value = {
+      outboundPending: Boolean(nudgeState.value?.outboundPending),
+      inboundPending: false,
+      inboundNotificationId: null,
+      outboundExpiresAt: nudgeState.value?.outboundExpiresAt ?? null,
+    }
+    pushToast({ title: 'Ignored', tone: 'success' })
+  } finally {
+    ignoreInflight.value = false
+  }
+}
+
+async function onNudgeBack() {
+  const username = user.value.username ?? null
+  const inboundId = nudgeState.value?.inboundNotificationId ?? null
+  if (!username || !inboundId) return
+
+  nudgeInflight.value = true
+  try {
+    await markNudgeNudgedBackById(inboundId).catch(() => {})
+    const res = await nudgeUser(username)
+    nudgeState.value = {
+      outboundPending: true,
+      inboundPending: false,
+      inboundNotificationId: null,
+      outboundExpiresAt: res.nextAllowedAt ?? null,
+    }
+    pushToast({ title: 'Nudged back', tone: 'success' })
+  } finally {
+    nudgeInflight.value = false
+  }
+}
+
+async function onNudgePrimary() {
+  const username = user.value.username ?? null
+  if (!username) return
+
+  nudgeInflight.value = true
+  try {
+    const res = await nudgeUser(username)
+    nudgeState.value = {
+      outboundPending: true,
+      inboundPending: false,
+      inboundNotificationId: null,
+      outboundExpiresAt: res.nextAllowedAt ?? null,
+    }
+  } finally {
+    nudgeInflight.value = false
+  }
+}
 
 const { addInterest, removeInterest, getPresenceStatus, isPresenceKnown } = usePresence()
 const lastUserId = ref<string | null>(null)
@@ -196,7 +400,6 @@ const presenceStatus = computed(() => {
 })
 const showOnlineNow = computed(() => presenceStatus.value !== 'offline')
 
-const { user: authUser } = useAuth()
 const viewerCanSeeLastOnline = computed(() => {
   const status = authUser.value?.verifiedStatus ?? 'none'
   return Boolean(authUser.value?.siteAdmin) || (typeof status === 'string' && status !== 'none')

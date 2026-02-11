@@ -32,10 +32,21 @@
           v-if="itemHref(item)"
           :to="itemHref(item)!"
           :prefetch="false"
-          class="block w-full text-left hover:bg-gray-50 dark:hover:bg-zinc-900 cursor-pointer"
+          custom
+          v-slot="{ navigate, href }"
         >
-          <AppNotificationRow v-if="item.type === 'single'" :notification="item.notification" />
-          <AppNotificationGroupRow v-else :group="item.group" />
+          <div
+            :data-href="href"
+            role="link"
+            tabindex="0"
+            class="block w-full text-left hover:bg-gray-50 dark:hover:bg-zinc-900 cursor-pointer"
+            @click="navigate"
+            @keydown.enter.prevent="() => navigate()"
+            @keydown.space.prevent="() => navigate()"
+          >
+            <AppNotificationRow v-if="item.type === 'single'" :notification="item.notification" />
+            <AppNotificationGroupRow v-else :group="item.group" />
+          </div>
         </NuxtLink>
         <div v-else class="block w-full text-left">
           <AppNotificationRow v-if="item.type === 'single'" :notification="item.notification" />

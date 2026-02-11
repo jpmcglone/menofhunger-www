@@ -31,8 +31,8 @@
           <div class="flex shrink-0 -space-x-2">
             <template v-for="a in group.actors.slice(0, 5)" :key="a.id">
               <NuxtLink
-                v-if="a.id"
-                :to="a.username ? `/u/${a.username}` : `/u/id/${a.id}`"
+                v-if="a.id && a.username"
+                :to="`/u/${a.username}`"
                 class="block"
                 @click.stop
               >
@@ -41,6 +41,11 @@
                   size-class="h-10 w-10"
                 />
               </NuxtLink>
+              <AppUserAvatar
+                v-else-if="a.id"
+                :user="{ id: a.id, username: a.username, name: a.name, avatarUrl: a.avatarUrl }"
+                size-class="h-10 w-10"
+              />
             </template>
             <div
               v-if="group.actorCount > 5"
@@ -93,8 +98,107 @@
               </template>
             </div>
           </div>
-          <div class="shrink-0 text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
-            {{ formatWhen(group.createdAt) }}
+          <div class="shrink-0 flex items-start gap-3">
+            <!-- Smart actions (nudge groups) -->
+            <div
+              v-if="group.kind === 'nudge'"
+              class="max-w-[14rem] flex flex-wrap items-center justify-end gap-2"
+              @click.stop.prevent
+            >
+              <span
+                v-if="nudgeActionState === 'gotit'"
+                class="text-sm font-semibold text-gray-600 dark:text-gray-300 whitespace-nowrap"
+              >
+                Got it
+              </span>
+              <span
+                v-if="nudgeActionState === 'ignored'"
+                class="text-sm font-semibold text-gray-600 dark:text-gray-300 whitespace-nowrap"
+              >
+                Ignored
+              </span>
+              <span
+                v-else-if="nudgeActionState === 'nudged'"
+                class="text-sm font-semibold text-gray-600 dark:text-gray-300 whitespace-nowrap"
+              >
+                Nudged back
+              </span>
+              <template v-else-if="!group.readAt">
+                <div
+                  v-if="canShowNudgeBack"
+                  class="inline-flex overflow-hidden rounded-xl border moh-border"
+                  @click.stop.prevent
+                >
+                  <Button
+                    size="small"
+                    label="Nudge back"
+                    severity="secondary"
+                    class="!rounded-none !border-0"
+                    :disabled="nudgeInflight || ignoreInflight"
+                    @click.stop.prevent="onNudgeBack"
+                  />
+                  <Button
+                    size="small"
+                    type="button"
+                    severity="secondary"
+                    class="!rounded-none !border-0 !px-2"
+                    aria-label="More nudge actions"
+                    aria-haspopup="true"
+                    :disabled="nudgeInflight || ignoreInflight"
+                    @click.stop.prevent="toggleNudgeMenu"
+                  >
+                    <template #icon>
+                      <Icon name="tabler:chevron-down" aria-hidden="true" />
+                    </template>
+                  </Button>
+                </div>
+                <div v-else class="inline-flex" @click.stop.prevent>
+                  <Button
+                    size="small"
+                    type="button"
+                    severity="secondary"
+                    rounded
+                    aria-label="Nudge actions"
+                    :disabled="ignoreInflight"
+                    @click.stop.prevent="toggleNudgeMenu"
+                  >
+                    <template #icon>
+                      <Icon name="tabler:chevron-down" aria-hidden="true" />
+                    </template>
+                    <span class="ml-1">Actions</span>
+                  </Button>
+                </div>
+                <Menu v-if="nudgeMenuMounted" ref="nudgeMenuRef" :model="nudgeMenuItems" popup>
+                  <template #item="{ item, props }">
+                    <a v-bind="props.action" class="flex items-center gap-2">
+                      <Icon v-if="item.iconName" :name="item.iconName" aria-hidden="true" />
+                      <span
+                        v-bind="props.label"
+                        class="flex-1"
+                      v-tooltip.bottom="
+                        item.value === 'ignore'
+                          ? tinyTooltip(ignoreNudgeTooltip)
+                          : item.value === 'gotit'
+                            ? tinyTooltip(gotItNudgeTooltip)
+                            : undefined
+                      "
+                      >
+                        {{ item.label }}
+                      </span>
+                    </a>
+                  </template>
+                </Menu>
+              </template>
+            </div>
+
+            <div class="shrink-0 text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
+              <ClientOnly>
+                <template #fallback>
+                  <span aria-hidden="true">&nbsp;</span>
+                </template>
+                {{ formatWhen(group.createdAt) }}
+              </ClientOnly>
+            </div>
           </div>
         </div>
       </div>
@@ -103,7 +207,9 @@
 </template>
 
 <script setup lang="ts">
-import type { NotificationActor, NotificationGroup } from '~/types/api'
+import type { FollowSummaryResponse, NotificationActor, NotificationGroup } from '~/types/api'
+import { tinyTooltip } from '~/utils/tiny-tooltip'
+import type { MenuItem } from 'primevue/menuitem'
 
 const { formatWhen } = useNotifications()
 
@@ -117,6 +223,99 @@ onMounted(() => {
 const props = defineProps<{
   group: NotificationGroup
 }>()
+
+const localReadAt = ref<string | null>(null)
+const group = computed<NotificationGroup>(() => {
+  if (!localReadAt.value) return props.group
+  return { ...props.group, readAt: localReadAt.value }
+})
+
+const { nudgeUser, ignoreNudgesByActor, markNudgesNudgedBackByActor, markNudgesReadByActor } = useNudge()
+const { push: pushToast } = useAppToast()
+const { apiFetchData } = useApiClient()
+
+const nudgeActionState = ref<'idle' | 'nudged' | 'ignored' | 'gotit'>('idle')
+const gotItNudgeTooltip = 'Accepts the nudge. They can nudge you again without you nudging back.'
+const ignoreNudgeTooltip = 'Dismisses it, but they still can’t nudge you again for 24 hours (unless you nudge them back).'
+const canShowNudgeBack = ref(false)
+const nudgeInflight = ref(false)
+const ignoreInflight = ref(false)
+
+type MenuItemWithIcon = MenuItem & { iconName?: string; value?: 'gotit' | 'ignore' }
+const nudgeMenuMounted = ref(false)
+const nudgeMenuRef = ref<{ toggle: (event: Event) => void } | null>(null)
+const nudgeMenuItems = computed<MenuItemWithIcon[]>(() => [
+  { label: 'Got it', iconName: 'tabler:check', value: 'gotit', command: () => void onGotIt() },
+  { label: 'Ignore', iconName: 'tabler:ban', value: 'ignore', command: () => void onIgnore() },
+])
+
+async function toggleNudgeMenu(event: Event) {
+  nudgeMenuMounted.value = true
+  await nextTick()
+  nudgeMenuRef.value?.toggle(event)
+}
+
+onMounted(async () => {
+  if (group.value.kind !== 'nudge') return
+  const username = group.value.actors?.[0]?.username ?? null
+  if (!username) return
+  try {
+    const rel = await apiFetchData<FollowSummaryResponse>(
+      `/follows/summary/${encodeURIComponent(username)}`,
+      { method: 'GET' },
+    )
+    const mutual = Boolean(rel?.viewerFollowsUser && rel?.userFollowsViewer)
+    const canNudgeNow = mutual && !rel?.nudge?.outboundPending
+    canShowNudgeBack.value = Boolean(canNudgeNow)
+  } catch {
+    canShowNudgeBack.value = false
+  }
+})
+
+async function onIgnore() {
+  const actorId = group.value.actors?.[0]?.id ?? null
+  if (!actorId) return
+  ignoreInflight.value = true
+  try {
+    await ignoreNudgesByActor(actorId)
+    localReadAt.value = new Date().toISOString()
+    nudgeActionState.value = 'ignored'
+    pushToast({ title: 'Ignored', tone: 'success' })
+  } finally {
+    ignoreInflight.value = false
+  }
+}
+
+async function onGotIt() {
+  const actorId = group.value.actors?.[0]?.id ?? null
+  if (!actorId) return
+  ignoreInflight.value = true
+  try {
+    await markNudgesReadByActor(actorId)
+    localReadAt.value = new Date().toISOString()
+    nudgeActionState.value = 'gotit'
+    pushToast({ title: 'Got it', tone: 'success' })
+  } finally {
+    ignoreInflight.value = false
+  }
+}
+
+async function onNudgeBack() {
+  const actorId = group.value.actors?.[0]?.id ?? null
+  const username = group.value.actors?.[0]?.username ?? null
+  if (!actorId || !username) return
+  nudgeInflight.value = true
+  try {
+    // Persist "you nudged back" for this actor's nudges, then send our nudge.
+    await markNudgesNudgedBackByActor(actorId).catch(() => {})
+    await nudgeUser(username)
+    localReadAt.value = new Date().toISOString()
+    nudgeActionState.value = 'nudged'
+    pushToast({ title: 'Nudged back', tone: 'success' })
+  } finally {
+    nudgeInflight.value = false
+  }
+}
 
 function actorTierIconBgClass(g: NotificationGroup): string {
   const actors = g.actors ?? []
@@ -171,6 +370,8 @@ function titleSuffix(g: NotificationGroup): string {
       return 'followed you'
     case 'followed_post':
       return `shared ${g.count} new posts`
+    case 'nudge':
+      return `nudged you ×${g.count}`
     default:
       return 'Notification'
   }
@@ -186,6 +387,8 @@ function contextLabel(g: NotificationGroup): string {
       return 'New followers'
     case 'followed_post':
       return 'New posts'
+    case 'nudge':
+      return 'Nudge'
     default:
       return ''
   }
@@ -199,11 +402,11 @@ function groupIconName(g: NotificationGroup): string {
       return 'tabler:user-plus'
     case 'followed_post':
       return 'tabler:file-text'
+    case 'nudge':
+      return 'tabler:hand-click'
     default:
       return 'tabler:bell'
   }
 }
-
-const group = computed(() => props.group)
 </script>
 

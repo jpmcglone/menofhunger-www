@@ -21,17 +21,30 @@ export function useNotifications() {
   const usersStore = useUsersStore()
   const { addNotificationsCallback, removeNotificationsCallback } = usePresence()
 
-  const notifications = ref<NotificationFeedItem[]>([])
-  const nextCursor = ref<string | null>(null)
-  const loading = ref(false)
+  const stateKey = `notifications:${me.value?.id ?? 'anon'}`
+  const notifications = useState<NotificationFeedItem[]>(`${stateKey}:items`, () => [])
+  const nextCursor = useState<string | null>(`${stateKey}:nextCursor`, () => null)
+  const loading = useState<boolean>(`${stateKey}:loading`, () => false)
+  const pendingRefresh = useState<boolean>(`${stateKey}:pendingRefresh`, () => false)
   const isNotificationsPage = computed(() => route.path === '/notifications')
 
   // Realtime: the API now returns grouped feed items, so we refetch when relevant events arrive.
   const notificationsCb: NotificationsCallback = {
+    onUpdated: () => {
+      if (!isNotificationsPage.value) return
+      if (loading.value) {
+        pendingRefresh.value = true
+        return
+      }
+      void fetchList({ forceRefresh: true })
+    },
     onNew: (payload) => {
       if (!payload?.notification?.id) return
       if (!isNotificationsPage.value) return
-      if (loading.value) return
+      if (loading.value) {
+        pendingRefresh.value = true
+        return
+      }
       // Best-effort: refresh to keep grouping consistent (also covers boost upserts that don't change undeliveredCount).
       void fetchList({ forceRefresh: true })
     },
@@ -39,7 +52,10 @@ export function useNotifications() {
       const ids = Array.isArray(payload?.notificationIds) ? payload.notificationIds : []
       if (ids.length === 0) return
       if (!isNotificationsPage.value) return
-      if (loading.value) return
+      if (loading.value) {
+        pendingRefresh.value = true
+        return
+      }
       void fetchList({ forceRefresh: true })
     },
   }
@@ -71,6 +87,10 @@ export function useNotifications() {
       return pagination
     } finally {
       loading.value = false
+      if (pendingRefresh.value && isNotificationsPage.value) {
+        pendingRefresh.value = false
+        void fetchList({ forceRefresh: true })
+      }
     }
   }
 
@@ -174,6 +194,8 @@ export function useNotifications() {
         return 'shared a post'
       case 'mention':
         return 'mentioned you'
+      case 'nudge':
+        return 'nudged you'
       case 'generic':
         return 'Notification'
       default:
@@ -194,6 +216,8 @@ export function useNotifications() {
         return 'tabler:file-text'
       case 'mention':
         return 'tabler:at'
+      case 'nudge':
+        return 'tabler:hand-click'
       case 'generic':
         return 'tabler:bell'
       default:
@@ -218,6 +242,8 @@ export function useNotifications() {
         return 'New post'
       case 'mention':
         return 'Mention'
+      case 'nudge':
+        return 'Nudge'
       default:
         return ''
     }
@@ -240,7 +266,6 @@ export function useNotifications() {
   function rowHref(n: Notification): string | null {
     if (n.subjectPostId) return `/p/${n.subjectPostId}`
     if (n.subjectUserId && n.actor?.username) return `/u/${n.actor.username}`
-    if (n.subjectUserId) return `/u/id/${n.subjectUserId}`
     return null
   }
 
@@ -248,12 +273,9 @@ export function useNotifications() {
     if (g.kind === 'followed_post') {
       const first = g.actors?.[0] ?? null
       if (first?.username) return `/u/${first.username}`
-      if (first?.id) return `/u/id/${first.id}`
-      if (g.subjectUserId) return `/u/id/${g.subjectUserId}`
       return null
     }
     if (g.subjectPostId) return `/p/${g.subjectPostId}`
-    if (g.subjectUserId) return `/u/id/${g.subjectUserId}`
     return null
   }
 

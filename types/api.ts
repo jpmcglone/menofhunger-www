@@ -154,6 +154,7 @@ export type UserPreview = {
   bannerUrl: string | null
   lastOnlineAt: string | null
   relationship: FollowRelationship
+  nudge: NudgeState | null
   followerCount: number | null
   followingCount: number | null
 }
@@ -489,10 +490,18 @@ export type FollowRelationship = {
   userFollowsViewer: boolean
 }
 
+export type NudgeState = {
+  outboundPending: boolean
+  inboundPending: boolean
+  inboundNotificationId: string | null
+  outboundExpiresAt: string | null
+}
+
 export type FollowSummaryResponse = FollowRelationship & {
   canView: boolean
   followerCount: number | null
   followingCount: number | null
+  nudge: NudgeState | null
 }
 
 export type FollowListUser = {
@@ -595,9 +604,9 @@ export type GetTopicPostsData = FeedPost[]
 /** Data type for GET /hashtags/trending (array); pagination in envelope. */
 export type GetTrendingHashtagsData = HashtagResult[]
 
-export type NotificationKind = 'comment' | 'boost' | 'follow' | 'followed_post' | 'mention' | 'generic'
+export type NotificationKind = 'comment' | 'boost' | 'follow' | 'followed_post' | 'mention' | 'nudge' | 'generic'
 
-export type NotificationGroupKind = 'comment' | 'boost' | 'follow' | 'followed_post'
+export type NotificationGroupKind = 'comment' | 'boost' | 'follow' | 'followed_post' | 'nudge'
 
 export type NotificationActor = {
   id: string
@@ -622,6 +631,8 @@ export type Notification = {
   kind: NotificationKind
   deliveredAt: string | null
   readAt: string | null
+  ignoredAt: string | null
+  nudgedBackAt: string | null
   actor: NotificationActor | null
   /** The post that caused this notification (e.g. a reply or mention post). */
   actorPostId: string | null

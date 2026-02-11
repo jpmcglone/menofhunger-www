@@ -126,28 +126,49 @@
                 tag="div"
                 class="relative flex flex-wrap gap-2"
               >
-                <NuxtLink
-                  v-for="u in listeners"
-                  :key="u.id"
-                  :to="listenerProfileTo(u)"
-                  class="relative block shrink-0 cursor-pointer moh-focus rounded-full"
-                  v-tooltip.bottom="tinyTooltip(u.username ? `@${u.username}` : 'User')"
-                >
-                  <AppUserAvatar
-                    :user="{ id: u.id, username: u.username, name: null, avatarUrl: u.avatarUrl }"
-                    size-class="h-9 w-9"
-                    bg-class="moh-surface"
-                  />
-                  <Transition name="moh-avatar-pause-fade">
-                    <div
-                      v-if="u.paused"
-                      class="absolute inset-0 rounded-full bg-black/30 flex items-center justify-center moh-avatar-pause"
-                      aria-hidden="true"
-                    >
-                      <Icon name="tabler:player-pause" aria-hidden="true" />
-                    </div>
-                  </Transition>
-                </NuxtLink>
+                <template v-for="u in listeners" :key="u.id">
+                  <NuxtLink
+                    v-if="u.username"
+                    :to="listenerProfileTo(u.username!)"
+                    class="relative block shrink-0 cursor-pointer moh-focus rounded-full"
+                    v-tooltip.bottom="tinyTooltip(`@${u.username}`)"
+                  >
+                    <AppUserAvatar
+                      :user="{ id: u.id, username: u.username, name: null, avatarUrl: u.avatarUrl }"
+                      size-class="h-9 w-9"
+                      bg-class="moh-surface"
+                    />
+                    <Transition name="moh-avatar-pause-fade">
+                      <div
+                        v-if="u.paused"
+                        class="absolute inset-0 rounded-full bg-black/30 flex items-center justify-center moh-avatar-pause"
+                        aria-hidden="true"
+                      >
+                        <Icon name="tabler:player-pause" aria-hidden="true" />
+                      </div>
+                    </Transition>
+                  </NuxtLink>
+                  <div
+                    v-else
+                    class="relative block shrink-0 rounded-full"
+                    v-tooltip.bottom="tinyTooltip('User')"
+                  >
+                    <AppUserAvatar
+                      :user="{ id: u.id, username: u.username, name: null, avatarUrl: u.avatarUrl }"
+                      size-class="h-9 w-9"
+                      bg-class="moh-surface"
+                    />
+                    <Transition name="moh-avatar-pause-fade">
+                      <div
+                        v-if="u.paused"
+                        class="absolute inset-0 rounded-full bg-black/30 flex items-center justify-center moh-avatar-pause"
+                        aria-hidden="true"
+                      >
+                        <Icon name="tabler:player-pause" aria-hidden="true" />
+                      </div>
+                    </Transition>
+                  </div>
+                </template>
               </TransitionGroup>
             </div>
           </div>
@@ -170,8 +191,8 @@
 import type { RadioStation } from '~/types/api'
 import { tinyTooltip } from '~/utils/tiny-tooltip'
 
-function listenerProfileTo(u: { id: string; username?: string | null }): string {
-  return u.username ? `/u/${encodeURIComponent(u.username)}` : `/u/id/${u.id}`
+function listenerProfileTo(username: string): string {
+  return `/u/${encodeURIComponent(username)}`
 }
 
 definePageMeta({

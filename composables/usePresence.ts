@@ -51,7 +51,14 @@ export type MessagesCallback = {
   onRead?: (payload: { conversationId?: string; userId?: string; lastReadAt?: string }) => void
 }
 
+export type WsNotificationsUpdatedPayload = { undeliveredCount?: number }
+
 export type NotificationsCallback = {
+  /**
+   * Fired when badge/undelivered count changes (e.g. new notification, mark delivered/read/ignored).
+   * Useful to refresh the notifications feed while user is on-screen.
+   */
+  onUpdated?: (payload: WsNotificationsUpdatedPayload) => void
   onNew?: (payload: WsNotificationsNewPayload) => void
   onDeleted?: (payload: WsNotificationsDeletedPayload) => void
 }
@@ -458,6 +465,10 @@ export function usePresence() {
       const newCount = Math.max(0, Math.floor(raw))
       notificationUndeliveredCount.value = newCount
       previousNotificationCountRef.value = newCount
+      if (!notificationsCallbacks.value.size) return
+      for (const cb of notificationsCallbacks.value) {
+        cb.onUpdated?.(data)
+      }
     })
 
     socket.on('notifications:new', (data: WsNotificationsNewPayload) => {

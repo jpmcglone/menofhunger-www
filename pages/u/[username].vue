@@ -44,6 +44,7 @@
         :relationship-tag-label="relationshipTagLabel"
         :is-self="isSelf"
         :follow-relationship="followRelationship"
+        :nudge="followSummary?.nudge ?? null"
         :show-follow-counts="showFollowCounts"
         :follower-count="followSummary?.followerCount ?? 0"
         :following-count="followSummary?.followingCount ?? 0"
@@ -377,6 +378,41 @@ const showFollowCounts = computed(() => {
   if (!followSummary.value) return false
   return isSelf.value || followSummary.value.canView
 })
+
+// Realtime nudges: if you are already viewing this user's profile and they nudge you,
+// update the local followSummary.nudge immediately so the header shows "Nudge back",
+// then refresh from the API to keep outbound/inbound state consistent.
+const { addNotificationsCallback, removeNotificationsCallback } = usePresence()
+const notificationsCb = {
+  onNew: (payload: any) => {
+    const n = payload?.notification ?? null
+    if (!n || n.kind !== 'nudge') return
+    const actorUsername = (n.actor?.username ?? '').trim().toLowerCase()
+    if (!actorUsername) return
+    if (actorUsername !== normalizedUsername.value) return
+    if (isSelf.value) return
+
+    const s = followSummaryData.value
+    if (s) {
+      const prev = s.nudge ?? { outboundPending: false, inboundPending: false, inboundNotificationId: null, outboundExpiresAt: null }
+      followSummaryData.value = {
+        ...s,
+        nudge: {
+          ...prev,
+          inboundPending: true,
+          inboundNotificationId: n.id ?? prev.inboundNotificationId ?? null,
+        },
+      }
+    }
+
+    void refreshFollowSummary()
+  },
+} as const
+
+if (import.meta.client) {
+  onMounted(() => addNotificationsCallback(notificationsCb as any))
+  onBeforeUnmount(() => removeNotificationsCallback(notificationsCb as any))
+}
 
 function onFollowed() {
   const s = followSummary.value

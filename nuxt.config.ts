@@ -41,7 +41,11 @@ export default defineNuxtConfig({
       // Facebook App ID for og:fb:app_id (fixes Sharing Debugger warning; improves link previews).
       facebookAppId: process.env.NUXT_PUBLIC_FACEBOOK_APP_ID || '',
       adsense: {
-        enabled: String(process.env.NUXT_PUBLIC_ADSENSE_ENABLED || '').trim() === 'true',
+        // Keep ads off in local dev to avoid noisy browser "Issues" coming from ad iframes
+        // (e.g. Quirks Mode documents injected by the provider). Use ADTEST=true if you need to test.
+        enabled:
+          String(process.env.NUXT_PUBLIC_ADSENSE_ENABLED || '').trim() === 'true' &&
+          (process.env.NODE_ENV === 'production' || String(process.env.NUXT_PUBLIC_ADSENSE_ADTEST || '').trim() === 'true'),
         // Example: ca-pub-1234567890123456
         client: String(process.env.NUXT_PUBLIC_ADSENSE_CLIENT || '').trim(),
         // Example: 1234567890 (numeric string)
@@ -70,6 +74,7 @@ export default defineNuxtConfig({
         { name: 'format-detection', content: 'telephone=no' },
         // AdSense site verification (safe; does not render ads by itself).
         ...(String(process.env.NUXT_PUBLIC_ADSENSE_ENABLED || '').trim() === 'true' &&
+        (process.env.NODE_ENV === 'production' || String(process.env.NUXT_PUBLIC_ADSENSE_ADTEST || '').trim() === 'true') &&
         /^ca-pub-\d+$/.test(String(process.env.NUXT_PUBLIC_ADSENSE_CLIENT || '').trim())
           ? [
               {
@@ -90,6 +95,7 @@ export default defineNuxtConfig({
       // AdSense loader in initial HTML (only when enabled + client looks real).
       script:
         String(process.env.NUXT_PUBLIC_ADSENSE_ENABLED || '').trim() === 'true' &&
+        (process.env.NODE_ENV === 'production' || String(process.env.NUXT_PUBLIC_ADSENSE_ADTEST || '').trim() === 'true') &&
         /^ca-pub-\d+$/.test(String(process.env.NUXT_PUBLIC_ADSENSE_CLIENT || '').trim())
         ? [
             {

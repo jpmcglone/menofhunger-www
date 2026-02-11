@@ -25,9 +25,9 @@
           </div>
         </div>
         <div v-else-if="showServerErrorCta" class="mt-4 flex flex-wrap items-center gap-3">
-          <NuxtLink to="/status" class="text-sm font-medium moh-text underline underline-offset-2">
+          <RouterLink to="/status" class="text-sm font-medium moh-text underline underline-offset-2">
             Check status
-          </NuxtLink>
+          </RouterLink>
           <button
             type="button"
             class="text-sm font-medium moh-text-muted hover:opacity-90 underline underline-offset-2"
@@ -72,14 +72,14 @@
               <span v-if="replyingToDisplay.length">
                 Replying to
                 <template v-for="(p, i) in replyingToDisplay" :key="p.id">
-                  <NuxtLink
+                  <RouterLink
                     :to="`/u/${encodeURIComponent(p.username)}`"
                     class="font-semibold hover:underline underline-offset-2 moh-text"
                     :class="participantLinkClass(p)"
                     :aria-label="`View @${p.username} profile`"
                   >
                     @{{ p.username }}
-                  </NuxtLink>
+                  </RouterLink>
                   <span v-if="i < replyingToDisplay.length - 1" class="moh-text-muted">, </span>
                 </template>
               </span>

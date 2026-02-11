@@ -125,6 +125,64 @@
             @followed="emit('followed')"
             @unfollowed="emit('unfollowed')"
           />
+          <div v-if="showNudge" class="flex items-center gap-2">
+            <!-- Nudge back split-button (primary action + caret menu) -->
+            <div
+              v-if="nudgeState?.inboundPending"
+              class="inline-flex overflow-hidden rounded-xl border moh-border"
+            >
+              <Button
+                label="Nudge back"
+                severity="secondary"
+                class="!rounded-none !border-0"
+                :disabled="nudgeInflight || ignoreInflight"
+                @click="onNudgeBack"
+              />
+              <Button
+                type="button"
+                severity="secondary"
+                class="!rounded-none !border-0 !px-2"
+                aria-label="More nudge actions"
+                aria-haspopup="true"
+                :disabled="nudgeInflight || ignoreInflight"
+                @click="toggleNudgeMenu"
+              >
+                <template #icon>
+                  <Icon name="tabler:chevron-down" aria-hidden="true" />
+                </template>
+              </Button>
+              <Menu v-if="nudgeMenuMounted" ref="nudgeMenuRef" :model="nudgeMenuItems" popup>
+                <template #item="{ item, props }">
+                  <a v-bind="props.action" class="flex items-center gap-2">
+                    <Icon v-if="item.iconName" :name="item.iconName" aria-hidden="true" />
+                    <span
+                      v-bind="props.label"
+                      class="flex-1"
+                      v-tooltip.bottom="
+                        item.value === 'ignore'
+                          ? tinyTooltip(ignoreNudgeTooltip)
+                          : item.value === 'gotit'
+                            ? tinyTooltip(gotItNudgeTooltip)
+                            : undefined
+                      "
+                    >
+                      {{ item.label }}
+                    </span>
+                  </a>
+                </template>
+              </Menu>
+            </div>
+
+            <!-- Default nudge button (no inbound pending) -->
+            <Button
+              v-else
+              :label="nudgePrimaryLabel"
+              severity="secondary"
+              rounded
+              :disabled="nudgePrimaryDisabled"
+              @click="onNudgePrimary"
+            />
+          </div>
           <Button
             v-if="canOpenMenu"
             type="button"
@@ -181,7 +239,7 @@
 
 <script setup lang="ts">
 import AppImg from '~/components/app/AppImg.vue'
-import type { FollowRelationship, PublicProfile } from '~/types/api'
+import type { FollowRelationship, NudgeState, PublicProfile } from '~/types/api'
 import { formatDateTime, formatListTime } from '~/utils/time-format'
 import { tinyTooltip } from '~/utils/tiny-tooltip'
 import type { MenuItem } from 'primevue/menuitem'
@@ -198,6 +256,7 @@ const props = defineProps<{
   relationshipTagLabel: string | null
   isSelf: boolean
   followRelationship: FollowRelationship | null
+  nudge: NudgeState | null
   showFollowCounts: boolean
   followerCount: number | null
   followingCount: number | null
@@ -219,6 +278,7 @@ const profileBannerUrl = computed(() => props.profileBannerUrl ?? null)
 const relationshipTagLabel = computed(() => props.relationshipTagLabel ?? null)
 const isSelf = computed(() => Boolean(props.isSelf))
 const followRelationship = computed(() => props.followRelationship ?? null)
+const nudgeFromProps = computed(() => props.nudge ?? null)
 const showFollowCounts = computed(() => Boolean(props.showFollowCounts))
 const followerCount = computed(() => props.followerCount ?? null)
 const followingCount = computed(() => props.followingCount ?? null)
@@ -232,6 +292,151 @@ const followerLabel = computed(() => (followerCountN.value === 1 ? 'Follower' : 
 const { user: authUser } = useAuth()
 const isAuthed = computed(() => Boolean(authUser.value?.id))
 
+const isMutualFollow = computed(() => {
+  const rel = followRelationship.value
+  if (!rel) return false
+  return Boolean(rel.viewerFollowsUser && rel.userFollowsViewer)
+})
+
+const showNudge = computed(() => {
+  if (!isAuthed.value) return false
+  if (isSelf.value) return false
+  if (!profile.value?.id || !profile.value?.username) return false
+  return isMutualFollow.value
+})
+
+const nudgeState = ref<NudgeState | null>(nudgeFromProps.value)
+watch(
+  nudgeFromProps,
+  (next) => {
+    nudgeState.value = next ?? null
+  },
+  { immediate: true },
+)
+
+const nudgeInflight = ref(false)
+const ignoreInflight = ref(false)
+const { nudgeUser, ackNudge, ignoreNudge, markNudgeNudgedBackById } = useNudge()
+const { push: pushToast } = useAppToast()
+
+const gotItNudgeTooltip = 'Accepts the nudge. They can nudge you again without you nudging back.'
+const ignoreNudgeTooltip = 'Dismisses it, but they still can’t nudge you again for 24 hours (unless you nudge them back).'
+
+const nudgePrimaryLabel = computed(() => {
+  const s = nudgeState.value
+  if (s?.inboundPending) return 'Nudge back'
+  if (s?.outboundPending) return 'Nudged'
+  return 'Nudge'
+})
+
+const nudgePrimaryDisabled = computed(() => {
+  const s = nudgeState.value
+  if (nudgeInflight.value) return true
+  // Block repeated sends when outbound is pending (unless this is a “nudge back” state).
+  if (s?.outboundPending && !s?.inboundPending) return true
+  return false
+})
+
+type MenuItemWithIcon = MenuItem & { iconName?: string; value?: 'gotit' | 'ignore' }
+const nudgeMenuMounted = ref(false)
+const nudgeMenuRef = ref<{ toggle: (event: Event) => void } | null>(null)
+const nudgeMenuItems = computed<MenuItemWithIcon[]>(() => [
+  {
+    label: 'Got it',
+    iconName: 'tabler:check',
+    value: 'gotit',
+    command: () => void onNudgeGotIt(),
+  },
+  {
+    label: 'Ignore',
+    iconName: 'tabler:ban',
+    value: 'ignore',
+    command: () => void onNudgeIgnore(),
+  },
+])
+
+async function toggleNudgeMenu(event: Event) {
+  nudgeMenuMounted.value = true
+  await nextTick()
+  nudgeMenuRef.value?.toggle(event)
+}
+
+async function onNudgeGotIt() {
+  const id = nudgeState.value?.inboundNotificationId ?? null
+  if (!id) return
+  ignoreInflight.value = true
+  try {
+    await ackNudge(id)
+    nudgeState.value = {
+      outboundPending: Boolean(nudgeState.value?.outboundPending),
+      inboundPending: false,
+      inboundNotificationId: null,
+      outboundExpiresAt: nudgeState.value?.outboundExpiresAt ?? null,
+    }
+    pushToast({ title: 'Got it', tone: 'success' })
+  } finally {
+    ignoreInflight.value = false
+  }
+}
+
+async function onNudgeIgnore() {
+  const id = nudgeState.value?.inboundNotificationId ?? null
+  if (!id) return
+  ignoreInflight.value = true
+  try {
+    await ignoreNudge(id)
+    nudgeState.value = {
+      outboundPending: Boolean(nudgeState.value?.outboundPending),
+      inboundPending: false,
+      inboundNotificationId: null,
+      outboundExpiresAt: nudgeState.value?.outboundExpiresAt ?? null,
+    }
+    pushToast({ title: 'Ignored', tone: 'success' })
+  } finally {
+    ignoreInflight.value = false
+  }
+}
+
+async function onNudgeBack() {
+  const username = profile.value?.username ?? null
+  const inboundId = nudgeState.value?.inboundNotificationId ?? null
+  if (!username || !inboundId) return
+
+  nudgeInflight.value = true
+  try {
+    // Mark "nudged back" on the inbound notification (best-effort), then send our nudge.
+    await markNudgeNudgedBackById(inboundId).catch(() => {})
+    const res = await nudgeUser(username)
+    nudgeState.value = {
+      outboundPending: true,
+      inboundPending: false,
+      inboundNotificationId: null,
+      outboundExpiresAt: res.nextAllowedAt ?? null,
+    }
+    pushToast({ title: 'Nudged back', tone: 'success' })
+  } finally {
+    nudgeInflight.value = false
+  }
+}
+
+async function onNudgePrimary() {
+  const username = profile.value?.username ?? null
+  if (!username) return
+
+  nudgeInflight.value = true
+  try {
+    const res = await nudgeUser(username)
+    nudgeState.value = {
+      outboundPending: true,
+      inboundPending: false,
+      inboundNotificationId: null,
+      outboundExpiresAt: res.nextAllowedAt ?? null,
+    }
+  } finally {
+    nudgeInflight.value = false
+  }
+}
+
 const canOpenMenu = computed(() => {
   if (!isAuthed.value) return false
   if (isSelf.value) return false
@@ -240,8 +445,6 @@ const canOpenMenu = computed(() => {
 
 const reportOpen = ref(false)
 const menuRef = ref()
-
-type MenuItemWithIcon = MenuItem & { iconName?: string }
 
 const menuItems = computed<MenuItemWithIcon[]>(() => {
   if (!canOpenMenu.value) return []

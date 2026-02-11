@@ -189,6 +189,7 @@
                   :class="[
                     'group flex h-12 items-center rounded-xl text-white hover:opacity-95 w-full moh-focus',
                     fabButtonClass,
+                    'mt-1',
                   ]"
                   :style="fabButtonStyle"
                   @click="openComposerForCurrentRoute()"
