@@ -32,29 +32,18 @@
           v-if="itemHref(item)"
           :to="itemHref(item)!"
           :prefetch="false"
-          custom
-          v-slot="{ navigate, href }"
+          class="block w-full text-left hover:bg-gray-50 dark:hover:bg-zinc-900 cursor-pointer"
         >
-          <div
-            :data-href="href"
-            role="link"
-            tabindex="0"
-            class="block w-full text-left hover:bg-gray-50 dark:hover:bg-zinc-900 cursor-pointer"
-            @click="navigate"
-            @keydown.enter.prevent="() => navigate()"
-            @keydown.space.prevent="() => navigate()"
-          >
-            <AppNotificationRow
-              v-if="item.type === 'single'"
-              :notification="item.notification"
-              :nudge-is-topmost="nudgeIsTopmostByIndex[idx] ?? false"
-            />
-            <AppNotificationGroupRow
-              v-else
-              :group="item.group"
-              :nudge-is-topmost="nudgeIsTopmostByIndex[idx] ?? false"
-            />
-          </div>
+          <AppNotificationRow
+            v-if="item.type === 'single'"
+            :notification="item.notification"
+            :nudge-is-topmost="nudgeIsTopmostByIndex[idx] ?? false"
+          />
+          <AppNotificationGroupRow
+            v-else
+            :group="item.group"
+            :nudge-is-topmost="nudgeIsTopmostByIndex[idx] ?? false"
+          />
         </NuxtLink>
         <div v-else class="block w-full text-left">
           <AppNotificationRow

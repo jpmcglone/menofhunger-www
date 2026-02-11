@@ -158,6 +158,7 @@
                       :status="authUser?.verifiedStatus ?? 'none'"
                       :premium="Boolean(authUser?.premium)"
                       :premium-plus="Boolean(authUser?.premiumPlus)"
+                      :is-organization="Boolean((authUser as any)?.isOrganization)"
                       :steward-badge-enabled="authUser?.stewardBadgeEnabled ?? true"
                     />
                   </div>

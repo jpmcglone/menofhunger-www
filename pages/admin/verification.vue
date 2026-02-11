@@ -70,7 +70,7 @@
         <div class="flex items-start justify-between gap-3">
           <div class="flex min-w-0 items-start gap-3">
             <AppUserAvatar
-              :user="{ id: item.user.id, name: item.user.name, username: item.user.username }"
+              :user="{ id: item.user.id, name: item.user.name, username: item.user.username, isOrganization: item.user.isOrganization }"
               size-class="h-10 w-10"
               bg-class="moh-surface"
             />
@@ -85,6 +85,7 @@
                   :status="item.user.verifiedStatus"
                   :premium="Boolean(item.user.premium)"
                   :premium-plus="Boolean(item.user.premiumPlus)"
+                  :is-organization="item.user.isOrganization"
                   :steward-badge-enabled="item.user.stewardBadgeEnabled ?? true"
                 />
               </div>

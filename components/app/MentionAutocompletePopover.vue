@@ -25,12 +25,19 @@
             @mousedown.prevent
             @click="emit('select', u)"
           >
-            <AppUserAvatar
-              :user="{ id: u.id, username: u.username, avatarUrl: u.avatarUrl }"
-              size-class="h-9 w-9"
-              bg-class="moh-surface dark:bg-black"
-              :show-presence="false"
-            />
+            <div
+              :class="[
+                'shrink-0 ring-2 ring-[color:var(--moh-surface-3)]',
+                roundClassFor(u),
+              ]"
+            >
+              <AppUserAvatar
+                :user="{ id: u.id, username: u.username, avatarUrl: u.avatarUrl, isOrganization: (u as any).isOrganization }"
+                size-class="h-9 w-9"
+                bg-class="moh-surface dark:bg-black"
+                :show-presence="false"
+              />
+            </div>
             <div class="min-w-0 flex-1">
               <div class="flex items-center gap-1.5 min-w-0">
                 <div class="font-semibold text-sm text-gray-900 dark:text-gray-50 truncate">
@@ -41,6 +48,7 @@
                   :status="u.verifiedStatus"
                   :premium="Boolean(u.premium)"
                   :premium-plus="Boolean(u.premiumPlus)"
+                  :is-organization="Boolean((u as any).isOrganization)"
                   :steward-badge-enabled="u.stewardBadgeEnabled ?? true"
                   size="xs"
                 />
@@ -68,6 +76,7 @@
 <script setup lang="ts">
 import type { FollowListUser } from '~/types/api'
 import { useUsersStore } from '~/composables/useUsersStore'
+import { avatarRoundClass as getAvatarRoundClass } from '~/utils/avatar-rounding'
 
 const props = defineProps<{
   open: boolean
@@ -79,6 +88,10 @@ const props = defineProps<{
 
 const usersStore = useUsersStore()
 const items = computed(() => props.items.map((u) => (u?.id ? (usersStore.overlay(u as any) as any) : u)))
+
+function roundClassFor(u: FollowListUser): string {
+  return getAvatarRoundClass(Boolean((u as any)?.isOrganization))
+}
 
 const emit = defineEmits<{
   (e: 'select', user: FollowListUser): void

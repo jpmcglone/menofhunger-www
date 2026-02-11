@@ -75,12 +75,12 @@
       </div>
 
       <div class="absolute left-4 bottom-0 translate-y-1/2">
-        <div class="rounded-full ring-4 ring-[color:var(--moh-surface-3)]">
+        <div :class="['ring-4 ring-[color:var(--moh-surface-3)]', avatarRoundClass]">
           <NuxtLink
             v-if="profilePath"
             :to="profilePath"
             :aria-label="`View @${user.username} profile`"
-            class="block moh-focus rounded-full"
+            :class="['block moh-focus', avatarRoundClass]"
             @click="onNavigate"
           >
             <AppUserAvatar
@@ -145,6 +145,7 @@
               :status="user.verifiedStatus"
               :premium="user.premium"
               :premium-plus="user.premiumPlus"
+              :is-organization="user.isOrganization"
               :steward-badge-enabled="user.stewardBadgeEnabled ?? true"
             />
           </div>
@@ -227,12 +228,15 @@ import { useUserOverlay } from '~/composables/useUserOverlay'
 import { formatDateTime, formatListTime } from '~/utils/time-format'
 import { tinyTooltip } from '~/utils/tiny-tooltip'
 import type { MenuItem } from 'primevue/menuitem'
+import { avatarRoundClass as getAvatarRoundClass } from '~/utils/avatar-rounding'
 
 const props = defineProps<{
   user: UserPreview
 }>()
 
 const { user } = useUserOverlay(computed(() => props.user))
+
+const avatarRoundClass = computed(() => getAvatarRoundClass(Boolean(user.value?.isOrganization)))
 
 const { user: authUser } = useAuth()
 const isAuthed = computed(() => Boolean(authUser.value?.id))

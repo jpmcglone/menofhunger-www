@@ -1,10 +1,10 @@
 <template>
   <div class="px-4 py-3 hover:bg-gray-50 dark:hover:bg-zinc-900 transition-colors">
     <div class="flex items-center justify-between gap-3">
-      <button
-        type="button"
+      <NuxtLink
+        v-if="profilePath"
+        :to="profilePath"
         class="min-w-0 flex-1 text-left"
-        @click="goToProfile"
         @mouseenter="onEnter"
         @mousemove="onMove"
         @mouseleave="onLeave"
@@ -38,7 +38,41 @@
             </div>
           </div>
         </div>
-      </button>
+      </NuxtLink>
+      <div
+        v-else
+        class="min-w-0 flex-1 text-left"
+      >
+        <div class="flex items-center gap-3 min-w-0">
+          <AppUserAvatar
+            :user="user"
+            size-class="h-10 w-10"
+          />
+
+          <div class="min-w-0">
+            <div class="flex items-center gap-2 min-w-0">
+              <div class="font-semibold truncate text-gray-900 dark:text-gray-50">
+                {{ displayName }}
+              </div>
+              <AppVerifiedBadge
+                :status="user.verifiedStatus"
+                :premium="user.premium"
+                :premium-plus="user.premiumPlus"
+                :steward-badge-enabled="user.stewardBadgeEnabled ?? true"
+              />
+              <div
+                v-if="nameMeta"
+                class="shrink-0 text-xs text-gray-500 dark:text-gray-400 tabular-nums"
+              >
+                {{ nameMeta }}
+              </div>
+            </div>
+            <div class="text-sm text-gray-600 dark:text-gray-300 truncate">
+              {{ handle }}
+            </div>
+          </div>
+        </div>
+      </div>
 
       <div class="shrink-0">
         <AppFollowButton
@@ -75,6 +109,10 @@ const displayName = computed(() => user.value?.name || user.value?.username || '
 const handle = computed(() => (user.value?.username ? `@${user.value.username}` : '@—'))
 
 const nameMeta = computed(() => (props.nameMeta ?? '').trim() || null)
+const profilePath = computed(() => {
+  if (!user.value?.username) return null
+  return `/u/${encodeURIComponent(user.value.username)}`
+})
 
 const { addInterest, removeInterest } = usePresence()
 onMounted(() => {
@@ -88,9 +126,5 @@ const { onEnter, onMove, onLeave } = useUserPreviewTrigger({
   username: computed(() => user.value?.username ?? ''),
 })
 
-function goToProfile() {
-  if (!user.value?.username) return
-  void navigateTo(`/u/${encodeURIComponent(user.value.username)}`)
-}
 </script>
 

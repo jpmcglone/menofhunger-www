@@ -33,6 +33,7 @@
           :status="verifiedStatus"
           :premium="premium"
           :premium-plus="premiumPlus"
+          :is-organization="isOrganization"
           :steward-badge-enabled="stewardBadgeEnabled"
         />
       </NuxtLink>
@@ -42,6 +43,7 @@
         :status="verifiedStatus"
         :premium="premium"
         :premium-plus="premiumPlus"
+        :is-organization="isOrganization"
         :steward-badge-enabled="stewardBadgeEnabled"
       />
     </div>
@@ -97,6 +99,7 @@ const props = defineProps<{
   verifiedStatus?: VerifiedStatus | null
   premium?: boolean
   premiumPlus?: boolean
+  isOrganization?: boolean
   stewardBadgeEnabled?: boolean
   editedAt?: string | null
   profilePath: string | null

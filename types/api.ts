@@ -110,6 +110,7 @@ export type PostAuthor = {
   name: string | null
   premium: boolean
   premiumPlus: boolean
+  isOrganization: boolean
   stewardBadgeEnabled: boolean
   verifiedStatus: 'none' | 'identity' | 'manual'
   avatarUrl: string | null
@@ -121,6 +122,7 @@ export type PostMention = {
   verifiedStatus?: 'none' | 'identity' | 'manual'
   premium?: boolean
   premiumPlus?: boolean
+  isOrganization?: boolean
   stewardBadgeEnabled?: boolean
 }
 
@@ -132,6 +134,7 @@ export type PublicProfile = {
   bio: string | null
   premium: boolean
   premiumPlus: boolean
+  isOrganization: boolean
   stewardBadgeEnabled: boolean
   verifiedStatus: 'none' | 'identity' | 'manual'
   avatarUrl: string | null
@@ -148,6 +151,7 @@ export type UserPreview = {
   bio: string | null
   premium: boolean
   premiumPlus: boolean
+  isOrganization: boolean
   stewardBadgeEnabled: boolean
   verifiedStatus: 'none' | 'identity' | 'manual'
   avatarUrl: string | null
@@ -390,6 +394,7 @@ export type AdminVerificationUser = {
   siteAdmin: boolean
   premium: boolean
   premiumPlus: boolean
+  isOrganization: boolean
   stewardBadgeEnabled: boolean
   verifiedStatus: 'none' | 'identity' | 'manual'
   verifiedAt: string | null
@@ -510,6 +515,7 @@ export type FollowListUser = {
   name: string | null
   premium: boolean
   premiumPlus: boolean
+  isOrganization: boolean
   stewardBadgeEnabled: boolean
   verifiedStatus: 'none' | 'identity' | 'manual'
   avatarUrl: string | null
@@ -614,6 +620,7 @@ export type NotificationActor = {
   name: string | null
   avatarUrl: string | null
   premium?: boolean
+  isOrganization?: boolean
   verifiedStatus?: string | null
 }
 
@@ -692,6 +699,7 @@ export type MessageUser = {
   name: string | null
   premium: boolean
   premiumPlus: boolean
+  isOrganization: boolean
   stewardBadgeEnabled: boolean
   verifiedStatus: 'none' | 'identity' | 'manual'
   avatarUrl: string | null

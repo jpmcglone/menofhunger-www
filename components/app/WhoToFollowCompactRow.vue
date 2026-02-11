@@ -9,7 +9,9 @@
       @mousemove="onMove"
       @mouseleave="onLeave"
     >
-      <AppUserAvatar :user="user" size-class="h-9 w-9" />
+      <div :class="['shrink-0 ring-2 ring-[color:var(--moh-surface-3)]', avatarRoundClass]">
+        <AppUserAvatar :user="user" size-class="h-9 w-9" />
+      </div>
       <div class="min-w-0">
         <div class="flex items-center gap-2 min-w-0">
           <div class="text-sm font-semibold truncate text-gray-900 dark:text-gray-50">
@@ -19,6 +21,7 @@
             :status="user.verifiedStatus"
             :premium="user.premium"
             :premium-plus="user.premiumPlus"
+            :is-organization="user.isOrganization"
             :steward-badge-enabled="user.stewardBadgeEnabled ?? true"
             size="xs"
           />
@@ -30,7 +33,9 @@
     </NuxtLink>
 
     <div v-else class="min-w-0 flex items-center gap-2.5">
-      <AppUserAvatar :user="user" size-class="h-9 w-9" />
+      <div :class="['shrink-0 ring-2 ring-[color:var(--moh-surface-3)]', avatarRoundClass]">
+        <AppUserAvatar :user="user" size-class="h-9 w-9" />
+      </div>
       <div class="min-w-0">
         <div class="flex items-center gap-2 min-w-0">
           <div class="text-sm font-semibold truncate text-gray-900 dark:text-gray-50">
@@ -40,6 +45,7 @@
             :status="user.verifiedStatus"
             :premium="user.premium"
             :premium-plus="user.premiumPlus"
+            :is-organization="user.isOrganization"
             :steward-badge-enabled="user.stewardBadgeEnabled ?? true"
             size="xs"
           />
@@ -68,6 +74,7 @@
 <script setup lang="ts">
 import type { FollowListUser } from '~/types/api'
 import { useUserOverlay } from '~/composables/useUserOverlay'
+import { avatarRoundClass as getAvatarRoundClass } from '~/utils/avatar-rounding'
 
 const props = defineProps<{
   user: FollowListUser
@@ -79,6 +86,8 @@ const emit = defineEmits<{
   (e: 'followed'): void
   (e: 'unfollowed'): void
 }>()
+
+const avatarRoundClass = computed(() => getAvatarRoundClass(Boolean(user.value?.isOrganization)))
 
 const displayName = computed(() => user.value?.name || user.value?.username || 'User')
 const handle = computed(() => (user.value?.username ? `@${user.value.username}` : '@—'))

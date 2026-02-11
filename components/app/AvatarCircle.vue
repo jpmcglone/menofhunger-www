@@ -1,13 +1,13 @@
 <template>
   <div
     ref="wrapEl"
-    :class="['relative shrink-0 rounded-full', sizeClass, wrapClass]"
+    :class="['relative shrink-0', roundClass, sizeClass, wrapClass]"
     :style="effectiveWrapStyle"
     aria-hidden="true"
   >
     <!-- Avatar (clipped to circle) -->
     <div
-      :class="['h-full w-full overflow-hidden rounded-full', bgClass]"
+      :class="['h-full w-full overflow-hidden', roundClass, bgClass]"
     >
       <AppImg
         v-if="src"
@@ -77,6 +77,8 @@ const props = withDefaults(
     username?: string | null
     sizeClass?: string
     bgClass?: string
+    /** Border radius class for the avatar wrapper/clip. Default circle. */
+    roundClass?: string
     /** Optional wrapper class for rings/glow. */
     wrapClass?: string
     /** Optional wrapper style for rings/glow. */
@@ -98,6 +100,7 @@ const props = withDefaults(
     username: null,
     sizeClass: 'h-10 w-10',
     bgClass: 'bg-gray-200 dark:bg-zinc-800',
+    roundClass: 'rounded-full',
     wrapClass: '',
     wrapStyle: () => ({}),
     premiumPlusGlow: false,

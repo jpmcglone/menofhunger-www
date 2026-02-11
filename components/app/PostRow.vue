@@ -77,6 +77,7 @@
             :verified-status="author.verifiedStatus"
             :premium="author.premium"
             :premium-plus="author.premiumPlus"
+            :is-organization="author.isOrganization"
             :steward-badge-enabled="author.stewardBadgeEnabled ?? true"
             :edited-at="postView.editedAt ?? null"
             :profile-path="authorProfilePath"

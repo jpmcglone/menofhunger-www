@@ -22,7 +22,6 @@
 
 <script setup lang="ts">
 import badgeUrl from '~/assets/images/verified-badge.png'
-
 type VerifiedStatus = 'none' | 'identity' | 'manual'
 type Size = 'xs' | 'sm' | 'md'
 
@@ -31,22 +30,26 @@ const props = withDefaults(
     status?: VerifiedStatus | null
     premium?: boolean
     premiumPlus?: boolean
+    isOrganization?: boolean
     stewardBadgeEnabled?: boolean
     size?: Size
     showTooltip?: boolean
   }>(),
-  { size: 'sm', premium: false, premiumPlus: false, stewardBadgeEnabled: true, showTooltip: true }
+  { size: 'sm', premium: false, premiumPlus: false, isOrganization: false, stewardBadgeEnabled: true, showTooltip: true }
 )
 
 // Use semantic CSS variables so the accent stays consistent across the app theme.
 const badgeBlue = 'var(--moh-verified)'
 const badgeOrange = 'var(--moh-premium)'
+const badgeOrgLowContrast = 'var(--moh-org)'
 
 const isVerified = computed(() => Boolean(props.status && props.status !== 'none'))
 const isPremium = computed(() => Boolean(props.premium || props.premiumPlus))
 const showSteward = computed(() => Boolean(props.premiumPlus) && props.stewardBadgeEnabled !== false)
+const isOrganization = computed(() => Boolean(props.isOrganization))
 
 const badgeColor = computed(() => {
+  if (isOrganization.value) return badgeOrgLowContrast
   return isVerified.value && isPremium.value ? badgeOrange : badgeBlue
 })
 
@@ -70,7 +73,7 @@ function updateTooltipPlacement() {
   if (!node) return
   const base = verificationText.value
   if (!base) return
-  const text = props.premiumPlus ? `Premium+ member · ${base}` : props.premium ? `Premium member · ${base}` : base
+  const text = isOrganization.value ? 'Organization account' : base
 
   const rect = node.getBoundingClientRect()
   const margin = 12
@@ -88,8 +91,7 @@ const tooltip = computed(() => {
   const base = verificationText.value
   if (!base) return null
 
-  // Premium badge should explicitly call out premium status.
-  const text = props.premiumPlus ? `Premium+ member · ${base}` : props.premium ? `Premium member · ${base}` : base
+  const text = isOrganization.value ? 'Organization account' : base
   // Prefer right, flip to left when needed. No arrow (handled by CSS).
   return { value: text, class: 'moh-tooltip', position: tooltipPlacement.value }
 })
@@ -103,8 +105,7 @@ const stewardTooltip = computed(() => {
 const ariaLabel = computed(() => {
   const base = verificationText.value
   if (!base) return 'Verified'
-  if (props.premiumPlus) return `Premium+ member, ${base}`
-  return props.premium ? `Premium member, ${base}` : base
+  return isOrganization.value ? 'Organization account' : base
 })
 
 const sizeClass = computed(() => {

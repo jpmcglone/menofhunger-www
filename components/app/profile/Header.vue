@@ -51,7 +51,12 @@
           hideAvatarDuringBanner ? 'opacity-0 pointer-events-none' : 'opacity-100'
         ]"
       >
-        <div class="group relative ring-4 ring-white dark:ring-black rounded-full">
+        <div
+          :class="[
+            'group relative ring-4 ring-white dark:ring-black',
+            avatarRoundClass
+          ]"
+        >
           <AppUserAvatar
             v-show="!hideAvatarThumb"
             :user="profile"
@@ -63,7 +68,10 @@
           <div
             v-if="profileAvatarUrl"
             v-show="!hideAvatarThumb"
-            class="pointer-events-none absolute inset-0 rounded-full bg-black/0 transition-colors duration-200 group-hover:bg-black/20"
+            :class="[
+              'pointer-events-none absolute inset-0 bg-black/0 transition-colors duration-200 group-hover:bg-black/20',
+              avatarRoundClass
+            ]"
             aria-hidden="true"
           />
           <button
@@ -89,6 +97,7 @@
               :status="profile?.verifiedStatus"
               :premium="profile?.premium"
               :premium-plus="profile?.premiumPlus"
+              :is-organization="profile?.isOrganization"
               :steward-badge-enabled="profile?.stewardBadgeEnabled ?? true"
             />
           </div>
@@ -248,6 +257,7 @@ import { formatDateTime, formatListTime } from '~/utils/time-format'
 import { tinyTooltip } from '~/utils/tiny-tooltip'
 import type { MenuItem } from 'primevue/menuitem'
 import { useUserOverlay } from '~/composables/useUserOverlay'
+import { avatarRoundClass as getAvatarRoundClass } from '~/utils/avatar-rounding'
 
 const props = defineProps<{
   profile: PublicProfile | null
@@ -277,6 +287,7 @@ const emit = defineEmits<{
 }>()
 
 const { user: profile } = useUserOverlay(computed(() => props.profile ?? null))
+const avatarRoundClass = computed(() => getAvatarRoundClass(Boolean(profile.value?.isOrganization)))
 const profileName = computed(() => props.profileName)
 const profileAvatarUrl = computed(() => props.profileAvatarUrl ?? null)
 const profileBannerUrl = computed(() => props.profileBannerUrl ?? null)

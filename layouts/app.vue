@@ -261,6 +261,7 @@
                         :status="appHeader.verifiedStatus"
                         :premium="Boolean(appHeader?.premium)"
                         :premium-plus="Boolean(appHeader?.premiumPlus)"
+                        :is-organization="Boolean((appHeader as any)?.isOrganization)"
                         :steward-badge-enabled="appHeader?.stewardBadgeEnabled ?? true"
                       />
                     </div>

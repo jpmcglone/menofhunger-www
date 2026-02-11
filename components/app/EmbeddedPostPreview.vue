@@ -1,11 +1,12 @@
 <template>
   <div class="mt-3 pr-12">
-    <div
+    <component
+      :is="permalink ? 'NuxtLink' : 'div'"
+      v-bind="permalink ? { to: permalink } : {}"
       class="overflow-hidden rounded-xl border moh-border transition-colors moh-surface-hover"
       role="group"
       aria-label="Embedded post preview"
       :aria-busy="showSkeleton ? 'true' : 'false'"
-      @click.stop="goToPost"
     >
       <div class="p-3 min-h-[96px]">
         <div v-if="showSkeleton" class="flex gap-3">
@@ -80,7 +81,7 @@
         </div>
         <div v-else class="text-sm moh-text-muted">Post unavailable.</div>
       </div>
-    </div>
+    </component>
   </div>
 </template>
 
@@ -99,11 +100,6 @@ const { apiFetchData } = useApiClient()
 const id = computed(() => (props.postId ?? '').trim())
 const permalink = computed(() => (id.value ? `/p/${encodeURIComponent(id.value)}` : null))
 const enabled = computed(() => props.enabled !== false)
-
-function goToPost() {
-  if (!permalink.value) return
-  return navigateTo(permalink.value)
-}
 
 function formatShortDate(d: Date): string {
   const now = new Date()

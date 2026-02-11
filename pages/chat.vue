@@ -103,8 +103,27 @@
                               :status="headerDirectUser.verifiedStatus"
                               :premium="headerDirectUser.premium"
                               :premium-plus="headerDirectUser.premiumPlus"
+                              :is-organization="headerDirectUser.isOrganization"
                               :steward-badge-enabled="headerDirectUser.stewardBadgeEnabled ?? true"
                             />
+                          </template>
+                          <template v-else-if="selectedConversation?.type === 'group' && !selectedConversation?.title">
+                            <span class="min-w-0 truncate">
+                              <template v-for="(member, index) in headerMembers" :key="`header-title-${member.id}`">
+                                <button
+                                  type="button"
+                                  class="hover:underline cursor-pointer"
+                                  :aria-label="member.username ? `View @${member.username}` : 'View profile'"
+                                  @click="goToProfile(member.user)"
+                                  @mouseenter="(e) => onUserPreviewEnter(member.username, e)"
+                                  @mousemove="onUserPreviewMove"
+                                  @mouseleave="onUserPreviewLeave"
+                                >
+                                  {{ member.label }}
+                                </button>
+                                <span v-if="index < headerMembers.length - 1">, </span>
+                              </template>
+                            </span>
                           </template>
                           <template v-else>
                             <span class="min-w-0 truncate">
@@ -131,6 +150,9 @@
                                 :class="member.toneClass"
                                 :aria-label="member.username ? `View @${member.username}` : 'View profile'"
                                 @click="goToProfile(member.user)"
+                                @mouseenter="(e) => onUserPreviewEnter(member.username, e)"
+                                @mousemove="onUserPreviewMove"
+                                @mouseleave="onUserPreviewLeave"
                               >
                                 {{ member.label }}
                               </button>
@@ -144,6 +166,9 @@
                               class="hover:underline cursor-pointer"
                               :aria-label="`View @${headerDirectUser.username}`"
                               @click="goToProfile(headerDirectUser)"
+                              @mouseenter="(e) => onUserPreviewEnter(headerDirectUser?.username, e)"
+                              @mousemove="onUserPreviewMove"
+                              @mouseleave="onUserPreviewLeave"
                             >
                               @{{ headerDirectUser.username }}
                             </button>
@@ -1028,6 +1053,14 @@ function getConversationPreview(conversation: MessageConversation) {
   return conversation.lastMessage?.body || 'No chats yet.'
 }
 
+const pop = useUserPreviewPopover()
+const { onMove: onUserPreviewMove, onLeave: onUserPreviewLeave } = useUserPreviewTrigger({ username: '' })
+function onUserPreviewEnter(username: string | null | undefined, event: MouseEvent) {
+  const u = (username ?? '').trim()
+  if (!u) return
+  pop.onTriggerEnter({ username: u, event })
+}
+
 function goToProfile(user: MessageUser | null | undefined) {
   const username = (user?.username ?? '').trim()
   if (!username) return
@@ -1354,6 +1387,7 @@ async function sendCurrentMessage() {
       name: my.name ?? null,
       premium: Boolean(my.premium),
       premiumPlus: Boolean(my.premiumPlus),
+      isOrganization: Boolean((my as any).isOrganization),
       stewardBadgeEnabled: my.stewardBadgeEnabled ?? true,
       verifiedStatus: (my.verifiedStatus ?? 'none') as 'none' | 'identity' | 'manual',
       avatarUrl: my.avatarUrl ?? null,

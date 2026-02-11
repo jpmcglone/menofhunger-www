@@ -78,6 +78,7 @@
                     :status="u.verifiedStatus"
                     :premium="u.premium"
                     :premium-plus="u.premiumPlus"
+                    :is-organization="u.isOrganization"
                     :steward-badge-enabled="u.stewardBadgeEnabled ?? true"
                   />
                 </div>
@@ -175,6 +176,21 @@
           />
           <div v-if="membershipPrereqError" class="text-sm text-red-700 dark:text-red-300">
             {{ membershipPrereqError }}
+          </div>
+        </div>
+
+        <div class="space-y-2">
+          <label class="text-sm font-medium text-gray-700 dark:text-gray-200">Organization account</label>
+          <div class="flex items-start gap-3 rounded-xl border border-gray-200 bg-gray-50 p-3 dark:border-zinc-800 dark:bg-zinc-950/40">
+            <Checkbox v-model="editIsOrganization" binary inputId="moh-admin-is-org" />
+            <div class="min-w-0">
+              <label for="moh-admin-is-org" class="block text-sm font-semibold text-gray-900 dark:text-gray-50">
+                Organization account
+              </label>
+              <div class="mt-1 text-xs text-gray-600 dark:text-gray-300">
+                Shows an Organization badge and a squircle avatar in clients.
+              </div>
+            </div>
           </div>
         </div>
 
@@ -289,6 +305,7 @@ type AdminUser = {
   siteAdmin: boolean
   premium: boolean
   premiumPlus: boolean
+  isOrganization: boolean
   stewardBadgeEnabled: boolean
   verifiedStatus: 'none' | 'identity' | 'manual'
   verifiedAt: string | null
@@ -335,6 +352,7 @@ const editBio = ref('')
 type MembershipTier = 'none' | 'premium' | 'premiumPlus'
 const editMembership = ref<MembershipTier>('none')
 const editVerifiedStatus = ref<AdminUser['verifiedStatus']>('none')
+const editIsOrganization = ref(false)
 
 type UsernameAvailability = 'unknown' | 'checking' | 'available' | 'taken' | 'invalid' | 'same'
 const usernameAvailability = ref<UsernameAvailability>('unknown')
@@ -478,6 +496,7 @@ function openEdit(u: AdminUser) {
   editBio.value = u.bio ?? ''
   editMembership.value = u.premiumPlus ? 'premiumPlus' : u.premium ? 'premium' : 'none'
   editVerifiedStatus.value = u.verifiedStatus ?? 'none'
+  editIsOrganization.value = Boolean(u.isOrganization)
   resetUsernameCheck()
   editOpen.value = true
 }
@@ -508,6 +527,7 @@ const { submit: saveUser, submitting: saving } = useFormSubmit(
         bio: editBio.value.trim() ? editBio.value.trim() : null,
         premium: editMembership.value === 'premium' || editMembership.value === 'premiumPlus',
         premiumPlus: editMembership.value === 'premiumPlus',
+        isOrganization: editIsOrganization.value,
         verifiedStatus: editVerifiedStatus.value,
       },
     })

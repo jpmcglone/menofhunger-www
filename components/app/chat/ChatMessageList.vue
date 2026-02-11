@@ -42,11 +42,19 @@
             isGroupChat && item.message.sender.id !== meId ? 'pl-10' : ''
           ]"
         >
-          <button
-            v-if="shouldShowIncomingAvatar(item.message, item.index)"
-            type="button"
+          <NuxtLink
+            v-if="shouldShowIncomingAvatar(item.message, item.index) && item.message.sender.username"
+            :to="`/u/${encodeURIComponent(item.message.sender.username)}`"
             class="absolute left-0 bottom-0 translate-y-[-6px] rounded-full cursor-pointer transition-opacity hover:opacity-90"
             :aria-label="item.message.sender.username ? `View @${item.message.sender.username}` : 'View profile'"
+          >
+            <AppUserAvatar :user="senderOverlay(item.message.sender)" size-class="h-7 w-7" />
+          </NuxtLink>
+          <button
+            v-else-if="shouldShowIncomingAvatar(item.message, item.index)"
+            type="button"
+            class="absolute left-0 bottom-0 translate-y-[-6px] rounded-full cursor-pointer transition-opacity hover:opacity-90"
+            aria-label="View profile"
             @click="goToProfile(item.message.sender)"
           >
             <AppUserAvatar :user="senderOverlay(item.message.sender)" size-class="h-7 w-7" />

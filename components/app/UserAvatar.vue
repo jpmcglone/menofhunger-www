@@ -5,6 +5,7 @@
     :username="username"
     :size-class="sizeClass"
     :bg-class="bgClass"
+    :round-class="roundClass"
     :premium-plus-glow="isPremiumPlus"
     :show-presence="showPresence"
     :presence-status="presenceStatus"
@@ -22,6 +23,7 @@
  * AvatarCircle + green dot (online), clock (idle), or offline. Callers don't need usePresence().
  */
 import { useUserOverlay } from '~/composables/useUserOverlay'
+import { avatarRoundClass } from '~/utils/avatar-rounding'
 
 export type UserAvatarUser = {
   id: string
@@ -29,6 +31,7 @@ export type UserAvatarUser = {
   name?: string | null
   username?: string | null
   premiumPlus?: boolean
+  isOrganization?: boolean
 }
 
 const props = withDefaults(
@@ -64,6 +67,8 @@ const avatarUrl = computed(() => u.value?.avatarUrl ?? null)
 const name = computed(() => u.value?.name ?? null)
 const username = computed(() => u.value?.username ?? null)
 const isPremiumPlus = computed(() => Boolean(u.value?.premiumPlus))
+const isOrganization = computed(() => Boolean((u.value as any)?.isOrganization))
+const roundClass = computed(() => avatarRoundClass(isOrganization.value))
 const previewUsername = computed(() => (u.value?.username ?? '').trim())
 const enablePreview = computed(() => props.enablePreview !== false)
 

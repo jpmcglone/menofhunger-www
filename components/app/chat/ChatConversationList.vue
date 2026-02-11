@@ -83,12 +83,12 @@
       tag="div"
       class="divide-y divide-gray-200 dark:divide-zinc-800"
     >
-      <button
+      <NuxtLink
         v-for="c in activeList"
         :key="c.id"
-        type="button"
+        :to="conversationPath(c.id)"
         class="w-full text-left"
-        @click="emit('select', c.id)"
+        @click="onConversationClick(c.id, $event)"
       >
         <div
           :class="[
@@ -170,7 +170,7 @@
             </span>
           </div>
         </div>
-      </button>
+      </NuxtLink>
 
       <div v-if="nextCursor" key="load-more" class="px-4 py-3">
         <Button label="Load more" text size="small" severity="secondary" :loading="loadingMore" @click="emit('load-more')" />
@@ -220,5 +220,16 @@ function getDirectUserOverlay(c: MessageConversation): MessageUser | null {
   const base = props.getDirectUser(c)
   if (!base?.id) return base
   return usersStore.overlay(base as any) as any
+}
+
+function conversationPath(id: string): string {
+  return `/chat?c=${encodeURIComponent(id)}`
+}
+
+function onConversationClick(id: string, event: MouseEvent) {
+  // Let browser-native modified clicks (cmd/ctrl/middle) open new tabs.
+  if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) return
+  event.preventDefault()
+  emit('select', id)
 }
 </script>
