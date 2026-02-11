@@ -6,13 +6,17 @@ export type NudgeSendResponse = {
 
 export function useNudge() {
   const { apiFetchData } = useApiClient()
+  const { invalidateUserPreviewCache } = useUserPreview()
 
   async function nudgeUser(username: string): Promise<NudgeSendResponse> {
     const u = (username ?? '').trim()
     if (!u) throw new Error('Username is required')
-    return await apiFetchData<NudgeSendResponse>(`/follows/${encodeURIComponent(u)}/nudge`, {
+    const res = await apiFetchData<NudgeSendResponse>(`/follows/${encodeURIComponent(u)}/nudge`, {
       method: 'POST'
     })
+    // Hover previews are cached; invalidate so the next hover reflects the new nudge state.
+    invalidateUserPreviewCache(u)
+    return res
   }
 
   async function ackNudge(notificationId: string): Promise<boolean> {
