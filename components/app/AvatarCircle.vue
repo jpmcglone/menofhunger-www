@@ -85,6 +85,8 @@ const props = withDefaults(
     wrapStyle?: Record<string, string>
     /** Premium+ users get an orange glow around the avatar. */
     premiumPlusGlow?: boolean
+    /** Organization users keep a silver premium+ glow. */
+    isOrganization?: boolean
     /** When false, do not show the presence dot (e.g. radio bar listener avatars). */
     showPresence?: boolean
     /** Presence state: green (online), clock (idle), yellow (connecting), or hidden (offline). */
@@ -104,6 +106,7 @@ const props = withDefaults(
     wrapClass: '',
     wrapStyle: () => ({}),
     premiumPlusGlow: false,
+    isOrganization: false,
     showPresence: true,
     presenceStatus: 'offline',
     presenceScale: 0.25,
@@ -170,8 +173,10 @@ const premiumPlusGlowStyle = computed<Record<string, string>>(() => {
   // Scale glow with avatar size.
   const glowPx = Math.max(12, Math.round(d * 0.42))
   const glowPx2 = Math.max(glowPx + 8, Math.round(glowPx * 1.65))
+  // Keep non-org premium+ glow orange regardless of viewer org theme.
+  const glowRgb = props.isOrganization ? 'var(--moh-org-rgb)' : '199, 125, 26'
   return {
-    boxShadow: `0 0 ${glowPx}px rgba(var(--moh-premium-rgb), 0.28), 0 0 ${glowPx2}px rgba(var(--moh-premium-rgb), 0.14)`,
+    boxShadow: `0 0 ${glowPx}px rgba(${glowRgb}, 0.28), 0 0 ${glowPx2}px rgba(${glowRgb}, 0.14)`,
   }
 })
 

@@ -7,6 +7,7 @@
     :bg-class="bgClass"
     :round-class="roundClass"
     :premium-plus-glow="isPremiumPlus"
+    :is-organization="isOrganization"
     :show-presence="showPresence"
     :presence-status="presenceStatus"
     :presence-scale="props.presenceScale"
