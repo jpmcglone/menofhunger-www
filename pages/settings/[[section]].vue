@@ -529,6 +529,8 @@ type FollowVisibility = 'all' | 'verified' | 'premium' | 'none'
 type SettingsSection = 'account' | 'verification' | 'billing' | 'privacy' | 'notifications' | 'links'
 
 const { user: authUser, ensureLoaded } = useAuth()
+const { invalidateUserPreviewCache } = useUserPreview()
+const usersStore = useUsersStore()
 const route = useRoute()
 
 // Ensure we have the current user (so inputs can prefill immediately).
@@ -549,6 +551,39 @@ import type {
   VerificationRequestPublic
 } from '~/types/api'
 import { siteConfig } from '~/config/site'
+
+function syncUserCaches(
+  nextUser: import('~/composables/useAuth').AuthUser | null | undefined,
+  previousUsername?: string | null,
+) {
+  const prev = (previousUsername ?? '').trim().toLowerCase()
+  const next = (nextUser?.username ?? '').trim().toLowerCase()
+  if (prev) invalidateUserPreviewCache(prev)
+  if (next) invalidateUserPreviewCache(next)
+  if (import.meta.client) {
+    if (prev) {
+      clearNuxtData(`public-profile:${prev}`)
+      clearNuxtData(`follow-summary:${prev}`)
+    }
+    if (next) {
+      clearNuxtData(`public-profile:${next}`)
+      clearNuxtData(`follow-summary:${next}`)
+    }
+  }
+  if (!nextUser?.id) return
+  usersStore.upsert({
+    id: nextUser.id,
+    username: nextUser.username ?? null,
+    name: nextUser.name ?? null,
+    bio: nextUser.bio ?? null,
+    premium: nextUser.premium,
+    premiumPlus: nextUser.premiumPlus,
+    verifiedStatus: nextUser.verifiedStatus,
+    avatarUrl: nextUser.avatarUrl ?? null,
+    bannerUrl: nextUser.bannerUrl ?? null,
+    pinnedPostId: nextUser.pinnedPostId ?? null,
+  })
+}
 
 const {
   permission: pushPermission,
@@ -959,6 +994,7 @@ const emailDirty = computed(() => {
 
 const { save: saveEmailRequest, saving: emailSaving, saved: emailSaved } = useFormSave(
   async () => {
+    const previousUsername = authUser.value?.username ?? null
     const raw = emailInput.value.trim()
     const body = { email: raw ? raw : '' }
     const result = await apiFetchData<{ user: import('~/composables/useAuth').AuthUser }>('/users/me/profile', {
@@ -966,6 +1002,7 @@ const { save: saveEmailRequest, saving: emailSaving, saved: emailSaved } = useFo
       body,
     })
     authUser.value = result.user ?? authUser.value
+    syncUserCaches(result.user, previousUsername)
   },
   {
     defaultError: 'Failed to save email.',
@@ -1008,12 +1045,14 @@ const interestsDirty = computed(() => {
 
 const { save: saveInterestsRequest, saving: interestsSaving, saved: interestsSaved } = useFormSave(
   async () => {
+    const previousUsername = authUser.value?.username ?? null
     const body = { interests: interestsInput.value }
     const result = await apiFetchData<{ user: import('~/composables/useAuth').AuthUser }>('/users/me/profile', {
       method: 'PATCH',
       body,
     })
     authUser.value = result.user ?? authUser.value
+    syncUserCaches(result.user, previousUsername)
   },
   {
     defaultError: 'Failed to save interests.',
@@ -1046,6 +1085,7 @@ const canSaveUsername = computed(() => {
 
 const { save: saveUsernameRequest, saving, saved } = useFormSave(
   async () => {
+    const previousUsername = authUser.value?.username ?? null
     const username = usernameInput.value.trim()
     const result = await apiFetchData<{ user: import('~/composables/useAuth').AuthUser }>('/users/me/username', {
       method: 'PATCH',
@@ -1054,6 +1094,7 @@ const { save: saveUsernameRequest, saving, saved } = useFormSave(
 
     // Update client auth state with latest user data.
     authUser.value = result.user ?? authUser.value
+    syncUserCaches(result.user, previousUsername)
   },
   {
     defaultError: 'Failed to save username.',
@@ -1086,11 +1127,13 @@ const privacyDirty = computed(() => (authUser.value?.followVisibility || 'all') 
 
 const { save: savePrivacyRequest, saving: privacySaving, saved: privacySaved } = useFormSave(
   async () => {
+    const previousUsername = authUser.value?.username ?? null
     const result = await apiFetchData<{ user: import('~/composables/useAuth').AuthUser }>('/users/me/settings', {
       method: 'PATCH',
       body: { followVisibility: followVisibilityInput.value }
     })
     authUser.value = result.user ?? authUser.value
+    syncUserCaches(result.user, previousUsername)
   },
   {
     defaultError: 'Failed to save privacy.',
@@ -1117,11 +1160,13 @@ const stewardBadgeDirty = computed(() => (authUser.value?.stewardBadgeEnabled ??
 
 const { save: saveStewardBadgeRequest, saving: stewardBadgeSaving, saved: stewardBadgeSaved } = useFormSave(
   async () => {
+    const previousUsername = authUser.value?.username ?? null
     const result = await apiFetchData<{ user: import('~/composables/useAuth').AuthUser }>('/users/me/settings', {
       method: 'PATCH',
       body: { stewardBadgeEnabled: stewardBadgeEnabledInput.value }
     })
     authUser.value = result.user ?? authUser.value
+    syncUserCaches(result.user, previousUsername)
   },
   {
     defaultError: 'Failed to save steward badge.',

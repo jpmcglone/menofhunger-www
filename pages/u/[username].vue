@@ -249,6 +249,8 @@ if (!notFound.value && profile.value) {
 }
 
 const { user: authUser, me: refetchMe } = useAuth()
+const usersStore = useUsersStore()
+const { invalidateUserPreviewCache } = useUserPreview()
 const { markReadBySubject } = useNotifications()
 watch(
   () => [profile.value?.id, authUser.value?.id] as const,
@@ -568,6 +570,26 @@ const editOpen = ref(false)
 function patchPublicProfile(patch: Partial<Pick<PublicProfile, 'name' | 'bio' | 'avatarUrl' | 'bannerUrl'>>) {
   if (!data.value) return
   data.value = { ...(data.value as PublicProfile), ...patch }
+  const profileId = profile.value?.id ?? authUser.value?.id ?? null
+  if (profileId) {
+    usersStore.upsert({
+      id: profileId,
+      username: profile.value?.username ?? authUser.value?.username ?? null,
+      name: (patch.name ?? profile.value?.name ?? authUser.value?.name) ?? null,
+      bio: (patch.bio ?? profile.value?.bio ?? authUser.value?.bio) ?? null,
+      avatarUrl: (patch.avatarUrl ?? profile.value?.avatarUrl ?? authUser.value?.avatarUrl) ?? null,
+      bannerUrl: (patch.bannerUrl ?? profile.value?.bannerUrl ?? authUser.value?.bannerUrl) ?? null,
+      premium: profile.value?.premium ?? authUser.value?.premium,
+      premiumPlus: profile.value?.premiumPlus ?? authUser.value?.premiumPlus,
+      verifiedStatus: profile.value?.verifiedStatus ?? authUser.value?.verifiedStatus,
+      pinnedPostId: profile.value?.pinnedPostId ?? authUser.value?.pinnedPostId ?? null,
+    })
+  }
+  const currentUsername = normalizedUsername.value
+  if (currentUsername) invalidateUserPreviewCache(currentUsername)
+  if (import.meta.client && currentUsername) {
+    clearNuxtData(`public-profile:${currentUsername}`)
+  }
 }
 
 watch(

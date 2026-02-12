@@ -181,6 +181,35 @@ const emit = defineEmits<{
 
 const { apiFetchData } = useApiClient()
 const { user: authUser } = useAuth()
+const { invalidateUserPreviewCache } = useUserPreview()
+const usersStore = useUsersStore()
+
+function syncUserCaches(
+  nextUser: import('~/composables/useAuth').AuthUser | null | undefined,
+  previousUsername?: string | null,
+) {
+  const prev = (previousUsername ?? '').trim().toLowerCase()
+  const next = (nextUser?.username ?? '').trim().toLowerCase()
+  if (prev) invalidateUserPreviewCache(prev)
+  if (next) invalidateUserPreviewCache(next)
+  if (import.meta.client) {
+    if (prev) clearNuxtData(`public-profile:${prev}`)
+    if (next) clearNuxtData(`public-profile:${next}`)
+  }
+  if (!nextUser?.id) return
+  usersStore.upsert({
+    id: nextUser.id,
+    username: nextUser.username ?? null,
+    name: nextUser.name ?? null,
+    bio: nextUser.bio ?? null,
+    premium: nextUser.premium,
+    premiumPlus: nextUser.premiumPlus,
+    verifiedStatus: nextUser.verifiedStatus,
+    avatarUrl: nextUser.avatarUrl ?? null,
+    bannerUrl: nextUser.bannerUrl ?? null,
+    pinnedPostId: nextUser.pinnedPostId ?? null,
+  })
+}
 
 const isSelf = computed(() => Boolean(props.isSelf))
 const profileAvatarUrl = computed(() => props.profileAvatarUrl ?? null)
@@ -394,7 +423,9 @@ const { submit: saveProfile, submitting: saving } = useFormSubmit(
         body: { key: init.key },
       })
 
+      const previousUsername = authUser.value?.username ?? null
       authUser.value = committed?.user ?? authUser.value
+      syncUserCaches(committed?.user, previousUsername)
       emit('patchProfile', { bannerUrl: committed?.user?.bannerUrl ?? null })
       clearPendingBanner()
     }
@@ -422,7 +453,9 @@ const { submit: saveProfile, submitting: saving } = useFormSubmit(
         body: { key: init.key },
       })
 
+      const previousUsername = authUser.value?.username ?? null
       authUser.value = committed.user ?? authUser.value
+      syncUserCaches(committed?.user, previousUsername)
       emit('patchProfile', { avatarUrl: committed.user?.avatarUrl ?? null })
       // Avatar is now persisted; clear staged state so UI reflects "applied".
       clearPendingAvatar()
@@ -438,8 +471,10 @@ const { submit: saveProfile, submitting: saving } = useFormSubmit(
 
     // Update profile state (public view) and auth user state (self).
     const u = result.user
+    const previousUsername = authUser.value?.username ?? null
     emit('patchProfile', { name: u?.name ?? null, bio: u?.bio ?? null })
     authUser.value = u ?? authUser.value
+    syncUserCaches(u, previousUsername)
     emit('update:modelValue', false)
   },
   {

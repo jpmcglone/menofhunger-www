@@ -11,7 +11,8 @@
     />
     <span
       v-if="showSteward"
-      :class="['inline-flex items-center justify-center text-[var(--moh-premium)]', sizeClass]"
+      :class="['inline-flex items-center justify-center', sizeClass]"
+      :style="{ color: badgeOrange }"
       v-tooltip="stewardTooltip"
       aria-label="Steward (Premium+)"
     >
@@ -40,7 +41,9 @@ const props = withDefaults(
 
 // Use semantic CSS variables so the accent stays consistent across the app theme.
 const badgeBlue = 'var(--moh-verified)'
-const badgeOrange = 'var(--moh-premium)'
+// Keep premium verification accents stable even for org viewers
+// (org viewer theme remaps --moh-premium globally).
+const badgeOrange = '#c77d1a'
 const badgeOrgLowContrast = 'var(--moh-org)'
 
 const isVerified = computed(() => Boolean(props.status && props.status !== 'none'))

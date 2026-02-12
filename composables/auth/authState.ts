@@ -7,6 +7,9 @@
  */
 export function clearAuthClientState(params?: { resetViewerCaches?: boolean }) {
   const resetViewerCaches = params?.resetViewerCaches ?? true
+  const prevUser = useState<any>('auth-user', () => null).value
+  const prevUserId = typeof prevUser?.id === 'string' ? prevUser.id : ''
+  const prevUsername = typeof prevUser?.username === 'string' ? prevUser.username.trim().toLowerCase() : ''
 
   // Auth user/session state
   useState<any>('auth-user', () => null).value = null
@@ -48,6 +51,24 @@ export function clearAuthClientState(params?: { resetViewerCaches?: boolean }) {
   useState<string | null>('drafts-next', () => null).value = null
   useState<boolean>('drafts-loading', () => false).value = false
   useState<string | null>('drafts-error', () => null).value = null
+
+  // Normalized users cache + notifications list state.
+  useState<Record<string, any>>('users-by-id', () => ({})).value = {}
+  if (prevUserId) {
+    useState<any[]>(`notifications:${prevUserId}:items`, () => []).value = []
+    useState<string | null>(`notifications:${prevUserId}:nextCursor`, () => null).value = null
+    useState<boolean>(`notifications:${prevUserId}:loading`, () => false).value = false
+    useState<boolean>(`notifications:${prevUserId}:pendingRefresh`, () => false).value = false
+  }
+  useState<any[]>('notifications:anon:items', () => []).value = []
+  useState<string | null>('notifications:anon:nextCursor', () => null).value = null
+  useState<boolean>('notifications:anon:loading', () => false).value = false
+  useState<boolean>('notifications:anon:pendingRefresh', () => false).value = false
+
+  if (import.meta.client && prevUsername) {
+    clearNuxtData(`public-profile:${prevUsername}`)
+    clearNuxtData(`follow-summary:${prevUsername}`)
+  }
 
   useState<any>('app-header', () => null).value = null
 }

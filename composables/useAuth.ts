@@ -1,6 +1,7 @@
 import type { UsersCallback } from '~/composables/usePresence'
 import { useUsersStore } from '~/composables/useUsersStore'
 import { clearAuthClientState } from '~/composables/auth/authState'
+import { clearMohCacheAll } from '~/composables/useApiClient'
 import { isAdminPath, isAuthAllowedAfterLogoutPath } from '~/config/routes'
 
 export type AuthUser = {
@@ -136,6 +137,7 @@ export function useAuth() {
   function handleUnauthorized() {
     authGeneration += 1
     clientMePromise = null
+    clearMohCacheAll()
     clearAuthClientState({ resetViewerCaches: true })
     // Keep local refs in sync with the shared state.
     user.value = null
@@ -149,6 +151,7 @@ export function useAuth() {
     emitLogout()
     await apiFetch<{ success: true }>('/auth/logout', { method: 'POST' })
 
+    clearMohCacheAll()
     clearAuthClientState({ resetViewerCaches: true })
     user.value = null
     didAttempt.value = true

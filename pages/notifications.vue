@@ -28,11 +28,14 @@
     </div>
     <div v-else class="relative z-0 divide-y divide-gray-200 dark:divide-zinc-800">
       <template v-for="(item, idx) in notifications" :key="item.type === 'single' ? item.notification.id : item.group.id">
-        <NuxtLink
+        <div
           v-if="itemHref(item)"
-          :to="itemHref(item)!"
-          :prefetch="false"
           class="block w-full text-left hover:bg-gray-50 dark:hover:bg-zinc-900 cursor-pointer"
+          role="link"
+          tabindex="0"
+          @click="openItem(item)"
+          @keydown.enter.prevent="openItem(item)"
+          @keydown.space.prevent="openItem(item)"
         >
           <AppNotificationRow
             v-if="item.type === 'single'"
@@ -44,7 +47,7 @@
             :group="item.group"
             :nudge-is-topmost="nudgeIsTopmostByIndex[idx] ?? false"
           />
-        </NuxtLink>
+        </div>
         <div v-else class="block w-full text-left">
           <AppNotificationRow
             v-if="item.type === 'single'"
@@ -105,6 +108,12 @@ const { setNotificationUndeliveredCount, addInterest, removeInterest } = usePres
 const loadingMore = ref(false)
 const markingAllRead = ref(false)
 const nuxtApp = useNuxtApp()
+
+function openItem(item: (typeof notifications.value)[number]) {
+  const href = itemHref(item)
+  if (!href) return
+  void navigateTo(href)
+}
 
 function nudgeActorIdForItem(item: (typeof notifications.value)[number]): string | null {
   if (item.type === 'single') {

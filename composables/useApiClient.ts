@@ -64,6 +64,13 @@ export function invalidateMohCache(params: { prefix?: string; exact?: string }) 
   }
 }
 
+/** Clear all MenOfHunger client response/inflight caches. */
+export function clearMohCacheAll() {
+  if (!import.meta.client) return
+  responseCache.clear()
+  inflight.clear()
+}
+
 function mergeHeaders(a?: HeadersInit, b?: HeadersInit): HeadersInit | undefined {
   if (!a && !b) return undefined
   if (!a) return b
@@ -136,6 +143,7 @@ export function useApiClient() {
   }
 
   function handleUnauthorizedClientSide() {
+    clearMohCacheAll()
     clearAuthClientState({ resetViewerCaches: true })
     if (!import.meta.client) return
     const route = useRoute()
