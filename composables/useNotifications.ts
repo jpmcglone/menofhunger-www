@@ -1,6 +1,7 @@
 import type { GetNotificationsResponse, Notification, NotificationFeedItem, NotificationGroup } from '~/types/api'
 import type { NotificationsCallback } from '~/composables/usePresence'
 import { useUsersStore } from '~/composables/useUsersStore'
+import { userColorTier, userTierBgClass, userTierTextClass } from '~/utils/user-tier'
 
 type NotificationsListResponse = {
   data: NotificationFeedItem[]
@@ -130,25 +131,19 @@ export function useNotifications() {
   /** Tailwind class for actor username by tier (premium > verified > default). Use ! so it wins over layout text color. */
   function actorTierClass(n: Notification): string {
     const a = n.actor?.id ? (usersStore.overlay(n.actor as any) as any) : n.actor
-    if (a?.premium) return '!text-[var(--moh-premium)]'
-    if (a?.verifiedStatus && a.verifiedStatus !== 'none') return '!text-[var(--moh-verified)]'
-    return ''
+    return userTierTextClass(userColorTier(a), { important: true })
   }
 
   /** Background color for notification type icon based on sender (actor) tier, not notification kind. */
   function actorTierIconBgClass(n: Notification): string {
     const a = n.actor?.id ? (usersStore.overlay(n.actor as any) as any) : n.actor
-    if (a?.premium) return 'bg-[var(--moh-premium)]'
-    if (a?.verifiedStatus && a.verifiedStatus !== 'none') return 'bg-[var(--moh-verified)]'
-    return 'bg-gray-500'
+    return userTierBgClass(userColorTier(a), { fallback: 'bg-gray-500' })
   }
 
   /** Background color for mention icon based on *viewer* tier (your account). */
   function viewerTierIconBgClass(): string {
     const u = me.value
-    if (u?.premium) return 'bg-[var(--moh-premium)]'
-    if (u?.verifiedStatus && u.verifiedStatus !== 'none') return 'bg-[var(--moh-verified)]'
-    return 'bg-gray-500'
+    return userTierBgClass(userColorTier(u), { fallback: 'bg-gray-500' })
   }
 
   /** Inline text color class for the subject post's visibility (used for the word \"post\" in comment notifications). */

@@ -36,6 +36,7 @@ export function useImageLightbox() {
   const target = useState<Rect | null>('moh.lightbox.target', () => null)
   const transform = useState<string>('moh.lightbox.transform', () => 'translate(0px, 0px) scale(1, 1)')
   const borderRadius = useState<string>('moh.lightbox.borderRadius', () => '0px')
+  const avatarBorderRadius = useState<string>('moh.lightbox.avatarBorderRadius', () => '9999px')
   const transition = useState<string>('moh.lightbox.transition', () => 'none')
 
   // Ensure global side-effects (scroll lock, keydown listener) are registered once,
@@ -46,12 +47,11 @@ export function useImageLightbox() {
   }
 
   function initialRadius(k: LightboxKind) {
-    return k === 'avatar' ? '9999px' : '0px'
+    return k === 'avatar' ? avatarBorderRadius.value : '0px'
   }
 
   function targetRadius(k: LightboxKind) {
-    // Avatars should remain circular even in full-screen.
-    return k === 'avatar' ? '9999px' : '0px'
+    return k === 'avatar' ? avatarBorderRadius.value : '0px'
   }
 
   function calcTargetRect(aspect: number, k: LightboxKind) {
@@ -203,7 +203,7 @@ export function useImageLightbox() {
     url: string | null,
     label: string,
     k: LightboxKind,
-    opts?: { mediaStartMode?: MediaStartMode },
+    opts?: { mediaStartMode?: MediaStartMode; avatarBorderRadius?: string },
   ) {
     if (!import.meta.client) return
     if (!url) return
@@ -216,6 +216,7 @@ export function useImageLightbox() {
     const myId = requestId
 
     kind.value = k
+    avatarBorderRadius.value = k === 'avatar' ? (opts?.avatarBorderRadius?.trim() || '9999px') : '9999px'
     alt.value = label
     src.value = url
     // When opening from a gallery (openGalleryFromMediaItems), items/mediaItems/index are already set; don't overwrite or the wrong item (e.g. video) won't show.
@@ -365,6 +366,7 @@ export function useImageLightbox() {
     mediaAspect.value = 1
     hideOrigin.value = false
     mediaStartMode.value = 'fitAnchored'
+    avatarBorderRadius.value = '9999px'
     origin.value = null
     target.value = null
     transition.value = 'none'

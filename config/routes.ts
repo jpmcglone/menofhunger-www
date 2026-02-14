@@ -75,7 +75,7 @@ export function routeHeaderDefaultsFor(path: string): RouteHeaderDefaults {
   if (path === '/chat') return { icon: 'tabler:mail', description: 'Chat conversations and chat requests.' }
   if (path.startsWith('/bookmarks')) return { icon: 'tabler:bookmark', description: 'Saved posts and folders.' }
   if (path === '/explore') return { icon: 'tabler:search', description: 'Search and discover.' }
-  if (path === '/groups') return { icon: 'tabler:users', description: 'Brotherhood circles and challenges. Coming soon.' }
+  if (path === '/groups') return { icon: 'tabler:users', description: 'Community groups and challenges. Coming soon.' }
   if (path === '/feedback') return { icon: 'tabler:send', description: 'Help us improve.' }
   if (path === '/only-me') return { icon: undefined, description: 'Private posts that only you can see. These never appear in feeds.' }
   if (path === '/roadmap') return { icon: 'tabler:map', description: 'What we’re building and when.' }

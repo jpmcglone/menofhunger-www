@@ -120,6 +120,7 @@ const emit = defineEmits<{
    * -1 when a bookmark is removed (was bookmarked -> not bookmarked).
    */
   (e: 'bookmarkCountDelta', delta: number): void
+  (e: 'bookmarkStateChanged', payload: { hasBookmarked: boolean; collectionIds: string[] }): void
 }>()
 
 const postId = computed(() => props.postId)
@@ -224,6 +225,7 @@ async function removeBookmark() {
   if (prevHas) {
     hasBookmarked.value = false
     collectionIds.value = []
+    emit('bookmarkStateChanged', { hasBookmarked: false, collectionIds: [] })
     bumpCounts({ prevHas, prevCollectionIds: prevIds, nextHas: false, nextCollectionIds: [] })
     emit('bookmarkCountDelta', -1)
     bumpBookmarksFeed()
@@ -237,6 +239,7 @@ async function removeBookmark() {
       const curIds: string[] = []
       hasBookmarked.value = true
       collectionIds.value = prevIds.slice()
+      emit('bookmarkStateChanged', { hasBookmarked: true, collectionIds: prevIds.slice() })
       bumpCounts({ prevHas: curHas, prevCollectionIds: curIds, nextHas: prevHas, nextCollectionIds: prevIds })
       emit('bookmarkCountDelta', 1)
     }
@@ -258,6 +261,7 @@ async function setBookmarkFolderIds(nextIds: string[]) {
   // when realtime interaction events also patch counts.
   hasBookmarked.value = true
   collectionIds.value = optimisticIds.slice()
+  emit('bookmarkStateChanged', { hasBookmarked: true, collectionIds: optimisticIds.slice() })
   bumpCounts({
     prevHas,
     prevCollectionIds: prevCids,
@@ -281,6 +285,7 @@ async function setBookmarkFolderIds(nextIds: string[]) {
         nextCollectionIds: serverIds.slice(),
       })
       collectionIds.value = serverIds
+      emit('bookmarkStateChanged', { hasBookmarked: true, collectionIds: serverIds.slice() })
     }
   } catch (e: unknown) {
     // Rollback optimistic change.
@@ -288,6 +293,7 @@ async function setBookmarkFolderIds(nextIds: string[]) {
     const curIds = optimisticIds.slice()
     hasBookmarked.value = Boolean(prevHas)
     collectionIds.value = prevCids.slice()
+    emit('bookmarkStateChanged', { hasBookmarked: Boolean(prevHas), collectionIds: prevCids.slice() })
     bumpCounts({
       prevHas: curHas,
       prevCollectionIds: curIds,

@@ -88,6 +88,7 @@ import { useApiClient } from '~/composables/useApiClient'
 import { usePostCountBumps } from '~/composables/usePostCountBumps'
 import { useMiddleScroller } from '~/composables/useMiddleScroller'
 import { useUserOverlay } from '~/composables/useUserOverlay'
+import { userColorTier, userTierTextClass } from '~/utils/user-tier'
 
 const replyModal = useReplyModal()
 const { apiFetchData } = useApiClient()
@@ -104,9 +105,7 @@ const parentAuthorProfilePath = computed(() =>
 const parentAuthorLinkClass = computed(() => {
   const author = parentAuthor.value
   if (!author) return ''
-  if (author.premium) return 'text-[var(--moh-premium)]'
-  if (author.verifiedStatus && author.verifiedStatus !== 'none') return 'text-[var(--moh-verified)]'
-  return ''
+  return userTierTextClass(userColorTier(author), { fallback: '' })
 })
 
 /** Thread participants to show as "Replying to @userA, @userB" (exclude self). */

@@ -1,4 +1,5 @@
 import type { GetNotificationsResponse, NotificationFeedItem } from '~/types/api'
+import { userColorTier } from '~/utils/user-tier'
 
 export function useNotificationsBadge() {
   const { user } = useAuth()
@@ -15,9 +16,9 @@ export function useNotificationsBadge() {
   })
 
   const toneClass = computed(() => {
-    const u = user.value
-    if (u?.premium) return 'moh-notif-badge-premium'
-    if (u?.verifiedStatus && u.verifiedStatus !== 'none') return 'moh-notif-badge-verified'
+    const tier = userColorTier(user.value)
+    if (tier === 'organization' || tier === 'premium') return 'moh-notif-badge-premium'
+    if (tier === 'verified') return 'moh-notif-badge-verified'
     return 'moh-notif-badge-normal'
   })
 

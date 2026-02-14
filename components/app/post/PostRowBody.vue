@@ -44,15 +44,16 @@ import { extractLinksFromText } from '~/utils/link-utils'
 import { splitTextByMentionsDisplay } from '~/utils/mention-autocomplete'
 import { splitTextByHashtagsDisplay } from '~/utils/hashtag-autocomplete'
 import { mentionTierToStyle } from '~/utils/mention-tier-style'
+import { tierFromMentionUser } from '~/composables/useMentionAutocomplete'
 
-type MentionTier = 'normal' | 'verified' | 'premium'
+type MentionTier = 'normal' | 'verified' | 'premium' | 'organization'
 type TextSegment = { text: string; href?: string; mentionUsername?: string; mentionTier?: MentionTier; hashtagTag?: string; hashtagTier?: MentionTier }
 
 const props = defineProps<{
   body: string
   hasMedia: boolean
   /** Usernames from post.mentions; @username in body that match (case-insensitive) become profile links. */
-  mentions?: Array<{ id: string; username: string; verifiedStatus?: string; premium?: boolean }>
+  mentions?: Array<{ id: string; username: string; verifiedStatus?: string; premium?: boolean; isOrganization?: boolean }>
   visibility?: import('~/types/api').PostVisibility
 }>()
 
@@ -194,7 +195,7 @@ const mentionByUsernameLower = computed(() => {
   for (const m of list) {
     const lower = m.username?.toLowerCase()
     if (!lower) continue
-    const tier: MentionTier = m.premium ? 'premium' : (m.verifiedStatus && m.verifiedStatus !== 'none') ? 'verified' : 'normal'
+    const tier: MentionTier = tierFromMentionUser(m)
     map.set(lower, { username: m.username, tier })
   }
   return map

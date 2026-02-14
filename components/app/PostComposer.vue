@@ -291,7 +291,7 @@
           <div class="min-w-0 space-y-1">
             <div class="text-[15px] font-semibold text-gray-900 dark:text-white">Log in to post</div>
             <div class="text-sm text-gray-700 dark:text-white/80">
-              Join the conversation and share updates with the brotherhood.
+              Join the conversation and share updates with the community.
             </div>
           </div>
         </div>
@@ -380,6 +380,8 @@ const props = defineProps<{
   mode?: 'create' | 'edit'
   /** Required when mode is edit. */
   editPostId?: string
+  /** True when the edited post is a draft (only-me notes use /drafts/:id). */
+  editPostIsDraft?: boolean
   /** When true, hide/disable all media capabilities (used for v1 post editing). */
   disableMedia?: boolean
   /** When false, success toast will not link to the new post. */
@@ -400,6 +402,7 @@ const toast = useAppToast()
 
 const mode = computed(() => props.mode ?? 'create')
 const editPostId = computed(() => (props.editPostId ?? '').trim() || null)
+const editPostIsDraft = computed(() => Boolean(props.editPostIsDraft))
 const disableMedia = computed(() => Boolean(props.disableMedia) || mode.value === 'edit')
 
 const isAuthed = computed(() => Boolean(user.value?.id))
@@ -846,7 +849,8 @@ const { submit: submitPost, submitting, submitError } = useFormSubmit(
     if (mode.value === 'edit') {
       const id = editPostId.value
       if (!id) throw new Error('Missing editPostId.')
-      const updatedPost = await apiFetchData<import('~/types/api').FeedPost>(`/posts/${encodeURIComponent(id)}`, {
+      const basePath = editPostIsDraft.value ? '/drafts/' : '/posts/'
+      const updatedPost = await apiFetchData<import('~/types/api').FeedPost>(`${basePath}${encodeURIComponent(id)}`, {
         method: 'PATCH',
         body: { body: draft.value },
       })

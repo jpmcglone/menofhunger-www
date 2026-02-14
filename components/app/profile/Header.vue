@@ -80,7 +80,15 @@
             type="button"
             class="absolute inset-0 cursor-zoom-in"
             aria-label="View avatar"
-            @click="emit('openImage', { event: $event, url: profileAvatarUrl, title: 'Avatar', kind: 'avatar' })"
+            @click="
+              emit('openImage', {
+                event: $event,
+                url: profileAvatarUrl,
+                title: 'Avatar',
+                kind: 'avatar',
+                isOrganization: Boolean(profile?.isOrganization),
+              })
+            "
           />
         </div>
       </div>
@@ -278,7 +286,10 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  (e: 'openImage', payload: { event: MouseEvent; url: string; title: string; kind: 'avatar' | 'banner' }): void
+  (
+    e: 'openImage',
+    payload: { event: MouseEvent; url: string; title: string; kind: 'avatar' | 'banner'; isOrganization?: boolean },
+  ): void
   (e: 'edit'): void
   (e: 'followed'): void
   (e: 'unfollowed'): void

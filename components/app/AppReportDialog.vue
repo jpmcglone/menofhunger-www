@@ -98,7 +98,7 @@ const headerText = computed(() => {
 const reasonOptions: Array<{ label: string; value: ReportReason }> = [
   { label: 'Spam', value: 'spam' },
   { label: 'Harassment', value: 'harassment' },
-  { label: 'Hate', value: 'hate' },
+  { label: 'Abusive content', value: 'hate' },
   { label: 'Sexual content', value: 'sexual' },
   { label: 'Violence', value: 'violence' },
   { label: 'Illegal content', value: 'illegal' },

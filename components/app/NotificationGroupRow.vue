@@ -193,6 +193,7 @@
 import type { FollowSummaryResponse, NotificationActor, NotificationGroup } from '~/types/api'
 import { tinyTooltip } from '~/utils/tiny-tooltip'
 import type { MenuItem } from 'primevue/menuitem'
+import { userColorTier, userTierBgClass, type UserColorTier } from '~/utils/user-tier'
 
 const { formatWhen } = useNotifications()
 
@@ -306,15 +307,16 @@ async function onNudgeBack() {
 
 function actorTierIconBgClass(g: NotificationGroup): string {
   const actors = g.actors ?? []
-  // Highest tier wins (premium > verified > normal)
-  const hasPremium = actors.some((a) => Boolean((a as any)?.premium))
-  if (hasPremium) return 'bg-[var(--moh-premium)]'
-  const hasVerified = actors.some((a) => {
-    const s = ((a as any)?.verifiedStatus ?? 'none') as string
-    return s && s !== 'none'
-  })
-  if (hasVerified) return 'bg-[var(--moh-verified)]'
-  return 'bg-gray-500'
+  // Highest tier wins (organization > premium > verified > normal).
+  const hasTier = (tier: UserColorTier) => actors.some((a) => userColorTier(a as any) === tier)
+  const topTier: UserColorTier = hasTier('organization')
+    ? 'organization'
+    : hasTier('premium')
+      ? 'premium'
+      : hasTier('verified')
+        ? 'verified'
+        : 'normal'
+  return userTierBgClass(topTier, { fallback: 'bg-gray-500' })
 }
 
 function subjectTierRowClass(g: NotificationGroup): string {

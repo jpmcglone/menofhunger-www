@@ -1,7 +1,7 @@
 import { segmentBodyWithMentions, type BodySegment } from '~/utils/mention-autocomplete'
 import { splitTextByHashtagsDisplay } from '~/utils/hashtag-autocomplete'
 
-type MentionTierLike = 'normal' | 'verified' | 'premium'
+type MentionTierLike = 'normal' | 'verified' | 'premium' | 'organization'
 
 export type ComposerBodySegment =
   | (BodySegment & { tier?: MentionTierLike })

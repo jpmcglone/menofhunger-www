@@ -617,6 +617,7 @@ import { useOnlyMePosts } from '~/composables/useOnlyMePosts'
 import { useReplyModal } from '~/composables/useReplyModal'
 import type { FeedPost, GetPresenceOnlineData, PostVisibility } from '~/types/api'
 import { isComposerEntrypointPath, routeHeaderDefaultsFor } from '~/config/routes'
+import { userColorTier, userTierTextClass } from '~/utils/user-tier'
 
 const route = useRoute()
 const { isActive: isActiveNav } = useRouteMatch(route)
@@ -1262,10 +1263,7 @@ onBeforeUnmount(() => {
 })
 
 const tierCtaTextClass = computed(() => {
-  const u = user.value
-  if (u?.premiumPlus || u?.premium) return 'text-[var(--moh-premium)]'
-  if (u?.verifiedStatus && u.verifiedStatus !== 'none') return 'text-[var(--moh-verified)]'
-  return 'text-gray-700 dark:text-gray-200'
+  return userTierTextClass(userColorTier(user.value), { fallback: 'text-gray-700 dark:text-gray-200' })
 })
 
 function scrollMiddleToTop() {

@@ -1,10 +1,11 @@
 import type { Ref } from 'vue'
 import type { MessageConversation } from '~/types/api'
+import { userColorTier } from '~/utils/user-tier'
 
 export type TypingUserDisplay = {
   userId: string
   username: string
-  tier: 'premium' | 'verified' | 'normal'
+  tier: 'organization' | 'premium' | 'verified' | 'normal'
 }
 
 type UseChatTypingOptions = {
@@ -41,8 +42,7 @@ export function useChatTyping({
       const u = p?.user
       const username = (u?.username ?? '').trim()
       if (!username) continue
-      const tier: TypingUserDisplay['tier'] =
-        u?.premium ? 'premium' : u?.verifiedStatus && u.verifiedStatus !== 'none' ? 'verified' : 'normal'
+      const tier: TypingUserDisplay['tier'] = userColorTier(u as any)
       result.push({ userId: uid, username, tier })
     }
     return result
@@ -62,6 +62,7 @@ export function useChatTyping({
   })
 
   function typingNameClass(u: TypingUserDisplay): string {
+    if (u.tier === 'organization') return 'text-[var(--moh-org)]'
     if (u.tier === 'premium') return 'text-[var(--moh-premium)]'
     if (u.tier === 'verified') return 'text-[var(--moh-verified)]'
     return 'text-gray-700 dark:text-gray-200'

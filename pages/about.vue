@@ -4,7 +4,7 @@
     <header class="space-y-3">
       <div class="flex flex-wrap items-center gap-2">
         <Tag value="About" severity="secondary" />
-        <Tag value="Brotherhood" severity="info" />
+        <Tag value="Community" severity="info" />
         <Tag value="Ambition" severity="contrast" />
       </div>
 
@@ -12,7 +12,7 @@
         Men of Hunger
       </h1>
       <p class="text-base sm:text-lg leading-relaxed text-gray-600 dark:text-gray-300">
-        Men of Hunger is a brotherhood for ambitious men who want more out of life — more discipline, more clarity,
+        Men of Hunger is a community for ambitious men who want more out of life — more discipline, more clarity,
         more strength, and more impact.
       </p>
     </header>
@@ -37,7 +37,7 @@
           </li>
           <li class="flex gap-2">
             <Icon name="tabler:check" class="mt-1 text-sm text-gray-500 dark:text-gray-400" aria-hidden="true" />
-            <span><strong class="text-gray-900 dark:text-gray-100">Brotherhood</strong> over isolation.</span>
+            <span><strong class="text-gray-900 dark:text-gray-100">Community</strong> over isolation.</span>
           </li>
         </ul>
       </div>
@@ -102,7 +102,7 @@ definePageMeta({
 usePageSeo({
   title: 'About',
   description:
-    'Men of Hunger is a brotherhood for ambitious men who want more discipline, clarity, strength, and impact.',
+    'Men of Hunger is a community for ambitious men who want more discipline, clarity, strength, and impact.',
   canonicalPath: '/about',
   ogType: 'website',
   image: '/images/banner.png',

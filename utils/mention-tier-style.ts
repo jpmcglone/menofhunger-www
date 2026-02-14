@@ -1,9 +1,10 @@
-type MentionTierLike = 'normal' | 'verified' | 'premium'
+import type { UserColorTier } from '~/utils/user-tier'
+import { userTierColorVar } from '~/utils/user-tier'
+
+type MentionTierLike = UserColorTier
 
 export function mentionTierToColorVar(tier: MentionTierLike | undefined): string | null {
-  if (tier === 'premium') return 'var(--moh-premium)'
-  if (tier === 'verified') return 'var(--moh-verified)'
-  return null
+  return tier ? userTierColorVar(tier) : null
 }
 
 export function mentionTierToStyle(tier: MentionTierLike | undefined): Record<string, string> | undefined {

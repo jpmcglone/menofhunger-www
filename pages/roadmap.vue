@@ -215,7 +215,7 @@ useHead({
   meta: [
     {
       name: 'keywords',
-      content: 'Men of Hunger roadmap, product roadmap, upcoming features, new features, community roadmap, brotherhood app features'
+      content: 'Men of Hunger roadmap, product roadmap, upcoming features, new features, community roadmap, app features'
     }
   ]
 })

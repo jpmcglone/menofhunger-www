@@ -116,13 +116,13 @@
       <div class="space-y-4 text-sm text-gray-700 dark:text-gray-200">
         <p>
           You’re about to create a new account.
-          Men of Hunger is a men’s community — built for brotherhood, self-improvement, and real conversations.
+          Men of Hunger is a men’s community built for self-improvement and real conversations.
         </p>
 
         <div class="space-y-2">
           <div class="font-semibold text-gray-900 dark:text-gray-50">A few basic rules</div>
           <ul class="list-disc pl-5 space-y-1 text-gray-700 dark:text-gray-200">
-            <li>Be respectful. No harassment, hate, or threats.</li>
+            <li>Be respectful. No harassment, abusive content, or threats.</li>
             <li>Keep it real. No impersonation or scams.</li>
             <li>No spam. Don’t flood the feed or DM people unsolicited.</li>
             <li>You must be 18+ to join.</li>

@@ -255,7 +255,7 @@ const reasonOptions = [
   { label: 'All reasons', value: 'all' as const },
   { label: 'Spam', value: 'spam' as const },
   { label: 'Harassment', value: 'harassment' as const },
-  { label: 'Hate', value: 'hate' as const },
+  { label: 'Abusive content', value: 'hate' as const },
   { label: 'Sexual content', value: 'sexual' as const },
   { label: 'Violence', value: 'violence' as const },
   { label: 'Illegal content', value: 'illegal' as const },
@@ -404,7 +404,7 @@ function statusSeverity(status: ReportStatus) {
 
 function reasonLabel(reason: ReportReason) {
   if (reason === 'harassment') return 'Harassment'
-  if (reason === 'hate') return 'Hate'
+  if (reason === 'hate') return 'Abusive content'
   if (reason === 'sexual') return 'Sexual content'
   if (reason === 'violence') return 'Violence'
   if (reason === 'illegal') return 'Illegal content'

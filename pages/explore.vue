@@ -194,19 +194,43 @@
           <h2 class="px-4 text-sm font-semibold text-gray-900 dark:text-gray-50">
             Topics
           </h2>
-          <AppHorizontalScroller scroller-class="no-scrollbar px-4">
-            <div class="flex gap-2 pb-2">
-              <button
-                v-for="t in displayTopics"
-                :key="t.value"
+          <div class="px-4">
+            <div class="flex items-stretch gap-3">
+              <div class="min-w-0 flex-1">
+                <AppHorizontalScroller scroller-class="no-scrollbar">
+                  <div class="flex gap-2 pb-2">
+                    <button
+                      v-for="t in displayTopics"
+                      :key="t.value"
+                      type="button"
+                      class="h-9 px-3 shrink-0 rounded-full border moh-border bg-white/60 dark:bg-zinc-900/40 text-sm text-gray-800 dark:text-gray-100 hover:bg-white dark:hover:bg-zinc-900 transition whitespace-nowrap"
+                      @click="selectTopic(t.value)"
+                    >
+                      {{ t.label }}
+                    </button>
+                  </div>
+                </AppHorizontalScroller>
+              </div>
+              <div
+                v-if="isAuthed"
+                class="w-px self-stretch bg-gray-200/80 dark:bg-zinc-700/70"
+                aria-hidden="true"
+              />
+              <Button
+                v-if="isAuthed"
                 type="button"
-                class="h-9 px-3 shrink-0 rounded-full border moh-border bg-white/60 dark:bg-zinc-900/40 text-sm text-gray-800 dark:text-gray-100 hover:bg-white dark:hover:bg-zinc-900 transition whitespace-nowrap"
-                @click="selectTopic(t.value)"
+                label="Edit"
+                text
+                severity="secondary"
+                class="shrink-0 self-start"
+                @click="openEditInterests"
               >
-                {{ t.label }}
-              </button>
+                <template #icon>
+                  <Icon name="tabler:pencil" aria-hidden="true" />
+                </template>
+              </Button>
             </div>
-          </AppHorizontalScroller>
+          </div>
         </section>
 
         <!-- Featured -->
@@ -370,6 +394,36 @@
       </template>
     </div>
   </div>
+  <AppModal
+    v-model="editInterestsOpen"
+    title="Edit interests"
+    max-width-class="max-w-[46rem]"
+    :dismissable-mask="true"
+  >
+    <div class="space-y-3">
+      <AppInterestsPicker
+        v-model="editInterestsInput"
+        :disabled="editInterestsSaving"
+        label=""
+        helper-right=""
+        helper-bottom="Used for discovery and recommendations."
+        description="Search, pick from suggestions, or add your own."
+      />
+      <AppInlineAlert v-if="editInterestsError" severity="danger">
+        {{ editInterestsError }}
+      </AppInlineAlert>
+    </div>
+    <template #footer>
+      <div class="flex items-center justify-end gap-2">
+        <Button label="Cancel" severity="secondary" text :disabled="editInterestsSaving" @click="editInterestsOpen = false" />
+        <Button label="Save" :loading="editInterestsSaving" :disabled="editInterestsSaving" @click="saveEditInterests">
+          <template #icon>
+            <Icon name="tabler:check" aria-hidden="true" />
+          </template>
+        </Button>
+      </div>
+    </template>
+  </AppModal>
   </AppPageContent>
 </template>
 
@@ -475,6 +529,43 @@ const followedTopicsUi = computed(() => {
   mapped.sort((a, b) => (b.score ?? 0) - (a.score ?? 0) || a.label.localeCompare(b.label))
   return mapped.slice(0, 20)
 })
+
+const editInterestsOpen = ref(false)
+const editInterestsInput = ref<string[]>([])
+const editInterestsSaving = ref(false)
+const editInterestsError = ref<string | null>(null)
+
+function openEditInterests() {
+  editInterestsInput.value = Array.isArray(authUser.value?.interests) ? [...authUser.value!.interests] : []
+  editInterestsError.value = null
+  editInterestsOpen.value = true
+}
+
+function normalizeInterests(vals: string[]): string[] {
+  return (vals ?? [])
+    .map((s) => String(s ?? '').trim())
+    .filter(Boolean)
+    .slice(0, 30)
+}
+
+async function saveEditInterests() {
+  if (editInterestsSaving.value) return
+  editInterestsSaving.value = true
+  editInterestsError.value = null
+  try {
+    const result = await apiFetch<{ user: import('~/composables/useAuth').AuthUser }>('/users/me/profile', {
+      method: 'PATCH',
+      body: { interests: normalizeInterests(editInterestsInput.value) },
+    })
+    authUser.value = result.data.user ?? authUser.value
+    editInterestsOpen.value = false
+    await Promise.resolve(refreshDiscover())
+  } catch (e: unknown) {
+    editInterestsError.value = getApiErrorMessage(e) || 'Failed to save interests.'
+  } finally {
+    editInterestsSaving.value = false
+  }
+}
 
 const isActiveTopicFollowed = computed(() => {
   const t = activeTopic.value

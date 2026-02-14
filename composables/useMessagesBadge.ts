@@ -1,4 +1,5 @@
 import type { GetMessagesUnreadCountResponse } from '~/types/api'
+import { userColorTier } from '~/utils/user-tier'
 
 export function useMessagesBadge() {
   const { user } = useAuth()
@@ -20,9 +21,9 @@ export function useMessagesBadge() {
   })
 
   const toneClass = computed(() => {
-    const u = user.value
-    if (u?.premium) return 'moh-notif-badge-premium'
-    if (u?.verifiedStatus && u.verifiedStatus !== 'none') return 'moh-notif-badge-verified'
+    const tier = userColorTier(user.value)
+    if (tier === 'organization' || tier === 'premium') return 'moh-notif-badge-premium'
+    if (tier === 'verified') return 'moh-notif-badge-verified'
     return 'moh-notif-badge-normal'
   })
 

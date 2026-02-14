@@ -147,6 +147,7 @@ import { usePostPermalinkSeo } from '~/composables/usePostPermalinkSeo'
 import { usePostCountBumps } from '~/composables/usePostCountBumps'
 import { useReplyModal } from '~/composables/useReplyModal'
 import type { LinkMetadata } from '~/utils/link-metadata'
+import { userColorTier, userTierTextClass } from '~/utils/user-tier'
 
 definePageMeta({
   layout: 'app',
@@ -222,8 +223,7 @@ const replyContext = computed(() => {
 
 function participantLinkClass(p: { id: string; username: string }): string {
   const author = post.value?.author
-  if (author?.id === p.id && author?.premium) return '!text-[var(--moh-premium)]'
-  if (author?.id === p.id && author?.verifiedStatus && author.verifiedStatus !== 'none') return '!text-[var(--moh-verified)]'
+  if (author?.id === p.id) return userTierTextClass(userColorTier(author), { important: true, fallback: '' })
   return ''
 }
 

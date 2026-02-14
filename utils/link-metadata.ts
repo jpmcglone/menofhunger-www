@@ -1,3 +1,5 @@
+import { joinUrl } from '~/utils/url'
+
 export type LinkMetadata = {
   url: string
   title: string | null
@@ -34,6 +36,10 @@ type MicrolinkResponse = {
   }
 }
 
+type ApiLinkMetadataResponse = {
+  data: LinkMetadata | null
+}
+
 function microlinkEndpoint(targetUrl: string): string {
   const u = new URL('https://api.microlink.io/')
   u.searchParams.set('url', targetUrl)
@@ -65,6 +71,38 @@ export async function getLinkMetadata(url: string, opts: GetLinkMetadataOptions 
   try {
     const u = new URL(key)
     if (u.protocol !== 'http:' && u.protocol !== 'https:') return null
+
+    // Prefer backend endpoint first so we reuse the shared DB cache.
+    try {
+      if (!import.meta.client) throw new Error('client-only')
+      const config = useRuntimeConfig()
+      const apiBase = String(config.public.apiBaseUrl || '').trim()
+      if (!apiBase) throw new Error('missing-api-base')
+      const apiUrl = new URL(joinUrl(apiBase, '/link-metadata'))
+      apiUrl.searchParams.set('url', u.toString())
+      const apiRes = await fetch(apiUrl.toString(), { method: 'GET', signal: opts.signal, credentials: 'include' })
+      if (apiRes.ok) {
+        const payload = (await apiRes.json()) as ApiLinkMetadataResponse
+        const data = payload?.data ?? null
+        if (data) {
+          const meta: LinkMetadata = {
+            url: normalizeText(data.url) ?? u.toString(),
+            title: normalizeText(data.title),
+            description: normalizeText(data.description),
+            siteName: normalizeText(data.siteName),
+            imageUrl: normalizeText(data.imageUrl),
+          }
+          cache.set(key, meta)
+          return meta
+        }
+      }
+    } catch (e: unknown) {
+      if (isAbortError(e)) {
+        cache.delete(key)
+        return null
+      }
+      // ignore and fallback
+    }
 
     // Best-effort, client-side approach:
     // 1) Try Microlink (popular metadata API; returns OG/Twitter reliably).

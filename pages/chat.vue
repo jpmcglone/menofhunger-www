@@ -343,7 +343,7 @@
               :user="composerUser"
               placeholder="Type a chat…"
               :loading="sending"
-              :auto-focus="!isTinyViewport"
+              :auto-focus="!isTabBarMode"
               @send="sendCurrentMessage"
             />
           </div>
@@ -486,6 +486,8 @@ import { useChatTyping } from '~/composables/chat/useChatTyping'
 import { useChatBlocks } from '~/composables/chat/useChatBlocks'
 import ChatConversationList from '~/components/app/chat/ChatConversationList.vue'
 import ChatMessageList from '~/components/app/chat/ChatMessageList.vue'
+import { useMediaQuery } from '@vueuse/core'
+import { userColorTier, type UserColorTier } from '~/utils/user-tier'
 
 const { apiFetch, apiFetchData } = useApiClient()
 const route = useRoute()
@@ -560,7 +562,7 @@ const {
 const { showRequests, displayRequests, toneClass } = useMessagesBadge()
 
 const activeTab = ref<'primary' | 'requests'>('primary')
-type MessageTone = 'premium' | 'verified' | 'normal'
+type MessageTone = UserColorTier
 type MessageConversationWithTone = MessageConversation & { unreadTone?: MessageTone }
 
 const conversations = ref<{ primary: MessageConversationWithTone[]; requests: MessageConversationWithTone[] }>({
@@ -603,7 +605,7 @@ const messagesScroller = ref<HTMLElement | null>(null)
 const dmComposerRef = ref<{ focus?: () => void } | null>(null)
 const messagesReady = ref(false)
 const pendingNewCount = ref(0)
-const pendingNewTier = ref<'premium' | 'verified' | 'normal'>('normal')
+const pendingNewTier = ref<MessageTone>('normal')
 const animateMessageList = ref(true)
 const renderedChatKey = ref<string | null>(null)
 const atBottom = ref(true)
@@ -748,6 +750,7 @@ const canStartDraft = computed(() => selectedRecipients.value.length > 0)
 const pendingButtonClass = computed(() => {
   // When there are unread/new messages below, keep the tier color treatment.
   if (pendingNewCount.value > 0) {
+    if (pendingNewTier.value === 'organization') return 'bg-[var(--moh-org)] text-white'
     if (pendingNewTier.value === 'premium') return 'bg-[var(--moh-premium)] text-white'
     if (pendingNewTier.value === 'verified') return 'bg-[var(--moh-verified)] text-white'
     return 'bg-gray-900 text-white dark:bg-white dark:text-gray-900'
@@ -763,6 +766,7 @@ const pendingNewLabel = computed(() => {
 })
 
 const showScrollToBottomButton = computed(() => Boolean(selectedChatKey.value) && !atBottom.value)
+const isTabBarMode = useMediaQuery('(max-width: 639px)')
 
 const { isTinyViewport, showListPane, showDetailPane: showChatPane, gridStyle } = useTwoPaneLayout(selectedChatKey, {
   // Keep left pane consistent with Admin/Settings.
@@ -792,8 +796,10 @@ const headerDirectUser = computed(() => {
 })
 
 function userToneClass(u: MessageUser | null | undefined): string {
-  if (u?.premium) return 'text-[var(--moh-premium)]'
-  if (u?.verifiedStatus && u.verifiedStatus !== 'none') return 'text-[var(--moh-verified)]'
+  const tier = userColorTier(u as any)
+  if (tier === 'organization') return 'text-[var(--moh-org)]'
+  if (tier === 'premium') return 'text-[var(--moh-premium)]'
+  if (tier === 'verified') return 'text-[var(--moh-verified)]'
   return 'text-gray-700 dark:text-gray-200'
 }
 
@@ -876,9 +882,10 @@ const scrollPillNeeded = computed(() => {
 })
 
 const scrollPillColor = computed(() => {
-  const u = me.value
-  if (u?.premium) return 'var(--moh-premium)'
-  if (u?.verifiedStatus && u.verifiedStatus !== 'none') return 'var(--moh-verified)'
+  const tier = userColorTier(me.value as any)
+  if (tier === 'organization') return 'var(--moh-org)'
+  if (tier === 'premium') return 'var(--moh-premium)'
+  if (tier === 'verified') return 'var(--moh-verified)'
   return 'rgba(148, 163, 184, 0.9)' // neutral
 })
 
@@ -967,17 +974,21 @@ function resetPendingNew() {
   pendingNewTier.value = 'normal'
 }
 
-function getMessageTier(message: Message): 'premium' | 'verified' | 'normal' {
-  if (message.sender.premium) return 'premium'
-  if (message.sender.verifiedStatus && message.sender.verifiedStatus !== 'none') return 'verified'
-  return 'normal'
+function getMessageTier(message: Message): MessageTone {
+  return userColorTier(message.sender as any)
+}
+
+function toneRank(tone: MessageTone): number {
+  if (tone === 'organization') return 3
+  if (tone === 'premium') return 2
+  if (tone === 'verified') return 1
+  return 0
 }
 
 function maybeUpgradePendingTier(message: Message) {
   if (message.sender.id === me.value?.id) return
   const next = getMessageTier(message)
-  if (pendingNewTier.value === 'premium') return
-  if (pendingNewTier.value === 'verified' && next === 'normal') return
+  if (toneRank(next) <= toneRank(pendingNewTier.value)) return
   pendingNewTier.value = next
 }
 
@@ -1078,13 +1089,17 @@ function getConversationLastMessageTier(conversation: MessageConversationWithTon
   const senderId = conversation.lastMessage?.senderId ?? null
   if (!senderId) return 'normal'
   const sender = conversation.participants.find((p) => p.user.id === senderId)?.user
-  if (sender?.premium) return 'premium'
-  if (sender?.verifiedStatus && sender.verifiedStatus !== 'none') return 'verified'
-  return 'normal'
+  return userColorTier(sender as any)
 }
+
+const ORG_CHAT_SILVER_DOT_CLASS = 'bg-[#313643] text-white'
+const ORG_CHAT_SILVER_UNREAD_CLASS = 'bg-[rgba(49,54,67,0.24)] dark:bg-[rgba(49,54,67,0.34)]'
+const ORG_CHAT_SILVER_FILLED_BUBBLE_CLASS = 'bg-[#313643] text-white'
+const ORG_CHAT_SILVER_OUTLINE_BUBBLE_CLASS = 'bg-transparent border border-[rgba(49,54,67,0.96)] text-gray-900 dark:text-gray-100'
 
 function conversationDotClass(conversation: MessageConversation): string {
   const tier = getConversationLastMessageTier(conversation)
+  if (tier === 'organization') return ORG_CHAT_SILVER_DOT_CLASS
   if (tier === 'premium') return 'bg-[var(--moh-premium)] text-white'
   if (tier === 'verified') return 'bg-[var(--moh-verified)] text-white'
   return 'bg-gray-700 text-white dark:bg-white dark:text-black'
@@ -1092,9 +1107,8 @@ function conversationDotClass(conversation: MessageConversation): string {
 
 function conversationUnreadHighlightClass(conversation: MessageConversation): string {
   const tier = getConversationLastMessageTier(conversation)
-  if (tier === 'premium') {
-    return 'bg-[rgba(var(--moh-premium-rgb),0.06)] dark:bg-[rgba(var(--moh-premium-rgb),0.09)]'
-  }
+  if (tier === 'organization') return ORG_CHAT_SILVER_UNREAD_CLASS
+  if (tier === 'premium') return 'bg-[rgba(var(--moh-premium-rgb),0.06)] dark:bg-[rgba(var(--moh-premium-rgb),0.09)]'
   if (tier === 'verified') {
     return 'bg-[rgba(var(--moh-verified-rgb),0.06)] dark:bg-[rgba(var(--moh-verified-rgb),0.09)]'
   }
@@ -1105,20 +1119,17 @@ function bubbleClass(m: Message) {
   const isMe = Boolean(m.sender.id && m.sender.id === me.value?.id)
 
   // Tier color always corresponds to the sender's tier.
-  const tier =
-    m.sender.premium
-      ? 'premium'
-      : m.sender.verifiedStatus && m.sender.verifiedStatus !== 'none'
-        ? 'verified'
-        : 'normal'
+  const tier = userColorTier(m.sender as any)
 
   if (isMe) {
+    if (tier === 'organization') return ORG_CHAT_SILVER_FILLED_BUBBLE_CLASS
     if (tier === 'premium') return 'bg-[var(--moh-premium)] text-white'
     if (tier === 'verified') return 'bg-[var(--moh-verified)] text-white'
     return 'bg-gray-100 text-gray-800 dark:bg-zinc-900 dark:text-gray-200'
   }
 
   // Incoming: outlined bubble (X-like).
+  if (tier === 'organization') return ORG_CHAT_SILVER_OUTLINE_BUBBLE_CLASS
   if (tier === 'premium') return 'bg-transparent border border-[rgba(var(--moh-premium-rgb),0.55)] text-gray-900 dark:text-gray-100'
   if (tier === 'verified') return 'bg-transparent border border-[rgba(var(--moh-verified-rgb),0.55)] text-gray-900 dark:text-gray-100'
   return 'bg-transparent border border-gray-200 text-gray-900 dark:border-zinc-600 dark:text-gray-100'
@@ -1301,12 +1312,7 @@ function updateConversationForMessage(message: Message) {
     const existing = next[idx]!
     const unreadInc = message.sender.id === me.value?.id ? 0 : 1
     const isUnreadIncoming = unreadInc === 1 && selectedConversationId.value !== message.conversationId
-    const incomingTier =
-      message.sender.premium
-        ? 'premium'
-        : message.sender.verifiedStatus && message.sender.verifiedStatus !== 'none'
-          ? 'verified'
-          : 'normal'
+    const incomingTier = getMessageTier(message)
     const updated: MessageConversation = {
       ...existing,
       lastMessageAt: message.createdAt,
@@ -1709,9 +1715,8 @@ watch(
   () => {
     if (!import.meta.client) return
     if (!viewerIsVerified.value) return
-    // Desktop: keep focus on the chat composer when switching threads.
-    // Mobile: avoid auto-focus so the keyboard doesn't pop when selecting a chat.
-    if (isTinyViewport.value) return
+    // Keep focus on non-mobile layouts; when the tab bar is visible, avoid opening the keyboard.
+    if (isTabBarMode.value) return
     void nextTick(() => dmComposerRef.value?.focus?.())
   },
   { flush: 'post' },
@@ -1722,6 +1727,22 @@ watch(
   (key) => {
     if (!import.meta.client) return
     if (!key) return
+    void nextTick().then(() => {
+      const el = messagesScroller.value
+      if (el) onMessagesScrollerMounted(el)
+    })
+  },
+  { flush: 'post' },
+)
+
+watch(
+  () => chatBootState.value,
+  (state) => {
+    if (!import.meta.client) return
+    if (state !== 'ready') return
+    if (!renderedChatKey.value) return
+    // Deep-link/refresh path can set renderedChatKey before the chat shell mounts.
+    // Re-apply initial scroller snap when the shell becomes ready.
     void nextTick().then(() => {
       const el = messagesScroller.value
       if (el) onMessagesScrollerMounted(el)

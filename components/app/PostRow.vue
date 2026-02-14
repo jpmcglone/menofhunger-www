@@ -206,6 +206,7 @@
               :initial-has-bookmarked="Boolean(postView.viewerHasBookmarked)"
               :initial-collection-ids="(postView.viewerBookmarkCollectionIds ?? []).filter(Boolean)"
               @bookmark-count-delta="onBookmarkCountDelta"
+              @bookmark-state-changed="onBookmarkStateChanged"
             />
 
             <AppPostRowShareMenu :can-share="canShare" :tooltip="shareTooltip" :items="shareMenuItems" />
@@ -266,6 +267,7 @@
       :register-unsaved-guard="false"
       mode="edit"
       :edit-post-id="postView.id"
+      :edit-post-is-draft="Boolean(postView.isDraft)"
       @edited="onEdited"
     />
   </Dialog>
@@ -319,6 +321,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: 'deleted', id: string): void
   (e: 'edited', payload: { id: string; post: FeedPost }): void
+  (e: 'bookmarkUpdated', payload: { postId: string; hasBookmarked: boolean; collectionIds: string[] }): void
 }>()
 
 const postState = ref(props.post)
@@ -695,6 +698,21 @@ function onBookmarkCountDelta(delta: number) {
   if (!d) return
   const next = Math.max(0, Math.floor(Number(postState.value.bookmarkCount ?? 0)) + d)
   postState.value = { ...postState.value, bookmarkCount: next }
+}
+
+function onBookmarkStateChanged(payload: { hasBookmarked: boolean; collectionIds: string[] }) {
+  const nextHas = Boolean(payload?.hasBookmarked)
+  const nextCollectionIds = Array.isArray(payload?.collectionIds) ? payload.collectionIds.filter(Boolean) : []
+  postState.value = {
+    ...postState.value,
+    viewerHasBookmarked: nextHas,
+    viewerBookmarkCollectionIds: nextCollectionIds,
+  }
+  emit('bookmarkUpdated', {
+    postId: postView.value.id,
+    hasBookmarked: nextHas,
+    collectionIds: nextCollectionIds,
+  })
 }
 const displayedCommentCount = computed(
   () => (postView.value.commentCount ?? 0) + getCommentCountBump(postView.value.id),

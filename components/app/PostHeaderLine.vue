@@ -78,14 +78,14 @@
         v-tooltip.bottom="createdAtTooltip"
       >
         {{ createdAtShort }}
-        <span
-          v-if="isEdited"
-          class="ml-1 text-[11px] font-semibold opacity-80"
-          aria-label="Edited"
-        >
-          edited
-        </span>
       </NuxtLink>
+      <span
+        v-if="isEdited"
+        class="ml-1 shrink-0 text-[11px] font-normal text-gray-400 dark:text-gray-500"
+        aria-label="Edited"
+      >
+        (edited)
+      </span>
     </div>
   </div>
 </template>

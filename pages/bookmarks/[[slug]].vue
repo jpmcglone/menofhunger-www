@@ -56,7 +56,12 @@
 
       <div v-else class="space-y-0">
         <div v-for="b in items" :key="b.bookmarkId">
-          <AppPostRow :post="b.post" @deleted="onBookmarkPostDeleted(b.post.id)" @edited="onBookmarkPostEdited(b.bookmarkId, $event.post)" />
+          <AppPostRow
+            :post="b.post"
+            @deleted="onBookmarkPostDeleted(b.post.id)"
+            @edited="onBookmarkPostEdited(b.bookmarkId, $event.post)"
+            @bookmark-updated="onBookmarkUpdated(b.bookmarkId, $event)"
+          />
         </div>
       </div>
 
@@ -281,6 +286,43 @@ function onBookmarkPostEdited(bookmarkId: string, post: SearchBookmarkItem['post
   const bid = (bookmarkId ?? '').trim()
   if (!bid) return
   items.value = items.value.map((b) => (b.bookmarkId === bid ? { ...b, post } : b))
+}
+
+function onBookmarkUpdated(
+  bookmarkId: string,
+  payload: { postId: string; hasBookmarked: boolean; collectionIds: string[] },
+) {
+  const bid = (bookmarkId ?? '').trim()
+  if (!bid) return
+  const nextHas = Boolean(payload?.hasBookmarked)
+  const nextCollectionIds = Array.isArray(payload?.collectionIds) ? payload.collectionIds.filter(Boolean) : []
+  const currentFolderId = folder.value?.id ?? null
+  const inUnorganized = slug.value === 'unorganized'
+
+  const shouldKeep =
+    slug.value === ''
+      ? nextHas
+      : inUnorganized
+        ? nextHas && nextCollectionIds.length === 0
+        : Boolean(currentFolderId && nextHas && nextCollectionIds.includes(currentFolderId))
+
+  if (!shouldKeep) {
+    items.value = items.value.filter((b) => b.bookmarkId !== bid)
+    return
+  }
+
+  items.value = items.value.map((b) => {
+    if (b.bookmarkId !== bid) return b
+    return {
+      ...b,
+      collectionIds: nextCollectionIds,
+      post: {
+        ...b.post,
+        viewerHasBookmarked: nextHas,
+        viewerBookmarkCollectionIds: nextCollectionIds,
+      },
+    }
+  })
 }
 
 const newFolderOpen = ref(false)

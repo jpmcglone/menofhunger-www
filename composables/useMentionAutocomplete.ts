@@ -2,6 +2,7 @@ import type { Ref } from 'vue'
 import type { FollowListUser } from '~/types/api'
 import { extractMentionedUsernames, parseActiveMention, type ActiveMention } from '~/utils/mention-autocomplete'
 import { getCaretPoint, type CaretPoint } from '~/utils/textarea-caret'
+import { userColorTier } from '~/utils/user-tier'
 
 type MentionUser = FollowListUser
 
@@ -35,13 +36,10 @@ function relationshipRank(u: MentionUser): number {
   return 3
 }
 
-export type MentionTier = 'premium' | 'verified' | 'normal'
+export type MentionTier = 'organization' | 'premium' | 'verified' | 'normal'
 
-export function tierFromMentionUser(u: { premium?: boolean; verifiedStatus?: string } | null): MentionTier {
-  if (!u) return 'normal'
-  if (u.premium) return 'premium'
-  if (u.verifiedStatus && u.verifiedStatus !== 'none') return 'verified'
-  return 'normal'
+export function tierFromMentionUser(u: { isOrganization?: boolean; premium?: boolean; premiumPlus?: boolean; verifiedStatus?: string } | null): MentionTier {
+  return userColorTier(u)
 }
 
 function scoreUsernameMode(u: MentionUser, q: string): number {

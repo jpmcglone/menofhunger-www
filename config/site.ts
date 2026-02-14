@@ -13,8 +13,8 @@ export const siteConfig = {
   },
   meta: {
     title: 'Men of Hunger',
-    description: "Men of Hunger — an online and offline brotherhood for driven men. Ambition isn't a flaw — it's fuel. We rise. We build. We lead.",
-    keywords: 'men of hunger, brotherhood, ambition, driven men, leadership, personal growth, vision, purpose, masculine excellence, achievement'
+    description: "Men of Hunger is an online and offline community for driven men. Ambition isn't a flaw — it's fuel. We rise. We build. We lead.",
+    keywords: 'men of hunger, community, ambition, driven men, leadership, personal growth, vision, purpose, achievement'
   }
 }
 

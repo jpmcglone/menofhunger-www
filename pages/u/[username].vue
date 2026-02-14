@@ -48,7 +48,7 @@
         :show-follow-counts="showFollowCounts"
         :follower-count="followSummary?.followerCount ?? 0"
         :following-count="followSummary?.followingCount ?? 0"
-        @open-image="(p) => openFromEvent(p.event, p.url, p.title, p.kind)"
+        @open-image="onOpenProfileImage"
         @edit="editOpen = true"
         @open-followers="goToFollowers"
         @open-following="goToFollowing"
@@ -573,6 +573,23 @@ const hideAvatarThumb = computed(() => viewer.visible.value && viewer.kind.value
 const hideAvatarDuringBanner = computed(() => viewer.visible.value && viewer.kind.value === 'banner')
 
 const editOpen = ref(false)
+
+function onOpenProfileImage(payload: {
+  event: MouseEvent
+  url: string
+  title: string
+  kind: 'avatar' | 'banner'
+  isOrganization?: boolean
+}) {
+  if (payload.kind === 'avatar') {
+    void openFromEvent(payload.event, payload.url, payload.title, payload.kind, {
+      avatarBorderRadius: payload.isOrganization ? '16%' : '9999px',
+    })
+    return
+  }
+  void openFromEvent(payload.event, payload.url, payload.title, payload.kind)
+}
+
 function patchPublicProfile(patch: Partial<Pick<PublicProfile, 'name' | 'bio' | 'avatarUrl' | 'bannerUrl'>>) {
   if (!data.value) return
   data.value = { ...(data.value as PublicProfile), ...patch }

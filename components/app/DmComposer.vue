@@ -57,11 +57,12 @@
 import type { FollowListUser } from '~/types/api'
 import { useMentionAutocomplete } from '~/composables/useMentionAutocomplete'
 import { useHashtagAutocomplete } from '~/composables/useHashtagAutocomplete'
+import { userColorTier } from '~/utils/user-tier'
 
 const props = withDefaults(
   defineProps<{
     modelValue: string
-    user?: Pick<FollowListUser, 'premium' | 'verifiedStatus'> | null
+    user?: Partial<Pick<FollowListUser, 'isOrganization' | 'premium' | 'premiumPlus' | 'verifiedStatus'>> | null
     placeholder?: string
     loading?: boolean
     disabled?: boolean
@@ -106,22 +107,19 @@ function focus() {
   textareaEl.value?.focus?.()
 }
 
-const userTier = computed<'premium' | 'verified' | 'normal'>(() => {
-  const u = props.user
-  if (u?.premium) return 'premium'
-  if (u?.verifiedStatus && u.verifiedStatus !== 'none') return 'verified'
-  return 'normal'
-})
+const userTier = computed(() => userColorTier(props.user))
 
 const outlineClass = computed(() => {
   const radius = isMultiline.value ? 'rounded-2xl' : 'rounded-full'
   const base = `${radius} border`
+  if (userTier.value === 'organization') return `${base} border-[var(--moh-org)]`
   if (userTier.value === 'premium') return `${base} border-[var(--moh-premium)]`
   if (userTier.value === 'verified') return `${base} border-[var(--moh-verified)]`
   return `${base} border-gray-300 dark:border-zinc-600`
 })
 
 const sendButtonClass = computed(() => {
+  if (userTier.value === 'organization') return 'bg-[var(--moh-org)] text-white hover:opacity-90'
   if (userTier.value === 'premium') return 'bg-[var(--moh-premium)] text-white hover:opacity-90'
   if (userTier.value === 'verified') return 'bg-[var(--moh-verified)] text-white hover:opacity-90'
   return 'bg-gray-900 text-white hover:bg-gray-800 dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100'

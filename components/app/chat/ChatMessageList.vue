@@ -67,32 +67,34 @@
               bubbleClass(item.message)
             ]"
           >
-            <div class="flex flex-wrap items-end gap-x-2 gap-y-1">
-              <span class="min-w-0 flex-[1_1_auto] whitespace-pre-wrap break-words">{{ item.message.body }}</span>
+            <div class="space-y-1">
+              <AppChatMessageRichBody :body="item.message.body" />
               <div
                 v-if="shouldShowMessageMeta(item, listIndex)"
-                class="ml-auto shrink-0 inline-flex items-center gap-1 text-xs opacity-75 whitespace-nowrap"
+                class="flex justify-end"
               >
-                <time
-                  :datetime="item.message.createdAt"
-                  :title="formatMessageTimeFull(item.message.createdAt)"
-                >
-                  {{ formatMessageTime(item.message.createdAt) }}
-                </time>
-                <template v-if="item.message.sender.id === meId">
-                  <span
-                    v-if="sendingMessageIds.has(item.message.id)"
-                    class="inline-block h-[10px] w-[10px] rounded-full border border-current border-t-transparent opacity-70 animate-spin"
-                    aria-label="Sending"
-                  />
-                  <Icon
-                    v-else-if="latestMyMessageId && item.message.id === latestMyMessageId"
-                    name="tabler:circle-check"
-                    size="10"
-                    class="opacity-80 translate-y-[0.5px]"
-                    aria-hidden="true"
-                  />
-                </template>
+                <div class="inline-flex items-center gap-1 text-xs opacity-75 whitespace-nowrap">
+                  <time
+                    :datetime="item.message.createdAt"
+                    :title="formatMessageTimeFull(item.message.createdAt)"
+                  >
+                    {{ formatMessageTime(item.message.createdAt) }}
+                  </time>
+                  <template v-if="item.message.sender.id === meId">
+                    <span
+                      v-if="sendingMessageIds.has(item.message.id)"
+                      class="inline-block h-[10px] w-[10px] rounded-full border border-current border-t-transparent opacity-70 animate-spin"
+                      aria-label="Sending"
+                    />
+                    <Icon
+                      v-else-if="latestMyMessageId && item.message.id === latestMyMessageId"
+                      name="tabler:circle-check"
+                      size="10"
+                      class="opacity-80 translate-y-[0.5px]"
+                      aria-hidden="true"
+                    />
+                  </template>
+                </div>
               </div>
             </div>
           </div>
