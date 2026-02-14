@@ -64,7 +64,7 @@
           <div class="flex items-center gap-2">
             <InputText
               v-model="codeInput"
-              class="w-full font-mono tracking-[0.25em] text-center"
+              class="w-full font-mono tracking-[0.25em] text-left"
               placeholder="••••••"
               autocomplete="one-time-code"
               inputmode="numeric"
@@ -373,10 +373,10 @@ const { submit: submitCode, submitting: verifying } = useFormSubmit(
     if (redirect && redirect.startsWith('/')) {
       await navigateTo(redirect)
     } else {
-      // New signup: route them straight into profile setup (OnboardingGate).
-      // We keep a query flag so OnboardingGate can send them to their profile once complete.
+      // New signup: start on home with onboarding gate, then route to profile on completion.
+      // Keep a query flag so OnboardingGate knows to redirect to profile.
       if (result.isNewUser) {
-        await navigateTo('/settings?welcome=1')
+        await navigateTo('/home?welcome=1')
       } else {
         await navigateTo('/home')
       }

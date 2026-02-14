@@ -120,6 +120,7 @@
             label="Edit profile"
             severity="secondary"
             rounded
+            :class="showEditProfileNudge ? ['moh-edit-profile-nudge', editProfileNudgeToneClass] : ''"
             @click="emit('edit')"
           >
             <template #icon>
@@ -291,8 +292,17 @@ const avatarRoundClass = computed(() => getAvatarRoundClass(Boolean(profile.valu
 const profileName = computed(() => props.profileName)
 const profileAvatarUrl = computed(() => props.profileAvatarUrl ?? null)
 const profileBannerUrl = computed(() => props.profileBannerUrl ?? null)
+const hasAvatar = computed(() => Boolean((profileAvatarUrl.value ?? '').trim()))
+const hasBanner = computed(() => Boolean((profileBannerUrl.value ?? '').trim()))
 const relationshipTagLabel = computed(() => props.relationshipTagLabel ?? null)
 const isSelf = computed(() => Boolean(props.isSelf))
+const showEditProfileNudge = computed(() => isSelf.value && !hasAvatar.value && !hasBanner.value)
+const editProfileNudgeToneClass = computed(() => {
+  const p = profile.value
+  if (p?.premium || p?.premiumPlus) return 'moh-edit-profile-nudge--premium'
+  if (p?.verifiedStatus && p.verifiedStatus !== 'none') return 'moh-edit-profile-nudge--verified'
+  return 'moh-edit-profile-nudge--normal'
+})
 const followRelationship = computed(() => props.followRelationship ?? null)
 const nudgeFromProps = computed(() => props.nudge ?? null)
 const showFollowCounts = computed(() => Boolean(props.showFollowCounts))
@@ -541,4 +551,40 @@ const lastOnlineTooltip = computed(() => {
   return formatDateTime(iso, { dateStyle: 'medium', timeStyle: 'short' })
 })
 </script>
+
+<style scoped>
+.moh-edit-profile-nudge {
+  --moh-edit-nudge-color: var(--moh-text);
+  border-color: transparent !important;
+  border-width: 0 !important;
+  box-shadow: 0 0 0 0 color-mix(in srgb, var(--moh-edit-nudge-color) 20%, transparent);
+  animation: mohEditProfilePulse 3.2s ease-in-out infinite;
+}
+
+.moh-edit-profile-nudge--normal {
+  --moh-edit-nudge-color: var(--moh-text);
+}
+
+.moh-edit-profile-nudge--verified {
+  --moh-edit-nudge-color: var(--moh-verified);
+}
+
+.moh-edit-profile-nudge--premium {
+  --moh-edit-nudge-color: var(--moh-premium);
+}
+
+@keyframes mohEditProfilePulse {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 0 color-mix(in srgb, var(--moh-edit-nudge-color) 18%, transparent),
+      0 0 0 0 color-mix(in srgb, var(--moh-edit-nudge-color) 10%, transparent);
+  }
+  50% {
+    box-shadow:
+      0 0 0 10px color-mix(in srgb, var(--moh-edit-nudge-color) 8%, transparent),
+      0 0 0 22px color-mix(in srgb, var(--moh-edit-nudge-color) 4%, transparent);
+  }
+}
+</style>
 

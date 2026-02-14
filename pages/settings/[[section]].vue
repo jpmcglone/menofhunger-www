@@ -961,7 +961,7 @@ const verificationStartDisabled = computed(() => Boolean(verificationStartDisabl
 const usernameInput = ref('')
 const emailInput = ref('')
 const currentUsername = computed(() => (authUser.value?.username ?? '').trim())
-const usernameIsSet = computed(() => Boolean(authUser.value?.usernameIsSet))
+const usernameLocked = computed(() => Boolean(authUser.value?.usernameIsSet || currentUsername.value))
 const {
   status: usernameStatus,
   helperText: usernameHelperText,
@@ -969,7 +969,7 @@ const {
 } = useUsernameField({
   value: usernameInput,
   currentUsername: currentUsername,
-  usernameIsSet,
+  usernameIsSet: usernameLocked,
   debounceMs: 500,
   lockedInvalidMessage: 'Only capitalization changes are allowed for your username.',
   caseOnlyMessage: 'Only capitalization changes are allowed (this change is OK).',
@@ -1079,7 +1079,7 @@ const canSaveUsername = computed(() => {
   // Allow capitalization-only changes regardless of current validation rules.
   if (isCaseOnlyChange.value) return true
   // If username is set, only capitalization is allowed.
-  if (authUser.value?.usernameIsSet) return false
+  if (usernameLocked.value) return false
   return usernameStatus.value === 'available'
 })
 
@@ -1187,7 +1187,7 @@ async function save() {
   const username = usernameInput.value.trim()
   if (!username) return
 
-  if (authUser.value?.usernameIsSet && !isCaseOnlyChange.value) {
+  if (usernameLocked.value && !isCaseOnlyChange.value) {
     usernameStatus.value = 'invalid'
     usernameHelperText.value = 'Only capitalization changes are allowed for your username.'
     return

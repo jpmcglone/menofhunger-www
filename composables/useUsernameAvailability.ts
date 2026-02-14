@@ -25,7 +25,8 @@ export function useUsernameAvailability() {
       )
 
       if (res.available) {
-        return { status: 'available', normalized: res.normalized, message: `Available: @${res.normalized}` }
+        // Show exactly what the user typed (including capitalization) in helper text.
+        return { status: 'available', normalized: res.normalized, message: `Available: @${trimmed}` }
       }
 
       if (res.error) return { status: 'invalid', normalized: res.normalized, message: res.error }

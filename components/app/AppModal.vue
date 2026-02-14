@@ -27,7 +27,7 @@
           <div class="absolute inset-0 flex items-center justify-center p-3 sm:p-4">
             <section
               :class="[
-                'relative w-full overflow-hidden rounded-2xl moh-popover moh-card-matte',
+                'relative flex w-full flex-col overflow-hidden rounded-2xl border moh-border moh-surface-1 moh-texture moh-card-matte',
                 maxWidthClass,
               ]"
               :style="panelStyle"
@@ -52,7 +52,7 @@
               </header>
 
               <!-- Scrollable body -->
-              <div :class="['overflow-y-auto overflow-x-hidden', bodyClass]" :style="bodyStyle">
+              <div :class="['min-h-0 flex-1 overflow-y-auto overflow-x-hidden', bodyClass]">
                 <slot />
               </div>
 
@@ -128,11 +128,5 @@ useEventListener(window, 'keydown', onKeyDown)
 const panelStyle = computed<CSSProperties>(() => ({
   maxHeight: props.maxHeight,
 }))
-const bodyStyle = computed<CSSProperties>(() => ({
-  // Subtract header + footer heights; footer also includes iOS safe-area padding.
-  maxHeight: `calc(${props.maxHeight} - 3.25rem${hasFooter.value ? ' - (3.25rem + env(safe-area-inset-bottom))' : ''})`,
-}))
-
-const hasFooter = computed(() => Boolean(useSlots().footer))
 </script>
 

@@ -192,10 +192,6 @@ function syncUserCaches(
   const next = (nextUser?.username ?? '').trim().toLowerCase()
   if (prev) invalidateUserPreviewCache(prev)
   if (next) invalidateUserPreviewCache(next)
-  if (import.meta.client) {
-    if (prev) clearNuxtData(`public-profile:${prev}`)
-    if (next) clearNuxtData(`public-profile:${next}`)
-  }
   if (!nextUser?.id) return
   usersStore.upsert({
     id: nextUser.id,

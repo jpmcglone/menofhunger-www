@@ -162,11 +162,11 @@
       </div>
 
       <template #footer>
-        <div class="flex items-center justify-between gap-3">
-          <div class="text-xs moh-text-muted">
+        <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div class="text-xs moh-text-muted text-center sm:text-left">
             Tip: press Enter to add what you typed.
           </div>
-          <div class="flex items-center gap-2">
+          <div class="flex items-center justify-end gap-2">
             <Button label="Cancel" severity="secondary" text :disabled="disabled" @click="closeDialog" />
             <Button
               label="Done"

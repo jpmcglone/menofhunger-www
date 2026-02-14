@@ -587,9 +587,6 @@ function patchPublicProfile(patch: Partial<Pick<PublicProfile, 'name' | 'bio' | 
   }
   const currentUsername = normalizedUsername.value
   if (currentUsername) invalidateUserPreviewCache(currentUsername)
-  if (import.meta.client && currentUsername) {
-    clearNuxtData(`public-profile:${currentUsername}`)
-  }
 }
 
 watch(

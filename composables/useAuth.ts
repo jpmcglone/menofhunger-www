@@ -2,7 +2,6 @@ import type { UsersCallback } from '~/composables/usePresence'
 import { useUsersStore } from '~/composables/useUsersStore'
 import { clearAuthClientState } from '~/composables/auth/authState'
 import { clearMohCacheAll } from '~/composables/useApiClient'
-import { isAdminPath, isAuthAllowedAfterLogoutPath } from '~/config/routes'
 
 export type AuthUser = {
   id: string
@@ -149,27 +148,24 @@ export function useAuth() {
     clientMePromise = null
     const { emitLogout } = usePresence()
     emitLogout()
-    await apiFetch<{ success: true }>('/auth/logout', { method: 'POST' })
+    const { onLogout } = usePushNotifications()
+
+    // Best-effort server/session cleanup: still clear local auth state even if network fails.
+    try {
+      await apiFetch<{ success: true }>('/auth/logout', { method: 'POST' })
+    } catch {
+      // No-op: proceed with local cleanup.
+    }
+    await onLogout().catch(() => undefined)
 
     clearMohCacheAll()
     clearAuthClientState({ resetViewerCaches: true })
     user.value = null
     didAttempt.value = true
 
-    // Redirect away from pages that effectively require auth.
+    // Always land on home after explicit logout.
     if (import.meta.client) {
-      const route = useRoute()
-      const path = String(route.path || '')
-      const layout = route.meta?.layout
-      const isAdmin = isAdminPath(path)
-
-      const requiresAuth =
-        isAdmin ||
-        (layout === 'app' && !isAuthAllowedAfterLogoutPath(path))
-
-      if (requiresAuth && path !== '/home') {
-        await navigateTo('/home', { replace: true })
-      }
+      await navigateTo('/home', { replace: true })
     }
   }
 
