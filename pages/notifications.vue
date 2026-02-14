@@ -27,7 +27,10 @@
       No notifications yet.
     </div>
     <div v-else class="relative z-0 divide-y divide-gray-200 dark:divide-zinc-800">
-      <template v-for="(item, idx) in notifications" :key="item.type === 'single' ? item.notification.id : item.group.id">
+      <template
+        v-for="(item, idx) in notifications"
+        :key="item.type === 'single' ? item.notification.id : item.type === 'group' ? item.group.id : item.rollup.id"
+      >
         <div
           v-if="itemHref(item)"
           class="block w-full text-left hover:bg-gray-50 dark:hover:bg-zinc-900 cursor-pointer"
@@ -42,6 +45,10 @@
             :notification="item.notification"
             :nudge-is-topmost="nudgeIsTopmostByIndex[idx] ?? false"
           />
+          <AppNotificationFollowedPostsRollupRow
+            v-else-if="item.type === 'followed_posts_rollup'"
+            :rollup="item.rollup"
+          />
           <AppNotificationGroupRow
             v-else
             :group="item.group"
@@ -53,6 +60,10 @@
             v-if="item.type === 'single'"
             :notification="item.notification"
             :nudge-is-topmost="nudgeIsTopmostByIndex[idx] ?? false"
+          />
+          <AppNotificationFollowedPostsRollupRow
+            v-else-if="item.type === 'followed_posts_rollup'"
+            :rollup="item.rollup"
           />
           <AppNotificationGroupRow
             v-else
@@ -120,6 +131,7 @@ function nudgeActorIdForItem(item: (typeof notifications.value)[number]): string
     if (item.notification.kind !== 'nudge') return null
     return item.notification.actor?.id ?? null
   }
+  if (item.type !== 'group') return null
   if (item.group.kind !== 'nudge') return null
   return item.group.actors?.[0]?.id ?? null
 }
@@ -145,9 +157,11 @@ const notificationActorIds = computed(() => {
       if (id) ids.add(id)
       continue
     }
-    for (const a of item.group.actors ?? []) {
-      const id = a?.id
-      if (id) ids.add(id)
+    if (item.type === 'group') {
+      for (const a of item.group.actors ?? []) {
+        const id = a?.id
+        if (id) ids.add(id)
+      }
     }
   }
   return [...ids]
@@ -184,7 +198,8 @@ async function onMarkAllRead() {
       if (item.type === 'single') {
         return { ...item, notification: { ...item.notification, readAt: now } }
       }
-      return { ...item, group: { ...item.group, readAt: now } }
+      if (item.type === 'group') return { ...item, group: { ...item.group, readAt: now } }
+      return { ...item, rollup: { ...item.rollup, readAt: now } }
     })
   } finally {
     markingAllRead.value = false

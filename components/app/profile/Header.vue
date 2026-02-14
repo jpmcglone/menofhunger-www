@@ -2,7 +2,7 @@
   <div class="-mt-4">
     <!-- Full-bleed profile header (cancel app layout padding) -->
     <div class="relative">
-      <div class="group relative aspect-[3/1] w-full bg-gray-200 dark:bg-zinc-900">
+      <div class="group relative aspect-[3.25/1] w-full bg-gray-200 dark:bg-zinc-900">
         <img
           v-if="profileBannerUrl"
           v-show="!hideBannerThumb"
@@ -43,6 +43,69 @@
             Last online {{ lastOnlineShort }}
           </template>
         </div>
+        <!-- Nudge overlay (top-right), mirroring user preview placement -->
+        <div v-if="showNudge" class="absolute top-3 right-3 z-20">
+          <!-- Nudge back split-button (primary action + caret menu) -->
+          <div
+            v-if="nudgeState?.inboundPending"
+            class="inline-flex overflow-hidden rounded-xl border moh-border"
+          >
+            <Button
+              label="Nudge back"
+              size="small"
+              severity="secondary"
+              class="!rounded-none !border-0 !text-xs"
+              :disabled="nudgeInflight || ignoreInflight"
+              @click="onNudgeBack"
+            />
+            <Button
+              type="button"
+              size="small"
+              severity="secondary"
+              class="!rounded-none !border-0 !px-2 !text-xs"
+              aria-label="More nudge actions"
+              aria-haspopup="true"
+              :disabled="nudgeInflight || ignoreInflight"
+              @click="toggleNudgeMenu"
+            >
+              <template #icon>
+                <Icon name="tabler:chevron-down" aria-hidden="true" />
+              </template>
+            </Button>
+            <Menu v-if="nudgeMenuMounted" ref="nudgeMenuRef" :model="nudgeMenuItems" popup>
+              <template #item="{ item, props }">
+                <a v-bind="props.action" class="flex items-center gap-2">
+                  <Icon v-if="item.iconName" :name="item.iconName" aria-hidden="true" />
+                  <span
+                    v-bind="props.label"
+                    class="flex-1"
+                    v-tooltip.bottom="
+                      item.value === 'ignore'
+                        ? tinyTooltip(ignoreNudgeTooltip)
+                        : item.value === 'gotit'
+                          ? tinyTooltip(gotItNudgeTooltip)
+                          : undefined
+                    "
+                  >
+                    {{ item.label }}
+                  </span>
+                </a>
+              </template>
+            </Menu>
+          </div>
+
+          <!-- Default nudge button (no inbound pending) -->
+          <Button
+            v-else
+            :label="nudgePrimaryLabel"
+            size="small"
+            severity="secondary"
+            rounded
+            class="!text-xs"
+            :disabled="nudgePrimaryDisabled"
+            @click="onNudgePrimary"
+          />
+        </div>
       </div>
 
       <div
@@ -60,7 +123,7 @@
           <AppUserAvatar
             v-show="!hideAvatarThumb"
             :user="profile"
-            size-class="h-28 w-28"
+            size-class="h-24 w-24"
             bg-class="bg-gray-200 dark:bg-zinc-800"
             :presence-scale="0.15"
             :presence-inset-ratio="0.25"
@@ -94,11 +157,11 @@
       </div>
     </div>
 
-    <div class="mx-auto max-w-3xl px-4 pb-5 pt-16">
+    <div class="mx-auto max-w-3xl px-4 pb-5 pt-14">
       <div class="flex items-start justify-between gap-4 mt-1">
         <div class="min-w-0">
           <div class="flex items-center gap-2 min-w-0">
-            <div class="text-2xl font-bold leading-none text-gray-900 dark:text-gray-50 truncate">
+            <div class="text-xl font-bold leading-none text-gray-900 dark:text-gray-50 truncate">
               {{ profileName }}
             </div>
             <AppVerifiedBadge
@@ -143,68 +206,22 @@
             @followed="emit('followed')"
             @unfollowed="emit('unfollowed')"
           />
-          <div v-if="showNudge" class="flex items-center gap-2">
-            <!-- Nudge back split-button (primary action + caret menu) -->
-            <div
-              v-if="nudgeState?.inboundPending"
-              class="inline-flex overflow-hidden rounded-xl border moh-border"
-            >
-              <Button
-                label="Nudge back"
-                size="small"
-                severity="secondary"
-                class="!rounded-none !border-0 !text-xs"
-                :disabled="nudgeInflight || ignoreInflight"
-                @click="onNudgeBack"
-              />
-              <Button
-                type="button"
-                size="small"
-                severity="secondary"
-                class="!rounded-none !border-0 !px-2 !text-xs"
-                aria-label="More nudge actions"
-                aria-haspopup="true"
-                :disabled="nudgeInflight || ignoreInflight"
-                @click="toggleNudgeMenu"
-              >
-                <template #icon>
-                  <Icon name="tabler:chevron-down" aria-hidden="true" />
-                </template>
-              </Button>
-              <Menu v-if="nudgeMenuMounted" ref="nudgeMenuRef" :model="nudgeMenuItems" popup>
-                <template #item="{ item, props }">
-                  <a v-bind="props.action" class="flex items-center gap-2">
-                    <Icon v-if="item.iconName" :name="item.iconName" aria-hidden="true" />
-                    <span
-                      v-bind="props.label"
-                      class="flex-1"
-                      v-tooltip.bottom="
-                        item.value === 'ignore'
-                          ? tinyTooltip(ignoreNudgeTooltip)
-                          : item.value === 'gotit'
-                            ? tinyTooltip(gotItNudgeTooltip)
-                            : undefined
-                      "
-                    >
-                      {{ item.label }}
-                    </span>
-                  </a>
-                </template>
-              </Menu>
-            </div>
-
-            <!-- Default nudge button (no inbound pending) -->
-            <Button
-              v-else
-              :label="nudgePrimaryLabel"
-              size="small"
-              severity="secondary"
-              rounded
-              class="!text-xs"
-              :disabled="nudgePrimaryDisabled"
-              @click="onNudgePrimary"
-            />
-          </div>
+          <Button
+            v-if="showPostBell"
+            type="button"
+            severity="secondary"
+            rounded
+            text
+            class="!px-2"
+            :disabled="bellInflight"
+            :aria-label="bellEnabled ? 'Disable post notifications' : 'Enable post notifications'"
+            v-tooltip.bottom="tinyTooltip(bellEnabled ? 'Post notifications on' : 'Post notifications off')"
+            @click="togglePostBell"
+          >
+            <template #icon>
+              <Icon :name="bellEnabled ? 'tabler:bell-filled' : 'tabler:bell'" aria-hidden="true" />
+            </template>
+          </Button>
           <Button
             v-if="canOpenMenu"
             type="button"
@@ -314,7 +331,12 @@ const editProfileNudgeToneClass = computed(() => {
   if (p?.verifiedStatus && p.verifiedStatus !== 'none') return 'moh-edit-profile-nudge--verified'
   return 'moh-edit-profile-nudge--normal'
 })
-const followRelationship = computed(() => props.followRelationship ?? null)
+const followState = useFollowState()
+const followRelationship = computed(() => {
+  const id = profile.value?.id ?? null
+  if (id) return followState.get(id) ?? props.followRelationship ?? null
+  return props.followRelationship ?? null
+})
 const nudgeFromProps = computed(() => props.nudge ?? null)
 const showFollowCounts = computed(() => Boolean(props.showFollowCounts))
 const followerCount = computed(() => props.followerCount ?? null)
@@ -328,6 +350,22 @@ const followerLabel = computed(() => (followerCountN.value === 1 ? 'Follower' : 
 
 const { user: authUser } = useAuth()
 const isAuthed = computed(() => Boolean(authUser.value?.id))
+
+const viewerFollowsUser = computed(() => Boolean(followRelationship.value?.viewerFollowsUser))
+const bellEnabled = computed(() => Boolean(followRelationship.value?.viewerPostNotificationsEnabled))
+const showPostBell = computed(() => {
+  if (!isAuthed.value) return false
+  if (isSelf.value) return false
+  if (!profile.value?.id || !profile.value?.username) return false
+  return viewerFollowsUser.value
+})
+const bellInflight = computed(() => Boolean(followState.inflight.value[`follow-bell:${profile.value?.id ?? ''}`]))
+async function togglePostBell() {
+  const id = profile.value?.id ?? null
+  const username = profile.value?.username ?? null
+  if (!id || !username) return
+  await followState.setPostNotificationsEnabled({ userId: id, username, enabled: !bellEnabled.value })
+}
 
 const isMutualFollow = computed(() => {
   const rel = followRelationship.value

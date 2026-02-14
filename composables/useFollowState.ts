@@ -41,7 +41,7 @@ export function useFollowState() {
   }
 
   function upsert(userId: string, partial: Partial<FollowRelationship>) {
-    const prev = state.value[userId] ?? { viewerFollowsUser: false, userFollowsViewer: false }
+    const prev = state.value[userId] ?? { viewerFollowsUser: false, userFollowsViewer: false, viewerPostNotificationsEnabled: false }
     set(userId, { ...prev, ...partial })
   }
 
@@ -59,7 +59,8 @@ export function useFollowState() {
       inflight,
       apply: () => {
         const prev = get(userId)
-        upsert(userId, { viewerFollowsUser: true })
+        // Bell defaults OFF for normal follows.
+        upsert(userId, { viewerFollowsUser: true, viewerPostNotificationsEnabled: false })
         return { prev }
       },
       request: async () => {
@@ -87,7 +88,8 @@ export function useFollowState() {
       inflight,
       apply: () => {
         const prev = get(userId)
-        upsert(userId, { viewerFollowsUser: false })
+        // Unfollow: clear bell.
+        upsert(userId, { viewerFollowsUser: false, viewerPostNotificationsEnabled: false })
         return { prev }
       },
       request: async () => {
@@ -107,6 +109,32 @@ export function useFollowState() {
     invalidateUserPreviewCache(username)
   }
 
-  return { state, inflight, error, get, set, upsert, ingest, follow, unfollow }
+  async function setPostNotificationsEnabled(params: { userId: string; username: string; enabled: boolean }) {
+    error.value = null
+    const { userId, username, enabled } = params
+    await runOptimisticRequest<{ prev: FollowRelationship | null }, { enabled: boolean }>({
+      key: `follow-bell:${userId}`,
+      inflight,
+      apply: () => {
+        const prev = get(userId)
+        upsert(userId, { viewerPostNotificationsEnabled: Boolean(enabled) })
+        return { prev }
+      },
+      request: async () => {
+        return await apiFetchData<{ enabled: boolean }>(
+          `/follows/${encodeURIComponent(username)}/post-notifications`,
+          { method: 'PATCH', body: { enabled: Boolean(enabled) } },
+        )
+      },
+      rollback: (snapshot, e) => {
+        if (snapshot.prev) set(userId, snapshot.prev)
+        else upsert(userId, { viewerPostNotificationsEnabled: false })
+        error.value = getApiErrorMessage(e) || 'Failed to update post notifications.'
+      },
+    })
+    invalidateUserPreviewCache(username)
+  }
+
+  return { state, inflight, error, get, set, upsert, ingest, follow, unfollow, setPostNotificationsEnabled }
 }
 

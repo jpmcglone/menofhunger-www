@@ -360,7 +360,11 @@ const followSummary = computed(() => followSummaryData.value ?? null)
 const followRelationship = computed<FollowRelationship | null>(() => {
   const s = followSummary.value
   if (!s) return null
-  return { viewerFollowsUser: s.viewerFollowsUser, userFollowsViewer: s.userFollowsViewer }
+  return {
+    viewerFollowsUser: s.viewerFollowsUser,
+    userFollowsViewer: s.userFollowsViewer,
+    viewerPostNotificationsEnabled: s.viewerPostNotificationsEnabled,
+  }
 })
 
 const relationshipTagLabel = computed(() => {

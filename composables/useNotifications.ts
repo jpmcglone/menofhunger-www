@@ -276,7 +276,8 @@ export function useNotifications() {
 
   function itemHref(item: NotificationFeedItem): string | null {
     if (item.type === 'single') return rowHref(item.notification)
-    return groupHref(item.group)
+    if (item.type === 'group') return groupHref(item.group)
+    return null
   }
 
   return {

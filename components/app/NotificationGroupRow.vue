@@ -74,11 +74,18 @@
         <div class="flex items-start justify-between gap-4">
           <div class="min-w-0 flex-1">
             <div :class="['min-w-0 max-w-full line-clamp-2 text-sm', group.readAt ? 'font-medium' : 'font-semibold']">
-              <span v-for="(part, idx) in actorDisplayParts(group)" :key="idx">
-                <span v-if="part.kind === 'actor'" class="whitespace-nowrap">{{ part.text }}</span>
-                <span v-else class="ml-1">{{ part.text }}</span>
-              </span>
-              <span class="ml-1">{{ titleSuffix(group) }}</span>
+              <template v-if="group.kind === 'followed_post' && group.actorCount === 1 && group.count > 1">
+                <span class="whitespace-nowrap">{{ group.count }} new posts</span>
+                <span class="ml-1">from</span>
+                <span class="ml-1 whitespace-nowrap">{{ actorLabel(group.actors?.[0] as any) }}</span>
+              </template>
+              <template v-else>
+                <span v-for="(part, idx) in actorDisplayParts(group)" :key="idx">
+                  <span v-if="part.kind === 'actor'" class="whitespace-nowrap">{{ part.text }}</span>
+                  <span v-else class="ml-1">{{ part.text }}</span>
+                </span>
+                <span class="ml-1">{{ titleSuffix(group) }}</span>
+              </template>
               <template v-if="group.kind === 'comment' && group.latestBody">
                 <span class="ml-1 italic text-gray-600 dark:text-gray-300">"{{ group.latestBody }}"</span>
               </template>
@@ -358,7 +365,7 @@ function titleSuffix(g: NotificationGroup): string {
     case 'follow':
       return 'followed you'
     case 'followed_post':
-      return `shared ${g.count} new posts`
+      return g.count > 1 ? `shared ${g.count} posts` : 'shared a post'
     case 'nudge':
       return `nudged you ×${g.count}`
     default:

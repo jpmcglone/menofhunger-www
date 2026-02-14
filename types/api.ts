@@ -496,6 +496,7 @@ export type FollowVisibility = 'all' | 'verified' | 'premium' | 'none'
 export type FollowRelationship = {
   viewerFollowsUser: boolean
   userFollowsViewer: boolean
+  viewerPostNotificationsEnabled: boolean
 }
 
 export type NudgeState = {
@@ -674,9 +675,20 @@ export type NotificationGroup = {
   subjectTier: SubjectTier
 }
 
+export type FollowedPostsRollup = {
+  id: string
+  createdAt: string
+  deliveredAt: string | null
+  readAt: string | null
+  actors: NotificationActor[]
+  actorCount: number
+  count: number
+}
+
 export type NotificationFeedItem =
   | { type: 'single'; notification: Notification }
   | { type: 'group'; group: NotificationGroup }
+  | { type: 'followed_posts_rollup'; rollup: FollowedPostsRollup }
 
 export type GetNotificationsData = NotificationFeedItem[]
 
