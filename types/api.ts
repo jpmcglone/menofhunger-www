@@ -72,6 +72,9 @@ export type RadioListener = {
 export type Websters1828WordOfDay = {
   word: string
   dictionaryUrl: string
+  definition: string | null
+  definitionHtml: string | null
+  sourceUrl: string
   fetchedAt: string
 }
 

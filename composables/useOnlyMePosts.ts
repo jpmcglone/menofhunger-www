@@ -29,5 +29,11 @@ export function useOnlyMePosts() {
     posts.value = [post, ...posts.value]
   }
 
-  return { posts, nextCursor, loading, error, refresh, loadMore, removePost, prependPost }
+  function replacePost(updated: FeedPost) {
+    const pid = (updated?.id ?? '').trim()
+    if (!pid) return
+    posts.value = posts.value.map((p) => (p.id === pid ? updated : p))
+  }
+
+  return { posts, nextCursor, loading, error, refresh, loadMore, removePost, prependPost, replacePost }
 }

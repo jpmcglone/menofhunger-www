@@ -21,6 +21,7 @@
     <ClientOnly>
       <AppToastStack />
       <AppUserPreviewPopover />
+      <AppWordDefinitionPopover />
       <AppOnlineCountPopover />
     </ClientOnly>
     <Transition
@@ -557,6 +558,8 @@
                   :show-divider="false"
                   :initial-text="composerInitialText ?? undefined"
                   :initial-media="composerIsFromOnlyMe ? (composerSourceOnlyMePost?.media ?? []) : undefined"
+                  :locked-visibility="composerLockedVisibility ?? undefined"
+                  :hide-visibility-picker="Boolean(composerLockedVisibility)"
                   :allowed-visibilities="composerAllowedVisibilities ?? undefined"
                   :create-post="composerIsFromOnlyMe ? createPostFromOnlyMeDraft : undefined"
                   persist-key="post-modal"
@@ -679,6 +682,7 @@ onBeforeUnmount(() => {
 const { hideTopBar, navCompactMode, isRightRailForcedHidden, isRightRailSearchHidden, title } = useLayoutRules(route)
 const isMessagesPage = computed(() => route.path === '/chat')
 const isOnlyMePage = computed(() => route.path === '/only-me')
+const viewerIsVerified = computed(() => (user.value?.verifiedStatus ?? 'none') !== 'none')
 
 // Post entrypoints (left-nav button + mobile FAB): only render on these routes.
 const isComposerEntrypointRoute = computed(() => {
@@ -821,8 +825,18 @@ watch(
   { immediate: true },
 )
 
+const composerLockedVisibility = computed<PostVisibility | null>(() => {
+  if (composerIsFromOnlyMe.value) return null
+  if (!viewerIsVerified.value) return 'onlyMe'
+  return isOnlyMePage.value ? 'onlyMe' : null
+})
+
 const composerAllowedVisibilities = computed<PostVisibility[] | null>(() => {
-  return composerIsFromOnlyMe.value ? ['public', 'verifiedOnly', 'premiumOnly'] : null
+  if (composerIsFromOnlyMe.value) return ['public', 'verifiedOnly', 'premiumOnly']
+  if (!viewerIsVerified.value) return ['onlyMe']
+  if (isOnlyMePage.value) return ['onlyMe']
+  // Left-nav/FAB modal composer: never allow Only me outside the Only me screen.
+  return ['public', 'verifiedOnly', 'premiumOnly']
 })
 
 const { apiFetchData } = useApiClient()
@@ -847,16 +861,26 @@ function defaultComposerInitialTextForRoute(): string | null {
 }
 
 function openComposerModal(initialText?: string | null) {
+  if (viewerIsVerified.value && !isOnlyMePage.value && composerVisibility.value === 'onlyMe') {
+    composerVisibility.value = composerNonOnlyMeVisibility.value ?? 'public'
+  }
   composerInitialText.value = (initialText ?? defaultComposerInitialTextForRoute()) || null
   composerModalOpen.value = true
 }
 function openComposerWithVisibility(visibility?: ComposerVisibility, initialText?: string | null) {
-  if (visibility) composerVisibility.value = visibility
+  if (visibility) {
+    const next = !viewerIsVerified.value
+      ? 'onlyMe'
+      : visibility === 'onlyMe' && !isOnlyMePage.value
+        ? (composerNonOnlyMeVisibility.value ?? 'public')
+        : visibility
+    composerVisibility.value = next
+  }
   composerInitialText.value = (initialText ?? defaultComposerInitialTextForRoute()) || null
   composerModalOpen.value = true
 }
 function openComposerForCurrentRoute(initialText?: string | null) {
-  if (isOnlyMePage.value) {
+  if (isOnlyMePage.value || !viewerIsVerified.value) {
     openComposerWithVisibility('onlyMe', initialText)
     return
   }
@@ -893,7 +917,11 @@ function onComposerPosted(payload: { id: string; visibility: string; post?: impo
 }
 
 const composerModalBorderClass = computed(() => {
-  const v = composerVisibility.value
+  const v = composerLockedVisibility.value ?? (
+    composerVisibility.value === 'onlyMe' && !isOnlyMePage.value
+      ? (composerNonOnlyMeVisibility.value ?? 'public')
+      : composerVisibility.value
+  )
   if (v === 'verifiedOnly') return 'moh-thread-verified'
   if (v === 'premiumOnly') return 'moh-thread-premium'
   if (v === 'onlyMe') return 'moh-thread-onlyme'
@@ -904,11 +932,12 @@ const composerModalBorderClass = computed(() => {
 const fabButtonClass = computed(() => {
   // On /only-me, always present the "Only me" purple button and default the composer to onlyMe.
   // (We don't permanently change the cookie just by visiting the page.)
-  if (isOnlyMePage.value) return 'moh-btn-onlyme moh-btn-tone'
-  const v = composerVisibility.value
+  if (isOnlyMePage.value || !viewerIsVerified.value) return 'moh-btn-onlyme moh-btn-tone'
+  const v = composerVisibility.value === 'onlyMe'
+    ? (composerNonOnlyMeVisibility.value ?? 'public')
+    : composerVisibility.value
   if (v === 'verifiedOnly') return 'moh-btn-verified moh-btn-tone'
   if (v === 'premiumOnly') return 'moh-btn-premium moh-btn-tone'
-  if (v === 'onlyMe') return 'moh-btn-onlyme moh-btn-tone'
   return 'bg-black text-white dark:bg-white dark:text-black'
 })
 const fabButtonStyle = computed(() => ({}))
@@ -1135,7 +1164,7 @@ const {
   error: whoToFollowError,
   refresh: refreshWhoToFollow,
 } = useWhoToFollow({
-  enabled: computed(() => isAuthed.value && !isRightRailForcedHidden.value),
+  enabled: computed(() => !isRightRailForcedHidden.value),
   defaultLimit: 4,
 })
 

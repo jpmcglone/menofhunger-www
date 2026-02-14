@@ -16,16 +16,12 @@ export function useWhoToFollow(options?: { enabled?: Ref<boolean>; defaultLimit?
 
   async function refresh(opts?: { limit?: number }) {
     if (!enabled.value) return
-    if (!isAuthed.value) {
-      users.value = []
-      error.value = null
-      return
-    }
 
     loading.value = true
     error.value = null
     try {
-      const res = await apiFetch<GetFollowRecommendationsData>('/follows/recommendations', {
+      const path = isAuthed.value ? '/follows/recommendations' : '/follows/top-users'
+      const res = await apiFetch<GetFollowRecommendationsData>(path, {
         method: 'GET',
         query: { limit: Math.max(1, Math.min(50, Math.floor(opts?.limit ?? defaultLimit))) },
       })
@@ -42,7 +38,7 @@ export function useWhoToFollow(options?: { enabled?: Ref<boolean>; defaultLimit?
   watch(
     [enabled, isAuthed],
     ([on, authed]) => {
-      if (on && authed) void refresh({ limit: defaultLimit })
+      if (on) void refresh({ limit: defaultLimit })
     },
     { immediate: true },
   )

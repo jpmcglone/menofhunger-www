@@ -84,7 +84,7 @@
               <div
                 :class="['rounded-none overflow-hidden', postHighlightClasses(pinnedPostForDisplay.visibility)]"
               >
-                <AppFeedPostRow :post="pinnedPostForDisplay" @deleted="onPinnedPostDeleted" />
+                <AppFeedPostRow :post="pinnedPostForDisplay" @deleted="onPinnedPostDeleted" @edited="onProfilePostEdited" />
               </div>
             </div>
           </template>
@@ -153,6 +153,7 @@
                   :reply-count-for-parent-id="profileReplyCountForParentId"
                   :replies-sort="profileSort ?? 'new'"
                   @deleted="profileRemovePost"
+                  @edited="onProfilePostEdited"
                 />
               </template>
 
@@ -289,6 +290,7 @@ const {
   setFilter: profileSetFilter,
   setSort: profileSetSort,
   removePost: profileRemovePost,
+  replacePost: profileReplacePost,
   hasLoadedOnce: profileHasLoadedOnce,
   nextCursor: profileNextCursor,
   loadMore: profileLoadMore,
@@ -297,6 +299,10 @@ const {
   defaultToNewestAndAll: true,
   showAds,
 })
+
+function onProfilePostEdited(payload: { id: string; post: import('~/types/api').FeedPost }) {
+  profileReplacePost(payload.post)
+}
 
 const {
   pinnedPost,

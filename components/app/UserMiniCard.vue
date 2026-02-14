@@ -19,6 +19,7 @@
               :status="user.verifiedStatus"
               :premium="user.premium"
               :premium-plus="user.premiumPlus"
+              :is-organization="Boolean(user.isOrganization)"
               :steward-badge-enabled="user.stewardBadgeEnabled ?? true"
             />
           </div>
@@ -41,6 +42,7 @@
               :status="user.verifiedStatus"
               :premium="user.premium"
               :premium-plus="user.premiumPlus"
+              :is-organization="Boolean(user.isOrganization)"
               :steward-badge-enabled="user.stewardBadgeEnabled ?? true"
             />
           </div>

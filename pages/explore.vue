@@ -11,6 +11,9 @@
             </InputIcon>
             <InputText
               v-model="searchQuery"
+              id="explore-search"
+              name="q"
+              aria-label="Search"
               class="w-full h-11 !rounded-full"
               placeholder="Search…"
               @keydown.enter="flushDebounceAndSearch"
@@ -62,6 +65,7 @@
                 v-else
                 :post="item.post"
                 @deleted="onSearchPostDeleted"
+                @edited="onSearchPostEdited"
               />
             </template>
           </TransitionGroup>
@@ -611,6 +615,12 @@ function onSearchPostDeleted(id: string) {
   if (!pid) return
   // Immediately remove from search results so the list feels responsive.
   posts.value = posts.value.filter((p) => p.id !== pid)
+}
+
+function onSearchPostEdited(payload: { id: string; post: import('~/types/api').FeedPost }) {
+  const pid = String(payload?.id ?? '').trim()
+  if (!pid) return
+  posts.value = posts.value.map((p) => (p.id === pid ? payload.post : p))
 }
 
 async function fetchPage(params: { append: boolean }) {

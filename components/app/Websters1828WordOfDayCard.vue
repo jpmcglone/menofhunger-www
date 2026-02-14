@@ -33,15 +33,16 @@
         </div>
 
         <div v-if="data?.dictionaryUrl" class="mt-3 flex justify-end">
-          <a
-            :href="data.dictionaryUrl"
-            target="_blank"
-            rel="noopener noreferrer"
-            class="inline-flex items-center gap-1.5 text-[11px] font-medium moh-text-muted hover:underline underline-offset-2"
+          <button
+            type="button"
+            class="inline-flex items-center text-[11px] font-medium moh-text-muted hover:underline underline-offset-2"
+            @mouseenter="onDefinitionTriggerEnter(data, $event)"
+            @mousemove="onDefinitionTriggerMove"
+            @mouseleave="onDefinitionTriggerLeave"
+            @click="onDefinitionTriggerClick(data, $event)"
           >
-            View definition
-            <Icon name="tabler:external-link" class="text-[11px] opacity-70" aria-hidden="true" />
-          </a>
+            See definition
+          </button>
         </div>
         <template #fallback>
           <div class="mt-4 text-sm moh-text-muted">Loading…</div>
@@ -55,11 +56,12 @@
 import type { Websters1828WordOfDay } from '~/types/api'
 
 const { apiFetchData } = useApiClient()
+const defPop = useWordDefinitionPopover()
 
 const { data, pending, error, refresh } = useAsyncData<Websters1828WordOfDay>(
   'websters1828:wotd',
   async () => {
-    return await apiFetchData<Websters1828WordOfDay>('/meta/websters1828/wotd', { method: 'GET' })
+    return await apiFetchData<Websters1828WordOfDay>('/meta/websters1828/wotd?includeDefinition=0', { method: 'GET' })
   },
   { server: false, lazy: true },
 )
@@ -74,5 +76,109 @@ watch(
     await refresh()
   }
 )
+
+type HydratedDefinition = {
+  definition: string | null
+  definitionHtml: string | null
+}
+
+const hydratedDefinitionByWord = ref<Record<string, HydratedDefinition>>({})
+const definitionLoadByWord = new Map<string, Promise<HydratedDefinition>>()
+
+async function loadDefinitionForWord(payload: Websters1828WordOfDay): Promise<HydratedDefinition> {
+  const wordKey = (payload.word ?? '').trim().toLowerCase()
+  if (!wordKey) return { definition: null, definitionHtml: null }
+  if (payload.definition?.trim() || payload.definitionHtml?.trim()) {
+    return {
+      definition: payload.definition?.trim() ? payload.definition : null,
+      definitionHtml: payload.definitionHtml?.trim() ? payload.definitionHtml : null,
+    }
+  }
+  const cached = hydratedDefinitionByWord.value[wordKey]
+  const cachedHasHtml = typeof cached?.definitionHtml === 'string' && cached.definitionHtml.trim().length > 0
+  // If we previously cached only plain text (older behavior), allow re-fetch to hydrate HTML styling.
+  if (cached !== undefined && cachedHasHtml) {
+    return cached
+  }
+  const existing = definitionLoadByWord.get(wordKey)
+  if (existing) return await existing
+
+  const p = apiFetchData<Websters1828WordOfDay>('/meta/websters1828/wotd?includeDefinition=1', { method: 'GET' })
+    .then((next) => {
+      const hydrated: HydratedDefinition = {
+        definition: next?.definition?.trim() ? next.definition : null,
+        definitionHtml: next?.definitionHtml?.trim() ? next.definitionHtml : null,
+      }
+      hydratedDefinitionByWord.value = {
+        ...hydratedDefinitionByWord.value,
+        [wordKey]: hydrated,
+      }
+      return hydrated
+    })
+    .catch(() => ({ definition: null, definitionHtml: null }))
+    .finally(() => {
+      definitionLoadByWord.delete(wordKey)
+    })
+
+  definitionLoadByWord.set(wordKey, p)
+  return await p
+}
+
+function onDefinitionTriggerEnter(payload: Websters1828WordOfDay, e: MouseEvent) {
+  const hasRenderableDefinition = (v: string | null | undefined): boolean => {
+    return typeof v === 'string' && v.trim().length > 0
+  }
+  const wordKey = (payload.word ?? '').trim().toLowerCase()
+  const cached = wordKey ? hydratedDefinitionByWord.value[wordKey] : undefined
+  defPop.onTriggerEnter({
+    payload: {
+      word: payload.word,
+      definition: cached !== undefined ? cached.definition : (payload.definition ?? null),
+      definitionHtml: cached !== undefined ? cached.definitionHtml : (payload.definitionHtml ?? null),
+      sourceUrl: payload.sourceUrl || payload.dictionaryUrl,
+    },
+    event: e,
+  })
+
+  // Prefer HTML styling. If we only have plain text cached, fetch once to hydrate HTML.
+  const hasKnownStyledDefinition = cached !== undefined
+    ? hasRenderableDefinition(cached.definitionHtml)
+    : hasRenderableDefinition(payload.definitionHtml)
+  if (hasKnownStyledDefinition) return
+
+  void loadDefinitionForWord(payload).then((hydrated) => {
+    if (!hydrated.definition && !hydrated.definitionHtml) return
+    const current = defPop.state.value.payload
+    if (!current) return
+    if ((current.word ?? '').trim().toLowerCase() !== wordKey) return
+    defPop.state.value.payload = {
+      ...current,
+      definition: hydrated.definition,
+      definitionHtml: hydrated.definitionHtml,
+    }
+  })
+}
+function onDefinitionTriggerMove(e: MouseEvent) {
+  defPop.onTriggerMove(e)
+}
+function onDefinitionTriggerLeave() {
+  defPop.onTriggerLeave()
+}
+
+function onDefinitionTriggerClick(payload: Websters1828WordOfDay, e: MouseEvent) {
+  // Mobile: no hover, so click should open the popover.
+  e.preventDefault()
+  e.stopPropagation()
+
+  const wordLower = (payload.word ?? '').trim().toLowerCase()
+  const openWordLower = (defPop.state.value.payload?.word ?? '').trim().toLowerCase()
+  if (defPop.state.value.open && wordLower && openWordLower === wordLower) {
+    defPop.close()
+    return
+  }
+
+  onDefinitionTriggerEnter(payload, e)
+  defPop.lock()
+}
 </script>
 

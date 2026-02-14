@@ -1,6 +1,8 @@
 export function useEmbeddedVideoManager() {
   // Global (per-app) active embedded video. Only one at a time.
   const activePostId = useState<string | null>('moh.active-embedded-video-post-id', () => null)
+  // When a video enters Picture-in-Picture, we pin "active" to that post id.
+  const pipPostId = useState<string | null>('moh.pip-video-post-id', () => null)
 
   /** When user unmutes a video (via tap), we set true so other players sync to unmuted. Mute sets false. Never set unmuted programmatically (Safari requires user gesture). */
   const appWideSoundOn = useState<boolean>('moh.app-video-sound-on', () => false)
@@ -43,6 +45,16 @@ export function useEmbeddedVideoManager() {
   function computeActiveFromViewport() {
     if (import.meta.server) return
     if (!registry) return
+
+    // While PiP is active, never auto-switch based on scroll/viewport.
+    if (pipPostId.value) {
+      if (activePostId.value !== pipPostId.value) activePostId.value = pipPostId.value
+      if (runtime) {
+        runtime.pendingId = null
+        runtime.pendingSinceMs = 0
+      }
+      return
+    }
 
     const vh = window.innerHeight || 0
     const centerY = vh / 2
@@ -193,6 +205,32 @@ export function useEmbeddedVideoManager() {
     if (!el) return
     ensureListeners()
     registry.set(id, el)
+
+    // Track PiP state (best-effort). Only available on HTMLVideoElement.
+    if (el instanceof HTMLVideoElement) {
+      const onEnter = () => {
+        pipPostId.value = id
+        activePostId.value = id
+        if (runtime) {
+          runtime.pendingId = null
+          runtime.pendingSinceMs = 0
+          runtime.lastSwitchMs = Date.now()
+        }
+      }
+      const onLeave = () => {
+        if (pipPostId.value === id) pipPostId.value = null
+        scheduleCompute()
+      }
+      // Avoid duplicate listeners on the same element (Map can re-set same element).
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const anyEl = el as any
+      if (!anyEl.__mohPipListenersAttached) {
+        anyEl.__mohPipListenersAttached = true
+        el.addEventListener('enterpictureinpicture', onEnter)
+        el.addEventListener('leavepictureinpicture', onLeave)
+      }
+    }
+
     scheduleCompute()
   }
 
@@ -220,6 +258,30 @@ export function useEmbeddedVideoManager() {
     if (!id) return
     if (import.meta.server) return
     ensureListeners()
+
+    // If PiP is active, a user-initiated play on another video should swap PiP to that video.
+    if (pipPostId.value && pipPostId.value !== id) {
+      const el = registry?.get(id) ?? null
+      if (import.meta.client && el instanceof HTMLVideoElement) {
+        // Best-effort: exit current PiP then request PiP on the new element.
+        // (Some browsers may automatically swap without explicit exit.)
+        void (async () => {
+          try {
+            if (document.pictureInPictureElement) {
+              await document.exitPictureInPicture()
+            }
+          } catch {
+            // ignore
+          }
+          try {
+            await el.requestPictureInPicture()
+          } catch {
+            // ignore
+          }
+        })()
+      }
+    }
+
     activePostId.value = id
     if (runtime) {
       runtime.pendingId = null
@@ -230,10 +292,12 @@ export function useEmbeddedVideoManager() {
 
   function stopAll() {
     activePostId.value = null
+    pipPostId.value = null
   }
 
   return {
     activePostId,
+    pipPostId,
     appWideSoundOn,
     register,
     unregister,

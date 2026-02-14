@@ -18,12 +18,15 @@ export const appConfig = {
     fadeMs: 200,
   },
 
-  /** Video upload (premium): max duration (seconds), resolution (1440p or less), and file size. */
+  /** Video upload (premium/premium+): max duration (seconds) and file size. */
   video: {
-    maxDurationSeconds: 5 * 60, // 5 minutes
-    maxWidth: 2560,
-    maxHeight: 1440,
-    // Phone videos are commonly much larger than 25MB even under 5 minutes.
-    maxBytes: 300 * 1024 * 1024,
+    premium: {
+      maxDurationSeconds: 5 * 60, // 5 minutes
+      maxBytes: 75 * 1024 * 1024, // 75MB
+    },
+    premiumPlus: {
+      maxDurationSeconds: 15 * 60, // 15 minutes
+      maxBytes: 125 * 1024 * 1024, // 125MB
+    },
   },
 } as const

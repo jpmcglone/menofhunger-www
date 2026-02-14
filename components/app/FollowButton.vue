@@ -42,6 +42,8 @@ const props = defineProps<{
   userId: string
   username: string | null
   initialRelationship?: FollowRelationship | null
+  /** When true, render the button even while logged out (click will route to login). */
+  showWhenLoggedOut?: boolean
   rounded?: boolean
   text?: boolean
   /** PrimeVue Button size (e.g. 'small'). */
@@ -95,7 +97,7 @@ watch(
 
 // When signed out, never show follow controls anywhere.
 const showButton = computed(
-  () => isAuthed.value && Boolean(props.username) && props.userId !== authUser.value?.id
+  () => Boolean(props.username) && props.userId !== authUser.value?.id && (isAuthed.value || props.showWhenLoggedOut === true)
 )
 const username = computed(() => props.username || '')
 

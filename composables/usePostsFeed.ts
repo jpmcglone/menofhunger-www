@@ -336,6 +336,38 @@ export function usePostsFeed(options: { visibility?: Ref<FeedFilter>; followingO
   function removePost(id: string) {
     const pid = (id ?? '').trim()
     if (!pid) return
+
+    const myId = me.value?.id ?? null
+    const isMyPost = (() => {
+      if (!myId) return true // Only the viewer can delete; default to full removal.
+      const find = (p: FeedPost | undefined): FeedPost | null => {
+        let cur: FeedPost | undefined = p
+        while (cur) {
+          if (cur.id === pid) return cur
+          cur = cur.parent
+        }
+        return null
+      }
+      for (const p of posts.value) {
+        const hit = find(p)
+        if (hit) return hit.author?.id === myId
+      }
+      return true
+    })()
+
+    if (isMyPost) {
+      const containsId = (p: FeedPost | undefined, targetId: string): boolean => {
+        let cur: FeedPost | undefined = p
+        while (cur) {
+          if (cur.id === targetId) return true
+          cur = cur.parent
+        }
+        return false
+      }
+      posts.value = posts.value.filter((p) => !containsId(p, pid))
+      return
+    }
+
     const tombstone = (p: FeedPost): FeedPost => ({
       ...p,
       deletedAt: new Date().toISOString(),
@@ -368,6 +400,20 @@ export function usePostsFeed(options: { visibility?: Ref<FeedFilter>; followingO
       .filter((p): p is FeedPost => Boolean(p))
   }
 
+  function replacePost(updated: FeedPost) {
+    const pid = (updated?.id ?? '').trim()
+    if (!pid) return
+
+    const replaceInChain = (node: FeedPost): FeedPost => {
+      const nextParent = node.parent ? replaceInChain(node.parent) : undefined
+      const base = nextParent !== node.parent ? { ...node, parent: nextParent } : node
+      if (base.id === pid) return { ...updated }
+      return base
+    }
+
+    posts.value = posts.value.map(replaceInChain)
+  }
+
   function addReply(parentId: string, replyPost: FeedPost, parentPostFromFeed: FeedPost) {
     const pid = (parentId ?? '').trim()
     if (!pid) return
@@ -393,5 +439,6 @@ export function usePostsFeed(options: { visibility?: Ref<FeedFilter>; followingO
     addPost,
     addReply,
     removePost,
+    replacePost,
   }
 }

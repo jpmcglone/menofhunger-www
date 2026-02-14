@@ -61,6 +61,7 @@
         :user-id="user.id"
         :username="user.username"
         :initial-relationship="user.relationship"
+        show-when-logged-out
         size="small"
         :show-icon="false"
         :button-class="followButtonClass"

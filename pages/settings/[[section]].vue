@@ -13,7 +13,14 @@
           <div class="px-4 text-lg font-semibold">Settings</div>
 
           <div class="mt-3 px-4">
-            <InputText v-model="sectionQuery" class="w-full h-11 !rounded-full" placeholder="Search settings…" />
+            <InputText
+              v-model="sectionQuery"
+              id="settings-search"
+              name="q"
+              aria-label="Search settings"
+              class="w-full h-11 !rounded-full"
+              placeholder="Search settings…"
+            />
           </div>
 
           <div class="mt-4 divide-y divide-gray-200 dark:divide-zinc-800">

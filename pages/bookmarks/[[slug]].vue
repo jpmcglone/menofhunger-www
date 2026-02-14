@@ -7,7 +7,14 @@
           <InputIcon>
             <Icon name="tabler:search" class="text-lg opacity-70" aria-hidden="true" />
           </InputIcon>
-          <InputText v-model="q" class="w-full" :placeholder="searchPlaceholder" />
+          <InputText
+            v-model="q"
+            id="bookmarks-search"
+            name="q"
+            aria-label="Search bookmarks"
+            class="w-full"
+            :placeholder="searchPlaceholder"
+          />
         </IconField>
         <AppBookmarkFolderSelect
           :collections="collections"
@@ -49,7 +56,7 @@
 
       <div v-else class="space-y-0">
         <div v-for="b in items" :key="b.bookmarkId">
-          <AppPostRow :post="b.post" />
+          <AppPostRow :post="b.post" @deleted="onBookmarkPostDeleted(b.post.id)" @edited="onBookmarkPostEdited(b.bookmarkId, $event.post)" />
         </div>
       </div>
 
@@ -241,6 +248,8 @@ const nextCursor = feed.nextCursor
 const loading = feed.loading
 const error = feed.error
 
+const bookmarksFeedBump = useState<number>('moh.bookmarks.feed.bump.v1', () => 0)
+
 async function refresh() {
   if (folderNotFound.value) {
     items.value = []
@@ -257,6 +266,22 @@ async function loadMore() {
 }
 
 watch([debouncedQ, folder, slug], () => void refresh(), { flush: 'post' })
+watch(bookmarksFeedBump, () => void refresh(), { flush: 'post' })
+onActivated(() => {
+  void refresh()
+})
+
+function onBookmarkPostDeleted(postId: string) {
+  const pid = (postId ?? '').trim()
+  if (!pid) return
+  items.value = items.value.filter((b) => b.post?.id !== pid)
+}
+
+function onBookmarkPostEdited(bookmarkId: string, post: SearchBookmarkItem['post']) {
+  const bid = (bookmarkId ?? '').trim()
+  if (!bid) return
+  items.value = items.value.map((b) => (b.bookmarkId === bid ? { ...b, post } : b))
+}
 
 const newFolderOpen = ref(false)
 const newFolderName = ref('')

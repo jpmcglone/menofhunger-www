@@ -137,6 +137,12 @@ const { show: showAuthActionModal } = useAuthActionModal()
 const { apiFetchData } = useApiClient()
 const toast = useAppToast()
 
+// Signal for the bookmarks page feed to refresh when bookmark state changes elsewhere.
+const bookmarksFeedBump = useState<number>('moh.bookmarks.feed.bump.v1', () => 0)
+function bumpBookmarksFeed() {
+  bookmarksFeedBump.value = (bookmarksFeedBump.value ?? 0) + 1
+}
+
 const loading = ref(false)
 const hasBookmarked = ref(Boolean(props.initialHasBookmarked))
 const collectionIds = ref<string[]>((props.initialCollectionIds ?? []).filter(Boolean))
@@ -220,6 +226,7 @@ async function removeBookmark() {
     collectionIds.value = []
     bumpCounts({ prevHas, prevCollectionIds: prevIds, nextHas: false, nextCollectionIds: [] })
     emit('bookmarkCountDelta', -1)
+    bumpBookmarksFeed()
   }
   try {
     await apiFetchData('/bookmarks/' + encodeURIComponent(postId.value), { method: 'DELETE' })
@@ -258,6 +265,7 @@ async function setBookmarkFolderIds(nextIds: string[]) {
     nextCollectionIds: optimisticIds.slice(),
   })
   if (didCreate) emit('bookmarkCountDelta', 1)
+  bumpBookmarksFeed()
   try {
     const res = await apiFetchData<{ collectionIds: string[] }>(
       '/bookmarks/' + encodeURIComponent(postId.value),

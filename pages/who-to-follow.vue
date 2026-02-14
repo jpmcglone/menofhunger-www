@@ -34,6 +34,7 @@
             :key="u.id"
             :user="u"
             :show-follow-button="true"
+            allow-logged-out-follow-button
           />
         </div>
       </div>

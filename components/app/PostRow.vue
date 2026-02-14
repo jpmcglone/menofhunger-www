@@ -80,6 +80,7 @@
             :is-organization="author.isOrganization"
             :steward-badge-enabled="author.stewardBadgeEnabled ?? true"
             :edited-at="postView.editedAt ?? null"
+            :hide-edited-badge="postView.visibility === 'onlyMe'"
             :profile-path="authorProfilePath"
             :post-id="postView.id"
             :post-permalink="postPermalink"
@@ -317,6 +318,7 @@ const props = defineProps<{
 }>()
 const emit = defineEmits<{
   (e: 'deleted', id: string): void
+  (e: 'edited', payload: { id: string; post: FeedPost }): void
 }>()
 
 const postState = ref(props.post)
@@ -606,7 +608,8 @@ const editOpen = ref(false)
 const canEditPost = computed(() => {
   if (!isSelf.value) return false
   if (isDeletedPost.value) return false
-  if (postView.value.visibility === 'onlyMe') return false
+  // Only-me posts are notes/drafts: allow unlimited edits (no age/edit-count cap).
+  if (postView.value.visibility === 'onlyMe') return !Boolean(postView.value.parentId)
   if (postView.value.parentId) return false
   const createdAt = new Date(postView.value.createdAt)
   const ageMs = Date.now() - createdAt.getTime()
@@ -622,6 +625,7 @@ function onEdited(payload: { id: string; post: FeedPost }) {
   if (payload?.id !== postView.value.id) return
   postState.value = payload.post
   editOpen.value = false
+  emit('edited', payload)
 }
 
 function onReportSubmitted() {

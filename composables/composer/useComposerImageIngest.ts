@@ -148,7 +148,15 @@ export function useComposerImageIngest(opts: {
   }
 
   async function addVideoFile(file: File, _source: 'picker' | 'drop' | 'paste') {
-    const { maxDurationSeconds, maxWidth, maxHeight, maxBytes } = appConfig.video
+    const { user } = useAuth()
+    const u = user.value
+    if (!u?.premium && !u?.premiumPlus) {
+      opts.toast.push({ title: 'Video uploads are for premium members only.', tone: 'error', durationMs: 2200 })
+      return
+    }
+
+    const limits = u.premiumPlus ? appConfig.video.premiumPlus : appConfig.video.premium
+    const { maxDurationSeconds, maxBytes } = limits
     if (file.size > maxBytes) {
       opts.toast.push({ title: `Video is too large (max ${formatBytes(maxBytes)}).`, tone: 'error', durationMs: 2200 })
       return
@@ -162,10 +170,6 @@ export function useComposerImageIngest(opts: {
     if (meta.durationSeconds > maxDurationSeconds) {
       const limitLabel = maxDurationSeconds >= 60 ? `${Math.round(maxDurationSeconds / 60)} minutes or shorter` : `${maxDurationSeconds}s or shorter`
       opts.toast.push({ title: `Video must be ${limitLabel}.`, tone: 'error', durationMs: 2200 })
-      return
-    }
-    if ((meta.width ?? 0) > maxWidth || (meta.height ?? 0) > maxHeight) {
-      opts.toast.push({ title: 'Video must be 1440p or smaller.', tone: 'error', durationMs: 2200 })
       return
     }
 

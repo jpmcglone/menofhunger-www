@@ -24,6 +24,7 @@
                 :status="user.verifiedStatus"
                 :premium="user.premium"
                 :premium-plus="user.premiumPlus"
+                :is-organization="Boolean(user.isOrganization)"
                 :steward-badge-enabled="user.stewardBadgeEnabled ?? true"
               />
               <div
@@ -58,6 +59,7 @@
                 :status="user.verifiedStatus"
                 :premium="user.premium"
                 :premium-plus="user.premiumPlus"
+                :is-organization="Boolean(user.isOrganization)"
                 :steward-badge-enabled="user.stewardBadgeEnabled ?? true"
               />
               <div
@@ -80,6 +82,7 @@
           :user-id="user.id"
           :username="user.username"
           :initial-relationship="user.relationship"
+          :show-when-logged-out="props.allowLoggedOutFollowButton === true"
         />
       </div>
     </div>
@@ -93,6 +96,8 @@ import { useUserOverlay } from '~/composables/useUserOverlay'
 const props = defineProps<{
   user: FollowListUser
   showFollowButton?: boolean
+  /** When true, show follow button even while logged out (click routes to login). */
+  allowLoggedOutFollowButton?: boolean
   /** Optional label displayed inline next to name + badges. */
   nameMeta?: string | null
 }>()
@@ -103,7 +108,7 @@ const { user: authUser } = useAuth()
 const isAuthed = computed(() => Boolean(authUser.value?.id))
 
 // When signed out, never show follow controls anywhere.
-const showFollowButton = computed(() => isAuthed.value && props.showFollowButton !== false)
+const showFollowButton = computed(() => props.showFollowButton !== false && (isAuthed.value || props.allowLoggedOutFollowButton === true))
 
 const displayName = computed(() => user.value?.name || user.value?.username || 'User')
 const handle = computed(() => (user.value?.username ? `@${user.value.username}` : '@—'))

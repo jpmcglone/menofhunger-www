@@ -102,6 +102,8 @@ const props = defineProps<{
   isOrganization?: boolean
   stewardBadgeEnabled?: boolean
   editedAt?: string | null
+  /** Hide the inline “edited” marker (e.g. for onlyMe notes/drafts). */
+  hideEditedBadge?: boolean
   profilePath: string | null
   postId: string
   postPermalink: string
@@ -114,7 +116,7 @@ const props = defineProps<{
 const displayName = computed(() => props.displayName || props.username || 'User')
 const username = computed(() => props.username || '')
 const stewardBadgeEnabled = computed(() => props.stewardBadgeEnabled ?? true)
-const isEdited = computed(() => Boolean(props.editedAt))
+const isEdited = computed(() => Boolean(props.editedAt) && !props.hideEditedBadge)
 
 const { onEnter, onMove, onLeave } = useUserPreviewTrigger({ username })
 </script>

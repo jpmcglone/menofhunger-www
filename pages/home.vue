@@ -4,11 +4,39 @@
     <!-- Layout: Composer at top, feed below. Wrapper ref used to detect when composer is in view (hides mobile FAB). -->
     <div ref="homeComposerEl" class="min-h-0">
       <AppPostComposer
+        v-if="!showOnlyMeHomeComposerCard"
         :create-post="createPostViaFeed"
         :allowed-visibilities="['public', 'verifiedOnly', 'premiumOnly']"
         persist-key="home"
         :register-unsaved-guard="false"
       />
+      <div v-else class="px-4 pt-4">
+        <div class="rounded-2xl border moh-border moh-surface p-4 sm:p-5">
+          <div class="flex items-start gap-3">
+            <div class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl moh-btn-onlyme moh-btn-tone">
+              <Icon name="tabler:eye-off" aria-hidden="true" />
+            </div>
+            <div class="min-w-0">
+              <div class="text-sm font-semibold moh-text">Unverified mode: Only me drafts</div>
+              <div class="mt-1 text-sm moh-text-muted">
+                While unverified, your posts are private to you. Verify your account to post publicly.
+              </div>
+            </div>
+          </div>
+          <div class="mt-4 flex items-center justify-end">
+            <Button
+              label="Post to Only me"
+              rounded
+              class="moh-btn-onlyme moh-btn-tone"
+              @click="openOnlyMeComposer"
+            >
+              <template #icon>
+                <Icon name="tabler:plus" aria-hidden="true" />
+              </template>
+            </Button>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- Feed: header + content -->
@@ -77,6 +105,7 @@
                   :reply-count-for-parent-id="replyCountForParentId"
                   :replies-sort="feedSort"
                   @deleted="removePost"
+                  @edited="onFeedPostEdited"
                 />
               </template>
             </div>
@@ -107,7 +136,7 @@
 import type { PostVisibility } from '~/types/api'
 import type { CreateMediaPayload } from '~/composables/useComposerMedia'
 import { postBodyHasVideoEmbed } from '~/utils/link-utils'
-import { MOH_HOME_COMPOSER_IN_VIEW_KEY } from '~/utils/injection-keys'
+import { MOH_HOME_COMPOSER_IN_VIEW_KEY, MOH_OPEN_COMPOSER_KEY } from '~/utils/injection-keys'
 import { useMiddleScroller } from '~/composables/useMiddleScroller'
 
 definePageMeta({
@@ -130,6 +159,8 @@ usePageSeo({
 const homeComposerEl = ref<HTMLElement | null>(null)
 const loadMoreSentinelEl = ref<HTMLElement | null>(null)
 const homeComposerInViewRef = inject(MOH_HOME_COMPOSER_IN_VIEW_KEY)
+const openComposer = inject(MOH_OPEN_COMPOSER_KEY, null)
+const { isAuthed } = useAuth()
 
 const middleScrollerRef = useMiddleScroller()
 
@@ -171,6 +202,7 @@ const {
   addPost,
   addReply,
   removePost,
+  replacePost,
   followingCount,
   showFollowingEmptyState,
   showAllEmptyState,
@@ -182,6 +214,10 @@ const {
   setFeedSort,
   resetFilters,
 } = useHomeFeed()
+
+function onFeedPostEdited(payload: { id: string; post: import('~/types/api').FeedPost }) {
+  replacePost(payload.post)
+}
 
 // Lazy-load more posts when sentinel nears bottom of scroll area
 let loadMoreObs: IntersectionObserver | null = null
@@ -214,6 +250,11 @@ onBeforeUnmount(() => {
 })
 
 const showMainLoader = computed(() => loading.value && !posts.value.length)
+const showOnlyMeHomeComposerCard = computed(() => isAuthed.value && !viewerIsVerified.value)
+
+function openOnlyMeComposer() {
+  openComposer?.('onlyMe')
+}
 
 const replyModal = useReplyModal()
 onActivated(() => {

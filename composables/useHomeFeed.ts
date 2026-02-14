@@ -66,6 +66,7 @@ export function useHomeFeed() {
     addPost,
     addReply,
     removePost,
+    replacePost,
   } = usePostsFeed({
     visibility: feedFilter,
     followingOnly,
@@ -171,6 +172,7 @@ export function useHomeFeed() {
     addPost,
     addReply,
     removePost,
+    replacePost,
     followingCount,
     showFollowingEmptyState,
     showAllEmptyState,

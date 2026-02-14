@@ -12,6 +12,7 @@
       :activate-video-on-mount="activateVideoOnMount"
       v-bind="$attrs"
         @deleted="$emit('deleted', $event)"
+        @edited="$emit('edited', $event)"
     >
       <template v-if="showCollapsedFooter" #threadFooter>
         <NuxtLink
@@ -44,6 +45,7 @@
         :activate-video-on-mount="i === chain.length - 1 ? activateVideoOnMount : undefined"
         v-bind="$attrs"
         @deleted="$emit('deleted', $event)"
+        @edited="$emit('edited', $event)"
       >
         <template v-if="hiddenRepliesForIndex(i) > 0" #threadFooter>
           <NuxtLink
@@ -62,6 +64,11 @@
 <script setup lang="ts">
 import type { FeedPost } from '~/types/api'
 
+defineEmits<{
+  (e: 'deleted', id: string): void
+  (e: 'edited', payload: { id: string; post: FeedPost }): void
+}>()
+
 const props = withDefaults(
   defineProps<{
     post: FeedPost
@@ -78,10 +85,6 @@ const props = withDefaults(
   }>(),
   { highlightedPostId: null, noPaddingTop: false, collapsedSiblingRepliesCount: 0, repliesSort: null },
 )
-
-defineEmits<{
-  (e: 'deleted', id: string): void
-}>()
 
 /** Ordered chain [root, ..., post] by walking parent up. */
 const chain = computed(() => {

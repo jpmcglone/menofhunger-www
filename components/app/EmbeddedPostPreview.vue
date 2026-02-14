@@ -42,6 +42,7 @@
                     :status="author?.verifiedStatus ?? 'none'"
                     :premium="author?.premium ?? false"
                     :premium-plus="author?.premiumPlus ?? false"
+                    :is-organization="Boolean(author?.isOrganization)"
                     :steward-badge-enabled="author?.stewardBadgeEnabled ?? true"
                   />
                 </div>

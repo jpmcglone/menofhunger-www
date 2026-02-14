@@ -259,8 +259,9 @@ function toLightboxItems(): LightboxMediaItem[] {
 }
 
 onMounted(() => {
-  if (import.meta.client && props.postId && singleVideoContainerRef.value && items.value.length === 1 && items.value[0]?.kind === 'video') {
-    videoManager.register(props.postId, singleVideoContainerRef.value)
+  if (import.meta.client && props.postId && items.value.length === 1 && items.value[0]?.kind === 'video') {
+    const el = (singleVideoEl.value ?? singleVideoContainerRef.value) as HTMLElement | null
+    if (el) videoManager.register(props.postId, el)
   }
 })
 
