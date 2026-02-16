@@ -9,9 +9,75 @@ import type { PostsCallback } from '~/composables/usePresence'
 type FeedFilter = 'all' | 'public' | PostVisibility
 type FeedSort = 'new' | 'trending'
 
+type LocalFeedInsert =
+  | { kind: 'prepend'; post: FeedPost }
+  | { kind: 'replaceParent'; post: FeedPost; parentId: string }
+
 export type PostsFeedDisplayItem =
   | { kind: 'post'; post: FeedPost }
   | { kind: 'ad'; key: string }
+
+function upsertLocalFeedInsert(inserts: LocalFeedInsert[], nextInsert: LocalFeedInsert): LocalFeedInsert[] {
+  const nextId = (nextInsert.post.id ?? '').trim()
+  if (!nextId) return inserts
+  const withoutSameId = inserts.filter((it) => (it.post.id ?? '').trim() !== nextId)
+  return [...withoutSameId, nextInsert]
+}
+
+function removeLocalFeedInsertsForDeletedPost(inserts: LocalFeedInsert[], postId: string): LocalFeedInsert[] {
+  const pid = (postId ?? '').trim()
+  if (!pid) return inserts
+  return inserts.filter((it) => {
+    if ((it.post.id ?? '').trim() === pid) return false
+    if (it.kind === 'replaceParent' && (it.parentId ?? '').trim() === pid) return false
+    return true
+  })
+}
+
+function patchLocalFeedInsertPost(inserts: LocalFeedInsert[], updated: FeedPost): LocalFeedInsert[] {
+  const pid = (updated?.id ?? '').trim()
+  if (!pid) return inserts
+  return inserts.map((it) => {
+    if ((it.post.id ?? '').trim() !== pid) return it
+    if (it.kind === 'prepend') return { kind: 'prepend', post: { ...updated } }
+    return { kind: 'replaceParent', parentId: it.parentId, post: { ...updated } }
+  })
+}
+
+function pruneAckedLocalFeedInserts(inserts: LocalFeedInsert[], incoming: FeedPost[]): LocalFeedInsert[] {
+  const incomingIds = new Set(incoming.map((p) => (p.id ?? '').trim()).filter(Boolean))
+  if (!incomingIds.size) return inserts
+  return inserts.filter((it) => !incomingIds.has((it.post.id ?? '').trim()))
+}
+
+function applyLocalFeedInserts(incoming: FeedPost[], inserts: LocalFeedInsert[]): FeedPost[] {
+  if (!inserts.length) return incoming.length ? [...incoming] : []
+  const out = incoming.length ? [...incoming] : []
+  const seen = new Set(out.map((p) => (p.id ?? '').trim()).filter(Boolean))
+
+  for (const insert of inserts) {
+    const postId = (insert.post.id ?? '').trim()
+    if (!postId || seen.has(postId)) continue
+
+    if (insert.kind === 'prepend') {
+      out.unshift(insert.post)
+      seen.add(postId)
+      continue
+    }
+
+    const parentId = (insert.parentId ?? '').trim()
+    const idx = parentId ? out.findIndex((p) => (p.id ?? '').trim() === parentId) : -1
+    if (idx >= 0) {
+      out[idx] = insert.post
+    } else {
+      // If parent isn't in this page yet, keep reply visible near the top.
+      out.unshift(insert.post)
+    }
+    seen.add(postId)
+  }
+
+  return out
+}
 
 export function usePostsFeed(options: { visibility?: Ref<FeedFilter>; followingOnly?: Ref<boolean>; sort?: Ref<FeedSort>; showAds?: Ref<boolean> } = {}) {
   const { apiFetch, apiFetchData } = useApiClient()
@@ -27,6 +93,19 @@ export function usePostsFeed(options: { visibility?: Ref<FeedFilter>; followingO
   const sort = options.sort ?? ref<FeedSort>('new')
   const showAds = options.showAds ?? computed(() => true)
   const lastHardRefreshMs = useState<number>('posts-feed-last-hard-refresh-ms', () => 0)
+  const localInserts = ref<LocalFeedInsert[]>([])
+
+  function rememberLocalInsert(insert: LocalFeedInsert) {
+    localInserts.value = upsertLocalFeedInsert(localInserts.value, insert)
+  }
+
+  function forgetLocalInsertsForDeletedPost(postId: string) {
+    localInserts.value = removeLocalFeedInsertsForDeletedPost(localInserts.value, postId)
+  }
+
+  function patchLocalInsert(updated: FeedPost) {
+    localInserts.value = patchLocalFeedInsertPost(localInserts.value, updated)
+  }
 
   const feed = useCursorFeed<FeedPost>({
     stateKey: 'posts-feed',
@@ -42,6 +121,12 @@ export function usePostsFeed(options: { visibility?: Ref<FeedFilter>; followingO
     }),
     defaultErrorMessage: 'Failed to load posts.',
     loadMoreErrorMessage: 'Failed to load more posts.',
+    getItemId: (post) => post.id,
+    mergeOnRefresh: (incoming) => {
+      const pending = pruneAckedLocalFeedInserts(localInserts.value, incoming)
+      if (pending.length !== localInserts.value.length) localInserts.value = pending
+      return applyLocalFeedInserts(incoming, pending)
+    },
     onDataLoaded: (data) => clearBumpsForPostIds(data.map((p) => p.id)),
   })
 
@@ -328,6 +413,7 @@ export function usePostsFeed(options: { visibility?: Ref<FeedFilter>; followingO
 
       if (post.visibility !== 'onlyMe') {
         posts.value = [post, ...posts.value]
+        rememberLocalInsert({ kind: 'prepend', post })
         await nextTick()
       }
       return post
@@ -369,6 +455,7 @@ export function usePostsFeed(options: { visibility?: Ref<FeedFilter>; followingO
         return false
       }
       posts.value = posts.value.filter((p) => !containsId(p, pid))
+      forgetLocalInsertsForDeletedPost(pid)
       return
     }
 
@@ -402,6 +489,7 @@ export function usePostsFeed(options: { visibility?: Ref<FeedFilter>; followingO
         return next
       })
       .filter((p): p is FeedPost => Boolean(p))
+    forgetLocalInsertsForDeletedPost(pid)
   }
 
   function replacePost(updated: FeedPost) {
@@ -416,6 +504,7 @@ export function usePostsFeed(options: { visibility?: Ref<FeedFilter>; followingO
     }
 
     posts.value = posts.value.map(replaceInChain)
+    patchLocalInsert(updated)
   }
 
   function addReply(parentId: string, replyPost: FeedPost, parentPostFromFeed: FeedPost) {
@@ -425,6 +514,7 @@ export function usePostsFeed(options: { visibility?: Ref<FeedFilter>; followingO
     if (idx < 0) return
     const replyWithParent: FeedPost = { ...replyPost, parent: parentPostFromFeed }
     posts.value = [...posts.value.slice(0, idx), replyWithParent, ...posts.value.slice(idx + 1)]
+    rememberLocalInsert({ kind: 'replaceParent', post: replyWithParent, parentId: pid })
   }
 
   return {

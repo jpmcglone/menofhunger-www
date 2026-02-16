@@ -17,6 +17,11 @@ export type UseCursorFeedOptions<T> = {
   onDataLoaded?: (data: T[]) => void
   /** Called after a successful fetch with the full envelope (e.g. to read pagination.counts). */
   onResponse?: (res: ApiEnvelope<T[]>) => void
+  /**
+   * Optional merge hook used by `refresh` to reconcile incoming server items with existing local state
+   * (for example, preserving optimistic rows until the backend catches up).
+   */
+  mergeOnRefresh?: (incoming: T[], existing: T[]) => T[]
 }
 
 /**
@@ -58,13 +63,14 @@ export function useCursorFeed<T>(options: UseCursorFeedOptions<T>) {
     if (loading.value) return
     loading.value = true
     error.value = null
-    items.value = []
-    nextCursor.value = null
+    const existing = items.value
     try {
       const { path, query } = options.buildRequest(null)
       const res = await apiFetch<T[]>(path, { method: 'GET', query })
       const data = res.data ?? []
-      items.value = data.length ? [...data] : []
+      items.value = options.mergeOnRefresh
+        ? options.mergeOnRefresh(data, existing)
+        : (data.length ? [...data] : [])
       nextCursor.value = res.pagination?.nextCursor ?? null
       options.onDataLoaded?.(data)
       options.onResponse?.(res)
