@@ -2,12 +2,13 @@ import type {
   FeedPost,
   FollowListUser,
   GetFollowRecommendationsData,
+  GetTopicCategoriesData,
   GetFollowedTopicsData,
   GetNewestUsersData,
   GetPostsData,
   GetPresenceOnlineData,
-  GetTopicsData,
   OnlineUser,
+  TopicCategory,
   Topic,
 } from '~/types/api'
 import { getApiErrorMessage } from '~/utils/api-error'
@@ -20,7 +21,7 @@ export function useExploreRecommendations(options?: { enabled?: Ref<boolean>, is
   const isAuthed = options?.isAuthed ?? ref(false)
 
   const featuredPosts = ref<FeedPost[]>([])
-  const topics = ref<Topic[]>([])
+  const categories = ref<TopicCategory[]>([])
   const followedTopics = ref<Topic[]>([])
   const onlineUsers = ref<OnlineUser[]>([])
 
@@ -49,13 +50,13 @@ export function useExploreRecommendations(options?: { enabled?: Ref<boolean>, is
       const baseCalls = await Promise.allSettled([
         // Over-fetch so we can still show up to 3 after excluding the viewer's own posts.
         apiFetch<GetPostsData>('/posts', { method: 'GET', query: { limit: 6, sort: 'featured', visibility: 'all' } }),
-        apiFetch<GetTopicsData>('/topics', { method: 'GET', query: { limit: 50 } }),
+        apiFetch<GetTopicCategoriesData>('/topics/categories', { method: 'GET', query: { limit: 20 } }),
         apiFetch<GetPresenceOnlineData>('/presence/online', { method: 'GET' }),
         ...(isAuthed.value ? [apiFetch<GetFollowedTopicsData>('/topics/followed', { method: 'GET', query: { limit: 50 } })] : []),
       ])
 
       const featuredRes = baseCalls[0].status === 'fulfilled' ? baseCalls[0].value : null
-      const topicsRes = baseCalls[1].status === 'fulfilled' ? baseCalls[1].value : null
+      const categoriesRes = baseCalls[1].status === 'fulfilled' ? baseCalls[1].value : null
       const onlineRes = baseCalls[2].status === 'fulfilled' ? baseCalls[2].value : null
       const followedTopicsRes =
         isAuthed.value && baseCalls[3] && baseCalls[3].status === 'fulfilled' ? baseCalls[3].value : null
@@ -64,7 +65,7 @@ export function useExploreRecommendations(options?: { enabled?: Ref<boolean>, is
       const featuredRaw = ((featuredRes?.data ?? []) as FeedPost[]) ?? []
       const featuredFiltered = viewerId ? featuredRaw.filter((p) => p.author?.id !== viewerId) : featuredRaw
       featuredPosts.value = featuredFiltered.slice(0, 3)
-      topics.value = ((topicsRes?.data ?? []) as Topic[]) ?? []
+      categories.value = ((categoriesRes?.data ?? []) as TopicCategory[]) ?? []
       onlineUsers.value = ((onlineRes?.data ?? []) as OnlineUser[]) ?? []
       followedTopics.value = isAuthed.value ? (((followedTopicsRes?.data ?? []) as Topic[]) ?? []) : []
 
@@ -107,7 +108,7 @@ export function useExploreRecommendations(options?: { enabled?: Ref<boolean>, is
       // Explore discovery should be soft-fail: show empty sections if calls fail (auth, etc).
       error.value = getApiErrorMessage(e) || 'Failed to load Explore recommendations.'
       featuredPosts.value = []
-      topics.value = []
+      categories.value = []
       onlineUsers.value = []
       followedTopics.value = []
       recommendedUsers.value = []
@@ -128,7 +129,7 @@ export function useExploreRecommendations(options?: { enabled?: Ref<boolean>, is
 
   return {
     featuredPosts,
-    topics,
+    categories,
     followedTopics,
     onlineUsers,
     recommendedUsers,

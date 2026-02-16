@@ -618,10 +618,20 @@ export type GetActiveUsersMetricsData = ActiveUsersMetrics
 
 export type Topic = {
   topic: string
+  category: string
+  categoryLabel: string
   score: number
   interestCount: number
   postCount: number
   viewerFollows?: boolean
+}
+
+export type TopicCategory = {
+  category: string
+  label: string
+  score: number
+  interestCount: number
+  postCount: number
 }
 
 /** Data type for GET /topics (array). */
@@ -632,6 +642,25 @@ export type GetFollowedTopicsData = Topic[]
 
 /** Data type for GET /topics/:topic/posts (array); pagination in envelope. */
 export type GetTopicPostsData = FeedPost[]
+
+/** Data type for GET /topics/categories (array). */
+export type GetTopicCategoriesData = TopicCategory[]
+
+/** Data type for GET /topics/categories/:category/topics (array). */
+export type GetCategoryTopicsData = Topic[]
+
+/** Data type for GET /topics/categories/:category/posts (array); pagination in envelope. */
+export type GetCategoryPostsData = FeedPost[]
+
+export type TopicOption = {
+  value: string
+  label: string
+  group: string
+  aliases: string[]
+}
+
+/** Data type for GET /topics/options (array). */
+export type GetTopicOptionsData = TopicOption[]
 
 /** Data type for GET /hashtags/trending (array); pagination in envelope. */
 export type GetTrendingHashtagsData = HashtagResult[]

@@ -161,6 +161,82 @@
         </div>
       </template>
 
+      <!-- Category mode (set by clicking a category chip) -->
+      <template v-else-if="activeCategory">
+        <div class="px-4 flex items-center justify-between gap-3">
+          <div class="min-w-0">
+            <div class="text-sm font-semibold text-gray-900 dark:text-gray-50 truncate">
+              Category: {{ activeCategoryLabel || activeCategory }}
+            </div>
+            <div class="text-xs moh-text-muted">
+              Showing posts matching this category.
+            </div>
+          </div>
+          <div class="shrink-0 flex items-center gap-2">
+            <Button
+              label="Clear"
+              text
+              severity="secondary"
+              @click="clearCategory"
+            />
+          </div>
+        </div>
+
+        <div v-if="categoryTopicsUi.length > 0" class="px-4">
+          <AppHorizontalScroller scroller-class="no-scrollbar">
+            <div class="flex gap-2 pb-2 pt-2">
+              <button
+                v-for="t in categoryTopicsUi"
+                :key="`ct-${t.value}`"
+                type="button"
+                class="h-9 px-3 shrink-0 rounded-full border moh-border bg-white/60 dark:bg-zinc-900/40 text-sm text-gray-800 dark:text-gray-100 hover:bg-white dark:hover:bg-zinc-900 transition whitespace-nowrap"
+                @click="selectTopicInCategory(t.value)"
+              >
+                {{ t.label }}
+              </button>
+            </div>
+          </AppHorizontalScroller>
+        </div>
+
+        <div v-if="categoryError" class="px-4">
+          <AppInlineAlert severity="warning">
+            {{ categoryError }}
+          </AppInlineAlert>
+        </div>
+
+        <div v-else-if="categoryLoading && categoryPosts.length === 0" class="flex justify-center py-12">
+          <AppLogoLoader />
+        </div>
+
+        <div v-else-if="categoryPosts.length > 0" class="space-y-0">
+          <AppFeedPostRow
+            v-for="p in categoryPosts"
+            :key="p.id"
+            :post="p"
+          />
+          <div v-if="categoryLoadingMore" class="flex justify-center py-6 px-4">
+            <AppLogoLoader />
+          </div>
+          <div v-else-if="categoryHasMore" class="flex justify-center py-4 px-4">
+            <Button
+              label="Load more"
+              severity="secondary"
+              :loading="categoryLoadingMore"
+              :disabled="categoryLoadingMore"
+              @click="loadMoreCategory"
+            />
+          </div>
+        </div>
+
+        <div v-else class="px-4">
+          <div class="rounded-xl border moh-border bg-gray-50/50 dark:bg-zinc-900/30 px-4 py-6 text-center">
+            <p class="text-sm moh-text-muted">
+              No posts found for this category.
+            </p>
+          </div>
+        </div>
+      </template>
+
       <!-- No (valid) search query: discovery sections -->
       <template v-else>
         <div v-if="discoverError" class="px-4">
@@ -189,10 +265,10 @@
           </AppHorizontalScroller>
         </section>
 
-        <!-- Topics -->
-        <section v-if="displayTopics.length > 0" class="space-y-3">
+        <!-- Categories -->
+        <section v-if="displayCategories.length > 0" class="space-y-3">
           <h2 class="px-4 text-sm font-semibold text-gray-900 dark:text-gray-50">
-            Topics
+            Categories
           </h2>
           <div class="px-4">
             <div class="flex items-stretch gap-3">
@@ -200,13 +276,13 @@
                 <AppHorizontalScroller scroller-class="no-scrollbar">
                   <div class="flex gap-2 pb-2">
                     <button
-                      v-for="t in displayTopics"
-                      :key="t.value"
+                      v-for="c in displayCategories"
+                      :key="c.value"
                       type="button"
                       class="h-9 px-3 shrink-0 rounded-full border moh-border bg-white/60 dark:bg-zinc-900/40 text-sm text-gray-800 dark:text-gray-100 hover:bg-white dark:hover:bg-zinc-900 transition whitespace-nowrap"
-                      @click="selectTopic(t.value)"
+                      @click="selectCategory(c.value)"
                     >
-                      {{ t.label }}
+                      {{ c.label }}
                     </button>
                   </div>
                 </AppHorizontalScroller>
@@ -428,9 +504,8 @@
 </template>
 
 <script setup lang="ts">
-import type { FeedPost, SearchUserResult, SearchMixedResult, SearchMixedPagination, GetPostsData, Topic } from '~/types/api'
+import type { FeedPost, SearchUserResult, SearchMixedResult, SearchMixedPagination, GetPostsData, GetCategoryPostsData, GetCategoryTopicsData, Topic, TopicCategory } from '~/types/api'
 import { getApiErrorMessage } from '~/utils/api-error'
-import { interestOptions } from '~/config/interests'
 
 definePageMeta({
   layout: 'app',
@@ -465,10 +540,11 @@ const searchQueryTrimmed = computed(() => searchQuery.value.trim())
 const isSearching = computed(() => searchQueryTrimmed.value.length >= 2)
 
 const activeTopic = computed(() => normalizeQueryParam(route.query.topic))
+const activeCategory = computed(() => normalizeQueryParam(route.query.category))
 
 const {
   featuredPosts,
-  topics,
+  categories,
   followedTopics,
   onlineUsers,
   recommendedUsers,
@@ -484,37 +560,21 @@ const {
   isAuthed: computed(() => isAuthed.value),
 })
 
-const topicLabelByValue = computed(() => {
-  const m = new Map<string, string>()
-  for (const opt of interestOptions) m.set(opt.value, opt.label)
-  return m
-})
+const { labelByValue: topicLabelByValue, load: loadTopicOptions } = useTopicOptions()
+void loadTopicOptions().catch(() => {})
 
-const displayTopics = computed(() => {
-  const raw = (topics.value ?? []) as Topic[]
-  const userPrefs = Array.isArray(authUser.value?.interests) ? authUser.value!.interests : []
-  const prefOrder = new Map<string, number>()
-  userPrefs.forEach((v, idx) => prefOrder.set(String(v), idx))
-
+const displayCategories = computed(() => {
+  const raw = (categories.value ?? []) as TopicCategory[]
   const mapped = raw
-    .map((t) => ({
-      value: t.topic,
-      label: topicLabelByValue.value.get(t.topic) ?? t.topic,
-      score: t.score ?? 0,
-      prefRank: prefOrder.has(t.topic) ? (prefOrder.get(t.topic) ?? 9999) : null,
+    .map((c) => ({
+      value: c.category,
+      label: c.label,
+      score: c.score ?? 0,
+      postCount: c.postCount ?? 0,
     }))
-    .filter((t) => Boolean(t.value))
-
-  mapped.sort((a, b) => {
-    const ap = a.prefRank
-    const bp = b.prefRank
-    if (ap != null && bp != null) return ap - bp
-    if (ap != null) return -1
-    if (bp != null) return 1
-    return (b.score ?? 0) - (a.score ?? 0) || a.label.localeCompare(b.label)
-  })
-
-  return mapped.slice(0, 20)
+    .filter((c) => Boolean(c.value))
+  mapped.sort((a, b) => (b.score ?? 0) - (a.score ?? 0) || (b.postCount ?? 0) - (a.postCount ?? 0) || a.label.localeCompare(b.label))
+  return mapped.slice(0, 7)
 })
 
 const followedTopicsUi = computed(() => {
@@ -650,8 +710,22 @@ function selectTopic(topic: string) {
   // Topic click: set a dedicated topic mode so we fetch topic-specific posts (not generic search).
   const nextQuery: Record<string, any> = { ...route.query }
   delete nextQuery.q
+  // If the user is explicitly selecting a topic (not coming from category view),
+  // drop category so the UI doesn't stay "pinned" to an unrelated category.
+  if (!activeCategory.value) delete nextQuery.category
   nextQuery.topic = t
-  Promise.resolve(router.replace({ path: route.path, query: nextQuery })).catch(() => {})
+  // Use push so browser Back returns to Explore (not previous page).
+  Promise.resolve(router.push({ path: route.path, query: nextQuery })).catch(() => {})
+}
+
+function selectCategory(category: string) {
+  const c = String(category ?? '').trim()
+  if (!c) return
+  const nextQuery: Record<string, any> = { ...route.query }
+  delete nextQuery.q
+  delete nextQuery.topic
+  nextQuery.category = c
+  Promise.resolve(router.push({ path: route.path, query: nextQuery })).catch(() => {})
 }
 
 function scheduleDebouncedSearch() {
@@ -819,7 +893,103 @@ const topicHasMore = computed(() => topicNextCursor.value !== null)
 function clearTopic() {
   const nextQuery: Record<string, any> = { ...route.query }
   delete nextQuery.topic
-  Promise.resolve(router.replace({ path: route.path, query: nextQuery })).catch(() => {})
+  // Use push so browser Back returns to topic view if desired.
+  Promise.resolve(router.push({ path: route.path, query: nextQuery })).catch(() => {})
+}
+
+// Category feed (uses API endpoint specifically for categories)
+const categoryTopics = ref<Topic[]>([])
+const categoryTopicsLoading = ref(false)
+const categoryPosts = ref<FeedPost[]>([])
+const categoryNextCursor = ref<string | null>(null)
+const categoryLoading = ref(false)
+const categoryLoadingMore = ref(false)
+const categoryError = ref<string | null>(null)
+
+const categoryHasMore = computed(() => categoryNextCursor.value !== null)
+
+const activeCategoryLabel = computed(() => {
+  const key = activeCategory.value
+  if (!key) return null
+  const row = (categories.value ?? []).find((c) => c.category === key)
+  return row?.label ?? null
+})
+
+const categoryTopicsUi = computed(() => {
+  const raw = (categoryTopics.value ?? []) as Topic[]
+  return raw
+    .filter((t) => (t.postCount ?? 0) > 0)
+    .sort((a, b) => (b.postCount ?? 0) - (a.postCount ?? 0) || (b.score ?? 0) - (a.score ?? 0) || a.topic.localeCompare(b.topic))
+    .slice(0, 24)
+    .map((t) => ({
+      value: t.topic,
+      label: topicLabelByValue.value.get(t.topic) ?? t.topic,
+    }))
+})
+
+function clearCategory() {
+  const nextQuery: Record<string, any> = { ...route.query }
+  delete nextQuery.category
+  Promise.resolve(router.push({ path: route.path, query: nextQuery })).catch(() => {})
+}
+
+function selectTopicInCategory(topic: string) {
+  const t = String(topic ?? '').trim()
+  if (!t) return
+  const nextQuery: Record<string, any> = { ...route.query }
+  delete nextQuery.q
+  nextQuery.topic = t
+  // Keep category pinned for breadcrumb/back behavior.
+  if (!nextQuery.category && activeCategory.value) nextQuery.category = activeCategory.value
+  Promise.resolve(router.push({ path: route.path, query: nextQuery })).catch(() => {})
+}
+
+async function fetchCategoryTopics() {
+  const c = activeCategory.value
+  if (!c) return
+  if (categoryTopicsLoading.value) return
+  categoryTopicsLoading.value = true
+  try {
+    const res = await apiFetch<GetCategoryTopicsData>(`/topics/categories/${encodeURIComponent(c)}/topics`, { method: 'GET' })
+    categoryTopics.value = (res.data ?? []) as Topic[]
+  } catch {
+    categoryTopics.value = []
+  } finally {
+    categoryTopicsLoading.value = false
+  }
+}
+
+async function fetchCategoryPage(params: { append: boolean }) {
+  const c = activeCategory.value
+  if (!c) return
+  const isAppend = params.append
+  if (isAppend) categoryLoadingMore.value = true
+  else categoryLoading.value = true
+  categoryError.value = null
+  try {
+    const query: Record<string, string> = { limit: '30' }
+    if (isAppend && categoryNextCursor.value) query.cursor = categoryNextCursor.value
+    const res = await apiFetch<GetCategoryPostsData>(`/topics/categories/${encodeURIComponent(c)}/posts`, { method: 'GET', query })
+    const data = (res.data ?? []) as FeedPost[]
+    const next = (res.pagination as { nextCursor?: string | null } | undefined)?.nextCursor ?? null
+    if (isAppend) categoryPosts.value = [...categoryPosts.value, ...data]
+    else categoryPosts.value = data
+    categoryNextCursor.value = next
+  } catch (e: unknown) {
+    categoryError.value = getApiErrorMessage(e) || 'Failed to load category posts.'
+    if (!isAppend) {
+      categoryPosts.value = []
+      categoryNextCursor.value = null
+    }
+  } finally {
+    categoryLoading.value = false
+    categoryLoadingMore.value = false
+  }
+}
+
+async function loadMoreCategory() {
+  if (categoryLoadingMore.value || !categoryNextCursor.value) return
+  await fetchCategoryPage({ append: true })
 }
 
 async function fetchTopicPage(params: { append: boolean }) {
@@ -876,6 +1046,26 @@ watch(
     if (searchQuery.value) searchQuery.value = ''
     clearSearchResults()
     void fetchTopicPage({ append: false })
+  },
+  { immediate: true },
+)
+
+watch(
+  () => route.query.category,
+  (cRaw) => {
+    const c = normalizeQueryParam(cRaw)
+    if (!c) {
+      categoryTopics.value = []
+      categoryPosts.value = []
+      categoryNextCursor.value = null
+      categoryError.value = null
+      return
+    }
+    // Clear search UI when switching to category mode
+    if (searchQuery.value) searchQuery.value = ''
+    clearSearchResults()
+    void fetchCategoryTopics()
+    void fetchCategoryPage({ append: false })
   },
   { immediate: true },
 )

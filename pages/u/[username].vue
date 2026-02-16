@@ -33,29 +33,40 @@
     </div>
 
     <div v-else>
-      <AppProfileHeader
-        :profile="profile"
-        :profile-name="profileName"
-        :profile-avatar-url="profileAvatarUrl"
-        :profile-banner-url="profileBannerUrl"
-        :hide-banner-thumb="hideBannerThumb"
-        :hide-avatar-thumb="hideAvatarThumb"
-        :hide-avatar-during-banner="hideAvatarDuringBanner"
-        :relationship-tag-label="relationshipTagLabel"
-        :is-self="isSelf"
-        :follow-relationship="followRelationship"
-        :nudge="followSummary?.nudge ?? null"
-        :show-follow-counts="showFollowCounts"
-        :follower-count="followSummary?.followerCount ?? 0"
-        :following-count="followSummary?.followingCount ?? 0"
-        @open-image="onOpenProfileImage"
-        @edit="editOpen = true"
-        @open-followers="goToFollowers"
-        @open-following="goToFollowing"
-        @followed="onFollowed"
-        @unfollowed="onUnfollowed"
-        @nudge-updated="onNudgeUpdated"
-      />
+      <!-- Client-only: header uses UI primitives (tooltips/menus/dialogs) that can SSR-hydrate inconsistently. -->
+      <ClientOnly>
+        <template #fallback>
+          <div>
+            <div class="aspect-[3.25/1] w-full bg-gray-200 dark:bg-zinc-900" />
+            <div class="mx-auto max-w-3xl px-4 pb-5 pt-14">
+              <div class="h-20" />
+            </div>
+          </div>
+        </template>
+        <AppProfileHeader
+          :profile="profile"
+          :profile-name="profileName"
+          :profile-avatar-url="profileAvatarUrl"
+          :profile-banner-url="profileBannerUrl"
+          :hide-banner-thumb="hideBannerThumb"
+          :hide-avatar-thumb="hideAvatarThumb"
+          :hide-avatar-during-banner="hideAvatarDuringBanner"
+          :relationship-tag-label="relationshipTagLabel"
+          :is-self="isSelf"
+          :follow-relationship="followRelationship"
+          :nudge="followSummary?.nudge ?? null"
+          :show-follow-counts="showFollowCounts"
+          :follower-count="followSummary?.followerCount ?? 0"
+          :following-count="followSummary?.followingCount ?? 0"
+          @open-image="onOpenProfileImage"
+          @edit="editOpen = true"
+          @open-followers="goToFollowers"
+          @open-following="goToFollowing"
+          @followed="onFollowed"
+          @unfollowed="onUnfollowed"
+          @nudge-updated="onNudgeUpdated"
+        />
+      </ClientOnly>
 
       <!-- Pinned post -->
       <div class="mt-3 mb-4">

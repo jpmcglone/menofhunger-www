@@ -166,6 +166,13 @@
               </label>
             </div>
             <Button
+              label="Normalize topic data (users + follows)"
+              severity="secondary"
+              :loading="runningKey === 'topicsNormalize'"
+              :disabled="Boolean(runningKey)"
+              @click="runJob('topicsNormalize', 'Normalize topic data', '/admin/jobs/topics-normalize')"
+            />
+            <Button
               label="Link metadata backfill"
               severity="secondary"
               :loading="runningKey === 'links'"
@@ -223,6 +230,7 @@ type JobKey =
   | 'notificationsOrphans'
   | 'hashtagsCleanup'
   | 'topics'
+  | 'topicsNormalize'
   | 'links'
   | 'popular'
   | 'trending'
