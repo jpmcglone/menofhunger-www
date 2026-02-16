@@ -37,6 +37,27 @@ export function usePostPermalinkSeo(opts: {
 }) {
   const canonicalPath = computed(() => `/p/${encodeURIComponent(opts.postId.value)}`)
 
+  const pollMeta = computed(() => {
+    const p = opts.post.value
+    if (!p || opts.isRestricted.value) return null
+    const poll = (p as any).poll as FeedPost['poll'] | null | undefined
+    if (!poll) return null
+    const totalVoteCount = Number((poll as any).totalVoteCount ?? 0) || 0
+    const ended = Boolean((poll as any).ended)
+    const endsAt = (poll as any).endsAt ? new Date((poll as any).endsAt) : null
+    const endsAtText =
+      endsAt && !Number.isNaN(endsAt.getTime())
+        ? ended
+          ? 'Done'
+          : `Ends ${endsAt.toLocaleString()}`
+        : null
+    const firstOptionImage =
+      ((poll as any).options as Array<{ imageUrl?: string | null }> | undefined)
+        ?.map((o) => (o?.imageUrl ?? '').trim())
+        .find(Boolean) ?? null
+    return { totalVoteCount, ended, endsAtText, firstOptionImage }
+  })
+
   const seoTitle = computed(() => {
     if (!opts.post.value) return opts.isRestricted.value ? opts.restrictionLabel.value : 'Post'
     if (opts.isRestricted.value) return opts.restrictionLabel.value
@@ -44,6 +65,15 @@ export function usePostPermalinkSeo(opts: {
     const username = (opts.post.value.author.username ?? '').trim()
     const bodyText = (opts.bodyTextSansLinks.value ?? '').trim()
     const hasBodyText = Boolean(bodyText)
+
+    // Poll: identity-first, with "Poll:" prefix for clarity in SERPs and share cards.
+    if (pollMeta.value) {
+      if (hasBodyText) {
+        const t = excerpt(bodyText, 56)
+        return username ? `Poll: ${t} — @${username}` : `Poll: ${t}`
+      }
+      return username ? `Poll by @${username}` : 'Poll'
+    }
 
     // Media post: preview the media.
     if (opts.primaryMedia.value) {
@@ -86,6 +116,15 @@ export function usePostPermalinkSeo(opts: {
     const username = (opts.post.value.author.username ?? '').trim()
     const bodyText = (opts.bodyTextSansLinks.value ?? '').trim()
     const hasBodyText = Boolean(bodyText)
+
+    if (pollMeta.value) {
+      const votes = pollMeta.value.totalVoteCount
+      const votesLabel = `${votes} vote${votes === 1 ? '' : 's'}`
+      const endsAtText = (pollMeta.value.endsAtText ?? '').trim()
+      const prefix = endsAtText ? `Poll · ${votesLabel} · ${endsAtText}` : `Poll · ${votesLabel}`
+      const main = hasBodyText ? excerpt(bodyText, 190) : username ? `Poll by @${username}.` : 'Poll.'
+      return excerpt(`${prefix} — ${main}`, 190) || 'Poll.'
+    }
 
     if (opts.primaryMedia.value) {
       if (hasBodyText) return excerpt(bodyText, 190)
@@ -134,6 +173,10 @@ export function usePostPermalinkSeo(opts: {
     const linkImage = (opts.linkMeta.value?.imageUrl ?? '').trim()
     if (linkImage) return linkImage
 
+    // Poll option image (if present) makes for a better unfurl than the author's avatar.
+    const pollImage = (pollMeta.value?.firstOptionImage ?? '').trim()
+    if (pollImage) return pollImage
+
     // Identity-first baseline for text-only (and as fallback for link shares with no image).
     const avatar = (opts.post.value?.author.avatarUrl ?? '').trim()
     return avatar || '/images/banner.png'
@@ -144,6 +187,11 @@ export function usePostPermalinkSeo(opts: {
     const username = (opts.post.value?.author.username ?? '').trim()
     const bodyText = (opts.bodyTextSansLinks.value ?? '').trim()
     const external = (opts.previewLink.value ?? '').trim()
+
+    if (pollMeta.value) {
+      if (bodyText) return `Poll: ${excerpt(bodyText, 120)}`
+      return username ? `Poll by @${username}` : `Poll on ${siteConfig.name}`
+    }
 
     if (opts.primaryMedia.value) {
       if (bodyText) return excerpt(bodyText, 120)
@@ -188,15 +236,19 @@ export function usePostPermalinkSeo(opts: {
     for (const u of opts.extraOgMediaUrls.value) images.push(toAbs(u))
     const linkImage = (opts.linkMeta.value?.imageUrl ?? '').trim()
     if (!images.length && linkImage) images.push(toAbs(linkImage))
+    const pollImage = (pollMeta.value?.firstOptionImage ?? '').trim()
+    if (!images.length && pollImage) images.push(toAbs(pollImage))
     if (!images.length && avatarUrl) images.push(toAbs(avatarUrl))
     // Always include a site fallback at the end.
     images.push(toAbs('/images/banner.png'))
 
+    const headlineBase = excerpt(opts.bodyTextSansLinks.value || 'Post', 90)
+    const headline = pollMeta.value ? `Poll: ${headlineBase}` : headlineBase
     const article: any = {
       '@type': 'Article',
       '@id': `${siteConfig.url}${canonicalPath.value}#article`,
       mainEntityOfPage: { '@id': `${siteConfig.url}${canonicalPath.value}#webpage` },
-      headline: excerpt(opts.bodyTextSansLinks.value || 'Post', 90),
+      headline,
       description: seoDescription.value,
       datePublished: opts.post.value.createdAt,
       dateModified: opts.post.value.createdAt,
@@ -204,6 +256,17 @@ export function usePostPermalinkSeo(opts: {
       publisher: { '@id': `${siteConfig.url}/#organization` },
       image: Array.from(new Set(images)).filter(Boolean),
       isAccessibleForFree: true,
+    }
+    if (pollMeta.value) {
+      const votes = pollMeta.value.totalVoteCount
+      article.about = [{ '@type': 'Thing', name: 'Poll' }]
+      article.interactionStatistic = [
+        {
+          '@type': 'InteractionCounter',
+          interactionType: 'http://schema.org/VoteAction',
+          userInteractionCount: votes,
+        },
+      ]
     }
     const video = opts.primaryVideo?.value
     if (video) {
@@ -247,6 +310,7 @@ export function usePostPermalinkSeo(opts: {
         { property: 'article:published_time', content: opts.post.value.createdAt },
         { property: 'article:modified_time', content: opts.post.value.createdAt },
         ...(authorUrl ? [{ property: 'article:author', content: authorUrl }] : []),
+        ...(pollMeta.value ? [{ property: 'article:tag', content: 'Poll' }] : []),
         // Multiple images: add extra OG images so platforms can pick/rotate (images, GIFs).
         ...opts.extraOgMediaUrls.value.map((u) => ({ property: 'og:image', content: toAbs(u) })),
       ]
