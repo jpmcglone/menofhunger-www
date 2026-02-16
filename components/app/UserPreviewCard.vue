@@ -218,17 +218,30 @@
           <span class="ml-1 text-gray-600 dark:text-gray-400">Followers</span>
         </div>
       </div>
+
+      <div v-if="canSendMessageFromPreview" class="mt-4">
+        <Button
+          label="Send message"
+          :class="['w-full', messageButtonClass]"
+          @click.stop.prevent="onSendMessage"
+        >
+          <template #icon>
+            <Icon name="tabler:message-circle-2" aria-hidden="true" />
+          </template>
+        </Button>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import type { UserPreview } from '~/types/api'
+import type { LookupMessageConversationResponse, UserPreview } from '~/types/api'
 import { useUserOverlay } from '~/composables/useUserOverlay'
 import { formatDateTime, formatListTime } from '~/utils/time-format'
 import { tinyTooltip } from '~/utils/tiny-tooltip'
 import type { MenuItem } from 'primevue/menuitem'
 import { avatarRoundClass as getAvatarRoundClass } from '~/utils/avatar-rounding'
+import { userColorTier } from '~/utils/user-tier'
 
 const props = defineProps<{
   user: UserPreview
@@ -241,6 +254,72 @@ const avatarRoundClass = computed(() => getAvatarRoundClass(Boolean(user.value?.
 const { user: authUser } = useAuth()
 const isAuthed = computed(() => Boolean(authUser.value?.id))
 const isSelf = computed(() => Boolean(authUser.value?.id && user.value.id && authUser.value.id === user.value.id))
+const viewerCanStartChats = computed(() => Boolean(authUser.value?.premium || authUser.value?.premiumPlus))
+const previewUserFollowsViewer = computed(() => Boolean(user.value.relationship?.userFollowsViewer))
+const viewerIsVerified = computed(() => (authUser.value?.verifiedStatus ?? 'none') !== 'none')
+const previewUserIsVerified = computed(() => userColorTier(user.value) !== 'normal')
+
+const { apiFetchData } = useApiClient()
+const dmLookupCache = useState<Record<string, string | null>>('moh-dm-lookup-cache', () => ({}))
+const dmLookupConversationId = ref<string | null>(null)
+const dmLookupInflight = ref(false)
+
+const shouldCheckExistingChat = computed(() => {
+  if (!isAuthed.value) return false
+  if (!viewerIsVerified.value) return false
+  if (!previewUserIsVerified.value) return false
+  if (isSelf.value) return false
+  if (!user.value.id) return false
+  // If viewer isn't premium, we need this to know whether to show the button at all.
+  if (!viewerCanStartChats.value) return true
+  // If viewer is premium AND the user doesn't follow them, this decides filled vs outline.
+  if (!previewUserFollowsViewer.value) return true
+  return false
+})
+
+watch(
+  () => [shouldCheckExistingChat.value, user.value.id] as const,
+  async ([shouldCheck, userId]) => {
+    dmLookupConversationId.value = null
+    if (!shouldCheck || !userId) return
+
+    const cached = dmLookupCache.value[userId]
+    if (cached !== undefined) {
+      dmLookupConversationId.value = cached
+      return
+    }
+
+    dmLookupInflight.value = true
+    try {
+      const res = await apiFetchData<LookupMessageConversationResponse['data']>('/messages/lookup', {
+        method: 'POST',
+        body: { user_ids: [userId] },
+      })
+      const convoId = res?.conversationId ?? null
+      dmLookupCache.value = { ...dmLookupCache.value, [userId]: convoId }
+      dmLookupConversationId.value = convoId
+    } catch {
+      // Best-effort: treat as unknown/no chat.
+      dmLookupConversationId.value = null
+    } finally {
+      dmLookupInflight.value = false
+    }
+  },
+  { immediate: true },
+)
+
+const hasExistingChat = computed(() => Boolean(dmLookupConversationId.value))
+
+const canSendMessageFromPreview = computed(() => {
+  if (!isAuthed.value) return false
+  if (!viewerIsVerified.value) return false
+  if (!previewUserIsVerified.value) return false
+  if (isSelf.value) return false
+  if (!user.value.id || !user.value.username) return false
+  // Premium can always start new chats; non-premium needs an existing conversation.
+  if (viewerCanStartChats.value) return true
+  return hasExistingChat.value
+})
 
 const isMutualFollow = computed(() => {
   const rel = user.value.relationship
@@ -446,6 +525,74 @@ const displayName = computed(() => {
 const pop = useUserPreviewPopover()
 function onNavigate() {
   pop.close()
+}
+
+const messageTier = computed(() => userColorTier(user.value))
+const messageFilledButtonClass = computed(() => {
+  const tier = messageTier.value
+  // Orgs are silver: use same treatment as org chat bubbles.
+  if (tier === 'organization') return '!border-[#313643] !bg-[#313643] !text-white hover:opacity-95'
+  if (tier === 'premium') return '!border-[var(--moh-premium)] !bg-[var(--moh-premium)] !text-white hover:opacity-95'
+  if (tier === 'verified') return '!border-[var(--moh-verified)] !bg-[var(--moh-verified)] !text-white hover:opacity-95'
+  return '!border-gray-900 !bg-gray-900 !text-white hover:opacity-95 dark:!border-white dark:!bg-white dark:!text-gray-900'
+})
+
+const messageOutlineButtonClass = computed(() => {
+  const tier = messageTier.value
+  if (tier === 'organization') {
+    return '!bg-transparent !border-[#313643] !text-[#313643] hover:!bg-[rgba(49,54,67,0.08)] dark:hover:!bg-[rgba(49,54,67,0.18)]'
+  }
+  if (tier === 'premium') {
+    return '!bg-transparent !border-[var(--moh-premium)] !text-[var(--moh-premium)] hover:!bg-[rgba(var(--moh-premium-rgb),0.08)] dark:hover:!bg-[rgba(var(--moh-premium-rgb),0.16)]'
+  }
+  if (tier === 'verified') {
+    return '!bg-transparent !border-[var(--moh-verified)] !text-[var(--moh-verified)] hover:!bg-[rgba(var(--moh-verified-rgb),0.08)] dark:hover:!bg-[rgba(var(--moh-verified-rgb),0.16)]'
+  }
+  return '!bg-transparent !border-gray-900 !text-gray-900 hover:!bg-gray-900/5 dark:!border-gray-200 dark:!text-gray-200 dark:hover:!bg-white/10'
+})
+
+const messageButtonClass = computed(() => {
+  // Filled when:
+  // - they follow you OR
+  // - you already have a chat together
+  // Outline only when:
+  // - they don't follow you AND
+  // - you don't already have a chat
+  if (hasExistingChat.value) return messageFilledButtonClass.value
+  return previewUserFollowsViewer.value ? messageFilledButtonClass.value : messageOutlineButtonClass.value
+})
+
+function onSendMessage() {
+  const username = (user.value.username ?? '').trim()
+  const userId = user.value.id ?? null
+  if (!username || !userId) return
+  pop.close()
+  void (async () => {
+    // If we already know there's a conversation, deep-link directly to it (avoids the extra URL hop).
+    const cached = dmLookupCache.value[userId]
+    let conversationId: string | null = dmLookupConversationId.value ?? (cached !== undefined ? cached : null)
+
+    // If we haven't checked yet, do a quick lookup on click.
+    if (conversationId === null && cached === undefined && !dmLookupInflight.value) {
+      try {
+        const res = await apiFetchData<LookupMessageConversationResponse['data']>('/messages/lookup', {
+          method: 'POST',
+          body: { user_ids: [userId] },
+        })
+        conversationId = res?.conversationId ?? null
+        dmLookupCache.value = { ...dmLookupCache.value, [userId]: conversationId }
+        dmLookupConversationId.value = conversationId
+      } catch {
+        // ignore
+      }
+    }
+
+    if (conversationId) {
+      await navigateTo({ path: '/chat', query: { c: conversationId } })
+      return
+    }
+    await navigateTo({ path: '/chat', query: { to: username } })
+  })()
 }
 </script>
 

@@ -1,22 +1,24 @@
 <template>
-  <div
-    v-if="shouldShowAd"
-    :class="[
-      'relative w-full rounded-xl border border-dotted moh-border bg-transparent overflow-hidden',
-      placement === 'rail' ? 'h-[250px]' : 'h-[120px] sm:h-[250px]'
-    ]"
-  >
-    <!-- Placeholder label (shown until we detect an actual ad render) -->
+  <!-- Entire ad slot is client-only to avoid SSR hydration mismatches
+       when auth state (premium vs non-premium) differs at render time. -->
+  <ClientOnly>
     <div
-      v-if="showPlaceholder"
-      class="pointer-events-none absolute inset-0 flex items-center justify-center text-xs font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500"
-      aria-hidden="true"
+      v-if="shouldShowAd"
+      :class="[
+        'relative w-full rounded-xl border border-dotted moh-border bg-transparent overflow-hidden',
+        placement === 'rail' ? 'h-[250px]' : 'h-[120px] sm:h-[250px]'
+      ]"
     >
-      AD
-    </div>
+      <!-- Placeholder label (shown until we detect an actual ad render) -->
+      <div
+        v-if="showPlaceholder"
+        class="pointer-events-none absolute inset-0 flex items-center justify-center text-xs font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500"
+        aria-hidden="true"
+      >
+        AD
+      </div>
 
-    <!-- AdSense unit -->
-    <ClientOnly>
+      <!-- AdSense unit -->
       <ins
         v-if="adsenseEnabled"
         ref="insEl"
@@ -28,11 +30,12 @@
         data-full-width-responsive="true"
         :data-adtest="adsenseAdtest ? 'on' : undefined"
       />
-      <template #fallback>
-        <div class="h-full w-full" aria-hidden="true" />
-      </template>
-    </ClientOnly>
-  </div>
+    </div>
+    <template #fallback>
+      <!-- Keep SSR empty to prevent ad DOM from appearing in server HTML. -->
+      <div aria-hidden="true" />
+    </template>
+  </ClientOnly>
 </template>
 
 <script setup lang="ts">

@@ -248,7 +248,7 @@
               <div
                 v-if="!hideTopBar"
                 ref="titleBarEl"
-                class="sticky top-0 z-10 shrink-0 border-b moh-border moh-frosted"
+                class="sticky top-0 z-50 shrink-0 border-b moh-border moh-frosted"
               >
                 <AppTitleBar>
                   <div class="flex items-center justify-between gap-3">

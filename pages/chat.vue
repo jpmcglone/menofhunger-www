@@ -109,19 +109,24 @@
                           </template>
                           <template v-else-if="selectedConversation?.type === 'group' && !selectedConversation?.title">
                             <span class="min-w-0 truncate">
-                              <template v-for="(member, index) in headerMembers" :key="`header-title-${member.id}`">
-                                <button
-                                  type="button"
-                                  class="hover:underline cursor-pointer"
-                                  :aria-label="member.username ? `View @${member.username}` : 'View profile'"
-                                  @click="goToProfile(member.user)"
-                                  @mouseenter="(e) => onUserPreviewEnter(member.username, e)"
-                                  @mousemove="onUserPreviewMove"
-                                  @mouseleave="onUserPreviewLeave"
-                                >
-                                  {{ member.label }}
-                                </button>
-                                <span v-if="index < headerMembers.length - 1">, </span>
+                              <template v-if="headerMembers.length">
+                                <template v-for="(member, index) in headerMembers" :key="`header-title-${member.id}`">
+                                  <button
+                                    type="button"
+                                    class="hover:underline cursor-pointer"
+                                    :aria-label="member.username ? `View @${member.username}` : 'View profile'"
+                                    @click="goToProfile(member.user)"
+                                    @mouseenter="(e) => onUserPreviewEnter(member.username, e)"
+                                    @mousemove="onUserPreviewMove"
+                                    @mouseleave="onUserPreviewLeave"
+                                  >
+                                    {{ member.label }}
+                                  </button>
+                                  <span v-if="index < headerMembers.length - 1">, </span>
+                                </template>
+                              </template>
+                              <template v-else>
+                                Group chat
                               </template>
                             </span>
                           </template>
@@ -141,22 +146,25 @@
                         </div>
                         <div class="text-xs text-gray-500 dark:text-gray-400 truncate">
                           <template v-if="selectedConversation?.type === 'group'">
-                            <span>{{ headerMemberCountLabel }}</span>
-                            <span v-if="headerMembers.length"> · </span>
-                            <template v-for="(member, index) in headerMembers" :key="member.id">
-                              <button
-                                type="button"
-                                class="font-semibold hover:underline cursor-pointer"
-                                :class="member.toneClass"
-                                :aria-label="member.username ? `View @${member.username}` : 'View profile'"
-                                @click="goToProfile(member.user)"
-                                @mouseenter="(e) => onUserPreviewEnter(member.username, e)"
-                                @mousemove="onUserPreviewMove"
-                                @mouseleave="onUserPreviewLeave"
-                              >
-                                {{ member.label }}
-                              </button>
-                              <span v-if="index < headerMembers.length - 1">, </span>
+                            <template v-if="headerMembers.length">
+                              <template v-for="(member, index) in headerMembers" :key="member.id">
+                                <button
+                                  type="button"
+                                  class="font-semibold hover:underline cursor-pointer"
+                                  :class="member.toneClass"
+                                  :aria-label="member.username ? `View @${member.username}` : 'View profile'"
+                                  @click="goToProfile(member.user)"
+                                  @mouseenter="(e) => onUserPreviewEnter(member.username, e)"
+                                  @mousemove="onUserPreviewMove"
+                                  @mouseleave="onUserPreviewLeave"
+                                >
+                                  {{ member.label }}
+                                </button>
+                                <span v-if="index < headerMembers.length - 1">, </span>
+                              </template>
+                            </template>
+                            <template v-else>
+                              Group chat
                             </template>
                           </template>
                           <template v-else-if="selectedConversation?.type === 'direct'">
@@ -478,6 +486,7 @@ import type {
   MessageConversation,
   SendMessageResponse,
   CreateMessageConversationResponse,
+  UserPreview,
 } from '~/types/api'
 import { getApiErrorMessage } from '~/utils/api-error'
 import { useChatBubbleShape } from '~/composables/chat/useChatBubbleShape'
@@ -492,7 +501,7 @@ import { userColorTier, type UserColorTier } from '~/utils/user-tier'
 const { apiFetch, apiFetchData } = useApiClient()
 const route = useRoute()
 const router = useRouter()
-const { user: me } = useAuth()
+const { user: me, ensureLoaded } = useAuth()
 const viewerIsVerified = computed(() => (me.value?.verifiedStatus ?? 'none') !== 'none')
 const viewerCanStartChats = computed(() => Boolean(me.value?.premium || me.value?.premiumPlus))
 const CHAT_BOOT_FADE_MS = 160
@@ -803,16 +812,12 @@ function userToneClass(u: MessageUser | null | undefined): string {
   return 'text-gray-700 dark:text-gray-200'
 }
 
-const headerMemberCountLabel = computed(() => {
-  if (selectedConversation.value?.type !== 'group') return ''
-  return `${selectedConversation.value.participants.length} members`
-})
-
 const headerMembers = computed(() => {
   if (selectedConversation.value?.type !== 'group') return []
   return selectedConversation.value.participants
     .map((p) => p.user ?? null)
     .filter((u): u is MessageUser => Boolean(u))
+    .filter((u) => u.id !== me.value?.id)
     .map((u) => {
     const label = u.name || u.username || 'User'
     return {
@@ -1511,7 +1516,10 @@ watch(recipientQuery, (val) => {
       const res = await apiFetchData<FollowListUser[]>('/search', {
         query: { type: 'users', q, limit: 8 },
       })
-      const filtered = (res ?? []).filter((u) => u.id !== me.value?.id)
+      const filtered = (res ?? [])
+        .filter((u) => u.id !== me.value?.id)
+        // Don't allow unverified users to show up in chat recipient search.
+        .filter((u) => userColorTier(u) !== 'normal')
       recipientResults.value = filtered
     } catch (e) {
       recipientError.value = getApiErrorMessage(e) || 'Failed to search users.'
@@ -1573,6 +1581,107 @@ async function createConversation() {
     // no-op
   }
 }
+
+function normalizeToUsernameParam(val: unknown): string | null {
+  const u = typeof val === 'string' ? val.trim() : ''
+  return u ? u : null
+}
+
+function mapPreviewToFollowListUser(preview: UserPreview): FollowListUser {
+  return {
+    id: preview.id,
+    username: preview.username,
+    name: preview.name,
+    premium: Boolean(preview.premium),
+    premiumPlus: Boolean(preview.premiumPlus),
+    isOrganization: Boolean(preview.isOrganization),
+    stewardBadgeEnabled: Boolean(preview.stewardBadgeEnabled ?? true),
+    verifiedStatus: preview.verifiedStatus ?? 'none',
+    avatarUrl: preview.avatarUrl ?? null,
+    relationship: preview.relationship,
+  }
+}
+
+async function clearToQueryParam() {
+  const q = { ...route.query } as Record<string, any>
+  if (!('to' in q)) return
+  delete q.to
+  await router.replace({ query: q })
+}
+
+async function openDraftChatWithRecipient(recipient: FollowListUser) {
+  draftRecipients.value = [recipient]
+  // Clear any selected existing chat and show draft pane.
+  await clearSelection({ replace: true, preserveDraft: true })
+  selectedChatKey.value = 'draft'
+  messagesReady.value = true
+  animateMessageList.value = false
+  messagesPaneState.value = 'ready'
+  renderedChatKey.value = 'draft'
+}
+
+async function openChatToUsername(username: string) {
+  const u = (username ?? '').trim()
+  if (!u) return
+
+  await ensureLoaded().catch(() => null)
+
+  // If user can't use chat at all, bail (screen already shows verify gate).
+  if (!viewerIsVerified.value) {
+    return
+  }
+
+  try {
+    const preview = await apiFetchData<UserPreview>(`/users/${encodeURIComponent(u)}/preview`, { method: 'GET' })
+    if (!preview?.id) {
+      return
+    }
+    const recipient = mapPreviewToFollowListUser(preview)
+    const targetIsVerified = userColorTier(preview) !== 'normal'
+
+    const lookup = await apiFetchData<LookupMessageConversationResponse['data']>('/messages/lookup', {
+      method: 'POST',
+      body: { user_ids: [recipient.id] },
+    })
+    const conversationId = lookup?.conversationId ?? null
+    if (conversationId) {
+      // Ensure convo exists in lists (selectConversation doesn't upsert into lists).
+      await fetchConversations('primary', { forceRefresh: true })
+      await fetchConversations('requests', { forceRefresh: true })
+      // Set `c` and remove `to` in a single URL update (avoid the extra jump).
+      const nextQuery = { ...(route.query as Record<string, any>), c: conversationId } as Record<string, any>
+      delete nextQuery['to']
+      await router.replace({ query: nextQuery })
+      await selectConversation(conversationId, { replace: true })
+      return
+    }
+
+    // No existing chat: don't allow starting a chat with an unverified user.
+    if (!targetIsVerified) return
+
+    if (!viewerCanStartChats.value) {
+      startChatInfoVisible.value = true
+      return
+    }
+
+    await openDraftChatWithRecipient(recipient)
+  } catch {
+    // Non-fatal: ignore
+  }
+}
+
+// Handle `/chat?to=<username>` changes while already on /chat.
+// (Without this, clicking “Send message” from within chat only updates the URL.)
+const lastHandledToUsername = ref<string | null>(null)
+watch(
+  () => normalizeToUsernameParam(route.query.to),
+  (toUsername) => {
+    if (!toUsername) return
+    if (toUsername === lastHandledToUsername.value) return
+    lastHandledToUsername.value = toUsername
+    void openChatToUsername(toUsername)
+  },
+)
 
 async function blockDirectUser() {
   const convo = selectedConversation.value
@@ -1676,6 +1785,10 @@ onMounted(() => {
   ;(async () => {
     try {
       await fetchConversations('primary', { forceRefresh: true })
+      const toUsername = normalizeToUsernameParam(route.query.to)
+      if (toUsername) {
+        await openChatToUsername(toUsername)
+      }
       if (selectedConversationId.value) {
         await selectConversation(selectedConversationId.value, { replace: true })
       }

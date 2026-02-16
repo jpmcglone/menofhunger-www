@@ -108,18 +108,21 @@ function focus() {
 }
 
 const userTier = computed(() => userColorTier(props.user))
+const ORG_CHAT_SILVER = '#313643'
 
 const outlineClass = computed(() => {
   const radius = isMultiline.value ? 'rounded-2xl' : 'rounded-full'
   const base = `${radius} border`
-  if (userTier.value === 'organization') return `${base} border-[var(--moh-org)]`
+  // Org uses the same dark silver as chat bubbles.
+  if (userTier.value === 'organization') return `${base} border-[${ORG_CHAT_SILVER}]`
   if (userTier.value === 'premium') return `${base} border-[var(--moh-premium)]`
   if (userTier.value === 'verified') return `${base} border-[var(--moh-verified)]`
   return `${base} border-gray-300 dark:border-zinc-600`
 })
 
 const sendButtonClass = computed(() => {
-  if (userTier.value === 'organization') return 'bg-[var(--moh-org)] text-white hover:opacity-90'
+  // Org uses the same dark silver as chat bubbles.
+  if (userTier.value === 'organization') return `bg-[${ORG_CHAT_SILVER}] text-white hover:opacity-90`
   if (userTier.value === 'premium') return 'bg-[var(--moh-premium)] text-white hover:opacity-90'
   if (userTier.value === 'verified') return 'bg-[var(--moh-verified)] text-white hover:opacity-90'
   return 'bg-gray-900 text-white hover:bg-gray-800 dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100'
