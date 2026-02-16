@@ -303,8 +303,47 @@ const MAX_RATIO = 6 / 4 // width/height max
 
 const single = computed(() => (items.value.length === 1 ? (items.value[0] ?? null) : null))
 const singleIsImageLike = computed(() => Boolean(single.value && single.value.kind !== 'video'))
-const singleWidth = computed(() => (typeof single.value?.width === 'number' ? single.value.width : null))
-const singleHeight = computed(() => (typeof single.value?.height === 'number' ? single.value.height : null))
+
+// Some phone photos rely on EXIF orientation. The browser displays them rotated, but our stored
+// width/height metadata can be the unrotated pixel matrix. That mismatch makes the layout box
+// wide while the rendered image is tall (centered letterbox). Measure the real decoded dimensions
+// on the client and prefer them for layout.
+const singleMeasured = ref<{ w: number; h: number } | null>(null)
+let singleMeasureReq = 0
+watch(
+  () => (singleIsImageLike.value ? (single.value?.url ?? null) : null),
+  (url) => {
+    if (!import.meta.client) return
+    singleMeasured.value = null
+    const u = (url ?? '').trim()
+    if (!u) return
+    singleMeasureReq += 1
+    const req = singleMeasureReq
+    const img = new Image()
+    img.decoding = 'async'
+    img.onload = () => {
+      if (req !== singleMeasureReq) return
+      const w = Number(img.naturalWidth || 0)
+      const h = Number(img.naturalHeight || 0)
+      if (w > 0 && h > 0) singleMeasured.value = { w, h }
+    }
+    img.onerror = () => {
+      if (req !== singleMeasureReq) return
+      singleMeasured.value = null
+    }
+    img.src = u
+  },
+  { immediate: true },
+)
+
+const singleWidth = computed(() => {
+  if (singleIsImageLike.value && singleMeasured.value?.w) return singleMeasured.value.w
+  return typeof single.value?.width === 'number' ? single.value.width : null
+})
+const singleHeight = computed(() => {
+  if (singleIsImageLike.value && singleMeasured.value?.h) return singleMeasured.value.h
+  return typeof single.value?.height === 'number' ? single.value.height : null
+})
 const singleAspectRatio = computed(() => {
   const w = singleWidth.value ?? 0
   const h = singleHeight.value ?? 0
