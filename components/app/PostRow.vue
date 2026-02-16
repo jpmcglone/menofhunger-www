@@ -105,6 +105,16 @@
           :visibility="postView.visibility"
         />
 
+        <AppPostPoll
+          v-if="!isDeletedPost && postView.poll"
+          :post-id="postView.id"
+          :poll="postView.poll"
+          :post-visibility="postView.visibility"
+          :viewer-is-author="isSelf"
+          :viewer-can-interact="viewerCanInteract"
+          @updated="onPollUpdated"
+        />
+
         <AppPostMediaGrid v-if="!isDeletedPost && postView.media?.length" :media="postView.media" :post-id="postView.id" :row-in-view="rowInView" />
 
         <AppPostRowLinkPreview
@@ -332,6 +342,11 @@ watch(
   },
 )
 const postView = computed(() => postState.value)
+
+function onPollUpdated(poll: any) {
+  postState.value = { ...(postState.value as any), poll }
+}
+
 const { user: author } = useUserOverlay(computed(() => postView.value.author))
 const isDeletedPost = computed(() => Boolean(postView.value.deletedAt))
 const clickable = computed(() => props.clickable !== false)
@@ -489,12 +504,12 @@ function onRowClick(e: MouseEvent) {
 }
 
 const createdAtDate = computed(() => new Date(postView.value.createdAt))
-const createdAtShort = computed(() => formatShortDate(createdAtDate.value))
+const { nowMs } = useNowTicker({ everyMs: 15_000 })
+const createdAtShort = computed(() => formatShortDate(createdAtDate.value, nowMs.value))
 const createdAtTooltip = computed(() => tinyTooltip(createdAtDate.value.toLocaleString()))
 
-function formatShortDate(d: Date): string {
-  const now = new Date()
-  const diffMs = now.getTime() - d.getTime()
+function formatShortDate(d: Date, nowMs: number): string {
+  const diffMs = Math.max(0, Math.floor((nowMs || 0) - d.getTime()))
   const diffSec = Math.floor(diffMs / 1000)
   if (diffSec < 60) return 'now'
   const diffMin = Math.floor(diffSec / 60)
@@ -504,7 +519,7 @@ function formatShortDate(d: Date): string {
   const diffDay = Math.floor(diffHr / 24)
   if (diffDay < 7) return `${diffDay}d`
 
-  const sameYear = now.getFullYear() === d.getFullYear()
+  const sameYear = new Date(nowMs).getFullYear() === d.getFullYear()
   const month = d.toLocaleString(undefined, { month: 'short' })
   const day = d.getDate()
   return sameYear ? `${month} ${day}` : `${month} ${day}, ${d.getFullYear()}`
@@ -615,7 +630,7 @@ const canEditPost = computed(() => {
   if (postView.value.visibility === 'onlyMe') return !Boolean(postView.value.parentId)
   if (postView.value.parentId) return false
   const createdAt = new Date(postView.value.createdAt)
-  const ageMs = Date.now() - createdAt.getTime()
+  const ageMs = nowMs.value - createdAt.getTime()
   if (!Number.isFinite(ageMs) || ageMs > 30 * 60 * 1000) return false
   const editCount = Math.max(0, Math.floor(postView.value.editCount ?? 0))
   return editCount < 3

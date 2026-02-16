@@ -87,7 +87,7 @@
           <div class="relative">
             <div
               ref="composerMirrorEl"
-              class="pointer-events-none absolute inset-0 overflow-x-hidden overflow-y-auto rounded-xl border moh-border-subtle moh-surface-2 px-3 py-2 text-[16px] leading-6 whitespace-pre-wrap break-words moh-text"
+              class="pointer-events-none absolute inset-0 overflow-x-hidden overflow-y-auto rounded-xl moh-surface-2 px-3 py-2 text-[16px] leading-6 whitespace-pre-wrap break-words moh-text"
               :style="composerTextareaVars"
               aria-hidden="true"
             >
@@ -110,7 +110,7 @@
               rows="3"
               enterkeyhint="enter"
               inputmode="text"
-              class="moh-composer-textarea relative z-10 w-full resize-none overflow-hidden rounded-xl border border-transparent bg-transparent px-3 py-2 text-[16px] leading-6 text-transparent caret-[color:var(--moh-text)] placeholder:text-[color:var(--moh-text-muted)] placeholder:opacity-70 focus:outline-none"
+              class="moh-composer-textarea relative z-10 w-full resize-none overflow-hidden rounded-xl border moh-border-subtle bg-transparent px-3 py-2 text-[16px] leading-6 text-transparent caret-[color:var(--moh-text)] placeholder:text-[color:var(--moh-text-muted)] placeholder:opacity-70 focus:outline-none"
               :style="composerTextareaVars"
               :placeholder="composerPlaceholder"
               @input="onComposerInput"
@@ -162,6 +162,15 @@
             />
           </div>
 
+          <AppComposerPoll
+            v-if="poll && !composerMedia.length"
+            class="mt-3"
+            :model-value="poll"
+            @update:model-value="onUpdatePoll"
+            @remove="clearPoll"
+            @status="onPollStatus"
+          />
+
           <!-- Drag overlay (with media): hug textarea + slots -->
           <AppComposerDropOverlay
             :visible="dropOverlayVisible && composerMedia.length > 0"
@@ -197,9 +206,9 @@
                   rounded
                   severity="secondary"
                   aria-label="Add media"
-                  :disabled="!canAddMoreMedia"
+                  :disabled="!canAddMoreMedia || hasPoll"
                   class="moh-focus"
-                  v-tooltip.bottom="tinyTooltip(canAddMoreMedia ? 'Add image/GIF' : 'Max 4 attachments')"
+                  v-tooltip.bottom="tinyTooltip(hasPoll ? 'Remove poll to add media' : (canAddMoreMedia ? 'Add image/GIF' : 'Max 4 attachments'))"
                   @click="onClickAddMedia"
                 >
                   <template #icon>
@@ -212,8 +221,8 @@
                   severity="secondary"
                   class="moh-focus"
                   aria-label="Add GIF"
-                  :disabled="!canAddMoreMedia"
-                  v-tooltip.bottom="tinyTooltip(canAddMoreMedia ? 'Add GIF (Giphy)' : 'Max 4 attachments')"
+                  :disabled="!canAddMoreMedia || hasPoll"
+                  v-tooltip.bottom="tinyTooltip(hasPoll ? 'Remove poll to add media' : (canAddMoreMedia ? 'Add GIF (Giphy)' : 'Max 4 attachments'))"
                   @click="onClickAddGiphy"
                 >
                   <template #icon>
@@ -223,6 +232,21 @@
                     >
                       GIF
                     </span>
+                  </template>
+                </Button>
+                <Button
+                  v-if="!replyTo"
+                  text
+                  rounded
+                  severity="secondary"
+                  class="moh-focus"
+                  aria-label="Add poll"
+                  :disabled="hasPoll || (isPremium && composerMedia.length > 0)"
+                  v-tooltip.bottom="tinyTooltip(hasPoll ? 'Poll added' : ((isPremium && composerMedia.length > 0) ? 'Remove media to add a poll' : 'Add poll'))"
+                  @click="onClickAddPoll"
+                >
+                  <template #icon>
+                    <Icon name="tabler:chart-bar" class="rotate-90" aria-hidden="true" />
                   </template>
                 </Button>
               </template>
@@ -252,19 +276,21 @@
               :disabled="
                 submitting ||
                 !canPost ||
-                (mode === 'edit' ? !draft.trim() : (!(draft.trim() || composerMedia.length))) ||
+                (mode === 'edit' ? !draft.trim() : (!(draft.trim() || composerMedia.length || hasPoll))) ||
                 postCharCount > postMaxLen ||
                 composerUploading ||
-                composerHasFailedMedia
+                composerHasFailedMedia ||
+                pollUploading ||
+                pollHasFailed
               "
-              :title="composerHasFailedMedia ? 'Remove failed items to post' : undefined"
+              :title="composerHasFailedMedia ? 'Remove failed items to post' : (pollHasFailed ? 'Remove failed poll images to post' : undefined)"
               :loading="submitting"
               @click="submit"
             />
           </div>
           </div>
           <p
-            v-if="composerHasFailedMedia"
+            v-if="composerHasFailedMedia || pollHasFailed"
             class="text-xs text-amber-600 dark:text-amber-400"
             role="status"
           >
@@ -345,6 +371,8 @@ type CachedComposerDraft = {
   // Keep as-is (may include non-serializable objects); never SSR-serialized.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   media: any[]
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  poll: any | null
 }
 const COMPOSER_DRAFT_CACHE = new Map<string, CachedComposerDraft>()
 
@@ -369,7 +397,7 @@ const props = defineProps<{
   /** Hide the visibility picker (useful with lockedVisibility). */
   hideVisibilityPicker?: boolean
   // Optional override. Return full FeedPost for replies (so it can be rendered immediately).
-  createPost?: (body: string, visibility: PostVisibility, media: CreateMediaPayload[]) => Promise<{ id: string } | import('~/types/api').FeedPost | null>
+  createPost?: (body: string, visibility: PostVisibility, media: CreateMediaPayload[], poll?: ComposerPollPayload | null) => Promise<{ id: string } | import('~/types/api').FeedPost | null>
   // When set, composer is in reply mode: visibility fixed to parent, parent_id + mentions sent.
   replyTo?: { parentId: string; visibility: PostVisibility; mentionUsernames: string[] }
   /** When true, use compact top padding for thread/reply modal layout (connects with thread line). */
@@ -520,6 +548,16 @@ function onComposerInput() {
   hashtag.recompute()
 }
 
+type ComposerPollPayload = import('~/composables/composer/types').ComposerPollPayload
+const poll = ref<ComposerPollPayload | null>(null)
+const hasPoll = computed(() => poll.value != null)
+const pollUploading = ref(false)
+const pollHasFailed = ref(false)
+function onPollStatus(v: { uploading: boolean; hasFailed: boolean }) {
+  pollUploading.value = Boolean(v?.uploading)
+  pollHasFailed.value = Boolean(v?.hasFailed)
+}
+
 const {
   composerMedia,
   canAddMoreMedia,
@@ -557,8 +595,8 @@ const {
 } = useComposerMedia({
   textareaEl: composerTextareaEl,
   maxSlots: 4,
-  canAcceptImages: computed(() => Boolean(isPremium.value && !disableMedia.value)),
-  canAcceptVideo: computed(() => Boolean(isPremium.value && !disableMedia.value)),
+  canAcceptImages: computed(() => Boolean(isPremium.value && !disableMedia.value && !hasPoll.value)),
+  canAcceptVideo: computed(() => Boolean(isPremium.value && !disableMedia.value && !hasPoll.value)),
   onMediaRejectedNeedPremium: () => {
     if (disableMedia.value) return
     usePremiumMediaModal().show()
@@ -599,14 +637,41 @@ function seedInitialMediaIfNeeded() {
 
 function onClickAddMedia() {
   if (disableMedia.value) return
+  if (hasPoll.value) return
   if (!isPremium.value) return usePremiumMediaModal().show()
   openMediaPicker()
 }
 
 function onClickAddGiphy() {
   if (disableMedia.value) return
+  if (hasPoll.value) return
   if (!isPremium.value) return usePremiumMediaModal().show()
   openGiphyPicker((draft.value || '').trim().slice(0, 120))
+}
+
+function clearPoll() {
+  poll.value = null
+  pollUploading.value = false
+  pollHasFailed.value = false
+}
+
+function onUpdatePoll(v: ComposerPollPayload) {
+  poll.value = v
+}
+
+function onClickAddPoll() {
+  if (disableMedia.value) return
+  if (props.replyTo) return
+  if (hasPoll.value) return
+  if (!isPremium.value) return usePremiumMediaModal().show()
+  if (composerMedia.value.length > 0) return
+  poll.value = {
+    options: [
+      { text: '', image: null },
+      { text: '', image: null },
+    ],
+    duration: { days: 1, hours: 0, minutes: 0 },
+  }
 }
 
 const composerAcceptTypes = computed(
@@ -718,7 +783,7 @@ const postMaxLen = computed(() => (isPremium.value ? 1000 : 200))
 const composerPlaceholder = computed(
   () =>
     props.placeholder ??
-    (props.replyTo ? 'Post your reply…' : "What's happening?"),
+    (props.replyTo ? 'Post your reply…' : (hasPoll.value ? 'Ask a question' : "What's happening?")),
 )
 const postCharCount = computed(() => draft.value.length)
 
@@ -728,7 +793,7 @@ function onUpdateAltText(localId: string, value: string) {
 
 /** True when the composer has draft text or media (for "discard?" confirm before link nav). */
 const hasUnsavedContent = computed(
-  () => (draft.value?.trim() ?? '') !== '' || (composerMedia.value?.length ?? 0) > 0,
+  () => (draft.value?.trim() ?? '') !== '' || (composerMedia.value?.length ?? 0) > 0 || hasPoll.value,
 )
 
 function draftSnapshot(): import('~/composables/useUnsavedDraftGuard').UnsavedDraftSnapshot {
@@ -741,6 +806,7 @@ function draftSnapshot(): import('~/composables/useUnsavedDraftGuard').UnsavedDr
 function clearComposer() {
   draft.value = ''
   clearAll()
+  clearPoll()
   void nextTick().then(() => resizeComposerTextarea())
 }
 
@@ -795,16 +861,17 @@ function restoreDraftFromCacheIfNeeded() {
   if (!cached) return
 
   // Only restore into an empty composer to avoid clobbering.
-  const hasAny = Boolean((draft.value?.trim() ?? '') !== '' || (composerMedia.value?.length ?? 0) > 0)
+  const hasAny = Boolean((draft.value?.trim() ?? '') !== '' || (composerMedia.value?.length ?? 0) > 0 || hasPoll.value)
   if (hasAny) return
 
   draft.value = String(cached.body ?? '')
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   composerMedia.value = (cached.media ?? []) as any
+  poll.value = (cached.poll ?? null) as any
 }
 
 watch(
-  [draft, composerMedia, persistKey],
+  [draft, composerMedia, poll, persistKey],
   () => {
     if (!import.meta.client) return
     const key = persistKey.value
@@ -813,6 +880,8 @@ watch(
       body: String(draft.value ?? ''),
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       media: (composerMedia.value ?? []) as any,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      poll: (poll.value ?? null) as any,
     })
   },
   { deep: true },
@@ -859,11 +928,12 @@ const { submit: submitPost, submitting, submitError } = useFormSubmit(
       return
     }
 
-    const mediaPayload: CreateMediaPayload[] = toCreatePayload(composerMedia.value)
+    const pollPayload = poll.value ? poll.value : null
+    const mediaPayload: CreateMediaPayload[] = hasPoll.value ? [] : toCreatePayload(composerMedia.value)
     const vis = effectiveVisibility.value
 
     const created = props.createPost
-      ? await props.createPost(draft.value, vis, mediaPayload)
+      ? await props.createPost(draft.value, vis, mediaPayload, pollPayload)
       : await apiFetchData<CreatePostData>('/posts', {
           method: 'POST',
           body: props.replyTo
@@ -874,11 +944,17 @@ const { submit: submitPost, submitting, submitError } = useFormSubmit(
                 mentions: props.replyTo.mentionUsernames,
                 media: mediaPayload,
               }
-            : { body: draft.value, visibility: vis, media: mediaPayload },
+            : {
+                body: draft.value,
+                visibility: vis,
+                media: mediaPayload,
+                ...(pollPayload ? { poll: pollPayload } : {}),
+              },
         })
 
     draft.value = ''
     clearAll()
+    clearPoll()
     void nextTick().then(() => resizeComposerTextarea())
 
     const id = (created as any)?.id as string | undefined
@@ -923,16 +999,42 @@ const { submit: submitPost, submitting, submitError } = useFormSubmit(
   },
 )
 
+// If the user changes the composer after an error, clear the inline error so it doesn't "stick"
+// after a later successful post (or after correcting validation issues like poll duration).
+watch(
+  [draft, composerMedia, poll],
+  () => {
+    if (submitError.value) submitError.value = null
+  },
+  { deep: true },
+)
+
 const submit = async () => {
   if (!canPost.value) return
   if (mode.value === 'edit') {
     if (!draft.value.trim()) return
   } else {
-    if (!(draft.value.trim() || composerMedia.value.length)) return
+    if (!(draft.value.trim() || composerMedia.value.length || hasPoll.value)) return
   }
   if (postCharCount.value > postMaxLen.value) return
   if (composerUploading.value) return
   if (composerHasFailedMedia.value) return
+  if (pollUploading.value) return
+  if (pollHasFailed.value) return
+  if (hasPoll.value && poll.value) {
+    const opts = (poll.value.options ?? []).filter(Boolean) as Array<{ image: any }>
+    const anyHasImage = opts.some((o) => Boolean(o?.image?.r2Key))
+    const allHaveImages = opts.every((o) => Boolean(o?.image?.r2Key))
+    if (anyHasImage && !allHaveImages) {
+      toast.push({
+        title: 'Poll images must be all or none',
+        message: 'If you add an image to any choice, every choice must have an image.',
+        tone: 'error',
+        durationMs: 2600,
+      })
+      return
+    }
+  }
 
   submitError.value = null
   await submitPost()

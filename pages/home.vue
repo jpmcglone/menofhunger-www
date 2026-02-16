@@ -135,6 +135,7 @@
 <script setup lang="ts">
 import type { PostVisibility } from '~/types/api'
 import type { CreateMediaPayload } from '~/composables/useComposerMedia'
+import type { ComposerPollPayload } from '~/composables/composer/types'
 import { postBodyHasVideoEmbed } from '~/utils/link-utils'
 import { MOH_HOME_COMPOSER_IN_VIEW_KEY, MOH_OPEN_COMPOSER_KEY } from '~/utils/injection-keys'
 import { useMiddleScroller } from '~/composables/useMiddleScroller'
@@ -274,10 +275,11 @@ async function createPostViaFeed(
   body: string,
   visibility: PostVisibility,
   media?: CreateMediaPayload[] | null,
+  poll?: ComposerPollPayload | null,
 ): Promise<{ id: string } | null> {
   // Home composer should never pass 'existing' media references, but ignore safely if it ever does.
   const filtered = (media ?? []).filter((m) => (m as any)?.source !== 'existing') as any
-  const created = await addPost(body, visibility, filtered.length ? filtered : null)
+  const created = await addPost(body, visibility, filtered.length ? filtered : null, poll ?? null)
   if (created?.id) {
     if (postBodyHasVideoEmbed(created.body ?? '', Boolean(created.media?.length))) {
       newlyPostedVideoPostId.value = created.id

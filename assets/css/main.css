@@ -190,13 +190,9 @@ html.dark {
   --moh-org-soft: rgba(185, 192, 204, 0.10);
 }
 
-/* When the logged-in viewer is an Organization account, shift premium accents to silver. */
-html.org-theme {
-  --moh-premium: var(--moh-org);
-  --moh-premium-rgb: var(--moh-org-rgb);
-  --moh-premium-ring: var(--moh-org-ring);
-  --moh-premium-soft: var(--moh-org-soft);
-}
+/* NOTE: Do NOT remap premium → org based on the viewer.
+   Premium orange must remain stable so "premium" UI reflects the target (post/user),
+   not the currently logged-in viewer's account type. */
 
 /* Apple-style continuous corners (squircle). Fallback: browsers ignore corner-shape, keep border-radius. */
 @layer utilities {

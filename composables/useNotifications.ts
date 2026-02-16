@@ -164,6 +164,13 @@ export function useNotifications() {
   function notificationTypeIconBgClass(n: Notification): string {
     if (n.kind === 'mention') return viewerTierIconBgClass()
     if (n.kind === 'generic') return 'bg-gray-500'
+    if (n.kind === 'poll_results_ready') {
+      const v = n.subjectPostVisibility ?? null
+      if (v === 'premiumOnly') return 'bg-[var(--moh-premium)]'
+      if (v === 'verifiedOnly') return 'bg-[var(--moh-verified)]'
+      if (v === 'onlyMe') return 'bg-[var(--moh-onlyme)]'
+      return 'bg-gray-500'
+    }
     return actorTierIconBgClass(n)
   }
 
@@ -213,6 +220,9 @@ export function useNotifications() {
         return 'tabler:at'
       case 'nudge':
         return 'tabler:hand-click'
+      case 'poll_results_ready':
+        // Use the same icon as the composer poll button (known present).
+        return 'tabler:chart-bar'
       case 'generic':
         return 'tabler:bell'
       default:

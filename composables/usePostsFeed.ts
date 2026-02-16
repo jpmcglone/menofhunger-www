@@ -1,4 +1,5 @@
 import type { FeedPost, GetPostsData, CreatePostData, PostMediaKind, PostMediaSource, PostVisibility } from '~/types/api'
+import type { ComposerPollPayload } from '~/composables/composer/types'
 import { getApiErrorMessage } from '~/utils/api-error'
 import { useCursorFeed } from '~/composables/useCursorFeed'
 import { useMiddleScroller } from '~/composables/useMiddleScroller'
@@ -307,10 +308,12 @@ export function usePostsFeed(options: { visibility?: Ref<FeedFilter>; followingO
       width?: number | null
       height?: number | null
     }> | null,
+    poll?: ComposerPollPayload | null,
   ): Promise<FeedPost | null> {
     const trimmed = (body ?? '').trim()
     const hasMedia = Boolean(media?.length)
-    if (!trimmed && !hasMedia) return null
+    const hasPoll = Boolean(poll)
+    if (!trimmed && !hasMedia && !hasPoll) return null
 
     try {
       const post = await apiFetchData<CreatePostData>('/posts', {
@@ -319,6 +322,7 @@ export function usePostsFeed(options: { visibility?: Ref<FeedFilter>; followingO
           body: trimmed || '',
           visibility,
           ...(media?.length ? { media } : {}),
+          ...(poll ? { poll } : {}),
         }
       })
 

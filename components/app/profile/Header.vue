@@ -406,14 +406,18 @@ const showPostBell = computed(() => {
   return viewerFollowsUser.value
 })
 
+const VERIFIED_BLUE = '#2b7bb9'
+const PREMIUM_ORANGE = '#c77d1a'
+
 const profileTier = computed(() => userColorTier(profile.value))
 const bellEnabledIconClass = computed(() => {
   if (!bellEnabled.value) return ''
   const tier = profileTier.value
   // Orgs are silver.
   if (tier === 'organization') return '!text-[#313643]'
-  if (tier === 'premium') return '!text-[var(--moh-premium)]'
-  if (tier === 'verified') return '!text-[var(--moh-verified)]'
+  // Use fixed colors so org viewer theme can't override target tier.
+  if (tier === 'premium') return `!text-[${PREMIUM_ORANGE}]`
+  if (tier === 'verified') return `!text-[${VERIFIED_BLUE}]`
   // Normal: neutral foreground
   return '!text-gray-900 dark:!text-gray-50'
 })

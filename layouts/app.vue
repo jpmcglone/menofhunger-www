@@ -841,7 +841,16 @@ const composerAllowedVisibilities = computed<PostVisibility[] | null>(() => {
 })
 
 const { apiFetchData } = useApiClient()
-async function createPostFromOnlyMeDraft(body: string, visibility: PostVisibility, media: import('~/composables/useComposerMedia').CreateMediaPayload[]) {
+async function createPostFromOnlyMeDraft(
+  body: string,
+  visibility: PostVisibility,
+  media: import('~/composables/useComposerMedia').CreateMediaPayload[],
+  poll?: import('~/composables/composer/types').ComposerPollPayload | null,
+) {
+  if (poll) {
+    // This flow hits /publish-from-only-me, which does not support polls.
+    throw new Error('Polls cannot be added when publishing an Only me draft. Create a new post instead.')
+  }
   const sourceId = composerSourceOnlyMePost.value?.id
   if (!sourceId) throw new Error('Missing source post.')
   return await apiFetchData<FeedPost>(`/posts/${encodeURIComponent(sourceId)}/publish-from-only-me`, {

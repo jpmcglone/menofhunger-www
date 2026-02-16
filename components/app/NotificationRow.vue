@@ -86,7 +86,10 @@
             <Icon
               v-else
               :name="notificationIconName(notification)"
-              class="text-xs text-white"
+              :class="[
+                'text-xs text-white',
+                notification.kind === 'poll_results_ready' ? 'rotate-90' : '',
+              ]"
               aria-hidden="true"
             />
           </div>

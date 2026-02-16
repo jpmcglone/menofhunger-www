@@ -107,6 +107,27 @@ export type PostMedia = {
   deletedAt: string | null
 }
 
+export type PostPollOption = {
+  id: string
+  text: string
+  imageUrl: string | null
+  width: number | null
+  height: number | null
+  alt: string | null
+  voteCount: number
+  percent: number
+}
+
+export type PostPoll = {
+  id: string
+  endsAt: string
+  ended: boolean
+  totalVoteCount: number
+  viewerHasVoted: boolean
+  viewerVotedOptionId: string | null
+  options: PostPollOption[]
+}
+
 export type PostAuthor = {
   id: string
   username: string | null
@@ -186,6 +207,7 @@ export type FeedPost = {
   parent?: FeedPost
   mentions?: PostMention[]
   media: PostMedia[]
+  poll?: PostPoll | null
   viewerHasBoosted?: boolean
   viewerHasBookmarked?: boolean
   viewerBookmarkCollectionIds?: string[]
@@ -614,7 +636,15 @@ export type GetTopicPostsData = FeedPost[]
 /** Data type for GET /hashtags/trending (array); pagination in envelope. */
 export type GetTrendingHashtagsData = HashtagResult[]
 
-export type NotificationKind = 'comment' | 'boost' | 'follow' | 'followed_post' | 'mention' | 'nudge' | 'generic'
+export type NotificationKind =
+  | 'comment'
+  | 'boost'
+  | 'follow'
+  | 'followed_post'
+  | 'mention'
+  | 'nudge'
+  | 'poll_results_ready'
+  | 'generic'
 
 export type NotificationGroupKind = 'comment' | 'boost' | 'follow' | 'followed_post' | 'nudge'
 

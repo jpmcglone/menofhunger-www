@@ -2,6 +2,20 @@ import type { PostMediaKind, PostMediaSource } from '~/types/api'
 
 export type UploadStatus = 'queued' | 'uploading' | 'processing' | 'done' | 'error'
 
+export type CreatePollOptionImagePayload = {
+  source: 'upload'
+  kind: 'image'
+  r2Key: string
+  width: number | null
+  height: number | null
+  alt: string | null
+}
+
+export type ComposerPollPayload = {
+  options: Array<{ text: string; image: CreatePollOptionImagePayload | null }>
+  duration: { days: number; hours: number; minutes: number }
+}
+
 export type CreateMediaPayload =
   | {
       /** Reference existing media from an only-me source post (publish-from-only-me flow). */
