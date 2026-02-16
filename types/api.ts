@@ -153,9 +153,18 @@ export type PostMention = {
 /** Public profile payload from GET /users/:username */
 export type PublicProfile = {
   id: string
+  createdAt: string
   username: string | null
   name: string | null
   bio: string | null
+  website: string | null
+  locationDisplay: string | null
+  locationCity: string | null
+  locationCounty: string | null
+  locationState: string | null
+  locationCountry: string | null
+  birthdayDisplay: string | null
+  birthdayMonthDay: string | null
   premium: boolean
   premiumPlus: boolean
   isOrganization: boolean
@@ -514,6 +523,7 @@ export type GiphyItem = {
 export type GiphySearchResponse = GiphyItem[]
 
 export type FollowVisibility = 'all' | 'verified' | 'premium' | 'none'
+export type BirthdayVisibility = 'none' | 'monthDay' | 'full'
 
 export type FollowRelationship = {
   viewerFollowsUser: boolean

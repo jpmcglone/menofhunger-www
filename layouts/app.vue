@@ -398,7 +398,16 @@
 
                   <AppSupportDonateCard />
 
-                  <AppAdSlot placement="rail" />
+                  <!-- Ads can mutate DOM; keep the mount point client-only. -->
+                  <ClientOnly>
+                    <AppAdSlot placement="rail" />
+                    <template #fallback>
+                      <div
+                        aria-hidden="true"
+                        class="relative w-full rounded-xl border border-dotted moh-border bg-transparent overflow-hidden h-[250px]"
+                      />
+                    </template>
+                  </ClientOnly>
 
                   <AppTrendingHashtagsCard />
 

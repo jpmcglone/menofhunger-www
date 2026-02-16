@@ -276,6 +276,34 @@
       <div v-else class="mt-4 text-sm text-gray-500 dark:text-gray-400">
         No bio yet.
       </div>
+
+      <div class="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-gray-600 dark:text-gray-300">
+        <div v-if="locationLabel" class="inline-flex items-center gap-1.5 min-w-0">
+          <Icon name="tabler:map-pin" class="shrink-0" aria-hidden="true" />
+          <span class="truncate">{{ locationLabel }}</span>
+        </div>
+
+        <a
+          v-if="websiteHref"
+          :href="websiteHref"
+          target="_blank"
+          rel="noopener noreferrer nofollow"
+          class="inline-flex items-center gap-1.5 min-w-0 hover:underline"
+        >
+          <Icon name="tabler:link" class="shrink-0" aria-hidden="true" />
+          <span class="truncate max-w-[18rem]">{{ websiteLabel }}</span>
+        </a>
+
+        <div v-if="birthdayLabel" class="inline-flex items-center gap-1.5 min-w-0">
+          <Icon name="tabler:cake" class="shrink-0" aria-hidden="true" />
+          <span class="truncate">Born {{ birthdayLabel }}</span>
+        </div>
+
+        <div v-if="joinedLabel" class="inline-flex items-center gap-1.5 min-w-0">
+          <Icon name="tabler:calendar" class="shrink-0" aria-hidden="true" />
+          <span class="truncate">Joined {{ joinedLabel }}</span>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -396,6 +424,48 @@ const { user: authUser } = useAuth()
 const isAuthed = computed(() => Boolean(authUser.value?.id))
 const viewerCanStartChats = computed(() => Boolean(authUser.value?.premium || authUser.value?.premiumPlus))
 const viewerIsVerified = computed(() => (authUser.value?.verifiedStatus ?? 'none') !== 'none')
+
+const locationLabel = computed(() => {
+  const s = (profile.value as any)?.locationDisplay ?? null
+  const v = typeof s === 'string' ? s.trim() : ''
+  return v ? v : null
+})
+
+const websiteHref = computed(() => {
+  const s = (profile.value as any)?.website ?? null
+  const v = typeof s === 'string' ? s.trim() : ''
+  return v ? v : null
+})
+
+const websiteLabel = computed(() => {
+  const href = websiteHref.value
+  if (!href) return ''
+  try {
+    const u = new URL(href)
+    const host = u.hostname
+    const path = u.pathname && u.pathname !== '/' ? u.pathname.replace(/\/$/, '') : ''
+    return `${host}${path}`
+  } catch {
+    return href
+  }
+})
+
+const birthdayLabel = computed(() => {
+  const display = (profile.value as any)?.birthdayDisplay ?? null
+  const displayV = typeof display === 'string' ? display.trim() : ''
+  if (displayV) return displayV
+  const s = (profile.value as any)?.birthdayMonthDay ?? null
+  const v = typeof s === 'string' ? s.trim() : ''
+  return v ? v : null
+})
+
+const joinedLabel = computed(() => {
+  const raw = (profile.value as any)?.createdAt ?? null
+  if (!raw) return null
+  const d = new Date(String(raw))
+  if (Number.isNaN(d.getTime())) return null
+  return d.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })
+})
 
 const viewerFollowsUser = computed(() => Boolean(followRelationship.value?.viewerFollowsUser))
 const bellEnabled = computed(() => Boolean(followRelationship.value?.viewerPostNotificationsEnabled))

@@ -85,7 +85,8 @@ export function useMentionAutocomplete(opts: {
   const limit = typeof opts.limit === 'number' ? Math.max(3, Math.min(20, Math.floor(opts.limit))) : DEFAULT_LIMIT
   const debounceMs = typeof opts.debounceMs === 'number' ? clamp(Math.floor(opts.debounceMs), 0, 600) : 120
 
-  const cache = globalMentionCache
+  // SSR-safe: never share mutable caches across SSR requests.
+  const cache = import.meta.client ? globalMentionCache : new Map<string, SearchCacheEntry>()
   let debounceTimer: ReturnType<typeof setTimeout> | null = null
   let blurCloseTimer: ReturnType<typeof setTimeout> | null = null
   let inflight: AbortController | null = null
@@ -97,6 +98,7 @@ export function useMentionAutocomplete(opts: {
   const recent = ref<MentionUser[]>([])
   /** Username (lowercase) -> tier for mentions the user has selected in this session. */
   const mentionTiers = ref<Record<string, MentionTier>>({})
+  const mounted = ref(false)
 
   function pruneCache() {
     while (cache.size > MAX_CACHE_ENTRIES) {
@@ -180,7 +182,7 @@ export function useMentionAutocomplete(opts: {
   function setItems(next: MentionUser[]) {
     items.value = next
     recent.value = next
-    globalMentionRecent = next
+    if (import.meta.client) globalMentionRecent = next
   }
 
   function syncMentionTiersFromText(text: string) {
@@ -462,10 +464,13 @@ export function useMentionAutocomplete(opts: {
     { immediate: true },
   )
 
-  // Seed per-instance recent from global (helps immediate results).
-  if (globalMentionRecent.length && recent.value.length === 0) {
-    recent.value = globalMentionRecent
-  }
+  // Determinism: avoid using global caches as an SSR/first-hydration render input.
+  // Seed + tier inference only after mount (client-only), so SSR and initial hydration stay stable.
+  onMounted(() => {
+    mounted.value = true
+    if (globalMentionRecent.length && recent.value.length === 0) recent.value = globalMentionRecent
+    syncMentionTiersFromText(opts.getText())
+  })
   onBeforeUnmount(() => {
     cleanupDom?.()
     cleanupDom = null
@@ -528,12 +533,14 @@ export function useMentionAutocomplete(opts: {
   watch(
     () => opts.getText(),
     (text) => {
+      if (!mounted.value) return
       syncMentionTiersFromText(text ?? '')
     },
     { immediate: true },
   )
 
   watch([items, recent], () => {
+    if (!mounted.value) return
     syncMentionTiersFromText(opts.getText())
   })
 

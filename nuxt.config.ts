@@ -15,8 +15,10 @@ function hostFromUrl(raw: string | undefined | null): string | null {
 export default defineNuxtConfig({
   compatibilityDate: '2024-11-01',
 
-  // Keep devtools off in production builds (reduces bundle + memory).
-  devtools: { enabled: process.env.NODE_ENV !== 'production' },
+  // Disable Nuxt DevTools runtime injection in this project.
+  // The inspector overlay can emit noisy Vue warnings (`<Suspense>` + `<VueElement style>`),
+  // which obscures real hydration issues during debugging.
+  devtools: { enabled: false },
 
   runtimeConfig: {
     // Server-side base URL for calling the API during SSR.
@@ -92,21 +94,9 @@ export default defineNuxtConfig({
         { name: 'apple-mobile-web-app-status-bar-style', content: 'default' },
         { name: 'apple-mobile-web-app-title', content: siteConfig.name }
       ],
-      // AdSense loader in initial HTML (only when enabled + client looks real).
-      script:
-        String(process.env.NUXT_PUBLIC_ADSENSE_ENABLED || '').trim() === 'true' &&
-        (process.env.NODE_ENV === 'production' || String(process.env.NUXT_PUBLIC_ADSENSE_ADTEST || '').trim() === 'true') &&
-        /^ca-pub-\d+$/.test(String(process.env.NUXT_PUBLIC_ADSENSE_CLIENT || '').trim())
-        ? [
-            {
-              async: true,
-              src: `https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${encodeURIComponent(
-                String(process.env.NUXT_PUBLIC_ADSENSE_CLIENT || '').trim(),
-              )}`,
-              crossorigin: 'anonymous',
-            },
-          ]
-        : [],
+      // NOTE: Do NOT inject the AdSense loader into the initial HTML.
+      // It can mutate the server-rendered DOM before Vue hydrates, causing hydration mismatches.
+      // `components/app/AdSlot.vue` loads the script client-side only, after mount.
       link: [
         { rel: 'manifest', href: '/site.webmanifest' },
         { rel: 'apple-touch-icon', sizes: '180x180', href: '/apple-touch-icon.png' },

@@ -129,6 +129,53 @@
                 </div>
 
                 <div class="space-y-3">
+                  <AppFormField
+                    label="Location"
+                    optional
+                    helper="Zipcode, city, or city/state. We normalize this to your profile location."
+                  >
+                    <InputText
+                      v-model="locationQueryInput"
+                      class="w-full"
+                      placeholder="e.g. Roanoke, VA or 24011"
+                      :disabled="profileDetailsSaving"
+                    />
+                  </AppFormField>
+
+                  <AppFormField
+                    label="Website"
+                    optional
+                    :helper="'Include full URL, e.g. https://example.com'"
+                  >
+                    <InputText
+                      v-model="websiteInput"
+                      class="w-full"
+                      placeholder="https://your-site.com"
+                      inputmode="url"
+                      :disabled="profileDetailsSaving"
+                    />
+                  </AppFormField>
+
+                  <div class="flex items-center gap-3">
+                    <Button
+                      label="Save profile details"
+                      severity="secondary"
+                      :loading="profileDetailsSaving"
+                      :disabled="profileDetailsSaving || !profileDetailsDirty"
+                      @click="saveProfileDetails"
+                    >
+                      <template #icon>
+                        <Icon name="tabler:check" aria-hidden="true" />
+                      </template>
+                    </Button>
+                    <div v-if="profileDetailsSaved" class="text-sm text-green-700 dark:text-green-300">Saved.</div>
+                  </div>
+                  <div v-if="profileDetailsHelperText" class="text-sm text-red-700 dark:text-red-300">
+                    {{ profileDetailsHelperText }}
+                  </div>
+                </div>
+
+                <div class="space-y-3">
                   <AppInterestsPicker
                     v-model="interestsInput"
                     :disabled="interestsSaving"
@@ -355,43 +402,20 @@
               <div v-if="billingLoading" class="text-sm moh-text-muted">Loading billing…</div>
             </div>
 
-              <div v-else-if="selectedSection === 'privacy'" class="space-y-6">
-                <div class="space-y-2">
-                  <div class="text-sm font-semibold text-gray-900 dark:text-gray-50">Follow visibility</div>
-                  <div class="text-sm text-gray-600 dark:text-gray-300">
-                    Choose who can see your follower/following counts and lists.
-                  </div>
-                </div>
-
-                <Select
-                  v-model="followVisibilityInput"
-                  :options="followVisibilityOptions"
-                  optionLabel="label"
-                  optionValue="value"
-                  placeholder="Select…"
-                  class="w-full"
-                  :disabled="privacySaving"
-                />
-
-                <div class="flex items-center gap-3">
-                  <Button
-                    label="Save"
-                    severity="secondary"
-                    :loading="privacySaving"
-                    :disabled="privacySaving || !privacyDirty"
-                    @click="savePrivacy"
-                  >
-                    <template #icon>
-                      <Icon name="tabler:check" aria-hidden="true" />
-                    </template>
-                  </Button>
-                  <div v-if="privacySaved" class="text-sm text-green-700 dark:text-green-300">Saved.</div>
-                </div>
-
-                <div v-if="privacyError" class="text-sm text-red-700 dark:text-red-300">
-                  {{ privacyError }}
-                </div>
-              </div>
+              <SettingsPrivacySection
+                v-else-if="selectedSection === 'privacy'"
+                :follow-visibility-input="followVisibilityInput"
+                :birthday-visibility-input="birthdayVisibilityInput"
+                :follow-visibility-options="followVisibilityOptions"
+                :birthday-visibility-options="birthdayVisibilityOptions"
+                :privacy-saving="privacySaving"
+                :privacy-dirty="privacyDirty"
+                :privacy-saved="privacySaved"
+                :privacy-error="privacyError"
+                @update:follow-visibility-input="followVisibilityInput = $event"
+                @update:birthday-visibility-input="birthdayVisibilityInput = $event"
+                @save="savePrivacy"
+              />
 
               <div v-else-if="selectedSection === 'notifications'" class="space-y-6">
                 <SettingsBrowserNotificationsSection
@@ -533,6 +557,7 @@ usePageSeo({
 })
 
 type FollowVisibility = 'all' | 'verified' | 'premium' | 'none'
+type BirthdayVisibility = 'none' | 'monthDay' | 'full'
 type SettingsSection = 'account' | 'verification' | 'billing' | 'privacy' | 'notifications' | 'links'
 
 const { user: authUser, ensureLoaded } = useAuth()
@@ -548,6 +573,7 @@ import { getApiErrorMessage } from '~/utils/api-error'
 import { useFormSave } from '~/composables/useFormSave'
 import { useFormSubmit } from '~/composables/useFormSubmit'
 import { formatDateTime } from '~/utils/time-format'
+import SettingsPrivacySection from '~/components/settings/sections/SettingsPrivacySection.vue'
 import type {
   BillingCheckoutSession,
   BillingMe,
@@ -607,15 +633,7 @@ const {
 const pushTestSending = ref(false)
 const pushTestMessage = ref('')
 const pushInitialStateChecked = ref(false)
-
-onMounted(() => {
-  pushInitialStateChecked.value = false
-  void refreshSubscriptionState()
-    .catch(() => {})
-    .finally(() => {
-      pushInitialStateChecked.value = true
-    })
-})
+const pushStateLoadedOnce = ref(false)
 
 async function pushSubscribe() {
   await subscribe()
@@ -694,7 +712,7 @@ const sections = computed(() => [
   {
     key: 'privacy' as const,
     label: 'Privacy',
-    description: 'Who can see your follower info.'
+    description: 'Manage who can see parts of your profile and activity.'
   },
   {
     key: 'notifications' as const,
@@ -718,7 +736,9 @@ function sectionRowClass(key: SettingsSection) {
   const active = selectedSection.value === key
   return [
     'block px-4 py-3 transition-colors',
-    active ? 'bg-gray-50 dark:bg-zinc-900' : 'hover:bg-gray-50 dark:hover:bg-zinc-900',
+    active
+      ? 'moh-pane-row-active'
+      : 'hover:bg-gray-50 dark:hover:bg-zinc-900',
   ]
 }
 
@@ -836,7 +856,18 @@ async function loadNotifPrefs() {
 watch(
   selectedSection,
   (s) => {
-    if (s === 'notifications') void loadNotifPrefs()
+    if (s === 'notifications') {
+      if (!pushStateLoadedOnce.value) {
+        pushInitialStateChecked.value = false
+        void refreshSubscriptionState()
+          .catch(() => {})
+          .finally(() => {
+            pushInitialStateChecked.value = true
+            pushStateLoadedOnce.value = true
+          })
+      }
+      void loadNotifPrefs()
+    }
   },
   { immediate: true }
 )
@@ -901,9 +932,13 @@ async function refreshVerification() {
   }
 }
 
-onMounted(() => {
-  void refreshVerification()
-})
+watch(
+  selectedSection,
+  (s) => {
+    if (s === 'verification') void refreshVerification()
+  },
+  { immediate: true },
+)
 
 const { submit: startVerification, submitting: verificationStarting } = useFormSubmit(
   async () => {
@@ -983,6 +1018,9 @@ const {
 })
 
 const emailHelperText = ref<string | null>(null)
+const locationQueryInput = ref('')
+const websiteInput = ref('')
+const profileDetailsHelperText = ref<string | null>(null)
 watch(
   () => authUser.value?.email ?? null,
   (v) => {
@@ -993,10 +1031,40 @@ watch(
   { immediate: true },
 )
 
+watch(
+  () => authUser.value?.locationDisplay ?? null,
+  (v) => {
+    if (locationQueryInput.value.trim()) return
+    if (typeof v !== 'string' || !v.trim()) return
+    locationQueryInput.value = v
+  },
+  { immediate: true },
+)
+
+watch(
+  () => authUser.value?.website ?? null,
+  (v) => {
+    if (websiteInput.value.trim()) return
+    if (typeof v !== 'string' || !v.trim()) return
+    websiteInput.value = v
+  },
+  { immediate: true },
+)
+
 const emailDirty = computed(() => {
   const current = (authUser.value?.email ?? '').trim().toLowerCase()
   const desired = emailInput.value.trim().toLowerCase()
   return current !== desired
+})
+
+const profileDetailsDirty = computed(() => {
+  const currentLocation = (authUser.value?.locationDisplay ?? '').trim().toLowerCase()
+  const desiredLocation = locationQueryInput.value.trim().toLowerCase()
+  if (currentLocation !== desiredLocation) return true
+
+  const currentWebsite = (authUser.value?.website ?? '').trim().toLowerCase()
+  const desiredWebsite = websiteInput.value.trim().toLowerCase()
+  return currentWebsite !== desiredWebsite
 })
 
 const { save: saveEmailRequest, saving: emailSaving, saved: emailSaved } = useFormSave(
@@ -1015,6 +1083,31 @@ const { save: saveEmailRequest, saving: emailSaving, saved: emailSaved } = useFo
     defaultError: 'Failed to save email.',
     onError: (message) => {
       emailHelperText.value = message
+    },
+  },
+)
+
+const {
+  save: saveProfileDetailsRequest,
+  saving: profileDetailsSaving,
+  saved: profileDetailsSaved,
+} = useFormSave(
+  async () => {
+    const previousUsername = authUser.value?.username ?? null
+    const result = await apiFetchData<{ user: import('~/composables/useAuth').AuthUser }>('/users/me/profile', {
+      method: 'PATCH',
+      body: {
+        locationQuery: locationQueryInput.value.trim(),
+        website: websiteInput.value.trim(),
+      },
+    })
+    authUser.value = result.user ?? authUser.value
+    syncUserCaches(result.user, previousUsername)
+  },
+  {
+    defaultError: 'Failed to save profile details.',
+    onError: (message) => {
+      profileDetailsHelperText.value = message
     },
   },
 )
@@ -1117,8 +1210,14 @@ const followVisibilityOptions: Array<{ label: string; value: FollowVisibility }>
   { label: 'Premium members', value: 'premium' },
   { label: 'Only me', value: 'none' }
 ]
+const birthdayVisibilityOptions: Array<{ label: string; value: BirthdayVisibility }> = [
+  { label: 'Hide birthday', value: 'none' },
+  { label: 'Month and day only', value: 'monthDay' },
+  { label: 'Full birthday (with year)', value: 'full' },
+]
 
 const followVisibilityInput = ref<FollowVisibility>('all')
+const birthdayVisibilityInput = ref<BirthdayVisibility>('monthDay')
 const privacyError = ref<string | null>(null)
 
 watch(
@@ -1130,14 +1229,29 @@ watch(
   { immediate: true }
 )
 
-const privacyDirty = computed(() => (authUser.value?.followVisibility || 'all') !== followVisibilityInput.value)
+watch(
+  () => authUser.value?.birthdayVisibility,
+  (v) => {
+    const next = (v || 'monthDay') as BirthdayVisibility
+    birthdayVisibilityInput.value = next
+  },
+  { immediate: true }
+)
+
+const privacyDirty = computed(() =>
+  (authUser.value?.followVisibility || 'all') !== followVisibilityInput.value ||
+  (authUser.value?.birthdayVisibility || 'monthDay') !== birthdayVisibilityInput.value
+)
 
 const { save: savePrivacyRequest, saving: privacySaving, saved: privacySaved } = useFormSave(
   async () => {
     const previousUsername = authUser.value?.username ?? null
     const result = await apiFetchData<{ user: import('~/composables/useAuth').AuthUser }>('/users/me/settings', {
       method: 'PATCH',
-      body: { followVisibility: followVisibilityInput.value }
+      body: {
+        followVisibility: followVisibilityInput.value,
+        birthdayVisibility: birthdayVisibilityInput.value,
+      }
     })
     authUser.value = result.user ?? authUser.value
     syncUserCaches(result.user, previousUsername)
@@ -1208,6 +1322,12 @@ async function saveEmail() {
   emailHelperText.value = null
   emailSaved.value = false
   await saveEmailRequest()
+}
+
+async function saveProfileDetails() {
+  profileDetailsHelperText.value = null
+  profileDetailsSaved.value = false
+  await saveProfileDetailsRequest()
 }
 
 async function saveInterests() {

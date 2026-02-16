@@ -50,7 +50,8 @@ export function useHashtagAutocomplete(opts: {
   const limit = typeof opts.limit === 'number' ? Math.max(3, Math.min(20, Math.floor(opts.limit))) : DEFAULT_LIMIT
   const debounceMs = typeof opts.debounceMs === 'number' ? clamp(Math.floor(opts.debounceMs), 0, 600) : 120
 
-  const cache = globalHashtagCache
+  // SSR-safe: never share mutable caches across SSR requests.
+  const cache = import.meta.client ? globalHashtagCache : new Map<string, SearchCacheEntry>()
   let debounceTimer: ReturnType<typeof setTimeout> | null = null
   let blurCloseTimer: ReturnType<typeof setTimeout> | null = null
   let inflight: AbortController | null = null
@@ -144,7 +145,7 @@ export function useHashtagAutocomplete(opts: {
   function buildSections(q: string, fetched: HashtagResult[]) {
     const qLower = normalize(q)
     if (!qLower) {
-      const recent = globalRecentHashtags.slice(0, 8)
+      const recent = import.meta.client ? globalRecentHashtags.slice(0, 8) : []
       const recentSet = new Set(recent.map((t) => t.value))
       const trending = fetched.filter((t) => !recentSet.has(t.value))
       const secs: Array<{ key: string; label?: string | null; items: HashtagResult[] }> = []
@@ -263,6 +264,7 @@ export function useHashtagAutocomplete(opts: {
     if (!a || !label) return
 
     // Update recents (client-only).
+    if (!import.meta.client) return
     const value = (tag.value ?? '').trim()
     if (value) {
       const idx = globalRecentHashtags.findIndex((t) => t.value === value)

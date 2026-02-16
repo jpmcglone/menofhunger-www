@@ -21,8 +21,9 @@ Sentry.init({
   // sessions when an error occurs.
   replaysOnErrorSampleRate: 1.0,
   
-  // If you don't want to use Session Replay, just remove the line below:
-  integrations: [Sentry.replayIntegration()],
+  // Session Replay is optional and not available in all environments (e.g. some test runners).
+  // Guard to avoid crashing Nuxt app initialization.
+  integrations: typeof (Sentry as any).replayIntegration === 'function' ? [(Sentry as any).replayIntegration()] : [],
 
   // Enable logs to be sent to Sentry
   enableLogs: true,

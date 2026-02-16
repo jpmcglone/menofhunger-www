@@ -269,15 +269,26 @@ function toStoredValue(raw: string): string {
 
 function labelFor(value: string): string {
   const preset = (topicOptions.value ?? []).find((o) => o.value === value)
-  if (preset) return preset.label
-  // Title-ish fallback for custom.
-  return String(value ?? '')
+  if (preset) {
+    // Normalize any legacy snake_case labels to a stable display form.
+    // (This prevents SSR/client hydration mismatches when one side has topic options cached.)
+    return String(preset.label ?? '')
+      .trim()
+      .replace(/[_\s]+/g, ' ')
+      .replace(/\s+/g, ' ')
+  }
+  // SSR/hydration-safe fallback:
+  // - Presets are often snake_case (e.g. "tech_news") but labels are spaced (e.g. "Tech news")
+  // - On SSR, global topic-options cache may be warm; on client it starts cold
+  //   → ensure fallback matches the label style to avoid hydration mismatches.
+  const s = String(value ?? '')
     .trim()
-    .split(' ')
-    .filter(Boolean)
-    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-    .join(' ')
-    .slice(0, 64) || value
+    .replace(/[_\s]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .toLowerCase()
+  if (!s) return value
+  const out = s.charAt(0).toUpperCase() + s.slice(1)
+  return out.slice(0, 64)
 }
 
 const categoryRows = ref<TopicCategory[]>([])

@@ -18,9 +18,6 @@
         <span class="font-medium">Send feedback</span>
       </NuxtLink>
     </div>
-    <div class="text-xs moh-text-muted">
-      We’re building this out. Submissions aren’t sent yet.
-    </div>
   </div>
 </template>
 

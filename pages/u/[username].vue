@@ -605,7 +605,10 @@ function onOpenProfileImage(payload: {
   void openFromEvent(payload.event, payload.url, payload.title, payload.kind)
 }
 
-function patchPublicProfile(patch: Partial<Pick<PublicProfile, 'name' | 'bio' | 'avatarUrl' | 'bannerUrl'>>) {
+function patchPublicProfile(patch: Partial<Pick<
+  PublicProfile,
+  'name' | 'bio' | 'avatarUrl' | 'bannerUrl' | 'website' | 'locationDisplay' | 'locationCity' | 'locationCounty' | 'locationState' | 'locationCountry'
+>>) {
   if (!data.value) return
   data.value = { ...(data.value as PublicProfile), ...patch }
   const profileId = profile.value?.id ?? authUser.value?.id ?? null

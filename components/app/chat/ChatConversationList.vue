@@ -94,9 +94,9 @@
           :class="[
             'moh-chat-row-surface w-full px-4 py-3 transition-colors',
             selectedConversationId === c.id
-              ? 'bg-gray-50 dark:bg-zinc-900'
+              ? 'moh-pane-row-active'
               : 'hover:bg-gray-50 dark:hover:bg-zinc-900',
-            c.unreadCount > 0 ? conversationUnreadHighlightClass(c) : '',
+            c.unreadCount > 0 && selectedConversationId !== c.id ? conversationUnreadHighlightClass(c) : '',
           ]"
         >
           <div class="flex items-center gap-3">

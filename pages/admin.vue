@@ -129,7 +129,7 @@ function areaRowClass(key: 'site-settings' | 'users' | 'verification' | 'media-r
   return [
     'block px-4 py-3 transition-colors',
     active
-      ? 'bg-gray-50 dark:bg-zinc-900'
+      ? 'moh-pane-row-active'
       : 'hover:bg-gray-50 dark:hover:bg-zinc-900',
   ]
 }

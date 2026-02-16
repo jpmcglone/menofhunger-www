@@ -1,41 +1,33 @@
 <template>
-  <!-- Entire ad slot is client-only to avoid SSR hydration mismatches
-       when auth state (premium vs non-premium) differs at render time. -->
-  <ClientOnly>
+  <div
+    v-if="shouldRender"
+    :class="[
+      'relative w-full rounded-xl border border-dotted moh-border bg-transparent overflow-hidden',
+      placement === 'rail' ? 'h-[250px]' : 'h-[120px] sm:h-[250px]'
+    ]"
+  >
+    <!-- Placeholder label (shown until we detect an actual ad render) -->
     <div
-      v-if="shouldShowAd"
-      :class="[
-        'relative w-full rounded-xl border border-dotted moh-border bg-transparent overflow-hidden',
-        placement === 'rail' ? 'h-[250px]' : 'h-[120px] sm:h-[250px]'
-      ]"
+      v-if="showPlaceholder"
+      class="pointer-events-none absolute inset-0 flex items-center justify-center text-xs font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500"
+      aria-hidden="true"
     >
-      <!-- Placeholder label (shown until we detect an actual ad render) -->
-      <div
-        v-if="showPlaceholder"
-        class="pointer-events-none absolute inset-0 flex items-center justify-center text-xs font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500"
-        aria-hidden="true"
-      >
-        AD
-      </div>
-
-      <!-- AdSense unit -->
-      <ins
-        v-if="adsenseEnabled"
-        ref="insEl"
-        class="adsbygoogle block w-full h-full"
-        style="display: block"
-        :data-ad-client="adsenseClient"
-        :data-ad-slot="slot"
-        data-ad-format="auto"
-        data-full-width-responsive="true"
-        :data-adtest="adsenseAdtest ? 'on' : undefined"
-      />
+      AD
     </div>
-    <template #fallback>
-      <!-- Keep SSR empty to prevent ad DOM from appearing in server HTML. -->
-      <div aria-hidden="true" />
-    </template>
-  </ClientOnly>
+
+    <!-- AdSense unit (client-only; never SSR-rendered). -->
+    <ins
+      v-if="mounted && shouldShowAd && adsenseEnabled"
+      ref="insEl"
+      class="adsbygoogle block w-full h-full"
+      style="display: block"
+      :data-ad-client="adsenseClient"
+      :data-ad-slot="slot"
+      data-ad-format="auto"
+      data-full-width-responsive="true"
+      :data-adtest="adsenseAdtest ? 'on' : undefined"
+    />
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -56,6 +48,9 @@ const adsenseAdtest = computed(() => Boolean(config.public.adsense?.adtest))
 const slot = computed(() => (props.placement === 'rail' ? adsenseRailSlot.value : adsenseFeedSlot.value))
 
 const shouldShowAd = computed(() => !isPremiumViewer.value)
+const mounted = ref(false)
+// SSR/hydration-safe: always reserve the slot space until mounted, then respect viewer tier.
+const shouldRender = computed(() => (!mounted.value ? true : shouldShowAd.value))
 function isValidAdsenseClient(v: string): boolean {
   // AdSense client format: ca-pub-1234567890123456
   return /^ca-pub-\d+$/.test((v ?? '').trim())
@@ -110,6 +105,8 @@ function looksFilled(el: HTMLElement | null): boolean {
 
 async function requestAd() {
   if (!import.meta.client) return
+  // Never load ads/scripts until after mount; prevents pre-hydration DOM mutation.
+  if (!mounted.value) return
   if (!shouldShowAd.value) return
   if (!isConfigured.value) return
 
@@ -150,6 +147,7 @@ async function requestAd() {
 }
 
 onMounted(() => {
+  mounted.value = true
   // If not configured, we still show the dotted placeholder.
   showPlaceholder.value = true
   void requestAd()

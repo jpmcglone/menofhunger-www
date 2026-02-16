@@ -75,7 +75,8 @@ export function useUsernameField(opts: {
         void runCheck(trimmed)
       }, opts.debounceMs ?? 500)
     },
-    { flush: 'post' },
+    // IMPORTANT (SSR/hydration): run synchronously so server + client initial render match.
+    { flush: 'sync' },
   )
 
   onBeforeUnmount(() => {

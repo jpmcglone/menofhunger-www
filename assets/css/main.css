@@ -207,6 +207,11 @@ html.dark {
     padding-right: var(--moh-gutter-x);
   }
 
+  /* Shared active row highlight for split-pane section lists (settings/admin/chat). */
+  .moh-pane-row-active {
+    background-color: var(--moh-surface-hover);
+  }
+
   /* Typography roles (bolder hierarchy, still compact like X) */
   .moh-h1 {
     font-size: 1.25rem;

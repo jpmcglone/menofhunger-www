@@ -1,45 +1,45 @@
 import type { GetTopicOptionsData, TopicOption } from '~/types/api'
 
-let TOPIC_OPTIONS_CACHE: TopicOption[] | null = null
-let TOPIC_OPTIONS_INFLIGHT: Promise<TopicOption[]> | null = null
+// IMPORTANT (SSR/hydration):
+// Do not use module-scope caches as a rendering input — SSR requests and the client boot
+// can observe different cache warmth and produce different first-render markup.
+// We keep request/client state in `useState()` and only use a module-scope inflight promise on the client
+// to dedupe concurrent loads.
+let CLIENT_TOPIC_OPTIONS_INFLIGHT: Promise<TopicOption[]> | null = null
 
 export function useTopicOptions() {
   const { apiFetch } = useApiClient()
 
-  const options = ref<TopicOption[] | null>(TOPIC_OPTIONS_CACHE)
-  const loading = ref(false)
-  const error = ref<string | null>(null)
+  const options = useState<TopicOption[] | null>('moh.topicOptions.v1', () => null)
+  const loading = useState<boolean>('moh.topicOptions.loading.v1', () => false)
+  const error = useState<string | null>('moh.topicOptions.error.v1', () => null)
 
   async function load() {
-    if (TOPIC_OPTIONS_CACHE) {
-      options.value = TOPIC_OPTIONS_CACHE
-      return TOPIC_OPTIONS_CACHE
-    }
-    if (TOPIC_OPTIONS_INFLIGHT) {
-      options.value = await TOPIC_OPTIONS_INFLIGHT
+    if (Array.isArray(options.value) && options.value.length > 0) return options.value
+    if (import.meta.client && CLIENT_TOPIC_OPTIONS_INFLIGHT) {
+      options.value = await CLIENT_TOPIC_OPTIONS_INFLIGHT
       return options.value
     }
 
     loading.value = true
     error.value = null
-    TOPIC_OPTIONS_INFLIGHT = (async () => {
+    const inflight = (async () => {
       const res = await apiFetch<GetTopicOptionsData>('/topics/options', { method: 'GET' })
       const data = (res.data ?? []) as TopicOption[]
-      TOPIC_OPTIONS_CACHE = data
       return data
     })()
+    if (import.meta.client) CLIENT_TOPIC_OPTIONS_INFLIGHT = inflight
 
     try {
-      options.value = await TOPIC_OPTIONS_INFLIGHT
+      options.value = await inflight
       return options.value
     } catch (e: unknown) {
       error.value = (e as Error)?.message ?? 'Failed to load topic options.'
       options.value = null
-      TOPIC_OPTIONS_CACHE = null
       throw e
     } finally {
       loading.value = false
-      TOPIC_OPTIONS_INFLIGHT = null
+      if (import.meta.client && CLIENT_TOPIC_OPTIONS_INFLIGHT === inflight) CLIENT_TOPIC_OPTIONS_INFLIGHT = null
     }
   }
 

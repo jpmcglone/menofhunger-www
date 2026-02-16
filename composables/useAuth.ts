@@ -12,6 +12,14 @@ export type AuthUser = {
   usernameIsSet?: boolean
   name?: string | null
   bio?: string | null
+  website?: string | null
+  locationInput?: string | null
+  locationDisplay?: string | null
+  locationZip?: string | null
+  locationCity?: string | null
+  locationCounty?: string | null
+  locationState?: string | null
+  locationCountry?: string | null
   birthdate?: string | null
   interests?: string[]
   menOnlyConfirmed?: boolean
@@ -21,6 +29,7 @@ export type AuthUser = {
   isOrganization?: boolean
   stewardBadgeEnabled?: boolean
   followVisibility?: 'all' | 'verified' | 'premium' | 'none'
+  birthdayVisibility?: 'none' | 'monthDay' | 'full'
   verifiedStatus?: 'none' | 'identity' | 'manual'
   verifiedAt?: string | null
   unverifiedAt?: string | null
@@ -64,6 +73,14 @@ export function useAuth() {
               username: u.username,
               name: u.name,
               bio: u.bio,
+              website: (u as any).website ?? (user.value as any)?.website ?? null,
+              locationInput: (u as any).locationInput ?? (user.value as any)?.locationInput ?? null,
+              locationDisplay: (u as any).locationDisplay ?? (user.value as any)?.locationDisplay ?? null,
+              locationZip: (u as any).locationZip ?? (user.value as any)?.locationZip ?? null,
+              locationCity: (u as any).locationCity ?? (user.value as any)?.locationCity ?? null,
+              locationCounty: (u as any).locationCounty ?? (user.value as any)?.locationCounty ?? null,
+              locationState: (u as any).locationState ?? (user.value as any)?.locationState ?? null,
+              locationCountry: (u as any).locationCountry ?? (user.value as any)?.locationCountry ?? null,
               premium: u.premium,
               premiumPlus: u.premiumPlus,
               isOrganization: (u as any).isOrganization,

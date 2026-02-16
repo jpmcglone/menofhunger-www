@@ -144,6 +144,30 @@
         <template #helper>{{ bioCharCount.display }}</template>
       </AppFormField>
 
+      <AppFormField label="Location">
+        <InputText
+          v-model="editLocationQuery"
+          class="w-full"
+          :maxlength="120"
+          placeholder="ZIP code or city/state"
+        />
+        <template #helper>
+          Optional. Leave blank to hide.
+        </template>
+      </AppFormField>
+
+      <AppFormField label="Website">
+        <InputText
+          v-model="editWebsite"
+          class="w-full"
+          :maxlength="200"
+          placeholder="https://example.com"
+        />
+        <template #helper>
+          Optional. Leave blank to hide.
+        </template>
+      </AppFormField>
+
       <AppInlineAlert v-if="editError" severity="danger">
         {{ editError }}
       </AppInlineAlert>
@@ -157,9 +181,17 @@ import { useFormSubmit } from '~/composables/useFormSubmit'
 
 type PublicProfile = {
   id: string
+  createdAt?: string
   username: string | null
   name: string | null
   bio: string | null
+  website?: string | null
+  locationDisplay?: string | null
+  locationCity?: string | null
+  locationCounty?: string | null
+  locationState?: string | null
+  locationCountry?: string | null
+  birthdayMonthDay?: string | null
   premium: boolean
   verifiedStatus: 'none' | 'identity' | 'manual'
   avatarUrl?: string | null
@@ -176,7 +208,10 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: 'update:modelValue', v: boolean): void
-  (e: 'patchProfile', patch: Partial<Pick<PublicProfile, 'name' | 'bio' | 'avatarUrl' | 'bannerUrl'>>): void
+  (e: 'patchProfile', patch: Partial<Pick<
+    PublicProfile,
+    'name' | 'bio' | 'avatarUrl' | 'bannerUrl' | 'website' | 'locationDisplay' | 'locationCity' | 'locationCounty' | 'locationState' | 'locationCountry'
+  >>): void
 }>()
 
 const { apiFetchData } = useApiClient()
@@ -213,6 +248,8 @@ const profileBannerUrl = computed(() => props.profileBannerUrl ?? null)
 
 const editName = ref('')
 const editBio = ref('')
+const editLocationQuery = ref('')
+const editWebsite = ref('')
 const nameCharCount = useFormCharCount(editName, 50)
 const bioCharCount = useFormCharCount(editBio, 160)
 const editError = ref<string | null>(null)
@@ -383,6 +420,8 @@ watch(
     editError.value = null
     editName.value = props.profile?.name || ''
     editBio.value = props.profile?.bio || ''
+    editLocationQuery.value = (props.profile?.locationDisplay ?? '') || ''
+    editWebsite.value = (props.profile?.website ?? '') || ''
     clearAvatarCropState()
     clearBannerCropState()
     clearPendingAvatar()
@@ -461,14 +500,25 @@ const { submit: saveProfile, submitting: saving } = useFormSubmit(
       method: 'PATCH',
       body: {
         name: editName.value,
-        bio: editBio.value
+        bio: editBio.value,
+        locationQuery: editLocationQuery.value,
+        website: editWebsite.value,
       }
     })
 
     // Update profile state (public view) and auth user state (self).
     const u = result.user
     const previousUsername = authUser.value?.username ?? null
-    emit('patchProfile', { name: u?.name ?? null, bio: u?.bio ?? null })
+    emit('patchProfile', {
+      name: u?.name ?? null,
+      bio: u?.bio ?? null,
+      website: u?.website ?? null,
+      locationDisplay: u?.locationDisplay ?? null,
+      locationCity: u?.locationCity ?? null,
+      locationCounty: u?.locationCounty ?? null,
+      locationState: u?.locationState ?? null,
+      locationCountry: u?.locationCountry ?? null,
+    })
     authUser.value = u ?? authUser.value
     syncUserCaches(u, previousUsername)
     emit('update:modelValue', false)
