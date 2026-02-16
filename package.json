@@ -15,6 +15,7 @@
     "lint": "eslint .",
     "loc": "node ./scripts/loc.mjs",
     "preview": "node .output/server/index.mjs",
+    "start": "node .output/server/index.mjs",
     "postinstall": "nuxt prepare",
     "test": "vitest --run",
     "validate-api-types": "node scripts/validate-api-types.mjs"
