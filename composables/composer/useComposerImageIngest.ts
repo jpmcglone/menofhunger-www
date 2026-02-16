@@ -158,7 +158,12 @@ export function useComposerImageIngest(opts: {
     const limits = u.premiumPlus ? appConfig.video.premiumPlus : appConfig.video.premium
     const { maxDurationSeconds, maxBytes } = limits
     if (file.size > maxBytes) {
-      opts.toast.push({ title: `Video is too large (max ${formatBytes(maxBytes)}).`, tone: 'error', durationMs: 2200 })
+      opts.toast.push({
+        title: `Video is too large (max ${formatBytes(maxBytes)}).`,
+        message: 'Try trimming it, or export at 1080p and try again.',
+        tone: 'error',
+        durationMs: 2600,
+      })
       return
     }
 

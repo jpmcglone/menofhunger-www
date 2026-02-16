@@ -5,6 +5,7 @@ import type { ComposerMediaItem } from './types'
 const CHUNK_SIZE = 256 * 1024 // 256KB for hash chunks
 
 async function computeFileSha256(file: File): Promise<string> {
+  // NOTE: This reads the whole file into memory. Do NOT use this for large videos.
   const buffer = await file.arrayBuffer()
   const hashBuffer = await crypto.subtle.digest('SHA-256', buffer)
   const hashArray = Array.from(new Uint8Array(hashBuffer))
@@ -20,6 +21,7 @@ export function useComposerUploads(opts: {
   const uploadWorkerRunning = ref(false)
   const uploadInFlight = ref(0)
   const UPLOAD_CONCURRENCY = typeof opts.concurrency === 'number' ? Math.max(1, Math.floor(opts.concurrency)) : 3
+  const MAX_HASH_BYTES = 24 * 1024 * 1024 // 24MB (avoid memory blowups on large files)
 
   async function uploadOne(id: string) {
     const next = opts.composerMedia.value.find((m) => m.localId === id) ?? null
@@ -68,10 +70,11 @@ export function useComposerUploads(opts: {
         thumbnailKey = thumbInit.key
       }
 
-      const contentHash = await computeFileSha256(file)
+      const shouldHash = next.kind !== 'video' && file.size <= MAX_HASH_BYTES
+      const contentHash = shouldHash ? await computeFileSha256(file) : undefined
       const initBody: { contentType: string; contentHash?: string; purpose?: 'post' | 'thumbnail' } = {
         contentType: file.type,
-        contentHash,
+        ...(contentHash ? { contentHash } : {}),
       }
       const init = await opts.apiFetchData<{
         key: string
@@ -86,7 +89,10 @@ export function useComposerUploads(opts: {
       })
 
       const maxBytes = typeof init.maxBytes === 'number' ? init.maxBytes : null
-      if (maxBytes && file.size > maxBytes) throw new Error('File is too large.')
+      if (maxBytes && file.size > maxBytes) {
+        const mb = Math.round(maxBytes / (1024 * 1024))
+        throw new Error(`File is too large (max ${mb}MB). Try trimming it or exporting at 1080p.`)
+      }
 
       if (!init.skipUpload && init.uploadUrl) {
         await new Promise<void>((resolve, reject) => {

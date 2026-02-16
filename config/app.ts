@@ -22,11 +22,13 @@ export const appConfig = {
   video: {
     premium: {
       maxDurationSeconds: 5 * 60, // 5 minutes
-      maxBytes: 75 * 1024 * 1024, // 75MB
+      // Without server-side transcoding, uploads must still be practical on mobile networks.
+      // Keep a hard cap to prevent "upload for 5 minutes then fail" experiences.
+      maxBytes: 250 * 1024 * 1024, // 250MB
     },
     premiumPlus: {
       maxDurationSeconds: 15 * 60, // 15 minutes
-      maxBytes: 125 * 1024 * 1024, // 125MB
+      maxBytes: 500 * 1024 * 1024, // 500MB
     },
   },
 } as const
