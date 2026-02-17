@@ -85,7 +85,7 @@ export function usePostsFeed(options: { visibility?: Ref<FeedFilter>; followingO
   const { clearBumpsForPostIds } = usePostCountBumps()
   const loadingIndicator = useLoadingIndicator()
   const { user: me } = useAuth()
-  const { addPostsCallback, removePostsCallback } = usePresence()
+  const { addPostsCallback, removePostsCallback, subscribePosts, unsubscribePosts } = usePresence()
   const boostState = useBoostState()
 
   const visibility = options.visibility ?? ref<FeedFilter>('all')
@@ -134,6 +134,82 @@ export function usePostsFeed(options: { visibility?: Ref<FeedFilter>; followingO
   const { nextCursor, loading, error, refresh: feedRefresh, loadMore: feedLoadMore } = feed
 
   // Realtime: patch post interaction counts in-place for visible feeds.
+  const visiblePostIds = ref<Set<string>>(new Set())
+  const syncedPostIds = ref<Set<string>>(new Set())
+  let io: IntersectionObserver | null = null
+  let unsubscribeTimer: ReturnType<typeof setTimeout> | null = null
+  const pendingUnsub = new Set<string>()
+
+  async function syncPostById(postId: string) {
+    const id = (postId ?? '').trim()
+    if (!id) return
+    if (syncedPostIds.value.has(id)) return
+    syncedPostIds.value = new Set([...syncedPostIds.value, id])
+    try {
+      const res = await apiFetchData<FeedPost>(`/posts/${encodeURIComponent(id)}`, { method: 'GET' })
+      const dto = res ?? null
+      if (!dto?.id) return
+      // Flatten parent chain so we can patch any node we already have.
+      const chain: FeedPost[] = []
+      let cur: FeedPost | undefined = dto
+      while (cur) {
+        chain.push(cur)
+        cur = cur.parent
+      }
+
+      const patchById = new Map(chain.map((p) => [p.id, p]))
+      const patchOne = (p: FeedPost): FeedPost => {
+        const incoming = patchById.get(p.id)
+        const next = incoming ? { ...incoming } : { ...p }
+        if (next.parent) next.parent = patchOne(next.parent)
+        return next
+      }
+
+      const containsAny = (p: FeedPost | undefined): boolean => {
+        let c: FeedPost | undefined = p
+        while (c) {
+          if (patchById.has(c.id)) return true
+          c = c.parent
+        }
+        return false
+      }
+
+      if (!posts.value.some((p) => containsAny(p))) return
+      posts.value = posts.value.map(patchOne)
+    } catch {
+      // Best-effort
+    }
+  }
+
+  function flushUnsub() {
+    if (pendingUnsub.size === 0) return
+    const ids = [...pendingUnsub]
+    pendingUnsub.clear()
+    unsubscribePosts(ids)
+  }
+
+  function scheduleUnsub(postId: string) {
+    const id = (postId ?? '').trim()
+    if (!id) return
+    pendingUnsub.add(id)
+    if (unsubscribeTimer) return
+    unsubscribeTimer = setTimeout(() => {
+      unsubscribeTimer = null
+      flushUnsub()
+    }, 1200)
+  }
+
+  function rescanAndObserve() {
+    if (!import.meta.client) return
+    const root = middleScrollerEl.value ?? document
+    const els = Array.from((root as any).querySelectorAll?.('[data-post-id]') ?? []) as HTMLElement[]
+    for (const el of els) {
+      const id = (el.dataset.postId ?? '').trim()
+      if (!id) continue
+      io?.observe(el)
+    }
+  }
+
   const postsCb: PostsCallback = {
     onInteraction: (payload) => {
       const postId = String(payload?.postId ?? '').trim()
@@ -175,10 +251,90 @@ export function usePostsFeed(options: { visibility?: Ref<FeedFilter>; followingO
       if (!posts.value.some((p) => containsId(p, postId))) return
       posts.value = posts.value.map(patchOne)
     },
+    onLiveUpdated: (payload) => {
+      const postId = String(payload?.postId ?? '').trim()
+      if (!postId) return
+      const patch = payload?.patch ?? {}
+      const patchOne = (p: FeedPost): FeedPost => {
+        let next: FeedPost = p
+        if (p.id === postId) {
+          next = { ...p }
+          if (typeof patch.body === 'string') next.body = patch.body
+          if (patch.editedAt !== undefined) next.editedAt = patch.editedAt
+          if (typeof patch.editCount === 'number') next.editCount = patch.editCount
+          if (patch.deletedAt !== undefined) next.deletedAt = patch.deletedAt
+          if (typeof patch.commentCount === 'number') next.commentCount = patch.commentCount
+        }
+        if (next.parent) {
+          next = { ...next, parent: patchOne(next.parent) }
+        }
+        return next
+      }
+      const containsId = (p: FeedPost | undefined, id: string): boolean => {
+        let cur: FeedPost | undefined = p
+        while (cur) {
+          if (cur.id === id) return true
+          cur = cur.parent
+        }
+        return false
+      }
+      if (!posts.value.some((p) => containsId(p, postId))) return
+      posts.value = posts.value.map(patchOne)
+    },
   }
   if (import.meta.client) {
     onMounted(() => addPostsCallback(postsCb))
     onBeforeUnmount(() => removePostsCallback(postsCb))
+  }
+
+  // Viewport subscriptions: subscribe while a post row is on-screen (with buffer).
+  if (import.meta.client) {
+    onMounted(() => {
+      io = new IntersectionObserver(
+        (entries) => {
+          const toSub: string[] = []
+          for (const entry of entries) {
+            const el = entry.target as HTMLElement
+            const id = (el.dataset.postId ?? '').trim()
+            if (!id) continue
+            if (entry.isIntersecting) {
+              if (!visiblePostIds.value.has(id)) {
+                visiblePostIds.value = new Set([...visiblePostIds.value, id])
+                toSub.push(id)
+                void syncPostById(id)
+              }
+            } else {
+              if (visiblePostIds.value.has(id)) {
+                const next = new Set(visiblePostIds.value)
+                next.delete(id)
+                visiblePostIds.value = next
+                scheduleUnsub(id)
+              }
+            }
+          }
+          if (toSub.length > 0) subscribePosts(toSub)
+        },
+        {
+          root: middleScrollerEl.value ?? null,
+          rootMargin: '200px 0px 200px 0px',
+          threshold: 0.01,
+        },
+      )
+      // Initial scan + re-scan on feed changes.
+      void nextTick(() => rescanAndObserve())
+    })
+    watch(
+      // Re-scan when feed items change; avoid referencing displayItems here (TDZ during setup).
+      () => posts.value.length,
+      () => void nextTick(() => rescanAndObserve()),
+    )
+    onBeforeUnmount(() => {
+      io?.disconnect()
+      io = null
+      if (unsubscribeTimer) clearTimeout(unsubscribeTimer)
+      unsubscribeTimer = null
+      pendingUnsub.clear()
+    })
   }
 
   function rootIdFor(p: FeedPost): string {

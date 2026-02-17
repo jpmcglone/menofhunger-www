@@ -7,6 +7,7 @@ import type {
   WsFollowsChangedPayload,
   WsNotificationsDeletedPayload,
   WsNotificationsNewPayload,
+  WsPostsLiveUpdatedPayload,
   WsPostsInteractionPayload,
   WsUsersMeUpdatedPayload,
   WsUsersSelfUpdatedPayload,
@@ -70,6 +71,7 @@ export type FollowsCallback = {
 
 export type PostsCallback = {
   onInteraction?: (payload: WsPostsInteractionPayload) => void
+  onLiveUpdated?: (payload: WsPostsLiveUpdatedPayload) => void
 }
 
 export type AdminCallback = {
@@ -179,6 +181,34 @@ export function usePresence() {
     if (socket?.connected && userIds.length > 0) {
       socket.emit('presence:unsubscribe', { userIds })
     }
+  }
+
+  function emitPostsSubscribe(postIds: string[]) {
+    const socket = socketRef.value
+    if (socket?.connected && postIds.length > 0) {
+      socket.emit('posts:subscribe', { postIds })
+    }
+  }
+
+  function emitPostsUnsubscribe(postIds: string[]) {
+    const socket = socketRef.value
+    if (socket?.connected && postIds.length > 0) {
+      socket.emit('posts:unsubscribe', { postIds })
+    }
+  }
+
+  function subscribePosts(postIds: string[]) {
+    if (!import.meta.client) return
+    const cleaned = (postIds ?? []).map((s) => String(s ?? '').trim()).filter(Boolean)
+    if (cleaned.length === 0) return
+    emitPostsSubscribe(cleaned)
+  }
+
+  function unsubscribePosts(postIds: string[]) {
+    if (!import.meta.client) return
+    const cleaned = (postIds ?? []).map((s) => String(s ?? '').trim()).filter(Boolean)
+    if (cleaned.length === 0) return
+    emitPostsUnsubscribe(cleaned)
   }
 
   function addInterest(userIds: string[]) {
@@ -556,6 +586,13 @@ export function usePresence() {
       }
     })
 
+    socket.on('posts:liveUpdated', (data: WsPostsLiveUpdatedPayload) => {
+      if (!postsCallbacks.value.size) return
+      for (const cb of postsCallbacks.value) {
+        cb.onLiveUpdated?.(data)
+      }
+    })
+
     socket.on('admin:updated', (data: WsAdminUpdatedPayload) => {
       if (!adminCallbacks.value.size) return
       for (const cb of adminCallbacks.value) {
@@ -766,6 +803,8 @@ export function usePresence() {
     removeFollowsCallback,
     addPostsCallback,
     removePostsCallback,
+    subscribePosts,
+    unsubscribePosts,
     addAdminCallback,
     removeAdminCallback,
     addUsersCallback,

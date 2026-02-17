@@ -564,6 +564,12 @@ async function unverifyEmail() {
   if (!u.emailVerifiedAt) return
   if (emailAdminSaving.value) return
 
+  // Safety: admins can clear verification, but only the user can re-verify.
+  const ok = window.confirm(
+    `Unverify ${u.email}?\n\nThis will mark the email as unverified and invalidate existing verification links.\nThe user will need to verify again themselves.`,
+  )
+  if (!ok) return
+
   emailAdminSaving.value = true
   emailAdminError.value = null
   try {

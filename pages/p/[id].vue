@@ -148,6 +148,7 @@ import { usePostCountBumps } from '~/composables/usePostCountBumps'
 import { useReplyModal } from '~/composables/useReplyModal'
 import type { LinkMetadata } from '~/utils/link-metadata'
 import { userColorTier, userTierTextClass } from '~/utils/user-tier'
+import type { PostsCallback } from '~/composables/usePresence'
 
 definePageMeta({
   layout: 'app',
@@ -245,6 +246,44 @@ const {
   post,
   isOnlyMe,
 })
+
+// Realtime: subscribe to this post while on-screen, and refresh replies when needed.
+const { addPostsCallback, removePostsCallback, subscribePosts, unsubscribePosts } = usePresence()
+const postsCb: PostsCallback = {
+  onLiveUpdated: (payload) => {
+    const pid = String(payload?.postId ?? '').trim()
+    if (!pid || pid !== postId.value) return
+    const patch = payload?.patch ?? {}
+    if (data.value && (data.value as any).id === pid) {
+      data.value = { ...(data.value as any), ...(patch as any) }
+    }
+    if (payload?.reason === 'comment_created') {
+      void fetchComments(null)
+    }
+    if (payload?.reason === 'post_deleted') {
+      onDeleted()
+    }
+  },
+}
+if (import.meta.client) {
+  onMounted(() => {
+    addPostsCallback(postsCb)
+    const pid = postId.value
+    if (pid) subscribePosts([pid])
+  })
+  watch(
+    () => postId.value,
+    (pid, prev) => {
+      if (prev) unsubscribePosts([prev])
+      if (pid) subscribePosts([pid])
+    },
+  )
+  onBeforeUnmount(() => {
+    removePostsCallback(postsCb)
+    const pid = postId.value
+    if (pid) unsubscribePosts([pid])
+  })
+}
 
 const { bumpCommentCount } = usePostCountBumps()
 

@@ -893,6 +893,23 @@ export type WsPostsInteractionPayload = {
   bookmarkCount?: number
 }
 
+export type WsPostsSubscribedPayload = {
+  postIds: string[]
+}
+
+export type WsPostsLiveUpdatedPayload = {
+  postId: string
+  version: string
+  reason: string
+  patch: Partial<{
+    body: string
+    editedAt: string | null
+    editCount: number
+    deletedAt: string | null
+    commentCount: number
+  }>
+}
+
 export type WsAdminUpdateKind = 'reports' | 'verification' | 'feedback'
 export type WsAdminUpdateAction = 'created' | 'updated' | 'deleted' | 'resolved' | 'reviewed' | 'other'
 export type WsAdminUpdatedPayload = {
