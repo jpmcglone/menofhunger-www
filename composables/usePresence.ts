@@ -8,6 +8,7 @@ import type {
   WsNotificationsDeletedPayload,
   WsNotificationsNewPayload,
   WsPostsInteractionPayload,
+  WsUsersMeUpdatedPayload,
   WsUsersSelfUpdatedPayload,
 } from '~/types/api'
 import { useUsersStore } from '~/composables/useUsersStore'
@@ -77,6 +78,7 @@ export type AdminCallback = {
 
 export type UsersCallback = {
   onSelfUpdated?: (payload: WsUsersSelfUpdatedPayload) => void
+  onMeUpdated?: (payload: WsUsersMeUpdatedPayload) => void
 }
 
 function apiBaseUrlToWsUrl(apiBaseUrl: string): string {
@@ -567,6 +569,13 @@ export function usePresence() {
       if (!usersCallbacks.value.size) return
       for (const cb of usersCallbacks.value) {
         cb.onSelfUpdated?.(data)
+      }
+    })
+
+    socket.on('users:meUpdated', (data: WsUsersMeUpdatedPayload) => {
+      if (!usersCallbacks.value.size) return
+      for (const cb of usersCallbacks.value) {
+        cb.onMeUpdated?.(data)
       }
     })
 

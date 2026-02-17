@@ -905,3 +905,46 @@ export type WsUsersSelfUpdatedPayload = {
   user: PublicProfile
 }
 
+// Canonical self-only auth/settings snapshot (matches API `/auth/me` user DTO).
+export type UserDto = {
+  id: string
+  createdAt: string
+  phone: string
+  email: string | null
+  emailVerifiedAt: string | null
+  emailVerificationRequestedAt: string | null
+  username: string | null
+  usernameIsSet: boolean
+  name: string | null
+  bio: string | null
+  website: string | null
+  locationInput: string | null
+  locationDisplay: string | null
+  locationZip: string | null
+  locationCity: string | null
+  locationCounty: string | null
+  locationState: string | null
+  locationCountry: string | null
+  birthdate: string | null
+  interests: string[]
+  menOnlyConfirmed: boolean
+  siteAdmin: boolean
+  premium: boolean
+  premiumPlus: boolean
+  isOrganization: boolean
+  stewardBadgeEnabled: boolean
+  verifiedStatus: 'none' | 'identity' | 'manual'
+  verifiedAt: string | null
+  unverifiedAt: string | null
+  followVisibility: 'all' | 'verified' | 'premium' | 'none'
+  birthdayVisibility: 'none' | 'monthDay' | 'full'
+  avatarUrl: string | null
+  bannerUrl: string | null
+  pinnedPostId: string | null
+}
+
+export type WsUsersMeUpdatedPayload = {
+  user: UserDto
+  reason?: string
+}
+

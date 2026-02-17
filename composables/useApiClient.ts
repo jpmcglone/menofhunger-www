@@ -36,21 +36,30 @@ export type MohApiFetchOptions = Omit<ApiFetchOptions, 'query'> & {
   mohRetry?: number | false
 }
 
-const inflight = new Map<string, Promise<unknown>>()
-const responseCache = new Map<string, { expiresAt: number; staleUntil?: number; value: unknown }>()
+// Client-only (never shared across SSR requests).
+const clientInflight = new Map<string, Promise<unknown>>()
+const clientResponseCache = new Map<string, { expiresAt: number; staleUntil?: number; value: unknown }>()
 
-function stableQueryKey(query: unknown): string {
-  const q = query as Record<string, unknown> | null | undefined
-  if (!q) return ''
-  const keys = Object.keys(q).sort()
+function stableQueryKey(query: MohApiQuery | undefined): string {
+  if (!query) return ''
+  const keys = Object.keys(query).sort()
   const parts: string[] = []
   for (const k of keys) {
-    const v = q[k]
+    const v = query[k]
     if (v === undefined || v === null) continue
-    const s = typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean' ? String(v) : JSON.stringify(v)
-    parts.push(`${encodeURIComponent(k)}=${encodeURIComponent(s)}`)
+    parts.push(`${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`)
   }
   return parts.length ? `?${parts.join('&')}` : ''
+}
+
+function inflightMapForCurrentContext(): Map<string, Promise<unknown>> {
+  if (import.meta.client) return clientInflight
+
+  // SSR: keep inflight dedupe request-scoped to avoid module-scope growth and any possibility of cross-request sharing.
+  const event = useRequestEvent()
+  const ctx = (event?.context ?? {}) as { mohApiInflight?: Map<string, Promise<unknown>> }
+  if (!ctx.mohApiInflight) ctx.mohApiInflight = new Map<string, Promise<unknown>>()
+  return ctx.mohApiInflight
 }
 
 /**
@@ -63,17 +72,17 @@ export function invalidateMohCache(params: { prefix?: string; exact?: string }) 
   const prefix = (params.prefix ?? '').trim()
   if (!exact && !prefix) return
 
-  for (const k of responseCache.keys()) {
-    if (exact && k === exact) responseCache.delete(k)
-    else if (prefix && k.startsWith(prefix)) responseCache.delete(k)
+  for (const k of clientResponseCache.keys()) {
+    if (exact && k === exact) clientResponseCache.delete(k)
+    else if (prefix && k.startsWith(prefix)) clientResponseCache.delete(k)
   }
 }
 
 /** Clear all MenOfHunger client response/inflight caches. */
 export function clearMohCacheAll() {
   if (!import.meta.client) return
-  responseCache.clear()
-  inflight.clear()
+  clientResponseCache.clear()
+  clientInflight.clear()
 }
 
 function mergeHeaders(a?: HeadersInit, b?: HeadersInit): HeadersInit | undefined {
@@ -231,19 +240,19 @@ export function useApiClient() {
           ? Math.max(0, Math.floor(mohRetry))
           : (import.meta.client && method === 'GET' ? 1 : 0)
     const cacheOpt = mohCache ?? false
-    const queryKey = stableQueryKey((fetchOptions as any)?.query)
+    const queryKey = stableQueryKey((fetchOptions as { query?: MohApiQuery } | undefined)?.query)
+    const inflight = inflightMapForCurrentContext()
 
     // Only support caching/dedupe for GET requests.
     if (method === 'GET') {
-      const cookieForKey = import.meta.server ? String((ssrHeaders as Record<string, string> | undefined)?.cookie ?? '') : ''
       const baseKey = `${method}:${url}${queryKey}`
-      const inflightKey = import.meta.server ? `${baseKey}:cookie=${cookieForKey}` : baseKey
+      const inflightKey = baseKey
 
       // Client-only response cache (never cache across server requests).
       if (import.meta.client && cacheOpt && typeof cacheOpt === 'object' && cacheOpt.ttlMs > 0) {
         const now = Date.now()
         const cacheKey = cacheOpt.key ?? baseKey
-        const hit = responseCache.get(cacheKey)
+        const hit = clientResponseCache.get(cacheKey)
         if (hit && hit.expiresAt > now) return hit.value as ApiEnvelope<T>
 
         const swrMs = Math.max(0, Math.floor(cacheOpt.staleWhileRevalidateMs ?? 0))
@@ -260,7 +269,7 @@ export function useApiClient() {
                 timeout,
               }, method, retryCount)
                 .then((env) => {
-                  responseCache.set(cacheKey, {
+                  clientResponseCache.set(cacheKey, {
                     value: env,
                     expiresAt: Date.now() + cacheOpt.ttlMs,
                     staleUntil: Date.now() + cacheOpt.ttlMs + swrMs,
@@ -288,7 +297,7 @@ export function useApiClient() {
           }
         }
 
-        if (hit) responseCache.delete(cacheKey)
+        if (hit) clientResponseCache.delete(cacheKey)
       }
 
       if (dedupe) {
@@ -307,7 +316,7 @@ export function useApiClient() {
             const baseKey2 = `${method}:${url}${queryKey}`
             const cacheKey = cacheOpt.key ?? baseKey2
             const swrMs = Math.max(0, Math.floor(cacheOpt.staleWhileRevalidateMs ?? 0))
-            responseCache.set(cacheKey, {
+            clientResponseCache.set(cacheKey, {
               value: env,
               expiresAt: Date.now() + cacheOpt.ttlMs,
               staleUntil: swrMs > 0 ? Date.now() + cacheOpt.ttlMs + swrMs : undefined,

@@ -94,6 +94,13 @@ export function useAuth() {
             }
           }
         },
+        onMeUpdated: (payload: import('~/types/api').WsUsersMeUpdatedPayload) => {
+          const me = payload?.user ?? null
+          if (!me?.id) return
+          if (me.id !== user.value?.id) return
+          // Canonical snapshot: replace local auth user state.
+          user.value = me as any
+        },
       }
       addUsersCallback(cb)
     })
