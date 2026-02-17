@@ -8,6 +8,8 @@ export type AuthUser = {
   createdAt?: string
   phone: string
   email?: string | null
+  emailVerifiedAt?: string | null
+  emailVerificationRequestedAt?: string | null
   username?: string | null
   usernameIsSet?: boolean
   name?: string | null

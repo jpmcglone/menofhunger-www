@@ -50,8 +50,9 @@ export type NotificationPreferences = {
   pushFollow: boolean
   pushMention: boolean
   pushMessage: boolean
-  emailDigestWeekly: boolean
+  emailDigestDaily: boolean
   emailNewNotifications: boolean
+  emailInstantHighSignal: boolean
 }
 
 export type RadioStation = {

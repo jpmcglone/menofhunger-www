@@ -29,6 +29,11 @@ export type MohApiFetchOptions = Omit<ApiFetchOptions, 'query'> & {
   mohCache?: MohCacheOptions
   /** Deduplicate identical in-flight GETs (default true). */
   mohDedupe?: boolean
+  /**
+   * Extra client-side retries for transient transport failures on idempotent calls.
+   * Defaults to 1 for GET in browser, 0 otherwise.
+   */
+  mohRetry?: number | false
 }
 
 const inflight = new Map<string, Promise<unknown>>()
@@ -155,14 +160,48 @@ export function useApiClient() {
     void Promise.resolve(navigateTo(`/login?redirect=${redirect}`)).catch(() => undefined)
   }
 
-  async function runFetch<T>(url: string, fetchOptions: ApiFetchOptions): Promise<ApiEnvelope<T>> {
-    try {
-      return await $fetch<ApiEnvelope<T>>(url, fetchOptions)
-    } catch (e) {
-      if (getErrorStatus(e) === 401) {
-        handleUnauthorizedClientSide()
+  function isTransientNetworkFailure(e: unknown): boolean {
+    if (getErrorStatus(e) !== null) return false
+    const maybe = e as { name?: unknown; message?: unknown; cause?: { message?: unknown } } | null | undefined
+    const name = String(maybe?.name ?? '').toLowerCase()
+    // Explicit aborts are often user/navigation driven and should not be retried.
+    if (name === 'aborterror') return false
+    const message = String(maybe?.message ?? '').toLowerCase()
+    const causeMessage = String(maybe?.cause?.message ?? '').toLowerCase()
+    const haystack = `${message} ${causeMessage}`
+    return (
+      haystack.includes('load failed') ||
+      haystack.includes('failed to fetch') ||
+      haystack.includes('networkerror') ||
+      haystack.includes('network request failed') ||
+      haystack.includes('the network connection was lost') ||
+      haystack.includes('<no response>')
+    )
+  }
+
+  async function runFetch<T>(
+    url: string,
+    fetchOptions: ApiFetchOptions,
+    method: string,
+    retryCount: number,
+  ): Promise<ApiEnvelope<T>> {
+    let attempt = 0
+    while (true) {
+      try {
+        return await $fetch<ApiEnvelope<T>>(url, fetchOptions)
+      } catch (e) {
+        if (getErrorStatus(e) === 401) {
+          handleUnauthorizedClientSide()
+        }
+        const canRetry =
+          attempt < retryCount &&
+          (method === 'GET' || method === 'HEAD') &&
+          isTransientNetworkFailure(e)
+        if (!canRetry) throw e
+        const delayMs = Math.min(750, 200 * 2 ** attempt)
+        await new Promise((resolve) => setTimeout(resolve, delayMs))
+        attempt += 1
       }
-      throw e
     }
   }
 
@@ -180,11 +219,17 @@ export function useApiClient() {
     }
     const headers = mergeHeaders(ssrHeaders, options.headers)
 
-    const { mohCache, mohDedupe, ...fetchOptions } = options
+    const { mohCache, mohDedupe, mohRetry, ...fetchOptions } = options
     const timeout = fetchOptions.timeout ?? defaultTimeoutMs
 
     const method = String(fetchOptions.method || 'GET').toUpperCase()
     const dedupe = mohDedupe !== false
+    const retryCount =
+      mohRetry === false
+        ? 0
+        : typeof mohRetry === 'number'
+          ? Math.max(0, Math.floor(mohRetry))
+          : (import.meta.client && method === 'GET' ? 1 : 0)
     const cacheOpt = mohCache ?? false
     const queryKey = stableQueryKey((fetchOptions as any)?.query)
 
@@ -213,7 +258,7 @@ export function useApiClient() {
                 credentials: fetchOptions.credentials ?? 'include',
                 headers,
                 timeout,
-              })
+              }, method, retryCount)
                 .then((env) => {
                   responseCache.set(cacheKey, {
                     value: env,
@@ -256,7 +301,7 @@ export function useApiClient() {
         credentials: fetchOptions.credentials ?? 'include',
         headers,
         timeout,
-      })
+      }, method, retryCount)
         .then((env) => {
           if (import.meta.client && cacheOpt && typeof cacheOpt === 'object' && cacheOpt.ttlMs > 0) {
             const baseKey2 = `${method}:${url}${queryKey}`
@@ -283,7 +328,7 @@ export function useApiClient() {
       credentials: fetchOptions.credentials ?? 'include',
       headers,
       timeout
-    })
+    }, method, retryCount)
   }
 
   async function apiFetchData<T>(path: string, options: MohApiFetchOptions = {}): Promise<T> {

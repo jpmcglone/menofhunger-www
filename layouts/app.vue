@@ -71,7 +71,7 @@
     <AppReplyModal />
     <div
       :class="['overflow-hidden moh-bg moh-text moh-texture', showStatusBg ? 'moh-status-tone' : '']"
-      :style="appViewportStyle"
+      style="height: var(--moh-viewport-h, 100vh);"
     >
       <div class="mx-auto flex h-full w-full max-w-6xl xl:max-w-7xl">
         <!-- Left Nav (independent scroll) -->
@@ -241,41 +241,72 @@
               ref="middleScrollerEl"
               :class="[
                 'no-scrollbar min-w-0 flex-1 overflow-x-hidden flex flex-col',
-                anyOverlayOpen || (isMessagesPage && hideTopBar) ? 'overflow-hidden' : 'overflow-y-auto overscroll-y-contain'
+                anyOverlayOpen || (isMessagesPage && hideTopBar) ? 'overflow-hidden' : 'overflow-y-auto overscroll-y-contain',
+                middleScrollerBottomPadClass,
               ]"
               :style="!hideTopBar ? { scrollPaddingTop: 'var(--moh-title-bar-height, 4rem)' } : undefined"
             >
               <div
                 v-if="!hideTopBar"
                 ref="titleBarEl"
-                class="sticky top-0 z-50 shrink-0 border-b moh-border moh-frosted"
+                class="sticky top-0 z-50 shrink-0 moh-frosted"
               >
-                <AppTitleBar>
-                  <div class="flex items-center justify-between gap-3">
-                    <div class="min-w-0 flex items-center gap-2">
-                      <Icon v-if="headerIcon" :name="headerIcon" class="text-xl shrink-0 opacity-80" aria-hidden="true" />
-                      <h1 class="min-w-0 truncate moh-h1">
-                        {{ headerTitle }}
-                      </h1>
-                      <AppVerifiedBadge
-                        v-if="hydrated && appHeader?.verifiedStatus"
-                        :status="appHeader.verifiedStatus"
-                        :premium="Boolean(appHeader?.premium)"
-                        :premium-plus="Boolean(appHeader?.premiumPlus)"
-                        :is-organization="Boolean((appHeader as any)?.isOrganization)"
-                        :steward-badge-enabled="appHeader?.stewardBadgeEnabled ?? true"
-                      />
+                <!-- Email verification banner should sit ABOVE the title bar (when title bar is shown). -->
+                <button
+                  v-if="showEmailUnverifiedBar"
+                  type="button"
+                  class="w-full border-b moh-border px-4 py-2 text-left text-sm backdrop-blur-sm bg-amber-50/95 text-amber-900 hover:bg-amber-50 dark:bg-amber-900/25 dark:text-amber-100 dark:hover:bg-amber-900/35"
+                  @click="navigateTo('/settings/account')"
+                >
+                  <span class="font-semibold">Email not verified.</span>
+                  <span class="ml-2">
+                    <span class="font-mono">{{ (user?.email ?? '').trim() }}</span>
+                    <span class="ml-2 opacity-90">Tap to verify in Settings.</span>
+                  </span>
+                </button>
+
+                <div class="border-b moh-border">
+                  <AppTitleBar>
+                    <div class="flex items-center justify-between gap-3">
+                      <div class="min-w-0 flex items-center gap-2">
+                        <Icon v-if="headerIcon" :name="headerIcon" class="text-xl shrink-0 opacity-80" aria-hidden="true" />
+                        <h1 class="min-w-0 truncate moh-h1">
+                          {{ headerTitle }}
+                        </h1>
+                        <AppVerifiedBadge
+                          v-if="hydrated && appHeader?.verifiedStatus"
+                          :status="appHeader.verifiedStatus"
+                          :premium="Boolean(appHeader?.premium)"
+                          :premium-plus="Boolean(appHeader?.premiumPlus)"
+                          :is-organization="Boolean((appHeader as any)?.isOrganization)"
+                          :steward-badge-enabled="appHeader?.stewardBadgeEnabled ?? true"
+                        />
+                      </div>
+                      <div v-if="hydrated && typeof appHeader?.postCount === 'number'" class="shrink-0 moh-meta">
+                        <span class="font-semibold tabular-nums">{{ formatCompactNumber(appHeader.postCount) }}</span>
+                        <span class="ml-1">posts</span>
+                      </div>
                     </div>
-                    <div v-if="hydrated && typeof appHeader?.postCount === 'number'" class="shrink-0 moh-meta">
-                      <span class="font-semibold tabular-nums">{{ formatCompactNumber(appHeader.postCount) }}</span>
-                      <span class="ml-1">posts</span>
-                    </div>
-                  </div>
-                  <p v-if="headerDescription" class="moh-meta">
-                    {{ headerDescription }}
-                  </p>
-                </AppTitleBar>
+                    <p v-if="headerDescription" class="moh-meta">
+                      {{ headerDescription }}
+                    </p>
+                  </AppTitleBar>
+                </div>
               </div>
+
+              <!-- If a page hides the title bar, keep the banner at the top of the scroller. -->
+              <button
+                v-if="hideTopBar && showEmailUnverifiedBar"
+                type="button"
+                class="sticky top-0 z-50 w-full border-b moh-border px-4 py-2 text-left text-sm backdrop-blur-sm bg-amber-50/95 text-amber-900 hover:bg-amber-50 dark:bg-amber-900/25 dark:text-amber-100 dark:hover:bg-amber-900/35"
+                @click="navigateTo('/settings/account')"
+              >
+                <span class="font-semibold">Email not verified.</span>
+                <span class="ml-2">
+                  <span class="font-mono">{{ (user?.email ?? '').trim() }}</span>
+                  <span class="ml-2 opacity-90">Tap to verify in Settings.</span>
+                </span>
+              </button>
 
             <div
               ref="middleContentEl"
@@ -694,6 +725,17 @@ const isMessagesPage = computed(() => route.path === '/chat')
 const isOnlyMePage = computed(() => route.path === '/only-me')
 const viewerIsVerified = computed(() => (user.value?.verifiedStatus ?? 'none') !== 'none')
 
+const showEmailUnverifiedBar = computed(() => {
+  if (!isAuthed.value) return false
+  // Avoid redundancy: this banner is meant to drive people *to* settings.
+  if (route.path.startsWith('/settings')) return false
+  // Also avoid redundancy on email flow pages (verify/unsubscribe, etc).
+  if (route.path.startsWith('/email')) return false
+  const email = (user.value?.email ?? '').trim()
+  if (!email) return false
+  return !user.value?.emailVerifiedAt
+})
+
 // Post entrypoints (left-nav button + mobile FAB): only render on these routes.
 const isComposerEntrypointRoute = computed(() => {
   return isComposerEntrypointPath({ path: route.path, profileTo: profileTo.value })
@@ -755,58 +797,6 @@ const anyOverlayOpen = computed(() => composerModalOpen.value || (replyModalOpen
 
 useScrollLock(anyOverlayOpen)
 const composerSheetStyle = ref<Record<string, string>>({ left: '0px', right: '0px', width: 'auto' })
-// SSR-safe: assume mobile so server and first client paint match.
-// IMPORTANT: keep this reactive to viewport changes; if it gets "stuck" false on desktop,
-// the layout will subtract the mobile tab bar height and create a big blank gap at the bottom.
-const isSmUp = ref(false)
-function updateIsSmUp() {
-  if (!import.meta.client || typeof window === 'undefined') return
-  isSmUp.value = window.matchMedia('(min-width: 640px)').matches
-}
-let smMql: MediaQueryList | null = null
-function onSmMqlChange() {
-  updateIsSmUp()
-}
-onMounted(() => {
-  updateIsSmUp()
-  if (!import.meta.client || typeof window === 'undefined') return
-
-  // Keep in sync on breakpoint changes (and as a fallback, on resize).
-  try {
-    smMql = window.matchMedia('(min-width: 640px)')
-    if (typeof smMql.addEventListener === 'function') smMql.addEventListener('change', onSmMqlChange)
-    // Safari < 14
-    // eslint-disable-next-line deprecation/deprecation
-    else if (typeof (smMql as any).addListener === 'function') (smMql as any).addListener(onSmMqlChange)
-  } catch {
-    smMql = null
-  }
-  window.addEventListener('resize', updateIsSmUp, { passive: true })
-})
-onBeforeUnmount(() => {
-  if (!import.meta.client || typeof window === 'undefined') return
-  window.removeEventListener('resize', updateIsSmUp as any)
-  if (smMql) {
-    if (typeof smMql.removeEventListener === 'function') smMql.removeEventListener('change', onSmMqlChange)
-    // eslint-disable-next-line deprecation/deprecation
-    else if (typeof (smMql as any).removeListener === 'function') (smMql as any).removeListener(onSmMqlChange)
-  }
-  smMql = null
-})
-const mobileBottomBarVisible = computed(() => !isSmUp.value && !anyOverlayOpen.value)
-
-const appViewportStyle = computed<Record<string, string>>(() => {
-  if (!mobileBottomBarVisible.value) return { height: 'var(--moh-viewport-h, 100vh)' }
-  if (showRadioBar.value) {
-    return {
-      height:
-        'calc(var(--moh-viewport-h, 100vh) - var(--moh-tabbar-height, 4rem) - var(--moh-radio-bar-height, 4rem) - var(--moh-safe-bottom, 0px))',
-    }
-  }
-  return {
-    height: 'calc(var(--moh-viewport-h, 100vh) - var(--moh-tabbar-height, 4rem) - var(--moh-safe-bottom, 0px))',
-  }
-})
 
 const composerSheetPlacementStyle = computed<Record<string, string>>(() => {
   // Keep composer placement consistent across breakpoints:
@@ -977,6 +967,16 @@ const middleContentEl = ref<HTMLElement | null>(null)
 
 const { currentStation: currentRadioStation } = useRadioPlayer()
 const showRadioBar = computed(() => Boolean(currentRadioStation.value))
+
+// Mobile-only bottom clearance for fixed bottom UI (tab bar + optional radio bar).
+// Use CSS breakpoints so SSR + first client paint don't "jump" on desktop.
+const middleScrollerBottomPadClass = computed(() => {
+  if (anyOverlayOpen.value || (isMessagesPage.value && hideTopBar.value)) return 'pb-0'
+  if (showRadioBar.value) {
+    return 'pb-[calc(var(--moh-tabbar-height,4.5rem)+var(--moh-radio-bar-height,4rem)+var(--moh-safe-bottom,0px))] sm:pb-0'
+  }
+  return 'pb-[calc(var(--moh-tabbar-height,4.5rem)+var(--moh-safe-bottom,0px))] sm:pb-0'
+})
 
 function updateComposerSheetStyle() {
   if (!import.meta.client) return

@@ -43,9 +43,27 @@
 <script setup lang="ts">
 const { toasts, dismiss, bgFor, fgFor } = useAppToast()
 
+const isSmUp = ref(false)
+function updateIsSmUp() {
+  if (!import.meta.client || typeof window === 'undefined') return
+  isSmUp.value = window.matchMedia('(min-width: 640px)').matches
+}
+onMounted(() => {
+  updateIsSmUp()
+  if (!import.meta.client || typeof window === 'undefined') return
+  window.addEventListener('resize', updateIsSmUp, { passive: true })
+})
+onBeforeUnmount(() => {
+  if (!import.meta.client || typeof window === 'undefined') return
+  window.removeEventListener('resize', updateIsSmUp as any)
+})
+
 const stackStyle = computed<Record<string, string>>(() => {
-  // Keep a little clearance from device safe area.
-  return { bottom: 'calc(var(--moh-safe-bottom, 0px) + 1rem)' }
+  // On mobile, keep clearance above the fixed tab bar (and safe area).
+  // On sm+ the tab bar is hidden, so keep it tighter.
+  return isSmUp.value
+    ? { bottom: 'calc(var(--moh-safe-bottom, 0px) + 1rem)' }
+    : { bottom: 'calc(var(--moh-tabbar-height, 4.5rem) + var(--moh-safe-bottom, 0px) + 1rem)' }
 })
 
 function onToastClick(t: { id: string; to?: string | null }) {

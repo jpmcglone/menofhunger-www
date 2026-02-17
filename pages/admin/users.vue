@@ -207,6 +207,54 @@
         </div>
 
         <div class="rounded-xl border border-gray-200 bg-gray-50 p-3 dark:border-zinc-800 dark:bg-zinc-950/40">
+          <div class="text-sm font-semibold text-gray-900 dark:text-gray-50">Email verification</div>
+
+          <div class="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
+            <div class="text-xs text-gray-500 dark:text-gray-400">Email</div>
+            <div class="text-sm font-mono text-gray-800 dark:text-gray-200">
+              {{ editingUser?.email || '—' }}
+            </div>
+
+            <div class="text-xs text-gray-500 dark:text-gray-400">Email status</div>
+            <div class="text-sm text-gray-800 dark:text-gray-200">
+              <Tag
+                :value="editingUser?.email ? (editingUser?.emailVerifiedAt ? 'Verified' : 'Unverified') : 'No email'"
+                :severity="!editingUser?.email ? 'secondary' : editingUser?.emailVerifiedAt ? 'success' : 'warning'"
+                class="!text-xs"
+              />
+            </div>
+
+            <div class="text-xs text-gray-500 dark:text-gray-400">Email verified at</div>
+            <div class="text-sm font-mono text-gray-800 dark:text-gray-200">
+              {{ emailVerifiedAtLabel }}
+            </div>
+
+            <div class="text-xs text-gray-500 dark:text-gray-400">Verification requested</div>
+            <div class="text-sm font-mono text-gray-800 dark:text-gray-200">
+              {{ emailVerificationRequestedAtLabel }}
+            </div>
+          </div>
+
+          <div class="mt-3 flex flex-wrap items-center gap-2">
+            <Button
+              label="Unverify email"
+              severity="danger"
+              size="small"
+              :loading="emailAdminSaving"
+              :disabled="emailAdminSaving || !editingUser?.email || !editingUser?.emailVerifiedAt"
+              @click="unverifyEmail"
+            />
+            <div class="text-xs text-gray-600 dark:text-gray-300">
+              Marks the email as unverified and invalidates existing verification links.
+            </div>
+          </div>
+
+          <AppInlineAlert v-if="emailAdminError" class="mt-3" severity="danger">
+            {{ emailAdminError }}
+          </AppInlineAlert>
+        </div>
+
+        <div class="rounded-xl border border-gray-200 bg-gray-50 p-3 dark:border-zinc-800 dark:bg-zinc-950/40">
           <div class="text-sm font-semibold text-gray-900 dark:text-gray-50">User details</div>
 
           <div class="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
@@ -297,6 +345,9 @@ type AdminUser = {
   id: string
   createdAt: string
   phone: string
+  email: string | null
+  emailVerifiedAt: string | null
+  emailVerificationRequestedAt: string | null
   username: string | null
   usernameIsSet: boolean
   name: string | null
@@ -344,6 +395,8 @@ async function runUserSearch() {
 const editOpen = ref(false)
 const editingUser = ref<AdminUser | null>(null)
 const editError = ref<string | null>(null)
+const emailAdminError = ref<string | null>(null)
+const emailAdminSaving = ref(false)
 
 const editPhone = ref('')
 const editUsername = ref('')
@@ -486,10 +539,13 @@ const verificationStatusSeverity = computed(() => {
 const verificationVerifiedAtLabel = computed(() => formatDateTime(editingUser.value?.verifiedAt))
 const verificationUnverifiedAtLabel = computed(() => formatDateTime(editingUser.value?.unverifiedAt))
 const joinedAtLabel = computed(() => formatDateTime(editingUser.value?.createdAt))
+const emailVerifiedAtLabel = computed(() => formatDateTime(editingUser.value?.emailVerifiedAt))
+const emailVerificationRequestedAtLabel = computed(() => formatDateTime(editingUser.value?.emailVerificationRequestedAt))
 
 function openEdit(u: AdminUser) {
   editingUser.value = u
   editError.value = null
+  emailAdminError.value = null
   editPhone.value = u.phone
   editUsername.value = u.username ?? ''
   editName.value = u.name ?? ''
@@ -499,6 +555,29 @@ function openEdit(u: AdminUser) {
   editIsOrganization.value = Boolean(u.isOrganization)
   resetUsernameCheck()
   editOpen.value = true
+}
+
+async function unverifyEmail() {
+  const u = editingUser.value
+  if (!u) return
+  if (!u.email) return
+  if (!u.emailVerifiedAt) return
+  if (emailAdminSaving.value) return
+
+  emailAdminSaving.value = true
+  emailAdminError.value = null
+  try {
+    const updated = await apiFetchData<AdminUser>(`/admin/users/${encodeURIComponent(u.id)}/email/unverify`, {
+      method: 'POST',
+    })
+    // Update results list in-place.
+    results.value = results.value.map((x) => (x.id === u.id ? updated : x))
+    editingUser.value = updated
+  } catch (e: unknown) {
+    emailAdminError.value = getApiErrorMessage(e) || 'Failed to unverify email.'
+  } finally {
+    emailAdminSaving.value = false
+  }
 }
 
 function onUserRowClick(u: AdminUser) {

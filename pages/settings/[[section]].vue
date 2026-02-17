@@ -100,6 +100,19 @@
                   <div v-if="saved" class="text-sm text-green-700 dark:text-green-300">Saved.</div>
                 </div>
 
+                <div
+                  v-if="route.query.email_verified === '1'"
+                  class="rounded-lg border moh-border p-2 text-sm text-green-800 dark:text-green-200 moh-surface"
+                >
+                  Email verified.
+                </div>
+                <div
+                  v-else-if="route.query.email_verified === '0'"
+                  class="rounded-lg border moh-border p-2 text-sm text-red-800 dark:text-red-200 moh-surface"
+                >
+                  Email verification link is invalid or expired.
+                </div>
+
                 <AppFormField
                   label="Email"
                   optional
@@ -126,6 +139,28 @@
                       <Icon name="tabler:check" aria-hidden="true" />
                     </template>
                   </Button>
+                  <div v-if="emailResendSaved" class="text-sm text-green-700 dark:text-green-300">Verification email sent.</div>
+                </div>
+
+                <div v-if="authUser?.email" class="flex flex-wrap items-center gap-3 text-sm">
+                  <Tag
+                    :value="authUser.emailVerifiedAt ? 'Email verified' : 'Email unverified'"
+                    :severity="authUser.emailVerifiedAt ? 'success' : 'warning'"
+                    class="!text-xs"
+                  />
+                  <div v-if="!authUser.emailVerifiedAt" class="moh-text-muted">
+                    Please verify your email to receive the daily digest.
+                  </div>
+                  <Button
+                    v-if="!authUser.emailVerifiedAt && emailVerificationUiReady"
+                    :label="emailResendButtonLabel"
+                    size="small"
+                    severity="secondary"
+                    :loading="emailResendSaving"
+                    :disabled="emailResendSaving || emailResendCooldownActive"
+                    @click="resendEmailVerification"
+                  />
+                  <div v-if="emailResendError" class="text-red-700 dark:text-red-300">{{ emailResendError }}</div>
                 </div>
 
                 <div class="space-y-3">
@@ -493,23 +528,52 @@
                       <div class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
                         Email
                       </div>
+                      <div
+                        v-if="route.query.digest_unsubscribed === '1'"
+                        class="rounded-lg border moh-border p-2 text-sm moh-surface"
+                      >
+                        Daily digest disabled. You can re-enable it below.
+                      </div>
                       <div v-if="!authUser?.email" class="text-sm text-gray-600 dark:text-gray-300">
                         Add an email in <NuxtLink to="/settings/account" class="font-medium hover:underline">Your account</NuxtLink> to enable email notifications.
                       </div>
                       <div v-else class="grid gap-3">
+                        <div
+                          v-if="!emailIsVerified"
+                          class="rounded-lg border moh-border p-3 text-sm moh-surface"
+                        >
+                          <div class="font-semibold">Verify your email to enable email notifications.</div>
+                          <div class="mt-1 text-xs moh-text-muted">
+                            Your settings are saved, but sending is disabled until verification.
+                          </div>
+                          <div class="mt-2">
+                            <NuxtLink to="/settings/account" class="font-medium hover:underline underline-offset-2">
+                              Go to account settings to verify →
+                            </NuxtLink>
+                          </div>
+                        </div>
                         <div class="flex items-start justify-between gap-4">
                           <div>
-                            <div class="font-medium">Weekly digest</div>
-                            <div class="text-xs moh-text-muted">A weekly recap email.</div>
+                            <div class="font-medium">Daily digest</div>
+                            <div class="text-xs moh-text-muted">A daily recap (recommended).</div>
                           </div>
-                          <Checkbox v-model="notifPrefs.emailDigestWeekly" binary :disabled="notifPrefsSaving" />
+                          <Checkbox v-model="notifPrefs.emailDigestDaily" binary :disabled="notifPrefsSaving || !emailIsVerified" />
                         </div>
                         <div class="flex items-start justify-between gap-4">
                           <div>
                             <div class="font-medium">New notifications</div>
                             <div class="text-xs moh-text-muted">A nudge when you have unread notifications.</div>
                           </div>
-                          <Checkbox v-model="notifPrefs.emailNewNotifications" binary :disabled="notifPrefsSaving" />
+                          <Checkbox v-model="notifPrefs.emailNewNotifications" binary :disabled="notifPrefsSaving || !emailIsVerified" />
+                        </div>
+                        <div class="flex items-start justify-between gap-4">
+                          <div>
+                            <div class="font-medium">Instant emails (high-signal)</div>
+                            <div class="text-xs moh-text-muted">
+                              Messages, mentions, and replies. Batched + throttled so it won’t spam you.
+                            </div>
+                          </div>
+                          <Checkbox v-model="notifPrefs.emailInstantHighSignal" binary :disabled="notifPrefsSaving || !emailIsVerified" />
                         </div>
                       </div>
                     </div>
@@ -560,13 +624,37 @@ type FollowVisibility = 'all' | 'verified' | 'premium' | 'none'
 type BirthdayVisibility = 'none' | 'monthDay' | 'full'
 type SettingsSection = 'account' | 'verification' | 'billing' | 'privacy' | 'notifications' | 'links'
 
-const { user: authUser, ensureLoaded } = useAuth()
+const { user: authUser, ensureLoaded, me } = useAuth()
 const { invalidateUserPreviewCache } = useUserPreview()
 const usersStore = useUsersStore()
 const route = useRoute()
+const toast = useAppToast()
+const emailVerificationUiReady = ref(false)
 
 // Ensure we have the current user (so inputs can prefill immediately).
 await ensureLoaded()
+// Important: `ensureLoaded()` is a no-op once auth has loaded. When navigating here
+// after an out-of-band update (e.g. admin unverifies email), force a refresh.
+onMounted(() => {
+  // Don't show resend controls until we know the server timestamp
+  // (prevents refresh -> click -> bypass countdown UI).
+  emailVerificationUiReady.value = false
+  void me().finally(() => {
+    emailVerificationUiReady.value = true
+  })
+})
+
+// Show a one-time toast after email verification redirect.
+onMounted(() => {
+  if (!import.meta.client) return
+  if (route.query.email_verified !== '1') return
+  toast.push({ title: 'Email was verified.', tone: 'success', durationMs: 2200 })
+  // Remove query param so it doesn't re-toast on refresh/back.
+  const nextQuery = { ...(route.query as Record<string, any>) }
+  delete nextQuery.email_verified
+  delete nextQuery.reason
+  void navigateTo({ path: route.path, query: nextQuery }, { replace: true })
+})
 
 const { apiFetch, apiFetchData } = useApiClient()
 import { getApiErrorMessage } from '~/utils/api-error'
@@ -898,9 +986,17 @@ async function saveNotifPrefs() {
 }
 
 onBeforeUnmount(() => {
+  if (emailResendTickTimer) {
+    clearInterval(emailResendTickTimer)
+    emailResendTickTimer = null
+  }
   if (notifPrefsSavedTimer) {
     clearTimeout(notifPrefsSavedTimer)
     notifPrefsSavedTimer = null
+  }
+  if (emailResendSavedTimer) {
+    clearTimeout(emailResendSavedTimer)
+    emailResendSavedTimer = null
   }
 })
 
@@ -1018,6 +1114,46 @@ const {
 })
 
 const emailHelperText = ref<string | null>(null)
+const emailResendSaving = ref(false)
+const emailResendSaved = ref(false)
+const emailResendError = ref<string | null>(null)
+let emailResendSavedTimer: ReturnType<typeof setTimeout> | null = null
+const EMAIL_RESEND_COOLDOWN_SECONDS = 30
+const emailResendUiHydrated = ref(false)
+const emailResendNowMs = ref<number>(Date.now())
+let emailResendTickTimer: ReturnType<typeof setInterval> | null = null
+
+const emailVerificationRequestedAtMs = computed(() => {
+  const raw = authUser.value?.emailVerificationRequestedAt ?? null
+  if (!raw) return null
+  const ms = new Date(String(raw)).getTime()
+  return Number.isFinite(ms) ? ms : null
+})
+
+const emailResendRetryAfterSeconds = computed(() => {
+  // Avoid SSR hydration mismatches: only show the live countdown after mount.
+  if (!emailResendUiHydrated.value) return 0
+  const requestedAt = emailVerificationRequestedAtMs.value
+  if (!requestedAt) return 0
+  const until = requestedAt + EMAIL_RESEND_COOLDOWN_SECONDS * 1000
+  const remainingMs = until - (emailResendNowMs.value ?? Date.now())
+  return Math.max(0, Math.ceil(remainingMs / 1000))
+})
+
+const emailResendCooldownActive = computed(() => emailResendRetryAfterSeconds.value > 0)
+const emailResendButtonLabel = computed(() =>
+  emailResendCooldownActive.value ? `Resend in ${emailResendRetryAfterSeconds.value}s` : 'Resend verification',
+)
+
+onMounted(() => {
+  if (!import.meta.client) return
+  emailResendUiHydrated.value = true
+  emailResendNowMs.value = Date.now()
+  if (emailResendTickTimer) clearInterval(emailResendTickTimer)
+  emailResendTickTimer = setInterval(() => {
+    emailResendNowMs.value = Date.now()
+  }, 250)
+})
 const locationQueryInput = ref('')
 const websiteInput = ref('')
 const profileDetailsHelperText = ref<string | null>(null)
@@ -1057,6 +1193,8 @@ const emailDirty = computed(() => {
   return current !== desired
 })
 
+const emailIsVerified = computed(() => Boolean(authUser.value?.email && authUser.value?.emailVerifiedAt))
+
 const profileDetailsDirty = computed(() => {
   const currentLocation = (authUser.value?.locationDisplay ?? '').trim().toLowerCase()
   const desiredLocation = locationQueryInput.value.trim().toLowerCase()
@@ -1078,6 +1216,16 @@ const { save: saveEmailRequest, saving: emailSaving, saved: emailSaved } = useFo
     })
     authUser.value = result.user ?? authUser.value
     syncUserCaches(result.user, previousUsername)
+
+    // If they set/changed email, server marks it unverified and sends verification.
+    if (result.user?.email && !result.user.emailVerifiedAt) {
+      emailResendSaved.value = true
+      if (emailResendSavedTimer) clearTimeout(emailResendSavedTimer)
+      emailResendSavedTimer = setTimeout(() => {
+        emailResendSavedTimer = null
+        emailResendSaved.value = false
+      }, 2500)
+    }
   },
   {
     defaultError: 'Failed to save email.',
@@ -1086,6 +1234,36 @@ const { save: saveEmailRequest, saving: emailSaving, saved: emailSaved } = useFo
     },
   },
 )
+
+async function resendEmailVerification() {
+  if (emailResendSaving.value || emailResendCooldownActive.value) return
+  emailResendSaving.value = true
+  emailResendError.value = null
+  emailResendSaved.value = false
+  try {
+    const res = await apiFetchData<{ sent: boolean; reason?: string; retryAfterSeconds?: number }>('/email/verification/resend', {
+      method: 'POST',
+    })
+    // Always refresh auth state; requestedAt drives the persistent cooldown (survives refresh).
+    await me()
+
+    if (res.sent) {
+      emailResendSaved.value = true
+    } else if (res.reason === 'cooldown') {
+      const s = Math.max(1, Math.floor(res.retryAfterSeconds ?? emailResendRetryAfterSeconds.value ?? 1))
+      emailResendError.value = `Please wait ${s}s before resending.`
+    }
+    if (emailResendSavedTimer) clearTimeout(emailResendSavedTimer)
+    emailResendSavedTimer = setTimeout(() => {
+      emailResendSavedTimer = null
+      emailResendSaved.value = false
+    }, 2500)
+  } catch (e: unknown) {
+    emailResendError.value = getApiErrorMessage(e) || 'Failed to resend verification email.'
+  } finally {
+    emailResendSaving.value = false
+  }
+}
 
 const {
   save: saveProfileDetailsRequest,
