@@ -105,6 +105,13 @@ async function loadDefinitionForWord(payload: Websters1828WordOfDay): Promise<Hy
 
   const p = apiFetchData<Websters1828WordOfDay>('/meta/websters1828/wotd?includeDefinition=1', { method: 'GET' })
     .then((next) => {
+      // Guardrail: if caches drift (or the API "heals" to a new WOTD), never attach a definition to the wrong word.
+      const nextWordKey = (next?.word ?? '').trim().toLowerCase()
+      if (nextWordKey && nextWordKey !== wordKey) {
+        // Refresh the base card so UI stays API-driven and consistent.
+        void refresh()
+        return { definition: null, definitionHtml: null }
+      }
       const hydrated: HydratedDefinition = {
         definition: next?.definition?.trim() ? next.definition : null,
         definitionHtml: next?.definitionHtml?.trim() ? next.definitionHtml : null,
