@@ -48,25 +48,28 @@
       />
     </div>
     <div class="flex gap-2.5 sm:gap-3" :class="{ 'mt-2': showThreadLineAboveAvatar && noPaddingTop }">
-      <div class="shrink-0 flex flex-col w-10">
+      <div class="relative z-20 shrink-0 flex flex-col w-10">
         <NuxtLink
           v-if="authorProfilePath"
           :to="authorProfilePath"
           class="group shrink-0"
           :aria-label="`View @${author.username} profile`"
         >
+          <div ref="avatarEl">
+            <AppUserAvatar
+              :user="author"
+              size-class="h-10 w-10"
+              bg-class="moh-surface"
+            />
+          </div>
+        </NuxtLink>
+        <div v-else ref="avatarEl">
           <AppUserAvatar
             :user="author"
             size-class="h-10 w-10"
             bg-class="moh-surface"
           />
-        </NuxtLink>
-        <AppUserAvatar
-          v-else
-          :user="author"
-          size-class="h-10 w-10"
-          bg-class="moh-surface"
-        />
+        </div>
       </div>
 
       <div class="relative z-10 min-w-0 flex-1" :class="{ 'pt-3': showThreadLineAboveAvatar }">
@@ -384,15 +387,90 @@ const highlightClass = computed(() => {
   if (v === 'onlyMe') return 'moh-post-highlight moh-post-highlight-onlyme'
   return 'moh-post-highlight'
 })
+
 // Thread line overlays: 2px; stay within row, gap between line and avatar (no overextend).
 const THREAD_LINE_GAP = 4
-const AVATAR_H = 40
-// When showThreadLineAboveAvatar && noPaddingTop we add mt-2 (8px) so avatar starts at 8; line above 0–4px, gap 4px.
-// When showThreadLineAboveAvatar && !noPaddingTop we have pt-3 (12px); line above 0–8px, gap 4px, avatar at 12.
-const threadLineAboveOverlayStyle = computed(() => ({ top: '0' }))
-const threadLineAboveOverlayHeight = computed(() =>
-  props.noPaddingTop ? '4px' : '8px',
+const FALLBACK_AVATAR_H = 40
+
+const avatarEl = ref<HTMLElement | null>(null)
+const avatarTopPx = ref(0)
+const avatarHPx = ref(FALLBACK_AVATAR_H)
+let avatarRo: ResizeObserver | null = null
+let avatarResizeRaf = 0
+
+function recomputeAvatarMetrics() {
+  if (!import.meta.client) return
+  const row = rowEl.value
+  const avatar = avatarEl.value
+  if (!row || !avatar) return
+  const rowRect = row.getBoundingClientRect()
+  const avatarRect = avatar.getBoundingClientRect()
+  // Clamp to avoid negative top from fractional rounding / transforms.
+  avatarTopPx.value = Math.max(0, Math.round(avatarRect.top - rowRect.top))
+  avatarHPx.value = Math.max(0, Math.round(avatarRect.height)) || FALLBACK_AVATAR_H
+}
+
+function scheduleAvatarMetricsRecompute() {
+  if (!import.meta.client) return
+  if (avatarResizeRaf) cancelAnimationFrame(avatarResizeRaf)
+  avatarResizeRaf = requestAnimationFrame(() => {
+    avatarResizeRaf = 0
+    recomputeAvatarMetrics()
+  })
+}
+
+onMounted(() => {
+  scheduleAvatarMetricsRecompute()
+  if (!import.meta.client) return
+  try {
+    avatarRo = new ResizeObserver(() => scheduleAvatarMetricsRecompute())
+    if (rowEl.value) avatarRo.observe(rowEl.value)
+    if (avatarEl.value) avatarRo.observe(avatarEl.value)
+    window.addEventListener('resize', scheduleAvatarMetricsRecompute, { passive: true })
+  } catch {
+    // ignore
+  }
+})
+
+watch(
+  avatarEl,
+  (el, prev) => {
+    if (!import.meta.client) return
+    if (!avatarRo) return
+    if (prev) avatarRo.unobserve(prev)
+    if (el) {
+      avatarRo.observe(el)
+      scheduleAvatarMetricsRecompute()
+    }
+  },
+  { flush: 'post' },
 )
+
+onBeforeUnmount(() => {
+  if (!import.meta.client) return
+  if (avatarResizeRaf) cancelAnimationFrame(avatarResizeRaf)
+  avatarResizeRaf = 0
+  try {
+    window.removeEventListener('resize', scheduleAvatarMetricsRecompute)
+  } catch {
+    // ignore
+  }
+  if (avatarRo) {
+    try {
+      if (rowEl.value) avatarRo.unobserve(rowEl.value)
+      if (avatarEl.value) avatarRo.unobserve(avatarEl.value)
+      avatarRo.disconnect()
+    } catch {
+      // ignore
+    } finally {
+      avatarRo = null
+    }
+  }
+})
+
+// When showThreadLineAboveAvatar: line should end THREAD_LINE_GAP px above the avatar.
+const threadLineAboveOverlayStyle = computed(() => ({ top: '0' }))
+const threadLineAboveOverlayHeight = computed(() => `${Math.max(0, avatarTopPx.value - THREAD_LINE_GAP)}px`)
 const threadLineAboveStyle = computed(() => {
   const base = { height: threadLineAboveOverlayHeight.value }
   if (props.threadLineTint === 'verified') return { ...base, backgroundColor: 'var(--moh-verified)' }
@@ -404,16 +482,9 @@ const threadLineBelowStyle = computed(() => {
   if (props.threadLineTint === 'premium') return { backgroundColor: 'var(--moh-premium)' }
   return undefined
 })
-// Line below starts (avatar bottom + gap). Avatar top: 8 when line above + noPaddingTop (mt-2), 12 when line above + pt-3, 8/16 when no line above (py-2/py-4).
+// Line below starts (avatar bottom + gap), based on measured avatar position.
 const threadLineBelowOverlayStyle = computed(() => {
-  const avatarTop = props.showThreadLineAboveAvatar
-    ? props.noPaddingTop
-      ? 8
-      : 12
-    : props.compact
-      ? 8
-      : 16
-  const top = avatarTop + AVATAR_H + THREAD_LINE_GAP
+  const top = avatarTopPx.value + avatarHPx.value + THREAD_LINE_GAP
   return { top: `${top}px`, bottom: '0' }
 })
 const rowStyle = computed(() => ({
