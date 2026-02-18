@@ -4,7 +4,7 @@
     :data-post-id="postView.id"
     :class="[
       'relative overflow-visible moh-gutter-x transition-colors',
-      compact ? 'py-2' : 'py-4',
+      compact ? 'py-1.5 sm:py-2' : 'py-3 sm:py-4',
       noPaddingBottom ? 'pb-0' : '',
       noPaddingTop ? 'pt-0' : '',
       showThreadLineAboveAvatar && !noPaddingTop ? 'pt-3' : '',
@@ -47,7 +47,7 @@
         :style="threadLineBelowStyle"
       />
     </div>
-    <div class="flex gap-3" :class="{ 'mt-2': showThreadLineAboveAvatar && noPaddingTop }">
+    <div class="flex gap-2.5 sm:gap-3" :class="{ 'mt-2': showThreadLineAboveAvatar && noPaddingTop }">
       <div class="shrink-0 flex flex-col w-10">
         <NuxtLink
           v-if="authorProfilePath"
@@ -93,10 +93,10 @@
 
         <div
           v-if="!isDeletedPost && postView.kind === 'checkin'"
-          class="mt-2 rounded-lg moh-surface/50 px-3 py-2.5"
+          class="mt-2 rounded-lg moh-surface/50 px-2.5 py-2 sm:px-3 sm:py-2.5"
         >
           <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
-            <span v-if="postView.checkinPrompt" class="text-[13px] moh-text-muted opacity-80">
+            <span v-if="postView.checkinPrompt" class="text-xs sm:text-[13px] moh-text-muted opacity-80">
               {{ postView.checkinPrompt }}
             </span>
           </div>
@@ -104,7 +104,7 @@
 
         <div
           v-if="isDeletedPost"
-          class="mt-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm font-semibold text-gray-700 dark:border-zinc-800 dark:bg-black dark:text-white"
+          class="mt-2 rounded-lg border border-gray-200 bg-gray-50 px-2.5 py-1.5 sm:px-3 sm:py-2 text-sm font-semibold text-gray-700 dark:border-zinc-800 dark:bg-black dark:text-white"
         >
           Post deleted.
         </div>
@@ -164,13 +164,13 @@
           </div>
         </div>
 
-          <div v-if="!isDeletedPost" class="mt-3 flex items-center justify-between moh-text-muted">
+          <div v-if="!isDeletedPost" class="mt-2.5 sm:mt-3 flex items-center justify-between moh-text-muted">
           <div class="flex items-center gap-1">
             <!-- Reply: hidden for only-me posts -->
             <div v-if="!isOnlyMe" class="inline-flex w-16 items-center justify-start">
               <button
                 type="button"
-                class="inline-flex h-9 w-9 items-center justify-center rounded-full transition-colors moh-surface-hover"
+                class="inline-flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-full transition-colors moh-surface-hover"
                 :class="commentClickable ? 'cursor-pointer' : 'cursor-default opacity-60'"
                 aria-label="Reply"
                 v-tooltip.bottom="commentTooltip"
@@ -181,14 +181,14 @@
               <NuxtLink
                 v-if="displayedCommentCount > 0"
                 :to="postPermalink"
-                class="ml-0 inline-block min-w-[1.5rem] select-none text-left text-xs tabular-nums moh-text-muted hover:underline"
+                class="ml-0 inline-block min-w-[1.5rem] select-none text-left text-[11px] sm:text-xs tabular-nums moh-text-muted hover:underline"
                 aria-label="View replies"
               >
                 {{ commentCountLabel ?? '' }}
               </NuxtLink>
               <span
                 v-else
-                class="ml-0 inline-block w-6 select-none text-left text-xs tabular-nums moh-text-muted"
+                class="ml-0 inline-block w-6 select-none text-left text-[11px] sm:text-xs tabular-nums moh-text-muted"
                 aria-hidden="true"
               >
                 {{ commentCountLabel ?? '' }}
@@ -198,7 +198,7 @@
             <div v-if="!isOnlyMe" class="inline-flex w-16 items-center justify-start">
               <button
                 type="button"
-                class="inline-flex h-9 w-9 items-center justify-center rounded-full transition-colors moh-surface-hover"
+                class="inline-flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-full transition-colors moh-surface-hover"
                 :class="boostClickable ? 'cursor-pointer' : 'cursor-default opacity-60'"
                 :aria-label="isBoosted ? 'Remove upvote' : 'Upvote'"
                 v-tooltip.bottom="upvoteTooltip"
@@ -226,14 +226,14 @@
                   />
                 </svg>
               </button>
-              <span class="ml-0 inline-block w-6 select-none text-left text-xs tabular-nums moh-text-muted" aria-hidden="true">
+              <span class="ml-0 inline-block w-6 select-none text-left text-[11px] sm:text-xs tabular-nums moh-text-muted" aria-hidden="true">
                 {{ boostCountLabel ?? '' }}
               </span>
             </div>
           </div>
 
           <div v-if="!isOnlyMe" class="relative flex items-center justify-end">
-            <span class="mr-0 inline-block w-6 select-none text-right text-xs tabular-nums moh-text-muted" aria-hidden="true">
+            <span class="mr-0 inline-block w-6 select-none text-right text-[11px] sm:text-xs tabular-nums moh-text-muted" aria-hidden="true">
               {{ bookmarkCountLabel ?? '' }}
             </span>
             <AppPostRowBookmarkButton

@@ -16,7 +16,7 @@
     <div ref="sortWrapEl" class="relative">
       <button
         type="button"
-        class="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1.5 text-[12px] font-semibold leading-none transition-colors border-gray-200 text-gray-700 hover:bg-gray-50 dark:border-zinc-800 dark:text-gray-200 dark:hover:bg-zinc-900"
+        class="inline-flex items-center gap-1.5 rounded-full border px-2 py-1 sm:px-2.5 sm:py-1.5 text-[11px] sm:text-[12px] font-semibold leading-none transition-colors border-gray-200 text-gray-700 hover:bg-gray-50 dark:border-zinc-800 dark:text-gray-200 dark:hover:bg-zinc-900"
         aria-label="Change feed sort order"
         @click="toggleSortPopover"
       >
@@ -36,7 +36,7 @@
         </div>
         <button
           type="button"
-          class="w-full text-left px-3 py-2 text-sm font-semibold transition-colors text-gray-900 hover:bg-gray-50 dark:text-gray-50 dark:hover:bg-zinc-900 flex items-center gap-2"
+          class="w-full text-left px-2.5 py-1.5 sm:px-3 sm:py-2 text-[13px] sm:text-sm font-semibold transition-colors text-gray-900 hover:bg-gray-50 dark:text-gray-50 dark:hover:bg-zinc-900 flex items-center gap-2"
           role="menuitem"
           @click="setSort('new')"
         >
@@ -46,7 +46,7 @@
         </button>
         <button
           type="button"
-          class="w-full text-left px-3 py-2 text-sm font-semibold transition-colors text-gray-900 hover:bg-gray-50 dark:text-gray-50 dark:hover:bg-zinc-900 flex items-center gap-2"
+          class="w-full text-left px-2.5 py-1.5 sm:px-3 sm:py-2 text-[13px] sm:text-sm font-semibold transition-colors text-gray-900 hover:bg-gray-50 dark:text-gray-50 dark:hover:bg-zinc-900 flex items-center gap-2"
           role="menuitem"
           @click="setSort('trending')"
         >
@@ -61,7 +61,7 @@
     <div v-if="showVisibilityFilter" ref="filterWrapEl" class="relative">
       <button
         type="button"
-        class="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1.5 text-[12px] font-semibold leading-none transition-colors"
+        class="inline-flex items-center gap-1.5 rounded-full border px-2 py-1 sm:px-2.5 sm:py-1.5 text-[11px] sm:text-[12px] font-semibold leading-none transition-colors"
         :class="filterPillClass"
         aria-label="Change feed visibility"
         @click="toggleFilterPopover"
@@ -93,7 +93,7 @@
         </div>
         <button
           type="button"
-          class="w-full text-left px-3 py-2 text-sm font-semibold transition-colors text-gray-900 hover:bg-gray-50 dark:text-gray-50 dark:hover:bg-zinc-900 flex items-center gap-2"
+          class="w-full text-left px-2.5 py-1.5 sm:px-3 sm:py-2 text-[13px] sm:text-sm font-semibold transition-colors text-gray-900 hover:bg-gray-50 dark:text-gray-50 dark:hover:bg-zinc-900 flex items-center gap-2"
           role="menuitem"
           @click="setFilter('all')"
         >
@@ -103,7 +103,7 @@
         </button>
         <button
           type="button"
-          class="w-full text-left px-3 py-2 text-sm font-semibold transition-colors text-gray-900 hover:bg-gray-50 dark:text-gray-50 dark:hover:bg-zinc-900 flex items-center gap-2"
+          class="w-full text-left px-2.5 py-1.5 sm:px-3 sm:py-2 text-[13px] sm:text-sm font-semibold transition-colors text-gray-900 hover:bg-gray-50 dark:text-gray-50 dark:hover:bg-zinc-900 flex items-center gap-2"
           role="menuitem"
           @click="setFilter('public')"
         >
@@ -113,7 +113,7 @@
         </button>
         <button
           type="button"
-          class="w-full text-left px-3 py-2 text-sm font-semibold transition-colors moh-menuitem-verified flex items-center gap-2"
+          class="w-full text-left px-2.5 py-1.5 sm:px-3 sm:py-2 text-[13px] sm:text-sm font-semibold transition-colors moh-menuitem-verified flex items-center gap-2"
           role="menuitem"
           @click="setFilter('verifiedOnly')"
         >
@@ -126,7 +126,7 @@
         </button>
         <button
           type="button"
-          class="w-full text-left px-3 py-2 text-sm font-semibold transition-colors moh-menuitem-premium flex items-center gap-2"
+          class="w-full text-left px-2.5 py-1.5 sm:px-3 sm:py-2 text-[13px] sm:text-sm font-semibold transition-colors moh-menuitem-premium flex items-center gap-2"
           role="menuitem"
           @click="setFilter('premiumOnly')"
         >

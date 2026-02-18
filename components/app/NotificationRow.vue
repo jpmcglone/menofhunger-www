@@ -24,10 +24,10 @@
     <!-- Column 2: the rest of the row -->
     <div
       :class="[
-        'flex min-w-0 flex-1 gap-4 ml-1',
+        'flex min-w-0 flex-1 gap-3 sm:gap-4 ml-1',
         // Content padding lives on column 2 so column 1 can be flush to the row edges.
         // When the bar is hidden, keep a left padding so the row still feels consistent.
-        notification.readAt ? 'px-4 py-4' : 'pr-4 py-4',
+        notification.readAt ? 'px-3 py-3 sm:px-4 sm:py-4' : 'pr-3 py-3 sm:pr-4 sm:py-4',
         shouldAnimate ? 'transition-[padding] duration-150 ease-out' : '',
       ]"
     >
@@ -48,7 +48,7 @@
                 name: notification.actor.name,
                 avatarUrl: notification.actor.avatarUrl,
               }"
-              size-class="h-10 w-10"
+              size-class="h-9 w-9 sm:h-10 sm:w-10"
             />
           </NuxtLink>
           <AppUserAvatar
@@ -59,16 +59,16 @@
               name: notification.actor.name,
               avatarUrl: notification.actor.avatarUrl,
             }"
-            size-class="h-10 w-10"
+            size-class="h-9 w-9 sm:h-10 sm:w-10"
           />
           <div
             v-else
-            class="h-10 w-10 rounded-full bg-gray-200 dark:bg-zinc-800"
+            class="h-9 w-9 sm:h-10 sm:w-10 rounded-full bg-gray-200 dark:bg-zinc-800"
             aria-hidden="true"
           />
           <!-- Notification type icon: mention = viewer tier; otherwise actor tier -->
           <div
-            class="absolute -bottom-3 -left-2 z-10 flex h-7 w-7 items-center justify-center rounded-full border-2 border-white dark:border-black shadow-sm"
+            class="absolute -bottom-3 -left-2 z-10 flex h-6 w-6 sm:h-7 sm:w-7 items-center justify-center rounded-full border-2 border-white dark:border-black shadow-sm"
             :class="notificationTypeIconBgClass(notification)"
             aria-hidden="true"
           >
@@ -101,7 +101,7 @@
         <div class="flex items-start justify-between gap-4">
           <div class="min-w-0 flex-1">
             <!-- Title + quoted message: up to 2 lines with truncation -->
-            <div :class="['min-w-0 max-w-full line-clamp-2 text-sm', notification.readAt ? 'font-medium' : 'font-semibold']">
+            <div :class="['min-w-0 max-w-full line-clamp-2 text-[13px] sm:text-sm', notification.readAt ? 'font-medium' : 'font-semibold']">
               <span :class="actorTierClass(notification)">{{ actorDisplay(notification) }}</span>
               <template v-if="notification.kind === 'comment'">
                 <span class="ml-1">replied to your</span>
@@ -125,11 +125,11 @@
             <!-- Fallback for other kinds with body -->
             <div
               v-if="notification.body && notification.kind !== 'comment' && notification.kind !== 'mention'"
-              class="mt-0.5 line-clamp-2 text-sm text-gray-600 dark:text-gray-300"
+              class="mt-0.5 line-clamp-2 text-[13px] sm:text-sm text-gray-600 dark:text-gray-300"
             >
               {{ notification.body }}
             </div>
-            <div v-if="!notification.body && !notification.subjectPostPreview?.media?.length" class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+            <div v-if="!notification.body && !notification.subjectPostPreview?.media?.length" class="mt-1 text-[11px] sm:text-xs text-gray-500 dark:text-gray-400">
               {{ notificationContext(notification) }}
             </div>
             <!-- Next line: media only (no blockquote) -->
@@ -248,7 +248,7 @@
               </span>
             </div>
 
-            <div class="shrink-0 text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
+            <div class="shrink-0 text-[11px] sm:text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
               <ClientOnly>
                 <template #fallback>
                   <span aria-hidden="true">&nbsp;</span>

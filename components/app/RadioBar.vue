@@ -1,6 +1,6 @@
 <template>
   <!-- Own padding so layout containers can stay padding-free. -->
-  <div v-if="displayStation" class="w-full px-4 py-2">
+  <div v-if="displayStation" class="w-full px-3 py-1.5 sm:px-4 sm:py-2">
     <div class="flex w-full items-center justify-between gap-3">
     <button
       type="button"
@@ -78,7 +78,7 @@
       <div :class="['flex items-center gap-1.5 shrink-0', showListenerStack ? 'ml-2 sm:ml-3' : '']">
         <button
           type="button"
-          class="moh-tap moh-focus inline-flex h-9 w-9 items-center justify-center rounded-full transition-colors moh-surface-hover"
+          class="moh-tap moh-focus inline-flex h-11 w-11 sm:h-9 sm:w-9 items-center justify-center rounded-full transition-colors moh-surface-hover"
           :aria-label="isMuted ? 'Unmute radio' : 'Mute radio'"
           @click="toggleMute"
         >
@@ -107,7 +107,7 @@
       <button
         v-else
         type="button"
-        class="moh-tap moh-focus inline-flex h-9 w-9 items-center justify-center rounded-full transition-colors moh-surface-hover"
+        class="moh-tap moh-focus inline-flex h-11 w-11 sm:h-9 sm:w-9 items-center justify-center rounded-full transition-colors moh-surface-hover"
         :aria-label="isPlaying ? 'Pause radio' : 'Play radio'"
         @click="toggle"
       >
@@ -116,7 +116,7 @@
 
       <button
         type="button"
-        class="moh-tap moh-focus inline-flex h-9 w-9 items-center justify-center rounded-full transition-colors moh-surface-hover"
+        class="moh-tap moh-focus inline-flex h-11 w-11 sm:h-9 sm:w-9 items-center justify-center rounded-full transition-colors moh-surface-hover"
         aria-label="Close radio"
         @click="stop"
       >

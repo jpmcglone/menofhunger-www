@@ -30,6 +30,14 @@
   --moh-right-rail-w: 20rem;
 }
 
+@media (max-width: 639px) {
+  :root {
+    --moh-tabbar-height: 4.25rem;
+    --moh-radio-bar-height: 3.75rem;
+    --moh-gutter-x: 0.875rem;
+  }
+}
+
 @supports (height: 100dvh) {
   :root {
     --moh-viewport-h: 100dvh;

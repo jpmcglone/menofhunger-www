@@ -2,7 +2,7 @@
   <div
     class="sticky top-0 z-20 border-b moh-border moh-surface p-0 shadow-[0_6px_16px_rgba(20,18,16,0.06)] dark:shadow-none"
   >
-    <div class="moh-feed-header-inner relative flex items-center justify-between gap-3 moh-gutter-x py-2">
+    <div class="moh-feed-header-inner relative flex items-center justify-between gap-3 moh-gutter-x py-1.5 sm:py-2">
       <template v-if="scopeTabs.length > 1">
         <AppTabSelector
           :model-value="scope"

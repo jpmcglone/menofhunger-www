@@ -9,10 +9,10 @@
           !isTinyViewport ? 'border-b-0 border-r' : ''
         ]"
       >
-        <div class="py-4">
-          <div class="px-4 text-lg font-semibold">Settings</div>
+        <div class="py-3 sm:py-4">
+          <div class="px-3 sm:px-4 text-base sm:text-lg font-semibold">Settings</div>
 
-          <div class="mt-3 px-4">
+          <div class="mt-3 px-3 sm:px-4">
             <InputText
               v-model="sectionQuery"
               id="settings-search"
@@ -45,7 +45,7 @@
       <!-- Right column: selected section -->
       <section v-if="showDetailPane" :class="['h-full overflow-hidden', !isTinyViewport ? 'pl-4' : '']">
         <div class="flex h-full flex-col">
-          <div class="border-b border-gray-200 py-3 dark:border-zinc-800">
+          <div class="border-b border-gray-200 py-2.5 sm:py-3 dark:border-zinc-800">
             <div class="flex items-center justify-between gap-3">
               <div class="flex min-w-0 items-start gap-2">
                 <Button
@@ -71,8 +71,8 @@
             </div>
           </div>
 
-          <div class="flex-1 overflow-y-auto pt-4 pb-0 sm:pb-4">
-            <div class="px-4">
+          <div class="flex-1 overflow-y-auto pt-3 sm:pt-4 pb-0 sm:pb-4">
+            <div class="px-3 sm:px-4">
               <div v-if="selectedSection === 'account'" class="space-y-6">
                 <AppUsernameField
                   v-model="usernameInput"
@@ -823,7 +823,7 @@ const filteredSections = computed(() => {
 function sectionRowClass(key: SettingsSection) {
   const active = selectedSection.value === key
   return [
-    'block px-4 py-3 transition-colors',
+    'block px-3 py-2.5 sm:px-4 sm:py-3 min-h-[44px] transition-colors',
     active
       ? 'moh-pane-row-active'
       : 'hover:bg-gray-50 dark:hover:bg-zinc-900',

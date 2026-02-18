@@ -1,5 +1,5 @@
 <template>
-  <div class="px-4 py-3 hover:bg-gray-50 dark:hover:bg-zinc-900 transition-colors">
+  <div class="px-3 py-2.5 sm:px-4 sm:py-3 min-h-[44px] flex items-center hover:bg-gray-50 dark:hover:bg-zinc-900 transition-colors">
     <div class="flex items-center justify-between gap-3">
       <NuxtLink
         v-if="profilePath"

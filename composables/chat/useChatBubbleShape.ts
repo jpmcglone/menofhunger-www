@@ -3,14 +3,23 @@ export function useChatBubbleShape() {
   const bubbleEls = new Map<string, HTMLElement>()
   let bubbleRo: ResizeObserver | null = null
 
+  function isSmallViewport() {
+    if (!import.meta.client) return false
+    try {
+      return window.matchMedia?.('(max-width: 639px)')?.matches ?? false
+    } catch {
+      return false
+    }
+  }
+
   function computeBubbleShapeFor(id: string, el: HTMLElement) {
     const h = Math.max(0, Math.floor(el.getBoundingClientRect().height))
     const current = bubbleShapeById.value.get(id) ?? 'rect'
     // Heuristics based on current styles:
     // - rect uses p-3 (12px top/bottom) + text-sm (~20px line height) => ~44px for 1 line
     // - 2 lines => ~64px. Use hysteresis to avoid flip-flop near boundary.
-    const toPillThreshold = 46
-    const toRectThreshold = 54
+    const toPillThreshold = isSmallViewport() ? 40 : 46
+    const toRectThreshold = isSmallViewport() ? 48 : 54
     const next =
       current === 'pill'
         ? (h > toRectThreshold ? 'rect' : 'pill')
@@ -61,7 +70,9 @@ export function useChatBubbleShape() {
   function bubbleShapeClass(id: string) {
     const shape = bubbleShapeById.value.get(id) ?? 'rect'
     // Pill should be a bit tighter vertically and more horizontal padding.
-    return shape === 'pill' ? 'rounded-full px-4 py-2' : 'rounded-2xl p-3'
+    return shape === 'pill'
+      ? 'rounded-full px-3.5 py-1.5 sm:px-4 sm:py-2'
+      : 'rounded-2xl p-2.5 sm:p-3'
   }
 
   onBeforeUnmount(() => {

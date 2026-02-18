@@ -64,7 +64,7 @@
           <!-- Right column: chat for selected thread (edge-to-edge column, consistent content margins) -->
           <section v-if="showChatPane" class="h-full overflow-hidden">
             <div class="flex h-full min-h-0 flex-col">
-              <div class="shrink-0 border-b border-gray-200 px-4 py-3 dark:border-zinc-800">
+              <div class="shrink-0 border-b border-gray-200 px-4 py-2 sm:py-3 dark:border-zinc-800">
                 <div class="flex items-center justify-between gap-3">
                   <div class="flex min-w-0 items-start gap-2">
                     <Button
@@ -86,7 +86,7 @@
                         :aria-label="headerAvatarUser.username ? `View @${headerAvatarUser.username}` : 'View profile'"
                         @click="goToProfile(headerAvatarUser)"
                       >
-                        <AppUserAvatar :user="headerAvatarUser" size-class="h-10 w-10" />
+                        <AppUserAvatar :user="headerAvatarUser" size-class="h-9 w-9 sm:h-10 sm:w-10" />
                       </button>
                       <div class="min-w-0">
                         <div class="font-semibold min-w-0 flex items-center gap-2">
@@ -305,7 +305,7 @@
             </div>
           </div>
 
-          <div v-if="selectedChatKey" class="shrink-0 border-t border-gray-200 px-4 py-2.5 dark:border-zinc-800" :style="composerBarStyle">
+          <div v-if="selectedChatKey" class="shrink-0 border-t border-gray-200 px-4 py-2 sm:py-2.5 dark:border-zinc-800" :style="composerBarStyle">
             <div v-if="selectedConversation?.viewerStatus === 'pending'" class="mb-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-200">
               This is a chat request. Replying accepts it and moves it to your inbox.
               <div class="mt-2">

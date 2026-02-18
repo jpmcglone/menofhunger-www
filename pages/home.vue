@@ -10,7 +10,7 @@
         persist-key="home"
         :register-unsaved-guard="false"
       />
-      <div v-else class="px-4 pt-4">
+      <div v-else class="px-3 pt-3 sm:px-4 sm:pt-4">
         <div class="rounded-2xl border moh-border moh-surface p-4 sm:p-5">
           <div class="flex items-start gap-3">
             <div class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl moh-btn-onlyme moh-btn-tone">
@@ -47,12 +47,12 @@
       leave-from-class="opacity-100 translate-y-0"
       leave-to-class="opacity-0 -translate-y-1 max-h-0"
     >
-      <div v-if="showCheckinPromptBar" class="px-4 pt-3 pb-3">
+      <div v-if="showCheckinPromptBar" class="px-3 pt-2.5 pb-2.5 sm:px-4 sm:pt-3 sm:pb-3">
         <div class="rounded-xl moh-surface/60 px-3 py-2.5">
           <div class="flex items-center justify-between gap-3">
             <div class="min-w-0 flex-1">
               <div
-                class="text-[13px] leading-snug moh-text-muted opacity-80 moh-serif"
+                class="text-xs sm:text-[13px] leading-snug moh-text-muted opacity-80 moh-serif"
                 style="display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;"
               >
                 {{ checkinPromptText }}
@@ -89,16 +89,16 @@
         @reset="() => void resetFilters()"
       />
 
-      <div v-if="feedCtaKind === 'verify'" class="mx-4 mt-4">
+      <div v-if="feedCtaKind === 'verify'" class="mx-3 mt-3 sm:mx-4 sm:mt-4">
         <AppAccessGateCard kind="verify" />
       </div>
 
-      <div v-else-if="feedCtaKind === 'premium'" class="mx-4 mt-4">
+      <div v-else-if="feedCtaKind === 'premium'" class="mx-3 mt-3 sm:mx-4 sm:mt-4">
         <AppAccessGateCard kind="premium" />
       </div>
 
       <template v-else>
-        <AppInlineAlert v-if="error" class="mx-4 mt-4" severity="danger">
+        <AppInlineAlert v-if="error" class="mx-3 mt-3 sm:mx-4 sm:mt-4" severity="danger">
           {{ error }}
         </AppInlineAlert>
 
