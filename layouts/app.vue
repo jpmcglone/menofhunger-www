@@ -670,8 +670,7 @@ import { siteConfig } from '~/config/site'
 import logoLightSmall from '~/assets/images/logo-white-bg-small.png'
 import logoDarkSmall from '~/assets/images/logo-black-bg-small.png'
 import { primaryTintCssForUser } from '~/utils/theme-tint'
-import dailyQuotes from '~/config/daily-quotes.json'
-import { formatDailyQuoteAttribution, getDailyQuote, type DailyQuote } from '~/utils/daily-quote'
+import { formatDailyQuoteAttribution } from '~/utils/daily-quote'
 import {
   MOH_HOME_COMPOSER_IN_VIEW_KEY,
   MOH_MIDDLE_SCROLLER_KEY,
@@ -683,7 +682,7 @@ import {
 import { useBookmarkCollections } from '~/composables/useBookmarkCollections'
 import { useOnlyMePosts } from '~/composables/useOnlyMePosts'
 import { useReplyModal } from '~/composables/useReplyModal'
-import type { FeedPost, GetPresenceOnlineData, PostVisibility } from '~/types/api'
+import type { DailyContentToday, DailyQuote, FeedPost, GetPresenceOnlineData, PostVisibility } from '~/types/api'
 import { isComposerEntrypointPath, routeHeaderDefaultsFor } from '~/config/routes'
 import { userColorTier, userTierTextClass } from '~/utils/user-tier'
 
@@ -901,7 +900,7 @@ function applyComposerCustomOptions(options?: ComposerOpenOptions | null) {
   composerCustomCreatePost.value = (options.createPost as ComposerCreatePostFn | undefined) ?? null
 }
 
-const { apiFetchData } = useApiClient()
+const { apiFetch, apiFetchData } = useApiClient()
 async function createPostFromOnlyMeDraft(
   body: string,
   visibility: PostVisibility,
@@ -1242,12 +1241,30 @@ const lightbox = useImageLightbox()
 // Status page uses a custom “ops” background only in dark mode.
 const showStatusBg = computed(() => route.path === '/status' && colorMode.value === 'dark')
 
-const { now: easternNow } = useEasternMidnightRollover()
-const dailyQuote = computed(() => {
-  const { quote } = getDailyQuote(dailyQuotes as unknown as DailyQuote[], easternNow.value)
-  return quote
-})
-const dailyQuoteAttribution = computed(() => (dailyQuote.value ? formatDailyQuoteAttribution(dailyQuote.value) : ''))
+const { dayKey: dailyContentDayKey } = useEasternMidnightRollover()
+const {
+  data: dailyContent,
+  refresh: refreshDailyContent,
+} = await useAsyncData<DailyContentToday>(
+  'daily-content:today',
+  async () => {
+    return await apiFetchData<DailyContentToday>('/meta/daily-content/today', { method: 'GET' })
+  },
+  { server: true },
+)
+
+const dailyQuote = computed<DailyQuote | null>(() => dailyContent.value?.quote ?? null)
+const dailyQuoteAttribution = computed(() => (dailyQuote.value ? formatDailyQuoteAttribution(dailyQuote.value as any) : ''))
+
+watch(
+  () => dailyContentDayKey.value,
+  async (next, prev) => {
+    if (!import.meta.client) return
+    if (!prev) return
+    if (next === prev) return
+    await refreshDailyContent()
+  },
+)
 
 const {
   users: whoToFollowUsers,
@@ -1259,7 +1276,6 @@ const {
   defaultLimit: 4,
 })
 
-const { apiFetch } = useApiClient()
 const onlineCount = ref<number | null>(null)
 const onlineCountPopover = useOnlineCountPopover()
 

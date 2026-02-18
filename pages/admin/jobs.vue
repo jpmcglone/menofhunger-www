@@ -21,6 +21,70 @@
         <div class="rounded-xl border moh-border moh-bg p-4 space-y-3">
           <div class="flex flex-wrap items-start justify-between gap-3">
             <div class="min-w-0">
+              <div class="text-sm font-semibold moh-text">Daily content</div>
+              <div class="text-xs moh-text-muted">
+                Force refresh the Word of the Day + Daily quote (overwrites caches for today).
+              </div>
+            </div>
+            <div class="flex flex-wrap items-center gap-2">
+              <Button
+                label="Refresh status"
+                severity="secondary"
+                :loading="dailyContentLoading"
+                :disabled="dailyContentLoading"
+                @click="refreshDailyContentStatus"
+              />
+              <Button
+                label="Force refresh"
+                :loading="runningKey === 'dailyContent'"
+                :disabled="Boolean(runningKey)"
+                @click="forceRefreshDailyContent"
+              >
+                <template #icon>
+                  <Icon name="tabler:refresh" aria-hidden="true" />
+                </template>
+              </Button>
+            </div>
+          </div>
+
+          <div v-if="dailyContent" class="grid grid-cols-2 gap-3 text-xs">
+            <div class="rounded-lg border moh-border p-3">
+              <div class="moh-text-muted">Day key (ET)</div>
+              <div class="mt-1 font-mono moh-text">{{ dailyContent.dayKey }}</div>
+            </div>
+            <div class="rounded-lg border moh-border p-3">
+              <div class="moh-text-muted">WOTD</div>
+              <div class="mt-1 font-semibold moh-text">{{ dailyContent.websters1828?.word || '—' }}</div>
+              <div v-if="dailyContent.websters1828?.fetchedAt" class="mt-1 moh-text-muted">
+                fetched {{ dailyContent.websters1828.fetchedAt }}
+              </div>
+            </div>
+            <div class="rounded-lg border moh-border p-3 col-span-2">
+              <div class="moh-text-muted">Daily quote</div>
+              <div class="mt-1 moh-text">
+                <span v-if="dailyContent.quote">“{{ dailyContent.quote.text }}”</span>
+                <span v-else>—</span>
+              </div>
+              <div v-if="dailyContent.quote" class="mt-1 moh-text-muted">
+                <span class="font-semibold">{{ dailyContent.quote.author }}</span>
+                <span v-if="dailyContent.quote.reference"> · {{ dailyContent.quote.reference }}</span>
+                <span v-if="dailyContent.quote.isParaphrase" class="ml-1">(paraphrase)</span>
+              </div>
+            </div>
+          </div>
+
+          <div v-else class="text-xs moh-text-muted">
+            Status not loaded yet.
+          </div>
+
+          <p class="text-xs moh-text-muted">
+            Tip: if prod looks stuck, force refresh here, then hard reload the web page to bypass any browser caching.
+          </p>
+        </div>
+
+        <div class="rounded-xl border moh-border moh-bg p-4 space-y-3">
+          <div class="flex flex-wrap items-start justify-between gap-3">
+            <div class="min-w-0">
               <div class="text-sm font-semibold moh-text">Hashtags</div>
               <div class="text-xs moh-text-muted">
                 Backfill hashtags from post bodies, clean up dead tags, and refresh trending.
@@ -208,7 +272,7 @@
 
 <script setup lang="ts">
 import { getApiErrorMessage } from '~/utils/api-error'
-import type { AdminHashtagBackfillStatus } from '~/types/api'
+import type { AdminHashtagBackfillStatus, DailyContentToday } from '~/types/api'
 
 definePageMeta({
   layout: 'app',
@@ -234,6 +298,7 @@ type JobKey =
   | 'links'
   | 'popular'
   | 'trending'
+  | 'dailyContent'
 
 const { apiFetch, apiFetchData } = useApiClient()
 const toast = useAppToast()
@@ -244,6 +309,34 @@ const hashtagBatchSize = ref(500)
 const hashtagBackfillStatus = ref<AdminHashtagBackfillStatus | null>(null)
 const hashtagBackfillLoading = ref(false)
 const hashtagBackfillRunning = ref(false)
+
+const dailyContent = ref<DailyContentToday | null>(null)
+const dailyContentLoading = ref(false)
+
+async function refreshDailyContentStatus() {
+  dailyContentLoading.value = true
+  try {
+    dailyContent.value = await apiFetchData<DailyContentToday>('/admin/daily-content/today', { method: 'GET' })
+  } catch (e: unknown) {
+    toast.push({ title: getApiErrorMessage(e) || 'Failed to load daily content status.', tone: 'error', durationMs: 2600 })
+  } finally {
+    dailyContentLoading.value = false
+  }
+}
+
+async function forceRefreshDailyContent() {
+  const ok = confirm('Force refresh Word of the Day + Daily quote for today? This overwrites caches.')
+  if (!ok) return
+  runningKey.value = 'dailyContent'
+  try {
+    dailyContent.value = await apiFetchData<DailyContentToday>('/admin/daily-content/refresh', { method: 'POST', body: { quote: true, websters1828: true } })
+    toast.push({ title: 'Daily content refreshed', tone: 'success', durationMs: 1800 })
+  } catch (e: unknown) {
+    toast.push({ title: getApiErrorMessage(e) || 'Daily content refresh failed.', tone: 'error', durationMs: 2600 })
+  } finally {
+    runningKey.value = null
+  }
+}
 
 const hashtagCanContinue = computed(() => {
   if (!hashtagBackfillStatus.value) return false
@@ -314,6 +407,7 @@ async function continueHashtagBackfill() {
 
 onMounted(() => {
   void refreshHashtagBackfillStatus()
+  void refreshDailyContentStatus()
 })
 </script>
 

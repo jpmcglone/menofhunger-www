@@ -80,6 +80,29 @@ export type Websters1828WordOfDay = {
   fetchedAt: string
 }
 
+export type DailyQuoteKind = 'scripture' | 'quote' | 'paraphrase'
+export type DailyQuote = {
+  id: string
+  kind: DailyQuoteKind
+  author: string
+  reference: string | null
+  text: string
+  isParaphrase: boolean
+  tradition?: string
+  note?: string
+  sourceUrl?: string
+}
+
+export type DailyContentToday = {
+  /** Eastern Time day key (YYYY-MM-DD). */
+  dayKey: string
+  quote: DailyQuote | null
+  quoteRefreshedAt: string | null
+  websters1828: Websters1828WordOfDay | null
+  websters1828RefreshedAt: string | null
+  websters1828RecheckedAt: string | null
+}
+
 export type FeedbackCategory = 'bug' | 'feature' | 'account' | 'other'
 export type FeedbackStatus = 'new' | 'triaged' | 'resolved'
 

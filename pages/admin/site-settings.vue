@@ -28,49 +28,72 @@
       {{ siteError }}
     </div>
 
-    <div v-else class="grid gap-6 lg:grid-cols-2">
-      <div class="rounded-xl border moh-border p-4 space-y-4">
-        <div class="space-y-1">
-          <div class="text-sm font-semibold text-gray-900 dark:text-gray-50">Verified</div>
-          <div class="text-xs text-gray-500 dark:text-gray-400">
-            Applies to Verified (non-premium) posts and replies. Only me posts are excluded.
+    <div v-else class="space-y-3">
+      <!-- Compact, vertical stacks (mobile-friendly) -->
+      <div class="rounded-xl border moh-border p-3 space-y-3">
+        <div class="flex items-start justify-between gap-3">
+          <div class="min-w-0">
+            <div class="text-sm font-semibold text-gray-900 dark:text-gray-50">Verified</div>
+            <div class="text-xs text-gray-500 dark:text-gray-400">
+              Verified (non-premium). Only-me excluded.
+            </div>
           </div>
         </div>
 
-        <div class="grid gap-4 sm:grid-cols-2">
-          <div class="space-y-2">
-            <label class="text-sm font-medium text-gray-700 dark:text-gray-200">Posts</label>
-            <InputNumber v-model="verifiedPostsPerWindow" :min="1" :max="100" class="w-full" />
-            <div class="text-xs text-gray-500 dark:text-gray-400">Max posts in the window.</div>
+        <div class="space-y-2">
+          <div class="flex items-center justify-between gap-3">
+            <label class="text-xs font-medium text-gray-700 dark:text-gray-200">Posts / window</label>
+            <InputNumber
+              v-model="verifiedPostsPerWindow"
+              :min="1"
+              :max="100"
+              size="small"
+              :inputStyle="{ width: '5.25rem' }"
+            />
           </div>
-
-          <div class="space-y-2">
-            <label class="text-sm font-medium text-gray-700 dark:text-gray-200">Window (minutes)</label>
-            <InputNumber v-model="verifiedWindowMinutes" :min="1" :max="1440" class="w-full" />
-            <div class="text-xs text-gray-500 dark:text-gray-400">Rolling window size.</div>
+          <div class="flex items-center justify-between gap-3">
+            <label class="text-xs font-medium text-gray-700 dark:text-gray-200">Window (minutes)</label>
+            <InputNumber
+              v-model="verifiedWindowMinutes"
+              :min="1"
+              :max="1440"
+              size="small"
+              :inputStyle="{ width: '5.25rem' }"
+            />
           </div>
         </div>
       </div>
 
-      <div class="rounded-xl border moh-border p-4 space-y-4">
-        <div class="space-y-1">
-          <div class="text-sm font-semibold text-gray-900 dark:text-gray-50">Premium</div>
-          <div class="text-xs text-gray-500 dark:text-gray-400">
-            Applies to Premium and Premium+ posts and replies. Only me posts are excluded.
+      <div class="rounded-xl border moh-border p-3 space-y-3">
+        <div class="flex items-start justify-between gap-3">
+          <div class="min-w-0">
+            <div class="text-sm font-semibold text-gray-900 dark:text-gray-50">Premium</div>
+            <div class="text-xs text-gray-500 dark:text-gray-400">
+              Premium + Premium+. Only-me excluded.
+            </div>
           </div>
         </div>
 
-        <div class="grid gap-4 sm:grid-cols-2">
-          <div class="space-y-2">
-            <label class="text-sm font-medium text-gray-700 dark:text-gray-200">Posts</label>
-            <InputNumber v-model="premiumPostsPerWindow" :min="1" :max="100" class="w-full" />
-            <div class="text-xs text-gray-500 dark:text-gray-400">Max posts in the window.</div>
+        <div class="space-y-2">
+          <div class="flex items-center justify-between gap-3">
+            <label class="text-xs font-medium text-gray-700 dark:text-gray-200">Posts / window</label>
+            <InputNumber
+              v-model="premiumPostsPerWindow"
+              :min="1"
+              :max="100"
+              size="small"
+              :inputStyle="{ width: '5.25rem' }"
+            />
           </div>
-
-          <div class="space-y-2">
-            <label class="text-sm font-medium text-gray-700 dark:text-gray-200">Window (minutes)</label>
-            <InputNumber v-model="premiumWindowMinutes" :min="1" :max="1440" class="w-full" />
-            <div class="text-xs text-gray-500 dark:text-gray-400">Rolling window size.</div>
+          <div class="flex items-center justify-between gap-3">
+            <label class="text-xs font-medium text-gray-700 dark:text-gray-200">Window (minutes)</label>
+            <InputNumber
+              v-model="premiumWindowMinutes"
+              :min="1"
+              :max="1440"
+              size="small"
+              :inputStyle="{ width: '5.25rem' }"
+            />
           </div>
         </div>
       </div>
