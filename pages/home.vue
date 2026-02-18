@@ -52,7 +52,7 @@
           <div class="flex items-center justify-between gap-3">
             <div class="min-w-0 flex-1">
               <div
-                class="text-[13px] leading-snug moh-text-muted opacity-80"
+                class="text-[13px] leading-snug moh-text-muted opacity-80 moh-serif"
                 style="display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;"
               >
                 {{ checkinPromptText }}
@@ -62,7 +62,7 @@
               label="Check in"
               size="small"
               rounded
-              class="shrink-0 moh-btn-primary !h-10 !min-h-10 !px-4 !py-0 !leading-none whitespace-nowrap"
+              :class="['shrink-0 !h-10 !min-h-10 !px-4 !py-0 !leading-none whitespace-nowrap', checkinButtonClass]"
               @click="openCheckinComposer"
             />
           </div>
@@ -217,8 +217,10 @@ const checkinAllowedVisibilities = computed<CheckinAllowedVisibility[]>(() => {
 
 const fallbackCheckinAllowedVisibilities = computed<CheckinAllowedVisibility[]>(() => {
   const out: CheckinAllowedVisibility[] = []
+  // Product rule: ONLY verified (and above) can check in.
+  if (!viewerIsVerified.value) return out
   if (viewerIsPremium.value) out.push('premiumOnly')
-  if (viewerIsVerified.value) out.push('verifiedOnly')
+  out.push('verifiedOnly')
   return out
 })
 
@@ -240,6 +242,14 @@ const showCheckinPromptBar = computed(() => {
 const checkinPromptText = computed(() => {
   const p = (checkinState.value?.prompt ?? '').trim()
   return p || 'Write a check-in…'
+})
+
+const checkinButtonClass = computed(() => {
+  // Match the Post button tone when it's tier-scoped; otherwise keep check-in as Verified.
+  const v = composerVisibility.value
+  if (v === 'premiumOnly') return 'moh-btn-premium moh-btn-tone'
+  if (v === 'verifiedOnly') return 'moh-btn-verified moh-btn-tone'
+  return 'moh-btn-verified moh-btn-tone'
 })
 
 const middleScrollerRef = useMiddleScroller()

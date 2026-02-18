@@ -17,17 +17,17 @@
 
     <!-- Column 2 -->
     <div :class="['flex min-w-0 flex-1 gap-4 ml-1', rollup.readAt ? 'px-4 py-4' : 'pr-4 py-4']">
+      <!-- Left: type icon in an "avatar slot" so it aligns with other notification avatars -->
+      <div class="relative flex shrink-0 items-start" aria-hidden="true">
+        <div class="h-10 w-10 flex items-center justify-center">
+          <Icon name="tabler:file-text" class="h-6 w-6 text-gray-500 dark:text-gray-400" aria-hidden="true" />
+        </div>
+      </div>
+
       <div class="min-w-0 flex-1">
         <!-- Top line: avatars (no overlap) + time -->
         <div class="flex items-start justify-between gap-4">
           <div ref="avatarsEl" class="min-w-0 flex-1 flex flex-wrap items-center gap-3" @click.stop>
-            <!-- type icon (no circle, no overlap) -->
-            <Icon
-              name="tabler:file-text"
-              class="h-6.5 w-6.5 text-gray-500 dark:text-gray-400 shrink-0"
-              aria-hidden="true"
-            />
-
             <template v-for="a in visibleActors" :key="a.id">
               <NuxtLink
                 v-if="a.username"
@@ -58,8 +58,8 @@
           </div>
         </div>
 
-        <!-- Message under avatars -->
-        <div class="mt-2 min-w-0" :style="{ paddingLeft: `${messageIndentPx}px` }">
+        <!-- Message under avatars (aligned with other notification text) -->
+        <div class="mt-2 min-w-0">
           <div :class="['min-w-0 max-w-full line-clamp-2 text-sm', rollup.readAt ? 'font-medium' : 'font-semibold']">
             <span class="text-gray-600 dark:text-gray-300 font-medium">New posts by</span>
             <span class="ml-1 inline-flex items-center gap-1">
@@ -113,7 +113,6 @@ const moreActorCount = computed(() => Math.max(0, Math.floor((rollup.value.actor
 
 const avatarsEl = ref<HTMLElement | null>(null)
 const maxVisibleAvatars = ref(8)
-const messageIndentPx = 26 + 12 // iconPx + gapPx (matches avatar row)
 
 function recomputeMaxVisibleAvatars() {
   const el = avatarsEl.value
@@ -121,8 +120,7 @@ function recomputeMaxVisibleAvatars() {
   // Approximate capacity: each avatar is 40px, gap-3 is 12px, plus a leading icon.
   const avatarPx = 40
   const gapPx = 12
-  const iconPx = 26 // matches h-6.5/w-6.5 (Tailwind = 1.625rem)
-  const w = Math.max(0, el.clientWidth - (iconPx + gapPx))
+  const w = Math.max(0, el.clientWidth)
   const capacity = Math.max(1, Math.floor((w + gapPx) / (avatarPx + gapPx)))
   // If we need an overflow pill, reserve a slot for it.
   maxVisibleAvatars.value = Math.max(1, capacity)

@@ -70,7 +70,7 @@
     <AppUnsavedDraftPromptModal />
     <AppReplyModal />
     <div
-      :class="['overflow-hidden moh-bg moh-text moh-texture', showStatusBg ? 'moh-status-tone' : '']"
+      :class="['overflow-hidden moh-bg moh-text moh-texture moh-vignette', showStatusBg ? 'moh-status-tone' : '']"
       style="height: var(--moh-viewport-h, 100vh);"
     >
       <div class="mx-auto flex h-full w-full max-w-6xl xl:max-w-7xl">
@@ -384,7 +384,7 @@
                     class="my-8 py-2 text-center text-sm leading-relaxed text-gray-700 dark:text-gray-200"
                   >
                     <figure>
-                      <blockquote class="italic">
+                      <blockquote class="italic moh-serif">
                         “{{ dailyQuote.text }}”
                       </blockquote>
                       <figcaption class="mt-2 text-xs text-gray-500 dark:text-gray-400">

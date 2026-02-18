@@ -24,8 +24,8 @@ export function useHomeFeed() {
     // When signed out, remove the Following toggle entirely.
     if (!isAuthed.value) return [{ key: 'all', label: 'All', disabled: false }]
     return [
-      { key: 'all', label: 'All', disabled: false },
       { key: 'following', label: 'Following', disabled: false },
+      { key: 'all', label: 'All', disabled: false },
     ]
   })
 

@@ -10,11 +10,14 @@
 
     <div
       v-if="stickyDividerLabel"
-      class="sticky -top-4 z-10 flex items-center moh-bg moh-texture py-2 pointer-events-none"
+      class="sticky -top-4 z-10 flex items-center py-2 pointer-events-none -mx-4 px-4 backdrop-blur-sm"
       style="position: sticky;"
     >
       <div class="flex-1 border-t border-gray-200 dark:border-zinc-800" />
-      <div class="mx-3 shrink-0 rounded-full bg-white px-2 text-[11px] font-semibold text-gray-500 shadow-sm dark:bg-zinc-900 dark:text-gray-400">
+      <div
+        class="mx-3 shrink-0 rounded-full px-2 text-[11px] font-semibold text-gray-500 shadow-sm dark:text-gray-400"
+        style="background: color-mix(in srgb, var(--moh-surface-2) 72%, transparent); border: 1px solid var(--moh-border-subtle);"
+      >
         {{ stickyDividerLabel }}
       </div>
       <div class="flex-1 border-t border-gray-200 dark:border-zinc-800" />

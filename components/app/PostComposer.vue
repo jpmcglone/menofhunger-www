@@ -83,11 +83,11 @@
           @dragleave="onComposerAreaDragLeave"
           @drop.prevent="onComposerDrop"
         >
-          <!-- Textarea wrapper: mirror shows @mentions styled; textarea on top with transparent text -->
-          <div class="relative">
+          <!-- Textarea wrapper: border/background live on wrapper so it stays visually consistent -->
+          <div class="moh-composer-field relative rounded-xl border moh-border-subtle moh-surface-2">
             <div
               ref="composerMirrorEl"
-              class="pointer-events-none absolute inset-0 overflow-x-hidden overflow-y-auto rounded-xl moh-surface-2 px-3 py-2 text-[16px] leading-6 whitespace-pre-wrap break-words moh-text"
+              class="pointer-events-none absolute inset-0 overflow-x-hidden overflow-y-auto rounded-xl px-3 py-2 text-[16px] leading-6 whitespace-pre-wrap break-words moh-text"
               :style="composerTextareaVars"
               aria-hidden="true"
             >
@@ -110,7 +110,7 @@
               rows="3"
               enterkeyhint="enter"
               inputmode="text"
-              class="moh-composer-textarea relative z-10 w-full resize-none overflow-hidden rounded-xl border moh-border-subtle bg-transparent px-3 py-2 text-[16px] leading-6 text-transparent caret-[color:var(--moh-text)] placeholder:text-[color:var(--moh-text-muted)] placeholder:opacity-70 focus:outline-none"
+              class="moh-composer-textarea relative z-10 w-full resize-none overflow-hidden rounded-xl bg-transparent px-3 py-2 text-[16px] leading-6 text-transparent caret-[color:var(--moh-text)] placeholder:text-[color:var(--moh-text-muted)] placeholder:opacity-70 focus:outline-none"
               :style="composerTextareaVars"
               :placeholder="composerPlaceholder"
               @input="onComposerInput"

@@ -1,10 +1,7 @@
 <template>
   <div
-    class="sticky top-0 z-20 border-b moh-border moh-surface-1 p-0 shadow-[0_6px_16px_rgba(20,18,16,0.06)] dark:shadow-none"
+    class="sticky top-0 z-20 border-b moh-border moh-surface p-0 shadow-[0_6px_16px_rgba(20,18,16,0.06)] dark:shadow-none"
   >
-    <!-- Tiny brightness wash (very subtle) -->
-    <div class="pointer-events-none absolute inset-0 bg-white/10 dark:bg-white/[0.02] moh-texture" aria-hidden="true" />
-
     <div class="moh-feed-header-inner relative flex items-center justify-between gap-3 moh-gutter-x py-2">
       <template v-if="scopeTabs.length > 1">
         <AppTabSelector

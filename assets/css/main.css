@@ -75,31 +75,57 @@ html.dark body {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  opacity: 0.015;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  opacity: 0.02;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 html.dark .moh-texture::before {
-  opacity: 0.02;
+  opacity: 0.03;
+}
+
+/* Subtle room-light vignette to give the feed "lodge" depth. */
+.moh-vignette {
+  position: relative;
+}
+.moh-vignette::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.45;
+  background:
+    radial-gradient(1200px 700px at 50% 0%, rgba(var(--moh-brass-rgb), 0.06), transparent 60%),
+    radial-gradient(1000px 700px at 50% 100%, rgba(0, 0, 0, 0.06), transparent 55%);
+}
+html.dark .moh-vignette::after {
+  opacity: 0.55;
+  background:
+    radial-gradient(1200px 700px at 50% 0%, rgba(var(--moh-brass-rgb), 0.09), transparent 60%),
+    radial-gradient(1000px 700px at 50% 100%, rgba(0, 0, 0, 0.22), transparent 55%);
+}
+
+/* Serif utility for "lodge" moments (quotes, prompts). */
+.moh-serif {
+  font-family: var(--moh-font-serif);
 }
 
 /* App color tokens (X-like neutrals). Keep these as CSS variables so every surface stays consistent. */
 :root {
   /* Warm neutrals (\"private study\" vibe) */
   /* Surface levels */
-  --moh-surface-0: #fbfaf7; /* page bg (bone) */
-  --moh-surface-1: #f2f0ea; /* primary surface (warm paper) */
+  --moh-surface-0: #fbfaf7; /* page bg (clean bone) */
+  --moh-surface-1: #f3f2ee; /* primary surface (stone paper) */
   --moh-surface-2: #ffffff; /* elevated card surface */
   --moh-surface-3: #ffffff; /* popovers/dialogs */
 
   /* Back-compat aliases (used throughout the app) */
   --moh-bg: var(--moh-surface-0);
   --moh-surface: var(--moh-surface-1);
-  --moh-surface-hover: #ebe7df; /* warm hover */
+  --moh-surface-hover: #eceae3; /* warm hover (less yellow) */
 
   /* Borders */
-  --moh-border-subtle: #eee9e1;
-  --moh-border: #e6e1d8; /* warm divider (alias) */
-  --moh-border-strong: #d7cfc3;
+  --moh-border-subtle: #ede9e0;
+  --moh-border: #e4dfd4; /* warm divider (alias) */
+  --moh-border-strong: #d6d0c4;
 
   /* Text */
   --moh-text: #141210; /* warm near-black */
@@ -107,15 +133,15 @@ html.dark .moh-texture::before {
   --moh-text-soft: #7a746e; /* tertiary */
 
   /* Focus (AA-visible) */
-  --moh-focus-ring: rgba(20, 18, 16, 0.26);
-  --moh-focus-ring-strong: rgba(20, 18, 16, 0.44);
+  --moh-focus-ring: rgba(163, 116, 34, 0.28);
+  --moh-focus-ring-strong: rgba(163, 116, 34, 0.46);
 
   /* Shadows (light mode only; dark uses borders) */
   --moh-shadow-1: 0 1px 1px rgba(20, 18, 16, 0.04), 0 8px 24px rgba(20, 18, 16, 0.06);
   --moh-shadow-2: 0 2px 2px rgba(20, 18, 16, 0.06), 0 18px 46px rgba(20, 18, 16, 0.10);
 
   /* Frosted surfaces (used for sticky title bars) */
-  --moh-frosted: rgba(242, 240, 234, 0.88);
+  --moh-frosted: rgba(243, 242, 238, 0.90);
 
   /* Typography */
   --moh-font-serif: Literata, ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
@@ -150,10 +176,14 @@ html.dark .moh-texture::before {
   --moh-checkin: #1f9d63;
   --moh-checkin-rgb: 31, 157, 99;
   --moh-checkin-soft: rgba(31, 157, 99, 0.12);
+
+  /* Lodge accent (brass) — used sparingly for focus + subtle highlights */
+  --moh-brass: #a37422;
+  --moh-brass-rgb: 163, 116, 34;
 }
 
 html.dark {
-  /* Serious, machined palette — not cozy */
+  /* Modern lodge dark: clean charcoal (keep texture + brass accents) */
   /* Surface levels */
   --moh-surface-0: #0F1113; /* page bg (charcoal) */
   --moh-surface-1: #14181C; /* primary surface */
@@ -166,9 +196,9 @@ html.dark {
   --moh-surface-hover: rgba(255, 255, 255, 0.05);
 
   /* Borders: opacity-based to stay consistent across surfaces */
-  --moh-border-subtle: rgba(255, 255, 255, 0.08);
-  --moh-border: rgba(255, 255, 255, 0.10);
-  --moh-border-strong: rgba(255, 255, 255, 0.16);
+  --moh-border-subtle: rgba(255, 255, 255, 0.075);
+  --moh-border: rgba(255, 255, 255, 0.095);
+  --moh-border-strong: rgba(255, 255, 255, 0.15);
 
   /* Text */
   --moh-text: #f4f4f5; /* Slightly brighter body for confidence */
@@ -176,8 +206,8 @@ html.dark {
   --moh-text-soft: #7f8792; /* tertiary */
 
   /* Focus (AA-visible) */
-  --moh-focus-ring: rgba(244, 244, 245, 0.24);
-  --moh-focus-ring-strong: rgba(244, 244, 245, 0.38);
+  --moh-focus-ring: rgba(var(--moh-brass-rgb), 0.34);
+  --moh-focus-ring-strong: rgba(var(--moh-brass-rgb), 0.54);
 
   /* Shadows: keep minimal in dark (borders do the work) */
   --moh-shadow-1: none;
@@ -341,17 +371,22 @@ html.dark {
     background-color: var(--moh-surface-2);
     border: 1px solid var(--moh-border-subtle);
     box-shadow: var(--moh-shadow-1);
+    /* Tactile paper feel: tiny top highlight (very subtle) */
+    background-image: linear-gradient(to bottom, rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0));
   }
   html.dark .moh-card {
     box-shadow: none;
+    background-image: linear-gradient(to bottom, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0));
   }
   .moh-popover {
     background-color: var(--moh-surface-3);
     border: 1px solid var(--moh-border-subtle);
     box-shadow: var(--moh-shadow-2);
+    background-image: linear-gradient(to bottom, rgba(255, 255, 255, 0.50), rgba(255, 255, 255, 0));
   }
   html.dark .moh-popover {
     box-shadow: none;
+    background-image: linear-gradient(to bottom, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0));
   }
 
   /* AA-visible focus ring (use on interactive elements) */
@@ -652,7 +687,7 @@ html.dark {
 /* Simple fade transition (Vue <Transition name="moh-fade">) */
 .moh-fade-enter-active,
 .moh-fade-leave-active {
-  transition: opacity 160ms ease, transform 160ms ease;
+  transition: opacity 190ms ease, transform 190ms ease;
 }
 .moh-fade-enter-from,
 .moh-fade-leave-to {
@@ -761,18 +796,25 @@ html:not(.dark) :where(.moh-composer-accent-public) :where(.p-inputtextarea, tex
 }
 
 /* Home composer: custom textarea with animated focus tint */
+.moh-composer-field {
+  transition: border-color 180ms ease, box-shadow 180ms ease;
+}
+.moh-composer-field:focus-within {
+  border-color: var(--moh-compose-accent);
+  box-shadow: 0 0 0 1px var(--moh-compose-ring);
+}
+
 .moh-composer-textarea {
   /* Remove browser-native styling (esp. Safari/iOS) */
   appearance: none;
   -webkit-appearance: none;
   outline: none;
   box-shadow: none;
-  transition: border-color 180ms ease, box-shadow 180ms ease;
 }
 .moh-composer-textarea:is(:focus, :focus-visible) {
   outline: none;
-  border-color: var(--moh-compose-accent);
-  box-shadow: 0 0 0 1px var(--moh-compose-ring);
+  /* Focus styling lives on `.moh-composer-field:focus-within` so border/ring line up with the visual field. */
+  box-shadow: none;
 }
 
 /* Chat DM composer (mobile IME reliability)
