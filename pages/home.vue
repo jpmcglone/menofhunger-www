@@ -50,8 +50,11 @@
       <div v-if="showCheckinPromptBar" class="px-4 pt-3 pb-3">
         <div class="rounded-xl moh-surface/60 px-3 py-2.5">
           <div class="flex items-center justify-between gap-3">
-            <div class="min-w-0">
-              <div class="truncate text-[13px] moh-text-muted opacity-80">
+            <div class="min-w-0 flex-1">
+              <div
+                class="text-[13px] leading-snug moh-text-muted opacity-80"
+                style="display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;"
+              >
                 {{ checkinPromptText }}
               </div>
             </div>
@@ -59,7 +62,7 @@
               label="Check in"
               size="small"
               rounded
-              class="moh-btn-primary !py-1.5"
+              class="shrink-0 moh-btn-primary !h-10 !min-h-10 !px-4 !py-0 !leading-none whitespace-nowrap"
               @click="openCheckinComposer"
             />
           </div>
