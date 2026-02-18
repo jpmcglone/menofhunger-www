@@ -77,7 +77,7 @@
         <!-- Left Nav (independent scroll) -->
         <aside
           :class="[
-            'no-scrollbar hidden sm:block shrink-0 h-full border-r moh-border moh-texture',
+            'no-scrollbar hidden md:block shrink-0 h-full border-r moh-border moh-texture',
             anyOverlayOpen ? 'overflow-hidden' : 'overflow-y-auto overscroll-y-contain'
           ]"
         >
@@ -323,8 +323,8 @@
 
             <!-- Radio player row: bottom of the middle column on desktop only. -->
             <div
-              v-if="showRadioBar"
-              class="hidden sm:block shrink-0 border-t border-gray-200 bg-white dark:border-zinc-800 dark:bg-black text-gray-900 dark:text-white"
+              v-if="radioHasStation"
+              class="hidden md:block shrink-0 border-t border-gray-200 bg-white dark:border-zinc-800 dark:bg-black text-gray-900 dark:text-white"
             >
               <AppRadioBar />
             </div>
@@ -530,33 +530,60 @@
       </div>
     </div>
 
-    <!-- Mobile: radio bar fixed flush above tab bar; fill height so bar is solid (no gap). -->
-    <div
-      v-if="showRadioBar"
-      class="sm:hidden fixed inset-x-0 z-30 flex items-center border-t border-gray-200 bg-white dark:border-zinc-800 dark:bg-black text-gray-900 dark:text-white"
-      :style="{ bottom: 'calc(var(--moh-tabbar-height, 4rem) + var(--moh-safe-bottom, 0px))', minHeight: 'var(--moh-radio-bar-height, 4rem)' }"
-    >
-      <div class="w-full">
-        <AppRadioBar />
+    <!-- Mobile bottom chrome (tab bar + optional radio) + FAB. -->
+    <!-- Important: breakpoints must match the left rail (`hidden md:block`). -->
+    <div v-if="!anyOverlayOpen" class="md:hidden fixed inset-x-0 bottom-0 z-50">
+      <!-- Radio sits above the tab bar when playing. -->
+      <Transition
+        enter-active-class="transition-[opacity,transform] duration-200 ease-out"
+        enter-from-class="opacity-0 translate-y-[30px]"
+        enter-to-class="opacity-100 translate-y-0"
+        leave-active-class="transition-[opacity,transform] duration-150 ease-in"
+        leave-from-class="opacity-100 translate-y-0"
+        leave-to-class="opacity-0 translate-y-[30px]"
+        @before-enter="() => { radioChromePadActive = true }"
+        @before-leave="() => { radioChromePadActive = true }"
+        @after-leave="() => { radioChromePadActive = false }"
+      >
+        <div
+          v-show="radioHasStation"
+          class="relative z-0 flex items-center border-t border-gray-200 bg-white dark:border-zinc-800 dark:bg-black text-gray-900 dark:text-white"
+          :style="{ minHeight: 'var(--moh-radio-bar-height, 4rem)' }"
+        >
+          <div class="w-full">
+            <AppRadioBar />
+          </div>
+        </div>
+      </Transition>
+
+      <div class="relative z-10">
+        <AppTabBar :items="tabItems" />
       </div>
     </div>
 
     <!-- Mobile FAB: above tab bar and radio (when radio is up). -->
-    <button
-      v-if="canOpenComposer && isComposerEntrypointRoute && !hideFabForHomeComposer && !anyOverlayOpen"
-      type="button"
-      aria-label="New post"
-      :class="[
-        'sm:hidden fixed right-4 z-40 flex h-12 w-12 items-center justify-center rounded-xl text-white shadow-lg hover:opacity-95 active:scale-95 moh-focus-strong',
-        fabButtonClass,
-      ]"
-      :style="fabBottomStyle"
-      @click="openComposerForCurrentRoute()"
+    <Transition
+      enter-active-class="transition-[opacity,transform] duration-200 ease-out"
+      enter-from-class="opacity-0 translate-y-[30px]"
+      enter-to-class="opacity-100 translate-y-0"
+      leave-active-class="transition-[opacity,transform] duration-150 ease-in"
+      leave-from-class="opacity-100 translate-y-0"
+      leave-to-class="opacity-0 translate-y-[30px]"
     >
-      <Icon name="tabler:plus" class="text-3xl" aria-hidden="true" />
-    </button>
-
-    <AppTabBar v-if="!anyOverlayOpen" :items="tabItems" />
+      <button
+        v-if="canOpenComposer && isComposerEntrypointRoute && !hideFabForHomeComposer && !anyOverlayOpen"
+        type="button"
+        aria-label="New post"
+        :class="[
+          'md:hidden fixed right-4 z-[60] flex h-12 w-12 items-center justify-center rounded-xl text-white shadow-lg hover:opacity-95 active:scale-95 moh-focus-strong',
+          fabButtonClass,
+        ]"
+        :style="fabBottomStyle"
+        @click="openComposerForCurrentRoute()"
+      >
+        <Icon name="tabler:plus" class="text-3xl" aria-hidden="true" />
+      </button>
+    </Transition>
 
     <ClientOnly>
       <Transition
@@ -597,11 +624,13 @@
                   auto-focus
                   :show-divider="false"
                   :initial-text="composerInitialText ?? undefined"
+                  :placeholder="composerCustomPlaceholder ?? undefined"
                   :initial-media="composerIsFromOnlyMe ? (composerSourceOnlyMePost?.media ?? []) : undefined"
                   :locked-visibility="composerLockedVisibility ?? undefined"
                   :hide-visibility-picker="Boolean(composerLockedVisibility)"
                   :allowed-visibilities="composerAllowedVisibilities ?? undefined"
-                  :create-post="composerIsFromOnlyMe ? createPostFromOnlyMeDraft : undefined"
+                  :disable-media="composerCustomDisableMedia"
+                  :create-post="composerCreatePost ?? undefined"
                   persist-key="post-modal"
                   :register-unsaved-guard="false"
                   @posted="onComposerPosted"
@@ -650,6 +679,7 @@ import {
   MOH_MIDDLE_SCROLLER_KEY,
   MOH_OPEN_COMPOSER_KEY,
   MOH_OPEN_COMPOSER_FROM_ONLYME_KEY,
+  type ComposerOpenOptions,
   type ComposerVisibility,
 } from '~/utils/injection-keys'
 import { useBookmarkCollections } from '~/composables/useBookmarkCollections'
@@ -778,6 +808,16 @@ const composerModalOpen = ref(false)
 const composerInitialText = ref<string | null>(null)
 const composerSourceOnlyMePost = ref<FeedPost | null>(null)
 const composerIsFromOnlyMe = computed(() => Boolean(composerSourceOnlyMePost.value?.id))
+const composerCustomPlaceholder = ref<string | null>(null)
+const composerCustomAllowedVisibilities = ref<PostVisibility[] | null>(null)
+const composerCustomDisableMedia = ref(false)
+type ComposerCreatePostFn = (
+  body: string,
+  visibility: PostVisibility,
+  media: import('~/composables/useComposerMedia').CreateMediaPayload[],
+  poll?: import('~/composables/composer/types').ComposerPollPayload | null,
+) => Promise<{ id: string } | FeedPost | null>
+const composerCustomCreatePost = ref<ComposerCreatePostFn | null>(null)
 
 const replyModal = useReplyModal()
 const replyModalOpen = computed(() => Boolean(replyModal.open.value))
@@ -832,12 +872,36 @@ const composerLockedVisibility = computed<PostVisibility | null>(() => {
 })
 
 const composerAllowedVisibilities = computed<PostVisibility[] | null>(() => {
+  if (composerCustomAllowedVisibilities.value?.length) return composerCustomAllowedVisibilities.value
   if (composerIsFromOnlyMe.value) return ['public', 'verifiedOnly', 'premiumOnly']
   if (!viewerIsVerified.value) return ['onlyMe']
   if (isOnlyMePage.value) return ['onlyMe']
   // Left-nav/FAB modal composer: never allow Only me outside the Only me screen.
   return ['public', 'verifiedOnly', 'premiumOnly']
 })
+const composerCreatePost = computed<ComposerCreatePostFn | null>(() => {
+  if (composerCustomCreatePost.value) return composerCustomCreatePost.value
+  if (composerIsFromOnlyMe.value) return createPostFromOnlyMeDraft
+  return null
+})
+
+function resetComposerCustomOptions() {
+  composerCustomPlaceholder.value = null
+  composerCustomAllowedVisibilities.value = null
+  composerCustomDisableMedia.value = false
+  composerCustomCreatePost.value = null
+}
+
+function applyComposerCustomOptions(options?: ComposerOpenOptions | null) {
+  resetComposerCustomOptions()
+  if (!options) return
+  composerCustomPlaceholder.value = (options.placeholder ?? '').trim() || null
+  composerCustomAllowedVisibilities.value = Array.isArray(options.allowedVisibilities)
+    ? options.allowedVisibilities.filter(Boolean) as PostVisibility[]
+    : null
+  composerCustomDisableMedia.value = Boolean(options.disableMedia)
+  composerCustomCreatePost.value = (options.createPost as ComposerCreatePostFn | undefined) ?? null
+}
 
 const { apiFetchData } = useApiClient()
 async function createPostFromOnlyMeDraft(
@@ -870,13 +934,21 @@ function defaultComposerInitialTextForRoute(): string | null {
 }
 
 function openComposerModal(initialText?: string | null) {
+  resetComposerCustomOptions()
   if (viewerIsVerified.value && !isOnlyMePage.value && composerVisibility.value === 'onlyMe') {
     composerVisibility.value = composerNonOnlyMeVisibility.value ?? 'public'
   }
   composerInitialText.value = (initialText ?? defaultComposerInitialTextForRoute()) || null
   composerModalOpen.value = true
 }
-function openComposerWithVisibility(visibility?: ComposerVisibility, initialText?: string | null) {
+function openComposerWithVisibility(visibilityOrOptions?: ComposerVisibility | ComposerOpenOptions, initialText?: string | null) {
+  const options: ComposerOpenOptions | null =
+    visibilityOrOptions && typeof visibilityOrOptions === 'object'
+      ? visibilityOrOptions
+      : null
+  const visibility = typeof visibilityOrOptions === 'string' ? visibilityOrOptions : options?.visibility
+  const nextInitialText = options ? options.initialText : initialText
+  applyComposerCustomOptions(options)
   if (visibility) {
     const next = !viewerIsVerified.value
       ? 'onlyMe'
@@ -885,7 +957,7 @@ function openComposerWithVisibility(visibility?: ComposerVisibility, initialText
         : visibility
     composerVisibility.value = next
   }
-  composerInitialText.value = (initialText ?? defaultComposerInitialTextForRoute()) || null
+  composerInitialText.value = (nextInitialText ?? defaultComposerInitialTextForRoute()) || null
   composerModalOpen.value = true
 }
 function openComposerForCurrentRoute(initialText?: string | null) {
@@ -898,6 +970,7 @@ function openComposerForCurrentRoute(initialText?: string | null) {
 provide(MOH_OPEN_COMPOSER_KEY, openComposerWithVisibility)
 
 function openComposerFromOnlyMe(post: FeedPost) {
+  resetComposerCustomOptions()
   composerSourceOnlyMePost.value = post
   // Publishing from only-me should never use onlyMe visibility. Use last non-onlyMe (or public).
   if (composerVisibility.value === 'onlyMe') composerVisibility.value = composerNonOnlyMeVisibility.value ?? 'public'
@@ -910,6 +983,7 @@ function closeComposerModal() {
   composerModalOpen.value = false
   composerInitialText.value = null
   composerSourceOnlyMePost.value = null
+  resetComposerCustomOptions()
 }
 
 const { prependPost: prependOnlyMePost } = useOnlyMePosts()
@@ -917,6 +991,7 @@ function onComposerPosted(payload: { id: string; visibility: string; post?: impo
   composerModalOpen.value = false
   composerInitialText.value = null
   composerSourceOnlyMePost.value = null
+  resetComposerCustomOptions()
   if (payload.visibility === 'onlyMe' && payload.post) {
     prependOnlyMePost(payload.post)
     if (route.path !== '/only-me') {
@@ -955,7 +1030,7 @@ const fabBottomStyle = computed<Record<string, string>>(() => {
   // Match the horizontal inset (`right-4`) with a bottom inset too.
   const inset = '1rem'
   const base = `calc(var(--moh-tabbar-height, 4rem) + var(--moh-safe-bottom, 0px) + ${inset})`
-  if (showRadioBar.value) {
+  if (radioChromePadActive.value) {
     return {
       bottom: `calc(var(--moh-tabbar-height, 4rem) + var(--moh-radio-bar-height, 4rem) + var(--moh-safe-bottom, 0px) + ${inset})`,
     }
@@ -966,16 +1041,25 @@ const fabBottomStyle = computed<Record<string, string>>(() => {
 const middleContentEl = ref<HTMLElement | null>(null)
 
 const { currentStation: currentRadioStation } = useRadioPlayer()
-const showRadioBar = computed(() => Boolean(currentRadioStation.value))
+const radioHasStation = computed(() => Boolean(currentRadioStation.value))
+// Keep bottom spacing stable while the radio animates out.
+const radioChromePadActive = ref(false)
+watch(
+  () => radioHasStation.value,
+  (has) => {
+    if (has) radioChromePadActive.value = true
+  },
+  { immediate: true },
+)
 
 // Mobile-only bottom clearance for fixed bottom UI (tab bar + optional radio bar).
 // Use CSS breakpoints so SSR + first client paint don't "jump" on desktop.
 const middleScrollerBottomPadClass = computed(() => {
   if (anyOverlayOpen.value || (isMessagesPage.value && hideTopBar.value)) return 'pb-0'
-  if (showRadioBar.value) {
-    return 'pb-[calc(var(--moh-tabbar-height,4.5rem)+var(--moh-radio-bar-height,4rem)+var(--moh-safe-bottom,0px))] sm:pb-0'
+  if (radioChromePadActive.value) {
+    return 'pb-[calc(var(--moh-tabbar-height,4.5rem)+var(--moh-radio-bar-height,4rem)+var(--moh-safe-bottom,0px))] md:pb-0'
   }
-  return 'pb-[calc(var(--moh-tabbar-height,4.5rem)+var(--moh-safe-bottom,0px))] sm:pb-0'
+  return 'pb-[calc(var(--moh-tabbar-height,4.5rem)+var(--moh-safe-bottom,0px))] md:pb-0'
 })
 
 function updateComposerSheetStyle() {

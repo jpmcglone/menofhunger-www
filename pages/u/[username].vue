@@ -68,6 +68,32 @@
         />
       </ClientOnly>
 
+      <div v-if="isSelf" class="mx-auto max-w-3xl px-4 mt-3">
+        <div class="flex flex-wrap items-center gap-2">
+          <span
+            v-tooltip.bottom="tinyTooltip('Coins')"
+            class="inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold border moh-border moh-surface"
+          >
+            <Icon name="tabler:coin" class="mr-1 text-[14px]" aria-hidden="true" />
+            {{ formatCount(authUser?.coins ?? 0) }}
+          </span>
+          <span
+            v-tooltip.bottom="tinyTooltip('Check-in streak (days)')"
+            class="inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold border moh-border moh-surface"
+          >
+            <Icon name="tabler:flame" class="mr-1 text-[14px]" aria-hidden="true" />
+            {{ Math.max(0, Math.floor(authUser?.checkinStreakDays ?? 0)) }}
+          </span>
+          <span
+            v-tooltip.bottom="tinyTooltip('Longest streak (days)')"
+            class="inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold border moh-border moh-surface"
+          >
+            <Icon name="tabler:trophy" class="mr-1 text-[14px]" aria-hidden="true" />
+            {{ Math.max(0, Math.floor(authUser?.longestStreakDays ?? 0)) }}
+          </span>
+        </div>
+      </div>
+
       <!-- Pinned post -->
       <div class="mt-3 mb-4">
         <ClientOnly>
@@ -231,6 +257,7 @@ import type { PublicProfile } from '~/composables/usePublicProfile'
 import type { FollowRelationship } from '~/types/api'
 import type { ProfilePostsFilter } from '~/utils/post-visibility'
 import { visibilityTagClasses, postHighlightClasses } from '~/utils/post-visibility'
+import { tinyTooltip } from '~/utils/tiny-tooltip'
 
 definePageMeta({
   layout: 'app',
@@ -261,6 +288,12 @@ if (!notFound.value && profile.value) {
 }
 
 const { user: authUser, me: refetchMe } = useAuth()
+
+const countFmt = new Intl.NumberFormat('en-US')
+function formatCount(n: unknown): string {
+  const v = typeof n === 'number' ? n : Number(n)
+  return countFmt.format(Math.max(0, Math.floor(Number.isFinite(v) ? v : 0)))
+}
 const usersStore = useUsersStore()
 const { invalidateUserPreviewCache } = useUserPreview()
 const { markReadBySubject } = useNotifications()

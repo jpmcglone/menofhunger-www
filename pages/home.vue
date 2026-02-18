@@ -39,6 +39,37 @@
       </div>
     </div>
 
+    <Transition
+      enter-active-class="transition-all duration-250 ease-out"
+      enter-from-class="opacity-0 -translate-y-1"
+      enter-to-class="opacity-100 translate-y-0"
+      leave-active-class="transition-all duration-220 ease-in"
+      leave-from-class="opacity-100 translate-y-0"
+      leave-to-class="opacity-0 -translate-y-1 max-h-0"
+    >
+      <div v-if="showCheckinPromptBar" class="px-4 pt-3 pb-3">
+        <div class="rounded-xl moh-surface/60 px-3 py-2.5">
+          <div class="flex items-center justify-between gap-3">
+            <div class="min-w-0">
+              <div class="truncate text-[13px] moh-text-muted opacity-80">
+                {{ checkinPromptText }}
+              </div>
+            </div>
+            <Button
+              label="Check in"
+              size="small"
+              rounded
+              class="moh-btn-primary !py-1.5"
+              @click="openCheckinComposer"
+            />
+          </div>
+          <AppInlineAlert v-if="checkinError" class="mt-2" severity="danger">
+            {{ checkinError }}
+          </AppInlineAlert>
+        </div>
+      </div>
+    </Transition>
+
     <!-- Feed: header + content -->
     <div>
       <AppFeedHomeFeedHeader
@@ -139,6 +170,7 @@ import type { ComposerPollPayload } from '~/composables/composer/types'
 import { postBodyHasVideoEmbed } from '~/utils/link-utils'
 import { MOH_HOME_COMPOSER_IN_VIEW_KEY, MOH_OPEN_COMPOSER_KEY } from '~/utils/injection-keys'
 import { useMiddleScroller } from '~/composables/useMiddleScroller'
+import type { CheckinAllowedVisibility } from '~/types/api'
 
 definePageMeta({
   layout: 'app',
@@ -162,6 +194,50 @@ const loadMoreSentinelEl = ref<HTMLElement | null>(null)
 const homeComposerInViewRef = inject(MOH_HOME_COMPOSER_IN_VIEW_KEY)
 const openComposer = inject(MOH_OPEN_COMPOSER_KEY, null)
 const { isAuthed } = useAuth()
+const { dayKey: etDayKey } = useEasternMidnightRollover()
+
+const { state: checkinState, error: checkinError, refresh: refreshCheckin, create: createCheckin } = useDailyCheckin()
+const checkinVisibility = ref<CheckinAllowedVisibility>('verifiedOnly')
+// TEMP: force the prompt bar to show while debugging check-in UX.
+const FORCE_SHOW_CHECKIN_PROMPT_BAR = false
+const composerVisibility = useCookie<PostVisibility>('moh.post.visibility.v1', {
+  default: () => 'public',
+  sameSite: 'lax',
+  path: '/',
+  maxAge: 60 * 60 * 24 * 365,
+})
+
+const checkinAllowedVisibilities = computed<CheckinAllowedVisibility[]>(() => {
+  const allowed = checkinState.value?.allowedVisibilities ?? []
+  return Array.isArray(allowed) ? allowed : []
+})
+
+const fallbackCheckinAllowedVisibilities = computed<CheckinAllowedVisibility[]>(() => {
+  const out: CheckinAllowedVisibility[] = []
+  if (viewerIsPremium.value) out.push('premiumOnly')
+  if (viewerIsVerified.value) out.push('verifiedOnly')
+  return out
+})
+
+const effectiveCheckinAllowedVisibilities = computed<CheckinAllowedVisibility[]>(() => {
+  return checkinAllowedVisibilities.value.length ? checkinAllowedVisibilities.value : fallbackCheckinAllowedVisibilities.value
+})
+
+const showCheckinPromptBar = computed(() => {
+  if (!isAuthed.value) return false
+  // Avoid showing check-in card when main feed is blocked by a gate CTA.
+  if (feedCtaKind.value) return false
+  if (FORCE_SHOW_CHECKIN_PROMPT_BAR) return true
+  if (!checkinState.value) return false
+  if (checkinState.value.hasCheckedInToday) return false
+  if (!effectiveCheckinAllowedVisibilities.value.length) return false
+  return true
+})
+
+const checkinPromptText = computed(() => {
+  const p = (checkinState.value?.prompt ?? '').trim()
+  return p || 'Write a check-in…'
+})
 
 const middleScrollerRef = useMiddleScroller()
 
@@ -215,6 +291,65 @@ const {
   setFeedSort,
   resetFilters,
 } = useHomeFeed()
+
+watch(
+  [isAuthed, etDayKey],
+  ([authed]) => {
+    if (!authed) {
+      checkinState.value = null
+      return
+    }
+    void refreshCheckin()
+  },
+  { immediate: true },
+)
+
+watch(
+  checkinAllowedVisibilities,
+  (allowed) => {
+    if (allowed.length && !allowed.includes(checkinVisibility.value)) {
+      checkinVisibility.value = allowed[0]!
+    }
+  },
+  { immediate: true },
+)
+
+function preferredCheckinVisibility(): CheckinAllowedVisibility {
+  const allowed = checkinAllowedVisibilities.value
+  if (!allowed.length) return 'verifiedOnly'
+  const current = composerVisibility.value
+  const preferred: CheckinAllowedVisibility = current === 'premiumOnly' ? 'premiumOnly' : 'verifiedOnly'
+  return allowed.includes(preferred) ? preferred : allowed[0]!
+}
+
+async function createCheckinViaComposer(
+  body: string,
+  visibility: PostVisibility,
+  _media?: unknown[] | null,
+  _poll?: unknown,
+): Promise<{ id: string } | import('~/types/api').FeedPost | null> {
+  const trimmed = body.trim()
+  if (!trimmed) return null
+  const vis: CheckinAllowedVisibility = visibility === 'premiumOnly' ? 'premiumOnly' : 'verifiedOnly'
+  const res = await createCheckin({ body: trimmed, visibility: vis })
+  posts.value = [res.post, ...posts.value.filter((p) => p.id !== res.post.id)]
+  return res.post
+}
+
+function openCheckinComposer() {
+  if (!openComposer) return
+  const allowed = effectiveCheckinAllowedVisibilities.value
+  if (!allowed.length) return
+  const preferred = preferredCheckinVisibility()
+  checkinVisibility.value = preferred
+  openComposer({
+    visibility: preferred,
+    placeholder: checkinState.value?.prompt ? checkinState.value.prompt : 'Write a check-in…',
+    allowedVisibilities: allowed,
+    disableMedia: true,
+    createPost: createCheckinViaComposer,
+  })
+}
 
 function onFeedPostEdited(payload: { id: string; post: import('~/types/api').FeedPost }) {
   replacePost(payload.post)

@@ -92,6 +92,17 @@
         </div>
 
         <div
+          v-if="!isDeletedPost && postView.kind === 'checkin'"
+          class="mt-2 rounded-lg moh-surface/50 px-3 py-2.5"
+        >
+          <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
+            <span v-if="postView.checkinPrompt" class="text-[13px] moh-text-muted opacity-80">
+              {{ postView.checkinPrompt }}
+            </span>
+          </div>
+        </div>
+
+        <div
           v-if="isDeletedPost"
           class="mt-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm font-semibold text-gray-700 dark:border-zinc-800 dark:bg-black dark:text-white"
         >
@@ -126,16 +137,31 @@
           :activate-video-on-mount="activateVideoOnMount"
         />
 
-        <div v-if="!isDeletedPost && visibilityTag" class="mt-2 flex items-center justify-between gap-3">
-          <span
-            v-if="visibilityTag"
-            class="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold border cursor-default"
-            :class="visibilityTagClass"
-            v-tooltip.bottom="visibilityTooltip"
-          >
-            <Icon v-if="postView.visibility === 'onlyMe'" name="tabler:eye-off" class="mr-1 text-[10px]" aria-hidden="true" />
-            {{ visibilityTag }}
-          </span>
+        <div v-if="!isDeletedPost && metaTags.length" class="mt-2 flex items-center justify-between gap-3">
+          <!-- Stop propagation so Cmd/Ctrl+Click behaves like a normal link (new tab), not row navigation. -->
+          <div class="flex items-center gap-2" @click.stop>
+            <template v-for="t in metaTags" :key="t.key">
+              <NuxtLink
+                v-if="t.to"
+                :to="t.to"
+                class="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold border cursor-pointer hover:opacity-90 moh-focus"
+                :class="t.class"
+                v-tooltip.bottom="t.tooltip"
+              >
+                <Icon v-if="t.icon" :name="t.icon" class="mr-1 text-[10px]" aria-hidden="true" />
+                {{ t.label }}
+              </NuxtLink>
+              <span
+                v-else
+                class="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold border cursor-default"
+                :class="t.class"
+                v-tooltip.bottom="t.tooltip"
+              >
+                <Icon v-if="t.icon" :name="t.icon" class="mr-1 text-[10px]" aria-hidden="true" />
+                {{ t.label }}
+              </span>
+            </template>
+          </div>
         </div>
 
           <div v-if="!isDeletedPost" class="mt-3 flex items-center justify-between moh-text-muted">
@@ -454,19 +480,42 @@ const authorProfilePath = computed(() => {
   return username ? `/u/${encodeURIComponent(username)}` : null
 })
 
-const visibilityTag = computed(() => {
-  return visibilityTagLabel(postView.value.visibility)
-})
+const isCheckinPost = computed(() => !isDeletedPost.value && postView.value.kind === 'checkin')
+const metaTags = computed(() => {
+  const out: Array<{ key: string; label: string; class: string; tooltip: any; icon?: string | null; to?: string | null }> = []
 
-const visibilityTagClass = computed(() => {
-  return visibilityTagClasses(postView.value.visibility)
-})
+  // Visibility tag first (Verified/Premium/Only me), if any.
+  const vis = visibilityTagLabel(postView.value.visibility)
+  if (vis) {
+    out.push({
+      key: `vis:${postView.value.visibility}`,
+      label: vis,
+      class: visibilityTagClasses(postView.value.visibility),
+      tooltip:
+        postView.value.visibility === 'verifiedOnly'
+          ? tinyTooltip('Visible to verified members')
+          : postView.value.visibility === 'premiumOnly'
+            ? tinyTooltip('Visible to premium members')
+            : postView.value.visibility === 'onlyMe'
+              ? tinyTooltip('Visible only to you')
+              : null,
+      icon: postView.value.visibility === 'onlyMe' ? 'tabler:eye-off' : null,
+    })
+  }
 
-const visibilityTooltip = computed(() => {
-  if (postView.value.visibility === 'verifiedOnly') return tinyTooltip('Visible to verified members')
-  if (postView.value.visibility === 'premiumOnly') return tinyTooltip('Visible to premium members')
-  if (postView.value.visibility === 'onlyMe') return tinyTooltip('Visible only to you')
-  return null
+  // Check-in tag second (replaces nothing; appends after visibility).
+  if (isCheckinPost.value) {
+    out.push({
+      key: 'kind:checkin',
+      label: 'Check in',
+      class: 'moh-tag-checkin',
+      tooltip: tinyTooltip('Daily check-in'),
+      icon: 'tabler:calendar-check',
+      to: '/check-ins',
+    })
+  }
+
+  return out
 })
 
 const postPermalink = computed(() => `/p/${encodeURIComponent(postView.value.id)}`)

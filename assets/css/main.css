@@ -145,6 +145,11 @@ html.dark .moh-texture::before {
   --moh-onlyme-rgb: 107, 79, 211;
   --moh-onlyme-ring: rgba(107, 79, 211, 0.34);
   --moh-onlyme-soft: rgba(107, 79, 211, 0.12);
+
+  /* Check-in accent (calm green). */
+  --moh-checkin: #1f9d63;
+  --moh-checkin-rgb: 31, 157, 99;
+  --moh-checkin-soft: rgba(31, 157, 99, 0.12);
 }
 
 html.dark {
@@ -534,6 +539,11 @@ html.dark {
     border-color: rgba(var(--moh-onlyme-rgb), 0.35);
     background-color: rgba(var(--moh-onlyme-rgb), 0.10);
     color: var(--moh-onlyme);
+  }
+  .moh-tag-checkin {
+    border-color: rgba(var(--moh-checkin-rgb), 0.35);
+    background-color: rgba(var(--moh-checkin-rgb), 0.10);
+    color: var(--moh-checkin);
   }
 
   .moh-menuitem-verified {

@@ -1,6 +1,6 @@
 <template>
   <!-- Own padding so layout containers can stay padding-free. -->
-  <div v-if="currentStation" class="w-full px-4 py-2">
+  <div v-if="displayStation" class="w-full px-4 py-2">
     <div class="flex w-full items-center justify-between gap-3">
     <button
       type="button"
@@ -8,7 +8,7 @@
       @click="navigateTo('/radio')"
     >
       <div class="min-w-0">
-        <div class="text-sm font-semibold truncate">{{ currentStation.name }}</div>
+        <div class="text-sm font-semibold truncate">{{ displayStation.name }}</div>
         <div class="text-[11px] text-gray-500 dark:text-white/70">
           <span v-if="isPlaying">Playing</span>
           <span v-else-if="!isBuffering">Paused</span>
@@ -127,7 +127,7 @@
 </template>
 
 <script setup lang="ts">
-import type { RadioListener } from '~/types/api'
+import type { RadioListener, RadioStation } from '~/types/api'
 import { tinyTooltip } from '~/utils/tiny-tooltip'
 import { useUsersStore } from '~/composables/useUsersStore'
 
@@ -137,7 +137,19 @@ function listenerProfileTo(username: string): string {
 
 const { currentStation, isPlaying, isBuffering, listeners, toggle, stop, volume, setVolume } = useRadioPlayer()
 const usersStore = useUsersStore()
-const listenersCount = computed(() => (currentStation.value ? listeners.value.length : null))
+
+// Keep last station around briefly so layout-level leave transitions can animate smoothly
+// even after `stop()` clears `currentStation`.
+const lastStation = ref<RadioStation | null>(null)
+watch(
+  () => currentStation.value,
+  (s) => {
+    if (s) lastStation.value = s
+  },
+  { immediate: true },
+)
+const displayStation = computed(() => currentStation.value ?? lastStation.value)
+const listenersCount = computed(() => (displayStation.value ? listeners.value.length : null))
 
 const preMuteVolume = ref<number | null>(null)
 
@@ -174,11 +186,11 @@ const volumeIconName = computed(() => {
 })
 
 const listenerStack = computed<RadioListener[]>(() => {
-  if (!currentStation.value) return []
+  if (!displayStation.value) return []
   return (listeners.value ?? []).slice(0, 5).map((u) => (u?.id ? (usersStore.overlay(u as any) as any) : u))
 })
 const listenerOverflowCount = computed(() => {
-  if (!currentStation.value) return 0
+  if (!displayStation.value) return 0
   return Math.max(0, (listeners.value?.length ?? 0) - listenerStack.value.length)
 })
 const showListenerStack = computed(() => listenersCount.value !== null && listenersCount.value > 0)

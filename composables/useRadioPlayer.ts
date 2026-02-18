@@ -66,6 +66,7 @@ export function useRadioPlayer() {
   }
 
   const currentStation = computed(() => stations.value.find((s) => s.id === stationId.value) ?? null)
+  const hasStation = computed(() => Boolean(currentStation.value))
 
   const radioCb = {
     onListeners: (payload: { stationId: string; listeners: any[] }) => {
@@ -246,6 +247,7 @@ export function useRadioPlayer() {
     loadStations,
     stationId: readonly(stationId),
     currentStation,
+    hasStation,
     isPlaying: readonly(isPlaying),
     isBuffering: readonly(isBuffering),
     error: readonly(error),

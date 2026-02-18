@@ -38,6 +38,10 @@ export type AuthUser = {
   avatarUrl?: string | null
   bannerUrl?: string | null
   pinnedPostId?: string | null
+  coins?: number
+  checkinStreakDays?: number
+  lastCheckinDayKey?: string | null
+  longestStreakDays?: number
 }
 
 let clientMePromise: Promise<AuthUser | null> | null = null

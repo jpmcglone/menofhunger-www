@@ -53,6 +53,7 @@ export type NotificationPreferences = {
   emailDigestDaily: boolean
   emailNewNotifications: boolean
   emailInstantHighSignal: boolean
+  emailStreakReminder: boolean
 }
 
 export type RadioStation = {
@@ -204,6 +205,9 @@ export type FeedPost = {
   editCount?: number
   body: string
   deletedAt: string | null
+  kind?: 'regular' | 'checkin'
+  checkinDayKey?: string | null
+  checkinPrompt?: string | null
   visibility: PostVisibility
   isDraft?: boolean
   topics?: string[]
@@ -958,10 +962,35 @@ export type UserDto = {
   avatarUrl: string | null
   bannerUrl: string | null
   pinnedPostId: string | null
+  coins: number
+  checkinStreakDays: number
+  lastCheckinDayKey: string | null
+  longestStreakDays: number
 }
 
 export type WsUsersMeUpdatedPayload = {
   user: UserDto
   reason?: string
+}
+
+// --- Daily check-ins ---
+
+export type CheckinAllowedVisibility = 'verifiedOnly' | 'premiumOnly'
+
+export type GetCheckinsTodayResponse = {
+  dayKey: string
+  prompt: string
+  hasCheckedInToday: boolean
+  coins: number
+  checkinStreakDays: number
+  allowedVisibilities: CheckinAllowedVisibility[]
+}
+
+export type CreateCheckinResponse = {
+  post: FeedPost
+  checkin: { dayKey: string; prompt: string }
+  coinsAwarded: number
+  bonusCoinsAwarded: number
+  checkinStreakDays: number
 }
 

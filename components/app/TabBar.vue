@@ -1,6 +1,6 @@
 <template>
   <nav
-    class="fixed inset-x-0 bottom-0 z-50 border-t moh-border moh-surface-1 moh-texture sm:hidden"
+    class="border-t moh-border moh-surface-1 moh-texture"
     style="min-height: calc(var(--moh-tabbar-height, 4.5rem) + var(--moh-safe-bottom, 0px)); padding-bottom: var(--moh-safe-bottom, 0px);"
     aria-label="Primary"
   >
@@ -106,4 +106,3 @@ function toggleProfileMenu(event: Event) {
   ;(profileMenuRef.value as any)?.toggle(event)
 }
 </script>
-
