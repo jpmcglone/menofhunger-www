@@ -99,6 +99,55 @@
       </div>
     </div>
 
+    <div class="pt-4" />
+
+    <div class="space-y-2">
+      <div class="text-sm font-semibold text-gray-900 dark:text-gray-50">Email samples</div>
+      <div class="text-sm text-gray-600 dark:text-gray-300">
+        Send yourself sample emails (requires a verified email on your admin account).
+      </div>
+    </div>
+
+    <div class="rounded-xl border moh-border p-3 space-y-3">
+      <div v-if="!viewerHasVerifiedEmail" class="text-sm text-gray-600 dark:text-gray-300">
+        Your email isn’t verified yet. Verify it first to send samples.
+      </div>
+
+      <div class="flex flex-wrap gap-2">
+        <Button
+          label="Daily digest"
+          severity="secondary"
+          :loading="emailSampleSending === 'daily_digest'"
+          :disabled="!viewerHasVerifiedEmail || Boolean(emailSampleSending)"
+          @click="sendEmailSample('daily_digest')"
+        />
+        <Button
+          label="Unread notifications"
+          severity="secondary"
+          :loading="emailSampleSending === 'new_notifications'"
+          :disabled="!viewerHasVerifiedEmail || Boolean(emailSampleSending)"
+          @click="sendEmailSample('new_notifications')"
+        />
+        <Button
+          label="Instant high-signal"
+          severity="secondary"
+          :loading="emailSampleSending === 'instant_high_signal'"
+          :disabled="!viewerHasVerifiedEmail || Boolean(emailSampleSending)"
+          @click="sendEmailSample('instant_high_signal')"
+        />
+        <Button
+          label="Streak reminder"
+          severity="secondary"
+          :loading="emailSampleSending === 'streak_reminder'"
+          :disabled="!viewerHasVerifiedEmail || Boolean(emailSampleSending)"
+          @click="sendEmailSample('streak_reminder')"
+        />
+      </div>
+      <div class="text-xs text-gray-500 dark:text-gray-400">
+        Tip: check your spam/promotions folders if you don’t see it.
+      </div>
+    </div>
+
     <div class="flex items-center gap-3">
       <Button
         label="Save"
@@ -147,6 +196,7 @@ type SiteConfig = {
 
 const { apiFetchData } = useApiClient()
 import { getApiErrorMessage } from '~/utils/api-error'
+import type { AdminEmailSampleSendResult, AdminEmailSampleType } from '~/types/api'
 
 const siteCfg = ref<SiteConfig | null>(null)
 const siteSaving = ref(false)
@@ -156,6 +206,32 @@ const verifiedPostsPerWindow = ref<number>(5)
 const verifiedWindowMinutes = ref<number>(5)
 const premiumPostsPerWindow = ref<number>(5)
 const premiumWindowMinutes = ref<number>(5)
+
+const { user } = useAuth()
+const viewerHasVerifiedEmail = computed(() => Boolean(user.value?.email && user.value?.emailVerifiedAt))
+const toast = useAppToast()
+const emailSampleSending = ref<AdminEmailSampleType | null>(null)
+
+async function sendEmailSample(type: AdminEmailSampleType) {
+  const ok = confirm(`Send sample "${type}" email to yourself?`)
+  if (!ok) return
+  emailSampleSending.value = type
+  try {
+    const res = await apiFetchData<AdminEmailSampleSendResult>('/admin/email-samples/send', {
+      method: 'POST',
+      body: { type },
+    })
+    if (res?.sent) {
+      toast.push({ title: 'Sample email sent', tone: 'success', durationMs: 1800 })
+    } else {
+      toast.push({ title: res?.reason || 'Sample email was not sent.', tone: 'error', durationMs: 2600 })
+    }
+  } catch (e: unknown) {
+    toast.push({ title: getApiErrorMessage(e) || 'Failed to send sample email.', tone: 'error', durationMs: 2600 })
+  } finally {
+    emailSampleSending.value = null
+  }
+}
 
 async function loadSiteConfig() {
   if (siteCfg.value) return

@@ -16,11 +16,16 @@
     />
 
     <!-- Column 2 -->
-    <div :class="['flex min-w-0 flex-1 gap-4 ml-1', rollup.readAt ? 'px-4 py-4' : 'pr-4 py-4']">
+    <div
+      :class="[
+        'flex min-w-0 flex-1 gap-3 sm:gap-4 ml-1',
+        rollup.readAt ? 'px-3 py-3 sm:px-4 sm:py-4' : 'pr-3 py-3 sm:pr-4 sm:py-4',
+      ]"
+    >
       <!-- Left: type icon in an "avatar slot" so it aligns with other notification avatars -->
-      <div class="relative flex shrink-0 items-start" aria-hidden="true">
-        <div class="h-10 w-10 flex items-center justify-center">
-          <Icon name="tabler:file-text" class="h-6 w-6 text-gray-500 dark:text-gray-400" aria-hidden="true" />
+      <div class="relative flex shrink-0 items-center self-center" aria-hidden="true">
+        <div class="h-9 w-9 sm:h-10 sm:w-10 flex items-center justify-center -translate-x-1.5 sm:-translate-x-2">
+          <Icon name="tabler:file-text" class="h-5 w-5 sm:h-6 sm:w-6 text-gray-500 dark:text-gray-400" aria-hidden="true" />
         </div>
       </div>
 
@@ -37,13 +42,13 @@
               >
                 <AppUserAvatar
                   :user="{ id: a.id, username: a.username, name: a.name, avatarUrl: a.avatarUrl }"
-                  size-class="h-10 w-10"
+                  size-class="h-9 w-9 sm:h-10 sm:w-10"
                 />
               </NuxtLink>
               <AppUserAvatar
                 v-else
                 :user="{ id: a.id, username: a.username, name: a.name, avatarUrl: a.avatarUrl }"
-                size-class="h-10 w-10"
+                size-class="h-9 w-9 sm:h-10 sm:w-10"
               />
             </template>
           </div>
@@ -60,7 +65,7 @@
 
         <!-- Message under avatars (aligned with other notification text) -->
         <div class="mt-2 min-w-0">
-          <div :class="['min-w-0 max-w-full line-clamp-2 text-sm', rollup.readAt ? 'font-medium' : 'font-semibold']">
+          <div :class="['min-w-0 max-w-full line-clamp-2 text-[13px] sm:text-sm', rollup.readAt ? 'font-medium' : 'font-semibold']">
             <span class="text-gray-600 dark:text-gray-300 font-medium">New posts by</span>
             <span class="ml-1 inline-flex items-center gap-1">
               <span class="truncate">{{ firstActorLabel }}</span>
