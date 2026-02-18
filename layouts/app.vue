@@ -242,7 +242,6 @@
               :class="[
                 'no-scrollbar min-w-0 flex-1 overflow-x-hidden flex flex-col',
                 anyOverlayOpen || (isMessagesPage && hideTopBar) ? 'overflow-hidden' : 'overflow-y-auto overscroll-y-contain',
-                middleScrollerBottomPadClass,
               ]"
               :style="!hideTopBar ? { scrollPaddingTop: 'var(--moh-title-bar-height, 4rem)' } : undefined"
             >
@@ -319,6 +318,36 @@
             >
               <slot />
             </div>
+            </div>
+
+            <!-- Mobile bottom chrome lives inside the center column (no fixed overlap). -->
+            <!-- Radio sits above tab bar when playing. -->
+            <div v-if="!anyOverlayOpen" class="md:hidden shrink-0">
+              <Transition
+                enter-active-class="transition-[opacity,transform] duration-200 ease-out"
+                enter-from-class="opacity-0 translate-y-[30px]"
+                enter-to-class="opacity-100 translate-y-0"
+                leave-active-class="transition-[opacity,transform] duration-150 ease-in"
+                leave-from-class="opacity-100 translate-y-0"
+                leave-to-class="opacity-0 translate-y-[30px]"
+                @before-enter="() => { radioChromePadActive = true }"
+                @before-leave="() => { radioChromePadActive = true }"
+                @after-leave="() => { radioChromePadActive = false }"
+              >
+                <div
+                  v-show="radioHasStation"
+                  class="relative z-0 flex items-center border-t border-gray-200 bg-white dark:border-zinc-800 dark:bg-black text-gray-900 dark:text-white"
+                  :style="{ minHeight: 'var(--moh-radio-bar-height, 4rem)' }"
+                >
+                  <div class="w-full">
+                    <AppRadioBar />
+                  </div>
+                </div>
+              </Transition>
+
+              <div class="relative z-10">
+                <AppTabBar :items="tabItems" />
+              </div>
             </div>
 
             <!-- Radio player row: bottom of the middle column on desktop only. -->
@@ -527,37 +556,6 @@
             </IconField>
           </div>
         </div>
-      </div>
-    </div>
-
-    <!-- Mobile bottom chrome (tab bar + optional radio) + FAB. -->
-    <!-- Important: breakpoints must match the left rail (`hidden md:block`). -->
-    <div v-if="!anyOverlayOpen" class="md:hidden fixed inset-x-0 bottom-0 z-50">
-      <!-- Radio sits above the tab bar when playing. -->
-      <Transition
-        enter-active-class="transition-[opacity,transform] duration-200 ease-out"
-        enter-from-class="opacity-0 translate-y-[30px]"
-        enter-to-class="opacity-100 translate-y-0"
-        leave-active-class="transition-[opacity,transform] duration-150 ease-in"
-        leave-from-class="opacity-100 translate-y-0"
-        leave-to-class="opacity-0 translate-y-[30px]"
-        @before-enter="() => { radioChromePadActive = true }"
-        @before-leave="() => { radioChromePadActive = true }"
-        @after-leave="() => { radioChromePadActive = false }"
-      >
-        <div
-          v-show="radioHasStation"
-          class="relative z-0 flex items-center border-t border-gray-200 bg-white dark:border-zinc-800 dark:bg-black text-gray-900 dark:text-white"
-          :style="{ minHeight: 'var(--moh-radio-bar-height, 4rem)' }"
-        >
-          <div class="w-full">
-            <AppRadioBar />
-          </div>
-        </div>
-      </Transition>
-
-      <div class="relative z-10">
-        <AppTabBar :items="tabItems" />
       </div>
     </div>
 
@@ -1051,16 +1049,6 @@ watch(
   },
   { immediate: true },
 )
-
-// Mobile-only bottom clearance for fixed bottom UI (tab bar + optional radio bar).
-// Use CSS breakpoints so SSR + first client paint don't "jump" on desktop.
-const middleScrollerBottomPadClass = computed(() => {
-  if (anyOverlayOpen.value || (isMessagesPage.value && hideTopBar.value)) return 'pb-0'
-  if (radioChromePadActive.value) {
-    return 'pb-[calc(var(--moh-tabbar-height,4.5rem)+var(--moh-radio-bar-height,4rem)+var(--moh-safe-bottom,0px))] md:pb-0'
-  }
-  return 'pb-[calc(var(--moh-tabbar-height,4.5rem)+var(--moh-safe-bottom,0px))] md:pb-0'
-})
 
 function updateComposerSheetStyle() {
   if (!import.meta.client) return

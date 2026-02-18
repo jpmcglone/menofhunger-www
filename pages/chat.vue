@@ -566,6 +566,7 @@ const {
   removeMessagesCallback,
   emitMessagesTyping,
   emitMessagesScreen,
+  suppressMessageUnreadBumpsForMs,
   isSocketConnected,
 } = usePresence()
 const { showRequests, displayRequests, toneClass } = useMessagesBadge()
@@ -848,7 +849,7 @@ const draftGroupTitle = computed(() => {
 })
 
 // Treat user as "at bottom" even if a few pixels off (mobile scroll rounding, safe-area, etc).
-const BOTTOM_THRESHOLD = 96
+const BOTTOM_THRESHOLD = 24
 
 function isAtBottom() {
   const el = messagesScroller.value
@@ -979,28 +980,37 @@ function resetPendingNew() {
   pendingNewTier.value = 'normal'
 }
 
+function markSelectedConversationReadIfVisible(conversationId: string) {
+  const id = (conversationId ?? '').trim()
+  if (!id) return
+  if (typeof document === 'undefined' || document.visibilityState !== 'visible') return
+  void apiFetch(`/messages/conversations/${id}/mark-read`, { method: 'POST' }).catch(() => {
+    // Non-fatal: badge will eventually sync from server.
+  })
+  updateConversationUnread(id, 0)
+}
+
 function getMessageTier(message: Message): MessageTone {
   return userColorTier(message.sender as any)
 }
 
-function toneRank(tone: MessageTone): number {
-  if (tone === 'organization') return 3
-  if (tone === 'premium') return 2
-  if (tone === 'verified') return 1
-  return 0
-}
-
-function maybeUpgradePendingTier(message: Message) {
+function setPendingTierFromIncoming(message: Message) {
   if (message.sender.id === me.value?.id) return
-  const next = getMessageTier(message)
-  if (toneRank(next) <= toneRank(pendingNewTier.value)) return
-  pendingNewTier.value = next
+  // UX: the button tint should match the last non-self sender while you're scrolled up.
+  pendingNewTier.value = getMessageTier(message)
 }
 
 function onMessagesScroll() {
+  const wasAtBottom = atBottom.value
   const bottom = isAtBottom()
   atBottom.value = bottom
-  if (bottom) resetPendingNew()
+  if (bottom) {
+    // Only clear pending state when the user actually reaches bottom.
+    const convoId = selectedConversationId.value
+    const shouldMarkRead = !wasAtBottom && pendingNewCount.value > 0 && Boolean(convoId)
+    resetPendingNew()
+    if (shouldMarkRead && convoId) markSelectedConversationReadIfVisible(convoId)
+  }
   updateStickyDivider()
   updateScrollPill()
   // Only show pill for user-driven scrolling (programmatic scrolls shouldn't surface it).
@@ -1017,6 +1027,12 @@ function onPendingButtonClick() {
   scrollToBottom('smooth')
   atBottom.value = true
   resetPendingNew()
+  const convoId = selectedConversationId.value
+  if (convoId) {
+    void nextTick().then(() => {
+      requestAnimationFrame(() => markSelectedConversationReadIfVisible(convoId))
+    })
+  }
 }
 
 function shouldShowIncomingAvatar(message: Message, index: number) {
@@ -1739,15 +1755,22 @@ const messageCallback = {
       }
       if (shouldStick) {
         void nextTick().then(() => {
-          scrollToBottom('smooth')
+          // If the viewer is already at bottom, keep it pinned without a smooth animation
+          // (smooth scrolling can briefly toggle `atBottom` and flash the button).
+          scrollToBottom('auto')
           // One more frame to handle any layout updates (e.g. typing row enter/leave).
-          requestAnimationFrame(() => scrollToBottom('smooth'))
+          requestAnimationFrame(() => scrollToBottom('auto'))
         })
-      } else if (msg.sender.id !== me.value?.id) {
+      } else if (!exists && msg.sender.id !== me.value?.id) {
         pendingNewCount.value += 1
-        maybeUpgradePendingTier(msg)
+        setPendingTierFromIncoming(msg)
       }
-      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+      // Only mark read when the user is actually at the bottom (i.e. they can see new messages).
+      // If they're scrolled up, keep messages "unread" and preserve the pending count until they return to bottom.
+      const isIncoming = msg.sender.id !== me.value?.id
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible' && shouldStick) {
+        // Prevent transient badge flicker: server may emit an unread bump before our mark-read is processed.
+        if (isIncoming) suppressMessageUnreadBumpsForMs(900)
         void apiFetch(`/messages/conversations/${msg.conversationId}/mark-read`, { method: 'POST' })
         updateConversationUnread(msg.conversationId, 0)
       }
@@ -1768,7 +1791,8 @@ const messageCallback = {
     updateConversationUnread(convoId, 0)
     // If we currently have this conversation open, ensure UI stays consistent.
     if (selectedConversationId.value === convoId) {
-      pendingNewCount.value = 0
+      // Only clear the pending count if we're already at bottom (otherwise keep the "new messages below" affordance).
+      if (atBottom.value) pendingNewCount.value = 0
     }
   },
 }

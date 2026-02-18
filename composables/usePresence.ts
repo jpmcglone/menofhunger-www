@@ -117,6 +117,9 @@ export function usePresence() {
     primary: 0,
     requests: 0,
   }))
+  // When the viewer is actively reading a chat, the server may briefly bump unread counts
+  // before the client's mark-read request is processed. Suppress those transient increases.
+  const suppressMessageUnreadBumpsUntilMs = useState<number>('presence-messages-unread-suppress-until', () => 0)
   /** Previous undelivered count so we only play in-app sound when count increases (not on load or mark-read). */
   const previousNotificationCountRef = ref<number | null>(null)
   /** Suppress sounds during initial sync after (re)connect. */
@@ -523,10 +526,20 @@ export function usePresence() {
     socket.on('messages:updated', (data: { primaryUnreadCount?: number; requestUnreadCount?: number }) => {
       const primaryRaw = typeof data?.primaryUnreadCount === 'number' ? data.primaryUnreadCount : 0
       const requestRaw = typeof data?.requestUnreadCount === 'number' ? data.requestUnreadCount : 0
-      messageUnreadCounts.value = {
+      const incoming = {
         primary: Math.max(0, Math.floor(primaryRaw)),
         requests: Math.max(0, Math.floor(requestRaw)),
       }
+      const now = Date.now()
+      if (now < (suppressMessageUnreadBumpsUntilMs.value ?? 0)) {
+        const prev = messageUnreadCounts.value
+        messageUnreadCounts.value = {
+          primary: Math.min(Math.max(0, Number(prev.primary) || 0), incoming.primary),
+          requests: Math.min(Math.max(0, Number(prev.requests) || 0), incoming.requests),
+        }
+        return
+      }
+      messageUnreadCounts.value = incoming
     })
 
     socket.on('messages:new', (data: { conversationId?: string; message?: unknown }) => {
@@ -774,6 +787,11 @@ export function usePresence() {
     connectionBarJustConnected: readonly(connectionBarJustConnected),
     notificationUndeliveredCount: readonly(notificationUndeliveredCount),
     messageUnreadCounts: readonly(messageUnreadCounts),
+    suppressMessageUnreadBumpsForMs(ms: number) {
+      const dur = Math.max(0, Math.floor(Number(ms) || 0))
+      if (dur <= 0) return
+      suppressMessageUnreadBumpsUntilMs.value = Date.now() + dur
+    },
     setNotificationUndeliveredCount(count: number) {
       const c = Math.max(0, Math.floor(Number(count)) || 0)
       notificationUndeliveredCount.value = c
