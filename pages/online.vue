@@ -334,11 +334,9 @@ async function loadMoreRecent() {
 }
 
 onMounted(async () => {
-  console.log('[presence] online page MOUNTED')
   addOnlineFeedCallback(feedCallback)
   // Wait for socket so we're registered before REST returns our listing; subscribe before fetch for real-time.
   await whenSocketConnected(12000)
-  console.log('[presence] online page: socket ready, subscribing to feed')
   subscribeOnlineFeed()
 
   // If we already have an SSR-hydrated list, ensure presence store is warmed up.
@@ -357,7 +355,6 @@ onMounted(async () => {
   // until their socket connection is established. SSR can undercount (often showing 0 when only you are online).
   await fetchOnlinePage()
   // If the combined call didn't include recent (or viewer can't see it), keep the existing recent fetch path for load-more only.
-  console.log('[presence] online page: fetch complete, users=', users.value.length)
 })
 
 // SSR: prefetch lists so the first HTML paint contains real data (reduces flicker).
@@ -368,7 +365,6 @@ if (import.meta.server) {
 }
 
 onBeforeUnmount(() => {
-  console.log('[presence] online page UNMOUNTING')
   if (mergeRefetchTimeout) {
     clearTimeout(mergeRefetchTimeout)
     mergeRefetchTimeout = null

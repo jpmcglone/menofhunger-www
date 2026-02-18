@@ -438,7 +438,10 @@ export function usePresence() {
       const users = Array.isArray(data?.users) ? data.users : []
       for (const u of users) {
         const id = u?.id
-        if (id) applyUserPresence(id, true, u.idle ?? false)
+        if (id) {
+          markPresenceKnown(id)
+          applyUserPresence(id, true, u.idle ?? false)
+        }
       }
       if (onlineFeedSubscribed.value && onlineFeedCallbacks.value.size > 0) {
         for (const cb of onlineFeedCallbacks.value) {
@@ -462,12 +465,18 @@ export function usePresence() {
 
     socket.on('presence:idle', (data: { userId?: string }) => {
       const id = data?.userId
-      if (id) setUserIdle(id)
+      if (id) {
+        markPresenceKnown(id)
+        setUserIdle(id)
+      }
     })
 
     socket.on('presence:active', (data: { userId?: string }) => {
       const id = data?.userId
-      if (id) setUserActive(id)
+      if (id) {
+        markPresenceKnown(id)
+        setUserActive(id)
+      }
     })
 
     socket.on('presence:idleDisconnected', () => {
