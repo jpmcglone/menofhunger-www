@@ -44,6 +44,13 @@
                 >
                   <Icon name="tabler:player-pause" aria-hidden="true" />
                 </div>
+                <div
+                  v-else-if="u.muted"
+                  class="absolute inset-0 rounded-full bg-black/30 flex items-center justify-center moh-avatar-pause moh-avatar-pause-sm"
+                  aria-hidden="true"
+                >
+                  <Icon name="tabler:volume-off" aria-hidden="true" />
+                </div>
               </Transition>
             </NuxtLink>
             <div
@@ -64,6 +71,13 @@
                   aria-hidden="true"
                 >
                   <Icon name="tabler:player-pause" aria-hidden="true" />
+                </div>
+                <div
+                  v-else-if="u.muted"
+                  class="absolute inset-0 rounded-full bg-black/30 flex items-center justify-center moh-avatar-pause moh-avatar-pause-sm"
+                  aria-hidden="true"
+                >
+                  <Icon name="tabler:volume-off" aria-hidden="true" />
                 </div>
               </Transition>
             </div>

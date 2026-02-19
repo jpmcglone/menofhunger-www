@@ -41,6 +41,12 @@
                   <div class="font-semibold moh-text leading-snug">
                     {{ s.name }}
                   </div>
+                  <div class="mt-0.5 moh-meta tabular-nums">
+                    <span :class="lobbyCountForStation(s.id) > 0 ? 'moh-text' : ''">
+                      {{ lobbyCountForStation(s.id) }}
+                    </span>
+                    <span> in lobby</span>
+                  </div>
                   <div v-if="s.attributionName" class="mt-0.5 moh-meta truncate">
                     {{ s.attributionName }}
                   </div>
@@ -146,6 +152,13 @@
                       >
                         <Icon name="tabler:player-pause" aria-hidden="true" />
                       </div>
+                      <div
+                        v-else-if="u.muted"
+                        class="absolute inset-0 rounded-full bg-black/30 flex items-center justify-center moh-avatar-pause"
+                        aria-hidden="true"
+                      >
+                        <Icon name="tabler:volume-off" aria-hidden="true" />
+                      </div>
                     </Transition>
                   </NuxtLink>
                   <div
@@ -165,6 +178,13 @@
                         aria-hidden="true"
                       >
                         <Icon name="tabler:player-pause" aria-hidden="true" />
+                      </div>
+                      <div
+                        v-else-if="u.muted"
+                        class="absolute inset-0 rounded-full bg-black/30 flex items-center justify-center moh-avatar-pause"
+                        aria-hidden="true"
+                      >
+                        <Icon name="tabler:volume-off" aria-hidden="true" />
                       </div>
                     </Transition>
                   </div>
@@ -208,7 +228,29 @@ usePageSeo({
   noindex: true,
 })
 
-const { stations, stationsLoading, stationId, currentStation, isPlaying, isBuffering, error, listeners, play, pause } = useRadioPlayer()
+const {
+  stations,
+  stationsLoading,
+  stationId,
+  currentStation,
+  isPlaying,
+  isBuffering,
+  error,
+  listeners,
+  play,
+  pause,
+  lobbyCountForStation,
+  subscribeLobbyCounts,
+  unsubscribeLobbyCounts,
+} = useRadioPlayer()
+
+onMounted(() => {
+  void subscribeLobbyCounts()
+})
+
+onBeforeUnmount(() => {
+  unsubscribeLobbyCounts()
+})
 
 function onStationRowClick(s: RadioStation) {
   // Simple behavior: clicking the row always plays that station (requires user gesture anyway).

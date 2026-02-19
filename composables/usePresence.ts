@@ -2,6 +2,7 @@ import { io, type Socket } from 'socket.io-client'
 import { appConfig } from '~/config/app'
 import type {
   FollowListUser,
+  RadioLobbyCounts,
   RadioListener,
   WsAdminUpdatedPayload,
   WsFollowsChangedPayload,
@@ -41,8 +42,10 @@ export type OnlineFeedCallback = {
 }
 
 export type RadioListenersPayload = { stationId: string; listeners: RadioListener[] }
+export type RadioLobbyCountsPayload = RadioLobbyCounts
 export type RadioCallback = {
   onListeners?: (payload: RadioListenersPayload) => void
+  onLobbyCounts?: (payload: RadioLobbyCountsPayload) => void
   /** Called when this tab's radio was closed because the user started playing in another tab. */
   onReplaced?: () => void
 }
@@ -574,6 +577,14 @@ export function usePresence() {
       }
     })
 
+    socket.on('radio:lobbyCounts', (data: { countsByStationId?: Record<string, number> }) => {
+      if (!radioCallbacks.value.size) return
+      const countsByStationId = (data?.countsByStationId ?? {}) as Record<string, number>
+      for (const cb of radioCallbacks.value) {
+        cb.onLobbyCounts?.({ countsByStationId })
+      }
+    })
+
     socket.on('radio:replaced', () => {
       for (const cb of radioCallbacks.value) {
         cb.onReplaced?.()
@@ -857,6 +868,21 @@ export function usePresence() {
       const socket = socketRef.value
       if (!socket?.connected) return
       socket.emit('radio:leave', {})
+    },
+    emitRadioMute(muted: boolean) {
+      const socket = socketRef.value
+      if (!socket?.connected) return
+      socket.emit('radio:mute', { muted: Boolean(muted) })
+    },
+    emitRadioLobbiesSubscribe() {
+      const socket = socketRef.value
+      if (!socket?.connected) return
+      socket.emit('radio:lobbies:subscribe', {})
+    },
+    emitRadioLobbiesUnsubscribe() {
+      const socket = socketRef.value
+      if (!socket?.connected) return
+      socket.emit('radio:lobbies:unsubscribe', {})
     },
     emitMessagesScreen(active: boolean) {
       const socket = socketRef.value

@@ -1,4 +1,4 @@
-import type { RadioListener, RadioStation } from '~/types/api'
+import type { RadioListener, RadioLobbyCounts, RadioStation } from '~/types/api'
 import radioStationsFallback from '~/config/radio-stations.json'
 
 const RADIO_STATION_ID_KEY = 'radio-station-id'
@@ -6,6 +6,7 @@ const RADIO_IS_PLAYING_KEY = 'radio-is-playing'
 const RADIO_IS_BUFFERING_KEY = 'radio-is-buffering'
 const RADIO_ERROR_KEY = 'radio-error'
 const RADIO_LISTENERS_KEY = 'radio-listeners'
+const RADIO_LOBBY_COUNTS_KEY = 'radio-lobby-counts'
 // Bump version when changing default behavior so existing cookies don't lock old defaults.
 const RADIO_VOLUME_KEY = 'moh.radio.volume.v2'
 const DEFAULT_RADIO_STATIONS: RadioStation[] = Array.isArray(radioStationsFallback)
@@ -35,6 +36,7 @@ export function useRadioPlayer() {
   const isBuffering = useState<boolean>(RADIO_IS_BUFFERING_KEY, () => false)
   const error = useState<string | null>(RADIO_ERROR_KEY, () => null)
   const listeners = useState<RadioListener[]>(RADIO_LISTENERS_KEY, () => [])
+  const lobbyCounts = useState<RadioLobbyCounts>(RADIO_LOBBY_COUNTS_KEY, () => ({ countsByStationId: {} }))
   const volumeCookie = useCookie<number>(RADIO_VOLUME_KEY, {
     // Default requested: start at 25%.
     default: () => 0.25,
@@ -68,12 +70,18 @@ export function useRadioPlayer() {
   const currentStation = computed(() => stations.value.find((s) => s.id === stationId.value) ?? null)
   const hasStation = computed(() => Boolean(currentStation.value))
 
+  const isMuted = computed(() => (volume.value ?? 0.5) <= 0.001)
+
   const radioCb = {
     onListeners: (payload: { stationId: string; listeners: any[] }) => {
       if (!payload?.stationId) return
       if (payload.stationId !== stationId.value) return
       // API emits {id, username, avatarUrl} (matches RadioListener shape)
       listeners.value = (payload.listeners ?? []) as RadioListener[]
+    },
+    onLobbyCounts: (payload: { countsByStationId: Record<string, number> }) => {
+      const countsByStationId = payload?.countsByStationId ?? {}
+      lobbyCounts.value = { countsByStationId }
     },
     onReplaced: () => {
       stop()
@@ -130,10 +138,18 @@ export function useRadioPlayer() {
   }
 
   function setVolume(next: number) {
+    const wasMuted = isMuted.value
     const v = clamp01(next)
     volume.value = v
     volumeCookie.value = v
     syncAudioVolume()
+
+    const nowMuted = isMuted.value
+    if (wasMuted !== nowMuted && stationId.value) {
+      // Best-effort: mute presence is only relevant while in a station lobby.
+      presence.connect()
+      presence.emitRadioMute(nowMuted)
+    }
   }
 
   async function play(station: RadioStation) {
@@ -164,6 +180,8 @@ export function useRadioPlayer() {
     await presence.whenSocketConnected(10_000)
     presence.addRadioCallback(radioCb)
     presence.emitRadioJoin(station.id)
+    // Send current mute state (so other listeners can see it immediately).
+    presence.emitRadioMute(isMuted.value)
 
     // Start playback (requires user gesture; caller should only invoke on click).
     a.src = url
@@ -241,6 +259,28 @@ export function useRadioPlayer() {
     syncAudioVolume()
   })
 
+  async function subscribeLobbyCounts() {
+    if (!import.meta.client) return
+    await ensureLoaded()
+    if (!user.value?.id) return
+    presence.connect()
+    await presence.whenSocketConnected(10_000)
+    presence.addRadioCallback(radioCb)
+    presence.emitRadioLobbiesSubscribe()
+  }
+
+  function unsubscribeLobbyCounts() {
+    if (!import.meta.client) return
+    presence.emitRadioLobbiesUnsubscribe()
+    // Don't remove the callback here: it may also be needed for per-station listeners if playing.
+  }
+
+  function lobbyCountForStation(stationIdRaw: string): number {
+    const id = String(stationIdRaw ?? '').trim()
+    if (!id) return 0
+    return Math.max(0, Math.floor(Number(lobbyCounts.value?.countsByStationId?.[id] ?? 0) || 0))
+  }
+
   return {
     stations: readonly(stations),
     stationsLoading: readonly(stationsLoading),
@@ -252,12 +292,16 @@ export function useRadioPlayer() {
     isBuffering: readonly(isBuffering),
     error: readonly(error),
     listeners: readonly(listeners),
+    lobbyCounts: readonly(lobbyCounts),
+    lobbyCountForStation,
     volume: readonly(volume),
     setVolume,
     play,
     pause,
     stop,
     toggle,
+    subscribeLobbyCounts,
+    unsubscribeLobbyCounts,
   }
 }
 

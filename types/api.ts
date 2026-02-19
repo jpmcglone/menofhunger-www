@@ -69,6 +69,11 @@ export type RadioListener = {
   username: string | null
   avatarUrl: string | null
   paused?: boolean
+  muted?: boolean
+}
+
+export type RadioLobbyCounts = {
+  countsByStationId: Record<string, number>
 }
 
 export type Websters1828WordOfDay = {
