@@ -10,7 +10,7 @@ export async function usePublicProfile(normalizedUsername: Ref<string>) {
   const { data, error } = await useAsyncData(
     () => `public-profile:${normalizedUsername.value}`,
     async () => {
-      return await apiFetchData<PublicProfile>(
+      return await apiFetchData<PublicProfile | { banned: true }>(
         `/users/${encodeURIComponent(normalizedUsername.value)}`,
         { method: 'GET' }
       )
@@ -22,8 +22,18 @@ export async function usePublicProfile(normalizedUsername: Ref<string>) {
     }
   )
 
-  const profile = computed(() => data.value ?? null)
+  const profileBanned = computed(
+    () => Boolean(data.value && typeof data.value === 'object' && 'banned' in data.value && (data.value as { banned?: boolean }).banned === true)
+  )
+  /** When banned, profile is null so consumers can treat it like "no profile"; use profileBanned for the message. */
+  const profile = computed((): PublicProfile | null => {
+    if (profileBanned.value) return null
+    const d = data.value
+    if (d && typeof d === 'object' && 'banned' in d) return null
+    return (d as PublicProfile) ?? null
+  })
   const notFound = computed(() => {
+    if (profileBanned.value) return false
     const e = error.value as { statusCode?: number; message?: string } | null
     if (!e) return false
     if (e?.statusCode === 404) return true
@@ -45,5 +55,5 @@ export async function usePublicProfile(normalizedUsername: Ref<string>) {
     }
   }
 
-  return { profile, data, error, notFound, apiError }
+  return { profile, data, error, notFound, profileBanned, apiError }
 }

@@ -546,7 +546,9 @@ const boostClickable = computed(() => {
 })
 const commentClickable = computed(() => viewerCanInteract.value)
 
+const authorBanned = computed(() => Boolean(postView.value.authorBanned ?? postView.value.author?.authorBanned))
 const authorProfilePath = computed(() => {
+  if (authorBanned.value) return null
   const username = (postView.value.author.username ?? '').trim()
   return username ? `/u/${encodeURIComponent(username)}` : null
 })
@@ -650,16 +652,19 @@ type MenuItemWithIcon = MenuItem & { iconName?: string }
 const openComposerFromOnlyMe = inject(MOH_OPEN_COMPOSER_FROM_ONLYME_KEY, null)
 
 const moreMenuItems = computed<MenuItemWithIcon[]>(() => {
-  const items: MenuItemWithIcon[] = [
-    {
+  const items: MenuItemWithIcon[] = []
+  if (!authorBanned.value) {
+    items.push({
       label: postView.value.author.username ? `View @${postView.value.author.username}` : 'View profile',
       iconName: 'tabler:user',
       command: () => {
         if (!authorProfilePath.value) return
         return navigateTo(authorProfilePath.value)
       },
-    },
-  ]
+    })
+  } else {
+    items.push({ label: 'User is banned', iconName: 'tabler:user-off', disabled: true })
+  }
 
   if (isDeletedPost.value) {
     return items

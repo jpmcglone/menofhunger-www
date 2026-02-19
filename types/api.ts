@@ -170,6 +170,8 @@ export type PostAuthor = {
   stewardBadgeEnabled: boolean
   verifiedStatus: 'none' | 'identity' | 'manual'
   avatarUrl: string | null
+  /** When true, author is banned; id/username/name/avatar are redacted. */
+  authorBanned?: boolean
 }
 
 export type PostMention = {
@@ -255,6 +257,8 @@ export type FeedPost = {
   viewerHasBoosted?: boolean
   viewerHasBookmarked?: boolean
   viewerBookmarkCollectionIds?: string[]
+  /** When true, post body/media/mentions/poll are redacted and author is placeholder. */
+  authorBanned?: boolean
   internal?: {
     boostScore: number | null
     boostScoreUpdatedAt: string | null

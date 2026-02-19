@@ -2,7 +2,16 @@
   <!-- Profile pages use the app-standard gutter (px-4). Banner cancels it for full-bleed. -->
   <AppPageContent bottom="standard">
   <div class="w-full">
-    <div v-if="notFound" class="px-4 mx-auto max-w-3xl py-10">
+    <div v-if="profileBanned" class="px-4 mx-auto max-w-3xl py-10">
+      <div class="text-2xl font-bold tracking-tight text-gray-900 dark:text-gray-50">
+        This account has been banned
+      </div>
+      <div class="mt-2 text-sm text-gray-600 dark:text-gray-300">
+        This profile is no longer available. If you think this is a mistake, contact an admin.
+      </div>
+    </div>
+
+    <div v-else-if="notFound" class="px-4 mx-auto max-w-3xl py-10">
       <div class="text-2xl font-bold tracking-tight text-gray-900 dark:text-gray-50">
         This account doesn't exist
       </div>
@@ -271,8 +280,8 @@ const baseProfilePath = computed(() => `/u/${encodeURIComponent(usernameParam.va
 const isFollowersRoute = computed(() => /\/followers\/?$/.test(route.path))
 const isFollowingRoute = computed(() => /\/following\/?$/.test(route.path))
 
-const { profile, data, notFound, apiError } = await usePublicProfile(normalizedUsername)
-useProfileSeo({ profile, normalizedUsername, notFound })
+const { profile, data, notFound, profileBanned, apiError } = await usePublicProfile(normalizedUsername)
+useProfileSeo({ profile, normalizedUsername, notFound, profileBanned })
 
 const { header: appHeader } = useAppHeader()
 const profileName = computed(() => profile.value?.name || profile.value?.username || 'User')
