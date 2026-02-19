@@ -1,19 +1,31 @@
 <template>
   <section class="w-full max-w-md px-6">
     <div class="space-y-6">
-      <div class="space-y-2">
-        <div class="flex items-center gap-2 text-2xl font-semibold tracking-tight">
-          <Icon name="tabler:login" aria-hidden="true" />
-          <span>Login</span>
-        </div>
+      <div class="flex items-center gap-2 text-2xl font-semibold tracking-tight">
+        <Icon name="tabler:door-enter" aria-hidden="true" />
+        <span>Login</span>
       </div>
 
+      <template v-if="showBannedNotice">
+        <AppInlineAlert severity="danger">
+          This account was banned. Contact an admin if you think it’s a mistake.
+        </AppInlineAlert>
+        <Button
+          label="Dismiss"
+          class="w-full sm:w-auto"
+          rounded
+          @click="dismissBanned"
+        />
+      </template>
+
+      <template v-else>
       <!-- Step 1: Phone -->
       <div class="space-y-2">
         <label class="text-sm font-medium text-gray-700 dark:text-gray-200">Phone number</label>
 
         <div v-if="step === 'phone'" class="flex flex-col gap-2 sm:flex-row sm:items-center">
           <InputText
+            ref="phoneInputRef"
             v-model="phoneInput"
             class="w-full"
             placeholder="+1 (555) 555-5555"
@@ -63,6 +75,7 @@
           <div class="space-y-3">
           <div class="flex items-center gap-2">
             <InputText
+              ref="codeInputRef"
               v-model="codeInput"
               class="w-full font-mono tracking-[0.25em] text-left"
               placeholder="••••••"
@@ -103,7 +116,6 @@
         </div>
         </div>
       </template>
-    </div>
 
     <Dialog
       v-model:visible="introOpen"
@@ -111,6 +123,7 @@
       header="Welcome to Men of Hunger"
       :draggable="false"
       class="w-[min(34rem,calc(100vw-2rem))]"
+      @show="focusIntroContinueButton"
       @hide="closeIntro"
     >
       <div class="space-y-4 text-sm text-gray-700 dark:text-gray-200">
@@ -136,7 +149,16 @@
 
         <div class="flex items-center justify-end gap-2 pt-1">
           <Button label="Cancel" severity="secondary" text :disabled="introContinuing" @click="closeIntro" />
+          <!-- Hidden autofocus target so Dialog focuses this instead of the close button; @show then moves focus to Continue -->
+          <button
+            type="button"
+            autofocus
+            tabindex="-1"
+            aria-hidden="true"
+            class="absolute opacity-0 pointer-events-none w-0 h-0"
+          />
           <Button
+            ref="introContinueBtnRef"
             label="Continue"
             :loading="introContinuing"
             :disabled="introContinuing"
@@ -149,6 +171,8 @@
         </div>
       </div>
     </Dialog>
+      </template>
+    </div>
   </section>
 </template>
 
@@ -172,6 +196,16 @@ import { useFormSubmit } from '~/composables/useFormSubmit'
 import { countDigitsBeforeIndex, formatPhoneAsYouType, indexFromDigitCount, normalizePhoneForApi } from '~/utils/phone'
 const route = useRoute()
 
+const showBannedNotice = computed(() => String(route.query.banned ?? '') === '1')
+
+function dismissBanned() {
+  resetToPhone()
+  // Preserve other query params like `redirect`, only clear the banned treatment.
+  const q = { ...route.query }
+  delete q.banned
+  navigateTo({ path: '/login', query: q }, { replace: true })
+}
+
 const step = ref<Step>('phone')
 
 const phoneInput = ref('')
@@ -185,6 +219,33 @@ const inlineError = ref<string | null>(null)
 const introOpen = ref(false)
 const introPhone = ref<string | null>(null)
 const introError = ref<string | null>(null)
+const introContinueBtnRef = ref<{ $el?: HTMLElement } | null>(null)
+
+const phoneInputRef = ref<{ $el?: HTMLElement } | null>(null)
+const codeInputRef = ref<{ $el?: HTMLElement } | null>(null)
+
+function focusInput(compRef: { value: { $el?: HTMLElement } | null }) {
+  nextTick(() => {
+    const el = compRef.value?.$el
+    const input = el?.tagName === 'INPUT' ? el : (el?.querySelector?.('input') as HTMLInputElement | null)
+    if (input && typeof input.focus === 'function') input.focus()
+  })
+}
+
+onMounted(() => {
+  focusInput(phoneInputRef)
+})
+
+function focusIntroContinueButton() {
+  // Dialog focuses the first [autofocus] in content (our hidden button), so the X never gets focus.
+  // After the dialog's enter transition, move focus to the Continue button.
+  nextTick(() => {
+    setTimeout(() => {
+      const el = introContinueBtnRef.value?.$el
+      if (el && typeof (el as HTMLElement).focus === 'function') (el as HTMLElement).focus()
+    }, 50)
+  })
+}
 
 const resendRemainingSeconds = ref(0)
 let resendTimer: ReturnType<typeof setInterval> | null = null
@@ -233,6 +294,8 @@ async function startOtp(phone: string) {
     body: { phone }
   })
 
+  inlineError.value = null
+  introError.value = null
   phoneCommitted.value = formatPhoneAsYouType(phoneInput.value.trim()) || phone
   phoneCommittedNormalized.value = phone
   step.value = 'code'
@@ -337,6 +400,14 @@ const { submit: acceptIntroAndContinue, submitting: introContinuing } = useFormS
 )
 
 watch(
+  step,
+  (newStep) => {
+    if (newStep === 'code') focusInput(codeInputRef)
+  },
+  { flush: 'post' }
+)
+
+watch(
   codeInput,
   (value) => {
     // Keep it numeric.
@@ -384,7 +455,19 @@ const { submit: submitCode, submitting: verifying } = useFormSubmit(
   },
   {
     defaultError: 'Failed to verify code.',
-    onError: (message) => {
+    onError: (message, e) => {
+      const anyErr = e as { data?: any; response?: { _data?: any } | null } | null | undefined
+      const data = anyErr?.data ?? anyErr?.response?._data
+      const reason = data?.meta?.errors?.[0]?.reason
+
+      if (reason === 'account_banned') {
+        resetToPhone()
+        inlineError.value = null
+        const q = { ...route.query, banned: '1' }
+        void Promise.resolve(navigateTo({ path: '/login', query: q }, { replace: true })).catch(() => undefined)
+        return
+      }
+
       inlineError.value = message
     },
   },

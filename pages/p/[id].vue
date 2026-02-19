@@ -17,7 +17,7 @@
             @click="goToLogin"
           >
             <template #icon>
-              <Icon name="tabler:login" aria-hidden="true" />
+              <Icon name="tabler:door-enter" aria-hidden="true" />
             </template>
           </Button>
           <div class="text-xs text-gray-500 dark:text-gray-400">

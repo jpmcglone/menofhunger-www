@@ -312,7 +312,7 @@
             class="mt-0.5 inline-flex h-11 w-11 shrink-0 items-center justify-center text-gray-900 dark:text-white"
             aria-hidden="true"
           >
-            <Icon name="tabler:login" class="text-[18px]" aria-hidden="true" />
+            <Icon name="tabler:door-enter" class="text-[18px]" aria-hidden="true" />
           </div>
           <div class="min-w-0 space-y-1">
             <div class="text-[15px] font-semibold text-gray-900 dark:text-white">Log in to post</div>

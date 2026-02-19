@@ -33,6 +33,7 @@ const title = computed(() => {
   if (kind.value === 'login') return 'Log in to continue'
   if (kind.value === 'verify') {
     if (action.value === 'useAsDraft') return 'Verify to use drafts'
+    if (action.value === 'poll') return 'Verify to vote'
     return 'Verify to reply'
   }
   if (kind.value === 'setUsername') return 'Set a username to boost'
@@ -43,11 +44,15 @@ const message = computed(() => {
   if (kind.value === 'login') {
     if (action.value === 'comment') return 'You need to log in to reply.'
     if (action.value === 'bookmark') return 'You need to log in to save posts.'
+    if (action.value === 'poll') return 'You need to log in to vote on polls.'
     return 'You need to log in to boost posts.'
   }
   if (kind.value === 'verify') {
     if (action.value === 'useAsDraft') {
       return 'Using “Use as draft” is available once your account is verified. Verify your account to continue.'
+    }
+    if (action.value === 'poll') {
+      return 'Voting on polls is for verified members. Verify your account to vote.'
     }
     return 'Replying is for verified members. Verify your account to reply.'
   }
@@ -63,7 +68,7 @@ const primaryLabel = computed(() => {
 })
 
 const primaryIconName = computed(() => {
-  if (kind.value === 'login') return 'tabler:login'
+  if (kind.value === 'login') return 'tabler:door-enter'
   if (kind.value === 'verify') return 'tabler:settings'
   if (kind.value === 'setUsername') return 'tabler:settings'
   return undefined

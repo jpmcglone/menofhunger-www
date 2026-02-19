@@ -113,6 +113,7 @@ const viewer = useImageLightbox()
 const toast = useAppToast()
 const route = useRoute()
 const { user } = useAuth()
+const { show: showAuthActionModal } = useAuthActionModal()
 
 const postVisibility = computed<PostVisibility>(() => props.postVisibility ?? 'public')
 const viewerIsAuthor = computed(() => props.viewerIsAuthor === true)
@@ -160,6 +161,7 @@ watch(
 )
 
 const isAuthed = computed(() => Boolean(user.value?.id))
+const viewerIsVerified = computed(() => Boolean(user.value?.verifiedStatus && user.value.verifiedStatus !== 'none'))
 const endedForce = ref(false)
 let endTimer: ReturnType<typeof setTimeout> | null = null
 
@@ -247,6 +249,11 @@ async function onVote(optionId: string) {
   if (!isAuthed.value) {
     const redirect = encodeURIComponent(route.fullPath || '/home')
     return navigateTo(`/login?redirect=${redirect}`)
+  }
+
+  if (!viewerIsVerified.value) {
+    showAuthActionModal({ kind: 'verify', action: 'poll' })
+    return
   }
 
   voting.value = true

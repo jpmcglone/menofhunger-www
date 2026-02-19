@@ -53,7 +53,7 @@
         { "text": "Reply in public threads (no dialogues)" },
         { "text": "Reply to DMs started with them (cannot start new DMs)" },
         { "text": "Text + links only (no images/GIFs/video)" },
-        { "text": "Access men-only read areas", "comingSoon": true },
+        { "text": "Access men-only read areas" },
         { "text": "Join groups with limited participation", "comingSoon": true }
       ],
       "cannot": [
@@ -95,7 +95,7 @@
         { "text": "Publish longform articles", "comingSoon": true },
         { "text": "Create posts with media (images, GIFs, video)" },
         { "text": "Participate fully in groups", "comingSoon": true },
-        { "text": "See no ads in member areas", "comingSoon": true },
+        { "text": "See no ads while you’re Premium" },
         { "text": "Edit posts within a reasonable window" }
       ],
       "cannot": [
@@ -132,7 +132,7 @@
         { "text": "Quarterly Steward Call (strategy, philosophy, Q&A)", "comingSoon": true },
         { "text": "Monthly written founder update", "comingSoon": true },
         { "text": "Early access to new features / betas", "comingSoon": true },
-        { "text": "No ads anywhere while logged in", "comingSoon": true },
+        { "text": "No ads anywhere while logged in" },
         { "text": "Better feed defaults (verified + subscribed first)", "comingSoon": true },
         { "text": "Advanced mute / filter controls", "comingSoon": true },
         { "text": "Better longform reading & writing tools", "comingSoon": true },

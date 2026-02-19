@@ -1,5 +1,5 @@
 {
-  "asOfDate": "Feb. 10, 2026",
+  "asOfDate": "Feb. 18, 2026",
   "originalAsOfDate": "Feb. 3, 2026",
   "intro": {
     "label": "Product roadmap",
@@ -86,7 +86,7 @@
               "done": true
             },
             {
-              "text": "**Email re-engagement (v1 digest)** — A simple weekly digest and “you have new notifications” emails so you stay connected (provider: Mailgun or SES; we’ll pick the cheapest option that still delivers well).",
+              "text": "**Email re-engagement (v1)** — Daily digest, “you have new notifications” nudges, and instant high-signal emails (provider: Resend).",
               "done": true
             },
             {
@@ -116,7 +116,7 @@
               "done": true
             },
             {
-              "text": "**Sentry** — Error tracking for both the API and the web app, so we catch regressions early and can respond fast.",
+              "text": "**Sentry** — Error tracking is wired up for the web app; API Sentry still needs to be added so we catch regressions end-to-end.",
               "inProgress": true
             },
             {
@@ -163,10 +163,12 @@
               "text": "**Admin-only restore** — Restore soft-deleted posts (admin-only for now)."
             },
             {
-              "text": "**Member experience (v1)** — No ads in member areas; paid tiers remain neutral (no boosted reach)."
+              "text": "**Member experience (v1)** — Premium members see no ads; paid tiers remain neutral (no boosted reach).",
+              "done": true
             },
             {
-              "text": "Manage subscription — Stripe customer portal (manage or cancel); optional annual plan or one-off support; Contact/Help in settings."
+              "text": "Manage subscription — Stripe customer portal (manage or cancel) via Settings → Billing.",
+              "done": true
             },
             {
               "text": "**Gift premium** — Pay for someone else’s subscription; send them a month (or more) of premium as a gift."

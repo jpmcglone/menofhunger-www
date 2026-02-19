@@ -20,6 +20,102 @@
       </AppPageHeader>
     </div>
 
+    <div class="px-4">
+      <div class="rounded-2xl border border-gray-200 bg-gray-50/70 p-4 dark:border-zinc-800 dark:bg-zinc-950/30">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <div class="min-w-0">
+            <div class="text-sm font-semibold text-gray-900 dark:text-gray-50">Banned users</div>
+            <div class="mt-0.5 text-xs text-gray-600 dark:text-gray-300">
+              Site admins can unban accounts here.
+            </div>
+          </div>
+          <div class="flex items-center gap-2">
+            <Button
+              :label="bannedOpen ? 'Hide' : 'Show'"
+              severity="secondary"
+              size="small"
+              :loading="bannedLoading"
+              :disabled="bannedLoading"
+              @click="toggleBannedOpen"
+            />
+            <Button
+              label="Refresh"
+              severity="secondary"
+              size="small"
+              :loading="bannedLoading"
+              :disabled="bannedLoading || !bannedOpen"
+              @click="refreshBannedUsers"
+            >
+              <template #icon>
+                <Icon name="tabler:refresh" aria-hidden="true" />
+              </template>
+            </Button>
+          </div>
+        </div>
+
+        <div v-if="bannedOpen" class="mt-4 space-y-3">
+          <div class="flex items-center gap-2">
+            <InputText
+              v-model="bannedQuery"
+              class="w-full"
+              placeholder="Filter banned users (username, name, email, phone)…"
+              @keydown.enter.prevent="refreshBannedUsers"
+            />
+            <Button
+              label="Filter"
+              severity="secondary"
+              :loading="bannedLoading"
+              :disabled="bannedLoading"
+              @click="refreshBannedUsers"
+            />
+          </div>
+
+          <AppInlineAlert v-if="bannedError" severity="danger">{{ bannedError }}</AppInlineAlert>
+
+          <div v-if="!bannedLoading && bannedUsers.length === 0" class="text-sm text-gray-600 dark:text-gray-300">
+            No banned users.
+          </div>
+
+          <div v-else class="divide-y divide-gray-200 dark:divide-zinc-800 rounded-xl border border-gray-200 dark:border-zinc-800 overflow-hidden">
+            <div v-for="u in bannedUsers" :key="u.id" class="bg-white/60 dark:bg-zinc-950/20 px-4 py-3">
+              <div class="flex items-start justify-between gap-3">
+                <div class="flex min-w-0 items-start gap-3">
+                  <AppUserAvatar :user="u" size-class="h-9 w-9" bg-class="moh-surface" />
+                  <div class="min-w-0">
+                    <div class="flex items-center gap-2 min-w-0">
+                      <div class="font-semibold truncate">
+                        {{ u.name || u.username || 'User' }}
+                      </div>
+                      <Tag value="Banned" severity="danger" class="!text-xs" />
+                    </div>
+                    <div class="text-sm text-gray-600 dark:text-gray-300 truncate">
+                      <span v-if="u.username">@{{ u.username }}</span>
+                      <span v-else class="italic">username not set</span>
+                    </div>
+                    <div v-if="u.bannedReason" class="mt-1 text-xs text-gray-600 dark:text-gray-300">
+                      Reason: <span class="font-medium">{{ u.bannedReason }}</span>
+                    </div>
+                    <div v-if="u.bannedAt" class="mt-0.5 text-xs text-gray-500 dark:text-gray-400 font-mono">
+                      Banned at: {{ formatDateTime(u.bannedAt) }}
+                    </div>
+                  </div>
+                </div>
+
+                <Button
+                  label="Unban"
+                  severity="secondary"
+                  size="small"
+                  :loading="unbanLoadingId === u.id"
+                  :disabled="Boolean(unbanLoadingId)"
+                  @click="unbanUser(u)"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div class="px-4 flex items-center gap-2">
       <InputText
         v-model="userQuery"
@@ -74,6 +170,7 @@
                   <div class="font-semibold truncate">
                     {{ u.name || u.username }}
                   </div>
+                  <Tag v-if="u.bannedAt" value="Banned" severity="danger" class="!text-xs" />
                   <AppVerifiedBadge
                     :status="u.verifiedStatus"
                     :premium="u.premium"
@@ -304,6 +401,58 @@
           </div>
         </div>
 
+        <div class="rounded-xl border border-gray-200 bg-gray-50 p-3 dark:border-zinc-800 dark:bg-zinc-950/40">
+          <div class="text-sm font-semibold text-gray-900 dark:text-gray-50">Account ban</div>
+          <div class="mt-2 flex flex-wrap items-center justify-between gap-3">
+            <div class="text-sm text-gray-700 dark:text-gray-200">
+              <Tag
+                :value="editingUser?.bannedAt ? 'Banned' : 'Not banned'"
+                :severity="editingUser?.bannedAt ? 'danger' : 'secondary'"
+                class="!text-xs"
+              />
+              <span v-if="editingUser?.bannedAt" class="ml-2 text-xs text-gray-600 dark:text-gray-300 font-mono">
+                {{ formatDateTime(editingUser?.bannedAt) }}
+              </span>
+            </div>
+
+            <div class="flex items-center gap-2">
+              <Button
+                v-if="editingUser?.bannedAt"
+                label="Unban"
+                severity="secondary"
+                size="small"
+                :loading="banSaving"
+                :disabled="banSaving"
+                @click="unbanEditingUser"
+              />
+              <Button
+                v-else
+                label="Ban user"
+                severity="danger"
+                size="small"
+                :loading="banSaving"
+                :disabled="banSaving"
+                @click="banEditingUser"
+              />
+            </div>
+          </div>
+
+          <div v-if="!editingUser?.bannedAt" class="mt-3 space-y-2">
+            <label class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+              Reason (optional)
+            </label>
+            <Textarea v-model="banReason" class="w-full" rows="2" autoResize :maxlength="500" placeholder="Internal note for admins…" />
+          </div>
+
+          <div v-if="editingUser?.bannedReason" class="mt-3 text-xs text-gray-600 dark:text-gray-300">
+            Current reason: <span class="font-medium">{{ editingUser.bannedReason }}</span>
+          </div>
+
+          <AppInlineAlert v-if="banError" class="mt-3" severity="danger">
+            {{ banError }}
+          </AppInlineAlert>
+        </div>
+
         <AppInlineAlert v-if="editError" severity="danger">
           {{ editError }}
         </AppInlineAlert>
@@ -354,6 +503,9 @@ type AdminUser = {
   bio: string | null
   avatarUrl?: string | null
   siteAdmin: boolean
+  bannedAt: string | null
+  bannedReason: string | null
+  bannedByAdminId: string | null
   premium: boolean
   premiumPlus: boolean
   isOrganization: boolean
@@ -397,6 +549,16 @@ const editingUser = ref<AdminUser | null>(null)
 const editError = ref<string | null>(null)
 const emailAdminError = ref<string | null>(null)
 const emailAdminSaving = ref(false)
+const banReason = ref('')
+const banSaving = ref(false)
+const banError = ref<string | null>(null)
+
+const bannedOpen = ref(false)
+const bannedQuery = ref('')
+const bannedUsers = ref<AdminUser[]>([])
+const bannedLoading = ref(false)
+const bannedError = ref<string | null>(null)
+const unbanLoadingId = ref<string | null>(null)
 
 const editPhone = ref('')
 const editUsername = ref('')
@@ -546,6 +708,8 @@ function openEdit(u: AdminUser) {
   editingUser.value = u
   editError.value = null
   emailAdminError.value = null
+  banError.value = null
+  banReason.value = ''
   editPhone.value = u.phone
   editUsername.value = u.username ?? ''
   editName.value = u.name ?? ''
@@ -555,6 +719,97 @@ function openEdit(u: AdminUser) {
   editIsOrganization.value = Boolean(u.isOrganization)
   resetUsernameCheck()
   editOpen.value = true
+}
+
+function toggleBannedOpen() {
+  bannedOpen.value = !bannedOpen.value
+  if (bannedOpen.value) void refreshBannedUsers()
+}
+
+async function refreshBannedUsers() {
+  if (bannedLoading.value) return
+  bannedLoading.value = true
+  bannedError.value = null
+  try {
+    const res = await apiFetch<AdminUser[]>('/admin/users/banned', {
+      method: 'GET',
+      query: { q: bannedQuery.value.trim(), limit: 25 },
+    })
+    bannedUsers.value = res.data ?? []
+  } catch (e: unknown) {
+    bannedError.value = getApiErrorMessage(e) || 'Failed to load banned users.'
+  } finally {
+    bannedLoading.value = false
+  }
+}
+
+async function unbanUser(u: AdminUser) {
+  if (unbanLoadingId.value) return
+  const ok = window.confirm(`Unban ${u.username ? `@${u.username}` : 'this user'}?`)
+  if (!ok) return
+  unbanLoadingId.value = u.id
+  try {
+    const updated = await apiFetchData<AdminUser>(`/admin/users/${encodeURIComponent(u.id)}/unban`, {
+      method: 'POST',
+    })
+    // remove from banned list
+    bannedUsers.value = bannedUsers.value.filter((x) => x.id !== u.id)
+    // update search results in-place if present
+    results.value = results.value.map((x) => (x.id === u.id ? updated : x))
+    if (editingUser.value?.id === u.id) editingUser.value = updated
+  } catch (e: unknown) {
+    bannedError.value = getApiErrorMessage(e) || 'Failed to unban user.'
+  } finally {
+    unbanLoadingId.value = null
+  }
+}
+
+async function banEditingUser() {
+  const u = editingUser.value
+  if (!u) return
+  if (banSaving.value) return
+  const ok = window.confirm(
+    `Ban ${u.username ? `@${u.username}` : 'this user'}?\n\nThey will be logged out immediately and will not be able to log in.`,
+  )
+  if (!ok) return
+  banSaving.value = true
+  banError.value = null
+  try {
+    const updated = await apiFetchData<AdminUser>(`/admin/users/${encodeURIComponent(u.id)}/ban`, {
+      method: 'POST',
+      body: { reason: banReason.value.trim() ? banReason.value.trim() : undefined },
+    })
+    results.value = results.value.map((x) => (x.id === u.id ? updated : x))
+    editingUser.value = updated
+    // keep the banned list fresh if it’s open
+    if (bannedOpen.value) void refreshBannedUsers()
+  } catch (e: unknown) {
+    banError.value = getApiErrorMessage(e) || 'Failed to ban user.'
+  } finally {
+    banSaving.value = false
+  }
+}
+
+async function unbanEditingUser() {
+  const u = editingUser.value
+  if (!u) return
+  if (banSaving.value) return
+  const ok = window.confirm(`Unban ${u.username ? `@${u.username}` : 'this user'}?`)
+  if (!ok) return
+  banSaving.value = true
+  banError.value = null
+  try {
+    const updated = await apiFetchData<AdminUser>(`/admin/users/${encodeURIComponent(u.id)}/unban`, {
+      method: 'POST',
+    })
+    results.value = results.value.map((x) => (x.id === u.id ? updated : x))
+    editingUser.value = updated
+    if (bannedOpen.value) void refreshBannedUsers()
+  } catch (e: unknown) {
+    banError.value = getApiErrorMessage(e) || 'Failed to unban user.'
+  } finally {
+    banSaving.value = false
+  }
 }
 
 async function unverifyEmail() {

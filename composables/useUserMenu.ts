@@ -44,7 +44,7 @@ export function useUserMenu() {
     { separator: true },
     {
       label: 'Log out',
-      iconName: 'tabler:logout',
+      iconName: 'tabler:door-exit',
       command: () => {
         confirmVisible.value = true
       },

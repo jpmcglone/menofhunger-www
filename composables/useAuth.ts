@@ -99,6 +99,13 @@ export function useAuth() {
           }
         },
         onMeUpdated: (payload: import('~/types/api').WsUsersMeUpdatedPayload) => {
+          if (payload?.reason === 'account_banned') {
+            handleUnauthorized()
+            if (import.meta.client) {
+              void Promise.resolve(navigateTo('/login?banned=1')).catch(() => undefined)
+            }
+            return
+          }
           const me = payload?.user ?? null
           if (!me?.id) return
           if (me.id !== user.value?.id) return
@@ -193,9 +200,9 @@ export function useAuth() {
     user.value = null
     didAttempt.value = true
 
-    // Always land on home after explicit logout.
+    // Redirect to landing page after explicit logout.
     if (import.meta.client) {
-      await navigateTo('/home', { replace: true })
+      await navigateTo('/', { replace: true })
     }
   }
 

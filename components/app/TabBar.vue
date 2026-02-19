@@ -65,7 +65,7 @@
       <Button label="Cancel" text severity="secondary" @click="confirmVisible = false" />
       <Button label="Log out" severity="danger" rounded @click="confirmLogout">
         <template #icon>
-          <Icon name="tabler:logout" aria-hidden="true" />
+          <Icon name="tabler:door-exit" aria-hidden="true" />
         </template>
       </Button>
     </template>

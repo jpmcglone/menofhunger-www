@@ -5,7 +5,7 @@ export function useFormSubmit<T>(
   options?: {
     defaultError?: string
     onSuccess?: (result: T) => void
-    onError?: (message: string) => void
+    onError?: (message: string, error?: unknown) => void
   },
 ) {
   const submitting = ref(false)
@@ -22,7 +22,7 @@ export function useFormSubmit<T>(
     } catch (e: unknown) {
       const message = getApiErrorMessage(e) || options?.defaultError || 'Failed to submit.'
       submitError.value = message
-      options?.onError?.(message)
+      options?.onError?.(message, e)
     } finally {
       submitting.value = false
     }

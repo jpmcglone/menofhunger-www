@@ -218,7 +218,7 @@
             ]"
           >
             <span class="flex h-12 w-12 shrink-0 items-center justify-center">
-              <Icon name="tabler:login" class="text-[22px] opacity-95" aria-hidden="true" />
+              <Icon name="tabler:door-enter" class="text-[22px] opacity-95" aria-hidden="true" />
             </span>
             <span v-if="!navCompactMode" class="hidden xl:inline text-base font-semibold">Log in</span>
           </NuxtLink>

@@ -1,4 +1,4 @@
-export type AuthAction = 'comment' | 'boost' | 'bookmark' | 'useAsDraft'
+export type AuthAction = 'comment' | 'boost' | 'bookmark' | 'useAsDraft' | 'poll'
 export type AuthActionModalKind = 'login' | 'verify' | 'setUsername'
 
 export function useAuthActionModal() {

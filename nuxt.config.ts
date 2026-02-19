@@ -118,6 +118,7 @@ export default defineNuxtConfig({
     '@nuxt/image',
     '@nuxt/scripts',
     '@nuxt/ui',
+    '@nuxtjs/color-mode',
     '@primevue/nuxt-module',
     '@sentry/nuxt/module'
   ],
@@ -166,8 +167,8 @@ export default defineNuxtConfig({
         'heroicons-solid:eye-slash',
         // Common core actions
         'tabler:plus',
-        'tabler:login',
-        'tabler:logout',
+        'tabler:door-enter',
+        'tabler:door-exit',
       ],
       // Guardrail: keep the icon client bundle from growing unbounded.
       // (Uncompressed size; the shipped gzip/brotli is much smaller.)

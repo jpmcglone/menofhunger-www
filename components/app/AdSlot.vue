@@ -36,7 +36,7 @@ const props = defineProps<{
 }>()
 
 const { user } = useAuth()
-const isPremiumViewer = computed(() => Boolean(user.value?.premium))
+const isPremiumViewer = computed(() => Boolean(user.value?.premium || user.value?.premiumPlus))
 
 const config = useRuntimeConfig()
 const adsenseEnabled = computed(() => Boolean(config.public.adsense?.enabled))

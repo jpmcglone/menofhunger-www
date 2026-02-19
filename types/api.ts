@@ -980,6 +980,9 @@ export type UserDto = {
   interests: string[]
   menOnlyConfirmed: boolean
   siteAdmin: boolean
+  bannedAt: string | null
+  bannedReason: string | null
+  bannedByAdminId: string | null
   premium: boolean
   premiumPlus: boolean
   isOrganization: boolean

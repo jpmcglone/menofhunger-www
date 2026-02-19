@@ -145,6 +145,12 @@ export function useApiClient() {
     return typeof status === 'number' ? status : null
   }
 
+  function getErrorReason(e: unknown): string | null {
+    const anyErr = e as any
+    const reason = anyErr?.data?.meta?.errors?.[0]?.reason
+    return typeof reason === 'string' && reason.trim() ? reason.trim() : null
+  }
+
   function shouldRedirectToLogin(path: string, layout: unknown): boolean {
     if (path === '/login') return false
     // Match the global auth middleware’s protection rules.
@@ -156,7 +162,7 @@ export function useApiClient() {
     return layout === 'app'
   }
 
-  function handleUnauthorizedClientSide() {
+  function handleUnauthorizedClientSide(opts?: { banned?: boolean }) {
     clearMohCacheAll()
     clearAuthClientState({ resetViewerCaches: true })
     if (!import.meta.client) return
@@ -164,6 +170,10 @@ export function useApiClient() {
     const path = String(route.path || '')
     const layout = route.meta?.layout
     if (!shouldRedirectToLogin(path, layout)) return
+    if (opts?.banned) {
+      void Promise.resolve(navigateTo('/login?banned=1')).catch(() => undefined)
+      return
+    }
     const redirect = encodeURIComponent(route.fullPath || path)
     // `navigateTo` can return non-Promise values in some Nuxt contexts; normalize.
     void Promise.resolve(navigateTo(`/login?redirect=${redirect}`)).catch(() => undefined)
@@ -200,7 +210,8 @@ export function useApiClient() {
         return await $fetch<ApiEnvelope<T>>(url, fetchOptions)
       } catch (e) {
         if (getErrorStatus(e) === 401) {
-          handleUnauthorizedClientSide()
+          const reason = getErrorReason(e)
+          handleUnauthorizedClientSide({ banned: reason === 'account_banned' })
         }
         const canRetry =
           attempt < retryCount &&
