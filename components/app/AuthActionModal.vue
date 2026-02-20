@@ -42,6 +42,7 @@ const title = computed(() => {
 
 const message = computed(() => {
   if (kind.value === 'login') {
+    if (action.value === 'post') return 'You need to log in to post.'
     if (action.value === 'comment') return 'You need to log in to reply.'
     if (action.value === 'bookmark') return 'You need to log in to save posts.'
     if (action.value === 'poll') return 'You need to log in to vote on polls.'

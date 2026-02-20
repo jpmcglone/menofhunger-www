@@ -120,12 +120,15 @@ export function useAuth() {
   async function me(): Promise<AuthUser | null> {
     const gen = authGeneration
     try {
-      const result = await apiFetch<{ user: AuthUser | null }>('/auth/me', { method: 'GET' })
+      const result = await apiFetch<AuthUser | null>('/auth/me', { method: 'GET' })
       // If auth state was reset while this request was in flight (logout/401), ignore.
       if (gen !== authGeneration) return null
-      user.value = result.data.user
-      return result.data.user
-    } catch {
+      user.value = result.data
+      return result.data
+    } catch (e: unknown) {
+      if (import.meta.dev) {
+        console.warn('[auth] /auth/me failed', e)
+      }
       // If the API is unreachable, fail gracefully.
       if (gen === authGeneration) user.value = null
       return null

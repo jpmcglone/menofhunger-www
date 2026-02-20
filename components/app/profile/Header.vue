@@ -260,11 +260,11 @@
       </div>
 
       <div v-if="showFollowCounts" class="mt-4 flex items-center gap-4 text-sm text-gray-600 dark:text-gray-300">
-        <button type="button" class="hover:underline" @click="emit('openFollowing')">
+        <button type="button" class="cursor-pointer hover:underline" @click="emit('openFollowing')">
           <span class="font-semibold text-gray-900 dark:text-gray-50 tabular-nums">{{ followingCount ?? 0 }}</span>
           <span class="ml-1 text-gray-600 dark:text-gray-400">Following</span>
         </button>
-        <button type="button" class="hover:underline" @click="emit('openFollowers')">
+        <button type="button" class="cursor-pointer hover:underline" @click="emit('openFollowers')">
           <span class="font-semibold text-gray-900 dark:text-gray-50 tabular-nums">{{ followerCountN }}</span>
           <span class="ml-1 text-gray-600 dark:text-gray-400">{{ followerLabel }}</span>
         </button>

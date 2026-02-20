@@ -300,40 +300,84 @@
       </div>
     </div>
 
-    <button
+    <!-- Logged-out: full disabled composer. Clicking it shows a login prompt; the Log in button navigates directly. -->
+    <div
       v-else
-      type="button"
-      class="w-full text-left rounded-2xl px-5 py-5 transition-colors moh-card hover:opacity-[0.985] active:scale-[0.995] moh-focus"
-      @click="goLogin"
+      role="button"
+      tabindex="0"
+      aria-label="Log in to post"
+      class="cursor-pointer"
+      :class="omitAvatar ? 'flex flex-col gap-2' : 'grid grid-cols-[2.5rem_minmax(0,1fr)] gap-x-3 items-start'"
+      @click="showLoginPrompt"
+      @keydown.enter="showLoginPrompt"
+      @keydown.space.prevent="showLoginPrompt"
     >
-      <div class="flex items-center justify-between gap-4">
-        <div class="flex min-w-0 items-start gap-4">
-          <div
-            class="mt-0.5 inline-flex h-11 w-11 shrink-0 items-center justify-center text-gray-900 dark:text-white"
-            aria-hidden="true"
-          >
-            <Icon name="tabler:door-enter" class="text-[18px]" aria-hidden="true" />
-          </div>
-          <div class="min-w-0 space-y-1">
-            <div class="text-[15px] font-semibold text-gray-900 dark:text-white">Log in to post</div>
-            <div class="text-sm text-gray-700 dark:text-white/80">
-              Join the conversation and share updates with the community.
-            </div>
+      <!-- Row 1: "Public" scope tag -->
+      <div :class="omitAvatar ? 'flex justify-end' : 'col-start-2 flex justify-end items-end mb-3 sm:mb-2'">
+        <span
+          class="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold border moh-text-muted border-gray-300 dark:border-zinc-600 select-none"
+          aria-hidden="true"
+        >
+          Public
+        </span>
+      </div>
+
+      <!-- Row 2: avatar placeholder -->
+      <template v-if="!omitAvatar">
+        <div
+          class="row-start-1 sm:row-start-2 col-start-1 mb-3 sm:mb-0 shrink-0 h-8 w-8 sm:h-10 sm:w-10 rounded-full ring-1 ring-gray-300 dark:ring-zinc-600 bg-gray-100 dark:bg-zinc-800 flex items-center justify-center"
+          aria-hidden="true"
+        >
+          <Icon name="tabler:user" class="text-gray-400 dark:text-zinc-500 text-[14px] sm:text-[16px]" />
+        </div>
+      </template>
+
+      <!-- Textarea + bottom bar -->
+      <div
+        :class="omitAvatar ? 'min-w-0 moh-composer-tint' : 'row-start-2 col-span-2 sm:col-span-1 sm:col-start-2 min-w-0 moh-composer-tint'"
+        class="pointer-events-none select-none"
+      >
+        <div class="moh-composer-field relative rounded-xl border moh-border-subtle moh-surface-2">
+          <div class="px-3 py-2 text-[16px] leading-6 min-h-[4.5rem] text-gray-400 dark:text-zinc-500 opacity-70">
+            What's happening?
           </div>
         </div>
 
-        <!-- Visual CTA button (same click target as the card). -->
-        <div
-          class="shrink-0 inline-flex items-center rounded-xl px-5 py-2.5 text-sm font-bold tracking-tight
-                 shadow-sm ring-1 ring-black/5
-                 bg-gray-900 text-white
-                 dark:bg-white dark:text-black dark:ring-white/15"
-          aria-hidden="true"
-        >
-          <span>Log in</span>
+        <div class="mt-3 flex items-center justify-between">
+          <div class="flex items-center gap-2 text-gray-500 dark:text-gray-400 opacity-40">
+            <Button text rounded severity="secondary" disabled aria-hidden="true">
+              <template #icon>
+                <Icon name="tabler:photo" aria-hidden="true" />
+              </template>
+            </Button>
+            <Button text rounded severity="secondary" disabled aria-hidden="true">
+              <template #icon>
+                <span class="inline-flex h-[22px] w-[22px] items-center justify-center rounded-md border border-current/30 bg-transparent text-[10px] font-black leading-none" aria-hidden="true">GIF</span>
+              </template>
+            </Button>
+            <Button text rounded severity="secondary" disabled aria-hidden="true">
+              <template #icon>
+                <Icon name="tabler:chart-bar" class="rotate-90" aria-hidden="true" />
+              </template>
+            </Button>
+          </div>
+          <div class="flex items-center gap-2">
+            <div class="moh-meta tabular-nums opacity-40">0/200</div>
+            <NuxtLink
+              :to="loginTo"
+              class="pointer-events-auto cursor-pointer shrink-0 inline-flex items-center rounded-full px-4 py-1.5 text-sm font-semibold
+                     bg-gray-900 text-white hover:bg-gray-700
+                     dark:bg-white dark:text-black dark:hover:bg-gray-100
+                     transition-colors moh-focus"
+              aria-label="Log in to post"
+              @click.stop
+            >
+              Log in
+            </NuxtLink>
+          </div>
         </div>
       </div>
-    </button>
+    </div>
   </div>
 
   <AppComposerGiphyPickerDialog
@@ -1047,9 +1091,14 @@ function onComposerKeydown(e: KeyboardEvent) {
   }
 }
 
-const goLogin = () => {
+const loginTo = computed(() => {
   const redirect = encodeURIComponent(route.fullPath || '/home')
-  return navigateTo(`/login?redirect=${redirect}`)
+  return `/login?redirect=${redirect}`
+})
+
+const { show: showAuthActionModal } = useAuthActionModal()
+function showLoginPrompt() {
+  showAuthActionModal({ kind: 'login', action: 'post' })
 }
 
 function applyInitialTextIfNeeded() {

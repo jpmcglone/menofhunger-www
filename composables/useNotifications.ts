@@ -65,41 +65,66 @@ export function useNotifications() {
     onBeforeUnmount(() => removeNotificationsCallback(notificationsCb))
   }
 
+  let fetchPromise: Promise<GetNotificationsResponse['pagination'] | undefined> | null = null
   async function fetchList(opts?: { cursor?: string | null; limit?: number; forceRefresh?: boolean }) {
+    // Prevent overlapping refresh/load-more requests which can corrupt pagination + grouping.
+    if (fetchPromise) {
+      // If this is a "load more" request, wait for the current request and then proceed.
+      if (opts?.cursor) {
+        await fetchPromise
+      } else {
+        if (opts?.forceRefresh) pendingRefresh.value = true
+        return await fetchPromise
+      }
+    }
+
     const cursor = opts?.cursor ?? null
     const limit = opts?.limit ?? 30
     const forceRefresh = opts?.forceRefresh ?? false
     if (!forceRefresh && !cursor && notifications.value.length > 0 && !opts) return
-    loading.value = true
+
+    const run = async (): Promise<GetNotificationsResponse['pagination'] | undefined> => {
+      loading.value = true
+      try {
+        const q = new URLSearchParams()
+        if (limit) q.set('limit', String(limit))
+        if (cursor) q.set('cursor', cursor)
+        const path = `/notifications?${q.toString()}`
+        // This endpoint includes a custom pagination shape (undeliveredCount), so use the endpoint-specific type.
+        const res = (await apiFetch<NotificationFeedItem[]>(path)) as unknown as GetNotificationsResponse
+        const list = res.data ?? []
+        const pagination = res.pagination
+        if (cursor) {
+          notifications.value = [...notifications.value, ...list]
+        } else {
+          notifications.value = list
+        }
+        nextCursor.value = pagination?.nextCursor ?? null
+        return pagination
+      } finally {
+        loading.value = false
+        if (pendingRefresh.value && isNotificationsPage.value) {
+          pendingRefresh.value = false
+          void fetchList({ forceRefresh: true })
+        }
+      }
+    }
+
+    fetchPromise = run()
     try {
-      const q = new URLSearchParams()
-      if (limit) q.set('limit', String(limit))
-      if (cursor) q.set('cursor', cursor)
-      const path = `/notifications?${q.toString()}`
-      const res = await apiFetch<NotificationFeedItem[]>(path) as NotificationsListResponse
-      const list = res.data ?? []
-      const pagination = res.pagination
-      if (cursor) {
-        notifications.value = [...notifications.value, ...list]
-      } else {
-        notifications.value = list
-      }
-      nextCursor.value = pagination?.nextCursor ?? null
-      return pagination
+      return await fetchPromise
     } finally {
-      loading.value = false
-      if (pendingRefresh.value && isNotificationsPage.value) {
-        pendingRefresh.value = false
-        void fetchList({ forceRefresh: true })
-      }
+      fetchPromise = null
     }
   }
 
   async function markDelivered() {
     try {
       await apiFetch('/notifications/mark-delivered', { method: 'POST' })
-    } catch {
-      // Ignore
+    } catch (e: unknown) {
+      if (import.meta.dev) {
+        console.warn('[notifications] markDelivered failed', e)
+      }
     }
   }
 
@@ -110,16 +135,20 @@ export function useNotifications() {
         method: 'POST',
         body: params,
       })
-    } catch {
-      // Fire-and-forget; ignore
+    } catch (e: unknown) {
+      if (import.meta.dev) {
+        console.warn('[notifications] markReadBySubject failed', e)
+      }
     }
   }
 
   async function markAllRead() {
     try {
       await apiFetch('/notifications/mark-all-read', { method: 'POST' })
-    } catch {
-      // Ignore
+    } catch (e: unknown) {
+      if (import.meta.dev) {
+        console.warn('[notifications] markAllRead failed', e)
+      }
     }
   }
 
@@ -269,8 +298,9 @@ export function useNotifications() {
   }
 
   function rowHref(n: Notification): string | null {
-    if (n.subjectPostId) return `/p/${n.subjectPostId}`
-    if (n.subjectUserId && n.actor?.username) return `/u/${n.actor.username}`
+    if (n.kind === 'comment' && n.actorPostId) return `/p/${encodeURIComponent(n.actorPostId)}`
+    if (n.subjectPostId) return `/p/${encodeURIComponent(n.subjectPostId)}`
+    if (n.subjectUserId && n.actor?.username) return `/u/${encodeURIComponent(n.actor.username)}`
     return null
   }
 

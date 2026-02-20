@@ -14,16 +14,16 @@ export type PublicUserEntity = {
 
 type UsersById = Record<string, Partial<PublicUserEntity>>
 
-function mergeDefined<T extends Record<string, any>>(prev: T, next: Partial<T>): T {
-  const out: any = { ...prev }
+function mergeDefined<T extends Record<string, unknown>>(prev: T, next: Partial<T>): T {
+  const out = { ...prev }
   for (const k of Object.keys(next) as Array<keyof T>) {
     const v = next[k]
-    if (v !== undefined) out[k] = v
+    if (v !== undefined) out[k] = v as T[typeof k]
   }
-  return out
+  return out as T
 }
 
-function shallowEqual(a: Record<string, any>, b: Record<string, any>): boolean {
+function shallowEqual(a: Record<string, unknown>, b: Record<string, unknown>): boolean {
   const aKeys = Object.keys(a)
   const bKeys = Object.keys(b)
   if (aKeys.length !== bKeys.length) return false
@@ -43,12 +43,13 @@ export function useUsersStore() {
   const byId = useState<UsersById>('users-by-id', () => ({}))
 
   function upsert(user: Partial<PublicUserEntity> | null | undefined) {
+    if (!user) return
     const id = String(user?.id ?? '').trim()
     if (!id) return
     const prev = byId.value[id] ?? {}
-    const merged = mergeDefined(prev, user as any)
+    const merged = mergeDefined(prev, user)
     // IMPORTANT: avoid infinite reactive loops by never reassigning if nothing actually changed.
-    if (shallowEqual(prev as any, merged as any)) return
+    if (shallowEqual(prev, merged)) return
     byId.value = { ...byId.value, [id]: merged }
   }
 
@@ -59,11 +60,11 @@ export function useUsersStore() {
   }
 
   function overlay<T extends { id?: string | null }>(snapshot: T): T {
-    const id = String((snapshot as any)?.id ?? '').trim()
+    const id = String(snapshot?.id ?? '').trim()
     if (!id) return snapshot
     const cached = byId.value[id]
     if (!cached) return snapshot
-    return { ...(snapshot as any), ...(cached as any) }
+    return { ...snapshot, ...cached } as T
   }
 
   return { byId, upsert, get, overlay }

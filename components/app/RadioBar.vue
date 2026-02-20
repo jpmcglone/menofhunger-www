@@ -23,7 +23,7 @@
     <button
       v-else
       type="button"
-      class="min-w-0 flex-1 text-left"
+      class="min-w-0 flex-1 cursor-pointer text-left"
       @click="navigateTo('/spaces')"
     >
       <div class="min-w-0">

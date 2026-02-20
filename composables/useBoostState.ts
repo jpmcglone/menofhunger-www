@@ -84,27 +84,33 @@ export function useBoostState() {
 
       // If the user tapped again while this was in flight, this response is stale.
       // Ignore it (we'll send a follow-up to match latest intent below).
-      if (typeof pending.value[postId] === 'boolean') return
+      const pendingNow = pending.value[postId]
+      if (typeof pendingNow !== 'boolean') {
+        // Otherwise commit server truth for this request.
+        set(postId, { viewerHasBoosted: result.viewerHasBoosted, boostCount: result.boostCount })
+      }
 
-      // Otherwise commit server truth for this request.
-      set(postId, { viewerHasBoosted: result.viewerHasBoosted, boostCount: result.boostCount })
     } catch (e: unknown) {
       // If user tapped again while this was in flight, do NOT fight the latest intent.
-      if (typeof pending.value[postId] === 'boolean') {
+      const pendingNow = pending.value[postId]
+      if (typeof pendingNow === 'boolean') {
         error.value = getApiErrorMessage(e) || 'Failed to boost.'
-        return
-      }
-
-      // Otherwise revert fully.
-      if (existed && prev) {
-        set(postId, prev)
       } else {
-        const next = { ...state.value }
-        delete next[postId]
-        state.value = next
+        // Otherwise revert fully, but only if we're still in the state this request was responsible for.
+        const cur = state.value[postId] ?? null
+        const curMatchesThisRequest = cur ? cur.viewerHasBoosted === desiredBoosted : false
+        if (curMatchesThisRequest) {
+          if (existed && prev) {
+            set(postId, prev)
+          } else {
+            const next = { ...state.value }
+            delete next[postId]
+            state.value = next
+          }
+        }
+        error.value = getApiErrorMessage(e) || 'Failed to boost.'
+        throw e
       }
-      error.value = getApiErrorMessage(e) || 'Failed to boost.'
-      throw e
     } finally {
       inflight.value = { ...inflight.value, [key]: false }
     }

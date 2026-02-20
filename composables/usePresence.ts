@@ -110,6 +110,39 @@ export type UsersCallback = {
   onMeUpdated?: (payload: WsUsersMeUpdatedPayload) => void
 }
 
+function isRecord(v: unknown): v is Record<string, unknown> {
+  return Boolean(v && typeof v === 'object')
+}
+
+function getSenderIdFromMessageNewPayload(payload: unknown): string | null {
+  if (!isRecord(payload)) return null
+  const message = payload.message
+  if (!isRecord(message)) return null
+  const sender = message.sender
+  if (!isRecord(sender)) return null
+  const id = sender.id
+  return typeof id === 'string' ? id : null
+}
+
+function pickPublicUserEntity(u: unknown): import('~/composables/useUsersStore').PublicUserEntity | null {
+  if (!isRecord(u)) return null
+  const id = typeof u.id === 'string' ? u.id : null
+  if (!id) return null
+  return {
+    id,
+    username: typeof u.username === 'string' ? u.username : null,
+    name: typeof u.name === 'string' ? u.name : null,
+    bio: typeof u.bio === 'string' ? u.bio : null,
+    premium: typeof u.premium === 'boolean' ? u.premium : undefined,
+    premiumPlus: typeof u.premiumPlus === 'boolean' ? u.premiumPlus : undefined,
+    verifiedStatus: typeof u.verifiedStatus === 'string' ? u.verifiedStatus : undefined,
+    avatarUrl: typeof u.avatarUrl === 'string' ? u.avatarUrl : null,
+    bannerUrl: typeof u.bannerUrl === 'string' ? u.bannerUrl : null,
+    pinnedPostId: typeof u.pinnedPostId === 'string' ? u.pinnedPostId : null,
+    lastOnlineAt: typeof u.lastOnlineAt === 'string' ? u.lastOnlineAt : null,
+  }
+}
+
 function apiBaseUrlToWsUrl(apiBaseUrl: string): string {
   const trimmed = apiBaseUrl.replace(/\/+$/, '').trim()
   if (trimmed.startsWith('https://')) return `wss://${trimmed.slice(8)}`
@@ -412,6 +445,7 @@ export function usePresence() {
   function connect() {
     if (!import.meta.client) return
     if (!user.value?.id || !apiBaseUrl) return
+    if (isSocketConnecting.value) return
     if (socketRef.value?.connected) return
     // Don't replace a socket that's still connecting (avoids "closed before connection" when multiple components mount).
     if (socketRef.value && !socketRef.value.connected) return
@@ -591,7 +625,7 @@ export function usePresence() {
       // Play sound only for realtime deliveries (not initial unread count sync).
       // Avoid playing for your own sent message when sender id is present.
       const meId = user.value?.id ?? null
-      const senderId = (data as any)?.message?.sender?.id ?? null
+      const senderId = getSenderIdFromMessageNewPayload(data)
       if (!meId || !senderId || senderId !== meId) {
         maybePlayMessageSound()
       }
@@ -630,7 +664,7 @@ export function usePresence() {
     socket.on('radio:chatMessage', (data: { stationId?: string; message?: RadioChatMessage }) => {
       if (!radioCallbacks.value.size) return
       const stationId = String(data?.stationId ?? '').trim()
-      const message = (data as any)?.message as RadioChatMessage | undefined
+      const message = data?.message
       if (!stationId || !message?.id) return
       for (const cb of radioCallbacks.value) {
         cb.onChatMessage?.({ stationId, message })
@@ -672,7 +706,7 @@ export function usePresence() {
     socket.on('spaces:chatMessage', (data: { spaceId?: string; message?: SpaceChatMessage }) => {
       if (!spacesCallbacks.value.size) return
       const spaceId = String(data?.spaceId ?? '').trim()
-      const message = (data as any)?.message as SpaceChatMessage | undefined
+      const message = data?.message
       if (!spaceId || !message?.id) return
       for (const cb of spacesCallbacks.value) {
         cb.onChatMessage?.({ spaceId, message })
@@ -682,9 +716,9 @@ export function usePresence() {
     socket.on('spaces:typing', (data: { spaceId?: string; sender?: SpaceChatSender; typing?: boolean }) => {
       if (!spacesCallbacks.value.size) return
       const spaceId = String(data?.spaceId ?? '').trim()
-      const sender = (data as any)?.sender as SpaceChatSender | undefined
+      const sender = data?.sender
       if (!spaceId || !sender?.id) return
-      const typing = (data as any)?.typing as boolean | undefined
+      const typing = typeof data?.typing === 'boolean' ? data.typing : undefined
       for (const cb of spacesCallbacks.value) {
         cb.onTyping?.({ spaceId, sender, typing })
       }
@@ -734,7 +768,8 @@ export function usePresence() {
 
     socket.on('users:selfUpdated', (data: WsUsersSelfUpdatedPayload) => {
       // Normalize immediately so any UI referencing this user updates everywhere.
-      if (data?.user?.id) usersStore.upsert(data.user as any)
+      const picked = pickPublicUserEntity(data?.user)
+      if (picked) usersStore.upsert(picked)
       if (!usersCallbacks.value.size) return
       for (const cb of usersCallbacks.value) {
         cb.onSelfUpdated?.(data)
@@ -783,6 +818,11 @@ export function usePresence() {
     socket.on('disconnect', () => {
       isSocketConnected.value = false
       isSocketConnecting.value = false
+      connectionBarJustConnected.value = false
+      if (connectionBarJustConnectedTimer) {
+        clearTimeout(connectionBarJustConnectedTimer)
+        connectionBarJustConnectedTimer = null
+      }
       // Clear presence state so UI (e.g. avatar green dot, status page) doesn't show stale "online"
       onlineUserIds.value = []
       idleUserIds.value = new Set()

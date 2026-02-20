@@ -233,9 +233,9 @@ watch(
 const { bumpCommentCount } = usePostCountBumps()
 
 function onReplyPosted(payload: ReplyPostedPayload) {
-  const cb = replyModal.onReplyPostedCallback.value
-  if (cb) {
-    cb(payload)
+  const cbs = replyModal.onReplyPostedCallbacks.value
+  if (cbs.length) {
+    for (const cb of cbs) cb(payload)
   } else {
     const parentId = parentPost.value?.id
     if (parentId) bumpCommentCount(parentId)

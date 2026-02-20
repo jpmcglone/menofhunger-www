@@ -74,10 +74,18 @@ export function useHomeFeed() {
     showAds,
   })
 
-  onMounted(() => startAutoSoftRefresh({ everyMs: 10_000 }))
+  let stopAutoSoftRefresh: (() => void) | undefined
+  onMounted(() => {
+    stopAutoSoftRefresh = startAutoSoftRefresh({ everyMs: 10_000 })
+  })
+  onBeforeUnmount(() => {
+    stopAutoSoftRefresh?.()
+    stopAutoSoftRefresh = undefined
+  })
 
   const followingCount = ref<number | null>(null)
   const followingCountLoading = ref(false)
+  let followingCountReqId = 0
   const showFollowingEmptyState = computed(
     () => Boolean(followingOnly.value && !loading.value && !error.value && posts.value.length === 0),
   )
@@ -92,16 +100,21 @@ export function useHomeFeed() {
     if (followingCount.value !== null) return
     if (followingCountLoading.value) return
 
+    followingCountReqId += 1
+    const reqId = followingCountReqId
     followingCountLoading.value = true
     void apiFetchData<number>('/follows/me/following-count')
       .then((res) => {
+        if (reqId !== followingCountReqId) return
         const n = Number(res ?? 0)
         followingCount.value = Number.isFinite(n) ? Math.max(0, Math.floor(n)) : 0
       })
       .catch(() => {
+        if (reqId !== followingCountReqId) return
         followingCount.value = null
       })
       .finally(() => {
+        if (reqId !== followingCountReqId) return
         followingCountLoading.value = false
       })
   })

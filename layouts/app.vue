@@ -383,7 +383,7 @@
           <aside
             :class="[
               // Layout should not add padding; right-rail content owns its gutters.
-              'relative no-scrollbar shrink-0 w-[var(--moh-right-rail-w)] h-full moh-texture',
+              'relative no-scrollbar shrink-0 w-[var(--moh-right-rail-w)] h-full moh-bg moh-texture',
               // Single native scroller: the rail itself scrolls; search floats above the entire layout.
               // IMPORTANT: `min-h-0` is required so the rail can scroll in a flex row.
               'min-h-0',
@@ -1082,8 +1082,7 @@ const isRightRailBreakpointUp = useMediaQuery('(min-width: 962px)')
 const isRightRailVisible = computed(() => Boolean(isRightRailBreakpointUp.value) && !isRightRailForcedHidden.value)
 // Prefer live chat in the right rail whenever a space is selected (where rail is available).
 const showRadioChat = computed(() => radioHasStation.value && isRightRailVisible.value)
-// If chat is occupying the rail, hide the floating rail search UI too.
-const hideRightRailSearch = computed(() => isRightRailSearchHidden.value || showRadioChat.value)
+const hideRightRailSearch = computed(() => isRightRailSearchHidden.value)
 // Keep space chat subscription alive while a space is selected (even when not on /spaces).
 useSpaceLiveChat()
 

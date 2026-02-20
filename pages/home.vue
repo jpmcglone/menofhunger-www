@@ -412,17 +412,20 @@ function openOnlyMeComposer() {
 }
 
 const replyModal = useReplyModal()
+let unregisterReplyPosted: null | (() => void) = null
 onActivated(() => {
   if (!import.meta.client) return
   void refresh()
-  replyModal.registerOnReplyPosted((payload) => {
+  const cb = (payload: import('~/composables/useReplyModal').ReplyPostedPayload) => {
     const parent = replyModal.parentPost.value
     if (!parent?.id || !payload.post) return
     addReply(parent.id, payload.post, parent)
-  })
+  }
+  unregisterReplyPosted = replyModal.registerOnReplyPosted(cb)
 })
 onDeactivated(() => {
-  replyModal.unregisterOnReplyPosted()
+  unregisterReplyPosted?.()
+  unregisterReplyPosted = null
 })
 
 async function createPostViaFeed(

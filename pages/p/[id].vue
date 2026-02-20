@@ -115,9 +115,13 @@
             No replies yet.
           </div>
           <template v-else>
-          <div v-for="c in comments" :key="c.id">
-            <AppPostRow :post="c" @deleted="onCommentDeleted" />
-          </div>
+          <AppCommentThread
+            v-for="c in comments"
+            :key="c.id"
+            :comment="c"
+            :replies-sort="commentsSort"
+            @deleted="onCommentDeleted"
+          />
           <div v-if="commentsNextCursor" class="flex justify-center px-4 py-4">
             <Button
               label="Load more replies"
@@ -322,17 +326,20 @@ function onReplyPosted(payload: { id: string; post?: FeedPost }) {
   void fetchThreadParticipants()
 }
 
-const { registerOnReplyPosted, unregisterOnReplyPosted } = useReplyModal()
+const replyModal = useReplyModal()
+let unregisterReplyPosted: null | (() => void) = null
 onMounted(() => {
   if (!import.meta.client) return
-  registerOnReplyPosted((payload) => {
+  const cb = (payload: import('~/composables/useReplyModal').ReplyPostedPayload) => {
     if (payload.post?.parentId === post.value?.id) {
       onReplyPosted(payload)
     }
-  })
+  }
+  unregisterReplyPosted = replyModal.registerOnReplyPosted(cb)
 })
 onBeforeUnmount(() => {
-  unregisterOnReplyPosted()
+  unregisterReplyPosted?.()
+  unregisterReplyPosted = null
 })
 
 const isRestricted = computed(() => {

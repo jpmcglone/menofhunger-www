@@ -176,8 +176,10 @@ export function usePostsFeed(options: { visibility?: Ref<FeedFilter>; followingO
 
       if (!posts.value.some((p) => containsAny(p))) return
       posts.value = posts.value.map(patchOne)
-    } catch {
-      // Best-effort
+    } catch (e: unknown) {
+      if (import.meta.dev) {
+        console.warn('[posts-feed] syncPostById failed', { postId: id, error: e })
+      }
     }
   }
 
@@ -463,47 +465,57 @@ export function usePostsFeed(options: { visibility?: Ref<FeedFilter>; followingO
     scroller.scrollTop += delta
   }
 
+  let softRefreshPromise: Promise<void> | null = null
   async function softRefreshNewer(opts?: { scroller?: HTMLElement | null }) {
     if (!import.meta.client) return
+    if (softRefreshPromise) return await softRefreshPromise
     if (loading.value) return
     const scroller = opts?.scroller ?? middleScrollerEl.value
     if (!scroller) return
 
-    const existing = posts.value
-    const headId = existing[0]?.id ?? null
-    if (!headId) return
+    softRefreshPromise = (async () => {
+      const existing = posts.value
+      const headId = existing[0]?.id ?? null
+      if (!headId) return
 
-    const anchor = pickAnchor(scroller)
+      const anchor = pickAnchor(scroller)
+
+      try {
+        const res = await apiFetch<GetPostsData>('/posts', {
+          method: 'GET',
+          query: {
+            limit: 30,
+            visibility: visibility.value,
+            ...(followingOnly.value ? { followingOnly: true } : {}),
+            ...(sort.value === 'trending' ? { sort: 'trending' } : {}),
+          },
+        })
+        const fresh = res.data ?? []
+        if (!fresh.length) return
+
+        const idx = fresh.findIndex((p: FeedPost) => p.id === headId)
+        const candidates = idx >= 0 ? fresh.slice(0, idx) : fresh
+        if (!candidates.length) return
+
+        const seen = new Set(existing.map((p: FeedPost) => p.id))
+        const newOnes = candidates.filter((p: FeedPost) => !seen.has(p.id))
+        if (!newOnes.length) return
+
+        posts.value = [...newOnes, ...existing]
+        if (anchor) await restoreAnchor(scroller, anchor)
+      } catch {
+        // Soft refresh should be silent; avoid disrupting the feed.
+      }
+    })()
 
     try {
-      const res = await apiFetch<GetPostsData>('/posts', {
-        method: 'GET',
-        query: {
-          limit: 30,
-          visibility: visibility.value,
-          ...(followingOnly.value ? { followingOnly: true } : {}),
-          ...(sort.value === 'trending' ? { sort: 'trending' } : {}),
-        },
-      })
-      const fresh = res.data ?? []
-      if (!fresh.length) return
-
-      const idx = fresh.findIndex((p: FeedPost) => p.id === headId)
-      const candidates = idx >= 0 ? fresh.slice(0, idx) : fresh
-      if (!candidates.length) return
-
-      const seen = new Set(existing.map((p: FeedPost) => p.id))
-      const newOnes = candidates.filter((p: FeedPost) => !seen.has(p.id))
-      if (!newOnes.length) return
-
-      posts.value = [...newOnes, ...existing]
-      if (anchor) await restoreAnchor(scroller, anchor)
-    } catch {
-      // Soft refresh should be silent; avoid disrupting the feed.
+      await softRefreshPromise
+    } finally {
+      softRefreshPromise = null
     }
   }
 
-  function startAutoSoftRefresh(opts?: { everyMs?: number }) {
+  function startAutoSoftRefresh(opts?: { everyMs?: number }): (() => void) | undefined {
     if (!import.meta.client) return
     const everyMs = Math.max(5_000, Math.floor(opts?.everyMs ?? 10_000))
     let timer: number | null = null
@@ -522,7 +534,7 @@ export function usePostsFeed(options: { visibility?: Ref<FeedFilter>; followingO
       timer = null
     }
     start()
-    onBeforeUnmount(() => stop())
+    return stop
   }
 
   async function loadMore() {

@@ -5,9 +5,9 @@ export type ReplyPostedPayload = { id: string; post?: FeedPost }
 export function useReplyModal() {
   const open = useState<boolean>('reply-modal-open', () => false)
   const parentPost = useState<FeedPost | null>('reply-modal-parent-post', () => null)
-  const onReplyPostedCallback = useState<((payload: ReplyPostedPayload) => void) | null>(
+  const onReplyPostedCallbacks = useState<Array<(payload: ReplyPostedPayload) => void>>(
     'reply-modal-on-reply-posted',
-    () => null,
+    () => [],
   )
 
   function show(post: FeedPost) {
@@ -21,11 +21,17 @@ export function useReplyModal() {
   }
 
   function registerOnReplyPosted(cb: (payload: ReplyPostedPayload) => void) {
-    onReplyPostedCallback.value = cb
+    if (onReplyPostedCallbacks.value.includes(cb)) return () => unregisterOnReplyPosted(cb)
+    onReplyPostedCallbacks.value = [...onReplyPostedCallbacks.value, cb]
+    return () => unregisterOnReplyPosted(cb)
   }
 
-  function unregisterOnReplyPosted() {
-    onReplyPostedCallback.value = null
+  function unregisterOnReplyPosted(cb?: (payload: ReplyPostedPayload) => void) {
+    if (!cb) {
+      onReplyPostedCallbacks.value = []
+      return
+    }
+    onReplyPostedCallbacks.value = onReplyPostedCallbacks.value.filter((x) => x !== cb)
   }
 
   return {
@@ -33,7 +39,7 @@ export function useReplyModal() {
     parentPost,
     show,
     hide,
-    onReplyPostedCallback,
+    onReplyPostedCallbacks,
     registerOnReplyPosted,
     unregisterOnReplyPosted,
   }
