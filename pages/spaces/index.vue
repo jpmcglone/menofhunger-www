@@ -190,6 +190,7 @@ usePageSeo({
 const { spaces, loading, loadedOnce, loadSpaces } = useSpaces()
 const { selectedSpaceId, currentSpace, members, lobbyCountForSpace, subscribeLobbyCounts, unsubscribeLobbyCounts, select } = useSpaceLobby()
 const { stationId: audioStationId, isPlaying, playSpace, pause, stop } = useSpaceAudio()
+const spaceChatSheetOpen = useState<boolean>('space-chat-sheet-open', () => false)
 
 const usersStore = useUsersStore()
 const lobbyMembers = computed(() => {
@@ -207,15 +208,16 @@ onBeforeUnmount(() => {
 })
 
 function onEnterSpace(space: Space) {
-  // Open space with music paused: select space, ensure paused, then navigate.
+  const isSameSpace = selectedSpaceId.value === space.id
   void select(space.id).then(() => {
-    pause()
+    // Switching spaces: stop audio so we don't auto-play the new one.
+    // Re-entering the already-selected space: leave audio as-is.
+    if (!isSameSpace) pause()
     navigateTo(`/spaces/${encodeURIComponent(space.id)}`)
   })
 }
 
 function onPlaySpace(space: Space) {
-  // Play button: select space and start music, then navigate so URL is shareable.
   void select(space.id).then(() => {
     if (isPlaying.value && audioStationId.value && audioStationId.value === (space.station?.id ?? null)) {
       pause()

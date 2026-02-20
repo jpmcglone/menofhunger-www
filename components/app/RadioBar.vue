@@ -159,7 +159,7 @@
       <button
         v-if="selectedSpaceId && !isRightRailChatVisible"
         type="button"
-        class="moh-tap moh-focus inline-flex h-11 w-11 items-center justify-center rounded-full transition-colors moh-surface-hover"
+        class="moh-tap moh-focus inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/30 dark:border-white/30 transition-colors moh-surface-hover"
         :aria-label="spaceChatSheetOpen ? 'Close live chat' : 'Open live chat'"
         @click="toggleChatSheet"
       >
@@ -261,9 +261,17 @@ function toggleChatSheet() {
 }
 
 function onLeaveClick() {
-  stop()
-  leave()
   spaceChatSheetOpen.value = false
+  if (route.path.startsWith('/spaces/')) {
+    // Navigate to the list first, then leave so the transition feels natural.
+    navigateTo('/spaces').then(() => {
+      stop()
+      leave()
+    })
+  } else {
+    stop()
+    leave()
+  }
 }
 </script>
 

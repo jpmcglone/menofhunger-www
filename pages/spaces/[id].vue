@@ -15,9 +15,20 @@
       </div>
 
       <template v-else>
-        <div class="moh-gutter-x pt-4 pb-3">
-          <h1 class="moh-h1">{{ space.name }}</h1>
-          <p class="mt-1 moh-meta">Live chat and music in the bar below. Share this link to bring others here.</p>
+        <div class="moh-gutter-x pt-4 pb-3 flex items-start justify-between gap-3">
+          <div class="min-w-0">
+            <h1 class="moh-h1">{{ space.name }}</h1>
+            <p class="mt-1 moh-meta">Live chat and music in the bar below. Share this link to bring others here.</p>
+          </div>
+          <button
+            type="button"
+            class="moh-tap moh-focus shrink-0 mt-1 inline-flex items-center gap-1.5 rounded-full border moh-border-subtle px-3 py-1.5 text-xs font-medium moh-meta moh-surface-hover transition-colors"
+            aria-label="Leave space"
+            @click="onLeave"
+          >
+            <Icon name="tabler:door-exit" class="text-[14px]" aria-hidden="true" />
+            Leave
+          </button>
         </div>
 
         <div class="moh-gutter-x pb-6 pt-1">
@@ -26,6 +37,16 @@
               <span class="font-semibold tabular-nums text-gray-900 dark:text-gray-100">{{ members.length }}</span>
               <span> here</span>
             </div>
+            <!-- Only shown on mobile; desktop shows chat in the right rail -->
+            <button
+              type="button"
+              class="min-[962px]:hidden moh-tap moh-focus shrink-0 inline-flex items-center gap-1.5 rounded-full border moh-border-subtle px-3 py-1.5 text-xs font-medium moh-meta moh-surface-hover transition-colors"
+              :aria-label="spaceChatSheetOpen ? 'Close chat' : 'Open chat'"
+              @click="spaceChatSheetOpen = !spaceChatSheetOpen"
+            >
+              <Icon name="tabler:messages" class="text-[14px]" aria-hidden="true" />
+              Chat
+            </button>
           </div>
 
           <div v-if="currentSpace && members.length === 0" class="mt-3 text-sm text-gray-600 dark:text-gray-300">
@@ -105,55 +126,85 @@
 </template>
 
 <script setup lang="ts">
+import type { Space } from '~/types/api'
 import { tinyTooltip } from '~/utils/tiny-tooltip'
 
 const route = useRoute()
 const id = computed(() => (route.params.id as string)?.trim() ?? '')
 
-const { spaces, loading, loadedOnce, loadSpaces, getById } = useSpaces()
-const { select, currentSpace, members, subscribeLobbyCounts, unsubscribeLobbyCounts } = useSpaceLobby()
+const { apiFetchData } = useApiClient()
+const { spaces, loading, loadedOnce, loadSpaces, hydrateSpaces, getById } = useSpaces()
+const { selectedSpaceId, select, leave, currentSpace, members, subscribeLobbyCounts, unsubscribeLobbyCounts } = useSpaceLobby()
+const { stop } = useSpaceAudio()
+const spaceChatSheetOpen = useState<boolean>('space-chat-sheet-open', () => false)
+
+// Fetch spaces for this page. Reuses existing client state when available (avoids refetch on
+// client-side nav from /spaces). Falls back to API when state is empty (direct link, hard refresh).
+const { data: spacesPayload } = await useAsyncData<Space[]>(
+  'spaces-detail',
+  async () => {
+    if (loadedOnce.value && spaces.value.length > 0) return [...spaces.value]
+    return apiFetchData<Space[]>('/spaces', { method: 'GET' })
+  },
+)
+
+if (spacesPayload.value) hydrateSpaces(spacesPayload.value)
+
+// SSR 404: if the route id isn't in the space list, return a proper 404 before rendering.
+if (import.meta.server && id.value && spacesPayload.value) {
+  if (!spacesPayload.value.some((s) => s.id === id.value)) {
+    throw createError({ statusCode: 404, statusMessage: 'Space not found' })
+  }
+}
 
 const space = computed(() => (id.value ? getById(id.value) : null))
 const lobbyMembers = computed(() => members.value ?? [])
 
-// Sync route id to selected space: select when we have a valid id and space exists.
-watch(
-  [id, space, loadedOnce],
-  async ([sid, s, loaded]) => {
-    const spaceId = String(sid ?? '').trim()
-    if (!spaceId || !loaded) return
-    if (s) {
-      await select(spaceId)
-    }
-  },
-  { immediate: true },
-)
+function onLeave() {
+  spaceChatSheetOpen.value = false
+  navigateTo('/spaces').then(() => {
+    stop()
+    leave()
+  })
+}
 
-// Load spaces on mount; redirect to list if id is invalid after load.
+// Select the space. Called on initial mount and when navigating between spaces.
+// Does not touch audio — play button in the card handles playback; link entry stays silent.
+async function enterThisSpace(spaceId: string) {
+  const spaceObj = getById(spaceId)
+  if (!spaceObj) return
+  await select(spaceId)
+}
+
 onMounted(async () => {
+  // Fallback: if SSR fetch failed or this is an isolated navigation, ensure spaces are loaded.
   if (!loadedOnce.value) await loadSpaces()
+
+  const spaceId = id.value
+  if (spaceId && selectedSpaceId.value !== spaceId) {
+    await enterThisSpace(spaceId)
+  }
+
   await subscribeLobbyCounts()
-  // Nuxt can leave the top loading bar stuck on dynamic routes (page:loading:end not fired).
-  // Fire the hook and finish the indicator so the bar always clears.
-  await useNuxtApp().callHook('page:loading:end')
+  useNuxtApp().callHook('page:loading:end')
   useLoadingIndicator().finish({ force: true })
 })
+
+// Re-enter when navigating between two spaces (component is reused by Nuxt).
+watch(id, async (newId) => {
+  if (!import.meta.client || !newId) return
+  await enterThisSpace(newId)
+})
+
+// Client 404 fallback: redirect to /spaces if the id resolves to nothing after load.
+watch([id, space, loadedOnce], ([sid, s, loaded]) => {
+  if (!import.meta.client || !loaded) return
+  if (sid && !s) navigateTo('/spaces')
+}, { immediate: true })
 
 onBeforeUnmount(() => {
   unsubscribeLobbyCounts()
 })
-
-// If we have an id but space not found after load, redirect to /spaces
-watch(
-  [id, space, loadedOnce],
-  ([sid, s, loaded]) => {
-    if (!import.meta.client || !loaded) return
-    const spaceId = String(sid ?? '').trim()
-    if (!spaceId) return
-    if (!s) navigateTo('/spaces')
-  },
-  { immediate: true },
-)
 
 definePageMeta({
   layout: 'app',

@@ -25,6 +25,13 @@ export function useSpaces() {
     }
   }
 
+  /** Hydrate from SSR or pre-fetched list so deep links have space data on first paint. */
+  function hydrateSpaces(list: Space[] | null | undefined) {
+    spaces.value = Array.isArray(list) ? list : []
+    loadedOnce.value = true
+    loading.value = false
+  }
+
   const byId = computed(() => new Map((spaces.value ?? []).map((s) => [s.id, s])))
 
   function getById(spaceIdRaw: string | null | undefined): Space | null {
@@ -38,6 +45,7 @@ export function useSpaces() {
     loading: readonly(loading),
     loadedOnce: readonly(loadedOnce),
     loadSpaces,
+    hydrateSpaces,
     getById,
   }
 }
