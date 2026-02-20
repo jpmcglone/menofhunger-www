@@ -260,14 +260,13 @@ function toggleChatSheet() {
   spaceChatSheetOpen.value = !spaceChatSheetOpen.value
 }
 
-function onLeaveClick() {
+async function onLeaveClick() {
   spaceChatSheetOpen.value = false
   if (route.path.startsWith('/spaces/')) {
     // Navigate to the list first, then leave so the transition feels natural.
-    navigateTo('/spaces').then(() => {
-      stop()
-      leave()
-    })
+    await navigateTo('/spaces')
+    stop()
+    leave()
   } else {
     stop()
     leave()

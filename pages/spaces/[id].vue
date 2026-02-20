@@ -160,12 +160,11 @@ if (import.meta.server && id.value && spacesPayload.value) {
 const space = computed(() => (id.value ? getById(id.value) : null))
 const lobbyMembers = computed(() => members.value ?? [])
 
-function onLeave() {
+async function onLeave() {
   spaceChatSheetOpen.value = false
-  navigateTo('/spaces').then(() => {
-    stop()
-    leave()
-  })
+  await navigateTo('/spaces')
+  stop()
+  leave()
 }
 
 // Select the space. Called on initial mount and when navigating between spaces.
