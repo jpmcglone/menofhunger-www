@@ -23,6 +23,12 @@
       <AppUserPreviewPopover />
       <AppWordDefinitionPopover />
       <AppOnlineCountPopover />
+      <AppSpaceLiveChatOverlay
+        v-if="radioChatSheetOpen && radioHasStation && !showRadioChat"
+        v-model="radioChatSheetOpen"
+        :space-name="radioChatStationName"
+        :message-count="radioChatMessageCount"
+      />
     </ClientOnly>
     <Transition
       enter-active-class="transition-all duration-200 ease-out"
@@ -160,6 +166,17 @@
                   :class="['opacity-90', item.iconClass]"
                   aria-hidden="true"
                 />
+                <span
+                  v-if="item.key === 'spaces'"
+                  class="absolute left-1/2 -top-1 -translate-x-1/2"
+                >
+                  <span
+                    class="inline-block moh-slow-bounce rounded-full px-1.5 py-0.5 text-[9px] font-extrabold tracking-[0.12em] uppercase text-white shadow-sm"
+                    style="background: linear-gradient(135deg, var(--moh-verified), var(--moh-premium));"
+                  >
+                    NEW
+                  </span>
+                </span>
                 <AppNotificationBadge v-if="item.key === 'notifications'" />
                 <AppMessagesBadge v-if="item.key === 'messages'" />
               </span>
@@ -353,9 +370,12 @@
             <!-- Radio player row: bottom of the middle column on desktop only. -->
             <div
               v-if="radioHasStation"
-              class="hidden md:block shrink-0 border-t border-gray-200 bg-white dark:border-zinc-800 dark:bg-black text-gray-900 dark:text-white"
+              class="hidden md:flex items-center shrink-0 border-t border-gray-200 bg-white dark:border-zinc-800 dark:bg-black text-gray-900 dark:text-white"
+              :style="{ height: 'var(--moh-radio-bar-height, 4rem)' }"
             >
-              <AppRadioBar />
+              <div class="w-full">
+                <AppRadioBar />
+              </div>
             </div>
           </main>
 
@@ -367,7 +387,7 @@
               // Single native scroller: the rail itself scrolls; search floats above the entire layout.
               // IMPORTANT: `min-h-0` is required so the rail can scroll in a flex row.
               'min-h-0',
-              anyOverlayOpen ? 'overflow-hidden' : 'overflow-y-auto overscroll-y-contain',
+              anyOverlayOpen || showRadioChat ? 'overflow-hidden' : 'overflow-y-auto overscroll-y-contain',
               isRightRailForcedHidden ? 'hidden' : 'hidden min-[962px]:block'
             ]"
           >
@@ -375,10 +395,25 @@
             <div
               :class="[
                 'transition-all duration-200 ease-out',
-                isRightRailSearchHidden ? 'pt-0' : 'pt-16'
+                hideRightRailSearch ? 'pt-0' : 'pt-16',
+                showRadioChat ? 'h-full' : '',
               ]"
             >
-              <AppRightRailContent>
+              <Transition
+                mode="out-in"
+                enter-active-class="transition-[opacity,transform] duration-200 ease-out"
+                enter-from-class="opacity-0 translate-y-1"
+                enter-to-class="opacity-100 translate-y-0"
+                leave-active-class="transition-[opacity,transform] duration-150 ease-in"
+                leave-from-class="opacity-100 translate-y-0"
+                leave-to-class="opacity-0 translate-y-1"
+              >
+                <div v-if="showRadioChat" key="radioChat" class="h-full min-h-0 flex flex-col">
+                  <AppRadioLiveChatPanel class="flex-1 min-h-0" />
+                </div>
+
+                <div v-else key="rightRailDefault">
+                  <AppRightRailContent>
                   <div
                     v-if="dailyQuote"
                     class="my-8 py-2 text-center text-sm leading-relaxed text-gray-700 dark:text-gray-200"
@@ -521,7 +556,9 @@
                     <span>&copy; {{ new Date().getFullYear() }} {{ siteConfig.name }}</span>
                   </div>
                 </div>
-              </AppRightRailContent>
+                  </AppRightRailContent>
+                </div>
+              </Transition>
             </div>
           </aside>
         </div>
@@ -537,7 +574,7 @@
         // Match the right rail breakpoint (right rail is hidden below ~962px).
         'hidden min-[962px]:block fixed left-0 right-0 top-0 z-40 pointer-events-none',
         'transition-opacity duration-200 ease-out',
-        isRightRailSearchHidden ? 'opacity-0 pointer-events-none' : 'opacity-100'
+        hideRightRailSearch ? 'opacity-0 pointer-events-none' : 'opacity-100'
       ]"
     >
       <div class="mx-auto w-full max-w-6xl xl:max-w-7xl flex justify-end">
@@ -666,11 +703,13 @@
 </template>
 
 <script setup lang="ts">
+import { useMediaQuery } from '@vueuse/core'
 import { siteConfig } from '~/config/site'
 import logoLightSmall from '~/assets/images/logo-white-bg-small.png'
 import logoDarkSmall from '~/assets/images/logo-black-bg-small.png'
 import { primaryTintCssForUser } from '~/utils/theme-tint'
 import { formatDailyQuoteAttribution } from '~/utils/daily-quote'
+import AppBottomSheet from '~/components/app/BottomSheet.vue'
 import {
   MOH_HOME_COMPOSER_IN_VIEW_KEY,
   MOH_MIDDLE_SCROLLER_KEY,
@@ -1037,8 +1076,41 @@ const fabBottomStyle = computed<Record<string, string>>(() => {
 
 const middleContentEl = ref<HTMLElement | null>(null)
 
-const { currentStation: currentRadioStation } = useRadioPlayer()
-const radioHasStation = computed(() => Boolean(currentRadioStation.value))
+const { selectedSpaceId, currentSpace } = useSpaceLobby()
+const radioHasStation = computed(() => Boolean(selectedSpaceId.value))
+const isRightRailBreakpointUp = useMediaQuery('(min-width: 962px)')
+const isRightRailVisible = computed(() => Boolean(isRightRailBreakpointUp.value) && !isRightRailForcedHidden.value)
+// Prefer live chat in the right rail whenever a space is selected (where rail is available).
+const showRadioChat = computed(() => radioHasStation.value && isRightRailVisible.value)
+// If chat is occupying the rail, hide the floating rail search UI too.
+const hideRightRailSearch = computed(() => isRightRailSearchHidden.value || showRadioChat.value)
+// Keep space chat subscription alive while a space is selected (even when not on /spaces).
+useSpaceLiveChat()
+
+// Mobile bottom-sheet chat
+const radioChatSheetOpen = useState<boolean>('space-chat-sheet-open', () => false)
+const radioChat = useSpaceLiveChat({ passive: true })
+const radioChatStationName = computed(() => currentSpace.value?.name ?? 'Place')
+const radioChatSheetTitle = computed(() => 'Live chat')
+const radioChatMessageCount = computed(() => {
+  return Math.max(0, radioChat.messages.value.length)
+})
+watch(
+  () => radioHasStation.value,
+  (has) => {
+    if (!has) radioChatSheetOpen.value = false
+  },
+  { immediate: true },
+)
+watch(
+  () => showRadioChat.value,
+  (show) => {
+    // If the right-rail live chat is visible again (e.g., resized back up),
+    // ensure the overlay is dismissed and doesn't auto-show next time.
+    if (show) radioChatSheetOpen.value = false
+  },
+  { immediate: true },
+)
 // Keep bottom spacing stable while the radio animates out.
 const radioChromePadActive = ref(false)
 watch(

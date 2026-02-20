@@ -1,25 +1,29 @@
 <template>
   <!-- Own padding so layout containers can stay padding-free. -->
-  <div v-if="displayStation" class="w-full px-3 py-1.5 sm:px-4 sm:py-2">
+  <div v-if="displaySpace" class="w-full px-3 py-1.5 sm:px-4 sm:py-2">
     <div class="flex w-full items-center justify-between gap-3">
     <button
       type="button"
       class="min-w-0 flex-1 text-left"
-      @click="navigateTo('/radio')"
+      @click="navigateTo('/spaces')"
     >
       <div class="min-w-0">
-        <div class="text-sm font-semibold truncate">{{ displayStation.name }}</div>
+        <div class="text-sm font-semibold truncate">{{ displaySpace.name }}</div>
         <div class="text-[11px] text-gray-500 dark:text-white/70">
-          <span v-if="isPlaying">Playing</span>
-          <span v-else-if="!isBuffering">Paused</span>
-          <span v-if="listenersCount !== null" class="ml-2 tabular-nums">· {{ listenersCount }}</span>
+          <span v-if="hasStation">
+            <span v-if="isBuffering">Buffering…</span>
+            <span v-else-if="isPlaying">Playing</span>
+            <span v-else>Paused</span>
+          </span>
+          <span v-else>No music</span>
+          <span v-if="membersCount !== null" class="ml-2 tabular-nums">· {{ membersCount }}</span>
         </div>
       </div>
     </button>
 
       <div v-if="showListenerStack" class="pointer-events-none hidden sm:flex items-center gap-2">
         <TransitionGroup
-          name="moh-radio-stack"
+          name="moh-space-stack"
           tag="div"
           class="relative flex items-center -space-x-2"
         >
@@ -89,11 +93,14 @@
       </div>
 
       <!-- Volume (smaller + to the right of avatars) -->
-      <div :class="['flex items-center gap-1.5 shrink-0', showListenerStack ? 'ml-2 sm:ml-3' : '']">
+      <div
+        v-if="hasStation"
+        :class="['flex items-center gap-1.5 shrink-0', showListenerStack ? 'ml-2 sm:ml-3' : '']"
+      >
         <button
           type="button"
-          class="moh-tap moh-focus inline-flex h-11 w-11 sm:h-9 sm:w-9 items-center justify-center rounded-full transition-colors moh-surface-hover"
-          :aria-label="isMuted ? 'Unmute radio' : 'Mute radio'"
+          class="moh-tap moh-focus inline-flex h-11 w-11 items-center justify-center rounded-full transition-colors moh-surface-hover"
+          :aria-label="isMuted ? 'Unmute' : 'Mute'"
           @click="toggleMute"
         >
           <Icon :name="volumeIconName" class="text-[18px] opacity-80" aria-hidden="true" />
@@ -101,38 +108,50 @@
         <input
           v-model.number="volumePercent"
           type="range"
-          name="radio-volume"
+          name="space-volume"
           min="0"
           max="100"
           step="1"
           class="w-12 sm:w-16 accent-black dark:accent-white"
-          aria-label="Radio volume"
+          aria-label="Volume"
         >
       </div>
 
       <div
-        v-if="isBuffering"
+        v-if="hasStation && isBuffering"
         class="h-8 w-8 flex items-center justify-center"
         aria-label="Loading"
         role="status"
       >
         <Icon name="tabler:loader" class="text-[18px] opacity-80 animate-spin" aria-hidden="true" />
       </div>
+
       <button
-        v-else
+        v-else-if="hasStation"
         type="button"
-        class="moh-tap moh-focus inline-flex h-11 w-11 sm:h-9 sm:w-9 items-center justify-center rounded-full transition-colors moh-surface-hover"
-        :aria-label="isPlaying ? 'Pause radio' : 'Play radio'"
+        class="moh-tap moh-focus inline-flex h-11 w-11 items-center justify-center rounded-full transition-colors moh-surface-hover"
+        :aria-label="isPlaying ? 'Pause' : 'Play'"
         @click="toggle"
       >
         <Icon :name="isPlaying ? 'tabler:player-pause' : 'tabler:player-play'" class="text-[18px] opacity-90" aria-hidden="true" />
       </button>
 
+      <!-- Toggle live chat overlay (all sizes for now) -->
+      <button
+        v-if="selectedSpaceId && !isRightRailChatVisible"
+        type="button"
+        class="moh-tap moh-focus inline-flex h-11 w-11 items-center justify-center rounded-full transition-colors moh-surface-hover"
+        :aria-label="spaceChatSheetOpen ? 'Close live chat' : 'Open live chat'"
+        @click="toggleChatSheet"
+      >
+        <Icon name="tabler:messages" class="text-[18px] opacity-90" aria-hidden="true" />
+      </button>
+
       <button
         type="button"
-        class="moh-tap moh-focus inline-flex h-11 w-11 sm:h-9 sm:w-9 items-center justify-center rounded-full transition-colors moh-surface-hover"
-        aria-label="Close radio"
-        @click="stop"
+        class="moh-tap moh-focus inline-flex h-11 w-11 items-center justify-center rounded-full transition-colors moh-surface-hover"
+        aria-label="Leave space"
+        @click="onLeaveClick"
       >
         <Icon name="tabler:x" class="text-[18px] opacity-90" aria-hidden="true" />
       </button>
@@ -141,7 +160,8 @@
 </template>
 
 <script setup lang="ts">
-import type { RadioListener, RadioStation } from '~/types/api'
+import { useMediaQuery } from '@vueuse/core'
+import type { Space, SpaceMember } from '~/types/api'
 import { tinyTooltip } from '~/utils/tiny-tooltip'
 import { useUsersStore } from '~/composables/useUsersStore'
 
@@ -149,21 +169,26 @@ function listenerProfileTo(username: string): string {
   return `/u/${encodeURIComponent(username)}`
 }
 
-const { currentStation, isPlaying, isBuffering, listeners, toggle, stop, volume, setVolume } = useRadioPlayer()
+const { selectedSpaceId, currentSpace, members, leave } = useSpaceLobby()
+const { hasStation, isPlaying, isBuffering, toggle, stop, volume, setVolume } = useSpaceAudio()
 const usersStore = useUsersStore()
+const route = useRoute()
+const { isRightRailForcedHidden } = useLayoutRules(route)
+const isRightRailBreakpointUp = useMediaQuery('(min-width: 962px)')
+const isRightRailVisible = computed(() => Boolean(isRightRailBreakpointUp.value) && !isRightRailForcedHidden.value)
+const isRightRailChatVisible = computed(() => Boolean(selectedSpaceId.value) && isRightRailVisible.value)
 
-// Keep last station around briefly so layout-level leave transitions can animate smoothly
-// even after `stop()` clears `currentStation`.
-const lastStation = ref<RadioStation | null>(null)
+// Keep last space around briefly so layout-level leave transitions can animate smoothly.
+const lastSpace = ref<Space | null>(null)
 watch(
-  () => currentStation.value,
+  () => currentSpace.value,
   (s) => {
-    if (s) lastStation.value = s
+    if (s) lastSpace.value = s
   },
   { immediate: true },
 )
-const displayStation = computed(() => currentStation.value ?? lastStation.value)
-const listenersCount = computed(() => (displayStation.value ? listeners.value.length : null))
+const displaySpace = computed(() => currentSpace.value ?? lastSpace.value)
+const membersCount = computed(() => (displaySpace.value ? members.value.length : null))
 
 const preMuteVolume = ref<number | null>(null)
 
@@ -199,41 +224,54 @@ const volumeIconName = computed(() => {
   return 'tabler:volume'
 })
 
-const listenerStack = computed<RadioListener[]>(() => {
-  if (!displayStation.value) return []
-  return (listeners.value ?? []).slice(0, 5).map((u) => (u?.id ? (usersStore.overlay(u as any) as any) : u))
+const listenerStack = computed<SpaceMember[]>(() => {
+  if (!displaySpace.value) return []
+  return (members.value ?? []).slice(0, 5).map((u) => (u?.id ? (usersStore.overlay(u as any) as any) : u))
 })
 const listenerOverflowCount = computed(() => {
-  if (!displayStation.value) return 0
-  return Math.max(0, (listeners.value?.length ?? 0) - listenerStack.value.length)
+  if (!displaySpace.value) return 0
+  return Math.max(0, (members.value?.length ?? 0) - listenerStack.value.length)
 })
-const showListenerStack = computed(() => listenersCount.value !== null && listenersCount.value > 0)
+const showListenerStack = computed(() => membersCount.value !== null && membersCount.value > 0)
+
+const spaceChatSheetOpen = useState<boolean>('space-chat-sheet-open', () => false)
+function toggleChatSheet() {
+  if (!selectedSpaceId.value) return
+  if (isRightRailChatVisible.value) return
+  spaceChatSheetOpen.value = !spaceChatSheetOpen.value
+}
+
+function onLeaveClick() {
+  stop()
+  leave()
+  spaceChatSheetOpen.value = false
+}
 </script>
 
 <style scoped>
-.moh-radio-stack-move {
+.moh-space-stack-move {
   transition: transform 260ms ease;
 }
-.moh-radio-stack-enter-active,
-.moh-radio-stack-leave-active {
+.moh-space-stack-enter-active,
+.moh-space-stack-leave-active {
   transition:
     opacity 180ms ease,
     transform 180ms ease;
 }
-.moh-radio-stack-enter-from,
-.moh-radio-stack-leave-to {
+.moh-space-stack-enter-from,
+.moh-space-stack-leave-to {
   opacity: 0;
   transform: translateY(2px) scale(0.98);
 }
-.moh-radio-stack-leave-active {
+.moh-space-stack-leave-active {
   position: absolute;
   pointer-events: none;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .moh-radio-stack-move,
-  .moh-radio-stack-enter-active,
-  .moh-radio-stack-leave-active {
+  .moh-space-stack-move,
+  .moh-space-stack-enter-active,
+  .moh-space-stack-leave-active {
     transition: none !important;
   }
 }

@@ -8,19 +8,15 @@
       <div class="grid h-full w-full grid-flow-col auto-cols-fr">
         <template v-for="item in items" :key="item.key">
           <button
-            v-if="item.key === 'profile'"
+            v-if="item.key === 'more'"
             type="button"
             class="flex h-full w-full flex-col items-center justify-center touch-manipulation transition-transform duration-100 active:scale-[0.98] moh-focus"
-            :class="isActive(item.to) ? 'moh-text' : 'moh-text-muted'"
-            aria-label="Profile menu"
-            @click="(e) => { haptics.tap(); toggleProfileMenu(e) }"
+            :class="moreOpen ? 'moh-text' : 'moh-text-muted'"
+            aria-label="More"
+            @click="() => { haptics.tap(); moreOpen = true }"
           >
             <div class="relative h-10 w-10 flex items-center justify-center">
-              <AppUserAvatar
-                :user="displayUser"
-                size-class="h-8 w-8"
-                :enable-preview="false"
-              />
+              <Icon :name="item.icon" size="24" class="opacity-90" aria-hidden="true" />
             </div>
           </button>
 
@@ -47,15 +43,57 @@
     </AppTabBarContent>
   </nav>
 
-  <Menu ref="profileMenuRef" :model="menuItems" popup appendTo="body">
-    <template #item="{ item, props }">
-      <a v-bind="props.action" class="flex items-center gap-2">
-        <!-- PrimeVue MenuItem supports arbitrary fields; we use iconName for Iconify. -->
-        <Icon v-if="item.iconName" :name="item.iconName" aria-hidden="true" />
-        <span v-bind="props.label">{{ item.label }}</span>
-      </a>
-    </template>
-  </Menu>
+  <AppBottomSheet
+    v-if="isMobile"
+    v-model="moreOpen"
+    title="More"
+    :panel-class="'inset-x-0 bottom-0 max-w-none rounded-t-2xl shadow-2xl moh-bg moh-text moh-texture border-t moh-border min-h-[min(28rem,60vh)]'"
+    :content-class="'px-0 pb-0 pt-2 min-h-0 flex-1 flex flex-col'"
+  >
+    <div class="w-full min-h-[12rem] flex flex-col">
+      <div class="flex flex-col">
+        <NuxtLink
+          v-for="mi in moreMenuItems"
+          :key="mi.key"
+          :to="mi.to"
+          class="moh-tap flex w-full items-center justify-between gap-3 px-5 py-4 moh-focus"
+          :class="[
+            mi.key === 'only-me' ? 'moh-menuitem-onlyme' : 'text-gray-900 dark:text-gray-100',
+            mi.key !== 'only-me' ? 'moh-surface-hover' : '',
+          ]"
+          @click="() => { moreOpen = false }"
+        >
+          <div class="flex items-center gap-3 min-w-0">
+            <div class="relative h-10 w-10 shrink-0 flex items-center justify-center">
+              <Icon
+                :name="isActive(mi.to) ? (mi.iconActive || mi.icon) : mi.icon"
+                size="20"
+                :class="['opacity-90', mi.iconClass]"
+                aria-hidden="true"
+              />
+              <span
+                v-if="mi.key === 'spaces'"
+                class="absolute left-1/2 -top-3.5 -translate-x-1/2"
+              >
+                <span
+                  class="inline-block moh-slow-bounce rounded-full px-1.5 py-0.5 text-[9px] font-extrabold tracking-[0.12em] uppercase text-white shadow-sm"
+                  style="background: linear-gradient(135deg, var(--moh-verified), var(--moh-premium));"
+                >
+                  NEW
+                </span>
+              </span>
+            </div>
+            <div class="min-w-0">
+              <div class="text-sm font-semibold truncate">
+                {{ mi.label }}
+              </div>
+            </div>
+          </div>
+          <Icon name="tabler:chevron-right" class="opacity-60" aria-hidden="true" />
+        </NuxtLink>
+      </div>
+    </div>
+  </AppBottomSheet>
 
   <Dialog v-model:visible="confirmVisible" modal header="Log out?" :style="{ width: '26rem', maxWidth: '92vw' }">
     <p class="text-sm text-gray-700 dark:text-gray-300">
@@ -73,8 +111,8 @@
 </template>
 
 <script setup lang="ts">
+import { useMediaQuery } from '@vueuse/core'
 import type { AppNavItem } from '~/composables/useAppNav'
-import { useUserOverlay } from '~/composables/useUserOverlay'
 
 defineProps<{
   items: AppNavItem[]
@@ -82,13 +120,22 @@ defineProps<{
 
 const route = useRoute()
 const { isActive } = useRouteMatch(route)
-const { user } = useAuth()
-const { user: displayUser } = useUserOverlay(user)
-const { menuItems, confirmVisible, confirmLogout } = useUserMenu()
+const { confirmVisible, confirmLogout } = useUserMenu()
 const middleScrollerRef = useMiddleScroller()
 const haptics = useHaptics()
 
-const profileMenuRef = ref()
+// Tab bar is md:hidden in layout; match that breakpoint (show sheet only when tab bar is visible).
+const isMobile = useMediaQuery('(max-width: 767px)')
+const moreOpen = ref(false)
+watch(isMobile, (mobile) => {
+  if (!mobile) moreOpen.value = false
+})
+
+const { allItems, isItemVisible } = useAppNav()
+const moreMenuItems = computed<AppNavItem[]>(() => {
+  const wanted = new Set(['bookmarks', 'spaces', 'groups', 'profile', 'only-me'])
+  return (allItems.value ?? []).filter((i) => wanted.has(i.key) && isItemVisible(i))
+})
 
 function onNavClick(to: string, e: MouseEvent) {
   if (!isActive(to)) return
@@ -100,9 +147,4 @@ function onNavClick(to: string, e: MouseEvent) {
   }
 }
 
-function toggleProfileMenu(event: Event) {
-  // PrimeVue Menu expects the click event to position the popup.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  ;(profileMenuRef.value as any)?.toggle(event)
-}
 </script>

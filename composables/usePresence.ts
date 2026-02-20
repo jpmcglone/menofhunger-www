@@ -2,8 +2,15 @@ import { io, type Socket } from 'socket.io-client'
 import { appConfig } from '~/config/app'
 import type {
   FollowListUser,
+  RadioChatMessage,
+  RadioChatSnapshot,
   RadioLobbyCounts,
   RadioListener,
+  SpaceChatSender,
+  SpaceChatMessage,
+  SpaceChatSnapshot,
+  SpaceLobbyCounts,
+  SpaceMember,
   WsAdminUpdatedPayload,
   WsFollowsChangedPayload,
   WsNotificationsDeletedPayload,
@@ -43,11 +50,28 @@ export type OnlineFeedCallback = {
 
 export type RadioListenersPayload = { stationId: string; listeners: RadioListener[] }
 export type RadioLobbyCountsPayload = RadioLobbyCounts
+export type RadioChatSnapshotPayload = RadioChatSnapshot
+export type RadioChatMessagePayload = { stationId: string; message: RadioChatMessage }
 export type RadioCallback = {
   onListeners?: (payload: RadioListenersPayload) => void
   onLobbyCounts?: (payload: RadioLobbyCountsPayload) => void
+  onChatSnapshot?: (payload: RadioChatSnapshotPayload) => void
+  onChatMessage?: (payload: RadioChatMessagePayload) => void
   /** Called when this tab's radio was closed because the user started playing in another tab. */
   onReplaced?: () => void
+}
+
+export type SpacesMembersPayload = { spaceId: string; members: SpaceMember[] }
+export type SpacesLobbyCountsPayload = SpaceLobbyCounts
+export type SpacesChatSnapshotPayload = SpaceChatSnapshot
+export type SpacesChatMessagePayload = { spaceId: string; message: SpaceChatMessage }
+export type SpacesTypingPayload = { spaceId: string; sender: SpaceChatSender; typing?: boolean }
+export type SpacesCallback = {
+  onMembers?: (payload: SpacesMembersPayload) => void
+  onLobbyCounts?: (payload: SpacesLobbyCountsPayload) => void
+  onChatSnapshot?: (payload: SpacesChatSnapshotPayload) => void
+  onChatMessage?: (payload: SpacesChatMessagePayload) => void
+  onTyping?: (payload: SpacesTypingPayload) => void
 }
 
 export type MessagesCallback = {
@@ -108,6 +132,7 @@ export function usePresence() {
   const onlineFeedCallbacks = useState<Set<OnlineFeedCallback>>('presence-online-feed-callbacks', () => new Set())
   const messagesCallbacks = useState<Set<MessagesCallback>>('presence-messages-callbacks', () => new Set())
   const radioCallbacks = useState<Set<RadioCallback>>('presence-radio-callbacks', () => new Set())
+  const spacesCallbacks = useState<Set<SpacesCallback>>('presence-spaces-callbacks', () => new Set())
   const notificationsCallbacks = useState<Set<NotificationsCallback>>('presence-notifications-callbacks', () => new Set())
   const followsCallbacks = useState<Set<FollowsCallback>>('presence-follows-callbacks', () => new Set())
   const postsCallbacks = useState<Set<PostsCallback>>('presence-posts-callbacks', () => new Set())
@@ -299,6 +324,14 @@ export function usePresence() {
 
   function removeRadioCallback(cb: RadioCallback) {
     radioCallbacks.value.delete(cb)
+  }
+
+  function addSpacesCallback(cb: SpacesCallback) {
+    spacesCallbacks.value.add(cb)
+  }
+
+  function removeSpacesCallback(cb: SpacesCallback) {
+    spacesCallbacks.value.delete(cb)
   }
 
   function addNotificationsCallback(cb: NotificationsCallback) {
@@ -585,9 +618,75 @@ export function usePresence() {
       }
     })
 
+    socket.on('radio:chatSnapshot', (data: { stationId?: string; messages?: RadioChatMessage[] }) => {
+      if (!radioCallbacks.value.size) return
+      const stationId = String(data?.stationId ?? '').trim()
+      const messages = Array.isArray(data?.messages) ? data.messages : []
+      for (const cb of radioCallbacks.value) {
+        cb.onChatSnapshot?.({ stationId, messages })
+      }
+    })
+
+    socket.on('radio:chatMessage', (data: { stationId?: string; message?: RadioChatMessage }) => {
+      if (!radioCallbacks.value.size) return
+      const stationId = String(data?.stationId ?? '').trim()
+      const message = (data as any)?.message as RadioChatMessage | undefined
+      if (!stationId || !message?.id) return
+      for (const cb of radioCallbacks.value) {
+        cb.onChatMessage?.({ stationId, message })
+      }
+    })
+
     socket.on('radio:replaced', () => {
       for (const cb of radioCallbacks.value) {
         cb.onReplaced?.()
+      }
+    })
+
+    socket.on('spaces:members', (data: { spaceId?: string; members?: SpaceMember[] }) => {
+      if (!spacesCallbacks.value.size) return
+      const spaceId = String(data?.spaceId ?? '').trim()
+      const members = Array.isArray(data?.members) ? data.members : []
+      for (const cb of spacesCallbacks.value) {
+        cb.onMembers?.({ spaceId, members })
+      }
+    })
+
+    socket.on('spaces:lobbyCounts', (data: { countsBySpaceId?: Record<string, number> }) => {
+      if (!spacesCallbacks.value.size) return
+      const countsBySpaceId = (data?.countsBySpaceId ?? {}) as Record<string, number>
+      for (const cb of spacesCallbacks.value) {
+        cb.onLobbyCounts?.({ countsBySpaceId })
+      }
+    })
+
+    socket.on('spaces:chatSnapshot', (data: { spaceId?: string; messages?: SpaceChatMessage[] }) => {
+      if (!spacesCallbacks.value.size) return
+      const spaceId = String(data?.spaceId ?? '').trim()
+      const messages = Array.isArray(data?.messages) ? data.messages : []
+      for (const cb of spacesCallbacks.value) {
+        cb.onChatSnapshot?.({ spaceId, messages })
+      }
+    })
+
+    socket.on('spaces:chatMessage', (data: { spaceId?: string; message?: SpaceChatMessage }) => {
+      if (!spacesCallbacks.value.size) return
+      const spaceId = String(data?.spaceId ?? '').trim()
+      const message = (data as any)?.message as SpaceChatMessage | undefined
+      if (!spaceId || !message?.id) return
+      for (const cb of spacesCallbacks.value) {
+        cb.onChatMessage?.({ spaceId, message })
+      }
+    })
+
+    socket.on('spaces:typing', (data: { spaceId?: string; sender?: SpaceChatSender; typing?: boolean }) => {
+      if (!spacesCallbacks.value.size) return
+      const spaceId = String(data?.spaceId ?? '').trim()
+      const sender = (data as any)?.sender as SpaceChatSender | undefined
+      if (!spaceId || !sender?.id) return
+      const typing = (data as any)?.typing as boolean | undefined
+      for (const cb of spacesCallbacks.value) {
+        cb.onTyping?.({ spaceId, sender, typing })
       }
     })
 
@@ -835,6 +934,8 @@ export function usePresence() {
     removeMessagesCallback,
     addRadioCallback,
     removeRadioCallback,
+    addSpacesCallback,
+    removeSpacesCallback,
     addNotificationsCallback,
     removeNotificationsCallback,
     addFollowsCallback,
@@ -883,6 +984,79 @@ export function usePresence() {
       const socket = socketRef.value
       if (!socket?.connected) return
       socket.emit('radio:lobbies:unsubscribe', {})
+    },
+    emitRadioChatSubscribe(stationId: string) {
+      const socket = socketRef.value
+      const id = String(stationId ?? '').trim()
+      if (!socket?.connected || !id) return
+      socket.emit('radio:chatSubscribe', { stationId: id })
+    },
+    emitRadioChatUnsubscribe() {
+      const socket = socketRef.value
+      if (!socket?.connected) return
+      socket.emit('radio:chatUnsubscribe', {})
+    },
+    emitRadioChatSend(stationId: string, body: string) {
+      const socket = socketRef.value
+      const id = String(stationId ?? '').trim()
+      const text = String(body ?? '')
+      if (!socket?.connected || !id) return
+      socket.emit('radio:chatSend', { stationId: id, body: text })
+    },
+    emitSpacesJoin(spaceId: string) {
+      const socket = socketRef.value
+      const id = String(spaceId ?? '').trim()
+      if (!socket?.connected || !id) return
+      socket.emit('spaces:join', { spaceId: id })
+    },
+    emitSpacesPause() {
+      const socket = socketRef.value
+      if (!socket?.connected) return
+      socket.emit('spaces:pause', {})
+    },
+    emitSpacesLeave() {
+      const socket = socketRef.value
+      if (!socket?.connected) return
+      socket.emit('spaces:leave', {})
+    },
+    emitSpacesMute(muted: boolean) {
+      const socket = socketRef.value
+      if (!socket?.connected) return
+      socket.emit('spaces:mute', { muted: Boolean(muted) })
+    },
+    emitSpacesLobbiesSubscribe() {
+      const socket = socketRef.value
+      if (!socket?.connected) return
+      socket.emit('spaces:lobbies:subscribe', {})
+    },
+    emitSpacesLobbiesUnsubscribe() {
+      const socket = socketRef.value
+      if (!socket?.connected) return
+      socket.emit('spaces:lobbies:unsubscribe', {})
+    },
+    emitSpacesChatSubscribe(spaceId: string) {
+      const socket = socketRef.value
+      const id = String(spaceId ?? '').trim()
+      if (!socket?.connected || !id) return
+      socket.emit('spaces:chatSubscribe', { spaceId: id })
+    },
+    emitSpacesChatUnsubscribe() {
+      const socket = socketRef.value
+      if (!socket?.connected) return
+      socket.emit('spaces:chatUnsubscribe', {})
+    },
+    emitSpacesChatSend(spaceId: string, body: string) {
+      const socket = socketRef.value
+      const id = String(spaceId ?? '').trim()
+      const text = String(body ?? '')
+      if (!socket?.connected || !id) return
+      socket.emit('spaces:chatSend', { spaceId: id, body: text })
+    },
+    emitSpacesTyping(spaceId: string, typing: boolean) {
+      const socket = socketRef.value
+      const id = String(spaceId ?? '').trim()
+      if (!socket?.connected || !id) return
+      socket.emit('spaces:typing', { spaceId: id, typing: Boolean(typing) })
     },
     emitMessagesScreen(active: boolean) {
       const socket = socketRef.value

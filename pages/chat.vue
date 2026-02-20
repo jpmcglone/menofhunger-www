@@ -243,6 +243,38 @@
                 :go-to-profile="goToProfile"
                 @load-older="loadOlderMessages"
               />
+
+              <Transition name="moh-typing-fade">
+                <div
+                  v-if="typingUsersTotalCount > 0"
+                  class="w-full px-4 pb-2 mt-3 text-sm text-gray-500 dark:text-gray-400"
+                  role="status"
+                  aria-live="polite"
+                >
+                  <div class="flex w-full items-center gap-2">
+                    <div class="h-7 w-7 shrink-0" aria-hidden="true" />
+                    <div class="truncate">
+                      <template v-if="typingUsersTotalCount === 1">
+                        <span class="font-semibold" :class="typingNameClass(typingUsersForDisplay[0]!)">
+                          @{{ typingUsersForDisplay[0]!.username }}
+                        </span>
+                        <span class="ml-1">is typing…</span>
+                      </template>
+                      <template v-else>
+                        <span class="font-semibold" :class="typingNameClass(typingUsersForDisplay[0]!)">
+                          @{{ typingUsersForDisplay[0]!.username }}
+                        </span>
+                        <span class="mx-1">and</span>
+                        <span class="font-semibold" :class="typingNameClass(typingUsersForDisplay[1]!)">
+                          @{{ typingUsersForDisplay[1]!.username }}
+                        </span>
+                        <span v-if="typingUsersTotalCount > 2" class="ml-1">and others</span>
+                        <span class="ml-1">are typing…</span>
+                      </template>
+                    </div>
+                  </div>
+                </div>
+              </Transition>
             </div>
             <div
               v-else
@@ -260,7 +292,10 @@
               :class="scrollPillVisible ? 'opacity-90' : 'opacity-0'"
               aria-hidden="true"
             >
-              <div class="w-full rounded-full" :style="scrollPillThumbStyle" />
+              <div
+                class="w-full rounded-full transition-[height,transform] duration-150 ease-out will-change-transform"
+                :style="scrollPillThumbStyle"
+              />
             </div>
             <Transition name="moh-fade">
               <button
@@ -310,38 +345,6 @@
               This is a chat request. Replying accepts it and moves it to your inbox.
               <div class="mt-2">
                 <Button label="Accept" size="small" severity="secondary" @click="acceptSelectedConversation" />
-              </div>
-            </div>
-            <!-- Typing bar: always present (blank when nobody is typing) -->
-            <div class="mb-2.5 flex w-full items-center gap-2">
-              <div class="h-9 w-9 shrink-0" aria-hidden="true" />
-              <div
-                class="moh-typing-bar flex min-h-[28px] w-full items-center rounded-full border border-gray-200 px-3 py-1 text-sm leading-5 text-gray-500 dark:border-zinc-800 dark:text-gray-400"
-                :class="typingUsersTotalCount > 0 ? 'moh-typing-bar--active' : ''"
-                role="status"
-                aria-live="polite"
-              >
-                <Transition name="moh-fade">
-                  <div v-if="typingUsersTotalCount > 0" class="truncate">
-                    <template v-if="typingUsersTotalCount === 1">
-                      <span class="font-semibold" :class="typingNameClass(typingUsersForDisplay[0]!)">
-                        @{{ typingUsersForDisplay[0]!.username }}
-                      </span>
-                      <span class="ml-1">is typing…</span>
-                    </template>
-                    <template v-else>
-                      <span class="font-semibold" :class="typingNameClass(typingUsersForDisplay[0]!)">
-                        @{{ typingUsersForDisplay[0]!.username }}
-                      </span>
-                      <span class="mx-1">and</span>
-                      <span class="font-semibold" :class="typingNameClass(typingUsersForDisplay[1]!)">
-                        @{{ typingUsersForDisplay[1]!.username }}
-                      </span>
-                      <span v-if="typingUsersTotalCount > 2" class="ml-1">and others</span>
-                      <span class="ml-1">are typing…</span>
-                    </template>
-                  </div>
-                </Transition>
               </div>
             </div>
             <AppInlineAlert v-if="sendError" class="mb-2" severity="danger">{{ sendError }}</AppInlineAlert>
@@ -730,6 +733,17 @@ const {
   composerText,
   emitMessagesTyping,
 })
+
+watch(
+  () => typingUsersTotalCount.value,
+  () => {
+    if (!import.meta.client) return
+    if (!selectedChatKey.value) return
+    if (!atBottom.value) return
+    requestAnimationFrame(() => scrollToBottom('auto'))
+  },
+  { flush: 'post' },
+)
 
 const newDialogVisible = ref(false)
 const startChatInfoVisible = ref(false)

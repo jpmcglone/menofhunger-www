@@ -1,7 +1,7 @@
 <template>
   <div
     v-if="show"
-    class="fixed inset-0 z-[60] bg-white/95 dark:bg-black/90"
+    class="fixed inset-0 z-[70] bg-white/95 dark:bg-black/90"
   >
     <!-- Scroll container so small screens can complete onboarding -->
     <div class="h-full w-full overflow-y-auto">

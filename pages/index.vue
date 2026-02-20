@@ -318,7 +318,7 @@
                 No verification required — set your name, photo, and bio so the community knows who you are. Edit anytime in settings.
               </p>
             </div>
-            <!-- Verified: post, boost, daily check-ins, chat, radio, verified-only -->
+            <!-- Verified: post, boost, daily check-ins, chat, spaces, verified-only -->
             <div class="rounded-2xl border border-[var(--moh-verified)]/30 bg-[rgba(var(--moh-verified-rgb),0.06)] p-4 shadow-sm dark:bg-[rgba(var(--moh-verified-rgb),0.1)] dark:border-[var(--moh-verified)]/25 sm:p-5">
               <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--moh-verified-soft)] text-[var(--moh-verified)] dark:bg-[rgba(var(--moh-verified-rgb),0.2)]">
                 <Icon name="tabler:plus" size="28" class="opacity-90" aria-hidden="true" />
@@ -359,11 +359,11 @@
             </div>
             <div class="rounded-2xl border border-[var(--moh-verified)]/30 bg-[rgba(var(--moh-verified-rgb),0.06)] p-4 shadow-sm dark:bg-[rgba(var(--moh-verified-rgb),0.1)] dark:border-[var(--moh-verified)]/25 sm:p-5">
               <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--moh-verified-soft)] text-[var(--moh-verified)] dark:bg-[rgba(var(--moh-verified-rgb),0.2)]">
-                <Icon name="tabler:radio" aria-hidden="true" />
+                <Icon name="tabler:layout-grid" aria-hidden="true" />
               </div>
-              <div class="mt-3 font-semibold text-[var(--moh-verified)]">Radio</div>
+              <div class="mt-3 font-semibold text-[var(--moh-verified)]">Places</div>
               <p class="mt-1 text-sm leading-relaxed text-gray-600 dark:text-gray-300">
-                <span class="font-medium text-[var(--moh-verified)]">Verified</span> — listen to radio with others in the app.
+                <span class="font-medium text-[var(--moh-verified)]">Verified</span> — enter spaces with live chat, and optionally play music while you build.
               </p>
             </div>
             <div class="rounded-2xl border border-[var(--moh-verified)]/30 bg-[rgba(var(--moh-verified-rgb),0.06)] p-4 shadow-sm dark:bg-[rgba(var(--moh-verified-rgb),0.1)] dark:border-[var(--moh-verified)]/25 sm:p-5">

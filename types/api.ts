@@ -76,6 +76,96 @@ export type RadioLobbyCounts = {
   countsByStationId: Record<string, number>
 }
 
+export type RadioChatSender = {
+  id: string
+  username: string | null
+  premium: boolean
+  premiumPlus: boolean
+  isOrganization: boolean
+  verifiedStatus: 'none' | 'identity' | 'manual'
+  stewardBadgeEnabled: boolean
+}
+
+export type RadioChatMessage = {
+  id: string
+  stationId: string
+  body: string
+  createdAt: string
+  sender: RadioChatSender
+}
+
+export type RadioChatSnapshot = {
+  stationId: string
+  messages: RadioChatMessage[]
+}
+
+export type SpaceStation = {
+  id: string
+  name: string
+  streamUrl: string
+  attributionName: string | null
+  attributionUrl: string | null
+}
+
+export type Space = {
+  id: string
+  name: string
+  stationId: string | null
+  station: SpaceStation | null
+  isBuiltin: boolean
+}
+
+export type SpaceMember = {
+  id: string
+  username: string | null
+  avatarUrl: string | null
+  paused?: boolean
+  muted?: boolean
+}
+
+export type SpaceLobbyCounts = {
+  countsBySpaceId: Record<string, number>
+}
+
+export type SpaceChatSender = {
+  id: string
+  username: string | null
+  premium: boolean
+  premiumPlus: boolean
+  isOrganization: boolean
+  verifiedStatus: 'none' | 'identity' | 'manual'
+  stewardBadgeEnabled: boolean
+}
+
+export type SpaceChatMessage =
+  | {
+      id: string
+      spaceId: string
+      kind: 'user'
+      body: string
+      createdAt: string
+      sender: SpaceChatSender
+    }
+  | {
+      id: string
+      spaceId: string
+      kind: 'system'
+      system: {
+        firstEvent: 'join' | 'leave'
+        lastEvent: 'join' | 'leave'
+        userId: string
+        username: string | null
+      }
+      body: string
+      createdAt: string
+      sender: null
+    }
+
+export type SpaceChatSnapshot = {
+  spaceId: string
+  messages: SpaceChatMessage[]
+}
+
 export type Websters1828WordOfDay = {
   word: string
   dictionaryUrl: string

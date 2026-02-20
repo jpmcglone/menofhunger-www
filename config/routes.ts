@@ -56,18 +56,32 @@ export function isNavActive(params: { currentPath: string; to: string }): boolea
 export function navCompactModePath(path: string): boolean {
   // Some routes need more horizontal space in the center column.
   // Force the left nav to remain compact (even on desktop) for those routes.
-  return path === '/tiers' || path.startsWith('/tiers/')
+  return (
+    path === '/tiers' ||
+    path.startsWith('/tiers/') ||
+    path === '/spaces' ||
+    path.startsWith('/spaces/') ||
+    path === '/radio' ||
+    path.startsWith('/radio/')
+  )
 }
 
 export function isRightRailForcedHiddenPath(path: string): boolean {
   // On these routes we want the center column to be as wide as possible.
-  const forced = ['/chat', '/admin', '/settings', '/roadmap', '/tiers', '/radio', '/comparison']
+  const forced = ['/chat', '/admin', '/settings', '/roadmap', '/tiers', '/comparison']
   return forced.some((p) => path === p || path.startsWith(`${p}/`))
 }
 
 export function isRightRailSearchHiddenPath(path: string): boolean {
   // On Explore, the search UI is part of the center column.
-  return path === '/explore' || path.startsWith('/explore/')
+  return (
+    path === '/explore' ||
+    path.startsWith('/explore/') ||
+    path === '/spaces' ||
+    path.startsWith('/spaces/') ||
+    path === '/radio' ||
+    path.startsWith('/radio/')
+  )
 }
 
 export function routeHeaderDefaultsFor(path: string): RouteHeaderDefaults {

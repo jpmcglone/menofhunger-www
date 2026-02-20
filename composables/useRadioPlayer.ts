@@ -87,7 +87,7 @@ export function useRadioPlayer() {
       stop()
       const { push } = useAppToast()
       push({
-        title: 'Radio stopped',
+        title: 'Music stopped',
         message: 'You started playing in another tab.',
         color: '#000000',
         durationMs: 3500,

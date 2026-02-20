@@ -17,9 +17,9 @@ export type AppNavItem = {
 export function useAppNav() {
   const { user } = useAuth()
   const isAuthed = computed(() => Boolean(user.value?.id))
-  const isVerified = computed(() => (user.value?.verifiedStatus ?? 'none') !== 'none')
-  const { stationId: radioStationId, isPlaying: radioIsPlaying } = useRadioPlayer()
-  const hasRadioSelected = computed(() => Boolean(radioStationId.value))
+  const isVerified = computed(() => Boolean(user.value?.premium) || (user.value?.verifiedStatus ?? 'none') !== 'none')
+  const { stationId: playbackStationId, isPlaying: musicIsPlaying } = useSpaceAudio()
+  const showMusicIcon = computed(() => Boolean(playbackStationId.value) && Boolean(musicIsPlaying.value))
 
   const profileTo = computed(() => {
     const u = user.value?.username
@@ -35,22 +35,24 @@ export function useAppNav() {
     // Authed-only core items
     { key: 'notifications', label: 'Notifications', to: '/notifications', icon: 'tabler:bell', iconActive: 'tabler:bell-filled', requiresAuth: true, showInLeft: true, showInTabs: true },
     { key: 'messages', label: 'Chat', to: '/chat', icon: 'tabler:message-circle', iconActive: 'tabler:message-circle-filled', requiresAuth: true, requiresVerified: true, showInLeft: true, showInTabs: true },
-    { key: 'bookmarks', label: 'Bookmarks', to: '/bookmarks', icon: 'tabler:bookmark', iconActive: 'tabler:bookmark-filled', requiresAuth: true, showInLeft: true, showInTabs: false },
-    { key: 'groups', label: 'Groups', to: '/groups', icon: 'heroicons-outline:user-group', iconActive: 'heroicons-solid:user-group', requiresAuth: true, showInLeft: true, showInTabs: false },
     {
-      key: 'radio',
-      label: 'Radio',
-      to: '/radio',
-      icon: hasRadioSelected.value ? 'tabler:music' : 'tabler:radio',
-      iconActive: hasRadioSelected.value ? 'tabler:music' : 'tabler:radio',
-      iconClass: radioIsPlaying.value ? 'moh-slow-bounce' : undefined,
+      key: 'spaces',
+      label: 'Places',
+      to: '/spaces',
+      icon: showMusicIcon.value ? 'tabler:music' : 'tabler:layout-grid',
+      iconActive: showMusicIcon.value ? 'tabler:music' : 'tabler:layout-grid',
+      iconClass: showMusicIcon.value ? 'moh-slow-bounce' : undefined,
       requiresAuth: true,
+      requiresVerified: true,
       showInLeft: true,
       showInTabs: false,
     },
+    { key: 'groups', label: 'Groups', to: '/groups', icon: 'heroicons-outline:user-group', iconActive: 'heroicons-solid:user-group', requiresAuth: true, showInLeft: true, showInTabs: false },
+    { key: 'bookmarks', label: 'Bookmarks', to: '/bookmarks', icon: 'tabler:bookmark', iconActive: 'tabler:bookmark-filled', requiresAuth: true, showInLeft: true, showInTabs: false },
     // Keep these as the Heroicons pair (you preferred the filled/outline look here).
-    { key: 'profile', label: 'Profile', to: profileTo.value, icon: 'heroicons-outline:user-circle', iconActive: 'heroicons-solid:user-circle', requiresAuth: true, showInLeft: true, showInTabs: true },
+    { key: 'profile', label: 'Profile', to: profileTo.value, icon: 'heroicons-outline:user-circle', iconActive: 'heroicons-solid:user-circle', requiresAuth: true, showInLeft: true, showInTabs: false },
     { key: 'only-me', label: 'Only me', to: '/only-me', icon: 'heroicons-outline:eye-slash', iconActive: 'heroicons-solid:eye-slash', requiresAuth: true, showInLeft: true, showInTabs: false },
+    { key: 'more', label: 'More', to: '/more', icon: 'tabler:dots', iconActive: 'tabler:dots', requiresAuth: true, showInLeft: false, showInTabs: true },
 
     // Misc
     { key: 'about', label: 'About', to: '/about', icon: 'tabler:info-circle', iconActive: 'tabler:info-circle-filled', showInLeft: false, showInTabs: false },
@@ -66,6 +68,6 @@ export function useAppNav() {
   const leftItems = computed(() => allItems.value.filter((i) => i.showInLeft && visible(i)))
   const tabItems = computed(() => allItems.value.filter((i) => i.showInTabs && visible(i)))
 
-  return { isAuthed, profileTo, leftItems, tabItems }
+  return { isAuthed, profileTo, allItems, leftItems, tabItems, isItemVisible: visible }
 }
 

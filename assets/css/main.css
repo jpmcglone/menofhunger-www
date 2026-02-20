@@ -243,6 +243,7 @@ html.dark {
   .moh-tap {
     touch-action: manipulation;
     -webkit-tap-highlight-color: transparent;
+    cursor: pointer;
   }
 
   .moh-gutter-x {
@@ -704,6 +705,22 @@ html.dark {
 }
 .moh-fade-enter-to,
 .moh-fade-leave-from {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Typing indicator fade (slightly slower/softer than moh-fade) */
+.moh-typing-fade-enter-active,
+.moh-typing-fade-leave-active {
+  transition: opacity 260ms ease, transform 260ms ease;
+}
+.moh-typing-fade-enter-from,
+.moh-typing-fade-leave-to {
+  opacity: 0;
+  transform: translateY(2px);
+}
+.moh-typing-fade-enter-to,
+.moh-typing-fade-leave-from {
   opacity: 1;
   transform: translateY(0);
 }

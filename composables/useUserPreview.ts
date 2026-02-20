@@ -18,11 +18,18 @@ export function useUserPreview() {
     const u = (normalizedUsername ?? '').trim()
     if (!u) throw new Error('Username is required')
 
-    return await apiFetchData<UserPreview>(`/users/${encodeURIComponent(u)}/preview`, {
-      method: 'GET',
-      mohCache: { ttlMs: 5 * 60 * 1000, staleWhileRevalidateMs: 10 * 60 * 1000, key: cacheKeyFor(u) },
-      signal: opts?.signal,
-    })
+    const data = await apiFetchData<UserPreview | { banned: true }>(
+      `/users/${encodeURIComponent(u)}/preview`,
+      {
+        method: 'GET',
+        mohCache: { ttlMs: 5 * 60 * 1000, staleWhileRevalidateMs: 10 * 60 * 1000, key: cacheKeyFor(u) },
+        signal: opts?.signal,
+      },
+    )
+    if (data && 'banned' in data && data.banned) {
+      throw new Error('User unavailable')
+    }
+    return data as UserPreview
   }
 
   function invalidateUserPreviewCache(username: string) {

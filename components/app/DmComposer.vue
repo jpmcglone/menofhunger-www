@@ -1,25 +1,23 @@
 <template>
-  <div class="flex w-full items-end gap-2">
-    <!-- Emoji button: outside the pill, left side -->
-    <AppEmojiPickerButton
-      tooltip="Emoji"
-      aria-label="Insert emoji"
-      :disabled="disabled"
-      @select="insertEmoji"
-    />
-
+  <div class="flex w-full items-end">
     <!-- Text pill -->
-    <div
-      class="relative flex w-full items-stretch overflow-hidden"
-      :class="outlineClass"
-    >
+    <div class="relative flex w-full items-stretch overflow-hidden" :class="outlineClass">
+      <!-- Emoji button: inside the pill, left side -->
+      <div class="dm-composer-emoji absolute left-2 bottom-2 z-10">
+        <AppEmojiPickerButton
+          tooltip="Emoji"
+          aria-label="Insert emoji"
+          :disabled="disabled"
+          @select="insertEmoji"
+        />
+      </div>
       <textarea
         ref="textareaEl"
         :value="modelValue"
         :placeholder="placeholder"
         :disabled="disabled"
         rows="1"
-        class="dm-composer-input min-h-[44px] w-full resize-none border-0 bg-transparent py-2.5 sm:py-3 pl-4 pr-12 text-[16px] text-[var(--moh-text)] placeholder:text-[var(--moh-text-muted)] focus:outline-none focus:ring-0 disabled:opacity-60"
+        class="dm-composer-input min-h-[44px] w-full resize-none border-0 bg-transparent py-2.5 sm:py-3 pl-12 pr-12 text-[16px] text-[var(--moh-text)] placeholder:text-[var(--moh-text-muted)] focus:outline-none focus:ring-0 disabled:opacity-60"
         @input="onInput"
         @keydown="onKeydown"
       />
@@ -41,7 +39,7 @@
           type="button"
           aria-label="Send"
           :disabled="loading"
-          class="absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full transition-colors disabled:opacity-50"
+          class="absolute right-2 bottom-2 flex h-8 w-8 items-center justify-center rounded-full transition-colors disabled:opacity-50"
           :class="sendButtonClass"
           @click="emitSend"
         >
@@ -222,3 +220,11 @@ watch(
 
 defineExpose({ focus })
 </script>
+
+<style scoped>
+.dm-composer-emoji :deep(.p-button) {
+  height: 32px;
+  width: 32px;
+  padding: 0;
+}
+</style>
