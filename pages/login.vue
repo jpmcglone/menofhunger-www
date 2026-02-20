@@ -129,7 +129,7 @@
       <div class="space-y-4 text-sm text-gray-700 dark:text-gray-200">
         <p>
           You’re about to create a new account.
-          Men of Hunger is a men’s community built for self-improvement and real conversations.
+          Men of Hunger is a men’s trusted community for men who want measurable progress — structured conversations, accountability, and real growth.
         </p>
 
         <div class="space-y-2">

@@ -2,14 +2,14 @@
   <AppPageContent bottom="standard">
     <div class="w-full">
       <div class="moh-gutter-x pt-4 pb-3">
-        <h1 class="moh-h1">Places</h1>
-        <p class="mt-1 moh-meta">Enter a place, chat, and optionally play music while you build.</p>
+        <h1 class="moh-h1">Spaces</h1>
+        <p class="mt-1 moh-meta">Enter a space, chat, and optionally play music while you build.</p>
       </div>
 
       <div class="moh-gutter-x pb-6 space-y-4">
         <section class="moh-card moh-card-matte !rounded-2xl overflow-hidden">
           <div class="px-4 py-3 border-b moh-border-subtle flex items-center justify-between gap-3">
-            <div class="moh-h2">Places</div>
+            <div class="moh-h2">Spaces</div>
             <div v-if="loading" class="moh-meta">
               {{ loadedOnce ? 'Refreshing…' : 'Loading…' }}
             </div>
@@ -17,11 +17,11 @@
 
           <div v-if="!loadedOnce" class="px-4 py-6 flex items-center gap-2 moh-meta" role="status" aria-live="polite">
             <Icon name="tabler:loader" class="text-[18px] opacity-80 animate-spin" aria-hidden="true" />
-            <span>Loading places…</span>
+            <span>Loading spaces…</span>
           </div>
 
           <div v-else-if="spaces.length === 0 && !loading" class="px-4 py-4 moh-meta">
-            No places available.
+            No spaces available.
           </div>
 
           <div v-else class="p-3">
@@ -38,9 +38,9 @@
               >
                 <button
                   type="button"
-                  class="min-w-0 flex-1 text-left moh-focus"
+                  class="min-w-0 flex-1 text-left moh-focus block"
                   :aria-label="`Enter ${space.name}`"
-                  @click="onEnterSpace(space.id)"
+                  @click="onEnterSpace(space)"
                 >
                   <div class="font-semibold moh-text leading-snug">
                     {{ space.name }}
@@ -88,7 +88,7 @@
             </div>
           </div>
           <div v-else class="text-sm text-gray-600 dark:text-gray-300">
-            Pick a place to see who’s here.
+            Pick a space to see who’s here.
           </div>
 
           <div v-if="currentSpace && members.length === 0" class="mt-3 text-sm text-gray-600 dark:text-gray-300">
@@ -175,21 +175,21 @@ import { useUsersStore } from '~/composables/useUsersStore'
 
 definePageMeta({
   layout: 'app',
-  title: 'Places',
+  title: 'Spaces',
   hideTopBar: true,
   middleware: ['verified'],
 })
 
 usePageSeo({
-  title: 'Places',
-  description: 'Enter places to chat and optionally play music.',
+  title: 'Spaces',
+  description: 'Enter spaces to chat and optionally play music.',
   canonicalPath: '/spaces',
   noindex: true,
 })
 
 const { spaces, loading, loadedOnce, loadSpaces } = useSpaces()
 const { selectedSpaceId, currentSpace, members, lobbyCountForSpace, subscribeLobbyCounts, unsubscribeLobbyCounts, select } = useSpaceLobby()
-const { stationId: audioStationId, isPlaying, playSpace, pause } = useSpaceAudio()
+const { stationId: audioStationId, isPlaying, playSpace, pause, stop } = useSpaceAudio()
 
 const usersStore = useUsersStore()
 const lobbyMembers = computed(() => {
@@ -206,18 +206,23 @@ onBeforeUnmount(() => {
   unsubscribeLobbyCounts()
 })
 
-function onEnterSpace(spaceId: string) {
-  void select(spaceId)
+function onEnterSpace(space: Space) {
+  // Open space with music paused: select space, ensure paused, then navigate.
+  void select(space.id).then(() => {
+    pause()
+    navigateTo(`/spaces/${encodeURIComponent(space.id)}`)
+  })
 }
 
 function onPlaySpace(space: Space) {
-  // Space card Play button switches space and auto-plays (if station exists).
+  // Play button: select space and start music, then navigate so URL is shareable.
   void select(space.id).then(() => {
     if (isPlaying.value && audioStationId.value && audioStationId.value === (space.station?.id ?? null)) {
       pause()
-      return
+    } else {
+      void playSpace(space)
     }
-    void playSpace(space)
+    navigateTo(`/spaces/${encodeURIComponent(space.id)}`)
   })
 }
 </script>

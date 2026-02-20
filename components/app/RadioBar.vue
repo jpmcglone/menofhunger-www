@@ -2,13 +2,32 @@
   <!-- Own padding so layout containers can stay padding-free. -->
   <div v-if="displaySpace" class="w-full px-3 py-1.5 sm:px-4 sm:py-2">
     <div class="flex w-full items-center justify-between gap-3">
+    <NuxtLink
+      v-if="selectedSpaceId"
+      :to="`/spaces/${encodeURIComponent(selectedSpaceId)}`"
+      class="min-w-0 flex-1 text-left block"
+    >
+      <div class="min-w-0">
+        <div class="text-sm font-semibold truncate">{{ displaySpace.name }}</div>
+        <div class="text-[11px] text-gray-500 dark:text-white/70">
+          <span v-if="hasStation">
+            <span v-if="isBuffering">Buffering…</span>
+            <span v-else-if="isPlaying">Playing</span>
+            <span v-else>Paused</span>
+          </span>
+          <span v-else>No music</span>
+          <span v-if="membersCount !== null" class="ml-2 tabular-nums">· {{ membersCount }}</span>
+        </div>
+      </div>
+    </NuxtLink>
     <button
+      v-else
       type="button"
       class="min-w-0 flex-1 text-left"
       @click="navigateTo('/spaces')"
     >
       <div class="min-w-0">
-        <div class="text-sm font-semibold truncate">{{ displaySpace.name }}</div>
+        <div class="text-sm font-semibold truncate">{{ displaySpace?.name }}</div>
         <div class="text-[11px] text-gray-500 dark:text-white/70">
           <span v-if="hasStation">
             <span v-if="isBuffering">Buffering…</span>

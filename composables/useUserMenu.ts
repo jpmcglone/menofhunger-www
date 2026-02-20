@@ -51,11 +51,15 @@ export function useUserMenu() {
     },
   ])
 
+  function openLogoutConfirm() {
+    confirmVisible.value = true
+  }
+
   async function confirmLogout() {
     confirmVisible.value = false
     await logout()
   }
 
-  return { menuItems, confirmVisible, confirmLogout }
+  return { menuItems, confirmVisible, confirmLogout, openLogoutConfirm }
 }
 

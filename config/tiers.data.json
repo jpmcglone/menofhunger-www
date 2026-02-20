@@ -1,10 +1,11 @@
 {
   "intro": {
     "label": "Membership",
-    "title": "Unverified, Verified, Premium, and Premium+ - how the tiers work.",
-    "description": "Unverified: read. Verified: real, but limited. Premium: speak and build. Premium+: steward and support."
+    "tagline": "A trusted community for men who want measurable progress in life.",
+    "title": "Unverified, Verified, Premium, and Premium+ — how the tiers work.",
+    "description": "Unverified: read. Verified: real, but limited. Premium: full access to a personal growth ecosystem — structured conversations, accountability, cohorts, and quality. Premium+: steward and support."
   },
-  "metaDescription": "Men of Hunger tiers: Unverified (read + private notes), Verified (real but limited), Premium (participate fully), Premium+ (steward and support).",
+  "metaDescription": "Men of Hunger: a trusted community for measurable progress. Tiers: Unverified (read), Verified (real but limited), Premium (personal growth ecosystem), Premium+ (steward).",
   "tiers": [
     {
       "id": "unverified",
@@ -83,13 +84,18 @@
         "amount": "$25",
         "interval": "/ month"
       },
-      "who": "Committed participants. This is the real community.",
+      "priceNote": "Save with quarterly ($65) or annual ($250) in Settings → Billing.",
+      "who": "Men who want measurable progress — committed to the full personal growth ecosystem, not just a feed.",
       "can": [
         { "text": "Everything Verified can do" },
         { "text": "Unlimited posting (within rate limits)" },
         { "text": "Full replies everywhere allowed" },
         { "text": "Access men-only + subscriber-only areas" },
         { "text": "DM other members" },
+        { "text": "Monthly structured conversations and accountability systems", "comingSoon": true },
+        { "text": "Small group cohorts, workshops & live calls", "comingSoon": true },
+        { "text": "Premium longform playbooks and resources", "comingSoon": true },
+        { "text": "Tightly moderated quality — no noise, no pay-to-win" },
         { "text": "Baseline ranking (unverified/verified may be slightly suppressed)" },
         { "text": "Start and participate in Dialogues", "comingSoon": true },
         { "text": "Publish longform articles", "comingSoon": true },
@@ -107,7 +113,7 @@
       ],
       "why": [
         "This is the economic engine",
-        "This is where culture lives",
+        "This is where culture and outcomes live",
         "This is where trust compounds",
         "If you can speak here, you've paid the price to care."
       ],

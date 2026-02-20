@@ -17,7 +17,19 @@
         <Icon name="tabler:message-circle" class="text-gray-500 dark:text-gray-400" aria-hidden="true" />
         <span class="font-medium">Send feedback</span>
       </NuxtLink>
+      <button
+        type="button"
+        class="inline-flex items-center gap-3 text-left text-gray-800 hover:underline dark:text-gray-200"
+        @click="openLogoutConfirm"
+      >
+        <Icon name="tabler:door-exit" class="text-gray-500 dark:text-gray-400" aria-hidden="true" />
+        <span class="font-medium">Log out</span>
+      </button>
     </div>
   </div>
 </template>
+
+<script setup lang="ts">
+const { openLogoutConfirm } = useUserMenu()
+</script>
 

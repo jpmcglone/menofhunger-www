@@ -53,20 +53,21 @@
     <div class="w-full min-h-[12rem] flex flex-col">
       <div class="flex flex-col">
         <NuxtLink
-          v-for="mi in moreMenuItems"
+          v-for="mi in mainMenuItems"
           :key="mi.key"
           :to="mi.to"
           class="moh-tap flex w-full items-center justify-between gap-3 px-5 py-4 moh-focus"
           :class="[
             mi.key === 'only-me' ? 'moh-menuitem-onlyme' : 'text-gray-900 dark:text-gray-100',
             mi.key !== 'only-me' ? 'moh-surface-hover' : '',
+            isActive(mi.to) ? (mi.key === 'only-me' ? 'moh-nav-onlyme-active' : 'moh-surface font-bold') : '',
           ]"
           @click="() => { moreOpen = false }"
         >
           <div class="flex items-center gap-3 min-w-0">
             <div class="relative h-10 w-10 shrink-0 flex items-center justify-center">
               <Icon
-                :name="isActive(mi.to) ? (mi.iconActive || mi.icon) : mi.icon"
+                :name="moreMenuIconName(mi)"
                 size="20"
                 :class="['opacity-90', mi.iconClass]"
                 aria-hidden="true"
@@ -89,7 +90,31 @@
               </div>
             </div>
           </div>
-          <Icon name="tabler:chevron-right" class="opacity-60" aria-hidden="true" />
+        </NuxtLink>
+      </div>
+
+      <div class="mt-1 border-t border-gray-200 dark:border-zinc-700 pt-2 pb-3 px-5 flex flex-col gap-0.5">
+        <NuxtLink
+          v-for="mi in footerMenuItems"
+          :key="mi.key"
+          :to="mi.to"
+          class="moh-tap flex w-full items-center justify-between gap-2 py-2 moh-focus rounded-lg px-2 -mx-1"
+          :class="[
+            isActive(mi.to)
+              ? 'moh-surface font-semibold text-gray-900 dark:text-gray-100'
+              : 'moh-surface-hover text-gray-600 dark:text-gray-400',
+          ]"
+          @click="() => { moreOpen = false }"
+        >
+          <div class="flex items-center gap-2 min-w-0">
+            <Icon
+              :name="moreMenuIconName(mi)"
+              size="16"
+              class="opacity-80 shrink-0"
+              aria-hidden="true"
+            />
+            <span class="text-xs font-medium truncate">{{ mi.label }}</span>
+          </div>
         </NuxtLink>
       </div>
     </div>
@@ -132,10 +157,25 @@ watch(isMobile, (mobile) => {
 })
 
 const { allItems, isItemVisible } = useAppNav()
-const moreMenuItems = computed<AppNavItem[]>(() => {
-  const wanted = new Set(['bookmarks', 'spaces', 'groups', 'profile', 'only-me'])
-  return (allItems.value ?? []).filter((i) => wanted.has(i.key) && isItemVisible(i))
-})
+const { totalCount: bookmarkTotalCount } = useBookmarkCollections()
+const hasBookmarks = computed(() => Math.max(0, Math.floor(bookmarkTotalCount.value ?? 0)) > 0)
+
+const mainMenuKeys = new Set(['bookmarks', 'spaces', 'groups', 'profile', 'only-me'])
+const footerMenuKeys = new Set(['settings', 'feedback', 'admin'])
+
+const mainMenuItems = computed<AppNavItem[]>(() =>
+  (allItems.value ?? []).filter((i) => mainMenuKeys.has(i.key) && isItemVisible(i)),
+)
+const footerMenuItems = computed<AppNavItem[]>(() =>
+  (allItems.value ?? []).filter((i) => footerMenuKeys.has(i.key) && isItemVisible(i)),
+)
+
+function moreMenuIconName(mi: AppNavItem): string {
+  if (mi.key === 'bookmarks' && (hasBookmarks.value || isActive(mi.to))) {
+    return mi.iconActive ?? mi.icon
+  }
+  return isActive(mi.to) ? (mi.iconActive ?? mi.icon) : mi.icon
+}
 
 function onNavClick(to: string, e: MouseEvent) {
   if (!isActive(to)) return

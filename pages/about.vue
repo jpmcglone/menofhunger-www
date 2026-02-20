@@ -12,8 +12,8 @@
         Men of Hunger
       </h1>
       <p class="text-base sm:text-lg leading-relaxed text-gray-600 dark:text-gray-300">
-        Men of Hunger is a community for ambitious men who want more out of life — more discipline, more clarity,
-        more strength, and more impact.
+        Men of Hunger is a trusted community for men who want measurable progress in life — discipline, clarity,
+        strength, and impact. Not just a forum: structured conversations, accountability, cohorts, and quality.
       </p>
     </header>
 
@@ -102,7 +102,7 @@ definePageMeta({
 usePageSeo({
   title: 'About',
   description:
-    'Men of Hunger is a community for ambitious men who want more discipline, clarity, strength, and impact.',
+    'Men of Hunger is a trusted community for men who want measurable progress — discipline, clarity, strength, and impact.',
   canonicalPath: '/about',
   ogType: 'website',
   image: '/images/banner.png',

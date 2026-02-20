@@ -22,6 +22,8 @@ export type Tier = {
   name: string
   subtitle: string
   price: TierPrice
+  /** Optional note under price (e.g. quarterly/annual options). */
+  priceNote?: string
   badge?: string
   who: string
   can: TierItem[]
@@ -35,6 +37,7 @@ export type Tier = {
 type TiersData = {
   intro: {
     label: string
+    tagline?: string
     title: string
     description: string
   }

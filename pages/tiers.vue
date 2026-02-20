@@ -5,6 +5,9 @@
       <p class="text-sm font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">
         {{ tiersIntro.label }}
       </p>
+      <p v-if="tiersIntro.tagline" class="mx-auto mt-1 max-w-xl text-base font-medium text-gray-700 dark:text-gray-200">
+        {{ tiersIntro.tagline }}
+      </p>
       <h1 class="mt-2 text-2xl font-bold tracking-tight text-gray-900 dark:text-gray-50 sm:text-3xl">
         {{ tiersIntro.title }}
       </h1>
@@ -229,6 +232,9 @@
                 {{ premiumTier.price.interval }}
               </span>
             </div>
+            <p v-if="premiumTier.priceNote" class="mt-2 text-xs text-gray-600 dark:text-gray-400">
+              {{ premiumTier.priceNote }}
+            </p>
           </div>
         <div class="px-6 py-5">
           <p class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">

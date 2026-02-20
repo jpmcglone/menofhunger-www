@@ -1,7 +1,7 @@
 <script setup lang="ts">
 definePageMeta({
   layout: 'app',
-  title: 'Places',
+  title: 'Spaces',
 })
 
 // Backwards-compatible route: redirect to /spaces.

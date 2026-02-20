@@ -10,6 +10,8 @@ export type AppNavItem = {
   iconClass?: string
   requiresAuth?: boolean
   requiresVerified?: boolean
+  /** Only show for site admins (e.g. Admin link). */
+  requiresAdmin?: boolean
   showInLeft?: boolean
   showInTabs?: boolean
 }
@@ -37,7 +39,7 @@ export function useAppNav() {
     { key: 'messages', label: 'Chat', to: '/chat', icon: 'tabler:message-circle', iconActive: 'tabler:message-circle-filled', requiresAuth: true, requiresVerified: true, showInLeft: true, showInTabs: true },
     {
       key: 'spaces',
-      label: 'Places',
+      label: 'Spaces',
       to: '/spaces',
       icon: showMusicIcon.value ? 'tabler:music' : 'tabler:layout-grid',
       iconActive: showMusicIcon.value ? 'tabler:music' : 'tabler:layout-grid',
@@ -53,15 +55,21 @@ export function useAppNav() {
     { key: 'profile', label: 'Profile', to: profileTo.value, icon: 'heroicons-outline:user-circle', iconActive: 'heroicons-solid:user-circle', requiresAuth: true, showInLeft: true, showInTabs: false },
     { key: 'only-me', label: 'Only me', to: '/only-me', icon: 'heroicons-outline:eye-slash', iconActive: 'heroicons-solid:eye-slash', requiresAuth: true, showInLeft: true, showInTabs: false },
     { key: 'more', label: 'More', to: '/more', icon: 'tabler:dots', iconActive: 'tabler:dots', requiresAuth: true, showInLeft: false, showInTabs: true },
+    { key: 'settings', label: 'Settings and privacy', to: '/settings', icon: 'tabler:settings', iconActive: 'tabler:settings', requiresAuth: true, showInLeft: false, showInTabs: false },
+    { key: 'feedback', label: 'Send feedback', to: '/feedback', icon: 'tabler:message-circle', iconActive: 'tabler:message-circle-filled', requiresAuth: true, showInLeft: false, showInTabs: false },
+    { key: 'admin', label: 'Admin', to: '/admin', icon: 'tabler:shield', iconActive: 'tabler:shield', requiresAuth: true, requiresAdmin: true, showInLeft: false, showInTabs: false },
 
     // Misc
     { key: 'about', label: 'About', to: '/about', icon: 'tabler:info-circle', iconActive: 'tabler:info-circle-filled', showInLeft: false, showInTabs: false },
     { key: 'status', label: 'Status', to: '/status', icon: 'tabler:bolt', iconActive: 'tabler:bolt', showInLeft: false, showInTabs: false }
   ])
 
+  const isAdmin = computed(() => Boolean(user.value?.siteAdmin))
+
   const visible = (item: AppNavItem) => {
     if (item.requiresAuth && !isAuthed.value) return false
     if (item.requiresVerified && !isVerified.value) return false
+    if (item.requiresAdmin && !isAdmin.value) return false
     return true
   }
 

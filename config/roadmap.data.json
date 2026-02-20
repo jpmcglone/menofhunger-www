@@ -4,7 +4,7 @@
   "intro": {
     "label": "Product roadmap",
     "title": "Where we're headed",
-    "description": "We’re building in phases, but the order is driven by a simple rule: the easiest things that are also essential ship first. That means trust, tier access, and safety come early, then content depth and discovery, then deeper community and stewardship."
+    "description": "We’re building a personal growth ecosystem: trust, tier access, and safety first; then content depth and discovery; then structured conversations, cohorts, workshops, and stewardship."
   },
   "phases": [
     {
@@ -387,6 +387,34 @@
         ]
       },
       {
+        "title": "Pricing & plans",
+        "items": [
+          {
+            "text": "**Quarterly plan ($65)** — 3 months upfront to improve cashflow and commitment."
+          },
+          {
+            "text": "**Annual plan ($250)** — Save vs monthly; reduces churn and accelerates capital."
+          },
+          {
+            "text": "**Founding member (limited lifetime VIP)** — Higher early price for lifetime access; limited availability."
+          }
+        ]
+      },
+      {
+        "title": "Acquisition & growth",
+        "items": [
+          {
+            "text": "**Lead magnet funnel** — E.g. “7 Daily Habits That Transform a Man’s Life”, “Weekly Accountability Tracker”, “90-day Life Reset Framework”; collect emails, then convert to Premium."
+          },
+          {
+            "text": "**Acquisition channels** — Targeted podcasts, YouTube (discipline, relationships, career), partner with aligned creators/influencers, paid ads targeting men’s growth interests."
+          },
+          {
+            "text": "**Structured cohorts & facilitated programming** — Monthly structured conversations, accountability systems, small group cohorts, workshops & live calls (not just open forums)."
+          }
+        ]
+      },
+      {
         "title": "Steward tier (Premium+)",
         "items": [
           {
@@ -436,5 +464,5 @@
     ]
   },
   "footerDisclaimer": "Dates are targets, not promises. We'll update this page as we lock in or shift milestones.",
-  "metaDescription": "See what we're building and when. Men of Hunger product roadmap — trust, tiers, and community features."
+  "metaDescription": "See what we're building and when. Men of Hunger product roadmap — trust, tiers, personal growth ecosystem, and community features."
 }

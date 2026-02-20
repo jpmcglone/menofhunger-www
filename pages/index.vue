@@ -42,19 +42,19 @@
           <div class="space-y-6 flex flex-col min-h-0">
             <div class="inline-flex items-center gap-2 rounded-full border border-green-200/70 bg-green-50/60 px-3 py-1 text-xs font-semibold tracking-wide text-green-800 dark:border-green-500/20 dark:bg-green-500/10 dark:text-green-200">
               <span class="h-1.5 w-1.5 rounded-full bg-green-500/80" aria-hidden="true" />
-              Trust-first, men-only community
+              Trust-first, men-only • Personal growth ecosystem
             </div>
 
             <h1 class="text-3xl sm:text-4xl font-black tracking-tight text-gray-900 dark:text-gray-50">
-              A place for ambitious men to think clearly, speak honestly, and build.
+              A trusted community for men who want measurable progress in life.
             </h1>
 
             <p class="text-base sm:text-lg leading-relaxed text-gray-700 dark:text-gray-200">
-              A community for builders, leaders, and growth-minded men who refuse to drift.
-              Read the feed free — <span class="font-semibold text-[var(--moh-verified)]">verify once</span> to post, reply, and connect.
+              Not just a forum — structured conversations, accountability systems, small group cohorts, workshops, and premium playbooks. Tightly moderated quality.
+              Read the feed free — <span class="font-semibold text-[var(--moh-verified)]">verify once</span> to post, reply, and connect. <span class="font-semibold text-[var(--moh-premium)]">Premium from $25/mo</span> (quarterly and annual save more).
             </p>
             <p class="text-sm text-gray-600 dark:text-gray-300">
-              The town square is for reach. Men of Hunger is the lodge — for real dialogue and quality engagement.
+              The town square is for reach. Men of Hunger is the lodge — for real dialogue, accountability, and outcomes.
             </p>
 
             <div class="flex flex-col sm:flex-row gap-3">
@@ -76,7 +76,7 @@
               </NuxtLink>
             </div>
             <p class="text-xs text-gray-500 dark:text-gray-400">
-              No algorithms. No pay-to-win. Just a feed, verification, and real conversation.
+              No algorithms. No pay-to-win. A feed, verification, real conversation — and a path to measurable progress.
             </p>
 
             <!-- Best features -->
@@ -98,9 +98,9 @@
                 </div>
               </div>
               <div class="rounded-2xl border border-gray-200 bg-white/70 p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-950/30">
-                <div class="text-sm font-semibold text-gray-900 dark:text-gray-50">Post, reply, connect</div>
+                <div class="text-sm font-semibold text-gray-900 dark:text-gray-50">Cohorts, workshops, playbooks</div>
                 <div class="mt-1 text-xs leading-relaxed text-gray-600 dark:text-gray-300">
-                  Share ideas, get feedback, and grow with other ambitious men.
+                  Premium gets structured conversations, accountability, and longform resources — not just a feed.
                 </div>
               </div>
             </div>
@@ -361,7 +361,7 @@
               <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--moh-verified-soft)] text-[var(--moh-verified)] dark:bg-[rgba(var(--moh-verified-rgb),0.2)]">
                 <Icon name="tabler:layout-grid" aria-hidden="true" />
               </div>
-              <div class="mt-3 font-semibold text-[var(--moh-verified)]">Places</div>
+              <div class="mt-3 font-semibold text-[var(--moh-verified)]">Spaces</div>
               <p class="mt-1 text-sm leading-relaxed text-gray-600 dark:text-gray-300">
                 <span class="font-medium text-[var(--moh-verified)]">Verified</span> — enter spaces with live chat, and optionally play music while you build.
               </p>
@@ -499,7 +499,7 @@
               <div class="space-y-4 pb-2">
                 <div class="space-y-2">
                   <p class="text-sm text-gray-800 dark:text-gray-100">
-                    Men of Hunger is a men's group for ambitious builders, leaders, and growth-minded men who refuse to drift.
+                    Men of Hunger is a trusted community for men who want measurable progress — online and in person.
                     We meet to think clearly, speak honestly, and help one another move our missions forward.
                   </p>
                   <p class="text-sm text-gray-800 dark:text-gray-100">
