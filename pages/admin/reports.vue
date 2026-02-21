@@ -48,14 +48,14 @@
         v-model="reportsQuery"
         class="w-full sm:w-72"
         placeholder="Search details, admin notes…"
-        @keydown.enter.prevent="loadReports(true)"
+        @keydown.enter.prevent="refresh()"
       />
       <Button
         label="Search"
         severity="secondary"
         :loading="loading"
         :disabled="loading"
-        @click="loadReports(true)"
+        @click="refresh()"
       >
         <template #icon>
           <Icon name="tabler:search" aria-hidden="true" />

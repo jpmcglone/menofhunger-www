@@ -5,9 +5,9 @@
         {{ displayName }}
       </div>
       <AppVerifiedBadge
-        :status="user.verifiedStatus"
-        :premium="user.premium"
-        :premium-plus="user.premiumPlus"
+        :status="verifiedStatus"
+        :premium="user.premium ?? undefined"
+        :premium-plus="user.premiumPlus ?? undefined"
         :is-organization="Boolean(user.isOrganization)"
         :steward-badge-enabled="user.stewardBadgeEnabled ?? true"
         :size="badgeSize"
@@ -21,6 +21,7 @@
 </template>
 
 <script setup lang="ts">
+type VerifiedStatus = 'none' | 'identity' | 'manual'
 type UserLike = {
   name?: string | null
   username?: string | null
@@ -44,6 +45,12 @@ const props = withDefaults(
     badgeSize: 'sm',
   },
 )
+
+const verifiedStatus = computed((): VerifiedStatus | null | undefined => {
+  const s = props.user.verifiedStatus
+  if (s === null || s === undefined) return s
+  return s === 'none' || s === 'identity' || s === 'manual' ? s : undefined
+})
 
 const displayName = computed(() => props.user.name || props.user.username || 'User')
 const handle = computed(() => (props.user.username ? `@${props.user.username}` : '@—'))

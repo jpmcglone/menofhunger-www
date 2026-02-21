@@ -36,14 +36,14 @@
         v-model="query"
         class="w-full sm:w-72"
         placeholder="Search username, name, phone, email…"
-        @keydown.enter.prevent="loadRequests(true)"
+        @keydown.enter.prevent="refresh()"
       />
       <Button
         label="Search"
         severity="secondary"
         :loading="loading"
         :disabled="loading"
-        @click="loadRequests(true)"
+        @click="refresh()"
       >
         <template #icon>
           <Icon name="tabler:search" aria-hidden="true" />

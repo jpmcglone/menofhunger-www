@@ -40,14 +40,14 @@
         v-model="feedbackQuery"
         class="w-full sm:w-72"
         placeholder="Search subject, details, email…"
-        @keydown.enter.prevent="loadFeedback(true)"
+        @keydown.enter.prevent="refresh()"
       />
       <Button
         label="Search"
         severity="secondary"
         :loading="loading"
         :disabled="loading"
-        @click="loadFeedback(true)"
+        @click="refresh()"
       >
         <template #icon>
           <Icon name="tabler:search" aria-hidden="true" />
