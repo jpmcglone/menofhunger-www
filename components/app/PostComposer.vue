@@ -1003,7 +1003,6 @@ const { submit: submitPost, submitting, submitError } = useFormSubmit(
     void nextTick().then(() => resizeComposerTextarea())
 
     const id = (created as any)?.id as string | undefined
-    console.log('[PostComposer] submit success - id:', id, 'vis:', vis)
     if (id) {
       emit('posted', {
         id,
@@ -1011,7 +1010,6 @@ const { submit: submitPost, submitting, submitError } = useFormSubmit(
         post: created as import('~/types/api').FeedPost,
       })
       const toneVisibility = vis
-      console.log('[PostComposer] pushing toast - tone:', toneVisibility, 'to:', `/p/${encodeURIComponent(id)}`)
       toast.push({
         title: props.replyTo ? 'Reply posted' : 'Posted',
         message:

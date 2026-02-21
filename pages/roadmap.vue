@@ -220,8 +220,16 @@ useHead({
   ]
 })
 
-/** Turn **bold** in item text into <strong> for display. */
+/** Turn **bold** in item text into <strong> for display. HTML-escape first to prevent XSS. */
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
 function formatItem(item: { text: string }): string {
-  return item.text.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+  return escapeHtml(item.text).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
 }
 </script>

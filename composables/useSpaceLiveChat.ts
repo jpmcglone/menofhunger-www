@@ -62,6 +62,7 @@ export function useSpaceLiveChat(options: { passive?: boolean } = {}) {
 
   const messagesBySpace = useState<Record<string, SpaceChatMessage[]>>('space-live-chat-messages', () => ({}))
   const subscribedSpaceId = useState<string | null>('space-live-chat-subscribed-space', () => null)
+  const snapshotReceivedForSpaceId = useState<string | null>('space-live-chat-snapshot-received', () => null)
   const callbackRef = useState<SpacesCallback | null>('space-live-chat-callback', () => null)
   const callbackRefs = useState<number>('space-live-chat-callback-refs', () => 0)
   const typingBySpaceId = useState<Map<string, Map<string, { sender: SpaceChatSender; exp: number }>>>(
@@ -76,6 +77,13 @@ export function useSpaceLiveChat(options: { passive?: boolean } = {}) {
     const sid = spaceId.value
     if (!sid) return []
     return messagesBySpace.value[sid] ?? []
+  })
+
+  // True while we're waiting for the first snapshot from the server after switching spaces.
+  const isLoadingMessages = computed(() => {
+    const sid = spaceId.value
+    if (!sid) return false
+    return snapshotReceivedForSpaceId.value !== sid
   })
 
   function setMessagesForSpace(sid: string, next: SpaceChatMessage[]) {
@@ -185,6 +193,7 @@ export function useSpaceLiveChat(options: { passive?: boolean } = {}) {
         const incoming = Array.isArray(payload?.messages) ? payload.messages : []
         const merged = upsertMessages(messagesBySpace.value[sid] ?? [], incoming)
         messagesBySpace.value = { ...messagesBySpace.value, [sid]: merged }
+        snapshotReceivedForSpaceId.value = sid
       },
       onChatMessage: (payload) => {
         const sid = String(payload?.spaceId ?? '').trim()
@@ -271,6 +280,7 @@ export function useSpaceLiveChat(options: { passive?: boolean } = {}) {
         if (!import.meta.client) return
         const prevId = (prev ?? '').trim()
         const nextId = (next ?? '').trim()
+        if (prevId !== nextId) snapshotReceivedForSpaceId.value = null
         if (prevId && prevId !== nextId) unsubscribe()
         if (nextId) await subscribeToSpace(nextId)
         else unsubscribe()
@@ -292,6 +302,7 @@ export function useSpaceLiveChat(options: { passive?: boolean } = {}) {
   return {
     spaceId,
     messages,
+    isLoadingMessages,
     typingNameClass,
     typingUsersForDisplay,
     typingUsersTotalCount,

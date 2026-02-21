@@ -79,6 +79,21 @@
 
       <div v-if="profile" class="mx-auto max-w-3xl px-4 mt-3">
         <div class="flex flex-wrap items-center gap-2">
+          <!-- Block/Unblock button (non-self profiles, authenticated) -->
+          <button
+            v-if="!isSelf && authUser && profile?.id"
+            type="button"
+            :disabled="blockingProfile"
+            class="inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold border transition-colors"
+            :class="viewerHasBlockedProfile
+              ? 'border-zinc-600 bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
+              : 'border-gray-300 dark:border-zinc-700 moh-surface text-gray-700 dark:text-gray-300 hover:border-red-400 dark:hover:border-red-500 hover:text-red-600 dark:hover:text-red-400'"
+            @click="toggleProfileBlock"
+          >
+            <Icon :name="viewerHasBlockedProfile ? 'tabler:ban-off' : 'tabler:ban'" class="mr-1 text-[13px]" aria-hidden="true" />
+            {{ viewerHasBlockedProfile ? 'Unblock' : 'Block' }}
+          </button>
+
           <span
             v-if="isSelf"
             v-tooltip.bottom="tinyTooltip('Coins')"
@@ -137,6 +152,32 @@
           </template>
           <div v-else class="min-h-0" aria-hidden="true" />
         </ClientOnly>
+      </div>
+
+      <!-- Block indicator: shown when a block exists between viewer and profile user -->
+      <div v-if="!isSelf && isBlockedWithProfile" class="mx-auto max-w-3xl px-4 mb-2">
+        <div class="flex items-start gap-3 rounded-xl border border-zinc-700 bg-zinc-900 px-4 py-3.5 text-sm text-zinc-300">
+          <Icon name="tabler:ban" class="mt-0.5 shrink-0 text-zinc-400" aria-hidden="true" />
+          <div class="min-w-0 flex-1">
+            <template v-if="viewerHasBlockedProfile">
+              <span class="font-semibold text-white">You've blocked {{ profileBlockHandle }}.</span>
+              They can view your posts but can't engage with them. You can view their posts but can't engage with theirs.
+            </template>
+            <template v-else>
+              <span class="font-semibold text-white">{{ profileBlockHandle }} has blocked you.</span>
+              You can view their posts but can't engage with them.
+            </template>
+          </div>
+          <button
+            v-if="viewerHasBlockedProfile"
+            type="button"
+            class="shrink-0 text-xs font-semibold text-zinc-300 underline underline-offset-2 hover:text-white"
+            :disabled="blockingProfile"
+            @click="toggleProfileBlock"
+          >
+            {{ blockingProfile ? 'Unblocking…' : 'Unblock' }}
+          </button>
+        </div>
       </div>
 
       <!-- Posts -->
@@ -439,6 +480,39 @@ watch(
   },
   { immediate: true }
 )
+
+const blockState = useBlockState()
+const toast = useAppToast()
+
+// Block status from the profile API response (viewer-specific).
+const viewerHasBlockedProfile = computed(() =>
+  Boolean(profile.value?.viewerHasBlockedUser) || blockState.isBlockedByMe(profile.value?.id ?? ''),
+)
+const profileHasBlockedViewer = computed(() => Boolean(profile.value?.userHasBlockedViewer))
+const isBlockedWithProfile = computed(() => viewerHasBlockedProfile.value || profileHasBlockedViewer.value)
+const profileBlockHandle = computed(() => {
+  const u = profile.value?.username
+  return u ? `@${u}` : 'this user'
+})
+
+const blockingProfile = ref(false)
+async function toggleProfileBlock() {
+  if (blockingProfile.value || !profile.value?.id) return
+  blockingProfile.value = true
+  try {
+    if (viewerHasBlockedProfile.value) {
+      await blockState.unblockUser(profile.value.id)
+      toast.push({ title: `${profileBlockHandle.value} unblocked`, message: 'You can now engage with their posts.', tone: 'success', durationMs: 3000 })
+    } else {
+      await blockState.blockUser(profile.value.id)
+      toast.push({ title: `${profileBlockHandle.value} blocked`, message: 'They can still see your posts but can\'t engage with them.', tone: 'success', durationMs: 3000 })
+    }
+  } catch (e: unknown) {
+    toast.pushError(e, viewerHasBlockedProfile.value ? 'Failed to unblock.' : 'Failed to block.')
+  } finally {
+    blockingProfile.value = false
+  }
+}
 
 const showFollowCounts = computed(() => {
   if (!profile.value?.id) return false

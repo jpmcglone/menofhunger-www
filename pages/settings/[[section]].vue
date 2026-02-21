@@ -543,6 +543,10 @@
                 </div>
               </div>
 
+              <div v-else-if="selectedSection === 'blocked'" class="space-y-4">
+                <SettingsBlockedUsersSection />
+              </div>
+
               <div v-else-if="selectedSection === 'links'" class="space-y-4">
                 <SettingsLinksSection />
               </div>
@@ -573,7 +577,7 @@ usePageSeo({
 
 type FollowVisibility = 'all' | 'verified' | 'premium' | 'none'
 type BirthdayVisibility = 'none' | 'monthDay' | 'full'
-type SettingsSection = 'account' | 'verification' | 'billing' | 'privacy' | 'notifications' | 'links'
+type SettingsSection = 'account' | 'verification' | 'billing' | 'privacy' | 'notifications' | 'blocked' | 'links'
 
 const { user: authUser, ensureLoaded, me } = useAuth()
 const { invalidateUserPreviewCache } = useUserPreview()
@@ -702,7 +706,7 @@ async function sendPushTest() {
   }
 }
 
-const allowedSections: SettingsSection[] = ['account', 'verification', 'billing', 'privacy', 'notifications', 'links']
+const allowedSections: SettingsSection[] = ['account', 'verification', 'billing', 'privacy', 'notifications', 'blocked', 'links']
 
 const routeSection = computed<SettingsSection | null>(() => {
   const raw = typeof route.params.section === 'string' ? route.params.section : null
@@ -757,6 +761,11 @@ const sections = computed(() => [
     key: 'notifications' as const,
     label: 'Notifications',
     description: 'Browser and in-app alerts.'
+  },
+  {
+    key: 'blocked' as const,
+    label: 'Blocked users',
+    description: 'Manage users you have blocked.'
   },
   {
     key: 'links' as const,

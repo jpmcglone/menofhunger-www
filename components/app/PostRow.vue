@@ -173,7 +173,7 @@
             <div v-if="!isOnlyMe" class="inline-flex w-16 items-center justify-start">
               <button
                 type="button"
-                class="inline-flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-full transition-colors moh-surface-hover"
+                class="moh-tap inline-flex h-10 w-10 sm:h-9 sm:w-9 items-center justify-center rounded-full transition-colors moh-surface-hover"
                 :class="commentClickable ? 'cursor-pointer' : 'cursor-default opacity-60'"
                 aria-label="Reply"
                 v-tooltip.bottom="commentTooltip"
@@ -201,7 +201,7 @@
             <div v-if="!isOnlyMe" class="inline-flex w-16 items-center justify-start">
               <button
                 type="button"
-                class="inline-flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-full transition-colors moh-surface-hover"
+                class="moh-tap inline-flex h-10 w-10 sm:h-9 sm:w-9 items-center justify-center rounded-full transition-colors moh-surface-hover"
                 :class="boostClickable ? 'cursor-pointer' : 'cursor-default opacity-60'"
                 :aria-label="isBoosted ? 'Remove upvote' : 'Upvote'"
                 v-tooltip.bottom="upvoteTooltip"
@@ -500,6 +500,7 @@ const isSelf = computed(() => Boolean(user.value?.id && user.value.id === (autho
 const { apiFetchData } = useApiClient()
 const { show: showAuthActionModal } = useAuthActionModal()
 const boostState = useBoostState()
+const blockState = useBlockState()
 
 const isOnlyMe = computed(() => postView.value.visibility === 'onlyMe')
 const viewerIsAdmin = computed(() => Boolean(user.value?.siteAdmin))
@@ -509,12 +510,32 @@ const viewerCanInteract = computed(() => {
   if (isOnlyMe.value && viewerIsAdmin.value && !isSelf.value) return false
   return true
 })
+
+// Block status from the post's API response (server-computed).
+const viewerBlockStatus = computed(() => postView.value.viewerBlockStatus ?? null)
+const isBlockedWithAuthor = computed(() => viewerBlockStatus.value !== null)
+const blockReasonText = computed(() => {
+  if (viewerBlockStatus.value === 'viewer_blocked') {
+    const handle = postView.value.author.username ? `@${postView.value.author.username}` : 'this user'
+    return `You've blocked ${handle}. Unblock them to engage with their posts.`
+  }
+  if (viewerBlockStatus.value === 'viewer_blocked_by') {
+    const handle = postView.value.author.username ? `@${postView.value.author.username}` : 'This user'
+    return `${handle} has blocked you. You can view their posts but can't engage with them.`
+  }
+  return null
+})
+
 const canBoost = computed(() => {
   // Only-me posts don't need boosts.
   if (isOnlyMe.value) return false
+  if (isBlockedWithAuthor.value) return false
   return viewerCanInteract.value && isAuthed.value && viewerHasUsername.value
 })
-const canComment = computed(() => viewerCanInteract.value && isAuthed.value && viewerIsVerified.value)
+const canComment = computed(() => {
+  if (isBlockedWithAuthor.value) return false
+  return viewerCanInteract.value && isAuthed.value && viewerIsVerified.value
+})
 const canShare = computed(() => {
   // Sharing private posts is confusing; keep it read-only.
   if (isOnlyMe.value) return false
@@ -526,6 +547,7 @@ const upvoteTooltip = computed(() => {
   if (!viewerCanInteract.value) return tinyTooltip('Boost')
   if (!isAuthed.value) return tinyTooltip('Log in to boost')
   if (!viewerHasUsername.value) return tinyTooltip('Set a username to boost')
+  if (isBlockedWithAuthor.value) return tinyTooltip('Blocked')
   const text = isBoosted.value ? 'Unboost' : 'Boost'
   return tinyTooltip(text)
 })
@@ -535,13 +557,18 @@ const commentTooltip = computed(() => {
   if (!viewerCanInteract.value) return tinyTooltip('Reply')
   if (!isAuthed.value) return tinyTooltip('Log in to reply')
   if (!viewerIsVerified.value) return tinyTooltip('Verify to reply')
+  if (isBlockedWithAuthor.value) return tinyTooltip('Blocked')
   return tinyTooltip('Reply')
 })
 
 const boostClickable = computed(() => {
+  if (isBlockedWithAuthor.value) return true  // clickable but shows block toast
   return viewerCanInteract.value && (!isAuthed.value || viewerHasUsername.value)
 })
-const commentClickable = computed(() => viewerCanInteract.value)
+const commentClickable = computed(() => {
+  if (isBlockedWithAuthor.value) return true  // clickable but shows block toast
+  return viewerCanInteract.value
+})
 
 const authorBanned = computed(() => Boolean(postView.value.authorBanned ?? postView.value.author?.authorBanned))
 const authorProfilePath = computed(() => {
@@ -684,6 +711,24 @@ const moreMenuItems = computed<MenuItemWithIcon[]>(() => {
         reportOpen.value = true
       },
     })
+
+    const authorUserId = postView.value.author.id
+    if (authorUserId && !authorBanned.value) {
+      const isBlocked = blockState.isBlockedByMe(authorUserId)
+        || viewerBlockStatus.value === 'viewer_blocked'
+      items.push({
+        label: isBlocked ? 'Unblock user' : 'Block user',
+        iconName: isBlocked ? 'tabler:ban-off' : 'tabler:ban',
+        class: isBlocked ? '' : 'text-red-600 dark:text-red-400',
+        command: () => {
+          if (isBlocked) {
+            void handleUnblockUser(authorUserId)
+          } else {
+            void handleBlockUser(authorUserId)
+          }
+        },
+      })
+    }
   }
 
   if (isSelf.value) {
@@ -884,6 +929,10 @@ const adminScoreLabel = computed(() => {
 
 async function onBoostClick() {
   if (!viewerCanInteract.value) return
+  if (isBlockedWithAuthor.value && blockReasonText.value) {
+    toast.push({ title: 'Can\'t boost', message: blockReasonText.value, tone: 'error', durationMs: 3500 })
+    return
+  }
   if (!isAuthed.value) {
     showAuthActionModal({ kind: 'login', action: 'boost' })
     return
@@ -903,6 +952,10 @@ const { show: showReplyModal } = useReplyModal()
 
 function onCommentClick() {
   if (!viewerCanInteract.value) return
+  if (isBlockedWithAuthor.value && blockReasonText.value) {
+    toast.push({ title: 'Can\'t reply', message: blockReasonText.value, tone: 'error', durationMs: 3500 })
+    return
+  }
   if (!isAuthed.value) {
     showAuthActionModal({ kind: 'login', action: 'comment' })
     return
@@ -912,6 +965,26 @@ function onCommentClick() {
     return
   }
   showReplyModal(postView.value)
+}
+
+async function handleBlockUser(userId: string) {
+  try {
+    await blockState.blockUser(userId)
+    const handle = postView.value.author.username ? `@${postView.value.author.username}` : 'User'
+    toast.push({ title: `${handle} blocked`, message: 'They can still see your posts but can\'t engage with them.', tone: 'success', durationMs: 3000 })
+  } catch (e: unknown) {
+    toast.pushError(e, 'Failed to block user.')
+  }
+}
+
+async function handleUnblockUser(userId: string) {
+  try {
+    await blockState.unblockUser(userId)
+    const handle = postView.value.author.username ? `@${postView.value.author.username}` : 'User'
+    toast.push({ title: `${handle} unblocked`, message: 'You can now engage with their posts.', tone: 'success', durationMs: 3000 })
+  } catch (e: unknown) {
+    toast.pushError(e, 'Failed to unblock user.')
+  }
 }
 
 const { addInterest, removeInterest } = usePresence()

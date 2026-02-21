@@ -1,5 +1,8 @@
 import type { Space, SpaceStation } from '~/types/api'
 
+/** Opacity for the visualizer when used as a background (radio bar, space cards). Use via :style="{ opacity }". */
+export const SPACE_VISUALIZER_BACKGROUND_OPACITY = 0.26
+
 const AUDIO_STATION_ID_KEY = 'space-audio-station-id'
 const AUDIO_IS_PLAYING_KEY = 'space-audio-is-playing'
 const AUDIO_IS_BUFFERING_KEY = 'space-audio-is-buffering'
@@ -10,6 +13,12 @@ const AUDIO_VOLUME_KEY = 'moh.space.audio.volume.v1'
 let audioEl: HTMLAudioElement | null = null
 let audioEventsBound = false
 
+// Web Audio API nodes — module-level singletons so we never try to
+// re-connect the same HTMLAudioElement to a second AudioContext.
+let audioCtx: AudioContext | null = null
+let analyserNode: AnalyserNode | null = null
+let mediaSourceNode: MediaElementAudioSourceNode | null = null
+
 function ensureAudio(): HTMLAudioElement | null {
   if (!import.meta.client) return null
   if (audioEl) return audioEl
@@ -17,6 +26,38 @@ function ensureAudio(): HTMLAudioElement | null {
   audioEl.preload = 'none'
   audioEl.crossOrigin = 'anonymous'
   return audioEl
+}
+
+/**
+ * Returns a shared AnalyserNode wired into the space audio element.
+ * Safe to call multiple times — returns the same node after first call.
+ * Returns null on SSR or if the audio element is unavailable.
+ */
+export function getSpaceAudioAnalyser(): AnalyserNode | null {
+  if (!import.meta.client) return null
+  const el = ensureAudio()
+  if (!el) return null
+  if (analyserNode) return analyserNode
+  try {
+    audioCtx = new AudioContext()
+    analyserNode = audioCtx.createAnalyser()
+    analyserNode.fftSize = 256
+    analyserNode.smoothingTimeConstant = 0.82
+    mediaSourceNode = audioCtx.createMediaElementSource(el)
+    mediaSourceNode.connect(analyserNode)
+    analyserNode.connect(audioCtx.destination)
+  } catch {
+    // Browser may restrict AudioContext creation before user interaction.
+    return null
+  }
+  return analyserNode
+}
+
+/** Resume the AudioContext if it was suspended by autoplay policy. */
+export function resumeSpaceAudioContext(): void {
+  if (import.meta.client && audioCtx?.state === 'suspended') {
+    void audioCtx.resume()
+  }
 }
 
 function clamp01(n: number): number {
@@ -130,6 +171,7 @@ export function useSpaceAudio() {
     isBuffering.value = true
 
     a.src = url
+    resumeSpaceAudioContext()
     try {
       await a.play()
     } catch (e) {

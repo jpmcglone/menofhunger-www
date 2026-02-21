@@ -57,7 +57,7 @@
             @select="selectConversation"
             @set-tab="setTab"
             @open-new="openNewDialog"
-            @open-blocks="openBlocksDialog"
+            @open-blocks="navigateTo('/settings/blocked')"
             @load-more="loadMoreConversations"
           />
 
@@ -347,8 +347,22 @@
                 <Button label="Accept" size="small" severity="secondary" @click="acceptSelectedConversation" />
               </div>
             </div>
+            <div
+              v-if="selectedConversation?.isBlockedWith"
+              class="mb-3 flex items-center gap-2 rounded-xl border border-zinc-700 bg-zinc-900 px-4 py-3 text-sm text-zinc-300 dark:border-zinc-700 dark:bg-zinc-900"
+            >
+              <Icon name="tabler:ban" class="shrink-0 text-zinc-400" aria-hidden="true" />
+              <span v-if="headerDirectUser && blockState.isBlockedByMe(headerDirectUser.id)">
+                You've blocked <strong class="font-semibold text-white">@{{ headerDirectUser.username }}</strong>. You can read past messages but can't send new ones.
+                <NuxtLink to="/settings/blocked" class="ml-1 underline text-zinc-300">Manage in Settings.</NuxtLink>
+              </span>
+              <span v-else>
+                <strong class="font-semibold text-white">@{{ headerDirectUser?.username }}</strong> has blocked you. You can read past messages but can't send new ones.
+              </span>
+            </div>
             <AppInlineAlert v-if="sendError" class="mb-2" severity="danger">{{ sendError }}</AppInlineAlert>
             <AppDmComposer
+              v-if="!selectedConversation?.isBlockedWith"
               ref="dmComposerRef"
               v-model="composerText"
               :user="composerUser"
@@ -438,31 +452,6 @@
       </template>
     </Dialog>
 
-    <Dialog
-      v-model:visible="blocksDialogVisible"
-      modal
-      header="Blocked users"
-      :style="{ width: '32rem', maxWidth: '92vw', minHeight: '18rem' }"
-    >
-      <AppInlineAlert v-if="blocksError" severity="danger" class="mb-3">{{ blocksError }}</AppInlineAlert>
-      <div v-if="blocksLoading" class="text-sm text-gray-500 dark:text-gray-400">Loading…</div>
-      <div v-else-if="blocks.length === 0" class="text-sm text-gray-500 dark:text-gray-400">No blocked users.</div>
-      <div v-else class="space-y-2">
-        <div
-          v-for="b in blocks"
-          :key="b.blocked.id"
-          class="flex items-center justify-between gap-2 rounded-lg border border-gray-200 px-3 py-2 dark:border-zinc-800"
-        >
-          <div class="flex items-center gap-2">
-            <AppUserAvatar :user="b.blocked" size-class="h-8 w-8" />
-            <div class="text-sm font-semibold">
-              {{ b.blocked.name || (b.blocked.username ? `@${b.blocked.username}` : 'User') }}
-            </div>
-          </div>
-          <Button label="Unblock" text severity="secondary" @click="unblockUser(b.blocked.id)" />
-        </div>
-      </div>
-    </Dialog>
   </div>
 </AppPageContent>
 </template>
@@ -495,7 +484,6 @@ import { getApiErrorMessage } from '~/utils/api-error'
 import { useChatBubbleShape } from '~/composables/chat/useChatBubbleShape'
 import { useChatTimeFormatting } from '~/composables/chat/useChatTimeFormatting'
 import { useChatTyping } from '~/composables/chat/useChatTyping'
-import { useChatBlocks } from '~/composables/chat/useChatBlocks'
 import ChatConversationList from '~/components/app/chat/ChatConversationList.vue'
 import ChatMessageList from '~/components/app/chat/ChatMessageList.vue'
 import { useMediaQuery } from '@vueuse/core'
@@ -756,11 +744,7 @@ const newConversationError = ref<string | null>(null)
 
 const draftRecipients = ref<FollowListUser[]>([])
 
-const { blocksDialogVisible, blocks, blocksLoading, blocksError, fetchBlocks, blockUser, unblockUser } = useChatBlocks({
-  apiFetch,
-  clearSelection,
-  fetchConversations,
-})
+const blockState = useBlockState()
 
 const activeList = computed(() => conversations.value[activeTab.value])
 const nextCursor = computed(() => nextCursorByTab.value[activeTab.value])
@@ -1237,6 +1221,10 @@ async function selectConversation(id: string, opts?: { replace?: boolean }) {
     const list = res.data?.messages ?? []
     messages.value = [...list].reverse()
     messagesNextCursor.value = res.pagination?.nextCursor ?? null
+    // Patch `isBlockedWith` from the conversation detail into the list row.
+    if (typeof res.data?.conversation?.isBlockedWith === 'boolean') {
+      updateConversationIsBlockedWith(id, res.data.conversation.isBlockedWith)
+    }
     try {
       await apiFetch('/messages/conversations/' + id + '/mark-read', { method: 'POST' })
       // If the user switched threads mid-request, don't mutate list state.
@@ -1319,6 +1307,18 @@ async function loadOlderMessages() {
   } finally {
     if (reqSeq === loadOlderReqSeq) loadingOlder.value = false
   }
+}
+
+function updateConversationIsBlockedWith(conversationId: string, isBlockedWith: boolean) {
+  const update = (tab: 'primary' | 'requests') => {
+    const idx = conversations.value[tab].findIndex((c) => c.id === conversationId)
+    if (idx === -1) return
+    const next = [...conversations.value[tab]]
+    next[idx] = { ...next[idx]!, isBlockedWith }
+    conversations.value[tab] = next
+  }
+  update('primary')
+  update('requests')
 }
 
 function updateConversationUnread(conversationId: string, unreadCount: number) {
@@ -1526,10 +1526,6 @@ function openNewDialog() {
   newConversationError.value = null
 }
 
-function openBlocksDialog() {
-  blocksDialogVisible.value = true
-  void fetchBlocks()
-}
 
 let recipientSearchTimer: ReturnType<typeof setTimeout> | null = null
 watch(recipientQuery, (val) => {
@@ -1718,7 +1714,10 @@ async function blockDirectUser() {
   if (!convo || convo.type !== 'direct') return
   const other = getDirectUser(convo)
   if (!other?.id) return
-  await blockUser(other.id)
+  await blockState.blockUser(other.id)
+  await fetchConversations('primary', { forceRefresh: true })
+  await fetchConversations('requests', { forceRefresh: true })
+  await clearSelection({ replace: true })
 }
 
 const presenceInterestIds = computed(() => {

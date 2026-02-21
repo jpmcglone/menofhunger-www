@@ -27,7 +27,7 @@
         v-if="radioChatSheetOpen && radioHasStation && !showRadioChat"
         v-model="radioChatSheetOpen"
         :space-name="radioChatStationName"
-        :message-count="radioChatMessageCount"
+        :member-count="members.length"
       />
     </ClientOnly>
     <Transition
@@ -355,7 +355,7 @@
               >
                 <div
                   v-show="radioHasStation"
-                  class="relative z-0 flex items-center border-t border-gray-200 bg-white dark:border-zinc-800 dark:bg-black text-gray-900 dark:text-white"
+                  class="moh-radio-bar dark relative z-0 flex items-center border-t border-zinc-800 bg-black text-white"
                   :style="{ minHeight: 'var(--moh-radio-bar-height, 4rem)' }"
                 >
                   <div class="w-full">
@@ -372,7 +372,7 @@
             <!-- Radio player row: bottom of the middle column on desktop only. -->
             <div
               v-if="radioHasStation"
-              class="hidden md:flex items-center shrink-0 border-t border-gray-200 bg-white dark:border-zinc-800 dark:bg-black text-gray-900 dark:text-white"
+              class="moh-radio-bar dark hidden md:flex items-center shrink-0 border-t border-zinc-800 bg-black text-white"
               :style="{ height: 'var(--moh-radio-bar-height, 4rem)' }"
             >
               <div class="w-full">
@@ -1100,6 +1100,7 @@ const middleContentEl = ref<HTMLElement | null>(null)
 
 const { selectedSpaceId, currentSpace } = useSpaceLobby()
 const radioHasStation = computed(() => Boolean(selectedSpaceId.value))
+useSpacePlayPauseShortcut(radioHasStation)
 
 // On /chat, force the right rail visible when the user is in a live space so they
 // can see the conversation list, DM chat, and live chat simultaneously.

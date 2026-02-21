@@ -20,26 +20,27 @@
             <h1 class="moh-h1">{{ space.name }}</h1>
             <p class="mt-1 moh-meta">Live chat and music in the bar below. Share this link to bring others here.</p>
           </div>
-          <button
-            type="button"
-            class="moh-tap moh-focus shrink-0 mt-1 inline-flex items-center gap-1.5 rounded-full border moh-border-subtle px-3 py-1.5 text-xs font-medium moh-meta moh-surface-hover transition-colors"
-            aria-label="Leave space"
-            @click="onLeave"
-          >
-            <Icon name="tabler:door-exit" class="text-[14px]" aria-hidden="true" />
-            Leave
-          </button>
+          <div class="shrink-0 mt-1 flex items-center gap-2">
+            <AppPostRowShareMenu
+              :can-share="true"
+              :tooltip="spaceShareTooltip"
+              :items="spaceShareMenuItems"
+            />
+            <button
+              type="button"
+              class="moh-tap moh-focus inline-flex items-center gap-1.5 rounded-full border moh-border-subtle px-3 py-1.5 text-xs font-medium moh-meta moh-surface-hover transition-colors"
+              aria-label="Leave space"
+              @click="onLeave"
+            >
+              <Icon name="tabler:door-exit" class="text-[14px]" aria-hidden="true" />
+              Leave
+            </button>
+          </div>
         </div>
 
-        <!-- Canvas area -->
-        <div class="moh-gutter-x flex-1 min-h-0 pb-3">
-          <div class="w-full h-full min-h-[40vh] rounded-xl border-2 border-dashed border-gray-300 dark:border-zinc-600 bg-gray-50/50 dark:bg-zinc-900/50 flex items-center justify-center">
-            <div class="text-center moh-meta opacity-50 select-none px-4">
-              <Icon name="tabler:video" class="text-3xl mb-2 block mx-auto" aria-hidden="true" />
-              <p class="text-sm">Canvas</p>
-              <p class="text-xs mt-1">Videos and content coming soon</p>
-            </div>
-          </div>
+        <!-- Visualizer / canvas area -->
+        <div class="moh-gutter-x flex-1 min-h-0 pb-3 min-h-[40vh]">
+          <AppSpaceVisualizer class="w-full h-full" />
         </div>
 
         <!-- Users + reactions -->
@@ -62,7 +63,7 @@
           </div>
 
           <div v-if="currentSpace && members.length === 0" class="mt-3 text-sm text-gray-600 dark:text-gray-300">
-            No one here yet. You’re the first.
+            You're the first — share the link to invite others.
           </div>
 
           <div v-else-if="currentSpace" class="mt-2 flex flex-wrap gap-3 py-1">
@@ -163,9 +164,12 @@
 </template>
 
 <script setup lang="ts">
+import type { MenuItem } from 'primevue/menuitem'
 import type { Space, SpaceReactionEvent } from '~/types/api'
+import { siteConfig } from '~/config/site'
 import { tinyTooltip } from '~/utils/tiny-tooltip'
 import { registerAvatarPositionResolver } from '~/composables/useSpaceReactions'
+import { useCopyToClipboard } from '~/composables/useCopyToClipboard'
 
 const route = useRoute()
 const id = computed(() => (route.params.id as string)?.trim() ?? '')
@@ -224,6 +228,29 @@ if (import.meta.server && id.value && spacesPayload.value) {
 
 const space = computed(() => (id.value ? getById(id.value) : null))
 const lobbyMembers = computed(() => members.value ?? [])
+
+const spaceShareUrl = computed(() =>
+  id.value ? `${siteConfig.url}/spaces/${encodeURIComponent(id.value)}` : '',
+)
+const toast = useAppToast()
+const { copyText: copyToClipboard } = useCopyToClipboard()
+type MenuItemWithIcon = MenuItem & { iconName?: string }
+const spaceShareTooltip = tinyTooltip('Share')
+const spaceShareMenuItems = computed<MenuItemWithIcon[]>(() => [
+  {
+    label: 'Copy link',
+    iconName: 'tabler:link',
+    command: async () => {
+      if (!import.meta.client || !spaceShareUrl.value) return
+      try {
+        await copyToClipboard(spaceShareUrl.value)
+        toast.push({ title: 'Space link copied', tone: 'public', durationMs: 1400 })
+      } catch {
+        toast.push({ title: 'Copy failed', tone: 'error', durationMs: 1800 })
+      }
+    },
+  },
+])
 
 function onReactionClick(reactionId: string, emoji: string) {
   const meId = user.value?.id ?? null

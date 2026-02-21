@@ -12,18 +12,18 @@
       <div class="absolute inset-0 moh-bg moh-texture moh-vignette pointer-events-none" aria-hidden="true" />
 
       <header
-        class="relative z-10 shrink-0 border-b moh-border-subtle px-4 pb-3 pt-[calc(1rem+var(--moh-safe-top,0px))] flex items-center justify-between gap-3"
+        class="relative z-10 shrink-0 border-b moh-border-subtle px-4 pb-2 pt-[calc(0.625rem+var(--moh-safe-top,0px))] flex items-center justify-between gap-3"
       >
         <AppLiveChatHeader
           :title="spaceName"
-          :message-count="messageCount"
+          :member-count="memberCount"
           title-class="text-lg tracking-tight"
           :heading-id="titleId"
         >
           <template #actions>
             <button
               type="button"
-              class="moh-tap ml-1 inline-flex h-9 w-9 items-center justify-center rounded-full text-gray-600 hover:bg-black/5 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-white/5 dark:hover:text-gray-50"
+              class="moh-tap ml-1 inline-flex h-10 w-10 sm:h-9 sm:w-9 items-center justify-center rounded-full text-gray-600 hover:bg-black/5 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-white/5 dark:hover:text-gray-50"
               aria-label="Close"
               @click="close"
             >
@@ -44,7 +44,7 @@
 const props = defineProps<{
   modelValue: boolean
   spaceName: string
-  messageCount: number
+  memberCount?: number | null
 }>()
 
 const emit = defineEmits<{

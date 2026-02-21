@@ -2,7 +2,7 @@
   <div>
     <button
       type="button"
-      class="inline-flex h-9 w-9 items-center justify-center rounded-full transition-colors moh-surface-hover"
+      class="moh-tap inline-flex h-10 w-10 sm:h-9 sm:w-9 items-center justify-center rounded-full transition-colors moh-surface-hover"
       :class="canShare ? 'cursor-pointer' : 'cursor-default opacity-60'"
       aria-label="Share"
       v-tooltip.bottom="tooltip"

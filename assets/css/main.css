@@ -237,9 +237,23 @@ html.dark {
    Premium orange must remain stable so "premium" UI reflects the target (post/user),
    not the currently logged-in viewer's account type. */
 
+/* Global mobile tap affordances: faster taps + no flash on all interactive elements. */
+button,
+a,
+[role="button"],
+[role="link"],
+[role="tab"],
+[role="menuitem"],
+input[type="submit"],
+input[type="button"],
+input[type="reset"] {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
 /* Apple-style continuous corners (squircle). Fallback: browsers ignore corner-shape, keep border-radius. */
 @layer utilities {
-  /* Mobile tap affordances: faster taps + no highlight flash. */
+  /* Explicit moh-tap for non-semantic interactive elements (divs with click handlers). */
   .moh-tap {
     touch-action: manipulation;
     -webkit-tap-highlight-color: transparent;
@@ -337,8 +351,15 @@ html.dark {
   .moh-surface-3 {
     background-color: var(--moh-surface-3);
   }
-  .moh-surface-hover:hover {
-    background-color: var(--moh-surface-hover);
+  @media (hover: hover) {
+    .moh-surface-hover:hover {
+      background-color: var(--moh-surface-hover);
+    }
+  }
+
+  /* Radio bar is always dark: force dark-mode hover so buttons don't use light hover */
+  .moh-radio-bar {
+    --moh-surface-hover: rgba(255, 255, 255, 0.06);
   }
 
   /* Post row hover: white layer, 0 by default, opacity up on hover (light = darken, dark = lighten) */
@@ -347,11 +368,13 @@ html.dark {
     opacity: 0;
     transition: opacity 0.2s ease;
   }
-  .group:hover .moh-post-row-hover-bg {
-    opacity: 0.5;
-  }
-  html.dark .group:hover .moh-post-row-hover-bg {
-    opacity: 0.14;
+  @media (hover: hover) {
+    .group:hover .moh-post-row-hover-bg {
+      opacity: 0.5;
+    }
+    html.dark .group:hover .moh-post-row-hover-bg {
+      opacity: 0.14;
+    }
   }
   .moh-border {
     border-color: var(--moh-border);
@@ -593,30 +616,34 @@ html.dark {
   .moh-menuitem-verified {
     color: var(--moh-verified);
   }
-  .moh-menuitem-verified:hover {
-    background-color: var(--moh-verified-soft);
-    color: var(--moh-text);
-  }
   .moh-menuitem-premium {
     color: var(--moh-premium);
-  }
-  .moh-menuitem-premium:hover {
-    background-color: var(--moh-premium-soft);
-    color: var(--moh-text);
   }
   .moh-menuitem-onlyme {
     color: var(--moh-onlyme);
   }
-  .moh-menuitem-onlyme:hover {
-    background-color: var(--moh-onlyme-soft);
-    color: var(--moh-text);
+  @media (hover: hover) {
+    .moh-menuitem-verified:hover {
+      background-color: var(--moh-verified-soft);
+      color: var(--moh-text);
+    }
+    .moh-menuitem-premium:hover {
+      background-color: var(--moh-premium-soft);
+      color: var(--moh-text);
+    }
+    .moh-menuitem-onlyme:hover {
+      background-color: var(--moh-onlyme-soft);
+      color: var(--moh-text);
+    }
   }
 
   .moh-nav-onlyme {
     color: var(--moh-onlyme);
   }
-  .moh-nav-onlyme:hover {
-    background-color: var(--moh-onlyme-soft);
+  @media (hover: hover) {
+    .moh-nav-onlyme:hover {
+      background-color: var(--moh-onlyme-soft);
+    }
   }
   .moh-nav-onlyme-active {
     background-color: rgba(var(--moh-onlyme-rgb), 0.14);
@@ -631,8 +658,10 @@ html.dark {
   .moh-btn-tone {
     transition: opacity 140ms ease;
   }
-  .moh-btn-tone:hover {
-    opacity: 0.93;
+  @media (hover: hover) {
+    .moh-btn-tone:hover {
+      opacity: 0.93;
+    }
   }
 
   .moh-btn-public {
@@ -640,8 +669,10 @@ html.dark {
     background-color: transparent !important;
     color: var(--moh-text) !important;
   }
-  .moh-btn-public:hover {
-    background-color: var(--moh-surface-hover) !important;
+  @media (hover: hover) {
+    .moh-btn-public:hover {
+      background-color: var(--moh-surface-hover) !important;
+    }
   }
 
   .moh-btn-verified {
@@ -779,6 +810,11 @@ html.dark {
   }
 }
 
+/* Tooltips are rendered to <body> but need to clear full-screen overlays (z-9999) */
+.p-tooltip {
+  z-index: 99999 !important;
+}
+
 /* PrimeVue tooltip (used by verified badge): simple black + small white text */
 .p-tooltip.moh-tooltip .p-tooltip-text {
   background: var(--moh-tooltip-bg) !important;
@@ -878,9 +914,11 @@ html.dark .moh-avatar-initial {
 .moh-mention-link {
   color: var(--p-primary-color, var(--moh-text));
 }
-.moh-mention-link:hover {
-  color: var(--p-primary-color, var(--moh-text));
-  opacity: 0.85;
+@media (hover: hover) {
+  .moh-mention-link:hover {
+    color: var(--p-primary-color, var(--moh-text));
+    opacity: 0.85;
+  }
 }
 
 /* Post list transitions: delete immediately, others slide into place (FLIP). */

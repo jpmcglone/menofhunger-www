@@ -33,7 +33,19 @@
       {{ displayUsername }}
     </span>
     <span class="mx-1 text-gray-500 dark:text-gray-400">:</span>
-    <span class="text-gray-900 dark:text-gray-100 break-words">
+    <!-- Redacted body when sender is blocked; click to toggle reveal -->
+    <span v-if="isBodyRedacted && !redactRevealed" class="inline-flex items-center gap-1">
+      <button
+        type="button"
+        class="inline-block rounded px-1 text-xs select-none bg-zinc-900 text-zinc-900 cursor-pointer hover:bg-zinc-700 hover:text-zinc-300 transition-colors"
+        title="Message from a blocked user. Click to reveal."
+        @click="redactRevealed = true"
+      >
+        &nbsp;{{ redactPlaceholder }}&nbsp;
+      </button>
+      <span class="text-[10px] text-zinc-600 cursor-default">(blocked)</span>
+    </span>
+    <span v-else class="text-gray-900 dark:text-gray-100 break-words">
       <template v-for="seg in bodySegments" :key="seg.key">
         <NuxtLink
           v-if="seg.type === 'mention'"
@@ -74,12 +86,30 @@ const props = defineProps<{
 }>()
 
 const { user: me } = useAuth()
+const blockState = useBlockState()
 
 const isMine = computed(() => {
   const myId = String(me.value?.id ?? '').trim()
   const senderId = String(props.message?.sender?.id ?? '').trim()
   return Boolean(myId && senderId && myId === senderId)
 })
+
+// Redaction: block either direction hides the message body by default.
+const senderId = computed(() => (props.message?.sender?.id ?? '').trim() || null)
+const isBodyRedacted = computed(() => {
+  if (isMine.value || !senderId.value) return false
+  return blockState.isBlockedByMe(senderId.value)
+})
+const redactRevealed = ref(false)
+const redactPlaceholder = computed(() => {
+  const body = props.message.body ?? ''
+  // Show a fixed-width block roughly proportional to message length.
+  const len = Math.max(8, Math.min(body.length, 30))
+  return '\u2588'.repeat(len)
+})
+
+// Reset reveal state when message changes.
+watch(senderId, () => { redactRevealed.value = false })
 
 const username = computed(() => (props.message?.sender?.username ?? '').trim() || null)
 const displayUsername = computed(() => username.value ?? 'User')

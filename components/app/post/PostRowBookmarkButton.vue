@@ -2,7 +2,7 @@
   <div class="relative">
     <button
       type="button"
-      class="inline-flex h-9 w-9 items-center justify-center rounded-full transition-colors moh-surface-hover"
+      class="moh-tap inline-flex h-10 w-10 sm:h-9 sm:w-9 items-center justify-center rounded-full transition-colors moh-surface-hover"
       :class="loading ? 'cursor-default opacity-60' : (viewerCanInteract ? 'cursor-pointer' : 'cursor-default opacity-60')"
       :aria-label="hasBookmarked ? 'Edit bookmark' : 'Save post'"
       v-tooltip.bottom="bookmarkTooltip"

@@ -1,40 +1,45 @@
 <template>
-  <div class="min-w-0">
+  <!-- Title + user count -->
+  <div class="min-w-0 flex items-center gap-2">
     <div :class="['truncate font-semibold text-gray-900 dark:text-gray-50', titleClass]" :id="headingId || undefined">
       {{ title }}
     </div>
-    <div class="mt-0.5 text-xs text-gray-600 dark:text-gray-300">
-      Live chat
-    </div>
-  </div>
-  <div class="shrink-0 flex items-center gap-2">
-    <span class="tabular-nums text-gray-500 dark:text-gray-400 text-xs">
-      {{ messageCount }}
+    <span v-if="memberCount != null" class="shrink-0 inline-flex items-center gap-1">
+      <Icon name="tabler:users" class="text-[12px] opacity-30" aria-hidden="true" />
+      <span class="text-[11px] tabular-nums font-medium text-gray-900 dark:text-white">{{ memberCount }}</span>
     </span>
-    <div class="relative group">
-      <span class="inline-flex items-center gap-1 text-[11px] font-semibold rounded-full border moh-border px-2 py-1 text-gray-600 dark:text-gray-300 cursor-default select-none">
-        <Icon name="tabler:clock-off" class="text-[11px] opacity-70" aria-hidden="true" />
-        Not saved
-      </span>
-      <div class="pointer-events-none absolute right-0 top-full mt-1.5 z-50 w-48 rounded-lg border moh-border moh-surface px-3 py-2 text-xs text-gray-700 dark:text-gray-300 shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-150">
-        These messages disappear when you leave — nothing is stored or saved.
-      </div>
-    </div>
+  </div>
+
+  <!-- Right side: ephemeral indicator + actions -->
+  <div class="shrink-0 flex items-center gap-1">
+    <!-- "Not saved" icon with tooltip -->
+    <button
+      v-tooltip.bottom="ephemeralTooltip"
+      type="button"
+      aria-label="Messages are not saved"
+      class="moh-tap cursor-pointer inline-flex h-8 w-8 items-center justify-center rounded-full text-gray-400 dark:text-gray-500 hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
+    >
+      <Icon name="tabler:clock-off" class="text-[15px]" aria-hidden="true" />
+    </button>
     <slot name="actions" />
   </div>
 </template>
 
 <script setup lang="ts">
+import { tinyTooltip } from '~/utils/tiny-tooltip'
+
 withDefaults(
   defineProps<{
     title: string
-    messageCount?: number | string
+    memberCount?: number | null
     titleClass?: string
     headingId?: string
   }>(),
   {
-    messageCount: 0,
+    memberCount: null,
     titleClass: '',
   },
 )
+
+const ephemeralTooltip = computed(() => tinyTooltip('Messages are not saved — they disappear when you leave'))
 </script>

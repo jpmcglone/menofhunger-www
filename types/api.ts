@@ -326,6 +326,10 @@ export type PublicProfile = {
   lastOnlineAt: string | null
   checkinStreakDays: number
   longestStreakDays: number
+  /** True when the viewer has blocked this user. */
+  viewerHasBlockedUser?: boolean
+  /** True when this user has blocked the viewer. */
+  userHasBlockedViewer?: boolean
 }
 
 /** Hover preview payload from GET /users/:username/preview */
@@ -377,6 +381,8 @@ export type FeedPost = {
   viewerHasBoosted?: boolean
   viewerHasBookmarked?: boolean
   viewerBookmarkCollectionIds?: string[]
+  /** Set when a block exists between viewer and author. */
+  viewerBlockStatus?: 'viewer_blocked' | 'viewer_blocked_by' | null
   /** When true, post body/media/mentions/poll are redacted and author is placeholder. */
   authorBanned?: boolean
   internal?: {
@@ -975,6 +981,8 @@ export type MessageConversation = {
   participants: MessageParticipant[]
   viewerStatus: MessageParticipantStatus
   unreadCount: number
+  /** True when a block exists in either direction between viewer and the other participant (direct chats only). */
+  isBlockedWith?: boolean
 }
 
 export type GetMessageConversationsData = MessageConversation[]

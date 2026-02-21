@@ -2,9 +2,9 @@
   <section class="h-full min-h-0 flex flex-col">
     <header
       v-if="showHeader"
-      class="shrink-0 px-4 py-3 border-b moh-border-subtle flex items-center justify-between gap-3"
+      class="shrink-0 px-4 py-2 border-b moh-border-subtle flex items-center justify-between gap-3"
     >
-      <AppLiveChatHeader :title="stationName" :message-count="chatMessageCount" title-class="moh-h2" />
+      <AppLiveChatHeader :title="stationName" :member-count="members.length" title-class="moh-h2" />
     </header>
 
     <div class="relative flex-1 min-h-0">
@@ -18,6 +18,10 @@
       >
         <div v-if="!spaceId" class="px-4 py-6 text-sm text-gray-600 dark:text-gray-300">
           Select a space to see its chat.
+        </div>
+        <div v-else-if="isLoadingMessages" class="px-4 py-6 flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400" role="status" aria-live="polite">
+          <Icon name="tabler:loader" class="text-base opacity-70 animate-spin" aria-hidden="true" />
+          <span>Joining…</span>
         </div>
         <div v-else-if="messages.length === 0" class="px-4 py-6 text-sm text-gray-600 dark:text-gray-300">
           No messages yet. Say hello.
@@ -107,7 +111,7 @@ withDefaults(defineProps<{ showHeader?: boolean }>(), {
   showHeader: true,
 })
 
-const { spaceId, messages, sendMessage, typingNameClass, typingUsersForDisplay, typingUsersTotalCount } = useSpaceLiveChat({
+const { spaceId, messages, isLoadingMessages, sendMessage, typingNameClass, typingUsersForDisplay, typingUsersTotalCount } = useSpaceLiveChat({
   passive: true,
 })
 const { currentSpace, members } = useSpaceLobby()

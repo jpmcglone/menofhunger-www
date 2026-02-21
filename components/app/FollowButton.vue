@@ -14,7 +14,7 @@
         'dark:!bg-white dark:!text-black dark:!border dark:!border-solid dark:!border-white dark:hover:!bg-white dark:hover:!text-black dark:hover:!border-white',
         props.buttonClass,
       ]"
-      @mouseenter="hovering = true"
+      @mouseenter="onMouseEnter"
       @mouseleave="hovering = false"
       @click="onClick"
     >
@@ -36,6 +36,7 @@
 
 <script setup lang="ts">
 import type { FollowRelationship } from '~/types/api'
+import { isRecentTouch } from '~/utils/recent-touch'
 
 const props = defineProps<{
   userId: string
@@ -85,6 +86,11 @@ const userFollowsViewer = computed(() => Boolean(relationship.value?.userFollows
 
 const hovering = ref(false)
 const confirmOpen = ref(false)
+
+function onMouseEnter() {
+  if (isRecentTouch()) return
+  hovering.value = true
+}
 
 watch(
   confirmOpen,

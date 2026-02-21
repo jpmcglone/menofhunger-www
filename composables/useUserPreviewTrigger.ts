@@ -1,4 +1,5 @@
 import type { Ref } from 'vue'
+import { isRecentTouch } from '~/utils/recent-touch'
 
 function resolveUsername(u: string | Ref<string> | Ref<string | null> | null | undefined): string {
   const raw = typeof u === 'string' ? u : u?.value
@@ -20,14 +21,14 @@ export function useUserPreviewTrigger(params: {
   })
 
   function onEnter(e: MouseEvent) {
-    if (!enabled.value) return
+    if (!enabled.value || isRecentTouch()) return
     const u = resolveUsername(params.username)
     if (!u) return
     pop.onTriggerEnter({ username: u, event: e })
   }
 
   function onMove(e: MouseEvent) {
-    if (!enabled.value) return
+    if (!enabled.value || isRecentTouch()) return
     pop.onTriggerMove(e)
   }
 

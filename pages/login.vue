@@ -194,6 +194,7 @@ type Step = 'phone' | 'code'
 const { apiFetchData } = useApiClient()
 import { useFormSubmit } from '~/composables/useFormSubmit'
 import { countDigitsBeforeIndex, formatPhoneAsYouType, indexFromDigitCount, normalizePhoneForApi } from '~/utils/phone'
+import { isSafeRedirect } from '~/utils/url'
 const route = useRoute()
 
 const showBannedNotice = computed(() => String(route.query.banned ?? '') === '1')
@@ -441,8 +442,8 @@ const { submit: submitCode, submitting: verifying } = useFormSubmit(
     user.value = result.user ?? null
 
     const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : null
-    if (redirect && redirect.startsWith('/')) {
-      await navigateTo(redirect)
+    if (isSafeRedirect(redirect)) {
+      await navigateTo(redirect!)
     } else {
       // New signup: start on home with onboarding gate, then route to profile on completion.
       // Keep a query flag so OnboardingGate knows to redirect to profile.

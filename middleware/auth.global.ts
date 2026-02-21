@@ -1,4 +1,5 @@
 import { isAdminPath, isLoggedOutAllowedPath, isPostPermalinkPath, isPublicPath, isUserProfilePath } from '~/config/routes'
+import { isSafeRedirect } from '~/utils/url'
 
 export default defineNuxtRouteMiddleware(async (to) => {
   const { user, ensureLoaded } = useAuth()
@@ -25,7 +26,7 @@ export default defineNuxtRouteMiddleware(async (to) => {
     await ensureLoaded()
     if (user.value) {
       const redirect = typeof to.query.redirect === 'string' ? to.query.redirect : null
-      if (redirect && redirect.startsWith('/')) return navigateTo(redirect)
+      if (isSafeRedirect(redirect)) return navigateTo(redirect!)
       return navigateTo('/home')
     }
     return

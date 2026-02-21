@@ -1,7 +1,16 @@
 <template>
   <!-- Own padding so layout containers can stay padding-free. -->
-  <div v-if="displaySpace" class="w-full px-3 py-1.5 sm:px-4 sm:py-2">
-    <div ref="barEl" class="flex w-full items-center justify-between gap-3">
+  <div v-if="displaySpace" class="w-full px-3 py-1.5 sm:px-4 sm:py-2 relative overflow-hidden">
+    <!-- Subtle visualizer in background when playing -->
+    <div
+      v-if="isPlaying"
+      :style="{ opacity: SPACE_VISUALIZER_BACKGROUND_OPACITY }"
+      class="absolute inset-0 pointer-events-none rounded-lg"
+      aria-hidden="true"
+    >
+      <AppSpaceVisualizer background-only class="w-full h-full" />
+    </div>
+    <div ref="barEl" class="relative z-10 flex w-full items-center justify-between gap-3">
     <NuxtLink
       v-if="selectedSpaceId"
       :to="`/spaces/${encodeURIComponent(selectedSpaceId)}`"
@@ -164,6 +173,15 @@
           <Icon :name="isPlaying ? 'tabler:player-pause' : 'tabler:player-play'" class="text-[18px] opacity-90" aria-hidden="true" />
         </button>
 
+        <!-- Share space link -->
+        <div v-if="selectedSpaceId" class="flex items-center">
+          <AppPostRowShareMenu
+            :can-share="true"
+            :tooltip="shareTooltip"
+            :items="shareMenuItems"
+          />
+        </div>
+
         <!-- Toggle live chat overlay -->
         <button
           v-if="selectedSpaceId && !isRightRailChatVisible"
@@ -190,9 +208,13 @@
 
 <script setup lang="ts">
 import { useMediaQuery, useElementSize } from '@vueuse/core'
+import type { MenuItem } from 'primevue/menuitem'
 import type { Space, SpaceMember } from '~/types/api'
+import { siteConfig } from '~/config/site'
 import { tinyTooltip } from '~/utils/tiny-tooltip'
 import { useUsersStore } from '~/composables/useUsersStore'
+import { SPACE_VISUALIZER_BACKGROUND_OPACITY } from '~/composables/useSpaceAudio'
+import { useCopyToClipboard } from '~/composables/useCopyToClipboard'
 
 function listenerProfileTo(username: string): string {
   return `/u/${encodeURIComponent(username)}`
@@ -296,6 +318,31 @@ const listenerOverflowCount = computed(() => {
   return Math.max(0, (members.value?.length ?? 0) - listenerStack.value.length)
 })
 const showListenerStack = computed(() => membersCount.value !== null && membersCount.value > 0)
+
+const spaceShareUrl = computed(() =>
+  selectedSpaceId.value
+    ? `${siteConfig.url}/spaces/${encodeURIComponent(selectedSpaceId.value)}`
+    : '',
+)
+const toast = useAppToast()
+const { copyText: copyToClipboard } = useCopyToClipboard()
+type MenuItemWithIcon = MenuItem & { iconName?: string }
+const shareTooltip = tinyTooltip('Share')
+const shareMenuItems = computed<MenuItemWithIcon[]>(() => [
+  {
+    label: 'Copy link',
+    iconName: 'tabler:link',
+    command: async () => {
+      if (!import.meta.client || !spaceShareUrl.value) return
+      try {
+        await copyToClipboard(spaceShareUrl.value)
+        toast.push({ title: 'Space link copied', tone: 'public', durationMs: 1400 })
+      } catch {
+        toast.push({ title: 'Copy failed', tone: 'error', durationMs: 1800 })
+      }
+    },
+  },
+])
 
 const spaceChatSheetOpen = useState<boolean>('space-chat-sheet-open', () => false)
 function toggleChatSheet() {
