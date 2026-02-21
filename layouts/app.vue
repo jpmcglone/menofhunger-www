@@ -1098,7 +1098,7 @@ const fabBottomStyle = computed<Record<string, string>>(() => {
 
 const middleContentEl = ref<HTMLElement | null>(null)
 
-const { selectedSpaceId, currentSpace } = useSpaceLobby()
+const { selectedSpaceId, currentSpace, members } = useSpaceLobby()
 const radioHasStation = computed(() => Boolean(selectedSpaceId.value))
 useSpacePlayPauseShortcut(radioHasStation)
 
