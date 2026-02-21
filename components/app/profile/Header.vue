@@ -356,6 +356,7 @@ import type { MenuItem } from 'primevue/menuitem'
 import { useUserOverlay } from '~/composables/useUserOverlay'
 import { avatarRoundClass as getAvatarRoundClass } from '~/utils/avatar-rounding'
 import { userColorTier } from '~/utils/user-tier'
+import { PRIMARY_PREMIUM_ORANGE, PRIMARY_VERIFIED_BLUE } from '~/utils/theme-tint'
 
 const props = defineProps<{
   profile: PublicProfile | null
@@ -476,9 +477,6 @@ const showPostBell = computed(() => {
   return viewerFollowsUser.value
 })
 
-const VERIFIED_BLUE = '#2b7bb9'
-const PREMIUM_ORANGE = '#c77d1a'
-
 const profileTier = computed(() => userColorTier(profile.value))
 const bellEnabledIconClass = computed(() => {
   if (!bellEnabled.value) return ''
@@ -486,8 +484,8 @@ const bellEnabledIconClass = computed(() => {
   // Orgs are silver.
   if (tier === 'organization') return '!text-[#313643]'
   // Use fixed colors so org viewer theme can't override target tier.
-  if (tier === 'premium') return `!text-[${PREMIUM_ORANGE}]`
-  if (tier === 'verified') return `!text-[${VERIFIED_BLUE}]`
+  if (tier === 'premium') return `!text-[${PRIMARY_PREMIUM_ORANGE[500]}]`
+  if (tier === 'verified') return `!text-[${PRIMARY_VERIFIED_BLUE[500]}]`
   // Normal: neutral foreground
   return '!text-gray-900 dark:!text-gray-50'
 })

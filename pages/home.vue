@@ -375,29 +375,8 @@ function onFeedPostEdited(payload: { id: string; post: import('~/types/api').Fee
 }
 
 // Lazy-load more posts when sentinel nears bottom of scroll area
-let loadMoreObs: IntersectionObserver | null = null
-watch(
-  [loadMoreSentinelEl, middleScrollerRef, nextCursor],
-  ([sentinel, scrollRoot]) => {
-    if (!import.meta.client) return
-    loadMoreObs?.disconnect()
-    loadMoreObs = null
-    const el = sentinel as HTMLElement | null
-    const root = scrollRoot as HTMLElement | null
-    if (!el || !root || !nextCursor.value) return
-    loadMoreObs = new IntersectionObserver(
-      (entries) => {
-        if (entries[0]?.isIntersecting) loadMore()
-      },
-      { root, rootMargin: '400px', threshold: 0 },
-    )
-    loadMoreObs.observe(el)
-  },
-  { immediate: true, flush: 'post' },
-)
+useLoadMoreObserver(loadMoreSentinelEl, middleScrollerRef, computed(() => Boolean(nextCursor.value)), loadMore)
 onBeforeUnmount(() => {
-  loadMoreObs?.disconnect()
-  loadMoreObs = null
   if (newlyPostedVideoPostTimer) {
     clearTimeout(newlyPostedVideoPostTimer)
     newlyPostedVideoPostTimer = null

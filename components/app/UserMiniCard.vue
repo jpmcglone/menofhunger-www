@@ -10,46 +10,14 @@
         @mouseleave="onLeave"
       >
         <AppUserAvatar :user="user" size-class="h-10 w-10" />
-        <div class="min-w-0">
-          <div class="flex items-center gap-2 min-w-0">
-            <div class="font-semibold truncate text-gray-900 dark:text-gray-50">
-              {{ displayName }}
-            </div>
-            <AppVerifiedBadge
-              :status="user.verifiedStatus"
-              :premium="user.premium"
-              :premium-plus="user.premiumPlus"
-              :is-organization="Boolean(user.isOrganization)"
-              :steward-badge-enabled="user.stewardBadgeEnabled ?? true"
-            />
-          </div>
-          <div class="text-sm text-gray-600 dark:text-gray-300 truncate">
-            {{ handle }}
-          </div>
-        </div>
+        <AppUserIdentityLine :user="user" name-class="" handle-class="text-sm" />
       </NuxtLink>
       <div
         v-else
         class="min-w-0 flex items-center gap-3 text-left"
       >
         <AppUserAvatar :user="user" size-class="h-10 w-10" />
-        <div class="min-w-0">
-          <div class="flex items-center gap-2 min-w-0">
-            <div class="font-semibold truncate text-gray-900 dark:text-gray-50">
-              {{ displayName }}
-            </div>
-            <AppVerifiedBadge
-              :status="user.verifiedStatus"
-              :premium="user.premium"
-              :premium-plus="user.premiumPlus"
-              :is-organization="Boolean(user.isOrganization)"
-              :steward-badge-enabled="user.stewardBadgeEnabled ?? true"
-            />
-          </div>
-          <div class="text-sm text-gray-600 dark:text-gray-300 truncate">
-            {{ handle }}
-          </div>
-        </div>
+        <AppUserIdentityLine :user="user" name-class="" handle-class="text-sm" />
       </div>
 
       <div class="shrink-0">
@@ -84,14 +52,11 @@ const emit = defineEmits<{
   (e: 'unfollowed'): void
 }>()
 
-const { user: authUser } = useAuth()
-const isAuthed = computed(() => Boolean(authUser.value?.id))
+const { isAuthed } = useAuth()
 
 // When signed out, never show follow controls anywhere.
 const showFollowButton = computed(() => isAuthed.value && props.showFollowButton !== false)
 
-const displayName = computed(() => user.value?.name || user.value?.username || 'User')
-const handle = computed(() => (user.value?.username ? `@${user.value.username}` : '@—'))
 const profilePath = computed(() => {
   if (!user.value?.username) return null
   return `/u/${encodeURIComponent(user.value.username)}`

@@ -3,8 +3,7 @@ import type { FeedVisibilityFilter } from '~/composables/useFeedFilters'
 import { useFeedFilters } from '~/composables/useFeedFilters'
 
 export function useHomeFeed() {
-  const { user } = useAuth()
-  const isAuthed = computed(() => Boolean(user.value?.id))
+  const { user, isAuthed } = useAuth()
   const { apiFetchData } = useApiClient()
   const middleScrollerEl = useMiddleScroller()
 

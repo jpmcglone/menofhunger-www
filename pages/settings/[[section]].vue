@@ -87,16 +87,7 @@
                 </AppUsernameField>
 
                 <div class="flex items-center gap-3">
-                  <Button
-                    label="Save"
-                    :loading="saving"
-                    :disabled="saving || !canSaveUsername"
-                    @click="save"
-                  >
-                    <template #icon>
-                      <Icon name="tabler:check" aria-hidden="true" />
-                    </template>
-                  </Button>
+                  <AppSaveButton :loading="saving" :disabled="!canSaveUsername" @click="save" />
                   <div v-if="saved" class="text-sm text-green-700 dark:text-green-300">Saved.</div>
                 </div>
 
@@ -128,17 +119,7 @@
                   />
                 </AppFormField>
                 <div class="flex items-center gap-3">
-                  <Button
-                    label="Save email"
-                    severity="secondary"
-                    :loading="emailSaving"
-                    :disabled="emailSaving || !emailDirty"
-                    @click="saveEmail"
-                  >
-                    <template #icon>
-                      <Icon name="tabler:check" aria-hidden="true" />
-                    </template>
-                  </Button>
+                  <AppSaveButton label="Save email" severity="secondary" :loading="emailSaving" :disabled="!emailDirty" @click="saveEmail" />
                   <div v-if="emailResendSaved" class="text-sm text-green-700 dark:text-green-300">Verification email sent.</div>
                 </div>
 
@@ -192,17 +173,7 @@
                   </AppFormField>
 
                   <div class="flex items-center gap-3">
-                    <Button
-                      label="Save profile details"
-                      severity="secondary"
-                      :loading="profileDetailsSaving"
-                      :disabled="profileDetailsSaving || !profileDetailsDirty"
-                      @click="saveProfileDetails"
-                    >
-                      <template #icon>
-                        <Icon name="tabler:check" aria-hidden="true" />
-                      </template>
-                    </Button>
+                    <AppSaveButton label="Save profile details" severity="secondary" :loading="profileDetailsSaving" :disabled="!profileDetailsDirty" @click="saveProfileDetails" />
                     <div v-if="profileDetailsSaved" class="text-sm text-green-700 dark:text-green-300">Saved.</div>
                   </div>
                   <div v-if="profileDetailsHelperText" class="text-sm text-red-700 dark:text-red-300">
@@ -220,17 +191,7 @@
                     description="Search, pick from suggestions, or add your own."
                   />
                   <div class="flex items-center gap-3">
-                    <Button
-                      label="Save interests"
-                      severity="secondary"
-                      :loading="interestsSaving"
-                      :disabled="interestsSaving || !interestsDirty"
-                      @click="saveInterests"
-                    >
-                      <template #icon>
-                        <Icon name="tabler:check" aria-hidden="true" />
-                      </template>
-                    </Button>
+                    <AppSaveButton label="Save interests" severity="secondary" :loading="interestsSaving" :disabled="!interestsDirty" @click="saveInterests" />
                     <div v-if="interestsSaved" class="text-sm text-green-700 dark:text-green-300">Saved.</div>
                   </div>
                   <div v-if="interestsHelperText" class="text-sm text-red-700 dark:text-red-300">
@@ -344,17 +305,7 @@
                   </div>
 
                   <div class="flex flex-wrap items-center gap-3">
-                    <Button
-                      label="Save"
-                      severity="secondary"
-                      :loading="stewardBadgeSaving"
-                      :disabled="stewardBadgeSaving || !stewardBadgeDirty"
-                      @click="saveStewardBadge"
-                    >
-                      <template #icon>
-                        <Icon name="tabler:check" aria-hidden="true" />
-                      </template>
-                    </Button>
+                    <AppSaveButton severity="secondary" :loading="stewardBadgeSaving" :disabled="!stewardBadgeDirty" @click="saveStewardBadge" />
                     <div v-if="stewardBadgeSaved" class="text-sm text-green-700 dark:text-green-300">Saved.</div>
                   </div>
 

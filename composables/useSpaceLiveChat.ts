@@ -200,7 +200,7 @@ export function useSpaceLiveChat(options: { passive?: boolean } = {}) {
           const myUsername = (user.value?.username ?? '').trim().toLowerCase()
           const mentioned = extractMentionedUsernames(msg.body)
           for (const un of mentioned) {
-            addFloating(senderId, '@', senderColor)
+            addFloating(senderId, '@', undefined, senderColor)
             // Sound only when someone else mentions the current user.
             if (myUsername && un === myUsername && senderId !== user.value?.id) {
               playMentionSound()

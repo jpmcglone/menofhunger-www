@@ -24,6 +24,7 @@
 
 <script setup lang="ts">
 import type { MenuItem } from 'primevue/menuitem'
+import { useAutoToggleMenu } from '~/composables/useAutoToggleMenu'
 
 const props = defineProps<{
   items: MenuItem[]
@@ -35,13 +36,6 @@ const props = defineProps<{
 const items = computed(() => props.items ?? [])
 const tooltip = computed(() => props.tooltip)
 
-const menuRef = ref<any>(null)
-const mounted = ref(false)
-
-async function toggle(event: Event) {
-  mounted.value = true
-  await nextTick()
-  ;(menuRef.value as any)?.toggle?.(event)
-}
+const { mounted, menuRef, toggle } = useAutoToggleMenu()
 </script>
 

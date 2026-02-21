@@ -135,7 +135,7 @@ const { apiFetchData } = useApiClient()
 const viewer = useImageLightbox()
 const toast = useAppToast()
 const route = useRoute()
-const { user } = useAuth()
+const { user, isAuthed, isVerified: viewerIsVerified } = useAuth()
 const { show: showAuthActionModal } = useAuthActionModal()
 
 const postVisibility = computed<PostVisibility>(() => props.postVisibility ?? 'public')
@@ -183,8 +183,6 @@ watch(
   },
 )
 
-const isAuthed = computed(() => Boolean(user.value?.id))
-const viewerIsVerified = computed(() => Boolean(user.value?.verifiedStatus && user.value.verifiedStatus !== 'none'))
 const endedForce = ref(false)
 let endTimer: ReturnType<typeof setTimeout> | null = null
 

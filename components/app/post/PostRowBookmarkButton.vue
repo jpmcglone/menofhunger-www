@@ -104,7 +104,6 @@
 
 <script setup lang="ts">
 import { tinyTooltip } from '~/utils/tiny-tooltip'
-import { getApiErrorMessage } from '~/utils/api-error'
 import { useBookmarkCollections } from '~/composables/useBookmarkCollections'
 
 const props = defineProps<{
@@ -126,8 +125,7 @@ const emit = defineEmits<{
 const postId = computed(() => props.postId)
 const viewerCanInteract = computed(() => Boolean(props.viewerCanInteract))
 
-const { user } = useAuth()
-const isAuthed = computed(() => Boolean(user.value?.id))
+const { user, isAuthed } = useAuth()
 const viewerToastTone = computed(() => {
   const u = user.value
   if (u?.premium) return 'premiumOnly' as const
@@ -248,7 +246,7 @@ async function removeBookmark() {
       bumpCounts({ prevHas: curHas, prevCollectionIds: curIds, nextHas: prevHas, nextCollectionIds: prevIds })
       emit('bookmarkCountDelta', 1)
     }
-    toast.push({ title: getApiErrorMessage(e) || 'Failed to unsave post.', tone: 'error', durationMs: 2000 })
+    toast.pushError(e, 'Failed to unsave post.')
   } finally {
     loading.value = false
   }
@@ -306,7 +304,7 @@ async function setBookmarkFolderIds(nextIds: string[]) {
       nextCollectionIds: prevCids,
     })
     if (didCreate) emit('bookmarkCountDelta', -1)
-    toast.push({ title: getApiErrorMessage(e) || 'Failed to save post.', tone: 'error', durationMs: 2000 })
+    toast.pushError(e, 'Failed to save post.')
   } finally {
     loading.value = false
   }
@@ -334,7 +332,7 @@ async function createFolderAndSave() {
     createOpen.value = false
     createName.value = ''
   } catch (e: unknown) {
-    toast.push({ title: getApiErrorMessage(e) || 'Failed to create folder.', tone: 'error', durationMs: 2200 })
+    toast.pushError(e, 'Failed to create folder.')
   } finally {
     creating.value = false
   }

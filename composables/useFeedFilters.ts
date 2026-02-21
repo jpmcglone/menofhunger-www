@@ -16,7 +16,7 @@ export function useFeedFilters(options: UseFeedFiltersOptions = {}) {
   const { cookieKeyPrefix = 'moh.feed', filterCookieKey, sortCookieKey } = options
   const filterKey = filterCookieKey ?? `${cookieKeyPrefix}.filter.v1`
   const sortKey = sortCookieKey ?? `${cookieKeyPrefix}.sort.v1`
-  const { user } = useAuth()
+  const { user, isVerified, isPremium } = useAuth()
 
   const filter = useCookie<FeedVisibilityFilter>(filterKey, {
     default: () => 'all',
@@ -31,10 +31,8 @@ export function useFeedFilters(options: UseFeedFiltersOptions = {}) {
     maxAge: 60 * 60 * 24 * 365,
   })
 
-  const viewerIsVerified = computed(() =>
-    Boolean(user.value?.verifiedStatus && user.value.verifiedStatus !== 'none')
-  )
-  const viewerIsPremium = computed(() => Boolean(user.value?.premium))
+  const viewerIsVerified = isVerified
+  const viewerIsPremium = isPremium
 
   const ctaKind = computed<null | 'verify' | 'premium'>(() => {
     if (filter.value === 'verifiedOnly' && !viewerIsVerified.value) return 'verify'

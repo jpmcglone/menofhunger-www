@@ -227,7 +227,7 @@ async function sendEmailSample(type: AdminEmailSampleType) {
       toast.push({ title: res?.reason || 'Sample email was not sent.', tone: 'error', durationMs: 2600 })
     }
   } catch (e: unknown) {
-    toast.push({ title: getApiErrorMessage(e) || 'Failed to send sample email.', tone: 'error', durationMs: 2600 })
+    toast.pushError(e, 'Failed to send sample email.')
   } finally {
     emailSampleSending.value = null
   }

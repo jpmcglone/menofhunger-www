@@ -70,7 +70,7 @@
           <div class="text-sm font-semibold moh-text truncate">
             {{ linkMeta?.title || previewLinkHost || 'Link' }}
           </div>
-          <div v-if="linkMeta?.description" class="mt-0.5 text-xs moh-text-muted overflow-hidden text-ellipsis">
+          <div v-if="linkMeta?.description" class="mt-0.5 text-xs moh-text-muted line-clamp-3">
             {{ linkMeta.description }}
           </div>
           <div class="mt-1 text-[11px] moh-text-muted truncate">

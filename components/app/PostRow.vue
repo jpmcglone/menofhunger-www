@@ -327,7 +327,6 @@ import { visibilityTagClasses, visibilityTagLabel } from '~/utils/post-visibilit
 import type { MenuItem } from 'primevue/menuitem'
 import { siteConfig } from '~/config/site'
 import { tinyTooltip } from '~/utils/tiny-tooltip'
-import { getApiErrorMessage } from '~/utils/api-error'
 import { formatShortCount } from '~/utils/text'
 import { useCopyToClipboard } from '~/composables/useCopyToClipboard'
 import { usePostCountBumps } from '~/composables/usePostCountBumps'
@@ -495,10 +494,8 @@ const rowStyle = computed(() => ({
 // Resource preservation: only do heavy work (metadata fetch + embeds) when the row is near viewport.
 const rowEl = ref<HTMLElement | null>(null)
 const { inView: rowInView } = useInViewOnce(rowEl, { root: null, rootMargin: '800px 0px', threshold: 0.01 })
-const { user, me: refetchMe } = useAuth()
-const isAuthed = computed(() => Boolean(user.value?.id))
+const { user, me: refetchMe, isAuthed, isVerified: viewerIsVerified } = useAuth()
 const viewerHasUsername = computed(() => Boolean(user.value?.usernameIsSet))
-const viewerIsVerified = computed(() => Boolean(user.value?.verifiedStatus && user.value.verifiedStatus !== 'none'))
 const isSelf = computed(() => Boolean(user.value?.id && user.value.id === (author.value?.id ?? postView.value.author.id)))
 const { apiFetchData } = useApiClient()
 const { show: showAuthActionModal } = useAuthActionModal()
@@ -788,7 +785,7 @@ async function pinToProfile() {
     await refetchMe()
     toast.push({ title: 'Pinned to profile', tone: 'success', durationMs: 1400 })
   } catch (e: unknown) {
-    toast.push({ title: getApiErrorMessage(e) || 'Failed to pin.', tone: 'error', durationMs: 2200 })
+    toast.pushError(e, 'Failed to pin.')
   }
 }
 
@@ -798,7 +795,7 @@ async function unpinFromProfile() {
     await refetchMe()
     toast.push({ title: 'Unpinned from profile', tone: 'success', durationMs: 1400 })
   } catch (e: unknown) {
-    toast.push({ title: getApiErrorMessage(e) || 'Failed to unpin.', tone: 'error', durationMs: 2200 })
+    toast.pushError(e, 'Failed to unpin.')
   }
 }
 
@@ -810,7 +807,7 @@ async function deletePost() {
     emit('deleted', postView.value.id)
     toast.push({ title: 'Post deleted', tone: postView.value.visibility, durationMs: 1400 })
   } catch (e: unknown) {
-    toast.push({ title: getApiErrorMessage(e) || 'Failed to delete post.', tone: 'error', durationMs: 2200 })
+    toast.pushError(e, 'Failed to delete post.')
   } finally {
     deleting.value = false
     deleteConfirmOpen.value = false
@@ -898,7 +895,7 @@ async function onBoostClick() {
   try {
     await boostState.toggleBoost(postView.value)
   } catch (e: unknown) {
-    toast.push({ title: getApiErrorMessage(e) || 'Failed to boost.', tone: 'error', durationMs: 2200 })
+    toast.pushError(e, 'Failed to boost.')
   }
 }
 

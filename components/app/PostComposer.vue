@@ -468,7 +468,7 @@ const props = defineProps<{
 }>()
 
 const route = useRoute()
-const { user } = useAuth()
+const { user, isAuthed, isPremium, isVerified: viewerIsVerified } = useAuth()
 const { apiFetchData } = useApiClient()
 const toast = useAppToast()
 
@@ -476,10 +476,6 @@ const mode = computed(() => props.mode ?? 'create')
 const editPostId = computed(() => (props.editPostId ?? '').trim() || null)
 const editPostIsDraft = computed(() => Boolean(props.editPostIsDraft))
 const disableMedia = computed(() => Boolean(props.disableMedia) || (mode.value === 'edit' && !editPostIsDraft.value))
-
-const isAuthed = computed(() => Boolean(user.value?.id))
-const isPremium = computed(() => Boolean(user.value?.premium))
-const viewerIsVerified = computed(() => (user.value?.verifiedStatus ?? 'none') !== 'none')
 const showDivider = computed(() => props.showDivider !== false)
 
 const persistKey = computed(() => {

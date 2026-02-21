@@ -229,13 +229,13 @@ usePageSeo({
   noindex: true,
 })
 
-import { getApiErrorMessage } from '~/utils/api-error'
 import { formatDateTime } from '~/utils/time-format'
 import { useFormSubmit } from '~/composables/useFormSubmit'
 import type { AdminReportItem, AdminReportListData, ReportReason, ReportStatus, ReportTargetType } from '~/types/api'
 import type { AdminCallback } from '~/composables/usePresence'
+import { useCursorFeed } from '~/composables/useCursorFeed'
 
-const { apiFetch, apiFetchData } = useApiClient()
+const { apiFetchData } = useApiClient()
 const { addAdminCallback, removeAdminCallback } = usePresence()
 
 const statusOptions = [
@@ -267,11 +267,22 @@ const targetFilter = ref<typeof targetOptions[number]['value']>('all')
 const reasonFilter = ref<typeof reasonOptions[number]['value']>('all')
 const reportsQuery = ref('')
 
-const items = ref<AdminReportItem[]>([])
-const nextCursor = ref<string | null>(null)
-const loading = ref(false)
-const loadingMore = ref(false)
-const error = ref<string | null>(null)
+const { items, nextCursor, loading, loadingMore, error, refresh, loadMore } = useCursorFeed<AdminReportItem>({
+  stateKey: 'admin-reports',
+  buildRequest: (cursor) => ({
+    path: '/admin/reports',
+    query: {
+      limit: 50,
+      cursor: cursor ?? undefined,
+      q: reportsQuery.value.trim() || undefined,
+      status: statusFilter.value === 'all' ? undefined : statusFilter.value,
+      targetType: targetFilter.value === 'all' ? undefined : targetFilter.value,
+      reason: reasonFilter.value === 'all' ? undefined : reasonFilter.value,
+    },
+  }),
+  defaultErrorMessage: 'Failed to load reports.',
+  loadMoreErrorMessage: 'Failed to load more reports.',
+})
 
 const detailsOpen = ref(false)
 const selected = ref<AdminReportItem | null>(null)
@@ -286,17 +297,14 @@ const canSave = computed(() => {
   return editStatus.value !== selected.value.status || note !== existingNote
 })
 
-const didInitialLoad = ref(false)
 const adminCb: AdminCallback = {
   onUpdated: (payload) => {
     if (payload?.kind !== 'reports') return
-    void loadReports(true)
+    void refresh()
   },
 }
 onMounted(() => {
-  if (didInitialLoad.value) return
-  didInitialLoad.value = true
-  void loadReports(true)
+  void refresh()
   addAdminCallback(adminCb)
 })
 
@@ -304,60 +312,7 @@ onBeforeUnmount(() => {
   removeAdminCallback(adminCb)
 })
 
-watch([statusFilter, targetFilter, reasonFilter], () => void loadReports(true))
-
-function queryParams(reset: boolean) {
-  return {
-    limit: 50,
-    cursor: reset ? undefined : nextCursor.value ?? undefined,
-    q: reportsQuery.value.trim() || undefined,
-    status: statusFilter.value === 'all' ? undefined : statusFilter.value,
-    targetType: targetFilter.value === 'all' ? undefined : targetFilter.value,
-    reason: reasonFilter.value === 'all' ? undefined : reasonFilter.value,
-  }
-}
-
-async function loadReports(reset: boolean) {
-  if (loading.value) return
-  loading.value = true
-  error.value = null
-  try {
-    if (reset) {
-      items.value = []
-      nextCursor.value = null
-    }
-    const res = await apiFetch<AdminReportListData>('/admin/reports', {
-      method: 'GET',
-      query: queryParams(reset) as Record<string, string | number | undefined>,
-    })
-    const list = res.data ?? []
-    items.value = reset ? list : [...items.value, ...list]
-    nextCursor.value = res.pagination?.nextCursor ?? null
-  } catch (e: unknown) {
-    error.value = getApiErrorMessage(e) || 'Failed to load reports.'
-  } finally {
-    loading.value = false
-  }
-}
-
-async function loadMore() {
-  if (!nextCursor.value) return
-  if (loadingMore.value || loading.value) return
-  loadingMore.value = true
-  try {
-    const res = await apiFetch<AdminReportListData>('/admin/reports', {
-      method: 'GET',
-      query: queryParams(false) as Record<string, string | number | undefined>,
-    })
-    const list = res.data ?? []
-    items.value = [...items.value, ...list]
-    nextCursor.value = res.pagination?.nextCursor ?? null
-  } catch (e: unknown) {
-    error.value = getApiErrorMessage(e) || 'Failed to load more reports.'
-  } finally {
-    loadingMore.value = false
-  }
-}
+watch([statusFilter, targetFilter, reasonFilter], () => void refresh())
 
 function openDetails(item: AdminReportItem) {
   selected.value = item

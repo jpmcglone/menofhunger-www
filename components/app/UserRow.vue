@@ -10,34 +10,14 @@
         @mouseleave="onLeave"
       >
         <div class="flex items-center gap-3 min-w-0">
-          <AppUserAvatar
-            :user="user"
-            size-class="h-10 w-10"
-          />
-
-          <div class="min-w-0">
-            <div class="flex items-center gap-2 min-w-0">
-              <div class="text-sm font-semibold truncate text-gray-900 dark:text-gray-50">
-                {{ displayName }}
-              </div>
-              <AppVerifiedBadge
-                :status="user.verifiedStatus"
-                :premium="user.premium"
-                :premium-plus="user.premiumPlus"
-                :is-organization="Boolean(user.isOrganization)"
-                :steward-badge-enabled="user.stewardBadgeEnabled ?? true"
-              />
-              <div
-                v-if="nameMeta"
-                class="shrink-0 text-xs text-gray-500 dark:text-gray-400 tabular-nums"
-              >
+          <AppUserAvatar :user="user" size-class="h-10 w-10" />
+          <AppUserIdentityLine :user="user">
+            <template v-if="nameMeta" #after-name>
+              <div class="shrink-0 text-xs text-gray-500 dark:text-gray-400 tabular-nums">
                 {{ nameMeta }}
               </div>
-            </div>
-            <div class="text-xs text-gray-600 dark:text-gray-300 truncate">
-              {{ handle }}
-            </div>
-          </div>
+            </template>
+          </AppUserIdentityLine>
         </div>
       </NuxtLink>
       <div
@@ -45,34 +25,14 @@
         class="min-w-0 flex-1 text-left"
       >
         <div class="flex items-center gap-3 min-w-0">
-          <AppUserAvatar
-            :user="user"
-            size-class="h-10 w-10"
-          />
-
-          <div class="min-w-0">
-            <div class="flex items-center gap-2 min-w-0">
-              <div class="text-sm font-semibold truncate text-gray-900 dark:text-gray-50">
-                {{ displayName }}
-              </div>
-              <AppVerifiedBadge
-                :status="user.verifiedStatus"
-                :premium="user.premium"
-                :premium-plus="user.premiumPlus"
-                :is-organization="Boolean(user.isOrganization)"
-                :steward-badge-enabled="user.stewardBadgeEnabled ?? true"
-              />
-              <div
-                v-if="nameMeta"
-                class="shrink-0 text-xs text-gray-500 dark:text-gray-400 tabular-nums"
-              >
+          <AppUserAvatar :user="user" size-class="h-10 w-10" />
+          <AppUserIdentityLine :user="user">
+            <template v-if="nameMeta" #after-name>
+              <div class="shrink-0 text-xs text-gray-500 dark:text-gray-400 tabular-nums">
                 {{ nameMeta }}
               </div>
-            </div>
-            <div class="text-xs text-gray-600 dark:text-gray-300 truncate">
-              {{ handle }}
-            </div>
-          </div>
+            </template>
+          </AppUserIdentityLine>
         </div>
       </div>
 
@@ -105,14 +65,10 @@ const props = defineProps<{
 
 const { user } = useUserOverlay(computed(() => props.user))
 
-const { user: authUser } = useAuth()
-const isAuthed = computed(() => Boolean(authUser.value?.id))
+const { isAuthed } = useAuth()
 
 // When signed out, never show follow controls anywhere.
 const showFollowButton = computed(() => props.showFollowButton !== false && (isAuthed.value || props.allowLoggedOutFollowButton === true))
-
-const displayName = computed(() => user.value?.name || user.value?.username || 'User')
-const handle = computed(() => (user.value?.username ? `@${user.value.username}` : '@—'))
 
 const nameMeta = computed(() => (props.nameMeta ?? '').trim() || null)
 const profilePath = computed(() => {

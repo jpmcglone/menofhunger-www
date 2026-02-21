@@ -14,36 +14,23 @@
       <header
         class="relative z-10 shrink-0 border-b moh-border-subtle px-4 pb-3 pt-[calc(1rem+var(--moh-safe-top,0px))] flex items-center justify-between gap-3"
       >
-        <div class="min-w-0">
-          <h2 :id="titleId" class="truncate text-lg font-semibold tracking-tight text-gray-900 dark:text-gray-50">
-            {{ spaceName }}
-          </h2>
-          <div class="mt-0.5 text-xs text-gray-600 dark:text-gray-300">
-            Live chat
-          </div>
-        </div>
-        <div class="shrink-0 flex items-center gap-2">
-          <span class="tabular-nums text-gray-500 dark:text-gray-400 text-xs">
-            {{ messageCount }}
-          </span>
-          <div class="relative group">
-            <span class="inline-flex items-center gap-1 text-[11px] font-semibold rounded-full border moh-border px-2 py-1 text-gray-600 dark:text-gray-300 cursor-default select-none">
-              <Icon name="tabler:clock-off" class="text-[11px] opacity-70" aria-hidden="true" />
-              Not saved
-            </span>
-            <div class="pointer-events-none absolute right-0 top-full mt-1.5 z-50 w-48 rounded-lg border moh-border moh-surface px-3 py-2 text-xs text-gray-700 dark:text-gray-300 shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-150">
-              These messages disappear when you leave — nothing is stored or saved.
-            </div>
-          </div>
-          <button
-            type="button"
-            class="moh-tap ml-1 inline-flex h-9 w-9 items-center justify-center rounded-full text-gray-600 hover:bg-black/5 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-white/5 dark:hover:text-gray-50"
-            aria-label="Close"
-            @click="close"
-          >
-            <Icon name="tabler:x" aria-hidden="true" />
-          </button>
-        </div>
+        <AppLiveChatHeader
+          :title="spaceName"
+          :message-count="messageCount"
+          title-class="text-lg tracking-tight"
+          :heading-id="titleId"
+        >
+          <template #actions>
+            <button
+              type="button"
+              class="moh-tap ml-1 inline-flex h-9 w-9 items-center justify-center rounded-full text-gray-600 hover:bg-black/5 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-white/5 dark:hover:text-gray-50"
+              aria-label="Close"
+              @click="close"
+            >
+              <Icon name="tabler:x" aria-hidden="true" />
+            </button>
+          </template>
+        </AppLiveChatHeader>
       </header>
 
       <div class="relative z-10 flex-1 min-h-0 pb-[calc(var(--moh-safe-bottom,0px))]">

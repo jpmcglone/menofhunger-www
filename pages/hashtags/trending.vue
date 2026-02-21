@@ -55,8 +55,8 @@
 </template>
 
 <script setup lang="ts">
-import type { GetTrendingHashtagsData, HashtagResult } from '~/types/api'
-import { getApiErrorMessage } from '~/utils/api-error'
+import type { HashtagResult } from '~/types/api'
+import { useCursorFeed } from '~/composables/useCursorFeed'
 
 definePageMeta({
   layout: 'app',
@@ -71,13 +71,16 @@ usePageSeo({
   noindex: true,
 })
 
-const { apiFetch } = useApiClient()
-
-const tags = ref<HashtagResult[]>([])
-const nextCursor = ref<string | null>(null)
-const loading = ref(false)
-const loadingMore = ref(false)
-const error = ref<string | null>(null)
+const { items: tags, nextCursor, loading, loadingMore, error, refresh, loadMore } = useCursorFeed<HashtagResult>({
+  stateKey: 'hashtags-trending',
+  buildRequest: (cursor) => ({
+    path: '/hashtags/trending',
+    query: { limit: 30, cursor: cursor ?? undefined },
+  }),
+  getItemId: (t) => t.value,
+  defaultErrorMessage: 'Failed to load trending hashtags.',
+  loadMoreErrorMessage: 'Failed to load more.',
+})
 
 function formatCount(n: number): string {
   const num = Math.max(0, Math.floor(Number(n) || 0))
@@ -85,52 +88,6 @@ function formatCount(n: number): string {
   if (num >= 1_000_000) return `${trim((num / 1_000_000).toFixed(num >= 10_000_000 ? 0 : 1))}m`
   if (num >= 1_000) return `${trim((num / 1_000).toFixed(num >= 10_000 ? 0 : 1))}k`
   return String(num)
-}
-
-async function fetchPage(cursor: string | null) {
-  const res = await apiFetch<GetTrendingHashtagsData>('/hashtags/trending', {
-    method: 'GET',
-    query: { limit: 30, cursor },
-  })
-  return {
-    items: res.data ?? [],
-    next: res.pagination?.nextCursor ?? null,
-  }
-}
-
-async function refresh() {
-  loading.value = true
-  error.value = null
-  try {
-    const r = await fetchPage(null)
-    tags.value = r.items
-    nextCursor.value = r.next
-  } catch (e: unknown) {
-    error.value = getApiErrorMessage(e) || 'Failed to load trending hashtags.'
-    tags.value = []
-    nextCursor.value = null
-  } finally {
-    loading.value = false
-  }
-}
-
-async function loadMore() {
-  const c = nextCursor.value
-  if (!c || loadingMore.value) return
-  loadingMore.value = true
-  error.value = null
-  try {
-    const r = await fetchPage(c)
-    const existing = new Set(tags.value.map((t) => t.value))
-    for (const t of r.items) {
-      if (!existing.has(t.value)) tags.value.push(t)
-    }
-    nextCursor.value = r.next
-  } catch (e: unknown) {
-    error.value = getApiErrorMessage(e) || 'Failed to load more.'
-  } finally {
-    loadingMore.value = false
-  }
 }
 
 if (import.meta.server) await refresh()

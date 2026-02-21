@@ -23,6 +23,7 @@
 
 <script setup lang="ts">
 import badgeUrl from '~/assets/images/verified-badge.png'
+import { PRIMARY_PREMIUM_ORANGE } from '~/utils/theme-tint'
 type VerifiedStatus = 'none' | 'identity' | 'manual'
 type Size = 'xs' | 'sm' | 'md'
 
@@ -43,7 +44,7 @@ const props = withDefaults(
 const badgeBlue = 'var(--moh-verified)'
 // Keep premium verification accents stable even for org viewers
 // (org viewer theme remaps --moh-premium globally).
-const badgeOrange = '#c77d1a'
+const badgeOrange = PRIMARY_PREMIUM_ORANGE[500]
 const badgeOrgLowContrast = 'var(--moh-org)'
 
 const isVerified = computed(() => Boolean(props.status && props.status !== 'none'))

@@ -242,6 +242,7 @@ import { tinyTooltip } from '~/utils/tiny-tooltip'
 import type { MenuItem } from 'primevue/menuitem'
 import { avatarRoundClass as getAvatarRoundClass } from '~/utils/avatar-rounding'
 import { userColorTier } from '~/utils/user-tier'
+import { PRIMARY_PREMIUM_ORANGE, PRIMARY_VERIFIED_BLUE } from '~/utils/theme-tint'
 
 const props = defineProps<{
   user: UserPreview
@@ -527,17 +528,14 @@ function onNavigate() {
   pop.close()
 }
 
-const VERIFIED_BLUE = '#2b7bb9'
-const PREMIUM_ORANGE = '#c77d1a'
-
 const messageTier = computed(() => userColorTier(user.value))
 const messageFilledButtonClass = computed(() => {
   const tier = messageTier.value
   // Orgs are silver: use same treatment as org chat bubbles.
   if (tier === 'organization') return '!border-[#313643] !bg-[#313643] !text-white hover:opacity-95'
   // Use fixed colors so org viewer theme can't override target tier.
-  if (tier === 'premium') return `!border-[${PREMIUM_ORANGE}] !bg-[${PREMIUM_ORANGE}] !text-white hover:opacity-95`
-  if (tier === 'verified') return `!border-[${VERIFIED_BLUE}] !bg-[${VERIFIED_BLUE}] !text-white hover:opacity-95`
+  if (tier === 'premium') return `!border-[${PRIMARY_PREMIUM_ORANGE[500]}] !bg-[${PRIMARY_PREMIUM_ORANGE[500]}] !text-white hover:opacity-95`
+  if (tier === 'verified') return `!border-[${PRIMARY_VERIFIED_BLUE[500]}] !bg-[${PRIMARY_VERIFIED_BLUE[500]}] !text-white hover:opacity-95`
   return '!border-gray-900 !bg-gray-900 !text-white hover:opacity-95 dark:!border-white dark:!bg-white dark:!text-gray-900'
 })
 
@@ -547,10 +545,10 @@ const messageOutlineButtonClass = computed(() => {
     return '!bg-transparent !border-[#313643] !text-[#313643] hover:!bg-[rgba(49,54,67,0.08)] dark:hover:!bg-[rgba(49,54,67,0.18)]'
   }
   if (tier === 'premium') {
-    return `!bg-transparent !border-[${PREMIUM_ORANGE}] !text-[${PREMIUM_ORANGE}] hover:!bg-[rgba(199,125,26,0.08)] dark:hover:!bg-[rgba(199,125,26,0.16)]`
+    return `!bg-transparent !border-[${PRIMARY_PREMIUM_ORANGE[500]}] !text-[${PRIMARY_PREMIUM_ORANGE[500]}] hover:!bg-[rgba(199,125,26,0.08)] dark:hover:!bg-[rgba(199,125,26,0.16)]`
   }
   if (tier === 'verified') {
-    return `!bg-transparent !border-[${VERIFIED_BLUE}] !text-[${VERIFIED_BLUE}] hover:!bg-[rgba(43,123,185,0.08)] dark:hover:!bg-[rgba(43,123,185,0.16)]`
+    return `!bg-transparent !border-[${PRIMARY_VERIFIED_BLUE[500]}] !text-[${PRIMARY_VERIFIED_BLUE[500]}] hover:!bg-[rgba(43,123,185,0.08)] dark:hover:!bg-[rgba(43,123,185,0.16)]`
   }
   return '!bg-transparent !border-gray-900 !text-gray-900 hover:!bg-gray-900/5 dark:!border-gray-200 dark:!text-gray-200 dark:hover:!bg-white/10'
 })

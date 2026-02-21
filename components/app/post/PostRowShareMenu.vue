@@ -48,6 +48,7 @@
 
 <script setup lang="ts">
 import type { MenuItem } from 'primevue/menuitem'
+import { useAutoToggleMenu } from '~/composables/useAutoToggleMenu'
 
 const props = defineProps<{
   canShare: boolean
@@ -64,13 +65,6 @@ const canShare = computed(() => Boolean(props.canShare))
 const tooltip = computed(() => props.tooltip)
 const items = computed(() => props.items ?? [])
 
-const menuRef = ref<any>(null)
-const mounted = ref(false)
-
-async function toggle(event: Event) {
-  mounted.value = true
-  await nextTick()
-  ;(menuRef.value as any)?.toggle?.(event)
-}
+const { mounted, menuRef, toggle } = useAutoToggleMenu()
 </script>
 

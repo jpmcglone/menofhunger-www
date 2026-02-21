@@ -203,10 +203,13 @@ const { getFloating, addFloating } = useSpaceReactions()
 const { hasStation, isPlaying, isBuffering, toggle, stop, volume, setVolume } = useSpaceAudio()
 const usersStore = useUsersStore()
 const presence = usePresence()
+const { user } = useAuth()
 
 const radioBarReactionsCb = {
   onReaction: (payload: import('~/types/api').SpaceReactionEvent) => {
     if (!payload?.spaceId || payload.spaceId !== selectedSpaceId.value) return
+    // Own reactions are handled by the spaces page optimistically — skip to avoid duplicates.
+    if (payload.userId === user.value?.id) return
     addFloating(payload.userId, payload.emoji)
   },
 }

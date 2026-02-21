@@ -149,7 +149,6 @@
 
 <script setup lang="ts">
 import type { SearchBookmarkItem } from '~/types/api'
-import { getApiErrorMessage } from '~/utils/api-error'
 import { useCursorFeed } from '~/composables/useCursorFeed'
 
 definePageMeta({
@@ -352,7 +351,7 @@ async function createFolder() {
     newFolderName.value = ''
     await ensureCollectionsLoaded({ force: true })
   } catch (e: unknown) {
-    toast.push({ title: getApiErrorMessage(e) || 'Failed to create folder.', tone: 'error', durationMs: 2200 })
+    toast.pushError(e, 'Failed to create folder.')
   } finally {
     creatingFolder.value = false
   }
@@ -375,7 +374,7 @@ async function renameFolder() {
     }
     manageFolderOpen.value = false
   } catch (e: unknown) {
-    toast.push({ title: getApiErrorMessage(e) || 'Failed to rename folder.', tone: 'error', durationMs: 2200 })
+    toast.pushError(e, 'Failed to rename folder.')
   } finally {
     renamingFolder.value = false
   }
@@ -393,7 +392,7 @@ async function deleteFolder() {
     manageFolderOpen.value = false
     await navigateTo('/bookmarks')
   } catch (e: unknown) {
-    toast.push({ title: getApiErrorMessage(e) || 'Failed to delete folder.', tone: 'error', durationMs: 2200 })
+    toast.pushError(e, 'Failed to delete folder.')
   } finally {
     deletingFolder.value = false
   }
@@ -402,7 +401,7 @@ async function deleteFolder() {
 try {
   await ensureCollectionsLoaded()
 } catch (e: unknown) {
-  toast.push({ title: getApiErrorMessage(e) || 'Failed to load folders.', tone: 'error', durationMs: 2200 })
+  toast.pushError(e, 'Failed to load folders.')
 }
 await refresh()
 </script>

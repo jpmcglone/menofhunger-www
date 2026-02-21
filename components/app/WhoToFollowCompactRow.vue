@@ -12,48 +12,14 @@
       <div :class="['shrink-0 ring-2 ring-[color:var(--moh-surface-3)]', avatarRoundClass]">
         <AppUserAvatar :user="user" size-class="h-9 w-9" />
       </div>
-      <div class="min-w-0">
-        <div class="flex items-center gap-2 min-w-0">
-          <div class="text-sm font-semibold truncate text-gray-900 dark:text-gray-50">
-            {{ displayName }}
-          </div>
-          <AppVerifiedBadge
-            :status="user.verifiedStatus"
-            :premium="user.premium"
-            :premium-plus="user.premiumPlus"
-            :is-organization="user.isOrganization"
-            :steward-badge-enabled="user.stewardBadgeEnabled ?? true"
-            size="xs"
-          />
-        </div>
-        <div class="text-xs text-gray-600 dark:text-gray-300 truncate">
-          {{ handle }}
-        </div>
-      </div>
+      <AppUserIdentityLine :user="user" badge-size="xs" />
     </NuxtLink>
 
     <div v-else class="min-w-0 flex items-center gap-2.5">
       <div :class="['shrink-0 ring-2 ring-[color:var(--moh-surface-3)]', avatarRoundClass]">
         <AppUserAvatar :user="user" size-class="h-9 w-9" />
       </div>
-      <div class="min-w-0">
-        <div class="flex items-center gap-2 min-w-0">
-          <div class="text-sm font-semibold truncate text-gray-900 dark:text-gray-50">
-            {{ displayName }}
-          </div>
-          <AppVerifiedBadge
-            :status="user.verifiedStatus"
-            :premium="user.premium"
-            :premium-plus="user.premiumPlus"
-            :is-organization="user.isOrganization"
-            :steward-badge-enabled="user.stewardBadgeEnabled ?? true"
-            size="xs"
-          />
-        </div>
-        <div class="text-xs text-gray-600 dark:text-gray-300 truncate">
-          {{ handle }}
-        </div>
-      </div>
+      <AppUserIdentityLine :user="user" badge-size="xs" />
     </div>
 
     <div class="shrink-0">
@@ -89,9 +55,6 @@ const emit = defineEmits<{
 }>()
 
 const avatarRoundClass = computed(() => getAvatarRoundClass(Boolean(user.value?.isOrganization)))
-
-const displayName = computed(() => user.value?.name || user.value?.username || 'User')
-const handle = computed(() => (user.value?.username ? `@${user.value.username}` : '@—'))
 
 const { onEnter, onMove, onLeave } = useUserPreviewTrigger({
   username: computed(() => user.value?.username ?? ''),

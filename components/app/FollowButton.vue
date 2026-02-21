@@ -23,15 +23,14 @@
       </template>
     </Button>
 
-    <Dialog v-model:visible="confirmOpen" modal header="Unfollow?" :style="{ width: '26rem' }" :draggable="false">
-      <p class="text-sm text-gray-700 dark:text-gray-300">
-        Unfollow <span class="font-semibold">@{{ username }}</span>?
-      </p>
-      <template #footer>
-        <Button label="Cancel" text severity="secondary" @click="confirmOpen = false" />
-        <Button label="Unfollow" severity="danger" @click="confirmUnfollow" />
-      </template>
-    </Dialog>
+    <AppConfirmDialog
+      v-model:visible="confirmOpen"
+      header="Unfollow?"
+      confirm-label="Unfollow"
+      @confirm="confirmUnfollow"
+    >
+      Unfollow <span class="font-semibold">@{{ username }}</span>?
+    </AppConfirmDialog>
   </div>
 </template>
 

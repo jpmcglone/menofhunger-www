@@ -566,30 +566,7 @@ watch(
 const middleScrollerEl = useMiddleScroller()
 const profileLoadMoreSentinelEl = ref<HTMLElement | null>(null)
 
-let profileLoadMoreObs: IntersectionObserver | null = null
-watch(
-  [profileLoadMoreSentinelEl, middleScrollerEl, () => profileNextCursor.value],
-  ([sentinel, scrollRoot]) => {
-    if (!import.meta.client) return
-    profileLoadMoreObs?.disconnect()
-    profileLoadMoreObs = null
-    const el = sentinel as HTMLElement | null
-    const root = scrollRoot as HTMLElement | null
-    if (!el || !root || !profileNextCursor.value) return
-    profileLoadMoreObs = new IntersectionObserver(
-      (entries) => {
-        if (entries[0]?.isIntersecting) profileLoadMore()
-      },
-      { root, rootMargin: '400px', threshold: 0 },
-    )
-    profileLoadMoreObs.observe(el)
-  },
-  { immediate: true, flush: 'post' },
-)
-onBeforeUnmount(() => {
-  profileLoadMoreObs?.disconnect()
-  profileLoadMoreObs = null
-})
+useLoadMoreObserver(profileLoadMoreSentinelEl, middleScrollerEl, computed(() => Boolean(profileNextCursor.value)), profileLoadMore)
 
 async function preserveMiddleScrollAfter<T>(fn: () => Promise<T>): Promise<T> {
   if (!import.meta.client) return await fn()

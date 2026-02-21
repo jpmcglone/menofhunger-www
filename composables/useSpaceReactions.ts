@@ -1,10 +1,29 @@
 import type { SpaceReaction } from '~/types/api'
 
+/**
+ * Module-level resolver so any component (spaces page) can register avatar positions
+ * and all addFloating calls (including those from useSpaceLiveChat) pick them up automatically.
+ */
+let _avatarPositionResolver: ((userId: string) => { x: number; y: number } | undefined) | null = null
+
+export function registerAvatarPositionResolver(
+  resolver: ((userId: string) => { x: number; y: number } | undefined) | null,
+) {
+  _avatarPositionResolver = resolver
+}
+
 export type FloatingReaction = {
   key: string
   emoji: string
   /** Optional CSS color value applied to the floating element. */
   color?: string
+  /** Viewport center of the source avatar. When set, rendered in the fullscreen Teleport overlay. */
+  startX?: number
+  startY?: number
+  /** Peak horizontal drift (px, signed). Emoji arcs smoothly to this side then slightly back. */
+  sway: number
+  /** Mid-point opacity (0–1) — controls how quickly the emoji fades out. */
+  opacityMid: number
 }
 
 const REACTIONS_KEY = 'space-reactions'
@@ -35,20 +54,51 @@ export function useSpaceReactions() {
     floatingByUserId.value = nextMap
   }
 
-  function addFloating(userIdRaw: string, emojiRaw: string, color?: string) {
+  function rnd(min: number, max: number) {
+    return min + Math.random() * (max - min)
+  }
+
+  /**
+   * @param pos  Viewport center of the avatar. When provided the emoji floats up the screen
+   *             from that point via the fullscreen Teleport overlay; otherwise falls back to
+   *             the old in-avatar animation.
+   * @param color  Optional CSS color for the emoji.
+   */
+  function addFloating(userIdRaw: string, emojiRaw: string, pos?: { x: number; y: number }, color?: string) {
     const userId = String(userIdRaw ?? '').trim()
     const emoji = String(emojiRaw ?? '').trim()
     if (!userId || !emoji) return
 
+    const resolvedPos = pos ?? _avatarPositionResolver?.(userId)
     const key = `${userId}-${Date.now()}-${Math.random().toString(16).slice(2)}`
+    const float: FloatingReaction = {
+      key,
+      emoji,
+      color,
+      startX: resolvedPos?.x,
+      startY: resolvedPos?.y,
+      sway: rnd(-32, 32),
+      opacityMid: rnd(0.55, 0.95),
+    }
     const current = floatingByUserId.value.get(userId) ?? []
     const nextMap = new Map(floatingByUserId.value)
-    nextMap.set(userId, [...current, { key, emoji, color }])
+    nextMap.set(userId, [...current, float])
     floatingByUserId.value = nextMap
 
     // Keep in sync with CSS animation duration.
-    setTimeout(() => removeFloating(userId, key), 1800)
+    setTimeout(() => removeFloating(userId, key), 1900)
   }
+
+  /** All floating reactions that have a viewport position (rendered by the fullscreen overlay). */
+  const allPositionedFloating = computed<FloatingReaction[]>(() => {
+    const result: FloatingReaction[] = []
+    for (const floats of floatingByUserId.value.values()) {
+      for (const f of floats) {
+        if (f.startX !== undefined && f.startY !== undefined) result.push(f)
+      }
+    }
+    return result
+  })
 
   function getFloating(userIdRaw: string): FloatingReaction[] {
     const userId = String(userIdRaw ?? '').trim()
@@ -79,6 +129,6 @@ export function useSpaceReactions() {
     })
   }
 
-  return { reactions, loadReactions, addFloating, addFloatingEmojisFromText, getFloating, clearAllFloating }
+  return { reactions, loadReactions, addFloating, addFloatingEmojisFromText, getFloating, allPositionedFloating, clearAllFloating }
 }
 

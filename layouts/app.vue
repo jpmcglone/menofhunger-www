@@ -737,7 +737,7 @@ const safariThemeColor = computed(() => (colorMode.value === 'dark' ? '#0F1113' 
 useHead({
   meta: [{ key: 'moh-theme-color', name: 'theme-color', content: safariThemeColor }],
 })
-const { initAuth, user } = useAuth()
+const { initAuth, user, isVerified: viewerIsVerified } = useAuth()
 const { isAuthed, profileTo, leftItems: leftNavItems, tabItems } = useAppNav()
 const notifBadge = useNotificationsBadge()
 const {
@@ -791,7 +791,6 @@ onBeforeUnmount(() => {
 const { hideTopBar, navCompactMode, isRightRailForcedHidden: _isRightRailForcedHiddenBase, isRightRailSearchHidden, title } = useLayoutRules(route)
 const isMessagesPage = computed(() => route.path === '/chat')
 const isOnlyMePage = computed(() => route.path === '/only-me')
-const viewerIsVerified = computed(() => (user.value?.verifiedStatus ?? 'none') !== 'none')
 
 const showEmailUnverifiedBar = computed(() => {
   if (!isAuthed.value) return false

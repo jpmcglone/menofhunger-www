@@ -210,7 +210,10 @@ export function useAuth() {
   }
 
   const isAuthed = computed(() => Boolean(user.value?.id))
+  const isVerified = computed(() => (user.value?.verifiedStatus ?? 'none') !== 'none')
+  const isPremium = computed(() => Boolean(user.value?.premium))
+  const isPremiumPlus = computed(() => Boolean(user.value?.premiumPlus))
 
-  return { user, me, ensureLoaded, initAuth, logout, handleUnauthorized, isAuthed }
+  return { user, me, ensureLoaded, initAuth, logout, handleUnauthorized, isAuthed, isVerified, isPremium, isPremiumPlus }
 }
 

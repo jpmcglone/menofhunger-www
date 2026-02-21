@@ -247,7 +247,7 @@ async function doDelete() {
     deleteConfirm.value = ''
     await load()
   } catch (e: unknown) {
-    toast.push({ title: getApiErrorMessage(e) || 'Delete failed.', tone: 'error', durationMs: 2600 })
+    toast.pushError(e, 'Delete failed.')
   } finally {
     deleting.value = false
   }

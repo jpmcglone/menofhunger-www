@@ -228,14 +228,14 @@ usePageSeo({
   noindex: true,
 })
 
-const { apiFetch, apiFetchData } = useApiClient()
+const { apiFetchData } = useApiClient()
 const { addAdminCallback, removeAdminCallback } = usePresence()
-import { getApiErrorMessage } from '~/utils/api-error'
 import { formatDateTime } from '~/utils/time-format'
 import { useFormSubmit } from '~/composables/useFormSubmit'
 import type { AdminFeedbackItem, AdminFeedbackListData, FeedbackCategory, FeedbackStatus } from '~/types/api'
 import { useMentionAutocomplete } from '~/composables/useMentionAutocomplete'
 import type { AdminCallback } from '~/composables/usePresence'
+import { useCursorFeed } from '~/composables/useCursorFeed'
 
 const statusOptions = [
   { label: 'All', value: 'all' as const },
@@ -255,11 +255,22 @@ const categoryOptions = [
 const statusFilter = ref<typeof statusOptions[number]['value']>('all')
 const categoryFilter = ref<typeof categoryOptions[number]['value']>('all')
 const feedbackQuery = ref('')
-const items = ref<AdminFeedbackItem[]>([])
-const nextCursor = ref<string | null>(null)
-const loading = ref(false)
-const loadingMore = ref(false)
-const error = ref<string | null>(null)
+
+const { items, nextCursor, loading, loadingMore, error, refresh, loadMore } = useCursorFeed<AdminFeedbackItem>({
+  stateKey: 'admin-feedback',
+  buildRequest: (cursor) => ({
+    path: '/admin/feedback',
+    query: {
+      limit: 50,
+      cursor: cursor ?? undefined,
+      q: feedbackQuery.value.trim() || undefined,
+      status: statusFilter.value === 'all' ? undefined : statusFilter.value,
+      category: categoryFilter.value === 'all' ? undefined : categoryFilter.value,
+    },
+  }),
+  defaultErrorMessage: 'Failed to load feedback.',
+  loadMoreErrorMessage: 'Failed to load more feedback.',
+})
 
 const detailsOpen = ref(false)
 const selected = ref<AdminFeedbackItem | null>(null)
@@ -286,17 +297,14 @@ const canSave = computed(() => {
   return editStatus.value !== selected.value.status || note !== existingNote
 })
 
-const didInitialLoad = ref(false)
 const adminCb: AdminCallback = {
   onUpdated: (payload) => {
     if (payload?.kind !== 'feedback') return
-    void loadFeedback(true)
+    void refresh()
   },
 }
 onMounted(() => {
-  if (didInitialLoad.value) return
-  didInitialLoad.value = true
-  void loadFeedback(true)
+  void refresh()
   addAdminCallback(adminCb)
 })
 
@@ -304,59 +312,7 @@ onBeforeUnmount(() => {
   removeAdminCallback(adminCb)
 })
 
-watch([statusFilter, categoryFilter], () => void loadFeedback(true))
-
-function queryParams(reset: boolean) {
-  return {
-    limit: 50,
-    cursor: reset ? undefined : nextCursor.value ?? undefined,
-    q: feedbackQuery.value.trim() || undefined,
-    status: statusFilter.value === 'all' ? undefined : statusFilter.value,
-    category: categoryFilter.value === 'all' ? undefined : categoryFilter.value,
-  }
-}
-
-async function loadFeedback(reset: boolean) {
-  if (loading.value) return
-  loading.value = true
-  error.value = null
-  try {
-    if (reset) {
-      items.value = []
-      nextCursor.value = null
-    }
-    const res = await apiFetch<AdminFeedbackListData>('/admin/feedback', {
-      method: 'GET',
-      query: queryParams(reset) as Record<string, string | number | undefined>,
-    })
-    const list = res.data ?? []
-    items.value = reset ? list : [...items.value, ...list]
-    nextCursor.value = res.pagination?.nextCursor ?? null
-  } catch (e: unknown) {
-    error.value = getApiErrorMessage(e) || 'Failed to load feedback.'
-  } finally {
-    loading.value = false
-  }
-}
-
-async function loadMore() {
-  if (!nextCursor.value) return
-  if (loadingMore.value || loading.value) return
-  loadingMore.value = true
-  try {
-    const res = await apiFetch<AdminFeedbackListData>('/admin/feedback', {
-      method: 'GET',
-      query: queryParams(false) as Record<string, string | number | undefined>,
-    })
-    const list = res.data ?? []
-    items.value = [...items.value, ...list]
-    nextCursor.value = res.pagination?.nextCursor ?? null
-  } catch (e: unknown) {
-    error.value = getApiErrorMessage(e) || 'Failed to load more feedback.'
-  } finally {
-    loadingMore.value = false
-  }
-}
+watch([statusFilter, categoryFilter], () => void refresh())
 
 function openDetails(item: AdminFeedbackItem) {
   selected.value = item

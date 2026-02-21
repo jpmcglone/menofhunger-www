@@ -34,6 +34,7 @@ export function useCursorFeed<T>(options: UseCursorFeedOptions<T>) {
   const items = useState<T[]>(stateKey, () => [])
   const nextCursor = useState<string | null>(`${stateKey}-next`, () => null)
   const loading = useState<boolean>(`${stateKey}-loading`, () => false)
+  const loadingMore = useState<boolean>(`${stateKey}-loading-more`, () => false)
   const error = useState<string | null>(`${stateKey}-error`, () => null)
 
   const defaultError = options.defaultErrorMessage ?? 'Failed to load.'
@@ -82,9 +83,9 @@ export function useCursorFeed<T>(options: UseCursorFeedOptions<T>) {
   }
 
   async function loadMore() {
-    if (loading.value) return
+    if (loading.value || loadingMore.value) return
     if (!nextCursor.value) return
-    loading.value = true
+    loadingMore.value = true
     error.value = null
     try {
       const { path, query } = options.buildRequest(nextCursor.value)
@@ -97,9 +98,9 @@ export function useCursorFeed<T>(options: UseCursorFeedOptions<T>) {
     } catch (e: unknown) {
       error.value = getApiErrorMessage(e) || loadMoreError
     } finally {
-      loading.value = false
+      loadingMore.value = false
     }
   }
 
-  return { items, nextCursor, loading, error, refresh, loadMore }
+  return { items, nextCursor, loading, loadingMore, error, refresh, loadMore }
 }

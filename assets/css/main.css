@@ -925,6 +925,26 @@ html.dark .moh-avatar-initial {
   animation: moh-reaction-float-up 1.6s ease-out forwards;
 }
 
+/* Full-screen emoji float (Teleport overlay in spaces page).
+   Uses a single --fw-sway value so the arc is smooth with no direction reversals. */
+@keyframes moh-emoji-float-up {
+  0%   { transform: translateY(0)     translateX(0)                              scale(1);    opacity: 1; }
+  15%  { transform: translateY(-8vh)  translateX(0)                              scale(1.4);  opacity: 1; }
+  42%  { transform: translateY(-34vh) translateX(var(--fw-sway, 0px))            scale(1.05); opacity: var(--fw-om, 0.85); }
+  100% { transform: translateY(-80vh) translateX(calc(var(--fw-sway, 0px) * .6)) scale(0.8);  opacity: 0; }
+}
+
+.moh-emoji-float {
+  position: fixed;
+  translate: -50% -50%;
+  font-size: 2rem;
+  line-height: 1;
+  pointer-events: none;
+  user-select: none;
+  will-change: transform, opacity;
+  animation: moh-emoji-float-up 1.8s ease-out forwards;
+}
+
 .moh-reaction-float-enter-active,
 .moh-reaction-float-leave-active {
   transition: none;

@@ -1,4 +1,5 @@
 import { PRIMARY_ONLYME_PURPLE, PRIMARY_PREMIUM_ORANGE, PRIMARY_VERIFIED_BLUE } from '~/utils/theme-tint'
+import { getApiErrorMessage } from '~/utils/api-error'
 
 export type AppToastTone = 'public' | 'verifiedOnly' | 'premiumOnly' | 'onlyMe' | 'success' | 'error'
 
@@ -106,6 +107,10 @@ export function useAppToast() {
     return id
   }
 
+  function pushError(e: unknown, fallback = 'Something went wrong.'): string {
+    return push({ title: getApiErrorMessage(e) || fallback, tone: 'error' })
+  }
+
   function dismiss(id: string) {
     toasts.value = toasts.value.filter((t) => t.id !== id)
   }
@@ -128,6 +133,6 @@ export function useAppToast() {
     return pickTextColorForBg(bg)
   }
 
-  return { toasts, push, dismiss, clear, bgFor, fgFor }
+  return { toasts, push, pushError, dismiss, clear, bgFor, fgFor }
 }
 

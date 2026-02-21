@@ -258,11 +258,11 @@
 </template>
 
 <script setup lang="ts">
-import { getApiErrorMessage } from '~/utils/api-error'
 import { formatDateTime } from '~/utils/time-format'
 import { useFormSubmit } from '~/composables/useFormSubmit'
 import type { AdminVerificationListData, AdminVerificationRequest, AdminVerificationUser, VerificationRequestStatus } from '~/types/api'
 import type { AdminCallback } from '~/composables/usePresence'
+import { useCursorFeed } from '~/composables/useCursorFeed'
 
 definePageMeta({
   layout: 'app',
@@ -279,7 +279,7 @@ usePageSeo({
 
 type VerifiedStatus = 'none' | 'identity' | 'manual'
 
-const { apiFetch, apiFetchData } = useApiClient()
+const { apiFetchData } = useApiClient()
 const { addAdminCallback, removeAdminCallback } = usePresence()
 
 const statusOptions = [
@@ -292,11 +292,21 @@ const statusOptions = [
 
 const statusFilter = ref<typeof statusOptions[number]['value']>('pending')
 const query = ref('')
-const items = ref<AdminVerificationRequest[]>([])
-const nextCursor = ref<string | null>(null)
-const loading = ref(false)
-const loadingMore = ref(false)
-const error = ref<string | null>(null)
+
+const { items, nextCursor, loading, loadingMore, error, refresh, loadMore } = useCursorFeed<AdminVerificationRequest>({
+  stateKey: 'admin-verification',
+  buildRequest: (cursor) => ({
+    path: '/admin/verification',
+    query: {
+      limit: 50,
+      cursor: cursor ?? undefined,
+      q: query.value.trim() || undefined,
+      status: statusFilter.value === 'all' ? undefined : statusFilter.value,
+    },
+  }),
+  defaultErrorMessage: 'Failed to load verification requests.',
+  loadMoreErrorMessage: 'Failed to load more verification requests.',
+})
 
 const detailsOpen = ref(false)
 const selected = ref<AdminVerificationRequest | null>(null)
@@ -307,17 +317,14 @@ const editRejectionReason = ref('')
 
 const saving = computed(() => Boolean(approving.value || rejecting.value))
 
-const didInitialLoad = ref(false)
 const adminCb: AdminCallback = {
   onUpdated: (payload) => {
     if (payload?.kind !== 'verification') return
-    void loadRequests(true)
+    void refresh()
   },
 }
 onMounted(() => {
-  if (didInitialLoad.value) return
-  didInitialLoad.value = true
-  void loadRequests(true)
+  void refresh()
   addAdminCallback(adminCb)
 })
 
@@ -325,58 +332,7 @@ onBeforeUnmount(() => {
   removeAdminCallback(adminCb)
 })
 
-watch(statusFilter, () => void loadRequests(true))
-
-function queryParams(reset: boolean) {
-  return {
-    limit: 50,
-    cursor: reset ? undefined : nextCursor.value ?? undefined,
-    q: query.value.trim() || undefined,
-    status: statusFilter.value === 'all' ? undefined : statusFilter.value,
-  }
-}
-
-async function loadRequests(reset: boolean) {
-  if (loading.value) return
-  loading.value = true
-  error.value = null
-  try {
-    if (reset) {
-      items.value = []
-      nextCursor.value = null
-    }
-    const res = await apiFetch<AdminVerificationListData>('/admin/verification', {
-      method: 'GET',
-      query: queryParams(reset) as Record<string, string | number | undefined>,
-    })
-    const list = res.data ?? []
-    items.value = reset ? list : [...items.value, ...list]
-    nextCursor.value = res.pagination?.nextCursor ?? null
-  } catch (e: unknown) {
-    error.value = getApiErrorMessage(e) || 'Failed to load verification requests.'
-  } finally {
-    loading.value = false
-  }
-}
-
-async function loadMore() {
-  if (!nextCursor.value) return
-  if (loadingMore.value || loading.value) return
-  loadingMore.value = true
-  try {
-    const res = await apiFetch<AdminVerificationListData>('/admin/verification', {
-      method: 'GET',
-      query: queryParams(false) as Record<string, string | number | undefined>,
-    })
-    const list = res.data ?? []
-    items.value = [...items.value, ...list]
-    nextCursor.value = res.pagination?.nextCursor ?? null
-  } catch (e: unknown) {
-    error.value = getApiErrorMessage(e) || 'Failed to load more verification requests.'
-  } finally {
-    loadingMore.value = false
-  }
-}
+watch(statusFilter, () => void refresh())
 
 function openDetails(item: AdminVerificationRequest) {
   selected.value = item

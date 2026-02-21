@@ -68,7 +68,7 @@
 
 <script setup lang="ts">
 import type { FeedPost } from '~/types/api'
-import { getApiErrorMessage } from '~/utils/api-error'
+import { useCursorFeed } from '~/composables/useCursorFeed'
 
 definePageMeta({
   layout: 'app',
@@ -83,63 +83,25 @@ usePageSeo({
   noindex: true,
 })
 
-const { apiFetch } = useApiClient()
-
 const sort = ref<'trending' | 'new'>('trending')
-const posts = ref<FeedPost[]>([])
-const nextCursor = ref<string | null>(null)
-const loading = ref(false)
-const loadingMore = ref(false)
-const error = ref<string | null>(null)
 
-async function fetchPage(cursor: string | null) {
-  const res = await apiFetch<FeedPost[]>('/posts', {
-    method: 'GET',
+const { items: posts, nextCursor, loading, loadingMore, error, refresh, loadMore } = useCursorFeed<FeedPost>({
+  stateKey: 'check-ins-feed',
+  buildRequest: (cursor) => ({
+    path: '/posts',
     query: {
       limit: 30,
-      cursor,
+      cursor: cursor ?? undefined,
       sort: sort.value,
       kind: 'checkin',
       visibility: 'all',
       followingOnly: false,
     },
-  })
-  return {
-    items: res.data ?? [],
-    next: res.pagination?.nextCursor ?? null,
-  }
-}
-
-async function refresh() {
-  loading.value = true
-  error.value = null
-  try {
-    const r = await fetchPage(null)
-    posts.value = r.items
-    nextCursor.value = r.next
-  } catch (e: unknown) {
-    error.value = getApiErrorMessage(e) || 'Failed to load check-ins.'
-    posts.value = []
-    nextCursor.value = null
-  } finally {
-    loading.value = false
-  }
-}
-
-async function loadMore() {
-  const c = nextCursor.value
-  if (!c || loadingMore.value) return
-  loadingMore.value = true
-  try {
-    const r = await fetchPage(c)
-    posts.value = [...posts.value, ...(r.items ?? [])]
-    nextCursor.value = r.next
-  } catch (e: unknown) {
-    error.value = getApiErrorMessage(e) || 'Failed to load more check-ins.'
-  } finally {
-    loadingMore.value = false
-  }
-}
+  }),
+  getItemId: (p) => p.id,
+  defaultErrorMessage: 'Failed to load check-ins.',
+  loadMoreErrorMessage: 'Failed to load more check-ins.',
+})
 
 function onDeleted(id: string) {
   posts.value = posts.value.filter((p) => p.id !== id)

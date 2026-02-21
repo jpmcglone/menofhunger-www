@@ -12,28 +12,18 @@
           :size-class="props.compact ? 'mx-auto h-10 w-10' : 'mx-auto xl:mx-0 h-10 w-10'"
           :enable-preview="false"
         />
-
         <div
           :class="[
             'min-w-0 flex-1',
             props.compact ? 'hidden' : 'hidden xl:block'
           ]"
         >
-          <div class="flex items-center justify-between gap-2">
-            <div class="min-w-0">
-              <div class="flex items-center gap-2 min-w-0">
-                <div class="font-semibold truncate">{{ displayName }}</div>
-                <AppVerifiedBadge
-                  :status="user?.verifiedStatus"
-                  :premium="user?.premium"
-                  :premium-plus="user?.premiumPlus"
-                  :is-organization="Boolean((user as any)?.isOrganization)"
-                  :steward-badge-enabled="user?.stewardBadgeEnabled ?? true"
-                />
-              </div>
-              <div class="text-sm text-gray-500 dark:text-gray-400 truncate">{{ handle }}</div>
-            </div>
-          </div>
+          <AppUserIdentityLine
+            v-if="user"
+            :user="user as any"
+            name-class=""
+            handle-class="text-sm text-gray-500 dark:text-gray-400"
+          />
         </div>
       </div>
     </NuxtLink>
@@ -51,7 +41,6 @@
           :size-class="props.compact ? 'mx-auto h-10 w-10' : 'mx-auto xl:mx-0 h-10 w-10'"
           :enable-preview="false"
         />
-
         <div
           :class="[
             'min-w-0 flex-1',
@@ -59,19 +48,12 @@
           ]"
         >
           <div class="flex items-center justify-between gap-2">
-            <div class="min-w-0">
-              <div class="flex items-center gap-2 min-w-0">
-                <div class="font-semibold truncate">{{ displayName }}</div>
-                <AppVerifiedBadge
-                  :status="user?.verifiedStatus"
-                  :premium="user?.premium"
-                  :premium-plus="user?.premiumPlus"
-                  :is-organization="Boolean((user as any)?.isOrganization)"
-                  :steward-badge-enabled="user?.stewardBadgeEnabled ?? true"
-                />
-              </div>
-              <div class="text-sm text-gray-500 dark:text-gray-400 truncate">{{ handle }}</div>
-            </div>
+            <AppUserIdentityLine
+              v-if="user"
+              :user="user as any"
+              name-class=""
+              handle-class="text-sm text-gray-500 dark:text-gray-400"
+            />
             <Icon name="tabler:dots-vertical" class="text-gray-500 dark:text-gray-400" aria-hidden="true" />
           </div>
         </div>
@@ -87,19 +69,15 @@
       </template>
     </Menu>
 
-    <Dialog v-if="!hideMenu" v-model:visible="confirmVisible" modal header="Log out?" :style="{ width: '26rem' }">
-      <p class="text-sm text-gray-700 dark:text-gray-300">
-        Are you sure you want to log out?
-      </p>
-      <template #footer>
-        <Button label="Cancel" text severity="secondary" @click="confirmVisible = false" />
-        <Button label="Log out" severity="danger" rounded @click="confirmLogout">
-          <template #icon>
-            <Icon name="tabler:door-exit" aria-hidden="true" />
-          </template>
-        </Button>
-      </template>
-    </Dialog>
+    <AppConfirmDialog
+      v-if="!hideMenu"
+      v-model:visible="confirmVisible"
+      header="Log out?"
+      message="Are you sure you want to log out?"
+      confirm-label="Log out"
+      confirm-icon="tabler:door-exit"
+      @confirm="confirmLogout"
+    />
   </div>
 </template>
 
@@ -134,13 +112,6 @@ const currentUserPresenceStatus = computed(() => {
   if (!u?.id) return 'offline' as const
   if (isSocketConnecting.value) return 'connecting' as const
   return getPresenceStatus(u.id)
-})
-
-const displayName = computed(() => user.value?.name || 'Account')
-const handle = computed(() => {
-  const u = user.value
-  const username = u?.username
-  return username ? `@${username}` : '@—'
 })
 
 const menuRef = ref()

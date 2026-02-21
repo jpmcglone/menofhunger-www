@@ -271,7 +271,6 @@
 </template>
 
 <script setup lang="ts">
-import { getApiErrorMessage } from '~/utils/api-error'
 import type { AdminHashtagBackfillStatus, DailyContentToday } from '~/types/api'
 
 definePageMeta({
@@ -318,7 +317,7 @@ async function refreshDailyContentStatus() {
   try {
     dailyContent.value = await apiFetchData<DailyContentToday>('/admin/daily-content/today', { method: 'GET' })
   } catch (e: unknown) {
-    toast.push({ title: getApiErrorMessage(e) || 'Failed to load daily content status.', tone: 'error', durationMs: 2600 })
+    toast.pushError(e, 'Failed to load daily content status.')
   } finally {
     dailyContentLoading.value = false
   }
@@ -332,7 +331,7 @@ async function forceRefreshDailyContent() {
     dailyContent.value = await apiFetchData<DailyContentToday>('/admin/daily-content/refresh', { method: 'POST', body: { quote: true, websters1828: true } })
     toast.push({ title: 'Daily content refreshed', tone: 'success', durationMs: 1800 })
   } catch (e: unknown) {
-    toast.push({ title: getApiErrorMessage(e) || 'Daily content refresh failed.', tone: 'error', durationMs: 2600 })
+    toast.pushError(e, 'Daily content refresh failed.')
   } finally {
     runningKey.value = null
   }
@@ -350,7 +349,7 @@ async function runJob(key: JobKey, label: string, path: string, body?: Record<st
     await apiFetchData<{ ok: true }>(path, body ? { method: 'POST', body } : { method: 'POST' })
     toast.push({ title: label, tone: 'success', durationMs: 1600 })
   } catch (e: unknown) {
-    toast.push({ title: getApiErrorMessage(e) || `${label} failed.`, tone: 'error', durationMs: 2600 })
+    toast.pushError(e, `${label} failed.`)
   } finally {
     runningKey.value = null
   }
@@ -364,7 +363,7 @@ async function refreshHashtagBackfillStatus() {
     const res = await apiFetch<AdminHashtagBackfillStatus | null>('/admin/jobs/hashtags/backfill', { method: 'GET' })
     hashtagBackfillStatus.value = res.data ?? null
   } catch (e: unknown) {
-    toast.push({ title: getApiErrorMessage(e) || 'Failed to load hashtag backfill status.', tone: 'error', durationMs: 2600 })
+    toast.pushError(e, 'Failed to load hashtag backfill status.')
   } finally {
     hashtagBackfillLoading.value = false
   }
@@ -380,7 +379,7 @@ async function startHashtagBackfill() {
     await refreshHashtagBackfillStatus()
     toast.push({ title: 'Hashtag backfill started', tone: 'success', durationMs: 1800 })
   } catch (e: unknown) {
-    toast.push({ title: getApiErrorMessage(e) || 'Hashtag backfill failed.', tone: 'error', durationMs: 2600 })
+    toast.pushError(e, 'Hashtag backfill failed.')
   } finally {
     hashtagBackfillRunning.value = false
   }
@@ -399,7 +398,7 @@ async function continueHashtagBackfill() {
     await refreshHashtagBackfillStatus()
     toast.push({ title: 'Hashtag backfill continued', tone: 'success', durationMs: 1600 })
   } catch (e: unknown) {
-    toast.push({ title: getApiErrorMessage(e) || 'Hashtag backfill failed.', tone: 'error', durationMs: 2600 })
+    toast.pushError(e, 'Hashtag backfill failed.')
   } finally {
     hashtagBackfillRunning.value = false
   }

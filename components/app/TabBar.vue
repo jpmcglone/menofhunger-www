@@ -120,19 +120,14 @@
     </div>
   </AppBottomSheet>
 
-  <Dialog v-model:visible="confirmVisible" modal header="Log out?" :style="{ width: '26rem', maxWidth: '92vw' }">
-    <p class="text-sm text-gray-700 dark:text-gray-300">
-      Are you sure you want to log out?
-    </p>
-    <template #footer>
-      <Button label="Cancel" text severity="secondary" @click="confirmVisible = false" />
-      <Button label="Log out" severity="danger" rounded @click="confirmLogout">
-        <template #icon>
-          <Icon name="tabler:door-exit" aria-hidden="true" />
-        </template>
-      </Button>
-    </template>
-  </Dialog>
+  <AppConfirmDialog
+    v-model:visible="confirmVisible"
+    header="Log out?"
+    message="Are you sure you want to log out?"
+    confirm-label="Log out"
+    confirm-icon="tabler:door-exit"
+    @confirm="confirmLogout"
+  />
 </template>
 
 <script setup lang="ts">

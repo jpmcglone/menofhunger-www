@@ -4,26 +4,7 @@
       v-if="showHeader"
       class="shrink-0 px-4 py-3 border-b moh-border-subtle flex items-center justify-between gap-3"
     >
-      <div class="min-w-0">
-        <div class="moh-h2 truncate">{{ stationName }}</div>
-        <div class="mt-0.5 text-xs text-gray-600 dark:text-gray-300">
-          Live chat
-        </div>
-      </div>
-      <div class="shrink-0 flex items-center gap-2">
-        <div class="text-xs text-gray-500 dark:text-gray-400 tabular-nums">
-          {{ chatMessageCount }}
-        </div>
-        <div class="relative group">
-          <span class="inline-flex items-center gap-1 text-[11px] font-semibold rounded-full border moh-border px-2 py-1 text-gray-600 dark:text-gray-300 cursor-default select-none">
-            <Icon name="tabler:clock-off" class="text-[11px] opacity-70" aria-hidden="true" />
-            Not saved
-          </span>
-          <div class="pointer-events-none absolute right-0 top-full mt-1.5 z-50 w-48 rounded-lg border moh-border moh-surface px-3 py-2 text-xs text-gray-700 dark:text-gray-300 shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-150">
-            These messages disappear when you leave — nothing is stored or saved.
-          </div>
-        </div>
-      </div>
+      <AppLiveChatHeader :title="stationName" :message-count="chatMessageCount" title-class="moh-h2" />
     </header>
 
     <div class="relative flex-1 min-h-0">

@@ -65,7 +65,7 @@
             No one here yet. You’re the first.
           </div>
 
-          <div v-else-if="currentSpace" class="mt-2 flex flex-wrap gap-3 max-h-[8rem] overflow-y-auto">
+          <div v-else-if="currentSpace" class="mt-2 flex flex-wrap gap-3 py-1">
             <template v-for="u in lobbyMembers" :key="u.id">
               <NuxtLink
                 v-if="u.username"
@@ -74,22 +74,13 @@
                 :aria-label="`View @${u.username}`"
                 v-tooltip.bottom="tinyTooltip(`@${u.username}`)"
               >
-                <div class="relative">
+                <div :ref="(el) => setAvatarEl(u.id, el as HTMLElement | null)" class="relative">
                   <AppUserAvatar
                     :user="{ id: u.id, username: u.username, avatarUrl: u.avatarUrl }"
                     size-class="h-10 w-10"
                     bg-class="moh-surface dark:bg-black"
                     :show-presence="false"
                   />
-                  <TransitionGroup name="moh-reaction-float">
-                    <span
-                      v-for="r in getFloating(u.id)"
-                      :key="r.key"
-                      class="moh-reaction-float absolute inset-0 flex items-center justify-center text-2xl font-bold pointer-events-none select-none"
-                      :style="r.color ? { color: r.color } : undefined"
-                      aria-hidden="true"
-                    >{{ r.emoji }}</span>
-                  </TransitionGroup>
                   <Transition name="moh-avatar-pause-fade">
                     <div
                       v-if="u.paused || u.muted"
@@ -110,22 +101,13 @@
                 class="group rounded-xl"
                 v-tooltip.bottom="tinyTooltip('User')"
               >
-                <div class="relative">
+                <div :ref="(el) => setAvatarEl(u.id, el as HTMLElement | null)" class="relative">
                   <AppUserAvatar
                     :user="{ id: u.id, username: u.username, avatarUrl: u.avatarUrl }"
                     size-class="h-10 w-10"
                     bg-class="moh-surface dark:bg-black"
                     :show-presence="false"
                   />
-                  <TransitionGroup name="moh-reaction-float">
-                    <span
-                      v-for="r in getFloating(u.id)"
-                      :key="r.key"
-                      class="moh-reaction-float absolute inset-0 flex items-center justify-center text-2xl font-bold pointer-events-none select-none"
-                      :style="r.color ? { color: r.color } : undefined"
-                      aria-hidden="true"
-                    >{{ r.emoji }}</span>
-                  </TransitionGroup>
                   <Transition name="moh-avatar-pause-fade">
                     <div
                       v-if="u.paused || u.muted"
@@ -159,12 +141,31 @@
         </div>
       </template>
     </div>
+
+    <!-- Fullscreen emoji float overlay — rendered outside any clipping ancestor -->
+    <Teleport to="body">
+      <div class="fixed inset-0 pointer-events-none overflow-hidden" style="z-index: 9990;" aria-hidden="true">
+        <span
+          v-for="r in allPositionedFloating"
+          :key="r.key"
+          class="moh-emoji-float"
+          :style="{
+            left: `${r.startX}px`,
+            top: `${r.startY}px`,
+            '--fw-sway': `${r.sway}px`,
+            '--fw-om': r.opacityMid,
+            ...(r.color ? { color: r.color } : {}),
+          }"
+        >{{ r.emoji }}</span>
+      </div>
+    </Teleport>
   </AppPageContent>
 </template>
 
 <script setup lang="ts">
 import type { Space, SpaceReactionEvent } from '~/types/api'
 import { tinyTooltip } from '~/utils/tiny-tooltip'
+import { registerAvatarPositionResolver } from '~/composables/useSpaceReactions'
 
 const route = useRoute()
 const id = computed(() => (route.params.id as string)?.trim() ?? '')
@@ -177,12 +178,28 @@ const spaceChatSheetOpen = useState<boolean>('space-chat-sheet-open', () => fals
 const { user, ensureLoaded } = useAuth()
 const presence = usePresence()
 
-const { reactions, loadReactions, addFloating, getFloating, clearAllFloating } = useSpaceReactions()
+const { reactions, loadReactions, addFloating, allPositionedFloating, clearAllFloating } = useSpaceReactions()
+
+// Track avatar wrapper elements by userId so we can read their viewport position.
+const avatarElMap = new Map<string, HTMLElement>()
+function setAvatarEl(userId: string, el: HTMLElement | null) {
+  if (el) avatarElMap.set(userId, el)
+  else avatarElMap.delete(userId)
+}
+function getAvatarPos(userId: string): { x: number; y: number } | undefined {
+  if (!import.meta.client) return undefined
+  const el = avatarElMap.get(userId)
+  if (!el) return undefined
+  const rect = el.getBoundingClientRect()
+  return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 }
+}
 
 const spacesReactionsCb = {
   onReaction: (payload: SpaceReactionEvent) => {
     if (!payload?.spaceId || payload.spaceId !== id.value) return
-    addFloating(payload.userId, payload.emoji)
+    // Own reactions are already added optimistically in onReactionClick — skip the echo.
+    if (payload.userId === user.value?.id) return
+    addFloating(payload.userId, payload.emoji, getAvatarPos(payload.userId))
   },
 }
 
@@ -210,7 +227,7 @@ const lobbyMembers = computed(() => members.value ?? [])
 
 function onReactionClick(reactionId: string, emoji: string) {
   const meId = user.value?.id ?? null
-  if (meId) addFloating(meId, emoji)
+  if (meId) addFloating(meId, emoji, getAvatarPos(meId))
   presence.emitSpacesReaction(id.value, reactionId)
 }
 
@@ -230,6 +247,7 @@ async function enterThisSpace(spaceId: string) {
 }
 
 onMounted(async () => {
+  registerAvatarPositionResolver(getAvatarPos)
   // Fallback: if SSR fetch failed or this is an isolated navigation, ensure spaces are loaded.
   if (!loadedOnce.value) await loadSpaces()
   await ensureLoaded()
@@ -248,6 +266,7 @@ onMounted(async () => {
 
 onBeforeUnmount(() => {
   presence.removeSpacesCallback(spacesReactionsCb as any)
+  registerAvatarPositionResolver(null)
 })
 
 // Re-enter when navigating between two spaces (component is reused by Nuxt).

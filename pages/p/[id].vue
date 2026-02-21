@@ -1,5 +1,5 @@
 <template>
-  <AppPageContent top="standard" bottom="standard">
+  <AppPageContent bottom="standard">
   <div class="w-full">
     <div v-if="errorText" class="px-4 mt-4">
       <div class="rounded-xl border border-gray-200 bg-gray-50 p-4 dark:border-zinc-800 dark:bg-zinc-950/40">
@@ -165,12 +165,8 @@ const postId = computed(() => String(route.params.id || '').trim())
 const { apiFetchData } = useApiClient()
 const highlightedPostRef = ref<HTMLElement | null>(null)
 
-const { user, ensureLoaded } = useAuth()
+const { user, ensureLoaded, isAuthed, isVerified: viewerIsVerified, isPremium: viewerIsPremium } = useAuth()
 await ensureLoaded()
-
-const isAuthed = computed(() => Boolean(user.value?.id))
-const viewerIsVerified = computed(() => Boolean(user.value?.verifiedStatus && user.value.verifiedStatus !== 'none'))
-const viewerIsPremium = computed(() => Boolean(user.value?.premium))
 
 const {
   post,
