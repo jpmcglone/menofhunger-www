@@ -135,19 +135,15 @@ export function useHomeFeed() {
 
   async function setFeedFilter(next: ProfilePostsFilter) {
     const safe = next === 'onlyMe' ? 'all' : (next as FeedVisibilityFilter)
-    feedFilter.value = safe
     await preserveMiddleScrollAfter(async () => await refresh({ visibility: safe }))
   }
 
   async function setFeedSort(next: 'new' | 'trending') {
-    feedSort.value = next
     await preserveMiddleScrollAfter(async () => await refresh({ sort: next }))
   }
 
   /** Set both filter and sort to default and refresh once (so reset matches manually selecting All + Newest). */
   async function resetFilters() {
-    feedFilter.value = 'all'
-    feedSort.value = 'new'
     await preserveMiddleScrollAfter(async () => await refresh({ visibility: 'all', sort: 'new' }))
   }
 

@@ -123,9 +123,10 @@ export function usePostsFeed(options: { visibility?: Ref<FeedFilter>; followingO
     loadMoreErrorMessage: 'Failed to load more posts.',
     getItemId: (post) => post.id,
     mergeOnRefresh: (incoming) => {
-      const pending = pruneAckedLocalFeedInserts(localInserts.value, incoming)
+      const live = incoming.filter((p) => !p.deletedAt)
+      const pending = pruneAckedLocalFeedInserts(localInserts.value, live)
       if (pending.length !== localInserts.value.length) localInserts.value = pending
-      return applyLocalFeedInserts(incoming, pending)
+      return applyLocalFeedInserts(live, pending)
     },
     onDataLoaded: (data) => clearBumpsForPostIds(data.map((p) => p.id)),
   })
@@ -257,6 +258,17 @@ export function usePostsFeed(options: { visibility?: Ref<FeedFilter>; followingO
       const postId = String(payload?.postId ?? '').trim()
       if (!postId) return
       const patch = payload?.patch ?? {}
+
+      // If a top-level post is deleted, remove it from the feed entirely.
+      if (patch.deletedAt) {
+        const isTopLevel = posts.value.some((p) => p.id === postId && !p.parentId)
+        if (isTopLevel) {
+          posts.value = posts.value.filter((p) => p.id !== postId)
+          forgetLocalInsertsForDeletedPost(postId)
+          return
+        }
+      }
+
       const patchOne = (p: FeedPost): FeedPost => {
         let next: FeedPost = p
         if (p.id === postId) {
@@ -421,8 +433,14 @@ export function usePostsFeed(options: { visibility?: Ref<FeedFilter>; followingO
 
   async function refresh(overrides?: RefreshOverrides) {
     if (loading.value) return
+    const filterChanged =
+      (overrides?.visibility !== undefined && overrides.visibility !== visibility.value) ||
+      (overrides?.sort !== undefined && overrides.sort !== sort.value)
     if (overrides?.visibility !== undefined) visibility.value = overrides.visibility
     if (overrides?.sort !== undefined) sort.value = overrides.sort
+    // Clear optimistic inserts when the filter changes so stale posts don't
+    // bleed into a fresh filtered result set.
+    if (filterChanged) localInserts.value = []
     loadingIndicator.start()
     try {
       await feedRefresh()
@@ -490,7 +508,7 @@ export function usePostsFeed(options: { visibility?: Ref<FeedFilter>; followingO
             ...(sort.value === 'trending' ? { sort: 'trending' } : {}),
           },
         })
-        const fresh = res.data ?? []
+        const fresh = (res.data ?? []).filter((p: FeedPost) => !p.deletedAt)
         if (!fresh.length) return
 
         const idx = fresh.findIndex((p: FeedPost) => p.id === headId)
@@ -501,7 +519,8 @@ export function usePostsFeed(options: { visibility?: Ref<FeedFilter>; followingO
         const newOnes = candidates.filter((p: FeedPost) => !seen.has(p.id))
         if (!newOnes.length) return
 
-        posts.value = [...newOnes, ...existing]
+        const existingLive = existing.filter((p: FeedPost) => !p.deletedAt)
+        posts.value = [...newOnes, ...existingLive]
         if (anchor) await restoreAnchor(scroller, anchor)
       } catch {
         // Soft refresh should be silent; avoid disrupting the feed.

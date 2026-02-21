@@ -5,7 +5,7 @@
       <section
         v-if="showListPane"
         :class="[
-          'h-full overflow-y-auto border-b border-gray-200 dark:border-zinc-800',
+          'h-full overflow-y-auto moh-scrollbar-stable border-b border-gray-200 dark:border-zinc-800',
           !isTinyViewport ? 'border-b-0 border-r' : ''
         ]"
       >
@@ -71,8 +71,8 @@
             </div>
           </div>
 
-          <div class="flex-1 overflow-y-auto pt-3 sm:pt-4 pb-0 sm:pb-4">
-            <div class="px-3 sm:px-4">
+          <div class="flex-1 overflow-y-auto moh-scrollbar-stable pt-3 sm:pt-4 pb-0 sm:pb-4">
+            <div class="px-3 sm:px-4 min-h-[20rem]">
               <div v-if="selectedSection === 'account'" class="space-y-6">
                 <AppUsernameField
                   v-model="usernameInput"

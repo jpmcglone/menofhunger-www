@@ -324,6 +324,8 @@ export type PublicProfile = {
   bannerUrl: string | null
   pinnedPostId: string | null
   lastOnlineAt: string | null
+  checkinStreakDays: number
+  longestStreakDays: number
 }
 
 /** Hover preview payload from GET /users/:username/preview */
@@ -340,6 +342,8 @@ export type UserPreview = {
   avatarUrl: string | null
   bannerUrl: string | null
   lastOnlineAt: string | null
+  checkinStreakDays: number
+  longestStreakDays: number
   relationship: FollowRelationship
   nudge: NudgeState | null
   followerCount: number | null

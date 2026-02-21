@@ -159,7 +159,7 @@ function apiBaseUrlToWsUrl(apiBaseUrl: string): string {
  */
 export function usePresence() {
   const usersStore = useUsersStore()
-  const onlineUserIds = useState<string[]>(PRESENCE_STATE_KEY, () => [])
+  const onlineUserIds = useState<Set<string>>(PRESENCE_STATE_KEY, () => new Set())
   const idleUserIds = useState<Set<string>>(PRESENCE_IDLE_IDS_KEY, () => new Set())
   const socketRef = useState<Socket | null>(PRESENCE_SOCKET_KEY, () => null)
   const interestRefs = useState<Map<string, number>>(PRESENCE_INTEREST_KEY, () => new Map())
@@ -195,9 +195,12 @@ export function usePresence() {
   let connectionBarJustConnectedTimer: ReturnType<typeof setTimeout> | null = null
   /** True after first successful connect; used to show "disconnected" banner only after a real disconnect (not on initial load). */
   const wasSocketConnectedOnce = useState<boolean>('presence-was-socket-connected-once', () => false)
+  /** True between emitLogout() and the resulting disconnect; prevents auto-reconnect after explicit logout. */
+  let pendingLogout = false
+  let serverDisconnectReconnectTimer: ReturnType<typeof setTimeout> | null = null
 
   function isOnline(userId: string): boolean {
-    return onlineUserIds.value.includes(userId)
+    return onlineUserIds.value.has(userId)
   }
 
   function isUserIdle(userId: string): boolean {
@@ -411,9 +414,9 @@ export function usePresence() {
   }
 
   function addOnlineIdsFromRest(userIds: string[]) {
-    const next = [...onlineUserIds.value]
+    const next = new Set(onlineUserIds.value)
     for (const id of userIds) {
-      if (id && !next.includes(id)) next.push(id)
+      if (id) next.add(id)
     }
     onlineUserIds.value = next
   }
@@ -469,15 +472,14 @@ export function usePresence() {
     })
 
     function applyUserPresence(userId: string, online: boolean, idle: boolean) {
-      const next = [...onlineUserIds.value]
+      const next = new Set(onlineUserIds.value)
       const nextIdle = new Set(idleUserIds.value)
       if (online) {
-        if (!next.includes(userId)) next.push(userId)
+        next.add(userId)
         if (idle) nextIdle.add(userId)
         else nextIdle.delete(userId)
       } else {
-        const i = next.indexOf(userId)
-        if (i >= 0) next.splice(i, 1)
+        next.delete(userId)
         nextIdle.delete(userId)
       }
       onlineUserIds.value = next
@@ -808,6 +810,11 @@ export function usePresence() {
       }
     }
     socket.on('connect', () => {
+      pendingLogout = false
+      if (serverDisconnectReconnectTimer) {
+        clearTimeout(serverDisconnectReconnectTimer)
+        serverDisconnectReconnectTimer = null
+      }
       const isReconnect = wasSocketConnectedOnce.value
       wasSocketConnectedOnce.value = true
       isSocketConnected.value = true
@@ -830,7 +837,7 @@ export function usePresence() {
       }
       syncSubscriptions()
     })
-    socket.on('disconnect', () => {
+    socket.on('disconnect', (reason: string) => {
       isSocketConnected.value = false
       isSocketConnecting.value = false
       connectionBarJustConnected.value = false
@@ -839,9 +846,19 @@ export function usePresence() {
         connectionBarJustConnectedTimer = null
       }
       // Clear presence state so UI (e.g. avatar green dot, status page) doesn't show stale "online"
-      onlineUserIds.value = []
+      onlineUserIds.value = new Set()
       idleUserIds.value = new Set()
       presenceKnownUserIds.value = new Set()
+      // For server-initiated disconnects (e.g. idle timeout), Socket.IO does NOT auto-reconnect.
+      // Schedule a delayed reconnect unless this was an explicit logout.
+      if (reason === 'io server disconnect' && !pendingLogout) {
+        serverDisconnectReconnectTimer = setTimeout(() => {
+          serverDisconnectReconnectTimer = null
+          if (!socketRef.value?.connected && !isSocketConnecting.value) {
+            reconnect()
+          }
+        }, 3000)
+      }
     })
     if (socket.connected) {
       wasSocketConnectedOnce.value = true
@@ -856,6 +873,7 @@ export function usePresence() {
   }
 
   function emitLogout() {
+    pendingLogout = true
     const socket = socketRef.value
     if (socket?.connected) {
       socket.emit('presence:logout')
@@ -863,6 +881,11 @@ export function usePresence() {
   }
 
   function disconnect() {
+    pendingLogout = false
+    if (serverDisconnectReconnectTimer) {
+      clearTimeout(serverDisconnectReconnectTimer)
+      serverDisconnectReconnectTimer = null
+    }
     const socket = socketRef.value
     if (socket) {
       socket.disconnect()
@@ -876,7 +899,7 @@ export function usePresence() {
       clearTimeout(connectionBarJustConnectedTimer)
       connectionBarJustConnectedTimer = null
     }
-    onlineUserIds.value = []
+    onlineUserIds.value = new Set()
     idleUserIds.value = new Set()
     presenceKnownUserIds.value = new Set()
     onlineFeedSubscribed.value = false
@@ -907,7 +930,13 @@ export function usePresence() {
     function onActivity() {
       const uid = user.value?.id
       const socket = socketRef.value
-      if (!uid || !socket?.connected) return
+      if (!uid) return
+      if (!socket?.connected) {
+        if (socket && !isSocketConnecting.value) {
+          reconnect()
+        }
+        return
+      }
       const now = Date.now()
       const throttleMs = appConfig.presenceActivityThrottleMs ?? 30_000
       const isIdle = idleUserIds.value.has(uid)
@@ -920,15 +949,20 @@ export function usePresence() {
     }
 
     watch(
-      () => [isSocketConnected.value, user.value?.id ?? null] as const,
-      ([connected, userId]) => {
-        if (!connected || !userId) return
+      () => user.value?.id ?? null,
+      (userId) => {
+        if (!userId) return
         const opts = { passive: true, capture: true }
         document.addEventListener('mousemove', onActivity, opts)
         document.addEventListener('mousedown', onActivity, opts)
         document.addEventListener('keydown', onActivity, opts)
         document.addEventListener('scroll', onActivity, opts)
         document.addEventListener('touchstart', onActivity, opts)
+
+        const onVisibilityChange = () => {
+          if (document.visibilityState === 'visible') onActivity()
+        }
+        document.addEventListener('visibilitychange', onVisibilityChange)
 
         const stopRoute = watch(
           () => route.path,
@@ -942,6 +976,7 @@ export function usePresence() {
           document.removeEventListener('keydown', onActivity, opts)
           document.removeEventListener('scroll', onActivity, opts)
           document.removeEventListener('touchstart', onActivity, opts)
+          document.removeEventListener('visibilitychange', onVisibilityChange)
           stopRoute()
         }
       },

@@ -1831,8 +1831,15 @@ onMounted(() => {
         await selectConversation(selectedConversationId.value, { replace: true })
       }
       revealChatScreenAfterFade()
-      // Prefetch requests tab in background.
-      void fetchConversations('requests')
+      // Fetch requests tab and auto-switch if the selected conversation is there.
+      await fetchConversations('requests', { forceRefresh: true })
+      if (selectedConversationId.value) {
+        const inPrimary = conversations.value.primary.some((c) => c.id === selectedConversationId.value)
+        const inRequests = conversations.value.requests.some((c) => c.id === selectedConversationId.value)
+        if (inRequests && !inPrimary) activeTab.value = 'requests'
+      } else if (conversations.value.primary.length === 0 && conversations.value.requests.length > 0) {
+        activeTab.value = 'requests'
+      }
     } catch {
       // Even if fetch fails, show the screen so errors/empty states can render.
       revealChatScreenAfterFade()

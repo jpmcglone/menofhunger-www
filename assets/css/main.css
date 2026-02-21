@@ -680,6 +680,11 @@ html.dark {
   }
 }
 
+/* Reserve space for scrollbar to prevent layout shift on Windows (scrollbar appears on hover). */
+.moh-scrollbar-stable {
+  scrollbar-gutter: stable;
+}
+
 /* Hide scrollbars (keep scroll functional) */
 .no-scrollbar {
   -ms-overflow-style: none; /* IE/old Edge */

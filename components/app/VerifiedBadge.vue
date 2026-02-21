@@ -94,8 +94,16 @@ const tooltip = computed(() => {
   const base = verificationText.value
   if (!base) return null
 
-  const text = isOrganization.value ? 'Organization account' : base
-  // Prefer right, flip to left when needed. No arrow (handled by CSS).
+  let text: string
+  if (isOrganization.value) {
+    text = 'Organization account'
+  } else if (props.premiumPlus && base) {
+    text = `Premium+, ${base}`
+  } else if (isPremium.value && base) {
+    text = `Premium, ${base}`
+  } else {
+    text = base
+  }
   return { value: text, class: 'moh-tooltip', position: tooltipPlacement.value }
 })
 

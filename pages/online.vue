@@ -150,6 +150,8 @@ const feedCallback: {
   onOnline(payload) {
     const { userId, user: userData, lastConnectAt = Date.now() } = payload
     if (!userId) return
+    // Remove from "recently online" -- they're online now.
+    recentUsers.value = recentUsers.value.filter((u) => u.id !== userId)
     if (users.value.some((u) => u.id === userId)) return
     addInterest([userId])
     if (typeof totalOnline.value === 'number') totalOnline.value += 1
@@ -170,19 +172,20 @@ const feedCallback: {
   },
   onSnapshot(payload) {
     const snap = payload?.users ?? []
-    const next = [...users.value]
-    for (const u of snap) {
-      if (u.id && !next.some((x) => x.id === u.id)) {
-        next.push(u as OnlineUser)
-      }
-    }
-    if (next.length !== users.value.length) {
-      users.value = next.sort(sortByRecent)
-      const ids = next.map((x) => x.id).filter(Boolean)
+    // Replace the online list with the authoritative snapshot (handles reconnect staleness).
+    const snapOnline = (snap as OnlineUser[]).sort(sortByRecent)
+    users.value = snapOnline
+    const ids = snapOnline.map((x) => x.id).filter(Boolean)
+    if (ids.length) {
       addOnlineIdsFromRest(ids)
-      const idleIds = (snap as OnlineUser[]).filter((x) => x.idle && x.id).map((x) => x.id)
+      const idleIds = snapOnline.filter((x) => x.idle && x.id).map((x) => x.id)
       if (idleIds.length) addIdleFromRest(idleIds)
       addInterest(ids)
+    }
+    // Remove snapshot users from "recently online" -- they're online now.
+    const snapIds = new Set(ids)
+    if (snapIds.size > 0) {
+      recentUsers.value = recentUsers.value.filter((u) => !snapIds.has(u.id))
     }
     if (typeof payload?.totalOnline === 'number') totalOnline.value = payload.totalOnline
   },

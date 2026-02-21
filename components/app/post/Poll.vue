@@ -1,11 +1,11 @@
 <template>
   <div
-    class="mt-3 rounded-xl border moh-border-subtle moh-surface-2 p-3"
+    class="mt-3"
     role="group"
     aria-label="Poll"
     @click.stop
   >
-    <div class="flex items-center justify-between gap-3">
+    <div class="flex items-center justify-between gap-3 mb-3">
       <div class="text-[11px] font-semibold moh-text-muted">
         {{ pollHeader }}
       </div>
@@ -14,61 +14,84 @@
       </div>
     </div>
 
-    <div class="mt-3 flex flex-col" :class="showResults ? 'gap-1.5' : 'gap-2'">
-      <component
-        :is="showResults ? 'div' : 'button'"
+    <!-- Results view -->
+    <div v-if="showResults" class="flex flex-col gap-2">
+      <div
         v-for="opt in pollView.options"
         :key="opt.id"
-        :type="showResults ? undefined : 'button'"
-        :class="[
-          'w-full text-left relative flex items-center gap-3 rounded-xl border !bg-transparent px-3 py-3 transition-colors min-h-[4.25rem]',
-          showResults
-            ? 'moh-border-subtle'
-            : `${accent.optionBorderClass} ${accent.optionHoverClass} moh-focus disabled:opacity-60 disabled:cursor-default`,
-          showResults && pollView.viewerVotedOptionId && opt.id === pollView.viewerVotedOptionId ? accent.votedBorderClass : '',
-        ]"
-        :disabled="showResults ? undefined : voteDisabled"
-        :aria-label="optionAriaLabel(opt)"
-        @click="showResults ? undefined : onVote(opt.id)"
+        class="relative w-full flex items-center gap-3 rounded-xl border overflow-hidden px-3 py-2.5"
+        :class="isVotedOption(opt.id) ? accent.votedBorderClass : 'moh-border-subtle'"
       >
+        <!-- Fill bar -->
+        <div
+          class="pointer-events-none absolute inset-y-0 left-0 transition-[width] duration-500 ease-out"
+          :style="{
+            width: `${Math.max(0, Math.min(100, opt.percent))}%`,
+            backgroundColor: accent.color,
+            opacity: pollView.viewerHasVoted && !isVotedOption(opt.id) ? 0.12 : 0.2,
+          }"
+        />
+
         <img
           v-if="opt.imageUrl"
           :src="opt.imageUrl"
-          class="rounded-lg border moh-border object-cover bg-black/5 dark:bg-white/5 cursor-zoom-in"
-          :class="showResults ? 'h-8 w-8' : 'h-10 w-10'"
+          class="relative z-10 shrink-0 rounded-lg border moh-border object-cover bg-black/5 dark:bg-white/5 cursor-zoom-in h-10 w-10"
           :alt="opt.alt || ''"
           loading="lazy"
           role="button"
           aria-label="View image"
           @click.stop="openOptionImage($event, opt.id)"
         />
-        <div class="min-w-0 flex-1">
-          <div class="flex items-center justify-between gap-3">
-            <div class="min-w-0 truncate text-sm moh-text font-semibold">
-              {{ opt.text }}
-            </div>
-            <div v-if="showResults" class="shrink-0 text-xs tabular-nums moh-text-muted">
-              {{ opt.percent }}%
-            </div>
-          </div>
-        </div>
 
-        <!-- Results bar: absolutely positioned so it doesn't affect vertical centering/layout -->
-        <div v-if="showResults" class="pointer-events-none absolute left-3 right-3 bottom-2">
-          <div class="w-full rounded-full bg-black/5 dark:bg-white/10 overflow-hidden h-1.5">
-            <div
-              class="h-full rounded-full"
-              :style="{ width: `${Math.max(0, Math.min(100, opt.percent))}%`, backgroundColor: barColor(opt.id) }"
-            />
+        <div class="relative z-10 min-w-0 flex-1 flex items-center justify-between gap-3">
+          <div
+            class="min-w-0 truncate text-sm moh-text"
+            :class="isVotedOption(opt.id) ? 'font-bold' : 'font-semibold'"
+          >
+            {{ opt.text }}
+          </div>
+          <div class="shrink-0 text-xs tabular-nums moh-text-muted font-medium">
+            {{ opt.percent }}%
           </div>
         </div>
-      </component>
+      </div>
+    </div>
+
+    <!-- Voting view -->
+    <div v-else class="flex flex-col gap-2">
+      <button
+        v-for="opt in pollView.options"
+        :key="opt.id"
+        type="button"
+        :class="[
+          'w-full text-left flex items-center gap-3 rounded-xl border !bg-transparent px-3 py-2.5 transition-colors',
+          accent.optionBorderClass, accent.optionHoverClass,
+          'moh-focus disabled:opacity-60 disabled:cursor-default',
+        ]"
+        :disabled="voteDisabled"
+        :aria-label="optionAriaLabel(opt)"
+        @click="onVote(opt.id)"
+      >
+        <img
+          v-if="opt.imageUrl"
+          :src="opt.imageUrl"
+          class="shrink-0 rounded-lg border moh-border object-cover bg-black/5 dark:bg-white/5 cursor-zoom-in h-10 w-10"
+          :alt="opt.alt || ''"
+          loading="lazy"
+          role="button"
+          aria-label="View image"
+          @click.stop="openOptionImage($event, opt.id)"
+        />
+        <div class="min-w-0 flex-1 text-sm moh-text font-semibold truncate">
+          {{ opt.text }}
+        </div>
+      </button>
     </div>
 
     <div class="mt-3 text-[11px] moh-text-muted tabular-nums">
       {{ pollView.totalVoteCount }} vote{{ pollView.totalVoteCount === 1 ? '' : 's' }}
       <span v-if="showResults && endedNow" class="ml-2">· Final results</span>
-      <span v-else-if="showResults && (pollView.viewerHasVoted || viewerIsAuthor)" class="ml-2">· Results so far</span>
+      <span v-else-if="showResults && (pollView.viewerHasVoted || viewerIsAuthor)" class="ml-2">(Results so far)</span>
     </div>
   </div>
 </template>
@@ -143,9 +166,9 @@ const accent = computed(() => {
       votedBorderClass: '!border-[color:var(--moh-onlyme)]',
     }
   }
-  // Public: neutral
+  // Public
   return {
-    color: 'var(--moh-border-strong)',
+    color: 'var(--p-primary-color)',
     optionBorderClass: '!border-[color:var(--moh-border-subtle)]',
     optionHoverClass: 'hover:!bg-black/5 dark:hover:!bg-white/10',
     votedBorderClass: '!border-[color:var(--moh-border-subtle)]',
@@ -221,11 +244,8 @@ function optionAriaLabel(opt: PostPollOption) {
   return `Vote for ${opt.text}`
 }
 
-function barColor(optionId: string) {
-  // In results mode we tint all bars by the poll/post tier (not the viewer).
-  if (showResults.value) return accent.value.color
-  if (pollView.value.viewerVotedOptionId && optionId === pollView.value.viewerVotedOptionId) return accent.value.color
-  return 'rgba(0,0,0,0.25)'
+function isVotedOption(optionId: string) {
+  return Boolean(pollView.value.viewerVotedOptionId && pollView.value.viewerVotedOptionId === optionId)
 }
 
 function openOptionImage(e: MouseEvent, optionId: string) {
@@ -273,4 +293,5 @@ async function onVote(optionId: string) {
   }
 }
 </script>
+
 

@@ -162,10 +162,15 @@ const {
   bumpCounts,
 } = useBookmarkCollections()
 
+const prevPostId = ref(props.postId)
 watch(
   () => [postId.value, props.initialHasBookmarked, props.initialCollectionIds] as const,
   () => {
-    // Reset local state if the post changes.
+    const postChanged = postId.value !== prevPostId.value
+    prevPostId.value = postId.value
+    // Skip prop-driven resets while a request is in flight to avoid
+    // overwriting the optimistic state from a folder toggle.
+    if (!postChanged && (loading.value || creating.value)) return
     hasBookmarked.value = Boolean(props.initialHasBookmarked)
     collectionIds.value = (props.initialCollectionIds ?? []).filter(Boolean)
     loading.value = false

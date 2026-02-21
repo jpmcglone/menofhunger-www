@@ -199,9 +199,24 @@ function listenerProfileTo(username: string): string {
 }
 
 const { selectedSpaceId, currentSpace, members, leave } = useSpaceLobby()
-const { getFloating } = useSpaceReactions()
+const { getFloating, addFloating } = useSpaceReactions()
 const { hasStation, isPlaying, isBuffering, toggle, stop, volume, setVolume } = useSpaceAudio()
 const usersStore = useUsersStore()
+const presence = usePresence()
+
+const radioBarReactionsCb = {
+  onReaction: (payload: import('~/types/api').SpaceReactionEvent) => {
+    if (!payload?.spaceId || payload.spaceId !== selectedSpaceId.value) return
+    addFloating(payload.userId, payload.emoji)
+  },
+}
+
+onMounted(() => {
+  presence.addSpacesCallback(radioBarReactionsCb as any)
+})
+onBeforeUnmount(() => {
+  presence.removeSpacesCallback(radioBarReactionsCb as any)
+})
 const route = useRoute()
 const { isRightRailForcedHidden } = useLayoutRules(route)
 const isRightRailBreakpointUp = useMediaQuery('(min-width: 962px)')

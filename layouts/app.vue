@@ -272,12 +272,13 @@
                   v-if="showEmailUnverifiedBar"
                   type="button"
                   class="w-full border-b moh-border px-4 py-2 text-left text-sm backdrop-blur-sm bg-amber-50/95 text-amber-900 hover:bg-amber-50 dark:bg-amber-900/25 dark:text-amber-100 dark:hover:bg-amber-900/35"
-                  @click="navigateTo('/settings/account')"
+                  :disabled="emailVerifResending"
+                  @click="resendEmailVerificationFromBanner"
                 >
                   <span class="font-semibold">Email not verified.</span>
                   <span class="ml-2">
                     <span class="font-mono">{{ (user?.email ?? '').trim() }}</span>
-                    <span class="ml-2 opacity-90">Tap to verify in Settings.</span>
+                    <span class="ml-2 opacity-90">{{ emailVerifResending ? 'Sending…' : 'Tap to resend verification email.' }}</span>
                   </span>
                 </button>
 
@@ -315,12 +316,13 @@
                 v-if="hideTopBar && showEmailUnverifiedBar"
                 type="button"
                 class="sticky top-0 z-50 w-full border-b moh-border px-4 py-2 text-left text-sm backdrop-blur-sm bg-amber-50/95 text-amber-900 hover:bg-amber-50 dark:bg-amber-900/25 dark:text-amber-100 dark:hover:bg-amber-900/35"
-                @click="navigateTo('/settings/account')"
+                :disabled="emailVerifResending"
+                @click="resendEmailVerificationFromBanner"
               >
                 <span class="font-semibold">Email not verified.</span>
                 <span class="ml-2">
                   <span class="font-mono">{{ (user?.email ?? '').trim() }}</span>
-                  <span class="ml-2 opacity-90">Tap to verify in Settings.</span>
+                  <span class="ml-2 opacity-90">{{ emailVerifResending ? 'Sending…' : 'Tap to resend verification email.' }}</span>
                 </span>
               </button>
 
@@ -802,6 +804,21 @@ const showEmailUnverifiedBar = computed(() => {
   return !user.value?.emailVerifiedAt
 })
 
+const emailVerifResending = ref(false)
+const appToast = useAppToast()
+async function resendEmailVerificationFromBanner() {
+  if (emailVerifResending.value) return
+  emailVerifResending.value = true
+  try {
+    await apiFetchData<{ sent: boolean }>('/email/verification/resend', { method: 'POST' })
+    appToast.push({ title: 'Verification email sent', message: 'Check your inbox.', tone: 'success' })
+  } catch {
+    appToast.push({ title: 'Could not send email', message: 'Please try again later.', tone: 'error' })
+  } finally {
+    emailVerifResending.value = false
+  }
+}
+
 // Post entrypoints (left-nav button + mobile FAB): only render on these routes.
 const isComposerEntrypointRoute = computed(() => {
   return isComposerEntrypointPath({ path: route.path, profileTo: profileTo.value })
@@ -1023,6 +1040,7 @@ function closeComposerModal() {
 }
 
 const { prependPost: prependOnlyMePost } = useOnlyMePosts()
+const globalPostsFeed = useState<import('~/types/api').FeedPost[]>('posts-feed', () => [])
 function onComposerPosted(payload: { id: string; visibility: string; post?: import('~/types/api').FeedPost }) {
   composerModalOpen.value = false
   composerInitialText.value = null
@@ -1032,6 +1050,11 @@ function onComposerPosted(payload: { id: string; visibility: string; post?: impo
     prependOnlyMePost(payload.post)
     if (route.path !== '/only-me') {
       navigateTo('/only-me?posted=1')
+    }
+  } else if (payload.post && payload.post.id) {
+    const alreadyInFeed = globalPostsFeed.value.some((p) => p.id === payload.post!.id)
+    if (!alreadyInFeed) {
+      globalPostsFeed.value = [payload.post, ...globalPostsFeed.value]
     }
   }
 }

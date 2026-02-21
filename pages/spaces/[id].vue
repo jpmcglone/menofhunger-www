@@ -1,6 +1,6 @@
 <template>
-  <AppPageContent bottom="standard">
-    <div class="w-full">
+  <AppPageContent bottom="standard" class="h-full">
+    <div class="w-full flex flex-col h-full">
       <div v-if="!space" class="moh-gutter-x py-8">
         <div v-if="loading" class="flex items-center gap-2 moh-meta">
           <Icon name="tabler:loader" class="text-[18px] opacity-80 animate-spin" aria-hidden="true" />
@@ -15,7 +15,7 @@
       </div>
 
       <template v-else>
-        <div class="moh-gutter-x pt-4 pb-3 flex items-start justify-between gap-3">
+        <div class="moh-gutter-x pt-4 pb-3 flex items-start justify-between gap-3 shrink-0">
           <div class="min-w-0">
             <h1 class="moh-h1">{{ space.name }}</h1>
             <p class="mt-1 moh-meta">Live chat and music in the bar below. Share this link to bring others here.</p>
@@ -31,7 +31,19 @@
           </button>
         </div>
 
-        <div class="moh-gutter-x pb-6 pt-1">
+        <!-- Canvas area -->
+        <div class="moh-gutter-x flex-1 min-h-0 pb-3">
+          <div class="w-full h-full min-h-[40vh] rounded-xl border-2 border-dashed border-gray-300 dark:border-zinc-600 bg-gray-50/50 dark:bg-zinc-900/50 flex items-center justify-center">
+            <div class="text-center moh-meta opacity-50 select-none px-4">
+              <Icon name="tabler:video" class="text-3xl mb-2 block mx-auto" aria-hidden="true" />
+              <p class="text-sm">Canvas</p>
+              <p class="text-xs mt-1">Videos and content coming soon</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Users + reactions -->
+        <div class="moh-gutter-x pb-4 pt-2 shrink-0 border-t moh-border">
           <div class="flex items-center justify-between gap-3 text-sm text-gray-600 dark:text-gray-300">
             <div class="min-w-0 truncate">
               <span class="font-semibold tabular-nums text-gray-900 dark:text-gray-100">{{ members.length }}</span>
@@ -53,7 +65,7 @@
             No one here yet. You’re the first.
           </div>
 
-          <div v-else-if="currentSpace" class="mt-3 flex flex-wrap gap-3">
+          <div v-else-if="currentSpace" class="mt-2 flex flex-wrap gap-3 max-h-[8rem] overflow-y-auto">
             <template v-for="u in lobbyMembers" :key="u.id">
               <NuxtLink
                 v-if="u.username"
