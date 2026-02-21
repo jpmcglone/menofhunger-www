@@ -68,6 +68,10 @@ export type RadioListener = {
   id: string
   username: string | null
   avatarUrl: string | null
+  premium: boolean
+  premiumPlus: boolean
+  isOrganization: boolean
+  verifiedStatus: 'none' | 'identity' | 'manual'
   paused?: boolean
   muted?: boolean
 }
@@ -119,6 +123,10 @@ export type SpaceMember = {
   id: string
   username: string | null
   avatarUrl: string | null
+  premium: boolean
+  premiumPlus: boolean
+  isOrganization: boolean
+  verifiedStatus: 'none' | 'identity' | 'manual'
   paused?: boolean
   muted?: boolean
 }
@@ -164,6 +172,19 @@ export type SpaceChatMessage =
 export type SpaceChatSnapshot = {
   spaceId: string
   messages: SpaceChatMessage[]
+}
+
+export type SpaceReaction = {
+  id: string
+  emoji: string
+  label: string
+}
+
+export type SpaceReactionEvent = {
+  spaceId: string
+  userId: string
+  reactionId: string
+  emoji: string
 }
 
 export type Websters1828WordOfDay = {

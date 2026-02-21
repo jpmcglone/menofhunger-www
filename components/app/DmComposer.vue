@@ -11,28 +11,20 @@
           @select="insertEmoji"
         />
       </div>
-      <textarea
-        ref="textareaEl"
-        :value="modelValue"
+
+      <AppStyledTextarea
+        ref="styledTextareaEl"
+        :model-value="modelValue"
         :placeholder="placeholder"
         :disabled="disabled"
-        rows="1"
-        class="dm-composer-input min-h-[44px] w-full resize-none border-0 bg-transparent py-2.5 sm:py-3 pl-12 pr-12 text-[16px] text-[var(--moh-text)] placeholder:text-[var(--moh-text-muted)] focus:outline-none focus:ring-0 disabled:opacity-60"
-        @input="onInput"
-        @keydown="onKeydown"
+        :auto-focus="autoFocus"
+        :priority-users="priorityUsers"
+        :priority-section-title="prioritySectionTitle"
+        :hashtag-color="userHashtagColor"
+        @update:model-value="onTextChange"
+        @send="onSend"
       />
-      <AppMentionAutocompletePopover
-        v-bind="mention.popoverProps"
-        @select="mention.onSelect"
-        @highlight="mention.onHighlight"
-        @requestClose="mention.onRequestClose"
-      />
-      <AppHashtagAutocompletePopover
-        v-bind="hashtag.popoverProps"
-        @select="hashtag.onSelect"
-        @highlight="hashtag.onHighlight"
-        @requestClose="hashtag.onRequestClose"
-      />
+
       <Transition name="moh-fade">
         <button
           v-if="hasText"
@@ -53,9 +45,7 @@
 
 <script setup lang="ts">
 import type { FollowListUser } from '~/types/api'
-import { useMentionAutocomplete } from '~/composables/useMentionAutocomplete'
-import { useHashtagAutocomplete } from '~/composables/useHashtagAutocomplete'
-import { userColorTier } from '~/utils/user-tier'
+import { userColorTier, userTierColorVar } from '~/utils/user-tier'
 
 const props = withDefaults(
   defineProps<{
@@ -65,6 +55,8 @@ const props = withDefaults(
     loading?: boolean
     disabled?: boolean
     autoFocus?: boolean
+    priorityUsers?: FollowListUser[] | null
+    prioritySectionTitle?: string
   }>(),
   {
     placeholder: 'Type a chat…',
@@ -72,6 +64,8 @@ const props = withDefaults(
     disabled: false,
     user: null,
     autoFocus: false,
+    priorityUsers: null,
+    prioritySectionTitle: undefined,
   },
 )
 
@@ -80,38 +74,17 @@ const emit = defineEmits<{
   send: []
 }>()
 
-const textareaEl = ref<HTMLTextAreaElement | null>(null)
+const styledTextareaEl = ref<InstanceType<typeof import('./StyledTextarea.vue').default> | null>(null)
 const isMultiline = ref(false)
-
-const mention = useMentionAutocomplete({
-  el: textareaEl,
-  getText: () => props.modelValue ?? '',
-  setText: (next) => emit('update:modelValue', next),
-  debounceMs: 200,
-  limit: 10,
-})
-
-const hashtag = useHashtagAutocomplete({
-  el: textareaEl,
-  getText: () => props.modelValue ?? '',
-  setText: (next) => emit('update:modelValue', next),
-  debounceMs: 200,
-  limit: 10,
-})
-
-const hasText = computed(() => props.modelValue.trim().length > 0)
-
-function focus() {
-  textareaEl.value?.focus?.()
-}
+const hasText = computed(() => (props.modelValue ?? '').trim().length > 0)
 
 const userTier = computed(() => userColorTier(props.user))
+const userHashtagColor = computed(() => userTierColorVar(userTier.value) ?? 'var(--p-primary-color)')
 const ORG_CHAT_SILVER = '#313643'
 
 const outlineClass = computed(() => {
   const radius = isMultiline.value ? 'rounded-2xl' : 'rounded-full'
   const base = `${radius} border`
-  // Org uses the same dark silver as chat bubbles.
   if (userTier.value === 'organization') return `${base} border-[${ORG_CHAT_SILVER}]`
   if (userTier.value === 'premium') return `${base} border-[var(--moh-premium)]`
   if (userTier.value === 'verified') return `${base} border-[var(--moh-verified)]`
@@ -119,85 +92,18 @@ const outlineClass = computed(() => {
 })
 
 const sendButtonClass = computed(() => {
-  // Org uses the same dark silver as chat bubbles.
   if (userTier.value === 'organization') return `bg-[${ORG_CHAT_SILVER}] text-white hover:opacity-90`
   if (userTier.value === 'premium') return 'bg-[var(--moh-premium)] text-white hover:opacity-90'
   if (userTier.value === 'verified') return 'bg-[var(--moh-verified)] text-white hover:opacity-90'
   return 'bg-gray-900 text-white hover:bg-gray-800 dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100'
 })
 
-function resizeTextarea() {
-  if (typeof document === 'undefined') return
-  const el = textareaEl.value
-  if (!el) return
-  el.style.height = 'auto'
-  const nextH = Math.max(el.scrollHeight, 44)
-  el.style.height = `${nextH}px`
-
-  // Switch from "pill" to rounded-rect when it grows to 2+ lines.
-  try {
-    const cs = window.getComputedStyle(el)
-    const lh = Number.parseFloat(cs.lineHeight || '') || 20
-    const pt = Number.parseFloat(cs.paddingTop || '') || 0
-    const pb = Number.parseFloat(cs.paddingBottom || '') || 0
-    const contentH = Math.max(0, el.scrollHeight - pt - pb)
-    const lines = lh > 0 ? Math.round(contentH / lh) : 1
-    isMultiline.value = lines >= 2
-  } catch {
-    isMultiline.value = nextH > 44
-  }
+function onTextChange(text: string) {
+  emit('update:modelValue', text)
+  checkMultiline()
 }
 
-function insertEmoji(emoji: string) {
-  const e = (emoji ?? '').trim()
-  if (!e) return
-  const el = textareaEl.value
-  const value = props.modelValue ?? ''
-  if (el && typeof el.selectionStart === 'number' && typeof el.selectionEnd === 'number') {
-    const start = el.selectionStart
-    const end = el.selectionEnd
-    const next = value.slice(0, start) + e + value.slice(end)
-    emit('update:modelValue', next)
-    void nextTick().then(() => {
-      el.focus?.()
-      try {
-        const pos = start + e.length
-        el.setSelectionRange?.(pos, pos)
-      } catch {
-        // ignore
-      }
-    })
-  } else {
-    const next = value + e
-    emit('update:modelValue', next)
-    void nextTick().then(() => {
-      el?.focus?.()
-      try {
-        const pos = next.length
-        el?.setSelectionRange?.(pos, pos)
-      } catch {
-        // ignore
-      }
-    })
-  }
-}
-
-function onInput(e: Event) {
-  const target = e.target as HTMLTextAreaElement
-  const val = target.value
-  emit('update:modelValue', val)
-  nextTick(resizeTextarea)
-  mention.recompute()
-  hashtag.recompute()
-}
-
-function onKeydown(e: KeyboardEvent) {
-  // Mention autocomplete binds keydown directly on the textarea.
-  // If it already handled this key, don't also send the message.
-  if (e.defaultPrevented) return
-  if (e.key !== 'Enter') return
-  if (e.shiftKey) return
-  e.preventDefault()
+function onSend() {
   if (hasText.value) emit('send')
 }
 
@@ -206,17 +112,28 @@ function emitSend() {
   emit('send')
 }
 
-onMounted(() => {
-  nextTick(resizeTextarea)
-  if (props.autoFocus) {
-    nextTick(() => focus())
-  }
-})
+function insertEmoji(emoji: string) {
+  styledTextareaEl.value?.insertAtCursor(emoji)
+}
 
-watch(
-  () => props.modelValue,
-  () => nextTick(resizeTextarea),
-)
+function focus() {
+  styledTextareaEl.value?.focus()
+}
+
+function checkMultiline() {
+  nextTick(() => {
+    const editorEl = styledTextareaEl.value?.$el?.querySelector('.moh-styled-textarea-editor') as HTMLElement | null
+    if (!editorEl) return
+    const style = window.getComputedStyle(editorEl)
+    const lh = parseFloat(style.lineHeight) || 20
+    const pt = parseFloat(style.paddingTop) || 0
+    const pb = parseFloat(style.paddingBottom) || 0
+    const contentH = Math.max(0, editorEl.scrollHeight - pt - pb)
+    isMultiline.value = lh > 0 ? Math.round(contentH / lh) >= 2 : false
+  })
+}
+
+watch(() => props.modelValue, checkMultiline)
 
 defineExpose({ focus })
 </script>

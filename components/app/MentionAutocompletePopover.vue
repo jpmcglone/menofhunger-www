@@ -5,64 +5,74 @@
         v-if="open"
         ref="panelEl"
         :id="listboxId || undefined"
-        class="fixed z-[1200] w-[min(22rem,92vw)] border moh-border bg-white shadow-2xl dark:bg-zinc-950 rounded-xl overflow-hidden"
+        class="fixed z-[10100] w-[min(22rem,92vw)] border moh-border bg-white shadow-2xl dark:bg-zinc-950 rounded-xl overflow-hidden"
         :style="panelStyle"
         role="listbox"
         aria-label="Mention suggestions"
         :data-placement="panelPlacement"
       >
         <div ref="scrollEl" class="max-h-[min(18rem,46vh)] overflow-y-auto">
-          <button
-            v-for="(u, i) in items"
-            :key="u.id"
-            type="button"
-            :id="optionId(i)"
-            class="w-full text-left px-3 py-2 flex items-center gap-3 transition-colors"
-            :class="i === highlightedIndex ? 'bg-black/5 dark:bg-white/10' : 'hover:bg-black/5 dark:hover:bg-white/10'"
-            role="option"
-            :aria-selected="i === highlightedIndex ? 'true' : 'false'"
-            @mouseenter="emit('highlight', i)"
-            @mousedown.prevent
-            @click="emit('select', u)"
-          >
+          <template v-for="(u, i) in items" :key="u.id">
+            <!-- Section header: shown at the start of each section when sections are active. -->
             <div
-              :class="[
-                'shrink-0 ring-2 ring-[color:var(--moh-surface-3)]',
-                roundClassFor(u),
-              ]"
+              v-if="sectionTitleByIndex.get(i)"
+              class="px-3 pt-2 pb-1 text-[11px] font-semibold tracking-wide uppercase text-gray-400 dark:text-gray-500 border-b border-gray-100 dark:border-zinc-800"
+              :class="i > 0 ? 'mt-1 border-t border-gray-100 dark:border-zinc-800' : ''"
+              aria-hidden="true"
             >
-              <AppUserAvatar
-                :user="{ id: u.id, username: u.username, avatarUrl: u.avatarUrl, isOrganization: (u as any).isOrganization }"
-                size-class="h-9 w-9"
-                bg-class="moh-surface dark:bg-black"
-                :show-presence="false"
-              />
+              {{ sectionTitleByIndex.get(i) }}
             </div>
-            <div class="min-w-0 flex-1">
-              <div class="flex items-center gap-1.5 min-w-0">
-                <div class="font-semibold text-sm text-gray-900 dark:text-gray-50 truncate">
-                  {{ u.name?.trim() || (u.username ? `@${u.username}` : 'User') }}
-                </div>
-                <AppVerifiedBadge
-                  v-if="u.verifiedStatus && u.verifiedStatus !== 'none'"
-                  :status="u.verifiedStatus"
-                  :premium="Boolean(u.premium)"
-                  :premium-plus="Boolean(u.premiumPlus)"
-                  :is-organization="Boolean((u as any).isOrganization)"
-                  :steward-badge-enabled="u.stewardBadgeEnabled ?? true"
-                  size="xs"
+
+            <button
+              type="button"
+              :id="optionId(i)"
+              class="w-full text-left px-3 py-2 flex items-center gap-3 transition-colors"
+              :class="i === highlightedIndex ? 'bg-black/5 dark:bg-white/10' : 'hover:bg-black/5 dark:hover:bg-white/10'"
+              role="option"
+              :aria-selected="i === highlightedIndex ? 'true' : 'false'"
+              @mouseenter="emit('highlight', i)"
+              @mousedown.prevent
+              @click="emit('select', u)"
+            >
+              <div
+                :class="[
+                  'shrink-0 ring-2 ring-[color:var(--moh-surface-3)]',
+                  roundClassFor(u),
+                ]"
+              >
+                <AppUserAvatar
+                  :user="{ id: u.id, username: u.username, avatarUrl: u.avatarUrl, isOrganization: (u as any).isOrganization }"
+                  size-class="h-9 w-9"
+                  bg-class="moh-surface dark:bg-black"
+                  :show-presence="false"
                 />
               </div>
-              <div class="text-xs text-gray-500 dark:text-gray-400 truncate">
-                <span v-if="u.username">@{{ u.username }}</span>
+              <div class="min-w-0 flex-1">
+                <div class="flex items-center gap-1.5 min-w-0">
+                  <div class="font-semibold text-sm text-gray-900 dark:text-gray-50 truncate">
+                    {{ u.name?.trim() || (u.username ? `@${u.username}` : 'User') }}
+                  </div>
+                  <AppVerifiedBadge
+                    v-if="u.verifiedStatus && u.verifiedStatus !== 'none'"
+                    :status="u.verifiedStatus"
+                    :premium="Boolean(u.premium)"
+                    :premium-plus="Boolean(u.premiumPlus)"
+                    :is-organization="Boolean((u as any).isOrganization)"
+                    :steward-badge-enabled="u.stewardBadgeEnabled ?? true"
+                    size="xs"
+                  />
+                </div>
+                <div class="text-xs text-gray-500 dark:text-gray-400 truncate">
+                  <span v-if="u.username">@{{ u.username }}</span>
+                </div>
               </div>
-            </div>
-            <div class="shrink-0 text-[11px] font-semibold tabular-nums text-gray-500 dark:text-gray-400">
-              <span v-if="u.relationship?.viewerFollowsUser && u.relationship?.userFollowsViewer">Mutual</span>
-              <span v-else-if="u.relationship?.viewerFollowsUser">Following</span>
-              <span v-else-if="u.relationship?.userFollowsViewer">Follows you</span>
-            </div>
-          </button>
+              <div class="shrink-0 text-[11px] font-semibold tabular-nums text-gray-500 dark:text-gray-400">
+                <span v-if="u.relationship?.viewerFollowsUser && u.relationship?.userFollowsViewer">Mutual</span>
+                <span v-else-if="u.relationship?.viewerFollowsUser">Following</span>
+                <span v-else-if="u.relationship?.userFollowsViewer">Follows you</span>
+              </div>
+            </button>
+          </template>
 
           <div v-if="items.length === 0" class="px-3 py-3 text-sm text-gray-600 dark:text-gray-300">
             No matches.
@@ -75,6 +85,7 @@
 
 <script setup lang="ts">
 import type { FollowListUser } from '~/types/api'
+import type { MentionSection } from '~/composables/useMentionAutocomplete'
 import { useUsersStore } from '~/composables/useUsersStore'
 import { avatarRoundClass as getAvatarRoundClass } from '~/utils/avatar-rounding'
 
@@ -84,10 +95,21 @@ const props = defineProps<{
   highlightedIndex: number
   anchor: { left: number; top: number; height: number } | null
   listboxId?: string
+  /** When provided (live-chat context), renders grouped results with section headings. */
+  sections?: MentionSection[]
 }>()
 
 const usersStore = useUsersStore()
 const items = computed(() => props.items.map((u) => (u?.id ? (usersStore.overlay(u as any) as any) : u)))
+
+// Maps global item index → section title (only for the first item in each section).
+const sectionTitleByIndex = computed(() => {
+  const map = new Map<number, string>()
+  for (const s of props.sections ?? []) {
+    map.set(s.startIndex, s.title)
+  }
+  return map
+})
 
 function roundClassFor(u: FollowListUser): string {
   return getAvatarRoundClass(Boolean((u as any)?.isOrganization))

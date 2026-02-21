@@ -113,18 +113,15 @@
                   />
                   <Transition name="moh-avatar-pause-fade">
                     <div
-                      v-if="u.paused"
-                      class="absolute inset-0 rounded-full bg-black/30 flex items-center justify-center moh-avatar-pause moh-avatar-pause-sm"
+                      v-if="u.paused || u.muted"
+                      class="absolute -bottom-1 -right-1 h-6 w-6 rounded-full bg-black/70 flex items-center justify-center ring-1 ring-white/20"
                       aria-hidden="true"
                     >
-                      <Icon name="tabler:player-pause" aria-hidden="true" />
-                    </div>
-                    <div
-                      v-else-if="u.muted"
-                      class="absolute inset-0 rounded-full bg-black/30 flex items-center justify-center moh-avatar-pause moh-avatar-pause-sm"
-                      aria-hidden="true"
-                    >
-                      <Icon name="tabler:volume-off" aria-hidden="true" />
+                      <Icon
+                        :name="u.paused ? 'tabler:player-pause' : 'tabler:volume-off'"
+                        class="text-[13px] text-white"
+                        aria-hidden="true"
+                      />
                     </div>
                   </Transition>
                 </div>
@@ -144,18 +141,15 @@
                   />
                   <Transition name="moh-avatar-pause-fade">
                     <div
-                      v-if="u.paused"
-                      class="absolute inset-0 rounded-full bg-black/30 flex items-center justify-center moh-avatar-pause moh-avatar-pause-sm"
+                      v-if="u.paused || u.muted"
+                      class="absolute -bottom-1 -right-1 h-6 w-6 rounded-full bg-black/70 flex items-center justify-center ring-1 ring-white/20"
                       aria-hidden="true"
                     >
-                      <Icon name="tabler:player-pause" aria-hidden="true" />
-                    </div>
-                    <div
-                      v-else-if="u.muted"
-                      class="absolute inset-0 rounded-full bg-black/30 flex items-center justify-center moh-avatar-pause moh-avatar-pause-sm"
-                      aria-hidden="true"
-                    >
-                      <Icon name="tabler:volume-off" aria-hidden="true" />
+                      <Icon
+                        :name="u.paused ? 'tabler:player-pause' : 'tabler:volume-off'"
+                        class="text-[13px] text-white"
+                        aria-hidden="true"
+                      />
                     </div>
                   </Transition>
                 </div>

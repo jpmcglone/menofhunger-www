@@ -69,20 +69,26 @@
                     bg-class="moh-surface dark:bg-black"
                     :show-presence="false"
                   />
+                  <TransitionGroup name="moh-reaction-float">
+                    <span
+                      v-for="r in getFloating(u.id)"
+                      :key="r.key"
+                      class="moh-reaction-float absolute inset-0 flex items-center justify-center text-2xl font-bold pointer-events-none select-none"
+                      :style="r.color ? { color: r.color } : undefined"
+                      aria-hidden="true"
+                    >{{ r.emoji }}</span>
+                  </TransitionGroup>
                   <Transition name="moh-avatar-pause-fade">
                     <div
-                      v-if="u.paused"
-                      class="absolute inset-0 rounded-full bg-black/30 flex items-center justify-center moh-avatar-pause moh-avatar-pause-sm"
+                      v-if="u.paused || u.muted"
+                      class="absolute -bottom-1 -right-1 h-6 w-6 rounded-full bg-black/70 flex items-center justify-center ring-1 ring-white/20"
                       aria-hidden="true"
                     >
-                      <Icon name="tabler:player-pause" aria-hidden="true" />
-                    </div>
-                    <div
-                      v-else-if="u.muted"
-                      class="absolute inset-0 rounded-full bg-black/30 flex items-center justify-center moh-avatar-pause moh-avatar-pause-sm"
-                      aria-hidden="true"
-                    >
-                      <Icon name="tabler:volume-off" aria-hidden="true" />
+                      <Icon
+                        :name="u.paused ? 'tabler:player-pause' : 'tabler:volume-off'"
+                        class="text-[13px] text-white"
+                        aria-hidden="true"
+                      />
                     </div>
                   </Transition>
                 </div>
@@ -99,25 +105,44 @@
                     bg-class="moh-surface dark:bg-black"
                     :show-presence="false"
                   />
+                  <TransitionGroup name="moh-reaction-float">
+                    <span
+                      v-for="r in getFloating(u.id)"
+                      :key="r.key"
+                      class="moh-reaction-float absolute inset-0 flex items-center justify-center text-2xl font-bold pointer-events-none select-none"
+                      :style="r.color ? { color: r.color } : undefined"
+                      aria-hidden="true"
+                    >{{ r.emoji }}</span>
+                  </TransitionGroup>
                   <Transition name="moh-avatar-pause-fade">
                     <div
-                      v-if="u.paused"
-                      class="absolute inset-0 rounded-full bg-black/30 flex items-center justify-center moh-avatar-pause moh-avatar-pause-sm"
+                      v-if="u.paused || u.muted"
+                      class="absolute -bottom-1 -right-1 h-6 w-6 rounded-full bg-black/70 flex items-center justify-center ring-1 ring-white/20"
                       aria-hidden="true"
                     >
-                      <Icon name="tabler:player-pause" aria-hidden="true" />
-                    </div>
-                    <div
-                      v-else-if="u.muted"
-                      class="absolute inset-0 rounded-full bg-black/30 flex items-center justify-center moh-avatar-pause moh-avatar-pause-sm"
-                      aria-hidden="true"
-                    >
-                      <Icon name="tabler:volume-off" aria-hidden="true" />
+                      <Icon
+                        :name="u.paused ? 'tabler:player-pause' : 'tabler:volume-off'"
+                        class="text-[13px] text-white"
+                        aria-hidden="true"
+                      />
                     </div>
                   </Transition>
                 </div>
               </div>
             </template>
+          </div>
+
+          <div v-if="currentSpace" class="mt-4 flex flex-wrap items-center gap-1.5">
+            <button
+              v-for="r in reactions"
+              :key="r.id"
+              type="button"
+              class="moh-tap moh-focus rounded-lg p-2 text-xl leading-none transition-transform active:scale-90 moh-surface-hover"
+              :aria-label="r.label"
+              @click="onReactionClick(r.id, r.emoji)"
+            >
+              {{ r.emoji }}
+            </button>
           </div>
         </div>
       </template>
@@ -126,7 +151,7 @@
 </template>
 
 <script setup lang="ts">
-import type { Space } from '~/types/api'
+import type { Space, SpaceReactionEvent } from '~/types/api'
 import { tinyTooltip } from '~/utils/tiny-tooltip'
 
 const route = useRoute()
@@ -137,6 +162,17 @@ const { spaces, loading, loadedOnce, loadSpaces, hydrateSpaces, getById } = useS
 const { selectedSpaceId, select, leave, currentSpace, members, subscribeLobbyCounts, unsubscribeLobbyCounts } = useSpaceLobby()
 const { stop } = useSpaceAudio()
 const spaceChatSheetOpen = useState<boolean>('space-chat-sheet-open', () => false)
+const { user, ensureLoaded } = useAuth()
+const presence = usePresence()
+
+const { reactions, loadReactions, addFloating, getFloating, clearAllFloating } = useSpaceReactions()
+
+const spacesReactionsCb = {
+  onReaction: (payload: SpaceReactionEvent) => {
+    if (!payload?.spaceId || payload.spaceId !== id.value) return
+    addFloating(payload.userId, payload.emoji)
+  },
+}
 
 // Fetch spaces for this page. Reuses existing client state when available (avoids refetch on
 // client-side nav from /spaces). Falls back to API when state is empty (direct link, hard refresh).
@@ -160,6 +196,12 @@ if (import.meta.server && id.value && spacesPayload.value) {
 const space = computed(() => (id.value ? getById(id.value) : null))
 const lobbyMembers = computed(() => members.value ?? [])
 
+function onReactionClick(reactionId: string, emoji: string) {
+  const meId = user.value?.id ?? null
+  if (meId) addFloating(meId, emoji)
+  presence.emitSpacesReaction(id.value, reactionId)
+}
+
 async function onLeave() {
   spaceChatSheetOpen.value = false
   await navigateTo('/spaces')
@@ -178,20 +220,28 @@ async function enterThisSpace(spaceId: string) {
 onMounted(async () => {
   // Fallback: if SSR fetch failed or this is an isolated navigation, ensure spaces are loaded.
   if (!loadedOnce.value) await loadSpaces()
+  await ensureLoaded()
+  void loadReactions()
 
   const spaceId = id.value
   if (spaceId && selectedSpaceId.value !== spaceId) {
     await enterThisSpace(spaceId)
   }
+  presence.addSpacesCallback(spacesReactionsCb as any)
 
   await subscribeLobbyCounts()
   useNuxtApp().callHook('page:loading:end')
   useLoadingIndicator().finish({ force: true })
 })
 
+onBeforeUnmount(() => {
+  presence.removeSpacesCallback(spacesReactionsCb as any)
+})
+
 // Re-enter when navigating between two spaces (component is reused by Nuxt).
 watch(id, async (newId) => {
   if (!import.meta.client || !newId) return
+  clearAllFloating()
   await enterThisSpace(newId)
 })
 

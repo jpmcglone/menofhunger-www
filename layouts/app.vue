@@ -786,7 +786,7 @@ onBeforeUnmount(() => {
   if (connectionBarRemoveListeners) connectionBarRemoveListeners()
 })
 
-const { hideTopBar, navCompactMode, isRightRailForcedHidden, isRightRailSearchHidden, title } = useLayoutRules(route)
+const { hideTopBar, navCompactMode, isRightRailForcedHidden: _isRightRailForcedHiddenBase, isRightRailSearchHidden, title } = useLayoutRules(route)
 const isMessagesPage = computed(() => route.path === '/chat')
 const isOnlyMePage = computed(() => route.path === '/only-me')
 const viewerIsVerified = computed(() => (user.value?.verifiedStatus ?? 'none') !== 'none')
@@ -1078,6 +1078,14 @@ const middleContentEl = ref<HTMLElement | null>(null)
 
 const { selectedSpaceId, currentSpace } = useSpaceLobby()
 const radioHasStation = computed(() => Boolean(selectedSpaceId.value))
+
+// On /chat, force the right rail visible when the user is in a live space so they
+// can see the conversation list, DM chat, and live chat simultaneously.
+const isRightRailForcedHidden = computed(() => {
+  if (_isRightRailForcedHiddenBase.value && isMessagesPage.value && selectedSpaceId.value) return false
+  return _isRightRailForcedHiddenBase.value
+})
+
 const isRightRailBreakpointUp = useMediaQuery('(min-width: 962px)')
 const isRightRailVisible = computed(() => Boolean(isRightRailBreakpointUp.value) && !isRightRailForcedHidden.value)
 // Prefer live chat in the right rail whenever a space is selected (where rail is available).

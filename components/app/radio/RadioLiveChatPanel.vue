@@ -1,21 +1,27 @@
 <template>
-  <section class="h-full min-h-0 flex flex-col moh-bg moh-texture">
+  <section class="h-full min-h-0 flex flex-col">
     <header
       v-if="showHeader"
       class="shrink-0 px-4 py-3 border-b moh-border-subtle flex items-center justify-between gap-3"
     >
       <div class="min-w-0">
-        <div class="moh-h2">Live chat</div>
-        <div class="mt-0.5 text-xs text-gray-600 dark:text-gray-300 truncate">
-          {{ stationName }}
+        <div class="moh-h2 truncate">{{ stationName }}</div>
+        <div class="mt-0.5 text-xs text-gray-600 dark:text-gray-300">
+          Live chat
         </div>
       </div>
       <div class="shrink-0 flex items-center gap-2">
-        <span class="text-[11px] font-semibold rounded-full border moh-border px-2 py-1 text-gray-600 dark:text-gray-300">
-          Not saved
-        </span>
         <div class="text-xs text-gray-500 dark:text-gray-400 tabular-nums">
-          {{ messages.length }}
+          {{ chatMessageCount }}
+        </div>
+        <div class="relative group">
+          <span class="inline-flex items-center gap-1 text-[11px] font-semibold rounded-full border moh-border px-2 py-1 text-gray-600 dark:text-gray-300 cursor-default select-none">
+            <Icon name="tabler:clock-off" class="text-[11px] opacity-70" aria-hidden="true" />
+            Not saved
+          </span>
+          <div class="pointer-events-none absolute right-0 top-full mt-1.5 z-50 w-48 rounded-lg border moh-border moh-surface px-3 py-2 text-xs text-gray-700 dark:text-gray-300 shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+            These messages disappear when you leave — nothing is stored or saved.
+          </div>
         </div>
       </div>
     </header>
@@ -101,6 +107,8 @@
         :user="composerUser"
         :disabled="!spaceId"
         :placeholder="spaceId ? 'Chat…' : 'Select a space to chat…'"
+        :priority-users="lobbyMentionCandidates"
+        :priority-section-title="stationName"
         @send="onSend"
       />
     </div>
@@ -112,6 +120,7 @@ import { useBottomAnchoredList } from '~/composables/useBottomAnchoredList'
 import RadioLiveChatMessageList from '~/components/app/radio/RadioLiveChatMessageList.vue'
 import AppDmComposer from '~/components/app/DmComposer.vue'
 import { userColorTier } from '~/utils/user-tier'
+import type { FollowListUser } from '~/types/api'
 
 withDefaults(defineProps<{ showHeader?: boolean }>(), {
   showHeader: true,
@@ -120,11 +129,29 @@ withDefaults(defineProps<{ showHeader?: boolean }>(), {
 const { spaceId, messages, sendMessage, typingNameClass, typingUsersForDisplay, typingUsersTotalCount } = useSpaceLiveChat({
   passive: true,
 })
-const { currentSpace } = useSpaceLobby()
+const { currentSpace, members } = useSpaceLobby()
 const { user } = useAuth()
+
+const lobbyMentionCandidates = computed<FollowListUser[]>(() =>
+  members.value
+    .filter((m) => Boolean(m.username))
+    .map((m) => ({
+      id: m.id,
+      username: m.username,
+      name: null,
+      premium: m.premium,
+      premiumPlus: m.premiumPlus,
+      isOrganization: m.isOrganization,
+      stewardBadgeEnabled: false,
+      verifiedStatus: m.verifiedStatus,
+      avatarUrl: m.avatarUrl,
+      relationship: { viewerFollowsUser: false, userFollowsViewer: false, viewerPostNotificationsEnabled: false },
+    })),
+)
 const presence = usePresence()
 
 const stationName = computed(() => currentSpace.value?.name ?? 'Space')
+const chatMessageCount = computed(() => messages.value.filter(m => m.kind === 'user').length)
 
 const scrollerEl = ref<HTMLElement | null>(null)
 const {

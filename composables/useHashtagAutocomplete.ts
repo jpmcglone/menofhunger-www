@@ -300,6 +300,7 @@ export function useHashtagAutocomplete(opts: {
 
   function onKeydown(e: KeyboardEvent): boolean {
     if (!open.value) return false
+    if (e.defaultPrevented) return true
 
     if (e.key === 'ArrowDown') {
       e.preventDefault()

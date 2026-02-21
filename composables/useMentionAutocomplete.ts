@@ -57,6 +57,8 @@ function scoreUsernameMode(u: MentionUser, q: string): number {
   return 0
 }
 
+export type MentionSection = { title: string; startIndex: number; count: number }
+
 export function useMentionAutocomplete(opts: {
   /** Ref to the actual textarea/input element when available. */
   el: Ref<HTMLTextAreaElement | HTMLInputElement | null>
@@ -70,6 +72,14 @@ export function useMentionAutocomplete(opts: {
   debounceMs?: number
   /** Search limit. */
   limit?: number
+  /**
+   * When provided, these users appear in a pinned top section (e.g. lobby members).
+   * The API is still queried for the remaining "Everyone" section below.
+   * When null/undefined, no sections are used (flat list, API-only).
+   */
+  priorityUsers?: Ref<MentionUser[] | null>
+  /** Label for the priority section header (default: "Here"). */
+  prioritySectionTitle?: string
 }) {
   const { apiFetchData } = useApiClient()
 
@@ -81,6 +91,8 @@ export function useMentionAutocomplete(opts: {
   const highlightedIndex = ref(0)
   const anchor = ref<CaretPoint | null>(null)
   const active = ref<ActiveMention | null>(null)
+  // Number of items at the start of `items` that belong to the priority section.
+  const prioritySectionCount = ref(0)
 
   const limit = typeof opts.limit === 'number' ? Math.max(3, Math.min(20, Math.floor(opts.limit))) : DEFAULT_LIMIT
   const debounceMs = typeof opts.debounceMs === 'number' ? clamp(Math.floor(opts.debounceMs), 0, 600) : 120
@@ -99,6 +111,22 @@ export function useMentionAutocomplete(opts: {
   /** Username (lowercase) -> tier for mentions the user has selected in this session. */
   const mentionTiers = ref<Record<string, MentionTier>>({})
   const mounted = ref(false)
+
+  /**
+   * When priorityUsers is set and we have ≥2 non-empty groups, expose section metadata
+   * so the popover can render labeled headers. Empty when no sections are needed.
+   */
+  const sections = computed<MentionSection[]>(() => {
+    if (!opts.priorityUsers?.value) return []
+    const pCount = prioritySectionCount.value
+    const otherCount = items.value.length - pCount
+    // Only show headers when both sections have results — avoids a lone header label.
+    if (pCount <= 0 || otherCount <= 0) return []
+    return [
+      { title: opts.prioritySectionTitle ?? 'Here', startIndex: 0, count: pCount },
+      { title: 'Everyone', startIndex: pCount, count: otherCount },
+    ]
+  })
 
   function pruneCache() {
     while (cache.size > MAX_CACHE_ENTRIES) {
@@ -244,22 +272,38 @@ export function useMentionAutocomplete(opts: {
       const res = await apiFetchData<MentionUser[]>('/search', {
         method: 'GET',
         query: { type: 'users', q, limit },
-        // Autocomplete should revalidate often; bypass HTTP caches so results update quickly.
         cache: 'no-store',
         headers: { 'Cache-Control': 'no-cache' },
         signal: controller.signal,
       })
       const raw = Array.isArray(res) ? res : []
       const mentionable = raw.filter((u) => Boolean((u.username ?? '').trim()))
-      const ranked = rerank(mentionable, q)
-      if (activeRequestId !== requestId) return
-      setItems(ranked)
-      if (qNorm) {
-        cache.set(qNorm, { expiresAt: now + CACHE_TTL_MS, items: ranked })
-        pruneCache()
+
+      const priorities = opts.priorityUsers?.value
+      if (priorities !== undefined && priorities !== null) {
+        // Merge: priority section first (local filter), then API results that aren't already there.
+        const priorityMatches = rerank(priorities, q).slice(0, limit)
+        const priorityIds = new Set(priorityMatches.map((u) => u.id))
+        const apiOnly = rerank(mentionable.filter((u) => !priorityIds.has(u.id)), q)
+        const merged = [...priorityMatches, ...apiOnly]
+        if (activeRequestId !== requestId) return
+        prioritySectionCount.value = priorityMatches.length
+        setItems(merged)
+        if (qNorm) {
+          // Cache only the API portion so future non-lobby contexts aren't polluted.
+          cache.set(qNorm, { expiresAt: now + CACHE_TTL_MS, items: rerank(mentionable, q) })
+          pruneCache()
+        }
+      } else {
+        const ranked = rerank(mentionable, q)
+        if (activeRequestId !== requestId) return
+        setItems(ranked)
+        if (qNorm) {
+          cache.set(qNorm, { expiresAt: now + CACHE_TTL_MS, items: ranked })
+          pruneCache()
+        }
       }
     } catch (e: unknown) {
-      // Abort is expected during rapid typing.
       if ((e as any)?.name === 'AbortError') return
       if (activeRequestId !== requestId) return
       items.value = []
@@ -275,24 +319,40 @@ export function useMentionAutocomplete(opts: {
     const qNorm = normalize(q)
 
     if (debounceTimer) clearTimeout(debounceTimer)
-    // If user just typed '@' (empty query), open immediately with recent/cache and don't hit network.
+
+    const priorities = opts.priorityUsers?.value
+    const hasPriority = priorities !== undefined && priorities !== null
+
+    // When priority users are set, show them immediately as a local pre-population while
+    // we wait for the API to fill in the "Everyone" section below.
+    if (hasPriority) {
+      const matched = rerank(priorities!, q).slice(0, limit)
+      prioritySectionCount.value = matched.length
+      items.value = matched
+    }
+
+    // If user just typed '@' (empty query), show recent/priority immediately — no network call needed.
     if (!q) {
-      items.value = recent.value?.length ? recent.value : (globalMentionRecent ?? [])
+      if (!hasPriority) {
+        items.value = recent.value?.length ? recent.value : (globalMentionRecent ?? [])
+      }
       updateAnchor()
       highlightedIndex.value = 0
       lastQueryNorm = ''
       return
     }
 
-    // Show best cached prefix immediately (prevents flicker and keeps results "sticky" while fetching).
-    const cached = qNorm ? getBestCached(qNorm) : null
-    if (cached) items.value = cached
+    // For non-priority mode, show best cached prefix immediately to avoid flicker.
+    if (!hasPriority) {
+      const cached = qNorm ? getBestCached(qNorm) : null
+      if (cached) items.value = cached
+    }
 
     const queryChanged = qNorm !== (lastQueryNorm ?? null)
     if (queryChanged) highlightedIndex.value = 0
     lastQueryNorm = qNorm
 
-    // Fetch faster for first character; debounce a bit more for subsequent typing.
+    // Fetch faster for first character; debounce more for subsequent typing.
     const delay = q.length <= 1 ? 0 : debounceMs
     const requestId = ++requestSeq
     activeRequestId = requestId
@@ -300,7 +360,6 @@ export function useMentionAutocomplete(opts: {
       debounceTimer = null
       void fetchUsers(q, requestId)
     }, delay)
-    // Update anchor eagerly so the popover tracks the caret while typing.
     updateAnchor()
   }
 
@@ -365,6 +424,9 @@ export function useMentionAutocomplete(opts: {
 
   function onKeydown(e: KeyboardEvent): boolean {
     if (!open.value) return false
+    // Guard against double-firing when both a Vue @keydown handler and bindDomEvents
+    // attach to the same element (one already handled and prevented the event).
+    if (e.defaultPrevented) return true
 
     if (e.key === 'ArrowDown') {
       e.preventDefault()
@@ -515,12 +577,14 @@ export function useMentionAutocomplete(opts: {
     highlightedIndex: number
     anchor: CaretPoint | null
     listboxId: string
+    sections: MentionSection[]
   }>({
     open: false,
     items: [],
     highlightedIndex: 0,
     anchor: null,
     listboxId,
+    sections: [],
   })
   watchEffect(() => {
     popoverProps.open = open.value
@@ -528,6 +592,7 @@ export function useMentionAutocomplete(opts: {
     popoverProps.highlightedIndex = highlightedIndex.value
     popoverProps.anchor = anchor.value
     popoverProps.listboxId = listboxId
+    popoverProps.sections = sections.value
   })
 
   watch(
@@ -550,6 +615,7 @@ export function useMentionAutocomplete(opts: {
     // state
     open: readonly(open),
     items: readonly(items),
+    sections: readonly(sections),
     highlightedIndex,
     anchor: readonly(anchor),
     active: readonly(active),

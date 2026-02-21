@@ -11,6 +11,7 @@ import type {
   SpaceChatSnapshot,
   SpaceLobbyCounts,
   SpaceMember,
+  SpaceReactionEvent,
   WsAdminUpdatedPayload,
   WsFollowsChangedPayload,
   WsNotificationsDeletedPayload,
@@ -66,12 +67,14 @@ export type SpacesLobbyCountsPayload = SpaceLobbyCounts
 export type SpacesChatSnapshotPayload = SpaceChatSnapshot
 export type SpacesChatMessagePayload = { spaceId: string; message: SpaceChatMessage }
 export type SpacesTypingPayload = { spaceId: string; sender: SpaceChatSender; typing?: boolean }
+export type SpacesReactionPayload = SpaceReactionEvent
 export type SpacesCallback = {
   onMembers?: (payload: SpacesMembersPayload) => void
   onLobbyCounts?: (payload: SpacesLobbyCountsPayload) => void
   onChatSnapshot?: (payload: SpacesChatSnapshotPayload) => void
   onChatMessage?: (payload: SpacesChatMessagePayload) => void
   onTyping?: (payload: SpacesTypingPayload) => void
+  onReaction?: (payload: SpacesReactionPayload) => void
 }
 
 export type MessagesCallback = {
@@ -724,6 +727,18 @@ export function usePresence() {
       }
     })
 
+    socket.on('spaces:reaction', (data: SpaceReactionEvent) => {
+      if (!spacesCallbacks.value.size) return
+      const spaceId = String((data as any)?.spaceId ?? '').trim()
+      const userId = String((data as any)?.userId ?? '').trim()
+      const reactionId = String((data as any)?.reactionId ?? '').trim()
+      const emoji = String((data as any)?.emoji ?? '').trim()
+      if (!spaceId || !userId || !emoji) return
+      for (const cb of spacesCallbacks.value) {
+        cb.onReaction?.({ spaceId, userId, reactionId, emoji })
+      }
+    })
+
     socket.on('messages:typing', (data: { conversationId?: string; userId?: string; typing?: boolean }) => {
       if (!messagesCallbacks.value.size) return
       for (const cb of messagesCallbacks.value) {
@@ -1097,6 +1112,13 @@ export function usePresence() {
       const id = String(spaceId ?? '').trim()
       if (!socket?.connected || !id) return
       socket.emit('spaces:typing', { spaceId: id, typing: Boolean(typing) })
+    },
+    emitSpacesReaction(spaceId: string, reactionId: string) {
+      const socket = socketRef.value
+      const sid = String(spaceId ?? '').trim()
+      const rid = String(reactionId ?? '').trim()
+      if (!socket?.connected || !sid || !rid) return
+      socket.emit('spaces:reaction', { spaceId: sid, reactionId: rid })
     },
     emitMessagesScreen(active: boolean) {
       const socket = socketRef.value

@@ -3,7 +3,7 @@
     <p class="whitespace-pre-wrap break-words">
       <template v-for="(seg, idx) in displayBodySegments" :key="idx">
         <a
-          v-if="seg.href"
+          v-if="seg.kind === 'link'"
           :href="seg.href"
           target="_blank"
           rel="noopener noreferrer"
@@ -12,6 +12,30 @@
         >
           {{ seg.text }}
         </a>
+        <NuxtLink
+          v-else-if="seg.kind === 'mention' && seg.isKnown"
+          :to="`/u/${seg.username}`"
+          class="font-bold hover:underline"
+          :class="onColoredBackground ? 'text-white' : ''"
+          :style="onColoredBackground ? undefined : { color: userTierColorVar(tierForUsername(seg.username!)) ?? 'var(--p-primary-color)' }"
+          @mouseenter="(e: MouseEvent) => onMentionEnter(e, seg.username!)"
+          @mousemove="onMentionMove"
+          @mouseleave="onMentionLeave"
+          @click.stop
+        >{{ seg.text }}</NuxtLink>
+        <span
+          v-else-if="seg.kind === 'mention'"
+          class="font-bold"
+          :class="onColoredBackground ? 'opacity-70' : 'opacity-60'"
+        >{{ seg.text }}</span>
+        <NuxtLink
+          v-else-if="seg.kind === 'hashtag'"
+          :to="{ path: '/explore', query: { q: `#${seg.tag}` } }"
+          class="font-medium hover:underline underline-offset-2"
+          :class="onColoredBackground ? 'text-white' : ''"
+          :style="onColoredBackground ? undefined : { color: hashtagColor }"
+          @click.stop
+        >{{ seg.text }}</NuxtLink>
         <span v-else>{{ seg.text }}</span>
       </template>
     </p>
@@ -58,13 +82,53 @@ import { extractLinksFromText, safeUrlDisplay, safeUrlHostname } from '~/utils/l
 import type { LinkMetadata } from '~/utils/link-metadata'
 import { getLinkMetadata } from '~/utils/link-metadata'
 
-type TextSegment = { text: string; href?: string }
+import { HASHTAG_IN_TEXT_DISPLAY_RE } from '~/utils/hashtag-autocomplete'
+import { userTierColorVar } from '~/utils/user-tier'
+import type { UserColorTier } from '~/utils/user-tier'
+
+type TextSegment =
+  | { kind: 'text'; text: string }
+  | { kind: 'link'; text: string; href: string }
+  | { kind: 'mention'; text: string; username: string; isKnown: boolean }
+  | { kind: 'hashtag'; text: string; tag: string }
+
+const MENTION_RE = /@([a-zA-Z0-9_]+)/g
 
 const props = defineProps<{
   body: string
+  /**
+   * True when the bubble this text sits inside has a solid colored background.
+   * Mentions and hashtags render as bold white to stay visible.
+   */
+  onColoredBackground?: boolean
+  /** Sender's tier — hashtags are colored to match the sender. */
+  senderTier?: UserColorTier
 }>()
 
 const linkify = new LinkifyIt()
+
+const { validSet, tierForUsername, validateMentionsInBody } = useValidatedChatUsernames()
+
+// Hover preview
+const hoveredMention = ref('')
+const { onEnter: _onMentionEnterRaw, onMove: onMentionMove, onLeave: _onMentionLeaveRaw } = useUserPreviewTrigger({
+  username: computed(() => hoveredMention.value),
+})
+function onMentionEnter(e: MouseEvent, username: string) {
+  hoveredMention.value = username
+  _onMentionEnterRaw(e)
+}
+function onMentionLeave() {
+  hoveredMention.value = ''
+  _onMentionLeaveRaw()
+}
+
+const hashtagColor = computed(() => userTierColorVar(props.senderTier ?? 'normal') ?? 'var(--p-primary-color)')
+
+// Trigger background validation for any @mentions in this message.
+watch(() => props.body, (body) => {
+  if (body) validateMentionsInBody(body, validSet.value)
+}, { immediate: true })
 
 function escapeRegExp(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
@@ -92,29 +156,59 @@ const previewLinkDisplay = computed(() => (previewLink.value ? safeUrlDisplay(pr
 
 const displayBodySegments = computed<TextSegment[]>(() => {
   const input = (displayBody.value ?? '').toString()
-  if (!input) return [{ text: '' }]
+  if (!input) return [{ kind: 'text', text: '' }]
 
-  const matches = linkify.match(input) ?? []
-  if (!matches.length) return [{ text: input }]
+  type RangedMatch = { start: number; end: number; seg: TextSegment }
+  const allMatches: RangedMatch[] = []
+
+  // Link matches
+  const linkMatches = linkify.match(input) ?? []
+  for (const m of linkMatches) {
+    const start = typeof (m as any).index === 'number' ? ((m as any).index as number) : -1
+    const end = typeof (m as any).lastIndex === 'number' ? ((m as any).lastIndex as number) : -1
+    if (start < 0 || end <= start) continue
+    const text = input.slice(start, end)
+    const href = (m.url ?? '').trim()
+    if (href && /^https?:\/\//i.test(href)) {
+      allMatches.push({ start, end, seg: { kind: 'link', text, href } })
+    }
+  }
+
+  // Mention matches (skip ranges already claimed by a link)
+  for (const m of input.matchAll(MENTION_RE)) {
+    const start = m.index!
+    const end = start + m[0].length
+    const username = m[1]!
+    const overlaps = allMatches.some((lm) => start < lm.end && end > lm.start)
+    if (!overlaps) {
+      const isKnown = validSet.value.has(username.toLowerCase())
+      allMatches.push({ start, end, seg: { kind: 'mention', text: m[0], username, isKnown } })
+    }
+  }
+
+  // Hashtag matches (skip ranges already claimed)
+  const hashRe = new RegExp(HASHTAG_IN_TEXT_DISPLAY_RE.source, 'g')
+  for (const m of input.matchAll(hashRe)) {
+    const start = m.index!
+    const end = start + m[0].length
+    const tag = m[1]!
+    const overlaps = allMatches.some((rm) => start < rm.end && end > rm.start)
+    if (!overlaps) {
+      allMatches.push({ start, end, seg: { kind: 'hashtag', text: m[0], tag } })
+    }
+  }
+
+  allMatches.sort((a, b) => a.start - b.start)
 
   const out: TextSegment[] = []
   let cursor = 0
-
-  for (const m of matches) {
-    const start = typeof (m as any).index === 'number' ? ((m as any).index as number) : -1
-    const end = typeof (m as any).lastIndex === 'number' ? ((m as any).lastIndex as number) : -1
-    if (start < 0 || end < 0 || end <= start) continue
-    if (start > cursor) out.push({ text: input.slice(cursor, start) })
-
-    const text = input.slice(start, end)
-    const href = (m.url ?? '').trim()
-    if (href && /^https?:\/\//i.test(href)) out.push({ text, href })
-    else out.push({ text })
+  for (const { start, end, seg } of allMatches) {
+    if (start > cursor) out.push({ kind: 'text', text: input.slice(cursor, start) })
+    out.push(seg)
     cursor = end
   }
-
-  if (cursor < input.length) out.push({ text: input.slice(cursor) })
-  return out.length ? out : [{ text: input }]
+  if (cursor < input.length) out.push({ kind: 'text', text: input.slice(cursor) })
+  return out.length ? out : [{ kind: 'text', text: input }]
 })
 
 const linkMeta = ref<LinkMetadata | null>(null)

@@ -161,6 +161,9 @@ export function useUserPreviewPopover() {
         if (myToken !== token) return
         if (!state.value.hoveringTrigger) return
 
+        // Feed the chat mention cache — we already know this user exists.
+        if (preview) useValidatedChatUsernames().markValid(username, preview)
+
         state.value.username = username
         state.value.preview = preview
         // Freeze position once open so it doesn't “chase” the cursor.

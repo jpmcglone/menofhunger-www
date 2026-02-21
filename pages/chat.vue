@@ -793,8 +793,8 @@ const showScrollToBottomButton = computed(() => Boolean(selectedChatKey.value) &
 const isTabBarMode = useMediaQuery('(max-width: 639px)')
 
 const { isTinyViewport, showListPane, showDetailPane: showChatPane, gridStyle } = useTwoPaneLayout(selectedChatKey, {
-  // Keep left pane consistent with Admin/Settings.
-  leftCols: '22rem',
+  // Cap left at 22rem but never more than 45% so the chat panel is always at least as wide.
+  leftCols: 'min(22rem, 45%)',
   rightCols: '1fr',
   minWidth: 1024,
   // Messages should not collapse panes due to short viewport height.

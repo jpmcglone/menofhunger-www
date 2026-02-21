@@ -71,7 +71,11 @@
             ]"
           >
             <div class="space-y-1">
-              <AppChatMessageRichBody :body="item.message.body" />
+              <AppChatMessageRichBody
+                :body="item.message.body"
+                :sender-tier="userColorTier(item.message.sender as any)"
+                :on-colored-background="item.message.sender.id === meId && userColorTier(item.message.sender as any) !== 'normal'"
+              />
               <div
                 v-if="shouldShowMessageMeta(item, listIndex)"
                 class="flex justify-end"
@@ -112,6 +116,7 @@ import type { PropType } from 'vue'
 import type { Message, MessageUser } from '~/types/api'
 import type { ChatListItem } from '~/composables/chat/useChatTimeFormatting'
 import { useUsersStore } from '~/composables/useUsersStore'
+import { userColorTier } from '~/utils/user-tier'
 
 const props = defineProps({
   messagesReady: { type: Boolean, required: true },

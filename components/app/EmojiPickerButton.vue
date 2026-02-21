@@ -20,7 +20,7 @@
       <div
         v-if="open"
         ref="panelEl"
-        class="moh-emoji-popover fixed z-[1100] w-fit max-w-[92vw] border moh-border bg-white shadow-2xl dark:bg-zinc-950"
+        class="moh-emoji-popover fixed z-[10100] w-fit max-w-[92vw] border moh-border bg-white shadow-2xl dark:bg-zinc-950"
         :style="panelStyle"
         role="dialog"
         aria-label="Emoji picker"

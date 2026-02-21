@@ -12,7 +12,7 @@ export function useNudge() {
     const u = (username ?? '').trim().toLowerCase()
     if (!u) return
     // Profile follow summary is cached via useAsyncData('follow-summary:<username>') on /u/:username.
-    clearNuxtData(`follow-summary:${u}`)
+    refreshNuxtData(`follow-summary:${u}`)
   }
 
   async function nudgeUser(username: string): Promise<NudgeSendResponse> {

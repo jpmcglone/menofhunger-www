@@ -494,9 +494,9 @@ function onUnfollowed() {
 
 function onNudgeUpdated(next: import('~/types/api').NudgeState | null) {
   const s = followSummaryData.value
-  if (!s) return
-  followSummaryData.value = { ...s, nudge: next }
-  // Reconcile with server state (cooldowns / inbound IDs) without a visible flicker.
+  if (s) {
+    followSummaryData.value = { ...s, nudge: next }
+  }
   void refreshFollowSummary()
 }
 

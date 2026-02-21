@@ -1,7 +1,7 @@
 <template>
   <!-- Own padding so layout containers can stay padding-free. -->
   <div v-if="displaySpace" class="w-full px-3 py-1.5 sm:px-4 sm:py-2">
-    <div class="flex w-full items-center justify-between gap-3">
+    <div ref="barEl" class="flex w-full items-center justify-between gap-3">
     <NuxtLink
       v-if="selectedSpaceId"
       :to="`/spaces/${encodeURIComponent(selectedSpaceId)}`"
@@ -55,26 +55,31 @@
             >
               <AppUserAvatar
                 :user="{ id: u.id, username: u.username, avatarUrl: u.avatarUrl }"
-                size-class="h-6 w-6"
+                size-class="h-8 w-8"
                 bg-class="moh-surface dark:bg-black"
                 :show-presence="false"
               />
               <Transition name="moh-avatar-pause-fade">
                 <div
-                  v-if="u.paused"
-                  class="absolute inset-0 rounded-full bg-black/30 flex items-center justify-center moh-avatar-pause moh-avatar-pause-sm"
+                  v-if="u.paused || u.muted"
+                  class="absolute -bottom-1 -right-1 h-5 w-5 rounded-full bg-black/70 flex items-center justify-center ring-1 ring-white/20"
                   aria-hidden="true"
                 >
-                  <Icon name="tabler:player-pause" aria-hidden="true" />
-                </div>
-                <div
-                  v-else-if="u.muted"
-                  class="absolute inset-0 rounded-full bg-black/30 flex items-center justify-center moh-avatar-pause moh-avatar-pause-sm"
-                  aria-hidden="true"
-                >
-                  <Icon name="tabler:volume-off" aria-hidden="true" />
+                  <Icon
+                    :name="u.paused ? 'tabler:player-pause' : 'tabler:volume-off'"
+                    class="text-[11px] text-white"
+                    aria-hidden="true"
+                  />
                 </div>
               </Transition>
+              <TransitionGroup name="moh-reaction-float" tag="div" class="absolute inset-0 pointer-events-none">
+                <span
+                  v-for="r in getFloating(u.id)"
+                  :key="r.key"
+                  class="moh-reaction-float absolute inset-0 flex items-center justify-center text-lg font-bold pointer-events-none select-none"
+                  :style="r.color ? { color: r.color } : undefined"
+                >{{ r.emoji }}</span>
+              </TransitionGroup>
             </NuxtLink>
             <div
               v-else
@@ -83,26 +88,31 @@
             >
               <AppUserAvatar
                 :user="{ id: u.id, username: u.username, avatarUrl: u.avatarUrl }"
-                size-class="h-6 w-6"
+                size-class="h-8 w-8"
                 bg-class="moh-surface dark:bg-black"
                 :show-presence="false"
               />
               <Transition name="moh-avatar-pause-fade">
                 <div
-                  v-if="u.paused"
-                  class="absolute inset-0 rounded-full bg-black/30 flex items-center justify-center moh-avatar-pause moh-avatar-pause-sm"
+                  v-if="u.paused || u.muted"
+                  class="absolute -bottom-1 -right-1 h-5 w-5 rounded-full bg-black/70 flex items-center justify-center ring-1 ring-white/20"
                   aria-hidden="true"
                 >
-                  <Icon name="tabler:player-pause" aria-hidden="true" />
-                </div>
-                <div
-                  v-else-if="u.muted"
-                  class="absolute inset-0 rounded-full bg-black/30 flex items-center justify-center moh-avatar-pause moh-avatar-pause-sm"
-                  aria-hidden="true"
-                >
-                  <Icon name="tabler:volume-off" aria-hidden="true" />
+                  <Icon
+                    :name="u.paused ? 'tabler:player-pause' : 'tabler:volume-off'"
+                    class="text-[11px] text-white"
+                    aria-hidden="true"
+                  />
                 </div>
               </Transition>
+              <TransitionGroup name="moh-reaction-float" tag="div" class="absolute inset-0 pointer-events-none">
+                <span
+                  v-for="r in getFloating(u.id)"
+                  :key="r.key"
+                  class="moh-reaction-float absolute inset-0 flex items-center justify-center text-lg font-bold pointer-events-none select-none"
+                  :style="r.color ? { color: r.color } : undefined"
+                >{{ r.emoji }}</span>
+              </TransitionGroup>
             </div>
           </template>
         </TransitionGroup>
@@ -111,75 +121,75 @@
         </div>
       </div>
 
-      <!-- Volume (smaller + to the right of avatars) -->
-      <div
-        v-if="hasStation"
-        :class="['flex items-center gap-1.5 shrink-0', showListenerStack ? 'ml-2 sm:ml-3' : '']"
-      >
+      <!-- Controls: volume, play/pause, chat, leave -->
+      <div ref="controlsEl" class="shrink-0 flex items-center gap-1.5">
+        <!-- Volume -->
+        <div v-if="hasStation" class="flex items-center gap-1.5">
+          <button
+            type="button"
+            class="moh-tap moh-focus inline-flex h-11 w-11 items-center justify-center rounded-full transition-colors moh-surface-hover"
+            :aria-label="isMuted ? 'Unmute' : 'Mute'"
+            @click="toggleMute"
+          >
+            <Icon :name="volumeIconName" class="text-[18px] opacity-80" aria-hidden="true" />
+          </button>
+          <input
+            v-model.number="volumePercent"
+            type="range"
+            name="space-volume"
+            min="0"
+            max="100"
+            step="1"
+            class="w-12 sm:w-16 accent-black dark:accent-white"
+            aria-label="Volume"
+          >
+        </div>
+
+        <!-- Buffering spinner or play/pause -->
+        <div
+          v-if="hasStation && isBuffering"
+          class="inline-flex h-11 w-11 items-center justify-center rounded-full"
+          aria-label="Loading"
+          role="status"
+        >
+          <Icon name="tabler:loader" class="text-[18px] opacity-80 animate-spin" aria-hidden="true" />
+        </div>
+        <button
+          v-else-if="hasStation"
+          type="button"
+          class="moh-tap moh-focus inline-flex h-11 w-11 items-center justify-center rounded-full transition-colors moh-surface-hover"
+          :aria-label="isPlaying ? 'Pause' : 'Play'"
+          @click="toggle"
+        >
+          <Icon :name="isPlaying ? 'tabler:player-pause' : 'tabler:player-play'" class="text-[18px] opacity-90" aria-hidden="true" />
+        </button>
+
+        <!-- Toggle live chat overlay -->
+        <button
+          v-if="selectedSpaceId && !isRightRailChatVisible"
+          type="button"
+          class="moh-tap moh-focus inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/30 dark:border-white/30 transition-colors moh-surface-hover"
+          :aria-label="spaceChatSheetOpen ? 'Close live chat' : 'Open live chat'"
+          @click="toggleChatSheet"
+        >
+          <Icon name="tabler:messages" class="text-[18px] opacity-90" aria-hidden="true" />
+        </button>
+
         <button
           type="button"
           class="moh-tap moh-focus inline-flex h-11 w-11 items-center justify-center rounded-full transition-colors moh-surface-hover"
-          :aria-label="isMuted ? 'Unmute' : 'Mute'"
-          @click="toggleMute"
+          aria-label="Leave space"
+          @click="onLeaveClick"
         >
-          <Icon :name="volumeIconName" class="text-[18px] opacity-80" aria-hidden="true" />
+          <Icon name="tabler:x" class="text-[18px] opacity-90" aria-hidden="true" />
         </button>
-        <input
-          v-model.number="volumePercent"
-          type="range"
-          name="space-volume"
-          min="0"
-          max="100"
-          step="1"
-          class="w-12 sm:w-16 accent-black dark:accent-white"
-          aria-label="Volume"
-        >
       </div>
-
-      <div
-        v-if="hasStation && isBuffering"
-        class="h-8 w-8 flex items-center justify-center"
-        aria-label="Loading"
-        role="status"
-      >
-        <Icon name="tabler:loader" class="text-[18px] opacity-80 animate-spin" aria-hidden="true" />
-      </div>
-
-      <button
-        v-else-if="hasStation"
-        type="button"
-        class="moh-tap moh-focus inline-flex h-11 w-11 items-center justify-center rounded-full transition-colors moh-surface-hover"
-        :aria-label="isPlaying ? 'Pause' : 'Play'"
-        @click="toggle"
-      >
-        <Icon :name="isPlaying ? 'tabler:player-pause' : 'tabler:player-play'" class="text-[18px] opacity-90" aria-hidden="true" />
-      </button>
-
-      <!-- Toggle live chat overlay (all sizes for now) -->
-      <button
-        v-if="selectedSpaceId && !isRightRailChatVisible"
-        type="button"
-        class="moh-tap moh-focus inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/30 dark:border-white/30 transition-colors moh-surface-hover"
-        :aria-label="spaceChatSheetOpen ? 'Close live chat' : 'Open live chat'"
-        @click="toggleChatSheet"
-      >
-        <Icon name="tabler:messages" class="text-[18px] opacity-90" aria-hidden="true" />
-      </button>
-
-      <button
-        type="button"
-        class="moh-tap moh-focus inline-flex h-11 w-11 items-center justify-center rounded-full transition-colors moh-surface-hover"
-        aria-label="Leave space"
-        @click="onLeaveClick"
-      >
-        <Icon name="tabler:x" class="text-[18px] opacity-90" aria-hidden="true" />
-      </button>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { useMediaQuery } from '@vueuse/core'
+import { useMediaQuery, useElementSize } from '@vueuse/core'
 import type { Space, SpaceMember } from '~/types/api'
 import { tinyTooltip } from '~/utils/tiny-tooltip'
 import { useUsersStore } from '~/composables/useUsersStore'
@@ -189,6 +199,7 @@ function listenerProfileTo(username: string): string {
 }
 
 const { selectedSpaceId, currentSpace, members, leave } = useSpaceLobby()
+const { getFloating } = useSpaceReactions()
 const { hasStation, isPlaying, isBuffering, toggle, stop, volume, setVolume } = useSpaceAudio()
 const usersStore = useUsersStore()
 const route = useRoute()
@@ -243,9 +254,24 @@ const volumeIconName = computed(() => {
   return 'tabler:volume'
 })
 
+const barEl = ref<HTMLElement | null>(null)
+const controlsEl = ref<HTMLElement | null>(null)
+const { width: barWidth } = useElementSize(barEl)
+const { width: controlsWidth } = useElementSize(controlsEl)
+
+// Avatar: h-8 w-8 = 32px, -space-x-2 = 8px overlap → N avatars = 8 + N×24px
+// Solving: N = floor((available - 8) / 24)
+// Reserve ~140px for the space name on the left, plus gap-3 spacing
+const maxStackVisible = computed(() => {
+  if (!barWidth.value || !controlsWidth.value) return 5
+  const available = barWidth.value - controlsWidth.value - 140 - 24
+  if (available < 32) return 0
+  return Math.min(5, Math.max(0, Math.floor((available - 8) / 24)))
+})
+
 const listenerStack = computed<SpaceMember[]>(() => {
   if (!displaySpace.value) return []
-  return (members.value ?? []).slice(0, 5).map((u) => (u?.id ? (usersStore.overlay(u as any) as any) : u))
+  return (members.value ?? []).slice(0, maxStackVisible.value).map((u) => (u?.id ? (usersStore.overlay(u as any) as any) : u))
 })
 const listenerOverflowCount = computed(() => {
   if (!displaySpace.value) return 0

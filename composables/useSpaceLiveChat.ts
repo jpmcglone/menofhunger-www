@@ -1,6 +1,6 @@
 import type { SpacesCallback } from '~/composables/usePresence'
 import type { SpaceChatMessage, SpaceChatSender } from '~/types/api'
-import { userColorTier } from '~/utils/user-tier'
+import { userColorTier, userTierColorVar } from '~/utils/user-tier'
 
 const MAX_MESSAGES_PER_SPACE = 220
 const TYPING_TTL_MS = 3500
@@ -27,10 +27,37 @@ function upsertMessages(existing: SpaceChatMessage[], incoming: SpaceChatMessage
   return clampMessageList(merged)
 }
 
+
+function playMentionSound() {
+  if (!import.meta.client) return
+  try {
+    const ctx = new AudioContext()
+    const osc = ctx.createOscillator()
+    const gain = ctx.createGain()
+    osc.connect(gain)
+    gain.connect(ctx.destination)
+    osc.frequency.value = 880
+    osc.type = 'sine'
+    gain.gain.setValueAtTime(0, ctx.currentTime)
+    gain.gain.linearRampToValueAtTime(0.25, ctx.currentTime + 0.01)
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5)
+    osc.start(ctx.currentTime)
+    osc.stop(ctx.currentTime + 0.5)
+    osc.onended = () => { try { ctx.close() } catch { /* ignore */ } }
+  } catch {
+    // AudioContext may be unavailable until user has interacted with the page.
+  }
+}
+
+function extractMentionedUsernames(body: string): string[] {
+  return [...body.matchAll(/@([a-zA-Z0-9_]+)/g)].map((m) => m[1]!.toLowerCase())
+}
+
 export function useSpaceLiveChat(options: { passive?: boolean } = {}) {
   const { ensureLoaded, user } = useAuth()
   const presence = usePresence()
   const lobby = useSpaceLobby()
+  const { addFloatingEmojisFromText, addFloating } = useSpaceReactions()
   const passive = options.passive === true
 
   const messagesBySpace = useState<Record<string, SpaceChatMessage[]>>('space-live-chat-messages', () => ({}))
@@ -164,6 +191,22 @@ export function useSpaceLiveChat(options: { passive?: boolean } = {}) {
         const msg = payload?.message as SpaceChatMessage | undefined
         if (!sid || !msg?.id) return
         appendMessageForSpace(sid, msg)
+        if (msg.kind === 'user' && msg.sender?.id && msg.body) {
+          addFloatingEmojisFromText(msg.sender.id, msg.body)
+
+          // Float "@" from the sender for every mentioned user, in the SENDER's tier color.
+          const senderId = msg.sender.id
+          const senderColor = userTierColorVar(userColorTier(msg.sender)) ?? undefined
+          const myUsername = (user.value?.username ?? '').trim().toLowerCase()
+          const mentioned = extractMentionedUsernames(msg.body)
+          for (const un of mentioned) {
+            addFloating(senderId, '@', senderColor)
+            // Sound only when someone else mentions the current user.
+            if (myUsername && un === myUsername && senderId !== user.value?.id) {
+              playMentionSound()
+            }
+          }
+        }
       },
       onTyping: (payload) => {
         const sid = String(payload?.spaceId ?? '').trim()

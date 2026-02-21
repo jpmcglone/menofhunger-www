@@ -900,3 +900,32 @@ html.dark .moh-avatar-initial {
   left: 0;
   right: 0;
 }
+
+@keyframes moh-reaction-float-up {
+  0% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  20% {
+    opacity: 1;
+    transform: translateY(-8px) scale(1.3);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-52px) scale(0.8);
+  }
+}
+
+.moh-reaction-float {
+  animation: moh-reaction-float-up 1.6s ease-out forwards;
+}
+
+.moh-reaction-float-enter-active,
+.moh-reaction-float-leave-active {
+  transition: none;
+}
+
+.moh-reaction-float-enter-from,
+.moh-reaction-float-leave-to {
+  opacity: 0;
+}
