@@ -173,10 +173,6 @@ function onDocPointerDown(e: Event) {
   close()
 }
 
-function onKeydown(e: KeyboardEvent) {
-  if (e.key === 'Escape' && open.value) close()
-}
-
 const scrollOpts = { passive: true, capture: true } as const
 const pointerOpts = { capture: true } as const
 watch(open, (v, _old, onCleanup) => {
@@ -186,7 +182,6 @@ watch(open, (v, _old, onCleanup) => {
     window.removeEventListener('resize', updatePanelPosition)
     window.removeEventListener('scroll', updatePanelPosition, scrollOpts)
     document.removeEventListener('pointerdown', onDocPointerDown, pointerOpts)
-    document.removeEventListener('keydown', onKeydown, pointerOpts)
   }
 
   // Ensure cleanup runs on unmount even if `open` stays true.
@@ -196,11 +191,12 @@ watch(open, (v, _old, onCleanup) => {
     window.addEventListener('resize', updatePanelPosition, { passive: true })
     window.addEventListener('scroll', updatePanelPosition, scrollOpts)
     document.addEventListener('pointerdown', onDocPointerDown, pointerOpts)
-    document.addEventListener('keydown', onKeydown, pointerOpts)
   } else {
     teardown()
   }
 })
+
+useModalEscape(open, close)
 
 defineExpose({ close })
 

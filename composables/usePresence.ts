@@ -195,6 +195,12 @@ export function usePresence() {
   let connectionBarJustConnectedTimer: ReturnType<typeof setTimeout> | null = null
   /** True after first successful connect; used to show "disconnected" banner only after a real disconnect (not on initial load). */
   const wasSocketConnectedOnce = useState<boolean>('presence-was-socket-connected-once', () => false)
+  /**
+   * True when the most recent socket disconnect happened while the page was visible.
+   * Only in that case does the user need a "Reconnecting…" banner — if the drop happened
+   * in the background (tab hidden / app backgrounded) we reconnect silently.
+   */
+  const socketDisconnectedWhileVisible = useState<boolean>('presence-socket-disconnected-while-visible', () => false)
   /** True between emitLogout() and the resulting disconnect; prevents auto-reconnect after explicit logout. */
   let pendingLogout = false
   let serverDisconnectReconnectTimer: ReturnType<typeof setTimeout> | null = null
@@ -816,9 +822,11 @@ export function usePresence() {
         serverDisconnectReconnectTimer = null
       }
       const isReconnect = wasSocketConnectedOnce.value
+      const wasDisconnectedWhileVisible = socketDisconnectedWhileVisible.value
       wasSocketConnectedOnce.value = true
       isSocketConnected.value = true
       isSocketConnecting.value = false
+      socketDisconnectedWhileVisible.value = false
       // Prevent dings on initial load/reconnect while the server syncs unread counts / backlog.
       suppressSoundsUntilMs = Date.now() + 1500
       // Preload notification + message sounds for low-latency playback (best-effort).
@@ -826,7 +834,9 @@ export function usePresence() {
       // Show current user as online immediately (avatar / status) until server sends real presence
       const me = user.value?.id
       if (me) applyUserPresence(me, true, false)
-      if (disconnectedDueToIdle.value || isReconnect) {
+      // Only flash the "Reconnected." green bar when the banner was actually visible to the user
+      // (idle kick, or a disconnect that happened while the page was in the foreground).
+      if (disconnectedDueToIdle.value || (isReconnect && wasDisconnectedWhileVisible)) {
         disconnectedDueToIdle.value = false
         connectionBarJustConnected.value = true
         if (connectionBarJustConnectedTimer) clearTimeout(connectionBarJustConnectedTimer)
@@ -845,6 +855,10 @@ export function usePresence() {
         clearTimeout(connectionBarJustConnectedTimer)
         connectionBarJustConnectedTimer = null
       }
+      // Only raise the reconnecting banner when the user was actively viewing the app.
+      // A background disconnect (tab hidden / app backgrounded) should reconnect silently.
+      socketDisconnectedWhileVisible.value =
+        typeof document !== 'undefined' && document.visibilityState === 'visible'
       // Clear presence state so UI (e.g. avatar green dot, status page) doesn't show stale "online"
       onlineUserIds.value = new Set()
       idleUserIds.value = new Set()
@@ -894,6 +908,7 @@ export function usePresence() {
     wasSocketConnectedOnce.value = false
     isSocketConnecting.value = false
     disconnectedDueToIdle.value = false
+    socketDisconnectedWhileVisible.value = false
     connectionBarJustConnected.value = false
     if (connectionBarJustConnectedTimer) {
       clearTimeout(connectionBarJustConnectedTimer)
@@ -993,6 +1008,7 @@ export function usePresence() {
     isSocketConnecting: readonly(isSocketConnecting),
     disconnectedDueToIdle: readonly(disconnectedDueToIdle),
     wasSocketConnectedOnce: readonly(wasSocketConnectedOnce),
+    socketDisconnectedWhileVisible: readonly(socketDisconnectedWhileVisible),
     connectionBarJustConnected: readonly(connectionBarJustConnected),
     notificationUndeliveredCount: readonly(notificationUndeliveredCount),
     messageUnreadCounts: readonly(messageUnreadCounts),

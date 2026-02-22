@@ -251,8 +251,10 @@
                 </Button>
               </template>
               <AppEmojiPickerButton
+                ref="emojiPickerEl"
                 tooltip="Emoji"
                 aria-label="Insert emoji"
+                persistent
                 @select="insertEmoji"
               />
             </div>
@@ -493,6 +495,7 @@ const myProfilePath = computed(() => {
 const draft = ref('')
 const composerTextareaEl = ref<HTMLTextAreaElement | null>(null)
 const composerMirrorEl = ref<HTMLDivElement | null>(null)
+const emojiPickerEl = ref<{ close: () => void } | null>(null)
 const initialTextApplied = ref(false)
 
 const mention = useMentionAutocomplete({
@@ -1084,6 +1087,7 @@ const submit = async () => {
   }
 
   submitError.value = null
+  emojiPickerEl.value?.close()
   await submitPost()
 }
 

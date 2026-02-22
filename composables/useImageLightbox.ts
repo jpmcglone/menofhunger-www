@@ -393,10 +393,7 @@ export function useImageLightbox() {
   }
 
   function onKeydown(e: KeyboardEvent) {
-    if (e.key === 'Escape') {
-      close()
-      return
-    }
+    // Escape is handled by the global modal stack (useModalEscape below).
     if (!visible.value) return
     if (kind.value !== 'media') return
     if ((items.value?.length ?? 0) < 2) return
@@ -411,6 +408,8 @@ export function useImageLightbox() {
       return
     }
   }
+
+  useModalEscape(visible, close)
 
   if (import.meta.client && !didInitKeydown) {
     didInitKeydown = true

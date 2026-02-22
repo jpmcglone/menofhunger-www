@@ -1,85 +1,80 @@
 <template>
-  <div class="mt-3 pr-12">
+  <div class="mt-3">
     <component
       :is="permalink ? 'NuxtLink' : 'div'"
       v-bind="permalink ? { to: permalink } : {}"
-      class="overflow-hidden rounded-xl border moh-border transition-colors moh-surface-hover"
+      class="block overflow-hidden rounded-xl border moh-border transition-colors moh-surface-hover"
       role="group"
       aria-label="Embedded post preview"
       :aria-busy="showSkeleton ? 'true' : 'false'"
     >
-      <div class="p-3 min-h-[96px]">
-        <div v-if="showSkeleton" class="flex gap-3">
-          <div class="h-9 w-9 rounded-full bg-gray-200 dark:bg-zinc-800 animate-pulse" aria-hidden="true" />
-          <div class="min-w-0 flex-1 space-y-2">
-            <div class="flex items-center justify-between gap-3">
-              <div class="h-4 w-40 max-w-[60%] rounded bg-gray-200 dark:bg-zinc-800 animate-pulse" aria-hidden="true" />
-              <div class="h-3 w-10 rounded bg-gray-200 dark:bg-zinc-800 animate-pulse" aria-hidden="true" />
-            </div>
-            <div class="h-3 w-64 max-w-[85%] rounded bg-gray-200 dark:bg-zinc-800 animate-pulse" aria-hidden="true" />
-            <!-- Reserve space for media to avoid layout shift -->
-            <div class="mt-2 h-20 w-full rounded-lg bg-gray-200 dark:bg-zinc-800 animate-pulse" aria-hidden="true" />
+      <div class="p-3">
+        <!-- Skeleton -->
+        <div v-if="showSkeleton" class="space-y-2" aria-hidden="true">
+          <div class="flex items-center gap-2">
+            <div class="h-5 w-5 rounded-full bg-gray-200 dark:bg-zinc-800 animate-pulse shrink-0" />
+            <div class="h-3 w-28 rounded bg-gray-200 dark:bg-zinc-800 animate-pulse" />
+            <div class="h-3 w-16 rounded bg-gray-200 dark:bg-zinc-800 animate-pulse" />
           </div>
+          <div class="h-3 w-full rounded bg-gray-200 dark:bg-zinc-800 animate-pulse" />
+          <div class="h-3 w-4/5 rounded bg-gray-200 dark:bg-zinc-800 animate-pulse" />
         </div>
 
         <div v-else-if="errorMessage" class="text-sm text-red-600 dark:text-red-400">{{ errorMessage }}</div>
 
-        <div v-else-if="post" class="flex gap-3">
-          <AppUserAvatar
-            :user="author"
-            size-class="h-9 w-9"
-            bg-class="moh-surface"
-          />
-          <div class="min-w-0 flex-1">
-            <div class="flex items-start justify-between gap-3">
-              <div class="min-w-0 flex-1">
-                <div class="flex min-w-0 items-center gap-1.5 flex-nowrap">
-                  <span class="text-sm font-semibold moh-text truncate">
-                    {{ author?.name || author?.username || 'User' }}
-                  </span>
-                  <AppVerifiedBadge
-                    class="shrink-0"
-                    :status="author?.verifiedStatus ?? 'none'"
-                    :premium="author?.premium ?? false"
-                    :premium-plus="author?.premiumPlus ?? false"
-                    :is-organization="Boolean(author?.isOrganization)"
-                    :steward-badge-enabled="author?.stewardBadgeEnabled ?? true"
-                  />
-                </div>
-                <div class="text-[11px] moh-text-muted truncate">@{{ author?.username || 'user' }}</div>
-              </div>
-              <div class="text-[11px] moh-text-muted shrink-0">
-                {{ createdAtShort }}
-              </div>
-            </div>
+        <div v-else-if="post">
+          <!-- Compact single-line header -->
+          <div class="flex min-w-0 items-center gap-1.5">
+            <AppUserAvatar
+              :user="author"
+              size-class="h-5 w-5"
+              bg-class="moh-surface"
+            />
+            <span class="text-sm font-semibold moh-text truncate leading-none">
+              {{ author?.name || author?.username || 'User' }}
+            </span>
+            <AppVerifiedBadge
+              class="shrink-0"
+              :status="author?.verifiedStatus ?? 'none'"
+              :premium="author?.premium ?? false"
+              :premium-plus="author?.premiumPlus ?? false"
+              :is-organization="Boolean(author?.isOrganization)"
+              :steward-badge-enabled="author?.stewardBadgeEnabled ?? true"
+            />
+            <span class="text-sm moh-text-muted truncate leading-none">@{{ author?.username || 'user' }}</span>
+            <span class="ml-auto shrink-0 text-xs moh-text-muted leading-none">{{ createdAtShort }}</span>
+          </div>
 
-            <div class="mt-2 text-sm moh-text whitespace-pre-wrap break-words">
-              {{ bodyPreview }}
-            </div>
+          <!-- Body — clamped to 4 lines so the preview stays compact -->
+          <div
+            v-if="bodyPreview"
+            class="mt-1.5 text-sm moh-text break-words line-clamp-4"
+          >{{ bodyPreview }}</div>
 
-            <!-- Compact media preview (up to 4) -->
-            <div
-              v-if="mediaItems.length"
-              class="mt-2"
-              aria-hidden="true"
-            >
-              <!-- Horizontal filmstrip; overflow clipped; no user scrolling. -->
-              <div class="no-scrollbar overflow-x-auto overflow-y-hidden pointer-events-none">
-                <div class="flex gap-2 px-0">
-                  <img
-                    v-for="(m, idx) in mediaItems"
-                    :key="m.id || idx"
-                    :src="m.url"
-                    class="h-24 w-auto shrink-0 rounded-lg object-cover bg-black/5 dark:bg-white/5"
-                    alt=""
-                    loading="lazy"
-                    decoding="async"
-                  />
-                </div>
-              </div>
+          <!-- Compact media: single image or horizontal filmstrip -->
+          <div v-if="mediaItems.length" class="mt-2 overflow-hidden rounded-lg" aria-hidden="true">
+            <img
+              v-if="mediaItems.length === 1"
+              :src="mediaItems[0]!.url"
+              class="max-h-48 w-full object-cover bg-black/5 dark:bg-white/5"
+              alt=""
+              loading="lazy"
+              decoding="async"
+            />
+            <div v-else class="no-scrollbar flex gap-2 overflow-x-auto pointer-events-none">
+              <img
+                v-for="(m, idx) in mediaItems"
+                :key="m.id || idx"
+                :src="m.url"
+                class="h-20 w-auto shrink-0 rounded-lg object-cover bg-black/5 dark:bg-white/5"
+                alt=""
+                loading="lazy"
+                decoding="async"
+              />
             </div>
           </div>
         </div>
+
         <div v-else class="text-sm moh-text-muted">Post unavailable.</div>
       </div>
     </component>
@@ -128,10 +123,8 @@ const createdAtShort = computed(() => {
 })
 
 const bodyPreview = computed(() => {
-  const raw = (post.value?.body ?? '').toString()
-  const trimmed = raw.trim()
-  if (trimmed.length <= 180) return trimmed
-  return trimmed.slice(0, 180).replace(/\s+$/, '') + '…'
+  // Return the full text; visual truncation is handled by CSS line-clamp in the template.
+  return (post.value?.body ?? '').toString().trim()
 })
 
 const mediaItems = computed(() => (post.value?.media ?? []).filter((m) => Boolean(m?.url)).slice(0, 4))

@@ -52,8 +52,8 @@ export function useKeyboardShortcutsHandler(opts: KeyboardShortcutsHandlerOption
   function onKeydown(e: KeyboardEvent) {
     if (e.metaKey || e.ctrlKey || e.altKey) return
 
-    // '?' always works regardless of focus context — toggles the shortcuts modal.
-    if (e.key === '?') {
+    // '?' toggles the shortcuts modal — but not when typing in a text field.
+    if (e.key === '?' && !isEditableElement(document.activeElement)) {
       e.preventDefault()
       showModal.value = !showModal.value
       return

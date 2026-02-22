@@ -39,7 +39,7 @@
       leave-to-class="opacity-0 -translate-y-2"
     >
       <div
-        v-if="isAuthed && (disconnectedDueToIdle || connectionBarJustConnected || (wasSocketConnectedOnce && !isSocketConnected))"
+        v-if="isAuthed && (disconnectedDueToIdle || connectionBarJustConnected || (socketDisconnectedWhileVisible && !isSocketConnected))"
         :class="[
           'fixed left-0 right-0 top-0 z-50 flex items-center justify-center gap-3 border-b px-4 pb-2.5 pt-[calc(0.625rem+var(--moh-safe-top,0px))] text-center text-sm backdrop-blur-sm',
           connectionBarJustConnected
@@ -788,6 +788,7 @@ const notifBadge = useNotificationsBadge()
 const {
   disconnectedDueToIdle,
   wasSocketConnectedOnce,
+  socketDisconnectedWhileVisible,
   isSocketConnected,
   connectionBarJustConnected,
   isSocketConnecting,
@@ -800,13 +801,13 @@ function onReconnectClick() {
 
 // When disconnected bar is visible, scroll or tap anywhere should reconnect.
 function onScrollOrTapReconnect() {
-  const showBanner = disconnectedDueToIdle.value || (wasSocketConnectedOnce.value && !isSocketConnected.value)
+  const showBanner = disconnectedDueToIdle.value || (socketDisconnectedWhileVisible.value && !isSocketConnected.value)
   if (showBanner && !isSocketConnecting.value) reconnect()
 }
 
 let connectionBarRemoveListeners: (() => void) | null = null
 watch(
-  () => isAuthed && (disconnectedDueToIdle.value || (wasSocketConnectedOnce.value && !isSocketConnected.value)),
+  () => isAuthed && (disconnectedDueToIdle.value || (socketDisconnectedWhileVisible.value && !isSocketConnected.value)),
   (shouldListen) => {
     if (import.meta.client && connectionBarRemoveListeners) {
       connectionBarRemoveListeners()
@@ -1231,15 +1232,12 @@ function updateComposerSheetStyle() {
   }
 }
 
+useModalEscape(composerModalOpen, closeComposerModal)
+
 watch(
   composerModalOpen,
   (open) => {
     if (!import.meta.client) return
-
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') closeComposerModal()
-    }
-    if (open) window.addEventListener('keydown', onKeyDown)
 
     if (open) {
       requestAnimationFrame(() => updateComposerSheetStyle())
@@ -1247,7 +1245,6 @@ watch(
     }
 
     return () => {
-      window.removeEventListener('keydown', onKeyDown)
       window.removeEventListener('resize', updateComposerSheetStyle)
     }
   },

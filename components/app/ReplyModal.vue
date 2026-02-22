@@ -208,22 +208,19 @@ watch(
   { immediate: true },
 )
 
+useModalEscape(replyModal.open, close)
+
 watch(
   () => replyModal.open.value,
   (open) => {
     if (!import.meta.client) return
 
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') close()
-    }
     if (open) {
-      window.addEventListener('keydown', onKeyDown)
       requestAnimationFrame(() => updateReplySheetStyle())
       window.addEventListener('resize', updateReplySheetStyle)
     }
 
     return () => {
-      window.removeEventListener('keydown', onKeyDown)
       window.removeEventListener('resize', updateReplySheetStyle)
     }
   },

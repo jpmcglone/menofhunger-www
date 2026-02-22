@@ -118,9 +118,7 @@ function onMaskClick() {
   close()
 }
 
-function onKeydown(e: KeyboardEvent) {
-  if (e.key === 'Escape' && visible.value) close()
-}
+useModalEscape(visible, close)
 
 watch(
   () => visible.value,
@@ -131,8 +129,5 @@ watch(
     else el.style.overflow = ''
   }
 )
-
-onMounted(() => window.addEventListener('keydown', onKeydown))
-onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
 </script>
 

@@ -71,7 +71,6 @@
 </template>
 
 <script setup lang="ts">
-import { useEventListener } from '@vueuse/core'
 import type { CSSProperties } from 'vue'
 
 const props = withDefaults(
@@ -118,12 +117,7 @@ function onMaskClick() {
   close()
 }
 
-function onKeyDown(e: KeyboardEvent) {
-  if (!open.value) return
-  if (e.key === 'Escape') close()
-}
-
-useEventListener(window, 'keydown', onKeyDown)
+useModalEscape(open, close)
 
 const panelStyle = computed<CSSProperties>(() => ({
   maxHeight: props.maxHeight,

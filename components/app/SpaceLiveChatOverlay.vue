@@ -59,9 +59,7 @@ function close() {
   emit('update:modelValue', false)
 }
 
-function onKeydown(e: KeyboardEvent) {
-  if (e.key === 'Escape' && visible.value) close()
-}
+useModalEscape(visible, close)
 
 watch(
   () => visible.value,
@@ -77,9 +75,6 @@ watch(
     }
   },
 )
-
-onMounted(() => window.addEventListener('keydown', onKeydown))
-onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
 onBeforeUnmount(() => {
   if (!import.meta.client) return
   // Safety: if the overlay is destroyed while open (e.g., leaving a space), restore scroll.
