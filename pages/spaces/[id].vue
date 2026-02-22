@@ -143,23 +143,6 @@
       </template>
     </div>
 
-    <!-- Fullscreen emoji float overlay — rendered outside any clipping ancestor -->
-    <Teleport to="body">
-      <div class="fixed inset-0 pointer-events-none overflow-hidden" style="z-index: 9990;" aria-hidden="true">
-        <span
-          v-for="r in allPositionedFloating"
-          :key="r.key"
-          class="moh-emoji-float"
-          :style="{
-            left: `${r.startX}px`,
-            top: `${r.startY}px`,
-            '--fw-sway': `${r.sway}px`,
-            '--fw-om': r.opacityMid,
-            ...(r.color ? { color: r.color } : {}),
-          }"
-        >{{ r.emoji }}</span>
-      </div>
-    </Teleport>
   </AppPageContent>
 </template>
 
@@ -182,7 +165,7 @@ const spaceChatSheetOpen = useState<boolean>('space-chat-sheet-open', () => fals
 const { user, ensureLoaded } = useAuth()
 const presence = usePresence()
 
-const { reactions, loadReactions, addFloating, allPositionedFloating, clearAllFloating } = useSpaceReactions()
+const { reactions, loadReactions, addFloating, clearAllFloating } = useSpaceReactions()
 
 // Track avatar wrapper elements by userId so we can read their viewport position.
 const avatarElMap = new Map<string, HTMLElement>()
@@ -300,8 +283,36 @@ onBeforeUnmount(() => {
 watch(id, async (newId) => {
   if (!import.meta.client || !newId) return
   clearAllFloating()
-  await enterThisSpace(newId)
+  if (selectedSpaceId.value !== newId) {
+    await enterThisSpace(newId)
+  }
 })
+
+// Handle back/forward navigation when the component is already mounted but the
+// selected space has drifted from the URL (e.g. browser back lands here after
+// the user had switched to a different space).
+onActivated(async () => {
+  const spaceId = id.value
+  if (!import.meta.client || !spaceId) return
+  if (selectedSpaceId.value !== spaceId) {
+    await enterThisSpace(spaceId)
+  }
+})
+
+// router.afterEach catches the case where back-navigation returns to this exact
+// page (same param, same component instance) without triggering watch(id) or
+// onActivated — e.g. Nuxt restored the page from scroll-history without a full
+// param change. Guard against running for unrelated navigations.
+const router = useRouter()
+const stopAfterEach = router.afterEach((to) => {
+  if (!import.meta.client) return
+  const toId = String(to.params.id ?? '').trim()
+  if (!toId || toId !== id.value) return
+  if (selectedSpaceId.value !== toId) {
+    void enterThisSpace(toId)
+  }
+})
+onBeforeUnmount(() => stopAfterEach())
 
 // Client 404 fallback: redirect to /spaces if the id resolves to nothing after load.
 watch([id, space, loadedOnce], ([sid, s, loaded]) => {

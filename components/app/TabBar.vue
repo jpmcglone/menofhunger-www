@@ -116,6 +116,16 @@
             <span class="text-xs font-medium truncate">{{ mi.label }}</span>
           </div>
         </NuxtLink>
+
+        <button
+          type="button"
+          class="moh-tap flex w-full items-center gap-2 py-2 moh-focus rounded-lg px-2 -mx-1 moh-surface-hover text-gray-600 dark:text-gray-400"
+          @click="() => { moreOpen = false; openShortcutsModal() }"
+        >
+          <Icon name="tabler:keyboard" size="16" class="opacity-80 shrink-0" aria-hidden="true" />
+          <span class="text-xs font-medium">Keyboard shortcuts</span>
+          <span class="ml-auto text-[10px] font-mono opacity-50">?</span>
+        </button>
       </div>
     </div>
   </AppBottomSheet>
@@ -143,6 +153,7 @@ const { isActive } = useRouteMatch(route)
 const { confirmVisible, confirmLogout } = useUserMenu()
 const middleScrollerRef = useMiddleScroller()
 const haptics = useHaptics()
+const { openShortcutsModal } = useKeyboardShortcuts()
 
 // Tab bar is md:hidden in layout; match that breakpoint (show sheet only when tab bar is visible).
 const isMobile = useMediaQuery('(max-width: 767px)')

@@ -58,6 +58,7 @@
           <template v-for="u in listenerStack" :key="u.id">
             <NuxtLink
               v-if="u.username"
+              :ref="(el) => setAvatarRef(u.id, el as HTMLElement | null)"
               :to="listenerProfileTo(u.username!)"
               class="relative pointer-events-auto cursor-pointer"
               v-tooltip.bottom="tinyTooltip(`@${u.username}`)"
@@ -81,17 +82,10 @@
                   />
                 </div>
               </Transition>
-              <TransitionGroup name="moh-reaction-float" tag="div" class="absolute inset-0 pointer-events-none">
-                <span
-                  v-for="r in getFloating(u.id)"
-                  :key="r.key"
-                  class="moh-reaction-float absolute inset-0 flex items-center justify-center text-lg font-bold pointer-events-none select-none"
-                  :style="r.color ? { color: r.color } : undefined"
-                >{{ r.emoji }}</span>
-              </TransitionGroup>
             </NuxtLink>
             <div
               v-else
+              :ref="(el) => setAvatarRef(u.id, el as HTMLElement | null)"
               class="relative pointer-events-auto"
               v-tooltip.bottom="tinyTooltip('User')"
             >
@@ -114,14 +108,6 @@
                   />
                 </div>
               </Transition>
-              <TransitionGroup name="moh-reaction-float" tag="div" class="absolute inset-0 pointer-events-none">
-                <span
-                  v-for="r in getFloating(u.id)"
-                  :key="r.key"
-                  class="moh-reaction-float absolute inset-0 flex items-center justify-center text-lg font-bold pointer-events-none select-none"
-                  :style="r.color ? { color: r.color } : undefined"
-                >{{ r.emoji }}</span>
-              </TransitionGroup>
             </div>
           </template>
         </TransitionGroup>
@@ -221,18 +207,33 @@ function listenerProfileTo(username: string): string {
 }
 
 const { selectedSpaceId, currentSpace, members, leave } = useSpaceLobby()
-const { getFloating, addFloating } = useSpaceReactions()
+const { addFloating } = useSpaceReactions()
 const { hasStation, isPlaying, isBuffering, toggle, stop, volume, setVolume } = useSpaceAudio()
 const usersStore = useUsersStore()
 const presence = usePresence()
 const { user } = useAuth()
+
+// Track avatar element positions so emojis can float over the full screen.
+const avatarEls = new Map<string, HTMLElement>()
+
+function setAvatarRef(userId: string, el: HTMLElement | null) {
+  if (el) avatarEls.set(userId, el)
+  else avatarEls.delete(userId)
+}
+
+function getAvatarViewportCenter(userId: string): { x: number; y: number } | undefined {
+  const el = avatarEls.get(userId)
+  if (!el) return undefined
+  const rect = el.getBoundingClientRect()
+  return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 }
+}
 
 const radioBarReactionsCb = {
   onReaction: (payload: import('~/types/api').SpaceReactionEvent) => {
     if (!payload?.spaceId || payload.spaceId !== selectedSpaceId.value) return
     // Own reactions are handled by the spaces page optimistically — skip to avoid duplicates.
     if (payload.userId === user.value?.id) return
-    addFloating(payload.userId, payload.emoji)
+    addFloating(payload.userId, payload.emoji, getAvatarViewportCenter(payload.userId))
   },
 }
 

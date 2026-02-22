@@ -235,8 +235,11 @@ onBeforeUnmount(() => {
 
 function onEnterSpace(space: Space) {
   const isSameSpace = selectedSpaceId.value === space.id
+  const wasPlaying = isPlaying.value
   void select(space.id).then(() => {
-    if (!isSameSpace) pause()
+    if (!isSameSpace && wasPlaying) {
+      void playSpace(space)
+    }
     navigateTo(`/spaces/${encodeURIComponent(space.id)}`)
   })
 }

@@ -850,7 +850,11 @@ function clearComposer() {
   void nextTick().then(() => resizeComposerTextarea())
 }
 
-defineExpose({ hasUnsavedContent, draftSnapshot, clearComposer })
+function focus() {
+  composerTextareaEl.value?.focus()
+}
+
+defineExpose({ hasUnsavedContent, draftSnapshot, clearComposer, focus })
 
 const shouldRegisterUnsavedGuard = computed(() =>
   // Register for create + reply composers so refresh/close warns about losing work.

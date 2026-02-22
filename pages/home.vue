@@ -5,6 +5,7 @@
     <div ref="homeComposerEl" class="min-h-0">
       <AppPostComposer
         v-if="!showOnlyMeHomeComposerCard"
+        ref="homeComposerRef"
         :create-post="createPostViaFeed"
         :allowed-visibilities="['public', 'verifiedOnly', 'premiumOnly']"
         persist-key="home"
@@ -172,7 +173,7 @@ import type { PostVisibility } from '~/types/api'
 import type { CreateMediaPayload } from '~/composables/useComposerMedia'
 import type { ComposerPollPayload } from '~/composables/composer/types'
 import { postBodyHasVideoEmbed } from '~/utils/link-utils'
-import { MOH_HOME_COMPOSER_IN_VIEW_KEY, MOH_OPEN_COMPOSER_KEY } from '~/utils/injection-keys'
+import { MOH_HOME_COMPOSER_IN_VIEW_KEY, MOH_OPEN_COMPOSER_KEY, MOH_FOCUS_HOME_COMPOSER_KEY } from '~/utils/injection-keys'
 import { useMiddleScroller } from '~/composables/useMiddleScroller'
 import type { CheckinAllowedVisibility } from '~/types/api'
 
@@ -194,9 +195,14 @@ usePageSeo({
 })
 
 const homeComposerEl = ref<HTMLElement | null>(null)
+const homeComposerRef = ref<{ focus: () => void } | null>(null)
 const loadMoreSentinelEl = ref<HTMLElement | null>(null)
 const homeComposerInViewRef = inject(MOH_HOME_COMPOSER_IN_VIEW_KEY)
 const openComposer = inject(MOH_OPEN_COMPOSER_KEY, null)
+
+provide(MOH_FOCUS_HOME_COMPOSER_KEY, () => {
+  homeComposerRef.value?.focus()
+})
 const { isAuthed } = useAuth()
 const { dayKey: etDayKey } = useEasternMidnightRollover()
 

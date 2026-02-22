@@ -75,6 +75,28 @@
     <AppPremiumMediaModal />
     <AppUnsavedDraftPromptModal />
     <AppReplyModal />
+    <AppKeyboardShortcutsModal />
+
+    <!-- Global full-screen emoji float overlay — rendered outside any clipping ancestor.
+         Covers both the spaces page and the radio bar in the layout. -->
+    <ClientOnly>
+      <Teleport to="body">
+        <div class="fixed inset-0 pointer-events-none overflow-hidden" style="z-index: 9990;" aria-hidden="true">
+          <span
+            v-for="r in allPositionedFloating"
+            :key="r.key"
+            class="moh-emoji-float"
+            :style="{
+              left: `${r.startX}px`,
+              top: `${r.startY}px`,
+              '--fw-sway': `${r.sway}px`,
+              '--fw-om': r.opacityMid,
+              ...(r.color ? { color: r.color } : {}),
+            }"
+          >{{ r.emoji }}</span>
+        </div>
+      </Teleport>
+    </ClientOnly>
     <div
       :class="['overflow-hidden moh-bg moh-text moh-texture moh-vignette', showStatusBg ? 'moh-status-tone' : '']"
       style="height: var(--moh-viewport-h, 100vh);"
@@ -221,6 +243,25 @@
             </div>
 
           </nav>
+
+          <!-- Keyboard shortcuts button -->
+          <button
+            type="button"
+            aria-label="Keyboard shortcuts (?)"
+            :class="[
+              'group flex w-full items-center rounded-lg text-gray-400 dark:text-gray-500 moh-surface-hover moh-focus mt-2',
+              !navCompactMode ? 'gap-2 h-8' : 'h-8 justify-center',
+            ]"
+            @click="openShortcutsModal"
+          >
+            <span class="flex h-8 w-12 shrink-0 items-center justify-center">
+              <Icon name="tabler:keyboard" size="16" class="opacity-60" aria-hidden="true" />
+            </span>
+            <span v-if="!navCompactMode" class="hidden xl:flex xl:items-center xl:justify-between xl:flex-1 xl:pr-3 whitespace-nowrap text-xs">
+              Shortcuts
+              <kbd class="inline-flex items-center justify-center rounded border border-current/30 bg-gray-100 dark:bg-zinc-800 px-1 font-mono text-[10px] font-semibold leading-4 opacity-70">?</kbd>
+            </span>
+          </button>
 
           <AppUserCard v-if="isAuthed" :compact="navCompactMode" />
           <NuxtLink
@@ -555,6 +596,8 @@
                     <span>·</span>
                     <NuxtLink to="/status" class="hover:underline">Status</NuxtLink>
                     <span>·</span>
+                    <button type="button" class="hover:underline" @click="openShortcutsModal">Shortcuts</button>
+                    <span>·</span>
                     <span>&copy; {{ new Date().getFullYear() }} {{ siteConfig.name }}</span>
                   </div>
                 </div>
@@ -587,6 +630,7 @@
                 <Icon name="tabler:search" class="text-lg opacity-70" aria-hidden="true" />
               </InputIcon>
               <InputText
+                ref="searchInputRef"
                 v-model="rightRailSearchQuery"
                 class="w-full h-11 !rounded-full moh-focus"
                 placeholder="Search…"
@@ -714,6 +758,7 @@ import { formatDailyQuoteAttribution } from '~/utils/daily-quote'
 import AppBottomSheet from '~/components/app/BottomSheet.vue'
 import {
   MOH_HOME_COMPOSER_IN_VIEW_KEY,
+  MOH_FOCUS_HOME_COMPOSER_KEY,
   MOH_MIDDLE_SCROLLER_KEY,
   MOH_OPEN_COMPOSER_KEY,
   MOH_OPEN_COMPOSER_FROM_ONLYME_KEY,
@@ -1099,8 +1144,30 @@ const fabBottomStyle = computed<Record<string, string>>(() => {
 const middleContentEl = ref<HTMLElement | null>(null)
 
 const { selectedSpaceId, currentSpace, members } = useSpaceLobby()
+const { allPositionedFloating } = useSpaceReactions()
 const radioHasStation = computed(() => Boolean(selectedSpaceId.value))
 useSpacePlayPauseShortcut(radioHasStation)
+
+// Global keyboard shortcuts
+const searchInputRef = ref<{ $el: HTMLElement } | HTMLElement | null>(null)
+const { openShortcutsModal } = useKeyboardShortcuts()
+const focusHomeComposer = inject(MOH_FOCUS_HOME_COMPOSER_KEY, null)
+useKeyboardShortcutsHandler({
+  openComposer: () => {
+    // If the home page's inline composer is visible, focus it directly.
+    // Otherwise fall back to the composer modal.
+    if (homeComposerInViewRef.value && focusHomeComposer) {
+      focusHomeComposer()
+    } else {
+      openComposerForCurrentRoute()
+    }
+  },
+  focusSearch: () => {
+    const el = searchInputRef.value
+    const input = el instanceof HTMLElement ? el : (el as { $el: HTMLElement } | null)?.$el
+    input?.focus()
+  },
+})
 
 // On /chat, force the right rail visible when the user is in a live space so they
 // can see the conversation list, DM chat, and live chat simultaneously.

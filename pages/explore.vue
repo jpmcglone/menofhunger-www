@@ -10,6 +10,7 @@
               <Icon name="tabler:search" class="text-lg opacity-70" aria-hidden="true" />
             </InputIcon>
             <InputText
+              ref="searchInputRef"
               v-model="searchQuery"
               id="explore-search"
               name="q"
@@ -526,6 +527,24 @@ const route = useRoute()
 const router = useRouter()
 const { apiFetch } = useApiClient()
 const { isAuthed, user: authUser } = useAuth()
+
+const searchInputRef = ref<{ $el: HTMLInputElement } | null>(null)
+
+function onGlobalKeyDown(e: KeyboardEvent) {
+  if (e.key !== '/') return
+  const target = e.target as HTMLElement
+  if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) return
+  e.preventDefault()
+  searchInputRef.value?.$el?.focus()
+}
+
+onMounted(() => {
+  window.addEventListener('keydown', onGlobalKeyDown)
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('keydown', onGlobalKeyDown)
+})
 
 function normalizeQueryParam(v: unknown): string {
   return String(v ?? '').trim()

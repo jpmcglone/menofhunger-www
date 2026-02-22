@@ -3,6 +3,10 @@
   <div
     v-if="chain.length === 1"
     :ref="highlightedPostId === post.id ? setHighlightedRef : undefined"
+    :data-post-id="post.id"
+    :class="keyboardFocusClass"
+    @mouseenter="onMouseEnter"
+    @mouseleave="onMouseLeave"
   >
     <AppPostRow
       :post="post"
@@ -27,7 +31,14 @@
   </div>
 
   <!-- Reply chain A -> B -> C: overlays on each row connect with no gap -->
-  <div v-else class="flex flex-col">
+  <div
+    v-else
+    class="flex flex-col"
+    :data-post-id="post.id"
+    :class="keyboardFocusClass"
+    @mouseenter="onMouseEnter"
+    @mouseleave="onMouseLeave"
+  >
     <div
       v-for="(item, i) in chain"
       :key="item.id"
@@ -136,4 +147,34 @@ function setHighlightedRef(el: unknown) {
   highlightedRowRef.value = Array.isArray(el) ? (el?.[0] as HTMLElement | null) ?? null : (el as HTMLElement | null) ?? null
 }
 defineExpose({ highlightedRowRef })
+
+// Keyboard shortcut focus tracking
+const { focusedPostId, focusSource, registerPost, unregisterPost, setFocusedPost, clearFocus } = useKeyboardShortcutsFocusedPost()
+
+const isKeyboardFocused = computed(
+  () => focusedPostId.value === props.post.id && focusSource.value === 'keyboard',
+)
+const keyboardFocusClass = computed(() =>
+  isKeyboardFocused.value
+    ? 'outline outline-1 outline-[var(--moh-focus-ring)] outline-offset-[-1px]'
+    : '',
+)
+
+function onMouseEnter() {
+  setFocusedPost(props.post.id, 'mouse')
+}
+
+function onMouseLeave() {
+  if (focusedPostId.value === props.post.id && focusSource.value === 'mouse') {
+    clearFocus()
+  }
+}
+
+onMounted(() => {
+  registerPost(props.post)
+})
+
+onBeforeUnmount(() => {
+  unregisterPost(props.post.id)
+})
 </script>

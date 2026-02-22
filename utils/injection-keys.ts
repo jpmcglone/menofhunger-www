@@ -27,3 +27,6 @@ export const MOH_OPEN_COMPOSER_FROM_ONLYME_KEY: InjectionKey<(post: FeedPost) =>
 /** Ref provided by layout, updated by home page when its composer is in the middle column viewport (hides mobile FAB). */
 export const MOH_HOME_COMPOSER_IN_VIEW_KEY: InjectionKey<Ref<boolean>> = Symbol('moh-home-composer-in-view')
 
+/** Provided by the home page: focuses the inline composer textarea when called. */
+export const MOH_FOCUS_HOME_COMPOSER_KEY: InjectionKey<() => void> = Symbol('moh-focus-home-composer')
+
