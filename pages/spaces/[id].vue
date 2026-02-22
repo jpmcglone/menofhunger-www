@@ -237,7 +237,14 @@ const spaceShareMenuItems = computed<MenuItemWithIcon[]>(() => [
 
 function onReactionClick(reactionId: string, emoji: string) {
   const meId = user.value?.id ?? null
-  if (meId) addFloating(meId, emoji, getAvatarPos(meId))
+  if (meId) {
+    // Spaces page: dramatic arc from the user's member avatar.
+    addFloating(meId, emoji, getAvatarPos(meId))
+    // Radio bar: optimistic short float from the listener stack avatar in the bar.
+    // Done here (not in the echo callback) so every click shows immediately, even
+    // when the server rate-limits or delays the presence echo.
+    addFloating(meId, emoji, undefined, undefined, 'bar')
+  }
   presence.emitSpacesReaction(id.value, reactionId)
 }
 

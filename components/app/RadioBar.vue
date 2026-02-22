@@ -201,6 +201,7 @@ import { tinyTooltip } from '~/utils/tiny-tooltip'
 import { useUsersStore } from '~/composables/useUsersStore'
 import { SPACE_VISUALIZER_BACKGROUND_OPACITY } from '~/composables/useSpaceAudio'
 import { useCopyToClipboard } from '~/composables/useCopyToClipboard'
+import { registerBarPositionResolver } from '~/composables/useSpaceReactions'
 
 function listenerProfileTo(username: string): string {
   return `/u/${encodeURIComponent(username)}`
@@ -216,24 +217,33 @@ const { user } = useAuth()
 // Track avatar element positions so emojis can float over the full screen.
 const avatarEls = new Map<string, HTMLElement>()
 
-function setAvatarRef(userId: string, el: HTMLElement | null) {
-  if (el) avatarEls.set(userId, el)
+function setAvatarRef(userId: string, el: HTMLElement | { $el?: HTMLElement } | null) {
+  // Template refs on Vue components (e.g. NuxtLink) give a component instance, not a raw
+  // DOM element. Unwrap $el when necessary so getBoundingClientRect is always available.
+  const domEl = el ? (el instanceof HTMLElement ? el : (el as any)?.$el ?? null) : null
+  if (domEl instanceof HTMLElement) avatarEls.set(userId, domEl)
   else avatarEls.delete(userId)
 }
 
 function getAvatarViewportCenter(userId: string): { x: number; y: number } | undefined {
   const el = avatarEls.get(userId)
-  if (!el) return undefined
+  if (!el || typeof el.getBoundingClientRect !== 'function') return undefined
   const rect = el.getBoundingClientRect()
   return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 }
 }
 
+// Expose the bar's avatar lookup as the bar position resolver so the spaces page can
+// trigger optimistic bar floats without waiting for the presence echo.
+onMounted(() => registerBarPositionResolver(getAvatarViewportCenter))
+onBeforeUnmount(() => registerBarPositionResolver(null))
+
 const radioBarReactionsCb = {
   onReaction: (payload: import('~/types/api').SpaceReactionEvent) => {
     if (!payload?.spaceId || payload.spaceId !== selectedSpaceId.value) return
-    // Own reactions are handled by the spaces page optimistically — skip to avoid duplicates.
+    // Own reactions are already handled optimistically in onReactionClick on the spaces page
+    // (which calls addFloating with variant 'bar' immediately). Skip the echo to avoid duplicates.
     if (payload.userId === user.value?.id) return
-    addFloating(payload.userId, payload.emoji, getAvatarViewportCenter(payload.userId))
+    addFloating(payload.userId, payload.emoji, getAvatarViewportCenter(payload.userId), undefined, 'bar')
   },
 }
 

@@ -85,7 +85,7 @@
           <span
             v-for="r in allPositionedFloating"
             :key="r.key"
-            class="moh-emoji-float"
+            :class="r.variant === 'bar' ? 'moh-emoji-float-bar' : 'moh-emoji-float'"
             :style="{
               left: `${r.startX}px`,
               top: `${r.startY}px`,

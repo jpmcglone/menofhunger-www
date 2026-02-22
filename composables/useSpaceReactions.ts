@@ -12,6 +12,21 @@ export function registerAvatarPositionResolver(
   _avatarPositionResolver = resolver
 }
 
+/**
+ * Resolver for the radio bar's listener stack avatars.
+ * Used by the radio bar to register its own avatar lookup so bar floats start from
+ * the correct position even when triggered optimistically from the spaces page.
+ */
+let _barPositionResolver: ((userId: string) => { x: number; y: number } | undefined) | null = null
+
+export function registerBarPositionResolver(
+  resolver: ((userId: string) => { x: number; y: number } | undefined) | null,
+) {
+  _barPositionResolver = resolver
+}
+
+export type FloatingReactionVariant = 'default' | 'bar'
+
 export type FloatingReaction = {
   key: string
   emoji: string
@@ -24,6 +39,8 @@ export type FloatingReaction = {
   sway: number
   /** Mid-point opacity (0–1) — controls how quickly the emoji fades out. */
   opacityMid: number
+  /** Controls which CSS animation class is applied in the Teleport overlay. */
+  variant: FloatingReactionVariant
 }
 
 const REACTIONS_KEY = 'space-reactions'
@@ -59,17 +76,24 @@ export function useSpaceReactions() {
   }
 
   /**
-   * @param pos  Viewport center of the avatar. When provided the emoji floats up the screen
-   *             from that point via the fullscreen Teleport overlay; otherwise falls back to
-   *             the old in-avatar animation.
-   * @param color  Optional CSS color for the emoji.
+   * @param pos      Viewport center of the avatar. When provided the emoji floats up from that
+   *                 point; otherwise falls back to the registered position resolver.
+   * @param color    Optional CSS color for the emoji.
+   * @param variant  'default' uses the full-screen dramatic arc; 'bar' uses the short fast animation.
    */
-  function addFloating(userIdRaw: string, emojiRaw: string, pos?: { x: number; y: number }, color?: string) {
+  function addFloating(
+    userIdRaw: string,
+    emojiRaw: string,
+    pos?: { x: number; y: number },
+    color?: string,
+    variant: FloatingReactionVariant = 'default',
+  ) {
     const userId = String(userIdRaw ?? '').trim()
     const emoji = String(emojiRaw ?? '').trim()
     if (!userId || !emoji) return
 
-    const resolvedPos = pos ?? _avatarPositionResolver?.(userId)
+    const resolver = variant === 'bar' ? _barPositionResolver : _avatarPositionResolver
+    const resolvedPos = pos ?? resolver?.(userId)
     const key = `${userId}-${Date.now()}-${Math.random().toString(16).slice(2)}`
     const float: FloatingReaction = {
       key,
@@ -79,14 +103,16 @@ export function useSpaceReactions() {
       startY: resolvedPos?.y,
       sway: rnd(-32, 32),
       opacityMid: rnd(0.55, 0.95),
+      variant,
     }
     const current = floatingByUserId.value.get(userId) ?? []
     const nextMap = new Map(floatingByUserId.value)
     nextMap.set(userId, [...current, float])
     floatingByUserId.value = nextMap
 
-    // Keep in sync with CSS animation duration.
-    setTimeout(() => removeFloating(userId, key), 1900)
+    // Timeout matches the CSS animation duration for each variant.
+    const durationMs = variant === 'bar' ? 1000 : 1900
+    setTimeout(() => removeFloating(userId, key), durationMs)
   }
 
   /** All floating reactions that have a viewport position (rendered by the fullscreen overlay). */

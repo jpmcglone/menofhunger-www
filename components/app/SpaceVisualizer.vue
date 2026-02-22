@@ -175,11 +175,21 @@ const BEAT_RING_DURATION_S = 1.1
 
 let ro: ResizeObserver | null = null
 
+// Pending canvas size set by ResizeObserver; applied at the top of draw() so
+// the canvas is cleared and immediately redrawn in the same RAF frame (no blank-frame flicker).
+let pendingCanvasSize: { w: number; h: number } | null = null
+
 function setupCanvas(canvas: HTMLCanvasElement) {
   const dpr = window.devicePixelRatio || 1
   const rect = canvas.getBoundingClientRect()
   canvas.width = Math.round(rect.width * dpr)
   canvas.height = Math.round(rect.height * dpr)
+}
+
+function scheduleCanvasResize(canvas: HTMLCanvasElement) {
+  const dpr = window.devicePixelRatio || 1
+  const rect = canvas.getBoundingClientRect()
+  pendingCanvasSize = { w: Math.round(rect.width * dpr), h: Math.round(rect.height * dpr) }
 }
 
 // ─── Background ──────────────────────────────────────────────────────────────
@@ -315,6 +325,16 @@ function draw() {
 
   const canvas = canvasEl.value
   if (!canvas) return
+
+  // Apply any pending resize before acquiring ctx dimensions.
+  // Doing it here (inside the RAF callback) means the canvas is cleared and
+  // immediately redrawn in the same frame — no blank-frame flicker on resize.
+  if (pendingCanvasSize) {
+    canvas.width = pendingCanvasSize.w
+    canvas.height = pendingCanvasSize.h
+    pendingCanvasSize = null
+  }
+
   const ctx = canvas.getContext('2d')
   if (!ctx) return
 
@@ -517,7 +537,7 @@ onMounted(() => {
   setupCanvas(canvas)
 
   ro = new ResizeObserver(() => {
-    if (canvasEl.value) setupCanvas(canvasEl.value)
+    if (canvasEl.value) scheduleCanvasResize(canvasEl.value)
   })
   ro.observe(canvas)
 
@@ -528,6 +548,7 @@ onBeforeUnmount(() => {
   stopLoop()
   ro?.disconnect()
   ro = null
+  pendingCanvasSize = null
   peaks = new Float32Array(BAR_COUNT)
   peakHoldFrames = new Uint8Array(BAR_COUNT)
   smoothedBars = new Float32Array(BAR_COUNT)

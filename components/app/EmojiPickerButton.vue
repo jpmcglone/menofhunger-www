@@ -46,12 +46,19 @@ const props = withDefaults(
     ariaLabel?: string
     icon?: string
     disabled?: boolean
+    /**
+     * When true the picker stays open after selecting an emoji and does not
+     * close when the user clicks into a text input or textarea (so they can
+     * type between picks). It still closes on Escape or clicking elsewhere.
+     */
+    persistent?: boolean
   }>(),
   {
     tooltip: 'Emoji',
     ariaLabel: 'Insert emoji',
     icon: 'tabler:mood-smile',
     disabled: false,
+    persistent: false,
   },
 )
 
@@ -144,6 +151,15 @@ function toggle() {
   }
 }
 
+function isEditableTarget(t: Node | null): boolean {
+  if (!t || !(t instanceof Element)) return false
+  const el = t as Element
+  const tag = el.tagName?.toLowerCase()
+  if (tag === 'input' || tag === 'textarea') return true
+  if (el.closest('[contenteditable="true"], [contenteditable=""]')) return true
+  return false
+}
+
 function onDocPointerDown(e: Event) {
   if (!open.value) return
   const t = e.target as Node | null
@@ -151,6 +167,9 @@ function onDocPointerDown(e: Event) {
   const panel = panelEl.value
   if (!t || !anchor || !panel) return
   if (panel.contains(t) || anchor.contains(t)) return
+  // In persistent mode, clicking a text-editable element keeps the picker open
+  // so the user can type between emoji picks.
+  if (props.persistent && isEditableTarget(t)) return
   close()
 }
 
@@ -183,6 +202,8 @@ watch(open, (v, _old, onCleanup) => {
   }
 })
 
+defineExpose({ close })
+
 function onEmojiClick(e: unknown) {
   // emoji-picker-element dispatches a CustomEvent with detail.unicode
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -190,7 +211,7 @@ function onEmojiClick(e: unknown) {
   const emoji = (unicode ?? '').trim()
   if (!emoji) return
   emit('select', emoji)
-  close()
+  if (!props.persistent) close()
 }
 </script>
 

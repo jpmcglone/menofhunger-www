@@ -5,8 +5,10 @@
       <!-- Emoji button: inside the pill, left side -->
       <div class="dm-composer-emoji absolute left-2 bottom-2 z-10">
         <AppEmojiPickerButton
+          ref="emojiPickerEl"
           tooltip="Emoji"
           aria-label="Insert emoji"
+          persistent
           :disabled="disabled"
           @select="insertEmoji"
         />
@@ -75,6 +77,7 @@ const emit = defineEmits<{
 }>()
 
 const styledTextareaEl = ref<InstanceType<typeof import('./StyledTextarea.vue').default> | null>(null)
+const emojiPickerEl = ref<{ close: () => void } | null>(null)
 const isMultiline = ref(false)
 const hasText = computed(() => (props.modelValue ?? '').trim().length > 0)
 
@@ -104,11 +107,15 @@ function onTextChange(text: string) {
 }
 
 function onSend() {
-  if (hasText.value) emit('send')
+  if (hasText.value) {
+    emojiPickerEl.value?.close()
+    emit('send')
+  }
 }
 
 function emitSend() {
   if (!hasText.value || props.loading) return
+  emojiPickerEl.value?.close()
   emit('send')
 }
 
