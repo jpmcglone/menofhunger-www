@@ -86,12 +86,26 @@
           {{ opt.text }}
         </div>
       </button>
+      <button
+        v-if="viewerIsAuthor && !voteDisabled"
+        type="button"
+        :class="[
+          'w-full text-left flex items-center gap-3 rounded-xl border !bg-transparent px-3 py-2.5 transition-colors text-sm moh-text-muted',
+          'moh-border-subtle hover:!bg-black/5 dark:hover:!bg-white/10 moh-focus',
+        ]"
+        :disabled="skipping"
+        aria-label="Skip voting to see how others vote"
+        @click="onSkip"
+      >
+        <Icon name="tabler:eye" class="h-5 w-5 shrink-0 opacity-70" aria-hidden="true" />
+        <span>Skip — see how others vote</span>
+      </button>
     </div>
 
     <div class="mt-3 text-[11px] moh-text-muted tabular-nums">
       {{ pollView.totalVoteCount }} vote{{ pollView.totalVoteCount === 1 ? '' : 's' }}
       <span v-if="showResults && endedNow" class="ml-2">· Final results</span>
-      <span v-else-if="showResults && (pollView.viewerHasVoted || viewerIsAuthor)" class="ml-2">(Results so far)</span>
+      <span v-else-if="showResults && pollView.viewerHasVoted" class="ml-2">(Results so far)</span>
     </div>
   </div>
 </template>
@@ -217,8 +231,11 @@ onBeforeUnmount(() => {
 })
 
 const endedNow = computed(() => Boolean(pollView.value.ended || endedForce.value))
-const showResults = computed(() => Boolean(endedNow.value || pollView.value.viewerHasVoted || viewerIsAuthor.value))
+const showResults = computed(() =>
+  Boolean(endedNow.value || pollView.value.viewerHasVoted),
+)
 const voting = ref(false)
+const skipping = ref(false)
 
 const voteDisabled = computed(() => {
   if (voting.value) return true
@@ -226,7 +243,6 @@ const voteDisabled = computed(() => {
   if (!isAuthed.value) return false // clickable to prompt login
   if (endedNow.value) return true
   if (pollView.value.viewerHasVoted) return true
-  if (viewerIsAuthor.value) return true
   return false
 })
 
@@ -234,7 +250,7 @@ const pollHeader = computed(() => (showResults.value ? 'Poll results' : 'Poll'))
 const endsLabel = computed(() => {
   const endsAt = new Date(pollView.value.endsAt)
   if (Number.isNaN(endsAt.getTime())) return ''
-  return endedNow.value ? 'Done' : `Ends ${endsAt.toLocaleString()}`
+  return endedNow.value ? 'Done' : `Ends ${endsAt.toLocaleString('en-US')}`
 })
 
 function optionAriaLabel(opt: PostPollOption) {
@@ -288,6 +304,32 @@ async function onVote(optionId: string) {
     toast.push({ title: 'Failed to vote', tone: 'error', durationMs: 2200 })
   } finally {
     voting.value = false
+  }
+}
+
+async function onSkip() {
+  if (!viewerIsAuthor.value || !props.viewerCanInteract) return
+  if (endedNow.value) return
+  if (pollView.value.viewerHasVoted) return
+
+  if (!isAuthed.value) {
+    const redirect = encodeURIComponent(route.fullPath || '/home')
+    return navigateTo(`/login?redirect=${redirect}`)
+  }
+
+  skipping.value = true
+  try {
+    const res = await apiFetchData<{ poll: PostPoll }>(`/posts/${encodeURIComponent(props.postId)}/poll/skip`, {
+      method: 'POST',
+    })
+    if (res?.poll) {
+      pollView.value = res.poll
+      emit('updated', res.poll)
+    }
+  } catch (e: unknown) {
+    toast.push({ title: 'Failed to skip', tone: 'error', durationMs: 2200 })
+  } finally {
+    skipping.value = false
   }
 }
 </script>

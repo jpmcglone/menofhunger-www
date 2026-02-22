@@ -49,7 +49,7 @@ export function usePostPermalinkSeo(opts: {
       endsAt && !Number.isNaN(endsAt.getTime())
         ? ended
           ? 'Done'
-          : `Ends ${endsAt.toLocaleString()}`
+          : `Ends ${endsAt.toLocaleString('en-US')}`
         : null
     const firstOptionImage =
       ((poll as any).options as Array<{ imageUrl?: string | null }> | undefined)

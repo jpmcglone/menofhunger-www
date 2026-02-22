@@ -8,6 +8,7 @@ export function useSpaceLobby() {
   const { ensureLoaded, user } = useAuth()
   const presence = usePresence()
   const { spaces, loadSpaces, getById } = useSpaces()
+  const { apiFetchData } = useApiClient()
 
   const selectedSpaceId = useState<string | null>(SELECTED_SPACE_ID_KEY, () => null)
   const members = useState<SpaceMember[]>(SPACE_MEMBERS_KEY, () => [])
@@ -25,6 +26,26 @@ export function useSpaceLobby() {
       const countsBySpaceId = payload?.countsBySpaceId ?? {}
       lobbyCounts.value = { countsBySpaceId }
     },
+  }
+
+  /**
+   * Fetch current lobby counts over HTTP (instant, no socket needed) and register
+   * the presence callback so real-time WebSocket pushes keep the counts live.
+   * Safe to call from any layout/page — duplicate registrations are harmless because
+   * all instances write to the same shared `lobbyCounts` state.
+   */
+  async function loadLobbyCounts() {
+    if (!import.meta.client) return
+    // Register the callback immediately so we handle the `spaces:lobbyCounts` event
+    // that the server emits to every socket right after connection.
+    presence.addSpacesCallback(spacesCb as any)
+    // Fetch the current snapshot over HTTP — no socket required, works on first render.
+    try {
+      const data = await apiFetchData<SpaceLobbyCounts>('/spaces/lobby-counts', { method: 'GET' })
+      if (data?.countsBySpaceId) lobbyCounts.value = { countsBySpaceId: data.countsBySpaceId }
+    } catch {
+      // best-effort; real-time socket updates will correct any stale state
+    }
   }
 
   async function select(spaceIdRaw: string) {
@@ -79,6 +100,7 @@ export function useSpaceLobby() {
     lobbyCountForSpace,
     select,
     leave,
+    loadLobbyCounts,
     subscribeLobbyCounts,
     unsubscribeLobbyCounts,
   }

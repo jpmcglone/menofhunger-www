@@ -98,7 +98,7 @@ const visible = computed(() => props.modelValue)
 const fullScreen = computed(() => props.fullScreen)
 const panelClass = computed(() => (props.panelClass ?? '').trim() || null)
 const contentClass = computed(() => (props.contentClass ?? '').trim() || null)
-const titleId = `moh-sheet-${useId?.() ?? Math.random().toString(16).slice(2)}`
+const titleId = `moh-sheet-${useId()}`
 
 // Use opacity-only transitions so the panel is never off-screen (translate-y-full was
 // getting stuck on some mobile browsers and only the dim showed).

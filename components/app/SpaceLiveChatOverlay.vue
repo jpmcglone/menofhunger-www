@@ -52,7 +52,7 @@ const emit = defineEmits<{
 }>()
 
 const visible = computed(() => props.modelValue)
-const titleId = `moh-live-chat-${useId?.() ?? Math.random().toString(16).slice(2)}`
+const titleId = `moh-live-chat-${useId()}`
 const previousOverflow = ref<string>('')
 
 function close() {

@@ -128,6 +128,7 @@ const recentError = useState<string | null>('online-page-recent-error', () => nu
 const nuxtApp = useNuxtApp()
 
 const { user: authUser } = useAuth()
+const { nowMs } = useNowTicker({ everyMs: 15_000 })
 const viewerCanSeeLastOnline = computed(() => {
   const status = authUser.value?.verifiedStatus ?? 'none'
   return Boolean(authUser.value?.siteAdmin) || (typeof status === 'string' && status !== 'none')
@@ -135,7 +136,7 @@ const viewerCanSeeLastOnline = computed(() => {
 
 function recentLastOnlineLabel(lastOnlineAt: string | null) {
   if (!viewerCanSeeLastOnline.value) return null
-  const t = formatListTime(lastOnlineAt)
+  const t = formatListTime(lastOnlineAt, nowMs.value)
   if (!t || t === '—') return null
   if (t === 'now') return '· <1m ago'
   if (/^\d+[mhd]$/.test(t)) return `· ${t} ago`

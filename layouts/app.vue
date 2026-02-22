@@ -205,11 +205,15 @@
               <span
                 v-if="!navCompactMode"
                 :class="[
-                  'hidden xl:inline whitespace-nowrap overflow-hidden text-lg max-w-[220px]',
+                  'hidden xl:inline-flex items-center gap-2 whitespace-nowrap overflow-hidden text-lg max-w-[220px]',
                   route.path === item.to ? 'font-bold' : 'font-semibold'
                 ]"
               >
                 {{ item.label }}
+                <span
+                  v-if="item.key === 'spaces' && totalInSpaces > 0"
+                  class="inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1 rounded text-[11px] font-medium tabular-nums moh-text-muted bg-black/10 dark:bg-white/10"
+                >{{ totalInSpaces }}</span>
               </span>
             </NuxtLink>
 
@@ -873,6 +877,7 @@ const { header: appHeader } = useAppHeader()
 const hydrated = ref(false)
 onMounted(() => {
   hydrated.value = true
+  void loadLobbyCounts()
 })
 const {
   totalCount: bookmarkTotalCount,
@@ -1144,7 +1149,11 @@ const fabBottomStyle = computed<Record<string, string>>(() => {
 
 const middleContentEl = ref<HTMLElement | null>(null)
 
-const { selectedSpaceId, currentSpace, members } = useSpaceLobby()
+const { selectedSpaceId, currentSpace, members, lobbyCounts, loadLobbyCounts } = useSpaceLobby()
+const totalInSpaces = computed(() => {
+  const counts = lobbyCounts.value?.countsBySpaceId ?? {}
+  return Object.values(counts).reduce((sum, n) => sum + Math.max(0, Number(n) || 0), 0)
+})
 const { allPositionedFloating } = useSpaceReactions()
 const radioHasStation = computed(() => Boolean(selectedSpaceId.value))
 useSpacePlayPauseShortcut(radioHasStation)

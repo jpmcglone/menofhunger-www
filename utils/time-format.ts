@@ -1,6 +1,9 @@
 type DateStyle = NonNullable<Intl.DateTimeFormatOptions['dateStyle']>
 type TimeStyle = NonNullable<Intl.DateTimeFormatOptions['timeStyle']>
 
+/** Fixed locale for SSR: server and client must produce identical output to avoid hydration mismatches. */
+const SSR_LOCALE = 'en-US'
+
 function toDate(iso: string | null | undefined): Date | null {
   if (!iso) return null
   const d = new Date(iso)
@@ -23,17 +26,17 @@ export function formatDateTime(
   const d = toDate(iso)
   if (!d) return fallback
   if (options?.dateStyle || options?.timeStyle) {
-    return d.toLocaleString(undefined, {
+    return d.toLocaleString(SSR_LOCALE, {
       dateStyle: options?.dateStyle,
       timeStyle: options?.timeStyle,
     })
   }
   const date = new Intl.DateTimeFormat(
-    undefined,
+    SSR_LOCALE,
     options?.dateOptions ?? { year: 'numeric', month: 'short', day: '2-digit' },
   ).format(d)
   const time = new Intl.DateTimeFormat(
-    undefined,
+    SSR_LOCALE,
     options?.timeOptions ?? { hour: 'numeric', minute: '2-digit' },
   ).format(d)
   return `${date}${options?.separator ?? ' · '}${time}`
@@ -51,20 +54,23 @@ export function formatDateOnly(
   const d = toDate(iso)
   if (!d) return fallback
   if (options?.dateStyle) {
-    return d.toLocaleDateString(undefined, { dateStyle: options.dateStyle })
+    return d.toLocaleDateString(SSR_LOCALE, { dateStyle: options.dateStyle })
   }
   return new Intl.DateTimeFormat(
-    undefined,
+    SSR_LOCALE,
     options?.dateOptions ?? { year: 'numeric', month: 'short', day: '2-digit' },
   ).format(d)
 }
 
-export function formatRelativeTime(iso: string | null, options?: { fallback?: string }): string {
+export function formatRelativeTime(
+  iso: string | null,
+  options?: { fallback?: string; nowMs?: number },
+): string {
   const fallback = options?.fallback ?? 'Never'
   if (!iso?.trim()) return fallback
   const date = new Date(iso)
   if (Number.isNaN(date.getTime())) return 'Unknown'
-  const now = Date.now()
+  const now = options?.nowMs ?? Date.now()
   const diffMs = now - date.getTime()
   const diffSec = Math.floor(diffMs / 1000)
   const diffMin = Math.floor(diffSec / 60)
@@ -75,14 +81,15 @@ export function formatRelativeTime(iso: string | null, options?: { fallback?: st
   const diffHr = Math.floor(diffMin / 60)
   if (diffHr === 1) return '1 hour ago'
   if (diffHr < 24) return `${diffHr} hours ago`
-  return date.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
+  return date.toLocaleTimeString(SSR_LOCALE, { hour: 'numeric', minute: '2-digit' })
 }
 
-export function formatListTime(iso: string | null) {
+export function formatListTime(iso: string | null, nowMs?: number) {
   if (!iso) return '—'
   const date = new Date(iso)
   if (Number.isNaN(date.getTime())) return '—'
-  const diffMs = Date.now() - date.getTime()
+  const now = nowMs ?? Date.now()
+  const diffMs = now - date.getTime()
   const diffMin = Math.floor(diffMs / 60000)
   if (diffMin < 1) return 'now'
   if (diffMin < 60) return `${diffMin}m`
@@ -90,7 +97,7 @@ export function formatListTime(iso: string | null) {
   if (diffHr < 24) return `${diffHr}h`
   const diffDay = Math.floor(diffHr / 24)
   if (diffDay < 7) return `${diffDay}d`
-  return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+  return date.toLocaleDateString(SSR_LOCALE, { month: 'short', day: 'numeric' })
 }
 
 export function formatMessageTime(iso: string) {
@@ -103,17 +110,17 @@ export function formatMessageTime(iso: string) {
   const diffDay = Math.floor(diffHr / 24)
 
   // In chat, always prefer a clock time over "Just now".
-  if (diffMin < 1) return date.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
+  if (diffMin < 1) return date.toLocaleTimeString(SSR_LOCALE, { hour: 'numeric', minute: '2-digit' })
   if (diffMin < 60) return `${diffMin}m`
   if (date.getFullYear() === now.getFullYear() && date.getMonth() === now.getMonth() && date.getDate() === now.getDate()) {
-    return date.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
+    return date.toLocaleTimeString(SSR_LOCALE, { hour: 'numeric', minute: '2-digit' })
   }
   if (diffDay < 6) {
-    return date.toLocaleDateString(undefined, { weekday: 'short', hour: 'numeric', minute: '2-digit' })
+    return date.toLocaleDateString(SSR_LOCALE, { weekday: 'short', hour: 'numeric', minute: '2-digit' })
   }
 
   const showYear = diffDay >= 364
-  return date.toLocaleDateString(undefined, {
+  return date.toLocaleDateString(SSR_LOCALE, {
     month: 'short',
     day: 'numeric',
     year: showYear ? 'numeric' : undefined,
@@ -125,7 +132,7 @@ export function formatMessageTime(iso: string) {
 export function formatMessageTimeFull(iso: string) {
   const date = new Date(iso)
   if (Number.isNaN(date.getTime())) return ''
-  return date.toLocaleString(undefined, {
+  return date.toLocaleString(SSR_LOCALE, {
     dateStyle: 'medium',
     timeStyle: 'short',
   })
@@ -147,5 +154,5 @@ export function formatDayDividerLabel(iso: string) {
     date.getMonth() === yday.getMonth() &&
     date.getDate() === yday.getDate()
   if (isYesterday) return 'Yesterday'
-  return date.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })
+  return date.toLocaleDateString(SSR_LOCALE, { weekday: 'short', month: 'short', day: 'numeric' })
 }

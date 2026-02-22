@@ -154,6 +154,7 @@ usePageSeo({
 
 const { data, pending, isUp, lastCheckedAtIso, refresh } = useApiHealth()
 const { user } = useAuth()
+const { nowMs } = useNowTicker({ everyMs: 10_000 })
 const { isSocketConnected, isSocketConnecting } = usePresence()
 
 const apiOk = computed(() => Boolean(data.value?.status === 'ok'))
@@ -187,7 +188,7 @@ const wsStatusLabel = computed(() => {
 
 const lastCheckedHuman = computed(() => {
   const iso = lastCheckedAtIso.value
-  return `Last checked ${formatRelativeTime(iso)}`
+  return `Last checked ${formatRelativeTime(iso, { nowMs: nowMs.value })}`
 })
 
 onMounted(() => {

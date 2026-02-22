@@ -131,10 +131,13 @@ onBeforeUnmount(() => {
   if (id) removeInterest([id])
 })
 
+// SSR-safe: use shared nowMs so server and client render identical relative times.
+const { nowMs } = useNowTicker({ everyMs: 15_000 })
+
 const createdAtShort = computed(() => {
   const d = new Date(props.post.createdAt)
-  const now = new Date()
-  const diffMs = now.getTime() - d.getTime()
+  const nowVal = nowMs.value
+  const diffMs = Math.max(0, nowVal - d.getTime())
   const diffSec = Math.floor(diffMs / 1000)
   if (diffSec < 60) return 'now'
   const diffMin = Math.floor(diffSec / 60)
@@ -143,8 +146,8 @@ const createdAtShort = computed(() => {
   if (diffHr < 24) return `${diffHr}h`
   const diffDay = Math.floor(diffHr / 24)
   if (diffDay < 7) return `${diffDay}d`
-  const sameYear = now.getFullYear() === d.getFullYear()
-  const month = d.toLocaleString(undefined, { month: 'short' })
+  const sameYear = new Date(nowVal).getFullYear() === d.getFullYear()
+  const month = d.toLocaleString('en-US', { month: 'short' })
   const day = d.getDate()
   return sameYear ? `${month} ${day}` : `${month} ${day}, ${d.getFullYear()}`
 })

@@ -465,7 +465,7 @@ const joinedLabel = computed(() => {
   if (!raw) return null
   const d = new Date(String(raw))
   if (Number.isNaN(d.getTime())) return null
-  return d.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })
+  return d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
 })
 
 const viewerFollowsUser = computed(() => Boolean(followRelationship.value?.viewerFollowsUser))
@@ -744,9 +744,10 @@ const showLastOnline = computed(() => {
   return Boolean(profile.value?.lastOnlineAt)
 })
 
+const { nowMs } = useNowTicker({ everyMs: 15_000 })
 const lastOnlineShort = computed(() => {
   const iso = profile.value?.lastOnlineAt ?? null
-  const t = formatListTime(iso)
+  const t = formatListTime(iso, nowMs.value)
   if (t === 'now') return '<1m ago'
   if (/^\d+[mhd]$/.test(t)) return `${t} ago`
   return t

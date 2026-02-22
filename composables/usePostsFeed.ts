@@ -278,6 +278,7 @@ export function usePostsFeed(options: { visibility?: Ref<FeedFilter>; followingO
           if (typeof patch.editCount === 'number') next.editCount = patch.editCount
           if (patch.deletedAt !== undefined) next.deletedAt = patch.deletedAt
           if (typeof patch.commentCount === 'number') next.commentCount = patch.commentCount
+          if (typeof patch.viewerCount === 'number') next.viewerCount = patch.viewerCount
         }
         if (next.parent) {
           next = { ...next, parent: patchOne(next.parent) }

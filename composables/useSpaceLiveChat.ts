@@ -28,6 +28,27 @@ function upsertMessages(existing: SpaceChatMessage[], incoming: SpaceChatMessage
 }
 
 
+function playTickSound() {
+  if (!import.meta.client) return
+  try {
+    const ctx = new AudioContext()
+    const osc = ctx.createOscillator()
+    const gain = ctx.createGain()
+    osc.connect(gain)
+    gain.connect(ctx.destination)
+    osc.frequency.value = 1100
+    osc.type = 'sine'
+    gain.gain.setValueAtTime(0, ctx.currentTime)
+    gain.gain.linearRampToValueAtTime(0.07, ctx.currentTime + 0.005)
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.055)
+    osc.start(ctx.currentTime)
+    osc.stop(ctx.currentTime + 0.055)
+    osc.onended = () => { try { ctx.close() } catch { /* ignore */ } }
+  } catch {
+    // AudioContext may be unavailable until user has interacted with the page.
+  }
+}
+
 function playMentionSound() {
   if (!import.meta.client) return
   try {
@@ -201,6 +222,8 @@ export function useSpaceLiveChat(options: { passive?: boolean } = {}) {
         if (!sid || !msg?.id) return
         appendMessageForSpace(sid, msg)
         if (msg.kind === 'user' && msg.sender?.id && msg.body) {
+          // Tick for any new message from someone else (distinct from the mention ding).
+          if (msg.sender.id !== user.value?.id) playTickSound()
           addFloatingEmojisFromText(msg.sender.id, msg.body)
 
           // Float "@" from the sender for every mentioned user, in the SENDER's tier color.

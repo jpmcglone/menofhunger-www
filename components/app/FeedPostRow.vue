@@ -2,7 +2,7 @@
   <!-- Single post (no parent): render one row -->
   <div
     v-if="chain.length === 1"
-    :ref="highlightedPostId === post.id ? setHighlightedRef : undefined"
+    :ref="(el) => { captureWrapperEl(el); if (highlightedPostId === post.id) setHighlightedRef(el) }"
     :data-post-id="post.id"
     :class="keyboardFocusClass"
     @mouseenter="onMouseEnter"
@@ -33,6 +33,7 @@
   <!-- Reply chain A -> B -> C: overlays on each row connect with no gap -->
   <div
     v-else
+    :ref="(el) => captureWrapperEl(el)"
     class="flex flex-col"
     :data-post-id="post.id"
     :class="keyboardFocusClass"
@@ -137,7 +138,6 @@ const rootVisibility = computed(() => chain.value[0]?.visibility)
 const threadLineTint = computed(() => {
   const v = rootVisibility.value
   if (v === 'verifiedOnly') return 'verified'
-  if (v === 'premiumOnly') return 'premium'
   return null
 })
 
@@ -147,6 +147,15 @@ function setHighlightedRef(el: unknown) {
   highlightedRowRef.value = Array.isArray(el) ? (el?.[0] as HTMLElement | null) ?? null : (el as HTMLElement | null) ?? null
 }
 defineExpose({ highlightedRowRef })
+
+// Post view tracking: observe this row for 50% visibility for 1s
+const { observe } = usePostViewTracker()
+const wrapperEl = ref<HTMLElement | null>(null)
+let stopObserve: (() => void) | null = null
+
+function captureWrapperEl(el: unknown) {
+  wrapperEl.value = Array.isArray(el) ? (el?.[0] as HTMLElement | null) ?? null : (el as HTMLElement | null) ?? null
+}
 
 // Keyboard shortcut focus tracking
 const { focusedPostId, focusSource, registerPost, unregisterPost, setFocusedPost, clearFocus } = useKeyboardShortcutsFocusedPost()
@@ -172,9 +181,16 @@ function onMouseLeave() {
 
 onMounted(() => {
   registerPost(props.post)
+  // Observe the wrapper: when ≥50% visible for ≥1s, mark all chain posts as viewed
+  if (wrapperEl.value) {
+    const postIds = chain.value.map((p) => p.id).filter(Boolean)
+    stopObserve = observe(postIds, wrapperEl.value)
+  }
 })
 
 onBeforeUnmount(() => {
   unregisterPost(props.post.id)
+  stopObserve?.()
+  stopObserve = null
 })
 </script>

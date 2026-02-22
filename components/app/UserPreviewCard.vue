@@ -496,9 +496,10 @@ const showLastOnline = computed(() => {
   if (!user.value.id || !isPresenceKnown(user.value.id)) return false
   return Boolean(user.value.lastOnlineAt)
 })
+const { nowMs } = useNowTicker({ everyMs: 15_000 })
 const lastOnlineShort = computed(() => {
   const iso = user.value.lastOnlineAt ?? null
-  const t = formatListTime(iso)
+  const t = formatListTime(iso, nowMs.value)
   if (t === 'now') return '<1m ago'
   if (/^\d+[mhd]$/.test(t)) return `${t} ago`
   return t

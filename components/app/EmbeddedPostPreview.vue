@@ -51,28 +51,13 @@
             class="mt-1.5 text-sm moh-text break-words line-clamp-4"
           >{{ bodyPreview }}</div>
 
-          <!-- Compact media: single image or horizontal filmstrip -->
-          <div v-if="mediaItems.length" class="mt-2 overflow-hidden rounded-lg" aria-hidden="true">
-            <img
-              v-if="mediaItems.length === 1"
-              :src="mediaItems[0]!.url"
-              class="max-h-48 w-full object-cover bg-black/5 dark:bg-white/5"
-              alt=""
-              loading="lazy"
-              decoding="async"
-            />
-            <div v-else class="no-scrollbar flex gap-2 overflow-x-auto pointer-events-none">
-              <img
-                v-for="(m, idx) in mediaItems"
-                :key="m.id || idx"
-                :src="m.url"
-                class="h-20 w-auto shrink-0 rounded-lg object-cover bg-black/5 dark:bg-white/5"
-                alt=""
-                loading="lazy"
-                decoding="async"
-              />
-            </div>
-          </div>
+          <!-- Media: same layout/rules as full posts, but non-interactive (click through to post) -->
+          <AppPostMediaGrid
+            v-if="mediaItems.length"
+            :media="mediaItems"
+            compact
+            :interactive="false"
+          />
         </div>
 
         <div v-else class="text-sm moh-text-muted">Post unavailable.</div>
@@ -97,9 +82,11 @@ const id = computed(() => (props.postId ?? '').trim())
 const permalink = computed(() => (id.value ? `/p/${encodeURIComponent(id.value)}` : null))
 const enabled = computed(() => props.enabled !== false)
 
-function formatShortDate(d: Date): string {
-  const now = new Date()
-  const diffMs = now.getTime() - d.getTime()
+// SSR-safe: use shared nowMs so server and client render identical relative times.
+const { nowMs } = useNowTicker({ everyMs: 15_000 })
+
+function formatShortDate(d: Date, nowMsVal: number): string {
+  const diffMs = Math.max(0, Math.floor((nowMsVal || 0) - d.getTime()))
   const diffSec = Math.floor(diffMs / 1000)
   if (diffSec < 60) return 'now'
   const diffMin = Math.floor(diffSec / 60)
@@ -108,15 +95,18 @@ function formatShortDate(d: Date): string {
   if (diffHr < 24) return `${diffHr}h`
   const diffDay = Math.floor(diffHr / 24)
   if (diffDay < 7) return `${diffDay}d`
-  const sameYear = now.getFullYear() === d.getFullYear()
-  const month = d.toLocaleString(undefined, { month: 'short' })
+  const sameYear = new Date(nowMsVal).getFullYear() === d.getFullYear()
+  // Fixed locale for SSR: server and client must produce identical output.
+  const month = d.toLocaleString('en-US', { month: 'short' })
   const day = d.getDate()
   return sameYear ? `${month} ${day}` : `${month} ${day}, ${d.getFullYear()}`
 }
 
 const createdAtShort = computed(() => {
   try {
-    return post.value?.createdAt ? formatShortDate(new Date(post.value.createdAt)) : ''
+    return post.value?.createdAt
+      ? formatShortDate(new Date(post.value.createdAt), nowMs.value)
+      : ''
   } catch {
     return ''
   }

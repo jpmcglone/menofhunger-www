@@ -187,6 +187,23 @@ watch(
   { immediate: true },
 )
 
+// Direct permalink visit = user saw this post (and full thread if a reply)
+const { markEngaged } = usePostViewTracker()
+watch(
+  () => post.value,
+  (p) => {
+    if (!import.meta.client || !p?.id || !isAuthed.value) return
+    const chainIds: string[] = []
+    let cur: FeedPost | undefined = p
+    while (cur?.id) {
+      chainIds.push(cur.id)
+      cur = cur.parent
+    }
+    if (chainIds.length) markEngaged(chainIds)
+  },
+  { immediate: true },
+)
+
 function onDeleted() {
   if (data.value) {
     data.value = {

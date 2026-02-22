@@ -1,16 +1,20 @@
 <template>
   <!-- Single media -->
-  <div v-if="items.length === 1" class="mt-3 flex justify-start">
-    <!-- Single video: inline media player (ready to play when row in view); one playing globally -->
+  <div
+    v-if="items.length === 1"
+    class="mt-3 flex justify-start"
+    :class="{ 'pointer-events-none': !interactive }"
+  >
+    <!-- Single video: interactive = inline player; non-interactive = poster only -->
     <div
       v-if="items[0]?.kind === 'video'"
       ref="singleVideoContainerRef"
       :class="singleBoxClass"
       :style="singleBoxStyle"
-      class="moh-squircle relative overflow-hidden rounded-2xl border moh-border bg-black"
+      class="moh-squircle relative overflow-hidden rounded-2xl bg-black"
     >
       <video
-        v-if="items[0]?.url"
+        v-if="interactive && items[0]?.url"
         ref="singleVideoEl"
         :src="singleVideoSrc"
         :poster="posterFor(items[0])"
@@ -28,9 +32,19 @@
         @pause="onSingleVideoPause"
         @volumechange="onSingleVideoVolumeChange"
       />
+      <!-- Non-interactive: poster/thumbnail only -->
+      <AppImg
+        v-else-if="items[0]?.url"
+        :src="posterFor(items[0]) || items[0]?.url"
+        class="absolute inset-0 h-full w-full object-contain"
+        :alt="items[0]?.alt ?? ''"
+        sizes="(max-width: 640px) 100vw, 720px"
+        loading="lazy"
+        decoding="async"
+      />
       <!-- Small corner controls only (no dimming). Safari requires user gesture to unmute. -->
       <button
-        v-if="singleVideoActive && singleVideoMuted"
+        v-if="interactive && singleVideoActive && singleVideoMuted"
         type="button"
         class="absolute right-2 top-2 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-black/50 text-white hover:bg-black/70"
         aria-label="Tap for sound"
@@ -39,7 +53,7 @@
         <Icon name="tabler:volume-off" class="text-base" aria-hidden="true" />
       </button>
       <button
-        v-else-if="singleVideoActive && !singleVideoMuted"
+        v-else-if="interactive && singleVideoActive && !singleVideoMuted"
         type="button"
         class="absolute right-2 top-2 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-black/50 text-white hover:bg-black/70"
         aria-label="Mute"
@@ -48,22 +62,27 @@
         <Icon name="tabler:volume" class="text-base" aria-hidden="true" />
       </button>
       <span
-        v-if="items[0]?.durationSeconds != null && items[0].durationSeconds > 0"
+        v-if="interactive && items[0]?.durationSeconds != null && items[0].durationSeconds > 0"
         class="pointer-events-none absolute right-2 bottom-2 rounded bg-black/65 px-1.5 py-0.5 text-[11px] font-semibold tabular-nums text-white"
         aria-hidden="true"
       >
         {{ formatDuration(items[0].durationSeconds) }}
       </span>
     </div>
-    <!-- Single image -->
-    <button
+    <!-- Single image (interactive: button for lightbox; non-interactive: div) -->
+    <component
+      :is="interactive ? 'button' : 'div'"
       v-else-if="items[0]?.url"
-      type="button"
-      class="moh-tap cursor-zoom-in select-none text-left focus:outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20 dark:focus-visible:ring-white/20"
-      :class="singleBoxClass"
+      :type="interactive ? 'button' : undefined"
+      :class="[
+        singleBoxClass,
+        interactive
+          ? 'moh-tap cursor-zoom-in select-none text-left !bg-transparent !border-0 !p-0 focus:outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20 dark:focus-visible:ring-white/20'
+          : 'select-none',
+      ]"
       :style="singleBoxStyle"
-      aria-label="View image"
-      @click.stop="openAt($event, 0)"
+      :aria-label="interactive ? 'View image' : undefined"
+      @click.stop="interactive ? openAt($event, 0) : undefined"
     >
       <div class="absolute inset-0" aria-hidden="true" />
       <AppImg
@@ -77,7 +96,7 @@
         loading="lazy"
         decoding="async"
       />
-    </button>
+    </component>
     <div
       v-else
       :style="{
@@ -96,17 +115,26 @@
     </div>
   </div>
 
-  <div v-else-if="items.length > 1" class="mt-3">
-    <div class="moh-squircle w-full overflow-hidden rounded-2xl border moh-border" :style="gridWrapperStyle">
-      <div class="grid gap-px bg-gray-200 dark:bg-zinc-800" :class="gridClass" :style="gridStyle">
+  <div
+    v-else-if="items.length > 1"
+    class="mt-3"
+    :class="{ 'pointer-events-none': !interactive }"
+  >
+    <div class="moh-squircle w-full overflow-hidden rounded-2xl" :style="gridWrapperStyle">
+      <div class="grid" :class="gridClass" :style="gridStyle">
         <template v-for="(m, idx) in items" :key="m.id || idx">
-          <button
+          <component
+            :is="interactive ? 'button' : 'div'"
             v-if="m.url"
-            type="button"
-            class="moh-tap relative min-w-0 min-h-0 cursor-zoom-in overflow-hidden focus:outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20 dark:focus-visible:ring-white/20"
-            :class="itemClass(idx)"
-            :aria-label="m.kind === 'video' ? `View video ${idx + 1} of ${items.length}` : `View image ${idx + 1} of ${items.length}`"
-            @click.stop="openAt($event, idx)"
+            :type="interactive ? 'button' : undefined"
+            :class="[
+              itemClass(idx),
+              interactive
+                ? 'moh-tap relative min-w-0 min-h-0 cursor-zoom-in overflow-hidden !bg-transparent !border-0 !p-0 focus:outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20 dark:focus-visible:ring-white/20'
+                : 'relative min-w-0 min-h-0 overflow-hidden',
+            ]"
+            :aria-label="interactive ? (m.kind === 'video' ? `View video ${idx + 1} of ${items.length}` : `View image ${idx + 1} of ${items.length}`) : undefined"
+            @click.stop="interactive ? openAt($event, idx) : undefined"
           >
             <AppImg
               v-if="m.kind !== 'video'"
@@ -133,10 +161,11 @@
               </div>
             </template>
             <div
+              v-if="interactive"
               class="pointer-events-none absolute inset-0 bg-black/0 transition-colors duration-200 hover:bg-black/10"
               aria-hidden="true"
             />
-          </button>
+          </component>
           <div
             v-else
             class="relative min-w-0 min-h-0 overflow-hidden flex items-center justify-center moh-surface"
@@ -169,8 +198,10 @@ const props = withDefaults(
     rowInView?: boolean
     /** When true, use smaller max height and cap aspect ratio at 4:6 (h:w). */
     compact?: boolean
+    /** When false, media is display-only (no lightbox, no video playback). Clicks pass through to parent (e.g. embedded preview). */
+    interactive?: boolean
   }>(),
-  { compact: false, postId: null, rowInView: true }
+  { compact: false, postId: null, rowInView: true, interactive: true }
 )
 
 const viewer = useImageLightbox()
@@ -259,7 +290,13 @@ function toLightboxItems(): LightboxMediaItem[] {
 }
 
 onMounted(() => {
-  if (import.meta.client && props.postId && items.value.length === 1 && items.value[0]?.kind === 'video') {
+  if (
+    import.meta.client &&
+    props.interactive &&
+    props.postId &&
+    items.value.length === 1 &&
+    items.value[0]?.kind === 'video'
+  ) {
     const el = (singleVideoEl.value ?? singleVideoContainerRef.value) as HTMLElement | null
     if (el) videoManager.register(props.postId, el)
   }
@@ -391,12 +428,12 @@ const singleBoxClass = computed(() => {
   if (!single.value) return ''
   if (!singleWidth.value || !singleHeight.value) {
     // Fallback: use style for dynamic dimensions
-    return 'moh-squircle relative overflow-hidden rounded-2xl w-full shrink-0 border moh-border'
+    return 'moh-squircle relative overflow-hidden rounded-2xl w-full shrink-0'
   }
   if (singleIsVeryWide.value) {
-    return 'moh-squircle relative overflow-hidden rounded-2xl w-full shrink-0 border moh-border'
+    return 'moh-squircle relative overflow-hidden rounded-2xl w-full shrink-0'
   }
-  return 'moh-squircle relative overflow-hidden rounded-2xl shrink-0 border moh-border'
+  return 'moh-squircle relative overflow-hidden rounded-2xl shrink-0'
 })
 
 const gridClass = computed(() => {

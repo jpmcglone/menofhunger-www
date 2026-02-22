@@ -372,6 +372,7 @@ export type FeedPost = {
   boostCount: number
   bookmarkCount: number
   commentCount?: number
+  viewerCount?: number
   parentId?: string | null
   /** When present, this post is a reply and the parent is included for thread display. */
   parent?: FeedPost
@@ -392,6 +393,13 @@ export type FeedPost = {
     score?: number | null
   }
   author: PostAuthor
+}
+
+export type PostViewBreakdown = {
+  premium: number
+  verified: number
+  unverified: number
+  total: number
 }
 
 export type BookmarkCollection = {
@@ -1073,6 +1081,7 @@ export type WsPostsLiveUpdatedPayload = {
     editCount: number
     deletedAt: string | null
     commentCount: number
+    viewerCount: number
   }>
 }
 

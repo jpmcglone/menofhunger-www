@@ -91,6 +91,73 @@
             :created-at-tooltip="createdAtTooltip"
           />
 
+          <!-- Viewer count chip: just left of the more (⋯) button -->
+          <Transition name="viewer-count-appear" appear>
+            <div
+              v-if="viewerCount > 0 && !isOnlyMe"
+              class="absolute right-10 sm:right-9 -top-2.5 z-20 flex items-center"
+            >
+              <div class="relative">
+                <button
+                  type="button"
+                  class="inline-flex h-10 w-auto sm:h-9 items-center gap-0.5 px-1.5 rounded-full text-[11px] tabular-nums moh-text-muted transition-colors moh-surface-hover cursor-default select-none"
+                  :aria-label="`${viewerCount} ${viewerCount === 1 ? 'person' : 'people'} saw this post`"
+                  @mouseenter="onViewerCountHover"
+                  @focus="onViewerCountHover"
+                  @mouseleave="viewerBreakdownVisible = false"
+                  @blur="viewerBreakdownVisible = false"
+                >
+                  <svg viewBox="0 0 24 24" class="h-3.5 w-3.5 shrink-0" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                  </svg>
+                  <span>{{ formatShortCount(viewerCount) }}</span>
+                </button>
+
+                <!-- Breakdown popover (shown on hover) -->
+                <Transition name="viewer-breakdown">
+                  <div
+                    v-if="viewerBreakdownVisible"
+                    class="absolute top-full mt-1.5 right-0 z-50 min-w-[10rem] rounded-lg border moh-border moh-surface shadow-lg px-3 py-2.5 text-[11px] sm:text-xs"
+                    role="tooltip"
+                  >
+                    <p class="mb-1.5 font-semibold moh-text">
+                      {{ viewerCount }} {{ viewerCount === 1 ? 'person' : 'people' }} saw this
+                    </p>
+                    <template v-if="viewerBreakdown">
+                      <div class="flex flex-col gap-1 moh-text-muted">
+                        <div v-if="viewerBreakdown.premium > 0" class="flex items-center justify-between gap-3">
+                          <span class="flex items-center gap-1.5">
+                            <span class="inline-block h-2 w-2 rounded-full bg-yellow-400 shrink-0" aria-hidden="true" />
+                            Premium
+                          </span>
+                          <span class="tabular-nums font-medium moh-text">{{ viewerBreakdown.premium }}</span>
+                        </div>
+                        <div v-if="viewerBreakdown.verified > 0" class="flex items-center justify-between gap-3">
+                          <span class="flex items-center gap-1.5">
+                            <span class="inline-block h-2 w-2 rounded-full bg-blue-400 shrink-0" aria-hidden="true" />
+                            Verified
+                          </span>
+                          <span class="tabular-nums font-medium moh-text">{{ viewerBreakdown.verified }}</span>
+                        </div>
+                        <div v-if="viewerBreakdown.unverified > 0" class="flex items-center justify-between gap-3">
+                          <span class="flex items-center gap-1.5">
+                            <span class="inline-block h-2 w-2 rounded-full bg-gray-400 shrink-0" aria-hidden="true" />
+                            Unverified
+                          </span>
+                          <span class="tabular-nums font-medium moh-text">{{ viewerBreakdown.unverified }}</span>
+                        </div>
+                      </div>
+                    </template>
+                    <template v-else>
+                      <div class="moh-text-muted animate-pulse">Loading…</div>
+                    </template>
+                  </div>
+                </Transition>
+              </div>
+            </div>
+          </Transition>
+
           <AppPostRowMoreMenu :items="moreMenuItems" :tooltip="moreTooltip" />
         </div>
 
@@ -235,7 +302,7 @@
             </div>
           </div>
 
-          <div v-if="!isOnlyMe" class="relative flex items-center justify-end">
+          <div v-if="!isOnlyMe" class="relative flex items-center gap-1 justify-end">
             <span class="mr-0 inline-block w-6 select-none text-right text-[11px] sm:text-xs tabular-nums moh-text-muted" aria-hidden="true">
               {{ bookmarkCountLabel ?? '' }}
             </span>
@@ -382,7 +449,7 @@ const highlightClass = computed(() => {
   if (!props.highlight) return ''
   const v = postView.value.visibility
   if (v === 'verifiedOnly') return 'moh-post-highlight moh-post-highlight-verified'
-  if (v === 'premiumOnly') return 'moh-post-highlight moh-post-highlight-premium'
+  if (v === 'premiumOnly') return 'moh-post-highlight'
   if (v === 'onlyMe') return 'moh-post-highlight moh-post-highlight-onlyme'
   return 'moh-post-highlight'
 })
@@ -652,7 +719,10 @@ function onRowClick(e: MouseEvent) {
 const createdAtDate = computed(() => new Date(postView.value.createdAt))
 const { nowMs } = useNowTicker({ everyMs: 15_000 })
 const createdAtShort = computed(() => formatShortDate(createdAtDate.value, nowMs.value))
-const createdAtTooltip = computed(() => tinyTooltip(createdAtDate.value.toLocaleString()))
+// Fixed locale for SSR: server and client must produce identical output.
+const createdAtTooltip = computed(() =>
+  tinyTooltip(createdAtDate.value.toLocaleString('en-US')),
+)
 
 function formatShortDate(d: Date, nowMs: number): string {
   const diffMs = Math.max(0, Math.floor((nowMs || 0) - d.getTime()))
@@ -666,7 +736,7 @@ function formatShortDate(d: Date, nowMs: number): string {
   if (diffDay < 7) return `${diffDay}d`
 
   const sameYear = new Date(nowMs).getFullYear() === d.getFullYear()
-  const month = d.toLocaleString(undefined, { month: 'short' })
+  const month = d.toLocaleString('en-US', { month: 'short' })
   const day = d.getDate()
   return sameYear ? `${month} ${day}` : `${month} ${day}, ${d.getFullYear()}`
 }
@@ -875,6 +945,26 @@ const bookmarkCountLabel = computed(() => {
   return formatShortCount(n)
 })
 
+const viewerCount = computed(() => Math.max(0, Math.floor(Number(postView.value.viewerCount ?? 0))))
+
+const viewerBreakdownVisible = ref(false)
+const viewerBreakdown = ref<import('~/types/api').PostViewBreakdown | null>(null)
+let viewerBreakdownFetched = false
+
+async function onViewerCountHover() {
+  viewerBreakdownVisible.value = true
+  if (viewerBreakdownFetched) return
+  viewerBreakdownFetched = true
+  try {
+    const result = await apiFetchData<import('~/types/api').PostViewBreakdown>(
+      `/posts/${encodeURIComponent(postView.value.id)}/views/breakdown`,
+    )
+    viewerBreakdown.value = result
+  } catch {
+    viewerBreakdownFetched = false // allow retry on next hover
+  }
+}
+
 function onBookmarkCountDelta(delta: number) {
   const d = Math.trunc(Number(delta) || 0)
   if (!d) return
@@ -1030,4 +1120,26 @@ const shareMenuItems = computed<MenuItemWithIcon[]>(() => [
   },
 ])
 </script>
+
+<style scoped>
+/* Viewer count chip: fade + scale in when it first appears (0 → 1) */
+.viewer-count-appear-enter-active {
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+.viewer-count-appear-enter-from {
+  opacity: 0;
+  transform: scale(0.7);
+}
+
+/* Breakdown popover: slide up and fade */
+.viewer-breakdown-enter-active,
+.viewer-breakdown-leave-active {
+  transition: opacity 0.12s ease, transform 0.12s ease;
+}
+.viewer-breakdown-enter-from,
+.viewer-breakdown-leave-to {
+  opacity: 0;
+  transform: translateY(-4px);
+}
+</style>
 

@@ -18,9 +18,9 @@
       </div>
 
       <!-- Space rows — edge to edge -->
-      <div v-else class="border-t moh-border">
+      <TransitionGroup v-else tag="div" class="border-t moh-border" move-class="transition-transform duration-500 ease-in-out">
         <div
-          v-for="space in spaces"
+          v-for="space in sortedSpaces"
           :key="space.id"
           class="relative border-b moh-border overflow-hidden transition-colors"
           :class="selectedSpaceId === space.id ? 'bg-black/[0.03] dark:bg-white/[0.04]' : ''"
@@ -37,6 +37,16 @@
 
           <!-- Row content -->
           <div class="relative z-10 flex items-center gap-3 px-4 py-2.5">
+
+            <!-- Far left: lobby count badge (always reserves space; hidden when 0) -->
+            <span
+              :class="[
+                'inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1 rounded text-[11px] font-medium tabular-nums shrink-0',
+                'moh-text-muted bg-black/10 dark:bg-white/10',
+                lobbyCountForSpace(space.id) === 0 ? 'invisible' : '',
+              ]"
+              aria-hidden="true"
+            >{{ lobbyCountForSpace(space.id) }}</span>
 
             <!-- Left: enter button -->
             <button
@@ -148,7 +158,7 @@
             </div>
           </div>
         </div>
-      </div>
+      </TransitionGroup>
 
       <!-- Empty state / member footer -->
       <div v-if="loadedOnce" class="moh-gutter-x pt-4">
@@ -190,6 +200,9 @@ const MAX_LOBBY_AVATARS = 4
 
 const { spaces, loading, loadedOnce, loadSpaces } = useSpaces()
 const { selectedSpaceId, currentSpace, members, lobbyCountForSpace, subscribeLobbyCounts, unsubscribeLobbyCounts, select } = useSpaceLobby()
+const sortedSpaces = computed(() =>
+  [...(spaces.value ?? [])].sort((a, b) => lobbyCountForSpace(b.id) - lobbyCountForSpace(a.id))
+)
 const { stationId: audioStationId, isPlaying, playSpace, pause } = useSpaceAudio()
 
 const usersStore = useUsersStore()
