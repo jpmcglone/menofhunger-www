@@ -59,8 +59,6 @@ export function navCompactModePath(path: string): boolean {
   return (
     path === '/tiers' ||
     path.startsWith('/tiers/') ||
-    path === '/spaces' ||
-    path.startsWith('/spaces/') ||
     path === '/radio' ||
     path.startsWith('/radio/')
   )

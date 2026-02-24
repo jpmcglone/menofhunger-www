@@ -5,9 +5,11 @@
     :style="effectiveWrapStyle"
     aria-hidden="true"
   >
-    <!-- Avatar (clipped to circle) -->
+    <!-- Avatar (clipped to circle).
+         When spacesRing is active, the outer wrapper has a gradient background + padding.
+         The inner div uses the page background to create the visible ring gap. -->
     <div
-      :class="['h-full w-full overflow-hidden', roundClass, bgClass]"
+      :class="['h-full w-full overflow-hidden', roundClass, spacesRing ? 'bg-[var(--moh-bg)]' : bgClass]"
     >
       <AppImg
         v-if="src"
@@ -70,6 +72,7 @@
 
 <script setup lang="ts">
 import AppImg from '~/components/app/AppImg.vue'
+import { SPACES_GRADIENT } from '~/utils/theme-tint'
 const props = withDefaults(
   defineProps<{
     src?: string | null
@@ -87,6 +90,8 @@ const props = withDefaults(
     premiumPlusGlow?: boolean
     /** Organization users keep a silver premium+ glow. */
     isOrganization?: boolean
+    /** Show the Spaces gradient ring around the avatar (for users currently in a space). */
+    spacesRing?: boolean
     /** When false, do not show the presence dot (e.g. radio bar listener avatars). */
     showPresence?: boolean
     /** Presence state: green (online), clock (idle), yellow (connecting), or hidden (offline). */
@@ -107,6 +112,7 @@ const props = withDefaults(
     wrapStyle: () => ({}),
     premiumPlusGlow: false,
     isOrganization: false,
+    spacesRing: false,
     showPresence: true,
     presenceStatus: 'offline',
     presenceScale: 0.25,
@@ -180,12 +186,27 @@ const premiumPlusGlowStyle = computed<Record<string, string>>(() => {
   }
 })
 
+// Spaces ring: gradient border rendered as a padded gradient shell on the outer wrapper.
+// The inner avatar div uses the page background to "cut" the visible ring.
+const spacesRingStyle = computed<Record<string, string>>(() => {
+  if (!props.spacesRing) return {}
+  const d = diameterPx.value
+  // Ring thickness scales with avatar size (~8% of diameter), min 2px.
+  const ringPx = Math.max(2, Math.round(d * 0.08))
+  return {
+    background: SPACES_GRADIENT,
+    padding: `${ringPx}px`,
+  }
+})
+
 const effectiveWrapStyle = computed<Record<string, string>>(() => {
   // Apply Premium+ glow on the wrapper itself so we don't need any internal z-index layering.
-  // Also respects any caller-provided wrapStyle (rings, etc).
+  // Spaces ring uses gradient background + padding to create a border-like ring.
+  // Caller-provided wrapStyle is applied last so it can override.
   return {
-    ...(props.wrapStyle ?? {}),
     ...(props.premiumPlusGlow ? premiumPlusGlowStyle.value : {}),
+    ...(props.spacesRing ? spacesRingStyle.value : {}),
+    ...(props.wrapStyle ?? {}),
   }
 })
 

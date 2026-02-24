@@ -60,7 +60,7 @@
       </div>
     </button>
 
-    <Menu v-if="!hideMenu" ref="menuRef" :model="menuItems" popup>
+    <Menu v-if="!hideMenu" ref="menuRef" :model="allMenuItems" popup>
       <template #item="{ item, props }">
         <a v-bind="props.action" class="flex items-center gap-2">
           <Icon v-if="item.iconName" :name="item.iconName" aria-hidden="true" />
@@ -103,15 +103,35 @@ const cardClass = computed(() => [
   props.compact ? 'p-0' : 'p-1 xl:p-2'
 ])
 
+const route = useRoute()
 const { user } = useAuth()
 const { getPresenceStatus, isSocketConnecting } = usePresence()
 const { menuItems, confirmVisible, confirmLogout } = useUserMenu()
+const { selectedSpaceId } = useSpaceLobby()
 
 const currentUserPresenceStatus = computed(() => {
   const u = user.value
   if (!u?.id) return 'offline' as const
   if (isSocketConnecting.value) return 'connecting' as const
   return getPresenceStatus(u.id)
+})
+
+type MenuItemWithIcon = MenuItem & { iconName?: string }
+
+// Prepend "Go to space" when the current user is actively in a space (suppressed on /spaces routes).
+const allMenuItems = computed<MenuItemWithIcon[]>(() => {
+  const base = menuItems.value as MenuItemWithIcon[]
+  const sid = selectedSpaceId.value
+  if (!sid || route.path.startsWith('/spaces')) return base
+  return [
+    {
+      label: 'Go to space',
+      iconName: 'tabler:layout-grid',
+      command: () => navigateTo(`/spaces/${encodeURIComponent(sid)}`),
+    } as MenuItemWithIcon,
+    { separator: true } as MenuItemWithIcon,
+    ...base,
+  ]
 })
 
 const menuRef = ref()

@@ -94,6 +94,19 @@ export const PRIMARY_TEXT_DARK: PrimaryPalette = {
   900: '#ffffff',
 }
 
+/**
+ * Spaces brand gradient: verified blue (left) → premium orange (right).
+ * Uses CSS variables so it respects live theme changes automatically.
+ * Use `spacesGradientStyle()` when you need an inline `style` object,
+ * or reference `SPACES_GRADIENT` directly in a CSS `background` value.
+ */
+export const SPACES_GRADIENT = 'linear-gradient(90deg, var(--moh-verified), var(--moh-premium))'
+
+/** Returns an inline-style `background` for the Spaces gradient (pill, circle, ring). */
+export function spacesGradientStyle(): { background: string } {
+  return { background: SPACES_GRADIENT }
+}
+
 export function primaryPaletteToCssVars(p: PrimaryPalette, selector: string, contrastColor: string): string {
   // PrimeVue semantic token naming: var(--p-primary-500), etc.
   // Use `!important` to ensure these overrides win over theme CSS.

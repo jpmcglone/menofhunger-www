@@ -237,6 +237,19 @@ html.dark {
    Premium orange must remain stable so "premium" UI reflects the target (post/user),
    not the currently logged-in viewer's account type. */
 
+/* Spaces gradient: verified blue → premium orange (left → right).
+   Applied to Spaces nav pill, compact circle, and the "in a space" avatar ring.
+   Uses the same CSS vars so it automatically follows theme overrides. */
+.moh-spaces-gradient {
+  background: linear-gradient(90deg, var(--moh-verified), var(--moh-premium));
+}
+/* Gradient ring variant: wraps the avatar in a padded gradient shell.
+   Inner content should be inset with a white/dark background to reveal the ring. */
+.moh-spaces-ring {
+  background: linear-gradient(90deg, var(--moh-verified), var(--moh-premium));
+  padding: 2px;
+}
+
 /* Global mobile tap affordances: faster taps + no flash on all interactive elements. */
 button,
 a,

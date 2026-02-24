@@ -49,11 +49,36 @@
     </div>
     <div class="flex gap-2.5 sm:gap-3" :class="{ 'mt-2': showThreadLineAboveAvatar && noPaddingTop }">
       <div class="relative z-20 shrink-0 flex flex-col w-10">
+        <!-- Own post + in a space: show context menu instead of direct navigation -->
+        <template v-if="showAvatarMenu">
+          <button
+            type="button"
+            class="group shrink-0"
+            aria-label="Avatar options"
+            @click.stop="toggleAvatarMenu"
+          >
+            <div ref="avatarEl">
+              <AppUserAvatar
+                :user="author"
+                size-class="h-10 w-10"
+                bg-class="moh-surface"
+              />
+            </div>
+          </button>
+          <Menu ref="avatarMenuRef" :model="avatarMenuItems" popup>
+            <template #item="{ item, props: itemProps }">
+              <a v-bind="itemProps.action" class="flex items-center gap-2">
+                <Icon v-if="item.iconName" :name="item.iconName" aria-hidden="true" />
+                <span v-bind="itemProps.label">{{ item.label }}</span>
+              </a>
+            </template>
+          </Menu>
+        </template>
         <NuxtLink
-          v-if="authorProfilePath"
+          v-else-if="authorProfilePath"
           :to="authorProfilePath"
           class="group shrink-0"
-          :aria-label="`View @${author.username} profile`"
+          :aria-label="`View @${author?.username} profile`"
         >
           <div ref="avatarEl">
             <AppUserAvatar
@@ -561,9 +586,44 @@ const rowStyle = computed(() => ({
 // Resource preservation: only do heavy work (metadata fetch + embeds) when the row is near viewport.
 const rowEl = ref<HTMLElement | null>(null)
 const { inView: rowInView } = useInViewOnce(rowEl, { root: null, rootMargin: '800px 0px', threshold: 0.01 })
+const route = useRoute()
 const { user, me: refetchMe, isAuthed, isVerified: viewerIsVerified } = useAuth()
 const viewerHasUsername = computed(() => Boolean(user.value?.usernameIsSet))
 const isSelf = computed(() => Boolean(user.value?.id && user.value.id === (author.value?.id ?? postView.value.author.id)))
+
+// Avatar context menu: shown when viewing your own post and you're in a space (but not on /spaces).
+const { selectedSpaceId } = useSpaceLobby()
+const showAvatarMenu = computed(() => {
+  if (!isSelf.value) return false
+  if (!selectedSpaceId.value) return false
+  if (route.path.startsWith('/spaces')) return false
+  return true
+})
+const avatarMenuRef = ref()
+type AvatarMenuItem = MenuItem & { iconName?: string }
+const avatarMenuItems = computed<AvatarMenuItem[]>(() => {
+  const sid = selectedSpaceId.value
+  const items: AvatarMenuItem[] = []
+  if (sid) {
+    items.push({
+      label: 'Go to space',
+      iconName: 'tabler:layout-grid',
+      command: () => navigateTo(`/spaces/${encodeURIComponent(sid)}`),
+    })
+  }
+  if (authorProfilePath.value) {
+    items.push({
+      label: 'View profile',
+      iconName: 'tabler:user',
+      command: () => navigateTo(authorProfilePath.value!),
+    })
+  }
+  return items
+})
+function toggleAvatarMenu(event: Event) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  ;(avatarMenuRef.value as any)?.toggle(event)
+}
 const { apiFetchData } = useApiClient()
 const { show: showAuthActionModal } = useAuthActionModal()
 const boostState = useBoostState()

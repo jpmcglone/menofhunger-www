@@ -143,17 +143,10 @@
             v-if="profileAvatarUrl"
             v-show="!hideAvatarThumb"
             type="button"
-            class="absolute inset-0 cursor-zoom-in"
-            aria-label="View avatar"
-            @click="
-              emit('openImage', {
-                event: $event,
-                url: profileAvatarUrl,
-                title: 'Avatar',
-                kind: 'avatar',
-                isOrganization: Boolean(profile?.isOrganization),
-              })
-            "
+            class="absolute inset-0"
+            :class="isSelf && selectedSpaceId && !$route.path.startsWith('/spaces') ? 'cursor-pointer' : 'cursor-zoom-in'"
+            aria-label="Avatar options"
+            @click="onAvatarClick($event)"
           />
         </div>
       </div>
@@ -308,6 +301,16 @@
   </div>
 
   <Menu v-if="canOpenMenu" ref="menuRef" :model="menuItems" popup>
+    <template #item="{ item, props }">
+      <a v-bind="props.action" class="flex items-center gap-2">
+        <Icon v-if="item.iconName" :name="item.iconName" aria-hidden="true" />
+        <span v-bind="props.label">{{ item.label }}</span>
+      </a>
+    </template>
+  </Menu>
+
+  <!-- Avatar context menu: shown when on own profile and optionally in a space -->
+  <Menu ref="avatarMenuRef" :model="avatarMenuItems" popup>
     <template #item="{ item, props }">
       <a v-bind="props.action" class="flex items-center gap-2">
         <Icon v-if="item.iconName" :name="item.iconName" aria-hidden="true" />
@@ -707,6 +710,61 @@ const canOpenMenu = computed(() => {
 
 const reportOpen = ref(false)
 const menuRef = ref()
+
+// Avatar context menu (for own profile: Go to space and/or View photo).
+const { selectedSpaceId } = useSpaceLobby()
+const avatarMenuRef = ref()
+
+type AvatarMenuItem = MenuItemWithIcon
+
+const avatarMenuItems = computed<AvatarMenuItem[]>(() => {
+  const items: AvatarMenuItem[] = []
+  const sid = selectedSpaceId.value
+  // Only offer "Go to space" when not already on the spaces page.
+  const route = useRoute()
+  if (sid && !route.path.startsWith('/spaces')) {
+    items.push({
+      label: 'Go to space',
+      iconName: 'tabler:layout-grid',
+      command: () => navigateTo(`/spaces/${encodeURIComponent(sid)}`),
+    })
+  }
+  if (profileAvatarUrl.value) {
+    items.push({
+      label: 'View photo',
+      iconName: 'tabler:photo',
+      command: () => {
+        emit('openImage', {
+          event: new MouseEvent('click'),
+          url: profileAvatarUrl.value!,
+          title: 'Avatar',
+          kind: 'avatar',
+          isOrganization: Boolean(profile.value?.isOrganization),
+        })
+      },
+    })
+  }
+  return items
+})
+
+function onAvatarClick(event: MouseEvent) {
+  const route = useRoute()
+  const inSpace = Boolean(selectedSpaceId.value) && !route.path.startsWith('/spaces')
+  if (isSelf.value && inSpace) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ;(avatarMenuRef.value as any)?.toggle(event)
+    return
+  }
+  if (profileAvatarUrl.value) {
+    emit('openImage', {
+      event,
+      url: profileAvatarUrl.value,
+      title: 'Avatar',
+      kind: 'avatar',
+      isOrganization: Boolean(profile.value?.isOrganization),
+    })
+  }
+}
 
 const blockState = useBlockState()
 const toast = useAppToast()

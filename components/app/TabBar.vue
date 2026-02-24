@@ -20,6 +20,42 @@
             </div>
           </button>
 
+          <!-- SPACES: gradient-outlined circle -->
+          <NuxtLink
+            v-else-if="item.key === 'spaces'"
+            :to="item.to"
+            class="flex h-full w-full flex-col items-center justify-center touch-manipulation transition-transform duration-100 active:scale-[0.98] moh-focus"
+            @click="(e) => { haptics.tap(); onNavClick(item.to, e) }"
+          >
+            <!-- Outer ring = gradient background; inner disc = page bg with icon -->
+            <div
+              class="relative flex items-center justify-center rounded-full shrink-0"
+              :style="{
+                background: 'linear-gradient(90deg, var(--moh-verified), var(--moh-premium))',
+                padding: isActive(item.to) ? '3px' : '2.5px',
+                width: '40px',
+                height: '40px',
+              }"
+            >
+              <div
+                class="w-full h-full rounded-full flex items-center justify-center"
+                :style="{
+                  background: isActive(item.to)
+                    ? 'linear-gradient(rgba(43,123,185,0.12) 0%, rgba(199,125,26,0.08) 100%)'
+                    : 'var(--moh-bg)',
+                }"
+              >
+                <Icon
+                  :name="isActive(item.to) ? (item.iconActive || item.icon) : item.icon"
+                  size="22"
+                  class="text-gray-900 dark:text-gray-100"
+                  :class="[item.iconClass, isActive(item.to) ? 'opacity-100' : 'opacity-80']"
+                  aria-hidden="true"
+                />
+              </div>
+            </div>
+          </NuxtLink>
+
           <NuxtLink
             v-else
             :to="item.to"
@@ -52,45 +88,36 @@
   >
     <div class="w-full min-h-[12rem] flex flex-col">
       <div class="flex flex-col">
-        <NuxtLink
-          v-for="mi in mainMenuItems"
-          :key="mi.key"
-          :to="mi.to"
-          class="moh-tap flex w-full items-center justify-between gap-3 px-5 py-4 moh-focus"
-          :class="[
-            mi.key === 'only-me' ? 'moh-menuitem-onlyme' : 'text-gray-900 dark:text-gray-100',
-            mi.key !== 'only-me' ? 'moh-surface-hover' : '',
-            isActive(mi.to) ? (mi.key === 'only-me' ? 'moh-nav-onlyme-active' : 'moh-surface font-bold') : '',
-          ]"
-          @click="() => { moreOpen = false }"
-        >
-          <div class="flex items-center gap-3 min-w-0">
-            <div class="relative h-10 w-10 shrink-0 flex items-center justify-center">
-              <Icon
-                :name="moreMenuIconName(mi)"
-                size="20"
-                :class="['opacity-90', mi.iconClass]"
-                aria-hidden="true"
-              />
-              <span
-                v-if="mi.key === 'spaces'"
-                class="absolute left-1/2 -top-3.5 -translate-x-1/2"
-              >
-                <span
-                  class="inline-block moh-slow-bounce rounded-full px-1.5 py-0.5 text-[9px] font-extrabold tracking-[0.12em] uppercase text-white shadow-sm"
-                  style="background: linear-gradient(135deg, var(--moh-verified), var(--moh-premium));"
-                >
-                  NEW
-                </span>
-              </span>
-            </div>
-            <div class="min-w-0">
-              <div class="text-sm font-semibold truncate">
-                {{ mi.label }}
+        <template v-for="mi in mainMenuItems" :key="mi.key">
+
+          <NuxtLink
+            :to="mi.to"
+            class="moh-tap flex w-full items-center justify-between gap-3 px-5 py-4 moh-focus"
+            :class="[
+              mi.key === 'only-me' ? 'moh-menuitem-onlyme' : 'text-gray-900 dark:text-gray-100',
+              mi.key !== 'only-me' ? 'moh-surface-hover' : '',
+              isActive(mi.to) ? (mi.key === 'only-me' ? 'moh-nav-onlyme-active' : 'moh-surface font-bold') : '',
+            ]"
+            @click="() => { moreOpen = false }"
+          >
+            <div class="flex items-center gap-3 min-w-0">
+              <div class="relative h-10 w-10 shrink-0 flex items-center justify-center">
+                <Icon
+                  :name="moreMenuIconName(mi)"
+                  size="20"
+                  :class="['opacity-90', mi.iconClass]"
+                  aria-hidden="true"
+                />
+              </div>
+              <div class="min-w-0">
+                <div class="text-sm font-semibold truncate">
+                  {{ mi.label }}
+                </div>
               </div>
             </div>
-          </div>
-        </NuxtLink>
+          </NuxtLink>
+
+        </template>
       </div>
 
       <div class="mt-1 border-t border-gray-200 dark:border-zinc-700 pt-2 pb-3 px-5 flex flex-col gap-0.5">
@@ -143,7 +170,6 @@
 <script setup lang="ts">
 import { useMediaQuery } from '@vueuse/core'
 import type { AppNavItem } from '~/composables/useAppNav'
-
 defineProps<{
   items: AppNavItem[]
 }>()
@@ -166,7 +192,7 @@ const { allItems, isItemVisible } = useAppNav()
 const { totalCount: bookmarkTotalCount } = useBookmarkCollections()
 const hasBookmarks = computed(() => Math.max(0, Math.floor(bookmarkTotalCount.value ?? 0)) > 0)
 
-const mainMenuKeys = new Set(['bookmarks', 'spaces', 'groups', 'profile', 'only-me'])
+const mainMenuKeys = new Set(['explore', 'groups', 'bookmarks', 'profile', 'only-me'])
 const footerMenuKeys = new Set(['settings', 'feedback', 'admin'])
 
 const mainMenuItems = computed<AppNavItem[]>(() =>

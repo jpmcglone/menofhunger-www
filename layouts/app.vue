@@ -147,75 +147,134 @@
           </div>
 
           <nav class="space-y-1 flex-1">
-            <NuxtLink
-              v-for="item in leftNavItems"
-              :key="item.label"
-              :to="item.to"
-              :class="[
-                // NOTE: Don't use `moh-text` here; it overrides per-item color accents (e.g. Only me).
-                'group flex h-12 items-center rounded-xl transition-colors moh-focus',
-                // Add breathing room between icon and label (label only shows in wide mode).
-                !navCompactMode ? 'gap-2' : '',
-                'w-full',
-                route.path === item.to
-                  ? (item.key === 'only-me' ? 'font-bold' : 'moh-surface font-bold')
-                  : 'font-semibold',
-                // Default nav tone
-                item.key !== 'only-me' ? 'text-gray-900 dark:text-gray-100 moh-surface-hover' : '',
-                item.key === 'only-me'
-                  ? (route.path === item.to ? 'moh-nav-onlyme-active' : 'moh-nav-onlyme')
-                  : ''
-              ]"
-              @click="(e) => onLeftNavClick(item.to, e)"
-            >
-              <span class="relative flex h-12 w-12 shrink-0 items-center justify-center">
-                <ClientOnly v-if="item.key === 'bookmarks'">
-                  <Icon
-                    :name="(hasBookmarks || isActiveNav(item.to)) ? 'tabler:bookmark-filled' : 'tabler:bookmark'"
-                    size="28"
-                    class="opacity-90"
-                    :style="hasBookmarks ? { color: 'var(--p-primary-color)' } : undefined"
+            <template v-for="item in leftNavItems" :key="item.key">
+
+              <!-- SPACES: gradient-outlined pill / circle -->
+              <NuxtLink
+                v-if="item.key === 'spaces'"
+                :to="item.to"
+                class="group flex h-12 items-center w-full moh-focus"
+                :class="navCompactMode ? 'justify-center' : ''"
+                @click="(e) => onLeftNavClick(item.to, e)"
+              >
+                <!-- Compact mode: gradient-outlined circle -->
+                <span
+                  v-if="navCompactMode"
+                  class="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition-all duration-150"
+                  :style="{
+                    border: `${isActiveNav(item.to) ? 3 : 2.5}px solid transparent`,
+                    background: isActiveNav(item.to)
+                      ? `linear-gradient(rgba(43,123,185,0.12) 0%, rgba(199,125,26,0.08) 100%) padding-box, linear-gradient(90deg, var(--moh-verified), var(--moh-premium)) border-box`
+                      : `linear-gradient(var(--moh-bg), var(--moh-bg)) padding-box, linear-gradient(90deg, var(--moh-verified), var(--moh-premium)) border-box`,
+                  }"
+                >
+                  <!-- Hover tint overlay -->
+                  <span
+                    class="absolute inset-0 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-150 pointer-events-none"
+                    style="background: linear-gradient(90deg, rgba(43,123,185,0.08), rgba(199,125,26,0.06));"
                     aria-hidden="true"
                   />
-                  <template #fallback>
-                    <Icon name="tabler:bookmark" size="28" class="opacity-90" aria-hidden="true" />
-                  </template>
-                </ClientOnly>
-                <Icon
-                  v-else
-                  :name="isActiveNav(item.to) ? (item.iconActive || item.icon) : item.icon"
-                  size="28"
-                  :class="['opacity-90', item.iconClass]"
-                  aria-hidden="true"
-                />
+                  <Icon
+                    :name="isActiveNav(item.to) ? (item.iconActive || item.icon) : item.icon"
+                    size="22"
+                    class="relative text-gray-900 dark:text-gray-100"
+                    :class="[item.iconClass, isActiveNav(item.to) ? 'opacity-100' : 'opacity-80 group-hover:opacity-100']"
+                    aria-hidden="true"
+                  />
+                </span>
+                <!-- Wide mode: gradient-outlined pill -->
                 <span
-                  v-if="item.key === 'spaces'"
-                  class="absolute left-1/2 -top-1 -translate-x-1/2"
+                  v-else
+                  class="relative flex items-center gap-3 w-full h-10 px-3 transition-all duration-150 rounded-full"
+                  :style="{
+                    border: `${isActiveNav(item.to) ? 3 : 2.5}px solid transparent`,
+                    background: isActiveNav(item.to)
+                      ? `linear-gradient(rgba(43,123,185,0.10) 0%, rgba(199,125,26,0.06) 100%) padding-box, linear-gradient(90deg, var(--moh-verified), var(--moh-premium)) border-box`
+                      : `linear-gradient(var(--moh-bg), var(--moh-bg)) padding-box, linear-gradient(90deg, var(--moh-verified), var(--moh-premium)) border-box`,
+                  }"
                 >
+                  <!-- Hover tint overlay -->
                   <span
-                    class="inline-block moh-slow-bounce rounded-full px-1.5 py-0.5 text-[9px] font-extrabold tracking-[0.12em] uppercase text-white shadow-sm"
-                    style="background: linear-gradient(135deg, var(--moh-verified), var(--moh-premium));"
+                    class="absolute inset-0 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-150 pointer-events-none"
+                    style="background: linear-gradient(90deg, rgba(43,123,185,0.06), rgba(199,125,26,0.04));"
+                    aria-hidden="true"
+                  />
+                  <Icon
+                    :name="isActiveNav(item.to) ? (item.iconActive || item.icon) : item.icon"
+                    size="22"
+                    class="relative shrink-0 text-gray-900 dark:text-gray-100"
+                    :class="[item.iconClass, isActiveNav(item.to) ? 'opacity-100' : 'opacity-80 group-hover:opacity-100']"
+                    aria-hidden="true"
+                  />
+                  <span
+                    class="relative hidden xl:inline-flex items-center gap-2 whitespace-nowrap overflow-hidden max-w-[180px] text-gray-900 dark:text-gray-100"
+                    :class="isActiveNav(item.to) ? 'font-bold text-base' : 'font-semibold text-base opacity-80 group-hover:opacity-100'"
                   >
-                    NEW
+                    {{ item.label }}
+                    <span
+                      v-if="totalInSpaces > 0"
+                      class="inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1.5 rounded text-[11px] font-medium tabular-nums moh-text-muted bg-black/10 dark:bg-white/10"
+                    >{{ totalInSpaces }}</span>
                   </span>
                 </span>
-                <AppNotificationBadge v-if="item.key === 'notifications'" />
-                <AppMessagesBadge v-if="item.key === 'messages'" />
-              </span>
-              <span
-                v-if="!navCompactMode"
+              </NuxtLink>
+
+              <!-- NORMAL nav items -->
+              <NuxtLink
+                v-else
+                :to="item.to"
                 :class="[
-                  'hidden xl:inline-flex items-center gap-2 whitespace-nowrap overflow-hidden text-lg max-w-[220px]',
-                  route.path === item.to ? 'font-bold' : 'font-semibold'
+                  // NOTE: Don't use `moh-text` here; it overrides per-item color accents (e.g. Only me).
+                  'group flex h-12 items-center rounded-xl transition-colors moh-focus',
+                  // Add breathing room between icon and label (label only shows in wide mode).
+                  !navCompactMode ? 'gap-2' : '',
+                  'w-full',
+                  route.path === item.to
+                    ? (item.key === 'only-me' ? 'font-bold' : 'moh-surface font-bold')
+                    : 'font-semibold',
+                  // Default nav tone
+                  item.key !== 'only-me' ? 'text-gray-900 dark:text-gray-100 moh-surface-hover' : '',
+                  item.key === 'only-me'
+                    ? (route.path === item.to ? 'moh-nav-onlyme-active' : 'moh-nav-onlyme')
+                    : ''
                 ]"
+                @click="(e) => onLeftNavClick(item.to, e)"
               >
-                {{ item.label }}
+                <span class="relative flex h-12 w-12 shrink-0 items-center justify-center">
+                  <ClientOnly v-if="item.key === 'bookmarks'">
+                    <Icon
+                      :name="(hasBookmarks || isActiveNav(item.to)) ? 'tabler:bookmark-filled' : 'tabler:bookmark'"
+                      size="28"
+                      class="opacity-90"
+                      :style="hasBookmarks ? { color: 'var(--p-primary-color)' } : undefined"
+                      aria-hidden="true"
+                    />
+                    <template #fallback>
+                      <Icon name="tabler:bookmark" size="28" class="opacity-90" aria-hidden="true" />
+                    </template>
+                  </ClientOnly>
+                  <Icon
+                    v-else
+                    :name="isActiveNav(item.to) ? (item.iconActive || item.icon) : item.icon"
+                    size="28"
+                    :class="['opacity-90', item.iconClass]"
+                    aria-hidden="true"
+                  />
+                  <AppNotificationBadge v-if="item.key === 'notifications'" />
+                  <AppMessagesBadge v-if="item.key === 'messages'" />
+                </span>
                 <span
-                  v-if="item.key === 'spaces' && totalInSpaces > 0"
-                  class="inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1 rounded text-[11px] font-medium tabular-nums moh-text-muted bg-black/10 dark:bg-white/10"
-                >{{ totalInSpaces }}</span>
-              </span>
-            </NuxtLink>
+                  v-if="!navCompactMode"
+                  :class="[
+                    'hidden xl:inline-flex items-center gap-2 whitespace-nowrap overflow-hidden text-lg max-w-[220px]',
+                    route.path === item.to ? 'font-bold' : 'font-semibold'
+                  ]"
+                >
+                  {{ item.label }}
+                </span>
+              </NuxtLink>
+
+            </template>
 
             <div class="pt-2">
               <Transition
@@ -757,7 +816,7 @@ import { useMediaQuery } from '@vueuse/core'
 import { siteConfig } from '~/config/site'
 import logoLightSmall from '~/assets/images/logo-white-bg-small.png'
 import logoDarkSmall from '~/assets/images/logo-black-bg-small.png'
-import { primaryTintCssForUser } from '~/utils/theme-tint'
+import { primaryTintCssForUser, spacesGradientStyle } from '~/utils/theme-tint'
 import { formatDailyQuoteAttribution } from '~/utils/daily-quote'
 import AppBottomSheet from '~/components/app/BottomSheet.vue'
 import {

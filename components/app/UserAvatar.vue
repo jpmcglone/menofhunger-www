@@ -8,6 +8,7 @@
     :round-class="roundClass"
     :premium-plus-glow="isPremiumPlus"
     :is-organization="isOrganization"
+    :spaces-ring="showSpacesRing"
     :show-presence="showPresence"
     :presence-status="presenceStatus"
     :presence-scale="props.presenceScale"
@@ -22,6 +23,8 @@
 /**
  * User avatar with presence: takes a user (id + avatar fields) and shows
  * AvatarCircle + green dot (online), clock (idle), or offline. Callers don't need usePresence().
+ * When the displayed user is the current auth user AND they are in a space, shows the Spaces
+ * gradient ring automatically.
  */
 import { useUserOverlay } from '~/composables/useUserOverlay'
 import { avatarRoundClass } from '~/utils/avatar-rounding'
@@ -61,7 +64,10 @@ const props = withDefaults(
   },
 )
 
+const route = useRoute()
 const { getPresenceStatus } = usePresence()
+const { user: authUser } = useAuth()
+const { selectedSpaceId } = useSpaceLobby()
 const { user: u } = useUserOverlay(computed(() => props.user))
 
 const avatarUrl = computed(() => u.value?.avatarUrl ?? null)
@@ -78,6 +84,20 @@ const showPresence = computed(() => props.showPresence ?? true)
 const presenceStatus = computed(() => {
   if (props.presenceStatusOverride !== undefined) return props.presenceStatusOverride
   return u.value?.id ? getPresenceStatus(u.value.id) : 'offline'
+})
+
+// Show the Spaces gradient ring when this avatar belongs to the current user and they are in a space.
+// Suppressed on /spaces routes (context is already clear) and when presence is hidden (radio bar).
+const showSpacesRing = computed(() => {
+  const uid = u.value?.id
+  const authId = authUser.value?.id
+  if (!uid || !authId || uid !== authId) return false
+  if (!selectedSpaceId.value) return false
+  // On the spaces page itself or in the radio bar (showPresence = false), the space context
+  // is already visible — the ring would be redundant.
+  if (route.path.startsWith('/spaces')) return false
+  if (props.showPresence === false) return false
+  return true
 })
 
 const { onEnter, onMove, onLeave } = useUserPreviewTrigger({
