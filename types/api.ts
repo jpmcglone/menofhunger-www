@@ -51,6 +51,7 @@ export type NotificationPreferences = {
   pushMention: boolean
   pushMessage: boolean
   emailDigestDaily: boolean
+  emailDigestWeekly: boolean
   emailNewNotifications: boolean
   emailInstantHighSignal: boolean
   emailStreakReminder: boolean
@@ -219,7 +220,7 @@ export type DailyContentToday = {
   websters1828RecheckedAt: string | null
 }
 
-export type AdminEmailSampleType = 'daily_digest' | 'new_notifications' | 'instant_high_signal' | 'streak_reminder'
+export type AdminEmailSampleType = 'daily_digest' | 'weekly_digest' | 'new_notifications' | 'instant_high_signal' | 'streak_reminder'
 export type AdminEmailSampleSendResult = {
   sent: boolean
   reason: string | null

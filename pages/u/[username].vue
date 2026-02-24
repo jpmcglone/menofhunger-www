@@ -79,21 +79,6 @@
 
       <div v-if="profile" class="mx-auto max-w-3xl px-4 mt-3">
         <div class="flex flex-wrap items-center gap-2">
-          <!-- Block/Unblock button (non-self profiles, authenticated) -->
-          <button
-            v-if="!isSelf && authUser && profile?.id"
-            type="button"
-            :disabled="blockingProfile"
-            class="inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold border transition-colors"
-            :class="viewerHasBlockedProfile
-              ? 'border-zinc-600 bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
-              : 'border-gray-300 dark:border-zinc-700 moh-surface text-gray-700 dark:text-gray-300 hover:border-red-400 dark:hover:border-red-500 hover:text-red-600 dark:hover:text-red-400'"
-            @click="toggleProfileBlock"
-          >
-            <Icon :name="viewerHasBlockedProfile ? 'tabler:ban-off' : 'tabler:ban'" class="mr-1 text-[13px]" aria-hidden="true" />
-            {{ viewerHasBlockedProfile ? 'Unblock' : 'Block' }}
-          </button>
-
           <span
             v-if="isSelf"
             v-tooltip.bottom="tinyTooltip('Coins')"
@@ -173,9 +158,9 @@
             type="button"
             class="shrink-0 text-xs font-semibold text-zinc-300 underline underline-offset-2 hover:text-white"
             :disabled="blockingProfile"
-            @click="toggleProfileBlock"
+            @click="bannerUnblockConfirmVisible = true"
           >
-            {{ blockingProfile ? 'Unblocking…' : 'Unblock' }}
+            Unblock
           </button>
         </div>
       </div>
@@ -297,6 +282,26 @@
         :profile-banner-url="profileBannerUrl"
         @patch-profile="patchPublicProfile"
       />
+
+      <Dialog
+        v-model:visible="bannerUnblockConfirmVisible"
+        modal
+        :header="`Unblock ${profileBlockHandle}?`"
+        :style="{ width: '28rem', maxWidth: '92vw' }"
+      >
+        <div class="text-sm text-gray-700 dark:text-gray-300">
+          They'll be able to see your posts and engage with them again.
+        </div>
+        <template #footer>
+          <Button label="Cancel" text severity="secondary" @click="bannerUnblockConfirmVisible = false" />
+          <Button
+            :label="blockingProfile ? 'Unblocking…' : 'Unblock'"
+            severity="secondary"
+            :disabled="blockingProfile"
+            @click="confirmBannerUnblock"
+          />
+        </template>
+      </Dialog>
     </div>
   </div>
   </AppPageContent>
@@ -495,20 +500,18 @@ const profileBlockHandle = computed(() => {
   return u ? `@${u}` : 'this user'
 })
 
+const bannerUnblockConfirmVisible = ref(false)
 const blockingProfile = ref(false)
-async function toggleProfileBlock() {
+
+async function confirmBannerUnblock() {
   if (blockingProfile.value || !profile.value?.id) return
   blockingProfile.value = true
   try {
-    if (viewerHasBlockedProfile.value) {
-      await blockState.unblockUser(profile.value.id)
-      toast.push({ title: `${profileBlockHandle.value} unblocked`, message: 'You can now engage with their posts.', tone: 'success', durationMs: 3000 })
-    } else {
-      await blockState.blockUser(profile.value.id)
-      toast.push({ title: `${profileBlockHandle.value} blocked`, message: 'They can still see your posts but can\'t engage with them.', tone: 'success', durationMs: 3000 })
-    }
+    await blockState.unblockUser(profile.value.id)
+    toast.push({ title: `${profileBlockHandle.value} unblocked`, message: 'You can now engage with their posts.', tone: 'success', durationMs: 3000 })
+    bannerUnblockConfirmVisible.value = false
   } catch (e: unknown) {
-    toast.pushError(e, viewerHasBlockedProfile.value ? 'Failed to unblock.' : 'Failed to block.')
+    toast.pushError(e, 'Failed to unblock.')
   } finally {
     blockingProfile.value = false
   }

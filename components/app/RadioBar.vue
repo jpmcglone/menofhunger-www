@@ -168,15 +168,29 @@
           />
         </div>
 
-        <!-- Toggle live chat overlay -->
+        <!-- Toggle live chat overlay / scroll-to-bottom -->
         <button
-          v-if="selectedSpaceId && !isRightRailChatVisible"
+          v-if="selectedSpaceId"
           type="button"
-          class="moh-tap moh-focus inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/30 dark:border-white/30 transition-colors moh-surface-hover"
-          :aria-label="spaceChatSheetOpen ? 'Close live chat' : 'Open live chat'"
-          @click="toggleChatSheet"
+          class="moh-tap moh-focus relative inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/30 dark:border-white/30 transition-colors moh-surface-hover"
+          :aria-label="spaceChatSheetOpen ? 'Close live chat' : chatUnreadCount > 0 ? `${chatUnreadCount} new chat messages` : 'Open live chat'"
+          @click="onChatButtonClick"
         >
           <Icon name="tabler:messages" class="text-[18px] opacity-90" aria-hidden="true" />
+          <Transition
+            enter-active-class="transition-transform duration-150 ease-out"
+            enter-from-class="scale-50 opacity-0"
+            enter-to-class="scale-100 opacity-100"
+            leave-active-class="transition-transform duration-100 ease-in"
+            leave-from-class="scale-100 opacity-100"
+            leave-to-class="scale-50 opacity-0"
+          >
+            <span
+              v-if="chatUnreadCount > 0"
+              class="pointer-events-none absolute -top-1 -right-1 min-w-[18px] h-[18px] rounded-full bg-red-500 text-white text-[10px] font-bold leading-none flex items-center justify-center px-1 ring-2 ring-white dark:ring-zinc-900 tabular-nums"
+              aria-hidden="true"
+            >{{ chatUnreadCount > 99 ? '99+' : chatUnreadCount }}</span>
+          </Transition>
         </button>
 
         <button
@@ -202,6 +216,7 @@ import { useUsersStore } from '~/composables/useUsersStore'
 import { SPACE_VISUALIZER_BACKGROUND_OPACITY } from '~/composables/useSpaceAudio'
 import { useCopyToClipboard } from '~/composables/useCopyToClipboard'
 import { registerBarPositionResolver } from '~/composables/useSpaceReactions'
+import { useSpaceChatUnread } from '~/composables/useSpaceChatUnread'
 
 function listenerProfileTo(username: string): string {
   return `/u/${encodeURIComponent(username)}`
@@ -356,10 +371,24 @@ const shareMenuItems = computed<MenuItemWithIcon[]>(() => [
 ])
 
 const spaceChatSheetOpen = useState<boolean>('space-chat-sheet-open', () => false)
-function toggleChatSheet() {
+const { unreadCount: chatUnreadCount, triggerScrollToBottom: triggerChatScrollToBottom } = useSpaceChatUnread()
+
+function onChatButtonClick() {
   if (!selectedSpaceId.value) return
-  if (isRightRailChatVisible.value) return
-  spaceChatSheetOpen.value = !spaceChatSheetOpen.value
+  if (isRightRailChatVisible.value) {
+    // Desktop: right rail is always visible — just jump to the bottom.
+    triggerChatScrollToBottom()
+    return
+  }
+  if (spaceChatSheetOpen.value) {
+    // Mobile, modal is open: scroll to bottom (panel will also clear the count).
+    triggerChatScrollToBottom()
+  } else {
+    // Mobile, modal is closed: open it. The panel will auto-scroll + clear on mount.
+    spaceChatSheetOpen.value = true
+    // Give the panel a tick to mount, then trigger scroll so it clears the count.
+    nextTick(() => triggerChatScrollToBottom())
+  }
 }
 
 async function onLeaveClick() {

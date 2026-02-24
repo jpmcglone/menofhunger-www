@@ -325,6 +325,31 @@
   />
 
   <Dialog
+    v-model:visible="blockConfirmVisible"
+    modal
+    :header="viewerHasBlockedProfile ? `Unblock ${profileBlockHandle}?` : `Block ${profileBlockHandle}?`"
+    :style="{ width: '28rem', maxWidth: '92vw' }"
+  >
+    <div class="text-sm text-gray-700 dark:text-gray-300">
+      <template v-if="viewerHasBlockedProfile">
+        They'll be able to see your posts and engage with them again.
+      </template>
+      <template v-else>
+        They can still view your posts but won't be able to engage with them.
+      </template>
+    </div>
+    <template #footer>
+      <Button label="Cancel" text severity="secondary" @click="blockConfirmVisible = false" />
+      <Button
+        :label="blockingProfile ? (viewerHasBlockedProfile ? 'Unblocking…' : 'Blocking…') : (viewerHasBlockedProfile ? 'Unblock' : 'Block')"
+        :severity="viewerHasBlockedProfile ? 'secondary' : 'danger'"
+        :disabled="blockingProfile"
+        @click="confirmBlock"
+      />
+    </template>
+  </Dialog>
+
+  <Dialog
     v-model:visible="startChatInfoVisible"
     modal
     header="Starting new chats"
@@ -683,9 +708,42 @@ const canOpenMenu = computed(() => {
 const reportOpen = ref(false)
 const menuRef = ref()
 
+const blockState = useBlockState()
+const toast = useAppToast()
+
+const viewerHasBlockedProfile = computed(() =>
+  Boolean(profile.value?.viewerHasBlockedUser) || blockState.isBlockedByMe(profile.value?.id ?? ''),
+)
+const profileBlockHandle = computed(() => {
+  const u = profile.value?.username
+  return u ? `@${u}` : 'this user'
+})
+
+const blockConfirmVisible = ref(false)
+const blockingProfile = ref(false)
+
+async function confirmBlock() {
+  if (blockingProfile.value || !profile.value?.id) return
+  blockingProfile.value = true
+  try {
+    if (viewerHasBlockedProfile.value) {
+      await blockState.unblockUser(profile.value.id)
+      toast.push({ title: `${profileBlockHandle.value} unblocked`, message: 'You can now engage with their posts.', tone: 'success', durationMs: 3000 })
+    } else {
+      await blockState.blockUser(profile.value.id)
+      toast.push({ title: `${profileBlockHandle.value} blocked`, message: "They can still see your posts but can't engage with them.", tone: 'success', durationMs: 3000 })
+    }
+    blockConfirmVisible.value = false
+  } catch (e: unknown) {
+    toast.pushError(e, viewerHasBlockedProfile.value ? 'Failed to unblock.' : 'Failed to block.')
+  } finally {
+    blockingProfile.value = false
+  }
+}
+
 const menuItems = computed<MenuItemWithIcon[]>(() => {
   if (!canOpenMenu.value) return []
-  return [
+  const items: MenuItemWithIcon[] = [
     {
       label: 'Report user',
       iconName: 'tabler:flag',
@@ -693,7 +751,15 @@ const menuItems = computed<MenuItemWithIcon[]>(() => {
         reportOpen.value = true
       },
     },
+    {
+      label: viewerHasBlockedProfile.value ? 'Unblock user' : 'Block user',
+      iconName: viewerHasBlockedProfile.value ? 'tabler:ban-off' : 'tabler:ban',
+      command: () => {
+        blockConfirmVisible.value = true
+      },
+    },
   ]
+  return items
 })
 
 function toggleMenu(event: Event) {

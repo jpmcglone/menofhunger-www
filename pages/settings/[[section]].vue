@@ -512,6 +512,13 @@
                         </div>
                         <div class="flex items-start justify-between gap-4">
                           <div>
+                            <div class="font-medium">Weekly digest</div>
+                            <div class="text-xs moh-text-muted">A Sunday morning recap: best post of the week + new members.</div>
+                          </div>
+                          <Checkbox v-model="notifPrefs.emailDigestWeekly" binary :disabled="notifPrefsSaving || !emailIsVerified" />
+                        </div>
+                        <div class="flex items-start justify-between gap-4">
+                          <div>
                             <div class="font-medium">New notifications</div>
                             <div class="text-xs moh-text-muted">A nudge when you have unread notifications.</div>
                           </div>

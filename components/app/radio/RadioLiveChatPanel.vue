@@ -106,6 +106,7 @@ import RadioLiveChatMessageList from '~/components/app/radio/RadioLiveChatMessag
 import AppDmComposer from '~/components/app/DmComposer.vue'
 import { userColorTier } from '~/utils/user-tier'
 import type { FollowListUser } from '~/types/api'
+import { useSpaceChatUnread } from '~/composables/useSpaceChatUnread'
 
 withDefaults(defineProps<{ showHeader?: boolean }>(), {
   showHeader: true,
@@ -146,8 +147,40 @@ const {
   pendingNewLabel,
   scrollToBottom,
   onNewItemsAppended,
-  onScrollToBottomClick,
+  onScrollToBottomClick: _onScrollToBottomClickBase,
 } = useBottomAnchoredList(scrollerEl)
+
+const { chatPanelVisible, chatAtBottom, scrollTrigger, clearUnread: clearChatUnread } = useSpaceChatUnread()
+
+// Tell the global counter that this panel is mounted and visible.
+onMounted(() => { chatPanelVisible.value = true })
+onBeforeUnmount(() => { chatPanelVisible.value = false })
+
+// Keep the shared atBottom in sync so app.vue can gate counting correctly.
+watchEffect(() => { chatAtBottom.value = atBottom.value })
+
+// When the user reaches the bottom, clear the global badge count.
+watch(atBottom, (v) => { if (v) clearChatUnread() })
+
+// When new messages arrive while scrolled up, also increment the global count
+// (the panel-visible branch; app.vue handles the modal-closed branch).
+const originalOnScrollToBottomClick = _onScrollToBottomClickBase
+function onScrollToBottomClick() {
+  originalOnScrollToBottomClick()
+  clearChatUnread()
+}
+
+// When the radio bar button is clicked while the panel is mounted, it increments
+// scrollTrigger to ask us to jump to the bottom.
+const lastScrollTrigger = ref(scrollTrigger.value)
+watch(scrollTrigger, (v) => {
+  if (v !== lastScrollTrigger.value) {
+    lastScrollTrigger.value = v
+    scrollToBottom('smooth')
+    pendingNewCount.value = 0
+    clearChatUnread()
+  }
+})
 
 const composerText = ref('')
 const composerUser = computed(() => user.value ?? null)

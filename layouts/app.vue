@@ -1218,6 +1218,42 @@ watch(
   },
   { immediate: true },
 )
+
+// ── Live-chat unread badge ────────────────────────────────────────────────────
+// Count non-system, non-self messages that arrive while the chat panel is either
+// not mounted (mobile modal closed) or not scrolled to the bottom.
+// When the panel IS visible and at the bottom it handles its own clear; we
+// only increment here for the "panel not showing" case to avoid double-counting.
+const { chatPanelVisible, chatAtBottom, clearUnread: clearChatUnread, incrementUnread: incrementChatUnread } = useSpaceChatUnread()
+
+let lastKnownChatMsgCount = 0
+watch(
+  () => radioChat.messages.value,
+  (msgs, prevMsgs) => {
+    if (!import.meta.client) return
+    const len = msgs.length
+    const prevLen = prevMsgs?.length ?? lastKnownChatMsgCount
+    lastKnownChatMsgCount = len
+    if (len <= prevLen) return
+    const newMsgs = msgs.slice(prevLen)
+    // Only count when the panel isn't already showing the messages at the bottom.
+    if (chatPanelVisible.value && chatAtBottom.value) return
+    const countable = newMsgs.filter(
+      (m) => m.kind === 'user' && m.sender?.id !== user.value?.id,
+    ).length
+    if (countable > 0) incrementChatUnread(countable)
+  },
+)
+
+// Reset the count whenever the selected space changes.
+watch(
+  () => radioChat.spaceId.value,
+  (_next, prev) => {
+    if (prev !== undefined) clearChatUnread()
+  },
+)
+// ─────────────────────────────────────────────────────────────────────────────
+
 // Keep bottom spacing stable while the radio animates out.
 const radioChromePadActive = ref(false)
 watch(

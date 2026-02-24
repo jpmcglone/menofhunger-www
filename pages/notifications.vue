@@ -237,10 +237,13 @@ onUnmounted(() => {
 
 // Refetch list when socket says new notifications arrived (count increased).
 // Use forceRefresh so we refetch even when we already have data (user is on the page).
+// Only auto-mark delivered if the page is currently visible; if it's a background tab,
+// skip so the badge isn't silently cleared before the user returns to the app.
 const { notificationUndeliveredCount } = usePresence()
 let undeliveredSeq = 0
 watch(notificationUndeliveredCount, async (newVal, oldVal) => {
   if (typeof newVal === 'number' && typeof oldVal === 'number' && newVal > oldVal) {
+    if (import.meta.client && document.visibilityState !== 'visible') return
     const seq = ++undeliveredSeq
     await markDelivered()
     if (seq !== undeliveredSeq) return

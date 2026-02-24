@@ -69,7 +69,7 @@
 </template>
 
 <script setup lang="ts">
-import { getSpaceAudioAnalyser } from '~/composables/useSpaceAudio'
+import { getSpaceAudioAnalyser, resumeSpaceAudioContext, debugSpaceAudio } from '~/composables/useSpaceAudio'
 import { userColorTier, type UserColorTier } from '~/utils/user-tier'
 
 const props = withDefaults(
@@ -140,6 +140,11 @@ const canvasEl = ref<HTMLCanvasElement | null>(null)
 let rafId: number | null = null
 let analyser: AnalyserNode | null = null
 let dataArray: Uint8Array<ArrayBuffer> | null = null
+let lastResumeAttemptMs = -Infinity
+// Consecutive frames where energy was zero while audio was playing.
+// Used to log a diagnostic warning once to the console.
+let zeroEnergyFrames = 0
+let zeroEnergyWarningLogged = false
 
 const BAR_COUNT = 48
 const GAP = 6
@@ -348,6 +353,17 @@ function draw() {
     if (analyser) dataArray = new Uint8Array(analyser.frequencyBinCount)
   }
 
+  // If the analyser is wired up but the AudioContext got suspended (iOS Safari
+  // re-suspends aggressively), nudge it awake — but only once per second so we
+  // aren't firing 60 redundant promises per frame when the context is running.
+  if (analyser) {
+    const nowMs = performance.now()
+    if (nowMs - lastResumeAttemptMs > 1000) {
+      lastResumeAttemptMs = nowMs
+      resumeSpaceAudioContext()
+    }
+  }
+
   ctx.clearRect(0, 0, W, H)
 
   const t = performance.now() / 1000
@@ -360,6 +376,28 @@ function draw() {
     let sum = 0
     for (let i = 0; i < dataArray.length; i++) sum += dataArray[i]!
     energy = sum / (dataArray.length * 255)
+
+    // If we're playing audio but consistently getting zero energy, log a
+    // diagnostic once so it shows up in Safari's Web Inspector console.
+    if (isPlaying.value) {
+      if (energy === 0) {
+        zeroEnergyFrames++
+        if (zeroEnergyFrames === 120 && !zeroEnergyWarningLogged) {
+          zeroEnergyWarningLogged = true
+          console.warn(
+            '[SpaceVisualizer] Audio is playing but getByteFrequencyData returns all zeros.',
+            'Possible causes: (1) AudioContext is suspended — check audioCtx.state,',
+            '(2) createMediaElementSource failed (CORS) — check for earlier [SpaceAudio] errors,',
+            '(3) audio is being decoded via a hardware path bypassing Web Audio.',
+            'Run debugSpaceAudio() in the console for a full diagnostic.',
+          )
+          debugSpaceAudio()
+        }
+      } else {
+        zeroEnergyFrames = 0
+        zeroEnergyWarningLogged = false
+      }
+    }
 
     const bassBinCount = Math.max(1, Math.floor(dataArray.length * BASS_BIN_FRACTION))
     let bassSum = 0
@@ -556,6 +594,9 @@ onBeforeUnmount(() => {
   slowAvgEnergy = 0
   beatAvgBass = 0
   lastBeatEmitTime = -Infinity
+  lastResumeAttemptMs = -Infinity
+  zeroEnergyFrames = 0
+  zeroEnergyWarningLogged = false
   beatRings.length = 0
   _particles.length = 0
 })

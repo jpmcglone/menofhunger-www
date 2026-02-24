@@ -122,6 +122,13 @@
           @click="sendEmailSample('daily_digest')"
         />
         <Button
+          label="Weekly digest"
+          severity="secondary"
+          :loading="emailSampleSending === 'weekly_digest'"
+          :disabled="!viewerHasVerifiedEmail || Boolean(emailSampleSending)"
+          @click="sendEmailSample('weekly_digest')"
+        />
+        <Button
           label="Unread notifications"
           severity="secondary"
           :loading="emailSampleSending === 'new_notifications'"

@@ -177,7 +177,7 @@
 import type { MenuItem } from 'primevue/menuitem'
 import type { Space } from '~/types/api'
 import { siteConfig } from '~/config/site'
-import { SPACE_VISUALIZER_BACKGROUND_OPACITY } from '~/composables/useSpaceAudio'
+import { SPACE_VISUALIZER_BACKGROUND_OPACITY, primeSpaceAudioContext } from '~/composables/useSpaceAudio'
 import { tinyTooltip } from '~/utils/tiny-tooltip'
 import { useUsersStore } from '~/composables/useUsersStore'
 import { useCopyToClipboard } from '~/composables/useCopyToClipboard'
@@ -249,6 +249,9 @@ onBeforeUnmount(() => {
 function onEnterSpace(space: Space) {
   const isSameSpace = selectedSpaceId.value === space.id
   const wasPlaying = isPlaying.value
+  // Prime synchronously — Safari drops user-gesture context after any await,
+  // so this must happen before select()'s async chain starts.
+  if (!isSameSpace && wasPlaying) primeSpaceAudioContext()
   void select(space.id).then(() => {
     if (!isSameSpace && wasPlaying) {
       void playSpace(space)
@@ -259,6 +262,9 @@ function onEnterSpace(space: Space) {
 
 function onPlaySpace(space: Space) {
   // Toggle play/pause in place — no navigation.
+  // Prime synchronously — Safari drops user-gesture context after any await,
+  // so this must happen before select()'s async chain starts.
+  primeSpaceAudioContext()
   void select(space.id).then(() => {
     if (isPlaying.value && audioStationId.value === (space.station?.id ?? null)) {
       pause()
