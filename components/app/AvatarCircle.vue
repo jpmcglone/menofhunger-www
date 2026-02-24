@@ -189,10 +189,10 @@ const premiumPlusGlowStyle = computed<Record<string, string>>(() => {
 // Spaces ring: gradient border rendered as a padded gradient shell on the outer wrapper.
 // The inner avatar div uses the page background to "cut" the visible ring.
 const spacesRingStyle = computed<Record<string, string>>(() => {
-  if (!props.spacesRing) return {}
+  if (!props.spacesRing) return {} as Record<string, string>
   const d = diameterPx.value
-  // Ring thickness scales with avatar size (~8% of diameter), min 2px.
-  const ringPx = Math.max(2, Math.round(d * 0.08))
+  // Ring thickness scales with avatar size, capped at 3px to stay subtle on large avatars.
+  const ringPx = Math.min(3, Math.max(2, Math.round(d * 0.05)))
   return {
     background: SPACES_GRADIENT,
     padding: `${ringPx}px`,

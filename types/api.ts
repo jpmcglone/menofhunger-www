@@ -1098,6 +1098,13 @@ export type WsUsersSelfUpdatedPayload = {
   user: PublicProfile
 }
 
+/** Emitted to subscribers of a user when that user joins or leaves a space. */
+export type WsUsersSpaceChangedPayload = {
+  userId: string
+  spaceId: string | null
+  previousSpaceId?: string
+}
+
 // Canonical self-only auth/settings snapshot (matches API `/auth/me` user DTO).
 export type UserDto = {
   id: string

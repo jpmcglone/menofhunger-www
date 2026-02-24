@@ -154,7 +154,7 @@
                 v-if="item.key === 'spaces'"
                 :to="item.to"
                 class="group flex h-12 items-center w-full moh-focus"
-                :class="navCompactMode ? 'justify-center' : ''"
+                :class="navCompactMode ? 'justify-center' : 'justify-center xl:justify-start'"
                 @click="(e) => onLeftNavClick(item.to, e)"
               >
                 <!-- Compact mode: gradient-outlined circle -->
@@ -182,10 +182,34 @@
                     aria-hidden="true"
                   />
                 </span>
-                <!-- Wide mode: gradient-outlined pill -->
+                <!-- Wide mode below xl: gradient-outlined circle (no label visible yet) -->
                 <span
                   v-else
-                  class="relative flex items-center gap-3 w-full h-10 px-3 transition-all duration-150 rounded-full"
+                  class="relative xl:hidden flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition-all duration-150"
+                  :style="{
+                    border: `${isActiveNav(item.to) ? 3 : 2.5}px solid transparent`,
+                    background: isActiveNav(item.to)
+                      ? `linear-gradient(rgba(43,123,185,0.12) 0%, rgba(199,125,26,0.08) 100%) padding-box, linear-gradient(90deg, var(--moh-verified), var(--moh-premium)) border-box`
+                      : `linear-gradient(var(--moh-bg), var(--moh-bg)) padding-box, linear-gradient(90deg, var(--moh-verified), var(--moh-premium)) border-box`,
+                  }"
+                >
+                  <span
+                    class="absolute inset-0 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-150 pointer-events-none"
+                    style="background: linear-gradient(90deg, rgba(43,123,185,0.08), rgba(199,125,26,0.06));"
+                    aria-hidden="true"
+                  />
+                  <Icon
+                    :name="isActiveNav(item.to) ? (item.iconActive || item.icon) : item.icon"
+                    size="22"
+                    class="relative text-gray-900 dark:text-gray-100"
+                    :class="[item.iconClass, isActiveNav(item.to) ? 'opacity-100' : 'opacity-80 group-hover:opacity-100']"
+                    aria-hidden="true"
+                  />
+                </span>
+                <!-- Wide mode at xl+: gradient-outlined pill with label -->
+                <span
+                  v-if="!navCompactMode"
+                  class="relative hidden xl:flex items-center gap-3 w-full h-10 px-3 transition-all duration-150 rounded-full"
                   :style="{
                     border: `${isActiveNav(item.to) ? 3 : 2.5}px solid transparent`,
                     background: isActiveNav(item.to)
@@ -207,7 +231,7 @@
                     aria-hidden="true"
                   />
                   <span
-                    class="relative hidden xl:inline-flex items-center gap-2 whitespace-nowrap overflow-hidden max-w-[180px] text-gray-900 dark:text-gray-100"
+                    class="relative inline-flex items-center gap-2 whitespace-nowrap overflow-hidden max-w-[180px] text-gray-900 dark:text-gray-100"
                     :class="isActiveNav(item.to) ? 'font-bold text-base' : 'font-semibold text-base opacity-80 group-hover:opacity-100'"
                   >
                     {{ item.label }}

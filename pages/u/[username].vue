@@ -692,14 +692,18 @@ function onOpenProfileImage(payload: {
   title: string
   kind: 'avatar' | 'banner'
   isOrganization?: boolean
+  originRect?: { left: number; top: number; width: number; height: number }
 }) {
   if (payload.kind === 'avatar') {
     void openFromEvent(payload.event, payload.url, payload.title, payload.kind, {
       avatarBorderRadius: payload.isOrganization ? '16%' : '9999px',
+      originRect: payload.originRect,
     })
     return
   }
-  void openFromEvent(payload.event, payload.url, payload.title, payload.kind)
+  void openFromEvent(payload.event, payload.url, payload.title, payload.kind, {
+    originRect: payload.originRect,
+  })
 }
 
 function patchPublicProfile(patch: Partial<Pick<

@@ -203,14 +203,15 @@ export function useImageLightbox() {
     url: string | null,
     label: string,
     k: LightboxKind,
-    opts?: { mediaStartMode?: MediaStartMode; avatarBorderRadius?: string },
+    opts?: { mediaStartMode?: MediaStartMode; avatarBorderRadius?: string; originRect?: Rect },
   ) {
     if (!import.meta.client) return
     if (!url) return
 
     const el = e.currentTarget as HTMLElement | null
-    const rect = el?.getBoundingClientRect?.()
-    if (!rect) return
+    const domRect = el?.getBoundingClientRect?.() ?? opts?.originRect ?? null
+    // When there's no source element (e.g. opened from a menu command), use opts.originRect
+    // so the same zoom-from animation can run.
 
     requestId += 1
     const myId = requestId
@@ -226,7 +227,7 @@ export function useImageLightbox() {
     }
     hideOrigin.value = k === 'media'
     mediaStartMode.value = k === 'media' ? (opts?.mediaStartMode ?? 'fitAnchored') : 'fitAnchored'
-    origin.value = { left: rect.left, top: rect.top, width: rect.width, height: rect.height }
+    origin.value = domRect ? { left: domRect.left, top: domRect.top, width: domRect.width, height: domRect.height } : null
     target.value = null
 
     visible.value = true
@@ -243,7 +244,7 @@ export function useImageLightbox() {
 
     // For media, we animate rect changes starting from origin (no scale distortion).
     // For other kinds, we can keep the existing transform-based zoom.
-    target.value = k === 'media' ? calcMediaStartRect(origin.value as Rect, aspect) : calcTargetRect(aspect, k)
+    target.value = k === 'media' && origin.value ? calcMediaStartRect(origin.value, aspect) : calcTargetRect(aspect, k)
     borderRadius.value = initialRadius(k)
     transition.value = 'none'
     transform.value = 'translate(0px, 0px) scale(1, 1)'

@@ -20,7 +20,18 @@ export function useSpaceLobby() {
     onMembers: (payload: { spaceId: string; members: SpaceMember[] }) => {
       if (!payload?.spaceId) return
       if (payload.spaceId !== selectedSpaceId.value) return
-      members.value = (payload.members ?? []) as SpaceMember[]
+      const nextMembers = (payload.members ?? []) as SpaceMember[]
+      const prevIds = new Set(members.value.map((m) => m.id))
+      const nextIds = new Set(nextMembers.map((m) => m.id))
+      const toRemove = [...prevIds].filter((id) => !nextIds.has(id))
+      const toAdd = [...nextIds].filter((id) => !prevIds.has(id))
+      if (toRemove.length) presence.removeInterest(toRemove)
+      if (toAdd.length) presence.addInterest(toAdd)
+      presence.setCurrentSpaceForUsers(
+        nextMembers.map((m) => m.id),
+        payload.spaceId,
+      )
+      members.value = nextMembers
     },
     onLobbyCounts: (payload: SpaceLobbyCounts) => {
       const countsBySpaceId = payload?.countsBySpaceId ?? {}
@@ -65,6 +76,8 @@ export function useSpaceLobby() {
   }
 
   function leave() {
+    const memberIds = members.value.map((m) => m.id)
+    if (memberIds.length) presence.removeInterest(memberIds)
     selectedSpaceId.value = null
     members.value = []
     if (!import.meta.client) return

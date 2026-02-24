@@ -117,6 +117,7 @@
         ]"
       >
         <div
+          ref="avatarWrapperRef"
           :class="[
             'group relative ring-4 ring-white dark:ring-black',
             avatarRoundClass
@@ -406,7 +407,14 @@ const props = defineProps<{
 const emit = defineEmits<{
   (
     e: 'openImage',
-    payload: { event: MouseEvent; url: string; title: string; kind: 'avatar' | 'banner'; isOrganization?: boolean },
+    payload: {
+      event: MouseEvent
+      url: string
+      title: string
+      kind: 'avatar' | 'banner'
+      isOrganization?: boolean
+      originRect?: { left: number; top: number; width: number; height: number }
+    },
   ): void
   (e: 'edit'): void
   (e: 'followed'): void
@@ -710,6 +718,7 @@ const canOpenMenu = computed(() => {
 
 const reportOpen = ref(false)
 const menuRef = ref()
+const avatarWrapperRef = ref<HTMLElement | null>(null)
 
 // Avatar context menu (for own profile: Go to space and/or View photo).
 const { selectedSpaceId } = useSpaceLobby()
@@ -740,6 +749,7 @@ const avatarMenuItems = computed<AvatarMenuItem[]>(() => {
           title: 'Avatar',
           kind: 'avatar',
           isOrganization: Boolean(profile.value?.isOrganization),
+          originRect: avatarWrapperRef.value?.getBoundingClientRect() ?? undefined,
         })
       },
     })

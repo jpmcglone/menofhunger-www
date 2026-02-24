@@ -20,6 +20,7 @@ import type {
   WsPostsInteractionPayload,
   WsUsersMeUpdatedPayload,
   WsUsersSelfUpdatedPayload,
+  WsUsersSpaceChangedPayload,
 } from '~/types/api'
 import { useUsersStore } from '~/composables/useUsersStore'
 
@@ -29,6 +30,7 @@ const PRESENCE_SOCKET_KEY = 'presence-socket'
 const PRESENCE_ONLINE_FEED_SUBSCRIBED_KEY = 'presence-online-feed-subscribed'
 const PRESENCE_INTEREST_KEY = 'presence-interest-refs'
 const PRESENCE_KNOWN_IDS_KEY = 'presence-known-ids'
+const PRESENCE_USER_CURRENT_SPACE_KEY = 'presence-user-current-space-by-id'
 const PRESENCE_DISCONNECTED_DUE_TO_IDLE_KEY = 'presence-disconnected-due-to-idle'
 const PRESENCE_SOCKET_CONNECTED_KEY = 'presence-socket-connected'
 const PRESENCE_SOCKET_CONNECTING_KEY = 'presence-socket-connecting'
@@ -111,6 +113,7 @@ export type AdminCallback = {
 export type UsersCallback = {
   onSelfUpdated?: (payload: WsUsersSelfUpdatedPayload) => void
   onMeUpdated?: (payload: WsUsersMeUpdatedPayload) => void
+  onSpaceChanged?: (payload: WsUsersSpaceChangedPayload) => void
 }
 
 function isRecord(v: unknown): v is Record<string, unknown> {
@@ -165,6 +168,8 @@ export function usePresence() {
   const interestRefs = useState<Map<string, number>>(PRESENCE_INTEREST_KEY, () => new Map())
   /** User IDs we've received at least one presence update for (subscribed/online/offline). Used to avoid showing "last online" until status is known. */
   const presenceKnownUserIds = useState<Set<string>>(PRESENCE_KNOWN_IDS_KEY, () => new Set())
+  /** userId -> current spaceId (null if not in a space). Updated via users:spaceChanged. */
+  const userCurrentSpaceById = useState<Record<string, string | null>>(PRESENCE_USER_CURRENT_SPACE_KEY, () => ({}))
   const onlineFeedCallbacks = useState<Set<OnlineFeedCallback>>('presence-online-feed-callbacks', () => new Set())
   const messagesCallbacks = useState<Set<MessagesCallback>>('presence-messages-callbacks', () => new Set())
   const radioCallbacks = useState<Set<RadioCallback>>('presence-radio-callbacks', () => new Set())
@@ -806,6 +811,17 @@ export function usePresence() {
       }
     })
 
+    socket.on('users:spaceChanged', (data: WsUsersSpaceChangedPayload) => {
+      const uid = data?.userId
+      if (!uid) return
+      const next = { ...userCurrentSpaceById.value }
+      next[uid] = data.spaceId ?? null
+      userCurrentSpaceById.value = next
+      for (const cb of usersCallbacks.value) {
+        cb.onSpaceChanged?.(data)
+      }
+    })
+
     function syncSubscriptions() {
       const refs = interestRefs.value
       if (refs.size > 0) {
@@ -1004,6 +1020,19 @@ export function usePresence() {
     isOnline,
     getPresenceStatus,
     isPresenceKnown,
+    userCurrentSpaceById: readonly(userCurrentSpaceById),
+    getCurrentSpaceForUser(userId: string): string | null {
+      return userId ? (userCurrentSpaceById.value[userId] ?? null) : null
+    },
+    /** Seed current space for users (e.g. from spaces:members so UI is correct before any users:spaceChanged). */
+    setCurrentSpaceForUsers(userIds: string[], spaceId: string | null) {
+      if (!userIds.length) return
+      const next = { ...userCurrentSpaceById.value }
+      for (const uid of userIds) {
+        if (uid) next[uid] = spaceId
+      }
+      userCurrentSpaceById.value = next
+    },
     isSocketConnected: readonly(isSocketConnected),
     isSocketConnecting: readonly(isSocketConnecting),
     disconnectedDueToIdle: readonly(disconnectedDueToIdle),
