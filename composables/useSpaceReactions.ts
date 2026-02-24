@@ -145,13 +145,29 @@ export function useSpaceReactions() {
     return [...(text.match(/\p{Extended_Pictographic}/gu) ?? [])]
   }
 
-  function addFloatingEmojisFromText(userId: string, text: string, delayMs = 320) {
+  /**
+   * Extract emojis from a chat message body and float each one.
+   *
+   * `variants` controls which animation layers receive the emoji.
+   * Defaults to both `'default'` (spaces-page arc, requires _avatarPositionResolver)
+   * and `'bar'` (radio-bar quick float, requires _barPositionResolver) so the radio
+   * bar always shows chat emojis regardless of which page the viewer is on.
+   * Either variant silently no-ops if its position resolver isn't currently registered.
+   */
+  function addFloatingEmojisFromText(
+    userId: string,
+    text: string,
+    delayMs = 320,
+    variants: FloatingReactionVariant[] = ['default', 'bar'],
+  ) {
     const uid = String(userId ?? '').trim()
     const body = String(text ?? '').trim()
     if (!uid || !body) return
     const emojis = extractEmojis(body).slice(0, 6)
     emojis.forEach((emoji, i) => {
-      setTimeout(() => addFloating(uid, emoji), i * delayMs)
+      setTimeout(() => {
+        for (const variant of variants) addFloating(uid, emoji, undefined, undefined, variant)
+      }, i * delayMs)
     })
   }
 
