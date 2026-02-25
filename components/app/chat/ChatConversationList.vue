@@ -87,7 +87,7 @@
         v-for="c in activeList"
         :key="c.id"
         :to="conversationPath(c.id)"
-        class="w-full text-left"
+        class="block w-full text-left"
         @click="onConversationClick(c.id, $event)"
       >
         <div
