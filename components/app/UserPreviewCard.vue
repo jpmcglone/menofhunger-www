@@ -548,7 +548,7 @@ const messageFilledButtonClass = computed(() => {
 const messageOutlineButtonClass = computed(() => {
   const tier = messageTier.value
   if (tier === 'organization') {
-    return '!bg-transparent !border-[#313643] !text-[#313643] hover:!bg-[rgba(49,54,67,0.08)] dark:hover:!bg-[rgba(49,54,67,0.18)]'
+    return '!bg-transparent !border-[#313643] !text-[#313643] dark:!border-[#8b96aa] dark:!text-[#b0bac9] hover:!bg-[rgba(49,54,67,0.08)] dark:hover:!bg-[rgba(176,186,201,0.12)]'
   }
   if (tier === 'premium') {
     return `!bg-transparent !border-[${PRIMARY_PREMIUM_ORANGE[500]}] !text-[${PRIMARY_PREMIUM_ORANGE[500]}] hover:!bg-[rgba(199,125,26,0.08)] dark:hover:!bg-[rgba(199,125,26,0.16)]`

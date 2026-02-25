@@ -1,13 +1,22 @@
 <template>
   <div v-if="orgs.length > 0" class="flex items-center gap-0.5">
     <template v-for="(org, i) in visible" :key="org.id">
-      <NuxtLink
+      <!--
+        Use a <button> (not NuxtLink/<a>) so this never creates a nested <a> when
+        rendered inside a link-based row. Click still navigates; hover shows the
+        org's profile preview card.
+      -->
+      <button
         v-if="org.username"
-        :to="`/u/${org.username}`"
+        type="button"
         :style="i > 0 ? { marginLeft: '-4px' } : {}"
-        class="relative flex-shrink-0 block"
+        class="relative flex-shrink-0 block focus:outline-none"
         :class="zClasses[i]"
         :aria-label="`View ${org.name || org.username} profile`"
+        @mouseenter="(e) => onEnter(org.username, e)"
+        @mousemove="onMove"
+        @mouseleave="onLeave"
+        @click.stop="onOrgClick(org.username)"
       >
         <img
           v-if="org.avatarUrl"
@@ -16,7 +25,7 @@
           :alt="org.name || org.username || 'org'"
         />
         <div v-else :class="['flex-shrink-0 bg-gray-200 dark:bg-zinc-700 ring-1 ring-white dark:ring-zinc-900', sizeClass, roundClass]" />
-      </NuxtLink>
+      </button>
       <span
         v-else
         :style="i > 0 ? { marginLeft: '-4px' } : {}"
@@ -89,4 +98,12 @@ const overflow = computed(() => Math.max(0, props.orgs.length - props.max))
 
 // Stacked z-index: first item is on top
 const zClasses = ['z-30', 'z-20', 'z-10']
+
+const { onEnter, onMove, onLeave } = useUserPreviewMultiTrigger()
+
+const router = useRouter()
+function onOrgClick(username: string | null) {
+  if (!username) return
+  void router.push(`/u/${encodeURIComponent(username)}`)
+}
 </script>
