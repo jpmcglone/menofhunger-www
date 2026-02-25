@@ -1,69 +1,74 @@
 <template>
-  <div class="mt-3">
-    <component
-      :is="permalink ? 'NuxtLink' : 'div'"
-      v-bind="permalink ? { to: permalink } : {}"
-      class="block overflow-hidden rounded-xl border moh-border transition-colors moh-surface-hover"
-      role="group"
-      aria-label="Embedded post preview"
-      :aria-busy="showSkeleton ? 'true' : 'false'"
-    >
-      <div class="p-3">
-        <!-- Skeleton -->
-        <div v-if="showSkeleton" class="space-y-2" aria-hidden="true">
-          <div class="flex items-center gap-2">
-            <div class="h-5 w-5 rounded-full bg-gray-200 dark:bg-zinc-800 animate-pulse shrink-0" />
-            <div class="h-3 w-28 rounded bg-gray-200 dark:bg-zinc-800 animate-pulse" />
-            <div class="h-3 w-16 rounded bg-gray-200 dark:bg-zinc-800 animate-pulse" />
-          </div>
-          <div class="h-3 w-full rounded bg-gray-200 dark:bg-zinc-800 animate-pulse" />
-          <div class="h-3 w-4/5 rounded bg-gray-200 dark:bg-zinc-800 animate-pulse" />
+  <!-- Always render as <a> so right-click / cmd+click "open in new tab" works.
+       @click.prevent stops the browser from following href; router.push() handles
+       client-side navigation instead. The <div @click.stop> wrapper in
+       PostRowLinkPreview prevents the parent PostRow row-click from firing. -->
+  <a
+    :href="permalink ?? undefined"
+    :class="[
+      'mt-3 block overflow-hidden rounded-xl border moh-border transition-colors moh-surface-hover',
+      permalink ? 'cursor-pointer' : 'pointer-events-none',
+    ]"
+    role="group"
+    aria-label="Embedded post preview"
+    :aria-busy="showSkeleton ? 'true' : 'false'"
+    @click.prevent="navigateToPost"
+  >
+    <div class="p-3">
+      <!-- Skeleton -->
+      <div v-if="showSkeleton" class="space-y-2" aria-hidden="true">
+        <div class="flex items-center gap-2">
+          <div class="h-5 w-5 rounded-full bg-gray-200 dark:bg-zinc-800 animate-pulse shrink-0" />
+          <div class="h-3 w-28 rounded bg-gray-200 dark:bg-zinc-800 animate-pulse" />
+          <div class="h-3 w-16 rounded bg-gray-200 dark:bg-zinc-800 animate-pulse" />
         </div>
-
-        <div v-else-if="errorMessage" class="text-sm text-red-600 dark:text-red-400">{{ errorMessage }}</div>
-
-        <div v-else-if="post">
-          <!-- Compact single-line header -->
-          <div class="flex min-w-0 items-center gap-1.5">
-            <AppUserAvatar
-              :user="author"
-              size-class="h-5 w-5"
-              bg-class="moh-surface"
-            />
-            <span class="text-sm font-semibold moh-text truncate leading-none">
-              {{ author?.name || author?.username || 'User' }}
-            </span>
-            <AppVerifiedBadge
-              class="shrink-0"
-              :status="author?.verifiedStatus ?? 'none'"
-              :premium="author?.premium ?? false"
-              :premium-plus="author?.premiumPlus ?? false"
-              :is-organization="Boolean(author?.isOrganization)"
-              :steward-badge-enabled="author?.stewardBadgeEnabled ?? true"
-            />
-            <span class="text-sm moh-text-muted truncate leading-none">@{{ author?.username || 'user' }}</span>
-            <span class="ml-auto shrink-0 text-xs moh-text-muted leading-none">{{ createdAtShort }}</span>
-          </div>
-
-          <!-- Body — clamped to 4 lines so the preview stays compact -->
-          <div
-            v-if="bodyPreview"
-            class="mt-1.5 text-sm moh-text break-words line-clamp-4"
-          >{{ bodyPreview }}</div>
-
-          <!-- Media: same layout/rules as full posts, but non-interactive (click through to post) -->
-          <AppPostMediaGrid
-            v-if="mediaItems.length"
-            :media="mediaItems"
-            compact
-            :interactive="false"
-          />
-        </div>
-
-        <div v-else class="text-sm moh-text-muted">Post unavailable.</div>
+        <div class="h-3 w-full rounded bg-gray-200 dark:bg-zinc-800 animate-pulse" />
+        <div class="h-3 w-4/5 rounded bg-gray-200 dark:bg-zinc-800 animate-pulse" />
       </div>
-    </component>
-  </div>
+
+      <div v-else-if="errorMessage" class="text-sm text-red-600 dark:text-red-400">{{ errorMessage }}</div>
+
+      <div v-else-if="post">
+        <!-- Compact single-line header -->
+        <div class="flex min-w-0 items-center gap-1.5">
+          <AppUserAvatar
+            :user="author"
+            size-class="h-5 w-5"
+            bg-class="moh-surface"
+          />
+          <span class="text-sm font-semibold moh-text truncate leading-none">
+            {{ author?.name || author?.username || 'User' }}
+          </span>
+          <AppVerifiedBadge
+            class="shrink-0"
+            :status="author?.verifiedStatus ?? 'none'"
+            :premium="author?.premium ?? false"
+            :premium-plus="author?.premiumPlus ?? false"
+            :is-organization="Boolean(author?.isOrganization)"
+            :steward-badge-enabled="author?.stewardBadgeEnabled ?? true"
+          />
+          <span class="text-sm moh-text-muted truncate leading-none">@{{ author?.username || 'user' }}</span>
+          <span class="ml-auto shrink-0 text-xs moh-text-muted leading-none">{{ createdAtShort }}</span>
+        </div>
+
+        <!-- Body — clamped to 4 lines so the preview stays compact -->
+        <div
+          v-if="bodyPreview"
+          class="mt-1.5 text-sm moh-text break-words line-clamp-4"
+        >{{ bodyPreview }}</div>
+
+        <!-- Media: non-interactive — clicks pass through to the <a> wrapper -->
+        <AppPostMediaGrid
+          v-if="mediaItems.length"
+          :media="mediaItems"
+          compact
+          :interactive="false"
+        />
+      </div>
+
+      <div v-else class="text-sm moh-text-muted">Post unavailable.</div>
+    </div>
+  </a>
 </template>
 
 <script setup lang="ts">
@@ -76,11 +81,18 @@ const props = defineProps<{
   enabled?: boolean
 }>()
 
+const router = useRouter()
 const { apiFetchData } = useApiClient()
 
 const id = computed(() => (props.postId ?? '').trim())
 const permalink = computed(() => (id.value ? `/p/${encodeURIComponent(id.value)}` : null))
 const enabled = computed(() => props.enabled !== false)
+
+function navigateToPost() {
+  if (permalink.value) {
+    void router.push(permalink.value)
+  }
+}
 
 // SSR-safe: use shared nowMs so server and client render identical relative times.
 const { nowMs } = useNowTicker({ everyMs: 15_000 })
@@ -188,4 +200,3 @@ onBeforeUnmount(() => {
   if (id) removeInterest([id])
 })
 </script>
-

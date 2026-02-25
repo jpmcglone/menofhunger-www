@@ -83,11 +83,14 @@
       </div>
     </a>
 
-    <AppEmbeddedPostPreview
-      v-if="embeddedPostId"
-      :post-id="embeddedPostId"
-      :enabled="embeddedPreviewEnabled"
-    />
+    <!-- Stop propagation so the parent PostRow's row-click handler never fires when
+         clicking the embedded preview — the NuxtLink inside handles navigation. -->
+    <div v-if="embeddedPostId" @click.stop>
+      <AppEmbeddedPostPreview
+        :post-id="embeddedPostId"
+        :enabled="embeddedPreviewEnabled"
+      />
+    </div>
 
     <div v-if="isPreviewLinkRumble && previewLink" class="mt-2 flex justify-end">
       <a
