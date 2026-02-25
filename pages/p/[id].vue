@@ -178,6 +178,11 @@ const {
   apiErrorStatus,
 } = await usePostPermalink(postId)
 
+// Flat repost: redirect to the original post's permalink.
+if (post.value?.kind === 'repost' && post.value?.repostedPost?.id) {
+  await navigateTo(`/p/${encodeURIComponent(post.value.repostedPost.id)}`, { replace: true })
+}
+
 const { markReadBySubject } = useNotifications()
 watch(
   () => [post.value?.id, user.value?.id] as const,

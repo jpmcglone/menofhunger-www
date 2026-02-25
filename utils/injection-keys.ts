@@ -10,6 +10,12 @@ export type ComposerOpenOptions = {
   placeholder?: string | null
   allowedVisibilities?: ComposerVisibility[] | null
   disableMedia?: boolean
+  /**
+   * When set, the composer opens in quote-repost mode: the post is shown as a
+   * locked embedded preview below the textarea. The post's URL is appended to
+   * the submitted body automatically. The user cannot remove it — only cancel.
+   */
+  quotedPost?: FeedPost | null
   createPost?: (
     body: string,
     visibility: ComposerVisibility,

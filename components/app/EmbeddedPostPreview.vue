@@ -57,6 +57,13 @@
           class="mt-1.5 text-sm moh-text break-words line-clamp-4"
         >{{ bodyPreview }}</div>
 
+        <!-- Poll indicator — don't render the actual poll, just signal it's there -->
+        <div
+          v-if="hasPoll"
+          class="mt-1.5 text-xs font-medium"
+          :style="pollTextStyle"
+        >View poll</div>
+
         <!-- Media: non-interactive — clicks pass through to the <a> wrapper -->
         <AppPostMediaGrid
           v-if="mediaItems.length"
@@ -77,16 +84,19 @@ import { getApiErrorMessage } from '~/utils/api-error'
 import { useUserOverlay } from '~/composables/useUserOverlay'
 
 const props = defineProps<{
-  postId: string
+  postId?: string
+  /** Pre-loaded post — skips the API fetch when provided. */
+  post?: FeedPost | null
   enabled?: boolean
 }>()
 
 const router = useRouter()
 const { apiFetchData } = useApiClient()
 
-const id = computed(() => (props.postId ?? '').trim())
+const id = computed(() => (props.postId ?? props.post?.id ?? '').trim())
 const permalink = computed(() => (id.value ? `/p/${encodeURIComponent(id.value)}` : null))
 const enabled = computed(() => props.enabled !== false)
+const preloadedPost = computed(() => props.post ?? null)
 
 function navigateToPost() {
   if (permalink.value) {
@@ -129,6 +139,16 @@ const bodyPreview = computed(() => {
   return (post.value?.body ?? '').toString().trim()
 })
 
+const hasPoll = computed(() => Boolean(post.value?.poll))
+
+const pollTextStyle = computed((): Record<string, string> => {
+  const v = post.value?.visibility
+  if (v === 'verifiedOnly') return { color: 'var(--moh-verified)' }
+  if (v === 'premiumOnly') return { color: 'var(--moh-premium)' }
+  if (v === 'onlyMe') return { color: 'var(--moh-onlyme)' }
+  return { color: 'var(--moh-text-muted)' }
+})
+
 const mediaItems = computed(() => (post.value?.media ?? []).filter((m) => Boolean(m?.url)).slice(0, 4))
 
 const key = computed(() => `embedded-post:${id.value || 'none'}`)
@@ -142,6 +162,8 @@ const immediate = computed(() => (import.meta.server ? true : enabled.value))
 const { data, pending, error, refresh } = useAsyncData(
   key,
   async () => {
+    // If a pre-loaded post was provided, skip the network fetch.
+    if (preloadedPost.value) return null
     const pid = id.value
     if (!pid) return null
     const res = await apiFetchData<GetPostData>('/posts/' + encodeURIComponent(pid), { method: 'GET' })
@@ -155,7 +177,7 @@ const { data, pending, error, refresh } = useAsyncData(
   },
 )
 
-const post = computed<FeedPost | null>(() => (data.value as FeedPost | null) ?? null)
+const post = computed<FeedPost | null>(() => preloadedPost.value ?? (data.value as FeedPost | null) ?? null)
 const { user: author } = useUserOverlay(computed(() => post.value?.author ?? null))
 const errorMessage = computed(() => (error.value ? getApiErrorMessage(error.value) || 'Failed to load embedded post.' : null))
 
@@ -175,6 +197,7 @@ watch(
     if (import.meta.server) return
     if (!pid) return
     if (!en) return
+    if (preloadedPost.value) return
     if (post.value) return
     if (errorMessage.value) return
     void refresh()

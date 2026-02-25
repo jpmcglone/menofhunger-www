@@ -799,6 +799,7 @@
                   :allowed-visibilities="composerAllowedVisibilities ?? undefined"
                   :disable-media="composerCustomDisableMedia"
                   :create-post="composerCreatePost ?? undefined"
+                  :quoted-post="composerQuotedPost ?? undefined"
                   persist-key="post-modal"
                   :register-unsaved-guard="false"
                   @posted="onComposerPosted"
@@ -997,6 +998,7 @@ const composerIsFromOnlyMe = computed(() => Boolean(composerSourceOnlyMePost.val
 const composerCustomPlaceholder = ref<string | null>(null)
 const composerCustomAllowedVisibilities = ref<PostVisibility[] | null>(null)
 const composerCustomDisableMedia = ref(false)
+const composerQuotedPost = ref<FeedPost | null>(null)
 type ComposerCreatePostFn = (
   body: string,
   visibility: PostVisibility,
@@ -1076,6 +1078,7 @@ function resetComposerCustomOptions() {
   composerCustomAllowedVisibilities.value = null
   composerCustomDisableMedia.value = false
   composerCustomCreatePost.value = null
+  composerQuotedPost.value = null
 }
 
 function applyComposerCustomOptions(options?: ComposerOpenOptions | null) {
@@ -1087,6 +1090,7 @@ function applyComposerCustomOptions(options?: ComposerOpenOptions | null) {
     : null
   composerCustomDisableMedia.value = Boolean(options.disableMedia)
   composerCustomCreatePost.value = (options.createPost as ComposerCreatePostFn | undefined) ?? null
+  composerQuotedPost.value = options.quotedPost ?? null
 }
 
 const { apiFetch, apiFetchData } = useApiClient()
@@ -1173,7 +1177,7 @@ function closeComposerModal() {
 }
 
 const { prependPost: prependOnlyMePost } = useOnlyMePosts()
-const globalPostsFeed = useState<import('~/types/api').FeedPost[]>('posts-feed', () => [])
+const { prependToHomeFeed } = useHomeFeedPrepend()
 function onComposerPosted(payload: { id: string; visibility: string; post?: import('~/types/api').FeedPost }) {
   composerModalOpen.value = false
   composerInitialText.value = null
@@ -1185,10 +1189,9 @@ function onComposerPosted(payload: { id: string; visibility: string; post?: impo
       navigateTo('/only-me?posted=1')
     }
   } else if (payload.post && payload.post.id) {
-    const alreadyInFeed = globalPostsFeed.value.some((p) => p.id === payload.post!.id)
-    if (!alreadyInFeed) {
-      globalPostsFeed.value = [payload.post, ...globalPostsFeed.value]
-    }
+    // Prepend to home feed immediately and track in localInserts so it survives
+    // the next hard refresh (home page uses keepalive → onActivated → refresh()).
+    prependToHomeFeed(payload.post)
   }
 }
 

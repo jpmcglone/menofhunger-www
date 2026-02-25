@@ -1,7 +1,39 @@
 <template>
+  <!-- Flat repost (kind=repost): show reposter header + render original post -->
+  <div
+    v-if="isFlatRepost && repostedPost"
+    :ref="(el) => { captureWrapperEl(el); if (highlightedPostId === post.id) setHighlightedRef(el) }"
+    :data-post-id="post.id"
+    :class="keyboardFocusClass"
+    @mouseenter="onMouseEnter"
+    @mouseleave="onMouseLeave"
+  >
+    <!-- "X reposted" header -->
+    <div class="flex items-center gap-1.5 px-4 pt-2 pb-0 text-xs moh-text-muted">
+      <Icon name="tabler:repeat" class="text-[13px] shrink-0" aria-hidden="true" />
+      <NuxtLink
+        v-if="post.author?.username"
+        :to="`/u/${encodeURIComponent(post.author.username)}`"
+        class="font-semibold hover:underline truncate moh-text-muted"
+        @click.stop
+      >{{ repostedByLabel }}</NuxtLink>
+      <span v-else class="font-semibold truncate">{{ repostedByLabel }}</span>
+    </div>
+    <!-- Original post content -->
+    <AppPostRow
+      :post="repostedPost"
+      :no-padding-top="true"
+      :no-border-bottom="false"
+      :activate-video-on-mount="activateVideoOnMount"
+      v-bind="$attrs"
+      @deleted="$emit('deleted', $event)"
+      @edited="$emit('edited', $event)"
+    />
+  </div>
+
   <!-- Single post (no parent): render one row -->
   <div
-    v-if="chain.length === 1"
+    v-else-if="chain.length === 1"
     :ref="(el) => { captureWrapperEl(el); if (highlightedPostId === post.id) setHighlightedRef(el) }"
     :data-post-id="post.id"
     :class="keyboardFocusClass"
@@ -97,6 +129,19 @@ const props = withDefaults(
   }>(),
   { highlightedPostId: null, noPaddingTop: false, collapsedSiblingRepliesCount: 0, repliesSort: null },
 )
+
+const { user: authUser } = useAuth()
+
+// ── Flat repost detection ────────────────────────────────────────────────────
+const isFlatRepost = computed(() => props.post.kind === 'repost' && Boolean(props.post.repostedPost))
+const repostedPost = computed(() => props.post.repostedPost ?? null)
+const repostedByLabel = computed(() => {
+  const author = props.post.author
+  const isMe = authUser.value?.id && authUser.value.id === author?.id
+  if (isMe) return 'You reposted'
+  const name = (author?.name || author?.username) ?? 'Someone'
+  return `${name} reposted`
+})
 
 /** Ordered chain [root, ..., post] by walking parent up. */
 const chain = computed(() => {

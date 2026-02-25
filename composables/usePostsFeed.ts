@@ -9,7 +9,7 @@ import type { PostsCallback } from '~/composables/usePresence'
 type FeedFilter = 'all' | 'public' | PostVisibility
 type FeedSort = 'new' | 'trending'
 
-type LocalFeedInsert =
+export type LocalFeedInsert =
   | { kind: 'prepend'; post: FeedPost }
   | { kind: 'replaceParent'; post: FeedPost; parentId: string }
 
@@ -93,7 +93,8 @@ export function usePostsFeed(options: { visibility?: Ref<FeedFilter>; followingO
   const sort = options.sort ?? ref<FeedSort>('new')
   const showAds = options.showAds ?? computed(() => true)
   const lastHardRefreshMs = useState<number>('posts-feed-last-hard-refresh-ms', () => 0)
-  const localInserts = ref<LocalFeedInsert[]>([])
+  // Shared via useState so that the global layout (modal composer) can also track optimistic inserts.
+  const localInserts = useState<LocalFeedInsert[]>('posts-feed-local-inserts', () => [])
 
   function rememberLocalInsert(insert: LocalFeedInsert) {
     localInserts.value = upsertLocalFeedInsert(localInserts.value, insert)
@@ -723,4 +724,25 @@ export function usePostsFeed(options: { visibility?: Ref<FeedFilter>; followingO
     removePost,
     replacePost,
   }
+}
+
+/**
+ * Lightweight composable for prepending a post to the home feed from any context
+ * (e.g. the global modal composer in app.vue). Uses the same shared useState keys
+ * as usePostsFeed so localInserts survive the next hard refresh (keepalive + onActivated).
+ */
+export function useHomeFeedPrepend() {
+  const posts = useState<FeedPost[]>('posts-feed', () => [])
+  const localInserts = useState<LocalFeedInsert[]>('posts-feed-local-inserts', () => [])
+
+  function prependToHomeFeed(post: FeedPost) {
+    const id = (post?.id ?? '').trim()
+    if (!id) return
+    if (!posts.value.some((p) => (p.id ?? '').trim() === id)) {
+      posts.value = [post, ...posts.value]
+    }
+    localInserts.value = upsertLocalFeedInsert(localInserts.value, { kind: 'prepend', post })
+  }
+
+  return { prependToHomeFeed }
 }

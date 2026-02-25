@@ -179,6 +179,11 @@
           />
         </div>
 
+        <!-- Locked quoted post preview (quote-repost mode) -->
+        <div v-if="quotedPost" class="select-none pointer-events-none">
+          <AppEmbeddedPostPreview :post="quotedPost" />
+        </div>
+
         <ClientOnly>
           <Teleport to="body">
             <div
@@ -400,6 +405,7 @@
 <script setup lang="ts">
 import { makeLocalId } from '~/composables/composer/types'
 import type { CreatePostData, PostVisibility } from '~/types/api'
+import { siteConfig } from '~/config/site'
 import type { CreateMediaPayload } from '~/composables/useComposerMedia'
 import { PRIMARY_ONLYME_PURPLE, PRIMARY_PREMIUM_ORANGE, PRIMARY_TEXT_DARK, PRIMARY_TEXT_LIGHT, PRIMARY_VERIFIED_BLUE, primaryPaletteToCssVars } from '~/utils/theme-tint'
 import { tinyTooltip } from '~/utils/tiny-tooltip'
@@ -467,6 +473,12 @@ const props = defineProps<{
    * This survives route changes and modal open/close, but NOT a browser refresh.
    */
   persistKey?: string
+  /**
+   * When set, the composer is in quote-repost mode. The post is displayed as a
+   * locked embedded preview (cannot be removed). Its URL is appended to the body
+   * on submit. The textarea is left empty for the user's own text.
+   */
+  quotedPost?: import('~/types/api').FeedPost | null
 }>()
 
 const route = useRoute()
@@ -479,6 +491,13 @@ const editPostId = computed(() => (props.editPostId ?? '').trim() || null)
 const editPostIsDraft = computed(() => Boolean(props.editPostIsDraft))
 const disableMedia = computed(() => Boolean(props.disableMedia) || (mode.value === 'edit' && !editPostIsDraft.value))
 const showDivider = computed(() => props.showDivider !== false)
+
+const quotedPost = computed(() => props.quotedPost ?? null)
+const quotedPostUrl = computed(() => {
+  const pid = quotedPost.value?.id
+  if (!pid) return null
+  return `${siteConfig.url}/p/${encodeURIComponent(pid)}`
+})
 
 const persistKey = computed(() => {
   if (!import.meta.client) return null
@@ -984,20 +1003,26 @@ const { submit: submitPost, submitting, submitError } = useFormSubmit(
     const mediaPayload: CreateMediaPayload[] = hasPoll.value ? [] : toCreatePayload(composerMedia.value)
     const vis = effectiveVisibility.value
 
+    // In quote-repost mode, append the quoted post URL to the body automatically.
+    const quotedUrl = quotedPostUrl.value
+    const submitBody = quotedUrl
+      ? [draft.value.trim(), quotedUrl].filter(Boolean).join('\n\n')
+      : draft.value
+
     const created = props.createPost
-      ? await props.createPost(draft.value, vis, mediaPayload, pollPayload)
+      ? await props.createPost(submitBody, vis, mediaPayload, pollPayload)
       : await apiFetchData<CreatePostData>('/posts', {
           method: 'POST',
           body: props.replyTo
             ? {
-                body: draft.value,
+                body: submitBody,
                 visibility: vis,
                 parent_id: props.replyTo.parentId,
                 mentions: props.replyTo.mentionUsernames,
                 media: mediaPayload,
               }
             : {
-                body: draft.value,
+                body: submitBody,
                 visibility: vis,
                 media: mediaPayload,
                 ...(pollPayload ? { poll: pollPayload } : {}),

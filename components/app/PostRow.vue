@@ -263,7 +263,7 @@
           <div v-if="!isDeletedPost" class="mt-2.5 sm:mt-3 flex items-center justify-between moh-text-muted">
           <div class="flex items-center gap-1">
             <!-- Reply: hidden for only-me posts -->
-            <div v-if="!isOnlyMe" class="inline-flex w-16 items-center justify-start">
+            <div v-if="!isOnlyMe" class="inline-flex w-14 items-center justify-start">
               <button
                 type="button"
                 class="moh-tap inline-flex h-10 w-10 sm:h-9 sm:w-9 items-center justify-center rounded-full transition-colors moh-surface-hover"
@@ -291,7 +291,7 @@
               </span>
             </div>
 
-            <div v-if="!isOnlyMe" class="inline-flex w-16 items-center justify-start">
+            <div v-if="!isOnlyMe" class="inline-flex w-14 items-center justify-start">
               <button
                 type="button"
                 class="moh-tap inline-flex h-10 w-10 sm:h-9 sm:w-9 items-center justify-center rounded-full transition-colors moh-surface-hover"
@@ -326,9 +326,64 @@
                 {{ boostCountLabel ?? '' }}
               </span>
             </div>
+
+            <!-- Repost button + menu -->
+            <div v-if="!isOnlyMe" class="relative inline-flex w-14 items-center justify-start">
+              <button
+                type="button"
+                class="moh-tap inline-flex h-10 w-10 sm:h-9 sm:w-9 items-center justify-center rounded-full transition-colors moh-surface-hover"
+                :class="viewerCanInteract ? 'cursor-pointer' : 'cursor-default opacity-60'"
+                :aria-label="isReposted ? 'Repost options' : 'Repost'"
+                v-tooltip.bottom="repostTooltip"
+                @click.stop="onRepostClick"
+              >
+                <Icon
+                  name="tabler:repeat"
+                  class="text-[19px]"
+                  aria-hidden="true"
+                  :style="isReposted ? { color: 'var(--p-primary-color)' } : undefined"
+                />
+              </button>
+              <span class="ml-0 inline-block w-6 select-none text-left text-[11px] sm:text-xs tabular-nums moh-text-muted" aria-hidden="true">
+                {{ repostCountLabel ?? '' }}
+              </span>
+
+              <!-- Repost menu popup -->
+              <Teleport to="body">
+                <div
+                  v-if="repostMenuOpen"
+                  class="fixed inset-0 z-[9998]"
+                  @click.stop="repostMenuOpen = false"
+                />
+                <div
+                  v-if="repostMenuOpen"
+                  ref="repostMenuEl"
+                  class="fixed z-[9999] min-w-[160px] rounded-xl border moh-border moh-surface shadow-lg overflow-hidden"
+                  :style="repostMenuStyle"
+                  @click.stop
+                >
+                  <button
+                    type="button"
+                    class="flex w-full items-center gap-2 px-4 py-2.5 text-sm moh-text hover:moh-surface-hover transition-colors"
+                    @click.stop="onRepostMenuRepost"
+                  >
+                    <Icon name="tabler:repeat" class="text-base shrink-0" aria-hidden="true" />
+                    {{ isReposted ? 'Un-repost' : 'Repost' }}
+                  </button>
+                  <button
+                    type="button"
+                    class="flex w-full items-center gap-2 px-4 py-2.5 text-sm moh-text hover:moh-surface-hover transition-colors border-t moh-border"
+                    @click.stop="onRepostMenuQuote"
+                  >
+                    <Icon name="tabler:quote" class="text-base shrink-0" aria-hidden="true" />
+                    Quote
+                  </button>
+                </div>
+              </Teleport>
+            </div>
           </div>
 
-          <div v-if="!isOnlyMe" class="relative flex items-center gap-1 justify-end">
+          <div v-if="!isOnlyMe" class="relative flex items-center gap-2 justify-end">
             <span class="mr-0 inline-block w-6 select-none text-right text-[11px] sm:text-xs tabular-nums moh-text-muted" aria-hidden="true">
               {{ bookmarkCountLabel ?? '' }}
             </span>
@@ -425,7 +480,7 @@ import { useCopyToClipboard } from '~/composables/useCopyToClipboard'
 import { usePostCountBumps } from '~/composables/usePostCountBumps'
 import { useInViewOnce } from '~/composables/useInViewOnce'
 import { useUserOverlay } from '~/composables/useUserOverlay'
-import { MOH_OPEN_COMPOSER_FROM_ONLYME_KEY } from '~/utils/injection-keys'
+import { MOH_OPEN_COMPOSER_FROM_ONLYME_KEY, MOH_OPEN_COMPOSER_KEY } from '~/utils/injection-keys'
 
 const props = defineProps<{
   post: FeedPost
@@ -1000,6 +1055,74 @@ const boostCountLabel = computed(() => {
   return formatShortCount(n)
 })
 
+// ── Repost state ─────────────────────────────────────────────────────────────
+const repostState = useRepostState()
+const repostEntry = computed(() => repostState.get(postView.value))
+const isReposted = computed(() => repostEntry.value.viewerHasReposted)
+const repostCount = computed(() => repostEntry.value.repostCount)
+const repostCountLabel = computed(() => {
+  const n = repostCount.value
+  if (!n) return null
+  return formatShortCount(n)
+})
+const repostTooltip = computed(() => {
+  if (!isAuthed.value) return tinyTooltip('Log in to repost')
+  if (!viewerIsVerified.value) return tinyTooltip('Verify to repost')
+  if (!viewerHasUsername.value) return tinyTooltip('Set a username to repost')
+  return isReposted.value ? tinyTooltip('Repost options') : tinyTooltip('Repost')
+})
+
+const repostMenuOpen = ref(false)
+const repostMenuEl = ref<HTMLElement | null>(null)
+const repostMenuStyle = ref<Record<string, string>>({})
+
+const openComposerKey = inject(MOH_OPEN_COMPOSER_KEY, null)
+
+function onRepostClick(e: MouseEvent) {
+  if (!viewerCanInteract.value) return
+  if (!isAuthed.value) {
+    showAuthActionModal({ kind: 'login', action: 'repost' as any })
+    return
+  }
+  if (!viewerIsVerified.value) {
+    showAuthActionModal({ kind: 'verify', action: 'repost' as any })
+    return
+  }
+  if (!viewerHasUsername.value) {
+    showAuthActionModal({ kind: 'setUsername', action: 'repost' as any })
+    return
+  }
+  // Position the menu near the button
+  const btn = (e.currentTarget as HTMLElement)
+  const rect = btn.getBoundingClientRect()
+  const menuWidth = 180
+  let left = rect.left
+  if (left + menuWidth > window.innerWidth - 8) left = window.innerWidth - menuWidth - 8
+  repostMenuStyle.value = {
+    top: `${rect.bottom + 4}px`,
+    left: `${left}px`,
+  }
+  repostMenuOpen.value = !repostMenuOpen.value
+}
+
+async function onRepostMenuRepost() {
+  repostMenuOpen.value = false
+  try {
+    await repostState.toggleRepost(postView.value)
+  } catch (e: unknown) {
+    toast.pushError(e, 'Failed to repost.')
+  }
+}
+
+function onRepostMenuQuote() {
+  repostMenuOpen.value = false
+  if (!openComposerKey) {
+    toast.push({ title: 'Could not open composer', tone: 'error', durationMs: 2000 })
+    return
+  }
+  openComposerKey({ quotedPost: props.post })
+}
+
 const bookmarkCountLabel = computed(() => {
   const n = Math.max(0, Math.floor(Number(postView.value.bookmarkCount ?? 0)))
   if (!n) return null
@@ -1115,7 +1238,16 @@ function onCommentClick() {
     showAuthActionModal({ kind: 'verify', action: 'comment' })
     return
   }
-  showReplyModal(postView.value)
+
+  // Flat repost: reply goes to the original post, but also mentions the reposter.
+  const post = postView.value
+  if (post.kind === 'repost' && post.repostedPost) {
+    const reposterUsername = post.author?.username
+    showReplyModal(post.repostedPost, reposterUsername ? [reposterUsername] : [])
+    return
+  }
+
+  showReplyModal(post)
 }
 
 async function handleBlockUser(userId: string) {

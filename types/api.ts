@@ -373,7 +373,7 @@ export type FeedPost = {
   editCount?: number
   body: string
   deletedAt: string | null
-  kind?: 'regular' | 'checkin'
+  kind?: 'regular' | 'checkin' | 'repost'
   checkinDayKey?: string | null
   checkinPrompt?: string | null
   visibility: PostVisibility
@@ -384,6 +384,8 @@ export type FeedPost = {
   boostCount: number
   bookmarkCount: number
   commentCount?: number
+  /** Denormalized count of flat reposts + quote reposts referencing this post. */
+  repostCount?: number
   viewerCount?: number
   parentId?: string | null
   /** When present, this post is a reply and the parent is included for thread display. */
@@ -394,8 +396,14 @@ export type FeedPost = {
   viewerHasBoosted?: boolean
   viewerHasBookmarked?: boolean
   viewerBookmarkCollectionIds?: string[]
+  /** True if the viewer has flat-reposted this post. */
+  viewerHasReposted?: boolean
   /** Set when a block exists between viewer and author. */
   viewerBlockStatus?: 'viewer_blocked' | 'viewer_blocked_by' | null
+  /** For kind='repost': the original post being reshared. */
+  repostedPost?: FeedPost
+  /** For posts containing an embedded post link: the quoted post (preloaded). */
+  quotedPost?: FeedPost
   /** When true, post body/media/mentions/poll are redacted and author is placeholder. */
   authorBanned?: boolean
   internal?: {
@@ -695,6 +703,19 @@ export type AdminHashtagBackfillStatus = {
 /** Data type for POST /posts (created post). */
 export type CreatePostData = FeedPost
 
+/** Response for POST /posts/:id/repost */
+export type RepostResponse = {
+  reposted: true
+  repostId: string
+  repostCount: number
+}
+
+/** Response for DELETE /posts/:id/repost */
+export type UnrepostResponse = {
+  reposted: false
+  repostCount: number
+}
+
 export type GiphyItem = {
   id: string
   title: string
@@ -864,6 +885,7 @@ export type GetTrendingHashtagsData = HashtagResult[]
 export type NotificationKind =
   | 'comment'
   | 'boost'
+  | 'repost'
   | 'follow'
   | 'followed_post'
   | 'mention'
@@ -871,7 +893,7 @@ export type NotificationKind =
   | 'poll_results_ready'
   | 'generic'
 
-export type NotificationGroupKind = 'comment' | 'boost' | 'follow' | 'followed_post' | 'nudge'
+export type NotificationGroupKind = 'comment' | 'boost' | 'repost' | 'follow' | 'followed_post' | 'nudge'
 
 export type NotificationActor = {
   id: string

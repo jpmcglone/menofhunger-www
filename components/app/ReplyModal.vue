@@ -114,9 +114,31 @@ const parentAuthorLinkClass = computed(() => {
 
 /** Thread participants to show as "Replying to @userA, @userB" (exclude self). */
 const replyingToDisplay = computed(() => {
-  const myUsername = user.value?.username
-  if (!myUsername) return threadParticipants.value
-  return threadParticipants.value.filter((p) => p.username?.toLowerCase() !== myUsername.toLowerCase())
+  const myUsername = user.value?.username?.toLowerCase()
+  const extras = replyModal.extraMentionUsernames.value ?? []
+
+  // Build a list: extras first (as minimal objects), then thread participants — deduped, self excluded.
+  const seen = new Set<string>()
+  const result: { id: string; username: string }[] = []
+
+  for (const username of extras) {
+    const key = username.toLowerCase()
+    if (myUsername && key === myUsername) continue
+    if (seen.has(key)) continue
+    seen.add(key)
+    result.push({ id: `extra:${username}`, username })
+  }
+
+  for (const p of threadParticipants.value) {
+    const key = (p.username ?? '').toLowerCase()
+    if (!key) continue
+    if (myUsername && key === myUsername) continue
+    if (seen.has(key)) continue
+    seen.add(key)
+    result.push(p)
+  }
+
+  return result
 })
 
 function participantLinkClass(p: { id: string; username: string }): string {
@@ -192,11 +214,19 @@ async function fetchThreadParticipants() {
 const replyContext = computed(() => {
   const post = parentPost.value
   if (!post) return null
-  const usernames = (threadParticipants.value ?? []).map((p) => p.username).filter(Boolean)
+  const threadUsernames = (threadParticipants.value ?? []).map((p) => p.username).filter(Boolean)
+  // Merge extras (e.g. reposter when replying to a flat repost) — deduplicated, extras first.
+  const extras = replyModal.extraMentionUsernames.value ?? []
+  const seen = new Set<string>()
+  const merged: string[] = []
+  for (const u of [...extras, ...threadUsernames]) {
+    const key = u.toLowerCase()
+    if (!seen.has(key)) { seen.add(key); merged.push(u) }
+  }
   return {
     parentId: post.id,
     visibility: post.visibility,
-    mentionUsernames: usernames,
+    mentionUsernames: merged,
   }
 })
 
