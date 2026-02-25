@@ -65,7 +65,7 @@ const props = withDefaults(
 )
 
 const route = useRoute()
-const { getPresenceStatus } = usePresence()
+const { getPresenceStatus, getCurrentSpaceForUser } = usePresence()
 const { user: authUser } = useAuth()
 const { selectedSpaceId } = useSpaceLobby()
 const { user: u } = useUserOverlay(computed(() => props.user))
@@ -86,18 +86,20 @@ const presenceStatus = computed(() => {
   return u.value?.id ? getPresenceStatus(u.value.id) : 'offline'
 })
 
-// Show the Spaces gradient ring when this avatar belongs to the current user and they are in a space.
+// Show the Spaces gradient ring when a user is in a space.
+// For the current user, read from the local space lobby state.
+// For other users, read from the presence WebSocket state (users:spaceChanged events).
 // Suppressed on /spaces routes (context is already clear) and when presence is hidden (radio bar).
 const showSpacesRing = computed(() => {
   const uid = u.value?.id
-  const authId = authUser.value?.id
-  if (!uid || !authId || uid !== authId) return false
-  if (!selectedSpaceId.value) return false
-  // On the spaces page itself or in the radio bar (showPresence = false), the space context
-  // is already visible — the ring would be redundant.
+  if (!uid) return false
   if (route.path.startsWith('/spaces')) return false
   if (props.showPresence === false) return false
-  return true
+  const authId = authUser.value?.id
+  if (uid === authId) {
+    return Boolean(selectedSpaceId.value)
+  }
+  return Boolean(getCurrentSpaceForUser(uid))
 })
 
 const { onEnter, onMove, onLeave } = useUserPreviewTrigger({

@@ -497,14 +497,21 @@ export function usePresence() {
       idleUserIds.value = nextIdle
     }
 
-    socket.on('presence:subscribed', (data: { users?: Array<{ userId: string; online: boolean; idle?: boolean }> }) => {
+    socket.on('presence:subscribed', (data: { users?: Array<{ userId: string; online: boolean; idle?: boolean; spaceId?: string | null }> }) => {
       const users = Array.isArray(data?.users) ? data.users : []
+      const nextSpaces = { ...userCurrentSpaceById.value }
+      let spacesChanged = false
       for (const u of users) {
         const id = u?.userId
         if (!id) continue
         markPresenceKnown(id)
         applyUserPresence(id, u.online, u.idle ?? false)
+        if ('spaceId' in u) {
+          nextSpaces[id] = u.spaceId ?? null
+          spacesChanged = true
+        }
       }
+      if (spacesChanged) userCurrentSpaceById.value = nextSpaces
     })
 
     socket.on('presence:online', (data: PresenceOnlinePayload) => {
