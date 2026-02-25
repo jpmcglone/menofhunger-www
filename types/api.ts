@@ -1,6 +1,14 @@
 /** Success envelope: payload in `data`, optional cursor/counts in `pagination`. */
 export type ApiEnvelope<T> = { data: T; pagination?: ApiPagination }
 
+/** Minimal org account shown alongside affiliated users. */
+export type OrgAffiliation = {
+  id: string
+  username: string | null
+  name: string | null
+  avatarUrl: string | null
+}
+
 export type ApiPagination = {
   nextCursor?: string | null
   counts?: {
@@ -287,6 +295,7 @@ export type PostAuthor = {
   stewardBadgeEnabled: boolean
   verifiedStatus: 'none' | 'identity' | 'manual'
   avatarUrl: string | null
+  orgAffiliations?: OrgAffiliation[]
   /** When true, author is banned; id/username/name/avatar are redacted. */
   authorBanned?: boolean
 }
@@ -327,6 +336,7 @@ export type PublicProfile = {
   lastOnlineAt: string | null
   checkinStreakDays: number
   longestStreakDays: number
+  orgAffiliations?: OrgAffiliation[]
   /** True when the viewer has blocked this user. */
   viewerHasBlockedUser?: boolean
   /** True when this user has blocked the viewer. */
@@ -353,6 +363,7 @@ export type UserPreview = {
   nudge: NudgeState | null
   followerCount: number | null
   followingCount: number | null
+  orgAffiliations?: OrgAffiliation[]
 }
 
 export type FeedPost = {
@@ -729,6 +740,7 @@ export type FollowListUser = {
   stewardBadgeEnabled: boolean
   verifiedStatus: 'none' | 'identity' | 'manual'
   avatarUrl: string | null
+  orgAffiliations?: OrgAffiliation[]
   relationship: FollowRelationship
 }
 

@@ -62,6 +62,9 @@
                             class="font-semibold hover:underline underline-offset-2"
                             :class="participantLinkClass(p)"
                             :aria-label="`View @${p.username} profile`"
+                            @mouseenter="(e) => multiTrigger.onEnter(p.username, e)"
+                            @mousemove="multiTrigger.onMove"
+                            @mouseleave="multiTrigger.onLeave"
                           >
                             @{{ p.username }}
                           </NuxtLink>
@@ -91,6 +94,7 @@ import { useUserOverlay } from '~/composables/useUserOverlay'
 import { userColorTier, userTierTextClass } from '~/utils/user-tier'
 
 const replyModal = useReplyModal()
+const multiTrigger = useUserPreviewMultiTrigger()
 const { apiFetchData } = useApiClient()
 const { user } = useAuth()
 const middleScrollerRef = useMiddleScroller()

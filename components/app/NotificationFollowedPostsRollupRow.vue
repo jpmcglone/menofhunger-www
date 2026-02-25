@@ -68,7 +68,12 @@
           <div :class="['min-w-0 max-w-full line-clamp-2 text-[13px] sm:text-sm', rollup.readAt ? 'font-medium' : 'font-semibold']">
             <span class="text-gray-600 dark:text-gray-300 font-medium">New posts by</span>
             <span class="ml-1 inline-flex items-center gap-1">
-              <span class="truncate">{{ firstActorLabel }}</span>
+              <span
+                class="truncate"
+                @mouseenter="onActorEnter"
+                @mousemove="onActorMove"
+                @mouseleave="onActorLeave"
+              >{{ firstActorLabel }}</span>
               <AppVerifiedBadge
                 v-if="firstActorHasBadge"
                 :status="firstActorVerifiedStatus"
@@ -93,6 +98,7 @@ import type { FollowedPostsRollup, NotificationActor } from '~/types/api'
 
 const { formatWhen } = useNotifications()
 
+
 const props = defineProps<{
   rollup: FollowedPostsRollup
 }>()
@@ -100,6 +106,9 @@ const props = defineProps<{
 const rollup = computed(() => props.rollup)
 
 const firstActor = computed<NotificationActor | null>(() => rollup.value.actors?.[0] ?? null)
+const { onEnter: onActorEnter, onMove: onActorMove, onLeave: onActorLeave } = useUserPreviewTrigger({
+  username: computed(() => firstActor.value?.username ?? ''),
+})
 const firstActorLabel = computed(() => {
   const a = firstActor.value
   if (!a) return 'someone'

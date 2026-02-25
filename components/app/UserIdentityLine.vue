@@ -1,6 +1,6 @@
 <template>
   <div class="min-w-0">
-    <div class="flex items-center gap-2 min-w-0">
+    <div class="flex items-center gap-1.5 min-w-0">
       <div :class="['font-semibold truncate text-gray-900 dark:text-gray-50', nameClass]">
         {{ displayName }}
       </div>
@@ -12,6 +12,11 @@
         :steward-badge-enabled="user.stewardBadgeEnabled ?? true"
         :size="badgeSize"
       />
+      <AppOrgAffiliationAvatars
+        v-if="orgAffiliations && orgAffiliations.length > 0"
+        :orgs="orgAffiliations"
+        :size="badgeSize === 'md' ? 'md' : badgeSize === 'xs' ? 'xs' : 'sm'"
+      />
       <slot name="after-name" />
     </div>
     <div :class="['truncate text-gray-600 dark:text-gray-300', handleClass]">
@@ -22,6 +27,7 @@
 
 <script setup lang="ts">
 type VerifiedStatus = 'none' | 'identity' | 'manual'
+type OrgAffiliation = { id: string; username: string | null; name: string | null; avatarUrl: string | null }
 type UserLike = {
   name?: string | null
   username?: string | null
@@ -30,6 +36,7 @@ type UserLike = {
   premiumPlus?: boolean | null
   isOrganization?: boolean | null
   stewardBadgeEnabled?: boolean | null
+  orgAffiliations?: OrgAffiliation[] | null
 }
 
 const props = withDefaults(
@@ -38,6 +45,8 @@ const props = withDefaults(
     nameClass?: string
     handleClass?: string
     badgeSize?: 'xs' | 'sm' | 'md'
+    /** Override org affiliations (falls back to user.orgAffiliations). */
+    orgAffiliations?: OrgAffiliation[] | null
   }>(),
   {
     nameClass: 'text-sm',
@@ -45,6 +54,8 @@ const props = withDefaults(
     badgeSize: 'sm',
   },
 )
+
+const orgAffiliations = computed(() => props.orgAffiliations ?? props.user.orgAffiliations ?? null)
 
 const verifiedStatus = computed((): VerifiedStatus | null | undefined => {
   const s = props.user.verifiedStatus

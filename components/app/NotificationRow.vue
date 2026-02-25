@@ -102,7 +102,12 @@
           <div class="min-w-0 flex-1">
             <!-- Title + quoted message: up to 2 lines with truncation -->
             <div :class="['min-w-0 max-w-full line-clamp-2 text-[13px] sm:text-sm', notification.readAt ? 'font-medium' : 'font-semibold']">
-              <span :class="actorTierClass(notification)">{{ actorDisplay(notification) }}</span>
+              <span
+                :class="actorTierClass(notification)"
+                @mouseenter="onActorEnter"
+                @mousemove="onActorMove"
+                @mouseleave="onActorLeave"
+              >{{ actorDisplay(notification) }}</span>
               <template v-if="notification.kind === 'comment'">
                 <span class="ml-1">replied to your</span>
                 <span class="ml-1" :class="subjectPostVisibilityTextClass(notification)">post</span>
@@ -295,6 +300,10 @@ const localReadAt = ref<string | null>(null)
 const notification = computed<Notification>(() => {
   if (!localReadAt.value) return props.notification
   return { ...props.notification, readAt: localReadAt.value }
+})
+
+const { onEnter: onActorEnter, onMove: onActorMove, onLeave: onActorLeave } = useUserPreviewTrigger({
+  username: computed(() => props.notification.actor?.username ?? ''),
 })
 const nudgeIsTopmost = computed(() => props.nudgeIsTopmost !== false)
 

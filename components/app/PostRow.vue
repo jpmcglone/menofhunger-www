@@ -107,6 +107,7 @@
             :premium-plus="author.premiumPlus"
             :is-organization="author.isOrganization"
             :steward-badge-enabled="author.stewardBadgeEnabled ?? true"
+            :org-affiliations="(author as any).orgAffiliations ?? postView.author.orgAffiliations"
             :edited-at="postView.editedAt ?? null"
             :hide-edited-badge="postView.visibility === 'onlyMe'"
             :profile-path="authorProfilePath"

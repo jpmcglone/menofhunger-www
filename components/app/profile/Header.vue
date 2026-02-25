@@ -167,6 +167,11 @@
               :is-organization="profile?.isOrganization"
               :steward-badge-enabled="profile?.stewardBadgeEnabled ?? true"
             />
+            <AppOrgAffiliationAvatars
+              v-if="!profile?.isOrganization && profile?.orgAffiliations && profile.orgAffiliations.length > 0"
+              :orgs="profile.orgAffiliations"
+              size="sm"
+            />
           </div>
           <div class="mt-1 text-sm text-gray-500 dark:text-gray-400 flex items-center gap-2">
             <div class="truncate">

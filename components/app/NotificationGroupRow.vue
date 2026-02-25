@@ -77,11 +77,22 @@
               <template v-if="group.kind === 'followed_post' && group.actorCount === 1 && group.count > 1">
                 <span class="whitespace-nowrap">{{ group.count }} new posts</span>
                 <span class="ml-1">from</span>
-                <span class="ml-1 whitespace-nowrap">{{ actorLabel(group.actors?.[0] as any) }}</span>
+                <span
+                  class="ml-1 whitespace-nowrap"
+                  @mouseenter="(e) => multiTrigger.onEnter(group.actors?.[0]?.username, e)"
+                  @mousemove="multiTrigger.onMove"
+                  @mouseleave="multiTrigger.onLeave"
+                >{{ actorLabel(group.actors?.[0] as any) }}</span>
               </template>
               <template v-else>
                 <span v-for="(part, idx) in actorDisplayParts(group)" :key="idx">
-                  <span v-if="part.kind === 'actor'" class="whitespace-nowrap">{{ part.text }}</span>
+                  <span
+                    v-if="part.kind === 'actor'"
+                    class="whitespace-nowrap"
+                    @mouseenter="(e) => multiTrigger.onEnter(part.username, e)"
+                    @mousemove="multiTrigger.onMove"
+                    @mouseleave="multiTrigger.onLeave"
+                  >{{ part.text }}</span>
                   <span v-else class="ml-1">{{ part.text }}</span>
                 </span>
                 <span class="ml-1">{{ titleSuffix(group) }}</span>
@@ -201,6 +212,8 @@ import type { FollowSummaryResponse, NotificationActor, NotificationGroup } from
 import { tinyTooltip } from '~/utils/tiny-tooltip'
 import type { MenuItem } from 'primevue/menuitem'
 import { userColorTier, userTierBgClass, type UserColorTier } from '~/utils/user-tier'
+
+const multiTrigger = useUserPreviewMultiTrigger()
 
 const { formatWhen } = useNotifications()
 
@@ -340,17 +353,21 @@ function actorLabel(a: NotificationActor): string {
   return 'Someone'
 }
 
-function actorDisplayParts(g: NotificationGroup): Array<{ kind: 'actor' | 'text'; text: string }> {
+function actorDisplayParts(g: NotificationGroup): Array<{ kind: 'actor' | 'text'; text: string; username?: string }> {
   const actors = g.actors ?? []
   const a1 = actors[0] ? actorLabel(actors[0]) : 'Someone'
   const a2 = actors[1] ? actorLabel(actors[1]) : ''
-  if (g.actorCount <= 1) return [{ kind: 'actor', text: a1 }]
-  if (g.actorCount === 2) return [{ kind: 'actor', text: a1 }, { kind: 'text', text: 'and' }, { kind: 'actor', text: a2 }]
+  if (g.actorCount <= 1) return [{ kind: 'actor', text: a1, username: actors[0]?.username ?? undefined }]
+  if (g.actorCount === 2) return [
+    { kind: 'actor', text: a1, username: actors[0]?.username ?? undefined },
+    { kind: 'text', text: 'and' },
+    { kind: 'actor', text: a2, username: actors[1]?.username ?? undefined },
+  ]
   const more = Math.max(0, g.actorCount - 2)
   return [
-    { kind: 'actor', text: a1 },
+    { kind: 'actor', text: a1, username: actors[0]?.username ?? undefined },
     { kind: 'text', text: ',' },
-    { kind: 'actor', text: a2 },
+    { kind: 'actor', text: a2, username: actors[1]?.username ?? undefined },
     { kind: 'text', text: 'and' },
     { kind: 'text', text: `${more} more` },
   ]

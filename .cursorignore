@@ -1,0 +1,18 @@
+# ──────────────────────────────────────────────
+# WWW-specific ignores (inherits workspace root rules)
+# ──────────────────────────────────────────────
+
+# Installed packages
+node_modules/
+
+# Nuxt generated output — large and fully derived from source
+.nuxt/
+.output/
+.cache/
+
+# Test coverage reports
+coverage/
+
+# Vitest / playwright run artifacts
+test-results/
+playwright-report/

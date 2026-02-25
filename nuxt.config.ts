@@ -92,7 +92,13 @@ export default defineNuxtConfig({
         { name: 'apple-mobile-web-app-capable', content: 'yes' },
         // Prefer default status bar behavior in iOS standalone.
         { name: 'apple-mobile-web-app-status-bar-style', content: 'default' },
-        { name: 'apple-mobile-web-app-title', content: siteConfig.name }
+        { name: 'apple-mobile-web-app-title', content: siteConfig.name },
+        // Smart App Banner — prompts iOS Safari users to open in the native app.
+        // Replace XXXXXX with the App Store numeric ID once the app is published.
+        // The `app-argument` passes the current URL so deep links work via the banner.
+        ...(process.env.NUXT_PUBLIC_IOS_APP_STORE_ID
+          ? [{ name: 'apple-itunes-app', content: `app-id=${process.env.NUXT_PUBLIC_IOS_APP_STORE_ID}` }]
+          : []),
       ],
       // NOTE: Do NOT inject the AdSense loader into the initial HTML.
       // It can mutate the server-rendered DOM before Vue hydrates, causing hydration mismatches.
@@ -299,10 +305,12 @@ export default defineNuxtConfig({
     '/u/**': { ssr: true },
     '/p/**': { ssr: true },
 
-    // Static content: prerender for fast, cacheable, indexable HTML.
-    '/terms': { prerender: true },
-    '/privacy': { prerender: true },
-    '/about': { prerender: true },
+    // Static content: SSR for fast, indexable HTML.
+    // Avoid prerender: the `app` layout requires runtime context (auth/API)
+    // that isn't available at build time, so payload files fail to generate.
+    '/terms': { ssr: true },
+    '/privacy': { ssr: true },
+    '/about': { ssr: true },
 
     // App-shell: enable SSR to reduce client-side "data flicker" on first paint.
     // These pages already gate browser-only logic behind onMounted/import.meta.client.

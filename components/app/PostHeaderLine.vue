@@ -46,6 +46,12 @@
         :is-organization="isOrganization"
         :steward-badge-enabled="stewardBadgeEnabled"
       />
+
+      <AppOrgAffiliationAvatars
+        v-if="orgAffiliations && orgAffiliations.length > 0"
+        :orgs="orgAffiliations"
+        size="xs"
+      />
     </div>
 
     <div class="moh-meta flex min-w-0 items-baseline gap-1.5 flex-nowrap font-light">
@@ -92,6 +98,7 @@
 
 <script setup lang="ts">
 type VerifiedStatus = 'none' | 'identity' | 'manual'
+type OrgAffiliation = { id: string; username: string | null; name: string | null; avatarUrl: string | null }
 
 const props = defineProps<{
   displayName: string
@@ -101,8 +108,9 @@ const props = defineProps<{
   premiumPlus?: boolean
   isOrganization?: boolean
   stewardBadgeEnabled?: boolean
+  orgAffiliations?: OrgAffiliation[] | null
   editedAt?: string | null
-  /** Hide the inline “edited” marker (e.g. for onlyMe notes/drafts). */
+  /** Hide the inline "edited" marker (e.g. for onlyMe notes/drafts). */
   hideEditedBadge?: boolean
   profilePath: string | null
   postId: string
@@ -120,4 +128,3 @@ const isEdited = computed(() => Boolean(props.editedAt) && !props.hideEditedBadg
 
 const { onEnter, onMove, onLeave } = useUserPreviewTrigger({ username })
 </script>
-

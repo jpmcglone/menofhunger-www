@@ -11,8 +11,8 @@
       <div
         v-if="open && preview"
         ref="cardEl"
-        class="fixed z-[1300] w-[340px] max-w-[calc(100vw-24px)] transition-[left,top] duration-150 ease-out motion-reduce:transition-none will-change-[left,top]"
-        :style="posStyle"
+        class="fixed z-[1300] w-[340px] max-w-[calc(100vw-24px)] rounded-2xl transition-[left,top] duration-150 ease-out motion-reduce:transition-none will-change-[left,top]"
+        :style="[posStyle, glowStyle]"
         @mouseenter="onCardEnter"
         @mouseleave="onCardLeave"
       >
@@ -23,11 +23,22 @@
 </template>
 
 <script setup lang="ts">
+import { userColorTier, userTierColorVar } from '~/utils/user-tier'
+
 const pop = useUserPreviewPopover()
 const { state } = pop
 
 const open = computed(() => Boolean(state.value.open))
 const preview = computed(() => state.value.preview)
+
+const glowStyle = computed(() => {
+  if (!preview.value?.premiumPlus) return {}
+  const color = userTierColorVar(userColorTier(preview.value))
+  if (!color) return {}
+  return {
+    boxShadow: `0 0 40px 16px color-mix(in srgb, ${color} 10%, transparent)`,
+  }
+})
 
 const cardEl = ref<HTMLElement | null>(null)
 

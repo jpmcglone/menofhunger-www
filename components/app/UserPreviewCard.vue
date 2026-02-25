@@ -148,6 +148,11 @@
               :is-organization="user.isOrganization"
               :steward-badge-enabled="user.stewardBadgeEnabled ?? true"
             />
+            <AppOrgAffiliationAvatars
+              v-if="!user.isOrganization && user.orgAffiliations && user.orgAffiliations.length > 0"
+              :orgs="user.orgAffiliations"
+              size="sm"
+            />
           </div>
 
           <NuxtLink

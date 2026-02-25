@@ -26,7 +26,13 @@
           <AppUserAvatar :user="item.blocked" size-class="h-9 w-9" />
         </NuxtLink>
         <div class="min-w-0 flex-1">
-          <NuxtLink :to="`/u/${item.blocked.username}`" class="block font-semibold text-sm truncate hover:underline">
+          <NuxtLink
+            :to="`/u/${item.blocked.username}`"
+            class="block font-semibold text-sm truncate hover:underline"
+            @mouseenter="(e) => multiTrigger.onEnter(item.blocked.username, e)"
+            @mousemove="multiTrigger.onMove"
+            @mouseleave="multiTrigger.onLeave"
+          >
             {{ item.blocked.name || item.blocked.username || 'User' }}
           </NuxtLink>
           <div class="text-xs text-gray-500 dark:text-gray-400 truncate">
@@ -48,6 +54,8 @@
 <script setup lang="ts">
 import type { MessageBlockListItem } from '~/types/api'
 import { getApiErrorMessage } from '~/utils/api-error'
+
+const multiTrigger = useUserPreviewMultiTrigger()
 
 const { apiFetch } = useApiClient()
 const blockState = useBlockState()

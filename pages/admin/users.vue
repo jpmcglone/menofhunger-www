@@ -178,6 +178,11 @@
                     :is-organization="u.isOrganization"
                     :steward-badge-enabled="u.stewardBadgeEnabled ?? true"
                   />
+                  <AppOrgAffiliationAvatars
+                    v-if="!u.isOrganization && u.orgAffiliations && u.orgAffiliations.length > 0"
+                    :orgs="u.orgAffiliations"
+                    size="xs"
+                  />
                 </div>
                 <div class="text-sm text-gray-600 dark:text-gray-300 truncate">
                   @{{ u.username }}
@@ -288,6 +293,107 @@
                 Shows an Organization badge and a squircle avatar in clients.
               </div>
             </div>
+          </div>
+        </div>
+
+        <!-- Org affiliations (only for non-org users) -->
+        <div v-if="editingUser && !editingUser.isOrganization" class="space-y-2">
+          <label class="text-sm font-medium text-gray-700 dark:text-gray-200">Org affiliations</label>
+          <div class="rounded-xl border border-gray-200 bg-gray-50 p-3 dark:border-zinc-800 dark:bg-zinc-950/40 space-y-3">
+            <div class="text-xs text-gray-500 dark:text-gray-400">
+              Org avatars will appear next to this user's name across the app.
+            </div>
+
+            <!-- Loading state -->
+            <div v-if="orgAffsLoading" class="text-sm text-gray-500 dark:text-gray-400">Loading…</div>
+
+            <!-- Current affiliations -->
+            <div v-else-if="orgAffs.length > 0" class="space-y-2">
+              <div
+                v-for="org in orgAffs"
+                :key="org.id"
+                class="flex items-center justify-between gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900"
+              >
+                <div class="flex items-center gap-2 min-w-0">
+                  <img
+                    v-if="org.avatarUrl"
+                    :src="org.avatarUrl"
+                    class="h-7 w-7 rounded-md object-cover flex-shrink-0"
+                    alt=""
+                  />
+                  <div v-else class="h-7 w-7 rounded-md bg-gray-200 dark:bg-zinc-700 flex-shrink-0" />
+                  <div class="min-w-0">
+                    <div class="text-sm font-medium truncate">{{ org.name || org.username || 'Unnamed org' }}</div>
+                    <div v-if="org.username" class="text-xs text-gray-500 dark:text-gray-400">@{{ org.username }}</div>
+                  </div>
+                </div>
+                <Button
+                  severity="danger"
+                  size="small"
+                  text
+                  :loading="orgRemovingId === org.id"
+                  :disabled="!!orgRemovingId"
+                  @click="removeOrgAff(org.id)"
+                >
+                  <template #icon>
+                    <Icon name="tabler:x" />
+                  </template>
+                </Button>
+              </div>
+            </div>
+
+            <div v-else class="text-sm text-gray-500 dark:text-gray-400 italic">No org affiliations.</div>
+
+            <!-- Add org -->
+            <div class="flex items-center gap-2">
+              <InputText
+                v-model="addOrgQuery"
+                class="flex-1 text-sm"
+                placeholder="Search org by username or name…"
+                @keydown.enter.prevent="searchOrgs"
+              />
+              <Button
+                label="Search"
+                severity="secondary"
+                size="small"
+                :loading="orgSearchLoading"
+                :disabled="orgSearchLoading || !addOrgQuery.trim()"
+                @click="searchOrgs"
+              />
+            </div>
+
+            <!-- Search results -->
+            <div v-if="orgSearchResults.length > 0" class="space-y-1">
+              <div
+                v-for="r in orgSearchResults"
+                :key="r.id"
+                class="flex items-center justify-between gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900"
+              >
+                <div class="flex items-center gap-2 min-w-0">
+                  <img
+                    v-if="r.avatarUrl"
+                    :src="r.avatarUrl"
+                    class="h-7 w-7 rounded-md object-cover flex-shrink-0"
+                    alt=""
+                  />
+                  <div v-else class="h-7 w-7 rounded-md bg-gray-200 dark:bg-zinc-700 flex-shrink-0" />
+                  <div class="min-w-0">
+                    <div class="text-sm font-medium truncate">{{ r.name || r.username || 'Unnamed org' }}</div>
+                    <div v-if="r.username" class="text-xs text-gray-500 dark:text-gray-400">@{{ r.username }}</div>
+                  </div>
+                </div>
+                <Button
+                  label="Add"
+                  severity="secondary"
+                  size="small"
+                  :disabled="orgAffs.some(a => a.id === r.id) || !!orgAddingId"
+                  :loading="orgAddingId === r.id"
+                  @click="addOrgAff(r.id)"
+                />
+              </div>
+            </div>
+
+            <AppInlineAlert v-if="orgAffsError" severity="danger">{{ orgAffsError }}</AppInlineAlert>
           </div>
         </div>
 
@@ -513,6 +619,14 @@ type AdminUser = {
   verifiedStatus: 'none' | 'identity' | 'manual'
   verifiedAt: string | null
   unverifiedAt: string | null
+  orgAffiliations?: OrgAffiliation[]
+}
+
+type OrgAffiliation = {
+  id: string
+  username: string | null
+  name: string | null
+  avatarUrl: string | null
 }
 
 const { apiFetch, apiFetchData } = useApiClient()
@@ -568,6 +682,87 @@ type MembershipTier = 'none' | 'premium' | 'premiumPlus'
 const editMembership = ref<MembershipTier>('none')
 const editVerifiedStatus = ref<AdminUser['verifiedStatus']>('none')
 const editIsOrganization = ref(false)
+
+// Org affiliations for the user being edited.
+const orgAffs = ref<OrgAffiliation[]>([])
+const orgAffsLoading = ref(false)
+const orgAffsError = ref<string | null>(null)
+const orgRemovingId = ref<string | null>(null)
+const orgAddingId = ref<string | null>(null)
+const addOrgQuery = ref('')
+const orgSearchLoading = ref(false)
+const orgSearchResults = ref<OrgAffiliation[]>([])
+
+async function loadOrgAffs(userId: string) {
+  orgAffsLoading.value = true
+  orgAffsError.value = null
+  orgSearchResults.value = []
+  addOrgQuery.value = ''
+  try {
+    const res = await apiFetch<OrgAffiliation[]>(`/admin/users/${encodeURIComponent(userId)}/orgs`, { method: 'GET' })
+    orgAffs.value = res.data ?? []
+  } catch (e: unknown) {
+    orgAffsError.value = getApiErrorMessage(e) || 'Failed to load org affiliations.'
+  } finally {
+    orgAffsLoading.value = false
+  }
+}
+
+async function searchOrgs() {
+  const q = addOrgQuery.value.trim()
+  if (!q || orgSearchLoading.value) return
+  orgSearchLoading.value = true
+  orgAffsError.value = null
+  try {
+    const res = await apiFetch<AdminUser[]>('/admin/users/search', {
+      method: 'GET',
+      query: { q, limit: 10 },
+    })
+    orgSearchResults.value = (res.data ?? [])
+      .filter((u) => u.isOrganization)
+      .map((u) => ({ id: u.id, username: u.username, name: u.name, avatarUrl: u.avatarUrl ?? null }))
+  } catch (e: unknown) {
+    orgAffsError.value = getApiErrorMessage(e) || 'Failed to search orgs.'
+  } finally {
+    orgSearchLoading.value = false
+  }
+}
+
+async function addOrgAff(orgId: string) {
+  const u = editingUser.value
+  if (!u || orgAddingId.value) return
+  orgAddingId.value = orgId
+  orgAffsError.value = null
+  try {
+    const added = await apiFetchData<OrgAffiliation>(`/admin/users/${encodeURIComponent(u.id)}/orgs`, {
+      method: 'POST',
+      body: { orgId },
+    })
+    if (!orgAffs.value.some((a) => a.id === added.id)) {
+      orgAffs.value = [...orgAffs.value, added]
+    }
+    orgSearchResults.value = orgSearchResults.value.filter((r) => r.id !== orgId)
+  } catch (e: unknown) {
+    orgAffsError.value = getApiErrorMessage(e) || 'Failed to add org affiliation.'
+  } finally {
+    orgAddingId.value = null
+  }
+}
+
+async function removeOrgAff(orgId: string) {
+  const u = editingUser.value
+  if (!u || orgRemovingId.value) return
+  orgRemovingId.value = orgId
+  orgAffsError.value = null
+  try {
+    await apiFetch(`/admin/users/${encodeURIComponent(u.id)}/orgs/${encodeURIComponent(orgId)}`, { method: 'DELETE' })
+    orgAffs.value = orgAffs.value.filter((a) => a.id !== orgId)
+  } catch (e: unknown) {
+    orgAffsError.value = getApiErrorMessage(e) || 'Failed to remove org affiliation.'
+  } finally {
+    orgRemovingId.value = null
+  }
+}
 
 type UsernameAvailability = 'unknown' | 'checking' | 'available' | 'taken' | 'invalid' | 'same'
 const usernameAvailability = ref<UsernameAvailability>('unknown')
@@ -719,6 +914,9 @@ function openEdit(u: AdminUser) {
   editIsOrganization.value = Boolean(u.isOrganization)
   resetUsernameCheck()
   editOpen.value = true
+  // Load org affiliations for non-org users.
+  if (!u.isOrganization) void loadOrgAffs(u.id)
+  else orgAffs.value = []
 }
 
 function toggleBannedOpen() {
