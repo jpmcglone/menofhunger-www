@@ -1056,7 +1056,10 @@ watch(
 const composerLockedVisibility = computed<PostVisibility | null>(() => {
   if (composerIsFromOnlyMe.value) return null
   if (!viewerIsVerified.value) return 'onlyMe'
-  return isOnlyMePage.value ? 'onlyMe' : null
+  if (isOnlyMePage.value) return 'onlyMe'
+  // Quote-reposts are locked to the original post's visibility.
+  if (composerQuotedPost.value?.visibility) return composerQuotedPost.value.visibility as PostVisibility
+  return null
 })
 
 const composerAllowedVisibilities = computed<PostVisibility[] | null>(() => {

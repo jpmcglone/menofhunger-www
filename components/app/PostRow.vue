@@ -347,7 +347,7 @@
                   name="tabler:repeat"
                   class="text-[19px]"
                   aria-hidden="true"
-                  :style="isReposted ? { color: 'var(--p-primary-color)' } : undefined"
+                  :style="isReposted ? { color: repostActiveColor } : undefined"
                 />
               </button>
               <span class="ml-0 inline-block w-6 select-none text-left text-[11px] sm:text-xs tabular-nums moh-text-muted" aria-hidden="true">
@@ -1089,6 +1089,13 @@ const boostCountLabel = computed(() => {
 const repostState = useRepostState()
 const repostEntry = computed(() => repostState.get(postView.value))
 const isReposted = computed(() => repostEntry.value.viewerHasReposted)
+const repostActiveColor = computed(() => {
+  const v = postView.value.visibility
+  if (v === 'verifiedOnly') return 'var(--moh-verified)'
+  if (v === 'premiumOnly') return 'var(--moh-premium)'
+  if (v === 'onlyMe') return 'var(--moh-onlyme)'
+  return 'var(--p-primary-color)'
+})
 const repostCount = computed(() => repostEntry.value.repostCount)
 const repostCountLabel = computed(() => {
   const n = repostCount.value

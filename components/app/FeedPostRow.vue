@@ -9,12 +9,12 @@
     @mouseleave="onMouseLeave"
   >
     <!-- "X reposted" header -->
-    <div class="flex items-center gap-1.5 px-4 pt-2 pb-0 text-xs moh-text-muted">
+    <div class="flex items-center gap-1.5 px-4 pt-2 pb-0 text-xs moh-text-muted" :style="repostHeaderColor ? { color: repostHeaderColor } : undefined">
       <Icon name="tabler:repeat" class="text-[13px] shrink-0" aria-hidden="true" />
       <NuxtLink
         v-if="post.author?.username"
         :to="`/u/${encodeURIComponent(post.author.username)}`"
-        class="font-semibold hover:underline truncate moh-text-muted"
+        class="font-semibold hover:underline truncate"
         @click.stop
       >{{ repostedByLabel }}</NuxtLink>
       <span v-else class="font-semibold truncate">{{ repostedByLabel }}</span>
@@ -141,6 +141,13 @@ const repostedByLabel = computed(() => {
   if (isMe) return 'You reposted'
   const name = (author?.name || author?.username) ?? 'Someone'
   return `${name} reposted`
+})
+const repostHeaderColor = computed(() => {
+  const v = repostedPost.value?.visibility ?? props.post.visibility
+  if (v === 'verifiedOnly') return 'var(--moh-verified)'
+  if (v === 'premiumOnly') return 'var(--moh-premium)'
+  if (v === 'onlyMe') return 'var(--moh-onlyme)'
+  return undefined
 })
 
 /** Ordered chain [root, ..., post] by walking parent up. */
