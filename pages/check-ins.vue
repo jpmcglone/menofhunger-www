@@ -111,6 +111,12 @@ function onEdited(payload: { id: string; post: FeedPost }) {
   posts.value = posts.value.map((p) => (p.id === payload.id ? payload.post : p))
 }
 
-watch(sort, () => void refresh(), { immediate: true })
+if (import.meta.server) await refresh()
+onMounted(() => {
+  if (posts.value.length === 0 && !loading.value) void refresh()
+})
+
+// Re-fetch when the user changes sort (client-side interaction only)
+watch(sort, () => void refresh())
 </script>
 

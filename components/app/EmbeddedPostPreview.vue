@@ -64,6 +64,16 @@
           :style="pollTextStyle"
         >View poll</div>
 
+        <!-- Check-in indicator -->
+        <div
+          v-if="isCheckin"
+          class="mt-1.5 flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium w-fit"
+          style="background-color: var(--moh-checkin-soft); color: var(--moh-checkin)"
+        >
+          <Icon name="tabler:calendar-check" class="text-[11px] shrink-0" aria-hidden="true" />
+          {{ checkinPrompt || 'Check-in' }}
+        </div>
+
         <!-- Media: non-interactive — clicks pass through to the <a> wrapper -->
         <AppPostMediaGrid
           v-if="mediaItems.length"
@@ -140,6 +150,8 @@ const bodyPreview = computed(() => {
 })
 
 const hasPoll = computed(() => Boolean(post.value?.poll))
+const isCheckin = computed(() => post.value?.kind === 'checkin')
+const checkinPrompt = computed(() => (post.value?.checkinPrompt ?? '').trim() || null)
 
 const pollTextStyle = computed((): Record<string, string> => {
   const v = post.value?.visibility

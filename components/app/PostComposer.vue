@@ -11,7 +11,7 @@
     <div v-if="isAuthed" :class="omitAvatar ? 'flex flex-col gap-2' : 'grid grid-cols-[2.5rem_minmax(0,1fr)] gap-x-3 items-start'">
       <!-- Row 1: visibility picker, or read-only scope tag (when not omitScopeTagAbove) -->
       <div
-        :class="omitAvatar ? 'flex justify-end' : 'col-start-2 flex justify-end items-end mb-3 sm:mb-2'"
+        :class="omitAvatar ? 'flex justify-start' : 'col-start-2 flex justify-start items-end mb-3 sm:mb-2'"
       >
         <AppComposerVisibilityPicker
           v-if="showVisibilityPicker"
@@ -320,7 +320,7 @@
       @keydown.space.prevent="showLoginPrompt"
     >
       <!-- Row 1: "Public" scope tag -->
-      <div :class="omitAvatar ? 'flex justify-end' : 'col-start-2 flex justify-end items-end mb-3 sm:mb-2'">
+      <div :class="omitAvatar ? 'flex justify-start' : 'col-start-2 flex justify-start items-end mb-3 sm:mb-2'">
         <span
           class="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold border moh-text-muted border-gray-300 dark:border-zinc-600 select-none"
           aria-hidden="true"

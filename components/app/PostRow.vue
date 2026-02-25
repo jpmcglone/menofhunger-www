@@ -188,13 +188,19 @@
         </div>
 
         <div
-          v-if="!isDeletedPost && postView.kind === 'checkin'"
-          class="mt-2 rounded-lg moh-surface/50 px-2.5 py-2 sm:px-3 sm:py-2.5"
+          v-if="!isDeletedPost && postView.kind === 'checkin' && postView.checkinPrompt"
+          class="mt-3 mb-3 flex items-start gap-2.5 rounded-xl border px-3 py-2.5"
+          style="background-color: var(--moh-checkin-soft); border-color: rgba(var(--moh-checkin-rgb), 0.3)"
         >
-          <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
-            <span v-if="postView.checkinPrompt" class="text-xs sm:text-[13px] moh-text-muted opacity-80">
-              {{ postView.checkinPrompt }}
-            </span>
+          <div
+            class="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full"
+            style="background-color: rgba(var(--moh-checkin-rgb), 0.18)"
+          >
+            <Icon name="tabler:calendar-check" class="text-[13px]" aria-hidden="true" style="color: var(--moh-checkin)" />
+          </div>
+          <div class="min-w-0 flex-1">
+            <div class="text-[10px] font-semibold uppercase tracking-wide" style="color: var(--moh-checkin); opacity: 0.75">{{ checkinPromptEyebrow }}</div>
+            <div class="mt-0.5 text-xs sm:text-[13px] leading-snug moh-text">{{ postView.checkinPrompt }}</div>
           </div>
         </div>
 
@@ -233,7 +239,7 @@
           :activate-video-on-mount="activateVideoOnMount"
         />
 
-        <div v-if="!isDeletedPost && metaTags.length" class="mt-2 flex items-center justify-between gap-3">
+        <div v-if="!isDeletedPost && metaTags.length" class="mt-3.5 flex items-center justify-between gap-3">
           <!-- Stop propagation so Cmd/Ctrl+Click behaves like a normal link (new tab), not row navigation. -->
           <div class="flex items-center gap-2" @click.stop>
             <template v-for="t in metaTags" :key="t.key">
@@ -364,7 +370,7 @@
                 >
                   <button
                     type="button"
-                    class="flex w-full items-center gap-2 px-4 py-2.5 text-sm moh-text hover:moh-surface-hover transition-colors"
+                    class="flex w-full items-center gap-2 px-4 py-2.5 text-sm moh-text hover:moh-surface-hover transition-colors cursor-pointer"
                     @click.stop="onRepostMenuRepost"
                   >
                     <Icon name="tabler:repeat" class="text-base shrink-0" aria-hidden="true" />
@@ -372,7 +378,7 @@
                   </button>
                   <button
                     type="button"
-                    class="flex w-full items-center gap-2 px-4 py-2.5 text-sm moh-text hover:moh-surface-hover transition-colors border-t moh-border"
+                    class="flex w-full items-center gap-2 px-4 py-2.5 text-sm moh-text hover:moh-surface-hover transition-colors border-t moh-border cursor-pointer"
                     @click.stop="onRepostMenuQuote"
                   >
                     <Icon name="tabler:quote" class="text-base shrink-0" aria-hidden="true" />
@@ -577,6 +583,9 @@ onMounted(() => {
   } catch {
     // ignore
   }
+  if (rowEl.value && postView.value.id && postView.value.visibility !== 'onlyMe') {
+    stopViewObserve = observeView([postView.value.id], rowEl.value)
+  }
 })
 
 watch(
@@ -613,6 +622,8 @@ onBeforeUnmount(() => {
       avatarRo = null
     }
   }
+  stopViewObserve?.()
+  stopViewObserve = null
 })
 
 // When showThreadLineAboveAvatar: line should end THREAD_LINE_GAP px above the avatar.
@@ -642,6 +653,11 @@ const rowStyle = computed(() => ({
 // Resource preservation: only do heavy work (metadata fetch + embeds) when the row is near viewport.
 const rowEl = ref<HTMLElement | null>(null)
 const { inView: rowInView } = useInViewOnce(rowEl, { root: null, rootMargin: '800px 0px', threshold: 0.01 })
+
+// View tracking: report when this row is ≥50% visible for ≥1s.
+// FeedPostRow also tracks the full thread chain; deduplication in usePostViewTracker handles overlap.
+const { observe: observeView } = usePostViewTracker()
+let stopViewObserve: (() => void) | null = null
 const route = useRoute()
 const { user, me: refetchMe, isAuthed, isVerified: viewerIsVerified } = useAuth()
 const viewerHasUsername = computed(() => Boolean(user.value?.usernameIsSet))
@@ -761,6 +777,20 @@ const authorProfilePath = computed(() => {
 })
 
 const isCheckinPost = computed(() => !isDeletedPost.value && postView.value.kind === 'checkin')
+
+function easternDayKeyNow(): string {
+  try {
+    return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York' }).format(new Date())
+  } catch {
+    return new Date().toISOString().slice(0, 10)
+  }
+}
+
+const checkinPromptEyebrow = computed(() => {
+  const dk = (postView.value.checkinDayKey ?? '').trim()
+  if (dk && dk === easternDayKeyNow()) return "TODAY'S PROMPT"
+  return 'PROMPT'
+})
 const metaTags = computed(() => {
   const out: Array<{ key: string; label: string; class: string; tooltip: any; icon?: string | null; to?: string | null }> = []
 
