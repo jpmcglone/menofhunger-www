@@ -24,13 +24,6 @@
           </div>
         </div>
 
-        <div
-          v-if="!canStartNew"
-          class="mt-3 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-700 dark:border-zinc-800 dark:bg-zinc-900/40 dark:text-gray-300"
-        >
-          Verified members can reply to chats started with them. Premium members can start new chats.
-        </div>
-
         <div class="mt-3 flex items-center gap-2">
           <button
             type="button"
@@ -58,7 +51,7 @@
             <span
               v-if="showRequestsBadge"
               :class="[
-                'ml-2 inline-flex min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold leading-[18px] text-center align-middle',
+                'ml-2 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold align-middle',
                 badgeToneClass,
               ]"
             >

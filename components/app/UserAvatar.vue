@@ -87,7 +87,8 @@ const presenceStatus = computed(() => {
 })
 
 // Show the Spaces gradient ring when a user is in a space.
-// For the current user, read from the local space lobby state.
+// For the current user, check both local lobby state and the presence-tracked map
+// (seeded in useSpaceLobby.select/leave) so the ring is visible on their own posts/avatar.
 // For other users, read from the presence WebSocket state (users:spaceChanged events).
 // Suppressed on /spaces routes (context is already clear) and when presence is hidden (radio bar).
 const showSpacesRing = computed(() => {
@@ -97,7 +98,7 @@ const showSpacesRing = computed(() => {
   if (props.showPresence === false) return false
   const authId = authUser.value?.id
   if (uid === authId) {
-    return Boolean(selectedSpaceId.value)
+    return Boolean(selectedSpaceId.value) || Boolean(getCurrentSpaceForUser(uid))
   }
   return Boolean(getCurrentSpaceForUser(uid))
 })

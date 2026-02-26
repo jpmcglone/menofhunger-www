@@ -1,6 +1,6 @@
 <template>
   <AppPageContent class="flex min-h-0 flex-1 flex-col" bottom="standard">
-    <div v-if="!viewerIsVerified" class="flex min-h-0 flex-1 items-center justify-center px-4 py-12">
+    <div v-if="!viewerIsVerified && !viewerIsPremium" class="flex min-h-0 flex-1 items-center justify-center px-4 py-12">
       <div class="w-full max-w-md">
         <div class="rounded-2xl border moh-border moh-bg p-5 shadow-sm">
           <div class="text-lg font-semibold moh-text">Verify to use chat</div>
@@ -313,28 +313,10 @@
           </div>
           <div v-else class="flex-1 flex items-center justify-center px-4 py-12">
             <div class="w-full max-w-lg">
-              <div
-                v-if="viewerIsVerified && !viewerCanStartChats"
-                class="rounded-2xl border moh-border moh-bg p-5 shadow-sm"
-              >
-                <div class="text-lg font-semibold moh-text">Start chats with Premium</div>
-                <div class="mt-1 text-sm moh-text-muted">
-                  As a verified member, you can reply to chats started with you. To start new chats yourself, upgrade to Premium.
-                </div>
-                <div class="mt-4 flex flex-wrap items-center justify-end gap-2">
-                  <Button label="View tiers" severity="secondary" @click="navigateTo('/tiers')" />
-                  <Button
-                    label="Get Premium"
-                    class="!border-[var(--moh-premium)] !bg-[var(--moh-premium)] !text-white hover:opacity-95"
-                    @click="navigateTo('/settings/billing')"
-                  />
-                </div>
-              </div>
-
-              <div v-else class="rounded-2xl border moh-border moh-bg p-5 shadow-sm">
+              <div class="rounded-2xl border moh-border moh-bg p-5 shadow-sm">
                 <div class="text-lg font-semibold moh-text">Select a conversation</div>
                 <div class="mt-1 text-sm moh-text-muted">
-                  Pick a conversation from the left.
+                  Pick a conversation from the left, or start a new one.
                 </div>
               </div>
             </div>
@@ -343,8 +325,9 @@
           <div v-if="selectedChatKey" class="shrink-0 border-t border-gray-200 px-4 py-2 sm:py-2.5 dark:border-zinc-800" :style="composerBarStyle">
             <div v-if="selectedConversation?.viewerStatus === 'pending'" class="mb-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-200">
               This is a chat request. Replying accepts it and moves it to your inbox.
-              <div class="mt-2">
+              <div class="mt-2 flex items-center gap-2">
                 <Button label="Accept" size="small" severity="secondary" @click="acceptSelectedConversation" />
+                <Button label="Delete" size="small" text severity="secondary" @click="deleteSelectedConversation" />
               </div>
             </div>
             <div
@@ -379,20 +362,16 @@
     <Dialog
       v-model:visible="startChatInfoVisible"
       modal
-      header="Starting new chats"
+      header="Can't start this chat"
       :style="{ width: '28rem', maxWidth: '92vw' }"
     >
       <div class="space-y-3 text-sm text-gray-700 dark:text-gray-300">
         <p>
-          As a verified member, you can chat when someone starts a conversation with you.
-        </p>
-        <p>
-          To start new chats yourself, upgrade to Premium.
+          You need a verified account to send messages.
         </p>
       </div>
       <template #footer>
-        <Button label="Not now" text severity="secondary" @click="startChatInfoVisible = false" />
-        <Button label="View tiers" severity="secondary" @click="goPremium" />
+        <Button label="Got it" severity="secondary" @click="startChatInfoVisible = false" />
       </template>
     </Dialog>
 
@@ -494,7 +473,9 @@ const route = useRoute()
 const router = useRouter()
 const { user: me, ensureLoaded } = useAuth()
 const viewerIsVerified = computed(() => (me.value?.verifiedStatus ?? 'none') !== 'none')
-const viewerCanStartChats = computed(() => Boolean(me.value?.premium || me.value?.premiumPlus))
+const viewerIsPremium = computed(() => Boolean(me.value?.premium || me.value?.premiumPlus))
+// Any verified or premium user can start new chats; non-premium can't start with premium recipients (API enforces).
+const viewerCanStartChats = computed(() => viewerIsVerified.value || viewerIsPremium.value)
 const CHAT_BOOT_FADE_MS = 160
 const MESSAGES_PANE_FADE_MS = 160
 const prefersReducedMotion = ref(false)
@@ -679,6 +660,11 @@ async function refreshAllConversationTabs() {
     fetchConversations('primary', { forceRefresh: true }),
     fetchConversations('requests', { forceRefresh: true }),
   ])
+  // If the user is on the primary tab with nothing in it but requests has conversations,
+  // auto-switch so inbound chat requests don't silently pile up out of view.
+  if (activeTab.value === 'primary' && conversations.value.primary.length === 0 && conversations.value.requests.length > 0) {
+    activeTab.value = 'requests'
+  }
 }
 
 // --- Optimistic message reconciliation ---
@@ -771,8 +757,12 @@ const blockState = useBlockState()
 const activeList = computed(() => conversations.value[activeTab.value])
 const nextCursor = computed(() => nextCursorByTab.value[activeTab.value])
 const listLoading = computed(() => listLoadingByTab.value[activeTab.value])
-const showRequestsBadge = computed(() => showRequests.value)
-const requestsBadgeText = computed(() => displayRequests.value)
+// Drive the requests tab badge from local state so it clears immediately when a request
+// is accessed (unreadCount → 0) or deleted (removed from the list). The global nav badge
+// still uses the server-pushed count from useMessagesBadge.
+const requestsBadgeCount = computed(() => conversations.value.requests.filter((c) => c.unreadCount > 0).length)
+const showRequestsBadge = computed(() => requestsBadgeCount.value > 0)
+const requestsBadgeText = computed(() => (requestsBadgeCount.value >= 99 ? '99+' : String(requestsBadgeCount.value)))
 const badgeToneClass = computed(() => toneClass.value)
 
 const canStartDraft = computed(() => selectedRecipients.value.length > 0)
@@ -1494,6 +1484,23 @@ async function acceptSelectedConversation() {
   await refreshAllConversationTabs()
 }
 
+function removeConversationFromList(conversationId: string) {
+  for (const tab of ['primary', 'requests'] as const) {
+    const idx = conversations.value[tab].findIndex((c) => c.id === conversationId)
+    if (idx !== -1) conversations.value[tab].splice(idx, 1)
+  }
+}
+
+async function deleteSelectedConversation() {
+  const id = selectedConversationId.value
+  if (!id) return
+  removeConversationFromList(id)
+  await clearSelection({ replace: true })
+  await apiFetch(`/messages/conversations/${id}`, { method: 'DELETE' }).catch(() => {
+    // Non-fatal: list state is already correct locally; server will eventually sync.
+  })
+}
+
 function setTab(tab: 'primary' | 'requests') {
   activeTab.value = tab
   void fetchConversations(tab, { forceRefresh: true })
@@ -1529,7 +1536,7 @@ watch(recipientQuery, (val) => {
       })
       const filtered = (res ?? [])
         .filter((u) => u.id !== me.value?.id)
-        // Don't allow unverified users to show up in chat recipient search.
+        // Only verified users can be chatted with.
         .filter((u) => userColorTier(u) !== 'normal')
       recipientResults.value = filtered
     } catch (e) {
@@ -1638,7 +1645,7 @@ async function openChatToUsername(username: string) {
   await ensureLoaded().catch(() => null)
 
   // If user can't use chat at all, bail (screen already shows verify gate).
-  if (!viewerIsVerified.value) {
+  if (!viewerIsVerified.value && !viewerIsPremium.value) {
     return
   }
 
@@ -1668,11 +1675,6 @@ async function openChatToUsername(username: string) {
 
     // No existing chat: don't allow starting a chat with an unverified user.
     if (!targetIsVerified) return
-
-    if (!viewerCanStartChats.value) {
-      startChatInfoVisible.value = true
-      return
-    }
 
     await openDraftChatWithRecipient(recipient)
   } catch {
@@ -1799,38 +1801,45 @@ const messageCallback = {
 }
 
 onMounted(() => {
-  if (!viewerIsVerified.value) return
   try {
     prefersReducedMotion.value = Boolean(window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches)
   } catch {
     // ignore
   }
-  addMessagesCallback(messageCallback)
-  emitMessagesScreen(true)
   ;(async () => {
-    try {
-      await fetchConversations('primary', { forceRefresh: true })
-      const toUsername = normalizeToUsernameParam(route.query.to)
-      if (toUsername) {
-        await openChatToUsername(toUsername)
-      }
-      if (selectedConversationId.value) {
-        await selectConversation(selectedConversationId.value, { replace: true })
-      }
-      revealChatScreenAfterFade()
-      // Fetch requests tab and auto-switch if the selected conversation is there.
-      await fetchConversations('requests', { forceRefresh: true })
-      if (selectedConversationId.value) {
-        const inPrimary = conversations.value.primary.some((c) => c.id === selectedConversationId.value)
-        const inRequests = conversations.value.requests.some((c) => c.id === selectedConversationId.value)
-        if (inRequests && !inPrimary) activeTab.value = 'requests'
-      } else if (conversations.value.primary.length === 0 && conversations.value.requests.length > 0) {
-        activeTab.value = 'requests'
-      }
-    } catch {
-      // Even if fetch fails, show the screen so errors/empty states can render.
-      revealChatScreenAfterFade()
+    // Ensure auth is loaded before checking verified status — avoids missing the early-return
+    // when the auth composable hasn't resolved yet at mount time.
+    try { await ensureLoaded() } catch { /* ignore */ }
+
+    if (!viewerIsVerified.value && !viewerIsPremium.value) return
+
+    addMessagesCallback(messageCallback)
+    emitMessagesScreen(true)
+
+    await fetchConversations('primary', { forceRefresh: true }).catch(() => { /* ignore */ })
+
+    const toUsername = normalizeToUsernameParam(route.query.to)
+    if (toUsername) {
+      try { await openChatToUsername(toUsername) } catch { /* ignore */ }
     }
+    if (selectedConversationId.value) {
+      try { await selectConversation(selectedConversationId.value, { replace: true }) } catch { /* ignore */ }
+    }
+    revealChatScreenAfterFade()
+
+    // Fetch requests tab after revealing so the screen appears quickly.
+    await fetchConversations('requests', { forceRefresh: true }).catch(() => { /* ignore */ })
+
+    if (selectedConversationId.value) {
+      const inPrimary = conversations.value.primary.some((c) => c.id === selectedConversationId.value)
+      const inRequests = conversations.value.requests.some((c) => c.id === selectedConversationId.value)
+      if (inRequests && !inPrimary) activeTab.value = 'requests'
+    } else if (conversations.value.primary.length === 0 && conversations.value.requests.length > 0) {
+      activeTab.value = 'requests'
+    }
+
+    // Ensure screen reveals even if everything above failed.
+    revealChatScreenAfterFade()
   })()
 })
 
@@ -1844,7 +1853,7 @@ onBeforeUnmount(() => {
 })
 
 watch(isSocketConnected, (connected) => {
-  if (!viewerIsVerified.value) return
+  if (!viewerIsVerified.value && !viewerIsPremium.value) return
   if (connected && route.path === '/chat') emitMessagesScreen(true)
 })
 
@@ -1859,7 +1868,7 @@ watch(
   () => selectedChatKey.value,
   () => {
     if (!import.meta.client) return
-    if (!viewerIsVerified.value) return
+    if (!viewerIsVerified.value && !viewerIsPremium.value) return
     // Keep focus on non-mobile layouts; when the tab bar is visible, avoid opening the keyboard.
     if (isTabBarMode.value) return
     void nextTick(() => dmComposerRef.value?.focus?.())

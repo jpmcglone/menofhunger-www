@@ -92,6 +92,15 @@
       />
     </div>
 
+    <!-- Space preview — rendered as a card using the exact same row as /spaces -->
+    <div
+      v-if="embeddedSpace && rowInView"
+      class="overflow-hidden rounded-xl border moh-border"
+      @click.stop
+    >
+      <AppSpaceRow :space="embeddedSpace" preview />
+    </div>
+
     <div v-if="isPreviewLinkRumble && previewLink" class="mt-2 flex justify-end">
       <a
         :href="previewLink || undefined"
@@ -137,34 +146,54 @@ function isLocalHost(host: string, expected: string) {
   return h === e || h === `www.${e}`
 }
 
+function getAllowedHosts(): Set<string> {
+  const allowedHosts = new Set<string>()
+  try {
+    const fromCfg = new URL(siteConfig.url)
+    if (fromCfg.hostname) allowedHosts.add(fromCfg.hostname.toLowerCase())
+  } catch {
+    // ignore
+  }
+  if (import.meta.client) {
+    const h = window.location.hostname
+    if (h) allowedHosts.add(h.toLowerCase())
+  }
+  return allowedHosts
+}
+
 function tryExtractLocalPostId(url: string): string | null {
   const raw = (url ?? '').trim()
   if (!raw) return null
   try {
     const u = new URL(raw)
     if (u.protocol !== 'http:' && u.protocol !== 'https:') return null
-
-    const allowedHosts = new Set<string>()
-    try {
-      const fromCfg = new URL(siteConfig.url)
-      if (fromCfg.hostname) allowedHosts.add(fromCfg.hostname.toLowerCase())
-    } catch {
-      // ignore
-    }
-    if (import.meta.client) {
-      const h = window.location.hostname
-      if (h) allowedHosts.add(h.toLowerCase())
-    }
-
     const host = u.hostname.toLowerCase()
-    const ok = Array.from(allowedHosts).some((a) => isLocalHost(host, a))
+    const ok = Array.from(getAllowedHosts()).some((a) => isLocalHost(host, a))
     if (!ok) return null
-
     const parts = u.pathname.split('/').filter(Boolean)
     if (parts.length !== 2) return null
     if (parts[0] !== 'p') return null
     const id = (parts[1] ?? '').trim()
     return id || null
+  } catch {
+    return null
+  }
+}
+
+function tryExtractLocalSpaceId(url: string): string | null {
+  const raw = (url ?? '').trim()
+  if (!raw) return null
+  try {
+    const u = new URL(raw)
+    if (u.protocol !== 'http:' && u.protocol !== 'https:') return null
+    const host = u.hostname.toLowerCase()
+    const ok = Array.from(getAllowedHosts()).some((a) => isLocalHost(host, a))
+    if (!ok) return null
+    const parts = u.pathname.split('/').filter(Boolean)
+    if (parts.length !== 2) return null
+    if (parts[0] !== 'spaces') return null
+    const id = (parts[1] ?? '').trim()
+    return id ? decodeURIComponent(id) : null
   } catch {
     return null
   }
@@ -183,12 +212,37 @@ const embeddedPostLink = computed(() => {
 
 const embeddedPostId = computed(() => (embeddedPostLink.value ? tryExtractLocalPostId(embeddedPostLink.value) : null))
 
+const embeddedSpaceLink = computed(() => {
+  const xs = capturedLinks.value
+  for (let i = xs.length - 1; i >= 0; i--) {
+    const u = xs[i]
+    if (u && tryExtractLocalSpaceId(u)) return u
+  }
+  return null
+})
+
+const embeddedSpaceId = computed(() => (embeddedSpaceLink.value ? tryExtractLocalSpaceId(embeddedSpaceLink.value) : null))
+
+const { spaces, loadedOnce: spacesLoadedOnce, loadSpaces, getById: getSpaceById } = useSpaces()
+
+const embeddedSpace = computed(() => (embeddedSpaceId.value ? getSpaceById(embeddedSpaceId.value) : null))
+
+watch(
+  [embeddedSpaceId, rowInView],
+  ([id, inView]) => {
+    if (!id || !inView || spacesLoadedOnce.value) return
+    void loadSpaces()
+  },
+  { immediate: true },
+)
+
 const previewLink = computed(() => {
   const xs = capturedLinks.value
   for (let i = xs.length - 1; i >= 0; i--) {
     const u = xs[i]
     if (!u) continue
     if (tryExtractLocalPostId(u)) continue
+    if (tryExtractLocalSpaceId(u)) continue
     return u
   }
   return null
@@ -314,7 +368,14 @@ const embeddedPreviewEnabled = computed(() => {
 })
 
 // Embedded MOH post: always show block so SSR can fetch and render the preview before first paint.
+// Space preview: show when space is resolved and row is in view.
 // External link preview: only show when row is in view (avoid metadata fetch for off-screen rows).
-const showAny = computed(() => Boolean(embeddedPostId.value || (showLinkPreview.value && rowInView.value)))
+const showAny = computed(() =>
+  Boolean(
+    embeddedPostId.value ||
+    (embeddedSpace.value && rowInView.value) ||
+    (showLinkPreview.value && rowInView.value),
+  )
+)
 </script>
 

@@ -73,6 +73,15 @@
         </div>
       </div>
     </a>
+
+    <!-- Space preview — same row as /spaces, full real-time updates -->
+    <div
+      v-if="embeddedSpace"
+      class="mt-2 overflow-hidden rounded-lg border border-current/20"
+      @click.stop
+    >
+      <AppSpaceRow :space="embeddedSpace" preview />
+    </div>
   </div>
 </template>
 
@@ -81,6 +90,7 @@ import LinkifyIt from 'linkify-it'
 import { extractLinksFromText, safeUrlDisplay, safeUrlHostname } from '~/utils/link-utils'
 import type { LinkMetadata } from '~/utils/link-metadata'
 import { getLinkMetadata } from '~/utils/link-metadata'
+import { siteConfig } from '~/config/site'
 
 import { HASHTAG_IN_TEXT_DISPLAY_RE } from '~/utils/hashtag-autocomplete'
 import { userTierColorVar } from '~/utils/user-tier'
@@ -134,23 +144,94 @@ function escapeRegExp(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
 
+function isLocalHost(host: string, expected: string) {
+  const h = (host ?? '').trim().toLowerCase()
+  const e = (expected ?? '').trim().toLowerCase()
+  if (!h || !e) return false
+  return h === e || h === `www.${e}`
+}
+
+function getAllowedHosts(): Set<string> {
+  const allowedHosts = new Set<string>()
+  try {
+    const fromCfg = new URL(siteConfig.url)
+    if (fromCfg.hostname) allowedHosts.add(fromCfg.hostname.toLowerCase())
+  } catch {
+    // ignore
+  }
+  if (import.meta.client) {
+    const h = window.location.hostname
+    if (h) allowedHosts.add(h.toLowerCase())
+  }
+  return allowedHosts
+}
+
+function tryExtractLocalSpaceId(url: string): string | null {
+  const raw = (url ?? '').trim()
+  if (!raw) return null
+  try {
+    const u = new URL(raw)
+    if (u.protocol !== 'http:' && u.protocol !== 'https:') return null
+    const host = u.hostname.toLowerCase()
+    const ok = Array.from(getAllowedHosts()).some((a) => isLocalHost(host, a))
+    if (!ok) return null
+    const parts = u.pathname.split('/').filter(Boolean)
+    if (parts.length !== 2) return null
+    if (parts[0] !== 'spaces') return null
+    const id = (parts[1] ?? '').trim()
+    return id ? decodeURIComponent(id) : null
+  } catch {
+    return null
+  }
+}
+
 const capturedLinks = computed(() => extractLinksFromText((props.body ?? '').toString()))
+
+const embeddedSpaceLink = computed(() => {
+  const xs = capturedLinks.value
+  for (let i = xs.length - 1; i >= 0; i--) {
+    const u = xs[i]
+    if (u && tryExtractLocalSpaceId(u)) return u
+  }
+  return null
+})
+
+const embeddedSpaceId = computed(() => (embeddedSpaceLink.value ? tryExtractLocalSpaceId(embeddedSpaceLink.value) : null))
+
+const { loadedOnce: spacesLoadedOnce, loadSpaces, getById: getSpaceById } = useSpaces()
+
+const embeddedSpace = computed(() => (embeddedSpaceId.value ? getSpaceById(embeddedSpaceId.value) : null))
+
+watchEffect(() => {
+  if (!embeddedSpaceId.value || spacesLoadedOnce.value) return
+  void loadSpaces()
+})
 
 const previewLink = computed(() => {
   const xs = capturedLinks.value
-  return xs.length ? xs[xs.length - 1] ?? null : null
+  // Skip space links — they get their own preview widget.
+  for (let i = xs.length - 1; i >= 0; i--) {
+    const u = xs[i]
+    if (!u) continue
+    if (tryExtractLocalSpaceId(u)) continue
+    return u
+  }
+  return null
 })
+
+// Strip the preview link OR the space link from the displayed body.
+const strippedLink = computed(() => embeddedSpaceLink.value ?? previewLink.value)
 
 const displayBody = computed(() => {
   const input = (props.body ?? '').toString()
-  const last = (previewLink.value ?? '').trim()
+  const last = (strippedLink.value ?? '').trim()
   if (!last) return input
   const re = new RegExp(String.raw`(?:\s*)${escapeRegExp(last)}\s*$`)
   if (!re.test(input)) return input
   return input.replace(re, '').replace(/\s+$/, '')
 })
 
-const showLinkPreview = computed(() => Boolean(previewLink.value))
+const showLinkPreview = computed(() => Boolean(previewLink.value && !embeddedSpaceId.value))
 const previewLinkHost = computed(() => (previewLink.value ? safeUrlHostname(previewLink.value) : null))
 const previewLinkDisplay = computed(() => (previewLink.value ? safeUrlDisplay(previewLink.value) : ''))
 

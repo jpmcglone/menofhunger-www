@@ -69,6 +69,9 @@ export function useSpaceLobby() {
     if (!user.value?.id) return
 
     selectedSpaceId.value = spaceId
+    // Seed the current user's own space into presence tracking so their avatar
+    // shows the gradient ring when others (or they themselves) see it in the feed.
+    presence.setCurrentSpaceForUsers([user.value.id], spaceId)
     presence.connect()
     await presence.whenSocketConnected(10_000)
     presence.addSpacesCallback(spacesCb as any)
@@ -78,6 +81,10 @@ export function useSpaceLobby() {
   function leave() {
     const memberIds = members.value.map((m) => m.id)
     if (memberIds.length) presence.removeInterest(memberIds)
+    // Clear the current user's own space from presence tracking.
+    if (user.value?.id) {
+      presence.setCurrentSpaceForUsers([user.value.id], null)
+    }
     selectedSpaceId.value = null
     members.value = []
     if (!import.meta.client) return
