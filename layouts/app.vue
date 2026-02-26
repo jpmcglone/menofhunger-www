@@ -1038,6 +1038,11 @@ const composerVisibility = useCookie<'public' | 'verifiedOnly' | 'premiumOnly' |
   maxAge: 60 * 60 * 24 * 365,
 })
 
+// Drives --moh-scope-bg / --moh-scope-text on <html> synchronously so that
+// .moh-btn-scope buttons (nav Post, check-in) snap to the new color at the
+// same instant as the PostComposer tint, without waiting for a Vue render flush.
+useComposerScopeTint()
+
 // Persist the last non-onlyMe posting visibility so "publish from drafts" never defaults to onlyMe.
 const composerNonOnlyMeVisibility = useCookie<'public' | 'verifiedOnly' | 'premiumOnly'>('moh.post.visibility.feed.v1', {
   default: () => 'public',
@@ -1218,8 +1223,11 @@ const fabButtonClass = computed(() => {
   const v = composerVisibility.value === 'onlyMe'
     ? (composerNonOnlyMeVisibility.value ?? 'public')
     : composerVisibility.value
-  if (v === 'verifiedOnly') return 'moh-btn-verified moh-btn-tone'
-  if (v === 'premiumOnly') return 'moh-btn-premium moh-btn-tone'
+  // Use .moh-btn-scope for verified/premium: its background reads --moh-scope-bg which
+  // is updated synchronously by useComposerScopeTint (via Unhead), so the button color
+  // snaps in the same CSS-cascade tick as the composer tint rather than waiting for
+  // Vue's async render flush.
+  if (v === 'verifiedOnly' || v === 'premiumOnly') return 'moh-btn-scope moh-btn-tone'
   return 'bg-black text-white dark:bg-white dark:text-black'
 })
 const fabButtonStyle = computed(() => ({}))

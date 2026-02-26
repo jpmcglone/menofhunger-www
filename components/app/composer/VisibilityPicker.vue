@@ -30,7 +30,7 @@
 
     <div
       v-if="open"
-      class="absolute right-0 top-full z-30 mt-2 w-56 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-lg dark:border-zinc-800 dark:bg-black"
+      class="absolute left-0 top-full z-30 mt-2 w-56 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-lg dark:border-zinc-800 dark:bg-black"
       role="menu"
       aria-label="Post visibility"
     >

@@ -50,28 +50,38 @@
     >
       <!-- v-show keeps a single root element so SSR and client agree (avoids hydration mismatch) -->
       <div v-show="showCheckinPromptBar" class="px-3 pt-2.5 pb-2.5 sm:px-4 sm:pt-3 sm:pb-3">
-        <div class="rounded-xl moh-surface/60 px-3 py-2.5">
-          <div class="flex items-center justify-between gap-3">
-            <div class="min-w-0 flex-1">
-              <div
-                class="text-xs sm:text-[13px] leading-snug moh-text-muted opacity-80 moh-serif"
-                style="display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;"
-              >
-                {{ displayCheckinPromptText }}
-              </div>
-            </div>
-            <Button
-              label="Check in"
-              size="small"
-              rounded
-              :class="['shrink-0 !h-10 !min-h-10 !px-4 !py-0 !leading-none whitespace-nowrap', checkinButtonClass]"
-              @click="openCheckinComposer"
-            />
+        <div
+          class="rounded-xl border flex items-center gap-2.5 px-3 py-2.5"
+          style="background-color: var(--moh-checkin-soft); border-color: rgba(var(--moh-checkin-rgb), 0.3)"
+        >
+          <div
+            class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full"
+            style="background-color: rgba(var(--moh-checkin-rgb), 0.18)"
+          >
+            <Icon name="tabler:calendar-check" class="text-sm" aria-hidden="true" style="color: var(--moh-checkin)" />
           </div>
-          <AppInlineAlert v-if="checkinError" class="mt-2" severity="danger">
-            {{ checkinError }}
-          </AppInlineAlert>
+          <div class="min-w-0 flex-1">
+            <div class="text-[10px] font-semibold uppercase tracking-wide" style="color: var(--moh-checkin); opacity: 0.75">
+              Today's Prompt
+            </div>
+            <div
+              class="mt-0.5 text-xs sm:text-[13px] leading-snug moh-text"
+              style="display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;"
+            >
+              {{ displayCheckinPromptText }}
+            </div>
+          </div>
+          <Button
+            label="Check in"
+            size="small"
+            rounded
+            class="shrink-0 !h-8 !min-h-8 !px-3 !py-0 !text-xs !leading-none whitespace-nowrap moh-btn-scope moh-btn-tone"
+            @click="openCheckinComposer"
+          />
         </div>
+        <AppInlineAlert v-if="checkinError" class="mt-2" severity="danger">
+          {{ checkinError }}
+        </AppInlineAlert>
       </div>
     </Transition>
 
@@ -255,13 +265,6 @@ const checkinPromptText = computed(() => {
 const hydrated = ref(false)
 const displayCheckinPromptText = computed(() => (hydrated.value ? checkinPromptText.value : 'Write a check-in…'))
 
-const checkinButtonClass = computed(() => {
-  // Match the Post button tone when it's tier-scoped; otherwise keep check-in as Verified.
-  const v = composerVisibility.value
-  if (v === 'premiumOnly') return 'moh-btn-premium moh-btn-tone'
-  if (v === 'verifiedOnly') return 'moh-btn-verified moh-btn-tone'
-  return 'moh-btn-verified moh-btn-tone'
-})
 
 const middleScrollerRef = useMiddleScroller()
 

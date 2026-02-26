@@ -703,6 +703,14 @@ input[type="reset"] {
     background-color: var(--moh-onlyme) !important;
     color: #ffffff !important;
   }
+  /* Reads --moh-scope-bg/--moh-scope-text set synchronously by useComposerScopeTint so
+     the button color updates via CSS cascade at the same instant as the composer tint,
+     avoiding the async Vue render-flush lag that class-based variants have. */
+  .moh-btn-scope {
+    border-color: var(--moh-scope-bg) !important;
+    background-color: var(--moh-scope-bg) !important;
+    color: var(--moh-scope-text, #ffffff) !important;
+  }
 
   /* Matte depth: inner shadow instead of glossy highlights */
   .moh-card-matte {
