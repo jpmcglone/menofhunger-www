@@ -303,6 +303,7 @@ const {
   loading,
   error,
   refresh,
+  softRefreshNewer,
   loadMore,
   addPost,
   addReply,
@@ -403,7 +404,16 @@ const replyModal = useReplyModal()
 let unregisterReplyPosted: null | (() => void) = null
 onActivated(() => {
   if (!import.meta.client) return
-  void refresh()
+  if (posts.value.length > 0) {
+    // Posts are already in memory (keepalive). Soft-refresh only fetches posts newer than the
+    // current head and prepends them, preserving the scroll position via anchor adjustment.
+    // We delay by 300ms so this runs after the scroll-restoration plugin's 200ms re-apply,
+    // preventing the two position adjustments from conflicting.
+    setTimeout(() => void softRefreshNewer(), 300)
+  } else {
+    // No posts yet (e.g. first activation, auth change) — do a full refresh.
+    void refresh()
+  }
   const cb = (payload: import('~/composables/useReplyModal').ReplyPostedPayload) => {
     const parent = replyModal.parentPost.value
     if (!parent?.id || !payload.post) return

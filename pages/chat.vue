@@ -645,7 +645,7 @@ function reconcileOptimisticSend(serverMsg: Message): boolean {
     if (!sendingIds.has(m.id)) continue
     if (!m.id.startsWith('local-')) continue
     if (m.conversationId !== serverMsg.conversationId) continue
-    if (m.body !== serverMsg.body) continue
+    if (m.body.trim() !== serverMsg.body.trim()) continue
 
     const localId = m.id
     const next = [...list]
@@ -1760,11 +1760,16 @@ const messageCallback = {
       const shouldStick = isAtBottom()
       atBottom.value = shouldStick
       // If this is our own sent message, prefer reconciling it into an optimistic local row.
-      reconcileOptimisticSend(msg)
+      const reconciled = reconcileOptimisticSend(msg)
       const exists = messages.value.some((m) => m.id === msg.id)
       if (!exists) {
         messages.value = [...messages.value, msg]
-        markMessageAnimated(msg.id)
+        // Don't animate our own message if reconciliation failed but we still have optimistic rows
+        // in flight — the API response will merge/deduplicate shortly, avoiding a double-enter flash.
+        const myOwnUnreconciled = !reconciled && msg.sender.id === me.value?.id && sendingMessageIds.value.size > 0
+        if (!myOwnUnreconciled) {
+          markMessageAnimated(msg.id)
+        }
       }
       if (shouldStick) {
         void nextTick().then(() => {

@@ -83,10 +83,21 @@ export default defineNuxtPlugin((nuxtApp) => {
   })
 
   // Snapshot the outgoing route's scroll position before navigating away.
+  // For forward navigation (not back/forward), immediately reset scroll to 0 so the incoming
+  // page never inherits the outgoing page's scroll offset during the transition.
   router.beforeEach((_to, from) => {
     const el = getMiddleScroller()
     if (!el) return true
     writeStoredTop(from.fullPath, el.scrollTop)
+
+    // Bookmark folder switches deliberately preserve scroll position (handled in scrollBehavior),
+    // and back/forward navigation restores from storage — skip the reset for both.
+    const isBookmarksNav =
+      _to.path.startsWith('/bookmarks') && from.path.startsWith('/bookmarks') && from.path !== _to.path
+    if (!isPopStateNavigation && !isBookmarksNav) {
+      el.scrollTop = 0
+    }
+
     return true
   })
 
@@ -100,44 +111,51 @@ export default defineNuxtPlugin((nuxtApp) => {
     const shouldRestoreFromStorage = isPopStateNavigation
     if (isPopStateNavigation) isPopStateNavigation = false
 
-    return new Promise<false>((resolve) => {
-      ;(nuxtApp as { hooks: { hookOnce: (name: string, cb: () => void) => void } }).hooks.hookOnce('page:finish', () => {
-        // Defer so layout and async content (e.g. feed) have a chance to render; otherwise scrollHeight can be 0.
-        const run = () => {
-          const el = getMiddleScroller()
-          if (!el) return resolve(false)
+    // Shared restore logic, called after the page DOM is ready.
+    const applyRestore = (resolve: (v: false) => void) => {
+      const el = getMiddleScroller()
+      if (!el) return resolve(false)
 
-          if (shouldRestoreFromStorage) {
-            const stored = readStoredTop(to.fullPath)
-            if (stored != null) {
-              const maxTop = Math.max(0, el.scrollHeight - el.clientHeight)
-              el.scrollTop = clamp(stored, 0, maxTop)
-              // Feed content is often loaded async; re-apply once it has rendered so we don't stay at a clamped value.
-              setTimeout(() => {
-                const el2 = getMiddleScroller()
-                if (el2) {
-                  const maxTop2 = Math.max(0, el2.scrollHeight - el2.clientHeight)
-                  el2.scrollTop = clamp(stored, 0, maxTop2)
-                }
-              }, 200)
-            }
-            return resolve(false)
+      if (shouldRestoreFromStorage) {
+        const stored = readStoredTop(to.fullPath)
+        if (stored != null) {
+          const apply = () => {
+            const el2 = getMiddleScroller()
+            if (!el2) return
+            const maxTop = Math.max(0, el2.scrollHeight - el2.clientHeight)
+            el2.scrollTop = clamp(stored, 0, maxTop)
           }
-
-          if (isBookmarksNav) {
-            const stored = readStoredTop(from.fullPath)
-            if (stored != null) {
-              const maxTop = Math.max(0, el.scrollHeight - el.clientHeight)
-              el.scrollTop = clamp(stored, 0, maxTop)
-            }
-            return resolve(false)
-          }
-
-          el.scrollTop = 0
-          return resolve(false)
+          apply()
+          // Re-apply after async content (e.g. feed images) expands the page height.
+          setTimeout(apply, 200)
         }
+        return resolve(false)
+      }
 
-        requestAnimationFrame(() => requestAnimationFrame(run))
+      if (isBookmarksNav) {
+        const stored = readStoredTop(from.fullPath)
+        if (stored != null) {
+          const maxTop = Math.max(0, el.scrollHeight - el.clientHeight)
+          el.scrollTop = clamp(stored, 0, maxTop)
+        }
+        return resolve(false)
+      }
+
+      el.scrollTop = 0
+      return resolve(false)
+    }
+
+    return new Promise<false>((resolve) => {
+      // Keepalive pages: Vue's <Suspense> does not re-resolve on reactivation, so 'page:finish'
+      // never fires. The keepalive DOM is already in the scroller by the next rAF — restore directly.
+      if (shouldRestoreFromStorage && to.meta?.keepalive) {
+        requestAnimationFrame(() => requestAnimationFrame(() => applyRestore(resolve)))
+        return
+      }
+
+      // For all other navigations, wait for 'page:finish' so async page content has rendered.
+      ;(nuxtApp as { hooks: { hookOnce: (name: string, cb: () => void) => void } }).hooks.hookOnce('page:finish', () => {
+        requestAnimationFrame(() => requestAnimationFrame(() => applyRestore(resolve)))
       })
     })
   }

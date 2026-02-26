@@ -39,7 +39,7 @@
         <div
           v-else
           :class="[
-            animateRows && recentAnimatedMessageIds.has(item.message.id) ? 'moh-chat-item-enter' : '',
+            animateRows && recentAnimatedMessageIds.has(item.key) ? 'moh-chat-item-enter' : '',
             'relative flex w-full',
             item.message.sender.id === meId ? 'justify-end' : 'justify-start',
             isGroupChat && item.message.sender.id !== meId ? 'pl-10' : ''
@@ -63,10 +63,10 @@
             <AppUserAvatar :user="senderOverlay(item.message.sender)" size-class="h-7 w-7" />
           </button>
           <div
-            :ref="(el) => registerBubbleEl(item.message.id, el)"
+            :ref="(el) => registerBubbleEl(item.key, el)"
             :class="[
               'max-w-[85%] text-sm',
-              bubbleShapeClass(item.message.id),
+              bubbleShapeClass(item.key),
               bubbleClass(item.message)
             ]"
           >

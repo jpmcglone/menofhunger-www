@@ -120,7 +120,7 @@ function emitSend() {
 }
 
 function insertEmoji(emoji: string) {
-  styledTextareaEl.value?.insertAtCursor(emoji)
+  styledTextareaEl.value?.insertAtCursor(emoji + ' ')
 }
 
 function focus() {

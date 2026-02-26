@@ -43,6 +43,7 @@
       <div ref="highlightedPostRef" class="scroll-mt-0">
         <AppFeedPostRow
           v-if="post.parent"
+          ref="feedPostRowRef"
           :post="post"
           :highlighted-post-id="post.id"
           :clickable="false"
@@ -153,6 +154,7 @@ import { useReplyModal } from '~/composables/useReplyModal'
 import type { LinkMetadata } from '~/utils/link-metadata'
 import { userColorTier, userTierTextClass } from '~/utils/user-tier'
 import type { PostsCallback } from '~/composables/usePresence'
+import { useMiddleScroller } from '~/composables/useMiddleScroller'
 
 definePageMeta({
   layout: 'app',
@@ -492,5 +494,36 @@ function goToLogin() {
 
 function reloadPage() {
   if (import.meta.client) globalThis.location?.reload()
+}
+
+// Scroll the highlighted reply into view so its top aligns with the scroller top.
+// Only needed when there are parent posts rendered above the selected post.
+type FeedPostRowExposed = { getHighlightedEl: () => HTMLElement | null }
+const feedPostRowRef = ref<FeedPostRowExposed | null>(null)
+const middleScrollerEl = useMiddleScroller()
+
+if (import.meta.client) {
+  const nuxtApp = useNuxtApp()
+  onMounted(() => {
+    // The scroll restoration plugin resets scrollTop to 0 at page:finish + 2 rAFs.
+    // Wait for page:finish + 3 rAFs so we run after that reset, then scroll down
+    // to the highlighted post if it isn't already at the top.
+    nuxtApp.hooks.hookOnce('page:finish', () => {
+      requestAnimationFrame(() =>
+        requestAnimationFrame(() =>
+          requestAnimationFrame(() => {
+            const el = feedPostRowRef.value?.getHighlightedEl()
+            const scroller = middleScrollerEl.value
+            if (!el || !scroller) return
+            const elRect = el.getBoundingClientRect()
+            const scrollerRect = scroller.getBoundingClientRect()
+            const delta = elRect.top - scrollerRect.top
+            if (delta <= 1) return
+            scroller.scrollTop = scroller.scrollTop + delta
+          }),
+        ),
+      )
+    })
+  })
 }
 </script>

@@ -46,6 +46,15 @@ export function useKeyboardShortcutsHandler(opts: KeyboardShortcutsHandlerOption
     const tag = el.tagName.toLowerCase()
     if (tag === 'input' || tag === 'textarea' || tag === 'select') return true
     if (el.isContentEditable) return true
+    // Web Components (e.g. emoji-picker-element) host their inputs inside a
+    // shadow root. document.activeElement points at the host, not the inner
+    // input, so we also check the shadow-root's active element.
+    const shadowActive = el.shadowRoot?.activeElement
+    if (shadowActive instanceof HTMLElement) {
+      const shadowTag = shadowActive.tagName.toLowerCase()
+      if (shadowTag === 'input' || shadowTag === 'textarea' || shadowTag === 'select') return true
+      if (shadowActive.isContentEditable) return true
+    }
     return false
   }
 
@@ -62,6 +71,12 @@ export function useKeyboardShortcutsHandler(opts: KeyboardShortcutsHandlerOption
     // When the shortcuts modal is open, suppress all other shortcuts.
     if (showModal.value) return
 
+    // All shortcuts (including G+X sequences) must not fire in editable elements.
+    if (isEditableElement(document.activeElement)) {
+      clearPendingG()
+      return
+    }
+
     // Complete a pending G+X sequence.
     if (pendingG) {
       clearPendingG()
@@ -73,9 +88,6 @@ export function useKeyboardShortcutsHandler(opts: KeyboardShortcutsHandlerOption
       }
       return
     }
-
-    // All remaining shortcuts do not fire in editable elements.
-    if (isEditableElement(document.activeElement)) return
 
     if (e.key === 'g' || e.key === 'G') {
       e.preventDefault()

@@ -216,7 +216,7 @@ const highlightedRowRef = ref<HTMLElement | null>(null)
 function setHighlightedRef(el: unknown) {
   highlightedRowRef.value = Array.isArray(el) ? (el?.[0] as HTMLElement | null) ?? null : (el as HTMLElement | null) ?? null
 }
-defineExpose({ highlightedRowRef })
+defineExpose({ highlightedRowRef, getHighlightedEl: () => highlightedRowRef.value })
 
 // Post view tracking: observe this row for 50% visibility for 1s
 const { observe } = usePostViewTracker()
