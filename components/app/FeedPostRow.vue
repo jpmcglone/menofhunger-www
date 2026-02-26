@@ -9,15 +9,25 @@
     @mouseleave="onMouseLeave"
   >
     <!-- "X reposted" header -->
-    <div class="flex items-center gap-1.5 px-4 pt-2 pb-0 text-xs moh-text-muted" :style="repostHeaderColor ? { color: repostHeaderColor } : undefined">
-      <Icon name="tabler:repeat" class="text-[13px] shrink-0" aria-hidden="true" />
+    <div class="flex items-center gap-1.5 px-4 pt-2 pb-0 text-xs moh-text-muted">
+      <Icon
+        name="tabler:repeat"
+        class="text-[13px] shrink-0"
+        aria-hidden="true"
+        :style="repostHeaderColor ? { color: repostHeaderColor } : undefined"
+      />
       <NuxtLink
-        v-if="post.author?.username"
-        :to="`/u/${encodeURIComponent(post.author.username)}`"
-        class="font-semibold hover:underline truncate"
+        v-if="reposterUsername"
+        :to="`/u/${encodeURIComponent(reposterUsername)}`"
+        class="font-semibold truncate hover:underline"
+        :style="reposterNameColor ? { color: reposterNameColor } : undefined"
         @click.stop
-      >{{ repostedByLabel }}</NuxtLink>
-      <span v-else class="font-semibold truncate">{{ repostedByLabel }}</span>
+        @mouseenter="onReposterEnter"
+        @mousemove="onReposterMove"
+        @mouseleave="onReposterLeave"
+      >{{ reposterName }}</NuxtLink>
+      <span v-else class="font-semibold truncate" :style="reposterNameColor ? { color: reposterNameColor } : undefined">{{ reposterName }}</span>
+      <span :style="repostHeaderColor ? { color: repostHeaderColor } : undefined">reposted</span>
     </div>
     <!-- Original post content -->
     <AppPostRow
@@ -107,6 +117,7 @@
 
 <script setup lang="ts">
 import type { FeedPost } from '~/types/api'
+import { userColorTier, userTierColorVar } from '~/utils/user-tier'
 
 defineEmits<{
   (e: 'deleted', id: string): void
@@ -135,12 +146,16 @@ const { user: authUser } = useAuth()
 // ── Flat repost detection ────────────────────────────────────────────────────
 const isFlatRepost = computed(() => props.post.kind === 'repost' && Boolean(props.post.repostedPost))
 const repostedPost = computed(() => props.post.repostedPost ?? null)
-const repostedByLabel = computed(() => {
-  const author = props.post.author
-  const isMe = authUser.value?.id && authUser.value.id === author?.id
-  if (isMe) return 'You reposted'
-  const name = (author?.name || author?.username) ?? 'Someone'
-  return `${name} reposted`
+
+const reposterUsername = computed(() => props.post.author?.username ?? null)
+const reposterIsMe = computed(() => Boolean(authUser.value?.id && authUser.value.id === props.post.author?.id))
+const reposterName = computed(() => {
+  if (reposterIsMe.value) return 'You'
+  return (props.post.author?.name || props.post.author?.username) ?? 'Someone'
+})
+const reposterNameColor = computed(() => {
+  const author = reposterIsMe.value ? authUser.value : props.post.author
+  return userTierColorVar(userColorTier(author ?? null))
 })
 const repostHeaderColor = computed(() => {
   const v = repostedPost.value?.visibility ?? props.post.visibility
@@ -148,6 +163,9 @@ const repostHeaderColor = computed(() => {
   if (v === 'premiumOnly') return 'var(--moh-premium)'
   if (v === 'onlyMe') return 'var(--moh-onlyme)'
   return undefined
+})
+const { onEnter: onReposterEnter, onMove: onReposterMove, onLeave: onReposterLeave } = useUserPreviewTrigger({
+  username: reposterUsername,
 })
 
 /** Ordered chain [root, ..., post] by walking parent up. */
