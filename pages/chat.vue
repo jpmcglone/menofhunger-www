@@ -1523,8 +1523,9 @@ let recipientSearchTimer: ReturnType<typeof setTimeout> | null = null
 watch(recipientQuery, (val) => {
   recipientError.value = null
   if (recipientSearchTimer) clearTimeout(recipientSearchTimer)
-  const q = val.trim()
-  if (q.length < 2) {
+  // Strip a leading @ so typing "@jay" works the same as "jay".
+  const q = val.trim().replace(/^@+/, '')
+  if (!q) {
     recipientResults.value = []
     return
   }
