@@ -12,7 +12,8 @@
 
 <script setup lang="ts">
 // Run composable so count is fetched on load / socket connect / tab visible (badge is in layout + TabBar).
-const { primaryCount: badgeCount, displayPrimary: badgeText, toneClass } = useMessagesBadge()
+// Show total (primary + requests) so recipients with pending message requests also see the badge.
+const { totalCount: badgeCount, displayTotal: badgeText, toneClass } = useMessagesBadge()
 
 // Prevent SSR/client hydration mismatch: same markup on server and first client paint.
 const hydrated = ref(false)

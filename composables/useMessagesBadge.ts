@@ -8,6 +8,7 @@ export function useMessagesBadge() {
 
   const primaryCount = computed(() => Math.max(0, Number(messageUnreadCounts.value.primary) || 0))
   const requestCount = computed(() => Math.max(0, Number(messageUnreadCounts.value.requests) || 0))
+  const totalCount = computed(() => primaryCount.value + requestCount.value)
   const showPrimary = computed(() => primaryCount.value > 0)
   const showRequests = computed(() => requestCount.value > 0)
 
@@ -17,6 +18,10 @@ export function useMessagesBadge() {
   })
   const displayRequests = computed(() => {
     const n = requestCount.value
+    return n >= 99 ? '99+' : String(n)
+  })
+  const displayTotal = computed(() => {
+    const n = totalCount.value
     return n >= 99 ? '99+' : String(n)
   })
 
@@ -63,10 +68,12 @@ export function useMessagesBadge() {
   return {
     primaryCount,
     requestCount,
+    totalCount,
     showPrimary,
     showRequests,
     displayPrimary,
     displayRequests,
+    displayTotal,
     toneClass,
     fetchUnreadCounts,
   }

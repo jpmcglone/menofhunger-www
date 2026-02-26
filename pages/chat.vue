@@ -583,7 +583,7 @@ const selectedConversation = computed(() =>
 )
 const isDraftChat = computed(() => selectedChatKey.value === 'draft')
 
-type ChatMessage = Message & { __localStatus?: 'sending'; __clientKey?: string }
+type ChatMessage = Message & { __clientKey?: string }
 const messages = ref<ChatMessage[]>([])
 const { buildMessagesWithDividers, formatListTime, formatMessageTime, formatMessageTimeFull } = useChatTimeFormatting()
 const messagesWithDividers = computed(() => buildMessagesWithDividers(messages.value))
@@ -619,7 +619,7 @@ const USER_SCROLL_GRACE_MS = 2000
 
 // Track recently-added messages so we can animate them reliably (even if scroll-to-bottom happens same frame).
 const recentAnimatedMessageIds = ref<Set<string>>(new Set())
-const recentAnimatedTimers = ref<Map<string, ReturnType<typeof setTimeout>>>(new Map())
+let recentAnimatedTimers = new Map<string, ReturnType<typeof setTimeout>>()
 const sendingMessageIds = ref<Set<string>>(new Set())
 const latestMyMessageId = computed<string | null>(() => {
   const myId = me.value?.id ?? null
@@ -631,39 +631,73 @@ const latestMyMessageId = computed<string | null>(() => {
   return null
 })
 
+// --- Helpers ---
+
+function clearSendingId(localId: string) {
+  const next = new Set(sendingMessageIds.value)
+  next.delete(localId)
+  sendingMessageIds.value = next
+}
+
+/** Swap an optimistic row in-place and deduplicate any server-message that already landed elsewhere. */
+function replaceOptimisticAtIndex(list: ChatMessage[], idx: number, serverMsg: Message, localId: string): ChatMessage[] {
+  const next = [...list]
+  next[idx] = { ...serverMsg, __clientKey: localId } as ChatMessage
+  return next.filter((m, j) => j === idx || m.id !== serverMsg.id)
+}
+
+/**
+ * Update a conversation row in both tab lists.
+ * Returns true if the conversation was found in at least one tab.
+ * Pass `moveToTop: true` to splice it to the front (e.g. when a new message arrives).
+ */
+function patchConversation(
+  conversationId: string,
+  updater: (c: MessageConversationWithTone) => MessageConversationWithTone,
+  opts?: { moveToTop?: boolean },
+): boolean {
+  let found = false
+  for (const tab of ['primary', 'requests'] as const) {
+    const idx = conversations.value[tab].findIndex((c) => c.id === conversationId)
+    if (idx === -1) continue
+    const next = [...conversations.value[tab]]
+    const updated = updater(next[idx]!)
+    if (opts?.moveToTop) {
+      next.splice(idx, 1)
+      next.unshift(updated)
+    } else {
+      next[idx] = updated
+    }
+    conversations.value[tab] = next
+    found = true
+  }
+  return found
+}
+
+async function refreshAllConversationTabs() {
+  await Promise.all([
+    fetchConversations('primary', { forceRefresh: true }),
+    fetchConversations('requests', { forceRefresh: true }),
+  ])
+}
+
+// --- Optimistic message reconciliation ---
+
 function reconcileOptimisticSend(serverMsg: Message): boolean {
   const myId = me.value?.id ?? null
-  if (!myId) return false
-  if (serverMsg.sender.id !== myId) return false
-  if (!serverMsg.conversationId) return false
+  if (!myId || serverMsg.sender.id !== myId || !serverMsg.conversationId) return false
   const sendingIds = sendingMessageIds.value
   if (!sendingIds.size) return false
 
   const list = messages.value
   for (let i = list.length - 1; i >= 0; i--) {
     const m = list[i]!
-    if (!sendingIds.has(m.id)) continue
-    if (!m.id.startsWith('local-')) continue
+    if (!sendingIds.has(m.id) || !m.id.startsWith('local-')) continue
     if (m.conversationId !== serverMsg.conversationId) continue
     if (m.body.trim() !== serverMsg.body.trim()) continue
 
-    const localId = m.id
-    const next = [...list]
-    // Keep the row's key stable (localId) and only swap the message content/metadata.
-    next[i] = { ...serverMsg, __clientKey: localId } as ChatMessage
-    // Guard: if the server message already exists elsewhere, drop duplicates.
-    const deduped: ChatMessage[] = []
-    for (let j = 0; j < next.length; j++) {
-      const cur = next[j]!
-      if (j !== i && cur.id === serverMsg.id) continue
-      deduped.push(cur)
-    }
-    messages.value = deduped
-
-    const sendingNext = new Set(sendingIds)
-    sendingNext.delete(localId)
-    sendingMessageIds.value = sendingNext
-
+    messages.value = replaceOptimisticAtIndex(list, i, serverMsg, m.id)
+    clearSendingId(m.id)
     return true
   }
   return false
@@ -673,18 +707,7 @@ function mergeServerMessageIntoOptimistic(localId: string, serverMsg: Message): 
   const list = messages.value
   const idx = list.findIndex((m) => m.id === localId)
   if (idx === -1) return false
-
-  const next = [...list]
-  next[idx] = { ...serverMsg, __clientKey: localId } as ChatMessage
-
-  // Guard: if the server message already exists elsewhere, drop duplicates (keep the optimistic row).
-  const deduped: ChatMessage[] = []
-  for (let j = 0; j < next.length; j++) {
-    const cur = next[j]!
-    if (j !== idx && cur.id === serverMsg.id) continue
-    deduped.push(cur)
-  }
-  messages.value = deduped
+  messages.value = replaceOptimisticAtIndex(list, idx, serverMsg, localId)
   return true
 }
 function markMessageAnimated(id: string) {
@@ -693,14 +716,13 @@ function markMessageAnimated(id: string) {
   const next = new Set(recentAnimatedMessageIds.value)
   next.add(mid)
   recentAnimatedMessageIds.value = next
-  const timers = recentAnimatedTimers.value
-  const existing = timers.get(mid)
+  const existing = recentAnimatedTimers.get(mid)
   if (existing) clearTimeout(existing)
-  timers.set(mid, setTimeout(() => {
+  recentAnimatedTimers.set(mid, setTimeout(() => {
     const n = new Set(recentAnimatedMessageIds.value)
     n.delete(mid)
     recentAnimatedMessageIds.value = n
-    timers.delete(mid)
+    recentAnimatedTimers.delete(mid)
   }, 420))
 }
 
@@ -1310,117 +1332,95 @@ async function loadOlderMessages() {
 }
 
 function updateConversationIsBlockedWith(conversationId: string, isBlockedWith: boolean) {
-  const update = (tab: 'primary' | 'requests') => {
-    const idx = conversations.value[tab].findIndex((c) => c.id === conversationId)
-    if (idx === -1) return
-    const next = [...conversations.value[tab]]
-    next[idx] = { ...next[idx]!, isBlockedWith }
-    conversations.value[tab] = next
-  }
-  update('primary')
-  update('requests')
+  patchConversation(conversationId, (c) => ({ ...c, isBlockedWith }))
 }
 
 function updateConversationUnread(conversationId: string, unreadCount: number) {
-  const update = (tab: 'primary' | 'requests') => {
-    const idx = conversations.value[tab].findIndex((c) => c.id === conversationId)
-    if (idx === -1) return
-    const next = [...conversations.value[tab]]
-    const existing = next[idx]!
-    const nextRow: MessageConversationWithTone = { ...existing, unreadCount }
-    if (unreadCount <= 0) {
-      // Clear any tracked unread tone when conversation is marked read.
-      nextRow.unreadTone = undefined
-    }
-    next[idx] = nextRow
-    conversations.value[tab] = next
-  }
-  update('primary')
-  update('requests')
+  patchConversation(conversationId, (c) => ({
+    ...c,
+    unreadCount,
+    // Clear the unread tone when the conversation is marked read.
+    ...(unreadCount <= 0 ? { unreadTone: undefined } : {}),
+  }))
 }
 
 function updateConversationForMessage(message: Message) {
-  const updateTab = (tab: 'primary' | 'requests') => {
-    const idx = conversations.value[tab].findIndex((c) => c.id === message.conversationId)
-    if (idx === -1) return false
-    const next = [...conversations.value[tab]]
-    const existing = next[idx]!
-    const unreadInc = message.sender.id === me.value?.id ? 0 : 1
+  const unreadInc = message.sender.id === me.value?.id ? 0 : 1
+  const incomingTier = getMessageTier(message)
+  const found = patchConversation(message.conversationId, (existing) => {
     const isUnreadIncoming = unreadInc === 1 && selectedConversationId.value !== message.conversationId
-    const incomingTier = getMessageTier(message)
-    const updated: MessageConversation = {
+    const updated: MessageConversationWithTone = {
       ...existing,
       lastMessageAt: message.createdAt,
       updatedAt: message.createdAt,
       lastMessage: { id: message.id, body: message.body, createdAt: message.createdAt, senderId: message.sender.id },
       unreadCount: selectedConversationId.value === message.conversationId ? 0 : existing.unreadCount + unreadInc,
     }
-    // Track the tier of the last incoming unread message for indicator tinting.
-    const updatedWithTone: MessageConversationWithTone = updated
-    if (isUnreadIncoming) updatedWithTone.unreadTone = incomingTier
-    next.splice(idx, 1)
-    next.unshift(updatedWithTone)
-    conversations.value[tab] = next
-    return true
-  }
-
-  const inPrimary = updateTab('primary')
-  const inRequests = inPrimary ? false : updateTab('requests')
-  if (!inPrimary && !inRequests) {
-    void fetchConversations('requests', { forceRefresh: true })
-    void fetchConversations('primary', { forceRefresh: true })
-  }
+    if (isUnreadIncoming) updated.unreadTone = incomingTier
+    return updated
+  }, { moveToTop: true })
+  if (!found) void refreshAllConversationTabs()
 }
 
 async function sendCurrentMessage() {
   if (!composerText.value.trim() || sending.value) return
-  let body = composerText.value
-  let localId: string | null = null
   sendError.value = null
   sending.value = true
   try {
-    // Draft chat: first send creates the conversation.
     if (!selectedConversationId.value && isDraftChat.value) {
-      if (!viewerCanStartChats.value) {
-        startChatInfoVisible.value = true
-        return
-      }
-      const res = await apiFetchData<CreateMessageConversationResponse['data']>('/messages/conversations', {
-        method: 'POST',
-        body: {
-          user_ids: draftRecipients.value.map((u) => u.id),
-          title: undefined,
-          body: composerText.value,
-        },
-      })
-      const conversationId = res?.conversationId
-      composerText.value = ''
-      // Refresh lists so conversation appears in primary or requests tab.
-      await fetchConversations('primary', { forceRefresh: true })
-      await fetchConversations('requests', { forceRefresh: true })
-      if (conversationId) {
-        const inPrimary = conversations.value.primary.some((c) => c.id === conversationId)
-        const inRequests = conversations.value.requests.some((c) => c.id === conversationId)
-        activeTab.value = inRequests && !inPrimary ? 'requests' : 'primary'
-        await selectConversation(conversationId, { replace: true })
-      } else {
-        // If something went wrong, stay in draft mode with composer cleared.
-      }
-      return
+      await sendFirstMessage()
+    } else {
+      await sendMessage()
     }
+  } finally {
+    sending.value = false
+  }
+}
 
-    if (!selectedConversationId.value) return
-    const my = me.value
-    if (!my) return
-    // Stop typing immediately when sending.
-    try {
-      emitMessagesTyping(selectedConversationId.value, false)
-    } catch {
-      // ignore
+/** Draft path: creates the conversation and sends the first message. */
+async function sendFirstMessage() {
+  if (!viewerCanStartChats.value) {
+    startChatInfoVisible.value = true
+    return
+  }
+  const body = composerText.value
+  try {
+    const res = await apiFetchData<CreateMessageConversationResponse['data']>('/messages/conversations', {
+      method: 'POST',
+      body: {
+        user_ids: draftRecipients.value.map((u) => u.id),
+        title: undefined,
+        body,
+      },
+    })
+    composerText.value = ''
+    await refreshAllConversationTabs()
+    const conversationId = res?.conversationId
+    if (conversationId) {
+      const inPrimary = conversations.value.primary.some((c) => c.id === conversationId)
+      const inRequests = conversations.value.requests.some((c) => c.id === conversationId)
+      activeTab.value = inRequests && !inPrimary ? 'requests' : 'primary'
+      await selectConversation(conversationId, { replace: true })
     }
+  } catch (e) {
+    sendError.value = getApiErrorMessage(e) || 'Failed to send message.'
+  }
+}
 
-    // Optimistic message row (shows "Sending").
-    body = composerText.value
+/** Normal send path: optimistically adds the message and reconciles with the server response. */
+async function sendMessage() {
+  // Snapshot the conversation ID now — the user could switch threads while the request is in flight.
+  const conversationId = selectedConversationId.value
+  if (!conversationId) return
+  const my = me.value
+  if (!my) return
+
+  const body = composerText.value
+  let localId: string | null = null
+  try {
+    try { emitMessagesTyping(conversationId, false) } catch { /* ignore */ }
+
+    // Add the optimistic row.
     localId = `local-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
     const optimisticSender: MessageUser = {
       id: my.id,
@@ -1433,80 +1433,65 @@ async function sendCurrentMessage() {
       verifiedStatus: (my.verifiedStatus ?? 'none') as 'none' | 'identity' | 'manual',
       avatarUrl: my.avatarUrl ?? null,
     }
-    const optimistic: Message = {
-      id: localId,
-      createdAt: new Date().toISOString(),
-      body,
-      conversationId: selectedConversationId.value,
-      sender: optimisticSender,
-    }
-    messages.value = [...messages.value, ({ ...optimistic, __clientKey: localId } as ChatMessage)]
+    messages.value = [
+      ...messages.value,
+      { id: localId, createdAt: new Date().toISOString(), body, conversationId, sender: optimisticSender, __clientKey: localId } as ChatMessage,
+    ]
     sendingMessageIds.value = new Set([...sendingMessageIds.value, localId])
     composerText.value = ''
     await nextTick()
     scrollToBottom('smooth')
 
     const res = await apiFetchData<SendMessageResponse['data']>(
-      `/messages/conversations/${selectedConversationId.value}/messages`,
-      {
-        method: 'POST',
-        body: { body },
-      },
+      `/messages/conversations/${conversationId}/messages`,
+      { method: 'POST', body: { body } },
     )
+
+    // Guard: user switched conversations while this was in flight — remove the stale optimistic row.
+    if (selectedConversationId.value !== conversationId) {
+      messages.value = messages.value.filter((m) => m.id !== localId)
+      clearSendingId(localId)
+      return
+    }
+
     const msg = res?.message
     if (msg) {
-      // Replace optimistic row content in-place (stable row key), or append if missing.
-      const merged = localId ? mergeServerMessageIntoOptimistic(localId, msg) : false
-      if (!merged) {
-        const exists = messages.value.some((m) => m.id === msg.id)
-        if (!exists) {
+      // Replace the optimistic row in-place (stable key), or append if it was already reconciled away.
+      if (!mergeServerMessageIntoOptimistic(localId, msg)) {
+        if (!messages.value.some((m) => m.id === msg.id)) {
           messages.value = [...messages.value, msg]
           markMessageAnimated(msg.id)
         }
       }
-
-      // Clear sending state.
-      const sendingNext = new Set(sendingMessageIds.value)
-      sendingNext.delete(localId)
-      sendingMessageIds.value = sendingNext
-
+      clearSendingId(localId)
       updateConversationForMessage(msg)
       await nextTick()
       scrollToBottom('smooth')
       resetPendingNew()
-    }
-    // Ensure optimistic row doesn't linger if API returned no message.
-    if (!msg) {
+    } else {
+      // API returned no message — remove the optimistic row and restore the composer.
       messages.value = messages.value.filter((m) => m.id !== localId)
-      const sendingNext = new Set(sendingMessageIds.value)
-      sendingNext.delete(localId)
-      sendingMessageIds.value = sendingNext
+      clearSendingId(localId)
       composerText.value = body
     }
+
     if (selectedConversation.value?.viewerStatus === 'pending') {
-      await fetchConversations('primary', { forceRefresh: true })
-      await fetchConversations('requests', { forceRefresh: true })
+      await refreshAllConversationTabs()
     }
   } catch (e) {
-    // Remove optimistic row and restore composer text.
     if (localId) {
       messages.value = messages.value.filter((m) => m.id !== localId)
-      const sendingNext = new Set(sendingMessageIds.value)
-      sendingNext.delete(localId)
-      sendingMessageIds.value = sendingNext
+      clearSendingId(localId)
     }
     if (body && !composerText.value.trim()) composerText.value = body
     sendError.value = getApiErrorMessage(e) || 'Failed to send message.'
-  } finally {
-    sending.value = false
   }
 }
 
 async function acceptSelectedConversation() {
   if (!selectedConversationId.value) return
   await apiFetch(`/messages/conversations/${selectedConversationId.value}/accept`, { method: 'POST' })
-  await fetchConversations('primary', { forceRefresh: true })
-  await fetchConversations('requests', { forceRefresh: true })
+  await refreshAllConversationTabs()
 }
 
 function setTab(tab: 'primary' | 'requests') {
@@ -1672,8 +1657,7 @@ async function openChatToUsername(username: string) {
     const conversationId = lookup?.conversationId ?? null
     if (conversationId) {
       // Ensure convo exists in lists (selectConversation doesn't upsert into lists).
-      await fetchConversations('primary', { forceRefresh: true })
-      await fetchConversations('requests', { forceRefresh: true })
+      await refreshAllConversationTabs()
       // Set `c` and remove `to` in a single URL update (avoid the extra jump).
       const nextQuery = { ...(route.query as Record<string, any>), c: conversationId } as Record<string, any>
       delete nextQuery['to']
@@ -1715,8 +1699,7 @@ async function blockDirectUser() {
   const other = getDirectUser(convo)
   if (!other?.id) return
   await blockState.blockUser(other.id)
-  await fetchConversations('primary', { forceRefresh: true })
-  await fetchConversations('requests', { forceRefresh: true })
+  await refreshAllConversationTabs()
   await clearSelection({ replace: true })
 }
 
@@ -1856,8 +1839,8 @@ onBeforeUnmount(() => {
   clearMessagesPaneTimer()
   removeMessagesCallback(messageCallback)
   emitMessagesScreen(false)
-  for (const t of recentAnimatedTimers.value.values()) clearTimeout(t)
-  recentAnimatedTimers.value.clear()
+  for (const t of recentAnimatedTimers.values()) clearTimeout(t)
+  recentAnimatedTimers.clear()
 })
 
 watch(isSocketConnected, (connected) => {
