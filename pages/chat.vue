@@ -402,22 +402,24 @@
             @click="addRecipient(u)"
           >
             <AppUserAvatar :user="u" size-class="h-8 w-8" />
-            <div class="min-w-0 flex-1">
-              <div class="text-sm font-semibold truncate">{{ u.name || u.username || 'User' }}</div>
-              <div class="text-xs text-gray-500 dark:text-gray-400 truncate">@{{ u.username }}</div>
-            </div>
+            <AppUserIdentityLine :user="u" class="min-w-0 flex-1" />
           </button>
         </div>
         <div v-if="selectedRecipients.length" class="flex flex-wrap gap-2">
           <span
             v-for="u in selectedRecipients"
             :key="u.id"
-            class="inline-flex items-center gap-2 rounded-full bg-gray-100 px-2 py-1 text-xs text-gray-800 dark:bg-zinc-900 dark:text-gray-200"
+            class="inline-flex items-center gap-1.5 rounded-full px-2 py-1 text-xs"
+            :style="recipientTagStyle(u)"
           >
             <AppUserAvatar :user="u" size-class="h-5 w-5" />
-            <span>@{{ u.username }}</span>
-            <button type="button" class="text-gray-500 hover:text-gray-700 dark:hover:text-gray-200" @click="removeRecipient(u.id)">
-              <Icon name="tabler:x" aria-hidden="true" />
+            <span class="font-medium">@{{ u.username }}</span>
+            <button
+              type="button"
+              class="opacity-60 hover:opacity-100 transition-opacity leading-none"
+              @click="removeRecipient(u.id)"
+            >
+              <Icon name="tabler:x" class="h-3 w-3" aria-hidden="true" />
             </button>
           </span>
         </div>
@@ -1568,6 +1570,14 @@ function addRecipient(user: FollowListUser) {
 
 function removeRecipient(userId: string) {
   selectedRecipients.value = selectedRecipients.value.filter((u) => u.id !== userId)
+}
+
+function recipientTagStyle(u: FollowListUser): Record<string, string> {
+  const tier = userColorTier(u)
+  if (tier === 'verified')     return { background: 'var(--moh-verified-soft)',  color: 'var(--moh-verified)' }
+  if (tier === 'premium')      return { background: 'var(--moh-premium-soft)',   color: 'var(--moh-premium)' }
+  if (tier === 'organization') return { background: 'var(--moh-org-soft)',        color: 'var(--moh-org)' }
+  return { background: 'rgba(128,128,128,0.12)', color: 'inherit' }
 }
 
 async function createConversation() {
