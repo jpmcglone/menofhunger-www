@@ -493,7 +493,7 @@ let chatBootTimer: ReturnType<typeof setTimeout> | null = null
 let messagesPaneTimer: ReturnType<typeof setTimeout> | null = null
 
 const composerBarStyle = computed<Record<string, string>>(() => ({
-  paddingBottom: 'calc(var(--moh-safe-bottom, 0px) + 4px)',
+  paddingBottom: 'calc(var(--moh-safe-bottom, 0px) - 4px)',
 }))
 const scrollToBottomButtonStyle = computed<Record<string, string>>(() => ({
   bottom: 'calc(var(--moh-safe-bottom, 0px) + 1rem)',
@@ -1545,6 +1545,7 @@ watch(recipientQuery, (val) => {
       })
       const filtered = (res ?? [])
         .filter((u) => u.id !== me.value?.id)
+        .filter((u) => userColorTier(u) !== 'normal')
       recipientResults.value = filtered
     } catch (e) {
       recipientError.value = getApiErrorMessage(e) || 'Failed to search users.'

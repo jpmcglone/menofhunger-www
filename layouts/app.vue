@@ -857,7 +857,7 @@ import { useBookmarkCollections } from '~/composables/useBookmarkCollections'
 import { useOnlyMePosts } from '~/composables/useOnlyMePosts'
 import { useReplyModal } from '~/composables/useReplyModal'
 import type { DailyContentToday, DailyQuote, FeedPost, GetPresenceOnlineData, PostVisibility } from '~/types/api'
-import { isComposerEntrypointPath, routeHeaderDefaultsFor } from '~/config/routes'
+import { isComposerEntrypointPath, routeHeaderDefaultsFor, isAdminPath, isSettingsPath } from '~/config/routes'
 import { userColorTier, userTierTextClass } from '~/utils/user-tier'
 
 const route = useRoute()
@@ -922,7 +922,7 @@ onBeforeUnmount(() => {
   if (connectionBarRemoveListeners) connectionBarRemoveListeners()
 })
 
-const { hideTopBar, navCompactMode, isRightRailForcedHidden: _isRightRailForcedHiddenBase, isRightRailSearchHidden, title } = useLayoutRules(route)
+const { hideTopBar, navCompactMode: _navCompactModeBase, isRightRailForcedHidden: _isRightRailForcedHiddenBase, isRightRailSearchHidden, title } = useLayoutRules(route)
 const isMessagesPage = computed(() => route.path === '/chat')
 const isOnlyMePage = computed(() => route.path === '/only-me')
 
@@ -1255,6 +1255,15 @@ const { allPositionedFloating } = useSpaceReactions()
 const radioHasStation = computed(() => Boolean(selectedSpaceId.value))
 useSpacePlayPauseShortcut(radioHasStation)
 
+// Force the left nav into compact (icon-only) mode on chat/settings/admin while in a space,
+// so the freed horizontal space goes to the center column and the live-chat right rail.
+const isSettingsOrAdminPage = computed(() => isSettingsPath(route.path) || isAdminPath(route.path))
+const navCompactMode = computed(() => {
+  if (_navCompactModeBase.value) return true
+  if (!selectedSpaceId.value) return false
+  return isMessagesPage.value || isSettingsOrAdminPage.value
+})
+
 // Global keyboard shortcuts
 const searchInputRef = ref<{ $el: HTMLElement } | HTMLElement | null>(null)
 const { openShortcutsModal } = useKeyboardShortcuts()
@@ -1278,8 +1287,11 @@ useKeyboardShortcutsHandler({
 
 // On /chat, force the right rail visible when the user is in a live space so they
 // can see the conversation list, DM chat, and live chat simultaneously.
+// On /settings and /admin, also show the right rail when in a space so live chat remains visible.
 const isRightRailForcedHidden = computed(() => {
-  if (_isRightRailForcedHiddenBase.value && isMessagesPage.value && selectedSpaceId.value) return false
+  if (_isRightRailForcedHiddenBase.value && selectedSpaceId.value) {
+    if (isMessagesPage.value || isSettingsOrAdminPage.value) return false
+  }
   return _isRightRailForcedHiddenBase.value
 })
 
