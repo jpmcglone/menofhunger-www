@@ -1,5 +1,5 @@
 <template>
-  <AppPageContent class="flex min-h-0 flex-1 flex-col" bottom="standard">
+  <AppPageContent class="flex min-h-0 flex-1 flex-col">
     <div v-if="!viewerIsVerified && !viewerIsPremium" class="flex min-h-0 flex-1 items-center justify-center px-4 py-12">
       <div class="w-full max-w-md">
         <div class="rounded-2xl border moh-border moh-bg p-5 shadow-sm">
@@ -383,7 +383,13 @@
     >
       <div class="space-y-3">
         <AppFormField label="Recipients">
-          <InputText v-model="recipientQuery" class="w-full" placeholder="@username or search" />
+          <InputText
+            v-model="recipientQuery"
+            class="w-full"
+            placeholder="Search for a username or display name…"
+            aria-label="Recipient search"
+            autofocus
+          />
         </AppFormField>
         <div v-if="recipientLoading" class="text-xs text-gray-500 dark:text-gray-400">Searching…</div>
         <AppInlineAlert v-if="recipientError" severity="danger">{{ recipientError }}</AppInlineAlert>
@@ -485,7 +491,7 @@ let chatBootTimer: ReturnType<typeof setTimeout> | null = null
 let messagesPaneTimer: ReturnType<typeof setTimeout> | null = null
 
 const composerBarStyle = computed<Record<string, string>>(() => ({
-  paddingBottom: 'calc(var(--moh-safe-bottom, 0px) + 10px)',
+  paddingBottom: 'calc(var(--moh-safe-bottom, 0px) + 4px)',
 }))
 const scrollToBottomButtonStyle = computed<Record<string, string>>(() => ({
   bottom: 'calc(var(--moh-safe-bottom, 0px) + 1rem)',
@@ -1537,8 +1543,6 @@ watch(recipientQuery, (val) => {
       })
       const filtered = (res ?? [])
         .filter((u) => u.id !== me.value?.id)
-        // Only verified users can be chatted with.
-        .filter((u) => userColorTier(u) !== 'normal')
       recipientResults.value = filtered
     } catch (e) {
       recipientError.value = getApiErrorMessage(e) || 'Failed to search users.'

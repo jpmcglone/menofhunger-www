@@ -74,13 +74,13 @@
       </div>
     </a>
 
-    <!-- Space preview — same row as /spaces, full real-time updates -->
+    <!-- Space preview — compact single-line variant for chat bubbles -->
     <div
       v-if="embeddedSpace"
-      class="mt-2 overflow-hidden rounded-lg border border-current/20"
+      class="mt-2 overflow-hidden rounded-lg border border-current/20 bg-black/20"
       @click.stop
     >
-      <AppSpaceRow :space="embeddedSpace" preview />
+      <AppSpaceRow :space="embeddedSpace" compact />
     </div>
   </div>
 </template>
