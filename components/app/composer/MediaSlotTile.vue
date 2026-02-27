@@ -57,17 +57,17 @@
           <div
             v-if="slot.item!.source === 'upload' && slot.item!.uploadStatus && slot.item!.uploadStatus !== 'done'"
             class="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-1.5"
-            :aria-label="uploadStatusLabel?.(slot.item!) ?? 'Uploading'"
+            :aria-label="slotStatusLabel ?? 'Uploading'"
           >
             <span
-              v-if="uploadStatusLabel?.(slot.item!)"
+              v-if="slotStatusLabel"
               class="text-[10px] font-medium text-white drop-shadow-sm"
             >
-              {{ uploadStatusLabel(slot.item!) }}
+              {{ slotStatusLabel }}
             </span>
             <div class="relative h-1.5 w-14 overflow-hidden rounded-full bg-black/25">
               <div
-                v-if="slot.item!.uploadStatus === 'uploading' && typeof slot.item!.uploadProgress === 'number'"
+                v-if="(slot.item!.uploadStatus === 'uploading' || slot.item!.uploadStatus === 'compressing') && typeof slot.item!.uploadProgress === 'number'"
                 class="h-full rounded-full transition-[width] duration-300 ease-out"
                 :style="{
                   width: `${Math.max(0, Math.min(100, slot.item!.uploadProgress ?? 0))}%`,
@@ -127,13 +127,27 @@ const canAddMore = computed(() => Boolean(props.canAddMore))
 const draggingMediaId = computed(() => props.draggingMediaId ?? null)
 const uploadBarColor = computed(() => props.uploadBarColor)
 const uploadStatusLabel = computed(() => props.uploadStatusLabel)
+
+const slotStatusLabel = computed(() => {
+  const item = props.slot.item
+  if (!item) return null
+  const custom = props.uploadStatusLabel?.(item)
+  if (custom) return custom
+  const s = item.uploadStatus
+  if (s === 'compressing') return 'Compressing…'
+  if (s === 'uploading') return 'Uploading…'
+  if (s === 'processing') return 'Processing…'
+  if (s === 'queued') return 'Queued'
+  return null
+})
+
 const draggable = computed(() => props.draggable !== false)
 const showAlt = computed(() => props.showAlt !== false)
 const tileSizeClass = computed(() => (props.tileSizeClass ?? 'h-20 w-20').trim() || 'h-20 w-20')
 
 function defaultRemoveLabelFor(item: ComposerMediaItem): string {
-  if (item.source === 'upload' && (item.uploadStatus === 'queued' || item.uploadStatus === 'uploading' || item.uploadStatus === 'processing')) {
-    return 'Cancel upload'
+  if (item.source === 'upload' && (item.uploadStatus === 'queued' || item.uploadStatus === 'compressing' || item.uploadStatus === 'uploading' || item.uploadStatus === 'processing')) {
+    return 'Cancel'
   }
   return 'Remove media'
 }

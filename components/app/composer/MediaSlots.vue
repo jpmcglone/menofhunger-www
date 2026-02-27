@@ -93,8 +93,8 @@ const altModalPreviewUrl = ref<string | null>(null)
 const altModalValue = ref('')
 
 function removeLabelFor(item: ComposerMediaItem): string {
-  if (item.source === 'upload' && (item.uploadStatus === 'queued' || item.uploadStatus === 'uploading' || item.uploadStatus === 'processing')) {
-    return 'Cancel upload'
+  if (item.source === 'upload' && (item.uploadStatus === 'queued' || item.uploadStatus === 'compressing' || item.uploadStatus === 'uploading' || item.uploadStatus === 'processing')) {
+    return 'Cancel'
   }
   return 'Remove media'
 }

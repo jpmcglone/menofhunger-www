@@ -21,6 +21,8 @@
     "validate-api-types": "node scripts/validate-api-types.mjs"
   },
   "dependencies": {
+    "@ffmpeg/ffmpeg": "^0.12.15",
+    "@ffmpeg/util": "^0.12.2",
     "@iconify-json/heroicons-outline": "^1.2.1",
     "@iconify-json/heroicons-solid": "^1.2.1",
     "@iconify-json/tabler": "^1.2.26",

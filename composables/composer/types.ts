@@ -1,6 +1,6 @@
 import type { PostMediaKind, PostMediaSource } from '~/types/api'
 
-export type UploadStatus = 'queued' | 'uploading' | 'processing' | 'done' | 'error'
+export type UploadStatus = 'queued' | 'compressing' | 'uploading' | 'processing' | 'done' | 'error'
 
 export type CreatePollOptionImagePayload = {
   source: 'upload'

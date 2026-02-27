@@ -2,6 +2,12 @@ import { computed, type Ref } from 'vue'
 import type { ComposerMediaItem } from './types'
 import { dataTransferHasMedia, makeLocalId } from './types'
 import { appConfig } from '~/config/app'
+import {
+  compressVideo,
+  estimateCompressionSeconds,
+  formatCompressionEstimate,
+  videoNeedsCompression,
+} from '~/composables/useVideoCompressor'
 
 export function useComposerImageIngest(opts: {
   maxSlots: number
@@ -128,10 +134,11 @@ export function useComposerImageIngest(opts: {
       added.push(p)
     }
 
+    // Always start the upload queue immediately (picks up queued images right away).
+    // Re-trigger after all video compression is done so compressed videos get uploaded.
+    opts.processUploadQueue()
     if (added.length) {
       void Promise.all(added).then(() => opts.processUploadQueue())
-    } else {
-      opts.processUploadQueue()
     }
 
     if (imageFiles.length || videoFiles.length) {
@@ -157,15 +164,6 @@ export function useComposerImageIngest(opts: {
 
     const limits = u.premiumPlus ? appConfig.video.premiumPlus : appConfig.video.premium
     const { maxDurationSeconds, maxBytes } = limits
-    if (file.size > maxBytes) {
-      opts.toast.push({
-        title: `Video is too large (max ${formatBytes(maxBytes)}).`,
-        message: 'Try trimming it, or export at 1080p and try again.',
-        tone: 'error',
-        durationMs: 2600,
-      })
-      return
-    }
 
     const meta = await getVideoMetadata(file)
     if (!meta) {
@@ -178,6 +176,20 @@ export function useComposerImageIngest(opts: {
       return
     }
 
+    const needsCompression = videoNeedsCompression(file, meta.width, meta.height)
+
+    // After compression the file will be much smaller; only enforce the raw size
+    // limit when we're NOT going to compress it (compression will handle oversized files).
+    if (!needsCompression && file.size > maxBytes) {
+      opts.toast.push({
+        title: `Video is too large (max ${formatBytes(maxBytes)}).`,
+        message: 'Try trimming it, or export at 1080p and try again.',
+        tone: 'error',
+        durationMs: 2600,
+      })
+      return
+    }
+
     const localId = makeLocalId()
     const previewUrl = meta.posterBlobUrl ?? URL.createObjectURL(file)
     const slot: ComposerMediaItem = {
@@ -186,7 +198,7 @@ export function useComposerImageIngest(opts: {
       kind: 'video',
       previewUrl,
       altText: defaultAltFromFilename(file.name),
-      uploadStatus: 'queued',
+      uploadStatus: needsCompression ? 'compressing' : 'queued',
       uploadError: null,
       file,
       thumbnailBlob: meta.posterBlob ?? null,
@@ -197,6 +209,53 @@ export function useComposerImageIngest(opts: {
       durationSeconds: meta.durationSeconds ?? null,
     }
     opts.composerMedia.value.push(slot)
+
+    if (!needsCompression) return
+
+    // Show the user an upfront time estimate
+    const fileSizeMB = file.size / (1024 * 1024)
+    const estSecs = estimateCompressionSeconds(fileSizeMB)
+    const estLabel = formatCompressionEstimate(estSecs)
+    opts.toast.push({
+      title: 'Compressing video…',
+      message: `This will take ${estLabel}. Keep this page open.`,
+      tone: 'public',
+      durationMs: Math.min(estSecs * 1000, 10_000),
+    })
+
+    try {
+      const compressed = await compressVideo(file, {
+        onProgress: (pct) => opts.patchComposerMedia(localId, { uploadProgress: pct }),
+      })
+
+      // Compressed file may be a different size — enforce the limit now
+      if (compressed.size > maxBytes) {
+        opts.patchComposerMedia(localId, {
+          uploadStatus: 'error',
+          uploadError: `Compressed video is still too large (max ${formatBytes(maxBytes)}). Try trimming it.`,
+        })
+        return
+      }
+
+      // Re-read metadata from the compressed file for accurate dimensions
+      const newMeta = await getVideoMetadata(compressed)
+      opts.patchComposerMedia(localId, {
+        file: compressed,
+        uploadStatus: 'queued',
+        uploadProgress: 0,
+        width: newMeta?.width ?? meta.width ?? null,
+        height: newMeta?.height ?? meta.height ?? null,
+        durationSeconds: newMeta?.durationSeconds ?? meta.durationSeconds ?? null,
+        ...(newMeta?.posterBlobUrl ? { previewUrl: newMeta.posterBlobUrl, thumbnailBlob: newMeta.posterBlob ?? null } : {}),
+      })
+
+      opts.toast.push({ title: 'Video compressed — uploading…', tone: 'public', durationMs: 2000 })
+    } catch {
+      opts.patchComposerMedia(localId, {
+        uploadStatus: 'error',
+        uploadError: 'Compression failed. Try a shorter or smaller video.',
+      })
+    }
   }
 
   function getVideoMetadata(file: File): Promise<{ width: number; height: number; durationSeconds: number; posterBlobUrl?: string; posterBlob?: Blob } | null> {

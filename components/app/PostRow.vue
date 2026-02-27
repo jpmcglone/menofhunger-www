@@ -21,6 +21,15 @@
       class="moh-post-row-hover-bg pointer-events-none absolute inset-0 z-0 rounded-lg"
       aria-hidden="true"
     />
+    <!-- Full-row background link: sits above the hover bg (z-[1]) but below all content (z-10+).
+         Gives proper browser link semantics — middle-click, cmd+click, right-click → "Open in new tab". -->
+    <NuxtLink
+      v-if="clickable && postPermalink"
+      :to="postPermalink"
+      class="absolute inset-0 z-[1] rounded-lg"
+      tabindex="-1"
+      aria-hidden="true"
+    />
     <!-- Overlay: line from top down to just above avatar (gap); no overextend -->
     <div
       v-if="showThreadLineAboveAvatar"
@@ -98,7 +107,7 @@
       </div>
 
       <div class="relative z-10 min-w-0 flex-1" :class="{ 'pt-3': showThreadLineAboveAvatar }">
-        <div class="relative" @click.stop>
+        <div class="relative">
           <AppPostHeaderLine
             :display-name="author.name || author.username || 'User'"
             :username="author.username || ''"
