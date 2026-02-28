@@ -49,7 +49,7 @@
         </div>
       </div>
 
-      <AppInlineAlert v-if="error" severity="error" :message="error" class="mx-4" />
+      <AppInlineAlert v-if="error" severity="danger" :message="error" class="mx-4" />
 
       <div v-if="loading && !data" class="px-4 text-sm text-gray-500 dark:text-gray-400">Loading…</div>
 
@@ -486,7 +486,7 @@ function renderCharts() {
       type: 'line',
       data: {
         labels,
-        datasets: [makeLineDataset('Signups', counts[0], '#3b82f6', totalPoints)],
+        datasets: [makeLineDataset('Signups', counts[0] ?? [], '#3b82f6', totalPoints)],
       },
       options: opts,
     })
@@ -500,8 +500,8 @@ function renderCharts() {
       data: {
         labels,
         datasets: [
-          makeLineDataset('Posts', counts[0], '#10b981', totalPoints),
-          makeLineDataset('Check-ins', counts[1], '#f59e0b', totalPoints),
+          makeLineDataset('Posts', counts[0] ?? [], '#10b981', totalPoints),
+          makeLineDataset('Check-ins', counts[1] ?? [], '#f59e0b', totalPoints),
         ],
       },
       options: opts,
@@ -516,8 +516,8 @@ function renderCharts() {
       data: {
         labels,
         datasets: [
-          makeLineDataset('Messages', counts[0], '#8b5cf6', totalPoints),
-          makeLineDataset('Follows', counts[1], '#ec4899', totalPoints),
+          makeLineDataset('Messages', counts[0] ?? [], '#8b5cf6', totalPoints),
+          makeLineDataset('Follows', counts[1] ?? [], '#ec4899', totalPoints),
         ],
       },
       options: opts,
