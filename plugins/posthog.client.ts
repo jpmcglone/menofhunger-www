@@ -40,6 +40,8 @@ export default defineNuxtPlugin((nuxtApp) => {
         if (user) identifyUser(user)
         else posthog.reset()
       })
+
+      posthog.capture('app_opened')
     })
   } else if (key) {
     console.log('[PostHog] Key looks like a placeholder — skipping init. Set NUXT_PUBLIC_POSTHOG_KEY to your real project key.')

@@ -6,6 +6,7 @@ export function usePremiumMediaModal() {
 
   function show() {
     open.value = true
+    useNuxtApp().$posthog?.capture('premium_upsell_viewed', { kind: 'media' })
   }
 
   function hide() {
