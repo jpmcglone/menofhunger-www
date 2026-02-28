@@ -42,6 +42,8 @@ export default defineNuxtConfig({
       vapidPublicKey: (process.env.NUXT_PUBLIC_VAPID_PUBLIC_KEY || '').trim(),
       // Facebook App ID for og:fb:app_id (fixes Sharing Debugger warning; improves link previews).
       facebookAppId: process.env.NUXT_PUBLIC_FACEBOOK_APP_ID || '',
+      posthogKey: (process.env.NUXT_PUBLIC_POSTHOG_KEY || '').trim(),
+      posthogHost: (process.env.NUXT_PUBLIC_POSTHOG_HOST || 'https://us.i.posthog.com').trim(),
       adsense: {
         // Keep ads off in local dev to avoid noisy browser "Issues" coming from ad iframes
         // (e.g. Quirks Mode documents injected by the provider). Use ADTEST=true if you need to test.

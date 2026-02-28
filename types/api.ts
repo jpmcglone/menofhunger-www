@@ -1210,3 +1210,68 @@ export type CreateCheckinResponse = {
   checkinStreakDays: number
 }
 
+// --- Admin analytics ---
+
+export type AnalyticsRange = '7d' | '30d' | '3m' | '1y' | 'all'
+export type AnalyticsGranularity = 'day' | 'week' | 'month'
+
+export type AdminAnalyticsTimeSeriesPoint = {
+  bucket: string
+  count: number
+}
+
+export type AdminAnalyticsSummary = {
+  totalUsers: number
+  premiumUsers: number
+  premiumPlusUsers: number
+  dau: number
+  mau: number
+}
+
+export type AdminAnalyticsRetentionRow = {
+  cohortWeek: string
+  size: number
+  w1: number
+  w4: number
+}
+
+export type AdminAnalyticsEngagement = {
+  d30CohortSize: number
+  d30RetainedCount: number
+  d30RetentionPct: number | null
+  activationEligibleCount: number
+  activationCount: number
+  activationPct: number | null
+  creatorMauCount: number
+  creatorCount: number
+  creatorPct: number | null
+  avgFollowersPerUser: number
+  connectedUserCount: number
+  connectedUserPct: number | null
+}
+
+export type AdminAnalyticsMonetization = {
+  free: number
+  payingPremium: number
+  payingPremiumPlus: number
+  compedPremium: number
+  compedPremiumPlus: number
+  byStatus: Record<string, number>
+}
+
+export type AdminAnalytics = {
+  range: AnalyticsRange
+  granularity: AnalyticsGranularity
+  summary: AdminAnalyticsSummary
+  signups: AdminAnalyticsTimeSeriesPoint[]
+  postsByVisibility: Record<string, number>
+  posts: AdminAnalyticsTimeSeriesPoint[]
+  checkins: AdminAnalyticsTimeSeriesPoint[]
+  messages: AdminAnalyticsTimeSeriesPoint[]
+  follows: AdminAnalyticsTimeSeriesPoint[]
+  retention: AdminAnalyticsRetentionRow[]
+  engagement: AdminAnalyticsEngagement
+  monetization: AdminAnalyticsMonetization
+  asOf: string
+}
+

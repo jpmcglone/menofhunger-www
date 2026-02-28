@@ -86,6 +86,16 @@
                 </div>
               </div>
             </NuxtLink>
+
+            <NuxtLink to="/admin/analytics" :class="areaRowClass('analytics')">
+              <div class="flex items-center gap-3">
+                <Icon name="tabler:chart-bar" class="text-lg" aria-hidden="true" />
+                <div class="min-w-0 flex-1">
+                  <div class="font-semibold truncate">Analytics</div>
+                  <div class="text-sm text-gray-600 dark:text-gray-300 truncate">KPIs, engagement trends, and monetization</div>
+                </div>
+              </div>
+            </NuxtLink>
           </div>
         </div>
       </aside>
@@ -111,7 +121,7 @@ definePageMeta({
 
 const route = useRoute()
 
-function isActiveArea(key: 'site-settings' | 'users' | 'verification' | 'media-review' | 'feedback' | 'reports' | 'search' | 'jobs') {
+function isActiveArea(key: 'site-settings' | 'users' | 'verification' | 'media-review' | 'feedback' | 'reports' | 'search' | 'jobs' | 'analytics') {
   const p = route.path
   if (key === 'site-settings') return p === '/admin/site-settings'
   if (key === 'users') return p === '/admin/users'
@@ -121,10 +131,11 @@ function isActiveArea(key: 'site-settings' | 'users' | 'verification' | 'media-r
   if (key === 'reports') return p === '/admin/reports'
   if (key === 'search') return p === '/admin/search'
   if (key === 'jobs') return p === '/admin/jobs'
+  if (key === 'analytics') return p === '/admin/analytics'
   return false
 }
 
-function areaRowClass(key: 'site-settings' | 'users' | 'verification' | 'media-review' | 'feedback' | 'reports' | 'search' | 'jobs') {
+function areaRowClass(key: 'site-settings' | 'users' | 'verification' | 'media-review' | 'feedback' | 'reports' | 'search' | 'jobs' | 'analytics') {
   const active = isActiveArea(key)
   return [
     'block px-4 py-3 transition-colors',
