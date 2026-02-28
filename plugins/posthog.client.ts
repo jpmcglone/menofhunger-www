@@ -1,4 +1,5 @@
 import posthog, { type PostHog } from 'posthog-js'
+import type { AuthUser } from '~/composables/useAuth'
 
 export default defineNuxtPlugin((nuxtApp) => {
   const config = useRuntimeConfig()
@@ -20,6 +21,12 @@ export default defineNuxtPlugin((nuxtApp) => {
       capture_pageleave: true,
       persistence: 'localStorage+cookie',
       autocapture: false,
+      // Session replay — masks all inputs by default for privacy.
+      // Enable/disable in PostHog → Project Settings → Session Replay.
+      session_recording: {
+        maskAllInputs: true,
+        maskTextSelector: '[data-ph-mask]', // add data-ph-mask to any sensitive element
+      },
     })
 
     client = posthog
@@ -32,7 +39,7 @@ export default defineNuxtPlugin((nuxtApp) => {
 
     // Identify the user once auth state is loaded.
     nuxtApp.hooks.hookOnce('app:mounted', () => {
-      const authUser = useState<{ id: string; name?: string | null; email?: string | null; premium?: boolean; premiumPlus?: boolean; username?: string | null } | null>('auth-user')
+      const authUser = useState<AuthUser | null>('auth-user')
 
       if (authUser.value) identifyUser(authUser.value)
 
@@ -47,14 +54,29 @@ export default defineNuxtPlugin((nuxtApp) => {
     console.log('[PostHog] Key looks like a placeholder — skipping init. Set NUXT_PUBLIC_POSTHOG_KEY to your real project key.')
   }
 
-  function identifyUser(user: { id: string; name?: string | null; email?: string | null; premium?: boolean; premiumPlus?: boolean; username?: string | null }) {
-    posthog.identify(user.id, {
-      name: user.name ?? undefined,
-      email: user.email ?? undefined,
-      username: user.username ?? undefined,
-      premium: user.premium ?? false,
-      premium_plus: user.premiumPlus ?? false,
-    })
+  function identifyUser(user: AuthUser) {
+    posthog.identify(
+      user.id,
+      // Mutable properties — updated on every identify call.
+      {
+        $name: user.username ? `@${user.username}` : undefined,
+        name: user.name ?? undefined,
+        email: user.email ?? undefined,
+        username: user.username ?? undefined,
+        premium: user.premium ?? false,
+        premium_plus: user.premiumPlus ?? false,
+        verified_status: user.verifiedStatus ?? 'none',
+        site_admin: user.siteAdmin ?? false,
+        is_organization: user.isOrganization ?? false,
+        coins: user.coins ?? 0,
+        checkin_streak_days: user.checkinStreakDays ?? 0,
+      },
+      // $set_once — written on first identify, never overwritten.
+      {
+        first_seen_at: new Date().toISOString(),
+        signed_up_at: user.createdAt ?? undefined,
+      },
+    )
   }
 
   return { provide: { posthog: client } }
