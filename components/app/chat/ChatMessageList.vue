@@ -102,8 +102,8 @@
               />
             </div>
 
-            <!-- Bubble row: action bar LEFT + bubble + action bar RIGHT -->
-            <div class="flex items-center gap-1">
+            <!-- Bubble row: action bar LEFT + stacked bubbles + action bar RIGHT -->
+            <div class="flex items-end gap-1">
               <!-- Action bar — LEFT (outgoing) -->
               <div
                 v-if="item.message.sender.id === meId"
@@ -132,30 +132,24 @@
                 </button>
               </div>
 
-              <!-- Main bubble -->
+              <!-- Stacked bubbles wrapper (ref for reaction picker anchor) -->
               <div
                 :ref="(el) => registerBubbleEl(item.key, el)"
-                :class="[
-                  'text-sm overflow-hidden',
-                  item.message.media?.length ? 'p-0' : bubbleShapeClass(item.key),
-                  item.message.deletedForMe
-                    ? 'px-3 py-2 italic opacity-60 border border-dashed border-gray-300 dark:border-zinc-600 text-gray-500 dark:text-gray-400 bg-transparent'
-                    : bubbleClass(item.message),
-                  item.message.media?.length ? 'rounded-2xl' : '',
-                ]"
+                class="flex flex-col gap-1.5 text-sm"
+                :class="item.message.sender.id === meId ? 'items-end' : 'items-start'"
               >
-                <!-- Media attachment (image / GIF / video) -->
+                <!-- ① Media bubble (own rounded card, above text) -->
                 <template v-if="item.message.media?.length && !item.message.deletedForMe">
                   <div
                     v-for="media in item.message.media"
                     :key="media.id"
-                    class="relative"
+                    class="relative overflow-hidden rounded-2xl"
                   >
                     <!-- Video: poster + play icon, opens in lightbox -->
                     <button
                       v-if="media.kind === 'video'"
                       type="button"
-                      class="moh-tap relative block overflow-hidden focus:outline-none cursor-zoom-in max-h-[320px] max-w-[260px] w-full"
+                      class="moh-tap relative block focus:outline-none cursor-zoom-in max-h-[320px] max-w-[260px] w-full"
                       :style="{ aspectRatio: media.width && media.height ? `${media.width}/${media.height}` : '16/9' }"
                       aria-label="View video"
                       @click.stop="(e) => openMessageMedia(e, item.message.media!, media)"
@@ -177,7 +171,7 @@
                     <button
                       v-else
                       type="button"
-                      class="moh-tap relative block overflow-hidden focus:outline-none cursor-zoom-in max-h-[320px] max-w-[260px] w-full"
+                      class="moh-tap relative block focus:outline-none cursor-zoom-in max-h-[320px] max-w-[260px] w-full"
                       :style="{ aspectRatio: media.width && media.height ? `${media.width}/${media.height}` : '1/1' }"
                       aria-label="View image"
                       @click.stop="(e) => openMessageMedia(e, item.message.media!, media)"
@@ -190,40 +184,13 @@
                         loading="lazy"
                       />
                     </button>
-                  </div>
-                </template>
 
-                <div :class="['space-y-1', item.message.media?.length && !item.message.deletedForMe ? 'px-2.5 py-2 sm:px-3' : '']">
-                  <!-- Deleted state -->
-                  <div v-if="item.message.deletedForMe" class="flex items-center justify-between gap-2 text-xs">
-                    <span>This message was deleted</span>
-                    <button
-                      type="button"
-                      class="shrink-0 underline hover:no-underline"
-                      @click.stop="emit('restore', item.message)"
+                    <!-- Timestamp overlay — only when media-only (no text body) -->
+                    <div
+                      v-if="!item.message.body.trim() && shouldShowMessageMeta(item, listIndex)"
+                      class="absolute bottom-1.5 right-2 inline-flex items-center gap-1 rounded-full bg-black/40 px-1.5 py-0.5 text-[10px] text-white whitespace-nowrap backdrop-blur-sm"
                     >
-                      Undo
-                    </button>
-                  </div>
-
-                  <!-- Normal body (only if there's text) -->
-                  <AppChatMessageRichBody
-                    v-else-if="item.message.body.trim()"
-                    :body="item.message.body"
-                    :sender-tier="userColorTier(item.message.sender as any)"
-                    :on-colored-background="item.message.sender.id === meId && userColorTier(item.message.sender as any) !== 'normal'"
-                  />
-
-                  <!-- Message meta (timestamp + delivery indicator) -->
-                  <div
-                    v-if="shouldShowMessageMeta(item, listIndex)"
-                    class="flex justify-end"
-                  >
-                    <div class="inline-flex items-center gap-1 text-xs opacity-75 whitespace-nowrap">
-                      <time
-                        :datetime="item.message.createdAt"
-                        :title="formatMessageTimeFull(item.message.createdAt)"
-                      >
+                      <time :datetime="item.message.createdAt" :title="formatMessageTimeFull(item.message.createdAt)">
                         {{ formatMessageTime(item.message.createdAt) }}
                       </time>
                       <template v-if="item.message.sender.id === meId">
@@ -241,6 +208,68 @@
                           aria-hidden="true"
                         />
                       </template>
+                    </div>
+                  </div>
+                </template>
+
+                <!-- ② Text bubble (only when there's body text, or message is deleted) -->
+                <div
+                  v-if="item.message.deletedForMe || item.message.body.trim()"
+                  :class="[
+                    item.message.deletedForMe
+                      ? 'px-3 py-2 italic opacity-60 border border-dashed border-gray-300 dark:border-zinc-600 text-gray-500 dark:text-gray-400 bg-transparent ' + bubbleShapeClass(item.key)
+                      : bubbleShapeClass(item.key) + ' ' + bubbleClass(item.message),
+                  ]"
+                >
+                  <div class="space-y-1 px-0">
+                    <!-- Deleted state -->
+                    <div v-if="item.message.deletedForMe" class="flex items-center justify-between gap-2 text-xs">
+                      <span>This message was deleted</span>
+                      <button
+                        type="button"
+                        class="shrink-0 underline hover:no-underline"
+                        @click.stop="emit('restore', item.message)"
+                      >
+                        Undo
+                      </button>
+                    </div>
+
+                    <!-- Normal body -->
+                    <AppChatMessageRichBody
+                      v-else
+                      :body="item.message.body"
+                      :sender-tier="userColorTier(item.message.sender as any)"
+                      :on-colored-background="item.message.sender.id === meId && userColorTier(item.message.sender as any) !== 'normal'"
+                    />
+
+                    <!-- Timestamp (shown here when there's a text bubble) -->
+                    <div
+                      v-if="shouldShowMessageMeta(item, listIndex)"
+                      class="flex justify-end"
+                    >
+                      <div class="inline-flex items-center gap-1 text-xs opacity-75 whitespace-nowrap">
+                        <time
+                          :datetime="item.message.createdAt"
+                          :title="formatMessageTimeFull(item.message.createdAt)"
+                        >
+                          {{ formatMessageTime(item.message.createdAt) }}
+                        </time>
+                        <template v-if="item.message.sender.id === meId">
+                          <span
+                            v-if="sendingMessageIds.has(item.message.id)"
+                            class="inline-block h-[10px] w-[10px] rounded-full border border-current border-t-transparent opacity-70 animate-spin"
+                            aria-label="Sending"
+                          />
+                          <Icon
+                            v-else-if="latestMyMessageId && item.message.id === latestMyMessageId"
+                            :name="isLatestMyMessageRead ? 'tabler:checks' : 'tabler:circle-check'"
+                            size="10"
+                            :class="['translate-y-[0.5px]', isLatestMyMessageRead ? 'text-blue-400 opacity-90' : 'opacity-60']"
+                            :aria-label="isLatestMyMessageRead ? 'Read' : 'Sent'"
+                            aria-hidden="true"
+                          />
+                        </template>
+                      </div>
                     </div>
                   </div>
                 </div>
