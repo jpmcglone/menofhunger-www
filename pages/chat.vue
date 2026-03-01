@@ -242,6 +242,7 @@
                 :should-show-incoming-avatar="shouldShowIncomingAvatar"
                 :go-to-profile="goToProfile"
                 :available-reactions="availableReactions"
+                :participants="otherParticipants"
                 @load-older="loadOlderMessages"
                 @react="handleReact"
                 @reply="handleReply"
@@ -872,6 +873,10 @@ const headerMembers = computed(() => {
     })
 })
 
+const otherParticipants = computed(() =>
+  (selectedConversation.value?.participants ?? []).filter((p) => p.user.id !== me.value?.id),
+)
+
 const isGroupChat = computed(() => {
   if (selectedConversation.value?.type === 'group') {
     return (selectedConversation.value.participants?.length ?? 0) >= 3
@@ -1351,6 +1356,15 @@ async function loadOlderMessages() {
   } finally {
     if (reqSeq === loadOlderReqSeq) loadingOlder.value = false
   }
+}
+
+function updateConversationParticipantRead(conversationId: string, userId: string, lastReadAt: string) {
+  patchConversation(conversationId, (c) => ({
+    ...c,
+    participants: c.participants.map((p) =>
+      p.user.id === userId ? { ...p, lastReadAt } : p,
+    ),
+  }))
 }
 
 function updateConversationIsBlockedWith(conversationId: string, isBlockedWith: boolean) {
@@ -2003,11 +2017,19 @@ const messageCallback = {
   onRead: (payload: { conversationId?: string; userId?: string; lastReadAt?: string }) => {
     const convoId = String(payload?.conversationId ?? '').trim()
     if (!convoId) return
-    // Self-only event: another tab/device marked this conversation read.
+
+    if (payload.userId && payload.userId !== me.value?.id) {
+      // Another participant read this conversation — update their lastReadAt so
+      // double-checkmarks and read avatars update in real-time.
+      if (payload.lastReadAt) {
+        updateConversationParticipantRead(convoId, payload.userId, payload.lastReadAt)
+      }
+      return
+    }
+
+    // Self event: another tab/device marked this conversation read.
     updateConversationUnread(convoId, 0)
-    // If we currently have this conversation open, ensure UI stays consistent.
     if (selectedConversationId.value === convoId) {
-      // Only clear the pending count if we're already at bottom (otherwise keep the "new messages below" affordance).
       if (atBottom.value) pendingNewCount.value = 0
     }
   },

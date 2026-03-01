@@ -177,9 +177,10 @@
                         />
                         <Icon
                           v-else-if="latestMyMessageId && item.message.id === latestMyMessageId"
-                          name="tabler:circle-check"
+                          :name="isLatestMyMessageRead ? 'tabler:checks' : 'tabler:circle-check'"
                           size="10"
-                          class="opacity-80 translate-y-[0.5px]"
+                          :class="['translate-y-[0.5px]', isLatestMyMessageRead ? 'text-blue-400 opacity-90' : 'opacity-60']"
+                          :aria-label="isLatestMyMessageRead ? 'Read' : 'Sent'"
                           aria-hidden="true"
                         />
                       </template>
@@ -239,6 +240,45 @@
                 <span class="font-semibold">{{ group.count }}</span>
               </button>
             </div>
+
+            <!-- Read avatars (group chats only, shown on the message each participant last read) -->
+            <div
+              v-if="isGroupChat && (readIndicatorsByMessageId.get(item.message.id) ?? []).filter(p => p.user.id !== item.message.sender.id).length"
+              :class="['flex gap-0.5', item.message.sender.id === meId ? 'justify-end' : 'justify-start']"
+            >
+              <template
+                v-for="participant in (readIndicatorsByMessageId.get(item.message.id) ?? []).filter(p => p.user.id !== item.message.sender.id)"
+                :key="participant.user.id"
+              >
+                <NuxtLink
+                  v-if="participant.user.username"
+                  :to="`/u/${encodeURIComponent(participant.user.username)}`"
+                  :title="`Read by @${participant.user.username}`"
+                  class="block rounded-full transition-opacity hover:opacity-75"
+                >
+                  <AppUserAvatar
+                    :user="senderOverlay(participant.user)"
+                    size-class="h-[14px] w-[14px]"
+                    :show-presence="false"
+                    :enable-preview="false"
+                  />
+                </NuxtLink>
+                <button
+                  v-else
+                  type="button"
+                  :title="`Read by ${participant.user.id}`"
+                  class="block rounded-full transition-opacity hover:opacity-75 cursor-pointer"
+                  @click="goToProfile(participant.user)"
+                >
+                  <AppUserAvatar
+                    :user="senderOverlay(participant.user)"
+                    size-class="h-[14px] w-[14px]"
+                    :show-presence="false"
+                    :enable-preview="false"
+                  />
+                </button>
+              </template>
+            </div>
           </div>
         </div>
       </template>
@@ -266,7 +306,7 @@
 
 <script setup lang="ts">
 import type { PropType } from 'vue'
-import type { Message, MessageUser, MessageReaction } from '~/types/api'
+import type { Message, MessageUser, MessageReaction, MessageParticipant } from '~/types/api'
 import type { ChatListItem } from '~/composables/chat/useChatTimeFormatting'
 import { useUsersStore } from '~/composables/useUsersStore'
 import { userColorTier } from '~/utils/user-tier'
@@ -298,6 +338,7 @@ const props = defineProps({
   shouldShowIncomingAvatar: { type: Function as PropType<(m: Message, index: number) => boolean>, required: true },
   goToProfile: { type: Function as PropType<(u: MessageUser | null | undefined) => void>, required: true },
   availableReactions: { type: Array as PropType<MessageReaction[]>, required: false, default: () => [] },
+  participants: { type: Array as PropType<MessageParticipant[]>, required: false, default: () => [] },
 })
 
 const CLUSTER_GAP_MS = 5 * 60 * 1000
@@ -312,6 +353,50 @@ const menuMessage = ref<Message | null>(null)
 const activeReactionIds = computed<Set<string>>(() => {
   if (!pickerMessage.value?.reactions) return new Set()
   return new Set(pickerMessage.value.reactions.filter((r) => r.reactedByMe).map((r) => r.reactionId))
+})
+
+// For each participant, find the latest message they've read and map it
+const readIndicatorsByMessageId = computed(() => {
+  const map = new Map<string, MessageParticipant[]>()
+  if (!props.participants.length) return map
+
+  const messageItems = props.messagesWithDividers.filter(
+    (item): item is Extract<ChatListItem, { type: 'message' }> => item.type === 'message',
+  )
+
+  for (const participant of props.participants) {
+    if (!participant.lastReadAt) continue
+    const lastReadMs = Date.parse(participant.lastReadAt)
+    if (!Number.isFinite(lastReadMs)) continue
+
+    // Messages are oldest-first; find the latest one at or before lastReadAt
+    let lastReadMsgId: string | null = null
+    for (const item of messageItems) {
+      if (parseMs(item.message.createdAt) <= lastReadMs) {
+        lastReadMsgId = item.message.id
+      } else {
+        break
+      }
+    }
+
+    if (lastReadMsgId) {
+      const existing = map.get(lastReadMsgId) ?? []
+      map.set(lastReadMsgId, [...existing, participant])
+    }
+  }
+
+  return map
+})
+
+const isLatestMyMessageRead = computed(() => {
+  if (!props.latestMyMessageId || !props.participants.length) return false
+  const latestMsgItem = props.messagesWithDividers.find(
+    (i): i is Extract<ChatListItem, { type: 'message' }> =>
+      i.type === 'message' && i.message.id === props.latestMyMessageId,
+  )
+  if (!latestMsgItem) return false
+  const latestMsgMs = parseMs(latestMsgItem.message.createdAt)
+  return props.participants.some((p) => !!p.lastReadAt && Date.parse(p.lastReadAt) >= latestMsgMs)
 })
 
 function collapseBlankLines(text: string): string {
