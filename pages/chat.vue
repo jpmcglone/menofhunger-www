@@ -360,7 +360,7 @@
               placeholder="Type a chat…"
               :loading="sending"
               :auto-focus="!isTabBarMode"
-              :reply-to="replyToMessage ? { id: replyToMessage.id, senderUsername: replyToMessage.sender.username, bodyPreview: replyToMessage.body.slice(0, 200), mediaThumbnailUrl: replyToMessage.media?.[0]?.thumbnailUrl ?? null } : null"
+              :reply-to="replyToMessage ? { id: replyToMessage.id, senderUsername: replyToMessage.sender.username, bodyPreview: replyToMessage.body.slice(0, 200), mediaThumbnailUrl: replyToMessage.media?.[0]?.thumbnailUrl ?? replyToMessage.media?.[0]?.url ?? null } : null"
               @send="sendCurrentMessage"
               @cancel-reply="replyToMessage = null"
             />
