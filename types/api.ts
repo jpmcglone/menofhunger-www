@@ -1005,12 +1005,35 @@ export type MessageParticipant = {
   lastReadAt: string | null
 }
 
+export type MessageReactionSummary = {
+  reactionId: string
+  emoji: string
+  count: number
+  reactedByMe: boolean
+  reactors: { id: string; username: string | null; avatarUrl: string | null }[]
+}
+
+export type MessageReplySnippet = {
+  id: string
+  senderUsername: string | null
+  bodyPreview: string
+}
+
+export type MessageReaction = {
+  id: string
+  emoji: string
+  label: string
+}
+
 export type Message = {
   id: string
   createdAt: string
   body: string
   conversationId: string
   sender: MessageUser
+  reactions: MessageReactionSummary[]
+  deletedForMe: boolean
+  replyTo: MessageReplySnippet | null
 }
 
 export type MessageConversation = {

@@ -28,7 +28,7 @@
         <div
           v-if="item.type === 'divider'"
           :ref="(el) => registerDividerEl(item.dayKey, item.label, el)"
-        class="relative flex items-center py-1.5 sm:py-2"
+          class="relative flex items-center py-1.5 sm:py-2"
         >
           <div class="flex-1 border-t border-gray-200 dark:border-zinc-800" />
           <div class="mx-3 shrink-0 rounded-full bg-white px-2 text-[11px] font-semibold text-gray-500 shadow-sm dark:bg-zinc-900 dark:text-gray-400">
@@ -36,15 +36,21 @@
           </div>
           <div class="flex-1 border-t border-gray-200 dark:border-zinc-800" />
         </div>
+
+        <!-- Message row -->
         <div
           v-else
+          :data-message-id="item.message.id"
           :class="[
             animateRows && recentAnimatedMessageIds.has(item.key) ? 'moh-chat-item-enter' : '',
-            'relative flex w-full',
+            'group relative flex w-full items-end gap-1',
             item.message.sender.id === meId ? 'justify-end' : 'justify-start',
             isGroupChat && item.message.sender.id !== meId ? 'pl-10' : ''
           ]"
+          @mouseenter="hoveredId = item.message.id"
+          @mouseleave="onRowLeave(item.message.id)"
         >
+          <!-- Avatar (incoming) -->
           <NuxtLink
             v-if="shouldShowIncomingAvatar(item.message, item.index) && item.message.sender.username"
             :to="`/u/${encodeURIComponent(item.message.sender.username)}`"
@@ -62,61 +68,211 @@
           >
             <AppUserAvatar :user="senderOverlay(item.message.sender)" size-class="h-7 w-7" />
           </button>
+
+          <!-- Reply snippet + (action bar + bubble) + reactions, all stacked -->
           <div
-            :ref="(el) => registerBubbleEl(item.key, el)"
-            :class="[
-              'max-w-[85%] text-sm',
-              bubbleShapeClass(item.key),
-              bubbleClass(item.message)
-            ]"
+            class="flex flex-col gap-1"
+            :class="item.message.sender.id === meId ? 'items-end' : 'items-start'"
+            style="max-width: 85%;"
           >
-            <div class="space-y-1">
-              <AppChatMessageRichBody
-                :body="item.message.body"
-                :sender-tier="userColorTier(item.message.sender as any)"
-                :on-colored-background="item.message.sender.id === meId && userColorTier(item.message.sender as any) !== 'normal'"
-              />
+            <!-- Reply snippet (above bubble) -->
+            <div
+              v-if="item.message.replyTo"
+              :class="[
+                'flex items-start gap-1.5 rounded-xl px-2 py-1.5 text-xs opacity-75 cursor-pointer w-full',
+                item.message.sender.id === meId
+                  ? 'bg-black/10 dark:bg-white/10 text-current'
+                  : 'bg-gray-100 dark:bg-zinc-800 text-gray-600 dark:text-gray-400',
+              ]"
+              @click="emit('scroll-to-reply', item.message.replyTo.id)"
+            >
+              <Icon name="tabler:corner-up-right" size="12" class="shrink-0 mt-0.5" aria-hidden="true" />
+              <div class="min-w-0 flex-1 overflow-hidden">
+                <span class="font-semibold mr-1">{{ item.message.replyTo.senderUsername ? `@${item.message.replyTo.senderUsername}` : 'Unknown' }}</span><span
+                  class="break-words"
+                  style="display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; white-space: pre-line;"
+                >{{ collapseBlankLines(item.message.replyTo.bodyPreview) }}</span>
+              </div>
+            </div>
+
+            <!-- Bubble row: action bar LEFT + bubble + action bar RIGHT -->
+            <div class="flex items-center gap-1">
+              <!-- Action bar — LEFT (outgoing) -->
               <div
-                v-if="shouldShowMessageMeta(item, listIndex)"
-                class="flex justify-end"
+                v-if="item.message.sender.id === meId"
+                :class="[
+                  'flex shrink-0 items-center gap-0.5 transition-opacity duration-150',
+                  hoveredId === item.message.id ? 'opacity-100' : 'opacity-0 pointer-events-none',
+                ]"
               >
-                <div class="inline-flex items-center gap-1 text-xs opacity-75 whitespace-nowrap">
-                  <time
-                    :datetime="item.message.createdAt"
-                    :title="formatMessageTimeFull(item.message.createdAt)"
+                <button
+                  type="button"
+                  title="More options"
+                  aria-label="More options"
+                  class="flex h-7 w-7 items-center justify-center rounded-full text-gray-400 hover:text-gray-600 dark:text-zinc-500 dark:hover:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors"
+                  @click.stop="openMenu($event, item.message)"
+                >
+                  <Icon name="tabler:dots" size="14" aria-hidden="true" />
+                </button>
+                <button
+                  type="button"
+                  title="React"
+                  aria-label="Add reaction"
+                  class="flex h-7 w-7 items-center justify-center rounded-full text-gray-400 hover:text-gray-600 dark:text-zinc-500 dark:hover:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors"
+                  @click.stop="openReactionPicker($event, item.message)"
+                >
+                  <Icon name="tabler:mood-smile" size="14" aria-hidden="true" />
+                </button>
+              </div>
+
+              <!-- Main bubble -->
+              <div
+                :ref="(el) => registerBubbleEl(item.key, el)"
+                :class="[
+                  'text-sm',
+                  bubbleShapeClass(item.key),
+                  item.message.deletedForMe
+                    ? 'px-3 py-2 italic opacity-60 border border-dashed border-gray-300 dark:border-zinc-600 text-gray-500 dark:text-gray-400 bg-transparent'
+                    : bubbleClass(item.message),
+                ]"
+              >
+                <div class="space-y-1">
+                  <!-- Deleted state -->
+                  <div v-if="item.message.deletedForMe" class="flex items-center justify-between gap-2 text-xs">
+                    <span>This message was deleted</span>
+                    <button
+                      type="button"
+                      class="shrink-0 underline hover:no-underline"
+                      @click.stop="emit('restore', item.message)"
+                    >
+                      Undo
+                    </button>
+                  </div>
+
+                  <!-- Normal body -->
+                  <AppChatMessageRichBody
+                    v-else
+                    :body="item.message.body"
+                    :sender-tier="userColorTier(item.message.sender as any)"
+                    :on-colored-background="item.message.sender.id === meId && userColorTier(item.message.sender as any) !== 'normal'"
+                  />
+
+                  <!-- Message meta (timestamp + delivery indicator) -->
+                  <div
+                    v-if="shouldShowMessageMeta(item, listIndex)"
+                    class="flex justify-end"
                   >
-                    {{ formatMessageTime(item.message.createdAt) }}
-                  </time>
-                  <template v-if="item.message.sender.id === meId">
-                    <span
-                      v-if="sendingMessageIds.has(item.message.id)"
-                      class="inline-block h-[10px] w-[10px] rounded-full border border-current border-t-transparent opacity-70 animate-spin"
-                      aria-label="Sending"
-                    />
-                    <Icon
-                      v-else-if="latestMyMessageId && item.message.id === latestMyMessageId"
-                      name="tabler:circle-check"
-                      size="10"
-                      class="opacity-80 translate-y-[0.5px]"
-                      aria-hidden="true"
-                    />
-                  </template>
+                    <div class="inline-flex items-center gap-1 text-xs opacity-75 whitespace-nowrap">
+                      <time
+                        :datetime="item.message.createdAt"
+                        :title="formatMessageTimeFull(item.message.createdAt)"
+                      >
+                        {{ formatMessageTime(item.message.createdAt) }}
+                      </time>
+                      <template v-if="item.message.sender.id === meId">
+                        <span
+                          v-if="sendingMessageIds.has(item.message.id)"
+                          class="inline-block h-[10px] w-[10px] rounded-full border border-current border-t-transparent opacity-70 animate-spin"
+                          aria-label="Sending"
+                        />
+                        <Icon
+                          v-else-if="latestMyMessageId && item.message.id === latestMyMessageId"
+                          name="tabler:circle-check"
+                          size="10"
+                          class="opacity-80 translate-y-[0.5px]"
+                          aria-hidden="true"
+                        />
+                      </template>
+                    </div>
+                  </div>
                 </div>
               </div>
+
+              <!-- Action bar — RIGHT (incoming) -->
+              <div
+                v-if="item.message.sender.id !== meId"
+                :class="[
+                  'flex shrink-0 items-center gap-0.5 transition-opacity duration-150',
+                  hoveredId === item.message.id ? 'opacity-100' : 'opacity-0 pointer-events-none',
+                ]"
+              >
+                <button
+                  type="button"
+                  title="React"
+                  aria-label="Add reaction"
+                  class="flex h-7 w-7 items-center justify-center rounded-full text-gray-400 hover:text-gray-600 dark:text-zinc-500 dark:hover:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors"
+                  @click.stop="openReactionPicker($event, item.message)"
+                >
+                  <Icon name="tabler:mood-smile" size="14" aria-hidden="true" />
+                </button>
+                <button
+                  type="button"
+                  title="More options"
+                  aria-label="More options"
+                  class="flex h-7 w-7 items-center justify-center rounded-full text-gray-400 hover:text-gray-600 dark:text-zinc-500 dark:hover:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors"
+                  @click.stop="openMenu($event, item.message)"
+                >
+                  <Icon name="tabler:dots" size="14" aria-hidden="true" />
+                </button>
+              </div>
+            </div>
+
+            <!-- Reactions row -->
+            <div
+              v-if="item.message.reactions?.length"
+              class="flex flex-wrap gap-1"
+            >
+              <button
+                v-for="group in item.message.reactions"
+                :key="group.reactionId"
+                type="button"
+                :title="group.reactors.map(r => r.username || r.id).join(', ')"
+                :class="[
+                  'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs border transition-all',
+                  group.reactedByMe
+                    ? 'border-[var(--p-primary-color)] bg-[var(--p-primary-color)] bg-opacity-10 text-[var(--p-primary-color)]'
+                    : 'border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-700 dark:text-gray-300 hover:border-gray-300 dark:hover:border-zinc-600',
+                ]"
+                @click.stop="emit('react', item.message, group.reactionId)"
+              >
+                <span>{{ group.emoji }}</span>
+                <span class="font-semibold">{{ group.count }}</span>
+              </button>
             </div>
           </div>
         </div>
       </template>
     </TransitionGroup>
+
+    <!-- Shared popovers (one instance, repositioned on open) -->
+    <AppChatReactionPicker
+      ref="reactionPickerRef"
+      :reactions="availableReactions"
+      :active-reaction-ids="activeReactionIds"
+      @select="onReactionSelect"
+    />
+
+    <AppChatMessageMenu
+      ref="messageMenuRef"
+      :message="menuMessage"
+      @reply="emit('reply', $event)"
+      @copy="onCopy"
+      @info="emit('info', $event)"
+      @delete="emit('delete-for-me', $event)"
+      @restore="emit('restore', $event)"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
 import type { PropType } from 'vue'
-import type { Message, MessageUser } from '~/types/api'
+import type { Message, MessageUser, MessageReaction } from '~/types/api'
 import type { ChatListItem } from '~/composables/chat/useChatTimeFormatting'
 import { useUsersStore } from '~/composables/useUsersStore'
 import { userColorTier } from '~/utils/user-tier'
+
+const toast = useAppToast()
+const colorMode = useColorMode()
 
 const props = defineProps({
   messagesReady: { type: Boolean, required: true },
@@ -141,10 +297,69 @@ const props = defineProps({
   registerBubbleEl: { type: Function as PropType<(id: string, el: unknown) => void>, required: true },
   shouldShowIncomingAvatar: { type: Function as PropType<(m: Message, index: number) => boolean>, required: true },
   goToProfile: { type: Function as PropType<(u: MessageUser | null | undefined) => void>, required: true },
+  availableReactions: { type: Array as PropType<MessageReaction[]>, required: false, default: () => [] },
 })
 
 const CLUSTER_GAP_MS = 5 * 60 * 1000
 const usersStore = useUsersStore()
+
+const hoveredId = ref<string | null>(null)
+const reactionPickerRef = ref<{ toggle: (e: Event) => void; hide: () => void } | null>(null)
+const messageMenuRef = ref<{ toggle: (e: Event) => void; hide: () => void } | null>(null)
+const pickerMessage = ref<Message | null>(null)
+const menuMessage = ref<Message | null>(null)
+
+const activeReactionIds = computed<Set<string>>(() => {
+  if (!pickerMessage.value?.reactions) return new Set()
+  return new Set(pickerMessage.value.reactions.filter((r) => r.reactedByMe).map((r) => r.reactionId))
+})
+
+function collapseBlankLines(text: string): string {
+  return text.split('\n').filter((line) => line.trim() !== '').join('\n')
+}
+
+function onRowLeave(id: string) {
+  if (hoveredId.value === id) hoveredId.value = null
+}
+
+function openReactionPicker(event: Event, message: Message) {
+  messageMenuRef.value?.hide()
+  pickerMessage.value = message
+  reactionPickerRef.value?.toggle(event)
+}
+
+function openMenu(event: Event, message: Message) {
+  reactionPickerRef.value?.hide()
+  menuMessage.value = message
+  messageMenuRef.value?.toggle(event)
+}
+
+function onReactionSelect(reactionId: string) {
+  if (!pickerMessage.value) return
+  emit('react', pickerMessage.value, reactionId)
+}
+
+async function onCopy(message: Message) {
+  try {
+    await navigator.clipboard.writeText(message.body)
+  } catch {
+    // Fallback for environments where clipboard API is unavailable.
+    const ta = document.createElement('textarea')
+    ta.value = message.body
+    ta.style.position = 'fixed'
+    ta.style.opacity = '0'
+    document.body.appendChild(ta)
+    ta.select()
+    document.execCommand('copy')
+    document.body.removeChild(ta)
+  }
+  const isDark = colorMode.value === 'dark'
+  toast.push({
+    title: 'Copied',
+    color: isDark ? '#F3F4F6' : '#111827',
+    durationMs: 1400,
+  })
+}
 
 function senderOverlay(u: MessageUser | null | undefined): MessageUser | null {
   if (!u?.id) return u ?? null
@@ -186,14 +401,11 @@ function shouldShowMessageMeta(item: ChatListItem, listIndex: number): boolean {
   const prevSameSender =
     prevItem?.type === 'message' && prevItem.message.sender.id === cur.sender.id
 
-  // If this message follows a long gap from the previous message by the same sender,
-  // show its time even if more messages follow soon.
   if (prevSameSender) {
     const prevMs = parseMs(prevItem.message.createdAt)
     if (curMs > prevMs && curMs - prevMs > CLUSTER_GAP_MS) return true
   }
 
-  // Otherwise only show time for the last message in the contiguous cluster.
   if (!nextItem || nextItem.type !== 'message') return true
   if (nextItem.message.sender.id !== cur.sender.id) return true
 
@@ -205,5 +417,11 @@ function shouldShowMessageMeta(item: ChatListItem, listIndex: number): boolean {
 
 const emit = defineEmits<{
   (e: 'load-older'): void
+  (e: 'react', message: Message, reactionId: string): void
+  (e: 'reply', message: Message): void
+  (e: 'info', message: Message): void
+  (e: 'delete-for-me', message: Message): void
+  (e: 'restore', message: Message): void
+  (e: 'scroll-to-reply', messageId: string): void
 }>()
 </script>

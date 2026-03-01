@@ -241,7 +241,14 @@
                 :register-bubble-el="registerBubbleEl"
                 :should-show-incoming-avatar="shouldShowIncomingAvatar"
                 :go-to-profile="goToProfile"
+                :available-reactions="availableReactions"
                 @load-older="loadOlderMessages"
+                @react="handleReact"
+                @reply="handleReply"
+                @info="handleInfo"
+                @delete-for-me="handleDeleteForMe"
+                @restore="handleRestore"
+                @scroll-to-reply="handleScrollToReply"
               />
 
               <Transition name="moh-typing-fade">
@@ -352,12 +359,20 @@
               placeholder="Type a chat…"
               :loading="sending"
               :auto-focus="!isTabBarMode"
+              :reply-to="replyToMessage ? { id: replyToMessage.id, senderUsername: replyToMessage.sender.username, bodyPreview: replyToMessage.body.slice(0, 200) } : null"
               @send="sendCurrentMessage"
+              @cancel-reply="replyToMessage = null"
             />
           </div>
         </div>
       </section>
     </div>
+
+    <ChatMessageInfoModal
+      v-model="infoModalVisible"
+      :message="infoMessage"
+      :participants="selectedConversation?.participants ?? []"
+    />
 
     <Dialog
       v-model:visible="startChatInfoVisible"
@@ -463,6 +478,7 @@ import type {
   Message,
   MessageUser,
   MessageConversation,
+  MessageReaction,
   SendMessageResponse,
   CreateMessageConversationResponse,
   UserPreview,
@@ -473,6 +489,7 @@ import { useChatTimeFormatting } from '~/composables/chat/useChatTimeFormatting'
 import { useChatTyping } from '~/composables/chat/useChatTyping'
 import ChatConversationList from '~/components/app/chat/ChatConversationList.vue'
 import ChatMessageList from '~/components/app/chat/ChatMessageList.vue'
+import ChatMessageInfoModal from '~/components/app/chat/ChatMessageInfoModal.vue'
 import { useMediaQuery } from '@vueuse/core'
 import { userColorTier, type UserColorTier } from '~/utils/user-tier'
 
@@ -583,6 +600,12 @@ const loadingOlder = ref(false)
 const sending = ref(false)
 const composerText = ref('')
 const sendError = ref<string | null>(null)
+
+// Message actions
+const replyToMessage = ref<Message | null>(null)
+const infoMessage = ref<Message | null>(null)
+const infoModalVisible = ref(false)
+const availableReactions = ref<import('~/types/api').MessageReaction[]>([])
 const composerUser = computed(() =>
   me.value
     ? {
@@ -1289,6 +1312,7 @@ async function clearSelection(opts?: { replace?: boolean; preserveDraft?: boolea
   resetPendingNew()
   resetTyping()
   sendingMessageIds.value = new Set()
+  replyToMessage.value = null
   messagesLoading.value = false
   const replace = opts?.replace ?? false
   const q = { ...route.query } as Record<string, any>
@@ -1431,18 +1455,23 @@ async function sendMessage() {
       verifiedStatus: (my.verifiedStatus ?? 'none') as 'none' | 'identity' | 'manual',
       avatarUrl: my.avatarUrl ?? null,
     }
+    const replySnippet = replyToMessage.value
+      ? { id: replyToMessage.value.id, senderUsername: replyToMessage.value.sender.username, bodyPreview: replyToMessage.value.body.slice(0, 200) }
+      : null
+    const capturedReplyToId = replyToMessage.value?.id ?? null
     messages.value = [
       ...messages.value,
-      { id: localId, createdAt: new Date().toISOString(), body, conversationId, sender: optimisticSender, __clientKey: localId } as ChatMessage,
+      { id: localId, createdAt: new Date().toISOString(), body, conversationId, sender: optimisticSender, reactions: [], deletedForMe: false, replyTo: replySnippet, __clientKey: localId } as ChatMessage,
     ]
     sendingMessageIds.value = new Set([...sendingMessageIds.value, localId])
     composerText.value = ''
+    replyToMessage.value = null
     await nextTick()
     scrollToBottom('smooth')
 
     const res = await apiFetchData<SendMessageResponse['data']>(
       `/messages/conversations/${conversationId}/messages`,
-      { method: 'POST', body: { body } },
+      { method: 'POST', body: { body, ...(capturedReplyToId ? { replyToId: capturedReplyToId } : {}) } },
     )
 
     // Guard: user switched conversations while this was in flight — remove the stale optimistic row.
@@ -1485,6 +1514,155 @@ async function sendMessage() {
     sendError.value = getApiErrorMessage(e) || 'Failed to send message.'
   }
 }
+
+// ─── Message action handlers ──────────────────────────────────────────────────
+
+function handleReply(message: Message) {
+  replyToMessage.value = message
+  nextTick(() => dmComposerRef.value?.focus?.())
+}
+
+function handleInfo(message: Message) {
+  infoMessage.value = message
+  infoModalVisible.value = true
+}
+
+async function handleReact(message: Message, reactionId: string) {
+  const conversationId = message.conversationId
+  const existingGroup = message.reactions?.find((r) => r.reactionId === reactionId)
+  const isToggleOff = existingGroup?.reactedByMe
+
+  // Optimistic update
+  const idx = messages.value.findIndex((m) => m.id === message.id)
+  if (idx !== -1) {
+    const msg = messages.value[idx]!
+    let reactions = [...(msg.reactions ?? [])]
+    if (isToggleOff) {
+      reactions = reactions
+        .map((r) => r.reactionId === reactionId
+          ? { ...r, count: r.count - 1, reactedByMe: false, reactors: r.reactors.filter((reactor) => reactor.id !== me.value?.id) }
+          : r,
+        )
+        .filter((r) => r.count > 0)
+    } else {
+      const existing = reactions.find((r) => r.reactionId === reactionId)
+      if (existing) {
+        reactions = reactions.map((r) => r.reactionId === reactionId
+          ? { ...r, count: r.count + 1, reactedByMe: true, reactors: [...r.reactors, { id: me.value?.id ?? '', username: me.value?.username ?? null, avatarUrl: me.value?.avatarUrl ?? null }] }
+          : r,
+        )
+      } else {
+        const reaction = availableReactions.value.find((r) => r.id === reactionId)
+        if (reaction) {
+          reactions = [...reactions, { reactionId, emoji: reaction.emoji, count: 1, reactedByMe: true, reactors: [{ id: me.value?.id ?? '', username: me.value?.username ?? null, avatarUrl: me.value?.avatarUrl ?? null }] }]
+        }
+      }
+    }
+    messages.value = [
+      ...messages.value.slice(0, idx),
+      { ...msg, reactions },
+      ...messages.value.slice(idx + 1),
+    ]
+  }
+
+  try {
+    if (isToggleOff) {
+      await apiFetch(`/messages/conversations/${conversationId}/messages/${message.id}/reactions/${reactionId}`, { method: 'DELETE' })
+    } else {
+      await apiFetch(`/messages/conversations/${conversationId}/messages/${message.id}/reactions`, { method: 'POST', body: { reactionId } })
+    }
+  } catch {
+    // Revert optimistic update on failure by re-fetching is too complex; the socket event will re-sync.
+  }
+}
+
+async function handleDeleteForMe(message: Message) {
+  const conversationId = message.conversationId
+  const idx = messages.value.findIndex((m) => m.id === message.id)
+  if (idx !== -1) {
+    const msg = messages.value[idx]!
+    messages.value = [
+      ...messages.value.slice(0, idx),
+      { ...msg, deletedForMe: true },
+      ...messages.value.slice(idx + 1),
+    ]
+  }
+  try {
+    await apiFetch(`/messages/conversations/${conversationId}/messages/${message.id}`, { method: 'DELETE' })
+  } catch {
+    // Revert on failure
+    if (idx !== -1) {
+      const msg = messages.value[idx]
+      if (msg) {
+        messages.value = [
+          ...messages.value.slice(0, idx),
+          { ...msg, deletedForMe: false },
+          ...messages.value.slice(idx + 1),
+        ]
+      }
+    }
+  }
+}
+
+async function handleRestore(message: Message) {
+  const conversationId = message.conversationId
+  const idx = messages.value.findIndex((m) => m.id === message.id)
+  if (idx !== -1) {
+    const msg = messages.value[idx]!
+    messages.value = [
+      ...messages.value.slice(0, idx),
+      { ...msg, deletedForMe: false },
+      ...messages.value.slice(idx + 1),
+    ]
+  }
+  try {
+    await apiFetch(`/messages/conversations/${conversationId}/messages/${message.id}/restore`, { method: 'POST' })
+  } catch {
+    // Revert on failure
+    if (idx !== -1) {
+      const msg = messages.value[idx]
+      if (msg) {
+        messages.value = [
+          ...messages.value.slice(0, idx),
+          { ...msg, deletedForMe: true },
+          ...messages.value.slice(idx + 1),
+        ]
+      }
+    }
+  }
+}
+
+function handleScrollToReply(messageId: string) {
+  const scroller = messagesScroller.value
+  const el = scroller?.querySelector(`[data-message-id="${messageId}"]`) as HTMLElement | null
+  if (!el) return
+  el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+
+  // Overlay that bleeds 16px beyond the row on each side (compensates for the px-4
+  // padding on the ChatMessageList container) so the highlight goes edge to edge.
+  const overlay = document.createElement('div')
+  overlay.style.cssText = [
+    'position: absolute',
+    'inset: 0',
+    'left: -1rem',
+    'right: -1rem',
+    'pointer-events: none',
+    'z-index: 0',
+  ].join('; ')
+  el.appendChild(overlay)
+
+  overlay.animate(
+    [
+      { backgroundColor: 'transparent', offset: 0 },
+      { backgroundColor: 'color-mix(in srgb, var(--p-primary-color) 14%, transparent)', offset: 0.25 },
+      { backgroundColor: 'color-mix(in srgb, var(--p-primary-color) 14%, transparent)', offset: 0.65 },
+      { backgroundColor: 'transparent', offset: 1 },
+    ],
+    { duration: 1800, easing: 'ease-in-out', fill: 'none' },
+  ).finished.then(() => overlay.remove())
+}
+
+// ─── End message action handlers ──────────────────────────────────────────────
 
 async function acceptSelectedConversation() {
   if (!selectedConversationId.value) return
@@ -1753,6 +1931,25 @@ watch(
 )
 
 const messageCallback = {
+  onReaction: (payload: { conversationId?: string; message?: unknown }) => {
+    const msg = payload?.message as Message | undefined
+    if (!msg?.id) return
+    if (selectedConversationId.value !== msg.conversationId) return
+    // Update the reactions on the existing message in-place.
+    const idx = messages.value.findIndex((m) => m.id === msg.id)
+    if (idx !== -1) {
+      const existing = messages.value[idx]!
+      messages.value = [
+        ...messages.value.slice(0, idx),
+        { ...existing, reactions: msg.reactions ?? [] },
+        ...messages.value.slice(idx + 1),
+      ]
+    }
+    // Also sync the info modal if it's open for this message.
+    if (infoMessage.value?.id === msg.id) {
+      infoMessage.value = { ...infoMessage.value, reactions: msg.reactions ?? [] }
+    }
+  },
   onMessage: (payload: { conversationId?: string; message?: unknown }) => {
     const msg = payload?.message as Message | undefined
     if (!msg?.conversationId) return
@@ -1831,6 +2028,11 @@ onMounted(() => {
 
     addMessagesCallback(messageCallback)
     emitMessagesScreen(true)
+
+    // Pre-fetch allowed reactions (used by the reaction picker)
+    apiFetchData<MessageReaction[]>('/messages/reactions').then((reactions) => {
+      availableReactions.value = reactions ?? []
+    }).catch(() => { /* ignore */ })
 
     await fetchConversations('primary', { forceRefresh: true }).catch(() => { /* ignore */ })
 

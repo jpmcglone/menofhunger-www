@@ -1,5 +1,29 @@
 <template>
-  <div class="flex w-full items-end">
+  <div class="flex w-full flex-col gap-1.5">
+    <!-- Reply-to snippet -->
+    <Transition name="moh-fade">
+      <div
+        v-if="replyTo"
+        class="flex items-start gap-2 rounded-xl border border-gray-200 dark:border-zinc-700 bg-gray-50 dark:bg-zinc-800/60 px-3 py-2 text-xs"
+      >
+        <Icon name="tabler:corner-up-right" size="13" class="mt-0.5 shrink-0 text-gray-400 dark:text-zinc-500" aria-hidden="true" />
+        <div class="min-w-0 flex-1">
+          <span class="font-semibold text-gray-600 dark:text-gray-300 mr-1">
+            {{ replyTo.senderUsername ? `@${replyTo.senderUsername}` : 'Reply' }}
+          </span>
+          <span class="text-gray-500 dark:text-gray-400 line-clamp-1">{{ replyTo.bodyPreview }}</span>
+        </div>
+        <button
+          type="button"
+          aria-label="Cancel reply"
+          class="shrink-0 text-gray-400 dark:text-zinc-500 hover:text-gray-600 dark:hover:text-zinc-300 transition-colors"
+          @click="emit('cancel-reply')"
+        >
+          <Icon name="tabler:x" size="13" aria-hidden="true" />
+        </button>
+      </div>
+    </Transition>
+
     <!-- Text pill -->
     <div class="relative flex w-full items-stretch overflow-hidden" :class="outlineClass">
       <!-- Emoji button: inside the pill, left side -->
@@ -45,8 +69,9 @@
   </div>
 </template>
 
+
 <script setup lang="ts">
-import type { FollowListUser } from '~/types/api'
+import type { FollowListUser, MessageReplySnippet } from '~/types/api'
 import { userColorTier, userTierColorVar } from '~/utils/user-tier'
 
 const props = withDefaults(
@@ -59,6 +84,7 @@ const props = withDefaults(
     autoFocus?: boolean
     priorityUsers?: FollowListUser[] | null
     prioritySectionTitle?: string
+    replyTo?: MessageReplySnippet | null
   }>(),
   {
     placeholder: 'Type a chat…',
@@ -68,12 +94,14 @@ const props = withDefaults(
     autoFocus: false,
     priorityUsers: null,
     prioritySectionTitle: undefined,
+    replyTo: null,
   },
 )
 
 const emit = defineEmits<{
   'update:modelValue': [value: string]
   send: []
+  'cancel-reply': []
 }>()
 
 const styledTextareaEl = ref<InstanceType<typeof import('./StyledTextarea.vue').default> | null>(null)

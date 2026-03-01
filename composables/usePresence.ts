@@ -81,6 +81,7 @@ export type SpacesCallback = {
 
 export type MessagesCallback = {
   onMessage?: (payload: { conversationId?: string; message?: unknown }) => void
+  onReaction?: (payload: { conversationId?: string; message?: unknown }) => void
   onTyping?: (payload: { conversationId?: string; userId?: string; typing?: boolean }) => void
   onRead?: (payload: { conversationId?: string; userId?: string; lastReadAt?: string }) => void
 }
@@ -655,6 +656,13 @@ export function usePresence() {
       if (!messagesCallbacks.value.size) return
       for (const cb of messagesCallbacks.value) {
         cb.onMessage?.(data)
+      }
+    })
+
+    socket.on('messages:reaction', (data: { conversationId?: string; message?: unknown }) => {
+      if (!messagesCallbacks.value.size) return
+      for (const cb of messagesCallbacks.value) {
+        cb.onReaction?.(data)
       }
     })
 
