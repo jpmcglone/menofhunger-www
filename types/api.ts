@@ -1017,12 +1017,26 @@ export type MessageReplySnippet = {
   id: string
   senderUsername: string | null
   bodyPreview: string
+  mediaThumbnailUrl: string | null
 }
 
 export type MessageReaction = {
   id: string
   emoji: string
   label: string
+}
+
+export type MessageMedia = {
+  id: string
+  kind: PostMediaKind
+  source: PostMediaSource
+  url: string
+  mp4Url: string | null
+  thumbnailUrl: string | null
+  width: number | null
+  height: number | null
+  durationSeconds: number | null
+  alt: string | null
 }
 
 export type Message = {
@@ -1034,6 +1048,7 @@ export type Message = {
   reactions: MessageReactionSummary[]
   deletedForMe: boolean
   replyTo: MessageReplySnippet | null
+  media: MessageMedia[]
 }
 
 export type MessageConversation = {

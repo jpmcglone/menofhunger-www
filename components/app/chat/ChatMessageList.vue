@@ -79,20 +79,27 @@
             <div
               v-if="item.message.replyTo"
               :class="[
-                'flex items-start gap-1.5 rounded-xl px-2 py-1.5 text-xs opacity-75 cursor-pointer w-full',
+                'flex items-center gap-1.5 rounded-xl px-2 py-1.5 text-xs opacity-75 cursor-pointer w-full',
                 item.message.sender.id === meId
                   ? 'bg-black/10 dark:bg-white/10 text-current'
                   : 'bg-gray-100 dark:bg-zinc-800 text-gray-600 dark:text-gray-400',
               ]"
               @click="emit('scroll-to-reply', item.message.replyTo.id)"
             >
-              <Icon name="tabler:corner-up-right" size="12" class="shrink-0 mt-0.5" aria-hidden="true" />
+              <Icon name="tabler:corner-up-right" size="12" class="shrink-0" aria-hidden="true" />
               <div class="min-w-0 flex-1 overflow-hidden">
                 <span class="font-semibold mr-1">{{ item.message.replyTo.senderUsername ? `@${item.message.replyTo.senderUsername}` : 'Unknown' }}</span><span
                   class="break-words"
                   style="display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; white-space: pre-line;"
                 >{{ collapseBlankLines(item.message.replyTo.bodyPreview) }}</span>
               </div>
+              <!-- Media thumbnail from the replied-to message -->
+              <img
+                v-if="item.message.replyTo.mediaThumbnailUrl"
+                :src="item.message.replyTo.mediaThumbnailUrl"
+                class="shrink-0 h-9 w-9 rounded-md object-cover"
+                aria-hidden="true"
+              />
             </div>
 
             <!-- Bubble row: action bar LEFT + bubble + action bar RIGHT -->
@@ -129,14 +136,64 @@
               <div
                 :ref="(el) => registerBubbleEl(item.key, el)"
                 :class="[
-                  'text-sm',
-                  bubbleShapeClass(item.key),
+                  'text-sm overflow-hidden',
+                  item.message.media?.length ? 'p-0' : bubbleShapeClass(item.key),
                   item.message.deletedForMe
                     ? 'px-3 py-2 italic opacity-60 border border-dashed border-gray-300 dark:border-zinc-600 text-gray-500 dark:text-gray-400 bg-transparent'
                     : bubbleClass(item.message),
+                  item.message.media?.length ? 'rounded-2xl' : '',
                 ]"
               >
-                <div class="space-y-1">
+                <!-- Media attachment (image / GIF / video) -->
+                <template v-if="item.message.media?.length && !item.message.deletedForMe">
+                  <div
+                    v-for="media in item.message.media"
+                    :key="media.id"
+                    class="relative"
+                  >
+                    <!-- Video: poster + play icon, opens in lightbox -->
+                    <button
+                      v-if="media.kind === 'video'"
+                      type="button"
+                      class="moh-tap relative block overflow-hidden focus:outline-none cursor-zoom-in max-h-[320px] max-w-[260px] w-full"
+                      :style="{ aspectRatio: media.width && media.height ? `${media.width}/${media.height}` : '16/9' }"
+                      aria-label="View video"
+                      @click.stop="(e) => openMessageMedia(e, item.message.media!, media)"
+                    >
+                      <img
+                        v-if="media.thumbnailUrl"
+                        :src="media.thumbnailUrl"
+                        class="block h-full w-full object-cover transition-opacity duration-150"
+                        :class="{ 'opacity-0': chatHideThumbs }"
+                        loading="lazy"
+                        aria-hidden="true"
+                      />
+                      <div v-else class="absolute inset-0 bg-gray-900" aria-hidden="true" />
+                      <div class="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/20" aria-hidden="true">
+                        <Icon name="tabler:player-play-filled" class="text-3xl text-white drop-shadow" />
+                      </div>
+                    </button>
+                    <!-- Image / GIF: opens in lightbox -->
+                    <button
+                      v-else
+                      type="button"
+                      class="moh-tap relative block overflow-hidden focus:outline-none cursor-zoom-in max-h-[320px] max-w-[260px] w-full"
+                      :style="{ aspectRatio: media.width && media.height ? `${media.width}/${media.height}` : '1/1' }"
+                      aria-label="View image"
+                      @click.stop="(e) => openMessageMedia(e, item.message.media!, media)"
+                    >
+                      <img
+                        :src="media.url"
+                        :alt="media.alt ?? ''"
+                        class="block h-full w-full object-cover transition-opacity duration-150"
+                        :class="{ 'opacity-0': chatHideThumbs }"
+                        loading="lazy"
+                      />
+                    </button>
+                  </div>
+                </template>
+
+                <div :class="['space-y-1', item.message.media?.length && !item.message.deletedForMe ? 'px-2.5 py-2 sm:px-3' : '']">
                   <!-- Deleted state -->
                   <div v-if="item.message.deletedForMe" class="flex items-center justify-between gap-2 text-xs">
                     <span>This message was deleted</span>
@@ -149,9 +206,9 @@
                     </button>
                   </div>
 
-                  <!-- Normal body -->
+                  <!-- Normal body (only if there's text) -->
                   <AppChatMessageRichBody
-                    v-else
+                    v-else-if="item.message.body.trim()"
                     :body="item.message.body"
                     :sender-tier="userColorTier(item.message.sender as any)"
                     :on-colored-background="item.message.sender.id === meId && userColorTier(item.message.sender as any) !== 'normal'"
@@ -306,13 +363,15 @@
 
 <script setup lang="ts">
 import type { PropType } from 'vue'
-import type { Message, MessageUser, MessageReaction, MessageParticipant } from '~/types/api'
+import type { Message, MessageMedia, MessageUser, MessageReaction, MessageParticipant } from '~/types/api'
 import type { ChatListItem } from '~/composables/chat/useChatTimeFormatting'
 import { useUsersStore } from '~/composables/useUsersStore'
 import { userColorTier } from '~/utils/user-tier'
 
 const toast = useAppToast()
 const colorMode = useColorMode()
+const viewer = useImageLightbox()
+const chatHideThumbs = computed(() => viewer.kind.value === 'media' && viewer.hideOrigin.value)
 
 const props = defineProps({
   messagesReady: { type: Boolean, required: true },
@@ -405,6 +464,19 @@ function collapseBlankLines(text: string): string {
 
 function onRowLeave(id: string) {
   if (hoveredId.value === id) hoveredId.value = null
+}
+
+function openMessageMedia(e: MouseEvent, mediaList: MessageMedia[], clicked: MessageMedia) {
+  const items = mediaList.map((m) => ({
+    url: m.url ?? '',
+    kind: m.kind === 'video' ? ('video' as const) : ('image' as const),
+    posterUrl: m.thumbnailUrl ?? null,
+    durationSeconds: m.durationSeconds ?? null,
+    width: m.width ?? null,
+    height: m.height ?? null,
+  }))
+  const idx = Math.max(0, mediaList.indexOf(clicked))
+  void viewer.openGalleryFromMediaItems(e, items, idx, 'Media', { mediaStartMode: 'fitAnchored' })
 }
 
 function openReactionPicker(event: Event, message: Message) {

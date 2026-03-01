@@ -360,7 +360,7 @@
               placeholder="Type a chat…"
               :loading="sending"
               :auto-focus="!isTabBarMode"
-              :reply-to="replyToMessage ? { id: replyToMessage.id, senderUsername: replyToMessage.sender.username, bodyPreview: replyToMessage.body.slice(0, 200) } : null"
+              :reply-to="replyToMessage ? { id: replyToMessage.id, senderUsername: replyToMessage.sender.username, bodyPreview: replyToMessage.body.slice(0, 200), mediaThumbnailUrl: replyToMessage.media?.[0]?.thumbnailUrl ?? null } : null"
               @send="sendCurrentMessage"
               @cancel-reply="replyToMessage = null"
             />
@@ -616,7 +616,7 @@ const composerUser = computed(() =>
     : null,
 )
 const messagesScroller = ref<HTMLElement | null>(null)
-const dmComposerRef = ref<{ focus?: () => void } | null>(null)
+const dmComposerRef = ref<{ focus?: () => void; getMedia?: () => import('~/composables/composer/types').CreateMediaPayload[]; clearMedia?: () => void } | null>(null)
 const messagesReady = ref(false)
 const pendingNewCount = ref(0)
 const pendingNewTier = ref<MessageTone>('normal')
@@ -1399,7 +1399,9 @@ function updateConversationForMessage(message: Message) {
 }
 
 async function sendCurrentMessage() {
-  if (!composerText.value.trim() || sending.value) return
+  const hasText = composerText.value.trim().length > 0
+  const hasMedia = (dmComposerRef.value?.getMedia?.() ?? []).length > 0
+  if ((!hasText && !hasMedia) || sending.value) return
   sendError.value = null
   sending.value = true
   try {
@@ -1420,6 +1422,7 @@ async function sendFirstMessage() {
     return
   }
   const body = composerText.value
+  const mediaPayload = dmComposerRef.value?.getMedia?.() ?? []
   try {
     const res = await apiFetchData<CreateMessageConversationResponse['data']>('/messages/conversations', {
       method: 'POST',
@@ -1427,9 +1430,11 @@ async function sendFirstMessage() {
         user_ids: draftRecipients.value.map((u) => u.id),
         title: undefined,
         body,
+        ...(mediaPayload.length > 0 ? { media: mediaPayload } : {}),
       },
     })
     composerText.value = ''
+    dmComposerRef.value?.clearMedia?.()
     await refreshAllConversationTabs()
     const conversationId = res?.conversationId
     if (conversationId) {
@@ -1452,6 +1457,7 @@ async function sendMessage() {
   if (!my) return
 
   const body = composerText.value
+  const mediaPayload = dmComposerRef.value?.getMedia?.() ?? []
   let localId: string | null = null
   try {
     try { emitMessagesTyping(conversationId, false) } catch { /* ignore */ }
@@ -1475,17 +1481,25 @@ async function sendMessage() {
     const capturedReplyToId = replyToMessage.value?.id ?? null
     messages.value = [
       ...messages.value,
-      { id: localId, createdAt: new Date().toISOString(), body, conversationId, sender: optimisticSender, reactions: [], deletedForMe: false, replyTo: replySnippet, __clientKey: localId } as ChatMessage,
+      { id: localId, createdAt: new Date().toISOString(), body, conversationId, sender: optimisticSender, reactions: [], deletedForMe: false, replyTo: replySnippet, media: [], __clientKey: localId } as ChatMessage,
     ]
     sendingMessageIds.value = new Set([...sendingMessageIds.value, localId])
     composerText.value = ''
+    dmComposerRef.value?.clearMedia?.()
     replyToMessage.value = null
     await nextTick()
     scrollToBottom('smooth')
 
     const res = await apiFetchData<SendMessageResponse['data']>(
       `/messages/conversations/${conversationId}/messages`,
-      { method: 'POST', body: { body, ...(capturedReplyToId ? { replyToId: capturedReplyToId } : {}) } },
+      {
+        method: 'POST',
+        body: {
+          body,
+          ...(capturedReplyToId ? { replyToId: capturedReplyToId } : {}),
+          ...(mediaPayload.length > 0 ? { media: mediaPayload } : {}),
+        },
+      },
     )
 
     // Guard: user switched conversations while this was in flight — remove the stale optimistic row.
