@@ -68,20 +68,19 @@
           <div :class="['min-w-0 max-w-full line-clamp-2 text-[13px] sm:text-sm', rollup.readAt ? 'font-medium' : 'font-semibold']">
             <span class="text-gray-600 dark:text-gray-300 font-medium">New posts by</span>
             <span class="ml-1 inline-flex items-center gap-1">
-              <span
-                class="truncate"
+              <NuxtLink
+                v-if="firstActor?.username"
+                :to="`/u/${firstActor.username}`"
+                :class="['truncate hover:underline', firstActorColorClass]"
                 @mouseenter="onActorEnter"
                 @mousemove="onActorMove"
                 @mouseleave="onActorLeave"
+                @click.stop
+              >{{ firstActorLabel }}</NuxtLink>
+              <span
+                v-else
+                class="truncate"
               >{{ firstActorLabel }}</span>
-              <AppVerifiedBadge
-                v-if="firstActorHasBadge"
-                :status="firstActorVerifiedStatus"
-                :premium="Boolean(firstActor?.premium)"
-                :is-organization="Boolean(firstActor?.isOrganization)"
-                size="xs"
-                :show-tooltip="false"
-              />
             </span>
             <span v-if="moreActorCount > 0" class="ml-1">
               and {{ moreActorCount }} {{ moreActorCount === 1 ? 'other' : 'others' }}
@@ -95,6 +94,7 @@
 
 <script setup lang="ts">
 import type { FollowedPostsRollup, NotificationActor } from '~/types/api'
+import { userColorTier, userTierTextClass } from '~/utils/user-tier'
 
 const { formatWhen } = useNotifications()
 
@@ -114,15 +114,7 @@ const firstActorLabel = computed(() => {
   if (!a) return 'someone'
   return (a.name ?? '').trim() || (a.username ?? '').trim() || 'someone'
 })
-const firstActorVerifiedStatus = computed(() => {
-  const a = firstActor.value as any
-  return (a?.verifiedStatus ?? 'none') as 'none' | 'identity' | 'manual'
-})
-const firstActorHasBadge = computed(() => {
-  const a = firstActor.value as any
-  const vs = (a?.verifiedStatus ?? 'none') as string
-  return Boolean((vs && vs !== 'none') || a?.isOrganization)
-})
+const firstActorColorClass = computed(() => userTierTextClass(userColorTier(firstActor.value as any), { important: true }))
 const moreActorCount = computed(() => Math.max(0, Math.floor((rollup.value.actorCount ?? 0) - 1)))
 
 const avatarsEl = ref<HTMLElement | null>(null)

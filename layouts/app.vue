@@ -1155,7 +1155,7 @@ function openComposerWithVisibility(visibilityOrOptions?: ComposerVisibility | C
         : visibility
     composerVisibility.value = next
   }
-  composerInitialText.value = (nextInitialText ?? defaultComposerInitialTextForRoute()) || null
+  composerInitialText.value = (nextInitialText ?? (options?.quotedPost ? null : defaultComposerInitialTextForRoute())) || null
   composerModalOpen.value = true
 }
 function openComposerForCurrentRoute(initialText?: string | null) {
