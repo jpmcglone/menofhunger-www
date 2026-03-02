@@ -71,7 +71,12 @@ export default defineNuxtConfig({
         // NOTE: Avoid iOS standalone (Add to Home Screen) full-bleed viewport behavior.
         // `viewport-fit=cover` + translucent status bar can cause content to render under the status bar
         // and appear shifted/clipped. Let iOS manage safe areas instead.
-        { name: 'viewport', content: 'width=device-width, initial-scale=1' },
+        //
+        // `interactive-widget=overlays-content`: The software keyboard overlays the page rather than
+        // resizing the layout/visual viewport. This keeps `100dvh` stable so the app shell and tab bar
+        // don't collapse when the keyboard opens. We compensate for the keyboard height explicitly in
+        // screens that need it (e.g. chat composer) via the useKeyboardHeight composable.
+        { name: 'viewport', content: 'width=device-width, initial-scale=1, interactive-widget=overlays-content' },
         // Hint to the browser that we support both schemes (affects UA surfaces + form controls).
         { name: 'color-scheme', content: 'light dark' },
         // iOS: avoid auto-linking phone numbers in app-like UI.

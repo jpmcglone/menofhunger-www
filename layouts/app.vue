@@ -469,7 +469,9 @@
 
             <!-- Mobile bottom chrome lives inside the center column (no fixed overlap). -->
             <!-- Radio sits above tab bar when playing. -->
-            <div v-if="!anyOverlayOpen" class="md:hidden shrink-0">
+            <!-- hideTabBarForKeyboard: hide on chat when the software keyboard is open so the -->
+            <!-- tab bar doesn't rise with the keyboard (mirrors native iOS sheet behaviour). -->
+            <div v-if="!anyOverlayOpen && !hideTabBarForKeyboard" class="md:hidden shrink-0">
               <Transition
                 enter-active-class="transition-[opacity,transform] duration-200 ease-out"
                 enter-from-class="opacity-0 translate-y-[30px]"
@@ -854,6 +856,7 @@ import {
   type ComposerVisibility,
 } from '~/utils/injection-keys'
 import { useBookmarkCollections } from '~/composables/useBookmarkCollections'
+import { useKeyboardHeight } from '~/composables/useKeyboardHeight'
 import { useOnlyMePosts } from '~/composables/useOnlyMePosts'
 import { useReplyModal } from '~/composables/useReplyModal'
 import type { DailyContentToday, DailyQuote, FeedPost, GetPresenceOnlineData, PostVisibility } from '~/types/api'
@@ -924,6 +927,11 @@ onBeforeUnmount(() => {
 
 const { hideTopBar, navCompactMode: _navCompactModeBase, isRightRailForcedHidden: _isRightRailForcedHiddenBase, isRightRailSearchHidden, title } = useLayoutRules(route)
 const isMessagesPage = computed(() => route.path === '/chat')
+const { keyboardHeight } = useKeyboardHeight()
+// Hide the mobile tab bar when the software keyboard is open on screens that have a
+// fixed composer bar (e.g. chat). This mirrors the native iOS sheet behaviour where
+// the tab bar is outside the modal hierarchy and never rises with the keyboard.
+const hideTabBarForKeyboard = computed(() => isMessagesPage.value && keyboardHeight.value > 0)
 const isOnlyMePage = computed(() => route.path === '/only-me')
 
 const showEmailUnverifiedBar = computed(() => {

@@ -492,6 +492,7 @@ import ChatConversationList from '~/components/app/chat/ChatConversationList.vue
 import ChatMessageList from '~/components/app/chat/ChatMessageList.vue'
 import ChatMessageInfoModal from '~/components/app/chat/ChatMessageInfoModal.vue'
 import { useMediaQuery } from '@vueuse/core'
+import { useKeyboardHeight } from '~/composables/useKeyboardHeight'
 import { userColorTier, type UserColorTier } from '~/utils/user-tier'
 
 const { apiFetch, apiFetchData } = useApiClient()
@@ -510,9 +511,16 @@ const messagesPaneState = ref<'loading' | 'fading' | 'ready'>('loading')
 let chatBootTimer: ReturnType<typeof setTimeout> | null = null
 let messagesPaneTimer: ReturnType<typeof setTimeout> | null = null
 
-const composerBarStyle = computed<Record<string, string>>(() => ({
-  paddingBottom: 'calc(var(--moh-safe-bottom, 0px) - 4px)',
-}))
+const { keyboardHeight } = useKeyboardHeight()
+
+// When the keyboard is open, offset the composer bar up by the keyboard height so it
+// sits directly above the keyboard. When closed, use the normal safe-area bottom inset.
+const composerBarStyle = computed<Record<string, string>>(() => {
+  if (keyboardHeight.value > 0) {
+    return { paddingBottom: `${keyboardHeight.value}px` }
+  }
+  return { paddingBottom: 'calc(var(--moh-safe-bottom, 0px) - 4px)' }
+})
 const scrollToBottomButtonStyle = computed<Record<string, string>>(() => ({
   bottom: 'calc(var(--moh-safe-bottom, 0px) + 1rem)',
 }))
