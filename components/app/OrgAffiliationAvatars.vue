@@ -10,13 +10,14 @@
         v-if="org.username"
         type="button"
         :style="i > 0 ? { marginLeft: '-4px' } : {}"
-        class="relative flex-shrink-0 block focus:outline-none"
+        class="relative flex-shrink-0 block cursor-pointer focus:outline-none"
         :class="zClasses[i]"
         :aria-label="`View ${org.name || org.username} profile`"
         @mouseenter="(e) => onEnter(org.username, e)"
         @mousemove="onMove"
         @mouseleave="onLeave"
-        @click.stop="onOrgClick(org.username)"
+        @click.stop="onOrgClick(org.username, $event)"
+        @auxclick.stop="onOrgAuxClick(org.username, $event)"
       >
         <img
           v-if="org.avatarUrl"
@@ -102,8 +103,24 @@ const zClasses = ['z-30', 'z-20', 'z-10']
 const { onEnter, onMove, onLeave } = useUserPreviewMultiTrigger()
 
 const router = useRouter()
-function onOrgClick(username: string | null) {
+
+function orgUrl(username: string) {
+  return `/u/${encodeURIComponent(username)}`
+}
+
+function onOrgClick(username: string | null, e: MouseEvent) {
   if (!username) return
-  void router.push(`/u/${encodeURIComponent(username)}`)
+  // Cmd/Ctrl+click → open in new tab, matching native link behaviour.
+  if (e.metaKey || e.ctrlKey) {
+    window.open(orgUrl(username), '_blank', 'noopener')
+  } else {
+    void router.push(orgUrl(username))
+  }
+}
+
+// Middle-click fires auxclick, not click.
+function onOrgAuxClick(username: string | null, e: MouseEvent) {
+  if (!username || e.button !== 1) return
+  window.open(orgUrl(username), '_blank', 'noopener')
 }
 </script>

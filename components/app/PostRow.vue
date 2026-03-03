@@ -1024,9 +1024,12 @@ const editOpen = ref(false)
 const canEditPost = computed(() => {
   if (!isSelf.value) return false
   if (isDeletedPost.value) return false
-  // Only-me posts are notes/drafts: allow unlimited edits (no age/edit-count cap).
-  if (postView.value.visibility === 'onlyMe') return !Boolean(postView.value.parentId)
+  // Replies are never editable (for anyone, including admins).
   if (postView.value.parentId) return false
+  // Only-me posts are notes/drafts: allow unlimited edits (no age/edit-count cap).
+  if (postView.value.visibility === 'onlyMe') return true
+  // Site admins can always edit their own top-level posts with no time/count limit.
+  if (viewerIsAdmin.value) return true
   const createdAt = new Date(postView.value.createdAt)
   const ageMs = nowMs.value - createdAt.getTime()
   if (!Number.isFinite(ageMs) || ageMs > 30 * 60 * 1000) return false
