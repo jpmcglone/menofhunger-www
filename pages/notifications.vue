@@ -31,14 +31,11 @@
         v-for="(item, idx) in notifications"
         :key="item.type === 'single' ? item.notification.id : item.type === 'group' ? item.group.id : item.rollup.id"
       >
-        <div
+        <!-- Real link: supports Cmd+click, right-click → "Open in new tab", keyboard nav -->
+        <NuxtLink
           v-if="itemHref(item)"
-          class="block w-full text-left hover:bg-gray-50 dark:hover:bg-zinc-900 cursor-pointer"
-          role="link"
-          tabindex="0"
-          @click="openItem(item)"
-          @keydown.enter.prevent="openItem(item)"
-          @keydown.space.prevent="openItem(item)"
+          :to="itemHref(item)!"
+          class="block w-full text-left hover:bg-gray-50 dark:hover:bg-zinc-900"
         >
           <AppNotificationRow
             v-if="item.type === 'single'"
@@ -54,7 +51,7 @@
             :group="item.group"
             :nudge-is-topmost="nudgeIsTopmostByIndex[idx] ?? false"
           />
-        </div>
+        </NuxtLink>
         <div v-else class="block w-full text-left">
           <AppNotificationRow
             v-if="item.type === 'single'"
@@ -119,12 +116,6 @@ const { setNotificationUndeliveredCount, addInterest, removeInterest } = usePres
 const loadingMore = ref(false)
 const markingAllRead = ref(false)
 const nuxtApp = useNuxtApp()
-
-function openItem(item: (typeof notifications.value)[number]) {
-  const href = itemHref(item)
-  if (!href) return
-  void navigateTo(href)
-}
 
 function nudgeActorIdForItem(item: (typeof notifications.value)[number]): string | null {
   if (item.type === 'single') {

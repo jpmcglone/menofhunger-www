@@ -859,7 +859,7 @@ import { useBookmarkCollections } from '~/composables/useBookmarkCollections'
 import { useKeyboardHeight } from '~/composables/useKeyboardHeight'
 import { useOnlyMePosts } from '~/composables/useOnlyMePosts'
 import { useReplyModal } from '~/composables/useReplyModal'
-import type { DailyContentToday, DailyQuote, FeedPost, GetPresenceOnlineData, PostVisibility } from '~/types/api'
+import type { DailyContentToday, DailyQuote, FeedPost, PostVisibility } from '~/types/api'
 import { isComposerEntrypointPath, routeHeaderDefaultsFor, isAdminPath, isSettingsPath } from '~/config/routes'
 import { userColorTier, userTierTextClass } from '~/utils/user-tier'
 
@@ -896,34 +896,24 @@ function onScrollOrTapReconnect() {
   if (showBanner && !isSocketConnecting.value) reconnect()
 }
 
-let connectionBarRemoveListeners: (() => void) | null = null
 watch(
   () => isAuthed && (disconnectedDueToIdle.value || (socketDisconnectedWhileVisible.value && !isSocketConnected.value)),
-  (shouldListen) => {
-    if (import.meta.client && connectionBarRemoveListeners) {
-      connectionBarRemoveListeners()
-      connectionBarRemoveListeners = null
-    }
-    if (import.meta.client && shouldListen) {
-      const opts = { capture: true }
-      document.addEventListener('scroll', onScrollOrTapReconnect, opts)
-      document.addEventListener('click', onScrollOrTapReconnect, opts)
-      document.addEventListener('touchstart', onScrollOrTapReconnect, opts)
-      document.addEventListener('keydown', onScrollOrTapReconnect, opts)
-      connectionBarRemoveListeners = () => {
-        document.removeEventListener('scroll', onScrollOrTapReconnect, opts)
-        document.removeEventListener('click', onScrollOrTapReconnect, opts)
-        document.removeEventListener('touchstart', onScrollOrTapReconnect, opts)
-        document.removeEventListener('keydown', onScrollOrTapReconnect, opts)
-        connectionBarRemoveListeners = null
-      }
-    }
+  (shouldListen, _, onCleanup) => {
+    if (!import.meta.client || !shouldListen) return
+    const opts = { capture: true }
+    document.addEventListener('scroll', onScrollOrTapReconnect, opts)
+    document.addEventListener('click', onScrollOrTapReconnect, opts)
+    document.addEventListener('touchstart', onScrollOrTapReconnect, opts)
+    document.addEventListener('keydown', onScrollOrTapReconnect, opts)
+    onCleanup(() => {
+      document.removeEventListener('scroll', onScrollOrTapReconnect, opts)
+      document.removeEventListener('click', onScrollOrTapReconnect, opts)
+      document.removeEventListener('touchstart', onScrollOrTapReconnect, opts)
+      document.removeEventListener('keydown', onScrollOrTapReconnect, opts)
+    })
   },
   { immediate: true },
 )
-onBeforeUnmount(() => {
-  if (connectionBarRemoveListeners) connectionBarRemoveListeners()
-})
 
 const { hideTopBar, navCompactMode: _navCompactModeBase, isRightRailForcedHidden: _isRightRailForcedHiddenBase, isRightRailSearchHidden, title } = useLayoutRules(route)
 const isMessagesPage = computed(() => route.path === '/chat')
@@ -1604,47 +1594,9 @@ const {
   defaultLimit: 4,
 })
 
-const onlineCount = ref<number | null>(null)
-const onlineCountPopover = useOnlineCountPopover()
-
-let onlinePollTimer: ReturnType<typeof setInterval> | null = null
-async function refreshOnlineCount() {
-  try {
-    const res = await apiFetch<GetPresenceOnlineData>('/presence/online', {
-      method: 'GET',
-      query: { includeSelf: '1' },
-      timeout: 8000,
-    })
-    const n =
-      typeof res?.pagination?.totalOnline === 'number'
-        ? res.pagination.totalOnline
-        : Array.isArray(res?.data)
-          ? res.data.length
-          : null
-    onlineCount.value = typeof n === 'number' ? Math.max(0, Math.floor(n)) : null
-
-    // Breakdown for hover popover (tier order: Premium+, Premium, Verified, Unverified).
-    const users = Array.isArray(res?.data) ? res.data : []
-    let premiumPlus = 0
-    let premium = 0
-    let verified = 0
-    let unverified = 0
-    for (const u of users) {
-      if (u.premiumPlus) premiumPlus += 1
-      else if (u.premium) premium += 1
-      else if (u.verifiedStatus && u.verifiedStatus !== 'none') verified += 1
-      else unverified += 1
-    }
-    const rows = []
-    if (premiumPlus > 0) rows.push({ key: 'premiumPlus', label: 'Premium+', count: premiumPlus, tone: 'premium' } as const)
-    if (premium > 0) rows.push({ key: 'premium', label: 'Premium', count: premium, tone: 'premium' } as const)
-    if (verified > 0) rows.push({ key: 'verified', label: 'Verified', count: verified, tone: 'verified' } as const)
-    if (unverified > 0) rows.push({ key: 'unverified', label: 'Unverified', count: unverified, tone: 'unverified' } as const)
-    onlineCountPopover.setRows(rows)
-  } catch {
-    // Best-effort: keep prior value.
-  }
-}
+const { count: onlineCount, onlineCountPopover } = useOnlineCount({
+  enabled: computed(() => !isRightRailForcedHidden.value),
+})
 
 function onOnlineLinkEnter(e: MouseEvent) {
   onlineCountPopover.onTriggerEnter(e)
@@ -1658,43 +1610,6 @@ function onOnlineLinkLeave() {
 function onOnlineLinkClick() {
   onlineCountPopover.close()
 }
-
-watch(
-  () => isRightRailForcedHidden.value,
-  (hidden) => {
-    if (!import.meta.client) return
-    if (onlinePollTimer) {
-      clearInterval(onlinePollTimer)
-      onlinePollTimer = null
-    }
-    if (hidden) return
-    void Promise.resolve(refreshOnlineCount()).catch(() => undefined)
-    onlinePollTimer = setInterval(() => {
-      void Promise.resolve(refreshOnlineCount()).catch(() => undefined)
-    }, 30_000)
-  },
-  { immediate: true },
-)
-
-// If the first poll happens before the viewer's socket is connected, /presence/online can undercount (often 0 when only you are online).
-// Refresh once right after presence connects so the right-rail "X online" matches the /online page count.
-watch(
-  () => isSocketConnected.value,
-  (connected) => {
-    if (!import.meta.client) return
-    if (!connected) return
-    if (!isAuthed.value) return
-    if (isRightRailForcedHidden.value) return
-    void Promise.resolve(refreshOnlineCount()).catch(() => undefined)
-  },
-  { immediate: true },
-)
-onBeforeUnmount(() => {
-  if (onlinePollTimer) {
-    clearInterval(onlinePollTimer)
-    onlinePollTimer = null
-  }
-})
 
 const tierCtaTextClass = computed(() => {
   return userTierTextClass(userColorTier(user.value), { fallback: 'text-gray-700 dark:text-gray-200' })

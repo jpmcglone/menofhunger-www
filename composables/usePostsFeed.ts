@@ -138,7 +138,7 @@ export function usePostsFeed(options: { visibility?: Ref<FeedFilter>; followingO
   // Realtime: patch post interaction counts in-place for visible feeds.
   const visiblePostIds = ref<Set<string>>(new Set())
   const syncedPostIds = ref<Set<string>>(new Set())
-  let io: IntersectionObserver | null = null
+  let postObserver: IntersectionObserver | null = null
   let unsubscribeTimer: ReturnType<typeof setTimeout> | null = null
   const pendingUnsub = new Set<string>()
 
@@ -210,7 +210,7 @@ export function usePostsFeed(options: { visibility?: Ref<FeedFilter>; followingO
     for (const el of els) {
       const id = (el.dataset.postId ?? '').trim()
       if (!id) continue
-      io?.observe(el)
+      postObserver?.observe(el)
     }
   }
 
@@ -306,7 +306,7 @@ export function usePostsFeed(options: { visibility?: Ref<FeedFilter>; followingO
   // Viewport subscriptions: subscribe while a post row is on-screen (with buffer).
   if (import.meta.client) {
     onMounted(() => {
-      io = new IntersectionObserver(
+      postObserver = new IntersectionObserver(
         (entries) => {
           const toSub: string[] = []
           for (const entry of entries) {
@@ -345,8 +345,8 @@ export function usePostsFeed(options: { visibility?: Ref<FeedFilter>; followingO
       () => void nextTick(() => rescanAndObserve()),
     )
     onBeforeUnmount(() => {
-      io?.disconnect()
-      io = null
+      postObserver?.disconnect()
+      postObserver = null
       if (unsubscribeTimer) clearTimeout(unsubscribeTimer)
       unsubscribeTimer = null
       pendingUnsub.clear()

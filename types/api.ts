@@ -17,7 +17,12 @@ export type ApiPagination = {
     verifiedOnly: number
     premiumOnly: number
   } | null
-  totalOnline?: number
+}
+
+/** Pagination shape specific to the /presence/online endpoint. */
+export type PresencePagination = ApiPagination & {
+  totalOnline: number
+  recentNextCursor?: string | null
 }
 
 export type ApiMetaError = {
@@ -65,15 +70,8 @@ export type NotificationPreferences = {
   emailStreakReminder: boolean
 }
 
-export type RadioStation = {
-  id: string
-  name: string
-  streamUrl: string
-  attributionName: string | null
-  attributionUrl: string | null
-}
-
-export type RadioListener = {
+/** Shared shape for Radio and Space lobby members (listeners/members). */
+export type LobbyMember = {
   id: string
   username: string | null
   avatarUrl: string | null
@@ -85,11 +83,8 @@ export type RadioListener = {
   muted?: boolean
 }
 
-export type RadioLobbyCounts = {
-  countsByStationId: Record<string, number>
-}
-
-export type RadioChatSender = {
+/** Shared shape for Radio and Space live-chat message senders. */
+export type LiveChatSender = {
   id: string
   username: string | null
   premium: boolean
@@ -98,6 +93,22 @@ export type RadioChatSender = {
   verifiedStatus: 'none' | 'identity' | 'manual'
   stewardBadgeEnabled: boolean
 }
+
+export type RadioStation = {
+  id: string
+  name: string
+  streamUrl: string
+  attributionName: string | null
+  attributionUrl: string | null
+}
+
+export type RadioListener = LobbyMember
+
+export type RadioLobbyCounts = {
+  countsByStationId: Record<string, number>
+}
+
+export type RadioChatSender = LiveChatSender
 
 export type RadioChatMessage = {
   id: string
@@ -128,31 +139,13 @@ export type Space = {
   isBuiltin: boolean
 }
 
-export type SpaceMember = {
-  id: string
-  username: string | null
-  avatarUrl: string | null
-  premium: boolean
-  premiumPlus: boolean
-  isOrganization: boolean
-  verifiedStatus: 'none' | 'identity' | 'manual'
-  paused?: boolean
-  muted?: boolean
-}
+export type SpaceMember = LobbyMember
 
 export type SpaceLobbyCounts = {
   countsBySpaceId: Record<string, number>
 }
 
-export type SpaceChatSender = {
-  id: string
-  username: string | null
-  premium: boolean
-  premiumPlus: boolean
-  isOrganization: boolean
-  verifiedStatus: 'none' | 'identity' | 'manual'
-  stewardBadgeEnabled: boolean
-}
+export type SpaceChatSender = LiveChatSender
 
 export type SpaceChatMessage =
   | {
@@ -902,7 +895,7 @@ export type NotificationActor = {
   avatarUrl: string | null
   premium?: boolean
   isOrganization?: boolean
-  verifiedStatus?: string | null
+  verifiedStatus?: 'none' | 'identity' | 'manual' | null
 }
 
 export type SubjectPostPreview = {

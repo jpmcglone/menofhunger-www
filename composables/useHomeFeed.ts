@@ -147,16 +147,10 @@ export function useHomeFeed() {
     await preserveMiddleScrollAfter(async () => await refresh({ visibility: 'all', sort: 'new' }))
   }
 
+  // Watch scope and user identity together so a simultaneous login+scope change
+  // only triggers a single refresh instead of two racing requests.
   watch(
-    () => feedScope.value,
-    () => {
-      void refresh()
-    },
-    { flush: 'post' },
-  )
-
-  watch(
-    () => user.value?.id ?? null,
+    () => [feedScope.value, user.value?.id ?? null] as const,
     () => {
       void refresh()
     },

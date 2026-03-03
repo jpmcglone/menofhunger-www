@@ -113,7 +113,6 @@ export default defineNuxtConfig({
       link: [
         { rel: 'manifest', href: '/site.webmanifest' },
         { rel: 'apple-touch-icon', sizes: '180x180', href: '/apple-touch-icon.png' },
-        { rel: 'apple-touch-icon-precomposed', sizes: '180x180', href: '/apple-touch-icon-precomposed.png' },
         { rel: 'icon', type: 'image/png', sizes: '192x192', href: '/android-chrome-192x192.png' },
         { rel: 'icon', type: 'image/png', sizes: '512x512', href: '/android-chrome-512x512.png' },
         { rel: 'icon', type: 'image/png', sizes: '32x32', href: '/favicon-32x32.png' },
@@ -331,6 +330,7 @@ export default defineNuxtConfig({
     '/only-me': { ssr: false },
     '/online': { ssr: true },
     '/settings': { ssr: false },
+    '/settings/**': { ssr: false },
     '/feedback': { ssr: false },
     '/admin': { ssr: false },
     '/admin/**': { ssr: false },

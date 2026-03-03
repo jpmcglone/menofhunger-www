@@ -463,10 +463,8 @@ export function usePresence() {
   function connect() {
     if (!import.meta.client) return
     if (!user.value?.id || !apiBaseUrl) return
-    if (isSocketConnecting.value) return
-    if (socketRef.value?.connected) return
-    // Don't replace a socket that's still connecting (avoids "closed before connection" when multiple components mount).
-    if (socketRef.value && !socketRef.value.connected) return
+    // If a socket already exists (connected or still connecting), don't create another one.
+    if (isSocketConnecting.value || socketRef.value) return
 
     isSocketConnecting.value = true
     const wsUrl = apiBaseUrlToWsUrl(apiBaseUrl)

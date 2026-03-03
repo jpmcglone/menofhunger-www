@@ -74,24 +74,24 @@ export function useAuth() {
 
           // If this update is about *me*, patch my auth user object.
           if (u.id === user.value?.id) {
+            // Spread existing user first to preserve fields that PublicProfile doesn't carry
+            // (locationInput, locationZip, phone, etc.), then overlay the fields it does.
             user.value = {
-              ...(user.value ?? ({ id: u.id } as AuthUser)),
+              ...(user.value ?? ({ id: u.id, phone: '' } as AuthUser)),
               username: u.username,
               name: u.name,
               bio: u.bio,
-              website: (u as any).website ?? (user.value as any)?.website ?? null,
-              locationInput: (u as any).locationInput ?? (user.value as any)?.locationInput ?? null,
-              locationDisplay: (u as any).locationDisplay ?? (user.value as any)?.locationDisplay ?? null,
-              locationZip: (u as any).locationZip ?? (user.value as any)?.locationZip ?? null,
-              locationCity: (u as any).locationCity ?? (user.value as any)?.locationCity ?? null,
-              locationCounty: (u as any).locationCounty ?? (user.value as any)?.locationCounty ?? null,
-              locationState: (u as any).locationState ?? (user.value as any)?.locationState ?? null,
-              locationCountry: (u as any).locationCountry ?? (user.value as any)?.locationCountry ?? null,
+              website: u.website,
+              locationDisplay: u.locationDisplay,
+              locationCity: u.locationCity,
+              locationCounty: u.locationCounty,
+              locationState: u.locationState,
+              locationCountry: u.locationCountry,
               premium: u.premium,
               premiumPlus: u.premiumPlus,
-              isOrganization: (u as any).isOrganization,
+              isOrganization: u.isOrganization,
               stewardBadgeEnabled: u.stewardBadgeEnabled,
-              verifiedStatus: u.verifiedStatus as any,
+              verifiedStatus: u.verifiedStatus,
               avatarUrl: u.avatarUrl,
               bannerUrl: u.bannerUrl,
               pinnedPostId: u.pinnedPostId,
@@ -110,7 +110,7 @@ export function useAuth() {
           if (!me?.id) return
           if (me.id !== user.value?.id) return
           // Canonical snapshot: replace local auth user state.
-          user.value = me as any
+          user.value = me
         },
       }
       addUsersCallback(cb)

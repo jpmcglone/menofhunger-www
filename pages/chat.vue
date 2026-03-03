@@ -493,6 +493,7 @@ import ChatMessageList from '~/components/app/chat/ChatMessageList.vue'
 import ChatMessageInfoModal from '~/components/app/chat/ChatMessageInfoModal.vue'
 import { useMediaQuery } from '@vueuse/core'
 import { useKeyboardHeight } from '~/composables/useKeyboardHeight'
+import { useRecipientSearch } from '~/composables/chat/useRecipientSearch'
 import { userColorTier, type UserColorTier } from '~/utils/user-tier'
 
 const { apiFetch, apiFetchData } = useApiClient()
@@ -783,12 +784,19 @@ watch(
 
 const newDialogVisible = ref(false)
 const startChatInfoVisible = ref(false)
-const recipientQuery = ref('')
-const recipientResults = ref<FollowListUser[]>([])
-const recipientLoading = ref(false)
-const recipientError = ref<string | null>(null)
-const selectedRecipients = ref<FollowListUser[]>([])
 const newConversationError = ref<string | null>(null)
+const {
+  query: recipientQuery,
+  results: recipientResults,
+  loading: recipientLoading,
+  error: recipientError,
+  selected: selectedRecipients,
+  canStart: canStartDraft,
+  add: addRecipient,
+  remove: removeRecipient,
+  reset: resetRecipientSearch,
+  tagStyle: recipientTagStyle,
+} = useRecipientSearch(computed(() => me.value?.id))
 
 const draftRecipients = ref<FollowListUser[]>([])
 
@@ -804,8 +812,6 @@ const requestsBadgeCount = computed(() => conversations.value.requests.filter((c
 const showRequestsBadge = computed(() => requestsBadgeCount.value > 0)
 const requestsBadgeText = computed(() => (requestsBadgeCount.value >= 99 ? '99+' : String(requestsBadgeCount.value)))
 const badgeToneClass = computed(() => toneClass.value)
-
-const canStartDraft = computed(() => selectedRecipients.value.length > 0)
 
 const pendingButtonClass = computed(() => {
   // When there are unread/new messages below, keep the tier color treatment.
@@ -1744,66 +1750,11 @@ function openNewDialog() {
     return
   }
   newDialogVisible.value = true
-  recipientQuery.value = ''
-  recipientResults.value = []
-  selectedRecipients.value = []
+  resetRecipientSearch()
   newConversationError.value = null
 }
 
 
-let recipientSearchTimer: ReturnType<typeof setTimeout> | null = null
-watch(recipientQuery, (val) => {
-  recipientError.value = null
-  if (recipientSearchTimer) clearTimeout(recipientSearchTimer)
-  // Strip a leading @ so typing "@jay" works the same as "jay".
-  const q = val.trim().replace(/^@+/, '')
-  if (!q) {
-    recipientResults.value = []
-    return
-  }
-  recipientSearchTimer = setTimeout(async () => {
-    recipientLoading.value = true
-    try {
-      const res = await apiFetchData<FollowListUser[]>('/search', {
-        query: { type: 'users', q, limit: 8 },
-      })
-      const filtered = (res ?? [])
-        .filter((u) => u.id !== me.value?.id)
-        .filter((u) => userColorTier(u) !== 'normal')
-      recipientResults.value = filtered
-    } catch (e) {
-      recipientError.value = getApiErrorMessage(e) || 'Failed to search users.'
-    } finally {
-      recipientLoading.value = false
-    }
-  }, 250)
-})
-
-onBeforeUnmount(() => {
-  if (recipientSearchTimer) {
-    clearTimeout(recipientSearchTimer)
-    recipientSearchTimer = null
-  }
-})
-
-function addRecipient(user: FollowListUser) {
-  if (selectedRecipients.value.find((u) => u.id === user.id)) return
-  selectedRecipients.value = [...selectedRecipients.value, user]
-  recipientQuery.value = ''
-  recipientResults.value = []
-}
-
-function removeRecipient(userId: string) {
-  selectedRecipients.value = selectedRecipients.value.filter((u) => u.id !== userId)
-}
-
-function recipientTagStyle(u: FollowListUser): Record<string, string> {
-  const tier = userColorTier(u)
-  if (tier === 'verified')     return { background: 'var(--moh-verified-soft)',  color: 'var(--moh-verified)' }
-  if (tier === 'premium')      return { background: 'var(--moh-premium-soft)',   color: 'var(--moh-premium)' }
-  if (tier === 'organization') return { background: 'var(--moh-org-soft)',        color: 'var(--moh-org)' }
-  return { background: 'rgba(128,128,128,0.12)', color: 'inherit' }
-}
 
 async function createConversation() {
   // Start a draft chat or jump to an existing conversation.

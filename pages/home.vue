@@ -218,8 +218,6 @@ const { dayKey: etDayKey } = useEasternMidnightRollover()
 
 const { state: checkinState, error: checkinError, refresh: refreshCheckin, create: createCheckin } = useDailyCheckin()
 const checkinVisibility = ref<CheckinAllowedVisibility>('verifiedOnly')
-// TEMP: force the prompt bar to show while debugging check-in UX.
-const FORCE_SHOW_CHECKIN_PROMPT_BAR = false
 const composerVisibility = useCookie<PostVisibility>('moh.post.visibility.v1', {
   default: () => 'public',
   sameSite: 'lax',
@@ -249,7 +247,6 @@ const showCheckinPromptBar = computed(() => {
   if (!isAuthed.value) return false
   // Avoid showing check-in card when main feed is blocked by a gate CTA.
   if (feedCtaKind.value) return false
-  if (FORCE_SHOW_CHECKIN_PROMPT_BAR) return true
   if (!checkinState.value) return false
   if (checkinState.value.hasCheckedInToday) return false
   if (!effectiveCheckinAllowedVisibilities.value.length) return false
