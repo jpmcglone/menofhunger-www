@@ -881,9 +881,19 @@ const headerMembers = computed(() => {
     })
 })
 
-const otherParticipants = computed(() =>
-  (selectedConversation.value?.participants ?? []).filter((p) => p.user.id !== me.value?.id),
-)
+const lastMessage = computed(() => messages.value[messages.value.length - 1] ?? null)
+const lastMessageIsMine = computed(() => !!lastMessage.value && lastMessage.value.sender.id === me.value?.id)
+
+// Exclude self from read receipts only when the final message is ours — there's no point
+// showing "I've read my own message". When the final message belongs to someone else, include
+// self so others can see we've read theirs.
+const otherParticipants = computed(() => {
+  const all = selectedConversation.value?.participants ?? []
+  if (lastMessageIsMine.value) {
+    return all.filter((p) => p.user.id !== me.value?.id)
+  }
+  return all
+})
 
 const isGroupChat = computed(() => {
   if (selectedConversation.value?.type === 'group') {

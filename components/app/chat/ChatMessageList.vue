@@ -143,7 +143,7 @@
                   <div
                     v-for="media in item.message.media"
                     :key="media.id"
-                    class="relative overflow-hidden rounded-2xl"
+                    class="relative overflow-hidden rounded-2xl bg-gray-200 dark:bg-zinc-800"
                   >
                     <!-- Video: poster + play icon, opens in lightbox -->
                     <button
@@ -157,10 +157,11 @@
                       <img
                         v-if="media.thumbnailUrl"
                         :src="media.thumbnailUrl"
-                        class="block h-full w-full object-cover transition-opacity duration-150"
-                        :class="{ 'opacity-0': chatHideThumbs }"
+                        class="block h-full w-full object-cover transition-opacity duration-300"
+                        :class="{ 'opacity-0': chatHideThumbs || !loadedMediaIds.has(`thumb-${media.id}`) }"
                         loading="lazy"
                         aria-hidden="true"
+                        @load="loadedMediaIds.add(`thumb-${media.id}`)"
                       />
                       <div v-else class="absolute inset-0 bg-gray-900" aria-hidden="true" />
                       <div class="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/20" aria-hidden="true">
@@ -179,9 +180,10 @@
                       <img
                         :src="media.url"
                         :alt="media.alt ?? ''"
-                        class="block h-full w-full object-cover transition-opacity duration-150"
-                        :class="{ 'opacity-0': chatHideThumbs }"
+                        class="block h-full w-full object-cover transition-opacity duration-300"
+                        :class="{ 'opacity-0': chatHideThumbs || !loadedMediaIds.has(media.id) }"
                         loading="lazy"
+                        @load="loadedMediaIds.add(media.id)"
                       />
                     </button>
 
@@ -401,6 +403,10 @@ const toast = useAppToast()
 const colorMode = useColorMode()
 const viewer = useImageLightbox()
 const chatHideThumbs = computed(() => viewer.kind.value === 'media' && viewer.hideOrigin.value)
+
+// Track which media IDs have finished loading so we can fade them in without layout shift.
+// reactive(Set) lets Vue track .has() calls reactively.
+const loadedMediaIds = reactive(new Set<string>())
 
 const props = defineProps({
   messagesReady: { type: Boolean, required: true },

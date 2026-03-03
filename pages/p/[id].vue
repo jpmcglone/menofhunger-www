@@ -517,7 +517,12 @@ if (import.meta.client) {
             if (!el || !scroller) return
             const elRect = el.getBoundingClientRect()
             const scrollerRect = scroller.getBoundingClientRect()
-            const delta = elRect.top - scrollerRect.top
+            // Offset by the sticky title bar height so the post top aligns with
+            // the bottom of the title bar, not the top of the scroller.
+            const titleBarHeight = parseFloat(
+              getComputedStyle(scroller).getPropertyValue('--moh-title-bar-height'),
+            ) || 0
+            const delta = elRect.top - scrollerRect.top - titleBarHeight
             if (delta <= 1) return
             scroller.scrollTop = scroller.scrollTop + delta
           }),
