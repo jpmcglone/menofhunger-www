@@ -17,11 +17,12 @@ export type ApiPagination = {
     verifiedOnly: number
     premiumOnly: number
   } | null
+  /** Total online users — only populated by /presence/online and /presence/online-page. */
+  totalOnline?: number
 }
 
-/** Pagination shape specific to the /presence/online endpoint. */
+/** Extended pagination shape for /presence/online-page which also returns a recent-users cursor. */
 export type PresencePagination = ApiPagination & {
-  totalOnline: number
   recentNextCursor?: string | null
 }
 

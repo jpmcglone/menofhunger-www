@@ -9,7 +9,8 @@ import type { GetPresenceOnlineData } from '~/types/api'
  */
 export function useOnlineCount(options: { enabled: Ref<boolean> }) {
   const { apiFetch } = useApiClient()
-  const { isSocketConnected, isAuthed } = usePresence()
+  const { isSocketConnected } = usePresence()
+  const { isAuthed } = useAuth()
   const onlineCountPopover = useOnlineCountPopover()
 
   const count = ref<number | null>(null)
