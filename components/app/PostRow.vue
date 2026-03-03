@@ -56,7 +56,13 @@
         :style="threadLineBelowStyle"
       />
     </div>
-    <div class="flex gap-2.5 sm:gap-3" :class="{ 'mt-2': showThreadLineAboveAvatar && noPaddingTop }">
+    <div
+      class="flex gap-2.5 sm:gap-3"
+      :class="{
+        'mt-2': showThreadLineAboveAvatar && noPaddingTop,
+        'pt-3': showThreadLineAboveAvatar && !noPaddingTop,
+      }"
+    >
       <div class="relative z-20 shrink-0 flex flex-col w-10">
         <!-- Own post + in a space: show context menu instead of direct navigation -->
         <template v-if="showAvatarMenu">
@@ -106,7 +112,7 @@
         </div>
       </div>
 
-      <div class="relative z-10 min-w-0 flex-1" :class="{ 'pt-3': showThreadLineAboveAvatar }">
+      <div class="relative z-10 min-w-0 flex-1">
         <div class="relative">
           <AppPostHeaderLine
             :display-name="author.name || author.username || 'User'"
