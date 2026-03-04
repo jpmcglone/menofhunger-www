@@ -1,7 +1,7 @@
 <template>
   <Card class="moh-card moh-card-matte !rounded-2xl">
     <template #title>
-      <span class="moh-h2">Posting Streak Leaderboard</span>
+      <span class="moh-h2">Streak Leaderboard</span>
     </template>
     <template #content>
       <div v-if="loading && users.length === 0" class="flex justify-center py-4">
@@ -16,13 +16,7 @@
         >
           <div
             class="shrink-0 w-5 text-center text-xs font-bold tabular-nums"
-            :class="
-              i === 0
-                ? 'text-amber-500'
-                : i === 1
-                  ? 'text-gray-400 dark:text-gray-500'
-                  : 'text-amber-700 dark:text-amber-600'
-            "
+            :style="{ color: tierColor(u) }"
           >
             {{ i + 1 }}
           </div>
@@ -40,8 +34,8 @@
             <AppUserIdentityLine :user="u" badge-size="xs" />
           </div>
 
-          <div class="shrink-0 flex items-center gap-0.5 text-xs font-semibold" style="color: var(--moh-checkin)">
-            <Icon name="tabler:flame" class="text-[11px]" aria-hidden="true" />
+          <div class="shrink-0 flex items-center gap-0.5 text-xs font-semibold moh-text">
+            <Icon name="tabler:flame" class="text-[11px] moh-text-muted" aria-hidden="true" />
             {{ u.checkinStreakDays }}d
           </div>
         </div>
@@ -64,8 +58,17 @@
 </template>
 
 <script setup lang="ts">
+import type { LeaderboardUser } from '~/types/api'
+
 const { users, loading, error, refresh } = useCheckinsLeaderboard({ limit: 3 })
 const { user: authUser } = useAuth()
+
+function tierColor(u: LeaderboardUser): string {
+  if (u.premiumPlus || u.stewardBadgeEnabled) return 'var(--moh-steward)'
+  if (u.premium) return 'var(--moh-premium)'
+  if (u.verifiedStatus !== 'none') return 'var(--moh-verified)'
+  return 'var(--moh-text-muted)'
+}
 const tierCtaTextClass = computed(() => {
   if (authUser.value?.premiumPlus) return 'text-[color:var(--moh-steward)]'
   if (authUser.value?.premium) return 'text-[color:var(--moh-premium)]'

@@ -75,13 +75,27 @@
     </a>
 
     <!-- Space preview — compact single-line variant for chat bubbles -->
-    <div
-      v-if="embeddedSpace"
-      class="mt-2 overflow-hidden rounded-lg border border-current/20 bg-black/20"
-      @click.stop
-    >
-      <AppSpaceRow :space="embeddedSpace" compact />
-    </div>
+    <template v-if="embeddedSpaceId">
+      <!-- Skeleton while the space store is loading -->
+      <div
+        v-if="!embeddedSpace"
+        class="mt-2 overflow-hidden rounded-lg border border-current/20 bg-black/10 dark:bg-white/5 animate-pulse"
+        aria-hidden="true"
+        @click.stop
+      >
+        <div class="flex items-center gap-2.5 px-3 py-1.5">
+          <div class="h-5 w-5 shrink-0 rounded-full bg-current/20" />
+          <div class="flex-1 space-y-1">
+            <div class="h-2.5 w-2/5 rounded bg-current/20" />
+            <div class="h-2 w-1/3 rounded bg-current/20" />
+          </div>
+        </div>
+      </div>
+      <!-- Resolved space -->
+      <div v-else class="mt-2 overflow-hidden rounded-lg border border-current/20 bg-black/20" @click.stop>
+        <AppSpaceRow :space="embeddedSpace" compact />
+      </div>
+    </template>
   </div>
 </template>
 

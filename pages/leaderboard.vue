@@ -3,7 +3,7 @@
     <div class="w-full">
       <div class="px-4 pt-4 pb-3">
         <AppPageHeader
-          title="Posting Streak Leaderboard"
+          title="Streak Leaderboard"
           icon="tabler:flame"
           description="Members with the longest active daily posting streaks. Any post counts."
         />
@@ -70,8 +70,8 @@ definePageMeta({
 })
 
 usePageSeo({
-  title: 'Posting Streak Leaderboard',
-  description: 'Members with the longest active daily posting streaks on Men of Hunger.',
+  title: 'Streak Leaderboard',
+  description: 'Members with the longest active posting streaks on Men of Hunger.',
   canonicalPath: '/leaderboard',
   noindex: true,
 })

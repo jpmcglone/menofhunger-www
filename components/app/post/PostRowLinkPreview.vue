@@ -93,13 +93,27 @@
     </div>
 
     <!-- Space preview — rendered as a card using the exact same row as /spaces -->
-    <div
-      v-if="embeddedSpace && rowInView"
-      class="overflow-hidden rounded-xl border moh-border"
-      @click.stop
-    >
-      <AppSpaceRow :space="embeddedSpace" preview />
-    </div>
+    <template v-if="embeddedSpaceId && rowInView">
+      <!-- Skeleton while the space store is loading -->
+      <div
+        v-if="!embeddedSpace"
+        class="overflow-hidden rounded-xl border moh-border animate-pulse"
+        aria-hidden="true"
+        @click.stop
+      >
+        <div class="flex items-center gap-3 px-4 py-2.5">
+          <div class="h-8 w-8 shrink-0 rounded-full bg-black/10 dark:bg-white/10" />
+          <div class="flex-1 space-y-1.5">
+            <div class="h-3 w-2/5 rounded bg-black/10 dark:bg-white/10" />
+            <div class="h-2.5 w-1/3 rounded bg-black/10 dark:bg-white/10" />
+          </div>
+        </div>
+      </div>
+      <!-- Resolved space -->
+      <div v-else class="overflow-hidden rounded-xl border moh-border" @click.stop>
+        <AppSpaceRow :space="embeddedSpace" preview />
+      </div>
+    </template>
 
     <div v-if="isPreviewLinkRumble && previewLink" class="mt-2 flex justify-end">
       <a
@@ -368,12 +382,12 @@ const embeddedPreviewEnabled = computed(() => {
 })
 
 // Embedded MOH post: always show block so SSR can fetch and render the preview before first paint.
-// Space preview: show when space is resolved and row is in view.
+// Space preview: show skeleton while loading, resolved card when ready (both require rowInView).
 // External link preview: only show when row is in view (avoid metadata fetch for off-screen rows).
 const showAny = computed(() =>
   Boolean(
     embeddedPostId.value ||
-    (embeddedSpace.value && rowInView.value) ||
+    (embeddedSpaceId.value && rowInView.value) ||
     (showLinkPreview.value && rowInView.value),
   )
 )
