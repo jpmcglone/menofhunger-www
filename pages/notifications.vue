@@ -49,8 +49,8 @@
             role="link"
             tabindex="0"
             @click="navigate($event)"
-            @keydown.enter.prevent="navigate($event)"
-            @keydown.space.prevent="navigate($event)"
+            @keydown.enter.prevent="navigate()"
+            @keydown.space.prevent="navigate()"
           >
             <AppNotificationRow
               v-if="item.type === 'single'"
