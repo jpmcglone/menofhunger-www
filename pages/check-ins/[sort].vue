@@ -10,20 +10,22 @@
       </div>
 
       <div class="px-4 pb-2 flex items-center gap-2">
-        <Button
-          label="Trending"
-          :severity="sort === 'trending' ? 'primary' : 'secondary'"
-          rounded
-          size="small"
-          @click="() => (sort = 'trending')"
-        />
-        <Button
-          label="New"
-          :severity="sort === 'new' ? 'primary' : 'secondary'"
-          rounded
-          size="small"
-          @click="() => (sort = 'new')"
-        />
+        <NuxtLink to="/check-ins/trending">
+          <Button
+            label="Trending"
+            :severity="sort === 'trending' ? 'primary' : 'secondary'"
+            rounded
+            size="small"
+          />
+        </NuxtLink>
+        <NuxtLink to="/check-ins/new">
+          <Button
+            label="New"
+            :severity="sort === 'new' ? 'primary' : 'secondary'"
+            rounded
+            size="small"
+          />
+        </NuxtLink>
       </div>
 
       <div v-if="error" class="px-4 pb-3">
@@ -70,6 +72,18 @@
 import type { FeedPost } from '~/types/api'
 import { useCursorFeed } from '~/composables/useCursorFeed'
 
+const route = useRoute()
+
+// Validate sort param — anything other than 'new' falls back to 'trending'
+const sort = computed<'trending' | 'new'>(() =>
+  route.params.sort === 'new' ? 'new' : 'trending'
+)
+
+// Redirect invalid slugs (e.g. /check-ins/foo) to canonical route
+if (import.meta.server && sort.value !== route.params.sort) {
+  await navigateTo('/check-ins/trending', { replace: true })
+}
+
 definePageMeta({
   layout: 'app',
   title: 'Check-ins',
@@ -77,16 +91,14 @@ definePageMeta({
 })
 
 usePageSeo({
-  title: 'Check-ins',
+  title: computed(() => (sort.value === 'new' ? 'New Check-ins' : 'Trending Check-ins')),
   description: 'Recent and trending check-ins on Men of Hunger.',
-  canonicalPath: '/check-ins',
+  canonicalPath: computed(() => `/check-ins/${sort.value}`),
   noindex: true,
 })
 
-const sort = ref<'trending' | 'new'>('trending')
-
 const { items: posts, nextCursor, loading, loadingMore, error, refresh, loadMore } = useCursorFeed<FeedPost>({
-  stateKey: 'check-ins-feed',
+  stateKey: `check-ins-feed-${sort.value}`,
   buildRequest: (cursor) => ({
     path: '/posts',
     query: {
