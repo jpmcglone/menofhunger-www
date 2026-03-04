@@ -1,6 +1,6 @@
 import { ref, computed, type Ref, type ComputedRef } from 'vue'
 import { userColorTier } from '~/utils/user-tier'
-import type { User } from '~/types/api'
+import type { AuthUser } from '~/composables/useAuth'
 
 export const BOTTOM_THRESHOLD = 24
 const USER_SCROLL_GRACE_MS = 2000
@@ -10,7 +10,7 @@ export interface UseChatScrollOptions {
   selectedChatKey: Ref<string | null>
   selectedConversationId: Ref<string | null>
   prefersReducedMotion: Ref<boolean>
-  me: ComputedRef<User | null> | Ref<User | null>
+  me: ComputedRef<AuthUser | null> | Ref<AuthUser | null>
   /** Called after scroll state updates; use to re-compute sticky date dividers. */
   onUpdateStickyDivider?: () => void
   /** Called when user first reaches the bottom (was not at bottom before). */
