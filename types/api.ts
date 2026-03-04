@@ -1064,6 +1064,8 @@ export type MessageConversation = {
   isMuted: boolean
   /** True when a block exists in either direction between viewer and the other participant (direct chats only). */
   isBlockedWith?: boolean
+  /** Present on search results when a message body matched the query. */
+  matchedMessage?: { id: string; body: string; createdAt: string } | null
 }
 
 export type GetMessageConversationsData = MessageConversation[]
@@ -1101,6 +1103,15 @@ export type LookupMessageConversationResponse = {
 
 export type SearchMessageConversationsResponse = {
   data: MessageConversation[]
+}
+
+export type MessagesAroundResponse = {
+  data: {
+    messages: Message[]
+    olderCursor: string | null
+    newerCursor: string | null
+    targetMessageId: string
+  }
 }
 
 export type MessageBlockListItem = {

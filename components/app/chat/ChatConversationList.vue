@@ -66,8 +66,14 @@
           <input
             v-model="searchQuery"
             type="search"
-            placeholder="Search chats…"
-            class="w-full rounded-lg border border-gray-200 bg-gray-50 py-1.5 pl-8 pr-3 text-sm placeholder-gray-400 outline-none focus:border-gray-400 focus:ring-0 dark:border-zinc-700 dark:bg-zinc-900 dark:placeholder-gray-500 dark:focus:border-zinc-500"
+            placeholder="Search chats or messages…"
+            class="w-full rounded-lg border border-gray-200 bg-gray-50 py-1.5 pl-8 pr-8 text-sm placeholder-gray-400 outline-none focus:border-gray-400 focus:ring-0 dark:border-zinc-700 dark:bg-zinc-900 dark:placeholder-gray-500 dark:focus:border-zinc-500"
+          />
+          <Icon
+            v-if="searchLoading"
+            name="tabler:loader-2"
+            class="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 animate-spin text-sm"
+            aria-hidden="true"
           />
         </div>
       </div>
@@ -78,7 +84,7 @@
     </div>
 
     <div v-else-if="displayList.length === 0" class="px-4 pt-2 pb-4 text-sm text-gray-500 dark:text-gray-400">
-      <template v-if="searchQuery.trim()">No chats matching "{{ searchQuery.trim() }}".</template>
+      <template v-if="searchEmptyMessage">{{ searchEmptyMessage }}</template>
       <template v-else>{{ activeTab === 'requests' ? 'No chat requests yet.' : 'No chats yet.' }}</template>
     </div>
 
@@ -93,7 +99,7 @@
         :key="c.id"
         :to="conversationPath(c.id)"
         class="block w-full text-left"
-        @click="onConversationClick(c.id, $event)"
+        @click="onConversationClick(c, $event)"
       >
         <div
           :class="[
@@ -154,6 +160,9 @@
                       <span class="ml-1">are typing…</span>
                     </template>
                   </div>
+                  <div v-else-if="c.matchedMessage" :key="`match-${c.id}`" class="truncate italic text-gray-500 dark:text-gray-400">
+                    "{{ c.matchedMessage.body.slice(0, 80) }}"
+                  </div>
                   <div v-else :key="`preview-${c.id}`" class="truncate">
                     {{ getConversationPreview(c) }}
                   </div>
@@ -194,30 +203,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import type { PropType } from 'vue'
 import type { MessageConversation, MessageUser } from '~/types/api'
 import type { TypingUserDisplay } from '~/composables/chat/useChatTyping'
 import { useUsersStore } from '~/composables/useUsersStore'
-
-const searchQuery = ref('')
-
-const displayList = computed(() => {
-  const q = searchQuery.value.trim().toLowerCase()
-  if (!q) return props.activeList
-  return props.activeList.filter((c) => {
-    if (c.title?.toLowerCase().includes(q)) return true
-    const other = props.getDirectUser(c)
-    if (other?.name?.toLowerCase().includes(q)) return true
-    if (other?.username?.toLowerCase().includes(q)) return true
-    // Also search other participants for group chats
-    return c.participants.some((p) => {
-      if (!p.user) return false
-      const u = p.user as MessageUser
-      return u.name?.toLowerCase().includes(q) || u.username?.toLowerCase().includes(q)
-    })
-  })
-})
 
 const props = defineProps({
   isTinyViewport: { type: Boolean, required: true },
@@ -239,15 +229,40 @@ const props = defineProps({
   typingNameClass: { type: Function as PropType<(u: TypingUserDisplay) => string>, required: true },
   conversationUnreadHighlightClass: { type: Function as PropType<(c: MessageConversation) => string>, required: true },
   conversationDotClass: { type: Function as PropType<(c: MessageConversation) => string>, required: true },
+  /** API search results — non-null when the parent has returned results for the current query. */
+  searchResults: { type: Array as PropType<MessageConversation[] | null>, default: null },
+  /** True while the API search is in flight. */
+  searchLoading: { type: Boolean, default: false },
 })
 
 const emit = defineEmits<{
   (e: 'select', id: string): void
+  (e: 'select-to-message', conversationId: string, messageId: string): void
   (e: 'set-tab', tab: 'primary' | 'requests'): void
   (e: 'open-new'): void
   (e: 'open-blocks'): void
   (e: 'load-more'): void
+  (e: 'search-query', q: string): void
 }>()
+
+const searchQuery = ref('')
+
+watch(searchQuery, (q) => emit('search-query', q))
+
+const displayList = computed(() => {
+  const q = searchQuery.value.trim().toLowerCase()
+  if (!q) return props.activeList
+  // Only use API results — no client-side filter (avoids "No results" flicker before API returns).
+  if (props.searchResults !== null) return props.searchResults
+  return []
+})
+
+const searchEmptyMessage = computed(() => {
+  const q = searchQuery.value.trim()
+  if (!q) return null
+  if (props.searchResults === null) return 'Searching…'
+  return `No chats matching "${q}".`
+})
 
 const usersStore = useUsersStore()
 function getDirectUserOverlay(c: MessageConversation): MessageUser | null {
@@ -260,11 +275,14 @@ function conversationPath(id: string): string {
   return `/chat?c=${encodeURIComponent(id)}`
 }
 
-function onConversationClick(id: string, event: MouseEvent) {
-  // Let browser-native modified clicks (cmd/ctrl/middle) open new tabs.
+function onConversationClick(c: MessageConversation, event: MouseEvent) {
   if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) return
   event.preventDefault()
   searchQuery.value = ''
-  emit('select', id)
+  if (c.matchedMessage) {
+    emit('select-to-message', c.id, c.matchedMessage.id)
+  } else {
+    emit('select', c.id)
+  }
 }
 </script>

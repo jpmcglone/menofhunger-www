@@ -54,11 +54,15 @@
             :typing-name-class="typingNameClass"
             :conversation-unread-highlight-class="conversationUnreadHighlightClass"
             :conversation-dot-class="conversationDotClass"
+            :search-results="conversationSearchResults"
+            :search-loading="conversationSearchLoading"
             @select="selectConversation"
+            @select-to-message="(convId, msgId) => selectConversation(convId, { jumpToMessageId: msgId })"
             @set-tab="setTab"
             @open-new="openNewDialog"
             @open-blocks="navigateTo('/settings/blocked')"
             @load-more="loadMoreConversations"
+            @search-query="handleConversationSearchQuery"
           />
 
           <!-- Right column: chat for selected thread (edge-to-edge column, consistent content margins) -->
@@ -199,10 +203,10 @@
                   <div class="flex items-center gap-2">
                     <Button
                       v-if="selectedConversation"
+                      v-tooltip.bottom="muteButtonTooltip"
                       text
                       severity="secondary"
                       :aria-label="selectedConversation.isMuted ? 'Unmute notifications' : 'Mute notifications'"
-                      :title="selectedConversation.isMuted ? 'Unmute notifications' : 'Mute notifications'"
                       @click="toggleMuteConversation"
                     >
                       <template #icon>
@@ -229,7 +233,10 @@
                 :messages-ready="messagesReady"
                 :messages-loading="messagesLoading"
                 :messages-next-cursor="messagesNextCursor"
+                :messages-newer-cursor="messagesNewerCursor"
                 :loading-older="loadingOlder"
+                :loading-newer="loadingNewer"
+                :jump-target-message-id="jumpTargetMessageId"
                 :is-draft-chat="isDraftChat"
                 :messages-count="messages.length"
                 :messages-with-dividers="messagesWithDividers"
@@ -251,6 +258,7 @@
                 :available-reactions="availableReactions"
                 :participants="otherParticipants"
                 @load-older="loadOlderMessages"
+                @load-newer="loadNewerMessages"
                 @react="handleReact"
                 @reply="handleReply"
                 @info="handleInfo"
@@ -514,6 +522,7 @@ import { useMediaQuery } from '@vueuse/core'
 import { useKeyboardHeight } from '~/composables/useKeyboardHeight'
 import { useRecipientSearch } from '~/composables/chat/useRecipientSearch'
 import { userColorTier, type UserColorTier } from '~/utils/user-tier'
+import { tinyTooltip } from '~/utils/tiny-tooltip'
 
 const { apiFetch, apiFetchData } = useApiClient()
 const route = useRoute()
@@ -624,8 +633,13 @@ const { buildMessagesWithDividers, formatListTime, formatMessageTime, formatMess
 const messagesWithDividers = computed(() => buildMessagesWithDividers(messages.value))
 const stickyDividerLabel = ref<string | null>(null)
 const messagesNextCursor = ref<string | null>(null)
+const messagesNewerCursor = ref<string | null>(null)
 const messagesLoading = ref(false)
 const loadingOlder = ref(false)
+const loadingNewer = ref(false)
+/** The message ID the user jumped to from search. Highlighted until cleared. */
+const jumpTargetMessageId = ref<string | null>(null)
+let jumpHighlightTimer: ReturnType<typeof setTimeout> | null = null
 const sending = ref(false)
 const composerText = ref('')
 const sendError = ref<string | null>(null)
@@ -682,7 +696,10 @@ const {
   me: me as any,
   onUpdateStickyDivider: () => updateStickyDivider(),
   onReachedBottom: (convoId, _hadPending) => markSelectedConversationReadIfVisible(convoId),
-  onScrollerMountedReady: () => { animateMessageList.value = true },
+  onScrollerMountedReady: () => {
+    animateMessageList.value = true
+    scrollToJumpTarget()
+  },
 })
 
 // Derived from conversation.unreadCount + atBottom — no manual sync needed.
@@ -873,6 +890,37 @@ const blockState = useBlockState()
 const activeList = computed(() => conversations.value[activeTab.value])
 const nextCursor = computed(() => nextCursorByTab.value[activeTab.value])
 const listLoading = computed(() => listLoadingByTab.value[activeTab.value])
+
+// ─── Conversation search ─────────────────────────────────────────────────────
+const conversationSearchResults = ref<import('~/types/api').MessageConversation[] | null>(null)
+const conversationSearchLoading = ref(false)
+let searchDebounceTimer: ReturnType<typeof setTimeout> | null = null
+
+function handleConversationSearchQuery(q: string) {
+  if (searchDebounceTimer) { clearTimeout(searchDebounceTimer); searchDebounceTimer = null }
+  const trimmed = q.trim()
+  if (!trimmed) {
+    conversationSearchResults.value = null
+    conversationSearchLoading.value = false
+    return
+  }
+  conversationSearchLoading.value = true
+  conversationSearchResults.value = null
+  searchDebounceTimer = setTimeout(async () => {
+    searchDebounceTimer = null
+    try {
+      const result = await apiFetchData<import('~/types/api').MessageConversation[]>(
+        `/messages/conversations/search?q=${encodeURIComponent(trimmed)}`,
+      )
+      conversationSearchResults.value = Array.isArray(result) ? result : []
+    } catch {
+      conversationSearchResults.value = []
+    } finally {
+      conversationSearchLoading.value = false
+    }
+  }, 300)
+}
+
 // Drive the requests tab badge from local state so it clears immediately when a request
 // is accessed (unreadCount → 0) or deleted (removed from the list). The global nav badge
 // still uses the server-pushed count from useMessagesBadge.
@@ -880,6 +928,14 @@ const requestsBadgeCount = computed(() => conversations.value.requests.filter((c
 const showRequestsBadge = computed(() => requestsBadgeCount.value > 0)
 const requestsBadgeText = computed(() => (requestsBadgeCount.value >= 99 ? '99+' : String(requestsBadgeCount.value)))
 const badgeToneClass = computed(() => toneClass.value)
+
+const muteButtonTooltip = computed(() => {
+  const c = selectedConversation.value
+  if (!c) return null
+  return c.isMuted
+    ? tinyTooltip('Unmute — turn notifications back on for this chat')
+    : tinyTooltip('Mute — silence notifications for this chat')
+})
 
 const pendingButtonClass = computed(() => {
   // When there are unread/new messages below, keep the tier color treatment.
@@ -1198,26 +1254,33 @@ async function loadMoreConversations() {
   }
 }
 
-async function selectConversation(id: string, opts?: { replace?: boolean }) {
+async function selectConversation(id: string, opts?: { replace?: boolean; jumpToMessageId?: string }) {
   cacheCurrentChatScrollPosition()
   const reqSeq = ++selectConversationReqSeq
   clearMessagesPaneTimer()
   dividerEls.clear()
   selectedConversationId.value = id
   selectedChatKey.value = id
-  // Leaving draft mode (if any)
   draftRecipients.value = []
   messagesReady.value = false
   animateMessageList.value = false
   renderedChatKey.value = null
   messagesPaneState.value = 'loading'
   setAtBottomState(true)
-  // If an older-messages request is in flight, ensure a thread switch doesn't get blocked by it.
   loadingOlder.value = false
+  loadingNewer.value = false
+  messagesNewerCursor.value = null
+  if (jumpHighlightTimer) { clearTimeout(jumpHighlightTimer); jumpHighlightTimer = null }
+  jumpTargetMessageId.value = opts?.jumpToMessageId ?? null
+
   const replace = opts?.replace ?? false
   const currentC = typeof route.query.c === 'string' ? route.query.c : null
-  if (currentC !== id) {
-    const nextQuery = { ...route.query, c: id }
+  const currentM = typeof route.query.m === 'string' ? route.query.m : null
+  const targetMsgId = opts?.jumpToMessageId ?? null
+  if (currentC !== id || currentM !== (targetMsgId ?? null)) {
+    const nextQuery: Record<string, string> = { ...route.query as any, c: id }
+    if (targetMsgId) nextQuery.m = targetMsgId
+    else delete nextQuery.m
     if (replace) await router.replace({ query: nextQuery })
     else await router.push({ query: nextQuery })
   }
@@ -1225,27 +1288,41 @@ async function selectConversation(id: string, opts?: { replace?: boolean }) {
   resetTyping()
   sendingMessageIds.value = new Set()
   try {
-    const res = await apiFetch<{ conversation: MessageConversation; messages: Message[] }>(
-      `/messages/conversations/${id}`,
-      { query: { limit: 50 } },
-    )
-    // If the user switched threads mid-request, ignore this response.
-    if (reqSeq !== selectConversationReqSeq || selectedConversationId.value !== id) return
-    const list = res.data?.messages ?? []
-    messages.value = [...list].reverse()
-    messagesNextCursor.value = res.pagination?.nextCursor ?? null
-    // Patch `isBlockedWith` from the conversation detail into the list row.
-    if (typeof res.data?.conversation?.isBlockedWith === 'boolean') {
-      updateConversationIsBlockedWith(id, res.data.conversation.isBlockedWith)
+    if (targetMsgId) {
+      // Jump to a specific message — fetch a window centered on it.
+      const res = await apiFetch<{
+        messages: Message[]
+        olderCursor: string | null
+        newerCursor: string | null
+        targetMessageId: string
+      }>(`/messages/conversations/${id}/messages/around/${targetMsgId}`)
+      if (reqSeq !== selectConversationReqSeq || selectedConversationId.value !== id) return
+      messages.value = res.data?.messages ?? []
+      messagesNextCursor.value = res.data?.olderCursor ?? null
+      messagesNewerCursor.value = res.data?.newerCursor ?? null
+      // atBottom false so the pending button isn't shown (we're in mid-history)
+      setAtBottomState(!messagesNewerCursor.value)
+    } else {
+      // Normal latest-messages fetch.
+      const res = await apiFetch<{ conversation: MessageConversation; messages: Message[] }>(
+        `/messages/conversations/${id}`,
+        { query: { limit: 50 } },
+      )
+      if (reqSeq !== selectConversationReqSeq || selectedConversationId.value !== id) return
+      const list = res.data?.messages ?? []
+      messages.value = [...list].reverse()
+      messagesNextCursor.value = res.pagination?.nextCursor ?? null
+      messagesNewerCursor.value = null
+      if (typeof res.data?.conversation?.isBlockedWith === 'boolean') {
+        updateConversationIsBlockedWith(id, res.data.conversation.isBlockedWith)
+      }
     }
     messagesReady.value = true
     messagesLoading.value = false
-    // If the user switched threads mid-request, don't mount the wrong scroller.
     if (selectedChatKey.value === id) {
       revealMessagesPaneAfterFade(id)
     }
   } finally {
-    // Only finalize loading flags for the latest request.
     if (reqSeq === selectConversationReqSeq) {
       messagesLoading.value = false
       if (!messagesReady.value) messagesReady.value = true
@@ -1255,9 +1332,11 @@ async function selectConversation(id: string, opts?: { replace?: boolean }) {
 
 async function clearSelection(opts?: { replace?: boolean; preserveDraft?: boolean }) {
   cacheCurrentChatScrollPosition()
-  // Invalidate any in-flight selection request so late responses can't mutate state.
   selectConversationReqSeq++
   loadingOlder.value = false
+  loadingNewer.value = false
+  if (jumpHighlightTimer) { clearTimeout(jumpHighlightTimer); jumpHighlightTimer = null }
+  jumpTargetMessageId.value = null
   clearMessagesPaneTimer()
   dividerEls.clear()
   selectedConversationId.value = null
@@ -1267,6 +1346,7 @@ async function clearSelection(opts?: { replace?: boolean; preserveDraft?: boolea
   }
   messages.value = []
   messagesNextCursor.value = null
+  messagesNewerCursor.value = null
   messagesReady.value = false
   animateMessageList.value = false
   renderedChatKey.value = null
@@ -1279,14 +1359,16 @@ async function clearSelection(opts?: { replace?: boolean; preserveDraft?: boolea
   const replace = opts?.replace ?? false
   const q = { ...route.query } as Record<string, any>
   delete q.c
+  delete q.m
   if (replace) await router.replace({ query: q })
   else await router.push({ query: q })
 }
 
 function syncSelectedFromRoute() {
   const c = typeof route.query.c === 'string' ? route.query.c : null
-  if (c && c !== selectedConversationId.value) {
-    void selectConversation(c, { replace: true })
+  const m = typeof route.query.m === 'string' ? route.query.m : null
+  if (c && (c !== selectedConversationId.value || m !== jumpTargetMessageId.value)) {
+    void selectConversation(c, { replace: true, jumpToMessageId: m ?? undefined })
     return
   }
   if (!c && selectedConversationId.value) {
@@ -1325,6 +1407,54 @@ async function loadOlderMessages() {
   } finally {
     if (reqSeq === loadOlderReqSeq) loadingOlder.value = false
   }
+}
+
+let loadNewerReqSeq = 0
+
+async function loadNewerMessages() {
+  if (!selectedConversationId.value || !messagesNewerCursor.value || loadingNewer.value) return
+  const reqSeq = ++loadNewerReqSeq
+  const conversationId = selectedConversationId.value
+  const cursor = messagesNewerCursor.value
+  loadingNewer.value = true
+  try {
+    const res = await apiFetch<Message[]>(`/messages/conversations/${conversationId}/messages/newer`, {
+      query: { cursor, limit: 50 },
+    })
+    if (reqSeq !== loadNewerReqSeq || selectedConversationId.value !== conversationId) return
+    const list = res.data ?? []
+    messages.value = [...messages.value, ...list]
+    const newerCursor = (res as any).pagination?.newerCursor ?? null
+    messagesNewerCursor.value = newerCursor
+    if (!newerCursor) {
+      // We've caught up to the present — the chat is now live at the bottom.
+      await nextTick()
+      setAtBottomState(isAtBottom())
+    }
+  } finally {
+    if (reqSeq === loadNewerReqSeq) loadingNewer.value = false
+  }
+}
+
+/** Scroll the scroller to the jump-target message row and briefly highlight it. */
+function scrollToJumpTarget() {
+  const targetId = jumpTargetMessageId.value
+  if (!targetId || !messagesScroller.value) return
+  const el = messagesScroller.value.querySelector<HTMLElement>(`[data-message-id="${targetId}"]`)
+  if (!el) return
+  // Scroll the element into the center of the viewport.
+  const scrollerRect = messagesScroller.value.getBoundingClientRect()
+  const elRect = el.getBoundingClientRect()
+  const offset = elRect.top - scrollerRect.top - scrollerRect.height / 2 + elRect.height / 2
+  messagesScroller.value.scrollTop += offset
+  refreshAtBottomFromScroller()
+  updateScrollPill()
+  // Clear the highlight after 2.5s so the flash is visible but not permanent.
+  if (jumpHighlightTimer) clearTimeout(jumpHighlightTimer)
+  jumpHighlightTimer = setTimeout(() => {
+    jumpHighlightTimer = null
+    jumpTargetMessageId.value = null
+  }, 2500)
 }
 
 function updateConversationParticipantRead(conversationId: string, userId: string, lastReadAt: string) {
@@ -2127,6 +2257,8 @@ onMounted(() => {
 onBeforeUnmount(() => {
   clearChatBootTimer()
   clearMessagesPaneTimer()
+  if (searchDebounceTimer) { clearTimeout(searchDebounceTimer); searchDebounceTimer = null }
+  if (jumpHighlightTimer) { clearTimeout(jumpHighlightTimer); jumpHighlightTimer = null }
   teardownRealtime()
   emitMessagesScreen(false)
   for (const t of recentAnimatedTimers.values()) clearTimeout(t)

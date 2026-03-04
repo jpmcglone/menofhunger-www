@@ -45,7 +45,8 @@
             animateRows && recentAnimatedMessageIds.has(item.key) ? 'moh-chat-item-enter' : '',
             'group relative flex w-full items-end gap-1',
             item.message.sender.id === meId ? 'justify-end' : 'justify-start',
-            isGroupChat && item.message.sender.id !== meId ? 'pl-10' : ''
+            isGroupChat && item.message.sender.id !== meId ? 'pl-10' : '',
+            item.message.id === jumpTargetMessageId ? 'moh-jump-target' : '',
           ]"
           @mouseenter="hoveredId = item.message.id"
           @mouseleave="onRowLeave(item.message.id)"
@@ -398,6 +399,11 @@
       @delete-for-all="emit('delete-for-all', $event)"
       @restore="emit('restore', $event)"
     />
+
+    <!-- Load newer button (shown when viewing historical messages) -->
+    <div v-if="messagesNewerCursor" class="pt-2 pb-1">
+      <Button label="Load newer" text size="small" severity="secondary" :loading="loadingNewer" @click="emit('load-newer')" />
+    </div>
   </div>
 </template>
 
@@ -442,6 +448,10 @@ const props = defineProps({
   goToProfile: { type: Function as PropType<(u: MessageUser | null | undefined) => void>, required: true },
   availableReactions: { type: Array as PropType<MessageReaction[]>, required: false, default: () => [] },
   participants: { type: Array as PropType<MessageParticipant[]>, required: false, default: () => [] },
+  /** Message ID to highlight (jump target from search). */
+  jumpTargetMessageId: { type: [String, null] as PropType<string | null>, required: false, default: null },
+  messagesNewerCursor: { type: [String, null] as PropType<string | null>, required: false, default: null },
+  loadingNewer: { type: Boolean, required: false, default: false },
 })
 
 const CLUSTER_GAP_MS = 5 * 60 * 1000
@@ -618,6 +628,7 @@ function shouldShowMessageMeta(item: ChatListItem, listIndex: number): boolean {
 
 const emit = defineEmits<{
   (e: 'load-older'): void
+  (e: 'load-newer'): void
   (e: 'react', message: Message, reactionId: string): void
   (e: 'reply', message: Message): void
   (e: 'info', message: Message): void
@@ -628,3 +639,17 @@ const emit = defineEmits<{
   (e: 'scroll-to-reply', messageId: string): void
 }>()
 </script>
+
+<style scoped>
+/* Flash highlight when jumping to a message from search */
+.moh-jump-target {
+  animation: moh-jump-flash 2.5s ease forwards;
+  border-radius: 0.5rem;
+}
+
+@keyframes moh-jump-flash {
+  0%   { background-color: color-mix(in srgb, var(--p-primary-500) 22%, transparent); }
+  30%  { background-color: color-mix(in srgb, var(--p-primary-500) 22%, transparent); }
+  100% { background-color: transparent; }
+}
+</style>
