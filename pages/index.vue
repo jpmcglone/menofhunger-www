@@ -430,7 +430,7 @@
             </a>
           </div>
           <div class="text-xs text-gray-500 dark:text-gray-400">
-            © {{ new Date().getFullYear() }} {{ siteConfig.name }}
+            © {{ currentYear }} {{ siteConfig.name }}
           </div>
         </nav>
       </footer>
@@ -546,6 +546,7 @@ useHead({
 })
 
 const roanokeMeetupUrl = siteConfig.social.meetup
+const currentYear = new Date().getUTCFullYear()
 const isRoanokeOpen = ref(false)
 
 watch(isRoanokeOpen, (open) => {

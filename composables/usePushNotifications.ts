@@ -52,6 +52,9 @@ export function usePushNotifications() {
   const errorMessage = ref<string | null>(null)
   const hasAutoPrompted = useState<boolean>(PUSH_HAS_AUTO_PROMPTED_KEY, () => false)
   const hasPermissionWatcher = useState<boolean>('push-has-permission-watcher', () => false)
+  // Tracks which userId the server-side push subscription is currently registered for.
+  // If it doesn't match the logged-in user, we re-register (handles user switching).
+  const subscribedForUserId = useState<string | null>('push-subscribed-user-id', () => null)
 
   const isSupported = computed(
     () =>
@@ -133,6 +136,7 @@ export function usePushNotifications() {
         }
       })
       isSubscribed.value = true
+      subscribedForUserId.value = user.value?.id ?? null
       return true
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'Failed to subscribe.'
@@ -159,6 +163,7 @@ export function usePushNotifications() {
         await sub.unsubscribe()
       }
       isSubscribed.value = false
+      subscribedForUserId.value = null
     } catch (e) {
       console.warn('[push] unsubscribe failed', e)
     }
@@ -195,7 +200,11 @@ export function usePushNotifications() {
     if (isRegistering.value) return
     await refreshSubscriptionState()
     if (Notification.permission !== 'granted') return
-    if (isSubscribed.value) return
+    // Re-register if: (a) no browser subscription exists, or (b) the subscription is registered
+    // for a different user — this handles the case where the browser subscription survived a
+    // logout (e.g. network failure) and a new user has since logged in.
+    const alreadyCorrectUser = isSubscribed.value && subscribedForUserId.value === user.value.id
+    if (alreadyCorrectUser) return
     void subscribe()
   }
 

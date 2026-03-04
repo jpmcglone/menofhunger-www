@@ -3,7 +3,7 @@
     "label": "Membership",
     "tagline": "A trusted community for men who want measurable progress in life.",
     "title": "Unverified, Verified, Premium, and Premium+ — how the tiers work.",
-    "description": "Unverified: read. Verified: real, but limited. Premium: full access to a personal growth ecosystem — structured conversations, accountability, cohorts, and quality. Premium+: steward and support."
+    "description": "Unverified: read. Verified: real, but limited. Premium: full access to the core product (posting, media, chat, spaces, and quality signal loops). Premium+: steward and support."
   },
   "metaDescription": "Men of Hunger: a trusted community for measurable progress. Tiers: Unverified (read), Verified (real but limited), Premium (personal growth ecosystem), Premium+ (steward).",
   "tiers": [
@@ -55,6 +55,7 @@
         { "text": "Reply to DMs started with them (cannot start new DMs)" },
         { "text": "Text + links only (no images/GIFs/video)" },
         { "text": "Access men-only read areas" },
+        { "text": "Join Spaces and live chat (verified+ only)" },
         { "text": "Join groups with limited participation", "comingSoon": true }
       ],
       "cannot": [
@@ -92,6 +93,9 @@
         { "text": "Full replies everywhere allowed" },
         { "text": "Access men-only + subscriber-only areas" },
         { "text": "DM other members" },
+        { "text": "Create posts with media (images, GIFs, video)" },
+        { "text": "Create polls" },
+        { "text": "Use bookmarks folders / collections" },
         { "text": "Monthly structured conversations and accountability systems", "comingSoon": true },
         { "text": "Small group cohorts, workshops & live calls", "comingSoon": true },
         { "text": "Premium longform playbooks and resources", "comingSoon": true },
@@ -99,10 +103,10 @@
         { "text": "Baseline ranking (unverified/verified may be slightly suppressed)" },
         { "text": "Start and participate in Dialogues", "comingSoon": true },
         { "text": "Publish longform articles", "comingSoon": true },
-        { "text": "Create posts with media (images, GIFs, video)" },
         { "text": "Participate fully in groups", "comingSoon": true },
         { "text": "See no ads while you’re Premium" },
-        { "text": "Edit posts within a reasonable window" }
+        { "text": "Edit posts within a reasonable window" },
+        { "text": "Compete in check-ins + leaderboard consistency loops" }
       ],
       "cannot": [
         { "text": "Override moderation" },
@@ -133,7 +137,7 @@
       "who": "Patrons, builders, long-term supporters. Not elites.",
       "can": [
         { "text": "Everything Premium can do" },
-        { "text": "Subtle Steward badge (opt-in)" },
+        { "text": "Subtle Steward badge (opt-in toggle in settings)" },
         { "text": "Access to Stewards-only forum", "comingSoon": true },
         { "text": "Quarterly Steward Call (strategy, philosophy, Q&A)", "comingSoon": true },
         { "text": "Monthly written founder update", "comingSoon": true },

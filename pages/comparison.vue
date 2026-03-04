@@ -46,7 +46,7 @@
             <tbody class="divide-y divide-gray-200 dark:divide-zinc-700">
               <tr
                 v-for="(row, i) in section.rows"
-                :key="i"
+                :key="`${row.x}:${row.moh}:${i}`"
                 class="align-top odd:bg-white/40 even:bg-transparent dark:odd:bg-zinc-900/30"
               >
                 <td class="px-5 py-4 text-gray-700 dark:text-gray-300">
@@ -119,16 +119,17 @@ const sections: ComparisonSection[] = [
   {
     id: 'moh-new',
     title: 'Men of Hunger adds',
-    description: 'What X does not offer by default.',
+    description: 'What Men of Hunger enforces and ships today.',
     rows: [
-      { x: 'No identity gating.', moh: 'Unverified, Verified, Premium, and Steward tiers.' },
-      { x: 'No men-only spaces.', moh: 'Men-only read areas and member-only rooms.' },
-      { x: 'No stewardship layer.', moh: 'Steward tier with founder updates and calls.' },
-      { x: 'No priority care.', moh: 'Priority support and faster moderation review.' },
-      { x: 'No concierge onboarding.', moh: 'Concierge onboarding for stewards.' },
-      { x: 'No built-in dialogues.', moh: 'Dialogues for structured, premium discussion.' },
-      { x: 'No premium reading/writing tools.', moh: 'Better longform tools and extended edit windows.' },
-      { x: 'No private group creation.', moh: 'Private groups, higher caps, and event tools.' },
+      { x: 'Identity optional for participation.', moh: 'Verification-gated participation with tiered access (Unverified, Verified, Premium, Premium+).' },
+      { x: 'No private-only posting mode by default.', moh: 'Only me posts for private notes/drafts before publishing publicly.' },
+      { x: 'No built-in consistency loop.', moh: 'Daily check-ins plus leaderboard momentum loops.' },
+      { x: 'No shared work rooms by default.', moh: 'Spaces (verified+) with live chat and optional shared audio while you build.' },
+      { x: 'DM access is broad once enabled.', moh: 'Tiered messaging: verified can reply to inbound DMs; premium can start new DMs.' },
+      { x: 'No tier-gated posting formats by trust level.', moh: 'Verified is text+links only; premium unlocks media posting.' },
+      { x: 'No first-class poll gate by trust + commitment.', moh: 'Premium polls with result notifications in the core feed/notification flow.' },
+      { x: 'Basic saves.', moh: 'Bookmark collections/folders for organized saving.' },
+      { x: 'Membership mostly about reach perks.', moh: 'No paid reach boost: membership buys depth, quality, and access.' },
     ],
   },
 ]

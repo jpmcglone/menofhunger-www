@@ -80,7 +80,7 @@
   </nav>
 
   <AppBottomSheet
-    v-if="isMobile"
+    v-if="isMobileHydrated"
     v-model="moreOpen"
     title="More"
     :panel-class="'inset-x-0 bottom-0 max-w-none rounded-t-2xl shadow-2xl moh-bg moh-text moh-texture border-t moh-border min-h-[min(28rem,60vh)]'"
@@ -168,7 +168,6 @@
 </template>
 
 <script setup lang="ts">
-import { useMediaQuery } from '@vueuse/core'
 import type { AppNavItem } from '~/composables/useAppNav'
 defineProps<{
   items: AppNavItem[]
@@ -182,10 +181,10 @@ const haptics = useHaptics()
 const { openShortcutsModal } = useKeyboardShortcuts()
 
 // Tab bar is md:hidden in layout; match that breakpoint (show sheet only when tab bar is visible).
-const isMobile = useMediaQuery('(max-width: 767px)')
+const isMobileHydrated = useHydratedMediaQuery('(max-width: 767px)')
 const moreOpen = ref(false)
-watch(isMobile, (mobile) => {
-  if (!mobile) moreOpen.value = false
+watch(isMobileHydrated, (mobileReady) => {
+  if (!mobileReady) moreOpen.value = false
 })
 
 const { allItems, isItemVisible } = useAppNav()

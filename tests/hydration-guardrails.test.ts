@@ -38,5 +38,35 @@ describe('hydration guardrails (structural)', () => {
     expect(useMention).toMatch(/onMounted\(\(\)\s*=>\s*{\s*[\s\S]*mounted\.value\s*=\s*true/)
     expect(useMention).toMatch(/if\s*\(!mounted\.value\)\s*return/)
   })
+
+  it('uses deterministic ids for avatar SVG masks', () => {
+    const avatarCircle = readFromRepo('components/app/AvatarCircle.vue')
+    expect(avatarCircle).toMatch(/idleClockMaskId = `idle-clock-mask-\$\{useId\(\)\}`/)
+    expect(avatarCircle).not.toMatch(/idle-clock-mask-\$\{Math\.random\(/)
+  })
+
+  it('gates right-rail media-query structure with hydrated media query helper', () => {
+    const layout = readFromRepo('layouts/app.vue')
+    expect(layout).toMatch(/const isRightRailBreakpointUp = useHydratedMediaQuery\('\(min-width: 962px\)'\)/)
+  })
+
+  it('gates mobile bottom-sheet mounting with hydrated media query helper', () => {
+    const tabBar = readFromRepo('components/app/TabBar.vue')
+    expect(tabBar).toMatch(/v-if="isMobileHydrated"/)
+    expect(tabBar).toMatch(/const isMobileHydrated = useHydratedMediaQuery\('\(max-width: 767px\)'\)/)
+  })
+
+  it('avoids inline Date rendering in landing template', () => {
+    const landing = readFromRepo('pages/index.vue')
+    expect(landing).not.toMatch(/new Date\(\)\.getFullYear\(\)/)
+    expect(landing).toMatch(/currentYear = new Date\(\)\.getUTCFullYear\(\)/)
+  })
+
+  it('uses stable non-index keys for notification media previews', () => {
+    const row = readFromRepo('components/app/NotificationRow.vue')
+    const group = readFromRepo('components/app/NotificationGroupRow.vue')
+    expect(row).toMatch(/:key="notificationMediaPreviewKey\(m, idx\)"/)
+    expect(group).toMatch(/:key="groupMediaPreviewKey\(m, idx\)"/)
+  })
 })
 

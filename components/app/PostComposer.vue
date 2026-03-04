@@ -91,7 +91,7 @@
               :style="composerTextareaVars"
               aria-hidden="true"
             >
-              <template v-for="(seg, i) in composerBodySegments" :key="i">
+              <template v-for="(seg, i) in composerBodySegments" :key="composerSegmentKey(seg, i)">
                 <!-- IMPORTANT: avoid font-weight changes in mirror; it desyncs caret alignment vs textarea -->
                 <span
                   v-if="seg.type === 'mention'"
@@ -415,6 +415,7 @@ import { useMentionAutocomplete } from '~/composables/useMentionAutocomplete'
 import { useHashtagAutocomplete } from '~/composables/useHashtagAutocomplete'
 import { segmentComposerBodyWithMentionAndHashtagTiers } from '~/utils/mention-composer-segments'
 import { mentionTierToStyle } from '~/utils/mention-tier-style'
+import { stableListKey } from '~/utils/stable-list-key'
 
 // In-memory draft cache (survives SPA navigation, not a full reload).
 // Keep module-scoped so it persists across route changes.
@@ -848,6 +849,10 @@ const composerPlaceholder = computed(
     (props.replyTo ? 'Post your reply…' : (hasPoll.value ? 'Ask a question' : "What's happening?")),
 )
 const postCharCount = computed(() => draft.value.length)
+
+function composerSegmentKey(seg: { type?: string; value?: string; tier?: string }, i: number): string {
+  return stableListKey(seg.type ?? 'text', seg.tier ?? '', seg.value ?? '', i)
+}
 
 function onUpdateAltText(localId: string, value: string) {
   patchComposerMedia(localId, { altText: value })

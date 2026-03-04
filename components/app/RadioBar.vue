@@ -207,7 +207,7 @@
 </template>
 
 <script setup lang="ts">
-import { useMediaQuery, useElementSize } from '@vueuse/core'
+import { useElementSize } from '@vueuse/core'
 import type { MenuItem } from 'primevue/menuitem'
 import type { Space, SpaceMember } from '~/types/api'
 import { siteConfig } from '~/config/site'
@@ -270,7 +270,7 @@ onBeforeUnmount(() => {
 })
 const route = useRoute()
 const { isRightRailForcedHidden } = useLayoutRules(route)
-const isRightRailBreakpointUp = useMediaQuery('(min-width: 962px)')
+const isRightRailBreakpointUp = useHydratedMediaQuery('(min-width: 962px)')
 const isRightRailVisible = computed(() => Boolean(isRightRailBreakpointUp.value) && !isRightRailForcedHidden.value)
 const isRightRailChatVisible = computed(() => Boolean(selectedSpaceId.value) && isRightRailVisible.value)
 

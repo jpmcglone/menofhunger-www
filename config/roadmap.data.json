@@ -1,10 +1,10 @@
 {
-  "asOfDate": "Feb. 18, 2026",
+  "asOfDate": "Mar. 4, 2026",
   "originalAsOfDate": "Feb. 3, 2026",
   "intro": {
     "label": "Product roadmap",
     "title": "Where we're headed",
-    "description": "We’re building a personal growth ecosystem: trust, tier access, and safety first; then content depth and discovery; then structured conversations, cohorts, workshops, and stewardship."
+    "description": "We’re building a personal growth ecosystem: trust, tier access, and safety first; then content depth, discovery, and daily consistency loops; then structured conversations, cohorts, workshops, and stewardship."
   },
   "phases": [
     {
@@ -46,6 +46,10 @@
             {
               "text": "**Premium baseline access** — Full posting and replies, member-only areas, can start DMs, and can post with media; Premium is baseline (unverified/verified may be slightly suppressed); paid tiers are neutral (no boosted reach).",
               "done": true
+            },
+            {
+              "text": "**Spaces (v1) for verified+** — Join spaces, see who is present, and use live chat + shared audio while you build.",
+              "done": true
             }
           ]
         },
@@ -71,6 +75,10 @@
             },
             {
               "text": "**Suggested users / who to follow** — Real “who to follow” (by interests or activity) so you fill your feed fast and see content that matters.",
+              "done": true
+            },
+            {
+              "text": "**Daily momentum loops** — Check-ins feed + leaderboard to reward consistency and visible streak progress.",
               "done": true
             },
             {
@@ -120,7 +128,12 @@
               "inProgress": true
             },
             {
-              "text": "**Third-party analytics (minimal)** — Track the key funnel events (join, verify submitted/approved, first post, follow, upgrade) so we can measure what’s working."
+              "text": "**Third-party analytics (minimal)** — Track the key funnel events (join, verify submitted/approved, first post, follow, upgrade) so we can measure what’s working.",
+              "done": true
+            },
+            {
+              "text": "**Hydration hardening** — Ongoing SSR/client mismatch fixes and guardrails to reduce front-end render regressions.",
+              "inProgress": true
             }
           ]
         }
@@ -164,6 +177,14 @@
             },
             {
               "text": "**Member experience (v1)** — Premium members see no ads; paid tiers remain neutral (no boosted reach).",
+              "done": true
+            },
+            {
+              "text": "**Polls (v1)** — Premium members can create polls; poll results notifications are delivered cleanly in notifications.",
+              "done": true
+            },
+            {
+              "text": "**Bookmark collections (v1)** — Save posts into folders and manage bookmark organization from a dedicated bookmarks surface.",
               "done": true
             },
             {
@@ -235,7 +256,8 @@
           "title": "Community depth",
           "items": [
             {
-              "text": "Groups (v1) — Create and join groups; group feed or group-scoped posts so you have pockets of accountability and conversation."
+              "text": "Groups (v1) — Create and join groups; group feed or group-scoped posts so you have pockets of accountability and conversation.",
+              "inProgress": true
             },
             {
               "text": "Dialogues (v1) — Start and participate in structured dialogues (premium required)."

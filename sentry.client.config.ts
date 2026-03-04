@@ -1,37 +1,62 @@
-import * as Sentry from "@sentry/nuxt";
+import * as Sentry from '@sentry/nuxt'
+import { browserTracingIntegration, replayIntegration } from '@sentry/nuxt'
 
 const config = useRuntimeConfig()
-const dsn = String(config.public?.sentry?.dsn || "").trim()
-const environment = String(config.public?.sentry?.environment || "").trim() || undefined
+const dsn = String(config.public?.sentry?.dsn || '').trim()
+const environment = String(config.public?.sentry?.environment || '').trim() || undefined
+const isProd = environment === 'production'
 
 Sentry.init({
   dsn: dsn || undefined,
   enabled: Boolean(dsn),
   environment,
 
-  // We recommend adjusting this value in production, or using tracesSampler
-  // for finer control
-  tracesSampleRate: 1.0,
+  integrations: [
+    // Captures page-load and navigation performance spans, and wires up distributed tracing.
+    browserTracingIntegration(),
+    // Records session replays; on error always capture, otherwise sample lightly.
+    replayIntegration({
+      maskAllText: false,
+      blockAllMedia: false,
+    }),
+  ],
 
-  // This sets the sample rate to be 10%. You may want this to be 100% while
-  // in development and sample at a lower rate in production
+  // 100% in dev/staging so nothing is missed; 20% in production to stay within quota.
+  tracesSampleRate: isProd ? 0.2 : 1.0,
+
+  // Replay: record 10% of normal sessions, always record sessions with errors.
   replaysSessionSampleRate: 0.1,
-  
-  // If the entire session is not sampled, use the below sample rate to sample
-  // sessions when an error occurs.
   replaysOnErrorSampleRate: 1.0,
-  
-  // Session Replay is optional and not available in all environments (e.g. some test runners).
-  // Guard to avoid crashing Nuxt app initialization.
-  integrations: typeof (Sentry as any).replayIntegration === 'function' ? [(Sentry as any).replayIntegration()] : [],
 
-  // Enable logs to be sent to Sentry
-  enableLogs: true,
-
-  // Enable sending of user PII (Personally Identifiable Information)
-  // https://docs.sentry.io/platforms/javascript/guides/nuxt/configuration/options/#sendDefaultPii
+  // Send cookies, headers, and user IP so we can correlate sessions/errors.
   sendDefaultPii: true,
 
-  // Setting this option to true will print useful information to the console while you're setting up Sentry.
+  // Forward console.log/warn/error to Sentry Logs.
+  enableLogs: true,
+
+  // Suppress known browser-noise errors that are not actionable.
+  ignoreErrors: [
+    // Network / connectivity
+    'NetworkError',
+    'Failed to fetch',
+    'Load failed',
+    'Network request failed',
+    'The network connection was lost',
+    'The Internet connection appears to be offline',
+    // Browser extension interference
+    'ResizeObserver loop limit exceeded',
+    'ResizeObserver loop completed with undelivered notifications',
+    // Safari back/forward cache quirks
+    'Blocked a frame with origin',
+    // Chunk loading (usually from stale client after deploy — user refresh fixes it)
+    /Loading chunk \d+ failed/,
+    /Loading CSS chunk \d+ failed/,
+    // User aborted requests
+    'AbortError',
+    'The user aborted a request',
+    // Safari push permission quirks
+    'NotAllowedError',
+  ],
+
   debug: false,
-});
+})

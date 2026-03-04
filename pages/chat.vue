@@ -518,7 +518,6 @@ import { useChatRealtime } from '~/composables/chat/useChatRealtime'
 import ChatConversationList from '~/components/app/chat/ChatConversationList.vue'
 import ChatMessageList from '~/components/app/chat/ChatMessageList.vue'
 import ChatMessageInfoModal from '~/components/app/chat/ChatMessageInfoModal.vue'
-import { useMediaQuery } from '@vueuse/core'
 import { useKeyboardHeight } from '~/composables/useKeyboardHeight'
 import { useRecipientSearch } from '~/composables/chat/useRecipientSearch'
 import { userColorTier, type UserColorTier } from '~/utils/user-tier'
@@ -955,7 +954,7 @@ const pendingNewLabel = computed(() => {
   return 'Scroll to bottom'
 })
 
-const isTabBarMode = useMediaQuery('(max-width: 639px)')
+const isTabBarMode = useHydratedMediaQuery('(max-width: 639px)')
 
 const { isTinyViewport, showListPane, showDetailPane: showChatPane, gridStyle } = useTwoPaneLayout(selectedChatKey, {
   // Cap left at 22rem but never more than 45% so the chat panel is always at least as wide.

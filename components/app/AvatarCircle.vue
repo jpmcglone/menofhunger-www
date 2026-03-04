@@ -132,7 +132,7 @@ const effectivePresenceStatus = computed(() => (hydrated.value ? props.presenceS
 
 const wrapEl = ref<HTMLElement | null>(null)
 const diameterPx = ref<number>(40)
-const idleClockMaskId = `idle-clock-mask-${Math.random().toString(36).slice(2, 9)}`
+const idleClockMaskId = `idle-clock-mask-${useId()}`
 
 const imgSizePx = computed(() => Math.max(16, Math.floor(diameterPx.value || 40)))
 

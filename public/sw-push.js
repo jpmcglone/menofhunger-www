@@ -5,7 +5,7 @@
  */
 
 // IMPORTANT: bump this whenever caching logic changes so old caches are purged.
-self.__MOH_SW_VERSION = 'moh-sw-dev-1772593816036';
+self.__MOH_SW_VERSION = 'moh-sw-dev-1772656912152';
 const CACHE_PREFIX = 'moh-sw'
 const NUxT_ASSETS_CACHE = `${CACHE_PREFIX}:nuxt:${self.__MOH_SW_VERSION}`
 const STATIC_ASSETS_CACHE = `${CACHE_PREFIX}:static:${self.__MOH_SW_VERSION}`
@@ -118,8 +118,11 @@ self.addEventListener('push', function (event) {
   const title = payload.title || 'Notification'
   const body = payload.body || ''
   const tag = payload.tag || 'notification'
+  const kind = payload.kind || 'generic'
   const url = payload.url || '/notifications'
   const icon = payload.icon || '/android-chrome-192x192.png'
+  const badge = payload.badge || '/android-chrome-192x192.png'
+  const renotify = payload.renotify === true
   const isTest = payload.test === true || title === 'Test notification'
 
   event.waitUntil(
@@ -132,7 +135,9 @@ self.addEventListener('push', function (event) {
         body,
         tag,
         icon,
-        data: { url }
+        badge,
+        renotify,
+        data: { url, kind, tag }
       }).catch(function (err) {
         console.error('[sw-push] showNotification failed', err)
       })
@@ -142,8 +147,13 @@ self.addEventListener('push', function (event) {
 
 self.addEventListener('notificationclick', function (event) {
   event.notification.close()
-  const url = event.notification.data?.url || '/notifications'
-  const fullUrl = new URL(url, self.location.origin).href
+  const data = event.notification.data || {}
+  let url = data.url || '/notifications'
+  const kind = data.kind || 'generic'
+  const tag = data.tag || ''
+  // Append click-through params for analytics (client reads and sends to Posthog).
+  const sep = url.includes('?') ? '&' : '?'
+  const fullUrl = new URL(url + sep + 'from=push&kind=' + encodeURIComponent(kind) + '&tag=' + encodeURIComponent(tag), self.location.origin).href
 
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function (windowClients) {

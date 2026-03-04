@@ -64,6 +64,9 @@ export type NotificationPreferences = {
   pushFollow: boolean
   pushMention: boolean
   pushMessage: boolean
+  pushRepost: boolean
+  pushNudge: boolean
+  pushFollowedPost: boolean
   emailDigestDaily: boolean
   emailDigestWeekly: boolean
   emailNewNotifications: boolean

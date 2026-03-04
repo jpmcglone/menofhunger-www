@@ -1,13 +1,15 @@
 import type { GetCheckinsLeaderboardResponse, LeaderboardUser } from '~/types/api'
 import { getApiErrorMessage } from '~/utils/api-error'
 
+const LEADERBOARD_KEY = 'checkins-leaderboard'
+
 export function useCheckinsLeaderboard(options?: { limit?: number }) {
   const { apiFetchData } = useApiClient()
 
-  const users = ref<LeaderboardUser[]>([])
-  const generatedAt = ref<string | null>(null)
-  const loading = ref(false)
-  const error = ref<string | null>(null)
+  const users = useState<LeaderboardUser[]>(`${LEADERBOARD_KEY}:users`, () => [])
+  const generatedAt = useState<string | null>(`${LEADERBOARD_KEY}:generatedAt`, () => null)
+  const loading = useState<boolean>(`${LEADERBOARD_KEY}:loading`, () => false)
+  const error = useState<string | null>(`${LEADERBOARD_KEY}:error`, () => null)
 
   async function refresh() {
     loading.value = true

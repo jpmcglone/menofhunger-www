@@ -144,7 +144,7 @@
             >
               <template
                 v-for="(m, idx) in notification.subjectPostPreview.media.slice(0, 4)"
-                :key="idx"
+                :key="notificationMediaPreviewKey(m, idx)"
               >
                 <img
                   v-if="(m.kind === 'video' ? m.thumbnailUrl : m.url)"
@@ -272,6 +272,7 @@
 <script setup lang="ts">
 import type { FollowSummaryResponse, Notification } from '~/types/api'
 import { tinyTooltip } from '~/utils/tiny-tooltip'
+import { stableListKey } from '~/utils/stable-list-key'
 import type { MenuItem } from 'primevue/menuitem'
 
 const {
@@ -306,6 +307,13 @@ const { onEnter: onActorEnter, onMove: onActorMove, onLeave: onActorLeave } = us
   username: computed(() => props.notification.actor?.username ?? ''),
 })
 const nudgeIsTopmost = computed(() => props.nudgeIsTopmost !== false)
+
+function notificationMediaPreviewKey(
+  media: { kind?: string | null; url?: string | null; thumbnailUrl?: string | null },
+  idx: number,
+): string {
+  return stableListKey('media', media.kind ?? 'unknown', media.thumbnailUrl ?? media.url ?? 'none', idx)
+}
 
 const { nudgeUser, ignoreNudge, ackNudge, markNudgeNudgedBackById } = useNudge()
 const { apiFetchData } = useApiClient()

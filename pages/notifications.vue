@@ -29,28 +29,44 @@
     <div v-else class="relative z-0 divide-y divide-gray-200 dark:divide-zinc-800">
       <template
         v-for="(item, idx) in notifications"
-        :key="item.type === 'single' ? item.notification.id : item.type === 'group' ? item.group.id : item.rollup.id"
+        :key="itemKey(item)"
       >
-        <!-- Real link: supports Cmd+click, right-click → "Open in new tab", keyboard nav -->
+        <!--
+          Use NuxtLink `custom` slot so the row renders as a <div>, not <a>.
+          Without this, the inner actor-avatar NuxtLinks inside each row create
+          nested <a> elements, which the browser automatically restructures and
+          causes hydration mismatches.
+          The div gets role="link" + keyboard handlers for full accessibility.
+        -->
         <NuxtLink
           v-if="itemHref(item)"
+          v-slot="{ navigate }"
           :to="itemHref(item)!"
-          class="block w-full text-left hover:bg-gray-50 dark:hover:bg-zinc-900"
+          custom
         >
-          <AppNotificationRow
-            v-if="item.type === 'single'"
-            :notification="item.notification"
-            :nudge-is-topmost="nudgeIsTopmostByIndex[idx] ?? false"
-          />
-          <AppNotificationFollowedPostsRollupRow
-            v-else-if="item.type === 'followed_posts_rollup'"
-            :rollup="item.rollup"
-          />
-          <AppNotificationGroupRow
-            v-else
-            :group="item.group"
-            :nudge-is-topmost="nudgeIsTopmostByIndex[idx] ?? false"
-          />
+          <div
+            class="block w-full text-left hover:bg-gray-50 dark:hover:bg-zinc-900 cursor-pointer"
+            role="link"
+            tabindex="0"
+            @click="navigate($event)"
+            @keydown.enter.prevent="navigate($event)"
+            @keydown.space.prevent="navigate($event)"
+          >
+            <AppNotificationRow
+              v-if="item.type === 'single'"
+              :notification="item.notification"
+              :nudge-is-topmost="nudgeIsTopmostByIndex[idx] ?? false"
+            />
+            <AppNotificationFollowedPostsRollupRow
+              v-else-if="item.type === 'followed_posts_rollup'"
+              :rollup="item.rollup"
+            />
+            <AppNotificationGroupRow
+              v-else
+              :group="item.group"
+              :nudge-is-topmost="nudgeIsTopmostByIndex[idx] ?? false"
+            />
+          </div>
         </NuxtLink>
         <div v-else class="block w-full text-left">
           <AppNotificationRow
@@ -115,7 +131,6 @@ const notifBadge = useNotificationsBadge()
 const { setNotificationUndeliveredCount, addInterest, removeInterest } = usePresence()
 const loadingMore = ref(false)
 const markingAllRead = ref(false)
-const nuxtApp = useNuxtApp()
 
 function nudgeActorIdForItem(item: (typeof notifications.value)[number]): string | null {
   if (item.type === 'single') {
@@ -125,6 +140,12 @@ function nudgeActorIdForItem(item: (typeof notifications.value)[number]): string
   if (item.type !== 'group') return null
   if (item.group.kind !== 'nudge') return null
   return item.group.actors?.[0]?.id ?? null
+}
+
+function itemKey(item: (typeof notifications.value)[number]): string {
+  if (item.type === 'single') return `single:${item.notification.id}`
+  if (item.type === 'group') return `group:${item.group.id}`
+  return `rollup:${item.rollup.id}`
 }
 
 // Only show the "Nudge back" action on the newest nudge row/group per actor.
@@ -210,10 +231,7 @@ async function loadMore() {
 onMounted(async () => {
   await markDelivered()
   setNotificationUndeliveredCount(0)
-  // If this is the initial SSR hydration and we already have the list, avoid a duplicate fetch.
-  if (!(nuxtApp.isHydrating && (notifications.value.length > 0 || loading.value))) {
-    await fetchList()
-  }
+  await fetchList()
 })
 
 onActivated(async () => {
@@ -244,8 +262,7 @@ watch(notificationUndeliveredCount, async (newVal, oldVal) => {
   }
 })
 
-// SSR: fetch initial list so the first HTML paint includes real content (reduces flicker).
-if (import.meta.server) {
-  await fetchList()
-}
+// No SSR fetch: notifications use a useState key derived from me.value?.id,
+// which may not be resolved during client hydration, causing a state-key mismatch
+// and hydration errors. The page is auth-gated so SSR data provides no SEO value.
 </script>

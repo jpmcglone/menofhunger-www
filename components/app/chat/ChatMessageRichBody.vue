@@ -1,7 +1,7 @@
 <template>
   <div class="min-w-0">
     <p class="whitespace-pre-wrap break-words">
-      <template v-for="(seg, idx) in displayBodySegments" :key="idx">
+      <template v-for="(seg, idx) in displayBodySegments" :key="bodySegmentKey(seg, idx)">
         <a
           v-if="seg.kind === 'link'"
           :href="seg.href"
@@ -104,6 +104,7 @@ import LinkifyIt from 'linkify-it'
 import { extractLinksFromText, safeUrlDisplay, safeUrlHostname } from '~/utils/link-utils'
 import type { LinkMetadata } from '~/utils/link-metadata'
 import { getLinkMetadata } from '~/utils/link-metadata'
+import { stableListKey } from '~/utils/stable-list-key'
 import { siteConfig } from '~/config/site'
 
 import { HASHTAG_IN_TEXT_DISPLAY_RE } from '~/utils/hashtag-autocomplete'
@@ -305,6 +306,13 @@ const displayBodySegments = computed<TextSegment[]>(() => {
   if (cursor < input.length) out.push({ kind: 'text', text: input.slice(cursor) })
   return out.length ? out : [{ kind: 'text', text: input }]
 })
+
+function bodySegmentKey(seg: TextSegment, idx: number): string {
+  if (seg.kind === 'link') return stableListKey('link', seg.href, seg.text, idx)
+  if (seg.kind === 'mention') return stableListKey('mention', seg.username, seg.text, idx)
+  if (seg.kind === 'hashtag') return stableListKey('hashtag', seg.tag, seg.text, idx)
+  return stableListKey('text', seg.text, idx)
+}
 
 const linkMeta = ref<LinkMetadata | null>(null)
 watch(

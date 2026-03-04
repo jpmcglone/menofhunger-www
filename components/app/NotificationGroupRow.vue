@@ -85,7 +85,7 @@
                 >{{ actorLabel(group.actors?.[0] as any) }}</span>
               </template>
               <template v-else>
-                <span v-for="(part, idx) in actorDisplayParts(group)" :key="idx">
+                <span v-for="(part, idx) in actorDisplayParts(group)" :key="actorDisplayPartKey(part, idx)">
                   <span
                     v-if="part.kind === 'actor'"
                     class="whitespace-nowrap"
@@ -105,7 +105,7 @@
               {{ contextLabel(group) }}
             </div>
             <div v-if="group.latestSubjectPostPreview?.media?.length" class="mt-2 flex shrink-0 -space-x-2">
-              <template v-for="(m, idx) in group.latestSubjectPostPreview.media.slice(0, 4)" :key="idx">
+              <template v-for="(m, idx) in group.latestSubjectPostPreview.media.slice(0, 4)" :key="groupMediaPreviewKey(m, idx)">
                 <img
                   v-if="(m.kind === 'video' ? m.thumbnailUrl : m.url)"
                   :src="m.kind === 'video' ? (m.thumbnailUrl || m.url) : m.url"
@@ -212,6 +212,7 @@ import type { FollowSummaryResponse, NotificationActor, NotificationGroup } from
 import { tinyTooltip } from '~/utils/tiny-tooltip'
 import type { MenuItem } from 'primevue/menuitem'
 import { userColorTier, userTierBgClass, type UserColorTier } from '~/utils/user-tier'
+import { stableListKey } from '~/utils/stable-list-key'
 
 const multiTrigger = useUserPreviewMultiTrigger()
 
@@ -371,6 +372,20 @@ function actorDisplayParts(g: NotificationGroup): Array<{ kind: 'actor' | 'text'
     { kind: 'text', text: 'and' },
     { kind: 'text', text: `${more} more` },
   ]
+}
+
+function actorDisplayPartKey(
+  part: { kind: 'actor' | 'text'; text: string; username?: string },
+  idx: number,
+): string {
+  return stableListKey('actor-part', part.kind, part.username ?? '', part.text, idx)
+}
+
+function groupMediaPreviewKey(
+  media: { kind?: string | null; url?: string | null; thumbnailUrl?: string | null },
+  idx: number,
+): string {
+  return stableListKey('media', media.kind ?? 'unknown', media.thumbnailUrl ?? media.url ?? 'none', idx)
 }
 
 function titleSuffix(g: NotificationGroup): string {

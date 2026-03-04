@@ -472,6 +472,27 @@
                           </div>
                           <Checkbox v-model="notifPrefs.pushMessage" binary :disabled="notifPrefsSaving" />
                         </div>
+                        <div class="flex items-start justify-between gap-4">
+                          <div>
+                            <div class="font-medium">Reposts</div>
+                            <div class="text-xs moh-text-muted">When someone reposts your post.</div>
+                          </div>
+                          <Checkbox v-model="notifPrefs.pushRepost" binary :disabled="notifPrefsSaving" />
+                        </div>
+                        <div class="flex items-start justify-between gap-4">
+                          <div>
+                            <div class="font-medium">Nudges</div>
+                            <div class="text-xs moh-text-muted">When someone nudges you.</div>
+                          </div>
+                          <Checkbox v-model="notifPrefs.pushNudge" binary :disabled="notifPrefsSaving" />
+                        </div>
+                        <div class="flex items-start justify-between gap-4">
+                          <div>
+                            <div class="font-medium">Posts from people you follow</div>
+                            <div class="text-xs moh-text-muted">When someone you follow shares a new post (bell enabled).</div>
+                          </div>
+                          <Checkbox v-model="notifPrefs.pushFollowedPost" binary :disabled="notifPrefsSaving" />
+                        </div>
                       </div>
                     </div>
 

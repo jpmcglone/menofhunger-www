@@ -1,6 +1,6 @@
 <template>
   <p class="mt-0.5 whitespace-pre-wrap break-words moh-text">
-    <template v-for="(seg, idx) in displayBodySegments" :key="idx">
+    <template v-for="(seg, idx) in displayBodySegments" :key="bodySegmentKey(seg, idx)">
       <a
         v-if="seg.href"
         :href="seg.href"
@@ -44,6 +44,7 @@ import { extractLinksFromText } from '~/utils/link-utils'
 import { splitTextByMentionsDisplay } from '~/utils/mention-autocomplete'
 import { splitTextByHashtagsDisplay } from '~/utils/hashtag-autocomplete'
 import { mentionTierToStyle } from '~/utils/mention-tier-style'
+import { stableListKey } from '~/utils/stable-list-key'
 import { tierFromMentionUser } from '~/composables/useMentionAutocomplete'
 
 type MentionTier = 'normal' | 'verified' | 'premium' | 'organization'
@@ -262,5 +263,12 @@ const displayBodySegments = computed<TextSegment[]>(() => {
   }
   return out.length ? out : [{ text: input }]
 })
+
+function bodySegmentKey(seg: TextSegment, idx: number): string {
+  if (seg.href) return stableListKey('link', seg.href, seg.text, idx)
+  if (seg.mentionUsername) return stableListKey('mention', seg.mentionUsername, seg.text, idx)
+  if (seg.hashtagTag) return stableListKey('hashtag', seg.hashtagTag, seg.text, idx)
+  return stableListKey('text', seg.text, idx)
+}
 </script>
 

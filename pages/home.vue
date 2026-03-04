@@ -62,8 +62,8 @@
       <div v-show="showCheckinCardArea">
         <AppFeedDailyCheckinCard
           :prompt="displayCheckinPromptText"
-          :streak="checkinState?.checkinStreakDays ?? 0"
-          :coins="checkinState?.coins ?? 0"
+          :streak="displayCheckinStreak"
+          :coins="displayCheckinCoins"
           :has-posted-today="hasPostedToday"
           :error="checkinError"
           @check-in="openCheckinComposer"
@@ -272,6 +272,8 @@ const checkinPromptText = computed(() => {
 // Use fallback text until after hydration so server and client match (checkinState can differ on SSR vs client).
 const hydrated = ref(false)
 const displayCheckinPromptText = computed(() => (hydrated.value ? checkinPromptText.value : 'Write a check-in…'))
+const displayCheckinStreak = computed(() => (hydrated.value ? (checkinState.value?.checkinStreakDays ?? 0) : 0))
+const displayCheckinCoins = computed(() => (hydrated.value ? (checkinState.value?.coins ?? 0) : 0))
 
 
 const middleScrollerRef = useMiddleScroller()

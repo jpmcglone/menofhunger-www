@@ -621,7 +621,23 @@
                     </Card>
                   </div>
 
-                  <AppCheckinsLeaderboardWidget />
+                  <!-- ClientOnly avoids hydration mismatch: widget shares leaderboard state with page,
+                       and SSR streaming can send layout before page fetch completes. -->
+                  <ClientOnly>
+                    <AppCheckinsLeaderboardWidget />
+                    <template #fallback>
+                      <Card class="moh-card moh-card-matte !rounded-2xl">
+                        <template #title>
+                          <span class="moh-h2">Streak Leaderboard</span>
+                        </template>
+                        <template #content>
+                          <div class="flex justify-center py-4" aria-hidden="true">
+                            <AppLogoLoader compact />
+                          </div>
+                        </template>
+                      </Card>
+                    </template>
+                  </ClientOnly>
 
                   <AppWebsters1828WordOfDayCard />
 
@@ -689,7 +705,7 @@
                     <span>·</span>
                     <button type="button" class="hover:underline" @click="openShortcutsModal">Shortcuts</button>
                     <span>·</span>
-                    <span>&copy; {{ new Date().getFullYear() }} {{ siteConfig.name }}</span>
+                    <span>&copy; {{ currentYear }} {{ siteConfig.name }}</span>
                   </div>
                 </div>
                   </AppRightRailContent>
@@ -841,7 +857,6 @@
 </template>
 
 <script setup lang="ts">
-import { useMediaQuery } from '@vueuse/core'
 import { siteConfig } from '~/config/site'
 import logoLightSmall from '~/assets/images/logo-white-bg-small.png'
 import logoDarkSmall from '~/assets/images/logo-black-bg-small.png'
@@ -868,6 +883,7 @@ import { userColorTier, userTierTextClass } from '~/utils/user-tier'
 const route = useRoute()
 const { isActive: isActiveNav } = useRouteMatch(route)
 const colorMode = useColorMode()
+const currentYear = new Date().getUTCFullYear()
 
 // Keep Safari iOS browser chrome (top/bottom bars) aligned with our in-app theme toggle.
 // This is the main fix for the “white bar” in dark mode while scrolling.
@@ -887,6 +903,9 @@ const {
   isSocketConnecting,
   reconnect,
 } = usePresence()
+
+// App icon badge (PWA): notifications + chat unread. Works on Android/Chrome; no-op on iOS.
+useAppIconBadge()
 
 function onReconnectClick() {
   reconnect()
@@ -1295,7 +1314,7 @@ const isRightRailForcedHidden = computed(() => {
   return _isRightRailForcedHiddenBase.value
 })
 
-const isRightRailBreakpointUp = useMediaQuery('(min-width: 962px)')
+const isRightRailBreakpointUp = useHydratedMediaQuery('(min-width: 962px)')
 const isRightRailVisible = computed(() => Boolean(isRightRailBreakpointUp.value) && !isRightRailForcedHidden.value)
 // Prefer live chat in the right rail whenever a space is selected (where rail is available).
 const showRadioChat = computed(() => radioHasStation.value && isRightRailVisible.value)

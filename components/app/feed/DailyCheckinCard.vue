@@ -2,15 +2,15 @@
   <!-- Streak-intact state: user has already posted today -->
   <div v-if="hasPostedToday" class="px-3 pt-2.5 pb-1 sm:px-4 sm:pt-3">
     <NuxtLink
-      to="/check-ins"
+      to="/leaderboard"
       class="flex items-center gap-2.5 rounded-xl border px-3.5 py-2.5 hover:opacity-90 transition-opacity"
-      style="background-color: var(--moh-checkin-soft); border-color: rgba(var(--moh-checkin-rgb), 0.3)"
+      style="background-color: rgba(127, 127, 127, 0.08); border-color: rgba(127, 127, 127, 0.2)"
     >
       <div
         class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full"
-        style="background-color: rgba(var(--moh-checkin-rgb), 0.2)"
+        style="background-color: rgba(127, 127, 127, 0.18)"
       >
-        <Icon name="tabler:flame" class="text-sm" aria-hidden="true" style="color: var(--moh-checkin)" />
+        <Icon name="tabler:flame" class="text-sm moh-text-muted" aria-hidden="true" />
       </div>
       <div class="flex-1 min-w-0">
         <span class="text-sm font-semibold moh-text">Streak intact</span>
