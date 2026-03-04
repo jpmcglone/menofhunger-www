@@ -62,7 +62,7 @@
                 <Button class="w-full sm:w-auto rounded-full px-6">
                   <span class="flex items-center gap-2">
                     <span>Sign up / Log in</span>
-                    <Icon name="tabler:door-enter" aria-hidden="true" />
+                    <Icon name="tabler:arrow-right" aria-hidden="true" />
                   </span>
                 </Button>
               </NuxtLink>
@@ -174,7 +174,10 @@
               <div class="mt-5">
                 <NuxtLink to="/login" class="inline-flex w-full sm:w-auto">
                   <Button class="w-full sm:w-auto rounded-full">
-                    Sign up or log in to get started
+                    <span class="flex items-center gap-2">
+                      <span>Sign up or log in to get started</span>
+                      <Icon name="tabler:arrow-right" aria-hidden="true" />
+                    </span>
                   </Button>
                 </NuxtLink>
               </div>

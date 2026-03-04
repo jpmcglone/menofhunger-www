@@ -203,9 +203,9 @@ export function useAuth() {
     user.value = null
     didAttempt.value = true
 
-    // Redirect to landing page after explicit logout.
+    // Redirect to home feed after explicit logout (home is accessible logged-out).
     if (import.meta.client) {
-      await navigateTo('/', { replace: true })
+      await navigateTo('/home', { replace: true })
     }
   }
 

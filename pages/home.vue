@@ -40,6 +40,16 @@
       </div>
     </div>
 
+    <!-- Welcome card: shown to all new users who haven't dismissed it (localStorage) -->
+    <ClientOnly>
+      <AppFeedHomeWelcomeCard
+        v-if="isAuthed"
+        :show-checkin-cta="showCheckinPromptBar"
+        :checkin-prompt="displayCheckinPromptText"
+        @check-in="openCheckinComposer"
+      />
+    </ClientOnly>
+
     <Transition
       enter-active-class="transition-all duration-250 ease-out"
       enter-from-class="opacity-0 -translate-y-1"
@@ -49,41 +59,20 @@
       leave-to-class="opacity-0 -translate-y-1 max-h-0"
     >
       <!-- v-show keeps a single root element so SSR and client agree (avoids hydration mismatch) -->
-      <div v-show="showCheckinPromptBar" class="px-3 pt-2.5 pb-2.5 sm:px-4 sm:pt-3 sm:pb-3">
-        <div
-          class="rounded-xl border flex items-center gap-2.5 px-3 py-2.5"
-          style="background-color: var(--moh-checkin-soft); border-color: rgba(var(--moh-checkin-rgb), 0.3)"
-        >
-          <div
-            class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full"
-            style="background-color: rgba(var(--moh-checkin-rgb), 0.18)"
-          >
-            <Icon name="tabler:calendar-check" class="text-sm" aria-hidden="true" style="color: var(--moh-checkin)" />
-          </div>
-          <div class="min-w-0 flex-1">
-            <div class="text-[10px] font-semibold uppercase tracking-wide" style="color: var(--moh-checkin); opacity: 0.75">
-              Today's Prompt
-            </div>
-            <div
-              class="mt-0.5 text-xs sm:text-[13px] leading-snug moh-text"
-              style="display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;"
-            >
-              {{ displayCheckinPromptText }}
-            </div>
-          </div>
-          <Button
-            label="Check in"
-            size="small"
-            rounded
-            class="shrink-0 !h-8 !min-h-8 !px-3 !py-0 !text-xs !leading-none whitespace-nowrap moh-btn-scope moh-btn-tone"
-            @click="openCheckinComposer"
-          />
-        </div>
-        <AppInlineAlert v-if="checkinError" class="mt-2" severity="danger">
-          {{ checkinError }}
-        </AppInlineAlert>
+      <div v-show="showCheckinCardArea">
+        <AppFeedDailyCheckinCard
+          :prompt="displayCheckinPromptText"
+          :streak="checkinState?.checkinStreakDays ?? 0"
+          :coins="checkinState?.coins ?? 0"
+          :has-posted-today="hasPostedToday"
+          :error="checkinError"
+          @check-in="openCheckinComposer"
+        />
       </div>
     </Transition>
+
+    <!-- Daily quote card: shown on mobile only (right rail shows it on desktop) -->
+    <AppFeedDailyQuoteCard />
 
     <!-- Feed: header + content -->
     <div>
@@ -132,7 +121,9 @@
             <AppFeedFollowingEmptyState
               v-if="showFollowingEmptyState"
               :following-count="followingCount"
+              :show-checkin-cta="showCheckinPromptBar"
               @find-people="navigateTo('/explore')"
+              @check-in="openCheckinComposer"
             />
             <AppFeedAllEmptyState
               v-else-if="showAllEmptyState"
@@ -213,7 +204,7 @@ const openComposer = inject(MOH_OPEN_COMPOSER_KEY, null)
 provide(MOH_FOCUS_HOME_COMPOSER_KEY, () => {
   homeComposerRef.value?.focus()
 })
-const { isAuthed } = useAuth()
+const { isAuthed, user: authUser } = useAuth()
 const { dayKey: etDayKey } = useEasternMidnightRollover()
 
 const { state: checkinState, error: checkinError, refresh: refreshCheckin, create: createCheckin } = useDailyCheckin()
@@ -243,13 +234,33 @@ const effectiveCheckinAllowedVisibilities = computed<CheckinAllowedVisibility[]>
   return checkinAllowedVisibilities.value.length ? checkinAllowedVisibilities.value : fallbackCheckinAllowedVisibilities.value
 })
 
+// True when the user has made any post today (any post, not just a check-in, earns the streak).
+const hasPostedToday = computed(() => {
+  if (!hydrated.value) return false
+  const lastKey = authUser.value?.lastCheckinDayKey ?? null
+  return Boolean(lastKey && lastKey === etDayKey.value)
+})
+
+// Show the check-in prompt when user is eligible and hasn't posted today.
 const showCheckinPromptBar = computed(() => {
   if (!isAuthed.value) return false
-  // Avoid showing check-in card when main feed is blocked by a gate CTA.
   if (feedCtaKind.value) return false
   if (!checkinState.value) return false
   if (checkinState.value.hasCheckedInToday) return false
   if (!effectiveCheckinAllowedVisibilities.value.length) return false
+  return true
+})
+
+// Show the streak-intact banner OR the check-in prompt (whichever is appropriate).
+// Suppress when the welcome card is visible and already contains the check-in CTA — no need to show both.
+const { dismissed: welcomeCardDismissed } = useWelcomeCard()
+const showCheckinCardArea = computed(() => {
+  if (!isAuthed.value) return false
+  if (feedCtaKind.value) return false
+  if (!checkinState.value) return false
+  if (!effectiveCheckinAllowedVisibilities.value.length) return false
+  // Welcome card is showing + it contains the check-in prompt — standalone card would be redundant.
+  if (!welcomeCardDismissed.value && showCheckinPromptBar.value) return false
   return true
 })
 

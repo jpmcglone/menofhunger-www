@@ -276,6 +276,18 @@
         No bio yet.
       </div>
 
+      <!-- Posting streak milestone badges -->
+      <div v-if="(profile?.longestStreakDays ?? 0) >= 7" class="mt-3 flex items-center gap-2 flex-wrap">
+        <AppStreakBadge :longest-streak-days="profile!.longestStreakDays" />
+        <span
+          v-if="profile!.checkinStreakDays > 0"
+          class="inline-flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400"
+        >
+          <Icon name="tabler:flame" class="text-[11px]" style="color: var(--moh-checkin)" aria-hidden="true" />
+          {{ profile!.checkinStreakDays }}-day posting streak
+        </span>
+      </div>
+
       <div class="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-gray-600 dark:text-gray-300">
         <div v-if="locationLabel" class="inline-flex items-center gap-1.5 min-w-0">
           <Icon name="tabler:map-pin" class="shrink-0" aria-hidden="true" />

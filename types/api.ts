@@ -1263,6 +1263,25 @@ export type CreateCheckinResponse = {
   checkinStreakDays: number
 }
 
+export type LeaderboardUser = {
+  id: string
+  username: string | null
+  name: string | null
+  premium: boolean
+  premiumPlus: boolean
+  isOrganization: boolean
+  stewardBadgeEnabled: boolean
+  verifiedStatus: 'none' | 'identity' | 'manual'
+  avatarUrl: string | null
+  checkinStreakDays: number
+  longestStreakDays: number
+}
+
+export type GetCheckinsLeaderboardResponse = {
+  users: LeaderboardUser[]
+  generatedAt: string
+}
+
 // --- Admin analytics ---
 
 export type AnalyticsRange = '7d' | '30d' | '3m' | '1y' | 'all'

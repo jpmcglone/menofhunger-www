@@ -69,7 +69,7 @@ const primaryLabel = computed(() => {
 })
 
 const primaryIconName = computed(() => {
-  if (kind.value === 'login') return 'tabler:door-enter'
+  if (kind.value === 'login') return 'tabler:arrow-right'
   if (kind.value === 'verify') return 'tabler:settings'
   if (kind.value === 'setUsername') return 'tabler:settings'
   return undefined
