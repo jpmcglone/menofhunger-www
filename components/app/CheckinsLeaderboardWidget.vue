@@ -47,7 +47,7 @@
         </div>
 
         <NuxtLink
-          to="/check-ins?tab=leaderboard"
+          to="/leaderboard"
           class="inline-block pt-3 text-sm font-medium hover:underline underline-offset-2"
           :class="tierCtaTextClass"
         >
