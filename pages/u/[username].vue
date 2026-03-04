@@ -78,29 +78,82 @@
       </ClientOnly>
 
       <div v-if="profile" class="mx-auto max-w-3xl px-4 mt-3">
-        <div class="flex flex-wrap items-center gap-2">
-          <span
-            v-if="isSelf"
-            v-tooltip.bottom="tinyTooltip('Coins')"
-            class="inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold border moh-border moh-surface"
-          >
-            <Icon name="tabler:coin" class="mr-1 text-[14px]" aria-hidden="true" />
-            {{ formatCount(authUser?.coins ?? 0) }}
-          </span>
-          <span
-            v-tooltip.bottom="tinyTooltip('Post streak (days)')"
-            class="inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold border moh-border moh-surface"
-          >
-            <Icon name="tabler:flame" class="mr-1 text-[14px]" aria-hidden="true" />
-            {{ Math.max(0, Math.floor((isSelf ? authUser?.checkinStreakDays : (profile as any)?.checkinStreakDays) ?? 0)) }}
-          </span>
-          <span
-            v-tooltip.bottom="tinyTooltip('Longest streak (days)')"
-            class="inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold border moh-border moh-surface"
-          >
-            <Icon name="tabler:trophy" class="mr-1 text-[14px]" aria-hidden="true" />
-            {{ Math.max(0, Math.floor((isSelf ? authUser?.longestStreakDays : (profile as any)?.longestStreakDays) ?? 0)) }}
-          </span>
+        <div class="flex items-center gap-2">
+          <!-- Streaks popover -->
+          <div ref="streaksWrapperEl" class="relative inline-block">
+            <button
+              type="button"
+              class="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold border moh-border moh-surface moh-text hover:opacity-80 transition-opacity"
+              @click="toggleStreaks"
+            >
+              <Icon name="tabler:flame" class="text-[14px] moh-text-muted" aria-hidden="true" />
+              Streaks
+            </button>
+            <Transition
+              enter-active-class="transition-[opacity,transform] duration-150 ease-out"
+              enter-from-class="opacity-0 scale-95"
+              enter-to-class="opacity-100 scale-100"
+              leave-active-class="transition-[opacity,transform] duration-100 ease-in"
+              leave-from-class="opacity-100 scale-100"
+              leave-to-class="opacity-0 scale-95"
+            >
+              <div
+                v-if="streaksOpen"
+                class="absolute left-0 top-full mt-2 z-50 w-52 rounded-xl border moh-border moh-bg shadow-lg p-3 origin-top-left"
+              >
+                <div class="space-y-2.5 text-sm">
+                  <div class="flex items-center justify-between gap-4">
+                    <div class="flex items-center gap-1.5 font-medium moh-text-muted">
+                      <Icon name="tabler:flame" class="text-[13px]" aria-hidden="true" />
+                      Current
+                    </div>
+                    <div class="font-semibold tabular-nums moh-text">{{ streakCurrentDays }}d</div>
+                  </div>
+                  <div class="flex items-center justify-between gap-4">
+                    <div class="flex items-center gap-1.5 font-medium moh-text-muted">
+                      <Icon name="tabler:trophy" class="text-[13px]" aria-hidden="true" />
+                      Longest
+                    </div>
+                    <div class="font-semibold tabular-nums moh-text">{{ streakLongestDays }}d</div>
+                  </div>
+                  <div v-if="isSelf" class="flex items-center justify-between gap-4">
+                    <div class="flex items-center gap-1.5 font-medium moh-text-muted">
+                      <Icon name="tabler:coin" class="text-[13px]" aria-hidden="true" />
+                      Coins
+                    </div>
+                    <div class="font-semibold tabular-nums moh-text">{{ formatCount(authUser?.coins ?? 0) }}</div>
+                  </div>
+                </div>
+              </div>
+            </Transition>
+          </div>
+
+          <!-- Badges popover — only shown if at least one milestone is earned -->
+          <div v-if="hasEarnedBadges" ref="badgesWrapperEl" class="relative inline-block">
+            <button
+              type="button"
+              class="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold border moh-border moh-surface moh-text hover:opacity-80 transition-opacity"
+              @click="toggleBadges"
+            >
+              <Icon name="tabler:award" class="text-[14px] moh-text-muted" aria-hidden="true" />
+              Badges
+            </button>
+            <Transition
+              enter-active-class="transition-[opacity,transform] duration-150 ease-out"
+              enter-from-class="opacity-0 scale-95"
+              enter-to-class="opacity-100 scale-100"
+              leave-active-class="transition-[opacity,transform] duration-100 ease-in"
+              leave-from-class="opacity-100 scale-100"
+              leave-to-class="opacity-0 scale-95"
+            >
+              <div
+                v-if="badgesOpen"
+                class="absolute left-0 top-full mt-2 z-50 rounded-xl border moh-border moh-bg shadow-lg p-3 origin-top-left"
+              >
+                <AppStreakBadge :longest-streak-days="streakLongestDays" />
+              </div>
+            </Transition>
+          </div>
         </div>
       </div>
 
@@ -350,6 +403,38 @@ function formatCount(n: unknown): string {
   const v = typeof n === 'number' ? n : Number(n)
   return countFmt.format(Math.max(0, Math.floor(Number.isFinite(v) ? v : 0)))
 }
+
+const streaksOpen = ref(false)
+const badgesOpen = ref(false)
+const streaksWrapperEl = ref<HTMLElement | null>(null)
+const badgesWrapperEl = ref<HTMLElement | null>(null)
+
+const streakCurrentDays = computed(() =>
+  Math.max(0, Math.floor((isSelf.value ? authUser.value?.checkinStreakDays : (profile.value as any)?.checkinStreakDays) ?? 0))
+)
+const streakLongestDays = computed(() =>
+  Math.max(0, Math.floor((isSelf.value ? authUser.value?.longestStreakDays : (profile.value as any)?.longestStreakDays) ?? 0))
+)
+// AppStreakBadge lowest milestone is 7 days
+const hasEarnedBadges = computed(() => streakLongestDays.value >= 7)
+
+function toggleStreaks() {
+  badgesOpen.value = false
+  streaksOpen.value = !streaksOpen.value
+}
+function toggleBadges() {
+  streaksOpen.value = false
+  badgesOpen.value = !badgesOpen.value
+}
+
+function onProfileStatPointerDown(e: PointerEvent) {
+  const target = e.target
+  if (!(target instanceof Node)) return
+  const inStreaks = streaksWrapperEl.value?.contains(target) ?? false
+  const inBadges = badgesWrapperEl.value?.contains(target) ?? false
+  if (!inStreaks) streaksOpen.value = false
+  if (!inBadges) badgesOpen.value = false
+}
 const usersStore = useUsersStore()
 const { invalidateUserPreviewCache } = useUserPreview()
 const { markReadBySubject } = useNotifications()
@@ -554,8 +639,14 @@ const notificationsCb = {
 } as const
 
 if (import.meta.client) {
-  onMounted(() => addNotificationsCallback(notificationsCb as any))
-  onBeforeUnmount(() => removeNotificationsCallback(notificationsCb as any))
+  onMounted(() => {
+    addNotificationsCallback(notificationsCb as any)
+    document.addEventListener('pointerdown', onProfileStatPointerDown, { capture: true })
+  })
+  onBeforeUnmount(() => {
+    removeNotificationsCallback(notificationsCb as any)
+    document.removeEventListener('pointerdown', onProfileStatPointerDown, true)
+  })
 }
 
 function onFollowed() {
