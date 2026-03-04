@@ -1041,6 +1041,10 @@ export type Message = {
   sender: MessageUser
   reactions: MessageReactionSummary[]
   deletedForMe: boolean
+  /** True when the sender deleted this message for all participants. */
+  deletedForAll: boolean
+  /** ISO string of when the message was last edited, or null. */
+  editedAt: string | null
   replyTo: MessageReplySnippet | null
   media: MessageMedia[]
 }
@@ -1056,6 +1060,8 @@ export type MessageConversation = {
   participants: MessageParticipant[]
   viewerStatus: MessageParticipantStatus
   unreadCount: number
+  /** True when the viewer has muted notifications for this conversation. */
+  isMuted: boolean
   /** True when a block exists in either direction between viewer and the other participant (direct chats only). */
   isBlockedWith?: boolean
 }
@@ -1091,6 +1097,10 @@ export type GetMessagesUnreadCountResponse = {
 
 export type LookupMessageConversationResponse = {
   data: { conversationId: string | null }
+}
+
+export type SearchMessageConversationsResponse = {
+  data: MessageConversation[]
 }
 
 export type MessageBlockListItem = {

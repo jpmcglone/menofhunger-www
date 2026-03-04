@@ -139,7 +139,7 @@
                 :class="item.message.sender.id === meId ? 'items-end' : 'items-start'"
               >
                 <!-- ① Media bubble (own rounded card, above text) -->
-                <template v-if="item.message.media?.length && !item.message.deletedForMe">
+                <template v-if="item.message.media?.length && !item.message.deletedForMe && !item.message.deletedForAll">
                   <div
                     v-for="media in item.message.media"
                     :key="media.id"
@@ -216,16 +216,21 @@
 
                 <!-- ② Text bubble (only when there's body text, or message is deleted) -->
                 <div
-                  v-if="item.message.deletedForMe || item.message.body.trim()"
+                  v-if="item.message.deletedForMe || item.message.deletedForAll || item.message.body.trim()"
                   :class="[
-                    item.message.deletedForMe
+                    (item.message.deletedForMe || item.message.deletedForAll)
                       ? 'px-3 py-2 italic opacity-60 border border-dashed border-gray-300 dark:border-zinc-600 text-gray-500 dark:text-gray-400 bg-transparent ' + bubbleShapeClass(item.key)
                       : bubbleShapeClass(item.key) + ' ' + bubbleClass(item.message),
                   ]"
                 >
                   <div class="space-y-1 px-0">
-                    <!-- Deleted state -->
-                    <div v-if="item.message.deletedForMe" class="flex items-center justify-between gap-2 text-xs">
+                    <!-- Deleted for all -->
+                    <div v-if="item.message.deletedForAll" class="text-xs">
+                      <span>This message was deleted for everyone</span>
+                    </div>
+
+                    <!-- Deleted for me -->
+                    <div v-else-if="item.message.deletedForMe" class="flex items-center justify-between gap-2 text-xs">
                       <span>This message was deleted</span>
                       <button
                         type="button"
@@ -250,6 +255,7 @@
                       class="flex justify-end"
                     >
                       <div class="inline-flex items-center gap-1 text-xs opacity-75 whitespace-nowrap">
+                        <span v-if="item.message.editedAt && !item.message.deletedForAll" class="italic">edited</span>
                         <time
                           :datetime="item.message.createdAt"
                           :title="formatMessageTimeFull(item.message.createdAt)"
@@ -383,10 +389,13 @@
     <AppChatMessageMenu
       ref="messageMenuRef"
       :message="menuMessage"
+      :viewer-user-id="props.meId"
       @reply="emit('reply', $event)"
       @copy="onCopy"
       @info="emit('info', $event)"
+      @edit="emit('edit', $event)"
       @delete="emit('delete-for-me', $event)"
+      @delete-for-all="emit('delete-for-all', $event)"
       @restore="emit('restore', $event)"
     />
   </div>
@@ -612,7 +621,9 @@ const emit = defineEmits<{
   (e: 'react', message: Message, reactionId: string): void
   (e: 'reply', message: Message): void
   (e: 'info', message: Message): void
+  (e: 'edit', message: Message): void
   (e: 'delete-for-me', message: Message): void
+  (e: 'delete-for-all', message: Message): void
   (e: 'restore', message: Message): void
   (e: 'scroll-to-reply', messageId: string): void
 }>()

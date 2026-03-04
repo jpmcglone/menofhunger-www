@@ -59,6 +59,17 @@
             </span>
           </button>
         </div>
+
+        <!-- Search input -->
+        <div class="mt-2 relative">
+          <Icon name="tabler:search" class="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 pointer-events-none text-sm" aria-hidden="true" />
+          <input
+            v-model="searchQuery"
+            type="search"
+            placeholder="Search chats…"
+            class="w-full rounded-lg border border-gray-200 bg-gray-50 py-1.5 pl-8 pr-3 text-sm placeholder-gray-400 outline-none focus:border-gray-400 focus:ring-0 dark:border-zinc-700 dark:bg-zinc-900 dark:placeholder-gray-500 dark:focus:border-zinc-500"
+          />
+        </div>
       </div>
     </div>
 
@@ -66,8 +77,9 @@
       Loading…
     </div>
 
-    <div v-else-if="activeList.length === 0" class="px-4 pt-2 pb-4 text-sm text-gray-500 dark:text-gray-400">
-      {{ activeTab === 'requests' ? 'No chat requests yet.' : 'No chats yet.' }}
+    <div v-else-if="displayList.length === 0" class="px-4 pt-2 pb-4 text-sm text-gray-500 dark:text-gray-400">
+      <template v-if="searchQuery.trim()">No chats matching "{{ searchQuery.trim() }}".</template>
+      <template v-else>{{ activeTab === 'requests' ? 'No chat requests yet.' : 'No chats yet.' }}</template>
     </div>
 
     <TransitionGroup
@@ -77,7 +89,7 @@
       class="divide-y divide-gray-200 dark:divide-zinc-800"
     >
       <NuxtLink
-        v-for="c in activeList"
+        v-for="c in displayList"
         :key="c.id"
         :to="conversationPath(c.id)"
         class="block w-full text-left"
@@ -148,6 +160,13 @@
                 </Transition>
               </div>
             </div>
+            <!-- Muted indicator -->
+            <Icon
+              v-if="c.isMuted"
+              name="tabler:bell-off"
+              class="shrink-0 text-xs text-gray-400 dark:text-gray-500"
+              aria-label="Muted"
+            />
             <!-- Keep wrapper mounted so removal animates (fade + slide/shrink), and siblings shift smoothly. -->
             <span
               class="moh-chat-row-badge-wrap overflow-hidden transition-[max-width,opacity,transform,margin-left] duration-180 ease-out"
@@ -175,10 +194,30 @@
 </template>
 
 <script setup lang="ts">
+import { ref, computed } from 'vue'
 import type { PropType } from 'vue'
 import type { MessageConversation, MessageUser } from '~/types/api'
 import type { TypingUserDisplay } from '~/composables/chat/useChatTyping'
 import { useUsersStore } from '~/composables/useUsersStore'
+
+const searchQuery = ref('')
+
+const displayList = computed(() => {
+  const q = searchQuery.value.trim().toLowerCase()
+  if (!q) return props.activeList
+  return props.activeList.filter((c) => {
+    if (c.title?.toLowerCase().includes(q)) return true
+    const other = props.getDirectUser(c)
+    if (other?.name?.toLowerCase().includes(q)) return true
+    if (other?.username?.toLowerCase().includes(q)) return true
+    // Also search other participants for group chats
+    return c.participants.some((p) => {
+      if (!p.user) return false
+      const u = p.user as MessageUser
+      return u.name?.toLowerCase().includes(q) || u.username?.toLowerCase().includes(q)
+    })
+  })
+})
 
 const props = defineProps({
   isTinyViewport: { type: Boolean, required: true },
@@ -225,6 +264,7 @@ function onConversationClick(id: string, event: MouseEvent) {
   // Let browser-native modified clicks (cmd/ctrl/middle) open new tabs.
   if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) return
   event.preventDefault()
+  searchQuery.value = ''
   emit('select', id)
 }
 </script>

@@ -197,9 +197,16 @@
                     </div>
                   </div>
                   <div class="flex items-center gap-2">
-                    <Button text severity="secondary" aria-label="Conversation options">
+                    <Button
+                      v-if="selectedConversation"
+                      text
+                      severity="secondary"
+                      :aria-label="selectedConversation.isMuted ? 'Unmute notifications' : 'Mute notifications'"
+                      :title="selectedConversation.isMuted ? 'Unmute notifications' : 'Mute notifications'"
+                      @click="toggleMuteConversation"
+                    >
                       <template #icon>
-                        <Icon name="tabler:dots" aria-hidden="true" />
+                        <Icon :name="selectedConversation.isMuted ? 'tabler:bell-off' : 'tabler:bell'" aria-hidden="true" />
                       </template>
                     </Button>
                   </div>
@@ -247,7 +254,9 @@
                 @react="handleReact"
                 @reply="handleReply"
                 @info="handleInfo"
+                @edit="handleEdit"
                 @delete-for-me="handleDeleteForMe"
+                @delete-for-all="handleDeleteForAll"
                 @restore="handleRestore"
                 @scroll-to-reply="handleScrollToReply"
               />
@@ -352,15 +361,23 @@
               </span>
             </div>
             <AppInlineAlert v-if="sendError" class="mb-2" severity="danger">{{ sendError }}</AppInlineAlert>
+            <!-- Edit mode banner -->
+            <div v-if="editingMessage" class="mb-2 flex items-center justify-between gap-2 rounded-lg bg-amber-50 px-3 py-1.5 text-xs text-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
+              <div class="flex items-center gap-1.5">
+                <Icon name="tabler:pencil" class="shrink-0" aria-hidden="true" />
+                <span>Editing message</span>
+              </div>
+              <button type="button" class="underline hover:no-underline shrink-0" @click="cancelEdit">Cancel</button>
+            </div>
             <AppDmComposer
               v-if="!selectedConversation?.isBlockedWith"
               ref="dmComposerRef"
               v-model="composerText"
               :user="composerUser"
-              placeholder="Type a chat…"
+              :placeholder="editingMessage ? 'Edit message…' : 'Type a chat…'"
               :loading="sending"
               :auto-focus="!isTabBarMode"
-              :reply-to="replyToMessage ? { id: replyToMessage.id, senderUsername: replyToMessage.sender.username, bodyPreview: replyToMessage.body.slice(0, 200), mediaThumbnailUrl: replyToMessage.media?.[0]?.thumbnailUrl ?? replyToMessage.media?.[0]?.url ?? null } : null"
+              :reply-to="!editingMessage && replyToMessage ? { id: replyToMessage.id, senderUsername: replyToMessage.sender.username, bodyPreview: replyToMessage.body.slice(0, 200), mediaThumbnailUrl: replyToMessage.media?.[0]?.thumbnailUrl ?? replyToMessage.media?.[0]?.url ?? null } : null"
               @send="sendCurrentMessage"
               @cancel-reply="replyToMessage = null"
             />
@@ -488,6 +505,8 @@ import { getApiErrorMessage } from '~/utils/api-error'
 import { useChatBubbleShape } from '~/composables/chat/useChatBubbleShape'
 import { useChatTimeFormatting } from '~/composables/chat/useChatTimeFormatting'
 import { useChatTyping } from '~/composables/chat/useChatTyping'
+import { useChatScroll } from '~/composables/chat/useChatScroll'
+import { useChatRealtime } from '~/composables/chat/useChatRealtime'
 import ChatConversationList from '~/components/app/chat/ChatConversationList.vue'
 import ChatMessageList from '~/components/app/chat/ChatMessageList.vue'
 import ChatMessageInfoModal from '~/components/app/chat/ChatMessageInfoModal.vue'
@@ -613,6 +632,7 @@ const sendError = ref<string | null>(null)
 
 // Message actions
 const replyToMessage = ref<Message | null>(null)
+const editingMessage = ref<Message | null>(null)
 const infoMessage = ref<Message | null>(null)
 const infoModalVisible = ref(false)
 const availableReactions = ref<import('~/types/api').MessageReaction[]>([])
@@ -627,20 +647,65 @@ const composerUser = computed(() =>
 const messagesScroller = ref<HTMLElement | null>(null)
 const dmComposerRef = ref<{ focus?: () => void; getMedia?: () => import('~/composables/composer/types').CreateMediaPayload[]; clearMedia?: () => void } | null>(null)
 const messagesReady = ref(false)
-const pendingNewCount = ref(0)
-const pendingNewTier = ref<MessageTone>('normal')
 const animateMessageList = ref(true)
 const renderedChatKey = ref<string | null>(null)
-const atBottom = ref(true)
-const scrollTopByChatKey = new Map<string, number>()
-const isAutoScrollingToBottom = ref(false)
-const scrollPillTopPx = ref(0)
-const scrollPillHeightPx = ref(0)
-const scrollPillVisible = ref(false)
-let scrollPillHideTimer: ReturnType<typeof setTimeout> | null = null
-let autoScrollToBottomTimer: ReturnType<typeof setTimeout> | null = null
-let lastUserScrollIntentAt = 0
-const USER_SCROLL_GRACE_MS = 2000
+
+// ─── Scroll management (via useChatScroll) ───────────────────────────────────
+const {
+  atBottom,
+  isAutoScrollingToBottom,
+  scrollPillTopPx,
+  scrollPillHeightPx,
+  scrollPillVisible,
+  scrollPillNeeded,
+  scrollPillColor,
+  scrollPillThumbStyle,
+  showScrollToBottomButton,
+  cacheCurrentChatScrollPosition,
+  getCachedScrollTopForChatKey,
+  normalizeChatKey,
+  isAtBottom,
+  stickToBottom,
+  setAtBottomState,
+  refreshAtBottomFromScroller,
+  markUserScrollIntent,
+  updateScrollPill,
+  observeScrollerForBottomAnchoring,
+  onMessagesScrollerMounted,
+  onMessagesScroll: scrollEventHandler,
+  teardown: teardownScroll,
+} = useChatScroll({
+  messagesScroller,
+  selectedChatKey,
+  selectedConversationId,
+  prefersReducedMotion,
+  me: me as any,
+  onUpdateStickyDivider: () => updateStickyDivider(),
+  onReachedBottom: (convoId, _hadPending) => markSelectedConversationReadIfVisible(convoId),
+  onScrollerMountedReady: () => { animateMessageList.value = true },
+})
+
+// Derived from conversation.unreadCount + atBottom — no manual sync needed.
+const pendingNewCount = computed(() => {
+  if (atBottom.value) return 0
+  const conversation = selectedConversation.value
+  if (!conversation) return 0
+  return Math.max(0, Math.floor(Number(conversation.unreadCount) || 0))
+})
+const pendingNewTier = computed((): MessageTone => {
+  const count = pendingNewCount.value
+  if (count <= 0) return 'normal'
+  const conversation = selectedConversation.value
+  if (!conversation) return 'normal'
+  if (conversation.unreadTone) return conversation.unreadTone
+  const myId = me.value?.id ?? null
+  for (let i = messages.value.length - 1; i >= 0; i--) {
+    const msg = messages.value[i]
+    if (!msg) continue
+    if (msg.sender.id !== myId) return getMessageTier(msg)
+  }
+  return getConversationLastMessageTier(conversation)
+})
 
 // Track recently-added messages so we can animate them reliably (even if scroll-to-bottom happens same frame).
 const recentAnimatedMessageIds = ref<Set<string>>(new Set())
@@ -834,9 +899,6 @@ const pendingNewLabel = computed(() => {
   return 'Scroll to bottom'
 })
 
-const showScrollToBottomButton = computed(() =>
-  Boolean(selectedChatKey.value) && !atBottom.value && !isAutoScrollingToBottom.value,
-)
 const isTabBarMode = useMediaQuery('(max-width: 639px)')
 
 const { isTinyViewport, showListPane, showDetailPane: showChatPane, gridStyle } = useTwoPaneLayout(selectedChatKey, {
@@ -923,261 +985,8 @@ const draftGroupTitle = computed(() => {
   return `${first}, ${second}, and ${rest.length} others`
 })
 
-// Treat user as "at bottom" even if a few pixels off (mobile scroll rounding, safe-area, etc).
-const BOTTOM_THRESHOLD = 24
-
-function isAtBottom() {
-  const el = messagesScroller.value
-  if (!el) return true
-  return el.scrollHeight - el.scrollTop - el.clientHeight <= BOTTOM_THRESHOLD
-}
-
-function scrollToBottom(behavior: ScrollBehavior = 'auto') {
-  const el = messagesScroller.value
-  if (!el) return
-  let nextBehavior = behavior
-  if (behavior === 'smooth' && typeof window !== 'undefined') {
-    const prefersReduced = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches
-    if (prefersReduced) nextBehavior = 'auto'
-  }
-  el.scrollTo({ top: el.scrollHeight, behavior: nextBehavior })
-}
-
-function normalizeChatKey(key: string | null | undefined): string | null {
-  const k = (key ?? '').trim()
-  return k ? k : null
-}
-
-function cacheScrollTopForChatKey(key: string | null | undefined, top: number) {
-  const normalized = normalizeChatKey(key)
-  if (!normalized) return
-  scrollTopByChatKey.set(normalized, Math.max(0, Math.floor(top)))
-}
-
-function cacheCurrentChatScrollPosition() {
-  const scroller = messagesScroller.value
-  if (!scroller) return
-  cacheScrollTopForChatKey(selectedChatKey.value, scroller.scrollTop)
-}
-
-function getCachedScrollTopForChatKey(key: string | null | undefined): number | null {
-  const normalized = normalizeChatKey(key)
-  if (!normalized) return null
-  const cached = scrollTopByChatKey.get(normalized)
-  return typeof cached === 'number' && Number.isFinite(cached) ? cached : null
-}
-
-function onMessagesScrollerMounted(scroller: HTMLElement, chatKey: string | null | undefined) {
-  const cachedTop = getCachedScrollTopForChatKey(chatKey)
-  const maxTopNow = Math.max(0, scroller.scrollHeight - scroller.clientHeight)
-  const targetTop = cachedTop != null ? Math.min(cachedTop, maxTopNow) : scroller.scrollHeight
-  // Force instant jump regardless of any global scroll-behavior.
-  scroller.scrollTop = targetTop
-  observeScrollerForBottomAnchoring(scroller)
-  requestAnimationFrame(() => {
-    const maxTop = Math.max(0, scroller.scrollHeight - scroller.clientHeight)
-    const nextTop = cachedTop != null ? Math.min(cachedTop, maxTop) : scroller.scrollHeight
-    scroller.scrollTop = nextTop
-    observeScrollerForBottomAnchoring(scroller)
-    updateStickyDivider()
-    updateScrollPill()
-    const bottom = refreshAtBottomFromScroller()
-    if (bottom) {
-      resetPendingNew()
-      const normalizedChatKey = normalizeChatKey(chatKey)
-      if (normalizedChatKey && selectedConversationId.value === normalizedChatKey) {
-        markSelectedConversationReadIfVisible(normalizedChatKey)
-      }
-    }
-    // Re-enable per-row animations after the container is mounted.
-    animateMessageList.value = true
-  })
-}
-
-const scrollPillNeeded = computed(() => {
-  const el = messagesScroller.value
-  if (!el) return false
-  return el.scrollHeight > el.clientHeight + 1
-})
-
-const scrollPillColor = computed(() => {
-  const tier = userColorTier(me.value as any)
-  if (tier === 'organization') return 'var(--moh-org)'
-  if (tier === 'premium') return 'var(--moh-premium)'
-  if (tier === 'verified') return 'var(--moh-verified)'
-  return 'rgba(148, 163, 184, 0.9)' // neutral
-})
-
-const scrollPillThumbStyle = computed<Record<string, string>>(() => {
-  const h = Math.max(0, Math.floor(scrollPillHeightPx.value))
-  const y = Math.max(0, Math.floor(scrollPillTopPx.value))
-  return {
-    height: `${h}px`,
-    transform: `translateY(${y}px)`,
-    background: scrollPillColor.value,
-  }
-})
-
-function updateScrollPill() {
-  const el = messagesScroller.value
-  if (!el) return
-  // Overlay track is `top-2 bottom-2` => 8px inset each side.
-  const insetPx = 8
-  const trackH = Math.max(0, el.clientHeight - insetPx * 2)
-  const scrollable = Math.max(1, el.scrollHeight - el.clientHeight)
-  if (trackH <= 0 || el.scrollHeight <= el.clientHeight + 1) {
-    scrollPillHeightPx.value = 0
-    scrollPillTopPx.value = 0
-    scrollPillVisible.value = false
-    return
-  }
-  const ratio = el.clientHeight / el.scrollHeight
-  const minThumb = 18
-  const thumbH = Math.min(trackH, Math.max(minThumb, Math.floor(trackH * ratio)))
-  const maxTop = Math.max(0, trackH - thumbH)
-  const scrollRatio = el.scrollTop / scrollable
-  scrollPillHeightPx.value = thumbH
-  scrollPillTopPx.value = Math.floor(maxTop * scrollRatio)
-}
-
-function kickScrollPillVisibility() {
-  if (!scrollPillNeeded.value) {
-    scrollPillVisible.value = false
-    return
-  }
-  scrollPillVisible.value = true
-  if (scrollPillHideTimer) clearTimeout(scrollPillHideTimer)
-  // Best-practice-ish: keep visible briefly after interaction.
-  scrollPillHideTimer = setTimeout(() => {
-    scrollPillHideTimer = null
-    scrollPillVisible.value = false
-  }, 1200)
-}
-
-function clearAutoScrollToBottomState() {
-  isAutoScrollingToBottom.value = false
-  if (autoScrollToBottomTimer) {
-    clearTimeout(autoScrollToBottomTimer)
-    autoScrollToBottomTimer = null
-  }
-}
-
-function beginAutoScrollToBottomState() {
-  isAutoScrollingToBottom.value = true
-  if (autoScrollToBottomTimer) clearTimeout(autoScrollToBottomTimer)
-  // Safety net: don't keep the button hidden forever if events don't fire.
-  autoScrollToBottomTimer = setTimeout(() => {
-    autoScrollToBottomTimer = null
-    isAutoScrollingToBottom.value = false
-  }, 1400)
-}
-
-function setAtBottomState(next: boolean) {
-  atBottom.value = next
-  if (next && isAutoScrollingToBottom.value) {
-    clearAutoScrollToBottomState()
-  }
-}
-
-function refreshAtBottomFromScroller() {
-  const bottom = isAtBottom()
-  setAtBottomState(bottom)
-  cacheCurrentChatScrollPosition()
-  return bottom
-}
-
-function stickToBottom(opts?: {
-  behavior?: ScrollBehavior
-  ifNearBottom?: boolean
-  includeExtraFrame?: boolean
-  userInitiated?: boolean
-}) {
-  if (!import.meta.client) return false
-  const {
-    behavior = 'auto',
-    ifNearBottom = false,
-    includeExtraFrame = false,
-    userInitiated = false,
-  } = opts ?? {}
-
-  if (ifNearBottom && !atBottom.value && !isAtBottom()) return false
-  if (userInitiated && behavior === 'smooth') beginAutoScrollToBottomState()
-
-  scrollToBottom(behavior)
-  requestAnimationFrame(() => {
-    if (includeExtraFrame) {
-      scrollToBottom('auto')
-      requestAnimationFrame(() => {
-        scrollToBottom('auto')
-        refreshAtBottomFromScroller()
-        updateScrollPill()
-      })
-      return
-    }
-    refreshAtBottomFromScroller()
-    updateScrollPill()
-  })
-  return true
-}
-
-function markUserScrollIntent() {
-  if (!import.meta.client) return
-  if (isAutoScrollingToBottom.value) clearAutoScrollToBottomState()
-  lastUserScrollIntentAt = Date.now()
-  kickScrollPillVisibility()
-}
-
+// Scroll pill resize observer — tracks scroller resizes to update the pill position.
 let scrollPillRo: ResizeObserver | null = null
-let bottomAnchorRo: ResizeObserver | null = null
-let observedScrollerContentEl: HTMLElement | null = null
-let lastMeasuredScrollHeight = 0
-
-function getScrollerContentEl(scroller: HTMLElement): HTMLElement | null {
-  return (scroller.firstElementChild as HTMLElement | null) ?? null
-}
-
-function wasAtBottomForHeight(scroller: HTMLElement, contentHeight: number): boolean {
-  return contentHeight - scroller.scrollTop - scroller.clientHeight <= BOTTOM_THRESHOLD
-}
-
-function maybeStickToBottomOnContentGrowth() {
-  if (!import.meta.client) return
-  const scroller = messagesScroller.value
-  if (!scroller) return
-
-  const previousHeight = lastMeasuredScrollHeight || scroller.scrollHeight
-  const currentHeight = scroller.scrollHeight
-  const grew = currentHeight > previousHeight + 1
-  const userRecentlyScrolled = Date.now() - lastUserScrollIntentAt < USER_SCROLL_GRACE_MS
-  const shouldStick =
-    atBottom.value || wasAtBottomForHeight(scroller, previousHeight)
-
-  lastMeasuredScrollHeight = currentHeight
-
-  if (!grew || !shouldStick) return
-  if (userRecentlyScrolled && !atBottom.value) return
-
-  stickToBottom({ behavior: 'auto' })
-}
-
-function observeScrollerForBottomAnchoring(scroller: HTMLElement) {
-  if (!import.meta.client) return
-  if (!bottomAnchorRo) {
-    bottomAnchorRo = new ResizeObserver(() => {
-      maybeStickToBottomOnContentGrowth()
-    })
-  }
-
-  const nextContentEl = getScrollerContentEl(scroller)
-  if (observedScrollerContentEl && observedScrollerContentEl !== nextContentEl) {
-    bottomAnchorRo.unobserve(observedScrollerContentEl)
-  }
-  observedScrollerContentEl = nextContentEl
-  if (nextContentEl) {
-    bottomAnchorRo.observe(nextContentEl)
-  }
-  lastMeasuredScrollHeight = scroller.scrollHeight
-}
 watch(
   messagesScroller,
   (el, prev) => {
@@ -1187,69 +996,19 @@ watch(
     if (el) {
       scrollPillRo.observe(el)
       observeScrollerForBottomAnchoring(el)
-      requestAnimationFrame(() => {
-        updateScrollPill()
-      })
-    } else if (bottomAnchorRo && observedScrollerContentEl) {
-      bottomAnchorRo.unobserve(observedScrollerContentEl)
-      observedScrollerContentEl = null
-      lastMeasuredScrollHeight = 0
+      requestAnimationFrame(() => { updateScrollPill() })
     }
   },
   { flush: 'post' },
 )
 
 onBeforeUnmount(() => {
-  clearAutoScrollToBottomState()
-  if (scrollPillHideTimer) {
-    clearTimeout(scrollPillHideTimer)
-    scrollPillHideTimer = null
-  }
+  teardownScroll()
   if (scrollPillRo) {
     scrollPillRo.disconnect()
     scrollPillRo = null
   }
-  if (bottomAnchorRo) {
-    bottomAnchorRo.disconnect()
-    bottomAnchorRo = null
-  }
-  observedScrollerContentEl = null
-  lastMeasuredScrollHeight = 0
 })
-
-function syncPendingFromSelectedConversation() {
-  const conversation = selectedConversation.value
-  if (!conversation) {
-    pendingNewCount.value = 0
-    pendingNewTier.value = 'normal'
-    return
-  }
-  const unread = Math.max(0, Math.floor(Number(conversation.unreadCount) || 0))
-  pendingNewCount.value = unread
-  if (unread <= 0) {
-    pendingNewTier.value = 'normal'
-    return
-  }
-  if (conversation.unreadTone) {
-    pendingNewTier.value = conversation.unreadTone
-    return
-  }
-  const myId = me.value?.id ?? null
-  for (let i = messages.value.length - 1; i >= 0; i--) {
-    const msg = messages.value[i]
-    if (!msg) continue
-    if (msg.sender.id !== myId) {
-      pendingNewTier.value = getMessageTier(msg)
-      return
-    }
-  }
-  pendingNewTier.value = getConversationLastMessageTier(conversation)
-}
-
-function resetPendingNew() {
-  pendingNewCount.value = 0
-  pendingNewTier.value = 'normal'
-}
 
 function markSelectedConversationReadIfVisible(conversationId: string) {
   const id = (conversationId ?? '').trim()
@@ -1266,38 +1025,19 @@ function getMessageTier(message: Message): MessageTone {
 }
 
 function onMessagesScroll() {
-  const wasAtBottom = atBottom.value
-  const bottom = refreshAtBottomFromScroller()
-  if (bottom) {
-    // Only clear pending state when the user actually reaches bottom.
-    const convoId = selectedConversationId.value
-    const shouldMarkRead = !wasAtBottom && pendingNewCount.value > 0 && Boolean(convoId)
-    resetPendingNew()
-    if (shouldMarkRead && convoId) markSelectedConversationReadIfVisible(convoId)
-  }
-  updateStickyDivider()
-  updateScrollPill()
-  // Only show pill for user-driven scrolling (programmatic scrolls shouldn't surface it).
-  if (import.meta.client && Date.now() - lastUserScrollIntentAt < USER_SCROLL_GRACE_MS) {
-    kickScrollPillVisibility()
-  }
+  // Capture pending count BEFORE the composable updates atBottom (which zeroes the computed).
+  const hadPending = pendingNewCount.value > 0
+  scrollEventHandler({ hadPending })
 }
 
 watch(messages, () => {
   void nextTick().then(() => updateStickyDivider())
 })
 
-watch(
-  selectedConversation,
-  () => {
-    syncPendingFromSelectedConversation()
-  },
-  { deep: true },
-)
-
 function onPendingButtonClick() {
+  // Eagerly mark at-bottom so the pending button disappears before the smooth scroll completes.
+  setAtBottomState(true)
   stickToBottom({ behavior: 'smooth', userInitiated: true })
-  resetPendingNew()
   const convoId = selectedConversationId.value
   if (convoId) {
     void nextTick().then(() => {
@@ -1472,7 +1212,6 @@ async function selectConversation(id: string, opts?: { replace?: boolean }) {
   renderedChatKey.value = null
   messagesPaneState.value = 'loading'
   setAtBottomState(true)
-  syncPendingFromSelectedConversation()
   // If an older-messages request is in flight, ensure a thread switch doesn't get blocked by it.
   loadingOlder.value = false
   const replace = opts?.replace ?? false
@@ -1533,7 +1272,6 @@ async function clearSelection(opts?: { replace?: boolean; preserveDraft?: boolea
   renderedChatKey.value = null
   messagesPaneState.value = 'loading'
   setAtBottomState(true)
-  resetPendingNew()
   resetTyping()
   sendingMessageIds.value = new Set()
   replyToMessage.value = null
@@ -1609,9 +1347,6 @@ function updateConversationUnread(conversationId: string, unreadCount: number) {
     // Clear the unread tone when the conversation is marked read.
     ...(unreadCount <= 0 ? { unreadTone: undefined } : {}),
   }))
-  if (selectedConversationId.value === conversationId) {
-    syncPendingFromSelectedConversation()
-  }
 }
 
 function updateConversationForMessage(message: Message) {
@@ -1639,13 +1374,15 @@ function updateConversationForMessage(message: Message) {
     else if (nextUnreadCount <= 0) updated.unreadTone = undefined
     return updated
   }, { moveToTop: true })
-  if (selectedConversationId.value === message.conversationId) {
-    syncPendingFromSelectedConversation()
-  }
   if (!found) void refreshAllConversationTabs()
 }
 
 async function sendCurrentMessage() {
+  // If in edit mode, submit the edit instead of sending a new message.
+  if (editingMessage.value) {
+    await handleEditSubmit()
+    return
+  }
   const hasText = composerText.value.trim().length > 0
   const hasMedia = (dmComposerRef.value?.getMedia?.() ?? []).length > 0
   if ((!hasText && !hasMedia) || sending.value) return
@@ -1660,6 +1397,11 @@ async function sendCurrentMessage() {
   } finally {
     sending.value = false
   }
+}
+
+function cancelEdit() {
+  composerText.value = ''
+  editingMessage.value = null
 }
 
 /** Draft path: creates the conversation and sends the first message. */
@@ -1728,7 +1470,7 @@ async function sendMessage() {
     const capturedReplyToId = replyToMessage.value?.id ?? null
     messages.value = [
       ...messages.value,
-      { id: localId, createdAt: new Date().toISOString(), body, conversationId, sender: optimisticSender, reactions: [], deletedForMe: false, replyTo: replySnippet, media: [], __clientKey: localId } as ChatMessage,
+      { id: localId, createdAt: new Date().toISOString(), body, conversationId, sender: optimisticSender, reactions: [], deletedForMe: false, deletedForAll: false, editedAt: null, replyTo: replySnippet, media: [], __clientKey: localId } as ChatMessage,
     ]
     sendingMessageIds.value = new Set([...sendingMessageIds.value, localId])
     composerText.value = ''
@@ -1769,7 +1511,6 @@ async function sendMessage() {
       updateConversationForMessage(msg)
       await nextTick()
       stickToBottom({ behavior: 'smooth' })
-      resetPendingNew()
     } else {
       // API returned no message — remove the optimistic row and restore the composer.
       messages.value = messages.value.filter((m) => m.id !== localId)
@@ -1907,6 +1648,83 @@ async function handleRestore(message: Message) {
   }
 }
 
+function handleEdit(message: Message) {
+  editingMessage.value = message
+  composerText.value = message.body
+  nextTick(() => dmComposerRef.value?.focus?.())
+}
+
+async function handleEditSubmit() {
+  const msg = editingMessage.value
+  if (!msg || !composerText.value.trim()) {
+    editingMessage.value = null
+    return
+  }
+  const body = composerText.value.trim()
+  const conversationId = msg.conversationId
+
+  // Optimistic update
+  const idx = messages.value.findIndex((m) => m.id === msg.id)
+  const originalBody = msg.body
+  if (idx !== -1) {
+    messages.value = [
+      ...messages.value.slice(0, idx),
+      { ...messages.value[idx]!, body, editedAt: new Date().toISOString() },
+      ...messages.value.slice(idx + 1),
+    ]
+  }
+  composerText.value = ''
+  editingMessage.value = null
+
+  try {
+    await apiFetch(`/messages/conversations/${conversationId}/messages/${msg.id}`, {
+      method: 'PATCH',
+      body: { body },
+    })
+  } catch {
+    // Revert on failure
+    if (idx !== -1) {
+      const current = messages.value[idx]
+      if (current) {
+        messages.value = [
+          ...messages.value.slice(0, idx),
+          { ...current, body: originalBody, editedAt: msg.editedAt },
+          ...messages.value.slice(idx + 1),
+        ]
+      }
+    }
+    composerText.value = body
+    editingMessage.value = msg
+  }
+}
+
+async function handleDeleteForAll(message: Message) {
+  const conversationId = message.conversationId
+  const idx = messages.value.findIndex((m) => m.id === message.id)
+  if (idx !== -1) {
+    messages.value = [
+      ...messages.value.slice(0, idx),
+      { ...messages.value[idx]!, deletedForAll: true, body: '' },
+      ...messages.value.slice(idx + 1),
+    ]
+  }
+  try {
+    await apiFetch(`/messages/conversations/${conversationId}/messages/${message.id}/all`, { method: 'DELETE' })
+  } catch {
+    // Revert on failure
+    if (idx !== -1) {
+      const msg = messages.value[idx]
+      if (msg) {
+        messages.value = [
+          ...messages.value.slice(0, idx),
+          { ...msg, deletedForAll: false, body: message.body },
+          ...messages.value.slice(idx + 1),
+        ]
+      }
+    }
+  }
+}
+
 function handleScrollToReply(messageId: string) {
   const scroller = messagesScroller.value
   const el = scroller?.querySelector(`[data-message-id="${messageId}"]`) as HTMLElement | null
@@ -1943,6 +1761,22 @@ async function acceptSelectedConversation() {
   if (!selectedConversationId.value) return
   await apiFetch(`/messages/conversations/${selectedConversationId.value}/accept`, { method: 'POST' })
   await refreshAllConversationTabs()
+}
+
+async function toggleMuteConversation() {
+  const convo = selectedConversation.value
+  if (!convo) return
+  const newMuted = !convo.isMuted
+  // Optimistic update
+  patchConversation(convo.id, (c) => ({ ...c, isMuted: newMuted }))
+  try {
+    await apiFetch(`/messages/conversations/${convo.id}/mute`, {
+      method: newMuted ? 'POST' : 'DELETE',
+    })
+  } catch {
+    // Revert on failure
+    patchConversation(convo.id, (c) => ({ ...c, isMuted: !newMuted }))
+  }
 }
 
 function removeConversationFromList(conversationId: string) {
@@ -2150,91 +1984,97 @@ watch(
   { immediate: true },
 )
 
-const messageCallback = {
-  onReaction: (payload: { conversationId?: string; message?: unknown }) => {
-    const msg = payload?.message as Message | undefined
-    if (!msg?.id) return
-    if (selectedConversationId.value !== msg.conversationId) return
-    // Update the reactions on the existing message in-place.
-    const idx = messages.value.findIndex((m) => m.id === msg.id)
-    if (idx !== -1) {
-      const existing = messages.value[idx]!
-      messages.value = [
-        ...messages.value.slice(0, idx),
-        { ...existing, reactions: msg.reactions ?? [] },
-        ...messages.value.slice(idx + 1),
-      ]
-    }
-    // Also sync the info modal if it's open for this message.
-    if (infoMessage.value?.id === msg.id) {
-      infoMessage.value = { ...infoMessage.value, reactions: msg.reactions ?? [] }
-    }
-  },
-  onMessage: (payload: { conversationId?: string; message?: unknown }) => {
-    const msg = payload?.message as Message | undefined
-    if (!msg?.conversationId) return
-    updateConversationForMessage(msg)
-    if (selectedConversationId.value === msg.conversationId) {
-      const shouldStick = isAtBottom()
+const meId = computed(() => me.value?.id ?? null)
+
+const { register: registerRealtime, teardown: teardownRealtime } = useChatRealtime({
+  selectedConversationId,
+  meId,
+  atBottom,
+  addMessagesCallback,
+  removeMessagesCallback,
+  handlers: {
+    onNewMessage(msg, isSelected, wasAtBottom) {
+      updateConversationForMessage(msg)
+      if (!isSelected) return
+      const shouldStick = wasAtBottom
       setAtBottomState(shouldStick)
-      // If this is our own sent message, prefer reconciling it into an optimistic local row.
       const reconciled = reconcileOptimisticSend(msg)
       const exists = messages.value.some((m) => m.id === msg.id)
       if (!exists) {
         messages.value = [...messages.value, msg]
-        // Don't animate our own message if reconciliation failed but we still have optimistic rows
-        // in flight — the API response will merge/deduplicate shortly, avoiding a double-enter flash.
         const myOwnUnreconciled = !reconciled && msg.sender.id === me.value?.id && sendingMessageIds.value.size > 0
-        if (!myOwnUnreconciled) {
-          markMessageAnimated(msg.id)
-        }
+        if (!myOwnUnreconciled) markMessageAnimated(msg.id)
       }
       if (shouldStick) {
         void nextTick().then(() => {
-          // Keep it pinned with one extra frame for late layout updates
-          // (typing row, metadata previews, etc).
           stickToBottom({ behavior: 'auto', ifNearBottom: true, includeExtraFrame: true })
         })
       }
-      // Only mark read when the user is actually at the bottom (i.e. they can see new messages).
-      // If they're scrolled up, keep messages "unread" and preserve the pending count until they return to bottom.
       const isIncoming = msg.sender.id !== me.value?.id
       if (typeof document !== 'undefined' && document.visibilityState === 'visible' && shouldStick) {
-        // Prevent transient badge flicker: server may emit an unread bump before our mark-read is processed.
         if (isIncoming) suppressMessageUnreadBumpsForMs(900)
         void apiFetch(`/messages/conversations/${msg.conversationId}/mark-read`, { method: 'POST' })
         updateConversationUnread(msg.conversationId, 0)
       }
-    }
-  },
-  onTyping: (payload: { conversationId?: string; userId?: string; typing?: boolean }) => {
-    const convoId = payload?.conversationId ?? null
-    const userId = payload?.userId ?? null
-    if (!convoId || !userId) return
-    if (route.path !== '/chat') return
-    if (userId === me.value?.id) return
-    setRemoteTyping(convoId, userId, payload?.typing)
-  },
-  onRead: (payload: { conversationId?: string; userId?: string; lastReadAt?: string }) => {
-    const convoId = String(payload?.conversationId ?? '').trim()
-    if (!convoId) return
+    },
 
-    if (payload.userId && payload.userId !== me.value?.id) {
-      // Another participant read this conversation — update their lastReadAt so
-      // double-checkmarks and read avatars update in real-time.
-      if (payload.lastReadAt) {
-        updateConversationParticipantRead(convoId, payload.userId, payload.lastReadAt)
+    onReaction(msg, isSelected) {
+      if (!isSelected) return
+      const idx = messages.value.findIndex((m) => m.id === msg.id)
+      if (idx !== -1) {
+        const existing = messages.value[idx]!
+        messages.value = [
+          ...messages.value.slice(0, idx),
+          { ...existing, reactions: msg.reactions ?? [] },
+          ...messages.value.slice(idx + 1),
+        ]
       }
-      return
-    }
+      if (infoMessage.value?.id === msg.id) {
+        infoMessage.value = { ...infoMessage.value, reactions: msg.reactions ?? [] }
+      }
+    },
 
-    // Self event: another tab/device marked this conversation read.
-    updateConversationUnread(convoId, 0)
-    if (selectedConversationId.value === convoId) {
-      if (atBottom.value) pendingNewCount.value = 0
-    }
+    onMessageEdited(msg, isSelected) {
+      if (!isSelected) return
+      const idx = messages.value.findIndex((m) => m.id === msg.id)
+      if (idx !== -1) {
+        messages.value = [
+          ...messages.value.slice(0, idx),
+          { ...messages.value[idx]!, body: msg.body, editedAt: msg.editedAt ?? null },
+          ...messages.value.slice(idx + 1),
+        ]
+      }
+      if (infoMessage.value?.id === msg.id) {
+        infoMessage.value = { ...infoMessage.value, body: msg.body, editedAt: msg.editedAt ?? null }
+      }
+    },
+
+    onMessageDeletedForAll(_convoId, messageId, isSelected) {
+      if (!isSelected) return
+      const idx = messages.value.findIndex((m) => m.id === messageId)
+      if (idx !== -1) {
+        messages.value = [
+          ...messages.value.slice(0, idx),
+          { ...messages.value[idx]!, deletedForAll: true, body: '' },
+          ...messages.value.slice(idx + 1),
+        ]
+      }
+    },
+
+    onTyping(convoId, userId, typing) {
+      if (route.path !== '/chat') return
+      setRemoteTyping(convoId, userId, typing)
+    },
+
+    onRead(convoId, userId, lastReadAt) {
+      if (userId && userId !== me.value?.id) {
+        if (lastReadAt) updateConversationParticipantRead(convoId, userId, lastReadAt)
+        return
+      }
+      updateConversationUnread(convoId, 0)
+    },
   },
-}
+})
 
 onMounted(() => {
   try {
@@ -2249,7 +2089,7 @@ onMounted(() => {
 
     if (!viewerIsVerified.value && !viewerIsPremium.value) return
 
-    addMessagesCallback(messageCallback)
+    registerRealtime()
     emitMessagesScreen(true)
 
     // Pre-fetch allowed reactions (used by the reaction picker)
@@ -2287,7 +2127,7 @@ onMounted(() => {
 onBeforeUnmount(() => {
   clearChatBootTimer()
   clearMessagesPaneTimer()
-  removeMessagesCallback(messageCallback)
+  teardownRealtime()
   emitMessagesScreen(false)
   for (const t of recentAnimatedTimers.values()) clearTimeout(t)
   recentAnimatedTimers.clear()

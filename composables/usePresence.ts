@@ -82,6 +82,8 @@ export type SpacesCallback = {
 export type MessagesCallback = {
   onMessage?: (payload: { conversationId?: string; message?: unknown }) => void
   onReaction?: (payload: { conversationId?: string; message?: unknown }) => void
+  onMessageEdited?: (payload: { conversationId?: string; message?: unknown }) => void
+  onMessageDeletedForAll?: (payload: { conversationId?: string; messageId?: string }) => void
   onTyping?: (payload: { conversationId?: string; userId?: string; typing?: boolean }) => void
   onRead?: (payload: { conversationId?: string; userId?: string; lastReadAt?: string }) => void
 }
@@ -661,6 +663,20 @@ export function usePresence() {
       if (!messagesCallbacks.value.size) return
       for (const cb of messagesCallbacks.value) {
         cb.onReaction?.(data)
+      }
+    })
+
+    socket.on('messages:edited', (data: { conversationId?: string; message?: unknown }) => {
+      if (!messagesCallbacks.value.size) return
+      for (const cb of messagesCallbacks.value) {
+        cb.onMessageEdited?.(data)
+      }
+    })
+
+    socket.on('messages:deleted-for-all', (data: { conversationId?: string; messageId?: string }) => {
+      if (!messagesCallbacks.value.size) return
+      for (const cb of messagesCallbacks.value) {
+        cb.onMessageDeletedForAll?.(data)
       }
     })
 
