@@ -155,6 +155,7 @@
               aria-hidden="true"
             >
               <span
+                v-if="c.unreadCount > 0"
                 class="inline-flex min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold leading-[18px] justify-center text-center"
                 :class="conversationDotClass(c)"
                 aria-label="Unread messages"
