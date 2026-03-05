@@ -52,10 +52,6 @@ export type ActiveSubscriptionGrant = {
   reason: string | null
 }
 
-export type AdminSubscriptionGrant = ActiveSubscriptionGrant & {
-  grantedByAdminId: string | null
-  createdAt: string
-}
 
 export type BillingMe = {
   premium: boolean
@@ -1324,8 +1320,11 @@ export type AdminAnalyticsTimeSeriesPoint = {
 
 export type AdminAnalyticsSummary = {
   totalUsers: number
+  verifiedUsers: number
   premiumUsers: number
   premiumPlusUsers: number
+  /** Users with at least one active (non-revoked, non-expired) subscription grant */
+  usersWithActiveGrants: number
   dau: number
   mau: number
 }

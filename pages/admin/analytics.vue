@@ -55,7 +55,7 @@
 
       <template v-if="data">
         <!-- Summary cards -->
-        <div class="px-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+        <div class="px-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-3">
           <div v-for="card in summaryCards" :key="card.label" class="rounded-xl border moh-border p-4 space-y-1">
             <div class="text-xs text-gray-500 dark:text-gray-400 font-medium truncate">{{ card.label }}</div>
             <div class="text-2xl font-bold tabular-nums">{{ card.value }}</div>
@@ -251,6 +251,35 @@
               </div>
             </div>
 
+            <!-- Verification → Premium funnel -->
+            <div class="rounded-xl border moh-border p-4 space-y-3 sm:col-span-2">
+              <div class="font-medium text-sm">Conversion Funnel</div>
+              <div class="text-xs text-gray-500 dark:text-gray-400 -mt-1">Signup → Verified → Premium</div>
+              <div class="flex items-stretch gap-0 rounded-lg overflow-hidden border moh-border text-center text-sm">
+                <div class="flex-1 px-3 py-3 bg-gray-50 dark:bg-zinc-900/50">
+                  <div class="text-lg font-bold tabular-nums">{{ data.summary.totalUsers.toLocaleString() }}</div>
+                  <div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">All users</div>
+                </div>
+                <div class="flex items-center px-1 text-gray-300 dark:text-zinc-600 select-none">›</div>
+                <div class="flex-1 px-3 py-3">
+                  <div class="text-lg font-bold tabular-nums" :class="engagementColor(verifiedConversionPct, 20, 50)">
+                    {{ data.summary.verifiedUsers.toLocaleString() }}
+                  </div>
+                  <div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Verified ({{ verifiedConversionPct }}%)</div>
+                </div>
+                <div class="flex items-center px-1 text-gray-300 dark:text-zinc-600 select-none">›</div>
+                <div class="flex-1 px-3 py-3">
+                  <div class="text-lg font-bold tabular-nums" :class="engagementColor(premiumOfVerifiedPct, 10, 30)">
+                    {{ data.summary.premiumUsers.toLocaleString() }}
+                  </div>
+                  <div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Premium ({{ premiumOfVerifiedPct }}% of verified)</div>
+                </div>
+              </div>
+              <div class="text-xs text-gray-400 dark:text-gray-500 border-t moh-border pt-2">
+                Verification is required for premium access — this shows your full upgrade path.
+              </div>
+            </div>
+
           </div>
         </div>
 
@@ -280,11 +309,11 @@
 
             <!-- Comped -->
             <div>
-              <div class="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-2">Comped (manually granted)</div>
+              <div class="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-2">Comped (grants)</div>
               <div class="grid grid-cols-3 gap-3 text-center">
                 <div class="rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900 p-3">
                   <div class="text-2xl font-bold tabular-nums text-amber-700 dark:text-amber-400">{{ totalComped.toLocaleString() }}</div>
-                  <div class="text-xs text-amber-600 dark:text-amber-500 mt-1">Total comped</div>
+                  <div class="text-xs text-amber-600 dark:text-amber-500 mt-1">Active comped</div>
                 </div>
                 <div class="rounded-lg border moh-border p-3">
                   <div class="text-2xl font-bold tabular-nums">{{ data.monetization.compedPremium.toLocaleString() }}</div>
@@ -294,6 +323,10 @@
                   <div class="text-2xl font-bold tabular-nums">{{ data.monetization.compedPremiumPlus.toLocaleString() }}</div>
                   <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">Premium+</div>
                 </div>
+              </div>
+              <div class="mt-2 flex items-center justify-between text-xs text-gray-500 dark:text-gray-400 px-1">
+                <span>Users with banked free months (incl. unverified)</span>
+                <span class="font-semibold tabular-nums">{{ data.summary.usersWithActiveGrants.toLocaleString() }}</span>
               </div>
             </div>
 
@@ -531,12 +564,17 @@ const summaryCards = computed(() => {
   if (!data.value) return []
   const { summary } = data.value
   const dauMauPct = summary.mau > 0 ? Math.round((summary.dau / summary.mau) * 100) : 0
+  const verifiedPct = summary.totalUsers > 0
+    ? Math.round((summary.verifiedUsers / summary.totalUsers) * 100)
+    : 0
   return [
     { label: 'Total Users', value: summary.totalUsers.toLocaleString(), sub: undefined },
+    { label: 'Verified', value: summary.verifiedUsers.toLocaleString(), sub: `${verifiedPct}% of all users` },
     { label: 'DAU', value: summary.dau.toLocaleString(), sub: '30-day avg' },
     { label: 'MAU', value: summary.mau.toLocaleString(), sub: '30-day window' },
     { label: 'DAU/MAU', value: dauMauPct + '%', sub: 'Stickiness' },
     { label: 'Premium', value: summary.premiumUsers.toLocaleString(), sub: `incl. ${summary.premiumPlusUsers} Premium+` },
+    { label: 'Banked Grants', value: summary.usersWithActiveGrants.toLocaleString(), sub: 'users w/ free months' },
   ]
 })
 
@@ -610,6 +648,16 @@ const compedPct = computed(() => {
 const payingPct = computed(() => {
   if (!data.value || data.value.summary.totalUsers === 0) return 0
   return Math.round((totalPaying.value / data.value.summary.totalUsers) * 100)
+})
+
+const verifiedConversionPct = computed(() => {
+  if (!data.value || data.value.summary.totalUsers === 0) return 0
+  return Math.round((data.value.summary.verifiedUsers / data.value.summary.totalUsers) * 100)
+})
+
+const premiumOfVerifiedPct = computed(() => {
+  if (!data.value || data.value.summary.verifiedUsers === 0) return 0
+  return Math.round((data.value.summary.premiumUsers / data.value.summary.verifiedUsers) * 100)
 })
 
 const asOfDisplay = computed(() => {

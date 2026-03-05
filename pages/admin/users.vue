@@ -670,6 +670,7 @@ type OrgAffiliation = {
 }
 
 const { apiFetch, apiFetchData } = useApiClient()
+import type { AdminGrantSummary } from '~/types/api'
 import { getApiErrorMessage } from '~/utils/api-error'
 import { formatDateTime } from '~/utils/time-format'
 import { useFormSubmit } from '~/composables/useFormSubmit'
@@ -718,7 +719,7 @@ async function loadGrants(userId: string) {
   grantsLoading.value = true
   grantError.value = null
   try {
-    const res = await apiFetchData<{ premiumMonthsRemaining: number; premiumPlusMonthsRemaining: number }>(
+    const res = await apiFetchData<AdminGrantSummary>(
       `/admin/users/${encodeURIComponent(userId)}/subscription-grants`,
       { method: 'GET' },
     )
@@ -737,7 +738,7 @@ async function saveGrantMonths() {
   grantSaving.value = true
   grantError.value = null
   try {
-    const res = await apiFetchData<{ premiumMonthsRemaining: number; premiumPlusMonthsRemaining: number }>(
+    const res = await apiFetchData<AdminGrantSummary>(
       `/admin/users/${encodeURIComponent(u.id)}/subscription-grants`,
       {
         method: 'PUT',
