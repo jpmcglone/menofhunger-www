@@ -71,9 +71,10 @@ export type BillingMe = {
   grants: ActiveSubscriptionGrant[]
 }
 
-export type AdminGrantMonths = {
-  grants: AdminSubscriptionGrant[]
-  effectiveExpiresAt: string | null
+/** Summary of banked free months for admin grant management UI. */
+export type AdminGrantSummary = {
+  premiumMonthsRemaining: number
+  premiumPlusMonthsRemaining: number
 }
 
 export type BillingCheckoutSession = {

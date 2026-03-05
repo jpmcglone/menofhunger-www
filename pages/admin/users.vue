@@ -266,20 +266,6 @@
           />
         </div>
 
-        <div class="space-y-2">
-          <label class="text-sm font-medium text-gray-700 dark:text-gray-200">Membership</label>
-          <Select
-            v-model="editMembership"
-            :options="membershipOptions"
-            optionLabel="label"
-            optionValue="value"
-            placeholder="Select…"
-            class="w-full"
-          />
-          <div v-if="membershipPrereqError" class="text-sm text-red-700 dark:text-red-300">
-            {{ membershipPrereqError }}
-          </div>
-        </div>
 
         <div class="space-y-2">
           <label class="text-sm font-medium text-gray-700 dark:text-gray-200">Organization account</label>
@@ -507,97 +493,55 @@
           </div>
         </div>
 
-        <!-- Free month grants -->
+        <!-- Free months grant management -->
         <div class="rounded-xl border border-gray-200 bg-gray-50 p-3 dark:border-zinc-800 dark:bg-zinc-950/40">
           <div class="text-sm font-semibold text-gray-900 dark:text-gray-50">Free months</div>
           <div class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-            Grant complimentary premium access. Grants stack from the latest active end date.
+            Set the total banked free months per tier. 0 = no free months. Premium+ is consumed first, then Premium.
           </div>
 
-          <!-- Active grants list -->
-          <div class="mt-3 space-y-2">
-            <div v-if="grantsLoading" class="text-sm text-gray-500 dark:text-gray-400">Loading grants…</div>
-            <div v-else-if="activeGrants.length === 0" class="text-sm italic text-gray-400 dark:text-gray-500">
-              No active grants.
+          <div v-if="grantsLoading" class="mt-3 text-sm text-gray-500 dark:text-gray-400">Loading…</div>
+          <div v-else class="mt-3 space-y-3">
+            <div class="flex items-center gap-3">
+              <label class="w-28 text-xs font-medium text-gray-700 dark:text-gray-300">Premium+ months</label>
+              <InputNumber
+                v-model="editPremiumPlusMonths"
+                :min="0"
+                :max="1200"
+                :allowEmpty="false"
+                inputClass="w-24 text-sm"
+                showButtons
+                buttonLayout="horizontal"
+                decrementButtonClass="p-button-secondary p-button-sm"
+                incrementButtonClass="p-button-secondary p-button-sm"
+              />
             </div>
-            <div
-              v-else
-              v-for="grant in activeGrants"
-              :key="grant.id"
-              class="flex items-start justify-between gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900"
+            <div class="flex items-center gap-3">
+              <label class="w-28 text-xs font-medium text-gray-700 dark:text-gray-300">Premium months</label>
+              <InputNumber
+                v-model="editPremiumMonths"
+                :min="0"
+                :max="1200"
+                :allowEmpty="false"
+                inputClass="w-24 text-sm"
+                showButtons
+                buttonLayout="horizontal"
+                decrementButtonClass="p-button-secondary p-button-sm"
+                incrementButtonClass="p-button-secondary p-button-sm"
+              />
+            </div>
+            <Button
+              label="Save free months"
+              severity="secondary"
+              size="small"
+              :loading="grantSaving"
+              :disabled="grantSaving"
+              @click="saveGrantMonths"
             >
-              <div class="min-w-0 text-xs space-y-0.5">
-                <div class="flex items-center gap-2">
-                  <Tag
-                    :value="grant.tier === 'premiumPlus' ? 'Premium+' : 'Premium'"
-                    severity="warning"
-                    class="!text-xs"
-                  />
-                  <span class="text-gray-500 dark:text-gray-400">{{ grant.months }}mo</span>
-                  <Tag :value="grant.source" severity="secondary" class="!text-xs" />
-                </div>
-                <div class="font-mono text-gray-600 dark:text-gray-300">
-                  {{ formatDateTime(grant.startsAt) }} → {{ formatDateTime(grant.endsAt) }}
-                </div>
-                <div v-if="grant.reason" class="text-gray-500 dark:text-gray-400 italic">{{ grant.reason }}</div>
-              </div>
-              <Button
-                severity="danger"
-                size="small"
-                text
-                :loading="revokingGrantId === grant.id"
-                :disabled="!!revokingGrantId"
-                @click="revokeGrant(grant.id)"
-              >
-                <template #icon>
-                  <Icon name="tabler:x" />
-                </template>
-              </Button>
-            </div>
-          </div>
-
-          <!-- Grant form -->
-          <div class="mt-4 space-y-3">
-            <div class="flex items-center gap-2">
-              <Select
-                v-model="grantTier"
-                :options="grantTierOptions"
-                optionLabel="label"
-                optionValue="value"
-                class="flex-1"
-                placeholder="Tier…"
-              />
-              <Select
-                v-model="grantMonths"
-                :options="grantMonthOptions"
-                optionLabel="label"
-                optionValue="value"
-                class="w-32"
-                placeholder="Months…"
-              />
-            </div>
-            <Textarea
-              v-model="grantReason"
-              class="w-full"
-              rows="2"
-              autoResize
-              :maxlength="500"
-              placeholder="Reason (optional, internal only)…"
-            />
-            <div class="flex items-center gap-2">
-              <Button
-                label="Grant months"
-                severity="secondary"
-                size="small"
-                :loading="grantSaving"
-                :disabled="grantSaving || !grantTier || !grantMonths"
-                @click="grantFreeMonths"
-              >
-                <template #icon>
-                  <Icon name="tabler:gift" aria-hidden="true" />
-                </template>
-              </Button>
-            </div>
+              <template #icon>
+                <Icon name="tabler:gift" aria-hidden="true" />
+              </template>
+            </Button>
           </div>
 
           <AppInlineAlert v-if="grantError" class="mt-3" severity="danger">{{ grantError }}</AppInlineAlert>
@@ -764,52 +708,22 @@ const banSaving = ref(false)
 const banError = ref<string | null>(null)
 
 // Free month grants state
-type AdminGrant = {
-  id: string
-  tier: 'premium' | 'premiumPlus'
-  source: 'admin' | 'referral'
-  months: number
-  startsAt: string
-  endsAt: string
-  reason: string | null
-  grantedByAdminId: string | null
-  createdAt: string
-}
-const activeGrants = ref<AdminGrant[]>([])
 const grantsLoading = ref(false)
 const grantSaving = ref(false)
 const grantError = ref<string | null>(null)
-const revokingGrantId = ref<string | null>(null)
-const grantTier = ref<'premium' | 'premiumPlus'>('premium')
-const grantMonths = ref<number>(1)
-const grantReason = ref('')
-
-const grantTierOptions = [
-  { label: 'Premium', value: 'premium' as const },
-  { label: 'Premium+', value: 'premiumPlus' as const },
-]
-
-const grantMonthOptions = [
-  { label: '1 month', value: 1 },
-  { label: '2 months', value: 2 },
-  { label: '3 months', value: 3 },
-  { label: '4 months', value: 4 },
-  { label: '6 months', value: 6 },
-  { label: '12 months', value: 12 },
-]
+const editPremiumMonths = ref(0)
+const editPremiumPlusMonths = ref(0)
 
 async function loadGrants(userId: string) {
   grantsLoading.value = true
   grantError.value = null
   try {
-    const res = await apiFetch<AdminGrant[]>(`/admin/users/${encodeURIComponent(userId)}/subscription-grants`, {
-      method: 'GET',
-    })
-    // Show only active (not revoked, not expired) grants in the panel
-    const now = new Date()
-    activeGrants.value = (res.data ?? []).filter(
-      (g) => new Date(g.endsAt) > now,
+    const res = await apiFetchData<{ premiumMonthsRemaining: number; premiumPlusMonthsRemaining: number }>(
+      `/admin/users/${encodeURIComponent(userId)}/subscription-grants`,
+      { method: 'GET' },
     )
+    editPremiumMonths.value = res.premiumMonthsRemaining
+    editPremiumPlusMonths.value = res.premiumPlusMonthsRemaining
   } catch (e: unknown) {
     grantError.value = getApiErrorMessage(e) || 'Failed to load grants.'
   } finally {
@@ -817,51 +731,28 @@ async function loadGrants(userId: string) {
   }
 }
 
-async function grantFreeMonths() {
+async function saveGrantMonths() {
   const u = editingUser.value
   if (!u || grantSaving.value) return
   grantSaving.value = true
   grantError.value = null
   try {
-    const res = await apiFetchData<{ grants: AdminGrant[]; effectiveExpiresAt: string | null }>(
+    const res = await apiFetchData<{ premiumMonthsRemaining: number; premiumPlusMonthsRemaining: number }>(
       `/admin/users/${encodeURIComponent(u.id)}/subscription-grants`,
       {
-        method: 'POST',
+        method: 'PUT',
         body: {
-          tier: grantTier.value,
-          months: grantMonths.value,
-          reason: grantReason.value.trim() || undefined,
+          premiumMonths: editPremiumMonths.value,
+          premiumPlusMonths: editPremiumPlusMonths.value,
         },
       },
     )
-    const now = new Date()
-    activeGrants.value = (res.grants ?? []).filter((g) => new Date(g.endsAt) > now)
-    grantReason.value = ''
+    editPremiumMonths.value = res.premiumMonthsRemaining
+    editPremiumPlusMonths.value = res.premiumPlusMonthsRemaining
   } catch (e: unknown) {
-    grantError.value = getApiErrorMessage(e) || 'Failed to grant months.'
+    grantError.value = getApiErrorMessage(e) || 'Failed to save free months.'
   } finally {
     grantSaving.value = false
-  }
-}
-
-async function revokeGrant(grantId: string) {
-  const u = editingUser.value
-  if (!u || revokingGrantId.value) return
-  const ok = window.confirm('Revoke this grant? The user will lose this access window immediately if they have no other active entitlements.')
-  if (!ok) return
-  revokingGrantId.value = grantId
-  grantError.value = null
-  try {
-    const res = await apiFetchData<{ grants: AdminGrant[]; effectiveExpiresAt: string | null }>(
-      `/admin/users/${encodeURIComponent(u.id)}/subscription-grants/${encodeURIComponent(grantId)}`,
-      { method: 'DELETE' },
-    )
-    const now = new Date()
-    activeGrants.value = (res.grants ?? []).filter((g) => new Date(g.endsAt) > now)
-  } catch (e: unknown) {
-    grantError.value = getApiErrorMessage(e) || 'Failed to revoke grant.'
-  } finally {
-    revokingGrantId.value = null
   }
 }
 
@@ -876,8 +767,6 @@ const editPhone = ref('')
 const editUsername = ref('')
 const editName = ref('')
 const editBio = ref('')
-type MembershipTier = 'none' | 'premium' | 'premiumPlus'
-const editMembership = ref<MembershipTier>('none')
 const editVerifiedStatus = ref<AdminUser['verifiedStatus']>('none')
 const editIsOrganization = ref(false)
 
@@ -1005,14 +894,8 @@ async function checkUsernameAvailability(username: string) {
 }
 
 const currentUsernameLower = computed(() => (editingUser.value?.username ?? '').trim().toLowerCase())
-const membershipPrereqError = computed(() => {
-  if (editMembership.value === 'none') return null
-  if (editVerifiedStatus.value === 'none') return 'User must be verified before enabling Premium or Premium+.'
-  return null
-})
 const canSave = computed(() => {
   if (!editingUser.value) return false
-  if (membershipPrereqError.value) return false
   const desired = editUsername.value.trim()
   if (!desired) return true // clearing is allowed
   const desiredLower = desired.toLowerCase()
@@ -1054,12 +937,6 @@ const verifiedOptions = [
   { label: 'Not verified', value: 'none' as const },
   { label: 'Identity verified', value: 'identity' as const },
   { label: 'Manually verified', value: 'manual' as const },
-]
-
-const membershipOptions = [
-  { label: 'None', value: 'none' as const },
-  { label: 'Premium', value: 'premium' as const },
-  { label: 'Premium+', value: 'premiumPlus' as const },
 ]
 
 const membershipLabel = computed(() => {
@@ -1104,15 +981,12 @@ function openEdit(u: AdminUser) {
   banError.value = null
   grantError.value = null
   banReason.value = ''
-  grantReason.value = ''
-  grantTier.value = 'premium'
-  grantMonths.value = 1
-  activeGrants.value = []
+  editPremiumMonths.value = 0
+  editPremiumPlusMonths.value = 0
   editPhone.value = u.phone
   editUsername.value = u.username ?? ''
   editName.value = u.name ?? ''
   editBio.value = u.bio ?? ''
-  editMembership.value = u.premiumPlus ? 'premiumPlus' : u.premium ? 'premium' : 'none'
   editVerifiedStatus.value = u.verifiedStatus ?? 'none'
   editIsOrganization.value = Boolean(u.isOrganization)
   resetUsernameCheck()
@@ -1268,8 +1142,6 @@ const { submit: saveUser, submitting: saving } = useFormSubmit(
         username: editUsername.value.trim() ? editUsername.value.trim() : null,
         name: editName.value.trim() ? editName.value.trim() : null,
         bio: editBio.value.trim() ? editBio.value.trim() : null,
-        premium: editMembership.value === 'premium' || editMembership.value === 'premiumPlus',
-        premiumPlus: editMembership.value === 'premiumPlus',
         isOrganization: editIsOrganization.value,
         verifiedStatus: editVerifiedStatus.value,
       },
