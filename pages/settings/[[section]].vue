@@ -348,6 +348,25 @@
                 <div v-if="billingMe?.cancelAtPeriodEnd" class="text-xs text-amber-700 dark:text-amber-300">
                   Canceling at period end.
                 </div>
+
+                <!-- Free month grants -->
+                <template v-if="billingMe?.grants && billingMe.grants.length > 0">
+                  <div class="border-t border-gray-200 dark:border-zinc-700 pt-2 mt-1 space-y-1.5">
+                    <div
+                      v-for="grant in billingMe.grants"
+                      :key="grant.id"
+                      class="flex items-center justify-between gap-3"
+                    >
+                      <div class="flex items-center gap-1.5 moh-text-muted">
+                        <Icon name="tabler:gift" class="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                        <span>{{ grant.tier === 'premiumPlus' ? 'Premium+ ' : 'Premium ' }}complimentary</span>
+                      </div>
+                      <div class="font-mono text-xs text-gray-700 dark:text-gray-300">
+                        through {{ formatDateTime(grant.endsAt) }}
+                      </div>
+                    </div>
+                  </div>
+                </template>
               </div>
 
               <AppInlineAlert v-if="billingError" severity="danger">{{ billingError }}</AppInlineAlert>
