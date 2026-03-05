@@ -40,6 +40,22 @@ export type ApiErrorEnvelope = {
 }
 
 export type BillingTier = 'premium' | 'premiumPlus'
+export type SubscriptionGrantSource = 'admin' | 'referral'
+
+export type ActiveSubscriptionGrant = {
+  id: string
+  tier: BillingTier
+  source: SubscriptionGrantSource
+  months: number
+  startsAt: string
+  endsAt: string
+  reason: string | null
+}
+
+export type AdminSubscriptionGrant = ActiveSubscriptionGrant & {
+  grantedByAdminId: string | null
+  createdAt: string
+}
 
 export type BillingMe = {
   premium: boolean
@@ -47,7 +63,17 @@ export type BillingMe = {
   verified: boolean
   subscriptionStatus: string | null
   cancelAtPeriodEnd: boolean
+  /** When the current Stripe billing period ends (null if no active Stripe sub). */
   currentPeriodEnd: string | null
+  /** Latest access expiry across Stripe + active grants. */
+  effectiveExpiresAt: string | null
+  /** Active (non-expired, non-revoked) subscription grants. */
+  grants: ActiveSubscriptionGrant[]
+}
+
+export type AdminGrantMonths = {
+  grants: AdminSubscriptionGrant[]
+  effectiveExpiresAt: string | null
 }
 
 export type BillingCheckoutSession = {
