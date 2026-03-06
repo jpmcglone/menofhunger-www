@@ -321,21 +321,33 @@
                 </div>
               </div>
 
-              <div class="rounded-xl border moh-border p-3 moh-surface space-y-2 text-sm">
+              <div class="rounded-xl border moh-border p-4 moh-surface space-y-4 text-sm">
                 <div class="flex items-center justify-between gap-3">
-                  <div class="moh-text-muted">Your tier</div>
-                  <div class="font-semibold text-gray-900 dark:text-gray-50">
-                    <span v-if="billingMe?.premiumPlus">Premium+</span>
-                    <span v-else-if="billingMe?.premium">Premium</span>
-                    <span v-else>Free</span>
+                  <div class="moh-text-muted">Verified</div>
+                  <div class="flex items-center gap-2 font-semibold">
+                    <span v-if="billingMe?.verified">Yes</span>
+                    <span v-else>No</span>
+                    <AppVerifiedBadge
+                      v-if="billingMe?.verified"
+                      :status="authUser?.verifiedStatus ?? 'none'"
+                      :premium="Boolean(billingMe?.premium)"
+                      :premium-plus="Boolean(billingMe?.premiumPlus)"
+                      :is-organization="Boolean((authUser as any)?.isOrganization)"
+                      :steward-badge-enabled="authUser?.stewardBadgeEnabled ?? true"
+                    />
                   </div>
                 </div>
                 <div class="flex items-center justify-between gap-3">
-                  <div class="moh-text-muted">Verified</div>
+                  <div class="moh-text-muted">Premium</div>
                   <div class="font-semibold">
-                    <span v-if="billingMe?.verified">Yes</span>
-                    <span v-else>No</span>
+                    <span v-if="billingMe?.premiumPlus" class="text-orange-700 dark:text-orange-300">Premium+</span>
+                    <span v-else-if="billingMe?.premium" class="text-amber-700 dark:text-amber-300">Premium</span>
+                    <span v-else class="moh-text-muted">No</span>
                   </div>
+                </div>
+                <div v-if="billingMe?.effectiveExpiresAt" class="flex items-center justify-between gap-3">
+                  <div class="moh-text-muted">Good through</div>
+                  <div class="font-mono text-xs">{{ formatDateTime(billingMe.effectiveExpiresAt) }}</div>
                 </div>
                 <div v-if="billingMe?.subscriptionStatus" class="flex items-center justify-between gap-3">
                   <div class="moh-text-muted">Subscription</div>
@@ -349,20 +361,34 @@
                   Canceling at period end.
                 </div>
 
-                <!-- Free month grants -->
-                <template v-if="billingMe?.grants && billingMe.grants.length > 0">
-                  <div class="border-t border-gray-200 dark:border-zinc-700 pt-2 mt-1 space-y-1.5">
-                    <div
-                      v-for="grant in billingMe.grants"
-                      :key="grant.id"
-                      class="flex items-center justify-between gap-3"
-                    >
-                      <div class="flex items-center gap-1.5 moh-text-muted">
-                        <Icon name="tabler:gift" class="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-                        <span>{{ grant.tier === 'premiumPlus' ? 'Premium+ ' : 'Premium ' }}complimentary</span>
+                <template v-if="billingHasAnyFreeMonths">
+                  <div class="border-t border-gray-200 dark:border-zinc-700 pt-3 space-y-2.5">
+                    <div class="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                      <span>Free months</span>
+                      <Icon
+                        name="tabler:info-circle"
+                        class="h-4 w-4"
+                        aria-hidden="true"
+                        title="Banked free months are used before paid billing. Premium+ months are consumed first."
+                      />
+                    </div>
+
+                    <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                      <div
+                        v-if="billingFreeMonthsPremiumPlus > 0"
+                        class="rounded-lg border border-orange-300 bg-orange-50/90 p-3 dark:border-orange-800/50 dark:bg-orange-950/25"
+                      >
+                        <div class="text-xs font-medium text-orange-900 dark:text-orange-200">Free Premium+</div>
+                        <div class="mt-1 text-2xl font-semibold text-orange-950 dark:text-orange-100">{{ billingFreeMonthsPremiumPlus }}</div>
+                        <div class="text-xs text-orange-800 dark:text-orange-300">month{{ billingFreeMonthsPremiumPlus === 1 ? '' : 's' }} left</div>
                       </div>
-                      <div class="font-mono text-xs text-gray-700 dark:text-gray-300">
-                        through {{ formatDateTime(grant.endsAt) }}
+                      <div
+                        v-if="billingFreeMonthsPremium > 0"
+                        class="rounded-lg border border-amber-300 bg-amber-50/90 p-3 dark:border-amber-800/50 dark:bg-amber-950/25"
+                      >
+                        <div class="text-xs font-medium text-amber-900 dark:text-amber-200">Free Premium</div>
+                        <div class="mt-1 text-2xl font-semibold text-amber-950 dark:text-amber-100">{{ billingFreeMonthsPremium }}</div>
+                        <div class="text-xs text-amber-800 dark:text-amber-300">month{{ billingFreeMonthsPremium === 1 ? '' : 's' }} left</div>
                       </div>
                     </div>
                   </div>
@@ -862,6 +888,37 @@ const billingLoading = ref(false)
 const billingError = ref<string | null>(null)
 const checkoutLoading = ref<BillingTier | null>(null)
 const portalLoading = ref(false)
+const BILLING_MS_PER_MONTH = 30.44 * 24 * 60 * 60 * 1000
+
+const billingFreeMonthsPremiumPlus = computed(() => {
+  const now = Date.now()
+  const grants = billingMe.value?.grants ?? []
+  const remainingMs = grants
+    .filter((g) => g.tier === 'premiumPlus')
+    .reduce((sum, g) => {
+      const endsAtMs = new Date(String(g.endsAt)).getTime()
+      if (!Number.isFinite(endsAtMs)) return sum
+      return sum + Math.max(0, endsAtMs - now)
+    }, 0)
+  return Math.round(remainingMs / BILLING_MS_PER_MONTH)
+})
+
+const billingFreeMonthsPremium = computed(() => {
+  const now = Date.now()
+  const grants = billingMe.value?.grants ?? []
+  const remainingMs = grants
+    .filter((g) => g.tier === 'premium')
+    .reduce((sum, g) => {
+      const endsAtMs = new Date(String(g.endsAt)).getTime()
+      if (!Number.isFinite(endsAtMs)) return sum
+      return sum + Math.max(0, endsAtMs - now)
+    }, 0)
+  return Math.round(remainingMs / BILLING_MS_PER_MONTH)
+})
+
+const billingHasAnyFreeMonths = computed(() =>
+  billingFreeMonthsPremiumPlus.value > 0 || billingFreeMonthsPremium.value > 0,
+)
 
 async function refreshBilling() {
   billingLoading.value = true
