@@ -262,6 +262,32 @@
           </div>
         </div>
 
+        <div class="rounded-xl border moh-border moh-bg p-4 space-y-3">
+          <div class="text-sm font-semibold moh-text">Billing</div>
+          <div class="text-xs moh-text-muted">
+            Fix users whose premium flag was set directly in the database before the entitlement system existed.
+            Scans for users marked premium/premium+ with no active Stripe subscription and no active grants,
+            then recomputes their tier (dropping them to verified).
+          </div>
+          <div class="flex flex-wrap gap-2">
+            <Button
+              label="Fix stale premium flags"
+              severity="warn"
+              :loading="runningKey === 'entitlementsBackfill'"
+              :disabled="Boolean(runningKey)"
+              @click="runEntitlementsBackfill"
+            >
+              <template #icon>
+                <Icon name="tabler:shield-check" aria-hidden="true" />
+              </template>
+            </Button>
+          </div>
+          <div v-if="entitlementsBackfillResult" class="rounded-lg border moh-border p-3 text-xs moh-text space-y-1">
+            <div>Scanned: <span class="font-semibold">{{ entitlementsBackfillResult.scanned }}</span></div>
+            <div>Fixed: <span class="font-semibold">{{ entitlementsBackfillResult.fixed }}</span></div>
+          </div>
+        </div>
+
         <p class="text-xs moh-text-muted">
           Tip: scheduled jobs still run automatically on the server; these buttons just let you trigger a run immediately.
         </p>
@@ -298,6 +324,7 @@ type JobKey =
   | 'popular'
   | 'trending'
   | 'dailyContent'
+  | 'entitlementsBackfill'
 
 const { apiFetch, apiFetchData } = useApiClient()
 const toast = useAppToast()
@@ -401,6 +428,24 @@ async function continueHashtagBackfill() {
     toast.pushError(e, 'Hashtag backfill failed.')
   } finally {
     hashtagBackfillRunning.value = false
+  }
+}
+
+const entitlementsBackfillResult = ref<{ scanned: number; fixed: number } | null>(null)
+
+async function runEntitlementsBackfill() {
+  const ok = confirm('This will recompute entitlements for all users who have a stale premium flag (no active Stripe sub, no active grants). They will drop to verified. Continue?')
+  if (!ok) return
+  runningKey.value = 'entitlementsBackfill'
+  entitlementsBackfillResult.value = null
+  try {
+    const result = await apiFetchData<{ ok: boolean; scanned: number; fixed: number }>('/admin/jobs/entitlements-backfill', { method: 'POST' })
+    entitlementsBackfillResult.value = result
+    toast.push({ title: `Fixed ${result.fixed} stale premium user(s)`, tone: 'success', durationMs: 3000 })
+  } catch (e: unknown) {
+    toast.pushError(e, 'Entitlements backfill failed.')
+  } finally {
+    runningKey.value = null
   }
 }
 
