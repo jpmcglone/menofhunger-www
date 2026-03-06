@@ -64,7 +64,7 @@
           :prompt="displayCheckinPromptText"
           :streak="displayCheckinStreak"
           :coins="displayCheckinCoins"
-          :has-posted-today="hasPostedToday"
+          :has-checked-in-today="hasCheckedInToday"
           :error="checkinError"
           @check-in="openCheckinComposer"
         />
@@ -234,11 +234,12 @@ const effectiveCheckinAllowedVisibilities = computed<CheckinAllowedVisibility[]>
   return checkinAllowedVisibilities.value.length ? checkinAllowedVisibilities.value : fallbackCheckinAllowedVisibilities.value
 })
 
-// True when the user has made any post today (any post, not just a check-in, earns the streak).
-const hasPostedToday = computed(() => {
+// True only when the user has completed today's check-in.
+// This intentionally ignores "any post today" so the check-in prompt remains visible
+// until a real check-in is submitted.
+const hasCheckedInToday = computed(() => {
   if (!hydrated.value) return false
-  const lastKey = authUser.value?.lastCheckinDayKey ?? null
-  return Boolean(lastKey && lastKey === etDayKey.value)
+  return Boolean(checkinState.value?.hasCheckedInToday)
 })
 
 // Show the check-in prompt when user is eligible and hasn't posted today.
