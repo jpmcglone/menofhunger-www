@@ -247,6 +247,32 @@
         </div>
 
         <div class="rounded-xl border moh-border moh-bg p-4 space-y-3">
+          <div class="text-sm font-semibold moh-text">Streaks</div>
+          <div class="text-xs moh-text-muted">
+            Recompute <code>checkinStreakDays</code>, <code>longestStreakDays</code>, and <code>lastCheckinDayKey</code>
+            for every user from their full post history. Use this to backfill users who posted before the streak
+            feature launched. The nightly reset cron will still zero out stale current streaks afterward.
+          </div>
+          <div class="flex flex-wrap gap-2">
+            <Button
+              label="Backfill streaks"
+              severity="secondary"
+              :loading="runningKey === 'streaksBackfill'"
+              :disabled="Boolean(runningKey)"
+              @click="runStreaksBackfill"
+            >
+              <template #icon>
+                <Icon name="tabler:flame" aria-hidden="true" />
+              </template>
+            </Button>
+          </div>
+          <div v-if="streaksBackfillResult" class="rounded-lg border moh-border p-3 text-xs moh-text space-y-1">
+            <div>Scanned: <span class="font-semibold">{{ streaksBackfillResult.scanned }}</span></div>
+            <div>Updated: <span class="font-semibold">{{ streaksBackfillResult.updated }}</span></div>
+          </div>
+        </div>
+
+        <div class="rounded-xl border moh-border moh-bg p-4 space-y-3">
           <div class="text-sm font-semibold moh-text">Scoring</div>
           <div class="text-xs moh-text-muted">
             Precompute scores/snapshots so hot paths are fast.
@@ -325,6 +351,7 @@ type JobKey =
   | 'trending'
   | 'dailyContent'
   | 'entitlementsBackfill'
+  | 'streaksBackfill'
 
 const { apiFetch, apiFetchData } = useApiClient()
 const toast = useAppToast()
@@ -444,6 +471,24 @@ async function runEntitlementsBackfill() {
     toast.push({ title: `Fixed ${result.fixed} stale premium user(s)`, tone: 'success', durationMs: 3000 })
   } catch (e: unknown) {
     toast.pushError(e, 'Entitlements backfill failed.')
+  } finally {
+    runningKey.value = null
+  }
+}
+
+const streaksBackfillResult = ref<{ scanned: number; updated: number } | null>(null)
+
+async function runStreaksBackfill() {
+  const ok = confirm('Recompute streaks for all users from their post history? This may take a moment.')
+  if (!ok) return
+  runningKey.value = 'streaksBackfill'
+  streaksBackfillResult.value = null
+  try {
+    const result = await apiFetchData<{ ok: boolean; scanned: number; updated: number }>('/admin/jobs/streaks-backfill', { method: 'POST' })
+    streaksBackfillResult.value = result
+    toast.push({ title: `Streaks backfilled — ${result.updated} user(s) updated`, tone: 'success', durationMs: 3000 })
+  } catch (e: unknown) {
+    toast.pushError(e, 'Streaks backfill failed.')
   } finally {
     runningKey.value = null
   }

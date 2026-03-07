@@ -6,10 +6,12 @@ const LEADERBOARD_KEY = 'checkins-leaderboard'
 export function useCheckinsLeaderboard(options?: { limit?: number }) {
   const { apiFetchData } = useApiClient()
 
-  const users = useState<LeaderboardUser[]>(`${LEADERBOARD_KEY}:users`, () => [])
-  const generatedAt = useState<string | null>(`${LEADERBOARD_KEY}:generatedAt`, () => null)
-  const loading = useState<boolean>(`${LEADERBOARD_KEY}:loading`, () => false)
-  const error = useState<string | null>(`${LEADERBOARD_KEY}:error`, () => null)
+  const scopeKey = options?.limit ? `${LEADERBOARD_KEY}:${options.limit}` : LEADERBOARD_KEY
+
+  const users = useState<LeaderboardUser[]>(`${scopeKey}:users`, () => [])
+  const generatedAt = useState<string | null>(`${scopeKey}:generatedAt`, () => null)
+  const loading = useState<boolean>(`${scopeKey}:loading`, () => false)
+  const error = useState<string | null>(`${scopeKey}:error`, () => null)
 
   async function refresh() {
     loading.value = true

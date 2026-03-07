@@ -53,10 +53,10 @@
           <div class="shrink-0 text-right">
             <div class="flex items-center justify-end gap-1 text-sm font-semibold moh-text">
               <Icon name="tabler:flame" class="moh-text-muted" aria-hidden="true" />
-              {{ u.checkinStreakDays }}d
+              {{ u.checkinStreakDays > 0 ? `${u.checkinStreakDays}d` : '—' }}
             </div>
             <div class="text-[11px] moh-text-muted">
-              best {{ u.longestStreakDays }}d
+              best {{ u.longestStreakDays > 0 ? `${u.longestStreakDays}d` : '—' }}
             </div>
           </div>
         </div>

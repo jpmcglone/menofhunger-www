@@ -1,6 +1,6 @@
 <template>
   <!-- Streak-intact state: user has already checked in today -->
-  <div v-if="hasCheckedInToday" class="px-3 pt-2.5 pb-1 sm:px-4 sm:pt-3">
+  <div v-if="hasCheckedInToday" class="px-3 pt-2.5 pb-3 sm:px-4 sm:pt-3">
     <NuxtLink
       to="/leaderboard"
       class="flex items-center gap-2.5 rounded-xl border px-3.5 py-2.5 hover:opacity-90 transition-opacity"
