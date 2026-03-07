@@ -5,7 +5,7 @@
         <AppPageHeader
           title="Streak Leaderboard"
           icon="tabler:flame"
-          description="Members with the longest active daily posting streaks. Any post counts."
+          description="Ranks by current streak first, then best streak all-time. Any post counts."
         />
       </div>
 
@@ -18,7 +18,7 @@
       </div>
 
       <div v-else-if="users.length === 0" class="px-4 py-6 text-sm moh-text-muted">
-        No active streaks yet.
+        No streaks yet.
       </div>
 
       <div v-else class="divide-y divide-black/5 dark:divide-white/5">
@@ -49,10 +49,15 @@
             <AppUserIdentityLine :user="u" badge-size="xs" />
           </div>
 
-          <!-- Streak count — high-contrast text, muted icon -->
-          <div class="shrink-0 flex items-center gap-1 text-sm font-semibold moh-text">
-            <Icon name="tabler:flame" class="moh-text-muted" aria-hidden="true" />
-            {{ u.checkinStreakDays }}d
+          <!-- Streak stats: current + best -->
+          <div class="shrink-0 text-right">
+            <div class="flex items-center justify-end gap-1 text-sm font-semibold moh-text">
+              <Icon name="tabler:flame" class="moh-text-muted" aria-hidden="true" />
+              {{ u.checkinStreakDays }}d
+            </div>
+            <div class="text-[11px] moh-text-muted">
+              best {{ u.longestStreakDays }}d
+            </div>
           </div>
         </div>
       </div>

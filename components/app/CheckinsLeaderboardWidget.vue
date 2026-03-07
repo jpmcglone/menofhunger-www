@@ -34,9 +34,14 @@
             <AppUserIdentityLine :user="u" badge-size="xs" />
           </div>
 
-          <div class="shrink-0 flex items-center gap-0.5 text-xs font-semibold moh-text">
-            <Icon name="tabler:flame" class="text-[11px] moh-text-muted" aria-hidden="true" />
-            {{ u.checkinStreakDays }}d
+          <div class="shrink-0 text-right">
+            <div class="flex items-center justify-end gap-0.5 text-xs font-semibold moh-text">
+              <Icon name="tabler:flame" class="text-[11px] moh-text-muted" aria-hidden="true" />
+              {{ u.checkinStreakDays }}d
+            </div>
+            <div class="text-[10px] moh-text-muted">
+              best {{ u.longestStreakDays }}d
+            </div>
           </div>
         </div>
 
@@ -51,7 +56,7 @@
 
       <div v-else class="text-sm moh-text-muted">
         <p v-if="error">{{ error }}</p>
-        <p v-else>No active streaks yet.</p>
+        <p v-else>No streaks yet.</p>
       </div>
     </template>
   </Card>
