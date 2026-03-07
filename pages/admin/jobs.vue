@@ -250,8 +250,7 @@
           <div class="text-sm font-semibold moh-text">Streaks</div>
           <div class="text-xs moh-text-muted">
             Recompute <code>checkinStreakDays</code>, <code>longestStreakDays</code>, and <code>lastCheckinDayKey</code>
-            for every user from their full post history. Use this to backfill users who posted before the streak
-            feature launched. The nightly reset cron will still zero out stale current streaks afterward.
+            for every user from their full (non-deleted, non-onlyMe) post history. Use this to repair stale streak data.
           </div>
           <div class="flex flex-wrap gap-2">
             <Button
@@ -269,6 +268,30 @@
           <div v-if="streaksBackfillResult" class="rounded-lg border moh-border p-3 text-xs moh-text space-y-1">
             <div>Scanned: <span class="font-semibold">{{ streaksBackfillResult.scanned }}</span></div>
             <div>Updated: <span class="font-semibold">{{ streaksBackfillResult.updated }}</span></div>
+          </div>
+        </div>
+
+        <div class="rounded-xl border moh-border moh-bg p-4 space-y-3">
+          <div class="text-sm font-semibold moh-text">Coins</div>
+          <div class="text-xs moh-text-muted">
+            One-time economy reset utility. Sets every user's coin balance to a fixed baseline.
+          </div>
+          <div class="flex flex-wrap gap-2">
+            <Button
+              label="Reset all coins to 1"
+              severity="warn"
+              :loading="runningKey === 'coinsReset'"
+              :disabled="Boolean(runningKey)"
+              @click="runCoinsReset"
+            >
+              <template #icon>
+                <Icon name="tabler:coin" aria-hidden="true" />
+              </template>
+            </Button>
+          </div>
+          <div v-if="coinsResetResult" class="rounded-lg border moh-border p-3 text-xs moh-text space-y-1">
+            <div>Updated users: <span class="font-semibold">{{ coinsResetResult.updated }}</span></div>
+            <div>New balance: <span class="font-semibold">{{ coinsResetResult.newValue }}</span></div>
           </div>
         </div>
 
@@ -352,6 +375,7 @@ type JobKey =
   | 'dailyContent'
   | 'entitlementsBackfill'
   | 'streaksBackfill'
+  | 'coinsReset'
 
 const { apiFetch, apiFetchData } = useApiClient()
 const toast = useAppToast()
@@ -477,6 +501,7 @@ async function runEntitlementsBackfill() {
 }
 
 const streaksBackfillResult = ref<{ scanned: number; updated: number } | null>(null)
+const coinsResetResult = ref<{ updated: number; newValue: number } | null>(null)
 
 async function runStreaksBackfill() {
   const ok = confirm('Recompute streaks for all users from their post history? This may take a moment.')
@@ -489,6 +514,22 @@ async function runStreaksBackfill() {
     toast.push({ title: `Streaks backfilled — ${result.updated} user(s) updated`, tone: 'success', durationMs: 3000 })
   } catch (e: unknown) {
     toast.pushError(e, 'Streaks backfill failed.')
+  } finally {
+    runningKey.value = null
+  }
+}
+
+async function runCoinsReset() {
+  const ok = confirm("Reset ALL users' coin balances to 1? This affects every account.")
+  if (!ok) return
+  runningKey.value = 'coinsReset'
+  coinsResetResult.value = null
+  try {
+    const result = await apiFetchData<{ ok: boolean; updated: number; newValue: number }>('/admin/jobs/coins-reset', { method: 'POST' })
+    coinsResetResult.value = result
+    toast.push({ title: `Coins reset for ${result.updated} user(s)`, tone: 'success', durationMs: 3000 })
+  } catch (e: unknown) {
+    toast.pushError(e, 'Coins reset failed.')
   } finally {
     runningKey.value = null
   }
