@@ -164,10 +164,11 @@ html.dark .moh-vignette::after {
   --moh-verified-ring: rgba(43, 123, 185, 0.38);
   --moh-verified-soft: rgba(43, 123, 185, 0.12);
 
-  --moh-premium: #c77d1a;
-  --moh-premium-rgb: 199, 125, 26;
-  --moh-premium-ring: rgba(199, 125, 26, 0.34);
-  --moh-premium-soft: rgba(199, 125, 26, 0.12);
+  /* Darker premium orange so white text remains readable (WCAG-friendly). */
+  --moh-premium: #b45309;
+  --moh-premium-rgb: 180, 83, 9;
+  --moh-premium-ring: rgba(180, 83, 9, 0.34);
+  --moh-premium-soft: rgba(180, 83, 9, 0.12);
 
   /* Organization accent (silver, low-contrast) */
   --moh-org: #8a93a3;
@@ -497,7 +498,7 @@ input[type="reset"] {
     color: #ffffff;
   }
   .moh-notif-badge-premium {
-    background-color: #e08b1a;
+    background-color: var(--moh-premium);
     color: #ffffff;
   }
   .moh-notif-badge-normal {

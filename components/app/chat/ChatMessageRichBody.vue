@@ -1,5 +1,5 @@
 <template>
-  <div class="min-w-0">
+  <div class="min-w-0 max-w-full">
     <p class="whitespace-pre-wrap break-words">
       <template v-for="(seg, idx) in displayBodySegments" :key="bodySegmentKey(seg, idx)">
         <a
@@ -45,11 +45,11 @@
       :href="previewLink || undefined"
       target="_blank"
       rel="noopener noreferrer"
-      class="group mt-2 block overflow-hidden rounded-lg border border-current/20 bg-black/5 transition-colors hover:bg-black/10 dark:bg-white/5 dark:hover:bg-white/10"
+      class="group mt-2 block w-full max-w-full overflow-hidden rounded-lg border border-current/20 bg-black/5 transition-colors hover:bg-black/10 dark:bg-white/5 dark:hover:bg-white/10"
       aria-label="Open link"
       @click.stop
     >
-      <div class="flex gap-2.5 p-2">
+      <div class="flex min-w-0 max-w-full gap-2.5 p-2">
         <div
           v-if="linkMeta?.imageUrl"
           class="h-10 w-10 shrink-0 overflow-hidden rounded-md bg-black/10 dark:bg-white/10"
@@ -58,13 +58,13 @@
           <img :src="linkMeta.imageUrl" class="h-full w-full object-cover" alt="" loading="lazy">
         </div>
         <div class="min-w-0 flex-1">
-          <div class="truncate text-[12px] font-semibold">
+          <div class="line-clamp-2 break-words text-[12px] font-semibold leading-4">
             {{ linkMeta?.title || previewLinkHost || 'Link' }}
           </div>
-          <div v-if="linkMeta?.description" class="truncate text-[11px] opacity-80">
+          <div v-if="linkMeta?.description" class="line-clamp-2 break-words text-[11px] opacity-80">
             {{ linkMeta.description }}
           </div>
-          <div class="truncate text-[10px] opacity-70">
+          <div class="break-all text-[10px] opacity-70">
             {{ previewLinkDisplay }}
           </div>
         </div>

@@ -136,7 +136,7 @@
               <!-- Stacked bubbles wrapper (ref for reaction picker anchor) -->
               <div
                 :ref="(el) => registerBubbleEl(item.key, el)"
-                class="flex flex-col gap-1.5 text-sm"
+                class="flex min-w-0 max-w-full flex-col gap-1.5 text-sm"
                 :class="item.message.sender.id === meId ? 'items-end' : 'items-start'"
               >
                 <!-- ① Media bubble (own rounded card, above text) -->
@@ -220,8 +220,8 @@
                   v-if="item.message.deletedForMe || item.message.deletedForAll || item.message.body.trim()"
                   :class="[
                     (item.message.deletedForMe || item.message.deletedForAll)
-                      ? 'px-3 py-2 italic opacity-60 border border-dashed border-gray-300 dark:border-zinc-600 text-gray-500 dark:text-gray-400 bg-transparent ' + bubbleShapeClass(item.key)
-                      : bubbleShapeClass(item.key) + ' ' + bubbleClass(item.message),
+                      ? 'max-w-full min-w-0 px-3 py-2 italic opacity-60 border border-dashed border-gray-300 dark:border-zinc-600 text-gray-500 dark:text-gray-400 bg-transparent ' + bubbleShapeClass(item.key)
+                      : 'max-w-full min-w-0 ' + bubbleShapeClass(item.key) + ' ' + bubbleClass(item.message),
                   ]"
                 >
                   <div class="space-y-1 px-0">
@@ -355,7 +355,7 @@
                     :user="senderOverlay(participant.user)"
                     size-class="h-[14px] w-[14px]"
                     :show-presence="false"
-                    :enable-preview="false"
+                    :enable-preview="true"
                   />
                 </NuxtLink>
                 <button
@@ -369,7 +369,7 @@
                     :user="senderOverlay(participant.user)"
                     size-class="h-[14px] w-[14px]"
                     :show-presence="false"
-                    :enable-preview="false"
+                    :enable-preview="true"
                   />
                 </button>
               </template>

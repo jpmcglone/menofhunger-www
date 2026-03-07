@@ -180,7 +180,7 @@ const premiumPlusGlowStyle = computed<Record<string, string>>(() => {
   const glowPx = Math.max(12, Math.round(d * 0.42))
   const glowPx2 = Math.max(glowPx + 8, Math.round(glowPx * 1.65))
   // Keep non-org premium+ glow orange regardless of viewer org theme.
-  const glowRgb = props.isOrganization ? 'var(--moh-org-rgb)' : '199, 125, 26'
+  const glowRgb = props.isOrganization ? 'var(--moh-org-rgb)' : 'var(--moh-premium-rgb)'
   return {
     boxShadow: `0 0 ${glowPx}px rgba(${glowRgb}, 0.28), 0 0 ${glowPx2}px rgba(${glowRgb}, 0.14)`,
   }

@@ -200,12 +200,12 @@ watch(
   bottom: 4px;
   left: 0;
   border-radius: 9999px;
-  background: var(--p-primary-500, #c77d1a);
+  background: var(--p-primary-500, #b45309);
   will-change: transform, width;
 }
 
 .moh-seg-fallback-active {
-  background: var(--p-primary-500, #c77d1a);
+  background: var(--p-primary-500, #b45309);
 }
 
 /* In dark mode, use a darker active pill (unverified/default should not be a light/white fill). */

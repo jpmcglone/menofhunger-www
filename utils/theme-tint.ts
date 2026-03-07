@@ -18,7 +18,7 @@ export const PRIMARY_ORANGE: PrimaryPalette = {
   200: '#fed7aa',
   300: '#fdba74',
   400: '#f39b4f',
-  500: '#c77d1a',
+  500: '#b45309',
   600: '#ad6815',
   700: '#8f5412',
   800: '#6f400f',
@@ -46,7 +46,7 @@ export const PRIMARY_PREMIUM_ORANGE: PrimaryPalette = {
   200: '#fed7aa',
   300: '#fdba74',
   400: '#f39b4f',
-  500: '#c77d1a',
+  500: '#b45309',
   600: '#ad6815',
   700: '#8f5412',
   800: '#6f400f',
@@ -141,10 +141,10 @@ export function primaryColor500ForUser(user: { verifiedStatus?: string | null; p
 
 export function primaryTintCssForUser(user: { verifiedStatus?: string | null; premium?: boolean | null } | null): string {
   if (user?.premium) {
-    // Premium gold works best with dark text in both modes.
+    // Premium orange uses white text for clear contrast.
     return (
-      primaryPaletteToCssVars(PRIMARY_PREMIUM_ORANGE, 'html', '#111827') +
-      primaryPaletteToCssVars(PRIMARY_PREMIUM_ORANGE, 'html.dark', '#111827')
+      primaryPaletteToCssVars(PRIMARY_PREMIUM_ORANGE, 'html', '#ffffff') +
+      primaryPaletteToCssVars(PRIMARY_PREMIUM_ORANGE, 'html.dark', '#ffffff')
     )
   }
   if (user?.verifiedStatus && user.verifiedStatus !== 'none') {

@@ -41,7 +41,7 @@
                 class="w-full h-full rounded-full flex items-center justify-center"
                 :style="{
                   background: isActive(item.to)
-                    ? 'linear-gradient(rgba(43,123,185,0.12) 0%, rgba(199,125,26,0.08) 100%)'
+                    ? 'linear-gradient(rgba(43,123,185,0.12) 0%, rgba(var(--moh-premium-rgb),0.08) 100%)'
                     : 'var(--moh-bg)',
                 }"
               >

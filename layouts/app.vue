@@ -164,14 +164,14 @@
                   :style="{
                     border: `${isActiveNav(item.to) ? 3 : 2.5}px solid transparent`,
                     background: isActiveNav(item.to)
-                      ? `linear-gradient(rgba(43,123,185,0.12) 0%, rgba(199,125,26,0.08) 100%) padding-box, linear-gradient(90deg, var(--moh-verified), var(--moh-premium)) border-box`
+                      ? `linear-gradient(rgba(43,123,185,0.12) 0%, rgba(var(--moh-premium-rgb),0.08) 100%) padding-box, linear-gradient(90deg, var(--moh-verified), var(--moh-premium)) border-box`
                       : `linear-gradient(var(--moh-bg), var(--moh-bg)) padding-box, linear-gradient(90deg, var(--moh-verified), var(--moh-premium)) border-box`,
                   }"
                 >
                   <!-- Hover tint overlay -->
                   <span
                     class="absolute inset-0 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-150 pointer-events-none"
-                    style="background: linear-gradient(90deg, rgba(43,123,185,0.08), rgba(199,125,26,0.06));"
+                    style="background: linear-gradient(90deg, rgba(43,123,185,0.08), rgba(var(--moh-premium-rgb),0.06));"
                     aria-hidden="true"
                   />
                   <Icon
@@ -189,13 +189,13 @@
                   :style="{
                     border: `${isActiveNav(item.to) ? 3 : 2.5}px solid transparent`,
                     background: isActiveNav(item.to)
-                      ? `linear-gradient(rgba(43,123,185,0.12) 0%, rgba(199,125,26,0.08) 100%) padding-box, linear-gradient(90deg, var(--moh-verified), var(--moh-premium)) border-box`
+                      ? `linear-gradient(rgba(43,123,185,0.12) 0%, rgba(var(--moh-premium-rgb),0.08) 100%) padding-box, linear-gradient(90deg, var(--moh-verified), var(--moh-premium)) border-box`
                       : `linear-gradient(var(--moh-bg), var(--moh-bg)) padding-box, linear-gradient(90deg, var(--moh-verified), var(--moh-premium)) border-box`,
                   }"
                 >
                   <span
                     class="absolute inset-0 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-150 pointer-events-none"
-                    style="background: linear-gradient(90deg, rgba(43,123,185,0.08), rgba(199,125,26,0.06));"
+                    style="background: linear-gradient(90deg, rgba(43,123,185,0.08), rgba(var(--moh-premium-rgb),0.06));"
                     aria-hidden="true"
                   />
                   <Icon
@@ -213,14 +213,14 @@
                   :style="{
                     border: `${isActiveNav(item.to) ? 3 : 2.5}px solid transparent`,
                     background: isActiveNav(item.to)
-                      ? `linear-gradient(rgba(43,123,185,0.10) 0%, rgba(199,125,26,0.06) 100%) padding-box, linear-gradient(90deg, var(--moh-verified), var(--moh-premium)) border-box`
+                      ? `linear-gradient(rgba(43,123,185,0.10) 0%, rgba(var(--moh-premium-rgb),0.06) 100%) padding-box, linear-gradient(90deg, var(--moh-verified), var(--moh-premium)) border-box`
                       : `linear-gradient(var(--moh-bg), var(--moh-bg)) padding-box, linear-gradient(90deg, var(--moh-verified), var(--moh-premium)) border-box`,
                   }"
                 >
                   <!-- Hover tint overlay -->
                   <span
                     class="absolute inset-0 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-150 pointer-events-none"
-                    style="background: linear-gradient(90deg, rgba(43,123,185,0.06), rgba(199,125,26,0.04));"
+                    style="background: linear-gradient(90deg, rgba(43,123,185,0.06), rgba(var(--moh-premium-rgb),0.04));"
                     aria-hidden="true"
                   />
                   <Icon

@@ -227,11 +227,24 @@ export function useChatScroll(opts: UseChatScrollOptions) {
 
   function maybeStickToBottomOnContentGrowth(scroller: HTMLElement) {
     const contentEl = getScrollerContentEl(scroller)
-    if (!contentEl || !atBottom.value) return
+    if (!contentEl) return
+
+    const previousHeight = lastMeasuredScrollHeight
     const nowHeight = scroller.scrollHeight
-    if (nowHeight <= lastMeasuredScrollHeight) return
+    const grew = nowHeight > previousHeight
+
+    // Keep the baseline in sync on both growth and shrink so future growth checks
+    // remain accurate even when content reflows in both directions.
     lastMeasuredScrollHeight = nowHeight
-    stickToBottom({ behavior: 'auto' })
+
+    if (!grew) return
+
+    // Anchor when we were pinned (or near-pinned) before growth. This keeps the
+    // viewport glued to the latest messages as bubble content re-measures.
+    const wasNearBottomBeforeGrowth = previousHeight - scroller.scrollTop - scroller.clientHeight <= BOTTOM_THRESHOLD
+    if (!atBottom.value && !wasNearBottomBeforeGrowth) return
+
+    stickToBottom({ behavior: 'auto', ifNearBottom: true })
   }
 
   function observeScrollerForBottomAnchoring(scroller: HTMLElement) {

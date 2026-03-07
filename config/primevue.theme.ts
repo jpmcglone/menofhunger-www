@@ -10,7 +10,7 @@ const MenOfHungerPreset = definePreset(Aura, {
       200: '#fed7aa',
       300: '#fdba74',
       400: '#f39b4f',
-      500: '#c77d1a',
+      500: '#b45309',
       600: '#ad6815',
       700: '#8f5412',
       800: '#6f400f',

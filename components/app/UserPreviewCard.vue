@@ -551,7 +551,7 @@ const messageOutlineButtonClass = computed(() => {
     return '!bg-transparent !border-[#313643] !text-[#313643] dark:!border-[#8b96aa] dark:!text-[#b0bac9] hover:!bg-[rgba(49,54,67,0.08)] dark:hover:!bg-[rgba(176,186,201,0.12)]'
   }
   if (tier === 'premium') {
-    return `!bg-transparent !border-[${PRIMARY_PREMIUM_ORANGE[500]}] !text-[${PRIMARY_PREMIUM_ORANGE[500]}] hover:!bg-[rgba(199,125,26,0.08)] dark:hover:!bg-[rgba(199,125,26,0.16)]`
+    return `!bg-transparent !border-[${PRIMARY_PREMIUM_ORANGE[500]}] !text-[${PRIMARY_PREMIUM_ORANGE[500]}] hover:!bg-[rgba(var(--moh-premium-rgb),0.08)] dark:hover:!bg-[rgba(var(--moh-premium-rgb),0.16)]`
   }
   if (tier === 'verified') {
     return `!bg-transparent !border-[${PRIMARY_VERIFIED_BLUE[500]}] !text-[${PRIMARY_VERIFIED_BLUE[500]}] hover:!bg-[rgba(43,123,185,0.08)] dark:hover:!bg-[rgba(43,123,185,0.16)]`
