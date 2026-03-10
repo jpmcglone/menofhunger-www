@@ -149,7 +149,6 @@ import { usePostPermalink, usePostPermalinkMedia } from '~/composables/usePostPe
 import { usePostComments } from '~/composables/usePostComments'
 import { useThreadParticipants } from '~/composables/useThreadParticipants'
 import { usePostPermalinkSeo } from '~/composables/usePostPermalinkSeo'
-import { usePostCountBumps } from '~/composables/usePostCountBumps'
 import { useReplyModal } from '~/composables/useReplyModal'
 import type { LinkMetadata } from '~/utils/link-metadata'
 import { userColorTier, userTierTextClass } from '~/utils/user-tier'
@@ -281,7 +280,7 @@ const postsCb: PostsCallback = {
     if (data.value && (data.value as any).id === pid) {
       data.value = { ...(data.value as any), ...(patch as any) }
     }
-    if (payload?.reason === 'comment_created') {
+    if (payload?.reason === 'comment_created' || payload?.reason === 'comment_deleted') {
       void fetchComments(null)
     }
     if (payload?.reason === 'post_deleted') {
@@ -309,8 +308,6 @@ if (import.meta.client) {
   })
 }
 
-const { bumpCommentCount } = usePostCountBumps()
-
 async function createComment(
   body: string,
   visibility: import('~/types/api').PostVisibility,
@@ -333,7 +330,6 @@ async function createComment(
 function onReplyPosted(payload: { id: string; post?: FeedPost }) {
   const p = post.value
   if (p?.id) {
-    bumpCommentCount(p.id)
     if (data.value) {
       data.value = { ...data.value, commentCount: (data.value.commentCount ?? 0) + 1 }
     }
