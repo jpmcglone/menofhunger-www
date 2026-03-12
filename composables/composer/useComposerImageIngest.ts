@@ -176,15 +176,14 @@ export function useComposerImageIngest(opts: {
       return
     }
 
-    const exceedsResolution = (meta.width > 2560 || meta.height > 1440)
-    const needsCompression = exceedsResolution || videoNeedsCompression(file, maxBytes)
+    const needsCompression = videoNeedsCompression(file, maxBytes)
 
     // After compression the file will be much smaller; only enforce the raw size
     // limit when we're NOT going to compress it (compression will handle oversized files).
     if (!needsCompression && file.size > maxBytes) {
       opts.toast.push({
         title: `Video is too large (max ${formatBytes(maxBytes)}).`,
-        message: 'Try trimming it, or export at 1080p and try again.',
+        message: 'Try trimming it or compressing it before uploading.',
         tone: 'error',
         durationMs: 2600,
       })
