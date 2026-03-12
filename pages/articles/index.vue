@@ -219,6 +219,7 @@ const tabButtonEls = new Map<TabKey, HTMLElement>()
 const underlineLeft = ref(0)
 const underlineWidth = ref(0)
 const underlineReady = ref(false)
+const underlineMounted = ref(false)
 
 function setTabButtonRef(key: TabKey, el: HTMLElement | null) {
   if (el) tabButtonEls.set(key, el)
@@ -259,7 +260,7 @@ onMounted(() => {
 
 watch(activeTab, (tab) => {
   if (!tabActivated[tab]) tabActivated[tab] = true
-  nextTick(updateUnderline)
+  nextTick(() => updateUnderline(underlineMounted.value))
   if (tab === 'drafts' && draftsState.drafts.value.length === 0 && !draftsState.loading.value) {
     void draftsState.load()
   }
@@ -274,8 +275,8 @@ watch(isPremium, (premium) => {
 
 onMounted(() => nextTick(() => {
   updateUnderline(false)
-  // Enable transitions after the initial snap so tab switches animate but mount doesn't.
-  requestAnimationFrame(() => { underlineReady.value = true })
+  // Only animate after the initial underline position is measured and painted.
+  underlineMounted.value = true
 }))
 
 async function confirmDelete(id: string) {

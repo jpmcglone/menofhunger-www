@@ -377,6 +377,7 @@ const route = useRoute()
 const id = computed(() => route.params.id as string)
 const { apiFetchData } = useApiClient()
 const { isAuthed, user } = useAuth()
+const { markReadBySubject } = useNotifications()
 const { show: showAuthActionModal } = useAuthActionModal()
 
 const gateKind = computed(() =>
@@ -629,6 +630,15 @@ watch(
   (articleId, prevId) => {
     if (prevId) presence.unsubscribeArticles([prevId])
     if (articleId) presence.subscribeArticles([articleId])
+  },
+  { immediate: true },
+)
+
+watch(
+  [() => article.value?.id, () => isAuthed.value],
+  ([articleId, authed]) => {
+    if (!authed || !articleId) return
+    void markReadBySubject({ article_id: articleId })
   },
   { immediate: true },
 )

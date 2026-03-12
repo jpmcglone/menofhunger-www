@@ -128,8 +128,8 @@ export function useNotifications() {
     }
   }
 
-  async function markReadBySubject(params: { post_id?: string; user_id?: string }) {
-    if (!params.post_id && !params.user_id) return
+  async function markReadBySubject(params: { post_id?: string; user_id?: string; article_id?: string }) {
+    if (!params.post_id && !params.user_id && !params.article_id) return
     try {
       await apiFetch('/notifications/mark-read', {
         method: 'POST',
@@ -216,7 +216,7 @@ export function useNotifications() {
     if (n.title) return n.title
     switch (n.kind) {
       case 'comment':
-        return 'replied to your post'
+        return n.subjectArticleId ? 'commented on your article' : 'replied to your post'
       case 'boost':
         return 'boosted your post'
       case 'follow':
@@ -271,7 +271,7 @@ export function useNotifications() {
     if (n.kind === 'generic' && n.body) return n.body
     switch (n.kind) {
       case 'comment':
-        return 'Reply'
+        return n.subjectArticleId ? 'Article comment' : 'Reply'
       case 'boost':
         return 'Boost'
       case 'follow':
@@ -305,6 +305,9 @@ export function useNotifications() {
 
   function rowHref(n: Notification): string | null {
     if (n.kind === 'followed_article' && n.subjectArticleId) return `/a/${encodeURIComponent(n.subjectArticleId)}`
+    if ((n.kind === 'comment' || n.kind === 'mention') && n.subjectArticleId) {
+      return `/a/${encodeURIComponent(n.subjectArticleId)}`
+    }
     if (n.kind === 'comment' && n.actorPostId) return `/p/${encodeURIComponent(n.actorPostId)}`
     if (n.subjectPostId) return `/p/${encodeURIComponent(n.subjectPostId)}`
     if (n.subjectUserId && n.actor?.username) return `/u/${encodeURIComponent(n.actor.username)}`

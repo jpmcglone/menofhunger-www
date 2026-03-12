@@ -18,11 +18,12 @@ const recentlySent = new Map<string, number>()
 export function useArticleViewTracker() {
   const { apiFetchData } = useApiClient()
   const { isAuthed } = useAuth()
+  const anonViewId = useAnonViewId()
 
   async function flush(articleId: string) {
-    if (!isAuthed.value) return
     const id = (articleId ?? '').trim()
     if (!id) return
+    if (!isAuthed.value && !anonViewId.value) return
 
     const now = Date.now()
     const last = recentlySent.get(id)
@@ -31,7 +32,11 @@ export function useArticleViewTracker() {
     try {
       await apiFetchData('/articles/views', {
         method: 'POST',
-        body: { articleIds: [id] },
+        body: {
+          articleIds: [id],
+          source: 'article_read_sentinel',
+          ...(anonViewId.value ? { anon_id: anonViewId.value } : {}),
+        },
       })
       recentlySent.set(id, Date.now())
     } catch {

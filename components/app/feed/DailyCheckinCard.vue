@@ -67,15 +67,29 @@
             <template v-if="streak > 0">Post today to keep your {{ streak }}-day streak alive.</template>
             <template v-else>Any post today starts your streak. Check in with today's prompt:</template>
           </div>
+
+          <!-- Mobile: place CTA below content, right-aligned -->
+          <div class="mt-2 flex justify-end sm:hidden">
+            <Button
+              label="Check in"
+              size="small"
+              rounded
+              class="!h-8 !min-h-8 !px-3 !py-0 !text-xs !leading-none whitespace-nowrap moh-btn-scope moh-btn-tone"
+              @click="$emit('check-in')"
+            />
+          </div>
         </div>
 
-        <Button
-          label="Check in"
-          size="small"
-          rounded
-          class="shrink-0 mt-0.5 !h-8 !min-h-8 !px-3 !py-0 !text-xs !leading-none whitespace-nowrap moh-btn-scope moh-btn-tone"
-          @click="$emit('check-in')"
-        />
+        <!-- Desktop+: keep CTA on the right -->
+        <div class="hidden sm:block">
+          <Button
+            label="Check in"
+            size="small"
+            rounded
+            class="shrink-0 mt-0.5 !h-8 !min-h-8 !px-3 !py-0 !text-xs !leading-none whitespace-nowrap moh-btn-scope moh-btn-tone"
+            @click="$emit('check-in')"
+          />
+        </div>
       </div>
 
       <AppInlineAlert v-if="error" class="mt-2" severity="danger">

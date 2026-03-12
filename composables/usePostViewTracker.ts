@@ -34,8 +34,12 @@ function enqueuePosts(ids: string[]) {
   }
 }
 
-async function flushPending(apiFetchData: (url: string, opts: Record<string, unknown>) => Promise<unknown>, isAuthed: boolean) {
-  if (!isAuthed || pendingPostIds.size === 0) return
+async function flushPending(
+  apiFetchData: (url: string, opts: Record<string, unknown>) => Promise<unknown>,
+  opts: { isAuthed: boolean; anonId: string | null; source: string },
+) {
+  if (pendingPostIds.size === 0) return
+  if (!opts.isAuthed && !opts.anonId) return
 
   const ids = [...pendingPostIds].slice(0, BATCH_MAX)
   for (const id of ids) pendingPostIds.delete(id)
@@ -43,7 +47,11 @@ async function flushPending(apiFetchData: (url: string, opts: Record<string, unk
   try {
     await apiFetchData('/posts/views', {
       method: 'POST',
-      body: { postIds: ids },
+      body: {
+        postIds: ids,
+        source: opts.source,
+        ...(opts.anonId ? { anon_id: opts.anonId } : {}),
+      },
     })
     const now = Date.now()
     for (const id of ids) recentlySent.set(id, now)
@@ -55,17 +63,26 @@ async function flushPending(apiFetchData: (url: string, opts: Record<string, unk
 export function usePostViewTracker() {
   const { apiFetchData } = useApiClient()
   const { isAuthed } = useAuth()
+  const anonViewId = useAnonViewId()
 
   // Start the periodic flush timer once (shared across all callers on this page).
   if (import.meta.client && !flushTimer) {
     flushTimer = setInterval(() => {
-      void flushPending(apiFetchData as any, isAuthed.value)
+      void flushPending(apiFetchData as any, {
+        isAuthed: isAuthed.value,
+        anonId: anonViewId.value,
+        source: 'feed_scroll',
+      })
     }, FLUSH_INTERVAL_MS)
 
     // Flush on tab hide so we don't lose views on navigation/close.
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'hidden') {
-        void flushPending(apiFetchData as any, isAuthed.value)
+        void flushPending(apiFetchData as any, {
+          isAuthed: isAuthed.value,
+          anonId: anonViewId.value,
+          source: 'feed_scroll',
+        })
       }
     }, { once: false })
   }
@@ -122,11 +139,14 @@ export function usePostViewTracker() {
    * Pass multiple IDs when viewing a thread (e.g. /p/:id for a reply).
    */
   function markEngaged(postIds: string | string[]): void {
-    if (!isAuthed.value) return
     const ids = (Array.isArray(postIds) ? postIds : [postIds]).filter(Boolean)
     if (ids.length === 0) return
     enqueuePosts(ids)
-    void flushPending(apiFetchData as any, isAuthed.value)
+    void flushPending(apiFetchData as any, {
+      isAuthed: isAuthed.value,
+      anonId: anonViewId.value,
+      source: 'permalink_engaged',
+    })
   }
 
   return { observe, markEngaged }

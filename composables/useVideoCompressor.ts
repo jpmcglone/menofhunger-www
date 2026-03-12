@@ -41,9 +41,10 @@ export function formatCompressionEstimate(secs: number): string {
 }
 
 /** Returns true if the file should be compressed before upload. */
-export function videoNeedsCompression(file: File, width: number, height: number): boolean {
-  // Compress if over 50MB OR resolution exceeds 1080p
-  return file.size > 50 * 1024 * 1024 || width > 1920 || height > 1080
+export function videoNeedsCompression(file: File, maxBytes: number): boolean {
+  // Only compress when required by the upload limit.
+  // If the file is already within limit, skip ffmpeg entirely.
+  return file.size > Math.max(1, Math.floor(maxBytes || 0))
 }
 
 /**
@@ -53,7 +54,10 @@ export function videoNeedsCompression(file: File, width: number, height: number)
  */
 export async function compressVideo(
   file: File,
-  opts: { onProgress?: (pct: number) => void } = {},
+  opts: {
+    onProgress?: (pct: number) => void
+    targetMaxBytes?: number
+  } = {},
 ): Promise<File> {
   const ffmpeg = await getFFmpeg()
 
@@ -65,33 +69,69 @@ export async function compressVideo(
   }
   ffmpeg.on('progress', onProgress)
 
+  const targetMaxBytes =
+    typeof opts.targetMaxBytes === 'number' && Number.isFinite(opts.targetMaxBytes)
+      ? Math.max(1, Math.floor(opts.targetMaxBytes))
+      : null
+
+  const profiles: Array<{ crf: string; maxHeight: number; preset: 'fast' | 'veryfast' | 'ultrafast'; audioBitrate: string }> = [
+    { crf: '28', maxHeight: 1080, preset: 'fast', audioBitrate: '128k' },
+    { crf: '32', maxHeight: 1080, preset: 'veryfast', audioBitrate: '96k' },
+    { crf: '36', maxHeight: 720, preset: 'veryfast', audioBitrate: '96k' },
+    { crf: '40', maxHeight: 720, preset: 'ultrafast', audioBitrate: '64k' },
+  ]
+
+  let smallest: File | null = null
+  let lastError: unknown = null
+
   try {
     await ffmpeg.writeFile(inputName, await fetchFile(file))
 
-    await ffmpeg.exec([
-      '-i', inputName,
-      // Scale down only if taller than 1080p; preserve aspect ratio
-      '-vf', "scale=-2:'min(1080,ih)'",
-      '-c:v', 'libx264',
-      '-crf', '28',        // quality sweet spot: visually good, good compression
-      '-preset', 'fast',   // fast = good speed/quality tradeoff
-      '-c:a', 'aac',
-      '-b:a', '128k',
-      '-movflags', 'faststart', // put metadata at front for web playback
-      'output.mp4',
-    ])
+    for (const [i, profile] of profiles.entries()) {
+      const outputName = `output-${i}.mp4`
+      try {
+        await ffmpeg.exec([
+          '-i', inputName,
+          // Scale down only if taller than the profile max; preserve aspect ratio.
+          '-vf', `scale=-2:'min(${profile.maxHeight},ih)'`,
+          '-c:v', 'libx264',
+          '-crf', profile.crf,
+          '-preset', profile.preset,
+          '-c:a', 'aac',
+          '-b:a', profile.audioBitrate,
+          '-movflags', 'faststart',
+          outputName,
+        ])
 
-    const data = await ffmpeg.readFile('output.mp4')
-    opts.onProgress?.(100)
+        const data = await ffmpeg.readFile(outputName)
+        const u8 = data as Uint8Array
+        // Ensure we have a plain ArrayBuffer (not SharedArrayBuffer) for the File constructor.
+        const buf = new Uint8Array(u8).buffer as ArrayBuffer
+        const out = new File([buf], 'video.mp4', { type: 'video/mp4' })
 
-    const u8 = data as Uint8Array
-    // Ensure we have a plain ArrayBuffer (not SharedArrayBuffer) for the File constructor
-    const buf = new Uint8Array(u8).buffer as ArrayBuffer
-    return new File([buf], 'video.mp4', { type: 'video/mp4' })
+        if (!smallest || out.size < smallest.size) {
+          smallest = out
+        }
+
+        if (!targetMaxBytes || out.size <= targetMaxBytes) {
+          opts.onProgress?.(100)
+          return out
+        }
+      } catch (err) {
+        lastError = err
+      } finally {
+        try { await ffmpeg.deleteFile(outputName) } catch { /* ignore */ }
+      }
+    }
+
+    if (smallest) {
+      opts.onProgress?.(100)
+      return smallest
+    }
+    throw lastError ?? new Error('Video compression failed.')
   } finally {
     ffmpeg.off('progress', onProgress)
     // Clean up virtual FS to free memory
     try { await ffmpeg.deleteFile(inputName) } catch { /* ignore */ }
-    try { await ffmpeg.deleteFile('output.mp4') } catch { /* ignore */ }
   }
 }

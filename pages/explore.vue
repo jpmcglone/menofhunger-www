@@ -56,11 +56,18 @@
             Searching for: <span class="font-semibold">{{ searchQueryTrimmed }}</span>
           </p>
           <TransitionGroup name="moh-post" tag="div" class="space-y-0">
-            <template v-for="item in interleaved" :key="item.kind === 'user' ? `u-${item.user.id}` : `p-${item.post.id}`">
+            <template
+              v-for="item in interleaved"
+              :key="item.kind === 'user' ? `u-${item.user.id}` : (item.kind === 'article' ? `a-${item.article.id}` : `p-${item.post.id}`)"
+            >
               <AppUserRow
                 v-if="item.kind === 'user'"
                 :user="item.user"
                 :show-follow-button="true"
+              />
+              <AppArticleListCard
+                v-else-if="item.kind === 'article'"
+                :article="item.article"
               />
               <AppFeedPostRow
                 v-else
@@ -87,7 +94,7 @@
         <div v-else-if="searchedOnce && !loading" class="px-4">
           <div class="rounded-xl border moh-border bg-gray-50/50 dark:bg-zinc-900/30 px-4 py-6 text-center">
             <p class="text-sm moh-text-muted">
-              No people or posts found for “{{ searchQueryTrimmed }}”.
+              No people, articles, or posts found for “{{ searchQueryTrimmed }}”.
             </p>
           </div>
         </div>
@@ -505,7 +512,7 @@
 </template>
 
 <script setup lang="ts">
-import type { FeedPost, SearchUserResult, SearchMixedResult, SearchMixedPagination, GetPostsData, GetCategoryPostsData, GetCategoryTopicsData, Topic, TopicCategory } from '~/types/api'
+import type { Article, FeedPost, SearchUserResult, SearchMixedResult, SearchMixedPagination, GetPostsData, GetCategoryPostsData, GetCategoryTopicsData, Topic, TopicCategory } from '~/types/api'
 import { getApiErrorMessage } from '~/utils/api-error'
 
 definePageMeta({
@@ -683,8 +690,10 @@ let isUpdatingRouteFromInput = false
 
 function clearSearchResults() {
   users.value = []
+  articles.value = []
   posts.value = []
   nextUserCursor.value = null
+  nextArticleCursor.value = null
   nextPostCursor.value = null
   searchError.value = null
   searchedOnce.value = false
@@ -763,8 +772,10 @@ function scheduleDebouncedSearch() {
 }
 
 const users = ref<SearchUserResult[]>([])
+const articles = ref<Article[]>([])
 const posts = ref<FeedPost[]>([])
 const nextUserCursor = ref<string | null>(null)
+const nextArticleCursor = ref<string | null>(null)
 const nextPostCursor = ref<string | null>(null)
 const loading = ref(false)
 const loadingMore = ref(false)
@@ -772,14 +783,15 @@ const searchError = ref<string | null>(null)
 const searchedOnce = ref(false)
 
 const hasMore = computed(
-  () => nextUserCursor.value !== null || nextPostCursor.value !== null,
+  () => nextUserCursor.value !== null || nextArticleCursor.value !== null || nextPostCursor.value !== null,
 )
 
-/** Users first (API order = exact match then relationship rank), then posts (API order = newest first). Keeps @john at top when they match. */
+/** Users first, then articles, then posts. Keeps direct profile matches and gated article previews above post bodies. */
 const interleaved = computed(() => {
   const userItems = users.value.map((user) => ({ kind: 'user' as const, user }))
+  const articleItems = articles.value.map((article) => ({ kind: 'article' as const, article }))
   const postItems = posts.value.map((post) => ({ kind: 'post' as const, post }))
-  return [...userItems, ...postItems]
+  return [...userItems, ...articleItems, ...postItems]
 })
 
 function dedupeById<T extends { id?: string | null }>(list: T[]): T[] {
@@ -827,6 +839,7 @@ async function fetchPage(params: { append: boolean }) {
       limit: '30',
     }
     if (isAppend && nextUserCursor.value) query.userCursor = nextUserCursor.value
+    if (isAppend && nextArticleCursor.value) query.articleCursor = nextArticleCursor.value
     if (isAppend && nextPostCursor.value) query.postCursor = nextPostCursor.value
 
     const res = await apiFetch<SearchMixedResult>('/search', {
@@ -837,24 +850,30 @@ async function fetchPage(params: { append: boolean }) {
     const data = res.data as SearchMixedResult
     const pagination = res.pagination as SearchMixedPagination | undefined
     const newUsers = data.users ?? []
+    const newArticles = data.articles ?? []
     const newPosts = data.posts ?? []
 
     if (isAppend) {
       users.value = dedupeById([...users.value, ...newUsers])
+      articles.value = dedupeById([...articles.value, ...newArticles])
       posts.value = dedupeById([...posts.value, ...newPosts])
     } else {
       users.value = dedupeById(newUsers)
+      articles.value = dedupeById(newArticles)
       posts.value = dedupeById(newPosts)
     }
 
     nextUserCursor.value = pagination?.nextUserCursor ?? null
+    nextArticleCursor.value = pagination?.nextArticleCursor ?? null
     nextPostCursor.value = pagination?.nextPostCursor ?? null
   } catch (e: unknown) {
     searchError.value = getApiErrorMessage(e) || 'Search failed.'
     if (!isAppend) {
       users.value = []
+      articles.value = []
       posts.value = []
       nextUserCursor.value = null
+      nextArticleCursor.value = null
       nextPostCursor.value = null
     }
   } finally {
@@ -864,7 +883,7 @@ async function fetchPage(params: { append: boolean }) {
 }
 
 async function loadMore() {
-  if (loadingMore.value || (!nextUserCursor.value && !nextPostCursor.value)) return
+  if (loadingMore.value || (!nextUserCursor.value && !nextArticleCursor.value && !nextPostCursor.value)) return
   await fetchPage({ append: true })
 }
 

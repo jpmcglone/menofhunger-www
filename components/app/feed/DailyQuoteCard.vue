@@ -1,21 +1,16 @@
 <template>
   <!-- Mobile-only: right rail shows this on desktop already -->
-  <div class="lg:hidden px-3 pb-1 sm:px-4">
-    <div
-      v-if="quote"
-      class="rounded-xl border px-4 py-3 text-center"
-      style="border-color: color-mix(in srgb, var(--moh-border-color) 60%, transparent); background-color: color-mix(in srgb, var(--moh-surface-2) 60%, transparent)"
-    >
-      <figure>
-        <blockquote class="text-sm italic leading-relaxed moh-text moh-serif">
-          "{{ quote.text }}"
-        </blockquote>
-        <figcaption class="mt-2 text-[11px] text-gray-500 dark:text-gray-400">
-          <span class="font-semibold">{{ attribution }}</span>
-          <span v-if="quote.isParaphrase" class="ml-1">(paraphrase)</span>
-        </figcaption>
-      </figure>
-    </div>
+  <div v-if="quote" class="lg:hidden px-3 py-3 text-center text-sm leading-relaxed text-gray-700 dark:text-gray-200 sm:px-4">
+    <figure>
+      <blockquote class="italic moh-serif">
+        “{{ quote.text }}”
+      </blockquote>
+      <figcaption class="mt-2 text-xs text-gray-500 dark:text-gray-400">
+        <span class="font-semibold">{{ attribution }}</span>
+        <span v-if="quote.isParaphrase" class="ml-1">(paraphrase)</span>
+      </figcaption>
+    </figure>
+    <div class="mt-8 h-[1px] w-32 mx-auto bg-gradient-to-r from-transparent via-gray-400 dark:via-gray-600 to-transparent" />
   </div>
 </template>
 

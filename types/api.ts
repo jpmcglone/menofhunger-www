@@ -811,12 +811,14 @@ export type HashtagResult = {
 export type SearchMixedResult = {
   users: SearchUserResult[]
   posts: FeedPost[]
+  articles: Article[]
 }
 
 /** Pagination for mixed search (two cursors). */
 export type SearchMixedPagination = {
   nextUserCursor?: string | null
   nextPostCursor?: string | null
+  nextArticleCursor?: string | null
 }
 
 /** Data type for GET /search?type=all. */

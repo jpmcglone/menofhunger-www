@@ -109,8 +109,14 @@
                 @mouseleave="onActorLeave"
               >{{ actorDisplay(notification) }}</span>
               <template v-if="notification.kind === 'comment'">
-                <span class="ml-1">replied to your</span>
-                <span class="ml-1" :class="subjectPostVisibilityTextClass(notification)">post</span>
+                <template v-if="notification.subjectArticleId">
+                  <span class="ml-1">commented on your</span>
+                  <span class="ml-1 font-semibold text-orange-600 dark:text-orange-400">article</span>
+                </template>
+                <template v-else>
+                  <span class="ml-1">replied to your</span>
+                  <span class="ml-1" :class="subjectPostVisibilityTextClass(notification)">post</span>
+                </template>
               </template>
             <template v-else-if="notification.kind === 'boost'">
               <span class="ml-1">boosted your</span>

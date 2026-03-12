@@ -176,7 +176,7 @@ export function useComposerImageIngest(opts: {
       return
     }
 
-    const needsCompression = videoNeedsCompression(file, meta.width, meta.height)
+    const needsCompression = videoNeedsCompression(file, maxBytes)
 
     // After compression the file will be much smaller; only enforce the raw size
     // limit when we're NOT going to compress it (compression will handle oversized files).
@@ -226,6 +226,7 @@ export function useComposerImageIngest(opts: {
     try {
       const compressed = await compressVideo(file, {
         onProgress: (pct) => opts.patchComposerMedia(localId, { uploadProgress: pct }),
+        targetMaxBytes: maxBytes,
       })
 
       // Compressed file may be a different size — enforce the limit now
@@ -253,7 +254,7 @@ export function useComposerImageIngest(opts: {
     } catch {
       opts.patchComposerMedia(localId, {
         uploadStatus: 'error',
-        uploadError: 'Compression failed. Try a shorter or smaller video.',
+        uploadError: 'Compression failed on this device. Try again, or export a smaller video.',
       })
     }
   }
