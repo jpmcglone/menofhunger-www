@@ -14,7 +14,7 @@ export function useLoadMoreObserver(
 ) {
   // Prefetch about one viewport before the actual bottom so users don't
   // "outrun" pagination while scrolling quickly through long feeds.
-  const rootMargin = options.rootMargin ?? '0px 0px 100% 0px'
+  const rootMargin = options.rootMargin ?? '0px 0px 200% 0px'
 
   const hasMoreRef = typeof hasMore === 'function' ? computed(hasMore) : hasMore
 

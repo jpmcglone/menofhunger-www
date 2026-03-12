@@ -174,7 +174,7 @@ function apiBaseUrlToWsUrl(apiBaseUrl: string): string {
 
 /**
  * Presence over WebSocket. Subscribe to specific users or the online feed.
- * Call from layout when authenticated.
+ * Works for authenticated and anonymous viewers.
  */
 export function usePresence() {
   const usersStore = useUsersStore()
@@ -517,9 +517,16 @@ export function usePresence() {
 
   function connect() {
     if (!import.meta.client) return
-    if (!user.value?.id || !apiBaseUrl) return
-    // If a socket already exists (connected or still connecting), don't create another one.
-    if (isSocketConnecting.value || socketRef.value) return
+    if (!apiBaseUrl) return
+    // If a socket already exists, reuse it instead of creating another one.
+    if (isSocketConnecting.value) return
+    if (socketRef.value) {
+      if (!socketRef.value.connected) {
+        isSocketConnecting.value = true
+        socketRef.value.connect()
+      }
+      return
+    }
 
     isSocketConnecting.value = true
     const wsUrl = apiBaseUrlToWsUrl(apiBaseUrl)
@@ -1069,9 +1076,8 @@ export function usePresence() {
   if (import.meta.client) {
     watch(
       () => user.value?.id ?? null,
-      (userId) => {
-        if (userId) connect()
-        else disconnect()
+      () => {
+        connect()
       },
       { immediate: true },
     )

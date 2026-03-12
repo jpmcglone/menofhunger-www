@@ -213,8 +213,10 @@ function onNavClick(to: string, e: MouseEvent) {
   e.preventDefault()
   e.stopPropagation()
   if (to === '/home') {
-    const el = middleScrollerRef.value
-    if (el) el.scrollTo({ top: 0, behavior: 'smooth' })
+    const middle = middleScrollerRef.value
+    const right = document.getElementById('moh-right-rail-scroller')
+    if (middle) middle.scrollTo({ top: 0, behavior: 'smooth' })
+    if (right) right.scrollTo({ top: 0, behavior: 'smooth' })
   }
 }
 

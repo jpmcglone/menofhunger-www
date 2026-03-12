@@ -144,6 +144,7 @@ import { getLinkMetadata } from '~/utils/link-metadata'
 import type { RumbleEmbedInfo } from '~/utils/rumble-embed'
 import { resolveRumbleEmbedInfo } from '~/utils/rumble-embed'
 import { useEmbeddedVideoManager } from '~/composables/useEmbeddedVideoManager'
+import { usePreviewFetchLimiter } from '~/composables/usePreviewFetchLimiter'
 import type { ArticleSharePreview } from '~/types/api'
 
 const props = defineProps<{
@@ -276,17 +277,35 @@ const embeddedSpaceLink = computed(() => {
 const embeddedSpaceId = computed(() => (embeddedSpaceLink.value ? tryExtractLocalSpaceId(embeddedSpaceLink.value) : null))
 
 const { apiFetchData } = useApiClient()
+const { runLimited } = usePreviewFetchLimiter()
+const PREVIEW_FETCH_DWELL_MS = 400
 
 watch(
   [embeddedArticleId, rowInView],
-  async ([articleId, inView]) => {
+  ([articleId, inView], _old, onCleanup) => {
+    let cancelled = false
+    let timer: ReturnType<typeof setTimeout> | null = null
+    onCleanup(() => {
+      cancelled = true
+      if (timer) clearTimeout(timer)
+      timer = null
+    })
+
     if (!articleId || !inView) return
     if (embeddedArticle.value?.id === articleId) return
-    try {
-      embeddedArticle.value = await apiFetchData<ArticleSharePreview>(`/articles/${articleId}`)
-    } catch {
-      embeddedArticle.value = null
-    }
+
+    timer = setTimeout(() => {
+      if (cancelled) return
+      void runLimited(() => apiFetchData<ArticleSharePreview>(`/articles/${articleId}`))
+        .then((res) => {
+          if (cancelled) return
+          embeddedArticle.value = res ?? null
+        })
+        .catch(() => {
+          if (cancelled) return
+          embeddedArticle.value = null
+        })
+    }, PREVIEW_FETCH_DWELL_MS)
   },
   { immediate: true },
 )
@@ -297,9 +316,16 @@ const embeddedSpace = computed(() => (embeddedSpaceId.value ? getSpaceById(embed
 
 watch(
   [embeddedSpaceId, rowInView],
-  ([id, inView]) => {
+  ([id, inView], _old, onCleanup) => {
+    let timer: ReturnType<typeof setTimeout> | null = null
+    onCleanup(() => {
+      if (timer) clearTimeout(timer)
+      timer = null
+    })
     if (!id || !inView || spacesLoadedOnce.value) return
-    void loadSpaces()
+    timer = setTimeout(() => {
+      void runLimited(() => loadSpaces())
+    }, PREVIEW_FETCH_DWELL_MS)
   },
   { immediate: true },
 )
@@ -412,27 +438,47 @@ function activateEmbeddedVideo() {
 const linkMeta = ref<LinkMetadata | null>(null)
 watch(
   [previewLink, rowInView, showLinkPreview],
-  async ([url, inView, canPreview]) => {
+  ([url, inView, canPreview], _old, onCleanup) => {
     linkMeta.value = null
     rumbleEmbedInfo.value = null
     if (!import.meta.client) return
     if (!canPreview) return
     if (!inView) return
     if (!url) return
-    // Special cases (embed) do not need metadata.
-    if (getYouTubeEmbedUrl(url)) return
-    if (isRumbleUrl(url) && !isRumbleShortsUrl(url)) {
-      rumbleEmbedInfo.value = await resolveRumbleEmbedInfo(url)
-      return
-    }
-    linkMeta.value = await getLinkMetadata(url)
+    let cancelled = false
+    let timer: ReturnType<typeof setTimeout> | null = null
+    const controller = new AbortController()
+    onCleanup(() => {
+      cancelled = true
+      if (timer) clearTimeout(timer)
+      timer = null
+      controller.abort()
+    })
+
+    timer = setTimeout(() => {
+      if (cancelled) return
+      // Special cases (embed) do not need metadata.
+      if (getYouTubeEmbedUrl(url)) return
+      if (isRumbleUrl(url) && !isRumbleShortsUrl(url)) {
+        void runLimited(() => resolveRumbleEmbedInfo(url))
+          .then((info) => {
+            if (cancelled) return
+            rumbleEmbedInfo.value = info
+          })
+        return
+      }
+      void runLimited(() => getLinkMetadata(url, { signal: controller.signal }))
+        .then((meta) => {
+          if (cancelled) return
+          linkMeta.value = meta
+        })
+    }, PREVIEW_FETCH_DWELL_MS)
   },
   { immediate: true },
 )
 
 const embeddedPreviewEnabled = computed(() => {
-  // Allow SSR to fetch embedded post previews on first paint.
-  if (import.meta.server) return true
+  // Keep embedded post hydration strictly viewport-driven to avoid eager single-post fetches.
   return rowInView.value
 })
 

@@ -92,6 +92,7 @@
 import type { FeedPost, GetPostData } from '~/types/api'
 import { getApiErrorMessage } from '~/utils/api-error'
 import { useUserOverlay } from '~/composables/useUserOverlay'
+import { usePreviewFetchLimiter } from '~/composables/usePreviewFetchLimiter'
 
 const props = defineProps<{
   postId?: string
@@ -107,6 +108,8 @@ const id = computed(() => (props.postId ?? props.post?.id ?? '').trim())
 const permalink = computed(() => (id.value ? `/p/${encodeURIComponent(id.value)}` : null))
 const enabled = computed(() => props.enabled !== false)
 const preloadedPost = computed(() => props.post ?? null)
+const { runLimited } = usePreviewFetchLimiter()
+const PREVIEW_FETCH_DWELL_MS = 400
 
 function navigateToPost() {
   if (permalink.value) {
@@ -165,12 +168,6 @@ const mediaItems = computed(() => (post.value?.media ?? []).filter((m) => Boolea
 
 const key = computed(() => `embedded-post:${id.value || 'none'}`)
 
-// SSR safety:
-// Our previous pattern (immediate:false + watch(refresh)) could render the skeleton on the server
-// while still delivering a hydrated post on the client, causing both DOM trees to coexist.
-// Fix: allow Nuxt to await the initial fetch on SSR by using immediate:true on the server.
-const immediate = computed(() => (import.meta.server ? true : enabled.value))
-
 const { data, pending, error, refresh } = useAsyncData(
   key,
   async () => {
@@ -178,13 +175,15 @@ const { data, pending, error, refresh } = useAsyncData(
     if (preloadedPost.value) return null
     const pid = id.value
     if (!pid) return null
-    const res = await apiFetchData<GetPostData>('/posts/' + encodeURIComponent(pid), { method: 'GET' })
+    const res = await runLimited(
+      async () => await apiFetchData<GetPostData>('/posts/' + encodeURIComponent(pid), { method: 'GET' }),
+    )
     return res ?? null
   },
   {
-    server: true,
+    server: false,
     lazy: true,
-    immediate: immediate.value,
+    immediate: false,
     watch: [id],
   },
 )
@@ -204,15 +203,22 @@ const showSkeleton = computed(() => {
 
 watch(
   [enabled, id],
-  ([en, pid]) => {
-    // Avoid SSR/client hydration mismatch: SSR is handled by `immediate:true` above.
-    if (import.meta.server) return
+  ([en, pid], _old, onCleanup) => {
+    let timer: ReturnType<typeof setTimeout> | null = null
+    onCleanup(() => {
+      if (timer) clearTimeout(timer)
+      timer = null
+    })
+
     if (!pid) return
     if (!en) return
     if (preloadedPost.value) return
     if (post.value) return
     if (errorMessage.value) return
-    void refresh()
+
+    timer = setTimeout(() => {
+      void refresh()
+    }, PREVIEW_FETCH_DWELL_MS)
   },
   { immediate: true },
 )

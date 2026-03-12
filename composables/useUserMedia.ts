@@ -75,6 +75,14 @@ export function useUserMedia(
   }
 
   async function loadMore() {
+    if (!enabled.value) return
+    if (loading.value || loadingMore.value) return
+    const key = paramsKey()
+    // Only paginate when params still match the currently loaded dataset.
+    if (!hasLoadedOnce.value || key !== lastLoadedKey.value) {
+      await load({ force: true })
+      return
+    }
     await mediaFeed.loadMore()
   }
 

@@ -14,6 +14,10 @@ function getMiddleScroller(): HTMLElement | null {
   return document.getElementById('moh-middle-scroller')
 }
 
+function getRightRailScroller(): HTMLElement | null {
+  return document.getElementById('moh-right-rail-scroller')
+}
+
 function readStoredTop(path: string): number | null {
   try {
     const raw = sessionStorage.getItem(`${KEY_PREFIX}${path}`)
@@ -86,9 +90,9 @@ export default defineNuxtPlugin((nuxtApp) => {
   // For forward navigation (not back/forward), immediately reset scroll to 0 so the incoming
   // page never inherits the outgoing page's scroll offset during the transition.
   router.beforeEach((_to, from) => {
-    const el = getMiddleScroller()
-    if (!el) return true
-    writeStoredTop(from.fullPath, el.scrollTop)
+    const middle = getMiddleScroller()
+    if (!middle) return true
+    writeStoredTop(from.fullPath, middle.scrollTop)
 
     // Bookmark folder switches deliberately preserve scroll position (handled in scrollBehavior),
     // and back/forward navigation restores from storage — skip the reset for both.
@@ -98,7 +102,9 @@ export default defineNuxtPlugin((nuxtApp) => {
     // Don't reset scroll for those — the page content updates in place just like the profile does.
     const isQueryOnlyChange = _to.path === from.path && _to.hash === from.hash
     if (!isPopStateNavigation && !isBookmarksNav && !isQueryOnlyChange) {
-      el.scrollTop = 0
+      middle.scrollTop = 0
+      const right = getRightRailScroller()
+      if (right) right.scrollTop = 0
     }
 
     return true
@@ -142,6 +148,8 @@ export default defineNuxtPlugin((nuxtApp) => {
       }
 
       el.scrollTop = 0
+      const right = getRightRailScroller()
+      if (right) right.scrollTop = 0
       return resolve(false)
     }
 

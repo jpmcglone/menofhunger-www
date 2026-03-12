@@ -135,55 +135,23 @@ export function usePostsFeed(options: { visibility?: Ref<FeedFilter>; followingO
   const posts = feed.items
   const { nextCursor, loading, loadingMore, error, refresh: feedRefresh, loadMore: feedLoadMore } = feed
 
+  function currentRequestKey(): string {
+    return JSON.stringify({
+      visibility: visibility.value,
+      followingOnly: Boolean(followingOnly.value),
+      sort: sort.value,
+    })
+  }
+
+  // Tracks which query signature produced the currently loaded dataset.
+  // loadMore only runs when the active filter/sort/scope still matches this key.
+  let loadedRequestKey = currentRequestKey()
+
   // Realtime: patch post interaction counts in-place for visible feeds.
   const visiblePostIds = ref<Set<string>>(new Set())
-  const syncedPostIds = ref<Set<string>>(new Set())
   let postObserver: IntersectionObserver | null = null
   let unsubscribeTimer: ReturnType<typeof setTimeout> | null = null
   const pendingUnsub = new Set<string>()
-
-  async function syncPostById(postId: string) {
-    const id = (postId ?? '').trim()
-    if (!id) return
-    if (syncedPostIds.value.has(id)) return
-    syncedPostIds.value = new Set([...syncedPostIds.value, id])
-    try {
-      const res = await apiFetchData<FeedPost>(`/posts/${encodeURIComponent(id)}`, { method: 'GET' })
-      const dto = res ?? null
-      if (!dto?.id) return
-      // Flatten parent chain so we can patch any node we already have.
-      const chain: FeedPost[] = []
-      let cur: FeedPost | undefined = dto
-      while (cur) {
-        chain.push(cur)
-        cur = cur.parent
-      }
-
-      const patchById = new Map(chain.map((p) => [p.id, p]))
-      const patchOne = (p: FeedPost): FeedPost => {
-        const incoming = patchById.get(p.id)
-        const next = incoming ? { ...incoming } : { ...p }
-        if (next.parent) next.parent = patchOne(next.parent)
-        return next
-      }
-
-      const containsAny = (p: FeedPost | undefined): boolean => {
-        let c: FeedPost | undefined = p
-        while (c) {
-          if (patchById.has(c.id)) return true
-          c = c.parent
-        }
-        return false
-      }
-
-      if (!posts.value.some((p) => containsAny(p))) return
-      posts.value = posts.value.map(patchOne)
-    } catch (e: unknown) {
-      if (import.meta.dev) {
-        console.warn('[posts-feed] syncPostById failed', { postId: id, error: e })
-      }
-    }
-  }
 
   function flushUnsub() {
     if (pendingUnsub.size === 0) return
@@ -320,7 +288,6 @@ export function usePostsFeed(options: { visibility?: Ref<FeedFilter>; followingO
               if (!visiblePostIds.value.has(id)) {
                 visiblePostIds.value = new Set([...visiblePostIds.value, id])
                 toSub.push(id)
-                void syncPostById(id)
               }
             } else {
               if (visiblePostIds.value.has(id)) {
@@ -450,6 +417,7 @@ export function usePostsFeed(options: { visibility?: Ref<FeedFilter>; followingO
     loadingIndicator.start()
     try {
       await feedRefresh()
+      loadedRequestKey = currentRequestKey()
       lastHardRefreshMs.value = Date.now()
     } finally {
       queueMicrotask(() => loadingIndicator.finish())
@@ -492,7 +460,7 @@ export function usePostsFeed(options: { visibility?: Ref<FeedFilter>; followingO
   async function softRefreshNewer(opts?: { scroller?: HTMLElement | null }) {
     if (!import.meta.client) return
     if (softRefreshPromise) return await softRefreshPromise
-    if (loading.value) return
+    if (loading.value || loadingMore.value) return
     const scroller = opts?.scroller ?? middleScrollerEl.value
     if (!scroller) return
 
@@ -562,8 +530,14 @@ export function usePostsFeed(options: { visibility?: Ref<FeedFilter>; followingO
   }
 
   async function loadMore() {
-    if (loading.value) return
+    if (loading.value || loadingMore.value) return
     if (!nextCursor.value) return
+    // If feed params changed, this is not a true "load more" request.
+    // Refresh first so we replace the dataset under the new filter signature.
+    if (currentRequestKey() !== loadedRequestKey) {
+      await refresh()
+      return
+    }
     loadingIndicator.start()
     try {
       await feedLoadMore()

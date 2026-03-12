@@ -65,6 +65,16 @@ export function useUserPosts(
   let fetchPromise: Promise<void> | null = null
   let inFlightFetchKey = ''
 
+  function fetchKeyFor(nextFilter: UserPostsFilter, nextSort: 'new' | 'trending'): string {
+    return [
+      usernameLower.value,
+      nextFilter,
+      nextSort,
+      opts.topLevelOnly ? '1' : '0',
+      opts.includeRestricted ? '1' : '0',
+    ].join('|')
+  }
+
   const feedRef = shallowRef(useCursorFeed<FeedPost>({
     stateKey: postsKey.value,
     buildRequest: (cursor) => ({
@@ -112,6 +122,14 @@ export function useUserPosts(
   }
 
   async function loadMore() {
+    if (!enabled.value) return
+    if (loading.value || loadingMore.value) return
+    const key = fetchKeyFor(filter.value, sort.value)
+    // Pagination is only valid for the currently loaded filter/sort dataset.
+    if (!lastFetchKey.value || lastFetchKey.value !== key) {
+      await fetch(filter.value, sort.value)
+      return
+    }
     return await feedRef.value.loadMore()
   }
 
@@ -192,13 +210,7 @@ export function useUserPosts(
   }
 
   async function fetch(nextFilter: UserPostsFilter, nextSort: 'new' | 'trending') {
-    const fetchKey = [
-      usernameLower.value,
-      nextFilter,
-      nextSort,
-      opts.topLevelOnly ? '1' : '0',
-      opts.includeRestricted ? '1' : '0',
-    ].join('|')
+    const fetchKey = fetchKeyFor(nextFilter, nextSort)
     if (fetchPromise && inFlightFetchKey === fetchKey) {
       return await fetchPromise
     }

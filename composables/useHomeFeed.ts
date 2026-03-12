@@ -40,7 +40,6 @@ export function useHomeFeed() {
     error,
     refresh,
     softRefreshNewer,
-    startAutoSoftRefresh,
     loadMore,
     addPost,
     addReply,
@@ -51,15 +50,6 @@ export function useHomeFeed() {
     followingOnly,
     sort: feedSort,
     showAds,
-  })
-
-  let stopAutoSoftRefresh: (() => void) | undefined
-  onMounted(() => {
-    stopAutoSoftRefresh = startAutoSoftRefresh({ everyMs: 10_000 })
-  })
-  onBeforeUnmount(() => {
-    stopAutoSoftRefresh?.()
-    stopAutoSoftRefresh = undefined
   })
 
   const followingCount = ref<number | null>(null)

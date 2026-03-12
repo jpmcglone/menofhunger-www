@@ -515,6 +515,7 @@
 
           <!-- Right rail (scroll zone #3). Visible on a custom breakpoint (~962px). -->
           <aside
+            id="moh-right-rail-scroller"
             ref="rightRailEl"
             :class="[
               // Layout should not add padding; right-rail content owns its gutters.
@@ -1702,8 +1703,10 @@ const tierCtaTextClass = computed(() => {
 })
 
 function scrollMiddleToTop() {
-  const el = middleScrollerEl.value
-  if (el) el.scrollTo({ top: 0, behavior: 'smooth' })
+  const middle = middleScrollerEl.value
+  const right = rightRailEl.value
+  if (middle) middle.scrollTo({ top: 0, behavior: 'smooth' })
+  if (right) right.scrollTo({ top: 0, behavior: 'smooth' })
 }
 
 function onHomeClick(e: MouseEvent) {

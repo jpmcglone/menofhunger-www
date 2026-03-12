@@ -5,7 +5,7 @@
       v-if="showButton && viewerFollowsUser"
       type="button"
       class="relative inline-flex items-center overflow-hidden rounded-full border px-4 py-2 text-sm font-semibold transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
-      :class="hovering
+      :class="hovering || confirmOpen
         ? 'border-red-500 text-red-500 dark:border-red-400 dark:text-red-400'
         : 'border-gray-300 text-gray-900 dark:border-zinc-500 dark:text-white'"
       @mouseenter="onMouseEnter"
@@ -13,23 +13,19 @@
       @click="onClick"
     >
       <!-- Invisible spacer — locks button width to "Following" size -->
-      <span class="invisible flex items-center gap-1.5" aria-hidden="true">
-        <Icon name="tabler:check" class="text-[14px]" aria-hidden="true" />
-        Following
-      </span>
+      <span class="invisible" aria-hidden="true">Following</span>
       <!-- "Following" label — fades out on hover -->
       <span
-        class="absolute inset-0 flex items-center justify-center gap-1.5 transition-opacity duration-150"
-        :class="hovering ? 'opacity-0' : 'opacity-100'"
+        class="absolute inset-0 flex items-center justify-center transition-opacity duration-150"
+        :class="hovering || confirmOpen ? 'opacity-0' : 'opacity-100'"
         aria-hidden="true"
       >
-        <Icon name="tabler:check" class="text-[14px]" aria-hidden="true" />
-        <span>Following</span>
+        Following
       </span>
       <!-- "Unfollow" label — fades in on hover -->
       <span
         class="absolute inset-0 flex items-center justify-center transition-opacity duration-150"
-        :class="hovering ? 'opacity-100' : 'opacity-0'"
+        :class="hovering || confirmOpen ? 'opacity-100' : 'opacity-0'"
       >
         Unfollow
       </span>

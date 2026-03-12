@@ -10,7 +10,7 @@
  * The API endpoint is idempotent, so duplicate calls are harmless.
  */
 
-const FLUSH_INTERVAL_MS = 2_000
+const FLUSH_INTERVAL_MS = 4_000
 const VISIBILITY_THRESHOLD = 0.5
 const VISIBILITY_DWELL_MS = 1_000
 const BATCH_MAX = 50
