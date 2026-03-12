@@ -1274,19 +1274,27 @@ const viewerCount = computed(() => Math.max(0, Math.floor(Number(postView.value.
 
 const viewerBreakdownVisible = ref(false)
 const viewerBreakdown = ref<import('~/types/api').PostViewBreakdown | null>(null)
-let viewerBreakdownFetched = false
+const viewerBreakdownLoading = ref(false)
+let viewerBreakdownRequestSeq = 0
 
 async function onViewerCountHover() {
   viewerBreakdownVisible.value = true
-  if (viewerBreakdownFetched) return
-  viewerBreakdownFetched = true
+  if (viewerBreakdownLoading.value) return
+  viewerBreakdownLoading.value = true
+  const requestSeq = ++viewerBreakdownRequestSeq
   try {
     const result = await apiFetchData<import('~/types/api').PostViewBreakdown>(
-      `/posts/${encodeURIComponent(postView.value.id)}/views/breakdown`,
+      `/posts/${encodeURIComponent(postView.value.id)}/views/breakdown?fresh=1`,
     )
-    viewerBreakdown.value = result
+    if (requestSeq === viewerBreakdownRequestSeq) {
+      viewerBreakdown.value = result
+    }
   } catch {
-    viewerBreakdownFetched = false // allow retry on next hover
+    // keep last known breakdown; try again on next hover
+  } finally {
+    if (requestSeq === viewerBreakdownRequestSeq) {
+      viewerBreakdownLoading.value = false
+    }
   }
 }
 
