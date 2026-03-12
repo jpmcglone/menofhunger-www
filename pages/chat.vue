@@ -2342,14 +2342,25 @@ watch(
 }
 
 .moh-chat-scroll-hide {
-  scrollbar-width: none; /* Firefox */
-  -ms-overflow-style: none; /* IE/Edge legacy */
+  scrollbar-width: thin;
+  scrollbar-color: rgba(128, 128, 128, 0.35) transparent;
 }
 
-:deep(.moh-chat-scroll-hide::-webkit-scrollbar) {
-  width: 0;
-  height: 0;
-  display: none;
+.moh-chat-scroll-hide::-webkit-scrollbar {
+  width: 6px;
+}
+
+.moh-chat-scroll-hide::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.moh-chat-scroll-hide::-webkit-scrollbar-thumb {
+  background-color: rgba(128, 128, 128, 0.35);
+  border-radius: 3px;
+}
+
+.moh-chat-scroll-hide::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(128, 128, 128, 0.6);
 }
 </style>
 

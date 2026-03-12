@@ -1603,6 +1603,22 @@ function onLayoutWheel(e: WheelEvent) {
   if (leftRailEl.value?.contains(target)) return
   if (rightRailEl.value?.contains(target)) return
 
+  // If the event originates inside a nested scrollable container within the center
+  // column (e.g. chat message list, settings panel, admin table), let native scroll
+  // handle it rather than intercepting. Walk up from the target until we reach the
+  // middle scroller; if any intermediate element is independently scrollable, bail out.
+  const middle = middleScrollerEl.value
+  if (middle && target instanceof Element) {
+    let el: Element | null = target
+    while (el && el !== middle) {
+      const overflowY = window.getComputedStyle(el).overflowY
+      if ((overflowY === 'auto' || overflowY === 'scroll') && el.scrollHeight > el.clientHeight) {
+        return
+      }
+      el = el.parentElement
+    }
+  }
+
   e.preventDefault()
 
   let delta = e.deltaY
