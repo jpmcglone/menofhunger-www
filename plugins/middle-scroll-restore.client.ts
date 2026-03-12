@@ -94,7 +94,10 @@ export default defineNuxtPlugin((nuxtApp) => {
     // and back/forward navigation restores from storage — skip the reset for both.
     const isBookmarksNav =
       _to.path.startsWith('/bookmarks') && from.path.startsWith('/bookmarks') && from.path !== _to.path
-    if (!isPopStateNavigation && !isBookmarksNav) {
+    // Query-only changes (same path + hash, only params differ) are in-place filter/sort updates.
+    // Don't reset scroll for those — the page content updates in place just like the profile does.
+    const isQueryOnlyChange = _to.path === from.path && _to.hash === from.hash
+    if (!isPopStateNavigation && !isBookmarksNav && !isQueryOnlyChange) {
       el.scrollTop = 0
     }
 
@@ -107,6 +110,8 @@ export default defineNuxtPlugin((nuxtApp) => {
 
     const isBookmarksNav =
       to.path.startsWith('/bookmarks') && from.path.startsWith('/bookmarks') && from.path !== to.path
+    // Query-only changes update in-place content (e.g. feed filter/sort); preserve scroll position.
+    const isQueryOnlyChange = to.path === from.path && to.hash === from.hash
 
     const shouldRestoreFromStorage = isPopStateNavigation
     if (isPopStateNavigation) isPopStateNavigation = false
@@ -132,12 +137,7 @@ export default defineNuxtPlugin((nuxtApp) => {
         return resolve(false)
       }
 
-      if (isBookmarksNav) {
-        const stored = readStoredTop(from.fullPath)
-        if (stored != null) {
-          const maxTop = Math.max(0, el.scrollHeight - el.clientHeight)
-          el.scrollTop = clamp(stored, 0, maxTop)
-        }
+      if (isBookmarksNav || isQueryOnlyChange) {
         return resolve(false)
       }
 

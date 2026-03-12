@@ -176,7 +176,8 @@ export function useComposerImageIngest(opts: {
       return
     }
 
-    const needsCompression = videoNeedsCompression(file, maxBytes)
+    const exceedsResolution = (meta.width > 2560 || meta.height > 1440)
+    const needsCompression = exceedsResolution || videoNeedsCompression(file, maxBytes)
 
     // After compression the file will be much smaller; only enforce the raw size
     // limit when we're NOT going to compress it (compression will handle oversized files).

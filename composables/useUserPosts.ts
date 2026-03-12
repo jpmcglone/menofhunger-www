@@ -212,7 +212,6 @@ export function useUserPosts(
     if (!loading.value && hasLoadedOnce.value && posts.value.length > 0 && lastFetchKey.value === fetchKey) {
       return
     }
-    if (loading.value) return
     error.value = null
 
     if (nextFilter === 'verifiedOnly' && !viewerIsVerified.value) {

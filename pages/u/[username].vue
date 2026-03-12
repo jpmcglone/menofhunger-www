@@ -225,7 +225,7 @@
           :filter="profileFilter"
           :viewer-is-verified="profileViewerIsVerified"
           :viewer-is-premium="profileViewerIsPremium"
-          :show-reset="profileIsFiltered"
+          :show-reset="profileSort !== 'new' || profileFilter !== 'all'"
           :show-visibility-filter="activeProfileTab !== 'media'"
           @update:sort="onUserPostsSortChange"
           @update:filter="onUserPostsFilterChange"
@@ -273,6 +273,17 @@
               <div v-if="postsOnlyError" class="px-4 mt-3 text-sm text-red-700 dark:text-red-300">{{ postsOnlyError }}</div>
               <div v-else-if="postsOnlyHasLoadedOnce && postsOnlyItems.length === 0" class="px-4 mt-3 text-sm text-gray-500 dark:text-gray-400">No posts yet.</div>
               <div v-else class="relative mt-3">
+                <div
+                  class="absolute inset-x-0 top-3 z-20 flex justify-center transition-opacity duration-150"
+                  :class="postsOnlyRefreshingOverlay ? 'opacity-100' : 'opacity-0 pointer-events-none'"
+                  :aria-hidden="!postsOnlyRefreshingOverlay"
+                >
+                  <AppLogoLoader compact />
+                </div>
+                <div
+                  class="transition-opacity duration-150"
+                  :class="postsOnlyRefreshingOverlay ? 'opacity-60 pointer-events-none' : 'opacity-100'"
+                >
                 <template v-for="item in postsOnlyItems" :key="item.kind === 'ad' ? item.key : item.post.id">
                   <AppFeedFakeAdRow v-if="item.kind === 'ad'" />
                   <AppFeedPostRow
@@ -285,6 +296,7 @@
                     @edited="(p) => postsOnlyReplacePost(p.post)"
                   />
                 </template>
+                </div>
                 <div v-if="postsOnlyNextCursor" class="relative flex justify-center items-center px-4 py-6 min-h-12">
                   <div ref="postsOnlyLoadMoreSentinelEl" class="absolute bottom-0 left-0 right-0 h-px" aria-hidden="true" />
                   <div class="transition-opacity duration-150" :class="postsOnlyLoadingMore ? 'opacity-100' : 'opacity-0 pointer-events-none'">
@@ -306,6 +318,17 @@
               <div v-if="profileError" class="px-4 mt-3 text-sm text-red-700 dark:text-red-300">{{ profileError }}</div>
               <div v-else-if="profileHasLoadedOnce && itemsWithoutPinned.length === 0 && !pinnedPostForDisplay" class="px-4 mt-3 text-sm text-gray-500 dark:text-gray-400">No posts yet.</div>
               <div v-else class="relative mt-3">
+                <div
+                  class="absolute inset-x-0 top-3 z-20 flex justify-center transition-opacity duration-150"
+                  :class="repliesRefreshingOverlay ? 'opacity-100' : 'opacity-0 pointer-events-none'"
+                  :aria-hidden="!repliesRefreshingOverlay"
+                >
+                  <AppLogoLoader compact />
+                </div>
+                <div
+                  class="transition-opacity duration-150"
+                  :class="repliesRefreshingOverlay ? 'opacity-60 pointer-events-none' : 'opacity-100'"
+                >
                 <template v-for="item in itemsWithoutPinned" :key="item.kind === 'ad' ? item.key : item.post.id">
                   <AppFeedFakeAdRow v-if="item.kind === 'ad'" />
                   <AppFeedPostRow
@@ -318,6 +341,7 @@
                     @edited="onProfilePostEdited"
                   />
                 </template>
+                </div>
                 <div v-if="profileNextCursor" class="relative flex justify-center items-center px-4 py-6 min-h-12">
                   <div ref="profileLoadMoreSentinelEl" class="absolute bottom-0 left-0 right-0 h-px" aria-hidden="true" />
                   <div class="transition-opacity duration-150" :class="profileLoadingMore ? 'opacity-100' : 'opacity-0 pointer-events-none'">
@@ -336,7 +360,18 @@
           <div v-if="profileArticlesFeed.error.value" class="px-4 mt-3 text-sm text-red-700 dark:text-red-300">
             {{ profileArticlesFeed.error.value }}
           </div>
-          <div v-else>
+          <div v-else class="relative mt-3">
+            <div
+              class="absolute inset-x-0 top-3 z-20 flex justify-center transition-opacity duration-150"
+              :class="articlesRefreshingOverlay ? 'opacity-100' : 'opacity-0 pointer-events-none'"
+              :aria-hidden="!articlesRefreshingOverlay"
+            >
+              <AppLogoLoader compact />
+            </div>
+            <div
+              class="transition-opacity duration-150"
+              :class="articlesRefreshingOverlay ? 'opacity-60 pointer-events-none' : 'opacity-100'"
+            >
             <TransitionGroup name="profile-articles-list" tag="div">
               <AppArticleListCard
                 v-for="article in profileArticlesFeed.articles.value"
@@ -344,6 +379,7 @@
                 :article="article"
               />
             </TransitionGroup>
+            </div>
             <button
               v-if="profileArticlesFeed.nextCursor.value"
               type="button"
@@ -366,7 +402,18 @@
           <div v-if="profileMediaFeed.error.value" class="px-4 mt-3 text-sm text-red-700 dark:text-red-300">
             {{ profileMediaFeed.error.value }}
           </div>
-          <div v-else>
+          <div v-else class="relative mt-3">
+            <div
+              class="absolute inset-x-0 top-3 z-20 flex justify-center transition-opacity duration-150"
+              :class="mediaRefreshingOverlay ? 'opacity-100' : 'opacity-0 pointer-events-none'"
+              :aria-hidden="!mediaRefreshingOverlay"
+            >
+              <AppLogoLoader compact />
+            </div>
+            <div
+              class="transition-opacity duration-150"
+              :class="mediaRefreshingOverlay ? 'opacity-60 pointer-events-none' : 'opacity-100'"
+            >
             <TransitionGroup
               name="media-grid"
               tag="div"
@@ -393,6 +440,7 @@
                 </div>
               </NuxtLink>
             </TransitionGroup>
+            </div>
             <!-- Load more -->
             <div v-if="profileMediaFeed.nextCursor.value" class="relative flex justify-center items-center px-4 py-6 min-h-12">
               <div ref="mediaLoadMoreSentinelEl" class="absolute bottom-0 left-0 right-0 h-px" aria-hidden="true" />
@@ -510,7 +558,8 @@ if (import.meta.client) {
 }
 
 // Prefer router navigation so back/forward restores exact profile subroutes.
-// `force: true` avoids alias dedupe (same route name + params).
+// For profile in-place tabs/modals, use history.pushState directly so changing
+// subpaths does not trigger global scroll reset in router scrollBehavior.
 //
 // Filters are managed via history.replaceState (historyBacked mode), so
 // location.search is the authoritative source — route.query may be stale.
@@ -523,13 +572,8 @@ async function pushProfilePath(path: string) {
       if (v != null) qs[k] = Array.isArray(v) ? String(v[v.length - 1] ?? '') : String(v)
     })
   }
-  try {
-    await router.push({ path, query: qs, force: true } as any)
-    return
-  } catch {
-    // Fallback: keep URL and local tab state in sync even if router rejects.
-  }
   currentPathname.value = path
+  if (!import.meta.client) return
   const search = new URLSearchParams(qs)
   const newUrl = search.toString() ? `${path}?${search}` : path
   history.pushState({ ...history.state }, '', newUrl)
@@ -778,6 +822,18 @@ const articlesInitialLoading = computed(
 )
 const mediaInitialLoading = computed(
   () => profileMediaFeed.loading.value && !profileMediaFeed.hasLoadedOnce.value && profileMediaFeed.items.value.length === 0,
+)
+const postsOnlyRefreshingOverlay = computed(
+  () => postsOnlyLoading.value && postsOnlyHasLoadedOnce.value && postsOnlyItems.value.length > 0,
+)
+const repliesRefreshingOverlay = computed(
+  () => profileLoading.value && profileHasLoadedOnce.value && itemsWithoutPinned.value.length > 0,
+)
+const articlesRefreshingOverlay = computed(
+  () => profileArticlesFeed.loading.value && profileArticlesFeed.hasLoadedOnce.value && profileArticlesFeed.articles.value.length > 0,
+)
+const mediaRefreshingOverlay = computed(
+  () => profileMediaFeed.loading.value && profileMediaFeed.hasLoadedOnce.value && profileMediaFeed.items.value.length > 0,
 )
 
 function onProfilePostEdited(payload: { id: string; post: import('~/types/api').FeedPost }) {

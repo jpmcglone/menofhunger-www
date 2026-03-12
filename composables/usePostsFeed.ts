@@ -434,24 +434,24 @@ export function usePostsFeed(options: { visibility?: Ref<FeedFilter>; followingO
     return Math.max(0, totalReplies - visibleReplyCount)
   }
 
-  type RefreshOverrides = { visibility?: FeedFilter; sort?: FeedSort } | void
+  let prevVisibility: FeedFilter = visibility.value
+  let prevSort: FeedSort = sort.value
+  let prevFollowing: boolean = followingOnly.value
 
-  async function refresh(overrides?: RefreshOverrides) {
-    if (loading.value) return
-    const filterChanged =
-      (overrides?.visibility !== undefined && overrides.visibility !== visibility.value) ||
-      (overrides?.sort !== undefined && overrides.sort !== sort.value)
-    if (overrides?.visibility !== undefined) visibility.value = overrides.visibility
-    if (overrides?.sort !== undefined) sort.value = overrides.sort
-    // Clear optimistic inserts when the filter changes so stale posts don't
-    // bleed into a fresh filtered result set.
-    if (filterChanged) localInserts.value = []
+  async function refresh() {
+    const paramsChanged =
+      visibility.value !== prevVisibility ||
+      sort.value !== prevSort ||
+      followingOnly.value !== prevFollowing
+    prevVisibility = visibility.value
+    prevSort = sort.value
+    prevFollowing = followingOnly.value
+    if (paramsChanged) localInserts.value = []
     loadingIndicator.start()
     try {
       await feedRefresh()
       lastHardRefreshMs.value = Date.now()
     } finally {
-      // Ensure the indicator always finishes (even on errors/throws).
       queueMicrotask(() => loadingIndicator.finish())
     }
   }
@@ -707,6 +707,17 @@ export function usePostsFeed(options: { visibility?: Ref<FeedFilter>; followingO
     const replyWithParent: FeedPost = { ...replyPost, parent: parentPostFromFeed }
     posts.value = [...posts.value.slice(0, idx), replyWithParent, ...posts.value.slice(idx + 1)]
     rememberLocalInsert({ kind: 'replaceParent', post: replyWithParent, parentId: pid })
+  }
+
+  // Auto-refresh when feed params change, matching the pattern in useArticleFeed / useUserMedia.
+  // flush: 'post' ensures the watcher fires after the reactive system (and any async router
+  // navigation) has settled, so buildRequest reads the correct values before fetching.
+  if (options.visibility || options.sort || options.followingOnly) {
+    watch(
+      () => [options.visibility?.value, options.sort?.value, options.followingOnly?.value],
+      () => { void refresh() },
+      { flush: 'post' },
+    )
   }
 
   return {

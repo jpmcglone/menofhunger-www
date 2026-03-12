@@ -117,7 +117,18 @@
               @who-to-follow="navigateTo('/who-to-follow')"
             />
 
-            <div class="relative">
+            <div class="relative mt-3">
+              <div
+                class="absolute inset-x-0 top-3 z-20 flex justify-center transition-opacity duration-150"
+                :class="feedRefreshingOverlay ? 'opacity-100' : 'opacity-0 pointer-events-none'"
+                :aria-hidden="!feedRefreshingOverlay"
+              >
+                <AppLogoLoader compact />
+              </div>
+              <div
+                class="transition-opacity duration-150"
+                :class="feedRefreshingOverlay ? 'opacity-60 pointer-events-none' : 'opacity-100'"
+              >
               <template v-for="item in displayItems" :key="item.kind === 'ad' ? item.key : item.post.id">
                 <AppFeedFakeAdRow v-if="item.kind === 'ad'" />
                 <AppFeedPostRow
@@ -131,6 +142,7 @@
                   @edited="onFeedPostEdited"
                 />
               </template>
+              </div>
             </div>
 
             <!-- Lazy-load sentinel + loader -->
@@ -412,6 +424,7 @@ watchEffect(() => {
 })
 
 const showMainLoader = computed(() => !initialFeedResolved.value && !error.value && posts.value.length === 0)
+const feedRefreshingOverlay = computed(() => loading.value && initialFeedResolved.value && displayItems.value.length > 0)
 
 function openOnlyMeComposer() {
   openComposer?.('onlyMe')

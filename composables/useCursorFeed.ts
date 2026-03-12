@@ -1,3 +1,4 @@
+import type { Ref } from 'vue'
 import type { ApiEnvelope } from '~/types/api'
 import { getApiErrorMessage } from '~/utils/api-error'
 import type { MohApiQuery } from '~/composables/useApiClient'
@@ -7,6 +8,8 @@ export type CursorFeedBuildRequest = (cursor: string | null) => { path: string; 
 export type UseCursorFeedOptions<T> = {
   /** Unique key for useState (and related keys for nextCursor, loading, error). */
   stateKey: string
+  /** Use Nuxt shared state (`useState`) or local refs. */
+  stateMode?: 'state' | 'local'
   /** Returns path and query for the API request. For initial load cursor is null; for loadMore pass the current nextCursor. */
   buildRequest: CursorFeedBuildRequest
   defaultErrorMessage?: string
@@ -31,11 +34,14 @@ export type UseCursorFeedOptions<T> = {
 export function useCursorFeed<T>(options: UseCursorFeedOptions<T>) {
   const { apiFetch } = useApiClient()
   const stateKey = options.stateKey
-  const items = useState<T[]>(stateKey, () => [])
-  const nextCursor = useState<string | null>(`${stateKey}-next`, () => null)
-  const loading = useState<boolean>(`${stateKey}-loading`, () => false)
-  const loadingMore = useState<boolean>(`${stateKey}-loading-more`, () => false)
-  const error = useState<string | null>(`${stateKey}-error`, () => null)
+  const stateMode = options.stateMode ?? 'state'
+  const items: Ref<T[]> = stateMode === 'state' ? useState<T[]>(stateKey, () => []) : shallowRef<T[]>([])
+  const nextCursor: Ref<string | null> = stateMode === 'state' ? useState<string | null>(`${stateKey}-next`, () => null) : ref<string | null>(null)
+  const loading: Ref<boolean> = stateMode === 'state' ? useState<boolean>(`${stateKey}-loading`, () => false) : ref(false)
+  const loadingMore: Ref<boolean> = stateMode === 'state' ? useState<boolean>(`${stateKey}-loading-more`, () => false) : ref(false)
+  const error: Ref<string | null> = stateMode === 'state' ? useState<string | null>(`${stateKey}-error`, () => null) : ref<string | null>(null)
+  let refreshPromise: Promise<void> | null = null
+  let refreshQueued = false
 
   const defaultError = options.defaultErrorMessage ?? 'Failed to load.'
   const loadMoreError = options.loadMoreErrorMessage ?? 'Failed to load more.'
@@ -61,25 +67,44 @@ export function useCursorFeed<T>(options: UseCursorFeedOptions<T>) {
   }
 
   async function refresh() {
-    if (loading.value) return
-    loading.value = true
-    error.value = null
-    const existing = items.value
-    try {
-      const { path, query } = options.buildRequest(null)
-      const res = await apiFetch<T[]>(path, { method: 'GET', query })
-      const data = res.data ?? []
-      items.value = options.mergeOnRefresh
-        ? options.mergeOnRefresh(data, existing)
-        : (data.length ? [...data] : [])
-      nextCursor.value = res.pagination?.nextCursor ?? null
-      options.onDataLoaded?.(data)
-      options.onResponse?.(res)
-    } catch (e: unknown) {
-      error.value = getApiErrorMessage(e) || defaultError
-    } finally {
-      loading.value = false
+    // Deterministic behavior under rapid filter/sort/scope changes:
+    // if a refresh is in-flight, queue one more pass so latest state wins.
+    if (loading.value || refreshPromise) {
+      refreshQueued = true
+      if (refreshPromise) {
+        await refreshPromise
+      }
+      return
     }
+
+    refreshPromise = (async () => {
+      loading.value = true
+      try {
+        do {
+          refreshQueued = false
+          error.value = null
+          const existing = items.value
+          try {
+            const { path, query } = options.buildRequest(null)
+            const res = await apiFetch<T[]>(path, { method: 'GET', query })
+            const data = res.data ?? []
+            items.value = options.mergeOnRefresh
+              ? options.mergeOnRefresh(data, existing)
+              : (data.length ? [...data] : [])
+            nextCursor.value = res.pagination?.nextCursor ?? null
+            options.onDataLoaded?.(data)
+            options.onResponse?.(res)
+          } catch (e: unknown) {
+            error.value = getApiErrorMessage(e) || defaultError
+          }
+        } while (refreshQueued)
+      } finally {
+        loading.value = false
+        refreshPromise = null
+      }
+    })()
+
+    await refreshPromise
   }
 
   async function loadMore() {

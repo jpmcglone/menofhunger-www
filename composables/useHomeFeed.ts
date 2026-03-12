@@ -14,6 +14,7 @@ export function useHomeFeed() {
     viewerIsVerified,
     viewerIsPremium,
     ctaKind: feedCtaKind,
+    resetFilters: resetUrlFilters,
   } = useUrlFeedFilters()
 
   const scopeTabs = computed(() => {
@@ -111,31 +112,30 @@ export function useHomeFeed() {
 
   async function setFeedFilter(next: ProfilePostsFilter) {
     const safe = next === 'onlyMe' ? 'all' : (next as FeedVisibilityFilter)
-    feedFilter.value = safe
-    await preserveMiddleScrollAfter(async () => await refresh({ visibility: safe }))
+    await preserveMiddleScrollAfter(async () => { feedFilter.value = safe })
   }
 
   async function setFeedSort(next: 'new' | 'trending') {
-    feedSort.value = next
-    await preserveMiddleScrollAfter(async () => await refresh({ sort: next }))
+    await preserveMiddleScrollAfter(async () => { feedSort.value = next })
   }
 
   async function resetFilters() {
-    // Keep current scope (all/following), only reset sort + visibility.
-    feedSort.value = 'new'
-    feedFilter.value = 'all'
-    await preserveMiddleScrollAfter(async () => await refresh({ visibility: 'all', sort: 'new' }))
+    // resetUrlFilters patches sort + filter atomically in one router.replace call,
+    // avoiding the race condition of two separate setter calls reading stale route.query.
+    await preserveMiddleScrollAfter(async () => { resetUrlFilters() })
   }
 
-  async function onFeedScopeChange(next: 'all' | 'following') {
-    feedScope.value = next as 'all' | 'following'
-    await preserveMiddleScrollAfter(async () => await refresh())
+  function onFeedScopeChange(next: 'all' | 'following') {
+    feedScope.value = next
+    // Scope drives followingOnly, which usePostsFeed watches and auto-refreshes on change.
   }
 
-  // Refresh feed when scope or user identity changes
+  // usePostsFeed already watches visibility/sort/followingOnly and auto-refreshes.
+  // We only need to handle user identity changes here (login/logout/account-switch
+  // while scope='all' won't change followingOnly, so the param watcher won't fire).
   watch(
-    () => [feedScope.value, user.value?.id ?? null] as const,
-    () => { void refresh() },
+    () => user.value?.id ?? null,
+    () => { void preserveMiddleScrollAfter(() => refresh()) },
     { flush: 'post' },
   )
 

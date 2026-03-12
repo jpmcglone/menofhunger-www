@@ -1,5 +1,6 @@
 import type { Article } from '~/types/api'
 import type { ProfilePostsFilter } from '~/utils/post-visibility'
+import { useCursorFeed } from '~/composables/useCursorFeed'
 
 export function useArticleFeed(opts?: {
   authorUsername?: string | Ref<string>
@@ -11,35 +12,37 @@ export function useArticleFeed(opts?: {
   /** When true, include articles of all visibility tiers (restricted ones are returned with viewerCanAccess=false). */
   includeRestricted?: boolean | Ref<boolean>
 }) {
-  const { apiFetch } = useApiClient()
   const enabled = opts?.enabled ?? computed(() => true)
 
-  const articles = ref<Article[]>([])
-  const nextCursor = ref<string | null>(null)
-  const loading = ref(false)
-  const loadingMore = ref(false)
-  const error = ref<string | null>(null)
+  const articlesFeed = useCursorFeed<Article>({
+    stateKey: 'articles-feed-local',
+    stateMode: 'local',
+    buildRequest: (cursor) => {
+      const params = new URLSearchParams({ limit: '20' })
+      const author = getAuthorUsername()
+      if (author) params.set('authorUsername', author)
+      if (opts?.sort?.value && opts.sort.value !== 'new') params.set('sort', opts.sort.value)
+      if (opts?.visibility?.value && opts.visibility.value !== 'all') params.set('visibility', opts.visibility.value)
+      if (opts?.mine?.value) params.set('mine', 'true')
+      if (opts?.followingOnly?.value) params.set('followingOnly', 'true')
+      const restricted = isRef(opts?.includeRestricted) ? opts!.includeRestricted.value : opts?.includeRestricted
+      if (restricted) params.set('includeRestricted', 'true')
+      if (cursor) params.set('cursor', cursor)
+      return { path: '/articles', query: Object.fromEntries(params.entries()) }
+    },
+    defaultErrorMessage: 'Failed to load articles.',
+  })
+  const articles = articlesFeed.items
+  const nextCursor = articlesFeed.nextCursor
+  const loading = articlesFeed.loading
+  const loadingMore = articlesFeed.loadingMore
+  const error = articlesFeed.error
   const hasLoadedOnce = ref(false)
   const lastLoadedKey = ref<string>('')
-  let loadPromise: Promise<void> | null = null
 
   function getAuthorUsername(): string | undefined {
     const u = opts?.authorUsername
     return isRef(u) ? u.value : u
-  }
-
-  function buildParams(cursor?: string | null) {
-    const params = new URLSearchParams({ limit: '20' })
-    const author = getAuthorUsername()
-    if (author) params.set('authorUsername', author)
-    if (opts?.sort?.value && opts.sort.value !== 'new') params.set('sort', opts.sort.value)
-    if (opts?.visibility?.value && opts.visibility.value !== 'all') params.set('visibility', opts.visibility.value)
-    if (opts?.mine?.value) params.set('mine', 'true')
-    if (opts?.followingOnly?.value) params.set('followingOnly', 'true')
-    const restricted = isRef(opts?.includeRestricted) ? opts!.includeRestricted.value : opts?.includeRestricted
-    if (restricted) params.set('includeRestricted', 'true')
-    if (cursor) params.set('cursor', cursor)
-    return params
   }
 
   function paramsKey() {
@@ -58,57 +61,21 @@ export function useArticleFeed(opts?: {
       articles.value = []
       nextCursor.value = null
       error.value = null
+      hasLoadedOnce.value = false
       lastLoadedKey.value = ''
       return
     }
     const key = paramsKey()
-    if (!force && loadPromise && loading.value) {
-      return await loadPromise
-    }
     if (!force && hasLoadedOnce.value && key === lastLoadedKey.value) {
       return
     }
-    const hadExistingItems = articles.value.length > 0
-    const task = (async () => {
-      loading.value = true
-      error.value = null
-      if (!hadExistingItems) {
-        articles.value = []
-      }
-      nextCursor.value = null
-      try {
-        const res = await apiFetch<Article[]>(`/articles?${buildParams()}`)
-        articles.value = res.data ?? []
-        nextCursor.value = res.pagination?.nextCursor ?? null
-        lastLoadedKey.value = key
-        hasLoadedOnce.value = true
-      } catch (e: any) {
-        error.value = e?.data?.meta?.errors?.[0]?.message ?? 'Failed to load articles.'
-        hasLoadedOnce.value = true
-      } finally {
-        loading.value = false
-      }
-    })()
-    loadPromise = task
-    try {
-      await task
-    } finally {
-      if (loadPromise === task) loadPromise = null
-    }
+    await articlesFeed.refresh()
+    hasLoadedOnce.value = true
+    if (!error.value) lastLoadedKey.value = key
   }
 
   async function loadMore() {
-    if (!nextCursor.value || loadingMore.value) return
-    loadingMore.value = true
-    try {
-      const res = await apiFetch<Article[]>(`/articles?${buildParams(nextCursor.value)}`)
-      articles.value.push(...(res.data ?? []))
-      nextCursor.value = res.pagination?.nextCursor ?? null
-    } catch {
-      // silently fail on pagination
-    } finally {
-      loadingMore.value = false
-    }
+    await articlesFeed.loadMore()
   }
 
   // Reload when reactive params change
@@ -119,6 +86,10 @@ export function useArticleFeed(opts?: {
   if (opts?.enabled) {
     watch(opts.enabled, (on) => {
       if (!on) {
+        articles.value = []
+        nextCursor.value = null
+        error.value = null
+        hasLoadedOnce.value = false
         lastLoadedKey.value = ''
         return
       }
