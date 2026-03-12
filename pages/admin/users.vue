@@ -395,6 +395,22 @@
           />
         </div>
 
+        <div class="space-y-2">
+          <label class="text-sm font-medium text-gray-700 dark:text-gray-200">Feature toggles</label>
+          <MultiSelect
+            v-model="editFeatureToggles"
+            :options="APP_FEATURE_TOGGLE_OPTIONS"
+            optionLabel="label"
+            optionValue="value"
+            display="chip"
+            class="w-full"
+            placeholder="None enabled"
+          />
+          <div class="text-xs text-gray-500 dark:text-gray-400">
+            Controls app entry points and gated features for this user.
+          </div>
+        </div>
+
         <div class="rounded-xl border border-gray-200 bg-gray-50 p-3 dark:border-zinc-800 dark:bg-zinc-950/40">
           <div class="text-sm font-semibold text-gray-900 dark:text-gray-50">Email verification</div>
 
@@ -649,6 +665,7 @@ type AdminUser = {
   bio: string | null
   avatarUrl?: string | null
   siteAdmin: boolean
+  featureToggles: string[]
   bannedAt: string | null
   bannedReason: string | null
   bannedByAdminId: string | null
@@ -671,6 +688,7 @@ type OrgAffiliation = {
 
 const { apiFetch, apiFetchData } = useApiClient()
 import type { AdminGrantSummary } from '~/types/api'
+import { APP_FEATURE_TOGGLE_OPTIONS, type AppFeatureToggle } from '~/config/app-feature-toggles'
 import { getApiErrorMessage } from '~/utils/api-error'
 import { formatDateTime } from '~/utils/time-format'
 import { useFormSubmit } from '~/composables/useFormSubmit'
@@ -770,6 +788,7 @@ const editName = ref('')
 const editBio = ref('')
 const editVerifiedStatus = ref<AdminUser['verifiedStatus']>('none')
 const editIsOrganization = ref(false)
+const editFeatureToggles = ref<AppFeatureToggle[]>([])
 
 // Org affiliations for the user being edited.
 const orgAffs = ref<OrgAffiliation[]>([])
@@ -990,6 +1009,11 @@ function openEdit(u: AdminUser) {
   editBio.value = u.bio ?? ''
   editVerifiedStatus.value = u.verifiedStatus ?? 'none'
   editIsOrganization.value = Boolean(u.isOrganization)
+  editFeatureToggles.value = Array.isArray(u.featureToggles)
+    ? u.featureToggles
+      .map((value) => String(value ?? '').trim())
+      .filter((value): value is AppFeatureToggle => APP_FEATURE_TOGGLE_OPTIONS.some((opt) => opt.value === value))
+    : []
   resetUsernameCheck()
   editOpen.value = true
   // Load org affiliations for non-org users.
@@ -1145,6 +1169,7 @@ const { submit: saveUser, submitting: saving } = useFormSubmit(
         bio: editBio.value.trim() ? editBio.value.trim() : null,
         isOrganization: editIsOrganization.value,
         verifiedStatus: editVerifiedStatus.value,
+        featureToggles: editFeatureToggles.value,
       },
     })
 

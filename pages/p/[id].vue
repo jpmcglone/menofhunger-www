@@ -59,7 +59,7 @@
         />
       </div>
 
-      <template v-if="!isOnlyMe">
+      <template v-if="!isOnlyMe && !isGatedPost">
         <div v-if="showReplyComposer" class="border-b border-gray-200 dark:border-zinc-800">
           <AppPostComposer
             v-if="replyContext"
@@ -193,7 +193,8 @@ watch(
   { immediate: true },
 )
 
-// Direct permalink visit = user saw this post (and full thread if a reply)
+// Direct permalink visit = user saw this post (and full thread if a reply).
+// Gated posts (viewerCanAccess === false) are excluded — viewer hasn't read the content.
 const { markEngaged } = usePostViewTracker()
 watch(
   () => post.value,
@@ -202,7 +203,7 @@ watch(
     const chainIds: string[] = []
     let cur: FeedPost | undefined = p
     while (cur?.id) {
-      chainIds.push(cur.id)
+      if (cur.viewerCanAccess !== false) chainIds.push(cur.id)
       cur = cur.parent
     }
     if (chainIds.length) markEngaged(chainIds)
@@ -364,6 +365,8 @@ const isRestricted = computed(() => {
   return accessHint.value !== 'none'
 })
 
+const isGatedPost = computed(() => post.value?.viewerCanAccess === false)
+
 const showServerErrorCta = computed(
   () =>
     Boolean(errorText.value) &&
@@ -405,7 +408,7 @@ const { data: linkMetaData } = await useAsyncData(
       return null
     }
   },
-  { server: true, watch: [previewLink] },
+  { server: false, watch: [previewLink] },
 )
 
 const linkMeta = computed<LinkMetadata | null>(() => (linkMetaData.value as LinkMetadata | null) ?? null)
@@ -465,13 +468,13 @@ const errorBody = computed(() => {
       parts.push(
         isAuthed.value && !viewerIsVerified.value
           ? 'Your account is not verified yet.'
-          : 'This post is visible to verified members only.',
+          : 'This post is verified only.',
       )
     } else if (accessHint.value === 'premiumOnly') {
       parts.push(
         isAuthed.value && !viewerIsPremium.value
           ? "Your account does not have premium access."
-          : 'This post is visible to premium members only.',
+          : 'This post is premium only.',
       )
     } else if (accessHint.value === 'private') {
       parts.push("This post is private. If it's yours, log in to view it.")

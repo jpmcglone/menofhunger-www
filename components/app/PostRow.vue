@@ -15,10 +15,11 @@
     :style="rowStyle"
     @click="onRowClick"
   >
-    <!-- Animated background: white at 0, opacity up on hover (main.css), back to 0 on mouse out -->
+    <!-- Animated background: transparent at 0, opacity up on hover (main.css), back to 0 on mouse out -->
     <div
       v-if="clickable"
       class="moh-post-row-hover-bg pointer-events-none absolute inset-0 z-0 rounded-lg"
+      :style="{ backgroundColor: hoverBgColor }"
       aria-hidden="true"
     />
     <!-- Full-row background link: sits above the hover bg (z-[1]) but below all content (z-10+).
@@ -225,6 +226,42 @@
         >
           Post deleted.
         </div>
+
+        <!-- Gated post: show partial body (mid-word cut, faded) then gate card -->
+        <template v-else-if="isGatedPost">
+          <div
+            v-if="postView.body"
+            class="relative overflow-hidden"
+            style="opacity: 0.75; mask-image: linear-gradient(to bottom, black 40%, transparent 100%); -webkit-mask-image: linear-gradient(to bottom, black 40%, transparent 100%);"
+          >
+            <AppPostRowBody
+              :body="postView.body"
+              :has-media="false"
+              :mentions="[]"
+              :visibility="postView.visibility"
+            />
+          </div>
+          <div
+            class="mt-2 flex items-center gap-2.5 rounded-xl border px-3.5 py-3"
+            :class="postView.visibility === 'premiumOnly'
+              ? 'border-orange-200 bg-orange-50 dark:border-orange-900/30 dark:bg-orange-950/20'
+              : 'border-blue-200 bg-blue-50 dark:border-blue-900/30 dark:bg-blue-950/20'"
+          >
+            <Icon
+              name="tabler:lock"
+              class="shrink-0 text-[15px]"
+              :class="postView.visibility === 'premiumOnly' ? 'text-orange-500' : 'text-blue-500'"
+              aria-hidden="true"
+            />
+            <span
+              class="text-[13px] font-medium"
+              :class="postView.visibility === 'premiumOnly' ? 'text-orange-700 dark:text-orange-400' : 'text-blue-700 dark:text-blue-400'"
+            >
+              {{ postView.visibility === 'premiumOnly' ? 'Become premium to read' : 'Verify to read' }}
+            </span>
+          </div>
+        </template>
+
         <AppPostRowBody
           v-else
           :body="postView.body"
@@ -234,7 +271,7 @@
         />
 
         <AppPostPoll
-          v-if="!isDeletedPost && postView.poll"
+          v-if="!isDeletedPost && !isGatedPost && postView.poll"
           :post-id="postView.id"
           :poll="postView.poll"
           :post-visibility="postView.visibility"
@@ -243,10 +280,10 @@
           @updated="onPollUpdated"
         />
 
-        <AppPostMediaGrid v-if="!isDeletedPost && postView.media?.length" :media="postView.media" :post-id="postView.id" :row-in-view="rowInView" />
+        <AppPostMediaGrid v-if="!isDeletedPost && !isGatedPost && postView.media?.length" :media="postView.media" :post-id="postView.id" :row-in-view="rowInView" />
 
         <AppPostRowLinkPreview
-          v-if="!isDeletedPost"
+          v-if="!isDeletedPost && !isGatedPost"
           :post-id="postView.id"
           :body="postView.body"
           :has-media="Boolean(postView.media?.length)"
@@ -254,7 +291,13 @@
           :activate-video-on-mount="activateVideoOnMount"
         />
 
-        <div v-if="!isDeletedPost && metaTags.length" class="mt-3.5 flex items-center justify-between gap-3">
+        <!-- Article share card -->
+        <AppArticleShareCard
+          v-if="!isDeletedPost && !isGatedPost && postView.kind === 'articleShare' && postView.article"
+          :article="postView.article"
+        />
+
+        <div v-if="!isDeletedPost && !isGatedPost && metaTags.length" class="mt-3.5 flex items-center justify-between gap-3">
           <!-- Stop propagation so Cmd/Ctrl+Click behaves like a normal link (new tab), not row navigation. -->
           <div class="flex items-center gap-2" @click.stop>
             <template v-for="t in metaTags" :key="t.key">
@@ -408,16 +451,33 @@
             <span class="mr-0 inline-block w-6 select-none text-right text-[11px] sm:text-xs tabular-nums moh-text-muted" aria-hidden="true">
               {{ bookmarkCountLabel ?? '' }}
             </span>
-            <AppPostRowBookmarkButton
-              :post-id="postView.id"
-              :viewer-can-interact="viewerCanInteract"
-              :initial-has-bookmarked="Boolean(postView.viewerHasBookmarked)"
-              :initial-collection-ids="(postView.viewerBookmarkCollectionIds ?? []).filter(Boolean)"
-              @bookmark-count-delta="onBookmarkCountDelta"
-              @bookmark-state-changed="onBookmarkStateChanged"
-            />
-
-            <AppPostRowShareMenu :can-share="canShare" :tooltip="shareTooltip" :items="shareMenuItems" />
+            <!-- For gated posts: intercept click before it reaches the child components -->
+            <div
+              v-if="isGatedPost"
+              class="contents"
+              @click.capture.stop="onGatedRightSideClick"
+            >
+              <AppPostRowBookmarkButton
+                :post-id="postView.id"
+                :viewer-can-interact="viewerCanInteract"
+                :initial-has-bookmarked="Boolean(postView.viewerHasBookmarked)"
+                :initial-collection-ids="(postView.viewerBookmarkCollectionIds ?? []).filter(Boolean)"
+                @bookmark-count-delta="onBookmarkCountDelta"
+                @bookmark-state-changed="onBookmarkStateChanged"
+              />
+              <AppPostRowShareMenu :can-share="canShare" :tooltip="shareTooltip" :items="shareMenuItems" />
+            </div>
+            <template v-else>
+              <AppPostRowBookmarkButton
+                :post-id="postView.id"
+                :viewer-can-interact="viewerCanInteract"
+                :initial-has-bookmarked="Boolean(postView.viewerHasBookmarked)"
+                :initial-collection-ids="(postView.viewerBookmarkCollectionIds ?? []).filter(Boolean)"
+                @bookmark-count-delta="onBookmarkCountDelta"
+                @bookmark-state-changed="onBookmarkStateChanged"
+              />
+              <AppPostRowShareMenu :can-share="canShare" :tooltip="shareTooltip" :items="shareMenuItems" />
+            </template>
           </div>
         </div>
 
@@ -546,6 +606,12 @@ function onPollUpdated(poll: any) {
 
 const { user: author } = useUserOverlay(computed(() => postView.value.author))
 const isDeletedPost = computed(() => Boolean(postView.value.deletedAt))
+const isGatedPost = computed(() => postView.value.viewerCanAccess === false)
+
+function onGatedRightSideClick() {
+  const kind = postView.value.visibility === 'premiumOnly' ? 'premium' : 'verify'
+  showAuthActionModal({ kind, action: 'bookmark' })
+}
 const clickable = computed(() => props.clickable !== false)
 const highlightClass = computed(() => {
   if (!props.highlight) return ''
@@ -554,6 +620,14 @@ const highlightClass = computed(() => {
   if (v === 'premiumOnly') return 'moh-post-highlight'
   if (v === 'onlyMe') return 'moh-post-highlight moh-post-highlight-onlyme'
   return 'moh-post-highlight'
+})
+
+const hoverBgColor = computed(() => {
+  const v = postView.value.visibility
+  if (v === 'premiumOnly') return 'var(--moh-premium)'
+  if (v === 'verifiedOnly') return 'var(--moh-verified)'
+  if (v === 'onlyMe') return 'var(--moh-onlyme)'
+  return '#ffffff'
 })
 
 // Thread line overlays: 2px; stay within row, gap between line and avatar (no overextend).
@@ -934,7 +1008,7 @@ const moreMenuItems = computed<MenuItemWithIcon[]>(() => {
     })
   }
 
-  if (isAuthed.value && !isSelf.value) {
+  if (isAuthed.value && !isSelf.value && !isGatedPost.value) {
     items.push({
       label: 'Report post',
       iconName: 'tabler:flag',
@@ -1135,6 +1209,11 @@ const openComposerKey = inject(MOH_OPEN_COMPOSER_KEY, null)
 
 function onRepostClick(e: MouseEvent) {
   if (!viewerCanInteract.value) return
+  if (isGatedPost.value) {
+    const kind = postView.value.visibility === 'premiumOnly' ? 'premium' : 'verify'
+    showAuthActionModal({ kind, action: 'boost' })
+    return
+  }
   if (!isAuthed.value) {
     showAuthActionModal({ kind: 'login', action: 'repost' as any })
     return
@@ -1258,6 +1337,11 @@ const adminScoreLabel = computed(() => {
 
 async function onBoostClick() {
   if (!viewerCanInteract.value) return
+  if (isGatedPost.value) {
+    const kind = postView.value.visibility === 'premiumOnly' ? 'premium' : 'verify'
+    showAuthActionModal({ kind, action: 'boost' })
+    return
+  }
   if (isBlockedWithAuthor.value && blockReasonText.value) {
     toast.push({ title: 'Can\'t boost', message: blockReasonText.value, tone: 'error', durationMs: 3500 })
     return
@@ -1281,6 +1365,11 @@ const { show: showReplyModal } = useReplyModal()
 
 function onCommentClick() {
   if (!viewerCanInteract.value) return
+  if (isGatedPost.value) {
+    const kind = postView.value.visibility === 'premiumOnly' ? 'premium' : 'verify'
+    showAuthActionModal({ kind, action: 'comment' })
+    return
+  }
   if (isBlockedWithAuthor.value && blockReasonText.value) {
     toast.push({ title: 'Can\'t reply', message: blockReasonText.value, tone: 'error', durationMs: 3500 })
     return

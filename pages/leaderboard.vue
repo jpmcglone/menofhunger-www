@@ -90,7 +90,6 @@ function tierColor(u: LeaderboardUser): string {
   return 'var(--moh-text-muted)'
 }
 
-if (import.meta.server) await refresh()
 onMounted(() => {
   if (users.value.length === 0 && !loading.value) void refresh()
 })

@@ -1,25 +1,57 @@
 <template>
   <div>
+    <!-- Following state: fixed-width pill with cross-fading "Following" ↔ "Unfollow" labels -->
+    <button
+      v-if="showButton && viewerFollowsUser"
+      type="button"
+      class="relative inline-flex items-center overflow-hidden rounded-full border px-4 py-2 text-sm font-semibold transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
+      :class="hovering
+        ? 'border-red-500 text-red-500 dark:border-red-400 dark:text-red-400'
+        : 'border-gray-300 text-gray-900 dark:border-zinc-500 dark:text-white'"
+      @mouseenter="onMouseEnter"
+      @mouseleave="hovering = false"
+      @click="onClick"
+    >
+      <!-- Invisible spacer — locks button width to "Following" size -->
+      <span class="invisible flex items-center gap-1.5" aria-hidden="true">
+        <Icon name="tabler:check" class="text-[14px]" aria-hidden="true" />
+        Following
+      </span>
+      <!-- "Following" label — fades out on hover -->
+      <span
+        class="absolute inset-0 flex items-center justify-center gap-1.5 transition-opacity duration-150"
+        :class="hovering ? 'opacity-0' : 'opacity-100'"
+        aria-hidden="true"
+      >
+        <Icon name="tabler:check" class="text-[14px]" aria-hidden="true" />
+        <span>Following</span>
+      </span>
+      <!-- "Unfollow" label — fades in on hover -->
+      <span
+        class="absolute inset-0 flex items-center justify-center transition-opacity duration-150"
+        :class="hovering ? 'opacity-100' : 'opacity-0'"
+      >
+        Unfollow
+      </span>
+    </button>
+
+    <!-- Not-following state: standard PrimeVue follow button -->
     <Button
-      v-if="showButton"
-      :label="buttonLabel"
-      :severity="buttonSeverity"
+      v-else-if="showButton"
+      :label="followLabel"
+      severity="primary"
       :rounded="rounded"
       :text="text"
       :size="props.size"
       :class="[
         '!rounded-full !font-semibold',
-        // Dark mode: always show follow controls as a white pill with black text (even on hover/unfollow state).
-        // Keep `!` so this wins over PrimeVue severity classes.
         'dark:!bg-white dark:!text-black dark:!border dark:!border-solid dark:!border-white dark:hover:!bg-white dark:hover:!text-black dark:hover:!border-white',
         props.buttonClass,
       ]"
-      @mouseenter="onMouseEnter"
-      @mouseleave="hovering = false"
       @click="onClick"
     >
       <template v-if="props.showIcon !== false" #icon>
-        <Icon :name="buttonIconName" aria-hidden="true" />
+        <Icon name="tabler:plus" aria-hidden="true" />
       </template>
     </Button>
 
@@ -106,23 +138,7 @@ const showButton = computed(
 )
 const username = computed(() => props.username || '')
 
-const buttonLabel = computed(() => {
-  if (!viewerFollowsUser.value) return userFollowsViewer.value ? 'Follow Back' : 'Follow'
-  if (hovering.value) return 'Unfollow'
-  return 'Following'
-})
-
-const buttonSeverity = computed(() => {
-  if (!viewerFollowsUser.value) return 'primary'
-  if (hovering.value) return 'danger'
-  return 'secondary'
-})
-
-const buttonIconName = computed(() => {
-  if (!viewerFollowsUser.value) return 'tabler:plus'
-  if (hovering.value) return 'tabler:x'
-  return 'tabler:check'
-})
+const followLabel = computed(() => userFollowsViewer.value ? 'Follow Back' : 'Follow')
 
 async function onClick() {
   if (!props.username) return

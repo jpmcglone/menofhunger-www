@@ -118,18 +118,14 @@ function onPosted(payload: { id: string; visibility: import('~/types/api').PostV
   }
 }
 
-if (import.meta.server) {
-  await refreshNotes()
-} else {
-  onMounted(() => {
-    // After posting only-me from another page we navigate here with ?posted=1 and prepend; skip refresh to avoid flash.
-    if (route.query.posted === '1') {
-      navigateTo('/only-me', { replace: true })
-      return
-    }
-    void refreshNotes()
-  })
-}
+onMounted(() => {
+  // After posting only-me from another page we navigate here with ?posted=1 and prepend; skip refresh to avoid flash.
+  if (route.query.posted === '1') {
+    navigateTo('/only-me', { replace: true })
+    return
+  }
+  void refreshNotes()
+})
 
 onMounted(() => {
   revealed.value = false

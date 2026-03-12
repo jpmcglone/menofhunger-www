@@ -13,7 +13,7 @@
     <span v-if="showReset" class="h-6 w-px bg-gray-200 dark:bg-zinc-800" aria-hidden="true" />
 
     <!-- Order (sort) -->
-    <div ref="sortWrapEl" class="relative">
+    <div ref="sortWrapEl" class="relative transition-opacity duration-200" :class="hideSort ? 'opacity-0 pointer-events-none' : 'opacity-100'">
       <button
         type="button"
         class="inline-flex cursor-pointer items-center gap-1.5 rounded-full border px-2 py-1 sm:px-2.5 sm:py-1.5 text-[11px] sm:text-[12px] font-semibold leading-none transition-colors border-gray-200 text-gray-700 hover:bg-gray-50 dark:border-zinc-800 dark:text-gray-200 dark:hover:bg-zinc-900"
@@ -70,7 +70,7 @@
           <Icon name="tabler:layout-grid" class="text-[10px] opacity-80" aria-hidden="true" />
         </template>
         <template v-else-if="filter === 'public'">
-          <Icon name="tabler:globe" class="text-[10px] opacity-80" aria-hidden="true" />
+          <Icon name="tabler:world" class="text-[10px] opacity-80" aria-hidden="true" />
         </template>
         <template v-else-if="filter === 'verifiedOnly'">
           <AppVerifiedBadge status="identity" :premium="false" :show-tooltip="false" />
@@ -107,7 +107,7 @@
           role="menuitem"
           @click="setFilter('public')"
         >
-          <Icon name="tabler:globe" class="text-[14px] opacity-70 shrink-0" aria-hidden="true" />
+          <Icon name="tabler:world" class="text-[14px] opacity-70 shrink-0" aria-hidden="true" />
           <span class="flex-1 text-left">Public</span>
           <Icon v-if="filter === 'public'" name="tabler:check" class="text-[12px] opacity-70 shrink-0" aria-hidden="true" />
         </button>
@@ -162,8 +162,10 @@ const props = withDefaults(
     sortCount?: number | null
     /** When false, hide visibility filter (e.g. for replies that inherit parent post visibility). */
     showVisibilityFilter?: boolean
+    /** When true, fade out the sort pill (it has no effect in this context). */
+    hideSort?: boolean
   }>(),
-  { showVisibilityFilter: true },
+  { showVisibilityFilter: true, hideSort: false },
 )
 
 const emit = defineEmits<{

@@ -35,8 +35,12 @@ export function isPublicPath(path: string): boolean {
   return PUBLIC_PATHS.has(path)
 }
 
+export function isArticlePermalinkPath(path: string): boolean {
+  return path.startsWith('/a/')
+}
+
 export function isPublicPrefixPath(path: string): boolean {
-  return isUserProfilePath(path) || isPostPermalinkPath(path)
+  return isUserProfilePath(path) || isPostPermalinkPath(path) || isArticlePermalinkPath(path)
 }
 
 export function isLoggedOutAllowedPath(path: string): boolean {
@@ -50,6 +54,10 @@ export function isAuthAllowedAfterLogoutPath(path: string): boolean {
 export function isNavActive(params: { currentPath: string; to: string }): boolean {
   const { currentPath, to } = params
   if (to === '/home') return currentPath === '/home'
+  if (to === '/articles') {
+    // Keep Articles nav active on both listing routes and article permalinks.
+    return currentPath === '/articles' || currentPath.startsWith('/articles/') || currentPath.startsWith('/a/')
+  }
   return currentPath === to || currentPath.startsWith(`${to}/`)
 }
 
@@ -60,14 +68,18 @@ export function navCompactModePath(path: string): boolean {
     path === '/tiers' ||
     path.startsWith('/tiers/') ||
     path === '/radio' ||
-    path.startsWith('/radio/')
+    path.startsWith('/radio/') ||
+    path.startsWith('/a/')
   )
 }
 
 export function isRightRailForcedHiddenPath(path: string): boolean {
   // On these routes we want the center column to be as wide as possible.
   const forced = ['/chat', '/admin', '/settings', '/roadmap', '/tiers', '/comparison']
-  return forced.some((p) => path === p || path.startsWith(`${p}/`))
+  if (forced.some((p) => path === p || path.startsWith(`${p}/`))) return true
+  // Article editor needs the full center column width.
+  if (path === '/articles/new' || path.startsWith('/articles/edit/')) return true
+  return false
 }
 
 export function isRightRailSearchHiddenPath(path: string): boolean {
@@ -105,8 +117,8 @@ export function isComposerEntrypointPath(params: { path: string; profileTo?: str
   if (p === '/profile') return true
   // Current user profile route today is /u/:username via useAppNav().
   if (params.profileTo && p === params.profileTo) return true
-  // Any user profile page.
-  if (/^\/u\/[^/]+$/.test(p)) return true
+  // Any user profile page (including tab sub-routes).
+  if (/^\/u\/[^/]+(\/(?:posts|replies|articles|media))?$/.test(p)) return true
   return false
 }
 

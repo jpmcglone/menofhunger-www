@@ -120,6 +120,10 @@
               <span class="ml-1">shared a</span>
               <span class="ml-1 font-semibold" :class="subjectPostVisibilityTextClass(notification)">post</span>
             </template>
+            <template v-else-if="notification.kind === 'followed_article'">
+              <span class="ml-1">published a new</span>
+              <span class="ml-1 font-semibold text-orange-600 dark:text-orange-400">article</span>
+            </template>
               <template v-else>
                 <span class="ml-1">{{ titleSuffix(notification) }}</span>
               </template>
@@ -154,6 +158,54 @@
                   loading="lazy"
                 >
               </template>
+            </div>
+
+            <!-- Article preview card (followed_article) -->
+            <div
+              v-if="notification.kind === 'followed_article' && notification.subjectArticlePreview"
+              class="mt-2.5 flex items-start gap-3 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 dark:border-zinc-700/70 dark:bg-zinc-800/60"
+            >
+              <!-- Thumbnail -->
+              <div
+                v-if="notification.subjectArticlePreview.thumbnailUrl"
+                class="shrink-0 overflow-hidden rounded-lg"
+              >
+                <img
+                  :src="notification.subjectArticlePreview.thumbnailUrl"
+                  :alt="notification.subjectArticlePreview.title ?? ''"
+                  class="h-14 w-20 object-cover"
+                  loading="lazy"
+                />
+              </div>
+              <!-- Text -->
+              <div class="min-w-0 flex-1">
+                <p
+                  v-if="notification.subjectArticlePreview.title"
+                  class="line-clamp-2 text-[13px] font-semibold leading-snug text-gray-900 dark:text-gray-100"
+                >
+                  {{ notification.subjectArticlePreview.title }}
+                </p>
+                <p
+                  v-if="notification.subjectArticlePreview.excerpt"
+                  class="mt-0.5 line-clamp-2 text-[11px] leading-snug text-gray-500 dark:text-zinc-400"
+                >
+                  {{ notification.subjectArticlePreview.excerpt }}
+                </p>
+                <div class="mt-1 flex items-center gap-1.5">
+                  <span
+                    v-if="notification.subjectArticlePreview.visibility && notification.subjectArticlePreview.visibility !== 'public'"
+                    :class="[
+                      'inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-semibold',
+                      notification.subjectArticlePreview.visibility === 'premiumOnly'
+                        ? 'bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400'
+                        : 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400',
+                    ]"
+                  >
+                    {{ notification.subjectArticlePreview.visibility === 'premiumOnly' ? 'Premium' : 'Verified' }}
+                  </span>
+                  <span class="text-[10px] text-orange-600 dark:text-orange-400 font-medium">Read article →</span>
+                </div>
+              </div>
             </div>
           </div>
           <div class="shrink-0 flex items-start gap-3">

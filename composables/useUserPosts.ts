@@ -27,17 +27,33 @@ export function useUserPosts(
     showAds?: Ref<boolean>
     /** When set, use separate cookie keys (e.g. for permalink "more from author" so it doesn't share state with profile). */
     cookieKeyPrefix?: string
+    /** When true, only return top-level posts (no replies). */
+    topLevelOnly?: boolean
+    /** When provided, uses these refs for filter/sort instead of cookie-persisted state. */
+    externalFilter?: Ref<UserPostsFilter>
+    externalSort?: Ref<'new' | 'trending'>
+    /** When true, include posts of all visibility tiers; restricted posts are returned with viewerCanAccess=false. */
+    includeRestricted?: boolean
   } = {},
 ) {
-  const { user: me } = useAuth()
+  const { user: me, isVerified: authIsVerified, isPremium: authIsPremium } = useAuth()
   const { clearBumpsForPostIds } = usePostCountBumps()
   const enabled = opts.enabled ?? computed(() => true)
   const showAds = opts.showAds ?? computed(() => true)
   const prefix = opts.cookieKeyPrefix ?? 'moh.profile.posts'
 
-  const { filter, sort, viewerIsVerified, viewerIsPremium, ctaKind } = useFeedFilters({ cookieKeyPrefix: prefix })
+  const internalFilters = opts.externalFilter ? null : useFeedFilters({ cookieKeyPrefix: prefix })
+  const filter: Ref<UserPostsFilter> = opts.externalFilter ?? internalFilters!.filter
+  const sort: Ref<'new' | 'trending'> = opts.externalSort ?? internalFilters!.sort
+  const viewerIsVerified = internalFilters?.viewerIsVerified ?? authIsVerified
+  const viewerIsPremium = internalFilters?.viewerIsPremium ?? authIsPremium
+  const ctaKind = computed<null | 'verify' | 'premium'>(() => {
+    if (filter.value === 'verifiedOnly' && !viewerIsVerified.value) return 'verify'
+    if (filter.value === 'premiumOnly' && !viewerIsPremium.value) return 'premium'
+    return null
+  })
 
-  if (opts.defaultToNewestAndAll) {
+  if (!opts.externalFilter && opts.defaultToNewestAndAll) {
     filter.value = 'all'
     sort.value = 'new'
   }
@@ -50,7 +66,14 @@ export function useUserPosts(
     stateKey: postsKey.value,
     buildRequest: (cursor) => ({
       path: `/posts/user/${encodeURIComponent(usernameLower.value)}`,
-      query: { limit: 30, visibility: filter.value, sort: sort.value, ...(cursor ? { cursor } : {}) },
+      query: {
+        limit: 30,
+        visibility: filter.value,
+        sort: sort.value,
+        ...(opts.topLevelOnly ? { topLevelOnly: true } : {}),
+        ...(opts.includeRestricted ? { includeRestricted: true } : {}),
+        ...(cursor ? { cursor } : {}),
+      },
     }),
     defaultErrorMessage: 'Failed to load posts.',
     onDataLoaded: (data) => clearBumpsForPostIds(data.map((p) => p.id)),
@@ -293,7 +316,13 @@ export function useUserPosts(
         stateKey: postsKey.value,
         buildRequest: (cursor) => ({
           path: `/posts/user/${encodeURIComponent(usernameLower.value)}`,
-          query: { limit: 30, visibility: filter.value, sort: sort.value, ...(cursor ? { cursor } : {}) },
+          query: {
+            limit: 30,
+            visibility: filter.value,
+            sort: sort.value,
+            ...(opts.topLevelOnly ? { topLevelOnly: true } : {}),
+            ...(cursor ? { cursor } : {}),
+          },
         }),
         defaultErrorMessage: 'Failed to load posts.',
         onDataLoaded: (data) => clearBumpsForPostIds(data.map((p) => p.id)),
@@ -329,6 +358,20 @@ export function useUserPosts(
       void fetch(filter.value, sort.value)
     }
   })
+
+  // Auto-reload when external filter/sort change
+  if (opts.externalFilter) {
+    watch(opts.externalFilter, (next) => {
+      if (!enabled.value) return
+      void fetch(next, sort.value)
+    }, { flush: 'post' })
+  }
+  if (opts.externalSort) {
+    watch(opts.externalSort, (next) => {
+      if (!enabled.value) return
+      void fetch(filter.value, next)
+    }, { flush: 'post' })
+  }
 
   return {
     filter,

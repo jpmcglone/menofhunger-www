@@ -223,6 +223,8 @@ export function useNotifications() {
         return 'followed you'
       case 'followed_post':
         return 'shared a post'
+      case 'followed_article':
+        return 'published an article'
       case 'mention':
         return 'mentioned you'
       case 'nudge':
@@ -245,6 +247,8 @@ export function useNotifications() {
         return 'tabler:user-plus'
       case 'followed_post':
         return 'tabler:file-text'
+      case 'followed_article':
+        return 'tabler:article'
       case 'mention':
         return 'tabler:at'
       case 'nudge':
@@ -274,6 +278,8 @@ export function useNotifications() {
         return 'New follower'
       case 'followed_post':
         return 'New post'
+      case 'followed_article':
+        return 'New article'
       case 'mention':
         return 'Mention'
       case 'nudge':
@@ -298,6 +304,7 @@ export function useNotifications() {
   }
 
   function rowHref(n: Notification): string | null {
+    if (n.kind === 'followed_article' && n.subjectArticleId) return `/a/${encodeURIComponent(n.subjectArticleId)}`
     if (n.kind === 'comment' && n.actorPostId) return `/p/${encodeURIComponent(n.actorPostId)}`
     if (n.subjectPostId) return `/p/${encodeURIComponent(n.subjectPostId)}`
     if (n.subjectUserId && n.actor?.username) return `/u/${encodeURIComponent(n.actor.username)}`

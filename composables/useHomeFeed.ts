@@ -1,51 +1,29 @@
 import type { ProfilePostsFilter } from '~/utils/post-visibility'
 import type { FeedVisibilityFilter } from '~/composables/useFeedFilters'
-import { useFeedFilters } from '~/composables/useFeedFilters'
+import { useUrlFeedFilters } from '~/composables/useUrlFeedFilters'
 
 export function useHomeFeed() {
   const { user, isAuthed } = useAuth()
   const { apiFetchData } = useApiClient()
   const middleScrollerEl = useMiddleScroller()
 
-  const { filter: feedFilter, sort: feedSort, viewerIsVerified, viewerIsPremium, ctaKind: feedCtaKind } = useFeedFilters({
-    filterCookieKey: 'moh.feed.filter.v1',
-    sortCookieKey: 'moh.home.sort.v1',
-  })
-
-  const feedScope = useCookie<'following' | 'all'>('moh.home.scope.v1', {
-    default: () => 'all',
-    sameSite: 'lax',
-    path: '/',
-    maxAge: 60 * 60 * 24 * 365,
-  })
+  const {
+    filter: feedFilter,
+    sort: feedSort,
+    scope: feedScope,
+    viewerIsVerified,
+    viewerIsPremium,
+    ctaKind: feedCtaKind,
+    resetFilters: _resetFilters,
+  } = useUrlFeedFilters()
 
   const scopeTabs = computed(() => {
-    // When signed out, remove the Following toggle entirely.
     if (!isAuthed.value) return [{ key: 'all', label: 'All', disabled: false }]
     return [
-      { key: 'following', label: 'Following', disabled: false },
       { key: 'all', label: 'All', disabled: false },
+      { key: 'following', label: 'Following', disabled: false },
     ]
   })
-
-  watch(
-    feedScope,
-    (v) => {
-      if (v === 'following' || v === 'all') return
-      feedScope.value = 'all'
-    },
-    { immediate: true },
-  )
-
-  watch(
-    isAuthed,
-    (authed) => {
-      if (authed) return
-      // If a signed-out user had the cookie set to following, force back to all so UI + state match.
-      if (feedScope.value === 'following') feedScope.value = 'all'
-    },
-    { immediate: true },
-  )
 
   const followingOnly = computed(() => Boolean(isAuthed.value && feedScope.value === 'following'))
   const showAds = computed(() => !user.value?.premium)
@@ -123,11 +101,9 @@ export function useHomeFeed() {
     if (!import.meta.client) return await fn()
     const scroller = middleScrollerEl.value
     if (!scroller) return await fn()
-
     const prevTop = scroller.scrollTop
     const res = await fn()
     await nextTick()
-
     const maxTop = Math.max(0, scroller.scrollHeight - scroller.clientHeight)
     scroller.scrollTop = Math.min(prevTop, maxTop)
     return res
@@ -135,25 +111,29 @@ export function useHomeFeed() {
 
   async function setFeedFilter(next: ProfilePostsFilter) {
     const safe = next === 'onlyMe' ? 'all' : (next as FeedVisibilityFilter)
+    feedFilter.value = safe
     await preserveMiddleScrollAfter(async () => await refresh({ visibility: safe }))
   }
 
   async function setFeedSort(next: 'new' | 'trending') {
+    feedSort.value = next
     await preserveMiddleScrollAfter(async () => await refresh({ sort: next }))
   }
 
-  /** Set both filter and sort to default and refresh once (so reset matches manually selecting All + Newest). */
   async function resetFilters() {
+    _resetFilters()
     await preserveMiddleScrollAfter(async () => await refresh({ visibility: 'all', sort: 'new' }))
   }
 
-  // Watch scope and user identity together so a simultaneous login+scope change
-  // only triggers a single refresh instead of two racing requests.
+  async function onFeedScopeChange(next: 'all' | 'following') {
+    feedScope.value = next as 'all' | 'following'
+    await preserveMiddleScrollAfter(async () => await refresh())
+  }
+
+  // Refresh feed when scope or user identity changes
   watch(
     () => [feedScope.value, user.value?.id ?? null] as const,
-    () => {
-      void refresh()
-    },
+    () => { void refresh() },
     { flush: 'post' },
   )
 
@@ -186,5 +166,6 @@ export function useHomeFeed() {
     setFeedFilter,
     setFeedSort,
     resetFilters,
+    onFeedScopeChange,
   }
 }

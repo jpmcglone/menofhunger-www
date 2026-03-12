@@ -235,7 +235,7 @@
             </template>
           </Button>
           <AppFollowButton
-            v-else-if="isAuthed && profile?.id"
+            v-if="isAuthed && profile?.id && !isSelf"
             :user-id="profile.id"
             :username="profile.username"
             :initial-relationship="followRelationship"
@@ -518,7 +518,7 @@ const joinedLabel = computed(() => {
   if (!raw) return null
   const d = new Date(String(raw))
   if (Number.isNaN(d.getTime())) return null
-  return d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+  return d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
 })
 
 const viewerFollowsUser = computed(() => Boolean(followRelationship.value?.viewerFollowsUser))

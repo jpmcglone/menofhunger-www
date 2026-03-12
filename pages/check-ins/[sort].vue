@@ -123,7 +123,6 @@ function onEdited(payload: { id: string; post: FeedPost }) {
   posts.value = posts.value.map((p) => (p.id === payload.id ? payload.post : p))
 }
 
-if (import.meta.server) await refresh()
 onMounted(() => {
   if (posts.value.length === 0 && !loading.value) void refresh()
 })

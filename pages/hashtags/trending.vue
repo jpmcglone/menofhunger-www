@@ -90,9 +90,7 @@ function formatCount(n: number): string {
   return String(num)
 }
 
-if (import.meta.server) await refresh()
 onMounted(() => {
-  // Avoid duplicate fetch after SSR/hydration; only refetch if we have no data.
   if (tags.value.length === 0 && !loading.value) void refresh()
 })
 </script>

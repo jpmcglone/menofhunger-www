@@ -393,7 +393,7 @@ export type FeedPost = {
   editCount?: number
   body: string
   deletedAt: string | null
-  kind?: 'regular' | 'checkin' | 'repost'
+  kind?: 'regular' | 'checkin' | 'repost' | 'articleShare'
   checkinDayKey?: string | null
   checkinPrompt?: string | null
   visibility: PostVisibility
@@ -424,8 +424,12 @@ export type FeedPost = {
   repostedPost?: FeedPost
   /** For posts containing an embedded post link: the quoted post (preloaded). */
   quotedPost?: FeedPost
+  /** For kind='articleShare': the shared article preview. */
+  article?: ArticleSharePreview
   /** When true, post body/media/mentions/poll are redacted and author is placeholder. */
   authorBanned?: boolean
+  /** False when the viewer's tier does not grant access; body/media stripped. */
+  viewerCanAccess?: boolean
   internal?: {
     boostScore: number | null
     boostScoreUpdatedAt: string | null
@@ -436,6 +440,13 @@ export type FeedPost = {
 }
 
 export type PostViewBreakdown = {
+  premium: number
+  verified: number
+  unverified: number
+  total: number
+}
+
+export type ArticleViewBreakdown = {
   premium: number
   verified: number
   unverified: number
@@ -908,6 +919,7 @@ export type NotificationKind =
   | 'repost'
   | 'follow'
   | 'followed_post'
+  | 'followed_article'
   | 'mention'
   | 'nudge'
   | 'poll_results_ready'
@@ -930,6 +942,13 @@ export type SubjectPostPreview = {
   media: Array<{ url: string; thumbnailUrl: string | null; kind: string }>
 }
 
+export type SubjectArticlePreview = {
+  title: string | null
+  excerpt: string | null
+  thumbnailUrl: string | null
+  visibility: string | null
+}
+
 /** Tier of the notification subject (post visibility or user tier) for unseen row highlight. */
 export type SubjectTier = 'premium' | 'verified' | null
 
@@ -946,9 +965,12 @@ export type Notification = {
   actorPostId: string | null
   subjectPostId: string | null
   subjectUserId: string | null
+  subjectArticleId: string | null
   title: string | null
   body: string | null
   subjectPostPreview?: SubjectPostPreview | null
+  /** When subject is an article (followed_article), article card preview. */
+  subjectArticlePreview?: SubjectArticlePreview | null
   /** When subject is a post, its visibility (used for UI tinting). */
   subjectPostVisibility?: PostVisibility | null
   /** Tier of subject (post or user) for unseen row highlight. */
@@ -1199,6 +1221,41 @@ export type WsPostsLiveUpdatedPayload = {
   }>
 }
 
+export type WsArticlesLiveUpdatedPayload = {
+  articleId: string
+  version: string
+  reason: string
+  patch: Partial<{
+    commentCount: number
+    viewCount: number
+    boostCount: number
+    reactions: ArticleReactionSummary[]
+  }>
+}
+
+export type WsArticlesCommentAddedPayload = {
+  articleId: string
+  comment: ArticleComment
+}
+
+export type WsArticlesCommentDeletedPayload = {
+  articleId: string
+  commentId: string
+  parentId: string | null
+}
+
+export type WsArticlesCommentUpdatedPayload = {
+  articleId: string
+  comment: ArticleComment
+}
+
+export type WsArticlesCommentReactionChangedPayload = {
+  articleId: string
+  commentId: string
+  parentId: string | null
+  reactions: ArticleReactionSummary[]
+}
+
 export type WsAdminUpdateKind = 'reports' | 'verification' | 'feedback'
 export type WsAdminUpdateAction = 'created' | 'updated' | 'deleted' | 'resolved' | 'reviewed' | 'other'
 export type WsAdminUpdatedPayload = {
@@ -1242,6 +1299,7 @@ export type UserDto = {
   interests: string[]
   menOnlyConfirmed: boolean
   siteAdmin: boolean
+  featureToggles: string[]
   bannedAt: string | null
   bannedReason: string | null
   bannedByAdminId: string | null
@@ -1360,6 +1418,38 @@ export type AdminAnalyticsMonetization = {
   byStatus: Record<string, number>
 }
 
+export type AdminAnalyticsTopArticle = {
+  id: string
+  title: string
+  slug: string
+  visibility: string
+  authorUsername: string
+  viewCount: number
+  boostCount: number
+  commentCount: number
+  reactionCount: number
+  publishedAt: string
+}
+
+export type AdminAnalyticsArticleKpi = {
+  totalPublished: number
+  totalDrafts: number
+  uniqueAuthors: number
+  totalViewsInRange: number
+  totalBoostsInRange: number
+  totalReactionsInRange: number
+  totalCommentsInRange: number
+  avgViewsPerArticle: number
+}
+
+export type AdminAnalyticsArticles = {
+  kpis: AdminAnalyticsArticleKpi
+  published: AdminAnalyticsTimeSeriesPoint[]
+  views: AdminAnalyticsTimeSeriesPoint[]
+  byVisibility: Record<string, number>
+  topArticles: AdminAnalyticsTopArticle[]
+}
+
 export type AdminAnalytics = {
   range: AnalyticsRange
   granularity: AnalyticsGranularity
@@ -1373,6 +1463,85 @@ export type AdminAnalytics = {
   retention: AdminAnalyticsRetentionRow[]
   engagement: AdminAnalyticsEngagement
   monetization: AdminAnalyticsMonetization
+  articles: AdminAnalyticsArticles
   asOf: string
+}
+
+// ─── Articles ────────────────────────────────────────────────────────────────
+
+export type ArticleReactionSummary = {
+  reactionId: string
+  emoji: string
+  count: number
+  viewerHasReacted: boolean
+}
+
+export type ArticleAuthor = {
+  id: string
+  username: string | null
+  name: string | null
+  bio: string | null
+  /** Override bio for article author sections. Falls back to `bio` if null. */
+  articleBio: string | null
+  avatarUrl: string | null
+  premium: boolean
+  premiumPlus: boolean
+  isOrganization: boolean
+  stewardBadgeEnabled: boolean
+  verifiedStatus: 'none' | 'identity' | 'manual'
+  orgAffiliations: OrgAffiliation[]
+}
+
+export type Article = {
+  id: string
+  createdAt: string
+  updatedAt: string
+  publishedAt: string | null
+  editedAt: string | null
+  deletedAt: string | null
+  title: string
+  slug: string
+  /** Tiptap JSON document as stringified JSON. */
+  body: string
+  excerpt: string | null
+  thumbnailUrl: string | null
+  /** R2 key for the thumbnail (used by the editor to track pending changes). */
+  thumbnailR2Key?: string | null
+  visibility: PostVisibility
+  isDraft: boolean
+  lastSavedAt: string
+  boostCount: number
+  commentCount: number
+  viewCount: number
+  author: ArticleAuthor
+  reactions: ArticleReactionSummary[]
+  readingTimeMinutes?: number
+  viewerHasBoosted?: boolean
+  /** False when the viewer's tier does not grant access; body/excerpt are stripped in this case. */
+  viewerCanAccess?: boolean
+}
+
+export type ArticleSharePreview = {
+  id: string
+  title: string
+  excerpt: string | null
+  thumbnailUrl: string | null
+  visibility: PostVisibility
+  publishedAt: string | null
+  author: Pick<ArticleAuthor, 'id' | 'username' | 'name' | 'avatarUrl' | 'verifiedStatus' | 'premium' | 'premiumPlus'>
+}
+
+export type ArticleComment = {
+  id: string
+  createdAt: string
+  editedAt: string | null
+  deletedAt: string | null
+  body: string
+  articleId: string
+  parentId: string | null
+  replyCount: number
+  author: ArticleAuthor
+  reactions: ArticleReactionSummary[]
+  replies?: ArticleComment[]
 }
 

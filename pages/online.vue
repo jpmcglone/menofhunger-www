@@ -361,13 +361,6 @@ onMounted(async () => {
   // If the combined call didn't include recent (or viewer can't see it), keep the existing recent fetch path for load-more only.
 })
 
-// SSR: prefetch lists so the first HTML paint contains real data (reduces flicker).
-if (import.meta.server) {
-  if (viewerCanSeeLastOnline.value) {
-    await fetchRecent()
-  }
-}
-
 onBeforeUnmount(() => {
   if (mergeRefetchTimeout) {
     clearTimeout(mergeRefetchTimeout)

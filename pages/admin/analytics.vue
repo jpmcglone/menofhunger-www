@@ -122,6 +122,96 @@
           </div>
         </div>
 
+        <!-- ─── Articles ──────────────────────────────────────────────── -->
+
+        <!-- Article KPI cards -->
+        <div class="px-4 space-y-2">
+          <div class="font-semibold text-sm">Articles <span class="text-gray-400 font-normal">({{ rangeLabel }} unless noted)</span></div>
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div v-for="card in articleKpiCards" :key="card.label" class="rounded-xl border moh-border p-4 space-y-1">
+              <div class="text-xs text-gray-500 dark:text-gray-400 font-medium truncate">{{ card.label }}</div>
+              <div class="text-2xl font-bold tabular-nums">{{ card.value }}</div>
+              <div class="text-xs text-gray-500 dark:text-gray-400">{{ card.sub }}</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Article visibility breakdown -->
+        <div class="px-4 space-y-2">
+          <div class="font-semibold text-sm">Article Visibility <span class="text-gray-400 font-normal">(published, {{ rangeLabel }})</span></div>
+          <div class="rounded-xl border moh-border p-4 space-y-3">
+            <div v-if="!data?.articles.byVisibility || Object.values(data.articles.byVisibility).every(v => v === 0)" class="text-sm text-gray-400 dark:text-gray-500 italic">
+              No articles published yet.
+            </div>
+            <template v-else>
+              <div v-for="vis in articleVisibilityRows" :key="vis.key" class="space-y-1">
+                <div class="flex items-center justify-between text-sm">
+                  <div class="flex items-center gap-2">
+                    <span class="inline-block w-2.5 h-2.5 rounded-full" :class="vis.dot" />
+                    <span class="font-medium">{{ vis.label }}</span>
+                    <span class="text-xs text-gray-400 dark:text-gray-500">{{ vis.description }}</span>
+                  </div>
+                  <div class="flex items-center gap-3 tabular-nums">
+                    <span class="text-xs text-gray-500 dark:text-gray-400">{{ vis.pct }}%</span>
+                    <span class="font-semibold">{{ vis.count.toLocaleString() }}</span>
+                  </div>
+                </div>
+                <div class="h-1.5 rounded-full bg-gray-100 dark:bg-zinc-800 overflow-hidden">
+                  <div class="h-full rounded-full transition-all" :class="vis.bar" :style="{ width: vis.pct + '%' }" />
+                </div>
+              </div>
+            </template>
+          </div>
+        </div>
+
+        <!-- Top articles table -->
+        <div class="px-4 space-y-2">
+          <div class="font-semibold text-sm">Top Articles by Views <span class="text-gray-400 font-normal">({{ rangeLabel }})</span></div>
+          <div class="rounded-xl border moh-border overflow-x-auto">
+            <table class="min-w-full text-sm">
+              <thead>
+                <tr class="border-b moh-border text-left text-gray-500 dark:text-gray-400">
+                  <th class="px-4 py-3 font-medium">Article</th>
+                  <th class="px-4 py-3 font-medium">Tier</th>
+                  <th class="px-4 py-3 font-medium text-right">Views</th>
+                  <th class="px-4 py-3 font-medium text-right">Boosts</th>
+                  <th class="px-4 py-3 font-medium text-right">Reactions</th>
+                  <th class="px-4 py-3 font-medium text-right">Comments</th>
+                  <th class="px-4 py-3 font-medium text-right">Published</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-gray-100 dark:divide-white/5">
+                <tr
+                  v-for="article in data?.articles.topArticles"
+                  :key="article.id"
+                  class="hover:bg-gray-50 dark:hover:bg-zinc-900/50 cursor-pointer"
+                  @click="navigateTo(`/a/${article.id}`)"
+                >
+                  <td class="px-4 py-3 max-w-[260px]">
+                    <div class="font-medium truncate">{{ article.title }}</div>
+                    <div class="text-xs text-gray-400 dark:text-gray-500">@{{ article.authorUsername }}</div>
+                  </td>
+                  <td class="px-4 py-3">
+                    <span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium" :class="visibilityBadgeClass(article.visibility)">
+                      {{ visibilityLabel(article.visibility) }}
+                    </span>
+                  </td>
+                  <td class="px-4 py-3 text-right tabular-nums font-semibold">{{ article.viewCount.toLocaleString() }}</td>
+                  <td class="px-4 py-3 text-right tabular-nums">{{ article.boostCount.toLocaleString() }}</td>
+                  <td class="px-4 py-3 text-right tabular-nums">{{ article.reactionCount.toLocaleString() }}</td>
+                  <td class="px-4 py-3 text-right tabular-nums">{{ article.commentCount.toLocaleString() }}</td>
+                  <td class="px-4 py-3 text-right text-xs text-gray-400 dark:text-gray-500 whitespace-nowrap">{{ articleAge(article.publishedAt) }}</td>
+                </tr>
+                <tr v-if="!data?.articles.topArticles.length">
+                  <td colspan="7" class="px-4 py-6 text-center text-gray-500 dark:text-gray-400 text-sm">No published articles yet</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- ─────────────────────────────────────────────────────────────── -->
+
         <!-- Retention table (always 10-week window) -->
         <div class="px-4 space-y-2">
           <div class="font-semibold text-sm">Weekly Cohort Retention <span class="text-gray-400 font-normal">(last 10 weeks)</span></div>
@@ -378,7 +468,7 @@
 
 <script setup lang="ts">
 import { Chart, registerables } from 'chart.js'
-import type { AdminAnalytics, AdminAnalyticsEngagement, AnalyticsGranularity, AnalyticsRange } from '~/types/api'
+import type { AdminAnalytics, AdminAnalyticsEngagement, AdminAnalyticsTopArticle, AnalyticsGranularity, AnalyticsRange } from '~/types/api'
 
 definePageMeta({ middleware: 'admin', layout: 'app' })
 
@@ -526,7 +616,10 @@ function renderCharts() {
   }
 
   if (contentCanvas.value) {
-    const { labels, counts, totalPoints } = alignSeries([data.value.posts, data.value.checkins], granularity)
+    const { labels, counts, totalPoints } = alignSeries(
+      [data.value.posts, data.value.checkins, data.value.articles.published],
+      granularity,
+    )
     contentChart?.destroy()
     contentChart = new Chart(contentCanvas.value, {
       type: 'line',
@@ -535,6 +628,7 @@ function renderCharts() {
         datasets: [
           makeLineDataset('Posts', counts[0] ?? [], '#10b981', totalPoints),
           makeLineDataset('Check-ins', counts[1] ?? [], '#f59e0b', totalPoints),
+          makeLineDataset('Articles', counts[2] ?? [], '#a855f7', totalPoints),
         ],
       },
       options: opts,
@@ -559,6 +653,57 @@ function renderCharts() {
 }
 
 // ─── Computed ─────────────────────────────────────────────────────────────────
+
+const ARTICLE_VISIBILITY_META: Record<string, { label: string; description: string; dot: string; bar: string }> = {
+  public:       { label: 'Public',       description: 'visible to everyone',    dot: 'bg-blue-500',   bar: 'bg-blue-500' },
+  verifiedOnly: { label: 'Verified Only', description: 'verified members only',  dot: 'bg-violet-500', bar: 'bg-violet-500' },
+  premiumOnly:  { label: 'Premium Only',  description: 'premium members only',   dot: 'bg-amber-500',  bar: 'bg-amber-500' },
+}
+const ARTICLE_VISIBILITY_ORDER = ['public', 'verifiedOnly', 'premiumOnly']
+
+const articleVisibilityRows = computed(() => {
+  if (!data.value) return []
+  const byVis = data.value.articles.byVisibility
+  const total = Object.values(byVis).reduce((a, b) => a + b, 0)
+  return ARTICLE_VISIBILITY_ORDER.map((key) => {
+    const count = byVis[key] ?? 0
+    const meta = ARTICLE_VISIBILITY_META[key] ?? { label: key, description: '', dot: 'bg-gray-400', bar: 'bg-gray-400' }
+    return { key, ...meta, count, pct: total > 0 ? Math.round((count / total) * 100) : 0 }
+  })
+})
+
+const articleKpiCards = computed(() => {
+  if (!data.value) return []
+  const k = data.value.articles.kpis
+  const r = rangeLabel.value
+  return [
+    { label: 'Published',   value: k.totalPublished.toLocaleString(),        sub: r },
+    { label: 'Drafts',      value: k.totalDrafts.toLocaleString(),            sub: 'all time (current)' },
+    { label: 'Authors',     value: k.uniqueAuthors.toLocaleString(),          sub: `published in ${r}` },
+    { label: 'Views',       value: k.totalViewsInRange.toLocaleString(),      sub: r },
+    { label: 'Avg Views',   value: k.avgViewsPerArticle.toLocaleString(),     sub: `per article (${r})` },
+    { label: 'Boosts',      value: k.totalBoostsInRange.toLocaleString(),     sub: r },
+    { label: 'Reactions',   value: k.totalReactionsInRange.toLocaleString(),  sub: r },
+    { label: 'Comments',    value: k.totalCommentsInRange.toLocaleString(),   sub: r },
+  ]
+})
+
+function visibilityBadgeClass(visibility: string): string {
+  if (visibility === 'verifiedOnly') return 'bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300'
+  if (visibility === 'premiumOnly')  return 'bg-amber-100  text-amber-700  dark:bg-amber-900/40  dark:text-amber-300'
+  return 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300'
+}
+
+function visibilityLabel(v: string) {
+  if (v === 'verifiedOnly') return 'Verified'
+  if (v === 'premiumOnly')  return 'Premium'
+  return 'Public'
+}
+
+function articleAge(iso: string) {
+  const d = new Date(iso)
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' })
+}
 
 const summaryCards = computed(() => {
   if (!data.value) return []

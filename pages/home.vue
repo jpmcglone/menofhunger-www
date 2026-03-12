@@ -330,6 +330,7 @@ const {
   setFeedFilter,
   setFeedSort,
   resetFilters,
+  onFeedScopeChange,
 } = useHomeFeed()
 
 watch(
@@ -462,9 +463,6 @@ async function createPostViaFeed(
   return created?.id ? { id: created.id } : null
 }
 
-function onFeedScopeChange(v: 'following' | 'all') {
-  feedScope.value = v
-}
+// onFeedScopeChange is provided by useHomeFeed — updates URL param and refreshes feed
 
-if (import.meta.server) await refresh()
 </script>

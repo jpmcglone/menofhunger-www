@@ -253,13 +253,13 @@
                   // Add breathing room between icon and label (label only shows in wide mode).
                   !navCompactMode ? 'gap-2' : '',
                   'w-full',
-                  route.path === item.to
+                  isActiveNav(item.to)
                     ? (item.key === 'only-me' ? 'font-bold' : 'moh-surface font-bold')
                     : 'font-semibold',
                   // Default nav tone
                   item.key !== 'only-me' ? 'text-gray-900 dark:text-gray-100 moh-surface-hover' : '',
                   item.key === 'only-me'
-                    ? (route.path === item.to ? 'moh-nav-onlyme-active' : 'moh-nav-onlyme')
+                    ? (isActiveNav(item.to) ? 'moh-nav-onlyme-active' : 'moh-nav-onlyme')
                     : ''
                 ]"
                 @click="(e) => onLeftNavClick(item.to, e)"
@@ -291,7 +291,7 @@
                   v-if="!navCompactMode"
                   :class="[
                     'hidden xl:inline-flex items-center gap-2 whitespace-nowrap overflow-hidden text-lg max-w-[220px]',
-                    route.path === item.to ? 'font-bold' : 'font-semibold'
+                    isActiveNav(item.to) ? 'font-bold' : 'font-semibold'
                   ]"
                 >
                   {{ item.label }}
@@ -565,6 +565,8 @@
                   </div>
 
                   <div class="space-y-4 transition-[transform] duration-200 ease-out">
+                  <AppTrendingArticlesCard v-if="articlesEnabled" />
+
                   <div class="space-y-1">
                     <div class="flex justify-end px-2">
                       <NuxtLink
@@ -585,7 +587,7 @@
                       </NuxtLink>
                     </div>
 
-                    <!-- Who to follow (real data) -->
+                  <!-- Who to follow (real data) -->
                     <Card class="moh-card moh-card-matte !rounded-2xl">
                       <template #title>
                         <span class="moh-h2">Who to follow</span>
@@ -893,6 +895,7 @@ useHead({
 })
 const { initAuth, user, isVerified: viewerIsVerified } = useAuth()
 const { isAuthed, profileTo, leftItems: leftNavItems, tabItems } = useAppNav()
+const { articlesEnabled } = useAppFeatures()
 const notifBadge = useNotificationsBadge()
 const {
   disconnectedDueToIdle,
@@ -938,11 +941,12 @@ watch(
 
 const { hideTopBar, navCompactMode: _navCompactModeBase, isRightRailForcedHidden: _isRightRailForcedHiddenBase, isRightRailSearchHidden, title } = useLayoutRules(route)
 const isMessagesPage = computed(() => route.path === '/chat')
+const isArticleEditorPage = computed(() => route.path === '/articles/new' || route.path.startsWith('/articles/edit/'))
 const { keyboardHeight } = useKeyboardHeight()
 // Hide the mobile tab bar when the software keyboard is open on screens that have a
 // fixed composer bar (e.g. chat). This mirrors the native iOS sheet behaviour where
 // the tab bar is outside the modal hierarchy and never rises with the keyboard.
-const hideTabBarForKeyboard = computed(() => isMessagesPage.value && keyboardHeight.value > 0)
+const hideTabBarForKeyboard = computed(() => (isMessagesPage.value || isArticleEditorPage.value) && keyboardHeight.value > 0)
 const isOnlyMePage = computed(() => route.path === '/only-me')
 
 const showEmailUnverifiedBar = computed(() => {
@@ -1538,6 +1542,7 @@ const middleScrollerEl = ref<HTMLElement | null>(null)
 const titleBarEl = ref<HTMLElement | null>(null)
 
 provide(MOH_MIDDLE_SCROLLER_KEY, middleScrollerEl)
+
 
 function updateTitleBarHeightVar() {
   if (!import.meta.client) return

@@ -23,7 +23,7 @@ const ctaLabel = computed(() => props.ctaLabel ?? 'Go to settings')
 const ctaTo = computed(() => props.ctaTo ?? '/settings')
 
 const title = computed(() => {
-  if (props.kind === 'verify') return 'Verified members only'
+  if (props.kind === 'verify') return 'Verified only'
   return 'Premium required'
 })
 

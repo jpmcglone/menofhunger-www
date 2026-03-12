@@ -218,57 +218,85 @@
         </div>
       </div>
 
-      <!-- Posts -->
-      <div class="mx-auto max-w-3xl">
-        <div class="px-4">
-          <div class="flex flex-wrap items-end justify-between gap-3">
-            <div class="text-sm font-semibold text-gray-900 dark:text-gray-50">
-              Posts
-              <span v-if="profileHasLoadedOnce" class="ml-2 text-xs font-medium text-gray-500 dark:text-gray-400">
-                {{ profileCounts?.all ?? 0 }}
-              </span>
-            </div>
+      <!-- Filter bar above tabs, right-aligned -->
+      <div class="flex items-center justify-end px-3 py-1 border-b border-gray-200 dark:border-zinc-800">
+        <AppFeedFiltersBar
+          :sort="profileSort"
+          :filter="profileFilter"
+          :viewer-is-verified="profileViewerIsVerified"
+          :viewer-is-premium="profileViewerIsPremium"
+          :show-reset="profileIsFiltered"
+          :show-visibility-filter="activeProfileTab !== 'media'"
+          @update:sort="onUserPostsSortChange"
+          @update:filter="onUserPostsFilterChange"
+          @reset="onUserPostsReset"
+        />
+      </div>
 
-            <AppFeedFiltersBar
-              :sort="profileSort ?? 'new'"
-              :filter="profileFilter ?? 'all'"
-              :viewer-is-verified="profileViewerIsVerified ?? false"
-              :viewer-is-premium="profileViewerIsPremium ?? false"
-              :show-reset="(profileFilter ?? 'all') !== 'all' || (profileSort ?? 'new') !== 'new'"
-              @update:sort="onUserPostsSortChange"
-              @update:filter="onUserPostsFilterChange"
-              @reset="onUserPostsReset"
-            />
-          </div>
-        </div>
+      <!-- Animated tab bar -->
+      <div ref="profileTabBarEl" class="relative flex gap-0 border-b border-gray-200 dark:border-zinc-800">
+        <button
+          v-for="tab in profileTabs"
+          :key="tab.key"
+          :ref="(el) => setProfileTabButtonRef(tab.key, el as HTMLElement | null)"
+          type="button"
+          class="relative cursor-pointer px-5 py-3 text-sm font-semibold transition-colors"
+          :class="activeProfileTab === tab.key
+            ? 'text-gray-900 dark:text-gray-100'
+            : 'text-gray-400 dark:text-zinc-500 hover:text-gray-600 dark:hover:text-zinc-300'"
+          @click="setProfileTab(tab.key)"
+        >
+          {{ tab.label }}
+        </button>
+        <!-- Animated sliding underline -->
+        <span
+          class="absolute bottom-0 h-[2px] rounded-full"
+          :class="profileUnderlineReady ? 'transition-[left,width] duration-250 ease-in-out' : ''"
+          :style="{ left: `${profileUnderlineLeft}px`, width: `${profileUnderlineWidth}px`, backgroundColor: profileActiveTabColor }"
+          aria-hidden="true"
+        />
+      </div>
 
+      <!-- ─── Posts tab (top-level only) ───────────────────────────────── -->
+      <div v-if="tabActivated.posts" v-show="activeProfileTab === 'posts'" class="min-h-[75vh]">
         <ClientOnly>
-          <template #fallback>
-            <div class="flex justify-center pt-12 pb-8">
-              <AppLogoLoader />
-            </div>
-          </template>
+          <template #fallback><div class="flex justify-center pt-12 pb-8"><AppLogoLoader /></div></template>
           <div>
-            <div v-if="profileError" class="px-4 mt-3 text-sm text-red-700 dark:text-red-300">
-              {{ profileError }}
+            <div v-if="postsOnlyError" class="px-4 mt-3 text-sm text-red-700 dark:text-red-300">{{ postsOnlyError }}</div>
+            <div v-else-if="postsOnlyLoading && !postsOnlyHasLoadedOnce" class="flex justify-center pt-12 pb-8"><AppLogoLoader /></div>
+            <div v-else-if="postsOnlyHasLoadedOnce && postsOnlyItems.length === 0" class="px-4 mt-3 text-sm text-gray-500 dark:text-gray-400">No posts yet.</div>
+            <div v-else class="relative mt-3">
+              <template v-for="item in postsOnlyItems" :key="item.kind === 'ad' ? item.key : item.post.id">
+                <AppFeedFakeAdRow v-if="item.kind === 'ad'" />
+                <AppFeedPostRow
+                  v-else
+                  :post="item.post"
+                  :collapsed-sibling-replies-count="postsOnlyCollapsedSiblingReplyCountFor(item.post)"
+                  :reply-count-for-parent-id="postsOnlyReplyCountForParentId"
+                  :replies-sort="profileSort"
+                  @deleted="postsOnlyRemovePost"
+                  @edited="(p) => postsOnlyReplacePost(p.post)"
+                />
+              </template>
+              <div v-if="postsOnlyNextCursor" class="relative flex justify-center items-center px-4 py-6 min-h-12">
+                <div ref="postsOnlyLoadMoreSentinelEl" class="absolute bottom-0 left-0 right-0 h-px" aria-hidden="true" />
+                <div class="transition-opacity duration-150" :class="postsOnlyLoading ? 'opacity-100' : 'opacity-0 pointer-events-none'">
+                  <AppLogoLoader compact />
+                </div>
+              </div>
             </div>
+          </div>
+        </ClientOnly>
+      </div>
 
-            <div v-else-if="profileCtaKind === 'verify'" class="px-4 mt-4">
-              <AppAccessGateCard kind="verify" />
-            </div>
-
-            <div v-else-if="profileCtaKind === 'premium'" class="px-4 mt-4">
-              <AppAccessGateCard kind="premium" />
-            </div>
-
-            <div v-else-if="profileLoading && profilePosts.length === 0" class="flex justify-center pt-12 pb-8">
-              <AppLogoLoader />
-            </div>
-
-            <div v-else-if="profileHasLoadedOnce && profilePosts.length === 0 && !pinnedPost" class="px-4 mt-3 text-sm text-gray-500 dark:text-gray-400">
-              No posts yet.
-            </div>
-
+      <!-- ─── Replies tab (all posts including replies) ─────────────────── -->
+      <div v-if="tabActivated.replies" v-show="activeProfileTab === 'replies'" class="min-h-[75vh]">
+        <ClientOnly>
+          <template #fallback><div class="flex justify-center pt-12 pb-8"><AppLogoLoader /></div></template>
+          <div>
+            <div v-if="profileError" class="px-4 mt-3 text-sm text-red-700 dark:text-red-300">{{ profileError }}</div>
+            <div v-else-if="profileLoading && !profileHasLoadedOnce" class="flex justify-center pt-12 pb-8"><AppLogoLoader /></div>
+            <div v-else-if="profileHasLoadedOnce && itemsWithoutPinned.length === 0 && !pinnedPost" class="px-4 mt-3 text-sm text-gray-500 dark:text-gray-400">No posts yet.</div>
             <div v-else class="relative mt-3">
               <template v-for="item in itemsWithoutPinned" :key="item.kind === 'ad' ? item.key : item.post.id">
                 <AppFeedFakeAdRow v-if="item.kind === 'ad'" />
@@ -277,30 +305,99 @@
                   :post="item.post"
                   :collapsed-sibling-replies-count="profileCollapsedSiblingReplyCountFor(item.post)"
                   :reply-count-for-parent-id="profileReplyCountForParentId"
-                  :replies-sort="profileSort ?? 'new'"
+                  :replies-sort="profileSort"
                   @deleted="profileRemovePost"
                   @edited="onProfilePostEdited"
                 />
               </template>
-
-              <!-- Load more when sentinel nears bottom of scroll area -->
               <div v-if="profileNextCursor" class="relative flex justify-center items-center px-4 py-6 min-h-12">
-                <div
-                  ref="profileLoadMoreSentinelEl"
-                  class="absolute bottom-0 left-0 right-0 h-px"
-                  aria-hidden="true"
-                />
-                <div
-                  class="transition-opacity duration-150"
-                  :class="profileLoading ? 'opacity-100' : 'opacity-0 pointer-events-none'"
-                  :aria-hidden="!profileLoading"
-                >
+                <div ref="profileLoadMoreSentinelEl" class="absolute bottom-0 left-0 right-0 h-px" aria-hidden="true" />
+                <div class="transition-opacity duration-150" :class="profileLoading ? 'opacity-100' : 'opacity-0 pointer-events-none'">
                   <AppLogoLoader compact />
                 </div>
               </div>
             </div>
           </div>
         </ClientOnly>
+      </div>
+
+      <!-- ─── Articles tab ─────────────────────────────────────────────── -->
+      <div v-if="articlesFeatureEnabled && tabActivated.articles" v-show="activeProfileTab === 'articles'" class="min-h-[75vh]">
+        <div v-if="profileArticlesFeed.loading.value && !profileArticlesFeed.hasLoadedOnce.value" class="flex justify-center pt-12 pb-8">
+          <AppLogoLoader />
+        </div>
+        <div v-else-if="profileArticlesFeed.error.value" class="px-4 mt-3 text-sm text-red-700 dark:text-red-300">
+          {{ profileArticlesFeed.error.value }}
+        </div>
+        <div v-else>
+          <TransitionGroup name="profile-articles-list" tag="div">
+            <AppArticleListCard
+              v-for="article in profileArticlesFeed.articles.value"
+              :key="article.id"
+              :article="article"
+            />
+          </TransitionGroup>
+          <button
+            v-if="profileArticlesFeed.nextCursor.value"
+            type="button"
+            class="w-full border-t border-gray-200 dark:border-zinc-800 py-3 text-sm text-gray-500 transition-colors hover:bg-gray-50 dark:text-zinc-400 dark:hover:bg-zinc-900"
+            :disabled="profileArticlesFeed.loadingMore.value"
+            @click="profileArticlesFeed.loadMore()"
+          >
+            {{ profileArticlesFeed.loadingMore.value ? 'Loading…' : 'Load more' }}
+          </button>
+          <p v-if="profileArticlesFeed.articles.value.length === 0" class="py-12 text-center text-sm text-gray-400 dark:text-zinc-500">
+            No articles yet.
+          </p>
+        </div>
+      </div>
+
+      <!-- ─── Media tab ─────────────────────────────────────────────────── -->
+      <div v-if="tabActivated.media" v-show="activeProfileTab === 'media'" class="min-h-[75vh]">
+        <div v-if="profileMediaFeed.loading.value && !profileMediaFeed.hasLoadedOnce.value" class="flex justify-center pt-12 pb-8">
+          <AppLogoLoader />
+        </div>
+        <div v-else-if="profileMediaFeed.error.value" class="px-4 mt-3 text-sm text-red-700 dark:text-red-300">
+          {{ profileMediaFeed.error.value }}
+        </div>
+        <div v-else>
+          <TransitionGroup
+            name="media-grid"
+            tag="div"
+            class="grid gap-0.5 bg-gray-200 dark:bg-zinc-800"
+            style="grid-template-columns: repeat(auto-fill, minmax(min(120px, 100%), 1fr))"
+          >
+            <NuxtLink
+              v-for="item in profileMediaFeed.items.value"
+              :key="item.id"
+              :to="`/p/${item.postId}`"
+              class="relative aspect-square overflow-hidden bg-gray-100 dark:bg-zinc-900 hover:opacity-90 transition-opacity"
+            >
+              <img
+                :src="item.kind === 'video' ? (item.thumbnailUrl ?? item.url ?? '') : (item.url ?? '')"
+                :alt="item.kind === 'video' ? 'Video' : 'Photo'"
+                class="absolute inset-0 h-full w-full object-cover"
+                loading="lazy"
+              />
+              <!-- Video play overlay -->
+              <div v-if="item.kind === 'video'" class="absolute inset-0 flex items-center justify-center">
+                <div class="rounded-full bg-black/50 p-2">
+                  <Icon name="tabler:player-play-filled" class="text-white text-lg" aria-hidden="true" />
+                </div>
+              </div>
+            </NuxtLink>
+          </TransitionGroup>
+          <!-- Load more -->
+          <div v-if="profileMediaFeed.nextCursor.value" class="relative flex justify-center items-center px-4 py-6 min-h-12">
+            <div ref="mediaLoadMoreSentinelEl" class="absolute bottom-0 left-0 right-0 h-px" aria-hidden="true" />
+            <div class="transition-opacity duration-150" :class="profileMediaFeed.loadingMore.value ? 'opacity-100' : 'opacity-0 pointer-events-none'">
+              <AppLogoLoader compact />
+            </div>
+          </div>
+          <p v-if="profileMediaFeed.hasLoadedOnce.value && profileMediaFeed.items.value.length === 0" class="py-12 text-center text-sm text-gray-400 dark:text-zinc-500">
+            No photos or videos yet.
+          </p>
+        </div>
       </div>
 
       <AppProfileFollowListDialog
@@ -367,18 +464,72 @@ import type { FollowRelationship } from '~/types/api'
 import type { ProfilePostsFilter } from '~/utils/post-visibility'
 import { visibilityTagClasses, postHighlightClasses } from '~/utils/post-visibility'
 import { tinyTooltip } from '~/utils/tiny-tooltip'
+import type { UserPostsFilter } from '~/composables/useUserPosts'
+import { userColorTier, userTierColorVar } from '~/utils/user-tier'
 
 definePageMeta({
   layout: 'app',
   title: 'Profile',
+  // Aliases let all tab URLs share the same route record — Vue Router keeps the
+  // component mounted when switching between them instead of unmounting/remounting.
+  alias: [
+    '/u/:username/posts',
+    '/u/:username/replies',
+    '/u/:username/articles',
+    '/u/:username/media',
+    '/u/:username/followers',
+    '/u/:username/following',
+  ],
 })
 
 const route = useRoute()
+const router = useRouter()
 const usernameParam = computed(() => String(route.params.username || ''))
 const normalizedUsername = computed(() => usernameParam.value.trim().toLowerCase())
 const baseProfilePath = computed(() => `/u/${encodeURIComponent(usernameParam.value)}`)
-const isFollowersRoute = computed(() => /\/followers\/?$/.test(route.path))
-const isFollowingRoute = computed(() => /\/following\/?$/.test(route.path))
+
+// ── currentPathname: tracks the real browser URL ──────────────────────────────
+// Keep this synced from router + browser history so tab/modal state follows URL.
+const currentPathname = ref(import.meta.client ? location.pathname : route.path)
+
+// Sync from Vue Router (handles: arriving from a different page, initial load)
+watch(() => route.path, (path) => { currentPathname.value = path })
+
+// Sync from browser back/forward.
+if (import.meta.client) {
+  const onPopState = () => { currentPathname.value = location.pathname }
+  onMounted(() => window.addEventListener('popstate', onPopState))
+  onBeforeUnmount(() => window.removeEventListener('popstate', onPopState))
+}
+
+// Prefer router navigation so back/forward restores exact profile subroutes.
+// `force: true` avoids alias dedupe (same route name + params).
+//
+// Filters are managed via history.replaceState (historyBacked mode), so
+// location.search is the authoritative source — route.query may be stale.
+async function pushProfilePath(path: string) {
+  const qs: Record<string, string> = {}
+  if (import.meta.client) {
+    new URLSearchParams(location.search).forEach((value, key) => { qs[key] = value })
+  } else {
+    Object.entries(route.query).forEach(([k, v]) => {
+      if (v != null) qs[k] = Array.isArray(v) ? String(v[v.length - 1] ?? '') : String(v)
+    })
+  }
+  try {
+    await router.push({ path, query: qs, force: true } as any)
+    return
+  } catch {
+    // Fallback: keep URL and local tab state in sync even if router rejects.
+  }
+  currentPathname.value = path
+  const search = new URLSearchParams(qs)
+  const newUrl = search.toString() ? `${path}?${search}` : path
+  history.pushState({ ...history.state }, '', newUrl)
+}
+
+const isFollowersRoute = computed(() => /\/followers\/?$/.test(currentPathname.value))
+const isFollowingRoute = computed(() => /\/following\/?$/.test(currentPathname.value))
 
 const { profile, data, notFound, profileBanned, apiError } = await usePublicProfile(normalizedUsername)
 useProfileSeo({ profile, normalizedUsername, notFound, profileBanned })
@@ -458,6 +609,114 @@ const effectivePinnedPostId = computed(() => {
 
 const showAds = computed(() => !authUser.value?.premium)
 
+// ─── Shared filter/sort state for all profile tabs — synced to URL params ─────
+const {
+  filter: profileFilter,
+  sort: profileSort,
+  viewerIsVerified: profileViewerIsVerified,
+  viewerIsPremium: profileViewerIsPremium,
+  ctaKind: profileCtaKind,
+  isFiltered: profileIsFiltered,
+  resetFilters: resetProfileFilters,
+} = useUrlFeedFilters({ historyBacked: true })
+
+// ─── Tab state ────────────────────────────────────────────────────────────────
+type ProfileTabKey = 'posts' | 'replies' | 'articles' | 'media'
+
+function tabFromRoute(path: string): ProfileTabKey {
+  if (/\/replies\/?$/.test(path)) return 'replies'
+  if (/\/media\/?$/.test(path)) return 'media'
+  if (/\/articles\/?$/.test(path)) return 'articles'
+  return 'posts'
+}
+
+const activeProfileTab = computed<ProfileTabKey>(() => tabFromRoute(currentPathname.value))
+
+const tabActivated = reactive<Record<ProfileTabKey, boolean>>({
+  posts: true,
+  replies: tabFromRoute(route.path) === 'replies',
+  articles: tabFromRoute(route.path) === 'articles',
+  media: tabFromRoute(route.path) === 'media',
+})
+
+watch(activeProfileTab, (tab) => {
+  if (!tabActivated[tab]) tabActivated[tab] = true
+  nextTick(updateProfileUnderline)
+}, { immediate: true })
+
+const { articlesEnabled: articlesFeatureEnabled } = useAppFeatures()
+const profileTabs = computed<Array<{ key: ProfileTabKey; label: string }>>(() => [
+  { key: 'posts', label: 'Posts' },
+  { key: 'replies', label: 'Replies' },
+  ...(articlesFeatureEnabled.value ? [{ key: 'articles' as ProfileTabKey, label: 'Articles' }] : []),
+  { key: 'media', label: 'Media' },
+])
+
+// ─── Animated tab underline ───────────────────────────────────────────────────
+const profileTabBarEl = ref<HTMLElement | null>(null)
+const profileTabButtonEls = new Map<ProfileTabKey, HTMLElement>()
+const profileUnderlineLeft = ref(0)
+const profileUnderlineWidth = ref(0)
+const profileUnderlineReady = ref(false)
+
+const profileActiveTabColor = computed(() => {
+  const tier = userColorTier(profile.value)
+  return userTierColorVar(tier) ?? 'var(--color-gray-900, #111827)'
+})
+
+function setProfileTabButtonRef(key: ProfileTabKey, el: HTMLElement | null) {
+  if (el) profileTabButtonEls.set(key, el)
+  else profileTabButtonEls.delete(key)
+}
+
+function updateProfileUnderline() {
+  if (!import.meta.client) return
+  const bar = profileTabBarEl.value
+  const btn = profileTabButtonEls.get(activeProfileTab.value)
+  if (!bar || !btn) return
+  const barRect = bar.getBoundingClientRect()
+  const btnRect = btn.getBoundingClientRect()
+  profileUnderlineLeft.value = Math.round(btnRect.left - barRect.left)
+  profileUnderlineWidth.value = Math.round(btnRect.width)
+}
+
+function setProfileTab(key: ProfileTabKey) {
+  if (activeProfileTab.value === key) return
+  const path = key === 'posts' ? baseProfilePath.value : `${baseProfilePath.value}/${key}`
+  pushProfilePath(path)
+}
+
+onMounted(() => nextTick(() => {
+  updateProfileUnderline()
+  requestAnimationFrame(() => { profileUnderlineReady.value = true })
+}))
+
+// ─── Posts-only feed (top-level, no replies) ──────────────────────────────────
+const {
+  posts: postsOnlyPosts,
+  displayItems: postsOnlyItems,
+  collapsedSiblingReplyCountFor: postsOnlyCollapsedSiblingReplyCountFor,
+  replyCountForParentId: postsOnlyReplyCountForParentId,
+  counts: postsOnlyCounts,
+  loading: postsOnlyLoading,
+  error: postsOnlyError,
+  hasLoadedOnce: postsOnlyHasLoadedOnce,
+  nextCursor: postsOnlyNextCursor,
+  loadMore: postsOnlyLoadMore,
+  removePost: postsOnlyRemovePost,
+  replacePost: postsOnlyReplacePost,
+} = useUserPosts(normalizedUsername, {
+  enabled: computed(() => !notFound.value),
+  showAds,
+  cookieKeyPrefix: 'moh.profile.posts.topLevel',
+  topLevelOnly: true,
+  externalFilter: profileFilter as Ref<UserPostsFilter>,
+  externalSort: profileSort,
+  includeRestricted: true,
+})
+
+// ─── Replies feed (all posts including replies) ───────────────────────────────
+const repliesEnabled = computed(() => !notFound.value && tabActivated.replies)
 const {
   posts: profilePosts,
   displayPosts: profileDisplayPosts,
@@ -467,26 +726,41 @@ const {
   counts: profileCounts,
   loading: profileLoading,
   error: profileError,
-  filter: profileFilter,
-  sort: profileSort,
-  viewerIsVerified: profileViewerIsVerified,
-  viewerIsPremium: profileViewerIsPremium,
-  ctaKind: profileCtaKind,
-  setFilter: profileSetFilter,
-  setSort: profileSetSort,
-  removePost: profileRemovePost,
-  replacePost: profileReplacePost,
   hasLoadedOnce: profileHasLoadedOnce,
   nextCursor: profileNextCursor,
   loadMore: profileLoadMore,
+  removePost: profileRemovePost,
+  replacePost: profileReplacePost,
 } = useUserPosts(normalizedUsername, {
-  enabled: computed(() => !notFound.value),
-  defaultToNewestAndAll: true,
+  enabled: repliesEnabled,
   showAds,
+  cookieKeyPrefix: 'moh.profile.posts.withReplies',
+  externalFilter: profileFilter as Ref<UserPostsFilter>,
+  externalSort: profileSort,
+  includeRestricted: true,
+})
+
+// ─── Articles feed ────────────────────────────────────────────────────────────
+const articlesEnabled = computed(() => !notFound.value && articlesFeatureEnabled.value && tabActivated.articles)
+const profileArticlesFeed = useArticleFeed({
+  authorUsername: normalizedUsername,
+  sort: profileSort,
+  visibility: profileFilter as Ref<ProfilePostsFilter>,
+  enabled: articlesEnabled,
+  includeRestricted: true,
+})
+
+// ─── Media feed ───────────────────────────────────────────────────────────────
+const mediaEnabled = computed(() => !notFound.value && tabActivated.media)
+const profileMediaFeed = useUserMedia(normalizedUsername, {
+  enabled: mediaEnabled,
+  visibility: profileFilter as Ref<ProfilePostsFilter>,
+  sort: profileSort,
 })
 
 function onProfilePostEdited(payload: { id: string; post: import('~/types/api').FeedPost }) {
   profileReplacePost(payload.post)
+  postsOnlyReplacePost(payload.post)
 }
 
 const {
@@ -533,7 +807,7 @@ const {
     `/follows/summary/${encodeURIComponent(normalizedUsername.value)}`,
     { method: 'GET' }
   )
-})
+}, { server: false })
 
 watch(
   () => authUser.value?.id ?? null,
@@ -687,10 +961,10 @@ const {
 } = useProfileFollowDialogs(normalizedUsername)
 
 function goToFollowers() {
-  void navigateTo(`${baseProfilePath.value}/followers`)
+  pushProfilePath(`${baseProfilePath.value}/followers`)
 }
 function goToFollowing() {
-  void navigateTo(`${baseProfilePath.value}/following`)
+  pushProfilePath(`${baseProfilePath.value}/following`)
 }
 
 // Route-driven modal state:
@@ -720,21 +994,25 @@ watch(
   followersOpen,
   (open) => {
     if (open) return
-    if (isFollowersRoute.value) void navigateTo(baseProfilePath.value)
+    if (isFollowersRoute.value) pushProfilePath(baseProfilePath.value)
   },
 )
 watch(
   followingOpen,
   (open) => {
     if (open) return
-    if (isFollowingRoute.value) void navigateTo(baseProfilePath.value)
+    if (isFollowingRoute.value) pushProfilePath(baseProfilePath.value)
   },
 )
 
 const middleScrollerEl = useMiddleScroller()
 const profileLoadMoreSentinelEl = ref<HTMLElement | null>(null)
+const postsOnlyLoadMoreSentinelEl = ref<HTMLElement | null>(null)
+const mediaLoadMoreSentinelEl = ref<HTMLElement | null>(null)
 
 useLoadMoreObserver(profileLoadMoreSentinelEl, middleScrollerEl, computed(() => Boolean(profileNextCursor.value)), profileLoadMore)
+useLoadMoreObserver(postsOnlyLoadMoreSentinelEl, middleScrollerEl, computed(() => Boolean(postsOnlyNextCursor.value)), postsOnlyLoadMore)
+useLoadMoreObserver(mediaLoadMoreSentinelEl, middleScrollerEl, computed(() => Boolean(profileMediaFeed.nextCursor.value)), profileMediaFeed.loadMore)
 
 async function preserveMiddleScrollAfter<T>(fn: () => Promise<T>): Promise<T> {
   if (!import.meta.client) return await fn()
@@ -751,19 +1029,17 @@ async function preserveMiddleScrollAfter<T>(fn: () => Promise<T>): Promise<T> {
 }
 
 async function onUserPostsSortChange(next: 'new' | 'trending') {
-  await preserveMiddleScrollAfter(() => profileSetSort(next))
+  await preserveMiddleScrollAfter(async () => { profileSort.value = next })
 }
 
 async function onUserPostsFilterChange(next: ProfilePostsFilter) {
+  // onlyMe is not a valid feed filter; treat it as 'all'
   const safeNext = next === 'onlyMe' ? 'all' : (next as 'all' | 'public' | 'verifiedOnly' | 'premiumOnly')
-  await preserveMiddleScrollAfter(() => profileSetFilter(safeNext))
+  await preserveMiddleScrollAfter(async () => { profileFilter.value = safeNext })
 }
 
 async function onUserPostsReset() {
-  await preserveMiddleScrollAfter(async () => {
-    await profileSetFilter('all')
-    await profileSetSort('new')
-  })
+  await preserveMiddleScrollAfter(async () => { resetProfileFilters() })
 }
 
 const profileAvatarUrl = computed(() => profile.value?.avatarUrl ?? null)
@@ -823,7 +1099,7 @@ function patchPublicProfile(patch: Partial<Pick<
 }
 
 watch(
-  [notFound, profileName, () => profile.value?.verifiedStatus, () => profile.value?.premium, () => profileCounts?.value?.all],
+  [notFound, profileName, () => profile.value?.verifiedStatus, () => profile.value?.premium, () => postsOnlyCounts.value.all],
   ([nf, name, status, premium, count]) => {
     if (nf) {
       appHeader.value = { title: 'Account not found', verifiedStatus: null, premium: null, postCount: null }
@@ -847,3 +1123,33 @@ onBeforeUnmount(() => {
   if (appHeader.value?.title === profileName.value) appHeader.value = null
 })
 </script>
+
+<style scoped>
+.profile-articles-list-enter-active,
+.profile-articles-list-leave-active {
+  transition: opacity 0.2s ease;
+}
+
+.profile-articles-list-enter-from,
+.profile-articles-list-leave-to {
+  opacity: 0;
+}
+
+.profile-articles-list-move {
+  transition: transform 0.25s ease;
+}
+
+.media-grid-enter-active,
+.media-grid-leave-active {
+  transition: opacity 0.2s ease;
+}
+
+.media-grid-enter-from,
+.media-grid-leave-to {
+  opacity: 0;
+}
+
+.media-grid-move {
+  transition: transform 0.25s ease;
+}
+</style>

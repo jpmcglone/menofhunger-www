@@ -13,6 +13,11 @@ import type {
   SpaceMember,
   SpaceReactionEvent,
   WsAdminUpdatedPayload,
+  WsArticlesLiveUpdatedPayload,
+  WsArticlesCommentAddedPayload,
+  WsArticlesCommentDeletedPayload,
+  WsArticlesCommentUpdatedPayload,
+  WsArticlesCommentReactionChangedPayload,
   WsFollowsChangedPayload,
   WsNotificationsDeletedPayload,
   WsNotificationsNewPayload,
@@ -109,6 +114,14 @@ export type PostsCallback = {
   onLiveUpdated?: (payload: WsPostsLiveUpdatedPayload) => void
 }
 
+export type ArticlesCallback = {
+  onLiveUpdated?: (payload: WsArticlesLiveUpdatedPayload) => void
+  onCommentAdded?: (payload: WsArticlesCommentAddedPayload) => void
+  onCommentDeleted?: (payload: WsArticlesCommentDeletedPayload) => void
+  onCommentUpdated?: (payload: WsArticlesCommentUpdatedPayload) => void
+  onCommentReactionChanged?: (payload: WsArticlesCommentReactionChangedPayload) => void
+}
+
 export type AdminCallback = {
   onUpdated?: (payload: WsAdminUpdatedPayload) => void
 }
@@ -180,8 +193,10 @@ export function usePresence() {
   const notificationsCallbacks = useState<Set<NotificationsCallback>>('presence-notifications-callbacks', () => new Set())
   const followsCallbacks = useState<Set<FollowsCallback>>('presence-follows-callbacks', () => new Set())
   const postsCallbacks = useState<Set<PostsCallback>>('presence-posts-callbacks', () => new Set())
+  const articlesCallbacks = useState<Set<ArticlesCallback>>('presence-articles-callbacks', () => new Set())
   const adminCallbacks = useState<Set<AdminCallback>>('presence-admin-callbacks', () => new Set())
   const usersCallbacks = useState<Set<UsersCallback>>('presence-users-callbacks', () => new Set())
+  const articleSubRefs = ref(new Set<string>())
   const onlineFeedSubscribed = useState(PRESENCE_ONLINE_FEED_SUBSCRIBED_KEY, () => false)
   const disconnectedDueToIdle = useState<boolean>(PRESENCE_DISCONNECTED_DUE_TO_IDLE_KEY, () => false)
   const notificationUndeliveredCount = useState<number>(NOTIFICATIONS_UNDELIVERED_COUNT_KEY, () => 0)
@@ -409,6 +424,44 @@ export function usePresence() {
 
   function removePostsCallback(cb: PostsCallback) {
     postsCallbacks.value.delete(cb)
+  }
+
+  function addArticlesCallback(cb: ArticlesCallback) {
+    articlesCallbacks.value.add(cb)
+  }
+
+  function removeArticlesCallback(cb: ArticlesCallback) {
+    articlesCallbacks.value.delete(cb)
+  }
+
+  function emitArticlesSubscribe(articleIds: string[]) {
+    const socket = socketRef.value
+    if (socket?.connected && articleIds.length > 0) {
+      socket.emit('articles:subscribe', { articleIds })
+    }
+  }
+
+  function emitArticlesUnsubscribe(articleIds: string[]) {
+    const socket = socketRef.value
+    if (socket?.connected && articleIds.length > 0) {
+      socket.emit('articles:unsubscribe', { articleIds })
+    }
+  }
+
+  function subscribeArticles(articleIds: string[]) {
+    if (!import.meta.client) return
+    const cleaned = (articleIds ?? []).map((s) => String(s ?? '').trim()).filter(Boolean)
+    if (cleaned.length === 0) return
+    for (const id of cleaned) articleSubRefs.value.add(id)
+    emitArticlesSubscribe(cleaned)
+  }
+
+  function unsubscribeArticles(articleIds: string[]) {
+    if (!import.meta.client) return
+    const cleaned = (articleIds ?? []).map((s) => String(s ?? '').trim()).filter(Boolean)
+    if (cleaned.length === 0) return
+    for (const id of cleaned) articleSubRefs.value.delete(id)
+    emitArticlesUnsubscribe(cleaned)
   }
 
   function addAdminCallback(cb: AdminCallback) {
@@ -816,6 +869,41 @@ export function usePresence() {
       }
     })
 
+    socket.on('articles:liveUpdated', (data: WsArticlesLiveUpdatedPayload) => {
+      if (!articlesCallbacks.value.size) return
+      for (const cb of articlesCallbacks.value) {
+        cb.onLiveUpdated?.(data)
+      }
+    })
+
+    socket.on('articles:commentAdded', (data: WsArticlesCommentAddedPayload) => {
+      if (!articlesCallbacks.value.size) return
+      for (const cb of articlesCallbacks.value) {
+        cb.onCommentAdded?.(data)
+      }
+    })
+
+    socket.on('articles:commentDeleted', (data: WsArticlesCommentDeletedPayload) => {
+      if (!articlesCallbacks.value.size) return
+      for (const cb of articlesCallbacks.value) {
+        cb.onCommentDeleted?.(data)
+      }
+    })
+
+    socket.on('articles:commentUpdated', (data: WsArticlesCommentUpdatedPayload) => {
+      if (!articlesCallbacks.value.size) return
+      for (const cb of articlesCallbacks.value) {
+        cb.onCommentUpdated?.(data)
+      }
+    })
+
+    socket.on('articles:commentReactionChanged', (data: WsArticlesCommentReactionChangedPayload) => {
+      if (!articlesCallbacks.value.size) return
+      for (const cb of articlesCallbacks.value) {
+        cb.onCommentReactionChanged?.(data)
+      }
+    })
+
     socket.on('admin:updated', (data: WsAdminUpdatedPayload) => {
       if (!adminCallbacks.value.size) return
       for (const cb of adminCallbacks.value) {
@@ -858,6 +946,10 @@ export function usePresence() {
       }
       if (onlineFeedSubscribed.value) {
         socket.emit('presence:subscribeOnlineFeed')
+      }
+      const artRefs = articleSubRefs.value
+      if (artRefs.size > 0) {
+        emitArticlesSubscribe([...artRefs])
       }
     }
     socket.on('connect', () => {
@@ -1108,6 +1200,10 @@ export function usePresence() {
     removePostsCallback,
     subscribePosts,
     unsubscribePosts,
+    addArticlesCallback,
+    removeArticlesCallback,
+    subscribeArticles,
+    unsubscribeArticles,
     addAdminCallback,
     removeAdminCallback,
     addUsersCallback,

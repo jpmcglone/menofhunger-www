@@ -60,11 +60,19 @@ export function usePostPermalinkSeo(opts: {
 
   const seoTitle = computed(() => {
     if (!opts.post.value) return opts.isRestricted.value ? opts.restrictionLabel.value : 'Post'
-    if (opts.isRestricted.value) return opts.restrictionLabel.value
 
     const username = (opts.post.value.author.username ?? '').trim()
     const bodyText = (opts.bodyTextSansLinks.value ?? '').trim()
     const hasBodyText = Boolean(bodyText)
+
+    // Restricted but we have post data: use partial body or author attribution
+    if (opts.isRestricted.value) {
+      if (hasBodyText) {
+        const t = excerpt(bodyText, 56)
+        return username ? `${t} — @${username}` : t
+      }
+      return username ? `Post by @${username}` : opts.restrictionLabel.value
+    }
 
     // Poll: identity-first, with "Poll:" prefix for clarity in SERPs and share cards.
     if (pollMeta.value) {
@@ -109,13 +117,23 @@ export function usePostPermalinkSeo(opts: {
       if (!opts.isRestricted.value) return 'Post.'
       return opts.restrictionSeoDescription.value
     }
-    if (opts.isRestricted.value) {
-      return opts.restrictionSeoDescription.value
-    }
 
     const username = (opts.post.value.author.username ?? '').trim()
     const bodyText = (opts.bodyTextSansLinks.value ?? '').trim()
     const hasBodyText = Boolean(bodyText)
+
+    if (opts.isRestricted.value) {
+      const v = opts.post.value.visibility
+      const gateMsg = v === 'premiumOnly'
+        ? 'This post is for premium members.'
+        : v === 'verifiedOnly'
+          ? 'This post is for verified members.'
+          : opts.restrictionSeoDescription.value
+      if (hasBodyText) {
+        return `${excerpt(bodyText, 120)} — ${gateMsg}`
+      }
+      return username ? `A post by @${username}. ${gateMsg}` : gateMsg
+    }
 
     if (pollMeta.value) {
       const votes = pollMeta.value.totalVoteCount
@@ -154,13 +172,16 @@ export function usePostPermalinkSeo(opts: {
   })
 
   const seoAuthor = computed(() => {
-    if (!opts.post.value || opts.isRestricted.value) return siteConfig.name
-    const username = (opts.post.value.author.username ?? '').trim()
+    const username = (opts.post.value?.author.username ?? '').trim()
     return username ? `@${username}` : siteConfig.name
   })
 
   const seoImage = computed(() => {
-    if (opts.isRestricted.value) return '/images/logo-black-bg.png'
+    // If restricted but we have post data, use the author's avatar for a meaningful og:image
+    if (opts.isRestricted.value) {
+      const avatar = (opts.post.value?.author.avatarUrl ?? '').trim()
+      return avatar || '/images/logo-black-bg.png'
+    }
 
     // Content-first: for video use thumbnail (poster) so og:image is an image; else use media url.
     const primary = opts.primaryMedia.value
@@ -211,7 +232,31 @@ export function usePostPermalinkSeo(opts: {
   }
 
   const jsonLdGraph = computed(() => {
-    if (!opts.post.value || opts.isRestricted.value) return []
+    if (!opts.post.value) return []
+
+    // For restricted posts with data: emit a basic Article schema with gating info
+    if (opts.isRestricted.value) {
+      const username = (opts.post.value.author.username ?? '').trim()
+      const authorUrl = username ? `${siteConfig.url}/u/${encodeURIComponent(username)}` : null
+      const avatarUrl = (opts.post.value.author.avatarUrl ?? '').trim() || null
+      const v = opts.post.value.visibility
+      const isAccessibleForFree = v !== 'verifiedOnly' && v !== 'premiumOnly'
+      const author: any = authorUrl
+        ? { '@type': 'Person', name: username ? `@${username}` : siteConfig.name, url: authorUrl, ...(avatarUrl ? { image: avatarUrl } : {}) }
+        : { '@type': 'Organization', name: siteConfig.name, url: siteConfig.url }
+      return [{
+        '@type': 'Article',
+        '@id': `${siteConfig.url}${canonicalPath.value}#article`,
+        mainEntityOfPage: { '@id': `${siteConfig.url}${canonicalPath.value}#webpage` },
+        headline: seoTitle.value,
+        description: seoDescription.value,
+        datePublished: opts.post.value.createdAt,
+        dateModified: opts.post.value.createdAt,
+        author,
+        publisher: { '@type': 'Organization', name: siteConfig.name, url: siteConfig.url },
+        isAccessibleForFree,
+      }]
+    }
 
     const username = (opts.post.value.author.username ?? '').trim()
     const authorUrl = username ? `${siteConfig.url}/u/${encodeURIComponent(username)}` : null
@@ -295,15 +340,24 @@ export function usePostPermalinkSeo(opts: {
     imageAlt: seoImageAlt,
     imageWidth: seoImageWidth,
     imageHeight: seoImageHeight,
-    noindex: computed(() => opts.isRestricted.value || Boolean(opts.errorText.value)),
+    noindex: computed(() => {
+      if (opts.errorText.value) return true
+      const v = opts.post.value?.visibility
+      // Private/only-me posts: always noindex
+      if (v === 'onlyMe') return true
+      // verifiedOnly and premiumOnly with post data are real discoverable pages
+      if (v === 'verifiedOnly' || v === 'premiumOnly') return false
+      // Unknown restriction (API hint without post data): noindex
+      return Boolean(opts.isRestricted.value)
+    }),
     author: seoAuthor,
     jsonLdGraph
   })
 
-  // Extra share tags for article rich previews (public posts only): article meta, og:image dimensions, og:video, twitter:player.
+  // Extra share tags: article meta for all posts (public + gated), og:image dimensions, og:video, twitter:player.
   useHead({
     meta: computed(() => {
-      if (!opts.post.value || opts.isRestricted.value) return []
+      if (!opts.post.value) return []
       const username = (opts.post.value.author.username ?? '').trim()
       const authorUrl = username ? `${siteConfig.url}/u/${encodeURIComponent(username)}` : null
       const meta: Array<{ property?: string; name?: string; content: string }> = [
@@ -312,10 +366,10 @@ export function usePostPermalinkSeo(opts: {
         ...(authorUrl ? [{ property: 'article:author', content: authorUrl }] : []),
         ...(pollMeta.value ? [{ property: 'article:tag', content: 'Poll' }] : []),
         // Multiple images: add extra OG images so platforms can pick/rotate (images, GIFs).
-        ...opts.extraOgMediaUrls.value.map((u) => ({ property: 'og:image', content: toAbs(u) })),
+        ...(!opts.isRestricted.value ? opts.extraOgMediaUrls.value.map((u) => ({ property: 'og:image', content: toAbs(u) })) : []),
       ]
-      // Video: og:video and twitter:player for rich video previews.
-      const video = opts.primaryVideo?.value
+      // Video: og:video and twitter:player for rich video previews (public posts only).
+      const video = !opts.isRestricted.value ? opts.primaryVideo?.value : null
       if (video) {
         const videoUrl = (video.url ?? '').trim()
         if (videoUrl) {

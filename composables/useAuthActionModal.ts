@@ -1,5 +1,7 @@
-export type AuthAction = 'comment' | 'boost' | 'bookmark' | 'useAsDraft' | 'poll' | 'post'
-export type AuthActionModalKind = 'login' | 'verify' | 'setUsername'
+export type AuthAction =
+  | 'comment' | 'boost' | 'bookmark' | 'useAsDraft' | 'poll' | 'post'
+  | 'article-comment' | 'article-boost' | 'article-react'
+export type AuthActionModalKind = 'login' | 'verify' | 'setUsername' | 'premium'
 
 export function useAuthActionModal() {
   const open = useState<boolean>('auth-action-modal-open', () => false)

@@ -1,0 +1,20 @@
+---
+description: Preserve in-page layout for tab and filter URL changes
+alwaysApply: true
+---
+
+# In-Place Route State (No Remount)
+
+For tab/modals/filter changes that should update URL without reloading/remounting:
+
+- Prefer one page component + `definePageMeta({ alias: [...] })` for subroutes.
+- Do not create separate stub pages for alias subroutes if content should stay in place.
+- Preserve existing query params when switching profile/home/article subpaths.
+- If Vue Router dedupes alias navigation (same route name/params), use `history.pushState` for path changes and track pathname locally.
+- When path is history-driven, query state composables must support history-backed mode:
+  - read query from `location.search`
+  - write with `history.replaceState`
+  - react to back/forward via `popstate`
+- Keep custom scroller position stable; do not rely on window-only scroll behavior.
+
+Cheap default: URL changes that only affect in-page state should be in-place updates, not route-record swaps.

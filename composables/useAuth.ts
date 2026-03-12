@@ -26,6 +26,7 @@ export type AuthUser = {
   interests?: string[]
   menOnlyConfirmed?: boolean
   siteAdmin?: boolean
+  featureToggles?: string[]
   premium?: boolean
   premiumPlus?: boolean
   isOrganization?: boolean

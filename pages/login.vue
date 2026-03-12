@@ -154,7 +154,6 @@
             type="button"
             autofocus
             tabindex="-1"
-            aria-hidden="true"
             class="absolute opacity-0 pointer-events-none w-0 h-0"
           />
           <Button

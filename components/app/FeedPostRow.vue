@@ -251,10 +251,11 @@ function onMouseLeave() {
 
 onMounted(() => {
   registerPost(props.post)
-  // Observe the wrapper: when ≥50% visible for ≥1s, mark all chain posts as viewed
+  // Observe the wrapper: when ≥50% visible for ≥1s, mark accessible chain posts as viewed.
+  // Gated posts (viewerCanAccess === false) are excluded — viewer hasn't read the content.
   if (wrapperEl.value) {
-    const postIds = chain.value.map((p) => p.id).filter(Boolean)
-    stopObserve = observe(postIds, wrapperEl.value)
+    const postIds = chain.value.filter((p) => p.viewerCanAccess !== false).map((p) => p.id).filter(Boolean)
+    if (postIds.length) stopObserve = observe(postIds, wrapperEl.value)
   }
 })
 
