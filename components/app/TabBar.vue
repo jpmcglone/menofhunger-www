@@ -108,6 +108,12 @@
                   :class="['opacity-90', mi.iconClass]"
                   aria-hidden="true"
                 />
+                <div
+                  v-if="mi.key === 'articles'"
+                  class="pointer-events-none absolute -bottom-1 left-1/2 -translate-x-1/2 z-20"
+                >
+                  <AppNewBadge small />
+                </div>
               </div>
               <div class="min-w-0">
                 <div class="text-sm font-semibold truncate">

@@ -286,6 +286,12 @@
                     :class="['opacity-90', item.iconClass]"
                     aria-hidden="true"
                   />
+                  <div
+                    v-if="item.key === 'articles'"
+                    class="pointer-events-none absolute -bottom-1 left-1/2 -translate-x-1/2 z-20"
+                  >
+                    <AppNewBadge />
+                  </div>
                   <AppNotificationBadge v-if="item.key === 'notifications'" />
                   <AppMessagesBadge v-if="item.key === 'messages'" />
                 </span>

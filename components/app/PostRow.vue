@@ -1288,6 +1288,11 @@ async function onViewerCountHover() {
     )
     if (requestSeq === viewerBreakdownRequestSeq) {
       viewerBreakdown.value = result
+      // Fresh breakdown is the newest source of truth; sync row chip count immediately.
+      const nextTotal = Math.max(0, Math.floor(Number(result?.total ?? 0)))
+      if (nextTotal !== Math.max(0, Math.floor(Number(postState.value.viewerCount ?? 0)))) {
+        postState.value = { ...postState.value, viewerCount: nextTotal }
+      }
     }
   } catch {
     // keep last known breakdown; try again on next hover

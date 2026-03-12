@@ -30,7 +30,7 @@
             {{ article.title }}
           </p>
           <p class="mt-0.5 text-xs moh-text-muted truncate">
-            by {{ article.author.name || article.author.username }}
+            {{ article.author.name || article.author.username }}
           </p>
         </div>
 
