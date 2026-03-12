@@ -63,7 +63,7 @@
 
     <!-- Editor area -->
     <div
-      class="mx-auto w-full max-w-3xl flex-1 pb-[calc(var(--moh-tabbar-height,4.5rem)+var(--moh-safe-bottom,0px)+1.25rem)] pt-6 sm:pt-8"
+      class="mx-auto w-full max-w-3xl flex-1 pb-[calc(var(--moh-tabbar-height,4.5rem)+var(--moh-safe-bottom,0px))] pt-6 sm:pt-8"
       :style="editorViewportStyle"
     >
       <!-- Thumbnail upload -->
@@ -320,28 +320,6 @@ watch(() => editor.visibility.value, () => editor.markDirty())
 
 onMounted(() => {
   hydrated.value = true
-  // Scroll so the title area is visible just below the sticky top bar on initial load.
-  // Two rAFs ensure the layout (including the thumbnail image) has been painted.
-  requestAnimationFrame(() => {
-    requestAnimationFrame(() => {
-      const scroller = document.getElementById('moh-middle-scroller')
-      const thumb = thumbnailSectionEl.value
-      const title = titleEl.value
-      const bar = topBarEl.value
-      if (!scroller || !thumb || !title || !bar) return
-
-      const scrollerRect = scroller.getBoundingClientRect()
-      const thumbBottom = thumb.getBoundingClientRect().bottom
-      const barH = bar.offsetHeight
-
-      // We want the bottom of the thumbnail section to land just below the top bar,
-      // which puts the title immediately in view.
-      const targetOffset = thumbBottom - scrollerRect.top - barH - 8
-      if (targetOffset > 0) {
-        scroller.scrollTo({ top: scroller.scrollTop + targetOffset, behavior: 'instant' })
-      }
-    })
-  })
 })
 </script>
 
