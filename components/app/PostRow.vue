@@ -189,6 +189,13 @@
                           </span>
                           <span class="tabular-nums font-medium moh-text">{{ viewerBreakdown.unverified }}</span>
                         </div>
+                        <div v-if="viewerBreakdown.guest > 0" class="flex items-center justify-between gap-3">
+                          <span class="flex items-center gap-1.5">
+                            <span class="inline-block h-2 w-2 rounded-full bg-gray-500/60 shrink-0" aria-hidden="true" />
+                            Guests
+                          </span>
+                          <span class="tabular-nums font-medium moh-text">{{ viewerBreakdown.guest }}</span>
+                        </div>
                       </div>
                     </template>
                     <template v-else>

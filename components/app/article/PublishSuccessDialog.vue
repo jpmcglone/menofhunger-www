@@ -24,10 +24,9 @@
       <button
         type="button"
         class="block w-full rounded-xl border border-gray-200 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
-        :disabled="sharing"
         @click="shareToFeed"
       >
-        {{ sharing ? 'Sharing…' : 'Share to feed' }}
+        Share to feed
       </button>
       <button
         type="button"
@@ -42,6 +41,7 @@
 
 <script setup lang="ts">
 import type { Article } from '~/types/api'
+import { MOH_OPEN_COMPOSER_KEY, type ComposerVisibility } from '~/utils/injection-keys'
 
 const props = defineProps<{
   article: Article
@@ -51,20 +51,13 @@ const emit = defineEmits<{
   (e: 'close'): void
 }>()
 
-const { apiFetchData } = useApiClient()
-const toast = useAppToast()
-const sharing = ref(false)
+const openComposer = inject(MOH_OPEN_COMPOSER_KEY, null)
 
-async function shareToFeed() {
-  sharing.value = true
-  try {
-    await apiFetchData(`/articles/${props.article.id}/share`, { method: 'POST', body: { body: '' } })
-    toast.push({ title: 'Article shared to your feed!', tone: 'success' })
-    emit('close')
-  } catch (e: any) {
-    toast.push({ title: e?.data?.meta?.errors?.[0]?.message ?? 'Could not share article.', tone: 'error' })
-  } finally {
-    sharing.value = false
-  }
+function shareToFeed() {
+  const articleUrl = `${window.location.origin}/a/${props.article.id}`
+  // Articles support public / verifiedOnly / premiumOnly (never onlyMe).
+  const visibility = (props.article.visibility ?? 'public') as ComposerVisibility
+  openComposer?.({ visibility, initialText: articleUrl })
+  emit('close')
 }
 </script>

@@ -443,6 +443,7 @@ export type PostViewBreakdown = {
   premium: number
   verified: number
   unverified: number
+  guest: number
   total: number
 }
 

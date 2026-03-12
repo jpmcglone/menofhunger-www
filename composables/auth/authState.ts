@@ -20,6 +20,12 @@ export function clearAuthClientState(params?: { resetViewerCaches?: boolean }) {
 
   if (!resetViewerCaches) return
 
+  // Only wipe viewer-specific caches when there was an actually authenticated user.
+  // If prevUserId is empty the user was already logged out; clearing feed/content state
+  // would erase public posts that logged-out visitors are legitimately seeing (e.g. when
+  // a right-rail endpoint returns 401 on a logged-out-allowed page like /home).
+  if (!prevUserId) return
+
   // Viewer-specific client caches so we never show stale authed-only data.
   // (Safe even if these stores haven't been initialized yet.)
   useState<any[]>('bookmark-collections', () => []).value = []
