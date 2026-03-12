@@ -102,33 +102,35 @@
     </NuxtLink>
 
     <!-- Draft "more" button -->
-    <div v-if="article.isDraft" ref="moreWrapEl" class="relative flex items-center px-2">
-      <button
-        type="button"
-        class="flex items-center justify-center w-8 h-8 rounded-full text-gray-400 hover:text-gray-700 hover:bg-gray-100 dark:text-zinc-500 dark:hover:text-zinc-200 dark:hover:bg-zinc-800 transition-colors"
-        aria-label="More options"
-        @click.prevent.stop="toggleMenu"
-      >
-        <Icon name="tabler:dots-vertical" class="text-[16px]" aria-hidden="true" />
-      </button>
-
-      <Transition name="more-menu">
-        <div
-          v-if="menuOpen"
-          class="absolute right-2 top-full z-30 mt-1 w-36 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-lg dark:border-zinc-800 dark:bg-black"
-          role="menu"
+    <div v-if="article.isDraft" ref="moreWrapEl" class="flex items-center px-2">
+      <div class="relative">
+        <button
+          type="button"
+          class="flex items-center justify-center w-8 h-8 rounded-full text-gray-400 hover:text-gray-700 hover:bg-gray-100 dark:text-zinc-500 dark:hover:text-zinc-200 dark:hover:bg-zinc-800 transition-colors"
+          aria-label="More options"
+          @click.prevent.stop="toggleMenu"
         >
-          <button
-            type="button"
-            class="w-full flex items-center gap-2 px-3 py-2.5 text-sm font-medium text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
-            role="menuitem"
-            @click.stop="onDelete"
+          <Icon name="tabler:dots-vertical" class="text-[16px]" aria-hidden="true" />
+        </button>
+
+        <Transition name="more-menu">
+          <div
+            v-if="menuOpen"
+            class="absolute right-0 top-full z-30 mt-1 w-36 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-lg dark:border-zinc-800 dark:bg-black"
+            role="menu"
           >
-            <Icon name="tabler:trash" class="text-[14px]" aria-hidden="true" />
-            Delete
-          </button>
-        </div>
-      </Transition>
+            <button
+              type="button"
+              class="w-full flex items-center gap-2 px-3 py-2.5 text-sm font-medium text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+              role="menuitem"
+              @click.stop="onDelete"
+            >
+              <Icon name="tabler:trash" class="text-[14px]" aria-hidden="true" />
+              Delete
+            </button>
+          </div>
+        </Transition>
+      </div>
     </div>
   </div>
 </template>

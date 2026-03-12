@@ -83,6 +83,11 @@
       </div>
     </a>
 
+    <!-- MOH article link → article share card -->
+    <div v-if="embeddedArticleId && embeddedArticle" @click.stop>
+      <AppArticleShareCard :article="embeddedArticle" />
+    </div>
+
     <!-- Stop propagation so the parent PostRow's row-click handler never fires when
          clicking the embedded preview — the NuxtLink inside handles navigation. -->
     <div v-if="embeddedPostId" @click.stop>
@@ -139,6 +144,7 @@ import { getLinkMetadata } from '~/utils/link-metadata'
 import type { RumbleEmbedInfo } from '~/utils/rumble-embed'
 import { resolveRumbleEmbedInfo } from '~/utils/rumble-embed'
 import { useEmbeddedVideoManager } from '~/composables/useEmbeddedVideoManager'
+import type { ArticleSharePreview } from '~/types/api'
 
 const props = defineProps<{
   postId: string
@@ -194,6 +200,25 @@ function tryExtractLocalPostId(url: string): string | null {
   }
 }
 
+function tryExtractLocalArticleId(url: string): string | null {
+  const raw = (url ?? '').trim()
+  if (!raw) return null
+  try {
+    const u = new URL(raw)
+    if (u.protocol !== 'http:' && u.protocol !== 'https:') return null
+    const host = u.hostname.toLowerCase()
+    const ok = Array.from(getAllowedHosts()).some((a) => isLocalHost(host, a))
+    if (!ok) return null
+    const parts = u.pathname.split('/').filter(Boolean)
+    if (parts.length !== 2) return null
+    if (parts[0] !== 'a') return null
+    const id = (parts[1] ?? '').trim()
+    return id || null
+  } catch {
+    return null
+  }
+}
+
 function tryExtractLocalSpaceId(url: string): string | null {
   const raw = (url ?? '').trim()
   if (!raw) return null
@@ -226,6 +251,19 @@ const embeddedPostLink = computed(() => {
 
 const embeddedPostId = computed(() => (embeddedPostLink.value ? tryExtractLocalPostId(embeddedPostLink.value) : null))
 
+const embeddedArticleLink = computed(() => {
+  const xs = capturedLinks.value
+  for (let i = xs.length - 1; i >= 0; i--) {
+    const u = xs[i]
+    if (u && tryExtractLocalArticleId(u)) return u
+  }
+  return null
+})
+
+const embeddedArticleId = computed(() => (embeddedArticleLink.value ? tryExtractLocalArticleId(embeddedArticleLink.value) : null))
+
+const embeddedArticle = ref<ArticleSharePreview | null>(null)
+
 const embeddedSpaceLink = computed(() => {
   const xs = capturedLinks.value
   for (let i = xs.length - 1; i >= 0; i--) {
@@ -236,6 +274,22 @@ const embeddedSpaceLink = computed(() => {
 })
 
 const embeddedSpaceId = computed(() => (embeddedSpaceLink.value ? tryExtractLocalSpaceId(embeddedSpaceLink.value) : null))
+
+const { apiFetchData } = useApiClient()
+
+watch(
+  [embeddedArticleId, rowInView],
+  async ([articleId, inView]) => {
+    if (!articleId || !inView) return
+    if (embeddedArticle.value?.id === articleId) return
+    try {
+      embeddedArticle.value = await apiFetchData<ArticleSharePreview>(`/articles/${articleId}`)
+    } catch {
+      embeddedArticle.value = null
+    }
+  },
+  { immediate: true },
+)
 
 const { spaces, loadedOnce: spacesLoadedOnce, loadSpaces, getById: getSpaceById } = useSpaces()
 
@@ -256,6 +310,7 @@ const previewLink = computed(() => {
     const u = xs[i]
     if (!u) continue
     if (tryExtractLocalPostId(u)) continue
+    if (tryExtractLocalArticleId(u)) continue
     if (tryExtractLocalSpaceId(u)) continue
     return u
   }
@@ -387,6 +442,7 @@ const embeddedPreviewEnabled = computed(() => {
 const showAny = computed(() =>
   Boolean(
     embeddedPostId.value ||
+    (embeddedArticleId.value && rowInView.value) ||
     (embeddedSpaceId.value && rowInView.value) ||
     (showLinkPreview.value && rowInView.value),
   )

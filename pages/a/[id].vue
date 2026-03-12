@@ -369,6 +369,7 @@
 import Menu from 'primevue/menu'
 import type { Article, ArticleSharePreview } from '~/types/api'
 import { useAutoToggleMenu } from '~/composables/useAutoToggleMenu'
+import { siteConfig } from '~/config/site'
 
 definePageMeta({ layout: 'app', hideTopBar: true })
 
@@ -732,9 +733,10 @@ async function onShareToFeed() {
   if (!article.value) return
   sharing.value = true
   try {
-    await apiFetchData(`/articles/${article.value.id}/share`, {
+    const articleUrl = `${siteConfig.url}/a/${article.value.id}`
+    await apiFetchData('/posts', {
       method: 'POST',
-      body: { body: '' },
+      body: { body: articleUrl, visibility: 'public' },
     })
     toast.push({ title: 'Shared to your feed!', tone: 'success' })
   } catch {
@@ -753,9 +755,12 @@ async function onSubmitShareWithComment() {
   if (!article.value) return
   sharing.value = true
   try {
-    await apiFetchData(`/articles/${article.value.id}/share`, {
+    const articleUrl = `${siteConfig.url}/a/${article.value.id}`
+    const comment = shareCommentText.value.trim()
+    const body = comment ? `${comment}\n\n${articleUrl}` : articleUrl
+    await apiFetchData('/posts', {
       method: 'POST',
-      body: { body: shareCommentText.value.trim() },
+      body: { body, visibility: 'public' },
     })
     shareCommentModalOpen.value = false
     toast.push({ title: 'Shared to your feed!', tone: 'success' })
