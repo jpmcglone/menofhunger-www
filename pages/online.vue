@@ -21,17 +21,22 @@
       </AppInlineAlert>
     </div>
 
-    <div v-else-if="loading && users.length === 0" class="px-4 py-6 text-sm text-gray-500 dark:text-gray-400">
-      Loading…
+    <div v-else-if="loading && users.length === 0" class="px-4 py-8 flex justify-center">
+      <AppLogoLoader />
     </div>
 
     <div v-else-if="users.length === 0" class="px-4 py-6 text-sm text-gray-500 dark:text-gray-400">
       No one online right now.
     </div>
 
-    <div v-else class="divide-y divide-gray-200 dark:divide-zinc-800">
+    <TransitionGroup
+      v-else
+      name="online-users-list"
+      tag="div"
+      class="divide-y divide-gray-200 dark:divide-zinc-800 transition-opacity duration-150"
+    >
       <AppUserRow v-for="u in users" :key="u.id" :user="u" :show-follow-button="true" />
-    </div>
+    </TransitionGroup>
 
     <!-- Recently online (verified viewers only) -->
     <template v-if="viewerCanSeeLastOnline">
@@ -50,15 +55,20 @@
         </AppInlineAlert>
       </div>
 
-      <div v-else-if="recentLoading && recentUsers.length === 0" class="px-4 py-6 text-sm text-gray-500 dark:text-gray-400">
-        Loading…
+      <div v-else-if="recentLoading && recentUsers.length === 0" class="px-4 py-8 flex justify-center">
+        <AppLogoLoader compact />
       </div>
 
       <div v-else-if="recentUsers.length === 0" class="px-4 py-6 text-sm text-gray-500 dark:text-gray-400">
         No one recently online.
       </div>
 
-      <div v-else class="divide-y divide-gray-200 dark:divide-zinc-800">
+      <TransitionGroup
+        v-else
+        name="online-users-list"
+        tag="div"
+        class="divide-y divide-gray-200 dark:divide-zinc-800 transition-opacity duration-150"
+      >
         <AppUserRow
           v-for="u in recentUsers"
           :key="u.id"
@@ -77,7 +87,7 @@
             @click="loadMoreRecent"
           />
         </div>
-      </div>
+      </TransitionGroup>
     </template>
   </div>
   </AppPageContent>
@@ -373,3 +383,19 @@ onBeforeUnmount(() => {
   }
 })
 </script>
+
+<style scoped>
+.online-users-list-enter-active,
+.online-users-list-leave-active {
+  transition: opacity 0.16s ease;
+}
+
+.online-users-list-enter-from,
+.online-users-list-leave-to {
+  opacity: 0;
+}
+
+.online-users-list-move {
+  transition: transform 0.2s ease;
+}
+</style>

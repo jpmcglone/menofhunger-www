@@ -44,37 +44,35 @@
     </div>
 
     <div v-else class="mt-4">
-      <div v-if="loading && !items.length" class="flex justify-center pt-12 pb-8">
-        <AppLogoLoader />
-      </div>
+      <AppSubtleSectionLoader :loading="showInitialLoader" min-height-class="min-h-[220px]">
+        <div v-if="folderNotFound" class="px-4 moh-text-muted text-sm">
+          Folder not found.
+        </div>
 
-      <div v-else-if="folderNotFound" class="px-4 moh-text-muted text-sm">
-        Folder not found.
-      </div>
+        <div v-else-if="!items.length" class="px-4 moh-text-muted text-sm">No saved posts yet.</div>
 
-      <div v-else-if="!items.length" class="px-4 moh-text-muted text-sm">No saved posts yet.</div>
+        <TransitionGroup v-else name="bookmarks-list" tag="div" class="space-y-0 transition-opacity duration-150">
+          <div v-for="b in items" :key="b.bookmarkId">
+            <AppPostRow
+              :post="b.post"
+              @deleted="onBookmarkPostDeleted(b.post.id)"
+              @edited="onBookmarkPostEdited(b.bookmarkId, $event.post)"
+              @bookmark-updated="onBookmarkUpdated(b.bookmarkId, $event)"
+            />
+          </div>
+        </TransitionGroup>
 
-      <div v-else class="space-y-0">
-        <div v-for="b in items" :key="b.bookmarkId">
-          <AppPostRow
-            :post="b.post"
-            @deleted="onBookmarkPostDeleted(b.post.id)"
-            @edited="onBookmarkPostEdited(b.bookmarkId, $event.post)"
-            @bookmark-updated="onBookmarkUpdated(b.bookmarkId, $event)"
+        <div v-if="nextCursor" class="px-4 pt-6 pb-0 sm:pb-6 flex justify-center">
+          <Button
+            label="Load more"
+            severity="secondary"
+            rounded
+            :loading="loading"
+            :disabled="loading"
+            @click="loadMore"
           />
         </div>
-      </div>
-
-      <div v-if="nextCursor" class="px-4 pt-6 pb-0 sm:pb-6 flex justify-center">
-        <Button
-          label="Load more"
-          severity="secondary"
-          rounded
-          :loading="loading"
-          :disabled="loading"
-          @click="loadMore"
-        />
-      </div>
+      </AppSubtleSectionLoader>
     </div>
 
     <Dialog
@@ -251,6 +249,7 @@ const items = feed.items
 const nextCursor = feed.nextCursor
 const loading = feed.loading
 const error = feed.error
+const showInitialLoader = computed(() => loading.value && items.value.length === 0)
 
 const bookmarksFeedBump = useState<number>('moh.bookmarks.feed.bump.v1', () => 0)
 
@@ -405,4 +404,20 @@ try {
 }
 await refresh()
 </script>
+
+<style scoped>
+.bookmarks-list-enter-active,
+.bookmarks-list-leave-active {
+  transition: opacity 0.18s ease;
+}
+
+.bookmarks-list-enter-from,
+.bookmarks-list-leave-to {
+  opacity: 0;
+}
+
+.bookmarks-list-move {
+  transition: transform 0.22s ease;
+}
+</style>
 

@@ -34,36 +34,34 @@
         </AppInlineAlert>
       </div>
 
-      <div v-if="loading && posts.length === 0" class="flex justify-center py-12">
-        <AppLogoLoader />
-      </div>
+      <AppSubtleSectionLoader :loading="showInitialLoader" min-height-class="min-h-[220px]">
+        <div v-if="posts.length === 0" class="px-4 py-6 text-sm moh-text-muted">
+          No check-ins yet.
+        </div>
 
-      <div v-else-if="posts.length === 0" class="px-4 py-6 text-sm moh-text-muted">
-        No check-ins yet.
-      </div>
+        <div v-else class="space-y-0 transition-opacity duration-150">
+          <TransitionGroup name="moh-post" tag="div" class="space-y-0">
+            <AppFeedPostRow
+              v-for="p in posts"
+              :key="p.id"
+              :post="p"
+              @deleted="(id) => onDeleted(id)"
+              @edited="onEdited"
+            />
+          </TransitionGroup>
+        </div>
 
-      <div v-else class="space-y-0">
-        <TransitionGroup name="moh-post" tag="div" class="space-y-0">
-          <AppFeedPostRow
-            v-for="p in posts"
-            :key="p.id"
-            :post="p"
-            @deleted="(id) => onDeleted(id)"
-            @edited="onEdited"
+        <div class="px-4 py-6 flex justify-center">
+          <Button
+            v-if="nextCursor"
+            label="Load more"
+            severity="secondary"
+            :loading="loadingMore"
+            :disabled="loadingMore"
+            @click="loadMore"
           />
-        </TransitionGroup>
-      </div>
-
-      <div class="px-4 py-6 flex justify-center">
-        <Button
-          v-if="nextCursor"
-          label="Load more"
-          severity="secondary"
-          :loading="loadingMore"
-          :disabled="loadingMore"
-          @click="loadMore"
-        />
-      </div>
+        </div>
+      </AppSubtleSectionLoader>
     </div>
   </AppPageContent>
 </template>
@@ -114,6 +112,7 @@ const { items: posts, nextCursor, loading, loadingMore, error, refresh, loadMore
   defaultErrorMessage: 'Failed to load check-ins.',
   loadMoreErrorMessage: 'Failed to load more check-ins.',
 })
+const showInitialLoader = computed(() => loading.value && posts.value.length === 0)
 
 function onDeleted(id: string) {
   posts.value = posts.value.filter((p) => p.id !== id)

@@ -26,7 +26,7 @@
 
 <script setup lang="ts">
 definePageMeta({
-  layout: 'app',
+  layout: 'default',
   title: 'Terms'
 })
 

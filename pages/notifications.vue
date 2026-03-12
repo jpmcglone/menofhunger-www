@@ -17,20 +17,18 @@
       </div>
     </div>
 
-    <div v-if="loading && !notifications.length" class="px-3 py-6 sm:px-4 sm:py-8 text-center text-[13px] sm:text-sm text-gray-500 dark:text-gray-400">
-      Loading…
-    </div>
-    <div
-      v-else-if="!notifications.length"
-      class="px-3 py-6 sm:px-4 sm:py-8 text-center text-[13px] sm:text-sm text-gray-500 dark:text-gray-400"
-    >
-      No notifications yet.
-    </div>
-    <div v-else class="relative z-0 divide-y divide-gray-200 dark:divide-zinc-800">
-      <template
-        v-for="(item, idx) in notifications"
-        :key="itemKey(item)"
+    <AppSubtleSectionLoader :loading="showInitialLoader" min-height-class="min-h-[220px]">
+      <div
+        v-if="!notifications.length"
+        class="px-3 py-6 sm:px-4 sm:py-8 text-center text-[13px] sm:text-sm text-gray-500 dark:text-gray-400"
       >
+        No notifications yet.
+      </div>
+      <div v-else class="relative z-0">
+        <TransitionGroup name="notifications-list" tag="div" class="divide-y divide-gray-200 dark:divide-zinc-800 transition-opacity duration-150">
+          <template
+            v-for="(item, idx) in notifications"
+          >
         <!--
           Use NuxtLink `custom` slot so the row renders as a <div>, not <a>.
           Without this, the inner actor-avatar NuxtLinks inside each row create
@@ -38,20 +36,38 @@
           causes hydration mismatches.
           The div gets role="link" + keyboard handlers for full accessibility.
         -->
-        <NuxtLink
-          v-if="itemHref(item)"
-          v-slot="{ navigate }"
-          :to="itemHref(item)!"
-          custom
-        >
-          <div
-            class="block w-full text-left hover:bg-gray-50 dark:hover:bg-zinc-900 cursor-pointer"
-            role="link"
-            tabindex="0"
-            @click="navigate($event)"
-            @keydown.enter.prevent="navigate()"
-            @keydown.space.prevent="navigate()"
+          <NuxtLink
+            v-if="itemHref(item)"
+            :key="itemKey(item)"
+            v-slot="{ navigate }"
+            :to="itemHref(item)!"
+            custom
           >
+            <div
+              class="block w-full text-left hover:bg-gray-50 dark:hover:bg-zinc-900 cursor-pointer"
+              role="link"
+              tabindex="0"
+              @click="navigate($event)"
+              @keydown.enter.prevent="navigate()"
+              @keydown.space.prevent="navigate()"
+            >
+              <AppNotificationRow
+                v-if="item.type === 'single'"
+                :notification="item.notification"
+                :nudge-is-topmost="nudgeIsTopmostByIndex[idx] ?? false"
+              />
+              <AppNotificationFollowedPostsRollupRow
+                v-else-if="item.type === 'followed_posts_rollup'"
+                :rollup="item.rollup"
+              />
+              <AppNotificationGroupRow
+                v-else
+                :group="item.group"
+                :nudge-is-topmost="nudgeIsTopmostByIndex[idx] ?? false"
+              />
+            </div>
+          </NuxtLink>
+          <div v-else :key="itemKey(item)" class="block w-full text-left">
             <AppNotificationRow
               v-if="item.type === 'single'"
               :notification="item.notification"
@@ -67,38 +83,25 @@
               :nudge-is-topmost="nudgeIsTopmostByIndex[idx] ?? false"
             />
           </div>
-        </NuxtLink>
-        <div v-else class="block w-full text-left">
-          <AppNotificationRow
-            v-if="item.type === 'single'"
-            :notification="item.notification"
-            :nudge-is-topmost="nudgeIsTopmostByIndex[idx] ?? false"
-          />
-          <AppNotificationFollowedPostsRollupRow
-            v-else-if="item.type === 'followed_posts_rollup'"
-            :rollup="item.rollup"
-          />
-          <AppNotificationGroupRow
-            v-else
-            :group="item.group"
-            :nudge-is-topmost="nudgeIsTopmostByIndex[idx] ?? false"
+          </template>
+        </TransitionGroup>
+
+        <div v-if="nextCursor && !loading" class="px-3 pt-2.5 pb-0 sm:px-4 sm:pt-3 sm:pb-3 text-center">
+          <Button
+            label="Load more"
+            text
+            severity="secondary"
+            :loading="loadingMore"
+            @click="loadMore"
           />
         </div>
-      </template>
-
-      <div v-if="nextCursor && !loading" class="px-3 pt-2.5 pb-0 sm:px-4 sm:pt-3 sm:pb-3 text-center">
-        <Button
-          label="Load more"
-          text
-          severity="secondary"
-          :loading="loadingMore"
-          @click="loadMore"
-        />
+        <div v-else-if="loadingMore" class="px-3 pt-2.5 pb-0 sm:px-4 sm:pt-3 sm:pb-3 text-center">
+          <div class="inline-flex transition-opacity duration-150">
+            <AppLogoLoader compact />
+          </div>
+        </div>
       </div>
-      <div v-else-if="loadingMore" class="px-3 pt-2.5 pb-0 sm:px-4 sm:pt-3 sm:pb-3 text-center text-[13px] sm:text-sm text-gray-500 dark:text-gray-400">
-        Loading…
-      </div>
-    </div>
+    </AppSubtleSectionLoader>
   </div>
   </AppPageContent>
 </template>
@@ -131,6 +134,7 @@ const notifBadge = useNotificationsBadge()
 const { setNotificationUndeliveredCount, addInterest, removeInterest } = usePresence()
 const loadingMore = ref(false)
 const markingAllRead = ref(false)
+const showInitialLoader = computed(() => loading.value && notifications.value.length === 0)
 
 function nudgeActorIdForItem(item: (typeof notifications.value)[number]): string | null {
   if (item.type === 'single') {
@@ -266,3 +270,19 @@ watch(notificationUndeliveredCount, async (newVal, oldVal) => {
 // which may not be resolved during client hydration, causing a state-key mismatch
 // and hydration errors. The page is auth-gated so SSR data provides no SEO value.
 </script>
+
+<style scoped>
+.notifications-list-enter-active,
+.notifications-list-leave-active {
+  transition: opacity 0.15s ease;
+}
+
+.notifications-list-enter-from,
+.notifications-list-leave-to {
+  opacity: 0;
+}
+
+.notifications-list-move {
+  transition: transform 0.2s ease;
+}
+</style>

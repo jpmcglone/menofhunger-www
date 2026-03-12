@@ -18,23 +18,21 @@
         </AppInlineAlert>
       </div>
 
-      <div v-if="notesLoading && notes.length === 0" class="flex justify-center pt-12 pb-8">
-        <AppLogoLoader />
-      </div>
-
-      <div v-else-if="!notesLoading && notes.length === 0" class="px-4 py-6 text-sm moh-text-muted">
-        No “Only me” posts yet.
-      </div>
-
-      <div v-else class="relative mt-2">
-        <div v-for="p in notes" :key="p.id">
-          <AppPostRow :post="p" @deleted="removeNote" @edited="onOnlyMePostEdited" />
+      <AppSubtleSectionLoader :loading="showInitialLoader" min-height-class="min-h-[220px]">
+        <div v-if="notes.length === 0" class="px-4 py-6 text-sm moh-text-muted">
+          No “Only me” posts yet.
         </div>
-      </div>
 
-      <div v-if="notesNextCursor" class="px-4 pt-6 pb-0 sm:pb-6 flex justify-center">
-        <Button label="Load more" severity="secondary" :loading="notesLoading" :disabled="notesLoading" @click="loadMoreNotes" />
-      </div>
+        <div v-else class="relative mt-2 transition-opacity duration-150">
+          <div v-for="p in notes" :key="p.id">
+            <AppPostRow :post="p" @deleted="removeNote" @edited="onOnlyMePostEdited" />
+          </div>
+        </div>
+
+        <div v-if="notesNextCursor" class="px-4 pt-6 pb-0 sm:pb-6 flex justify-center">
+          <Button label="Load more" severity="secondary" :loading="notesLoading" :disabled="notesLoading" @click="loadMoreNotes" />
+        </div>
+      </AppSubtleSectionLoader>
     </div>
 
     <!-- Privacy gate (resets every visit) -->
@@ -106,6 +104,7 @@ const loadMoreNotes = notesFeed.loadMore
 const removeNote = notesFeed.removePost
 const replaceNote = notesFeed.replacePost
 const prependNote = notesFeed.prependPost
+const showInitialLoader = computed(() => notesLoading.value && notes.value.length === 0)
 
 function onOnlyMePostEdited(payload: { id: string; post: FeedPost }) {
   replaceNote(payload.post)

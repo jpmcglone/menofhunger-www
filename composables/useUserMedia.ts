@@ -28,6 +28,16 @@ export function useUserMedia(
   const loadingMore = ref(false)
   const error = ref<string | null>(null)
   const hasLoadedOnce = ref(false)
+  const lastLoadedKey = ref<string>('')
+  let loadPromise: Promise<void> | null = null
+
+  function paramsKey() {
+    return [
+      usernameLower.value,
+      opts.visibility?.value ?? 'all',
+      opts.sort?.value ?? 'new',
+    ].join('|')
+  }
 
   function buildParams(cursor?: string | null) {
     const params = new URLSearchParams({ limit: '30' })
@@ -39,32 +49,50 @@ export function useUserMedia(
     return params
   }
 
-  async function load() {
+  async function load(opts?: { force?: boolean }) {
+    const force = Boolean(opts?.force)
     if (!enabled.value) {
       items.value = []
       nextCursor.value = null
       error.value = null
+      lastLoadedKey.value = ''
+      return
+    }
+    const key = paramsKey()
+    if (!force && loadPromise && loading.value) {
+      return await loadPromise
+    }
+    if (!force && hasLoadedOnce.value && key === lastLoadedKey.value) {
       return
     }
     const hadExistingItems = items.value.length > 0
-    loading.value = true
-    error.value = null
-    if (!hadExistingItems) {
-      items.value = []
-    }
-    nextCursor.value = null
+    const task = (async () => {
+      loading.value = true
+      error.value = null
+      if (!hadExistingItems) {
+        items.value = []
+      }
+      nextCursor.value = null
+      try {
+        const res = await apiFetch<UserMediaItem[]>(
+          `/posts/user/${encodeURIComponent(usernameLower.value)}/media?${buildParams()}`,
+        )
+        items.value = res.data ?? []
+        nextCursor.value = res.pagination?.nextCursor ?? null
+        lastLoadedKey.value = key
+        hasLoadedOnce.value = true
+      } catch (e: any) {
+        error.value = e?.data?.meta?.errors?.[0]?.message ?? 'Failed to load media.'
+        hasLoadedOnce.value = true
+      } finally {
+        loading.value = false
+      }
+    })()
+    loadPromise = task
     try {
-      const res = await apiFetch<UserMediaItem[]>(
-        `/posts/user/${encodeURIComponent(usernameLower.value)}/media?${buildParams()}`,
-      )
-      items.value = res.data ?? []
-      nextCursor.value = res.pagination?.nextCursor ?? null
-      hasLoadedOnce.value = true
-    } catch (e: any) {
-      error.value = e?.data?.meta?.errors?.[0]?.message ?? 'Failed to load media.'
-      hasLoadedOnce.value = true
+      await task
     } finally {
-      loading.value = false
+      if (loadPromise === task) loadPromise = null
     }
   }
 
@@ -88,6 +116,7 @@ export function useUserMedia(
     items.value = []
     nextCursor.value = null
     hasLoadedOnce.value = false
+    lastLoadedKey.value = ''
     if (enabled.value) void load()
   }, { flush: 'post' })
 
@@ -96,6 +125,7 @@ export function useUserMedia(
       items.value = []
       nextCursor.value = null
       error.value = null
+      lastLoadedKey.value = ''
       return
     }
     if (import.meta.client) void load()

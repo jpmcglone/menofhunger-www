@@ -6,8 +6,8 @@
     </ClientOnly>
 
     <!-- Loading -->
-    <div v-if="pending" class="flex items-center justify-center py-20">
-      <Icon name="tabler:loader-2" class="animate-spin text-gray-400 text-2xl" />
+    <div v-if="pending" class="flex items-center justify-center py-20 transition-opacity duration-200">
+      <AppLogoLoader />
     </div>
 
     <!-- Error / not found -->
@@ -17,7 +17,7 @@
     </div>
 
     <!-- Article -->
-    <article v-else>
+    <article v-else class="transition-opacity duration-200">
       <!-- Centered content column -->
       <div class="mx-auto max-w-3xl px-4 pt-8 pb-4 sm:px-6 lg:px-8">
         <!-- Thumbnail hero -->

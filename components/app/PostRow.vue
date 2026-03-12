@@ -672,7 +672,7 @@ onMounted(() => {
   } catch {
     // ignore
   }
-  if (rowEl.value && postView.value.id && postView.value.visibility !== 'onlyMe') {
+  if (rowEl.value && postView.value.id && postView.value.viewerCanAccess !== false) {
     stopViewObserve = observeView([postView.value.id], rowEl.value)
   }
 })

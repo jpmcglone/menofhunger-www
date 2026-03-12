@@ -93,8 +93,13 @@ export function usePostViewTracker() {
    * Returns a cleanup function — call it on unmount or when el changes.
    * Pass multiple postIds to track a thread chain (all enqueued together).
    */
-  function observe(postIds: string | string[], el: HTMLElement | null): () => void {
+  function observe(
+    postIds: string | string[],
+    el: HTMLElement | null,
+    opts?: { canTrack?: boolean },
+  ): () => void {
     if (!import.meta.client || !el) return () => {}
+    if (opts?.canTrack === false) return () => {}
     const ids = (Array.isArray(postIds) ? postIds : [postIds]).filter(Boolean)
     if (ids.length === 0) return () => {}
 
@@ -138,7 +143,8 @@ export function usePostViewTracker() {
    * boost/bookmark/comment (server-side also records, but this keeps client in sync).
    * Pass multiple IDs when viewing a thread (e.g. /p/:id for a reply).
    */
-  function markEngaged(postIds: string | string[]): void {
+  function markEngaged(postIds: string | string[], opts?: { canTrack?: boolean }): void {
+    if (opts?.canTrack === false) return
     const ids = (Array.isArray(postIds) ? postIds : [postIds]).filter(Boolean)
     if (ids.length === 0) return
     enqueuePosts(ids)

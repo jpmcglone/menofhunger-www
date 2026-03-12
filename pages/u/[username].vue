@@ -158,7 +158,7 @@
       </div>
 
       <!-- Pinned post -->
-      <div class="mt-3 mb-4">
+      <div v-if="showPinnedPost" class="mt-3 mb-4">
         <ClientOnly>
           <template #fallback>
             <div class="min-h-0" aria-hidden="true" />
@@ -257,147 +257,154 @@
         />
       </div>
 
+      <div v-if="effectiveProfileCtaKind === 'verify'" class="mx-3 mt-3 sm:mx-4 sm:mt-4">
+        <AppAccessGateCard kind="verify" />
+      </div>
+      <div v-else-if="effectiveProfileCtaKind === 'premium'" class="mx-3 mt-3 sm:mx-4 sm:mt-4">
+        <AppAccessGateCard kind="premium" />
+      </div>
+
       <!-- ─── Posts tab (top-level only) ───────────────────────────────── -->
-      <div v-if="tabActivated.posts" v-show="activeProfileTab === 'posts'" class="min-h-[75vh]">
+      <div v-if="!effectiveProfileCtaKind && tabActivated.posts" v-show="activeProfileTab === 'posts'" class="min-h-[75vh]">
         <ClientOnly>
           <template #fallback><div class="flex justify-center pt-12 pb-8"><AppLogoLoader /></div></template>
-          <div>
-            <div v-if="postsOnlyError" class="px-4 mt-3 text-sm text-red-700 dark:text-red-300">{{ postsOnlyError }}</div>
-            <div v-else-if="postsOnlyLoading && !postsOnlyHasLoadedOnce" class="flex justify-center pt-12 pb-8"><AppLogoLoader /></div>
-            <div v-else-if="postsOnlyHasLoadedOnce && postsOnlyItems.length === 0" class="px-4 mt-3 text-sm text-gray-500 dark:text-gray-400">No posts yet.</div>
-            <div v-else class="relative mt-3">
-              <template v-for="item in postsOnlyItems" :key="item.kind === 'ad' ? item.key : item.post.id">
-                <AppFeedFakeAdRow v-if="item.kind === 'ad'" />
-                <AppFeedPostRow
-                  v-else
-                  :post="item.post"
-                  :collapsed-sibling-replies-count="postsOnlyCollapsedSiblingReplyCountFor(item.post)"
-                  :reply-count-for-parent-id="postsOnlyReplyCountForParentId"
-                  :replies-sort="profileSort"
-                  @deleted="postsOnlyRemovePost"
-                  @edited="(p) => postsOnlyReplacePost(p.post)"
-                />
-              </template>
-              <div v-if="postsOnlyNextCursor" class="relative flex justify-center items-center px-4 py-6 min-h-12">
-                <div ref="postsOnlyLoadMoreSentinelEl" class="absolute bottom-0 left-0 right-0 h-px" aria-hidden="true" />
-                <div class="transition-opacity duration-150" :class="postsOnlyLoading ? 'opacity-100' : 'opacity-0 pointer-events-none'">
-                  <AppLogoLoader compact />
+          <AppSubtleSectionLoader :loading="postsOnlyInitialLoading" min-height-class="min-h-[220px]">
+            <div>
+              <div v-if="postsOnlyError" class="px-4 mt-3 text-sm text-red-700 dark:text-red-300">{{ postsOnlyError }}</div>
+              <div v-else-if="postsOnlyHasLoadedOnce && postsOnlyItems.length === 0" class="px-4 mt-3 text-sm text-gray-500 dark:text-gray-400">No posts yet.</div>
+              <div v-else class="relative mt-3">
+                <template v-for="item in postsOnlyItems" :key="item.kind === 'ad' ? item.key : item.post.id">
+                  <AppFeedFakeAdRow v-if="item.kind === 'ad'" />
+                  <AppFeedPostRow
+                    v-else
+                    :post="item.post"
+                    :collapsed-sibling-replies-count="postsOnlyCollapsedSiblingReplyCountFor(item.post)"
+                    :reply-count-for-parent-id="postsOnlyReplyCountForParentId"
+                    :replies-sort="profileSort"
+                    @deleted="postsOnlyRemovePost"
+                    @edited="(p) => postsOnlyReplacePost(p.post)"
+                  />
+                </template>
+                <div v-if="postsOnlyNextCursor" class="relative flex justify-center items-center px-4 py-6 min-h-12">
+                  <div ref="postsOnlyLoadMoreSentinelEl" class="absolute bottom-0 left-0 right-0 h-px" aria-hidden="true" />
+                  <div class="transition-opacity duration-150" :class="postsOnlyLoadingMore ? 'opacity-100' : 'opacity-0 pointer-events-none'">
+                    <AppLogoLoader compact />
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
+          </AppSubtleSectionLoader>
         </ClientOnly>
       </div>
 
       <!-- ─── Replies tab (all posts including replies) ─────────────────── -->
-      <div v-if="tabActivated.replies" v-show="activeProfileTab === 'replies'" class="min-h-[75vh]">
+      <div v-if="!effectiveProfileCtaKind && tabActivated.replies" v-show="activeProfileTab === 'replies'" class="min-h-[75vh]">
         <ClientOnly>
           <template #fallback><div class="flex justify-center pt-12 pb-8"><AppLogoLoader /></div></template>
-          <div>
-            <div v-if="profileError" class="px-4 mt-3 text-sm text-red-700 dark:text-red-300">{{ profileError }}</div>
-            <div v-else-if="profileLoading && !profileHasLoadedOnce" class="flex justify-center pt-12 pb-8"><AppLogoLoader /></div>
-            <div v-else-if="profileHasLoadedOnce && itemsWithoutPinned.length === 0 && !pinnedPost" class="px-4 mt-3 text-sm text-gray-500 dark:text-gray-400">No posts yet.</div>
-            <div v-else class="relative mt-3">
-              <template v-for="item in itemsWithoutPinned" :key="item.kind === 'ad' ? item.key : item.post.id">
-                <AppFeedFakeAdRow v-if="item.kind === 'ad'" />
-                <AppFeedPostRow
-                  v-else
-                  :post="item.post"
-                  :collapsed-sibling-replies-count="profileCollapsedSiblingReplyCountFor(item.post)"
-                  :reply-count-for-parent-id="profileReplyCountForParentId"
-                  :replies-sort="profileSort"
-                  @deleted="profileRemovePost"
-                  @edited="onProfilePostEdited"
-                />
-              </template>
-              <div v-if="profileNextCursor" class="relative flex justify-center items-center px-4 py-6 min-h-12">
-                <div ref="profileLoadMoreSentinelEl" class="absolute bottom-0 left-0 right-0 h-px" aria-hidden="true" />
-                <div class="transition-opacity duration-150" :class="profileLoading ? 'opacity-100' : 'opacity-0 pointer-events-none'">
-                  <AppLogoLoader compact />
+          <AppSubtleSectionLoader :loading="repliesInitialLoading" min-height-class="min-h-[220px]">
+            <div>
+              <div v-if="profileError" class="px-4 mt-3 text-sm text-red-700 dark:text-red-300">{{ profileError }}</div>
+              <div v-else-if="profileHasLoadedOnce && itemsWithoutPinned.length === 0 && !pinnedPostForDisplay" class="px-4 mt-3 text-sm text-gray-500 dark:text-gray-400">No posts yet.</div>
+              <div v-else class="relative mt-3">
+                <template v-for="item in itemsWithoutPinned" :key="item.kind === 'ad' ? item.key : item.post.id">
+                  <AppFeedFakeAdRow v-if="item.kind === 'ad'" />
+                  <AppFeedPostRow
+                    v-else
+                    :post="item.post"
+                    :collapsed-sibling-replies-count="profileCollapsedSiblingReplyCountFor(item.post)"
+                    :reply-count-for-parent-id="profileReplyCountForParentId"
+                    :replies-sort="profileSort"
+                    @deleted="profileRemovePost"
+                    @edited="onProfilePostEdited"
+                  />
+                </template>
+                <div v-if="profileNextCursor" class="relative flex justify-center items-center px-4 py-6 min-h-12">
+                  <div ref="profileLoadMoreSentinelEl" class="absolute bottom-0 left-0 right-0 h-px" aria-hidden="true" />
+                  <div class="transition-opacity duration-150" :class="profileLoadingMore ? 'opacity-100' : 'opacity-0 pointer-events-none'">
+                    <AppLogoLoader compact />
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
+          </AppSubtleSectionLoader>
         </ClientOnly>
       </div>
 
       <!-- ─── Articles tab ─────────────────────────────────────────────── -->
-      <div v-if="articlesFeatureEnabled && tabActivated.articles" v-show="activeProfileTab === 'articles'" class="min-h-[75vh]">
-        <div v-if="profileArticlesFeed.loading.value && !profileArticlesFeed.hasLoadedOnce.value" class="flex justify-center pt-12 pb-8">
-          <AppLogoLoader />
-        </div>
-        <div v-else-if="profileArticlesFeed.error.value" class="px-4 mt-3 text-sm text-red-700 dark:text-red-300">
-          {{ profileArticlesFeed.error.value }}
-        </div>
-        <div v-else>
-          <TransitionGroup name="profile-articles-list" tag="div">
-            <AppArticleListCard
-              v-for="article in profileArticlesFeed.articles.value"
-              :key="article.id"
-              :article="article"
-            />
-          </TransitionGroup>
-          <button
-            v-if="profileArticlesFeed.nextCursor.value"
-            type="button"
-            class="w-full border-t border-gray-200 dark:border-zinc-800 py-3 text-sm text-gray-500 transition-colors hover:bg-gray-50 dark:text-zinc-400 dark:hover:bg-zinc-900"
-            :disabled="profileArticlesFeed.loadingMore.value"
-            @click="profileArticlesFeed.loadMore()"
-          >
-            {{ profileArticlesFeed.loadingMore.value ? 'Loading…' : 'Load more' }}
-          </button>
-          <p v-if="profileArticlesFeed.articles.value.length === 0" class="py-12 text-center text-sm text-gray-400 dark:text-zinc-500">
-            No articles yet.
-          </p>
-        </div>
+      <div v-if="!effectiveProfileCtaKind && articlesFeatureEnabled && tabActivated.articles" v-show="activeProfileTab === 'articles'" class="min-h-[75vh]">
+        <AppSubtleSectionLoader :loading="articlesInitialLoading" min-height-class="min-h-[220px]">
+          <div v-if="profileArticlesFeed.error.value" class="px-4 mt-3 text-sm text-red-700 dark:text-red-300">
+            {{ profileArticlesFeed.error.value }}
+          </div>
+          <div v-else>
+            <TransitionGroup name="profile-articles-list" tag="div">
+              <AppArticleListCard
+                v-for="article in profileArticlesFeed.articles.value"
+                :key="article.id"
+                :article="article"
+              />
+            </TransitionGroup>
+            <button
+              v-if="profileArticlesFeed.nextCursor.value"
+              type="button"
+              class="w-full border-t border-gray-200 dark:border-zinc-800 py-3 text-sm text-gray-500 transition-colors hover:bg-gray-50 dark:text-zinc-400 dark:hover:bg-zinc-900"
+              :disabled="profileArticlesFeed.loadingMore.value"
+              @click="profileArticlesFeed.loadMore()"
+            >
+              {{ profileArticlesFeed.loadingMore.value ? 'Loading…' : 'Load more' }}
+            </button>
+            <p v-if="profileArticlesFeed.articles.value.length === 0" class="py-12 text-center text-sm text-gray-400 dark:text-zinc-500">
+              No articles yet.
+            </p>
+          </div>
+        </AppSubtleSectionLoader>
       </div>
 
       <!-- ─── Media tab ─────────────────────────────────────────────────── -->
-      <div v-if="tabActivated.media" v-show="activeProfileTab === 'media'" class="min-h-[75vh]">
-        <div v-if="profileMediaFeed.loading.value && !profileMediaFeed.hasLoadedOnce.value" class="flex justify-center pt-12 pb-8">
-          <AppLogoLoader />
-        </div>
-        <div v-else-if="profileMediaFeed.error.value" class="px-4 mt-3 text-sm text-red-700 dark:text-red-300">
-          {{ profileMediaFeed.error.value }}
-        </div>
-        <div v-else>
-          <TransitionGroup
-            name="media-grid"
-            tag="div"
-            class="grid gap-0.5 bg-gray-200 dark:bg-zinc-800"
-            style="grid-template-columns: repeat(auto-fill, minmax(min(120px, 100%), 1fr))"
-          >
-            <NuxtLink
-              v-for="item in profileMediaFeed.items.value"
-              :key="item.id"
-              :to="`/p/${item.postId}`"
-              class="relative aspect-square overflow-hidden bg-gray-100 dark:bg-zinc-900 hover:opacity-90 transition-opacity"
-            >
-              <img
-                :src="item.kind === 'video' ? (item.thumbnailUrl ?? item.url ?? '') : (item.url ?? '')"
-                :alt="item.kind === 'video' ? 'Video' : 'Photo'"
-                class="absolute inset-0 h-full w-full object-cover"
-                loading="lazy"
-              />
-              <!-- Video play overlay -->
-              <div v-if="item.kind === 'video'" class="absolute inset-0 flex items-center justify-center">
-                <div class="rounded-full bg-black/50 p-2">
-                  <Icon name="tabler:player-play-filled" class="text-white text-lg" aria-hidden="true" />
-                </div>
-              </div>
-            </NuxtLink>
-          </TransitionGroup>
-          <!-- Load more -->
-          <div v-if="profileMediaFeed.nextCursor.value" class="relative flex justify-center items-center px-4 py-6 min-h-12">
-            <div ref="mediaLoadMoreSentinelEl" class="absolute bottom-0 left-0 right-0 h-px" aria-hidden="true" />
-            <div class="transition-opacity duration-150" :class="profileMediaFeed.loadingMore.value ? 'opacity-100' : 'opacity-0 pointer-events-none'">
-              <AppLogoLoader compact />
-            </div>
+      <div v-if="!effectiveProfileCtaKind && tabActivated.media" v-show="activeProfileTab === 'media'" class="min-h-[75vh]">
+        <AppSubtleSectionLoader :loading="mediaInitialLoading" min-height-class="min-h-[220px]">
+          <div v-if="profileMediaFeed.error.value" class="px-4 mt-3 text-sm text-red-700 dark:text-red-300">
+            {{ profileMediaFeed.error.value }}
           </div>
-          <p v-if="profileMediaFeed.hasLoadedOnce.value && profileMediaFeed.items.value.length === 0" class="py-12 text-center text-sm text-gray-400 dark:text-zinc-500">
-            No photos or videos yet.
-          </p>
-        </div>
+          <div v-else>
+            <TransitionGroup
+              name="media-grid"
+              tag="div"
+              class="grid gap-0.5 bg-gray-200 dark:bg-zinc-800"
+              style="grid-template-columns: repeat(auto-fill, minmax(min(120px, 100%), 1fr))"
+            >
+              <NuxtLink
+                v-for="item in profileMediaFeed.items.value"
+                :key="item.id"
+                :to="`/p/${item.postId}`"
+                class="relative aspect-square overflow-hidden bg-gray-100 dark:bg-zinc-900 hover:opacity-90 transition-opacity"
+              >
+                <img
+                  :src="item.kind === 'video' ? (item.thumbnailUrl ?? item.url ?? '') : (item.url ?? '')"
+                  :alt="item.kind === 'video' ? 'Video' : 'Photo'"
+                  class="absolute inset-0 h-full w-full object-cover"
+                  loading="lazy"
+                />
+                <!-- Video play overlay -->
+                <div v-if="item.kind === 'video'" class="absolute inset-0 flex items-center justify-center">
+                  <div class="rounded-full bg-black/50 p-2">
+                    <Icon name="tabler:player-play-filled" class="text-white text-lg" aria-hidden="true" />
+                  </div>
+                </div>
+              </NuxtLink>
+            </TransitionGroup>
+            <!-- Load more -->
+            <div v-if="profileMediaFeed.nextCursor.value" class="relative flex justify-center items-center px-4 py-6 min-h-12">
+              <div ref="mediaLoadMoreSentinelEl" class="absolute bottom-0 left-0 right-0 h-px" aria-hidden="true" />
+              <div class="transition-opacity duration-150" :class="profileMediaFeed.loadingMore.value ? 'opacity-100' : 'opacity-0 pointer-events-none'">
+                <AppLogoLoader compact />
+              </div>
+            </div>
+            <p v-if="profileMediaFeed.hasLoadedOnce.value && profileMediaFeed.items.value.length === 0" class="py-12 text-center text-sm text-gray-400 dark:text-zinc-500">
+              No photos or videos yet.
+            </p>
+          </div>
+        </AppSubtleSectionLoader>
       </div>
 
       <AppProfileFollowListDialog
@@ -631,6 +638,9 @@ function tabFromRoute(path: string): ProfileTabKey {
 }
 
 const activeProfileTab = computed<ProfileTabKey>(() => tabFromRoute(currentPathname.value))
+const effectiveProfileCtaKind = computed<null | 'verify' | 'premium'>(() => (
+  activeProfileTab.value === 'media' ? null : profileCtaKind.value
+))
 
 const tabActivated = reactive<Record<ProfileTabKey, boolean>>({
   posts: true,
@@ -699,6 +709,7 @@ const {
   replyCountForParentId: postsOnlyReplyCountForParentId,
   counts: postsOnlyCounts,
   loading: postsOnlyLoading,
+  loadingMore: postsOnlyLoadingMore,
   error: postsOnlyError,
   hasLoadedOnce: postsOnlyHasLoadedOnce,
   nextCursor: postsOnlyNextCursor,
@@ -712,7 +723,6 @@ const {
   topLevelOnly: true,
   externalFilter: profileFilter as Ref<UserPostsFilter>,
   externalSort: profileSort,
-  includeRestricted: true,
 })
 
 // ─── Replies feed (all posts including replies) ───────────────────────────────
@@ -725,6 +735,7 @@ const {
   replyCountForParentId: profileReplyCountForParentId,
   counts: profileCounts,
   loading: profileLoading,
+  loadingMore: profileLoadingMore,
   error: profileError,
   hasLoadedOnce: profileHasLoadedOnce,
   nextCursor: profileNextCursor,
@@ -737,7 +748,6 @@ const {
   cookieKeyPrefix: 'moh.profile.posts.withReplies',
   externalFilter: profileFilter as Ref<UserPostsFilter>,
   externalSort: profileSort,
-  includeRestricted: true,
 })
 
 // ─── Articles feed ────────────────────────────────────────────────────────────
@@ -747,16 +757,28 @@ const profileArticlesFeed = useArticleFeed({
   sort: profileSort,
   visibility: profileFilter as Ref<ProfilePostsFilter>,
   enabled: articlesEnabled,
-  includeRestricted: true,
 })
 
 // ─── Media feed ───────────────────────────────────────────────────────────────
 const mediaEnabled = computed(() => !notFound.value && tabActivated.media)
+const mediaVisibilityFilter = computed<ProfilePostsFilter>(() => 'all')
 const profileMediaFeed = useUserMedia(normalizedUsername, {
   enabled: mediaEnabled,
-  visibility: profileFilter as Ref<ProfilePostsFilter>,
+  visibility: mediaVisibilityFilter,
   sort: profileSort,
 })
+const postsOnlyInitialLoading = computed(
+  () => postsOnlyLoading.value && !postsOnlyHasLoadedOnce.value && postsOnlyItems.value.length === 0,
+)
+const repliesInitialLoading = computed(
+  () => profileLoading.value && !profileHasLoadedOnce.value && itemsWithoutPinned.value.length === 0 && !pinnedPostForDisplay.value,
+)
+const articlesInitialLoading = computed(
+  () => profileArticlesFeed.loading.value && !profileArticlesFeed.hasLoadedOnce.value && profileArticlesFeed.articles.value.length === 0,
+)
+const mediaInitialLoading = computed(
+  () => profileMediaFeed.loading.value && !profileMediaFeed.hasLoadedOnce.value && profileMediaFeed.items.value.length === 0,
+)
 
 function onProfilePostEdited(payload: { id: string; post: import('~/types/api').FeedPost }) {
   profileReplacePost(payload.post)
@@ -764,16 +786,22 @@ function onProfilePostEdited(payload: { id: string; post: import('~/types/api').
 }
 
 const {
-  pinnedPost,
   pinnedPostForDisplay,
   pinnedReplyToUsername,
   pinnedPostData,
   refreshPinnedPost,
-} = useProfilePinnedPost({ normalizedUsername, effectivePinnedPostId, profilePosts })
+} = useProfilePinnedPost({
+  normalizedUsername,
+  effectivePinnedPostId,
+  profilePosts,
+  activeFilter: profileFilter as Ref<ProfilePostsFilter>,
+})
+const showPinnedPost = computed(() => activeProfileTab.value !== 'media' && !effectiveProfileCtaKind.value && Boolean(pinnedPostForDisplay.value))
+const visiblePinnedPostId = computed(() => pinnedPostForDisplay.value?.id ?? null)
 
 const itemsWithoutPinned = computed(() => {
   const list = profileDisplayItems.value ?? []
-  const pid = effectivePinnedPostId.value
+  const pid = visiblePinnedPostId.value
   if (!pid) return list
   return list.filter((item) => item.kind !== 'post' || item.post.id !== pid)
 })
@@ -801,7 +829,7 @@ const { apiFetch } = useApiClient()
 const {
   data: followSummaryData,
   refresh: refreshFollowSummary,
-} = await useAsyncData(`follow-summary:${normalizedUsername.value}`, async () => {
+} = useAsyncData(`follow-summary:${normalizedUsername.value}`, async () => {
   if (notFound.value) return null
   return await apiFetchData<import('~/types/api').FollowSummaryResponse>(
     `/follows/summary/${encodeURIComponent(normalizedUsername.value)}`,

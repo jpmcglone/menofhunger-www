@@ -109,31 +109,30 @@
               @reset="onCommentsFilterReset"
             />
           </div>
-          <div v-if="commentsLoading && !comments.length" class="px-4 py-6 text-sm moh-text-muted">
-            Loading…
-          </div>
-          <div v-else-if="!comments.length" class="px-4 py-6 text-sm moh-text-muted">
-            No replies yet.
-          </div>
-          <template v-else>
-          <AppCommentThread
-            v-for="c in comments"
-            :key="c.id"
-            :comment="c"
-            :replies-sort="commentsSort"
-            @deleted="onCommentDeleted"
-          />
-          <div v-if="commentsNextCursor" class="flex justify-center px-4 py-4">
-            <Button
-              label="Load more replies"
-              severity="secondary"
-              rounded
-              :loading="commentsLoading"
-              :disabled="commentsLoading"
-              @click="loadMoreComments"
-            />
-          </div>
-          </template>
+          <AppSubtleSectionLoader :loading="commentsInitialLoading" min-height-class="min-h-[140px]">
+            <div v-if="!comments.length" class="px-4 py-6 text-sm moh-text-muted">
+              No replies yet.
+            </div>
+            <template v-else>
+              <AppCommentThread
+                v-for="c in comments"
+                :key="c.id"
+                :comment="c"
+                :replies-sort="commentsSort"
+                @deleted="onCommentDeleted"
+              />
+              <div v-if="commentsNextCursor" class="flex justify-center px-4 py-4">
+                <Button
+                  label="Load more replies"
+                  severity="secondary"
+                  rounded
+                  :loading="commentsLoading"
+                  :disabled="commentsLoading"
+                  @click="loadMoreComments"
+                />
+              </div>
+            </template>
+          </AppSubtleSectionLoader>
         </div>
       </template>
 
@@ -167,7 +166,9 @@ const { apiFetchData } = useApiClient()
 const highlightedPostRef = ref<HTMLElement | null>(null)
 
 const { user, ensureLoaded, isAuthed, isVerified: viewerIsVerified, isPremium: viewerIsPremium } = useAuth()
-await ensureLoaded()
+if (import.meta.client) {
+  void ensureLoaded()
+}
 
 const {
   post,
@@ -270,6 +271,7 @@ const {
   post,
   isOnlyMe,
 })
+const commentsInitialLoading = computed(() => commentsLoading.value && comments.value.length === 0)
 
 // Realtime: subscribe to this post while on-screen, and refresh replies when needed.
 const { addPostsCallback, removePostsCallback, subscribePosts, unsubscribePosts } = usePresence()
@@ -391,7 +393,7 @@ const linkMetaKey = computed(() => {
   return `post:${postId.value}:linkmeta:${u || 'none'}`
 })
 
-const { data: linkMetaData } = await useAsyncData(
+const { data: linkMetaData } = useAsyncData(
   linkMetaKey,
   async () => {
     if (!post.value || isRestricted.value) return null

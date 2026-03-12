@@ -20,6 +20,8 @@ export function useArticleFeed(opts?: {
   const loadingMore = ref(false)
   const error = ref<string | null>(null)
   const hasLoadedOnce = ref(false)
+  const lastLoadedKey = ref<string>('')
+  let loadPromise: Promise<void> | null = null
 
   function getAuthorUsername(): string | undefined {
     const u = opts?.authorUsername
@@ -40,30 +42,58 @@ export function useArticleFeed(opts?: {
     return params
   }
 
-  async function load() {
+  function paramsKey() {
+    const author = getAuthorUsername() ?? ''
+    const mine = opts?.mine?.value ? '1' : '0'
+    const followingOnly = opts?.followingOnly?.value ? '1' : '0'
+    const sort = opts?.sort?.value ?? 'new'
+    const visibility = opts?.visibility?.value ?? 'all'
+    const restricted = isRef(opts?.includeRestricted) ? opts!.includeRestricted.value : Boolean(opts?.includeRestricted)
+    return [author, mine, followingOnly, sort, visibility, restricted ? '1' : '0'].join('|')
+  }
+
+  async function load(opts?: { force?: boolean }) {
+    const force = Boolean(opts?.force)
     if (!enabled.value) {
       articles.value = []
       nextCursor.value = null
       error.value = null
+      lastLoadedKey.value = ''
+      return
+    }
+    const key = paramsKey()
+    if (!force && loadPromise && loading.value) {
+      return await loadPromise
+    }
+    if (!force && hasLoadedOnce.value && key === lastLoadedKey.value) {
       return
     }
     const hadExistingItems = articles.value.length > 0
-    loading.value = true
-    error.value = null
-    if (!hadExistingItems) {
-      articles.value = []
-    }
-    nextCursor.value = null
+    const task = (async () => {
+      loading.value = true
+      error.value = null
+      if (!hadExistingItems) {
+        articles.value = []
+      }
+      nextCursor.value = null
+      try {
+        const res = await apiFetch<Article[]>(`/articles?${buildParams()}`)
+        articles.value = res.data ?? []
+        nextCursor.value = res.pagination?.nextCursor ?? null
+        lastLoadedKey.value = key
+        hasLoadedOnce.value = true
+      } catch (e: any) {
+        error.value = e?.data?.meta?.errors?.[0]?.message ?? 'Failed to load articles.'
+        hasLoadedOnce.value = true
+      } finally {
+        loading.value = false
+      }
+    })()
+    loadPromise = task
     try {
-      const res = await apiFetch<Article[]>(`/articles?${buildParams()}`)
-      articles.value = res.data ?? []
-      nextCursor.value = res.pagination?.nextCursor ?? null
-      hasLoadedOnce.value = true
-    } catch (e: any) {
-      error.value = e?.data?.meta?.errors?.[0]?.message ?? 'Failed to load articles.'
-      hasLoadedOnce.value = true
+      await task
     } finally {
-      loading.value = false
+      if (loadPromise === task) loadPromise = null
     }
   }
 
@@ -82,13 +112,17 @@ export function useArticleFeed(opts?: {
   }
 
   // Reload when reactive params change
-  if (opts?.sort) watch(opts.sort, () => { if (enabled.value) load() })
-  if (opts?.visibility) watch(opts.visibility, () => { if (enabled.value) load() })
-  if (opts?.followingOnly) watch(opts.followingOnly, () => { if (enabled.value) load() })
-  if (isRef(opts?.authorUsername)) watch(opts!.authorUsername as Ref<string>, () => { if (enabled.value) load() })
+  if (opts?.sort) watch(opts.sort, () => { if (enabled.value) void load() })
+  if (opts?.visibility) watch(opts.visibility, () => { if (enabled.value) void load() })
+  if (opts?.followingOnly) watch(opts.followingOnly, () => { if (enabled.value) void load() })
+  if (isRef(opts?.authorUsername)) watch(opts!.authorUsername as Ref<string>, () => { if (enabled.value) void load() })
   if (opts?.enabled) {
     watch(opts.enabled, (on) => {
-      if (on && articles.value.length === 0 && !loading.value) load()
+      if (!on) {
+        lastLoadedKey.value = ''
+        return
+      }
+      if (articles.value.length === 0 && !loading.value) void load()
     }, { immediate: true, flush: 'post' })
   }
 

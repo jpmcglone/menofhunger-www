@@ -20,9 +20,10 @@ export function useArticleViewTracker() {
   const { isAuthed } = useAuth()
   const anonViewId = useAnonViewId()
 
-  async function flush(articleId: string) {
+  async function flush(articleId: string, opts?: { canTrack?: boolean }) {
     const id = (articleId ?? '').trim()
     if (!id) return
+    if (opts?.canTrack === false) return
     if (!isAuthed.value && !anonViewId.value) return
 
     const now = Date.now()
@@ -51,8 +52,13 @@ export function useArticleViewTracker() {
    *
    * Returns a cleanup function — call it on unmount or when el changes.
    */
-  function observe(articleId: string, el: HTMLElement | null): () => void {
+  function observe(
+    articleId: string,
+    el: HTMLElement | null,
+    opts?: { canTrack?: boolean },
+  ): () => void {
     if (!import.meta.client || !el) return () => {}
+    if (opts?.canTrack === false) return () => {}
     const id = (articleId ?? '').trim()
     if (!id) return () => {}
 
@@ -67,7 +73,7 @@ export function useArticleViewTracker() {
           if (!dwellTimer) {
             dwellTimer = setTimeout(() => {
               dwellTimer = null
-              void flush(id)
+              void flush(id, opts)
             }, DWELL_MS)
           }
         } else {

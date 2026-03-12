@@ -283,6 +283,7 @@ export default defineNuxtConfig({
   nitro: {
     sourceMap: false,
     prerender: {
+      routes: ['/about', '/privacy', '/terms'],
       // Avoid auto-prerendering internal content endpoints.
       // Nitro treats ignore entries as exact strings or regex; regex is safest.
       ignore: [/^\/__nuxt_content\//],
@@ -311,12 +312,10 @@ export default defineNuxtConfig({
     '/u/**': { ssr: true },
     '/p/**': { ssr: true },
 
-    // Static content: SSR for fast, indexable HTML.
-    // Avoid prerender: the `app` layout requires runtime context (auth/API)
-    // that isn't available at build time, so payload files fail to generate.
-    '/terms': { ssr: true },
-    '/privacy': { ssr: true },
-    '/about': { ssr: true },
+    // Static content: prerender to ship ready-to-serve HTML at build time.
+    '/terms': { prerender: true },
+    '/privacy': { prerender: true },
+    '/about': { prerender: true },
 
     // App-shell: enable SSR to reduce client-side "data flicker" on first paint.
     // These pages already gate browser-only logic behind onMounted/import.meta.client.

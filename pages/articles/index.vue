@@ -81,62 +81,58 @@
 
     <!-- Published articles feed -->
     <div v-if="tabActivated.published" v-show="activeTab === 'published'" role="tabpanel">
-      <div v-if="(publishedFeed.loading.value || !publishedFeed.hasLoadedOnce.value) && publishedFeed.articles.value.length === 0" class="flex items-center justify-center py-16">
-        <AppLogoLoader />
-      </div>
-      <div v-else-if="publishedFeed.error.value" class="py-8 text-center text-sm text-red-500">
-        {{ publishedFeed.error.value }}
-      </div>
-      <div v-else>
-        <TransitionGroup name="articles-list" tag="div">
-          <AppArticleListCard
-            v-for="article in publishedFeed.articles.value"
-            :key="article.id"
-            :article="article"
-          />
-        </TransitionGroup>
-        <button
-          v-if="publishedFeed.nextCursor.value"
-          type="button"
-          class="w-full border-t border-gray-200 dark:border-zinc-800 py-3 text-sm text-gray-500 transition-colors hover:bg-gray-50 dark:text-zinc-400 dark:hover:bg-zinc-900"
-          :disabled="publishedFeed.loadingMore.value"
-          @click="publishedFeed.loadMore()"
-        >
-          {{ publishedFeed.loadingMore.value ? 'Loading…' : 'Load more' }}
-        </button>
-        <p v-if="publishedFeed.hasLoadedOnce.value && publishedFeed.articles.value.length === 0" class="py-12 text-center text-sm text-gray-400 dark:text-zinc-500">
-          No articles found.
-          <template v-if="isPremium">
-            <NuxtLink to="/articles/new" class="hover:underline" :style="{ color: activeTabColor }">Write the first one!</NuxtLink>
-          </template>
-        </p>
-      </div>
+      <AppSubtleSectionLoader :loading="publishedInitialLoading" min-height-class="min-h-[220px]">
+        <div v-if="publishedFeed.error.value" class="py-8 text-center text-sm text-red-500">
+          {{ publishedFeed.error.value }}
+        </div>
+        <div v-else>
+          <TransitionGroup name="articles-list" tag="div">
+            <AppArticleListCard
+              v-for="article in publishedFeed.articles.value"
+              :key="article.id"
+              :article="article"
+            />
+          </TransitionGroup>
+          <button
+            v-if="publishedFeed.nextCursor.value"
+            type="button"
+            class="w-full border-t border-gray-200 dark:border-zinc-800 py-3 text-sm text-gray-500 transition-colors hover:bg-gray-50 dark:text-zinc-400 dark:hover:bg-zinc-900"
+            :disabled="publishedFeed.loadingMore.value"
+            @click="publishedFeed.loadMore()"
+          >
+            {{ publishedFeed.loadingMore.value ? 'Loading…' : 'Load more' }}
+          </button>
+          <p v-if="publishedFeed.hasLoadedOnce.value && publishedFeed.articles.value.length === 0" class="py-12 text-center text-sm text-gray-400 dark:text-zinc-500">
+            No articles found.
+            <template v-if="isPremium">
+              <NuxtLink to="/articles/new" class="hover:underline" :style="{ color: activeTabColor }">Write the first one!</NuxtLink>
+            </template>
+          </p>
+        </div>
+      </AppSubtleSectionLoader>
     </div>
 
     <!-- Drafts -->
     <div v-if="tabActivated.drafts" v-show="activeTab === 'drafts'" role="tabpanel">
-      <div v-if="draftsState.loading.value && !draftsState.hasLoadedOnce.value">
-        <div class="flex items-center justify-center py-16">
-          <AppLogoLoader />
+      <AppSubtleSectionLoader :loading="draftsInitialLoading" min-height-class="min-h-[220px]">
+        <div v-if="draftsState.error.value" class="py-8 text-center text-sm text-red-500">
+          {{ draftsState.error.value }}
         </div>
-      </div>
-      <div v-else-if="draftsState.error.value" class="py-8 text-center text-sm text-red-500">
-        {{ draftsState.error.value }}
-      </div>
-      <div v-else>
-        <TransitionGroup name="articles-list" tag="div">
-          <AppArticleListCard
-            v-for="draft in draftsState.drafts.value"
-            :key="draft.id"
-            :article="draft"
-            @delete="confirmDelete"
-          />
-        </TransitionGroup>
-        <p v-if="draftsState.hasLoadedOnce.value && draftsState.drafts.value.length === 0" class="py-12 text-center text-sm text-gray-400 dark:text-zinc-500">
-          No drafts found.
-          <NuxtLink to="/articles/new" class="hover:underline" :style="{ color: activeTabColor }">Start writing!</NuxtLink>
-        </p>
-      </div>
+        <div v-else>
+          <TransitionGroup name="articles-list" tag="div">
+            <AppArticleListCard
+              v-for="draft in draftsState.drafts.value"
+              :key="draft.id"
+              :article="draft"
+              @delete="confirmDelete"
+            />
+          </TransitionGroup>
+          <p v-if="draftsState.hasLoadedOnce.value && draftsState.drafts.value.length === 0" class="py-12 text-center text-sm text-gray-400 dark:text-zinc-500">
+            No drafts found.
+            <NuxtLink to="/articles/new" class="hover:underline" :style="{ color: activeTabColor }">Start writing!</NuxtLink>
+          </p>
+        </div>
+      </AppSubtleSectionLoader>
     </div>
   </AppPageContent>
 </template>
@@ -252,6 +248,12 @@ const publishedFeed = useArticleFeed({
   includeRestricted: true,
 })
 const draftsState = useArticleDrafts({ visibility: visibilityFilter, enabled: isPremium })
+const publishedInitialLoading = computed(
+  () => (publishedFeed.loading.value || !publishedFeed.hasLoadedOnce.value) && publishedFeed.articles.value.length === 0,
+)
+const draftsInitialLoading = computed(
+  () => draftsState.loading.value && !draftsState.hasLoadedOnce.value && draftsState.drafts.value.length === 0,
+)
 
 onMounted(() => {
   publishedFeed.load()

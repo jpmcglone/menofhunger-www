@@ -1,12 +1,14 @@
 import type { Ref } from 'vue'
 import type { FeedPost } from '~/types/api'
+import type { ProfilePostsFilter } from '~/utils/post-visibility'
 
 export function useProfilePinnedPost(options: {
   normalizedUsername: Ref<string>
   effectivePinnedPostId: Ref<string | null>
   profilePosts: Ref<FeedPost[]>
+  activeFilter: Ref<ProfilePostsFilter>
 }) {
-  const { effectivePinnedPostId, profilePosts } = options
+  const { effectivePinnedPostId, profilePosts, activeFilter } = options
   const { apiFetchData } = useApiClient()
 
   const pinnedPostKey = computed(() => `profile-pinned-post:${options.normalizedUsername.value}:${effectivePinnedPostId.value ?? ''}`)
@@ -36,6 +38,7 @@ export function useProfilePinnedPost(options: {
   const pinnedPostForDisplay = computed(() => {
     const p = pinnedPost.value
     if (!p) return null
+    if (activeFilter.value !== 'all' && p.visibility !== activeFilter.value) return null
     if (!p.parent) return p
     const { parent: _parent, ...rest } = p
     return { ...rest } as FeedPost

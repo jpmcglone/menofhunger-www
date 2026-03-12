@@ -133,7 +133,7 @@ export function usePostsFeed(options: { visibility?: Ref<FeedFilter>; followingO
   })
 
   const posts = feed.items
-  const { nextCursor, loading, error, refresh: feedRefresh, loadMore: feedLoadMore } = feed
+  const { nextCursor, loading, loadingMore, error, refresh: feedRefresh, loadMore: feedLoadMore } = feed
 
   // Realtime: patch post interaction counts in-place for visible feeds.
   const visiblePostIds = ref<Set<string>>(new Set())
@@ -717,6 +717,7 @@ export function usePostsFeed(options: { visibility?: Ref<FeedFilter>; followingO
     replyCountForParentId,
     nextCursor,
     loading,
+    loadingMore,
     error,
     refresh,
     softRefreshNewer,

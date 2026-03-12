@@ -14,7 +14,6 @@ export function useHomeFeed() {
     viewerIsVerified,
     viewerIsPremium,
     ctaKind: feedCtaKind,
-    resetFilters: _resetFilters,
   } = useUrlFeedFilters()
 
   const scopeTabs = computed(() => {
@@ -36,6 +35,7 @@ export function useHomeFeed() {
     replyCountForParentId,
     nextCursor,
     loading,
+    loadingMore,
     error,
     refresh,
     softRefreshNewer,
@@ -121,7 +121,9 @@ export function useHomeFeed() {
   }
 
   async function resetFilters() {
-    _resetFilters()
+    // Keep current scope (all/following), only reset sort + visibility.
+    feedSort.value = 'new'
+    feedFilter.value = 'all'
     await preserveMiddleScrollAfter(async () => await refresh({ visibility: 'all', sort: 'new' }))
   }
 
@@ -149,6 +151,7 @@ export function useHomeFeed() {
     replyCountForParentId,
     nextCursor,
     loading,
+    loadingMore,
     error,
     refresh,
     softRefreshNewer,

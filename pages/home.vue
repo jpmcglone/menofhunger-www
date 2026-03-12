@@ -103,30 +103,16 @@
           {{ error }}
         </AppInlineAlert>
 
-        <div class="relative">
-          <!-- Loader: always in DOM, opacity 0/1, z-0 (below feed). Visible when loading and no posts. -->
-          <div
-            class="absolute inset-x-0 top-0 flex justify-center items-center min-h-[240px] transition-opacity duration-150 z-0"
-            :class="showMainLoader ? 'opacity-100' : 'opacity-0 pointer-events-none'"
-            :aria-hidden="!showMainLoader"
-          >
-            <AppLogoLoader />
-          </div>
-
-          <!-- Feed: always in flow (no movement), z-10 so above loader. Hidden when loader visible. -->
-          <div
-            class="relative z-10"
-            :class="showMainLoader ? 'opacity-0 pointer-events-none' : 'opacity-100'"
-          >
+        <AppSubtleSectionLoader :loading="showMainLoader" min-height-class="min-h-[240px]">
             <AppFeedFollowingEmptyState
-              v-if="showFollowingEmptyState"
+              v-if="initialFeedResolved && showFollowingEmptyState"
               :following-count="followingCount"
               :show-checkin-cta="showCheckinPromptBar"
               @find-people="navigateTo('/explore')"
               @check-in="openCheckinComposer"
             />
             <AppFeedAllEmptyState
-              v-else-if="showAllEmptyState"
+              v-else-if="initialFeedResolved && showAllEmptyState"
               @explore="navigateTo('/explore')"
               @who-to-follow="navigateTo('/who-to-follow')"
             />
@@ -156,14 +142,13 @@
               />
               <div
                 class="transition-opacity duration-150"
-                :class="loading ? 'opacity-100' : 'opacity-0 pointer-events-none'"
-                :aria-hidden="!loading"
+                :class="loadingMore ? 'opacity-100' : 'opacity-0 pointer-events-none'"
+                :aria-hidden="!loadingMore"
               >
                 <AppLogoLoader compact />
               </div>
             </div>
-          </div>
-        </div>
+        </AppSubtleSectionLoader>
       </template>
     </div>
   </AppPageContent>
@@ -312,6 +297,7 @@ const {
   replyCountForParentId,
   nextCursor,
   loading,
+  loadingMore,
   error,
   refresh,
   softRefreshNewer,
@@ -405,8 +391,27 @@ onBeforeUnmount(() => {
   }
 })
 
-const showMainLoader = computed(() => loading.value && !posts.value.length)
 const showOnlyMeHomeComposerCard = computed(() => isAuthed.value && !viewerIsVerified.value)
+const initialFeedLoadStarted = ref(false)
+const initialFeedResolved = ref(false)
+
+watchEffect(() => {
+  if (initialFeedResolved.value) return
+  if (posts.value.length > 0 || Boolean(error.value)) {
+    initialFeedResolved.value = true
+    return
+  }
+  if (loading.value) {
+    initialFeedLoadStarted.value = true
+    return
+  }
+  if (initialFeedLoadStarted.value && !loading.value) {
+    // First request completed with an empty feed (no error).
+    initialFeedResolved.value = true
+  }
+})
+
+const showMainLoader = computed(() => !initialFeedResolved.value && !error.value && posts.value.length === 0)
 
 function openOnlyMeComposer() {
   openComposer?.('onlyMe')

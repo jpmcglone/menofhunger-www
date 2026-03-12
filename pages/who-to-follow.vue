@@ -22,35 +22,33 @@
         </AppInlineAlert>
       </div>
 
-      <div v-if="loading && users.length === 0" class="flex justify-center py-12">
-        <AppLogoLoader />
-      </div>
-
-      <!-- Edge-to-edge list -->
-      <div v-else-if="users.length > 0" class="space-y-0">
-        <div class="space-y-0">
-          <AppUserRow
-            v-for="u in users"
-            :key="u.id"
-            :user="u"
-            :show-follow-button="true"
-            allow-logged-out-follow-button
-          />
-        </div>
-      </div>
-
-      <div v-else class="px-4">
-        <div class="rounded-xl border moh-border bg-gray-50/50 dark:bg-zinc-900/30 px-4 py-6 text-center">
-          <p class="text-sm moh-text-muted">
-            No suggestions yet — try following a few people first.
-          </p>
-          <div class="mt-3">
-            <NuxtLink to="/explore" class="font-medium hover:underline">
-              Explore
-            </NuxtLink>
+      <AppSubtleSectionLoader :loading="showInitialLoader" min-height-class="min-h-[220px]">
+        <!-- Edge-to-edge list -->
+        <div v-if="users.length > 0" class="space-y-0 transition-opacity duration-150">
+          <div class="space-y-0">
+            <AppUserRow
+              v-for="u in users"
+              :key="u.id"
+              :user="u"
+              :show-follow-button="true"
+              allow-logged-out-follow-button
+            />
           </div>
         </div>
-      </div>
+
+        <div v-else class="px-4">
+          <div class="rounded-xl border moh-border bg-gray-50/50 dark:bg-zinc-900/30 px-4 py-6 text-center">
+            <p class="text-sm moh-text-muted">
+              No suggestions yet — try following a few people first.
+            </p>
+            <div class="mt-3">
+              <NuxtLink to="/explore" class="font-medium hover:underline">
+                Explore
+              </NuxtLink>
+            </div>
+          </div>
+        </div>
+      </AppSubtleSectionLoader>
     </div>
   </div>
   </AppPageContent>
@@ -72,6 +70,7 @@ usePageSeo({
 })
 
 const { users, loading, error, refresh } = useWhoToFollow()
+const showInitialLoader = computed(() => loading.value && users.value.length === 0)
 
 onMounted(() => {
   void refresh({ limit: 50 })

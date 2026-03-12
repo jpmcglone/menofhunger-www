@@ -61,6 +61,9 @@ export function useUserPosts(
   const postsKey = computed(() => `user-posts-list:${prefix}:${usernameLower.value}`)
   const counts = ref<PostCounts>(EMPTY_COUNTS)
   const hasLoadedOnce = ref(false)
+  const lastFetchKey = ref<string>('')
+  let fetchPromise: Promise<void> | null = null
+  let inFlightFetchKey = ''
 
   const feedRef = shallowRef(useCursorFeed<FeedPost>({
     stateKey: postsKey.value,
@@ -96,6 +99,7 @@ export function useUserPosts(
     },
   })
   const loading = computed(() => feedRef.value.loading.value)
+  const loadingMore = computed(() => feedRef.value.loadingMore.value)
   const error = computed<string | null>({
     get: () => feedRef.value.error.value,
     set: (v) => {
@@ -188,10 +192,24 @@ export function useUserPosts(
   }
 
   async function fetch(nextFilter: UserPostsFilter, nextSort: 'new' | 'trending') {
+    const fetchKey = [
+      usernameLower.value,
+      nextFilter,
+      nextSort,
+      opts.topLevelOnly ? '1' : '0',
+      opts.includeRestricted ? '1' : '0',
+    ].join('|')
+    if (fetchPromise && inFlightFetchKey === fetchKey) {
+      return await fetchPromise
+    }
     if (!enabled.value) {
       posts.value = []
       nextCursor.value = null
       error.value = null
+      lastFetchKey.value = ''
+      return
+    }
+    if (!loading.value && hasLoadedOnce.value && posts.value.length > 0 && lastFetchKey.value === fetchKey) {
       return
     }
     if (loading.value) return
@@ -208,7 +226,18 @@ export function useUserPosts(
 
     filter.value = nextFilter
     sort.value = nextSort
-    await refresh()
+    inFlightFetchKey = fetchKey
+    const task = (async () => {
+      await refresh()
+      lastFetchKey.value = fetchKey
+    })()
+    fetchPromise = task
+    try {
+      await task
+    } finally {
+      if (fetchPromise === task) fetchPromise = null
+      if (inFlightFetchKey === fetchKey) inFlightFetchKey = ''
+    }
   }
 
   async function setFilter(next: UserPostsFilter) {
@@ -306,6 +335,7 @@ export function useUserPosts(
     nextCursor.value = null
     counts.value = EMPTY_COUNTS
     error.value = null
+    lastFetchKey.value = ''
   }
 
   watch(
@@ -321,6 +351,7 @@ export function useUserPosts(
             visibility: filter.value,
             sort: sort.value,
             ...(opts.topLevelOnly ? { topLevelOnly: true } : {}),
+            ...(opts.includeRestricted ? { includeRestricted: true } : {}),
             ...(cursor ? { cursor } : {}),
           },
         }),
@@ -331,6 +362,7 @@ export function useUserPosts(
           hasLoadedOnce.value = true
         },
       })
+      lastFetchKey.value = ''
       filter.value = 'all'
       sort.value = 'new'
       void fetch('all', 'new')
@@ -345,6 +377,7 @@ export function useUserPosts(
         posts.value = []
         nextCursor.value = null
         error.value = null
+        lastFetchKey.value = ''
         return
       }
       if (!import.meta.client) return
@@ -383,6 +416,7 @@ export function useUserPosts(
     replyCountForParentId,
     counts,
     loading,
+    loadingMore,
     error,
     hasLoadedOnce,
     nextCursor,

@@ -98,12 +98,14 @@
       </Teleport>
     </ClientOnly>
     <div
+      ref="layoutViewportEl"
       :class="['overflow-hidden moh-bg moh-text moh-texture moh-vignette', showStatusBg ? 'moh-status-tone' : '']"
       style="height: var(--moh-viewport-h, 100vh);"
     >
       <div class="mx-auto flex h-full w-full max-w-6xl xl:max-w-7xl">
         <!-- Left Nav (independent scroll) -->
         <aside
+          ref="leftRailEl"
           :class="[
             'no-scrollbar hidden md:block shrink-0 h-full border-r moh-border moh-texture',
             anyOverlayOpen ? 'overflow-hidden' : 'overflow-y-auto overscroll-y-contain'
@@ -513,6 +515,7 @@
 
           <!-- Right rail (scroll zone #3). Visible on a custom breakpoint (~962px). -->
           <aside
+            ref="rightRailEl"
             :class="[
               // Layout should not add padding; right-rail content owns its gutters.
               'relative no-scrollbar shrink-0 w-[var(--moh-right-rail-w)] h-full moh-bg moh-texture',
@@ -1457,7 +1460,13 @@ function formatCompactNumber(n: number): string {
 }
 
 // Centralized auth hydration lives in `useAuth()`.
-await initAuth()
+// Some app-layout routes (e.g. /home) intentionally allow logged-out access and skip auth middleware checks.
+// Initialize here too so SSR and first client render agree on auth-dependent layout branches.
+if (import.meta.server) {
+  await initAuth()
+} else {
+  void initAuth()
+}
 // nav items are provided by useAppNav() so mobile + desktop stay in sync
 
 // When user is logged in, keep subscription state in sync.
@@ -1540,6 +1549,9 @@ watch(
 
 const middleScrollerEl = ref<HTMLElement | null>(null)
 const titleBarEl = ref<HTMLElement | null>(null)
+const layoutViewportEl = ref<HTMLElement | null>(null)
+const leftRailEl = ref<HTMLElement | null>(null)
+const rightRailEl = ref<HTMLElement | null>(null)
 
 provide(MOH_MIDDLE_SCROLLER_KEY, middleScrollerEl)
 
@@ -1580,6 +1592,35 @@ onBeforeUnmount(() => {
   titleBarRo = null
 })
 
+// ── Linked scroll: middle + right columns scroll together ─────────────────────
+function onLayoutWheel(e: WheelEvent) {
+  if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) return
+  if (anyOverlayOpen.value) return
+
+  const target = e.target as Node | null
+  if (!target) return
+
+  if (leftRailEl.value?.contains(target)) return
+  if (rightRailEl.value?.contains(target)) return
+
+  e.preventDefault()
+
+  let delta = e.deltaY
+  if (e.deltaMode === 1) delta *= 20
+  else if (e.deltaMode === 2) delta *= (middleScrollerEl.value?.clientHeight ?? window.innerHeight)
+
+  middleScrollerEl.value?.scrollBy(0, delta)
+  rightRailEl.value?.scrollBy(0, delta)
+}
+
+onMounted(() => {
+  layoutViewportEl.value?.addEventListener('wheel', onLayoutWheel, { passive: false })
+})
+
+onBeforeUnmount(() => {
+  layoutViewportEl.value?.removeEventListener('wheel', onLayoutWheel)
+})
+
 const lightbox = useImageLightbox()
 
 // Status page uses a custom “ops” background only in dark mode.
@@ -1589,12 +1630,15 @@ const { dayKey: dailyContentDayKey } = useEasternMidnightRollover()
 const {
   data: dailyContent,
   refresh: refreshDailyContent,
-} = await useAsyncData<DailyContentToday>(
+} = useLazyAsyncData<DailyContentToday | null>(
   'daily-content:today',
   async () => {
     return await apiFetchData<DailyContentToday>('/meta/daily-content/today', { method: 'GET' })
   },
-  { server: true },
+  {
+    server: false,
+    default: () => null,
+  },
 )
 
 const dailyQuote = computed<DailyQuote | null>(() => dailyContent.value?.quote ?? null)
