@@ -32,14 +32,23 @@ export function useUserMenu() {
     },
     { separator: true },
     {
+      label: 'Feature requests',
+      iconName: 'tabler:bulb',
+      command: () => navigateTo('/feedback'),
+    },
+    ...(user.value?.premiumPlus
+      ? []
+      : ([
+          {
+            label: 'Upgrade',
+            iconName: 'tabler:sparkles',
+            command: () => navigateTo('/tiers'),
+          },
+        ] as MenuItemWithIcon[])),
+    {
       label: 'Settings & privacy',
       iconName: 'tabler:settings',
       command: () => navigateTo('/settings'),
-    },
-    {
-      label: 'Send feedback',
-      iconName: 'tabler:message-circle',
-      command: () => navigateTo('/feedback'),
     },
     { separator: true },
     {

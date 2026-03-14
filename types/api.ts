@@ -1022,6 +1022,16 @@ export type GetNotificationsResponse = {
   }
 }
 
+/** Data type for GET /notifications/new-posts (array); pagination in envelope. */
+export type GetNotificationsNewPostsData = FeedPost[]
+
+export type GetNotificationsNewPostsResponse = {
+  data: FeedPost[]
+  pagination: {
+    nextCursor: string | null
+  }
+}
+
 export type GetNotificationsUnreadCountResponse = {
   data: { count: number }
 }

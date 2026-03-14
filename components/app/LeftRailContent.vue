@@ -12,7 +12,9 @@ const props = defineProps<{
 const wrapperClass = computed(() => [
   // Keep internal layout stable; only width changes between compact and wide.
   // This wrapper is "content", not the layout container — it owns its own padding.
-  'min-h-full w-14 px-1 py-4 transition-[width,padding] duration-200 ease-out flex flex-col',
+  // IMPORTANT: must be exact-height (not min-height) so bottom footer can stay pinned
+  // while only the top nav region scrolls.
+  'h-full min-h-0 w-14 px-1 py-4 transition-[width,padding] duration-200 ease-out flex flex-col',
   // On desktop, match the right rail's padding (`px-4`) in both modes.
   // When compact, increase rail width so the inner content can still fit `w-12`,
   // while keeping the same right gutter to the divider as wide mode.

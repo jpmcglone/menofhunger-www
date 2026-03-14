@@ -222,8 +222,8 @@
             text
             class="!px-2"
             :disabled="bellInflight"
-            :aria-label="bellEnabled ? 'Disable post notifications' : 'Enable post notifications'"
-            v-tooltip.bottom="tinyTooltip(bellEnabled ? 'Post notifications on' : 'Post notifications off')"
+            :aria-label="bellEnabled ? 'Disable every-post notifications for this user' : 'Enable every-post notifications for this user'"
+            v-tooltip.bottom="tinyTooltip(bellEnabled ? 'Every post/reply from this user (standalone, no rollup)' : 'Enable every post/reply from this user')"
             @click="togglePostBell"
           >
             <template #icon>

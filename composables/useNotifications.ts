@@ -315,6 +315,10 @@ export function useNotifications() {
   }
 
   function groupHref(g: NotificationGroup): string | null {
+    if (g.kind === 'follow') {
+      const meUsername = (me.value?.username ?? '').trim()
+      return meUsername ? `/u/${encodeURIComponent(meUsername)}/followers` : '/settings'
+    }
     if (g.kind === 'followed_post') {
       const first = g.actors?.[0] ?? null
       if (first?.username) return `/u/${first.username}`
@@ -327,7 +331,7 @@ export function useNotifications() {
   function itemHref(item: NotificationFeedItem): string | null {
     if (item.type === 'single') return rowHref(item.notification)
     if (item.type === 'group') return groupHref(item.group)
-    return null
+    return '/new-posts'
   }
 
   return {

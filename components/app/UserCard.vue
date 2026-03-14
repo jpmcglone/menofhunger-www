@@ -4,6 +4,7 @@
       v-if="hideMenu && (linkToHome || user?.username)"
       :to="linkToHome ? '/home' : `/u/${user!.username}`"
       :class="cardClass"
+      :style="cardStyle"
     >
       <div class="flex items-center gap-3">
         <AppUserAvatar
@@ -18,12 +19,15 @@
             props.compact ? 'hidden' : 'hidden xl:block'
           ]"
         >
-          <AppUserIdentityLine
-            v-if="user"
-            :user="user as any"
-            name-class=""
-            handle-class="text-sm text-gray-500 dark:text-gray-400"
-          />
+          <div class="min-w-0">
+            <div class="mt-0.5 flex items-center min-w-0">
+              <div class="font-semibold truncate text-gray-900 dark:text-gray-50">{{ displayName }}</div>
+            </div>
+            <div class="mt-0.5 flex items-center gap-1 text-sm text-amber-700 dark:text-amber-300">
+              <Icon name="tabler:coin" size="14" aria-hidden="true" />
+              <span class="truncate">{{ coinsLabel }}</span>
+            </div>
+          </div>
         </div>
       </div>
     </NuxtLink>
@@ -32,6 +36,7 @@
       ref="buttonEl"
       type="button"
       :class="cardClass"
+      :style="cardStyle"
       @click="toggleMenu"
     >
       <div class="flex items-center gap-3">
@@ -47,14 +52,14 @@
             props.compact ? 'hidden' : 'hidden xl:block'
           ]"
         >
-          <div class="flex items-center justify-between gap-2">
-            <AppUserIdentityLine
-              v-if="user"
-              :user="user as any"
-              name-class=""
-              handle-class="text-sm text-gray-500 dark:text-gray-400"
-            />
-            <Icon name="tabler:dots-vertical" class="text-gray-500 dark:text-gray-400" aria-hidden="true" />
+          <div class="min-w-0 pr-1">
+            <div class="mt-0.5 flex items-center min-w-0">
+              <div class="font-semibold truncate text-gray-900 dark:text-gray-50">{{ displayName }}</div>
+            </div>
+            <div class="mt-0.5 flex items-center gap-1 text-sm text-amber-700 dark:text-amber-300">
+              <Icon name="tabler:coin" size="14" aria-hidden="true" />
+              <span class="truncate">{{ coinsLabel }}</span>
+            </div>
           </div>
         </div>
       </div>
@@ -99,7 +104,7 @@ const cardClass = computed(() => [
   props.compact
     ? // Compact left rail: avatar only (no card chrome).
       'group block w-full p-0 bg-transparent border-0 rounded-none text-left'
-    : 'group block w-full rounded-xl border border-gray-200 bg-gray-50/80 text-left transition-colors hover:bg-gray-100 dark:border-zinc-800 dark:bg-zinc-950/40 dark:hover:bg-zinc-900',
+    : 'group moh-user-card-tier relative block w-full rounded-xl border border-black/10 bg-gray-50/80 text-left transition-colors dark:border-white/10 dark:bg-zinc-950/40',
   props.compact ? 'p-0' : 'p-1 xl:p-2'
 ])
 
@@ -109,12 +114,34 @@ const { getPresenceStatus, isSocketConnecting } = usePresence()
 const { menuItems, confirmVisible, confirmLogout } = useUserMenu()
 const { selectedSpaceId } = useSpaceLobby()
 
+const tierAccentRgb = computed<string | null>(() => {
+  const u = user.value
+  if (!u) return null
+  if (u.premiumPlus || u.isOrganization) return 'var(--moh-org-rgb)'
+  if (u.premium) return 'var(--moh-premium-rgb)'
+  if (u.verifiedStatus && u.verifiedStatus !== 'none') return 'var(--moh-verified-rgb)'
+  return null
+})
+
+const cardStyle = computed<Record<string, string> | undefined>(() => {
+  if (props.compact) return undefined
+  // Keep border neutral; only hover tint follows user tier.
+  if (!tierAccentRgb.value) return { '--user-card-hover': 'var(--moh-surface-hover)' }
+  return {
+    '--user-card-hover': `rgba(${tierAccentRgb.value}, 0.12)`,
+  }
+})
+
 const currentUserPresenceStatus = computed(() => {
   const u = user.value
   if (!u?.id) return 'offline' as const
   if (isSocketConnecting.value) return 'connecting' as const
   return getPresenceStatus(u.id)
 })
+
+const coinCount = computed(() => Math.max(0, Math.floor(Number(user.value?.coins ?? 0))))
+const coinsLabel = computed(() => `${coinCount.value.toLocaleString()} ${coinCount.value === 1 ? 'coin' : 'coins'}`)
+const displayName = computed(() => user.value?.name || user.value?.username || 'User')
 
 type MenuItemWithIcon = MenuItem & { iconName?: string }
 
@@ -143,4 +170,10 @@ function toggleMenu(event: Event) {
   ;(menuRef.value as any)?.toggle(event)
 }
 </script>
+
+<style scoped>
+.moh-user-card-tier:hover {
+  background-color: var(--user-card-hover, var(--moh-surface-hover));
+}
+</style>
 

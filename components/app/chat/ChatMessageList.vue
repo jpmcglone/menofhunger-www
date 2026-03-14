@@ -103,8 +103,84 @@
               />
             </div>
 
-            <!-- Bubble row: action bar LEFT + stacked bubbles + action bar RIGHT -->
-            <div class="flex items-end gap-1">
+            <!-- Media bubbles (render above text/actions when present) -->
+            <template v-if="item.message.media?.length && !item.message.deletedForMe && !item.message.deletedForAll">
+              <div
+                v-for="media in item.message.media"
+                :key="media.id"
+                class="relative overflow-hidden rounded-2xl bg-gray-200 dark:bg-zinc-800"
+              >
+                <!-- Video: poster + play icon, opens in lightbox -->
+                <button
+                  v-if="media.kind === 'video'"
+                  type="button"
+                  class="moh-tap relative block focus:outline-none cursor-zoom-in max-h-[320px] max-w-[260px] w-full"
+                  :style="{ aspectRatio: media.width && media.height ? `${media.width}/${media.height}` : '16/9' }"
+                  aria-label="View video"
+                  @click.stop="(e) => openMessageMedia(e, item.message.media!, media)"
+                >
+                  <img
+                    v-if="media.thumbnailUrl"
+                    :src="media.thumbnailUrl"
+                    class="block h-full w-full object-cover transition-opacity duration-300"
+                    :class="{ 'opacity-0': chatHideThumbs || !loadedMediaIds.has(`thumb-${media.id}`) }"
+                    loading="lazy"
+                    aria-hidden="true"
+                    @load="loadedMediaIds.add(`thumb-${media.id}`)"
+                  />
+                  <div v-else class="absolute inset-0 bg-gray-900" aria-hidden="true" />
+                  <div class="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/20" aria-hidden="true">
+                    <Icon name="tabler:player-play-filled" class="text-3xl text-white drop-shadow" />
+                  </div>
+                </button>
+                <!-- Image / GIF: opens in lightbox -->
+                <button
+                  v-else
+                  type="button"
+                  class="moh-tap relative block focus:outline-none cursor-zoom-in max-h-[320px] max-w-[260px] w-full"
+                  :style="{ aspectRatio: media.width && media.height ? `${media.width}/${media.height}` : '1/1' }"
+                  aria-label="View image"
+                  @click.stop="(e) => openMessageMedia(e, item.message.media!, media)"
+                >
+                  <img
+                    :src="media.url"
+                    :alt="media.alt ?? ''"
+                    class="block h-full w-full object-cover transition-opacity duration-300"
+                    :class="{ 'opacity-0': chatHideThumbs || !loadedMediaIds.has(media.id) }"
+                    loading="lazy"
+                    @load="loadedMediaIds.add(media.id)"
+                  />
+                </button>
+
+                <!-- Timestamp overlay — only when media-only (no text body) -->
+                <div
+                  v-if="!hasTextBubble(item.message) && shouldShowMessageMeta(item, listIndex)"
+                  class="absolute bottom-1.5 right-2 inline-flex items-center gap-1 rounded-full bg-black/40 px-1.5 py-0.5 text-[10px] text-white whitespace-nowrap backdrop-blur-sm"
+                >
+                  <time :datetime="item.message.createdAt" :title="formatMessageTimeFull(item.message.createdAt)">
+                    {{ formatMessageTime(item.message.createdAt) }}
+                  </time>
+                  <template v-if="item.message.sender.id === meId">
+                    <span
+                      v-if="sendingMessageIds.has(item.message.id)"
+                      class="inline-block h-[10px] w-[10px] rounded-full border border-current border-t-transparent opacity-70 animate-spin"
+                      aria-label="Sending"
+                    />
+                    <Icon
+                      v-else-if="latestMyMessageId && item.message.id === latestMyMessageId"
+                      :name="isLatestMyMessageRead ? 'tabler:checks' : 'tabler:circle-check'"
+                      size="10"
+                      :class="['translate-y-[0.5px]', isLatestMyMessageRead ? 'text-blue-400 opacity-90' : 'opacity-60']"
+                      :aria-label="isLatestMyMessageRead ? 'Read' : 'Sent'"
+                      aria-hidden="true"
+                    />
+                  </template>
+                </div>
+              </div>
+            </template>
+
+            <!-- Bubble/action row: for text/deleted messages actions anchor to text bubble. -->
+            <div v-if="hasTextBubble(item.message)" class="flex items-end gap-1">
               <!-- Action bar — LEFT (outgoing) -->
               <div
                 v-if="item.message.sender.id === meId"
@@ -133,91 +209,15 @@
                 </button>
               </div>
 
-              <!-- Stacked bubbles wrapper (ref for reaction picker anchor) -->
+              <!-- Anchor/actions align to text bubble when present, otherwise media bubble stack -->
               <div
                 :ref="(el) => registerBubbleEl(item.key, el)"
                 class="flex min-w-0 max-w-full flex-col gap-1.5 text-sm"
                 :class="item.message.sender.id === meId ? 'items-end' : 'items-start'"
               >
-                <!-- ① Media bubble (own rounded card, above text) -->
-                <template v-if="item.message.media?.length && !item.message.deletedForMe && !item.message.deletedForAll">
-                  <div
-                    v-for="media in item.message.media"
-                    :key="media.id"
-                    class="relative overflow-hidden rounded-2xl bg-gray-200 dark:bg-zinc-800"
-                  >
-                    <!-- Video: poster + play icon, opens in lightbox -->
-                    <button
-                      v-if="media.kind === 'video'"
-                      type="button"
-                      class="moh-tap relative block focus:outline-none cursor-zoom-in max-h-[320px] max-w-[260px] w-full"
-                      :style="{ aspectRatio: media.width && media.height ? `${media.width}/${media.height}` : '16/9' }"
-                      aria-label="View video"
-                      @click.stop="(e) => openMessageMedia(e, item.message.media!, media)"
-                    >
-                      <img
-                        v-if="media.thumbnailUrl"
-                        :src="media.thumbnailUrl"
-                        class="block h-full w-full object-cover transition-opacity duration-300"
-                        :class="{ 'opacity-0': chatHideThumbs || !loadedMediaIds.has(`thumb-${media.id}`) }"
-                        loading="lazy"
-                        aria-hidden="true"
-                        @load="loadedMediaIds.add(`thumb-${media.id}`)"
-                      />
-                      <div v-else class="absolute inset-0 bg-gray-900" aria-hidden="true" />
-                      <div class="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/20" aria-hidden="true">
-                        <Icon name="tabler:player-play-filled" class="text-3xl text-white drop-shadow" />
-                      </div>
-                    </button>
-                    <!-- Image / GIF: opens in lightbox -->
-                    <button
-                      v-else
-                      type="button"
-                      class="moh-tap relative block focus:outline-none cursor-zoom-in max-h-[320px] max-w-[260px] w-full"
-                      :style="{ aspectRatio: media.width && media.height ? `${media.width}/${media.height}` : '1/1' }"
-                      aria-label="View image"
-                      @click.stop="(e) => openMessageMedia(e, item.message.media!, media)"
-                    >
-                      <img
-                        :src="media.url"
-                        :alt="media.alt ?? ''"
-                        class="block h-full w-full object-cover transition-opacity duration-300"
-                        :class="{ 'opacity-0': chatHideThumbs || !loadedMediaIds.has(media.id) }"
-                        loading="lazy"
-                        @load="loadedMediaIds.add(media.id)"
-                      />
-                    </button>
-
-                    <!-- Timestamp overlay — only when media-only (no text body) -->
-                    <div
-                      v-if="!item.message.body.trim() && shouldShowMessageMeta(item, listIndex)"
-                      class="absolute bottom-1.5 right-2 inline-flex items-center gap-1 rounded-full bg-black/40 px-1.5 py-0.5 text-[10px] text-white whitespace-nowrap backdrop-blur-sm"
-                    >
-                      <time :datetime="item.message.createdAt" :title="formatMessageTimeFull(item.message.createdAt)">
-                        {{ formatMessageTime(item.message.createdAt) }}
-                      </time>
-                      <template v-if="item.message.sender.id === meId">
-                        <span
-                          v-if="sendingMessageIds.has(item.message.id)"
-                          class="inline-block h-[10px] w-[10px] rounded-full border border-current border-t-transparent opacity-70 animate-spin"
-                          aria-label="Sending"
-                        />
-                        <Icon
-                          v-else-if="latestMyMessageId && item.message.id === latestMyMessageId"
-                          :name="isLatestMyMessageRead ? 'tabler:checks' : 'tabler:circle-check'"
-                          size="10"
-                          :class="['translate-y-[0.5px]', isLatestMyMessageRead ? 'text-blue-400 opacity-90' : 'opacity-60']"
-                          :aria-label="isLatestMyMessageRead ? 'Read' : 'Sent'"
-                          aria-hidden="true"
-                        />
-                      </template>
-                    </div>
-                  </div>
-                </template>
-
                 <!-- ② Text bubble (only when there's body text, or message is deleted) -->
                 <div
-                  v-if="item.message.deletedForMe || item.message.deletedForAll || item.message.body.trim()"
+                  v-if="hasTextBubble(item.message)"
                   :class="[
                     (item.message.deletedForMe || item.message.deletedForAll)
                       ? 'max-w-full min-w-0 px-3 py-2 italic opacity-60 border border-dashed border-gray-300 dark:border-zinc-600 text-gray-500 dark:text-gray-400 bg-transparent ' + bubbleShapeClass(item.key)
@@ -514,6 +514,10 @@ const isLatestMyMessageRead = computed(() => {
 
 function collapseBlankLines(text: string): string {
   return text.split('\n').filter((line) => line.trim() !== '').join('\n')
+}
+
+function hasTextBubble(message: Message): boolean {
+  return Boolean(message.deletedForMe || message.deletedForAll || (message.body ?? '').trim())
 }
 
 function onRowLeave(id: string) {

@@ -66,7 +66,12 @@
         <!-- Message under avatars (aligned with other notification text) -->
         <div class="mt-2 min-w-0">
           <div :class="['min-w-0 max-w-full line-clamp-2 text-[13px] sm:text-sm', rollup.readAt ? 'font-medium' : 'font-semibold']">
-            <span class="text-gray-600 dark:text-gray-300 font-medium">New posts by</span>
+            <NuxtLink
+              to="/new-posts"
+              class="text-gray-600 dark:text-gray-300 font-medium hover:underline"
+              @click.stop
+            >New posts</NuxtLink>
+            <span class="text-gray-600 dark:text-gray-300 font-medium"> by</span>
             <span class="ml-1 inline-flex items-center gap-1">
               <NuxtLink
                 v-if="firstActor?.username"

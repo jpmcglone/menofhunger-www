@@ -107,12 +107,17 @@
         <aside
           ref="leftRailEl"
           :class="[
-            'no-scrollbar hidden md:block shrink-0 h-full border-r moh-border moh-texture',
-            anyOverlayOpen ? 'overflow-hidden' : 'overflow-y-auto overscroll-y-contain'
+            'hidden md:block shrink-0 h-full border-r moh-border moh-texture overflow-hidden'
           ]"
         >
         <!-- IMPORTANT: no `h-full` + no `overflow-hidden` here, or the rail can't actually scroll -->
         <AppLeftRailContent :compact="navCompactMode">
+          <div
+            :class="[
+              'min-h-0 flex-1 no-scrollbar',
+              anyOverlayOpen ? 'overflow-hidden' : 'overflow-y-auto overscroll-y-contain',
+            ]"
+          >
           <div class="mb-3">
             <NuxtLink
               :to="'/home'"
@@ -338,43 +343,46 @@
             </div>
 
           </nav>
+          </div>
 
-          <!-- Keyboard shortcuts button -->
-          <button
-            type="button"
-            aria-label="Keyboard shortcuts (?)"
-            :class="[
-              'group flex w-full items-center rounded-lg text-gray-400 dark:text-gray-500 moh-surface-hover moh-focus mt-2',
-              !navCompactMode ? 'gap-2 h-8' : 'h-8 justify-center',
-            ]"
-            @click="openShortcutsModal"
-          >
-            <span class="flex h-8 w-12 shrink-0 items-center justify-center">
-              <Icon name="tabler:keyboard" size="16" class="opacity-60" aria-hidden="true" />
-            </span>
-            <span v-if="!navCompactMode" class="hidden xl:flex xl:items-center xl:justify-between xl:flex-1 xl:pr-3 whitespace-nowrap text-xs">
-              Shortcuts
-              <kbd class="inline-flex items-center justify-center rounded border border-current/30 bg-gray-100 dark:bg-zinc-800 px-1 font-mono text-[10px] font-semibold leading-4 opacity-70">?</kbd>
-            </span>
-          </button>
+          <div class="shrink-0 border-t border-black/10 dark:border-white/10 pt-2">
+            <!-- Keyboard shortcuts button -->
+            <button
+              type="button"
+              aria-label="Keyboard shortcuts (?)"
+              :class="[
+                'group flex w-full items-center rounded-lg text-gray-400 dark:text-gray-500 moh-surface-hover moh-focus',
+                !navCompactMode ? 'gap-2 h-8' : 'h-8 justify-center',
+              ]"
+              @click="openShortcutsModal"
+            >
+              <span class="flex h-8 w-12 shrink-0 items-center justify-center">
+                <Icon name="tabler:keyboard" size="16" class="opacity-60" aria-hidden="true" />
+              </span>
+              <span v-if="!navCompactMode" class="hidden xl:flex xl:items-center xl:justify-between xl:flex-1 xl:pr-3 whitespace-nowrap text-xs">
+                Shortcuts
+                <kbd class="inline-flex items-center justify-center rounded border border-current/30 bg-gray-100 dark:bg-zinc-800 px-1 font-mono text-[10px] font-semibold leading-4 opacity-70">?</kbd>
+              </span>
+            </button>
 
-          <AppUserCard v-if="isAuthed" :compact="navCompactMode" />
-          <NuxtLink
-            v-else
-            to="/login"
-            aria-label="Log in"
-            :class="[
-              // Match the Post button shape/style (rounded rect).
-              'group flex h-12 items-center rounded-xl bg-black text-white hover:opacity-95 dark:bg-white dark:text-black moh-focus',
-              navCompactMode ? 'w-12 mx-auto justify-center' : 'w-full',
-              'mt-2'
-            ]"
-          >
-            <span class="flex h-12 w-12 shrink-0 items-center justify-center">
-              <Icon name="tabler:arrow-right" class="text-[22px] opacity-95" aria-hidden="true" />
-            </span>
-            <span v-if="!navCompactMode" class="hidden xl:inline text-base font-semibold">Log in</span>
-          </NuxtLink>
+            <AppUserCard v-if="isAuthed" :compact="navCompactMode" />
+            <NuxtLink
+              v-else
+              to="/login"
+              aria-label="Log in"
+              :class="[
+                // Match the Post button shape/style (rounded rect).
+                'group flex h-12 items-center rounded-xl bg-black text-white hover:opacity-95 dark:bg-white dark:text-black moh-focus',
+                navCompactMode ? 'w-12 mx-auto justify-center' : 'w-full',
+                'mt-2'
+              ]"
+            >
+              <span class="flex h-12 w-12 shrink-0 items-center justify-center">
+                <Icon name="tabler:arrow-right" class="text-[22px] opacity-95" aria-hidden="true" />
+              </span>
+              <span v-if="!navCompactMode" class="hidden xl:inline text-base font-semibold">Log in</span>
+            </NuxtLink>
+          </div>
         </AppLeftRailContent>
         </aside>
 
@@ -888,7 +896,15 @@ import { useBookmarkCollections } from '~/composables/useBookmarkCollections'
 import { useKeyboardHeight } from '~/composables/useKeyboardHeight'
 import { useOnlyMePosts } from '~/composables/useOnlyMePosts'
 import { useReplyModal } from '~/composables/useReplyModal'
-import type { DailyContentToday, DailyQuote, FeedPost, PostVisibility } from '~/types/api'
+import type {
+  DailyContentToday,
+  DailyQuote,
+  FeedPost,
+  GetMessagesUnreadCountResponse,
+  GetNotificationsResponse,
+  NotificationFeedItem,
+  PostVisibility,
+} from '~/types/api'
 import { isComposerEntrypointPath, routeHeaderDefaultsFor, isAdminPath, isSettingsPath } from '~/config/routes'
 import { userColorTier, userTierTextClass } from '~/utils/user-tier'
 
@@ -914,6 +930,8 @@ const {
   isSocketConnected,
   connectionBarJustConnected,
   isSocketConnecting,
+  setNotificationUndeliveredCount,
+  setMessageUnreadCounts,
   reconnect,
 } = usePresence()
 
@@ -1135,6 +1153,37 @@ function applyComposerCustomOptions(options?: ComposerOpenOptions | null) {
 }
 
 const { apiFetch, apiFetchData } = useApiClient()
+const criticalBadgeCountsLoaded = useState<boolean>('critical-badge-counts-loaded', () => false)
+
+async function loadCriticalBadgeCounts(opts?: { force?: boolean }) {
+  if (!isAuthed.value || !user.value?.id) {
+    setNotificationUndeliveredCount(0)
+    setMessageUnreadCounts({ primary: 0, requests: 0 })
+    criticalBadgeCountsLoaded.value = true
+    return
+  }
+  if (criticalBadgeCountsLoaded.value && !opts?.force) return
+
+  const [notifRes, messagesRes] = await Promise.allSettled([
+    apiFetch<NotificationFeedItem[]>('/notifications', { method: 'GET', query: { limit: 1 } }) as Promise<{
+      data: NotificationFeedItem[]
+      pagination?: GetNotificationsResponse['pagination']
+    }>,
+    apiFetchData<GetMessagesUnreadCountResponse['data']>('/messages/unread-count'),
+  ])
+
+  if (notifRes.status === 'fulfilled') {
+    const undelivered = Math.max(0, Number(notifRes.value?.pagination?.undeliveredCount ?? 0) || 0)
+    setNotificationUndeliveredCount(undelivered)
+  }
+  if (messagesRes.status === 'fulfilled') {
+    const primary = Math.max(0, Number(messagesRes.value?.primary ?? 0) || 0)
+    const requests = Math.max(0, Number(messagesRes.value?.requests ?? 0) || 0)
+    setMessageUnreadCounts({ primary, requests })
+  }
+
+  criticalBadgeCountsLoaded.value = true
+}
 async function createPostFromOnlyMeDraft(
   body: string,
   visibility: PostVisibility,
@@ -1471,8 +1520,10 @@ function formatCompactNumber(n: number): string {
 // Initialize here too so SSR and first client render agree on auth-dependent layout branches.
 if (import.meta.server) {
   await initAuth()
+  // Badge counts are high-priority; preload on SSR so they render in initial HTML.
+  await loadCriticalBadgeCounts()
 } else {
-  void initAuth()
+  void initAuth().then(() => loadCriticalBadgeCounts()).catch(() => undefined)
 }
 // nav items are provided by useAppNav() so mobile + desktop stay in sync
 
