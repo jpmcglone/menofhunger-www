@@ -1,4 +1,4 @@
-import type { GetNotificationsResponse, NotificationFeedItem } from '~/types/api'
+import type { GetNotificationsUnreadCountResponse } from '~/types/api'
 import { userColorTier } from '~/utils/user-tier'
 
 export function useNotificationsBadge() {
@@ -25,11 +25,8 @@ export function useNotificationsBadge() {
   async function fetchUndeliveredCount() {
     if (!user.value?.id) return
     try {
-      const res = await apiFetch<NotificationFeedItem[]>('/notifications?limit=1') as {
-        data: NotificationFeedItem[]
-        pagination?: GetNotificationsResponse['pagination']
-      }
-      const raw = res?.pagination?.undeliveredCount ?? 0
+      const res = await apiFetch<GetNotificationsUnreadCountResponse['data']>('/notifications/unread-count')
+      const raw = res?.data?.count ?? 0
       setNotificationUndeliveredCount(raw)
     } catch {
       // Ignore; badge will update on next socket event or page load

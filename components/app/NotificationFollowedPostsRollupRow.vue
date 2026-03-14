@@ -32,7 +32,7 @@
       <div class="min-w-0 flex-1">
         <!-- Top line: avatars (no overlap) + time -->
         <div class="flex items-start justify-between gap-4">
-          <div ref="avatarsEl" class="min-w-0 flex-1 flex flex-wrap items-center gap-3" @click.stop>
+          <div ref="avatarsEl" class="min-w-0 flex-1 flex flex-wrap items-center gap-3">
             <template v-for="a in visibleActors" :key="a.id">
               <NuxtLink
                 v-if="a.username"

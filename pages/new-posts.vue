@@ -25,8 +25,6 @@
           <template v-for="post in displayPosts" :key="post.id">
             <AppFeedPostRow
               :post="post"
-              :collapsed-sibling-replies-count="collapsedSiblingReplyCountFor(post)"
-              :reply-count-for-parent-id="replyCountForParentId"
               :replies-sort="'new'"
             />
           </template>
@@ -67,8 +65,6 @@ usePageSeo({
 
 const {
   displayPosts,
-  collapsedSiblingReplyCountFor,
-  replyCountForParentId,
   nextCursor,
   loading,
   loadingMore,

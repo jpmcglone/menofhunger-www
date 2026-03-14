@@ -1,7 +1,13 @@
 <template>
   <AppPageContent class="h-full min-h-0" bottom="standard">
   <div class="h-full min-h-0">
-    <div class="grid h-full min-h-0 grid-cols-1 md:grid-cols-[22rem_1fr]">
+    <template v-if="isFullWidthRoute">
+      <main class="h-full overflow-y-auto">
+        <NuxtPage />
+      </main>
+    </template>
+
+    <div v-else class="grid h-full min-h-0 grid-cols-1 md:grid-cols-[22rem_1fr]">
       <!-- Left: admin areas -->
       <aside class="hidden md:block h-full overflow-y-auto border-r moh-border">
         <div class="py-4">
@@ -120,6 +126,11 @@ definePageMeta({
 })
 
 const route = useRoute()
+
+const isFullWidthRoute = computed(() => {
+  const p = route.path
+  return /^\/admin\/users\/[^/]+/.test(p) && p !== '/admin/users'
+})
 
 function isActiveArea(key: 'site-settings' | 'users' | 'verification' | 'media-review' | 'feedback' | 'reports' | 'search' | 'jobs' | 'analytics') {
   const p = route.path

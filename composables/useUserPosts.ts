@@ -81,6 +81,9 @@ export function useUserPosts(
       path: `/posts/user/${encodeURIComponent(usernameLower.value)}`,
       query: {
         limit: 30,
+        collapseByRoot: true,
+        collapseMode: 'root',
+        prefer: 'root',
         visibility: filter.value,
         sort: sort.value,
         ...(opts.topLevelOnly ? { topLevelOnly: true } : {}),
@@ -133,19 +136,20 @@ export function useUserPosts(
     return await feedRef.value.loadMore()
   }
 
-  function rootIdFor(p: FeedPost): string {
-    let cur: FeedPost | undefined = p
+  const displayPosts = computed(() => posts.value)
+
+  function rootIdFor(post: FeedPost): string {
+    let cur: FeedPost | undefined = post
     while (cur?.parent) cur = cur.parent
-    return (cur?.id ?? p.id ?? '').trim()
+    return (cur?.id ?? post.id ?? '').trim()
   }
 
   const replyCountByRootId = computed(() => {
     const totals = new Map<string, number>()
-    for (const p of posts.value) {
-      // Count reply items (not root posts) by thread root.
-      const isReply = Boolean((p.parentId ?? '').trim())
+    for (const post of posts.value) {
+      const isReply = Boolean((post.parentId ?? '').trim())
       if (!isReply) continue
-      const rootId = rootIdFor(p)
+      const rootId = rootIdFor(post)
       if (!rootId) continue
       totals.set(rootId, (totals.get(rootId) ?? 0) + 1)
     }
@@ -154,10 +158,10 @@ export function useUserPosts(
 
   const replyCountByParentId = computed(() => {
     const totals = new Map<string, number>()
-    for (const p of posts.value) {
-      const pid = (p.parentId ?? '').trim()
-      if (!pid) continue
-      totals.set(pid, (totals.get(pid) ?? 0) + 1)
+    for (const post of posts.value) {
+      const parentId = (post.parentId ?? '').trim()
+      if (!parentId) continue
+      totals.set(parentId, (totals.get(parentId) ?? 0) + 1)
     }
     return totals
   })
@@ -168,23 +172,18 @@ export function useUserPosts(
     return replyCountByParentId.value.get(pid) ?? 0
   }
 
-  const displayPosts = computed(() => {
-    const seenRootIds = new Set<string>()
-    const out: FeedPost[] = []
-    for (const p of posts.value) {
-      const rootId = rootIdFor(p)
-      if (!rootId) continue
-      if (seenRootIds.has(rootId)) continue
-      seenRootIds.add(rootId)
-      out.push(p)
-    }
-    return out
-  })
+  function collapsedSiblingReplyCountFor(post: FeedPost): number {
+    const rootId = rootIdFor(post)
+    if (!rootId) return 0
+    const totalReplies = replyCountByRootId.value.get(rootId) ?? 0
+    const visibleReplyCount = Boolean((post.parentId ?? '').trim()) ? 1 : 0
+    return Math.max(0, totalReplies - visibleReplyCount)
+  }
 
   const displayItems = computed<UserPostsDisplayItem[]>(() => {
     const out: UserPostsDisplayItem[] = []
     let rootPostCount = 0
-    for (const p of displayPosts.value) {
+    for (const p of posts.value) {
       out.push({ kind: 'post', post: p })
 
       if (!showAds.value) continue
@@ -195,19 +194,10 @@ export function useUserPosts(
       rootPostCount += 1
       if (rootPostCount % 10 !== 0) continue
 
-      const rootId = rootIdFor(p)
-      out.push({ kind: 'ad', key: `ad-after-${rootId || p.id}` })
+      out.push({ kind: 'ad', key: `ad-after-${p.id}` })
     }
     return out
   })
-
-  function collapsedSiblingReplyCountFor(post: FeedPost): number {
-    const rootId = rootIdFor(post)
-    if (!rootId) return 0
-    const totalReplies = replyCountByRootId.value.get(rootId) ?? 0
-    const visibleReplyCount = Boolean((post.parentId ?? '').trim()) ? 1 : 0
-    return Math.max(0, totalReplies - visibleReplyCount)
-  }
 
   async function fetch(nextFilter: UserPostsFilter, nextSort: 'new' | 'trending') {
     const fetchKey = fetchKeyFor(nextFilter, nextSort)
@@ -359,6 +349,9 @@ export function useUserPosts(
           path: `/posts/user/${encodeURIComponent(usernameLower.value)}`,
           query: {
             limit: 30,
+            collapseByRoot: true,
+            collapseMode: 'root',
+            prefer: 'root',
             visibility: filter.value,
             sort: sort.value,
             ...(opts.topLevelOnly ? { topLevelOnly: true } : {}),

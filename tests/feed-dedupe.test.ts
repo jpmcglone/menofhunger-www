@@ -50,8 +50,8 @@ function makePost(p: Partial<FeedPost> & { id: string }): FeedPost {
   } as FeedPost
 }
 
-describe('feed thread de-dupe + collapsed counts', () => {
-  it('dedupes by thread root (reply items sharing same root)', () => {
+describe('feed collapsed-count helpers', () => {
+  it('keeps API-provided ordering/items in displayPosts', () => {
     const visibility = ref<'all'>('all')
     const followingOnly = ref(false)
     const sort = ref<'new'>('new')
@@ -68,7 +68,7 @@ describe('feed thread de-dupe + collapsed counts', () => {
       // Feed returns leaf replies; each contains its parent chain.
       feed.posts.value = [C2, B2, C]
 
-      expect(feed.displayPosts.value.map((p) => p.id)).toEqual(['C2'])
+      expect(feed.displayPosts.value.map((p) => p.id)).toEqual(['C2', 'B2', 'C'])
     })
   })
 
@@ -104,10 +104,10 @@ describe('feed thread de-dupe + collapsed counts', () => {
       const C2 = makePost({ id: 'C2', parentId: 'B', parent: B })
       const B2 = makePost({ id: 'B2', parentId: 'A', parent: A })
 
-      // Root item appears first; it should win the root group.
+      // Root item appears first; displayPosts mirrors API-provided rows.
       feed.posts.value = [A, C2, B2]
 
-      expect(feed.displayPosts.value.map((p) => p.id)).toEqual(['A'])
+      expect(feed.displayPosts.value.map((p) => p.id)).toEqual(['A', 'C2', 'B2'])
       // totalRepliesUnderRoot(A) = 2 (C2, B2). Root row is visible => subtract 0.
       expect(feed.collapsedSiblingReplyCountFor(A)).toBe(2)
     })
@@ -133,7 +133,7 @@ describe('feed thread de-dupe + collapsed counts', () => {
     })
   })
 
-  it('useUserPosts uses the same root de-dupe + collapsed count behavior', async () => {
+  it('useUserPosts mirrors API rows and exposes count helpers', async () => {
     const usernameLower = ref(`user-${Math.random().toString(36).slice(2, 8)}`)
     const userFeed = await runInSetup(() =>
       useUserPosts(usernameLower, {
@@ -151,7 +151,7 @@ describe('feed thread de-dupe + collapsed counts', () => {
 
     userFeed.posts.value = [C, B2]
 
-    expect(userFeed.displayPosts.value.map((p) => p.id)).toEqual(['C'])
+    expect(userFeed.displayPosts.value.map((p) => p.id)).toEqual(['C', 'B2'])
     expect(userFeed.collapsedSiblingReplyCountFor(C)).toBe(1)
     expect(userFeed.replyCountForParentId('A')).toBe(1)
   })

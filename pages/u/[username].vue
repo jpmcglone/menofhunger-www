@@ -289,8 +289,6 @@
                   <AppFeedPostRow
                     v-else
                     :post="item.post"
-                    :collapsed-sibling-replies-count="postsOnlyCollapsedSiblingReplyCountFor(item.post)"
-                    :reply-count-for-parent-id="postsOnlyReplyCountForParentId"
                     :replies-sort="profileSort"
                     @deleted="postsOnlyRemovePost"
                     @edited="(p) => postsOnlyReplacePost(p.post)"
@@ -334,8 +332,6 @@
                   <AppFeedPostRow
                     v-else
                     :post="item.post"
-                    :collapsed-sibling-replies-count="profileCollapsedSiblingReplyCountFor(item.post)"
-                    :reply-count-for-parent-id="profileReplyCountForParentId"
                     :replies-sort="profileSort"
                     @deleted="profileRemovePost"
                     @edited="onProfilePostEdited"
@@ -749,8 +745,6 @@ onMounted(() => nextTick(() => {
 const {
   posts: postsOnlyPosts,
   displayItems: postsOnlyItems,
-  collapsedSiblingReplyCountFor: postsOnlyCollapsedSiblingReplyCountFor,
-  replyCountForParentId: postsOnlyReplyCountForParentId,
   counts: postsOnlyCounts,
   loading: postsOnlyLoading,
   loadingMore: postsOnlyLoadingMore,
@@ -775,8 +769,6 @@ const {
   posts: profilePosts,
   displayPosts: profileDisplayPosts,
   displayItems: profileDisplayItems,
-  collapsedSiblingReplyCountFor: profileCollapsedSiblingReplyCountFor,
-  replyCountForParentId: profileReplyCountForParentId,
   counts: profileCounts,
   loading: profileLoading,
   loadingMore: profileLoadingMore,

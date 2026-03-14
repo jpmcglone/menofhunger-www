@@ -308,7 +308,9 @@ export function useNotifications() {
     if ((n.kind === 'comment' || n.kind === 'mention') && n.subjectArticleId) {
       return `/a/${encodeURIComponent(n.subjectArticleId)}`
     }
-    if (n.kind === 'comment' && n.actorPostId) return `/p/${encodeURIComponent(n.actorPostId)}`
+    if ((n.kind === 'comment' || n.kind === 'followed_post' || n.kind === 'mention') && n.actorPostId) {
+      return `/p/${encodeURIComponent(n.actorPostId)}`
+    }
     if (n.subjectPostId) return `/p/${encodeURIComponent(n.subjectPostId)}`
     if (n.subjectUserId && n.actor?.username) return `/u/${encodeURIComponent(n.actor.username)}`
     return null
@@ -319,11 +321,7 @@ export function useNotifications() {
       const meUsername = (me.value?.username ?? '').trim()
       return meUsername ? `/u/${encodeURIComponent(meUsername)}/followers` : '/settings'
     }
-    if (g.kind === 'followed_post') {
-      const first = g.actors?.[0] ?? null
-      if (first?.username) return `/u/${first.username}`
-      return null
-    }
+    if (g.kind === 'followed_post') return '/new-posts'
     if (g.subjectPostId) return `/p/${g.subjectPostId}`
     return null
   }

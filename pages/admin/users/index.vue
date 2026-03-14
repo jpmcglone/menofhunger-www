@@ -266,7 +266,6 @@
           />
         </div>
 
-
         <div class="space-y-2">
           <label class="text-sm font-medium text-gray-700 dark:text-gray-200">Organization account</label>
           <div class="flex items-start gap-3 rounded-xl border border-gray-200 bg-gray-50 p-3 dark:border-zinc-800 dark:bg-zinc-950/40">
@@ -461,6 +460,16 @@
 
         <div class="rounded-xl border border-gray-200 bg-gray-50 p-3 dark:border-zinc-800 dark:bg-zinc-950/40">
           <div class="text-sm font-semibold text-gray-900 dark:text-gray-50">User details</div>
+          <div class="mt-2">
+            <Button
+              v-if="editingUser?.username"
+              label="View public profile"
+              size="small"
+              severity="secondary"
+              outlined
+              @click="navigateTo(`/u/${encodeURIComponent(editingUser.username)}`)"
+            />
+          </div>
 
           <div class="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
             <div class="text-xs text-gray-500 dark:text-gray-400">User ID</div>
@@ -693,21 +702,32 @@ import { getApiErrorMessage } from '~/utils/api-error'
 import { formatDateTime } from '~/utils/time-format'
 import { useFormSubmit } from '~/composables/useFormSubmit'
 
+const route = useRoute()
+const router = useRouter()
+
 const userQuery = ref('')
 const searching = ref(false)
 const searchedOnce = ref(false)
 const searchError = ref<string | null>(null)
 const results = ref<AdminUser[]>([])
 
-async function runUserSearch() {
+async function runUserSearch(opts?: { updateUrl?: boolean }) {
   if (searching.value) return
   searchError.value = null
   searchedOnce.value = true
   searching.value = true
+
+  const q = userQuery.value.trim()
+
+  if (opts?.updateUrl !== false) {
+    const query = q ? { q } : undefined
+    void router.replace({ path: '/admin/users', query })
+  }
+
   try {
     const res = await apiFetch<AdminUser[]>('/admin/users/search', {
       method: 'GET',
-      query: { q: userQuery.value.trim(), limit: 25 },
+      query: { q, limit: 25 },
     })
     results.value = res.data ?? []
   } catch (e: unknown) {
@@ -716,6 +736,24 @@ async function runUserSearch() {
     searching.value = false
   }
 }
+
+function syncFromUrl() {
+  const q = typeof route.query.q === 'string' ? route.query.q : ''
+  userQuery.value = q
+  void runUserSearch({ updateUrl: false })
+}
+
+onMounted(() => {
+  syncFromUrl()
+})
+
+watch(() => route.query.q, (newQ) => {
+  const q = typeof newQ === 'string' ? newQ : ''
+  if (q !== userQuery.value.trim()) {
+    userQuery.value = q
+    void runUserSearch({ updateUrl: false })
+  }
+})
 
 const editOpen = ref(false)
 const editingUser = ref<AdminUser | null>(null)
@@ -1144,11 +1182,11 @@ async function unverifyEmail() {
 }
 
 function onUserRowClick(u: AdminUser) {
-  // Row click: go to public profile when possible.
-  // If username isn't set, there is no public profile; open edit instead.
+  // Row click: go to admin detail when possible.
+  // If username isn't set, we cannot use username route; open edit instead.
   const username = (u.username ?? '').trim()
   if (u.usernameIsSet && username) {
-    void navigateTo(`/u/${encodeURIComponent(username)}`)
+    void navigateTo(`/admin/users/${encodeURIComponent(username)}`)
     return
   }
   openEdit(u)

@@ -43,6 +43,8 @@ export type AuthUser = {
   checkinStreakDays?: number
   lastCheckinDayKey?: string | null
   longestStreakDays?: number
+  notificationUndeliveredCount?: number
+  messageUnreadCounts?: { primary: number; requests: number }
 }
 
 let clientMePromise: Promise<AuthUser | null> | null = null
@@ -125,6 +127,16 @@ export function useAuth() {
       // If auth state was reset while this request was in flight (logout/401), ignore.
       if (gen !== authGeneration) return null
       user.value = result.data
+      if (result.data?.id) {
+        const notif = Math.max(0, Math.floor(Number(result.data.notificationUndeliveredCount) || 0))
+        useState<number>('notifications-undelivered-count', () => 0).value = notif
+        const primary = Math.max(0, Math.floor(Number(result.data.messageUnreadCounts?.primary) || 0))
+        const requests = Math.max(0, Math.floor(Number(result.data.messageUnreadCounts?.requests) || 0))
+        useState<{ primary: number; requests: number }>('messages-unread-counts', () => ({ primary: 0, requests: 0 })).value = {
+          primary,
+          requests,
+        }
+      }
       return result.data
     } catch (e: unknown) {
       if (import.meta.dev) {

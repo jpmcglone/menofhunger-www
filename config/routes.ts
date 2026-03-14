@@ -74,6 +74,8 @@ export function navCompactModePath(path: string): boolean {
 }
 
 export function isRightRailForcedHiddenPath(path: string): boolean {
+  // Admin user detail pages should show the right rail.
+  if (/^\/admin\/users\/[^/]+/.test(path) && path !== '/admin/users') return false
   // On these routes we want the center column to be as wide as possible.
   const forced = ['/chat', '/admin', '/settings', '/roadmap', '/tiers', '/comparison']
   if (forced.some((p) => path === p || path.startsWith(`${p}/`))) return true

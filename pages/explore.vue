@@ -96,6 +96,24 @@
             <p class="text-sm moh-text-muted">
               No people, articles, or posts found for “{{ searchQueryTrimmed }}”.
             </p>
+            <div
+              v-if="isCheckinQuery && canShowSearchCheckinHint"
+              class="mt-4 rounded-lg border moh-border bg-white/70 dark:bg-zinc-900/50 p-3 text-left"
+            >
+              <div class="text-[11px] font-semibold uppercase tracking-wide" style="color: var(--moh-checkin); opacity: 0.8">
+                Today's Prompt
+              </div>
+              <p class="mt-1 text-sm moh-text">{{ displayCheckinPromptText }}</p>
+              <div class="mt-3 flex justify-end">
+                <Button
+                  :label="hasCheckedInToday ? 'See check-ins' : 'Check in'"
+                  size="small"
+                  rounded
+                  class="moh-btn-scope moh-btn-tone"
+                  @click="hasCheckedInToday ? goToCheckinsFeed() : openCheckinComposer()"
+                />
+              </div>
+            </div>
           </div>
         </div>
       </template>
@@ -253,6 +271,24 @@
           </AppInlineAlert>
         </div>
 
+        <section v-if="shouldRenderCheckinSection" class="space-y-3">
+          <h2 class="px-4 text-sm font-semibold text-gray-900 dark:text-gray-50">
+            Daily check-in
+          </h2>
+          <AppFeedDailyCheckinCard
+            v-if="showExploreCheckinCard"
+            :prompt="displayCheckinPromptText"
+            :streak="displayCheckinStreak"
+            :coins="displayCheckinCoins"
+            :has-checked-in-today="hasCheckedInToday"
+            :error="checkinError"
+            @check-in="openCheckinComposer"
+          />
+          <div v-else-if="checkinLoading" class="flex justify-center py-6">
+            <AppLogoLoader />
+          </div>
+        </section>
+
         <!-- Followed topics -->
         <section v-if="isAuthed && followedTopicsUi.length > 0" class="space-y-3">
           <h2 class="px-4 text-sm font-semibold text-gray-900 dark:text-gray-50">
@@ -318,7 +354,7 @@
         </section>
 
         <!-- Featured -->
-        <section v-if="discoverLoading || featuredPosts.length > 0" class="space-y-3">
+        <section v-if="discoverInitialLoading || featuredPosts.length > 0" class="space-y-3">
           <div class="px-4 flex items-center justify-between gap-3">
             <h2 class="text-sm font-semibold text-gray-900 dark:text-gray-50">
               Featured
@@ -327,13 +363,12 @@
               label="Refresh"
               text
               severity="secondary"
-              :loading="discoverLoading"
               :disabled="discoverLoading"
               @click="refreshDiscover"
             />
           </div>
 
-          <div v-if="discoverLoading && featuredPosts.length === 0" class="flex justify-center py-6">
+          <div v-if="discoverInitialLoading && featuredPosts.length === 0" class="flex justify-center py-6">
             <AppLogoLoader />
           </div>
 
@@ -342,6 +377,33 @@
               v-for="p in featuredPosts"
               :key="p.id"
               :post="p"
+            />
+          </div>
+        </section>
+
+        <!-- Trending articles -->
+        <section v-if="discoverInitialLoading || trendingArticles.length > 0" class="space-y-3">
+          <div class="px-4 flex items-center justify-between gap-3">
+            <h2 class="text-sm font-semibold text-gray-900 dark:text-gray-50">
+              Trending articles
+            </h2>
+            <NuxtLink
+              to="/articles?sort=trending"
+              class="text-sm font-medium hover:underline underline-offset-2 text-[var(--p-primary-color)] moh-focus"
+            >
+              Browse all
+            </NuxtLink>
+          </div>
+
+          <div v-if="discoverInitialLoading && trendingArticles.length === 0" class="flex justify-center py-6">
+            <AppLogoLoader />
+          </div>
+
+          <div v-else-if="trendingArticles.length > 0" class="space-y-0">
+            <AppArticleListCard
+              v-for="article in trendingArticles"
+              :key="article.id"
+              :article="article"
             />
           </div>
         </section>
@@ -365,7 +427,7 @@
 
         <template v-if="isAuthed">
           <!-- People to follow -->
-          <section v-if="discoverLoading || recommendedUsers.length > 0" class="space-y-3">
+          <section v-if="discoverInitialLoading || recommendedUsers.length > 0" class="space-y-3">
             <div class="px-4 flex items-center justify-between gap-3">
               <h2 class="text-sm font-semibold text-gray-900 dark:text-gray-50">
                 People to follow
@@ -374,13 +436,12 @@
                 label="Refresh"
                 text
                 severity="secondary"
-                :loading="discoverLoading"
                 :disabled="discoverLoading"
                 @click="refreshDiscover"
               />
             </div>
 
-            <div v-if="discoverLoading && recommendedUsers.length === 0" class="flex justify-center py-6">
+            <div v-if="discoverInitialLoading && recommendedUsers.length === 0" class="flex justify-center py-6">
               <AppLogoLoader />
             </div>
 
@@ -397,12 +458,12 @@
           </section>
 
           <!-- Trending from recommended -->
-          <section v-if="discoverLoading || trendingPosts.length > 0" class="space-y-3">
+          <section v-if="discoverInitialLoading || trendingPosts.length > 0" class="space-y-3">
             <h2 class="px-4 text-sm font-semibold text-gray-900 dark:text-gray-50">
               Trending from people you might like
             </h2>
 
-            <div v-if="discoverLoading && trendingPosts.length === 0" class="flex justify-center py-6">
+            <div v-if="discoverInitialLoading && trendingPosts.length === 0" class="flex justify-center py-6">
               <AppLogoLoader />
             </div>
 
@@ -512,8 +573,22 @@
 </template>
 
 <script setup lang="ts">
-import type { Article, FeedPost, SearchUserResult, SearchMixedResult, SearchMixedPagination, GetPostsData, GetCategoryPostsData, GetCategoryTopicsData, Topic, TopicCategory } from '~/types/api'
+import type {
+  Article,
+  FeedPost,
+  SearchUserResult,
+  SearchMixedResult,
+  SearchMixedPagination,
+  GetPostsData,
+  GetCategoryPostsData,
+  GetCategoryTopicsData,
+  Topic,
+  TopicCategory,
+  PostVisibility,
+  CheckinAllowedVisibility,
+} from '~/types/api'
 import { getApiErrorMessage } from '~/utils/api-error'
+import { MOH_OPEN_COMPOSER_KEY } from '~/utils/injection-keys'
 
 definePageMeta({
   layout: 'app',
@@ -534,8 +609,11 @@ const route = useRoute()
 const router = useRouter()
 const { apiFetch } = useApiClient()
 const { isAuthed, user: authUser } = useAuth()
+const openComposer = inject(MOH_OPEN_COMPOSER_KEY, null)
+const { dayKey: etDayKey } = useEasternMidnightRollover()
 
 const searchInputRef = ref<{ $el: HTMLInputElement } | null>(null)
+const hydrated = ref(false)
 
 function onGlobalKeyDown(e: KeyboardEvent) {
   if (e.key !== '/') return
@@ -546,11 +624,14 @@ function onGlobalKeyDown(e: KeyboardEvent) {
 }
 
 onMounted(() => {
+  hydrated.value = true
   window.addEventListener('keydown', onGlobalKeyDown)
+  document.addEventListener('visibilitychange', onVisibilityChange)
 })
 
 onBeforeUnmount(() => {
   window.removeEventListener('keydown', onGlobalKeyDown)
+  document.removeEventListener('visibilitychange', onVisibilityChange)
 })
 
 function normalizeQueryParam(v: unknown): string {
@@ -570,6 +651,7 @@ const activeCategory = computed(() => normalizeQueryParam(route.query.category))
 
 const {
   featuredPosts,
+  trendingArticles,
   categories,
   followedTopics,
   onlineUsers,
@@ -577,6 +659,7 @@ const {
   newestUsers,
   trendingPosts,
   loading: discoverLoading,
+  hasLoadedOnce: discoverHasLoadedOnce,
   error: discoverError,
   refresh: refreshDiscover,
   removeUserById: removeDiscoverUser,
@@ -585,6 +668,107 @@ const {
   enabled: computed(() => !isSearching.value),
   isAuthed: computed(() => isAuthed.value),
 })
+const discoverInitialLoading = computed(() => discoverLoading.value && !discoverHasLoadedOnce.value)
+
+const {
+  state: checkinState,
+  loading: checkinLoading,
+  error: checkinError,
+  refresh: refreshCheckin,
+  create: createCheckin,
+} = useDailyCheckin()
+
+const hasCheckedInToday = computed(() => (hydrated.value ? Boolean(checkinState.value?.hasCheckedInToday) : false))
+
+const checkinAllowedVisibilities = computed<CheckinAllowedVisibility[]>(() => {
+  const allowed = checkinState.value?.allowedVisibilities ?? []
+  return Array.isArray(allowed) ? allowed : []
+})
+
+const showExploreCheckinCard = computed(() => {
+  if (!isAuthed.value) return false
+  if (!checkinState.value) return false
+  if (checkinState.value.hasCheckedInToday) return false
+  return checkinAllowedVisibilities.value.length > 0
+})
+
+const shouldRenderCheckinSection = computed(() => {
+  if (!isAuthed.value) return false
+  if (checkinLoading.value) return true
+  if (!checkinState.value) return false
+  if (checkinState.value.hasCheckedInToday) return false
+  return showExploreCheckinCard.value || Boolean(checkinError.value)
+})
+
+const canOpenCheckinComposer = computed(() => Boolean(openComposer) && checkinAllowedVisibilities.value.length > 0)
+
+const checkinPromptText = computed(() => {
+  const p = (checkinState.value?.prompt ?? '').trim()
+  return p || 'Write a check-in…'
+})
+
+const displayCheckinPromptText = computed(() => (hydrated.value ? checkinPromptText.value : 'Write a check-in…'))
+const displayCheckinStreak = computed(() => (hydrated.value ? (checkinState.value?.checkinStreakDays ?? 0) : 0))
+const displayCheckinCoins = computed(() => (hydrated.value ? (checkinState.value?.coins ?? 0) : 0))
+
+function onVisibilityChange() {
+  if (!import.meta.client || document.hidden) return
+  if (!isAuthed.value) return
+  void refreshCheckin()
+}
+
+watch(
+  [isAuthed, etDayKey],
+  ([authed]) => {
+    if (!authed) {
+      checkinState.value = null
+      return
+    }
+    void refreshCheckin()
+  },
+  { immediate: true },
+)
+
+function preferredCheckinVisibility(): CheckinAllowedVisibility {
+  const allowed = checkinAllowedVisibilities.value
+  if (!allowed.length) return 'verifiedOnly'
+  return allowed.includes('premiumOnly') ? 'premiumOnly' : 'verifiedOnly'
+}
+
+async function createCheckinViaComposer(
+  body: string,
+  visibility: PostVisibility,
+  _media?: unknown[] | null,
+  _poll?: unknown,
+): Promise<{ id: string } | FeedPost | null> {
+  const trimmed = body.trim()
+  if (!trimmed) return null
+  const vis: CheckinAllowedVisibility = visibility === 'premiumOnly' ? 'premiumOnly' : 'verifiedOnly'
+  const res = await createCheckin({ body: trimmed, visibility: vis })
+  void refreshCheckin()
+  return res.post
+}
+
+function openCheckinComposer() {
+  if (!canOpenCheckinComposer.value) return
+  const preferred = preferredCheckinVisibility()
+  openComposer?.({
+    visibility: preferred,
+    placeholder: checkinState.value?.prompt ? checkinState.value.prompt : 'Write a check-in…',
+    allowedVisibilities: checkinAllowedVisibilities.value,
+    disableMedia: true,
+    createPost: createCheckinViaComposer,
+  })
+}
+
+function goToCheckinsFeed() {
+  void navigateTo('/check-ins/trending')
+}
+
+const isCheckinQuery = computed(() => /\b(check[\s-]?in|streak|prompt|daily)\b/i.test(searchQueryTrimmed.value))
+const canShowSearchCheckinHint = computed(
+  () => Boolean(isAuthed.value && checkinState.value && (hasCheckedInToday.value || canOpenCheckinComposer.value)),
+)
 
 const { labelByValue: topicLabelByValue, load: loadTopicOptions } = useTopicOptions()
 void loadTopicOptions().catch(() => {})
@@ -781,6 +965,7 @@ const loading = ref(false)
 const loadingMore = ref(false)
 const searchError = ref<string | null>(null)
 const searchedOnce = ref(false)
+const activeSearchSource = ref<'explore' | 'external'>('external')
 
 const hasMore = computed(
   () => nextUserCursor.value !== null || nextArticleCursor.value !== null || nextPostCursor.value !== null,
@@ -835,6 +1020,7 @@ async function fetchPage(params: { append: boolean }) {
   try {
     const query: Record<string, string> = {
       type: 'all',
+      source: activeSearchSource.value,
       q,
       limit: '30',
     }
@@ -898,6 +1084,7 @@ watch(
     }
 
     if (trimmed.length >= 2) {
+      activeSearchSource.value = isUpdatingRouteFromInput ? 'explore' : 'external'
       void fetchPage({ append: false })
     } else {
       clearSearchResults()

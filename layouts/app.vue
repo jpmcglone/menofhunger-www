@@ -901,8 +901,7 @@ import type {
   DailyQuote,
   FeedPost,
   GetMessagesUnreadCountResponse,
-  GetNotificationsResponse,
-  NotificationFeedItem,
+  GetNotificationsUnreadCountResponse,
   PostVisibility,
 } from '~/types/api'
 import { isComposerEntrypointPath, routeHeaderDefaultsFor, isAdminPath, isSettingsPath } from '~/config/routes'
@@ -1164,16 +1163,31 @@ async function loadCriticalBadgeCounts(opts?: { force?: boolean }) {
   }
   if (criticalBadgeCountsLoaded.value && !opts?.force) return
 
+  // Fast path: hydrate from /auth/me payload when available.
+  const bootNotif = Number((user.value as any)?.notificationUndeliveredCount)
+  const bootPrimary = Number((user.value as any)?.messageUnreadCounts?.primary)
+  const bootRequests = Number((user.value as any)?.messageUnreadCounts?.requests)
+  const hasBootCounts =
+    Number.isFinite(bootNotif)
+    && Number.isFinite(bootPrimary)
+    && Number.isFinite(bootRequests)
+  if (hasBootCounts) {
+    setNotificationUndeliveredCount(Math.max(0, Math.floor(bootNotif || 0)))
+    setMessageUnreadCounts({
+      primary: Math.max(0, Math.floor(bootPrimary || 0)),
+      requests: Math.max(0, Math.floor(bootRequests || 0)),
+    })
+    criticalBadgeCountsLoaded.value = true
+    return
+  }
+
   const [notifRes, messagesRes] = await Promise.allSettled([
-    apiFetch<NotificationFeedItem[]>('/notifications', { method: 'GET', query: { limit: 1 } }) as Promise<{
-      data: NotificationFeedItem[]
-      pagination?: GetNotificationsResponse['pagination']
-    }>,
+    apiFetchData<GetNotificationsUnreadCountResponse['data']>('/notifications/unread-count'),
     apiFetchData<GetMessagesUnreadCountResponse['data']>('/messages/unread-count'),
   ])
 
   if (notifRes.status === 'fulfilled') {
-    const undelivered = Math.max(0, Number(notifRes.value?.pagination?.undeliveredCount ?? 0) || 0)
+    const undelivered = Math.max(0, Number(notifRes.value?.count ?? 0) || 0)
     setNotificationUndeliveredCount(undelivered)
   }
   if (messagesRes.status === 'fulfilled') {

@@ -1332,11 +1332,63 @@ export type UserDto = {
   checkinStreakDays: number
   lastCheckinDayKey: string | null
   longestStreakDays: number
+  /** Included by /auth/me bootstrap response for fast badge hydration. */
+  notificationUndeliveredCount?: number
+  /** Included by /auth/me bootstrap response for fast badge hydration. */
+  messageUnreadCounts?: {
+    primary: number
+    requests: number
+  }
 }
 
 export type WsUsersMeUpdatedPayload = {
   user: UserDto
   reason?: string
+}
+
+export type AdminUserSensitiveFields = {
+  phone: string
+  email: string | null
+  birthdate: string | null
+}
+
+export type AdminUserDetailData = UserDto & {
+  orgAffiliations: OrgAffiliation[]
+  sensitive: AdminUserSensitiveFields
+  canRevealSensitive: boolean
+}
+
+export type AdminUserRecentPost = {
+  id: string
+  createdAt: string
+  body: string
+  parentId: string | null
+  rootId: string | null
+  kind: string
+  visibility: string
+  commentCount: number
+  boostCount: number
+  bookmarkCount: number
+}
+
+export type AdminUserRecentArticle = {
+  id: string
+  title: string
+  slug: string
+  excerpt: string | null
+  createdAt: string
+  publishedAt: string | null
+  isDraft: boolean
+  visibility: string
+  viewCount: number
+  boostCount: number
+  commentCount: number
+}
+
+export type AdminUserRecentSearch = {
+  id: string
+  query: string
+  createdAt: string
 }
 
 // --- Daily check-ins ---

@@ -114,6 +114,9 @@ export function usePostsFeed(options: { visibility?: Ref<FeedFilter>; followingO
       path: '/posts',
       query: {
         limit: 30,
+        collapseByRoot: true,
+        collapseMode: 'root',
+        prefer: 'root',
         visibility: visibility.value,
         ...(followingOnly.value ? { followingOnly: true } : {}),
         ...(sort.value === 'trending' ? { sort: 'trending' } : {}),
@@ -323,19 +326,20 @@ export function usePostsFeed(options: { visibility?: Ref<FeedFilter>; followingO
     })
   }
 
-  function rootIdFor(p: FeedPost): string {
-    let cur: FeedPost | undefined = p
+  const displayPosts = computed(() => posts.value)
+
+  function rootIdFor(post: FeedPost): string {
+    let cur: FeedPost | undefined = post
     while (cur?.parent) cur = cur.parent
-    return (cur?.id ?? p.id ?? '').trim()
+    return (cur?.id ?? post.id ?? '').trim()
   }
 
   const replyCountByRootId = computed(() => {
     const totals = new Map<string, number>()
-    for (const p of posts.value) {
-      // Count reply items (not root posts) by thread root.
-      const isReply = Boolean((p.parentId ?? '').trim())
+    for (const post of posts.value) {
+      const isReply = Boolean((post.parentId ?? '').trim())
       if (!isReply) continue
-      const rootId = rootIdFor(p)
+      const rootId = rootIdFor(post)
       if (!rootId) continue
       totals.set(rootId, (totals.get(rootId) ?? 0) + 1)
     }
@@ -344,10 +348,10 @@ export function usePostsFeed(options: { visibility?: Ref<FeedFilter>; followingO
 
   const replyCountByParentId = computed(() => {
     const totals = new Map<string, number>()
-    for (const p of posts.value) {
-      const pid = (p.parentId ?? '').trim()
-      if (!pid) continue
-      totals.set(pid, (totals.get(pid) ?? 0) + 1)
+    for (const post of posts.value) {
+      const parentId = (post.parentId ?? '').trim()
+      if (!parentId) continue
+      totals.set(parentId, (totals.get(parentId) ?? 0) + 1)
     }
     return totals
   })
@@ -358,23 +362,18 @@ export function usePostsFeed(options: { visibility?: Ref<FeedFilter>; followingO
     return replyCountByParentId.value.get(pid) ?? 0
   }
 
-  const displayPosts = computed(() => {
-    const seenRootIds = new Set<string>()
-    const out: FeedPost[] = []
-    for (const p of posts.value) {
-      const rootId = rootIdFor(p)
-      if (!rootId) continue
-      if (seenRootIds.has(rootId)) continue
-      seenRootIds.add(rootId)
-      out.push(p)
-    }
-    return out
-  })
+  function collapsedSiblingReplyCountFor(post: FeedPost): number {
+    const rootId = rootIdFor(post)
+    if (!rootId) return 0
+    const totalReplies = replyCountByRootId.value.get(rootId) ?? 0
+    const visibleReplyCount = Boolean((post.parentId ?? '').trim()) ? 1 : 0
+    return Math.max(0, totalReplies - visibleReplyCount)
+  }
 
   const displayItems = computed<PostsFeedDisplayItem[]>(() => {
     const out: PostsFeedDisplayItem[] = []
     let rootPostCount = 0
-    for (const p of displayPosts.value) {
+    for (const p of posts.value) {
       out.push({ kind: 'post', post: p })
 
       if (!showAds.value) continue
@@ -387,19 +386,10 @@ export function usePostsFeed(options: { visibility?: Ref<FeedFilter>; followingO
       if (rootPostCount % 10 !== 0) continue
 
       // Insert only *between* feed rows (never inside a thread).
-      const rootId = rootIdFor(p)
-      out.push({ kind: 'ad', key: `ad-after-${rootId || p.id}` })
+      out.push({ kind: 'ad', key: `ad-after-${p.id}` })
     }
     return out
   })
-
-  function collapsedSiblingReplyCountFor(post: FeedPost): number {
-    const rootId = rootIdFor(post)
-    if (!rootId) return 0
-    const totalReplies = replyCountByRootId.value.get(rootId) ?? 0
-    const visibleReplyCount = Boolean((post.parentId ?? '').trim()) ? 1 : 0
-    return Math.max(0, totalReplies - visibleReplyCount)
-  }
 
   let prevVisibility: FeedFilter = visibility.value
   let prevSort: FeedSort = sort.value
@@ -476,6 +466,9 @@ export function usePostsFeed(options: { visibility?: Ref<FeedFilter>; followingO
           method: 'GET',
           query: {
             limit: 30,
+            collapseByRoot: true,
+            collapseMode: 'root',
+            prefer: 'root',
             visibility: visibility.value,
             ...(followingOnly.value ? { followingOnly: true } : {}),
             ...(sort.value === 'trending' ? { sort: 'trending' } : {}),

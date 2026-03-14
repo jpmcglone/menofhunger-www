@@ -55,11 +55,11 @@
 
       <template v-if="data">
         <!-- Summary cards -->
-        <div class="px-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-3">
-          <div v-for="card in summaryCards" :key="card.label" class="rounded-xl border moh-border p-4 space-y-1">
-            <div class="text-xs text-gray-500 dark:text-gray-400 font-medium truncate">{{ card.label }}</div>
-            <div class="text-2xl font-bold tabular-nums">{{ card.value }}</div>
-            <div v-if="card.sub" class="text-xs text-gray-500 dark:text-gray-400">{{ card.sub }}</div>
+        <div class="px-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-3">
+          <div v-for="card in summaryCards" :key="card.label" class="rounded-xl border moh-border p-4 space-y-1.5">
+            <div class="text-xs text-gray-600 dark:text-gray-300 font-semibold leading-tight">{{ card.label }}</div>
+            <div class="text-2xl font-bold tabular-nums leading-none">{{ card.value }}</div>
+            <div v-if="card.sub" class="text-xs text-gray-500 dark:text-gray-400 leading-tight">{{ card.sub }}</div>
           </div>
         </div>
 
@@ -214,11 +214,11 @@
 
         <!-- Retention table (always 10-week window) -->
         <div class="px-4 space-y-2">
-          <div class="font-semibold text-sm">Weekly Cohort Retention <span class="text-gray-400 font-normal">(last 10 weeks)</span></div>
+          <div class="font-semibold text-sm">Weekly Cohort Retention <span class="text-gray-500 dark:text-gray-400 font-normal">(last 10 weeks)</span></div>
           <div class="rounded-xl border moh-border overflow-x-auto">
             <table class="min-w-full text-sm">
               <thead>
-                <tr class="border-b moh-border text-left text-gray-500 dark:text-gray-400">
+                <tr class="border-b moh-border text-left text-gray-600 dark:text-gray-300">
                   <th class="px-4 py-3 font-medium">Cohort week</th>
                   <th class="px-4 py-3 font-medium text-right">Users</th>
                   <th class="px-4 py-3 font-medium text-right">W1 retained</th>
@@ -231,13 +231,21 @@
                 <tr v-for="row in retentionRows" :key="row.cohortWeek" class="hover:bg-gray-50 dark:hover:bg-zinc-900/50">
                   <td class="px-4 py-3 font-mono text-xs">{{ row.cohortWeek }}</td>
                   <td class="px-4 py-3 text-right tabular-nums">{{ row.size.toLocaleString() }}</td>
-                  <td class="px-4 py-3 text-right tabular-nums">{{ row.w1.toLocaleString() }}</td>
                   <td class="px-4 py-3 text-right tabular-nums">
-                    <span :class="retentionColor(row.w1Pct)">{{ row.w1Pct }}%</span>
+                    <span v-if="row.isW1Eligible">{{ row.w1.toLocaleString() }}</span>
+                    <span v-else class="text-gray-500 dark:text-gray-400 font-medium">--</span>
                   </td>
-                  <td class="px-4 py-3 text-right tabular-nums">{{ row.w4.toLocaleString() }}</td>
                   <td class="px-4 py-3 text-right tabular-nums">
-                    <span :class="retentionColor(row.w4Pct)">{{ row.w4Pct }}%</span>
+                    <span v-if="row.isW1Eligible" :class="retentionColor(row.w1Pct)">{{ row.w1Pct }}%</span>
+                    <span v-else class="text-gray-500 dark:text-gray-400 font-medium">--</span>
+                  </td>
+                  <td class="px-4 py-3 text-right tabular-nums">
+                    <span v-if="row.isW4Eligible">{{ row.w4.toLocaleString() }}</span>
+                    <span v-else class="text-gray-500 dark:text-gray-400 font-medium">--</span>
+                  </td>
+                  <td class="px-4 py-3 text-right tabular-nums">
+                    <span v-if="row.isW4Eligible" :class="retentionColor(row.w4Pct)">{{ row.w4Pct }}%</span>
+                    <span v-else class="text-gray-500 dark:text-gray-400 font-medium">--</span>
                   </td>
                 </tr>
                 <tr v-if="!retentionRows.length">
@@ -546,21 +554,106 @@ function formatBucket(bucket: string, granularity: AnalyticsGranularity) {
 type SeriesPoint = { bucket: string; count: number }
 
 /**
- * Merges multiple sparse series onto a single sorted date axis,
+ * Merges sparse series onto a full selected-scope axis,
  * filling 0 for any bucket that's missing in a given series.
  */
-function alignSeries(seriesList: SeriesPoint[][], granularity: AnalyticsGranularity) {
-  const bucketSet = new Set<string>()
-  for (const series of seriesList) {
-    for (const p of series) bucketSet.add(p.bucket)
-  }
-  const sortedBuckets = Array.from(bucketSet).sort()
-  const labels = sortedBuckets.map((b) => formatBucket(b, granularity))
+function alignSeries(
+  seriesList: SeriesPoint[][],
+  granularity: AnalyticsGranularity,
+  range: AnalyticsRange,
+  asOfIso: string,
+) {
+  const sortedBuckets = buildBucketAxis(seriesList, granularity, range, asOfIso)
+  const labels = sortedBuckets.map((bucket) => formatBucket(bucket, granularity))
   const counts = seriesList.map((series) => {
-    const map = new Map(series.map((p) => [p.bucket, p.count]))
-    return sortedBuckets.map((b) => map.get(b) ?? 0)
+    const map = new Map(series.map((point) => [point.bucket, point.count]))
+    return sortedBuckets.map((bucket) => map.get(bucket) ?? 0)
   })
   return { labels, counts, totalPoints: sortedBuckets.length }
+}
+
+function buildBucketAxis(
+  seriesList: SeriesPoint[][],
+  granularity: AnalyticsGranularity,
+  range: AnalyticsRange,
+  asOfIso: string,
+) {
+  const asOf = new Date(asOfIso)
+  if (Number.isNaN(asOf.getTime())) return []
+
+  const isAll = range === 'all'
+  const rangeDays = analyticsRangeDays(range)
+  let startDate: Date
+  let endDate: Date
+
+  if (isAll) {
+    const allBuckets = seriesList.flatMap((series) => series.map((point) => point.bucket))
+    if (allBuckets.length === 0) return []
+    const sorted = [...new Set(allBuckets)].sort()
+    startDate = parseUtcBucket(sorted[0]!)
+    endDate = truncateToGranularity(asOf, granularity)
+  } else {
+    // Match backend range semantics: since = now - N days.
+    const since = new Date(asOf.getTime() - (rangeDays * 86400000))
+    startDate = truncateToGranularity(since, granularity)
+    endDate = truncateToGranularity(asOf, granularity)
+  }
+
+  if (startDate.getTime() > endDate.getTime()) {
+    const tmp = startDate
+    startDate = endDate
+    endDate = tmp
+  }
+
+  const buckets: string[] = []
+  let cursor = new Date(startDate)
+  while (cursor.getTime() <= endDate.getTime()) {
+    buckets.push(toBucketKey(cursor))
+    cursor = incrementBucket(cursor, granularity)
+  }
+  return buckets
+}
+
+function analyticsRangeDays(range: AnalyticsRange): number {
+  if (range === '7d') return 7
+  if (range === '30d') return 30
+  if (range === '3m') return 90
+  if (range === '1y') return 365
+  return 0
+}
+
+function parseUtcBucket(bucket: string): Date {
+  return new Date(`${bucket}T00:00:00Z`)
+}
+
+function toBucketKey(date: Date): string {
+  return date.toISOString().slice(0, 10)
+}
+
+function truncateToGranularity(date: Date, granularity: AnalyticsGranularity): Date {
+  const y = date.getUTCFullYear()
+  const m = date.getUTCMonth()
+  const d = date.getUTCDate()
+
+  if (granularity === 'month') {
+    return new Date(Date.UTC(y, m, 1))
+  }
+  if (granularity === 'week') {
+    const weekday = date.getUTCDay()
+    const daysFromMonday = (weekday + 6) % 7
+    return new Date(Date.UTC(y, m, d - daysFromMonday))
+  }
+  return new Date(Date.UTC(y, m, d))
+}
+
+function incrementBucket(date: Date, granularity: AnalyticsGranularity): Date {
+  if (granularity === 'month') {
+    return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 1))
+  }
+  if (granularity === 'week') {
+    return new Date(date.getTime() + 7 * 86400000)
+  }
+  return new Date(date.getTime() + 86400000)
 }
 
 function makeLineDataset(label: string, data: number[], color: string, totalPoints: number) {
@@ -603,7 +696,12 @@ function renderCharts() {
   const granularity = data.value.granularity
 
   if (signupsCanvas.value) {
-    const { labels, counts, totalPoints } = alignSeries([data.value.signups], granularity)
+    const { labels, counts, totalPoints } = alignSeries(
+      [data.value.signups],
+      granularity,
+      selectedRange.value,
+      data.value.asOf,
+    )
     signupsChart?.destroy()
     signupsChart = new Chart(signupsCanvas.value, {
       type: 'line',
@@ -619,6 +717,8 @@ function renderCharts() {
     const { labels, counts, totalPoints } = alignSeries(
       [data.value.posts, data.value.checkins, data.value.articles.published],
       granularity,
+      selectedRange.value,
+      data.value.asOf,
     )
     contentChart?.destroy()
     contentChart = new Chart(contentCanvas.value, {
@@ -636,7 +736,12 @@ function renderCharts() {
   }
 
   if (connectionsCanvas.value) {
-    const { labels, counts, totalPoints } = alignSeries([data.value.messages, data.value.follows], granularity)
+    const { labels, counts, totalPoints } = alignSeries(
+      [data.value.messages, data.value.follows],
+      granularity,
+      selectedRange.value,
+      data.value.asOf,
+    )
     connectionsChart?.destroy()
     connectionsChart = new Chart(connectionsCanvas.value, {
       type: 'line',
@@ -754,12 +859,22 @@ const visibilityRows = computed(() => {
 
 const retentionRows = computed(() => {
   if (!data.value) return []
+  const now = new Date()
   return data.value.retention.map((r) => ({
     ...r,
+    isW1Eligible: cohortWeeksElapsed(r.cohortWeek, now) >= 1,
+    isW4Eligible: cohortWeeksElapsed(r.cohortWeek, now) >= 4,
     w1Pct: r.size > 0 ? Math.round((r.w1 / r.size) * 100) : 0,
     w4Pct: r.size > 0 ? Math.round((r.w4 / r.size) * 100) : 0,
   }))
 })
+
+function cohortWeeksElapsed(cohortWeek: string, nowDate = new Date()): number {
+  const cohortTime = Date.parse(`${cohortWeek}T00:00:00Z`)
+  if (Number.isNaN(cohortTime)) return Number.POSITIVE_INFINITY
+  const elapsedMs = nowDate.getTime() - cohortTime
+  return Math.floor(elapsedMs / (7 * 24 * 60 * 60 * 1000))
+}
 
 function retentionColor(pct: number): string {
   if (pct >= 40) return 'text-green-600 dark:text-green-400 font-semibold'

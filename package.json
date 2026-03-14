@@ -6,6 +6,7 @@
     "node": ">=22.13.0"
   },
   "scripts": {
+    "prebuild": "npx nuxi typecheck && npm run validate-api-types && npm test",
     "build": "NODE_OPTIONS=--max-old-space-size=4096 nuxt build",
     "dev": "NODE_OPTIONS=--max-old-space-size=4096 nuxt dev",
     "dev:check": "node scripts/check-port.mjs",
