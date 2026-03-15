@@ -346,25 +346,6 @@
           </div>
 
           <div class="shrink-0 border-t border-black/10 dark:border-white/10 pt-2">
-            <!-- Keyboard shortcuts button -->
-            <button
-              type="button"
-              aria-label="Keyboard shortcuts (?)"
-              :class="[
-                'group flex w-full items-center rounded-lg text-gray-400 dark:text-gray-500 moh-surface-hover moh-focus',
-                !navCompactMode ? 'gap-2 h-8' : 'h-8 justify-center',
-              ]"
-              @click="openShortcutsModal"
-            >
-              <span class="flex h-8 w-12 shrink-0 items-center justify-center">
-                <Icon name="tabler:keyboard" size="16" class="opacity-60" aria-hidden="true" />
-              </span>
-              <span v-if="!navCompactMode" class="hidden xl:flex xl:items-center xl:justify-between xl:flex-1 xl:pr-3 whitespace-nowrap text-xs">
-                Shortcuts
-                <kbd class="inline-flex items-center justify-center rounded border border-current/30 bg-gray-100 dark:bg-zinc-800 px-1 font-mono text-[10px] font-semibold leading-4 opacity-70">?</kbd>
-              </span>
-            </button>
-
             <AppUserCard v-if="isAuthed" :compact="navCompactMode" />
             <NuxtLink
               v-else

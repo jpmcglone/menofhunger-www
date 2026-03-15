@@ -106,6 +106,7 @@ export function routeHeaderDefaultsFor(path: string): RouteHeaderDefaults {
   if (path === '/only-me') return { icon: undefined, description: 'Private posts that only you can see. These never appear in feeds.' }
   if (path === '/roadmap') return { icon: 'tabler:map', description: 'What we’re building and when.' }
   if (path === '/tiers') return { icon: 'tabler:tags', description: 'Unverified, Verified, and Premium — what you get with each tier.' }
+  if (path === '/coins') return { icon: 'tabler:coin', description: 'Your coin balance, transfers, and activity.' }
   return { icon: undefined, description: undefined }
 }
 

@@ -193,6 +193,7 @@ export function useNotifications() {
   function notificationTypeIconBgClass(n: Notification): string {
     if (n.kind === 'mention') return viewerTierIconBgClass()
     if (n.kind === 'generic') return 'bg-gray-500'
+    if (n.kind === 'coin_transfer') return 'bg-amber-500'
     if (n.kind === 'poll_results_ready') {
       const v = n.subjectPostVisibility ?? null
       if (v === 'premiumOnly') return 'bg-[var(--moh-premium)]'
@@ -229,6 +230,8 @@ export function useNotifications() {
         return 'mentioned you'
       case 'nudge':
         return 'nudged you'
+      case 'coin_transfer':
+        return n.title ?? 'sent you coins'
       case 'generic':
         return 'Notification'
       default:
@@ -256,6 +259,8 @@ export function useNotifications() {
       case 'poll_results_ready':
         // Use the same icon as the composer poll button (known present).
         return 'tabler:chart-bar'
+      case 'coin_transfer':
+        return 'tabler:coin'
       case 'generic':
         return 'tabler:bell'
       default:
@@ -284,6 +289,8 @@ export function useNotifications() {
         return 'Mention'
       case 'nudge':
         return 'Nudge'
+      case 'coin_transfer':
+        return 'Coins'
       default:
         return ''
     }
@@ -304,6 +311,7 @@ export function useNotifications() {
   }
 
   function rowHref(n: Notification): string | null {
+    if (n.kind === 'coin_transfer') return '/coins'
     if (n.kind === 'followed_article' && n.subjectArticleId) return `/a/${encodeURIComponent(n.subjectArticleId)}`
     if ((n.kind === 'comment' || n.kind === 'mention') && n.subjectArticleId) {
       return `/a/${encodeURIComponent(n.subjectArticleId)}`

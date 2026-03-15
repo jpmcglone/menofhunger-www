@@ -30,6 +30,11 @@ export function useUserMenu() {
       iconName: 'tabler:user',
       command: () => viewProfile(),
     },
+    {
+      label: 'Coins',
+      iconName: 'tabler:coin',
+      command: () => navigateTo('/coins'),
+    },
     { separator: true },
     {
       label: 'Feature requests',

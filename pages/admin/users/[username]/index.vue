@@ -213,6 +213,44 @@
           <div class="flex items-center justify-end gap-2">
             <Button label="Save changes" size="small" :loading="editSaving" :disabled="editSaving" @click="saveEdit" />
           </div>
+          <div class="mt-2 rounded-xl border border-gray-200 dark:border-zinc-800 p-3 space-y-2">
+            <div class="text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wide">Coins adjustment</div>
+            <div class="grid gap-2 sm:grid-cols-[1fr_1fr_auto_auto]">
+              <InputNumber
+                v-model="coinsAdjustAmount"
+                input-id="coins-adjust-amount"
+                class="w-full"
+                :min="1"
+                :step="1"
+                :use-grouping="false"
+                placeholder="Amount"
+              />
+              <InputText
+                v-model="coinsAdjustReason"
+                class="w-full"
+                maxlength="200"
+                placeholder="Reason (optional)"
+              />
+              <Button
+                label="Add"
+                severity="success"
+                :loading="coinsAdjustSaving"
+                :disabled="coinsAdjustSaving || !coinsAdjustAmount || coinsAdjustAmount < 1"
+                @click="adjustCoins(1)"
+              />
+              <Button
+                label="Remove"
+                severity="danger"
+                :loading="coinsAdjustSaving"
+                :disabled="coinsAdjustSaving || !coinsAdjustAmount || coinsAdjustAmount < 1"
+                @click="adjustCoins(-1)"
+              />
+            </div>
+            <AppInlineAlert v-if="coinsAdjustError" severity="danger">{{ coinsAdjustError }}</AppInlineAlert>
+            <div class="text-xs text-gray-500 dark:text-gray-400">
+              Creates a transparent activity event showing who added or removed coins.
+            </div>
+          </div>
         </div>
       </div>
 
@@ -287,6 +325,7 @@ import { getApiErrorMessage } from '~/utils/api-error'
 import { formatDateTime } from '~/utils/time-format'
 import { APP_FEATURE_TOGGLE_OPTIONS, type AppFeatureToggle } from '~/config/app-feature-toggles'
 import type {
+  AdminAdjustCoinsResult,
   AdminUserDetailData,
   AdminUserSensitiveFields,
   AdminUserRecentArticle,
@@ -333,6 +372,10 @@ const editIsOrganization = ref(false)
 const editFeatureToggles = ref<AppFeatureToggle[]>([])
 const editSaving = ref(false)
 const editError = ref<string | null>(null)
+const coinsAdjustAmount = ref<number | null>(null)
+const coinsAdjustReason = ref('')
+const coinsAdjustSaving = ref(false)
+const coinsAdjustError = ref<string | null>(null)
 
 const actionSaving = ref(false)
 const banSaving = ref(false)
@@ -498,6 +541,30 @@ async function saveEdit() {
     editError.value = getApiErrorMessage(e) || 'Failed to save user.'
   } finally {
     editSaving.value = false
+  }
+}
+
+async function adjustCoins(sign: 1 | -1) {
+  const current = user.value
+  const rawAmount = Math.floor(Number(coinsAdjustAmount.value || 0))
+  if (!current || coinsAdjustSaving.value || rawAmount < 1) return
+  coinsAdjustSaving.value = true
+  coinsAdjustError.value = null
+  try {
+    const result = await apiFetchData<AdminAdjustCoinsResult>(`/admin/users/${encodeURIComponent(current.id)}/coins/adjust`, {
+      method: 'POST',
+      body: {
+        delta: sign * rawAmount,
+        reason: coinsAdjustReason.value.trim() || null,
+      },
+    })
+    user.value = { ...current, coins: result.targetBalanceAfter }
+    coinsAdjustAmount.value = null
+    coinsAdjustReason.value = ''
+  } catch (e: unknown) {
+    coinsAdjustError.value = getApiErrorMessage(e) || 'Failed to adjust coins.'
+  } finally {
+    coinsAdjustSaving.value = false
   }
 }
 

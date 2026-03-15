@@ -108,10 +108,15 @@
           />
           <!-- Stats: coins + streak -->
           <div v-if="moreHasStats" class="mt-1 flex items-center gap-3">
-            <span v-if="(moreUser.coins ?? 0) > 0" class="flex items-center gap-1 text-xs font-medium text-amber-500 dark:text-amber-400">
+            <NuxtLink
+              v-if="canUseCoins && (moreUser.coins ?? 0) > 0"
+              to="/coins"
+              class="flex items-center gap-1 text-xs font-medium text-amber-500 dark:text-amber-400 hover:text-amber-700 dark:hover:text-amber-300 transition-colors"
+              @click.stop
+            >
               <Icon name="tabler:coin" size="13" aria-hidden="true" />
               {{ moreUser.coins!.toLocaleString() }} coins
-            </span>
+            </NuxtLink>
             <span v-if="(moreUser.checkinStreakDays ?? 0) > 0" class="flex items-center gap-1 text-xs font-medium text-orange-500 dark:text-orange-400">
               <Icon name="tabler:flame" size="13" aria-hidden="true" />
               {{ moreUser.checkinStreakDays }}d streak
@@ -161,6 +166,28 @@
       </div>
 
       <div class="mt-1 border-t border-gray-200 dark:border-zinc-700 pt-2 pb-3 px-5 flex flex-col gap-0.5">
+        <NuxtLink
+          v-if="moreUser && canUseCoins"
+          to="/coins"
+          class="moh-tap flex w-full items-center justify-between gap-2 py-2 moh-focus rounded-lg px-2 -mx-1"
+          :class="[
+            isActive('/coins')
+              ? 'moh-surface font-semibold text-gray-900 dark:text-gray-100'
+              : 'moh-surface-hover text-gray-600 dark:text-gray-400',
+          ]"
+          @click="() => { moreOpen = false }"
+        >
+          <div class="flex items-center gap-2 min-w-0">
+            <Icon
+              name="tabler:coin"
+              size="16"
+              class="opacity-80 shrink-0"
+              aria-hidden="true"
+            />
+            <span class="text-xs font-medium truncate">Coins</span>
+          </div>
+        </NuxtLink>
+
         <NuxtLink
           v-for="mi in footerMenuItems"
           :key="mi.key"
@@ -234,8 +261,9 @@ const haptics = useHaptics()
 
 // User data exposed to the "More" bottom sheet.
 const moreUser = computed(() => user.value ?? null)
+const canUseCoins = computed(() => (moreUser.value?.verifiedStatus ?? 'none') !== 'none')
 const moreHasStats = computed(
-  () => (moreUser.value?.coins ?? 0) > 0 || (moreUser.value?.checkinStreakDays ?? 0) > 0,
+  () => (canUseCoins.value && (moreUser.value?.coins ?? 0) > 0) || (moreUser.value?.checkinStreakDays ?? 0) > 0,
 )
 const { openShortcutsModal } = useKeyboardShortcuts()
 

@@ -50,6 +50,14 @@ export type AuthUser = {
 let clientMePromise: Promise<AuthUser | null> | null = null
 let authGeneration = 0
 
+function isNuxtComposableContextError(e: unknown): boolean {
+  const message = String((e as { message?: unknown } | null | undefined)?.message ?? '')
+  return (
+    message.includes('A composable that requires access to the Nuxt instance was called outside') ||
+    message.includes('called outside of a plugin, Nuxt hook, Nuxt middleware, or Vue setup function')
+  )
+}
+
 export function useAuth() {
   const { apiFetch } = useApiClient()
   const usersStore = useUsersStore()
@@ -57,6 +65,11 @@ export function useAuth() {
   const user = useState<AuthUser | null>('auth-user', () => null)
   const didAttempt = useState<boolean>('auth-did-attempt', () => false)
   const initDone = useState<boolean>('auth-init-done', () => false)
+  // Hoist these to the setup scope so they survive `await` inside me() —
+  // calling useState after an await loses the Nuxt instance context on SSR.
+  // Guardrail: never add new useState() calls inside `me()` after its first await.
+  const notifCount = useState<number>('notifications-undelivered-count', () => 0)
+  const messageUnreadCounts = useState<{ primary: number; requests: number }>('messages-unread-counts', () => ({ primary: 0, requests: 0 }))
 
   // Realtime: keep user tier/profile in sync across tabs/devices.
   const wsHooked = useState<boolean>('auth-ws-users-self-updated-hooked', () => false)
@@ -128,18 +141,18 @@ export function useAuth() {
       if (gen !== authGeneration) return null
       user.value = result.data
       if (result.data?.id) {
-        const notif = Math.max(0, Math.floor(Number(result.data.notificationUndeliveredCount) || 0))
-        useState<number>('notifications-undelivered-count', () => 0).value = notif
-        const primary = Math.max(0, Math.floor(Number(result.data.messageUnreadCounts?.primary) || 0))
-        const requests = Math.max(0, Math.floor(Number(result.data.messageUnreadCounts?.requests) || 0))
-        useState<{ primary: number; requests: number }>('messages-unread-counts', () => ({ primary: 0, requests: 0 })).value = {
-          primary,
-          requests,
+        notifCount.value = Math.max(0, Math.floor(Number(result.data.notificationUndeliveredCount) || 0))
+        messageUnreadCounts.value = {
+          primary: Math.max(0, Math.floor(Number(result.data.messageUnreadCounts?.primary) || 0)),
+          requests: Math.max(0, Math.floor(Number(result.data.messageUnreadCounts?.requests) || 0)),
         }
       }
       return result.data
     } catch (e: unknown) {
       if (import.meta.dev) {
+        if (isNuxtComposableContextError(e)) {
+          console.error('[auth] Nuxt composable context error in /auth/me flow. Keep useState/useRoute/useRequest* at setup scope only.', e)
+        }
         console.warn('[auth] /auth/me failed', e)
       }
       // If the API is unreachable, fail gracefully.

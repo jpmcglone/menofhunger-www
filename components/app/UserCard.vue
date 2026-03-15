@@ -1,5 +1,25 @@
 <template>
   <div class="pt-3">
+    <div v-if="showTopControls" class="mb-1.5 flex items-center justify-between gap-2">
+      <button
+        type="button"
+        class="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs font-medium text-gray-500 dark:text-gray-400 hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
+        @click.stop="openShortcutsModal"
+      >
+        <span>Shortcuts</span>
+        <span class="inline-flex h-4 min-w-[1rem] items-center justify-center rounded border border-current/35 px-1 font-mono text-[10px] leading-none">?</span>
+      </button>
+
+      <NuxtLink
+        v-if="canUseCoins"
+        to="/coins"
+        class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-50 dark:bg-amber-900/30 border border-amber-200/60 dark:border-amber-700/40 text-sm font-medium text-amber-700 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/50 transition-colors"
+      >
+        <Icon name="tabler:coin" size="14" aria-hidden="true" />
+        <span class="truncate tabular-nums">{{ coinCountLabel }}</span>
+      </NuxtLink>
+    </div>
+
     <NuxtLink
       v-if="hideMenu && (linkToHome || user?.username)"
       :to="linkToHome ? '/home' : `/u/${user!.username}`"
@@ -22,10 +42,6 @@
           <div class="min-w-0">
             <div class="mt-0.5 flex items-center min-w-0">
               <div class="font-semibold truncate text-gray-900 dark:text-gray-50">{{ displayName }}</div>
-            </div>
-            <div class="mt-0.5 flex items-center gap-1 text-sm text-amber-700 dark:text-amber-300">
-              <Icon name="tabler:coin" size="14" aria-hidden="true" />
-              <span class="truncate">{{ coinsLabel }}</span>
             </div>
           </div>
         </div>
@@ -55,10 +71,6 @@
           <div class="min-w-0 pr-1">
             <div class="mt-0.5 flex items-center min-w-0">
               <div class="font-semibold truncate text-gray-900 dark:text-gray-50">{{ displayName }}</div>
-            </div>
-            <div class="mt-0.5 flex items-center gap-1 text-sm text-amber-700 dark:text-amber-300">
-              <Icon name="tabler:coin" size="14" aria-hidden="true" />
-              <span class="truncate">{{ coinsLabel }}</span>
             </div>
           </div>
         </div>
@@ -113,6 +125,8 @@ const { user } = useAuth()
 const { getPresenceStatus, isSocketConnecting } = usePresence()
 const { menuItems, confirmVisible, confirmLogout } = useUserMenu()
 const { selectedSpaceId } = useSpaceLobby()
+const { openShortcutsModal } = useKeyboardShortcuts()
+const isXlUp = useHydratedMediaQuery('(min-width: 1280px)')
 
 const tierAccentRgb = computed<string | null>(() => {
   const u = user.value
@@ -140,8 +154,10 @@ const currentUserPresenceStatus = computed(() => {
 })
 
 const coinCount = computed(() => Math.max(0, Math.floor(Number(user.value?.coins ?? 0))))
-const coinsLabel = computed(() => `${coinCount.value.toLocaleString()} ${coinCount.value === 1 ? 'coin' : 'coins'}`)
+const coinCountLabel = computed(() => coinCount.value.toLocaleString())
+const canUseCoins = computed(() => (user.value?.verifiedStatus ?? 'none') !== 'none')
 const displayName = computed(() => user.value?.name || user.value?.username || 'User')
+const showTopControls = computed(() => !props.compact && !props.hideMenu && isXlUp.value)
 
 type MenuItemWithIcon = MenuItem & { iconName?: string }
 

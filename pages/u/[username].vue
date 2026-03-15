@@ -116,13 +116,17 @@
                     </div>
                     <div class="font-semibold tabular-nums moh-text">{{ streakLongestDays }}d</div>
                   </div>
-                  <div v-if="isSelf" class="flex items-center justify-between gap-4">
+                  <NuxtLink
+                    v-if="isSelf"
+                    to="/coins"
+                    class="flex items-center justify-between gap-4 hover:bg-black/5 dark:hover:bg-white/5 rounded-lg px-1 -mx-1 py-0.5 transition-colors"
+                  >
                     <div class="flex items-center gap-1.5 font-medium moh-text-muted">
-                      <Icon name="tabler:coin" class="text-[13px]" aria-hidden="true" />
+                      <Icon name="tabler:coin" class="text-[13px] text-amber-500" aria-hidden="true" />
                       Coins
                     </div>
                     <div class="font-semibold tabular-nums moh-text">{{ formatCount(authUser?.coins ?? 0) }}</div>
-                  </div>
+                  </NuxtLink>
                 </div>
               </div>
             </Transition>

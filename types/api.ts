@@ -927,6 +927,7 @@ export type NotificationKind =
   | 'nudge'
   | 'poll_results_ready'
   | 'generic'
+  | 'coin_transfer'
 
 export type NotificationGroupKind = 'comment' | 'boost' | 'repost' | 'follow' | 'followed_post' | 'nudge'
 
@@ -1391,6 +1392,13 @@ export type AdminUserRecentSearch = {
   createdAt: string
 }
 
+export type AdminAdjustCoinsResult = {
+  transferId: string
+  targetUserId: string
+  delta: number
+  targetBalanceAfter: number
+}
+
 // --- Daily check-ins ---
 
 export type CheckinAllowedVisibility = 'verifiedOnly' | 'premiumOnly'
@@ -1610,3 +1618,50 @@ export type ArticleComment = {
   replies?: ArticleComment[]
 }
 
+
+export type CoinTransferCounterparty = {
+  userId: string
+  username: string
+  displayName: string | null
+  avatarUrl: string | null
+}
+
+export type CoinTransferItem = {
+  id: string
+  createdAt: string
+  amount: number
+  note: string | null
+  direction: 'sent' | 'received' | 'admin_added' | 'admin_removed'
+  counterparty: CoinTransferCounterparty
+}
+
+export type CoinTransferReceiptParty = {
+  userId: string
+  username: string | null
+  displayName: string | null
+  avatarUrl: string | null
+}
+
+export type CoinTransferReceipt = {
+  id: string
+  createdAt: string
+  amount: number
+  note: string | null
+  direction: 'sent' | 'received' | 'admin_added' | 'admin_removed'
+  sender: CoinTransferReceiptParty
+  recipient: CoinTransferReceiptParty
+  counterparty: CoinTransferCounterparty
+}
+
+export type TransferCoinsRequest = {
+  recipientUsername: string
+  amount: number
+  note?: string | null
+}
+
+export type TransferCoinsResponse = {
+  transferId: string
+  amount: number
+  recipientUsername: string
+  senderBalanceAfter: number
+}
