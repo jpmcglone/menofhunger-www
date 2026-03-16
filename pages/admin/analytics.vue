@@ -122,6 +122,114 @@
           </div>
         </div>
 
+        <!-- ─── Coins ────────────────────────────────────────────────── -->
+
+        <!-- Coin KPI cards -->
+        <div class="px-4 space-y-2">
+          <div class="font-semibold text-sm">Coins <span class="text-gray-400 font-normal">({{ rangeLabel }} unless noted)</span></div>
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div v-for="card in coinKpiCards" :key="card.label" class="rounded-xl border moh-border p-4 space-y-1">
+              <div class="text-xs text-gray-500 dark:text-gray-400 font-medium truncate">{{ card.label }}</div>
+              <div class="text-2xl font-bold tabular-nums" :class="card.color ?? ''">{{ card.value }}</div>
+              <div class="text-xs text-gray-500 dark:text-gray-400">{{ card.sub }}</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Coins minted chart -->
+        <div class="px-4 space-y-2">
+          <div class="font-semibold text-sm">Coins Minted from Streaks <span class="text-gray-400 font-normal">({{ rangeLabel }})</span></div>
+          <div class="rounded-xl border moh-border p-4">
+            <canvas ref="coinsMintedCanvas" height="180" />
+          </div>
+        </div>
+
+        <!-- Multiplier breakdown -->
+        <div class="px-4 space-y-2">
+          <div class="font-semibold text-sm">Streak Multiplier Distribution <span class="text-gray-400 font-normal">({{ rangeLabel }})</span></div>
+          <div class="rounded-xl border moh-border p-4 space-y-3">
+            <div v-if="coinMultiplierTotal === 0" class="text-sm text-gray-400 dark:text-gray-500 italic">
+              No streak rewards yet.
+            </div>
+            <template v-else>
+              <div v-for="row in coinMultiplierRows" :key="row.label" class="space-y-1">
+                <div class="flex items-center justify-between text-sm">
+                  <div class="flex items-center gap-2">
+                    <span class="inline-block w-2.5 h-2.5 rounded-full" :class="row.dot" />
+                    <span class="font-medium">{{ row.label }}</span>
+                    <span class="text-xs text-gray-400 dark:text-gray-500">{{ row.desc }}</span>
+                  </div>
+                  <div class="flex items-center gap-3 tabular-nums">
+                    <span class="text-xs text-gray-500 dark:text-gray-400">{{ row.pct }}%</span>
+                    <span class="font-semibold">{{ row.count.toLocaleString() }}</span>
+                  </div>
+                </div>
+                <div class="h-1.5 rounded-full bg-gray-100 dark:bg-zinc-800 overflow-hidden">
+                  <div class="h-full rounded-full transition-all" :class="row.bar" :style="{ width: row.pct + '%' }" />
+                </div>
+              </div>
+            </template>
+          </div>
+        </div>
+
+        <!-- Economy health indicators -->
+        <div class="px-4 space-y-2">
+          <div class="font-semibold text-sm">Economy Health <span class="text-gray-400 font-normal">(all-time unless noted)</span></div>
+          <div class="rounded-xl border moh-border p-4 space-y-4">
+            <!-- Velocity ratio -->
+            <div>
+              <div class="flex items-start justify-between gap-2">
+                <div>
+                  <div class="text-xs font-semibold text-gray-700 dark:text-gray-300">Velocity Ratio</div>
+                  <div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                    Coins transferred ÷ coins minted ({{ rangeLabel }}). Higher = coins are circulating; lower = mostly being saved.
+                  </div>
+                </div>
+                <div class="text-xl font-bold tabular-nums shrink-0" :class="velocityColor">
+                  {{ data?.coins.velocityRatio != null ? data.coins.velocityRatio.toFixed(3) : '—' }}
+                </div>
+              </div>
+              <div v-if="data?.coins.velocityRatio != null" class="mt-2 text-xs text-gray-500 dark:text-gray-400 italic">
+                <template v-if="data.coins.velocityRatio < 0.1">Very low — almost no coins are being shared yet.</template>
+                <template v-else-if="data.coins.velocityRatio < 0.4">Low — coins are mostly being saved.</template>
+                <template v-else-if="data.coins.velocityRatio < 0.8">Moderate — healthy mix of saving and spending.</template>
+                <template v-else>High — coins are actively circulating.</template>
+              </div>
+            </div>
+
+            <hr class="moh-border" />
+
+            <!-- Gini coefficient -->
+            <div>
+              <div class="flex items-start justify-between gap-2">
+                <div>
+                  <div class="text-xs font-semibold text-gray-700 dark:text-gray-300">Gini Coefficient</div>
+                  <div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                    Distribution inequality (0 = everyone equal, 1 = one person holds all coins). Computed over all non-banned holders.
+                  </div>
+                </div>
+                <div class="text-xl font-bold tabular-nums shrink-0" :class="giniColor">
+                  {{ data?.coins.giniCoefficient != null ? data.coins.giniCoefficient.toFixed(3) : '—' }}
+                </div>
+              </div>
+              <div v-if="data?.coins.giniCoefficient != null" class="mt-2">
+                <div class="h-2 rounded-full bg-gray-100 dark:bg-zinc-800 overflow-hidden">
+                  <div
+                    class="h-full rounded-full transition-all"
+                    :class="giniBarColor"
+                    :style="{ width: (data.coins.giniCoefficient * 100).toFixed(1) + '%' }"
+                  />
+                </div>
+                <div class="mt-1 text-xs text-gray-500 dark:text-gray-400 italic">
+                  <template v-if="data.coins.giniCoefficient < 0.35">Relatively equal distribution.</template>
+                  <template v-else-if="data.coins.giniCoefficient < 0.55">Moderate inequality — typical for early economies.</template>
+                  <template v-else>High inequality — a small group holds most coins.</template>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- ─── Articles ──────────────────────────────────────────────── -->
 
         <!-- Article KPI cards -->
@@ -491,10 +599,12 @@ const error = ref<string | null>(null)
 const signupsCanvas = ref<HTMLCanvasElement | null>(null)
 const contentCanvas = ref<HTMLCanvasElement | null>(null)
 const connectionsCanvas = ref<HTMLCanvasElement | null>(null)
+const coinsMintedCanvas = ref<HTMLCanvasElement | null>(null)
 
 let signupsChart: Chart | null = null
 let contentChart: Chart | null = null
 let connectionsChart: Chart | null = null
+let coinsMintedChart: Chart | null = null
 
 const colorMode = useColorMode()
 const isDark = computed(() => colorMode.value === 'dark')
@@ -755,9 +865,86 @@ function renderCharts() {
       options: opts,
     })
   }
+
+  if (coinsMintedCanvas.value && data.value.coins.minted.length > 0) {
+    const { labels, counts, totalPoints } = alignSeries(
+      [data.value.coins.minted],
+      granularity,
+      selectedRange.value,
+      data.value.asOf,
+    )
+    coinsMintedChart?.destroy()
+    coinsMintedChart = new Chart(coinsMintedCanvas.value, {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [makeLineDataset('Coins minted', counts[0] ?? [], '#f59e0b', totalPoints)],
+      },
+      options: opts,
+    })
+  }
 }
 
 // ─── Computed ─────────────────────────────────────────────────────────────────
+
+const coinKpiCards = computed(() => {
+  if (!data.value) return []
+  const c = data.value.coins
+  const r = rangeLabel.value
+  return [
+    { label: 'Total in Economy', value: c.totalInEconomy.toLocaleString(), sub: 'all users, all time', color: 'text-amber-600 dark:text-amber-400' },
+    { label: 'Minted from Streaks', value: c.mintedInRange.toLocaleString(), sub: r },
+    { label: 'Sent Peer-to-Peer', value: c.transferredInRange.toLocaleString(), sub: r },
+    { label: 'Unique Earners', value: c.uniqueEarnersInRange.toLocaleString(), sub: `earned in ${r}` },
+  ]
+})
+
+const MULTIPLIER_META: Array<{ amount: number; label: string; desc: string; dot: string; bar: string }> = [
+  { amount: 1, label: '1x', desc: 'days 1–7',   dot: 'bg-gray-400',   bar: 'bg-gray-400' },
+  { amount: 2, label: '2x', desc: 'days 8–14',  dot: 'bg-amber-400',  bar: 'bg-amber-400' },
+  { amount: 3, label: '3x', desc: 'days 15–21', dot: 'bg-orange-500', bar: 'bg-orange-500' },
+  { amount: 4, label: '4x', desc: 'days 22+',   dot: 'bg-red-500',    bar: 'bg-red-500' },
+]
+
+const coinMultiplierTotal = computed(() => {
+  if (!data.value) return 0
+  return Object.values(data.value.coins.mintedByMultiplier).reduce((a, b) => a + b, 0)
+})
+
+const velocityColor = computed(() => {
+  const v = data.value?.coins.velocityRatio
+  if (v == null) return 'text-gray-400 dark:text-gray-500'
+  if (v < 0.1) return 'text-gray-400 dark:text-gray-500'
+  if (v < 0.4) return 'text-blue-600 dark:text-blue-400'
+  if (v < 0.8) return 'text-green-600 dark:text-green-400'
+  return 'text-orange-500 dark:text-orange-400'
+})
+
+const giniColor = computed(() => {
+  const g = data.value?.coins.giniCoefficient
+  if (g == null) return 'text-gray-400 dark:text-gray-500'
+  if (g < 0.35) return 'text-green-600 dark:text-green-400'
+  if (g < 0.55) return 'text-amber-600 dark:text-amber-400'
+  return 'text-red-600 dark:text-red-400'
+})
+
+const giniBarColor = computed(() => {
+  const g = data.value?.coins.giniCoefficient
+  if (g == null) return 'bg-gray-400'
+  if (g < 0.35) return 'bg-green-500'
+  if (g < 0.55) return 'bg-amber-500'
+  return 'bg-red-500'
+})
+
+const coinMultiplierRows = computed(() => {
+  if (!data.value) return []
+  const total = coinMultiplierTotal.value
+  const byMult = data.value.coins.mintedByMultiplier
+  return MULTIPLIER_META.map((m) => {
+    const count = byMult[String(m.amount)] ?? 0
+    return { ...m, count, pct: total > 0 ? Math.round((count / total) * 100) : 0 }
+  })
+})
 
 const ARTICLE_VISIBILITY_META: Record<string, { label: string; description: string; dot: string; bar: string }> = {
   public:       { label: 'Public',       description: 'visible to everyone',    dot: 'bg-blue-500',   bar: 'bg-blue-500' },
@@ -825,6 +1012,7 @@ const summaryCards = computed(() => {
     { label: 'DAU/MAU', value: dauMauPct + '%', sub: 'Stickiness' },
     { label: 'Premium', value: summary.premiumUsers.toLocaleString(), sub: `incl. ${summary.premiumPlusUsers} Premium+` },
     { label: 'Banked Grants', value: summary.usersWithActiveGrants.toLocaleString(), sub: 'users w/ free months' },
+    { label: 'Coins in Economy', value: summary.totalCoinsInEconomy.toLocaleString(), sub: 'see Coins section ↓' },
   ]
 })
 
@@ -930,5 +1118,6 @@ onUnmounted(() => {
   signupsChart?.destroy()
   contentChart?.destroy()
   connectionsChart?.destroy()
+  coinsMintedChart?.destroy()
 })
 </script>

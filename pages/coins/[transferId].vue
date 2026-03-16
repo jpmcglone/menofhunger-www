@@ -26,10 +26,12 @@ function shortDateTime(iso: string): string {
 }
 
 function isPositiveDirection(direction: CoinTransferReceipt['direction']): boolean {
-  return direction === 'received' || direction === 'admin_added'
+  return direction === 'received' || direction === 'admin_added' || direction === 'streak_reward' || direction === 'verification_gift'
 }
 
 function receiptLabel(direction: CoinTransferReceipt['direction']): string {
+  if (direction === 'streak_reward') return 'Streak reward'
+  if (direction === 'verification_gift') return 'Welcome gift'
   if (direction === 'admin_added') return 'Admin adjustment (added)'
   if (direction === 'admin_removed') return 'Admin adjustment (removed)'
   return 'Amount'
@@ -98,7 +100,46 @@ onMounted(() => {
           <div class="mt-1 text-xs text-gray-500 dark:text-gray-400">Receipt #{{ receipt.id }}</div>
         </div>
 
-        <div class="rounded-2xl border border-gray-200 bg-white/95 shadow-sm p-4 space-y-3 dark:border-white/10 dark:bg-white/[0.03]">
+        <!-- Streak reward / verification gift: show earned-by card instead of sender/recipient -->
+        <div
+          v-if="receipt.direction === 'streak_reward' || receipt.direction === 'verification_gift'"
+          class="rounded-2xl border border-gray-200 bg-white/95 shadow-sm p-4 space-y-3 dark:border-white/10 dark:bg-white/[0.03]"
+        >
+          <div class="text-sm font-semibold text-gray-900 dark:text-gray-100">Earned by</div>
+          <div class="flex items-center gap-3 rounded-xl border border-gray-200 dark:border-white/10 px-3 py-2.5">
+            <AppUserAvatar
+              :user="{ id: receipt.recipient.userId, username: receipt.recipient.username, avatarUrl: receipt.recipient.avatarUrl }"
+              size-class="h-9 w-9"
+              :show-presence="false"
+            />
+            <div class="min-w-0 flex-1">
+              <NuxtLink
+                v-if="receipt.recipient.username"
+                :to="`/u/${receipt.recipient.username}`"
+                class="font-semibold text-gray-900 dark:text-gray-100 hover:underline truncate"
+              >
+                {{ receipt.recipient.displayName?.trim() || `@${receipt.recipient.username}` }}
+              </NuxtLink>
+              <div v-else class="font-semibold text-gray-900 dark:text-gray-100 truncate">
+                {{ receipt.recipient.displayName || 'Unknown user' }}
+              </div>
+            </div>
+            <NuxtLink
+              v-if="receipt.recipient.username"
+              :to="`/u/${receipt.recipient.username}`"
+              class="inline-flex items-center gap-1 text-xs font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 transition-colors"
+            >
+              Profile
+              <Icon name="tabler:chevron-right" size="14" />
+            </NuxtLink>
+          </div>
+        </div>
+
+        <!-- Transfer: show both sender and recipient -->
+        <div
+          v-else
+          class="rounded-2xl border border-gray-200 bg-white/95 shadow-sm p-4 space-y-3 dark:border-white/10 dark:bg-white/[0.03]"
+        >
           <div class="text-sm font-semibold text-gray-900 dark:text-gray-100">Parties</div>
 
           <div class="flex items-center gap-3 rounded-xl border border-gray-200 dark:border-white/10 px-3 py-2.5">
@@ -161,7 +202,7 @@ onMounted(() => {
         </div>
 
         <div
-          v-if="receipt.note"
+          v-if="receipt.note && receipt.direction !== 'streak_reward' && receipt.direction !== 'verification_gift'"
           class="rounded-xl border border-gray-200 bg-white/90 shadow-sm p-4 text-sm text-gray-700 italic dark:border-white/10 dark:bg-white/[0.02] dark:text-gray-300"
         >
           "{{ receipt.note }}"

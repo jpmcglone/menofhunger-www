@@ -214,7 +214,13 @@
             <Button label="Save changes" size="small" :loading="editSaving" :disabled="editSaving" @click="saveEdit" />
           </div>
           <div class="mt-2 rounded-xl border border-gray-200 dark:border-zinc-800 p-3 space-y-2">
-            <div class="text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wide">Coins adjustment</div>
+            <div class="flex items-center justify-between gap-2">
+              <div class="text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wide">Coins</div>
+              <div class="flex items-center gap-1.5 text-amber-600 dark:text-amber-400">
+                <Icon name="tabler:coin" size="16" aria-hidden="true" />
+                <span class="text-lg font-bold tabular-nums">{{ (user?.coins ?? 0).toLocaleString() }}</span>
+              </div>
+            </div>
             <div class="grid gap-2 sm:grid-cols-[1fr_1fr_auto_auto]">
               <InputNumber
                 v-model="coinsAdjustAmount"

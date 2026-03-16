@@ -404,7 +404,7 @@
 
 <script setup lang="ts">
 import { makeLocalId } from '~/composables/composer/types'
-import type { CreatePostData, PostVisibility } from '~/types/api'
+import type { CreatePostData, PostStreakReward, PostVisibility } from '~/types/api'
 import { siteConfig } from '~/config/site'
 import type { CreateMediaPayload } from '~/composables/useComposerMedia'
 import { PRIMARY_ONLYME_PURPLE, PRIMARY_PREMIUM_ORANGE, PRIMARY_TEXT_DARK, PRIMARY_TEXT_LIGHT, PRIMARY_VERIFIED_BLUE, primaryPaletteToCssVars } from '~/utils/theme-tint'
@@ -486,6 +486,29 @@ const route = useRoute()
 const { user, isAuthed, isPremium, isVerified: viewerIsVerified } = useAuth()
 const { apiFetchData } = useApiClient()
 const toast = useAppToast()
+
+const STREAK_MULTIPLIER_MILESTONES = new Set([8, 15, 22])
+function pushStreakToast(reward: PostStreakReward) {
+  const isMilestone = STREAK_MULTIPLIER_MILESTONES.has(reward.streakDays)
+  const coinWord = reward.coinsEarned === 1 ? 'coin' : 'coins'
+  if (isMilestone) {
+    toast.push({
+      title: `Streak milestone! Day ${reward.streakDays}`,
+      message: `Your multiplier is now ${reward.multiplier}x — you earned ${reward.coinsEarned} ${coinWord} today!`,
+      tone: 'success',
+      to: '/coins',
+      durationMs: 4000,
+    })
+  } else {
+    toast.push({
+      title: `+${reward.coinsEarned} ${coinWord} from your streak`,
+      message: `Day ${reward.streakDays} · ${reward.multiplier}x multiplier`,
+      tone: 'success',
+      to: '/coins',
+      durationMs: 3000,
+    })
+  }
+}
 
 const mode = computed(() => props.mode ?? 'create')
 const editPostId = computed(() => (props.editPostId ?? '').trim() || null)
@@ -1039,12 +1062,14 @@ const { submit: submitPost, submitting, submitError } = useFormSubmit(
     clearPoll()
     void nextTick().then(() => resizeComposerTextarea())
 
-    const id = (created as any)?.id as string | undefined
+    const post = (created as CreatePostData)?.post ?? (created as any)
+    const streakReward = (created as CreatePostData)?.streakReward ?? null
+    const id = post?.id as string | undefined
     if (id) {
       emit('posted', {
         id,
         visibility: vis,
-        post: created as import('~/types/api').FeedPost,
+        post,
       })
       const toneVisibility = vis
       toast.push({
@@ -1065,10 +1090,12 @@ const { submit: submitPost, submitting, submitError } = useFormSubmit(
               : toneVisibility === 'onlyMe'
                 ? 'onlyMe'
                 : 'public',
-        // Always deep-link successful posts to their permalink.
         to: `/p/${encodeURIComponent(id)}`,
         durationMs: 2600,
       })
+      if (streakReward) {
+        pushStreakToast(streakReward)
+      }
     }
   },
   {

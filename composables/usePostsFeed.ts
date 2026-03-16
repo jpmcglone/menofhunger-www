@@ -560,7 +560,7 @@ export function usePostsFeed(options: { visibility?: Ref<FeedFilter>; followingO
     if (!trimmed && !hasMedia && !hasPoll) return null
 
     try {
-      const post = await apiFetchData<CreatePostData>('/posts', {
+      const result = await apiFetchData<CreatePostData>('/posts', {
         method: 'POST',
         body: {
           body: trimmed || '',
@@ -570,6 +570,7 @@ export function usePostsFeed(options: { visibility?: Ref<FeedFilter>; followingO
         }
       })
 
+      const post = result.post
       if (post.visibility !== 'onlyMe') {
         posts.value = [post, ...posts.value]
         rememberLocalInsert({ kind: 'prepend', post })

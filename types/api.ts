@@ -732,8 +732,17 @@ export type AdminHashtagBackfillStatus = {
   updatedAt: string
 }
 
+export type PostStreakReward = {
+  coinsEarned: number
+  streakDays: number
+  multiplier: 1 | 2 | 3 | 4
+}
+
 /** Data type for POST /posts (created post). */
-export type CreatePostData = FeedPost
+export type CreatePostData = {
+  post: FeedPost
+  streakReward: PostStreakReward | null
+}
 
 /** Response for POST /posts/:id/repost */
 export type RepostResponse = {
@@ -1458,6 +1467,8 @@ export type AdminAnalyticsSummary = {
   usersWithActiveGrants: number
   dau: number
   mau: number
+  /** Sum of all user coin balances — total coins in the economy */
+  totalCoinsInEconomy: number
 }
 
 export type AdminAnalyticsRetentionRow = {
@@ -1489,6 +1500,27 @@ export type AdminAnalyticsMonetization = {
   compedPremium: number
   compedPremiumPlus: number
   byStatus: Record<string, number>
+}
+
+export type AdminAnalyticsCoins = {
+  /** Sum of all user coin balances (all time, all non-banned users). */
+  totalInEconomy: number
+  /** Coins minted from streak rewards in the selected range. */
+  mintedInRange: number
+  /** Coins sent peer-to-peer in the selected range. */
+  transferredInRange: number
+  /** Distinct users who earned streak coins in the selected range. */
+  uniqueEarnersInRange: number
+  /** Distinct users who sent coins to others in the selected range. */
+  uniqueSendersInRange: number
+  /** Coins minted per time bucket in the selected range. */
+  minted: AdminAnalyticsTimeSeriesPoint[]
+  /** Coins minted grouped by multiplier amount (1, 2, 3, 4). */
+  mintedByMultiplier: Record<string, number>
+  /** transferred / minted in range. Null when minted = 0. */
+  velocityRatio: number | null
+  /** Gini coefficient (0 = equal, 1 = all coins held by one person). Null when no holders. */
+  giniCoefficient: number | null
 }
 
 export type AdminAnalyticsTopArticle = {
@@ -1536,6 +1568,7 @@ export type AdminAnalytics = {
   retention: AdminAnalyticsRetentionRow[]
   engagement: AdminAnalyticsEngagement
   monetization: AdminAnalyticsMonetization
+  coins: AdminAnalyticsCoins
   articles: AdminAnalyticsArticles
   asOf: string
 }
@@ -1631,7 +1664,7 @@ export type CoinTransferItem = {
   createdAt: string
   amount: number
   note: string | null
-  direction: 'sent' | 'received' | 'admin_added' | 'admin_removed'
+  direction: 'sent' | 'received' | 'admin_added' | 'admin_removed' | 'streak_reward' | 'verification_gift'
   counterparty: CoinTransferCounterparty
 }
 
@@ -1647,7 +1680,7 @@ export type CoinTransferReceipt = {
   createdAt: string
   amount: number
   note: string | null
-  direction: 'sent' | 'received' | 'admin_added' | 'admin_removed'
+  direction: 'sent' | 'received' | 'admin_added' | 'admin_removed' | 'streak_reward' | 'verification_gift'
   sender: CoinTransferReceiptParty
   recipient: CoinTransferReceiptParty
   counterparty: CoinTransferCounterparty

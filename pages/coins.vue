@@ -194,10 +194,12 @@ function shortDateTime(iso: string): string {
 }
 
 function isPositiveDirection(direction: CoinTransferItem['direction']): boolean {
-  return direction === 'received' || direction === 'admin_added'
+  return direction === 'received' || direction === 'admin_added' || direction === 'streak_reward' || direction === 'verification_gift'
 }
 
 function activityVerb(direction: CoinTransferItem['direction']): string {
+  if (direction === 'streak_reward') return 'Streak reward'
+  if (direction === 'verification_gift') return 'Welcome gift'
   if (direction === 'received') return 'From'
   if (direction === 'sent') return 'To'
   if (direction === 'admin_added') return 'Admin added via'
@@ -205,6 +207,8 @@ function activityVerb(direction: CoinTransferItem['direction']): string {
 }
 
 function activityIcon(direction: CoinTransferItem['direction']): string {
+  if (direction === 'streak_reward') return 'tabler:flame'
+  if (direction === 'verification_gift') return 'tabler:rosette-discount-check'
   if (direction === 'received') return 'tabler:arrow-down'
   if (direction === 'sent') return 'tabler:arrow-up'
   if (direction === 'admin_added') return 'tabler:plus'
@@ -218,9 +222,17 @@ function activityTone(direction: CoinTransferItem['direction']): string {
 }
 
 function activityBubbleTone(direction: CoinTransferItem['direction']): string {
+  if (direction === 'streak_reward') return 'bg-orange-100 dark:bg-orange-900/30'
+  if (direction === 'verification_gift') return 'bg-blue-100 dark:bg-blue-900/30'
   return isPositiveDirection(direction)
     ? 'bg-green-100 dark:bg-green-900/30'
     : 'bg-amber-100 dark:bg-amber-900/30'
+}
+
+function activityStreakTone(direction: CoinTransferItem['direction']): string {
+  if (direction === 'streak_reward') return 'text-orange-500 dark:text-orange-400'
+  if (direction === 'verification_gift') return 'text-blue-500 dark:text-blue-400'
+  return activityTone(direction)
 }
 </script>
 
@@ -462,7 +474,7 @@ function activityBubbleTone(direction: CoinTransferItem['direction']): string {
         </div>
 
         <div v-else-if="transfers.length === 0 && historyLoaded" class="text-sm text-gray-600 dark:text-gray-400 text-center py-8 rounded-xl border border-dashed border-gray-200 dark:border-white/10">
-          No coin transfers yet.
+          No coin activity yet. Post something to start your streak!
         </div>
 
         <div v-else class="space-y-2">
@@ -479,11 +491,12 @@ function activityBubbleTone(direction: CoinTransferItem['direction']): string {
               <Icon
                 :name="activityIcon(t.direction)"
                 size="18"
-                :class="activityTone(t.direction)"
+                :class="activityStreakTone(t.direction)"
               />
             </div>
 
             <AppUserAvatar
+              v-if="t.direction !== 'streak_reward' && t.direction !== 'verification_gift'"
               :user="{ id: t.counterparty.userId, username: t.counterparty.username, avatarUrl: t.counterparty.avatarUrl }"
               size-class="h-8 w-8"
               :show-presence="false"
@@ -492,19 +505,25 @@ function activityBubbleTone(direction: CoinTransferItem['direction']): string {
 
             <div class="min-w-0 flex-1">
               <div class="text-sm text-gray-900 dark:text-gray-100">
-                <span class="text-gray-600 dark:text-gray-400">{{ activityVerb(t.direction) }} </span>
-                <NuxtLink
-                  v-if="t.counterparty.username"
-                  :to="`/u/${t.counterparty.username}`"
-                  class="font-semibold text-gray-900 dark:text-gray-100 hover:underline"
-                >
-                  @{{ t.counterparty.username }}
-                </NuxtLink>
-                <span v-else class="font-semibold text-gray-900 dark:text-gray-100">
-                  {{ t.counterparty.displayName || 'System' }}
-                </span>
+                <template v-if="t.direction === 'streak_reward' || t.direction === 'verification_gift'">
+                  <span class="font-semibold">{{ activityVerb(t.direction) }}</span>
+                  <span v-if="t.note && t.direction !== 'verification_gift'" class="text-gray-600 dark:text-gray-400"> · {{ t.note }}</span>
+                </template>
+                <template v-else>
+                  <span class="text-gray-600 dark:text-gray-400">{{ activityVerb(t.direction) }} </span>
+                  <NuxtLink
+                    v-if="t.counterparty.username"
+                    :to="`/u/${t.counterparty.username}`"
+                    class="font-semibold text-gray-900 dark:text-gray-100 hover:underline"
+                  >
+                    @{{ t.counterparty.username }}
+                  </NuxtLink>
+                  <span v-else class="font-semibold text-gray-900 dark:text-gray-100">
+                    {{ t.counterparty.displayName || 'System' }}
+                  </span>
+                </template>
               </div>
-              <div v-if="t.note" class="text-xs text-gray-600 dark:text-gray-400 truncate mt-0.5 italic">
+              <div v-if="t.note && t.direction !== 'streak_reward' && t.direction !== 'verification_gift'" class="text-xs text-gray-600 dark:text-gray-400 truncate mt-0.5 italic">
                 "{{ t.note }}"
               </div>
               <div class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">

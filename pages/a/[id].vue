@@ -199,6 +199,63 @@
               :readonly="!isAuthed || article?.viewerCanAccess === false"
               @toggle="guardedReact"
             />
+
+            <!-- Tip button (verified viewers only, not the author) -->
+            <div v-if="canTip" class="relative" @click.stop>
+              <button
+                type="button"
+                class="moh-tap inline-flex items-center gap-1 h-10 sm:h-9 px-2 rounded-full transition-colors moh-surface-hover text-amber-500 dark:text-amber-400"
+                aria-label="Send coins to author"
+                @click="tipOpen = !tipOpen"
+              >
+                <Icon name="tabler:coin" class="text-[17px]" aria-hidden="true" />
+                <span class="text-[11px] sm:text-xs font-medium">Tip</span>
+              </button>
+
+              <!-- Tip popover -->
+              <Transition name="tip-pop">
+                <div
+                  v-if="tipOpen"
+                  class="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 z-50 w-52 rounded-2xl border moh-border moh-surface shadow-xl p-3 space-y-2.5"
+                >
+                  <div class="text-xs font-semibold moh-text text-center">Send coins to {{ article?.author?.name || article?.author?.username }}</div>
+                  <div class="grid grid-cols-4 gap-1.5">
+                    <button
+                      v-for="amt in TIP_PRESETS"
+                      :key="amt"
+                      type="button"
+                      :class="[
+                        'rounded-xl py-1.5 text-xs font-semibold transition-colors border',
+                        tipAmount === amt
+                          ? 'bg-amber-500 text-white border-amber-500'
+                          : 'moh-surface-hover moh-border moh-text',
+                      ]"
+                      @click="tipAmount = amt"
+                    >
+                      {{ amt }}
+                    </button>
+                  </div>
+                  <div class="flex gap-1.5">
+                    <input
+                      v-model.number="tipAmount"
+                      type="number"
+                      min="1"
+                      class="min-w-0 flex-1 rounded-xl border moh-border moh-surface px-2 py-1.5 text-xs moh-text text-center focus:outline-none focus:ring-1 focus:ring-amber-400"
+                      placeholder="Custom"
+                      @click.stop
+                    />
+                    <button
+                      type="button"
+                      :disabled="tipLoading || !tipAmount || tipAmount < 1"
+                      class="rounded-xl bg-amber-500 hover:bg-amber-600 disabled:opacity-50 disabled:cursor-not-allowed text-white px-3 py-1.5 text-xs font-semibold transition-colors"
+                      @click.stop="sendTip"
+                    >
+                      {{ tipLoading ? '…' : 'Send' }}
+                    </button>
+                  </div>
+                </div>
+              </Transition>
+            </div>
           </div>
 
           <!-- View count + Share menu -->
@@ -527,6 +584,47 @@ const authorBio = computed(() => article.value?.author?.articleBio || article.va
 // Is the current viewer the author
 const viewerIsAuthor = computed(() => Boolean(user.value?.id && article.value?.author?.id === user.value.id))
 
+// ─── Tip ────────────────────────────────────────────────────────────────────
+const TIP_PRESETS = [1, 3, 5, 10] as const
+const tipOpen = ref(false)
+const tipAmount = ref<number | null>(3)
+const tipLoading = ref(false)
+const canTip = computed(
+  () =>
+    isAuthed.value &&
+    user.value?.verifiedStatus !== 'none' &&
+    !viewerIsAuthor.value &&
+    article.value?.author?.verifiedStatus !== 'none' &&
+    Boolean(article.value?.author?.username),
+)
+
+async function sendTip() {
+  const amt = tipAmount.value
+  const username = article.value?.author?.username
+  if (!amt || amt < 1 || !username || tipLoading.value) return
+  tipLoading.value = true
+  try {
+    await apiFetchData('/coins/transfer', {
+      method: 'POST',
+      body: { recipientUsername: username, amount: Math.trunc(amt) },
+    })
+    tipOpen.value = false
+    tipAmount.value = 3
+    toast.push({
+      title: `${Math.trunc(amt)} coin${amt === 1 ? '' : 's'} sent!`,
+      message: `To ${article.value?.author?.name || username}`,
+      tone: 'success',
+      to: '/coins',
+      durationMs: 3000,
+    })
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : 'Failed to send tip.'
+    toast.push({ title: msg, tone: 'error', durationMs: 2500 })
+  } finally {
+    tipLoading.value = false
+  }
+}
+
 // Hover preview trigger
 const { onEnter: authorEnter, onMove: authorMove, onLeave: authorLeave } = useUserPreviewTrigger({
   username: computed(() => article.value?.author?.username ?? ''),
@@ -603,9 +701,12 @@ function scrollToComment(commentId: string) {
   setTimeout(() => { highlightedCommentId.value = null }, 4000)
 }
 
+const closeTipPopover = () => { tipOpen.value = false }
+
 onMounted(() => {
   isHydrated.value = true
   presence.addArticlesCallback(articlesCallback)
+  document.addEventListener('click', closeTipPopover)
 
   const commentId = extractCommentIdFromHash(route.hash)
   if (commentId) {
@@ -666,6 +767,7 @@ onUnmounted(() => {
   if (article.value?.id) presence.unsubscribeArticles([article.value.id])
   stopObservingView?.()
   stopObservingView = null
+  document.removeEventListener('click', closeTipPopover)
 })
 
 const boostCountLabel = computed(() => {
@@ -820,5 +922,15 @@ const reactionState = useArticleReactions(
 .viewer-breakdown-leave-to {
   opacity: 0;
   transform: translateY(-4px);
+}
+
+.tip-pop-enter-active,
+.tip-pop-leave-active {
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+.tip-pop-enter-from,
+.tip-pop-leave-to {
+  opacity: 0;
+  transform: translateY(6px) scale(0.97);
 }
 </style>

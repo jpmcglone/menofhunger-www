@@ -102,11 +102,13 @@
         { "text": "Tightly moderated quality — no noise, no pay-to-win" },
         { "text": "Baseline ranking (unverified/verified may be slightly suppressed)" },
         { "text": "Start and participate in Dialogues", "comingSoon": true },
-        { "text": "Publish longform articles", "comingSoon": true },
+        { "text": "Publish longform articles" },
         { "text": "Participate fully in groups", "comingSoon": true },
         { "text": "See no ads while you’re Premium" },
         { "text": "Edit posts within a reasonable window" },
-        { "text": "Compete in check-ins + leaderboard consistency loops" }
+        { "text": "Compete in check-ins + leaderboard consistency loops" },
+        { "text": "Earn coins from daily streaks with escalating multipliers (1x–4x)" },
+        { "text": "Send coins to other verified members" }
       ],
       "cannot": [
         { "text": "Override moderation" },

@@ -1,5 +1,5 @@
 {
-  "asOfDate": "Mar. 4, 2026",
+  "asOfDate": "Mar. 15, 2026",
   "originalAsOfDate": "Feb. 3, 2026",
   "intro": {
     "label": "Product roadmap",
@@ -20,7 +20,8 @@
           "title": "Trust & access (essential)",
           "items": [
             {
-              "text": "**Account states** — Active / suspended / banned with consistent enforcement (posting, messaging, uploads, and real-time connections)."
+              "text": "**Account states** — Active / suspended / banned with consistent enforcement (posting, messaging, uploads, and real-time connections).",
+              "done": true
             },
             {
               "text": "**Identity verification (provider-agnostic)** — We submit verification requests to an external provider, trust the response, and store a simple status lifecycle (**pending → verified → revoked**) with timestamps and reason codes.",
@@ -79,6 +80,10 @@
             },
             {
               "text": "**Daily momentum loops** — Check-ins feed + leaderboard to reward consistency and visible streak progress.",
+              "done": true
+            },
+            {
+              "text": "**Coins & streak rewards** — Earn coins automatically from daily streaks with escalating multipliers (1x–4x based on consecutive days); send coins to other verified members; full transfer history and receipt pages; admin coin adjustments.",
               "done": true
             },
             {
@@ -272,7 +277,8 @@
           "title": "Longform publishing",
           "items": [
             {
-              "text": "**Articles (v1)** — A separate longform editor (rich text/markdown with safe rendering), drafts + autosave, publish/unpublish, and SEO-friendly public pages."
+              "text": "**Articles (v1)** — A separate longform editor (rich text/markdown with safe rendering), drafts + autosave, publish/unpublish, and SEO-friendly public pages; views, boosts, reactions, and comments.",
+              "done": true
             }
           ]
         },
@@ -405,6 +411,12 @@
         "items": [
           {
             "text": "**Unified purchases** — One commerce flow that supports premium subscriptions plus one-off purchases (cosmetics/badges), refunds, and entitlements."
+          },
+          {
+            "text": "**Coin spending** — Give coins a purpose beyond transfers: boost a post for visibility, unlock cosmetics, tip article authors, or redeem for other in-app perks."
+          },
+          {
+            "text": "**Coins leaderboard** — Top coin holders and top earners this week so the economy has visible social proof."
           }
         ]
       },
