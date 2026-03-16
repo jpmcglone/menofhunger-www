@@ -28,6 +28,9 @@ export function useNotifications() {
   const loading = useState<boolean>(`${stateKey}:loading`, () => false)
   const pendingRefresh = useState<boolean>(`${stateKey}:pendingRefresh`, () => false)
   const activeKind = useState<NotificationKind | null>(`${stateKey}:activeKind`, () => null)
+  // True once the first fetch has completed (success or error). Used to distinguish
+  // "never fetched yet" (show loader) from "fetched and empty" (show empty state).
+  const hasFetched = useState<boolean>(`${stateKey}:hasFetched`, () => false)
   const isNotificationsPage = computed(() => route.path === '/notifications')
 
   // Realtime: the API now returns grouped feed items, so we refetch when relevant events arrive.
@@ -105,6 +108,7 @@ export function useNotifications() {
         return pagination
       } finally {
         loading.value = false
+        hasFetched.value = true
         if (pendingRefresh.value && isNotificationsPage.value) {
           pendingRefresh.value = false
           void fetchList({ forceRefresh: true })
@@ -351,6 +355,7 @@ export function useNotifications() {
     notifications,
     nextCursor,
     loading,
+    hasFetched,
     activeKind,
     setKind,
     isNotificationsPage,

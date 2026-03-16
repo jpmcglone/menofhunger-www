@@ -139,6 +139,7 @@ const {
   notifications,
   nextCursor,
   loading,
+  hasFetched,
   activeKind,
   setKind,
   fetchList,
@@ -174,7 +175,9 @@ const notifBadge = useNotificationsBadge()
 const { setNotificationUndeliveredCount, addInterest, removeInterest } = usePresence()
 const loadingMore = ref(false)
 const markingAllRead = ref(false)
-const showInitialLoader = computed(() => loading.value && notifications.value.length === 0)
+// Show the full-page loader until the first fetch completes. After that, keep
+// existing data visible during background refreshes — never blank the list mid-flight.
+const showInitialLoader = computed(() => !hasFetched.value)
 
 function nudgeActorIdForItem(item: (typeof notifications.value)[number]): string | null {
   if (item.type === 'single') {
