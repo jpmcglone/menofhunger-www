@@ -38,7 +38,7 @@ function hasUserActivation(): boolean {
 }
 
 function getAudioContext(): AudioContext | null {
-  if (!import.meta.client) return null
+  if (!import.meta.client || typeof window === 'undefined') return null
   if (audioCtx) return audioCtx
   const Ctx = (window as any).AudioContext || (window as any).webkitAudioContext
   if (!Ctx) return null

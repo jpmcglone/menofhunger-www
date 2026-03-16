@@ -200,62 +200,6 @@
               @toggle="guardedReact"
             />
 
-            <!-- Tip button (verified viewers only, not the author) -->
-            <div v-if="canTip" class="relative" @click.stop>
-              <button
-                type="button"
-                class="moh-tap inline-flex items-center gap-1 h-10 sm:h-9 px-2 rounded-full transition-colors moh-surface-hover text-amber-500 dark:text-amber-400"
-                aria-label="Send coins to author"
-                @click="tipOpen = !tipOpen"
-              >
-                <Icon name="tabler:coin" class="text-[17px]" aria-hidden="true" />
-                <span class="text-[11px] sm:text-xs font-medium">Tip</span>
-              </button>
-
-              <!-- Tip popover -->
-              <Transition name="tip-pop">
-                <div
-                  v-if="tipOpen"
-                  class="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 z-50 w-52 rounded-2xl border moh-border moh-surface shadow-xl p-3 space-y-2.5"
-                >
-                  <div class="text-xs font-semibold moh-text text-center">Send coins to {{ article?.author?.name || article?.author?.username }}</div>
-                  <div class="grid grid-cols-4 gap-1.5">
-                    <button
-                      v-for="amt in TIP_PRESETS"
-                      :key="amt"
-                      type="button"
-                      :class="[
-                        'rounded-xl py-1.5 text-xs font-semibold transition-colors border',
-                        tipAmount === amt
-                          ? 'bg-amber-500 text-white border-amber-500'
-                          : 'moh-surface-hover moh-border moh-text',
-                      ]"
-                      @click="tipAmount = amt"
-                    >
-                      {{ amt }}
-                    </button>
-                  </div>
-                  <div class="flex gap-1.5">
-                    <input
-                      v-model.number="tipAmount"
-                      type="number"
-                      min="1"
-                      class="min-w-0 flex-1 rounded-xl border moh-border moh-surface px-2 py-1.5 text-xs moh-text text-center focus:outline-none focus:ring-1 focus:ring-amber-400"
-                      placeholder="Custom"
-                      @click.stop
-                    />
-                    <button
-                      type="button"
-                      :disabled="tipLoading || !tipAmount || tipAmount < 1"
-                      class="rounded-xl bg-amber-500 hover:bg-amber-600 disabled:opacity-50 disabled:cursor-not-allowed text-white px-3 py-1.5 text-xs font-semibold transition-colors"
-                      @click.stop="sendTip"
-                    >
-                      {{ tipLoading ? '…' : 'Send' }}
-                    </button>
-                  </div>
-                </div>
-              </Transition>
-            </div>
           </div>
 
           <!-- View count + Share menu -->
@@ -349,8 +293,65 @@
         </ClientOnly>
 
         <!-- Author bio section -->
-        <div class="mt-6 rounded-2xl border border-gray-200 bg-gray-50 p-6 dark:border-zinc-800 dark:bg-zinc-900">
+        <div class="relative mt-6 rounded-2xl border border-gray-200 bg-gray-50 p-6 dark:border-zinc-800 dark:bg-zinc-900" @click.stop>
           <p class="mb-4 text-xs font-semibold uppercase tracking-widest text-gray-400 dark:text-zinc-500">About the author</p>
+
+          <!-- Tip button -->
+          <div v-if="canTip" class="absolute top-4 right-4">
+            <button
+              type="button"
+              class="moh-tap inline-flex items-center gap-1 h-8 px-2.5 rounded-full border border-amber-300/60 dark:border-amber-600/40 bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 text-xs font-medium transition-colors hover:bg-amber-100 dark:hover:bg-amber-900/40"
+              aria-label="Send coins to author"
+              @click.stop="tipOpen = !tipOpen"
+            >
+              <Icon name="tabler:coin" class="text-[14px]" aria-hidden="true" />
+              Tip
+            </button>
+
+            <!-- Tip popover -->
+            <Transition name="tip-pop">
+              <div
+                v-if="tipOpen"
+                class="absolute top-full mt-2 right-0 z-50 w-52 rounded-2xl border moh-border moh-surface shadow-xl p-3 space-y-2.5"
+              >
+                <div class="text-xs font-semibold moh-text text-center">Send coins to {{ article?.author?.name || article?.author?.username }}</div>
+                <div class="grid grid-cols-4 gap-1.5">
+                  <button
+                    v-for="amt in TIP_PRESETS"
+                    :key="amt"
+                    type="button"
+                    :class="[
+                      'rounded-xl py-1.5 text-xs font-semibold transition-colors border',
+                      tipAmount === amt
+                        ? 'bg-amber-500 text-white border-amber-500'
+                        : 'moh-surface-hover moh-border moh-text',
+                    ]"
+                    @click.stop="tipAmount = amt"
+                  >
+                    {{ amt }}
+                  </button>
+                </div>
+                <div class="flex gap-1.5">
+                  <input
+                    v-model.number="tipAmount"
+                    type="number"
+                    min="1"
+                    class="min-w-0 flex-1 rounded-xl border moh-border moh-surface px-2 py-1.5 text-xs moh-text text-center focus:outline-none focus:ring-1 focus:ring-amber-400"
+                    placeholder="Custom"
+                    @click.stop
+                  />
+                  <button
+                    type="button"
+                    :disabled="tipLoading || !tipAmount || tipAmount < 1"
+                    class="rounded-xl bg-amber-500 hover:bg-amber-600 disabled:opacity-50 disabled:cursor-not-allowed text-white px-3 py-1.5 text-xs font-semibold transition-colors"
+                    @click.stop="sendTip"
+                  >
+                    {{ tipLoading ? '…' : 'Send' }}
+                  </button>
+                </div>
+              </div>
+            </Transition>
+          </div>
           <div class="flex gap-4">
             <NuxtLink
               :to="`/u/${article.author.username}`"
@@ -604,9 +605,11 @@ async function sendTip() {
   if (!amt || amt < 1 || !username || tipLoading.value) return
   tipLoading.value = true
   try {
+    const title = (article.value?.title ?? '').trim()
+    const note = title ? `Tip on "${title}"` : 'Tip from article'
     await apiFetchData('/coins/transfer', {
       method: 'POST',
-      body: { recipientUsername: username, amount: Math.trunc(amt) },
+      body: { recipientUsername: username, amount: Math.trunc(amt), note },
     })
     tipOpen.value = false
     tipAmount.value = 3
