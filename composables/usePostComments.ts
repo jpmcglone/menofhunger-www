@@ -81,6 +81,12 @@ export function usePostComments(options: {
   }
 
   function prependComment(newPost: FeedPost) {
+    const existingIdx = comments.value.findIndex((c) => c.id === newPost.id)
+    if (existingIdx >= 0) {
+      // Realtime/fetch may have inserted this comment already; upsert in place.
+      comments.value.splice(existingIdx, 1, newPost)
+      return
+    }
     comments.value = [newPost, ...comments.value]
     if (commentsCounts.value) {
       commentsCounts.value = { ...commentsCounts.value, all: commentsCounts.value.all + 1 }

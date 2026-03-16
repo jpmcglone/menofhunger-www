@@ -143,6 +143,11 @@ watch(
   () => props.comment.commentCount ?? 0,
   (next, prev) => {
     if (!import.meta.client) return
+    // When server-side commentCount catches up after a local reply bump, consume
+    // the optimistic delta so totals do not double-count (0 -> 2 flash).
+    if (localCountBump.value > 0 && next > prev) {
+      localCountBump.value = Math.max(0, localCountBump.value - (next - prev))
+    }
     if (prev <= 0 && next > 0) void fetchPreviewReplies()
     if (next <= 0 && localCountBump.value <= 0) previewReplies.value = []
   },

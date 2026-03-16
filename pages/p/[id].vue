@@ -283,8 +283,18 @@ const postsCb: PostsCallback = {
     if (data.value && (data.value as any).id === pid) {
       data.value = { ...(data.value as any), ...(patch as any) }
     }
+    const serverCommentCount = typeof (patch as any)?.commentCount === 'number'
+      ? Math.max(0, Number((patch as any).commentCount))
+      : null
+    if (serverCommentCount != null) {
+      if (commentsCounts.value) {
+        commentsCounts.value = { ...commentsCounts.value, all: serverCommentCount }
+      }
+    }
     if (payload?.reason === 'comment_created' || payload?.reason === 'comment_deleted') {
-      void fetchComments(null)
+      // If server gave us authoritative count in the patch, avoid immediate hard refetch
+      // to reduce count jitter/double-update races right after posting.
+      if (serverCommentCount == null) void fetchComments(null)
     }
     if (payload?.reason === 'post_deleted') {
       onDeleted()
