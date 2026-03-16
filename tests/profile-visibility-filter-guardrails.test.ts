@@ -7,9 +7,11 @@ function readFromRepo(relativePath: string): string {
 }
 
 describe('profile visibility filters (structural)', () => {
-  it('does not opt profile posts/articles feeds into includeRestricted mode', () => {
+  it('opts profile posts/articles/media feeds into includeRestricted mode for full obfuscated display', () => {
     const profilePage = readFromRepo('pages/u/[username].vue')
-    expect(profilePage).not.toMatch(/includeRestricted:\s*true/)
+    // All profile feeds pass includeRestricted: true so every tier appears (obfuscated as needed).
+    const matches = [...profilePage.matchAll(/includeRestricted:\s*true/g)]
+    expect(matches.length).toBeGreaterThanOrEqual(3)
   })
 
   it('forces media tab visibility to all while visibility controls are hidden', () => {
