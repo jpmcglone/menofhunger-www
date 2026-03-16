@@ -10,6 +10,8 @@ export type UserMediaItem = {
   width: number | null
   height: number | null
   durationSeconds: number | null
+  visibility?: string
+  viewerCanAccess?: boolean
 }
 
 export function useUserMedia(
@@ -18,6 +20,7 @@ export function useUserMedia(
     enabled?: Ref<boolean>
     visibility?: Ref<ProfilePostsFilter>
     sort?: Ref<'new' | 'trending'>
+    includeRestricted?: boolean
   } = {},
 ) {
   const enabled = opts.enabled ?? computed(() => true)
@@ -31,6 +34,7 @@ export function useUserMedia(
       if (vis && vis !== 'all') params.set('visibility', vis)
       const sort = opts.sort?.value
       if (sort && sort !== 'new') params.set('sort', sort)
+      if (opts.includeRestricted) params.set('includeRestricted', 'true')
       if (cursor) params.set('cursor', cursor)
       return {
         path: `/posts/user/${encodeURIComponent(usernameLower.value)}/media`,

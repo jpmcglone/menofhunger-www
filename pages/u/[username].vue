@@ -430,13 +430,23 @@
                   :src="item.kind === 'video' ? (item.thumbnailUrl ?? item.url ?? '') : (item.url ?? '')"
                   :alt="item.kind === 'video' ? 'Video' : 'Photo'"
                   class="absolute inset-0 h-full w-full object-cover"
+                  :class="item.viewerCanAccess === false ? 'blur-sm scale-110' : ''"
                   loading="lazy"
                 />
                 <!-- Video play overlay -->
-                <div v-if="item.kind === 'video'" class="absolute inset-0 flex items-center justify-center">
+                <div v-if="item.kind === 'video' && item.viewerCanAccess !== false" class="absolute inset-0 flex items-center justify-center">
                   <div class="rounded-full bg-black/50 p-2">
                     <Icon name="tabler:player-play-filled" class="text-white text-lg" aria-hidden="true" />
                   </div>
+                </div>
+                <!-- Restricted overlay -->
+                <div v-if="item.viewerCanAccess === false" class="absolute inset-0 flex flex-col items-center justify-center bg-black/40">
+                  <Icon
+                    :name="item.visibility === 'premiumOnly' ? 'tabler:crown' : 'tabler:rosette-discount-check'"
+                    :class="item.visibility === 'premiumOnly' ? 'text-amber-400' : 'text-blue-400'"
+                    size="22"
+                    aria-hidden="true"
+                  />
                 </div>
               </NuxtLink>
             </TransitionGroup>
@@ -576,7 +586,14 @@ async function pushProfilePath(path: string) {
   if (!import.meta.client) return
   const search = new URLSearchParams(qs)
   const newUrl = search.toString() ? `${path}?${search}` : path
-  history.pushState({ ...history.state }, '', newUrl)
+  // Stamp correct Vue Router state so back/forward navigation restores this tab URL.
+  const state = {
+    ...history.state,
+    back: history.state?.current ?? null,
+    current: newUrl,
+    forward: null,
+  }
+  history.pushState(state, '', newUrl)
 }
 
 const isFollowersRoute = computed(() => /\/followers\/?$/.test(currentPathname.value))
@@ -598,7 +615,7 @@ if (!notFound.value && profile.value) {
   }
 }
 
-const { user: authUser, me: refetchMe } = useAuth()
+const { user: authUser, me: refetchMe, isAuthed } = useAuth()
 
 const countFmt = new Intl.NumberFormat('en-US')
 function formatCount(n: unknown): string {
@@ -764,6 +781,7 @@ const {
   topLevelOnly: true,
   externalFilter: profileFilter as Ref<UserPostsFilter>,
   externalSort: profileSort,
+  includeRestricted: true,
 })
 
 // ─── Replies feed (all posts including replies) ───────────────────────────────
@@ -787,6 +805,7 @@ const {
   cookieKeyPrefix: 'moh.profile.posts.withReplies',
   externalFilter: profileFilter as Ref<UserPostsFilter>,
   externalSort: profileSort,
+  includeRestricted: true,
 })
 
 // ─── Articles feed ────────────────────────────────────────────────────────────
@@ -796,6 +815,7 @@ const profileArticlesFeed = useArticleFeed({
   sort: profileSort,
   visibility: profileFilter as Ref<ProfilePostsFilter>,
   enabled: articlesEnabled,
+  includeRestricted: true,
 })
 
 // ─── Media feed ───────────────────────────────────────────────────────────────
@@ -805,6 +825,7 @@ const profileMediaFeed = useUserMedia(normalizedUsername, {
   enabled: mediaEnabled,
   visibility: mediaVisibilityFilter,
   sort: profileSort,
+  includeRestricted: true,
 })
 const postsOnlyInitialLoading = computed(
   () => postsOnlyLoading.value && !postsOnlyHasLoadedOnce.value && postsOnlyItems.value.length === 0,

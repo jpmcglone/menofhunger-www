@@ -96,7 +96,7 @@
 
     <!-- Comment list -->
     <div v-else class="space-y-6">
-      <div v-for="comment in comments" :key="comment.id">
+      <div v-for="comment in comments" :key="comment.id" :data-comment-id="comment.id">
         <AppArticleCommentRow
           :comment="comment"
           :article-id="articleId"
@@ -112,6 +112,7 @@
           <AppArticleCommentRow
             v-for="reply in comment.replies"
             :key="reply.id"
+            :data-comment-id="reply.id"
             :comment="reply"
             :article-id="articleId"
             :parent-id="comment.id"
@@ -378,8 +379,10 @@ const toast = useAppToast()
 async function submitComment() {
   if (!newCommentBody.value.trim()) return
   try {
-    await createComment(newCommentBody.value, null)
+    const comment = await createComment(newCommentBody.value, null)
     newCommentBody.value = ''
+    await nextTick()
+    scrollToComment(comment.id)
   } catch (e: any) {
     toast.push({ title: e?.data?.meta?.errors?.[0]?.message ?? 'Could not post comment.', tone: 'error' })
   }
@@ -393,12 +396,19 @@ function handleReply(commentId: string, mentionUsername?: string) {
 async function submitReply(parentId: string) {
   if (!replyBody.value.trim()) return
   try {
-    await createComment(replyBody.value, parentId)
+    const reply = await createComment(replyBody.value, parentId)
     replyBody.value = ''
     replyingToId.value = null
+    await nextTick()
+    scrollToComment(reply.id)
   } catch (e: any) {
     toast.push({ title: e?.data?.meta?.errors?.[0]?.message ?? 'Could not post reply.', tone: 'error' })
   }
+}
+
+function scrollToComment(commentId: string) {
+  const el = document.querySelector(`[data-comment-id="${commentId}"]`)
+  el?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
 }
 
 function cancelReply() {

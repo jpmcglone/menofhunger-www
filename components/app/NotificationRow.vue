@@ -139,7 +139,7 @@
             </div>
             <!-- Fallback for other kinds with body -->
             <div
-              v-if="notification.body && notification.kind !== 'comment' && notification.kind !== 'mention'"
+              v-if="notification.body && notification.kind !== 'comment' && notification.kind !== 'mention' && notification.kind !== 'followed_article'"
               class="mt-0.5 line-clamp-2 text-[13px] sm:text-sm text-gray-600 dark:text-gray-300"
             >
               {{ notification.body }}
