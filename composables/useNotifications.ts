@@ -1,4 +1,4 @@
-import type { GetNotificationsResponse, Notification, NotificationFeedItem, NotificationGroup } from '~/types/api'
+import type { GetNotificationsResponse, Notification, NotificationFeedItem, NotificationGroup, NotificationKind } from '~/types/api'
 import type { NotificationsCallback } from '~/composables/usePresence'
 import { useUsersStore } from '~/composables/useUsersStore'
 import { userColorTier, userTierBgClass, userTierTextClass } from '~/utils/user-tier'
@@ -27,6 +27,7 @@ export function useNotifications() {
   const nextCursor = useState<string | null>(`${stateKey}:nextCursor`, () => null)
   const loading = useState<boolean>(`${stateKey}:loading`, () => false)
   const pendingRefresh = useState<boolean>(`${stateKey}:pendingRefresh`, () => false)
+  const activeKind = useState<NotificationKind | null>(`${stateKey}:activeKind`, () => null)
   const isNotificationsPage = computed(() => route.path === '/notifications')
 
   // Realtime: the API now returns grouped feed items, so we refetch when relevant events arrive.
@@ -89,6 +90,7 @@ export function useNotifications() {
         const q = new URLSearchParams()
         if (limit) q.set('limit', String(limit))
         if (cursor) q.set('cursor', cursor)
+        if (activeKind.value) q.set('kind', activeKind.value)
         const path = `/notifications?${q.toString()}`
         // This endpoint includes a custom pagination shape (undeliveredCount), so use the endpoint-specific type.
         const res = (await apiFetch<NotificationFeedItem[]>(path)) as unknown as GetNotificationsResponse
@@ -296,6 +298,11 @@ export function useNotifications() {
     }
   }
 
+  async function setKind(kind: NotificationKind | null) {
+    activeKind.value = kind
+    await fetchList({ forceRefresh: true })
+  }
+
   function formatWhen(createdAt: string): string {
     const d = new Date(createdAt)
     const now = new Date()
@@ -344,6 +351,8 @@ export function useNotifications() {
     notifications,
     nextCursor,
     loading,
+    activeKind,
+    setKind,
     isNotificationsPage,
     fetchList,
     markDelivered,

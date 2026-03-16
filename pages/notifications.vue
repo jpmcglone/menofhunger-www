@@ -15,6 +15,19 @@
           @click="onMarkAllRead"
         />
       </div>
+      <div class="relative z-10 flex gap-1.5 px-3 pb-2.5 sm:px-4 overflow-x-auto scrollbar-hide">
+        <button
+          v-for="chip in kindChips"
+          :key="chip.kind ?? 'all'"
+          class="shrink-0 inline-flex items-center px-3 py-1 rounded-full text-[13px] font-medium transition-colors"
+          :class="activeKind === chip.kind
+            ? 'bg-gray-900 text-white dark:bg-white dark:text-gray-900'
+            : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-zinc-800 dark:text-gray-400 dark:hover:bg-zinc-700'"
+          @click="onChipSelect(chip.kind)"
+        >
+          {{ chip.label }}
+        </button>
+      </div>
     </div>
 
     <AppSubtleSectionLoader :loading="showInitialLoader" min-height-class="min-h-[220px]">
@@ -107,6 +120,8 @@
 </template>
 
 <script setup lang="ts">
+import type { NotificationKind } from '~/types/api'
+
 definePageMeta({
   layout: 'app',
   title: 'Notifications',
@@ -124,11 +139,36 @@ const {
   notifications,
   nextCursor,
   loading,
+  activeKind,
+  setKind,
   fetchList,
   markDelivered,
   markAllRead,
   itemHref,
 } = useNotifications()
+
+const kindChips: { label: string; kind: NotificationKind | null }[] = [
+  { label: 'All', kind: null },
+  { label: 'Mentions', kind: 'mention' },
+  { label: 'Comments', kind: 'comment' },
+  { label: 'Follows', kind: 'follow' },
+  { label: 'Boosts', kind: 'boost' },
+  { label: 'New Posts', kind: 'followed_post' },
+]
+
+const router = useRouter()
+const route = useRoute()
+
+async function onChipSelect(kind: NotificationKind | null) {
+  await setKind(kind)
+  const query = { ...route.query }
+  if (kind) {
+    query.kind = kind
+  } else {
+    delete query.kind
+  }
+  void router.replace({ query })
+}
 
 const notifBadge = useNotificationsBadge()
 const { setNotificationUndeliveredCount, addInterest, removeInterest } = usePresence()
@@ -232,16 +272,27 @@ async function loadMore() {
   }
 }
 
+function kindFromQuery(): NotificationKind | null {
+  const q = route.query.kind
+  const valid: NotificationKind[] = ['comment', 'boost', 'repost', 'follow', 'followed_post', 'followed_article', 'mention', 'nudge', 'coin_transfer', 'poll_results_ready', 'generic']
+  return (typeof q === 'string' && valid.includes(q as NotificationKind)) ? (q as NotificationKind) : null
+}
+
 onMounted(async () => {
   await markDelivered()
   setNotificationUndeliveredCount(0)
-  await fetchList()
+  await setKind(kindFromQuery())
 })
 
 onActivated(async () => {
   await markDelivered()
   setNotificationUndeliveredCount(0)
-  await fetchList({ forceRefresh: true })
+  const kind = kindFromQuery()
+  if (kind !== activeKind.value) {
+    await setKind(kind)
+  } else {
+    await fetchList({ forceRefresh: true })
+  }
 })
 
 onUnmounted(() => {
