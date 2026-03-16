@@ -120,7 +120,7 @@
               </template>
             <template v-else-if="notification.kind === 'boost'">
               <span class="ml-1">boosted your</span>
-              <span class="ml-1" :class="subjectPostVisibilityTextClass(notification)">post</span>
+              <span class="ml-1" :class="notification.subjectArticleId ? 'font-semibold text-orange-600 dark:text-orange-400' : subjectPostVisibilityTextClass(notification)">{{ notification.subjectArticleId ? 'article' : 'post' }}</span>
             </template>
             <template v-else-if="notification.kind === 'followed_post'">
               <span class="ml-1">shared a</span>

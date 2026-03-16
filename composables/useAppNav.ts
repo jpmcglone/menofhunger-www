@@ -18,7 +18,6 @@ export type AppNavItem = {
 
 export function useAppNav() {
   const { user, isAuthed, isVerified: isVerifiedBase, isPremium } = useAuth()
-  const { articlesEnabled } = useAppFeatures()
   // A user is "verified" for nav purposes if they have premium OR verified status.
   const isVerified = computed(() => isPremium.value || isVerifiedBase.value)
   const { stationId: playbackStationId, isPlaying: musicIsPlaying } = useSpaceAudio()
@@ -75,7 +74,7 @@ export function useAppNav() {
     return true
   }
 
-  const leftItems = computed(() => allItems.value.filter((i) => i.showInLeft && visible(i) && (i.key !== 'articles' || articlesEnabled.value)))
+  const leftItems = computed(() => allItems.value.filter((i) => i.showInLeft && visible(i)))
   const tabItems = computed(() => allItems.value.filter((i) => i.showInTabs && visible(i)))
 
   return { isAuthed, profileTo, allItems, leftItems, tabItems, isItemVisible: visible }

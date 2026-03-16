@@ -11,7 +11,7 @@
         <!-- Visibility picker -->
         <AppComposerVisibilityPicker
           v-model="editor.visibility.value"
-          :allowed="['public', 'verifiedOnly', 'premiumOnly']"
+          :allowed="allowedVisibilities"
           :viewer-is-verified="isVerified || isPremium"
           :is-premium="isPremium"
         />
@@ -150,6 +150,19 @@ const props = defineProps<{
 }>()
 
 const { isVerified, isPremium } = useAuth()
+
+// Visibility can only be increased (public → verified → premium), never decreased.
+// For drafts all options remain available since no visibility is "committed" yet.
+const VISIBILITY_RANK: Record<string, number> = { public: 0, verifiedOnly: 1, premiumOnly: 2 }
+const ALL_ARTICLE_VISIBILITIES = ['public', 'verifiedOnly', 'premiumOnly'] as const
+type ArticleVisibility = (typeof ALL_ARTICLE_VISIBILITIES)[number]
+
+const allowedVisibilities = computed<ArticleVisibility[]>(() => {
+  const isDraft = editor.article.value?.isDraft !== false
+  if (isDraft) return [...ALL_ARTICLE_VISIBILITIES]
+  const originalRank = VISIBILITY_RANK[initialArticleRef.value?.visibility ?? 'public'] ?? 0
+  return ALL_ARTICLE_VISIBILITIES.filter(v => (VISIBILITY_RANK[v] ?? 0) >= originalRank)
+})
 const { apiFetchData } = useApiClient()
 const toast = useAppToast()
 const { assetUrl } = useAssets()
@@ -240,13 +253,19 @@ const titleToneClass = computed(() => {
   return 'title-tone-public'
 })
 
-function onPrimaryAction() {
+const router = useRouter()
+
+async function onPrimaryAction() {
   const isDraft = editor.article.value?.isDraft !== false
   if (isDraft) {
     void handlePublish()
     return
   }
-  void editor.save()
+  await editor.save()
+  if (editor.saveStatus.value === 'saved') {
+    const articleId = editor.article.value?.id
+    if (articleId) await router.push(`/a/${articleId}`)
+  }
 }
 
 // Bug 7 fix: use template ref directly

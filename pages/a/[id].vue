@@ -37,9 +37,19 @@
         </div>
 
         <!-- Title -->
-        <h1 class="text-3xl font-bold leading-snug text-gray-900 dark:text-gray-100 sm:text-4xl">
-          {{ article.title }}
-        </h1>
+        <div class="flex items-start justify-between gap-4">
+          <h1 class="text-3xl font-bold leading-snug text-gray-900 dark:text-gray-100 sm:text-4xl">
+            {{ article.title }}
+          </h1>
+          <NuxtLink
+            v-if="viewerIsAuthor"
+            :to="`/articles/edit/${article.id}`"
+            class="mt-1.5 flex-shrink-0 inline-flex items-center gap-1.5 rounded-full border border-gray-200 dark:border-zinc-700 px-3 py-1 text-xs font-medium text-gray-500 dark:text-zinc-400 hover:border-gray-400 dark:hover:border-zinc-500 hover:text-gray-700 dark:hover:text-zinc-200 transition-colors"
+          >
+            <Icon name="tabler:pencil" class="text-[12px]" aria-hidden="true" />
+            Edit
+          </NuxtLink>
+        </div>
 
         <!-- Meta: author, date, read time -->
         <div class="mt-4 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-sm text-gray-500 dark:text-zinc-400">
@@ -54,7 +64,7 @@
           <span class="mx-1">·</span>
           <time :datetime="article.publishedAt ?? article.createdAt">{{ publishedLabel }}</time>
           <span v-if="readingTime && article.viewerCanAccess !== false">· {{ readingTime }}</span>
-          <span v-if="article.editedAt" class="text-xs text-gray-400 dark:text-zinc-500">· Edited</span>
+          <time v-if="article.editedAt" :datetime="article.editedAt" class="text-xs text-gray-400 dark:text-zinc-500">· Edited {{ editedLabel }}</time>
         </div>
 
         <!-- Visibility badge -->
@@ -577,6 +587,12 @@ const publishedLabel = computed(() => {
   const dateStr = article.value?.publishedAt ?? article.value?.createdAt
   if (!dateStr) return ''
   return new Date(dateStr).toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' })
+})
+
+const editedLabel = computed(() => {
+  const dateStr = article.value?.editedAt
+  if (!dateStr) return ''
+  return new Date(dateStr).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
 })
 
 // Author bio (use articleBio override if set, otherwise regular bio)

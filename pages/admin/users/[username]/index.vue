@@ -330,6 +330,7 @@
 import { getApiErrorMessage } from '~/utils/api-error'
 import { formatDateTime } from '~/utils/time-format'
 import { APP_FEATURE_TOGGLE_OPTIONS, type AppFeatureToggle } from '~/config/app-feature-toggles'
+import { articleVisibilityBarClass, articleVisibilityHoverClass } from '~/utils/article-visibility'
 import type {
   AdminAdjustCoinsResult,
   AdminUserDetailData,
@@ -447,17 +448,8 @@ function removeFeatureToggle(value: AppFeatureToggle) {
   editFeatureToggles.value = editFeatureToggles.value.filter((entry) => entry !== value)
 }
 
-function compactArticleAccentBarClass(visibility: string) {
-  if (visibility === 'premiumOnly') return 'bg-orange-500'
-  if (visibility === 'verifiedOnly') return 'bg-blue-500'
-  return 'bg-transparent'
-}
-
-function compactArticleHoverClass(visibility: string) {
-  if (visibility === 'premiumOnly') return 'hover:bg-orange-50 dark:hover:bg-orange-950/30'
-  if (visibility === 'verifiedOnly') return 'hover:bg-blue-50 dark:hover:bg-blue-950/30'
-  return 'hover:bg-gray-50 dark:hover:bg-white/5'
-}
+const compactArticleAccentBarClass = articleVisibilityBarClass
+const compactArticleHoverClass = articleVisibilityHoverClass
 
 function resetEditForm() {
   const current = user.value

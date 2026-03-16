@@ -58,6 +58,7 @@
 
 <script setup lang="ts">
 import type { Article } from '~/types/api'
+import { articleVisibilityBarClass, articleVisibilityHoverClass } from '~/utils/article-visibility'
 
 const { apiFetchData } = useApiClient()
 
@@ -113,16 +114,7 @@ onBeforeUnmount(() => {
   document.removeEventListener('visibilitychange', onVisibilityChange)
 })
 
-function accentBarClass(article: Article): string {
-  if (article.visibility === 'premiumOnly') return 'bg-orange-500'
-  if (article.visibility === 'verifiedOnly') return 'bg-blue-500'
-  return 'bg-transparent'
-}
-
-function rowHoverClass(article: Article): string {
-  if (article.visibility === 'premiumOnly') return 'hover:bg-orange-50 dark:hover:bg-orange-950/30'
-  if (article.visibility === 'verifiedOnly') return 'hover:bg-blue-50 dark:hover:bg-blue-950/30'
-  return 'hover:bg-gray-50 dark:hover:bg-white/5'
-}
+const accentBarClass = (article: Article) => articleVisibilityBarClass(article.visibility)
+const rowHoverClass = (article: Article) => articleVisibilityHoverClass(article.visibility)
 
 </script>

@@ -55,8 +55,8 @@ export function useArticleFeed(opts?: {
     return [author, mine, followingOnly, sort, visibility, restricted ? '1' : '0'].join('|')
   }
 
-  async function load(opts?: { force?: boolean }) {
-    const force = Boolean(opts?.force)
+  async function load(loadOpts?: { force?: boolean }) {
+    const force = Boolean(loadOpts?.force)
     if (!enabled.value) {
       articles.value = []
       nextCursor.value = null
@@ -89,6 +89,7 @@ export function useArticleFeed(opts?: {
   // Reload when reactive params change
   if (opts?.sort) watch(opts.sort, () => { if (enabled.value) void load() })
   if (opts?.visibility) watch(opts.visibility, () => { if (enabled.value) void load() })
+  if (opts?.mine) watch(opts.mine, () => { if (enabled.value) void load() })
   if (opts?.followingOnly) watch(opts.followingOnly, () => { if (enabled.value) void load() })
   if (isRef(opts?.authorUsername)) watch(opts!.authorUsername as Ref<string>, () => { if (enabled.value) void load() })
   if (opts?.enabled) {

@@ -39,7 +39,13 @@
           <template v-else-if="isGated">
             <span>{{ dateLabel }}</span>
             <span>·</span>
-            <span class="font-medium">{{ article.author?.name || article.author?.username }}</span>
+            <NuxtLink
+              v-if="article.author?.username"
+              :to="`/u/${article.author.username}`"
+              class="font-medium hover:underline underline-offset-2 normal-case tracking-normal"
+              @click.stop
+            >{{ article.author.name || article.author.username }}</NuxtLink>
+            <span v-else class="font-medium">{{ article.author?.name || article.author?.username }}</span>
             <span>·</span>
             <span
               :class="[
@@ -56,7 +62,13 @@
           <template v-else>
             <span>{{ dateLabel }}</span>
             <span>·</span>
-            <span class="font-medium">{{ article.author?.name || article.author?.username }}</span>
+            <NuxtLink
+              v-if="article.author?.username"
+              :to="`/u/${article.author.username}`"
+              class="font-medium hover:underline underline-offset-2 normal-case tracking-normal"
+              @click.stop
+            >{{ article.author.name || article.author.username }}</NuxtLink>
+            <span v-else class="font-medium">{{ article.author?.name || article.author?.username }}</span>
             <template v-if="readingTime">
               <span>·</span>
               <span>{{ readingTime }}</span>
@@ -137,6 +149,7 @@
 
 <script setup lang="ts">
 import type { Article } from '~/types/api'
+import { articleVisibilityBarClass, articleVisibilityHoverClass } from '~/utils/article-visibility'
 
 const props = defineProps<{
   article: Article
@@ -168,21 +181,8 @@ const savedLabel = computed(() => {
   return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
 })
 
-const visibilityBarClass = computed(() => {
-  if (props.article.visibility === 'premiumOnly') return 'bg-orange-500'
-  if (props.article.visibility === 'verifiedOnly') return 'bg-blue-500'
-  return 'bg-transparent'
-})
-
-const hoverClass = computed(() => {
-  if (props.article.visibility === 'premiumOnly') {
-    return 'hover:bg-orange-50 dark:hover:bg-orange-950/30'
-  }
-  if (props.article.visibility === 'verifiedOnly') {
-    return 'hover:bg-blue-50 dark:hover:bg-blue-950/30'
-  }
-  return 'hover:bg-gray-50 dark:hover:bg-white/5'
-})
+const visibilityBarClass = computed(() => articleVisibilityBarClass(props.article.visibility))
+const hoverClass = computed(() => articleVisibilityHoverClass(props.article.visibility))
 
 const readingTime = computed(() => {
   const mins = props.article.readingTimeMinutes

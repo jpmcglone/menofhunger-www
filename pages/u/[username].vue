@@ -355,7 +355,7 @@
       </div>
 
       <!-- ─── Articles tab ─────────────────────────────────────────────── -->
-      <div v-if="!effectiveProfileCtaKind && articlesFeatureEnabled && tabActivated.articles" v-show="activeProfileTab === 'articles'" class="min-h-[75vh]">
+      <div v-if="!effectiveProfileCtaKind && tabActivated.articles" v-show="activeProfileTab === 'articles'" class="min-h-[75vh]">
         <AppSubtleSectionLoader :loading="articlesInitialLoading" min-height-class="min-h-[220px]">
           <div v-if="profileArticlesFeed.error.value" class="px-4 mt-3 text-sm text-red-700 dark:text-red-300">
             {{ profileArticlesFeed.error.value }}
@@ -698,11 +698,10 @@ watch(activeProfileTab, (tab) => {
   nextTick(updateProfileUnderline)
 }, { immediate: true })
 
-const { articlesEnabled: articlesFeatureEnabled } = useAppFeatures()
 const profileTabs = computed<Array<{ key: ProfileTabKey; label: string }>>(() => [
   { key: 'posts', label: 'Posts' },
   { key: 'replies', label: 'Replies' },
-  ...(articlesFeatureEnabled.value ? [{ key: 'articles' as ProfileTabKey, label: 'Articles' }] : []),
+  { key: 'articles', label: 'Articles' },
   { key: 'media', label: 'Media' },
 ])
 
@@ -791,7 +790,7 @@ const {
 })
 
 // ─── Articles feed ────────────────────────────────────────────────────────────
-const articlesEnabled = computed(() => !notFound.value && articlesFeatureEnabled.value && tabActivated.articles)
+const articlesEnabled = computed(() => !notFound.value && tabActivated.articles)
 const profileArticlesFeed = useArticleFeed({
   authorUsername: normalizedUsername,
   sort: profileSort,

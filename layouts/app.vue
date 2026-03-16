@@ -564,7 +564,7 @@
                   </div>
 
                   <div class="space-y-4 transition-[transform] duration-200 ease-out">
-                  <AppTrendingArticlesCard v-if="articlesEnabled" />
+                  <AppTrendingArticlesCard />
 
                   <div class="space-y-1">
                     <div class="flex justify-end px-2">
@@ -901,7 +901,6 @@ useHead({
 })
 const { initAuth, user, isVerified: viewerIsVerified } = useAuth()
 const { isAuthed, profileTo, leftItems: leftNavItems, tabItems } = useAppNav()
-const { articlesEnabled } = useAppFeatures()
 const notifBadge = useNotificationsBadge()
 const {
   disconnectedDueToIdle,

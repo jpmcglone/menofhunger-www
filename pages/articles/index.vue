@@ -245,7 +245,7 @@ const publishedFeed = useArticleFeed({
   sort,
   visibility: visibilityFilter,
   followingOnly,
-  includeRestricted: true,
+  includeRestricted: isAuthed,
 })
 const draftsState = useArticleDrafts({ visibility: visibilityFilter, enabled: isPremium })
 const publishedInitialLoading = computed(

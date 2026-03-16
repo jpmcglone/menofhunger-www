@@ -16,7 +16,6 @@ export function useAppFeatures() {
   })
 
   const hasFeature = (key: AppFeatureToggle): boolean => enabledSet.value.has(key)
-  const articlesEnabled = computed(() => hasFeature('articles'))
 
-  return { enabledSet, hasFeature, articlesEnabled }
+  return { enabledSet, hasFeature }
 }

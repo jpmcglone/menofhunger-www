@@ -3,7 +3,7 @@ export type RouteHeaderDefaults = { icon?: string; description?: string }
 export const PUBLIC_PATHS = new Set<string>(['/about', '/status', '/roadmap', '/tiers'])
 
 // Allow logged-out browsing of core feed/discovery for now.
-export const LOGGED_OUT_ALLOWED_PATHS = new Set<string>(['/home', '/explore', '/notifications', '/feedback'])
+export const LOGGED_OUT_ALLOWED_PATHS = new Set<string>(['/home', '/explore', '/notifications', '/feedback', '/articles'])
 
 // After logout, these pages are safe to keep the user on (even if they use the `app` layout).
 export const AUTH_ALLOWED_AFTER_LOGOUT_PATHS = new Set<string>([
@@ -13,6 +13,7 @@ export const AUTH_ALLOWED_AFTER_LOGOUT_PATHS = new Set<string>([
   '/roadmap',
   '/tiers',
   '/feedback',
+  '/articles',
 ])
 
 export function isAdminPath(path: string): boolean {

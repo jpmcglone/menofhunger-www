@@ -1,4 +1,4 @@
-import { isAdminPath, isLoggedOutAllowedPath, isPostPermalinkPath, isPublicPath, isUserProfilePath } from '~/config/routes'
+import { isAdminPath, isArticlePermalinkPath, isLoggedOutAllowedPath, isPostPermalinkPath, isPublicPath, isUserProfilePath } from '~/config/routes'
 import { isSafeRedirect } from '~/utils/url'
 
 export default defineNuxtRouteMiddleware(async (to) => {
@@ -14,8 +14,9 @@ export default defineNuxtRouteMiddleware(async (to) => {
   // Public routes (no auth check, SSR-safe/prerender-safe).
   if (isPublicPath(to.path)) return
   if (isUserProfilePath(to.path)) return
-  // Post permalinks should never force login; show access reasons on the page instead.
+  // Post/article permalinks should never force login; show access reasons on the page instead.
   if (isPostPermalinkPath(to.path)) return
+  if (isArticlePermalinkPath(to.path)) return
   // Admin routes are protected by admin middleware (404 for non-admins).
   if (isAdminPath(to.path)) return
   // Allow logged-out browsing of core feed/discovery for now.

@@ -27,7 +27,7 @@ const articles = ref<Article[]>([])
 onMounted(async () => {
   try {
     const res = await apiFetchData<Article[]>(`/articles`, {
-      query: { authorUsername: props.authorUsername, limit: 6, includeRestricted: true },
+      query: { authorUsername: props.authorUsername, limit: 4, includeRestricted: true },
     })
     articles.value = (Array.isArray(res) ? res : []).filter((a) => a.id !== props.currentArticleId).slice(0, 3)
   } catch {

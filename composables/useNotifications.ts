@@ -323,8 +323,10 @@ export function useNotifications() {
 
   function rowHref(n: Notification): string | null {
     if (n.kind === 'coin_transfer') return '/coins'
-    if (n.kind === 'followed_article' && n.subjectArticleId) return `/a/${encodeURIComponent(n.subjectArticleId)}`
-    if ((n.kind === 'comment' || n.kind === 'mention') && n.subjectArticleId) {
+    // Article-related notifications always route to the article page.
+    if (n.subjectArticleId && (
+      n.kind === 'followed_article' || n.kind === 'comment' || n.kind === 'mention' || n.kind === 'boost'
+    )) {
       return `/a/${encodeURIComponent(n.subjectArticleId)}`
     }
     if ((n.kind === 'comment' || n.kind === 'followed_post' || n.kind === 'mention') && n.actorPostId) {
