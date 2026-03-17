@@ -170,10 +170,10 @@ const activeError = computed(() => activeTab.value === 'weekly' ? weekly.error.v
 
 function switchTab(tab: 'all' | 'weekly') {
   activeTab.value = tab
-  if (tab === 'weekly' && weekly.users.value.length === 0 && !weekly.loading.value) {
+  if (tab === 'weekly' && weekly.users.value.length === 0) {
     void weekly.refresh()
   }
-  if (tab === 'all' && allTime.users.value.length === 0 && !allTime.loading.value) {
+  if (tab === 'all' && allTime.users.value.length === 0) {
     void allTime.refresh()
   }
 }
@@ -186,6 +186,6 @@ function tierColor(u: LeaderboardUser): string {
 }
 
 onMounted(() => {
-  if (allTime.users.value.length === 0 && !allTime.loading.value) void allTime.refresh()
+  if (allTime.users.value.length === 0) void allTime.refresh()
 })
 </script>

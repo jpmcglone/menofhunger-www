@@ -2,6 +2,7 @@ import type { GetCheckinsLeaderboardResponse, LeaderboardUser, LeaderboardViewer
 import { getApiErrorMessage } from '~/utils/api-error'
 
 const LEADERBOARD_KEY = 'checkins-leaderboard'
+const inflightByKey = new Map<string, Promise<void>>()
 
 export function useCheckinsLeaderboard(options?: { limit?: number; scope?: 'all' | 'weekly' }) {
   const { apiFetchData } = useApiClient()
@@ -17,26 +18,37 @@ export function useCheckinsLeaderboard(options?: { limit?: number; scope?: 'all'
   const error = useState<string | null>(`${scopeKey}:error`, () => null)
 
   async function refresh() {
-    loading.value = true
-    error.value = null
-    try {
-      const query: Record<string, string | number> = {}
-      if (options?.limit) query.limit = options.limit
-      if (scope === 'weekly') query.scope = 'weekly'
-
-      const data = await apiFetchData<GetCheckinsLeaderboardResponse>('/checkins/leaderboard', {
-        method: 'GET',
-        query: Object.keys(query).length ? query : undefined,
-      })
-      users.value = data.users
-      viewerRank.value = data.viewerRank ?? null
-      weekStart.value = data.weekStart ?? null
-      generatedAt.value = data.generatedAt
-    } catch (e: unknown) {
-      error.value = getApiErrorMessage(e) || 'Failed to load leaderboard.'
-    } finally {
-      loading.value = false
+    const existing = inflightByKey.get(scopeKey)
+    if (existing) {
+      await existing
+      return
     }
+
+    const run = (async () => {
+      loading.value = true
+      error.value = null
+      try {
+        const query: Record<string, string | number> = {}
+        if (options?.limit) query.limit = options.limit
+        if (scope === 'weekly') query.scope = 'weekly'
+
+        const data = await apiFetchData<GetCheckinsLeaderboardResponse>('/checkins/leaderboard', {
+          method: 'GET',
+          query: Object.keys(query).length ? query : undefined,
+        })
+        users.value = data.users
+        viewerRank.value = data.viewerRank ?? null
+        weekStart.value = data.weekStart ?? null
+        generatedAt.value = data.generatedAt
+      } catch (e: unknown) {
+        error.value = getApiErrorMessage(e) || 'Failed to load leaderboard.'
+      } finally {
+        loading.value = false
+        inflightByKey.delete(scopeKey)
+      }
+    })()
+    inflightByKey.set(scopeKey, run)
+    await run
   }
 
   return { users, viewerRank, weekStart, generatedAt, loading, error, refresh }
