@@ -36,32 +36,28 @@
         </div>
       </header>
 
-      <!-- hero: best features + sign up / peek -->
+      <!-- hero -->
       <main class="pt-10 sm:pt-14 pb-10 sm:pb-14">
         <div class="grid gap-10 lg:grid-cols-2 lg:gap-14 items-stretch">
           <div class="space-y-6 flex flex-col min-h-0">
             <div class="inline-flex items-center gap-2 rounded-full border border-green-200/70 bg-green-50/60 px-3 py-1 text-xs font-semibold tracking-wide text-green-800 dark:border-green-500/20 dark:bg-green-500/10 dark:text-green-200">
               <span class="h-1.5 w-1.5 rounded-full bg-green-500/80" aria-hidden="true" />
-              Trust-first, men-only • Personal growth ecosystem
+              Trust-first, men-only
             </div>
 
             <h1 class="text-3xl sm:text-4xl font-black tracking-tight text-gray-900 dark:text-gray-50">
-              A trusted community for men who want measurable progress in life.
+              {{ VOICE.tagline }}
             </h1>
 
             <p class="text-base sm:text-lg leading-relaxed text-gray-700 dark:text-gray-200">
-              Not just a forum — structured conversations, accountability systems, small group cohorts, workshops, and premium playbooks. Tightly moderated quality.
-              Read the feed free — <span class="font-semibold text-[var(--moh-verified)]">verify once</span> to post, reply, and connect. <span class="font-semibold text-[var(--moh-premium)]">Premium from $25/mo</span> (quarterly and annual save more).
-            </p>
-            <p class="text-sm text-gray-600 dark:text-gray-300">
-              The town square is for reach. Men of Hunger is the lodge — for real dialogue, accountability, and outcomes.
+              {{ VOICE.lodgeDescription }}
             </p>
 
             <div class="flex flex-col sm:flex-row gap-3">
               <NuxtLink to="/login" class="inline-flex">
                 <Button class="w-full sm:w-auto rounded-full px-6">
                   <span class="flex items-center gap-2">
-                    <span>Sign up / Log in</span>
+                    <span>Join now</span>
                     <Icon name="tabler:arrow-right" aria-hidden="true" />
                   </span>
                 </Button>
@@ -69,44 +65,88 @@
               <NuxtLink to="/home" class="inline-flex">
                 <Button severity="secondary" class="w-full sm:w-auto rounded-full px-6">
                   <span class="flex items-center gap-2">
-                    <span>Take a peek at the app</span>
+                    <span>See what's happening</span>
                     <Icon name="tabler:eye" aria-hidden="true" />
                   </span>
                 </Button>
               </NuxtLink>
             </div>
-            <p class="text-xs text-gray-500 dark:text-gray-400">
-              No algorithms. No pay-to-win. A feed, verification, real conversation — and a path to measurable progress.
-            </p>
 
-            <!-- Best features -->
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <NuxtLink
+                to="/explore"
+                class="group rounded-xl border border-gray-200 bg-white/70 px-4 py-3 shadow-sm transition-colors hover:bg-white dark:border-zinc-800 dark:bg-zinc-950/30 dark:hover:bg-zinc-900/40"
+              >
+                <div class="flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-gray-100">
+                  <Icon name="tabler:compass" class="text-gray-500 dark:text-gray-400" aria-hidden="true" />
+                  Explore
+                </div>
+                <div class="mt-1 text-xs text-gray-600 dark:text-gray-300">
+                  Find public conversations by topic.
+                </div>
+              </NuxtLink>
+              <NuxtLink
+                to="/home"
+                class="group rounded-xl border border-gray-200 bg-white/70 px-4 py-3 shadow-sm transition-colors hover:bg-white dark:border-zinc-800 dark:bg-zinc-950/30 dark:hover:bg-zinc-900/40"
+              >
+                <div class="flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-gray-100">
+                  <Icon name="tabler:home" class="text-gray-500 dark:text-gray-400" aria-hidden="true" />
+                  Public feed
+                </div>
+                <div class="mt-1 text-xs text-gray-600 dark:text-gray-300">
+                  Read what members are building right now.
+                </div>
+              </NuxtLink>
+              <NuxtLink
+                to="/articles?sort=trending"
+                class="group rounded-xl border border-gray-200 bg-white/70 px-4 py-3 shadow-sm transition-colors hover:bg-white dark:border-zinc-800 dark:bg-zinc-950/30 dark:hover:bg-zinc-900/40"
+              >
+                <div class="flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-gray-100">
+                  <Icon name="tabler:article" class="text-gray-500 dark:text-gray-400" aria-hidden="true" />
+                  Articles
+                </div>
+                <div class="mt-1 text-xs text-gray-600 dark:text-gray-300">
+                  Read longform from the community.
+                </div>
+              </NuxtLink>
+            </div>
+
+            <!-- Pillars: 3 compact cards mirroring the DailyCheckinCard style -->
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
-              <div class="rounded-2xl border border-gray-200 bg-white/70 p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-950/30">
-                <div class="text-sm font-semibold text-gray-900 dark:text-gray-50">Read the feed</div>
-                <div class="mt-1 text-xs leading-relaxed text-gray-600 dark:text-gray-300">
-                  Browse public posts, follow accounts, and see what the community is building.
+              <div class="rounded-xl border px-4 py-3" style="background-color: rgba(var(--moh-verified-rgb), 0.06); border-color: rgba(var(--moh-verified-rgb), 0.25)">
+                <div class="flex items-center gap-2">
+                  <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg" style="background-color: rgba(var(--moh-verified-rgb), 0.15)">
+                    <Icon name="tabler:shield-check" class="text-sm" style="color: var(--moh-verified)" aria-hidden="true" />
+                  </div>
+                  <div class="text-[10px] font-semibold uppercase tracking-wide" style="color: var(--moh-verified); opacity: 0.85">Verify</div>
                 </div>
-                <NuxtLink to="/home" class="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-gray-700 hover:underline dark:text-gray-200">
-                  Try it
-                  <Icon name="tabler:arrow-right" class="h-3.5 w-3.5" aria-hidden="true" />
-                </NuxtLink>
+                <div class="mt-2 text-sm font-semibold text-gray-900 dark:text-gray-50">{{ VOICE.onboarding.verifyHeading }}</div>
+                <div class="mt-0.5 text-xs leading-relaxed text-gray-600 dark:text-gray-300">{{ VOICE.onboarding.verifyBody }}</div>
               </div>
-              <div class="rounded-2xl border border-[var(--moh-verified)]/30 bg-[rgba(var(--moh-verified-rgb),0.06)] p-4 shadow-sm dark:bg-[rgba(var(--moh-verified-rgb),0.1)] dark:border-[var(--moh-verified)]/25">
-                <div class="text-sm font-semibold text-[var(--moh-verified)]">Full participation requires verification</div>
-                <div class="mt-1 text-xs leading-relaxed text-gray-600 dark:text-gray-300">
-                  <span class="text-[var(--moh-verified)]">Verification</span> keeps the culture clean and real.
+              <div class="rounded-xl border px-4 py-3" style="background-color: var(--moh-checkin-soft); border-color: rgba(var(--moh-checkin-rgb), 0.3)">
+                <div class="flex items-center gap-2">
+                  <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg" style="background-color: rgba(var(--moh-checkin-rgb), 0.18)">
+                    <Icon name="tabler:flame" class="text-sm" style="color: var(--moh-checkin)" aria-hidden="true" />
+                  </div>
+                  <div class="text-[10px] font-semibold uppercase tracking-wide" style="color: var(--moh-checkin); opacity: 0.85">Streaks</div>
                 </div>
+                <div class="mt-2 text-sm font-semibold text-gray-900 dark:text-gray-50">{{ VOICE.onboarding.showUpDaily }}</div>
+                <div class="mt-0.5 text-xs leading-relaxed text-gray-600 dark:text-gray-300">{{ VOICE.onboarding.streakBody }}</div>
               </div>
-              <div class="rounded-2xl border border-gray-200 bg-white/70 p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-950/30">
-                <div class="text-sm font-semibold text-gray-900 dark:text-gray-50">Cohorts, workshops, playbooks</div>
-                <div class="mt-1 text-xs leading-relaxed text-gray-600 dark:text-gray-300">
-                  Premium gets structured conversations, accountability, and longform resources — not just a feed.
+              <div class="rounded-xl border px-4 py-3" style="background-color: rgba(var(--moh-premium-rgb), 0.06); border-color: rgba(var(--moh-premium-rgb), 0.25)">
+                <div class="flex items-center gap-2">
+                  <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg" style="background-color: rgba(var(--moh-premium-rgb), 0.15)">
+                    <Icon name="tabler:crown" class="text-sm" style="color: var(--moh-premium)" aria-hidden="true" />
+                  </div>
+                  <div class="text-[10px] font-semibold uppercase tracking-wide" style="color: var(--moh-premium); opacity: 0.85">Premium</div>
                 </div>
+                <div class="mt-2 text-sm font-semibold text-gray-900 dark:text-gray-50">Go deeper.</div>
+                <div class="mt-0.5 text-xs leading-relaxed text-gray-600 dark:text-gray-300">Cohorts, workshops, playbooks, media posts, polls, and premium-only conversations.</div>
               </div>
             </div>
 
-            <!-- left column: local meetup card (full width of column) -->
-            <div class="w-full rounded-2xl border border-gray-200 bg-white/70 p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-950/30 sm:p-6">
+            <!-- local meetup card -->
+            <div class="hidden sm:block w-full rounded-xl border border-gray-200 bg-white/70 p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-950/30 sm:p-6">
               <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div>
                   <div class="text-sm font-semibold text-gray-900 dark:text-gray-50">Local meetup</div>
@@ -125,11 +165,12 @@
             </div>
           </div>
 
-          <!-- right rail: how it works + trust + quote of the day -->
+          <!-- right rail -->
           <div class="space-y-4">
-            <div class="rounded-3xl border border-gray-200 bg-white/70 p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-950/30">
+            <!-- How it works -->
+            <div class="rounded-2xl border border-gray-200 bg-white/70 p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-950/30">
               <div class="flex items-center gap-3">
-                <div class="flex h-10 w-10 items-center justify-center rounded-2xl bg-gray-900 text-white dark:bg-white dark:text-gray-900">
+                <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-gray-900 text-white dark:bg-white dark:text-gray-900">
                   <Icon name="tabler:route" aria-hidden="true" />
                 </div>
                 <div>
@@ -141,33 +182,25 @@
               <ol class="mt-5 space-y-3 text-sm">
                 <li class="flex gap-3">
                   <span class="mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-gray-900/10 text-xs font-black text-gray-900 dark:bg-white/10 dark:text-gray-50">1</span>
-                  <span class="text-gray-700 dark:text-gray-200">
-                    <strong>Join</strong> with your phone number.
-                  </span>
+                  <span class="text-gray-700 dark:text-gray-200"><strong>Join</strong> with your phone number.</span>
                 </li>
                 <li class="flex gap-3">
                   <span class="mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-gray-900/10 text-xs font-black text-gray-900 dark:bg-white/10 dark:text-gray-50">2</span>
-                  <span class="text-gray-700 dark:text-gray-200">
-                    <strong>Set up your profile</strong> (username, interests, and more).
-                  </span>
+                  <span class="text-gray-700 dark:text-gray-200"><strong>Set up your profile</strong> — username, interests, photo.</span>
                 </li>
                 <li class="flex gap-3">
                   <span class="mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-gray-900/10 text-xs font-black text-gray-900 dark:bg-white/10 dark:text-gray-50">3</span>
-                  <span class="text-gray-700 dark:text-gray-200">
-                    <strong>Read, follow, boost</strong> — things you can do before verification.
-                  </span>
+                  <span class="text-gray-700 dark:text-gray-200"><strong>Read, follow, boost</strong> — start before verification.</span>
                 </li>
                 <li class="flex gap-3">
-                  <span class="mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[var(--moh-verified-soft)] text-xs font-black text-[var(--moh-verified)] dark:bg-[rgba(var(--moh-verified-rgb),0.2)]">4</span>
-                  <span class="text-gray-700 dark:text-gray-200">
-                    <strong class="text-[var(--moh-verified)]">Verify</strong>. Full participation requires verification.
+                  <span class="mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full" style="background-color: var(--moh-verified-soft); color: var(--moh-verified)">
+                    <span class="text-xs font-black">4</span>
                   </span>
+                  <span class="text-gray-700 dark:text-gray-200"><strong class="text-[var(--moh-verified)]">Verify</strong> to post, reply, and unlock check-in streaks.</span>
                 </li>
                 <li class="flex gap-3">
                   <span class="mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-gray-900/10 text-xs font-black text-gray-900 dark:bg-white/10 dark:text-gray-50">5</span>
-                  <span class="text-gray-700 dark:text-gray-200">
-                    <strong>Participate</strong> — post, reply, explore, boost, and grow your network.
-                  </span>
+                  <span class="text-gray-700 dark:text-gray-200"><strong>Show up.</strong> Consistency is the game.</span>
                 </li>
               </ol>
 
@@ -175,7 +208,7 @@
                 <NuxtLink to="/login" class="inline-flex w-full sm:w-auto">
                   <Button class="w-full sm:w-auto rounded-full">
                     <span class="flex items-center gap-2">
-                      <span>Sign up or log in to get started</span>
+                      <span>Join now</span>
                       <Icon name="tabler:arrow-right" aria-hidden="true" />
                     </span>
                   </Button>
@@ -183,9 +216,10 @@
               </div>
             </div>
 
-            <div class="rounded-3xl border border-gray-200 bg-white/70 p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-950/30">
+            <!-- Trust card -->
+            <div class="rounded-2xl border border-gray-200 bg-white/70 p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-950/30">
               <div class="flex items-center gap-3">
-                <div class="flex h-10 w-10 items-center justify-center rounded-2xl bg-orange-500/10 text-orange-800 dark:text-orange-200">
+                <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-orange-500/10 text-orange-800 dark:text-orange-200">
                   <Icon name="tabler:shield-check" aria-hidden="true" />
                 </div>
                 <div>
@@ -196,7 +230,7 @@
               <ul class="mt-4 space-y-2 text-sm text-gray-700 dark:text-gray-200">
                 <li class="flex gap-3">
                   <span class="mt-2 h-1 w-1 shrink-0 rounded-full bg-[var(--moh-verified)]" aria-hidden="true" />
-                  <span>Unverified accounts see <span class="font-medium">only public posts</span> — verified-only and premium-only posts are hidden. Participation requires <span class="font-medium text-[var(--moh-verified)]">verification</span>.</span>
+                  <span>Participation requires <span class="font-medium text-[var(--moh-verified)]">verification</span>. Unverified accounts see only public posts.</span>
                 </li>
                 <li class="flex gap-3">
                   <span class="mt-2 h-1 w-1 shrink-0 rounded-full bg-[var(--moh-premium)]" aria-hidden="true" />
@@ -204,24 +238,20 @@
                 </li>
                 <li class="flex gap-3">
                   <span class="mt-2 h-1 w-1 shrink-0 rounded-full bg-gray-500" aria-hidden="true" />
-                  <span>A place built for quality — we keep it that way.</span>
+                  <span>Quality is non-negotiable. We keep it that way.</span>
                 </li>
               </ul>
             </div>
 
-            <!-- right column: quote of the day (same as app layout, free-floating) -->
+            <!-- Quote of the day -->
             <div
               v-if="dailyQuote"
-              class="mt-16 sm:mt-20 py-2 text-center text-sm leading-relaxed text-gray-700 dark:text-gray-200"
+              class="mt-8 py-2 text-center text-sm leading-relaxed text-gray-700 dark:text-gray-200"
             >
               <figure>
-                <blockquote class="italic moh-serif">
-                  "{{ dailyQuote.text }}"
-                </blockquote>
+                <blockquote class="italic moh-serif">"{{ dailyQuote.text }}"</blockquote>
                 <figcaption class="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                  <span class="font-semibold">
-                    {{ dailyQuoteAttribution }}
-                  </span>
+                  <span class="font-semibold">{{ dailyQuoteAttribution }}</span>
                   <span v-if="dailyQuote.isParaphrase" class="ml-1">(paraphrase)</span>
                 </figcaption>
               </figure>
@@ -230,10 +260,10 @@
           </div>
         </div>
 
-        <!-- Badges: Verified, Premium, Org accounts -->
+        <!-- Badges -->
         <section class="mt-16 sm:mt-20">
           <h2 class="text-lg font-bold tracking-tight text-gray-900 dark:text-gray-50 sm:text-xl">
-            Badges you’ll see
+            Badges you'll see
           </h2>
           <p class="mt-1 text-sm text-gray-600 dark:text-gray-300">
             <span class="font-medium text-[var(--moh-verified)]">Verified</span>, <span class="font-medium text-[var(--moh-premium)]">Premium</span>, and <span class="font-medium text-[var(--moh-org)]">org accounts</span> — each has a distinct badge.
@@ -265,146 +295,185 @@
               </NuxtLink>
               <span v-else class="inline-flex items-center gap-2">
                 <AppVerifiedBadge :is-organization="true" status="manual" size="md" />
-                <NuxtLink
-                  to="/u/menofhunger"
-                  class="text-sm text-gray-500 hover:underline dark:text-gray-400"
-                >
-                  e.g. @menofhunger
-                </NuxtLink>
+                <NuxtLink to="/u/menofhunger" class="text-sm text-gray-500 hover:underline dark:text-gray-400">e.g. @menofhunger</NuxtLink>
               </span>
             </div>
           </div>
         </section>
 
-        <!-- What you can do: value features (colored by required tier) -->
+        <!-- Trending articles -->
+        <section v-if="trendingArticles.length > 0" class="mt-16 sm:mt-20">
+          <div class="flex items-center justify-between gap-4">
+            <div>
+              <h2 class="text-lg font-bold tracking-tight text-gray-900 dark:text-gray-50 sm:text-xl">
+                Trending Articles
+              </h2>
+            </div>
+            <NuxtLink
+              to="/articles?sort=trending"
+              class="hidden sm:inline-flex items-center gap-1 text-sm font-semibold text-gray-700 hover:underline dark:text-gray-200"
+            >
+              Browse all
+              <Icon name="tabler:arrow-right" class="h-4 w-4" aria-hidden="true" />
+            </NuxtLink>
+          </div>
+
+          <div class="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <NuxtLink
+              v-for="(article, i) in trendingArticles"
+              :key="article.id"
+              :to="`/a/${article.id}`"
+              class="group relative flex flex-col rounded-2xl border border-gray-200 bg-white/70 shadow-sm transition-all hover:shadow-md hover:-translate-y-0.5 dark:border-zinc-800 dark:bg-zinc-950/30 overflow-hidden"
+            >
+              <!-- thumbnail -->
+              <div v-if="article.thumbnailUrl" class="relative aspect-[16/9] w-full overflow-hidden bg-gray-100 dark:bg-zinc-800">
+                <img
+                  :src="article.thumbnailUrl"
+                  :alt="article.title"
+                  class="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
+                >
+                <div
+                  class="absolute top-3 left-3 flex h-7 w-7 items-center justify-center rounded-lg text-xs font-black tabular-nums leading-none shadow-sm"
+                  :class="i === 0
+                    ? 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300'
+                    : 'bg-white/90 text-gray-600 dark:bg-zinc-900/80 dark:text-zinc-400'"
+                >{{ i + 1 }}</div>
+              </div>
+              <div v-else class="relative flex aspect-[16/9] w-full items-center justify-center bg-gray-100 dark:bg-zinc-800">
+                <Icon name="tabler:article" class="text-2xl text-gray-300 dark:text-zinc-600" aria-hidden="true" />
+                <div
+                  class="absolute top-3 left-3 flex h-7 w-7 items-center justify-center rounded-lg text-xs font-black tabular-nums leading-none shadow-sm"
+                  :class="i === 0
+                    ? 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300'
+                    : 'bg-white/90 text-gray-600 dark:bg-zinc-900/80 dark:text-zinc-400'"
+                >{{ i + 1 }}</div>
+              </div>
+
+              <div class="flex flex-1 flex-col p-4">
+                <p class="line-clamp-2 text-sm font-semibold leading-snug text-gray-900 dark:text-gray-100 group-hover:underline">
+                  {{ article.title }}
+                </p>
+                <p v-if="article.excerpt" class="mt-1.5 line-clamp-2 text-xs leading-relaxed text-gray-600 dark:text-gray-400">
+                  {{ article.excerpt }}
+                </p>
+                <div class="mt-auto pt-3 flex items-center gap-2">
+                  <span class="text-xs font-medium text-gray-500 dark:text-gray-400 truncate">
+                    {{ article.author.name || article.author.username }}
+                  </span>
+                  <span v-if="article.readingTimeMinutes" class="text-xs text-gray-400 dark:text-gray-500">
+                    · {{ article.readingTimeMinutes }} min read
+                  </span>
+                </div>
+              </div>
+            </NuxtLink>
+          </div>
+
+          <div class="mt-4 sm:hidden">
+            <NuxtLink
+              to="/articles?sort=trending"
+              class="inline-flex items-center gap-1 text-sm font-semibold text-gray-700 hover:underline dark:text-gray-200"
+            >
+              Browse all articles
+              <Icon name="tabler:arrow-right" class="h-4 w-4" aria-hidden="true" />
+            </NuxtLink>
+          </div>
+        </section>
+
+        <!-- What you can do (condensed) -->
         <section class="mt-12 sm:mt-16">
           <h2 class="text-lg font-bold tracking-tight text-gray-900 dark:text-gray-50 sm:text-xl">
             What you can do
           </h2>
           <p class="mt-1 text-sm text-gray-600 dark:text-gray-300">
-            Your profile doesn’t require verification. The rest is <span class="font-medium text-[var(--moh-verified)]">Verified</span> (blue) or <span class="font-medium text-[var(--moh-premium)]">Premium</span> (orange). Reply and boost require verification; bookmarks don’t.
+            <span class="font-medium text-[var(--moh-verified)]">Verified</span> (blue) or <span class="font-medium text-[var(--moh-premium)]">Premium</span> (orange). Read the feed and bookmark without verification.
           </p>
           <div class="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5 lg:grid-cols-3">
-            <!-- Unverified: least → most interesting -->
             <div class="rounded-2xl border border-gray-200 bg-white/70 p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-950/30 sm:p-5">
               <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-gray-900/10 text-gray-800 dark:bg-white/10 dark:text-gray-200">
                 <Icon name="tabler:home" aria-hidden="true" />
               </div>
               <div class="mt-3 font-semibold text-gray-900 dark:text-gray-50">Read the feed</div>
               <p class="mt-1 text-sm leading-relaxed text-gray-600 dark:text-gray-300">
-                No verification required — you only see public posts (verified-only and premium-only are hidden). Browse and bookmark; sign in to follow people and save your bookmarks.
+                Browse public posts, articles, and profiles. Follow people. No verification required.
               </p>
               <NuxtLink to="/home" class="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-gray-700 hover:underline dark:text-gray-200">
-                Try it
-                <Icon name="tabler:arrow-right" class="h-3.5 w-3.5" aria-hidden="true" />
+                Try it <Icon name="tabler:arrow-right" class="h-3.5 w-3.5" aria-hidden="true" />
               </NuxtLink>
             </div>
-            <div class="rounded-2xl border border-gray-200 bg-white/70 p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-950/30 sm:p-5">
-              <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-gray-900/10 text-gray-800 dark:bg-white/10 dark:text-gray-200">
-                <Icon name="tabler:search" aria-hidden="true" />
-              </div>
-              <div class="mt-3 font-semibold text-gray-900 dark:text-gray-50">Explore</div>
-              <p class="mt-1 text-sm leading-relaxed text-gray-600 dark:text-gray-300">
-                No verification required — you only see public content. Verify to see verified-only and premium-only posts.
-              </p>
-              <NuxtLink to="/explore" class="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-gray-700 hover:underline dark:text-gray-200">
-                Try it
-                <Icon name="tabler:arrow-right" class="h-3.5 w-3.5" aria-hidden="true" />
-              </NuxtLink>
-            </div>
-            <div class="rounded-2xl border border-gray-200 bg-white/70 p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-950/30 sm:p-5">
-              <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-gray-900/10 text-gray-800 dark:bg-white/10 dark:text-gray-200">
-                <Icon name="heroicons-outline:user-circle" aria-hidden="true" />
-              </div>
-              <div class="mt-3 font-semibold text-gray-900 dark:text-gray-50">Your profile</div>
-              <p class="mt-1 text-sm leading-relaxed text-gray-600 dark:text-gray-300">
-                No verification required — set your name, photo, and bio so the community knows who you are. Edit anytime in settings.
-              </p>
-            </div>
-            <!-- Verified: post, boost, daily check-ins, chat, spaces, verified-only -->
             <div class="rounded-2xl border border-[var(--moh-verified)]/30 bg-[rgba(var(--moh-verified-rgb),0.06)] p-4 shadow-sm dark:bg-[rgba(var(--moh-verified-rgb),0.1)] dark:border-[var(--moh-verified)]/25 sm:p-5">
               <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--moh-verified-soft)] text-[var(--moh-verified)] dark:bg-[rgba(var(--moh-verified-rgb),0.2)]">
                 <Icon name="tabler:plus" size="28" class="opacity-90" aria-hidden="true" />
               </div>
-              <div class="mt-3 font-semibold text-[var(--moh-verified)]">Post</div>
+              <div class="mt-3 font-semibold text-[var(--moh-verified)]">Post, reply, boost</div>
               <p class="mt-1 text-sm leading-relaxed text-gray-600 dark:text-gray-300">
-                <span class="font-medium text-[var(--moh-verified)]">Verified</span> — share ideas, get feedback, and connect with the community.
+                <span class="font-medium text-[var(--moh-verified)]">Verified</span> — share ideas, reply to threads, and boost posts worth seeing.
               </p>
             </div>
             <div class="rounded-2xl border border-[var(--moh-verified)]/30 bg-[rgba(var(--moh-verified-rgb),0.06)] p-4 shadow-sm dark:bg-[rgba(var(--moh-verified-rgb),0.1)] dark:border-[var(--moh-verified)]/25 sm:p-5">
-              <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--moh-verified-soft)] text-[var(--moh-verified)] dark:bg-[rgba(var(--moh-verified-rgb),0.2)]">
-                <svg viewBox="0 0 24 24" class="h-5 w-5" aria-hidden="true">
-                  <path d="M12 4.5L3.75 12.25h5.25V20h6V12.25h5.25L12 4.5z" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round" />
-                </svg>
+              <div class="flex h-10 w-10 items-center justify-center rounded-xl" style="background-color: rgba(var(--moh-checkin-rgb), 0.18)">
+                <Icon name="tabler:calendar-check" aria-hidden="true" style="color: var(--moh-checkin)" />
               </div>
-              <div class="mt-3 font-semibold text-[var(--moh-verified)]">Boost posts</div>
+              <div class="mt-3 font-semibold text-[var(--moh-verified)]">Daily check-ins & streaks</div>
               <p class="mt-1 text-sm leading-relaxed text-gray-600 dark:text-gray-300">
-                <span class="font-medium text-[var(--moh-verified)]">Verified</span> — give posts you value a boost so more of the community sees them.
-              </p>
-            </div>
-            <div class="rounded-2xl border border-[var(--moh-verified)]/30 bg-[rgba(var(--moh-verified-rgb),0.06)] p-4 shadow-sm dark:bg-[rgba(var(--moh-verified-rgb),0.1)] dark:border-[var(--moh-verified)]/25 sm:p-5">
-              <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--moh-verified-soft)] text-[var(--moh-verified)] dark:bg-[rgba(var(--moh-verified-rgb),0.2)]">
-                <Icon name="tabler:calendar-check" aria-hidden="true" />
-              </div>
-              <div class="mt-3 font-semibold text-[var(--moh-verified)]">Daily check-ins</div>
-              <p class="mt-1 text-sm leading-relaxed text-gray-600 dark:text-gray-300">
-                <span class="font-medium text-[var(--moh-verified)]">Verified</span> — daily prompts for reflection and engagement streaks.
+                <span class="font-medium text-[var(--moh-verified)]">Verified</span> — daily prompts, coin rewards, and streak multipliers for consistency.
               </p>
             </div>
             <div class="rounded-2xl border border-[var(--moh-verified)]/30 bg-[rgba(var(--moh-verified-rgb),0.06)] p-4 shadow-sm dark:bg-[rgba(var(--moh-verified-rgb),0.1)] dark:border-[var(--moh-verified)]/25 sm:p-5">
               <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--moh-verified-soft)] text-[var(--moh-verified)] dark:bg-[rgba(var(--moh-verified-rgb),0.2)]">
                 <Icon name="tabler:message-circle" aria-hidden="true" />
               </div>
-              <div class="mt-3 font-semibold text-[var(--moh-verified)]">Chat</div>
+              <div class="mt-3 font-semibold text-[var(--moh-verified)]">Chat & spaces</div>
               <p class="mt-1 text-sm leading-relaxed text-gray-600 dark:text-gray-300">
-                <span class="font-medium text-[var(--moh-verified)]">Verified</span> — direct messages and conversations with other members.
+                <span class="font-medium text-[var(--moh-verified)]">Verified</span> — DMs, group conversations, and live spaces with music.
               </p>
             </div>
-            <div class="rounded-2xl border border-[var(--moh-verified)]/30 bg-[rgba(var(--moh-verified-rgb),0.06)] p-4 shadow-sm dark:bg-[rgba(var(--moh-verified-rgb),0.1)] dark:border-[var(--moh-verified)]/25 sm:p-5">
-              <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--moh-verified-soft)] text-[var(--moh-verified)] dark:bg-[rgba(var(--moh-verified-rgb),0.2)]">
-                <Icon name="tabler:layout-grid" aria-hidden="true" />
-              </div>
-              <div class="mt-3 font-semibold text-[var(--moh-verified)]">Spaces</div>
-              <p class="mt-1 text-sm leading-relaxed text-gray-600 dark:text-gray-300">
-                <span class="font-medium text-[var(--moh-verified)]">Verified</span> — enter spaces with live chat, and optionally play music while you build.
-              </p>
-            </div>
-            <div class="rounded-2xl border border-[var(--moh-verified)]/30 bg-[rgba(var(--moh-verified-rgb),0.06)] p-4 shadow-sm dark:bg-[rgba(var(--moh-verified-rgb),0.1)] dark:border-[var(--moh-verified)]/25 sm:p-5">
-              <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--moh-verified-soft)] text-[var(--moh-verified)] dark:bg-[rgba(var(--moh-verified-rgb),0.2)]">
-                <Icon name="tabler:lock" aria-hidden="true" />
-              </div>
-              <div class="mt-3 font-semibold text-[var(--moh-verified)]">Verified-only posts</div>
-              <p class="mt-1 text-sm leading-relaxed text-gray-600 dark:text-gray-300">
-                <span class="font-medium text-[var(--moh-verified)]">Verified</span> members can create posts visible only to verified members.
-              </p>
-            </div>
-            <!-- Premium: GIFs/images first, then polls, then premium-only -->
             <div class="rounded-2xl border border-[var(--moh-premium)]/30 bg-[rgba(var(--moh-premium-rgb),0.06)] p-4 shadow-sm dark:bg-[rgba(var(--moh-premium-rgb),0.1)] dark:border-[var(--moh-premium)]/25 sm:p-5">
               <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--moh-premium-soft)] text-[var(--moh-premium)] dark:bg-[rgba(var(--moh-premium-rgb),0.2)]">
                 <Icon name="tabler:photo" aria-hidden="true" />
               </div>
-              <div class="mt-3 font-semibold text-[var(--moh-premium)]">GIFs, images & videos</div>
+              <div class="mt-3 font-semibold text-[var(--moh-premium)]">Media, polls & articles</div>
               <p class="mt-1 text-sm leading-relaxed text-gray-600 dark:text-gray-300">
-                <span class="font-medium text-[var(--moh-premium)]">Premium</span> members can post GIFs, images, and videos in the feed.
-              </p>
-            </div>
-            <div class="rounded-2xl border border-[var(--moh-premium)]/30 bg-[rgba(var(--moh-premium-rgb),0.06)] p-4 shadow-sm dark:bg-[rgba(var(--moh-premium-rgb),0.1)] dark:border-[var(--moh-premium)]/25 sm:p-5">
-              <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--moh-premium-soft)] text-[var(--moh-premium)] dark:bg-[rgba(var(--moh-premium-rgb),0.2)]">
-                <Icon name="tabler:chart-bar" class="rotate-90" aria-hidden="true" />
-              </div>
-              <div class="mt-3 font-semibold text-[var(--moh-premium)]">Polls</div>
-              <p class="mt-1 text-sm leading-relaxed text-gray-600 dark:text-gray-300">
-                <span class="font-medium text-[var(--moh-premium)]">Premium</span> members can create polls for quick feedback.
+                <span class="font-medium text-[var(--moh-premium)]">Premium</span> — GIFs, images, videos, polls, and longform articles.
               </p>
             </div>
             <div class="rounded-2xl border border-[var(--moh-premium)]/30 bg-[rgba(var(--moh-premium-rgb),0.06)] p-4 shadow-sm dark:bg-[rgba(var(--moh-premium-rgb),0.1)] dark:border-[var(--moh-premium)]/25 sm:p-5">
               <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--moh-premium-soft)] text-[var(--moh-premium)] dark:bg-[rgba(var(--moh-premium-rgb),0.2)]">
                 <Icon name="tabler:lock" aria-hidden="true" />
               </div>
-              <div class="mt-3 font-semibold text-[var(--moh-premium)]">Premium-only posts</div>
+              <div class="mt-3 font-semibold text-[var(--moh-premium)]">Premium-only conversations</div>
               <p class="mt-1 text-sm leading-relaxed text-gray-600 dark:text-gray-300">
-                <span class="font-medium text-[var(--moh-premium)]">Premium</span> members can create posts visible only to premium members.
+                <span class="font-medium text-[var(--moh-premium)]">Premium</span> — create posts and articles visible only to premium members.
               </p>
+            </div>
+          </div>
+        </section>
+
+        <!-- Bottom CTA -->
+        <section class="mt-16 sm:mt-20 text-center">
+          <div class="rounded-2xl border border-gray-200 bg-white/70 p-8 shadow-sm dark:border-zinc-800 dark:bg-zinc-950/30 sm:p-12">
+            <h2 class="text-2xl sm:text-3xl font-black tracking-tight text-gray-900 dark:text-gray-50">
+              Stop scrolling. Start building.
+            </h2>
+            <p class="mt-3 text-sm sm:text-base text-gray-600 dark:text-gray-300 max-w-lg mx-auto">
+              No algorithms. No pay-to-win. A feed, verification, real conversation — and a path to measurable progress.
+            </p>
+            <div class="mt-6 flex flex-col sm:flex-row items-center justify-center gap-3">
+              <NuxtLink to="/login" class="inline-flex">
+                <Button class="rounded-full px-8">
+                  <span class="flex items-center gap-2">
+                    <span>Join now</span>
+                    <Icon name="tabler:arrow-right" aria-hidden="true" />
+                  </span>
+                </Button>
+              </NuxtLink>
+              <NuxtLink to="/articles?sort=trending" class="inline-flex">
+                <Button severity="secondary" class="rounded-full px-6">
+                  <span class="flex items-center gap-2">
+                    <span>Read articles</span>
+                    <Icon name="tabler:article" aria-hidden="true" />
+                  </span>
+                </Button>
+              </NuxtLink>
             </div>
           </div>
         </section>
@@ -418,6 +487,7 @@
             </ClientOnly>
             <NuxtLink to="/about" class="font-semibold text-gray-700 hover:underline dark:text-gray-200">About</NuxtLink>
             <NuxtLink to="/tiers" class="font-semibold text-gray-700 hover:underline dark:text-gray-200">Tiers</NuxtLink>
+            <NuxtLink to="/articles" class="font-semibold text-gray-700 hover:underline dark:text-gray-200">Articles</NuxtLink>
             <NuxtLink to="/roadmap" class="font-semibold text-gray-700 hover:underline dark:text-gray-200">Roadmap</NuxtLink>
             <NuxtLink to="/status" class="font-semibold text-gray-700 hover:underline dark:text-gray-200">Status</NuxtLink>
             <a
@@ -531,16 +601,16 @@
 
 <script setup lang="ts">
 import { siteConfig } from '~/config/site'
+import { VOICE } from '~/config/voice'
 import { formatDailyQuoteAttribution } from '~/utils/daily-quote'
 import logoLightSmall from '~/assets/images/logo-white-bg-small.png'
 import logoDarkSmall from '~/assets/images/logo-black-bg-small.png'
-import type { DailyContentToday, DailyQuote, PublicProfile } from '~/types/api'
+import type { Article, DailyContentToday, DailyQuote, PublicProfile } from '~/types/api'
 
 definePageMeta({
   layout: 'empty'
 })
 
-// Auth redirect handled in middleware (SSR + client). If we render, user is anonymous.
 useHead({
   htmlAttrs: { class: 'moh-landing' }
 })
@@ -555,9 +625,9 @@ watch(isRoanokeOpen, (open) => {
   }
 })
 
-// Quote of the day (same source as app layout)
 const { apiFetchData } = useApiClient()
 const { dayKey: dailyContentDayKey } = useEasternMidnightRollover()
+
 const {
   data: dailyContent,
   refresh: refreshDailyContent,
@@ -579,7 +649,17 @@ watch(
   },
 )
 
-// Org account example: public profile for @menofhunger (landing badges section)
+// Trending public articles (SSR-safe, no login required)
+const { data: trendingArticlesData } = await useAsyncData<Article[]>(
+  'landing:trending-articles',
+  () => apiFetchData<Article[]>('/articles', {
+    query: { limit: 6, sort: 'trending', visibility: 'public' },
+  }),
+  { server: true },
+)
+const trendingArticles = computed(() => trendingArticlesData.value ?? [])
+
+// Org account badge example
 const ORG_USERNAME = 'menofhunger'
 const { data: orgProfileData } = await useAsyncData<PublicProfile>(
   `landing:org-profile:${ORG_USERNAME}`,
