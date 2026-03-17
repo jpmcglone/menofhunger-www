@@ -84,6 +84,7 @@ function toArticleRow(item: AdminUserRecentArticle): Article {
       orgAffiliations: author?.orgAffiliations ?? [],
     },
     reactions: [],
+    tags: [],
     viewerCanAccess: true,
   }
 }

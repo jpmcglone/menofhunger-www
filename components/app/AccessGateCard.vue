@@ -1,13 +1,38 @@
 <template>
-  <div class="rounded-xl border border-gray-200 bg-gray-50 p-4 dark:border-zinc-800 dark:bg-zinc-950/40">
-    <div class="font-semibold text-gray-900 dark:text-gray-50">
-      {{ title }}
+  <div
+    class="rounded-xl border px-4 py-3.5 flex items-start gap-3.5"
+    :class="kind === 'verify'
+      ? 'border-blue-200 bg-blue-50/60 dark:border-blue-500/20 dark:bg-blue-500/6'
+      : 'border-orange-200 bg-orange-50/60 dark:border-orange-500/20 dark:bg-orange-500/6'"
+  >
+    <!-- Icon badge -->
+    <div
+      class="shrink-0 flex h-10 w-10 items-center justify-center rounded-xl mt-0.5"
+      :class="kind === 'verify'
+        ? 'bg-blue-100 dark:bg-blue-500/15'
+        : 'bg-orange-100 dark:bg-orange-500/15'"
+    >
+      <Icon
+        :name="kind === 'verify' ? 'tabler:rosette-discount-check' : 'tabler:crown'"
+        class="text-lg"
+        :class="kind === 'verify' ? 'text-blue-600 dark:text-blue-400' : 'text-orange-500 dark:text-orange-400'"
+        aria-hidden="true"
+      />
     </div>
-    <div class="mt-1 text-sm text-gray-600 dark:text-gray-300">
-      {{ body }}
-    </div>
-    <div class="mt-3">
-      <Button :label="ctaLabel" severity="secondary" @click="navigateTo(ctaTo)" />
+
+    <!-- Text + CTA -->
+    <div class="flex-1 min-w-0">
+      <div class="text-sm font-semibold moh-text leading-snug">{{ title }}</div>
+      <div class="mt-0.5 text-[12px] moh-text-muted leading-snug">{{ body }}</div>
+      <div class="mt-2.5">
+        <Button
+          :label="ctaLabel"
+          size="small"
+          severity="secondary"
+          rounded
+          @click="navigateTo(ctaTo)"
+        />
+      </div>
     </div>
   </div>
 </template>
@@ -23,13 +48,12 @@ const ctaLabel = computed(() => props.ctaLabel ?? 'Go to settings')
 const ctaTo = computed(() => props.ctaTo ?? '/settings')
 
 const title = computed(() => {
-  if (props.kind === 'verify') return 'Verified only'
+  if (props.kind === 'verify') return 'Verified members only'
   return 'Premium required'
 })
 
 const body = computed(() => {
-  if (props.kind === 'verify') return 'Verify your account to view verified-only posts.'
-  return 'Upgrade to premium to view premium-only posts.'
+  if (props.kind === 'verify') return 'Verify your account to view this content.'
+  return 'Upgrade to premium to view this content.'
 })
 </script>
-

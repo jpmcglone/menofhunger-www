@@ -15,6 +15,8 @@ import type { Article } from '~/types/api'
 
 definePageMeta({ layout: 'app', title: 'Edit Article', hideTopBar: true, middleware: 'premium', ssr: false })
 
+usePageSeo({ title: 'Edit Article', noindex: true })
+
 const route = useRoute()
 const id = computed(() => route.params.id as string)
 const { apiFetchData } = useApiClient()

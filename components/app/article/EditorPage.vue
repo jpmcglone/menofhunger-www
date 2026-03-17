@@ -93,7 +93,7 @@
         <button
           v-else
           type="button"
-          class="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-gray-200 py-8 text-sm text-gray-400 transition-colors hover:border-gray-300 hover:text-gray-500 dark:border-zinc-700 dark:text-zinc-500 dark:hover:border-zinc-600"
+          class="flex aspect-[16/9] w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-gray-200 p-4 text-sm text-gray-400 transition-colors hover:border-gray-300 hover:text-gray-500 dark:border-zinc-700 dark:text-zinc-500 dark:hover:border-zinc-600"
           :disabled="thumbnailUploading"
           @click="triggerThumbnailUpload"
         >
@@ -122,6 +122,13 @@
         placeholder="Article title…"
         :rows="1"
         @input="onTitleInput"
+      />
+
+      <!-- Tags input — below title, above body -->
+      <AppArticleTagInput
+        v-model="editor.tags.value"
+        class="mb-4"
+        @update:model-value="editor.markDirty()"
       />
 
       <!-- Tiptap editor -->

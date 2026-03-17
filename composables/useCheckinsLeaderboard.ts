@@ -13,7 +13,7 @@ export function useCheckinsLeaderboard(options?: { limit?: number; scope?: 'all'
   const viewerRank = useState<LeaderboardViewerRank | null>(`${scopeKey}:viewerRank`, () => null)
   const weekStart = useState<string | null>(`${scopeKey}:weekStart`, () => null)
   const generatedAt = useState<string | null>(`${scopeKey}:generatedAt`, () => null)
-  const loading = useState<boolean>(`${scopeKey}:loading`, () => false)
+  const loading = useState<boolean>(`${scopeKey}:loading`, () => true)
   const error = useState<string | null>(`${scopeKey}:error`, () => null)
 
   async function refresh() {

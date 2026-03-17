@@ -817,11 +817,23 @@ export type HashtagResult = {
   usageCount: number
 }
 
+export type TaxonomyKind = 'topic' | 'subtopic' | 'tag'
+
+export type TaxonomyMatch = {
+  id: string
+  slug: string
+  label: string
+  kind: TaxonomyKind
+  score: number
+  aliases: string[]
+}
+
 /** Mixed search result: users + posts. */
 export type SearchMixedResult = {
   users: SearchUserResult[]
   posts: FeedPost[]
   articles: Article[]
+  taxonomyMatches?: TaxonomyMatch[]
 }
 
 /** Pagination for mixed search (two cursors). */
@@ -1608,6 +1620,24 @@ export type ArticleAuthor = {
   orgAffiliations: OrgAffiliation[]
 }
 
+export type ArticleTag = {
+  /** Normalized slug — safe for URL params (e.g. "stoicism"). */
+  tag: string
+  /** Display label as the author typed it (e.g. "Stoicism"). */
+  label: string
+}
+
+/** User-selected taxonomy preferences for digest personalization. */
+export type TaxonomyPreference = {
+  termId: string
+  slug: string
+  label: string
+  kind: TaxonomyKind
+}
+
+/** Backwards-compat alias while migration completes. */
+export type ArticleTagPreference = TaxonomyPreference
+
 export type Article = {
   id: string
   createdAt: string
@@ -1631,6 +1661,7 @@ export type Article = {
   viewCount: number
   author: ArticleAuthor
   reactions: ArticleReactionSummary[]
+  tags: ArticleTag[]
   readingTimeMinutes?: number
   viewerHasBoosted?: boolean
   /** False when the viewer's tier does not grant access; body/excerpt are stripped in this case. */

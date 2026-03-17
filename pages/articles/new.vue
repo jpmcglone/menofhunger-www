@@ -15,6 +15,8 @@ import type { Article } from '~/types/api'
 
 definePageMeta({ layout: 'app', title: 'New Article', hideTopBar: true, ssr: false })
 
+usePageSeo({ title: 'New Article', noindex: true })
+
 const { isPremium, ensureLoaded } = useAuth()
 const { apiFetchData } = useApiClient()
 

@@ -562,9 +562,18 @@
                     </figure>
                     <div class="mt-8 h-[1px] w-32 mx-auto bg-gradient-to-r from-transparent via-gray-400 dark:via-gray-600 to-transparent" />
                   </div>
+                  <!-- Quote placeholder while daily content loads -->
+                  <div v-else class="my-8 py-2 text-center space-y-2.5 animate-pulse" aria-hidden="true">
+                    <div class="h-3.5 bg-gray-200 dark:bg-zinc-800 rounded-full mx-auto w-64" />
+                    <div class="h-3.5 bg-gray-200 dark:bg-zinc-800 rounded-full mx-auto w-56" />
+                    <div class="h-3.5 bg-gray-200 dark:bg-zinc-800 rounded-full mx-auto w-44" />
+                    <div class="mt-3 h-3 bg-gray-200 dark:bg-zinc-800 rounded-full mx-auto w-28" />
+                    <div class="mt-6 h-[1px] w-32 mx-auto bg-gray-200 dark:bg-zinc-800" />
+                  </div>
 
                   <div class="space-y-4 transition-[transform] duration-200 ease-out">
                   <AppTrendingArticlesCard />
+                  <AppTrendingTagsCard />
 
                   <div class="space-y-1">
                     <div class="flex justify-end px-2">
@@ -592,8 +601,14 @@
                         <span class="moh-h2">Who to follow</span>
                       </template>
                       <template #content>
-                        <div v-if="whoToFollowLoading && whoToFollowUsers.length === 0" class="flex justify-center py-4">
-                          <AppLogoLoader />
+                        <div v-if="whoToFollowLoading && whoToFollowUsers.length === 0" class="space-y-3 animate-pulse py-1">
+                          <div v-for="i in 3" :key="i" class="flex items-center gap-2.5">
+                            <div class="h-9 w-9 rounded-full bg-gray-200 dark:bg-zinc-800 shrink-0" />
+                            <div class="flex-1 space-y-1.5">
+                              <div class="h-3 bg-gray-200 dark:bg-zinc-800 rounded-full w-2/3" />
+                              <div class="h-2.5 bg-gray-200 dark:bg-zinc-800 rounded-full w-1/2" />
+                            </div>
+                          </div>
                         </div>
 
                         <div v-else-if="whoToFollowUsers.length > 0">
@@ -626,20 +641,7 @@
                        and SSR streaming can send layout before page fetch completes. -->
                   <ClientOnly>
                     <AppCheckinsLeaderboardWidget />
-                    <template #fallback>
-                      <Card class="moh-card moh-card-matte !rounded-2xl">
-                        <template #title>
-                          <span class="moh-h2">Streak Leaderboard</span>
-                        </template>
-                        <template #content>
-                          <div class="flex justify-center py-4" aria-hidden="true">
-                            <AppLogoLoader compact />
-                          </div>
-                        </template>
-                      </Card>
-                    </template>
                   </ClientOnly>
-
                   <AppWebsters1828WordOfDayCard />
 
                   <AppSupportDonateCard />
@@ -647,14 +649,7 @@
                   <!-- Ads can mutate DOM; keep the mount point client-only. -->
                   <ClientOnly>
                     <AppAdSlot placement="rail" />
-                    <template #fallback>
-                      <div
-                        aria-hidden="true"
-                        class="relative w-full rounded-xl border border-dotted moh-border bg-transparent overflow-hidden h-[250px]"
-                      />
-                    </template>
                   </ClientOnly>
-
                   <AppTrendingHashtagsCard />
 
                   <Card class="moh-card moh-card-matte !rounded-2xl">

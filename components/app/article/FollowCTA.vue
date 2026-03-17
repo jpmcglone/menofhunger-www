@@ -1,7 +1,7 @@
 <template>
   <div
     v-if="shouldShow"
-    class="my-10 rounded-2xl border border-gray-200 bg-gradient-to-br from-gray-50 to-white p-6 dark:border-zinc-700 dark:from-zinc-800/60 dark:to-zinc-900"
+    class="my-10 rounded-2xl border moh-border moh-surface p-5"
   >
     <div class="flex items-center gap-4">
       <NuxtLink :to="`/u/${author.username}`" class="flex-shrink-0">

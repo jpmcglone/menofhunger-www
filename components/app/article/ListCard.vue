@@ -31,6 +31,17 @@
           </p>
         </div>
 
+        <!-- Tags -->
+        <div v-if="article.tags?.length" class="flex flex-wrap gap-1">
+          <NuxtLink
+            v-for="tag in article.tags.slice(0, 4)"
+            :key="tag.tag"
+            :to="`/topics/${encodeURIComponent(tag.tag)}`"
+            class="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-2 py-0.5 text-[10px] font-medium text-gray-500 hover:bg-gray-100 hover:text-gray-700 dark:border-zinc-700 dark:bg-zinc-800/60 dark:text-zinc-400 dark:hover:bg-zinc-700 dark:hover:text-zinc-200 transition-colors"
+            @click.stop
+          >{{ tag.label }}</NuxtLink>
+        </div>
+
         <!-- Meta row -->
         <div class="mt-1 flex flex-wrap items-center gap-x-1.5 text-xs uppercase tracking-wide text-gray-400 dark:text-zinc-500">
           <template v-if="article.isDraft">

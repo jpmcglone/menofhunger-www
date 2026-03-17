@@ -86,6 +86,7 @@
 
 <script setup lang="ts">
 import { useEditor, EditorContent } from '@tiptap/vue-3'
+import { Extension } from '@tiptap/core'
 import StarterKit from '@tiptap/starter-kit'
 import Image from '@tiptap/extension-image'
 import Placeholder from '@tiptap/extension-placeholder'
@@ -115,6 +116,30 @@ const linkDialogUrl = ref('')
 const isToolbarScrollable = ref(false)
 let toolbarResizeObserver: ResizeObserver | null = null
 
+const TabIndentExtension = Extension.create({
+  name: 'tabIndent',
+  addKeyboardShortcuts() {
+    return {
+      Tab: () => {
+        if (this.editor.isActive('listItem')) {
+          return this.editor.commands.sinkListItem('listItem')
+        }
+        if (this.editor.isActive('codeBlock')) {
+          return this.editor.commands.insertContent('\t')
+        }
+        // Common editor expectation: Tab indents instead of moving focus away.
+        return this.editor.commands.insertContent('\u00A0\u00A0\u00A0\u00A0')
+      },
+      'Shift-Tab': () => {
+        if (this.editor.isActive('listItem')) {
+          return this.editor.commands.liftListItem('listItem')
+        }
+        return false
+      },
+    }
+  },
+})
+
 function parseBody(raw: string | null | undefined) {
   if (!raw) return ''
   try {
@@ -139,6 +164,7 @@ const editor = useEditor({
     Youtube.configure({ width: 720, height: 405, nocookie: true }),
     Callout,
     Placeholder.configure({ placeholder: props.placeholder || 'Start writing your article…' }),
+    TabIndentExtension,
   ],
   editorProps: {
     attributes: {

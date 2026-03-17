@@ -1,4 +1,4 @@
-import type { Article } from '~/types/api'
+import type { Article, ArticleTag } from '~/types/api'
 import type { PostVisibility } from '~/types/api'
 
 type SaveStatus = 'idle' | 'saving' | 'saved' | 'error'
@@ -15,6 +15,7 @@ export function useArticleEditor(initialArticle: Ref<Article | null>) {
   // Bug 1 fix: track whether thumbnail was explicitly changed so null means "remove"
   const thumbnailDirty = ref(false)
   const visibility = ref<PostVisibility>(initialArticle.value?.visibility ?? 'public')
+  const tags = ref<ArticleTag[]>(initialArticle.value?.tags ?? [])
   const saveStatus = ref<SaveStatus>('idle')
   const lastSavedAt = ref<Date | null>(initialArticle.value?.lastSavedAt ? new Date(initialArticle.value.lastSavedAt) : null)
   const isDirty = ref(false)
@@ -29,6 +30,7 @@ export function useArticleEditor(initialArticle: Ref<Article | null>) {
       visibility.value = a.visibility
       thumbnailUrl.value = a.thumbnailUrl
       thumbnailR2Key.value = a.thumbnailR2Key ?? null
+      tags.value = a.tags ?? []
       lastSavedAt.value = a.lastSavedAt ? new Date(a.lastSavedAt) : null
     }
   })
@@ -72,6 +74,8 @@ export function useArticleEditor(initialArticle: Ref<Article | null>) {
           title: title.value,
           body: body.value,
           visibility: visibility.value,
+          // Always sync tags so removals propagate.
+          tags: tags.value.map((t) => t.label),
           // Bug 1 fix: include thumbnailR2Key when dirty (null = explicit removal)
           ...(thumbnailDirty.value ? { thumbnailR2Key: thumbnailR2Key.value } : {}),
         },
@@ -121,6 +125,7 @@ export function useArticleEditor(initialArticle: Ref<Article | null>) {
     thumbnailR2Key,
     thumbnailDirty,
     visibility,
+    tags,
     saveStatus,
     lastSavedAt,
     lastSavedLabel,

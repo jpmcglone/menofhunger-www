@@ -15,8 +15,14 @@
       </div>
 
       <ClientOnly>
-        <div v-if="pending" class="mt-4 text-sm moh-text-muted">
-          Loading…
+        <div v-if="pending" class="mt-5 animate-pulse" aria-hidden="true">
+          <div class="flex items-end gap-3">
+            <div class="h-9 w-1.5 rounded-full bg-gray-200 dark:bg-zinc-800 shrink-0" />
+            <div class="h-8 w-32 bg-gray-200 dark:bg-zinc-800 rounded" />
+          </div>
+          <div class="mt-3 flex justify-end">
+            <div class="h-3 w-24 bg-gray-200 dark:bg-zinc-800 rounded-full" />
+          </div>
         </div>
         <div v-else-if="error" class="mt-4 text-sm text-red-700 dark:text-red-300">
           Couldn’t load the word of the day.
@@ -35,18 +41,16 @@
         <div v-if="data?.dictionaryUrl" class="mt-3 flex justify-end">
           <button
             type="button"
-            class="inline-flex items-center text-[11px] font-medium moh-text-muted hover:underline underline-offset-2"
+            class="inline-flex items-center gap-1 text-[11px] font-medium moh-text-muted hover:moh-text transition-colors"
             @mouseenter="onDefinitionTriggerEnter(data, $event)"
             @mousemove="onDefinitionTriggerMove"
             @mouseleave="onDefinitionTriggerLeave"
             @click="onDefinitionTriggerClick(data, $event)"
           >
             See definition
+            <Icon name="tabler:chevron-right" class="text-[10px]" aria-hidden="true" />
           </button>
         </div>
-        <template #fallback>
-          <div class="mt-4 text-sm moh-text-muted">Loading…</div>
-        </template>
       </ClientOnly>
     </template>
   </Card>

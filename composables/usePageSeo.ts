@@ -120,6 +120,9 @@ export function usePageSeo(options: PageSeoOptions = {}) {
  
     // Landing page: include WebSite + Organization as well (best practice).
     if (route.path === '/' || options.canonicalPath === '/') {
+      const email = (siteConfig as any).contactEmail as string | undefined
+      const topics = (siteConfig as any).topics as string[] | undefined
+
       baseGraph.unshift(
         {
           '@type': 'WebSite',
@@ -128,20 +131,96 @@ export function usePageSeo(options: PageSeoOptions = {}) {
           name: siteConfig.name,
           description: siteConfig.meta.description,
           inLanguage: 'en-US',
-          publisher: { '@id': `${siteConfig.url}/#organization` }
+          publisher: { '@id': `${siteConfig.url}/#organization` },
+          // Sitelinks Searchbox: lets Google show a search field under the result.
+          potentialAction: {
+            '@type': 'SearchAction',
+            target: {
+              '@type': 'EntryPoint',
+              urlTemplate: `${siteConfig.url}/explore?q={search_term_string}`,
+            },
+            'query-input': 'required name=search_term_string',
+          },
         },
         {
           '@type': 'Organization',
           '@id': `${siteConfig.url}/#organization`,
           name: siteConfig.name,
+          alternateName: 'MOH',
           url: siteConfig.url,
           description: siteConfig.meta.description,
-          logo: toAbsoluteUrl('/images/logo-black-bg.png'),
+          logo: {
+            '@type': 'ImageObject',
+            url: toAbsoluteUrl('/images/logo-black-bg.png'),
+            width: 512,
+            height: 512,
+          },
+          image: toAbsoluteUrl('/images/banner.png'),
           foundingDate: String(siteConfig.established),
+          // knowsAbout tells Google what topics this entity covers — key for E-E-A-T.
+          ...(topics?.length ? { knowsAbout: topics } : {}),
+          // contactPoint helps Google trust the entity as real / reachable.
+          ...(email ? {
+            contactPoint: {
+              '@type': 'ContactPoint',
+              email,
+              contactType: 'customer support',
+              availableLanguage: 'English',
+            },
+          } : {}),
           sameAs: [
-            twitterProfileUrl(siteConfig.social.twitter),
-            (siteConfig.social as { meetup?: string })?.meetup
-          ].filter(Boolean)
+            // Explicit xUrl takes priority over the derived twitter profile URL so we get
+            // the canonical https://x.com/... form Google prefers for entity association.
+            (siteConfig.social as { xUrl?: string })?.xUrl || twitterProfileUrl(siteConfig.social.twitter),
+            (siteConfig.social as { meetup?: string })?.meetup,
+          ].filter(Boolean),
+        },
+        // FAQ schema on the homepage — eligible for "People also ask" boxes in SERPs.
+        {
+          '@type': 'FAQPage',
+          '@id': `${siteConfig.url}/#faq`,
+          mainEntity: [
+            {
+              '@type': 'Question',
+              name: 'What is Men of Hunger?',
+              acceptedAnswer: {
+                '@type': 'Answer',
+                text: 'Men of Hunger is a trusted online community for men who want measurable progress in life — covering discipline, ambition, fitness, leadership, faith, and family. It features structured conversations, daily check-ins, accountability tools, cohorts, and premium playbooks.',
+              },
+            },
+            {
+              '@type': 'Question',
+              name: 'How do I join Men of Hunger?',
+              acceptedAnswer: {
+                '@type': 'Answer',
+                text: 'Sign up at menofhunger.com with your phone number, set up your profile, and start participating. Full participation — posting, replying, and accessing verified-only content — requires identity verification, which keeps the community trustworthy and real.',
+              },
+            },
+            {
+              '@type': 'Question',
+              name: 'What is verification on Men of Hunger?',
+              acceptedAnswer: {
+                '@type': 'Answer',
+                text: 'Verification on Men of Hunger is an identity confirmation step that unlocks full participation — posting, replying, and accessing verified-only content. It keeps the community accountable and filters out bad actors.',
+              },
+            },
+            {
+              '@type': 'Question',
+              name: 'What does a premium membership include?',
+              acceptedAnswer: {
+                '@type': 'Answer',
+                text: 'Premium membership on Men of Hunger includes access to structured cohorts, workshops, premium-only articles and playbooks, and a higher tier of engagement within the community.',
+              },
+            },
+            {
+              '@type': 'Question',
+              name: 'Is there a Men of Hunger meetup or in-person group?',
+              acceptedAnswer: {
+                '@type': 'Answer',
+                text: 'Yes. Men of Hunger hosts local meetups in Roanoke, VA. Details and RSVP are available at the Meetup group: meetup.com/menofhunger.',
+              },
+            },
+          ],
         }
       )
     }

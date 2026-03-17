@@ -1,6 +1,8 @@
 <script setup lang="ts">
 definePageMeta({ layout: 'app', title: 'Coins', ssr: false, hideTopBar: true })
 
+usePageSeo({ title: 'Coins', description: 'Send and receive coins on Men of Hunger.', noindex: true })
+
 import type { FollowListUser } from '~/types/api'
 import type { CoinTransferItem, TransferCoinsResponse } from '~/types/api'
 

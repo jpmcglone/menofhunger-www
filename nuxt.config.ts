@@ -92,6 +92,15 @@ export default defineNuxtConfig({
               },
             ]
           : []),
+        // Google Search Console site verification.
+        // Set NUXT_PUBLIC_GOOGLE_SITE_VERIFICATION in production env to your verification token.
+        ...(String(process.env.NUXT_PUBLIC_GOOGLE_SITE_VERIFICATION || '').trim()
+          ? [{ name: 'google-site-verification', content: String(process.env.NUXT_PUBLIC_GOOGLE_SITE_VERIFICATION).trim() }]
+          : []),
+        // Bing / Microsoft Clarity site verification.
+        ...(String(process.env.NUXT_PUBLIC_BING_SITE_VERIFICATION || '').trim()
+          ? [{ name: 'msvalidate.01', content: String(process.env.NUXT_PUBLIC_BING_SITE_VERIFICATION).trim() }]
+          : []),
         // PWA + add-to-home meta
         // Default theme-color (overridden at runtime to match in-app dark mode toggle).
         { name: 'theme-color', content: '#ffffff' },
@@ -116,7 +125,24 @@ export default defineNuxtConfig({
         { rel: 'icon', type: 'image/png', sizes: '192x192', href: '/android-chrome-192x192.png' },
         { rel: 'icon', type: 'image/png', sizes: '512x512', href: '/android-chrome-512x512.png' },
         { rel: 'icon', type: 'image/png', sizes: '32x32', href: '/favicon-32x32.png' },
-        { rel: 'icon', type: 'image/png', sizes: '16x16', href: '/favicon-16x16.png' }
+        { rel: 'icon', type: 'image/png', sizes: '16x16', href: '/favicon-16x16.png' },
+        // ——— Performance / Core Web Vitals ———
+        // preconnect: browser opens the TCP+TLS handshake early for these origins,
+        // cutting request latency for the first resource loaded from each domain.
+        // This directly improves LCP and TTFB — both Google ranking signals.
+        //
+        // Assets CDN (Cloudflare R2 or custom domain): avatars, thumbnails, media.
+        ...(process.env.NUXT_PUBLIC_ASSETS_BASE_URL
+          ? [
+              { rel: 'preconnect', href: new URL(process.env.NUXT_PUBLIC_ASSETS_BASE_URL).origin, crossorigin: '' as const },
+              { rel: 'dns-prefetch', href: new URL(process.env.NUXT_PUBLIC_ASSETS_BASE_URL).origin },
+            ]
+          : []),
+        // PostHog analytics (loaded on every page).
+        { rel: 'dns-prefetch', href: 'https://us.i.posthog.com' },
+        // Google services used for AdSense / Fonts / etc.
+        { rel: 'dns-prefetch', href: 'https://fonts.gstatic.com' },
+        { rel: 'dns-prefetch', href: 'https://pagead2.googlesyndication.com' },
       ],
       title: siteConfig.meta.title
     }
@@ -311,6 +337,9 @@ export default defineNuxtConfig({
     // increase memory churn on Render. Prefer CDN caching if/when Cloudflare is in front.
     '/u/**': { ssr: true },
     '/p/**': { ssr: true },
+    // Article detail + listing: public and indexed; SSR for full meta on first response.
+    '/a/**': { ssr: true },
+    '/articles': { ssr: true },
 
     // Static content: prerender to ship ready-to-serve HTML at build time.
     '/terms': { prerender: true },
@@ -321,19 +350,31 @@ export default defineNuxtConfig({
     // These pages already gate browser-only logic behind onMounted/import.meta.client.
     '/home': { ssr: true },
     '/explore': { ssr: true },
-    '/notifications': { ssr: true },
-    '/chat': { ssr: false },
-    '/bookmarks': { ssr: false },
-    '/bookmarks/**': { ssr: false },
-    '/groups': { ssr: false },
-    '/only-me': { ssr: false },
-    '/online': { ssr: true },
-    '/settings': { ssr: false },
-    '/settings/**': { ssr: false },
-    '/feedback': { ssr: false },
-    '/admin': { ssr: false },
-    '/admin/**': { ssr: false },
+    // ——— Auth-gated / private routes ———
+    // X-Robots-Tag: noindex prevents crawlers from indexing these even if they sneak past robots.txt.
+    // This is a belt-and-suspenders approach: robots.txt saves crawl budget,
+    // X-Robots-Tag ensures no accidental indexing.
+    '/notifications': { ssr: true, headers: { 'X-Robots-Tag': 'noindex, nofollow' } },
+    '/chat': { ssr: false, headers: { 'X-Robots-Tag': 'noindex, nofollow' } },
+    '/bookmarks': { ssr: false, headers: { 'X-Robots-Tag': 'noindex, nofollow' } },
+    '/bookmarks/**': { ssr: false, headers: { 'X-Robots-Tag': 'noindex, nofollow' } },
+    '/groups': { ssr: false, headers: { 'X-Robots-Tag': 'noindex, nofollow' } },
+    '/only-me': { ssr: false, headers: { 'X-Robots-Tag': 'noindex, nofollow' } },
+    '/online': { ssr: true, headers: { 'X-Robots-Tag': 'noindex, nofollow' } },
+    '/new-posts': { ssr: true, headers: { 'X-Robots-Tag': 'noindex, nofollow' } },
+    '/settings': { ssr: false, headers: { 'X-Robots-Tag': 'noindex, nofollow' } },
+    '/settings/**': { ssr: false, headers: { 'X-Robots-Tag': 'noindex, nofollow' } },
+    '/coins': { ssr: false, headers: { 'X-Robots-Tag': 'noindex, nofollow' } },
+    '/coins/**': { ssr: false, headers: { 'X-Robots-Tag': 'noindex, nofollow' } },
+    '/feedback': { ssr: false, headers: { 'X-Robots-Tag': 'noindex, nofollow' } },
+    '/email/**': { ssr: false, headers: { 'X-Robots-Tag': 'noindex, nofollow' } },
+    '/articles/new': { ssr: false, headers: { 'X-Robots-Tag': 'noindex, nofollow' } },
+    '/articles/edit/**': { ssr: false, headers: { 'X-Robots-Tag': 'noindex, nofollow' } },
+    '/admin': { ssr: false, headers: { 'X-Robots-Tag': 'noindex, nofollow' } },
+    '/admin/**': { ssr: false, headers: { 'X-Robots-Tag': 'noindex, nofollow' } },
     '/status': { ssr: true },
+    '/spaces': { ssr: false, headers: { 'X-Robots-Tag': 'noindex, nofollow' } },
+    '/spaces/**': { ssr: false, headers: { 'X-Robots-Tag': 'noindex, nofollow' } },
 
     // ——— CDN / edge caching: reduce bandwidth and request load on www ———
     // Nitro build output + public assets. Use s-maxage so CDN caches; browsers use max-age.

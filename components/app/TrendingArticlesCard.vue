@@ -5,9 +5,19 @@
       <span class="moh-h2">Trending Articles</span>
     </div>
 
-    <!-- Loading -->
-    <div v-if="loading && articles.length === 0" class="flex justify-center py-4 px-4">
-      <AppLogoLoader />
+    <!-- Loading skeleton -->
+    <div v-if="loading && articles.length === 0" class="animate-pulse" aria-hidden="true">
+      <div v-for="i in 4" :key="i" class="flex items-center gap-2.5 border-t moh-border-subtle pl-3 pr-4 py-3">
+        <div class="h-6 w-6 rounded-md bg-gray-200 dark:bg-zinc-800 shrink-0" />
+        <div class="flex-1 space-y-1.5">
+          <div class="h-3 bg-gray-200 dark:bg-zinc-800 rounded-full w-full" />
+          <div class="h-2.5 bg-gray-200 dark:bg-zinc-800 rounded-full w-24" />
+        </div>
+        <div class="h-9 w-14 rounded-md bg-gray-200 dark:bg-zinc-800 shrink-0" />
+      </div>
+      <div class="border-t moh-border-subtle px-4 py-3">
+        <div class="h-3 w-40 bg-gray-200 dark:bg-zinc-800 rounded-full" />
+      </div>
     </div>
 
     <!-- Empty -->
@@ -18,12 +28,22 @@
     <!-- Rows: compact right-rail variant -->
     <div v-else>
       <NuxtLink
-        v-for="article in articles"
+        v-for="(article, i) in articles"
         :key="article.id"
         :to="`/a/${article.id}`"
-        :class="['relative flex items-center gap-3 border-t border-gray-200 dark:border-zinc-800 pl-4 pr-5 py-3 transition-colors moh-focus', rowHoverClass(article)]"
+        :class="['relative flex items-center gap-3 border-t moh-border-subtle pl-3 pr-4 py-3 transition-colors moh-focus', rowHoverClass(article)]"
       >
         <div :class="['absolute right-0 top-0 bottom-0 w-[3px]', accentBarClass(article)]" aria-hidden="true" />
+
+        <!-- Rank number -->
+        <div
+          class="shrink-0 flex h-6 w-6 items-center justify-center rounded-md text-[11px] font-black tabular-nums leading-none"
+          :class="i === 0
+            ? 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300'
+            : 'bg-gray-100 text-gray-400 dark:bg-zinc-800 dark:text-zinc-500'"
+        >
+          {{ i + 1 }}
+        </div>
 
         <div class="flex-1 min-w-0">
           <p class="line-clamp-2 text-sm font-semibold text-gray-900 dark:text-gray-100 leading-snug">
@@ -38,18 +58,21 @@
           v-if="article.thumbnailUrl"
           :src="article.thumbnailUrl"
           :alt="article.title"
-          class="shrink-0 w-16 rounded object-cover border border-gray-200 dark:border-zinc-700"
+          class="shrink-0 w-14 rounded-md object-cover border border-gray-200 dark:border-zinc-700"
           style="aspect-ratio: 16/9;"
         >
       </NuxtLink>
 
       <!-- Footer link -->
-      <div class="border-t border-gray-200 dark:border-zinc-800 px-4 py-3">
+      <div class="border-t moh-border-subtle px-4 py-3">
         <NuxtLink
           to="/articles?sort=trending"
-          class="text-sm font-medium hover:underline underline-offset-2 text-[var(--p-primary-color)] moh-focus"
+          class="flex items-center justify-between gap-2 group moh-focus"
         >
-          Browse trending articles
+          <span class="text-sm font-medium moh-text-muted group-hover:moh-text transition-colors">
+            Browse trending articles
+          </span>
+          <Icon name="tabler:chevron-right" class="text-xs moh-text-muted shrink-0" aria-hidden="true" />
         </NuxtLink>
       </div>
     </div>
@@ -63,7 +86,7 @@ import { articleVisibilityBarClass, articleVisibilityHoverClass } from '~/utils/
 const { apiFetchData } = useApiClient()
 
 const articles = ref<Article[]>([])
-const loading = ref(false)
+const loading = ref(true)
 
 async function refresh() {
   loading.value = true

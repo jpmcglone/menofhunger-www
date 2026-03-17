@@ -67,6 +67,16 @@
           <time v-if="article.editedAt" :datetime="article.editedAt" class="text-xs text-gray-400 dark:text-zinc-500">· Edited {{ editedLabel }}</time>
         </div>
 
+        <!-- Tags -->
+        <div v-if="article.tags?.length" class="mt-3 flex flex-wrap gap-1.5">
+          <NuxtLink
+            v-for="tag in article.tags"
+            :key="tag.tag"
+            :to="`/topics/${encodeURIComponent(tag.tag)}`"
+            class="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-2.5 py-0.5 text-xs font-medium text-gray-500 hover:bg-gray-100 hover:text-gray-700 dark:border-zinc-700 dark:bg-zinc-800/60 dark:text-zinc-400 dark:hover:bg-zinc-700 dark:hover:text-zinc-200 transition-colors"
+          >{{ tag.label }}</NuxtLink>
+        </div>
+
         <!-- Visibility badge -->
         <div v-if="article.visibility !== 'public'" class="mt-3">
           <span
@@ -294,14 +304,6 @@
           </div>
         </div>
 
-        <!-- Follow CTA -->
-        <ClientOnly>
-          <AppArticleFollowCTA
-            :author="article.author"
-            :viewer-is-author="viewerIsAuthor"
-          />
-        </ClientOnly>
-
         <!-- Author bio section -->
         <div class="relative mt-6 rounded-2xl border border-gray-200 bg-gray-50 p-6 dark:border-zinc-800 dark:bg-zinc-900" @click.stop>
           <p class="mb-4 text-xs font-semibold uppercase tracking-widest text-gray-400 dark:text-zinc-500">About the author</p>
@@ -373,19 +375,42 @@
               <AppUserAvatar :user="article.author" size="lg" />
             </NuxtLink>
             <div class="flex-1 min-w-0">
-              <NuxtLink
-                :to="`/u/${article.author.username}`"
-                @mouseenter="(e) => authorEnter(e)"
-                @mousemove="(e) => authorMove(e)"
-                @mouseleave="authorLeave"
+              <div class="flex items-start justify-between gap-3">
+                <NuxtLink
+                  :to="`/u/${article.author.username}`"
+                  class="block min-w-0 flex-1"
+                  @mouseenter="(e) => authorEnter(e)"
+                  @mousemove="(e) => authorMove(e)"
+                  @mouseleave="authorLeave"
+                >
+                  <AppUserIdentityLine
+                    :user="article.author"
+                    name-class="text-base"
+                    handle-class="text-xs"
+                    badge-size="md"
+                  />
+                </NuxtLink>
+                <div
+                  v-if="isAuthed && !viewerIsAuthor && article.author.id && article.author.username"
+                  class="hidden sm:block shrink-0"
+                >
+                  <AppFollowButton
+                    :user-id="article.author.id"
+                    :username="article.author.username"
+                    size="small"
+                  />
+                </div>
+              </div>
+              <div
+                v-if="isAuthed && !viewerIsAuthor && article.author.id && article.author.username"
+                class="mt-2 sm:hidden"
               >
-                <AppUserIdentityLine
-                  :user="article.author"
-                  name-class="text-base"
-                  handle-class="text-xs"
-                  badge-size="md"
+                <AppFollowButton
+                  :user-id="article.author.id"
+                  :username="article.author.username"
+                  size="small"
                 />
-              </NuxtLink>
+              </div>
               <p v-if="authorBio" class="mt-2 text-sm text-gray-600 dark:text-zinc-400 line-clamp-4">
                 {{ authorBio }}
               </p>
@@ -400,6 +425,13 @@
       </div>
 
       <!-- Related articles: edge to edge, outside the content column -->
+      <ClientOnly>
+        <AppArticleRelatedByTagArticles
+          v-if="article.tags?.length"
+          :article-id="article.id"
+          :tags="article.tags"
+        />
+      </ClientOnly>
       <ClientOnly>
         <AppArticleRelatedArticles
           v-if="article.author.username"

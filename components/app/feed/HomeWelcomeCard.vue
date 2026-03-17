@@ -26,12 +26,12 @@
           </button>
         </div>
 
-        <div class="h-px moh-divide" />
+        <div class="h-px bg-black/6 dark:bg-white/6" />
 
         <!-- Step 1: Follow people -->
         <div class="px-4 py-3">
           <div class="flex items-center gap-2 mb-2.5">
-            <div class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-gray-100 dark:bg-zinc-800 text-[11px] font-bold moh-text-muted">1</div>
+            <div class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-gray-100 dark:bg-zinc-800 text-[11px] font-black moh-text-muted">1</div>
             <div class="text-sm font-semibold moh-text">{{ VOICE.welcome.step1Heading }}</div>
           </div>
 
@@ -50,19 +50,19 @@
 
           <NuxtLink
             to="/who-to-follow"
-            class="mt-2 inline-flex items-center gap-1 text-xs font-medium moh-text-muted hover:underline underline-offset-2"
+            class="mt-2 flex items-center justify-between gap-2 group"
           >
-            See all suggestions
-            <Icon name="tabler:arrow-right" class="text-[10px]" aria-hidden="true" />
+            <span class="text-xs font-medium moh-text-muted group-hover:moh-text transition-colors">See all suggestions</span>
+            <Icon name="tabler:chevron-right" class="text-[10px] moh-text-muted shrink-0" aria-hidden="true" />
           </NuxtLink>
         </div>
 
-        <div class="h-px moh-divide" />
+        <div class="h-px bg-black/6 dark:bg-white/6" />
 
         <!-- Step 2: Unverified — get verified first -->
         <div v-if="!isVerified" class="px-4 py-3">
           <div class="flex items-center gap-2 mb-2">
-            <div class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-gray-100 dark:bg-zinc-800 text-[11px] font-bold moh-text-muted">2</div>
+            <div class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-gray-100 dark:bg-zinc-800 text-[11px] font-black moh-text-muted">2</div>
             <div class="text-sm font-semibold moh-text">{{ VOICE.welcome.step2HeadingVerify }}</div>
           </div>
           <p class="text-xs moh-text-muted leading-relaxed">
@@ -80,7 +80,7 @@
         <!-- Step 2: Verified — post daily and build a streak -->
         <div v-else class="px-4 py-3">
           <div class="flex items-center gap-2 mb-2">
-            <div class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-gray-100 dark:bg-zinc-800 text-[11px] font-bold moh-text-muted">2</div>
+            <div class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-gray-100 dark:bg-zinc-800 text-[11px] font-black moh-text-muted">2</div>
             <div class="text-sm font-semibold moh-text">{{ VOICE.welcome.step2HeadingStreak }}</div>
           </div>
           <p class="text-xs moh-text-muted leading-relaxed">
@@ -108,7 +108,7 @@
         </div>
 
         <!-- Footer -->
-        <div class="h-px moh-divide" />
+        <div class="h-px bg-black/6 dark:bg-white/6" />
         <div class="px-4 py-3 flex justify-end">
           <Button :label="VOICE.welcome.dismiss" severity="secondary" size="small" rounded @click="dismiss">
             <template #icon>

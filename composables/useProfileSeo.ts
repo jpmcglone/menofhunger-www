@@ -71,17 +71,41 @@ export function useProfileSeo(options: {
     const u = profile.value.username.trim()
     const url = `${siteConfig.url}/u/${encodeURIComponent(u)}`
     const bio = (profile.value.bio ?? '').trim()
+    const website = (profile.value.website ?? '').trim()
+    const displayName = (profile.value.name ?? `@${u}`).trim()
 
-    return [
-      {
-        '@type': 'Person',
-        '@id': `${url}#person`,
-        url,
-        name: (profile.value.name ?? `@${u}`).trim(),
-        description: bio ? excerpt(bio, 300) : undefined,
-        image: profile.value.avatarUrl || undefined,
-      },
-    ]
+    const personNode: Record<string, unknown> = {
+      '@type': 'Person',
+      '@id': `${url}#person`,
+      url,
+      name: displayName,
+      description: bio ? excerpt(bio, 300) : undefined,
+      image: profile.value.avatarUrl || undefined,
+      // Link to their personal website strengthens E-E-A-T for the author.
+      ...(website ? { sameAs: [website] } : {}),
+    }
+
+    // BreadcrumbList: shows "Men of Hunger > @username" in search results.
+    const breadcrumb = {
+      '@type': 'BreadcrumbList',
+      '@id': `${url}#breadcrumb`,
+      itemListElement: [
+        {
+          '@type': 'ListItem',
+          position: 1,
+          name: siteConfig.name,
+          item: siteConfig.url,
+        },
+        {
+          '@type': 'ListItem',
+          position: 2,
+          name: displayName,
+          item: url,
+        },
+      ],
+    }
+
+    return [personNode, breadcrumb]
   })
 
   usePageSeo({

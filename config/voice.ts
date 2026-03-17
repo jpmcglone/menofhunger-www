@@ -20,7 +20,7 @@ export const VOICE = {
   onboarding: {
     setupHeading: 'Set up your profile.',
     setupSubtitle: 'A few things before you get in.',
-    findYourMen: 'Find your men.',
+    findYourMen: 'Who to follow.',
     showUpDaily: 'Show up every day.',
     streakBody:
       'Any post — text, photos, a daily check-in — keeps your streak alive. Consistency is the game.',
@@ -37,7 +37,7 @@ export const VOICE = {
   feed: {
     emptyTitle: 'Your feed is waiting.',
     emptyBody: "Find men worth following, or see what the community is building.",
-    followingEmptyHeading: 'Find your men.',
+    followingEmptyHeading: "Who's worth following.",
     postHeading: 'Say something.',
     postBody: "Don't wait for the perfect thought. Get in the conversation.",
     checkinHeading: 'Check in today.',
@@ -49,7 +49,7 @@ export const VOICE = {
   // ── Actions / CTAs ──────────────────────────────────────────────────────────
   actions: {
     explore: 'Explore',
-    findPeople: 'Find your men',
+    findPeople: 'Who to follow',
     seeAllSuggestions: 'See all',
     verify: 'Get verified',
     checkIn: 'Check in',
@@ -64,7 +64,7 @@ export const VOICE = {
     subtitlePremium: 'Premium access. Here\'s how to make it count.',
     subtitleVerified: "You're verified. Here's how to make the most of it.",
     subtitleDefault: "Here's where to start.",
-    step1Heading: 'Find your men.',
+    step1Heading: 'Who to follow.',
     step2HeadingVerify: 'Prove who you are.',
     step2HeadingStreak: 'Show up every day.',
     step2BodyVerify:

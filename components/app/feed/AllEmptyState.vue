@@ -1,17 +1,22 @@
 <template>
   <div
-    class="mx-4 mt-4 rounded-xl border border-gray-200 bg-gray-50 p-4 dark:border-zinc-800 dark:bg-zinc-950/40"
+    class="mx-4 mt-4 rounded-xl border moh-border moh-surface p-4 flex items-start gap-3.5"
     role="status"
   >
-    <div class="font-semibold text-gray-900 dark:text-gray-50">{{ VOICE.feed.emptyTitle }}</div>
-    <div class="mt-1 text-sm text-gray-600 dark:text-gray-300">
-      <slot>
-        {{ VOICE.feed.emptyBody }}
-      </slot>
+    <!-- Icon tile -->
+    <div class="shrink-0 flex h-10 w-10 items-center justify-center rounded-xl bg-gray-100 dark:bg-zinc-800 mt-0.5">
+      <Icon name="tabler:users" class="text-lg moh-text-muted" aria-hidden="true" />
     </div>
-    <div class="mt-3 flex flex-wrap gap-3">
-      <Button :label="VOICE.actions.explore" severity="secondary" @click="$emit('explore')" />
-      <Button :label="VOICE.actions.findPeople" severity="secondary" @click="$emit('who-to-follow')" />
+
+    <div class="flex-1 min-w-0">
+      <div class="font-semibold moh-text">{{ VOICE.feed.emptyTitle }}</div>
+      <div class="mt-0.5 text-sm moh-text-muted leading-snug">
+        <slot>{{ VOICE.feed.emptyBody }}</slot>
+      </div>
+      <div class="mt-3 flex flex-wrap gap-2">
+        <Button size="small" :label="VOICE.actions.explore" severity="secondary" rounded @click="$emit('explore')" />
+        <Button size="small" :label="VOICE.actions.findPeople" severity="secondary" rounded @click="$emit('who-to-follow')" />
+      </div>
     </div>
   </div>
 </template>

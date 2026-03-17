@@ -1,7 +1,7 @@
 <template>
   <Card class="moh-card moh-card-matte !rounded-2xl">
     <template #title>
-      <span class="moh-h2">Trending hashtags</span>
+      <span class="moh-h2">Trending topics</span>
     </template>
     <template #content>
       <div v-if="loading && tags.length === 0" class="space-y-0.5 animate-pulse" aria-hidden="true">
@@ -19,17 +19,16 @@
       </div>
 
       <div v-else-if="tags.length === 0" class="text-sm moh-text-muted">
-        No trends yet.
+        No tags yet.
       </div>
 
       <div v-else class="space-y-0.5">
         <NuxtLink
           v-for="(t, i) in tags"
-          :key="`${t.value}-${i}`"
-          :to="{ path: '/explore', query: { q: `#${t.value}` } }"
+          :key="`${t.slug}-${i}`"
+          :to="`/topics/${encodeURIComponent(t.slug)}`"
           class="flex items-center gap-2.5 rounded-lg px-1.5 py-1.5 transition-colors hover:bg-black/5 dark:hover:bg-white/10 moh-focus"
         >
-          <!-- Rank badge -->
           <div
             class="shrink-0 flex h-6 w-6 items-center justify-center rounded-md text-[11px] font-black tabular-nums leading-none"
             :class="i === 0
@@ -40,21 +39,21 @@
           </div>
           <div class="flex-1 min-w-0">
             <div class="font-semibold text-sm moh-text truncate">
-              {{ formatHashtagLabel(t.label) }}
+              {{ formatTaxonomyLabel(t.label) }}
             </div>
             <div class="moh-meta">
-              {{ formatCount(t.usageCount) }} posts lately
+              {{ t.kind }}
             </div>
           </div>
           <Icon name="tabler:chevron-right" class="shrink-0 text-gray-400 dark:text-zinc-500" aria-hidden="true" />
         </NuxtLink>
 
         <NuxtLink
-          to="/hashtags/trending"
+          to="/articles"
           class="flex items-center justify-between gap-2 border-t moh-border-subtle pt-3 mt-2 group moh-focus"
         >
           <span class="text-sm font-medium moh-text-muted group-hover:moh-text transition-colors">
-            Show more hashtags
+            Browse all topics
           </span>
           <Icon name="tabler:chevron-right" class="text-xs moh-text-muted shrink-0" aria-hidden="true" />
         </NuxtLink>
@@ -64,35 +63,33 @@
 </template>
 
 <script setup lang="ts">
-import type { GetTrendingHashtagsData, HashtagResult } from '~/types/api'
 import { getApiErrorMessage } from '~/utils/api-error'
-import { formatHashtagLabel } from '~/utils/taxonomy-format'
+import { formatTaxonomyLabel } from '~/utils/taxonomy-format'
 
-const { apiFetch } = useApiClient()
+type TrendingArticleTag = {
+  slug: string
+  label: string
+  kind: 'topic' | 'subtopic' | 'tag'
+  score: number
+}
 
-const tags = ref<HashtagResult[]>([])
+const { apiFetchData } = useApiClient()
+
+const tags = ref<TrendingArticleTag[]>([])
 const loading = ref(true)
 const error = ref<string | null>(null)
-
-function formatCount(n: number): string {
-  const num = Math.max(0, Math.floor(Number(n) || 0))
-  const trim = (s: string) => (s.endsWith('.0') ? s.slice(0, -2) : s)
-  if (num >= 1_000_000) return `${trim((num / 1_000_000).toFixed(num >= 10_000_000 ? 0 : 1))}m`
-  if (num >= 1_000) return `${trim((num / 1_000).toFixed(num >= 10_000 ? 0 : 1))}k`
-  return String(num)
-}
 
 async function refresh() {
   loading.value = true
   error.value = null
   try {
-    const res = await apiFetch<GetTrendingHashtagsData>('/hashtags/trending', {
+    const res = await apiFetchData<TrendingArticleTag[]>('/taxonomy/search', {
       method: 'GET',
-      query: { limit: 8 },
+      query: { q: '', limit: 10 },
     })
-    tags.value = (res.data ?? []).slice(0, 8)
+    tags.value = (res ?? []).slice(0, 10)
   } catch (e: unknown) {
-    error.value = getApiErrorMessage(e) || 'Failed to load trending hashtags.'
+    error.value = getApiErrorMessage(e) || 'Failed to load trending tags.'
     tags.value = []
   } finally {
     loading.value = false
@@ -103,4 +100,3 @@ onMounted(() => {
   void refresh()
 })
 </script>
-

@@ -48,6 +48,28 @@
       />
     </div>
 
+    <!-- Active tag filter banner -->
+    <Transition name="tag-banner">
+      <div
+        v-if="activeTag"
+        class="flex items-center gap-2 px-4 py-2 border-b border-gray-200 dark:border-zinc-800 bg-gray-50 dark:bg-zinc-900/60"
+      >
+        <Icon name="tabler:tag" class="text-xs text-gray-400 dark:text-zinc-500 shrink-0" aria-hidden="true" />
+        <span class="text-xs text-gray-500 dark:text-zinc-400">Filtered by tag:</span>
+        <span class="inline-flex items-center gap-1 rounded-full border border-gray-200 bg-white dark:border-zinc-700 dark:bg-zinc-800 pl-2.5 pr-1.5 py-0.5 text-xs font-medium text-gray-700 dark:text-zinc-300">
+          {{ activeTag }}
+          <button
+            type="button"
+            class="flex h-3.5 w-3.5 items-center justify-center rounded-full text-gray-400 hover:bg-gray-200 hover:text-gray-600 dark:text-zinc-500 dark:hover:bg-zinc-700 transition-colors"
+            aria-label="Clear tag filter"
+            @click="clearTagFilter"
+          >
+            <Icon name="tabler:x" class="text-[9px]" aria-hidden="true" />
+          </button>
+        </span>
+      </div>
+    </Transition>
+
     <!-- Content tabs (Published | Drafts) for premium users -->
     <div v-if="isPremium" ref="tabBarEl" role="tablist" class="relative flex gap-0 border-b border-gray-200 dark:border-zinc-800">
       <button
@@ -143,11 +165,27 @@ import { userColorTier, userTierColorVar } from '~/utils/user-tier'
 
 definePageMeta({ layout: 'app', title: 'Articles', hideTopBar: true })
 
-useHead({ title: 'Articles' })
-useSeoMeta({
-  description: 'Read and discover articles on Men of Hunger.',
-  ogTitle: 'Articles — Men of Hunger',
-  ogDescription: 'Read and discover articles on Men of Hunger.',
+usePageSeo({
+  title: 'Articles',
+  description: 'Read and discover articles on Men of Hunger — longform writing on discipline, ambition, growth, and brotherhood.',
+  jsonLdGraph: computed(() => [
+    {
+      '@type': 'CollectionPage',
+      '@id': 'https://menofhunger.com/articles#webpage',
+      url: 'https://menofhunger.com/articles',
+      name: 'Articles — Men of Hunger',
+      description: 'Longform articles on discipline, ambition, personal growth, and brotherhood from the Men of Hunger community.',
+      isPartOf: { '@id': 'https://menofhunger.com/#website' },
+      inLanguage: 'en-US',
+    },
+    {
+      '@type': 'BreadcrumbList',
+      itemListElement: [
+        { '@type': 'ListItem', position: 1, name: 'Men of Hunger', item: 'https://menofhunger.com' },
+        { '@type': 'ListItem', position: 2, name: 'Articles', item: 'https://menofhunger.com/articles' },
+      ],
+    },
+  ]),
 })
 
 const { isPremium, isVerified, isAuthed, user } = useAuth()
@@ -173,6 +211,17 @@ const scopeTabs = [
 ]
 
 const followingOnly = computed(() => isAuthed.value && scope.value === 'following')
+
+// Tag filter — read from ?tag= query param.
+const activeTag = computed<string | null>(() => {
+  const t = route.query.tag
+  return typeof t === 'string' && t.trim() ? t.trim() : null
+})
+
+function clearTagFilter() {
+  const { tag: _tag, ...rest } = route.query
+  void router.replace({ path: route.path, query: rest })
+}
 
 // ─── Tabs ─────────────────────────────────────────────────────────────────────
 
@@ -245,6 +294,7 @@ const publishedFeed = useArticleFeed({
   sort,
   visibility: visibilityFilter,
   followingOnly,
+  tag: activeTag,
   includeRestricted: isAuthed,
 })
 const draftsState = useArticleDrafts({ visibility: visibilityFilter, enabled: isPremium })
@@ -256,6 +306,10 @@ const draftsInitialLoading = computed(
 )
 
 onMounted(() => {
+  if (activeTag.value) {
+    void navigateTo(`/topics/${encodeURIComponent(activeTag.value)}`, { replace: true })
+    return
+  }
   publishedFeed.load()
   if (isPremium.value) draftsState.load()
 })
@@ -293,6 +347,18 @@ function onArticlesFilterChange(next: ProfilePostsFilter) {
 </script>
 
 <style scoped>
+.tag-banner-enter-active,
+.tag-banner-leave-active {
+  transition: opacity 0.15s ease, max-height 0.15s ease;
+  max-height: 3rem;
+  overflow: hidden;
+}
+.tag-banner-enter-from,
+.tag-banner-leave-to {
+  opacity: 0;
+  max-height: 0;
+}
+
 .articles-list-enter-active,
 .articles-list-leave-active {
   transition: opacity 0.2s ease;

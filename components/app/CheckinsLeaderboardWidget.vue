@@ -1,5 +1,5 @@
 <template>
-  <Card class="moh-card moh-card-matte !rounded-2xl">
+  <Card class="moh-card moh-card-matte !rounded-2xl overflow-hidden">
     <template #title>
       <span class="moh-h2">Streak Leaderboard</span>
     </template>
@@ -12,11 +12,12 @@
         <div
           v-for="(u, i) in users.slice(0, 3)"
           :key="u.id"
-          class="flex items-center gap-2.5 py-1.5"
+          class="flex items-center gap-2.5 py-2"
         >
+          <!-- Rank badge -->
           <div
-            class="shrink-0 w-5 text-center text-xs font-bold tabular-nums"
-            :style="{ color: tierColor(u) }"
+            class="shrink-0 flex h-7 w-7 items-center justify-center rounded-lg text-xs font-black tabular-nums leading-none"
+            :class="rankBadgeClass(i)"
           >
             {{ i + 1 }}
           </div>
@@ -35,22 +36,25 @@
           </div>
 
           <div class="shrink-0 text-right">
-            <div class="flex items-center justify-end gap-0.5 text-xs font-semibold moh-text">
-              <Icon name="tabler:flame" class="text-[11px] moh-text-muted" aria-hidden="true" />
+            <div class="flex items-center justify-end gap-0.5 text-xs font-bold moh-text tabular-nums">
+              <Icon name="tabler:flame" class="text-[10px] text-orange-400" aria-hidden="true" />
               {{ u.checkinStreakDays > 0 ? `${u.checkinStreakDays}d` : '—' }}
             </div>
-            <div class="text-[10px] moh-text-muted">
+            <div class="text-[10px] moh-text-muted tabular-nums">
               best {{ u.longestStreakDays > 0 ? `${u.longestStreakDays}d` : '—' }}
             </div>
           </div>
         </div>
 
+        <!-- Full-width CTA row -->
         <NuxtLink
           to="/leaderboard"
-          class="inline-block pt-3 text-sm font-medium hover:underline underline-offset-2"
-          :class="tierCtaTextClass"
+          class="flex items-center justify-between gap-2 border-t moh-border-subtle pt-3 mt-1 group"
         >
-          See full leaderboard
+          <span class="text-sm font-medium moh-text-muted group-hover:moh-text transition-colors">
+            See full leaderboard
+          </span>
+          <Icon name="tabler:chevron-right" class="text-xs moh-text-muted shrink-0" aria-hidden="true" />
         </NuxtLink>
       </div>
 
@@ -66,20 +70,12 @@
 import type { LeaderboardUser } from '~/types/api'
 
 const { users, loading, error, refresh } = useCheckinsLeaderboard({ limit: 3 })
-const { user: authUser } = useAuth()
 
-function tierColor(u: LeaderboardUser): string {
-  if (u.premiumPlus || u.stewardBadgeEnabled) return 'var(--moh-steward)'
-  if (u.premium) return 'var(--moh-premium)'
-  if (u.verifiedStatus !== 'none') return 'var(--moh-verified)'
-  return 'var(--moh-text-muted)'
+function rankBadgeClass(index: number): string {
+  if (index === 0) return 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300'
+  if (index === 1) return 'bg-gray-100 text-gray-500 dark:bg-zinc-700 dark:text-zinc-300'
+  return 'bg-orange-50 text-orange-500 dark:bg-orange-900/20 dark:text-orange-400'
 }
-const tierCtaTextClass = computed(() => {
-  if (authUser.value?.premiumPlus) return 'text-[color:var(--moh-steward)]'
-  if (authUser.value?.premium) return 'text-[color:var(--moh-premium)]'
-  if ((authUser.value?.verifiedStatus ?? 'none') !== 'none') return 'text-[color:var(--moh-verified)]'
-  return 'moh-text-muted'
-})
 
 onMounted(() => void refresh())
 </script>

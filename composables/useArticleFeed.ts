@@ -9,6 +9,8 @@ export function useArticleFeed(opts?: {
   mine?: Ref<boolean>
   followingOnly?: Ref<boolean>
   enabled?: Ref<boolean>
+  /** Filter by a single tag slug (e.g. "stoicism"). Reactive. */
+  tag?: Ref<string | null> | string | null
   /** When true, include articles of all visibility tiers (restricted ones are returned with viewerCanAccess=false). */
   includeRestricted?: boolean | Ref<boolean>
 }) {
@@ -27,6 +29,8 @@ export function useArticleFeed(opts?: {
       if (opts?.followingOnly?.value) params.set('followingOnly', 'true')
       const restricted = isRef(opts?.includeRestricted) ? opts!.includeRestricted.value : opts?.includeRestricted
       if (restricted) params.set('includeRestricted', 'true')
+      const tag = isRef(opts?.tag) ? (opts!.tag as Ref<string | null>).value : opts?.tag
+      if (tag) params.set('tag', tag)
       if (cursor) params.set('cursor', cursor)
       return { path: '/articles', query: Object.fromEntries(params.entries()) }
     },
@@ -52,7 +56,8 @@ export function useArticleFeed(opts?: {
     const sort = opts?.sort?.value ?? 'new'
     const visibility = opts?.visibility?.value ?? 'all'
     const restricted = isRef(opts?.includeRestricted) ? opts!.includeRestricted.value : Boolean(opts?.includeRestricted)
-    return [author, mine, followingOnly, sort, visibility, restricted ? '1' : '0'].join('|')
+    const tag = isRef(opts?.tag) ? (opts!.tag as Ref<string | null>).value : (opts?.tag ?? '')
+    return [author, mine, followingOnly, sort, visibility, restricted ? '1' : '0', tag ?? ''].join('|')
   }
 
   async function load(loadOpts?: { force?: boolean }) {
@@ -92,6 +97,7 @@ export function useArticleFeed(opts?: {
   if (opts?.mine) watch(opts.mine, () => { if (enabled.value) void load() })
   if (opts?.followingOnly) watch(opts.followingOnly, () => { if (enabled.value) void load() })
   if (isRef(opts?.authorUsername)) watch(opts!.authorUsername as Ref<string>, () => { if (enabled.value) void load() })
+  if (isRef(opts?.tag)) watch(opts!.tag as Ref<string | null>, () => { if (enabled.value) void load() })
   if (opts?.enabled) {
     watch(opts.enabled, (on) => {
       if (!on) {

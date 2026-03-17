@@ -602,6 +602,28 @@
                       </div>
                     </div>
 
+                    <div class="rounded-xl border moh-border p-3 moh-surface space-y-3">
+                      <div class="font-semibold text-gray-900 dark:text-gray-50">Article topics you follow</div>
+                      <div class="text-xs moh-text-muted">
+                        We use these tags to personalize your weekly digest.
+                      </div>
+                      <div v-if="tagPrefsLoading" class="text-sm moh-text-muted">Loading topics…</div>
+                      <AppInlineAlert v-else-if="tagPrefsError" severity="danger">{{ tagPrefsError }}</AppInlineAlert>
+                      <div v-else class="space-y-3">
+                        <AppArticleTagInput v-model="preferredArticleTags" />
+                        <div class="flex flex-wrap items-center gap-3">
+                          <Button
+                            label="Save topics"
+                            severity="secondary"
+                            :loading="tagPrefsSaving"
+                            :disabled="tagPrefsSaving || !tagPrefsDirty || !emailIsVerified"
+                            @click="saveTagPrefs"
+                          />
+                          <div v-if="tagPrefsSaved" class="text-sm text-green-700 dark:text-green-300">Saved.</div>
+                        </div>
+                      </div>
+                    </div>
+
                     <div class="flex flex-wrap items-center gap-3">
                       <Button
                         label="Save preferences"
@@ -691,12 +713,14 @@ import { useFormSubmit } from '~/composables/useFormSubmit'
 import { formatDateTime } from '~/utils/time-format'
 import SettingsPrivacySection from '~/components/settings/sections/SettingsPrivacySection.vue'
 import type {
+  ArticleTag,
   BillingCheckoutSession,
   BillingMe,
   BillingPortalSession,
   BillingTier,
   MyVerificationStatus,
   NotificationPreferences,
+  TaxonomyPreference,
   VerificationRequestPublic
 } from '~/types/api'
 import { siteConfig } from '~/config/site'
@@ -984,11 +1008,19 @@ const notifPrefsSaving = ref(false)
 const notifPrefsSaved = ref(false)
 const notifPrefsError = ref<string | null>(null)
 let notifPrefsSavedTimer: ReturnType<typeof setTimeout> | null = null
+const preferredArticleTags = ref<ArticleTag[]>([])
+const tagPrefsInitial = ref<string>('')
+const tagPrefsLoading = ref(false)
+const tagPrefsSaving = ref(false)
+const tagPrefsSaved = ref(false)
+const tagPrefsError = ref<string | null>(null)
+let tagPrefsSavedTimer: ReturnType<typeof setTimeout> | null = null
 
 const notifPrefsDirty = computed(() => {
   if (!notifPrefs.value) return false
   return JSON.stringify(notifPrefs.value) !== notifPrefsInitial.value
 })
+const tagPrefsDirty = computed(() => JSON.stringify(preferredArticleTags.value) !== tagPrefsInitial.value)
 
 async function loadNotifPrefs() {
   notifPrefsLoading.value = true
@@ -1002,6 +1034,21 @@ async function loadNotifPrefs() {
     notifPrefsError.value = getApiErrorMessage(e) || 'Failed to load preferences.'
   } finally {
     notifPrefsLoading.value = false
+  }
+}
+
+async function loadTagPrefs() {
+  tagPrefsLoading.value = true
+  tagPrefsError.value = null
+  tagPrefsSaved.value = false
+  try {
+    const res = await apiFetchData<TaxonomyPreference[]>('/users/me/taxonomy-preferences', { method: 'GET' })
+    preferredArticleTags.value = (res ?? []).map((r) => ({ tag: r.slug, label: r.label }))
+    tagPrefsInitial.value = JSON.stringify(preferredArticleTags.value)
+  } catch (e: unknown) {
+    tagPrefsError.value = getApiErrorMessage(e) || 'Failed to load article topics.'
+  } finally {
+    tagPrefsLoading.value = false
   }
 }
 
@@ -1019,6 +1066,7 @@ watch(
           })
       }
       void loadNotifPrefs()
+      void loadTagPrefs()
     }
   },
   { immediate: true }
@@ -1049,6 +1097,31 @@ async function saveNotifPrefs() {
   }
 }
 
+async function saveTagPrefs() {
+  if (tagPrefsSaving.value) return
+  tagPrefsSaving.value = true
+  tagPrefsError.value = null
+  tagPrefsSaved.value = false
+  try {
+    const res = await apiFetchData<TaxonomyPreference[]>('/users/me/taxonomy-preferences', {
+      method: 'PUT',
+      body: { slugs: preferredArticleTags.value.map((t) => t.tag) },
+    })
+    preferredArticleTags.value = (res ?? []).map((r) => ({ tag: r.slug, label: r.label }))
+    tagPrefsInitial.value = JSON.stringify(preferredArticleTags.value)
+    tagPrefsSaved.value = true
+    if (tagPrefsSavedTimer) clearTimeout(tagPrefsSavedTimer)
+    tagPrefsSavedTimer = setTimeout(() => {
+      tagPrefsSavedTimer = null
+      tagPrefsSaved.value = false
+    }, 1500)
+  } catch (e: unknown) {
+    tagPrefsError.value = getApiErrorMessage(e) || 'Failed to save article topics.'
+  } finally {
+    tagPrefsSaving.value = false
+  }
+}
+
 onBeforeUnmount(() => {
   if (emailResendTickTimer) {
     clearInterval(emailResendTickTimer)
@@ -1057,6 +1130,10 @@ onBeforeUnmount(() => {
   if (notifPrefsSavedTimer) {
     clearTimeout(notifPrefsSavedTimer)
     notifPrefsSavedTimer = null
+  }
+  if (tagPrefsSavedTimer) {
+    clearTimeout(tagPrefsSavedTimer)
+    tagPrefsSavedTimer = null
   }
   if (emailResendSavedTimer) {
     clearTimeout(emailResendSavedTimer)

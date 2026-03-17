@@ -28,34 +28,33 @@
     >
       <div class="flex items-start gap-3">
         <div
-          class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl mt-0.5"
+          class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl mt-0.5"
           style="background-color: rgba(var(--moh-checkin-rgb), 0.18)"
         >
           <Icon name="tabler:calendar-check" class="text-lg" aria-hidden="true" style="color: var(--moh-checkin)" />
         </div>
 
         <div class="flex-1 min-w-0">
-          <div class="flex items-center gap-2 flex-wrap">
+          <div class="flex items-center justify-between gap-2">
             <div class="text-[10px] font-semibold uppercase tracking-wide" style="color: var(--moh-checkin); opacity: 0.75">
               Today's Prompt
             </div>
-            <!-- Active streak pill -->
-            <div
-              v-if="streak > 0"
-              class="inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-semibold leading-none"
-              style="background-color: rgba(var(--moh-checkin-rgb), 0.15); color: var(--moh-checkin)"
-            >
-              <Icon name="tabler:flame" class="text-[9px]" aria-hidden="true" />
-              {{ streak }}-day streak
-            </div>
-            <!-- Coin multiplier -->
+            <!-- Highest-priority pill: coin multiplier trumps streak -->
             <div
               v-if="nextMultiplier > 1"
-              class="inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-bold leading-none text-white"
+              class="shrink-0 inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-bold leading-none text-white"
               style="background-color: var(--moh-checkin)"
               :title="`Post today to earn ${nextMultiplier}x coins`"
             >
               {{ nextMultiplier }}x coins
+            </div>
+            <div
+              v-else-if="streak > 0"
+              class="shrink-0 inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-semibold leading-none"
+              style="background-color: rgba(var(--moh-checkin-rgb), 0.15); color: var(--moh-checkin)"
+            >
+              <Icon name="tabler:flame" class="text-[9px]" aria-hidden="true" />
+              {{ streak }}d
             </div>
           </div>
 
@@ -65,7 +64,7 @@
 
           <div class="mt-1.5 text-[11px] moh-text-muted">
             <template v-if="streak > 0">Post today to keep your {{ streak }}-day streak alive.</template>
-            <template v-else>Any post today starts your streak. Check in with today's prompt:</template>
+            <template v-else>Any post today starts your streak.</template>
           </div>
 
           <!-- Mobile: place CTA below content, right-aligned -->

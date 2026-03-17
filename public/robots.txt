@@ -1,6 +1,40 @@
+# Men of Hunger — robots.txt
+# https://menofhunger.com
+
 User-agent: *
 Allow: /
 
-# Admin and app-shell routes are not useful for crawlers.
+# ——— Crawl-budget: private / auth-gated routes ———
+# These pages require login and return no useful content to crawlers.
+# Disallowing saves crawl budget for the pages that matter.
+Disallow: /home
+Disallow: /notifications
+Disallow: /chat
+Disallow: /bookmarks
+Disallow: /bookmarks/
+Disallow: /only-me
+Disallow: /settings
+Disallow: /settings/
+Disallow: /coins
+Disallow: /coins/
+Disallow: /feedback
+Disallow: /new-posts
+Disallow: /online
+Disallow: /groups
+Disallow: /check-ins
+Disallow: /email/
+Disallow: /spaces
+
+# ——— Admin ———
 Disallow: /admin
 Disallow: /admin/
+
+# ——— Article editor (auth-gated, noindex) ———
+Disallow: /articles/new
+Disallow: /articles/edit/
+
+# ——— Nuxt internals ———
+Disallow: /_nuxt/
+
+# Sitemap index
+Sitemap: https://menofhunger.com/sitemap.xml

@@ -55,6 +55,20 @@
           <p class="mb-3 px-4 text-sm font-medium text-gray-700 dark:text-gray-300">
             Searching for: <span class="font-semibold">{{ searchQueryTrimmed }}</span>
           </p>
+          <div v-if="tagSuggestions.length > 0" class="mb-3 px-4">
+            <div class="flex flex-wrap items-center gap-1.5 rounded-xl border moh-border bg-gray-50/60 dark:bg-zinc-900/40 px-3 py-2">
+              <span class="text-xs moh-text-muted">Topics:</span>
+              <NuxtLink
+                v-for="t in tagSuggestions.slice(0, 5)"
+                :key="t.slug"
+                :to="`/topics/${encodeURIComponent(t.slug)}`"
+                class="inline-flex items-center gap-1 rounded-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-2 py-0.5 text-xs font-medium text-gray-600 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors"
+              >
+                {{ t.label }}
+                <span class="text-[10px] text-gray-400 dark:text-zinc-500 uppercase">{{ t.kind }}</span>
+              </NuxtLink>
+            </div>
+          </div>
           <TransitionGroup name="moh-post" tag="div" class="space-y-0">
             <template
               v-for="item in interleaved"
@@ -601,6 +615,7 @@ import type {
   SearchUserResult,
   SearchMixedResult,
   SearchMixedPagination,
+  TaxonomyMatch,
   GetPostsData,
   GetCategoryPostsData,
   GetCategoryTopicsData,
@@ -630,7 +645,7 @@ usePageSeo({
 
 const route = useRoute()
 const router = useRouter()
-const { apiFetch } = useApiClient()
+const { apiFetch, apiFetchData } = useApiClient()
 const { isAuthed, user: authUser } = useAuth()
 const openComposer = inject(MOH_OPEN_COMPOSER_KEY, null)
 const { dayKey: etDayKey } = useEasternMidnightRollover()
@@ -899,6 +914,7 @@ function clearSearchResults() {
   users.value = []
   articles.value = []
   posts.value = []
+  tagSuggestions.value = []
   nextUserCursor.value = null
   nextArticleCursor.value = null
   nextPostCursor.value = null
@@ -992,6 +1008,8 @@ const loadingMore = ref(false)
 const searchError = ref<string | null>(null)
 const searchedOnce = ref(false)
 const activeSearchSource = ref<'explore' | 'external'>('external')
+const tagSuggestions = ref<TaxonomyMatch[]>([])
+let searchFetchSeq = 0
 
 const hasMore = computed(
   () => nextUserCursor.value !== null || nextArticleCursor.value !== null || nextPostCursor.value !== null,
@@ -1031,6 +1049,7 @@ function onSearchPostEdited(payload: { id: string; post: import('~/types/api').F
 }
 
 async function fetchPage(params: { append: boolean }) {
+  const seq = ++searchFetchSeq
   const q = searchQueryTrimmed.value
   if (q.length < 2) return
 
@@ -1058,6 +1077,7 @@ async function fetchPage(params: { append: boolean }) {
       method: 'GET',
       query,
     })
+    if (seq !== searchFetchSeq) return
 
     const data = res.data as SearchMixedResult
     const pagination = res.pagination as SearchMixedPagination | undefined
@@ -1073,22 +1093,26 @@ async function fetchPage(params: { append: boolean }) {
       users.value = dedupeById(newUsers)
       articles.value = dedupeById(newArticles)
       posts.value = dedupeById(newPosts)
+      tagSuggestions.value = (data.taxonomyMatches ?? []).slice(0, 5)
     }
 
     nextUserCursor.value = pagination?.nextUserCursor ?? null
     nextArticleCursor.value = pagination?.nextArticleCursor ?? null
     nextPostCursor.value = pagination?.nextPostCursor ?? null
   } catch (e: unknown) {
+    if (seq !== searchFetchSeq) return
     searchError.value = getApiErrorMessage(e) || 'Search failed.'
     if (!isAppend) {
       users.value = []
       articles.value = []
       posts.value = []
+      tagSuggestions.value = []
       nextUserCursor.value = null
       nextArticleCursor.value = null
       nextPostCursor.value = null
     }
   } finally {
+    if (seq !== searchFetchSeq) return
     loading.value = false
     loadingMore.value = false
   }
@@ -1126,6 +1150,7 @@ watch(searchQuery, () => {
 })
 
 onBeforeUnmount(() => {
+  searchFetchSeq++
   if (debounceTimer != null) {
     clearTimeout(debounceTimer)
     debounceTimer = null

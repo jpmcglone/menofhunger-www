@@ -237,12 +237,14 @@ export function usePostPermalinkSeo(opts: {
     // For restricted posts with data: emit a basic Article schema with gating info
     if (opts.isRestricted.value) {
       const username = (opts.post.value.author.username ?? '').trim()
+      const name = (opts.post.value.author.name ?? '').trim()
       const authorUrl = username ? `${siteConfig.url}/u/${encodeURIComponent(username)}` : null
       const avatarUrl = (opts.post.value.author.avatarUrl ?? '').trim() || null
       const v = opts.post.value.visibility
       const isAccessibleForFree = v !== 'verifiedOnly' && v !== 'premiumOnly'
+      const displayName = name || (username ? `@${username}` : siteConfig.name)
       const author: any = authorUrl
-        ? { '@type': 'Person', name: username ? `@${username}` : siteConfig.name, url: authorUrl, ...(avatarUrl ? { image: avatarUrl } : {}) }
+        ? { '@type': 'Person', name: displayName, url: authorUrl, ...(avatarUrl ? { image: avatarUrl } : {}) }
         : { '@type': 'Organization', name: siteConfig.name, url: siteConfig.url }
       return [{
         '@type': 'Article',
@@ -259,14 +261,16 @@ export function usePostPermalinkSeo(opts: {
     }
 
     const username = (opts.post.value.author.username ?? '').trim()
+    const name = (opts.post.value.author.name ?? '').trim()
     const authorUrl = username ? `${siteConfig.url}/u/${encodeURIComponent(username)}` : null
     const authorId = authorUrl ? `${authorUrl}#person` : `${siteConfig.url}/#organization`
     const avatarUrl = (opts.post.value.author.avatarUrl ?? '').trim() || null
+    const displayName = name || (username ? `@${username}` : siteConfig.name)
     const author: any = authorUrl
       ? {
           '@type': 'Person',
           '@id': authorId,
-          name: username ? `@${username}` : siteConfig.name,
+          name: displayName,
           url: authorUrl,
           ...(avatarUrl ? { image: avatarUrl } : {})
         }
