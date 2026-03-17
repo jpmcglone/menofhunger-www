@@ -10,7 +10,7 @@
           <div class="rounded-2xl border moh-border moh-bg p-5 shadow-sm flex flex-col max-h-[calc(100dvh-2rem)] sm:max-h-[calc(100dvh-4rem)]">
             <div class="shrink-0 flex items-start justify-between gap-3">
               <div class="min-w-0">
-                <div class="text-xl font-bold tracking-tight">Finish setting up your profile</div>
+                <div class="text-xl font-bold tracking-tight">{{ VOICE.onboarding.setupHeading }}</div>
                 <div class="mt-1 text-sm moh-text-muted">
                   {{ subtitle }}
                 </div>
@@ -59,7 +59,7 @@
           <div class="space-y-2">
             <div class="flex items-baseline justify-between gap-3">
               <label class="text-sm font-medium moh-text">
-                Interests<span class="ml-0.5">*</span>
+                Life arenas<span class="ml-0.5">*</span>
               </label>
               <div class="text-xs moh-text-muted">Pick at least 1</div>
             </div>
@@ -69,7 +69,7 @@
               label=""
               helper-right=""
               helper-bottom=""
-              description="Search, pick from suggestions, or add your own."
+              description="Pick the arenas you're building in."
             />
           </div>
 
@@ -93,7 +93,7 @@
                 @update:modelValue="(v) => (menOnlyConfirmed = Boolean(v))"
               />
               <div class="text-sm moh-text leading-snug">
-                I understand Men of Hunger is a men’s community, and I’m joining as a man.
+                {{ VOICE.onboarding.menConfirm }}
                 <div class="mt-1 text-xs moh-text-muted">
                   You can browse right away. Posting and messaging require verification first.
                 </div>
@@ -106,15 +106,15 @@
           </div>
 
           <div class="flex items-center justify-between gap-3 pt-1">
-            <div class="text-xs moh-text-muted">Profile setup is required to continue.</div>
+            <div class="text-xs moh-text-muted">Required to continue.</div>
             <Button
-              label="Continue"
+              :label="VOICE.onboarding.ctaStart"
               :loading="submitting"
               :disabled="submitting || !canSubmit"
               @click="submit"
             >
               <template #icon>
-                <Icon name="tabler:check" aria-hidden="true" />
+                <Icon name="tabler:arrow-right" aria-hidden="true" />
               </template>
             </Button>
           </div>
@@ -128,6 +128,7 @@
 </template>
 
 <script setup lang="ts">
+import { VOICE } from '~/config/voice'
 import { getApiErrorMessage } from '~/utils/api-error'
 import { formatDateOnly } from '~/utils/time-format'
 
@@ -167,8 +168,8 @@ function formatList(items: string[]): string {
 
 const subtitle = computed(() => {
   const parts = missingParts.value
-  if (parts.length === 0) return 'You’re all set.'
-  return `Before you continue, we need ${formatList(parts)}.`
+  if (parts.length === 0) return VOICE.onboarding.setupSubtitle
+  return `We need ${formatList(parts)} before you can get started.`
 })
 
 const usernameInput = ref('')
@@ -293,6 +294,11 @@ async function submit() {
       body: payload,
     })
     user.value = res.user ?? user.value
+
+    useNuxtApp().$posthog?.capture('onboarding_completed', {
+      arena_count: interests.value.length,
+      from_welcome: route.query.welcome === '1',
+    })
 
     // Post-signup: once onboarding is complete, send them to their profile (preserve capitalization).
     if (route.query.welcome === '1') {

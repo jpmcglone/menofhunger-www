@@ -3,7 +3,7 @@
     <!-- Who to Follow -->
     <div class="rounded-xl border moh-border moh-surface p-4">
       <div class="text-sm font-semibold moh-text mb-3">
-        Follow a few members to fill your feed
+        {{ VOICE.feed.followingEmptyHeading }}
       </div>
 
       <div v-if="wtfLoading && wtfUsers.length === 0" class="flex justify-center py-4">
@@ -23,7 +23,7 @@
         to="/who-to-follow"
         class="mt-3 inline-flex items-center gap-1 text-sm font-medium hover:underline underline-offset-2 moh-text-muted"
       >
-        See all suggestions
+        {{ VOICE.actions.seeAllSuggestions }} suggestions
         <Icon name="tabler:arrow-right" class="text-xs" aria-hidden="true" />
       </NuxtLink>
     </div>
@@ -38,8 +38,8 @@
           <Icon name="tabler:calendar-check" class="text-sm" aria-hidden="true" style="color: var(--moh-checkin)" />
         </div>
         <div class="flex-1 min-w-0">
-          <div class="text-sm font-semibold moh-text">Check in today</div>
-          <div class="text-xs moh-text-muted mt-0.5">Join the brotherhood — share how today is going.</div>
+          <div class="text-sm font-semibold moh-text">{{ VOICE.feed.checkinHeading }}</div>
+          <div class="text-xs moh-text-muted mt-0.5">{{ VOICE.feed.checkinBody }}</div>
         </div>
         <Button
           label="Check in"
@@ -58,11 +58,11 @@
           <Icon name="tabler:pencil" class="text-sm moh-text-muted" aria-hidden="true" />
         </div>
         <div class="flex-1 min-w-0">
-          <div class="text-sm font-semibold moh-text">Post something</div>
-          <div class="text-xs moh-text-muted mt-0.5">Share what's on your mind with the community.</div>
+          <div class="text-sm font-semibold moh-text">{{ VOICE.feed.postHeading }}</div>
+          <div class="text-xs moh-text-muted mt-0.5">{{ VOICE.feed.postBody }}</div>
         </div>
         <Button
-          label="Post"
+          :label="VOICE.actions.post"
           size="small"
           severity="secondary"
           rounded
@@ -79,11 +79,11 @@
           <Icon name="tabler:shield-check" class="text-sm moh-text-muted" aria-hidden="true" />
         </div>
         <div class="flex-1 min-w-0">
-          <div class="text-sm font-semibold moh-text">Verify your identity</div>
-          <div class="text-xs moh-text-muted mt-0.5">Unlock public posting, daily check-ins, and posting streaks.</div>
+          <div class="text-sm font-semibold moh-text">{{ VOICE.feed.verifyHeading }}</div>
+          <div class="text-xs moh-text-muted mt-0.5">{{ VOICE.feed.verifyBody }}</div>
         </div>
         <Button
-          label="Verify"
+          :label="VOICE.actions.verify"
           size="small"
           severity="secondary"
           rounded
@@ -96,6 +96,8 @@
 </template>
 
 <script setup lang="ts">
+import { VOICE } from '~/config/voice'
+
 defineProps<{
   followingCount: number | null
   showCheckinCta?: boolean

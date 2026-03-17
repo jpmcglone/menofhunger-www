@@ -46,16 +46,38 @@
 
     <AppModal
       v-model="dialogOpen"
-      title="Select interests"
+      title="Choose your arenas"
       max-width-class="max-w-[46rem]"
       :dismissable-mask="true"
       :disable-close="disabled"
       body-class="p-0 overflow-hidden"
-      max-height="min(90vh, 46rem)"
+      max-height="min(90vh, 52rem)"
     >
       <div class="p-4 h-full flex flex-col gap-3">
         <div class="text-sm moh-text-muted">
-          Search and pick interests.
+          Pick the arenas you're building in. Fine-tune with the search below.
+        </div>
+
+        <!-- Arena quick-picks -->
+        <div class="flex flex-wrap gap-2">
+          <button
+            v-for="arena in LIFE_ARENAS"
+            :key="arena.key"
+            type="button"
+            class="inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-semibold transition-colors"
+            :class="arenaState(arena) !== 'none' ? 'bg-transparent' : 'moh-surface-hover'"
+            :style="
+              arenaState(arena) !== 'none'
+                ? { borderColor: 'var(--p-primary-color)', color: 'var(--p-primary-color)' }
+                : { borderColor: 'var(--moh-border)', color: 'var(--moh-text)' }
+            "
+            :disabled="disabled"
+            :title="arena.description"
+            @click="onToggleArena(arena)"
+          >
+            <Icon :name="arena.icon" class="text-xs shrink-0" aria-hidden="true" />
+            <span>{{ arena.label }}</span>
+          </button>
         </div>
 
         <div class="space-y-2">
@@ -180,6 +202,7 @@
 
 <script setup lang="ts">
 import type { GetTopicCategoriesData, GetCategoryTopicsData, Topic, TopicCategory } from '~/types/api'
+import { LIFE_ARENAS, arenaSelectionState, toggleArena } from '~/config/arenas'
 
 type Option = { value: string; label: string; group?: string; keywords?: string[] }
 
@@ -448,6 +471,20 @@ const filteredSuggestedGroups = computed(() => {
   }
   return groups
 })
+
+function arenaState(arena: (typeof LIFE_ARENAS)[number]) {
+  return arenaSelectionState(arena, draft.value)
+}
+
+function onToggleArena(arena: (typeof LIFE_ARENAS)[number]) {
+  if (props.disabled) return
+  const wasActive = arenaState(arena) !== 'none'
+  draft.value = toggleArena(arena, draft.value, props.max)
+  useNuxtApp().$posthog?.capture('arena_toggled', {
+    arena: arena.key,
+    action: wasActive ? 'deselect' : 'select',
+  })
+}
 
 function toggle(value: string) {
   const v = String(value ?? '').trim()

@@ -309,6 +309,28 @@
           </AppHorizontalScroller>
         </section>
 
+        <!-- Life Arenas quick-filter -->
+        <section class="space-y-2">
+          <h2 class="px-4 text-sm font-semibold text-gray-900 dark:text-gray-50">
+            Arenas
+          </h2>
+          <AppHorizontalScroller scroller-class="no-scrollbar px-4">
+            <div class="flex gap-2 pb-2">
+              <button
+                v-for="arena in LIFE_ARENAS"
+                :key="arena.key"
+                type="button"
+                class="h-9 px-3 shrink-0 inline-flex items-center gap-1.5 rounded-full border moh-border bg-white/60 dark:bg-zinc-900/40 text-sm text-gray-800 dark:text-gray-100 hover:bg-white dark:hover:bg-zinc-900 transition whitespace-nowrap"
+                :title="arena.description"
+                @click="selectCategory(arena.categoryKey, 'arena')"
+              >
+                <Icon :name="arena.icon" class="text-sm shrink-0 opacity-70" aria-hidden="true" />
+                <span>{{ arena.label }}</span>
+              </button>
+            </div>
+          </AppHorizontalScroller>
+        </section>
+
         <!-- Categories -->
         <section v-if="displayCategories.length > 0" class="space-y-3">
           <h2 class="px-4 text-sm font-semibold text-gray-900 dark:text-gray-50">
@@ -589,6 +611,7 @@ import type {
 } from '~/types/api'
 import { getApiErrorMessage } from '~/utils/api-error'
 import { MOH_OPEN_COMPOSER_KEY } from '~/utils/injection-keys'
+import { LIFE_ARENAS } from '~/config/arenas'
 
 definePageMeta({
   layout: 'app',
@@ -930,9 +953,12 @@ function selectTopic(topic: string) {
   Promise.resolve(router.push({ path: route.path, query: nextQuery })).catch(() => {})
 }
 
-function selectCategory(category: string) {
+function selectCategory(category: string, source?: string) {
   const c = String(category ?? '').trim()
   if (!c) return
+  if (source) {
+    useNuxtApp().$posthog?.capture('explore_category_selected', { category: c, source })
+  }
   const nextQuery: Record<string, any> = { ...route.query }
   delete nextQuery.q
   delete nextQuery.topic

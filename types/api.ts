@@ -1441,10 +1441,20 @@ export type LeaderboardUser = {
   avatarUrl: string | null
   checkinStreakDays: number
   longestStreakDays: number
+  /** Only present on weekly-scope responses. */
+  daysThisWeek?: number
+}
+
+export type LeaderboardViewerRank = {
+  rank: number
+  user: LeaderboardUser
 }
 
 export type GetCheckinsLeaderboardResponse = {
   users: LeaderboardUser[]
+  viewerRank: LeaderboardViewerRank | null
+  /** ISO timestamp; only present on weekly-scope responses. */
+  weekStart?: string
   generatedAt: string
 }
 

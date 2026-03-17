@@ -71,6 +71,14 @@
       </div>
     </Transition>
 
+    <!-- Weekly mission card: shown to verified users with an active or recent streak -->
+    <ClientOnly>
+      <AppFeedWeeklyMissionCard
+        v-if="isAuthed && viewerIsVerified && displayCheckinStreak > 0"
+        :checkin-streak-days="displayCheckinStreak"
+      />
+    </ClientOnly>
+
     <!-- Daily quote card: shown on mobile only (right rail shows it on desktop) -->
     <AppFeedDailyQuoteCard />
 
@@ -247,7 +255,7 @@ const showCheckinPromptBar = computed(() => {
   return true
 })
 
-// Show the streak-intact banner OR the check-in prompt (whichever is appropriate).
+// Show the check-in prompt only (the WeeklyMissionCard covers the already-checked-in state).
 // Suppress when the welcome card is visible and already contains the check-in CTA — no need to show both.
 const { dismissed: welcomeCardDismissed } = useWelcomeCard()
 const showCheckinCardArea = computed(() => {
@@ -255,6 +263,8 @@ const showCheckinCardArea = computed(() => {
   if (feedCtaKind.value) return false
   if (!checkinState.value) return false
   if (!effectiveCheckinAllowedVisibilities.value.length) return false
+  // Already checked in — WeeklyMissionCard handles this state; no need for the streak-intact banner.
+  if (hasCheckedInToday.value) return false
   // Welcome card is showing + it contains the check-in prompt — standalone card would be redundant.
   if (!welcomeCardDismissed.value && showCheckinPromptBar.value) return false
   return true

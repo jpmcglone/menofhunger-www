@@ -13,7 +13,7 @@
         <!-- Header -->
         <div class="px-4 pt-4 pb-3 flex items-start justify-between gap-3">
           <div>
-            <div class="text-base font-bold moh-text leading-snug">Welcome to Men of Hunger.</div>
+            <div class="text-base font-bold moh-text leading-snug">{{ VOICE.welcome.heading }}</div>
             <div class="mt-0.5 text-sm moh-text-muted">{{ subtitle }}</div>
           </div>
           <button
@@ -32,7 +32,7 @@
         <div class="px-4 py-3">
           <div class="flex items-center gap-2 mb-2.5">
             <div class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-gray-100 dark:bg-zinc-800 text-[11px] font-bold moh-text-muted">1</div>
-            <div class="text-sm font-semibold moh-text">Follow a few members</div>
+            <div class="text-sm font-semibold moh-text">{{ VOICE.welcome.step1Heading }}</div>
           </div>
 
           <div v-if="wtfLoading && wtfUsers.length === 0" class="flex justify-center py-3">
@@ -63,10 +63,10 @@
         <div v-if="!isVerified" class="px-4 py-3">
           <div class="flex items-center gap-2 mb-2">
             <div class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-gray-100 dark:bg-zinc-800 text-[11px] font-bold moh-text-muted">2</div>
-            <div class="text-sm font-semibold moh-text">Verify your identity</div>
+            <div class="text-sm font-semibold moh-text">{{ VOICE.welcome.step2HeadingVerify }}</div>
           </div>
           <p class="text-xs moh-text-muted leading-relaxed">
-            Men of Hunger is identity-verified. Verification unlocks public posting, daily check-ins, and posting streaks.
+            {{ VOICE.welcome.step2BodyVerify }}
           </p>
           <div class="mt-3">
             <Button label="Get verified" size="small" severity="secondary" rounded @click="navigateTo('/verification')">
@@ -81,15 +81,10 @@
         <div v-else class="px-4 py-3">
           <div class="flex items-center gap-2 mb-2">
             <div class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-gray-100 dark:bg-zinc-800 text-[11px] font-bold moh-text-muted">2</div>
-            <div class="text-sm font-semibold moh-text">Post every day to build your streak</div>
+            <div class="text-sm font-semibold moh-text">{{ VOICE.welcome.step2HeadingStreak }}</div>
           </div>
           <p class="text-xs moh-text-muted leading-relaxed">
-            <template v-if="isPremium">
-              Any post — text, photos, video, or a daily check-in — keeps your streak alive. Post consistently to earn coins and unlock milestone badges.
-            </template>
-            <template v-else>
-              Any post — a reply, a thought, or a daily check-in — keeps your streak alive. Post consistently to earn coins and unlock milestone badges.
-            </template>
+            {{ VOICE.welcome.step2BodyStreak }}
           </p>
 
           <!-- Today's check-in prompt embed (only when user hasn't posted today) -->
@@ -115,7 +110,7 @@
         <!-- Footer -->
         <div class="h-px moh-divide" />
         <div class="px-4 py-3 flex justify-end">
-          <Button label="I'm all set" severity="secondary" size="small" rounded @click="dismiss">
+          <Button :label="VOICE.welcome.dismiss" severity="secondary" size="small" rounded @click="dismiss">
             <template #icon>
               <Icon name="tabler:arrow-right" aria-hidden="true" />
             </template>
@@ -128,6 +123,8 @@
 </template>
 
 <script setup lang="ts">
+import { VOICE } from '~/config/voice'
+
 defineProps<{
   showCheckinCta?: boolean
   checkinPrompt?: string
@@ -141,10 +138,10 @@ const { isVerified, isPremium, isPremiumPlus } = useAuth()
 const { dismissed, dismiss } = useWelcomeCard()
 
 const subtitle = computed(() => {
-  if (isPremiumPlus.value) return "You have full access. Here's how to get started."
-  if (isPremium.value) return "You have Premium access. Here's how to get started."
-  if (isVerified.value) return "You're verified. Here's how to get the most out of it."
-  return "Here's how to get started."
+  if (isPremiumPlus.value) return VOICE.welcome.subtitleFullAccess
+  if (isPremium.value) return VOICE.welcome.subtitlePremium
+  if (isVerified.value) return VOICE.welcome.subtitleVerified
+  return VOICE.welcome.subtitleDefault
 })
 
 const followedCount = ref(0)

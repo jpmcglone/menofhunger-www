@@ -1,14 +1,17 @@
-import type { GetCheckinsLeaderboardResponse, LeaderboardUser } from '~/types/api'
+import type { GetCheckinsLeaderboardResponse, LeaderboardUser, LeaderboardViewerRank } from '~/types/api'
 import { getApiErrorMessage } from '~/utils/api-error'
 
 const LEADERBOARD_KEY = 'checkins-leaderboard'
 
-export function useCheckinsLeaderboard(options?: { limit?: number }) {
+export function useCheckinsLeaderboard(options?: { limit?: number; scope?: 'all' | 'weekly' }) {
   const { apiFetchData } = useApiClient()
 
-  const scopeKey = options?.limit ? `${LEADERBOARD_KEY}:${options.limit}` : LEADERBOARD_KEY
+  const scope = options?.scope ?? 'all'
+  const scopeKey = `${LEADERBOARD_KEY}:${scope}${options?.limit ? `:${options.limit}` : ''}`
 
   const users = useState<LeaderboardUser[]>(`${scopeKey}:users`, () => [])
+  const viewerRank = useState<LeaderboardViewerRank | null>(`${scopeKey}:viewerRank`, () => null)
+  const weekStart = useState<string | null>(`${scopeKey}:weekStart`, () => null)
   const generatedAt = useState<string | null>(`${scopeKey}:generatedAt`, () => null)
   const loading = useState<boolean>(`${scopeKey}:loading`, () => false)
   const error = useState<string | null>(`${scopeKey}:error`, () => null)
@@ -17,11 +20,17 @@ export function useCheckinsLeaderboard(options?: { limit?: number }) {
     loading.value = true
     error.value = null
     try {
+      const query: Record<string, string | number> = {}
+      if (options?.limit) query.limit = options.limit
+      if (scope === 'weekly') query.scope = 'weekly'
+
       const data = await apiFetchData<GetCheckinsLeaderboardResponse>('/checkins/leaderboard', {
         method: 'GET',
-        query: options?.limit ? { limit: options.limit } : undefined,
+        query: Object.keys(query).length ? query : undefined,
       })
       users.value = data.users
+      viewerRank.value = data.viewerRank ?? null
+      weekStart.value = data.weekStart ?? null
       generatedAt.value = data.generatedAt
     } catch (e: unknown) {
       error.value = getApiErrorMessage(e) || 'Failed to load leaderboard.'
@@ -30,5 +39,5 @@ export function useCheckinsLeaderboard(options?: { limit?: number }) {
     }
   }
 
-  return { users, generatedAt, loading, error, refresh }
+  return { users, viewerRank, weekStart, generatedAt, loading, error, refresh }
 }
