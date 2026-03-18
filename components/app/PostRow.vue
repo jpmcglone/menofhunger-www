@@ -141,6 +141,7 @@
             >
               <div class="relative">
                 <button
+                  ref="viewerCountBtnEl"
                   type="button"
                   class="inline-flex h-10 w-auto sm:h-9 items-center gap-0.5 px-1.5 rounded-full text-[11px] tabular-nums moh-text-muted transition-colors moh-surface-hover cursor-default select-none"
                   :aria-label="`${viewerCount} ${viewerCount === 1 ? 'person' : 'people'} saw this post`"
@@ -156,53 +157,56 @@
                   <span>{{ formatShortCount(viewerCount) }}</span>
                 </button>
 
-                <!-- Breakdown popover (shown on hover) -->
-                <Transition name="viewer-breakdown">
-                  <div
-                    v-if="viewerBreakdownVisible"
-                    class="absolute top-full mt-1.5 right-0 z-50 min-w-[10rem] rounded-lg border moh-border moh-surface shadow-lg px-3 py-2.5 text-[11px] sm:text-xs"
-                    role="tooltip"
-                  >
-                    <p class="mb-1.5 font-semibold moh-text">
-                      {{ viewerCount }} {{ viewerCount === 1 ? 'person' : 'people' }} saw this
-                    </p>
-                    <template v-if="viewerBreakdown">
-                      <div class="flex flex-col gap-1 moh-text-muted">
-                        <div v-if="viewerBreakdown.premium > 0" class="flex items-center justify-between gap-3">
-                          <span class="flex items-center gap-1.5">
-                            <span class="inline-block h-2 w-2 rounded-full bg-yellow-400 shrink-0" aria-hidden="true" />
-                            Premium
-                          </span>
-                          <span class="tabular-nums font-medium moh-text">{{ viewerBreakdown.premium }}</span>
+                <!-- Breakdown popover: teleported to body so it's never clipped by a parent stacking context -->
+                <Teleport to="body">
+                  <Transition name="viewer-breakdown">
+                    <div
+                      v-if="viewerBreakdownVisible"
+                      class="fixed z-[9999] min-w-[10rem] rounded-lg border moh-border moh-surface shadow-lg px-3 py-2.5 text-[11px] sm:text-xs"
+                      :style="viewerBreakdownStyle"
+                      role="tooltip"
+                    >
+                      <p class="mb-1.5 font-semibold moh-text">
+                        {{ viewerCount }} {{ viewerCount === 1 ? 'person' : 'people' }} saw this
+                      </p>
+                      <template v-if="viewerBreakdown">
+                        <div class="flex flex-col gap-1 moh-text-muted">
+                          <div v-if="viewerBreakdown.premium > 0" class="flex items-center justify-between gap-3">
+                            <span class="flex items-center gap-1.5">
+                              <span class="inline-block h-2 w-2 rounded-full bg-yellow-400 shrink-0" aria-hidden="true" />
+                              Premium
+                            </span>
+                            <span class="tabular-nums font-medium moh-text">{{ viewerBreakdown.premium }}</span>
+                          </div>
+                          <div v-if="viewerBreakdown.verified > 0" class="flex items-center justify-between gap-3">
+                            <span class="flex items-center gap-1.5">
+                              <span class="inline-block h-2 w-2 rounded-full bg-blue-400 shrink-0" aria-hidden="true" />
+                              Verified
+                            </span>
+                            <span class="tabular-nums font-medium moh-text">{{ viewerBreakdown.verified }}</span>
+                          </div>
+                          <div v-if="viewerBreakdown.unverified > 0" class="flex items-center justify-between gap-3">
+                            <span class="flex items-center gap-1.5">
+                              <span class="inline-block h-2 w-2 rounded-full bg-gray-400 shrink-0" aria-hidden="true" />
+                              Unverified
+                            </span>
+                            <span class="tabular-nums font-medium moh-text">{{ viewerBreakdown.unverified }}</span>
+                          </div>
+                          <div v-if="viewerBreakdown.guest > 0" class="flex items-center justify-between gap-3">
+                            <span class="flex items-center gap-1.5">
+                              <span class="inline-block h-2 w-2 rounded-full bg-gray-500/60 shrink-0" aria-hidden="true" />
+                              Guests
+                            </span>
+                            <span class="tabular-nums font-medium moh-text">{{ viewerBreakdown.guest }}</span>
+                          </div>
                         </div>
-                        <div v-if="viewerBreakdown.verified > 0" class="flex items-center justify-between gap-3">
-                          <span class="flex items-center gap-1.5">
-                            <span class="inline-block h-2 w-2 rounded-full bg-blue-400 shrink-0" aria-hidden="true" />
-                            Verified
-                          </span>
-                          <span class="tabular-nums font-medium moh-text">{{ viewerBreakdown.verified }}</span>
-                        </div>
-                        <div v-if="viewerBreakdown.unverified > 0" class="flex items-center justify-between gap-3">
-                          <span class="flex items-center gap-1.5">
-                            <span class="inline-block h-2 w-2 rounded-full bg-gray-400 shrink-0" aria-hidden="true" />
-                            Unverified
-                          </span>
-                          <span class="tabular-nums font-medium moh-text">{{ viewerBreakdown.unverified }}</span>
-                        </div>
-                        <div v-if="viewerBreakdown.guest > 0" class="flex items-center justify-between gap-3">
-                          <span class="flex items-center gap-1.5">
-                            <span class="inline-block h-2 w-2 rounded-full bg-gray-500/60 shrink-0" aria-hidden="true" />
-                            Guests
-                          </span>
-                          <span class="tabular-nums font-medium moh-text">{{ viewerBreakdown.guest }}</span>
-                        </div>
-                      </div>
-                    </template>
-                    <template v-else>
-                      <div class="moh-text-muted animate-pulse">Loading…</div>
-                    </template>
-                  </div>
-                </Transition>
+                      </template>
+                      <template v-else>
+                        <div class="moh-text-muted animate-pulse">Loading…</div>
+                      </template>
+                    </div>
+                  </Transition>
+                </Teleport>
               </div>
             </div>
           </Transition>
@@ -1272,10 +1276,24 @@ const bookmarkCountLabel = computed(() => {
 
 const viewerCount = computed(() => Math.max(0, Math.floor(Number(postView.value.viewerCount ?? 0))))
 
+const viewerCountBtnEl = ref<HTMLElement | null>(null)
 const viewerBreakdownVisible = ref(false)
 const viewerBreakdown = ref<import('~/types/api').PostViewBreakdown | null>(null)
 const viewerBreakdownLoading = ref(false)
 let viewerBreakdownRequestSeq = 0
+
+const viewerBreakdownStyle = computed(() => {
+  if (!import.meta.client || !viewerCountBtnEl.value) return {}
+  const rect = viewerCountBtnEl.value.getBoundingClientRect()
+  const popoverWidth = 160
+  let left = rect.right - popoverWidth
+  if (left < 8) left = 8
+  if (left + popoverWidth > window.innerWidth - 8) left = window.innerWidth - popoverWidth - 8
+  return {
+    top: `${Math.round(rect.bottom + 6)}px`,
+    left: `${Math.round(left)}px`,
+  }
+})
 
 async function onViewerCountHover() {
   viewerBreakdownVisible.value = true
