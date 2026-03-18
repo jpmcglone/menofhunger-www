@@ -18,7 +18,7 @@ function author(overrides: Partial<FeedPost['author']> = {}): FeedPost['author']
     premiumPlus: false,
     isOrganization: false,
     stewardBadgeEnabled: false,
-    verifiedStatus: 'verified',
+    verifiedStatus: 'manual',
     avatarUrl: 'https://cdn.example/avatars/alice.jpg',
     orgAffiliations: [],
     ...overrides,
@@ -42,21 +42,34 @@ function basePost(overrides: Partial<FeedPost> = {}): FeedPost {
 }
 
 function input(partial: Partial<PostPermalinkSeoInput> & { post: FeedPost | null }): PostPermalinkSeoInput {
-  const post = partial.post
+  const {
+    post,
+    postId,
+    errorText,
+    isRestricted,
+    restrictionLabel,
+    restrictionSeoDescription,
+    previewLink,
+    linkMeta,
+    primaryMedia,
+    extraOgMediaUrls,
+    primaryVideo,
+    bodyTextSansLinks,
+  } = partial
   return {
     post,
-    postId: post?.id ?? 'post-1',
-    errorText: null,
-    isRestricted: false,
-    restrictionLabel: 'Post',
-    restrictionSeoDescription: 'Unavailable.',
-    previewLink: null,
-    linkMeta: null,
-    primaryMedia: null,
-    extraOgMediaUrls: [],
-    primaryVideo: null,
-    bodyTextSansLinks: post ? post.body.replace(/\s+/g, ' ').trim() : '',
-    ...partial,
+    postId: postId ?? post?.id ?? 'post-1',
+    errorText: errorText ?? null,
+    isRestricted: isRestricted ?? false,
+    restrictionLabel: restrictionLabel ?? 'Post',
+    restrictionSeoDescription: restrictionSeoDescription ?? 'Unavailable.',
+    previewLink: previewLink ?? null,
+    linkMeta: linkMeta ?? null,
+    primaryMedia: primaryMedia ?? null,
+    extraOgMediaUrls: extraOgMediaUrls ?? [],
+    primaryVideo: primaryVideo ?? null,
+    bodyTextSansLinks:
+      bodyTextSansLinks ?? (post ? post.body.replace(/\s+/g, ' ').trim() : ''),
   }
 }
 

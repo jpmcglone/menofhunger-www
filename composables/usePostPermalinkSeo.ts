@@ -8,8 +8,6 @@ import {
   type PostPermalinkPrimaryVideo,
 } from '~/utils/post-permalink-seo-meta'
 
-export type { PostPermalinkPrimaryMedia, PostPermalinkPrimaryVideo }
-
 export function usePostPermalinkSeo(opts: {
   postId: ComputedRef<string>
   post: Ref<FeedPost | null>
