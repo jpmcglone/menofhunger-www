@@ -394,7 +394,6 @@ const {
   primaryVideo,
 } = usePostPermalinkMedia({
   post,
-  isRestricted,
   requestURL,
 })
 
@@ -406,7 +405,7 @@ const linkMetaKey = computed(() => {
 const { data: linkMetaData } = useAsyncData(
   linkMetaKey,
   async () => {
-    if (!post.value || isRestricted.value) return null
+    if (!post.value || post.value.viewerCanAccess === false) return null
     if ((post.value.media ?? []).filter((m) => m && !m.deletedAt && (m.url ?? '').trim()).length) return null
     const url = (previewLink.value ?? '').trim()
     if (!url) return null

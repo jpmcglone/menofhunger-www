@@ -76,10 +76,11 @@ export async function usePostPermalink(postId: Ref<string>) {
 
 export function usePostPermalinkMedia(options: {
   post: Ref<FeedPost | null>
-  isRestricted: Ref<boolean>
   requestURL: { hostname?: string } | null
 }) {
-  const { post, isRestricted, requestURL } = options
+  const { post, requestURL } = options
+  /** API strips body/media when the viewer cannot access the post (logged-out tier gates, etc.). */
+  const contentHiddenFromViewer = computed(() => post.value?.viewerCanAccess === false)
 
   function escapeRegExp(s: string): string {
     return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
@@ -121,12 +122,12 @@ export function usePostPermalinkMedia(options: {
   }
 
   const capturedLinks = computed(() => {
-    if (!post.value || isRestricted.value) return []
+    if (!post.value || contentHiddenFromViewer.value) return []
     return extractLinksFromText(post.value.body)
   })
 
   const previewLink = computed(() => {
-    if (!post.value || isRestricted.value) return null
+    if (!post.value || contentHiddenFromViewer.value) return null
     if (post.value.media?.length) return null
     const xs = capturedLinks.value
     for (let i = xs.length - 1; i >= 0; i--) {
@@ -139,7 +140,7 @@ export function usePostPermalinkMedia(options: {
   })
 
   const bodyTextSansLinks = computed(() => {
-    if (!post.value || isRestricted.value) return ''
+    if (!post.value || contentHiddenFromViewer.value) return ''
     let body = (post.value.body ?? '').toString()
     for (const u of capturedLinks.value) {
       const url = (u ?? '').trim()
@@ -151,7 +152,7 @@ export function usePostPermalinkMedia(options: {
   })
 
   const usableMedia = computed(() => {
-    if (!post.value || isRestricted.value) return []
+    if (!post.value || contentHiddenFromViewer.value) return []
     return (post.value.media ?? []).filter((m) => Boolean(m && !m.deletedAt && (m.url ?? '').trim()))
   })
 
