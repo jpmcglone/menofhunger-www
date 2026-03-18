@@ -53,96 +53,186 @@
       <p v-else class="mt-0.5 text-sm italic text-gray-400 dark:text-zinc-500">[deleted]</p>
 
       <!-- Reaction pills + inline actions -->
-      <div v-if="!deleted" class="mt-1.5 flex flex-wrap items-center gap-2">
-        <AppArticleReactionBar
-          :reactions="commentReactions"
-          readonly
-          class="text-xs"
-          @toggle="reactionState.toggle"
-        />
-
-        <!-- Reply -->
-        <button
-          v-if="canComment && !isReply"
-          type="button"
-          class="inline-flex items-center gap-1.5 text-xs text-gray-400 transition-colors hover:text-gray-700 dark:text-zinc-500 dark:hover:text-zinc-300"
-          @click="emit('reply', comment.id, comment.author.username ?? undefined)"
-        >
-          Reply
-          <span
-            v-if="comment.replyCount > 0"
-            class="tabular-nums rounded-full bg-gray-200 px-1.5 py-0.5 text-[10px] font-semibold leading-none text-gray-700 dark:bg-zinc-700 dark:text-zinc-200"
-          >{{ comment.replyCount }}</span>
-        </button>
-
-        <!-- React -->
-        <div v-if="isAuthed" ref="reactWrapRef" class="relative">
+      <div v-if="!deleted" class="mt-1.5">
+        <div class="flex items-center justify-between gap-2">
+          <div class="flex min-w-0 items-center gap-2 sm:gap-2.5">
+          <!-- Comments -->
           <button
+            v-if="canComment && !isReply"
             type="button"
-            class="inline-flex items-center justify-center text-gray-400 transition-colors hover:text-gray-700 dark:text-zinc-500 dark:hover:text-zinc-300"
-            aria-label="Add reaction"
-            @click="reactPickerOpen = !reactPickerOpen"
+            class="inline-flex items-center gap-1"
+            aria-label="Reply"
+            v-tooltip.bottom="replyTooltip"
+            @click="emit('reply', comment.id, comment.author.username ?? undefined)"
           >
-            <Icon name="tabler:mood-smile" size="15" />
+            <span class="inline-flex h-8 w-8 items-center justify-center text-gray-400 transition-colors hover:text-gray-700 dark:text-zinc-500 dark:hover:text-zinc-300">
+              <Icon name="tabler:message-circle" size="15" aria-hidden="true" />
+            </span>
+            <span
+              v-if="replyCountDisplay > 0"
+              class="tabular-nums text-[12px] font-semibold leading-none text-gray-700 dark:text-zinc-200"
+            >{{ replyCountDisplay }}</span>
           </button>
-          <div
-            v-if="reactPickerOpen"
-            class="absolute left-0 top-full z-50 mt-1 flex items-center gap-1 rounded-xl border border-gray-200 bg-white p-2 shadow-lg dark:border-zinc-700 dark:bg-zinc-900"
-            role="menu"
-            aria-label="Pick a reaction"
-          >
+
+            <!-- Reactions (desktop) -->
+            <AppArticleReactionBar
+              :reactions="commentReactions"
+              readonly
+              class="hidden text-xs sm:flex"
+              @toggle="reactionState.toggle"
+            />
+
+            <!-- Add reaction (desktop) -->
+            <div v-if="isAuthed" class="relative hidden sm:block">
+              <button
+                ref="reactButtonDesktopRef"
+                type="button"
+                class="inline-flex h-8 w-8 items-center justify-center text-gray-400 transition-colors hover:text-gray-700 dark:text-zinc-500 dark:hover:text-zinc-300"
+                aria-label="Add reaction"
+                v-tooltip.bottom="reactTooltip"
+                @click="toggleReactionPicker(reactButtonDesktopRef)"
+              >
+                <Icon name="tabler:mood-smile" size="15" />
+              </button>
+            </div>
+          </div>
+
+          <div class="ml-auto flex shrink-0 items-center gap-1">
+            <!-- Share -->
             <button
-              v-for="reaction in REACTIONS"
-              :key="reaction.id"
               type="button"
-              class="flex h-8 w-8 items-center justify-center rounded-lg text-lg transition-colors hover:bg-gray-100 dark:hover:bg-zinc-800"
-              :aria-label="reaction.label"
-              :title="reaction.label"
-              @click="pickReaction(reaction.id, reaction.emoji)"
+              class="inline-flex h-8 w-8 items-center justify-center text-gray-400 transition-colors hover:text-gray-700 dark:text-zinc-500 dark:hover:text-zinc-300"
+              aria-label="Share comment"
+              v-tooltip.bottom="shareTooltip"
+              @click="toggleShareMenu($event)"
             >
-              {{ reaction.emoji }}
+              <svg viewBox="0 0 24 24" class="h-[15px] w-[15px]" aria-hidden="true">
+                <path
+                  d="M12 3v10"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.9"
+                  stroke-linecap="round"
+                />
+                <path
+                  d="M7.5 7.5L12 3l4.5 4.5"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.9"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+                <path
+                  d="M5 11.5v7a1.5 1.5 0 0 0 1.5 1.5h11A1.5 1.5 0 0 0 19 18.5v-7"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.9"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+              </svg>
             </button>
+            <Menu v-if="shareMenuMounted" ref="shareMenuRef" :model="shareMenuItems" popup>
+              <template #item="{ item, props: menuProps }">
+                <a v-bind="menuProps.action" class="flex items-center gap-2">
+                  <Icon v-if="item.iconName" :name="item.iconName" aria-hidden="true" />
+                  <span v-bind="menuProps.label">{{ item.label }}</span>
+                </a>
+              </template>
+            </Menu>
+
+            <!-- More (only shown when there are items, e.g. delete for own comments) -->
+            <div v-if="hasMoreOptions" ref="moreWrapRef" class="relative">
+              <button
+                type="button"
+                class="inline-flex h-8 w-8 items-center justify-center text-gray-400 transition-colors hover:text-gray-700 dark:text-zinc-500 dark:hover:text-zinc-300"
+                aria-label="More options"
+                v-tooltip.bottom="moreTooltip"
+                @click="moreOpen = !moreOpen"
+              >
+                <Icon name="tabler:dots" size="15" />
+              </button>
+              <Transition name="popover">
+                <div
+                  v-if="moreOpen"
+                  class="absolute right-0 top-full z-50 mt-1 w-36 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-lg dark:border-zinc-700 dark:bg-zinc-900"
+                >
+                  <button
+                    type="button"
+                    class="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-left text-sm text-red-500 transition-colors hover:bg-red-50 dark:hover:bg-red-950/30"
+                    @click="onDeleteClick"
+                  >
+                    <Icon name="tabler:trash" size="15" class="shrink-0" />
+                    Delete
+                  </button>
+                </div>
+              </Transition>
+            </div>
           </div>
         </div>
 
-        <!-- Share -->
-        <button
-          type="button"
-          class="inline-flex items-center justify-center text-gray-400 transition-colors hover:text-gray-700 dark:text-zinc-500 dark:hover:text-zinc-300"
-          aria-label="Share comment"
-          @click="onShare"
-        >
-          <Icon name="tabler:share" size="15" />
-        </button>
-
-        <!-- More (only shown when there are items, e.g. delete for own comments) -->
-        <div v-if="isOwnComment" ref="moreWrapRef" class="relative">
-          <button
-            type="button"
-            class="inline-flex items-center justify-center text-gray-400 transition-colors hover:text-gray-700 dark:text-zinc-500 dark:hover:text-zinc-300"
-            aria-label="More options"
-            @click="moreOpen = !moreOpen"
-          >
-            <Icon name="tabler:dots" size="15" />
-          </button>
-          <Transition name="popover">
-            <div
-              v-if="moreOpen"
-              class="absolute left-0 top-full z-50 mt-1 w-36 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-lg dark:border-zinc-700 dark:bg-zinc-900"
-            >
+        <!-- Mobile overflow-safe reactions row -->
+        <div v-if="commentReactions.length > 0 || isAuthed" class="mt-1 sm:hidden">
+          <div class="flex items-center gap-2">
+            <div class="min-w-0 flex-1 overflow-x-auto no-scrollbar">
+              <div class="flex w-max items-center gap-1.5 pr-2">
+                <button
+                  v-for="r in commentReactions"
+                  :key="`mobile-pill-${r.reactionId}`"
+                  type="button"
+                  class="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-sm font-medium transition-colors"
+                  :class="r.viewerHasReacted
+                    ? 'border-orange-300 bg-orange-50 text-orange-700 dark:border-orange-700 dark:bg-orange-900/30 dark:text-orange-300'
+                    : 'border-gray-200 bg-gray-50 text-gray-700 hover:border-gray-300 hover:bg-gray-100 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:border-zinc-600 dark:hover:bg-zinc-700'"
+                  :aria-pressed="r.viewerHasReacted"
+                  :aria-label="`${r.emoji} ${r.count} reactions`"
+                  @click="reactionState.toggle(r.reactionId, r.emoji)"
+                >
+                  <span>{{ r.emoji }}</span>
+                  <span class="tabular-nums">{{ r.count }}</span>
+                </button>
+              </div>
+            </div>
+            <div v-if="isAuthed" class="relative shrink-0">
               <button
+                ref="reactButtonMobileRef"
                 type="button"
-                class="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-left text-sm text-red-500 transition-colors hover:bg-red-50 dark:hover:bg-red-950/30"
-                @click="onDeleteClick"
+                class="inline-flex h-8 w-8 items-center justify-center text-gray-400 transition-colors hover:text-gray-700 dark:text-zinc-500 dark:hover:text-zinc-300"
+                aria-label="Add reaction"
+                v-tooltip.bottom="reactTooltip"
+                @click="toggleReactionPicker(reactButtonMobileRef)"
               >
-                <Icon name="tabler:trash" size="15" class="shrink-0" />
-                Delete
+                <Icon name="tabler:mood-smile" size="15" />
               </button>
             </div>
-          </Transition>
+          </div>
         </div>
       </div>
     </div>
+
+    <!-- Reaction picker rendered to body to avoid clipping/overflow issues -->
+    <Teleport to="body">
+      <div
+        v-if="reactPickerOpen"
+        ref="reactionPickerEl"
+        class="fixed z-[10020] flex items-center gap-1 rounded-xl border border-gray-200 bg-white p-2 shadow-lg dark:border-zinc-700 dark:bg-zinc-900"
+        :style="reactionPickerStyle"
+        role="menu"
+        aria-label="Pick a reaction"
+      >
+        <button
+          v-for="reaction in REACTIONS"
+          :key="`picker-${reaction.id}`"
+          type="button"
+          class="flex h-8 w-8 items-center justify-center rounded-lg text-lg transition-colors hover:bg-gray-100 dark:hover:bg-zinc-800"
+          :aria-label="reaction.label"
+          :title="reaction.label"
+          @click="pickReaction(reaction.id, reaction.emoji)"
+        >
+          {{ reaction.emoji }}
+        </button>
+      </div>
+    </Teleport>
 
     <!-- Delete confirm bar -->
     <Transition name="fade">
@@ -171,8 +261,12 @@
 </template>
 
 <script setup lang="ts">
+import type { MenuItem } from 'primevue/menuitem'
 import type { ArticleComment } from '~/types/api'
 import { ARTICLE_REACTIONS as REACTIONS } from '~/utils/article-reactions'
+import { tinyTooltip } from '~/utils/tiny-tooltip'
+import { useAutoToggleMenu } from '~/composables/useAutoToggleMenu'
+import { useCopyToClipboard } from '~/composables/useCopyToClipboard'
 
 const props = defineProps<{
   comment: ArticleComment
@@ -195,11 +289,25 @@ const toast = useAppToast()
 
 const deleted = computed(() => Boolean(props.comment.deletedAt))
 const isOwnComment = computed(() => user.value?.id === props.comment.author.id)
+const hasMoreOptions = computed(() => isOwnComment.value)
 const confirmingDelete = ref(false)
 const moreOpen = ref(false)
 const reactPickerOpen = ref(false)
 const moreWrapRef = ref<HTMLElement | null>(null)
-const reactWrapRef = ref<HTMLElement | null>(null)
+const reactButtonDesktopRef = ref<HTMLElement | null>(null)
+const reactButtonMobileRef = ref<HTMLElement | null>(null)
+const reactionPickerEl = ref<HTMLElement | null>(null)
+const reactionPickerStyle = ref<Record<string, string>>({})
+const reactionPickerAnchorEl = ref<HTMLElement | null>(null)
+const { copyText: copyToClipboard } = useCopyToClipboard()
+
+const replyTooltip = computed(() => tinyTooltip('Reply'))
+const reactTooltip = computed(() => tinyTooltip('React'))
+const shareTooltip = computed(() => tinyTooltip('Share'))
+const moreTooltip = computed(() => tinyTooltip('More'))
+
+type MenuItemWithIcon = MenuItem & { iconName?: string }
+const { mounted: shareMenuMounted, menuRef: shareMenuRef, toggle: toggleShareMenu } = useAutoToggleMenu()
 
 const highlightColor = computed(() => {
   if (props.visibility === 'premiumOnly') return '#f97316'
@@ -213,13 +321,62 @@ function onDocPointerDown(e: PointerEvent) {
     moreOpen.value = false
     confirmingDelete.value = false
   }
-  if (reactPickerOpen.value && !reactWrapRef.value?.contains(target)) {
+  if (
+    reactPickerOpen.value
+    && !reactionPickerAnchorEl.value?.contains(target)
+    && !reactionPickerEl.value?.contains(target)
+  ) {
     reactPickerOpen.value = false
   }
 }
 
 onMounted(() => window.addEventListener('pointerdown', onDocPointerDown, { capture: true }))
 onBeforeUnmount(() => window.removeEventListener('pointerdown', onDocPointerDown, { capture: true } as EventListenerOptions))
+
+function updateReactionPickerPosition() {
+  if (!import.meta.client) return
+  const anchor = reactionPickerAnchorEl.value
+  if (!anchor) return
+  const rect = anchor.getBoundingClientRect()
+  const pickerWidth = 240
+  const margin = 8
+  let left = rect.left
+  if (left + pickerWidth > window.innerWidth - margin) left = window.innerWidth - pickerWidth - margin
+  if (left < margin) left = margin
+  const top = rect.bottom + 6
+  reactionPickerStyle.value = {
+    top: `${Math.max(margin, top)}px`,
+    left: `${left}px`,
+  }
+}
+
+function toggleReactionPicker(anchor: HTMLElement | null) {
+  if (!anchor) return
+  if (reactPickerOpen.value && reactionPickerAnchorEl.value === anchor) {
+    reactPickerOpen.value = false
+    return
+  }
+  reactionPickerAnchorEl.value = anchor
+  updateReactionPickerPosition()
+  reactPickerOpen.value = true
+}
+
+function onViewportChange() {
+  if (!reactPickerOpen.value) return
+  updateReactionPickerPosition()
+}
+
+onMounted(() => {
+  if (!import.meta.client) return
+  window.addEventListener('resize', onViewportChange, { passive: true })
+  window.addEventListener('scroll', onViewportChange, { passive: true })
+})
+
+onBeforeUnmount(() => {
+  if (!import.meta.client) return
+  window.removeEventListener('resize', onViewportChange)
+  window.removeEventListener('scroll', onViewportChange)
+})
 
 function onDeleteClick() {
   confirmingDelete.value = true
@@ -230,12 +387,22 @@ async function onShare() {
   moreOpen.value = false
   const url = `${window.location.origin}/a/${props.articleId}#comment-${props.comment.id}`
   try {
-    await navigator.clipboard.writeText(url)
+    await copyToClipboard(url)
     toast.push({ title: 'Link copied!', message: 'Comment link copied to clipboard.', tone: 'success' })
   } catch {
     toast.push({ title: 'Comment link', message: url })
   }
 }
+
+const shareMenuItems = computed<MenuItemWithIcon[]>(() => [
+  {
+    label: 'Copy link',
+    iconName: 'tabler:link',
+    command: () => {
+      void onShare()
+    },
+  },
+])
 
 const reactionState = useArticleReactions(
   'comment',
@@ -243,6 +410,7 @@ const reactionState = useArticleReactions(
   computed(() => props.comment.reactions),
 )
 const commentReactions = reactionState.reactions
+const replyCountDisplay = computed(() => Math.max(0, Math.floor(Number(props.comment.replyCount ?? 0))))
 
 function pickReaction(reactionId: string, emoji: string) {
   reactionState.toggle(reactionId, emoji)

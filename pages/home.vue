@@ -143,6 +143,8 @@
                   v-else
                   :post="item.post"
                   :activate-video-on-mount="item.post.id === newlyPostedVideoPostId"
+                  :collapsed-sibling-replies-count="collapsedSiblingReplyCountFor(item.post)"
+                  :reply-count-for-parent-id="replyCountForParentId"
                   :replies-sort="feedSort"
                   @deleted="removePost"
                   @edited="onFeedPostEdited"
@@ -313,6 +315,8 @@ const {
   scopeTabs,
   posts,
   displayPosts,
+  collapsedSiblingReplyCountFor,
+  replyCountForParentId,
   nextCursor,
   loading,
   loadingMore,

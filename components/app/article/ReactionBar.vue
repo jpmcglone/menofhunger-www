@@ -1,21 +1,27 @@
 <template>
   <div class="flex flex-wrap items-center gap-1.5">
     <!-- Existing reaction pills -->
-    <button
-      v-for="r in reactions"
-      :key="r.reactionId"
-      type="button"
-      class="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-sm font-medium transition-colors"
-      :class="r.viewerHasReacted
-        ? 'border-orange-300 bg-orange-50 text-orange-700 dark:border-orange-700 dark:bg-orange-900/30 dark:text-orange-300'
-        : 'border-gray-200 bg-gray-50 text-gray-700 hover:border-gray-300 hover:bg-gray-100 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:border-zinc-600 dark:hover:bg-zinc-700'"
-      :aria-pressed="r.viewerHasReacted"
-      :aria-label="`${r.emoji} ${r.count} reactions`"
-      @click="emit('toggle', r.reactionId, r.emoji)"
+    <TransitionGroup
+      name="reaction-pill"
+      tag="div"
+      class="contents"
     >
-      <span>{{ r.emoji }}</span>
-      <span class="tabular-nums">{{ r.count }}</span>
-    </button>
+      <button
+        v-for="r in reactions"
+        :key="r.reactionId"
+        type="button"
+        class="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-sm font-medium transition-colors"
+        :class="r.viewerHasReacted
+          ? 'border-orange-300 bg-orange-50 text-orange-700 dark:border-orange-700 dark:bg-orange-900/30 dark:text-orange-300'
+          : 'border-gray-200 bg-gray-50 text-gray-700 hover:border-gray-300 hover:bg-gray-100 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:border-zinc-600 dark:hover:bg-zinc-700'"
+        :aria-pressed="r.viewerHasReacted"
+        :aria-label="`${r.emoji} ${r.count} reactions`"
+        @click="emit('toggle', r.reactionId, r.emoji)"
+      >
+        <span>{{ r.emoji }}</span>
+        <span class="tabular-nums">{{ r.count }}</span>
+      </button>
+    </TransitionGroup>
 
     <!-- Add reaction button -->
     <div v-if="!readonly" ref="pickerAnchorEl" class="relative">
@@ -88,3 +94,20 @@ onBeforeUnmount(() => {
   window.removeEventListener('pointerdown', onDocPointerDown, { capture: true } as any)
 })
 </script>
+
+<style scoped>
+.reaction-pill-enter-active,
+.reaction-pill-leave-active {
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+
+.reaction-pill-enter-from,
+.reaction-pill-leave-to {
+  opacity: 0;
+  transform: scale(0.92);
+}
+
+.reaction-pill-move {
+  transition: transform 0.2s ease;
+}
+</style>
