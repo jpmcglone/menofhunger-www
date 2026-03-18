@@ -50,128 +50,159 @@ function makePost(p: Partial<FeedPost> & { id: string }): FeedPost {
   } as FeedPost
 }
 
-describe('feed collapsed-count helpers', () => {
-  it('keeps API-provided ordering/items in displayPosts', () => {
-    const visibility = ref<'all'>('all')
-    const followingOnly = ref(false)
-    const sort = ref<'new'>('new')
-    const feedPromise = runInSetup(() => usePostsFeed({ visibility, followingOnly, sort }))
-    return feedPromise.then((feed) => {
+function makeFeed() {
+  const visibility = ref<'all'>('all')
+  const followingOnly = ref(false)
+  const sort = ref<'new'>('new')
+  return runInSetup(() => usePostsFeed({ visibility, followingOnly, sort }))
+}
 
-      // Thread A -> B -> (C, C2), plus a sibling reply B2 to A.
-      const A = makePost({ id: 'A', parentId: null })
-      const B = makePost({ id: 'B', parentId: 'A', parent: A })
-      const C = makePost({ id: 'C', parentId: 'B', parent: B })
-      const C2 = makePost({ id: 'C2', parentId: 'B', parent: B })
-      const B2 = makePost({ id: 'B2', parentId: 'A', parent: A })
+// ---------------------------------------------------------------------------
+// 1. collapsedSiblingReplyCountFor must use commentCount, NOT feed-page counts
+// ---------------------------------------------------------------------------
+// This was the root cause: the old code counted how many replies appeared in
+// the current feed page (always 0-1 after collapseByRoot), instead of using
+// the API-provided commentCount.  If this test ever fails, it means someone
+// re-introduced feed-page counting.
+describe('collapsedSiblingReplyCountFor uses commentCount (regression)', () => {
+  it('returns the post\'s own commentCount regardless of how many replies are in the feed page', async () => {
+    const feed = await makeFeed()
 
-      // Feed returns leaf replies; each contains its parent chain.
-      feed.posts.value = [C2, B2, C]
+    const root = makePost({ id: 'root', parentId: null, commentCount: 7 })
+    const reply = makePost({ id: 'reply', parentId: 'root', parent: root, commentCount: 3 })
 
-      expect(feed.displayPosts.value.map((p) => p.id)).toEqual(['C2', 'B2', 'C'])
-    })
+    // Only 1 reply in the feed page, but root has 7 total comments
+    feed.posts.value = [reply]
+
+    expect(feed.collapsedSiblingReplyCountFor(reply)).toBe(3)
+    // Root isn't in the page, but if it were, its count should still be 7
+    feed.posts.value = [root, reply]
+    expect(feed.collapsedSiblingReplyCountFor(root)).toBe(7)
   })
 
-  it('computes hidden reply count per root as (totalRepliesUnderRoot - 1) when a reply is visible', () => {
-    const visibility = ref<'all'>('all')
-    const followingOnly = ref(false)
-    const sort = ref<'new'>('new')
-    const feedPromise = runInSetup(() => usePostsFeed({ visibility, followingOnly, sort }))
-    return feedPromise.then((feed) => {
+  it('is not affected by adding/removing sibling replies from the feed page', async () => {
+    const feed = await makeFeed()
 
-      const A = makePost({ id: 'A', parentId: null })
-      const B = makePost({ id: 'B', parentId: 'A', parent: A })
-      const C = makePost({ id: 'C', parentId: 'B', parent: B })
-      const C2 = makePost({ id: 'C2', parentId: 'B', parent: B })
-      const B2 = makePost({ id: 'B2', parentId: 'A', parent: A })
+    const root = makePost({ id: 'root', parentId: null, commentCount: 10 })
+    const r1 = makePost({ id: 'r1', parentId: 'root', parent: root, commentCount: 0 })
+    const r2 = makePost({ id: 'r2', parentId: 'root', parent: root, commentCount: 0 })
+    const r3 = makePost({ id: 'r3', parentId: 'root', parent: root, commentCount: 0 })
 
-      feed.posts.value = [C2, B2, C]
+    // 1 reply in page
+    feed.posts.value = [r1]
+    expect(feed.collapsedSiblingReplyCountFor(root)).toBe(10)
 
-      // totalRepliesUnderRoot(A) = 3 (C2, B2, C). One reply row is visible (C2).
-      expect(feed.collapsedSiblingReplyCountFor(C2)).toBe(2)
-    })
+    // 3 replies in page — count must stay the same (commentCount, not page count)
+    feed.posts.value = [r1, r2, r3]
+    expect(feed.collapsedSiblingReplyCountFor(root)).toBe(10)
   })
 
-  it('counts hidden replies correctly when the root post itself is displayed', () => {
-    const visibility = ref<'all'>('all')
-    const followingOnly = ref(false)
-    const sort = ref<'new'>('new')
-    const feedPromise = runInSetup(() => usePostsFeed({ visibility, followingOnly, sort }))
-    return feedPromise.then((feed) => {
-
-      const A = makePost({ id: 'A', parentId: null })
-      const B = makePost({ id: 'B', parentId: 'A', parent: A })
-      const C2 = makePost({ id: 'C2', parentId: 'B', parent: B })
-      const B2 = makePost({ id: 'B2', parentId: 'A', parent: A })
-
-      // Root item appears first; displayPosts mirrors API-provided rows.
-      feed.posts.value = [A, C2, B2]
-
-      expect(feed.displayPosts.value.map((p) => p.id)).toEqual(['A', 'C2', 'B2'])
-      // totalRepliesUnderRoot(A) = 2 (C2, B2). Root row is visible => subtract 0.
-      expect(feed.collapsedSiblingReplyCountFor(A)).toBe(2)
-    })
+  it('returns 0 for a post with commentCount 0', async () => {
+    const feed = await makeFeed()
+    const leaf = makePost({ id: 'leaf', parentId: 'x', commentCount: 0 })
+    feed.posts.value = [leaf]
+    expect(feed.collapsedSiblingReplyCountFor(leaf)).toBe(0)
   })
 
-  it('replyCountForParentId counts direct parent reply items in the current page', () => {
-    const visibility = ref<'all'>('all')
-    const followingOnly = ref(false)
-    const sort = ref<'new'>('new')
-    const feedPromise = runInSetup(() => usePostsFeed({ visibility, followingOnly, sort }))
-    return feedPromise.then((feed) => {
-
-      const A = makePost({ id: 'A', parentId: null })
-      const B = makePost({ id: 'B', parentId: 'A', parent: A })
-      const B2 = makePost({ id: 'B2', parentId: 'A', parent: A })
-      const C = makePost({ id: 'C', parentId: 'B', parent: B })
-
-      feed.posts.value = [C, B2]
-
-      expect(feed.replyCountForParentId('A')).toBe(1) // B2
-      expect(feed.replyCountForParentId('B')).toBe(1) // C
-      expect(feed.replyCountForParentId('missing')).toBe(0)
-    })
+  it('clamps negative commentCount to 0', async () => {
+    const feed = await makeFeed()
+    const weird = makePost({ id: 'w', commentCount: -3 })
+    feed.posts.value = [weird]
+    expect(feed.collapsedSiblingReplyCountFor(weird)).toBe(0)
   })
+})
 
-  it('useUserPosts mirrors API rows and exposes count helpers', async () => {
-    const usernameLower = ref(`user-${Math.random().toString(36).slice(2, 8)}`)
+// ---------------------------------------------------------------------------
+// 2. useUserPosts collapsed count also uses commentCount
+// ---------------------------------------------------------------------------
+describe('useUserPosts collapsedSiblingReplyCountFor (regression)', () => {
+  it('uses commentCount, not feed-page reply tallies', async () => {
+    const usernameLower = ref(`u-${Math.random().toString(36).slice(2, 8)}`)
     const userFeed = await runInSetup(() =>
       useUserPosts(usernameLower, {
-        // Prevent auto-fetch in onMounted; we set posts manually.
         enabled: computed(() => false),
         defaultToNewestAndAll: true,
         cookieKeyPrefix: `test-${Math.random().toString(36).slice(2, 8)}`,
       }),
     )
 
-    const A = makePost({ id: 'A', parentId: null })
-    const B = makePost({ id: 'B', parentId: 'A', parent: A })
-    const C = makePost({ id: 'C', parentId: 'B', parent: B })
-    const B2 = makePost({ id: 'B2', parentId: 'A', parent: A })
+    const root = makePost({ id: 'root', parentId: null, commentCount: 5 })
+    const reply = makePost({ id: 'reply', parentId: 'root', parent: root, commentCount: 2 })
 
-    userFeed.posts.value = [C, B2]
+    userFeed.posts.value = [reply]
 
-    expect(userFeed.displayPosts.value.map((p) => p.id)).toEqual(['C', 'B2'])
-    expect(userFeed.collapsedSiblingReplyCountFor(C)).toBe(1)
-    expect(userFeed.replyCountForParentId('A')).toBe(1)
-  })
-
-  it('does not throw when a reply is missing its parent object', () => {
-    const visibility = ref<'all'>('all')
-    const followingOnly = ref(false)
-    const sort = ref<'new'>('new')
-    const feedPromise = runInSetup(() => usePostsFeed({ visibility, followingOnly, sort }))
-    return feedPromise.then((feed) => {
-
-      const orphan = makePost({ id: 'R1', parentId: 'A', parent: undefined })
-      const orphan2 = makePost({ id: 'R2', parentId: 'A', parent: undefined })
-
-      feed.posts.value = [orphan, orphan2]
-
-      // Root-walk falls back to own id in absence of parent chain, so both remain (safe behavior).
-      expect(feed.displayPosts.value.map((p) => p.id)).toEqual(['R1', 'R2'])
-      expect(() => feed.collapsedSiblingReplyCountFor(orphan)).not.toThrow()
-    })
+    expect(userFeed.collapsedSiblingReplyCountFor(reply)).toBe(2)
+    expect(userFeed.collapsedSiblingReplyCountFor(root)).toBe(5)
   })
 })
 
+// ---------------------------------------------------------------------------
+// 3. displayPosts preserves API ordering (no client-side reordering)
+// ---------------------------------------------------------------------------
+describe('displayPosts ordering', () => {
+  it('preserves the exact order returned by the API', async () => {
+    const feed = await makeFeed()
+
+    const A = makePost({ id: 'A', parentId: null })
+    const B = makePost({ id: 'B', parentId: 'A', parent: A })
+    const C = makePost({ id: 'C', parentId: 'B', parent: B })
+    const D = makePost({ id: 'D', parentId: null })
+
+    feed.posts.value = [C, D, B, A]
+    expect(feed.displayPosts.value.map((p) => p.id)).toEqual(['C', 'D', 'B', 'A'])
+  })
+})
+
+// ---------------------------------------------------------------------------
+// 4. Edge: orphan replies (missing parent object) don't crash
+// ---------------------------------------------------------------------------
+describe('orphan reply safety', () => {
+  it('does not throw when parent chain is missing', async () => {
+    const feed = await makeFeed()
+
+    const orphan = makePost({ id: 'R1', parentId: 'gone', parent: undefined, commentCount: 4 })
+    feed.posts.value = [orphan]
+
+    expect(() => feed.collapsedSiblingReplyCountFor(orphan)).not.toThrow()
+    expect(feed.collapsedSiblingReplyCountFor(orphan)).toBe(4)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// 5. collapsedRepliesLabelFor text (unit-testable pure function)
+// ---------------------------------------------------------------------------
+// Extracted from FeedPostRow and CommentThread; the same logic is duplicated
+// in both components.  These tests document the expected label format.
+describe('collapsed replies label format', () => {
+  function collapsedRepliesLabelFor(
+    n: number,
+    repliesSort: 'new' | 'trending' | null,
+  ) {
+    const noun = n === 1 ? 'reply' : 'replies'
+    const qualifier =
+      repliesSort === 'trending'
+        ? 'trending'
+        : repliesSort === 'new'
+          ? 'new'
+          : null
+    return `View ${n} more${qualifier ? ` ${qualifier}` : ''} ${noun}`
+  }
+
+  it('singular: "View 1 more new reply"', () => {
+    expect(collapsedRepliesLabelFor(1, 'new')).toBe('View 1 more new reply')
+  })
+
+  it('plural: "View 5 more new replies"', () => {
+    expect(collapsedRepliesLabelFor(5, 'new')).toBe('View 5 more new replies')
+  })
+
+  it('trending: "View 3 more trending replies"', () => {
+    expect(collapsedRepliesLabelFor(3, 'trending')).toBe(
+      'View 3 more trending replies',
+    )
+  })
+
+  it('no sort qualifier: "View 2 more replies"', () => {
+    expect(collapsedRepliesLabelFor(2, null)).toBe('View 2 more replies')
+  })
+})

@@ -6,7 +6,7 @@
       :show-thread-line-below-avatar="Boolean(visibleReplies.length)"
       @deleted="emit('deleted', $event)"
     >
-      <template v-if="showFooterOnParent" #threadFooter>
+      <template v-if="hasMoreHidden" #threadFooter>
         <NuxtLink
           :to="commentPermalink"
           class="inline-flex items-center gap-2 rounded-lg px-2 py-1 text-sm font-semibold text-gray-700 transition-colors moh-surface-hover dark:text-gray-200"
@@ -25,19 +25,9 @@
         compact
         no-padding-top
         show-thread-line-above-avatar
-        :show-thread-line-below-avatar="idx < visibleReplies.length - 1 || hasMoreHidden"
+        :show-thread-line-below-avatar="idx < visibleReplies.length - 1"
         @deleted="onNestedDeleted"
-      >
-        <template v-if="showFooterOnLastVisible && idx === visibleReplies.length - 1" #threadFooter>
-          <NuxtLink
-            :to="commentPermalink"
-            class="inline-flex items-center gap-2 rounded-lg px-2 py-1 text-sm font-semibold text-gray-700 transition-colors moh-surface-hover dark:text-gray-200"
-          >
-            <Icon name="tabler:message-circle" class="text-[14px] opacity-70" aria-hidden="true" />
-            {{ footerLabel }}
-          </NuxtLink>
-        </template>
-      </AppPostRow>
+      />
     </template>
   </div>
 </template>
@@ -76,8 +66,6 @@ function collapsedRepliesLabelFor(n: number) {
   return `View ${n} more${qualifier ? ` ${qualifier}` : ''} ${noun}`
 }
 
-const showFooterOnParent = computed(() => hasMoreHidden.value && visibleReplies.value.length === 0)
-const showFooterOnLastVisible = computed(() => hasMoreHidden.value && visibleReplies.value.length > 0)
 const footerLabel = computed(() => collapsedRepliesLabelFor(hiddenCount.value))
 
 async function fetchPreviewReplies() {

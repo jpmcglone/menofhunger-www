@@ -129,8 +129,6 @@ const props = withDefaults(
     post: FeedPost
     activateVideoOnMount?: boolean
     collapsedSiblingRepliesCount?: number
-    /** Total replies in this feed page by direct parent id (for per-row "View X more" footers). */
-    replyCountForParentId?: (parentId: string) => number
     /** Sort context for the collapsed replies footer label ("more new/trending replies"). */
     repliesSort?: 'new' | 'trending' | null
     /** When set, the post with this id is highlighted (e.g. the post being viewed on /p/:id). */
@@ -196,7 +194,7 @@ const collapsedRepliesLabel = computed(() => collapsedRepliesLabelFor(collapsedS
 function hiddenRepliesForIndex(i: number): number {
   const node = chain.value[i]
   if (!node?.id) return 0
-  const total = props.replyCountForParentId?.(node.id) ?? 0
+  const total = node.commentCount ?? 0
   const hasVisibleChild = i < chain.value.length - 1
   return Math.max(0, total - (hasVisibleChild ? 1 : 0))
 }

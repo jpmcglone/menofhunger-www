@@ -14,6 +14,7 @@
     ]"
     :style="rowStyle"
     @click="onRowClick"
+    @auxclick="onRowAuxClick"
   >
     <!-- Animated background: transparent at 0, opacity up on hover (main.css), back to 0 on mouse out -->
     <div
@@ -748,6 +749,7 @@ const threadLineBelowOverlayStyle = computed(() => {
 const rowStyle = computed(() => ({
   contentVisibility: 'auto' as const,
   containIntrinsicSize: '240px',
+  ...(clickable.value ? { cursor: 'pointer' } : {}),
 }))
 
 // Resource preservation: only do heavy work (metadata fetch + embeds) when the row is near viewport.
@@ -959,7 +961,19 @@ function isInteractiveTarget(target: EventTarget | null): boolean {
 function onRowClick(e: MouseEvent) {
   if (!clickable.value) return
   if (isInteractiveTarget(e.target)) return
+  if (e.metaKey || e.ctrlKey) {
+    window.open(postPermalink.value, '_blank')
+    return
+  }
   void goToPost()
+}
+
+function onRowAuxClick(e: MouseEvent) {
+  if (!clickable.value) return
+  if (e.button !== 1) return
+  if (isInteractiveTarget(e.target)) return
+  e.preventDefault()
+  window.open(postPermalink.value, '_blank')
 }
 
 const createdAtDate = computed(() => new Date(postView.value.createdAt))

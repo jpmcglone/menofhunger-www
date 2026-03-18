@@ -19,7 +19,7 @@ const wrapperClass = computed(() => [
   // When compact, increase rail width so the inner content can still fit `w-12`,
   // while keeping the same right gutter to the divider as wide mode.
   // Prefer: left collapses (xl) before right rail hides (lg).
-  props.compact ? 'md:w-20 md:px-4' : 'md:w-20 md:px-4 xl:w-56 xl:px-4',
+  props.compact ? 'md:w-[5.25rem] md:px-4' : 'md:w-[5.25rem] md:px-4 xl:w-56 xl:px-4',
 ])
 </script>
 

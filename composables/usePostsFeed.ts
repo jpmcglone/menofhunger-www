@@ -328,46 +328,8 @@ export function usePostsFeed(options: { visibility?: Ref<FeedFilter>; followingO
 
   const displayPosts = computed(() => posts.value)
 
-  function rootIdFor(post: FeedPost): string {
-    let cur: FeedPost | undefined = post
-    while (cur?.parent) cur = cur.parent
-    return (cur?.id ?? post.id ?? '').trim()
-  }
-
-  const replyCountByRootId = computed(() => {
-    const totals = new Map<string, number>()
-    for (const post of posts.value) {
-      const isReply = Boolean((post.parentId ?? '').trim())
-      if (!isReply) continue
-      const rootId = rootIdFor(post)
-      if (!rootId) continue
-      totals.set(rootId, (totals.get(rootId) ?? 0) + 1)
-    }
-    return totals
-  })
-
-  const replyCountByParentId = computed(() => {
-    const totals = new Map<string, number>()
-    for (const post of posts.value) {
-      const parentId = (post.parentId ?? '').trim()
-      if (!parentId) continue
-      totals.set(parentId, (totals.get(parentId) ?? 0) + 1)
-    }
-    return totals
-  })
-
-  function replyCountForParentId(parentId: string): number {
-    const pid = (parentId ?? '').trim()
-    if (!pid) return 0
-    return replyCountByParentId.value.get(pid) ?? 0
-  }
-
   function collapsedSiblingReplyCountFor(post: FeedPost): number {
-    const rootId = rootIdFor(post)
-    if (!rootId) return 0
-    const totalReplies = replyCountByRootId.value.get(rootId) ?? 0
-    const visibleReplyCount = Boolean((post.parentId ?? '').trim()) ? 1 : 0
-    return Math.max(0, totalReplies - visibleReplyCount)
+    return Math.max(0, post.commentCount ?? 0)
   }
 
   const displayItems = computed<PostsFeedDisplayItem[]>(() => {
@@ -693,7 +655,6 @@ export function usePostsFeed(options: { visibility?: Ref<FeedFilter>; followingO
     displayPosts,
     displayItems,
     collapsedSiblingReplyCountFor,
-    replyCountForParentId,
     nextCursor,
     loading,
     loadingMore,
