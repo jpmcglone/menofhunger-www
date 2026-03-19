@@ -322,6 +322,136 @@ describe('displayPosts thread merge', () => {
 })
 
 // ---------------------------------------------------------------------------
+// NEW: End-to-end scenario — "40 comments, but View 3 more new replies"
+// ---------------------------------------------------------------------------
+// Simulates the full pipeline: API collapses to maxPerRoot=2, stamps
+// threadCollapsedCount, then client merges same-root items. The footer count
+// should reflect only how many *new/trending* items were collapsed, NOT
+// the raw commentCount.
+describe('end-to-end: 40 comments but only N are in the new feed', () => {
+  it('API keeps 2 of 4 new replies → threadCollapsedCount=2, client absorbs 1 on-chain sibling → footer=3', async () => {
+    const feed = await makeFeed()
+
+    // Scenario:
+    //   John's post "What's everyone reading?" has 40 total comments.
+    //   The "new" feed contained 4 replies to John's post. API kept 2
+    //   (maxPerRoot=2) and collapsed 2 → threadCollapsedCount=2 on each kept item.
+    //
+    //   Kept item 1: Nick (reply to John)       chain: [John → Nick]
+    //   Kept item 2: Peter (reply to Nick)       chain: [John → Nick → Peter]
+    //
+    //   Client merge: Peter is deeper. Nick is on Peter's chain (absorbed, no
+    //   extra count). But the API also collapsed Bob (a sibling branch reply to
+    //   John, not on Peter's chain). threadCollapsedCount started at 2 from API;
+    //   since Nick was on-chain, no client-side increment. So final = 2.
+    //
+    //   However, if one of the collapsed items was on a sibling branch that also
+    //   appeared as a kept item... let's test the variant where it does increment.
+
+    const john = makePost({ id: 'john', commentCount: 40 })
+    const nick = makePost({ id: 'nick', parentId: 'john', parent: john, threadCollapsedCount: 2 })
+    const peter = makePost({ id: 'peter', parentId: 'nick', parent: nick, threadCollapsedCount: 2 })
+
+    // Both kept items from API are in the feed.
+    feed.posts.value = [peter, nick]
+
+    const out = feed.displayPosts.value
+    // Nick is on Peter's chain → absorbed. Only Peter remains.
+    expect(out).toHaveLength(1)
+    expect(out[0]!.id).toBe('peter')
+    // Nick was on-chain, so no extra increment. API's 2 stays.
+    expect((out[0] as any).threadCollapsedCount).toBe(2)
+    // collapsedSiblingReplyCountFor should return threadCollapsedCount (2), not commentCount (40)
+    expect(feed.collapsedSiblingReplyCountFor(out[0]!)).toBe(2)
+  })
+
+  it('API keeps 2 sibling replies → threadCollapsedCount=2, client absorbs off-chain sibling → footer=3', async () => {
+    const feed = await makeFeed()
+
+    // Variant: API kept 2, collapsed 2 (threadCollapsedCount=2).
+    // But the 2 kept items are SIBLINGS (both reply to John, different branches).
+    // Client merge absorbs the off-chain sibling → extraCollapsed=1 → total=3.
+
+    const john = makePost({ id: 'john', commentCount: 40 })
+    const nick = makePost({ id: 'nick', parentId: 'john', parent: john, threadCollapsedCount: 2 })
+    const bob = makePost({ id: 'bob', parentId: 'john', parent: john, threadCollapsedCount: 2 })
+
+    feed.posts.value = [nick, bob]
+
+    const out = feed.displayPosts.value
+    expect(out).toHaveLength(1)
+    expect(out[0]!.id).toBe('nick') // first in feed, same chain length
+    // API said 2 collapsed + bob is off-chain sibling absorbed client-side = 3
+    expect((out[0] as any).threadCollapsedCount).toBe(3)
+    expect(feed.collapsedSiblingReplyCountFor(out[0]!)).toBe(3)
+  })
+
+  it('single reply in feed with no threadCollapsedCount falls back to commentCount', async () => {
+    const feed = await makeFeed()
+
+    // Only 1 reply from this thread appeared in the feed — no collapsing
+    // occurred, so threadCollapsedCount is absent. Falls back to commentCount.
+    const john = makePost({ id: 'john', commentCount: 40 })
+    const nick = makePost({ id: 'nick', parentId: 'john', parent: john, commentCount: 5 })
+
+    feed.posts.value = [nick]
+
+    const out = feed.displayPosts.value
+    expect(out).toHaveLength(1)
+    // No threadCollapsedCount → falls back to nick's own commentCount
+    expect(feed.collapsedSiblingReplyCountFor(out[0]!)).toBe(5)
+  })
+
+  it('top-level trending post with threadCollapsedCount=0 falls back to commentCount', async () => {
+    const feed = await makeFeed()
+
+    // Post is in the trending feed but no other trending items share its root.
+    // threadCollapsedCount=0 → use commentCount.
+    const post = makePost({ id: 'post', commentCount: 40, threadCollapsedCount: 0 })
+    feed.posts.value = [post]
+
+    expect(feed.collapsedSiblingReplyCountFor(post)).toBe(40)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// NEW: Full pipeline with mixed threads
+// ---------------------------------------------------------------------------
+describe('full pipeline: multiple threads with different collapse scenarios', () => {
+  it('handles mixed threads correctly in a single feed page', async () => {
+    const feed = await makeFeed()
+
+    // Thread A: John's post (40 comments). API kept 2 of 4 trending replies.
+    // The 2 kept are on the same chain (nick→peter). threadCollapsedCount=2.
+    const john = makePost({ id: 'john', commentCount: 40 })
+    const nick = makePost({ id: 'nick', parentId: 'john', parent: john, threadCollapsedCount: 2 })
+    const peter = makePost({ id: 'peter', parentId: 'nick', parent: nick, threadCollapsedCount: 2 })
+
+    // Thread B: Mary's post (5 comments). Only 1 trending reply in the feed.
+    const mary = makePost({ id: 'mary', commentCount: 5 })
+    const sue = makePost({ id: 'sue', parentId: 'mary', parent: mary })
+
+    // Thread C: Dave's standalone post (0 comments).
+    const dave = makePost({ id: 'dave', commentCount: 0 })
+
+    feed.posts.value = [peter, nick, sue, dave]
+
+    const out = feed.displayPosts.value
+    // Thread A: peter is deepest, nick absorbed → only peter
+    // Thread B: sue is alone → stays
+    // Thread C: dave is alone → stays
+    expect(out.map((p) => p.id)).toEqual(['peter', 'sue', 'dave'])
+
+    // Thread A footer: 2 trending items collapsed (from API), nick on-chain
+    expect(feed.collapsedSiblingReplyCountFor(out[0]!)).toBe(2)
+    // Thread B footer: no threadCollapsedCount → sue's commentCount (0)
+    expect(feed.collapsedSiblingReplyCountFor(out[1]!)).toBe(0)
+    // Thread C: no replies at all
+    expect(feed.collapsedSiblingReplyCountFor(out[2]!)).toBe(0)
+  })
+})
+
+// ---------------------------------------------------------------------------
 // 5. collapsedRepliesLabelFor text (unit-testable pure function)
 // ---------------------------------------------------------------------------
 // Extracted from FeedPostRow and CommentThread; the same logic is duplicated
