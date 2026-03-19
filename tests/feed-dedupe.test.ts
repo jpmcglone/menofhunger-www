@@ -20,7 +20,7 @@ async function runInSetup<T>(fn: () => T): Promise<T> {
   return result
 }
 
-function makePost(p: Partial<FeedPost> & { id: string }): FeedPost {
+function makePost(p: Partial<FeedPost> & { id: string; threadCollapsedCount?: number }): FeedPost {
   return {
     id: p.id,
     createdAt: p.createdAt ?? new Date().toISOString(),
@@ -47,6 +47,7 @@ function makePost(p: Partial<FeedPost> & { id: string }): FeedPost {
         avatarUrl: null,
       } as FeedPost['author']),
     parent: (p.parent ?? undefined) as FeedPost['parent'],
+    ...(typeof p.threadCollapsedCount === 'number' ? { threadCollapsedCount: p.threadCollapsedCount } : {}),
   } as FeedPost
 }
 
@@ -137,10 +138,21 @@ describe('useUserPosts collapsedSiblingReplyCountFor (regression)', () => {
 })
 
 // ---------------------------------------------------------------------------
-// 3. displayPosts preserves API ordering (no client-side reordering)
+// 3. displayPosts ordering
 // ---------------------------------------------------------------------------
 describe('displayPosts ordering', () => {
-  it('preserves the exact order returned by the API', async () => {
+  it('preserves order of independent root threads relative to each other', async () => {
+    const feed = await makeFeed()
+
+    const A = makePost({ id: 'A', parentId: null })
+    const D = makePost({ id: 'D', parentId: null })
+
+    // Two completely independent posts; no merging should occur.
+    feed.posts.value = [A, D]
+    expect(feed.displayPosts.value.map((p) => p.id)).toEqual(['A', 'D'])
+  })
+
+  it('absorbs ancestor posts that are already visible through a deeper chain item', async () => {
     const feed = await makeFeed()
 
     const A = makePost({ id: 'A', parentId: null })
@@ -148,8 +160,10 @@ describe('displayPosts ordering', () => {
     const C = makePost({ id: 'C', parentId: 'B', parent: B })
     const D = makePost({ id: 'D', parentId: null })
 
+    // C, B, and A all share root A. C is the deepest → primary.
+    // B and A are on C's chain → absorbed. Only C and D remain.
     feed.posts.value = [C, D, B, A]
-    expect(feed.displayPosts.value.map((p) => p.id)).toEqual(['C', 'D', 'B', 'A'])
+    expect(feed.displayPosts.value.map((p) => p.id)).toEqual(['C', 'D'])
   })
 })
 
@@ -165,6 +179,145 @@ describe('orphan reply safety', () => {
 
     expect(() => feed.collapsedSiblingReplyCountFor(orphan)).not.toThrow()
     expect(feed.collapsedSiblingReplyCountFor(orphan)).toBe(4)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// NEW: threadCollapsedCount takes priority over commentCount
+// ---------------------------------------------------------------------------
+describe('collapsedSiblingReplyCountFor prefers threadCollapsedCount', () => {
+  it('returns threadCollapsedCount when > 0, even if commentCount is larger', async () => {
+    const feed = await makeFeed()
+    const post = makePost({ id: 'p1', commentCount: 100, threadCollapsedCount: 3 })
+    feed.posts.value = [post]
+    expect(feed.collapsedSiblingReplyCountFor(post)).toBe(3)
+  })
+
+  it('falls back to commentCount when threadCollapsedCount is 0', async () => {
+    const feed = await makeFeed()
+    const post = makePost({ id: 'p2', commentCount: 7, threadCollapsedCount: 0 })
+    feed.posts.value = [post]
+    expect(feed.collapsedSiblingReplyCountFor(post)).toBe(7)
+  })
+
+  it('falls back to commentCount when threadCollapsedCount is absent', async () => {
+    const feed = await makeFeed()
+    const post = makePost({ id: 'p3', commentCount: 5 })
+    feed.posts.value = [post]
+    expect(feed.collapsedSiblingReplyCountFor(post)).toBe(5)
+  })
+
+  it('useUserPosts also prioritizes threadCollapsedCount', async () => {
+    const usernameLower = ref(`u-${Math.random().toString(36).slice(2, 8)}`)
+    const userFeed = await runInSetup(() =>
+      useUserPosts(usernameLower, {
+        enabled: computed(() => false),
+        defaultToNewestAndAll: true,
+        cookieKeyPrefix: `test-${Math.random().toString(36).slice(2, 8)}`,
+      }),
+    )
+    const post = makePost({ id: 'p4', commentCount: 10, threadCollapsedCount: 2 })
+    userFeed.posts.value = [post]
+    expect(userFeed.collapsedSiblingReplyCountFor(post)).toBe(2)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// NEW: Thread merge in displayPosts (client-side multi-item-per-root merging)
+// ---------------------------------------------------------------------------
+describe('displayPosts thread merge', () => {
+  it('passes through single-root groups with one item unchanged', async () => {
+    const feed = await makeFeed()
+    // Only the reply in the feed — root not present as a feed item.
+    const root = makePost({ id: 'root' })
+    const r1 = makePost({ id: 'r1', parentId: 'root', parent: root })
+    feed.posts.value = [r1]
+    const out = feed.displayPosts.value.map((p) => p.id)
+    expect(out).toEqual(['r1'])
+  })
+
+  it('absorbs root when both root and reply are in the feed (reply is deeper)', async () => {
+    const feed = await makeFeed()
+    const root = makePost({ id: 'root' })
+    const r1 = makePost({ id: 'r1', parentId: 'root', parent: root })
+    // Both share root 'root'; r1 is deeper → primary, root absorbed.
+    feed.posts.value = [r1, root]
+    const out = feed.displayPosts.value.map((p) => p.id)
+    expect(out).toEqual(['r1'])
+  })
+
+  it('absorbs sibling that is already on the primary chain (no threadCollapsedCount bump)', async () => {
+    const feed = await makeFeed()
+    // Chain: root -> r1 -> r2 (r2 is deepest)
+    const root = makePost({ id: 'root' })
+    const r1 = makePost({ id: 'r1', parentId: 'root', parent: root })
+    const r2 = makePost({ id: 'r2', parentId: 'r1', parent: r1 })
+    // Feed has both r2 (deepest, chain root->r1->r2) and r1 (on r2's chain)
+    feed.posts.value = [r2, r1]
+    const out = feed.displayPosts.value
+    // r1 should be absorbed (it's on r2's chain); only r2 remains
+    expect(out.map((p) => p.id)).toEqual(['r2'])
+    // No extra collapsed because r1 is visible through r2's chain
+    expect((out[0] as any).threadCollapsedCount ?? 0).toBe(0)
+  })
+
+  it('absorbs sibling branch and increments threadCollapsedCount', async () => {
+    const feed = await makeFeed()
+    // Thread: root -> r1 and root -> r2 (siblings; r2 is NOT on r1's chain)
+    const root = makePost({ id: 'root' })
+    const r1 = makePost({ id: 'r1', parentId: 'root', parent: root })
+    const r2 = makePost({ id: 'r2', parentId: 'root', parent: root })
+    // Both siblings; r1 comes first so it's primary (same chain length)
+    feed.posts.value = [r1, r2]
+    const out = feed.displayPosts.value
+    expect(out).toHaveLength(1)
+    expect(out[0]!.id).toBe('r1')
+    // r2 is a sibling branch: absorbed + adds 1 to threadCollapsedCount
+    expect((out[0] as any).threadCollapsedCount).toBe(1)
+  })
+
+  it('picks the deepest item as primary when chain lengths differ', async () => {
+    const feed = await makeFeed()
+    const root = makePost({ id: 'root' })
+    const r1 = makePost({ id: 'r1', parentId: 'root', parent: root })
+    const r2 = makePost({ id: 'r2', parentId: 'r1', parent: r1 }) // deeper
+    // Feed: r1, r2 (r2 has root -> r1 -> r2; r1 has root -> r1)
+    feed.posts.value = [r1, r2]
+    const out = feed.displayPosts.value
+    expect(out.map((p) => p.id)).toEqual(['r2'])
+    // r1 is on r2's chain → not extraCollapsed
+    expect((out[0] as any).threadCollapsedCount ?? 0).toBe(0)
+  })
+
+  it('accumulates existing threadCollapsedCount from API with extra collapsed siblings', async () => {
+    const feed = await makeFeed()
+    const root = makePost({ id: 'root' })
+    // r1 already has threadCollapsedCount=1 from API (1 trending item collapsed server-side)
+    const r1 = makePost({ id: 'r1', parentId: 'root', parent: root, threadCollapsedCount: 1 })
+    const r2 = makePost({ id: 'r2', parentId: 'root', parent: root }) // sibling → +1 client-side
+    feed.posts.value = [r1, r2]
+    const out = feed.displayPosts.value
+    expect(out).toHaveLength(1)
+    expect(out[0]!.id).toBe('r1')
+    // 1 from API + 1 from client = 2
+    expect((out[0] as any).threadCollapsedCount).toBe(2)
+  })
+
+  it('preserves independent root groups side by side', async () => {
+    const feed = await makeFeed()
+    const A = makePost({ id: 'A' })
+    const B = makePost({ id: 'B' })
+    const ar = makePost({ id: 'ar', parentId: 'A', parent: A })
+    feed.posts.value = [A, B, ar]
+    const out = feed.displayPosts.value.map((p) => p.id)
+    // A and ar share root A; B is independent
+    // ar is on chain [A, ar], A is also on that chain → A absorbed; ar stays
+    // Order: first-occurrence of A's group = A's position (index 0), B at 1
+    // Actually: ar is deeper (length 2) so it's primary; A (length 1) absorbed
+    // B is standalone
+    expect(out).toContain('ar')
+    expect(out).toContain('B')
+    expect(out).not.toContain('A') // absorbed into ar's chain
   })
 })
 

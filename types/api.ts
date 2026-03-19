@@ -430,6 +430,12 @@ export type FeedPost = {
   authorBanned?: boolean
   /** False when the viewer's tier does not grant access; body/media stripped. */
   viewerCanAccess?: boolean
+  /**
+   * When set, this many other trending/new items from the same root thread were
+   * collapsed by the API and are not shown in the feed. Used to render accurate
+   * "View N more trending replies" footers.
+   */
+  threadCollapsedCount?: number
   internal?: {
     boostScore: number | null
     boostScoreUpdatedAt: string | null

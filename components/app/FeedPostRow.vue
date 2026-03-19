@@ -181,8 +181,9 @@ const collapsedSiblingRepliesCount = computed(() => Math.max(0, Math.floor(props
 const rootPostId = computed(() => chain.value[0]?.id ?? null)
 const showCollapsedFooter = computed(() => Boolean(collapsedSiblingRepliesCount.value > 0 && rootPostId.value))
 
-function collapsedRepliesLabelFor(n: number) {
+function collapsedRepliesLabelFor(n: number, omitSortQualifier = false) {
   const noun = n === 1 ? 'reply' : 'replies'
+  if (omitSortQualifier) return `View ${n} more ${noun}`
   const qualifier = props.repliesSort === 'trending' ? 'trending' : (props.repliesSort === 'new' ? 'new' : null)
   return `View ${n} more${qualifier ? ` ${qualifier}` : ''} ${noun}`
 }
@@ -194,6 +195,10 @@ const collapsedRepliesLabel = computed(() => collapsedRepliesLabelFor(collapsedS
 function hiddenRepliesForIndex(i: number): number {
   const node = chain.value[i]
   if (!node?.id) return 0
+  // Root node (i===0): prefer threadCollapsedCount when available (trending/new-aware).
+  if (i === 0 && (node.threadCollapsedCount ?? 0) > 0) {
+    return node.threadCollapsedCount!
+  }
   const total = node.commentCount ?? 0
   const hasVisibleChild = i < chain.value.length - 1
   return Math.max(0, total - (hasVisibleChild ? 1 : 0))

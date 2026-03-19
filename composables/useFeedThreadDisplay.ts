@@ -32,6 +32,7 @@ export function useFeedThreadDisplay(
   })
 
   function collapsedSiblingReplyCountFor(post: FeedPost): number {
+    if ((post.threadCollapsedCount ?? 0) > 0) return post.threadCollapsedCount!
     return Math.max(0, post.commentCount ?? 0)
   }
 

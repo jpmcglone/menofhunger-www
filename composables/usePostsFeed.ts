@@ -117,6 +117,7 @@ export function usePostsFeed(options: { visibility?: Ref<FeedFilter>; followingO
         collapseByRoot: true,
         collapseMode: 'root',
         prefer: 'reply',
+        collapseMaxPerRoot: 2,
         visibility: visibility.value,
         ...(followingOnly.value ? { followingOnly: true } : {}),
         ...(sort.value === 'trending' ? { sort: 'trending' } : {}),
@@ -326,9 +327,75 @@ export function usePostsFeed(options: { visibility?: Ref<FeedFilter>; followingO
     })
   }
 
-  const displayPosts = computed(() => posts.value)
+  function chainLength(p: FeedPost): number {
+    let n = 0
+    let c: FeedPost | undefined = p
+    while (c) { n++; c = c.parent }
+    return n
+  }
+
+  function rootIdOf(p: FeedPost): string {
+    let c: FeedPost | undefined = p
+    while (c?.parent) c = c.parent
+    return c?.id ?? p.id
+  }
+
+  function chainIds(p: FeedPost): Set<string> {
+    const ids = new Set<string>()
+    let c: FeedPost | undefined = p
+    while (c) { ids.add(c.id); c = c.parent }
+    return ids
+  }
+
+  const displayPosts = computed<FeedPost[]>(() => {
+    const raw = posts.value
+    if (!raw.length) return raw
+
+    // Group by root ID (walk parent chain to find ultimate ancestor).
+    const byRoot = new Map<string, FeedPost[]>()
+    for (const p of raw) {
+      const root = rootIdOf(p)
+      const group = byRoot.get(root) ?? []
+      group.push(p)
+      byRoot.set(root, group)
+    }
+
+    // For each multi-item root group, merge into the deepest chain.
+    const absorbed = new Set<string>()
+    const overrides = new Map<string, FeedPost>()
+
+    for (const [, group] of byRoot) {
+      if (group.length <= 1) continue
+
+      // Primary = item with the longest chain (deepest in thread).
+      const primary = group.reduce((a, b) => chainLength(a) >= chainLength(b) ? a : b)
+      const primaryIds = chainIds(primary)
+
+      let extraCollapsed = 0
+      for (const item of group) {
+        if (item.id === primary.id) continue
+        absorbed.add(item.id)
+        if (!primaryIds.has(item.id)) {
+          // Sibling branch: not already visible on the primary chain.
+          extraCollapsed++
+        }
+      }
+
+      if (extraCollapsed > 0) {
+        overrides.set(primary.id, {
+          ...primary,
+          threadCollapsedCount: (primary.threadCollapsedCount ?? 0) + extraCollapsed,
+        })
+      }
+    }
+
+    return raw
+      .filter((p) => !absorbed.has(p.id))
+      .map((p) => overrides.get(p.id) ?? p)
+  })
 
   function collapsedSiblingReplyCountFor(post: FeedPost): number {
+    if ((post.threadCollapsedCount ?? 0) > 0) return post.threadCollapsedCount!
     return Math.max(0, post.commentCount ?? 0)
   }
 
@@ -431,6 +498,7 @@ export function usePostsFeed(options: { visibility?: Ref<FeedFilter>; followingO
             collapseByRoot: true,
             collapseMode: 'root',
             prefer: 'reply',
+            collapseMaxPerRoot: 2,
             visibility: visibility.value,
             ...(followingOnly.value ? { followingOnly: true } : {}),
             ...(sort.value === 'trending' ? { sort: 'trending' } : {}),
