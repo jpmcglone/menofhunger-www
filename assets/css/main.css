@@ -187,6 +187,12 @@ html.dark .moh-vignette::after {
   --moh-checkin-rgb: 31, 157, 99;
   --moh-checkin-soft: rgba(31, 157, 99, 0.12);
 
+  /* Community groups (cyan / baby-blue — distinct from verified blue). */
+  --moh-group: #0ea5e9;
+  --moh-group-rgb: 14, 165, 233;
+  --moh-group-soft: rgba(14, 165, 233, 0.14);
+  --moh-group-ring: rgba(14, 165, 233, 0.35);
+
   /* Lodge accent (brass) — used sparingly for focus + subtle highlights */
   --moh-brass: #a37422;
   --moh-brass-rgb: 163, 116, 34;
@@ -233,6 +239,11 @@ html.dark {
   --moh-org-rgb: 185, 192, 204;
   --moh-org-ring: rgba(185, 192, 204, 0.22);
   --moh-org-soft: rgba(185, 192, 204, 0.10);
+
+  --moh-group: #38bdf8;
+  --moh-group-rgb: 56, 189, 248;
+  --moh-group-soft: rgba(56, 189, 248, 0.14);
+  --moh-group-ring: rgba(56, 189, 248, 0.32);
 }
 
 /* NOTE: Do NOT remap premium → org based on the viewer.

@@ -40,6 +40,13 @@
     </div>
 
     <div v-else-if="post">
+      <div v-if="isGatedPost && post.groupPreview" class="px-4 pt-4 pb-2">
+        <AppGroupPreviewCard
+          :preview="post.groupPreview"
+          :join-busy="groupJoinBusy"
+          @join="joinGroupFromPreview"
+        />
+      </div>
       <div ref="highlightedPostRef" class="scroll-mt-0">
         <AppFeedPostRow
           v-if="post.parent"
@@ -143,7 +150,10 @@
 </template>
 
 <script setup lang="ts">
+import AppGroupPreviewCard from '~/components/app/groups/AppGroupPreviewCard.vue'
 import type { FeedPost } from '~/types/api'
+import { feedPostThreadGroupDisplayName } from '~/utils/community-group-preview'
+import { getApiErrorMessage } from '~/utils/api-error'
 import { usePostPermalink, usePostPermalinkMedia } from '~/composables/usePostPermalink'
 import { usePostComments } from '~/composables/usePostComments'
 import { useThreadParticipants } from '~/composables/useThreadParticipants'
@@ -163,6 +173,7 @@ const route = useRoute()
 const requestURL = useRequestURL()
 const postId = computed(() => String(route.params.id || '').trim())
 const { apiFetchData } = useApiClient()
+const { push: pushToast } = useAppToast()
 const highlightedPostRef = ref<HTMLElement | null>(null)
 
 const { user, ensureLoaded, isAuthed, isVerified: viewerIsVerified, isPremium: viewerIsPremium } = useAuth()
@@ -178,6 +189,7 @@ const {
   isDeleted,
   isOnlyMe,
   apiErrorStatus,
+  refreshPost,
 } = await usePostPermalink(postId)
 
 // Flat repost: redirect to the original post's permalink.
@@ -244,6 +256,7 @@ const replyContext = computed(() => {
     parentId: post.value.id,
     visibility: post.value.visibility,
     mentionUsernames: usernames,
+    groupDisplayName: feedPostThreadGroupDisplayName(post.value),
   }
 })
 
@@ -378,6 +391,26 @@ const isRestricted = computed(() => {
 })
 
 const isGatedPost = computed(() => post.value?.viewerCanAccess === false)
+
+const groupJoinBusy = ref(false)
+async function joinGroupFromPreview() {
+  const gp = post.value?.groupPreview
+  if (!gp || groupJoinBusy.value) return
+  groupJoinBusy.value = true
+  try {
+    await apiFetchData(`/groups/${encodeURIComponent(gp.id)}/join`, { method: 'POST', body: {} })
+    await refreshPost()
+  } catch (e: unknown) {
+    pushToast({
+      title: 'Could not join',
+      message: getApiErrorMessage(e) || 'Try again.',
+      tone: 'error',
+      durationMs: 4500,
+    })
+  } finally {
+    groupJoinBusy.value = false
+  }
+}
 
 const showServerErrorCta = computed(
   () =>

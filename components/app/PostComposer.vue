@@ -1,4 +1,6 @@
 <template>
+  <!-- Single root so fallthrough attrs (e.g. class from parents) can merge; Giphy dialog is a sibling inside. -->
+  <div>
   <!-- Composer -->
   <div
     :class="[
@@ -27,7 +29,13 @@
           v-tooltip.bottom="scopeTagTooltip"
           aria-label="Reply visibility"
         >
-          <Icon v-if="effectiveVisibility === 'onlyMe'" name="tabler:eye-off" class="mr-1 text-[10px]" aria-hidden="true" />
+          <Icon
+            v-if="showGroupScopeIcon"
+            name="tabler:users-group"
+            class="mr-1 text-[10px]"
+            aria-hidden="true"
+          />
+          <Icon v-else-if="effectiveVisibility === 'onlyMe'" name="tabler:eye-off" class="mr-1 text-[10px]" aria-hidden="true" />
           {{ scopeTagLabel }}
         </span>
       </div>
@@ -240,7 +248,7 @@
                   </template>
                 </Button>
                 <Button
-                  v-if="!replyTo"
+                  v-if="!replyTo && !disablePoll"
                   text
                   rounded
                   severity="secondary"
@@ -400,6 +408,7 @@
     @search="searchGiphy"
     @select="selectGiphyGif"
   />
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -407,7 +416,15 @@ import { makeLocalId } from '~/composables/composer/types'
 import type { CreatePostData, PostStreakReward, PostVisibility } from '~/types/api'
 import { siteConfig } from '~/config/site'
 import type { CreateMediaPayload } from '~/composables/useComposerMedia'
-import { PRIMARY_ONLYME_PURPLE, PRIMARY_PREMIUM_ORANGE, PRIMARY_TEXT_DARK, PRIMARY_TEXT_LIGHT, PRIMARY_VERIFIED_BLUE, primaryPaletteToCssVars } from '~/utils/theme-tint'
+import {
+  PRIMARY_GROUP_SKY,
+  PRIMARY_ONLYME_PURPLE,
+  PRIMARY_PREMIUM_ORANGE,
+  PRIMARY_TEXT_DARK,
+  PRIMARY_TEXT_LIGHT,
+  PRIMARY_VERIFIED_BLUE,
+  primaryPaletteToCssVars,
+} from '~/utils/theme-tint'
 import { tinyTooltip } from '~/utils/tiny-tooltip'
 import { visibilityTagClasses, visibilityTagLabel } from '~/utils/post-visibility'
 import { useFormSubmit } from '~/composables/useFormSubmit'
@@ -449,10 +466,20 @@ const props = defineProps<{
   lockedVisibility?: PostVisibility
   /** Hide the visibility picker (useful with lockedVisibility). */
   hideVisibilityPicker?: boolean
+  /** Community group wall: show group scope pill + cyan composer tint (not for replies). */
+  groupComposer?: boolean
+  /** Name shown in the scope tag when groupComposer is true. */
+  groupName?: string
   // Optional override. Return full FeedPost for replies (so it can be rendered immediately).
   createPost?: (body: string, visibility: PostVisibility, media: CreateMediaPayload[], poll?: ComposerPollPayload | null) => Promise<{ id: string } | import('~/types/api').FeedPost | null>
   // When set, composer is in reply mode: visibility fixed to parent, parent_id + mentions sent.
-  replyTo?: { parentId: string; visibility: PostVisibility; mentionUsernames: string[] }
+  replyTo?: {
+    parentId: string
+    visibility: PostVisibility
+    mentionUsernames: string[]
+    /** Community group thread: show this label with group styling instead of e.g. "Public". */
+    groupDisplayName?: string | null
+  }
   /** When true, use compact top padding for thread/reply modal layout (connects with thread line). */
   inReplyThread?: boolean
   /** When true, omit the avatar (used when parent renders avatar in shared thread column). */
@@ -465,6 +492,8 @@ const props = defineProps<{
   editPostIsDraft?: boolean
   /** When true, hide/disable all media capabilities (used for v1 post editing). */
   disableMedia?: boolean
+  /** When true, hide poll controls (e.g. community groups disallow polls). */
+  disablePoll?: boolean
   /** When false, success toast will not link to the new post. */
   successToPermalink?: boolean
   /** When false, do not register with the global unsaved-draft guard. */
@@ -514,6 +543,7 @@ const mode = computed(() => props.mode ?? 'create')
 const editPostId = computed(() => (props.editPostId ?? '').trim() || null)
 const editPostIsDraft = computed(() => Boolean(props.editPostIsDraft))
 const disableMedia = computed(() => Boolean(props.disableMedia) || (mode.value === 'edit' && !editPostIsDraft.value))
+const disablePoll = computed(() => Boolean(props.disablePoll))
 const showDivider = computed(() => props.showDivider !== false)
 
 const quotedPost = computed(() => props.quotedPost ?? null)
@@ -808,17 +838,36 @@ const effectiveVisibility = computed(() =>
   props.replyTo ? props.replyTo.visibility : (lockedVisibility.value ?? visibility.value),
 )
 
+const replyGroupDisplayLabel = computed(() => (props.replyTo?.groupDisplayName ?? '').trim())
+const replyShowsGroupScope = computed(() => Boolean(replyGroupDisplayLabel.value))
+/** Group wall composer or reply inside a community group thread — shared chrome (pill, tint, button). */
+const useGroupScopeChrome = computed(
+  () => (props.groupComposer && !props.replyTo) || replyShowsGroupScope.value,
+)
+
 const showVisibilityPicker = computed(() => {
   if (props.replyTo) return false
   if (props.hideVisibilityPicker) return false
   if (lockedVisibility.value) return false
   return true
 })
-const scopeTagLabel = computed(
-  () => visibilityTagLabel(effectiveVisibility.value) ?? 'Public',
-)
-const scopeTagClass = computed(() => visibilityTagClasses(effectiveVisibility.value))
+const showGroupScopeIcon = computed(() => useGroupScopeChrome.value)
+
+const scopeTagLabel = computed(() => {
+  if (props.groupComposer && !props.replyTo) return props.groupName || 'Group'
+  if (replyShowsGroupScope.value) return replyGroupDisplayLabel.value
+  return visibilityTagLabel(effectiveVisibility.value) ?? 'Public'
+})
+const scopeTagClass = computed(() => {
+  if (useGroupScopeChrome.value) {
+    return 'border-[color:rgba(var(--moh-group-rgb),0.45)] bg-[color:var(--moh-group-soft)] text-[color:var(--moh-group)]'
+  }
+  return visibilityTagClasses(effectiveVisibility.value)
+})
 const scopeTagTooltip = computed(() => {
+  if (useGroupScopeChrome.value) {
+    return tinyTooltip('Visible to members of this group only')
+  }
   const v = effectiveVisibility.value
   if (v === 'verifiedOnly') return tinyTooltip('Visible to verified members')
   if (v === 'premiumOnly') return tinyTooltip('Visible to premium members')
@@ -828,6 +877,7 @@ const scopeTagTooltip = computed(() => {
 
 // Upload bar fill color matches effective visibility (parent tier when replying).
 const composerUploadBarColor = computed(() => {
+  if (useGroupScopeChrome.value) return 'var(--moh-group)'
   const v = effectiveVisibility.value
   if (v === 'verifiedOnly') return 'var(--moh-verified)'
   if (v === 'premiumOnly') return 'var(--moh-premium)'
@@ -837,9 +887,15 @@ const composerUploadBarColor = computed(() => {
 
 // Composer tint CSS for moh-composer-tint class (beats global theme overrides).
 const composerTintCss = computed(() => {
-  const v = effectiveVisibility.value
   const baseSel = 'html .moh-composer-tint'
   const darkSel = 'html.dark .moh-composer-tint'
+  if (useGroupScopeChrome.value) {
+    return (
+      primaryPaletteToCssVars(PRIMARY_GROUP_SKY, baseSel, '#ffffff') +
+      primaryPaletteToCssVars(PRIMARY_GROUP_SKY, darkSel, '#000000')
+    )
+  }
+  const v = effectiveVisibility.value
   if (v === 'verifiedOnly') {
     return primaryPaletteToCssVars(PRIMARY_VERIFIED_BLUE, baseSel, '#ffffff') + primaryPaletteToCssVars(PRIMARY_VERIFIED_BLUE, darkSel, '#000000')
   }
@@ -856,6 +912,9 @@ useHead({ style: [{ key: 'moh-composer-tint', textContent: () => composerTintCss
 // Textarea styling (uses effective visibility so reply composer matches parent tier).
 const isDarkMode = computed(() => Boolean(useColorMode().value === 'dark'))
 const composerTextareaVars = computed<Record<string, string>>(() => {
+  if (useGroupScopeChrome.value) {
+    return { '--moh-compose-accent': 'var(--moh-group)', '--moh-compose-ring': 'var(--moh-group-ring)' }
+  }
   const v = effectiveVisibility.value
   if (v === 'verifiedOnly') return { '--moh-compose-accent': 'var(--moh-verified)', '--moh-compose-ring': 'var(--moh-verified-ring)' }
   if (v === 'premiumOnly') return { '--moh-compose-accent': 'var(--moh-premium)', '--moh-compose-ring': 'var(--moh-premium-ring)' }
@@ -997,8 +1056,13 @@ const composerHasFailedMedia = computed(
   () => composerMedia.value?.some((m) => m.source === 'upload' && m.uploadStatus === 'error') ?? false,
 )
 
-const postButtonOutlined = computed(() => effectiveVisibility.value === 'public')
+const postButtonOutlined = computed(
+  () => effectiveVisibility.value === 'public' && !replyShowsGroupScope.value,
+)
 const postButtonClass = computed(() => {
+  if (replyShowsGroupScope.value) {
+    return 'moh-btn-tone !border-[color:var(--moh-group)] !bg-[color:var(--moh-group)] !text-white'
+  }
   const v = effectiveVisibility.value
   if (v === 'verifiedOnly') return 'moh-btn-verified moh-btn-tone'
   if (v === 'premiumOnly') return 'moh-btn-premium moh-btn-tone'

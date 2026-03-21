@@ -8,7 +8,11 @@
       noPaddingBottom ? 'pb-0' : '',
       noPaddingTop ? 'pt-0' : '',
       showThreadLineAboveAvatar && !noPaddingTop ? 'pt-3' : '',
-      noBorderBottom ? '' : 'border-b moh-border',
+      noBorderBottom
+        ? ''
+        : subtleBorderBottom
+          ? 'border-b border-gray-100 dark:border-white/[0.06]'
+          : 'border-b moh-border',
       clickable ? 'cursor-pointer rounded-lg group' : '',
       highlight ? highlightClass : ''
     ]"
@@ -59,7 +63,7 @@
       />
     </div>
     <div
-      class="flex gap-2.5 sm:gap-3"
+      class="relative z-[2] flex gap-2.5 sm:gap-3"
       :class="{
         'mt-2': showThreadLineAboveAvatar && noPaddingTop,
         'pt-3': showThreadLineAboveAvatar && !noPaddingTop,
@@ -116,6 +120,42 @@
 
       <div class="relative z-10 min-w-0 flex-1">
         <div class="relative">
+          <div
+            v-if="feedGroupTagForRow"
+            class="relative mb-1 inline-flex min-w-0 max-w-full items-center"
+          >
+            <NuxtLink
+              :to="`/g/${encodeURIComponent(feedGroupTagForRow.slug)}`"
+              class="flex min-w-0 max-w-full items-center gap-1.5 rounded-md py-0.5 pl-0.5 pr-1 -ml-0.5 text-left transition-colors hover:bg-black/[0.04] dark:hover:bg-white/[0.06]"
+              :aria-label="`Group: ${feedGroupTagForRow.name}`"
+              @click.stop
+              @mouseenter="onFeedGroupEnter"
+              @mousemove="onFeedGroupMove"
+              @mouseleave="onFeedGroupLeave"
+            >
+              <div
+                class="h-[18px] w-[18px] shrink-0 overflow-hidden bg-gray-200 dark:bg-zinc-700"
+                :class="groupAvatarRoundClass"
+              >
+                <img
+                  v-if="feedGroupTagForRow.avatarImageUrl"
+                  :src="feedGroupTagForRow.avatarImageUrl"
+                  alt=""
+                  class="h-full w-full object-cover"
+                  loading="lazy"
+                >
+                <div
+                  v-else
+                  class="flex h-full w-full items-center justify-center text-[8px] font-bold text-gray-500 dark:text-zinc-400"
+                >
+                  {{ feedGroupInitials }}
+                </div>
+              </div>
+              <span class="min-w-0 flex-1 truncate text-xs font-medium text-gray-500 dark:text-zinc-400">
+                {{ feedGroupTagForRow.name }}
+              </span>
+            </NuxtLink>
+          </div>
           <AppPostHeaderLine
             :display-name="author.name || author.username || 'User'"
             :username="author.username || ''"
@@ -124,7 +164,7 @@
             :premium-plus="author.premiumPlus"
             :is-organization="author.isOrganization"
             :steward-badge-enabled="author.stewardBadgeEnabled ?? true"
-            :org-affiliations="(author as any).orgAffiliations ?? postView.author.orgAffiliations"
+            :org-affiliations="(author as any).orgAffiliations ?? postView.author?.orgAffiliations"
             :edited-at="postView.editedAt ?? null"
             :hide-edited-badge="postView.visibility === 'onlyMe'"
             :profile-path="authorProfilePath"
@@ -138,7 +178,7 @@
           <Transition name="viewer-count-appear" appear>
             <div
               v-if="viewerCount > 0 && !isOnlyMe"
-              class="absolute right-10 sm:right-9 -top-2.5 z-20 flex items-center"
+              class="absolute right-10 sm:right-9 -top-2.5 z-30 flex items-center pointer-events-auto"
             >
               <div class="relative">
                 <button
@@ -563,7 +603,9 @@
 
 <script setup lang="ts">
 import { inject } from 'vue'
-import type { FeedPost } from '~/types/api'
+import type { CommunityGroupShell, FeedPost } from '~/types/api'
+import { groupPreviewToFeedShell } from '~/utils/community-group-preview'
+import { groupAvatarRoundClass as getGroupAvatarRoundClass } from '~/utils/avatar-rounding'
 import { visibilityTagClasses, visibilityTagLabel } from '~/utils/post-visibility'
 import type { MenuItem } from 'primevue/menuitem'
 import { siteConfig } from '~/config/site'
@@ -596,11 +638,18 @@ const props = defineProps<{
   compact?: boolean
   /** When set, color the thread line by root post visibility (e.g. blue for verified, orange for premium). */
   threadLineTint?: 'verified' | 'premium' | null
+  /** Group wall: owner can pin a root post to the group feed top. */
+  groupWall?: { groupId: string; viewerIsOwner: boolean } | null
+  /** Combined feed / discovery: show inline group context in the header column. */
+  feedGroup?: CommunityGroupShell | null
+  /** Lighter row separator (matches home/profile feel vs default moh-border). */
+  subtleBorderBottom?: boolean
 }>()
 const emit = defineEmits<{
   (e: 'deleted', id: string): void
   (e: 'edited', payload: { id: string; post: FeedPost }): void
   (e: 'bookmarkUpdated', payload: { postId: string; hasBookmarked: boolean; collectionIds: string[] }): void
+  (e: 'groupPinChanged'): void
 }>()
 
 const postState = ref(props.post)
@@ -612,11 +661,51 @@ watch(
 )
 const postView = computed(() => postState.value)
 
+const groupAvatarRoundClass = getGroupAvatarRoundClass()
+
+const feedGroupForRow = computed((): CommunityGroupShell | null => {
+  if (props.feedGroup) return props.feedGroup
+  const gp = postView.value.groupPreview ?? null
+  return gp ? groupPreviewToFeedShell(gp) : null
+})
+
+const route = useRoute()
+const feedGroupTagForRow = computed((): CommunityGroupShell | null => {
+  const group = feedGroupForRow.value
+  if (!group) return null
+  // On a single group wall page, the group context is already obvious.
+  if (/^\/g\/[^/]+\/?$/.test(route.path)) return null
+  return group
+})
+
+const feedGroupInitials = computed(() => {
+  const n = (feedGroupForRow.value?.name ?? '').trim()
+  if (!n) return '?'
+  const parts = n.split(/\s+/).filter(Boolean)
+  if (parts.length >= 2) return (parts[0]![0]! + parts[1]![0]!).toUpperCase()
+  return n.slice(0, 2).toUpperCase()
+})
+
+const { onEnter: onFeedGroupEnter, onMove: onFeedGroupMove, onLeave: onFeedGroupLeave } = useGroupPreviewTrigger({
+  shell: feedGroupForRow,
+})
+
 function onPollUpdated(poll: any) {
   postState.value = { ...(postState.value as any), poll }
 }
 
-const { user: author } = useUserOverlay(computed(() => postView.value.author))
+const authorSnapshot = computed(() => postView.value?.author ?? null)
+const { user: authorOverlay } = useUserOverlay(authorSnapshot)
+const author = computed(() => authorOverlay.value ?? authorSnapshot.value ?? ({
+  id: '',
+  username: '',
+  name: 'User',
+  verifiedStatus: null,
+  premium: false,
+  premiumPlus: false,
+  isOrganization: false,
+  stewardBadgeEnabled: true,
+} as any))
 const isDeletedPost = computed(() => Boolean(postView.value.deletedAt))
 const isGatedPost = computed(() => postView.value.viewerCanAccess === false)
 
@@ -760,10 +849,13 @@ const { inView: rowInView } = useInViewOnce(rowEl, { root: null, rootMargin: '80
 // FeedPostRow also tracks the full thread chain; deduplication in usePostViewTracker handles overlap.
 const { observe: observeView } = usePostViewTracker()
 let stopViewObserve: (() => void) | null = null
-const route = useRoute()
 const { user, me: refetchMe, isAuthed, isVerified: viewerIsVerified } = useAuth()
 const viewerHasUsername = computed(() => Boolean(user.value?.usernameIsSet))
-const isSelf = computed(() => Boolean(user.value?.id && user.value.id === (author.value?.id ?? postView.value.author.id)))
+const isSelf = computed(() => {
+  const viewerId = user.value?.id ?? null
+  const authorId = author.value?.id ?? authorSnapshot.value?.id ?? null
+  return Boolean(viewerId && authorId && viewerId === authorId)
+})
 
 // Avatar context menu: shown when viewing your own post and you're in a space (but not on /spaces).
 const { selectedSpaceId } = useSpaceLobby()
@@ -817,11 +909,11 @@ const viewerBlockStatus = computed(() => postView.value.viewerBlockStatus ?? nul
 const isBlockedWithAuthor = computed(() => viewerBlockStatus.value !== null)
 const blockReasonText = computed(() => {
   if (viewerBlockStatus.value === 'viewer_blocked') {
-    const handle = postView.value.author.username ? `@${postView.value.author.username}` : 'this user'
+    const handle = author.value?.username ? `@${author.value.username}` : 'this user'
     return `You've blocked ${handle}. Unblock them to engage with their posts.`
   }
   if (viewerBlockStatus.value === 'viewer_blocked_by') {
-    const handle = postView.value.author.username ? `@${postView.value.author.username}` : 'This user'
+    const handle = author.value?.username ? `@${author.value.username}` : 'This user'
     return `${handle} has blocked you. You can view their posts but can't engage with them.`
   }
   return null
@@ -874,7 +966,7 @@ const commentClickable = computed(() => {
 const authorBanned = computed(() => Boolean(postView.value.authorBanned ?? postView.value.author?.authorBanned))
 const authorProfilePath = computed(() => {
   if (authorBanned.value) return null
-  const username = (postView.value.author.username ?? '').trim()
+  const username = (author.value?.username ?? '').trim()
   return username ? `/u/${encodeURIComponent(username)}` : null
 })
 
@@ -1009,7 +1101,7 @@ const moreMenuItems = computed<MenuItemWithIcon[]>(() => {
   const items: MenuItemWithIcon[] = []
   if (!authorBanned.value) {
     items.push({
-      label: postView.value.author.username ? `View @${postView.value.author.username}` : 'View profile',
+      label: author.value?.username ? `View @${author.value.username}` : 'View profile',
       iconName: 'tabler:user',
       command: () => {
         if (!authorProfilePath.value) return
@@ -1042,7 +1134,7 @@ const moreMenuItems = computed<MenuItemWithIcon[]>(() => {
       },
     })
 
-    const authorUserId = postView.value.author.id
+    const authorUserId = author.value?.id ?? null
     if (authorUserId && !authorBanned.value) {
       const isBlocked = blockState.isBlockedByMe(authorUserId)
         || viewerBlockStatus.value === 'viewer_blocked'
@@ -1059,6 +1151,21 @@ const moreMenuItems = computed<MenuItemWithIcon[]>(() => {
         },
       })
     }
+  }
+
+  if (
+    props.groupWall?.viewerIsOwner &&
+    !isDeletedPost.value &&
+    !postView.value.parentId &&
+    postView.value.communityGroupId === props.groupWall.groupId
+  ) {
+    items.push({ separator: true })
+    const isGpinned = Boolean(postView.value.pinnedInGroupAt)
+    items.push({
+      label: isGpinned ? 'Unpin from group top' : 'Pin to group top',
+      iconName: isGpinned ? 'tabler:x' : 'tabler:pinned',
+      command: () => void (isGpinned ? unpinGroupWall() : pinGroupWall()),
+    })
   }
 
   if (isSelf.value) {
@@ -1164,6 +1271,33 @@ async function pinToProfile() {
     toast.push({ title: 'Pinned to profile', tone: 'success', durationMs: 1400 })
   } catch (e: unknown) {
     toast.pushError(e, 'Failed to pin.')
+  }
+}
+
+async function pinGroupWall() {
+  const gw = props.groupWall
+  if (!gw) return
+  try {
+    await apiFetchData(`/groups/${encodeURIComponent(gw.groupId)}/pin/${encodeURIComponent(postView.value.id)}`, {
+      method: 'POST',
+      body: {},
+    })
+    toast.push({ title: 'Pinned to group', tone: 'success', durationMs: 1400 })
+    emit('groupPinChanged')
+  } catch (e: unknown) {
+    toast.pushError(e, 'Failed to pin.')
+  }
+}
+
+async function unpinGroupWall() {
+  const gw = props.groupWall
+  if (!gw) return
+  try {
+    await apiFetchData(`/groups/${encodeURIComponent(gw.groupId)}/pin`, { method: 'DELETE' })
+    toast.push({ title: 'Unpinned from group', tone: 'success', durationMs: 1400 })
+    emit('groupPinChanged')
+  } catch (e: unknown) {
+    toast.pushError(e, 'Failed to unpin.')
   }
 }
 
@@ -1449,7 +1583,7 @@ function onCommentClick() {
 async function handleBlockUser(userId: string) {
   try {
     await blockState.blockUser(userId)
-    const handle = postView.value.author.username ? `@${postView.value.author.username}` : 'User'
+    const handle = author.value?.username ? `@${author.value.username}` : 'User'
     toast.push({ title: `${handle} blocked`, message: 'They can still see your posts but can\'t engage with them.', tone: 'success', durationMs: 3000 })
   } catch (e: unknown) {
     toast.pushError(e, 'Failed to block user.')
@@ -1459,7 +1593,7 @@ async function handleBlockUser(userId: string) {
 async function handleUnblockUser(userId: string) {
   try {
     await blockState.unblockUser(userId)
-    const handle = postView.value.author.username ? `@${postView.value.author.username}` : 'User'
+    const handle = author.value?.username ? `@${author.value.username}` : 'User'
     toast.push({ title: `${handle} unblocked`, message: 'You can now engage with their posts.', tone: 'success', durationMs: 3000 })
   } catch (e: unknown) {
     toast.pushError(e, 'Failed to unblock user.')

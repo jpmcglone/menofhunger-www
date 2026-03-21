@@ -92,6 +92,7 @@ import { usePostCountBumps } from '~/composables/usePostCountBumps'
 import { useMiddleScroller } from '~/composables/useMiddleScroller'
 import { useUserOverlay } from '~/composables/useUserOverlay'
 import { userColorTier, userTierTextClass } from '~/utils/user-tier'
+import { feedPostThreadGroupDisplayName } from '~/utils/community-group-preview'
 
 const replyModal = useReplyModal()
 const multiTrigger = useUserPreviewMultiTrigger()
@@ -227,6 +228,7 @@ const replyContext = computed(() => {
     parentId: post.id,
     visibility: post.visibility,
     mentionUsernames: merged,
+    groupDisplayName: feedPostThreadGroupDisplayName(post),
   }
 })
 

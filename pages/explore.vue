@@ -72,12 +72,20 @@
           <TransitionGroup name="moh-post" tag="div" class="space-y-0">
             <template
               v-for="item in interleaved"
-              :key="item.kind === 'user' ? `u-${item.user.id}` : (item.kind === 'article' ? `a-${item.article.id}` : `p-${item.post.id}`)"
+              :key="item.kind === 'user' ? `u-${item.user.id}` : item.kind === 'article' ? `a-${item.article.id}` : item.kind === 'group' ? `g-${item.group.id}` : `p-${item.post.id}`"
             >
               <AppUserRow
                 v-if="item.kind === 'user'"
                 :user="item.user"
                 :show-follow-button="true"
+              />
+              <AppGroupPreviewCard
+                v-else-if="item.kind === 'group'"
+                class="mx-4 mb-3"
+                :preview="shellToGroupPreview(item.group)"
+                :show-join="isAuthed"
+                :join-busy="joinExploreGroupId === item.group.id"
+                @join="joinExploreGroup(item.group)"
               />
               <AppArticleListCard
                 v-else-if="item.kind === 'article'"
@@ -108,7 +116,7 @@
         <div v-else-if="searchedOnce && !loading" class="px-4">
           <div class="rounded-xl border moh-border bg-gray-50/50 dark:bg-zinc-900/30 px-4 py-6 text-center">
             <p class="text-sm moh-text-muted">
-              No people, articles, or posts found for “{{ searchQueryTrimmed }}”.
+              No people, groups, articles, or posts found for “{{ searchQueryTrimmed }}”.
             </p>
             <div
               v-if="isCheckinQuery && canShowSearchCheckinHint"
@@ -323,24 +331,37 @@
           </AppHorizontalScroller>
         </section>
 
-        <!-- Life Arenas quick-filter -->
-        <section class="space-y-2">
-          <h2 class="px-4 text-sm font-semibold text-gray-900 dark:text-gray-50">
-            Arenas
-          </h2>
-          <AppHorizontalScroller scroller-class="no-scrollbar px-4">
-            <div class="flex gap-2 pb-2">
-              <button
-                v-for="arena in LIFE_ARENAS"
-                :key="arena.key"
-                type="button"
-                class="h-9 px-3 shrink-0 inline-flex items-center gap-1.5 rounded-full border moh-border bg-white/60 dark:bg-zinc-900/40 text-sm text-gray-800 dark:text-gray-100 hover:bg-white dark:hover:bg-zinc-900 transition whitespace-nowrap"
-                :title="arena.description"
-                @click="selectCategory(arena.categoryKey, 'arena')"
+        <!-- Groups (featured + largest) -->
+        <section v-if="discoverInitialLoading || exploreGroups.length > 0" class="space-y-3">
+          <div class="px-4 flex items-center justify-between gap-3">
+            <h2 class="text-sm font-semibold text-gray-900 dark:text-gray-50">
+              Groups
+            </h2>
+            <NuxtLink
+              v-if="isAuthed"
+              to="/groups"
+              class="text-sm font-medium hover:underline underline-offset-2 text-[var(--p-primary-color)] moh-focus"
+            >
+              Browse groups
+            </NuxtLink>
+          </div>
+          <div v-if="discoverInitialLoading && exploreGroups.length === 0" class="flex justify-center py-6">
+            <AppLogoLoader />
+          </div>
+          <AppHorizontalScroller v-else-if="exploreGroups.length > 0" scroller-class="no-scrollbar px-4">
+            <div class="flex gap-3 pb-2">
+              <div
+                v-for="g in exploreGroups"
+                :key="`eg-${g.id}`"
+                class="w-[min(100vw-2rem,22rem)] max-w-[22rem] shrink-0"
               >
-                <Icon :name="arena.icon" class="text-sm shrink-0 opacity-70" aria-hidden="true" />
-                <span>{{ arena.label }}</span>
-              </button>
+                <AppGroupPreviewCard
+                  :preview="shellToGroupPreview(g)"
+                  :show-join="isAuthed"
+                  :join-busy="joinExploreGroupId === g.id"
+                  @join="joinExploreGroup(g)"
+                />
+              </div>
             </div>
           </AppHorizontalScroller>
         </section>
@@ -562,12 +583,12 @@
           </p>
         </template>
 
-        <!-- Logged out: simple search-only Explore -->
+        <!-- Logged out: groups also appear in “Community groups” above; this is the search hint only -->
         <template v-else>
           <div class="px-4">
             <div class="rounded-xl border moh-border bg-gray-50/50 dark:bg-zinc-900/30 p-4">
               <p class="text-sm moh-text-muted">
-                Use the search bar to find people and posts.
+                Use the search bar to find people, groups, and posts. Log in to join groups.
               </p>
             </div>
           </div>
@@ -609,8 +630,10 @@
 </template>
 
 <script setup lang="ts">
+import AppGroupPreviewCard from '~/components/app/groups/AppGroupPreviewCard.vue'
 import type {
   Article,
+  CommunityGroupShell,
   FeedPost,
   SearchUserResult,
   SearchMixedResult,
@@ -624,9 +647,9 @@ import type {
   PostVisibility,
   CheckinAllowedVisibility,
 } from '~/types/api'
+import { shellToGroupPreview } from '~/utils/community-group-preview'
 import { getApiErrorMessage } from '~/utils/api-error'
 import { MOH_OPEN_COMPOSER_KEY } from '~/utils/injection-keys'
-import { LIFE_ARENAS } from '~/config/arenas'
 
 definePageMeta({
   layout: 'app',
@@ -696,6 +719,7 @@ const {
   recommendedUsers,
   newestUsers,
   trendingPosts,
+  exploreGroups,
   loading: discoverLoading,
   hasLoadedOnce: discoverHasLoadedOnce,
   error: discoverError,
@@ -707,6 +731,24 @@ const {
   isAuthed: computed(() => isAuthed.value),
 })
 const discoverInitialLoading = computed(() => discoverLoading.value && !discoverHasLoadedOnce.value)
+
+const joinExploreGroupId = ref<string | null>(null)
+
+async function joinExploreGroup(g: CommunityGroupShell) {
+  if (!isAuthed.value || joinExploreGroupId.value) return
+  const id = (g?.id ?? '').trim()
+  if (!id) return
+  joinExploreGroupId.value = id
+  try {
+    await apiFetch(`/groups/${encodeURIComponent(id)}/join`, { method: 'POST', body: {} })
+    void refreshDiscover()
+    if (isSearching.value) void fetchPage({ append: false })
+  } catch {
+    // soft-fail; card still links to group
+  } finally {
+    joinExploreGroupId.value = null
+  }
+}
 
 const {
   state: checkinState,
@@ -1000,6 +1042,7 @@ function scheduleDebouncedSearch() {
 const users = ref<SearchUserResult[]>([])
 const articles = ref<Article[]>([])
 const posts = ref<FeedPost[]>([])
+const searchGroups = ref<CommunityGroupShell[]>([])
 const nextUserCursor = ref<string | null>(null)
 const nextArticleCursor = ref<string | null>(null)
 const nextPostCursor = ref<string | null>(null)
@@ -1015,12 +1058,13 @@ const hasMore = computed(
   () => nextUserCursor.value !== null || nextArticleCursor.value !== null || nextPostCursor.value !== null,
 )
 
-/** Users first, then articles, then posts. Keeps direct profile matches and gated article previews above post bodies. */
+/** Users, groups, articles, then posts — matches /search?type=all ordering. */
 const interleaved = computed(() => {
   const userItems = users.value.map((user) => ({ kind: 'user' as const, user }))
+  const groupItems = searchGroups.value.map((group) => ({ kind: 'group' as const, group }))
   const articleItems = articles.value.map((article) => ({ kind: 'article' as const, article }))
   const postItems = posts.value.map((post) => ({ kind: 'post' as const, post }))
-  return [...userItems, ...articleItems, ...postItems]
+  return [...userItems, ...groupItems, ...articleItems, ...postItems]
 })
 
 function dedupeById<T extends { id?: string | null }>(list: T[]): T[] {
@@ -1084,15 +1128,18 @@ async function fetchPage(params: { append: boolean }) {
     const newUsers = data.users ?? []
     const newArticles = data.articles ?? []
     const newPosts = data.posts ?? []
+    const newGroups = data.groups ?? []
 
     if (isAppend) {
       users.value = dedupeById([...users.value, ...newUsers])
       articles.value = dedupeById([...articles.value, ...newArticles])
       posts.value = dedupeById([...posts.value, ...newPosts])
+      searchGroups.value = dedupeById([...searchGroups.value, ...newGroups])
     } else {
       users.value = dedupeById(newUsers)
       articles.value = dedupeById(newArticles)
       posts.value = dedupeById(newPosts)
+      searchGroups.value = dedupeById(newGroups)
       tagSuggestions.value = (data.taxonomyMatches ?? []).slice(0, 5)
     }
 
@@ -1106,6 +1153,7 @@ async function fetchPage(params: { append: boolean }) {
       users.value = []
       articles.value = []
       posts.value = []
+      searchGroups.value = []
       tagSuggestions.value = []
       nextUserCursor.value = null
       nextArticleCursor.value = null

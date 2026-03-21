@@ -18,17 +18,21 @@
   <div class="fixed inset-0 z-0 moh-bg moh-texture" aria-hidden="true" />
 
   <div class="relative z-10">
+    <!-- Single root inside ClientOnly avoids Vue 3.5 slot / hydration edge cases with multi-node default slots. -->
     <ClientOnly>
-      <AppToastStack />
-      <AppUserPreviewPopover />
-      <AppWordDefinitionPopover />
-      <AppOnlineCountPopover />
-      <AppSpaceLiveChatOverlay
-        v-if="radioChatSheetOpen && radioHasStation && !showRadioChat"
-        v-model="radioChatSheetOpen"
-        :space-name="radioChatStationName"
-        :member-count="members.length"
-      />
+      <div class="contents">
+        <AppToastStack />
+        <AppUserPreviewPopover />
+        <AppGroupPreviewPopover />
+        <AppWordDefinitionPopover />
+        <AppOnlineCountPopover />
+        <AppSpaceLiveChatOverlay
+          v-if="radioChatSheetOpen && radioHasStation && !showRadioChat"
+          v-model="radioChatSheetOpen"
+          :space-name="radioChatStationName"
+          :member-count="members.length"
+        />
+      </div>
     </ClientOnly>
     <Transition
       enter-active-class="transition-all duration-200 ease-out"
@@ -156,103 +160,7 @@
           <nav class="space-y-1 flex-1">
             <template v-for="item in leftNavItems" :key="item.key">
 
-              <!-- SPACES: gradient-outlined pill / circle -->
               <NuxtLink
-                v-if="item.key === 'spaces'"
-                :to="item.to"
-                class="group flex h-12 items-center w-full moh-focus"
-                :class="navCompactMode ? 'justify-center' : 'justify-center xl:justify-start'"
-                @click="(e) => onLeftNavClick(item.to, e)"
-              >
-                <!-- Compact mode: gradient-outlined circle -->
-                <span
-                  v-if="navCompactMode"
-                  class="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition-all duration-150"
-                  :style="{
-                    border: `${isActiveNav(item.to) ? 3 : 2.5}px solid transparent`,
-                    background: isActiveNav(item.to)
-                      ? `linear-gradient(rgba(43,123,185,0.12) 0%, rgba(var(--moh-premium-rgb),0.08) 100%) padding-box, linear-gradient(90deg, var(--moh-verified), var(--moh-premium)) border-box`
-                      : `linear-gradient(var(--moh-bg), var(--moh-bg)) padding-box, linear-gradient(90deg, var(--moh-verified), var(--moh-premium)) border-box`,
-                  }"
-                >
-                  <!-- Hover tint overlay -->
-                  <span
-                    class="absolute inset-0 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-150 pointer-events-none"
-                    style="background: linear-gradient(90deg, rgba(43,123,185,0.08), rgba(var(--moh-premium-rgb),0.06));"
-                    aria-hidden="true"
-                  />
-                  <Icon
-                    :name="isActiveNav(item.to) ? (item.iconActive || item.icon) : item.icon"
-                    size="22"
-                    class="relative text-gray-900 dark:text-gray-100"
-                    :class="[item.iconClass, isActiveNav(item.to) ? 'opacity-100' : 'opacity-80 group-hover:opacity-100']"
-                    aria-hidden="true"
-                  />
-                </span>
-                <!-- Wide mode below xl: gradient-outlined circle (no label visible yet) -->
-                <span
-                  v-else
-                  class="relative xl:hidden flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition-all duration-150"
-                  :style="{
-                    border: `${isActiveNav(item.to) ? 3 : 2.5}px solid transparent`,
-                    background: isActiveNav(item.to)
-                      ? `linear-gradient(rgba(43,123,185,0.12) 0%, rgba(var(--moh-premium-rgb),0.08) 100%) padding-box, linear-gradient(90deg, var(--moh-verified), var(--moh-premium)) border-box`
-                      : `linear-gradient(var(--moh-bg), var(--moh-bg)) padding-box, linear-gradient(90deg, var(--moh-verified), var(--moh-premium)) border-box`,
-                  }"
-                >
-                  <span
-                    class="absolute inset-0 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-150 pointer-events-none"
-                    style="background: linear-gradient(90deg, rgba(43,123,185,0.08), rgba(var(--moh-premium-rgb),0.06));"
-                    aria-hidden="true"
-                  />
-                  <Icon
-                    :name="isActiveNav(item.to) ? (item.iconActive || item.icon) : item.icon"
-                    size="22"
-                    class="relative text-gray-900 dark:text-gray-100"
-                    :class="[item.iconClass, isActiveNav(item.to) ? 'opacity-100' : 'opacity-80 group-hover:opacity-100']"
-                    aria-hidden="true"
-                  />
-                </span>
-                <!-- Wide mode at xl+: gradient-outlined pill with label -->
-                <span
-                  v-if="!navCompactMode"
-                  class="relative hidden xl:flex items-center gap-3 w-full h-10 px-3 transition-all duration-150 rounded-full"
-                  :style="{
-                    border: `${isActiveNav(item.to) ? 3 : 2.5}px solid transparent`,
-                    background: isActiveNav(item.to)
-                      ? `linear-gradient(rgba(43,123,185,0.10) 0%, rgba(var(--moh-premium-rgb),0.06) 100%) padding-box, linear-gradient(90deg, var(--moh-verified), var(--moh-premium)) border-box`
-                      : `linear-gradient(var(--moh-bg), var(--moh-bg)) padding-box, linear-gradient(90deg, var(--moh-verified), var(--moh-premium)) border-box`,
-                  }"
-                >
-                  <!-- Hover tint overlay -->
-                  <span
-                    class="absolute inset-0 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-150 pointer-events-none"
-                    style="background: linear-gradient(90deg, rgba(43,123,185,0.06), rgba(var(--moh-premium-rgb),0.04));"
-                    aria-hidden="true"
-                  />
-                  <Icon
-                    :name="isActiveNav(item.to) ? (item.iconActive || item.icon) : item.icon"
-                    size="22"
-                    class="relative shrink-0 text-gray-900 dark:text-gray-100"
-                    :class="[item.iconClass, isActiveNav(item.to) ? 'opacity-100' : 'opacity-80 group-hover:opacity-100']"
-                    aria-hidden="true"
-                  />
-                  <span
-                    class="relative inline-flex items-center gap-2 whitespace-nowrap overflow-hidden max-w-[180px] text-gray-900 dark:text-gray-100"
-                    :class="isActiveNav(item.to) ? 'font-bold text-base' : 'font-semibold text-base opacity-80 group-hover:opacity-100'"
-                  >
-                    {{ item.label }}
-                    <span
-                      v-if="totalInSpaces > 0"
-                      class="inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1.5 rounded text-[11px] font-medium tabular-nums moh-text-muted bg-black/10 dark:bg-white/10"
-                    >{{ totalInSpaces }}</span>
-                  </span>
-                </span>
-              </NuxtLink>
-
-              <!-- NORMAL nav items -->
-              <NuxtLink
-                v-else
                 :to="item.to"
                 :class="[
                   // NOTE: Don't use `moh-text` here; it overrides per-item color accents (e.g. Only me).
@@ -292,7 +200,7 @@
                     aria-hidden="true"
                   />
                   <div
-                    v-if="item.key === 'articles'"
+                    v-if="item.key === 'groups'"
                     class="pointer-events-none absolute -bottom-1 left-1/2 -translate-x-1/2 z-20"
                   >
                     <AppNewBadge />
@@ -312,6 +220,77 @@
               </NuxtLink>
 
             </template>
+
+            <!-- More button + popover (bookmarks, profile, only me) -->
+            <div v-if="isAuthed && moreNavItems.length" class="relative">
+              <button
+                ref="moreButtonRef"
+                type="button"
+                :class="[
+                  'group flex h-12 items-center rounded-xl transition-colors moh-focus w-full text-gray-900 dark:text-gray-100 moh-surface-hover',
+                  !navCompactMode ? 'gap-2' : '',
+                  morePopoverOpen || moreNavHasActiveRoute ? 'moh-surface font-bold' : 'font-semibold',
+                ]"
+                @click="morePopoverOpen = !morePopoverOpen"
+              >
+                <span class="relative flex h-12 w-12 shrink-0 items-center justify-center">
+                  <Icon name="tabler:dots" size="28" class="opacity-90" aria-hidden="true" />
+                </span>
+                <span
+                  v-if="!navCompactMode"
+                  class="hidden xl:inline whitespace-nowrap text-lg"
+                  :class="morePopoverOpen || moreNavHasActiveRoute ? 'font-bold' : 'font-semibold'"
+                >
+                  More
+                </span>
+              </button>
+              <Transition
+                enter-active-class="transition-all duration-150 ease-out"
+                enter-from-class="opacity-0 scale-95"
+                enter-to-class="opacity-100 scale-100"
+                leave-active-class="transition-all duration-100 ease-in"
+                leave-from-class="opacity-100 scale-100"
+                leave-to-class="opacity-0 scale-95"
+              >
+                <div
+                  v-if="morePopoverOpen"
+                  ref="morePopoverRef"
+                  class="absolute left-0 bottom-full mb-2 z-50 min-w-[12rem] rounded-xl border moh-border bg-white p-1.5 shadow-lg dark:bg-zinc-900"
+                >
+                  <NuxtLink
+                    v-for="mi in moreNavItems"
+                    :key="mi.key"
+                    :to="mi.to"
+                    :class="[
+                      'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors moh-focus',
+                      mi.key === 'only-me'
+                        ? (isActiveNav(mi.to) ? 'moh-nav-onlyme-active font-bold' : 'moh-nav-onlyme')
+                        : (isActiveNav(mi.to) ? 'moh-surface font-bold text-gray-900 dark:text-gray-100' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-zinc-800'),
+                    ]"
+                    @click="morePopoverOpen = false"
+                  >
+                    <ClientOnly v-if="mi.key === 'bookmarks'">
+                      <Icon
+                        :name="(hasBookmarks || isActiveNav(mi.to)) ? 'tabler:bookmark-filled' : 'tabler:bookmark'"
+                        size="22"
+                        :style="hasBookmarks ? { color: 'var(--p-primary-color)' } : undefined"
+                        aria-hidden="true"
+                      />
+                      <template #fallback>
+                        <Icon name="tabler:bookmark" size="22" aria-hidden="true" />
+                      </template>
+                    </ClientOnly>
+                    <Icon
+                      v-else
+                      :name="isActiveNav(mi.to) ? (mi.iconActive || mi.icon) : mi.icon"
+                      size="22"
+                      aria-hidden="true"
+                    />
+                    <span>{{ mi.label }}</span>
+                  </NuxtLink>
+                </div>
+              </Transition>
+            </div>
 
             <div class="pt-2">
               <Transition
@@ -346,23 +325,28 @@
           </div>
 
           <div class="shrink-0 border-t border-black/10 dark:border-white/10 pt-2">
-            <AppUserCard v-if="isAuthed" :compact="navCompactMode" />
-            <NuxtLink
-              v-else
-              to="/login"
-              aria-label="Log in"
-              :class="[
-                // Match the Post button shape/style (rounded rect).
-                'group flex h-12 items-center rounded-xl bg-black text-white hover:opacity-95 dark:bg-white dark:text-black moh-focus',
-                navCompactMode ? 'w-12 mx-auto justify-center' : 'w-full',
-                'mt-2'
-              ]"
-            >
-              <span class="flex h-12 w-12 shrink-0 items-center justify-center">
-                <Icon name="tabler:arrow-right" class="text-[22px] opacity-95" aria-hidden="true" />
-              </span>
-              <span v-if="!navCompactMode" class="hidden xl:inline text-base font-semibold">Log in</span>
-            </NuxtLink>
+            <ClientOnly>
+              <AppUserCard v-if="isAuthed" :compact="navCompactMode" />
+              <NuxtLink
+                v-else
+                to="/login"
+                aria-label="Log in"
+                :class="[
+                  // Match the Post button shape/style (rounded rect).
+                  'group flex h-12 items-center rounded-xl bg-black text-white hover:opacity-95 dark:bg-white dark:text-black moh-focus',
+                  navCompactMode ? 'w-12 mx-auto justify-center' : 'w-full',
+                  'mt-2'
+                ]"
+              >
+                <span class="flex h-12 w-12 shrink-0 items-center justify-center">
+                  <Icon name="tabler:arrow-right" class="text-[22px] opacity-95" aria-hidden="true" />
+                </span>
+                <span v-if="!navCompactMode" class="hidden xl:inline text-base font-semibold">Log in</span>
+              </NuxtLink>
+              <template #fallback>
+                <div class="mt-2 h-12 w-full" />
+              </template>
+            </ClientOnly>
           </div>
         </AppLeftRailContent>
         </aside>
@@ -657,36 +641,9 @@
                       <span class="moh-h2">Groups</span>
                     </template>
                     <template #content>
-                      <div class="space-y-3 text-sm moh-text-muted">
-                        <div class="flex items-start justify-between gap-3">
-                          <div class="min-w-0">
-                            <div class="font-semibold">Daily Discipline</div>
-                            <div class="text-xs moh-text-muted">14 members · 3 new posts</div>
-                          </div>
-                          <Tag value="New" severity="success" />
-                        </div>
-                        <div class="flex items-start justify-between gap-3">
-                          <div class="min-w-0">
-                            <div class="font-semibold">Business Builders</div>
-                            <div class="text-xs moh-text-muted">62 members · 1 new post</div>
-                          </div>
-                          <Tag value="Active" severity="info" />
-                        </div>
-                        <div class="flex items-start justify-between gap-3">
-                          <div class="min-w-0">
-                            <div class="font-semibold">Strength & Conditioning</div>
-                            <div class="text-xs moh-text-muted">28 members · 0 new posts</div>
-                          </div>
-                          <Tag value="Open" severity="secondary" />
-                        </div>
-                        <Button
-                          label="Browse groups"
-                          text
-                          severity="secondary"
-                          class="w-full justify-center"
-                          @click="navigateTo('/groups')"
-                        />
-                      </div>
+                      <ClientOnly>
+                        <AppGroupsRailCard />
+                      </ClientOnly>
                     </template>
                   </Card>
 
@@ -811,11 +768,14 @@
                   :placeholder="composerCustomPlaceholder ?? undefined"
                   :initial-media="composerIsFromOnlyMe ? (composerSourceOnlyMePost?.media ?? []) : undefined"
                   :locked-visibility="composerLockedVisibility ?? undefined"
-                  :hide-visibility-picker="Boolean(composerLockedVisibility)"
+                  :hide-visibility-picker="Boolean(composerLockedVisibility) || composerIsGroupMode"
                   :allowed-visibilities="composerAllowedVisibilities ?? undefined"
                   :disable-media="composerCustomDisableMedia"
                   :create-post="composerCreatePost ?? undefined"
                   :quoted-post="composerQuotedPost ?? undefined"
+                  :group-composer="composerIsGroupMode"
+                  :group-name="composerIsGroupMode ? (composerGroupName ?? undefined) : undefined"
+                  :disable-poll="composerIsGroupMode"
                   persist-key="post-modal"
                   :register-unsaved-guard="false"
                   @posted="onComposerPosted"
@@ -881,7 +841,9 @@ import type {
   PostVisibility,
 } from '~/types/api'
 import { isComposerEntrypointPath, routeHeaderDefaultsFor, isAdminPath, isSettingsPath } from '~/config/routes'
+import { MOH_GROUP_COMPOSER_KEY } from '~/utils/injection-keys'
 import { userColorTier, userTierTextClass } from '~/utils/user-tier'
+import { ClientOnly, NuxtLink } from '#components'
 
 const route = useRoute()
 const { isActive: isActiveNav } = useRouteMatch(route)
@@ -895,7 +857,7 @@ useHead({
   meta: [{ key: 'moh-theme-color', name: 'theme-color', content: safariThemeColor }],
 })
 const { initAuth, user, isVerified: viewerIsVerified } = useAuth()
-const { isAuthed, profileTo, leftItems: leftNavItems, tabItems } = useAppNav()
+const { isAuthed, profileTo, leftItems: leftNavItems, moreItems: moreNavItems, tabItems } = useAppNav()
 const notifBadge = useNotificationsBadge()
 const {
   disconnectedDueToIdle,
@@ -950,6 +912,23 @@ const { keyboardHeight } = useKeyboardHeight()
 // the tab bar is outside the modal hierarchy and never rises with the keyboard.
 const hideTabBarForKeyboard = computed(() => (isMessagesPage.value || isArticleEditorPage.value) && keyboardHeight.value > 0)
 const isOnlyMePage = computed(() => route.path === '/only-me')
+
+const morePopoverOpen = ref(false)
+const moreButtonRef = ref<HTMLElement | null>(null)
+const morePopoverRef = ref<HTMLElement | null>(null)
+const moreNavHasActiveRoute = computed(() => moreNavItems.value.some((item) => isActiveNav(item.to)))
+function onDocClickForMore(e: MouseEvent) {
+  if (!morePopoverOpen.value) return
+  const t = e.target as Node | null
+  if (moreButtonRef.value?.contains(t)) return
+  if (morePopoverRef.value?.contains(t)) return
+  morePopoverOpen.value = false
+}
+onMounted(() => document.addEventListener('click', onDocClickForMore, true))
+onBeforeUnmount(() => document.removeEventListener('click', onDocClickForMore, true))
+const isGroupPage = computed(() => /^\/g\/[^/]+$/.test(route.path))
+const groupComposerCtx = ref<import('~/utils/injection-keys').GroupComposerContext | null>(null)
+provide(MOH_GROUP_COMPOSER_KEY, groupComposerCtx)
 
 const showEmailUnverifiedBar = computed(() => {
   if (!isAuthed.value) return false
@@ -1021,6 +1000,7 @@ const composerInitialText = ref<string | null>(null)
 const composerSourceOnlyMePost = ref<FeedPost | null>(null)
 const composerIsFromOnlyMe = computed(() => Boolean(composerSourceOnlyMePost.value?.id))
 const composerCustomPlaceholder = ref<string | null>(null)
+const composerCustomGroupName = ref<string | null>(null)
 const composerCustomAllowedVisibilities = ref<PostVisibility[] | null>(null)
 const composerCustomDisableMedia = ref(false)
 const composerQuotedPost = ref<FeedPost | null>(null)
@@ -1045,6 +1025,14 @@ watch(
   },
   { immediate: true },
 )
+
+const composerIsGroupMode = computed(() => Boolean(composerCustomGroupName.value) || Boolean(groupComposerCtx.value))
+const composerGroupName = computed(() => {
+  const custom = (composerCustomGroupName.value ?? '').trim()
+  if (custom) return custom
+  const ctx = (groupComposerCtx.value?.groupName ?? '').trim()
+  return ctx || null
+})
 
 const anyOverlayOpen = computed(() => composerModalOpen.value || (replyModalOpen.value && replyModalHasParent.value))
 
@@ -1085,6 +1073,7 @@ watch(
 
 const composerLockedVisibility = computed<PostVisibility | null>(() => {
   if (composerIsFromOnlyMe.value) return null
+  if (composerIsGroupMode.value) return 'public'
   if (!viewerIsVerified.value) return 'onlyMe'
   if (isOnlyMePage.value) return 'onlyMe'
   // Quote-reposts are locked to the original post's visibility.
@@ -1094,6 +1083,7 @@ const composerLockedVisibility = computed<PostVisibility | null>(() => {
 
 const composerAllowedVisibilities = computed<PostVisibility[] | null>(() => {
   if (composerCustomAllowedVisibilities.value?.length) return composerCustomAllowedVisibilities.value
+  if (groupComposerCtx.value) return ['public']
   if (composerIsFromOnlyMe.value) return ['public', 'verifiedOnly', 'premiumOnly']
   if (!viewerIsVerified.value) return ['onlyMe']
   if (isOnlyMePage.value) return ['onlyMe']
@@ -1102,12 +1092,14 @@ const composerAllowedVisibilities = computed<PostVisibility[] | null>(() => {
 })
 const composerCreatePost = computed<ComposerCreatePostFn | null>(() => {
   if (composerCustomCreatePost.value) return composerCustomCreatePost.value
+  if (groupComposerCtx.value?.createPost) return groupComposerCtx.value.createPost as ComposerCreatePostFn
   if (composerIsFromOnlyMe.value) return createPostFromOnlyMeDraft
   return null
 })
 
 function resetComposerCustomOptions() {
   composerCustomPlaceholder.value = null
+  composerCustomGroupName.value = null
   composerCustomAllowedVisibilities.value = null
   composerCustomDisableMedia.value = false
   composerCustomCreatePost.value = null
@@ -1118,6 +1110,7 @@ function applyComposerCustomOptions(options?: ComposerOpenOptions | null) {
   resetComposerCustomOptions()
   if (!options) return
   composerCustomPlaceholder.value = (options.placeholder ?? '').trim() || null
+  composerCustomGroupName.value = (options.groupName ?? '').trim() || null
   composerCustomAllowedVisibilities.value = Array.isArray(options.allowedVisibilities)
     ? options.allowedVisibilities.filter(Boolean) as PostVisibility[]
     : null
@@ -1234,6 +1227,17 @@ function openComposerForCurrentRoute(initialText?: string | null) {
     openComposerWithVisibility('onlyMe', initialText)
     return
   }
+  const gCtx = groupComposerCtx.value
+  if (gCtx) {
+    openComposerWithVisibility({
+      visibility: 'public',
+      allowedVisibilities: ['public'],
+      placeholder: `Post to ${gCtx.groupName}…`,
+      groupName: gCtx.groupName,
+      createPost: gCtx.createPost,
+    }, initialText)
+    return
+  }
   openComposerModal(initialText)
 }
 provide(MOH_OPEN_COMPOSER_KEY, openComposerWithVisibility)
@@ -1267,7 +1271,7 @@ function onComposerPosted(payload: { id: string; visibility: string; post?: impo
     if (route.path !== '/only-me') {
       navigateTo('/only-me?posted=1')
     }
-  } else if (payload.post && payload.post.id) {
+  } else if (payload.post && payload.post.id && !payload.post.communityGroupId) {
     // Prepend to home feed immediately and track in localInserts so it survives
     // the next hard refresh (home page uses keepalive → onActivated → refresh()).
     prependToHomeFeed(payload.post)
@@ -1275,6 +1279,7 @@ function onComposerPosted(payload: { id: string; visibility: string; post?: impo
 }
 
 const composerModalBorderClass = computed(() => {
+  if (isGroupPage.value && groupComposerCtx.value) return 'border-[color:var(--moh-group)]'
   const v = composerLockedVisibility.value ?? (
     composerVisibility.value === 'onlyMe' && !isOnlyMePage.value
       ? (composerNonOnlyMeVisibility.value ?? 'public')
@@ -1288,6 +1293,7 @@ const composerModalBorderClass = computed(() => {
 
 // Post button (FAB + left nav): color matches composer scope. Public = black/white (light) or white/black (dark).
 const fabButtonClass = computed(() => {
+  if (isGroupPage.value && groupComposerCtx.value) return 'moh-btn-tone'
   // On /only-me, always present the "Only me" purple button and default the composer to onlyMe.
   // (We don't permanently change the cookie just by visiting the page.)
   if (isOnlyMePage.value || !viewerIsVerified.value) return 'moh-btn-onlyme moh-btn-tone'
@@ -1301,7 +1307,12 @@ const fabButtonClass = computed(() => {
   if (v === 'verifiedOnly' || v === 'premiumOnly') return 'moh-btn-scope moh-btn-tone'
   return 'bg-black text-white dark:bg-white dark:text-black'
 })
-const fabButtonStyle = computed(() => ({}))
+const fabButtonStyle = computed(() => {
+  if (isGroupPage.value && groupComposerCtx.value) {
+    return { backgroundColor: 'var(--moh-group)', color: '#fff' }
+  }
+  return {}
+})
 // FAB sits above tab bar, and above radio bar too when it’s visible (mobile only).
 const fabBottomStyle = computed<Record<string, string>>(() => {
   // Match the horizontal inset (`right-4`) with a bottom inset too.
@@ -1317,11 +1328,7 @@ const fabBottomStyle = computed<Record<string, string>>(() => {
 
 const middleContentEl = ref<HTMLElement | null>(null)
 
-const { selectedSpaceId, currentSpace, members, lobbyCounts, loadLobbyCounts } = useSpaceLobby()
-const totalInSpaces = computed(() => {
-  const counts = lobbyCounts.value?.countsBySpaceId ?? {}
-  return Object.values(counts).reduce((sum, n) => sum + Math.max(0, Number(n) || 0), 0)
-})
+const { selectedSpaceId, currentSpace, members, loadLobbyCounts } = useSpaceLobby()
 const { allPositionedFloating } = useSpaceReactions()
 const radioHasStation = computed(() => Boolean(selectedSpaceId.value))
 useSpacePlayPauseShortcut(radioHasStation)

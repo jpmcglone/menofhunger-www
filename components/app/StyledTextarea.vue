@@ -340,19 +340,23 @@ function onHashtagClose() { hashtagPopover.open = false }
 
 // ─── Enter-to-send ────────────────────────────────────────────
 
+const insertNewline = ({ editor: ed }: { editor: CoreEditor }) => {
+  ed.commands.first(({ commands }) => [() => commands.newlineInCode(), () => commands.splitBlock()])
+  return true
+}
+
 const SendOnEnter = Extension.create({
   name: 'sendOnEnter',
   addKeyboardShortcuts() {
     return {
-      'Enter': () => {
+      Enter: () => {
         if (mentionPopover.open || hashtagPopover.open) return false
         emit('send')
         return true
       },
-      'Shift-Enter': ({ editor: ed }) => {
-        ed.commands.first(({ commands }) => [() => commands.newlineInCode(), () => commands.splitBlock()])
-        return true
-      },
+      'Shift-Enter': insertNewline,
+      'Alt-Enter': insertNewline,
+      'Ctrl-Enter': insertNewline,
     }
   },
 })

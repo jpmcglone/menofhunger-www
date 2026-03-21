@@ -1,6 +1,10 @@
 import type { FeedPost, GetPostsData, CreatePostData, PostMediaKind, PostMediaSource, PostVisibility } from '~/types/api'
 import type { ComposerPollPayload } from '~/composables/composer/types'
 import { getApiErrorMessage } from '~/utils/api-error'
+import {
+  collapsedSiblingReplyCountForPost,
+  mergeFeedThreadsForDisplay,
+} from '~/utils/merge-feed-threads-for-display'
 import { useCursorFeed } from '~/composables/useCursorFeed'
 import { useMiddleScroller } from '~/composables/useMiddleScroller'
 import { usePostCountBumps } from '~/composables/usePostCountBumps'
@@ -79,7 +83,57 @@ function applyLocalFeedInserts(incoming: FeedPost[], inserts: LocalFeedInsert[])
   return out
 }
 
-export function usePostsFeed(options: { visibility?: Ref<FeedFilter>; followingOnly?: Ref<boolean>; sort?: Ref<FeedSort>; showAds?: Ref<boolean> } = {}) {
+export type UsePostsFeedOptions = {
+  visibility?: Ref<FeedFilter>
+  followingOnly?: Ref<boolean>
+  sort?: Ref<FeedSort>
+  showAds?: Ref<boolean>
+  /** Default `posts-feed` — use a unique key for non-home feeds so state does not clash. */
+  feedStateKey?: string
+  /** Default `state`. Use `local` for per-page-instance feeds (e.g. group wall). */
+  cursorFeedStateMode?: 'state' | 'local'
+  /** Default `posts-feed-local-inserts` — pair with `feedStateKey` for isolated optimistic rows. */
+  localInsertsStateKey?: string
+  /** GET /posts?groupsHub=true — all groups the viewer is in (members-only on server). */
+  groupsHub?: Ref<boolean>
+  /** GET /posts?communityGroupId=… — single group wall (members-only on server). */
+  communityGroupId?: Ref<string | null | undefined>
+  /** When false, clears the feed and skips refresh (e.g. wait until group shell + membership are known). */
+  enabled?: Ref<boolean>
+}
+
+function postsFeedListQuery(opts: {
+  visibility: FeedFilter
+  followingOnly: boolean
+  sort: FeedSort
+  cursor: string | null
+  groupsHub?: boolean
+  communityGroupId?: string | null
+}): Record<string, string | number | boolean | undefined> {
+  const gid = (opts.communityGroupId ?? '').trim()
+  const groupScoped = Boolean(opts.groupsHub || gid)
+  return {
+    limit: 30,
+    collapseByRoot: true,
+    collapseMode: 'root',
+    prefer: 'reply',
+    collapseMaxPerRoot: 2,
+    ...(groupScoped
+      ? {
+          ...(opts.groupsHub ? { groupsHub: true } : {}),
+          ...(gid ? { communityGroupId: gid } : {}),
+          visibility: 'all',
+        }
+      : {
+          visibility: opts.visibility,
+          ...(opts.followingOnly ? { followingOnly: true } : {}),
+        }),
+    ...(opts.sort === 'trending' ? { sort: 'trending' } : {}),
+    ...(opts.cursor ? { cursor: opts.cursor } : {}),
+  }
+}
+
+export function usePostsFeed(options: UsePostsFeedOptions = {}) {
   const { apiFetch, apiFetchData } = useApiClient()
   const middleScrollerEl = useMiddleScroller()
   const { clearBumpsForPostIds } = usePostCountBumps()
@@ -88,13 +142,17 @@ export function usePostsFeed(options: { visibility?: Ref<FeedFilter>; followingO
   const { addPostsCallback, removePostsCallback, subscribePosts, unsubscribePosts } = usePresence()
   const boostState = useBoostState()
 
+  const feedStateKey = options.feedStateKey ?? 'posts-feed'
+  const localInsertsStateKey = options.localInsertsStateKey ?? 'posts-feed-local-inserts'
+  const cursorFeedStateMode = options.cursorFeedStateMode ?? 'state'
+
   const visibility = options.visibility ?? ref<FeedFilter>('all')
   const followingOnly = options.followingOnly ?? ref(false)
   const sort = options.sort ?? ref<FeedSort>('new')
   const showAds = options.showAds ?? computed(() => true)
-  const lastHardRefreshMs = useState<number>('posts-feed-last-hard-refresh-ms', () => 0)
+  const lastHardRefreshMs = useState<number>(`${feedStateKey}-last-hard-refresh-ms`, () => 0)
   // Shared via useState so that the global layout (modal composer) can also track optimistic inserts.
-  const localInserts = useState<LocalFeedInsert[]>('posts-feed-local-inserts', () => [])
+  const localInserts = useState<LocalFeedInsert[]>(localInsertsStateKey, () => [])
 
   function rememberLocalInsert(insert: LocalFeedInsert) {
     localInserts.value = upsertLocalFeedInsert(localInserts.value, insert)
@@ -109,20 +167,18 @@ export function usePostsFeed(options: { visibility?: Ref<FeedFilter>; followingO
   }
 
   const feed = useCursorFeed<FeedPost>({
-    stateKey: 'posts-feed',
+    stateKey: feedStateKey,
+    stateMode: cursorFeedStateMode,
     buildRequest: (cursor) => ({
       path: '/posts',
-      query: {
-        limit: 30,
-        collapseByRoot: true,
-        collapseMode: 'root',
-        prefer: 'reply',
-        collapseMaxPerRoot: 2,
+      query: postsFeedListQuery({
         visibility: visibility.value,
-        ...(followingOnly.value ? { followingOnly: true } : {}),
-        ...(sort.value === 'trending' ? { sort: 'trending' } : {}),
-        ...(cursor ? { cursor } : {}),
-      },
+        followingOnly: followingOnly.value,
+        sort: sort.value,
+        cursor,
+        groupsHub: options.groupsHub?.value,
+        communityGroupId: options.communityGroupId?.value ?? null,
+      }),
     }),
     defaultErrorMessage: 'Failed to load posts.',
     loadMoreErrorMessage: 'Failed to load more posts.',
@@ -140,10 +196,13 @@ export function usePostsFeed(options: { visibility?: Ref<FeedFilter>; followingO
   const { nextCursor, loading, loadingMore, error, refresh: feedRefresh, loadMore: feedLoadMore } = feed
 
   function currentRequestKey(): string {
+    const gid = (options.communityGroupId?.value ?? '').trim()
     return JSON.stringify({
       visibility: visibility.value,
       followingOnly: Boolean(followingOnly.value),
       sort: sort.value,
+      groupsHub: Boolean(options.groupsHub?.value),
+      communityGroupId: gid || null,
     })
   }
 
@@ -327,82 +386,18 @@ export function usePostsFeed(options: { visibility?: Ref<FeedFilter>; followingO
     })
   }
 
-  function chainLength(p: FeedPost): number {
-    let n = 0
-    let c: FeedPost | undefined = p
-    while (c) { n++; c = c.parent }
-    return n
-  }
-
-  function rootIdOf(p: FeedPost): string {
-    let c: FeedPost | undefined = p
-    while (c?.parent) c = c.parent
-    return c?.id ?? p.id
-  }
-
-  function chainIds(p: FeedPost): Set<string> {
-    const ids = new Set<string>()
-    let c: FeedPost | undefined = p
-    while (c) { ids.add(c.id); c = c.parent }
-    return ids
-  }
-
-  const displayPosts = computed<FeedPost[]>(() => {
-    const raw = posts.value
-    if (!raw.length) return raw
-
-    // Group by root ID (walk parent chain to find ultimate ancestor).
-    const byRoot = new Map<string, FeedPost[]>()
-    for (const p of raw) {
-      const root = rootIdOf(p)
-      const group = byRoot.get(root) ?? []
-      group.push(p)
-      byRoot.set(root, group)
-    }
-
-    // For each multi-item root group, merge into the deepest chain.
-    const absorbed = new Set<string>()
-    const overrides = new Map<string, FeedPost>()
-
-    for (const [, group] of byRoot) {
-      if (group.length <= 1) continue
-
-      // Primary = item with the longest chain (deepest in thread).
-      const primary = group.reduce((a, b) => chainLength(a) >= chainLength(b) ? a : b)
-      const primaryIds = chainIds(primary)
-
-      let extraCollapsed = 0
-      for (const item of group) {
-        if (item.id === primary.id) continue
-        absorbed.add(item.id)
-        if (!primaryIds.has(item.id)) {
-          // Sibling branch: not already visible on the primary chain.
-          extraCollapsed++
-        }
-      }
-
-      if (extraCollapsed > 0) {
-        overrides.set(primary.id, {
-          ...primary,
-          threadCollapsedCount: (primary.threadCollapsedCount ?? 0) + extraCollapsed,
-        })
-      }
-    }
-
-    return raw
-      .filter((p) => !absorbed.has(p.id))
-      .map((p) => overrides.get(p.id) ?? p)
-  })
+  const displayPosts = computed<FeedPost[]>(() =>
+    mergeFeedThreadsForDisplay(posts.value),
+  )
 
   function collapsedSiblingReplyCountFor(post: FeedPost): number {
-    if ((post.threadCollapsedCount ?? 0) > 0) return post.threadCollapsedCount!
-    return Math.max(0, post.commentCount ?? 0)
+    return collapsedSiblingReplyCountForPost(post)
   }
 
   const displayItems = computed<PostsFeedDisplayItem[]>(() => {
     const out: PostsFeedDisplayItem[] = []
     let rootPostCount = 0
-    for (const p of posts.value) {
+    for (const p of displayPosts.value) {
       out.push({ kind: 'post', post: p })
 
       if (!showAds.value) continue
@@ -493,16 +488,14 @@ export function usePostsFeed(options: { visibility?: Ref<FeedFilter>; followingO
       try {
         const res = await apiFetch<GetPostsData>('/posts', {
           method: 'GET',
-          query: {
-            limit: 30,
-            collapseByRoot: true,
-            collapseMode: 'root',
-            prefer: 'reply',
-            collapseMaxPerRoot: 2,
+          query: postsFeedListQuery({
             visibility: visibility.value,
-            ...(followingOnly.value ? { followingOnly: true } : {}),
-            ...(sort.value === 'trending' ? { sort: 'trending' } : {}),
-          },
+            followingOnly: followingOnly.value,
+            sort: sort.value,
+            cursor: null,
+            groupsHub: options.groupsHub?.value,
+            communityGroupId: options.communityGroupId?.value ?? null,
+          }),
         })
         const fresh = (res.data ?? []).filter((p: FeedPost) => !p.deletedAt)
         if (!fresh.length) return
@@ -583,6 +576,7 @@ export function usePostsFeed(options: { visibility?: Ref<FeedFilter>; followingO
       height?: number | null
     }> | null,
     poll?: ComposerPollPayload | null,
+    communityGroupId?: string | null,
   ): Promise<FeedPost | null> {
     const trimmed = (body ?? '').trim()
     const hasMedia = Boolean(media?.length)
@@ -595,6 +589,7 @@ export function usePostsFeed(options: { visibility?: Ref<FeedFilter>; followingO
         body: {
           body: trimmed || '',
           visibility,
+          ...(communityGroupId ? { community_group_id: communityGroupId } : {}),
           ...(media?.length ? { media } : {}),
           ...(poll ? { poll } : {}),
         }
@@ -707,13 +702,39 @@ export function usePostsFeed(options: { visibility?: Ref<FeedFilter>; followingO
     rememberLocalInsert({ kind: 'replaceParent', post: replyWithParent, parentId: pid })
   }
 
+  function feedEnabled(): boolean {
+    if (options.enabled && !options.enabled.value) return false
+    return true
+  }
+
   // Auto-refresh when feed params change, matching the pattern in useArticleFeed / useUserMedia.
   // flush: 'post' ensures the watcher fires after the reactive system (and any async router
   // navigation) has settled, so buildRequest reads the correct values before fetching.
-  if (options.visibility || options.sort || options.followingOnly) {
+  if (
+    options.visibility ||
+    options.sort ||
+    options.followingOnly ||
+    options.groupsHub ||
+    options.communityGroupId ||
+    options.enabled
+  ) {
     watch(
-      () => [options.visibility?.value, options.sort?.value, options.followingOnly?.value],
-      () => { void refresh() },
+      () => [
+        options.visibility?.value,
+        options.sort?.value,
+        options.followingOnly?.value,
+        options.groupsHub?.value,
+        options.communityGroupId?.value,
+        options.enabled?.value,
+      ],
+      () => {
+        if (!feedEnabled()) {
+          posts.value = []
+          nextCursor.value = null
+          return
+        }
+        void refresh()
+      },
       { flush: 'post' },
     )
   }

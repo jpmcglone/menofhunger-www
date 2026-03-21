@@ -1,6 +1,6 @@
 <template>
   <!-- Streak-intact state: user has already checked in today -->
-  <div v-if="hasCheckedInToday" class="px-3 pt-2.5 pb-3 sm:px-4 sm:pt-3">
+  <div v-if="hasCheckedInToday" class="px-3 pb-3 pt-2 sm:px-4">
     <NuxtLink
       to="/leaderboard"
       class="flex items-center gap-2.5 rounded-xl border px-3.5 py-2.5 hover:opacity-90 transition-opacity"
@@ -20,81 +20,42 @@
     </NuxtLink>
   </div>
 
-  <!-- Prompt state: user hasn't checked in today -->
-  <div v-else class="px-3 pt-2.5 pb-1 sm:px-4 sm:pt-3">
-    <div
-      class="rounded-xl border px-4 py-3"
+  <!-- Prompt state: user hasn't checked in today — layout matches WeeklyMissionCard -->
+  <div v-else class="px-3 pb-3 pt-2 sm:px-4">
+    <button
+      type="button"
+      class="block w-full rounded-xl border text-left transition-opacity hover:opacity-90 active:opacity-80 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--moh-checkin)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--moh-bg)] dark:focus-visible:ring-offset-zinc-950"
       style="background-color: var(--moh-checkin-soft); border-color: rgba(var(--moh-checkin-rgb), 0.3)"
+      :title="nextMultiplier > 1 ? `Post today to earn ${nextMultiplier}x coins` : undefined"
+      @click="$emit('check-in')"
     >
-      <div class="flex items-start gap-3">
+      <div class="flex items-center gap-3 px-4 py-3.5">
         <div
-          class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl mt-0.5"
+          class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl"
           style="background-color: rgba(var(--moh-checkin-rgb), 0.18)"
         >
           <Icon name="tabler:calendar-check" class="text-lg" aria-hidden="true" style="color: var(--moh-checkin)" />
         </div>
 
         <div class="flex-1 min-w-0">
-          <div class="flex items-center justify-between gap-2">
-            <div class="text-[10px] font-semibold uppercase tracking-wide" style="color: var(--moh-checkin); opacity: 0.75">
-              Today's Prompt
-            </div>
-            <!-- Highest-priority pill: coin multiplier trumps streak -->
-            <div
-              v-if="nextMultiplier > 1"
-              class="shrink-0 inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-bold leading-none text-white"
-              style="background-color: var(--moh-checkin)"
-              :title="`Post today to earn ${nextMultiplier}x coins`"
-            >
-              {{ nextMultiplier }}x coins
-            </div>
-            <div
-              v-else-if="streak > 0"
-              class="shrink-0 inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-semibold leading-none"
-              style="background-color: rgba(var(--moh-checkin-rgb), 0.15); color: var(--moh-checkin)"
-            >
-              <Icon name="tabler:flame" class="text-[9px]" aria-hidden="true" />
-              {{ streak }}d
-            </div>
-          </div>
-
-          <div class="mt-1 text-sm leading-snug moh-text">
-            {{ prompt }}
-          </div>
-
-          <div class="mt-1.5 text-[11px] moh-text-muted">
+          <div class="text-sm font-semibold moh-text leading-snug">{{ prompt }}</div>
+          <div class="text-[11px] moh-text-muted mt-0.5 leading-snug">
             <template v-if="streak > 0">Post today to keep your {{ streak }}-day streak alive.</template>
             <template v-else>Any post today starts your streak.</template>
-          </div>
-
-          <!-- Mobile: place CTA below content, right-aligned -->
-          <div class="mt-2 flex justify-end sm:hidden">
-            <Button
-              label="Check in"
-              size="small"
-              rounded
-              class="!h-8 !min-h-8 !px-3 !py-0 !text-xs !leading-none whitespace-nowrap moh-btn-scope moh-btn-tone"
-              @click="$emit('check-in')"
-            />
+            <template v-if="nextMultiplier > 1">
+              <span class="mx-1 opacity-40" aria-hidden="true">·</span>
+              {{ nextMultiplier }}x coins
+            </template>
           </div>
         </div>
 
-        <!-- Desktop+: keep CTA on the right -->
-        <div class="hidden sm:block">
-          <Button
-            label="Check in"
-            size="small"
-            rounded
-            class="shrink-0 mt-0.5 !h-8 !min-h-8 !px-3 !py-0 !text-xs !leading-none whitespace-nowrap moh-btn-scope moh-btn-tone"
-            @click="$emit('check-in')"
-          />
-        </div>
+        <Icon name="tabler:chevron-right" class="shrink-0 text-sm moh-text-muted" aria-hidden="true" />
       </div>
+    </button>
 
-      <AppInlineAlert v-if="error" class="mt-2" severity="danger">
-        {{ error }}
-      </AppInlineAlert>
-    </div>
+    <AppInlineAlert v-if="error" class="mt-2" severity="danger">
+      {{ error }}
+    </AppInlineAlert>
   </div>
 </template>
 

@@ -780,6 +780,21 @@ function patchConversation(
   return found
 }
 
+/** Last non–deleted-for-all message in the open thread (for list preview after delete). */
+function lastVisibleMessageSnapshot(list: ChatMessage[]): NonNullable<MessageConversation['lastMessage']> | null {
+  for (let i = list.length - 1; i >= 0; i--) {
+    const m = list[i]!
+    if (m.deletedForAll) continue
+    return {
+      id: m.id,
+      body: m.body,
+      createdAt: m.createdAt,
+      senderId: m.sender.id,
+    }
+  }
+  return null
+}
+
 async function refreshAllConversationTabs() {
   await Promise.all([
     fetchConversations('primary', { forceRefresh: true }),
@@ -2178,16 +2193,34 @@ const { register: registerRealtime, teardown: teardownRealtime } = useChatRealti
       }
     },
 
-    onMessageDeletedForAll(_convoId, messageId, isSelected) {
-      if (!isSelected) return
-      const idx = messages.value.findIndex((m) => m.id === messageId)
-      if (idx !== -1) {
-        messages.value = [
-          ...messages.value.slice(0, idx),
-          { ...messages.value[idx]!, deletedForAll: true, body: '' },
-          ...messages.value.slice(idx + 1),
-        ]
+    onMessageDeletedForAll(convoId, messageId, isSelected) {
+      if (isSelected) {
+        const idx = messages.value.findIndex((m) => m.id === messageId)
+        if (idx !== -1) {
+          messages.value = [
+            ...messages.value.slice(0, idx),
+            { ...messages.value[idx]!, deletedForAll: true, body: '' },
+            ...messages.value.slice(idx + 1),
+          ]
+        }
       }
+
+      patchConversation(convoId, (c) => {
+        if (c.lastMessage?.id !== messageId) return c
+        if (isSelected) {
+          const snap = lastVisibleMessageSnapshot(messages.value)
+          if (snap) {
+            return { ...c, lastMessage: snap, lastMessageAt: snap.createdAt }
+          }
+          return { ...c, lastMessage: null, lastMessageAt: null }
+        }
+        return {
+          ...c,
+          lastMessage: c.lastMessage
+            ? { ...c.lastMessage, body: 'Message deleted' }
+            : null,
+        }
+      })
     },
 
     onTyping(convoId, userId, typing) {

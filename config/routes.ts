@@ -55,6 +55,10 @@ export function isAuthAllowedAfterLogoutPath(path: string): boolean {
 export function isNavActive(params: { currentPath: string; to: string }): boolean {
   const { currentPath, to } = params
   if (to === '/home') return currentPath === '/home'
+  if (to === '/groups') {
+    // Groups nav should stay active for both hub routes and group detail routes.
+    return currentPath === '/groups' || currentPath.startsWith('/groups/') || currentPath.startsWith('/g/')
+  }
   if (to === '/articles') {
     // Keep Articles nav active on both listing routes and article permalinks.
     return currentPath === '/articles' || currentPath.startsWith('/articles/') || currentPath.startsWith('/a/')
@@ -102,7 +106,9 @@ export function routeHeaderDefaultsFor(path: string): RouteHeaderDefaults {
   if (path === '/chat') return { icon: 'tabler:mail', description: 'Chat conversations and chat requests.' }
   if (path.startsWith('/bookmarks')) return { icon: 'tabler:bookmark', description: 'Saved posts and folders.' }
   if (path === '/explore') return { icon: 'tabler:search', description: 'Search and discover.' }
-  if (path === '/groups') return { icon: 'tabler:users', description: 'Community groups and challenges. Coming soon.' }
+  if (path === '/groups' || path.startsWith('/groups/') || path.startsWith('/g/')) {
+    return { icon: 'tabler:users', description: 'Community groups and shared conversations.' }
+  }
   if (path === '/feedback') return { icon: 'tabler:send', description: 'Help us improve.' }
   if (path === '/only-me') return { icon: undefined, description: 'Private posts that only you can see. These never appear in feeds.' }
   if (path === '/roadmap') return { icon: 'tabler:map', description: 'What we’re building and when.' }
@@ -123,6 +129,8 @@ export function isComposerEntrypointPath(params: { path: string; profileTo?: str
   if (params.profileTo && p === params.profileTo) return true
   // Any user profile page (including tab sub-routes).
   if (/^\/u\/[^/]+(\/(?:posts|replies|articles|media))?$/.test(p)) return true
+  // Group detail page.
+  if (/^\/g\/[^/]+$/.test(p)) return true
   return false
 }
 

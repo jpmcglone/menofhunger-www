@@ -34,10 +34,14 @@
       :post="repostedPost"
       :no-padding-top="true"
       :no-border-bottom="false"
+      :subtle-border-bottom="subtleBorderBottom"
       :activate-video-on-mount="activateVideoOnMount"
+      :group-wall="groupWall"
+      :feed-group="feedGroup"
       v-bind="$attrs"
       @deleted="$emit('deleted', $event)"
       @edited="$emit('edited', $event)"
+      @group-pin-changed="$emit('groupPinChanged')"
     />
   </div>
 
@@ -55,10 +59,14 @@
       :highlight="highlightedPostId === post.id"
       :no-padding-top="noPaddingTop"
       :no-border-bottom="false"
+      :subtle-border-bottom="subtleBorderBottom"
       :activate-video-on-mount="activateVideoOnMount"
+      :group-wall="groupWall"
+      :feed-group="feedGroup"
       v-bind="$attrs"
-        @deleted="$emit('deleted', $event)"
-        @edited="$emit('edited', $event)"
+      @deleted="$emit('deleted', $event)"
+      @edited="$emit('edited', $event)"
+      @group-pin-changed="$emit('groupPinChanged')"
     >
       <template v-if="showCollapsedFooter" #threadFooter>
         <NuxtLink
@@ -97,9 +105,13 @@
         :show-thread-line-below-avatar="i < chain.length - 1"
         :thread-line-tint="threadLineTint"
         :activate-video-on-mount="i === chain.length - 1 ? activateVideoOnMount : undefined"
+        :group-wall="i === chain.length - 1 ? groupWall : null"
+        :feed-group="feedGroup"
+        :subtle-border-bottom="subtleBorderBottom && i === chain.length - 1"
         v-bind="$attrs"
         @deleted="$emit('deleted', $event)"
         @edited="$emit('edited', $event)"
+        @group-pin-changed="$emit('groupPinChanged')"
       >
         <template v-if="hiddenRepliesForIndex(i) > 0" #threadFooter>
           <NuxtLink
@@ -116,12 +128,13 @@
 </template>
 
 <script setup lang="ts">
-import type { FeedPost } from '~/types/api'
+import type { CommunityGroupShell, FeedPost } from '~/types/api'
 import { userColorTier, userTierColorVar } from '~/utils/user-tier'
 
 defineEmits<{
   (e: 'deleted', id: string): void
   (e: 'edited', payload: { id: string; post: FeedPost }): void
+  (e: 'groupPinChanged'): void
 }>()
 
 const props = withDefaults(
@@ -135,8 +148,20 @@ const props = withDefaults(
     highlightedPostId?: string | null
     /** Remove top padding from the first row (e.g. on post permalink page). */
     noPaddingTop?: boolean
+    groupWall?: { groupId: string; viewerIsOwner: boolean } | null
+    feedGroup?: CommunityGroupShell | null
+    /** Softer bottom border between rows (e.g. combined groups feed). */
+    subtleBorderBottom?: boolean
   }>(),
-  { highlightedPostId: null, noPaddingTop: false, collapsedSiblingRepliesCount: 0, repliesSort: null },
+  {
+    highlightedPostId: null,
+    noPaddingTop: false,
+    collapsedSiblingRepliesCount: 0,
+    repliesSort: null,
+    groupWall: null,
+    feedGroup: null,
+    subtleBorderBottom: false,
+  },
 )
 
 const { user: authUser } = useAuth()

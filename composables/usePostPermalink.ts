@@ -9,7 +9,7 @@ import { normalizeForMeta } from '~/utils/text'
 export async function usePostPermalink(postId: Ref<string>) {
   const { apiFetchData } = useApiClient()
 
-  const { data, error } = await useAsyncData(
+  const { data, error, refresh: refreshPost } = await useAsyncData(
     () => `post:${postId.value}`,
     () => {
       if (!postId.value) throw new Error('Post not found.')
@@ -71,6 +71,7 @@ export async function usePostPermalink(postId: Ref<string>) {
     isDeleted,
     isOnlyMe,
     apiErrorStatus,
+    refreshPost,
   }
 }
 

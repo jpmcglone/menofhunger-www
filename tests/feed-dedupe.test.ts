@@ -4,6 +4,7 @@ import { mount } from '@vue/test-utils'
 import type { FeedPost } from '~/types/api'
 import { usePostsFeed } from '~/composables/usePostsFeed'
 import { useUserPosts } from '~/composables/useUserPosts'
+import { mergeFeedThreadsForDisplay } from '~/utils/merge-feed-threads-for-display'
 
 async function runInSetup<T>(fn: () => T): Promise<T> {
   let result: T | null = null
@@ -318,6 +319,86 @@ describe('displayPosts thread merge', () => {
     expect(out).toContain('ar')
     expect(out).toContain('B')
     expect(out).not.toContain('A') // absorbed into ar's chain
+  })
+
+  it('parallel branches A→B→C and A→B→D: first in feed wins, other collapsed', async () => {
+    const feed = await makeFeed()
+    const A = makePost({ id: 'A' })
+    const B = makePost({ id: 'B', parentId: 'A', parent: A })
+    const C = makePost({ id: 'C', parentId: 'B', parent: B })
+    const D = makePost({ id: 'D', parentId: 'B', parent: B })
+    feed.posts.value = [C, D]
+    const out = feed.displayPosts.value
+    expect(out).toHaveLength(1)
+    expect(out[0]!.id).toBe('C')
+    expect((out[0] as any).threadCollapsedCount).toBe(1)
+  })
+
+  it('mergeFeedThreadsForDisplay leaves no duplicate post ids in output', () => {
+    const A = makePost({ id: 'A' })
+    const B = makePost({ id: 'B', parentId: 'A', parent: A })
+    const C = makePost({ id: 'C', parentId: 'B', parent: B })
+    const D = makePost({ id: 'D', parentId: 'B', parent: B })
+    const merged = mergeFeedThreadsForDisplay([C, D])
+    const ids = merged.map((p) => p.id)
+    expect(new Set(ids).size).toBe(ids.length)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// displayItems: must follow merged display rows (no duplicate visible chains)
+// ---------------------------------------------------------------------------
+describe('displayItems thread merge alignment', () => {
+  it('does not render two post rows for parallel A→B→C and A→B→D', async () => {
+    const feed = await makeFeed()
+    const A = makePost({ id: 'A' })
+    const B = makePost({ id: 'B', parentId: 'A', parent: A })
+    const C = makePost({ id: 'C', parentId: 'B', parent: B })
+    const D = makePost({ id: 'D', parentId: 'B', parent: B })
+    feed.posts.value = [C, D]
+    const postRows = feed.displayItems.value.filter((it) => it.kind === 'post')
+    expect(postRows).toHaveLength(1)
+    expect(postRows[0]).toEqual(
+      expect.objectContaining({ kind: 'post', post: expect.objectContaining({ id: 'C' }) }),
+    )
+  })
+
+  it('counts root posts for ads from merged rows, not raw feed length', async () => {
+    const feed = await makeFeed()
+    const roots = Array.from({ length: 10 }, (_, i) =>
+      makePost({ id: `r${i}`, parentId: null }),
+    )
+    const A = makePost({ id: 'A' })
+    const B = makePost({ id: 'B', parentId: 'A', parent: A })
+    const C = makePost({ id: 'C', parentId: 'B', parent: B })
+    const D = makePost({ id: 'D', parentId: 'B', parent: B })
+    // 10 roots + 2 merged into 1 → 11 raw posts, 11 visible rows → ad after 10th root
+    feed.posts.value = [...roots, C, D]
+    const items = feed.displayItems.value
+    const postRows = items.filter((it) => it.kind === 'post')
+    expect(postRows).toHaveLength(11)
+    const ads = items.filter((it) => it.kind === 'ad')
+    expect(ads).toHaveLength(1)
+    expect(ads[0]).toEqual(expect.objectContaining({ kind: 'ad', key: 'ad-after-r9' }))
+  })
+
+  it('useUserPosts displayItems also dedupes parallel A→B→C / A→B→D', async () => {
+    const usernameLower = ref(`u-${Math.random().toString(36).slice(2, 8)}`)
+    const userFeed = await runInSetup(() =>
+      useUserPosts(usernameLower, {
+        enabled: computed(() => false),
+        defaultToNewestAndAll: true,
+        cookieKeyPrefix: `test-${Math.random().toString(36).slice(2, 8)}`,
+      }),
+    )
+    const A = makePost({ id: 'A' })
+    const B = makePost({ id: 'B', parentId: 'A', parent: A })
+    const C = makePost({ id: 'C', parentId: 'B', parent: B })
+    const D = makePost({ id: 'D', parentId: 'B', parent: B })
+    userFeed.posts.value = [C, D]
+    expect(userFeed.displayPosts.value.map((p) => p.id)).toEqual(['C'])
+    const postRows = userFeed.displayItems.value.filter((it) => it.kind === 'post')
+    expect(postRows).toHaveLength(1)
   })
 })
 

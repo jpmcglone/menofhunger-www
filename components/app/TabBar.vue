@@ -20,42 +20,6 @@
             </div>
           </button>
 
-          <!-- SPACES: gradient-outlined circle -->
-          <NuxtLink
-            v-else-if="item.key === 'spaces'"
-            :to="item.to"
-            class="flex h-full w-full flex-col items-center justify-center touch-manipulation transition-transform duration-100 active:scale-[0.98] moh-focus"
-            @click="(e) => { haptics.tap(); onNavClick(item.to, e) }"
-          >
-            <!-- Outer ring = gradient background; inner disc = page bg with icon -->
-            <div
-              class="relative flex items-center justify-center rounded-full shrink-0"
-              :style="{
-                background: 'linear-gradient(90deg, var(--moh-verified), var(--moh-premium))',
-                padding: isActive(item.to) ? '3px' : '2.5px',
-                width: '40px',
-                height: '40px',
-              }"
-            >
-              <div
-                class="w-full h-full rounded-full flex items-center justify-center"
-                :style="{
-                  background: isActive(item.to)
-                    ? 'linear-gradient(rgba(43,123,185,0.12) 0%, rgba(var(--moh-premium-rgb),0.08) 100%)'
-                    : 'var(--moh-bg)',
-                }"
-              >
-                <Icon
-                  :name="isActive(item.to) ? (item.iconActive || item.icon) : item.icon"
-                  size="22"
-                  class="text-gray-900 dark:text-gray-100"
-                  :class="[item.iconClass, isActive(item.to) ? 'opacity-100' : 'opacity-80']"
-                  aria-hidden="true"
-                />
-              </div>
-            </div>
-          </NuxtLink>
-
           <NuxtLink
             v-else
             :to="item.to"

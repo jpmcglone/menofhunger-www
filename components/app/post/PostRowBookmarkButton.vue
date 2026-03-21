@@ -138,7 +138,9 @@ const toast = useAppToast()
 
 // Signal for the bookmarks page feed to refresh when bookmark state changes elsewhere.
 const bookmarksFeedBump = useState<number>('moh.bookmarks.feed.bump.v1', () => 0)
+const route = useRoute()
 function bumpBookmarksFeed() {
+  if (import.meta.client && route.path.startsWith('/bookmarks')) return
   bookmarksFeedBump.value = (bookmarksFeedBump.value ?? 0) + 1
 }
 

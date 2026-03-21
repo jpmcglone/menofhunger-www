@@ -1,5 +1,6 @@
 import type {
   Article,
+  CommunityGroupShell,
   FeedPost,
   FollowListUser,
   GetFollowRecommendationsData,
@@ -30,6 +31,7 @@ export function useExploreRecommendations(options?: { enabled?: Ref<boolean>, is
   const newestUsers = ref<FollowListUser[]>([])
   const trendingPosts = ref<FeedPost[]>([])
   const trendingArticles = ref<Article[]>([])
+  const exploreGroups = ref<CommunityGroupShell[]>([])
 
   const loading = ref(false)
   const hasLoadedOnce = ref(false)
@@ -56,6 +58,7 @@ export function useExploreRecommendations(options?: { enabled?: Ref<boolean>, is
         apiFetch<GetTopicCategoriesData>('/topics/categories', { method: 'GET', query: { limit: 20 } }),
         apiFetch<GetPresenceOnlineData>('/presence/online', { method: 'GET' }),
         apiFetch<Article[]>('/articles', { method: 'GET', query: { limit: 6, sort: 'trending', includeRestricted: true } }),
+        apiFetch<CommunityGroupShell[]>('/groups/explore', { method: 'GET' }),
         ...(isAuthed.value ? [apiFetch<GetFollowedTopicsData>('/topics/followed', { method: 'GET', query: { limit: 50 } })] : []),
       ])
 
@@ -63,8 +66,9 @@ export function useExploreRecommendations(options?: { enabled?: Ref<boolean>, is
       const categoriesRes = baseCalls[1].status === 'fulfilled' ? baseCalls[1].value : null
       const onlineRes = baseCalls[2].status === 'fulfilled' ? baseCalls[2].value : null
       const articlesRes = baseCalls[3].status === 'fulfilled' ? baseCalls[3].value : null
+      const exploreGroupsRes = baseCalls[4].status === 'fulfilled' ? baseCalls[4].value : null
       const followedTopicsRes =
-        isAuthed.value && baseCalls[4] && baseCalls[4].status === 'fulfilled' ? baseCalls[4].value : null
+        isAuthed.value && baseCalls[5] && baseCalls[5].status === 'fulfilled' ? baseCalls[5].value : null
 
       const viewerId = String(authUser.value?.id ?? '').trim()
       const featuredRaw = ((featuredRes?.data ?? []) as FeedPost[]) ?? []
@@ -73,6 +77,7 @@ export function useExploreRecommendations(options?: { enabled?: Ref<boolean>, is
       categories.value = ((categoriesRes?.data ?? []) as TopicCategory[]) ?? []
       onlineUsers.value = ((onlineRes?.data ?? []) as OnlineUser[]) ?? []
       trendingArticles.value = (((articlesRes?.data ?? []) as Article[]) ?? []).slice(0, 4)
+      exploreGroups.value = Array.isArray(exploreGroupsRes?.data) ? exploreGroupsRes.data : []
       followedTopics.value = isAuthed.value ? (((followedTopicsRes?.data ?? []) as Topic[]) ?? []) : []
 
       if (isAuthed.value) {
@@ -121,6 +126,7 @@ export function useExploreRecommendations(options?: { enabled?: Ref<boolean>, is
       newestUsers.value = []
       trendingPosts.value = []
       trendingArticles.value = []
+      exploreGroups.value = []
     } finally {
       loading.value = false
       hasLoadedOnce.value = true
@@ -144,6 +150,7 @@ export function useExploreRecommendations(options?: { enabled?: Ref<boolean>, is
     newestUsers,
     trendingPosts,
     trendingArticles,
+    exploreGroups,
     loading,
     hasLoadedOnce,
     error,

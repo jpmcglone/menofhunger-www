@@ -2,7 +2,7 @@
   <Dialog
     :visible="modelValue"
     modal
-    header="Crop avatar"
+    :header="dialogHeader"
     :draggable="false"
     :style="{ width: 'min(60rem, 96vw)' }"
     @update:visible="(v) => emit('update:modelValue', Boolean(v))"
@@ -15,8 +15,8 @@
             ref="cropperRef"
             class="h-[24rem] w-full min-w-0"
             :src="cropSrc"
-            :stencil-component="CircleStencil"
-            :stencil-props="{ aspectRatio: 1 }"
+            :stencil-component="stencilComponent"
+            :stencil-props="stencilProps"
             :canvas="{ width: 640, height: 640 }"
             image-restriction="stencil"
             :default-size="avatarDefaultSize"
@@ -31,30 +31,38 @@
         <div class="text-sm font-medium text-gray-800 dark:text-gray-200">
           Preview
         </div>
-        <div class="mx-auto h-32 w-32 overflow-hidden rounded-full bg-gray-200 dark:bg-zinc-800">
+        <div
+          class="mx-auto h-32 w-32 overflow-hidden bg-gray-200 dark:bg-zinc-800"
+          :class="previewRoundClass"
+        >
           <img v-if="cropPreviewUrl" :src="cropPreviewUrl" alt="" class="h-full w-full object-cover" />
         </div>
-        <AppInlineAlert severity="info" title="Tip">
-          We recommend using <span class="font-semibold">Auto</span> to frame your face.
-        </AppInlineAlert>
-        <div class="flex justify-center">
-          <Button
-            label="Auto (recommended)"
-            severity="success"
-            class="w-full"
-            :loading="faceDetecting"
-            :disabled="disabled || !cropSrc || faceDetecting"
-            @click="autoCropFace"
-          >
-            <template #icon>
-              <Icon name="tabler:bolt" aria-hidden="true" />
-            </template>
-          </Button>
-        </div>
-        <AppInlineAlert v-if="faceDetectError" severity="warning">
-          {{ faceDetectError }}
-        </AppInlineAlert>
-        <div class="text-xs text-gray-500 dark:text-gray-400">
+        <template v-if="!isGroupVariant">
+          <AppInlineAlert severity="info" title="Tip">
+            We recommend using <span class="font-semibold">Auto</span> to frame your face.
+          </AppInlineAlert>
+          <div class="flex justify-center">
+            <Button
+              label="Auto (recommended)"
+              severity="success"
+              class="w-full"
+              :loading="faceDetecting"
+              :disabled="disabled || !cropSrc || faceDetecting"
+              @click="autoCropFace"
+            >
+              <template #icon>
+                <Icon name="tabler:bolt" aria-hidden="true" />
+              </template>
+            </Button>
+          </div>
+          <AppInlineAlert v-if="faceDetectError" severity="warning">
+            {{ faceDetectError }}
+          </AppInlineAlert>
+        </template>
+        <div
+          v-if="!isGroupVariant"
+          class="text-xs text-gray-500 dark:text-gray-400"
+        >
           This is how your avatar will appear. The saved image remains a square (best for future layouts), but it’s displayed as a circle.
         </div>
       </div>
@@ -72,13 +80,19 @@
 </template>
 
 <script setup lang="ts">
-import { Cropper, CircleStencil } from 'vue-advanced-cropper'
+import { Cropper, CircleStencil, RectangleStencil } from 'vue-advanced-cropper'
+import { groupAvatarRoundClass } from '~/utils/avatar-rounding'
 
-const props = defineProps<{
-  modelValue: boolean
-  file: File | null
-  disabled?: boolean
-}>()
+const props = withDefaults(
+  defineProps<{
+    modelValue: boolean
+    file: File | null
+    disabled?: boolean
+    /** `group`: square crop + group squircle preview; no face auto-crop. */
+    variant?: 'user' | 'group'
+  }>(),
+  { variant: 'user' },
+)
 
 const emit = defineEmits<{
   (e: 'update:modelValue', v: boolean): void
@@ -88,6 +102,21 @@ const emit = defineEmits<{
 
 const modelValue = computed(() => Boolean(props.modelValue))
 const disabled = computed(() => Boolean(props.disabled))
+const isGroupVariant = computed(() => props.variant === 'group')
+const stencilComponent = computed(() => (isGroupVariant.value ? RectangleStencil : CircleStencil))
+const stencilProps = computed(() => {
+  if (isGroupVariant.value) {
+    const cls = groupAvatarRoundClass()
+    return { aspectRatio: 1, previewClass: cls, boundingBoxClass: cls }
+  }
+  return { aspectRatio: 1 }
+})
+const previewRoundClass = computed(() =>
+  isGroupVariant.value ? groupAvatarRoundClass() : 'rounded-full',
+)
+const dialogHeader = computed(() =>
+  isGroupVariant.value ? 'Crop group avatar' : 'Crop avatar',
+)
 
 // Crop state
 const cropSrc = ref<string | null>(null)
@@ -215,12 +244,14 @@ function clamp(n: number, min: number, max: number) {
 }
 
 async function onCropperReady() {
+  if (isGroupVariant.value) return
   if (!autoFaceOnOpen.value) return
   autoFaceOnOpen.value = false
   await autoCropFace()
 }
 
 async function autoCropFace() {
+  if (isGroupVariant.value) return
   if (!modelValue.value) return
   if (!cropperRef.value?.setCoordinates) return
   const srcFile = props.file

@@ -318,6 +318,61 @@
           </div>
         </div>
 
+        <!-- Community groups -->
+        <div class="px-4 space-y-3">
+          <div class="font-semibold text-sm">
+            Community groups
+            <span class="text-gray-400 font-normal">({{ rangeLabel }})</span>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            <div
+              v-for="c in groupKpiCards"
+              :key="c.label"
+              class="rounded-xl border moh-border p-4 space-y-1.5"
+            >
+              <div class="text-xs text-gray-600 dark:text-gray-300 font-semibold leading-tight">{{ c.label }}</div>
+              <div class="text-2xl font-bold tabular-nums leading-none">{{ c.value }}</div>
+              <div v-if="c.sub" class="text-xs text-gray-500 dark:text-gray-400 leading-tight">{{ c.sub }}</div>
+            </div>
+          </div>
+          <div class="rounded-xl border moh-border overflow-x-auto">
+            <table class="min-w-full text-sm">
+              <thead>
+                <tr class="border-b moh-border text-left text-gray-500 dark:text-gray-400">
+                  <th class="px-4 py-3 font-medium">Group</th>
+                  <th class="px-4 py-3 font-medium text-right">Members</th>
+                  <th class="px-4 py-3 font-medium text-right">Root posts</th>
+                  <th class="px-4 py-3 font-medium text-right">≥1 reply in 24h</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-gray-100 dark:divide-white/5">
+                <tr
+                  v-for="g in data.groups.topGroups"
+                  :key="g.id"
+                  class="hover:bg-gray-50 dark:hover:bg-zinc-900/50 cursor-pointer"
+                  @click="navigateTo(`/g/${encodeURIComponent(g.slug)}`)"
+                >
+                  <td class="px-4 py-3">
+                    <div class="font-medium">{{ g.name }}</div>
+                    <div class="text-xs text-gray-400 dark:text-gray-500 font-mono">{{ g.slug }}</div>
+                  </td>
+                  <td class="px-4 py-3 text-right tabular-nums">{{ g.memberCount.toLocaleString() }}</td>
+                  <td class="px-4 py-3 text-right tabular-nums">{{ g.rootPostsInRange.toLocaleString() }}</td>
+                  <td class="px-4 py-3 text-right tabular-nums">
+                    <span v-if="g.replyRate24hPct !== null">{{ g.replyRate24hPct }}%</span>
+                    <span v-else class="text-gray-400">—</span>
+                  </td>
+                </tr>
+                <tr v-if="!data.groups.topGroups.length">
+                  <td colspan="4" class="px-4 py-6 text-center text-gray-500 dark:text-gray-400 text-sm">
+                    No groups yet
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
         <!-- ─────────────────────────────────────────────────────────────── -->
 
         <!-- Retention table (always 10-week window) -->
@@ -996,6 +1051,32 @@ function articleAge(iso: string) {
   const d = new Date(iso)
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' })
 }
+
+const groupKpiCards = computed(() => {
+  if (!data.value?.groups) return []
+  const g = data.value.groups
+  return [
+    {
+      label: 'Users in ≥1 group',
+      value: g.usersInAnyGroup.toLocaleString(),
+      sub: g.pctUsersInAnyGroup != null ? `${g.pctUsersInAnyGroup}% of all users` : undefined,
+    },
+    { label: 'Active groups', value: g.activeGroups.toLocaleString(), sub: 'not deleted' },
+    {
+      label: 'New memberships',
+      value: g.newActiveMembershipsInRange.toLocaleString(),
+      sub: 'active joins in range',
+    },
+    { label: 'Pending approvals', value: g.pendingApprovals.toLocaleString(), sub: 'current backlog' },
+    { label: 'Group root posts', value: g.groupRootPostsInRange.toLocaleString(), sub: 'in range' },
+    { label: 'Group replies', value: g.groupRepliesInRange.toLocaleString(), sub: 'in range' },
+    {
+      label: 'Roots w/ reply in 24h',
+      value: g.pctGroupRootsWithReplyWithin24h !== null ? `${g.pctGroupRootsWithReplyWithin24h}%` : '—',
+      sub: 'of roots in range',
+    },
+  ]
+})
 
 const summaryCards = computed(() => {
   if (!data.value) return []

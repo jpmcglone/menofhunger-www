@@ -39,10 +39,10 @@ export function useAppNav() {
     { key: 'explore', label: 'Explore', to: '/explore', icon: 'tabler:search', iconActive: 'tabler:search', showInLeft: true, showInTabs: false },
     { key: 'articles', label: 'Articles', to: '/articles', icon: 'tabler:article', iconActive: 'tabler:article-filled', showInLeft: true, showInTabs: false },
     { key: 'groups', label: 'Groups', to: '/groups', icon: 'heroicons-outline:user-group', iconActive: 'heroicons-solid:user-group', requiresAuth: true, showInLeft: true, showInTabs: false },
-    { key: 'bookmarks', label: 'Bookmarks', to: '/bookmarks', icon: 'tabler:bookmark', iconActive: 'tabler:bookmark-filled', requiresAuth: true, showInLeft: true, showInTabs: false },
+    { key: 'bookmarks', label: 'Bookmarks', to: '/bookmarks', icon: 'tabler:bookmark', iconActive: 'tabler:bookmark-filled', requiresAuth: true, showInLeft: false, showInTabs: false },
     // Keep these as the Heroicons pair (you preferred the filled/outline look here).
-    { key: 'profile', label: 'Profile', to: profileTo.value, icon: 'heroicons-outline:user-circle', iconActive: 'heroicons-solid:user-circle', requiresAuth: true, showInLeft: true, showInTabs: false },
-    { key: 'only-me', label: 'Only me', to: '/only-me', icon: 'heroicons-outline:eye-slash', iconActive: 'heroicons-solid:eye-slash', requiresAuth: true, showInLeft: true, showInTabs: false },
+    { key: 'profile', label: 'Profile', to: profileTo.value, icon: 'heroicons-outline:user-circle', iconActive: 'heroicons-solid:user-circle', requiresAuth: true, showInLeft: false, showInTabs: false },
+    { key: 'only-me', label: 'Only me', to: '/only-me', icon: 'heroicons-outline:eye-slash', iconActive: 'heroicons-solid:eye-slash', requiresAuth: true, showInLeft: false, showInTabs: false },
     {
       key: 'spaces',
       label: 'Spaces',
@@ -76,7 +76,9 @@ export function useAppNav() {
 
   const leftItems = computed(() => allItems.value.filter((i) => i.showInLeft && visible(i)))
   const tabItems = computed(() => allItems.value.filter((i) => i.showInTabs && visible(i)))
+  const moreMenuKeys = new Set(['bookmarks', 'profile', 'only-me'])
+  const moreItems = computed(() => allItems.value.filter((i) => moreMenuKeys.has(i.key) && visible(i)))
 
-  return { isAuthed, profileTo, allItems, leftItems, tabItems, isItemVisible: visible }
+  return { isAuthed, profileTo, allItems, leftItems, tabItems, moreItems, isItemVisible: visible }
 }
 

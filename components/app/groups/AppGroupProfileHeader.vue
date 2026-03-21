@@ -1,0 +1,276 @@
+<template>
+  <!-- Full-bleed group header (same shell pattern as profile: banner + overlapping avatar + max-w-3xl meta). -->
+  <div class="relative w-full">
+    <div class="relative">
+      <div class="group relative aspect-[3.25/1] w-full overflow-hidden bg-gray-200 dark:bg-zinc-900">
+        <img
+          v-if="coverUrl"
+          v-show="!hideBannerThumb"
+          :src="coverUrl"
+          alt=""
+          class="h-full w-full object-cover"
+          loading="lazy"
+          decoding="async"
+        >
+        <div
+          v-if="coverUrl"
+          v-show="!hideBannerThumb"
+          class="pointer-events-none absolute inset-0 bg-black/0 transition-colors duration-200 group-hover:bg-black/20"
+          aria-hidden="true"
+        />
+        <button
+          v-if="coverUrl"
+          v-show="!hideBannerThumb"
+          type="button"
+          class="absolute inset-0 z-[1] cursor-zoom-in"
+          aria-label="View group banner"
+          @click="emitOpenBanner($event)"
+        />
+        <div
+          class="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/70 via-black/25 to-transparent"
+          aria-hidden="true"
+        />
+        <!-- Settings on banner: members (including owners) — owners edit details via “Edit group”; this opens advanced settings. -->
+        <div class="absolute right-3 top-3 z-10 flex flex-wrap items-center justify-end gap-2">
+          <NuxtLink
+            v-if="showSettingsLink"
+            :to="`/g/${encodeURIComponent(shell.slug)}/settings`"
+            class="moh-tap hidden sm:inline-flex items-center gap-1.5 rounded-full bg-black/35 px-3 py-1.5 text-xs font-semibold text-white backdrop-blur-sm hover:bg-black/50"
+          >
+            <Icon name="tabler:settings" class="text-[15px] opacity-90" aria-hidden="true" />
+            Settings
+          </NuxtLink>
+          <NuxtLink
+            v-if="showSettingsLink"
+            :to="`/g/${encodeURIComponent(shell.slug)}/settings`"
+            class="moh-tap flex h-9 w-9 items-center justify-center rounded-full bg-black/35 text-white backdrop-blur-sm hover:bg-black/50 sm:hidden"
+            aria-label="Group settings"
+          >
+            <Icon name="tabler:settings" class="text-lg" aria-hidden="true" />
+          </NuxtLink>
+        </div>
+      </div>
+
+      <div
+        :class="[
+          'absolute left-4 bottom-0 z-10 translate-y-1/2 transition-opacity duration-200',
+          hideAvatarDuringBanner ? 'opacity-0 pointer-events-none' : 'opacity-100',
+        ]"
+      >
+        <div
+          ref="avatarWrapperRef"
+          class="group/av relative h-24 w-24 overflow-hidden bg-gray-200 ring-4 ring-white dark:bg-zinc-800 dark:ring-black"
+          :class="avatarRoundClass"
+        >
+          <img
+            v-if="avatarUrl"
+            v-show="!hideAvatarThumb"
+            :src="avatarUrl"
+            alt=""
+            class="h-full w-full object-cover"
+            loading="lazy"
+            decoding="async"
+          >
+          <div
+            v-else
+            class="flex h-full w-full items-center justify-center text-2xl font-bold moh-text"
+          >
+            {{ initials }}
+          </div>
+          <div
+            v-if="avatarUrl"
+            v-show="!hideAvatarThumb"
+            class="pointer-events-none absolute inset-0 bg-black/0 transition-colors duration-200 group-hover/av:bg-black/20"
+            :class="avatarRoundClass"
+            aria-hidden="true"
+          />
+          <button
+            v-if="avatarUrl"
+            v-show="!hideAvatarThumb"
+            type="button"
+            class="absolute inset-0 cursor-zoom-in"
+            aria-label="View group avatar"
+            @click="emitOpenAvatar($event)"
+          />
+        </div>
+      </div>
+    </div>
+
+    <div class="mx-auto max-w-3xl px-4 pb-5 pt-14">
+      <div class="flex items-start justify-between gap-4 mt-1">
+        <div class="min-w-0">
+          <h1 class="text-xl font-bold leading-none text-gray-900 dark:text-gray-50 truncate">
+            {{ shell.name }}
+          </h1>
+          <div class="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-gray-500 dark:text-gray-400">
+            <NuxtLink
+              :to="`/g/${encodeURIComponent(shell.slug)}/members`"
+              class="font-medium hover:underline underline-offset-2 text-gray-700 dark:text-gray-200 tabular-nums"
+            >
+              {{ shell.memberCount.toLocaleString() }} members
+            </NuxtLink>
+            <span aria-hidden="true">·</span>
+            <span>{{ shell.joinPolicy === 'approval' ? 'Approval to join' : 'Open' }}</span>
+          </div>
+        </div>
+        <div v-if="!isMember" class="shrink-0 flex items-center gap-2">
+          <Button
+            v-if="!shell.viewerPendingApproval"
+            label="Join group"
+            rounded
+            :loading="joinBusy"
+            @click="$emit('join')"
+          />
+          <template v-else>
+            <span class="text-xs moh-text-muted self-center">Request pending</span>
+            <Button
+              label="Cancel request"
+              rounded
+              severity="secondary"
+              size="small"
+              :loading="cancelBusy"
+              @click="$emit('cancel-request')"
+            />
+          </template>
+        </div>
+        <div v-else class="shrink-0 flex items-center gap-2">
+          <Button
+            v-if="isOwner"
+            label="Edit group"
+            severity="secondary"
+            rounded
+            @click="$emit('edit')"
+          >
+            <template #icon>
+              <Icon name="tabler:pencil" aria-hidden="true" />
+            </template>
+          </Button>
+          <Button
+            v-if="canLeave"
+            label="Leave group"
+            rounded
+            severity="secondary"
+            size="small"
+            :loading="leaveBusy"
+            @click="$emit('leave')"
+          />
+        </div>
+      </div>
+
+      <div v-if="shell.description" class="mt-4 whitespace-pre-wrap break-words text-sm text-gray-800 dark:text-gray-200 leading-relaxed">
+        {{ shell.description }}
+      </div>
+      <div v-else class="mt-4 text-sm text-gray-500 dark:text-gray-400">
+        No description yet.
+      </div>
+      <div v-if="shell.rules" class="mt-4 border-t moh-border pt-4">
+        <div class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1">
+          Rules
+        </div>
+        <div class="relative">
+          <div
+            ref="rulesContentRef"
+            class="text-sm text-gray-600 dark:text-gray-300 whitespace-pre-wrap leading-relaxed overflow-hidden transition-[max-height] duration-300 ease-in-out"
+            :style="{ maxHeight: rulesExpanded ? `${rulesFullHeight}px` : '3.25rem' }"
+          >
+            {{ shell.rules }}
+          </div>
+          <button
+            v-if="rulesOverflows"
+            type="button"
+            class="mt-1 text-xs font-medium text-[color:var(--moh-group)] hover:underline"
+            @click="rulesExpanded = !rulesExpanded"
+          >
+            {{ rulesExpanded ? 'Show less' : 'See more' }}
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script setup lang="ts">
+import type { CommunityGroupShell } from '~/types/api'
+import { groupAvatarRoundClass } from '~/utils/avatar-rounding'
+
+const props = defineProps<{
+  shell: CommunityGroupShell
+  isMember: boolean
+  isOwner?: boolean
+  canLeave: boolean
+  coverUrl: string | null
+  avatarUrl: string | null
+  joinBusy?: boolean
+  leaveBusy?: boolean
+  cancelBusy?: boolean
+  /** Link to settings for any member; owner sees more on the settings page. */
+  showSettingsLink?: boolean
+  hideBannerThumb?: boolean
+  hideAvatarThumb?: boolean
+  hideAvatarDuringBanner?: boolean
+}>()
+
+const emit = defineEmits<{
+  (
+    e: 'openImage',
+    payload: {
+      event: MouseEvent
+      url: string
+      title: string
+      kind: 'avatar' | 'banner'
+      originRect?: { left: number; top: number; width: number; height: number }
+    },
+  ): void
+  (e: 'edit'): void
+  (e: 'join'): void
+  (e: 'leave'): void
+  (e: 'cancel-request'): void
+}>()
+
+const avatarRoundClass = groupAvatarRoundClass()
+const avatarWrapperRef = ref<HTMLElement | null>(null)
+
+const rulesContentRef = ref<HTMLElement | null>(null)
+const rulesExpanded = ref(false)
+const rulesFullHeight = ref(0)
+const rulesOverflows = ref(false)
+
+function measureRules() {
+  const el = rulesContentRef.value
+  if (!el) return
+  rulesFullHeight.value = el.scrollHeight
+  rulesOverflows.value = el.scrollHeight > 52
+}
+
+onMounted(() => nextTick(measureRules))
+watch(() => props.shell.rules, () => {
+  rulesExpanded.value = false
+  nextTick(measureRules)
+})
+
+function emitOpenBanner(event: MouseEvent) {
+  const url = props.coverUrl
+  if (!url) return
+  emit('openImage', { event, url, title: 'Group banner', kind: 'banner' })
+}
+
+function emitOpenAvatar(event: MouseEvent) {
+  const url = props.avatarUrl
+  if (!url) return
+  emit('openImage', {
+    event,
+    url,
+    title: 'Group avatar',
+    kind: 'avatar',
+    originRect: avatarWrapperRef.value?.getBoundingClientRect() ?? undefined,
+  })
+}
+
+const initials = computed(() => {
+  const n = (props.shell.name ?? '').trim()
+  if (!n) return '?'
+  const parts = n.split(/\s+/).filter(Boolean)
+  if (parts.length >= 2) return (parts[0]![0]! + parts[1]![0]!).toUpperCase()
+  return n.slice(0, 2).toUpperCase()
+})
+</script>

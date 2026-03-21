@@ -55,6 +55,7 @@
           <div v-for="b in items" :key="b.bookmarkId">
             <AppPostRow
               :post="b.post"
+              :feed-group="bookmarkFeedGroup(b.post)"
               @deleted="onBookmarkPostDeleted(b.post.id)"
               @edited="onBookmarkPostEdited(b.bookmarkId, $event.post)"
               @bookmark-updated="onBookmarkUpdated(b.bookmarkId, $event)"
@@ -146,8 +147,15 @@
 </template>
 
 <script setup lang="ts">
-import type { SearchBookmarkItem } from '~/types/api'
+import type { FeedPost, SearchBookmarkItem } from '~/types/api'
 import { useCursorFeed } from '~/composables/useCursorFeed'
+import { groupPreviewToFeedShell } from '~/utils/community-group-preview'
+
+function bookmarkFeedGroup(post: FeedPost) {
+  const gp = post.groupPreview ?? null
+  if (!gp) return null
+  return groupPreviewToFeedShell(gp)
+}
 
 definePageMeta({
   layout: 'app',

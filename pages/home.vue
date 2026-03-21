@@ -50,6 +50,36 @@
       />
     </ClientOnly>
 
+    <ClientOnly>
+      <div
+        v-if="showGroupsOnboardingNudge"
+        class="mx-3 mt-3 sm:mx-4 sm:mt-4 rounded-2xl border moh-border moh-surface p-4 sm:p-5"
+      >
+        <div class="flex items-start gap-3">
+          <div class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border moh-border bg-violet-500/10 text-violet-700 dark:text-violet-300">
+            <Icon name="tabler:users-group" aria-hidden="true" />
+          </div>
+          <div class="min-w-0 flex-1">
+            <div class="text-sm font-semibold moh-text">Join a community group</div>
+            <p class="mt-1 text-sm moh-text-muted">
+              Groups are smaller rooms for focused conversation — posts stay inside the group, not on the home feed.
+            </p>
+            <div class="mt-3 flex flex-wrap gap-2">
+              <Button label="Browse groups" rounded size="small" @click="navigateTo('/groups')" />
+              <Button
+                label="Dismiss"
+                text
+                rounded
+                size="small"
+                severity="secondary"
+                @click="dismissGroupsNudge"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+    </ClientOnly>
+
     <Transition
       enter-active-class="transition-all duration-250 ease-out"
       enter-from-class="opacity-0 -translate-y-1"
@@ -174,7 +204,7 @@
 </template>
 
 <script setup lang="ts">
-import type { PostVisibility } from '~/types/api'
+import type { CommunityGroupShell, PostVisibility } from '~/types/api'
 import type { CreateMediaPayload } from '~/composables/useComposerMedia'
 import type { ComposerPollPayload } from '~/composables/composer/types'
 import { postBodyHasVideoEmbed } from '~/utils/link-utils'
@@ -209,6 +239,44 @@ provide(MOH_FOCUS_HOME_COMPOSER_KEY, () => {
   homeComposerRef.value?.focus()
 })
 const { isAuthed, user: authUser } = useAuth()
+const { apiFetchData } = useApiClient()
+const groupsNudgeDismissed = useCookie('moh.groups-nudge.dismissed', {
+  default: () => '',
+  path: '/',
+  sameSite: 'lax',
+  maxAge: 60 * 60 * 24 * 365,
+})
+const myGroupsCount = ref<number | null>(null)
+
+async function refreshMyGroupsCount() {
+  if (!isAuthed.value) {
+    myGroupsCount.value = null
+    return
+  }
+  try {
+    const list = await apiFetchData<CommunityGroupShell[]>('/groups/me')
+    myGroupsCount.value = Array.isArray(list) ? list.length : 0
+  } catch {
+    myGroupsCount.value = null
+  }
+}
+
+const showGroupsOnboardingNudge = computed(() => {
+  if (!isAuthed.value) return false
+  if (groupsNudgeDismissed.value) return false
+  if (myGroupsCount.value === null) return false
+  return myGroupsCount.value === 0
+})
+
+function dismissGroupsNudge() {
+  groupsNudgeDismissed.value = '1'
+}
+
+watch(isAuthed, (a) => {
+  if (a) void refreshMyGroupsCount()
+  else myGroupsCount.value = null
+}, { immediate: true })
+
 const { dayKey: etDayKey } = useEasternMidnightRollover()
 
 const { state: checkinState, error: checkinError, refresh: refreshCheckin, create: createCheckin } = useDailyCheckin()
@@ -442,6 +510,7 @@ const replyModal = useReplyModal()
 let unregisterReplyPosted: null | (() => void) = null
 onActivated(() => {
   if (!import.meta.client) return
+  if (isAuthed.value) void refreshMyGroupsCount()
   if (posts.value.length > 0) {
     // Posts are already in memory (keepalive). Soft-refresh only fetches posts newer than the
     // current head and prepends them, preserving the scroll position via anchor adjustment.

@@ -386,6 +386,20 @@ export type UserPreview = {
   orgAffiliations?: OrgAffiliation[]
 }
 
+/** Compact group card for gated posts and discovery. */
+export type CommunityGroupPreview = {
+  id: string
+  slug: string
+  name: string
+  descriptionPreview: string
+  coverImageUrl: string | null
+  avatarImageUrl: string | null
+  joinPolicy: 'open' | 'approval'
+  memberCount: number
+  viewerMembership: { status: 'active' | 'pending'; role: 'owner' | 'moderator' | 'member' } | null
+  viewerPendingApproval: boolean
+}
+
 export type FeedPost = {
   id: string
   createdAt: string
@@ -408,6 +422,12 @@ export type FeedPost = {
   repostCount?: number
   viewerCount?: number
   parentId?: string | null
+  /** When set, post is scoped to a community group (not on global feeds). */
+  communityGroupId?: string | null
+  /** Present on group root posts when pinned by owner. */
+  pinnedInGroupAt?: string | null
+  /** When viewer cannot read a group post, join CTA context. */
+  groupPreview?: CommunityGroupPreview | null
   /** When present, this post is a reply and the parent is included for thread display. */
   parent?: FeedPost
   mentions?: PostMention[]
@@ -839,6 +859,7 @@ export type SearchMixedResult = {
   users: SearchUserResult[]
   posts: FeedPost[]
   articles: Article[]
+  groups?: CommunityGroupShell[]
   taxonomyMatches?: TaxonomyMatch[]
 }
 
@@ -1583,6 +1604,27 @@ export type AdminAnalyticsArticles = {
   topArticles: AdminAnalyticsTopArticle[]
 }
 
+export type AdminAnalyticsGroupsTopRow = {
+  id: string
+  slug: string
+  name: string
+  memberCount: number
+  rootPostsInRange: number
+  replyRate24hPct: number | null
+}
+
+export type AdminAnalyticsGroups = {
+  usersInAnyGroup: number
+  pctUsersInAnyGroup: number | null
+  activeGroups: number
+  newActiveMembershipsInRange: number
+  pendingApprovals: number
+  groupRootPostsInRange: number
+  groupRepliesInRange: number
+  pctGroupRootsWithReplyWithin24h: number | null
+  topGroups: AdminAnalyticsGroupsTopRow[]
+}
+
 export type AdminAnalytics = {
   range: AnalyticsRange
   granularity: AnalyticsGranularity
@@ -1598,7 +1640,42 @@ export type AdminAnalytics = {
   monetization: AdminAnalyticsMonetization
   coins: AdminAnalyticsCoins
   articles: AdminAnalyticsArticles
+  groups: AdminAnalyticsGroups
   asOf: string
+}
+
+/** Community group shell (public to signed-in users). */
+export type CommunityGroupShell = {
+  id: string
+  slug: string
+  name: string
+  description: string
+  rules: string | null
+  coverImageUrl: string | null
+  avatarImageUrl: string | null
+  joinPolicy: 'open' | 'approval'
+  memberCount: number
+  isFeatured: boolean
+  featuredOrder: number
+  createdAt: string
+  viewerMembership: { status: 'active' | 'pending'; role: 'owner' | 'moderator' | 'member' } | null
+  viewerPendingApproval: boolean
+}
+
+export type CommunityGroupMemberListItem = {
+  userId: string
+  username: string | null
+  name: string | null
+  role: 'owner' | 'moderator' | 'member'
+  avatarUrl: string | null
+  joinedAt: string
+}
+
+export type CommunityGroupPendingMember = {
+  userId: string
+  username: string | null
+  name: string | null
+  requestedAt: string
 }
 
 // ─── Articles ────────────────────────────────────────────────────────────────

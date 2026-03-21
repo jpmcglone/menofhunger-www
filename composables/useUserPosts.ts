@@ -1,4 +1,8 @@
 import type { ApiPagination, FeedPost } from '~/types/api'
+import {
+  collapsedSiblingReplyCountForPost,
+  mergeFeedThreadsForDisplay,
+} from '~/utils/merge-feed-threads-for-display'
 import { useCursorFeed } from '~/composables/useCursorFeed'
 import { usePostCountBumps } from '~/composables/usePostCountBumps'
 import { useFeedFilters, type FeedVisibilityFilter } from '~/composables/useFeedFilters'
@@ -136,17 +140,16 @@ export function useUserPosts(
     return await feedRef.value.loadMore()
   }
 
-  const displayPosts = computed(() => posts.value)
+  const displayPosts = computed(() => mergeFeedThreadsForDisplay(posts.value))
 
   function collapsedSiblingReplyCountFor(post: FeedPost): number {
-    if ((post.threadCollapsedCount ?? 0) > 0) return post.threadCollapsedCount!
-    return Math.max(0, post.commentCount ?? 0)
+    return collapsedSiblingReplyCountForPost(post)
   }
 
   const displayItems = computed<UserPostsDisplayItem[]>(() => {
     const out: UserPostsDisplayItem[] = []
     let rootPostCount = 0
-    for (const p of posts.value) {
+    for (const p of displayPosts.value) {
       out.push({ kind: 'post', post: p })
 
       if (!showAds.value) continue

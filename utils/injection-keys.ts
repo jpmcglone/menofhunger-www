@@ -8,6 +8,8 @@ export type ComposerOpenOptions = {
   visibility?: ComposerVisibility
   initialText?: string | null
   placeholder?: string | null
+  /** Optional group scope label for composer mode (e.g. group wall modal). */
+  groupName?: string | null
   allowedVisibilities?: ComposerVisibility[] | null
   disableMedia?: boolean
   /**
@@ -35,4 +37,17 @@ export const MOH_HOME_COMPOSER_IN_VIEW_KEY: InjectionKey<Ref<boolean>> = Symbol(
 
 /** Provided by the home page: focuses the inline composer textarea when called. */
 export const MOH_FOCUS_HOME_COMPOSER_KEY: InjectionKey<() => void> = Symbol('moh-focus-home-composer')
+
+/** Layout provides this ref; the group page injects and writes to it so the layout FAB/modal knows about the active group. */
+export type GroupComposerContext = {
+  groupId: string
+  groupName: string
+  createPost: (
+    body: string,
+    visibility: ComposerVisibility,
+    media?: unknown[] | null,
+    poll?: unknown | null,
+  ) => Promise<{ id: string } | import('~/types/api').FeedPost | null>
+}
+export const MOH_GROUP_COMPOSER_KEY: InjectionKey<Ref<GroupComposerContext | null>> = Symbol('moh-group-composer')
 
