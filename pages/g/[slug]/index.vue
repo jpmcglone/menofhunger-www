@@ -502,6 +502,12 @@ function stopGroupFeedAutoRefresh() {
 
 onMounted(() => {
   if (!import.meta.client) return
+  // Shell is already hydrated via useAsyncData, so usePostsFeed's internal watcher
+  // never fires for the initial load (it only reacts to changes). Kick off the feed
+  // explicitly if we're already a member.
+  if (groupFeedEnabled.value && !posts.value.length) {
+    void feedRefresh()
+  }
   registerReplyPostedHandler()
   startGroupFeedAutoRefresh()
 })
@@ -512,6 +518,8 @@ onActivated(() => {
   startGroupFeedAutoRefresh()
   if (posts.value.length > 0) {
     setTimeout(() => void softRefreshNewer(), 300)
+  } else if (groupFeedEnabled.value) {
+    void feedRefresh()
   }
 })
 
