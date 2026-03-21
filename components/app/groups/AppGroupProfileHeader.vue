@@ -114,13 +114,31 @@
           </div>
         </div>
         <div v-if="!isMember" class="shrink-0 flex items-center gap-2">
-          <Button
-            v-if="!shell.viewerPendingApproval"
-            label="Join group"
-            rounded
-            :loading="joinBusy"
-            @click="$emit('join')"
-          />
+          <!-- Logged-out: prompt to log in -->
+          <NuxtLink
+            v-if="!viewerIsLoggedIn"
+            to="/login"
+            class="inline-flex items-center gap-1.5 rounded-full bg-[color:var(--moh-group)] px-4 py-2 text-sm font-semibold text-white shadow-sm hover:opacity-90 transition-opacity"
+          >
+            Log in to join
+          </NuxtLink>
+          <!-- Logged-in but not verified: prompt to verify -->
+          <NuxtLink
+            v-else-if="!viewerIsVerified"
+            to="/settings/verification"
+            class="inline-flex items-center gap-1.5 rounded-full bg-[color:var(--moh-group)] px-4 py-2 text-sm font-semibold text-white shadow-sm hover:opacity-90 transition-opacity"
+          >
+            Get verified to join
+          </NuxtLink>
+          <!-- Verified: show normal join/pending buttons -->
+          <template v-else-if="!shell.viewerPendingApproval">
+            <Button
+              label="Join group"
+              rounded
+              :loading="joinBusy"
+              @click="$emit('join')"
+            />
+          </template>
           <template v-else>
             <span class="text-xs moh-text-muted self-center">Request pending</span>
             <Button
@@ -152,18 +170,34 @@
             severity="secondary"
             size="small"
             :loading="leaveBusy"
-            @click="$emit('leave')"
+            @click="leaveConfirmOpen = true"
           />
         </div>
       </div>
 
-      <div v-if="shell.description" class="mt-4 whitespace-pre-wrap break-words text-sm text-gray-800 dark:text-gray-200 leading-relaxed">
-        {{ shell.description }}
+      <!-- Description -->
+      <div v-if="shell.description" class="mt-4">
+        <!-- Obfuscated: logged-out or unverified — short fade like article gate -->
+        <div
+          v-if="descriptionObfuscated"
+          class="overflow-hidden opacity-75"
+          style="max-height: 2.75rem; mask-image: linear-gradient(to bottom, black 0%, transparent 100%); -webkit-mask-image: linear-gradient(to bottom, black 0%, transparent 100%);"
+        >
+          <div class="whitespace-pre-wrap break-words text-sm text-gray-800 dark:text-gray-200 leading-relaxed">
+            {{ shell.description }}
+          </div>
+        </div>
+        <!-- Full description for verified viewers -->
+        <div v-else class="whitespace-pre-wrap break-words text-sm text-gray-800 dark:text-gray-200 leading-relaxed">
+          {{ shell.description }}
+        </div>
       </div>
-      <div v-else class="mt-4 text-sm text-gray-500 dark:text-gray-400">
+      <div v-else-if="!descriptionObfuscated" class="mt-4 text-sm text-gray-500 dark:text-gray-400">
         No description yet.
       </div>
-      <div v-if="shell.rules" class="mt-4 border-t moh-border pt-4">
+
+      <!-- Rules: members only -->
+      <div v-if="shell.rules && isMember" class="mt-4 border-t moh-border pt-4">
         <div class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1">
           Rules
         </div>
@@ -187,13 +221,22 @@
       </div>
     </div>
   </div>
+
+  <AppConfirmDialog
+    v-model:visible="leaveConfirmOpen"
+    header="Leave group?"
+    confirm-label="Leave"
+    @confirm="$emit('leave')"
+  >
+    You'll lose access to the group's posts and feed. You can rejoin later.
+  </AppConfirmDialog>
 </template>
 
 <script setup lang="ts">
 import type { CommunityGroupShell } from '~/types/api'
 import { groupAvatarRoundClass } from '~/utils/avatar-rounding'
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   shell: CommunityGroupShell
   isMember: boolean
   isOwner?: boolean
@@ -208,7 +251,14 @@ const props = defineProps<{
   hideBannerThumb?: boolean
   hideAvatarThumb?: boolean
   hideAvatarDuringBanner?: boolean
-}>()
+  /** Whether the current viewer is authenticated (affects join CTA and description visibility). */
+  viewerIsLoggedIn?: boolean
+  /** Whether the current viewer is verified (affects join CTA). */
+  viewerIsVerified?: boolean
+}>(), {
+  viewerIsLoggedIn: true,
+  viewerIsVerified: true,
+})
 
 const emit = defineEmits<{
   (
@@ -229,6 +279,10 @@ const emit = defineEmits<{
 
 const avatarRoundClass = groupAvatarRoundClass()
 const avatarWrapperRef = ref<HTMLElement | null>(null)
+const leaveConfirmOpen = ref(false)
+
+// Show full description only to verified (logged-in + verified) viewers.
+const descriptionObfuscated = computed(() => !props.viewerIsLoggedIn || !props.viewerIsVerified)
 
 const rulesContentRef = ref<HTMLElement | null>(null)
 const rulesExpanded = ref(false)

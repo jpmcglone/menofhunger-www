@@ -24,6 +24,8 @@
           :hide-banner-thumb="hideBannerThumb"
           :hide-avatar-thumb="hideAvatarThumb"
           :hide-avatar-during-banner="hideAvatarDuringBanner"
+          :viewer-is-logged-in="isAuthed"
+          :viewer-is-verified="isVerified"
           @join="doJoin"
           @leave="doLeave"
           @cancel-request="doCancelRequest"
@@ -37,6 +39,47 @@
           :is-owner="isOwner"
           @updated="onGroupShellUpdated"
         />
+
+        <!-- Logged-out CTA -->
+        <div v-if="!isAuthed" class="px-4 py-6 border-b moh-border">
+          <div class="rounded-xl border moh-border bg-[var(--moh-surface-2)] px-5 py-6 text-center max-w-lg mx-auto">
+            <p class="text-sm font-medium moh-text mb-3">
+              Log in to join <span class="font-bold">{{ shell.name }}</span> and see what members are posting.
+            </p>
+            <div class="flex justify-center gap-2 flex-wrap">
+              <NuxtLink
+                :to="`/login?redirect=${encodeURIComponent(route.fullPath)}`"
+                class="inline-flex items-center gap-1.5 rounded-full bg-[color:var(--moh-group)] px-5 py-2 text-sm font-semibold text-white shadow-sm hover:opacity-90 transition-opacity"
+              >
+                Log in
+              </NuxtLink>
+              <NuxtLink
+                to="/login?tab=signup"
+                class="inline-flex items-center gap-1.5 rounded-full border moh-border px-5 py-2 text-sm font-semibold moh-text hover:bg-[var(--moh-surface-2)] transition-colors"
+              >
+                Sign up
+              </NuxtLink>
+            </div>
+          </div>
+        </div>
+
+        <!-- Logged-in but not verified CTA -->
+        <div v-else-if="!isVerified && !isMember" class="px-4 py-6 border-b moh-border">
+          <div class="rounded-xl border moh-border bg-[var(--moh-surface-2)] px-5 py-6 text-center max-w-lg mx-auto">
+            <p class="text-sm font-medium moh-text mb-1">
+              Verification required to join.
+            </p>
+            <p class="text-xs moh-text-muted mb-3">
+              Verify your identity to join <span class="font-semibold">{{ shell.name }}</span> and participate.
+            </p>
+            <NuxtLink
+              to="/settings/verification"
+              class="inline-flex items-center gap-1.5 rounded-full bg-[color:var(--moh-group)] px-5 py-2 text-sm font-semibold text-white shadow-sm hover:opacity-90 transition-opacity"
+            >
+              Get verified
+            </NuxtLink>
+          </div>
+        </div>
 
         <div v-if="isMember" class="border-b moh-border">
           <AppPostComposer
@@ -142,9 +185,11 @@ import { useLoadMoreObserver } from '~/composables/useLoadMoreObserver'
 import { useMiddleScroller } from '~/composables/useMiddleScroller'
 import { getApiErrorMessage } from '~/utils/api-error'
 import { MOH_GROUP_COMPOSER_KEY } from '~/utils/injection-keys'
+import { siteConfig } from '~/config/site'
 
 const route = useRoute()
 const { apiFetchData } = useApiClient()
+const { isAuthed, isVerified } = useAuth()
 
 const slug = computed(() => String(route.params.slug ?? '').trim())
 
@@ -154,9 +199,30 @@ definePageMeta({
   hideTopBar: false,
 })
 
-const shell = ref<CommunityGroupShell | null>(null)
-const shellLoading = ref(true)
-const shellError = ref<string | null>(null)
+// SSR-friendly shell fetch: data is serialized in the page payload for immediate hydration.
+// The reactive key re-fetches when navigating between group pages (SPA navigation).
+const {
+  data: shell,
+  error: shellFetchError,
+  status: shellFetchStatus,
+  refresh: refreshShell,
+} = await useAsyncData<CommunityGroupShell | null>(
+  () => `group-shell-${slug.value}`,
+  async () => {
+    if (!slug.value) return null
+    return await apiFetchData<CommunityGroupShell>(`/groups/by-slug/${encodeURIComponent(slug.value)}`)
+  },
+)
+
+const shellLoading = computed(() => shellFetchStatus.value === 'pending')
+const shellError = computed(() =>
+  shellFetchError.value ? getApiErrorMessage(shellFetchError.value) || 'Group not found.' : null,
+)
+
+async function loadShell() {
+  await refreshShell()
+}
+
 const { header: appHeader } = useAppHeader()
 
 const joinBusy = ref(false)
@@ -235,34 +301,38 @@ function onOpenGroupImage(payload: {
   })
 }
 
-function onGroupShellUpdated(next: CommunityGroupShell) {
-  shell.value = next
+async function onGroupShellUpdated(_next: CommunityGroupShell) {
+  await loadShell()
 }
+
+// SEO: use the group avatar as the OG image when available, fall back to site logo.
+const seoImage = computed(() => {
+  const avatar = shell.value?.avatarImageUrl
+  const cover = shell.value?.coverImageUrl
+  return avatar || cover || '/images/logo-black-bg.png'
+})
+
+const seoDescription = computed(() => {
+  const s = shell.value
+  if (!s) return siteConfig.meta.description
+  const memberStr = `${s.memberCount.toLocaleString()} member${s.memberCount === 1 ? '' : 's'}`
+  const policy = s.joinPolicy === 'approval' ? 'approval required' : 'open to join'
+  const desc = (s.description ?? '').trim()
+  if (desc) return `${desc.slice(0, 140)} · ${memberStr} · ${policy}`
+  return `${s.name} on ${siteConfig.name} · ${memberStr} · ${policy}`
+})
 
 usePageSeo({
   title: computed(() => shell.value?.name ?? 'Group'),
-  description: computed(() => (shell.value?.description ?? '').slice(0, 160)),
+  description: seoDescription,
+  image: seoImage,
+  imageAlt: computed(() => shell.value ? `${shell.value.name} group on ${siteConfig.name}` : siteConfig.name),
+  twitterCard: computed(() => (shell.value?.avatarImageUrl ? 'summary' : 'summary_large_image')),
   canonicalPath: computed(() => `/g/${slug.value}`),
-  noindex: true,
+  ogType: 'website',
+  // Groups are public pages — allow indexing for shareability.
+  noindex: false,
 })
-
-async function loadShell() {
-  if (!slug.value) {
-    shellError.value = 'Group not found.'
-    shell.value = null
-    return
-  }
-  shellLoading.value = true
-  shellError.value = null
-  try {
-    shell.value = await apiFetchData<CommunityGroupShell>(`/groups/by-slug/${encodeURIComponent(slug.value)}`)
-  } catch (e: unknown) {
-    shell.value = null
-    shellError.value = getApiErrorMessage(e) || 'Group not found.'
-  } finally {
-    shellLoading.value = false
-  }
-}
 
 watch(
   [shell, shellError],
@@ -292,7 +362,7 @@ async function doJoin() {
     await loadShell()
     if (isMember.value) await feedRefresh()
   } catch (e: unknown) {
-    shellError.value = getApiErrorMessage(e) || 'Could not join.'
+    console.error(getApiErrorMessage(e) || 'Could not join.')
   } finally {
     joinBusy.value = false
   }
@@ -308,7 +378,7 @@ async function doLeave() {
     nextCursor.value = null
     await loadShell()
   } catch (e: unknown) {
-    shellError.value = getApiErrorMessage(e) || 'Could not leave.'
+    console.error(getApiErrorMessage(e) || 'Could not leave.')
   } finally {
     leaveBusy.value = false
   }
@@ -322,7 +392,7 @@ async function doCancelRequest() {
     await apiFetchData(`/groups/${encodeURIComponent(s.id)}/cancel-request`, { method: 'POST', body: {} })
     await loadShell()
   } catch (e: unknown) {
-    shellError.value = getApiErrorMessage(e) || 'Could not cancel request.'
+    console.error(getApiErrorMessage(e) || 'Could not cancel request.')
   } finally {
     cancelBusy.value = false
   }
@@ -354,7 +424,7 @@ async function createGroupPost(
     posts.value = [post, ...posts.value]
     return post?.id ? { id: post.id } : null
   } catch (e: unknown) {
-    shellError.value = getApiErrorMessage(e) || 'Failed to post.'
+    console.error(getApiErrorMessage(e) || 'Failed to post.')
     throw e
   }
 }
@@ -429,14 +499,6 @@ function stopGroupFeedAutoRefresh() {
   stopAutoSoftRefresh?.()
   stopAutoSoftRefresh = null
 }
-
-watch(
-  slug,
-  async () => {
-    await loadShell()
-  },
-  { immediate: true },
-)
 
 onMounted(() => {
   if (!import.meta.client) return

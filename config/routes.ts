@@ -14,6 +14,7 @@ export const AUTH_ALLOWED_AFTER_LOGOUT_PATHS = new Set<string>([
   '/tiers',
   '/feedback',
   '/articles',
+  '/groups',
 ])
 
 export function isAdminPath(path: string): boolean {
@@ -44,8 +45,16 @@ export function isPublicPrefixPath(path: string): boolean {
   return isUserProfilePath(path) || isPostPermalinkPath(path) || isArticlePermalinkPath(path)
 }
 
+export function isGroupDetailPath(path: string): boolean {
+  return path.startsWith('/g/')
+}
+
+export function isGroupsHubPath(path: string): boolean {
+  return path === '/groups' || path.startsWith('/groups/')
+}
+
 export function isLoggedOutAllowedPath(path: string): boolean {
-  return LOGGED_OUT_ALLOWED_PATHS.has(path)
+  return LOGGED_OUT_ALLOWED_PATHS.has(path) || isGroupDetailPath(path) || isGroupsHubPath(path)
 }
 
 export function isAuthAllowedAfterLogoutPath(path: string): boolean {

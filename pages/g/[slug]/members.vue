@@ -1,7 +1,7 @@
 <template>
   <AppPageContent bottom="standard">
-    <div class="w-full max-w-lg mx-auto px-3 py-4 sm:px-4">
-      <div class="flex items-center gap-2 mb-4">
+    <div class="w-full py-4">
+      <div class="flex items-center gap-2 mb-4 px-3 sm:px-4">
         <NuxtLink
           :to="`/g/${encodeURIComponent(slug)}`"
           class="moh-tap flex h-9 w-9 items-center justify-center rounded-full moh-surface-hover"
@@ -14,28 +14,30 @@
         </h1>
       </div>
 
-      <IconField icon-position="left" class="w-full mb-4">
-        <InputIcon>
-          <Icon name="tabler:search" class="text-lg opacity-70" aria-hidden="true" />
-        </InputIcon>
-        <InputText
-          v-model="searchInput"
-          class="w-full"
-          placeholder="Search members…"
-          @keydown.enter.prevent="flushSearch"
-        />
-      </IconField>
+      <div class="px-3 sm:px-4 mb-3">
+        <IconField icon-position="left" class="w-full">
+          <InputIcon>
+            <Icon name="tabler:search" class="text-lg opacity-70" aria-hidden="true" />
+          </InputIcon>
+          <InputText
+            v-model="searchInput"
+            class="w-full"
+            placeholder="Search members…"
+            @keydown.enter.prevent="flushSearch"
+          />
+        </IconField>
+      </div>
 
-      <AppInlineAlert v-if="error" severity="danger" class="mb-3">
+      <AppInlineAlert v-if="error" severity="danger" class="mb-3 mx-3 sm:mx-4">
         {{ error }}
       </AppInlineAlert>
 
       <AppSubtleSectionLoader :loading="loading && !rows.length" min-height-class="min-h-[120px]">
-        <ul v-if="filteredRows.length" class="divide-y moh-border rounded-xl border moh-border overflow-hidden moh-surface">
+        <ul v-if="filteredRows.length">
           <li
             v-for="m in filteredRows"
             :key="m.userId"
-            class="flex items-center gap-3 px-3 py-2.5"
+            class="flex items-center gap-3 px-3 py-2.5 sm:px-4 border-b border-gray-100 dark:border-zinc-900 last:border-b-0 hover:bg-black/[.03] dark:hover:bg-white/[.03] transition-colors"
           >
             <NuxtLink :to="m.username ? `/u/${encodeURIComponent(m.username)}` : '#'" class="shrink-0" @click.prevent="goProfile(m)">
               <AppUserAvatar
