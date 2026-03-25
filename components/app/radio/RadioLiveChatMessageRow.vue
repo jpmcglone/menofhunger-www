@@ -67,11 +67,23 @@
         <span v-else>{{ seg.text }}</span>
       </template>
     </span>
+    <div v-if="messageMedia.length > 0" class="mt-1">
+      <img
+        v-for="(m, idx) in messageMedia"
+        :key="idx"
+        :src="m.url"
+        :alt="m.alt ?? ''"
+        :width="m.width ?? undefined"
+        :height="m.height ?? undefined"
+        loading="lazy"
+        class="rounded-lg max-w-[280px] max-h-[200px] object-contain"
+      />
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import type { SpaceChatMessage } from '~/types/api'
+import type { SpaceChatMediaItem, SpaceChatMessage } from '~/types/api'
 import { userColorTier, userTierColorVar, userTierTextClass } from '~/utils/user-tier'
 import { HASHTAG_IN_TEXT_DISPLAY_RE } from '~/utils/hashtag-autocomplete'
 
@@ -92,6 +104,11 @@ const isMine = computed(() => {
   const myId = String(me.value?.id ?? '').trim()
   const senderId = String(props.message?.sender?.id ?? '').trim()
   return Boolean(myId && senderId && myId === senderId)
+})
+
+const messageMedia = computed<SpaceChatMediaItem[]>(() => {
+  if (props.message.kind !== 'user') return []
+  return (props.message as any).media ?? []
 })
 
 // Redaction: block either direction hides the message body by default.

@@ -195,12 +195,20 @@ export type SpaceLobbyCounts = {
 
 export type SpaceChatSender = LiveChatSender
 
+export type SpaceChatMediaItem = {
+  url: string
+  width: number | null
+  height: number | null
+  alt: string | null
+}
+
 export type SpaceChatMessage =
   | {
       id: string
       spaceId: string
       kind: 'user'
       body: string
+      media?: SpaceChatMediaItem[]
       createdAt: string
       sender: SpaceChatSender
     }

@@ -88,6 +88,7 @@
       :style="{ minHeight: 'var(--moh-radio-bar-height, 4rem)' }"
     >
       <AppDmComposer
+        ref="composerRef"
         v-model="composerText"
         :user="composerUser"
         :disabled="!spaceId"
@@ -105,7 +106,8 @@ import { useBottomAnchoredList } from '~/composables/useBottomAnchoredList'
 import RadioLiveChatMessageList from '~/components/app/radio/RadioLiveChatMessageList.vue'
 import AppDmComposer from '~/components/app/DmComposer.vue'
 import { userColorTier } from '~/utils/user-tier'
-import type { FollowListUser } from '~/types/api'
+import type { CreateMediaPayload } from '~/composables/composer/types'
+import type { FollowListUser, SpaceChatMediaItem } from '~/types/api'
 import { useSpaceChatUnread } from '~/composables/useSpaceChatUnread'
 
 withDefaults(defineProps<{ showHeader?: boolean }>(), {
@@ -184,7 +186,23 @@ watch(scrollTrigger, (v) => {
 
 const composerText = ref('')
 const composerUser = computed(() => user.value ?? null)
+const composerRef = ref<InstanceType<typeof AppDmComposer> | null>(null)
 const chatBarEl = ref<HTMLElement | null>(null)
+
+const { assetUrl } = useAssets()
+
+function mediaPayloadsToChat(payloads: CreateMediaPayload[]): SpaceChatMediaItem[] {
+  const out: SpaceChatMediaItem[] = []
+  for (const p of payloads) {
+    if (p.source === 'giphy') {
+      out.push({ url: p.url, width: p.width, height: p.height, alt: p.alt ?? null })
+    } else if (p.source === 'upload') {
+      const url = assetUrl(p.r2Key)
+      if (url) out.push({ url, width: p.width, height: p.height, alt: p.alt ?? null })
+    }
+  }
+  return out
+}
 
 const scrollPillTopPx = ref(0)
 const scrollPillHeightPx = ref(0)
@@ -326,16 +344,17 @@ onBeforeUnmount(() => {
 function onSend() {
   if (!spaceId.value) return
   const text = composerText.value.trim()
-  if (!text) return
-  // Stop typing immediately when sending.
+  const rawMedia = composerRef.value?.getMedia?.() ?? []
+  const chatMedia = mediaPayloadsToChat(rawMedia)
+  if (!text && chatMedia.length === 0) return
   try {
     presence.emitSpacesTyping(spaceId.value, false)
   } catch {
     // ignore
   }
-  sendMessage(text)
+  sendMessage(text, chatMedia.length > 0 ? chatMedia : undefined)
   composerText.value = ''
-  // Best-effort: keep view pinned when sending while at bottom.
+  composerRef.value?.clearMedia?.()
   scheduleAfterFrame(() => scrollToBottom('auto'))
 }
 

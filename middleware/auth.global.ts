@@ -1,4 +1,4 @@
-import { isAdminPath, isArticlePermalinkPath, isLoggedOutAllowedPath, isPostPermalinkPath, isPublicPath, isUserProfilePath } from '~/config/routes'
+import { isAdminPath, isArticlePermalinkPath, isLoggedOutAllowedPath, isPostPermalinkPath, isPublicPath, isSpacePermalinkPath, isUserProfilePath } from '~/config/routes'
 import { isSafeRedirect } from '~/utils/url'
 
 export default defineNuxtRouteMiddleware(async (to) => {
@@ -17,6 +17,8 @@ export default defineNuxtRouteMiddleware(async (to) => {
   // Post/article permalinks should never force login; show access reasons on the page instead.
   if (isPostPermalinkPath(to.path)) return
   if (isArticlePermalinkPath(to.path)) return
+  // Space permalinks (/s/:username) are publicly viewable with obfuscated content for guests.
+  if (isSpacePermalinkPath(to.path)) return
   // Admin routes are protected by admin middleware (404 for non-admins).
   if (isAdminPath(to.path)) return
   // Allow logged-out browsing of core feed/discovery for now.

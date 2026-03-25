@@ -222,6 +222,12 @@
                   ]"
                 >
                   {{ item.label }}
+                  <ClientOnly>
+                    <span
+                      v-if="item.key === 'spaces' && totalLobbyCount > 0"
+                      class="text-sm font-medium moh-meta tabular-nums"
+                    >({{ totalLobbyCount }})</span>
+                  </ClientOnly>
                 </span>
               </NuxtLink>
 
@@ -1334,7 +1340,7 @@ const fabBottomStyle = computed<Record<string, string>>(() => {
 
 const middleContentEl = ref<HTMLElement | null>(null)
 
-const { selectedSpaceId, currentSpace, members, loadLobbyCounts } = useSpaceLobby()
+const { selectedSpaceId, currentSpace, members, totalLobbyCount, loadLobbyCounts } = useSpaceLobby()
 const { allPositionedFloating } = useSpaceReactions()
 const radioHasStation = computed(() => Boolean(selectedSpaceId.value))
 useSpacePlayPauseShortcut(radioHasStation)

@@ -41,8 +41,12 @@ export function isArticlePermalinkPath(path: string): boolean {
   return path.startsWith('/a/')
 }
 
+export function isSpacePermalinkPath(path: string): boolean {
+  return path.startsWith('/s/')
+}
+
 export function isPublicPrefixPath(path: string): boolean {
-  return isUserProfilePath(path) || isPostPermalinkPath(path) || isArticlePermalinkPath(path)
+  return isUserProfilePath(path) || isPostPermalinkPath(path) || isArticlePermalinkPath(path) || isSpacePermalinkPath(path)
 }
 
 export function isGroupDetailPath(path: string): boolean {
@@ -71,6 +75,9 @@ export function isNavActive(params: { currentPath: string; to: string }): boolea
   if (to === '/articles') {
     // Keep Articles nav active on both listing routes and article permalinks.
     return currentPath === '/articles' || currentPath.startsWith('/articles/') || currentPath.startsWith('/a/')
+  }
+  if (to === '/spaces') {
+    return currentPath === '/spaces' || currentPath.startsWith('/spaces/') || currentPath.startsWith('/s/')
   }
   return currentPath === to || currentPath.startsWith(`${to}/`)
 }
@@ -105,6 +112,7 @@ export function isRightRailSearchHiddenPath(path: string): boolean {
     path.startsWith('/explore/') ||
     path === '/spaces' ||
     path.startsWith('/spaces/') ||
+    path.startsWith('/s/') ||
     path === '/radio' ||
     path.startsWith('/radio/')
   )

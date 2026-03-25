@@ -61,9 +61,8 @@ definePageMeta({
 
 usePageSeo({
   title: 'Spaces',
-  description: 'Join spaces to chat, watch videos, and listen to music together.',
+  description: 'Live spaces on Men of Hunger — join a watch party, listen to radio, or just hang out and chat with other men. Verified members can create and host their own space.',
   canonicalPath: '/spaces',
-  noindex: true,
 })
 
 const { user } = useAuth()

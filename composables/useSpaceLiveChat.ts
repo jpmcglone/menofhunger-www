@@ -312,14 +312,15 @@ export function useSpaceLiveChat(options: { passive?: boolean } = {}) {
     )
   }
 
-  function sendMessage(body: string) {
+  function sendMessage(body: string, media?: Array<{ url: string; width: number | null; height: number | null; alt: string | null }>) {
     const sid = spaceId.value
     if (!import.meta.client) return
     if (!sid) return
     if (!user.value?.id) return
     const text = String(body ?? '').trim()
-    if (!text) return
-    presence.emitSpacesChatSend(sid, text)
+    const hasMedia = media && media.length > 0
+    if (!text && !hasMedia) return
+    presence.emitSpacesChatSend(sid, text, hasMedia ? media : undefined)
   }
 
   return {

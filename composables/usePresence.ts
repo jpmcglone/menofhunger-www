@@ -1353,12 +1353,14 @@ export function usePresence() {
       if (!socket?.connected) return
       socket.emit('spaces:chatUnsubscribe', {})
     },
-    emitSpacesChatSend(spaceId: string, body: string) {
+    emitSpacesChatSend(spaceId: string, body: string, media?: Array<{ url: string; width: number | null; height: number | null; alt: string | null }>) {
       const socket = socketRef.value
       const id = String(spaceId ?? '').trim()
       const text = String(body ?? '')
       if (!socket?.connected || !id) return
-      socket.emit('spaces:chatSend', { spaceId: id, body: text })
+      const payload: Record<string, unknown> = { spaceId: id, body: text }
+      if (media && media.length > 0) payload.media = media
+      socket.emit('spaces:chatSend', payload)
     },
     emitSpacesTyping(spaceId: string, typing: boolean) {
       const socket = socketRef.value

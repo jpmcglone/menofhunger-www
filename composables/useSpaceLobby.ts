@@ -68,9 +68,12 @@ export function useSpaceLobby() {
     await ensureLoaded()
     if (!user.value?.id) return
 
+    const prev = selectedSpaceId.value
+    if (prev && prev !== spaceId) {
+      leave()
+    }
+
     selectedSpaceId.value = spaceId
-    // Seed the current user's own space into presence tracking so their avatar
-    // shows the gradient ring when others (or they themselves) see it in the feed.
     presence.setCurrentSpaceForUsers([user.value.id], spaceId)
     presence.connect()
     await presence.whenSocketConnected(10_000)
@@ -112,6 +115,16 @@ export function useSpaceLobby() {
     return Math.max(0, Math.floor(Number(lobbyCounts.value?.countsBySpaceId?.[id] ?? 0) || 0))
   }
 
+  const totalLobbyCount = computed(() => {
+    const counts = lobbyCounts.value?.countsBySpaceId
+    if (!counts) return 0
+    let total = 0
+    for (const id in counts) {
+      total += Math.max(0, Math.floor(Number(counts[id]) || 0))
+    }
+    return total
+  })
+
   // Re-join the space room whenever the socket reconnects, since Socket.IO creates
   // a new socket on reconnect and the server-side room membership is lost.
   if (import.meta.client) {
@@ -132,6 +145,7 @@ export function useSpaceLobby() {
     currentSpace,
     members: readonly(members),
     lobbyCounts: readonly(lobbyCounts),
+    totalLobbyCount,
     lobbyCountForSpace,
     select,
     leave,

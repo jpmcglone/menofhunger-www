@@ -23,7 +23,7 @@
               Hosted by @{{ space.owner?.username ?? 'unknown' }}
             </p>
           </div>
-          <div class="shrink-0 mt-1 flex items-center gap-2">
+          <div v-if="canJoinSpace" class="shrink-0 mt-1 flex items-center gap-2">
             <AppPostRowShareMenu
               :can-share="true"
               :tooltip="spaceShareTooltip"
@@ -41,119 +41,139 @@
           </div>
         </div>
 
-        <!-- Owner controls -->
-        <SpaceOwnerPanel
-          v-if="isOwner"
-          :space="space"
-          class="moh-gutter-x pb-3"
-          @space-updated="(s) => { space = s; upsertSpace(s) }"
-        />
+        <!-- Gate: logged-out or unverified users see a CTA instead of interactive content -->
+        <div v-if="!canJoinSpace" class="moh-gutter-x flex-1 flex items-center justify-center min-h-[40vh]">
+          <div class="text-center max-w-sm">
+            <Icon name="tabler:lock" class="text-[48px] opacity-20 mx-auto" aria-hidden="true" />
+            <p class="mt-3 text-lg font-semibold moh-text">This space requires a verified account</p>
+            <p class="mt-1 text-sm moh-meta">
+              {{ isAuthed ? 'Upgrade to Verified or Premium to join spaces.' : 'Log in or create an account to join.' }}
+            </p>
+            <NuxtLink
+              :to="isAuthed ? '/tiers' : `/login?redirect=${encodeURIComponent(route.fullPath)}`"
+              class="mt-4 inline-flex items-center gap-2 rounded-full bg-[var(--p-primary-color)] px-5 py-2.5 text-sm font-semibold text-white hover:opacity-90 transition-opacity"
+            >
+              <Icon :name="isAuthed ? 'tabler:star' : 'tabler:login'" class="text-[16px]" aria-hidden="true" />
+              {{ isAuthed ? 'View tiers' : 'Log in' }}
+            </NuxtLink>
+          </div>
+        </div>
 
-        <!-- Canvas area -->
-        <div class="moh-gutter-x flex-1 min-h-0 pb-3 min-h-[40vh]">
-          <!-- Watch Party mode: YouTube player -->
-          <SpaceYouTubePlayer
-            v-if="space.mode === 'WATCH_PARTY' && space.watchPartyUrl"
+        <template v-else>
+          <!-- Owner controls -->
+          <SpaceOwnerPanel
+            v-if="isOwner"
             :space="space"
-            class="w-full h-full"
+            class="moh-gutter-x pb-3"
+            @space-updated="(s) => { space = s; upsertSpace(s) }"
           />
-          <!-- Radio mode: audio visualizer -->
-          <AppSpaceVisualizer
-            v-else-if="space.mode === 'RADIO' && space.radioStreamUrl"
-            class="w-full h-full"
-          />
-          <!-- None mode: blank canvas -->
-          <div v-else class="w-full h-full flex items-center justify-center moh-meta">
-            <div class="text-center">
-              <Icon name="tabler:campfire" class="text-[48px] opacity-20" aria-hidden="true" />
-              <p class="mt-2 opacity-50 text-sm">Space is idle</p>
-            </div>
-          </div>
-        </div>
 
-        <!-- Users + reactions -->
-        <div class="moh-gutter-x pb-4 pt-2 shrink-0 border-t moh-border">
-          <div class="flex items-center justify-between gap-3 text-sm text-gray-600 dark:text-gray-300">
-            <div class="min-w-0 truncate">
-              <span class="font-semibold tabular-nums text-gray-900 dark:text-gray-100">{{ members.length }}</span>
-              <span> here</span>
-            </div>
-            <button
-              type="button"
-              class="min-[962px]:hidden moh-tap moh-focus shrink-0 inline-flex items-center gap-1.5 rounded-full border moh-border-subtle px-3 py-1.5 text-xs font-medium moh-meta moh-surface-hover transition-colors"
-              :aria-label="spaceChatSheetOpen ? 'Close chat' : 'Open chat'"
-              @click="spaceChatSheetOpen = !spaceChatSheetOpen"
-            >
-              <Icon name="tabler:messages" class="text-[14px]" aria-hidden="true" />
-              Chat
-            </button>
-          </div>
-
-          <div v-if="space && members.length === 0" class="mt-3 text-sm text-gray-600 dark:text-gray-300">
-            You're the first — share the link to invite others.
-          </div>
-
-          <div v-else-if="space" class="mt-2 flex flex-wrap gap-3 py-1">
-            <template v-for="u in lobbyMembers" :key="u.id">
-              <NuxtLink
-                v-if="u.username"
-                :to="`/u/${encodeURIComponent(u.username)}`"
-                class="group moh-focus rounded-xl"
-                :aria-label="`View @${u.username}`"
-                v-tooltip.bottom="tinyTooltip(`@${u.username}`)"
-              >
-                <div :ref="(el) => setAvatarEl(u.id, el as HTMLElement | null)" class="relative">
-                  <AppUserAvatar
-                    :user="{ id: u.id, username: u.username, avatarUrl: u.avatarUrl }"
-                    size-class="h-10 w-10"
-                    bg-class="moh-surface dark:bg-black"
-                    :show-presence="false"
-                  />
-                  <Transition name="moh-avatar-pause-fade">
-                    <div
-                      v-if="u.paused || u.muted"
-                      class="absolute -bottom-1 -right-1 h-6 w-6 rounded-full bg-black/70 flex items-center justify-center ring-1 ring-white/20"
-                      aria-hidden="true"
-                    >
-                      <Icon
-                        :name="u.paused ? 'tabler:player-pause' : 'tabler:volume-off'"
-                        class="text-[13px] text-white"
-                        aria-hidden="true"
-                      />
-                    </div>
-                  </Transition>
-                </div>
-              </NuxtLink>
-              <div
-                v-else
-                class="group rounded-xl"
-                v-tooltip.bottom="tinyTooltip('User')"
-              >
-                <div :ref="(el) => setAvatarEl(u.id, el as HTMLElement | null)" class="relative">
-                  <AppUserAvatar
-                    :user="{ id: u.id, username: u.username, avatarUrl: u.avatarUrl }"
-                    size-class="h-10 w-10"
-                    bg-class="moh-surface dark:bg-black"
-                    :show-presence="false"
-                  />
-                </div>
+          <!-- Canvas area -->
+          <div class="moh-gutter-x flex-1 min-h-0 pb-3 min-h-[40vh]">
+            <!-- Watch Party mode: YouTube player -->
+            <SpaceYouTubePlayer
+              v-if="space.mode === 'WATCH_PARTY' && space.watchPartyUrl"
+              :space="space"
+              class="w-full h-full"
+            />
+            <!-- Radio mode: audio visualizer -->
+            <AppSpaceVisualizer
+              v-else-if="space.mode === 'RADIO' && space.radioStreamUrl"
+              class="w-full h-full"
+            />
+            <!-- None mode: blank canvas -->
+            <div v-else class="w-full h-full flex items-center justify-center moh-meta">
+              <div class="text-center">
+                <Icon name="tabler:campfire" class="text-[48px] opacity-20" aria-hidden="true" />
+                <p class="mt-2 opacity-50 text-sm">Space is idle</p>
               </div>
-            </template>
+            </div>
           </div>
 
-          <div v-if="space" class="mt-4 flex flex-wrap items-center gap-1.5">
-            <button
-              v-for="r in reactions"
-              :key="r.id"
-              type="button"
-              class="moh-tap moh-focus rounded-lg p-2 text-xl leading-none transition-transform active:scale-90 moh-surface-hover"
-              :aria-label="r.label"
-              @click="onReactionClick(r.id, r.emoji)"
-            >
-              {{ r.emoji }}
-            </button>
+          <!-- Users + reactions -->
+          <div class="moh-gutter-x pb-4 pt-2 shrink-0 border-t moh-border">
+            <div class="flex items-center justify-between gap-3 text-sm text-gray-600 dark:text-gray-300">
+              <div class="min-w-0 truncate">
+                <span class="font-semibold tabular-nums text-gray-900 dark:text-gray-100">{{ members.length }}</span>
+                <span> here</span>
+              </div>
+              <button
+                type="button"
+                class="min-[962px]:hidden moh-tap moh-focus shrink-0 inline-flex items-center gap-1.5 rounded-full border moh-border-subtle px-3 py-1.5 text-xs font-medium moh-meta moh-surface-hover transition-colors"
+                :aria-label="spaceChatSheetOpen ? 'Close chat' : 'Open chat'"
+                @click="spaceChatSheetOpen = !spaceChatSheetOpen"
+              >
+                <Icon name="tabler:messages" class="text-[14px]" aria-hidden="true" />
+                Chat
+              </button>
+            </div>
+
+            <div v-if="space && members.length === 0" class="mt-3 text-sm text-gray-600 dark:text-gray-300">
+              You're the first — share the link to invite others.
+            </div>
+
+            <div v-else-if="space" class="mt-2 flex flex-wrap gap-3 py-1">
+              <template v-for="u in lobbyMembers" :key="u.id">
+                <NuxtLink
+                  v-if="u.username"
+                  :to="`/u/${encodeURIComponent(u.username)}`"
+                  class="group moh-focus rounded-xl"
+                  :aria-label="`View @${u.username}`"
+                  v-tooltip.bottom="tinyTooltip(`@${u.username}`)"
+                >
+                  <div :ref="(el) => setAvatarEl(u.id, el as HTMLElement | null)" class="relative">
+                    <AppUserAvatar
+                      :user="{ id: u.id, username: u.username, avatarUrl: u.avatarUrl }"
+                      size-class="h-10 w-10"
+                      bg-class="moh-surface dark:bg-black"
+                      :show-presence="false"
+                    />
+                    <Transition name="moh-avatar-pause-fade">
+                      <div
+                        v-if="u.paused || u.muted"
+                        class="absolute -bottom-1 -right-1 h-6 w-6 rounded-full bg-black/70 flex items-center justify-center ring-1 ring-white/20"
+                        aria-hidden="true"
+                      >
+                        <Icon
+                          :name="u.paused ? 'tabler:player-pause' : 'tabler:volume-off'"
+                          class="text-[13px] text-white"
+                          aria-hidden="true"
+                        />
+                      </div>
+                    </Transition>
+                  </div>
+                </NuxtLink>
+                <div
+                  v-else
+                  class="group rounded-xl"
+                  v-tooltip.bottom="tinyTooltip('User')"
+                >
+                  <div :ref="(el) => setAvatarEl(u.id, el as HTMLElement | null)" class="relative">
+                    <AppUserAvatar
+                      :user="{ id: u.id, username: u.username, avatarUrl: u.avatarUrl }"
+                      size-class="h-10 w-10"
+                      bg-class="moh-surface dark:bg-black"
+                      :show-presence="false"
+                    />
+                  </div>
+                </div>
+              </template>
+            </div>
+
+            <div v-if="space" class="mt-4 flex flex-wrap items-center gap-1.5">
+              <button
+                v-for="r in reactions"
+                :key="r.id"
+                type="button"
+                class="moh-tap moh-focus rounded-lg p-2 text-xl leading-none transition-transform active:scale-90 moh-surface-hover"
+                :aria-label="r.label"
+                @click="onReactionClick(r.id, r.emoji)"
+              >
+                {{ r.emoji }}
+              </button>
+            </div>
           </div>
-        </div>
+        </template>
       </template>
     </div>
   </AppPageContent>
@@ -174,7 +194,9 @@ const { fetchSpaceByUsername, upsertSpace } = useSpaces()
 const { selectedSpaceId, select, leave, currentSpace, members, subscribeLobbyCounts, unsubscribeLobbyCounts } = useSpaceLobby()
 const { stop } = useSpaceAudio()
 const spaceChatSheetOpen = useState<boolean>('space-chat-sheet-open', () => false)
-const { user, ensureLoaded } = useAuth()
+const { user, ensureLoaded, isVerified, isPremium } = useAuth()
+const isAuthed = computed(() => Boolean(user.value?.id))
+const canJoinSpace = computed(() => isAuthed.value && (isVerified.value || isPremium.value))
 const presence = usePresence()
 
 const { reactions, loadReactions, addFloating, clearAllFloating } = useSpaceReactions()
@@ -275,17 +297,21 @@ function removePageCallbacks() {
 onMounted(async () => {
   registerAvatarPositionResolver(getAvatarPos)
   await ensureLoaded()
-  void loadReactions()
 
   const s = await fetchSpaceByUsername(username.value)
   spaceLoading.value = false
   if (!s) return
   space.value = s
   upsertSpace(s)
+
+  if (!canJoinSpace.value) {
+    useNuxtApp().callHook('page:loading:end')
+    useLoadingIndicator().finish({ force: true })
+    return
+  }
+
+  void loadReactions()
   await enterSpace(s)
-  // Socket is guaranteed connected here. For Watch Party, request the current
-  // state now so a hard-reload viewer syncs even if the earlier attempt in
-  // SpaceYouTubePlayer.onMounted fired before the socket was ready.
   if (s.mode === 'WATCH_PARTY' && s.watchPartyUrl && !isOwner.value) {
     const { requestCurrentState } = useWatchParty()
     requestCurrentState(s.id)
@@ -347,20 +373,51 @@ definePageMeta({
   layout: 'app',
   title: 'Space',
   hideTopBar: true,
-  middleware: ['verified'],
-  // Keep the page alive when navigating away so the YouTube player and radio keep
-  // playing without interruption. max:1 ensures at most one space page is cached.
   keepalive: { max: 1 },
 })
 
+const spaceMode = computed(() => {
+  if (!space.value) return ''
+  if (space.value.mode === 'WATCH_PARTY') return ' Watch party in progress.'
+  if (space.value.mode === 'RADIO') return ' Radio playing live.'
+  return ''
+})
+
 usePageSeo({
-  title: computed(() => (space.value?.title ? `${space.value.title} · Space` : 'Space')),
-  description: computed(() =>
-    space.value
-      ? `Join ${space.value.title} — hosted by @${space.value.owner?.username ?? 'unknown'}.`
-      : 'Enter a space to chat and hang out.',
-  ),
+  title: computed(() => {
+    if (!space.value) return 'Space'
+    const host = space.value.owner?.username ? `@${space.value.owner.username}` : ''
+    return host ? `${space.value.title} by ${host}` : space.value.title
+  }),
+  description: computed(() => {
+    if (!space.value) return 'Join a live space on Men of Hunger — chat, watch parties, and radio with other men.'
+    const desc = space.value.description
+      ? `${space.value.description}`
+      : `Join ${space.value.title} — a live space hosted by @${space.value.owner?.username ?? 'unknown'} on Men of Hunger.`
+    return `${desc}${spaceMode.value} Verified members can join and chat live.`
+  }),
   canonicalPath: computed(() => (username.value ? `/s/${encodeURIComponent(username.value)}` : '/spaces')),
-  noindex: true,
+  ogType: 'website',
+  jsonLdGraph: computed(() => {
+    if (!space.value) return []
+    const s = space.value
+    return [{
+      '@type': 'Event',
+      name: s.title,
+      description: s.description || `Live space hosted by @${s.owner?.username ?? 'unknown'}`,
+      eventAttendanceMode: 'https://schema.org/OnlineEventAttendanceMode',
+      eventStatus: s.isActive ? 'https://schema.org/EventScheduled' : 'https://schema.org/EventPostponed',
+      location: {
+        '@type': 'VirtualLocation',
+        url: `${siteConfig.url}/s/${encodeURIComponent(username.value)}`,
+      },
+      organizer: {
+        '@type': 'Person',
+        name: s.owner?.username ? `@${s.owner.username}` : 'Unknown',
+        url: s.owner?.username ? `${siteConfig.url}/u/${encodeURIComponent(s.owner.username)}` : undefined,
+      },
+      isAccessibleForFree: true,
+    }]
+  }),
 })
 </script>
