@@ -373,6 +373,101 @@
           </div>
         </div>
 
+        <!-- ─── Spaces ──────────────────────────────────────────────────── -->
+
+        <!-- Spaces KPI cards -->
+        <div class="px-4 space-y-3">
+          <div class="font-semibold text-sm">
+            Spaces
+            <span class="text-gray-400 font-normal">({{ rangeLabel }} unless noted)</span>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            <div
+              v-for="c in spaceKpiCards"
+              :key="c.label"
+              class="rounded-xl border moh-border p-4 space-y-1.5"
+            >
+              <div class="text-xs text-gray-600 dark:text-gray-300 font-semibold leading-tight">{{ c.label }}</div>
+              <div class="text-2xl font-bold tabular-nums leading-none">{{ c.value }}</div>
+              <div v-if="c.sub" class="text-xs text-gray-500 dark:text-gray-400 leading-tight">{{ c.sub }}</div>
+            </div>
+          </div>
+
+          <!-- Mode breakdown -->
+          <div class="rounded-xl border moh-border p-4 space-y-3">
+            <div class="text-xs font-semibold text-gray-600 dark:text-gray-300 mb-1">Mode Breakdown <span class="font-normal text-gray-400">(all-time, current state)</span></div>
+            <div v-if="!data.spaces || Object.values(data.spaces.byMode).every(v => v === 0)" class="text-sm text-gray-400 dark:text-gray-500 italic">
+              No spaces yet.
+            </div>
+            <template v-else>
+              <div v-for="row in spaceModeRows" :key="row.key" class="space-y-1">
+                <div class="flex items-center justify-between text-sm">
+                  <div class="flex items-center gap-2">
+                    <span class="inline-block w-2.5 h-2.5 rounded-full" :class="row.dot" />
+                    <span class="font-medium">{{ row.label }}</span>
+                  </div>
+                  <div class="flex items-center gap-3 tabular-nums">
+                    <span class="text-xs text-gray-500 dark:text-gray-400">{{ row.pct }}%</span>
+                    <span class="font-semibold">{{ row.count.toLocaleString() }}</span>
+                  </div>
+                </div>
+                <div class="h-1.5 rounded-full bg-gray-100 dark:bg-zinc-800 overflow-hidden">
+                  <div class="h-full rounded-full transition-all" :class="row.bar" :style="{ width: row.pct + '%' }" />
+                </div>
+              </div>
+            </template>
+          </div>
+
+          <!-- Currently active spaces table -->
+          <div class="rounded-xl border moh-border overflow-x-auto">
+            <table class="min-w-full text-sm">
+              <thead>
+                <tr class="border-b moh-border text-left text-gray-500 dark:text-gray-400">
+                  <th class="px-4 py-3 font-medium">Space</th>
+                  <th class="px-4 py-3 font-medium">Owner</th>
+                  <th class="px-4 py-3 font-medium text-right">Mode</th>
+                  <th class="px-4 py-3 font-medium text-right">Created</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-gray-100 dark:divide-white/5">
+                <tr
+                  v-for="s in data.spaces?.topSpaces ?? []"
+                  :key="s.id"
+                  class="hover:bg-gray-50 dark:hover:bg-zinc-900/50 cursor-pointer"
+                  @click="navigateTo(`/s/${encodeURIComponent(s.ownerUsername)}`)"
+                >
+                  <td class="px-4 py-3">
+                    <div class="font-medium">{{ s.title }}</div>
+                  </td>
+                  <td class="px-4 py-3 text-gray-500 dark:text-gray-400">
+                    @{{ s.ownerUsername }}
+                  </td>
+                  <td class="px-4 py-3 text-right">
+                    <span
+                      class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium"
+                      :class="s.mode === 'WATCH_PARTY'
+                        ? 'bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300'
+                        : s.mode === 'RADIO'
+                          ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300'
+                          : 'bg-gray-100 dark:bg-zinc-800 text-gray-500 dark:text-gray-400'"
+                    >
+                      {{ s.mode === 'WATCH_PARTY' ? 'Watch party' : s.mode === 'RADIO' ? 'Radio' : 'Idle' }}
+                    </span>
+                  </td>
+                  <td class="px-4 py-3 text-right text-xs text-gray-400 dark:text-gray-500 whitespace-nowrap">
+                    {{ articleAge(s.createdAt) }}
+                  </td>
+                </tr>
+                <tr v-if="!data.spaces?.topSpaces?.length">
+                  <td colspan="4" class="px-4 py-6 text-center text-gray-500 dark:text-gray-400 text-sm">
+                    No active spaces
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
         <!-- ─────────────────────────────────────────────────────────────── -->
 
         <!-- Retention table (always 10-week window) -->
@@ -473,7 +568,7 @@
               <div class="flex items-start justify-between gap-2">
                 <div>
                   <div class="font-medium text-sm">Creator %</div>
-                  <div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">MAU who posted or checked in (30 days)</div>
+                  <div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">MAU who posted, published an article, or hosted a space (30 days)</div>
                 </div>
                 <div class="text-right shrink-0">
                   <div v-if="data.engagement.creatorPct !== null" class="text-2xl font-bold tabular-nums" :class="engagementColor(data.engagement.creatorPct, 15, 30)">
@@ -1078,6 +1173,32 @@ const groupKpiCards = computed(() => {
   ]
 })
 
+const spaceKpiCards = computed(() => {
+  if (!data.value?.spaces) return []
+  const s = data.value.spaces
+  return [
+    { label: 'Total Spaces', value: s.totalSpaces.toLocaleString(), sub: 'all time' },
+    { label: 'Active Now', value: s.activeSpaces.toLocaleString(), sub: 'isActive = true' },
+    { label: 'Created in Range', value: s.spacesCreatedInRange.toLocaleString(), sub: rangeLabel.value },
+  ]
+})
+
+const SPACE_MODE_META: Record<string, { label: string; dot: string; bar: string }> = {
+  NONE:        { label: 'Idle',        dot: 'bg-gray-400',   bar: 'bg-gray-400' },
+  WATCH_PARTY: { label: 'Watch Party', dot: 'bg-purple-500', bar: 'bg-purple-500' },
+  RADIO:       { label: 'Radio',       dot: 'bg-blue-500',   bar: 'bg-blue-500' },
+}
+
+const spaceModeRows = computed(() => {
+  if (!data.value?.spaces) return []
+  const byMode = data.value.spaces.byMode
+  const total = Object.values(byMode).reduce((a, b) => a + b, 0)
+  return Object.entries(byMode).map(([mode, count]) => {
+    const meta = SPACE_MODE_META[mode] ?? { label: mode, dot: 'bg-gray-400', bar: 'bg-gray-400' }
+    return { key: mode, ...meta, count, pct: total > 0 ? Math.round((count / total) * 100) : 0 }
+  }).sort((a, b) => b.count - a.count)
+})
+
 const summaryCards = computed(() => {
   if (!data.value) return []
   const { summary } = data.value
@@ -1088,7 +1209,7 @@ const summaryCards = computed(() => {
   return [
     { label: 'Total Users', value: summary.totalUsers.toLocaleString(), sub: undefined },
     { label: 'Verified', value: summary.verifiedUsers.toLocaleString(), sub: `${verifiedPct}% of all users` },
-    { label: 'DAU', value: summary.dau.toLocaleString(), sub: '30-day avg' },
+    { label: 'DAU', value: summary.dau.toLocaleString(), sub: `${rangeLabel.value} avg` },
     { label: 'MAU', value: summary.mau.toLocaleString(), sub: '30-day window' },
     { label: 'DAU/MAU', value: dauMauPct + '%', sub: 'Stickiness' },
     { label: 'Premium', value: summary.premiumUsers.toLocaleString(), sub: `incl. ${summary.premiumPlusUsers} Premium+` },

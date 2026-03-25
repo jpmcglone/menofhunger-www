@@ -130,7 +130,7 @@
                     />
                     <Transition name="moh-avatar-pause-fade">
                       <div
-                        v-if="u.paused || u.muted"
+                        v-if="space.mode === 'RADIO' && (u.paused || u.muted)"
                         class="absolute -bottom-1 -right-1 h-6 w-6 rounded-full bg-black/70 flex items-center justify-center ring-1 ring-white/20"
                         aria-hidden="true"
                       >

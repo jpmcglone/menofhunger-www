@@ -242,7 +242,7 @@ export function useSpaceAudio() {
     presence.emitSpacesPause()
   }
 
-  function stop() {
+  function stop({ silent = false }: { silent?: boolean } = {}) {
     if (!import.meta.client) return
     const a = ensureAudio()
     if (a) {
@@ -258,7 +258,10 @@ export function useSpaceAudio() {
     isPlaying.value = false
     isBuffering.value = false
     error.value = null
-    presence.emitSpacesPause()
+    // Don't broadcast pause when stopping due to a mode change — the space is
+    // no longer in RADIO mode so the paused flag would be meaningless and would
+    // cause stale pause icons to appear after switching back to watch party.
+    if (!silent) presence.emitSpacesPause()
   }
 
   function toggle() {
@@ -279,6 +282,8 @@ export function useSpaceAudio() {
   // - If the selected space changes away from the one this audio belongs to, stop.
   // - If the selected space is no longer in RADIO mode (or has no stream), stop.
   // This guarantees switching to WATCH_PARTY or NONE immediately cancels radio playback.
+  // Use silent=true so we don't broadcast spaces:pause when the mode changes — the pause
+  // flag has no meaning outside RADIO mode and causes stale pause icons for other viewers.
   watch(
     [selectedSpaceId, currentSpace, activeSpaceId],
     ([selectedId, space, activeId]) => {
@@ -286,11 +291,11 @@ export function useSpaceAudio() {
       const aid = String(activeId ?? '').trim()
       if (!aid) return
       if (!sid || sid !== aid) {
-        stop()
+        stop({ silent: true })
         return
       }
       if (!space || space.id !== aid || space.mode !== 'RADIO' || !space.radioStreamUrl) {
-        stop()
+        stop({ silent: true })
       }
     },
     { deep: false },

@@ -310,6 +310,25 @@ export function useSpaceLiveChat(options: { passive?: boolean } = {}) {
       },
       { immediate: true },
     )
+
+    // Re-subscribe to chat on socket reconnect. Without this, after a disconnect
+    // the user rejoins the space presence (via useSpaceLobby) but chat subscription
+    // is lost, so join/leave system messages and incoming chat messages are missed.
+    let prevChatConnected = presence.isSocketConnected.value
+    watch(
+      () => presence.isSocketConnected.value,
+      async (connected) => {
+        if (connected && !prevChatConnected) {
+          const sid = spaceId.value
+          if (sid) {
+            subscribedSpaceId.value = null
+            snapshotReceivedForSpaceId.value = null
+            await subscribeToSpace(sid)
+          }
+        }
+        prevChatConnected = connected
+      },
+    )
   }
 
   function sendMessage(body: string, media?: Array<{ url: string; width: number | null; height: number | null; alt: string | null }>) {

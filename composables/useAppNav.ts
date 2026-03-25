@@ -48,7 +48,7 @@ export function useAppNav() {
       label: 'Spaces',
       to: '/spaces',
       icon: showMusicIcon.value ? 'tabler:music' : 'tabler:layout-grid',
-      iconActive: showMusicIcon.value ? 'tabler:music' : 'tabler:layout-grid',
+      iconActive: showMusicIcon.value ? 'tabler:music-filled' : 'tabler:layout-grid-filled',
       iconClass: showMusicIcon.value ? 'moh-slow-bounce' : undefined,
       requiresAuth: true,
       requiresVerified: true,

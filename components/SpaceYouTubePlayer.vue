@@ -148,6 +148,8 @@ let ownerSyncTimer: ReturnType<typeof setInterval> | null = null
 let lastOwnerState: { isPlaying: boolean; currentTime: number; playbackRate: number; atMs: number } | null = null
 /** True after the first successful applyState so periodic checkpoints use a relaxed seek threshold. */
 let hasSyncedInitially = false
+/** The video ID currently loaded in the iframe — used to detect URL changes without recreating the player. */
+let currentVideoId: string | null = null
 
 /** True when a newer owner tab has taken primary control — this tab should not emit control events. */
 const isReplacedOwner = ref(false)
@@ -221,11 +223,25 @@ function applyOwnerRestoreState(state: WatchPartyState) {
 }
 
 /**
+ * If the player is ready and the video ID has changed, swap the video without
+ * destroying the iframe. Returns true if a swap occurred.
+ */
+function loadNewVideoIfNeeded(videoId: string | null): boolean {
+  if (!videoId || !ytPlayer || !playerReady.value) return false
+  if (videoId === currentVideoId) return false
+  currentVideoId = videoId
+  hasSyncedInitially = false
+  ytPlayer.loadVideoById?.({ videoId, startSeconds: 0 })
+  return true
+}
+
+/**
  * @param startSeconds  If > 0 the player will begin buffering from this
  *   position so viewers never see the video flash from 0:00.
  */
 function createPlayer(videoId: string, startSeconds = 0) {
   if (!playerContainerRef.value) return
+  currentVideoId = videoId
   const container = document.createElement('div')
   playerContainerRef.value.innerHTML = ''
   playerContainerRef.value.appendChild(container)
@@ -374,6 +390,11 @@ function stopOwnerSyncTimer() {
 function applyState(state: WatchPartyState) {
   if (!ytPlayer || isOwner.value) return
 
+  // If the video changed, swap the embed first. The subsequent seek + play/pause
+  // will be applied once the new video is loaded (the next applyState tick).
+  const stateVideoId = extractVideoId(state.videoUrl)
+  if (stateVideoId && loadNewVideoIfNeeded(stateVideoId)) return
+
   // Always compute the wall-clock-adjusted position so a state that was stored
   // seconds ago still lands the viewer at the correct spot.
   const adjusted = driftAdjustedTime(state)
@@ -414,6 +435,15 @@ watch(watchPartyState, (newState) => {
     return
   }
   if (playerReady.value) applyState(newState)
+})
+
+// When the host applies a new YouTube URL (via SpaceOwnerPanel), the space prop
+// updates but the iframe stays on the old video. Detect the video ID change and
+// swap the video in-place without destroying/recreating the player.
+watch(() => props.space.watchPartyUrl, (newUrl) => {
+  if (!isOwner.value) return
+  const newId = extractVideoId(newUrl ?? '')
+  loadNewVideoIfNeeded(newId)
 })
 
 watch(pendingOwnerRestore, (pending) => {
@@ -532,6 +562,7 @@ onBeforeUnmount(() => {
   playerReady.value = false
   lastOwnerState = null
   hasSyncedInitially = false
+  currentVideoId = null
   isReplacedOwner.value = false
   pendingOwnerRestore.value = false
   ownerSyncChipVisible.value = false

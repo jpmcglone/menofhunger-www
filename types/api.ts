@@ -1654,6 +1654,31 @@ export type AdminAnalyticsGroups = {
   topGroups: AdminAnalyticsGroupsTopRow[]
 }
 
+export type AdminAnalyticsSpacesTopRow = {
+  id: string
+  ownerId: string
+  ownerUsername: string
+  title: string
+  mode: string
+  isActive: boolean
+  createdAt: string
+}
+
+export type AdminAnalyticsSpaces = {
+  /** All-time total spaces. */
+  totalSpaces: number
+  /** Spaces currently marked isActive = true. */
+  activeSpaces: number
+  /** Spaces created within the selected range. */
+  spacesCreatedInRange: number
+  /** All-time spaces by current mode (NONE / WATCH_PARTY / RADIO). */
+  byMode: Record<string, number>
+  /** Time series — spaces created per bucket in the selected range. */
+  created: AdminAnalyticsTimeSeriesPoint[]
+  /** Currently active spaces, most recently updated first. */
+  topSpaces: AdminAnalyticsSpacesTopRow[]
+}
+
 export type AdminAnalytics = {
   range: AnalyticsRange
   granularity: AnalyticsGranularity
@@ -1670,6 +1695,7 @@ export type AdminAnalytics = {
   coins: AdminAnalyticsCoins
   articles: AdminAnalyticsArticles
   groups: AdminAnalyticsGroups
+  spaces: AdminAnalyticsSpaces
   asOf: string
 }
 
