@@ -31,8 +31,9 @@ Sentry.init({
   // Send cookies, headers, and user IP so we can correlate sessions/errors.
   sendDefaultPii: true,
 
-  // Forward console.log/warn/error to Sentry Logs.
-  enableLogs: true,
+  // Keep Sentry event capture enabled, but avoid forwarding every console line
+  // to Sentry Logs in development.
+  enableLogs: false,
 
   // Suppress known browser-noise errors that are not actionable.
   ignoreErrors: [

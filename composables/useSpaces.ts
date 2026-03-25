@@ -17,7 +17,6 @@ export function useSpaces() {
       const remote = await apiFetchData<Space[]>('/spaces', { method: 'GET' })
       spaces.value = Array.isArray(remote) ? remote : []
     } catch {
-      // Best-effort: render empty list if fetch fails
       spaces.value = spaces.value ?? []
     } finally {
       loading.value = false
@@ -25,7 +24,6 @@ export function useSpaces() {
     }
   }
 
-  /** Hydrate from SSR or pre-fetched list so deep links have space data on first paint. */
   function hydrateSpaces(list: Space[] | null | undefined) {
     spaces.value = Array.isArray(list) ? list : []
     loadedOnce.value = true
@@ -40,13 +38,31 @@ export function useSpaces() {
     return byId.value.get(id) ?? null
   }
 
+  function upsertSpace(space: Space) {
+    const idx = spaces.value.findIndex((s) => s.id === space.id)
+    if (idx >= 0) {
+      spaces.value[idx] = space
+    } else {
+      spaces.value.push(space)
+    }
+  }
+
+  async function fetchSpaceByUsername(username: string): Promise<Space | null> {
+    try {
+      return await apiFetchData<Space>(`/spaces/by-username/${encodeURIComponent(username)}`, { method: 'GET' })
+    } catch {
+      return null
+    }
+  }
+
   return {
     spaces: readonly(spaces),
     loading: readonly(loading),
     loadedOnce: readonly(loadedOnce),
     loadSpaces,
     hydrateSpaces,
+    upsertSpace,
     getById,
+    fetchSpaceByUsername,
   }
 }
-

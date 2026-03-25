@@ -512,7 +512,7 @@ const props = defineProps<{
 }>()
 
 const route = useRoute()
-const { user, isAuthed, isPremium, isVerified: viewerIsVerified } = useAuth()
+const { user, me, isAuthed, isPremium, isVerified: viewerIsVerified } = useAuth()
 const { apiFetchData } = useApiClient()
 const toast = useAppToast()
 
@@ -1181,7 +1181,26 @@ watch(
 )
 
 const submit = async () => {
-  if (!canPost.value) return
+  // Mobile backgrounding can leave auth state stale after transient /auth/me
+  // failures. Try one explicit refresh before blocking submit.
+  if (!isAuthed.value) {
+    try {
+      await me()
+    } catch {
+      // best-effort; normal canPost checks below handle final state
+    }
+  }
+  if (!canPost.value) {
+    if (!isAuthed.value) {
+      toast.push({
+        title: 'Session expired',
+        message: 'Please log in again to post your draft.',
+        tone: 'error',
+        durationMs: 2600,
+      })
+    }
+    return
+  }
   if (mode.value === 'edit') {
     if (!draft.value.trim()) return
   } else {

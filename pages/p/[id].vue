@@ -354,16 +354,20 @@ async function createComment(
 }
 
 function onReplyPosted(payload: { id: string; post?: FeedPost }) {
-  const p = post.value
-  if (p?.id) {
-    if (data.value) {
-      data.value = { ...data.value, commentCount: (data.value.commentCount ?? 0) + 1 }
-    }
-  }
   if (payload.post) {
     prependComment(payload.post)
   } else {
     void fetchComments(null)
+  }
+  // Sync data.value.commentCount with the single source of truth (commentsCounts).
+  // Doing this after prependComment ensures we read the already-bumped value,
+  // so both the AppPostRow comment bubble and the "Replies X" header show the
+  // same number in the same render cycle — no perceived double-increment.
+  if (data.value) {
+    const synced = commentsCounts.value
+      ? commentsCounts.value.all
+      : (data.value.commentCount ?? 0) + 1
+    data.value = { ...data.value, commentCount: synced }
   }
   void fetchThreadParticipants()
 }

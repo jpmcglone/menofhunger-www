@@ -14,6 +14,7 @@ Sentry.init({
   tracesSampleRate: isProd ? 0.2 : 1.0,
 
   sendDefaultPii: true,
-  enableLogs: true,
+  // Keep Sentry event capture enabled, but avoid extra SDK info logs in dev SSR.
+  enableLogs: false,
   debug: false,
 })

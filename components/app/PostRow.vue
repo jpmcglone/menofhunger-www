@@ -858,23 +858,23 @@ const isSelf = computed(() => {
 })
 
 // Avatar context menu: shown when viewing your own post and you're in a space (but not on /spaces).
-const { selectedSpaceId } = useSpaceLobby()
+const { selectedSpaceId, currentSpace: currentSpaceForNav } = useSpaceLobby()
 const showAvatarMenu = computed(() => {
   if (!isSelf.value) return false
   if (!selectedSpaceId.value) return false
-  if (route.path.startsWith('/spaces')) return false
+  if (route.path.startsWith('/spaces') || route.path.startsWith('/s/')) return false
   return true
 })
 const avatarMenuRef = ref()
 type AvatarMenuItem = MenuItem & { iconName?: string }
 const avatarMenuItems = computed<AvatarMenuItem[]>(() => {
-  const sid = selectedSpaceId.value
   const items: AvatarMenuItem[] = []
-  if (sid) {
+  const ownerUsername = currentSpaceForNav.value?.owner?.username
+  if (ownerUsername) {
     items.push({
       label: 'Go to space',
       iconName: 'tabler:layout-grid',
-      command: () => navigateTo(`/spaces/${encodeURIComponent(sid)}`),
+      command: () => navigateTo(`/s/${encodeURIComponent(ownerUsername)}`),
     })
   }
   if (authorProfilePath.value) {

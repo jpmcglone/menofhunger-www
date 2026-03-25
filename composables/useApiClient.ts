@@ -1,7 +1,7 @@
 import type { ApiEnvelope } from '~/types/api'
 import { clearAuthClientState } from '~/composables/auth/authState'
 import { joinUrl } from '~/utils/url'
-import { isAdminPath, isLoggedOutAllowedPath, isPostPermalinkPath, isPublicPath, isUserProfilePath } from '~/config/routes'
+import { isAdminPath, isArticlePermalinkPath, isLoggedOutAllowedPath, isPostPermalinkPath, isPublicPath, isUserProfilePath } from '~/config/routes'
 
 type ApiFetchOptions = NonNullable<Parameters<typeof $fetch>[1]>
 
@@ -157,6 +157,7 @@ export function useApiClient() {
     if (isPublicPath(path)) return false
     if (isUserProfilePath(path)) return false
     if (isPostPermalinkPath(path)) return false
+    if (isArticlePermalinkPath(path)) return false
     if (isAdminPath(path)) return false
     if (isLoggedOutAllowedPath(path)) return false
     return layout === 'app'

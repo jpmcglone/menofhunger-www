@@ -1,8 +1,11 @@
 <template>
   <span
     :class="[
-      'inline-flex min-w-[2rem] items-center justify-center rounded-full border border-white/80 bg-gradient-to-r from-[var(--moh-verified)] to-[var(--moh-premium)] px-1.5 py-0.5 text-center font-bold leading-none text-white dark:border-black/70 moh-new-badge-float',
+      'inline-flex min-w-[2rem] items-center justify-center rounded-full border px-1.5 py-0.5 text-center font-bold leading-none text-white moh-new-badge-float',
       small ? 'text-[8px]' : 'text-[9px]',
+      variant === 'beta'
+        ? 'border-white/80 bg-red-600 dark:border-black/70'
+        : 'border-white/80 bg-gradient-to-r from-[var(--moh-verified)] to-[var(--moh-premium)] dark:border-black/70',
     ]"
     :aria-label="label"
   >
@@ -14,9 +17,11 @@
 withDefaults(defineProps<{
   label?: string
   small?: boolean
+  variant?: 'new' | 'beta'
 }>(), {
   label: 'NEW',
   small: false,
+  variant: 'new',
 })
 </script>
 

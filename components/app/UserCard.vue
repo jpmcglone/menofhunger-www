@@ -124,7 +124,7 @@ const route = useRoute()
 const { user } = useAuth()
 const { getPresenceStatus, isSocketConnecting } = usePresence()
 const { menuItems, confirmVisible, confirmLogout } = useUserMenu()
-const { selectedSpaceId } = useSpaceLobby()
+const { selectedSpaceId, currentSpace: currentSpaceForNav } = useSpaceLobby()
 const { openShortcutsModal } = useKeyboardShortcuts()
 const isXlUp = useHydratedMediaQuery('(min-width: 1280px)')
 
@@ -164,13 +164,13 @@ type MenuItemWithIcon = MenuItem & { iconName?: string }
 // Prepend "Go to space" when the current user is actively in a space (suppressed on /spaces routes).
 const allMenuItems = computed<MenuItemWithIcon[]>(() => {
   const base = menuItems.value as MenuItemWithIcon[]
-  const sid = selectedSpaceId.value
-  if (!sid || route.path.startsWith('/spaces')) return base
+  const ownerUsername = currentSpaceForNav.value?.owner?.username
+  if (!ownerUsername || route.path.startsWith('/spaces') || route.path.startsWith('/s/')) return base
   return [
     {
       label: 'Go to space',
       iconName: 'tabler:layout-grid',
-      command: () => navigateTo(`/spaces/${encodeURIComponent(sid)}`),
+      command: () => navigateTo(`/s/${encodeURIComponent(ownerUsername)}`),
     } as MenuItemWithIcon,
     { separator: true } as MenuItemWithIcon,
     ...base,

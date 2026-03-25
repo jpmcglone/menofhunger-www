@@ -4,8 +4,21 @@
 
       <!-- Header -->
       <div class="moh-gutter-x pt-4 pb-3">
-        <h1 class="moh-h1">Spaces</h1>
-        <p class="mt-1 moh-meta">Enter a space, chat, and optionally play music while you build.</p>
+        <div class="flex items-start justify-between gap-3">
+          <div>
+            <h1 class="moh-h1">Spaces</h1>
+            <p class="mt-1 moh-meta">Join a space to chat and hang out. Create your own to host.</p>
+          </div>
+          <button
+            v-if="user && !mySpace"
+            type="button"
+            class="moh-tap moh-focus shrink-0 inline-flex items-center gap-1.5 rounded-full bg-[var(--p-primary-color)] text-white px-4 py-2 text-sm font-semibold transition-opacity hover:opacity-90"
+            @click="onCreateSpace"
+          >
+            <Icon name="tabler:plus" class="text-[16px]" aria-hidden="true" />
+            Create Space
+          </button>
+        </div>
       </div>
 
       <!-- Loading -->
@@ -14,10 +27,10 @@
         <span>Loading spaces…</span>
       </div>
       <div v-else-if="spaces.length === 0 && !loading" class="moh-gutter-x py-4 moh-meta">
-        No spaces available.
+        No active spaces right now. Be the first to create one!
       </div>
 
-      <!-- Space rows — edge to edge -->
+      <!-- Space rows -->
       <TransitionGroup v-else tag="div" class="border-t moh-border" move-class="transition-transform duration-500 ease-in-out">
         <AppSpaceRow
           v-for="space in sortedSpaces"
@@ -26,13 +39,12 @@
         />
       </TransitionGroup>
 
-      <!-- Empty state / member footer -->
       <div v-if="loadedOnce" class="moh-gutter-x pt-4">
         <p v-if="!currentSpace" class="moh-meta">
           Pick a space to see who's here. Share a space link to bring others in.
         </p>
         <p v-else-if="members.length === 0" class="moh-meta">
-          You're the first in {{ currentSpace.name }} — share the link to invite others.
+          You're the first in {{ currentSpace.title }} — share the link to invite others.
         </p>
       </div>
     </div>
@@ -49,24 +61,37 @@ definePageMeta({
 
 usePageSeo({
   title: 'Spaces',
-  description: 'Enter spaces to chat and optionally play music.',
+  description: 'Join spaces to chat, watch videos, and listen to music together.',
   canonicalPath: '/spaces',
   noindex: true,
 })
 
+const { user } = useAuth()
 const { spaces, loading, loadedOnce, loadSpaces } = useSpaces()
 const { currentSpace, members, lobbyCountForSpace, subscribeLobbyCounts, unsubscribeLobbyCounts } = useSpaceLobby()
+const { getMySpace, createSpace } = useSpaceOwner()
+
+const mySpace = useState<any>('my-space', () => null)
+
 const sortedSpaces = computed(() =>
-  [...(spaces.value ?? [])].sort((a, b) => lobbyCountForSpace(b.id) - lobbyCountForSpace(a.id))
+  [...(spaces.value ?? [])].sort((a, b) => (b.listenerCount ?? 0) - (a.listenerCount ?? 0))
 )
 
-onMounted(() => {
+async function onCreateSpace() {
+  const space = await createSpace({ title: `${user.value?.username ?? 'My'}'s Space` })
+  if (space) {
+    navigateTo(`/s/${encodeURIComponent(space.owner?.username ?? '')}`)
+  }
+}
+
+onMounted(async () => {
   if (!loadedOnce.value) void loadSpaces()
   void subscribeLobbyCounts()
+  const s = await getMySpace()
+  if (s) mySpace.value = s
 })
 
 onBeforeUnmount(() => {
   unsubscribeLobbyCounts()
 })
 </script>
-

@@ -12,19 +12,20 @@
     </div>
     <div ref="barEl" class="relative z-10 flex w-full items-center justify-between gap-3">
     <NuxtLink
-      v-if="selectedSpaceId"
-      :to="`/spaces/${encodeURIComponent(selectedSpaceId)}`"
+      v-if="selectedSpaceId && displaySpace?.owner?.username"
+      :to="`/s/${encodeURIComponent(displaySpace.owner.username)}`"
       class="min-w-0 flex-1 text-left block"
     >
       <div class="min-w-0">
-        <div class="text-sm font-semibold truncate">{{ displaySpace.name }}</div>
+        <div class="text-sm font-semibold truncate">{{ displaySpace.title }}</div>
         <div class="text-[11px] text-gray-500 dark:text-white/70">
-          <span v-if="hasStation">
+          <span v-if="displaySpace.mode === 'WATCH_PARTY'">Watching</span>
+          <span v-else-if="hasRadioStream">
             <span v-if="isBuffering">Buffering…</span>
-            <span v-else-if="isPlaying">Playing</span>
+            <span v-else-if="isPlaying">Listening</span>
             <span v-else>Paused</span>
           </span>
-          <span v-else>No music</span>
+          <span v-else>In space</span>
           <span v-if="membersCount !== null" class="ml-2 tabular-nums">· {{ membersCount }}</span>
         </div>
       </div>
@@ -36,14 +37,15 @@
       @click="navigateTo('/spaces')"
     >
       <div class="min-w-0">
-        <div class="text-sm font-semibold truncate">{{ displaySpace?.name }}</div>
+        <div class="text-sm font-semibold truncate">{{ displaySpace?.title }}</div>
         <div class="text-[11px] text-gray-500 dark:text-white/70">
-          <span v-if="hasStation">
+          <span v-if="displaySpace?.mode === 'WATCH_PARTY'">Watching</span>
+          <span v-else-if="hasRadioStream">
             <span v-if="isBuffering">Buffering…</span>
-            <span v-else-if="isPlaying">Playing</span>
+            <span v-else-if="isPlaying">Listening</span>
             <span v-else>Paused</span>
           </span>
-          <span v-else>No music</span>
+          <span v-else>In space</span>
           <span v-if="membersCount !== null" class="ml-2 tabular-nums">· {{ membersCount }}</span>
         </div>
       </div>
@@ -119,7 +121,7 @@
       <!-- Controls: volume, play/pause, chat, leave -->
       <div ref="controlsEl" class="shrink-0 flex items-center gap-1.5">
         <!-- Volume -->
-        <div v-if="hasStation" class="flex items-center gap-1.5">
+        <div v-if="hasRadioStream" class="flex items-center gap-1.5">
           <button
             type="button"
             class="moh-tap moh-focus inline-flex h-11 w-11 items-center justify-center rounded-full transition-colors moh-surface-hover"
@@ -142,7 +144,7 @@
 
         <!-- Buffering spinner or play/pause -->
         <div
-          v-if="hasStation && isBuffering"
+          v-if="hasRadioStream && isBuffering"
           class="inline-flex h-11 w-11 items-center justify-center rounded-full"
           aria-label="Loading"
           role="status"
@@ -150,7 +152,7 @@
           <Icon name="tabler:loader" class="text-[18px] opacity-80 animate-spin" aria-hidden="true" />
         </div>
         <button
-          v-else-if="hasStation"
+          v-else-if="hasRadioStream"
           type="button"
           class="moh-tap moh-focus inline-flex h-11 w-11 items-center justify-center rounded-full transition-colors moh-surface-hover"
           :aria-label="isPlaying ? 'Pause' : 'Play'"
@@ -224,7 +226,7 @@ function listenerProfileTo(username: string): string {
 
 const { selectedSpaceId, currentSpace, members, leave } = useSpaceLobby()
 const { addFloating } = useSpaceReactions()
-const { hasStation, isPlaying, isBuffering, toggle, stop, volume, setVolume } = useSpaceAudio()
+const { hasRadioStream, isPlaying, isBuffering, toggle, stop, volume, setVolume } = useSpaceAudio()
 const usersStore = useUsersStore()
 const presence = usePresence()
 const { user } = useAuth()
@@ -345,11 +347,10 @@ const listenerOverflowCount = computed(() => {
 })
 const showListenerStack = computed(() => membersCount.value !== null && membersCount.value > 0)
 
-const spaceShareUrl = computed(() =>
-  selectedSpaceId.value
-    ? `${siteConfig.url}/spaces/${encodeURIComponent(selectedSpaceId.value)}`
-    : '',
-)
+const spaceShareUrl = computed(() => {
+  if (!displaySpace.value?.owner?.username) return ''
+  return `${siteConfig.url}/s/${encodeURIComponent(displaySpace.value.owner.username)}`
+})
 const toast = useAppToast()
 const { copyText: copyToClipboard } = useCopyToClipboard()
 type MenuItemWithIcon = MenuItem & { iconName?: string }
@@ -393,8 +394,7 @@ function onChatButtonClick() {
 
 async function onLeaveClick() {
   spaceChatSheetOpen.value = false
-  if (route.path.startsWith('/spaces/')) {
-    // Navigate to the list first, then leave so the transition feels natural.
+  if (route.path.startsWith('/spaces/') || route.path.startsWith('/s/')) {
     await navigateTo('/spaces')
     stop()
     leave()

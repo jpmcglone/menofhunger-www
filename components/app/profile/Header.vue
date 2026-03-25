@@ -145,7 +145,7 @@
             v-show="!hideAvatarThumb"
             type="button"
             class="absolute inset-0"
-            :class="isSelf && selectedSpaceId && !$route.path.startsWith('/spaces') ? 'cursor-pointer' : 'cursor-zoom-in'"
+            :class="isSelf && selectedSpaceId && !$route.path.startsWith('/spaces') && !$route.path.startsWith('/s/') ? 'cursor-pointer' : 'cursor-zoom-in'"
             aria-label="Avatar options"
             @click="onAvatarClick($event)"
           />
@@ -739,21 +739,20 @@ const menuRef = ref()
 const avatarWrapperRef = ref<HTMLElement | null>(null)
 
 // Avatar context menu (for own profile: Go to space and/or View photo).
-const { selectedSpaceId } = useSpaceLobby()
+const { selectedSpaceId, currentSpace: currentSpaceForNav } = useSpaceLobby()
 const avatarMenuRef = ref()
 
 type AvatarMenuItem = MenuItemWithIcon
 
 const avatarMenuItems = computed<AvatarMenuItem[]>(() => {
   const items: AvatarMenuItem[] = []
-  const sid = selectedSpaceId.value
-  // Only offer "Go to space" when not already on the spaces page.
+  const ownerUsername = currentSpaceForNav.value?.owner?.username
   const route = useRoute()
-  if (sid && !route.path.startsWith('/spaces')) {
+  if (ownerUsername && !route.path.startsWith('/spaces') && !route.path.startsWith('/s/')) {
     items.push({
       label: 'Go to space',
       iconName: 'tabler:layout-grid',
-      command: () => navigateTo(`/spaces/${encodeURIComponent(sid)}`),
+      command: () => navigateTo(`/s/${encodeURIComponent(ownerUsername)}`),
     })
   }
   if (profileAvatarUrl.value) {
@@ -777,7 +776,7 @@ const avatarMenuItems = computed<AvatarMenuItem[]>(() => {
 
 function onAvatarClick(event: MouseEvent) {
   const route = useRoute()
-  const inSpace = Boolean(selectedSpaceId.value) && !route.path.startsWith('/spaces')
+  const inSpace = Boolean(selectedSpaceId.value) && !route.path.startsWith('/spaces') && !route.path.startsWith('/s/')
   if (isSelf.value && inSpace) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     ;(avatarMenuRef.value as any)?.toggle(event)

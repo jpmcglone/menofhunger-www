@@ -205,6 +205,12 @@
                   >
                     <AppNewBadge />
                   </div>
+                  <div
+                    v-if="item.key === 'spaces'"
+                    class="pointer-events-none absolute -bottom-1 left-1/2 -translate-x-1/2 z-20"
+                  >
+                    <AppNewBadge label="BETA" variant="beta" />
+                  </div>
                   <AppNotificationBadge v-if="item.key === 'notifications'" />
                   <AppMessagesBadge v-if="item.key === 'messages'" />
                 </span>
@@ -1384,7 +1390,7 @@ useSpaceLiveChat()
 // Mobile bottom-sheet chat
 const radioChatSheetOpen = useState<boolean>('space-chat-sheet-open', () => false)
 const radioChat = useSpaceLiveChat({ passive: true })
-const radioChatStationName = computed(() => currentSpace.value?.name ?? 'Place')
+const radioChatStationName = computed(() => currentSpace.value?.title ?? 'Place')
 const radioChatSheetTitle = computed(() => 'Live chat')
 const radioChatMessageCount = computed(() => {
   return Math.max(0, radioChat.messages.value.length)

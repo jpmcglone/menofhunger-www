@@ -20,8 +20,8 @@ export function useAppNav() {
   const { user, isAuthed, isVerified: isVerifiedBase, isPremium } = useAuth()
   // A user is "verified" for nav purposes if they have premium OR verified status.
   const isVerified = computed(() => isPremium.value || isVerifiedBase.value)
-  const { stationId: playbackStationId, isPlaying: musicIsPlaying } = useSpaceAudio()
-  const showMusicIcon = computed(() => Boolean(playbackStationId.value) && Boolean(musicIsPlaying.value))
+  const { activeSpaceId, isPlaying: musicIsPlaying } = useSpaceAudio()
+  const showMusicIcon = computed(() => Boolean(activeSpaceId.value) && Boolean(musicIsPlaying.value))
 
   const profileTo = computed(() => {
     const u = user.value?.username

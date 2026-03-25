@@ -136,7 +136,7 @@ const lobbyMentionCandidates = computed<FollowListUser[]>(() =>
 )
 const presence = usePresence()
 
-const stationName = computed(() => currentSpace.value?.name ?? 'Space')
+const stationName = computed(() => currentSpace.value?.title ?? 'Space')
 const chatMessageCount = computed(() => messages.value.filter(m => m.kind === 'user').length)
 
 const scrollerEl = ref<HTMLElement | null>(null)

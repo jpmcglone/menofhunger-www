@@ -50,6 +50,16 @@ export type AuthUser = {
 let clientMePromise: Promise<AuthUser | null> | null = null
 let authGeneration = 0
 
+function getErrorStatus(e: unknown): number | null {
+  const anyErr = e as any
+  const status =
+    (typeof anyErr?.status === 'number' ? anyErr.status : null) ??
+    (typeof anyErr?.statusCode === 'number' ? anyErr.statusCode : null) ??
+    (typeof anyErr?.response?.status === 'number' ? anyErr.response.status : null) ??
+    (typeof anyErr?.data?.meta?.status === 'number' ? anyErr.data.meta.status : null)
+  return typeof status === 'number' ? status : null
+}
+
 function isNuxtComposableContextError(e: unknown): boolean {
   const message = String((e as { message?: unknown } | null | undefined)?.message ?? '')
   return (
@@ -155,9 +165,13 @@ export function useAuth() {
         }
         console.warn('[auth] /auth/me failed', e)
       }
-      // If the API is unreachable, fail gracefully.
-      if (gen === authGeneration) user.value = null
-      return null
+      // Keep an existing authenticated user on transient/non-auth failures (mobile
+      // background/wake network flaps are common). A 401 is handled by api client
+      // unauthorized flow, which clears auth state explicitly.
+      if (gen === authGeneration && getErrorStatus(e) === 401) {
+        user.value = null
+      }
+      return user.value
     } finally {
       if (gen === authGeneration) didAttempt.value = true
     }

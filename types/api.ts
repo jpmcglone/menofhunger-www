@@ -150,23 +150,44 @@ export type RadioChatSnapshot = {
   messages: RadioChatMessage[]
 }
 
-export type SpaceStation = {
+export type SpaceOwner = {
   id: string
-  name: string
-  streamUrl: string
-  attributionName: string | null
-  attributionUrl: string | null
+  username: string | null
+  avatarUrl: string | null
+  premium: boolean
+  premiumPlus: boolean
+  isOrganization: boolean
+  verifiedStatus: 'none' | 'identity' | 'manual'
 }
 
 export type Space = {
   id: string
-  name: string
-  stationId: string | null
-  station: SpaceStation | null
-  isBuiltin: boolean
+  title: string
+  description: string | null
+  isActive: boolean
+  mode: 'NONE' | 'WATCH_PARTY' | 'RADIO'
+  watchPartyUrl: string | null
+  radioStreamUrl: string | null
+  owner: SpaceOwner
+  listenerCount: number
 }
 
 export type SpaceMember = LobbyMember
+
+export type WatchPartyState = {
+  videoUrl: string
+  isPlaying: boolean
+  currentTime: number
+  playbackRate: number
+  updatedAt: number
+}
+
+export type SpaceModeChanged = {
+  spaceId: string
+  mode: 'NONE' | 'WATCH_PARTY' | 'RADIO'
+  watchPartyUrl: string | null
+  radioStreamUrl: string | null
+}
 
 export type SpaceLobbyCounts = {
   countsBySpaceId: Record<string, number>

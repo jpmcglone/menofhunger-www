@@ -112,6 +112,21 @@ export function useSpaceLobby() {
     return Math.max(0, Math.floor(Number(lobbyCounts.value?.countsBySpaceId?.[id] ?? 0) || 0))
   }
 
+  // Re-join the space room whenever the socket reconnects, since Socket.IO creates
+  // a new socket on reconnect and the server-side room membership is lost.
+  if (import.meta.client) {
+    let prevConnected = presence.isSocketConnected.value
+    watch(
+      () => presence.isSocketConnected.value,
+      (connected) => {
+        if (connected && !prevConnected && selectedSpaceId.value) {
+          presence.emitSpacesJoin(selectedSpaceId.value)
+        }
+        prevConnected = connected
+      },
+    )
+  }
+
   return {
     selectedSpaceId,
     currentSpace,

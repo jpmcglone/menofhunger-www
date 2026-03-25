@@ -11,7 +11,9 @@ import type {
   SpaceChatSnapshot,
   SpaceLobbyCounts,
   SpaceMember,
+  SpaceModeChanged,
   SpaceReactionEvent,
+  WatchPartyState,
   WsAdminUpdatedPayload,
   WsArticlesLiveUpdatedPayload,
   WsArticlesCommentAddedPayload,
@@ -75,6 +77,8 @@ export type SpacesChatSnapshotPayload = SpaceChatSnapshot
 export type SpacesChatMessagePayload = { spaceId: string; message: SpaceChatMessage }
 export type SpacesTypingPayload = { spaceId: string; sender: SpaceChatSender; typing?: boolean }
 export type SpacesReactionPayload = SpaceReactionEvent
+export type SpacesWatchPartyStatePayload = { spaceId: string } & WatchPartyState
+export type SpacesModeChangedPayload = SpaceModeChanged
 export type SpacesCallback = {
   onMembers?: (payload: SpacesMembersPayload) => void
   onLobbyCounts?: (payload: SpacesLobbyCountsPayload) => void
@@ -82,6 +86,10 @@ export type SpacesCallback = {
   onChatMessage?: (payload: SpacesChatMessagePayload) => void
   onTyping?: (payload: SpacesTypingPayload) => void
   onReaction?: (payload: SpacesReactionPayload) => void
+  onWatchPartyState?: (payload: SpacesWatchPartyStatePayload) => void
+  onModeChanged?: (payload: SpacesModeChangedPayload) => void
+  /** Fired on a secondary owner tab — this tab should stop sending control events. */
+  onWatchPartyOwnerReplaced?: (payload: { spaceId: string }) => void
 }
 
 export type MessagesCallback = {
@@ -841,6 +849,40 @@ export function usePresence() {
       }
     })
 
+    socket.on('spaces:watchPartyState', (data: { spaceId?: string } & Partial<WatchPartyState>) => {
+      if (!spacesCallbacks.value.size) return
+      const spaceId = String(data?.spaceId ?? '').trim()
+      if (!spaceId) return
+      for (const cb of spacesCallbacks.value) {
+        cb.onWatchPartyState?.({
+          spaceId,
+          videoUrl: String(data?.videoUrl ?? ''),
+          isPlaying: Boolean(data?.isPlaying),
+          currentTime: Number(data?.currentTime ?? 0),
+          playbackRate: Number(data?.playbackRate ?? 1),
+          updatedAt: Number(data?.updatedAt ?? Date.now()),
+        })
+      }
+    })
+
+    socket.on('spaces:modeChanged', (data: SpaceModeChanged) => {
+      if (!spacesCallbacks.value.size) return
+      const spaceId = String((data as any)?.spaceId ?? '').trim()
+      if (!spaceId) return
+      for (const cb of spacesCallbacks.value) {
+        cb.onModeChanged?.(data)
+      }
+    })
+
+    socket.on('spaces:watchPartyOwnerReplaced', (data: { spaceId?: string }) => {
+      if (!spacesCallbacks.value.size) return
+      const spaceId = String(data?.spaceId ?? '').trim()
+      if (!spaceId) return
+      for (const cb of spacesCallbacks.value) {
+        cb.onWatchPartyOwnerReplaced?.({ spaceId })
+      }
+    })
+
     socket.on('messages:typing', (data: { conversationId?: string; userId?: string; typing?: boolean }) => {
       if (!messagesCallbacks.value.size) return
       for (const cb of messagesCallbacks.value) {
@@ -1330,6 +1372,25 @@ export function usePresence() {
       const rid = String(reactionId ?? '').trim()
       if (!socket?.connected || !sid || !rid) return
       socket.emit('spaces:reaction', { spaceId: sid, reactionId: rid })
+    },
+    emitSpacesWatchPartyControl(spaceId: string, state: { videoUrl: string; isPlaying: boolean; currentTime: number; playbackRate: number }) {
+      const socket = socketRef.value
+      const id = String(spaceId ?? '').trim()
+      if (!socket?.connected || !id) return
+      socket.emit('spaces:watchPartyControl', { spaceId: id, ...state })
+    },
+    emitSpacesRequestWatchPartyState(spaceId: string) {
+      const socket = socketRef.value
+      const id = String(spaceId ?? '').trim()
+      if (!socket?.connected || !id) return
+      socket.emit('spaces:requestWatchPartyState', { spaceId: id })
+    },
+    /** Owner calls this after a successful REST setMode so all viewers get a real-time modeChanged broadcast. */
+    emitSpacesAnnounceMode(spaceId: string, data: { mode: string; watchPartyUrl?: string | null; radioStreamUrl?: string | null }) {
+      const socket = socketRef.value
+      const id = String(spaceId ?? '').trim()
+      if (!socket?.connected || !id) return
+      socket.emit('spaces:announceMode', { spaceId: id, ...data })
     },
     emitMessagesScreen(active: boolean) {
       const socket = socketRef.value
