@@ -214,8 +214,12 @@ function toggleMute() {
 
 function applyOwnerRestoreState(state: WatchPartyState) {
   if (!ytPlayer) return
-  // Restore owner to the authoritative server state, then keep paused.
-  const target = Math.max(0, Number(driftAdjustedTime(state)) || 0)
+  const raw = Math.max(0, Number(driftAdjustedTime(state)) || 0)
+  // If the saved position is at or past the video's end (video finished before
+  // the owner rejoined), restart from 0 so the player isn't stuck on a black
+  // ended-state frame.
+  const duration: number = ytPlayer.getDuration?.() ?? 0
+  const target = duration > 0 && raw >= duration - 1 ? 0 : raw
   ignoreNextStateChange = true
   ytPlayer.seekTo?.(target, true)
   ytPlayer.setPlaybackRate?.(state.playbackRate)
@@ -275,10 +279,17 @@ function createPlayer(videoId: string, startSeconds = 0) {
         playerReady.value = true
         syncLocalVolumeFromPlayer()
         const state = watchPartyState.value
-        if (state) {
+        if (isOwner.value) {
+          // State already arrived before the player was ready — apply the
+          // restore now so the chip is cleared and the player lands correctly.
+          if (pendingOwnerRestore.value && state) {
+            applyOwnerRestoreState(state)
+            pendingOwnerRestore.value = false
+          }
+        } else if (state) {
           // applyState computes drift internally, so pass the raw state.
           applyState(state)
-        } else if (!isOwner.value) {
+        } else {
           // State hasn't arrived yet — request it now as a final fallback.
           requestCurrentState(props.space.id)
         }
