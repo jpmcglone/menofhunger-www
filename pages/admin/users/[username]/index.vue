@@ -260,6 +260,44 @@
         </div>
       </div>
 
+      <!-- Referral card -->
+      <div v-if="referralInfo" class="px-4">
+        <div class="rounded-2xl border border-gray-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 p-4 space-y-3">
+          <div class="text-sm font-semibold text-gray-900 dark:text-gray-50">Referrals</div>
+          <div class="grid gap-3 text-sm sm:grid-cols-3">
+            <div>
+              <div class="text-xs text-gray-500 dark:text-gray-400 mb-0.5">Referral code</div>
+              <div class="font-mono font-semibold">{{ referralInfo.referralCode ?? '—' }}</div>
+            </div>
+            <div>
+              <div class="text-xs text-gray-500 dark:text-gray-400 mb-0.5">Recruited by</div>
+              <div>
+                <NuxtLink
+                  v-if="referralInfo.recruiter?.username"
+                  :to="`/admin/users/${encodeURIComponent(referralInfo.recruiter.username)}`"
+                  class="font-medium hover:underline"
+                >@{{ referralInfo.recruiter.username }}</NuxtLink>
+                <span v-else-if="referralInfo.recruiter?.name">{{ referralInfo.recruiter.name }}</span>
+                <span v-else class="text-gray-400">—</span>
+              </div>
+              <div v-if="referralInfo.bonusGrantedAt" class="text-xs text-green-600 dark:text-green-400 mt-0.5">Bonus granted {{ formatDateTime(referralInfo.bonusGrantedAt) }}</div>
+            </div>
+            <div>
+              <div class="text-xs text-gray-500 dark:text-gray-400 mb-0.5">Recruits ({{ referralInfo.recruits.length }})</div>
+              <div v-if="referralInfo.recruits.length === 0" class="text-gray-400">None</div>
+              <ul v-else class="space-y-1">
+                <li v-for="r in referralInfo.recruits" :key="r.id" class="flex items-center gap-1.5 text-xs">
+                  <NuxtLink v-if="r.username" :to="`/admin/users/${encodeURIComponent(r.username)}`" class="hover:underline font-medium">@{{ r.username }}</NuxtLink>
+                  <span v-else>{{ r.name ?? r.id }}</span>
+                  <span v-if="r.bonusGranted" class="text-green-600 dark:text-green-400">+1mo</span>
+                  <span v-else-if="r.isPremium" class="text-amber-600 dark:text-amber-400">premium</span>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Recent cards -->
       <div class="px-4 grid gap-4 lg:grid-cols-3">
         <!-- Posts -->
@@ -333,6 +371,7 @@ import { APP_FEATURE_TOGGLE_OPTIONS, type AppFeatureToggle } from '~/config/app-
 import { articleVisibilityBarClass, articleVisibilityHoverClass } from '~/utils/article-visibility'
 import type {
   AdminAdjustCoinsResult,
+  AdminReferralInfo,
   AdminUserDetailData,
   AdminUserSensitiveFields,
   AdminUserRecentArticle,
@@ -390,6 +429,7 @@ const banSaving = ref(false)
 const recentPosts = ref<AdminUserRecentPost[]>([])
 const recentArticles = ref<AdminUserRecentArticle[]>([])
 const recentSearches = ref<AdminUserRecentSearch[]>([])
+const referralInfo = ref<AdminReferralInfo | null>(null)
 
 const verifiedStatusOptions: Array<{ label: string; value: 'none' | 'identity' | 'manual' }> = [
   { label: 'None', value: 'none' },
@@ -490,6 +530,12 @@ async function loadPage() {
     sensitiveRevealed.value = false
     revealedSensitive.value = null
     resetEditForm()
+    // Load referral info separately (best-effort, non-blocking).
+    try {
+      referralInfo.value = await apiFetchData<AdminReferralInfo>(`/admin/users/${encodeURIComponent(detail.id)}/referral`)
+    } catch {
+      referralInfo.value = null
+    }
   } catch (e: unknown) {
     loadError.value = getApiErrorMessage(e) || 'Failed to load user.'
   } finally {

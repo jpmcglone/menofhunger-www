@@ -101,6 +101,26 @@
             </button>
           </div>
 
+          <!-- Referral code — optional, only actionable if no recruiter already set -->
+          <div class="rounded-xl border moh-border p-4 moh-surface space-y-2">
+            <div class="text-sm font-medium moh-text">Referred by someone?</div>
+            <p class="text-xs moh-text-muted">
+              Enter their referral code. You'll automatically follow them and both earn +1 free month when you go premium.
+            </p>
+            <div class="flex gap-2">
+              <InputText
+                v-model="referralCodeInput"
+                class="flex-1 font-mono"
+                placeholder="e.g. JOHNDOE"
+                autocomplete="off"
+                spellcheck="false"
+                maxlength="20"
+                :disabled="submitting"
+              />
+            </div>
+            <div v-if="referralError" class="text-xs text-red-600 dark:text-red-400">{{ referralError }}</div>
+          </div>
+
           <div v-if="error" class="text-sm text-red-700 dark:text-red-300">
             {{ error }}
           </div>
@@ -224,6 +244,9 @@ const {
   },
 })
 
+const referralCodeInput = ref('')
+const referralError = ref<string | null>(null)
+
 const error = ref<string | null>(null)
 const submitting = ref(false)
 
@@ -299,6 +322,20 @@ async function submit() {
       arena_count: interests.value.length,
       from_welcome: route.query.welcome === '1',
     })
+
+    // Apply referral code if provided. Fire-and-forget — don't block navigation on failure.
+    const code = referralCodeInput.value.trim()
+    if (code) {
+      try {
+        await apiFetchData('/billing/referral/set-recruiter', { method: 'POST', body: { code } })
+      } catch (e: unknown) {
+        const msg = getApiErrorMessage(e) ?? ''
+        // "already set" is fine — user entered a code but already had a recruiter linked at signup.
+        if (!msg.toLowerCase().includes('already been set')) {
+          referralError.value = msg || 'Referral code not applied.'
+        }
+      }
+    }
 
     // Post-signup: once onboarding is complete, send them to their profile (preserve capitalization).
     if (route.query.welcome === '1') {

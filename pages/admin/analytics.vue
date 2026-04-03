@@ -724,6 +724,56 @@
           </div>
         </div>
 
+        <!-- ─── Referrals ───────────────────────────────────────────────────── -->
+        <div class="px-4 space-y-4">
+          <div class="text-sm font-semibold text-gray-900 dark:text-gray-50">Referrals (all time)</div>
+          <div v-if="referralAnalyticsLoading" class="text-sm text-gray-500 dark:text-gray-400">Loading…</div>
+          <template v-else-if="referralAnalytics">
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div class="rounded-xl border moh-border p-4 space-y-1">
+                <div class="text-xs font-semibold text-gray-600 dark:text-gray-300">Referral Codes</div>
+                <div class="text-2xl font-bold">{{ referralAnalytics.totalCodesCreated.toLocaleString() }}</div>
+              </div>
+              <div class="rounded-xl border moh-border p-4 space-y-1">
+                <div class="text-xs font-semibold text-gray-600 dark:text-gray-300">Total Recruits</div>
+                <div class="text-2xl font-bold">{{ referralAnalytics.totalRecruits.toLocaleString() }}</div>
+              </div>
+              <div class="rounded-xl border moh-border p-4 space-y-1">
+                <div class="text-xs font-semibold text-gray-600 dark:text-gray-300">Bonuses Granted</div>
+                <div class="text-2xl font-bold">{{ referralAnalytics.totalBonusesGranted.toLocaleString() }}</div>
+              </div>
+              <div class="rounded-xl border moh-border p-4 space-y-1">
+                <div class="text-xs font-semibold text-gray-600 dark:text-gray-300">Conversion Rate</div>
+                <div class="text-2xl font-bold">{{ referralAnalytics.conversionRatePct }}%</div>
+                <div class="text-xs text-gray-500 dark:text-gray-400">recruits → premium</div>
+              </div>
+            </div>
+
+            <!-- Top recruiters -->
+            <div v-if="referralAnalytics.topRecruiters.length > 0" class="rounded-xl border moh-border p-4 space-y-2">
+              <div class="text-xs font-semibold text-gray-600 dark:text-gray-300">Top Recruiters</div>
+              <div class="divide-y divide-gray-100 dark:divide-zinc-800">
+                <div
+                  v-for="(r, i) in referralAnalytics.topRecruiters"
+                  :key="r.userId"
+                  class="flex items-center justify-between gap-3 py-1.5 text-sm"
+                >
+                  <div class="flex items-center gap-2 min-w-0">
+                    <span class="text-xs text-gray-400 w-5 text-right shrink-0">{{ i + 1 }}.</span>
+                    <NuxtLink
+                      v-if="r.username"
+                      :to="`/admin/users/${encodeURIComponent(r.username)}`"
+                      class="font-medium hover:underline truncate"
+                    >@{{ r.username }}</NuxtLink>
+                    <span v-else class="truncate text-gray-500">{{ r.name ?? r.userId }}</span>
+                  </div>
+                  <span class="shrink-0 font-semibold text-amber-700 dark:text-amber-300">{{ r.recruitCount }} recruit{{ r.recruitCount === 1 ? '' : 's' }}</span>
+                </div>
+              </div>
+            </div>
+          </template>
+        </div>
+
         <div class="px-4 text-xs text-gray-400 dark:text-gray-500">
           Last updated {{ asOfDisplay }}
         </div>
@@ -734,7 +784,7 @@
 
 <script setup lang="ts">
 import { Chart, registerables } from 'chart.js'
-import type { AdminAnalytics, AdminAnalyticsEngagement, AdminAnalyticsTopArticle, AnalyticsGranularity, AnalyticsRange } from '~/types/api'
+import type { AdminAnalytics, AdminAnalyticsEngagement, AdminAnalyticsTopArticle, AdminReferralAnalytics, AnalyticsGranularity, AnalyticsRange } from '~/types/api'
 
 definePageMeta({ middleware: 'admin', layout: 'app' })
 
@@ -745,6 +795,8 @@ const { apiFetchData } = useApiClient()
 const data = ref<AdminAnalytics | null>(null)
 const loading = ref(false)
 const error = ref<string | null>(null)
+const referralAnalytics = ref<AdminReferralAnalytics | null>(null)
+const referralAnalyticsLoading = ref(false)
 
 const signupsCanvas = ref<HTMLCanvasElement | null>(null)
 const contentCanvas = ref<HTMLCanvasElement | null>(null)
@@ -795,6 +847,15 @@ async function load() {
     error.value = e instanceof Error ? e.message : 'Failed to load analytics'
   } finally {
     loading.value = false
+  }
+  // Load referral analytics separately (always all-time; non-blocking).
+  referralAnalyticsLoading.value = true
+  try {
+    referralAnalytics.value = await apiFetchData<AdminReferralAnalytics>('/admin/analytics/referrals')
+  } catch {
+    // non-critical
+  } finally {
+    referralAnalyticsLoading.value = false
   }
 }
 

@@ -65,6 +65,48 @@ export type BillingMe = {
   effectiveExpiresAt: string | null
   /** Active (non-expired, non-revoked) subscription grants. */
   grants: ActiveSubscriptionGrant[]
+  /** Referral code set by this user (premium-only). */
+  referralCode: string | null
+  /** Who recruited this user (null if no recruiter). */
+  recruiter: { username: string | null; name: string | null } | null
+  /** How many users this user has recruited. */
+  recruitCount: number
+  /** Whether the one-time referral bonus has been granted to this user. */
+  referralBonusGranted: boolean
+}
+
+export type Recruit = {
+  id: string
+  username: string | null
+  name: string | null
+  avatarKey: string | null
+  recruitedAt: string
+  isPremium: boolean
+  bonusGranted: boolean
+}
+
+export type ReferralMe = {
+  referralCode: string | null
+  recruiter: { username: string | null; name: string | null } | null
+  recruitCount: number
+  referralBonusGranted: boolean
+}
+
+export type AdminReferralInfo = {
+  referralCode: string | null
+  bonusGrantedAt: string | null
+  recruiter: { id: string; username: string | null; name: string | null } | null
+  recruits: Recruit[]
+}
+
+export type AdminReferralAnalytics = {
+  totalCodesCreated: number
+  totalRecruits: number
+  totalBonusesGranted: number
+  /** Percentage of recruits who converted to premium (0–100, integer). */
+  conversionRatePct: number
+  recruitsOverTime: Array<{ bucket: string; count: number }>
+  topRecruiters: Array<{ userId: string; username: string | null; name: string | null; recruitCount: number }>
 }
 
 /** Summary of banked free months for admin grant management UI. */

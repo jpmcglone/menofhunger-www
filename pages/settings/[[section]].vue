@@ -431,6 +431,131 @@
               </div>
 
               <div v-if="billingLoading" class="text-sm moh-text-muted">Loading billing…</div>
+
+              <!-- Referrals -->
+              <div v-if="billingMe" class="space-y-4 border-t border-gray-200 pt-4 dark:border-zinc-800">
+                <div class="text-sm font-semibold text-gray-900 dark:text-gray-50">Referrals</div>
+
+                <!-- Your referral code (premium-only) -->
+                <div class="rounded-xl border moh-border p-4 moh-surface space-y-3 text-sm">
+                  <div class="flex items-center justify-between gap-3">
+                    <div class="font-medium text-gray-700 dark:text-gray-200">Your referral code</div>
+                  </div>
+                  <template v-if="billingMe.premium">
+                    <div v-if="billingMe.referralCode" class="flex items-center gap-2">
+                      <span class="font-mono text-base font-semibold tracking-wide">{{ billingMe.referralCode }}</span>
+                      <button
+                        type="button"
+                        class="text-xs underline transition-colors"
+                        :class="referralCodeCopied
+                          ? 'text-green-600 dark:text-green-400 cursor-default'
+                          : 'text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-100'"
+                        :disabled="referralCodeCopied"
+                        @click="copyReferralCode"
+                      >{{ referralCodeCopied ? 'Copied!' : 'Copy' }}</button>
+                    </div>
+                    <p v-if="billingMe.referralCode" class="text-xs text-gray-500 dark:text-gray-400">
+                      Share this code. Anyone who uses it will automatically follow you — and when they go premium you both earn +1 free month.
+                    </p>
+                    <div class="flex gap-2">
+                      <InputText
+                        v-model="referralCodeDraft"
+                        class="flex-1 font-mono"
+                        :placeholder="billingMe.referralCode ? 'Change code' : 'Set your code (e.g. YOURNAME)'"
+                        spellcheck="false"
+                        autocomplete="off"
+                        maxlength="20"
+                        :disabled="referralCodeSaving"
+                      />
+                      <Button
+                        :label="billingMe.referralCode ? 'Update' : 'Set'"
+                        :loading="referralCodeSaving"
+                        :disabled="!referralCodeDraft.trim() || referralCodeSaving"
+                        @click="saveReferralCode"
+                      />
+                    </div>
+                    <AppInlineAlert v-if="referralCodeError" severity="danger">{{ referralCodeError }}</AppInlineAlert>
+                    <div v-if="referralCodeSaved" class="text-xs text-green-700 dark:text-green-400">Referral code saved.</div>
+                    <p class="text-xs text-gray-400 dark:text-gray-500">4–20 characters. Letters, numbers, hyphens, underscores only.</p>
+                  </template>
+                  <p v-else class="text-sm text-gray-500 dark:text-gray-400">
+                    Become a premium member to get a referral code.
+                  </p>
+                </div>
+
+                <!-- Recruiter -->
+                <div class="rounded-xl border moh-border p-4 moh-surface space-y-3 text-sm">
+                  <div class="font-medium text-gray-700 dark:text-gray-200">Who recruited you</div>
+                  <template v-if="billingMe.recruiter">
+                    <div class="flex items-center gap-2">
+                      <Icon name="tabler:user-check" class="h-4 w-4 text-green-600" aria-hidden="true" />
+                      <span class="font-semibold">
+                        <NuxtLink
+                          v-if="billingMe.recruiter.username"
+                          :to="`/u/${billingMe.recruiter.username}`"
+                          class="hover:underline"
+                        >@{{ billingMe.recruiter.username }}</NuxtLink>
+                        <span v-else>{{ billingMe.recruiter.name ?? 'Unknown' }}</span>
+                      </span>
+                      <span v-if="billingMe.referralBonusGranted" class="text-xs text-green-700 dark:text-green-400">(bonus granted)</span>
+                      <span v-else class="text-xs text-gray-500 dark:text-gray-400">(bonus pending first payment)</span>
+                    </div>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">Your recruiter is locked in. When you make your first premium payment, you both receive +1 free month.</p>
+                  </template>
+                  <template v-else>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">Enter a referral code to link a recruiter. You'll automatically follow them — and when you go premium you both earn +1 free month. Once set, it cannot be changed.</p>
+                    <div class="flex gap-2">
+                      <InputText
+                        v-model="recruiterCodeDraft"
+                        class="flex-1 font-mono"
+                        placeholder="Enter referral code"
+                        spellcheck="false"
+                        autocomplete="off"
+                        :disabled="recruiterSaving"
+                      />
+                      <Button
+                        label="Apply"
+                        :loading="recruiterSaving"
+                        :disabled="!recruiterCodeDraft.trim() || recruiterSaving"
+                        @click="applyRecruiter"
+                      />
+                    </div>
+                    <AppInlineAlert v-if="recruiterError" severity="danger">{{ recruiterError }}</AppInlineAlert>
+                  </template>
+                </div>
+
+                <!-- Recruits list -->
+                <div v-if="billingMe.premium" class="rounded-xl border moh-border p-4 moh-surface space-y-3 text-sm">
+                  <div class="flex items-center justify-between gap-2">
+                    <div class="font-medium text-gray-700 dark:text-gray-200">
+                      Your recruits
+                      <span v-if="billingMe.recruitCount > 0" class="ml-1.5 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800 dark:bg-amber-900/30 dark:text-amber-300">{{ billingMe.recruitCount }}</span>
+                    </div>
+                  </div>
+                  <template v-if="recruitsLoading">
+                    <div class="text-xs text-gray-500 dark:text-gray-400">Loading recruits…</div>
+                  </template>
+                  <template v-else-if="recruits.length === 0">
+                    <p class="text-xs text-gray-500 dark:text-gray-400">No one has used your code yet. Share it!</p>
+                  </template>
+                  <ul v-else class="divide-y divide-gray-100 dark:divide-zinc-800">
+                    <li v-for="r in recruits" :key="r.id" class="flex items-center justify-between gap-3 py-2">
+                      <div class="flex items-center gap-2 min-w-0">
+                        <Icon name="tabler:user-plus" class="h-4 w-4 shrink-0 text-gray-400" aria-hidden="true" />
+                        <span class="truncate font-medium">
+                          <NuxtLink v-if="r.username" :to="`/u/${r.username}`" class="hover:underline">@{{ r.username }}</NuxtLink>
+                          <span v-else>{{ r.name ?? r.id }}</span>
+                        </span>
+                      </div>
+                      <div class="flex items-center gap-2 shrink-0 text-xs text-gray-500 dark:text-gray-400">
+                        <span v-if="r.bonusGranted" class="text-green-600 dark:text-green-400 font-medium">+1 month</span>
+                        <span v-else-if="r.isPremium" class="text-amber-600 dark:text-amber-400">premium</span>
+                        <span v-else>no premium yet</span>
+                      </div>
+                    </li>
+                  </ul>
+                </div>
+              </div>
             </div>
 
               <SettingsPrivacySection
@@ -720,6 +845,7 @@ import type {
   BillingTier,
   MyVerificationStatus,
   NotificationPreferences,
+  Recruit,
   TaxonomyPreference,
   VerificationRequestPublic
 } from '~/types/api'
@@ -1001,6 +1127,102 @@ async function openPortal() {
   }
 }
 
+// ─── Referral ────────────────────────────────────────────────────────────────
+
+const referralCodeDraft = ref('')
+const referralCodeSaving = ref(false)
+const referralCodeSaved = ref(false)
+const referralCodeError = ref<string | null>(null)
+let referralCodeSavedTimer: ReturnType<typeof setTimeout> | null = null
+
+const referralCodeCopied = ref(false)
+let referralCodeCopiedTimer: ReturnType<typeof setTimeout> | null = null
+
+const recruiterCodeDraft = ref('')
+const recruiterSaving = ref(false)
+const recruiterError = ref<string | null>(null)
+
+const recruits = ref<Recruit[]>([])
+const recruitsLoading = ref(false)
+
+async function saveReferralCode() {
+  const code = referralCodeDraft.value.trim()
+  if (!code) return
+  referralCodeSaving.value = true
+  referralCodeError.value = null
+  referralCodeSaved.value = false
+  try {
+    const res = await apiFetchData<{ referralCode: string }>('/billing/referral/code', {
+      method: 'PUT',
+      body: { code }
+    })
+    referralCodeDraft.value = ''
+    referralCodeSaved.value = true
+    if (billingMe.value) billingMe.value = { ...billingMe.value, referralCode: res.referralCode }
+    if (referralCodeSavedTimer) clearTimeout(referralCodeSavedTimer)
+    referralCodeSavedTimer = setTimeout(() => { referralCodeSaved.value = false }, 3000)
+  } catch (e: unknown) {
+    referralCodeError.value = getApiErrorMessage(e) || 'Failed to save referral code.'
+  } finally {
+    referralCodeSaving.value = false
+  }
+}
+
+async function applyRecruiter() {
+  const code = recruiterCodeDraft.value.trim()
+  if (!code) return
+  recruiterSaving.value = true
+  recruiterError.value = null
+  try {
+    const res = await apiFetchData<{ recruiter: { username: string | null; name: string | null } }>('/billing/referral/set-recruiter', {
+      method: 'POST',
+      body: { code }
+    })
+    recruiterCodeDraft.value = ''
+    if (billingMe.value) billingMe.value = { ...billingMe.value, recruiter: res.recruiter }
+  } catch (e: unknown) {
+    recruiterError.value = getApiErrorMessage(e) || 'Failed to apply referral code.'
+  } finally {
+    recruiterSaving.value = false
+  }
+}
+
+async function copyReferralCode() {
+  const code = billingMe.value?.referralCode
+  if (!code) return
+  try {
+    await navigator.clipboard.writeText(code)
+    referralCodeCopied.value = true
+    if (referralCodeCopiedTimer) clearTimeout(referralCodeCopiedTimer)
+    referralCodeCopiedTimer = setTimeout(() => { referralCodeCopied.value = false }, 2000)
+  } catch {
+    // clipboard unavailable — silent fail
+  }
+}
+
+async function loadRecruits() {
+  recruitsLoading.value = true
+  try {
+    recruits.value = await apiFetchData<Recruit[]>('/billing/referral/recruits', { method: 'GET' })
+  } catch {
+    // non-critical
+  } finally {
+    recruitsLoading.value = false
+  }
+}
+
+// Load recruits whenever we land on billing and premium status is known to be true.
+// The two reactive sources (section change vs billingMe arriving) are intentionally
+// collapsed here: watch the combination so we load exactly once per entry.
+watch(
+  [selectedSection, () => billingMe.value?.premium],
+  ([section, isPremium]) => {
+    if (section === 'billing' && isPremium) void loadRecruits()
+  },
+)
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 const notifPrefs = ref<NotificationPreferences | null>(null)
 const notifPrefsInitial = ref<string>('')
 const notifPrefsLoading = ref(false)
@@ -1138,6 +1360,14 @@ onBeforeUnmount(() => {
   if (emailResendSavedTimer) {
     clearTimeout(emailResendSavedTimer)
     emailResendSavedTimer = null
+  }
+  if (referralCodeSavedTimer) {
+    clearTimeout(referralCodeSavedTimer)
+    referralCodeSavedTimer = null
+  }
+  if (referralCodeCopiedTimer) {
+    clearTimeout(referralCodeCopiedTimer)
+    referralCodeCopiedTimer = null
   }
 })
 
