@@ -487,18 +487,52 @@
                 <div class="rounded-xl border moh-border p-4 moh-surface space-y-3 text-sm">
                   <div class="font-medium text-gray-700 dark:text-gray-200">Who recruited you</div>
                   <template v-if="billingMe.recruiter">
-                    <div class="flex items-center gap-2">
-                      <Icon name="tabler:user-check" class="h-4 w-4 text-green-600" aria-hidden="true" />
-                      <span class="font-semibold">
-                        <NuxtLink
-                          v-if="billingMe.recruiter.username"
-                          :to="`/u/${billingMe.recruiter.username}`"
-                          class="hover:underline"
-                        >@{{ billingMe.recruiter.username }}</NuxtLink>
-                        <span v-else>{{ billingMe.recruiter.name ?? 'Unknown' }}</span>
-                      </span>
-                      <span v-if="billingMe.referralBonusGranted" class="text-xs text-green-700 dark:text-green-400">(bonus granted)</span>
-                      <span v-else class="text-xs text-gray-500 dark:text-gray-400">(bonus pending first payment)</span>
+                    <!-- Rich recruiter card with hover preview -->
+                    <NuxtLink
+                      v-if="billingMe.recruiter.username"
+                      :to="`/u/${billingMe.recruiter.username}`"
+                      class="flex items-center gap-3 rounded-xl border moh-border p-3 hover:bg-gray-50 dark:hover:bg-zinc-900 transition-colors"
+                    >
+                      <AppUserAvatar
+                        :user="{
+                          id: billingMe.recruiter.id,
+                          avatarUrl: billingMe.recruiter.avatarUrl,
+                          name: billingMe.recruiter.name,
+                          username: billingMe.recruiter.username,
+                          premiumPlus: billingMe.recruiter.premiumPlus,
+                        }"
+                        size-class="h-10 w-10 shrink-0"
+                        :show-presence="false"
+                      />
+                      <div class="min-w-0 flex-1">
+                        <div class="flex items-center gap-1.5 flex-wrap">
+                          <span class="font-semibold text-gray-900 dark:text-gray-50 truncate">
+                            {{ billingMe.recruiter.name || billingMe.recruiter.username }}
+                          </span>
+                          <AppVerifiedBadge
+                            :status="billingMe.recruiter.verifiedStatus"
+                            :premium="billingMe.recruiter.premium"
+                            :premium-plus="billingMe.recruiter.premiumPlus"
+                            size="xs"
+                          />
+                        </div>
+                        <div class="text-xs text-gray-500 dark:text-gray-400">
+                          @{{ billingMe.recruiter.username }}
+                        </div>
+                      </div>
+                      <div class="shrink-0 flex flex-col items-end gap-1">
+                        <Icon name="tabler:user-check" class="h-4 w-4 text-green-600" aria-hidden="true" />
+                        <span
+                          v-if="billingMe.referralBonusGranted"
+                          class="text-[11px] text-green-700 dark:text-green-400 font-medium"
+                        >Bonus granted</span>
+                        <span v-else class="text-[11px] text-gray-400 dark:text-gray-500">Bonus pending</span>
+                      </div>
+                    </NuxtLink>
+                    <!-- Fallback: no username -->
+                    <div v-else class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-200">
+                      <Icon name="tabler:user-check" class="h-4 w-4 text-green-600 shrink-0" aria-hidden="true" />
+                      <span>{{ billingMe.recruiter.name ?? 'Unknown' }}</span>
                     </div>
                     <p class="text-xs text-gray-500 dark:text-gray-400">Your recruiter is locked in. When you make your first premium payment, you both receive +1 free month.</p>
                   </template>
@@ -1174,12 +1208,10 @@ async function applyRecruiter() {
   recruiterSaving.value = true
   recruiterError.value = null
   try {
-    const res = await apiFetchData<{ recruiter: { username: string | null; name: string | null } }>('/billing/referral/set-recruiter', {
-      method: 'POST',
-      body: { code }
-    })
+    await apiFetchData('/billing/referral/set-recruiter', { method: 'POST', body: { code } })
     recruiterCodeDraft.value = ''
-    if (billingMe.value) billingMe.value = { ...billingMe.value, recruiter: res.recruiter }
+    // Refresh billing to get the full rich recruiter object (avatar, badges, etc.)
+    await refreshBilling()
   } catch (e: unknown) {
     recruiterError.value = getApiErrorMessage(e) || 'Failed to apply referral code.'
   } finally {

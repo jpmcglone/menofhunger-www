@@ -1,4 +1,5 @@
 import LinkifyIt from 'linkify-it'
+import { siteConfig } from '~/config/site'
 
 const linkify = new LinkifyIt()
 
@@ -33,6 +34,96 @@ export function safeUrlDisplay(url: string): string {
     return `${host}${path}${u.search ? u.search : ''}`
   } catch {
     return url
+  }
+}
+
+/**
+ * Returns true if the URL belongs to the MoH domain (production or current dev host).
+ * Used by link-preview components to render a branded internal card instead of a generic one.
+ */
+export function isMohUrl(url: string): boolean {
+  try {
+    const u = new URL(url)
+    if (u.protocol !== 'http:' && u.protocol !== 'https:') return false
+    const host = u.hostname.toLowerCase()
+    try {
+      const cfgHost = new URL(siteConfig.url).hostname.toLowerCase()
+      if (host === cfgHost || host === `www.${cfgHost}`) return true
+    } catch { /* ignore */ }
+    if (import.meta.client) {
+      const winHost = window.location.hostname.toLowerCase()
+      if (winHost && host === winHost) return true
+    }
+    return false
+  } catch {
+    return false
+  }
+}
+
+/** Returns the path+search+hash portion of a URL, or null on parse failure. */
+export function mohUrlPath(url: string): string | null {
+  try {
+    const u = new URL(url)
+    return u.pathname + (u.search || '') + (u.hash || '')
+  } catch {
+    return null
+  }
+}
+
+// ─── MoH-specific path extractors ────────────────────────────────────────────
+// These replace the inline tryExtractLocal* copies in each component.
+
+/** Extracts the post ID from a MoH `/p/:id` URL. */
+export function extractMohPostId(url: string): string | null {
+  if (!isMohUrl(url)) return null
+  try {
+    const parts = new URL(url).pathname.split('/').filter(Boolean)
+    if (parts.length !== 2 || parts[0] !== 'p') return null
+    return (parts[1] ?? '').trim() || null
+  } catch {
+    return null
+  }
+}
+
+/** Extracts the article ID from a MoH `/a/:id` URL. */
+export function extractMohArticleId(url: string): string | null {
+  if (!isMohUrl(url)) return null
+  try {
+    const parts = new URL(url).pathname.split('/').filter(Boolean)
+    if (parts.length !== 2 || parts[0] !== 'a') return null
+    return (parts[1] ?? '').trim() || null
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Extracts the space ID from a MoH `/spaces/:id` or `/s/:id` URL.
+ * The `/s/` short alias is treated identically to `/spaces/`.
+ */
+export function extractMohSpaceId(url: string): string | null {
+  if (!isMohUrl(url)) return null
+  try {
+    const parts = new URL(url).pathname.split('/').filter(Boolean)
+    if (parts.length !== 2) return null
+    if (parts[0] !== 'spaces' && parts[0] !== 's') return null
+    const id = (parts[1] ?? '').trim()
+    return id ? decodeURIComponent(id) : null
+  } catch {
+    return null
+  }
+}
+
+/** Extracts the username from a MoH `/u/:username` URL. */
+export function extractMohUsername(url: string): string | null {
+  if (!isMohUrl(url)) return null
+  try {
+    const parts = new URL(url).pathname.split('/').filter(Boolean)
+    if (parts.length !== 2 || parts[0] !== 'u') return null
+    const username = (parts[1] ?? '').trim()
+    return username ? decodeURIComponent(username) : null
+  } catch {
+    return null
   }
 }
 

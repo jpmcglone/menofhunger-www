@@ -46,7 +46,33 @@
       </div>
     </div>
 
-    <!-- Generic link preview (last link only) -->
+    <!-- MoH internal link preview — branded card, navigates in-app -->
+    <NuxtLink
+      v-else-if="showLinkPreview && isMohInternalLink && mohInternalPath"
+      :to="mohInternalPath"
+      class="group block overflow-hidden rounded-xl border moh-border transition-colors moh-surface-hover moh-focus"
+      aria-label="Open page"
+      @click.stop
+    >
+      <div class="relative flex items-center gap-3 p-3">
+        <div class="pointer-events-none absolute inset-0 bg-white/10" aria-hidden="true" />
+        <div class="relative z-10 h-12 w-12 shrink-0 overflow-hidden rounded-lg border moh-border" aria-hidden="true">
+          <img :src="logoLight" class="h-full w-full object-cover dark:hidden" alt="" loading="lazy" />
+          <img :src="logoDark" class="h-full w-full object-cover hidden dark:block" alt="" loading="lazy" />
+        </div>
+        <div class="relative z-10 min-w-0 flex-1">
+          <div class="text-sm font-semibold moh-text truncate">
+            {{ linkMeta?.title || 'Men of Hunger' }}
+          </div>
+          <div v-if="linkMeta?.description" class="mt-0.5 text-xs moh-text-muted line-clamp-2">
+            {{ linkMeta.description }}
+          </div>
+          <div class="mt-1 text-[11px] moh-text-muted">menofhunger.com</div>
+        </div>
+      </div>
+    </NuxtLink>
+
+    <!-- Generic link preview (last link only, external sites) -->
     <a
       v-else-if="showLinkPreview"
       :href="previewLink || undefined"
@@ -120,6 +146,11 @@
       </div>
     </template>
 
+    <!-- User profile link → compact user card -->
+    <div v-if="embeddedUsername && rowInView" @click.stop>
+      <AppUserLinkCard :username="embeddedUsername" :enabled="rowInView" />
+    </div>
+
     <div v-if="isPreviewLinkRumble && previewLink" class="mt-2 flex justify-end">
       <a
         :href="previewLink || undefined"
@@ -137,8 +168,9 @@
 </template>
 
 <script setup lang="ts">
-import { siteConfig } from '~/config/site'
-import { extractLinksFromText, getYouTubeEmbedUrl, getYouTubePosterUrl, isRumbleShortsUrl, isRumbleUrl, safeUrlDisplay, safeUrlHostname } from '~/utils/link-utils'
+import { extractLinksFromText, getYouTubeEmbedUrl, getYouTubePosterUrl, isRumbleShortsUrl, isRumbleUrl, safeUrlDisplay, safeUrlHostname, isMohUrl, mohUrlPath, extractMohPostId, extractMohArticleId, extractMohSpaceId, extractMohUsername } from '~/utils/link-utils'
+import logoLight from '~/assets/images/logo-white-bg-small.png'
+import logoDark from '~/assets/images/logo-black-bg-small.png'
 import type { LinkMetadata } from '~/utils/link-metadata'
 import { getLinkMetadata } from '~/utils/link-metadata'
 import type { RumbleEmbedInfo } from '~/utils/rumble-embed'
@@ -160,108 +192,29 @@ const body = computed(() => (props.body ?? '').toString())
 const hasMedia = computed(() => Boolean(props.hasMedia))
 const rowInView = computed(() => Boolean(props.rowInView))
 
-function isLocalHost(host: string, expected: string) {
-  const h = (host ?? '').trim().toLowerCase()
-  const e = (expected ?? '').trim().toLowerCase()
-  if (!h || !e) return false
-  return h === e || h === `www.${e}`
-}
-
-function getAllowedHosts(): Set<string> {
-  const allowedHosts = new Set<string>()
-  try {
-    const fromCfg = new URL(siteConfig.url)
-    if (fromCfg.hostname) allowedHosts.add(fromCfg.hostname.toLowerCase())
-  } catch {
-    // ignore
-  }
-  if (import.meta.client) {
-    const h = window.location.hostname
-    if (h) allowedHosts.add(h.toLowerCase())
-  }
-  return allowedHosts
-}
-
-function tryExtractLocalPostId(url: string): string | null {
-  const raw = (url ?? '').trim()
-  if (!raw) return null
-  try {
-    const u = new URL(raw)
-    if (u.protocol !== 'http:' && u.protocol !== 'https:') return null
-    const host = u.hostname.toLowerCase()
-    const ok = Array.from(getAllowedHosts()).some((a) => isLocalHost(host, a))
-    if (!ok) return null
-    const parts = u.pathname.split('/').filter(Boolean)
-    if (parts.length !== 2) return null
-    if (parts[0] !== 'p') return null
-    const id = (parts[1] ?? '').trim()
-    return id || null
-  } catch {
-    return null
-  }
-}
-
-function tryExtractLocalArticleId(url: string): string | null {
-  const raw = (url ?? '').trim()
-  if (!raw) return null
-  try {
-    const u = new URL(raw)
-    if (u.protocol !== 'http:' && u.protocol !== 'https:') return null
-    const host = u.hostname.toLowerCase()
-    const ok = Array.from(getAllowedHosts()).some((a) => isLocalHost(host, a))
-    if (!ok) return null
-    const parts = u.pathname.split('/').filter(Boolean)
-    if (parts.length !== 2) return null
-    if (parts[0] !== 'a') return null
-    const id = (parts[1] ?? '').trim()
-    return id || null
-  } catch {
-    return null
-  }
-}
-
-function tryExtractLocalSpaceId(url: string): string | null {
-  const raw = (url ?? '').trim()
-  if (!raw) return null
-  try {
-    const u = new URL(raw)
-    if (u.protocol !== 'http:' && u.protocol !== 'https:') return null
-    const host = u.hostname.toLowerCase()
-    const ok = Array.from(getAllowedHosts()).some((a) => isLocalHost(host, a))
-    if (!ok) return null
-    const parts = u.pathname.split('/').filter(Boolean)
-    if (parts.length !== 2) return null
-    if (parts[0] !== 'spaces') return null
-    const id = (parts[1] ?? '').trim()
-    return id ? decodeURIComponent(id) : null
-  } catch {
-    return null
-  }
-}
-
 const capturedLinks = computed(() => extractLinksFromText(body.value))
 
 const embeddedPostLink = computed(() => {
   const xs = capturedLinks.value
   for (let i = xs.length - 1; i >= 0; i--) {
     const u = xs[i]
-    if (u && tryExtractLocalPostId(u)) return u
+    if (u && extractMohPostId(u)) return u
   }
   return null
 })
 
-const embeddedPostId = computed(() => (embeddedPostLink.value ? tryExtractLocalPostId(embeddedPostLink.value) : null))
+const embeddedPostId = computed(() => (embeddedPostLink.value ? extractMohPostId(embeddedPostLink.value) : null))
 
 const embeddedArticleLink = computed(() => {
   const xs = capturedLinks.value
   for (let i = xs.length - 1; i >= 0; i--) {
     const u = xs[i]
-    if (u && tryExtractLocalArticleId(u)) return u
+    if (u && extractMohArticleId(u)) return u
   }
   return null
 })
 
-const embeddedArticleId = computed(() => (embeddedArticleLink.value ? tryExtractLocalArticleId(embeddedArticleLink.value) : null))
+const embeddedArticleId = computed(() => (embeddedArticleLink.value ? extractMohArticleId(embeddedArticleLink.value) : null))
 
 const embeddedArticle = ref<ArticleSharePreview | null>(null)
 
@@ -269,12 +222,23 @@ const embeddedSpaceLink = computed(() => {
   const xs = capturedLinks.value
   for (let i = xs.length - 1; i >= 0; i--) {
     const u = xs[i]
-    if (u && tryExtractLocalSpaceId(u)) return u
+    if (u && extractMohSpaceId(u)) return u
   }
   return null
 })
 
-const embeddedSpaceId = computed(() => (embeddedSpaceLink.value ? tryExtractLocalSpaceId(embeddedSpaceLink.value) : null))
+const embeddedSpaceId = computed(() => (embeddedSpaceLink.value ? extractMohSpaceId(embeddedSpaceLink.value) : null))
+
+const embeddedUserLink = computed(() => {
+  const xs = capturedLinks.value
+  for (let i = xs.length - 1; i >= 0; i--) {
+    const u = xs[i]
+    if (u && extractMohUsername(u)) return u
+  }
+  return null
+})
+
+const embeddedUsername = computed(() => (embeddedUserLink.value ? extractMohUsername(embeddedUserLink.value) : null))
 
 const { apiFetchData } = useApiClient()
 const { runLimited } = usePreviewFetchLimiter()
@@ -335,9 +299,10 @@ const previewLink = computed(() => {
   for (let i = xs.length - 1; i >= 0; i--) {
     const u = xs[i]
     if (!u) continue
-    if (tryExtractLocalPostId(u)) continue
-    if (tryExtractLocalArticleId(u)) continue
-    if (tryExtractLocalSpaceId(u)) continue
+    if (extractMohPostId(u)) continue
+    if (extractMohArticleId(u)) continue
+    if (extractMohSpaceId(u)) continue
+    if (extractMohUsername(u)) continue
     return u
   }
   return null
@@ -482,14 +447,18 @@ const embeddedPreviewEnabled = computed(() => {
   return rowInView.value
 })
 
+const isMohInternalLink = computed(() => Boolean(previewLink.value && isMohUrl(previewLink.value)))
+const mohInternalPath = computed(() => (previewLink.value ? mohUrlPath(previewLink.value) : null))
+
 // Embedded MOH post: always show block so SSR can fetch and render the preview before first paint.
-// Space preview: show skeleton while loading, resolved card when ready (both require rowInView).
+// Space/article/user preview: show skeleton while loading, resolved card when ready (both require rowInView).
 // External link preview: only show when row is in view (avoid metadata fetch for off-screen rows).
 const showAny = computed(() =>
   Boolean(
     embeddedPostId.value ||
     (embeddedArticleId.value && rowInView.value) ||
     (embeddedSpaceId.value && rowInView.value) ||
+    (embeddedUsername.value && rowInView.value) ||
     (showLinkPreview.value && rowInView.value),
   )
 )

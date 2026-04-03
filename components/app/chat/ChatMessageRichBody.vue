@@ -40,8 +40,32 @@
       </template>
     </p>
 
+    <!-- MoH internal link — branded card, navigates in-app -->
+    <NuxtLink
+      v-if="showLinkPreview && isMohInternalLink && mohInternalPath"
+      :to="mohInternalPath"
+      class="group mt-2 flex min-w-0 max-w-full items-center gap-2.5 overflow-hidden rounded-lg border border-current/20 bg-black/5 p-2 transition-colors hover:bg-black/10 dark:bg-white/5 dark:hover:bg-white/10"
+      aria-label="Open page"
+      @click.stop
+    >
+      <div class="h-9 w-9 shrink-0 overflow-hidden rounded-md border border-current/10" aria-hidden="true">
+        <img :src="logoLight" class="h-full w-full object-cover dark:hidden" alt="" loading="lazy" />
+        <img :src="logoDark" class="h-full w-full object-cover hidden dark:block" alt="" loading="lazy" />
+      </div>
+      <div class="min-w-0 flex-1">
+        <div class="line-clamp-2 break-words text-[12px] font-semibold leading-4">
+          {{ linkMeta?.title || 'Men of Hunger' }}
+        </div>
+        <div v-if="linkMeta?.description" class="line-clamp-2 break-words text-[11px] opacity-80">
+          {{ linkMeta.description }}
+        </div>
+        <div class="text-[10px] opacity-70">menofhunger.com</div>
+      </div>
+    </NuxtLink>
+
+    <!-- Generic external link preview -->
     <a
-      v-if="showLinkPreview"
+      v-else-if="showLinkPreview"
       :href="previewLink || undefined"
       target="_blank"
       rel="noopener noreferrer"
@@ -74,6 +98,16 @@
       </div>
     </a>
 
+    <!-- Post embed — same component as posts, viewport-gated via enabled prop -->
+    <div v-if="embeddedPostId" @click.stop>
+      <AppEmbeddedPostPreview :post-id="embeddedPostId" :enabled="true" />
+    </div>
+
+    <!-- Article embed -->
+    <div v-if="embeddedArticleId && embeddedArticle" @click.stop>
+      <AppArticleShareCard :article="embeddedArticle" />
+    </div>
+
     <!-- Space preview — compact single-line variant for chat bubbles -->
     <template v-if="embeddedSpaceId">
       <!-- Skeleton while the space store is loading -->
@@ -96,20 +130,27 @@
         <AppSpaceRow :space="embeddedSpace" compact />
       </div>
     </template>
+
+    <!-- User profile link → compact user card -->
+    <div v-if="embeddedUsername" @click.stop>
+      <AppUserLinkCard :username="embeddedUsername" />
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import LinkifyIt from 'linkify-it'
-import { extractLinksFromText, safeUrlDisplay, safeUrlHostname } from '~/utils/link-utils'
+import { extractLinksFromText, safeUrlDisplay, safeUrlHostname, isMohUrl, mohUrlPath, extractMohPostId, extractMohArticleId, extractMohSpaceId, extractMohUsername } from '~/utils/link-utils'
+import logoLight from '~/assets/images/logo-white-bg-small.png'
+import logoDark from '~/assets/images/logo-black-bg-small.png'
 import type { LinkMetadata } from '~/utils/link-metadata'
 import { getLinkMetadata } from '~/utils/link-metadata'
 import { stableListKey } from '~/utils/stable-list-key'
-import { siteConfig } from '~/config/site'
 
 import { HASHTAG_IN_TEXT_DISPLAY_RE } from '~/utils/hashtag-autocomplete'
 import { userTierColorVar } from '~/utils/user-tier'
 import type { UserColorTier } from '~/utils/user-tier'
+import type { ArticleSharePreview } from '~/types/api'
 
 type TextSegment =
   | { kind: 'text'; text: string }
@@ -159,62 +200,70 @@ function escapeRegExp(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
 
-function isLocalHost(host: string, expected: string) {
-  const h = (host ?? '').trim().toLowerCase()
-  const e = (expected ?? '').trim().toLowerCase()
-  if (!h || !e) return false
-  return h === e || h === `www.${e}`
-}
-
-function getAllowedHosts(): Set<string> {
-  const allowedHosts = new Set<string>()
-  try {
-    const fromCfg = new URL(siteConfig.url)
-    if (fromCfg.hostname) allowedHosts.add(fromCfg.hostname.toLowerCase())
-  } catch {
-    // ignore
-  }
-  if (import.meta.client) {
-    const h = window.location.hostname
-    if (h) allowedHosts.add(h.toLowerCase())
-  }
-  return allowedHosts
-}
-
-function tryExtractLocalSpaceId(url: string): string | null {
-  const raw = (url ?? '').trim()
-  if (!raw) return null
-  try {
-    const u = new URL(raw)
-    if (u.protocol !== 'http:' && u.protocol !== 'https:') return null
-    const host = u.hostname.toLowerCase()
-    const ok = Array.from(getAllowedHosts()).some((a) => isLocalHost(host, a))
-    if (!ok) return null
-    const parts = u.pathname.split('/').filter(Boolean)
-    if (parts.length !== 2) return null
-    if (parts[0] !== 'spaces') return null
-    const id = (parts[1] ?? '').trim()
-    return id ? decodeURIComponent(id) : null
-  } catch {
-    return null
-  }
-}
-
 const capturedLinks = computed(() => extractLinksFromText((props.body ?? '').toString()))
+
+// ── Embedded special content ─────────────────────────────────────────────────
+
+const embeddedPostLink = computed(() => {
+  const xs = capturedLinks.value
+  for (let i = xs.length - 1; i >= 0; i--) {
+    const u = xs[i]
+    if (u && extractMohPostId(u)) return u
+  }
+  return null
+})
+const embeddedPostId = computed(() => (embeddedPostLink.value ? extractMohPostId(embeddedPostLink.value) : null))
+
+const embeddedArticleLink = computed(() => {
+  const xs = capturedLinks.value
+  for (let i = xs.length - 1; i >= 0; i--) {
+    const u = xs[i]
+    if (u && extractMohArticleId(u)) return u
+  }
+  return null
+})
+const embeddedArticleId = computed(() => (embeddedArticleLink.value ? extractMohArticleId(embeddedArticleLink.value) : null))
+const embeddedArticle = ref<ArticleSharePreview | null>(null)
+
+const { apiFetchData } = useApiClient()
+const DWELL_MS = 400
+
+watch(
+  embeddedArticleId,
+  (articleId, _old, onCleanup) => {
+    let cancelled = false
+    let timer: ReturnType<typeof setTimeout> | null = null
+    onCleanup(() => {
+      cancelled = true
+      if (timer) clearTimeout(timer)
+    })
+    if (!articleId) return
+    if (embeddedArticle.value?.id === articleId) return
+    embeddedArticle.value = null
+    timer = setTimeout(async () => {
+      if (cancelled) return
+      try {
+        const res = await apiFetchData<ArticleSharePreview>(`/articles/${articleId}`)
+        if (!cancelled) embeddedArticle.value = res ?? null
+      } catch {
+        if (!cancelled) embeddedArticle.value = null
+      }
+    }, DWELL_MS)
+  },
+  { immediate: true },
+)
 
 const embeddedSpaceLink = computed(() => {
   const xs = capturedLinks.value
   for (let i = xs.length - 1; i >= 0; i--) {
     const u = xs[i]
-    if (u && tryExtractLocalSpaceId(u)) return u
+    if (u && extractMohSpaceId(u)) return u
   }
   return null
 })
-
-const embeddedSpaceId = computed(() => (embeddedSpaceLink.value ? tryExtractLocalSpaceId(embeddedSpaceLink.value) : null))
+const embeddedSpaceId = computed(() => (embeddedSpaceLink.value ? extractMohSpaceId(embeddedSpaceLink.value) : null))
 
 const { loadedOnce: spacesLoadedOnce, loadSpaces, getById: getSpaceById } = useSpaces()
-
 const embeddedSpace = computed(() => (embeddedSpaceId.value ? getSpaceById(embeddedSpaceId.value) : null))
 
 watchEffect(() => {
@@ -222,33 +271,54 @@ watchEffect(() => {
   void loadSpaces()
 })
 
+const embeddedUserLink = computed(() => {
+  const xs = capturedLinks.value
+  for (let i = xs.length - 1; i >= 0; i--) {
+    const u = xs[i]
+    if (u && extractMohUsername(u)) return u
+  }
+  return null
+})
+const embeddedUsername = computed(() => (embeddedUserLink.value ? extractMohUsername(embeddedUserLink.value) : null))
+
+// ── Generic / branded fallback preview ──────────────────────────────────────
+
 const previewLink = computed(() => {
   const xs = capturedLinks.value
-  // Skip space links — they get their own preview widget.
+  // All specially-handled MoH content gets its own widget — skip those here.
   for (let i = xs.length - 1; i >= 0; i--) {
     const u = xs[i]
     if (!u) continue
-    if (tryExtractLocalSpaceId(u)) continue
+    if (extractMohPostId(u)) continue
+    if (extractMohArticleId(u)) continue
+    if (extractMohSpaceId(u)) continue
+    if (extractMohUsername(u)) continue
     return u
   }
   return null
 })
 
-// Strip the preview link OR the space link from the displayed body.
-const strippedLink = computed(() => embeddedSpaceLink.value ?? previewLink.value)
+// Strip the embedded special link from the displayed body so it isn't shown as raw text.
+const embeddedSpecialLink = computed(
+  () => embeddedSpaceLink.value ?? embeddedPostLink.value ?? embeddedArticleLink.value ?? embeddedUserLink.value ?? previewLink.value,
+)
 
 const displayBody = computed(() => {
   const input = (props.body ?? '').toString()
-  const last = (strippedLink.value ?? '').trim()
+  const last = (embeddedSpecialLink.value ?? '').trim()
   if (!last) return input
   const re = new RegExp(String.raw`(?:\s*)${escapeRegExp(last)}\s*$`)
   if (!re.test(input)) return input
   return input.replace(re, '').replace(/\s+$/, '')
 })
 
-const showLinkPreview = computed(() => Boolean(previewLink.value && !embeddedSpaceId.value))
+const showLinkPreview = computed(() =>
+  Boolean(previewLink.value && !embeddedSpaceId.value && !embeddedPostId.value && !embeddedArticleId.value && !embeddedUsername.value),
+)
 const previewLinkHost = computed(() => (previewLink.value ? safeUrlHostname(previewLink.value) : null))
 const previewLinkDisplay = computed(() => (previewLink.value ? safeUrlDisplay(previewLink.value) : ''))
+const isMohInternalLink = computed(() => Boolean(previewLink.value && isMohUrl(previewLink.value)))
+const mohInternalPath = computed(() => (previewLink.value ? mohUrlPath(previewLink.value) : null))
 
 const displayBodySegments = computed<TextSegment[]>(() => {
   const input = (displayBody.value ?? '').toString()

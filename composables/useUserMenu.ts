@@ -14,12 +14,18 @@ export function useUserMenu() {
 
   type MenuItemWithIcon = MenuItem & { iconName?: string }
 
+  const profileUrl = computed(() => {
+    const username = (user.value?.username ?? '').trim()
+    return username ? `/u/${encodeURIComponent(username)}` : '/settings'
+  })
+
   const menuItems = computed<MenuItemWithIcon[]>(() => [
     ...(user.value?.siteAdmin
       ? ([
           {
             label: 'Admin',
             iconName: 'tabler:shield',
+            url: '/admin',
             command: () => navigateTo('/admin'),
           },
           { separator: true },
@@ -28,17 +34,20 @@ export function useUserMenu() {
     {
       label: 'View profile',
       iconName: 'tabler:user',
+      url: profileUrl.value,
       command: () => viewProfile(),
     },
     {
       label: 'Coins',
       iconName: 'tabler:coin',
+      url: '/coins',
       command: () => navigateTo('/coins'),
     },
     { separator: true },
     {
       label: 'Feature requests',
       iconName: 'tabler:bulb',
+      url: '/feedback',
       command: () => navigateTo('/feedback'),
     },
     ...(user.value?.premiumPlus
@@ -47,12 +56,14 @@ export function useUserMenu() {
           {
             label: 'Upgrade',
             iconName: 'tabler:sparkles',
+            url: '/tiers',
             command: () => navigateTo('/tiers'),
           },
         ] as MenuItemWithIcon[])),
     {
       label: 'Settings & privacy',
       iconName: 'tabler:settings',
+      url: '/settings',
       command: () => navigateTo('/settings'),
     },
     { separator: true },

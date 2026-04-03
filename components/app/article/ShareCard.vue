@@ -16,10 +16,18 @@
     <!-- Content -->
     <div class="p-3">
       <!-- Article label -->
-      <div class="mb-1.5 flex items-center gap-1.5">
+      <div class="mb-1.5 flex items-center gap-1.5 flex-wrap">
         <Icon name="tabler:article" class="text-[11px] text-gray-400 dark:text-zinc-500" aria-hidden="true" />
         <span class="text-[11px] font-medium uppercase tracking-wide text-gray-400 dark:text-zinc-500">Article</span>
         <span v-if="readingTime" class="text-[11px] text-gray-400 dark:text-zinc-500">· {{ readingTime }}</span>
+        <!-- Access gate chip: shown when server stripped the excerpt due to viewer's tier -->
+        <span
+          v-if="isGated"
+          class="inline-flex items-center gap-0.5 rounded-md px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700/50"
+        >
+          <Icon name="tabler:lock" class="text-[10px] shrink-0" aria-hidden="true" />
+          {{ gateLabel }}
+        </span>
       </div>
 
       <!-- Title -->
@@ -60,5 +68,13 @@ const readingTime = computed(() => {
   const words = props.article.excerpt.split(/\s+/).length
   const minutes = Math.max(1, Math.round(words / 200))
   return `${minutes} min read`
+})
+
+// The excerpt is stripped server-side when the viewer's tier doesn't permit access.
+const isGated = computed(() => !props.article.excerpt && props.article.visibility !== 'public')
+const gateLabel = computed(() => {
+  if (props.article.visibility === 'premiumOnly') return 'Premium'
+  if (props.article.visibility === 'verifiedOnly') return 'Members only'
+  return 'Members only'
 })
 </script>

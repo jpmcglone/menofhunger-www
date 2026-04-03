@@ -51,9 +51,18 @@
           <span class="ml-auto shrink-0 text-xs moh-text-muted leading-none">{{ createdAtShort }}</span>
         </div>
 
+        <!-- Access gate: body/media were stripped server-side for this viewer -->
+        <div
+          v-if="post.viewerCanAccess === false"
+          class="mt-1.5 inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700/50"
+        >
+          <Icon name="tabler:lock" class="text-[11px] shrink-0" aria-hidden="true" />
+          Members only
+        </div>
+
         <!-- Body — clamped to 4 lines so the preview stays compact -->
         <div
-          v-if="bodyPreview"
+          v-else-if="bodyPreview"
           class="mt-1.5 text-sm moh-text break-words line-clamp-4"
         >{{ bodyPreview }}</div>
 
@@ -76,7 +85,7 @@
 
         <!-- Media: non-interactive — clicks pass through to the <a> wrapper -->
         <AppPostMediaGrid
-          v-if="mediaItems.length"
+          v-if="mediaItems.length && post.viewerCanAccess !== false"
           :media="mediaItems"
           compact
           :interactive="false"

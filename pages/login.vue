@@ -147,23 +147,6 @@
 
         <div v-if="introError" class="text-sm text-red-700 dark:text-red-300">{{ introError }}</div>
 
-        <div class="space-y-1">
-          <label class="text-sm font-medium text-gray-700 dark:text-gray-200">
-            Referral code <span class="font-normal text-gray-400">(optional)</span>
-          </label>
-          <InputText
-            v-model="referralCodeInput"
-            class="w-full"
-            placeholder="e.g. JOHNDOE"
-            autocomplete="off"
-            spellcheck="false"
-            :disabled="introContinuing"
-          />
-          <p class="text-xs text-gray-500 dark:text-gray-400">
-            If a member referred you, enter their code here.
-          </p>
-        </div>
-
         <div class="flex items-center justify-end gap-2 pt-1">
           <Button label="Cancel" severity="secondary" text :disabled="introContinuing" @click="closeIntro" />
           <!-- Hidden autofocus target so Dialog focuses this instead of the close button; @show then moves focus to Continue -->
@@ -237,8 +220,6 @@ const introOpen = ref(false)
 const introPhone = ref<string | null>(null)
 const introError = ref<string | null>(null)
 const introContinueBtnRef = ref<{ $el?: HTMLElement } | null>(null)
-const referralCodeInput = ref('')
-
 const phoneInputRef = ref<{ $el?: HTMLElement } | null>(null)
 const codeInputRef = ref<{ $el?: HTMLElement } | null>(null)
 
@@ -295,7 +276,6 @@ function resetToPhone() {
   introPhone.value = null
   introError.value = null
   introContinuing.value = false
-  referralCodeInput.value = ''
   verifying.value = false
   startResendCountdown(0)
 }
@@ -305,7 +285,6 @@ function closeIntro() {
   introPhone.value = null
   introError.value = null
   introContinuing.value = false
-  referralCodeInput.value = ''
 }
 
 async function startOtp(phone: string) {
@@ -450,10 +429,9 @@ const { submit: submitCode, submitting: verifying } = useFormSubmit(
     const code = codeInput.value.replace(/\D/g, '').slice(0, 6)
     if (!phone || code.length !== 6) return
 
-    const referralCode = referralCodeInput.value.trim() || undefined
     const result = await apiFetchData<{ isNewUser: boolean; user: any; sessionId: string }>('/auth/phone/verify', {
       method: 'POST',
-      body: { phone, code, ...(referralCode ? { referralCode } : {}) }
+      body: { phone, code }
     })
 
     // Immediately hydrate auth state from the response so we don't look logged out
