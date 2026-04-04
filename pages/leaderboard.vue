@@ -149,6 +149,7 @@ definePageMeta({
   layout: 'app',
   title: 'Leaderboard',
   hideTopBar: true,
+  ssr: false,
 })
 
 usePageSeo({

@@ -130,6 +130,11 @@
               <span class="ml-1">published a new</span>
               <span class="ml-1 font-semibold text-orange-600 dark:text-orange-400">article</span>
             </template>
+              <template v-else-if="notification.kind === 'group_join_request'">
+                <span class="ml-1">requests to join</span>
+                <span v-if="notification.subjectGroupName" class="ml-1 font-semibold">{{ notification.subjectGroupName }}</span>
+                <span v-else class="ml-1">your group</span>
+              </template>
               <template v-else>
                 <span class="ml-1">{{ titleSuffix(notification) }}</span>
               </template>

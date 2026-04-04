@@ -96,6 +96,7 @@ definePageMeta({
   layout: 'app',
   title: 'Search',
   middleware: 'admin',
+  ssr: false,
 })
 
 usePageSeo({

@@ -121,6 +121,7 @@ import type { Space, WatchPartyState } from '~/types/api'
 
 const props = defineProps<{
   space: Space
+  roomReady?: boolean
 }>()
 
 // ─── Sync configuration ────────────────────────────────────────────────────
@@ -137,6 +138,12 @@ const { isSocketConnected } = presence
 const { selectedSpaceId } = useSpaceLobby()
 
 const isOwner = computed(() => Boolean(user.value?.id && props.space?.owner?.id && user.value.id === props.space.owner.id))
+const canRequestRoomState = computed(() => props.roomReady !== false)
+
+function wpLog(...args: unknown[]) {
+  if (!import.meta.dev) return
+  console.info('[watch-party/player]', ...args)
+}
 
 const playerContainerRef = ref<HTMLElement | null>(null)
 const playerReady = ref(false)
@@ -174,10 +181,21 @@ function extractVideoId(url: string): string | null {
 }
 
 
-/** Return the drift-adjusted current time for a WatchPartyState. */
+/**
+ * Return the drift-adjusted current time for a WatchPartyState.
+ *
+ * The server stores raw currentTime + the timestamp (updatedAt) when it
+ * received the owner's control event. It does NOT pre-adjust currentTime
+ * before broadcasting, so the client is responsible for the full elapsed
+ * calculation. This keeps things correct for both real-time broadcasts
+ * (updatedAt ≈ now, elapsed ≈ RTT) and delayed join responses (updatedAt
+ * could be many seconds old).
+ */
 function driftAdjustedTime(state: WatchPartyState): number {
   if (!state.isPlaying) return state.currentTime
-  const elapsedSec = (Date.now() - state.updatedAt) / 1000
+  const updatedAtMs = Number(state.updatedAt)
+  if (!updatedAtMs || !isFinite(updatedAtMs)) return state.currentTime
+  const elapsedSec = Math.max(0, (Date.now() - updatedAtMs) / 1000)
   return state.currentTime + elapsedSec * state.playbackRate
 }
 
@@ -220,8 +238,24 @@ function applyOwnerRestoreState(state: WatchPartyState) {
   // ended-state frame.
   const duration: number = ytPlayer.getDuration?.() ?? 0
   const target = duration > 0 && raw >= duration - 1 ? 0 : raw
+  const restoreVideoId = extractVideoId(state.videoUrl) ?? currentVideoId
+  wpLog('owner:apply-restore', {
+    raw,
+    target,
+    playbackRate: state.playbackRate,
+    stateVideoId: restoreVideoId,
+    currentVideoId,
+    duration,
+  })
   ignoreNextStateChange = true
-  ytPlayer.seekTo?.(target, true)
+  // Use cueVideoById for paused restore so YouTube renders the target frame
+  // without requiring autoplay/user interaction.
+  if (restoreVideoId) {
+    currentVideoId = restoreVideoId
+    ytPlayer.cueVideoById?.({ videoId: restoreVideoId, startSeconds: target })
+  } else {
+    ytPlayer.seekTo?.(target, true)
+  }
   ytPlayer.setPlaybackRate?.(state.playbackRate)
   ytPlayer.pauseVideo?.()
 }
@@ -244,7 +278,11 @@ function loadNewVideoIfNeeded(videoId: string | null): boolean {
  *   position so viewers never see the video flash from 0:00.
  */
 function createPlayer(videoId: string, startSeconds = 0) {
-  if (!playerContainerRef.value) return
+  if (!playerContainerRef.value) {
+    wpLog('createPlayer:skip-missing-container', { videoId, startSeconds })
+    return
+  }
+  wpLog('createPlayer:start', { videoId, startSeconds, isOwner: isOwner.value, roomReady: canRequestRoomState.value })
   currentVideoId = videoId
   const container = document.createElement('div')
   playerContainerRef.value.innerHTML = ''
@@ -276,22 +314,40 @@ function createPlayer(videoId: string, startSeconds = 0) {
     },
     events: {
       onReady: () => {
+        const iframe = playerContainerRef.value?.querySelector('iframe')
+        wpLog('yt:onReady:dom', {
+          containerWidth: playerContainerRef.value?.clientWidth ?? 0,
+          containerHeight: playerContainerRef.value?.clientHeight ?? 0,
+          hasIframe: Boolean(iframe),
+          iframeSrc: iframe?.getAttribute('src') ?? null,
+        })
+        wpLog('yt:onReady', {
+          isOwner: isOwner.value,
+          hasState: Boolean(watchPartyState.value),
+          pendingOwnerRestore: pendingOwnerRestore.value,
+          canRequestRoomState: canRequestRoomState.value,
+        })
         playerReady.value = true
         syncLocalVolumeFromPlayer()
         const state = watchPartyState.value
         if (isOwner.value) {
-          // State already arrived before the player was ready — apply the
-          // restore now so the chip is cleared and the player lands correctly.
+          // Apply restore if state arrived before the player was ready.
+          // Always clear the flag so the sync timer can start emitting:
+          //  • With prior state  → seek to saved position, then timer takes over.
+          //  • Fresh space (no state) → timer starts from 0 immediately.
           if (pendingOwnerRestore.value && state) {
             applyOwnerRestoreState(state)
-            pendingOwnerRestore.value = false
           }
+          pendingOwnerRestore.value = false
         } else if (state) {
           // applyState computes drift internally, so pass the raw state.
           applyState(state)
-        } else {
+        } else if (canRequestRoomState.value) {
           // State hasn't arrived yet — request it now as a final fallback.
+          wpLog('yt:onReady:request-state', { spaceId: props.space.id })
           requestCurrentState(props.space.id)
+        } else {
+          wpLog('yt:onReady:skip-request-room-not-ready', { spaceId: props.space.id })
         }
       },
       onStateChange: (event: any) => {
@@ -354,6 +410,9 @@ function startOwnerSyncTimer() {
   if (ownerSyncTimer) clearInterval(ownerSyncTimer)
   ownerSyncTimer = setInterval(() => {
     if (!ytPlayer || !playerReady.value) return
+    // Don't emit while waiting for the initial restore — we don't want to
+    // overwrite the server's saved position with the player's 0:00 start position.
+    if (pendingOwnerRestore.value) return
     const YTState = (window as any).YT?.PlayerState
     const playerState = ytPlayer.getPlayerState?.()
     const isPlaying = playerState === YTState?.PLAYING || playerState === YTState?.BUFFERING
@@ -409,6 +468,7 @@ function applyState(state: WatchPartyState) {
   // Always compute the wall-clock-adjusted position so a state that was stored
   // seconds ago still lands the viewer at the correct spot.
   const adjusted = driftAdjustedTime(state)
+  if (!isFinite(adjusted)) return  // bad/missing updatedAt — skip rather than seek to NaN
   const currentTime = ytPlayer.getCurrentTime?.() ?? 0
   const drift = Math.abs(currentTime - adjusted)
 
@@ -438,6 +498,13 @@ function applyState(state: WatchPartyState) {
 
 watch(watchPartyState, (newState) => {
   if (!newState) return
+  wpLog('watchPartyState:update', {
+    isOwner: isOwner.value,
+    isPlaying: newState.isPlaying,
+    currentTime: Number(newState.currentTime ?? 0),
+    updatedAt: Number(newState.updatedAt ?? 0),
+    playerReady: playerReady.value,
+  })
   if (isOwner.value) {
     if (playerReady.value && pendingOwnerRestore.value) {
       applyOwnerRestoreState(newState)
@@ -480,7 +547,14 @@ watch(pendingOwnerRestore, (pending) => {
 // first join attempt may have raced handleConnection's async auth (userId null
 // → server skipped emitting watchPartyState). Always requesting ensures sync.
 let prevSocketConnected = isSocketConnected.value
-watch(isSocketConnected, (connected) => {
+watch(isSocketConnected, async (connected) => {
+  wpLog('socket:connected-changed', {
+    connected,
+    prevSocketConnected,
+    isOwner: isOwner.value,
+    playerReady: playerReady.value,
+    canRequestRoomState: canRequestRoomState.value,
+  })
   // Owner disconnect behavior: pause locally at the exact current timestamp.
   // This keeps owner and viewers aligned with the server's disconnect pause policy
   // and prevents owner playback from running ahead while offline.
@@ -489,20 +563,28 @@ watch(isSocketConnected, (connected) => {
     ytPlayer.pauseVideo?.()
   }
 
-  if (!connected) {
-    prevSocketConnected = connected
-    return
-  }
+  // Update prevSocketConnected immediately so a re-entrant watch tick has
+  // the correct baseline even while we await below.
+  prevSocketConnected = connected
+
+  if (!connected) return
+
+  // On hard reload the Vue reactive watcher flush runs in the same microtask
+  // batch as the socket connect event, but BEFORE the whenSocketConnected
+  // promise continuation that calls emitSpacesJoin. Waiting one tick lets
+  // that continuation run so the client is in the space room before we ask
+  // for the authoritative watch-party state.
+  await nextTick()
 
   // On (re)connect: both host and viewers request authoritative room state.
   // Host applies it once and remains paused; viewers apply normal sync behavior.
-  if (isOwner.value) {
-    pendingOwnerRestore.value = true
-    requestCurrentState(props.space.id)
-  } else {
-    requestCurrentState(props.space.id)
+  if (!canRequestRoomState.value) {
+    wpLog('socket:skip-request-room-not-ready', { spaceId: props.space.id })
+    return
   }
-  prevSocketConnected = connected
+  if (isOwner.value) pendingOwnerRestore.value = true
+  wpLog('socket:request-state', { spaceId: props.space.id, isOwner: isOwner.value })
+  requestCurrentState(props.space.id)
 })
 
 // Belt-and-suspenders: when the player becomes ready, request state if the
@@ -510,7 +592,23 @@ watch(isSocketConnected, (connected) => {
 // where the YouTube API loaded before the socket finished connecting).
 watch(playerReady, (ready) => {
   if (!ready || isOwner.value || watchPartyState.value) return
-  if (isSocketConnected.value) requestCurrentState(props.space.id)
+  if (isSocketConnected.value && canRequestRoomState.value) {
+    wpLog('playerReady:request-state', { spaceId: props.space.id })
+    requestCurrentState(props.space.id)
+  }
+})
+
+watch(canRequestRoomState, (ready) => {
+  wpLog('room-ready:changed', {
+    ready,
+    isSocketConnected: isSocketConnected.value,
+    playerReady: playerReady.value,
+    isOwner: isOwner.value,
+  })
+  if (!ready || !isSocketConnected.value) return
+  if (isOwner.value) pendingOwnerRestore.value = true
+  wpLog('room-ready:request-state', { spaceId: props.space.id, isOwner: isOwner.value })
+  requestCurrentState(props.space.id)
 })
 
 // When the user explicitly leaves the space (selectedSpaceId → null), pause the
@@ -531,20 +629,34 @@ const replacedCb = {
 
 onMounted(async () => {
   const videoId = extractVideoId(props.space.watchPartyUrl ?? '')
-  if (!videoId) return
+  if (!videoId) {
+    wpLog('mount:skip-invalid-video-url', { watchPartyUrl: props.space.watchPartyUrl ?? null })
+    return
+  }
+
+  wpLog('mount:start', {
+    spaceId: props.space.id,
+    videoId,
+    isOwner: isOwner.value,
+    roomReady: canRequestRoomState.value,
+    isSocketConnected: isSocketConnected.value,
+  })
 
   subscribe(props.space.id)
 
   if (isOwner.value) {
     presence.addSpacesCallback(replacedCb as any)
     pendingOwnerRestore.value = true
+  }
+  // Fire a state request immediately so the response races the YouTube API
+  // load. Even if the API is already cached (< 200 ms), the network round
+  // trip (~50–150 ms) usually completes in time for us to read the position
+  // from watchPartyState before calling createPlayer below.
+  if (canRequestRoomState.value) {
+    wpLog('mount:request-state', { spaceId: props.space.id })
     requestCurrentState(props.space.id)
   } else {
-    // Fire a state request immediately so the response races the YouTube API
-    // load. Even if the API is already cached (< 200 ms), the network round
-    // trip (~50–150 ms) usually completes in time for us to read the position
-    // from watchPartyState before calling createPlayer below.
-    requestCurrentState(props.space.id)
+    wpLog('mount:skip-request-room-not-ready', { spaceId: props.space.id })
   }
 
   await loadYouTubeAPIOnce()
@@ -553,6 +665,11 @@ onMounted(async () => {
   // from the correct position rather than flashing 0:00 first.
   const initialState = watchPartyState.value
   const startSeconds = initialState ? driftAdjustedTime(initialState) : 0
+  wpLog('mount:create-player', {
+    spaceId: props.space.id,
+    startSeconds,
+    hasInitialState: Boolean(initialState),
+  })
 
   createPlayer(videoId, startSeconds)
   startOwnerSyncTimer()

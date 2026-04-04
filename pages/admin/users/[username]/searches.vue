@@ -44,6 +44,7 @@ definePageMeta({
   layout: 'app',
   title: 'User Searches',
   middleware: 'admin',
+  ssr: false,
 })
 
 const route = useRoute()

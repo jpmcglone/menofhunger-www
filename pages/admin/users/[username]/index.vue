@@ -383,6 +383,7 @@ definePageMeta({
   layout: 'app',
   title: 'User 360',
   middleware: 'admin',
+  ssr: false,
 })
 
 const route = useRoute()

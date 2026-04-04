@@ -138,8 +138,15 @@
   </div>
 </template>
 
-<script setup lang="ts">
+<script lang="ts">
+// Module-level singleton — shared across all ChatMessageRichBody instances so
+// the expensive LinkifyIt regex compilation only happens once per page load
+// rather than once per mounted message row.
 import LinkifyIt from 'linkify-it'
+const _linkify = new LinkifyIt()
+</script>
+
+<script setup lang="ts">
 import { extractLinksFromText, safeUrlDisplay, safeUrlHostname, isMohUrl, mohUrlPath, extractMohPostId, extractMohArticleId, extractMohSpaceId, extractMohUsername } from '~/utils/link-utils'
 import logoLight from '~/assets/images/logo-white-bg-small.png'
 import logoDark from '~/assets/images/logo-black-bg-small.png'
@@ -170,8 +177,6 @@ const props = defineProps<{
   /** Sender's tier — hashtags are colored to match the sender. */
   senderTier?: UserColorTier
 }>()
-
-const linkify = new LinkifyIt()
 
 const { validSet, tierForUsername, validateMentionsInBody } = useValidatedChatUsernames()
 
@@ -328,7 +333,7 @@ const displayBodySegments = computed<TextSegment[]>(() => {
   const allMatches: RangedMatch[] = []
 
   // Link matches
-  const linkMatches = linkify.match(input) ?? []
+  const linkMatches = _linkify.match(input) ?? []
   for (const m of linkMatches) {
     const start = typeof (m as any).index === 'number' ? ((m as any).index as number) : -1
     const end = typeof (m as any).lastIndex === 'number' ? ((m as any).lastIndex as number) : -1

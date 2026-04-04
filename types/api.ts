@@ -1055,6 +1055,7 @@ export type NotificationKind =
   | 'poll_results_ready'
   | 'generic'
   | 'coin_transfer'
+  | 'group_join_request'
 
 export type NotificationGroupKind = 'comment' | 'boost' | 'repost' | 'follow' | 'followed_post' | 'nudge'
 
@@ -1097,6 +1098,11 @@ export type Notification = {
   subjectPostId: string | null
   subjectUserId: string | null
   subjectArticleId: string | null
+  subjectGroupId: string | null
+  /** Slug of the subject group (only populated for group_join_request notifications). */
+  subjectGroupSlug?: string | null
+  /** Display name of the subject group (only populated for group_join_request notifications). */
+  subjectGroupName?: string | null
   title: string | null
   body: string | null
   subjectPostPreview?: SubjectPostPreview | null
@@ -1765,6 +1771,8 @@ export type CommunityGroupShell = {
   createdAt: string
   viewerMembership: { status: 'active' | 'pending'; role: 'owner' | 'moderator' | 'member' } | null
   viewerPendingApproval: boolean
+  /** Number of pending join requests. Only populated for owners and moderators of approval-policy groups. */
+  pendingMemberCount?: number
 }
 
 export type CommunityGroupMemberListItem = {

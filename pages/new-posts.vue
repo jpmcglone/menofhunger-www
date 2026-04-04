@@ -54,6 +54,7 @@ definePageMeta({
   layout: 'app',
   title: 'New posts',
   hideTopBar: true,
+  ssr: false,
 })
 
 usePageSeo({

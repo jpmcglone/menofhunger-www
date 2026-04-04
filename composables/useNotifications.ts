@@ -238,6 +238,8 @@ export function useNotifications() {
         return 'nudged you'
       case 'coin_transfer':
         return n.title ?? 'sent you coins'
+      case 'group_join_request':
+        return 'requests to join your group'
       case 'generic':
         return 'Notification'
       default:
@@ -263,10 +265,11 @@ export function useNotifications() {
       case 'nudge':
         return 'tabler:hand-click'
       case 'poll_results_ready':
-        // Use the same icon as the composer poll button (known present).
         return 'tabler:chart-bar'
       case 'coin_transfer':
         return 'tabler:coin'
+      case 'group_join_request':
+        return 'tabler:users-group'
       case 'generic':
         return 'tabler:bell'
       default:
@@ -297,6 +300,8 @@ export function useNotifications() {
         return 'Nudge'
       case 'coin_transfer':
         return 'Coins'
+      case 'group_join_request':
+        return 'Join request'
       default:
         return ''
     }
@@ -323,6 +328,9 @@ export function useNotifications() {
 
   function rowHref(n: Notification): string | null {
     if (n.kind === 'coin_transfer') return '/coins'
+    if (n.kind === 'group_join_request' && n.subjectGroupSlug) {
+      return `/g/${encodeURIComponent(n.subjectGroupSlug)}/pending`
+    }
     // Article-related notifications always route to the article page.
     if (n.subjectArticleId && (
       n.kind === 'followed_article' || n.kind === 'comment' || n.kind === 'mention' || n.kind === 'boost'

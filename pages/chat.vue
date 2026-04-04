@@ -489,6 +489,7 @@ definePageMeta({
   layout: 'app',
   title: 'Chat',
   hideTopBar: true,
+  ssr: false,
 })
 
 usePageSeo({

@@ -786,7 +786,7 @@
 import { Chart, registerables } from 'chart.js'
 import type { AdminAnalytics, AdminAnalyticsEngagement, AdminAnalyticsTopArticle, AdminReferralAnalytics, AnalyticsGranularity, AnalyticsRange } from '~/types/api'
 
-definePageMeta({ middleware: 'admin', layout: 'app' })
+definePageMeta({ middleware: 'admin', layout: 'app', ssr: false })
 
 Chart.register(...registerables)
 

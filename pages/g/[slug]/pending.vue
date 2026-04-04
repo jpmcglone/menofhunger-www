@@ -74,7 +74,7 @@ import { getApiErrorMessage } from '~/utils/api-error'
 const route = useRoute()
 const slug = computed(() => String(route.params.slug ?? '').trim())
 
-definePageMeta({ layout: 'app', title: 'Pending', hideTopBar: true })
+definePageMeta({ layout: 'app', title: 'Pending', hideTopBar: true, ssr: false })
 
 const { apiFetchData } = useApiClient()
 

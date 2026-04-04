@@ -99,6 +99,7 @@ definePageMeta({
   layout: 'app',
   title: 'New group',
   hideTopBar: true,
+  ssr: false,
 })
 
 usePageSeo({

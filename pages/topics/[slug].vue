@@ -63,7 +63,6 @@ const route = useRoute()
 const { apiFetchData } = useApiClient()
 
 const termSlug = computed(() => String(route.params.slug ?? '').trim().toLowerCase())
-const term = ref<TaxonomyMatch | null>(null)
 
 function toPrettyLabel(slug: string): string {
   if (!slug) return 'topic'
@@ -74,6 +73,20 @@ function toPrettyLabel(slug: string): string {
     .join(' ')
 }
 
+// Server-side taxonomy fetch — runs on SSR so usePageSeo gets a real label for
+// og:title / JSON-LD. The reactive key re-fetches on client-side slug changes.
+const { data: termData } = await useAsyncData(
+  () => `topic-${termSlug.value}`,
+  () => apiFetchData<TaxonomyMatch[]>('/taxonomy/search', {
+    method: 'GET',
+    query: { q: termSlug.value, limit: 10 },
+  }).catch(() => null),
+)
+
+const term = computed(() =>
+  (termData.value ?? []).find((r: TaxonomyMatch) => r.slug === termSlug.value) ?? null,
+)
+
 const termLabel = computed(() => term.value?.label || toPrettyLabel(termSlug.value))
 
 const feed = useArticleFeed({
@@ -83,20 +96,6 @@ const feed = useArticleFeed({
 const initialLoading = computed(
   () => (feed.loading.value || !feed.hasLoadedOnce.value) && feed.articles.value.length === 0,
 )
-
-async function loadTerm() {
-  const slug = termSlug.value
-  if (!slug) return
-  try {
-    const rows = await apiFetchData<TaxonomyMatch[]>('/taxonomy/search', {
-      method: 'GET',
-      query: { q: slug, limit: 10 },
-    })
-    term.value = (rows ?? []).find((r) => r.slug === slug) ?? null
-  } catch {
-    term.value = null
-  }
-}
 
 usePageSeo({
   title: computed(() => `${termLabel.value}`),
@@ -116,8 +115,6 @@ usePageSeo({
 })
 
 watch(termSlug, async () => {
-  term.value = null
-  await loadTerm()
   await feed.load({ force: true })
 }, { immediate: true })
 </script>

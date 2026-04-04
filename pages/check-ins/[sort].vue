@@ -86,6 +86,7 @@ definePageMeta({
   layout: 'app',
   title: 'Check-ins',
   hideTopBar: true,
+  ssr: false,
 })
 
 usePageSeo({

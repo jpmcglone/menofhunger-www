@@ -219,6 +219,7 @@ definePageMeta({
   layout: 'app',
   title: 'Feedback',
   middleware: 'admin',
+  ssr: false,
 })
 
 usePageSeo({

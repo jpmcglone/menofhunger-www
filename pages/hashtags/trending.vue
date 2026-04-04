@@ -62,6 +62,7 @@ definePageMeta({
   layout: 'app',
   title: 'Trending hashtags',
   hideTopBar: true,
+  ssr: false,
 })
 
 usePageSeo({

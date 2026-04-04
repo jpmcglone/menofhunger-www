@@ -268,6 +268,7 @@ definePageMeta({
   layout: 'app',
   title: 'Verification',
   middleware: 'admin',
+  ssr: false,
 })
 
 usePageSeo({

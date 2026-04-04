@@ -75,6 +75,7 @@ import type { FeedPost } from '~/types/api'
 definePageMeta({
   layout: 'app',
   title: 'Only me',
+  ssr: false,
 })
 
 usePageSeo({

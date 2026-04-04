@@ -152,6 +152,23 @@
           </template>
         </div>
         <div v-else class="shrink-0 flex items-center gap-2">
+          <!-- Pending requests badge (owners + mods of approval-policy groups) -->
+          <NuxtLink
+            v-if="isAdminViewer && shell.joinPolicy === 'approval'"
+            :to="`/g/${encodeURIComponent(shell.slug)}/pending`"
+            class="relative inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold moh-surface-hover border moh-border"
+            :aria-label="pendingMemberCount > 0 ? `${pendingMemberCount} pending request${pendingMemberCount !== 1 ? 's' : ''}` : 'Pending requests'"
+          >
+            <Icon name="tabler:users-group" class="text-[14px] opacity-80" aria-hidden="true" />
+            <span class="hidden sm:inline">Requests</span>
+            <span
+              v-if="pendingMemberCount > 0"
+              class="absolute -top-1.5 -right-1.5 flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white leading-none"
+              aria-hidden="true"
+            >
+              {{ pendingMemberCount >= 99 ? '99+' : pendingMemberCount }}
+            </span>
+          </NuxtLink>
           <Button
             v-if="isOwner"
             label="Edit group"
@@ -280,6 +297,13 @@ const emit = defineEmits<{
 const avatarRoundClass = groupAvatarRoundClass()
 const avatarWrapperRef = ref<HTMLElement | null>(null)
 const leaveConfirmOpen = ref(false)
+
+const isAdminViewer = computed(() => {
+  const role = props.shell.viewerMembership?.role
+  return role === 'owner' || role === 'moderator'
+})
+
+const pendingMemberCount = computed(() => props.shell.pendingMemberCount ?? 0)
 
 // Show full description only to verified (logged-in + verified) viewers.
 const descriptionObfuscated = computed(() => !props.viewerIsLoggedIn || !props.viewerIsVerified)

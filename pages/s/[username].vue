@@ -70,12 +70,22 @@
 
           <!-- Canvas area -->
           <div class="moh-gutter-x flex-1 min-h-0 pb-3 min-h-[40vh]">
-            <!-- Watch Party mode: YouTube player -->
-            <SpaceYouTubePlayer
-              v-if="space.mode === 'WATCH_PARTY' && space.watchPartyUrl"
-              :space="space"
-              class="w-full h-full"
-            />
+            <!-- Watch Party mode: YouTube player.
+                 ClientOnly prevents hydration mismatches — the server never renders
+                 this component (spaceReady=false), so Vue must not try to hydrate it
+                 when Suspense resolves and onMounted fires during the hydration phase.
+                 spaceReady gates the inner v-if until after emitSpacesJoin so the
+                 player's onMounted requestCurrentState fires while we're already in
+                 the socket room. -->
+            <template v-if="space?.mode === 'WATCH_PARTY' && space?.watchPartyUrl">
+              <ClientOnly>
+                <SpaceYouTubePlayer
+                  :space="space"
+                  :room-ready="spaceReady"
+                  class="w-full h-full"
+                />
+              </ClientOnly>
+            </template>
             <!-- Radio mode: audio visualizer -->
             <AppSpaceVisualizer
               v-else-if="space.mode === 'RADIO' && space.radioStreamUrl"
@@ -203,6 +213,28 @@ const { reactions, loadReactions, addFloating, clearAllFloating } = useSpaceReac
 
 const spaceLoading = ref(true)
 const space = ref<Space | null>(null)
+/** True only after emitSpacesJoin has completed — gates SpaceYouTubePlayer so its
+ *  requestCurrentState fires while we're already in the socket room. */
+const spaceReady = ref(false)
+
+function spacesLog(...args: unknown[]) {
+  if (!import.meta.client || !import.meta.dev) return
+  console.info('[spaces/page]', ...args)
+}
+
+// Lightweight SSR fetch for metadata only — gives bots/crawlers real og:title,
+// og:description, and JSON-LD Event. We deliberately do NOT seed space.value
+// from this so the interactive template (SpaceYouTubePlayer etc.) stays unmounted
+// until onMounted runs and the socket is ready, preserving sync timing.
+const { data: ssrSpace } = await useAsyncData(
+  `space-${username.value}`,
+  () => fetchSpaceByUsername(username.value),
+  { server: true },
+)
+
+// Used only by usePageSeo below — falls back from the live ref to the SSR
+// snapshot so bots get rich metadata even before onMounted runs.
+const seoSpace = computed(() => space.value ?? ssrSpace.value)
 
 const isOwner = computed(() => Boolean(user.value?.id && space.value?.owner?.id && user.value.id === space.value.owner.id))
 
@@ -298,24 +330,37 @@ onMounted(async () => {
   registerAvatarPositionResolver(getAvatarPos)
   await ensureLoaded()
 
+  spacesLog('mount:start', { username: username.value })
   const s = await fetchSpaceByUsername(username.value)
   spaceLoading.value = false
-  if (!s) return
+  if (!s) {
+    spacesLog('mount:space-not-found', { username: username.value })
+    return
+  }
   space.value = s
   upsertSpace(s)
+  spacesLog('mount:space-loaded', {
+    id: s.id,
+    mode: s.mode,
+    hasWatchPartyUrl: Boolean(s.watchPartyUrl),
+    isOwner: isOwner.value,
+    canJoinSpace: canJoinSpace.value,
+  })
 
   if (!canJoinSpace.value) {
+    spacesLog('mount:join-blocked', { reason: 'not-authed-or-not-eligible' })
     useNuxtApp().callHook('page:loading:end')
     useLoadingIndicator().finish({ force: true })
     return
   }
 
   void loadReactions()
+  spacesLog('mount:enter-space:start', { spaceId: s.id })
   await enterSpace(s)
-  if (s.mode === 'WATCH_PARTY' && s.watchPartyUrl && !isOwner.value) {
-    const { requestCurrentState } = useWatchParty()
-    requestCurrentState(s.id)
-  }
+  // Open the gate AFTER emitSpacesJoin has fired inside enterSpace so the
+  // player's onMounted requestCurrentState always lands while we're in the room.
+  spaceReady.value = true
+  spacesLog('mount:enter-space:done', { spaceId: s.id, spaceReady: spaceReady.value })
   addPageCallbacks()
   await subscribeLobbyCounts()
   useNuxtApp().callHook('page:loading:end')
@@ -357,17 +402,41 @@ onBeforeUnmount(() => {
 watch(username, async (newUsername) => {
   if (!import.meta.client || !newUsername) return
   clearAllFloating()
+  spaceReady.value = false
+  spacesLog('username:changed', { username: newUsername, spaceReady: spaceReady.value })
   spaceLoading.value = true
   const s = await fetchSpaceByUsername(newUsername)
   spaceLoading.value = false
   if (!s) {
     space.value = null
+    spacesLog('username:space-not-found', { username: newUsername })
     return
   }
   space.value = s
   upsertSpace(s)
+  spacesLog('username:space-loaded', {
+    id: s.id,
+    mode: s.mode,
+    hasWatchPartyUrl: Boolean(s.watchPartyUrl),
+  })
+  spacesLog('username:enter-space:start', { spaceId: s.id })
   await enterSpace(s)
+  spaceReady.value = true
+  spacesLog('username:enter-space:done', { spaceId: s.id, spaceReady: spaceReady.value })
 })
+
+watch(
+  [() => space.value?.mode, () => space.value?.watchPartyUrl, () => spaceReady.value],
+  ([mode, watchPartyUrl, ready]) => {
+    spacesLog('render-state', {
+      mode,
+      hasWatchPartyUrl: Boolean(watchPartyUrl),
+      spaceReady: ready,
+      selectedSpaceId: selectedSpaceId.value,
+    })
+  },
+  { immediate: true },
+)
 
 definePageMeta({
   layout: 'app',
@@ -377,30 +446,30 @@ definePageMeta({
 })
 
 const spaceMode = computed(() => {
-  if (!space.value) return ''
-  if (space.value.mode === 'WATCH_PARTY') return ' Watch party in progress.'
-  if (space.value.mode === 'RADIO') return ' Radio playing live.'
+  if (!seoSpace.value) return ''
+  if (seoSpace.value.mode === 'WATCH_PARTY') return ' Watch party in progress.'
+  if (seoSpace.value.mode === 'RADIO') return ' Radio playing live.'
   return ''
 })
 
 usePageSeo({
   title: computed(() => {
-    if (!space.value) return 'Space'
-    const host = space.value.owner?.username ? `@${space.value.owner.username}` : ''
-    return host ? `${space.value.title} by ${host}` : space.value.title
+    if (!seoSpace.value) return 'Space'
+    const host = seoSpace.value.owner?.username ? `@${seoSpace.value.owner.username}` : ''
+    return host ? `${seoSpace.value.title} by ${host}` : seoSpace.value.title
   }),
   description: computed(() => {
-    if (!space.value) return 'Join a live space on Men of Hunger — chat, watch parties, and radio with other men.'
-    const desc = space.value.description
-      ? `${space.value.description}`
-      : `Join ${space.value.title} — a live space hosted by @${space.value.owner?.username ?? 'unknown'} on Men of Hunger.`
+    if (!seoSpace.value) return 'Join a live space on Men of Hunger — chat, watch parties, and radio with other men.'
+    const desc = seoSpace.value.description
+      ? `${seoSpace.value.description}`
+      : `Join ${seoSpace.value.title} — a live space hosted by @${seoSpace.value.owner?.username ?? 'unknown'} on Men of Hunger.`
     return `${desc}${spaceMode.value} Verified members can join and chat live.`
   }),
   canonicalPath: computed(() => (username.value ? `/s/${encodeURIComponent(username.value)}` : '/spaces')),
   ogType: 'website',
   jsonLdGraph: computed(() => {
-    if (!space.value) return []
-    const s = space.value
+    if (!seoSpace.value) return []
+    const s = seoSpace.value
     return [{
       '@type': 'Event',
       name: s.title,

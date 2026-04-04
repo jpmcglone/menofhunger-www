@@ -182,6 +182,7 @@ definePageMeta({
   title: 'Site settings',
   hideTopBar: true,
   middleware: 'admin',
+  ssr: false,
 })
 
 usePageSeo({

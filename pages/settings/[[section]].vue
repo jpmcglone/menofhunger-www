@@ -819,7 +819,8 @@
 <script setup lang="ts">
 definePageMeta({
   layout: 'app',
-  title: 'Settings'
+  title: 'Settings',
+  ssr: false,
 })
 
 usePageSeo({

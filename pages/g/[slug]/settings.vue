@@ -74,7 +74,7 @@ const route = useRoute()
 const slug = computed(() => String(route.params.slug ?? '').trim())
 const { apiFetchData } = useApiClient()
 
-definePageMeta({ layout: 'app', title: 'Group settings', hideTopBar: true })
+definePageMeta({ layout: 'app', title: 'Group settings', hideTopBar: true, ssr: false })
 
 const shell = ref<CommunityGroupShell | null>(null)
 const shellLoading = ref(true)

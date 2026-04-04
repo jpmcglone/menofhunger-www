@@ -69,6 +69,7 @@
 definePageMeta({
   layout: 'app',
   title: 'Comparison',
+  ssr: false,
 })
 
 usePageSeo({
