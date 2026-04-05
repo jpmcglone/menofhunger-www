@@ -146,7 +146,7 @@
             </p>
           </div>
           <NuxtLink
-            to="/settings/subscription"
+            to="/settings/billing"
             :class="[
               'mt-2 inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold text-white shadow transition-opacity hover:opacity-90',
               article.visibility === 'premiumOnly' ? 'bg-orange-500' : 'bg-blue-500',

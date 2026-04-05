@@ -190,7 +190,7 @@
           style="border-color: rgba(var(--moh-verified-rgb), 0.2);"
         >
           <NuxtLink
-            to="/settings"
+            to="/settings/billing"
             class="inline-flex w-full items-center justify-center rounded-xl px-4 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-95"
             style="background-color: var(--moh-verified);"
           >
@@ -295,7 +295,7 @@
         <div class="border-t px-6 py-4 dark:border-zinc-700" style="border-color: rgba(var(--moh-premium-rgb), 0.2);">
           <NuxtLink
             v-if="premiumTier.cta && !isPremium"
-            to="/settings"
+            to="/settings/billing"
             class="inline-flex w-full items-center justify-center rounded-xl px-4 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-95"
             style="background-color: var(--moh-premium);"
           >
@@ -408,7 +408,7 @@
         <div class="border-t px-6 py-4 dark:border-zinc-700" style="border-color: rgba(var(--moh-premium-rgb), 0.2);">
           <NuxtLink
             v-if="premiumPlusTier.cta && !isPremiumPlus"
-            to="/settings"
+            to="/settings/billing"
             class="inline-flex w-full items-center justify-center rounded-xl px-4 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-95"
             style="background-color: var(--moh-premium);"
           >

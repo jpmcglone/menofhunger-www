@@ -79,7 +79,7 @@
           <p class="mt-0.5 text-sm text-gray-500 dark:text-zinc-400">Premium members can comment on all articles.</p>
           <div class="mt-2">
             <NuxtLink
-              to="/settings/subscription"
+              to="/settings/billing"
               class="inline-flex items-center rounded-lg bg-amber-500 px-4 py-1.5 text-sm font-semibold text-white transition-opacity hover:opacity-85"
             >
               Upgrade to Premium

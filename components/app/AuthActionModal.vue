@@ -104,7 +104,7 @@ async function onPrimary() {
     return
   }
   if (kind.value === 'premium') {
-    await navigateTo('/settings/subscription')
+    await navigateTo('/settings/billing')
     return
   }
   // verify / setUsername both live in settings for now.

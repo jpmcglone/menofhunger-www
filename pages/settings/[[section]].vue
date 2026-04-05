@@ -428,6 +428,15 @@
                 >
                   Verify to subscribe
                 </NuxtLink>
+                <Button
+                  v-if="isDev && (billingMe?.premium || billingMe?.premiumPlus)"
+                  label="DEV: Remove Premium"
+                  severity="danger"
+                  size="small"
+                  outlined
+                  :loading="devResetLoading"
+                  @click="devResetPremium"
+                />
               </div>
 
               <div v-if="billingLoading" class="text-sm moh-text-muted">Loading billing…</div>
@@ -813,6 +822,53 @@
         </div>
       </section>
     </div>
+
+    <!-- Checkout success modal -->
+    <Teleport to="body">
+      <Transition
+        enter-active-class="transition duration-200 ease-out"
+        enter-from-class="opacity-0"
+        enter-to-class="opacity-100"
+        leave-active-class="transition duration-150 ease-in"
+        leave-from-class="opacity-100"
+        leave-to-class="opacity-0"
+      >
+        <div
+          v-if="checkoutSuccessModal"
+          class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          @click.self="checkoutSuccessModal = false"
+        >
+          <div class="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl dark:bg-zinc-900 text-center space-y-4">
+            <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-full" :class="checkoutSuccessTier === 'premiumPlus' ? 'bg-orange-100 dark:bg-orange-900/30' : 'bg-amber-100 dark:bg-amber-900/30'">
+              <Icon name="tabler:crown" class="h-7 w-7" :class="checkoutSuccessTier === 'premiumPlus' ? 'text-orange-600 dark:text-orange-400' : 'text-amber-600 dark:text-amber-400'" />
+            </div>
+            <h2 class="text-xl font-bold text-gray-900 dark:text-gray-50">
+              Welcome to {{ checkoutSuccessTier === 'premiumPlus' ? 'Premium+' : 'Premium' }}!
+            </h2>
+            <p class="text-sm text-gray-600 dark:text-gray-300">
+              Thank you for supporting Men of Hunger. Your subscription is now active and you have access to all {{ checkoutSuccessTier === 'premiumPlus' ? 'Premium+' : 'Premium' }} features.
+            </p>
+            <div class="flex flex-col gap-2 pt-2">
+              <NuxtLink
+                to="/tiers"
+                class="inline-flex items-center justify-center rounded-xl px-4 py-2.5 text-sm font-semibold transition-opacity hover:opacity-90 text-white"
+                :class="checkoutSuccessTier === 'premiumPlus' ? 'bg-orange-600' : 'bg-amber-600'"
+                @click="checkoutSuccessModal = false"
+              >
+                See what's included
+              </NuxtLink>
+              <button
+                type="button"
+                class="text-sm font-medium text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                @click="checkoutSuccessModal = false"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
   </AppPageContent>
 </template>
 
@@ -834,6 +890,7 @@ type FollowVisibility = 'all' | 'verified' | 'premium' | 'none'
 type BirthdayVisibility = 'none' | 'monthDay' | 'full'
 type SettingsSection = 'account' | 'verification' | 'billing' | 'privacy' | 'notifications' | 'blocked' | 'links'
 
+const isDev = import.meta.dev
 const { user: authUser, ensureLoaded, me } = useAuth()
 const { invalidateUserPreviewCache } = useUserPreview()
 const usersStore = useUsersStore()
@@ -1161,6 +1218,51 @@ async function openPortal() {
     portalLoading.value = false
   }
 }
+
+// ─── Dev-only: reset premium ──────────────────────────────────────────────────
+
+const devResetLoading = ref(false)
+
+async function devResetPremium() {
+  if (devResetLoading.value) return
+  devResetLoading.value = true
+  try {
+    await apiFetchData('/billing/dev-reset', { method: 'DELETE' })
+    await refreshBilling()
+    await me()
+    toast.push({ title: 'Premium removed (dev).', tone: 'success', durationMs: 2000 })
+  } catch (e: unknown) {
+    billingError.value = getApiErrorMessage(e) || 'Failed to reset premium.'
+  } finally {
+    devResetLoading.value = false
+  }
+}
+
+// ─── Checkout success modal ───────────────────────────────────────────────────
+
+const checkoutSuccessModal = ref(false)
+const checkoutSuccessTier = ref<'premium' | 'premiumPlus'>('premium')
+
+onMounted(() => {
+  if (!import.meta.client) return
+  if (route.query.checkout !== 'success') return
+
+  const pollForPremium = async (attempts = 0) => {
+    await refreshBilling()
+    if (billingMe.value?.premium || billingMe.value?.premiumPlus) {
+      checkoutSuccessTier.value = billingMe.value.premiumPlus ? 'premiumPlus' : 'premium'
+      checkoutSuccessModal.value = true
+      await me()
+    } else if (attempts < 5) {
+      setTimeout(() => pollForPremium(attempts + 1), 2000)
+      return
+    }
+    const nextQuery = { ...(route.query as Record<string, any>) }
+    delete nextQuery.checkout
+    void navigateTo({ path: route.path, query: nextQuery }, { replace: true })
+  }
+  void pollForPremium()
+})
 
 // ─── Referral ────────────────────────────────────────────────────────────────
 
