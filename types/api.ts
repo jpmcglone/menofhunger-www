@@ -1403,6 +1403,16 @@ export type WsArticlesCommentReactionChangedPayload = {
   reactions: ArticleReactionSummary[]
 }
 
+export type WsPostsCommentAddedPayload = {
+  parentPostId: string
+  comment: FeedPost
+}
+
+export type WsPostsCommentDeletedPayload = {
+  parentPostId: string
+  commentId: string
+}
+
 export type WsAdminUpdateKind = 'reports' | 'verification' | 'feedback'
 export type WsAdminUpdateAction = 'created' | 'updated' | 'deleted' | 'resolved' | 'reviewed' | 'other'
 export type WsAdminUpdatedPayload = {

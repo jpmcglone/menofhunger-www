@@ -1,5 +1,5 @@
 {
-  "asOfDate": "Mar. 15, 2026",
+  "asOfDate": "Apr. 5, 2026",
   "originalAsOfDate": "Feb. 3, 2026",
   "intro": {
     "label": "Product roadmap",
@@ -87,7 +87,29 @@
               "done": true
             },
             {
-              "text": "**Invite a friend** — Shareable signup or invite link (“Join me on Men of Hunger”) so you can bring friends and grow the circle. **Premium members:** when someone you invite verifies, they get **a free month of premium**."
+              "text": "**Invite a friend** — Shareable signup or invite link (“Join me on Men of Hunger”) so you can bring friends and grow the circle. **Premium members:** when someone you invite verifies, they get **a free month of premium**.",
+              "inProgress": true
+            },
+            {
+              "text": "**Pinned profile post** — Pin one post to the top of your profile so visitors see what matters most.",
+              "done": true
+            }
+          ]
+        },
+        {
+          "title": "Content richness",
+          "items": [
+            {
+              "text": "**Repost / quote post** — One-tap repost or quote with your own commentary; shows in your followers' feeds.",
+              "done": true
+            },
+            {
+              "text": "**Link previews** — Paste a URL in a post and get a rich preview card (title, image, description); refreshed in the background.",
+              "done": true
+            },
+            {
+              "text": "**GIF picker (Giphy)** — Browse and attach GIFs in the composer via a server-side Giphy proxy.",
+              "done": true
             }
           ]
         },
@@ -139,6 +161,10 @@
             {
               "text": "**Hydration hardening** — Ongoing SSR/client mismatch fixes and guardrails to reduce front-end render regressions.",
               "inProgress": true
+            },
+            {
+              "text": "**Terms of Service + Privacy Policy** — Public legal pages so members know the rules and their rights.",
+              "done": true
             }
           ]
         }
@@ -198,6 +224,10 @@
             },
             {
               "text": "**Gift premium** — Pay for someone else’s subscription; send them a month (or more) of premium as a gift."
+            },
+            {
+              "text": "**Weekly missions** — Milestone-style weekly goals surfaced in the home feed to encourage consistent engagement.",
+              "done": true
             }
           ]
         },
@@ -221,7 +251,8 @@
               "done": true
             },
             {
-              "text": "**Sitemap** — A sitemap for public profiles and public posts only; restricted tiers never appear."
+              "text": "**Sitemap** — A sitemap for public profiles and public posts only; restricted tiers never appear.",
+              "done": true
             },
             {
               "text": "**Canonical + share previews** — Canonical URLs everywhere; share previews never leak restricted content. Premium content also respects the rule: **premium requires verified**.",
@@ -245,6 +276,36 @@
               "done": true
             }
           ]
+        },
+        {
+          "title": "Live & real-time",
+          "items": [
+            {
+              "text": "**Radio / listening rooms** — Broadcast a live audio stream or station; listeners can join, chat live, and react in real-time.",
+              "done": true
+            },
+            {
+              "text": "**Watch party** — Sync a YouTube video so a room watches together with live chat reactions.",
+              "done": true
+            }
+          ]
+        },
+        {
+          "title": "Admin & operations",
+          "items": [
+            {
+              "text": "**Admin analytics dashboard** — Key platform metrics (DAU/MAU, content, growth) visible to admins.",
+              "done": true
+            },
+            {
+              "text": "**Admin site settings** — Feature flags and site-wide config manageable by admins without a deploy.",
+              "done": true
+            },
+            {
+              "text": "**Admin media review queue** — Review flagged or uploaded media before it goes live.",
+              "done": true
+            }
+          ]
         }
       ]
     },
@@ -262,7 +323,7 @@
           "items": [
             {
               "text": "Groups (v1) — Create and join groups; group feed or group-scoped posts so you have pockets of accountability and conversation.",
-              "inProgress": true
+              "done": true
             },
             {
               "text": "Dialogues (v1) — Start and participate in structured dialogues (premium required)."
@@ -286,7 +347,8 @@
           "title": "Real-time engagement",
           "items": [
             {
-              "text": "**Live thread updates** — Real-time updates under posts (new replies, edits, deletes/restores) so conversations feel active without refresh."
+              "text": "**Live thread updates** — Real-time updates under posts (new replies, edits, deletes/restores) so conversations feel active without refresh.",
+              "done": true
             }
           ]
         },
@@ -364,6 +426,10 @@
         "items": [
           {
             "text": "Alt text for images (accessibility and screen readers).",
+            "done": true
+          },
+          {
+            "text": "**Word definitions** — Tap any word in a post or article to get an inline dictionary definition (Webster's 1828).",
             "done": true
           }
         ]
@@ -492,6 +558,19 @@
           },
           {
             "text": "Tip or support a creator — One-time payment to another member (optional)."
+          }
+        ]
+      },
+      {
+        "title": "Engagement & discovery",
+        "items": [
+          {
+            "text": "**Keyboard shortcuts** — Power-user keyboard shortcuts for navigation, composing, and interacting with posts.",
+            "done": true
+          },
+          {
+            "text": "**Online presence / who's online** — See who's currently active on the platform in real-time.",
+            "done": true
           }
         ]
       }

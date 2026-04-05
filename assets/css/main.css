@@ -263,16 +263,22 @@ html.dark {
   padding: 2px;
 }
 
-/* Global mobile tap affordances: faster taps + no flash on all interactive elements. */
+/* Global interactive affordances: pointer cursor + faster taps + no flash. */
 button,
 a,
+summary,
 [role="button"],
 [role="link"],
 [role="tab"],
 [role="menuitem"],
+[role="checkbox"],
+[role="radio"],
+[role="switch"],
+[role="option"],
 input[type="submit"],
 input[type="button"],
 input[type="reset"] {
+  cursor: pointer;
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
 }

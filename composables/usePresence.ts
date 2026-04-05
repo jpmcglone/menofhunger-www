@@ -25,6 +25,8 @@ import type {
   WsNotificationsNewPayload,
   WsPostsLiveUpdatedPayload,
   WsPostsInteractionPayload,
+  WsPostsCommentAddedPayload,
+  WsPostsCommentDeletedPayload,
   WsUsersMeUpdatedPayload,
   WsUsersSelfUpdatedPayload,
   WsUsersSpaceChangedPayload,
@@ -120,6 +122,8 @@ export type FollowsCallback = {
 export type PostsCallback = {
   onInteraction?: (payload: WsPostsInteractionPayload) => void
   onLiveUpdated?: (payload: WsPostsLiveUpdatedPayload) => void
+  onCommentAdded?: (payload: WsPostsCommentAddedPayload) => void
+  onCommentDeleted?: (payload: WsPostsCommentDeletedPayload) => void
 }
 
 export type ArticlesCallback = {
@@ -205,6 +209,7 @@ export function usePresence() {
   const adminCallbacks = useState<Set<AdminCallback>>('presence-admin-callbacks', () => new Set())
   const usersCallbacks = useState<Set<UsersCallback>>('presence-users-callbacks', () => new Set())
   const articleSubRefs = ref(new Set<string>())
+  const postSubRefs = ref(new Set<string>())
   const onlineFeedSubscribed = useState(PRESENCE_ONLINE_FEED_SUBSCRIBED_KEY, () => false)
   const disconnectedDueToIdle = useState<boolean>(PRESENCE_DISCONNECTED_DUE_TO_IDLE_KEY, () => false)
   const notificationUndeliveredCount = useState<number>(NOTIFICATIONS_UNDELIVERED_COUNT_KEY, () => 0)
@@ -308,6 +313,7 @@ export function usePresence() {
     if (!import.meta.client) return
     const cleaned = (postIds ?? []).map((s) => String(s ?? '').trim()).filter(Boolean)
     if (cleaned.length === 0) return
+    for (const id of cleaned) postSubRefs.value.add(id)
     emitPostsSubscribe(cleaned)
   }
 
@@ -315,6 +321,7 @@ export function usePresence() {
     if (!import.meta.client) return
     const cleaned = (postIds ?? []).map((s) => String(s ?? '').trim()).filter(Boolean)
     if (cleaned.length === 0) return
+    for (const id of cleaned) postSubRefs.value.delete(id)
     emitPostsUnsubscribe(cleaned)
   }
 
@@ -918,6 +925,20 @@ export function usePresence() {
       }
     })
 
+    socket.on('posts:commentAdded', (data: WsPostsCommentAddedPayload) => {
+      if (!postsCallbacks.value.size) return
+      for (const cb of postsCallbacks.value) {
+        cb.onCommentAdded?.(data)
+      }
+    })
+
+    socket.on('posts:commentDeleted', (data: WsPostsCommentDeletedPayload) => {
+      if (!postsCallbacks.value.size) return
+      for (const cb of postsCallbacks.value) {
+        cb.onCommentDeleted?.(data)
+      }
+    })
+
     socket.on('articles:liveUpdated', (data: WsArticlesLiveUpdatedPayload) => {
       if (!articlesCallbacks.value.size) return
       for (const cb of articlesCallbacks.value) {
@@ -999,6 +1020,10 @@ export function usePresence() {
       const artRefs = articleSubRefs.value
       if (artRefs.size > 0) {
         emitArticlesSubscribe([...artRefs])
+      }
+      const pRefs = postSubRefs.value
+      if (pRefs.size > 0) {
+        emitPostsSubscribe([...pRefs])
       }
     }
     socket.on('connect', () => {

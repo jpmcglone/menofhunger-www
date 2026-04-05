@@ -16,21 +16,47 @@
       },
       "who": "Curious men. Lurkers. Readers. Zero trust assumed.",
       "can": [
-        { "text": "Read public posts and longform" },
-        { "text": "Follow accounts" },
-        { "text": "Save / bookmark posts" },
-        { "text": "Create private notes (Only me posts / drafts)" },
-        { "text": "Manage profile basics (name, bio, avatar)" },
-        { "text": "See public metrics (boosts, replies count)" }
+        {
+          "text": "Read public posts and longform"
+        },
+        {
+          "text": "Follow accounts"
+        },
+        {
+          "text": "Save / bookmark posts"
+        },
+        {
+          "text": "Create private notes (Only me posts / drafts)"
+        },
+        {
+          "text": "Manage profile basics (name, bio, avatar)"
+        },
+        {
+          "text": "See public metrics (boosts, replies count)"
+        }
       ],
       "cannot": [
-        { "text": "Post publicly" },
-        { "text": "Reply" },
-        { "text": "React meaningfully" },
-        { "text": "Join men-only areas" },
-        { "text": "DM anyone" },
-        { "text": "Create groups" },
-        { "text": "Participate in dialogues" }
+        {
+          "text": "Post publicly"
+        },
+        {
+          "text": "Reply"
+        },
+        {
+          "text": "React meaningfully"
+        },
+        {
+          "text": "Join men-only areas"
+        },
+        {
+          "text": "DM anyone"
+        },
+        {
+          "text": "Create groups"
+        },
+        {
+          "text": "Participate in dialogues"
+        }
       ],
       "why": [
         "Keeps the funnel wide",
@@ -48,24 +74,56 @@
       },
       "who": "Real men who've proven identity but haven't committed financially.",
       "can": [
-        { "text": "Everything Unverified can do" },
-        { "text": "React (boosts / acknowledgments)" },
-        { "text": "Post in public threads (within rate limits; may be lower than Premium)" },
-        { "text": "Reply in public threads (no dialogues)" },
-        { "text": "Reply to DMs started with them (cannot start new DMs)" },
-        { "text": "Text + links only (no images/GIFs/video)" },
-        { "text": "Access men-only read areas" },
-        { "text": "Join Spaces and live chat (verified+ only)" },
-        { "text": "Join groups with limited participation", "comingSoon": true }
+        {
+          "text": "Everything Unverified can do"
+        },
+        {
+          "text": "React (boosts / acknowledgments)"
+        },
+        {
+          "text": "Post in public threads (within rate limits; may be lower than Premium)"
+        },
+        {
+          "text": "Reply in public threads (no dialogues)"
+        },
+        {
+          "text": "Reply to DMs started with them (cannot start new DMs)"
+        },
+        {
+          "text": "Text + links only (no images/GIFs/video)"
+        },
+        {
+          "text": "Access men-only read areas"
+        },
+        {
+          "text": "Join Spaces and live chat (verified+ only)"
+        },
+        {
+          "text": "Join groups with limited participation"
+        }
       ],
       "cannot": [
-        { "text": "Full posting freedom" },
-        { "text": "Start dialogues" },
-        { "text": "Longform publishing" },
-        { "text": "Create groups" },
-        { "text": "Start new DMs freely" },
-        { "text": "Access subscriber-only areas" },
-        { "text": "Monetize or promote content" }
+        {
+          "text": "Full posting freedom"
+        },
+        {
+          "text": "Start dialogues"
+        },
+        {
+          "text": "Longform publishing"
+        },
+        {
+          "text": "Create groups"
+        },
+        {
+          "text": "Start new DMs freely"
+        },
+        {
+          "text": "Access subscriber-only areas"
+        },
+        {
+          "text": "Monetize or promote content"
+        }
       ],
       "why": [
         "Establishes real-human baseline",
@@ -88,34 +146,90 @@
       "priceNote": "Save with quarterly ($65) or annual ($250) in Settings → Billing.",
       "who": "Men who want measurable progress — committed to the full personal growth ecosystem, not just a feed.",
       "can": [
-        { "text": "Everything Verified can do" },
-        { "text": "Unlimited posting (within rate limits)" },
-        { "text": "Full replies everywhere allowed" },
-        { "text": "Access men-only + subscriber-only areas" },
-        { "text": "DM other members" },
-        { "text": "Create posts with media (images, GIFs, video)" },
-        { "text": "Create polls" },
-        { "text": "Use bookmarks folders / collections" },
-        { "text": "Monthly structured conversations and accountability systems", "comingSoon": true },
-        { "text": "Small group cohorts, workshops & live calls", "comingSoon": true },
-        { "text": "Premium longform playbooks and resources", "comingSoon": true },
-        { "text": "Tightly moderated quality — no noise, no pay-to-win" },
-        { "text": "Baseline ranking (unverified/verified may be slightly suppressed)" },
-        { "text": "Start and participate in Dialogues", "comingSoon": true },
-        { "text": "Publish longform articles" },
-        { "text": "Participate fully in groups", "comingSoon": true },
-        { "text": "See no ads while you’re Premium" },
-        { "text": "Edit posts within a reasonable window" },
-        { "text": "Compete in check-ins + leaderboard consistency loops" },
-        { "text": "Earn coins from daily streaks with escalating multipliers (1x–4x)" },
-        { "text": "Send coins to other verified members" }
+        {
+          "text": "Everything Verified can do"
+        },
+        {
+          "text": "Unlimited posting (within rate limits)"
+        },
+        {
+          "text": "Full replies everywhere allowed"
+        },
+        {
+          "text": "Access men-only + subscriber-only areas"
+        },
+        {
+          "text": "DM other members"
+        },
+        {
+          "text": "Create posts with media (images, GIFs, video)"
+        },
+        {
+          "text": "Create polls"
+        },
+        {
+          "text": "Use bookmarks folders / collections"
+        },
+        {
+          "text": "Monthly structured conversations and accountability systems",
+          "comingSoon": true
+        },
+        {
+          "text": "Small group cohorts, workshops & live calls",
+          "comingSoon": true
+        },
+        {
+          "text": "Premium longform playbooks and resources",
+          "comingSoon": true
+        },
+        {
+          "text": "Tightly moderated quality — no noise, no pay-to-win"
+        },
+        {
+          "text": "Baseline ranking (unverified/verified may be slightly suppressed)"
+        },
+        {
+          "text": "Start and participate in Dialogues",
+          "comingSoon": true
+        },
+        {
+          "text": "Publish longform articles"
+        },
+        {
+          "text": "Participate fully in groups"
+        },
+        {
+          "text": "See no ads while you’re Premium"
+        },
+        {
+          "text": "Edit posts within a reasonable window"
+        },
+        {
+          "text": "Compete in check-ins + leaderboard consistency loops"
+        },
+        {
+          "text": "Earn coins from daily streaks with escalating multipliers (1x–4x)"
+        },
+        {
+          "text": "Send coins to other verified members"
+        }
       ],
       "cannot": [
-        { "text": "Override moderation" },
-        { "text": "Influence ranking" },
-        { "text": "Bypass rules" },
-        { "text": "Control product direction" },
-        { "text": "Access steward-only spaces" }
+        {
+          "text": "Override moderation"
+        },
+        {
+          "text": "Influence ranking"
+        },
+        {
+          "text": "Bypass rules"
+        },
+        {
+          "text": "Control product direction"
+        },
+        {
+          "text": "Access steward-only spaces"
+        }
       ],
       "why": [
         "This is the economic engine",
@@ -138,34 +252,103 @@
       "badge": "Best perks",
       "who": "Patrons, builders, long-term supporters. Not elites.",
       "can": [
-        { "text": "Everything Premium can do" },
-        { "text": "Subtle Steward badge (opt-in toggle in settings)" },
-        { "text": "Access to Stewards-only forum", "comingSoon": true },
-        { "text": "Quarterly Steward Call (strategy, philosophy, Q&A)", "comingSoon": true },
-        { "text": "Monthly written founder update", "comingSoon": true },
-        { "text": "Early access to new features / betas", "comingSoon": true },
-        { "text": "No ads anywhere while logged in" },
-        { "text": "Better feed defaults (verified + subscribed first)", "comingSoon": true },
-        { "text": "Advanced mute / filter controls", "comingSoon": true },
-        { "text": "Better longform reading & writing tools", "comingSoon": true },
-        { "text": "Higher media limits (size / quality)", "comingSoon": true },
-        { "text": "Extended edit window", "comingSoon": true },
-        { "text": "More saved drafts", "comingSoon": true },
-        { "text": "Priority support inbox", "comingSoon": true },
-        { "text": "Faster moderation review on reports (not different outcomes)", "comingSoon": true },
-        { "text": "Priority account recovery", "comingSoon": true },
-        { "text": "Concierge onboarding (optional / limited)", "comingSoon": true },
-        { "text": "Ability to create one private group", "comingSoon": true },
-        { "text": "Higher group member caps", "comingSoon": true },
-        { "text": "Event / RSVP tools (later phase)", "comingSoon": true }
+        {
+          "text": "Everything Premium can do"
+        },
+        {
+          "text": "Subtle Steward badge (opt-in toggle in settings)"
+        },
+        {
+          "text": "Access to Stewards-only forum",
+          "comingSoon": true
+        },
+        {
+          "text": "Quarterly Steward Call (strategy, philosophy, Q&A)",
+          "comingSoon": true
+        },
+        {
+          "text": "Monthly written founder update",
+          "comingSoon": true
+        },
+        {
+          "text": "Early access to new features / betas",
+          "comingSoon": true
+        },
+        {
+          "text": "No ads anywhere while logged in"
+        },
+        {
+          "text": "Better feed defaults (verified + subscribed first)",
+          "comingSoon": true
+        },
+        {
+          "text": "Advanced mute / filter controls",
+          "comingSoon": true
+        },
+        {
+          "text": "Better longform reading & writing tools",
+          "comingSoon": true
+        },
+        {
+          "text": "Higher media limits (size / quality)",
+          "comingSoon": true
+        },
+        {
+          "text": "Extended edit window",
+          "comingSoon": true
+        },
+        {
+          "text": "More saved drafts",
+          "comingSoon": true
+        },
+        {
+          "text": "Priority support inbox",
+          "comingSoon": true
+        },
+        {
+          "text": "Faster moderation review on reports (not different outcomes)",
+          "comingSoon": true
+        },
+        {
+          "text": "Priority account recovery",
+          "comingSoon": true
+        },
+        {
+          "text": "Concierge onboarding (optional / limited)",
+          "comingSoon": true
+        },
+        {
+          "text": "Ability to create one private group",
+          "comingSoon": true
+        },
+        {
+          "text": "Higher group member caps",
+          "comingSoon": true
+        },
+        {
+          "text": "Event / RSVP tools (later phase)",
+          "comingSoon": true
+        }
       ],
       "cannot": [
-        { "text": "No boosted reach" },
-        { "text": "No special ranking" },
-        { "text": "No moderation immunity" },
-        { "text": "No veto power" },
-        { "text": "No control over others" },
-        { "text": "No influence over who gets heard" }
+        {
+          "text": "No boosted reach"
+        },
+        {
+          "text": "No special ranking"
+        },
+        {
+          "text": "No moderation immunity"
+        },
+        {
+          "text": "No veto power"
+        },
+        {
+          "text": "No control over others"
+        },
+        {
+          "text": "No influence over who gets heard"
+        }
       ],
       "why": [
         "Funds moderation, legal, and hiring",

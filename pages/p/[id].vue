@@ -313,6 +313,17 @@ const postsCb: PostsCallback = {
       onDeleted()
     }
   },
+  onCommentAdded: (payload) => {
+    if (String(payload?.parentPostId ?? '').trim() !== postId.value) return
+    if (!payload?.comment) return
+    // prependComment deduplicates by ID, so the commenter's own HTTP response is a no-op.
+    prependComment(payload.comment)
+  },
+  onCommentDeleted: (payload) => {
+    if (String(payload?.parentPostId ?? '').trim() !== postId.value) return
+    if (!payload?.commentId) return
+    onCommentDeleted(payload.commentId)
+  },
 }
 if (import.meta.client) {
   onMounted(() => {
