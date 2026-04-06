@@ -75,6 +75,9 @@ export function useAuth() {
   const user = useState<AuthUser | null>('auth-user', () => null)
   const didAttempt = useState<boolean>('auth-did-attempt', () => false)
   const initDone = useState<boolean>('auth-init-done', () => false)
+  // True when the last /auth/me failed due to a network/server error (not a 401).
+  // Keeps the user in their current page in degraded mode instead of redirecting to login.
+  const apiUnreachable = useState<boolean>('auth-api-unreachable', () => false)
   // Hoist these to the setup scope so they survive `await` inside me() —
   // calling useState after an await loses the Nuxt instance context on SSR.
   // Guardrail: never add new useState() calls inside `me()` after its first await.
@@ -149,6 +152,7 @@ export function useAuth() {
       const result = await apiFetch<AuthUser | null>('/auth/me', { method: 'GET' })
       // If auth state was reset while this request was in flight (logout/401), ignore.
       if (gen !== authGeneration) return null
+      apiUnreachable.value = false
       user.value = result.data
       if (result.data?.id) {
         notifCount.value = Math.max(0, Math.floor(Number(result.data.notificationUndeliveredCount) || 0))
@@ -168,8 +172,15 @@ export function useAuth() {
       // Keep an existing authenticated user on transient/non-auth failures (mobile
       // background/wake network flaps are common). A 401 is handled by api client
       // unauthorized flow, which clears auth state explicitly.
-      if (gen === authGeneration && getErrorStatus(e) === 401) {
-        user.value = null
+      if (gen === authGeneration) {
+        const status = getErrorStatus(e)
+        if (status === 401) {
+          user.value = null
+          apiUnreachable.value = false
+        } else {
+          // Network/server error — flag as unreachable so middleware doesn't redirect to login.
+          apiUnreachable.value = true
+        }
       }
       return user.value
     } finally {
@@ -221,6 +232,7 @@ export function useAuth() {
     // Keep local refs in sync with the shared state.
     user.value = null
     didAttempt.value = true
+    apiUnreachable.value = false
   }
 
   async function logout() {
@@ -254,6 +266,6 @@ export function useAuth() {
   const isPremium = computed(() => Boolean(user.value?.premium))
   const isPremiumPlus = computed(() => Boolean(user.value?.premiumPlus))
 
-  return { user, me, ensureLoaded, initAuth, logout, handleUnauthorized, isAuthed, isVerified, isPremium, isPremiumPlus }
+  return { user, me, ensureLoaded, initAuth, logout, handleUnauthorized, isAuthed, isVerified, isPremium, isPremiumPlus, apiUnreachable }
 }
 

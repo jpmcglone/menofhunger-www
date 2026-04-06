@@ -1,6 +1,7 @@
 export type ApiHealthResponse = {
   status: 'ok' | 'degraded'
   nowIso: string
+  serverTime?: number
   uptimeSeconds: number
   service: string
   config: {
@@ -9,8 +10,17 @@ export type ApiHealthResponse = {
     giphyConfigured: boolean
     twilioConfigured: boolean
     twilioDisabledInDev: boolean
+    locationSearchConfigured?: boolean
+    stripeConfigured?: boolean
+    emailConfigured?: boolean
+    browserPushConfigured?: boolean
   }
   db: {
+    status: 'ok' | 'down'
+    latencyMs: number
+    error?: string
+  }
+  redis?: {
     status: 'ok' | 'down'
     latencyMs: number
     error?: string
