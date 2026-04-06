@@ -418,6 +418,7 @@ export type PublicProfile = {
   bio: string | null
   website: string | null
   locationDisplay: string | null
+  locationZip: string | null
   locationCity: string | null
   locationCounty: string | null
   locationState: string | null
@@ -1944,4 +1945,21 @@ export type TransferCoinsResponse = {
   amount: number
   recipientUsername: string
   senderBalanceAfter: number
+}
+
+/** Response from GET /users/by-location */
+export type LocationBrowseSection = {
+  key: string
+  label: string
+  users: FollowListUser[]
+}
+
+export type LocationBrowseResponse = {
+  location: {
+    zip?: string
+    city?: string
+    county?: string
+    state: string
+  }
+  sections: LocationBrowseSection[]
 }

@@ -290,7 +290,15 @@
       </div>
 
       <div class="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-gray-600 dark:text-gray-300">
-        <div v-if="locationLabel" class="inline-flex items-center gap-1.5 min-w-0">
+        <NuxtLink
+          v-if="locationLabel && locationTo"
+          :to="locationTo"
+          class="inline-flex items-center gap-1.5 min-w-0 hover:underline underline-offset-2"
+        >
+          <Icon name="tabler:map-pin" class="shrink-0" aria-hidden="true" />
+          <span class="truncate">{{ locationLabel }}</span>
+        </NuxtLink>
+        <div v-else-if="locationLabel" class="inline-flex items-center gap-1.5 min-w-0">
           <Icon name="tabler:map-pin" class="shrink-0" aria-hidden="true" />
           <span class="truncate">{{ locationLabel }}</span>
         </div>
@@ -484,6 +492,16 @@ const locationLabel = computed(() => {
   const s = (profile.value as any)?.locationDisplay ?? null
   const v = typeof s === 'string' ? s.trim() : ''
   return v ? v : null
+})
+
+const locationTo = computed(() => {
+  const p = profile.value as any
+  if (!p?.locationState) return null
+  const query: Record<string, string> = { state: p.locationState }
+  if (p.locationCity) query.city = p.locationCity
+  if (p.locationCounty) query.county = p.locationCounty
+  if (p.locationZip) query.zip = p.locationZip
+  return { path: '/l', query }
 })
 
 const websiteHref = computed(() => {
