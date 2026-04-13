@@ -904,7 +904,7 @@ const currentYear = new Date().getUTCFullYear()
 
 // Keep Safari iOS browser chrome (top/bottom bars) aligned with our in-app theme toggle.
 // This is the main fix for the “white bar” in dark mode while scrolling.
-const safariThemeColor = computed(() => (colorMode.value === 'dark' ? '#0F1113' : '#ffffff'))
+const safariThemeColor = computed(() => (colorMode.value === 'dark' ? '#0F1113' : '#fbfaf7'))
 useHead({
   meta: [{ key: 'moh-theme-color', name: 'theme-color', content: safariThemeColor }],
 })

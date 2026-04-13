@@ -65,7 +65,12 @@ export default defineNuxtConfig({
     head: {
       // Keep AdSense loader off unless actually enabled + configured.
       // (Avoids noisy 400s in dev/staging when placeholders are present.)
-      htmlAttrs: { lang: 'en' },
+      // Set the dark background color directly on <html> so it appears from the very first byte
+      // of HTML — before any external CSS downloads or JS executes. Without this the browser
+      // shows white until the stylesheet is parsed and --moh-bg resolves. Light-mode users see
+      // a very brief dark flash (acceptable; dark is the app default). Once CSS loads the
+      // !important rule in main.css overrides this inline value with the correct CSS variable.
+      htmlAttrs: { lang: 'en', style: 'background-color:#0F1113' },
       meta: [
         { charset: 'utf-8' },
         // NOTE: Avoid iOS standalone (Add to Home Screen) full-bleed viewport behavior.
@@ -102,8 +107,10 @@ export default defineNuxtConfig({
           ? [{ name: 'msvalidate.01', content: String(process.env.NUXT_PUBLIC_BING_SITE_VERIFICATION).trim() }]
           : []),
         // PWA + add-to-home meta
-        // Default theme-color (overridden at runtime to match in-app dark mode toggle).
-        { name: 'theme-color', content: '#ffffff' },
+        // Default theme-color to dark so the browser chrome matches the app background on
+        // initial load. The runtime computed in layouts/app.vue (safariThemeColor) overrides
+        // this immediately after hydration to track the user's actual color mode setting.
+        { name: 'theme-color', content: '#0F1113' },
         { name: 'mobile-web-app-capable', content: 'yes' },
         { name: 'apple-mobile-web-app-capable', content: 'yes' },
         // Prefer default status bar behavior in iOS standalone.
