@@ -109,10 +109,41 @@
       </div>
     </a>
 
-    <!-- MOH article link → article share card -->
-    <div v-if="embeddedArticleId && embeddedArticle" @click.stop>
-      <AppArticleShareCard :article="embeddedArticle" />
-    </div>
+    <!-- MOH article link → article share card (or skeleton while fetching) -->
+    <!-- Suppressed when a preloaded article is passed in — the parent PostRow renders
+         AppArticleShareCard directly in that case to avoid a duplicate card. -->
+    <template v-if="embeddedArticleId && !preloadedArticle">
+      <!-- Resolved -->
+      <div v-if="embeddedArticle" @click.stop>
+        <AppArticleShareCard :article="embeddedArticle" />
+      </div>
+      <!-- Skeleton: matches AppArticleShareCard layout so the row height is stable -->
+      <div
+        v-else-if="rowInView"
+        class="mt-2 overflow-hidden rounded-xl border border-gray-200 dark:border-zinc-700 animate-pulse"
+        aria-hidden="true"
+        @click.stop
+      >
+        <!-- Thumbnail placeholder (16:9) -->
+        <div class="aspect-[16/9] w-full bg-gray-200 dark:bg-zinc-800" />
+        <!-- Content placeholder -->
+        <div class="p-3 space-y-2">
+          <!-- Label row -->
+          <div class="h-2.5 w-16 rounded bg-gray-200 dark:bg-zinc-700" />
+          <!-- Title -->
+          <div class="h-3.5 w-4/5 rounded bg-gray-200 dark:bg-zinc-700" />
+          <div class="h-3.5 w-3/5 rounded bg-gray-200 dark:bg-zinc-700" />
+          <!-- Excerpt -->
+          <div class="h-2.5 w-full rounded bg-gray-200 dark:bg-zinc-700" />
+          <div class="h-2.5 w-2/3 rounded bg-gray-200 dark:bg-zinc-700" />
+          <!-- Author row -->
+          <div class="flex items-center gap-1.5 pt-1">
+            <div class="h-4 w-4 rounded-full bg-gray-200 dark:bg-zinc-700 shrink-0" />
+            <div class="h-2.5 w-24 rounded bg-gray-200 dark:bg-zinc-700" />
+          </div>
+        </div>
+      </div>
+    </template>
 
     <!-- Stop propagation so the parent PostRow's row-click handler never fires when
          clicking the embedded preview — the NuxtLink inside handles navigation. -->
@@ -185,6 +216,8 @@ const props = defineProps<{
   hasMedia: boolean
   rowInView: boolean
   activateVideoOnMount?: boolean
+  /** When provided, used immediately as the article preview — no fetch needed. */
+  preloadedArticle?: ArticleSharePreview | null
 }>()
 
 const postId = computed(() => props.postId)
@@ -216,7 +249,15 @@ const embeddedArticleLink = computed(() => {
 
 const embeddedArticleId = computed(() => (embeddedArticleLink.value ? extractMohArticleId(embeddedArticleLink.value) : null))
 
+const preloadedArticle = computed(() => props.preloadedArticle ?? null)
 const embeddedArticle = ref<ArticleSharePreview | null>(null)
+
+// Seed from preloaded data immediately (no fetch needed for articleShare posts).
+watchEffect(() => {
+  if (preloadedArticle.value) {
+    embeddedArticle.value = preloadedArticle.value
+  }
+})
 
 const embeddedSpaceLink = computed(() => {
   const xs = capturedLinks.value
@@ -256,7 +297,10 @@ watch(
     })
 
     if (!articleId || !inView) return
+    // Skip fetch when article data is already available (either preloaded or previously fetched).
     if (embeddedArticle.value?.id === articleId) return
+    // Skip fetch entirely when a preloaded article covers this ID.
+    if (preloadedArticle.value?.id === articleId) return
 
     timer = setTimeout(() => {
       if (cancelled) return
@@ -453,10 +497,11 @@ const mohInternalPath = computed(() => (previewLink.value ? mohUrlPath(previewLi
 // Embedded MOH post: always show block so SSR can fetch and render the preview before first paint.
 // Space/article/user preview: show skeleton while loading, resolved card when ready (both require rowInView).
 // External link preview: only show when row is in view (avoid metadata fetch for off-screen rows).
+// Article: when preloadedArticle is provided, PostRow renders the card directly — skip showing anything here.
 const showAny = computed(() =>
   Boolean(
     embeddedPostId.value ||
-    (embeddedArticleId.value && rowInView.value) ||
+    (embeddedArticleId.value && !preloadedArticle.value && rowInView.value) ||
     (embeddedSpaceId.value && rowInView.value) ||
     (embeddedUsername.value && rowInView.value) ||
     (showLinkPreview.value && rowInView.value),

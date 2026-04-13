@@ -341,9 +341,11 @@
           :has-media="Boolean(postView.media?.length)"
           :row-in-view="rowInView"
           :activate-video-on-mount="activateVideoOnMount"
+          :preloaded-article="postView.article ?? null"
         />
 
-        <!-- Article share card -->
+        <!-- Article share card: rendered directly from API data (no fetch needed).
+             PostRowLinkPreview suppresses its own article block when preloadedArticle is set. -->
         <AppArticleShareCard
           v-if="!isDeletedPost && !isGatedPost && postView.kind === 'articleShare' && postView.article"
           :article="postView.article"
