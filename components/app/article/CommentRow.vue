@@ -338,7 +338,7 @@ const bodyClampStyle = computed(() => {
 
 const expandedHeight = ref('none')
 
-function toggleExpand() {
+async function toggleExpand() {
   if (!expanded.value) {
     const textEl = bodyTextEl.value
     if (textEl) expandedHeight.value = `${textEl.scrollHeight}px`
@@ -353,13 +353,14 @@ function toggleExpand() {
       wrap.addEventListener('transitionend', onEnd)
     }
   } else {
-    // Snap to measured height first so the transition has a start value
+    // Snap to the measured pixel height so CSS transition has a concrete start value,
+    // then wait for Vue to flush that change to the DOM before setting expanded=false
+    // (which switches max-height to the collapsed em value and triggers the animation).
     const textEl = bodyTextEl.value
-    if (textEl) {
-      expandedHeight.value = `${textEl.scrollHeight}px`
-      // Force reflow so the browser registers the explicit height before collapsing
-      void bodyWrapEl.value?.offsetHeight
-    }
+    if (textEl) expandedHeight.value = `${textEl.scrollHeight}px`
+    await nextTick()
+    // Force reflow so the browser paints the explicit height before the transition starts
+    void bodyWrapEl.value?.offsetHeight
     expanded.value = false
   }
 }

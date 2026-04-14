@@ -145,6 +145,7 @@ export type NotificationPreferences = {
   emailNewNotifications: boolean
   emailInstantHighSignal: boolean
   emailStreakReminder: boolean
+  emailFollowedArticle: boolean
 }
 
 /** Shared shape for Radio and Space lobby members (listeners/members). */
