@@ -5,33 +5,23 @@
         <AppPageHeader
           title="Leaderboard"
           icon="tabler:trophy"
-          :description="activeTab === 'weekly'
-            ? 'Most active this week — distinct posting days since Monday ET.'
-            : 'Ranks by current streak first, then best streak all-time. Any post counts.'"
+          :description="tabDescription"
         />
       </div>
 
       <!-- Tab switcher -->
       <div class="flex px-4 pb-3 gap-1.5">
         <button
+          v-for="tab in tabs"
+          :key="tab.id"
           type="button"
           class="px-3 py-1 rounded-full text-sm font-semibold transition-colors"
-          :class="activeTab === 'all'
+          :class="activeTab === tab.id
             ? 'bg-gray-900 text-white dark:bg-gray-100 dark:text-gray-900'
             : 'moh-surface-hover moh-text-muted border moh-border'"
-          @click="switchTab('all')"
+          @click="switchTab(tab.id)"
         >
-          All-time
-        </button>
-        <button
-          type="button"
-          class="px-3 py-1 rounded-full text-sm font-semibold transition-colors"
-          :class="activeTab === 'weekly'
-            ? 'bg-gray-900 text-white dark:bg-gray-100 dark:text-gray-900'
-            : 'moh-surface-hover moh-text-muted border moh-border'"
-          @click="switchTab('weekly')"
-        >
-          This week
+          {{ tab.label }}
         </button>
       </div>
 
@@ -39,100 +29,130 @@
         <AppInlineAlert severity="danger">{{ activeError }}</AppInlineAlert>
       </div>
 
-      <div v-if="activeLoading && activeUsers.length === 0" class="flex justify-center py-12">
+      <!-- Initial load (nothing to show yet) -->
+      <div v-if="displayUsers.length === 0 && pending" class="flex justify-center py-12">
         <AppLogoLoader />
       </div>
 
-      <div v-else-if="activeUsers.length === 0" class="px-4 py-6 text-sm moh-text-muted">
+      <div v-else-if="displayUsers.length === 0 && !pending" class="px-4 py-6 text-sm moh-text-muted">
         No activity yet.
       </div>
 
-      <div v-else class="divide-y divide-black/5 dark:divide-white/5">
+      <!-- Persistent list: never removed once populated -->
+      <div v-else class="relative">
+        <!-- Dim overlay + spinner while waiting for a new tab's data -->
         <div
-          v-for="(u, i) in activeUsers"
-          :key="u.id"
-          class="flex items-center gap-3 px-4 py-3"
+          v-if="pending"
+          class="absolute inset-0 z-10 flex items-start justify-center pt-12 bg-white/40 dark:bg-zinc-950/40"
         >
-          <!-- Rank -->
-          <div
-            class="shrink-0 w-7 text-center text-sm font-bold tabular-nums"
-            :style="{ color: tierColor(u) }"
-          >
-            {{ i + 1 }}
-          </div>
-
-          <!-- Avatar + identity -->
-          <NuxtLink
-            v-if="u.username"
-            :to="`/u/${encodeURIComponent(u.username)}`"
-            class="flex-1 min-w-0 flex items-center gap-2.5 hover:opacity-90"
-          >
-            <AppUserAvatar :user="u" size-class="h-9 w-9" />
-            <AppUserIdentityLine :user="u" badge-size="xs" />
-          </NuxtLink>
-          <div v-else class="flex-1 min-w-0 flex items-center gap-2.5">
-            <AppUserAvatar :user="u" size-class="h-9 w-9" />
-            <AppUserIdentityLine :user="u" badge-size="xs" />
-          </div>
-
-          <!-- Stats -->
-          <div class="shrink-0 text-right">
-            <template v-if="activeTab === 'weekly'">
-              <div class="flex items-center justify-end gap-1 text-sm font-semibold moh-text">
-                <Icon name="tabler:calendar-check" class="moh-text-muted" aria-hidden="true" />
-                {{ u.daysThisWeek ?? 0 }}d
-              </div>
-              <div class="text-[11px] moh-text-muted">this week</div>
-            </template>
-            <template v-else>
-              <div class="flex items-center justify-end gap-1 text-sm font-semibold moh-text">
-                <Icon name="tabler:flame" class="moh-text-muted" aria-hidden="true" />
-                {{ u.checkinStreakDays > 0 ? `${u.checkinStreakDays}d` : '—' }}
-              </div>
-              <div class="text-[11px] moh-text-muted">
-                best {{ u.longestStreakDays > 0 ? `${u.longestStreakDays}d` : '—' }}
-              </div>
-            </template>
-          </div>
+          <AppLogoLoader compact />
         </div>
 
-        <!-- Pinned viewer rank (shown when viewer is not in the top-N list) -->
+        <TransitionGroup tag="div" name="lb-row">
+          <div
+            v-for="(u, i) in displayUsers"
+            :key="u.id"
+            class="flex items-center gap-3 px-4 py-3 border-b border-black/5 dark:border-white/5"
+          >
+            <!-- Rank -->
+            <div
+              class="shrink-0 w-7 text-center text-sm font-bold tabular-nums"
+              :style="{ color: tierColor(u) }"
+            >
+              {{ i + 1 }}
+            </div>
+
+            <!-- Avatar + identity -->
+            <NuxtLink
+              v-if="u.username"
+              :to="`/u/${encodeURIComponent(u.username)}`"
+              class="flex-1 min-w-0 flex items-center gap-2.5 hover:opacity-90"
+            >
+              <AppUserAvatar :user="u" size-class="h-9 w-9" />
+              <AppUserIdentityLine :user="u" badge-size="xs" />
+            </NuxtLink>
+            <div v-else class="flex-1 min-w-0 flex items-center gap-2.5">
+              <AppUserAvatar :user="u" size-class="h-9 w-9" />
+              <AppUserIdentityLine :user="u" badge-size="xs" />
+            </div>
+
+            <!-- Stats (changes based on which tab is displayed) -->
+            <div class="shrink-0 text-right">
+              <template v-if="displayTab === 'weekly'">
+                <div class="flex items-center justify-end gap-1 text-sm font-semibold moh-text">
+                  <Icon name="tabler:calendar-check" class="moh-text-muted" aria-hidden="true" />
+                  {{ u.daysThisWeek ?? 0 }}d
+                </div>
+                <div class="text-[11px] moh-text-muted">this week</div>
+              </template>
+              <template v-else-if="displayTab === 'best'">
+                <div class="flex items-center justify-end gap-1 text-sm font-semibold moh-text">
+                  <Icon name="tabler:trophy" class="moh-text-muted" aria-hidden="true" />
+                  {{ u.longestStreakDays > 0 ? `${u.longestStreakDays}d` : '—' }}
+                </div>
+                <div class="text-[11px] moh-text-muted">
+                  now {{ u.checkinStreakDays > 0 ? `${u.checkinStreakDays}d` : '—' }}
+                </div>
+              </template>
+              <template v-else>
+                <div class="flex items-center justify-end gap-1 text-sm font-semibold moh-text">
+                  <Icon name="tabler:flame" class="moh-text-muted" aria-hidden="true" />
+                  {{ u.checkinStreakDays > 0 ? `${u.checkinStreakDays}d` : '—' }}
+                </div>
+                <div class="text-[11px] moh-text-muted">
+                  best {{ u.longestStreakDays > 0 ? `${u.longestStreakDays}d` : '—' }}
+                </div>
+              </template>
+            </div>
+          </div>
+        </TransitionGroup>
+
+        <!-- Pinned viewer rank (outside TransitionGroup — static position at bottom) -->
         <div
-          v-if="activeViewerRank"
+          v-if="displayViewerRank"
           class="flex items-center gap-3 px-4 py-3 bg-gray-50/60 dark:bg-zinc-900/40"
         >
           <div class="shrink-0 w-7 text-center text-sm font-bold tabular-nums moh-text-muted">
-            #{{ activeViewerRank.rank }}
+            #{{ displayViewerRank.rank }}
           </div>
 
           <NuxtLink
-            v-if="activeViewerRank.user.username"
-            :to="`/u/${encodeURIComponent(activeViewerRank.user.username)}`"
+            v-if="displayViewerRank.user.username"
+            :to="`/u/${encodeURIComponent(displayViewerRank.user.username)}`"
             class="flex-1 min-w-0 flex items-center gap-2.5 hover:opacity-90"
           >
-            <AppUserAvatar :user="activeViewerRank.user" size-class="h-9 w-9" />
-            <AppUserIdentityLine :user="activeViewerRank.user" badge-size="xs" />
+            <AppUserAvatar :user="displayViewerRank.user" size-class="h-9 w-9" />
+            <AppUserIdentityLine :user="displayViewerRank.user" badge-size="xs" />
           </NuxtLink>
           <div v-else class="flex-1 min-w-0 flex items-center gap-2.5">
-            <AppUserAvatar :user="activeViewerRank.user" size-class="h-9 w-9" />
-            <AppUserIdentityLine :user="activeViewerRank.user" badge-size="xs" />
+            <AppUserAvatar :user="displayViewerRank.user" size-class="h-9 w-9" />
+            <AppUserIdentityLine :user="displayViewerRank.user" badge-size="xs" />
           </div>
 
           <div class="shrink-0 text-right">
-            <template v-if="activeTab === 'weekly'">
+            <template v-if="displayTab === 'weekly'">
               <div class="flex items-center justify-end gap-1 text-sm font-semibold moh-text">
                 <Icon name="tabler:calendar-check" class="moh-text-muted" aria-hidden="true" />
-                {{ activeViewerRank.user.daysThisWeek ?? 0 }}d
+                {{ displayViewerRank.user.daysThisWeek ?? 0 }}d
               </div>
               <div class="text-[11px] moh-text-muted">this week</div>
+            </template>
+            <template v-else-if="displayTab === 'best'">
+              <div class="flex items-center justify-end gap-1 text-sm font-semibold moh-text">
+                <Icon name="tabler:trophy" class="moh-text-muted" aria-hidden="true" />
+                {{ displayViewerRank.user.longestStreakDays > 0 ? `${displayViewerRank.user.longestStreakDays}d` : '—' }}
+              </div>
+              <div class="text-[11px] moh-text-muted">
+                now {{ displayViewerRank.user.checkinStreakDays > 0 ? `${displayViewerRank.user.checkinStreakDays}d` : '—' }}
+              </div>
             </template>
             <template v-else>
               <div class="flex items-center justify-end gap-1 text-sm font-semibold moh-text">
                 <Icon name="tabler:flame" class="moh-text-muted" aria-hidden="true" />
-                {{ activeViewerRank.user.checkinStreakDays > 0 ? `${activeViewerRank.user.checkinStreakDays}d` : '—' }}
+                {{ displayViewerRank.user.checkinStreakDays > 0 ? `${displayViewerRank.user.checkinStreakDays}d` : '—' }}
               </div>
               <div class="text-[11px] moh-text-muted">
-                best {{ activeViewerRank.user.longestStreakDays > 0 ? `${activeViewerRank.user.longestStreakDays}d` : '—' }}
+                best {{ displayViewerRank.user.longestStreakDays > 0 ? `${displayViewerRank.user.longestStreakDays}d` : '—' }}
               </div>
             </template>
           </div>
@@ -143,7 +163,9 @@
 </template>
 
 <script setup lang="ts">
-import type { LeaderboardUser } from '~/types/api'
+import type { LeaderboardUser, LeaderboardViewerRank } from '~/types/api'
+
+type TabId = 'all' | 'best' | 'weekly'
 
 definePageMeta({
   layout: 'app',
@@ -159,23 +181,46 @@ usePageSeo({
   noindex: true,
 })
 
-const activeTab = ref<'all' | 'weekly'>('all')
+const tabs: { id: TabId; label: string; description: string }[] = [
+  { id: 'all', label: 'Active Streak', description: 'Ranked by current active streak, then best streak as tiebreaker.' },
+  { id: 'best', label: 'Best Streak', description: 'Ranked by highest streak ever achieved — current or past.' },
+  { id: 'weekly', label: 'This Week', description: 'Most active this week — distinct posting days since Monday ET.' },
+]
 
-const allTime = useCheckinsLeaderboard({ scope: 'all' })
+const activeTab = ref<TabId>('all')
+const displayTab = ref<TabId>('all')
+const displayUsers = ref<LeaderboardUser[]>([])
+const displayViewerRank = ref<LeaderboardViewerRank | null>(null)
+
+const active = useCheckinsLeaderboard({ scope: 'all' })
+const best = useCheckinsLeaderboard({ scope: 'best' })
 const weekly = useCheckinsLeaderboard({ scope: 'weekly' })
 
-const activeUsers = computed(() => activeTab.value === 'weekly' ? weekly.users.value : allTime.users.value)
-const activeViewerRank = computed(() => activeTab.value === 'weekly' ? weekly.viewerRank.value : allTime.viewerRank.value)
-const activeLoading = computed(() => activeTab.value === 'weekly' ? weekly.loading.value : allTime.loading.value)
-const activeError = computed(() => activeTab.value === 'weekly' ? weekly.error.value : allTime.error.value)
+const scopeMap = { all: active, best, weekly } as const
 
-function switchTab(tab: 'all' | 'weekly') {
+const pending = computed(() => activeTab.value !== displayTab.value)
+const activeError = computed(() => scopeMap[activeTab.value].error.value)
+const tabDescription = computed(() => tabs.find(t => t.id === activeTab.value)?.description ?? '')
+
+for (const tabId of ['all', 'best', 'weekly'] as const) {
+  watch(scopeMap[tabId].users, (users) => {
+    if (activeTab.value === tabId && users.length > 0) {
+      displayUsers.value = users
+      displayViewerRank.value = scopeMap[tabId].viewerRank.value
+      displayTab.value = tabId
+    }
+  })
+}
+
+function switchTab(tab: TabId) {
   activeTab.value = tab
-  if (tab === 'weekly' && weekly.users.value.length === 0) {
-    void weekly.refresh()
-  }
-  if (tab === 'all' && allTime.users.value.length === 0) {
-    void allTime.refresh()
+  const scope = scopeMap[tab]
+  if (scope.users.value.length > 0) {
+    displayUsers.value = scope.users.value
+    displayViewerRank.value = scope.viewerRank.value
+    displayTab.value = tab
+  } else {
+    void scope.refresh()
   }
 }
 
@@ -187,6 +232,27 @@ function tierColor(u: LeaderboardUser): string {
 }
 
 onMounted(() => {
-  if (allTime.users.value.length === 0) void allTime.refresh()
+  if (active.users.value.length === 0) void active.refresh()
 })
 </script>
+
+<style scoped>
+.lb-row-move {
+  transition: transform 0.3s ease;
+}
+.lb-row-enter-active {
+  transition: opacity 0.2s ease;
+}
+.lb-row-enter-from {
+  opacity: 0;
+}
+.lb-row-leave-active {
+  transition: opacity 0.15s ease;
+  position: absolute;
+  left: 0;
+  right: 0;
+}
+.lb-row-leave-to {
+  opacity: 0;
+}
+</style>

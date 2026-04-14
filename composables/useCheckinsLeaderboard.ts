@@ -4,7 +4,7 @@ import { getApiErrorMessage } from '~/utils/api-error'
 const LEADERBOARD_KEY = 'checkins-leaderboard'
 const inflightByKey = new Map<string, Promise<void>>()
 
-export function useCheckinsLeaderboard(options?: { limit?: number; scope?: 'all' | 'weekly' }) {
+export function useCheckinsLeaderboard(options?: { limit?: number; scope?: 'all' | 'best' | 'weekly' }) {
   const { apiFetchData } = useApiClient()
 
   const scope = options?.scope ?? 'all'
@@ -31,6 +31,7 @@ export function useCheckinsLeaderboard(options?: { limit?: number; scope?: 'all'
         const query: Record<string, string | number> = {}
         if (options?.limit) query.limit = options.limit
         if (scope === 'weekly') query.scope = 'weekly'
+        else if (scope === 'best') query.scope = 'best'
 
         const data = await apiFetchData<GetCheckinsLeaderboardResponse>('/checkins/leaderboard', {
           method: 'GET',
