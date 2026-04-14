@@ -62,7 +62,7 @@
         </div>
         <div class="relative z-10 min-w-0 flex-1">
           <div class="text-sm font-semibold moh-text truncate">
-            {{ linkMeta?.title || 'Men of Hunger' }}
+            {{ linkMeta?.title || mohInternalTitle }}
           </div>
           <div v-if="linkMeta?.description" class="mt-0.5 text-xs moh-text-muted line-clamp-2">
             {{ linkMeta.description }}
@@ -493,6 +493,14 @@ const embeddedPreviewEnabled = computed(() => {
 
 const isMohInternalLink = computed(() => Boolean(previewLink.value && isMohUrl(previewLink.value)))
 const mohInternalPath = computed(() => (previewLink.value ? mohUrlPath(previewLink.value) : null))
+
+const mohInternalTitle = computed(() => {
+  const p = mohInternalPath.value
+  if (!p) return 'Men of Hunger'
+  const segment = p.split('/').filter(Boolean)[0]
+  if (!segment) return 'Men of Hunger'
+  return segment.charAt(0).toUpperCase() + segment.slice(1).replace(/-/g, ' ')
+})
 
 // Embedded MOH post: always show block so SSR can fetch and render the preview before first paint.
 // Space/article/user preview: show skeleton while loading, resolved card when ready (both require rowInView).

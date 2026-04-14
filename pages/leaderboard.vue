@@ -244,9 +244,9 @@ function tierColor(u: LeaderboardUser): string {
   return 'var(--moh-text-muted)'
 }
 
-onMounted(() => {
-  if (active.users.value.length === 0) void active.refresh()
-})
+if (import.meta.client) {
+  switchTab('all')
+}
 </script>
 
 <style scoped>
