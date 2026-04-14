@@ -53,17 +53,23 @@
 
       <!-- Body -->
       <div v-if="!deleted" class="mt-0.5">
-        <p
-          class="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap break-words"
-          :class="{ 'line-clamp-4': !expanded && isTruncatable }"
+        <div
+          ref="bodyWrapEl"
+          class="overflow-hidden transition-[max-height] duration-300 ease-in-out"
+          :style="bodyClampStyle"
         >
-          {{ comment.body }}
-        </p>
+          <p
+            ref="bodyTextEl"
+            class="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap break-words"
+          >
+            {{ comment.body }}
+          </p>
+        </div>
         <button
           v-if="isTruncatable"
           type="button"
           class="mt-0.5 text-xs font-medium text-gray-500 hover:text-gray-700 dark:text-zinc-400 dark:hover:text-zinc-200"
-          @click="expanded = !expanded"
+          @click="toggleExpand"
         >
           {{ expanded ? 'Show less' : 'Show more' }}
         </button>
@@ -312,14 +318,51 @@ const hasMoreOptions = computed(() => isOwnComment.value)
 const confirmingDelete = ref(false)
 const moreOpen = ref(false)
 
-// ─── Truncation ──────────────────────────────────────────────────────────────
-// Offer "show more" when the body has many characters or multiple newlines,
-// indicating it likely overflows 4 lines. This avoids DOM measurement complexity.
+// ─── Truncation (animated) ────────────────────────────────────────────────────
 const expanded = ref(false)
+const bodyWrapEl = ref<HTMLElement | null>(null)
+const bodyTextEl = ref<HTMLElement | null>(null)
+
+const COLLAPSED_MAX = '5.6em'
+
 const isTruncatable = computed(() => {
   const body = props.comment.body
   return body.length > 280 || (body.match(/\n/g)?.length ?? 0) >= 4
 })
+
+const bodyClampStyle = computed(() => {
+  if (!isTruncatable.value) return undefined
+  if (expanded.value) return { maxHeight: expandedHeight.value }
+  return { maxHeight: COLLAPSED_MAX }
+})
+
+const expandedHeight = ref('none')
+
+function toggleExpand() {
+  if (!expanded.value) {
+    const textEl = bodyTextEl.value
+    if (textEl) expandedHeight.value = `${textEl.scrollHeight}px`
+    expanded.value = true
+    // After transition finishes, remove the constraint so content reflows naturally
+    const wrap = bodyWrapEl.value
+    if (wrap) {
+      const onEnd = () => {
+        wrap.removeEventListener('transitionend', onEnd)
+        if (expanded.value) expandedHeight.value = 'none'
+      }
+      wrap.addEventListener('transitionend', onEnd)
+    }
+  } else {
+    // Snap to measured height first so the transition has a start value
+    const textEl = bodyTextEl.value
+    if (textEl) {
+      expandedHeight.value = `${textEl.scrollHeight}px`
+      // Force reflow so the browser registers the explicit height before collapsing
+      void bodyWrapEl.value?.offsetHeight
+    }
+    expanded.value = false
+  }
+}
 
 // ─── Timestamp deep-link ──────────────────────────────────────────────────────
 

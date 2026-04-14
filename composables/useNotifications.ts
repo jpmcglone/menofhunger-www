@@ -335,7 +335,8 @@ export function useNotifications() {
     if (n.subjectArticleId && (
       n.kind === 'followed_article' || n.kind === 'comment' || n.kind === 'mention' || n.kind === 'boost'
     )) {
-      return `/a/${encodeURIComponent(n.subjectArticleId)}`
+      const hash = n.subjectArticleCommentId ? `#comment-${n.subjectArticleCommentId}` : ''
+      return `/a/${encodeURIComponent(n.subjectArticleId)}${hash}`
     }
     if ((n.kind === 'comment' || n.kind === 'followed_post' || n.kind === 'mention') && n.actorPostId) {
       return `/p/${encodeURIComponent(n.actorPostId)}`

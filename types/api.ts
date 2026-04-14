@@ -1099,6 +1099,7 @@ export type Notification = {
   subjectPostId: string | null
   subjectUserId: string | null
   subjectArticleId: string | null
+  subjectArticleCommentId: string | null
   subjectGroupId: string | null
   /** Slug of the subject group (only populated for group_join_request notifications). */
   subjectGroupSlug?: string | null
