@@ -30,11 +30,11 @@
       </div>
 
       <!-- Initial load (nothing to show yet) -->
-      <div v-if="displayUsers.length === 0 && pending" class="flex justify-center py-12">
+      <div v-if="initialLoading" class="flex justify-center py-12">
         <AppLogoLoader />
       </div>
 
-      <div v-else-if="displayUsers.length === 0 && !pending" class="px-4 py-6 text-sm moh-text-muted">
+      <div v-else-if="displayUsers.length === 0 && hasFetched" class="px-4 py-6 text-sm moh-text-muted">
         No activity yet.
       </div>
 
@@ -191,6 +191,8 @@ const activeTab = ref<TabId>('all')
 const displayTab = ref<TabId>('all')
 const displayUsers = ref<LeaderboardUser[]>([])
 const displayViewerRank = ref<LeaderboardViewerRank | null>(null)
+const initialLoading = ref(true)
+const hasFetched = ref(false)
 
 const active = useCheckinsLeaderboard({ scope: 'all' })
 const best = useCheckinsLeaderboard({ scope: 'best' })
@@ -202,12 +204,25 @@ const pending = computed(() => activeTab.value !== displayTab.value)
 const activeError = computed(() => scopeMap[activeTab.value].error.value)
 const tabDescription = computed(() => tabs.find(t => t.id === activeTab.value)?.description ?? '')
 
+function commitScope(tabId: TabId) {
+  const scope = scopeMap[tabId]
+  displayUsers.value = scope.users.value
+  displayViewerRank.value = scope.viewerRank.value
+  displayTab.value = tabId
+  initialLoading.value = false
+  hasFetched.value = true
+}
+
 for (const tabId of ['all', 'best', 'weekly'] as const) {
   watch(scopeMap[tabId].users, (users) => {
     if (activeTab.value === tabId && users.length > 0) {
-      displayUsers.value = users
-      displayViewerRank.value = scopeMap[tabId].viewerRank.value
-      displayTab.value = tabId
+      commitScope(tabId)
+    }
+  })
+  watch(scopeMap[tabId].loading, (loading) => {
+    if (!loading && activeTab.value === tabId) {
+      initialLoading.value = false
+      hasFetched.value = true
     }
   })
 }
@@ -216,9 +231,7 @@ function switchTab(tab: TabId) {
   activeTab.value = tab
   const scope = scopeMap[tab]
   if (scope.users.value.length > 0) {
-    displayUsers.value = scope.users.value
-    displayViewerRank.value = scope.viewerRank.value
-    displayTab.value = tab
+    commitScope(tab)
   } else {
     void scope.refresh()
   }
