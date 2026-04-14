@@ -4,11 +4,11 @@
       ref="textareaEl"
       v-model="model"
       :class="[
-        'article-comment-textarea w-full resize-none rounded-xl border border-gray-200 bg-white px-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none dark:border-zinc-700 dark:bg-zinc-900 dark:text-gray-100 dark:placeholder-zinc-500',
-        rowsClass,
+        'article-comment-textarea w-full resize-none rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none dark:border-zinc-700 dark:bg-zinc-900 dark:text-gray-100 dark:placeholder-zinc-500',
+        'overflow-y-auto',
       ]"
+      :style="textareaStyle"
       :placeholder="placeholder"
-      :rows="rows ?? 3"
       :disabled="disabled"
       :autofocus="autofocus"
     />
@@ -19,16 +19,27 @@
       @request-close="mention.onRequestClose"
     />
   </div>
+  <div v-if="maxlength" class="mt-1 flex justify-end">
+    <span
+      class="text-[11px] tabular-nums transition-colors"
+      :class="isOverLimit ? 'text-red-500 font-medium' : isNearLimit ? 'text-amber-500' : 'text-gray-400 dark:text-zinc-500'"
+    >
+      {{ model.length }} / {{ maxlength }}
+    </span>
+  </div>
 </template>
 
 <script setup lang="ts">
 import type { FollowListUser } from '~/types/api'
 import { useMentionAutocomplete } from '~/composables/useMentionAutocomplete'
 
+const MIN_HEIGHT_PX = 80 // ~3 rows
+const MAX_HEIGHT_PX = 200
+
 const props = defineProps<{
   modelValue: string
   placeholder?: string
-  rows?: number
+  maxlength?: number
   disabled?: boolean
   autofocus?: boolean
   priorityUsers?: FollowListUser[]
@@ -41,17 +52,37 @@ const emit = defineEmits<{
 }>()
 
 const textareaEl = ref<HTMLTextAreaElement | null>(null)
+const currentHeight = ref(MIN_HEIGHT_PX)
 
 const model = computed({
   get: () => props.modelValue,
   set: (v) => emit('update:modelValue', v),
 })
 
-const rowsClass = computed(() => {
-  switch (props.rows) {
-    case 2: return 'py-2'
-    default: return 'py-2.5'
-  }
+const isOverLimit = computed(() => props.maxlength !== undefined && model.value.length > props.maxlength)
+const isNearLimit = computed(() => props.maxlength !== undefined && model.value.length >= props.maxlength * 0.9)
+
+const textareaStyle = computed(() => ({
+  minHeight: `${MIN_HEIGHT_PX}px`,
+  maxHeight: `${MAX_HEIGHT_PX}px`,
+  height: `${currentHeight.value}px`,
+}))
+
+function autoResize() {
+  const el = textareaEl.value
+  if (!el) return
+  el.style.height = 'auto'
+  const newHeight = Math.min(Math.max(el.scrollHeight, MIN_HEIGHT_PX), MAX_HEIGHT_PX)
+  currentHeight.value = newHeight
+  el.style.height = `${newHeight}px`
+}
+
+watch(model, () => {
+  nextTick(autoResize)
+})
+
+onMounted(() => {
+  autoResize()
 })
 
 const mention = useMentionAutocomplete({
@@ -89,7 +120,17 @@ onBeforeUnmount(() => {
   textareaEl.value?.removeEventListener('keydown', handleKeydownCapture, { capture: true })
 })
 
-defineExpose({ focus: () => textareaEl.value?.focus({ preventScroll: true }), el: textareaEl })
+defineExpose({
+  focus: () => textareaEl.value?.focus({ preventScroll: true }),
+  focusEnd: () => {
+    const el = textareaEl.value
+    if (!el) return
+    el.focus({ preventScroll: true })
+    const len = el.value.length
+    el.setSelectionRange(len, len)
+  },
+  el: textareaEl,
+})
 </script>
 
 <style scoped>

@@ -43,6 +43,7 @@
     </AppTabBarContent>
   </nav>
 
+  <ClientOnly>
   <AppBottomSheet
     v-if="isMobileHydrated"
     v-model="moreOpen"
@@ -199,6 +200,7 @@
       </div>
     </div>
   </AppBottomSheet>
+  </ClientOnly>
 
   <AppConfirmDialog
     v-model:visible="confirmVisible"

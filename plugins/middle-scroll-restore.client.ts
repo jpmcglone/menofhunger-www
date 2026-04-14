@@ -98,10 +98,11 @@ export default defineNuxtPlugin((nuxtApp) => {
     // and back/forward navigation restores from storage — skip the reset for both.
     const isBookmarksNav =
       _to.path.startsWith('/bookmarks') && from.path.startsWith('/bookmarks') && from.path !== _to.path
-    // Query-only changes (same path + hash, only params differ) are in-place filter/sort updates.
-    // Don't reset scroll for those — the page content updates in place just like the profile does.
-    const isQueryOnlyChange = _to.path === from.path && _to.hash === from.hash
-    if (!isPopStateNavigation && !isBookmarksNav && !isQueryOnlyChange) {
+    // In-page changes (same path — hash or query differs) are in-place updates
+    // (e.g. filter/sort, comment deep-links). Don't reset scroll; let page-level
+    // code handle scrolling to the right place.
+    const isInPageChange = _to.path === from.path
+    if (!isPopStateNavigation && !isBookmarksNav && !isInPageChange) {
       middle.scrollTop = 0
       const right = getRightRailScroller()
       if (right) right.scrollTop = 0
@@ -116,11 +117,27 @@ export default defineNuxtPlugin((nuxtApp) => {
 
     const isBookmarksNav =
       to.path.startsWith('/bookmarks') && from.path.startsWith('/bookmarks') && from.path !== to.path
-    // Query-only changes update in-place content (e.g. feed filter/sort); preserve scroll position.
-    const isQueryOnlyChange = to.path === from.path && to.hash === from.hash
+    // In-page changes (hash or query change on same path) preserve scroll position.
+    const isInPageChange = to.path === from.path
 
     const shouldRestoreFromStorage = isPopStateNavigation
     if (isPopStateNavigation) isPopStateNavigation = false
+
+    // In-page changes (hash/query on the same path) don't trigger page:finish,
+    // so resolve immediately. For back/forward, restore from storage first.
+    if (isInPageChange) {
+      if (shouldRestoreFromStorage) {
+        const el = getMiddleScroller()
+        if (el) {
+          const stored = readStoredTop(to.fullPath)
+          if (stored != null) {
+            const maxTop = Math.max(0, el.scrollHeight - el.clientHeight)
+            el.scrollTop = clamp(stored, 0, maxTop)
+          }
+        }
+      }
+      return false as const
+    }
 
     // Shared restore logic, called after the page DOM is ready.
     const applyRestore = (resolve: (v: false) => void) => {
@@ -137,13 +154,12 @@ export default defineNuxtPlugin((nuxtApp) => {
             el2.scrollTop = clamp(stored, 0, maxTop)
           }
           apply()
-          // Re-apply after async content (e.g. feed images) expands the page height.
           setTimeout(apply, 200)
         }
         return resolve(false)
       }
 
-      if (isBookmarksNav || isQueryOnlyChange) {
+      if (isBookmarksNav) {
         return resolve(false)
       }
 
@@ -154,14 +170,11 @@ export default defineNuxtPlugin((nuxtApp) => {
     }
 
     return new Promise<false>((resolve) => {
-      // Keepalive pages: Vue's <Suspense> does not re-resolve on reactivation, so 'page:finish'
-      // never fires. The keepalive DOM is already in the scroller by the next rAF — restore directly.
       if (shouldRestoreFromStorage && to.meta?.keepalive) {
         requestAnimationFrame(() => requestAnimationFrame(() => applyRestore(resolve)))
         return
       }
 
-      // For all other navigations, wait for 'page:finish' so async page content has rendered.
       ;(nuxtApp as { hooks: { hookOnce: (name: string, cb: () => void) => void } }).hooks.hookOnce('page:finish', () => {
         requestAnimationFrame(() => requestAnimationFrame(() => applyRestore(resolve)))
       })

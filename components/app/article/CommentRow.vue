@@ -1,7 +1,7 @@
 <template>
   <div
     :id="`comment-${comment.id}`"
-    class="relative flex gap-3"
+    class="relative flex gap-3 py-2"
     :class="{ 'pb-10': confirmingDelete }"
   >
     <!-- Highlight ring (briefly shown on deep-link navigation) -->
@@ -43,13 +43,31 @@
         />
         <span class="text-[11px] text-gray-400 dark:text-zinc-500">@{{ comment.author.username }}</span>
         <span class="text-[11px] text-gray-400 dark:text-zinc-500">·</span>
-        <span class="text-[11px] text-gray-400 dark:text-zinc-500">{{ timeAgo }}</span>
+        <a
+          :href="`/a/${articleId}#comment-${comment.id}`"
+          class="text-[11px] text-gray-400 dark:text-zinc-500 hover:underline hover:text-gray-600 dark:hover:text-zinc-300"
+          :title="fullTimestamp"
+          @click.prevent="onTimestampClick"
+        >{{ timeAgo }}</a>
       </div>
 
       <!-- Body -->
-      <p v-if="!deleted" class="mt-0.5 text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap break-words">
-        {{ comment.body }}
-      </p>
+      <div v-if="!deleted" class="mt-0.5">
+        <p
+          class="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap break-words"
+          :class="{ 'line-clamp-4': !expanded && isTruncatable }"
+        >
+          {{ comment.body }}
+        </p>
+        <button
+          v-if="isTruncatable"
+          type="button"
+          class="mt-0.5 text-xs font-medium text-gray-500 hover:text-gray-700 dark:text-zinc-400 dark:hover:text-zinc-200"
+          @click="expanded = !expanded"
+        >
+          {{ expanded ? 'Show less' : 'Show more' }}
+        </button>
+      </div>
       <p v-else class="mt-0.5 text-sm italic text-gray-400 dark:text-zinc-500">[deleted]</p>
 
       <!-- Reaction pills + inline actions -->
@@ -58,12 +76,12 @@
           <div class="flex min-w-0 items-center gap-2 sm:gap-2.5">
           <!-- Comments -->
           <button
-            v-if="canComment && !isReply"
+            v-if="canComment"
             type="button"
             class="inline-flex items-center gap-1"
             aria-label="Reply"
             v-tooltip.bottom="replyTooltip"
-            @click="emit('reply', comment.id, comment.author.username ?? undefined)"
+            @click="emit('reply', isReply ? (parentId ?? comment.id) : comment.id, comment.author.username ?? undefined)"
           >
             <span class="inline-flex h-8 w-8 items-center justify-center text-gray-400 transition-colors hover:text-gray-700 dark:text-zinc-500 dark:hover:text-zinc-300">
               <Icon name="tabler:message-circle" size="15" aria-hidden="true" />
@@ -286,12 +304,37 @@ const emit = defineEmits<{
 const { user, isAuthed } = useAuth()
 const { onEnter: authorEnter, onMove: authorMove, onLeave: authorLeave } = useUserPreviewTrigger({ username: computed(() => props.comment.author.username ?? '') })
 const toast = useAppToast()
+const { copyText: copyToClipboard } = useCopyToClipboard()
 
 const deleted = computed(() => Boolean(props.comment.deletedAt))
 const isOwnComment = computed(() => user.value?.id === props.comment.author.id)
 const hasMoreOptions = computed(() => isOwnComment.value)
 const confirmingDelete = ref(false)
 const moreOpen = ref(false)
+
+// ─── Truncation ──────────────────────────────────────────────────────────────
+// Offer "show more" when the body has many characters or multiple newlines,
+// indicating it likely overflows 4 lines. This avoids DOM measurement complexity.
+const expanded = ref(false)
+const isTruncatable = computed(() => {
+  const body = props.comment.body
+  return body.length > 280 || (body.match(/\n/g)?.length ?? 0) >= 4
+})
+
+// ─── Timestamp deep-link ──────────────────────────────────────────────────────
+
+function onTimestampClick() {
+  const router = useRouter()
+  router.push({ hash: `#comment-${props.comment.id}` })
+}
+
+const fullTimestamp = computed(() => {
+  try {
+    return new Date(props.comment.createdAt).toLocaleString()
+  } catch {
+    return ''
+  }
+})
 const reactPickerOpen = ref(false)
 const moreWrapRef = ref<HTMLElement | null>(null)
 const reactButtonDesktopRef = ref<HTMLElement | null>(null)
@@ -299,7 +342,6 @@ const reactButtonMobileRef = ref<HTMLElement | null>(null)
 const reactionPickerEl = ref<HTMLElement | null>(null)
 const reactionPickerStyle = ref<Record<string, string>>({})
 const reactionPickerAnchorEl = ref<HTMLElement | null>(null)
-const { copyText: copyToClipboard } = useCopyToClipboard()
 
 const replyTooltip = computed(() => tinyTooltip('Reply'))
 const reactTooltip = computed(() => tinyTooltip('React'))

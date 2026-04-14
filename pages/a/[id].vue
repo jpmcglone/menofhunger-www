@@ -65,6 +65,12 @@
           <time :datetime="article.publishedAt ?? article.createdAt">{{ publishedLabel }}</time>
           <span v-if="readingTime && article.viewerCanAccess !== false">· {{ readingTime }}</span>
           <time v-if="article.editedAt" :datetime="article.editedAt" class="text-xs text-gray-400 dark:text-zinc-500">· Edited {{ editedLabel }}</time>
+          <button
+            v-if="article.viewerCanAccess !== false && displayCommentCount > 0"
+            type="button"
+            class="hover:underline underline-offset-2"
+            @click="guardedScrollToComments"
+          >· {{ displayCommentCount }} {{ displayCommentCount === 1 ? 'comment' : 'comments' }}</button>
         </div>
 
         <!-- Tags -->
@@ -213,12 +219,15 @@
               </span>
             </div>
 
-            <!-- Reactions -->
-            <AppArticleReactionBar
-              :reactions="reactionState.reactions.value"
-              :readonly="!isAuthed || article?.viewerCanAccess === false"
-              @toggle="guardedReact"
-            />
+            <!-- Reactions: ClientOnly because reaction state (viewerHasReacted, count)
+                 differs between unauthenticated SSR and authenticated client -->
+            <ClientOnly>
+              <AppArticleReactionBar
+                :reactions="reactionState.reactions.value"
+                :readonly="!isAuthed || article?.viewerCanAccess === false"
+                @toggle="guardedReact"
+              />
+            </ClientOnly>
 
           </div>
 
@@ -736,18 +745,34 @@ function extractCommentIdFromHash(hash: string): string | null {
   return m?.[1] ?? null
 }
 
+/**
+ * Scroll the custom middle scroller the minimum amount needed to bring `el`
+ * fully into view, with `padding` px of breathing room above and below.
+ * If the element is already fully visible, nothing happens.
+ */
+function scrollIntoViewIfNeeded(el: HTMLElement, padding = 20) {
+  const scroller = document.getElementById('moh-middle-scroller')
+  if (!scroller) {
+    el.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+    return
+  }
+  const scrollerRect = scroller.getBoundingClientRect()
+  const elRect = el.getBoundingClientRect()
+  const relTop = elRect.top - scrollerRect.top
+  const relBottom = elRect.bottom - scrollerRect.top
+  const viewHeight = scroller.clientHeight
+
+  if (relTop < padding) {
+    scroller.scrollBy({ top: relTop - padding, behavior: 'smooth' })
+  } else if (relBottom > viewHeight - padding) {
+    scroller.scrollBy({ top: relBottom - viewHeight + padding, behavior: 'smooth' })
+  }
+}
+
 function scrollToComment(commentId: string) {
   const el = document.getElementById(`comment-${commentId}`)
   if (!el) return
-  const scroller = document.getElementById('moh-middle-scroller')
-  if (scroller) {
-    const scrollerRect = scroller.getBoundingClientRect()
-    const elRect = el.getBoundingClientRect()
-    const target = scroller.scrollTop + (elRect.top - scrollerRect.top) - 80
-    scroller.scrollTo({ top: Math.max(0, target), behavior: 'smooth' })
-  } else {
-    el.scrollIntoView({ behavior: 'smooth', block: 'center' })
-  }
+  scrollIntoViewIfNeeded(el)
   highlightedCommentId.value = commentId
   setTimeout(() => { highlightedCommentId.value = null }, 4000)
 }
@@ -759,22 +784,8 @@ onMounted(() => {
   presence.addArticlesCallback(articlesCallback)
   document.addEventListener('click', closeTipPopover)
 
-  const commentId = extractCommentIdFromHash(route.hash)
-  if (commentId) {
-    // Wait for comments to load then scroll
-    const stop = watch(
-      () => document.getElementById(`comment-${commentId}`),
-      (el) => {
-        if (el) {
-          stop?.()
-          setTimeout(() => scrollToComment(commentId), 150)
-        }
-      },
-      { immediate: true },
-    )
-    // Give up after 5s
-    setTimeout(() => stop?.(), 5000)
-  }
+  // Comment deep-link polling is started by the article watcher below,
+  // so it only begins once the article (and its comments section) have mounted.
 })
 
 watch(
@@ -803,6 +814,41 @@ watch(
   },
 )
 
+// ─── Comment deep-link: poll until the target comment element appears ─────────
+// Start only after the article loads (ensures AppArticleComments is mounted).
+// Uses double-rAF once found so the scroll fires after the layout is stable.
+let deepLinkInterval: ReturnType<typeof setInterval> | null = null
+
+watch(
+  article,
+  (art) => {
+    if (!art || deepLinkInterval !== null) return
+    const commentId = extractCommentIdFromHash(route.hash)
+    if (!commentId) return
+
+    highlightedCommentId.value = commentId
+
+    const POLL_MS = 150
+    const TIMEOUT_MS = 10_000
+    let elapsed = 0
+    deepLinkInterval = setInterval(() => {
+      elapsed += POLL_MS
+      const el = document.getElementById(`comment-${commentId}`)
+      if (el) {
+        clearInterval(deepLinkInterval!)
+        deepLinkInterval = null
+        // Double rAF: ensures the scroll fires after the browser has painted
+        // the newly-added comment nodes and the layout is fully stable.
+        requestAnimationFrame(() => requestAnimationFrame(() => scrollToComment(commentId)))
+      } else if (elapsed >= TIMEOUT_MS) {
+        clearInterval(deepLinkInterval!)
+        deepLinkInterval = null
+      }
+    }, POLL_MS)
+  },
+  { immediate: true },
+)
+
 // Attach scroll observer once the sentinel element is rendered.
 // Guard: never track views for articles the viewer cannot access.
 watch(viewSentinelEl, (el) => {
@@ -819,6 +865,10 @@ onUnmounted(() => {
   stopObservingView?.()
   stopObservingView = null
   document.removeEventListener('click', closeTipPopover)
+  if (deepLinkInterval) {
+    clearInterval(deepLinkInterval)
+    deepLinkInterval = null
+  }
 })
 
 const boostCountLabel = computed(() => {
@@ -831,24 +881,13 @@ const commentsEl = ref<{ focusCompose: () => void; composeTextareaEl: HTMLTextAr
 
 function scrollToComments() {
   const textarea = commentsEl.value?.composeTextareaEl
-  const scroller = document.getElementById('moh-middle-scroller')
-
-  if (textarea && scroller) {
-    // Compute scroll position so the textarea aligns near the top of the viewport,
-    // leaving a small gap for the sticky title bar.
-    const OFFSET = 20
-    const scrollerRect = scroller.getBoundingClientRect()
-    const textareaRect = textarea.getBoundingClientRect()
-    const targetScrollTop = scroller.scrollTop + (textareaRect.top - scrollerRect.top) - OFFSET
-
-    scroller.scrollTo({ top: Math.max(0, targetScrollTop), behavior: 'smooth' })
-
-    // Focus after the smooth scroll settles, without triggering a second scroll jump.
-    setTimeout(() => textarea.focus({ preventScroll: true }), 380)
+  if (textarea) {
+    scrollIntoViewIfNeeded(textarea)
+    setTimeout(() => textarea.focus({ preventScroll: true }), 300)
   } else {
-    // Fallback: scroll the comments section into view, then focus.
-    document.getElementById('comments')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    setTimeout(() => commentsEl.value?.focusCompose(), 400)
+    const section = document.getElementById('comments')
+    if (section) scrollIntoViewIfNeeded(section)
+    setTimeout(() => commentsEl.value?.focusCompose(), 350)
   }
 }
 

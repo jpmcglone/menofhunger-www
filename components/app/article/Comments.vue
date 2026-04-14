@@ -11,25 +11,32 @@
     <!-- Compose box -->
     <div class="mb-6">
       <template v-if="canComment">
-        <AppArticleCommentTextarea
-          ref="composeTextareaEl"
-          v-model="newCommentBody"
-          placeholder="Write a comment…"
-          :rows="3"
-          :disabled="submitting"
-          :priority-users="composePriorityUsers"
-          @submit="submitComment"
-        />
-        <div class="mt-2 flex justify-end">
-          <button
-            type="button"
-            class="rounded-lg px-4 py-1.5 text-sm font-semibold text-white transition-opacity hover:opacity-85 disabled:opacity-40"
-            :style="{ backgroundColor: accentColor }"
-            :disabled="!newCommentBody.trim() || submitting"
-            @click="submitComment"
-          >
-            {{ submitting ? 'Posting…' : 'Post' }}
-          </button>
+        <div class="flex items-start gap-3">
+          <div class="flex-shrink-0 pt-1">
+            <AppUserAvatar v-if="user" :user="user" size-class="h-8 w-8" />
+          </div>
+          <div class="flex-1 min-w-0">
+            <AppArticleCommentTextarea
+              ref="composeTextareaEl"
+              v-model="newCommentBody"
+              placeholder="Write a comment…"
+              :maxlength="commentMaxLength"
+              :disabled="submitting"
+              :priority-users="composePriorityUsers"
+              @submit="submitComment"
+            />
+            <div class="mt-2 flex justify-end">
+              <button
+                type="button"
+                class="rounded-lg px-4 py-1.5 text-sm font-semibold text-white transition-opacity hover:opacity-85 disabled:opacity-40"
+                :style="{ backgroundColor: accentColor }"
+                :disabled="!newCommentBody.trim() || submitting || newCommentBodyOverLimit"
+                @click="submitComment"
+              >
+                {{ submitting ? 'Posting…' : 'Post' }}
+              </button>
+            </div>
+          </div>
         </div>
       </template>
 
@@ -136,29 +143,36 @@
         </div>
 
         <!-- Inline reply compose for this comment -->
-        <div v-if="replyingToId === comment.id" class="ml-10 mt-3 border-l-2 pl-4" :style="{ borderColor: accentColor + '66' }">
-          <AppArticleCommentTextarea
-            v-model="replyBody"
-            :placeholder="`Replying to @${comment.author.username || comment.author.name}…`"
-            :rows="2"
-            autofocus
-            :priority-users="replyPriorityUsers(comment)"
-            @submit="submitReply(comment.id)"
-            @esc="cancelReply"
-          />
-          <div class="mt-2 flex gap-2">
-            <button
-              type="button"
-              class="rounded-lg px-3 py-1 text-xs font-semibold text-white transition-opacity hover:opacity-85 disabled:opacity-40"
-              :style="{ backgroundColor: accentColor }"
-              :disabled="!replyBody.trim() || submitting"
-              @click="submitReply(comment.id)"
-            >
-              {{ submitting ? 'Posting…' : 'Reply' }}
-            </button>
-            <button type="button" class="text-xs text-gray-500 hover:text-gray-700 dark:text-zinc-400" @click="cancelReply">
-              Cancel
-            </button>
+        <div v-if="replyingToId === comment.id" ref="replyBoxEl" class="ml-10 mt-3 border-l-2 pl-4" :style="{ borderColor: accentColor + '66' }">
+          <div class="flex items-start gap-3">
+            <div class="flex-shrink-0 pt-1">
+              <AppUserAvatar v-if="user" :user="user" size-class="h-7 w-7" />
+            </div>
+            <div class="flex-1 min-w-0">
+              <AppArticleCommentTextarea
+                ref="replyTextareaEl"
+                v-model="replyBody"
+                :placeholder="`Replying to @${comment.author.username || comment.author.name}…`"
+                :maxlength="commentMaxLength"
+                :priority-users="replyPriorityUsers(comment)"
+                @submit="submitReply(replyingToId)"
+                @esc="cancelReply"
+              />
+              <div class="mt-2 flex gap-2">
+                <button
+                  type="button"
+                  class="rounded-lg px-3 py-1 text-xs font-semibold text-white transition-opacity hover:opacity-85 disabled:opacity-40"
+                  :style="{ backgroundColor: accentColor }"
+                  :disabled="!replyBody.trim() || submitting || replyBodyOverLimit"
+                  @click="submitReply(replyingToId)"
+                >
+                  {{ submitting ? 'Posting…' : 'Reply' }}
+                </button>
+                <button type="button" class="text-xs text-gray-500 hover:text-gray-700 dark:text-zinc-400" @click="cancelReply">
+                  Cancel
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -191,7 +205,11 @@ const props = defineProps<{
   highlightedCommentId?: string | null
 }>()
 
-const { isAuthed, isVerified, isPremium } = useAuth()
+const { user, isAuthed, isVerified, isPremium, isPremiumPlus } = useAuth()
+
+const commentMaxLength = computed(() => (isPremium.value || isPremiumPlus.value) ? 2000 : 500)
+const newCommentBodyOverLimit = computed(() => newCommentBody.value.length > commentMaxLength.value)
+const replyBodyOverLimit = computed(() => replyBody.value.length > commentMaxLength.value)
 
 const canComment = computed(() => {
   if (props.visibility === 'premiumOnly') return isPremium.value
@@ -220,6 +238,43 @@ const newCommentBody = ref('')
 const replyingToId = ref<string | null>(null)
 const replyBody = ref('')
 const composeTextareaEl = ref<{ focus: () => void; el: { value: HTMLTextAreaElement | null } } | null>(null)
+// These refs are inside a v-for, so Vue stores them as arrays.
+// Only one reply box is ever open at a time, so we always access [0].
+const replyTextareaEl = ref<Array<{ focus: () => void; focusEnd: () => void }>>([])
+const replyBoxEl = ref<HTMLElement[]>([])
+
+watch(replyingToId, (id) => {
+  if (!id) return
+  // Step 1: wait for Vue to render the reply box into the DOM
+  nextTick(() => {
+    // Step 2: wait for the browser to do layout so getBoundingClientRect is accurate
+    requestAnimationFrame(() => {
+      // Focus with cursor at end of "@username "
+      const textarea = replyTextareaEl.value?.[0]
+      textarea?.focusEnd()
+
+      // Scroll the whole reply box (textarea + buttons) into view with 20px padding
+      const el = replyBoxEl.value?.[0]
+      if (!el) return
+      const scroller = document.getElementById('moh-middle-scroller')
+      if (!scroller) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+        return
+      }
+      const PADDING = 20
+      const scrollerRect = scroller.getBoundingClientRect()
+      const elRect = el.getBoundingClientRect()
+      const relTop = elRect.top - scrollerRect.top
+      const relBottom = elRect.bottom - scrollerRect.top
+      const viewHeight = scroller.clientHeight
+      if (relTop < PADDING) {
+        scroller.scrollBy({ top: relTop - PADDING, behavior: 'smooth' })
+      } else if (relBottom > viewHeight - PADDING) {
+        scroller.scrollBy({ top: relBottom - viewHeight + PADDING, behavior: 'smooth' })
+      }
+    })
+  })
+})
 
 // ─── Realtime ───────────────────────────────────────────────────────────────
 
