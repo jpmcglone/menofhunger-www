@@ -5,7 +5,7 @@
       v-if="showButton && viewerFollowsUser"
       type="button"
       class="relative inline-flex items-center overflow-hidden rounded-full border px-4 py-2 text-sm font-semibold transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
-      :class="hovering || confirmOpen
+      :class="hovering || confirmPending
         ? 'border-red-500 text-red-500 dark:border-red-400 dark:text-red-400'
         : 'border-gray-300 text-gray-900 dark:border-zinc-500 dark:text-white'"
       @mouseenter="onMouseEnter"
@@ -17,7 +17,7 @@
       <!-- "Following" label — fades out on hover -->
       <span
         class="absolute inset-0 flex items-center justify-center transition-opacity duration-150"
-        :class="hovering || confirmOpen ? 'opacity-0' : 'opacity-100'"
+        :class="hovering || confirmPending ? 'opacity-0' : 'opacity-100'"
         aria-hidden="true"
       >
         Following
@@ -25,7 +25,7 @@
       <!-- "Unfollow" label — fades in on hover -->
       <span
         class="absolute inset-0 flex items-center justify-center transition-opacity duration-150"
-        :class="hovering || confirmOpen ? 'opacity-100' : 'opacity-0'"
+        :class="hovering || confirmPending ? 'opacity-100' : 'opacity-0'"
       >
         Unfollow
       </span>
@@ -51,14 +51,6 @@
       </template>
     </Button>
 
-    <AppConfirmDialog
-      v-model:visible="confirmOpen"
-      header="Unfollow?"
-      confirm-label="Unfollow"
-      @confirm="confirmUnfollow"
-    >
-      Unfollow <span class="font-semibold">@{{ username }}</span>?
-    </AppConfirmDialog>
   </div>
 </template>
 
@@ -113,20 +105,13 @@ const viewerFollowsUser = computed(() => Boolean(relationship.value?.viewerFollo
 const userFollowsViewer = computed(() => Boolean(relationship.value?.userFollowsViewer))
 
 const hovering = ref(false)
-const confirmOpen = ref(false)
+const confirmPending = ref(false)
+const { confirm } = useAppConfirm()
 
 function onMouseEnter() {
   if (isRecentTouch()) return
   hovering.value = true
 }
-
-watch(
-  confirmOpen,
-  (open) => {
-    if (open) emit('confirm-opened')
-    else emit('confirm-closed')
-  },
-)
 
 // When signed out, never show follow controls anywhere.
 const showButton = computed(
@@ -143,19 +128,25 @@ async function onClick() {
   }
 
   if (viewerFollowsUser.value) {
-    confirmOpen.value = true
+    confirmPending.value = true
+    emit('confirm-opened')
+    const ok = await confirm({
+      header: 'Unfollow?',
+      message: `Unfollow @${username.value}?`,
+      confirmLabel: 'Unfollow',
+      confirmSeverity: 'danger',
+    })
+    confirmPending.value = false
+    emit('confirm-closed')
+    if (ok) {
+      await followState.unfollow({ userId: props.userId, username: props.username })
+      emit('unfollowed')
+    }
     return
   }
 
   await followState.follow({ userId: props.userId, username: props.username })
   emit('followed')
-}
-
-async function confirmUnfollow() {
-  confirmOpen.value = false
-  if (!props.username) return
-  await followState.unfollow({ userId: props.userId, username: props.username })
-  emit('unfollowed')
 }
 </script>
 

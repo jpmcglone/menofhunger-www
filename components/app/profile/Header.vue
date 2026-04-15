@@ -354,52 +354,28 @@
     @submitted="onReportSubmitted"
   />
 
-  <Dialog
-    v-model:visible="blockConfirmVisible"
-    modal
-    :header="viewerHasBlockedProfile ? `Unblock ${profileBlockHandle}?` : `Block ${profileBlockHandle}?`"
-    :style="{ width: '28rem', maxWidth: '92vw' }"
-  >
-    <div class="text-sm text-gray-700 dark:text-gray-300">
-      <template v-if="viewerHasBlockedProfile">
-        They'll be able to see your posts and engage with them again.
-      </template>
-      <template v-else>
-        They can still view your posts but won't be able to engage with them.
-      </template>
-    </div>
-    <template #footer>
-      <Button label="Cancel" text severity="secondary" @click="blockConfirmVisible = false" />
-      <Button
-        :label="blockingProfile ? (viewerHasBlockedProfile ? 'Unblocking…' : 'Blocking…') : (viewerHasBlockedProfile ? 'Unblock' : 'Block')"
-        :severity="viewerHasBlockedProfile ? 'secondary' : 'danger'"
-        :disabled="blockingProfile"
-        @click="confirmBlock"
-      />
-    </template>
-  </Dialog>
 
-  <Dialog
-    v-model:visible="startChatInfoVisible"
-    modal
+  <AppConfirmDialog
+    :visible="startChatInfoVisible"
     header="Starting new chats"
-    :style="{ width: '28rem', maxWidth: '92vw' }"
+    message="To start new chats yourself, upgrade to Premium."
+    cancel-label="Not now"
+    confirm-label="Get Premium"
+    confirm-severity="primary"
+    @update:visible="startChatInfoVisible = $event"
+    @confirm="goBilling"
+    @cancel="startChatInfoVisible = false"
   >
-    <div class="space-y-3 text-sm text-gray-700 dark:text-gray-300">
-      <p>
-        To start new chats yourself, upgrade to Premium.
-      </p>
-    </div>
-    <template #footer>
-      <Button label="Not now" text severity="secondary" @click="startChatInfoVisible = false" />
-      <Button label="View tiers" severity="secondary" @click="goPremium" />
-      <Button
-        label="Get Premium"
-        class="!border-[var(--moh-premium)] !bg-[var(--moh-premium)] !text-white hover:opacity-95"
-        @click="goBilling"
-      />
+    <template #extra-actions>
+      <button
+        type="button"
+        class="moh-tap moh-focus rounded-lg px-4 py-2 text-sm font-medium moh-text-muted hover:moh-text transition-colors"
+        @click="goPremium"
+      >
+        View tiers
+      </button>
     </template>
-  </Dialog>
+  </AppConfirmDialog>
 </template>
 
 <script setup lang="ts">
@@ -822,23 +798,31 @@ const profileBlockHandle = computed(() => {
   return u ? `@${u}` : 'this user'
 })
 
-const blockConfirmVisible = ref(false)
 const blockingProfile = ref(false)
+const { confirm } = useAppConfirm()
 
-async function confirmBlock() {
-  if (blockingProfile.value || !profile.value?.id) return
+async function openBlockConfirm() {
+  const isBlocked = viewerHasBlockedProfile.value
+  const ok = await confirm({
+    header: isBlocked ? `Unblock ${profileBlockHandle.value}?` : `Block ${profileBlockHandle.value}?`,
+    message: isBlocked
+      ? "They'll be able to see your posts and engage with them again."
+      : "They can still view your posts but won't be able to engage with them.",
+    confirmLabel: isBlocked ? 'Unblock' : 'Block',
+    confirmSeverity: isBlocked ? 'primary' : 'danger',
+  })
+  if (!ok || blockingProfile.value || !profile.value?.id) return
   blockingProfile.value = true
   try {
-    if (viewerHasBlockedProfile.value) {
+    if (isBlocked) {
       await blockState.unblockUser(profile.value.id)
       toast.push({ title: `${profileBlockHandle.value} unblocked`, message: 'You can now engage with their posts.', tone: 'success', durationMs: 3000 })
     } else {
       await blockState.blockUser(profile.value.id)
       toast.push({ title: `${profileBlockHandle.value} blocked`, message: "They can still see your posts but can't engage with them.", tone: 'success', durationMs: 3000 })
     }
-    blockConfirmVisible.value = false
   } catch (e: unknown) {
-    toast.pushError(e, viewerHasBlockedProfile.value ? 'Failed to unblock.' : 'Failed to block.')
+    toast.pushError(e, isBlocked ? 'Failed to unblock.' : 'Failed to block.')
   } finally {
     blockingProfile.value = false
   }
@@ -857,9 +841,7 @@ const menuItems = computed<MenuItemWithIcon[]>(() => {
     {
       label: viewerHasBlockedProfile.value ? 'Unblock user' : 'Block user',
       iconName: viewerHasBlockedProfile.value ? 'tabler:ban-off' : 'tabler:ban',
-      command: () => {
-        blockConfirmVisible.value = true
-      },
+      command: () => openBlockConfirm(),
     },
   ]
   return items

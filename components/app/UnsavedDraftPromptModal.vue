@@ -1,22 +1,24 @@
 <template>
-  <Dialog
-    v-model:visible="open"
-    modal
+  <AppConfirmDialog
+    :visible="open"
     header="Save draft?"
-    :draggable="false"
-    class="w-[min(30rem,calc(100vw-2rem))]"
-    aria-label="Save draft prompt"
+    message="You have a post started. Do you want to save it as a draft before leaving?"
+    confirm-label="Save draft"
+    confirm-severity="primary"
+    @update:visible="!$event && choose('cancel')"
+    @confirm="choose('save')"
+    @cancel="choose('cancel')"
   >
-    <p class="text-sm moh-text-muted">
-      You have a post started. Do you want to save it as a draft before leaving?
-    </p>
-
-    <template #footer>
-      <Button label="Cancel" severity="secondary" text @click="choose('cancel')" />
-      <Button label="Discard" severity="secondary" text @click="choose('discard')" />
-      <Button label="Save draft" @click="choose('save')" />
+    <template #extra-actions>
+      <button
+        type="button"
+        class="moh-tap moh-focus rounded-lg px-4 py-2 text-sm font-medium moh-text-muted hover:moh-text transition-colors"
+        @click="choose('discard')"
+      >
+        Discard
+      </button>
     </template>
-  </Dialog>
+  </AppConfirmDialog>
 </template>
 
 <script setup lang="ts">
@@ -28,4 +30,3 @@ function choose(choice: UnsavedDraftPromptChoice) {
   choosePrompt(choice)
 }
 </script>
-

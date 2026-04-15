@@ -86,15 +86,6 @@
       </template>
     </Menu>
 
-    <AppConfirmDialog
-      v-if="!hideMenu"
-      v-model:visible="confirmVisible"
-      header="Log out?"
-      message="Are you sure you want to log out?"
-      confirm-label="Log out"
-      confirm-icon="tabler:door-exit"
-      @confirm="confirmLogout"
-    />
   </div>
 </template>
 
@@ -123,7 +114,7 @@ const cardClass = computed(() => [
 const route = useRoute()
 const { user } = useAuth()
 const { getPresenceStatus, isSocketConnecting } = usePresence()
-const { menuItems, confirmVisible, confirmLogout } = useUserMenu()
+const { menuItems } = useUserMenu()
 const { selectedSpaceId, currentSpace: currentSpaceForNav } = useSpaceLobby()
 const { openShortcutsModal } = useKeyboardShortcuts()
 const isXlUp = useHydratedMediaQuery('(min-width: 1280px)')

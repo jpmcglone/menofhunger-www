@@ -20,7 +20,7 @@
       <button
         type="button"
         class="inline-flex items-center gap-3 text-left text-gray-800 hover:underline dark:text-gray-200"
-        @click="openLogoutConfirm"
+        @click="requestLogout"
       >
         <Icon name="tabler:door-exit" class="text-gray-500 dark:text-gray-400" aria-hidden="true" />
         <span class="font-medium">Log out</span>
@@ -30,6 +30,6 @@
 </template>
 
 <script setup lang="ts">
-const { openLogoutConfirm } = useUserMenu()
+const { requestLogout } = useUserMenu()
 </script>
 

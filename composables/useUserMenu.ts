@@ -2,8 +2,18 @@ import type { MenuItem } from 'primevue/menuitem'
 
 export function useUserMenu() {
   const { user, logout } = useAuth()
+  const { confirm } = useAppConfirm()
 
-  const confirmVisible = ref(false)
+  async function requestLogout() {
+    const ok = await confirm({
+      header: 'Log out?',
+      message: 'Are you sure you want to log out?',
+      confirmLabel: 'Log out',
+      confirmSeverity: 'danger',
+      confirmIcon: 'tabler:door-exit',
+    })
+    if (ok) await logout()
+  }
 
   function viewProfile() {
     const username = (user.value?.username ?? '').trim()
@@ -70,21 +80,10 @@ export function useUserMenu() {
     {
       label: 'Log out',
       iconName: 'tabler:door-exit',
-      command: () => {
-        confirmVisible.value = true
-      },
+      command: () => requestLogout(),
     },
   ])
 
-  function openLogoutConfirm() {
-    confirmVisible.value = true
-  }
-
-  async function confirmLogout() {
-    confirmVisible.value = false
-    await logout()
-  }
-
-  return { menuItems, confirmVisible, confirmLogout, openLogoutConfirm }
+  return { menuItems, requestLogout }
 }
 

@@ -215,7 +215,7 @@
             type="button"
             class="shrink-0 text-xs font-semibold text-zinc-300 underline underline-offset-2 hover:text-white"
             :disabled="blockingProfile"
-            @click="bannerUnblockConfirmVisible = true"
+            @click="openBannerUnblockConfirm"
           >
             Unblock
           </button>
@@ -498,25 +498,6 @@
         @patch-profile="patchPublicProfile"
       />
 
-      <Dialog
-        v-model:visible="bannerUnblockConfirmVisible"
-        modal
-        :header="`Unblock ${profileBlockHandle}?`"
-        :style="{ width: '28rem', maxWidth: '92vw' }"
-      >
-        <div class="text-sm text-gray-700 dark:text-gray-300">
-          They'll be able to see your posts and engage with them again.
-        </div>
-        <template #footer>
-          <Button label="Cancel" text severity="secondary" @click="bannerUnblockConfirmVisible = false" />
-          <Button
-            :label="blockingProfile ? 'Unblocking…' : 'Unblock'"
-            severity="secondary"
-            :disabled="blockingProfile"
-            @click="confirmBannerUnblock"
-          />
-        </template>
-      </Dialog>
     </div>
   </div>
   </AppPageContent>
@@ -959,16 +940,21 @@ const profileBlockHandle = computed(() => {
   return u ? `@${u}` : 'this user'
 })
 
-const bannerUnblockConfirmVisible = ref(false)
 const blockingProfile = ref(false)
+const { confirm } = useAppConfirm()
 
-async function confirmBannerUnblock() {
-  if (blockingProfile.value || !profile.value?.id) return
+async function openBannerUnblockConfirm() {
+  const ok = await confirm({
+    header: `Unblock ${profileBlockHandle.value}?`,
+    message: "They'll be able to see your posts and engage with them again.",
+    confirmLabel: 'Unblock',
+    confirmSeverity: 'primary',
+  })
+  if (!ok || blockingProfile.value || !profile.value?.id) return
   blockingProfile.value = true
   try {
     await blockState.unblockUser(profile.value.id)
     toast.push({ title: `${profileBlockHandle.value} unblocked`, message: 'You can now engage with their posts.', tone: 'success', durationMs: 3000 })
-    bannerUnblockConfirmVisible.value = false
   } catch (e: unknown) {
     toast.pushError(e, 'Failed to unblock.')
   } finally {

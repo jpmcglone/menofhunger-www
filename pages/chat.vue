@@ -400,21 +400,6 @@
       :participants="selectedConversation?.participants ?? []"
     />
 
-    <Dialog
-      v-model:visible="startChatInfoVisible"
-      modal
-      header="Can't start this chat"
-      :style="{ width: '28rem', maxWidth: '92vw' }"
-    >
-      <div class="space-y-3 text-sm text-gray-700 dark:text-gray-300">
-        <p>
-          You need a verified account to send messages.
-        </p>
-      </div>
-      <template #footer>
-        <Button label="Got it" severity="secondary" @click="startChatInfoVisible = false" />
-      </template>
-    </Dialog>
 
     <Dialog
       v-model:visible="newDialogVisible"
@@ -883,7 +868,17 @@ watch(
 )
 
 const newDialogVisible = ref(false)
-const startChatInfoVisible = ref(false)
+const { confirm } = useAppConfirm()
+
+async function showCantStartChat() {
+  await confirm({
+    header: "Can't start this chat",
+    message: 'You need a verified account to send messages.',
+    confirmLabel: 'Got it',
+    confirmSeverity: 'primary',
+    showCancel: false,
+  })
+}
 const newConversationError = ref<string | null>(null)
 const {
   query: recipientQuery,
@@ -1552,7 +1547,7 @@ function cancelEdit() {
 /** Draft path: creates the conversation and sends the first message. */
 async function sendFirstMessage() {
   if (!viewerCanStartChats.value) {
-    startChatInfoVisible.value = true
+    void showCantStartChat()
     return
   }
   const body = composerText.value
@@ -1948,7 +1943,7 @@ function setTab(tab: 'primary' | 'requests') {
 
 function openNewDialog() {
   if (!viewerCanStartChats.value) {
-    startChatInfoVisible.value = true
+    void showCantStartChat()
     return
   }
   newDialogVisible.value = true
@@ -1962,7 +1957,7 @@ async function createConversation() {
   // Start a draft chat or jump to an existing conversation.
   if (!canStartDraft.value) return
   if (!viewerCanStartChats.value) {
-    startChatInfoVisible.value = true
+    void showCantStartChat()
     return
   }
   newConversationError.value = null

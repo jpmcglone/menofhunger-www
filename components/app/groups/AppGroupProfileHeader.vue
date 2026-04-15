@@ -187,7 +187,7 @@
             severity="secondary"
             size="small"
             :loading="leaveBusy"
-            @click="leaveConfirmOpen = true"
+            @click="onLeaveClick"
           />
         </div>
       </div>
@@ -239,14 +239,6 @@
     </div>
   </div>
 
-  <AppConfirmDialog
-    v-model:visible="leaveConfirmOpen"
-    header="Leave group?"
-    confirm-label="Leave"
-    @confirm="$emit('leave')"
-  >
-    You'll lose access to the group's posts and feed. You can rejoin later.
-  </AppConfirmDialog>
 </template>
 
 <script setup lang="ts">
@@ -296,7 +288,17 @@ const emit = defineEmits<{
 
 const avatarRoundClass = groupAvatarRoundClass()
 const avatarWrapperRef = ref<HTMLElement | null>(null)
-const leaveConfirmOpen = ref(false)
+const { confirm } = useAppConfirm()
+
+async function onLeaveClick() {
+  const ok = await confirm({
+    header: 'Leave group?',
+    message: "You'll lose access to the group's posts and feed. You can rejoin later.",
+    confirmLabel: 'Leave',
+    confirmSeverity: 'danger',
+  })
+  if (ok) emit('leave')
+}
 
 const isAdminViewer = computed(() => {
   const role = props.shell.viewerMembership?.role

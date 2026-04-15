@@ -543,32 +543,6 @@
     </div>
   </div>
 
-  <Dialog
-    v-if="deleteConfirmOpen"
-    v-model:visible="deleteConfirmOpen"
-    modal
-    header="Delete post?"
-    :draggable="false"
-    class="w-[min(28rem,calc(100vw-2rem))]"
-  >
-    <div class="text-sm moh-text-muted">
-      This post will show as deleted, but replies will remain visible.
-    </div>
-    <template #footer>
-      <Button label="Cancel" severity="secondary" text :disabled="deleting" @click="deleteConfirmOpen = false" />
-      <Button
-        label="Delete"
-        severity="danger"
-        :loading="deleting"
-        :disabled="deleting"
-        @click="deletePost"
-      >
-        <template #icon>
-          <Icon name="tabler:trash" aria-hidden="true" />
-        </template>
-      </Button>
-    </template>
-  </Dialog>
 
   <Dialog
     v-if="editOpen"
@@ -1217,9 +1191,7 @@ const moreMenuItems = computed<MenuItemWithIcon[]>(() => {
       label: 'Delete post',
       iconName: 'tabler:trash',
       class: 'text-red-600 dark:text-red-400',
-      command: () => {
-        deleteConfirmOpen.value = true
-      },
+      command: () => openDeleteConfirm(),
     })
   }
 
@@ -1244,8 +1216,19 @@ const canEditPost = computed(() => {
   const editCount = Math.max(0, Math.floor(postView.value.editCount ?? 0))
   return editCount < 3
 })
-const deleteConfirmOpen = ref(false)
 const deleting = ref(false)
+const { confirm } = useAppConfirm()
+
+async function openDeleteConfirm() {
+  const ok = await confirm({
+    header: 'Delete post?',
+    message: 'This post will show as deleted, but replies will remain visible.',
+    confirmLabel: 'Delete',
+    confirmSeverity: 'danger',
+    confirmIcon: 'tabler:trash',
+  })
+  if (ok) await deletePost()
+}
 const reportOpen = ref(false)
 
 function onEdited(payload: { id: string; post: FeedPost }) {
@@ -1324,7 +1307,6 @@ async function deletePost() {
     toast.pushError(e, 'Failed to delete post.')
   } finally {
     deleting.value = false
-    deleteConfirmOpen.value = false
   }
 }
 

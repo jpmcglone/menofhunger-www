@@ -117,59 +117,39 @@
         </div>
       </template>
 
-    <Dialog
-      v-model:visible="introOpen"
-      modal
+    <AppConfirmDialog
+      :visible="introOpen"
       header="Welcome to Men of Hunger"
-      :draggable="false"
-      class="w-[min(34rem,calc(100vw-2rem))]"
-      @show="focusIntroContinueButton"
-      @hide="closeIntro"
+      confirm-label="Continue"
+      confirm-severity="primary"
+      confirm-icon="tabler:arrow-right"
+      :loading="introContinuing"
+      @update:visible="!$event && closeIntro()"
+      @confirm="acceptIntroAndContinue"
+      @cancel="closeIntro"
     >
-      <div class="space-y-4 text-sm text-gray-700 dark:text-gray-200">
+      <div class="space-y-4 text-sm moh-text-muted">
         <p>
           You’re about to create a new account.
           Men of Hunger is a men’s trusted community for men who want measurable progress — structured conversations, accountability, and real growth.
         </p>
 
         <div class="space-y-2">
-          <div class="font-semibold text-gray-900 dark:text-gray-50">A few basic rules</div>
-          <ul class="list-disc pl-5 space-y-1 text-gray-700 dark:text-gray-200">
+          <div class="font-semibold moh-text">A few basic rules</div>
+          <ul class="list-disc pl-5 space-y-1">
             <li>Be respectful. No harassment, abusive content, or threats.</li>
             <li>Keep it real. No impersonation or scams.</li>
             <li>No spam. Don’t flood the feed or DM people unsolicited.</li>
             <li>You must be 18+ to join.</li>
           </ul>
-          <div class="text-xs text-gray-500 dark:text-gray-400">
+          <div class="text-xs moh-text-soft">
             You can browse right away. Posting and messaging require verification first.
           </div>
         </div>
 
         <div v-if="introError" class="text-sm text-red-700 dark:text-red-300">{{ introError }}</div>
-
-        <div class="flex items-center justify-end gap-2 pt-1">
-          <Button label="Cancel" severity="secondary" text :disabled="introContinuing" @click="closeIntro" />
-          <!-- Hidden autofocus target so Dialog focuses this instead of the close button; @show then moves focus to Continue -->
-          <button
-            type="button"
-            autofocus
-            tabindex="-1"
-            class="absolute opacity-0 pointer-events-none w-0 h-0"
-          />
-          <Button
-            ref="introContinueBtnRef"
-            label="Continue"
-            :loading="introContinuing"
-            :disabled="introContinuing"
-            @click="acceptIntroAndContinue"
-          >
-            <template #icon>
-              <Icon name="tabler:arrow-right" aria-hidden="true" />
-            </template>
-          </Button>
-        </div>
       </div>
-    </Dialog>
+    </AppConfirmDialog>
       </template>
     </div>
   </section>
@@ -219,7 +199,6 @@ const inlineError = ref<string | null>(null)
 const introOpen = ref(false)
 const introPhone = ref<string | null>(null)
 const introError = ref<string | null>(null)
-const introContinueBtnRef = ref<{ $el?: HTMLElement } | null>(null)
 const phoneInputRef = ref<{ $el?: HTMLElement } | null>(null)
 const codeInputRef = ref<{ $el?: HTMLElement } | null>(null)
 
@@ -234,17 +213,6 @@ function focusInput(compRef: { value: { $el?: HTMLElement } | null }) {
 onMounted(() => {
   focusInput(phoneInputRef)
 })
-
-function focusIntroContinueButton() {
-  // Dialog focuses the first [autofocus] in content (our hidden button), so the X never gets focus.
-  // After the dialog's enter transition, move focus to the Continue button.
-  nextTick(() => {
-    setTimeout(() => {
-      const el = introContinueBtnRef.value?.$el
-      if (el && typeof (el as HTMLElement).focus === 'function') (el as HTMLElement).focus()
-    }, 50)
-  })
-}
 
 const resendRemainingSeconds = ref(0)
 let resendTimer: ReturnType<typeof setInterval> | null = null

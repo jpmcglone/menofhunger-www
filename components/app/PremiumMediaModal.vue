@@ -1,21 +1,15 @@
 <template>
-  <Dialog
-    v-model:visible="open"
-    modal
+  <AppConfirmDialog
+    :visible="open"
     header="Premium required"
-    :draggable="false"
-    class="w-[min(30rem,calc(100vw-2rem))]"
-    aria-label="Premium required for media"
-  >
-    <p class="text-sm moh-text-muted">
-      Media posts (images, GIFs, and videos) are for premium members. Upgrade to post media.
-    </p>
-
-    <template #footer>
-      <Button label="Not now" severity="secondary" text @click="hide" />
-      <Button label="Go to settings" @click="onGoToSettings" />
-    </template>
-  </Dialog>
+    message="Media posts (images, GIFs, and videos) are for premium members. Upgrade to post media."
+    cancel-label="Not now"
+    confirm-label="Go to settings"
+    confirm-severity="primary"
+    @update:visible="!$event && hide()"
+    @confirm="onGoToSettings"
+    @cancel="hide"
+  />
 </template>
 
 <script setup lang="ts">
@@ -26,4 +20,3 @@ async function onGoToSettings() {
   await navigateTo('/settings')
 }
 </script>
-

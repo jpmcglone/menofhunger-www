@@ -192,7 +192,7 @@
         <button
           type="button"
           class="moh-tap flex w-full items-center gap-2 py-2.5 moh-focus rounded-lg px-2 -mx-1 hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600 dark:text-red-400"
-          @click="() => { moreOpen = false; confirmVisible = true }"
+          @click="() => { moreOpen = false; requestLogout() }"
         >
           <Icon name="tabler:door-exit" size="16" class="shrink-0" aria-hidden="true" />
           <span class="text-sm font-medium">Sign out</span>
@@ -202,14 +202,6 @@
   </AppBottomSheet>
   </ClientOnly>
 
-  <AppConfirmDialog
-    v-model:visible="confirmVisible"
-    header="Log out?"
-    message="Are you sure you want to log out?"
-    confirm-label="Log out"
-    confirm-icon="tabler:door-exit"
-    @confirm="confirmLogout"
-  />
 </template>
 
 <script setup lang="ts">
@@ -220,7 +212,7 @@ defineProps<{
 
 const route = useRoute()
 const { isActive } = useRouteMatch(route)
-const { confirmVisible, confirmLogout } = useUserMenu()
+const { requestLogout } = useUserMenu()
 const { user } = useAuth()
 const middleScrollerRef = useMiddleScroller()
 const haptics = useHaptics()

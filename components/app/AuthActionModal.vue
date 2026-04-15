@@ -1,29 +1,16 @@
 <template>
-  <Dialog
-    v-model:visible="open"
-    modal
+  <AppConfirmDialog
+    :visible="open"
     :header="title"
-    :draggable="false"
-    class="w-[min(30rem,calc(100vw-2rem))]"
-  >
-    <div class="text-sm moh-text-muted">
-      {{ message }}
-    </div>
-
-    <template #footer>
-      <Button label="Not now" severity="secondary" text @click="hide" />
-      <Button
-        :label="primaryLabel"
-        severity="secondary"
-        rounded
-        @click="onPrimary"
-      >
-        <template v-if="primaryIconName" #icon>
-          <Icon :name="primaryIconName" aria-hidden="true" />
-        </template>
-      </Button>
-    </template>
-  </Dialog>
+    :message="message"
+    cancel-label="Not now"
+    :confirm-label="primaryLabel"
+    confirm-severity="primary"
+    :confirm-icon="primaryIconName"
+    @update:visible="!$event && hide()"
+    @confirm="onPrimary"
+    @cancel="hide"
+  />
 </template>
 
 <script setup lang="ts">
@@ -77,7 +64,6 @@ const message = computed(() => {
     if (action.value === 'article-comment') return 'Commenting on articles is for verified members. Verify your account to continue.'
     return 'Replying is for verified members. Verify your account to reply.'
   }
-  // setUsername
   return "Boosting is available once you've set your username."
 })
 
@@ -107,7 +93,6 @@ async function onPrimary() {
     await navigateTo('/settings/billing')
     return
   }
-  // verify / setUsername both live in settings for now.
   await navigateTo('/settings')
 }
 </script>

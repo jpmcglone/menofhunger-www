@@ -115,6 +115,7 @@
     </Transition>
 
     <AppOnboardingGate />
+    <AppConfirmMount />
     <AppAuthActionModal />
     <AppPremiumMediaModal />
     <AppUnsavedDraftPromptModal />
