@@ -213,7 +213,10 @@ export function usePushNotifications() {
     if (!import.meta.client || !('serviceWorker' in navigator) || !user.value?.id) return
     try {
       const reg = await registerSw()
-      if (reg) void reg.update()
+      // `update()` is fire-and-forget but must NOT escape unhandled: in Safari, SW update
+      // failures can surface as a CustomEvent rejection rather than a plain Error, which
+      // Sentry captures as an unhandled promise rejection if the Promise is discarded with void.
+      if (reg) reg.update().catch(() => {})
       const sub = reg?.pushManager ? await reg.pushManager.getSubscription() : null
       isSubscribed.value = !!sub
       permission.value = typeof Notification !== 'undefined' ? Notification.permission : 'unsupported'
@@ -231,10 +234,10 @@ export function usePushNotifications() {
       status.onchange = () => {
         permission.value = typeof Notification !== 'undefined' ? Notification.permission : 'unsupported'
         if (permission.value === 'granted') {
-          void ensureSubscribedWhenGranted()
+          ensureSubscribedWhenGranted().catch(() => {})
           return
         }
-        void refreshSubscriptionState()
+        refreshSubscriptionState().catch(() => {})
       }
     } catch (e) {
       console.warn('[push] permission watcher failed', e)

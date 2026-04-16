@@ -1,78 +1,96 @@
-# Nuxt Minimal Starter
+# menofhunger-www
 
-Look at the [Nuxt documentation](https://nuxt.com/docs/getting-started/introduction) to learn more.
+Public-facing Nuxt 4 website for Men of Hunger. Talks to [`menofhunger-api`](../menofhunger-api) over a cookie-authenticated JSON API.
+
+## Architecture at a glance
+
+- **Framework**: Nuxt 4 (`nuxt ^4.x`), Vue 3.5, TypeScript
+- **Styling**: Tailwind (v4-style entry) + Nuxt UI + PrimeVue theme
+- **API**: all product API calls go through `composables/useApiClient.ts`. Do **not** add ad-hoc `fetch`/`$fetch` to the backend.
+- **Content**: `@nuxt/content` for long-form pages (docs, legal). Not for product features.
+- **Observability**: Sentry (client + server), PostHog. PII scrubbing lives in `sentry.client.config.ts`.
+- **Auth**: HTTP-only cookies set by the API. Admin surfaces are hidden from non-admins via 404 (see `middleware/admin.ts`), never 401/403.
+
+See also:
+- `DEPLOYMENT.md` — Render deployment, env vars, troubleshooting
+- `.cursor/rules/` — project conventions (API contract, in-place route state, layouts, etc.)
+- `docs/` — feature-specific notes
 
 ## Setup
 
-Make sure to install dependencies:
+Node `>=22.13.0` required (see `.nvmrc`, `engines.node`).
 
 ```bash
-npm install
+npm ci
+cp env.example .env   # then fill in real values
 ```
 
-## Environment
+Required env vars (minimum for local dev):
 
-Create a local `.env` file:
+- `NUXT_PUBLIC_API_BASE_URL` — browser-facing API base URL (e.g. `http://localhost:3001`)
+- `NUXT_API_BASE_URL` — SSR-side API base URL (useful when containerized; defaults to `NUXT_PUBLIC_API_BASE_URL`)
+
+Optional but commonly set:
+
+- `NUXT_PUBLIC_ASSETS_BASE_URL` — public R2/CDN bucket for uploaded media
+- `NUXT_PUBLIC_VAPID_PUBLIC_KEY` — must match the API's `VAPID_PUBLIC_KEY` (for Web Push)
+- `NUXT_PUBLIC_SENTRY_DSN`, `SENTRY_ENVIRONMENT` — Sentry
+- `NUXT_PUBLIC_POSTHOG_KEY`, `NUXT_PUBLIC_POSTHOG_HOST` — PostHog
+- `NUXT_PUBLIC_FACEBOOK_APP_ID` — OG tags
+- `NUXT_PUBLIC_IOS_APP_STORE_ID` — Smart App Banner for iOS Safari
+- `NUXT_PUBLIC_ADSENSE_*` — see `nuxt.config.ts` for the full set
+
+Full env check: `node scripts/check-env.mjs` (load `.env` first or export vars in the shell).
+
+## Development
 
 ```bash
-cp env.example .env
+npm run dev          # Nuxt dev server on http://localhost:3000
+npm run dev:clean    # kill stale dev server + bump SW version + restart
+npm run dev:kill     # free port 3000
+npm run lint         # flat ESLint config
+npm run test         # Vitest (runs in Nuxt + happy-dom environment)
 ```
 
-Then set:
+The dev server auto-reloads. Do not start long-running dev servers from tooling/scripts — assume one is already running.
 
-- `NUXT_PUBLIC_API_BASE_URL`: Base URL for the API (example: `http://localhost:3001`)
+## When you change an API response
 
-## Development Server
+Per `.cursor/rules/00-project-overview.mdc`:
 
-Start the development server on `http://localhost:3000`:
+1. Update DTOs in `menofhunger-api/src/common/dto/**`
+2. Update types in `menofhunger-www/types/api.ts`
+3. Run `npx nuxi typecheck` and `node scripts/validate-api-types.mjs`
+
+## Build / deploy
 
 ```bash
-npm run dev
+npm run build        # runs prebuild gate: typecheck + validate-api-types + tests
+npm run preview      # serve .output locally
 ```
+
+`prebuild` is a quality gate: it bumps the service-worker version, runs `nuxi typecheck`, validates API type drift against the API repo, and runs the test suite. If any of these fail, the build fails.
+
+Deploy: see `DEPLOYMENT.md`. In short: Render, `npm ci && npm run build`, with env vars set per `render.yaml`.
+
+## Testing
+
+- `vitest.config.ts` uses `@nuxt/test-utils/config` with `environment: 'nuxt'` and happy-dom.
+- Tests live in `tests/`. Mix of structural guardrails (e.g. `api-client-guardrails.test.ts`, `hydration-guardrails.test.ts`) and behavioral tests.
 
 ## Troubleshooting
 
-### Port already in use (3000)
-
-If the dev server fails to start or is stale:
+### Port 3000 in use
 
 ```bash
 npm run dev:check
 npm run dev:kill
 ```
 
-## Production
+### Stale client after deploy (iOS PWA especially)
 
-Build the application for production:
+Handled automatically by `plugins/chunk-error-recovery.client.ts` + HTML `cache-control: no-store` in `nuxt.config.ts` `routeRules`. If a user still sees a broken page, a hard refresh clears it.
 
-```bash
-npm run build
-```
+## License
 
-Locally preview production build:
-
-```bash
-npm run preview
-```
-
-Check out the [deployment documentation](https://nuxt.com/docs/getting-started/deployment) for more information.
-
-## Deploy to Render
-
-This project uses **npm** (not Bun). If Render shows `bun install` in the build log:
-
-1. Go to **Dashboard → your service → Settings → Build & Deploy**
-2. Set **Build Command** to: `npm ci && npm run build`
-3. Save and redeploy
-
-The `render.yaml` Blueprint spec defines the correct build; if your service was created manually, sync the Blueprint or update the build command as above.
-
-## Production env checklist
-
-Before deploying, ensure:
-
-- `NUXT_PUBLIC_API_BASE_URL` — API base URL (e.g. `https://api.menofhunger.com`)
-- Optionally: `NUXT_PUBLIC_ASSETS_BASE_URL`, `NUXT_PUBLIC_VAPID_PUBLIC_KEY` (for push)
-- For SSR from Render: `NUXT_API_BASE_URL` can match the internal API URL if different from public
-
-To check required env: `node scripts/check-env.mjs` (load `.env` first or set vars in the shell).
+Private / proprietary. Not open source.

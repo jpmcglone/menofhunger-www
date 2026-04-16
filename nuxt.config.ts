@@ -272,6 +272,14 @@ export default defineNuxtConfig({
   },
 
   // Render builds can be memory-constrained; sourcemaps are a big multiplier.
+  // Transpile PrimeVue + its @primeuix/* utility layer through Vite/esbuild so the output
+  // is compatible with Mobile Safari on iOS 18.x. Without this, @primeuix/utils ships
+  // un-transpiled ESM with multi-line template literals in querySelectorAll selectors
+  // that cause "Importing a module script failed" on Mobile Safari 26.3 / iOS 18.7.
+  build: {
+    transpile: ['primevue', '@primeuix/utils', '@primeuix/styled', '@primeuix/forms', '@primeuix/themes'],
+  },
+
   vite: {
     build: {
       sourcemap: false,
@@ -338,15 +346,21 @@ export default defineNuxtConfig({
     // /: middleware redirects logged-in users to /home (SSR); anonymous see landing.
     // SWR disabled: Nitro serves cached response before Nuxt cookie hooks run, causing
     // "Cannot append headers after they are sent" when useCookie writes Set-Cookie.
-    '/': { ssr: true },
+    //
+    // no-store on all SSR HTML responses: iOS Safari (and iOS PWA standalone mode) can cache
+    // the HTML document, causing it to reference old JS chunk hashes after a new deploy.
+    // Those old /_nuxt/* chunks no longer exist → browser gets 404 → "Importing a module
+    // script failed". The chunk files themselves carry `immutable` cache headers (content-
+    // addressed by hash), so only the HTML document needs no-store.
+    '/': { ssr: true, headers: { 'cache-control': 'no-store' } },
     // Public shareable: SSR for crawlers/link unfurls.
     // NOTE: We intentionally avoid Nitro's in-memory route cache here. It fragments by Cookie easily and can
     // increase memory churn on Render. Prefer CDN caching if/when Cloudflare is in front.
-    '/u/**': { ssr: true },
-    '/p/**': { ssr: true },
+    '/u/**': { ssr: true, headers: { 'cache-control': 'no-store' } },
+    '/p/**': { ssr: true, headers: { 'cache-control': 'no-store' } },
     // Article detail + listing: public and indexed; SSR for full meta on first response.
-    '/a/**': { ssr: true },
-    '/articles': { ssr: true },
+    '/a/**': { ssr: true, headers: { 'cache-control': 'no-store' } },
+    '/articles': { ssr: true, headers: { 'cache-control': 'no-store' } },
 
     // Static content: prerender to ship ready-to-serve HTML at build time.
     '/terms': { prerender: true },
@@ -355,23 +369,32 @@ export default defineNuxtConfig({
 
     // App-shell: enable SSR to reduce client-side "data flicker" on first paint.
     // These pages already gate browser-only logic behind onMounted/import.meta.client.
-    '/home': { ssr: true },
-    '/explore': { ssr: true },
+    //
+    // IMPORTANT — no-store on HTML responses:
+    // iOS Safari (and iOS PWA / Add-to-Home-Screen standalone mode) aggressively caches
+    // the HTML document for app-shell pages. Without Cache-Control: no-store, a user who
+    // adds the site to their home screen can end up serving old HTML that references JS
+    // chunk hashes from a previous deploy. Those old chunks no longer exist on the server
+    // after a new build → the browser gets a 404 → Safari reports "Importing a module
+    // script failed". The /_nuxt/** chunk files already carry `immutable` + 1-year max-age
+    // (content-addressed), so only the HTML needs no-store.
+    '/home': { ssr: true, headers: { 'cache-control': 'no-store' } },
+    '/explore': { ssr: true, headers: { 'cache-control': 'no-store' } },
     // ——— Auth-gated / private routes ———
     // X-Robots-Tag: noindex prevents crawlers from indexing these even if they sneak past robots.txt.
     // This is a belt-and-suspenders approach: robots.txt saves crawl budget,
     // X-Robots-Tag ensures no accidental indexing.
-    '/notifications': { ssr: true, headers: { 'X-Robots-Tag': 'noindex, nofollow' } },
+    '/notifications': { ssr: true, headers: { 'X-Robots-Tag': 'noindex, nofollow', 'cache-control': 'no-store' } },
     '/chat': { ssr: false, headers: { 'X-Robots-Tag': 'noindex, nofollow' } },
     '/bookmarks': { ssr: false, headers: { 'X-Robots-Tag': 'noindex, nofollow' } },
     '/bookmarks/**': { ssr: false, headers: { 'X-Robots-Tag': 'noindex, nofollow' } },
-    '/groups': { ssr: true },
+    '/groups': { ssr: true, headers: { 'cache-control': 'no-store' } },
     '/groups/**': { ssr: false, headers: { 'X-Robots-Tag': 'noindex, nofollow' } },
-    '/g': { ssr: true },
-    '/g/**': { ssr: true },
+    '/g': { ssr: true, headers: { 'cache-control': 'no-store' } },
+    '/g/**': { ssr: true, headers: { 'cache-control': 'no-store' } },
     '/only-me': { ssr: false, headers: { 'X-Robots-Tag': 'noindex, nofollow' } },
-    '/online': { ssr: true, headers: { 'X-Robots-Tag': 'noindex, nofollow' } },
-    '/new-posts': { ssr: true, headers: { 'X-Robots-Tag': 'noindex, nofollow' } },
+    '/online': { ssr: true, headers: { 'X-Robots-Tag': 'noindex, nofollow', 'cache-control': 'no-store' } },
+    '/new-posts': { ssr: true, headers: { 'X-Robots-Tag': 'noindex, nofollow', 'cache-control': 'no-store' } },
     '/settings': { ssr: false, headers: { 'X-Robots-Tag': 'noindex, nofollow' } },
     '/settings/**': { ssr: false, headers: { 'X-Robots-Tag': 'noindex, nofollow' } },
     '/coins': { ssr: false, headers: { 'X-Robots-Tag': 'noindex, nofollow' } },
@@ -382,7 +405,7 @@ export default defineNuxtConfig({
     '/articles/edit/**': { ssr: false, headers: { 'X-Robots-Tag': 'noindex, nofollow' } },
     '/admin': { ssr: false, headers: { 'X-Robots-Tag': 'noindex, nofollow' } },
     '/admin/**': { ssr: false, headers: { 'X-Robots-Tag': 'noindex, nofollow' } },
-    '/status': { ssr: true },
+    '/status': { ssr: true, headers: { 'cache-control': 'no-store' } },
     '/spaces': { ssr: false, headers: { 'X-Robots-Tag': 'noindex, nofollow' } },
     '/spaces/**': { ssr: false, headers: { 'X-Robots-Tag': 'noindex, nofollow' } },
 

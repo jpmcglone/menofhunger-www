@@ -1,37 +1,63 @@
-import { FFmpeg } from '@ffmpeg/ffmpeg'
-import { fetchFile, toBlobURL } from '@ffmpeg/util'
+// The `@ffmpeg/ffmpeg` wrapper (plus its peer `@ffmpeg/util`) is hundreds of kB
+// of JS and drags in WASM-loader plumbing. We want to ship it ONLY on the code
+// path that actually compresses a video — not on every page that imports the
+// pure helpers below (size check, time estimate, label formatting).
+//
+// So: no top-level `import` from `@ffmpeg/*`. `getFFmpeg()` dynamic-imports them
+// lazily, and the import promise is memoized for subsequent calls.
 
-// CDN URLs for the single-threaded core (no SharedArrayBuffer required)
+// Use loose types to avoid pulling in `@ffmpeg/ffmpeg` type definitions at the
+// top of the module — even `import type` can prevent bundlers from fully
+// tree-shaking the peer module in some setups. The `compressVideo` function
+// narrows to the actual instance shape internally.
+type FFmpegInstance = {
+  loaded: boolean
+  load(opts: { coreURL: string; wasmURL: string }): Promise<void>
+  writeFile(name: string, data: Uint8Array): Promise<void>
+  readFile(name: string): Promise<Uint8Array | string>
+  deleteFile(name: string): Promise<void>
+  exec(args: string[]): Promise<number>
+  on(event: 'progress', cb: (p: { progress: number }) => void): void
+  off(event: 'progress', cb: (p: { progress: number }) => void): void
+}
+
+// CDN URLs for the single-threaded core (no SharedArrayBuffer required).
 const CORE_VERSION = '0.12.6'
 const CORE_BASE = `https://unpkg.com/@ffmpeg/core@${CORE_VERSION}/dist/umd`
 
-let ffmpegInstance: FFmpeg | null = null
-let loadPromise: Promise<void> | null = null
+let ffmpegInstance: FFmpegInstance | null = null
+let loadPromise: Promise<FFmpegInstance> | null = null
+let ffmpegUtilModule: typeof import('@ffmpeg/util') | null = null
 
-async function getFFmpeg(): Promise<FFmpeg> {
+async function getFFmpeg(): Promise<FFmpegInstance> {
   if (ffmpegInstance?.loaded) return ffmpegInstance
 
   if (!loadPromise) {
     loadPromise = (async () => {
-      const ffmpeg = new FFmpeg()
+      const [{ FFmpeg }, util] = await Promise.all([
+        import('@ffmpeg/ffmpeg'),
+        import('@ffmpeg/util'),
+      ])
+      ffmpegUtilModule = util
+      const ffmpeg = new FFmpeg() as unknown as FFmpegInstance
       await ffmpeg.load({
-        coreURL: await toBlobURL(`${CORE_BASE}/ffmpeg-core.js`, 'text/javascript'),
-        wasmURL: await toBlobURL(`${CORE_BASE}/ffmpeg-core.wasm`, 'application/wasm'),
+        coreURL: await util.toBlobURL(`${CORE_BASE}/ffmpeg-core.js`, 'text/javascript'),
+        wasmURL: await util.toBlobURL(`${CORE_BASE}/ffmpeg-core.wasm`, 'application/wasm'),
       })
       ffmpegInstance = ffmpeg
+      return ffmpeg
     })().catch((e) => {
       loadPromise = null
       throw e
     })
   }
 
-  await loadPromise
-  return ffmpegInstance!
+  return loadPromise
 }
 
 /** Estimate compression time in seconds based on file size. Conservative for mobile. */
 export function estimateCompressionSeconds(fileSizeMB: number): number {
-  // ~1.5 seconds per MB is a safe mobile estimate (can be faster on desktop)
+  // ~1.5 seconds per MB is a safe mobile estimate (can be faster on desktop).
   return Math.max(15, Math.ceil(fileSizeMB * 1.5))
 }
 
@@ -60,6 +86,8 @@ export async function compressVideo(
   } = {},
 ): Promise<File> {
   const ffmpeg = await getFFmpeg()
+  const util = ffmpegUtilModule ?? (await import('@ffmpeg/util'))
+  ffmpegUtilModule = util
 
   const ext = file.name.split('.').pop()?.toLowerCase() ?? 'mp4'
   const inputName = `input.${ext}`
@@ -85,7 +113,7 @@ export async function compressVideo(
   let lastError: unknown = null
 
   try {
-    await ffmpeg.writeFile(inputName, await fetchFile(file))
+    await ffmpeg.writeFile(inputName, await util.fetchFile(file))
 
     for (const [i, profile] of profiles.entries()) {
       const outputName = `output-${i}.mp4`
@@ -131,7 +159,7 @@ export async function compressVideo(
     throw lastError ?? new Error('Video compression failed.')
   } finally {
     ffmpeg.off('progress', onProgress)
-    // Clean up virtual FS to free memory
+    // Clean up virtual FS to free memory.
     try { await ffmpeg.deleteFile(inputName) } catch { /* ignore */ }
   }
 }

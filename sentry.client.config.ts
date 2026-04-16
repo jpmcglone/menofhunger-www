@@ -1,5 +1,6 @@
 import * as Sentry from '@sentry/nuxt'
 import { browserTracingIntegration, replayIntegration } from '@sentry/nuxt'
+import { scrubSentryEvent } from '~/utils/sentry-scrub'
 
 const config = useRuntimeConfig()
 const dsn = String(config.public?.sentry?.dsn || '').trim()
@@ -28,8 +29,19 @@ Sentry.init({
   replaysSessionSampleRate: 0.1,
   replaysOnErrorSampleRate: 1.0,
 
-  // Send cookies, headers, and user IP so we can correlate sessions/errors.
+  // Include user IP + some default request/context data so we can correlate errors
+  // with affected users and environments. Actual PII (auth cookies, session tokens,
+  // Authorization headers, emails in request bodies) is stripped by `beforeSend` /
+  // `beforeSendTransaction` below. See `utils/sentry-scrub.ts` and `docs/observability.md`.
   sendDefaultPii: true,
+
+  // Strip auth cookies / tokens / obvious PII before events leave the browser.
+  beforeSend(event) {
+    return scrubSentryEvent(event)
+  },
+  beforeSendTransaction(event) {
+    return scrubSentryEvent(event)
+  },
 
   // Keep Sentry event capture enabled, but avoid forwarding every console line
   // to Sentry Logs in development.
@@ -57,6 +69,11 @@ Sentry.init({
     'The user aborted a request',
     // Safari push permission quirks
     'NotAllowedError',
+    // Facebook in-app browser injects its own JS that tries to reach the native Facebook app via
+    // window.webkit.messageHandlers. That bridge isn't available in every FBIAB context, so the
+    // injected script crashes — at our URL, so Sentry blames us. Not our code; not actionable.
+    /window\.webkit\.messageHandlers/,
+    "undefined is not an object (evaluating 'window.webkit.messageHandlers')",
   ],
 
   debug: false,

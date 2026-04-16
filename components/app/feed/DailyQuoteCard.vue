@@ -1,6 +1,11 @@
 <template>
-  <!-- Mobile-only: right rail shows this on desktop already -->
-  <div v-if="quote" class="lg:hidden px-3 py-3 text-center text-sm leading-relaxed text-gray-700 dark:text-gray-200 sm:px-4">
+  <!-- Mobile only (tab-bar layout, i.e. below the `md` breakpoint that switches us
+       from the bottom tab bar to the left rail). At `md` and above the left rail
+       is visible and the right rail (which renders its own copy of the quote)
+       appears at 962px; if we used `lg:hidden` here the center and right-rail
+       quotes would both render in the 962px–1023px window. Hiding at `md` keeps
+       the quote out of the center column whenever the tab bar is NOT showing. -->
+  <div v-if="quote" class="md:hidden px-3 py-3 text-center text-sm leading-relaxed text-gray-700 dark:text-gray-200 sm:px-4">
     <figure>
       <blockquote class="italic moh-serif">
         “{{ quote.text }}”

@@ -75,7 +75,18 @@ export function useAppNav() {
   }
 
   const leftItems = computed(() => allItems.value.filter((i) => i.showInLeft && visible(i)))
-  const tabItems = computed(() => allItems.value.filter((i) => i.showInTabs && visible(i)))
+  // When the user is signed out, the bottom tab bar mirrors the left rail.
+  // Otherwise the tab bar would degrade to just `home` (every other `showInTabs: true`
+  // item — notifications, messages, spaces, more — is `requiresAuth: true` and filters
+  // out), leaving anonymous mobile visitors with no way to reach Explore / Articles /
+  // Groups from the primary nav. Logged-in users still get the curated tab set
+  // (home, notifications, messages, spaces, more).
+  const tabItems = computed(() => {
+    if (!isAuthed.value) {
+      return allItems.value.filter((i) => i.showInLeft && visible(i))
+    }
+    return allItems.value.filter((i) => i.showInTabs && visible(i))
+  })
   const moreMenuKeys = new Set(['bookmarks', 'profile', 'only-me'])
   const moreItems = computed(() => allItems.value.filter((i) => moreMenuKeys.has(i.key) && visible(i)))
 
