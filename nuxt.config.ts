@@ -460,7 +460,20 @@ export default defineNuxtConfig({
 
   sentry: {
     org: 'jp-mcglone',
-    project: 'menofhunger-www'
+    project: 'menofhunger-www',
+    // Scope sourcemap upload to the client bundle only.
+    // Nitro is built with `sourceMap: false`, so the server has no maps to upload —
+    // but without an explicit `assets` glob the Sentry plugin still walks every server
+    // chunk to inject debug IDs, which OOMs Render builds (`Ineffective mark-compacts
+    // near heap limit` during the Sentry phase, after `[nitro] Nuxt Nitro server built`).
+    sourcemaps: {
+      assets: ['./.output/public/**/*'],
+      ignore: ['./.output/server/**/*'],
+      // Don't ship .map files to production; we only need them long enough to upload.
+      filesToDeleteAfterUpload: ['./.output/public/**/*.map']
+    },
+    // Reduce build-time chatter / network work the plugin does.
+    telemetry: false
   },
 
   sourcemap: {
