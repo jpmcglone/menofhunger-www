@@ -3,8 +3,7 @@ definePageMeta({ layout: 'app', title: 'Coins', ssr: false, hideTopBar: true })
 
 usePageSeo({ title: 'Coins', description: 'Send and receive coins on Men of Hunger.', noindex: true })
 
-import type { FollowListUser } from '~/types/api'
-import type { CoinTransferItem, TransferCoinsResponse } from '~/types/api'
+import type { FollowListUser, CoinTransferItem, TransferCoinsResponse  } from '~/types/api'
 
 const { user: authUser } = useAuth()
 const { apiFetchData } = useApiClient()
@@ -332,7 +331,7 @@ function activityStreakTone(direction: CoinTransferItem['direction']): string {
                     step="1"
                     placeholder="0"
                     class="w-full pl-9 pr-3 py-2.5 rounded-xl border moh-border moh-surface moh-text text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/40 dark:focus:ring-amber-400/40 placeholder:text-gray-400 dark:placeholder:text-gray-500"
-                  />
+                  >
                 </div>
                 <button
                   type="button"

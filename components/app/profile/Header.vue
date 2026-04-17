@@ -78,8 +78,6 @@
                   <a v-bind="props.action" class="flex items-center gap-2">
                     <Icon v-if="item.iconName" :name="item.iconName" aria-hidden="true" />
                     <span
-                      v-bind="props.label"
-                      class="flex-1"
                       v-tooltip.bottom="
                         item.value === 'ignore'
                           ? tinyTooltip(ignoreNudgeTooltip)
@@ -87,6 +85,8 @@
                             ? tinyTooltip(gotItNudgeTooltip)
                             : undefined
                       "
+                      v-bind="props.label"
+                      class="flex-1"
                     >
                       {{ item.label }}
                     </span>
@@ -201,13 +201,13 @@
           </Button>
           <Button
             v-if="showChatButton"
+            v-tooltip.bottom="tinyTooltip('Message')"
             type="button"
             severity="secondary"
             rounded
             text
             class="!px-2"
             aria-label="Send message"
-            v-tooltip.bottom="tinyTooltip('Message')"
             @click="onChatClick"
           >
             <template #icon>
@@ -216,6 +216,7 @@
           </Button>
           <Button
             v-if="showPostBell"
+            v-tooltip.bottom="tinyTooltip(bellEnabled ? 'Every post/reply from this user (standalone, no rollup)' : 'Enable every post/reply from this user')"
             type="button"
             severity="secondary"
             rounded
@@ -223,7 +224,6 @@
             class="!px-2"
             :disabled="bellInflight"
             :aria-label="bellEnabled ? 'Disable every-post notifications for this user' : 'Enable every-post notifications for this user'"
-            v-tooltip.bottom="tinyTooltip(bellEnabled ? 'Every post/reply from this user (standalone, no rollup)' : 'Enable every post/reply from this user')"
             @click="togglePostBell"
           >
             <template #icon>
@@ -324,6 +324,25 @@
           <span class="truncate">Joined {{ joinedLabel }}</span>
         </div>
       </div>
+
+      <NuxtLink
+        v-if="crewPill"
+        :to="`/c/${encodeURIComponent(crewPill.slug)}`"
+        class="mt-3 inline-flex items-center gap-2 rounded-full border moh-border pl-1.5 pr-3 py-1 max-w-full hover:bg-gray-50 dark:hover:bg-zinc-900 transition-colors"
+        :aria-label="`View Crew: ${crewPillName}`"
+      >
+        <span class="h-6 w-6 rounded-full overflow-hidden bg-gray-200 dark:bg-zinc-800 shrink-0 inline-flex items-center justify-center">
+          <img
+            v-if="crewPill.avatarUrl"
+            :src="crewPill.avatarUrl"
+            alt=""
+            class="h-full w-full object-cover"
+            loading="lazy"
+          >
+          <Icon v-else name="tabler:shield-check" class="text-xs opacity-70" aria-hidden="true" />
+        </span>
+        <span class="text-xs font-medium moh-text truncate">{{ crewPillName }}</span>
+      </NuxtLink>
     </div>
   </div>
 
@@ -515,6 +534,32 @@ const joinedLabel = computed(() => {
   if (Number.isNaN(d.getTime())) return null
   return d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
 })
+
+// Subtle "my crew" pill sourced lazily from the compact crew summary endpoint.
+// Keeps profile page lean and avoids inflating the PublicProfile DTO with crew data
+// that most viewers never look at.
+const crewApi = useCrew()
+const crewPill = ref<import('~/types/api').CrewPublic | null>(null)
+const crewPillName = computed(() => {
+  if (!crewPill.value) return ''
+  const n = (crewPill.value.name ?? '').trim()
+  return n.length > 0 ? n : 'Untitled Crew'
+})
+watch(
+  () => profile.value?.id ?? null,
+  async (id) => {
+    if (!id) {
+      crewPill.value = null
+      return
+    }
+    try {
+      crewPill.value = await crewApi.getCrewForUser(id)
+    } catch {
+      crewPill.value = null
+    }
+  },
+  { immediate: true },
+)
 
 const viewerFollowsUser = computed(() => Boolean(followRelationship.value?.viewerFollowsUser))
 const bellEnabled = computed(() => Boolean(followRelationship.value?.viewerPostNotificationsEnabled))
@@ -772,7 +817,7 @@ function onAvatarClick(event: MouseEvent) {
   const route = useRoute()
   const inSpace = Boolean(selectedSpaceId.value) && !route.path.startsWith('/spaces') && !route.path.startsWith('/s/')
   if (isSelf.value && inSpace) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     ;(avatarMenuRef.value as any)?.toggle(event)
     return
   }
@@ -849,7 +894,7 @@ const menuItems = computed<MenuItemWithIcon[]>(() => {
 
 function toggleMenu(event: Event) {
   // PrimeVue Menu expects the click event to position the popup.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   ;(menuRef.value as any)?.toggle(event)
 }
 

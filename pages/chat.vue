@@ -149,7 +149,7 @@
                           </template>
                         </div>
                         <div class="text-xs text-gray-500 dark:text-gray-400 truncate">
-                          <template v-if="selectedConversation?.type === 'group'">
+                          <template v-if="selectedConversation?.type === 'group' || selectedConversation?.type === 'crew_wall'">
                             <template v-if="headerMembers.length">
                               <template v-for="(member, index) in headerMembers" :key="member.id">
                                 <button
@@ -168,7 +168,7 @@
                               </template>
                             </template>
                             <template v-else>
-                              Group chat
+                              {{ selectedConversation?.type === 'crew_wall' ? 'Crew chat' : 'Group chat' }}
                             </template>
                           </template>
                           <template v-else-if="selectedConversation?.type === 'direct'">
@@ -409,53 +409,23 @@
     >
       <div class="space-y-3">
         <AppFormField label="Recipients">
-          <InputText
-            v-model="recipientQuery"
-            class="w-full"
+          <AppUserSearchPicker
+            v-model="newDialogRecipients"
+            multiple
+            show="all"
+            require-verified
+            unselectable-hint="Only verified men can receive messages."
             placeholder="Search for a username or display name…"
-            aria-label="Recipient search"
             autofocus
           />
         </AppFormField>
-        <div v-if="recipientLoading" class="text-xs text-gray-500 dark:text-gray-400">Searching…</div>
-        <AppInlineAlert v-if="recipientError" severity="danger">{{ recipientError }}</AppInlineAlert>
-        <div v-if="recipientResults.length" class="max-h-48 overflow-y-auto rounded-lg border border-gray-200 dark:border-zinc-800">
-          <button
-            v-for="u in recipientResults"
-            :key="u.id"
-            type="button"
-            class="flex w-full items-center gap-3 px-3 py-2 text-left hover:bg-gray-50 dark:hover:bg-zinc-900"
-            @click="addRecipient(u)"
-          >
-            <AppUserAvatar :user="u" size-class="h-8 w-8" />
-            <AppUserIdentityLine :user="u" class="min-w-0 flex-1" />
-          </button>
-        </div>
-        <div v-if="selectedRecipients.length" class="flex flex-wrap gap-2">
-          <span
-            v-for="u in selectedRecipients"
-            :key="u.id"
-            class="inline-flex items-center gap-1.5 rounded-full px-2 py-1 text-xs"
-            :style="recipientTagStyle(u)"
-          >
-            <AppUserAvatar :user="u" size-class="h-5 w-5" />
-            <span class="font-medium">@{{ u.username }}</span>
-            <button
-              type="button"
-              class="opacity-60 hover:opacity-100 transition-opacity leading-none"
-              @click="removeRecipient(u.id)"
-            >
-              <Icon name="tabler:x" class="h-3 w-3" aria-hidden="true" />
-            </button>
-          </span>
-        </div>
         <AppInlineAlert v-if="newConversationError" severity="danger">{{ newConversationError }}</AppInlineAlert>
       </div>
       <template #footer>
         <Button label="Cancel" text severity="secondary" @click="newDialogVisible = false" />
         <Button
           label="Start chat"
-          :disabled="!viewerCanStartChats || !canStartDraft"
+          :disabled="!viewerCanStartChats || newDialogRecipients.length === 0"
           @click="createConversation"
         >
           <template #icon>
@@ -505,7 +475,6 @@ import ChatConversationList from '~/components/app/chat/ChatConversationList.vue
 import ChatMessageList from '~/components/app/chat/ChatMessageList.vue'
 import ChatMessageInfoModal from '~/components/app/chat/ChatMessageInfoModal.vue'
 import { useKeyboardHeight } from '~/composables/useKeyboardHeight'
-import { useRecipientSearch } from '~/composables/chat/useRecipientSearch'
 import { userColorTier, type UserColorTier } from '~/utils/user-tier'
 import { tinyTooltip } from '~/utils/tiny-tooltip'
 
@@ -711,7 +680,7 @@ const pendingNewTier = computed((): MessageTone => {
 
 // Track recently-added messages so we can animate them reliably (even if scroll-to-bottom happens same frame).
 const recentAnimatedMessageIds = ref<Set<string>>(new Set())
-let recentAnimatedTimers = new Map<string, ReturnType<typeof setTimeout>>()
+const recentAnimatedTimers = new Map<string, ReturnType<typeof setTimeout>>()
 const sendingMessageIds = ref<Set<string>>(new Set())
 const latestMyMessageId = computed<string | null>(() => {
   const myId = me.value?.id ?? null
@@ -880,18 +849,7 @@ async function showCantStartChat() {
   })
 }
 const newConversationError = ref<string | null>(null)
-const {
-  query: recipientQuery,
-  results: recipientResults,
-  loading: recipientLoading,
-  error: recipientError,
-  selected: selectedRecipients,
-  canStart: canStartDraft,
-  add: addRecipient,
-  remove: removeRecipient,
-  reset: resetRecipientSearch,
-  tagStyle: recipientTagStyle,
-} = useRecipientSearch(computed(() => me.value?.id))
+const newDialogRecipients = ref<FollowListUser[]>([])
 
 const draftRecipients = ref<FollowListUser[]>([])
 
@@ -1003,8 +961,14 @@ function userToneClass(u: MessageUser | null | undefined): string {
 }
 
 const headerMembers = computed(() => {
-  if (selectedConversation.value?.type !== 'group') return []
-  return selectedConversation.value.participants
+  // Both group chats and crew chats render a comma-separated list of the
+  // other participants under the header title (and as the title itself when
+  // the group chat has no custom name). Crew chats always have a name (the
+  // crew's name, populated by the backend), so we only use this list for the
+  // subtitle on crews — the title row keeps showing the crew name.
+  const type = selectedConversation.value?.type
+  if (type !== 'group' && type !== 'crew_wall') return []
+  return selectedConversation.value!.participants
     .map((p) => p.user ?? null)
     .filter((u): u is MessageUser => Boolean(u))
     .filter((u) => u.id !== me.value?.id)
@@ -1151,6 +1115,9 @@ function getDirectUser(conversation: MessageConversation) {
 }
 
 function getConversationTitle(conversation: MessageConversation) {
+  if (conversation.type === 'crew_wall') {
+    return conversation.crew?.name || 'Untitled Crew'
+  }
   if (conversation.type === 'group') {
     return conversation.title || conversation.participants.map((p) => p.user.name || p.user.username || 'User').join(', ')
   }
@@ -1947,15 +1914,17 @@ function openNewDialog() {
     return
   }
   newDialogVisible.value = true
-  resetRecipientSearch()
+  newDialogRecipients.value = []
   newConversationError.value = null
 }
 
-
+watch(newDialogVisible, (open) => {
+  if (!open) newDialogRecipients.value = []
+})
 
 async function createConversation() {
   // Start a draft chat or jump to an existing conversation.
-  if (!canStartDraft.value) return
+  if (newDialogRecipients.value.length === 0) return
   if (!viewerCanStartChats.value) {
     void showCantStartChat()
     return
@@ -1965,7 +1934,7 @@ async function createConversation() {
     newDialogVisible.value = false
     const res = await apiFetchData<LookupMessageConversationResponse['data']>('/messages/lookup', {
       method: 'POST',
-      body: { user_ids: selectedRecipients.value.map((u) => u.id) },
+      body: { user_ids: newDialogRecipients.value.map((u) => u.id) },
     })
     const conversationId = res?.conversationId ?? null
     if (conversationId) {
@@ -1973,7 +1942,7 @@ async function createConversation() {
       return
     }
 
-    draftRecipients.value = [...selectedRecipients.value]
+    draftRecipients.value = [...newDialogRecipients.value]
     // Clear any selected existing chat and show draft pane.
     await clearSelection({ replace: true, preserveDraft: true })
     selectedChatKey.value = 'draft'

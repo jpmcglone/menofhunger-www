@@ -9,7 +9,7 @@
           <!-- Option image (left) - reuse existing media slot tile UI -->
           <div class="shrink-0 self-start">
             <AppComposerMediaSlotTile
-              :slot="slotForOption(opt)"
+              :media-slot="slotForOption(opt)"
               :first-empty-slot-index="0"
               :can-add-more="true"
               :dragging-media-id="null"

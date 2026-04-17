@@ -56,10 +56,17 @@
           </div>
           <Button label="Change" text severity="secondary" @click="resetToPhone()" />
         </div>
+
+        <!-- Phone-step errors (e.g. invalid number, /auth/phone/exists or /start failure).
+             Without this, errors set on inlineError were silently invisible until the user
+             advanced to the code step. -->
+        <AppInlineAlert v-if="step === 'phone' && inlineError" severity="danger">
+          {{ inlineError }}
+        </AppInlineAlert>
       </div>
 
       <template v-if="step !== 'phone'">
-        <hr class="border-gray-200 dark:border-zinc-800" />
+        <hr class="border-gray-200 dark:border-zinc-800" >
 
         <!-- Step 2: Code -->
         <div class="space-y-2">

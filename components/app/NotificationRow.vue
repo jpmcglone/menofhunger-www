@@ -135,6 +135,14 @@
                 <span v-if="notification.subjectGroupName" class="ml-1 font-semibold">{{ notification.subjectGroupName }}</span>
                 <span v-else class="ml-1">your group</span>
               </template>
+              <template v-else-if="notification.kind === 'crew_invite_received'">
+                <span class="ml-1">invited you to</span>
+                <span
+                  v-if="notification.subjectCrewName"
+                  class="ml-1 font-semibold"
+                >{{ notification.subjectCrewName }}</span>
+                <span v-else class="ml-1">their crew</span>
+              </template>
               <template v-else>
                 <span class="ml-1">{{ titleSuffix(notification) }}</span>
               </template>
@@ -186,7 +194,7 @@
                   :alt="notification.subjectArticlePreview.title ?? ''"
                   class="h-14 w-20 object-cover"
                   loading="lazy"
-                />
+                >
               </div>
               <!-- Text -->
               <div class="min-w-0 flex-1">
@@ -277,8 +285,6 @@
                     <a v-bind="props.action" class="flex items-center gap-2">
                       <Icon v-if="item.iconName" :name="item.iconName" aria-hidden="true" />
                       <span
-                        v-bind="props.label"
-                        class="flex-1"
                         v-tooltip.bottom="
                           item.value === 'ignore'
                             ? tinyTooltip(ignoreNudgeTooltip)
@@ -286,6 +292,8 @@
                               ? tinyTooltip(gotItNudgeTooltip)
                               : undefined
                         "
+                        v-bind="props.label"
+                        class="flex-1"
                       >
                         {{ item.label }}
                       </span>
@@ -314,6 +322,54 @@
               >
                 Following
               </span>
+            </div>
+            <!-- Crew invite: Accept / Decline directly from the notification.
+                 The terminal state ("Joined" / "Rejected" / "No longer
+                 available") is driven by `subjectCrewInviteStatus` so it persists
+                 across reloads. Older notifications without a linked invite id
+                 still work — we resolve via the inbox on first click. -->
+            <div
+              v-else-if="notification.kind === 'crew_invite_received'"
+              class="max-w-[16rem] flex flex-wrap items-center justify-end gap-2"
+              @click.stop.prevent
+            >
+              <span
+                v-if="crewInviteDisplayState === 'accepted'"
+                class="text-sm font-medium text-gray-500 dark:text-gray-400 whitespace-nowrap"
+              >
+                Joined
+              </span>
+              <span
+                v-else-if="crewInviteDisplayState === 'declined'"
+                class="text-sm font-medium text-gray-500 dark:text-gray-400 whitespace-nowrap"
+              >
+                Rejected
+              </span>
+              <span
+                v-else-if="crewInviteDisplayState === 'cancelled' || crewInviteDisplayState === 'expired'"
+                class="text-sm font-medium text-gray-500 dark:text-gray-400 whitespace-nowrap"
+              >
+                No longer available
+              </span>
+              <template v-else>
+                <Button
+                  size="small"
+                  label="Accept"
+                  rounded
+                  :disabled="crewInviteInflight"
+                  :loading="crewInviteInflight && crewInviteAction === 'accept'"
+                  @click.stop.prevent="onAcceptCrewInvite"
+                />
+                <Button
+                  size="small"
+                  label="Decline"
+                  severity="secondary"
+                  rounded
+                  :disabled="crewInviteInflight"
+                  :loading="crewInviteInflight && crewInviteAction === 'decline'"
+                  @click.stop.prevent="onDeclineCrewInvite"
+                />
+              </template>
             </div>
 
             <div class="shrink-0 text-[11px] sm:text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
@@ -488,6 +544,111 @@ async function onNudgeBack() {
     // ignore (backend enforces if not allowed / blocked)
   } finally {
     nudgeInflight.value = false
+  }
+}
+
+// Crew invite (accept / decline directly from the row).
+const crewApi = useCrew()
+const viewerCrew = useViewerCrew()
+const crewInviteInflight = ref(false)
+const crewInviteAction = ref<'accept' | 'decline' | null>(null)
+// Local override: optimistic state set by clicking Accept/Decline in this tab.
+// Survives until the page is reloaded — at which point the server-provided
+// `subjectCrewInviteStatus` takes over.
+const crewInviteLocalState = ref<'accepted' | 'declined' | null>(null)
+// Resolved on demand for legacy notifications that predate `subjectCrewInviteId`.
+const resolvedCrewInviteId = ref<string | null>(null)
+
+const crewInviteDisplayState = computed<
+  'pending' | 'accepted' | 'declined' | 'cancelled' | 'expired'
+>(() => {
+  if (crewInviteLocalState.value) return crewInviteLocalState.value
+  const serverStatus = notification.value.subjectCrewInviteStatus
+  if (serverStatus && serverStatus !== 'pending') return serverStatus
+  return 'pending'
+})
+
+async function getCrewInviteId(): Promise<string | null> {
+  const direct = notification.value.subjectCrewInviteId
+  if (direct) return direct
+  if (resolvedCrewInviteId.value) return resolvedCrewInviteId.value
+  const inviterId = notification.value.actor?.id ?? null
+  if (!inviterId) return null
+  try {
+    const inbox = await crewApi.listInbox()
+    // Most recent pending invite from this inviter wins; the API returns inbox
+    // sorted by createdAt desc so a simple .find() does the right thing.
+    const match = inbox.find((inv) => inv.status === 'pending' && inv.invitedBy.id === inviterId)
+    if (match) {
+      resolvedCrewInviteId.value = match.id
+      return match.id
+    }
+  } catch {
+    // fall through and let the caller surface a sensible toast
+  }
+  return null
+}
+
+async function onAcceptCrewInvite() {
+  if (crewInviteInflight.value) return
+  crewInviteInflight.value = true
+  crewInviteAction.value = 'accept'
+  try {
+    const inviteId = await getCrewInviteId()
+    if (!inviteId) {
+      pushToast({ title: 'This invite is no longer available.', tone: 'error' })
+      return
+    }
+    await crewApi.acceptInvite(inviteId)
+    crewInviteLocalState.value = 'accepted'
+    localReadAt.value = new Date().toISOString()
+    // Mark the underlying notification as read so the unread badge clears
+    // (otherwise the bell would still bounce until next visit).
+    void apiFetchData(`/notifications/${encodeURIComponent(notification.value.id)}/mark-read`, {
+      method: 'POST',
+    }).catch(() => {})
+    pushToast({ title: 'Joined crew', tone: 'success' })
+    // Refresh nav membership so the rail/tab label flips to "Your Crew" before
+    // we navigate. Founding accepts make the inviter the owner; accepting an
+    // invite into an existing crew makes the viewer a member — `/crew/me` has
+    // the canonical role, so we just refetch.
+    void viewerCrew.refresh()
+    // Take them to their crew so they can post on the wall right away.
+    void navigateTo('/crew')
+  } catch (e: unknown) {
+    const msg = (e as { data?: { meta?: { errors?: Array<{ message?: string }> } } })?.data?.meta?.errors?.[0]?.message
+      ?? 'Could not accept invite.'
+    pushToast({ title: msg, tone: 'error' })
+  } finally {
+    crewInviteInflight.value = false
+    crewInviteAction.value = null
+  }
+}
+
+async function onDeclineCrewInvite() {
+  if (crewInviteInflight.value) return
+  crewInviteInflight.value = true
+  crewInviteAction.value = 'decline'
+  try {
+    const inviteId = await getCrewInviteId()
+    if (!inviteId) {
+      pushToast({ title: 'This invite is no longer available.', tone: 'error' })
+      return
+    }
+    await crewApi.declineInvite(inviteId)
+    crewInviteLocalState.value = 'declined'
+    localReadAt.value = new Date().toISOString()
+    void apiFetchData(`/notifications/${encodeURIComponent(notification.value.id)}/mark-read`, {
+      method: 'POST',
+    }).catch(() => {})
+    pushToast({ title: 'Invite declined', tone: 'success' })
+  } catch (e: unknown) {
+    const msg = (e as { data?: { meta?: { errors?: Array<{ message?: string }> } } })?.data?.meta?.errors?.[0]?.message
+      ?? 'Could not decline invite.'
+    pushToast({ title: msg, tone: 'error' })
+  } finally {
+    crewInviteInflight.value = false
+    crewInviteAction.value = null
   }
 }
 

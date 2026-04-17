@@ -3,14 +3,60 @@ import { getApiErrorMessage } from '~/utils/api-error'
 import { userColorTier } from '~/utils/user-tier'
 
 /**
- * Manages the new-chat recipient picker: query input, debounced user search,
- * selected recipients list, and per-recipient tag styles.
+ * Which users to render in the result list.
  *
- * Automatically filters out the current viewer and unverified/non-premium users
- * (same rules as the chat.vue page).
+ *   - 'all'           — every user returned by /search
+ *   - 'verified'      — only `verifiedStatus !== 'none'`
+ *   - 'premium'       — `premium` or `premiumPlus`
+ *   - 'organization'  — `isOrganization`
+ *
+ * Selectability (whether a result can be picked) is controlled separately by
+ * `requireVerified` so a caller can show everyone but only let verified users
+ * be picked — see `AppUserSearchPicker`.
  */
-export function useRecipientSearch(viewerId: Ref<string | null | undefined>) {
+export type RecipientShowFilter = 'all' | 'verified' | 'premium' | 'organization'
+
+export type RecipientSearchOptions = {
+  /** What to render in the list. Server still validates final eligibility. */
+  show?: RecipientShowFilter
+  /** User IDs to hide from the result list (already-selected, members, etc.). */
+  excludeUserIds?: Ref<string[]> | ComputedRef<string[]> | string[]
+  /** Page size for the /search request. */
+  limit?: number
+}
+
+function passesShow(u: FollowListUser, show: RecipientShowFilter): boolean {
+  if (show === 'all') return true
+  if (show === 'verified') {
+    const status = (u as unknown as { verifiedStatus?: string | null }).verifiedStatus ?? 'none'
+    return status !== 'none'
+  }
+  if (show === 'premium') return Boolean(u.premium || u.premiumPlus)
+  if (show === 'organization') return Boolean(u.isOrganization)
+  return true
+}
+
+/**
+ * Manages a recipient picker: query input, debounced user search, optional
+ * multi-select state, and per-tier tag styles.
+ *
+ * Used by `AppUserSearchPicker` (which is in turn used by the chat new-conversation
+ * flow and the crew invite dialog).
+ */
+export function useRecipientSearch(
+  viewerId: Ref<string | null | undefined>,
+  options: RecipientSearchOptions = {},
+) {
   const { apiFetchData } = useApiClient()
+
+  const show = options.show ?? 'all'
+  const limit = options.limit ?? 8
+  const excludeRef = computed<string[]>(() => {
+    const v = options.excludeUserIds
+    if (!v) return []
+    if (Array.isArray(v)) return v
+    return v.value ?? []
+  })
 
   const query = ref('')
   const results = ref<FollowListUser[]>([])
@@ -61,11 +107,13 @@ export function useRecipientSearch(viewerId: Ref<string | null | undefined>) {
       loading.value = true
       try {
         const res = await apiFetchData<FollowListUser[]>('/search', {
-          query: { type: 'users', q, limit: 8 },
+          query: { type: 'users', q, limit },
         })
+        const exclude = new Set(excludeRef.value)
         results.value = (res ?? [])
           .filter((u) => u.id !== viewerId.value)
-          .filter((u) => userColorTier(u) !== 'normal')
+          .filter((u) => !exclude.has(u.id))
+          .filter((u) => passesShow(u, show))
       } catch (e) {
         error.value = getApiErrorMessage(e) || 'Failed to search users.'
       } finally {

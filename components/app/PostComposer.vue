@@ -189,7 +189,7 @@
 
         <!-- Locked quoted post preview (quote-repost mode) -->
         <div v-if="quotedPost" class="select-none pointer-events-none">
-          <AppEmbeddedPostPreview :post="quotedPost" />
+          <AppEmbeddedPostPreview :preloaded-post="quotedPost" />
         </div>
 
         <ClientOnly>

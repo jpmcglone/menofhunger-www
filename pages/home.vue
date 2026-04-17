@@ -204,13 +204,12 @@
 </template>
 
 <script setup lang="ts">
-import type { CommunityGroupShell, PostVisibility } from '~/types/api'
+import type { CommunityGroupShell, PostVisibility, CheckinAllowedVisibility  } from '~/types/api'
 import type { CreateMediaPayload } from '~/composables/useComposerMedia'
 import type { ComposerPollPayload } from '~/composables/composer/types'
 import { postBodyHasVideoEmbed } from '~/utils/link-utils'
 import { MOH_HOME_COMPOSER_IN_VIEW_KEY, MOH_OPEN_COMPOSER_KEY, MOH_FOCUS_HOME_COMPOSER_KEY } from '~/utils/injection-keys'
 import { useMiddleScroller } from '~/composables/useMiddleScroller'
-import type { CheckinAllowedVisibility } from '~/types/api'
 
 definePageMeta({
   layout: 'app',

@@ -106,17 +106,17 @@ import { usePreviewFetchLimiter } from '~/composables/usePreviewFetchLimiter'
 const props = defineProps<{
   postId?: string
   /** Pre-loaded post — skips the API fetch when provided. */
-  post?: FeedPost | null
+  preloadedPost?: FeedPost | null
   enabled?: boolean
 }>()
 
 const router = useRouter()
 const { apiFetchData } = useApiClient()
 
-const id = computed(() => (props.postId ?? props.post?.id ?? '').trim())
+const id = computed(() => (props.postId ?? props.preloadedPost?.id ?? '').trim())
 const permalink = computed(() => (id.value ? `/p/${encodeURIComponent(id.value)}` : null))
 const enabled = computed(() => props.enabled !== false)
-const preloadedPost = computed(() => props.post ?? null)
+const preloadedPost = computed(() => props.preloadedPost ?? null)
 const { runLimited } = usePreviewFetchLimiter()
 const PREVIEW_FETCH_DWELL_MS = 400
 

@@ -144,6 +144,49 @@ export type UsersCallback = {
   onSpaceChanged?: (payload: WsUsersSpaceChangedPayload) => void
 }
 
+/**
+ * Crew realtime payloads. The server fans these out to each member of the
+ * affected crew (and to the inviter/invitee for invite events). Pages that
+ * care can register a callback to react in place — the global hook (in this
+ * file) also keeps the viewer's nav membership cache in sync regardless.
+ */
+export type WsCrewInviteUpdatedPayload = {
+  invite: {
+    id: string
+    status: 'pending' | 'accepted' | 'declined' | 'cancelled' | 'expired'
+    [key: string]: unknown
+  }
+}
+export type WsCrewMembersChangedPayload = {
+  crewId: string
+  kind: 'joined' | 'left' | 'kicked'
+  userId: string
+}
+export type WsCrewOwnerChangedPayload = {
+  crewId: string
+  newOwnerUserId: string
+  previousOwnerUserId: string
+  reason: 'direct' | 'vote' | 'inactivity'
+}
+export type WsCrewDisbandedPayload = { crewId: string }
+export type WsCrewUpdatedPayload = { crew: unknown }
+export type WsCrewWallPayload = { crewId: string; conversationId: string; message?: unknown; messageId?: string }
+export type WsCrewTransferVotePayload = { crewId: string; vote: unknown }
+
+export type CrewCallback = {
+  onInviteReceived?: (payload: WsCrewInviteUpdatedPayload) => void
+  onInviteUpdated?: (payload: WsCrewInviteUpdatedPayload) => void
+  onMembersChanged?: (payload: WsCrewMembersChangedPayload) => void
+  onOwnerChanged?: (payload: WsCrewOwnerChangedPayload) => void
+  onDisbanded?: (payload: WsCrewDisbandedPayload) => void
+  onUpdated?: (payload: WsCrewUpdatedPayload) => void
+  onWallNew?: (payload: WsCrewWallPayload) => void
+  onWallEdited?: (payload: WsCrewWallPayload) => void
+  onWallDeleted?: (payload: WsCrewWallPayload) => void
+  onWallReaction?: (payload: WsCrewWallPayload) => void
+  onTransferVote?: (payload: WsCrewTransferVotePayload) => void
+}
+
 function isRecord(v: unknown): v is Record<string, unknown> {
   return Boolean(v && typeof v === 'object')
 }
@@ -208,6 +251,7 @@ export function usePresence() {
   const articlesCallbacks = useState<Set<ArticlesCallback>>('presence-articles-callbacks', () => new Set())
   const adminCallbacks = useState<Set<AdminCallback>>('presence-admin-callbacks', () => new Set())
   const usersCallbacks = useState<Set<UsersCallback>>('presence-users-callbacks', () => new Set())
+  const crewCallbacks = useState<Set<CrewCallback>>('presence-crew-callbacks', () => new Set())
   const articleSubRefs = ref(new Set<string>())
   const postSubRefs = ref(new Set<string>())
   const onlineFeedSubscribed = useState(PRESENCE_ONLINE_FEED_SUBSCRIBED_KEY, () => false)
@@ -493,6 +537,14 @@ export function usePresence() {
 
   function removeUsersCallback(cb: UsersCallback) {
     usersCallbacks.value.delete(cb)
+  }
+
+  function addCrewCallback(cb: CrewCallback) {
+    crewCallbacks.value.add(cb)
+  }
+
+  function removeCrewCallback(cb: CrewCallback) {
+    crewCallbacks.value.delete(cb)
   }
 
   function addOnlineIdsFromRest(userIds: string[]) {
@@ -1009,6 +1061,43 @@ export function usePresence() {
       }
     })
 
+    // Crew realtime: events are emitted per-user (no rooms) to every member of the
+    // affected crew (and to the inviter/invitee for invite events). We just fan out
+    // to whoever subscribed via addCrewCallback.
+    socket.on('crew:invite-received', (data: WsCrewInviteUpdatedPayload) => {
+      for (const cb of crewCallbacks.value) cb.onInviteReceived?.(data)
+    })
+    socket.on('crew:invite-updated', (data: WsCrewInviteUpdatedPayload) => {
+      for (const cb of crewCallbacks.value) cb.onInviteUpdated?.(data)
+    })
+    socket.on('crew:members-changed', (data: WsCrewMembersChangedPayload) => {
+      for (const cb of crewCallbacks.value) cb.onMembersChanged?.(data)
+    })
+    socket.on('crew:owner-changed', (data: WsCrewOwnerChangedPayload) => {
+      for (const cb of crewCallbacks.value) cb.onOwnerChanged?.(data)
+    })
+    socket.on('crew:disbanded', (data: WsCrewDisbandedPayload) => {
+      for (const cb of crewCallbacks.value) cb.onDisbanded?.(data)
+    })
+    socket.on('crew:updated', (data: WsCrewUpdatedPayload) => {
+      for (const cb of crewCallbacks.value) cb.onUpdated?.(data)
+    })
+    socket.on('crew:wall:new', (data: WsCrewWallPayload) => {
+      for (const cb of crewCallbacks.value) cb.onWallNew?.(data)
+    })
+    socket.on('crew:wall:edited', (data: WsCrewWallPayload) => {
+      for (const cb of crewCallbacks.value) cb.onWallEdited?.(data)
+    })
+    socket.on('crew:wall:deleted', (data: WsCrewWallPayload) => {
+      for (const cb of crewCallbacks.value) cb.onWallDeleted?.(data)
+    })
+    socket.on('crew:wall:reaction', (data: WsCrewWallPayload) => {
+      for (const cb of crewCallbacks.value) cb.onWallReaction?.(data)
+    })
+    socket.on('crew:transfer-vote', (data: WsCrewTransferVotePayload) => {
+      for (const cb of crewCallbacks.value) cb.onTransferVote?.(data)
+    })
+
     function syncSubscriptions() {
       const refs = interestRefs.value
       if (refs.size > 0) {
@@ -1281,6 +1370,8 @@ export function usePresence() {
     removeAdminCallback,
     addUsersCallback,
     removeUsersCallback,
+    addCrewCallback,
+    removeCrewCallback,
     emitRadioJoin(stationId: string) {
       const socket = socketRef.value
       const id = (stationId ?? '').trim()

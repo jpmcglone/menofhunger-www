@@ -98,8 +98,21 @@ export type UsePostsFeedOptions = {
   groupsHub?: Ref<boolean>
   /** GET /posts?communityGroupId=… — single group wall (members-only on server). */
   communityGroupId?: Ref<string | null | undefined>
+  /**
+   * GET /posts?authorIds=u1,u2,… — restrict the feed to posts authored by a specific
+   * set of users (capped at 50 server-side). Useful for crew pages, where we want the
+   * home-feed shape filtered to just the crew members. Empty arrays clear the feed
+   * (since there are no possible authors to match).
+   */
+  authorIds?: Ref<string[] | null | undefined>
   /** When false, clears the feed and skips refresh (e.g. wait until group shell + membership are known). */
   enabled?: Ref<boolean>
+}
+
+function normalizeAuthorIds(ids: string[] | null | undefined): string[] | null {
+  if (!ids) return null
+  const cleaned = ids.map((id) => (id ?? '').trim()).filter(Boolean)
+  return cleaned.length > 0 ? cleaned.slice(0, 50) : null
 }
 
 function postsFeedListQuery(opts: {
@@ -109,9 +122,11 @@ function postsFeedListQuery(opts: {
   cursor: string | null
   groupsHub?: boolean
   communityGroupId?: string | null
+  authorIds?: string[] | null
 }): Record<string, string | number | boolean | undefined> {
   const gid = (opts.communityGroupId ?? '').trim()
   const groupScoped = Boolean(opts.groupsHub || gid)
+  const authorIds = normalizeAuthorIds(opts.authorIds)
   return {
     limit: 30,
     collapseByRoot: true,
@@ -127,6 +142,7 @@ function postsFeedListQuery(opts: {
       : {
           visibility: opts.visibility,
           ...(opts.followingOnly ? { followingOnly: true } : {}),
+          ...(authorIds ? { authorIds: authorIds.join(',') } : {}),
         }),
     ...(opts.sort === 'trending' ? { sort: 'trending' } : {}),
     ...(opts.cursor ? { cursor: opts.cursor } : {}),
@@ -178,6 +194,7 @@ export function usePostsFeed(options: UsePostsFeedOptions = {}) {
         cursor,
         groupsHub: options.groupsHub?.value,
         communityGroupId: options.communityGroupId?.value ?? null,
+        authorIds: options.authorIds?.value ?? null,
       }),
     }),
     defaultErrorMessage: 'Failed to load posts.',
@@ -203,6 +220,7 @@ export function usePostsFeed(options: UsePostsFeedOptions = {}) {
       sort: sort.value,
       groupsHub: Boolean(options.groupsHub?.value),
       communityGroupId: gid || null,
+      authorIds: normalizeAuthorIds(options.authorIds?.value ?? null) ?? null,
     })
   }
 
@@ -495,6 +513,7 @@ export function usePostsFeed(options: UsePostsFeedOptions = {}) {
             cursor: null,
             groupsHub: options.groupsHub?.value,
             communityGroupId: options.communityGroupId?.value ?? null,
+            authorIds: options.authorIds?.value ?? null,
           }),
         })
         const fresh = (res.data ?? []).filter((p: FeedPost) => !p.deletedAt)
@@ -716,6 +735,7 @@ export function usePostsFeed(options: UsePostsFeedOptions = {}) {
     options.followingOnly ||
     options.groupsHub ||
     options.communityGroupId ||
+    options.authorIds ||
     options.enabled
   ) {
     watch(
@@ -725,6 +745,7 @@ export function usePostsFeed(options: UsePostsFeedOptions = {}) {
         options.followingOnly?.value,
         options.groupsHub?.value,
         options.communityGroupId?.value,
+        normalizeAuthorIds(options.authorIds?.value ?? null)?.join(',') ?? '',
         options.enabled?.value,
       ],
       () => {

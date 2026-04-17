@@ -131,7 +131,10 @@ async function fetchMentionUsers(query: string): Promise<FollowListUser[]> {
   const qn = norm(query)
   const now = Date.now()
 
-  if (mentionInflight) { try { mentionInflight.abort() } catch {} mentionInflight = null }
+  if (mentionInflight) {
+    try { mentionInflight.abort() } catch { /* abort errors are not actionable */ }
+    mentionInflight = null
+  }
 
   const cached = qn ? mentionCache.get(qn) : null
   if (cached && cached.expiresAt > now) return cached.items
@@ -252,7 +255,10 @@ let hashtagInflight: AbortController | null = null
 async function fetchHashtags(query: string): Promise<HashtagResult[]> {
   const qn = norm(query)
   const now = Date.now()
-  if (hashtagInflight) { try { hashtagInflight.abort() } catch {} hashtagInflight = null }
+  if (hashtagInflight) {
+    try { hashtagInflight.abort() } catch { /* abort errors are not actionable */ }
+    hashtagInflight = null
+  }
   const cached = qn ? hashtagCache.get(qn) : null
   if (cached && cached.expiresAt > now) return cached.items
   if (!qn) return []

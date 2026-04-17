@@ -18,7 +18,7 @@ describe('useAuth hydration guardrails (structural)', () => {
   it('does not call useState inside me\(\) after awaiting /auth/me', () => {
     const src = readFromRepo('composables/useAuth.ts')
     const meBlock =
-      src.match(/async function me\(\): Promise<AuthUser \| null> \{[\s\S]*?\n  \}\n\n  async function ensureLoaded/)?.[0] ?? ''
+      src.match(/async function me\(\): Promise<AuthUser \| null> \{[\s\S]*?\n {2}\}\n\n {2}async function ensureLoaded/)?.[0] ?? ''
     expect(meBlock).toContain(`await apiFetch<AuthUser | null>('/auth/me'`)
     expect(meBlock).not.toMatch(/useState<|useState\(/)
     expect(meBlock).toMatch(/notifCount\.value\s*=/)

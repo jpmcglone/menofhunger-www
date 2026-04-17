@@ -7,7 +7,7 @@
       :data-composer-slot-index="slot.index"
     >
       <AppComposerMediaSlotTile
-        :slot="slot"
+        :media-slot="slot"
         :first-empty-slot-index="firstEmptySlotIndex"
         :can-add-more="canAddMore"
         :dragging-media-id="draggingMediaId"

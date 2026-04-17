@@ -1160,9 +1160,10 @@ async function fetchPage(params: { append: boolean }) {
       nextPostCursor.value = null
     }
   } finally {
-    if (seq !== searchFetchSeq) return
-    loading.value = false
-    loadingMore.value = false
+    if (seq === searchFetchSeq) {
+      loading.value = false
+      loadingMore.value = false
+    }
   }
 }
 

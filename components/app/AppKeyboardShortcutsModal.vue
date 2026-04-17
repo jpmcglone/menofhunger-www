@@ -48,9 +48,8 @@
 </template>
 
 <script setup lang="ts">
-import type { ShortcutSection } from '~/composables/useKeyboardShortcuts'
+import type { ShortcutSection, ShortcutDef  } from '~/composables/useKeyboardShortcuts'
 import { ALL_SHORTCUTS } from '~/composables/useKeyboardShortcuts'
-import type { ShortcutDef } from '~/composables/useKeyboardShortcuts'
 
 const { showModal } = useKeyboardShortcuts()
 

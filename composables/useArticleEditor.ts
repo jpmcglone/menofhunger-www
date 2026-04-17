@@ -1,5 +1,4 @@
-import type { Article, ArticleTag } from '~/types/api'
-import type { PostVisibility } from '~/types/api'
+import type { Article, ArticleTag, PostVisibility  } from '~/types/api'
 
 type SaveStatus = 'idle' | 'saving' | 'saved' | 'error'
 
@@ -38,7 +37,7 @@ export function useArticleEditor(initialArticle: Ref<Article | null>) {
   function isBodyEmpty(raw: string): boolean {
     if (!raw) return true
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       function hasText(node: any): boolean {
         if (node.type === 'text') return !!node.text?.trim()
         if (Array.isArray(node.content)) return node.content.some(hasText)

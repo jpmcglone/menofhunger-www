@@ -68,7 +68,7 @@
             type="search"
             placeholder="Search chats or messages…"
             class="w-full rounded-lg border border-gray-200 bg-gray-50 py-1.5 pl-8 pr-8 text-sm placeholder-gray-400 outline-none focus:border-gray-400 focus:ring-0 dark:border-zinc-700 dark:bg-zinc-900 dark:placeholder-gray-500 dark:focus:border-zinc-500"
-          />
+          >
           <Icon
             v-if="searchLoading"
             name="tabler:loader-2"
@@ -115,6 +115,20 @@
               <AppUserAvatar :user="getDirectUserOverlay(c)" size-class="h-10 w-10" />
             </div>
             <div
+              v-else-if="c.type === 'crew_wall'"
+              class="relative h-10 w-10 shrink-0 overflow-hidden rounded-full bg-gray-200 text-gray-600 dark:bg-zinc-800 dark:text-gray-300"
+            >
+              <img
+                v-if="c.crew?.avatarUrl"
+                :src="c.crew.avatarUrl"
+                :alt="c.crew.name ?? 'Crew avatar'"
+                class="h-full w-full object-cover"
+              >
+              <div v-else class="flex h-full w-full items-center justify-center">
+                <Icon name="tabler:shield" class="text-sm" aria-hidden="true" />
+              </div>
+            </div>
+            <div
               v-else
               class="flex h-10 w-10 items-center justify-center rounded-full bg-gray-200 text-gray-600 dark:bg-zinc-800 dark:text-gray-300"
             >
@@ -126,6 +140,14 @@
                   <div class="font-semibold truncate">
                     {{ getConversationTitle(c) }}
                   </div>
+                  <span
+                    v-if="c.type === 'crew_wall'"
+                    class="inline-flex items-center gap-1 rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-800 dark:bg-amber-500/15 dark:text-amber-300"
+                    title="Crew wall"
+                  >
+                    <Icon name="tabler:shield-check" class="text-[10px]" aria-hidden="true" />
+                    Crew
+                  </span>
                   <AppVerifiedBadge
                     v-if="c.type === 'direct' && getDirectUserOverlay(c)"
                     :status="getDirectUserOverlay(c)!.verifiedStatus"

@@ -240,6 +240,28 @@ export function useNotifications() {
         return n.title ?? 'sent you coins'
       case 'group_join_request':
         return 'requests to join your group'
+      case 'crew_invite_received':
+        return 'invited you to their crew'
+      case 'crew_invite_accepted':
+        return 'accepted your crew invite'
+      case 'crew_invite_declined':
+        return 'declined your crew invite'
+      case 'crew_invite_cancelled':
+        return 'cancelled their crew invite'
+      case 'crew_member_joined':
+        return 'joined your crew'
+      case 'crew_member_left':
+        return 'left your crew'
+      case 'crew_member_kicked':
+        return 'was removed from your crew'
+      case 'crew_owner_transferred':
+        return 'Crew ownership transferred'
+      case 'crew_owner_transfer_vote':
+        return 'started a vote in your crew'
+      case 'crew_wall_mention':
+        return 'mentioned you on the wall'
+      case 'crew_disbanded':
+        return 'Your crew was disbanded'
       case 'generic':
         return 'Notification'
       default:
@@ -270,6 +292,18 @@ export function useNotifications() {
         return 'tabler:coin'
       case 'group_join_request':
         return 'tabler:users-group'
+      case 'crew_invite_received':
+      case 'crew_invite_accepted':
+      case 'crew_invite_declined':
+      case 'crew_invite_cancelled':
+      case 'crew_member_joined':
+      case 'crew_member_left':
+      case 'crew_member_kicked':
+      case 'crew_owner_transferred':
+      case 'crew_owner_transfer_vote':
+      case 'crew_wall_mention':
+      case 'crew_disbanded':
+        return 'tabler:shield-check'
       case 'generic':
         return 'tabler:bell'
       default:
@@ -330,6 +364,23 @@ export function useNotifications() {
     if (n.kind === 'coin_transfer') return '/coins'
     if (n.kind === 'group_join_request' && n.subjectGroupSlug) {
       return `/g/${encodeURIComponent(n.subjectGroupSlug)}/pending`
+    }
+    // All crew notifications route into the user's crew area; the page knows how to
+    // surface invites (inbox), wall, members, and ownership transfer state.
+    if (
+      n.kind === 'crew_invite_received' ||
+      n.kind === 'crew_invite_cancelled' ||
+      n.kind === 'crew_invite_accepted' ||
+      n.kind === 'crew_invite_declined' ||
+      n.kind === 'crew_member_joined' ||
+      n.kind === 'crew_member_left' ||
+      n.kind === 'crew_member_kicked' ||
+      n.kind === 'crew_owner_transferred' ||
+      n.kind === 'crew_owner_transfer_vote' ||
+      n.kind === 'crew_wall_mention' ||
+      n.kind === 'crew_disbanded'
+    ) {
+      return '/crew'
     }
     // Article-related notifications always route to the article page.
     if (n.subjectArticleId && (

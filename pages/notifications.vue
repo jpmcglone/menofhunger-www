@@ -172,7 +172,7 @@ async function onChipSelect(kind: NotificationKind | null) {
 }
 
 const notifBadge = useNotificationsBadge()
-const { setNotificationUndeliveredCount, addInterest, removeInterest } = usePresence()
+const { setNotificationUndeliveredCount, addInterest, removeInterest, addCrewCallback, removeCrewCallback } = usePresence()
 const loadingMore = ref(false)
 const markingAllRead = ref(false)
 // Show the full-page loader until the first fetch completes. After that, keep
@@ -247,6 +247,34 @@ onBeforeUnmount(() => {
   const added = [...presenceAddedIds.value]
   if (added.length) removeInterest(added)
 })
+
+// Realtime: when a crew invite's status changes (accepted / declined / cancelled
+// / expired) — possibly from another tab or device — patch any matching
+// `crew_invite_received` rows in place so their inline buttons swap to the
+// terminal indicator without requiring a refresh.
+const crewCb = {
+  onInviteUpdated(payload: { invite: { id: string; status: string } }) {
+    const inviteId = payload?.invite?.id
+    const status = payload?.invite?.status as
+      | 'pending' | 'accepted' | 'declined' | 'cancelled' | 'expired' | undefined
+    if (!inviteId || !status) return
+    let mutated = false
+    const next = notifications.value.map((item) => {
+      if (item.type !== 'single') return item
+      const n = item.notification
+      if (n.kind !== 'crew_invite_received') return item
+      if (n.subjectCrewInviteId !== inviteId) return item
+      mutated = true
+      return {
+        ...item,
+        notification: { ...n, subjectCrewInviteStatus: status },
+      }
+    })
+    if (mutated) notifications.value = next
+  },
+}
+onMounted(() => addCrewCallback(crewCb))
+onBeforeUnmount(() => removeCrewCallback(crewCb))
 
 async function onMarkAllRead() {
   markingAllRead.value = true

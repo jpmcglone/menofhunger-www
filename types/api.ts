@@ -1058,6 +1058,17 @@ export type NotificationKind =
   | 'generic'
   | 'coin_transfer'
   | 'group_join_request'
+  | 'crew_invite_received'
+  | 'crew_invite_accepted'
+  | 'crew_invite_declined'
+  | 'crew_invite_cancelled'
+  | 'crew_member_joined'
+  | 'crew_member_left'
+  | 'crew_member_kicked'
+  | 'crew_owner_transferred'
+  | 'crew_owner_transfer_vote'
+  | 'crew_wall_mention'
+  | 'crew_disbanded'
 
 export type NotificationGroupKind = 'comment' | 'boost' | 'repost' | 'follow' | 'followed_post' | 'nudge'
 
@@ -1106,6 +1117,22 @@ export type Notification = {
   subjectGroupSlug?: string | null
   /** Display name of the subject group (only populated for group_join_request notifications). */
   subjectGroupName?: string | null
+  /** Crew this notification is about (any crew_* kind that has a real crew). */
+  subjectCrewId: string | null
+  /** Specific crew invite (crew_invite_received and related) — used for inline accept/decline. */
+  subjectCrewInviteId: string | null
+  /**
+   * Lifecycle status of `subjectCrewInviteId`, when present. Lets the row render the
+   * correct terminal state ("Joined crew", "Declined", "No longer available") on a
+   * fresh load without an extra fetch.
+   */
+  subjectCrewInviteStatus: 'pending' | 'accepted' | 'declined' | 'cancelled' | 'expired' | null
+  /**
+   * Display name of the crew this notification refers to. For founding invites
+   * (no Crew yet) this falls back to `CrewInvite.crewNameOnAccept`. Null when
+   * the crew is still untitled — the row should render "their crew" in that case.
+   */
+  subjectCrewName: string | null
   title: string | null
   body: string | null
   subjectPostPreview?: SubjectPostPreview | null
@@ -1173,7 +1200,20 @@ export type GetNotificationsUnreadCountResponse = {
   data: { count: number }
 }
 
-export type MessageConversationType = 'direct' | 'group'
+export type MessageConversationType = 'direct' | 'group' | 'crew_wall'
+
+/**
+ * Lightweight crew summary attached to `crew_wall` conversations so the chat
+ * list/header can render the crew avatar, label the row as a Crew chat, and
+ * deep-link to /c/:slug without a per-row round-trip.
+ */
+export type MessageConversationCrewSummary = {
+  id: string
+  slug: string
+  /** Display name; null when the crew hasn't been named yet. */
+  name: string | null
+  avatarUrl: string | null
+}
 export type MessageParticipantStatus = 'pending' | 'accepted'
 export type MessageParticipantRole = 'owner' | 'member'
 
@@ -1264,6 +1304,11 @@ export type MessageConversation = {
   isBlockedWith?: boolean
   /** Present on search results when a message body matched the query. */
   matchedMessage?: { id: string; body: string; createdAt: string } | null
+  /**
+   * Populated only for `crew_wall` conversations. Lets the chat row render the
+   * crew avatar/name and link to the crew's public page.
+   */
+  crew?: MessageConversationCrewSummary | null
 }
 
 export type GetMessageConversationsData = MessageConversation[]
@@ -1964,4 +2009,80 @@ export type LocationBrowseResponse = {
     state: string
   }
   sections: LocationBrowseSection[]
+}
+
+// ─── Crews ───────────────────────────────────────────────────────────────────
+
+export type CrewMemberRole = 'owner' | 'member'
+
+export type CrewInviteStatus =
+  | 'pending'
+  | 'accepted'
+  | 'declined'
+  | 'cancelled'
+  | 'expired'
+
+export type CrewMemberListItem = {
+  user: CrewUserSummary
+  role: CrewMemberRole
+  joinedAt: string
+  isDesignatedSuccessor: boolean
+}
+
+/** Shared user summary used by crew DTOs (matches the API UserListDto shape). */
+export type CrewUserSummary = Omit<FollowListUser, 'relationship' | 'orgAffiliations'> & {
+  orgAffiliations?: OrgAffiliation[]
+}
+
+export type CrewPublic = {
+  id: string
+  slug: string
+  /** null means "Untitled Crew". Renderers should show the friendly fallback. */
+  name: string | null
+  tagline: string | null
+  bio: string | null
+  avatarUrl: string | null
+  coverUrl: string | null
+  memberCount: number
+  createdAt: string
+  owner: CrewUserSummary
+  members: CrewMemberListItem[]
+}
+
+export type CrewPrivate = CrewPublic & {
+  wallConversationId: string
+  designatedSuccessorUserId: string | null
+  viewerRole: CrewMemberRole
+  pendingInviteCount: number
+}
+
+export type CrewInvite = {
+  id: string
+  createdAt: string
+  expiresAt: string
+  status: CrewInviteStatus
+  message: string | null
+  crew: CrewPublic | null
+  invitedBy: CrewUserSummary
+  invitee: CrewUserSummary
+}
+
+/**
+ * Viewer-specific membership info attached to GET /crew/by-slug responses.
+ * Populated only when the viewer is an active member of the resolved crew.
+ * Lets the public page render member-only surfaces (the chat button + unread
+ * badge, owner controls) without an extra round-trip to /crew/me.
+ */
+export type CrewBySlugViewerMembership = {
+  role: CrewMemberRole
+  wallConversationId: string
+  designatedSuccessorUserId: string | null
+  /** Unread message count for the crew chat (the wall conversation). */
+  unreadChatCount: number
+}
+
+export type CrewBySlugResponse = {
+  crew: CrewPublic
+  redirectedFromSlug: string | null
+  viewerMembership: CrewBySlugViewerMembership | null
 }

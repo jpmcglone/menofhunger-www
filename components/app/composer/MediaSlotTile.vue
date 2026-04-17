@@ -39,7 +39,7 @@
           <button
             type="button"
             class="absolute -right-2 -top-2 inline-flex h-6 w-6 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-700 shadow-sm transition-colors hover:bg-gray-50 dark:border-zinc-800 dark:bg-black dark:text-gray-200 dark:hover:bg-zinc-900"
-            :aria-label="removeLabelFor(slot.item!)"
+            :aria-label="resolveRemoveLabel(slot.item!)"
             @click.stop="emit('remove', slot.item!.localId)"
           >
             <span class="text-[12px] leading-none" aria-hidden="true">×</span>
@@ -51,7 +51,7 @@
             aria-label="Edit alt text"
             @click.stop="emit('edit-alt', slot.item!.localId)"
           >
-            {{ altLabel(slot.item!) }}
+            {{ resolveAltLabel(slot.item!) }}
           </button>
 
           <div
@@ -100,7 +100,7 @@ import type { ComposerMediaItem } from '~/composables/useComposerMedia'
 type Slot = { index: number; empty: boolean; item?: ComposerMediaItem }
 
 const props = defineProps<{
-  slot: Slot
+  mediaSlot: Slot
   firstEmptySlotIndex: number | null
   canAddMore: boolean
   draggingMediaId: string | null
@@ -121,7 +121,7 @@ const emit = defineEmits<{
   (e: 'edit-alt', localId: string): void
 }>()
 
-const slot = computed(() => props.slot)
+const slot = computed(() => props.mediaSlot)
 const firstEmptySlotIndex = computed(() => (typeof props.firstEmptySlotIndex === 'number' ? props.firstEmptySlotIndex : null))
 const canAddMore = computed(() => Boolean(props.canAddMore))
 const draggingMediaId = computed(() => props.draggingMediaId ?? null)
@@ -129,7 +129,7 @@ const uploadBarColor = computed(() => props.uploadBarColor)
 const uploadStatusLabel = computed(() => props.uploadStatusLabel)
 
 const slotStatusLabel = computed(() => {
-  const item = props.slot.item
+  const item = props.mediaSlot.item
   if (!item) return null
   const custom = props.uploadStatusLabel?.(item)
   if (custom) return custom
@@ -158,10 +158,10 @@ function defaultAltLabel(item: ComposerMediaItem): string {
   return text.length > 16 ? `${text.slice(0, 16)}…` : text
 }
 
-function removeLabelFor(item: ComposerMediaItem) {
+function resolveRemoveLabel(item: ComposerMediaItem) {
   return props.removeLabelFor?.(item) ?? defaultRemoveLabelFor(item)
 }
-function altLabel(item: ComposerMediaItem) {
+function resolveAltLabel(item: ComposerMediaItem) {
   return props.altLabel?.(item) ?? defaultAltLabel(item)
 }
 

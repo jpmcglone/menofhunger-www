@@ -212,11 +212,7 @@ function goProfile(m: CommunityGroupMemberListItem) {
 }
 
 onMounted(async () => {
-  try {
-    await loadShell()
-    await reloadFromServer()
-  } catch (e: unknown) {
-    throw e
-  }
+  await loadShell()
+  await reloadFromServer()
 })
 </script>

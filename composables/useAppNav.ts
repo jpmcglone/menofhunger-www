@@ -12,6 +12,12 @@ export type AppNavItem = {
   requiresVerified?: boolean
   /** Only show for site admins (e.g. Admin link). */
   requiresAdmin?: boolean
+  /**
+   * Hard kill-switch. When `false`, the item is hidden everywhere (left rail,
+   * tab bar, mobile "More" sheet) regardless of auth/verification. The route
+   * itself remains reachable by direct link — this only hides the entry point.
+   */
+  enabled?: boolean
   showInLeft?: boolean
   showInTabs?: boolean
 }
@@ -29,6 +35,27 @@ export function useAppNav() {
     return u ? `/u/${encodeURIComponent(u)}` : '/settings'
   })
 
+  // Crew label changes with viewer membership: "Crew" (none) → "Your Crew"
+  // (member) → "My Crew" (owner). Lazy-load the membership the first time the
+  // nav is consulted so we don't pay for it on signed-out marketing routes.
+  const { membership: crewMembership, ensureLoaded: ensureCrewLoaded } = useViewerCrew()
+  // Crew is still WIP — hide its nav entry in production. /crew still resolves
+  // for anyone with a direct link; we only suppress discovery via the rail and
+  // mobile "More" sheet. Staging + local dev keep the entry so we can keep
+  // iterating on it.
+  const env = String(useRuntimeConfig().public?.sentry?.environment || '').trim().toLowerCase()
+  const crewEnabled = computed(() => env !== 'production')
+  // Skip the membership probe entirely in environments where crew is hidden,
+  // so we don't issue a `/crew/me` request just to compute a label nobody
+  // ever sees.
+  if (import.meta.client && crewEnabled.value) ensureCrewLoaded()
+  const crewLabel = computed(() => {
+    const role = crewMembership.value?.role
+    if (role === 'owner') return 'My Crew'
+    if (role === 'member') return 'Your Crew'
+    return 'Crew'
+  })
+
   const allItems = computed<AppNavItem[]>(() => [
     { key: 'home', label: 'Home', to: '/home', icon: 'tabler:home', iconActive: 'tabler:home-filled', showInLeft: true, showInTabs: true },
 
@@ -39,6 +66,7 @@ export function useAppNav() {
     { key: 'explore', label: 'Explore', to: '/explore', icon: 'tabler:search', iconActive: 'tabler:search', showInLeft: true, showInTabs: false },
     { key: 'articles', label: 'Articles', to: '/articles', icon: 'tabler:article', iconActive: 'tabler:article-filled', showInLeft: true, showInTabs: false },
     { key: 'groups', label: 'Groups', to: '/groups', icon: 'heroicons-outline:user-group', iconActive: 'heroicons-solid:user-group', requiresAuth: false, showInLeft: true, showInTabs: false },
+    { key: 'crew', label: crewLabel.value, to: '/crew', icon: 'tabler:shield-check', iconActive: 'tabler:shield-check-filled', requiresAuth: true, requiresVerified: true, enabled: crewEnabled.value, showInLeft: true, showInTabs: false },
     { key: 'bookmarks', label: 'Bookmarks', to: '/bookmarks', icon: 'tabler:bookmark', iconActive: 'tabler:bookmark-filled', requiresAuth: true, showInLeft: false, showInTabs: false },
     // Keep these as the Heroicons pair (you preferred the filled/outline look here).
     { key: 'profile', label: 'Profile', to: profileTo.value, icon: 'heroicons-outline:user-circle', iconActive: 'heroicons-solid:user-circle', requiresAuth: true, showInLeft: false, showInTabs: false },
@@ -68,6 +96,7 @@ export function useAppNav() {
   const isAdmin = computed(() => Boolean(user.value?.siteAdmin))
 
   const visible = (item: AppNavItem) => {
+    if (item.enabled === false) return false
     if (item.requiresAuth && !isAuthed.value) return false
     if (item.requiresVerified && !isVerified.value) return false
     if (item.requiresAdmin && !isAdmin.value) return false

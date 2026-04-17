@@ -236,7 +236,7 @@ const { allItems, isItemVisible } = useAppNav()
 const { totalCount: bookmarkTotalCount } = useBookmarkCollections()
 const hasBookmarks = computed(() => Math.max(0, Math.floor(bookmarkTotalCount.value ?? 0)) > 0)
 
-const mainMenuKeys = new Set(['explore', 'articles', 'groups', 'bookmarks', 'profile', 'only-me'])
+const mainMenuKeys = new Set(['explore', 'articles', 'groups', 'crew', 'bookmarks', 'profile', 'only-me'])
 const footerMenuKeys = new Set(['settings', 'feedback', 'admin'])
 
 const mainMenuItems = computed<AppNavItem[]>(() =>
