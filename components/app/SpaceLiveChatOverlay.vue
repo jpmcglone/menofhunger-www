@@ -23,7 +23,7 @@
           <template #actions>
             <button
               type="button"
-              class="moh-tap ml-1 inline-flex h-10 w-10 sm:h-9 sm:w-9 items-center justify-center rounded-full text-gray-600 hover:bg-black/5 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-white/5 dark:hover:text-gray-50"
+              class="moh-tap ml-1 inline-flex h-10 w-10 items-center justify-center rounded-full text-gray-600 hover:bg-black/5 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-white/5 dark:hover:text-gray-50"
               aria-label="Close"
               @click="close"
             >

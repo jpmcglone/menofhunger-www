@@ -77,7 +77,7 @@
             </div>
 
             <!-- Stats (changes based on which tab is displayed) -->
-            <div class="shrink-0 text-right">
+            <div class="shrink-0 text-right tabular-nums">
               <template v-if="displayTab === 'weekly'">
                 <div class="flex items-center justify-end gap-1 text-sm font-semibold moh-text">
                   <Icon name="tabler:calendar-check" class="moh-text-muted" aria-hidden="true" />
@@ -129,7 +129,7 @@
             <AppUserIdentityLine :user="displayViewerRank.user" badge-size="xs" />
           </div>
 
-          <div class="shrink-0 text-right">
+          <div class="shrink-0 text-right tabular-nums">
             <template v-if="displayTab === 'weekly'">
               <div class="flex items-center justify-end gap-1 text-sm font-semibold moh-text">
                 <Icon name="tabler:calendar-check" class="moh-text-muted" aria-hidden="true" />

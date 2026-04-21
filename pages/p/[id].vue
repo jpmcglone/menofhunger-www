@@ -3,10 +3,10 @@
   <div class="w-full">
     <div v-if="errorText" class="px-4 mt-4">
       <div class="rounded-xl border border-gray-200 bg-gray-50 p-4 dark:border-zinc-800 dark:bg-zinc-950/40">
-        <div class="text-lg font-semibold text-gray-900 dark:text-gray-50">
+        <div class="text-lg font-semibold text-gray-900 dark:text-gray-50 text-balance">
           {{ errorTitle }}
         </div>
-        <div class="mt-1 text-sm text-gray-700 dark:text-gray-300">
+        <div class="mt-1 text-sm text-gray-700 dark:text-gray-300 text-pretty">
           {{ errorBody }}
         </div>
 
@@ -99,8 +99,8 @@
           <div class="px-4 py-3 flex flex-wrap items-center justify-between gap-3 border-b border-gray-200 dark:border-zinc-800">
             <div class="text-sm font-semibold moh-text">
               Replies
-              <span class="ml-2 text-xs font-medium text-gray-500 dark:text-gray-400">
-                {{ commentCountDisplay }}
+              <span class="ml-2 text-xs font-medium text-gray-500 dark:text-gray-400 tabular-nums">
+                <AppAnimatedCount :value="commentCountDisplay" />
               </span>
             </div>
             <AppFeedFiltersBar

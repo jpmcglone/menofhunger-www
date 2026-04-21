@@ -108,7 +108,7 @@
                   </div>
                 </div>
                 <div class="h-1.5 rounded-full bg-gray-100 dark:bg-zinc-800 overflow-hidden">
-                  <div class="h-full rounded-full transition-all" :class="vis.bar" :style="{ width: vis.pct + '%' }" />
+                  <div class="h-full rounded-full transition-[width]" :class="vis.bar" :style="{ width: vis.pct + '%' }" />
                 </div>
               </div>
             </template>
@@ -166,7 +166,7 @@
                   </div>
                 </div>
                 <div class="h-1.5 rounded-full bg-gray-100 dark:bg-zinc-800 overflow-hidden">
-                  <div class="h-full rounded-full transition-all" :class="row.bar" :style="{ width: row.pct + '%' }" />
+                  <div class="h-full rounded-full transition-[width]" :class="row.bar" :style="{ width: row.pct + '%' }" />
                 </div>
               </div>
             </template>
@@ -216,7 +216,7 @@
               <div v-if="data?.coins.giniCoefficient != null" class="mt-2">
                 <div class="h-2 rounded-full bg-gray-100 dark:bg-zinc-800 overflow-hidden">
                   <div
-                    class="h-full rounded-full transition-all"
+                    class="h-full rounded-full transition-[width]"
                     :class="giniBarColor"
                     :style="{ width: (data.coins.giniCoefficient * 100).toFixed(1) + '%' }"
                   />
@@ -266,7 +266,7 @@
                   </div>
                 </div>
                 <div class="h-1.5 rounded-full bg-gray-100 dark:bg-zinc-800 overflow-hidden">
-                  <div class="h-full rounded-full transition-all" :class="vis.bar" :style="{ width: vis.pct + '%' }" />
+                  <div class="h-full rounded-full transition-[width]" :class="vis.bar" :style="{ width: vis.pct + '%' }" />
                 </div>
               </div>
             </template>
@@ -418,7 +418,7 @@
                   </div>
                 </div>
                 <div class="h-1.5 rounded-full bg-gray-100 dark:bg-zinc-800 overflow-hidden">
-                  <div class="h-full rounded-full transition-all" :class="row.bar" :style="{ width: row.pct + '%' }" />
+                  <div class="h-full rounded-full transition-[width]" :class="row.bar" :style="{ width: row.pct + '%' }" />
                 </div>
               </div>
             </template>

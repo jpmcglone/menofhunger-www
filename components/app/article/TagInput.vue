@@ -276,7 +276,7 @@ onBeforeUnmount(() => {
 <style scoped>
 .chip-enter-active,
 .chip-leave-active {
-  transition: all 0.15s ease;
+  transition: opacity 0.15s ease, transform 0.15s ease;
 }
 .chip-enter-from,
 .chip-leave-to {

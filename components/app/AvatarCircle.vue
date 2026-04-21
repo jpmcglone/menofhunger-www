@@ -9,7 +9,7 @@
          When spacesRing is active, the outer wrapper has a gradient background + padding.
          The inner div uses the page background to create the visible ring gap. -->
     <div
-      :class="['h-full w-full overflow-hidden', roundClass, spacesRing ? 'bg-[var(--moh-bg)]' : bgClass]"
+      :class="['h-full w-full overflow-hidden moh-img-outline', roundClass, spacesRing ? 'bg-[var(--moh-bg)]' : bgClass]"
     >
       <AppImg
         v-if="src"

@@ -36,7 +36,7 @@
         </div>
         <div class="min-w-0 flex-1">
           <h1 class="text-xl font-semibold moh-text truncate">{{ crewName }}</h1>
-          <p class="text-xs moh-text-muted">
+          <p class="text-xs moh-text-muted tabular-nums">
             {{ crew.memberCount }} / 5 members · max 5
           </p>
         </div>

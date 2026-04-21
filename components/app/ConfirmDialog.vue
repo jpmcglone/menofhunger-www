@@ -54,7 +54,7 @@
                   ref="confirmBtnRef"
                   type="button"
                   :class="[
-                    'moh-tap moh-focus rounded-lg px-4 py-2 text-sm font-semibold transition-colors flex items-center gap-1.5',
+                    'moh-tap moh-pressable moh-focus rounded-lg px-4 py-2 text-sm font-semibold transition-colors flex items-center gap-1.5',
                     severityClasses,
                   ]"
                   :disabled="loading || disabled"

@@ -9,7 +9,7 @@
       <template v-if="hasMoreHidden" #threadFooter>
         <NuxtLink
           :to="commentPermalink"
-          class="inline-flex items-center gap-2 rounded-lg px-2 py-1 text-sm font-semibold text-gray-700 transition-colors moh-surface-hover dark:text-gray-200"
+          class="inline-flex items-center gap-2 rounded-lg px-2 py-1 text-sm font-semibold text-gray-700 transition-colors moh-surface-hover dark:text-gray-200 tabular-nums"
         >
           <Icon name="tabler:message-circle" class="text-[14px] opacity-70" aria-hidden="true" />
           {{ footerLabel }}

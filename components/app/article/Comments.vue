@@ -134,7 +134,7 @@
         <div v-if="hasMoreReplies(comment)" class="ml-10 mt-2 border-l-2 border-gray-100 pl-4 dark:border-zinc-800">
           <button
             type="button"
-            class="text-xs font-medium text-gray-500 transition-colors hover:text-gray-700 dark:text-zinc-400 dark:hover:text-zinc-200"
+            class="text-xs font-medium text-gray-500 transition-colors hover:text-gray-700 dark:text-zinc-400 dark:hover:text-zinc-200 tabular-nums"
             :disabled="isLoadingReplies(comment.id)"
             @click="onLoadMoreReplies(comment.id)"
           >

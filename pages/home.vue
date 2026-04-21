@@ -14,7 +14,7 @@
       <div v-else class="px-3 pt-3 sm:px-4 sm:pt-4">
         <div class="rounded-2xl border moh-border moh-surface p-4 sm:p-5">
           <div class="flex items-start gap-3">
-            <div class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl moh-btn-onlyme moh-btn-tone">
+            <div class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg moh-btn-onlyme moh-btn-tone">
               <Icon name="tabler:eye-off" aria-hidden="true" />
             </div>
             <div class="min-w-0">
@@ -56,7 +56,7 @@
         class="mx-3 mt-3 sm:mx-4 sm:mt-4 rounded-2xl border moh-border moh-surface p-4 sm:p-5"
       >
         <div class="flex items-start gap-3">
-          <div class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border moh-border bg-violet-500/10 text-violet-700 dark:text-violet-300">
+          <div class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border moh-border bg-violet-500/10 text-violet-700 dark:text-violet-300">
             <Icon name="tabler:users-group" aria-hidden="true" />
           </div>
           <div class="min-w-0 flex-1">
@@ -81,10 +81,10 @@
     </ClientOnly>
 
     <Transition
-      enter-active-class="transition-all duration-250 ease-out"
+      enter-active-class="transition-[opacity,transform] duration-250 ease-out"
       enter-from-class="opacity-0 -translate-y-1"
       enter-to-class="opacity-100 translate-y-0"
-      leave-active-class="transition-all duration-220 ease-in"
+      leave-active-class="transition-[opacity,transform,max-height] duration-220 ease-in"
       leave-from-class="opacity-100 translate-y-0"
       leave-to-class="opacity-0 -translate-y-1 max-h-0"
     >

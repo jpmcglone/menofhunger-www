@@ -204,7 +204,7 @@
                   v-for="g in filteredMine"
                   :key="g.id"
                   type="button"
-                  class="relative text-left rounded-2xl border moh-border p-4 overflow-hidden transition-all hover:border-[color:rgba(var(--moh-group-rgb),0.4)] hover:shadow-sm dark:hover:shadow-none moh-surface"
+                  class="relative text-left rounded-2xl border moh-border p-4 overflow-hidden transition-[border-color,box-shadow] duration-150 ease-out hover:border-[color:rgba(var(--moh-group-rgb),0.4)] hover:shadow-sm dark:hover:shadow-none moh-surface"
                   @click="selectGroup(g)"
                 >
                   <div

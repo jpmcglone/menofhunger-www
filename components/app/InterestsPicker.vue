@@ -541,7 +541,7 @@ watch(
 <style scoped>
 .moh-interest-enter-active,
 .moh-interest-leave-active {
-  transition: all 160ms ease;
+  transition: opacity 160ms ease, transform 160ms ease;
 }
 .moh-interest-move {
   transition: transform 160ms ease;

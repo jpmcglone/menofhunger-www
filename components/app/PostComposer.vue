@@ -287,7 +287,7 @@
               rounded
               :outlined="postButtonOutlined"
               severity="secondary"
-              :class="[postButtonClass, '!min-h-0 !py-1.5 !px-5 !text-sm !font-semibold']"
+              :class="[postButtonClass, 'moh-pressable !min-h-0 !py-1.5 !px-5 !text-sm !font-semibold']"
               :disabled="
                 submitting ||
                 !canPost ||

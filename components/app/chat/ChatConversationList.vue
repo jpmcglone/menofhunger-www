@@ -51,7 +51,7 @@
             <span
               v-if="showRequestsBadge"
               :class="[
-                'ml-2 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold align-middle',
+                'ml-2 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold align-middle tabular-nums',
                 badgeToneClass,
               ]"
             >
@@ -207,11 +207,11 @@
             >
               <span
                 v-if="c.unreadCount > 0"
-                class="inline-flex min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold leading-[18px] justify-center text-center"
+                class="inline-flex min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold leading-[18px] justify-center text-center tabular-nums"
                 :class="conversationDotClass(c)"
                 aria-label="Unread messages"
               >
-                {{ c.unreadCount > 99 ? '99+' : c.unreadCount }}
+                <AppAnimatedCount :value="c.unreadCount" :format="(n) => (n > 99 ? '99+' : String(n))" />
               </span>
             </span>
           </div>

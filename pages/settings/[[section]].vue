@@ -74,7 +74,7 @@
 
           <div class="flex-1 overflow-y-auto moh-scrollbar-stable pt-3 sm:pt-4 pb-0 sm:pb-4">
             <div class="px-3 sm:px-4 min-h-[20rem]">
-              <div v-if="selectedSection === 'account'" class="space-y-6">
+              <div v-if="showsBlock('account')" class="space-y-6">
                 <AppUsernameField
                   v-model="usernameInput"
                   :status="usernameStatus"
@@ -138,6 +138,7 @@
                     :label="emailResendButtonLabel"
                     size="small"
                     severity="secondary"
+                    class="tabular-nums"
                     :loading="emailResendSaving"
                     :disabled="emailResendSaving || emailResendCooldownActive"
                     @click="resendEmailVerification"
@@ -201,7 +202,12 @@
                 </div>
               </div>
 
-              <div v-else-if="selectedSection === 'verification'" class="space-y-6">
+              <div v-if="showsBlock('verification')" class="space-y-6">
+                <div v-if="composedBlocks.length > 1" class="border-t moh-border pt-6 -mt-2">
+                  <div class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-3">
+                    Verification
+                  </div>
+                </div>
                 <div class="rounded-xl border moh-border p-3 moh-surface space-y-2 text-sm">
                   <div class="flex items-center justify-between gap-3">
                     <div class="font-semibold text-gray-900 dark:text-gray-50">Your verification</div>
@@ -314,7 +320,7 @@
                 </div>
               </div>
 
-            <div v-else-if="selectedSection === 'billing'" class="space-y-6">
+            <div v-if="showsBlock('billing')" class="space-y-6">
               <div class="space-y-2">
                 <div class="text-sm font-semibold text-gray-900 dark:text-gray-50">Billing</div>
                 <div class="text-sm text-gray-600 dark:text-gray-300">
@@ -603,7 +609,7 @@
             </div>
 
               <SettingsPrivacySection
-                v-else-if="selectedSection === 'privacy'"
+                v-if="showsBlock('privacy')"
                 :follow-visibility-input="followVisibilityInput"
                 :birthday-visibility-input="birthdayVisibilityInput"
                 :follow-visibility-options="followVisibilityOptions"
@@ -617,7 +623,7 @@
                 @save="savePrivacy"
               />
 
-              <div v-else-if="selectedSection === 'notifications'" class="space-y-6">
+              <div v-if="showsBlock('notifications')" class="space-y-6">
                 <SettingsBrowserNotificationsSection
                   :push-vapid-configured="pushVapidConfigured"
                   :push-is-supported="pushIsSupported"
@@ -816,15 +822,25 @@
                 </div>
               </div>
 
-              <div v-else-if="selectedSection === 'blocked'" class="space-y-4">
+              <div v-if="showsBlock('blocked')" class="space-y-4">
+                <div v-if="composedBlocks.length > 1" class="border-t moh-border pt-6 -mt-2">
+                  <div class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-3">
+                    Blocked users
+                  </div>
+                </div>
                 <SettingsBlockedUsersSection />
               </div>
 
-              <div v-else-if="selectedSection === 'links'" class="space-y-4">
+              <div v-if="showsBlock('links')" class="space-y-4">
+                <div v-if="composedBlocks.length > 1" class="border-t moh-border pt-6 -mt-2">
+                  <div class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-3">
+                    Helpful links
+                  </div>
+                </div>
                 <SettingsLinksSection />
               </div>
 
-              <div v-else class="text-sm text-gray-600 dark:text-gray-300">
+              <div v-if="composedBlocks.length === 0" class="text-sm text-gray-600 dark:text-gray-300">
                 Choose a section from the left.
               </div>
             </div>
@@ -898,7 +914,23 @@ usePageSeo({
 
 type FollowVisibility = 'all' | 'verified' | 'premium' | 'none'
 type BirthdayVisibility = 'none' | 'monthDay' | 'full'
-type SettingsSection = 'account' | 'verification' | 'billing' | 'privacy' | 'notifications' | 'blocked' | 'links'
+// Top-level Settings now has only four sections:
+//   account              — username, email, profile, location, interests, verification, useful links
+//   notifications        — push permission + per-event notification matrix
+//   privacy              — visibility settings + blocked users
+//   billing              — Premium subscription management
+// The previous narrower keys (`verification`, `blocked`, `links`) are kept as
+// "blocks" that the merged sections compose (see `composedBlocks` below) and
+// as legacy URL aliases that redirect to their new home.
+type SettingsSection = 'account' | 'notifications' | 'privacy' | 'billing'
+type SettingsBlock =
+  | 'account'
+  | 'verification'
+  | 'billing'
+  | 'privacy'
+  | 'notifications'
+  | 'blocked'
+  | 'links'
 
 const isDev = import.meta.dev
 const { user: authUser, ensureLoaded, me } = useAuth()
@@ -1031,20 +1063,39 @@ async function sendPushTest() {
   }
 }
 
-const allowedSections: SettingsSection[] = ['account', 'verification', 'billing', 'privacy', 'notifications', 'blocked', 'links']
+const allowedSections: SettingsSection[] = ['account', 'notifications', 'privacy', 'billing']
+
+// Old narrower URL keys redirect into one of the 4 top-level sections.
+const sectionAlias: Record<string, SettingsSection> = {
+  verification: 'account',
+  links: 'account',
+  blocked: 'privacy',
+}
+
+function normalizeSection(raw: string | null): SettingsSection | null {
+  if (!raw) return null
+  if ((allowedSections as string[]).includes(raw)) return raw as SettingsSection
+  if (raw in sectionAlias) return sectionAlias[raw] ?? null
+  return null
+}
 
 const routeSection = computed<SettingsSection | null>(() => {
   const raw = typeof route.params.section === 'string' ? route.params.section : null
-  if (!raw) return null
-  return allowedSections.includes(raw as SettingsSection) ? (raw as SettingsSection) : null
+  return normalizeSection(raw)
 })
 
-// Legacy support: /settings?section=links -> /settings/links
+// Legacy support: /settings?section=links -> /settings/account, etc.
 const legacySection = computed<SettingsSection | null>(() => {
   const raw = typeof route.query.section === 'string' ? route.query.section : null
-  if (!raw) return null
-  return allowedSections.includes(raw as SettingsSection) ? (raw as SettingsSection) : null
+  return normalizeSection(raw)
 })
+
+// Redirect aliased URLs to their canonical 4-section home so the URL bar
+// reflects the actual section being shown.
+const rawRouteParam = typeof route.params.section === 'string' ? route.params.section : null
+if (rawRouteParam && rawRouteParam in sectionAlias) {
+  await navigateTo(`/settings/${sectionAlias[rawRouteParam]}`, { replace: true })
+}
 
 if (!routeSection.value && legacySection.value) {
   await navigateTo(`/settings/${legacySection.value}`, { replace: true })
@@ -1065,39 +1116,44 @@ const sections = computed(() => [
   {
     key: 'account' as const,
     label: 'Your account',
-    description: 'Username and profile basics.'
+    description: 'Username, email, profile, verification, and helpful links.'
   },
   {
-    key: 'verification' as const,
-    label: 'Verification',
-    description: 'Start verification and check your status.'
+    key: 'notifications' as const,
+    label: 'Notifications',
+    description: 'Browser permission and per-event alert preferences.'
+  },
+  {
+    key: 'privacy' as const,
+    label: 'Privacy & Safety',
+    description: 'Visibility settings and blocked users.'
   },
   {
     key: 'billing' as const,
     label: 'Billing',
     description: 'Premium and Premium+ subscriptions.'
-  },
-  {
-    key: 'privacy' as const,
-    label: 'Privacy',
-    description: 'Manage who can see parts of your profile and activity.'
-  },
-  {
-    key: 'notifications' as const,
-    label: 'Notifications',
-    description: 'Browser and in-app alerts.'
-  },
-  {
-    key: 'blocked' as const,
-    label: 'Blocked users',
-    description: 'Manage users you have blocked.'
-  },
-  {
-    key: 'links' as const,
-    label: 'Links',
-    description: 'About, terms, privacy, feedback.'
   }
 ])
+
+// Each top-level section is composed from one or more "blocks" (the original
+// narrower sections). Rendering them as independent `v-if` siblings (instead of
+// a single `v-if/v-else-if` chain) lets us mount multiple blocks under one URL
+// without restructuring the template into a single big `<template v-if>`.
+const sectionToBlocks: Record<SettingsSection, ReadonlyArray<SettingsBlock>> = {
+  account: ['account', 'verification', 'links'],
+  notifications: ['notifications'],
+  privacy: ['privacy', 'blocked'],
+  billing: ['billing'],
+}
+
+const composedBlocks = computed<ReadonlyArray<SettingsBlock>>(() => {
+  const s = selectedSection.value
+  return s ? sectionToBlocks[s] : []
+})
+
+function showsBlock(block: SettingsBlock): boolean {
+  return composedBlocks.value.includes(block)
+}
 
 const filteredSections = computed(() => {
   const q = sectionQuery.value.trim().toLowerCase()
@@ -1546,8 +1602,10 @@ async function refreshVerification() {
 
 watch(
   selectedSection,
-  (s) => {
-    if (s === 'verification') void refreshVerification()
+  () => {
+    // Verification is now a block under "account" — refresh whenever that
+    // section is open so the badge/status reflects any out-of-band changes.
+    if (showsBlock('verification')) void refreshVerification()
   },
   { immediate: true },
 )

@@ -56,10 +56,10 @@
               <span>Chat</span>
               <span
                 v-if="unreadChatCount > 0"
-                class="ml-1 inline-flex min-w-[18px] h-[18px] items-center justify-center rounded-full bg-amber-500 px-1 text-[10px] font-bold leading-none text-white"
+                class="ml-1 inline-flex min-w-[18px] h-[18px] items-center justify-center rounded-full bg-amber-500 px-1 text-[10px] font-bold leading-none text-white tabular-nums"
                 aria-hidden="true"
               >
-                {{ unreadChatCount > 99 ? '99+' : unreadChatCount }}
+                <AppAnimatedCount :value="unreadChatCount" :format="(n) => (n > 99 ? '99+' : String(n))" />
               </span>
             </NuxtLink>
             <Button
@@ -95,7 +95,7 @@
           <Icon name="tabler:users" aria-hidden="true" />
           <NuxtLink
             :to="`/c/${encodeURIComponent(crew.slug)}/members`"
-            class="hover:underline"
+            class="hover:underline tabular-nums"
           >
             {{ crew.memberCount }} {{ crew.memberCount === 1 ? 'member' : 'members' }}
           </NuxtLink>

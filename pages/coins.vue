@@ -335,7 +335,7 @@ function activityStreakTone(direction: CoinTransferItem['direction']): string {
                 </div>
                 <button
                   type="button"
-                  class="px-3 py-2 text-xs font-semibold rounded-xl border moh-border moh-text-muted hover:moh-text transition-colors whitespace-nowrap"
+                  class="px-3 py-2 text-xs font-semibold rounded-xl border moh-border moh-text-muted hover:moh-text transition-colors whitespace-nowrap tabular-nums"
                   :disabled="maxAmount === 0"
                   @click="setMax"
                 >
@@ -355,7 +355,7 @@ function activityStreakTone(direction: CoinTransferItem['direction']): string {
                 placeholder="What's this for?"
                 class="w-full px-3 py-2.5 rounded-xl border moh-border moh-surface moh-text text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/40 dark:focus:ring-amber-400/40 placeholder:text-gray-400 dark:placeholder:text-gray-500 resize-none"
               />
-              <div class="text-right text-xs text-gray-400 dark:text-gray-500 mt-0.5">
+              <div class="text-right text-xs text-gray-400 dark:text-gray-500 mt-0.5 tabular-nums">
                 {{ note.length }}/140
               </div>
             </div>
@@ -391,7 +391,7 @@ function activityStreakTone(direction: CoinTransferItem['direction']): string {
 
               <div class="flex items-center justify-between pt-1 border-t border-amber-200/70 dark:border-amber-700/40">
                 <span class="text-sm text-gray-600 dark:text-gray-400">Sending</span>
-                <span class="font-bold text-amber-600 dark:text-amber-400 flex items-center gap-1">
+                <span class="font-bold text-amber-600 dark:text-amber-400 flex items-center gap-1 tabular-nums">
                   <Icon name="tabler:coin" size="16" />
                   {{ fmt(amount!) }} {{ amount === 1 ? 'coin' : 'coins' }}
                 </span>
@@ -441,7 +441,7 @@ function activityStreakTone(direction: CoinTransferItem['direction']): string {
               <Icon name="tabler:circle-check" size="32" class="text-green-500 dark:text-green-400" />
             </div>
             <div>
-              <div class="font-semibold moh-text">
+              <div class="font-semibold moh-text tabular-nums">
                 Sent {{ fmt(successResult?.amount ?? 0) }} {{ (successResult?.amount ?? 0) === 1 ? 'coin' : 'coins' }}!
               </div>
               <div class="text-sm moh-text-muted mt-0.5">
@@ -527,7 +527,7 @@ function activityStreakTone(direction: CoinTransferItem['direction']): string {
               <div v-if="t.note && t.direction !== 'streak_reward' && t.direction !== 'verification_gift'" class="text-xs text-gray-600 dark:text-gray-400 truncate mt-0.5 italic">
                 "{{ t.note }}"
               </div>
-              <div class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
+              <div class="text-xs text-gray-400 dark:text-gray-500 mt-0.5 tabular-nums">
                 {{ relativeTime(t.createdAt) }} · {{ shortDateTime(t.createdAt) }}
               </div>
             </div>

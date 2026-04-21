@@ -302,13 +302,17 @@ input[type="reset"] {
     background-color: var(--moh-surface-hover);
   }
 
-  /* Typography roles (bolder hierarchy, still compact like X) */
+  /* Typography roles (bolder hierarchy, still compact like X).
+     `text-wrap: balance` evens line lengths in headings (avoids one orphan word on
+     its own line). `text-wrap: pretty` for body text avoids dangling single-word
+     last lines. Both are progressive — older browsers ignore them. */
   .moh-h1 {
     font-size: 1.25rem;
     line-height: 1.15;
     font-weight: 800;
     letter-spacing: -0.015em;
     color: var(--moh-text);
+    text-wrap: balance;
   }
   .moh-h2 {
     font-size: 1.05rem;
@@ -316,22 +320,28 @@ input[type="reset"] {
     font-weight: 800;
     letter-spacing: -0.01em;
     color: var(--moh-text);
+    text-wrap: balance;
   }
   .moh-body {
     font-size: 0.95rem;
     line-height: 1.45;
     color: var(--moh-text);
+    text-wrap: pretty;
   }
   .moh-meta {
     font-size: 0.8125rem;
     line-height: 1.25;
     color: var(--moh-text-muted);
+    font-variant-numeric: tabular-nums;
+    text-wrap: pretty;
   }
   .moh-meta-strong {
     font-size: 0.8125rem;
     line-height: 1.25;
     font-weight: 650;
     color: var(--moh-text-muted);
+    font-variant-numeric: tabular-nums;
+    text-wrap: pretty;
   }
 
   .moh-squircle {
@@ -429,7 +439,23 @@ input[type="reset"] {
     background-color: var(--moh-frosted);
   }
 
-  /* Cohesive “card” + “popover” surfaces */
+  /* Concentric border-radius convention.
+     ----------------------------------------------------
+     When a rounded element sits inside another rounded element with padding,
+     they look "concentric" only if:
+         outer-radius = inner-radius + padding
+     i.e. inner-radius = outer-radius − padding.
+     Examples:
+       outer rounded-2xl (16px) + p-3 (12px) → inner rounded-md (4px ≈ 16-12)
+       outer rounded-2xl (16px) + p-4 (16px) → inner not rounded (0px)
+       outer rounded-3xl (24px) + p-4 (16px) → inner rounded-lg (8px)
+       outer rounded-xl  (12px) + p-2 ( 8px) → inner rounded     (4px)
+     If a card holds an inset chip/icon-well that does NOT touch the card
+     edges (e.g. a 40×40 icon well in a 16px-padded card), this rule does
+     not strictly apply — but err on the side of a smaller inner radius so
+     the eye reads it as "child of" not "competing with" the parent. */
+
+  /* Cohesive "card" + "popover" surfaces */
   .moh-card {
     background-color: var(--moh-surface-2);
     border: 1px solid var(--moh-border-subtle);
@@ -500,6 +526,7 @@ input[type="reset"] {
     /* Use the same display font as profile names (sans). */
     font-family: var(--moh-font-sans);
     letter-spacing: -0.01em;
+    text-wrap: balance;
   }
 
   /* Theme-tinted pill (uses current app primary tokens). */
@@ -728,6 +755,40 @@ input[type="reset"] {
     border-color: var(--moh-scope-bg) !important;
     background-color: var(--moh-scope-bg) !important;
     color: var(--moh-scope-text, #ffffff) !important;
+  }
+
+  /* Tactile press feedback for primary affordances (buttons, FABs, action chips).
+     Tiny scale-down on :active reads as "I felt that" without ever being loud.
+     Honors prefers-reduced-motion. Use sparingly — only on things the user
+     intentionally taps, not on every clickable element. */
+  .moh-pressable {
+    transition-property: transform;
+    transition-duration: 120ms;
+    transition-timing-function: ease-out;
+  }
+  .moh-pressable:active {
+    transform: scale(0.96);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .moh-pressable {
+      transition-property: none;
+    }
+    .moh-pressable:active {
+      transform: none;
+    }
+  }
+
+  /* Subtle 1px outline for user-uploaded images / avatars / media thumbs.
+     Pure black/white at 10% opacity so it never picks up the surface tint
+     underneath (a tinted neutral like zinc reads as dirt on the image edge).
+     `outline-offset: -1px` keeps the outline inside the image rect so it
+     composites over rounded corners cleanly. */
+  .moh-img-outline {
+    outline: 1px solid rgba(0, 0, 0, 0.1);
+    outline-offset: -1px;
+  }
+  html.dark .moh-img-outline {
+    outline-color: rgba(255, 255, 255, 0.1);
   }
 
   /* Matte depth: inner shadow instead of glossy highlights */
@@ -1056,6 +1117,14 @@ html.dark .moh-avatar-initial {
   font-family: "Literata", Georgia, "Times New Roman", serif;
   font-size: 1.125rem;   /* 18px */
   line-height: 1.78;
+}
+
+/* Long-form prose: pretty-wrap paragraphs to avoid orphan words; balance headings. */
+.article-body p {
+  text-wrap: pretty;
+}
+.article-body :is(h1, h2, h3, h4) {
+  text-wrap: balance;
 }
 
 /* Tighten list-item gaps — prose default (~0.75em) is too airy for articles */

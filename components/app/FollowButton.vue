@@ -4,7 +4,7 @@
     <button
       v-if="showButton && viewerFollowsUser"
       type="button"
-      class="relative inline-flex items-center overflow-hidden rounded-full border px-4 py-2 text-sm font-semibold transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
+      class="moh-pressable relative inline-flex items-center overflow-hidden rounded-full border px-4 py-2 text-sm font-semibold transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
       :class="hovering || confirmPending
         ? 'border-red-500 text-red-500 dark:border-red-400 dark:text-red-400'
         : 'border-gray-300 text-gray-900 dark:border-zinc-500 dark:text-white'"
@@ -40,7 +40,7 @@
       :text="text"
       :size="props.size"
       :class="[
-        '!rounded-full !font-semibold',
+        'moh-pressable !rounded-full !font-semibold',
         'dark:!bg-white dark:!text-black dark:!border dark:!border-solid dark:!border-white dark:hover:!bg-white dark:hover:!text-black dark:hover:!border-white',
         props.buttonClass,
       ]"

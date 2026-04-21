@@ -1,8 +1,11 @@
 <template>
   <div
     :class="[
-      'relative flex transition-colors',
-      shouldAnimate ? 'transition-all duration-150 ease-out' : '',
+      // `transition-colors` handles the only property that actually changes on
+      // this row (background/border tier tint). Don't use `transition-all` — it
+      // also picks up `padding`/`color` and triggers extra paints per render.
+      'relative flex',
+      shouldAnimate ? 'transition-colors duration-150 ease-out' : 'transition-colors',
       subjectTierRowClass(group),
     ]"
   >
@@ -49,7 +52,7 @@
             </template>
             <div
               v-if="group.actorCount > 5"
-              class="h-10 w-10 rounded-full border border-gray-200 dark:border-zinc-700 bg-gray-100 dark:bg-zinc-900 flex items-center justify-center text-xs font-semibold text-gray-700 dark:text-gray-200"
+              class="h-10 w-10 rounded-full border border-gray-200 dark:border-zinc-700 bg-gray-100 dark:bg-zinc-900 flex items-center justify-center text-xs font-semibold text-gray-700 dark:text-gray-200 tabular-nums"
               aria-hidden="true"
             >
               +{{ group.actorCount - 5 }}
@@ -75,7 +78,7 @@
           <div class="min-w-0 flex-1">
             <div :class="['min-w-0 max-w-full line-clamp-2 text-sm', group.readAt ? 'font-medium' : 'font-semibold']">
               <template v-if="group.kind === 'followed_post' && group.actorCount === 1 && group.count > 1">
-                <span class="whitespace-nowrap">{{ group.count }} new posts</span>
+                <span class="whitespace-nowrap tabular-nums">{{ group.count }} new posts</span>
                 <span class="ml-1">from</span>
                 <span
                   class="ml-1 whitespace-nowrap"

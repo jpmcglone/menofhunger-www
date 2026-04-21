@@ -4,7 +4,7 @@
     <div class="sticky top-0 z-20 border-b moh-border moh-frosted moh-texture overflow-hidden">
       <div class="relative z-10 flex items-center justify-between gap-3 px-3 py-2.5 sm:px-4 sm:py-3">
         <div class="min-w-0">
-          <div class="text-base sm:text-lg font-semibold">Notifications</div>
+          <div class="text-base sm:text-lg font-semibold text-balance">Notifications</div>
         </div>
         <Button
           v-if="notifications.length > 0"

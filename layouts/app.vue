@@ -35,10 +35,10 @@
       </div>
     </ClientOnly>
     <Transition
-      enter-active-class="transition-all duration-200 ease-out"
+      enter-active-class="transition-[opacity,transform] duration-200 ease-out"
       enter-from-class="opacity-0 -translate-y-2"
       enter-to-class="opacity-100 translate-y-0"
-      leave-active-class="transition-all duration-150 ease-in"
+      leave-active-class="transition-[opacity,transform] duration-150 ease-in"
       leave-from-class="opacity-100 translate-y-0"
       leave-to-class="opacity-0 -translate-y-2"
     >
@@ -77,10 +77,10 @@
     <!-- API connectivity banner: shown when REST API is unreachable (network error, server down). -->
     <!-- Keeps the user in a logged-in appearance during brief outages or rolling deploys. -->
     <Transition
-      enter-active-class="transition-all duration-200 ease-out"
+      enter-active-class="transition-[opacity,transform] duration-200 ease-out"
       enter-from-class="opacity-0 -translate-y-2"
       enter-to-class="opacity-100 translate-y-0"
-      leave-active-class="transition-all duration-150 ease-in"
+      leave-active-class="transition-[opacity,transform] duration-150 ease-in"
       leave-from-class="opacity-100 translate-y-0"
       leave-to-class="opacity-0 -translate-y-2"
     >
@@ -292,10 +292,10 @@
                 </span>
               </button>
               <Transition
-                enter-active-class="transition-all duration-150 ease-out"
+                enter-active-class="transition-[opacity,transform] duration-150 ease-out"
                 enter-from-class="opacity-0 scale-95"
                 enter-to-class="opacity-100 scale-100"
-                leave-active-class="transition-all duration-100 ease-in"
+                leave-active-class="transition-[opacity,transform] duration-100 ease-in"
                 leave-from-class="opacity-100 scale-100"
                 leave-to-class="opacity-0 scale-95"
               >
@@ -353,7 +353,7 @@
                   type="button"
                   aria-label="Post"
                   :class="[
-                    'group flex h-12 items-center rounded-xl text-white hover:opacity-95 w-full moh-focus',
+                    'moh-pressable group flex h-12 items-center rounded-xl text-white hover:opacity-95 w-full moh-focus',
                     fabButtonClass,
                     'mt-1',
                   ]"
@@ -556,7 +556,7 @@
             <!-- Offset the scroller content so it doesn't sit under the floating search bar. -->
             <div
               :class="[
-                'transition-all duration-200 ease-out',
+                'transition-[padding-top] duration-200 ease-out',
                 hideRightRailSearch ? 'pt-0' : 'pt-16',
                 showRadioChat ? 'h-full' : '',
               ]"
@@ -603,9 +603,9 @@
                   </div>
 
                   <div class="space-y-4 transition-[transform] duration-200 ease-out">
-                  <AppTrendingArticlesCard />
-                  <AppTrendingTagsCard />
-
+                  <!-- Order matters here: Who-to-follow renders before Trending so the
+                       most actionable rail card (real people you can follow right now)
+                       is the first thing the eye lands on after the daily quote. -->
                   <div class="space-y-1">
                     <div class="flex justify-end px-2">
                       <NuxtLink
@@ -617,7 +617,9 @@
                         @click="onOnlineLinkClick"
                       >
                         <template v-if="typeof onlineCount === 'number'">
-                          <span class="font-semibold text-gray-900 dark:text-white tabular-nums">{{ onlineCount }}</span>
+                          <span class="font-semibold text-gray-900 dark:text-white tabular-nums">
+                            <AppAnimatedCount :value="onlineCount" />
+                          </span>
                           <span class="moh-text-muted">online</span>
                         </template>
                         <template v-else>
@@ -668,12 +670,18 @@
                     </Card>
                   </div>
 
+                  <AppWebsters1828WordOfDayCard />
+
+                  <!-- Unified trending card replaces the previous three:
+                       AppTrendingArticlesCard / AppTrendingTagsCard / AppTrendingHashtagsCard.
+                       One label, three tabs (Articles / Topics / Hashtags). -->
+                  <AppRailTrendingCard />
+
                   <!-- ClientOnly avoids hydration mismatch: widget shares leaderboard state with page,
                        and SSR streaming can send layout before page fetch completes. -->
                   <ClientOnly>
                     <AppCheckinsLeaderboardWidget />
                   </ClientOnly>
-                  <AppWebsters1828WordOfDayCard />
 
                   <AppSupportDonateCard />
 
@@ -681,7 +689,6 @@
                   <ClientOnly>
                     <AppAdSlot placement="rail" />
                   </ClientOnly>
-                  <AppTrendingHashtagsCard />
 
                   <Card class="moh-card moh-card-matte !rounded-2xl">
                     <template #title>
@@ -763,7 +770,7 @@
         type="button"
         aria-label="New post"
         :class="[
-          'md:hidden fixed right-4 z-[60] flex h-12 w-12 items-center justify-center rounded-xl text-white shadow-lg hover:opacity-95 active:scale-95 moh-focus-strong',
+          'moh-pressable md:hidden fixed right-4 z-[60] flex h-12 w-12 items-center justify-center rounded-xl text-white shadow-lg hover:opacity-95 moh-focus-strong',
           fabButtonClass,
         ]"
         :style="fabBottomStyle"

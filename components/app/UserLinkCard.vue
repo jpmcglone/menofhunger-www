@@ -29,7 +29,7 @@
         </div>
         <div class="text-xs moh-text-muted leading-tight">@{{ preview.username }}</div>
         <div v-if="preview.bio" class="mt-0.5 text-xs moh-text-muted line-clamp-1">{{ preview.bio }}</div>
-        <div v-if="preview.followerCount != null" class="mt-1 text-[11px] moh-text-muted">
+        <div v-if="preview.followerCount != null" class="mt-1 text-[11px] moh-text-muted tabular-nums">
           {{ followerLabel }}
         </div>
       </div>

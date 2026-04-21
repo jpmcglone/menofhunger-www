@@ -429,7 +429,7 @@
                 <img
                   :src="item.kind === 'video' ? (item.thumbnailUrl ?? item.url ?? '') : (item.url ?? '')"
                   :alt="item.kind === 'video' ? 'Video' : 'Photo'"
-                  class="absolute inset-0 h-full w-full object-cover"
+                  class="absolute inset-0 h-full w-full object-cover moh-img-outline"
                   :class="item.viewerCanAccess === false ? 'blur-sm scale-110' : ''"
                   loading="lazy"
                 />

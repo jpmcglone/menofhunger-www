@@ -136,7 +136,7 @@
               @mouseleave="onFeedGroupLeave"
             >
               <div
-                class="h-[18px] w-[18px] shrink-0 overflow-hidden bg-gray-200 dark:bg-zinc-700"
+                class="h-[18px] w-[18px] shrink-0 overflow-hidden bg-gray-200 dark:bg-zinc-700 moh-img-outline"
                 :class="groupAvatarRoundClass"
               >
                 <img
@@ -197,7 +197,7 @@
                     <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                     <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                   </svg>
-                  <span>{{ formatShortCount(viewerCount) }}</span>
+                  <AppAnimatedCount :value="viewerCount" :format="formatShortCount" />
                 </button>
 
                 <!-- Breakdown popover: teleported to body so it's never clipped by a parent stacking context -->
@@ -209,8 +209,9 @@
                       :style="viewerBreakdownStyle"
                       role="tooltip"
                     >
-                      <p class="mb-1.5 font-semibold moh-text">
-                        {{ viewerCount }} {{ viewerCount === 1 ? 'person' : 'people' }} saw this
+                      <p class="mb-1.5 font-semibold moh-text tabular-nums">
+                        <AppAnimatedCount :value="viewerCount" />
+                        {{ viewerCount === 1 ? 'person' : 'people' }} saw this
                       </p>
                       <template v-if="viewerBreakdown">
                         <div class="flex flex-col gap-1 moh-text-muted">
@@ -423,7 +424,7 @@
             <div v-if="!isOnlyMe" class="inline-flex w-14 items-center justify-start">
               <button
                 type="button"
-                class="moh-tap inline-flex h-10 w-10 sm:h-9 sm:w-9 items-center justify-center rounded-full transition-colors moh-surface-hover"
+                class="moh-tap moh-pressable inline-flex h-10 w-10 items-center justify-center rounded-full transition-colors moh-surface-hover"
                 :class="commentClickable ? 'cursor-pointer' : 'cursor-default opacity-60'"
                 aria-label="Reply"
                 v-tooltip.bottom="commentTooltip"
@@ -437,21 +438,19 @@
                 class="ml-0 inline-block min-w-[1.5rem] select-none text-left text-[11px] sm:text-xs tabular-nums moh-text-muted hover:underline"
                 aria-label="View replies"
               >
-                {{ commentCountLabel ?? '' }}
+                <AppAnimatedCount :value="displayedCommentCount" :format="formatShortCount" />
               </NuxtLink>
               <span
                 v-else
                 class="ml-0 inline-block w-6 select-none text-left text-[11px] sm:text-xs tabular-nums moh-text-muted"
                 aria-hidden="true"
-              >
-                {{ commentCountLabel ?? '' }}
-              </span>
+              ></span>
             </div>
 
             <div v-if="!isOnlyMe" class="inline-flex w-14 items-center justify-start">
               <button
                 type="button"
-                class="moh-tap inline-flex h-10 w-10 sm:h-9 sm:w-9 items-center justify-center rounded-full transition-colors moh-surface-hover"
+                class="moh-tap moh-pressable inline-flex h-10 w-10 items-center justify-center rounded-full transition-colors moh-surface-hover"
                 :class="boostClickable ? 'cursor-pointer' : 'cursor-default opacity-60'"
                 :aria-label="isBoosted ? 'Remove upvote' : 'Upvote'"
                 v-tooltip.bottom="upvoteTooltip"
@@ -480,7 +479,7 @@
                 </svg>
               </button>
               <span class="ml-0 inline-block w-6 select-none text-left text-[11px] sm:text-xs tabular-nums moh-text-muted" aria-hidden="true">
-                {{ boostCountLabel ?? '' }}
+                <AppAnimatedCount v-if="boostCount > 0" :value="boostCount" :format="formatShortCount" />
               </span>
             </div>
 
@@ -488,7 +487,7 @@
             <div v-if="!isOnlyMe" class="relative inline-flex w-14 items-center justify-start">
               <button
                 type="button"
-                class="moh-tap inline-flex h-10 w-10 sm:h-9 sm:w-9 items-center justify-center rounded-full transition-colors moh-surface-hover"
+                class="moh-tap moh-pressable inline-flex h-10 w-10 items-center justify-center rounded-full transition-colors moh-surface-hover"
                 :class="viewerCanInteract ? 'cursor-pointer' : 'cursor-default opacity-60'"
                 :aria-label="isReposted ? 'Repost options' : 'Repost'"
                 v-tooltip.bottom="repostTooltip"
@@ -502,7 +501,7 @@
                 />
               </button>
               <span class="ml-0 inline-block w-6 select-none text-left text-[11px] sm:text-xs tabular-nums moh-text-muted" aria-hidden="true">
-                {{ repostCountLabel ?? '' }}
+                <AppAnimatedCount v-if="repostCount > 0" :value="repostCount" :format="formatShortCount" />
               </span>
 
               <!-- Repost menu popup -->
@@ -542,7 +541,7 @@
 
           <div v-if="!isOnlyMe" class="relative flex items-center gap-2 justify-end">
             <span class="mr-0 inline-block w-6 select-none text-right text-[11px] sm:text-xs tabular-nums moh-text-muted" aria-hidden="true">
-              {{ bookmarkCountLabel ?? '' }}
+              <AppAnimatedCount v-if="bookmarkCountValue > 0" :value="bookmarkCountValue" :format="formatShortCount" />
             </span>
             <!-- For gated posts: intercept click before it reaches the child components -->
             <div
@@ -1469,8 +1468,11 @@ function onRepostMenuQuote() {
   openComposerKey({ quotedPost: props.post })
 }
 
+const bookmarkCountValue = computed(() =>
+  Math.max(0, Math.floor(Number(postView.value.bookmarkCount ?? 0))),
+)
 const bookmarkCountLabel = computed(() => {
-  const n = Math.max(0, Math.floor(Number(postView.value.bookmarkCount ?? 0)))
+  const n = bookmarkCountValue.value
   if (!n) return null
   return formatShortCount(n)
 })

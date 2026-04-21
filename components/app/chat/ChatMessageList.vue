@@ -155,7 +155,7 @@
                 <!-- Timestamp overlay — only when media-only (no text body) -->
                 <div
                   v-if="!hasTextBubble(item.message) && shouldShowMessageMeta(item, listIndex)"
-                  class="absolute bottom-1.5 right-2 inline-flex items-center gap-1 rounded-full bg-black/40 px-1.5 py-0.5 text-[10px] text-white whitespace-nowrap backdrop-blur-sm"
+                  class="absolute bottom-1.5 right-2 inline-flex items-center gap-1 rounded-full bg-black/40 px-1.5 py-0.5 text-[10px] text-white whitespace-nowrap backdrop-blur-sm tabular-nums"
                 >
                   <time :datetime="item.message.createdAt" :title="formatMessageTimeFull(item.message.createdAt)">
                     {{ formatMessageTime(item.message.createdAt) }}
@@ -255,7 +255,7 @@
                       v-if="shouldShowMessageMeta(item, listIndex)"
                       class="flex justify-end"
                     >
-                      <div class="inline-flex items-center gap-1 text-xs opacity-75 whitespace-nowrap">
+                      <div class="inline-flex items-center gap-1 text-xs opacity-75 whitespace-nowrap tabular-nums">
                         <span v-if="item.message.editedAt && !item.message.deletedForAll" class="italic">edited</span>
                         <time
                           :datetime="item.message.createdAt"
@@ -324,7 +324,7 @@
                 type="button"
                 :title="group.reactors.map(r => r.username || r.id).join(', ')"
                 :class="[
-                  'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs border transition-all',
+                  'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs border transition-[border-color,background-color,color] duration-150 ease-out',
                   group.reactedByMe
                     ? 'border-[var(--p-primary-color)] bg-[var(--p-primary-color)] bg-opacity-10 text-[var(--p-primary-color)]'
                     : 'border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-700 dark:text-gray-300 hover:border-gray-300 dark:hover:border-zinc-600',
@@ -332,7 +332,7 @@
                 @click.stop="emit('react', item.message, group.reactionId)"
               >
                 <span>{{ group.emoji }}</span>
-                <span class="font-semibold">{{ group.count }}</span>
+                <span class="font-semibold tabular-nums">{{ group.count }}</span>
               </button>
             </div>
 

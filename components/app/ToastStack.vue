@@ -40,7 +40,7 @@
                 v-for="(action, i) in t.actions!"
                 :key="action.id ?? `${t.id}-action-${i}`"
                 type="button"
-                class="inline-flex h-8 items-center rounded-full px-3 text-xs font-semibold transition-colors moh-focus"
+                class="moh-pressable inline-flex h-8 items-center rounded-full px-3 text-xs font-semibold transition-colors moh-focus"
                 :class="action.primary
                   ? 'bg-white/95 text-gray-900 hover:bg-white'
                   : 'bg-white/15 text-current hover:bg-white/25'"
@@ -50,7 +50,7 @@
               </button>
               <button
                 type="button"
-                class="shrink-0 inline-flex h-8 w-8 items-center justify-center rounded-full text-lg font-semibold opacity-80 hover:opacity-100 transition-opacity moh-focus"
+                class="shrink-0 inline-flex h-10 w-10 items-center justify-center rounded-full text-lg font-semibold opacity-80 hover:opacity-100 transition-opacity moh-focus"
                 aria-label="Dismiss"
                 @click.stop="dismiss(t.id)"
               >
@@ -61,7 +61,7 @@
             <button
               v-else
               type="button"
-              class="shrink-0 inline-flex h-8 w-8 items-center justify-center rounded-full font-semibold opacity-80 hover:opacity-100 transition-opacity moh-focus"
+              class="shrink-0 inline-flex h-10 w-10 items-center justify-center rounded-full font-semibold opacity-80 hover:opacity-100 transition-opacity moh-focus"
               aria-label="Dismiss"
               @click.stop="dismiss(t.id)"
             >

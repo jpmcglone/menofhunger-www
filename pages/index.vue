@@ -323,7 +323,7 @@
               v-for="(article, i) in trendingArticles"
               :key="article.id"
               :to="`/a/${article.id}`"
-              class="group relative flex flex-col rounded-2xl border border-gray-200 bg-white/70 shadow-sm transition-all hover:shadow-md hover:-translate-y-0.5 dark:border-zinc-800 dark:bg-zinc-950/30 overflow-hidden"
+              class="group relative flex flex-col rounded-2xl border border-gray-200 bg-white/70 shadow-sm transition-[transform,box-shadow] duration-200 ease-out hover:shadow-md hover:-translate-y-0.5 dark:border-zinc-800 dark:bg-zinc-950/30 overflow-hidden"
             >
               <!-- thumbnail -->
               <div v-if="article.thumbnailUrl" class="relative aspect-[16/9] w-full overflow-hidden bg-gray-100 dark:bg-zinc-800">

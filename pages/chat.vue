@@ -332,7 +332,7 @@
                 @click="onPendingButtonClick"
               >
                 <Icon name="tabler:arrow-down" class="text-xs" aria-hidden="true" />
-                <span>{{ pendingNewLabel }}</span>
+                <span class="tabular-nums">{{ pendingNewLabel }}</span>
               </button>
             </Transition>
           </div>

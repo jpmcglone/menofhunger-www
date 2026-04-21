@@ -3,7 +3,7 @@
   <div class="absolute right-0 -top-2.5 z-30 pointer-events-auto">
     <button
       type="button"
-      class="moh-tap inline-flex h-10 w-10 sm:h-9 sm:w-9 items-center justify-center rounded-full transition-opacity hover:opacity-70"
+      class="moh-tap moh-pressable inline-flex h-10 w-10 items-center justify-center rounded-full transition-opacity hover:opacity-70"
       aria-label="More"
       aria-haspopup="true"
       v-tooltip.bottom="tooltip"

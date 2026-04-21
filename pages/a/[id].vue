@@ -180,7 +180,7 @@
             <div class="inline-flex w-14 items-center justify-start">
               <button
                 type="button"
-                class="moh-tap inline-flex h-10 w-10 sm:h-9 sm:w-9 items-center justify-center rounded-full transition-colors moh-surface-hover"
+                class="moh-tap inline-flex h-10 w-10 items-center justify-center rounded-full transition-colors moh-surface-hover"
                 aria-label="Jump to comments"
                 @click="guardedScrollToComments"
               >
@@ -195,7 +195,7 @@
             <div class="inline-flex w-14 items-center justify-start">
               <button
                 type="button"
-                class="moh-tap inline-flex h-10 w-10 sm:h-9 sm:w-9 items-center justify-center rounded-full transition-colors moh-surface-hover"
+                class="moh-tap inline-flex h-10 w-10 items-center justify-center rounded-full transition-colors moh-surface-hover"
                 :aria-label="isHydrated && boostState.boosted.value ? 'Remove boost' : 'Boost article'"
                 @click="guardedBoost"
               >
@@ -245,7 +245,7 @@
                 @blur="viewCountBreakdownVisible = false"
               >
                 <Icon name="tabler:eye" class="text-[15px]" aria-hidden="true" />
-                <span>{{ displayViewCount.toLocaleString() }}</span>
+                <AppAnimatedCount :value="displayViewCount" :format="(n) => n.toLocaleString()" />
               </button>
 
               <!-- Breakdown popover -->
@@ -255,8 +255,9 @@
                   class="absolute top-full mt-1.5 right-0 z-50 min-w-[11rem] rounded-lg border moh-border moh-surface shadow-lg px-3 py-2.5 text-[11px] sm:text-xs"
                   role="tooltip"
                 >
-                  <p class="mb-1.5 font-semibold moh-text">
-                    {{ displayViewCount }} {{ displayViewCount === 1 ? 'person' : 'people' }} read this
+                  <p class="mb-1.5 font-semibold moh-text tabular-nums">
+                    <AppAnimatedCount :value="displayViewCount" />
+                    {{ displayViewCount === 1 ? 'person' : 'people' }} read this
                   </p>
                   <template v-if="viewCountBreakdown">
                     <div class="flex flex-col gap-1 moh-text-muted">
@@ -292,7 +293,7 @@
 
             <button
               type="button"
-              class="moh-tap inline-flex h-10 w-10 sm:h-9 sm:w-9 items-center justify-center rounded-full transition-colors moh-surface-hover"
+              class="moh-tap inline-flex h-10 w-10 items-center justify-center rounded-full transition-colors moh-surface-hover"
             aria-label="Share article"
             @click="toggleShareMenu($event)"
           >

@@ -76,13 +76,13 @@
             <NuxtLink
               v-if="canUseCoins && (moreUser.coins ?? 0) > 0"
               to="/coins"
-              class="flex items-center gap-1 text-xs font-medium text-amber-500 dark:text-amber-400 hover:text-amber-700 dark:hover:text-amber-300 transition-colors"
+              class="flex items-center gap-1 text-xs font-medium text-amber-500 dark:text-amber-400 hover:text-amber-700 dark:hover:text-amber-300 transition-colors tabular-nums"
               @click.stop
             >
               <Icon name="tabler:coin" size="13" aria-hidden="true" />
               {{ moreUser.coins!.toLocaleString() }} coins
             </NuxtLink>
-            <span v-if="(moreUser.checkinStreakDays ?? 0) > 0" class="flex items-center gap-1 text-xs font-medium text-orange-500 dark:text-orange-400">
+            <span v-if="(moreUser.checkinStreakDays ?? 0) > 0" class="flex items-center gap-1 text-xs font-medium text-orange-500 dark:text-orange-400 tabular-nums">
               <Icon name="tabler:flame" size="13" aria-hidden="true" />
               {{ moreUser.checkinStreakDays }}d streak
             </span>

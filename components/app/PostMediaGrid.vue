@@ -46,7 +46,7 @@
       <button
         v-if="interactive && singleVideoActive && singleVideoMuted"
         type="button"
-        class="absolute right-2 top-2 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-black/50 text-white hover:bg-black/70"
+        class="absolute right-2 top-2 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-black/50 text-white hover:bg-black/70"
         aria-label="Tap for sound"
         @click.stop="onTapUnmute"
       >
@@ -55,7 +55,7 @@
       <button
         v-else-if="interactive && singleVideoActive && !singleVideoMuted"
         type="button"
-        class="absolute right-2 top-2 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-black/50 text-white hover:bg-black/70"
+        class="absolute right-2 top-2 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-black/50 text-white hover:bg-black/70"
         aria-label="Mute"
         @click.stop="onTapMute"
       >
@@ -87,7 +87,7 @@
       <div class="absolute inset-0" aria-hidden="true" />
       <AppImg
         :src="items[0]?.url"
-        class="absolute inset-0 h-full w-full object-contain"
+        class="absolute inset-0 h-full w-full object-contain moh-img-outline"
         :class="hideThumbs ? 'opacity-0 transition-opacity duration-150' : 'opacity-100'"
         :width="singleWidth ?? undefined"
         :height="singleHeight ?? undefined"
@@ -139,7 +139,7 @@
             <AppImg
               v-if="m.kind !== 'video'"
               :src="m.url"
-              class="block h-full w-full bg-black/3 dark:bg-white/3 object-cover object-center"
+              class="block h-full w-full bg-black/3 dark:bg-white/3 object-cover object-center moh-img-outline"
               :class="[imgClass(idx), hideThumbs ? 'opacity-0 transition-opacity duration-150' : 'opacity-100']"
               :alt="m.alt ?? ''"
               sizes="(max-width: 640px) 50vw, 360px"
@@ -149,7 +149,7 @@
             <template v-else>
               <AppImg
                 :src="posterFor(m) || m.url"
-                class="block h-full w-full bg-black/3 dark:bg-white/3 object-cover object-center"
+                class="block h-full w-full bg-black/3 dark:bg-white/3 object-cover object-center moh-img-outline"
                 :class="[imgClass(idx), hideThumbs ? 'opacity-0 transition-opacity duration-150' : 'opacity-100']"
                 :alt="m.alt ?? ''"
                 sizes="(max-width: 640px) 50vw, 360px"

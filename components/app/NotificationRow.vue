@@ -4,8 +4,11 @@
       // Two-column layout:
       // - col 1: unread bar (animates width/margin/opacity)
       // - col 2: the rest of the content (with consistent padding)
-      'relative flex transition-colors',
-      shouldAnimate ? 'transition-all duration-150 ease-out' : '',
+      // `transition-colors` handles the only property that actually changes on
+      // this row (background/border tier tint). Don't use `transition-all` — it
+      // also picks up `padding`/`color` and triggers extra paints per render.
+      'relative flex',
+      shouldAnimate ? 'transition-colors duration-150 ease-out' : 'transition-colors',
       subjectTierRowClass(notification),
     ]"
   >
@@ -173,7 +176,7 @@
                   v-if="(m.kind === 'video' ? m.thumbnailUrl : m.url)"
                   :src="m.kind === 'video' ? (m.thumbnailUrl || m.url) : m.url"
                   :alt="''"
-                  class="h-8 w-8 shrink-0 rounded border border-gray-200 object-cover dark:border-zinc-700 bg-black"
+                  class="h-8 w-8 shrink-0 rounded object-cover bg-black moh-img-outline"
                   loading="lazy"
                 >
               </template>
