@@ -1426,6 +1426,9 @@ export type WsPostsLiveUpdatedPayload = {
     deletedAt: string | null
     commentCount: number
     viewerCount: number
+    boostCount: number
+    bookmarkCount: number
+    repostCount: number
   }>
 }
 

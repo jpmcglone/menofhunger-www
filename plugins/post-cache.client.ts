@@ -35,6 +35,19 @@ export default defineNuxtPlugin(() => {
         clearBumpsForPostIds([postId])
       }
       if (typeof patch.viewerCount === 'number') delta.viewerCount = patch.viewerCount
+      // boost / bookmark / repost counts are also fanned out via this event so
+      // every viewer of the post (not just actor + author) sees them update.
+      // The actor's `viewerHasBoosted` / `viewerHasBookmarked` flags continue
+      // to flow through `onInteraction` below.
+      if (typeof patch.boostCount === 'number') {
+        delta.boostCount = Math.max(0, Math.floor(patch.boostCount))
+      }
+      if (typeof patch.bookmarkCount === 'number') {
+        delta.bookmarkCount = Math.max(0, Math.floor(patch.bookmarkCount))
+      }
+      if (typeof patch.repostCount === 'number') {
+        delta.repostCount = Math.max(0, Math.floor(patch.repostCount))
+      }
       postCache.patch(postId, delta)
     },
     onInteraction: (payload: import('~/types/api').WsPostsInteractionPayload) => {

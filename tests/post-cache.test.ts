@@ -291,6 +291,39 @@ describe('applyLiveUpdatedPatch', () => {
     expect(result.commentCount).toBe(3)
     expect(result.viewerCount).toBe(10)
   })
+
+  // The following three locks in the room fan-out for boost/bookmark/repost.
+  // Before this fix, only the post author + actor saw count changes for these
+  // interactions; passive viewers (subscribed to the post room) saw stale data.
+  it('applies boostCount from a posts:liveUpdated patch', () => {
+    const post = makePost({ id: 'p1', boostCount: 1 })
+    const result = applyLiveUpdatedPatch(post, 'p1', { boostCount: 4 })
+    expect(result.boostCount).toBe(4)
+  })
+
+  it('applies bookmarkCount from a posts:liveUpdated patch', () => {
+    const post = makePost({ id: 'p1', bookmarkCount: 0 })
+    const result = applyLiveUpdatedPatch(post, 'p1', { bookmarkCount: 2 })
+    expect(result.bookmarkCount).toBe(2)
+  })
+
+  it('applies repostCount from a posts:liveUpdated patch', () => {
+    const post = makePost({ id: 'p1' })
+    const result = applyLiveUpdatedPatch(post, 'p1', { repostCount: 6 })
+    expect((result as FeedPost & { repostCount?: number }).repostCount).toBe(6)
+  })
+
+  it('floors and clamps the count fields to non-negative integers', () => {
+    const post = makePost({ id: 'p1', boostCount: 0, bookmarkCount: 0 })
+    const result = applyLiveUpdatedPatch(post, 'p1', {
+      boostCount: -2,
+      bookmarkCount: 3.7,
+      repostCount: -10,
+    })
+    expect(result.boostCount).toBe(0)
+    expect(result.bookmarkCount).toBe(3)
+    expect((result as FeedPost & { repostCount?: number }).repostCount).toBe(0)
+  })
 })
 
 // ── applyInteractionPatch ──────────────────────────────────────────────────────
@@ -355,6 +388,10 @@ describe('applyInteractionPatch', () => {
 // PostRow reads from cache.get(post) to get fresh data.
 
 describe('global plugin simulation — liveUpdated → cache', () => {
+  // Mirrors the implementation in plugins/post-cache.client.ts. Keep these in
+  // sync. (The plugin itself is hard to import from a unit test because it
+  // depends on Nuxt context; the contract under test is the field allowlist
+  // and the cache write.)
   function simulateLiveUpdated(
     cache: ReturnType<typeof usePostCache>,
     payload: WsPostsLiveUpdatedPayload,
@@ -367,6 +404,18 @@ describe('global plugin simulation — liveUpdated → cache', () => {
     if (patch.deletedAt !== undefined) delta.deletedAt = patch.deletedAt
     if (typeof patch.commentCount === 'number') delta.commentCount = patch.commentCount
     if (typeof patch.viewerCount === 'number') delta.viewerCount = patch.viewerCount
+    if (typeof patch.boostCount === 'number') {
+      delta.boostCount = Math.max(0, Math.floor(patch.boostCount))
+    }
+    if (typeof patch.bookmarkCount === 'number') {
+      delta.bookmarkCount = Math.max(0, Math.floor(patch.bookmarkCount))
+    }
+    if (typeof (patch as { repostCount?: number }).repostCount === 'number') {
+      ;(delta as FeedPost & { repostCount?: number }).repostCount = Math.max(
+        0,
+        Math.floor((patch as { repostCount: number }).repostCount),
+      )
+    }
     cache.patch(payload.postId, delta)
   }
 
@@ -409,6 +458,51 @@ describe('global plugin simulation — liveUpdated → cache', () => {
     expect(mergedReply.parent?.commentCount).toBe(2)
     // The original reply object is untouched
     expect(reply.parent?.commentCount).toBe(0)
+  })
+
+  // The liveUpdated event is the room broadcast. These three lock in the bug
+  // fix where passive viewers (not the actor, not the author) could not see
+  // boost / bookmark / repost counts change in real time.
+  it('boost room fan-out updates boostCount via cache.get for passive viewers', async () => {
+    const cache = await runInSetup(usePostCache)
+    const post = makePost({ id: 'p1', boostCount: 2 })
+    simulateLiveUpdated(
+      cache,
+      makeLiveUpdatedPayload('p1', { boostCount: 3 }, 'boost_changed'),
+    )
+    expect(cache.get(post).boostCount).toBe(3)
+    expect(post.boostCount).toBe(2)
+  })
+
+  it('bookmark room fan-out updates bookmarkCount via cache.get for passive viewers', async () => {
+    const cache = await runInSetup(usePostCache)
+    const post = makePost({ id: 'p1', bookmarkCount: 0 })
+    simulateLiveUpdated(
+      cache,
+      makeLiveUpdatedPayload('p1', { bookmarkCount: 1 }, 'bookmark_changed'),
+    )
+    expect(cache.get(post).bookmarkCount).toBe(1)
+  })
+
+  it('repost room fan-out updates repostCount via cache.get for passive viewers', async () => {
+    const cache = await runInSetup(usePostCache)
+    const post = makePost({ id: 'p1' })
+    simulateLiveUpdated(
+      cache,
+      makeLiveUpdatedPayload('p1', { repostCount: 4 }, 'repost_changed'),
+    )
+    expect((cache.get(post) as FeedPost & { repostCount?: number }).repostCount).toBe(4)
+  })
+
+  it('post_deleted reason patches deletedAt so PostRow can render the deleted state', async () => {
+    const cache = await runInSetup(usePostCache)
+    const ts = new Date().toISOString()
+    const post = makePost({ id: 'p1' })
+    simulateLiveUpdated(
+      cache,
+      makeLiveUpdatedPayload('p1', { deletedAt: ts }, 'post_deleted'),
+    )
+    expect(cache.get(post).deletedAt).toBe(ts)
   })
 })
 
