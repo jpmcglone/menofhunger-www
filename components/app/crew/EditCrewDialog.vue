@@ -220,7 +220,7 @@
 <script setup lang="ts">
 import { useFormSubmit } from '~/composables/useFormSubmit'
 import type { CrewMemberListItem, CrewPrivate, CrewPublic } from '~/types/api'
-import { groupAvatarRoundClass } from '~/utils/avatar-rounding'
+import { crewAvatarRoundClass } from '~/utils/avatar-rounding'
 
 const props = defineProps<{
   modelValue: boolean
@@ -241,7 +241,7 @@ const { assetUrl } = useAssets()
 const crewApi = useCrew()
 
 const isOwner = computed(() => Boolean(props.isOwner))
-const avatarRoundClass = groupAvatarRoundClass()
+const avatarRoundClass = crewAvatarRoundClass()
 
 const coverUrl = computed(() => props.crew?.coverUrl ?? null)
 const avatarUrl = computed(() => props.crew?.avatarUrl ?? null)

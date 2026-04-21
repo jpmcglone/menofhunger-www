@@ -14,17 +14,17 @@
     <AppInlineAlert v-if="search.error.value" severity="danger">{{ search.error.value }}</AppInlineAlert>
 
     <div
-      v-if="search.results.value.length > 0"
+      v-if="sortedResults.length > 0"
       class="max-h-56 overflow-y-auto rounded-lg border moh-border divide-y divide-gray-100 dark:divide-white/5"
     >
       <button
-        v-for="u in search.results.value"
+        v-for="u in sortedResults"
         :key="u.id"
         type="button"
         class="flex w-full items-center gap-3 px-3 py-2 text-left transition-colors"
         :class="rowClass(u)"
         :disabled="disabled || !isSelectable(u)"
-        :title="!isSelectable(u) ? selectableHint : undefined"
+        :title="!isSelectable(u) ? hintFor(u) : undefined"
         @click="pick(u)"
       >
         <AppUserAvatar :user="u" size-class="h-8 w-8" />
@@ -34,7 +34,7 @@
             v-if="!isSelectable(u)"
             class="text-[11px] moh-text-muted mt-0.5"
           >
-            {{ selectableHint }}
+            {{ hintFor(u) }}
           </p>
         </div>
       </button>
@@ -46,6 +46,7 @@
     >
       No matching {{ emptyNoun }} found.
     </div>
+
 
     <div v-if="multiple && selectedUsers.length > 0" class="flex flex-wrap gap-2 pt-1">
       <span
@@ -119,6 +120,8 @@ const props = withDefaults(
     show?: RecipientShowFilter
     /** When true, non-verified users are visible but not selectable. */
     requireVerified?: boolean
+    /** When true, users already in a Crew are shown as disabled and sorted to the bottom. */
+    disableInCrew?: boolean
     /** Optional override for the disabled-row hint copy. */
     unselectableHint?: string
     /** Page size for the /search request. */
@@ -133,6 +136,7 @@ const props = withDefaults(
     excludeUserIds: () => [],
     show: 'all',
     requireVerified: false,
+    disableInCrew: false,
     unselectableHint: undefined,
     limit: 8,
   },
@@ -175,10 +179,31 @@ const emptyNoun = computed(() => {
   return 'people'
 })
 
+// Sort selectable users before disabled users (inCrew or unverified)
+const sortedResults = computed<FollowListUser[]>(() => {
+  const results = search.results.value
+  if (!props.disableInCrew && !props.requireVerified) return results
+  return [...results].sort((a, b) => {
+    const aOk = isSelectable(a) ? 0 : 1
+    const bOk = isSelectable(b) ? 0 : 1
+    return aOk - bOk
+  })
+})
+
 function isSelectable(u: FollowListUser): boolean {
-  if (!props.requireVerified) return true
-  const status = (u as unknown as { verifiedStatus?: string | null }).verifiedStatus ?? 'none'
-  return status !== 'none'
+  if (props.requireVerified) {
+    const status = (u as unknown as { verifiedStatus?: string | null }).verifiedStatus ?? 'none'
+    if (status === 'none') return false
+  }
+  if (props.disableInCrew && (u as FollowListUser & { inCrew?: boolean }).inCrew) return false
+  return true
+}
+
+function hintFor(u: FollowListUser): string {
+  if (props.disableInCrew && (u as FollowListUser & { inCrew?: boolean }).inCrew) {
+    return 'Already in a Crew.'
+  }
+  return selectableHint.value
 }
 
 function rowClass(u: FollowListUser): string {
@@ -214,7 +239,7 @@ function clearSelection() {
 }
 
 function onSubmitFirst() {
-  const first = search.results.value.find((u) => isSelectable(u))
+  const first = sortedResults.value.find((u) => isSelectable(u))
   if (first) pick(first)
 }
 

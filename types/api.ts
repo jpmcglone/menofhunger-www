@@ -442,6 +442,8 @@ export type PublicProfile = {
   viewerHasBlockedUser?: boolean
   /** True when this user has blocked the viewer. */
   userHasBlockedViewer?: boolean
+  /** True when this user is an active member of any Crew. */
+  inCrew?: boolean
 }
 
 /** Hover preview payload from GET /users/:username/preview */
@@ -920,6 +922,8 @@ export type FollowListUser = {
   avatarUrl: string | null
   orgAffiliations?: OrgAffiliation[]
   relationship: FollowRelationship
+  /** True when this user is an active member of any Crew. Present on search results. */
+  inCrew?: boolean
 }
 
 /** Search user result (FollowListUser + createdAt for interleaving). */
@@ -1468,6 +1472,11 @@ export type WsPostsCommentAddedPayload = {
 export type WsPostsCommentDeletedPayload = {
   parentPostId: string
   commentId: string
+}
+
+/** New top-level post from someone the viewer follows; pushed to each follower's user room. */
+export type WsFeedNewPostPayload = {
+  post: FeedPost
 }
 
 export type WsAdminUpdateKind = 'reports' | 'verification' | 'feedback'

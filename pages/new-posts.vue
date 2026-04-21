@@ -22,7 +22,7 @@
         </div>
 
         <div v-else class="relative mt-3">
-          <template v-for="post in displayPosts" :key="post.id">
+          <template v-for="post in displayPosts" :key="post._localId ?? post.id">
             <AppFeedPostRow
               :post="post"
               :replies-sort="'new'"

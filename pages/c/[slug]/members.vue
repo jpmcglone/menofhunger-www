@@ -23,7 +23,10 @@
       </div>
 
       <div class="flex items-center gap-3">
-        <div class="h-10 w-10 rounded-xl overflow-hidden bg-gray-200 dark:bg-zinc-800 shrink-0">
+        <div
+          class="h-10 w-10 overflow-hidden bg-gray-200 dark:bg-zinc-800 shrink-0"
+          :class="crewAvatarRound"
+        >
           <img
             v-if="crew.avatarUrl"
             :src="crew.avatarUrl"
@@ -90,6 +93,9 @@
 <script setup lang="ts">
 import type { CrewBySlugViewerMembership, CrewPublic } from '~/types/api'
 import { getApiErrorMessage } from '~/utils/api-error'
+import { crewAvatarRoundClass } from '~/utils/avatar-rounding'
+
+const crewAvatarRound = crewAvatarRoundClass()
 
 definePageMeta({
   layout: 'app',

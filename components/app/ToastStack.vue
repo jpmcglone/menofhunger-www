@@ -10,10 +10,7 @@
           :style="{ backgroundColor: bgFor(t), color: fgFor(t) }"
           role="status"
         >
-          <div
-            class="flex min-h-12 items-center gap-3 px-4 py-2"
-            :class="hasActions(t) ? 'flex-wrap sm:flex-nowrap' : ''"
-          >
+          <div class="flex min-h-12 items-center gap-3 px-4 py-2">
             <!-- Whole-row action: only when there are no buttons AND `to` is set. -->
             <button
               v-if="t.to && !hasActions(t)"
@@ -26,15 +23,15 @@
               <span v-if="t.message" class="truncate text-sm opacity-90 leading-none">{{ t.message }}</span>
             </button>
             <!-- Static row (no nav, no buttons OR with buttons): just text. -->
-            <div v-else class="flex min-w-0 flex-1 items-center gap-2">
+            <div v-else class="flex min-w-0 flex-1" :class="hasActions(t) ? 'flex-col gap-1' : 'items-center gap-2'">
               <span
-                class="truncate text-sm font-semibold leading-none"
-                :class="hasActions(t) ? 'whitespace-normal break-words' : ''"
+                class="text-sm font-semibold leading-snug"
+                :class="hasActions(t) ? '' : 'truncate leading-none'"
               >{{ t.title }}</span>
               <span
                 v-if="t.message"
-                class="truncate text-sm opacity-90 leading-none"
-                :class="hasActions(t) ? 'whitespace-normal break-words' : ''"
+                class="text-sm opacity-90"
+                :class="hasActions(t) ? 'leading-snug' : 'truncate leading-none'"
               >{{ t.message }}</span>
             </div>
 

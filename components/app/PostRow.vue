@@ -675,7 +675,12 @@ watch(
     postState.value = p
   },
 )
-const postView = computed(() => postState.value)
+
+// Merge the post with any cached realtime deltas (counts, body, flags, boost).
+// This is the single read point for all mutable post fields — no matter which feed
+// array the post came from, postView always reflects the latest server-confirmed state.
+const postCache = usePostCache()
+const postView = computed(() => postCache.get(postState.value))
 
 const groupAvatarRoundClass = getGroupAvatarRoundClass()
 

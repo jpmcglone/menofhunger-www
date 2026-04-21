@@ -47,6 +47,10 @@ export function useCrew() {
     await apiFetchData(`/crew/me/members/${encodeURIComponent(userId)}`, { method: 'DELETE' })
   }
 
+  async function reorderMembers(userIdOrder: string[]): Promise<void> {
+    await apiFetchData('/crew/me/members/order', { method: 'PATCH', body: { order: userIdOrder } })
+  }
+
   async function sendInvite(params: {
     inviteeUserId: string
     message?: string | null
@@ -128,6 +132,7 @@ export function useCrew() {
     leaveCrew,
     disbandCrew,
     kickMember,
+    reorderMembers,
     sendInvite,
     listInbox,
     listOutbox,

@@ -103,12 +103,24 @@
             {{ shell.name }}
           </h1>
           <div class="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-gray-500 dark:text-gray-400">
+            <!--
+              Member list is API-gated to active members (groups.service#listMembers
+              calls assertActiveMember). Non-members see the count without a link so
+              clicking it can't trigger an unhandled 404 from the members page.
+            -->
             <NuxtLink
+              v-if="isMember"
               :to="`/g/${encodeURIComponent(shell.slug)}/members`"
               class="font-medium hover:underline underline-offset-2 text-gray-700 dark:text-gray-200 tabular-nums"
             >
               {{ shell.memberCount.toLocaleString() }} members
             </NuxtLink>
+            <span
+              v-else
+              class="font-medium text-gray-700 dark:text-gray-200 tabular-nums"
+            >
+              {{ shell.memberCount.toLocaleString() }} members
+            </span>
             <span aria-hidden="true">·</span>
             <span>{{ shell.joinPolicy === 'approval' ? 'Approval to join' : 'Open' }}</span>
           </div>

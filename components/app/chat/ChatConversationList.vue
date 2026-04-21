@@ -116,7 +116,8 @@
             </div>
             <div
               v-else-if="c.type === 'crew_wall'"
-              class="relative h-10 w-10 shrink-0 overflow-hidden rounded-full bg-gray-200 text-gray-600 dark:bg-zinc-800 dark:text-gray-300"
+              class="relative h-10 w-10 shrink-0 overflow-hidden bg-gray-200 text-gray-600 dark:bg-zinc-800 dark:text-gray-300"
+              :class="crewAvatarRound"
             >
               <img
                 v-if="c.crew?.avatarUrl"
@@ -125,7 +126,7 @@
                 class="h-full w-full object-cover"
               >
               <div v-else class="flex h-full w-full items-center justify-center">
-                <Icon name="tabler:shield" class="text-sm" aria-hidden="true" />
+                <Icon name="tabler:shield-check" class="text-sm" aria-hidden="true" />
               </div>
             </div>
             <div
@@ -230,6 +231,9 @@ import type { PropType } from 'vue'
 import type { MessageConversation, MessageUser } from '~/types/api'
 import type { TypingUserDisplay } from '~/composables/chat/useChatTyping'
 import { useUsersStore } from '~/composables/useUsersStore'
+import { crewAvatarRoundClass } from '~/utils/avatar-rounding'
+
+const crewAvatarRound = crewAvatarRoundClass()
 
 const props = defineProps({
   isTinyViewport: { type: Boolean, required: true },

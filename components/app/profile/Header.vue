@@ -331,7 +331,10 @@
         class="mt-3 inline-flex items-center gap-2 rounded-full border moh-border pl-1.5 pr-3 py-1 max-w-full hover:bg-gray-50 dark:hover:bg-zinc-900 transition-colors"
         :aria-label="`View Crew: ${crewPillName}`"
       >
-        <span class="h-6 w-6 rounded-full overflow-hidden bg-gray-200 dark:bg-zinc-800 shrink-0 inline-flex items-center justify-center">
+        <span
+          class="h-6 w-6 overflow-hidden bg-gray-200 dark:bg-zinc-800 shrink-0 inline-flex items-center justify-center"
+          :class="crewAvatarRound"
+        >
           <img
             v-if="crewPill.avatarUrl"
             :src="crewPill.avatarUrl"
@@ -348,7 +351,7 @@
 
   <Menu v-if="canOpenMenu" ref="menuRef" :model="menuItems" popup>
     <template #item="{ item, props }">
-      <a v-bind="props.action" class="flex items-center gap-2">
+      <a v-bind="props.action" class="flex items-center gap-2" :class="item.class">
         <Icon v-if="item.iconName" :name="item.iconName" aria-hidden="true" />
         <span v-bind="props.label">{{ item.label }}</span>
       </a>
@@ -373,6 +376,13 @@
     @submitted="onReportSubmitted"
   />
 
+
+  <AppCrewInviteToCrewDialog
+    v-if="canInviteToCrew"
+    v-model="inviteToCrewOpen"
+    :invitee-user-id="inviteToCrewUserId"
+    :invitee-name="profile?.name || profile?.username || null"
+  />
 
   <AppConfirmDialog
     :visible="startChatInfoVisible"
@@ -404,7 +414,9 @@ import { formatDateTime, formatListTime } from '~/utils/time-format'
 import { tinyTooltip } from '~/utils/tiny-tooltip'
 import type { MenuItem } from 'primevue/menuitem'
 import { useUserOverlay } from '~/composables/useUserOverlay'
-import { avatarRoundClass as getAvatarRoundClass } from '~/utils/avatar-rounding'
+import { avatarRoundClass as getAvatarRoundClass, crewAvatarRoundClass } from '~/utils/avatar-rounding'
+
+const crewAvatarRound = crewAvatarRoundClass()
 import { userColorTier } from '~/utils/user-tier'
 import { PRIMARY_PREMIUM_ORANGE, PRIMARY_VERIFIED_BLUE } from '~/utils/theme-tint'
 
@@ -873,9 +885,61 @@ async function openBlockConfirm() {
   }
 }
 
+const viewerCrew = useViewerCrew()
+// Ensure viewer crew state is loaded so the invite option appears correctly.
+// ensureLoaded is idempotent — subsequent calls are no-ops if already loaded.
+onMounted(() => { void viewerCrew.ensureLoaded() })
+
+const inviteToCrewOpen = ref(false)
+const inviteToCrewUserId = ref<string | null>(null)
+
+// Can invite to crew when:
+//   a) viewer is crew owner with room (memberCount < 5), OR
+//   b) viewer has no crew yet (will create one and invite as first member)
+// AND profile user is not already in a crew
+const canInviteToCrew = computed(() => {
+  if (!isAuthed.value || isSelf.value) return false
+  if (!viewerIsVerified.value) return false
+  if ((profile.value as PublicProfile & { inCrew?: boolean })?.inCrew) return false
+  const membership = viewerCrew.membership.value
+  if (membership?.role === 'owner') {
+    // Owner can invite if the viewer crew has room (max 5 members)
+    // We rely on viewerCrew to know the owner's role; room check is loose here
+    // (server will reject if full); this shows/hides the button optimistically.
+    return true
+  }
+  // No crew yet — can create one and invite
+  if (!membership) return true
+  return false
+})
+
+const inviteToCrewLabel = computed(() =>
+  viewerCrew.membership.value ? 'Add to my Crew' : 'Invite to Crew',
+)
+
+function openInviteToCrew() {
+  if (!profile.value?.id) return
+  inviteToCrewUserId.value = profile.value.id
+  inviteToCrewOpen.value = true
+}
+
+// Exclude IDs for the invite dialog: just the profile user (pre-selected)
+const inviteToCrewExcludeIds = computed<string[]>(() => [])
+
 const menuItems = computed<MenuItemWithIcon[]>(() => {
   if (!canOpenMenu.value) return []
-  const items: MenuItemWithIcon[] = [
+  const items: MenuItemWithIcon[] = []
+
+  if (canInviteToCrew.value) {
+    items.push({
+      label: inviteToCrewLabel.value,
+      iconName: 'tabler:shield-check',
+      class: 'text-amber-600 dark:text-amber-400 font-semibold',
+      command: () => openInviteToCrew(),
+    })
+  }
+
+  items.push(
     {
       label: 'Report user',
       iconName: 'tabler:flag',
@@ -888,7 +952,7 @@ const menuItems = computed<MenuItemWithIcon[]>(() => {
       iconName: viewerHasBlockedProfile.value ? 'tabler:ban-off' : 'tabler:ban',
       command: () => openBlockConfirm(),
     },
-  ]
+  )
   return items
 })
 

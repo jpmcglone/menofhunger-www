@@ -27,7 +27,10 @@
       <!-- Header (avatar + name + tagline + meta + actions) -->
       <div class="moh-gutter-x -mt-12 md:-mt-14 relative max-w-3xl mx-auto">
         <div class="flex items-end gap-4">
-          <div class="h-24 w-24 md:h-28 md:w-28 rounded-2xl overflow-hidden ring-4 ring-[var(--moh-bg)] bg-gray-200 dark:bg-zinc-800 shrink-0">
+          <div
+            class="h-24 w-24 md:h-28 md:w-28 overflow-hidden ring-4 ring-[var(--moh-bg)] bg-gray-200 dark:bg-zinc-800 shrink-0"
+            :class="crewAvatarRound"
+          >
             <img
               v-if="crew.avatarUrl"
               :src="crew.avatarUrl"
@@ -105,11 +108,34 @@
           <p class="text-sm moh-text whitespace-pre-line">{{ crew.bio }}</p>
         </section>
 
+        <!-- Crew member strip (5 fixed slots) -->
+        <section class="mt-6">
+          <AppCrewCrewMemberStrip
+            v-if="crew.members.length > 0 || isOwner"
+            :members="crew.members"
+            :is-owner="isOwner"
+            :can-add-member="canAddMember"
+            @add-member="addMemberOpen = true"
+          />
+        </section>
+
         <!-- Posts feed: posts authored by crew members, filtered by visibility
              on the server (viewer only sees what they're allowed to see). Behaves
              like the home feed scoped to this crew's roster. -->
         <section class="mt-6">
-          <h2 class="text-sm font-semibold moh-text uppercase tracking-wide mb-2">Posts</h2>
+          <div class="sticky top-0 z-20 -mx-4 px-4 py-1.5 border-b moh-border moh-surface flex justify-between items-center mb-3">
+            <h2 class="text-sm font-semibold moh-text uppercase tracking-wide">Posts</h2>
+            <AppFeedFiltersBar
+              :sort="feedSort"
+              :filter="feedFilter"
+              :viewer-is-verified="viewerIsVerified"
+              :viewer-is-premium="viewerIsPremium"
+              :show-reset="isFiltered"
+              @update:sort="feedSort = $event"
+              @update:filter="feedFilter = $event"
+              @reset="resetFilters()"
+            />
+          </div>
 
           <AppInlineAlert v-if="feedError" class="mb-3" severity="danger">
             {{ feedError }}
@@ -120,7 +146,7 @@
               No posts from this crew yet.
             </div>
             <div v-else class="relative">
-              <template v-for="item in displayItems" :key="item.kind === 'ad' ? item.key : item.post.id">
+              <template v-for="item in displayItems" :key="item.kind === 'ad' ? item.key : (item.post._localId ?? item.post.id)">
                 <AppFeedFakeAdRow v-if="item.kind === 'ad'" />
                 <AppFeedPostRow
                   v-else
@@ -156,6 +182,13 @@
       @updated="onCrewUpdated"
       @disbanded="onCrewDisbanded"
     />
+
+    <AppCrewAddCrewMemberDialog
+      v-if="isOwner && crew"
+      v-model="addMemberOpen"
+      :exclude-user-ids="addMemberExcludeIds"
+      @invited="onMemberInvited"
+    />
   </AppPageContent>
 </template>
 
@@ -165,6 +198,9 @@ import { useLoadMoreObserver } from '~/composables/useLoadMoreObserver'
 import { useMiddleScroller } from '~/composables/useMiddleScroller'
 import type { CrewCallback, WsCrewWallPayload } from '~/composables/usePresence'
 import { getApiErrorMessage } from '~/utils/api-error'
+import { crewAvatarRoundClass } from '~/utils/avatar-rounding'
+
+const crewAvatarRound = crewAvatarRoundClass()
 
 definePageMeta({
   layout: 'app',
@@ -197,7 +233,19 @@ const isMember = computed(() => Boolean(viewerMembership.value))
 const isOwner = computed(() => viewerMembership.value?.role === 'owner')
 
 const editCrewOpen = ref(false)
+const addMemberOpen = ref(false)
 const leaving = ref(false)
+
+// Add-member dialog: exclude current members + pending invitees
+const addMemberExcludeIds = computed<string[]>(() => {
+  const ids = new Set<string>()
+  for (const m of crew.value?.members ?? []) ids.add(m.user.id)
+  return [...ids]
+})
+
+const canAddMember = computed(
+  () => isOwner.value && (crew.value?.memberCount ?? 0) < 5,
+)
 
 const viewerCrew = useViewerCrew()
 
@@ -213,6 +261,15 @@ const crewMemberAuthorIds = computed<string[]>(() =>
 )
 
 const feedEnabled = computed(() => Boolean(crew.value && crewMemberAuthorIds.value.length > 0))
+
+const {
+  sort: feedSort,
+  filter: feedFilter,
+  viewerIsVerified,
+  viewerIsPremium,
+  isFiltered,
+  resetFilters,
+} = useUrlFeedFilters()
 
 const {
   posts,
@@ -232,9 +289,9 @@ const {
   localInsertsStateKey: 'crew-feed-local-inserts',
   authorIds: crewMemberAuthorIds,
   enabled: feedEnabled,
-  visibility: ref('all'),
+  visibility: feedFilter,
   followingOnly: ref(false),
-  sort: ref('new'),
+  sort: feedSort,
   showAds: ref(false),
 })
 
@@ -283,6 +340,11 @@ function onCrewUpdated(updated: CrewPrivate) {
   if (import.meta.client && updated.slug && updated.slug !== String(route.params.slug)) {
     void navigateTo(`/c/${encodeURIComponent(updated.slug)}`, { replace: true })
   }
+}
+
+function onMemberInvited() {
+  // Refresh crew data to get updated pending invite count
+  void load()
 }
 
 function onCrewDisbanded() {

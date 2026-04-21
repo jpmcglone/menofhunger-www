@@ -14,6 +14,7 @@ export function useBoostState() {
   const inflight = useState<Record<string, boolean>>('boost-inflight', () => ({}))
   const pending = useState<Record<string, boolean>>('boost-pending', () => ({}))
   const error = useState<string | null>('boost-state-error', () => null)
+  const postCache = usePostCache()
 
   function get(post: Pick<FeedPost, 'id' | 'boostCount' | 'viewerHasBoosted'>): BoostStateEntry {
     const existing = state.value[post.id]
@@ -26,6 +27,8 @@ export function useBoostState() {
 
   function set(postId: string, entry: BoostStateEntry) {
     state.value = { ...state.value, [postId]: entry }
+    // Also push into the shared post cache so PostRow reads boost state from one place.
+    postCache.patch(postId, { boostCount: entry.boostCount, viewerHasBoosted: entry.viewerHasBoosted })
   }
 
   function ingest(posts: Array<Pick<FeedPost, 'id' | 'boostCount' | 'viewerHasBoosted'>>) {

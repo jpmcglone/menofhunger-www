@@ -8,6 +8,7 @@ import { normalizeForMeta } from '~/utils/text'
 
 export async function usePostPermalink(postId: Ref<string>) {
   const { apiFetchData } = useApiClient()
+  const { clearBumpsForPostIds } = usePostCountBumps()
 
   const { data, error, refresh: refreshPost } = await useAsyncData(
     () => `post:${postId.value}`,
@@ -21,6 +22,17 @@ export async function usePostPermalink(postId: Ref<string>) {
       // Reuse SSR payload during hydration to avoid a duplicate client fetch.
       getCachedData: (key, nuxtApp) => nuxtApp.payload.data[key] ?? nuxtApp.static.data[key],
     }
+  )
+
+  // Whenever fresh server data arrives for this post, clear any optimistic
+  // commentCount bumps we accumulated for it — the server's count is now authoritative.
+  watch(
+    data,
+    (fresh) => {
+      const id = (fresh as FeedPost | null)?.id
+      if (id) clearBumpsForPostIds([id])
+    },
+    { immediate: true },
   )
 
   const post = computed(() => data.value ?? null)

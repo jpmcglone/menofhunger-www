@@ -152,6 +152,7 @@
 <script setup lang="ts">
 import AppGroupPreviewCard from '~/components/app/groups/AppGroupPreviewCard.vue'
 import type { FeedPost } from '~/types/api'
+import { applyLiveUpdatedPatch } from '~/utils/feed-patch'
 import { feedPostThreadGroupDisplayName } from '~/utils/community-group-preview'
 import { getApiErrorMessage } from '~/utils/api-error'
 import { usePostPermalink, usePostPermalinkMedia } from '~/composables/usePostPermalink'
@@ -287,17 +288,23 @@ const {
 const commentsInitialLoading = computed(() => commentsLoading.value && comments.value.length === 0)
 
 // Realtime: subscribe to this post while on-screen, and refresh replies when needed.
+// Content patches (counts, body, flags) also flow through the global cache plugin so
+// PostRow always shows the freshest data without needing explicit data.value updates.
+// onLiveUpdated here handles permalink-specific concerns: commentsCounts, comment
+// re-fetching, and deletion.
 const { addPostsCallback, removePostsCallback, subscribePosts, unsubscribePosts } = usePresence()
 const postsCb: PostsCallback = {
   onLiveUpdated: (payload) => {
     const pid = String(payload?.postId ?? '').trim()
     if (!pid || pid !== postId.value) return
     const patch = payload?.patch ?? {}
-    if (data.value && (data.value as any).id === pid) {
-      data.value = { ...(data.value as any), ...(patch as any) }
+    // Apply the canonical field allowlist to data.value for any template code that
+    // reads directly from it (outside of PostRow's cache overlay).
+    if (data.value && (data.value as FeedPost).id === pid) {
+      data.value = applyLiveUpdatedPatch(data.value as FeedPost, pid, patch) as typeof data.value
     }
-    const serverCommentCount = typeof (patch as any)?.commentCount === 'number'
-      ? Math.max(0, Number((patch as any).commentCount))
+    const serverCommentCount = typeof patch?.commentCount === 'number'
+      ? Math.max(0, patch.commentCount)
       : null
     if (serverCommentCount != null) {
       if (commentsCounts.value) {

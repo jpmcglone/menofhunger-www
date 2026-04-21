@@ -9,6 +9,7 @@ import { useCursorFeed } from '~/composables/useCursorFeed'
 import { useMiddleScroller } from '~/composables/useMiddleScroller'
 import { usePostCountBumps } from '~/composables/usePostCountBumps'
 import type { PostsCallback } from '~/composables/usePresence'
+// feed-patch utilities are used by the global post-cache plugin; no longer needed here.
 
 type FeedFilter = 'all' | 'public' | PostVisibility
 type FeedSort = 'new' | 'trending'
@@ -152,11 +153,11 @@ function postsFeedListQuery(opts: {
 export function usePostsFeed(options: UsePostsFeedOptions = {}) {
   const { apiFetch, apiFetchData } = useApiClient()
   const middleScrollerEl = useMiddleScroller()
-  const { clearBumpsForPostIds } = usePostCountBumps()
+  const { clearBumpsForPostIds, bumpCommentCount } = usePostCountBumps()
   const loadingIndicator = useLoadingIndicator()
   const { user: me } = useAuth()
   const { addPostsCallback, removePostsCallback, subscribePosts, unsubscribePosts } = usePresence()
-  const boostState = useBoostState()
+
 
   const feedStateKey = options.feedStateKey ?? 'posts-feed'
   const localInsertsStateKey = options.localInsertsStateKey ?? 'posts-feed-local-inserts'
@@ -264,90 +265,21 @@ export function usePostsFeed(options: UsePostsFeedOptions = {}) {
   }
 
   const postsCb: PostsCallback = {
-    onInteraction: (payload) => {
-      const postId = String(payload?.postId ?? '').trim()
-      if (!postId) return
-      const kind = payload?.kind
-      const active = Boolean(payload?.active)
-      const actorId = String(payload?.actorUserId ?? '').trim()
-      const isMe = Boolean(actorId && actorId === me.value?.id)
-
-      const patchOne = (p: FeedPost): FeedPost => {
-        const next: FeedPost = { ...p }
-        if (next.id === postId) {
-          if (kind === 'boost' && typeof payload?.boostCount === 'number') {
-            next.boostCount = Math.max(0, Math.floor(payload.boostCount))
-            if (isMe) next.viewerHasBoosted = active
-            if (isMe) boostState.set(postId, { viewerHasBoosted: active, boostCount: next.boostCount })
-          }
-          if (kind === 'bookmark' && typeof payload?.bookmarkCount === 'number') {
-            next.bookmarkCount = Math.max(0, Math.floor(payload.bookmarkCount))
-            if (isMe) next.viewerHasBookmarked = active
-          }
-        }
-        if (next.parent) {
-          next.parent = patchOne(next.parent)
-        }
-        return next
-      }
-
-      // Only update if we actually have the post in this feed.
-      // Note: post might appear deep in a parent chain, so check recursively.
-      const containsId = (p: FeedPost | undefined, id: string): boolean => {
-        let cur: FeedPost | undefined = p
-        while (cur) {
-          if (cur.id === id) return true
-          cur = cur.parent
-        }
-        return false
-      }
-      if (!posts.value.some((p) => containsId(p, postId))) return
-      posts.value = posts.value.map(patchOne)
-    },
+    // Content patches (counts, body, flags) are handled globally by plugins/post-cache.client.ts.
+    // Per-feed callbacks only handle structural changes: deletions remove rows from the array.
     onLiveUpdated: (payload) => {
       const postId = String(payload?.postId ?? '').trim()
       if (!postId) return
       const patch = payload?.patch ?? {}
-
-      // If a top-level post is deleted, remove it from the feed entirely.
+      // Remove a top-level deleted post from the array entirely so it disappears from the feed.
+      // Non-top-level deleted posts (replies inside threads) are rendered as tombstones via the cache.
       if (patch.deletedAt) {
         const isTopLevel = posts.value.some((p) => p.id === postId && !p.parentId)
         if (isTopLevel) {
           posts.value = posts.value.filter((p) => p.id !== postId)
           forgetLocalInsertsForDeletedPost(postId)
-          return
         }
       }
-
-      const patchOne = (p: FeedPost): FeedPost => {
-        let next: FeedPost = p
-        if (p.id === postId) {
-          next = { ...p }
-          if (typeof patch.body === 'string') next.body = patch.body
-          if (patch.editedAt !== undefined) next.editedAt = patch.editedAt
-          if (typeof patch.editCount === 'number') next.editCount = patch.editCount
-          if (patch.deletedAt !== undefined) next.deletedAt = patch.deletedAt
-          if (typeof patch.commentCount === 'number') {
-            next.commentCount = patch.commentCount
-            clearBumpsForPostIds([postId])
-          }
-          if (typeof patch.viewerCount === 'number') next.viewerCount = patch.viewerCount
-        }
-        if (next.parent) {
-          next = { ...next, parent: patchOne(next.parent) }
-        }
-        return next
-      }
-      const containsId = (p: FeedPost | undefined, id: string): boolean => {
-        let cur: FeedPost | undefined = p
-        while (cur) {
-          if (cur.id === id) return true
-          cur = cur.parent
-        }
-        return false
-      }
-      if (!posts.value.some((p) => containsId(p, postId))) return
-      posts.value = posts.value.map(patchOne)
     },
   }
   if (import.meta.client) {
@@ -732,7 +664,16 @@ export function usePostsFeed(options: UsePostsFeedOptions = {}) {
     // For optimistic replies, preserve the parent reference so the row keeps
     // its thread context (parent shown above as a "reply to" preview). Prefer
     // any parent the server supplied; fall back to the optimistic parent.
-    const merged: FeedPost = { ...realPost, parent: realPost.parent ?? existing.parent }
+    // Keep `_localId` on the merged post so the v-for :key stays stable across the
+    // optimistic→real swap — the same component instance updates props in place
+    // instead of unmounting and remounting (which causes visible jitter).
+    const merged: FeedPost = {
+      ...realPost,
+      parent: realPost.parent ?? existing.parent,
+      _localId: existing._localId,
+      _pending: undefined,
+      _pendingError: undefined,
+    }
     const next = posts.value.slice()
     next[idx] = merged
     posts.value = next
@@ -784,6 +725,9 @@ export function usePostsFeed(options: UsePostsFeedOptions = {}) {
   function addReply(parentId: string, replyPost: FeedPost, parentPostFromFeed: FeedPost) {
     const pid = (parentId ?? '').trim()
     if (!pid) return
+    // Bump the shared optimistic counter for the direct parent so any PostRow rendering it
+    // reflects the new reply immediately, regardless of whether the parent is in this feed.
+    bumpCommentCount(pid)
     const idx = posts.value.findIndex((p) => p.id === pid)
     if (idx < 0) return
     const replyWithParent: FeedPost = { ...replyPost, parent: parentPostFromFeed }
@@ -933,4 +877,32 @@ export function useHomeFeedPrepend() {
     markOptimisticPostingInHomeFeed,
     removeOptimisticFromHomeFeed,
   }
+}
+
+/**
+ * Global hook so the modal composer in `layouts/app.vue` can prepend newly created posts
+ * to the profile feed when the viewer is viewing their own profile.
+ *
+ * The profile page (`pages/u/[username].vue`) registers a callback via `registerProfilePrepend`
+ * when `isSelf` is true and cleans up when it deactivates. `layouts/app.vue` calls
+ * `prependToProfileFeed(post)` after every successful post creation.
+ */
+export function useProfileFeedPrepend() {
+  type PrependCb = (post: FeedPost) => void
+  const callbacks = useState<Set<PrependCb>>('profile-feed-prepend-cbs', () => new Set())
+
+  function prependToProfileFeed(post: FeedPost) {
+    const id = (post?.id ?? '').trim()
+    if (!id) return
+    for (const cb of callbacks.value) {
+      try { cb(post) } catch { /* ignore */ }
+    }
+  }
+
+  function registerProfilePrepend(cb: PrependCb): () => void {
+    callbacks.value.add(cb)
+    return () => callbacks.value.delete(cb)
+  }
+
+  return { prependToProfileFeed, registerProfilePrepend }
 }

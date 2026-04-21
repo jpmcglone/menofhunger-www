@@ -23,6 +23,7 @@ import type {
   WsFollowsChangedPayload,
   WsNotificationsDeletedPayload,
   WsNotificationsNewPayload,
+  WsFeedNewPostPayload,
   WsPostsLiveUpdatedPayload,
   WsPostsInteractionPayload,
   WsPostsCommentAddedPayload,
@@ -126,6 +127,8 @@ export type PostsCallback = {
   onLiveUpdated?: (payload: WsPostsLiveUpdatedPayload) => void
   onCommentAdded?: (payload: WsPostsCommentAddedPayload) => void
   onCommentDeleted?: (payload: WsPostsCommentDeletedPayload) => void
+  /** New top-level post from a followed user; home feed uses this to prepend in real time. */
+  onFeedNewPost?: (payload: WsFeedNewPostPayload) => void
 }
 
 export type ArticlesCallback = {
@@ -999,6 +1002,13 @@ export function usePresence() {
       if (!postsCallbacks.value.size) return
       for (const cb of postsCallbacks.value) {
         cb.onCommentDeleted?.(data)
+      }
+    })
+
+    socket.on('feed:newPost', (data: WsFeedNewPostPayload) => {
+      if (!postsCallbacks.value.size) return
+      for (const cb of postsCallbacks.value) {
+        cb.onFeedNewPost?.(data)
       }
     })
 

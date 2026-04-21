@@ -35,12 +35,18 @@
             />
           </div>
           <div>
-            <label for="g-desc" class="block text-sm font-medium moh-text mb-1">Description</label>
+            <div class="flex items-center justify-between mb-1">
+              <label for="g-desc" class="block text-sm font-medium moh-text">Description</label>
+              <span class="text-xs" :class="description.length > 160 ? 'text-red-500' : 'moh-text-muted'">
+                {{ description.length }}/160
+              </span>
+            </div>
             <Textarea
               id="g-desc"
               v-model="description"
               class="w-full min-h-[120px]"
               auto-resize
+              maxlength="160"
               placeholder="What is this group for?"
             />
           </div>
@@ -83,7 +89,7 @@
             label="Create group"
             rounded
             :loading="submitting"
-            :disabled="!name.trim() || !description.trim()"
+            :disabled="!name.trim() || !description.trim() || description.length > 160"
           />
         </form>
       </template>

@@ -291,6 +291,14 @@ onMounted(() => {
   }
 })
 
+// When an optimistic post is replaced by the real server post in place (same component
+// instance kept via stable :key), the post id changes. Re-register so keyboard focus
+// tracking stays in sync with the real id.
+watch(() => props.post.id, (newId, oldId) => {
+  if (oldId && oldId !== newId) unregisterPost(oldId)
+  registerPost(props.post)
+})
+
 onBeforeUnmount(() => {
   unregisterPost(props.post.id)
   stopObserve?.()

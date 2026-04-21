@@ -110,7 +110,7 @@
             No posts in your groups yet.
           </div>
           <div v-else class="relative mt-3">
-            <template v-for="item in displayItems" :key="item.kind === 'ad' ? item.key : item.post.id">
+            <template v-for="item in displayItems" :key="item.kind === 'ad' ? item.key : (item.post._localId ?? item.post.id)">
               <AppFeedFakeAdRow v-if="item.kind === 'ad'" />
               <AppFeedPostRow
                 v-else

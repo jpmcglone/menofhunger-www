@@ -1114,9 +1114,11 @@ function getDirectUser(conversation: MessageConversation) {
   return conversation.participants.find((p) => p.user.id !== me.value?.id)?.user ?? null
 }
 
+const viewerCrew = useViewerCrew()
+
 function getConversationTitle(conversation: MessageConversation) {
   if (conversation.type === 'crew_wall') {
-    return conversation.crew?.name || 'Untitled Crew'
+    return viewerCrew.membership.value?.role === 'owner' ? 'Your Crew' : 'My Crew'
   }
   if (conversation.type === 'group') {
     return conversation.title || conversation.participants.map((p) => p.user.name || p.user.username || 'User').join(', ')

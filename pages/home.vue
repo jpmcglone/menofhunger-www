@@ -163,23 +163,25 @@
               >
                 <AppLogoLoader compact />
               </div>
-              <div
+              <TransitionGroup
+                name="feed-post"
+                tag="div"
                 class="transition-opacity duration-150"
                 :class="feedRefreshingOverlay ? 'opacity-60 pointer-events-none' : 'opacity-100'"
               >
-              <template v-for="item in displayItems" :key="item.kind === 'ad' ? item.key : item.post.id">
-                <AppFeedFakeAdRow v-if="item.kind === 'ad'" />
-                <AppFeedPostRow
-                  v-else
-                  :post="item.post"
-                  :activate-video-on-mount="item.post.id === newlyPostedVideoPostId"
-                  :collapsed-sibling-replies-count="collapsedSiblingReplyCountFor(item.post)"
-                  :replies-sort="feedSort"
-                  @deleted="removePost"
-                  @edited="onFeedPostEdited"
-                />
-              </template>
-              </div>
+                <template v-for="item in displayItems" :key="item.kind === 'ad' ? item.key : (item.post._localId ?? item.post.id)">
+                  <AppFeedFakeAdRow v-if="item.kind === 'ad'" />
+                  <AppFeedPostRow
+                    v-else
+                    :post="item.post"
+                    :activate-video-on-mount="item.post.id === newlyPostedVideoPostId"
+                    :collapsed-sibling-replies-count="collapsedSiblingReplyCountFor(item.post)"
+                    :replies-sort="feedSort"
+                    @deleted="removePost"
+                    @edited="onFeedPostEdited"
+                  />
+                </template>
+              </TransitionGroup>
             </div>
 
             <!-- Lazy-load sentinel + loader -->
@@ -508,6 +510,17 @@ function openOnlyMeComposer() {
 }
 
 const replyModal = useReplyModal()
+const { addPostsCallback, removePostsCallback } = usePresence()
+const { prependToHomeFeed } = useHomeFeedPrepend()
+
+const feedNewPostCb = {
+  onFeedNewPost: (payload: import('~/types/api').WsFeedNewPostPayload) => {
+    const post = payload?.post
+    if (!post?.id) return
+    prependToHomeFeed(post)
+  },
+}
+
 let unregisterReplyPending: null | (() => void) = null
 onActivated(() => {
   if (!import.meta.client) return
@@ -522,6 +535,8 @@ onActivated(() => {
     // No posts yet (e.g. first activation, auth change) — do a full refresh.
     void refresh()
   }
+  // Real-time: prepend new posts from followed users to the home feed.
+  addPostsCallback(feedNewPostCb)
   // Optimistic replies: when the reply modal forwards a pending submit, slot
   // the optimistic row into the parent's position via `addReply` and let
   // pendingPosts handle the network call + retry/discard surface.
@@ -543,6 +558,7 @@ onActivated(() => {
   unregisterReplyPending = replyModal.registerOnReplyPending(pendingCb)
 })
 onDeactivated(() => {
+  removePostsCallback(feedNewPostCb)
   unregisterReplyPending?.()
   unregisterReplyPending = null
 })
@@ -585,3 +601,30 @@ function onComposerPending(payload: {
 // onFeedScopeChange is provided by useHomeFeed — updates URL param and refreshes feed
 
 </script>
+
+<style scoped>
+/* Enter animation for newly prepended feed posts (real-time from followed users or soft-refresh). */
+.feed-post-enter-active {
+  transition: opacity 350ms ease, transform 350ms ease;
+}
+.feed-post-enter-from {
+  opacity: 0;
+  transform: translateY(-10px);
+}
+.feed-post-enter-to {
+  opacity: 1;
+  transform: translateY(0);
+}
+/* Existing rows must not animate when something is added/removed above them, and rows being
+   removed (e.g. parent post replaced by an optimistic reply) should disappear instantly so the
+   new row is the only thing the eye tracks. Vue's TransitionGroup defaults to a 0.5s move
+   transform; we override it here. */
+.feed-post-move,
+.feed-post-leave-active {
+  transition: none !important;
+}
+.feed-post-leave-from,
+.feed-post-leave-to {
+  opacity: 0;
+}
+</style>

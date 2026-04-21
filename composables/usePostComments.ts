@@ -8,6 +8,7 @@ export function usePostComments(options: {
 }) {
   const { postId, post, isOnlyMe } = options
   const { apiFetch } = useApiClient()
+  const { clearBumpsForPostIds } = usePostCountBumps()
 
   const comments = ref<FeedPost[]>([])
   const commentsNextCursor = ref<string | null>(null)
@@ -48,6 +49,10 @@ export function usePostComments(options: {
       }
       commentsNextCursor.value = res.pagination?.nextCursor ?? null
       commentsCounts.value = res.pagination?.counts ?? null
+      // Server data is now authoritative for these reply rows — drop any optimistic
+      // commentCount bumps so PostRow doesn't display a doubled count.
+      const ids = list.map((c) => c.id).filter(Boolean)
+      if (ids.length) clearBumpsForPostIds(ids)
     } catch {
       if (cursor === null) comments.value = []
       commentsNextCursor.value = null

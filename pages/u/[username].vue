@@ -288,7 +288,7 @@
                   class="transition-opacity duration-150"
                   :class="postsOnlyRefreshingOverlay ? 'opacity-60 pointer-events-none' : 'opacity-100'"
                 >
-                <template v-for="item in postsOnlyItems" :key="item.kind === 'ad' ? item.key : item.post.id">
+                <template v-for="item in postsOnlyItems" :key="item.kind === 'ad' ? item.key : (item.post._localId ?? item.post.id)">
                   <AppFeedFakeAdRow v-if="item.kind === 'ad'" />
                   <AppFeedPostRow
                     v-else
@@ -331,7 +331,7 @@
                   class="transition-opacity duration-150"
                   :class="repliesRefreshingOverlay ? 'opacity-60 pointer-events-none' : 'opacity-100'"
                 >
-                <template v-for="item in itemsWithoutPinned" :key="item.kind === 'ad' ? item.key : item.post.id">
+                <template v-for="item in itemsWithoutPinned" :key="item.kind === 'ad' ? item.key : (item.post._localId ?? item.post.id)">
                   <AppFeedFakeAdRow v-if="item.kind === 'ad'" />
                   <AppFeedPostRow
                     v-else
@@ -512,6 +512,7 @@ import { visibilityTagClasses, postHighlightClasses } from '~/utils/post-visibil
 import { tinyTooltip } from '~/utils/tiny-tooltip'
 import type { UserPostsFilter } from '~/composables/useUserPosts'
 import { userColorTier, userTierColorVar } from '~/utils/user-tier'
+import { collectChainIds } from '~/utils/feed-patch'
 
 definePageMeta({
   layout: 'app',
@@ -755,6 +756,7 @@ const {
   loadMore: postsOnlyLoadMore,
   removePost: postsOnlyRemovePost,
   replacePost: postsOnlyReplacePost,
+  prependPost: postsOnlyPrependPost,
 } = useUserPosts(normalizedUsername, {
   enabled: computed(() => !notFound.value),
   showAds,
@@ -780,6 +782,7 @@ const {
   loadMore: profileLoadMore,
   removePost: profileRemovePost,
   replacePost: profileReplacePost,
+  prependPost: profilePrependPost,
 } = useUserPosts(normalizedUsername, {
   enabled: repliesEnabled,
   showAds,
@@ -971,7 +974,7 @@ const showFollowCounts = computed(() => {
 // Realtime nudges: if you are already viewing this user's profile and they nudge you,
 // update the local followSummary.nudge immediately so the header shows "Nudge back",
 // then refresh from the API to keep outbound/inbound state consistent.
-const { addNotificationsCallback, removeNotificationsCallback } = usePresence()
+const { addNotificationsCallback, removeNotificationsCallback, addPostsCallback, removePostsCallback, subscribePosts, unsubscribePosts } = usePresence()
 const notificationsCb = {
   onNew: (payload: any) => {
     const n = payload?.notification ?? null
@@ -998,16 +1001,129 @@ const notificationsCb = {
   },
 } as const
 
+// When the viewer is on their own profile, prepend newly created posts to the posts-only list
+// so new posts appear at the top immediately (same behaviour as home feed).
+const { registerProfilePrepend } = useProfileFeedPrepend()
+let unregisterProfilePrepend: (() => void) | null = null
+let unregisterReplyPending: (() => void) | null = null
+const replyModal = useReplyModal()
+const pendingPosts = usePendingPostsManager()
+
+// Content patches (counts, body, flags, boost) for posts on this profile are handled
+// globally by plugins/post-cache.client.ts — PostRow reads fresh data from usePostCache.
+// The profile still subscribes to post rooms so the server knows to deliver events,
+// and the callback object below exists only to satisfy the PostsCallback type while
+// keeping the subscription lifecycle clean.
+const profilePostsCb = {}
+
 if (import.meta.client) {
+  // Subscribe all currently loaded post IDs; update when the posts list grows.
+  let subscribedIds = new Set<string>()
+  function syncProfilePostSubscriptions() {
+    const ids = new Set<string>()
+    // Walk each post's full .parent chain so that parent posts embedded in reply rows
+    // are subscribed even when they are no longer a top-level feed entry.
+    for (const p of postsOnlyPosts.value) for (const id of collectChainIds(p)) ids.add(id)
+    for (const p of profilePosts.value) for (const id of collectChainIds(p)) ids.add(id)
+    const toSub = [...ids].filter((id) => !subscribedIds.has(id))
+    const toUnsub = [...subscribedIds].filter((id) => !ids.has(id))
+    if (toSub.length > 0) subscribePosts(toSub)
+    if (toUnsub.length > 0) unsubscribePosts(toUnsub)
+    subscribedIds = ids
+  }
+
   onMounted(() => {
     addNotificationsCallback(notificationsCb as any)
+    addPostsCallback(profilePostsCb)
     document.addEventListener('pointerdown', onProfileStatPointerDown, { capture: true })
+    void nextTick(() => syncProfilePostSubscriptions())
+    if (isSelf.value) {
+      unregisterProfilePrepend = registerProfilePrepend((post) => {
+        if (!post.parentId) {
+          // Top-level posts appear in both the Posts tab and the Replies tab.
+          postsOnlyPrependPost(post)
+        }
+        // All posts (top-level and replies) appear in the Replies tab.
+        profilePrependPost(post)
+      })
+
+      // Handle replies submitted while viewing the Replies tab: insert the optimistic
+      // row under the parent post immediately, then swap in the real post on success.
+      const replyCb = (payload: import('~/composables/useReplyModal').ReplyPendingPayload) => {
+        const replyWithParent: import('~/types/api').FeedPost = {
+          ...payload.optimisticPost,
+          parent: payload.parentPost,
+        }
+
+        // Insert after the parent row if it's visible; otherwise prepend to the top.
+        const parentIdx = profilePosts.value.findIndex((p) => p.id === payload.parentPost.id)
+        if (parentIdx >= 0) {
+          const next = profilePosts.value.slice()
+          next.splice(parentIdx, 1, replyWithParent)
+          profilePosts.value = next
+        } else {
+          profilePosts.value = [replyWithParent, ...profilePosts.value]
+        }
+
+        pendingPosts.submit({
+          localId: payload.localId,
+          optimisticPost: replyWithParent,
+          perform: payload.perform,
+          callbacks: {
+            insert: () => {},
+            replace: (localId, real) => {
+              const idx = profilePosts.value.findIndex((p) => p._localId === localId)
+              if (idx < 0) return
+              const existing = profilePosts.value[idx]
+              const parent = real.parent ?? existing?.parent
+              const merged: import('~/types/api').FeedPost = {
+                ...real,
+                parent,
+                // Keep _localId so the v-for :key stays stable across the
+                // optimistic→real swap (no remount, no jitter).
+                _localId: existing?._localId,
+                _pending: undefined,
+                _pendingError: undefined,
+              }
+              const next = profilePosts.value.slice()
+              next[idx] = merged
+              profilePosts.value = next
+            },
+            markFailed: (localId, errorMessage) => {
+              profilePosts.value = profilePosts.value.map((p) =>
+                p._localId === localId ? { ...p, _pending: 'failed' as const, _pendingError: errorMessage } : p,
+              )
+            },
+            markPosting: (localId) => {
+              profilePosts.value = profilePosts.value.map((p) =>
+                p._localId === localId ? { ...p, _pending: 'posting' as const, _pendingError: null } : p,
+              )
+            },
+            remove: (localId) => {
+              profilePosts.value = profilePosts.value.filter((p) => p._localId !== localId)
+            },
+          },
+        })
+      }
+      unregisterReplyPending = replyModal.registerOnReplyPending(replyCb)
+    }
+  })
+  watch([postsOnlyPosts, profilePosts], () => {
+    void nextTick(() => syncProfilePostSubscriptions())
   })
   onBeforeUnmount(() => {
     removeNotificationsCallback(notificationsCb as any)
+    removePostsCallback(profilePostsCb)
+    if (subscribedIds.size > 0) unsubscribePosts([...subscribedIds])
+    subscribedIds.clear()
     document.removeEventListener('pointerdown', onProfileStatPointerDown, true)
+    unregisterProfilePrepend?.()
+    unregisterProfilePrepend = null
+    unregisterReplyPending?.()
+    unregisterReplyPending = null
   })
 }
+
 
 function onFollowed() {
   const s = followSummary.value

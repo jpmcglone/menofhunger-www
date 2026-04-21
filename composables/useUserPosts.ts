@@ -87,7 +87,7 @@ export function useUserPosts(
         limit: 30,
         collapseByRoot: true,
         collapseMode: 'root',
-        prefer: 'root',
+        prefer: opts.topLevelOnly ? 'root' : 'reply',
         visibility: filter.value,
         sort: sort.value,
         ...(opts.topLevelOnly ? { topLevelOnly: true } : {}),
@@ -297,6 +297,18 @@ export function useUserPosts(
     posts.value = posts.value.map(replaceInChain)
   }
 
+  /**
+   * Prepend a real (server-confirmed) post to the top of this user's post list.
+   * Used by the profile page to immediately show the viewer's own newly created post.
+   * Skips if the post is already present to avoid duplicates.
+   */
+  function prependPost(post: FeedPost) {
+    const id = (post?.id ?? '').trim()
+    if (!id) return
+    if (posts.value.some((p) => (p.id ?? '').trim() === id)) return
+    posts.value = [post, ...posts.value]
+  }
+
   if (!enabled.value) {
     posts.value = []
     nextCursor.value = null
@@ -317,7 +329,7 @@ export function useUserPosts(
             limit: 30,
             collapseByRoot: true,
             collapseMode: 'root',
-            prefer: 'root',
+            prefer: opts.topLevelOnly ? 'root' : 'reply',
             visibility: filter.value,
             sort: sort.value,
             ...(opts.topLevelOnly ? { topLevelOnly: true } : {}),
@@ -397,5 +409,6 @@ export function useUserPosts(
     setSort,
     removePost,
     replacePost,
+    prependPost,
   }
 }

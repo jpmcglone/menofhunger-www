@@ -241,13 +241,7 @@
                     aria-hidden="true"
                   />
                   <div
-                    v-if="item.key === 'groups'"
-                    class="pointer-events-none absolute -bottom-1 left-1/2 -translate-x-1/2 z-20"
-                  >
-                    <AppNewBadge />
-                  </div>
-                  <div
-                    v-if="item.key === 'spaces'"
+                    v-if="item.key === 'crew' || item.key === 'spaces'"
                     class="pointer-events-none absolute -bottom-1 left-1/2 -translate-x-1/2 z-20"
                   >
                     <AppNewBadge label="BETA" variant="beta" />
@@ -1355,6 +1349,7 @@ const {
   markOptimisticPostingInHomeFeed,
   removeOptimisticFromHomeFeed,
 } = useHomeFeedPrepend()
+const { prependToProfileFeed } = useProfileFeedPrepend()
 const pendingPosts = usePendingPostsManager()
 
 function onComposerPending(payload: {
@@ -1373,7 +1368,13 @@ function onComposerPending(payload: {
     perform: payload.perform,
     callbacks: {
       insert: (p) => prependOptimisticToHomeFeed(p),
-      replace: (lid, real) => replaceOptimisticInHomeFeed(lid, real),
+      replace: (lid, real) => {
+        replaceOptimisticInHomeFeed(lid, real)
+        // Also prepend to the profile feed in case the viewer is on their own profile.
+        if (real.id && real.visibility !== 'onlyMe' && !real.communityGroupId) {
+          prependToProfileFeed(real)
+        }
+      },
       markFailed: (lid, msg) => markOptimisticFailedInHomeFeed(lid, msg),
       markPosting: (lid) => markOptimisticPostingInHomeFeed(lid),
       remove: (lid) => removeOptimisticFromHomeFeed(lid),
@@ -1394,6 +1395,8 @@ function onComposerPosted(payload: { id: string; visibility: string; post?: impo
     // Prepend to home feed immediately and track in localInserts so it survives
     // the next hard refresh (home page uses keepalive → onActivated → refresh()).
     prependToHomeFeed(payload.post)
+    // Also push to the profile feed in case the viewer is on their own profile.
+    prependToProfileFeed(payload.post)
   }
 }
 
