@@ -69,7 +69,6 @@ function makePost(overrides: Partial<FeedPost> & { id: string }): FeedPost {
     commentCount: overrides.commentCount ?? 0,
     viewerCount: overrides.viewerCount ?? 0,
     parentId: (overrides.parentId ?? null) as string | null,
-    rootId: (overrides.rootId ?? null) as string | null,
     mentions: [],
     media: [],
     viewerHasBoosted: overrides.viewerHasBoosted ?? false,
@@ -239,8 +238,8 @@ describe('usePostsFeed.addReply', () => {
     const feed = await makeFeed()
     const bumps = await runInSetup(usePostCountBumps)
     const root = makePost({ id: uid('A') })
-    const middle = makePost({ id: uid('B'), parentId: root.id, rootId: root.id, parent: root })
-    const grandchild = makePost({ id: uid('C'), parentId: middle.id, rootId: root.id })
+    const middle = makePost({ id: uid('B'), parentId: root.id, parent: root })
+    const grandchild = makePost({ id: uid('C'), parentId: middle.id })
 
     feed.posts.value = [middle]
     feed.addReply(middle.id, grandchild, middle)

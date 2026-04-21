@@ -132,7 +132,7 @@
               :viewer-is-premium="viewerIsPremium"
               :show-reset="isFiltered"
               @update:sort="feedSort = $event"
-              @update:filter="feedFilter = $event"
+              @update:filter="onCrewFeedFilterChange"
               @reset="resetFilters()"
             />
           </div>
@@ -199,6 +199,8 @@ import { useMiddleScroller } from '~/composables/useMiddleScroller'
 import type { CrewCallback, WsCrewWallPayload } from '~/composables/usePresence'
 import { getApiErrorMessage } from '~/utils/api-error'
 import { crewAvatarRoundClass } from '~/utils/avatar-rounding'
+import type { ProfilePostsFilter } from '~/utils/post-visibility'
+import type { FeedVisibilityFilter } from '~/composables/useFeedFilters'
 
 const crewAvatarRound = crewAvatarRoundClass()
 
@@ -294,6 +296,13 @@ const {
   sort: feedSort,
   showAds: ref(false),
 })
+
+// FeedFiltersBar emits the wider ProfilePostsFilter (which includes 'onlyMe'),
+// but the crew feed only supports the FeedVisibilityFilter set. Coerce 'onlyMe'
+// to 'all' so the assignment type-checks and the URL stays in a valid state.
+function onCrewFeedFilterChange(next: ProfilePostsFilter) {
+  feedFilter.value = next === 'onlyMe' ? 'all' : (next as FeedVisibilityFilter)
+}
 
 const seoDescription = computed(
   () => crew.value?.tagline ?? 'A Crew on Men of Hunger — verified men holding each other accountable.',
