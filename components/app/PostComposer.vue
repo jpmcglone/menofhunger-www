@@ -413,9 +413,11 @@
 
 <script setup lang="ts">
 import { makeLocalId } from '~/composables/composer/types'
-import type { CreatePostData, PostStreakReward, PostVisibility } from '~/types/api'
+import type { CreatePostData, PostStreakReward, PostVisibility, FeedPost, PostAuthor } from '~/types/api'
 import { siteConfig } from '~/config/site'
 import type { CreateMediaPayload } from '~/composables/useComposerMedia'
+import { buildOptimisticPost } from '~/utils/optimistic-post'
+import { makePendingLocalId } from '~/composables/usePendingPostsManager'
 import {
   PRIMARY_GROUP_SKY,
   PRIMARY_ONLYME_PURPLE,
@@ -449,6 +451,20 @@ const COMPOSER_DRAFT_CACHE = new Map<string, CachedComposerDraft>()
 const emit = defineEmits<{
   (e: 'posted', payload: { id: string; visibility: PostVisibility; post?: import('~/types/api').FeedPost }): void
   (e: 'edited', payload: { id: string; post: import('~/types/api').FeedPost }): void
+  /**
+   * Optimistic submission. Fired immediately when the user clicks Post (before
+   * the network call). The parent renders `optimisticPost` in its feed and
+   * runs `perform()` via `usePendingPostsManager()`. The composer is cleared
+   * by the time this fires, so the user can keep working.
+   */
+  (
+    e: 'pending',
+    payload: {
+      localId: string
+      optimisticPost: import('~/types/api').FeedPost
+      perform: () => Promise<import('~/types/api').FeedPost | { id: string } | null | undefined>
+    },
+  ): void
 }>()
 
 const props = defineProps<{
@@ -509,6 +525,16 @@ const props = defineProps<{
    * on submit. The textarea is left empty for the user's own text.
    */
   quotedPost?: import('~/types/api').FeedPost | null
+  /**
+   * Opt out of optimistic background posting. When false (default), creating
+   * a new post fires a `pending` event immediately, clears the composer, and
+   * lets the parent handle insertion + retry/discard via
+   * `usePendingPostsManager`. When true, the composer awaits the create call
+   * synchronously and shows a loading spinner (legacy behavior — used for
+   * flows where the parent cannot show an optimistic row, e.g. publishing
+   * from an only-me draft to a different page).
+   */
+  syncSubmit?: boolean
 }>()
 
 const route = useRoute()
@@ -1070,7 +1096,82 @@ const postButtonClass = computed(() => {
   return 'moh-btn-public'
 })
 
-// Composer submit
+/**
+ * Optimistic create is the default for new top-level posts. The composer
+ * fires `pending` (with an optimistic FeedPost + a `perform` callback) and
+ * clears immediately so the user can keep using the app. The parent inserts
+ * the optimistic row into its feed and routes the perform call through
+ * `usePendingPostsManager`, which surfaces failures via a persistent toast
+ * with Retry / Discard.
+ *
+ * Non-optimistic paths that still await the network call (so they can show a
+ * spinner + inline error):
+ *   - Edit mode (PATCH).
+ *   - syncSubmit prop = true (escape hatch for unusual flows).
+ *   - createPost override (caller wants direct control of the network call).
+ *
+ * Replies use the optimistic path too: the composer fires `pending` (with the
+ * optimistic FeedPost carrying `parentId`), the reply modal forwards it to a
+ * registered handler, the modal closes immediately, and the parent feed slots
+ * the reply in via `addReply` while the network call runs in the background.
+ */
+const useOptimisticCreate = computed(
+  () => mode.value !== 'edit' && !props.syncSubmit && !props.createPost,
+)
+
+function buildSubmitBody(): string {
+  const quotedUrl = quotedPostUrl.value
+  if (!quotedUrl) return draft.value
+  return [draft.value.trim(), quotedUrl].filter(Boolean).join('\n\n')
+}
+
+function performCreate(submitBody: string, vis: PostVisibility, mediaPayload: CreateMediaPayload[], pollPayload: ComposerPollPayload | null) {
+  if (props.createPost) {
+    return props.createPost(submitBody, vis, mediaPayload, pollPayload)
+  }
+  return apiFetchData<CreatePostData>('/posts', {
+    method: 'POST',
+    body: props.replyTo
+      ? {
+          body: submitBody,
+          visibility: vis,
+          parent_id: props.replyTo.parentId,
+          mentions: props.replyTo.mentionUsernames,
+          media: mediaPayload,
+        }
+      : {
+          body: submitBody,
+          visibility: vis,
+          media: mediaPayload,
+          ...(pollPayload ? { poll: pollPayload } : {}),
+        },
+  })
+}
+
+function unwrapCreated(created: unknown): { post: FeedPost | null; streakReward: PostStreakReward | null } {
+  const wrapped = created as CreatePostData | null | undefined
+  const post = (wrapped?.post ?? (created as FeedPost | null | undefined)) ?? null
+  const streakReward = wrapped?.streakReward ?? null
+  return { post: post && (post as FeedPost).id ? (post as FeedPost) : null, streakReward }
+}
+
+function makeOptimisticAuthor(): PostAuthor | null {
+  const u = user.value
+  if (!u?.id) return null
+  return {
+    id: u.id,
+    username: (u.username ?? '') || null,
+    name: (u as any).name ?? null,
+    premium: Boolean(u.premium),
+    premiumPlus: Boolean((u as any).premiumPlus),
+    isOrganization: Boolean((u as any).isOrganization),
+    stewardBadgeEnabled: Boolean((u as any).stewardBadgeEnabled ?? true),
+    verifiedStatus: ((u as any).verifiedStatus ?? 'none') as PostAuthor['verifiedStatus'],
+    avatarUrl: (u as any).avatarUrl ?? null,
+  }
+}
+
+// Composer submit (sync path: edit + reply + opt-out via `syncSubmit`).
 const { submit: submitPost, submitting, submitError } = useFormSubmit(
   async () => {
     if (mode.value === 'edit') {
@@ -1082,7 +1183,7 @@ const { submit: submitPost, submitting, submitError } = useFormSubmit(
         const mediaPayload: CreateMediaPayload[] = toCreatePayload(composerMedia.value)
         patchBody.media = mediaPayload
       }
-      const updatedPost = await apiFetchData<import('~/types/api').FeedPost>(`${basePath}${encodeURIComponent(id)}`, {
+      const updatedPost = await apiFetchData<FeedPost>(`${basePath}${encodeURIComponent(id)}`, {
         method: 'PATCH',
         body: patchBody,
       })
@@ -1094,72 +1195,20 @@ const { submit: submitPost, submitting, submitError } = useFormSubmit(
     const pollPayload = poll.value ? poll.value : null
     const mediaPayload: CreateMediaPayload[] = hasPoll.value ? [] : toCreatePayload(composerMedia.value)
     const vis = effectiveVisibility.value
+    const submitBody = buildSubmitBody()
 
-    // In quote-repost mode, append the quoted post URL to the body automatically.
-    const quotedUrl = quotedPostUrl.value
-    const submitBody = quotedUrl
-      ? [draft.value.trim(), quotedUrl].filter(Boolean).join('\n\n')
-      : draft.value
-
-    const created = props.createPost
-      ? await props.createPost(submitBody, vis, mediaPayload, pollPayload)
-      : await apiFetchData<CreatePostData>('/posts', {
-          method: 'POST',
-          body: props.replyTo
-            ? {
-                body: submitBody,
-                visibility: vis,
-                parent_id: props.replyTo.parentId,
-                mentions: props.replyTo.mentionUsernames,
-                media: mediaPayload,
-              }
-            : {
-                body: submitBody,
-                visibility: vis,
-                media: mediaPayload,
-                ...(pollPayload ? { poll: pollPayload } : {}),
-              },
-        })
+    const created = await performCreate(submitBody, vis, mediaPayload, pollPayload)
+    const { post, streakReward } = unwrapCreated(created)
 
     draft.value = ''
     clearAll()
     clearPoll()
     void nextTick().then(() => resizeComposerTextarea())
 
-    const post = (created as CreatePostData)?.post ?? (created as any)
-    const streakReward = (created as CreatePostData)?.streakReward ?? null
-    const id = post?.id as string | undefined
-    if (id) {
-      emit('posted', {
-        id,
-        visibility: vis,
-        post,
-      })
-      const toneVisibility = vis
-      toast.push({
-        title: props.replyTo ? 'Reply posted' : 'Posted',
-        message:
-          toneVisibility === 'premiumOnly'
-            ? 'Premium-only · Tap to view'
-            : toneVisibility === 'verifiedOnly'
-              ? 'Verified-only · Tap to view'
-              : toneVisibility === 'onlyMe'
-                ? 'Only you can see this · Tap to view'
-                : 'Tap to view',
-        tone:
-          toneVisibility === 'premiumOnly'
-            ? 'premiumOnly'
-            : toneVisibility === 'verifiedOnly'
-              ? 'verifiedOnly'
-              : toneVisibility === 'onlyMe'
-                ? 'onlyMe'
-                : 'public',
-        to: `/p/${encodeURIComponent(id)}`,
-        durationMs: 2600,
-      })
-      if (streakReward) {
-        pushStreakToast(streakReward)
-      }
+    if (post?.id) {
+      emit('posted', { id: post.id, visibility: vis, post })
+      pushPostedToast(vis, post.id)
+      if (streakReward) pushStreakToast(streakReward)
     }
   },
   {
@@ -1169,6 +1218,84 @@ const { submit: submitPost, submitting, submitError } = useFormSubmit(
     },
   },
 )
+
+function pushPostedToast(vis: PostVisibility, postId: string) {
+  toast.push({
+    title: props.replyTo ? 'Reply posted' : 'Posted',
+    message:
+      vis === 'premiumOnly'
+        ? 'Premium-only · Tap to view'
+        : vis === 'verifiedOnly'
+          ? 'Verified-only · Tap to view'
+          : vis === 'onlyMe'
+            ? 'Only you can see this · Tap to view'
+            : 'Tap to view',
+    tone:
+      vis === 'premiumOnly'
+        ? 'premiumOnly'
+        : vis === 'verifiedOnly'
+          ? 'verifiedOnly'
+          : vis === 'onlyMe'
+            ? 'onlyMe'
+            : 'public',
+    to: `/p/${encodeURIComponent(postId)}`,
+    durationMs: 2600,
+  })
+}
+
+/**
+ * Fire-and-forget submit for new top-level posts. Builds an optimistic
+ * FeedPost, fires `pending` so the parent can render it + run the create via
+ * `usePendingPostsManager`, then clears the composer. No toast on success
+ * (the row in the feed is the feedback). The streak reward (if any) is
+ * surfaced by the parent after the real post lands.
+ */
+function submitOptimistic(): boolean {
+  const author = makeOptimisticAuthor()
+  if (!author) return false
+
+  const vis = effectiveVisibility.value
+  const pollPayload = poll.value ? poll.value : null
+  const mediaPayload: CreateMediaPayload[] = hasPoll.value ? [] : toCreatePayload(composerMedia.value)
+  const submitBody = buildSubmitBody()
+
+  const localId = makePendingLocalId()
+  const optimisticPost = buildOptimisticPost({
+    localId,
+    body: submitBody,
+    visibility: vis,
+    media: composerMedia.value,
+    poll: pollPayload,
+    parentId: props.replyTo?.parentId ?? null,
+    author,
+  })
+
+  // Snapshot what we need for the network call BEFORE clearing the composer.
+  const snapshot = {
+    body: submitBody,
+    vis,
+    mediaPayload,
+    pollPayload,
+  }
+
+  emit('pending', {
+    localId,
+    optimisticPost,
+    perform: async () => {
+      const created = await performCreate(snapshot.body, snapshot.vis, snapshot.mediaPayload, snapshot.pollPayload)
+      const { post } = unwrapCreated(created)
+      return post
+    },
+  })
+
+  // Clear immediately so the user can keep typing / scrolling.
+  draft.value = ''
+  clearAll()
+  clearPoll()
+  submitError.value = null
+  void nextTick().then(() => resizeComposerTextarea())
+  return true
+}
 
 // If the user changes the composer after an error, clear the inline error so it doesn't "stick"
 // after a later successful post (or after correcting validation issues like poll duration).
@@ -1228,6 +1355,11 @@ const submit = async () => {
 
   submitError.value = null
   emojiPickerEl.value?.close()
+
+  if (useOptimisticCreate.value) {
+    if (submitOptimistic()) return
+    // Author missing (shouldn't happen for authed users) — fall through to sync path.
+  }
   await submitPost()
 }
 

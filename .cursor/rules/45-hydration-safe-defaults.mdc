@@ -1,0 +1,44 @@
+---
+description: Hydration-safe defaults for Vue components, layouts, pages, and composables
+globs: components/**/*.vue,layouts/**/*.vue,pages/**/*.vue,app.vue,error.vue,composables/**/*.ts,plugins/**/*.ts
+alwaysApply: false
+---
+
+# Hydration-Safe Defaults
+
+The full reference is the `ssr-hydration` skill. These are the non-negotiables to keep in front of you while editing.
+
+## Hard rules
+
+- **No `v-if` on client-only state.** If a value is computed in `onMounted`, set in a watcher, derived from `window`/`document`/`navigator`/`localStorage`, or pulled from auth/cookies after mount, render is gated with **`v-show`**, **`<ClientOnly>`**, or **`definePageMeta({ ssr: false })`** — never `v-if`.
+- **Responsive variants are CSS-only.** Use Tailwind responsive classes (`sm:hidden`, `md:flex`, …). Never `v-if="isMobile"`. If you need JS-driven breakpoints, use `useHydratedMediaQuery` (see `tests/hydration-guardrails.test.ts` for the canonical pattern).
+- **No browser APIs at top level.** Initialize refs to a stable default; populate inside `onMounted`.
+- **No `Date.now()`, `new Date()`, or `Math.random()` in templates.** Compute in `onMounted` or wrap in `<ClientOnly>`. For per-instance ids, use `useId()`.
+- **`<TransitionGroup>` needs a server fallback.** Render a static `v-for` on SSR, swap to `<TransitionGroup>` after `mounted` flips true.
+- **Auth-gated screens that gain nothing from SSR get `definePageMeta({ ssr: false })`.** Editors, dashboards, settings pages.
+
+## Quick patterns
+
+```vue
+<script setup lang="ts">
+const mounted = ref(false)
+onMounted(() => { mounted.value = true })
+
+const dynamicStyle = computed(() =>
+  mounted.value ? { paddingBottom: `${someClientValue.value}px` } : undefined,
+)
+</script>
+
+<template>
+  <!-- v-show keeps the node in SSR HTML; only display toggles -->
+  <div v-show="mounted && shouldShowAd" class="pb-[4.5rem]" :style="dynamicStyle" />
+</template>
+```
+
+## When you add client-conditional rendering
+
+Add a structural guardrail to `tests/hydration-guardrails.test.ts` that asserts the safe pattern is in place (see existing tests for examples — they grep the source for the canonical shape). This is what stops the next refactor from regressing it.
+
+## When you finish editing
+
+The feature-done checklist (`40-feature-done-checklist.mdc`) requires running `npm run check:hydration` after substantive UI work. Don't skip it for SSR pages.

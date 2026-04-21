@@ -118,6 +118,7 @@ function loadYouTubeAPIOnce(): Promise<void> {
 
 <script setup lang="ts">
 import type { Space, WatchPartyState } from '~/types/api'
+import { extractVideoId, driftAdjustedTime } from '~/utils/watchPartyMath'
 
 const props = defineProps<{
   space: Space
@@ -170,34 +171,13 @@ const pendingOwnerRestore = ref(false)
 const ownerSyncChipVisible = ref(false)
 let ownerSyncChipDelayTimer: ReturnType<typeof setTimeout> | null = null
 
-function extractVideoId(url: string): string | null {
-  try {
-    const u = new URL(url)
-    if (u.hostname === 'youtu.be') return u.pathname.slice(1) || null
-    return u.searchParams.get('v') || null
-  } catch {
-    return null
-  }
-}
-
-
 /**
- * Return the drift-adjusted current time for a WatchPartyState.
- *
- * The server stores raw currentTime + the timestamp (updatedAt) when it
- * received the owner's control event. It does NOT pre-adjust currentTime
- * before broadcasting, so the client is responsible for the full elapsed
- * calculation. This keeps things correct for both real-time broadcasts
- * (updatedAt ≈ now, elapsed ≈ RTT) and delayed join responses (updatedAt
- * could be many seconds old).
+ * Queued apply for video-swap: after calling loadVideoById the player is not
+ * ready to seekTo/play yet. We stash the desired state here and re-apply it in
+ * onStateChange when the new video reports CUED (5) or BUFFERING (3), so
+ * viewers never sit on a freshly-loaded-but-never-played video.
  */
-function driftAdjustedTime(state: WatchPartyState): number {
-  if (!state.isPlaying) return state.currentTime
-  const updatedAtMs = Number(state.updatedAt)
-  if (!updatedAtMs || !isFinite(updatedAtMs)) return state.currentTime
-  const elapsedSec = Math.max(0, (Date.now() - updatedAtMs) / 1000)
-  return state.currentTime + elapsedSec * state.playbackRate
-}
+let pendingApply: WatchPartyState | null = null
 
 function syncLocalVolumeFromPlayer() {
   if (!ytPlayer) return
@@ -351,19 +331,32 @@ function createPlayer(videoId: string, startSeconds = 0) {
         }
       },
       onStateChange: (event: any) => {
-        if (!isOwner.value || ignoreNextStateChange) {
+        const YTState = (window as any).YT?.PlayerState
+        const st = event.data
+
+        // Apply any stashed state when the new video finishes loading (CUED = 5,
+        // BUFFERING = 3). This handles the video-swap case where applyState returned
+        // early after loadVideoById and there was no follow-up WS tick.
+        if ((st === YTState?.CUED || st === YTState?.BUFFERING) && pendingApply) {
+          const stateToApply = pendingApply
+          pendingApply = null
+          // Re-invoke applyState now that the player has the new video loaded.
+          applyState(stateToApply)
+          return
+        }
+
+        // Only the active primary owner tab drives the room via emitCurrentState.
+        if (!isOwner.value || isReplacedOwner.value || ignoreNextStateChange) {
           ignoreNextStateChange = false
           return
         }
-        const YTState = (window as any).YT.PlayerState
-        const st = event.data
         // Scrubbing often transitions through BUFFERING/PAUSED and can miss a clean
         // PLAYING/PAUSED edge, so emit for these state changes too.
         if (
-          st === YTState.PLAYING ||
-          st === YTState.PAUSED ||
-          st === YTState.BUFFERING ||
-          st === YTState.ENDED
+          st === YTState?.PLAYING ||
+          st === YTState?.PAUSED ||
+          st === YTState?.BUFFERING ||
+          st === YTState?.ENDED
         ) {
           emitCurrentState()
         }
@@ -458,12 +451,19 @@ function stopOwnerSyncTimer() {
 }
 
 function applyState(state: WatchPartyState) {
-  if (!ytPlayer || isOwner.value) return
+  if (!ytPlayer) return
+  // The active primary owner tab drives the room; it must not seek itself.
+  // Replaced owner tabs should follow the room exactly like viewers.
+  if (isOwner.value && !isReplacedOwner.value) return
 
-  // If the video changed, swap the embed first. The subsequent seek + play/pause
-  // will be applied once the new video is loaded (the next applyState tick).
+  // If the video changed, swap the embed first. We stash the desired state in
+  // pendingApply so onStateChange can re-apply it once the new video is ready
+  // (CUED or BUFFERING), avoiding reliance on a follow-up WS tick.
   const stateVideoId = extractVideoId(state.videoUrl)
-  if (stateVideoId && loadNewVideoIfNeeded(stateVideoId)) return
+  if (stateVideoId && loadNewVideoIfNeeded(stateVideoId)) {
+    pendingApply = state
+    return
+  }
 
   // Always compute the wall-clock-adjusted position so a state that was stored
   // seconds ago still lands the viewer at the correct spot.
@@ -500,28 +500,43 @@ watch(watchPartyState, (newState) => {
   if (!newState) return
   wpLog('watchPartyState:update', {
     isOwner: isOwner.value,
+    isReplacedOwner: isReplacedOwner.value,
     isPlaying: newState.isPlaying,
     currentTime: Number(newState.currentTime ?? 0),
     updatedAt: Number(newState.updatedAt ?? 0),
     playerReady: playerReady.value,
   })
-  if (isOwner.value) {
+  // Active primary owner: apply restore on reconnect, otherwise it drives the room.
+  if (isOwner.value && !isReplacedOwner.value) {
     if (playerReady.value && pendingOwnerRestore.value) {
       applyOwnerRestoreState(newState)
       pendingOwnerRestore.value = false
     }
     return
   }
+  // Viewers and replaced owner tabs both follow the remote state.
   if (playerReady.value) applyState(newState)
 })
 
 // When the host applies a new YouTube URL (via SpaceOwnerPanel), the space prop
-// updates but the iframe stays on the old video. Detect the video ID change and
-// swap the video in-place without destroying/recreating the player.
+// updates but the iframe stays on the old video. Detect the video ID change,
+// swap the video in-place, and immediately broadcast a paused-at-0 control so
+// viewers snap to the new video without waiting for the next player event.
 watch(() => props.space.watchPartyUrl, (newUrl) => {
-  if (!isOwner.value) return
+  if (!isOwner.value || isReplacedOwner.value) return
   const newId = extractVideoId(newUrl ?? '')
-  loadNewVideoIfNeeded(newId)
+  if (!loadNewVideoIfNeeded(newId)) return
+  // Broadcast immediately with the new URL so viewers load the video now.
+  // The server's resetForVideo (called by handleSpacesAnnounceMode) is the
+  // belt-and-suspenders: this client-side emit is belt.
+  if (props.space?.id && newUrl) {
+    sendControl(props.space.id, {
+      videoUrl: newUrl,
+      isPlaying: false,
+      currentTime: 0,
+      playbackRate: ytPlayer?.getPlaybackRate?.() ?? 1,
+    })
+  }
 })
 
 watch(pendingOwnerRestore, (pending) => {
@@ -590,8 +605,12 @@ watch(isSocketConnected, async (connected) => {
 // Belt-and-suspenders: when the player becomes ready, request state if the
 // socket is already connected but no state has arrived yet (e.g. hard reload
 // where the YouTube API loaded before the socket finished connecting).
+// Applies to viewers AND replaced owner tabs (both follow remote state).
 watch(playerReady, (ready) => {
-  if (!ready || isOwner.value || watchPartyState.value) return
+  if (!ready) return
+  // Active primary owner drives the room — skip state request.
+  if (isOwner.value && !isReplacedOwner.value) return
+  if (watchPartyState.value) return
   if (isSocketConnected.value && canRequestRoomState.value) {
     wpLog('playerReady:request-state', { spaceId: props.space.id })
     requestCurrentState(props.space.id)
@@ -624,6 +643,15 @@ const replacedCb = {
   onWatchPartyOwnerReplaced: (payload: { spaceId: string }) => {
     if (payload.spaceId !== props.space.id) return
     isReplacedOwner.value = true
+    wpLog('owner:replaced', { spaceId: payload.spaceId })
+  },
+  onWatchPartyOwnerPromoted: (payload: { spaceId: string }) => {
+    if (payload.spaceId !== props.space.id) return
+    isReplacedOwner.value = false
+    wpLog('owner:promoted', { spaceId: payload.spaceId })
+    // Resume emitting now that we are primary again. The sync timer will pick
+    // up naturally; emit once immediately so viewers don't wait up to 10 s.
+    if (ytPlayer && playerReady.value) emitCurrentState()
   },
 }
 
@@ -691,6 +719,7 @@ onBeforeUnmount(() => {
   lastOwnerState = null
   hasSyncedInitially = false
   currentVideoId = null
+  pendingApply = null
   isReplacedOwner.value = false
   pendingOwnerRestore.value = false
   ownerSyncChipVisible.value = false

@@ -26,11 +26,12 @@
       <div class="mt-0.5 text-[12px] moh-text-muted leading-snug">{{ body }}</div>
       <div class="mt-2.5">
         <Button
+          as="NuxtLink"
+          :to="ctaTo"
           :label="ctaLabel"
           size="small"
           severity="secondary"
           rounded
-          @click="navigateTo(ctaTo)"
         />
       </div>
     </div>

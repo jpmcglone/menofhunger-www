@@ -5,11 +5,12 @@
       <AppPageHeader title="Reports" icon="tabler:flag" description="Review and triage reported posts and users.">
         <template #leading>
           <Button
+            as="NuxtLink"
+            to="/admin"
             class="md:hidden"
             text
             severity="secondary"
             aria-label="Back"
-            @click="navigateTo('/admin')"
           >
             <template #icon>
               <Icon name="tabler:chevron-left" aria-hidden="true" />

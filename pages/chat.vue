@@ -8,7 +8,7 @@
             Chat is only available for verified members.
           </div>
           <div class="mt-4 flex items-center justify-end">
-            <Button label="View tiers" severity="secondary" @click="navigateTo('/tiers')" />
+            <Button as="NuxtLink" to="/tiers" label="View tiers" severity="secondary" />
           </div>
         </div>
       </div>

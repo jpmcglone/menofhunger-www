@@ -52,11 +52,12 @@
     </p>
 
     <Button
+      as="NuxtLink"
+      to="/groups"
       label="Browse groups"
       text
       severity="secondary"
       class="w-full justify-center"
-      @click="navigateTo('/groups')"
     />
   </div>
 </template>

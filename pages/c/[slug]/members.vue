@@ -7,7 +7,7 @@
     <div v-else-if="notFound" class="moh-gutter-x pt-10 pb-16 max-w-xl mx-auto text-center space-y-3">
       <Icon name="tabler:shield-off" class="text-3xl opacity-60" aria-hidden="true" />
       <h1 class="moh-h1">Crew not found</h1>
-      <Button label="Back home" rounded @click="navigateTo('/')" />
+      <Button as="NuxtLink" to="/" label="Back home" rounded />
     </div>
 
     <div v-else-if="crew" class="moh-gutter-x pt-6 pb-10 max-w-3xl mx-auto space-y-5">
@@ -108,6 +108,7 @@ const removingMemberId = ref<string | null>(null)
 
 const crewApi = useCrew()
 const { addCrewCallback, removeCrewCallback } = usePresence()
+const { markReadBySubject } = useNotifications()
 
 const crewName = computed(() => {
   const n = (crew.value?.name ?? '').trim()
@@ -142,6 +143,9 @@ async function load() {
     const res = await crewApi.getCrewBySlug(slug)
     crew.value = res.crew
     viewerMembership.value = res.viewerMembership
+    if (import.meta.client && res.viewerMembership && res.crew.id) {
+      void markReadBySubject({ crew_id: res.crew.id })
+    }
     if (import.meta.client && res.crew.slug && res.crew.slug !== slug) {
       void navigateTo(`/c/${encodeURIComponent(res.crew.slug)}/members`, { replace: true })
     }

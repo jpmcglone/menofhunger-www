@@ -51,6 +51,7 @@
                     auto-focus
                     :show-divider="false"
                     in-reply-thread
+                    @pending="onReplyPending"
                     @posted="onReplyPosted"
                   >
                     <template #above-textarea>
@@ -91,6 +92,7 @@ import { useApiClient } from '~/composables/useApiClient'
 import { usePostCountBumps } from '~/composables/usePostCountBumps'
 import { useMiddleScroller } from '~/composables/useMiddleScroller'
 import { useUserOverlay } from '~/composables/useUserOverlay'
+import { usePendingPostsManager } from '~/composables/usePendingPostsManager'
 import { userColorTier, userTierTextClass } from '~/utils/user-tier'
 import { feedPostThreadGroupDisplayName } from '~/utils/community-group-preview'
 
@@ -264,6 +266,7 @@ watch(
 )
 
 const { bumpCommentCount } = usePostCountBumps()
+const pendingPosts = usePendingPostsManager()
 
 function onReplyPosted(payload: ReplyPostedPayload) {
   const cbs = replyModal.onReplyPostedCallbacks.value
@@ -272,6 +275,65 @@ function onReplyPosted(payload: ReplyPostedPayload) {
   } else {
     const parentId = parentPost.value?.id
     if (parentId) bumpCommentCount(parentId)
+  }
+  replyModal.hide()
+}
+
+/**
+ * Optimistic reply path. The composer fires `pending` immediately on submit
+ * (clearing itself), we close the modal, then either:
+ *  - hand the payload off to a registered consumer (e.g. home/group feeds)
+ *    that knows how to slot the optimistic row in via `addReply` and run
+ *    `perform` through `usePendingPostsManager`; or
+ *  - fall back to a built-in handler that just runs `perform` and surfaces
+ *    the real post via the existing `onReplyPosted` callback chain. This
+ *    keeps consumers that haven't migrated to the pending flow (e.g. the
+ *    permalink page, comment thread previews) working — they get the modal
+ *    closing instantly, then the row appears once the server responds.
+ */
+function onReplyPending(payload: {
+  localId: string
+  optimisticPost: FeedPost
+  perform: () => Promise<FeedPost | { id: string } | null | undefined>
+}) {
+  const parent = parentPost.value
+  if (!parent) return
+  const enriched: FeedPost = {
+    ...payload.optimisticPost,
+    parent,
+    visibility: parent.visibility,
+  }
+  const fullPayload = {
+    localId: payload.localId,
+    optimisticPost: enriched,
+    parentPost: parent,
+    perform: payload.perform,
+  }
+
+  const cbs = replyModal.onReplyPendingCallbacks.value
+  if (cbs.length) {
+    for (const cb of cbs) cb(fullPayload)
+  } else {
+    pendingPosts.submit({
+      localId: fullPayload.localId,
+      optimisticPost: fullPayload.optimisticPost,
+      perform: fullPayload.perform,
+      callbacks: {
+        insert: () => {},
+        replace: () => {},
+        markFailed: () => {},
+        markPosting: () => {},
+        remove: () => {},
+      },
+      onSuccess: (real) => {
+        const postedCbs = replyModal.onReplyPostedCallbacks.value
+        if (postedCbs.length) {
+          for (const cb of postedCbs) cb({ id: real.id, post: real })
+        } else {
+          bumpCommentCount(parent.id)
+        }
+      },
+    })
   }
   replyModal.hide()
 }

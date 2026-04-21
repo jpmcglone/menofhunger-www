@@ -39,31 +39,29 @@
       </div>
       <div v-else class="relative z-0">
         <TransitionGroup name="notifications-list" tag="div" class="divide-y divide-gray-200 dark:divide-zinc-800 transition-opacity duration-150">
-          <template
+          <div
             v-for="(item, idx) in notifications"
-          >
-        <!--
-          Use NuxtLink `custom` slot so the row renders as a <div>, not <a>.
-          Without this, the inner actor-avatar NuxtLinks inside each row create
-          nested <a> elements, which the browser automatically restructures and
-          causes hydration mismatches.
-          The div gets role="link" + keyboard handlers for full accessibility.
-        -->
-          <NuxtLink
-            v-if="itemHref(item)"
             :key="itemKey(item)"
-            v-slot="{ navigate }"
-            :to="itemHref(item)!"
-            custom
+            class="relative hover:bg-gray-50 dark:hover:bg-zinc-900"
+            :class="itemHref(item) ? 'cursor-pointer' : ''"
+            :role="itemHref(item) ? 'link' : undefined"
+            :tabindex="itemHref(item) ? 0 : undefined"
+            @click="onNotificationClick(item, $event)"
+            @auxclick="onNotificationAuxClick(item, $event)"
+            @keydown.enter.prevent="itemHref(item) ? navigateTo(itemHref(item)!) : undefined"
+            @keydown.space.prevent="itemHref(item) ? navigateTo(itemHref(item)!) : undefined"
           >
-            <div
-              class="block w-full text-left hover:bg-gray-50 dark:hover:bg-zinc-900 cursor-pointer"
-              role="link"
-              tabindex="0"
-              @click="navigate($event)"
-              @keydown.enter.prevent="navigate()"
-              @keydown.space.prevent="navigate()"
-            >
+            <!-- Background anchor: aria-hidden so it's invisible to assistive tech and
+                 tabindex="-1" so it's skipped by keyboard, but present in the DOM so
+                 right-click → "Open in new tab" and cmd/ctrl+click work natively. -->
+            <NuxtLink
+              v-if="itemHref(item)"
+              :to="itemHref(item)!"
+              class="absolute inset-0 z-[1]"
+              tabindex="-1"
+              aria-hidden="true"
+            />
+            <div class="relative z-[2]">
               <AppNotificationRow
                 v-if="item.type === 'single'"
                 :notification="item.notification"
@@ -79,24 +77,7 @@
                 :nudge-is-topmost="nudgeIsTopmostByIndex[idx] ?? false"
               />
             </div>
-          </NuxtLink>
-          <div v-else :key="itemKey(item)" class="block w-full text-left">
-            <AppNotificationRow
-              v-if="item.type === 'single'"
-              :notification="item.notification"
-              :nudge-is-topmost="nudgeIsTopmostByIndex[idx] ?? false"
-            />
-            <AppNotificationFollowedPostsRollupRow
-              v-else-if="item.type === 'followed_posts_rollup'"
-              :rollup="item.rollup"
-            />
-            <AppNotificationGroupRow
-              v-else
-              :group="item.group"
-              :nudge-is-topmost="nudgeIsTopmostByIndex[idx] ?? false"
-            />
           </div>
-          </template>
         </TransitionGroup>
 
         <div v-if="nextCursor && !loading" class="px-3 pt-2.5 pb-0 sm:px-4 sm:pt-3 sm:pb-3 text-center">
@@ -144,6 +125,7 @@ const {
   setKind,
   fetchList,
   markDelivered,
+  markReadById,
   markAllRead,
   itemHref,
 } = useNotifications()
@@ -301,6 +283,84 @@ async function loadMore() {
   } finally {
     loadingMore.value = false
   }
+}
+
+function isInteractiveTarget(target: EventTarget | null): boolean {
+  const el = target as HTMLElement | null
+  if (!el) return false
+  return Boolean(
+    el.closest(
+      ['a', 'button', 'iframe', 'input', 'textarea', 'select', '[role="menu"]', '[role="menuitem"]', '[data-pc-section]'].join(','),
+    ),
+  )
+}
+
+/**
+ * Optimistically mark a feed item as read+seen in local state and on the server.
+ * Used when the user opens a notification (including new-tab opens) so the row
+ * stops showing as unread immediately, instead of waiting for the destination
+ * page to fire markReadBySubject + the websocket to round-trip.
+ *
+ * Groups/rollups carry a representative id; markReadById on that id won't clear
+ * every underlying notification — but the row's visible "unread" styling reads
+ * off the group/rollup's own readAt, which we update locally. The destination
+ * page's `markReadBySubject` will then clear the rest server-side.
+ */
+function markItemReadOptimistic(item: (typeof notifications.value)[number]) {
+  const now = new Date().toISOString()
+  let id: string | null = null
+  notifications.value = notifications.value.map((curr) => {
+    if (curr !== item) return curr
+    if (curr.type === 'single') {
+      id = curr.notification.id
+      if (curr.notification.readAt) return curr
+      return {
+        ...curr,
+        notification: {
+          ...curr.notification,
+          readAt: now,
+          deliveredAt: curr.notification.deliveredAt ?? now,
+        },
+      }
+    }
+    if (curr.type === 'group') {
+      id = curr.group.id
+      if (curr.group.readAt) return curr
+      return {
+        ...curr,
+        group: { ...curr.group, readAt: now, deliveredAt: curr.group.deliveredAt ?? now },
+      }
+    }
+    if (curr.rollup.readAt) return curr
+    return {
+      ...curr,
+      rollup: { ...curr.rollup, readAt: now, deliveredAt: curr.rollup.deliveredAt ?? now },
+    }
+  })
+  if (id) void markReadById(id)
+}
+
+function onNotificationClick(item: (typeof notifications.value)[number], e: MouseEvent) {
+  const href = itemHref(item)
+  if (!href) return
+  if (isInteractiveTarget(e.target)) return
+  if (e.metaKey || e.ctrlKey) {
+    markItemReadOptimistic(item)
+    window.open(href, '_blank')
+    return
+  }
+  markItemReadOptimistic(item)
+  void navigateTo(href)
+}
+
+function onNotificationAuxClick(item: (typeof notifications.value)[number], e: MouseEvent) {
+  if (e.button !== 1) return
+  const href = itemHref(item)
+  if (!href) return
+  if (isInteractiveTarget(e.target)) return
+  e.preventDefault()
+  markItemReadOptimistic(item)
+  window.open(href, '_blank')
 }
 
 function kindFromQuery(): NotificationKind | null {

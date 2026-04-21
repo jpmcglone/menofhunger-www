@@ -9,11 +9,12 @@
       </div>
       <div class="shrink-0 flex items-center gap-2">
         <Button
+          as="NuxtLink"
+          to="/admin/media-review"
           class="md:hidden"
           text
           severity="secondary"
           aria-label="Back"
-          @click="navigateTo('/admin/media-review')"
         >
           <template #icon>
             <Icon name="tabler:chevron-left" aria-hidden="true" />

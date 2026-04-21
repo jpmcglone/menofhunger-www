@@ -23,9 +23,10 @@
           <div class="flex flex-wrap gap-2 shrink-0 sm:pt-1">
             <Button
               v-if="canCreateGroup"
+              as="NuxtLink"
+              to="/groups/new"
               label="Create group"
               rounded
-              @click="navigateTo('/groups/new')"
             >
               <template #icon>
                 <Icon name="tabler:plus" aria-hidden="true" />
@@ -33,10 +34,11 @@
             </Button>
             <Button
               v-else-if="isAuthed"
+              as="NuxtLink"
+              to="/tiers"
               label="Upgrade to create"
               rounded
               severity="secondary"
-              @click="navigateTo('/tiers')"
             >
               <template #icon>
                 <Icon name="tabler:sparkles" aria-hidden="true" />
@@ -100,7 +102,7 @@
           <p class="text-sm moh-text-muted max-w-md mx-auto">
             You’re not in any groups yet. Explore and join one — then posts will show up here.
           </p>
-          <Button label="Explore groups" rounded @click="navigateTo('/groups')" />
+          <Button as="NuxtLink" to="/groups" label="Explore groups" rounded />
         </div>
 
         <AppSubtleSectionLoader v-else :loading="feedLoading && !posts.length" min-height-class="min-h-[200px]">
@@ -186,6 +188,10 @@ const {
   removePost,
   replacePost,
   addReply,
+  replaceOptimistic,
+  markOptimisticFailed,
+  markOptimisticPosting,
+  removeOptimistic,
 } = usePostsFeed({
   feedStateKey: 'groups-hub-feed',
   localInsertsStateKey: 'groups-hub-feed-local-inserts',
@@ -260,22 +266,33 @@ useLoadMoreObserver(
 )
 
 const replyModal = useReplyModal()
-let unregisterReplyPosted: null | (() => void) = null
+const pendingPosts = usePendingPostsManager()
+let unregisterReplyPending: null | (() => void) = null
 let stopAutoSoftRefresh: null | (() => void) = null
 
 function registerReplyPostedHandler() {
-  if (!import.meta.client || unregisterReplyPosted) return
-  const cb = (payload: import('~/composables/useReplyModal').ReplyPostedPayload) => {
-    const parent = replyModal.parentPost.value
-    if (!parent?.id || !payload.post) return
-    addReply(parent.id, payload.post, parent)
+  if (!import.meta.client || unregisterReplyPending) return
+  const pendingCb = (payload: import('~/composables/useReplyModal').ReplyPendingPayload) => {
+    addReply(payload.parentPost.id, payload.optimisticPost, payload.parentPost)
+    pendingPosts.submit({
+      localId: payload.localId,
+      optimisticPost: payload.optimisticPost,
+      perform: payload.perform,
+      callbacks: {
+        insert: () => {},
+        replace: (lid, real) => replaceOptimistic(lid, real),
+        markFailed: (lid, msg) => markOptimisticFailed(lid, msg),
+        markPosting: (lid) => markOptimisticPosting(lid),
+        remove: (lid) => removeOptimistic(lid),
+      },
+    })
   }
-  unregisterReplyPosted = replyModal.registerOnReplyPosted(cb)
+  unregisterReplyPending = replyModal.registerOnReplyPending(pendingCb)
 }
 
 function unregisterReplyPostedHandler() {
-  unregisterReplyPosted?.()
-  unregisterReplyPosted = null
+  unregisterReplyPending?.()
+  unregisterReplyPending = null
 }
 
 function startGroupsHubAutoRefresh() {

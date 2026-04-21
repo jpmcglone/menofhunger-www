@@ -92,6 +92,8 @@ export type SpacesCallback = {
   onModeChanged?: (payload: SpacesModeChangedPayload) => void
   /** Fired on a secondary owner tab — this tab should stop sending control events. */
   onWatchPartyOwnerReplaced?: (payload: { spaceId: string }) => void
+  /** Fired when this tab is re-elected as primary owner (previous primary disconnected). */
+  onWatchPartyOwnerPromoted?: (payload: { spaceId: string }) => void
 }
 
 export type MessagesCallback = {
@@ -939,6 +941,15 @@ export function usePresence() {
       if (!spaceId) return
       for (const cb of spacesCallbacks.value) {
         cb.onWatchPartyOwnerReplaced?.({ spaceId })
+      }
+    })
+
+    socket.on('spaces:watchPartyOwnerPromoted', (data: { spaceId?: string }) => {
+      if (!spacesCallbacks.value.size) return
+      const spaceId = String(data?.spaceId ?? '').trim()
+      if (!spaceId) return
+      for (const cb of spacesCallbacks.value) {
+        cb.onWatchPartyOwnerPromoted?.({ spaceId })
       }
     })
 

@@ -544,6 +544,15 @@ export type FeedPost = {
     score?: number | null
   }
   author: PostAuthor
+  // ── Client-only fields ─────────────────────────────────────────────────────
+  // Set on optimistic posts that have been added to a feed but not yet
+  // confirmed by the server. Never returned by the API; never serialized.
+  /** 'posting' while in flight; 'failed' after a failed attempt. */
+  _pending?: 'posting' | 'failed' | null
+  /** Stable id used to find/replace this row across pending → real transitions. */
+  _localId?: string | null
+  /** User-facing error message when `_pending === 'failed'`. */
+  _pendingError?: string | null
 }
 
 export type PostViewBreakdown = {

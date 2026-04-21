@@ -1,0 +1,13 @@
+{
+  "comment": "Routes the runtime hydration check visits. Add public/SSR routes whose hydration must stay clean. Auth-gated pages with definePageMeta({ ssr: false }) do NOT need to be listed (they have nothing to hydrate). When you add or significantly change a public page, add it here.",
+  "routes": [
+    "/",
+    "/about",
+    "/tiers",
+    "/comparison",
+    "/roadmap",
+    "/privacy",
+    "/terms",
+    "/login"
+  ]
+}

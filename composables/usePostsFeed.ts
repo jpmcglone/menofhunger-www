@@ -711,6 +711,76 @@ export function usePostsFeed(options: UsePostsFeedOptions = {}) {
     patchLocalInsert(updated)
   }
 
+  // ── Optimistic post helpers ──────────────────────────────────────────────
+  // The pending-posts manager calls these to add/replace/mark-failed/remove an
+  // optimistic post in-place. Optimistic posts use `_localId` for identity (the
+  // server-assigned `id` is only set after the create succeeds).
+
+  function findIndexByLocalId(localId: string): number {
+    return posts.value.findIndex((p) => (p._localId ?? '') === localId)
+  }
+
+  function prependOptimisticPost(post: FeedPost) {
+    if (!post?._localId) return
+    posts.value = [post, ...posts.value]
+  }
+
+  function replaceOptimistic(localId: string, realPost: FeedPost) {
+    const idx = findIndexByLocalId(localId)
+    if (idx < 0) return
+    const existing = posts.value[idx]!
+    // For optimistic replies, preserve the parent reference so the row keeps
+    // its thread context (parent shown above as a "reply to" preview). Prefer
+    // any parent the server supplied; fall back to the optimistic parent.
+    const merged: FeedPost = { ...realPost, parent: realPost.parent ?? existing.parent }
+    const next = posts.value.slice()
+    next[idx] = merged
+    posts.value = next
+    // Drop the stale optimistic local insert (keyed by _localId) — the server
+    // will never ack that id, so without this it would linger in localInserts
+    // and be re-applied on every refresh.
+    if (localId) forgetLocalInsertsForDeletedPost(localId)
+    const parentId = (merged.parentId ?? existing.parentId ?? null)
+    if (parentId) {
+      rememberLocalInsert({ kind: 'replaceParent', post: merged, parentId })
+    } else if (merged.visibility !== 'onlyMe') {
+      rememberLocalInsert({ kind: 'prepend', post: merged })
+    }
+  }
+
+  function markOptimisticFailed(localId: string, errorMessage: string) {
+    const idx = findIndexByLocalId(localId)
+    if (idx < 0) return
+    const next = posts.value.slice()
+    next[idx] = { ...next[idx]!, _pending: 'failed', _pendingError: errorMessage }
+    posts.value = next
+  }
+
+  function markOptimisticPosting(localId: string) {
+    const idx = findIndexByLocalId(localId)
+    if (idx < 0) return
+    const next = posts.value.slice()
+    next[idx] = { ...next[idx]!, _pending: 'posting', _pendingError: null }
+    posts.value = next
+  }
+
+  function removeOptimistic(localId: string) {
+    const idx = findIndexByLocalId(localId)
+    if (idx < 0) return
+    const existing = posts.value[idx]!
+    // If this was an optimistic reply that took its parent's slot via
+    // `addReply`, restore the parent post when the user discards instead of
+    // leaving a hole where the parent used to be.
+    if (existing.parentId && existing.parent) {
+      const next = posts.value.slice()
+      next[idx] = existing.parent
+      posts.value = next
+    } else {
+      posts.value = posts.value.filter((_, i) => i !== idx)
+    }
+    if (localId) forgetLocalInsertsForDeletedPost(localId)
+  }
+
   function addReply(parentId: string, replyPost: FeedPost, parentPostFromFeed: FeedPost) {
     const pid = (parentId ?? '').trim()
     if (!pid) return
@@ -777,6 +847,11 @@ export function usePostsFeed(options: UsePostsFeedOptions = {}) {
     addReply,
     removePost,
     replacePost,
+    prependOptimisticPost,
+    replaceOptimistic,
+    markOptimisticFailed,
+    markOptimisticPosting,
+    removeOptimistic,
   }
 }
 
@@ -798,5 +873,64 @@ export function useHomeFeedPrepend() {
     localInserts.value = upsertLocalFeedInsert(localInserts.value, { kind: 'prepend', post })
   }
 
-  return { prependToHomeFeed }
+  // ── Optimistic helpers shared with usePostsFeed ──────────────────────────
+  // Mirror the helpers in usePostsFeed so callers from a non-page context
+  // (e.g. the global modal composer in app.vue) can manage optimistic rows
+  // in the home feed.
+
+  function findIdx(localId: string): number {
+    return posts.value.findIndex((p) => (p._localId ?? '') === localId)
+  }
+
+  function prependOptimisticToHomeFeed(post: FeedPost) {
+    if (!post?._localId) return
+    posts.value = [post, ...posts.value]
+  }
+
+  function replaceOptimisticInHomeFeed(localId: string, realPost: FeedPost) {
+    const idx = findIdx(localId)
+    if (idx < 0) {
+      // Not present (different feed instance) — fall back to a normal prepend
+      // so the user still sees their post once it lands.
+      prependToHomeFeed(realPost)
+      return
+    }
+    const next = posts.value.slice()
+    next[idx] = { ...realPost }
+    posts.value = next
+    if (realPost.visibility !== 'onlyMe') {
+      localInserts.value = upsertLocalFeedInsert(localInserts.value, { kind: 'prepend', post: realPost })
+    }
+  }
+
+  function markOptimisticFailedInHomeFeed(localId: string, errorMessage: string) {
+    const idx = findIdx(localId)
+    if (idx < 0) return
+    const next = posts.value.slice()
+    next[idx] = { ...next[idx]!, _pending: 'failed', _pendingError: errorMessage }
+    posts.value = next
+  }
+
+  function markOptimisticPostingInHomeFeed(localId: string) {
+    const idx = findIdx(localId)
+    if (idx < 0) return
+    const next = posts.value.slice()
+    next[idx] = { ...next[idx]!, _pending: 'posting', _pendingError: null }
+    posts.value = next
+  }
+
+  function removeOptimisticFromHomeFeed(localId: string) {
+    const idx = findIdx(localId)
+    if (idx < 0) return
+    posts.value = posts.value.filter((_, i) => i !== idx)
+  }
+
+  return {
+    prependToHomeFeed,
+    prependOptimisticToHomeFeed,
+    replaceOptimisticInHomeFeed,
+    markOptimisticFailedInHomeFeed,
+    markOptimisticPostingInHomeFeed,
+    removeOptimisticFromHomeFeed,
+  }
 }

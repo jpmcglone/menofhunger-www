@@ -6,11 +6,12 @@
       <template #leading>
         <!-- Only show back on mobile; desktop has the admin left pane. -->
         <Button
+          as="NuxtLink"
+          to="/admin"
           class="md:hidden"
           text
           severity="secondary"
           aria-label="Back"
-          @click="navigateTo('/admin')"
         >
           <template #icon>
             <Icon name="tabler:chevron-left" aria-hidden="true" />
@@ -463,11 +464,12 @@
           <div class="mt-2">
             <Button
               v-if="editingUser?.username"
+              as="NuxtLink"
+              :to="`/u/${encodeURIComponent(editingUser.username)}`"
               label="View public profile"
               size="small"
               severity="secondary"
               outlined
-              @click="navigateTo(`/u/${encodeURIComponent(editingUser.username)}`)"
             />
           </div>
 

@@ -1,0 +1,36 @@
+---
+description: Definition of done for substantive www features (lint, types, tests, build, hydration)
+alwaysApply: true
+---
+
+# Feature "Done" Checklist (menofhunger-www)
+
+After **substantive** work in this repo (new feature, refactor, page/component changes, composable changes, route/middleware/plugin changes), run this gate **before declaring the task complete**. Don't skip steps because they are slow — they are the contract.
+
+A change is "substantive" if it touches: `pages/**`, `components/**`, `layouts/**`, `composables/**`, `middleware/**`, `plugins/**`, `server/**`, `nuxt.config.ts`, `app.vue`, `error.vue`, `app.config.ts`, or any `.ts`/`.vue` outside `tests/` and `scripts/`.
+
+## Run, in order, from `menofhunger-www/`
+
+1. **Lint** — `npm run lint`
+   - Fix every error. Warnings: fix new ones you introduced; ignore pre-existing.
+2. **Types** — `npx nuxi typecheck`
+   - Zero errors. If types broke because the API changed, also update `types/api.ts` and re-run `node scripts/validate-api-types.mjs`.
+3. **Unit tests** — `npm test`
+   - All green. If you added client-conditional rendering, browser-API access, or new auth-gated UI, **add a structural guardrail test** to `tests/hydration-guardrails.test.ts` (or a new file) before this step.
+4. **Production build** — `npm run build`
+   - Must succeed. Catches SSR-only crashes and missing imports that dev mode hides.
+   - The `prebuild` hook re-runs typecheck + validate-api-types + tests. Don't comment it out.
+5. **Runtime hydration check** — `npm run check:hydration`
+   - Spins up the freshly-built server and visits the routes in `scripts/hydration-routes.json` with a headless browser. Fails on any `[Vue warn] Hydration` console message or page error.
+   - If you added or significantly changed a public/SSR page, **add it to `scripts/hydration-routes.json`**.
+   - On failure: read the `runtime-hydration-check` skill and the `ssr-hydration` skill, fix, re-run.
+
+## When something fails
+
+- Don't loosen the check. Fix the code.
+- Don't disable a guardrail test to make CI green. If the guardrail is wrong, update it to encode the new correct invariant — never delete it without replacement.
+- If a step is genuinely irrelevant to your change (e.g., docs-only edit), say so explicitly when reporting back.
+
+## Telling the user it's done
+
+Report which steps you ran and the outcome of each. If you skipped any, say which and why.

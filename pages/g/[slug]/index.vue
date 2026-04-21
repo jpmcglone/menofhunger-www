@@ -190,6 +190,7 @@ import { siteConfig } from '~/config/site'
 const route = useRoute()
 const { apiFetchData } = useApiClient()
 const { isAuthed, isVerified } = useAuth()
+const { markReadBySubject } = useNotifications()
 
 const slug = computed(() => String(route.params.slug ?? '').trim())
 
@@ -249,6 +250,10 @@ const {
   removePost,
   replacePost,
   addReply,
+  replaceOptimistic,
+  markOptimisticFailed,
+  markOptimisticPosting,
+  removeOptimistic,
 } = usePostsFeed({
   feedStateKey: 'group-wall-feed',
   cursorFeedStateMode: 'local',
@@ -472,22 +477,36 @@ useLoadMoreObserver(
 )
 
 const replyModal = useReplyModal()
-let unregisterReplyPosted: null | (() => void) = null
+const pendingPosts = usePendingPostsManager()
+let unregisterReplyPending: null | (() => void) = null
 let stopAutoSoftRefresh: null | (() => void) = null
 
 function registerReplyPostedHandler() {
-  if (!import.meta.client || unregisterReplyPosted) return
-  const cb = (payload: import('~/composables/useReplyModal').ReplyPostedPayload) => {
-    const parent = replyModal.parentPost.value
-    if (!parent?.id || !payload.post) return
-    addReply(parent.id, payload.post, parent)
+  if (!import.meta.client || unregisterReplyPending) return
+  // Optimistic replies: slot the optimistic row into the parent's position via
+  // `addReply` and route the network call through pendingPosts so retry/discard
+  // is wired up.
+  const pendingCb = (payload: import('~/composables/useReplyModal').ReplyPendingPayload) => {
+    addReply(payload.parentPost.id, payload.optimisticPost, payload.parentPost)
+    pendingPosts.submit({
+      localId: payload.localId,
+      optimisticPost: payload.optimisticPost,
+      perform: payload.perform,
+      callbacks: {
+        insert: () => {},
+        replace: (lid, real) => replaceOptimistic(lid, real),
+        markFailed: (lid, msg) => markOptimisticFailed(lid, msg),
+        markPosting: (lid) => markOptimisticPosting(lid),
+        remove: (lid) => removeOptimistic(lid),
+      },
+    })
   }
-  unregisterReplyPosted = replyModal.registerOnReplyPosted(cb)
+  unregisterReplyPending = replyModal.registerOnReplyPending(pendingCb)
 }
 
 function unregisterReplyPostedHandler() {
-  unregisterReplyPosted?.()
-  unregisterReplyPosted = null
+  unregisterReplyPending?.()
+  unregisterReplyPending = null
 }
 
 function startGroupFeedAutoRefresh() {
@@ -499,6 +518,22 @@ function stopGroupFeedAutoRefresh() {
   stopAutoSoftRefresh?.()
   stopAutoSoftRefresh = null
 }
+
+/**
+ * Visiting a group surfaces every group_* notification (join requests, etc.), so
+ * clear them in one shot whenever the shell resolves to a group the viewer can see.
+ * Watching `shell.id` (instead of just running once on mount) keeps SPA navigation
+ * between groups honest.
+ */
+watch(
+  () => shell.value?.id ?? null,
+  (groupId) => {
+    if (!import.meta.client) return
+    if (!groupId) return
+    void markReadBySubject({ group_id: groupId })
+  },
+  { immediate: true },
+)
 
 onMounted(() => {
   if (!import.meta.client) return

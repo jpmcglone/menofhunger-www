@@ -5,11 +5,12 @@
       <AppPageHeader title="Search" icon="tabler:search" description="Recent user searches.">
       <template #leading>
         <Button
+          as="NuxtLink"
+          to="/admin"
           class="md:hidden"
           text
           severity="secondary"
           aria-label="Back"
-          @click="navigateTo('/admin')"
         >
           <template #icon>
             <Icon name="tabler:chevron-left" aria-hidden="true" />

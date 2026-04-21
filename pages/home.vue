@@ -6,10 +6,10 @@
       <AppPostComposer
         v-if="!showOnlyMeHomeComposerCard"
         ref="homeComposerRef"
-        :create-post="createPostViaFeed"
         :allowed-visibilities="['public', 'verifiedOnly', 'premiumOnly']"
         persist-key="home"
         :register-unsaved-guard="false"
+        @pending="onComposerPending"
       />
       <div v-else class="px-3 pt-3 sm:px-4 sm:pt-4">
         <div class="rounded-2xl border moh-border moh-surface p-4 sm:p-5">
@@ -65,7 +65,7 @@
               Groups are smaller rooms for focused conversation — posts stay inside the group, not on the home feed.
             </p>
             <div class="mt-3 flex flex-wrap gap-2">
-              <Button label="Browse groups" rounded size="small" @click="navigateTo('/groups')" />
+              <Button as="NuxtLink" to="/groups" label="Browse groups" rounded size="small" />
               <Button
                 label="Dismiss"
                 text
@@ -205,8 +205,6 @@
 
 <script setup lang="ts">
 import type { CommunityGroupShell, PostVisibility, CheckinAllowedVisibility  } from '~/types/api'
-import type { CreateMediaPayload } from '~/composables/useComposerMedia'
-import type { ComposerPollPayload } from '~/composables/composer/types'
 import { postBodyHasVideoEmbed } from '~/utils/link-utils'
 import { MOH_HOME_COMPOSER_IN_VIEW_KEY, MOH_OPEN_COMPOSER_KEY, MOH_FOCUS_HOME_COMPOSER_KEY } from '~/utils/injection-keys'
 import { useMiddleScroller } from '~/composables/useMiddleScroller'
@@ -389,10 +387,14 @@ const {
   refresh,
   softRefreshNewer,
   loadMore,
-  addPost,
   addReply,
   removePost,
   replacePost,
+  prependOptimisticPost,
+  replaceOptimistic,
+  markOptimisticFailed,
+  markOptimisticPosting,
+  removeOptimistic,
   followingCount,
   showFollowingEmptyState,
   showAllEmptyState,
@@ -506,7 +508,7 @@ function openOnlyMeComposer() {
 }
 
 const replyModal = useReplyModal()
-let unregisterReplyPosted: null | (() => void) = null
+let unregisterReplyPending: null | (() => void) = null
 onActivated(() => {
   if (!import.meta.client) return
   if (isAuthed.value) void refreshMyGroupsCount()
@@ -520,41 +522,64 @@ onActivated(() => {
     // No posts yet (e.g. first activation, auth change) — do a full refresh.
     void refresh()
   }
-  const cb = (payload: import('~/composables/useReplyModal').ReplyPostedPayload) => {
-    const parent = replyModal.parentPost.value
-    if (!parent?.id || !payload.post) return
-    addReply(parent.id, payload.post, parent)
+  // Optimistic replies: when the reply modal forwards a pending submit, slot
+  // the optimistic row into the parent's position via `addReply` and let
+  // pendingPosts handle the network call + retry/discard surface.
+  const pendingCb = (payload: import('~/composables/useReplyModal').ReplyPendingPayload) => {
+    addReply(payload.parentPost.id, payload.optimisticPost, payload.parentPost)
+    pendingPosts.submit({
+      localId: payload.localId,
+      optimisticPost: payload.optimisticPost,
+      perform: payload.perform,
+      callbacks: {
+        insert: () => {},
+        replace: (lid, real) => replaceOptimistic(lid, real),
+        markFailed: (lid, msg) => markOptimisticFailed(lid, msg),
+        markPosting: (lid) => markOptimisticPosting(lid),
+        remove: (lid) => removeOptimistic(lid),
+      },
+    })
   }
-  unregisterReplyPosted = replyModal.registerOnReplyPosted(cb)
+  unregisterReplyPending = replyModal.registerOnReplyPending(pendingCb)
 })
 onDeactivated(() => {
-  unregisterReplyPosted?.()
-  unregisterReplyPosted = null
+  unregisterReplyPending?.()
+  unregisterReplyPending = null
 })
 
-async function createPostViaFeed(
-  body: string,
-  visibility: PostVisibility,
-  media?: CreateMediaPayload[] | null,
-  poll?: ComposerPollPayload | null,
-): Promise<{ id: string } | null> {
-  // Home composer should never pass 'existing' media references, but ignore safely if it ever does.
-  const filtered = (media ?? []).filter((m) => (m as any)?.source !== 'existing') as any
-  const created = await addPost(body, visibility, filtered.length ? filtered : null, poll ?? null)
-  if (created?.id) {
-    if (postBodyHasVideoEmbed(created.body ?? '', Boolean(created.media?.length))) {
-      newlyPostedVideoPostId.value = created.id
-      if (import.meta.client) {
-        if (newlyPostedVideoPostTimer) clearTimeout(newlyPostedVideoPostTimer)
-        newlyPostedVideoPostTimer = setTimeout(() => {
-          newlyPostedVideoPostId.value = null
-          newlyPostedVideoPostTimer = null
-        }, 800)
-      }
-    }
-    // Do not hard-refresh the whole feed after posting; `addPost` already prepends.
-  }
-  return created?.id ? { id: created.id } : null
+const pendingPosts = usePendingPostsManager()
+
+function flashNewlyPostedVideo(post: import('~/types/api').FeedPost) {
+  if (!postBodyHasVideoEmbed(post.body ?? '', Boolean(post.media?.length))) return
+  newlyPostedVideoPostId.value = post.id
+  if (!import.meta.client) return
+  if (newlyPostedVideoPostTimer) clearTimeout(newlyPostedVideoPostTimer)
+  newlyPostedVideoPostTimer = setTimeout(() => {
+    newlyPostedVideoPostId.value = null
+    newlyPostedVideoPostTimer = null
+  }, 800)
+}
+
+function onComposerPending(payload: {
+  localId: string
+  optimisticPost: import('~/types/api').FeedPost
+  perform: () => Promise<import('~/types/api').FeedPost | { id: string } | null | undefined>
+}) {
+  pendingPosts.submit({
+    localId: payload.localId,
+    optimisticPost: payload.optimisticPost,
+    perform: payload.perform,
+    callbacks: {
+      insert: (p) => prependOptimisticPost(p),
+      replace: (lid, real) => {
+        replaceOptimistic(lid, real)
+        flashNewlyPostedVideo(real)
+      },
+      markFailed: (lid, msg) => markOptimisticFailed(lid, msg),
+      markPosting: (lid) => markOptimisticPosting(lid),
+      remove: (lid) => removeOptimistic(lid),
+    },
+  })
 }
 
 // onFeedScopeChange is provided by useHomeFeed — updates URL param and refreshes feed

@@ -14,7 +14,9 @@
           ? 'border-b border-gray-100 dark:border-white/[0.06]'
           : 'border-b moh-border',
       clickable ? 'cursor-pointer rounded-lg group' : '',
-      highlight ? highlightClass : ''
+      highlight ? highlightClass : '',
+      pendingStatus === 'posting' ? 'opacity-70' : '',
+      pendingStatus === 'failed' ? 'opacity-90' : '',
     ]"
     :style="rowStyle"
     @click="onRowClick"
@@ -252,7 +254,7 @@
             </div>
           </Transition>
 
-          <AppPostRowMoreMenu :items="moreMenuItems" :tooltip="moreTooltip" />
+          <AppPostRowMoreMenu v-if="!isPendingRow" :items="moreMenuItems" :tooltip="moreTooltip" />
         </div>
 
         <div
@@ -378,7 +380,44 @@
           </div>
         </div>
 
-          <div v-if="!isDeletedPost" class="mt-2.5 sm:mt-3 flex items-center justify-between moh-text-muted">
+        <div
+          v-if="isPendingRow"
+          class="mt-2.5 sm:mt-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border px-3 py-2 text-sm"
+          :class="pendingStatus === 'failed'
+            ? 'border-red-300/70 bg-red-50/70 text-red-800 dark:border-red-800/60 dark:bg-red-950/30 dark:text-red-200'
+            : 'border-gray-200 bg-gray-50 text-gray-700 dark:border-zinc-800 dark:bg-zinc-900/60 dark:text-gray-300'"
+          @click.stop
+        >
+          <span class="inline-flex items-center gap-2">
+            <template v-if="pendingStatus === 'posting'">
+              <Icon name="tabler:loader-2" class="animate-spin text-base" aria-hidden="true" />
+              <span>Posting…</span>
+            </template>
+            <template v-else>
+              <Icon name="tabler:alert-triangle" class="text-base" aria-hidden="true" />
+              <span>{{ pendingErrorText }}</span>
+            </template>
+          </span>
+          <span v-if="pendingStatus === 'failed'" class="inline-flex items-center gap-2">
+            <Button
+              label="Retry"
+              size="small"
+              severity="secondary"
+              rounded
+              @click.stop="onRetryPending"
+            />
+            <Button
+              label="Discard"
+              size="small"
+              severity="secondary"
+              text
+              rounded
+              @click.stop="onDiscardPending"
+            />
+          </span>
+        </div>
+
+        <div v-else-if="!isDeletedPost" class="mt-2.5 sm:mt-3 flex items-center justify-between moh-text-muted">
           <div class="flex items-center gap-1">
             <!-- Reply: hidden for only-me posts -->
             <div v-if="!isOnlyMe" class="inline-flex w-14 items-center justify-start">
@@ -592,6 +631,7 @@ import { usePostCountBumps } from '~/composables/usePostCountBumps'
 import { useInViewOnce } from '~/composables/useInViewOnce'
 import { useUserOverlay } from '~/composables/useUserOverlay'
 import { MOH_OPEN_COMPOSER_FROM_ONLYME_KEY, MOH_OPEN_COMPOSER_KEY } from '~/utils/injection-keys'
+import { isPendingLocalId } from '~/composables/usePendingPostsManager'
 
 const props = defineProps<{
   post: FeedPost
@@ -689,7 +729,26 @@ function onGatedRightSideClick() {
   const kind = postView.value.visibility === 'premiumOnly' ? 'premium' : 'verify'
   showAuthActionModal({ kind, action: 'bookmark' })
 }
-const clickable = computed(() => props.clickable !== false)
+const pendingStatus = computed<'posting' | 'failed' | null>(() => {
+  const s = postView.value._pending
+  return s === 'posting' || s === 'failed' ? s : null
+})
+const isPendingRow = computed(() => pendingStatus.value !== null)
+const pendingErrorText = computed(() => (postView.value._pendingError ?? '').trim() || 'Failed to post.')
+
+const pendingPostsManager = usePendingPostsManager()
+function onRetryPending() {
+  const lid = (postView.value._localId ?? '').trim()
+  if (!lid) return
+  void pendingPostsManager.retry(lid)
+}
+function onDiscardPending() {
+  const lid = (postView.value._localId ?? '').trim()
+  if (!lid) return
+  pendingPostsManager.discard(lid)
+}
+
+const clickable = computed(() => props.clickable !== false && !isPendingRow.value)
 const highlightClass = computed(() => {
   if (!props.highlight) return ''
   const v = postView.value.visibility
@@ -749,7 +808,12 @@ onMounted(() => {
   } catch {
     // ignore
   }
-  if (rowEl.value && postView.value.id && postView.value.viewerCanAccess !== false) {
+  if (
+    rowEl.value
+    && postView.value.id
+    && postView.value.viewerCanAccess !== false
+    && !isPendingLocalId(postView.value.id)
+  ) {
     stopViewObserve = observeView([postView.value.id], rowEl.value)
   }
 })

@@ -77,6 +77,7 @@ const slug = computed(() => String(route.params.slug ?? '').trim())
 definePageMeta({ layout: 'app', title: 'Pending', hideTopBar: true, ssr: false })
 
 const { apiFetchData } = useApiClient()
+const { markReadBySubject } = useNotifications()
 
 const shell = ref<CommunityGroupShell | null>(null)
 const shellLoading = ref(true)
@@ -183,6 +184,9 @@ onMounted(async () => {
     if (!isMod.value) {
       throw createError({ statusCode: 404, statusMessage: 'Not found' })
     }
+    // Mods landing on the pending-requests page should clear group_join_request
+    // notifications for this group — they're seeing them right here.
+    if (shell.value?.id) void markReadBySubject({ group_id: shell.value.id })
     if (shell.value?.joinPolicy === 'approval') {
       await loadPending()
     }

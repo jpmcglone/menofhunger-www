@@ -1,0 +1,59 @@
+---
+description: Watch Party sync model for SpaceYouTubePlayer and related composables. Read when working on Spaces, watch-party playback, applyState, owner/viewer sync, or useWatchParty/usePresence for watch party events.
+globs: components/SpaceYouTubePlayer.vue,composables/useWatchParty.ts,composables/usePresence.ts,utils/watchPartyMath.ts,pages/s/**
+alwaysApply: false
+---
+
+# Watch Party Sync Model
+
+## Owner vs. Viewer identity
+
+`isOwner` — is the current user the space owner (either tab).  
+`isReplacedOwner` — this owner tab was superseded by a newer tab; it follows the room like a viewer.
+
+The active primary tab is: `isOwner && !isReplacedOwner`.
+
+## `applyState` gate (SpaceYouTubePlayer.vue)
+
+```typescript
+if (!ytPlayer) return
+if (isOwner.value && !isReplacedOwner.value) return  // primary drives; never self-seeks
+// replaced owner tabs and viewers both reach here
+```
+
+NEVER gate on `isOwner` alone — that silences replaced-owner tabs and breaks owner-on-two-screens.
+
+## Video swap — `pendingApply`
+
+After `loadVideoById`, the player isn't ready to seek/play yet.  
+Store the desired state in `pendingApply` and re-apply it in `onStateChange` when the player reports `CUED` (5) or `BUFFERING` (3).
+
+```typescript
+if (stateVideoId && loadNewVideoIfNeeded(stateVideoId)) {
+  pendingApply = state   // applied in onStateChange
+  return
+}
+```
+
+## Math utilities
+
+`driftAdjustedTime(state)` and `extractVideoId(url)` live in `utils/watchPartyMath.ts`.  
+**Do not redefine them inline** — import from there.
+
+## Presence events (both directions)
+
+| Event (socket.io) | Direction | Meaning |
+|---|---|---|
+| `spaces:watchPartyState` | server → client | Authoritative room state |
+| `spaces:watchPartyControl` | client → server | Primary owner sends position |
+| `spaces:requestWatchPartyState` | client → server | Pull current state (on join/reconnect) |
+| `spaces:watchPartyOwnerReplaced` | server → replaced tab | Stop emitting; follow the room |
+| `spaces:watchPartyOwnerPromoted` | server → new primary | Clear `isReplacedOwner`; resume emitting |
+
+## Owner URL change
+
+When `watchPartyUrl` prop changes (owner picked a new video), the watcher:
+1. Calls `loadNewVideoIfNeeded(newId)`.
+2. Immediately calls `sendControl(spaceId, { videoUrl, isPlaying: false, currentTime: 0, ... })` so viewers snap to the new video before the player emits its first event.
+
+The server's `resetForVideo` (called by `handleSpacesAnnounceMode`) is belt-and-suspenders.

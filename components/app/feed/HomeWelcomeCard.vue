@@ -69,7 +69,7 @@
             {{ VOICE.welcome.step2BodyVerify }}
           </p>
           <div class="mt-3">
-            <Button label="Get verified" size="small" severity="secondary" rounded @click="navigateTo('/verification')">
+            <Button as="NuxtLink" to="/verification" label="Get verified" size="small" severity="secondary" rounded>
               <template #icon>
                 <Icon name="tabler:shield-check" aria-hidden="true" />
               </template>

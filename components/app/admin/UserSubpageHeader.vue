@@ -3,10 +3,11 @@
     <AppPageHeader :title="title" :icon="icon" :description="description">
       <template #leading>
         <Button
+          as="NuxtLink"
+          :to="`/admin/users/${encodedUsername}`"
           text
           severity="secondary"
           aria-label="Back to user overview"
-          @click="navigateTo(`/admin/users/${encodedUsername}`)"
         >
           <template #icon>
             <Icon name="tabler:chevron-left" aria-hidden="true" />
@@ -17,11 +18,12 @@
     <div class="mt-2">
       <Button
         v-if="username"
+        as="NuxtLink"
+        :to="`/u/${encodedUsername}`"
         label="View public profile"
         size="small"
         severity="secondary"
         outlined
-        @click="navigateTo(`/u/${encodedUsername}`)"
       />
     </div>
   </div>

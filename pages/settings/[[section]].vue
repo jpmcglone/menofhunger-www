@@ -50,10 +50,11 @@
               <div class="flex min-w-0 items-start gap-2">
                 <Button
                   v-if="selectedSection"
+                  as="NuxtLink"
+                  to="/settings"
                   text
                   severity="secondary"
                   aria-label="Back"
-                  @click="navigateTo('/settings')"
                 >
                   <template #icon>
                     <Icon name="tabler:chevron-left" aria-hidden="true" />

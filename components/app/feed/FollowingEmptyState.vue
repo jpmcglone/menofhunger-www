@@ -83,12 +83,13 @@
           <div class="text-xs moh-text-muted mt-0.5">{{ VOICE.feed.verifyBody }}</div>
         </div>
         <Button
+          as="NuxtLink"
+          to="/verification"
           :label="VOICE.actions.verify"
           size="small"
           severity="secondary"
           rounded
           class="shrink-0 !h-8 !min-h-8 !px-3 !py-0 !text-xs !leading-none whitespace-nowrap"
-          @click="navigateTo('/verification')"
         />
       </div>
     </div>

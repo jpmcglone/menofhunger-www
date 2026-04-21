@@ -92,11 +92,12 @@
           <div class="shrink-0 flex items-center gap-2 flex-wrap justify-end">
             <Button
               v-if="user.username"
+              as="NuxtLink"
+              :to="`/u/${encodeURIComponent(user.username)}`"
               label="View profile"
               severity="secondary"
               outlined
               size="small"
-              @click="navigateTo(`/u/${encodeURIComponent(user.username)}`)"
             />
             <Button
               :label="user.bannedAt ? 'Unban' : 'Ban'"
@@ -304,7 +305,7 @@
         <div class="rounded-2xl border border-gray-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 p-4 space-y-3">
           <div class="flex items-center justify-between gap-2">
             <div class="text-sm font-semibold text-gray-900 dark:text-gray-50">Recent posts</div>
-            <Button text size="small" label="View all" @click="navigateTo(`/admin/users/${encodedUsername}/posts`)" />
+            <Button as="NuxtLink" :to="`/admin/users/${encodedUsername}/posts`" text size="small" label="View all" />
           </div>
           <div v-if="recentPosts.length === 0" class="text-sm text-gray-500 dark:text-gray-400">No posts yet.</div>
           <NuxtLink
@@ -327,7 +328,7 @@
         <div class="rounded-2xl border border-gray-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 p-4 space-y-3">
           <div class="flex items-center justify-between gap-2">
             <div class="text-sm font-semibold text-gray-900 dark:text-gray-50">Recent articles</div>
-            <Button text size="small" label="View all" @click="navigateTo(`/admin/users/${encodedUsername}/articles`)" />
+            <Button as="NuxtLink" :to="`/admin/users/${encodedUsername}/articles`" text size="small" label="View all" />
           </div>
           <div v-if="recentArticles.length === 0" class="text-sm text-gray-500 dark:text-gray-400">No articles yet.</div>
           <NuxtLink
@@ -351,7 +352,7 @@
         <div class="rounded-2xl border border-gray-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 p-4 space-y-3">
           <div class="flex items-center justify-between gap-2">
             <div class="text-sm font-semibold text-gray-900 dark:text-gray-50">Recent searches</div>
-            <Button text size="small" label="View all" @click="navigateTo(`/admin/users/${encodedUsername}/searches`)" />
+            <Button as="NuxtLink" :to="`/admin/users/${encodedUsername}/searches`" text size="small" label="View all" />
           </div>
           <div v-if="recentSearches.length === 0" class="text-sm text-gray-500 dark:text-gray-400">No searches yet.</div>
           <div v-for="s in recentSearches" :key="s.id" class="text-sm border-b border-gray-100 dark:border-zinc-800 pb-2 last:border-b-0">

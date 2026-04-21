@@ -4,11 +4,12 @@
       <AppPageHeader title="Jobs" icon="tabler:terminal-2" description="Run maintenance, scoring, and backfill jobs.">
         <template #leading>
           <Button
+            as="NuxtLink"
+            to="/admin"
             class="md:hidden"
             text
             severity="secondary"
             aria-label="Back"
-            @click="navigateTo('/admin')"
           >
             <template #icon>
               <Icon name="tabler:chevron-left" aria-hidden="true" />

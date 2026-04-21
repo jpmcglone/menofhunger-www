@@ -2,6 +2,23 @@ import type { FeedPost } from '~/types/api'
 
 export type ReplyPostedPayload = { id: string; post?: FeedPost }
 
+/**
+ * Payload fired the moment the user clicks "Reply" — before the network call
+ * has resolved. Consumers wire `optimisticPost` into their feed (e.g. via
+ * `addReply`) and run `perform` through `usePendingPostsManager` so the row
+ * shows immediately and gets replaced with the real post when it lands.
+ *
+ * `parentPost` is the post being replied to (already enriched on the
+ * optimistic post as `optimisticPost.parent`); it's exposed separately so
+ * consumers can look up where to slot the reply without unwrapping.
+ */
+export type ReplyPendingPayload = {
+  localId: string
+  optimisticPost: FeedPost
+  parentPost: FeedPost
+  perform: () => Promise<FeedPost | { id: string } | null | undefined>
+}
+
 export function useReplyModal() {
   const open = useState<boolean>('reply-modal-open', () => false)
   const parentPost = useState<FeedPost | null>('reply-modal-parent-post', () => null)
@@ -13,6 +30,10 @@ export function useReplyModal() {
   const extraMentionUsernames = useState<string[]>('reply-modal-extra-mentions', () => [])
   const onReplyPostedCallbacks = useState<Array<(payload: ReplyPostedPayload) => void>>(
     'reply-modal-on-reply-posted',
+    () => [],
+  )
+  const onReplyPendingCallbacks = useState<Array<(payload: ReplyPendingPayload) => void>>(
+    'reply-modal-on-reply-pending',
     () => [],
   )
 
@@ -42,6 +63,20 @@ export function useReplyModal() {
     onReplyPostedCallbacks.value = onReplyPostedCallbacks.value.filter((x) => x !== cb)
   }
 
+  function registerOnReplyPending(cb: (payload: ReplyPendingPayload) => void) {
+    if (onReplyPendingCallbacks.value.includes(cb)) return () => unregisterOnReplyPending(cb)
+    onReplyPendingCallbacks.value = [...onReplyPendingCallbacks.value, cb]
+    return () => unregisterOnReplyPending(cb)
+  }
+
+  function unregisterOnReplyPending(cb?: (payload: ReplyPendingPayload) => void) {
+    if (!cb) {
+      onReplyPendingCallbacks.value = []
+      return
+    }
+    onReplyPendingCallbacks.value = onReplyPendingCallbacks.value.filter((x) => x !== cb)
+  }
+
   return {
     open,
     parentPost,
@@ -51,5 +86,8 @@ export function useReplyModal() {
     onReplyPostedCallbacks,
     registerOnReplyPosted,
     unregisterOnReplyPosted,
+    onReplyPendingCallbacks,
+    registerOnReplyPending,
+    unregisterOnReplyPending,
   }
 }

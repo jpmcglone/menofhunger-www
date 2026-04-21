@@ -87,6 +87,7 @@ const slug = computed(() => String(route.params.slug ?? '').trim())
 definePageMeta({ layout: 'app', title: 'Members', hideTopBar: true })
 
 const { apiFetch, apiFetchData } = useApiClient()
+const { markReadBySubject } = useNotifications()
 
 const shell = ref<CommunityGroupShell | null>(null)
 const rows = ref<CommunityGroupMemberListItem[]>([])
@@ -213,6 +214,7 @@ function goProfile(m: CommunityGroupMemberListItem) {
 
 onMounted(async () => {
   await loadShell()
+  if (shell.value?.id) void markReadBySubject({ group_id: shell.value.id })
   await reloadFromServer()
 })
 </script>

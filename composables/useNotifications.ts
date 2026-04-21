@@ -134,8 +134,14 @@ export function useNotifications() {
     }
   }
 
-  async function markReadBySubject(params: { post_id?: string; user_id?: string; article_id?: string }) {
-    if (!params.post_id && !params.user_id && !params.article_id) return
+  async function markReadBySubject(params: {
+    post_id?: string
+    user_id?: string
+    article_id?: string
+    crew_id?: string
+    group_id?: string
+  }) {
+    if (!params.post_id && !params.user_id && !params.article_id && !params.crew_id && !params.group_id) return
     try {
       await apiFetch('/notifications/mark-read', {
         method: 'POST',
@@ -144,6 +150,23 @@ export function useNotifications() {
     } catch (e: unknown) {
       if (import.meta.dev) {
         console.warn('[notifications] markReadBySubject failed', e)
+      }
+    }
+  }
+
+  /**
+   * Mark a single notification as read by id. Used for snappy optimistic clears
+   * on the notifications page (e.g. when the user opens a row in a new tab —
+   * the destination's `markReadBySubject` will eventually fire too, but this
+   * gives the originating tab immediate visual feedback).
+   */
+  async function markReadById(id: string) {
+    if (!id) return
+    try {
+      await apiFetch(`/notifications/${encodeURIComponent(id)}/mark-read`, { method: 'POST' })
+    } catch (e: unknown) {
+      if (import.meta.dev) {
+        console.warn('[notifications] markReadById failed', e)
       }
     }
   }
@@ -424,6 +447,7 @@ export function useNotifications() {
     fetchList,
     markDelivered,
     markReadBySubject,
+    markReadById,
     markAllRead,
     actorDisplay,
     actorTierClass,

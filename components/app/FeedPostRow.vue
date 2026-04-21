@@ -130,6 +130,7 @@
 <script setup lang="ts">
 import type { CommunityGroupShell, FeedPost } from '~/types/api'
 import { userColorTier, userTierColorVar } from '~/utils/user-tier'
+import { isPendingLocalId } from '~/composables/usePendingPostsManager'
 
 defineEmits<{
   (e: 'deleted', id: string): void
@@ -282,7 +283,10 @@ onMounted(() => {
   // Observe the wrapper: when ≥50% visible for ≥1s, mark accessible chain posts as viewed.
   // Gated posts (viewerCanAccess === false) are excluded — viewer hasn't read the content.
   if (wrapperEl.value) {
-    const postIds = chain.value.filter((p) => p.viewerCanAccess !== false).map((p) => p.id).filter(Boolean)
+    const postIds = chain.value
+      .filter((p) => p.viewerCanAccess !== false && !isPendingLocalId(p.id))
+      .map((p) => p.id)
+      .filter(Boolean)
     if (postIds.length) stopObserve = observe(postIds, wrapperEl.value)
   }
 })

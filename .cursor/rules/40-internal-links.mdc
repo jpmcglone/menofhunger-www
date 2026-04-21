@@ -1,0 +1,62 @@
+---
+description: Internal navigation must render a real <a> element for cmd/middle/right-click "Open in new tab" to work
+alwaysApply: true
+---
+
+## Internal links must be real anchors
+
+Every navigation to another route in this app MUST produce a real `<a>` element in the DOM so that:
+- right-click → "Open in new tab" works
+- cmd/ctrl+click opens in a new tab
+- middle-click opens in a new tab
+
+### Patterns
+
+**Inline links** — always use `<NuxtLink>`:
+```vue
+<NuxtLink to="/some/path">Label</NuxtLink>
+```
+
+**Button-styled CTAs that only navigate** — use `<Button as="NuxtLink" :to="...">`:
+```vue
+<Button as="NuxtLink" to="/tiers" label="View plans" rounded />
+<Button as="NuxtLink" to="/admin" severity="secondary" aria-label="Back">
+  <template #icon><Icon name="tabler:chevron-left" /></template>
+</Button>
+```
+
+**Full-row / full-card click targets that contain inner links or buttons** — use the **background NuxtLink overlay** pattern (see `.cursor/skills/clickable-rows/SKILL.md`):
+```vue
+<div class="relative cursor-pointer hover:bg-gray-50 dark:hover:bg-zinc-900"
+     role="link" tabindex="0"
+     @click="onRowClick(href, $event)"
+     @auxclick="onRowAuxClick(href, $event)"
+     @keydown.enter.prevent="navigateTo(href)"
+     @keydown.space.prevent="navigateTo(href)"
+>
+  <NuxtLink :to="href" class="absolute inset-0 z-[1]" tabindex="-1" aria-hidden="true" />
+  <div class="relative z-[2]"><!-- content --></div>
+</div>
+```
+
+### What stays as `<Button @click>` (exceptions)
+
+Buttons whose primary purpose is **mutating state** (and may navigate as a side-effect) stay as regular buttons:
+- "Accept invite", "Decline", "Follow back", "Nudge back" — these POST to the API first
+- Anything that shows a confirmation dialog before navigating
+- PrimeVue MenuItem `command:` callbacks (popup menu items use `command`, not `href`)
+
+### Never do these
+
+```vue
+<!-- ❌ not a real <a> — right-click won't offer "Open in new tab" -->
+<Button @click="navigateTo('/some/path')" label="Go" />
+
+<!-- ❌ div role="link" is accessible but not a native anchor -->
+<NuxtLink custom v-slot="{ navigate }" to="/path">
+  <div role="link" @click="navigate($event)">...</div>
+</NuxtLink>
+
+<!-- ❌ @click on non-anchor for primary navigation -->
+<tr @click="navigateTo('/path')">...</tr>
+```

@@ -832,6 +832,7 @@
                   persist-key="post-modal"
                   :register-unsaved-guard="false"
                   @posted="onComposerPosted"
+                  @pending="onComposerPending"
                 />
               </div>
             </div>
@@ -1346,7 +1347,39 @@ function closeComposerModal() {
 }
 
 const { prependPost: prependOnlyMePost } = useOnlyMePosts()
-const { prependToHomeFeed } = useHomeFeedPrepend()
+const {
+  prependToHomeFeed,
+  prependOptimisticToHomeFeed,
+  replaceOptimisticInHomeFeed,
+  markOptimisticFailedInHomeFeed,
+  markOptimisticPostingInHomeFeed,
+  removeOptimisticFromHomeFeed,
+} = useHomeFeedPrepend()
+const pendingPosts = usePendingPostsManager()
+
+function onComposerPending(payload: {
+  localId: string
+  optimisticPost: import('~/types/api').FeedPost
+  perform: () => Promise<import('~/types/api').FeedPost | { id: string } | null | undefined>
+}) {
+  // Close the modal immediately so the user can keep working.
+  composerModalOpen.value = false
+  composerInitialText.value = null
+  composerSourceOnlyMePost.value = null
+  resetComposerCustomOptions()
+  pendingPosts.submit({
+    localId: payload.localId,
+    optimisticPost: payload.optimisticPost,
+    perform: payload.perform,
+    callbacks: {
+      insert: (p) => prependOptimisticToHomeFeed(p),
+      replace: (lid, real) => replaceOptimisticInHomeFeed(lid, real),
+      markFailed: (lid, msg) => markOptimisticFailedInHomeFeed(lid, msg),
+      markPosting: (lid) => markOptimisticPostingInHomeFeed(lid),
+      remove: (lid) => removeOptimisticFromHomeFeed(lid),
+    },
+  })
+}
 function onComposerPosted(payload: { id: string; visibility: string; post?: import('~/types/api').FeedPost }) {
   composerModalOpen.value = false
   composerInitialText.value = null

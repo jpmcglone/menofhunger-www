@@ -2,7 +2,7 @@
   <AppPageContent bottom="standard">
     <div class="moh-gutter-x pt-4 pb-10 max-w-xl mx-auto space-y-6">
       <div class="flex items-center gap-2">
-        <Button text rounded severity="secondary" aria-label="Back" @click="navigateTo('/groups')">
+        <Button as="NuxtLink" to="/groups" text rounded severity="secondary" aria-label="Back">
           <template #icon>
             <Icon name="tabler:chevron-left" aria-hidden="true" />
           </template>
@@ -16,7 +16,7 @@
 
       <div v-else-if="!canCreate" class="rounded-xl border moh-border p-4 space-y-3">
         <p class="text-sm moh-text-muted">Only premium members can create groups.</p>
-        <Button label="View plans" rounded @click="navigateTo('/tiers')" />
+        <Button as="NuxtLink" to="/tiers" label="View plans" rounded />
       </div>
 
       <template v-else>

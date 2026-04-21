@@ -5,11 +5,12 @@
         <AppPageHeader title="Analytics" icon="tabler:chart-bar" description="KPIs, engagement trends, and monetization.">
           <template #leading>
             <Button
+              as="NuxtLink"
+              to="/admin"
               class="md:hidden"
               text
               severity="secondary"
               aria-label="Back"
-              @click="navigateTo('/admin')"
             >
               <template #icon>
                 <Icon name="tabler:chevron-left" aria-hidden="true" />
@@ -292,12 +293,15 @@
                 <tr
                   v-for="article in data?.articles.topArticles"
                   :key="article.id"
-                  class="hover:bg-gray-50 dark:hover:bg-zinc-900/50 cursor-pointer"
-                  @click="navigateTo(`/a/${article.id}`)"
+                  class="relative hover:bg-gray-50 dark:hover:bg-zinc-900/50 cursor-pointer"
+                  @click="onAnalyticsRowClick(`/a/${article.id}`, $event)"
+                  @auxclick="onAnalyticsRowAuxClick(`/a/${article.id}`, $event)"
                 >
                   <td class="px-4 py-3 max-w-[260px]">
-                    <div class="font-medium truncate">{{ article.title }}</div>
-                    <div class="text-xs text-gray-400 dark:text-gray-500">@{{ article.authorUsername }}</div>
+                    <!-- Background anchor for right-click "Open in new tab"; positioned relative to <tr> -->
+                    <NuxtLink :to="`/a/${article.id}`" class="absolute inset-0 z-0" tabindex="-1" aria-hidden="true" />
+                    <div class="relative z-[1] font-medium truncate">{{ article.title }}</div>
+                    <div class="relative z-[1] text-xs text-gray-400 dark:text-gray-500">@{{ article.authorUsername }}</div>
                   </td>
                   <td class="px-4 py-3">
                     <span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium" :class="visibilityBadgeClass(article.visibility)">
@@ -349,12 +353,14 @@
                 <tr
                   v-for="g in data.groups.topGroups"
                   :key="g.id"
-                  class="hover:bg-gray-50 dark:hover:bg-zinc-900/50 cursor-pointer"
-                  @click="navigateTo(`/g/${encodeURIComponent(g.slug)}`)"
+                  class="relative hover:bg-gray-50 dark:hover:bg-zinc-900/50 cursor-pointer"
+                  @click="onAnalyticsRowClick(`/g/${encodeURIComponent(g.slug)}`, $event)"
+                  @auxclick="onAnalyticsRowAuxClick(`/g/${encodeURIComponent(g.slug)}`, $event)"
                 >
                   <td class="px-4 py-3">
-                    <div class="font-medium">{{ g.name }}</div>
-                    <div class="text-xs text-gray-400 dark:text-gray-500 font-mono">{{ g.slug }}</div>
+                    <NuxtLink :to="`/g/${encodeURIComponent(g.slug)}`" class="absolute inset-0 z-0" tabindex="-1" aria-hidden="true" />
+                    <div class="relative z-[1] font-medium">{{ g.name }}</div>
+                    <div class="relative z-[1] text-xs text-gray-400 dark:text-gray-500 font-mono">{{ g.slug }}</div>
                   </td>
                   <td class="px-4 py-3 text-right tabular-nums">{{ g.memberCount.toLocaleString() }}</td>
                   <td class="px-4 py-3 text-right tabular-nums">{{ g.rootPostsInRange.toLocaleString() }}</td>
@@ -433,11 +439,13 @@
                 <tr
                   v-for="s in data.spaces?.topSpaces ?? []"
                   :key="s.id"
-                  class="hover:bg-gray-50 dark:hover:bg-zinc-900/50 cursor-pointer"
-                  @click="navigateTo(`/s/${encodeURIComponent(s.ownerUsername)}`)"
+                  class="relative hover:bg-gray-50 dark:hover:bg-zinc-900/50 cursor-pointer"
+                  @click="onAnalyticsRowClick(`/s/${encodeURIComponent(s.ownerUsername)}`, $event)"
+                  @auxclick="onAnalyticsRowAuxClick(`/s/${encodeURIComponent(s.ownerUsername)}`, $event)"
                 >
                   <td class="px-4 py-3">
-                    <div class="font-medium">{{ s.title }}</div>
+                    <NuxtLink :to="`/s/${encodeURIComponent(s.ownerUsername)}`" class="absolute inset-0 z-0" tabindex="-1" aria-hidden="true" />
+                    <div class="relative z-[1] font-medium">{{ s.title }}</div>
                   </td>
                   <td class="px-4 py-3 text-gray-500 dark:text-gray-400">
                     @{{ s.ownerUsername }}
@@ -789,6 +797,20 @@ import type { AdminAnalytics, AdminAnalyticsEngagement, AdminAnalyticsTopArticle
 definePageMeta({ middleware: 'admin', layout: 'app', ssr: false })
 
 Chart.register(...registerables)
+
+function onAnalyticsRowClick(href: string, e: MouseEvent) {
+  if (e.metaKey || e.ctrlKey) {
+    window.open(href, '_blank')
+    return
+  }
+  void navigateTo(href)
+}
+
+function onAnalyticsRowAuxClick(href: string, e: MouseEvent) {
+  if (e.button !== 1) return
+  e.preventDefault()
+  window.open(href, '_blank')
+}
 
 const { apiFetchData } = useApiClient()
 

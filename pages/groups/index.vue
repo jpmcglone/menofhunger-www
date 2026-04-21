@@ -12,9 +12,10 @@
           <div class="flex flex-wrap gap-2 shrink-0">
             <Button
               v-if="isAuthed && canCreateGroup"
+              as="NuxtLink"
+              to="/groups/new"
               label="Create group"
               rounded
-              @click="navigateTo('/groups/new')"
             >
               <template #icon>
                 <Icon name="tabler:plus" aria-hidden="true" />
@@ -22,10 +23,11 @@
             </Button>
             <Button
               v-else-if="isAuthed"
+              as="NuxtLink"
+              to="/tiers"
               label="Upgrade to create"
               rounded
               severity="secondary"
-              @click="navigateTo('/tiers')"
             >
               <template #icon>
                 <Icon name="tabler:sparkles" aria-hidden="true" />

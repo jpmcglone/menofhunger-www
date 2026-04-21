@@ -30,11 +30,10 @@
         </div>
       </div>
     </NuxtLink>
-    <button
+    <NuxtLink
       v-else
-      type="button"
-      class="min-w-0 flex-1 cursor-pointer text-left"
-      @click="navigateTo('/spaces')"
+      to="/spaces"
+      class="min-w-0 flex-1 text-left block"
     >
       <div class="min-w-0">
         <div class="text-sm font-semibold truncate">{{ displaySpace?.title }}</div>
@@ -49,7 +48,7 @@
           <span v-if="membersCount !== null" class="ml-2 tabular-nums">· {{ membersCount }}</span>
         </div>
       </div>
-    </button>
+    </NuxtLink>
 
       <div v-if="showListenerStack" class="pointer-events-none hidden sm:flex items-center gap-2">
         <TransitionGroup

@@ -1,8 +1,7 @@
 <template>
-  <!-- Always render as <a> so right-click / cmd+click "open in new tab" works.
-       @click.prevent stops the browser from following href; router.push() handles
-       client-side navigation instead. The <div @click.stop> wrapper in
-       PostRowLinkPreview prevents the parent PostRow row-click from firing. -->
+  <!-- Always render as <a> so right-click / cmd+click / middle-click "open in new tab" works.
+       @click lets modifier-clicks (cmd/ctrl/middle) open a new tab natively; only plain
+       left-clicks are intercepted for client-side SPA navigation. -->
   <a
     :href="permalink ?? undefined"
     :class="[
@@ -12,7 +11,7 @@
     role="group"
     aria-label="Embedded post preview"
     :aria-busy="showSkeleton ? 'true' : 'false'"
-    @click.prevent="navigateToPost"
+    @click="onEmbeddedClick"
   >
     <div class="p-3">
       <!-- Skeleton -->
@@ -120,10 +119,12 @@ const preloadedPost = computed(() => props.preloadedPost ?? null)
 const { runLimited } = usePreviewFetchLimiter()
 const PREVIEW_FETCH_DWELL_MS = 400
 
-function navigateToPost() {
-  if (permalink.value) {
-    void router.push(permalink.value)
-  }
+function onEmbeddedClick(e: MouseEvent) {
+  if (!permalink.value) return
+  // Let cmd/ctrl+click and middle-click open in a new tab natively.
+  if (e.metaKey || e.ctrlKey) return
+  e.preventDefault()
+  void router.push(permalink.value)
 }
 
 // SSR-safe: use shared nowMs so server and client render identical relative times.

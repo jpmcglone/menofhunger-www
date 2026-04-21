@@ -17,6 +17,9 @@ alwaysApply: true
 - Never show both the layout title bar **and** an in-page header
 - If you need an in-page header, set route meta to hide the top bar (e.g. `hideTopBar: true`)
 
+## Links
+- Every internal navigation MUST render a real `<a>` so right-click / cmd+click / middle-click "Open in new tab" works. See rule `40-internal-links.mdc` and skill `.cursor/skills/clickable-rows/SKILL.md`.
+
 ## Admin
 - Hide admin pages from non-admins (**404** in middleware)
 

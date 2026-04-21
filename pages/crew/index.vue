@@ -24,10 +24,11 @@
           other accountable. Verify to create one or join an invite.
         </p>
         <Button
+          as="NuxtLink"
+          to="/verification"
           label="Get verified"
           rounded
           class="mt-2"
-          @click="navigateTo('/verification')"
         />
       </div>
 

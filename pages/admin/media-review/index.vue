@@ -3,11 +3,12 @@
     <AppPageHeader title="Media review" icon="tabler:photo" description="Review and delete uploaded images and videos.">
       <template #leading>
         <Button
+          as="NuxtLink"
+          to="/admin"
           class="md:hidden"
           text
           severity="secondary"
           aria-label="Back"
-          @click="navigateTo('/admin')"
         >
           <template #icon>
             <Icon name="tabler:chevron-left" aria-hidden="true" />
@@ -189,10 +190,11 @@
         <div class="shrink-0 flex items-center gap-2">
           <Button
             v-if="details?.asset.id"
+            as="NuxtLink"
+            :to="`/admin/media-review/${encodeURIComponent(details.asset.id)}`"
             label="Open page"
             text
             severity="secondary"
-            @click="navigateTo(`/admin/media-review/${encodeURIComponent(details.asset.id)}`)"
           >
             <template #icon>
               <Icon name="tabler:external-link" aria-hidden="true" />

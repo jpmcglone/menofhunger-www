@@ -3,14 +3,45 @@ import { getApiErrorMessage } from '~/utils/api-error'
 
 export type AppToastTone = 'public' | 'verifiedOnly' | 'premiumOnly' | 'onlyMe' | 'success' | 'error'
 
+export type AppToastAction = {
+  /** Stable id for keying. Optional. */
+  id?: string
+  label: string
+  /** When true, button uses solid/primary styling. */
+  primary?: boolean
+  /**
+   * Called when the user taps the action. Receives the toast id so the
+   * handler can decide whether to keep the toast open. The toast is dismissed
+   * automatically unless `keepOpen` is returned `true`.
+   */
+  onClick?: (toastId: string) => void | boolean | Promise<void | boolean>
+  /** When true, do NOT dismiss the toast after click (handler can dismiss explicitly). */
+  keepOpen?: boolean
+}
+
 export type AppToast = {
   id: string
   title: string
   message?: string | null
   tone?: AppToastTone | null
   color?: string | null // hex like "#RRGGBB"
+  /**
+   * Auto-dismiss duration in ms. Ignored when `persistent` is true OR when
+   * `actions` is non-empty (interactive toasts wait for the user).
+   */
   durationMs?: number | null
+  /**
+   * Optional in-app navigation target. Only used when there are no `actions`.
+   * When set without actions, the entire toast row is the action.
+   */
   to?: string | null
+  /**
+   * When set, renders action buttons. The toast row itself is NOT clickable
+   * (no `to` navigation), so each touch zone is unambiguous: the buttons.
+   */
+  actions?: AppToastAction[] | null
+  /** When true, the toast does not auto-dismiss; user must close or act on it. */
+  persistent?: boolean
 }
 
 function randomId() {
@@ -87,10 +118,15 @@ export function useAppToast() {
 
   function push(input: Omit<AppToast, 'id'>): string {
     const id = randomId()
-    const durationMs =
-      typeof input.durationMs === 'number' && Number.isFinite(input.durationMs)
-        ? clamp(Math.floor(input.durationMs), 800, 15000)
-        : 2600
+    const actions = Array.isArray(input.actions) && input.actions.length > 0 ? input.actions : null
+    // Interactive toasts (with buttons) wait for the user — never auto-dismiss
+    // and ignore the row as a navigation target.
+    const persistent = Boolean(input.persistent) || Boolean(actions)
+    const durationMs = persistent
+      ? null
+      : (typeof input.durationMs === 'number' && Number.isFinite(input.durationMs)
+          ? clamp(Math.floor(input.durationMs), 800, 15000)
+          : 2600)
 
     const toast: AppToast = {
       id,
@@ -99,7 +135,10 @@ export function useAppToast() {
       tone: input.tone ?? null,
       color: input.color ?? null,
       durationMs,
-      to: input.to ?? null,
+      // Mutually exclusive with actions: only one touch zone.
+      to: actions ? null : (input.to ?? null),
+      actions,
+      persistent,
     }
 
     // Keep the stack small.

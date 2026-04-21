@@ -10,7 +10,7 @@
       <p class="text-sm moh-text-muted">
         This Crew may have disbanded or changed its name.
       </p>
-      <Button label="Back home" rounded @click="navigateTo('/')" />
+      <Button as="NuxtLink" to="/" label="Back home" rounded />
     </div>
 
     <div v-else-if="crew" class="pb-10">
@@ -186,6 +186,7 @@ const unreadChatOverride = ref<number | null>(null)
 const crewApi = useCrew()
 const { addCrewCallback, removeCrewCallback } = usePresence()
 const { user: meUser } = useAuth()
+const { markReadBySubject } = useNotifications()
 
 const crewName = computed(() => {
   const n = (crew.value?.name ?? '').trim()
@@ -329,6 +330,11 @@ async function load() {
     canonicalSlug.value = res.crew.slug
     // A fresh server count supersedes any local optimistic override.
     unreadChatOverride.value = null
+    // Visiting a crew page surfaces every crew_* notification (members joining/leaving,
+    // wall mentions, owner changes, invite outcomes, etc.) — clear them all in one shot.
+    if (import.meta.client && res.viewerMembership && res.crew.id) {
+      void markReadBySubject({ crew_id: res.crew.id })
+    }
     if (import.meta.client && res.crew.slug && res.crew.slug !== slug) {
       void navigateTo(`/c/${encodeURIComponent(res.crew.slug)}`, { replace: true })
     }
