@@ -61,9 +61,17 @@ Sentry.init({
     'ResizeObserver loop completed with undelivered notifications',
     // Safari back/forward cache quirks
     'Blocked a frame with origin',
-    // Chunk loading (usually from stale client after deploy — user refresh fixes it)
+    // Chunk loading after a deploy: the user has stale HTML in memory referencing
+    // chunk hashes that no longer exist on the server. `plugins/chunk-error-recovery.client.ts`
+    // catches these in `app:error` and forces a single page reload, which transparently
+    // recovers the user. The error here is just noise from a self-healing condition —
+    // keep this list in sync with `isChunkLoadError()` in that plugin.
     /Loading chunk \d+ failed/,
     /Loading CSS chunk \d+ failed/,
+    /Importing a module script failed/i, // Mobile Safari / iOS
+    /Failed to fetch dynamically imported module/i, // Chrome / Firefox
+    /error loading dynamically imported module/i, // Vite generic
+    /Unable to preload CSS/i, // Vite CSS preload
     // User aborted requests
     'AbortError',
     'The user aborted a request',
