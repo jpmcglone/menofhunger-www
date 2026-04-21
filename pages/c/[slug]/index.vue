@@ -110,7 +110,7 @@
 
         <!-- Crew member strip (5 fixed slots) -->
         <section class="mt-6">
-          <AppCrewCrewMemberStrip
+          <AppCrewMemberStrip
             v-if="crew.members.length > 0 || isOwner"
             :members="crew.members"
             :is-owner="isOwner"
