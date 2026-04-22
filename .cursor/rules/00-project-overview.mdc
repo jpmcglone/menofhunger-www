@@ -20,6 +20,9 @@ alwaysApply: true
 ## Links
 - Every internal navigation MUST render a real `<a>` so right-click / cmd+click / middle-click "Open in new tab" works. See rule `40-internal-links.mdc` and skill `.cursor/skills/clickable-rows/SKILL.md`.
 
+## Real-time first
+- Pages that show mutable server state must wire a websocket subscription via `usePresence()` AND fetch on mount/activation. HTTP is the on-load sync; sockets are the live feed. See rule `60-realtime-first.mdc` and skill `.cursor/skills/realtime-page-sync/SKILL.md`.
+
 ## Admin
 - Hide admin pages from non-admins (**404** in middleware)
 

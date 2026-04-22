@@ -1,10 +1,26 @@
 import { describe, expect, it } from 'vitest'
-import type { FeedPost } from '~/types/api'
+import type { CommunityGroupPreview, FeedPost } from '~/types/api'
 import {
   computePostPermalinkSeo,
   POST_PERMALINK_LOGO_OG,
   type PostPermalinkSeoInput,
 } from '~/utils/post-permalink-seo-meta'
+
+function group(overrides: Partial<CommunityGroupPreview> = {}): CommunityGroupPreview {
+  return {
+    id: 'g1',
+    slug: 'cool-group',
+    name: 'Cool Group',
+    descriptionPreview: 'A friendly group for people who like things.',
+    coverImageUrl: null,
+    avatarImageUrl: 'https://cdn.example/groups/cool-group.png',
+    joinPolicy: 'open',
+    memberCount: 42,
+    viewerMembership: null,
+    viewerPendingApproval: false,
+    ...overrides,
+  }
+}
 
 const LONG_PUBLIC_BODY =
   'This is a public post with enough text to show up in share previews and search results clearly for everyone.'
@@ -252,5 +268,103 @@ describe('computePostPermalinkSeo — onlyMe & errors', () => {
     expect(r.noindex).toBe(true)
     expect(r.title).toBe('Post unavailable')
     expect(r.description).toBe('Not found.')
+  })
+})
+
+describe('computePostPermalinkSeo — group affiliation', () => {
+  it('public text post in a group: title + description + jsonLd reference the group', () => {
+    const g = group()
+    const post = basePost({ body: LONG_PUBLIC_BODY, groupPreview: g })
+    const r = computePostPermalinkSeo(
+      input({ post, bodyTextSansLinks: LONG_PUBLIC_BODY }),
+    )
+    expect(r.title).toContain('· in Cool Group')
+    expect(r.description).toContain('From the Cool Group group on Men of Hunger')
+    expect(r.group?.name).toBe('Cool Group')
+    expect(r.group?.url).toContain('/g/cool-group')
+    const groupNode = r.jsonLdGraph.find(
+      (x: any) => x?.['@type'] === 'Organization' && String(x?.['@id'] ?? '').endsWith('#group'),
+    ) as any
+    expect(groupNode?.name).toBe('Cool Group')
+    const article = r.jsonLdGraph.find((x: any) => x?.['@type'] === 'Article') as any
+    expect(article?.articleSection).toBe('Cool Group')
+    expect(article?.isPartOf?.['@id']).toContain('#group')
+  })
+
+  it('public text post in a group with no media: og:image falls back to group avatar before user avatar', () => {
+    const g = group({ avatarImageUrl: 'https://cdn.example/groups/cg.png' })
+    const post = basePost({
+      body: 'short',
+      author: author({ avatarUrl: 'https://cdn.example/avatars/alice.jpg' }),
+      groupPreview: g,
+    })
+    const r = computePostPermalinkSeo(input({ post, bodyTextSansLinks: 'short' }))
+    expect(r.image).toBe('https://cdn.example/groups/cg.png')
+    expect(r.imageAlt).toContain('Cool Group group avatar')
+  })
+
+  it('public photo post in a group: photo still wins over group avatar but group still surfaces in title', () => {
+    const g = group()
+    const post = basePost({ body: '', groupPreview: g })
+    const r = computePostPermalinkSeo(
+      input({
+        post,
+        bodyTextSansLinks: '',
+        primaryMedia: { url: 'https://cdn.example/photo.jpg', kind: 'image', width: 1200, height: 800 },
+      }),
+    )
+    expect(r.image).toBe('https://cdn.example/photo.jpg')
+    expect(r.title).toMatch(/Photo — shared by @alice · in Cool Group$/)
+  })
+
+  it('public text post in a group with no group avatar and no user avatar: falls back to logo', () => {
+    const g = group({ avatarImageUrl: null })
+    const post = basePost({
+      body: 'short',
+      author: author({ avatarUrl: '' }),
+      groupPreview: g,
+    })
+    const r = computePostPermalinkSeo(input({ post, bodyTextSansLinks: 'short' }))
+    expect(r.image).toBe(POST_PERMALINK_LOGO_OG)
+  })
+
+  it('verified-only post in a group: still mentions group + uses group avatar before user avatar', () => {
+    const g = group({ avatarImageUrl: 'https://cdn.example/groups/cg.png' })
+    const post = basePost({
+      visibility: 'verifiedOnly',
+      body: 'teaser…',
+      viewerCanAccess: false,
+      groupPreview: g,
+    })
+    const r = computePostPermalinkSeo(input({ post, bodyTextSansLinks: '' }))
+    expect(r.title).toContain('· in Cool Group')
+    expect(r.description).toContain('verified members')
+    expect(r.description).toContain('From the Cool Group group')
+    expect(r.image).toBe('https://cdn.example/groups/cg.png')
+    expect(r.group?.name).toBe('Cool Group')
+    const article = r.jsonLdGraph.find((x: any) => x?.['@type'] === 'Article') as any
+    expect(article?.articleSection).toBe('Cool Group')
+    expect(article?.isAccessibleForFree).toBe(false)
+  })
+
+  it('onlyMe post in a group: never leaks group affiliation', () => {
+    const g = group()
+    const post = basePost({ visibility: 'onlyMe', body: 'private', groupPreview: g })
+    const r = computePostPermalinkSeo(input({ post, bodyTextSansLinks: 'private' }))
+    expect(r.title).not.toContain('Cool Group')
+    expect(r.description).not.toContain('Cool Group')
+    expect(r.group).toBeNull()
+    const article = r.jsonLdGraph.find((x: any) => x?.['@type'] === 'Article') as any
+    expect(article?.articleSection).toBeUndefined()
+  })
+
+  it('post with malformed group preview (missing slug) ignores it', () => {
+    const post = basePost({
+      body: LONG_PUBLIC_BODY,
+      groupPreview: group({ slug: '' }) as CommunityGroupPreview,
+    })
+    const r = computePostPermalinkSeo(input({ post, bodyTextSansLinks: LONG_PUBLIC_BODY }))
+    expect(r.group).toBeNull()
+    expect(r.title).not.toContain('Cool Group')
   })
 })

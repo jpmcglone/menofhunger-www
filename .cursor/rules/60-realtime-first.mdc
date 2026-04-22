@@ -1,0 +1,101 @@
+---
+description: Real-time first — pages must reflect server-side changes live via websockets, with HTTP fetch as the on-mount sync.
+alwaysApply: true
+---
+
+# Real-time First (Web)
+
+The default for every page in this app is **real-time over websockets, with the HTTP fetch as the on-mount/on-activate sync**. The user should never need to refresh to see something the server already knows about.
+
+## The pattern
+
+For any page or component that displays state which can change while the user is looking at it, you wire **two** things:
+
+1. **HTTP fetch** on mount / activation — gets the user "caught up" to the current server state. This is the source of truth at first paint.
+2. **Websocket subscription** while the page is alive — keeps that local state in sync as the server emits events.
+
+Both are required. Neither alone is enough:
+
+- HTTP-only → user has to refresh to see new replies, invites, badge counts, etc.
+- Socket-only → user opens the page, sees nothing until the next event lands.
+
+## How to wire it
+
+Use the `usePresence()` composable (`composables/usePresence.ts`). It owns the singleton socket, exposes typed callback registries (`addPostsCallback`, `addCrewCallback`, `addGroupInviteCallback`, `addNotificationsCallback`, `addOnlineFeedCallback`, `addSpacesCallback`, `addRadioCallback`, `addMessagesCallback`, …), and wires reconnect / cross-tab fan-out automatically. Don't open your own socket.
+
+```ts
+const { addGroupInviteCallback, removeGroupInviteCallback } = usePresence()
+
+const cb = {
+  onReceived: (payload) => { /* patch local state in place */ },
+  onUpdated:  (payload) => { /* patch local state in place */ },
+}
+
+onMounted(() => addGroupInviteCallback(cb))
+onBeforeUnmount(() => removeGroupInviteCallback(cb))
+```
+
+### When the page also has subscription-style data
+
+For posts, articles, spaces, radio, etc., the gateway requires the client to **subscribe** to a room/topic before it gets events. Always pair `subscribe*` with `unsubscribe*`:
+
+```ts
+onMounted(() => {
+  addPostsCallback(postsCb)
+  if (postId.value) subscribePosts([postId.value])
+})
+watch(() => postId.value, (pid, prev) => {
+  if (prev) unsubscribePosts([prev])
+  if (pid) subscribePosts([pid])
+})
+onBeforeUnmount(() => {
+  removePostsCallback(postsCb)
+  if (postId.value) unsubscribePosts([postId.value])
+})
+```
+
+### onActivated, not just onMounted
+
+For pages inside `<KeepAlive>` (most app routes), use `onActivated` to **also re-fetch** when the user navigates back to the page. The socket subscription stays alive, but the page may have missed events while it was inactive — a fresh fetch closes that gap.
+
+```ts
+onActivated(async () => {
+  await fetchList({ forceRefresh: true })
+})
+```
+
+## What socket events should do to local state
+
+Patch in place, don't refetch. The server's socket payload is the same DTO as the HTTP response, so you can splice it into your local `ref`/`useState` directly:
+
+```ts
+const cb: NotificationsCallback = {
+  onUpdated: (payload) => {
+    notifications.value = notifications.value.map((n) =>
+      n.id === payload.notification.id ? { ...n, ...payload.notification } : n,
+    )
+  },
+}
+```
+
+Refetch only when the event tells you the local cache can't be patched (deletion of an unknown entity, structural reordering, etc.).
+
+## Optimistic UI
+
+When the **viewer** initiated the change (sent an invite, posted a comment, accepted/declined), update local state optimistically right after the HTTP call resolves. Don't wait for the round-trip socket echo — but DO let the socket event arrive harmlessly (your reducer must be idempotent and de-dupe by id).
+
+## What does NOT need socket wiring
+
+- Static / marketing pages (`/`, `/about`, `/tiers`, `/privacy`, …).
+- Pages whose content is fully derived from URL params and never mutated server-side mid-session (e.g. a static article archive).
+- One-shot flows that close immediately (composer dialogs, confirm modals).
+
+If you skip socket wiring for a page that displays mutable state, leave a one-line comment explaining why. That's the contract that keeps the real-time surface honest.
+
+## API contract
+
+The other side of this lives in the API repo: `menofhunger-api/.cursor/rules/60-realtime-first.mdc` requires every state-changing service to emit through `PresenceRealtimeService`. If a feature ships without a backend emit, the front-end work is wasted — flag it before writing the page.
+
+## Skill
+
+For the full pattern (callback shapes, common pitfalls, deduping, badge counts), read `.cursor/skills/realtime-page-sync/SKILL.md`.

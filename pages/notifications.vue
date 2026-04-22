@@ -154,7 +154,15 @@ async function onChipSelect(kind: NotificationKind | null) {
 }
 
 const notifBadge = useNotificationsBadge()
-const { setNotificationUndeliveredCount, addInterest, removeInterest, addCrewCallback, removeCrewCallback } = usePresence()
+const {
+  setNotificationUndeliveredCount,
+  addInterest,
+  removeInterest,
+  addCrewCallback,
+  removeCrewCallback,
+  addGroupInviteCallback,
+  removeGroupInviteCallback,
+} = usePresence()
 const loadingMore = ref(false)
 const markingAllRead = ref(false)
 // Show the full-page loader until the first fetch completes. After that, keep
@@ -257,6 +265,33 @@ const crewCb = {
 }
 onMounted(() => addCrewCallback(crewCb))
 onBeforeUnmount(() => removeCrewCallback(crewCb))
+
+// Realtime: same pattern for community group invites — keep the row's terminal
+// state in sync when the invite is accepted / declined / cancelled / expired
+// from another tab or device.
+const groupInviteCb = {
+  onUpdated(payload: { invite: { id: string; status: string } }) {
+    const inviteId = payload?.invite?.id
+    const status = payload?.invite?.status as
+      | 'pending' | 'accepted' | 'declined' | 'cancelled' | 'expired' | undefined
+    if (!inviteId || !status) return
+    let mutated = false
+    const next = notifications.value.map((item) => {
+      if (item.type !== 'single') return item
+      const n = item.notification
+      if (n.kind !== 'community_group_invite_received') return item
+      if (n.subjectCommunityGroupInviteId !== inviteId) return item
+      mutated = true
+      return {
+        ...item,
+        notification: { ...n, subjectCommunityGroupInviteStatus: status },
+      }
+    })
+    if (mutated) notifications.value = next
+  },
+}
+onMounted(() => addGroupInviteCallback(groupInviteCb))
+onBeforeUnmount(() => removeGroupInviteCallback(groupInviteCb))
 
 async function onMarkAllRead() {
   markingAllRead.value = true

@@ -36,6 +36,9 @@ export function usePostPermalinkSeo(opts: {
       extraOgMediaUrls: opts.extraOgMediaUrls.value,
       primaryVideo: opts.primaryVideo?.value,
       bodyTextSansLinks: opts.bodyTextSansLinks.value,
+      // groupPreview defaults to `post.groupPreview` inside computePostPermalinkSeo
+      // when not explicitly passed; we surface it so callers can override (e.g. tests).
+      groupPreview: opts.post.value?.groupPreview ?? null,
     }),
   )
 
@@ -68,6 +71,17 @@ export function usePostPermalinkSeo(opts: {
         { property: 'article:modified_time', content: p.createdAt },
         ...(authorUrl ? [{ property: 'article:author', content: authorUrl }] : []),
         ...(poll ? [{ property: 'article:tag', content: 'Poll' }] : []),
+        // Surface community-group affiliation as an OG `article:section`. Crawlers
+        // and previewers (Slack, Twitter, Facebook, Discord) honor this for the
+        // "category" line in rich previews — way more visible than burying it
+        // in JSON-LD only.
+        ...(s.group
+          ? [
+              { property: 'article:section', content: s.group.name },
+              { property: 'article:tag', content: s.group.name },
+              { property: 'og:article:section', content: s.group.name },
+            ]
+          : []),
         ...s.ogImageSecondaryAbsoluteUrls.map((u) => ({ property: 'og:image', content: u })),
       ]
       const video = p.visibility === 'public' ? opts.primaryVideo?.value : null

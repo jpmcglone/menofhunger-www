@@ -1082,6 +1082,10 @@ export type NotificationKind =
   | 'crew_owner_transfer_vote'
   | 'crew_wall_mention'
   | 'crew_disbanded'
+  | 'community_group_invite_received'
+  | 'community_group_invite_accepted'
+  | 'community_group_invite_declined'
+  | 'community_group_invite_cancelled'
 
 export type NotificationGroupKind = 'comment' | 'boost' | 'repost' | 'follow' | 'followed_post' | 'nudge'
 
@@ -1146,6 +1150,17 @@ export type Notification = {
    * the crew is still untitled — the row should render "their crew" in that case.
    */
   subjectCrewName: string | null
+  /**
+   * Specific community-group invite this notification refers to (set for
+   * `community_group_invite_*` kinds). Lets the row accept/decline directly.
+   */
+  subjectCommunityGroupInviteId?: string | null
+  /**
+   * Lifecycle status of `subjectCommunityGroupInviteId`, when present. Mirrors
+   * `subjectCrewInviteStatus` so the row can render the correct terminal state
+   * ("Joined", "Declined", "No longer available") on a fresh load.
+   */
+  subjectCommunityGroupInviteStatus?: 'pending' | 'accepted' | 'declined' | 'cancelled' | 'expired' | null
   title: string | null
   body: string | null
   subjectPostPreview?: SubjectPostPreview | null
@@ -1852,6 +1867,8 @@ export type CommunityGroupShell = {
   viewerPendingApproval: boolean
   /** Number of pending join requests. Only populated for owners and moderators of approval-policy groups. */
   pendingMemberCount?: number
+  /** Number of pending outbound invites the group still has open. Only populated for owners and moderators. */
+  pendingInviteCount?: number
 }
 
 export type CommunityGroupMemberListItem = {
@@ -1868,6 +1885,60 @@ export type CommunityGroupPendingMember = {
   username: string | null
   name: string | null
   requestedAt: string
+}
+
+// ─── Community group invites ─────────────────────────────────────────────────
+
+export type CommunityGroupInviteStatus =
+  | 'pending'
+  | 'accepted'
+  | 'declined'
+  | 'cancelled'
+  | 'expired'
+
+/** Lightweight group ref returned with each invite (for inbox row rendering). */
+export type CommunityGroupInviteGroupRef = {
+  id: string
+  slug: string
+  name: string
+  descriptionPreview: string
+  avatarImageUrl: string | null
+  coverImageUrl: string | null
+  joinPolicy: 'open' | 'approval'
+  memberCount: number
+}
+
+export type CommunityGroupInvite = {
+  id: string
+  createdAt: string
+  updatedAt: string
+  expiresAt: string
+  status: CommunityGroupInviteStatus
+  message: string | null
+  /** ISO; only set when the invitee previously declined this same row. */
+  lastDeclinedAt: string | null
+  group: CommunityGroupInviteGroupRef
+  invitedBy: FollowListUser
+  invitee: FollowListUser
+}
+
+/**
+ * Annotation returned by `/groups/:groupId/invitable-users` so the picker can
+ * render hints like "Already a member" or "Declined — try again on Mar 14".
+ */
+export type CommunityGroupInvitableUserStatus =
+  | { kind: 'invitable' }
+  | { kind: 'self' }
+  | { kind: 'banned' }
+  | { kind: 'member'; role: 'owner' | 'moderator' | 'member' }
+  | { kind: 'pending_join_request' }
+  | { kind: 'pending_invite'; inviteId: string; lastNotifiedAt: string | null }
+  | { kind: 'declined_cooldown'; inviteId: string; declinedAt: string; canReinviteAt: string }
+  | { kind: 'declined_invitable'; inviteId: string; declinedAt: string }
+
+export type CommunityGroupInvitableUser = {
+  user: FollowListUser
+  inviteStatus: CommunityGroupInvitableUserStatus
 }
 
 // ─── Articles ────────────────────────────────────────────────────────────────

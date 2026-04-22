@@ -124,11 +124,11 @@
         <div class="relative">
           <div
             v-if="feedGroupTagForRow"
-            class="relative mb-1 inline-flex min-w-0 max-w-full items-center"
+            class="relative mb-1 flex items-center"
           >
             <NuxtLink
               :to="`/g/${encodeURIComponent(feedGroupTagForRow.slug)}`"
-              class="flex min-w-0 max-w-full items-center gap-1.5 rounded-md py-0.5 pl-0.5 pr-1 -ml-0.5 text-left transition-colors hover:bg-black/[0.04] dark:hover:bg-white/[0.06]"
+              class="inline-flex max-w-full items-center gap-1.5 rounded-md py-0.5 pl-0.5 pr-1 -ml-0.5 text-left transition-colors hover:bg-black/[0.04] dark:hover:bg-white/[0.06]"
               :aria-label="`Group: ${feedGroupTagForRow.name}`"
               @click.stop
               @mouseenter="onFeedGroupEnter"
@@ -153,7 +153,7 @@
                   {{ feedGroupInitials }}
                 </div>
               </div>
-              <span class="min-w-0 flex-1 truncate text-xs font-medium text-gray-500 dark:text-zinc-400">
+              <span class="whitespace-nowrap text-xs font-medium text-gray-500 dark:text-zinc-400">
                 {{ feedGroupTagForRow.name }}
               </span>
             </NuxtLink>
@@ -433,18 +433,15 @@
                 <Icon name="tabler:message-circle" class="text-[18px]" aria-hidden="true" />
               </button>
               <NuxtLink
-                v-if="displayedCommentCount > 0"
                 :to="postPermalink"
-                class="ml-0 inline-block min-w-[1.5rem] select-none text-left text-[11px] sm:text-xs tabular-nums moh-text-muted hover:underline"
+                class="ml-0 inline-block min-w-[1.5rem] select-none text-left text-[11px] sm:text-xs tabular-nums moh-text-muted hover:underline moh-count-gutter"
+                :class="displayedCommentCount > 0 ? 'opacity-100' : 'opacity-0 pointer-events-none'"
+                :aria-hidden="displayedCommentCount === 0 ? 'true' : undefined"
+                :tabindex="displayedCommentCount === 0 ? -1 : undefined"
                 aria-label="View replies"
               >
-                <AppAnimatedCount :value="displayedCommentCount" :format="formatShortCount" />
+                <AppAnimatedCount :value="displayedCommentCount" :format="formatCountOrBlank" />
               </NuxtLink>
-              <span
-                v-else
-                class="ml-0 inline-block w-6 select-none text-left text-[11px] sm:text-xs tabular-nums moh-text-muted"
-                aria-hidden="true"
-              ></span>
             </div>
 
             <div v-if="!isOnlyMe" class="inline-flex w-14 items-center justify-start">
@@ -478,8 +475,12 @@
                   />
                 </svg>
               </button>
-              <span class="ml-0 inline-block w-6 select-none text-left text-[11px] sm:text-xs tabular-nums moh-text-muted" aria-hidden="true">
-                <AppAnimatedCount v-if="boostCount > 0" :value="boostCount" :format="formatShortCount" />
+              <span
+                class="ml-0 inline-block w-6 select-none text-left text-[11px] sm:text-xs tabular-nums moh-text-muted moh-count-gutter"
+                :class="boostCount > 0 ? 'opacity-100' : 'opacity-0'"
+                aria-hidden="true"
+              >
+                <AppAnimatedCount :value="boostCount" :format="formatCountOrBlank" />
               </span>
             </div>
 
@@ -500,8 +501,12 @@
                   :style="isReposted ? { color: repostActiveColor } : undefined"
                 />
               </button>
-              <span class="ml-0 inline-block w-6 select-none text-left text-[11px] sm:text-xs tabular-nums moh-text-muted" aria-hidden="true">
-                <AppAnimatedCount v-if="repostCount > 0" :value="repostCount" :format="formatShortCount" />
+              <span
+                class="ml-0 inline-block w-6 select-none text-left text-[11px] sm:text-xs tabular-nums moh-text-muted moh-count-gutter"
+                :class="repostCount > 0 ? 'opacity-100' : 'opacity-0'"
+                aria-hidden="true"
+              >
+                <AppAnimatedCount :value="repostCount" :format="formatCountOrBlank" />
               </span>
 
               <!-- Repost menu popup -->
@@ -540,8 +545,12 @@
           </div>
 
           <div v-if="!isOnlyMe" class="relative flex items-center gap-2 justify-end">
-            <span class="mr-0 inline-block w-6 select-none text-right text-[11px] sm:text-xs tabular-nums moh-text-muted" aria-hidden="true">
-              <AppAnimatedCount v-if="bookmarkCountValue > 0" :value="bookmarkCountValue" :format="formatShortCount" />
+            <span
+              class="mr-0 inline-block w-6 select-none text-right text-[11px] sm:text-xs tabular-nums moh-text-muted moh-count-gutter"
+              :class="bookmarkCountValue > 0 ? 'opacity-100' : 'opacity-0'"
+              aria-hidden="true"
+            >
+              <AppAnimatedCount :value="bookmarkCountValue" :format="formatCountOrBlank" />
             </span>
             <!-- For gated posts: intercept click before it reaches the child components -->
             <div
@@ -625,6 +634,7 @@ import type { MenuItem } from 'primevue/menuitem'
 import { siteConfig } from '~/config/site'
 import { tinyTooltip } from '~/utils/tiny-tooltip'
 import { formatShortCount } from '~/utils/text'
+const formatCountOrBlank = (n: number) => n === 0 ? ' ' : formatShortCount(n)
 import { useCopyToClipboard } from '~/composables/useCopyToClipboard'
 import { usePostCountBumps } from '~/composables/usePostCountBumps'
 import { useInViewOnce } from '~/composables/useInViewOnce'
@@ -1700,6 +1710,14 @@ const shareMenuItems = computed<MenuItemWithIcon[]>(() => [
 </script>
 
 <style scoped>
+/* Count gutters (replies/boost/repost/bookmark): always render the digit so
+   AppAnimatedCount's slide animation runs on the 0↔1 transitions too. The
+   opacity fade is timed to match the digit slide (~240ms) so the number
+   "rolls in" and fades up together (and rolls out + fades down). */
+.moh-count-gutter {
+  transition: opacity 240ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
 /* Viewer count chip: fade + scale in when it first appears (0 → 1) */
 .viewer-count-appear-enter-active {
   transition: opacity 0.25s ease, transform 0.25s ease;

@@ -146,6 +146,14 @@
                 >{{ notification.subjectCrewName }}</span>
                 <span v-else class="ml-1">their crew</span>
               </template>
+              <template v-else-if="notification.kind === 'community_group_invite_received'">
+                <span class="ml-1">invited you to</span>
+                <span
+                  v-if="notification.subjectGroupName"
+                  class="ml-1 font-semibold"
+                >{{ notification.subjectGroupName }}</span>
+                <span v-else class="ml-1">their group</span>
+              </template>
               <template v-else>
                 <span class="ml-1">{{ titleSuffix(notification) }}</span>
               </template>
@@ -371,6 +379,52 @@
                   :disabled="crewInviteInflight"
                   :loading="crewInviteInflight && crewInviteAction === 'decline'"
                   @click.stop.prevent="onDeclineCrewInvite"
+                />
+              </template>
+            </div>
+            <!-- Community group invite: same Accept/Decline pattern as crews;
+                 terminal copy is driven by `subjectCommunityGroupInviteStatus`
+                 so it persists across reloads. -->
+            <div
+              v-else-if="notification.kind === 'community_group_invite_received'"
+              class="max-w-[16rem] flex flex-wrap items-center justify-end gap-2"
+              @click.stop.prevent
+            >
+              <span
+                v-if="groupInviteDisplayState === 'accepted'"
+                class="text-sm font-medium text-gray-500 dark:text-gray-400 whitespace-nowrap"
+              >
+                Joined
+              </span>
+              <span
+                v-else-if="groupInviteDisplayState === 'declined'"
+                class="text-sm font-medium text-gray-500 dark:text-gray-400 whitespace-nowrap"
+              >
+                Declined
+              </span>
+              <span
+                v-else-if="groupInviteDisplayState === 'cancelled' || groupInviteDisplayState === 'expired'"
+                class="text-sm font-medium text-gray-500 dark:text-gray-400 whitespace-nowrap"
+              >
+                No longer available
+              </span>
+              <template v-else>
+                <Button
+                  size="small"
+                  label="Accept"
+                  rounded
+                  :disabled="groupInviteInflight"
+                  :loading="groupInviteInflight && groupInviteAction === 'accept'"
+                  @click.stop.prevent="onAcceptGroupInvite"
+                />
+                <Button
+                  size="small"
+                  label="Decline"
+                  severity="secondary"
+                  rounded
+                  :disabled="groupInviteInflight"
+                  :loading="groupInviteInflight && groupInviteAction === 'decline'"
+                  @click.stop.prevent="onDeclineGroupInvite"
                 />
               </template>
             </div>
@@ -652,6 +706,78 @@ async function onDeclineCrewInvite() {
   } finally {
     crewInviteInflight.value = false
     crewInviteAction.value = null
+  }
+}
+
+// Community group invite (accept / decline directly from the row).
+const groupInvitesApi = useGroupInvites()
+const groupInviteInflight = ref(false)
+const groupInviteAction = ref<'accept' | 'decline' | null>(null)
+const groupInviteLocalState = ref<'accepted' | 'declined' | null>(null)
+
+const groupInviteDisplayState = computed<
+  'pending' | 'accepted' | 'declined' | 'cancelled' | 'expired'
+>(() => {
+  if (groupInviteLocalState.value) return groupInviteLocalState.value
+  const serverStatus = notification.value.subjectCommunityGroupInviteStatus ?? null
+  if (serverStatus && serverStatus !== 'pending') return serverStatus
+  return 'pending'
+})
+
+async function onAcceptGroupInvite() {
+  if (groupInviteInflight.value) return
+  const inviteId = notification.value.subjectCommunityGroupInviteId
+  if (!inviteId) {
+    pushToast({ title: 'This invite is no longer available.', tone: 'error' })
+    return
+  }
+  groupInviteInflight.value = true
+  groupInviteAction.value = 'accept'
+  try {
+    const res = await groupInvitesApi.acceptInvite(inviteId)
+    groupInviteLocalState.value = 'accepted'
+    localReadAt.value = new Date().toISOString()
+    void apiFetchData(`/notifications/${encodeURIComponent(notification.value.id)}/mark-read`, {
+      method: 'POST',
+    }).catch(() => {})
+    pushToast({ title: 'Joined group', tone: 'success' })
+    if (res?.groupSlug) {
+      void navigateTo(`/g/${encodeURIComponent(res.groupSlug)}`)
+    }
+  } catch (e: unknown) {
+    const msg = (e as { data?: { meta?: { errors?: Array<{ message?: string }> } } })?.data?.meta?.errors?.[0]?.message
+      ?? 'Could not accept invite.'
+    pushToast({ title: msg, tone: 'error' })
+  } finally {
+    groupInviteInflight.value = false
+    groupInviteAction.value = null
+  }
+}
+
+async function onDeclineGroupInvite() {
+  if (groupInviteInflight.value) return
+  const inviteId = notification.value.subjectCommunityGroupInviteId
+  if (!inviteId) {
+    pushToast({ title: 'This invite is no longer available.', tone: 'error' })
+    return
+  }
+  groupInviteInflight.value = true
+  groupInviteAction.value = 'decline'
+  try {
+    await groupInvitesApi.declineInvite(inviteId)
+    groupInviteLocalState.value = 'declined'
+    localReadAt.value = new Date().toISOString()
+    void apiFetchData(`/notifications/${encodeURIComponent(notification.value.id)}/mark-read`, {
+      method: 'POST',
+    }).catch(() => {})
+    pushToast({ title: 'Invite declined', tone: 'success' })
+  } catch (e: unknown) {
+    const msg = (e as { data?: { meta?: { errors?: Array<{ message?: string }> } } })?.data?.meta?.errors?.[0]?.message
+      ?? 'Could not decline invite.'
+    pushToast({ title: msg, tone: 'error' })
+  } finally {
+    groupInviteInflight.value = false
+    groupInviteAction.value = null
   }
 }
 

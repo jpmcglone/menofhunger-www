@@ -30,6 +30,7 @@
           @leave="doLeave"
           @cancel-request="doCancelRequest"
           @edit="editOpen = true"
+          @invite="inviteOpen = true"
           @open-image="onOpenGroupImage"
         />
 
@@ -38,6 +39,12 @@
           :shell="shell"
           :is-owner="isOwner"
           @updated="onGroupShellUpdated"
+        />
+
+        <AppGroupsInviteToGroupDialog
+          v-if="isMod"
+          v-model="inviteOpen"
+          :shell="shell"
         />
 
         <!-- Logged-out CTA -->
@@ -286,6 +293,7 @@ const hideAvatarThumb = computed(() => viewer.visible.value && viewer.kind.value
 const hideAvatarDuringBanner = computed(() => viewer.visible.value && viewer.kind.value === 'banner')
 
 const editOpen = ref(false)
+const inviteOpen = ref(false)
 
 function onOpenGroupImage(payload: {
   event: MouseEvent

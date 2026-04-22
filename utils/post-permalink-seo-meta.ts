@@ -1,4 +1,4 @@
-import type { FeedPost } from '~/types/api'
+import type { CommunityGroupPreview, FeedPost } from '~/types/api'
 import type { LinkMetadata } from '~/utils/link-metadata'
 import { siteConfig } from '~/config/site'
 import { safeUrlHostname } from '~/utils/link-utils'
@@ -7,6 +7,10 @@ import { excerpt, gatedPostBodyPreview, normalizeForMeta } from '~/utils/text'
 export const POST_PERMALINK_LOGO_OG = '/images/logo-black-bg.png'
 const DESC_PUBLIC_MAX = 280
 const TITLE_SNIP = 72
+// When the post belongs to a community group we suffix the title with `· {group}`.
+// Reserve a few characters for the suffix so we don't blow past Twitter/OG title
+// limits when both author + group are appended.
+const GROUP_TITLE_SUFFIX_BUDGET = 28
 
 export type PostPermalinkPrimaryMedia = {
   url?: string | null
@@ -36,6 +40,15 @@ export type PostPermalinkSeoInput = {
   extraOgMediaUrls: string[]
   primaryVideo: PostPermalinkPrimaryVideo | null | undefined
   bodyTextSansLinks: string
+  /**
+   * The community group the post belongs to (if any). Used to:
+   *   - mention the group in the share title / description
+   *   - slot the group avatar into the og:image fallback chain
+   *   - reference the group from JSON-LD as `articleSection` / `isPartOf`
+   * Groups are public entities, so we can include them even on tier-gated posts.
+   * For `onlyMe` posts we still skip group hints to keep the share private.
+   */
+  groupPreview?: CommunityGroupPreview | null
 }
 
 export type PostPermalinkSeoComputed = {
@@ -53,6 +66,19 @@ export type PostPermalinkSeoComputed = {
   ogImageSecondaryAbsoluteUrls: string[]
   ogVideoAbsoluteUrl: string | null
   jsonLdGraph: unknown[]
+  /**
+   * Resolved compact info about the group the post belongs to, if any. Surfaced
+   * so the composable / page can emit `og:article:section` and other meta tags
+   * without re-parsing `groupPreview`. Null when the post has no group, or the
+   * post is `onlyMe` (we don't leak group affiliation on private permalinks).
+   */
+  group: {
+    name: string
+    slug: string
+    url: string
+    avatarAbsoluteUrl: string | null
+    descriptionPreview: string
+  } | null
 }
 
 function tierShareSnippet(post: FeedPost): string {
@@ -107,6 +133,7 @@ export function computePostPermalinkSeo(input: PostPermalinkSeoInput): PostPerma
     extraOgMediaUrls,
     primaryVideo,
     bodyTextSansLinks,
+    groupPreview,
   } = input
 
   const canonicalPath = `/p/${encodeURIComponent(postId)}`
@@ -116,6 +143,26 @@ export function computePostPermalinkSeo(input: PostPermalinkSeoInput): PostPerma
   const isOnlyMePost = visibility === 'onlyMe'
   const pollMetaPublic = pollMetaPublicFromPost(post, isPublicPost)
 
+  // Resolve a usable group reference. We only surface group info on non-private
+  // posts — onlyMe shares should not leak which group an author belongs to.
+  const groupRef = (() => {
+    if (!post || isOnlyMePost) return null
+    const g = groupPreview ?? post.groupPreview ?? null
+    if (!g || !g.id || !g.slug || !g.name) return null
+    const name = (g.name ?? '').trim()
+    const slug = (g.slug ?? '').trim()
+    if (!name || !slug) return null
+    const avatar = (g.avatarImageUrl ?? '').trim() || null
+    return {
+      name,
+      slug,
+      url: `${siteConfig.url}/g/${encodeURIComponent(slug)}`,
+      avatarAbsoluteUrl: avatar ? toAbs(avatar) : null,
+      descriptionPreview: (g.descriptionPreview ?? '').trim(),
+    }
+  })()
+  const groupSuffix = groupRef ? ` · in ${excerpt(groupRef.name, GROUP_TITLE_SUFFIX_BUDGET)}` : ''
+
   const gateLine = (() => {
     if (!post) return restrictionSeoDescription
     const v = post.visibility
@@ -124,6 +171,10 @@ export function computePostPermalinkSeo(input: PostPermalinkSeoInput): PostPerma
     return restrictionSeoDescription
   })()
 
+  // Compose the final title from a "core" piece (existing logic) + an optional
+  // " · in <Group>" suffix. We trim the core so the suffix has room without
+  // blowing past TITLE_SNIP, but only when a group is actually present.
+  const titleCoreBudget = groupRef ? Math.max(24, TITLE_SNIP - groupSuffix.length) : TITLE_SNIP
   let title: string
   if (!post) {
     title = isRestricted ? restrictionLabel : 'Post'
@@ -146,7 +197,7 @@ export function computePostPermalinkSeo(input: PostPermalinkSeoInput): PostPerma
         } else title = at ? `Poll — shared by ${at}` : 'Poll'
       } else if (primaryMedia) {
         if (hasBody) {
-          const t = excerpt(bodyText, TITLE_SNIP)
+          const t = excerpt(bodyText, titleCoreBudget)
           title = at ? `${t} — shared by ${at}` : t
         } else {
           const kind = primaryMedia.kind === 'gif' ? 'GIF' : primaryMedia.kind === 'video' ? 'Video' : 'Photo'
@@ -162,15 +213,21 @@ export function computePostPermalinkSeo(input: PostPermalinkSeoInput): PostPerma
             const t = lt || host
             title = at ? `${t} — shared by ${at}` : t
           } else {
-            const t = excerpt(bodyText, TITLE_SNIP)
+            const t = excerpt(bodyText, titleCoreBudget)
             title = at ? `${t} — shared by ${at}` : t
           }
         } else if (hasBody) {
-          const t = excerpt(bodyText, TITLE_SNIP)
+          const t = excerpt(bodyText, titleCoreBudget)
           title = at ? `${t} — shared by ${at}` : t
         } else title = at ? `Post — shared by ${at}` : 'Post'
       }
     }
+  }
+  // Append the group affiliation. We do this for every visibility except
+  // onlyMe (groupRef is already null for onlyMe), so tier-gated shares still
+  // surface "in <Group>" — the group itself is public info.
+  if (groupRef && title && !title.includes(groupRef.name)) {
+    title = `${title}${groupSuffix}`
   }
 
   let description: string
@@ -233,6 +290,16 @@ export function computePostPermalinkSeo(input: PostPermalinkSeoInput): PostPerma
     }
   }
 
+  // Surface the group in the description too. Suffix-style so we don't disrupt
+  // the existing "first sentence is the body excerpt" structure that crawlers
+  // rely on. We always include the group line even when title already contains
+  // it, since description is what most search snippets show.
+  if (groupRef && description) {
+    const groupLine = `From the ${groupRef.name} group on ${siteConfig.name}.`
+    const combined = `${description.replace(/\s+$/, '')} ${groupLine}`.trim()
+    description = excerpt(combined, DESC_PUBLIC_MAX) || description
+  }
+
   const author = atAuthor(post) || siteConfig.name
 
   let image: string
@@ -240,8 +307,14 @@ export function computePostPermalinkSeo(input: PostPermalinkSeoInput): PostPerma
     image = POST_PERMALINK_LOGO_OG
   } else {
     const avatar = (post.author.avatarUrl ?? '').trim()
+    // Group avatar slots in **between** the post-specific image and the user
+    // avatar fallback. Rationale: when a post belongs to a community group, the
+    // group identity is more recognizable in a share preview than the author
+    // avatar (which tends to be a generic face). Public posts still let real
+    // post media (photo / video poster / link image / poll image) win.
+    const groupAvatar = groupRef?.avatarAbsoluteUrl ?? null
     if (isTierGated || isOnlyMePost) {
-      image = avatar || POST_PERMALINK_LOGO_OG
+      image = groupAvatar || avatar || POST_PERMALINK_LOGO_OG
     } else if (isPublicPost) {
       const posterUrl = (primaryMedia?.thumbnailUrl ?? '').trim()
       const mediaUrl = (primaryMedia?.url ?? '').trim()
@@ -252,15 +325,23 @@ export function computePostPermalinkSeo(input: PostPermalinkSeoInput): PostPerma
         if (linkImage) image = linkImage
         else {
           const pollImage = (pollMetaPublic?.firstOptionImage ?? '').trim()
-          image = pollImage || avatar || POST_PERMALINK_LOGO_OG
+          image = pollImage || groupAvatar || avatar || POST_PERMALINK_LOGO_OG
         }
       }
-    } else image = avatar || POST_PERMALINK_LOGO_OG
+    } else image = groupAvatar || avatar || POST_PERMALINK_LOGO_OG
   }
 
   let imageAlt: string
+  const imageIsGroupAvatar = Boolean(
+    groupRef?.avatarAbsoluteUrl && image === groupRef.avatarAbsoluteUrl,
+  )
   if (!post) {
     imageAlt = siteConfig.name
+  } else if (imageIsGroupAvatar && groupRef) {
+    const at = atAuthor(post)
+    imageAlt = at
+      ? `${groupRef.name} group avatar — post by ${at}`
+      : `${groupRef.name} group avatar`
   } else {
     const p = post
     const at = atAuthor(p)
@@ -313,26 +394,43 @@ export function computePostPermalinkSeo(input: PostPermalinkSeoInput): PostPerma
       ? { '@type': 'Person', name: authorDisplay, url: authorUrl, ...(avatarUrl ? { image: avatarUrl } : {}) }
       : { '@type': 'Organization', name: siteConfig.name, url: siteConfig.url }
 
+    // Group node — referenced by both gated and public articles via `isPartOf`
+    // and `articleSection`. We still emit it for tier-gated posts because the
+    // group itself is public; only `onlyMe` skips it (groupRef is null there).
+    const groupNode: any = groupRef
+      ? {
+          '@type': 'Organization',
+          '@id': `${groupRef.url}#group`,
+          name: groupRef.name,
+          url: groupRef.url,
+          ...(groupRef.avatarAbsoluteUrl ? { logo: groupRef.avatarAbsoluteUrl, image: groupRef.avatarAbsoluteUrl } : {}),
+          ...(groupRef.descriptionPreview ? { description: groupRef.descriptionPreview } : {}),
+        }
+      : null
+
     if (isTierGated || isOnlyMePost) {
       const v = p.visibility
       const isAccessibleForFree = v !== 'verifiedOnly' && v !== 'premiumOnly' && v !== 'onlyMe'
       const headline = isTierGated
         ? excerpt(tierShareSnippet(p) || `Post by @${username || 'user'}`, 90)
         : `Private post — @${username || 'user'}`
-      return [
-        {
-          '@type': 'Article',
-          '@id': `${siteConfig.url}${canonicalPath}#article`,
-          mainEntityOfPage: { '@id': `${siteConfig.url}${canonicalPath}#webpage` },
-          headline,
-          description,
-          datePublished: p.createdAt,
-          dateModified: p.createdAt,
-          author: authorNode,
-          publisher: { '@type': 'Organization', name: siteConfig.name, url: siteConfig.url },
-          isAccessibleForFree,
-        },
-      ]
+      const article: any = {
+        '@type': 'Article',
+        '@id': `${siteConfig.url}${canonicalPath}#article`,
+        mainEntityOfPage: { '@id': `${siteConfig.url}${canonicalPath}#webpage` },
+        headline,
+        description,
+        datePublished: p.createdAt,
+        dateModified: p.createdAt,
+        author: authorNode,
+        publisher: { '@type': 'Organization', name: siteConfig.name, url: siteConfig.url },
+        isAccessibleForFree,
+      }
+      if (groupNode) {
+        article.articleSection = groupRef!.name
+        article.isPartOf = { '@id': groupNode['@id'] }
+      }
+      return groupNode ? [groupNode, article] : [article]
     }
 
     const authorId = authorUrl ? `${authorUrl}#person` : `${siteConfig.url}/#organization`
@@ -356,6 +454,9 @@ export function computePostPermalinkSeo(input: PostPermalinkSeoInput): PostPerma
     if (!images.length && linkImage) images.push(toAbs(linkImage))
     const pollImage = (pollMetaPublic?.firstOptionImage ?? '').trim()
     if (!images.length && pollImage) images.push(toAbs(pollImage))
+    // Group avatar slots in before user avatar — same priority as the og:image
+    // resolver above so the JSON-LD `image` array reflects the same hierarchy.
+    if (!images.length && groupRef?.avatarAbsoluteUrl) images.push(groupRef.avatarAbsoluteUrl)
     if (!images.length && avatarUrl) images.push(toAbs(avatarUrl))
     images.push(toAbs(POST_PERMALINK_LOGO_OG))
 
@@ -393,7 +494,11 @@ export function computePostPermalinkSeo(input: PostPermalinkSeoInput): PostPerma
         ...(video.width != null && video.height != null ? { width: video.width, height: video.height } : {}),
       }
     }
-    return [authorUrl ? authorPerson : null, article].filter(Boolean)
+    if (groupNode) {
+      article.articleSection = groupRef!.name
+      article.isPartOf = { '@id': groupNode['@id'] }
+    }
+    return [authorUrl ? authorPerson : null, groupNode, article].filter(Boolean)
   })()
 
   return {
@@ -410,5 +515,6 @@ export function computePostPermalinkSeo(input: PostPermalinkSeoInput): PostPerma
     ogImageSecondaryAbsoluteUrls,
     ogVideoAbsoluteUrl,
     jsonLdGraph,
+    group: groupRef,
   }
 }

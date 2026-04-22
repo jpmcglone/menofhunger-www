@@ -181,6 +181,35 @@
               {{ pendingMemberCount >= 99 ? '99+' : pendingMemberCount }}
             </span>
           </NuxtLink>
+          <!-- Pending sent invites (owners + mods). Always present for admins so
+               the "who have I invited?" view is one tap away even when the count
+               is zero. -->
+          <NuxtLink
+            v-if="isAdminViewer"
+            :to="`/g/${encodeURIComponent(shell.slug)}/invites`"
+            class="relative inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold moh-surface-hover border moh-border"
+            :aria-label="pendingInviteCount > 0 ? `${pendingInviteCount} pending invite${pendingInviteCount !== 1 ? 's' : ''}` : 'Pending invites'"
+          >
+            <Icon name="tabler:mail-forward" class="text-[14px] opacity-80" aria-hidden="true" />
+            <span class="hidden sm:inline">Invites</span>
+            <span
+              v-if="pendingInviteCount > 0"
+              class="absolute -top-1.5 -right-1.5 flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-[color:var(--moh-group)] px-1 text-[10px] font-bold text-white leading-none"
+              aria-hidden="true"
+            >
+              {{ pendingInviteCount >= 99 ? '99+' : pendingInviteCount }}
+            </span>
+          </NuxtLink>
+          <Button
+            v-if="isAdminViewer"
+            label="Invite"
+            rounded
+            @click="$emit('invite')"
+          >
+            <template #icon>
+              <Icon name="tabler:user-plus" aria-hidden="true" />
+            </template>
+          </Button>
           <Button
             v-if="isOwner"
             label="Edit group"
@@ -293,6 +322,7 @@ const emit = defineEmits<{
     },
   ): void
   (e: 'edit'): void
+  (e: 'invite'): void
   (e: 'join'): void
   (e: 'leave'): void
   (e: 'cancel-request'): void
@@ -318,6 +348,7 @@ const isAdminViewer = computed(() => {
 })
 
 const pendingMemberCount = computed(() => props.shell.pendingMemberCount ?? 0)
+const pendingInviteCount = computed(() => props.shell.pendingInviteCount ?? 0)
 
 // Show full description only to verified (logged-in + verified) viewers.
 const descriptionObfuscated = computed(() => !props.viewerIsLoggedIn || !props.viewerIsVerified)

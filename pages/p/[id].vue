@@ -40,6 +40,39 @@
     </div>
 
     <div v-else-if="post">
+      <NuxtLink
+        v-if="postGroupShell && !isGatedPost"
+        :to="`/g/${encodeURIComponent(postGroupShell.slug)}`"
+        class="group flex items-center gap-2.5 border-b moh-border moh-gutter-x py-2 transition-colors hover:bg-black/[0.04] dark:hover:bg-white/[0.06]"
+        :aria-label="`Back to ${postGroupShell.name}`"
+      >
+        <Icon
+          name="tabler:chevron-left"
+          class="text-base shrink-0 moh-text-muted transition-transform group-hover:-translate-x-0.5"
+          aria-hidden="true"
+        />
+        <div
+          class="h-6 w-6 shrink-0 overflow-hidden bg-gray-200 dark:bg-zinc-700 moh-img-outline"
+          :class="postGroupAvatarRoundClass"
+        >
+          <img
+            v-if="postGroupShell.avatarImageUrl"
+            :src="postGroupShell.avatarImageUrl"
+            alt=""
+            class="h-full w-full object-cover"
+            loading="lazy"
+          >
+          <div
+            v-else
+            class="flex h-full w-full items-center justify-center text-[9px] font-bold text-gray-500 dark:text-zinc-400"
+          >
+            {{ postGroupInitials }}
+          </div>
+        </div>
+        <span class="min-w-0 flex-1 truncate text-sm font-semibold moh-text">
+          {{ postGroupShell.name }}
+        </span>
+      </NuxtLink>
       <div v-if="isGatedPost && post.groupPreview" class="px-4 pt-4 pb-2">
         <AppGroupPreviewCard
           :preview="post.groupPreview"
@@ -151,9 +184,10 @@
 
 <script setup lang="ts">
 import AppGroupPreviewCard from '~/components/app/groups/AppGroupPreviewCard.vue'
-import type { FeedPost } from '~/types/api'
+import type { CommunityGroupPreview, FeedPost } from '~/types/api'
 import { applyLiveUpdatedPatch } from '~/utils/feed-patch'
 import { feedPostThreadGroupDisplayName } from '~/utils/community-group-preview'
+import { groupAvatarRoundClass as getGroupAvatarRoundClass } from '~/utils/avatar-rounding'
 import { getApiErrorMessage } from '~/utils/api-error'
 import { usePostPermalink, usePostPermalinkMedia } from '~/composables/usePostPermalink'
 import { usePostComments } from '~/composables/usePostComments'
@@ -413,6 +447,46 @@ const isRestricted = computed(() => {
 })
 
 const isGatedPost = computed(() => post.value?.viewerCanAccess === false)
+
+// "Thin strip" group affiliation for the permalink header. We resolve it from
+// the highlighted post's own groupPreview (the API populates this for any post
+// belonging to a community group, not just gated ones). When the highlighted
+// post is a reply rendered inside AppFeedPostRow, the group still belongs to
+// the highlighted post, not the parent — so we read from `post` directly.
+const postGroupShell = computed<CommunityGroupPreview | null>(() => {
+  const gp = post.value?.groupPreview
+  if (!gp || !gp.id || !gp.slug) return null
+  return gp
+})
+
+const postGroupAvatarRoundClass = getGroupAvatarRoundClass()
+
+const postGroupInitials = computed(() => {
+  const name = postGroupShell.value?.name?.trim() || ''
+  if (!name) return ''
+  const parts = name.split(/\s+/).slice(0, 2)
+  return parts.map((p) => p.charAt(0).toUpperCase()).join('')
+})
+
+// Surface the post's group up to the layout so:
+//   - the "Groups" left-nav stays selected while reading a group post
+//   - any other layout-level chrome can react if needed
+// Cleared when the post has no group, the route changes, or we unmount.
+const pageGroupCtx = usePageGroupContext()
+watchEffect(() => {
+  const gp = postGroupShell.value
+  pageGroupCtx.value = gp
+    ? {
+        id: gp.id,
+        slug: gp.slug,
+        name: gp.name,
+        avatarImageUrl: gp.avatarImageUrl ?? null,
+      }
+    : null
+})
+onBeforeUnmount(() => {
+  pageGroupCtx.value = null
+})
 
 const groupJoinBusy = ref(false)
 async function joinGroupFromPreview() {

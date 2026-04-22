@@ -285,6 +285,14 @@ export function useNotifications() {
         return 'mentioned you on the wall'
       case 'crew_disbanded':
         return 'Your crew was disbanded'
+      case 'community_group_invite_received':
+        return 'invited you to their group'
+      case 'community_group_invite_accepted':
+        return 'accepted your group invite'
+      case 'community_group_invite_declined':
+        return 'declined your group invite'
+      case 'community_group_invite_cancelled':
+        return 'cancelled their group invite'
       case 'generic':
         return 'Notification'
       default:
@@ -314,6 +322,10 @@ export function useNotifications() {
       case 'coin_transfer':
         return 'tabler:coin'
       case 'group_join_request':
+      case 'community_group_invite_received':
+      case 'community_group_invite_accepted':
+      case 'community_group_invite_declined':
+      case 'community_group_invite_cancelled':
         return 'tabler:users-group'
       case 'crew_invite_received':
       case 'crew_invite_accepted':
@@ -359,6 +371,11 @@ export function useNotifications() {
         return 'Coins'
       case 'group_join_request':
         return 'Join request'
+      case 'community_group_invite_received':
+      case 'community_group_invite_accepted':
+      case 'community_group_invite_declined':
+      case 'community_group_invite_cancelled':
+        return 'Group invite'
       default:
         return ''
     }
@@ -387,6 +404,18 @@ export function useNotifications() {
     if (n.kind === 'coin_transfer') return '/coins'
     if (n.kind === 'group_join_request' && n.subjectGroupSlug) {
       return `/g/${encodeURIComponent(n.subjectGroupSlug)}/pending`
+    }
+    // Community group invites — invitee and inviter both land on the group
+    // page; the row's inline Accept/Decline buttons take care of the action
+    // itself, so the click-through is just for context.
+    if (
+      (n.kind === 'community_group_invite_received' ||
+        n.kind === 'community_group_invite_accepted' ||
+        n.kind === 'community_group_invite_declined' ||
+        n.kind === 'community_group_invite_cancelled') &&
+      n.subjectGroupSlug
+    ) {
+      return `/g/${encodeURIComponent(n.subjectGroupSlug)}`
     }
     // All crew notifications route into the user's crew area; the page knows how to
     // surface invites (inbox), wall, members, and ownership transfer state.

@@ -1,6 +1,7 @@
 import { io, type Socket } from 'socket.io-client'
 import { appConfig } from '~/config/app'
 import type {
+  CommunityGroupInviteStatus,
   FollowListUser,
   RadioChatMessage,
   RadioChatSnapshot,
@@ -192,6 +193,24 @@ export type CrewCallback = {
   onTransferVote?: (payload: WsCrewTransferVotePayload) => void
 }
 
+/**
+ * Community-group invite realtime payloads. The server fans these out to the
+ * inviter and invitee on send/cancel/accept/decline. Pages can subscribe via
+ * `addGroupInviteCallback` to patch in-memory state without a refetch.
+ */
+export type WsGroupInviteUpdatedPayload = {
+  invite: {
+    id: string
+    status: CommunityGroupInviteStatus
+    [key: string]: unknown
+  }
+}
+
+export type GroupInviteCallback = {
+  onReceived?: (payload: WsGroupInviteUpdatedPayload) => void
+  onUpdated?: (payload: WsGroupInviteUpdatedPayload) => void
+}
+
 function isRecord(v: unknown): v is Record<string, unknown> {
   return Boolean(v && typeof v === 'object')
 }
@@ -257,6 +276,7 @@ export function usePresence() {
   const adminCallbacks = useState<Set<AdminCallback>>('presence-admin-callbacks', () => new Set())
   const usersCallbacks = useState<Set<UsersCallback>>('presence-users-callbacks', () => new Set())
   const crewCallbacks = useState<Set<CrewCallback>>('presence-crew-callbacks', () => new Set())
+  const groupInviteCallbacks = useState<Set<GroupInviteCallback>>('presence-group-invite-callbacks', () => new Set())
   const articleSubRefs = ref(new Set<string>())
   const postSubRefs = ref(new Set<string>())
   const onlineFeedSubscribed = useState(PRESENCE_ONLINE_FEED_SUBSCRIBED_KEY, () => false)
@@ -550,6 +570,14 @@ export function usePresence() {
 
   function removeCrewCallback(cb: CrewCallback) {
     crewCallbacks.value.delete(cb)
+  }
+
+  function addGroupInviteCallback(cb: GroupInviteCallback) {
+    groupInviteCallbacks.value.add(cb)
+  }
+
+  function removeGroupInviteCallback(cb: GroupInviteCallback) {
+    groupInviteCallbacks.value.delete(cb)
   }
 
   function addOnlineIdsFromRest(userIds: string[]) {
@@ -1119,6 +1147,16 @@ export function usePresence() {
       for (const cb of crewCallbacks.value) cb.onTransferVote?.(data)
     })
 
+    // Community group invite realtime: emitted to inviter and invitee on
+    // send/cancel/accept/decline. We don't auto-refresh anything global from
+    // here — pages that care register a callback to patch their own state.
+    socket.on('groups:invite-received', (data: WsGroupInviteUpdatedPayload) => {
+      for (const cb of groupInviteCallbacks.value) cb.onReceived?.(data)
+    })
+    socket.on('groups:invite-updated', (data: WsGroupInviteUpdatedPayload) => {
+      for (const cb of groupInviteCallbacks.value) cb.onUpdated?.(data)
+    })
+
     function syncSubscriptions() {
       const refs = interestRefs.value
       if (refs.size > 0) {
@@ -1393,6 +1431,8 @@ export function usePresence() {
     removeUsersCallback,
     addCrewCallback,
     removeCrewCallback,
+    addGroupInviteCallback,
+    removeGroupInviteCallback,
     emitRadioJoin(stationId: string) {
       const socket = socketRef.value
       const id = (stationId ?? '').trim()
