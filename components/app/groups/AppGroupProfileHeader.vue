@@ -122,7 +122,15 @@
               {{ shell.memberCount.toLocaleString() }} members
             </span>
             <span aria-hidden="true">·</span>
-            <span>{{ shell.joinPolicy === 'approval' ? 'Approval to join' : 'Open' }}</span>
+            <span class="inline-flex items-center gap-1">
+              <Icon
+                v-if="shell.joinPolicy === 'approval'"
+                name="tabler:lock"
+                class="text-[13px] opacity-80"
+                aria-hidden="true"
+              />
+              {{ shell.joinPolicy === 'approval' ? 'Private' : 'Open' }}
+            </span>
           </div>
         </div>
         <div v-if="!isMember" class="shrink-0 flex items-center gap-2">
@@ -162,6 +170,23 @@
               @click="$emit('cancel-request')"
             />
           </template>
+          <!--
+            Share is always available so anyone (including non-members and
+            visitors logged out) can grab a link to the group.
+          -->
+          <Button
+            type="button"
+            severity="secondary"
+            rounded
+            text
+            aria-label="More"
+            aria-haspopup="true"
+            @click="toggleMoreMenu"
+          >
+            <template #icon>
+              <Icon name="tabler:dots-vertical" aria-hidden="true" />
+            </template>
+          </Button>
         </div>
         <div v-else class="shrink-0 flex items-center gap-2">
           <!-- Pending requests badge (owners + mods of approval-policy groups) -->
@@ -221,15 +246,25 @@
               <Icon name="tabler:pencil" aria-hidden="true" />
             </template>
           </Button>
+          <!--
+            More menu: collects "Share group" (copy link) and "Leave group"
+            so the header keeps a clean primary cluster. Mirrors the dots-
+            vertical pattern from `app/profile/Header.vue`. Always available
+            so any member can grab a share link.
+          -->
           <Button
-            v-if="canLeave"
-            label="Leave group"
-            rounded
+            type="button"
             severity="secondary"
-            size="small"
-            :loading="leaveBusy"
-            @click="onLeaveClick"
-          />
+            rounded
+            text
+            aria-label="More"
+            aria-haspopup="true"
+            @click="toggleMoreMenu"
+          >
+            <template #icon>
+              <Icon name="tabler:dots-vertical" aria-hidden="true" />
+            </template>
+          </Button>
         </div>
       </div>
 
@@ -253,6 +288,15 @@
       <div v-else-if="!descriptionObfuscated" class="mt-4 text-sm text-gray-500 dark:text-gray-400">
         No description yet.
       </div>
+
+      <Menu ref="moreMenuRef" :model="moreMenuItems" popup>
+        <template #item="{ item, props }">
+          <a v-bind="props.action" class="flex items-center gap-2" :class="item.class">
+            <Icon v-if="item.iconName" :name="item.iconName" aria-hidden="true" />
+            <span v-bind="props.label">{{ item.label }}</span>
+          </a>
+        </template>
+      </Menu>
 
       <!-- Rules: members only -->
       <div v-if="shell.rules && isMember" class="mt-4 border-t moh-border pt-4">
@@ -283,8 +327,12 @@
 </template>
 
 <script setup lang="ts">
+import type { MenuItem } from 'primevue/menuitem'
 import type { CommunityGroupShell } from '~/types/api'
 import { groupAvatarRoundClass } from '~/utils/avatar-rounding'
+import { useCopyToClipboard } from '~/composables/useCopyToClipboard'
+
+type MenuItemWithIcon = MenuItem & { iconName?: string }
 
 const props = withDefaults(defineProps<{
   shell: CommunityGroupShell
@@ -331,6 +379,8 @@ const emit = defineEmits<{
 const avatarRoundClass = groupAvatarRoundClass()
 const avatarWrapperRef = ref<HTMLElement | null>(null)
 const { confirm } = useAppConfirm()
+const { copyText } = useCopyToClipboard()
+const toast = useAppToast()
 
 async function onLeaveClick() {
   const ok = await confirm({
@@ -340,6 +390,49 @@ async function onLeaveClick() {
     confirmSeverity: 'danger',
   })
   if (ok) emit('leave')
+}
+
+const moreMenuRef = ref<{ toggle: (event: Event) => void } | null>(null)
+
+const groupShareUrl = computed(() => {
+  if (!import.meta.client) return ''
+  const slug = props.shell?.slug
+  if (!slug) return ''
+  return `${window.location.origin}/g/${encodeURIComponent(slug)}`
+})
+
+async function copyGroupLink() {
+  const url = groupShareUrl.value
+  if (!url) return
+  try {
+    await copyText(url)
+    toast.push({ title: 'Group link copied', tone: 'public', durationMs: 1400 })
+  } catch {
+    toast.push({ title: 'Copy failed', tone: 'error', durationMs: 1800 })
+  }
+}
+
+const moreMenuItems = computed<MenuItemWithIcon[]>(() => {
+  const items: MenuItemWithIcon[] = [
+    {
+      label: 'Share group',
+      iconName: 'tabler:link',
+      command: () => void copyGroupLink(),
+    },
+  ]
+  if (props.canLeave) {
+    items.push({
+      label: 'Leave group',
+      iconName: 'tabler:logout',
+      class: 'text-red-600 dark:text-red-400',
+      command: () => void onLeaveClick(),
+    })
+  }
+  return items
+})
+
+function toggleMoreMenu(event: Event) {
+  moreMenuRef.value?.toggle(event)
 }
 
 const isAdminViewer = computed(() => {

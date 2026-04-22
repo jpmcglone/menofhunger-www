@@ -24,7 +24,7 @@
  *   8. Delete-comment realtime: a `comment_deleted` patch decrements the parent's
  *      displayed count via the cache (without mutating the array).
  */
-import { computed, defineComponent, h, nextTick } from 'vue'
+import { computed, defineComponent, h, nextTick, ref } from 'vue'
 import { describe, expect, it } from 'vitest'
 import { mount } from '@vue/test-utils'
 import type { FeedPost, WsPostsLiveUpdatedPayload, WsPostsInteractionPayload } from '~/types/api'
@@ -653,5 +653,79 @@ describe('optimistic comment → server confirmation lifecycle', () => {
     bumps.clearBumpsForPostIds([id])
 
     expect(bumps.getCommentCountBump(id)).toBe(0)
+  })
+})
+
+// ── 9. usePostComments.prependComment bumpCount option ────────────────────────
+//
+// Regression: on /p/:id, the WS `liveUpdated` (with authoritative
+// patch.commentCount) is followed by `commentAdded` (with the new reply DTO).
+// If `prependComment` always bumps `commentsCounts.all`, the post-liveUpdated
+// commentAdded run double-counts (e.g. 0 → 2 instead of 0 → 1). The WS handler
+// must opt out of the bump; the HTTP onReplyPosted path keeps the default bump.
+
+describe('usePostComments.prependComment bumpCount option', () => {
+  it('default bump=true increments commentsCounts.all (HTTP onReplyPosted path)', async () => {
+    const { usePostComments } = await import('~/composables/usePostComments')
+    const postId = ref('parent-1')
+    const post = ref<{ id: string; visibility?: string; commentCount?: number } | null>({
+      id: 'parent-1',
+      visibility: 'public',
+      commentCount: 0,
+    })
+    const isOnlyMe = ref(true) // skip initial fetch
+    const api = await runInSetup(() => usePostComments({ postId, post, isOnlyMe }))
+    api.commentsCounts.value = { all: 0, public: 0, verifiedOnly: 0, premiumOnly: 0 }
+
+    const reply = makePost({ id: 'c-1', parentId: 'parent-1' })
+    api.prependComment(reply)
+
+    expect(api.comments.value).toHaveLength(1)
+    expect(api.commentsCounts.value?.all).toBe(1)
+  })
+
+  it('bumpCount=false skips the count bump (WS onCommentAdded path)', async () => {
+    const { usePostComments } = await import('~/composables/usePostComments')
+    const postId = ref('parent-2')
+    const post = ref<{ id: string; visibility?: string; commentCount?: number } | null>({
+      id: 'parent-2',
+      visibility: 'public',
+      commentCount: 0,
+    })
+    const isOnlyMe = ref(true)
+    const api = await runInSetup(() => usePostComments({ postId, post, isOnlyMe }))
+    // Simulate the authoritative liveUpdated arriving first.
+    api.commentsCounts.value = { all: 1, public: 1, verifiedOnly: 0, premiumOnly: 0 }
+
+    const reply = makePost({ id: 'c-2', parentId: 'parent-2' })
+    api.prependComment(reply, { bumpCount: false })
+
+    expect(api.comments.value).toHaveLength(1)
+    // Count stays at 1 (set by liveUpdated), no double-bump from commentAdded.
+    expect(api.commentsCounts.value?.all).toBe(1)
+  })
+
+  it('liveUpdated → commentAdded race: end-state count is 1 (no double-bump)', async () => {
+    const { usePostComments } = await import('~/composables/usePostComments')
+    const postId = ref('parent-3')
+    const post = ref<{ id: string; visibility?: string; commentCount?: number } | null>({
+      id: 'parent-3',
+      visibility: 'public',
+      commentCount: 0,
+    })
+    const isOnlyMe = ref(true)
+    const api = await runInSetup(() => usePostComments({ postId, post, isOnlyMe }))
+    api.commentsCounts.value = { all: 0, public: 0, verifiedOnly: 0, premiumOnly: 0 }
+
+    // 1. liveUpdated (authoritative) sets all=1.
+    api.commentsCounts.value = { ...api.commentsCounts.value, all: 1 }
+    // 2. commentAdded prepends without bump (the fix).
+    const reply = makePost({ id: 'c-3', parentId: 'parent-3' })
+    api.prependComment(reply, { bumpCount: false })
+    // 3. HTTP onReplyPosted runs prependComment(real) — finds existing id, no bump.
+    api.prependComment(reply)
+
+    expect(api.comments.value).toHaveLength(1)
+    expect(api.commentsCounts.value?.all).toBe(1)
   })
 })

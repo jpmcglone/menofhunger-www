@@ -85,7 +85,11 @@ export function usePostComments(options: {
     }
   }
 
-  function prependComment(newPost: FeedPost) {
+  // `bumpCount` defaults to true for the optimistic local path (HTTP onReplyPosted)
+  // so the "Replies N" header animates immediately. WS `commentAdded` callers must
+  // pass `false`: the paired `liveUpdated` event already carries the authoritative
+  // post-increment count, so an extra bump here would double-count (e.g. 0 → 2).
+  function prependComment(newPost: FeedPost, options?: { bumpCount?: boolean }) {
     const existingIdx = comments.value.findIndex((c) => c.id === newPost.id)
     if (existingIdx >= 0) {
       // Realtime/fetch may have inserted this comment already; upsert in place.
@@ -93,7 +97,8 @@ export function usePostComments(options: {
       return
     }
     comments.value = [newPost, ...comments.value]
-    if (commentsCounts.value) {
+    const bumpCount = options?.bumpCount !== false
+    if (bumpCount && commentsCounts.value) {
       commentsCounts.value = { ...commentsCounts.value, all: commentsCounts.value.all + 1 }
     }
   }

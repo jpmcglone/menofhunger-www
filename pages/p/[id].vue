@@ -358,7 +358,10 @@ const postsCb: PostsCallback = {
     if (String(payload?.parentPostId ?? '').trim() !== postId.value) return
     if (!payload?.comment) return
     // prependComment deduplicates by ID, so the commenter's own HTTP response is a no-op.
-    prependComment(payload.comment)
+    // Skip the count bump: the paired `liveUpdated` event (emitted just before this
+    // one server-side) already set commentsCounts.all to the authoritative post-
+    // increment value. Bumping here on top of that would double-count (0 → 2).
+    prependComment(payload.comment, { bumpCount: false })
   },
   onCommentDeleted: (payload) => {
     if (String(payload?.parentPostId ?? '').trim() !== postId.value) return

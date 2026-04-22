@@ -90,7 +90,7 @@ const pendingActionId = ref<string | null>(null)
 const notApplicableReason = computed(() => {
   if (shellLoading.value || !shell.value || !isMod.value) return ''
   if (shell.value.joinPolicy !== 'approval') {
-    return 'This group is open to join — there are no requests to approve.'
+    return 'This group is open — there are no requests to approve.'
   }
   return ''
 })

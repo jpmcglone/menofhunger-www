@@ -167,24 +167,37 @@
             rounded
             size="small"
             :severity="editJoinPolicy === 'open' ? 'primary' : 'secondary'"
-            :disabled="saving || !isOwner"
+            :disabled="saving || !isOwner || isCurrentlyPrivate"
             @click="editJoinPolicy = 'open'"
           />
           <Button
-            label="Approval required"
             rounded
             size="small"
             :severity="editJoinPolicy === 'approval' ? 'primary' : 'secondary'"
             :disabled="saving || !isOwner"
             @click="editJoinPolicy = 'approval'"
-          />
+          >
+            <template #icon>
+              <Icon name="tabler:lock" aria-hidden="true" />
+            </template>
+            Private
+          </Button>
         </div>
         <template #helper>
-          {{
-            editJoinPolicy === 'open'
-              ? 'Anyone can join immediately.'
-              : 'New members wait for owner or moderator approval.'
-          }}
+          <template v-if="isCurrentlyPrivate">
+            <span class="moh-text-muted">A private group cannot be made open. This is permanent.</span>
+          </template>
+          <template v-else-if="editJoinPolicy === 'open'">
+            Any verified member can find this group and read its posts.
+          </template>
+          <template v-else>
+            <span>
+              Only members can see posts. New members are approved by you or a moderator.
+            </span>
+            <span class="block mt-1 text-amber-700 dark:text-amber-400">
+              Heads up: once a group is private, it can never be made open again.
+            </span>
+          </template>
         </template>
       </AppFormField>
 
@@ -215,7 +228,9 @@ const { apiFetchData } = useApiClient()
 const { assetUrl } = useAssets()
 
 const isOwner = computed(() => Boolean(props.isOwner))
+const isCurrentlyPrivate = computed(() => props.shell?.joinPolicy === 'approval')
 const avatarRoundClass = groupAvatarRoundClass()
+const { confirm } = useAppConfirm()
 
 const coverUrl = computed(() => props.shell?.coverImageUrl ?? null)
 const avatarUrl = computed(() => props.shell?.avatarImageUrl ?? null)
@@ -439,6 +454,19 @@ const { submit: saveGroup, submitting: saving } = useFormSubmit(
     const s = props.shell
     if (!s?.id) return
     editError.value = null
+
+    // Confirm one-way privacy transition before any uploads. Going open -> private
+    // is permanent: members joined under the public-readability promise and the
+    // API rejects any future attempt to revert. Spell that out plainly.
+    if (s.joinPolicy === 'open' && editJoinPolicy.value === 'approval') {
+      const ok = await confirm({
+        header: 'Make this group private?',
+        message: "Posts will be hidden from non-members and new members will need approval. This can't be undone — a private group can never be made open again.",
+        confirmLabel: 'Make private',
+        confirmSeverity: 'danger',
+      })
+      if (!ok) return
+    }
 
     let coverImageUrl: string | undefined
     let avatarImageUrl: string | undefined

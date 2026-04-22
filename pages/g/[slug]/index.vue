@@ -103,8 +103,28 @@
             show-divider
           />
         </div>
+        <!--
+          Open-group reader CTA: verified, signed-in non-members can read the
+          feed but cannot post until they join. Keep the bar compact so the
+          feed below still leads.
+        -->
+        <div
+          v-else-if="canReadFeed"
+          class="flex items-center justify-between gap-3 border-b moh-border px-4 py-3"
+        >
+          <p class="text-sm moh-text-muted">
+            Join to post in this group.
+          </p>
+          <Button
+            label="Join group"
+            rounded
+            size="small"
+            :loading="joinBusy"
+            @click="doJoin"
+          />
+        </div>
 
-        <template v-if="isMember">
+        <template v-if="canReadFeed">
           <div class="flex flex-wrap items-center justify-between gap-2 border-b moh-border px-3 py-2 sm:px-4">
             <div class="flex gap-1 rounded-full border moh-border p-0.5 bg-[var(--moh-surface)]">
               <button
@@ -240,7 +260,14 @@ const cancelBusy = ref(false)
 const feedSort = ref<'new' | 'trending'>('new')
 
 const isMember = computed(() => shell.value?.viewerMembership?.status === 'active')
-const groupFeedEnabled = computed(() => Boolean(shell.value?.id && isMember.value))
+// Open groups: any verified, signed-in viewer can read posts (composer remains
+// members-only — see `v-if="isMember"` on AppPostComposer below). Private/approval
+// groups continue to require active membership for reads.
+const isOpenGroup = computed(() => shell.value?.joinPolicy === 'open')
+const canReadFeed = computed(() =>
+  Boolean(shell.value?.id && (isMember.value || (isOpenGroup.value && isAuthed.value && isVerified.value))),
+)
+const groupFeedEnabled = computed(() => Boolean(shell.value?.id && canReadFeed.value))
 
 const {
   posts,
@@ -329,7 +356,7 @@ const seoDescription = computed(() => {
   const s = shell.value
   if (!s) return siteConfig.meta.description
   const memberStr = `${s.memberCount.toLocaleString()} member${s.memberCount === 1 ? '' : 's'}`
-  const policy = s.joinPolicy === 'approval' ? 'approval required' : 'open to join'
+  const policy = s.joinPolicy === 'approval' ? 'private group' : 'open group'
   const desc = (s.description ?? '').trim()
   if (desc) return `${desc.slice(0, 140)} · ${memberStr} · ${policy}`
   return `${s.name} on ${siteConfig.name} · ${memberStr} · ${policy}`
@@ -480,7 +507,7 @@ const middleScrollerRef = useMiddleScroller()
 useLoadMoreObserver(
   loadMoreSentinelEl,
   middleScrollerRef,
-  computed(() => Boolean(isMember.value && nextCursor.value)),
+  computed(() => Boolean(canReadFeed.value && nextCursor.value)),
   () => void loadMore(),
 )
 

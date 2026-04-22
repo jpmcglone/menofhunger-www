@@ -88,8 +88,9 @@
           <span class="font-semibold text-gray-900 dark:text-gray-50">{{ preview.memberCount.toLocaleString() }}</span>
           <span class="ml-1 text-gray-600 dark:text-gray-400">{{ preview.memberCount === 1 ? 'Member' : 'Members' }}</span>
         </div>
-        <div v-if="preview.joinPolicy === 'approval'" class="text-xs moh-text-muted">
-          Approval to join
+        <div v-if="preview.joinPolicy === 'approval'" class="inline-flex items-center gap-1 text-xs moh-text-muted">
+          <Icon name="tabler:lock" class="text-[12px]" aria-hidden="true" />
+          Private
         </div>
       </div>
     </div>

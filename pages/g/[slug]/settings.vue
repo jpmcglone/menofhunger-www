@@ -80,6 +80,7 @@ const shell = ref<CommunityGroupShell | null>(null)
 const shellLoading = ref(true)
 const loadError = ref<string | null>(null)
 const leaveBusy = ref(false)
+const { confirm } = useAppConfirm()
 
 const isMod = computed(() => {
   const m = shell.value?.viewerMembership
@@ -118,6 +119,13 @@ async function loadShell() {
 async function doLeave() {
   const s = shell.value
   if (!s || leaveBusy.value) return
+  const ok = await confirm({
+    header: 'Leave group?',
+    message: "You'll lose access to the group's posts and feed. You can rejoin later.",
+    confirmLabel: 'Leave',
+    confirmSeverity: 'danger',
+  })
+  if (!ok) return
   leaveBusy.value = true
   try {
     await apiFetchData(`/groups/${encodeURIComponent(s.id)}/leave`, { method: 'POST', body: {} })

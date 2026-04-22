@@ -146,9 +146,10 @@
                     <span class="font-medium moh-text">{{ g.name }}</span>
                     <span
                       v-if="g.joinPolicy === 'approval'"
-                      class="text-[10px] uppercase tracking-wide font-semibold px-1.5 py-0.5 rounded border moh-border moh-text-muted"
+                      class="inline-flex items-center gap-1 text-[10px] uppercase tracking-wide font-semibold px-1.5 py-0.5 rounded border moh-border moh-text-muted"
                     >
-                      Approval
+                      <Icon name="tabler:lock" class="text-[10px]" aria-hidden="true" />
+                      Private
                     </span>
                     <span
                       v-else

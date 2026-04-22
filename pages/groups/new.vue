@@ -73,15 +73,23 @@
               />
               <Button
                 type="button"
-                label="Approval"
                 rounded
                 size="small"
                 :severity="joinPolicy === 'approval' ? 'primary' : 'secondary'"
                 @click="joinPolicy = 'approval'"
-              />
+              >
+                <template #icon>
+                  <Icon name="tabler:lock" aria-hidden="true" />
+                </template>
+                Private
+              </Button>
             </div>
             <p class="mt-2 text-xs moh-text-muted">
-              {{ joinPolicy === 'open' ? 'Anyone can join this group immediately.' : 'New members wait for a moderator or you to approve.' }}
+              {{
+                joinPolicy === 'open'
+                  ? 'Any verified member can find and join this group, and read its posts.'
+                  : 'Only members can see posts. New members are approved by you or a moderator. Heads up: a private group can never be made open later.'
+              }}
             </p>
           </div>
           <Button
