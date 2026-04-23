@@ -1933,10 +1933,11 @@ async function createConversation() {
   }
   newConversationError.value = null
   try {
+    const recipients = [...newDialogRecipients.value]
     newDialogVisible.value = false
     const res = await apiFetchData<LookupMessageConversationResponse['data']>('/messages/lookup', {
       method: 'POST',
-      body: { user_ids: newDialogRecipients.value.map((u) => u.id) },
+      body: { user_ids: recipients.map((u) => u.id) },
     })
     const conversationId = res?.conversationId ?? null
     if (conversationId) {
@@ -1944,7 +1945,7 @@ async function createConversation() {
       return
     }
 
-    draftRecipients.value = [...newDialogRecipients.value]
+    draftRecipients.value = recipients
     // Clear any selected existing chat and show draft pane.
     await clearSelection({ replace: true, preserveDraft: true })
     selectedChatKey.value = 'draft'
