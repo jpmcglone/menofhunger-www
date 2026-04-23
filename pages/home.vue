@@ -1,17 +1,35 @@
 <template>
   <!-- hideTopBar page: no top padding here -->
   <AppPageContent bottom="standard">
+    <!-- Daily check-in hero is the page's purpose statement. It renders full-bleed at the top
+         until the user has answered (drives the "answer this" intent for the day). After they
+         answer, the hero collapses to a compact strip placed under the composer so the home
+         page can give the composer + feed back the prime real estate.
+
+         Both variants are gated on `heroResolved` so we never flash the full hero before we
+         know whether the user has already answered. SSR renders nothing for either; on mount,
+         the right one appears in the right slot. See 45-hydration-safe-defaults.mdc. -->
+    <AppFeedDailyCheckinHero
+      v-if="heroResolved && !hasCheckedInToday"
+      :state="checkinState"
+      :prompt="checkinHeroPrompt"
+      :my-checkin-body="lastCheckinBody"
+      :can-answer="canAnswerCheckin"
+      :on-answer="openCheckinComposer"
+      :on-login-to-answer="goToLoginForCheckin"
+    />
+
     <!-- Layout: Composer at top, feed below. Wrapper ref used to detect when composer is in view (hides mobile FAB). -->
     <div ref="homeComposerEl" class="min-h-0">
       <AppPostComposer
-        v-if="!showOnlyMeHomeComposerCard"
+        v-if="isAuthed && !showOnlyMeHomeComposerCard"
         ref="homeComposerRef"
         :allowed-visibilities="['public', 'verifiedOnly', 'premiumOnly']"
         persist-key="home"
         :register-unsaved-guard="false"
         @pending="onComposerPending"
       />
-      <div v-else class="px-3 pt-3 sm:px-4 sm:pt-4">
+      <div v-else-if="isAuthed" class="px-3 pt-3 sm:px-4 sm:pt-4">
         <div class="rounded-2xl border moh-border moh-surface p-4 sm:p-5">
           <div class="flex items-start gap-3">
             <div class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg moh-btn-onlyme moh-btn-tone">
@@ -39,6 +57,27 @@
         </div>
       </div>
     </div>
+
+    <!-- Compact hero shown under the composer once today's question is answered. Same component
+         + realtime hooks as the full hero, just collapsed. Hidden for logged-out viewers since
+         they never have an answered state. Gated on `heroResolved` so SSR renders nothing
+         here and we don't briefly show the full hero on top before this collapses in.
+
+         When the viewer is verified and has a streak, we also pass `weekly-mission-streak-days`
+         which folds the weekly-mission progress card INTO this card (one combined clickable
+         surface → /leaderboard) instead of showing a second card below. The standalone
+         AppFeedWeeklyMissionCard render below is gated to only fire when this fold-in doesn't. -->
+    <AppFeedDailyCheckinHero
+      v-if="heroResolved && hasCheckedInToday"
+      :state="checkinState"
+      :prompt="checkinHeroPrompt"
+      :my-checkin-body="lastCheckinBody"
+      :can-answer="canAnswerCheckin"
+      :on-answer="openCheckinComposer"
+      :on-login-to-answer="goToLoginForCheckin"
+      :weekly-mission-streak-days="displayCheckinStreak"
+      compact
+    />
 
     <!-- Welcome card: shown to all new users who haven't dismissed it (localStorage) -->
     <ClientOnly>
@@ -80,37 +119,17 @@
       </div>
     </ClientOnly>
 
-    <Transition
-      enter-active-class="transition-[opacity,transform] duration-250 ease-out"
-      enter-from-class="opacity-0 -translate-y-1"
-      enter-to-class="opacity-100 translate-y-0"
-      leave-active-class="transition-[opacity,transform,max-height] duration-220 ease-in"
-      leave-from-class="opacity-100 translate-y-0"
-      leave-to-class="opacity-0 -translate-y-1 max-h-0"
-    >
-      <!-- v-show keeps a single root element so SSR and client agree (avoids hydration mismatch) -->
-      <div v-show="showCheckinCardArea">
-        <AppFeedDailyCheckinCard
-          :prompt="displayCheckinPromptText"
-          :streak="displayCheckinStreak"
-          :coins="displayCheckinCoins"
-          :has-checked-in-today="hasCheckedInToday"
-          :error="checkinError"
-          @check-in="openCheckinComposer"
-        />
-      </div>
-    </Transition>
-
-    <!-- Weekly mission card: shown to verified users with an active or recent streak -->
+    <!-- Weekly mission card: shown to verified users with an active or recent streak.
+         When the compact daily-check-in hero is visible (viewer answered today), the mission
+         row is folded into that card so the surface stays a single clickable card. We only
+         render this standalone card when the compact hero isn't going to show (i.e. before
+         today's check-in is in). -->
     <ClientOnly>
       <AppFeedWeeklyMissionCard
-        v-if="isAuthed && viewerIsVerified && displayCheckinStreak > 0"
+        v-if="isAuthed && viewerIsVerified && displayCheckinStreak > 0 && !hasCheckedInToday"
         :checkin-streak-days="displayCheckinStreak"
       />
     </ClientOnly>
-
-    <!-- Daily quote card: shown on mobile only (right rail shows it on desktop) -->
-    <AppFeedDailyQuoteCard />
 
     <!-- Feed: header + content -->
     <div>
@@ -121,12 +140,16 @@
         :scope-tabs="scopeTabs"
         :viewer-is-verified="viewerIsVerified"
         :viewer-is-premium="viewerIsPremium"
-        :show-reset="feedFilter !== 'all' || feedSort !== 'new'"
+        :show-reset="feedFilter !== 'all' || (feedScope !== 'forYou' && feedSort !== 'new')"
         @update:scope="onFeedScopeChange"
         @update:sort="setFeedSort"
         @update:filter="setFeedFilter"
         @reset="() => void resetFilters()"
       />
+
+      <!-- Daily quote: demoted from the top stack so the check-in hero owns the daily slot.
+           Kept mobile-only since the right rail still surfaces it on desktop. -->
+      <AppFeedDailyQuoteCard />
 
       <div v-if="feedCtaKind === 'verify'" class="mx-3 mt-3 sm:mx-4 sm:mt-4">
         <AppAccessGateCard kind="verify" />
@@ -150,7 +173,7 @@
               @check-in="openCheckinComposer"
             />
             <AppFeedAllEmptyState
-              v-else-if="initialFeedResolved && showAllEmptyState"
+              v-else-if="initialFeedResolved && (showAllEmptyState || showForYouEmptyState)"
               @explore="navigateTo('/explore')"
               @who-to-follow="navigateTo('/who-to-follow')"
             />
@@ -208,6 +231,7 @@
 <script setup lang="ts">
 import type { CommunityGroupShell, PostVisibility, CheckinAllowedVisibility  } from '~/types/api'
 import { postBodyHasVideoEmbed } from '~/utils/link-utils'
+import { pickCheckinPrompt } from '~/utils/checkin-prompts'
 import { MOH_HOME_COMPOSER_IN_VIEW_KEY, MOH_OPEN_COMPOSER_KEY, MOH_FOCUS_HOME_COMPOSER_KEY } from '~/utils/injection-keys'
 import { useMiddleScroller } from '~/composables/useMiddleScroller'
 
@@ -278,7 +302,7 @@ watch(isAuthed, (a) => {
 
 const { dayKey: etDayKey } = useEasternMidnightRollover()
 
-const { state: checkinState, error: checkinError, refresh: refreshCheckin, create: createCheckin } = useDailyCheckin()
+const { state: checkinState, loading: checkinLoading, error: checkinError, refresh: refreshCheckin, create: createCheckin } = useDailyCheckin()
 const checkinVisibility = ref<CheckinAllowedVisibility>('verifiedOnly')
 const composerVisibility = useCookie<PostVisibility>('moh.post.visibility.v1', {
   default: () => 'public',
@@ -313,6 +337,32 @@ const hasCheckedInToday = computed(() => {
   return Boolean(checkinState.value?.hasCheckedInToday)
 })
 
+// Gates whether either daily-check-in hero (full or compact) is allowed to render.
+// Goal: avoid a SSR/CSR flash where the full hero shows for a moment, then collapses
+// into the compact one once the auth + check-in state finally resolves.
+//
+// Truthy when:
+//   - SSR has finished and the client has mounted (hydrated), AND
+//   - Either the user is unauthenticated (full hero is the obvious answer), OR
+//     the check-in state has loaded (success), OR
+//     the initial fetch has settled (even on error) — so the page is never
+//     left blank when the API is slow or fails. In the error case we show the
+//     full hero in a degraded "no crew / no streak" mode; that's always better
+//     than showing nothing.
+//
+// While false (still fetching), both <AppFeedDailyCheckinHero> instances are
+// v-if'd off so SSR produces nothing and there is no wrong-variant flash.
+const heroResolved = computed(() => {
+  if (!hydrated.value) return false
+  if (!isAuthed.value) return true
+  if (checkinState.value !== null && checkinState.value !== undefined) return true
+  // State is still in-flight — keep waiting to avoid flashing the wrong variant.
+  if (checkinLoading.value) return false
+  // Fetch completed but state is still null (error path). Show the full hero so
+  // the page isn't blank; it renders with null state (fallback prompt / no crew).
+  return true
+})
+
 // Show the check-in prompt when user is eligible and hasn't posted today.
 const showCheckinPromptBar = computed(() => {
   if (!isAuthed.value) return false
@@ -323,24 +373,13 @@ const showCheckinPromptBar = computed(() => {
   return true
 })
 
-// Show the check-in prompt only (the WeeklyMissionCard covers the already-checked-in state).
-// Suppress when the welcome card is visible and already contains the check-in CTA — no need to show both.
-const { dismissed: welcomeCardDismissed } = useWelcomeCard()
-const showCheckinCardArea = computed(() => {
-  if (!isAuthed.value) return false
-  if (feedCtaKind.value) return false
-  if (!checkinState.value) return false
-  if (!effectiveCheckinAllowedVisibilities.value.length) return false
-  // Already checked in — WeeklyMissionCard handles this state; no need for the streak-intact banner.
-  if (hasCheckedInToday.value) return false
-  // Welcome card is showing + it contains the check-in prompt — standalone card would be redundant.
-  if (!welcomeCardDismissed.value && showCheckinPromptBar.value) return false
-  return true
-})
 
 const checkinPromptText = computed(() => {
   const p = (checkinState.value?.prompt ?? '').trim()
-  return p || 'Write a check-in…'
+  if (p) return p
+  // API unavailable — derive today's question deterministically client-side
+  // so the hero always shows the real prompt rather than generic placeholder text.
+  return pickCheckinPrompt().prompt
 })
 
 // Use fallback text until after hydration so server and client match (checkinState can differ on SSR vs client).
@@ -399,6 +438,7 @@ const {
   removeOptimistic,
   followingCount,
   showFollowingEmptyState,
+  showForYouEmptyState,
   showAllEmptyState,
   viewerIsVerified,
   viewerIsPremium,
@@ -440,6 +480,13 @@ function preferredCheckinVisibility(): CheckinAllowedVisibility {
   return allowed.includes(preferred) ? preferred : allowed[0]!
 }
 
+/**
+ * Last submitted check-in body for the hero's "you answered today" echo. Cleared on
+ * day rollover so it doesn't bleed into tomorrow's prompt state.
+ */
+const lastCheckinBody = ref<string | null>(null)
+watch(etDayKey, () => { lastCheckinBody.value = null })
+
 async function createCheckinViaComposer(
   body: string,
   visibility: PostVisibility,
@@ -450,8 +497,19 @@ async function createCheckinViaComposer(
   if (!trimmed) return null
   const vis: CheckinAllowedVisibility = visibility === 'premiumOnly' ? 'premiumOnly' : 'verifiedOnly'
   const res = await createCheckin({ body: trimmed, visibility: vis })
+  lastCheckinBody.value = trimmed
   posts.value = [res.post, ...posts.value.filter((p) => p.id !== res.post.id)]
   return res.post
+}
+
+/** Eligibility gate for the hero's primary action — verified users only (or premium). */
+const canAnswerCheckin = computed(() => effectiveCheckinAllowedVisibilities.value.length > 0)
+
+/** Hero prompt — falls back to a generic phrasing during SSR / initial load. */
+const checkinHeroPrompt = computed(() => displayCheckinPromptText.value)
+
+function goToLoginForCheckin() {
+  void navigateTo('/login')
 }
 
 function openCheckinComposer() {

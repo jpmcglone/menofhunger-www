@@ -25,7 +25,8 @@
           <img
             :src="article.thumbnailUrl"
             :alt="article.title"
-            :class="['h-full w-full object-cover', article.viewerCanAccess === false ? 'blur-xl scale-110' : '']"
+            :class="['h-full w-full object-cover', article.viewerCanAccess === false ? 'blur-xl scale-110' : 'cursor-zoom-in']"
+            @click="onThumbnailClick"
           />
           <!-- Lock overlay for gated articles -->
           <div
@@ -107,6 +108,7 @@
           v-if="article.viewerCanAccess !== false"
           class="prose prose-gray mt-8 dark:prose-invert max-w-none article-body"
           v-html="bodyWithHeadingIds"
+          @click="onArticleBodyClick"
         />
 
         <!-- Gated: show faded excerpt teaser then access gate -->
@@ -489,6 +491,7 @@ const { apiFetchData } = useApiClient()
 const { isAuthed, user } = useAuth()
 const { markReadBySubject } = useNotifications()
 const { show: showAuthActionModal } = useAuthActionModal()
+const { openFromEvent: openLightbox } = useImageLightbox()
 
 const gateKind = computed(() =>
   article.value?.visibility === 'premiumOnly' ? 'premium' : 'verify',
@@ -528,6 +531,22 @@ function guardedReact(reactionId: string, emoji: string) {
     return
   }
   reactionState.toggle(reactionId, emoji)
+}
+
+function onThumbnailClick(e: MouseEvent) {
+  const url = article.value?.thumbnailUrl
+  if (!url || article.value?.viewerCanAccess === false) return
+  void openLightbox(e, url, article.value?.title ?? '', 'media')
+}
+
+function onArticleBodyClick(e: MouseEvent) {
+  const target = e.target as HTMLElement
+  if (target.tagName !== 'IMG') return
+  const img = target as HTMLImageElement
+  const src = img.currentSrc || img.src || img.getAttribute('src') || ''
+  if (!src) return
+  // Pass the img element as currentTarget so the animation zooms from the image position.
+  void openLightbox({ currentTarget: img } as unknown as MouseEvent, src, img.alt || '', 'media')
 }
 
 const { data: article, pending } = useAsyncData<Article>(
@@ -697,7 +716,7 @@ const isHydrated = ref(false)
 // A sentinel placed at the article midpoint triggers the view count after the
 // reader has kept it visible for 2 s (dwell threshold).
 const viewSentinelEl = ref<HTMLElement | null>(null)
-const { observe: observeArticleView } = useArticleViewTracker()
+const { observe: observeArticleView, trackOnDwell: trackArticleViewOnDwell } = useArticleViewTracker()
 
 // ─── Realtime live updates ────────────────────────────────────────────────────
 const presence = usePresence()
@@ -860,11 +879,30 @@ watch(viewSentinelEl, (el) => {
   }
 })
 
+// Page-dwell view tracker: counts a view after 5 s on the page even if the
+// reader never scrolls to the end sentinel.  Works for logged-out visitors
+// (anon_id cookie) and logged-in users alike, matching how post feed rows
+// count views when visible in the feed without requiring a full scroll-through.
+let stopDwellTracking: (() => void) | null = null
+watch(
+  () => article.value?.id,
+  (articleId) => {
+    stopDwellTracking?.()
+    stopDwellTracking = null
+    if (articleId && article.value?.viewerCanAccess !== false) {
+      stopDwellTracking = trackArticleViewOnDwell(articleId)
+    }
+  },
+  { immediate: true },
+)
+
 onUnmounted(() => {
   presence.removeArticlesCallback(articlesCallback)
   if (article.value?.id) presence.unsubscribeArticles([article.value.id])
   stopObservingView?.()
   stopObservingView = null
+  stopDwellTracking?.()
+  stopDwellTracking = null
   document.removeEventListener('click', closeTipPopover)
   if (deepLinkInterval) {
     clearInterval(deepLinkInterval)
@@ -1023,5 +1061,9 @@ const reactionState = useArticleReactions(
 .tip-pop-leave-to {
   opacity: 0;
   transform: translateY(6px) scale(0.97);
+}
+
+.article-body :deep(img) {
+  cursor: zoom-in;
 }
 </style>

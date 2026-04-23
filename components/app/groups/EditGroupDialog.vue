@@ -171,6 +171,7 @@
             @click="editJoinPolicy = 'open'"
           />
           <Button
+            label="Private"
             rounded
             size="small"
             :severity="editJoinPolicy === 'approval' ? 'primary' : 'secondary'"
@@ -180,7 +181,6 @@
             <template #icon>
               <Icon name="tabler:lock" aria-hidden="true" />
             </template>
-            Private
           </Button>
         </div>
         <template #helper>

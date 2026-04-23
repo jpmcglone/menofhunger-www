@@ -46,6 +46,9 @@ export function useHashtagAutocomplete(opts: {
   const highlightedIndex = ref(0)
   const anchor = ref<CaretPoint | null>(null)
   const active = ref<ActiveHashtag | null>(null)
+  // True while a search request is in-flight or pending (debounced). The popover uses
+  // this to show a spinner instead of "No matches" before the API has resolved.
+  const loading = ref(false)
 
   const limit = typeof opts.limit === 'number' ? Math.max(3, Math.min(20, Math.floor(opts.limit))) : DEFAULT_LIMIT
   const debounceMs = typeof opts.debounceMs === 'number' ? clamp(Math.floor(opts.debounceMs), 0, 600) : 120
@@ -75,6 +78,7 @@ export function useHashtagAutocomplete(opts: {
     anchor.value = null
     items.value = []
     highlightedIndex.value = 0
+    loading.value = false
     if (blurCloseTimer) {
       clearTimeout(blurCloseTimer)
       blurCloseTimer = null
@@ -199,6 +203,7 @@ export function useHashtagAutocomplete(opts: {
       const next = filterAndSort(cleaned, q)
       if (activeRequestId !== requestId) return
       buildSections(q, next)
+      loading.value = false
       cache.set(qNorm, { expiresAt: now + CACHE_TTL_MS, items: next })
       pruneCache()
     } catch (e: unknown) {
@@ -206,6 +211,7 @@ export function useHashtagAutocomplete(opts: {
       if ((e as any)?.name === 'AbortError') return
       if (activeRequestId !== requestId) return
       items.value = []
+      loading.value = false
     } finally {
       if (inflight === controller) inflight = null
     }
@@ -227,6 +233,14 @@ export function useHashtagAutocomplete(opts: {
     const queryChanged = qNorm !== (lastQueryNorm ?? null)
     if (queryChanged) highlightedIndex.value = 0
     lastQueryNorm = qNorm
+
+    // Show loader only when we have nothing useful to display yet — the empty-query branch
+    // (recent + trending) is local-only and never needs a spinner.
+    if (qNorm && items.value.length === 0) {
+      loading.value = true
+    } else if (!qNorm) {
+      loading.value = false
+    }
 
     // Fetch faster for first character; debounce a bit more for subsequent typing.
     const delay = q.length <= 1 ? 0 : debounceMs
@@ -426,6 +440,7 @@ export function useHashtagAutocomplete(opts: {
     highlightedIndex: number
     anchor: CaretPoint | null
     listboxId: string
+    loading: boolean
   }>({
     open: false,
     items: [],
@@ -433,6 +448,7 @@ export function useHashtagAutocomplete(opts: {
     highlightedIndex: 0,
     anchor: null,
     listboxId,
+    loading: false,
   })
   watchEffect(() => {
     popoverProps.open = open.value
@@ -441,6 +457,7 @@ export function useHashtagAutocomplete(opts: {
     popoverProps.highlightedIndex = highlightedIndex.value
     popoverProps.anchor = anchor.value
     popoverProps.listboxId = listboxId
+    popoverProps.loading = loading.value
   })
 
   const highlightedTag = computed(() => items.value[highlightedIndex.value] ?? null)
@@ -452,6 +469,7 @@ export function useHashtagAutocomplete(opts: {
     anchor: readonly(anchor),
     active: readonly(active),
     highlightedTag,
+    loading: readonly(loading),
 
     recompute,
     onKeydown,

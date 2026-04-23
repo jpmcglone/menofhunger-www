@@ -1,11 +1,17 @@
 import type { ProfilePostsFilter } from '~/utils/post-visibility'
 import type { FeedVisibilityFilter } from '~/composables/useFeedFilters'
+import type { FeedScope } from '~/composables/useUrlFeedFilters'
 import { useUrlFeedFilters } from '~/composables/useUrlFeedFilters'
+import { useEasternMidnightRollover } from '~/composables/useEasternMidnightRollover'
+
+const HOME_SCOPE_COOKIE = 'moh.home.scope.v1'
 
 export function useHomeFeed() {
   const { user, isAuthed } = useAuth()
   const { apiFetchData } = useApiClient()
   const middleScrollerEl = useMiddleScroller()
+  const route = useRoute()
+  const { dayKey } = useEasternMidnightRollover()
 
   const {
     filter: feedFilter,
@@ -22,11 +28,68 @@ export function useHomeFeed() {
     return [
       { key: 'all', label: 'All', disabled: false },
       { key: 'following', label: 'Following', disabled: false },
+      { key: 'forYou', label: 'For You', disabled: false },
     ]
   })
 
   const followingOnly = computed(() => Boolean(isAuthed.value && feedScope.value === 'following'))
+  const forYou = computed(() => Boolean(isAuthed.value && feedScope.value === 'forYou'))
   const showAds = computed(() => !user.value?.premium)
+
+  // Signed-out home defaults to trending (instead of the chronological "new") so
+  // first-time visitors land on the most engaging content. Once a visitor explicitly
+  // picks a sort via the URL/header, we honor it.
+  const effectiveSort = computed<'new' | 'trending'>(() => {
+    if (isAuthed.value) return feedSort.value
+    return route.query.sort ? feedSort.value : 'trending'
+  })
+
+  // ── Daily-persisted default scope (authed only) ─────────────────────────────
+  // The cookie pins the user's last-chosen tab for the rest of the ET day.
+  // On a new day (or no cookie), the default snaps back to "For You".
+  function readScopeCookie(): { day: string; scope: FeedScope } | null {
+    const c = useCookie<string | null>(HOME_SCOPE_COOKIE, { default: () => null }).value
+    if (!c) return null
+    const idx = c.indexOf(':')
+    if (idx <= 0) return null
+    const day = c.slice(0, idx)
+    const scope = c.slice(idx + 1)
+    if (scope !== 'all' && scope !== 'following' && scope !== 'forYou') return null
+    return { day, scope }
+  }
+
+  function writeScopeCookie(scope: FeedScope) {
+    const cookie = useCookie<string | null>(HOME_SCOPE_COOKIE, {
+      default: () => null,
+      maxAge: 60 * 60 * 24 * 30,
+      sameSite: 'lax',
+    })
+    cookie.value = `${dayKey.value}:${scope}`
+  }
+
+  if (import.meta.client) {
+    onMounted(() => {
+      if (!isAuthed.value) return
+      // Only auto-default when the user didn't explicitly request a scope via the URL.
+      const hasUrlScope = typeof route.query.scope === 'string' && route.query.scope.length > 0
+      if (hasUrlScope) return
+      const cookie = readScopeCookie()
+      if (cookie && cookie.day === dayKey.value) {
+        if (feedScope.value !== cookie.scope) feedScope.value = cookie.scope
+      } else {
+        if (feedScope.value !== 'forYou') feedScope.value = 'forYou'
+        writeScopeCookie('forYou')
+      }
+    })
+
+    watch(
+      () => [feedScope.value, dayKey.value, isAuthed.value] as const,
+      ([scope, _day, authed]) => {
+        if (!authed) return
+        writeScopeCookie(scope)
+      },
+    )
+  }
 
   const {
     posts,
@@ -52,7 +115,8 @@ export function useHomeFeed() {
   } = usePostsFeed({
     visibility: feedFilter,
     followingOnly,
-    sort: feedSort,
+    sort: effectiveSort,
+    forYou,
     showAds,
   })
 
@@ -62,8 +126,11 @@ export function useHomeFeed() {
   const showFollowingEmptyState = computed(
     () => Boolean(followingOnly.value && !loading.value && !error.value && posts.value.length === 0),
   )
+  const showForYouEmptyState = computed(
+    () => Boolean(forYou.value && !loading.value && !error.value && posts.value.length === 0),
+  )
   const showAllEmptyState = computed(
-    () => Boolean(!followingOnly.value && !loading.value && !error.value && posts.value.length === 0),
+    () => Boolean(!followingOnly.value && !forYou.value && !loading.value && !error.value && posts.value.length === 0),
   )
 
   watchEffect(() => {
@@ -119,9 +186,9 @@ export function useHomeFeed() {
     await preserveMiddleScrollAfter(async () => { resetUrlFilters() })
   }
 
-  function onFeedScopeChange(next: 'all' | 'following') {
+  function onFeedScopeChange(next: FeedScope) {
     feedScope.value = next
-    // Scope drives followingOnly, which usePostsFeed watches and auto-refreshes on change.
+    // Scope drives followingOnly + forYou, which usePostsFeed watches and auto-refreshes on change.
   }
 
   // usePostsFeed already watches visibility/sort/followingOnly and auto-refreshes.
@@ -160,6 +227,7 @@ export function useHomeFeed() {
     removeOptimistic,
     followingCount,
     showFollowingEmptyState,
+    showForYouEmptyState,
     showAllEmptyState,
     viewerIsVerified,
     viewerIsPremium,

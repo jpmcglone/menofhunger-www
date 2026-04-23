@@ -58,7 +58,9 @@ const REGISTRY = new Map<string, Entry>()
 function isFeedPost(value: unknown): value is FeedPost {
   if (!value || typeof value !== 'object') return false
   const v = value as Partial<FeedPost>
-  return typeof v.id === 'string' && typeof v.body === 'string' && Array.isArray(v.media)
+  // `media` may legitimately be null/undefined for text-only posts returned by some API paths;
+  // don't require it to be an array or text-only replies would be silently dropped.
+  return typeof v.id === 'string' && typeof v.body === 'string'
 }
 
 /**

@@ -68,5 +68,16 @@ describe('hydration guardrails (structural)', () => {
     expect(row).toMatch(/:key="notificationMediaPreviewKey\(m, idx\)"/)
     expect(group).toMatch(/:key="groupMediaPreviewKey\(m, idx\)"/)
   })
+
+  it('gates the daily check-in hero on `heroResolved` so SSR never renders the wrong variant', () => {
+    const home = readFromRepo('pages/home.vue')
+    // Full and compact hero are both gated on heroResolved + the auth-derived hasCheckedInToday.
+    // Without this gate we'd flash the full hero on first paint, then collapse it into the
+    // compact one as soon as /checkins/today resolves on the client.
+    expect(home).toMatch(/<AppFeedDailyCheckinHero\s+v-if="heroResolved && !hasCheckedInToday"/)
+    expect(home).toMatch(/<AppFeedDailyCheckinHero\s+v-if="heroResolved && hasCheckedInToday"[\s\S]*?compact/)
+    // heroResolved itself must require both `hydrated` AND a known checkin state (or unauth viewer).
+    expect(home).toMatch(/const heroResolved = computed\(\(\) => {[\s\S]*?if \(!hydrated\.value\) return false[\s\S]*?if \(!isAuthed\.value\) return true[\s\S]*?return checkinState\.value !== null/)
+  })
 })
 

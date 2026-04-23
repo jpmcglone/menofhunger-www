@@ -73,6 +73,7 @@
               />
               <Button
                 type="button"
+                label="Private"
                 rounded
                 size="small"
                 :severity="joinPolicy === 'approval' ? 'primary' : 'secondary'"
@@ -81,7 +82,6 @@
                 <template #icon>
                   <Icon name="tabler:lock" aria-hidden="true" />
                 </template>
-                Private
               </Button>
             </div>
             <p class="mt-2 text-xs moh-text-muted">

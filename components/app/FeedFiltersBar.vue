@@ -13,7 +13,7 @@
     <span v-if="showReset" class="h-6 w-px bg-gray-200 dark:bg-zinc-800" aria-hidden="true" />
 
     <!-- Order (sort) -->
-    <div ref="sortWrapEl" class="relative transition-opacity duration-200" :class="hideSort ? 'opacity-0 pointer-events-none' : 'opacity-100'">
+    <div ref="sortWrapEl" class="transition-opacity duration-200" :class="hideSort ? 'opacity-0 pointer-events-none' : 'opacity-100'">
       <button
         type="button"
         class="inline-flex cursor-pointer items-center gap-1.5 rounded-full border px-2 py-1 sm:px-2.5 sm:py-1.5 text-[11px] sm:text-[12px] font-semibold leading-none transition-colors border-gray-200 text-gray-700 hover:bg-gray-50 dark:border-zinc-800 dark:text-gray-200 dark:hover:bg-zinc-900"
@@ -25,9 +25,12 @@
         <Icon name="tabler:chevron-down" class="text-[10px] opacity-70" aria-hidden="true" />
       </button>
 
+      <Teleport to="body">
       <div
         v-if="sortPopoverOpen"
-        class="absolute right-0 top-full z-30 mt-2 w-56 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-lg dark:border-zinc-800 dark:bg-black"
+        ref="sortMenuEl"
+        class="fixed z-[9999] w-56 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-lg dark:border-zinc-800 dark:bg-black"
+        :style="sortMenuStyle"
         role="menu"
         aria-label="Feed sort"
       >
@@ -55,10 +58,11 @@
           <Icon v-if="sort === 'trending'" name="tabler:check" class="text-[12px] opacity-70 shrink-0" aria-hidden="true" />
         </button>
       </div>
+      </Teleport>
     </div>
 
     <!-- Visibility (optional: e.g. replies inherit parent post visibility) -->
-    <div v-if="showVisibilityFilter" ref="filterWrapEl" class="relative">
+    <div v-if="showVisibilityFilter" ref="filterWrapEl">
       <button
         type="button"
         class="inline-flex cursor-pointer items-center gap-1.5 rounded-full border px-2 py-1 sm:px-2.5 sm:py-1.5 text-[11px] sm:text-[12px] font-semibold leading-none transition-colors"
@@ -82,9 +86,12 @@
         <Icon name="tabler:chevron-down" class="text-[10px] opacity-70" aria-hidden="true" />
       </button>
 
+      <Teleport to="body">
       <div
         v-if="filterPopoverOpen"
-        class="absolute right-0 top-full z-30 mt-2 w-56 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-lg dark:border-zinc-800 dark:bg-black"
+        ref="filterMenuEl"
+        class="fixed z-[9999] w-56 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-lg dark:border-zinc-800 dark:bg-black"
+        :style="filterMenuStyle"
         role="menu"
         aria-label="Feed visibility"
       >
@@ -138,6 +145,7 @@
           <Icon v-if="filter === 'premiumOnly'" name="tabler:check" class="text-[12px] opacity-70 shrink-0" aria-hidden="true" />
         </button>
       </div>
+      </Teleport>
     </div>
   </div>
 </template>
@@ -178,6 +186,19 @@ const sortWrapEl = ref<HTMLElement | null>(null)
 const filterWrapEl = ref<HTMLElement | null>(null)
 const sortPopoverOpen = ref(false)
 const filterPopoverOpen = ref(false)
+
+const {
+  style: sortMenuStyle,
+  menuEl: sortMenuEl,
+  place: placeSortMenu,
+  reset: resetSortMenu,
+} = useMenuPosition()
+const {
+  style: filterMenuStyle,
+  menuEl: filterMenuEl,
+  place: placeFilterMenu,
+  reset: resetFilterMenu,
+} = useMenuPosition()
 
 const sort = computed(() => props.sort)
 const filter = computed(() => props.filter)
@@ -236,17 +257,29 @@ const resetButtonClass = computed(() => {
 
 function closeSortPopover() {
   sortPopoverOpen.value = false
+  resetSortMenu()
 }
 function closeFilterPopover() {
   filterPopoverOpen.value = false
+  resetFilterMenu()
 }
-function toggleSortPopover() {
+function toggleSortPopover(e: MouseEvent) {
   closeFilterPopover()
-  sortPopoverOpen.value = !sortPopoverOpen.value
+  const next = !sortPopoverOpen.value
+  if (next) {
+    const btn = e.currentTarget as HTMLElement
+    placeSortMenu(btn, { align: 'end', menuWidth: 224, menuHeight: 132 })
+  }
+  sortPopoverOpen.value = next
 }
-function toggleFilterPopover() {
+function toggleFilterPopover(e: MouseEvent) {
   closeSortPopover()
-  filterPopoverOpen.value = !filterPopoverOpen.value
+  const next = !filterPopoverOpen.value
+  if (next) {
+    const btn = e.currentTarget as HTMLElement
+    placeFilterMenu(btn, { align: 'end', menuWidth: 224, menuHeight: 220 })
+  }
+  filterPopoverOpen.value = next
 }
 
 function setSort(v: 'new' | 'trending') {
@@ -263,7 +296,12 @@ function onResetClick() {
   closeFilterPopover()
 }
 
-function installOutsideClose(openRef: Ref<boolean>, wrapEl: Ref<HTMLElement | null>, close: () => void) {
+function installOutsideClose(
+  openRef: Ref<boolean>,
+  wrapEl: Ref<HTMLElement | null>,
+  menuEl: Ref<HTMLElement | null>,
+  close: () => void,
+) {
   watch(
     openRef,
     (open) => {
@@ -271,10 +309,10 @@ function installOutsideClose(openRef: Ref<boolean>, wrapEl: Ref<HTMLElement | nu
       if (!open) return
 
       const onPointerDown = (e: Event) => {
-        const el = wrapEl.value
         const target = e.target as Node | null
-        if (!el || !target) return
-        if (el.contains(target)) return
+        if (!target) return
+        if (wrapEl.value && wrapEl.value.contains(target)) return
+        if (menuEl.value && menuEl.value.contains(target)) return
         close()
       }
       const onKeyDown = (e: KeyboardEvent) => {
@@ -295,7 +333,7 @@ function installOutsideClose(openRef: Ref<boolean>, wrapEl: Ref<HTMLElement | nu
   )
 }
 
-installOutsideClose(sortPopoverOpen, sortWrapEl, closeSortPopover)
-installOutsideClose(filterPopoverOpen, filterWrapEl, closeFilterPopover)
+installOutsideClose(sortPopoverOpen, sortWrapEl, sortMenuEl, closeSortPopover)
+installOutsideClose(filterPopoverOpen, filterWrapEl, filterMenuEl, closeFilterPopover)
 </script>
 

@@ -248,6 +248,12 @@
                   </div>
                   <AppNotificationBadge v-if="item.key === 'notifications'" />
                   <AppMessagesBadge v-if="item.key === 'messages'" />
+                  <AppCrewInvitesBadge v-if="item.key === 'crew'" />
+                  <span
+                    v-if="item.key === 'home' && (Number(notificationUnreadCommentCount) || 0) > 0"
+                    class="pointer-events-none absolute right-1 top-1 h-2.5 w-2.5 rounded-full bg-orange-500 ring-2 ring-[var(--moh-bg)]"
+                    aria-label="A reply is waiting on you"
+                  />
                 </span>
                 <span
                   v-if="!navCompactMode"
@@ -922,6 +928,8 @@ const {
   connectionBarJustConnected,
   isSocketConnecting,
   setNotificationUndeliveredCount,
+  setNotificationUnreadCommentCount,
+  notificationUnreadCommentCount,
   setMessageUnreadCounts,
   reconnect,
 } = usePresence()
@@ -1213,6 +1221,7 @@ const criticalBadgeCountsLoaded = useState<boolean>('critical-badge-counts-loade
 async function loadCriticalBadgeCounts(opts?: { force?: boolean }) {
   if (!isAuthed.value || !user.value?.id) {
     setNotificationUndeliveredCount(0)
+    setNotificationUnreadCommentCount(0)
     setMessageUnreadCounts({ primary: 0, requests: 0 })
     criticalBadgeCountsLoaded.value = true
     return
@@ -1245,6 +1254,8 @@ async function loadCriticalBadgeCounts(opts?: { force?: boolean }) {
   if (notifRes.status === 'fulfilled') {
     const undelivered = Math.max(0, Number(notifRes.value?.count ?? 0) || 0)
     setNotificationUndeliveredCount(undelivered)
+    const waiting = Math.max(0, Number(notifRes.value?.unreadCommentCount ?? 0) || 0)
+    setNotificationUnreadCommentCount(waiting)
   }
   if (messagesRes.status === 'fulfilled') {
     const primary = Math.max(0, Number(messagesRes.value?.primary ?? 0) || 0)

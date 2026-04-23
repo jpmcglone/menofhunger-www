@@ -88,6 +88,11 @@ export type UsePostsFeedOptions = {
   visibility?: Ref<FeedFilter>
   followingOnly?: Ref<boolean>
   sort?: Ref<FeedSort>
+  /**
+   * When true, sends `sort=forYou` to the API regardless of `sort.value`.
+   * For You is a personalized re-rank of trending; the regular sort pill is ignored.
+   */
+  forYou?: Ref<boolean>
   showAds?: Ref<boolean>
   /** Default `posts-feed` — use a unique key for non-home feeds so state does not clash. */
   feedStateKey?: string
@@ -120,6 +125,7 @@ function postsFeedListQuery(opts: {
   visibility: FeedFilter
   followingOnly: boolean
   sort: FeedSort
+  forYou?: boolean
   cursor: string | null
   groupsHub?: boolean
   communityGroupId?: string | null
@@ -128,6 +134,9 @@ function postsFeedListQuery(opts: {
   const gid = (opts.communityGroupId ?? '').trim()
   const groupScoped = Boolean(opts.groupsHub || gid)
   const authorIds = normalizeAuthorIds(opts.authorIds)
+  // For You is a personalized re-rank of trending. It overrides sort and ignores `followingOnly`
+  // (the algorithm has its own follow-graph signal). Group-scoped feeds aren't affected.
+  const isForYou = Boolean(opts.forYou && !groupScoped)
   return {
     limit: 30,
     collapseByRoot: true,
@@ -142,10 +151,10 @@ function postsFeedListQuery(opts: {
         }
       : {
           visibility: opts.visibility,
-          ...(opts.followingOnly ? { followingOnly: true } : {}),
+          ...(!isForYou && opts.followingOnly ? { followingOnly: true } : {}),
           ...(authorIds ? { authorIds: authorIds.join(',') } : {}),
         }),
-    ...(opts.sort === 'trending' ? { sort: 'trending' } : {}),
+    ...(isForYou ? { sort: 'forYou' } : opts.sort === 'trending' ? { sort: 'trending' } : {}),
     ...(opts.cursor ? { cursor: opts.cursor } : {}),
   }
 }
@@ -166,6 +175,7 @@ export function usePostsFeed(options: UsePostsFeedOptions = {}) {
   const visibility = options.visibility ?? ref<FeedFilter>('all')
   const followingOnly = options.followingOnly ?? ref(false)
   const sort = options.sort ?? ref<FeedSort>('new')
+  const forYou = options.forYou ?? ref(false)
   const showAds = options.showAds ?? computed(() => true)
   const lastHardRefreshMs = useState<number>(`${feedStateKey}-last-hard-refresh-ms`, () => 0)
   // Shared via useState so that the global layout (modal composer) can also track optimistic inserts.
@@ -192,6 +202,7 @@ export function usePostsFeed(options: UsePostsFeedOptions = {}) {
         visibility: visibility.value,
         followingOnly: followingOnly.value,
         sort: sort.value,
+        forYou: forYou.value,
         cursor,
         groupsHub: options.groupsHub?.value,
         communityGroupId: options.communityGroupId?.value ?? null,
@@ -219,6 +230,7 @@ export function usePostsFeed(options: UsePostsFeedOptions = {}) {
       visibility: visibility.value,
       followingOnly: Boolean(followingOnly.value),
       sort: sort.value,
+      forYou: Boolean(forYou.value),
       groupsHub: Boolean(options.groupsHub?.value),
       communityGroupId: gid || null,
       authorIds: normalizeAuthorIds(options.authorIds?.value ?? null) ?? null,
@@ -271,14 +283,29 @@ export function usePostsFeed(options: UsePostsFeedOptions = {}) {
       const postId = String(payload?.postId ?? '').trim()
       if (!postId) return
       const patch = payload?.patch ?? {}
-      // Remove a top-level deleted post from the array entirely so it disappears from the feed.
-      // Non-top-level deleted posts (replies inside threads) are rendered as tombstones via the cache.
       if (patch.deletedAt) {
+        // Case 1: deleted post is a top-level item in the array (no parent).
+        // Remove it entirely.
         const isTopLevel = posts.value.some((p) => p.id === postId && !p.parentId)
         if (isTopLevel) {
           posts.value = posts.value.filter((p) => p.id !== postId)
           forgetLocalInsertsForDeletedPost(postId)
+          return
         }
+        // Case 2: deleted post is a reply that took the parent's slot via `addReply`
+        // (it has a parentId but is sitting as the top-level array entry). Restore the
+        // parent instead of leaving the slot occupied by a deleted reply.
+        const replyIdx = posts.value.findIndex((p) => p.id === postId && p.parentId && p.parent)
+        if (replyIdx >= 0) {
+          const entry = posts.value[replyIdx]!
+          const next = posts.value.slice()
+          next[replyIdx] = entry.parent!
+          posts.value = next
+          forgetLocalInsertsForDeletedPost(postId)
+        }
+        // Case 3: deleted post is a reply nested deeper in a parent chain (e.g. A→B→C
+        // where C is deleted). The cache patch in post-cache.client.ts will mark it
+        // deletedAt so PostRow can render a tombstone — no structural feed change needed.
       }
     },
   }
@@ -368,15 +395,18 @@ export function usePostsFeed(options: UsePostsFeedOptions = {}) {
   let prevVisibility: FeedFilter = visibility.value
   let prevSort: FeedSort = sort.value
   let prevFollowing: boolean = followingOnly.value
+  let prevForYou: boolean = forYou.value
 
   async function refresh() {
     const paramsChanged =
       visibility.value !== prevVisibility ||
       sort.value !== prevSort ||
-      followingOnly.value !== prevFollowing
+      followingOnly.value !== prevFollowing ||
+      forYou.value !== prevForYou
     prevVisibility = visibility.value
     prevSort = sort.value
     prevFollowing = followingOnly.value
+    prevForYou = forYou.value
     if (paramsChanged) localInserts.value = []
     loadingIndicator.start()
     try {
@@ -442,6 +472,7 @@ export function usePostsFeed(options: UsePostsFeedOptions = {}) {
             visibility: visibility.value,
             followingOnly: followingOnly.value,
             sort: sort.value,
+            forYou: forYou.value,
             cursor: null,
             groupsHub: options.groupsHub?.value,
             communityGroupId: options.communityGroupId?.value ?? null,
@@ -590,7 +621,19 @@ export function usePostsFeed(options: UsePostsFeedOptions = {}) {
         }
         return false
       }
-      posts.value = posts.value.filter((p) => !containsId(p, pid))
+      // If the deleted post is a reply that took its parent's slot in the feed via
+      // `addReply`, restore the parent so the feed doesn't leave a blank hole.
+      // This mirrors the same logic in `removeOptimistic` for the pre-confirm path.
+      posts.value = posts.value
+        .map((p): FeedPost | null => {
+          if (!containsId(p, pid)) return p
+          // p IS the deleted reply and it has a parent → restore the parent in its slot.
+          if (p.id === pid && p.parentId && p.parent) return p.parent
+          // p is the deleted post with no parent chain to fall back to, or the deleted
+          // id is somewhere deeper in the chain (shouldn't happen in home feed but guard).
+          return null
+        })
+        .filter((p): p is FeedPost => Boolean(p))
       forgetLocalInsertsForDeletedPost(pid)
       return
     }
@@ -747,6 +790,7 @@ export function usePostsFeed(options: UsePostsFeedOptions = {}) {
     options.visibility ||
     options.sort ||
     options.followingOnly ||
+    options.forYou ||
     options.groupsHub ||
     options.communityGroupId ||
     options.authorIds ||
@@ -757,6 +801,7 @@ export function usePostsFeed(options: UsePostsFeedOptions = {}) {
         options.visibility?.value,
         options.sort?.value,
         options.followingOnly?.value,
+        options.forYou?.value,
         options.groupsHub?.value,
         options.communityGroupId?.value,
         normalizeAuthorIds(options.authorIds?.value ?? null)?.join(',') ?? '',

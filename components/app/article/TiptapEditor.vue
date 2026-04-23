@@ -170,6 +170,19 @@ const editor = useEditor({
     attributes: {
       class: 'focus:outline-none min-h-[72vh] prose prose-gray dark:prose-invert max-w-none article-body pb-16',
     },
+    handlePaste(_view, event) {
+      const items = Array.from(event.clipboardData?.items ?? [])
+      const imageFiles = items
+        .filter((item) => item.type.startsWith('image/'))
+        .map((item) => item.getAsFile())
+        .filter((f): f is File => f !== null)
+      if (imageFiles.length === 0) return false
+      event.preventDefault()
+      for (const file of imageFiles) {
+        void uploadAndInsertImage(file)
+      }
+      return true
+    },
   },
   onUpdate: ({ editor: e }) => {
     emit('update:modelValue', JSON.stringify(e.getJSON()))
@@ -275,11 +288,7 @@ function triggerImageUpload() {
   imageInputEl.value?.click()
 }
 
-async function onImageFileChange(event: Event) {
-  const input = event.target as HTMLInputElement
-  const file = input.files?.[0]
-  if (!file) return
-  input.value = ''
+async function uploadAndInsertImage(file: File) {
   uploading.value = true
   try {
     const init = await apiFetchData<{ key: string; uploadUrl: string; headers: Record<string, string> }>(
@@ -311,6 +320,14 @@ async function onImageFileChange(event: Event) {
   } finally {
     uploading.value = false
   }
+}
+
+async function onImageFileChange(event: Event) {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  if (!file) return
+  input.value = ''
+  await uploadAndInsertImage(file)
 }
 
 onMounted(() => {

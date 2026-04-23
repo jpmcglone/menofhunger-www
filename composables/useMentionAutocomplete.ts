@@ -91,6 +91,9 @@ export function useMentionAutocomplete(opts: {
   const highlightedIndex = ref(0)
   const anchor = ref<CaretPoint | null>(null)
   const active = ref<ActiveMention | null>(null)
+  // True while a search request is in-flight or pending (debounced) for the active query.
+  // Used by the popover to show a spinner instead of "No matches" before the API has resolved.
+  const loading = ref(false)
   // Number of items at the start of `items` that belong to the priority section.
   const prioritySectionCount = ref(0)
 
@@ -142,6 +145,7 @@ export function useMentionAutocomplete(opts: {
     anchor.value = null
     items.value = []
     highlightedIndex.value = 0
+    loading.value = false
     if (blurCloseTimer) {
       clearTimeout(blurCloseTimer)
       blurCloseTimer = null
@@ -289,6 +293,7 @@ export function useMentionAutocomplete(opts: {
         if (activeRequestId !== requestId) return
         prioritySectionCount.value = priorityMatches.length
         setItems(merged)
+        loading.value = false
         if (qNorm) {
           // Cache only the API portion so future non-lobby contexts aren't polluted.
           cache.set(qNorm, { expiresAt: now + CACHE_TTL_MS, items: rerank(mentionable, q) })
@@ -298,6 +303,7 @@ export function useMentionAutocomplete(opts: {
         const ranked = rerank(mentionable, q)
         if (activeRequestId !== requestId) return
         setItems(ranked)
+        loading.value = false
         if (qNorm) {
           cache.set(qNorm, { expiresAt: now + CACHE_TTL_MS, items: ranked })
           pruneCache()
@@ -307,6 +313,7 @@ export function useMentionAutocomplete(opts: {
       if ((e as any)?.name === 'AbortError') return
       if (activeRequestId !== requestId) return
       items.value = []
+      loading.value = false
     } finally {
       if (inflight === controller) inflight = null
     }
@@ -339,18 +346,29 @@ export function useMentionAutocomplete(opts: {
       updateAnchor()
       highlightedIndex.value = 0
       lastQueryNorm = ''
+      loading.value = false
       return
     }
 
     // For non-priority mode, show best cached prefix immediately to avoid flicker.
+    let usedCache = false
     if (!hasPriority) {
       const cached = qNorm ? getBestCached(qNorm) : null
-      if (cached) items.value = cached
+      if (cached) {
+        items.value = cached
+        usedCache = true
+      }
     }
 
     const queryChanged = qNorm !== (lastQueryNorm ?? null)
     if (queryChanged) highlightedIndex.value = 0
     lastQueryNorm = qNorm
+
+    // Show loader only when we have nothing useful to display yet — avoids flashing the
+    // spinner when prior results (cache or priority section) are already on screen.
+    if (items.value.length === 0 && !usedCache) {
+      loading.value = true
+    }
 
     // Fetch faster for first character; debounce more for subsequent typing.
     const delay = q.length <= 1 ? 0 : debounceMs
@@ -578,6 +596,7 @@ export function useMentionAutocomplete(opts: {
     anchor: CaretPoint | null
     listboxId: string
     sections: MentionSection[]
+    loading: boolean
   }>({
     open: false,
     items: [],
@@ -585,6 +604,7 @@ export function useMentionAutocomplete(opts: {
     anchor: null,
     listboxId,
     sections: [],
+    loading: false,
   })
   watchEffect(() => {
     popoverProps.open = open.value
@@ -593,6 +613,7 @@ export function useMentionAutocomplete(opts: {
     popoverProps.anchor = anchor.value
     popoverProps.listboxId = listboxId
     popoverProps.sections = sections.value
+    popoverProps.loading = loading.value
   })
 
   watch(
@@ -621,6 +642,7 @@ export function useMentionAutocomplete(opts: {
     active: readonly(active),
     mentionTiers: readonly(mentionTiers),
     highlightedUser,
+    loading: readonly(loading),
 
     // manual handlers (for components that already own input/keydown behavior)
     recompute,

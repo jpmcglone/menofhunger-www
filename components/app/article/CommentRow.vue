@@ -166,31 +166,35 @@
             </Menu>
 
             <!-- More (only shown when there are items, e.g. delete for own comments) -->
-            <div v-if="hasMoreOptions" ref="moreWrapRef" class="relative">
+            <div v-if="hasMoreOptions" ref="moreWrapRef">
               <button
                 type="button"
                 class="inline-flex h-8 w-8 items-center justify-center text-gray-400 transition-colors hover:text-gray-700 dark:text-zinc-500 dark:hover:text-zinc-300"
                 aria-label="More options"
                 v-tooltip.bottom="moreTooltip"
-                @click="moreOpen = !moreOpen"
+                @click="onMoreClick"
               >
                 <Icon name="tabler:dots" size="15" />
               </button>
-              <Transition name="popover">
-                <div
-                  v-if="moreOpen"
-                  class="absolute right-0 top-full z-50 mt-1 w-36 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-lg dark:border-zinc-700 dark:bg-zinc-900"
-                >
-                  <button
-                    type="button"
-                    class="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-left text-sm text-red-500 transition-colors hover:bg-red-50 dark:hover:bg-red-950/30"
-                    @click="onDeleteClick"
+              <Teleport to="body">
+                <Transition name="popover">
+                  <div
+                    v-if="moreOpen"
+                    ref="moreMenuEl"
+                    class="fixed z-[9999] w-36 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-lg dark:border-zinc-700 dark:bg-zinc-900"
+                    :style="moreMenuStyle"
                   >
-                    <Icon name="tabler:trash" size="15" class="shrink-0" />
-                    Delete
-                  </button>
-                </div>
-              </Transition>
+                    <button
+                      type="button"
+                      class="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-left text-sm text-red-500 transition-colors hover:bg-red-50 dark:hover:bg-red-950/30"
+                      @click="onDeleteClick"
+                    >
+                      <Icon name="tabler:trash" size="15" class="shrink-0" />
+                      Delete
+                    </button>
+                  </div>
+                </Transition>
+              </Teleport>
             </div>
           </div>
         </div>
@@ -317,6 +321,23 @@ const isOwnComment = computed(() => user.value?.id === props.comment.author.id)
 const hasMoreOptions = computed(() => isOwnComment.value)
 const confirmingDelete = ref(false)
 const moreOpen = ref(false)
+const {
+  style: moreMenuStyle,
+  menuEl: moreMenuEl,
+  place: placeMoreMenu,
+  reset: resetMoreMenu,
+} = useMenuPosition()
+
+function onMoreClick(e: MouseEvent) {
+  const next = !moreOpen.value
+  if (next) {
+    const btn = e.currentTarget as HTMLElement
+    placeMoreMenu(btn, { align: 'end', menuWidth: 144, menuHeight: 44 })
+  } else {
+    resetMoreMenu()
+  }
+  moreOpen.value = next
+}
 
 // ─── Truncation (animated) ────────────────────────────────────────────────────
 const expanded = ref(false)
@@ -403,9 +424,14 @@ const highlightColor = computed(() => {
 
 function onDocPointerDown(e: PointerEvent) {
   const target = e.target as Node
-  if (moreOpen.value && !moreWrapRef.value?.contains(target)) {
+  if (
+    moreOpen.value
+    && !moreWrapRef.value?.contains(target)
+    && !moreMenuEl.value?.contains(target)
+  ) {
     moreOpen.value = false
     confirmingDelete.value = false
+    resetMoreMenu()
   }
   if (
     reactPickerOpen.value

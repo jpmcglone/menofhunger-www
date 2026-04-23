@@ -140,6 +140,10 @@ export type NotificationPreferences = {
   pushRepost: boolean
   pushNudge: boolean
   pushFollowedPost: boolean
+  /** Send a single push 24h after a reply if the recipient hasn't opened it yet. Once-per-notification, never spammed. */
+  pushReplyNudge: boolean
+  /** Crew streak: push when the strict crew streak advances or breaks. Highest-signal push in the product. */
+  pushCrewStreak: boolean
   emailDigestDaily: boolean
   emailDigestWeekly: boolean
   emailNewNotifications: boolean
@@ -1225,7 +1229,11 @@ export type GetNotificationsNewPostsResponse = {
 }
 
 export type GetNotificationsUnreadCountResponse = {
-  data: { count: number }
+  data: {
+    count: number
+    /** Unread reply (kind: 'comment') notifications — drives the "waiting on you" dot on the Home tab. */
+    unreadCommentCount: number
+  }
 }
 
 export type MessageConversationType = 'direct' | 'group' | 'crew_wall'
@@ -1497,6 +1505,22 @@ export type WsFeedNewPostPayload = {
   post: FeedPost
 }
 
+/**
+ * Live "someone in your circle just answered today's check-in" event.
+ * Emitted to followers + crew members of the actor when a `kind: 'checkin'` post is created.
+ */
+export type WsCheckinAnsweredTodayPayload = {
+  dayKey: string
+  totalToday: number
+  answerer: {
+    id: string
+    username: string | null
+    displayName: string | null
+    avatarUrl: string | null
+    isFollowed?: boolean
+  }
+}
+
 export type WsAdminUpdateKind = 'reports' | 'verification' | 'feedback'
 export type WsAdminUpdateAction = 'created' | 'updated' | 'deleted' | 'resolved' | 'reviewed' | 'other'
 export type WsAdminUpdatedPayload = {
@@ -1630,6 +1654,26 @@ export type AdminAdjustCoinsResult = {
 
 export type CheckinAllowedVisibility = 'verifiedOnly' | 'premiumOnly'
 
+export type CheckinCrewMemberStatus = {
+  userId: string
+  username: string | null
+  displayName: string | null
+  avatarUrl: string | null
+  answeredToday: boolean
+  isViewer: boolean
+}
+
+export type CheckinCrewBlock = {
+  id: string
+  slug: string
+  name: string | null
+  promptFraming: 'crew'
+  currentStreakDays: number
+  longestStreakDays: number
+  lastCompletedDayKey: string | null
+  memberStatus: CheckinCrewMemberStatus[]
+}
+
 export type GetCheckinsTodayResponse = {
   dayKey: string
   prompt: string
@@ -1637,6 +1681,22 @@ export type GetCheckinsTodayResponse = {
   coins: number
   checkinStreakDays: number
   allowedVisibilities: CheckinAllowedVisibility[]
+  crew?: CheckinCrewBlock | null
+}
+
+export type CheckinAnswerer = {
+  id: string
+  username: string | null
+  displayName: string | null
+  avatarUrl: string | null
+  answeredAt: string
+  isFollowed?: boolean
+}
+
+export type GetCheckinsTodayAnsweredResponse = {
+  dayKey: string
+  totalToday: number
+  recentAnswerers: CheckinAnswerer[]
 }
 
 export type CreateCheckinResponse = {

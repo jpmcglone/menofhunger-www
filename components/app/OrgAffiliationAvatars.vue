@@ -4,10 +4,12 @@
       <!--
         Use a <button> (not NuxtLink/<a>) so this never creates a nested <a> when
         rendered inside a link-based row. Click still navigates; hover shows the
-        org's profile preview card.
+        org's profile preview card. When `interactive` is false the org avatar
+        is rendered as a plain span — no hover preview, no click — so it stays
+        purely informational (used inside other popovers/menus).
       -->
       <button
-        v-if="org.username"
+        v-if="org.username && interactive"
         type="button"
         :style="i > 0 ? { marginLeft: '-4px' } : {}"
         class="relative flex-shrink-0 block cursor-pointer focus:outline-none"
@@ -73,10 +75,17 @@ const props = withDefaults(
     size?: 'xs' | 'sm' | 'md'
     /** Max orgs to show before showing +N overflow. Default: 3. */
     max?: number
+    /**
+     * When false, render org avatars as plain spans (no hover preview, no
+     * click navigation). Use inside other popovers/menus where the avatar
+     * should be purely decorative. Default: true.
+     */
+    interactive?: boolean
   }>(),
   {
     size: 'sm',
     max: 3,
+    interactive: true,
   },
 )
 

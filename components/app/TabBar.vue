@@ -12,11 +12,16 @@
             type="button"
             class="flex h-full w-full flex-col items-center justify-center touch-manipulation transition-transform duration-100 active:scale-[0.98] moh-focus"
             :class="moreOpen ? 'moh-text' : 'moh-text-muted'"
-            aria-label="More"
+            :aria-label="moreAriaLabel"
             @click="() => { haptics.tap(); moreOpen = true }"
           >
             <div class="relative h-10 w-10 flex items-center justify-center">
               <Icon :name="item.icon" size="24" class="opacity-90" aria-hidden="true" />
+              <span
+                v-if="hasPendingCrewInvites"
+                class="pointer-events-none absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-amber-500 ring-2 ring-[var(--moh-bg)]"
+                aria-hidden="true"
+              />
             </div>
           </button>
 
@@ -36,6 +41,11 @@
               />
               <AppNotificationBadge v-if="item.key === 'notifications'" />
               <AppMessagesBadge v-if="item.key === 'messages'" />
+              <span
+                v-if="item.key === 'home' && showWaitingDot"
+                class="pointer-events-none absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-orange-500 ring-2 ring-[var(--moh-bg)]"
+                aria-label="A reply is waiting on you"
+              />
             </div>
           </NuxtLink>
         </template>
@@ -104,7 +114,7 @@
             ]"
             @click="() => { moreOpen = false }"
           >
-            <div class="flex items-center gap-3 min-w-0">
+              <div class="flex items-center gap-3 min-w-0">
               <div class="relative h-10 w-10 shrink-0 flex items-center justify-center">
                 <Icon
                   :name="moreMenuIconName(mi)"
@@ -118,6 +128,7 @@
                 >
                   <AppNewBadge small />
                 </div>
+                <AppCrewInvitesBadge v-if="mi.key === 'crew'" />
               </div>
               <div class="min-w-0">
                 <div class="text-sm font-semibold truncate">
@@ -216,6 +227,22 @@ const { requestLogout } = useUserMenu()
 const { user } = useAuth()
 const middleScrollerRef = useMiddleScroller()
 const haptics = useHaptics()
+const { notificationUnreadCommentCount } = usePresence()
+/**
+ * Dot-only "waiting on you" indicator next to the Home tab. We deliberately do not show
+ * a number — the count creates anxiety and we just want the user to know "someone replied;
+ * tap home to see it." When the user reads the reply, the count drops to 0 and the dot disappears.
+ */
+const showWaitingDot = computed(() => Number(notificationUnreadCommentCount.value ?? 0) > 0)
+
+// Crew invites are surfaced inside the More sheet on mobile, so we add a tiny
+// dot to the More button itself when the viewer has pending invites — without
+// it, mobile users would never discover the badge.
+const { count: pendingCrewInviteCount } = useCrewInvitesBadge()
+const hasPendingCrewInvites = computed(() => pendingCrewInviteCount.value > 0)
+const moreAriaLabel = computed(() =>
+  hasPendingCrewInvites.value ? 'More — pending crew invite' : 'More',
+)
 
 // User data exposed to the "More" bottom sheet.
 const moreUser = computed(() => user.value ?? null)

@@ -69,7 +69,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: 'update:modelValue', v: boolean): void
-  (e: 'invited'): void
+  (e: 'invited', invite: import('~/types/api').CrewInvite): void
 }>()
 
 const crewApi = useCrew()
@@ -100,12 +100,12 @@ async function submit() {
   sending.value = true
   error.value = null
   try {
-    await crewApi.sendInvite({
+    const invite = await crewApi.sendInvite({
       inviteeUserId: selectedUser.value.id,
       message: message.value.trim() || null,
     })
     pushToast({ title: 'Invite sent', tone: 'success' })
-    emit('invited')
+    emit('invited', invite)
     close()
   } catch (e) {
     error.value = getApiErrorMessage(e) || 'Could not send that invite.'

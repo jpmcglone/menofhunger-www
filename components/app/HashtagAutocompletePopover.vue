@@ -43,7 +43,16 @@
             </button>
           </template>
 
-          <div v-if="totalItems === 0" class="px-3 py-3 text-sm text-gray-600 dark:text-gray-300">
+          <div
+            v-if="totalItems === 0 && loading"
+            class="px-3 py-3 flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400"
+            role="status"
+            aria-live="polite"
+          >
+            <Icon name="tabler:loader-2" size="16" class="animate-spin" aria-hidden="true" />
+            <span>Searching…</span>
+          </div>
+          <div v-else-if="totalItems === 0" class="px-3 py-3 text-sm text-gray-600 dark:text-gray-300">
             No matches.
           </div>
         </div>
@@ -64,6 +73,8 @@ const props = defineProps<{
   highlightedIndex: number
   anchor: { left: number; top: number; height: number } | null
   listboxId?: string
+  /** True while the autocomplete is fetching results — shows a spinner instead of "No matches". */
+  loading?: boolean
 }>()
 
 const emit = defineEmits<{

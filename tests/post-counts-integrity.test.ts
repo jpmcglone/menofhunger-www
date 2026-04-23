@@ -729,3 +729,78 @@ describe('usePostComments.prependComment bumpCount option', () => {
     expect(api.commentsCounts.value?.all).toBe(1)
   })
 })
+
+// ── 10. usePostComments.onCommentDeleted double-fire guard ────────────────────
+//
+// Regression: when the deleting user removes their own reply, the local
+// `<PostRow @deleted>` event AND the server-emitted `posts:commentDeleted` WS
+// event both call `onCommentDeleted` with the same id. Without the guard, the
+// second call decrements `commentsCounts.all` again — leaving the displayed
+// count one too low until the next fetch.
+//
+// The fix only decrements when an entry was actually removed from
+// `comments.value`. The paired `posts:liveUpdated` (with patch.commentCount)
+// remains the authoritative reconciliation path for the count.
+
+describe('usePostComments.onCommentDeleted double-fire guard', () => {
+  it('decrements exactly once when the comment is in the list', async () => {
+    const { usePostComments } = await import('~/composables/usePostComments')
+    const postId = ref('parent-d1')
+    const post = ref<{ id: string; visibility?: string; commentCount?: number } | null>({
+      id: 'parent-d1',
+      visibility: 'public',
+      commentCount: 1,
+    })
+    const isOnlyMe = ref(true)
+    const api = await runInSetup(() => usePostComments({ postId, post, isOnlyMe }))
+    api.commentsCounts.value = { all: 1, public: 1, verifiedOnly: 0, premiumOnly: 0 }
+
+    const reply = makePost({ id: 'c-d1', parentId: 'parent-d1' })
+    api.prependComment(reply, { bumpCount: false })
+    expect(api.comments.value).toHaveLength(1)
+
+    api.onCommentDeleted('c-d1')
+    expect(api.comments.value).toHaveLength(0)
+    expect(api.commentsCounts.value?.all).toBe(0)
+  })
+
+  it('does NOT decrement on a second call for an already-removed comment', async () => {
+    const { usePostComments } = await import('~/composables/usePostComments')
+    const postId = ref('parent-d2')
+    const post = ref<{ id: string; visibility?: string; commentCount?: number } | null>({
+      id: 'parent-d2',
+      visibility: 'public',
+      commentCount: 1,
+    })
+    const isOnlyMe = ref(true)
+    const api = await runInSetup(() => usePostComments({ postId, post, isOnlyMe }))
+    api.commentsCounts.value = { all: 1, public: 1, verifiedOnly: 0, premiumOnly: 0 }
+
+    const reply = makePost({ id: 'c-d2', parentId: 'parent-d2' })
+    api.prependComment(reply, { bumpCount: false })
+
+    // First fire: local @deleted from PostRow.
+    api.onCommentDeleted('c-d2')
+    expect(api.commentsCounts.value?.all).toBe(0)
+
+    // Second fire: WS posts:commentDeleted for the same id. Must be a no-op.
+    api.onCommentDeleted('c-d2')
+    expect(api.commentsCounts.value?.all).toBe(0)
+  })
+
+  it('does NOT decrement when called for an unknown comment id', async () => {
+    const { usePostComments } = await import('~/composables/usePostComments')
+    const postId = ref('parent-d3')
+    const post = ref<{ id: string; visibility?: string; commentCount?: number } | null>({
+      id: 'parent-d3',
+      visibility: 'public',
+      commentCount: 2,
+    })
+    const isOnlyMe = ref(true)
+    const api = await runInSetup(() => usePostComments({ postId, post, isOnlyMe }))
+    api.commentsCounts.value = { all: 2, public: 2, verifiedOnly: 0, premiumOnly: 0 }
+
+    api.onCommentDeleted('does-not-exist')
+    expect(api.commentsCounts.value?.all).toBe(2)
+  })
+})

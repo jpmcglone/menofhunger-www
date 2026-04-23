@@ -8,7 +8,7 @@
           :model-value="scope"
           aria-label="Feed scope"
           :tabs="scopeTabs"
-          @update:model-value="$emit('update:scope', $event as 'following' | 'all')"
+          @update:model-value="$emit('update:scope', $event as FeedScope)"
         />
       </template>
       <!-- Keep filters pinned to the far right even when scope tabs are hidden. -->
@@ -21,6 +21,7 @@
           :viewer-is-verified="viewerIsVerified"
           :viewer-is-premium="viewerIsPremium"
           :show-reset="showReset"
+          :hide-sort="scope === 'forYou'"
           @update:sort="$emit('update:sort', $event)"
           @update:filter="$emit('update:filter', $event)"
           @reset="$emit('reset')"
@@ -32,9 +33,10 @@
 
 <script setup lang="ts">
 import type { ProfilePostsFilter } from '~/utils/post-visibility'
+import type { FeedScope } from '~/composables/useUrlFeedFilters'
 
 defineProps<{
-  scope: 'following' | 'all'
+  scope: FeedScope
   sort: 'new' | 'trending'
   filter: ProfilePostsFilter
   scopeTabs: Array<{ key: string; label: string; disabled: boolean }>
@@ -44,7 +46,7 @@ defineProps<{
 }>()
 
 defineEmits<{
-  (e: 'update:scope', v: 'following' | 'all'): void
+  (e: 'update:scope', v: FeedScope): void
   (e: 'update:sort', v: 'new' | 'trending'): void
   (e: 'update:filter', v: ProfilePostsFilter): void
   (e: 'reset'): void

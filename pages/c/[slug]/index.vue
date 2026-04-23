@@ -113,9 +113,13 @@
           <AppCrewMemberStrip
             v-if="crew.members.length > 0 || isOwner"
             :members="crew.members"
+            :pending-invitees="pendingInvitees"
             :is-owner="isOwner"
+            :viewer-is-member="isMember"
             :can-add-member="canAddMember"
             @add-member="addMemberOpen = true"
+            @member-click="onMemberClick"
+            @pending-click="onPendingClick"
           />
         </section>
 
@@ -189,11 +193,33 @@
       :exclude-user-ids="addMemberExcludeIds"
       @invited="onMemberInvited"
     />
+
+    <AppCrewMemberActionMenu
+      :open="memberMenuOpen"
+      :target="memberMenuTarget"
+      :anchor-el="memberMenuAnchor"
+      :viewer-is-owner="isOwner"
+      :viewer-user-id="meUser?.id ?? null"
+      @update:open="memberMenuOpen = $event"
+      @remove-member="onRemoveMemberRequested"
+      @cancel-invite="onCancelInviteRequested"
+    />
+
+    <AppConfirmDialog
+      v-model:visible="removeConfirmOpen"
+      :header="removeConfirmHeader"
+      :message="removeConfirmMessage"
+      confirm-label="Remove"
+      confirm-severity="danger"
+      :loading="removingMember"
+      @confirm="performRemoveMember"
+    />
   </AppPageContent>
 </template>
 
 <script setup lang="ts">
-import type { CrewBySlugViewerMembership, CrewPrivate, CrewPublic, FeedPost } from '~/types/api'
+import type { CrewBySlugViewerMembership, CrewInvite, CrewMemberListItem, CrewPrivate, CrewPublic, FeedPost } from '~/types/api'
+import type { CrewMemberActionTarget } from '~/components/app/crew/CrewMemberActionMenu.vue'
 import { useLoadMoreObserver } from '~/composables/useLoadMoreObserver'
 import { useMiddleScroller } from '~/composables/useMiddleScroller'
 import type { CrewCallback, WsCrewWallPayload } from '~/composables/usePresence'
@@ -238,12 +264,134 @@ const editCrewOpen = ref(false)
 const addMemberOpen = ref(false)
 const leaving = ref(false)
 
+// Pending invitees (members only). Populated after load() + kept fresh via
+// realtime invite events so you don't have to refresh after (un)inviting.
+const pendingInvitees = ref<CrewInvite[]>([])
+
 // Add-member dialog: exclude current members + pending invitees
 const addMemberExcludeIds = computed<string[]>(() => {
   const ids = new Set<string>()
   for (const m of crew.value?.members ?? []) ids.add(m.user.id)
+  for (const inv of pendingInvitees.value) ids.add(inv.invitee.id)
   return [...ids]
 })
+
+const toast = useAppToast()
+
+const memberMenuOpen = ref(false)
+const memberMenuTarget = ref<CrewMemberActionTarget | null>(null)
+const memberMenuAnchor = ref<HTMLElement | null>(null)
+
+const removeConfirmOpen = ref(false)
+const removingMember = ref(false)
+const pendingRemoveUser = ref<{ id: string; name: string } | null>(null)
+
+const removeConfirmHeader = computed(() => {
+  const name = pendingRemoveUser.value?.name ?? 'this member'
+  return `Remove ${name}?`
+})
+const removeConfirmMessage = computed(
+  () => 'They will lose access to the crew chat and feed. You can invite them back later.',
+)
+
+function onMemberClick(payload: { member: CrewMemberListItem; anchorEl: HTMLElement }) {
+  memberMenuTarget.value = {
+    kind: 'member',
+    user: payload.member.user,
+    role: payload.member.role,
+  }
+  memberMenuAnchor.value = payload.anchorEl
+  memberMenuOpen.value = true
+}
+
+function onPendingClick(payload: { invite: CrewInvite; anchorEl: HTMLElement }) {
+  memberMenuTarget.value = {
+    kind: 'pendingInvite',
+    user: payload.invite.invitee,
+    inviteId: payload.invite.id,
+  }
+  memberMenuAnchor.value = payload.anchorEl
+  memberMenuOpen.value = true
+}
+
+function onRemoveMemberRequested(userId: string) {
+  const m = (crew.value?.members ?? []).find((x) => x.user.id === userId)
+  if (!m) return
+  pendingRemoveUser.value = {
+    id: userId,
+    name: m.user.name ?? m.user.username ?? 'this member',
+  }
+  removeConfirmOpen.value = true
+}
+
+async function performRemoveMember() {
+  const target = pendingRemoveUser.value
+  if (!target) return
+  removingMember.value = true
+  try {
+    await crewApi.kickMember(target.id)
+    if (crew.value) {
+      crew.value = {
+        ...crew.value,
+        members: crew.value.members.filter((m) => m.user.id !== target.id),
+        memberCount: Math.max(0, (crew.value.memberCount ?? 1) - 1),
+      }
+    }
+    toast.add({ severity: 'success', summary: `Removed ${target.name}`, life: 2500 })
+  } catch (e) {
+    toast.add({ severity: 'error', summary: getApiErrorMessage(e) || 'Could not remove that member.', life: 4000 })
+  } finally {
+    removingMember.value = false
+    removeConfirmOpen.value = false
+    pendingRemoveUser.value = null
+  }
+}
+
+async function onCancelInviteRequested(inviteId: string) {
+  const invite = pendingInvitees.value.find((i) => i.id === inviteId)
+  const name = invite?.invitee.name ?? invite?.invitee.username ?? 'invite'
+  pendingInvitees.value = pendingInvitees.value.filter((i) => i.id !== inviteId)
+  try {
+    await crewApi.cancelInvite(inviteId)
+    toast.add({ severity: 'success', summary: `Invite to ${name} withdrawn`, life: 2500 })
+  } catch (e) {
+    if (invite) {
+      pendingInvitees.value = [...pendingInvitees.value, invite].sort((a, b) =>
+        a.createdAt.localeCompare(b.createdAt),
+      )
+    }
+    toast.add({ severity: 'error', summary: getApiErrorMessage(e) || 'Could not cancel the invite.', life: 4000 })
+  }
+}
+
+async function refreshPendingInvitees(crewId: string | null) {
+  if (!import.meta.client || !crewId) {
+    if (pendingInvitees.value.length > 0) pendingInvitees.value = []
+    return
+  }
+  try {
+    const all = await crewApi.listOutbox()
+    const next = all
+      .filter((inv) => inv.status === 'pending' && inv.crew?.id === crewId)
+      .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
+    // Only reassign if the list actually changed — keeps Vue from re-keying
+    // unchanged child rows and prevents avatar flicker on idempotent refreshes
+    // (e.g., right after our own optimistic insert/remove).
+    if (!sameInviteIds(pendingInvitees.value, next)) {
+      pendingInvitees.value = next
+    }
+  } catch {
+    // Non-fatal — leave existing list alone
+  }
+}
+
+function sameInviteIds(a: CrewInvite[], b: CrewInvite[]): boolean {
+  if (a.length !== b.length) return false
+  for (let i = 0; i < a.length; i++) {
+    if (a[i].id !== b[i].id) return false
+  }
+  return true
+}
 
 const canAddMember = computed(
   () => isOwner.value && (crew.value?.memberCount ?? 0) < 5,
@@ -351,9 +499,16 @@ function onCrewUpdated(updated: CrewPrivate) {
   }
 }
 
-function onMemberInvited() {
-  // Refresh crew data to get updated pending invite count
-  void load()
+function onMemberInvited(invite: CrewInvite) {
+  // Optimistic insert — no full reload (avoids the page-level spinner flash).
+  // The realtime crew:invite-received event will fire shortly after; the
+  // refresh path is idempotent and will leave the array untouched if the IDs
+  // already match.
+  if (!crew.value || invite.crew?.id !== crew.value.id) return
+  if (pendingInvitees.value.some((i) => i.id === invite.id)) return
+  pendingInvitees.value = [...pendingInvitees.value, invite].sort((a, b) =>
+    a.createdAt.localeCompare(b.createdAt),
+  )
 }
 
 function onCrewDisbanded() {
@@ -392,7 +547,10 @@ async function load() {
     loading.value = false
     return
   }
-  loading.value = true
+  // Only show the page-level spinner on the very first load. Subsequent
+  // reloads (realtime member/owner changes, etc.) refresh in place to avoid
+  // flashing the whole page back to a loading state.
+  if (crew.value === null) loading.value = true
   notFound.value = false
   try {
     const res = await crewApi.getCrewBySlug(slug)
@@ -406,6 +564,11 @@ async function load() {
     if (import.meta.client && res.viewerMembership && res.crew.id) {
       void markReadBySubject({ crew_id: res.crew.id })
     }
+    if (res.viewerMembership) {
+      void refreshPendingInvitees(res.crew.id)
+    } else {
+      pendingInvitees.value = []
+    }
     if (import.meta.client && res.crew.slug && res.crew.slug !== slug) {
       void navigateTo(`/c/${encodeURIComponent(res.crew.slug)}`, { replace: true })
     }
@@ -417,6 +580,10 @@ async function load() {
 }
 
 watch(() => route.params.slug, () => {
+  // Different crew page — clear stale data so the page-level spinner shows.
+  crew.value = null
+  viewerMembership.value = null
+  pendingInvitees.value = []
   void load()
 })
 
@@ -433,9 +600,21 @@ const realtimeCb: CrewCallback = {
   onOwnerChanged() {
     void load()
   },
-  onDisbanded() {
+  onDisbanded(payload: { crewId: string }) {
+    // Only flip if the disbanded crew is the one this page is showing. The
+    // viewer can receive a `crew:disbanded` event for an OLD crew (e.g. their
+    // solo crew was auto-disbanded when they accepted an invite) while sitting
+    // on a different crew page — without this guard, that page would
+    // incorrectly flash "not found".
+    if (!crew.value || payload?.crewId !== crew.value.id) return
     notFound.value = true
     crew.value = null
+  },
+  onInviteReceived() {
+    if (isMember.value) void refreshPendingInvitees(crew.value?.id ?? null)
+  },
+  onInviteUpdated() {
+    if (isMember.value) void refreshPendingInvitees(crew.value?.id ?? null)
   },
   onWallNew(payload: WsCrewWallPayload) {
     // Bump the chat badge for new messages on this crew while we're on the page,

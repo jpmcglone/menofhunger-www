@@ -16,6 +16,7 @@
         v-if="orgAffiliations && orgAffiliations.length > 0"
         :orgs="orgAffiliations"
         :size="badgeSize === 'md' ? 'md' : badgeSize === 'xs' ? 'xs' : 'sm'"
+        :interactive="interactive"
       />
       <slot name="after-name" />
     </div>
@@ -47,11 +48,17 @@ const props = withDefaults(
     badgeSize?: 'xs' | 'sm' | 'md'
     /** Override org affiliations (falls back to user.orgAffiliations). */
     orgAffiliations?: OrgAffiliation[] | null
+    /**
+     * Forwarded to org affiliation avatars. When false, org avatars become
+     * non-interactive (no hover preview, no click). Default: true.
+     */
+    interactive?: boolean
   }>(),
   {
     nameClass: 'text-sm',
     handleClass: 'text-xs',
     badgeSize: 'sm',
+    interactive: true,
   },
 )
 

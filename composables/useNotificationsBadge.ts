@@ -4,7 +4,12 @@ import { userColorTier } from '~/utils/user-tier'
 export function useNotificationsBadge() {
   const { user } = useAuth()
   const { apiFetch } = useApiClient()
-  const { notificationUndeliveredCount, setNotificationUndeliveredCount, isSocketConnected } = usePresence()
+  const {
+    notificationUndeliveredCount,
+    setNotificationUndeliveredCount,
+    setNotificationUnreadCommentCount,
+    isSocketConnected,
+  } = usePresence()
 
   const count = computed(() => Math.max(0, Number(notificationUndeliveredCount.value) || 0))
   /** Only show badge when there is at least one unseen notification (never show for 0). */
@@ -28,6 +33,9 @@ export function useNotificationsBadge() {
       const res = await apiFetch<GetNotificationsUnreadCountResponse['data']>('/notifications/unread-count')
       const raw = res?.data?.count ?? 0
       setNotificationUndeliveredCount(raw)
+      // Same endpoint also seeds the "waiting on you" dot so we don't pay for a second round-trip.
+      const waitingRaw = res?.data?.unreadCommentCount ?? 0
+      setNotificationUnreadCommentCount(waitingRaw)
     } catch {
       // Ignore; badge will update on next socket event or page load
     }
@@ -37,7 +45,10 @@ export function useNotificationsBadge() {
     () => user.value?.id,
     (userId) => {
       if (userId) fetchUndeliveredCount()
-      else setNotificationUndeliveredCount(0)
+      else {
+        setNotificationUndeliveredCount(0)
+        setNotificationUnreadCommentCount(0)
+      }
     },
     { immediate: true },
   )

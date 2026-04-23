@@ -1423,8 +1423,7 @@ const repostTooltip = computed(() => {
 })
 
 const repostMenuOpen = ref(false)
-const repostMenuEl = ref<HTMLElement | null>(null)
-const repostMenuStyle = ref<Record<string, string>>({})
+const { style: repostMenuStyle, menuEl: repostMenuEl, place: placeRepostMenu } = useMenuPosition()
 
 const openComposerKey = inject(MOH_OPEN_COMPOSER_KEY, null)
 
@@ -1447,16 +1446,8 @@ function onRepostClick(e: MouseEvent) {
     showAuthActionModal({ kind: 'setUsername', action: 'repost' as any })
     return
   }
-  // Position the menu near the button
-  const btn = (e.currentTarget as HTMLElement)
-  const rect = btn.getBoundingClientRect()
-  const menuWidth = 180
-  let left = rect.left
-  if (left + menuWidth > window.innerWidth - 8) left = window.innerWidth - menuWidth - 8
-  repostMenuStyle.value = {
-    top: `${rect.bottom + 4}px`,
-    left: `${left}px`,
-  }
+  const btn = e.currentTarget as HTMLElement
+  placeRepostMenu(btn, { menuWidth: 180, menuHeight: 96 })
   repostMenuOpen.value = !repostMenuOpen.value
 }
 

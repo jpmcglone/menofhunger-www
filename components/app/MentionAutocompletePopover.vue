@@ -74,7 +74,16 @@
             </button>
           </template>
 
-          <div v-if="items.length === 0" class="px-3 py-3 text-sm text-gray-600 dark:text-gray-300">
+          <div
+            v-if="items.length === 0 && loading"
+            class="px-3 py-3 flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400"
+            role="status"
+            aria-live="polite"
+          >
+            <Icon name="tabler:loader-2" size="16" class="animate-spin" aria-hidden="true" />
+            <span>Searching…</span>
+          </div>
+          <div v-else-if="items.length === 0" class="px-3 py-3 text-sm text-gray-600 dark:text-gray-300">
             No matches.
           </div>
         </div>
@@ -97,6 +106,8 @@ const props = defineProps<{
   listboxId?: string
   /** When provided (live-chat context), renders grouped results with section headings. */
   sections?: MentionSection[]
+  /** True while the autocomplete is fetching results — used to show a spinner instead of "No matches". */
+  loading?: boolean
 }>()
 
 const usersStore = useUsersStore()

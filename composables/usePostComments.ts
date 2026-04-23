@@ -79,8 +79,13 @@ export function usePostComments(options: {
   }
 
   function onCommentDeleted(commentId: string) {
+    // Guard the decrement on actually removing a row. The deleting client gets the
+    // local `@deleted` event AND the WS `posts:commentDeleted` event for the same id;
+    // without this guard the second fire double-decrements `commentsCounts.all`.
+    const before = comments.value.length
     comments.value = comments.value.filter((c) => c.id !== commentId)
-    if (commentsCounts.value) {
+    const removed = comments.value.length < before
+    if (removed && commentsCounts.value) {
       commentsCounts.value = { ...commentsCounts.value, all: Math.max(0, commentsCounts.value.all - 1) }
     }
   }

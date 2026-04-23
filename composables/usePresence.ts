@@ -32,6 +32,7 @@ import type {
   WsUsersMeUpdatedPayload,
   WsUsersSelfUpdatedPayload,
   WsUsersSpaceChangedPayload,
+  WsCheckinAnsweredTodayPayload,
 } from '~/types/api'
 import { useUsersStore } from '~/composables/useUsersStore'
 
@@ -46,6 +47,7 @@ const PRESENCE_DISCONNECTED_DUE_TO_IDLE_KEY = 'presence-disconnected-due-to-idle
 const PRESENCE_SOCKET_CONNECTED_KEY = 'presence-socket-connected'
 const PRESENCE_SOCKET_CONNECTING_KEY = 'presence-socket-connecting'
 const NOTIFICATIONS_UNDELIVERED_COUNT_KEY = 'notifications-undelivered-count'
+const NOTIFICATIONS_UNREAD_COMMENT_COUNT_KEY = 'notifications-unread-comment-count'
 const MESSAGES_UNREAD_COUNTS_KEY = 'messages-unread-counts'
 const NOTIFICATION_SOUND_PATH = '/sounds/notification.mp3'
 const MESSAGE_SOUND_PATH = '/sounds/new-message.mp3'
@@ -179,6 +181,22 @@ export type WsCrewUpdatedPayload = { crew: unknown }
 export type WsCrewWallPayload = { crewId: string; conversationId: string; message?: unknown; messageId?: string }
 export type WsCrewTransferVotePayload = { crewId: string; vote: unknown }
 
+export type WsCrewStreakAdvancedPayload = {
+  crewId: string
+  dayKey: string
+  currentStreakDays: number
+  longestStreakDays: number
+}
+export type WsCrewStreakBrokenPayload = {
+  crewId: string
+  missedDayKey: string
+  missedMembers: Array<{
+    id: string
+    username: string | null
+    displayName: string | null
+  }>
+}
+
 export type CrewCallback = {
   onInviteReceived?: (payload: WsCrewInviteUpdatedPayload) => void
   onInviteUpdated?: (payload: WsCrewInviteUpdatedPayload) => void
@@ -191,6 +209,8 @@ export type CrewCallback = {
   onWallDeleted?: (payload: WsCrewWallPayload) => void
   onWallReaction?: (payload: WsCrewWallPayload) => void
   onTransferVote?: (payload: WsCrewTransferVotePayload) => void
+  onStreakAdvanced?: (payload: WsCrewStreakAdvancedPayload) => void
+  onStreakBroken?: (payload: WsCrewStreakBrokenPayload) => void
 }
 
 /**
@@ -209,6 +229,15 @@ export type WsGroupInviteUpdatedPayload = {
 export type GroupInviteCallback = {
   onReceived?: (payload: WsGroupInviteUpdatedPayload) => void
   onUpdated?: (payload: WsGroupInviteUpdatedPayload) => void
+}
+
+/**
+ * Daily check-in social-proof realtime. Emitted to the actor's followers + crew members when
+ * someone in the viewer's circle answers today's question. The home hero uses this to bump
+ * `totalToday` and prepend a face without polling.
+ */
+export type CheckinsCallback = {
+  onAnsweredToday?: (payload: WsCheckinAnsweredTodayPayload) => void
 }
 
 function isRecord(v: unknown): v is Record<string, unknown> {
@@ -277,11 +306,17 @@ export function usePresence() {
   const usersCallbacks = useState<Set<UsersCallback>>('presence-users-callbacks', () => new Set())
   const crewCallbacks = useState<Set<CrewCallback>>('presence-crew-callbacks', () => new Set())
   const groupInviteCallbacks = useState<Set<GroupInviteCallback>>('presence-group-invite-callbacks', () => new Set())
+  const checkinsCallbacks = useState<Set<CheckinsCallback>>('presence-checkins-callbacks', () => new Set())
   const articleSubRefs = ref(new Set<string>())
   const postSubRefs = ref(new Set<string>())
   const onlineFeedSubscribed = useState(PRESENCE_ONLINE_FEED_SUBSCRIBED_KEY, () => false)
   const disconnectedDueToIdle = useState<boolean>(PRESENCE_DISCONNECTED_DUE_TO_IDLE_KEY, () => false)
   const notificationUndeliveredCount = useState<number>(NOTIFICATIONS_UNDELIVERED_COUNT_KEY, () => 0)
+  /**
+   * "Waiting on you" dot — count of unread reply notifications.
+   * Drives the dot on the Home tab. Updated via `notifications:waitingCountChanged`.
+   */
+  const notificationUnreadCommentCount = useState<number>(NOTIFICATIONS_UNREAD_COMMENT_COUNT_KEY, () => 0)
   const messageUnreadCounts = useState<{ primary: number; requests: number }>(MESSAGES_UNREAD_COUNTS_KEY, () => ({
     primary: 0,
     requests: 0,
@@ -580,6 +615,14 @@ export function usePresence() {
     groupInviteCallbacks.value.delete(cb)
   }
 
+  function addCheckinsCallback(cb: CheckinsCallback) {
+    checkinsCallbacks.value.add(cb)
+  }
+
+  function removeCheckinsCallback(cb: CheckinsCallback) {
+    checkinsCallbacks.value.delete(cb)
+  }
+
   function addOnlineIdsFromRest(userIds: string[]) {
     const next = new Set(onlineUserIds.value)
     for (const id of userIds) {
@@ -777,6 +820,11 @@ export function usePresence() {
       for (const cb of notificationsCallbacks.value) {
         cb.onNew?.(data)
       }
+    })
+
+    socket.on('notifications:waitingCountChanged', (data: { unreadCommentCount?: number }) => {
+      const raw = typeof data?.unreadCommentCount === 'number' ? data.unreadCommentCount : 0
+      notificationUnreadCommentCount.value = Math.max(0, Math.floor(raw))
     })
 
     socket.on('notifications:deleted', (data: WsNotificationsDeletedPayload) => {
@@ -1146,6 +1194,12 @@ export function usePresence() {
     socket.on('crew:transfer-vote', (data: WsCrewTransferVotePayload) => {
       for (const cb of crewCallbacks.value) cb.onTransferVote?.(data)
     })
+    socket.on('crew:streak:advanced', (data: WsCrewStreakAdvancedPayload) => {
+      for (const cb of crewCallbacks.value) cb.onStreakAdvanced?.(data)
+    })
+    socket.on('crew:streak:broken', (data: WsCrewStreakBrokenPayload) => {
+      for (const cb of crewCallbacks.value) cb.onStreakBroken?.(data)
+    })
 
     // Community group invite realtime: emitted to inviter and invitee on
     // send/cancel/accept/decline. We don't auto-refresh anything global from
@@ -1155,6 +1209,11 @@ export function usePresence() {
     })
     socket.on('groups:invite-updated', (data: WsGroupInviteUpdatedPayload) => {
       for (const cb of groupInviteCallbacks.value) cb.onUpdated?.(data)
+    })
+
+    socket.on('checkin:answeredToday', (data: WsCheckinAnsweredTodayPayload) => {
+      if (!checkinsCallbacks.value.size) return
+      for (const cb of checkinsCallbacks.value) cb.onAnsweredToday?.(data)
     })
 
     function syncSubscriptions() {
@@ -1382,6 +1441,7 @@ export function usePresence() {
     socketDisconnectedWhileVisible: readonly(socketDisconnectedWhileVisible),
     connectionBarJustConnected: readonly(connectionBarJustConnected),
     notificationUndeliveredCount: readonly(notificationUndeliveredCount),
+    notificationUnreadCommentCount: readonly(notificationUnreadCommentCount),
     messageUnreadCounts: readonly(messageUnreadCounts),
     suppressMessageUnreadBumpsForMs(ms: number) {
       const dur = Math.max(0, Math.floor(Number(ms) || 0))
@@ -1391,6 +1451,10 @@ export function usePresence() {
     setNotificationUndeliveredCount(count: number) {
       const c = Math.max(0, Math.floor(Number(count)) || 0)
       notificationUndeliveredCount.value = c
+    },
+    setNotificationUnreadCommentCount(count: number) {
+      const c = Math.max(0, Math.floor(Number(count)) || 0)
+      notificationUnreadCommentCount.value = c
     },
     setMessageUnreadCounts(counts: { primary?: number; requests?: number }) {
       const nextPrimary = Math.max(0, Math.floor(Number(counts.primary)) || 0)
@@ -1433,6 +1497,8 @@ export function usePresence() {
     removeCrewCallback,
     addGroupInviteCallback,
     removeGroupInviteCallback,
+    addCheckinsCallback,
+    removeCheckinsCallback,
     emitRadioJoin(stationId: string) {
       const socket = socketRef.value
       const id = (stationId ?? '').trim()

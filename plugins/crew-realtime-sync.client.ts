@@ -28,8 +28,17 @@ export default defineNuxtPlugin(() => {
       onOwnerChanged() {
         void viewerCrew.refresh()
       },
-      onDisbanded() {
-        viewerCrew.clear()
+      // Only clear when the disbanded crew is the one we currently think we're
+      // in. The API may emit `crew:disbanded` for an OLD crew (auto-disbanded
+      // when the viewer accepts an invite as a solo crew member) right around
+      // the time we get added to a NEW crew — without this guard, a late-arriving
+      // disband event would wipe the freshly-set new membership.
+      onDisbanded(payload: { crewId: string }) {
+        const disbandedId = payload?.crewId
+        const currentId = viewerCrew.membership.value?.crewId ?? null
+        if (!disbandedId || !currentId || disbandedId === currentId) {
+          viewerCrew.clear()
+        }
       },
     }
   }

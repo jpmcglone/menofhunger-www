@@ -713,6 +713,20 @@
                           </div>
                           <Checkbox v-model="notifPrefs.pushFollowedPost" binary :disabled="notifPrefsSaving" />
                         </div>
+                        <div class="flex items-start justify-between gap-4">
+                          <div>
+                            <div class="font-medium">Reply nudges</div>
+                            <div class="text-xs moh-text-muted">One reminder if a reply to your post is still unread after 24 hours.</div>
+                          </div>
+                          <Checkbox v-model="notifPrefs.pushReplyNudge" binary :disabled="notifPrefsSaving" />
+                        </div>
+                        <div class="flex items-start justify-between gap-4">
+                          <div>
+                            <div class="font-medium">Crew streak</div>
+                            <div class="text-xs moh-text-muted">When your crew's streak advances or breaks. The single most important push in the app.</div>
+                          </div>
+                          <Checkbox v-model="notifPrefs.pushCrewStreak" binary :disabled="notifPrefsSaving" />
+                        </div>
                       </div>
                     </div>
 

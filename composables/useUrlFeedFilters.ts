@@ -1,6 +1,6 @@
 import type { FeedVisibilityFilter, FeedSort } from '~/composables/useFeedFilters'
 
-export type FeedScope = 'all' | 'following'
+export type FeedScope = 'all' | 'following' | 'forYou'
 type UrlFeedFiltersOptions = {
   // Uses history.replaceState + location.search as source of truth.
   // Useful on pages that intentionally bypass Vue Router with pushState.
@@ -110,20 +110,23 @@ export function useUrlFeedFilters(options: UrlFeedFiltersOptions = {}) {
     },
   })
 
-  // ── scope (all / following) — only meaningful when authed ──────────────────
+  // ── scope (all / following / forYou) — only meaningful when authed ──────────
   const scope = computed<FeedScope>({
     get: () => {
       if (!isAuthed.value) return 'all'
-      return readQueryValue('scope') === 'following' ? 'following' : 'all'
+      const v = readQueryValue('scope')
+      if (v === 'following') return 'following'
+      if (v === 'forYou') return 'forYou'
+      return 'all'
     },
     set: (val) => {
       applyQueryPatch({ scope: val === 'all' ? undefined : val })
     },
   })
 
-  // Reset scope to 'all' if user logs out while on 'following'
+  // Reset authed-only scopes if the user signs out.
   watch(isAuthed, (authed) => {
-    if (!authed && scope.value === 'following') {
+    if (!authed && (scope.value === 'following' || scope.value === 'forYou')) {
       applyQueryPatch({ scope: undefined })
     }
   })
