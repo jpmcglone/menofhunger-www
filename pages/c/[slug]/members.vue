@@ -258,7 +258,7 @@ async function performRemoveMember() {
         memberCount: Math.max(0, (crew.value.memberCount ?? 1) - 1),
       }
     }
-    toast.add({ severity: 'success', summary: `Removed ${target.name}`, life: 2500 })
+    toast.push({ title: `Removed ${target.name}`, tone: 'success' })
   } catch (e) {
     error.value = getApiErrorMessage(e) || 'Could not remove that member.'
   } finally {
@@ -274,14 +274,14 @@ async function onCancelInviteRequested(inviteId: string) {
   pendingInvitees.value = pendingInvitees.value.filter((i) => i.id !== inviteId)
   try {
     await crewApi.cancelInvite(inviteId)
-    toast.add({ severity: 'success', summary: `Invite to ${name} withdrawn`, life: 2500 })
+    toast.push({ title: `Invite to ${name} withdrawn`, tone: 'success' })
   } catch (e) {
     if (invite) {
       pendingInvitees.value = [...pendingInvitees.value, invite].sort((a, b) =>
         a.createdAt.localeCompare(b.createdAt),
       )
     }
-    toast.add({ severity: 'error', summary: getApiErrorMessage(e) || 'Could not cancel the invite.', life: 4000 })
+    toast.push({ title: getApiErrorMessage(e) || 'Could not cancel the invite.', tone: 'error' })
   }
 }
 
@@ -306,7 +306,7 @@ async function refreshPendingInvitees(crewId: string | null) {
 function sameInviteIds(a: CrewInvite[], b: CrewInvite[]): boolean {
   if (a.length !== b.length) return false
   for (let i = 0; i < a.length; i++) {
-    if (a[i].id !== b[i].id) return false
+    if (a[i]?.id !== b[i]?.id) return false
   }
   return true
 }
