@@ -327,32 +327,25 @@
 
       <NuxtLink
         v-if="crewPill"
-        ref="crewPillEl"
         :to="`/c/${encodeURIComponent(crewPill.slug)}`"
-        class="mt-3 inline-flex items-center gap-1.5 rounded-full border moh-border pl-2 pr-3 py-1 max-w-full hover:bg-gray-50 dark:hover:bg-zinc-900 transition-colors"
+        class="mt-3 inline-flex items-center gap-2 rounded-full border moh-border pl-1.5 pr-3 py-1 max-w-full hover:bg-gray-50 dark:hover:bg-zinc-900 transition-colors"
         :aria-label="`View Crew: ${crewPillName}`"
         @mouseenter="onCrewPillEnter"
         @mouseleave="onCrewPillLeave"
       >
-        <!-- Crew identity icon — always shown so the pill reads as "Crew" at a glance -->
-        <Icon
-          name="tabler:shield-check"
-          class="shrink-0 text-amber-500"
-          size="14"
-          aria-hidden="true"
-        />
-        <!-- Crew avatar (if set) -->
+        <!-- Crew avatar or fallback shield icon -->
         <span
-          v-if="crewPill.avatarUrl"
-          class="h-5 w-5 overflow-hidden bg-gray-200 dark:bg-zinc-800 shrink-0 inline-flex items-center justify-center"
+          class="h-6 w-6 overflow-hidden bg-gray-200 dark:bg-zinc-800 shrink-0 inline-flex items-center justify-center"
           :class="crewAvatarRound"
         >
           <img
+            v-if="crewPill.avatarUrl"
             :src="crewPill.avatarUrl"
             alt=""
             class="h-full w-full object-cover"
             loading="lazy"
           >
+          <Icon v-else name="tabler:shield-check" class="text-xs opacity-70" aria-hidden="true" />
         </span>
         <span class="text-xs font-medium moh-text truncate">{{ crewPillName }}</span>
       </NuxtLink>
@@ -562,7 +555,6 @@ const joinedLabel = computed(() => {
 // that most viewers never look at.
 const crewApi = useCrew()
 const crewPill = ref<import('~/types/api').CrewPublic | null>(null)
-const crewPillEl = ref<HTMLElement | null>(null)
 const crewPillName = computed(() => {
   if (!crewPill.value) return ''
   const n = (crewPill.value.name ?? '').trim()
@@ -586,9 +578,9 @@ watch(
 
 const crewPreviewPop = useCrewPreviewPopover()
 
-function onCrewPillEnter() {
+function onCrewPillEnter(e: MouseEvent) {
   const crew = crewPill.value
-  const el = crewPillEl.value as HTMLElement | null
+  const el = e.currentTarget as HTMLElement | null
   if (!crew || !el) return
   crewPreviewPop.onTriggerEnter({ crew, anchorEl: el })
 }

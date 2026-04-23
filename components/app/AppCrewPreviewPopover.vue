@@ -11,7 +11,7 @@
       <div
         v-if="open && crew"
         ref="cardEl"
-        class="fixed z-[1300] w-[340px] max-w-[calc(100vw-24px)] rounded-2xl transition-[left,top] duration-150 ease-out motion-reduce:transition-none will-change-[left,top] overflow-hidden"
+        class="fixed z-[1300] w-[280px] max-w-[calc(100vw-24px)] max-h-[calc(100vh-2rem)] overflow-y-auto rounded-2xl transition-[left,top] duration-150 ease-out motion-reduce:transition-none will-change-[left,top]"
         :style="posStyle"
         @mouseenter="onCardEnter"
         @mouseleave="onCardLeave"
@@ -36,8 +36,8 @@ const { style: posStyle } = useAnchoredPopoverPosition({
   anchorX: computed(() => state.value.anchorX),
   anchorY: computed(() => state.value.anchorY),
   el: cardEl,
-  defaultWidth: 340,
-  defaultHeight: 220,
+  defaultWidth: 280,
+  defaultHeight: 260,
   margin: 8,
   offset: 8,
 })
