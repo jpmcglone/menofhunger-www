@@ -24,6 +24,7 @@
         <AppToastStack />
         <AppUserPreviewPopover />
         <AppGroupPreviewPopover />
+        <AppCrewPreviewPopover />
         <AppWordDefinitionPopover />
         <AppOnlineCountPopover />
         <AppSpaceLiveChatOverlay
