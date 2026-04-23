@@ -339,7 +339,7 @@
             </h2>
             <NuxtLink
               v-if="isAuthed"
-              to="/groups"
+              to="/groups/explore"
               class="text-sm font-medium hover:underline underline-offset-2 text-[var(--p-primary-color)] moh-focus"
             >
               Browse groups

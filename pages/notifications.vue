@@ -15,19 +15,24 @@
           @click="onMarkAllRead"
         />
       </div>
-      <div class="relative z-10 flex gap-1.5 px-3 pb-2.5 sm:px-4 overflow-x-auto scrollbar-hide">
-        <button
-          v-for="chip in kindChips"
-          :key="chip.kind ?? 'all'"
-          class="shrink-0 inline-flex items-center px-3 py-1 rounded-full text-[13px] font-medium transition-colors"
-          :class="activeKind === chip.kind
-            ? 'bg-gray-900 text-white dark:bg-white dark:text-gray-900'
-            : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-zinc-800 dark:text-gray-400 dark:hover:bg-zinc-700'"
-          @click="onChipSelect(chip.kind)"
-        >
-          {{ chip.label }}
-        </button>
-      </div>
+      <AppHorizontalScroller
+        class="relative z-10"
+        scroller-class="no-scrollbar px-3 pb-2.5 sm:px-4"
+      >
+        <div class="flex gap-1.5">
+          <button
+            v-for="chip in kindChips"
+            :key="chip.kind ?? 'all'"
+            class="shrink-0 inline-flex items-center px-3 py-1 rounded-full text-[13px] font-medium transition-colors"
+            :class="activeKind === chip.kind
+              ? 'bg-gray-900 text-white dark:bg-white dark:text-gray-900'
+              : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-zinc-800 dark:text-gray-400 dark:hover:bg-zinc-700'"
+            @click="onChipSelect(chip.kind)"
+          >
+            {{ chip.label }}
+          </button>
+        </div>
+      </AppHorizontalScroller>
     </div>
 
     <AppSubtleSectionLoader :loading="showInitialLoader" min-height-class="min-h-[220px]">

@@ -6,12 +6,12 @@
           <div>
             <h1 class="moh-h1">Groups</h1>
             <p class="mt-1 moh-meta max-w-xl">
-              Discover communities or open a group you’re in. Posts from all your groups live on the feed.
+              Newest and trending posts from every group you’re in.
             </p>
           </div>
-          <div class="flex flex-wrap gap-2 shrink-0">
+          <div class="flex flex-wrap gap-2 shrink-0 sm:pt-1">
             <Button
-              v-if="isAuthed && canCreateGroup"
+              v-if="canCreateGroup"
               as="NuxtLink"
               to="/groups/new"
               label="Create group"
@@ -33,49 +33,7 @@
                 <Icon name="tabler:sparkles" aria-hidden="true" />
               </template>
             </Button>
-            <Button
-              v-if="isAuthed && pickTarget"
-              label="Pick a group for me"
-              rounded
-              severity="secondary"
-              :loading="pickLoading"
-              @click="pickForMe"
-            >
-              <template #icon>
-                <Icon name="tabler:hand-finger" aria-hidden="true" />
-              </template>
-            </Button>
           </div>
-        </div>
-
-        <div class="flex flex-wrap items-center gap-2">
-          <div class="flex gap-1 rounded-full border moh-border p-0.5 bg-[var(--moh-surface)]">
-            <button
-              type="button"
-              class="rounded-full px-3 py-1 text-xs font-semibold transition-colors"
-              :class="tab === 'explore' ? 'bg-[color:rgba(var(--moh-group-rgb),0.2)] text-[color:var(--moh-group)]' : 'moh-text-muted'"
-              @click="setTab('explore')"
-            >
-              Explore groups
-            </button>
-            <button
-              type="button"
-              class="rounded-full px-3 py-1 text-xs font-semibold transition-colors"
-              :class="tab === 'my' ? 'bg-[color:rgba(var(--moh-group-rgb),0.2)] text-[color:var(--moh-group)]' : 'moh-text-muted'"
-              @click="setTab('my')"
-            >
-              My groups
-            </button>
-          </div>
-          <NuxtLink
-            v-if="isAuthed && mine.length > 0"
-            to="/groups/feed"
-            class="inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors moh-border hover:bg-[color:rgba(var(--moh-group-rgb),0.08)]"
-            style="border-color: rgba(var(--moh-group-rgb), 0.35); color: var(--moh-group)"
-          >
-            <Icon name="tabler:layout-list" class="text-sm opacity-90" aria-hidden="true" />
-            Groups feed
-          </NuxtLink>
         </div>
 
         <AppInlineAlert v-if="error" severity="danger">
@@ -87,190 +45,169 @@
         </div>
       </div>
 
-      <template v-if="!metaLoading">
-        <!-- Explore -->
-        <section v-if="tab === 'explore'" class="moh-gutter-x pb-10 pt-6">
-          <div class="rounded-xl border moh-border overflow-hidden">
-            <div
-              class="flex flex-wrap items-center justify-between gap-2 border-b moh-border px-4 py-3"
-            >
-              <h2 class="m-0 text-sm font-semibold moh-text">
-                Discover
-              </h2>
-              <NuxtLink
-                to="/explore"
-                class="text-xs font-medium hover:underline moh-text-muted shrink-0"
-              >
-                Site explore →
-              </NuxtLink>
-            </div>
-            <div
-              v-if="!exploreGroups.length"
-              class="p-6 text-sm moh-text-muted text-center"
-            >
-              No groups to show yet.
-            </div>
-            <div v-else class="divide-y divide-gray-100 dark:divide-white/5">
-              <NuxtLink
-                v-for="g in exploreGroups"
+      <template v-if="!isAuthed">
+        <div class="moh-gutter-x py-12 text-center text-sm moh-text-muted">
+          Log in to see posts from your groups.
+        </div>
+      </template>
+
+      <template v-else-if="!metaLoading">
+        <!-- Your groups — horizontal carousel of groups the viewer is in.
+             Edge-to-edge: padding hugs the gutter on first/last items so
+             cards align with the page gutter while the scroll surface
+             bleeds to the viewport edge. -->
+        <section
+          v-if="mine.length > 0"
+          class="border-b moh-border py-5"
+          aria-labelledby="groups-mine-heading"
+        >
+          <div class="moh-gutter-x mb-3 flex items-baseline justify-between gap-3">
+            <h2 id="groups-mine-heading" class="text-sm font-semibold uppercase tracking-wide moh-text-muted">
+              Your groups
+            </h2>
+            <span class="text-xs moh-text-muted tabular-nums">
+              {{ mine.length }}
+            </span>
+          </div>
+          <!-- py-1.5 leaves vertical breathing room: `overflow-x: auto`
+               implies `overflow-y: auto` per spec, which would otherwise
+               clip the card's hover-lift (`-translate-y-0.5`) and any
+               future shadow. AppHorizontalScroller adds the paging arrows
+               so non-trackpad users can navigate sideways. -->
+          <AppHorizontalScroller
+            ref="carouselEl"
+            scroller-class="no-scrollbar snap-x snap-mandatory scroll-px-4 sm:scroll-px-6 px-4 sm:px-6 py-1.5"
+          >
+            <div class="flex gap-3">
+              <AppGroupCompactCard
+                v-for="g in mine"
                 :key="g.id"
-                :to="`/g/${encodeURIComponent(g.slug)}`"
-                class="relative flex items-center gap-3 p-4 overflow-hidden hover:bg-gray-50/60 dark:hover:bg-zinc-900/40 transition-colors"
-              >
-                <div
-                  v-if="g.coverImageUrl"
-                  class="pointer-events-none absolute inset-0 bg-cover bg-center opacity-[0.03]"
-                  :style="{ backgroundImage: `url(${g.coverImageUrl})` }"
-                  aria-hidden="true"
-                />
-                <div
-                  class="relative h-12 w-12 shrink-0 overflow-hidden bg-gray-200 dark:bg-zinc-800"
-                  :class="avatarRoundClass"
-                >
-                  <img
-                    v-if="g.avatarImageUrl"
-                    :src="g.avatarImageUrl"
-                    alt=""
-                    class="h-full w-full object-cover"
-                    loading="lazy"
-                  >
-                  <div
-                    v-else
-                    class="flex h-full w-full items-center justify-center text-sm font-bold moh-text"
-                  >
-                    {{ initials(g.name) }}
-                  </div>
-                </div>
-                <div class="relative min-w-0 flex-1">
-                  <div class="flex items-center gap-2 flex-wrap">
-                    <span class="font-medium moh-text">{{ g.name }}</span>
-                    <span
-                      v-if="g.joinPolicy === 'approval'"
-                      class="inline-flex items-center gap-1 text-[10px] uppercase tracking-wide font-semibold px-1.5 py-0.5 rounded border moh-border moh-text-muted"
-                    >
-                      <Icon name="tabler:lock" class="text-[10px]" aria-hidden="true" />
-                      Private
-                    </span>
-                    <span
-                      v-else
-                      class="text-[10px] uppercase tracking-wide font-semibold px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-700 dark:text-emerald-300"
-                    >
-                      Open
-                    </span>
-                  </div>
-                  <p class="mt-0.5 text-sm moh-text-muted line-clamp-2">{{ g.description }}</p>
-                  <div class="mt-1 text-xs moh-text-muted tabular-nums">{{ g.memberCount.toLocaleString() }} members</div>
-                </div>
-                <Icon name="tabler:chevron-right" class="relative text-lg opacity-50 shrink-0" aria-hidden="true" />
-              </NuxtLink>
+                :group="g"
+              />
             </div>
-          </div>
+          </AppHorizontalScroller>
         </section>
 
-        <!-- My groups -->
-        <section v-else class="relative overflow-hidden">
+        <!-- Explore — same spotlight surface as /groups/explore (with
+             search-less defaults), capped to a horizontal scroller. The
+             "See all" anchor opens the full discover surface. -->
+        <section
+          v-if="spotlight.length > 0"
+          class="border-b moh-border py-5"
+          aria-labelledby="groups-explore-heading"
+        >
+          <div class="moh-gutter-x mb-3 flex items-baseline justify-between gap-3">
+            <h2 id="groups-explore-heading" class="text-sm font-semibold uppercase tracking-wide moh-text-muted">
+              Explore
+            </h2>
+            <NuxtLink
+              to="/groups/explore"
+              class="inline-flex items-center gap-0.5 text-xs font-semibold moh-text-muted transition-colors hover:text-[color:var(--moh-group)]"
+            >
+              See all
+              <Icon name="tabler:chevron-right" class="text-sm" aria-hidden="true" />
+            </NuxtLink>
+          </div>
+          <AppHorizontalScroller
+            ref="otherCarouselEl"
+            scroller-class="no-scrollbar snap-x snap-mandatory scroll-px-4 sm:scroll-px-6 px-4 sm:px-6 py-1.5"
+          >
+            <div class="flex gap-3">
+              <AppGroupCompactCard
+                v-for="g in spotlight"
+                :key="g.id"
+                :group="g"
+              />
+            </div>
+          </AppHorizontalScroller>
+        </section>
+
+        <AppInlineAlert v-if="feedError" class="moh-gutter-x mt-3" severity="danger">
+          {{ feedError }}
+        </AppInlineAlert>
+
+        <div v-if="!mine.length" class="moh-gutter-x py-10 space-y-4 text-center">
+          <p class="text-sm moh-text-muted max-w-md mx-auto">
+            You’re not in any groups yet. Explore and join one — then posts will show up here.
+          </p>
+          <Button as="NuxtLink" to="/groups/explore" label="Explore groups" rounded />
+        </div>
+
+        <!-- Feed section header — owns the Newest/Trending toggle. -->
+        <div
+          v-if="mine.length"
+          class="moh-gutter-x flex items-center justify-between gap-3 border-b moh-border py-3"
+        >
+          <h2 class="text-sm font-semibold uppercase tracking-wide moh-text-muted">
+            Feed
+          </h2>
+          <div class="flex gap-1 rounded-full border moh-border p-0.5 bg-[var(--moh-surface)]">
+            <button
+              type="button"
+              class="rounded-full px-3 py-1 text-xs font-semibold transition-colors"
+              :class="feedSort === 'new' ? 'bg-[color:rgba(var(--moh-group-rgb),0.2)] text-[color:var(--moh-group)]' : 'moh-text-muted'"
+              @click="setFeedSort('new')"
+            >
+              Newest
+            </button>
+            <button
+              type="button"
+              class="rounded-full px-3 py-1 text-xs font-semibold transition-colors"
+              :class="feedSort === 'trending' ? 'bg-[color:rgba(var(--moh-group-rgb),0.2)] text-[color:var(--moh-group)]' : 'moh-text-muted'"
+              @click="setFeedSort('trending')"
+            >
+              Trending
+            </button>
+          </div>
+        </div>
+
+        <AppSubtleSectionLoader v-if="mine.length" :loading="feedLoading && !posts.length" min-height-class="min-h-[200px]">
+          <div v-if="!posts.length && !feedLoading" class="px-3 py-10 text-center text-sm moh-text-muted sm:px-4">
+            No posts in your groups yet.
+          </div>
+          <div v-else class="relative mt-3">
+            <template v-for="item in displayItems" :key="item.kind === 'ad' ? item.key : (item.post._localId ?? item.post.id)">
+              <AppFeedFakeAdRow v-if="item.kind === 'ad'" />
+              <AppFeedPostRow
+                v-else
+                :post="item.post"
+                :feed-group="shellForPost(item.post) ?? null"
+                subtle-border-bottom
+                :group-wall="null"
+                :collapsed-sibling-replies-count="collapsedSiblingReplyCountFor(item.post)"
+                :replies-sort="feedSort"
+                @deleted="removePost"
+                @edited="onEdited"
+                @group-pin-changed="onGroupPinChanged"
+              />
+            </template>
+          </div>
+        </AppSubtleSectionLoader>
+
+        <div v-if="mine.length && nextCursor" class="relative flex justify-center items-center py-6 min-h-12">
+          <div ref="loadMoreSentinelEl" class="absolute bottom-0 left-0 right-0 h-px" aria-hidden="true" />
           <div
-            class="pointer-events-none absolute inset-0 opacity-[0.08]"
-            style="background: radial-gradient(120% 80% at 10% 0%, rgba(var(--moh-group-rgb), 0.55), transparent 55%), radial-gradient(90% 60% at 90% 20%, rgba(var(--moh-group-rgb), 0.25), transparent 50%)"
-            aria-hidden="true"
-          />
-          <div class="relative moh-gutter-x pb-10 pt-2 space-y-6">
-            <template v-if="!isAuthed">
-              <p class="text-sm moh-text-muted text-center py-8">
-                Log in to see groups you belong to.
-              </p>
-            </template>
-            <template v-else-if="!mine.length">
-              <div class="rounded-2xl border moh-border p-8 text-center">
-                <p class="text-sm moh-text-muted">
-                  You’re not in any groups yet.
-                </p>
-                <Button label="Explore groups" class="mt-4" rounded @click="setTab('explore')" />
-              </div>
-            </template>
-            <template v-else>
-              <IconField icon-position="left" class="w-full max-w-md">
-                <InputIcon>
-                  <Icon name="tabler:search" class="text-lg opacity-70" aria-hidden="true" />
-                </InputIcon>
-                <InputText
-                  v-model="search"
-                  class="w-full"
-                  placeholder="Search your groups…"
-                />
-              </IconField>
-
-              <div class="grid gap-3 sm:grid-cols-2">
-                <button
-                  v-for="g in filteredMine"
-                  :key="g.id"
-                  type="button"
-                  class="relative text-left rounded-2xl border moh-border p-4 overflow-hidden transition-[border-color,box-shadow] duration-150 ease-out hover:border-[color:rgba(var(--moh-group-rgb),0.4)] hover:shadow-sm dark:hover:shadow-none moh-surface"
-                  @click="selectGroup(g)"
-                >
-                  <div
-                    v-if="g.coverImageUrl"
-                    class="pointer-events-none absolute inset-0 bg-cover bg-center opacity-[0.03]"
-                    :style="{ backgroundImage: `url(${g.coverImageUrl})` }"
-                    aria-hidden="true"
-                  />
-                  <div class="relative flex gap-3">
-                    <div
-                      class="h-14 w-14 shrink-0 overflow-hidden bg-gray-200 ring-2 ring-[color:rgba(var(--moh-group-rgb),0.25)] dark:bg-zinc-800"
-                      :class="avatarRoundClass"
-                    >
-                      <img
-                        v-if="g.avatarImageUrl"
-                        :src="g.avatarImageUrl"
-                        alt=""
-                        class="h-full w-full object-cover"
-                        loading="lazy"
-                      >
-                      <div
-                        v-else
-                        class="flex h-full w-full items-center justify-center text-lg font-bold moh-text"
-                      >
-                        {{ initials(g.name) }}
-                      </div>
-                    </div>
-                    <div class="min-w-0 flex-1">
-                      <div class="flex items-start justify-between gap-2">
-                        <span class="font-semibold moh-text line-clamp-2 leading-snug">{{ g.name }}</span>
-                        <Icon name="tabler:chevron-right" class="text-lg shrink-0 opacity-35 mt-0.5" aria-hidden="true" />
-                      </div>
-                      <p class="mt-1 text-xs moh-text-muted line-clamp-2">
-                        {{ g.description }}
-                      </p>
-                      <div class="mt-2 flex flex-wrap items-center gap-2">
-                        <span class="text-[11px] tabular-nums moh-text-muted">
-                          {{ g.memberCount.toLocaleString() }} members
-                        </span>
-                        <span
-                          class="rounded-md px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide"
-                          :class="roleBadgeClass(g)"
-                        >
-                          {{ roleLabel(g) }}
-                        </span>
-                      </div>
-                      <p class="mt-2 text-[11px] font-medium text-[color:var(--moh-group)]">
-                        Open group →
-                      </p>
-                    </div>
-                  </div>
-                </button>
-              </div>
-            </template>
+            class="transition-opacity duration-150"
+            :class="loadingMore ? 'opacity-100' : 'opacity-0 pointer-events-none'"
+            :aria-hidden="!loadingMore"
+          >
+            <AppLogoLoader compact />
           </div>
-        </section>
+        </div>
       </template>
     </div>
   </AppPageContent>
 </template>
 
 <script setup lang="ts">
-import type { CommunityGroupShell } from '~/types/api'
-import { groupAvatarRoundClass } from '~/utils/avatar-rounding'
+import type { CommunityGroupShell, FeedPost } from '~/types/api'
+import { useLoadMoreObserver } from '~/composables/useLoadMoreObserver'
+import { useMiddleScroller } from '~/composables/useMiddleScroller'
 import { getApiErrorMessage } from '~/utils/api-error'
+// Components in `components/app/groups/` are imported explicitly throughout
+// this codebase — Nuxt's pathPrefix auto-import would mangle the name. See
+// pages/groups/explore.vue for the same pattern.
+import AppGroupCompactCard from '~/components/app/groups/AppGroupCompactCard.vue'
 
 definePageMeta({
   layout: 'app',
@@ -280,7 +217,7 @@ definePageMeta({
 
 usePageSeo({
   title: 'Groups',
-  description: 'Explore community groups and manage groups you’re in.',
+  description: 'Posts from every group you’re in.',
   canonicalPath: '/groups',
   noindex: true,
 })
@@ -289,23 +226,42 @@ const route = useRoute()
 const { apiFetchData } = useApiClient()
 const { user, isAuthed } = useAuth()
 
-const tab = computed<'explore' | 'my'>(() => (route.query.tab === 'my' ? 'my' : 'explore'))
-
-function setTab(t: 'explore' | 'my') {
-  if (t === 'my') {
-    void navigateTo({ path: '/groups', query: { tab: 'my' } })
-    return
-  }
-  void navigateTo({ path: '/groups' })
-}
-
 const metaLoading = ref(true)
 const error = ref<string | null>(null)
-const exploreGroups = ref<CommunityGroupShell[]>([])
 const mine = ref<CommunityGroupShell[]>([])
-const search = ref('')
-const pickLoading = ref(false)
-const avatarRoundClass = groupAvatarRoundClass()
+const spotlight = ref<CommunityGroupShell[]>([])
+
+const feedSort = ref<'new' | 'trending'>('new')
+const groupsHubRef = ref(true)
+
+const {
+  posts,
+  displayItems,
+  collapsedSiblingReplyCountFor,
+  nextCursor,
+  loading: feedLoading,
+  loadingMore,
+  error: feedError,
+  refresh: feedRefresh,
+  softRefreshNewer,
+  startAutoSoftRefresh,
+  loadMore,
+  removePost,
+  replacePost,
+  addReply,
+  replaceOptimistic,
+  markOptimisticFailed,
+  markOptimisticPosting,
+  removeOptimistic,
+} = usePostsFeed({
+  feedStateKey: 'groups-hub-feed',
+  localInsertsStateKey: 'groups-hub-feed-local-inserts',
+  groupsHub: groupsHubRef,
+  sort: feedSort,
+  visibility: ref('all'),
+  followingOnly: ref(false),
+  showAds: ref(false),
+})
 
 const canCreateGroup = computed(() => {
   const u = user.value
@@ -313,49 +269,23 @@ const canCreateGroup = computed(() => {
   return Boolean(u.premium || u.premiumPlus || u.siteAdmin)
 })
 
-const pickTarget = computed(() => {
-  for (const g of exploreGroups.value) {
-    if (g.joinPolicy !== 'open') continue
-    if (g.viewerMembership?.status === 'active') continue
-    return g
-  }
-  return null
-})
-
-const filteredMine = computed(() => {
-  const q = search.value.trim().toLowerCase()
-  if (!q) return mine.value
-  return mine.value.filter((g) => {
-    const name = (g.name ?? '').toLowerCase()
-    const desc = (g.description ?? '').toLowerCase()
-    return name.includes(q) || desc.includes(q)
-  })
-})
-
-function initials(name: string) {
-  const n = (name ?? '').trim()
-  if (!n) return '?'
-  const parts = n.split(/\s+/).filter(Boolean)
-  if (parts.length >= 2) return (parts[0]![0]! + parts[1]![0]!).toUpperCase()
-  return n.slice(0, 2).toUpperCase()
+function shellForPost(p: FeedPost) {
+  const id = p.communityGroupId ?? null
+  if (!id) return null
+  return mine.value.find((g) => g.id === id) ?? null
 }
 
-function roleLabel(g: CommunityGroupShell) {
-  const r = g.viewerMembership?.role
-  if (r === 'owner') return 'Owner'
-  if (r === 'moderator') return 'Moderator'
-  return 'Member'
+function setFeedSort(s: 'new' | 'trending') {
+  if (feedSort.value === s) return
+  feedSort.value = s
 }
 
-function roleBadgeClass(g: CommunityGroupShell) {
-  const r = g.viewerMembership?.role
-  if (r === 'owner') return 'bg-amber-500/15 text-amber-700 dark:text-amber-300'
-  if (r === 'moderator') return 'bg-[color:var(--moh-group-soft)] text-[color:var(--moh-group)]'
-  return 'bg-gray-200/80 text-gray-700 dark:bg-zinc-800 dark:text-zinc-200'
+function onEdited(payload: { id: string; post: FeedPost }) {
+  replacePost(payload.post)
 }
 
-function selectGroup(g: CommunityGroupShell) {
-  void navigateTo(`/g/${encodeURIComponent(g.slug)}`)
+async function onGroupPinChanged() {
+  await feedRefresh()
 }
 
 /** Legacy `/groups?group=<id>` → canonical `/g/:slug`. */
@@ -373,46 +303,127 @@ async function redirectIfLegacyGroupQuery(): Promise<boolean> {
   return true
 }
 
+/** Legacy `/groups?tab=my` → `/groups/explore`. */
+async function redirectIfLegacyMyTab(): Promise<boolean> {
+  if (route.query.tab !== 'my') return false
+  await navigateTo('/groups/explore', { replace: true })
+  return true
+}
+
 async function loadMeta() {
   metaLoading.value = true
   error.value = null
   try {
-    const expl = await apiFetchData<CommunityGroupShell[]>('/groups/explore')
-    exploreGroups.value = Array.isArray(expl) ? expl : []
-    if (isAuthed.value) {
-      const m = await apiFetchData<CommunityGroupShell[]>('/groups/me')
-      mine.value = Array.isArray(m) ? m : []
-    } else {
-      mine.value = []
+    // Both surfaces are independent; fetch in parallel so the page paints
+    // in one round-trip. The "other groups" carousel mirrors the empty
+    // state of /groups/explore (server-side excludeMine).
+    const [m, e] = await Promise.all([
+      apiFetchData<CommunityGroupShell[]>('/groups/me'),
+      apiFetchData<CommunityGroupShell[]>('/groups/explore?excludeMine=1&limit=24'),
+    ])
+    const rows = Array.isArray(m) ? m : []
+    // Owner first, then moderator, then member. Within each tier the API's
+    // natural order (recently joined first) is preserved.
+    const rank = (g: CommunityGroupShell) => {
+      const role = g.viewerMembership?.role
+      if (role === 'owner') return 0
+      if (role === 'moderator') return 1
+      return 2
     }
+    mine.value = [...rows].sort((a, b) => rank(a) - rank(b))
+    spotlight.value = Array.isArray(e) ? e : []
   } catch (e: unknown) {
-    error.value = getApiErrorMessage(e) || 'Failed to load groups.'
-    exploreGroups.value = []
+    error.value = getApiErrorMessage(e) || 'Failed to load your groups.'
     mine.value = []
+    spotlight.value = []
   } finally {
     metaLoading.value = false
   }
 }
 
-async function pickForMe() {
-  const g = pickTarget.value
-  if (!g || pickLoading.value) return
-  pickLoading.value = true
-  try {
-    await apiFetchData(`/groups/${encodeURIComponent(g.id)}/join`, { method: 'POST', body: {} })
-    await navigateTo(`/g/${encodeURIComponent(g.slug)}`)
-  } catch (e: unknown) {
-    error.value = getApiErrorMessage(e) || 'Could not join that group.'
-  } finally {
-    pickLoading.value = false
+// Snap each carousel back to the first card when its set changes (e.g.
+// login/logout swaps the data set out from under the user).
+type ScrollerHandle = { scrollToStart: () => void } | null
+const carouselEl = ref<ScrollerHandle>(null)
+const otherCarouselEl = ref<ScrollerHandle>(null)
+watch(
+  () => mine.value.length,
+  () => {
+    if (!import.meta.client) return
+    carouselEl.value?.scrollToStart()
+  },
+)
+watch(
+  () => spotlight.value.length,
+  () => {
+    if (!import.meta.client) return
+    otherCarouselEl.value?.scrollToStart()
+  },
+)
+
+const loadMoreSentinelEl = ref<HTMLElement | null>(null)
+const middleScrollerRef = useMiddleScroller()
+useLoadMoreObserver(
+  loadMoreSentinelEl,
+  middleScrollerRef,
+  computed(() => Boolean(isAuthed.value && mine.value.length && nextCursor.value)),
+  () => void loadMore(),
+)
+
+const replyModal = useReplyModal()
+const pendingPosts = usePendingPostsManager()
+let unregisterReplyPending: null | (() => void) = null
+let stopAutoSoftRefresh: null | (() => void) = null
+
+function registerReplyPostedHandler() {
+  if (!import.meta.client || unregisterReplyPending) return
+  const pendingCb = (payload: import('~/composables/useReplyModal').ReplyPendingPayload) => {
+    addReply(payload.parentPost.id, payload.optimisticPost, payload.parentPost)
+    pendingPosts.submit({
+      localId: payload.localId,
+      optimisticPost: payload.optimisticPost,
+      perform: payload.perform,
+      callbacks: {
+        insert: () => {},
+        replace: (lid, real) => replaceOptimistic(lid, real),
+        markFailed: (lid, msg) => markOptimisticFailed(lid, msg),
+        markPosting: (lid) => markOptimisticPosting(lid),
+        remove: (lid) => removeOptimistic(lid),
+      },
+    })
   }
+  unregisterReplyPending = replyModal.registerOnReplyPending(pendingCb)
+}
+
+function unregisterReplyPostedHandler() {
+  unregisterReplyPending?.()
+  unregisterReplyPending = null
+}
+
+function startGroupsHubAutoRefresh() {
+  if (stopAutoSoftRefresh) return
+  stopAutoSoftRefresh = startAutoSoftRefresh({ everyMs: 12_000 }) ?? null
+}
+
+function stopGroupsHubAutoRefresh() {
+  stopAutoSoftRefresh?.()
+  stopAutoSoftRefresh = null
 }
 
 watch(
-  [isAuthed],
-  async () => {
+  isAuthed,
+  async (a) => {
+    if (!a) {
+      mine.value = []
+      spotlight.value = []
+      posts.value = []
+      nextCursor.value = null
+      return
+    }
     await loadMeta()
-    if (isAuthed.value && (await redirectIfLegacyGroupQuery())) return
+    if (await redirectIfLegacyMyTab()) return
+    if (await redirectIfLegacyGroupQuery()) return
+    await feedRefresh()
   },
   { immediate: true },
 )
@@ -424,4 +435,36 @@ watch(
     if (await redirectIfLegacyGroupQuery()) return
   },
 )
+
+watch(
+  () => route.query.tab,
+  async () => {
+    await redirectIfLegacyMyTab()
+  },
+)
+
+onMounted(() => {
+  if (!import.meta.client) return
+  registerReplyPostedHandler()
+  startGroupsHubAutoRefresh()
+})
+
+onActivated(() => {
+  if (!import.meta.client) return
+  registerReplyPostedHandler()
+  startGroupsHubAutoRefresh()
+  if (posts.value.length > 0) {
+    setTimeout(() => void softRefreshNewer(), 300)
+  }
+})
+
+onDeactivated(() => {
+  unregisterReplyPostedHandler()
+  stopGroupsHubAutoRefresh()
+})
+
+onBeforeUnmount(() => {
+  unregisterReplyPostedHandler()
+  stopGroupsHubAutoRefresh()
+})
 </script>

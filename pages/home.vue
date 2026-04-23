@@ -65,7 +65,7 @@
               Groups are smaller rooms for focused conversation — posts stay inside the group, not on the home feed.
             </p>
             <div class="mt-3 flex flex-wrap gap-2">
-              <Button as="NuxtLink" to="/groups" label="Browse groups" rounded size="small" />
+              <Button as="NuxtLink" to="/groups/explore" label="Browse groups" rounded size="small" />
               <Button
                 label="Dismiss"
                 text

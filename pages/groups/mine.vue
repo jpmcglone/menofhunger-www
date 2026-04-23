@@ -5,10 +5,11 @@
 <script setup lang="ts">
 definePageMeta({
   layout: 'app',
-  title: 'My groups',
+  title: 'Explore groups',
   hideTopBar: true,
 })
 
-/** @deprecated Use `/groups?tab=my` — combined list lives on the Groups hub. */
-await navigateTo({ path: '/groups', query: { tab: 'my' } }, { replace: true })
+/** @deprecated The "My groups" tab was removed; your groups now appear as the
+ *  carousel at the top of /groups/explore. */
+await navigateTo('/groups/explore', { replace: true })
 </script>

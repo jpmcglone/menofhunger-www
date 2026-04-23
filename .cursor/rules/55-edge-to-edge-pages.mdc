@@ -1,0 +1,71 @@
+---
+description: Pages must feel edge-to-edge. Never wrap an entire page or full section in a single bordered/rounded card.
+globs: pages/**/*.vue
+alwaysApply: true
+---
+
+# Edge-to-edge pages, no full-screen card wrappers
+
+The page chrome IS the card. Wrapping the whole route in a `rounded-2xl border …`
+container makes the app feel like a website-inside-a-website and wastes
+horizontal space on mobile. It's banned.
+
+## Rules
+
+1. The top-level template of any `pages/**/*.vue` file MUST NOT be a single
+   `rounded-* border …` element. Use `AppPageContent` + `moh-gutter-x` and
+   let sections breathe to the viewport edge.
+2. Section separators use `border-b moh-border` (or a subtle shadow), not a
+   nested rounded card around the whole section.
+3. Lists / feeds / carousels: each row may have its own surface treatment,
+   but the list itself must not be wrapped in an outer rounded card.
+4. Individual cards are fine when they ARE the unit (a single composer card,
+   a single empty-state card, a single CTA tile). They are not fine when they
+   contain "the whole page".
+5. On mobile, content should reach the viewport edge wherever it improves
+   density (carousels, media, feed rows). Use `moh-gutter-x` for text blocks
+   and form fields.
+
+## Quick check before merging
+
+- [ ] Open the page on mobile width. Is there visible empty space to the
+      LEFT and RIGHT of the page's content? If yes, the wrapper card has
+      to go.
+- [ ] Is there exactly one outer `rounded-* border` ancestor around 80%+ of
+      the page body? If yes, remove it.
+
+If you genuinely need a "card-shaped page" (e.g. an auth form), it should be
+narrow and centered (`max-w-md mx-auto`), not full-width.
+
+## Example
+
+Bad — full-screen card wraps the entire page:
+
+```vue
+<template>
+  <AppPageContent>
+    <div class="rounded-2xl border moh-border moh-surface m-3 p-4">
+      <h1>Some page</h1>
+      <!-- everything else nested inside -->
+    </div>
+  </AppPageContent>
+</template>
+```
+
+Good — edge-to-edge with section dividers:
+
+```vue
+<template>
+  <AppPageContent>
+    <div class="moh-gutter-x border-b moh-border pt-4 pb-4">
+      <h1 class="moh-h1">Some page</h1>
+    </div>
+    <section class="border-b moh-border py-5">
+      <!-- carousel reaches the viewport edge; cards inside use the gutter -->
+    </section>
+    <section>
+      <div class="moh-gutter-x py-5">…</div>
+    </section>
+  </AppPageContent>
+</template>
+```

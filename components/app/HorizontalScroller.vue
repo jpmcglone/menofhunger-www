@@ -89,6 +89,18 @@ function pageRight() {
   pageBy(1)
 }
 
+/** Jump to the very start of the strip (used by parents that need to reset
+ *  the carousel when its data set changes — e.g. login/logout). */
+function scrollToStart(opts: { smooth?: boolean } = {}) {
+  const el = scrollerEl.value
+  if (!el) return
+  if (opts.smooth) el.scrollTo({ left: 0, behavior: 'smooth' })
+  else el.scrollLeft = 0
+  scheduleUpdate()
+}
+
+defineExpose({ scrollToStart, pageBy, el: scrollerEl })
+
 onMounted(() => {
   updateScrollState()
 

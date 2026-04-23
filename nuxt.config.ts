@@ -217,6 +217,7 @@ export default defineNuxtConfig({
         'tabler:plus',
         'tabler:door-enter',
         'tabler:door-exit',
+        'tabler:crown-filled',
       ],
       // Guardrail: keep the icon client bundle from growing unbounded.
       // (Uncompressed size; the shipped gzip/brotli is much smaller.)
