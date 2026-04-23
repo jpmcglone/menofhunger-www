@@ -573,6 +573,7 @@ export type ArticleViewBreakdown = {
   premium: number
   verified: number
   unverified: number
+  guest: number
   total: number
 }
 
