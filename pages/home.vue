@@ -355,12 +355,9 @@ const hasCheckedInToday = computed(() => {
 const heroResolved = computed(() => {
   if (!hydrated.value) return false
   if (!isAuthed.value) return true
-  if (checkinState.value !== null && checkinState.value !== undefined) return true
-  // State is still in-flight — keep waiting to avoid flashing the wrong variant.
+  // Stay hidden while the initial fetch is in-flight to avoid flashing the wrong variant.
   if (checkinLoading.value) return false
-  // Fetch completed but state is still null (error path). Show the full hero so
-  // the page isn't blank; it renders with null state (fallback prompt / no crew).
-  return true
+  return checkinState.value !== null
 })
 
 // Show the check-in prompt when user is eligible and hasn't posted today.
