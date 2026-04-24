@@ -1075,7 +1075,13 @@ export type NotificationKind =
   | 'poll_results_ready'
   | 'generic'
   | 'coin_transfer'
+  | 'message'
   | 'group_join_request'
+  | 'community_group_member_joined'
+  | 'community_group_join_approved'
+  | 'community_group_join_rejected'
+  | 'community_group_member_removed'
+  | 'community_group_disbanded'
   | 'crew_invite_received'
   | 'crew_invite_accepted'
   | 'crew_invite_declined'
@@ -1166,6 +1172,8 @@ export type Notification = {
    * ("Joined", "Declined", "No longer available") on a fresh load.
    */
   subjectCommunityGroupInviteStatus?: 'pending' | 'accepted' | 'declined' | 'cancelled' | 'expired' | null
+  /** Conversation this notification is about (used for `message` kind). */
+  subjectConversationId?: string | null
   title: string | null
   body: string | null
   subjectPostPreview?: SubjectPostPreview | null

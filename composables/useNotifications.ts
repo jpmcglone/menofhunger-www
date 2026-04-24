@@ -293,6 +293,18 @@ export function useNotifications() {
         return 'declined your group invite'
       case 'community_group_invite_cancelled':
         return 'cancelled their group invite'
+      case 'community_group_member_joined':
+        return 'joined the group'
+      case 'community_group_join_approved':
+        return 'Your join request was approved'
+      case 'community_group_join_rejected':
+        return 'Your join request was not accepted'
+      case 'community_group_member_removed':
+        return 'You were removed from a group'
+      case 'community_group_disbanded':
+        return 'A group you were in was disbanded'
+      case 'message':
+        return 'sent you a message'
       case 'generic':
         return 'Notification'
       default:
@@ -321,11 +333,18 @@ export function useNotifications() {
         return 'tabler:chart-bar'
       case 'coin_transfer':
         return 'tabler:coin'
+      case 'message':
+        return 'tabler:message'
       case 'group_join_request':
       case 'community_group_invite_received':
       case 'community_group_invite_accepted':
       case 'community_group_invite_declined':
       case 'community_group_invite_cancelled':
+      case 'community_group_member_joined':
+      case 'community_group_join_approved':
+      case 'community_group_join_rejected':
+      case 'community_group_member_removed':
+      case 'community_group_disbanded':
         return 'tabler:users-group'
       case 'crew_invite_received':
       case 'crew_invite_accepted':
@@ -376,6 +395,18 @@ export function useNotifications() {
       case 'community_group_invite_declined':
       case 'community_group_invite_cancelled':
         return 'Group invite'
+      case 'community_group_member_joined':
+        return 'New member'
+      case 'community_group_join_approved':
+        return 'Join approved'
+      case 'community_group_join_rejected':
+        return 'Join not accepted'
+      case 'community_group_member_removed':
+        return 'Removed from group'
+      case 'community_group_disbanded':
+        return 'Group disbanded'
+      case 'message':
+        return 'Direct message'
       default:
         return ''
     }
@@ -402,6 +433,9 @@ export function useNotifications() {
 
   function rowHref(n: Notification): string | null {
     if (n.kind === 'coin_transfer') return '/coins'
+    if (n.kind === 'message' && n.subjectConversationId) {
+      return `/messages/${encodeURIComponent(n.subjectConversationId)}`
+    }
     if (n.kind === 'group_join_request' && n.subjectGroupSlug) {
       return `/g/${encodeURIComponent(n.subjectGroupSlug)}/pending`
     }
@@ -412,7 +446,12 @@ export function useNotifications() {
       (n.kind === 'community_group_invite_received' ||
         n.kind === 'community_group_invite_accepted' ||
         n.kind === 'community_group_invite_declined' ||
-        n.kind === 'community_group_invite_cancelled') &&
+        n.kind === 'community_group_invite_cancelled' ||
+        n.kind === 'community_group_member_joined' ||
+        n.kind === 'community_group_join_approved' ||
+        n.kind === 'community_group_join_rejected' ||
+        n.kind === 'community_group_member_removed' ||
+        n.kind === 'community_group_disbanded') &&
       n.subjectGroupSlug
     ) {
       return `/g/${encodeURIComponent(n.subjectGroupSlug)}`
