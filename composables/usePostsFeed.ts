@@ -113,6 +113,8 @@ export type UsePostsFeedOptions = {
   authorIds?: Ref<string[] | null | undefined>
   /** When false, clears the feed and skips refresh (e.g. wait until group shell + membership are known). */
   enabled?: Ref<boolean>
+  /** When true and a group-scoped request, only top-level (non-reply) posts are returned. */
+  topLevelOnly?: Ref<boolean>
 }
 
 function normalizeAuthorIds(ids: string[] | null | undefined): string[] | null {
@@ -130,6 +132,7 @@ function postsFeedListQuery(opts: {
   groupsHub?: boolean
   communityGroupId?: string | null
   authorIds?: string[] | null
+  topLevelOnly?: boolean
 }): Record<string, string | number | boolean | undefined> {
   const gid = (opts.communityGroupId ?? '').trim()
   const groupScoped = Boolean(opts.groupsHub || gid)
@@ -148,6 +151,7 @@ function postsFeedListQuery(opts: {
           ...(opts.groupsHub ? { groupsHub: true } : {}),
           ...(gid ? { communityGroupId: gid } : {}),
           visibility: 'all',
+          ...(opts.topLevelOnly ? { topLevelOnly: true } : {}),
         }
       : {
           visibility: opts.visibility,
@@ -207,6 +211,7 @@ export function usePostsFeed(options: UsePostsFeedOptions = {}) {
         groupsHub: options.groupsHub?.value,
         communityGroupId: options.communityGroupId?.value ?? null,
         authorIds: options.authorIds?.value ?? null,
+        topLevelOnly: options.topLevelOnly?.value,
       }),
     }),
     defaultErrorMessage: 'Failed to load posts.',
@@ -234,6 +239,7 @@ export function usePostsFeed(options: UsePostsFeedOptions = {}) {
       groupsHub: Boolean(options.groupsHub?.value),
       communityGroupId: gid || null,
       authorIds: normalizeAuthorIds(options.authorIds?.value ?? null) ?? null,
+      topLevelOnly: Boolean(options.topLevelOnly?.value),
     })
   }
 
