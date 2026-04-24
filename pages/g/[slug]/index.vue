@@ -886,3 +886,19 @@ onBeforeUnmount(() => {
   if (appHeader.value?.title === (shell.value?.name || 'Group')) appHeader.value = null
 })
 </script>
+
+<style scoped>
+.media-grid-enter-active,
+.media-grid-leave-active {
+  transition: opacity 0.2s ease;
+}
+
+.media-grid-enter-from,
+.media-grid-leave-to {
+  opacity: 0;
+}
+
+.media-grid-move {
+  transition: transform 0.25s ease;
+}
+</style>
