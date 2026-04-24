@@ -118,9 +118,9 @@ function onNewFolder() {
 
 watch(
   open,
-  (isOpen) => {
+  (isOpen, _old, onCleanup) => {
     if (!import.meta.client || !isOpen) return
-    const onPointerDown = (e: Event) => {
+    const onPointerDown = (e: PointerEvent) => {
       const el = wrapEl.value
       const target = e.target as Node | null
       if (!el || !target || el.contains(target)) return
@@ -129,14 +129,12 @@ watch(
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') open.value = false
     }
-    window.addEventListener('mousedown', onPointerDown, true)
-    window.addEventListener('touchstart', onPointerDown, true)
+    window.addEventListener('pointerdown', onPointerDown, true)
     window.addEventListener('keydown', onKeyDown)
-    return () => {
-      window.removeEventListener('mousedown', onPointerDown, true)
-      window.removeEventListener('touchstart', onPointerDown, true)
+    onCleanup(() => {
+      window.removeEventListener('pointerdown', onPointerDown, true)
       window.removeEventListener('keydown', onKeyDown)
-    }
+    })
   },
   { flush: 'post' },
 )
