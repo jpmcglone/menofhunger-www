@@ -10,6 +10,7 @@ export function useNotificationsBadge() {
     setNotificationUnreadCommentCount,
     isSocketConnected,
   } = usePresence()
+  const criticalBadgeCountsLoaded = useState<boolean>('critical-badge-counts-loaded', () => false)
 
   const count = computed(() => Math.max(0, Number(notificationUndeliveredCount.value) || 0))
   /** Only show badge when there is at least one unseen notification (never show for 0). */
@@ -44,7 +45,9 @@ export function useNotificationsBadge() {
   watch(
     () => user.value?.id,
     (userId) => {
-      if (userId) fetchUndeliveredCount()
+      if (userId) {
+        if (!criticalBadgeCountsLoaded.value) void fetchUndeliveredCount()
+      }
       else {
         setNotificationUndeliveredCount(0)
         setNotificationUnreadCommentCount(0)

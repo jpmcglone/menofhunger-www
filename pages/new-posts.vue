@@ -74,17 +74,15 @@ const {
   loadMore,
 } = useNewPostsFeed()
 
-const { markDelivered } = useNotifications()
+const { markNewPostsRead } = useNotifications()
 const notifBadge = useNotificationsBadge()
-const { setNotificationUndeliveredCount } = usePresence()
 const initialLoadResolved = ref(false)
 
 const showInitialLoader = computed(() => !initialLoadResolved.value || (loading.value && displayPosts.value.length === 0))
 
 onMounted(async () => {
   try {
-    await markDelivered()
-    setNotificationUndeliveredCount(0)
+    void markNewPostsRead()
     await refresh()
   } finally {
     initialLoadResolved.value = true
@@ -92,8 +90,7 @@ onMounted(async () => {
 })
 
 onActivated(async () => {
-  await markDelivered()
-  setNotificationUndeliveredCount(0)
+  void markNewPostsRead()
   await refresh()
 })
 

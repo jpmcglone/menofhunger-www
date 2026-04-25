@@ -182,6 +182,7 @@ export function usePostsFeed(options: UsePostsFeedOptions = {}) {
   const forYou = options.forYou ?? ref(false)
   const showAds = options.showAds ?? computed(() => true)
   const lastHardRefreshMs = useState<number>(`${feedStateKey}-last-hard-refresh-ms`, () => 0)
+  const lastHardRefreshRequestKey = useState<string>(`${feedStateKey}-last-hard-refresh-request-key`, () => '')
   // Shared via useState so that the global layout (modal composer) can also track optimistic inserts.
   const localInserts = useState<LocalFeedInsert[]>(localInsertsStateKey, () => [])
 
@@ -402,8 +403,21 @@ export function usePostsFeed(options: UsePostsFeedOptions = {}) {
   let prevSort: FeedSort = sort.value
   let prevFollowing: boolean = followingOnly.value
   let prevForYou: boolean = forYou.value
+  let hardRefreshPromise: Promise<void> | null = null
+  let hardRefreshPromiseKey = ''
 
   async function refresh() {
+    const requestKey = currentRequestKey()
+    if (hardRefreshPromise && hardRefreshPromiseKey === requestKey) return await hardRefreshPromise
+    if (
+      posts.value.length > 0 &&
+      lastHardRefreshRequestKey.value === requestKey &&
+      Date.now() - lastHardRefreshMs.value < 1_000
+    ) {
+      return
+    }
+    if (hardRefreshPromise) await hardRefreshPromise
+
     const paramsChanged =
       visibility.value !== prevVisibility ||
       sort.value !== prevSort ||
@@ -415,11 +429,18 @@ export function usePostsFeed(options: UsePostsFeedOptions = {}) {
     prevForYou = forYou.value
     if (paramsChanged) localInserts.value = []
     loadingIndicator.start()
-    try {
+    hardRefreshPromiseKey = requestKey
+    hardRefreshPromise = (async () => {
       await feedRefresh()
-      loadedRequestKey = currentRequestKey()
+      loadedRequestKey = requestKey
+      lastHardRefreshRequestKey.value = loadedRequestKey
       lastHardRefreshMs.value = Date.now()
+    })()
+    try {
+      await hardRefreshPromise
     } finally {
+      hardRefreshPromise = null
+      hardRefreshPromiseKey = ''
       queueMicrotask(() => loadingIndicator.finish())
     }
   }
@@ -461,6 +482,7 @@ export function usePostsFeed(options: UsePostsFeedOptions = {}) {
     if (!import.meta.client) return
     if (softRefreshPromise) return await softRefreshPromise
     if (loading.value || loadingMore.value) return
+    if (Date.now() - lastHardRefreshMs.value < 1_500) return
     const scroller = opts?.scroller ?? middleScrollerEl.value
     if (!scroller) return
 
@@ -483,6 +505,7 @@ export function usePostsFeed(options: UsePostsFeedOptions = {}) {
             groupsHub: options.groupsHub?.value,
             communityGroupId: options.communityGroupId?.value ?? null,
             authorIds: options.authorIds?.value ?? null,
+            topLevelOnly: options.topLevelOnly?.value,
           }),
         })
         const fresh = (res.data ?? []).filter((p: FeedPost) => !p.deletedAt)

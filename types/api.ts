@@ -1691,6 +1691,7 @@ export type GetCheckinsTodayResponse = {
   checkinStreakDays: number
   allowedVisibilities: CheckinAllowedVisibility[]
   crew?: CheckinCrewBlock | null
+  socialProof?: GetCheckinsTodayAnsweredResponse | null
 }
 
 export type CheckinAnswerer = {

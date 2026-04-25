@@ -409,15 +409,23 @@ function kindFromQuery(): NotificationKind | null {
   return (typeof q === 'string' && valid.includes(q as NotificationKind)) ? (q as NotificationKind) : null
 }
 
-onMounted(async () => {
-  await markDelivered()
+let lastDeliveredMarkAt = 0
+function markDeliveredInBackground() {
+  if (import.meta.client && document.visibilityState !== 'visible') return
+  const now = Date.now()
+  if (now - lastDeliveredMarkAt < 1_000) return
+  lastDeliveredMarkAt = now
+  void markDelivered()
   setNotificationUndeliveredCount(0)
+}
+
+onMounted(async () => {
+  markDeliveredInBackground()
   await setKind(kindFromQuery())
 })
 
 onActivated(async () => {
-  await markDelivered()
-  setNotificationUndeliveredCount(0)
+  markDeliveredInBackground()
   const kind = kindFromQuery()
   if (kind !== activeKind.value) {
     await setKind(kind)
@@ -435,16 +443,10 @@ onUnmounted(() => {
 // Only auto-mark delivered if the page is currently visible; if it's a background tab,
 // skip so the badge isn't silently cleared before the user returns to the app.
 const { notificationUndeliveredCount } = usePresence()
-let undeliveredSeq = 0
-watch(notificationUndeliveredCount, async (newVal, oldVal) => {
+watch(notificationUndeliveredCount, (newVal, oldVal) => {
   if (typeof newVal === 'number' && typeof oldVal === 'number' && newVal > oldVal) {
     if (import.meta.client && document.visibilityState !== 'visible') return
-    const seq = ++undeliveredSeq
-    await markDelivered()
-    if (seq !== undeliveredSeq) return
-    setNotificationUndeliveredCount(0)
-    if (seq !== undeliveredSeq) return
-    await fetchList({ forceRefresh: true })
+    markDeliveredInBackground()
   }
 })
 

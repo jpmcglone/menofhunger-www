@@ -2,6 +2,8 @@ import type { FollowListUser, GetFollowRecommendationsData } from '~/types/api'
 import { getApiErrorMessage } from '~/utils/api-error'
 import { LIFE_ARENAS } from '~/config/arenas'
 
+const WHO_TO_FOLLOW_TTL_MS = 10 * 60 * 1000
+
 export function useWhoToFollow(options?: { enabled?: Ref<boolean>; defaultLimit?: number }) {
   const { apiFetch } = useApiClient()
   const { user } = useAuth()
@@ -12,11 +14,24 @@ export function useWhoToFollow(options?: { enabled?: Ref<boolean>; defaultLimit?
   const users = ref<FollowListUser[]>([])
   const loading = ref(false)
   const error = ref<string | null>(null)
+  const cache = useState<Record<string, { expiresAt: number; users: FollowListUser[] }>>('who-to-follow-cache', () => ({}))
 
   const isAuthed = computed(() => Boolean(user.value?.id))
 
+  function cacheKey(limit: number): string {
+    return `${user.value?.id ?? 'anon'}:${limit}`
+  }
+
   async function refresh(opts?: { limit?: number }) {
     if (!enabled.value) return
+    const limit = Math.max(1, Math.min(50, Math.floor(opts?.limit ?? defaultLimit)))
+    const key = cacheKey(limit)
+    const hit = cache.value[key]
+    if (hit && hit.expiresAt > Date.now()) {
+      users.value = hit.users
+      error.value = null
+      return
+    }
 
     loading.value = true
     error.value = null
@@ -24,9 +39,12 @@ export function useWhoToFollow(options?: { enabled?: Ref<boolean>; defaultLimit?
       const path = isAuthed.value ? '/follows/recommendations' : '/follows/top-users'
       const res = await apiFetch<GetFollowRecommendationsData>(path, {
         method: 'GET',
-        query: { limit: Math.max(1, Math.min(50, Math.floor(opts?.limit ?? defaultLimit))) },
+        query: { limit },
+        mohCache: { ttlMs: WHO_TO_FOLLOW_TTL_MS, staleWhileRevalidateMs: WHO_TO_FOLLOW_TTL_MS },
       })
-      users.value = (res.data ?? []) as GetFollowRecommendationsData
+      const next = (res.data ?? []) as GetFollowRecommendationsData
+      users.value = next
+      cache.value = { ...cache.value, [key]: { expiresAt: Date.now() + WHO_TO_FOLLOW_TTL_MS, users: next } }
     } catch (e: unknown) {
       error.value = getApiErrorMessage(e) || 'Failed to load suggestions.'
       users.value = []
@@ -39,7 +57,14 @@ export function useWhoToFollow(options?: { enabled?: Ref<boolean>; defaultLimit?
   watch(
     [enabled, isAuthed],
     ([on, authed]) => {
-      if (on) void refresh({ limit: defaultLimit })
+      if (!on) return
+      if (import.meta.client) {
+        window.setTimeout(() => {
+          if (enabled.value && isAuthed.value === authed) void refresh({ limit: defaultLimit })
+        }, 250)
+      } else {
+        void refresh({ limit: defaultLimit })
+      }
     },
     { immediate: true },
   )

@@ -340,7 +340,6 @@ import type {
   CheckinAllowedVisibility,
   CheckinCrewBlock,
   CheckinCrewMemberStatus,
-  GetCheckinsTodayAnsweredResponse,
   PostVisibility,
   WsCheckinAnsweredTodayPayload,
 } from '~/types/api'
@@ -359,6 +358,11 @@ const props = defineProps<{
     coins?: number
     allowedVisibilities?: CheckinAllowedVisibility[]
     crew?: CheckinCrewBlock | null
+    socialProof?: {
+      dayKey: string
+      totalToday: number
+      recentAnswerers: CheckinAnswerer[]
+    } | null
   } | null
   /** Last submitted check-in body for the "you answered" echo. Optional. */
   myCheckinBody?: string | null
@@ -390,7 +394,6 @@ const props = defineProps<{
 }>()
 
 const { isAuthed } = useAuth()
-const { apiFetchData } = useApiClient()
 const { addCheckinsCallback, removeCheckinsCallback, addCrewCallback, removeCrewCallback } = usePresence()
 const { dayKey: etDayKey } = useEasternMidnightRollover()
 const _openComposer = inject(MOH_OPEN_COMPOSER_KEY, null) // referenced for parity; parent owns onAnswer
@@ -572,15 +575,10 @@ const socialProofLine = computed(() => {
   return `${names[0]}, ${names[1]}, and ${remainder.toLocaleString()} other${remainder === 1 ? '' : 's'} answered today.`
 })
 
-async function refreshSocialProof() {
-  try {
-    const data = await apiFetchData<GetCheckinsTodayAnsweredResponse>('/checkins/today/answered', { method: 'GET' })
-    totalToday.value = Math.max(0, Number(data?.totalToday ?? 0) || 0)
-    const list = Array.isArray(data?.recentAnswerers) ? data.recentAnswerers : []
-    recentAnswerers.value = list
-  } catch {
-    // Social proof is non-critical — degrade silently.
-  }
+function refreshSocialProof() {
+  const data = props.state?.socialProof ?? null
+  totalToday.value = Math.max(0, Number(data?.totalToday ?? 0) || 0)
+  recentAnswerers.value = Array.isArray(data?.recentAnswerers) ? data.recentAnswerers : []
 }
 
 const answeredCb = {
@@ -622,7 +620,7 @@ const crewCb = {
 }
 
 onMounted(() => {
-  void refreshSocialProof()
+  refreshSocialProof()
   addCheckinsCallback(answeredCb)
   addCrewCallback(crewCb)
 })
@@ -633,12 +631,14 @@ onBeforeUnmount(() => {
 })
 
 watch(etDayKey, () => {
-  void refreshSocialProof()
+  refreshSocialProof()
   // New day — drop any local streak overrides; trust the next /checkins/today payload.
   localCrewStreak.value = null
   localCrewLongest.value = null
   localCrewLastCompletedDayKey.value = null
 })
+
+watch(() => props.state?.socialProof, () => refreshSocialProof(), { immediate: true })
 
 defineExpose({ refreshSocialProof })
 

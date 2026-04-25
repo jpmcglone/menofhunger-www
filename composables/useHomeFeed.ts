@@ -21,14 +21,14 @@ export function useHomeFeed() {
     viewerIsPremium,
     ctaKind: feedCtaKind,
     resetFilters: resetUrlFilters,
-  } = useUrlFeedFilters()
+  } = useUrlFeedFilters({ defaultScope: 'forYou' })
 
   const scopeTabs = computed(() => {
     if (!isAuthed.value) return [{ key: 'all', label: 'All', disabled: false }]
     return [
-      { key: 'all', label: 'All', disabled: false },
-      { key: 'following', label: 'Following', disabled: false },
       { key: 'forYou', label: 'For You', disabled: false },
+      { key: 'following', label: 'Following', disabled: false },
+      { key: 'all', label: 'All', disabled: false },
     ]
   })
 

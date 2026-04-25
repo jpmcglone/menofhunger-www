@@ -1,17 +1,43 @@
 import type { CheckinAllowedVisibility, CreateCheckinResponse, GetCheckinsTodayResponse } from '~/types/api'
 
+const TODAY_CHECKIN_CACHE_TTL_MS = 30_000
+
 export function useDailyCheckin() {
   const { apiFetchData } = useApiClient()
+  const { user } = useAuth()
+  const { dayKey } = useEasternMidnightRollover()
 
   const state = ref<GetCheckinsTodayResponse | null>(null)
   const loading = ref(false)
   const error = ref<string | null>(null)
+  const cache = useState<Record<string, { expiresAt: number; data: GetCheckinsTodayResponse }>>('daily-checkin-today-cache', () => ({}))
+
+  function cacheKey(): string | null {
+    const uid = (user.value?.id ?? '').trim()
+    if (!uid) return null
+    return `${uid}:${dayKey.value}`
+  }
 
   async function refresh() {
+    const key = cacheKey()
+    const hit = key ? cache.value[key] : null
+    if (hit && hit.expiresAt > Date.now()) {
+      state.value = hit.data
+      error.value = null
+      return
+    }
+    if (key && hit) {
+      const nextCache = { ...cache.value }
+      delete nextCache[key]
+      cache.value = nextCache
+    }
+
     loading.value = true
     error.value = null
     try {
-      state.value = await apiFetchData<GetCheckinsTodayResponse>('/checkins/today', { method: 'GET' })
+      const next = await apiFetchData<GetCheckinsTodayResponse>('/checkins/today', { method: 'GET' })
+      state.value = next
+      if (key) cache.value = { ...cache.value, [key]: { expiresAt: Date.now() + TODAY_CHECKIN_CACHE_TTL_MS, data: next } }
     } catch (e: any) {
       error.value = e?.data?.meta?.errors?.[0]?.message ?? e?.message ?? 'Failed to load check-in.'
       state.value = null
@@ -55,6 +81,10 @@ export function useDailyCheckin() {
         allowedVisibilities: [],
         crew: null,
       }
+    }
+    const key = cacheKey()
+    if (key && state.value) {
+      cache.value = { ...cache.value, [key]: { expiresAt: Date.now() + TODAY_CHECKIN_CACHE_TTL_MS, data: state.value } }
     }
     return res
   }

@@ -5,6 +5,7 @@ export function useMessagesBadge() {
   const { user } = useAuth()
   const { apiFetchData } = useApiClient()
   const { messageUnreadCounts, setMessageUnreadCounts, isSocketConnected } = usePresence()
+  const criticalBadgeCountsLoaded = useState<boolean>('critical-badge-counts-loaded', () => false)
 
   const primaryCount = computed(() => Math.max(0, Number(messageUnreadCounts.value.primary) || 0))
   const requestCount = computed(() => Math.max(0, Number(messageUnreadCounts.value.requests) || 0))
@@ -47,7 +48,9 @@ export function useMessagesBadge() {
   watch(
     () => user.value?.id,
     (userId) => {
-      if (userId) fetchUnreadCounts()
+      if (userId) {
+        if (!criticalBadgeCountsLoaded.value) void fetchUnreadCounts()
+      }
       else setMessageUnreadCounts({ primary: 0, requests: 0 })
     },
     { immediate: true },

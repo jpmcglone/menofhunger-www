@@ -5,6 +5,8 @@ type UrlFeedFiltersOptions = {
   // Uses history.replaceState + location.search as source of truth.
   // Useful on pages that intentionally bypass Vue Router with pushState.
   historyBacked?: boolean
+  /** Scope used when `?scope=` is absent. Defaults to `all`. */
+  defaultScope?: FeedScope
 }
 
 /**
@@ -28,6 +30,7 @@ export function useUrlFeedFilters(options: UrlFeedFiltersOptions = {}) {
   const router = useRouter()
   const { isVerified, isPremium, isAuthed } = useAuth()
   const historyBacked = options.historyBacked === true
+  const defaultScope = options.defaultScope ?? 'all'
   const historyQueryVersion = ref(0)
 
   // When the profile page switches tabs via history.pushState (bypassing Vue Router
@@ -117,10 +120,11 @@ export function useUrlFeedFilters(options: UrlFeedFiltersOptions = {}) {
       const v = readQueryValue('scope')
       if (v === 'following') return 'following'
       if (v === 'forYou') return 'forYou'
-      return 'all'
+      if (v === 'all') return 'all'
+      return defaultScope
     },
     set: (val) => {
-      applyQueryPatch({ scope: val === 'all' ? undefined : val })
+      applyQueryPatch({ scope: val === defaultScope ? undefined : val })
     },
   })
 
@@ -138,7 +142,7 @@ export function useUrlFeedFilters(options: UrlFeedFiltersOptions = {}) {
     return null
   })
 
-  const isFiltered = computed(() => sort.value !== 'new' || filter.value !== 'all' || scope.value !== 'all')
+  const isFiltered = computed(() => sort.value !== 'new' || filter.value !== 'all' || scope.value !== defaultScope)
 
   function resetFilters() {
     applyQueryPatch({ sort: undefined, filter: undefined })

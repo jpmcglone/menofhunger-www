@@ -1,4 +1,4 @@
-import type { GetNotificationsResponse, Notification, NotificationFeedItem, NotificationGroup, NotificationKind } from '~/types/api'
+import type { GetNotificationsResponse, Notification, NotificationFeedItem, NotificationGroup, NotificationGroupKind, NotificationKind } from '~/types/api'
 import type { NotificationsCallback } from '~/composables/usePresence'
 import { useUsersStore } from '~/composables/useUsersStore'
 import { userColorTier, userTierBgClass, userTierTextClass } from '~/utils/user-tier'
@@ -20,7 +20,7 @@ export function useNotifications() {
   const route = useRoute()
   const { user: me } = useAuth()
   const usersStore = useUsersStore()
-  const { addNotificationsCallback, removeNotificationsCallback } = usePresence()
+  const { addNotificationsCallback, removeNotificationsCallback, setNotificationUndeliveredCount } = usePresence()
 
   const stateKey = `notifications:${me.value?.id ?? 'anon'}`
   const notifications = useState<NotificationFeedItem[]>(`${stateKey}:items`, () => [])
@@ -32,36 +32,55 @@ export function useNotifications() {
   // "never fetched yet" (show loader) from "fetched and empty" (show empty state).
   const hasFetched = useState<boolean>(`${stateKey}:hasFetched`, () => false)
   const isNotificationsPage = computed(() => route.path === '/notifications')
+  const groupedKinds = new Set<NotificationGroupKind>(['comment', 'boost', 'repost', 'follow', 'followed_post', 'nudge'])
+
+  function notificationMatchesActiveKind(n: Notification): boolean {
+    return !activeKind.value || n.kind === activeKind.value
+  }
+
+  function prependNotification(n: Notification): boolean {
+    if (!n?.id || !notificationMatchesActiveKind(n)) return true
+    if (groupedKinds.has(n.kind as NotificationGroupKind)) return false
+    const next = notifications.value.filter((item) => item.type !== 'single' || item.notification.id !== n.id)
+    notifications.value = [{ type: 'single', notification: n }, ...next]
+    hasFetched.value = true
+    return true
+  }
+
+  function removeNotificationsByIds(ids: string[]): void {
+    const idSet = new Set(ids.map((id) => (id ?? '').trim()).filter(Boolean))
+    if (!idSet.size) return
+    notifications.value = notifications.value.filter((item) => {
+      if (item.type === 'single') return !idSet.has(item.notification.id)
+      if (item.type === 'group') return !idSet.has(item.group.id)
+      return !idSet.has(item.rollup.id)
+    })
+  }
 
   // Realtime: the API now returns grouped feed items, so we refetch when relevant events arrive.
   const notificationsCb: NotificationsCallback = {
     onUpdated: () => {
-      if (!isNotificationsPage.value) return
-      if (loading.value) {
-        pendingRefresh.value = true
-        return
-      }
-      void fetchList({ forceRefresh: true })
+      // Count-only updates are already applied in usePresence. Avoid refetching the
+      // grouped list unless a structural event below cannot be patched in place.
     },
     onNew: (payload) => {
-      if (!payload?.notification?.id) return
+      const notification = payload?.notification
+      if (!notification?.id) return
       if (!isNotificationsPage.value) return
+      const patched = prependNotification(notification)
+      if (patched) return
       if (loading.value) {
         pendingRefresh.value = true
         return
       }
-      // Best-effort: refresh to keep grouping consistent (also covers boost upserts that don't change undeliveredCount).
+      // Grouped rows need the server's aggregation shape.
       void fetchList({ forceRefresh: true })
     },
     onDeleted: (payload) => {
       const ids = Array.isArray(payload?.notificationIds) ? payload.notificationIds : []
       if (ids.length === 0) return
       if (!isNotificationsPage.value) return
-      if (loading.value) {
-        pendingRefresh.value = true
-        return
-      }
-      void fetchList({ forceRefresh: true })
+      removeNotificationsByIds(ids)
     },
   }
   if (import.meta.client) {
@@ -177,6 +196,19 @@ export function useNotifications() {
     } catch (e: unknown) {
       if (import.meta.dev) {
         console.warn('[notifications] markAllRead failed', e)
+      }
+    }
+  }
+
+  async function markNewPostsRead() {
+    try {
+      const res = await apiFetch<{ undeliveredCount?: number }>('/notifications/new-posts/mark-read', { method: 'POST' })
+      if (typeof res.data?.undeliveredCount === 'number') {
+        setNotificationUndeliveredCount(res.data.undeliveredCount)
+      }
+    } catch (e: unknown) {
+      if (import.meta.dev) {
+        console.warn('[notifications] markNewPostsRead failed', e)
       }
     }
   }
@@ -517,6 +549,7 @@ export function useNotifications() {
     markReadBySubject,
     markReadById,
     markAllRead,
+    markNewPostsRead,
     actorDisplay,
     actorTierClass,
     actorTierIconBgClass,

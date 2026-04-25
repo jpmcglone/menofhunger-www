@@ -1844,7 +1844,10 @@ const {
 } = useLazyAsyncData<DailyContentToday | null>(
   'daily-content:today',
   async () => {
-    return await apiFetchData<DailyContentToday>('/meta/daily-content/today', { method: 'GET' })
+    return await apiFetchData<DailyContentToday>('/meta/daily-content/today', {
+      method: 'GET',
+      mohCache: { ttlMs: 60 * 60 * 1000, staleWhileRevalidateMs: 60 * 60 * 1000 },
+    })
   },
   {
     server: false,
