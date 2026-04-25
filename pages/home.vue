@@ -653,7 +653,7 @@ function onComposerPending(payload: {
   })
 }
 
-// onFeedScopeChange is provided by useHomeFeed — updates URL param and refreshes feed
+// onFeedScopeChange is provided by useHomeFeed — remembers the selected scope and refreshes feed
 
 </script>
 

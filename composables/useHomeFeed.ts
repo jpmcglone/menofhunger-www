@@ -2,26 +2,52 @@ import type { ProfilePostsFilter } from '~/utils/post-visibility'
 import type { FeedVisibilityFilter } from '~/composables/useFeedFilters'
 import type { FeedScope } from '~/composables/useUrlFeedFilters'
 import { useUrlFeedFilters } from '~/composables/useUrlFeedFilters'
-import { useEasternMidnightRollover } from '~/composables/useEasternMidnightRollover'
 
 const HOME_SCOPE_COOKIE = 'moh.home.scope.v1'
+const DEFAULT_HOME_SCOPE: FeedScope = 'forYou'
+
+function normalizeHomeScope(value: unknown): FeedScope {
+  const raw = typeof value === 'string' ? value : ''
+  // Older cookies were stored as `${dayKey}:${scope}`. Keep the user's last choice
+  // while dropping the daily reset behavior.
+  const scope = raw.includes(':') ? raw.slice(raw.indexOf(':') + 1) : raw
+  if (scope === 'all' || scope === 'following' || scope === 'forYou') return scope
+  return DEFAULT_HOME_SCOPE
+}
 
 export function useHomeFeed() {
   const { user, isAuthed } = useAuth()
   const { apiFetchData } = useApiClient()
   const middleScrollerEl = useMiddleScroller()
   const route = useRoute()
-  const { dayKey } = useEasternMidnightRollover()
+  const router = useRouter()
 
   const {
     filter: feedFilter,
     sort: feedSort,
-    scope: feedScope,
     viewerIsVerified,
     viewerIsPremium,
     ctaKind: feedCtaKind,
     resetFilters: resetUrlFilters,
-  } = useUrlFeedFilters({ defaultScope: 'forYou' })
+  } = useUrlFeedFilters()
+
+  const storedFeedScope = useCookie<string | null>(HOME_SCOPE_COOKIE, {
+    default: () => DEFAULT_HOME_SCOPE,
+    path: '/',
+    sameSite: 'lax',
+    maxAge: 60 * 60 * 24 * 365,
+  })
+
+  const feedScope = computed<FeedScope>({
+    get: () => {
+      if (!isAuthed.value) return 'all'
+      return normalizeHomeScope(storedFeedScope.value)
+    },
+    set: (next) => {
+      if (!isAuthed.value) return
+      storedFeedScope.value = normalizeHomeScope(next)
+    },
+  })
 
   const scopeTabs = computed(() => {
     if (!isAuthed.value) return [{ key: 'all', label: 'All', disabled: false }]
@@ -44,52 +70,21 @@ export function useHomeFeed() {
     return route.query.sort ? feedSort.value : 'trending'
   })
 
-  // ── Daily-persisted default scope (authed only) ─────────────────────────────
-  // The cookie pins the user's last-chosen tab for the rest of the ET day.
-  // On a new day (or no cookie), the default snaps back to "For You".
-  function readScopeCookie(): { day: string; scope: FeedScope } | null {
-    const c = useCookie<string | null>(HOME_SCOPE_COOKIE, { default: () => null }).value
-    if (!c) return null
-    const idx = c.indexOf(':')
-    if (idx <= 0) return null
-    const day = c.slice(0, idx)
-    const scope = c.slice(idx + 1)
-    if (scope !== 'all' && scope !== 'following' && scope !== 'forYou') return null
-    return { day, scope }
-  }
+  watch(
+    storedFeedScope,
+    (value) => {
+      const normalized = normalizeHomeScope(value)
+      if (value !== normalized) storedFeedScope.value = normalized
+    },
+    { immediate: true },
+  )
 
-  function writeScopeCookie(scope: FeedScope) {
-    const cookie = useCookie<string | null>(HOME_SCOPE_COOKIE, {
-      default: () => null,
-      maxAge: 60 * 60 * 24 * 30,
-      sameSite: 'lax',
-    })
-    cookie.value = `${dayKey.value}:${scope}`
-  }
-
-  if (import.meta.client) {
-    onMounted(() => {
-      if (!isAuthed.value) return
-      // Only auto-default when the user didn't explicitly request a scope via the URL.
-      const hasUrlScope = typeof route.query.scope === 'string' && route.query.scope.length > 0
-      if (hasUrlScope) return
-      const cookie = readScopeCookie()
-      if (cookie && cookie.day === dayKey.value) {
-        if (feedScope.value !== cookie.scope) feedScope.value = cookie.scope
-      } else {
-        if (feedScope.value !== 'forYou') feedScope.value = 'forYou'
-        writeScopeCookie('forYou')
-      }
-    })
-
-    watch(
-      () => [feedScope.value, dayKey.value, isAuthed.value] as const,
-      ([scope, _day, authed]) => {
-        if (!authed) return
-        writeScopeCookie(scope)
-      },
-    )
-  }
+  onMounted(() => {
+    if (!('scope' in route.query)) return
+    const query = { ...route.query }
+    delete query.scope
+    void router.replace({ path: route.path, query })
+  })
 
   const {
     posts,
@@ -183,7 +178,10 @@ export function useHomeFeed() {
   async function resetFilters() {
     // resetUrlFilters patches sort + filter atomically in one router.replace call,
     // avoiding the race condition of two separate setter calls reading stale route.query.
-    await preserveMiddleScrollAfter(async () => { resetUrlFilters() })
+    await preserveMiddleScrollAfter(async () => {
+      feedScope.value = DEFAULT_HOME_SCOPE
+      resetUrlFilters()
+    })
   }
 
   function onFeedScopeChange(next: FeedScope) {

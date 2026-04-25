@@ -13,53 +13,55 @@
     <span v-if="showReset" class="h-6 w-px bg-gray-200 dark:bg-zinc-800" aria-hidden="true" />
 
     <!-- Order (sort) -->
-    <div ref="sortWrapEl" class="transition-opacity duration-200" :class="hideSort ? 'opacity-0 pointer-events-none' : 'opacity-100'">
-      <button
-        type="button"
-        class="inline-flex cursor-pointer items-center gap-1.5 rounded-full border px-2 py-1 sm:px-2.5 sm:py-1.5 text-[11px] sm:text-[12px] font-semibold leading-none transition-colors border-gray-200 text-gray-700 hover:bg-gray-50 dark:border-zinc-800 dark:text-gray-200 dark:hover:bg-zinc-900"
-        aria-label="Change feed sort order"
-        @click="toggleSortPopover"
-      >
-        <Icon :name="sortIconName" class="text-[10px] opacity-80" aria-hidden="true" />
-        <span>{{ sortLabel }}</span>
-        <Icon name="tabler:chevron-down" class="text-[10px] opacity-70" aria-hidden="true" />
-      </button>
+    <Transition name="feed-sort-pill">
+      <div v-if="!hideSort" ref="sortWrapEl">
+        <button
+          type="button"
+          class="inline-flex cursor-pointer items-center gap-1.5 rounded-full border px-2 py-1 sm:px-2.5 sm:py-1.5 text-[11px] sm:text-[12px] font-semibold leading-none transition-colors border-gray-200 text-gray-700 hover:bg-gray-50 dark:border-zinc-800 dark:text-gray-200 dark:hover:bg-zinc-900"
+          aria-label="Change feed sort order"
+          @click="toggleSortPopover"
+        >
+          <Icon :name="sortIconName" class="text-[10px] opacity-80" aria-hidden="true" />
+          <span>{{ sortLabel }}</span>
+          <Icon name="tabler:chevron-down" class="text-[10px] opacity-70" aria-hidden="true" />
+        </button>
 
-      <Teleport to="body">
-      <div
-        v-if="sortPopoverOpen"
-        ref="sortMenuEl"
-        class="fixed z-[9999] w-56 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-lg dark:border-zinc-800 dark:bg-black"
-        :style="sortMenuStyle"
-        role="menu"
-        aria-label="Feed sort"
-      >
-        <div class="px-3 pt-2 pb-1 text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
-          Order
+        <Teleport to="body">
+        <div
+          v-if="sortPopoverOpen"
+          ref="sortMenuEl"
+          class="fixed z-[9999] w-56 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-lg dark:border-zinc-800 dark:bg-black"
+          :style="sortMenuStyle"
+          role="menu"
+          aria-label="Feed sort"
+        >
+          <div class="px-3 pt-2 pb-1 text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+            Order
+          </div>
+          <button
+            type="button"
+            class="w-full cursor-pointer text-left px-2.5 py-1.5 sm:px-3 sm:py-2 text-[13px] sm:text-sm font-semibold transition-colors text-gray-900 hover:bg-gray-50 dark:text-gray-50 dark:hover:bg-zinc-900 flex items-center gap-2"
+            role="menuitem"
+            @click="setSort('new')"
+          >
+            <Icon name="tabler:clock" class="text-[14px] opacity-70 shrink-0" aria-hidden="true" />
+            <span class="flex-1 text-left">{{ formatSortLabel('new') }}</span>
+            <Icon v-if="sort === 'new'" name="tabler:check" class="text-[12px] opacity-70 shrink-0" aria-hidden="true" />
+          </button>
+          <button
+            type="button"
+            class="w-full cursor-pointer text-left px-2.5 py-1.5 sm:px-3 sm:py-2 text-[13px] sm:text-sm font-semibold transition-colors text-gray-900 hover:bg-gray-50 dark:text-gray-50 dark:hover:bg-zinc-900 flex items-center gap-2"
+            role="menuitem"
+            @click="setSort('trending')"
+          >
+            <Icon name="tabler:bolt" class="text-[14px] opacity-70 shrink-0" aria-hidden="true" />
+            <span class="flex-1 text-left">{{ formatSortLabel('trending') }}</span>
+            <Icon v-if="sort === 'trending'" name="tabler:check" class="text-[12px] opacity-70 shrink-0" aria-hidden="true" />
+          </button>
         </div>
-        <button
-          type="button"
-          class="w-full cursor-pointer text-left px-2.5 py-1.5 sm:px-3 sm:py-2 text-[13px] sm:text-sm font-semibold transition-colors text-gray-900 hover:bg-gray-50 dark:text-gray-50 dark:hover:bg-zinc-900 flex items-center gap-2"
-          role="menuitem"
-          @click="setSort('new')"
-        >
-          <Icon name="tabler:clock" class="text-[14px] opacity-70 shrink-0" aria-hidden="true" />
-          <span class="flex-1 text-left">{{ formatSortLabel('new') }}</span>
-          <Icon v-if="sort === 'new'" name="tabler:check" class="text-[12px] opacity-70 shrink-0" aria-hidden="true" />
-        </button>
-        <button
-          type="button"
-          class="w-full cursor-pointer text-left px-2.5 py-1.5 sm:px-3 sm:py-2 text-[13px] sm:text-sm font-semibold transition-colors text-gray-900 hover:bg-gray-50 dark:text-gray-50 dark:hover:bg-zinc-900 flex items-center gap-2"
-          role="menuitem"
-          @click="setSort('trending')"
-        >
-          <Icon name="tabler:bolt" class="text-[14px] opacity-70 shrink-0" aria-hidden="true" />
-          <span class="flex-1 text-left">{{ formatSortLabel('trending') }}</span>
-          <Icon v-if="sort === 'trending'" name="tabler:check" class="text-[12px] opacity-70 shrink-0" aria-hidden="true" />
-        </button>
+        </Teleport>
       </div>
-      </Teleport>
-    </div>
+    </Transition>
 
     <!-- Visibility (optional: e.g. replies inherit parent post visibility) -->
     <div v-if="showVisibilityFilter" ref="filterWrapEl">
@@ -173,7 +175,12 @@ const props = withDefaults(
     /** When true, fade out the sort pill (it has no effect in this context). */
     hideSort?: boolean
   }>(),
-  { showVisibilityFilter: true, hideSort: false },
+  {
+    sortNoun: undefined,
+    sortCount: null,
+    showVisibilityFilter: true,
+    hideSort: false,
+  },
 )
 
 const emit = defineEmits<{
@@ -335,5 +342,24 @@ function installOutsideClose(
 
 installOutsideClose(sortPopoverOpen, sortWrapEl, sortMenuEl, closeSortPopover)
 installOutsideClose(filterPopoverOpen, filterWrapEl, filterMenuEl, closeFilterPopover)
+
+watch(
+  () => props.hideSort,
+  (hidden) => {
+    if (hidden) closeSortPopover()
+  },
+)
 </script>
+
+<style scoped>
+.feed-sort-pill-enter-active,
+.feed-sort-pill-leave-active {
+  transition: opacity 160ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+.feed-sort-pill-enter-from,
+.feed-sort-pill-leave-to {
+  opacity: 0;
+}
+</style>
 

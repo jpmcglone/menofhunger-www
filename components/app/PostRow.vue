@@ -190,8 +190,8 @@
                   :aria-label="`${viewerCount} ${viewerCount === 1 ? 'person' : 'people'} saw this post`"
                   @mouseenter="onViewerCountHover"
                   @focus="onViewerCountHover"
-                  @mouseleave="viewerBreakdownVisible = false"
-                  @blur="viewerBreakdownVisible = false"
+                  @mouseleave="hideViewerBreakdown"
+                  @blur="hideViewerBreakdown"
                 >
                   <svg viewBox="0 0 24 24" class="h-3.5 w-3.5 shrink-0" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -205,6 +205,7 @@
                   <Transition name="viewer-breakdown">
                     <div
                       v-if="viewerBreakdownVisible"
+                      ref="viewerBreakdownEl"
                       class="fixed z-[9999] min-w-[10rem] rounded-lg border moh-border moh-surface shadow-lg px-3 py-2.5 text-[11px] sm:text-xs"
                       :style="viewerBreakdownStyle"
                       role="tooltip"
@@ -1486,21 +1487,28 @@ const viewerBreakdown = ref<import('~/types/api').PostViewBreakdown | null>(null
 const viewerBreakdownLoading = ref(false)
 let viewerBreakdownRequestSeq = 0
 
-const viewerBreakdownStyle = computed(() => {
-  if (!import.meta.client || !viewerCountBtnEl.value) return {}
-  const rect = viewerCountBtnEl.value.getBoundingClientRect()
-  const popoverWidth = 160
-  let left = rect.right - popoverWidth
-  if (left < 8) left = 8
-  if (left + popoverWidth > window.innerWidth - 8) left = window.innerWidth - popoverWidth - 8
-  return {
-    top: `${Math.round(rect.bottom + 6)}px`,
-    left: `${Math.round(left)}px`,
-  }
-})
+const {
+  style: viewerBreakdownStyle,
+  menuEl: viewerBreakdownEl,
+  place: placeViewerBreakdown,
+  reset: resetViewerBreakdownPosition,
+} = useMenuPosition()
 
-async function onViewerCountHover() {
+function placeViewerBreakdownFrom(anchorEl: HTMLElement | null) {
+  if (!anchorEl) return
+  placeViewerBreakdown(anchorEl, {
+    align: 'end',
+    gap: 6,
+    menuWidth: 176,
+    menuHeight: 120,
+  })
+}
+
+async function onViewerCountHover(event?: Event) {
+  const anchorEl = event?.currentTarget instanceof HTMLElement ? event.currentTarget : viewerCountBtnEl.value
+  placeViewerBreakdownFrom(anchorEl)
   viewerBreakdownVisible.value = true
+  placeViewerBreakdownFrom(anchorEl)
   if (viewerBreakdownLoading.value) return
   viewerBreakdownLoading.value = true
   const requestSeq = ++viewerBreakdownRequestSeq
@@ -1523,6 +1531,11 @@ async function onViewerCountHover() {
       viewerBreakdownLoading.value = false
     }
   }
+}
+
+function hideViewerBreakdown() {
+  viewerBreakdownVisible.value = false
+  resetViewerBreakdownPosition()
 }
 
 function onBookmarkCountDelta(delta: number) {
