@@ -124,11 +124,11 @@
         <div class="relative">
           <div
             v-if="feedGroupTagForRow"
-            class="relative mb-1 flex items-center"
+            class="relative mb-1.5 flex items-center"
           >
             <NuxtLink
               :to="`/g/${encodeURIComponent(feedGroupTagForRow.slug)}`"
-              class="inline-flex max-w-full items-center gap-1.5 rounded-md py-0.5 pl-0.5 pr-1 -ml-0.5 text-left transition-colors hover:bg-black/[0.04] dark:hover:bg-white/[0.06]"
+              class="inline-flex max-w-full items-center gap-1.5 rounded-full border moh-border bg-black/[0.025] py-0.5 pl-0.5 pr-2 -ml-0.5 text-left shadow-sm shadow-black/[0.03] transition-colors hover:bg-black/[0.05] dark:bg-white/[0.045] dark:shadow-black/20 dark:hover:bg-white/[0.075]"
               :aria-label="`Group: ${feedGroupTagForRow.name}`"
               @click.stop
               @mouseenter="onFeedGroupEnter"
@@ -153,7 +153,10 @@
                   {{ feedGroupInitials }}
                 </div>
               </div>
-              <span class="whitespace-nowrap text-xs font-medium text-gray-500 dark:text-zinc-400">
+              <span class="text-[10px] font-semibold uppercase tracking-wide text-gray-400 dark:text-zinc-500" aria-hidden="true">
+                in
+              </span>
+              <span class="whitespace-nowrap text-xs font-semibold text-gray-700 dark:text-zinc-200">
                 {{ feedGroupTagForRow.name }}
               </span>
             </NuxtLink>

@@ -40,7 +40,7 @@
             severity="secondary"
             :loading="loading"
             :disabled="loading"
-            @click="refresh({ limit: 50 })"
+            @click="refresh({ limit: 50, force: true })"
           />
         </div>
 

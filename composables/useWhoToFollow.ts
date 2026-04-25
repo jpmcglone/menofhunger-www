@@ -4,6 +4,10 @@ import { LIFE_ARENAS } from '~/config/arenas'
 
 const WHO_TO_FOLLOW_TTL_MS = 10 * 60 * 1000
 
+function makeRecommendationSeed(): string {
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`
+}
+
 export function useWhoToFollow(options?: { enabled?: Ref<boolean>; defaultLimit?: number }) {
   const { apiFetch } = useApiClient()
   const { user } = useAuth()
@@ -22,12 +26,12 @@ export function useWhoToFollow(options?: { enabled?: Ref<boolean>; defaultLimit?
     return `${user.value?.id ?? 'anon'}:${limit}`
   }
 
-  async function refresh(opts?: { limit?: number }) {
+  async function refresh(opts?: { limit?: number; force?: boolean }) {
     if (!enabled.value) return
     const limit = Math.max(1, Math.min(50, Math.floor(opts?.limit ?? defaultLimit)))
     const key = cacheKey(limit)
     const hit = cache.value[key]
-    if (hit && hit.expiresAt > Date.now()) {
+    if (!opts?.force && hit && hit.expiresAt > Date.now()) {
       users.value = hit.users
       error.value = null
       return
@@ -37,9 +41,11 @@ export function useWhoToFollow(options?: { enabled?: Ref<boolean>; defaultLimit?
     error.value = null
     try {
       const path = isAuthed.value ? '/follows/recommendations' : '/follows/top-users'
+      const query: Record<string, number | string> = { limit }
+      if (opts?.force && isAuthed.value) query.seed = makeRecommendationSeed()
       const res = await apiFetch<GetFollowRecommendationsData>(path, {
         method: 'GET',
-        query: { limit },
+        query,
         mohCache: { ttlMs: WHO_TO_FOLLOW_TTL_MS, staleWhileRevalidateMs: WHO_TO_FOLLOW_TTL_MS },
       })
       const next = (res.data ?? []) as GetFollowRecommendationsData
