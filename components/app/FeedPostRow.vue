@@ -239,10 +239,12 @@ const collapsedRepliesLabel = computed(() => collapsedRepliesLabelFor(collapsedS
 function hiddenRepliesForIndex(i: number): number {
   const node = chain.value[i]
   if (!node?.id) return 0
-  if ((node.threadCollapsedCount ?? 0) > 0) return node.threadCollapsedCount!
   const total = liveCommentCountFor(node)
   const hasVisibleChild = i < chain.value.length - 1
-  return Math.max(0, total - (hasVisibleChild ? 1 : 0))
+  const hiddenDirectReplies = Math.max(0, total - (hasVisibleChild ? 1 : 0))
+  const collapsed = Math.max(0, Math.floor(node.threadCollapsedCount ?? 0))
+  if (collapsed > 0) return Math.min(collapsed, hiddenDirectReplies)
+  return hiddenDirectReplies
 }
 
 /** Root post visibility (primary post in the thread) for tier-based styling. */

@@ -140,7 +140,7 @@ function postAndParentChainIds(post: FeedPost): string[] {
   return ids
 }
 
-function postsFeedListQuery(opts: {
+export function postsFeedListQuery(opts: {
   visibility: FeedFilter
   followingOnly: boolean
   sort: FeedSort
@@ -158,7 +158,7 @@ function postsFeedListQuery(opts: {
   const authorIds = normalizeAuthorIds(opts.authorIds)
   // For You is a personalized re-rank of trending. It overrides sort and ignores `followingOnly`
   // (the algorithm has its own follow-graph signal). Group-scoped feeds aren't affected.
-  const isForYou = Boolean(opts.forYou && !groupScoped && !opts.mediaOnly)
+  const isForYou = Boolean(opts.forYou && !groupScoped)
   return {
     limit: opts.limit ?? 30,
     collapseByRoot: opts.mediaOnly ? false : true,
@@ -464,8 +464,10 @@ export function usePostsFeed(options: UsePostsFeedOptions = {}) {
 
   function collapsedSiblingReplyCountFor(post: FeedPost): number {
     const cached = postCache.get(post)
-    if ((cached.threadCollapsedCount ?? 0) > 0) return collapsedSiblingReplyCountForPost(cached)
-    return Math.max(0, Math.floor(cached.commentCount ?? 0)) + getCommentCountBump(cached.id)
+    const liveCommentCount = Math.max(0, Math.floor(cached.commentCount ?? 0)) + getCommentCountBump(cached.id)
+    const collapsedCount = Math.max(0, Math.floor(cached.threadCollapsedCount ?? 0))
+    if (collapsedCount > 0) return Math.min(collapsedCount, liveCommentCount)
+    return liveCommentCount
   }
 
   const displayItems = computed<PostsFeedDisplayItem[]>(() => {
@@ -494,6 +496,7 @@ export function usePostsFeed(options: UsePostsFeedOptions = {}) {
   let prevFollowing: boolean = followingOnly.value
   let prevForYou: boolean = forYou.value
   let prevMediaOnly: boolean = mediaOnly.value
+  let prevTopLevelOnly: boolean = Boolean(options.topLevelOnly?.value)
   let hardRefreshPromise: Promise<void> | null = null
   let hardRefreshPromiseKey = ''
 
@@ -514,12 +517,14 @@ export function usePostsFeed(options: UsePostsFeedOptions = {}) {
       sort.value !== prevSort ||
       followingOnly.value !== prevFollowing ||
       forYou.value !== prevForYou ||
-      mediaOnly.value !== prevMediaOnly
+      mediaOnly.value !== prevMediaOnly ||
+      Boolean(options.topLevelOnly?.value) !== prevTopLevelOnly
     prevVisibility = visibility.value
     prevSort = sort.value
     prevFollowing = followingOnly.value
     prevForYou = forYou.value
     prevMediaOnly = mediaOnly.value
+    prevTopLevelOnly = Boolean(options.topLevelOnly?.value)
     if (paramsChanged) localInserts.value = []
     loadingIndicator.start()
     hardRefreshPromiseKey = requestKey
@@ -907,32 +912,22 @@ export function usePostsFeed(options: UsePostsFeedOptions = {}) {
     return true
   }
 
-  // Auto-refresh when feed params change, matching the pattern in useArticleFeed / useUserMedia.
-  // flush: 'post' ensures the watcher fires after the reactive system (and any async router
-  // navigation) has settled, so buildRequest reads the correct values before fetching.
+  // Auto-refresh when the canonical request key changes. Keeping the watcher tied to
+  // `currentRequestKey()` prevents drift when new query-shaping refs are added.
   if (
     options.visibility ||
     options.sort ||
     options.followingOnly ||
     options.forYou ||
     options.mediaOnly ||
+    options.topLevelOnly ||
     options.groupsHub ||
     options.communityGroupId ||
     options.authorIds ||
     options.enabled
   ) {
     watch(
-      () => [
-        options.visibility?.value,
-        options.sort?.value,
-        options.followingOnly?.value,
-        options.forYou?.value,
-        options.mediaOnly?.value,
-        options.groupsHub?.value,
-        options.communityGroupId?.value,
-        normalizeAuthorIds(options.authorIds?.value ?? null)?.join(',') ?? '',
-        options.enabled?.value,
-      ],
+      () => [feedEnabled(), currentRequestKey()] as const,
       () => {
         if (!feedEnabled()) {
           posts.value = []

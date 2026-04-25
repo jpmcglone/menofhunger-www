@@ -194,6 +194,13 @@ describe('collapsedSiblingReplyCountFor prefers threadCollapsedCount', () => {
     expect(feed.collapsedSiblingReplyCountFor(post)).toBe(3)
   })
 
+  it('never returns more collapsed replies than the post can actually have', async () => {
+    const feed = await makeFeed()
+    const post = makePost({ id: 'p0', commentCount: 0, threadCollapsedCount: 2 })
+    feed.posts.value = [post]
+    expect(feed.collapsedSiblingReplyCountFor(post)).toBe(0)
+  })
+
   it('falls back to commentCount when threadCollapsedCount is 0', async () => {
     const feed = await makeFeed()
     const post = makePost({ id: 'p2', commentCount: 7, threadCollapsedCount: 0 })
@@ -442,8 +449,9 @@ describe('end-to-end: 40 comments but only N are in the new feed', () => {
     expect(out[0]!.id).toBe('peter')
     // Nick was on-chain, so no extra increment. API's 2 stays.
     expect((out[0] as any).threadCollapsedCount).toBe(2)
-    // collapsedSiblingReplyCountFor should return threadCollapsedCount (2), not commentCount (40)
-    expect(feed.collapsedSiblingReplyCountFor(out[0]!)).toBe(2)
+    // Peter has no hidden direct replies, so the root-thread collapse hint should not
+    // render a misleading "View 2 more replies" footer under Peter.
+    expect(feed.collapsedSiblingReplyCountFor(out[0]!)).toBe(0)
   })
 
   it('API keeps 2 sibling replies → threadCollapsedCount=2, client absorbs off-chain sibling → footer=3', async () => {
@@ -464,7 +472,8 @@ describe('end-to-end: 40 comments but only N are in the new feed', () => {
     expect(out[0]!.id).toBe('nick') // first in feed, same chain length
     // API said 2 collapsed + bob is off-chain sibling absorbed client-side = 3
     expect((out[0] as any).threadCollapsedCount).toBe(3)
-    expect(feed.collapsedSiblingReplyCountFor(out[0]!)).toBe(3)
+    // Nick has no hidden direct replies; bob was a sibling branch under John.
+    expect(feed.collapsedSiblingReplyCountFor(out[0]!)).toBe(0)
   })
 
   it('single reply in feed with no threadCollapsedCount falls back to commentCount', async () => {
@@ -523,8 +532,8 @@ describe('full pipeline: multiple threads with different collapse scenarios', ()
     // Thread C: dave is alone → stays
     expect(out.map((p) => p.id)).toEqual(['peter', 'sue', 'dave'])
 
-    // Thread A footer: 2 trending items collapsed (from API), nick on-chain
-    expect(feed.collapsedSiblingReplyCountFor(out[0]!)).toBe(2)
+    // Thread A: peter has no hidden direct replies, so no footer under peter.
+    expect(feed.collapsedSiblingReplyCountFor(out[0]!)).toBe(0)
     // Thread B footer: no threadCollapsedCount → sue's commentCount (0)
     expect(feed.collapsedSiblingReplyCountFor(out[1]!)).toBe(0)
     // Thread C: no replies at all
