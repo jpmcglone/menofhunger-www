@@ -1,22 +1,57 @@
 <template>
-  <AppAvatarCircle
-    :src="avatarUrl"
-    :name="name"
-    :username="username"
-    :size-class="sizeClass"
-    :bg-class="bgClass"
-    :round-class="roundClass"
-    :premium-plus-glow="isPremiumPlus"
-    :is-organization="isOrganization"
-    :spaces-ring="showSpacesRing"
-    :show-presence="showPresence"
-    :presence-status="presenceStatus"
-    :presence-scale="props.presenceScale"
-    :presence-inset-ratio="props.presenceInsetRatio"
+  <span
+    ref="wrapEl"
+    class="relative inline-flex shrink-0"
     @mouseenter="onEnter"
     @mousemove="onMove"
     @mouseleave="onLeave"
-  />
+  >
+    <AppAvatarCircle
+      :src="avatarUrl"
+      :name="name"
+      :username="username"
+      :size-class="sizeClass"
+      :bg-class="bgClass"
+      :round-class="roundClass"
+      :premium-plus-glow="isPremiumPlus"
+      :is-organization="isOrganization"
+      :spaces-ring="showSpacesRing"
+      :show-presence="showPresence"
+      :presence-status="presenceStatus"
+      :presence-scale="props.presenceScale"
+      :presence-inset-ratio="props.presenceInsetRatio"
+    />
+    <ClientOnly>
+      <button
+        v-if="activeStatus"
+        type="button"
+        class="moh-avatar-status-bubble moh-focus absolute -right-1 -top-1 z-20 inline-flex h-5 w-5 items-center justify-center rounded-full bg-white text-[var(--p-primary-color)] shadow-[0_2px_8px_rgba(0,0,0,0.18)] ring-1 ring-black/10 transition-[transform,opacity] duration-150 hover:scale-[1.04] active:scale-[0.96] dark:bg-zinc-900 dark:ring-white/15"
+        :aria-label="`${displayName}'s status`"
+        @click.prevent.stop="toggleStatusPopover"
+      >
+        <Icon name="tabler:message-circle-filled" size="13" aria-hidden="true" />
+      </button>
+      <Transition
+        enter-active-class="transition-[opacity,transform] duration-150 ease-out"
+        enter-from-class="opacity-0 translate-y-1 scale-95"
+        enter-to-class="opacity-100 translate-y-0 scale-100"
+        leave-active-class="transition-[opacity,transform] duration-100 ease-in"
+        leave-from-class="opacity-100 translate-y-0 scale-100"
+        leave-to-class="opacity-0 translate-y-1 scale-95"
+      >
+        <div
+          v-if="statusPopoverOpen && activeStatus"
+          class="absolute left-1/2 top-full z-50 mt-2 w-56 -translate-x-1/2 rounded-2xl bg-white p-3 text-left shadow-[0_12px_32px_rgba(0,0,0,0.18)] ring-1 ring-black/10 dark:bg-zinc-950 dark:ring-white/15"
+          role="dialog"
+          @click.stop
+        >
+          <div class="text-xs font-semibold text-gray-500 dark:text-gray-400">{{ displayName }}</div>
+          <div class="mt-1 text-sm font-medium leading-snug text-gray-900 dark:text-gray-50">{{ activeStatus.text }}</div>
+          <div class="mt-2 text-xs text-gray-500 dark:text-gray-400">{{ statusMeta }}</div>
+        </div>
+      </Transition>
+    </ClientOnly>
+  </span>
 </template>
 
 <script setup lang="ts">
@@ -28,6 +63,7 @@
  */
 import { useUserOverlay } from '~/composables/useUserOverlay'
 import { avatarRoundClass } from '~/utils/avatar-rounding'
+import { formatRelativeTime } from '~/utils/time-format'
 
 export type UserAvatarUser = {
   id: string
@@ -65,10 +101,13 @@ const props = withDefaults(
 )
 
 const route = useRoute()
-const { getPresenceStatus, getCurrentSpaceForUser } = usePresence()
+const { getPresenceStatus, getCurrentSpaceForUser, getUserStatus } = usePresence()
 const { user: authUser } = useAuth()
 const { selectedSpaceId } = useSpaceLobby()
 const { user: u } = useUserOverlay(computed(() => props.user))
+const { nowMs } = useNowTicker({ everyMs: 30_000 })
+const wrapEl = ref<HTMLElement | null>(null)
+const statusPopoverOpen = ref(false)
 
 const avatarUrl = computed(() => u.value?.avatarUrl ?? null)
 const name = computed(() => u.value?.name ?? null)
@@ -78,12 +117,69 @@ const isOrganization = computed(() => Boolean((u.value as any)?.isOrganization))
 const roundClass = computed(() => avatarRoundClass(isOrganization.value))
 const previewUsername = computed(() => (u.value?.username ?? '').trim())
 const enablePreview = computed(() => props.enablePreview !== false)
+const displayName = computed(() => name.value || username.value || 'User')
 
 const showPresence = computed(() => props.showPresence ?? true)
 
 const presenceStatus = computed(() => {
   if (props.presenceStatusOverride !== undefined) return props.presenceStatusOverride
   return u.value?.id ? getPresenceStatus(u.value.id) : 'offline'
+})
+
+const activeStatus = computed(() => {
+  const uid = u.value?.id
+  if (!uid || props.showPresence === false) return null
+  return getUserStatus(uid)
+})
+
+const statusMeta = computed(() => {
+  const status = activeStatus.value
+  if (!status) return ''
+  const setAt = formatRelativeTime(status.setAt, { nowMs: nowMs.value, fallback: '' })
+  const expiresAtMs = Date.parse(status.expiresAt)
+  if (!Number.isFinite(expiresAtMs)) return setAt ? `Set ${setAt.toLowerCase()}` : 'Active status'
+  const minutesLeft = Math.max(0, Math.ceil((expiresAtMs - nowMs.value) / 60000))
+  const expires =
+    minutesLeft < 60
+      ? `Expires in ${minutesLeft}m`
+      : `Expires in ${Math.ceil(minutesLeft / 60)}h`
+  return setAt ? `Set ${setAt.toLowerCase()} · ${expires}` : expires
+})
+
+function closeStatusPopover() {
+  statusPopoverOpen.value = false
+}
+
+function toggleStatusPopover() {
+  statusPopoverOpen.value = !statusPopoverOpen.value
+}
+
+function onDocumentClick(event: MouseEvent) {
+  const target = event.target
+  if (target instanceof Node && wrapEl.value?.contains(target)) return
+  closeStatusPopover()
+}
+
+function onKeydown(event: KeyboardEvent) {
+  if (event.key === 'Escape') closeStatusPopover()
+}
+
+onMounted(() => {
+  if (!import.meta.client) return
+  document.addEventListener('click', onDocumentClick)
+  document.addEventListener('keydown', onKeydown)
+  window.addEventListener('scroll', closeStatusPopover, true)
+})
+
+onBeforeUnmount(() => {
+  if (!import.meta.client) return
+  document.removeEventListener('click', onDocumentClick)
+  document.removeEventListener('keydown', onKeydown)
+  window.removeEventListener('scroll', closeStatusPopover, true)
+})
+
+watch(activeStatus, (status) => {
+  if (!status) closeStatusPopover()
 })
 
 // Show the Spaces gradient ring when a user is in a space.

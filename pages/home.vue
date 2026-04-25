@@ -134,6 +134,7 @@
     <!-- Feed: header + content -->
     <div>
       <AppFeedHomeFeedHeader
+        v-if="isAuthed"
         :scope="feedScope"
         :sort="feedSort"
         :filter="feedFilter"

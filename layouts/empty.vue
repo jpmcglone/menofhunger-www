@@ -1,5 +1,8 @@
 <template>
   <div class="min-h-screen flex flex-col moh-bg moh-texture moh-text">
+    <ClientOnly>
+      <AppUserPreviewPopover />
+    </ClientOnly>
     <main class="flex-1 flex items-center justify-center">
       <slot />
     </main>

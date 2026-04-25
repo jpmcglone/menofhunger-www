@@ -25,6 +25,8 @@ import type {
   WsNotificationsDeletedPayload,
   WsNotificationsNewPayload,
   WsFeedNewPostPayload,
+  WsPresenceStatusClearedPayload,
+  WsPresenceStatusUpdatedPayload,
   WsPostsLiveUpdatedPayload,
   WsPostsInteractionPayload,
   WsPostsCommentAddedPayload,
@@ -33,6 +35,8 @@ import type {
   WsUsersSelfUpdatedPayload,
   WsUsersSpaceChangedPayload,
   WsCheckinAnsweredTodayPayload,
+  GetPresenceStatusesData,
+  UserStatus,
 } from '~/types/api'
 import { useUsersStore } from '~/composables/useUsersStore'
 
@@ -43,6 +47,8 @@ const PRESENCE_ONLINE_FEED_SUBSCRIBED_KEY = 'presence-online-feed-subscribed'
 const PRESENCE_INTEREST_KEY = 'presence-interest-refs'
 const PRESENCE_KNOWN_IDS_KEY = 'presence-known-ids'
 const PRESENCE_USER_CURRENT_SPACE_KEY = 'presence-user-current-space-by-id'
+const PRESENCE_STATUS_BY_USER_ID_KEY = 'presence-status-by-user-id'
+const PRESENCE_STATUS_FETCHED_AT_KEY = 'presence-status-fetched-at'
 const PRESENCE_DISCONNECTED_DUE_TO_IDLE_KEY = 'presence-disconnected-due-to-idle'
 const PRESENCE_SOCKET_CONNECTED_KEY = 'presence-socket-connected'
 const PRESENCE_SOCKET_CONNECTING_KEY = 'presence-socket-connecting'
@@ -54,10 +60,11 @@ const MESSAGE_SOUND_PATH = '/sounds/new-message.mp3'
 /** Min ms between plays so we don't ding repeatedly (e.g. multiple sockets on mobile or burst of events). */
 const NOTIFICATION_SOUND_COOLDOWN_MS = 3000
 const MESSAGE_SOUND_COOLDOWN_MS = 1800
+const STATUS_FETCH_TTL_MS = 60_000
 
-export type PresenceOnlinePayload = { userId: string; user?: FollowListUser; lastConnectAt?: number; idle?: boolean }
+export type PresenceOnlinePayload = { userId: string; user?: FollowListUser & { status?: UserStatus | null }; lastConnectAt?: number; idle?: boolean }
 export type PresenceOfflinePayload = { userId: string }
-export type PresenceOnlineFeedSnapshotPayload = { users: Array<FollowListUser & { lastConnectAt?: number; idle?: boolean }>; totalOnline?: number }
+export type PresenceOnlineFeedSnapshotPayload = { users: Array<FollowListUser & { lastConnectAt?: number; idle?: boolean; status?: UserStatus | null }>; totalOnline?: number }
 export type OnlineFeedCallback = {
   onOnline?: (payload: PresenceOnlinePayload) => void
   onOffline?: (payload: PresenceOfflinePayload) => void
@@ -294,6 +301,8 @@ export function usePresence() {
   const presenceKnownUserIds = useState<Set<string>>(PRESENCE_KNOWN_IDS_KEY, () => new Set())
   /** userId -> current spaceId (null if not in a space). Updated via users:spaceChanged. */
   const userCurrentSpaceById = useState<Record<string, string | null>>(PRESENCE_USER_CURRENT_SPACE_KEY, () => ({}))
+  const statusByUserId = useState<Record<string, UserStatus>>(PRESENCE_STATUS_BY_USER_ID_KEY, () => ({}))
+  const statusFetchedAtByUserId = useState<Record<string, number>>(PRESENCE_STATUS_FETCHED_AT_KEY, () => ({}))
   const onlineFeedCallbacks = useState<Set<OnlineFeedCallback>>('presence-online-feed-callbacks', () => new Set())
   const messagesCallbacks = useState<Set<MessagesCallback>>('presence-messages-callbacks', () => new Set())
   const radioCallbacks = useState<Set<RadioCallback>>('presence-radio-callbacks', () => new Set())
@@ -380,9 +389,97 @@ export function usePresence() {
     return Boolean(userId && presenceKnownUserIds.value.has(userId))
   }
 
+  function isStatusActive(status: UserStatus | null | undefined): status is UserStatus {
+    if (!status?.userId || !status.text) return false
+    const expiresAtMs = Date.parse(status.expiresAt)
+    return Number.isFinite(expiresAtMs) && expiresAtMs > Date.now()
+  }
+
+  function applyUserStatus(status: UserStatus | null | undefined) {
+    const uid = status?.userId
+    if (!uid) return
+    const next = { ...statusByUserId.value }
+    if (isStatusActive(status)) next[uid] = status
+    else delete next[uid]
+    statusByUserId.value = next
+    statusFetchedAtByUserId.value = {
+      ...statusFetchedAtByUserId.value,
+      [uid]: Date.now(),
+    }
+  }
+
+  function clearUserStatus(userId: string) {
+    const uid = String(userId ?? '').trim()
+    if (!uid) return
+    const next = { ...statusByUserId.value }
+    delete next[uid]
+    statusByUserId.value = next
+    statusFetchedAtByUserId.value = {
+      ...statusFetchedAtByUserId.value,
+      [uid]: Date.now(),
+    }
+  }
+
+  function getUserStatus(userId: string): UserStatus | null {
+    const uid = String(userId ?? '').trim()
+    if (!uid) return null
+    const status = statusByUserId.value[uid] ?? null
+    if (!isStatusActive(status)) return null
+    return status
+  }
+
+  function addStatusesFromRest(statuses: Array<UserStatus | null | undefined>) {
+    for (const status of statuses) {
+      if (status?.userId) applyUserStatus(status)
+    }
+  }
+
+  async function fetchStatusesForUsers(userIds: string[]) {
+    if (!import.meta.client) return
+    const now = Date.now()
+    const ids = Array.from(new Set((userIds ?? []).map((id) => String(id ?? '').trim()).filter(Boolean)))
+      .filter((id) => now - (statusFetchedAtByUserId.value[id] ?? 0) > STATUS_FETCH_TTL_MS)
+      .slice(0, 100)
+    if (ids.length === 0) return
+    statusFetchedAtByUserId.value = {
+      ...statusFetchedAtByUserId.value,
+      ...Object.fromEntries(ids.map((id) => [id, now])),
+    }
+    try {
+      const statuses = await apiFetchData<GetPresenceStatusesData>('/presence/statuses', {
+        method: 'GET',
+        query: { userIds: ids.join(',') },
+        mohCache: false,
+      })
+      const returnedIds = new Set((statuses ?? []).map((status) => status.userId))
+      for (const status of statuses ?? []) applyUserStatus(status)
+      for (const id of ids) {
+        if (!returnedIds.has(id)) clearUserStatus(id)
+      }
+    } catch {
+      // Status bubbles are contextual; presence itself should not fail if this fetch does.
+    }
+  }
+
+  async function setMyStatus(text: string): Promise<UserStatus> {
+    const cleanText = String(text ?? '').trim()
+    const status = await apiFetchData<UserStatus>('/presence/status', {
+      method: 'PUT',
+      body: { text: cleanText },
+    })
+    applyUserStatus(status)
+    return status
+  }
+
+  async function clearMyStatus(): Promise<void> {
+    await apiFetchData<{ cleared: true }>('/presence/status', { method: 'DELETE' })
+    const id = user.value?.id
+    if (id) clearUserStatus(id)
+  }
+
   const { user } = useAuth()
   const route = useRoute()
-  const { apiBaseUrl } = useApiClient()
+  const { apiBaseUrl, apiFetchData } = useApiClient()
   const sfx = useSfx()
 
   function emitSubscribe(userIds: string[]) {
@@ -439,7 +536,10 @@ export function usePresence() {
       if (count === 0) toAdd.push(uid)
     }
     trimInterestIfNeeded(refs)
-    if (toAdd.length > 0) emitSubscribe(toAdd)
+    if (toAdd.length > 0) {
+      emitSubscribe(toAdd)
+      void fetchStatusesForUsers(toAdd)
+    }
   }
 
   function removeInterest(userIds: string[]) {
@@ -701,7 +801,7 @@ export function usePresence() {
       idleUserIds.value = nextIdle
     }
 
-    socket.on('presence:subscribed', (data: { users?: Array<{ userId: string; online: boolean; idle?: boolean; spaceId?: string | null }> }) => {
+    socket.on('presence:subscribed', (data: { users?: Array<{ userId: string; online: boolean; idle?: boolean; spaceId?: string | null; status?: UserStatus | null }> }) => {
       const users = Array.isArray(data?.users) ? data.users : []
       const nextSpaces = { ...userCurrentSpaceById.value }
       let spacesChanged = false
@@ -710,6 +810,10 @@ export function usePresence() {
         if (!id) continue
         markPresenceKnown(id)
         applyUserPresence(id, u.online, u.idle ?? false)
+        if ('status' in u) {
+          if (u.status) applyUserStatus(u.status)
+          else clearUserStatus(id)
+        }
         if ('spaceId' in u) {
           nextSpaces[id] = u.spaceId ?? null
           spacesChanged = true
@@ -723,6 +827,7 @@ export function usePresence() {
       if (id) {
         markPresenceKnown(id)
         applyUserPresence(id, true, data.idle ?? false)
+        if (data.user?.status) applyUserStatus(data.user.status)
       }
       if (onlineFeedSubscribed.value && onlineFeedCallbacks.value.size > 0) {
         for (const cb of onlineFeedCallbacks.value) {
@@ -738,6 +843,7 @@ export function usePresence() {
         if (id) {
           markPresenceKnown(id)
           applyUserPresence(id, true, u.idle ?? false)
+          if (u.status) applyUserStatus(u.status)
         }
       }
       if (onlineFeedSubscribed.value && onlineFeedCallbacks.value.size > 0) {
@@ -778,6 +884,14 @@ export function usePresence() {
 
     socket.on('presence:idleDisconnected', () => {
       disconnectedDueToIdle.value = true
+    })
+
+    socket.on('presence:status-updated', (data: WsPresenceStatusUpdatedPayload) => {
+      applyUserStatus(data?.status)
+    })
+
+    socket.on('presence:status-cleared', (data: WsPresenceStatusClearedPayload) => {
+      if (data?.userId) clearUserStatus(data.userId)
     })
 
     let lastNotificationSoundPlayedAt = 0
@@ -1421,6 +1535,12 @@ export function usePresence() {
     isOnline,
     getPresenceStatus,
     isPresenceKnown,
+    getUserStatus,
+    statusByUserId: readonly(statusByUserId),
+    addStatusesFromRest,
+    fetchStatusesForUsers,
+    setMyStatus,
+    clearMyStatus,
     userCurrentSpaceById: readonly(userCurrentSpaceById),
     getCurrentSpaceForUser(userId: string): string | null {
       return userId ? (userCurrentSpaceById.value[userId] ?? null) : null

@@ -322,6 +322,48 @@
           </div>
         </div>
 
+        <!-- Top posts table -->
+        <div class="px-4 space-y-2">
+          <div class="font-semibold text-sm">Top Posts by Views <span class="text-gray-400 font-normal">(all time, public)</span></div>
+          <div class="rounded-xl border moh-border overflow-x-auto">
+            <table class="min-w-full text-sm">
+              <thead>
+                <tr class="border-b moh-border text-left text-gray-500 dark:text-gray-400">
+                  <th class="px-4 py-3 font-medium">Post</th>
+                  <th class="px-4 py-3 font-medium text-right">Views</th>
+                  <th class="px-4 py-3 font-medium text-right">Boosts</th>
+                  <th class="px-4 py-3 font-medium text-right">Comments</th>
+                  <th class="px-4 py-3 font-medium text-right">Reactions</th>
+                  <th class="px-4 py-3 font-medium text-right">Created</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-gray-100 dark:divide-white/5">
+                <tr
+                  v-for="post in data?.topPostsAllTime"
+                  :key="post.id"
+                  class="relative hover:bg-gray-50 dark:hover:bg-zinc-900/50 cursor-pointer"
+                  @click="onAnalyticsRowClick(`/p/${post.id}`, $event)"
+                  @auxclick="onAnalyticsRowAuxClick(`/p/${post.id}`, $event)"
+                >
+                  <td class="px-4 py-3 max-w-[420px]">
+                    <NuxtLink :to="`/p/${post.id}`" class="absolute inset-0 z-0" tabindex="-1" aria-hidden="true" />
+                    <div class="relative z-[1] line-clamp-2 font-medium">{{ post.bodyPreview || 'Untitled post' }}</div>
+                    <div class="relative z-[1] text-xs text-gray-400 dark:text-gray-500">@{{ post.authorUsername || 'unknown' }}</div>
+                  </td>
+                  <td class="px-4 py-3 text-right tabular-nums font-semibold">{{ post.viewCount.toLocaleString() }}</td>
+                  <td class="px-4 py-3 text-right tabular-nums">{{ post.boostCount.toLocaleString() }}</td>
+                  <td class="px-4 py-3 text-right tabular-nums">{{ post.commentCount.toLocaleString() }}</td>
+                  <td class="px-4 py-3 text-right tabular-nums">{{ post.reactionCount.toLocaleString() }}</td>
+                  <td class="px-4 py-3 text-right text-xs text-gray-400 dark:text-gray-500 whitespace-nowrap">{{ articleAge(post.createdAt) }}</td>
+                </tr>
+                <tr v-if="!data?.topPostsAllTime.length">
+                  <td colspan="6" class="px-4 py-6 text-center text-gray-500 dark:text-gray-400 text-sm">No public posts yet</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
         <!-- Community groups -->
         <div class="px-4 space-y-3">
           <div class="font-semibold text-sm">
@@ -1292,6 +1334,8 @@ const summaryCards = computed(() => {
   return [
     { label: 'Total Users', value: summary.totalUsers.toLocaleString(), sub: undefined },
     { label: 'Verified', value: summary.verifiedUsers.toLocaleString(), sub: `${verifiedPct}% of all users` },
+    { label: 'Public Posts', value: summary.totalPublicPosts.toLocaleString(), sub: 'all time' },
+    { label: 'Published Articles', value: data.value.articles.kpis.totalPublished.toLocaleString(), sub: 'all time' },
     { label: 'DAU', value: summary.dau.toLocaleString(), sub: `${rangeLabel.value} avg` },
     { label: 'MAU', value: summary.mau.toLocaleString(), sub: '30-day window' },
     { label: 'DAU/MAU', value: dauMauPct + '%', sub: 'Stickiness' },

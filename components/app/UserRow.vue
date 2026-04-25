@@ -11,13 +11,18 @@
       >
         <div class="flex items-center gap-3 min-w-0">
           <AppUserAvatar :user="user" size-class="h-10 w-10" />
-          <AppUserIdentityLine :user="user">
-            <template v-if="nameMeta" #after-name>
-              <div class="shrink-0 text-xs text-gray-500 dark:text-gray-400 tabular-nums">
-                {{ nameMeta }}
-              </div>
-            </template>
-          </AppUserIdentityLine>
+          <div class="min-w-0 flex-1">
+            <AppUserIdentityLine :user="user">
+              <template v-if="nameMeta" #after-name>
+                <div class="shrink-0 text-xs text-gray-500 dark:text-gray-400 tabular-nums">
+                  {{ nameMeta }}
+                </div>
+              </template>
+            </AppUserIdentityLine>
+            <div v-if="activeStatus" class="mt-0.5 truncate text-xs text-gray-500 dark:text-gray-400">
+              {{ activeStatus.text }}
+            </div>
+          </div>
         </div>
       </NuxtLink>
       <div
@@ -26,13 +31,18 @@
       >
         <div class="flex items-center gap-3 min-w-0">
           <AppUserAvatar :user="user" size-class="h-10 w-10" />
-          <AppUserIdentityLine :user="user">
-            <template v-if="nameMeta" #after-name>
-              <div class="shrink-0 text-xs text-gray-500 dark:text-gray-400 tabular-nums">
-                {{ nameMeta }}
-              </div>
-            </template>
-          </AppUserIdentityLine>
+          <div class="min-w-0 flex-1">
+            <AppUserIdentityLine :user="user">
+              <template v-if="nameMeta" #after-name>
+                <div class="shrink-0 text-xs text-gray-500 dark:text-gray-400 tabular-nums">
+                  {{ nameMeta }}
+                </div>
+              </template>
+            </AppUserIdentityLine>
+            <div v-if="activeStatus" class="mt-0.5 truncate text-xs text-gray-500 dark:text-gray-400">
+              {{ activeStatus.text }}
+            </div>
+          </div>
         </div>
       </div>
 
@@ -71,12 +81,13 @@ const { isAuthed } = useAuth()
 const showFollowButton = computed(() => props.showFollowButton !== false && (isAuthed.value || props.allowLoggedOutFollowButton === true))
 
 const nameMeta = computed(() => (props.nameMeta ?? '').trim() || null)
+const { getUserStatus, addInterest, removeInterest } = usePresence()
+const activeStatus = computed(() => getUserStatus(user.value?.id ?? ''))
 const profilePath = computed(() => {
   if (!user.value?.username) return null
   return `/u/${encodeURIComponent(user.value.username)}`
 })
 
-const { addInterest, removeInterest } = usePresence()
 onMounted(() => {
   if (user.value?.id) addInterest([user.value.id])
 })

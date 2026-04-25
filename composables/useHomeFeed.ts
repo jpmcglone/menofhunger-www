@@ -40,7 +40,7 @@ export function useHomeFeed() {
 
   const feedScope = computed<FeedScope>({
     get: () => {
-      if (!isAuthed.value) return 'all'
+      if (!isAuthed.value) return DEFAULT_HOME_SCOPE
       return normalizeHomeScope(storedFeedScope.value)
     },
     set: (next) => {
@@ -50,7 +50,7 @@ export function useHomeFeed() {
   })
 
   const scopeTabs = computed(() => {
-    if (!isAuthed.value) return [{ key: 'all', label: 'All', disabled: false }]
+    if (!isAuthed.value) return [{ key: DEFAULT_HOME_SCOPE, label: 'For You', disabled: false }]
     return [
       { key: 'forYou', label: 'For You', disabled: false },
       { key: 'following', label: 'Following', disabled: false },
@@ -59,7 +59,7 @@ export function useHomeFeed() {
   })
 
   const followingOnly = computed(() => Boolean(isAuthed.value && feedScope.value === 'following'))
-  const forYou = computed(() => Boolean(isAuthed.value && feedScope.value === 'forYou'))
+  const forYou = computed(() => feedScope.value === 'forYou')
   const showAds = computed(() => !user.value?.premium)
 
   // Signed-out home defaults to trending (instead of the chronological "new") so

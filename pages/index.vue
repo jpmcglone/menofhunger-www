@@ -111,6 +111,46 @@
               </NuxtLink>
             </div>
 
+            <div
+              v-if="landingSnapshot"
+              class="rounded-2xl border border-gray-200 bg-white/75 p-4 shadow-[0_18px_55px_rgba(15,23,42,0.08)] backdrop-blur dark:border-zinc-800 dark:bg-zinc-950/40 dark:shadow-black/20 sm:p-5"
+            >
+              <div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+                <div>
+                  <div class="text-[10px] font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">Community pulse</div>
+                  <div class="mt-2 grid grid-cols-2 gap-3">
+                    <div>
+                      <div class="text-2xl font-black tabular-nums tracking-tight text-gray-900 dark:text-gray-50">{{ formatLandingCount(landingSnapshot.stats.publicPostCount) }}</div>
+                      <div class="text-xs font-medium text-gray-500 dark:text-gray-400">public posts</div>
+                    </div>
+                    <div>
+                      <div class="text-2xl font-black tabular-nums tracking-tight text-gray-900 dark:text-gray-50">{{ formatLandingCount(landingSnapshot.stats.verifiedMenCount) }}</div>
+                      <div class="text-xs font-medium text-gray-500 dark:text-gray-400">verified men</div>
+                    </div>
+                  </div>
+                </div>
+                <div v-if="recentlyActiveMen.length" class="min-w-0">
+                  <div class="mb-2 text-xs font-semibold text-gray-600 dark:text-gray-300">Recently around</div>
+                  <div class="flex -space-x-2">
+                    <NuxtLink
+                      v-for="man in recentlyActiveMen"
+                      :key="man.id"
+                      :to="man.username ? `/u/${encodeURIComponent(man.username)}` : '/home'"
+                      class="relative inline-flex rounded-full ring-2 ring-white transition-transform duration-150 hover:z-10 hover:-translate-y-0.5 focus-visible:z-10 dark:ring-zinc-950"
+                      :aria-label="`View ${man.name || man.username || 'member'} profile`"
+                    >
+                      <AppUserAvatar
+                        :user="man"
+                        size-class="h-9 w-9"
+                        bg-class="bg-gray-100 dark:bg-zinc-800"
+                        :show-presence="false"
+                      />
+                    </NuxtLink>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <!-- Pillars: 3 compact cards mirroring the DailyCheckinCard style -->
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
               <div class="rounded-xl border px-4 py-3" style="background-color: rgba(var(--moh-verified-rgb), 0.06); border-color: rgba(var(--moh-verified-rgb), 0.25)">
@@ -301,79 +341,129 @@
           </div>
         </section>
 
-        <!-- Trending articles -->
-        <section v-if="trendingArticles.length > 0" class="mt-16 sm:mt-20">
-          <div class="flex items-center justify-between gap-4">
+        <!-- Top weekly posts -->
+        <section v-if="topPostsThisWeek.length > 0" class="mt-16 sm:mt-20">
+          <div class="flex items-end justify-between gap-4">
             <div>
-              <h2 class="text-lg font-bold tracking-tight text-gray-900 dark:text-gray-50 sm:text-xl">
-                Trending Articles
+              <div class="text-[10px] font-semibold uppercase tracking-[0.18em] text-orange-700 dark:text-orange-300">This week</div>
+              <h2 class="mt-1 text-lg font-bold tracking-tight text-gray-900 dark:text-gray-50 sm:text-xl">
+                Public posts catching attention
               </h2>
+              <p class="mt-1 max-w-xl text-sm text-gray-600 dark:text-gray-300">
+                Real conversations, ranked by recent public view activity.
+              </p>
             </div>
             <NuxtLink
-              to="/articles?sort=trending"
+              to="/home"
               class="hidden sm:inline-flex items-center gap-1 text-sm font-semibold text-gray-700 hover:underline dark:text-gray-200"
             >
-              Browse all
+              Open feed
               <Icon name="tabler:arrow-right" class="h-4 w-4" aria-hidden="true" />
             </NuxtLink>
           </div>
 
-          <div class="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            <NuxtLink
-              v-for="(article, i) in trendingArticles"
-              :key="article.id"
-              :to="`/a/${article.id}`"
-              class="group relative flex flex-col rounded-2xl border border-gray-200 bg-white/70 shadow-sm transition-[transform,box-shadow] duration-200 ease-out hover:shadow-md hover:-translate-y-0.5 dark:border-zinc-800 dark:bg-zinc-950/30 overflow-hidden"
+          <TransitionGroup
+            name="landing-top-post"
+            tag="div"
+            class="mt-6 grid grid-cols-1 gap-3 lg:grid-cols-3 lg:gap-4"
+          >
+            <div
+              v-for="(post, i) in topPostsThisWeek"
+              :key="post.id"
+              class="landing-top-post-card group relative min-h-[12.5rem] cursor-pointer overflow-hidden rounded-2xl border border-gray-200 bg-white/80 shadow-sm shadow-black/[0.04] transition-[border-color,box-shadow] duration-200 ease-out hover:border-orange-300/70 hover:shadow-[0_18px_50px_rgba(15,23,42,0.10)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-500 dark:border-white/[0.08] dark:bg-zinc-950/55 dark:shadow-black/25 dark:hover:border-orange-300/30"
+              role="link"
+              tabindex="0"
+              :style="{ '--landing-top-post-delay': `${i * 45}ms` }"
+              @click="onLandingPostRowClick(postHref(post), $event)"
+              @auxclick="onLandingPostRowAuxClick(postHref(post), $event)"
+              @keydown.enter.prevent="navigateTo(postHref(post))"
+              @keydown.space.prevent="navigateTo(postHref(post))"
             >
-              <!-- thumbnail -->
-              <div v-if="article.thumbnailUrl" class="relative aspect-[16/9] w-full overflow-hidden bg-gray-100 dark:bg-zinc-800">
-                <img
-                  :src="article.thumbnailUrl"
-                  :alt="article.title"
-                  class="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
-                >
-                <div
-                  class="absolute top-3 left-3 flex h-7 w-7 items-center justify-center rounded-lg text-xs font-black tabular-nums leading-none shadow-sm"
-                  :class="i === 0
-                    ? 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300'
-                    : 'bg-white/90 text-gray-600 dark:bg-zinc-900/80 dark:text-zinc-400'"
-                >{{ i + 1 }}</div>
-              </div>
-              <div v-else class="relative flex aspect-[16/9] w-full items-center justify-center bg-gray-100 dark:bg-zinc-800">
-                <Icon name="tabler:article" class="text-2xl text-gray-300 dark:text-zinc-600" aria-hidden="true" />
-                <div
-                  class="absolute top-3 left-3 flex h-7 w-7 items-center justify-center rounded-lg text-xs font-black tabular-nums leading-none shadow-sm"
-                  :class="i === 0
-                    ? 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300'
-                    : 'bg-white/90 text-gray-600 dark:bg-zinc-900/80 dark:text-zinc-400'"
-                >{{ i + 1 }}</div>
-              </div>
+              <div class="pointer-events-none absolute inset-0 z-0 bg-orange-500/[0.03] opacity-0 transition-opacity duration-200 group-hover:opacity-100 dark:bg-orange-300/[0.04]" aria-hidden="true" />
+              <NuxtLink
+                :to="postHref(post)"
+                class="absolute inset-0 z-[1] rounded-2xl"
+                tabindex="-1"
+                aria-hidden="true"
+              />
 
-              <div class="flex flex-1 flex-col p-4">
-                <p class="line-clamp-2 text-sm font-semibold leading-snug text-gray-900 dark:text-gray-100 group-hover:underline">
-                  {{ article.title }}
-                </p>
-                <p v-if="article.excerpt" class="mt-1.5 line-clamp-2 text-xs leading-relaxed text-gray-600 dark:text-gray-400">
-                  {{ article.excerpt }}
-                </p>
-                <div class="mt-auto pt-3 flex items-center gap-2">
-                  <span class="text-xs font-medium text-gray-500 dark:text-gray-400 truncate">
-                    {{ article.author.name || article.author.username }}
+              <div class="relative z-[2] flex h-full flex-col p-4 sm:p-5">
+                <div class="flex items-start gap-3">
+                  <NuxtLink
+                    :to="authorHref(post)"
+                    class="relative shrink-0 rounded-full"
+                    :aria-label="`View @${post.author.username || 'member'} profile`"
+                    @click.stop
+                  >
+                    <AppUserAvatar
+                      :user="post.author"
+                      size-class="h-10 w-10"
+                      bg-class="moh-surface"
+                      :enable-preview="false"
+                    />
+                  </NuxtLink>
+                  <div class="min-w-0 flex-1 pt-0.5">
+                    <div class="flex min-w-0 items-center gap-1.5">
+                      <NuxtLink
+                        :to="authorHref(post)"
+                        class="truncate text-sm font-semibold text-gray-900 hover:underline dark:text-gray-50"
+                        @click.stop
+                      >
+                        {{ post.author.name || post.author.username || 'Member' }}
+                      </NuxtLink>
+                      <AppVerifiedBadge
+                        v-if="post.author.verifiedStatus && post.author.verifiedStatus !== 'none'"
+                        :status="post.author.verifiedStatus"
+                        :premium="post.author.premium"
+                        :premium-plus="post.author.premiumPlus"
+                        :show-tooltip="false"
+                      />
+                    </div>
+                    <div class="mt-0.5 flex min-w-0 items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+                      <span class="truncate">@{{ post.author.username || 'member' }}</span>
+                      <span aria-hidden="true">·</span>
+                      <span class="inline-flex items-center gap-1 tabular-nums">
+                        <Icon name="tabler:eye" class="h-3.5 w-3.5" aria-hidden="true" />
+                        {{ formatLandingCount(post.weeklyViewCount || post.viewerCount || 0) }}
+                      </span>
+                    </div>
+                  </div>
+                  <span
+                    class="flex h-7 min-w-7 shrink-0 items-center justify-center rounded-full px-2 text-xs font-black tabular-nums"
+                    :class="i === 0 ? 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300' : 'bg-gray-100 text-gray-600 dark:bg-white/10 dark:text-gray-300'"
+                  >
+                    {{ i + 1 }}
                   </span>
-                  <span v-if="article.readingTimeMinutes" class="text-xs text-gray-400 dark:text-gray-500">
-                    · {{ article.readingTimeMinutes }} min read
+                </div>
+
+                <p class="mt-4 line-clamp-4 text-[15px] font-medium leading-6 text-gray-900 group-hover:underline dark:text-gray-50">
+                  {{ post.body }}
+                </p>
+
+                <div class="mt-auto flex items-center gap-4 pt-5 text-xs font-medium text-gray-500 dark:text-gray-400">
+                  <span class="inline-flex items-center gap-1 tabular-nums">
+                    <Icon name="tabler:rocket" class="h-3.5 w-3.5" aria-hidden="true" />
+                    {{ formatLandingCount(post.boostCount) }}
+                  </span>
+                  <span class="inline-flex items-center gap-1 tabular-nums">
+                    <Icon name="tabler:message-circle" class="h-3.5 w-3.5" aria-hidden="true" />
+                    {{ formatLandingCount(post.commentCount ?? 0) }}
+                  </span>
+                  <span class="ml-auto inline-flex items-center gap-1 font-semibold text-gray-700 dark:text-gray-200">
+                    Read
+                    <Icon name="tabler:arrow-up-right" class="h-3.5 w-3.5 transition-transform duration-200 group-hover:translate-x-0.5 group-hover:-translate-y-0.5" aria-hidden="true" />
                   </span>
                 </div>
               </div>
-            </NuxtLink>
-          </div>
+            </div>
+          </TransitionGroup>
 
           <div class="mt-4 sm:hidden">
             <NuxtLink
-              to="/articles?sort=trending"
+              to="/home"
               class="inline-flex items-center gap-1 text-sm font-semibold text-gray-700 hover:underline dark:text-gray-200"
             >
-              Browse all articles
+              Open public feed
               <Icon name="tabler:arrow-right" class="h-4 w-4" aria-hidden="true" />
             </NuxtLink>
           </div>
@@ -448,6 +538,52 @@
           </div>
         </section>
 
+        <!-- Articles preview -->
+        <section v-if="landingArticlePreviews.length > 0" class="mt-12 sm:mt-16">
+          <div class="flex items-end justify-between gap-4">
+            <div>
+              <div class="text-[10px] font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">Read next</div>
+              <h2 class="mt-1 text-lg font-bold tracking-tight text-gray-900 dark:text-gray-50 sm:text-xl">
+                Articles worth opening
+              </h2>
+            </div>
+            <NuxtLink
+              to="/articles?sort=trending"
+              class="inline-flex items-center gap-1 text-sm font-semibold text-gray-700 hover:underline dark:text-gray-200"
+            >
+              See all
+              <Icon name="tabler:arrow-right" class="h-4 w-4" aria-hidden="true" />
+            </NuxtLink>
+          </div>
+
+          <div class="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <NuxtLink
+              v-for="article in landingArticlePreviews"
+              :key="article.id"
+              :to="`/a/${article.id}`"
+              class="group relative flex min-h-[11rem] flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white/70 p-4 shadow-sm transition-[border-color,box-shadow,transform] duration-200 ease-out hover:-translate-y-0.5 hover:border-orange-300/70 hover:shadow-[0_18px_50px_rgba(15,23,42,0.10)] dark:border-zinc-800 dark:bg-zinc-950/30 dark:hover:border-orange-300/30 sm:p-5"
+            >
+              <div class="flex items-center gap-2 text-xs font-semibold text-gray-500 dark:text-gray-400">
+                <Icon name="tabler:article" class="h-4 w-4 text-orange-600 dark:text-orange-300" aria-hidden="true" />
+                <span>{{ article.readingTimeMinutes ? `${article.readingTimeMinutes} min read` : 'Article' }}</span>
+              </div>
+              <h3 class="mt-3 line-clamp-2 text-base font-bold leading-snug text-gray-900 group-hover:underline dark:text-gray-50">
+                {{ article.title }}
+              </h3>
+              <p v-if="article.excerpt" class="mt-2 line-clamp-2 text-sm leading-relaxed text-gray-600 dark:text-gray-300">
+                {{ article.excerpt }}
+              </p>
+              <div class="mt-auto flex items-center justify-between gap-3 pt-4 text-xs font-medium text-gray-500 dark:text-gray-400">
+                <span class="truncate">{{ article.author.name || article.author.username }}</span>
+                <span class="inline-flex items-center gap-1 font-semibold text-gray-700 dark:text-gray-200">
+                  Read
+                  <Icon name="tabler:arrow-up-right" class="h-3.5 w-3.5 transition-transform duration-200 group-hover:translate-x-0.5 group-hover:-translate-y-0.5" aria-hidden="true" />
+                </span>
+              </div>
+            </NuxtLink>
+          </div>
+        </section>
+
         <!-- Bottom CTA -->
         <section class="mt-16 sm:mt-20 text-center">
           <div class="rounded-2xl border border-gray-200 bg-white/70 p-8 shadow-sm dark:border-zinc-800 dark:bg-zinc-950/30 sm:p-12">
@@ -455,7 +591,7 @@
               Stop scrolling. Start building.
             </h2>
             <p class="mt-3 text-sm sm:text-base text-gray-600 dark:text-gray-300 max-w-lg mx-auto">
-              No algorithms. No pay-to-win. A feed, verification, real conversation — and a path to measurable progress.
+              Join the community, or look around the public feed first.
             </p>
             <div class="mt-6 flex flex-col sm:flex-row items-center justify-center gap-3">
               <NuxtLink to="/login" class="inline-flex">
@@ -466,11 +602,11 @@
                   </span>
                 </Button>
               </NuxtLink>
-              <NuxtLink to="/articles?sort=trending" class="inline-flex">
+              <NuxtLink to="/home" class="inline-flex">
                 <Button severity="secondary" class="rounded-full px-6">
                   <span class="flex items-center gap-2">
-                    <span>Read articles</span>
-                    <Icon name="tabler:article" aria-hidden="true" />
+                    <span>Explore the feed</span>
+                    <Icon name="tabler:home" aria-hidden="true" />
                   </span>
                 </Button>
               </NuxtLink>
@@ -605,7 +741,7 @@ import { VOICE } from '~/config/voice'
 import { formatDailyQuoteAttribution } from '~/utils/daily-quote'
 import logoLightSmall from '~/assets/images/logo-white-bg-small.png'
 import logoDarkSmall from '~/assets/images/logo-black-bg-small.png'
-import type { Article, DailyContentToday, DailyQuote, PublicProfile } from '~/types/api'
+import type { DailyContentToday, DailyQuote, LandingSnapshot, LandingTopPost, PublicProfile } from '~/types/api'
 
 definePageMeta({
   layout: 'empty'
@@ -649,15 +785,51 @@ watch(
   },
 )
 
-// Trending public articles (SSR-safe, no login required)
-const { data: trendingArticlesData } = await useAsyncData<Article[]>(
-  'landing:trending-articles',
-  () => apiFetchData<Article[]>('/articles', {
-    query: { limit: 6, sort: 'trending', visibility: 'public' },
-  }),
+const { data: landingSnapshotData } = await useAsyncData<LandingSnapshot>(
+  'landing:snapshot',
+  () => apiFetchData<LandingSnapshot>('/meta/landing', { method: 'GET' }),
   { server: true },
 )
-const trendingArticles = computed(() => trendingArticlesData.value ?? [])
+const landingSnapshot = computed(() => landingSnapshotData.value ?? null)
+const recentlyActiveMen = computed(() => landingSnapshot.value?.recentlyActiveMen ?? [])
+const topPostsThisWeek = computed(() => landingSnapshot.value?.topPostsThisWeek ?? [])
+const trendingArticles = computed(() => landingSnapshot.value?.trendingArticles ?? [])
+const landingArticlePreviews = computed(() => trendingArticles.value.slice(0, 3))
+
+function formatLandingCount(value: number): string {
+  return new Intl.NumberFormat('en-US', { notation: value >= 10_000 ? 'compact' : 'standard', maximumFractionDigits: 1 }).format(value)
+}
+
+function postHref(post: LandingTopPost): string {
+  return `/p/${encodeURIComponent(post.id)}`
+}
+
+function authorHref(post: LandingTopPost): string {
+  const username = String(post.author.username ?? '').trim()
+  return username ? `/u/${encodeURIComponent(username)}` : postHref(post)
+}
+
+function isInteractiveTarget(target: EventTarget | null): boolean {
+  const el = target as HTMLElement | null
+  if (!el) return false
+  return Boolean(el.closest('a,button,iframe,input,textarea,select,[role="menu"],[role="menuitem"],[data-pc-section]'))
+}
+
+function onLandingPostRowClick(href: string, e: MouseEvent) {
+  if (isInteractiveTarget(e.target)) return
+  if (e.metaKey || e.ctrlKey) {
+    window.open(href, '_blank')
+    return
+  }
+  void navigateTo(href)
+}
+
+function onLandingPostRowAuxClick(href: string, e: MouseEvent) {
+  if (e.button !== 1) return
+  if (isInteractiveTarget(e.target)) return
+  e.preventDefault()
+  window.open(href, '_blank')
+}
 
 // Org account badge example
 const ORG_USERNAME = 'menofhunger'
@@ -676,3 +848,29 @@ usePageSeo({
   twitterCard: 'summary_large_image'
 })
 </script>
+
+<style scoped>
+.landing-top-post-move {
+  transition: transform 280ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+.landing-top-post-enter-active {
+  transition:
+    opacity 220ms cubic-bezier(0.2, 0, 0, 1),
+    transform 220ms cubic-bezier(0.2, 0, 0, 1);
+  transition-delay: var(--landing-top-post-delay, 0ms);
+}
+
+.landing-top-post-leave-active {
+  position: absolute;
+  transition:
+    opacity 160ms cubic-bezier(0.2, 0, 0, 1),
+    transform 160ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+.landing-top-post-enter-from,
+.landing-top-post-leave-to {
+  opacity: 0;
+  transform: translateY(8px);
+}
+</style>

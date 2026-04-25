@@ -413,6 +413,13 @@ const crewMembers = computed<CheckinCrewMemberStatus[]>(() => crew.value?.member
 const crewAnsweredCount = computed(() => crewMembers.value.filter((m) => m.answeredToday).length)
 const crewMemberCount = computed(() => crewMembers.value.length)
 const crewAllAnswered = computed(() => crewMemberCount.value > 0 && crewAnsweredCount.value === crewMemberCount.value)
+const crewMissingCount = computed(() => Math.max(0, crewMemberCount.value - crewAnsweredCount.value))
+const crewAnsweredNames = computed(() =>
+  crewMembers.value
+    .filter((m) => m.answeredToday)
+    .map((m) => displayCrewMemberName(m))
+    .filter(Boolean),
+)
 
 const effectiveCrewStreak = computed(() => {
   if (localCrewStreak.value != null) return localCrewStreak.value
@@ -435,22 +442,42 @@ const promptText = computed(() => {
 const headerLabel = computed(() => (crew.value ? "Your crew's question today" : "Today's question"))
 const crewHref = computed(() => (crew.value ? `/c/${crew.value.slug}` : '/c'))
 
+function displayCrewMemberName(member: CheckinCrewMemberStatus): string {
+  return (member.displayName ?? member.username ?? 'A brother').trim()
+}
+
+function formatCrewNames(names: string[], max = 2): string {
+  const cleaned = names.map((n) => n.trim()).filter(Boolean)
+  if (cleaned.length === 0) return ''
+  if (cleaned.length === 1) return cleaned[0]!
+  if (cleaned.length === 2) return `${cleaned[0]} and ${cleaned[1]}`
+  const visible = cleaned.slice(0, max)
+  const others = cleaned.length - visible.length
+  if (visible.length === 1) return `${visible[0]} and ${others} other${others === 1 ? '' : 's'}`
+  return `${visible[0]}, ${visible[1]}, and ${others} other${others === 1 ? '' : 's'}`
+}
+
+function missingCrewSuffix(missing: number): string {
+  if (missing <= 0) return "Everyone's in."
+  return `${missing} still need${missing === 1 ? 's' : ''} to check in.`
+}
+
 const crewStatusLine = computed(() => {
   const total = crewMemberCount.value
   if (total === 0) return ''
   const answered = crewAnsweredCount.value
+  const missing = crewMissingCount.value
+  const answeredNames = formatCrewNames(crewAnsweredNames.value)
   if (crewAllAnswered.value) {
     const days = effectiveCrewStreak.value
-    if (days >= 2) return `Day ${days} locked in. All ${total} of you.`
-    return `All ${total} of you answered. Day 1 on the board.`
+    const prefix = answeredNames
+      ? `${answeredNames} from your crew checked in.`
+      : `All ${total} from your crew checked in.`
+    if (days >= 2) return `${prefix} Day ${days} locked in.`
+    return `${prefix} Day 1 on the board.`
   }
-  if (answered === 0) return `0 of ${total} have answered yet. Be the first.`
-  const waiting = crewMembers.value.filter((m) => !m.answeredToday && !m.isViewer)
-  const waitingNames = waiting.map((m) => m.displayName ?? m.username ?? 'a brother').filter(Boolean)
-  if (waitingNames.length === 0) return `${answered} of ${total} answered. You're up.`
-  if (waitingNames.length === 1) return `${answered} of ${total} answered. ${waitingNames[0]} is up.`
-  if (waitingNames.length === 2) return `${answered} of ${total} answered. ${waitingNames[0]} and ${waitingNames[1]} are up.`
-  return `${answered} of ${total} answered. ${waitingNames[0]} and ${waitingNames.length - 1} others are up.`
+  if (answered === 0) return `No one from your crew has checked in yet. ${missingCrewSuffix(missing)}`
+  return `${answeredNames} from your crew checked in. ${missingCrewSuffix(missing)}`
 })
 
 const hasAnswered = computed(() => Boolean(props.state?.hasCheckedInToday))
@@ -538,10 +565,15 @@ const compactLabel = computed(() => {
 const compactSocialProofLine = computed(() => {
   if (crew.value) {
     const total = crewMemberCount.value
-    if (total === 0) return 'Your crew · waiting on the rest.'
-    const answered = crewAnsweredCount.value
-    if (crewAllAnswered.value) return `All ${total} of you answered.`
-    return `${answered} of ${total} answered today.`
+    if (total === 0) return 'Your crew is waiting to check in.'
+    const answeredNames = formatCrewNames(crewAnsweredNames.value, 1)
+    if (crewAllAnswered.value) {
+      return answeredNames
+        ? `${answeredNames} from your crew checked in. Everyone's in.`
+        : `All ${total} from your crew checked in.`
+    }
+    if (!answeredNames) return `No one from your crew has checked in yet. ${missingCrewSuffix(crewMissingCount.value)}`
+    return `${answeredNames} from your crew checked in. ${missingCrewSuffix(crewMissingCount.value)}`
   }
   // Mirror the full hero's wording but tightened for one line.
   const total = totalToday.value

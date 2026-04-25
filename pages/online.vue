@@ -7,11 +7,11 @@
           <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-500 opacity-75" />
           <span class="relative inline-flex h-3 w-3 rounded-full bg-green-500" />
         </span>
-        Online now
+        Here now
       </h1>
       <p class="mt-1 text-sm text-gray-600 dark:text-gray-300">
-        <span v-if="totalOnline !== null">{{ totalOnline }} {{ totalOnline === 1 ? 'person' : 'people' }} online now.</span>
-        <span v-else>People currently active. Updates in real time.</span>
+        <span v-if="totalOnline !== null">{{ totalOnline }} {{ totalOnline === 1 ? 'person is' : 'people are' }} here now.</span>
+        <span v-else>People currently active or recently around. Updates in real time.</span>
       </p>
     </div>
 
@@ -26,7 +26,7 @@
     </div>
 
     <div v-else-if="users.length === 0" class="px-4 py-6 text-sm text-gray-500 dark:text-gray-400">
-      No one online right now.
+      No one here right now.
     </div>
 
     <TransitionGroup
@@ -42,10 +42,10 @@
     <template v-if="viewerCanSeeLastOnline">
       <div class="px-4 pt-8 pb-2">
         <h2 class="text-base font-bold tracking-tight text-gray-900 dark:text-gray-50">
-          Recently online
+          Recently around
         </h2>
         <p class="mt-1 text-sm text-gray-600 dark:text-gray-300">
-          Most recent first.
+          Men who were around recently.
         </p>
       </div>
 
@@ -60,7 +60,7 @@
       </div>
 
       <div v-else-if="recentUsers.length === 0" class="px-4 py-6 text-sm text-gray-500 dark:text-gray-400">
-        No one recently online.
+        No one recently around.
       </div>
 
       <TransitionGroup
@@ -106,8 +106,8 @@ definePageMeta({
 })
 
 usePageSeo({
-  title: 'Online now',
-  description: 'People currently active.',
+  title: 'Here now',
+  description: 'People currently active or recently around.',
   canonicalPath: '/online',
   noindex: true,
 })
@@ -122,6 +122,7 @@ const {
   removeInterest,
   addOnlineIdsFromRest,
   addIdleFromRest,
+  addStatusesFromRest,
   whenSocketConnected,
 } = usePresence()
 
@@ -171,6 +172,7 @@ const feedCallback: {
       const withTime = { ...userData, lastConnectAt }
       const next = [withTime, ...users.value].sort(sortByRecent)
       users.value = next
+      addStatusesFromRest([withTime.status])
     } else {
       void mergeUserFromRefetch(userId)
     }
@@ -190,6 +192,7 @@ const feedCallback: {
     const ids = snapOnline.map((x) => x.id).filter(Boolean)
     if (ids.length) {
       addOnlineIdsFromRest(ids)
+      addStatusesFromRest(snapOnline.map((u) => u.status))
       const idleIds = snapOnline.filter((x) => x.idle && x.id).map((x) => x.id)
       if (idleIds.length) addIdleFromRest(idleIds)
       addInterest(ids)
@@ -226,6 +229,7 @@ async function mergeUserFromRefetch(userId: string) {
           next.push(u)
         }
       }
+      addStatusesFromRest(fromApi.map((u) => u.status))
       if (typeof res?.pagination?.totalOnline === 'number') totalOnline.value = res.pagination.totalOnline
       if (next.length !== users.value.length) {
         users.value = next.sort(sortByRecent)
@@ -251,6 +255,7 @@ async function fetchOnline() {
     if (users.value.length > 0) {
       const ids = users.value.map((u) => u.id).filter(Boolean)
       addOnlineIdsFromRest(ids)
+      addStatusesFromRest(users.value.map((u) => u.status))
       const idleIds = users.value.filter((u) => u.idle && u.id).map((u) => u.id)
       if (idleIds.length) addIdleFromRest(idleIds)
       addInterest(ids)
@@ -288,6 +293,7 @@ async function fetchOnlinePage() {
     if (users.value.length > 0) {
       const ids = users.value.map((u) => u.id).filter(Boolean)
       addOnlineIdsFromRest(ids)
+      addStatusesFromRest(users.value.map((u) => u.status))
       const idleIds = users.value.filter((u) => u.idle && u.id).map((u) => u.id)
       if (idleIds.length) addIdleFromRest(idleIds)
       addInterest(ids)
@@ -297,6 +303,7 @@ async function fetchOnlinePage() {
       const recent = (res?.data?.recent ?? []) as RecentlyOnlineUser[]
       const next = (res as any)?.pagination?.recentNextCursor ?? null
       recentUsers.value = recent
+      addStatusesFromRest(recent.map((u) => u.status))
       recentNextCursor.value = typeof next === 'string' && next.trim() ? next : null
     }
   } catch (e: unknown) {
@@ -326,6 +333,7 @@ async function fetchRecent(params?: { cursor?: string | null }) {
       },
     })
     const data = res.data ?? []
+    addStatusesFromRest(data.map((u) => u.status))
     const next = res.pagination?.nextCursor ?? null
     if (params?.cursor) recentUsers.value = [...recentUsers.value, ...data]
     else recentUsers.value = data
@@ -359,6 +367,7 @@ onMounted(async () => {
     const ids = users.value.map((u) => u.id).filter(Boolean)
     if (ids.length) {
       addOnlineIdsFromRest(ids)
+      addStatusesFromRest(users.value.map((u) => u.status))
       const idleIds = users.value.filter((u) => u.idle && u.id).map((u) => u.id)
       if (idleIds.length) addIdleFromRest(idleIds)
       addInterest(ids)

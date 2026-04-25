@@ -984,15 +984,25 @@ export type GetFollowRecommendationsData = FollowListUser[]
 /** Data type for GET /users/newest (array). */
 export type GetNewestUsersData = FollowListUser[]
 
-export type OnlineUser = FollowListUser & { lastConnectAt?: number; idle?: boolean }
+export type UserStatus = {
+  userId: string
+  text: string
+  setAt: string
+  expiresAt: string
+}
+
+export type OnlineUser = FollowListUser & { lastConnectAt?: number; idle?: boolean; status?: UserStatus | null }
 
 /** Data type for GET /presence/online (array); totalOnline in pagination. */
 export type GetPresenceOnlineData = OnlineUser[]
 
-export type RecentlyOnlineUser = FollowListUser & { lastOnlineAt: string | null }
+export type RecentlyOnlineUser = FollowListUser & { lastOnlineAt: string | null; status?: UserStatus | null }
 
 /** Data type for GET /presence/recent (array); nextCursor in pagination. */
 export type GetPresenceRecentData = RecentlyOnlineUser[]
+
+/** Data type for GET /presence/statuses (array). */
+export type GetPresenceStatusesData = UserStatus[]
 
 export type PresenceOnlinePage = {
   online: OnlineUser[]
@@ -1549,6 +1559,14 @@ export type WsUsersSpaceChangedPayload = {
   previousSpaceId?: string
 }
 
+export type WsPresenceStatusUpdatedPayload = {
+  status: UserStatus
+}
+
+export type WsPresenceStatusClearedPayload = {
+  userId: string
+}
+
 // Canonical self-only auth/settings snapshot (matches API `/auth/me` user DTO).
 export type UserDto = {
   id: string
@@ -1759,6 +1777,8 @@ export type AdminAnalyticsTimeSeriesPoint = {
 export type AdminAnalyticsSummary = {
   totalUsers: number
   verifiedUsers: number
+  /** All-time public, regular, non-draft, non-deleted posts. */
+  totalPublicPosts: number
   premiumUsers: number
   premiumPlusUsers: number
   /** Users with at least one active (non-revoked, non-expired) subscription grant */
@@ -1767,6 +1787,17 @@ export type AdminAnalyticsSummary = {
   mau: number
   /** Sum of all user coin balances — total coins in the economy */
   totalCoinsInEconomy: number
+}
+
+export type AdminAnalyticsTopPost = {
+  id: string
+  bodyPreview: string
+  authorUsername: string
+  viewCount: number
+  boostCount: number
+  commentCount: number
+  reactionCount: number
+  createdAt: string
 }
 
 export type AdminAnalyticsRetentionRow = {
@@ -1904,6 +1935,8 @@ export type AdminAnalytics = {
   granularity: AnalyticsGranularity
   summary: AdminAnalyticsSummary
   signups: AdminAnalyticsTimeSeriesPoint[]
+  /** Top public regular posts by all-time denormalized view count. */
+  topPostsAllTime: AdminAnalyticsTopPost[]
   postsByVisibility: Record<string, number>
   posts: AdminAnalyticsTimeSeriesPoint[]
   checkins: AdminAnalyticsTimeSeriesPoint[]
@@ -1916,6 +1949,30 @@ export type AdminAnalytics = {
   articles: AdminAnalyticsArticles
   groups: AdminAnalyticsGroups
   spaces: AdminAnalyticsSpaces
+  asOf: string
+}
+
+export type LandingStats = {
+  /** All-time public, regular, non-draft, non-deleted posts. */
+  publicPostCount: number
+  /** Verified, non-org, non-banned users with completed usernames. */
+  verifiedMenCount: number
+}
+
+export type LandingTopPost = FeedPost & {
+  /** Distinct logged-in/anonymous viewers active on this post in the last 7 days. */
+  weeklyViewCount: number
+}
+
+export type LandingUser = Omit<FollowListUser, 'relationship'> & {
+  relationship?: FollowRelationship
+}
+
+export type LandingSnapshot = {
+  stats: LandingStats
+  recentlyActiveMen: LandingUser[]
+  topPostsThisWeek: LandingTopPost[]
+  trendingArticles: Article[]
   asOf: string
 }
 
