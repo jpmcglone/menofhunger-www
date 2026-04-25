@@ -23,14 +23,17 @@
     />
     <ClientOnly>
       <button
-        v-if="activeStatus"
+        v-if="showStatusButton"
         ref="statusButtonEl"
         type="button"
-        class="moh-avatar-status-bubble moh-focus absolute -right-1 -top-1 z-20 inline-flex h-5 w-5 items-center justify-center rounded-full bg-white text-[var(--p-primary-color)] shadow-[0_2px_8px_rgba(0,0,0,0.18)] ring-1 ring-black/10 transition-[transform,opacity] duration-150 hover:scale-[1.04] active:scale-[0.96] dark:bg-zinc-900 dark:ring-white/15"
-        :aria-label="`${displayName}'s status`"
-        @click.prevent.stop="toggleStatusPopover"
+        :class="statusButtonClass"
+        :aria-label="activeStatus ? `${displayName}'s status` : 'Set status'"
+        @click.prevent.stop="onStatusButtonClick"
+        @mouseenter.stop="onStatusEnter"
+        @mousemove.stop
+        @mouseleave.stop="onStatusLeave"
       >
-        <Icon name="tabler:message-circle-filled" size="13" aria-hidden="true" />
+        <Icon :name="activeStatus ? 'tabler:message-circle-filled' : 'tabler:message-circle'" size="13" aria-hidden="true" />
       </button>
       <Teleport to="body">
         <Transition
@@ -44,14 +47,12 @@
           <div
             v-if="statusPopoverOpen && activeStatus"
             ref="statusPopoverEl"
-            class="fixed z-[9999] w-56 origin-top rounded-2xl bg-white p-3 text-left shadow-[0_12px_32px_rgba(0,0,0,0.18)] ring-1 ring-black/10 dark:bg-zinc-950 dark:ring-white/15"
+            class="fixed z-[9999] w-56 origin-top rounded-2xl bg-black/75 p-3 text-left shadow-[0_18px_48px_rgba(0,0,0,0.35)] ring-1 ring-white/15 backdrop-blur-xl"
             :style="statusPopoverStyle"
             role="dialog"
             @click.stop
           >
-            <div class="text-xs font-semibold text-gray-500 dark:text-gray-400">{{ displayName }}</div>
-            <div class="mt-1 text-sm font-medium leading-snug text-gray-900 dark:text-gray-50">{{ activeStatus.text }}</div>
-            <div class="mt-2 text-xs text-gray-500 dark:text-gray-400">{{ statusMeta }}</div>
+            <div class="text-sm font-semibold leading-snug text-white">{{ activeStatus.text }}</div>
           </div>
         </Transition>
       </Teleport>
@@ -68,7 +69,6 @@
  */
 import { useUserOverlay } from '~/composables/useUserOverlay'
 import { avatarRoundClass } from '~/utils/avatar-rounding'
-import { formatRelativeTime } from '~/utils/time-format'
 
 export type UserAvatarUser = {
   id: string
@@ -79,6 +79,10 @@ export type UserAvatarUser = {
   isOrganization?: boolean
 }
 
+const emit = defineEmits<{
+  (e: 'statusClick'): void
+}>()
+
 const props = withDefaults(
   defineProps<{
     user: UserAvatarUser | null | undefined
@@ -88,6 +92,12 @@ const props = withDefaults(
     enablePreview?: boolean
     /** When false, hide the presence indicator (e.g. radio bar listener avatars). Default true. */
     showPresence?: boolean
+    /** When false, hide the temporary status bubble while keeping presence visible. */
+    showStatus?: boolean
+    /** When true, show an empty status affordance if no active status exists. */
+    showEmptyStatus?: boolean
+    /** Use `custom` when the parent wants to open an editor instead of the read-only status card. */
+    statusBehavior?: 'view' | 'custom'
     /** Override presence (e.g. 'connecting' for current user while socket is connecting). */
     presenceStatusOverride?: 'online' | 'idle' | 'connecting' | 'offline'
     /** Presence dot size as fraction of avatar diameter (default 0.25). Use smaller for large avatars. */
@@ -100,6 +110,9 @@ const props = withDefaults(
     bgClass: 'bg-gray-200 dark:bg-zinc-800',
     enablePreview: true,
     showPresence: true,
+    showStatus: true,
+    showEmptyStatus: false,
+    statusBehavior: 'view',
     presenceScale: 0.25,
     presenceInsetRatio: 0.5,
   },
@@ -110,11 +123,11 @@ const { getPresenceStatus, getCurrentSpaceForUser, getUserStatus } = usePresence
 const { user: authUser } = useAuth()
 const { selectedSpaceId } = useSpaceLobby()
 const { user: u } = useUserOverlay(computed(() => props.user))
-const { nowMs } = useNowTicker({ everyMs: 30_000 })
 const wrapEl = ref<HTMLElement | null>(null)
 const statusButtonEl = ref<HTMLElement | null>(null)
 const statusPopoverEl = ref<HTMLElement | null>(null)
 const statusPopoverOpen = ref(false)
+const statusPopoverPinned = ref(false)
 const statusPopoverPosition = ref({ top: 0, left: 0 })
 
 const avatarUrl = computed(() => u.value?.avatarUrl ?? null)
@@ -136,26 +149,21 @@ const presenceStatus = computed(() => {
 
 const activeStatus = computed(() => {
   const uid = u.value?.id
-  if (!uid || props.showPresence === false) return null
+  if (!uid || props.showPresence === false || props.showStatus === false) return null
   return getUserStatus(uid)
 })
 
-const statusMeta = computed(() => {
-  const status = activeStatus.value
-  if (!status) return ''
-  const setAt = formatRelativeTime(status.setAt, { nowMs: nowMs.value, fallback: '' })
-  const expiresAtMs = Date.parse(status.expiresAt)
-  if (!Number.isFinite(expiresAtMs)) return setAt ? `Set ${setAt.toLowerCase()}` : 'Active status'
-  const minutesLeft = Math.max(0, Math.ceil((expiresAtMs - nowMs.value) / 60000))
-  const expires =
-    minutesLeft < 60
-      ? `Expires in ${minutesLeft}m`
-      : `Expires in ${Math.ceil(minutesLeft / 60)}h`
-  return setAt ? `Set ${setAt.toLowerCase()} · ${expires}` : expires
-})
+const showStatusButton = computed(() => Boolean(props.showStatus && props.showPresence !== false && (activeStatus.value || props.showEmptyStatus)))
+const statusButtonClass = computed(() => [
+  'moh-avatar-status-bubble moh-focus absolute -right-1 -top-1 z-20 inline-flex h-5 w-5 items-center justify-center rounded-full transition-[transform,opacity] duration-150 hover:scale-[1.04] active:scale-[0.96]',
+  activeStatus.value
+    ? 'bg-zinc-950 text-white shadow-[0_2px_8px_rgba(0,0,0,0.22)] ring-1 ring-white/20 dark:bg-black dark:text-white dark:ring-white/25'
+    : 'border border-dashed border-white/80 bg-zinc-950 text-white shadow-[0_2px_8px_rgba(0,0,0,0.22)] ring-1 ring-white/20 dark:border-white/80 dark:bg-black dark:text-white',
+])
 
 function closeStatusPopover() {
   statusPopoverOpen.value = false
+  statusPopoverPinned.value = false
 }
 
 function updateStatusPopoverPosition() {
@@ -180,6 +188,38 @@ async function toggleStatusPopover() {
     await nextTick()
     updateStatusPopoverPosition()
   }
+}
+
+function onStatusButtonClick() {
+  onLeave()
+  if (props.statusBehavior === 'custom') {
+    emit('statusClick')
+    return
+  }
+  if (activeStatus.value) {
+    statusPopoverPinned.value = true
+    statusPopoverOpen.value = true
+    void nextTick(updateStatusPopoverPosition)
+  }
+}
+
+function onStatusEnter() {
+  onLeave()
+  if (props.statusBehavior !== 'view' || !activeStatus.value) return
+  statusPopoverOpen.value = true
+  void nextTick(updateStatusPopoverPosition)
+}
+
+function onStatusLeave(event: MouseEvent) {
+  if (props.statusBehavior !== 'view') return
+  if (statusPopoverPinned.value) return
+  closeStatusPopover()
+
+  const nextTarget = event.relatedTarget
+  if (!(nextTarget instanceof Node)) return
+  if (!wrapEl.value?.contains(nextTarget)) return
+  if (statusButtonEl.value?.contains(nextTarget)) return
+  onEnter(event)
 }
 
 const statusPopoverStyle = computed(() => ({

@@ -26,6 +26,7 @@
         ref="homeComposerRef"
         :allowed-visibilities="['public', 'verifiedOnly', 'premiumOnly']"
         persist-key="home"
+        enable-avatar-status-editor
         :register-unsaved-guard="false"
         @pending="onComposerPending"
       />

@@ -119,7 +119,7 @@
         <div
           ref="avatarWrapperRef"
           :class="[
-            'group relative ring-4 ring-white dark:ring-black',
+            'group relative inline-flex leading-none ring-4 ring-white dark:ring-black',
             avatarRoundClass
           ]"
         >

@@ -32,6 +32,7 @@
           :presence-status-override="currentUserPresenceStatus"
           :size-class="props.compact ? 'mx-auto h-10 w-10' : 'mx-auto xl:mx-0 h-10 w-10'"
           :enable-preview="false"
+          :show-status="false"
         />
         <div
           :class="[
@@ -61,6 +62,7 @@
           :presence-status-override="currentUserPresenceStatus"
           :size-class="props.compact ? 'mx-auto h-10 w-10' : 'mx-auto xl:mx-0 h-10 w-10'"
           :enable-preview="false"
+          :show-status="false"
         />
         <div
           :class="[
@@ -86,62 +88,86 @@
       </template>
     </Menu>
 
-    <Transition
-      enter-active-class="transition-[opacity,transform] duration-150 ease-out"
-      enter-from-class="opacity-0 translate-y-1 scale-95"
-      enter-to-class="opacity-100 translate-y-0 scale-100"
-      leave-active-class="transition-[opacity,transform] duration-100 ease-in"
-      leave-from-class="opacity-100 translate-y-0 scale-100"
-      leave-to-class="opacity-0 translate-y-1 scale-95"
-    >
-      <form
-        v-if="statusEditorOpen"
-        ref="statusEditorRef"
-        class="fixed bottom-[calc(5rem+var(--moh-safe-bottom,0px))] left-4 right-4 z-50 mx-auto max-w-sm rounded-2xl bg-white p-3 text-left shadow-[0_12px_32px_rgba(0,0,0,0.18)] ring-1 ring-black/10 dark:bg-zinc-950 dark:ring-white/15 md:absolute md:bottom-16 md:left-3 md:right-3 md:max-w-none"
-        @submit.prevent="saveStatus"
-        @click.stop
-      >
-        <div class="text-sm font-semibold text-gray-900 dark:text-gray-50">Set status</div>
-        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-          Shows on your avatar for 24 hours.
-        </p>
-        <input
-          v-model="statusDraft"
-          type="text"
-          maxlength="120"
-          placeholder="What are you up to?"
-          class="mt-3 w-full rounded-xl border border-black/10 bg-white px-3 py-2 text-sm text-gray-900 outline-none transition-shadow focus:ring-2 focus:ring-[var(--p-primary-color)]/30 dark:border-white/10 dark:bg-zinc-900 dark:text-gray-50"
+    <ClientOnly>
+      <Teleport to="body">
+        <Transition
+          enter-active-class="transition-opacity duration-150 ease-out"
+          enter-from-class="opacity-0"
+          enter-to-class="opacity-100"
+          leave-active-class="transition-opacity duration-100 ease-in"
+          leave-from-class="opacity-100"
+          leave-to-class="opacity-0"
         >
-        <div v-if="statusError" class="mt-2 text-xs text-red-600 dark:text-red-400">{{ statusError }}</div>
-        <div class="mt-3 flex items-center justify-between gap-2">
-          <button
-            type="button"
-            class="rounded-lg px-2.5 py-1.5 text-xs font-medium text-gray-500 transition-colors hover:bg-black/5 dark:text-gray-400 dark:hover:bg-white/5"
-            :disabled="statusSaving"
-            @click="clearStatus"
+          <div
+            v-if="statusEditorOpen"
+            class="fixed inset-0 z-[9999] flex items-center justify-center bg-black/45 px-4 py-6 backdrop-blur-sm"
+            role="presentation"
+            @click.self="closeStatusEditor"
           >
-            Clear
-          </button>
-          <div class="flex items-center gap-2">
-            <button
-              type="button"
-              class="rounded-lg px-2.5 py-1.5 text-xs font-medium text-gray-500 transition-colors hover:bg-black/5 dark:text-gray-400 dark:hover:bg-white/5"
-              :disabled="statusSaving"
-              @click="closeStatusEditor"
+            <Transition
+              appear
+              enter-active-class="transition-[opacity,transform] duration-150 ease-out"
+              enter-from-class="opacity-0 translate-y-2 scale-95"
+              enter-to-class="opacity-100 translate-y-0 scale-100"
+              leave-active-class="transition-[opacity,transform] duration-100 ease-in"
+              leave-from-class="opacity-100 translate-y-0 scale-100"
+              leave-to-class="opacity-0 translate-y-2 scale-95"
             >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              class="moh-pressable rounded-lg bg-[var(--p-primary-color)] px-3 py-1.5 text-xs font-semibold text-white transition-[opacity,transform] active:scale-[0.96] disabled:opacity-60"
-              :disabled="statusSaving || !statusDraft.trim()"
-            >
-              {{ statusSaving ? 'Saving…' : 'Save' }}
-            </button>
+              <form
+                ref="statusEditorRef"
+                class="w-full max-w-sm rounded-3xl bg-white p-5 text-left shadow-[0_24px_80px_rgba(0,0,0,0.35)] ring-1 ring-black/10 dark:bg-zinc-950 dark:ring-white/15"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="status-editor-title"
+                @submit.prevent="saveStatus"
+                @click.stop
+              >
+                <div id="status-editor-title" class="text-lg font-semibold tracking-tight text-gray-900 dark:text-gray-50">Set status</div>
+                <p class="mt-1 text-sm leading-snug text-gray-500 dark:text-gray-400">
+                  Shows on your avatar for 24 hours.
+                </p>
+                <input
+                  ref="statusInputRef"
+                  v-model="statusDraft"
+                  type="text"
+                  maxlength="120"
+                  placeholder="What are you up to?"
+                  class="mt-4 w-full rounded-2xl border border-black/10 bg-white px-4 py-3 text-base text-gray-900 outline-none transition-shadow focus:ring-2 focus:ring-[var(--p-primary-color)]/30 dark:border-white/10 dark:bg-zinc-900 dark:text-gray-50"
+                >
+                <div v-if="statusError" class="mt-2 text-sm text-red-600 dark:text-red-400">{{ statusError }}</div>
+                <div class="mt-5 flex items-center justify-between gap-3">
+                  <button
+                    type="button"
+                    class="rounded-xl px-3 py-2 text-sm font-medium text-gray-500 transition-colors hover:bg-black/5 dark:text-gray-400 dark:hover:bg-white/5"
+                    :disabled="statusSaving"
+                    @click="clearStatus"
+                  >
+                    Clear
+                  </button>
+                  <div class="flex items-center gap-2">
+                    <button
+                      type="button"
+                      class="rounded-xl px-3 py-2 text-sm font-medium text-gray-500 transition-colors hover:bg-black/5 dark:text-gray-400 dark:hover:bg-white/5"
+                      :disabled="statusSaving"
+                      @click="closeStatusEditor"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      class="moh-pressable rounded-xl bg-[var(--p-primary-color)] px-4 py-2 text-sm font-semibold text-white transition-[opacity,transform] active:scale-[0.96] disabled:opacity-60"
+                      :disabled="statusSaving || !statusDraft.trim()"
+                    >
+                      {{ statusSaving ? 'Saving…' : 'Save' }}
+                    </button>
+                  </div>
+                </div>
+              </form>
+            </Transition>
           </div>
-        </div>
-      </form>
-    </Transition>
+        </Transition>
+      </Teleport>
+    </ClientOnly>
 
   </div>
 </template>
@@ -209,6 +235,7 @@ const displayName = computed(() => user.value?.name || user.value?.username || '
 const showTopControls = computed(() => !props.compact && !props.hideMenu && isXlUp.value)
 const statusEditorOpen = ref(false)
 const statusEditorRef = ref<HTMLElement | null>(null)
+const statusInputRef = ref<HTMLInputElement | null>(null)
 const statusDraft = ref('')
 const statusSaving = ref(false)
 const statusError = ref<string | null>(null)
@@ -259,6 +286,7 @@ function openStatusEditor() {
   statusDraft.value = activeStatus.value?.text ?? ''
   statusError.value = null
   statusEditorOpen.value = true
+  void nextTick(() => statusInputRef.value?.focus())
 }
 
 function closeStatusEditor() {

@@ -52,6 +52,9 @@
             <AppUserAvatar
               :user="user"
               size-class="h-8 w-8 sm:h-10 sm:w-10"
+              :show-empty-status="enableAvatarStatusEditor"
+              :status-behavior="enableAvatarStatusEditor ? 'custom' : 'view'"
+              @status-click="openStatusEditor"
             />
           </div>
         </NuxtLink>
@@ -59,6 +62,9 @@
           <AppUserAvatar
             :user="user"
             size-class="h-8 w-8 sm:h-10 sm:w-10"
+            :show-empty-status="enableAvatarStatusEditor"
+            :status-behavior="enableAvatarStatusEditor ? 'custom' : 'view'"
+            @status-click="openStatusEditor"
           />
         </div>
       </template>
@@ -395,6 +401,89 @@
     </div>
   </div>
 
+  <ClientOnly>
+    <Teleport to="body">
+      <Transition
+        enter-active-class="transition-opacity duration-150 ease-out"
+        enter-from-class="opacity-0"
+        enter-to-class="opacity-100"
+        leave-active-class="transition-opacity duration-100 ease-in"
+        leave-from-class="opacity-100"
+        leave-to-class="opacity-0"
+      >
+        <div
+          v-if="statusEditorOpen"
+          class="fixed inset-0 z-[9999] flex items-center justify-center bg-black/45 px-4 py-6 backdrop-blur-sm"
+          role="presentation"
+          @click.self="closeStatusEditor"
+        >
+          <Transition
+            appear
+            enter-active-class="transition-[opacity,transform] duration-150 ease-out"
+            enter-from-class="opacity-0 translate-y-2 scale-95"
+            enter-to-class="opacity-100 translate-y-0 scale-100"
+            leave-active-class="transition-[opacity,transform] duration-100 ease-in"
+            leave-from-class="opacity-100 translate-y-0 scale-100"
+            leave-to-class="opacity-0 translate-y-2 scale-95"
+          >
+            <form
+              ref="statusEditorRef"
+              class="w-full max-w-sm rounded-3xl bg-white p-5 text-left shadow-[0_24px_80px_rgba(0,0,0,0.35)] ring-1 ring-black/10 dark:bg-zinc-950 dark:ring-white/15"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="composer-status-editor-title"
+              @submit.prevent="saveStatus"
+              @click.stop
+            >
+              <div id="composer-status-editor-title" class="text-lg font-semibold tracking-tight text-gray-900 dark:text-gray-50">
+                {{ activeStatus ? 'Update status' : 'Set status' }}
+              </div>
+              <p class="mt-1 text-sm leading-snug text-gray-500 dark:text-gray-400">
+                Shows on your avatar for 24 hours.
+              </p>
+              <input
+                ref="statusInputRef"
+                v-model="statusDraft"
+                type="text"
+                maxlength="120"
+                placeholder="What are you up to?"
+                class="mt-4 w-full rounded-2xl border border-black/10 bg-white px-4 py-3 text-base text-gray-900 outline-none transition-shadow focus:ring-2 focus:ring-[var(--p-primary-color)]/30 dark:border-white/10 dark:bg-zinc-900 dark:text-gray-50"
+              >
+              <div v-if="statusError" class="mt-2 text-sm text-red-600 dark:text-red-400">{{ statusError }}</div>
+              <div class="mt-5 flex items-center justify-between gap-3">
+                <button
+                  type="button"
+                  class="rounded-xl px-3 py-2 text-sm font-medium text-gray-500 transition-colors hover:bg-black/5 disabled:opacity-50 dark:text-gray-400 dark:hover:bg-white/5"
+                  :disabled="statusSaving || !activeStatus"
+                  @click="clearStatus"
+                >
+                  Clear
+                </button>
+                <div class="flex items-center gap-2">
+                  <button
+                    type="button"
+                    class="rounded-xl px-3 py-2 text-sm font-medium text-gray-500 transition-colors hover:bg-black/5 dark:text-gray-400 dark:hover:bg-white/5"
+                    :disabled="statusSaving"
+                    @click="closeStatusEditor"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    class="moh-pressable rounded-xl bg-[var(--p-primary-color)] px-4 py-2 text-sm font-semibold text-white transition-[opacity,transform] active:scale-[0.96] disabled:opacity-60"
+                    :disabled="statusSaving || !statusDraft.trim()"
+                  >
+                    {{ statusSaving ? 'Saving…' : 'Save' }}
+                  </button>
+                </div>
+              </div>
+            </form>
+          </Transition>
+        </div>
+      </Transition>
+    </Teleport>
+  </ClientOnly>
+
   <AppComposerGiphyPickerDialog
     ref="giphyInputRef"
     :open="giphyOpen"
@@ -429,6 +518,7 @@ import {
 } from '~/utils/theme-tint'
 import { tinyTooltip } from '~/utils/tiny-tooltip'
 import { visibilityTagClasses, visibilityTagLabel } from '~/utils/post-visibility'
+import { getApiErrorMessage } from '~/utils/api-error'
 import { useFormSubmit } from '~/composables/useFormSubmit'
 import { useMentionAutocomplete } from '~/composables/useMentionAutocomplete'
 import { useHashtagAutocomplete } from '~/composables/useHashtagAutocomplete'
@@ -535,11 +625,14 @@ const props = defineProps<{
    * from an only-me draft to a different page).
    */
   syncSubmit?: boolean
+  /** Home composer only: avatar status bubble opens the status editor instead of read-only status. */
+  enableAvatarStatusEditor?: boolean
 }>()
 
 const route = useRoute()
 const { user, me, isAuthed, isPremium, isVerified: viewerIsVerified } = useAuth()
 const { apiFetchData } = useApiClient()
+const { getUserStatus, setMyStatus, clearMyStatus } = usePresence()
 const toast = useAppToast()
 
 const STREAK_MULTIPLIER_MILESTONES = new Set([8, 15, 22])
@@ -571,6 +664,72 @@ const editPostIsDraft = computed(() => Boolean(props.editPostIsDraft))
 const disableMedia = computed(() => Boolean(props.disableMedia) || (mode.value === 'edit' && !editPostIsDraft.value))
 const disablePoll = computed(() => Boolean(props.disablePoll))
 const showDivider = computed(() => props.showDivider !== false)
+const enableAvatarStatusEditor = computed(() => Boolean(props.enableAvatarStatusEditor))
+const statusEditorOpen = ref(false)
+const statusEditorRef = ref<HTMLElement | null>(null)
+const statusInputRef = ref<HTMLInputElement | null>(null)
+const statusDraft = ref('')
+const statusSaving = ref(false)
+const statusError = ref<string | null>(null)
+const activeStatus = computed(() => {
+  const id = user.value?.id
+  return id ? getUserStatus(id) : null
+})
+
+function openStatusEditor() {
+  if (!enableAvatarStatusEditor.value) return
+  statusDraft.value = activeStatus.value?.text ?? ''
+  statusError.value = null
+  statusEditorOpen.value = true
+  void nextTick(() => statusInputRef.value?.focus())
+}
+
+function closeStatusEditor() {
+  statusEditorOpen.value = false
+  statusError.value = null
+}
+
+async function saveStatus() {
+  const text = statusDraft.value.trim()
+  if (!text) return
+  statusSaving.value = true
+  statusError.value = null
+  try {
+    await setMyStatus(text)
+    closeStatusEditor()
+  } catch (e) {
+    statusError.value = getApiErrorMessage(e) || 'Could not save status.'
+  } finally {
+    statusSaving.value = false
+  }
+}
+
+async function clearStatus() {
+  if (!activeStatus.value) return
+  statusSaving.value = true
+  statusError.value = null
+  try {
+    await clearMyStatus()
+    statusDraft.value = ''
+    closeStatusEditor()
+  } catch (e) {
+    statusError.value = getApiErrorMessage(e) || 'Could not clear status.'
+  } finally {
+    statusSaving.value = false
+  }
+}
+
+function onStatusEditorKeydown(event: KeyboardEvent) {
+  if (event.key === 'Escape') closeStatusEditor()
+}
+
+if (import.meta.client) {
+  watch(statusEditorOpen, (open) => {
+    if (open) document.addEventListener('keydown', onStatusEditorKeydown)
+    else document.removeEventListener('keydown', onStatusEditorKeydown)
+  })
+  onBeforeUnmount(() => document.removeEventListener('keydown', onStatusEditorKeydown))
+}
 
 const quotedPost = computed(() => props.quotedPost ?? null)
 const quotedPostUrl = computed(() => {

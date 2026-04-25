@@ -1033,13 +1033,14 @@ const leftNavViewportRef = ref<HTMLElement | null>(null)
 const leftNavLogoRef = ref<HTMLElement | null>(null)
 const leftNavPostRef = ref<HTMLElement | null>(null)
 const leftNavCapacity = ref(99)
+const leftRailNavItems = computed(() => primaryNavItems.value.filter((item) => item.menuSection !== 'footer'))
 const leftVisibleNavItems = computed<AppNavItem[]>(() => {
-  const items = primaryNavItems.value
+  const items = leftRailNavItems.value
   if (items.length <= leftNavCapacity.value) return items
   return items.slice(0, Math.max(0, leftNavCapacity.value - 1))
 })
 const leftOverflowNavItems = computed<AppNavItem[]>(() => {
-  const items = primaryNavItems.value
+  const items = leftRailNavItems.value
   if (items.length <= leftNavCapacity.value) return []
   return items.slice(Math.max(0, leftNavCapacity.value - 1))
 })
