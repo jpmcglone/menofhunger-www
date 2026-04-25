@@ -65,6 +65,31 @@ describe('home feed query shape', () => {
     expect(allMedia.sort).toBeUndefined()
     expect(allMedia.followingOnly).toBeUndefined()
   })
+
+  it('sends trending sort for Following and All media', () => {
+    const followingTrendingMedia = postsFeedListQuery({
+      visibility: 'all',
+      followingOnly: true,
+      sort: 'trending',
+      forYou: false,
+      cursor: null,
+      mediaOnly: true,
+      limit: 40,
+    })
+    const allTrendingMedia = postsFeedListQuery({
+      visibility: 'all',
+      followingOnly: false,
+      sort: 'trending',
+      forYou: false,
+      cursor: null,
+      mediaOnly: true,
+      limit: 40,
+    })
+
+    expect(followingTrendingMedia).toMatchObject({ mediaOnly: true, followingOnly: true, sort: 'trending' })
+    expect(allTrendingMedia).toMatchObject({ mediaOnly: true, sort: 'trending' })
+    expect(allTrendingMedia.followingOnly).toBeUndefined()
+  })
 })
 
 describe('home feed refresh guardrails', () => {
