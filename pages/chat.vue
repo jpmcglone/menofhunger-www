@@ -1118,6 +1118,8 @@ const viewerCrew = useViewerCrew()
 
 function getConversationTitle(conversation: MessageConversation) {
   if (conversation.type === 'crew_wall') {
+    const crewName = (conversation.crew?.name ?? '').trim()
+    if (crewName) return crewName
     return viewerCrew.membership.value?.role === 'owner' ? 'Your Crew' : 'My Crew'
   }
   if (conversation.type === 'group') {
