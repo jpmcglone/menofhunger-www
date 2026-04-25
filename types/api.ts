@@ -1234,6 +1234,7 @@ export type GetNotificationsResponse = {
   pagination: {
     nextCursor: string | null
     undeliveredCount: number
+    unreadByKind?: Partial<Record<NotificationKind | 'all', number>>
   }
 }
 

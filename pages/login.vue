@@ -182,6 +182,7 @@ import { useFormSubmit } from '~/composables/useFormSubmit'
 import { countDigitsBeforeIndex, formatPhoneAsYouType, indexFromDigitCount, normalizePhoneForApi } from '~/utils/phone'
 import { isSafeRedirect } from '~/utils/url'
 const route = useRoute()
+const { capturedReferralCode, captureReferralFromRoute, markReferralApplied } = useReferralCapture()
 
 const showBannedNotice = computed(() => String(route.query.banned ?? '') === '1')
 
@@ -217,7 +218,16 @@ function focusInput(compRef: { value: { $el?: HTMLElement } | null }) {
   })
 }
 
+watch(
+  () => route.query.ref,
+  () => {
+    captureReferralFromRoute(route)
+  },
+  { immediate: true },
+)
+
 onMounted(() => {
+  captureReferralFromRoute(route)
   focusInput(phoneInputRef)
 })
 
@@ -404,10 +414,12 @@ const { submit: submitCode, submitting: verifying } = useFormSubmit(
     const code = codeInput.value.replace(/\D/g, '').slice(0, 6)
     if (!phone || code.length !== 6) return
 
-    const result = await apiFetchData<{ isNewUser: boolean; user: any; sessionId: string }>('/auth/phone/verify', {
+    const referralCode = capturedReferralCode.value.trim()
+    const result = await apiFetchData<{ isNewUser: boolean; referralApplied?: boolean; user: any; sessionId: string }>('/auth/phone/verify', {
       method: 'POST',
-      body: { phone, code }
+      body: referralCode ? { phone, code, referralCode } : { phone, code }
     })
+    if (result.referralApplied) markReferralApplied(referralCode)
 
     // Immediately hydrate auth state from the response so we don't look logged out
     // until a full refresh (client-side navigation won't rerun SSR init).

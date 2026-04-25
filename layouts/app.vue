@@ -159,12 +159,13 @@
         <!-- IMPORTANT: no `h-full` + no `overflow-hidden` here, or the rail can't actually scroll -->
         <AppLeftRailContent :compact="navCompactMode">
           <div
+            ref="leftNavViewportRef"
             :class="[
               'min-h-0 flex-1 no-scrollbar',
-              anyOverlayOpen ? 'overflow-hidden' : 'overflow-y-auto overscroll-y-contain',
+              'overflow-hidden',
             ]"
           >
-          <div class="mb-3">
+          <div ref="leftNavLogoRef" class="mb-3">
             <NuxtLink
               :to="'/home'"
               :class="[
@@ -200,7 +201,7 @@
           </div>
 
           <nav class="space-y-1 flex-1">
-            <template v-for="item in leftNavItems" :key="item.key">
+            <template v-for="item in leftVisibleNavItems" :key="item.key">
 
               <NuxtLink
                 :to="item.to"
@@ -275,8 +276,8 @@
 
             </template>
 
-            <!-- More button + popover (bookmarks, profile, only me) -->
-            <div v-if="isAuthed && moreNavItems.length" class="relative">
+            <!-- More button + popover (height overflow from the ordered nav list) -->
+            <div v-if="leftOverflowNavItems.length" class="relative">
               <button
                 ref="moreButtonRef"
                 type="button"
@@ -312,7 +313,7 @@
                   class="absolute left-0 bottom-full mb-2 z-50 min-w-[12rem] rounded-xl border moh-border bg-white p-1.5 shadow-lg dark:bg-zinc-900"
                 >
                   <NuxtLink
-                    v-for="mi in moreNavItems"
+                    v-for="mi in leftOverflowNavItems"
                     :key="mi.key"
                     :to="mi.to"
                     :class="[
@@ -321,32 +322,44 @@
                         ? (isActiveNav(mi.to) ? 'moh-nav-onlyme-active font-bold' : 'moh-nav-onlyme')
                         : (isActiveNav(mi.to) ? 'moh-surface font-bold text-gray-900 dark:text-gray-100' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-zinc-800'),
                     ]"
-                    @click="morePopoverOpen = false"
+                    @click="(e) => { morePopoverOpen = false; onLeftNavClick(mi.to, e) }"
                   >
-                    <ClientOnly v-if="mi.key === 'bookmarks'">
+                    <span class="relative flex h-6 w-6 shrink-0 items-center justify-center">
+                      <ClientOnly v-if="mi.key === 'bookmarks'">
+                        <Icon
+                          :name="(hasBookmarks || isActiveNav(mi.to)) ? 'tabler:bookmark-filled' : 'tabler:bookmark'"
+                          size="22"
+                          :style="hasBookmarks ? { color: 'var(--p-primary-color)' } : undefined"
+                          aria-hidden="true"
+                        />
+                        <template #fallback>
+                          <Icon name="tabler:bookmark" size="22" aria-hidden="true" />
+                        </template>
+                      </ClientOnly>
                       <Icon
-                        :name="(hasBookmarks || isActiveNav(mi.to)) ? 'tabler:bookmark-filled' : 'tabler:bookmark'"
+                        v-else
+                        :name="isActiveNav(mi.to) ? (mi.iconActive || mi.icon) : mi.icon"
                         size="22"
-                        :style="hasBookmarks ? { color: 'var(--p-primary-color)' } : undefined"
+                        :class="mi.iconClass"
                         aria-hidden="true"
                       />
-                      <template #fallback>
-                        <Icon name="tabler:bookmark" size="22" aria-hidden="true" />
-                      </template>
-                    </ClientOnly>
-                    <Icon
-                      v-else
-                      :name="isActiveNav(mi.to) ? (mi.iconActive || mi.icon) : mi.icon"
-                      size="22"
-                      aria-hidden="true"
-                    />
+                      <AppNotificationBadge v-if="mi.key === 'notifications'" />
+                      <AppMessagesBadge v-if="mi.key === 'messages'" />
+                      <AppCrewInvitesBadge v-if="mi.key === 'crew'" />
+                    </span>
                     <span>{{ mi.label }}</span>
+                    <ClientOnly>
+                      <span
+                        v-if="mi.key === 'spaces' && totalLobbyCount > 0"
+                        class="ml-auto text-xs font-medium moh-meta tabular-nums"
+                      >({{ totalLobbyCount }})</span>
+                    </ClientOnly>
                   </NuxtLink>
                 </div>
               </Transition>
             </div>
 
-            <div class="pt-2">
+            <div ref="leftNavPostRef" class="pt-2">
               <Transition
                 enter-active-class="transition-opacity duration-150 ease-out"
                 enter-from-class="opacity-0"
@@ -610,6 +623,8 @@
                   </div>
 
                   <div class="space-y-4 transition-[transform] duration-200 ease-out">
+                  <AppReferralRailCard />
+
                   <!-- Order matters here: Who-to-follow renders before Trending so the
                        most actionable rail card (real people you can follow right now)
                        is the first thing the eye lands on after the daily quote. -->
@@ -906,6 +921,7 @@ import { isComposerEntrypointPath, routeHeaderDefaultsFor, isAdminPath, isSettin
 import { MOH_GROUP_COMPOSER_KEY } from '~/utils/injection-keys'
 import { userColorTier, userTierTextClass } from '~/utils/user-tier'
 import { ClientOnly, NuxtLink } from '#components'
+import type { AppNavItem } from '~/composables/useAppNav'
 
 const route = useRoute()
 const { isActive: isActiveNav } = useRouteMatch(route)
@@ -919,7 +935,7 @@ useHead({
   meta: [{ key: 'moh-theme-color', name: 'theme-color', content: safariThemeColor }],
 })
 const { initAuth, user, me: fetchMe, isVerified: viewerIsVerified, apiUnreachable } = useAuth()
-const { isAuthed, profileTo, leftItems: leftNavItems, moreItems: moreNavItems, tabItems } = useAppNav()
+const { isAuthed, profileTo, primaryItems: primaryNavItems, tabItems } = useAppNav()
 const notifBadge = useNotificationsBadge()
 const {
   disconnectedDueToIdle,
@@ -1013,7 +1029,21 @@ const isOnlyMePage = computed(() => route.path === '/only-me')
 const morePopoverOpen = ref(false)
 const moreButtonRef = ref<HTMLElement | null>(null)
 const morePopoverRef = ref<HTMLElement | null>(null)
-const moreNavHasActiveRoute = computed(() => moreNavItems.value.some((item) => isActiveNav(item.to)))
+const leftNavViewportRef = ref<HTMLElement | null>(null)
+const leftNavLogoRef = ref<HTMLElement | null>(null)
+const leftNavPostRef = ref<HTMLElement | null>(null)
+const leftNavCapacity = ref(99)
+const leftVisibleNavItems = computed<AppNavItem[]>(() => {
+  const items = primaryNavItems.value
+  if (items.length <= leftNavCapacity.value) return items
+  return items.slice(0, Math.max(0, leftNavCapacity.value - 1))
+})
+const leftOverflowNavItems = computed<AppNavItem[]>(() => {
+  const items = primaryNavItems.value
+  if (items.length <= leftNavCapacity.value) return []
+  return items.slice(Math.max(0, leftNavCapacity.value - 1))
+})
+const moreNavHasActiveRoute = computed(() => leftOverflowNavItems.value.some((item) => isActiveNav(item.to)))
 function onDocClickForMore(e: MouseEvent) {
   if (!morePopoverOpen.value) return
   const t = e.target as Node | null
@@ -1021,8 +1051,36 @@ function onDocClickForMore(e: MouseEvent) {
   if (morePopoverRef.value?.contains(t)) return
   morePopoverOpen.value = false
 }
-onMounted(() => document.addEventListener('click', onDocClickForMore, true))
-onBeforeUnmount(() => document.removeEventListener('click', onDocClickForMore, true))
+function updateLeftNavCapacity() {
+  const viewport = leftNavViewportRef.value
+  if (!viewport) return
+  const itemHeight = 52 // h-12 plus space-y-1 gap.
+  const logoHeight = leftNavLogoRef.value?.offsetHeight ?? 0
+  const postHeight = leftNavPostRef.value?.offsetHeight ?? 0
+  const available = Math.max(0, viewport.clientHeight - logoHeight - postHeight)
+  leftNavCapacity.value = Math.max(1, Math.floor((available + 4) / itemHeight))
+}
+let leftNavResizeObserver: ResizeObserver | null = null
+onMounted(() => {
+  document.addEventListener('click', onDocClickForMore, true)
+  updateLeftNavCapacity()
+  leftNavResizeObserver = new ResizeObserver(() => updateLeftNavCapacity())
+  if (leftNavViewportRef.value) leftNavResizeObserver.observe(leftNavViewportRef.value)
+  if (leftNavLogoRef.value) leftNavResizeObserver.observe(leftNavLogoRef.value)
+  if (leftNavPostRef.value) leftNavResizeObserver.observe(leftNavPostRef.value)
+  window.addEventListener('resize', updateLeftNavCapacity)
+})
+onBeforeUnmount(() => {
+  document.removeEventListener('click', onDocClickForMore, true)
+  window.removeEventListener('resize', updateLeftNavCapacity)
+  leftNavResizeObserver?.disconnect()
+  leftNavResizeObserver = null
+})
+watch(
+  primaryNavItems,
+  () => nextTick(updateLeftNavCapacity),
+  { flush: 'post' },
+)
 const isGroupPage = computed(() => /^\/g\/[^/]+$/.test(route.path))
 const groupComposerCtx = ref<import('~/utils/injection-keys').GroupComposerContext | null>(null)
 provide(MOH_GROUP_COMPOSER_KEY, groupComposerCtx)
@@ -1874,7 +1932,7 @@ const {
   error: whoToFollowError,
   refresh: refreshWhoToFollow,
 } = useWhoToFollow({
-  enabled: computed(() => !isRightRailForcedHidden.value),
+  enabled: computed(() => hydrated.value && !isRightRailForcedHidden.value),
   defaultLimit: 4,
 })
 

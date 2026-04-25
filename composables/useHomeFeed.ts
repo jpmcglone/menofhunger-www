@@ -1,6 +1,7 @@
 import type { ProfilePostsFilter } from '~/utils/post-visibility'
 import type { FeedVisibilityFilter } from '~/composables/useFeedFilters'
 import type { FeedScope } from '~/composables/useUrlFeedFilters'
+import type { Ref } from 'vue'
 import { useUrlFeedFilters } from '~/composables/useUrlFeedFilters'
 
 const HOME_SCOPE_COOKIE = 'moh.home.scope.v1'
@@ -15,7 +16,7 @@ function normalizeHomeScope(value: unknown): FeedScope {
   return DEFAULT_HOME_SCOPE
 }
 
-export function useHomeFeed() {
+export function useHomeFeed(options?: { mediaOnly?: Ref<boolean> }) {
   const { user, isAuthed } = useAuth()
   const { apiFetchData } = useApiClient()
   const middleScrollerEl = useMiddleScroller()
@@ -112,6 +113,7 @@ export function useHomeFeed() {
     followingOnly,
     sort: effectiveSort,
     forYou,
+    mediaOnly: options?.mediaOnly,
     showAds,
   })
 

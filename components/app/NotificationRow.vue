@@ -183,7 +183,13 @@
             >
               {{ notification.body }}
             </div>
-            <div v-if="!notification.body && !notification.subjectPostPreview?.media?.length" class="mt-1 text-[11px] sm:text-xs text-gray-500 dark:text-gray-400">
+            <div
+              v-if="notification.kind === 'repost' && notification.subjectPostPreview?.bodySnippet"
+              class="mt-1.5 line-clamp-2 rounded-lg border border-gray-200 bg-gray-50 px-2.5 py-1.5 text-[12px] sm:text-[13px] leading-snug text-gray-600 dark:border-zinc-700/70 dark:bg-zinc-800/60 dark:text-gray-300"
+            >
+              {{ notification.subjectPostPreview.bodySnippet }}
+            </div>
+            <div v-if="!notification.body && !notification.subjectPostPreview?.bodySnippet && !notification.subjectPostPreview?.media?.length" class="mt-1 text-[11px] sm:text-xs text-gray-500 dark:text-gray-400">
               {{ notificationContext(notification) }}
             </div>
             <!-- Next line: media only (no blockquote) -->

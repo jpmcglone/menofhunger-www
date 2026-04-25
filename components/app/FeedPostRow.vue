@@ -9,7 +9,7 @@
     @mouseleave="onMouseLeave"
   >
     <!-- "X reposted" header -->
-    <div class="flex items-center gap-1.5 px-4 pt-2 pb-0 text-xs moh-text-muted">
+    <div class="flex items-center gap-1.5 px-4 pt-4 pb-0 text-xs moh-text-muted lg:pt-2">
       <Icon
         name="tabler:repeat"
         class="text-[13px] shrink-0"

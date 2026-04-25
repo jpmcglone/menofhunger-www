@@ -76,7 +76,7 @@
 <script setup lang="ts">
 const props = withDefaults(
   defineProps<{
-    visible: boolean
+    visible?: boolean
     header: string
     message?: string
     cancelLabel?: string
@@ -88,6 +88,7 @@ const props = withDefaults(
     disabled?: boolean
   }>(),
   {
+    visible: false,
     cancelLabel: 'Cancel',
     showCancel: true,
     confirmLabel: 'Confirm',
@@ -106,7 +107,7 @@ const emit = defineEmits<{
 const confirmBtnRef = ref<HTMLButtonElement | null>(null)
 
 const open = computed({
-  get: () => props.visible,
+  get: () => Boolean(props.visible),
   set: (v) => emit('update:visible', v),
 })
 

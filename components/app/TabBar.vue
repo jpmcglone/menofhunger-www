@@ -217,7 +217,7 @@
 
 <script setup lang="ts">
 import type { AppNavItem } from '~/composables/useAppNav'
-defineProps<{
+const props = defineProps<{
   items: AppNavItem[]
 }>()
 
@@ -259,18 +259,19 @@ watch(isMobileHydrated, (mobileReady) => {
   if (!mobileReady) moreOpen.value = false
 })
 
-const { allItems, isItemVisible } = useAppNav()
+const { primaryItems } = useAppNav()
 const { totalCount: bookmarkTotalCount } = useBookmarkCollections()
 const hasBookmarks = computed(() => Math.max(0, Math.floor(bookmarkTotalCount.value ?? 0)) > 0)
 
-const mainMenuKeys = new Set(['explore', 'articles', 'groups', 'crew', 'bookmarks', 'profile', 'only-me'])
-const footerMenuKeys = new Set(['settings', 'feedback', 'admin'])
+const visibleTabKeys = computed(() =>
+  new Set(props.items.filter((i) => i.key !== 'more').map((i) => i.key)),
+)
 
 const mainMenuItems = computed<AppNavItem[]>(() =>
-  (allItems.value ?? []).filter((i) => mainMenuKeys.has(i.key) && isItemVisible(i)),
+  primaryItems.value.filter((i) => i.menuSection !== 'footer' && !visibleTabKeys.value.has(i.key)),
 )
 const footerMenuItems = computed<AppNavItem[]>(() =>
-  (allItems.value ?? []).filter((i) => footerMenuKeys.has(i.key) && isItemVisible(i)),
+  primaryItems.value.filter((i) => i.menuSection === 'footer' && !visibleTabKeys.value.has(i.key)),
 )
 
 function moreMenuIconName(mi: AppNavItem): string {

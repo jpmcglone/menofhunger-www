@@ -50,6 +50,11 @@ describe('hydration guardrails (structural)', () => {
     expect(layout).toMatch(/const isRightRailBreakpointUp = useHydratedMediaQuery\('\(min-width: 962px\)'\)/)
   })
 
+  it('gates right-rail who-to-follow fetch until after hydration', () => {
+    const layout = readFromRepo('layouts/app.vue')
+    expect(layout).toMatch(/useWhoToFollow\(\{[\s\S]*enabled:\s*computed\(\(\)\s*=>\s*hydrated\.value\s*&&\s*!isRightRailForcedHidden\.value\)/)
+  })
+
   it('gates mobile bottom-sheet mounting with hydrated media query helper', () => {
     const tabBar = readFromRepo('components/app/TabBar.vue')
     expect(tabBar).toMatch(/v-if="isMobileHydrated"/)

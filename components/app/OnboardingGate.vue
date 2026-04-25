@@ -105,7 +105,12 @@
           <div class="rounded-xl border moh-border p-4 moh-surface space-y-2">
             <div class="text-sm font-medium moh-text">Referred by someone?</div>
             <p class="text-xs moh-text-muted">
-              Enter their referral code. You'll automatically follow them and both earn +1 free month when you go premium.
+              <template v-if="referralAlreadyApplied">
+                Your signup link already set this referral. It can’t be changed here.
+              </template>
+              <template v-else>
+                Enter their referral code. You'll automatically follow them and both earn +1 free month when you go premium.
+              </template>
             </p>
             <div class="flex gap-2">
               <InputText
@@ -115,8 +120,11 @@
                 autocomplete="off"
                 spellcheck="false"
                 maxlength="20"
-                :disabled="submitting"
+                :disabled="submitting || referralAlreadyApplied"
               />
+            </div>
+            <div v-if="referralAlreadyApplied" class="text-xs text-green-700 dark:text-green-400">
+              Referral applied.
             </div>
             <div v-if="referralError" class="text-xs text-red-600 dark:text-red-400">{{ referralError }}</div>
           </div>
@@ -155,6 +163,12 @@ import { formatDateOnly } from '~/utils/time-format'
 const { user, ensureLoaded } = useAuth()
 const { apiFetchData } = useApiClient()
 const route = useRoute()
+const {
+  capturedReferralCode,
+  appliedReferralCode,
+  captureReferralFromRoute,
+  clearReferralCapture,
+} = useReferralCapture()
 
 await ensureLoaded()
 
@@ -246,6 +260,24 @@ const {
 
 const referralCodeInput = ref('')
 const referralError = ref<string | null>(null)
+const referralAlreadyApplied = computed(() => Boolean(appliedReferralCode.value))
+
+watch(
+  () => route.query.ref,
+  () => {
+    captureReferralFromRoute(route)
+  },
+  { immediate: true },
+)
+
+watch(
+  [capturedReferralCode, appliedReferralCode],
+  ([captured, applied]) => {
+    const code = applied || captured
+    if (code && !referralCodeInput.value.trim()) referralCodeInput.value = code
+  },
+  { immediate: true },
+)
 
 const error = ref<string | null>(null)
 const submitting = ref(false)
@@ -325,7 +357,7 @@ async function submit() {
 
     // Apply referral code if provided. Fire-and-forget — don't block navigation on failure.
     const code = referralCodeInput.value.trim()
-    if (code) {
+    if (code && !referralAlreadyApplied.value) {
       try {
         await apiFetchData('/billing/referral/set-recruiter', { method: 'POST', body: { code } })
       } catch (e: unknown) {
@@ -334,7 +366,11 @@ async function submit() {
         if (!msg.toLowerCase().includes('already been set')) {
           referralError.value = msg || 'Referral code not applied.'
         }
+      } finally {
+        clearReferralCapture()
       }
+    } else if (referralAlreadyApplied.value) {
+      clearReferralCapture()
     }
 
     // Post-signup: once onboarding is complete, send them to their profile (preserve capitalization).

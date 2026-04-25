@@ -2,11 +2,19 @@ import type { GetNotificationsResponse, Notification, NotificationFeedItem, Noti
 import type { NotificationsCallback } from '~/composables/usePresence'
 import { useUsersStore } from '~/composables/useUsersStore'
 import { userColorTier, userTierBgClass, userTierTextClass } from '~/utils/user-tier'
+import {
+  closeAllBrowserNotifications,
+  closeBrowserNotifications,
+  closeBrowserNotificationsForIds,
+  closeBrowserNotificationsForSubject,
+} from '~/utils/browser-notifications'
 
 type NotificationsListResponse = {
   data: NotificationFeedItem[]
   pagination?: GetNotificationsResponse['pagination']
 }
+
+type NotificationUnreadByKind = Partial<Record<NotificationKind | 'all', number>>
 
 /**
  * Seen vs Read semantics:
@@ -28,6 +36,7 @@ export function useNotifications() {
   const loading = useState<boolean>(`${stateKey}:loading`, () => false)
   const pendingRefresh = useState<boolean>(`${stateKey}:pendingRefresh`, () => false)
   const activeKind = useState<NotificationKind | null>(`${stateKey}:activeKind`, () => null)
+  const unreadByKind = useState<NotificationUnreadByKind>(`${stateKey}:unreadByKind`, () => ({ all: 0 }))
   // True once the first fetch has completed (success or error). Used to distinguish
   // "never fetched yet" (show loader) from "fetched and empty" (show empty state).
   const hasFetched = useState<boolean>(`${stateKey}:hasFetched`, () => false)
@@ -60,8 +69,12 @@ export function useNotifications() {
   // Realtime: the API now returns grouped feed items, so we refetch when relevant events arrive.
   const notificationsCb: NotificationsCallback = {
     onUpdated: () => {
-      // Count-only updates are already applied in usePresence. Avoid refetching the
-      // grouped list unless a structural event below cannot be patched in place.
+      if (!isNotificationsPage.value) return
+      if (loading.value) {
+        pendingRefresh.value = true
+        return
+      }
+      void fetchList({ forceRefresh: true })
     },
     onNew: (payload) => {
       const notification = payload?.notification
@@ -118,6 +131,7 @@ export function useNotifications() {
         const res = (await apiFetch<NotificationFeedItem[]>(path)) as unknown as GetNotificationsResponse
         const list = res.data ?? []
         const pagination = res.pagination
+        unreadByKind.value = normalizeUnreadByKind(pagination?.unreadByKind)
         if (cursor) {
           notifications.value = [...notifications.value, ...list]
         } else {
@@ -166,6 +180,7 @@ export function useNotifications() {
         method: 'POST',
         body: params,
       })
+      closeBrowserNotificationsForSubject(params)
     } catch (e: unknown) {
       if (import.meta.dev) {
         console.warn('[notifications] markReadBySubject failed', e)
@@ -183,6 +198,7 @@ export function useNotifications() {
     if (!id) return
     try {
       await apiFetch(`/notifications/${encodeURIComponent(id)}/mark-read`, { method: 'POST' })
+      closeBrowserNotificationsForIds([id])
     } catch (e: unknown) {
       if (import.meta.dev) {
         console.warn('[notifications] markReadById failed', e)
@@ -193,10 +209,51 @@ export function useNotifications() {
   async function markAllRead() {
     try {
       await apiFetch('/notifications/mark-all-read', { method: 'POST' })
+      closeAllBrowserNotifications()
     } catch (e: unknown) {
       if (import.meta.dev) {
         console.warn('[notifications] markAllRead failed', e)
       }
+    }
+  }
+
+  function normalizeUnreadByKind(counts: NotificationUnreadByKind | null | undefined): NotificationUnreadByKind {
+    const next: NotificationUnreadByKind = { all: 0 }
+    if (!counts) return next
+    for (const [kind, value] of Object.entries(counts)) {
+      const count = Math.max(0, Math.floor(Number(value) || 0))
+      if (count <= 0) continue
+      next[kind as NotificationKind | 'all'] = count
+      if (kind !== 'all') next.all = (next.all ?? 0) + count
+    }
+    if (typeof counts.all === 'number') next.all = Math.max(0, Math.floor(counts.all))
+    return next
+  }
+
+  function clearUnreadKind(kind: NotificationKind | 'all' | null) {
+    if (!kind || kind === 'all') {
+      unreadByKind.value = { all: 0 }
+      return
+    }
+    const prev = unreadByKind.value
+    const removed = Math.max(0, Math.floor(Number(prev[kind]) || 0))
+    unreadByKind.value = {
+      ...prev,
+      [kind]: 0,
+      all: Math.max(0, Math.floor(Number(prev.all) || 0) - removed),
+    }
+  }
+
+  function decrementUnreadKind(kind: NotificationKind | null, amount = 1) {
+    if (!kind) return
+    const prev = unreadByKind.value
+    const current = Math.max(0, Math.floor(Number(prev[kind]) || 0))
+    if (current <= 0) return
+    const delta = Math.min(current, Math.max(1, Math.floor(amount)))
+    unreadByKind.value = {
+      ...prev,
+      [kind]: Math.max(0, current - delta),
+      all: Math.max(0, Math.floor(Number(prev.all) || 0) - delta),
     }
   }
 
@@ -206,6 +263,7 @@ export function useNotifications() {
       if (typeof res.data?.undeliveredCount === 'number') {
         setNotificationUndeliveredCount(res.data.undeliveredCount)
       }
+      closeBrowserNotifications({ kinds: ['followed_post'] })
     } catch (e: unknown) {
       if (import.meta.dev) {
         console.warn('[notifications] markNewPostsRead failed', e)
@@ -281,6 +339,8 @@ export function useNotifications() {
         return n.subjectArticleId ? 'commented on your article' : 'replied to your post'
       case 'boost':
         return 'boosted your post'
+      case 'repost':
+        return 'reposted your post'
       case 'follow':
         return 'followed you'
       case 'followed_post':
@@ -512,7 +572,7 @@ export function useNotifications() {
       const hash = n.subjectArticleCommentId ? `#comment-${n.subjectArticleCommentId}` : ''
       return `/a/${encodeURIComponent(n.subjectArticleId)}${hash}`
     }
-    if ((n.kind === 'comment' || n.kind === 'followed_post' || n.kind === 'mention') && n.actorPostId) {
+    if ((n.kind === 'comment' || n.kind === 'followed_post' || n.kind === 'mention' || n.kind === 'repost') && n.actorPostId) {
       return `/p/${encodeURIComponent(n.actorPostId)}`
     }
     if (n.subjectPostId) return `/p/${encodeURIComponent(n.subjectPostId)}`
@@ -542,6 +602,7 @@ export function useNotifications() {
     loading,
     hasFetched,
     activeKind,
+    unreadByKind,
     setKind,
     isNotificationsPage,
     fetchList,
@@ -550,6 +611,8 @@ export function useNotifications() {
     markReadById,
     markAllRead,
     markNewPostsRead,
+    clearUnreadKind,
+    decrementUnreadKind,
     actorDisplay,
     actorTierClass,
     actorTierIconBgClass,

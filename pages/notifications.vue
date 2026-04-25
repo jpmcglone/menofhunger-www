@@ -23,13 +23,20 @@
           <button
             v-for="chip in kindChips"
             :key="chip.kind ?? 'all'"
-            class="shrink-0 inline-flex items-center px-3 py-1 rounded-full text-[13px] font-medium transition-colors"
+            class="relative shrink-0 inline-flex items-center px-3 py-1 rounded-full text-[13px] font-medium transition-colors"
             :class="activeKind === chip.kind
               ? 'bg-gray-900 text-white dark:bg-white dark:text-gray-900'
               : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-zinc-800 dark:text-gray-400 dark:hover:bg-zinc-700'"
             @click="onChipSelect(chip.kind)"
           >
-            {{ chip.label }}
+            <span
+              class="pointer-events-none absolute inset-0 rounded-full border transition-opacity duration-200 ease-out"
+              :class="chipHasUnseenNotifications(chip.kind)
+                ? 'opacity-100 border-amber-400/80 dark:border-amber-300/80'
+                : 'opacity-0 border-transparent'"
+              aria-hidden="true"
+            />
+            <span class="relative z-[1]">{{ chip.label }}</span>
           </button>
         </div>
       </AppHorizontalScroller>
@@ -107,6 +114,7 @@
 
 <script setup lang="ts">
 import type { NotificationKind } from '~/types/api'
+import { closeBrowserNotificationsForHref } from '~/utils/browser-notifications'
 
 definePageMeta({
   layout: 'app',
@@ -127,11 +135,14 @@ const {
   loading,
   hasFetched,
   activeKind,
+  unreadByKind,
   setKind,
   fetchList,
   markDelivered,
   markReadById,
   markAllRead,
+  clearUnreadKind,
+  decrementUnreadKind,
   itemHref,
 } = useNotifications()
 
@@ -173,6 +184,11 @@ const markingAllRead = ref(false)
 // Show the full-page loader until the first fetch completes. After that, keep
 // existing data visible during background refreshes — never blank the list mid-flight.
 const showInitialLoader = computed(() => !hasFetched.value)
+
+function chipHasUnseenNotifications(kind: NotificationKind | null): boolean {
+  const key = kind ?? 'all'
+  return Math.max(0, Number(unreadByKind.value[key] ?? 0) || 0) > 0
+}
 
 function nudgeActorIdForItem(item: (typeof notifications.value)[number]): string | null {
   if (item.type === 'single') {
@@ -302,6 +318,7 @@ async function onMarkAllRead() {
   markingAllRead.value = true
   try {
     await markAllRead()
+    clearUnreadKind('all')
     const now = new Date().toISOString()
     notifications.value = notifications.value.map((item) => {
       if (item.type === 'single') {
@@ -349,11 +366,13 @@ function isInteractiveTarget(target: EventTarget | null): boolean {
 function markItemReadOptimistic(item: (typeof notifications.value)[number]) {
   const now = new Date().toISOString()
   let id: string | null = null
+  let unreadKind: NotificationKind | null = null
   notifications.value = notifications.value.map((curr) => {
     if (curr !== item) return curr
     if (curr.type === 'single') {
       id = curr.notification.id
       if (curr.notification.readAt) return curr
+      unreadKind = curr.notification.kind
       return {
         ...curr,
         notification: {
@@ -366,18 +385,22 @@ function markItemReadOptimistic(item: (typeof notifications.value)[number]) {
     if (curr.type === 'group') {
       id = curr.group.id
       if (curr.group.readAt) return curr
+      unreadKind = curr.group.kind
       return {
         ...curr,
         group: { ...curr.group, readAt: now, deliveredAt: curr.group.deliveredAt ?? now },
       }
     }
     if (curr.rollup.readAt) return curr
+    unreadKind = 'followed_post'
     return {
       ...curr,
       rollup: { ...curr.rollup, readAt: now, deliveredAt: curr.rollup.deliveredAt ?? now },
     }
   })
+  decrementUnreadKind(unreadKind)
   if (id) void markReadById(id)
+  closeBrowserNotificationsForHref(itemHref(item))
 }
 
 function onNotificationClick(item: (typeof notifications.value)[number], e: MouseEvent) {

@@ -111,6 +111,8 @@ export type UsePostsFeedOptions = {
    * (since there are no possible authors to match).
    */
   authorIds?: Ref<string[] | null | undefined>
+  /** When true, request only posts that have at least one non-deleted media item. */
+  mediaOnly?: Ref<boolean>
   /** When false, clears the feed and skips refresh (e.g. wait until group shell + membership are known). */
   enabled?: Ref<boolean>
   /** When true and a group-scoped request, only top-level (non-reply) posts are returned. */
@@ -132,6 +134,8 @@ function postsFeedListQuery(opts: {
   groupsHub?: boolean
   communityGroupId?: string | null
   authorIds?: string[] | null
+  mediaOnly?: boolean
+  limit?: number
   topLevelOnly?: boolean
 }): Record<string, string | number | boolean | undefined> {
   const gid = (opts.communityGroupId ?? '').trim()
@@ -139,10 +143,10 @@ function postsFeedListQuery(opts: {
   const authorIds = normalizeAuthorIds(opts.authorIds)
   // For You is a personalized re-rank of trending. It overrides sort and ignores `followingOnly`
   // (the algorithm has its own follow-graph signal). Group-scoped feeds aren't affected.
-  const isForYou = Boolean(opts.forYou && !groupScoped)
+  const isForYou = Boolean(opts.forYou && !groupScoped && !opts.mediaOnly)
   return {
-    limit: 30,
-    collapseByRoot: true,
+    limit: opts.limit ?? 30,
+    collapseByRoot: opts.mediaOnly ? false : true,
     collapseMode: 'root',
     prefer: 'reply',
     collapseMaxPerRoot: 2,
@@ -158,6 +162,7 @@ function postsFeedListQuery(opts: {
           ...(!isForYou && opts.followingOnly ? { followingOnly: true } : {}),
           ...(authorIds ? { authorIds: authorIds.join(',') } : {}),
         }),
+    ...(opts.mediaOnly ? { mediaOnly: true } : {}),
     ...(isForYou ? { sort: 'forYou' } : opts.sort === 'trending' ? { sort: 'trending' } : {}),
     ...(opts.cursor ? { cursor: opts.cursor } : {}),
   }
@@ -180,6 +185,8 @@ export function usePostsFeed(options: UsePostsFeedOptions = {}) {
   const followingOnly = options.followingOnly ?? ref(false)
   const sort = options.sort ?? ref<FeedSort>('new')
   const forYou = options.forYou ?? ref(false)
+  const mediaOnly = options.mediaOnly ?? ref(false)
+  const pageLimit = computed(() => (mediaOnly.value ? 40 : 30))
   const showAds = options.showAds ?? computed(() => true)
   const lastHardRefreshMs = useState<number>(`${feedStateKey}-last-hard-refresh-ms`, () => 0)
   const lastHardRefreshRequestKey = useState<string>(`${feedStateKey}-last-hard-refresh-request-key`, () => '')
@@ -212,6 +219,8 @@ export function usePostsFeed(options: UsePostsFeedOptions = {}) {
         groupsHub: options.groupsHub?.value,
         communityGroupId: options.communityGroupId?.value ?? null,
         authorIds: options.authorIds?.value ?? null,
+        mediaOnly: mediaOnly.value,
+        limit: pageLimit.value,
         topLevelOnly: options.topLevelOnly?.value,
       }),
     }),
@@ -240,6 +249,8 @@ export function usePostsFeed(options: UsePostsFeedOptions = {}) {
       groupsHub: Boolean(options.groupsHub?.value),
       communityGroupId: gid || null,
       authorIds: normalizeAuthorIds(options.authorIds?.value ?? null) ?? null,
+      mediaOnly: Boolean(mediaOnly.value),
+      limit: pageLimit.value,
       topLevelOnly: Boolean(options.topLevelOnly?.value),
     })
   }
@@ -403,6 +414,7 @@ export function usePostsFeed(options: UsePostsFeedOptions = {}) {
   let prevSort: FeedSort = sort.value
   let prevFollowing: boolean = followingOnly.value
   let prevForYou: boolean = forYou.value
+  let prevMediaOnly: boolean = mediaOnly.value
   let hardRefreshPromise: Promise<void> | null = null
   let hardRefreshPromiseKey = ''
 
@@ -422,11 +434,13 @@ export function usePostsFeed(options: UsePostsFeedOptions = {}) {
       visibility.value !== prevVisibility ||
       sort.value !== prevSort ||
       followingOnly.value !== prevFollowing ||
-      forYou.value !== prevForYou
+      forYou.value !== prevForYou ||
+      mediaOnly.value !== prevMediaOnly
     prevVisibility = visibility.value
     prevSort = sort.value
     prevFollowing = followingOnly.value
     prevForYou = forYou.value
+    prevMediaOnly = mediaOnly.value
     if (paramsChanged) localInserts.value = []
     loadingIndicator.start()
     hardRefreshPromiseKey = requestKey
@@ -505,6 +519,8 @@ export function usePostsFeed(options: UsePostsFeedOptions = {}) {
             groupsHub: options.groupsHub?.value,
             communityGroupId: options.communityGroupId?.value ?? null,
             authorIds: options.authorIds?.value ?? null,
+            mediaOnly: mediaOnly.value,
+            limit: pageLimit.value,
             topLevelOnly: options.topLevelOnly?.value,
           }),
         })
@@ -820,6 +836,7 @@ export function usePostsFeed(options: UsePostsFeedOptions = {}) {
     options.sort ||
     options.followingOnly ||
     options.forYou ||
+    options.mediaOnly ||
     options.groupsHub ||
     options.communityGroupId ||
     options.authorIds ||
@@ -831,6 +848,7 @@ export function usePostsFeed(options: UsePostsFeedOptions = {}) {
         options.sort?.value,
         options.followingOnly?.value,
         options.forYou?.value,
+        options.mediaOnly?.value,
         options.groupsHub?.value,
         options.communityGroupId?.value,
         normalizeAuthorIds(options.authorIds?.value ?? null)?.join(',') ?? '',

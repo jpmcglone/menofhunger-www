@@ -18,8 +18,10 @@ export type AppNavItem = {
    * itself remains reachable by direct link — this only hides the entry point.
    */
   enabled?: boolean
-  showInLeft?: boolean
-  showInTabs?: boolean
+  /** Include in the ordered app navigation model shared by left rail and mobile tabs. */
+  showInPrimaryNav?: boolean
+  /** Presentation grouping inside overflow menus. */
+  menuSection?: 'main' | 'footer'
 }
 
 export function useAppNav() {
@@ -47,21 +49,23 @@ export function useAppNav() {
     return 'Crew'
   })
 
+  const moreItem = computed<AppNavItem>(() => ({
+    key: 'more',
+    label: 'More',
+    to: '/more',
+    icon: 'tabler:dots',
+    iconActive: 'tabler:dots',
+    requiresAuth: true,
+    showInPrimaryNav: false,
+    menuSection: 'main',
+  }))
+
   const allItems = computed<AppNavItem[]>(() => [
-    { key: 'home', label: 'Home', to: '/home', icon: 'tabler:home', iconActive: 'tabler:home-filled', showInLeft: true, showInTabs: true },
+    { key: 'home', label: 'Home', to: '/home', icon: 'tabler:home', iconActive: 'tabler:home-filled', showInPrimaryNav: true, menuSection: 'main' },
 
     // Authed-only core items
-    { key: 'notifications', label: 'Notifications', to: '/notifications', icon: 'tabler:bell', iconActive: 'tabler:bell-filled', requiresAuth: true, showInLeft: true, showInTabs: true },
-    { key: 'messages', label: 'Chat', to: '/chat', icon: 'tabler:message-circle', iconActive: 'tabler:message-circle-filled', requiresAuth: true, requiresVerified: true, showInLeft: true, showInTabs: true },
-    // Use Tabler magnifying glass for Explore (Tabler doesn't provide a filled variant for search).
-    { key: 'explore', label: 'Explore', to: '/explore', icon: 'tabler:search', iconActive: 'tabler:search', showInLeft: true, showInTabs: false },
-    { key: 'articles', label: 'Articles', to: '/articles', icon: 'tabler:article', iconActive: 'tabler:article-filled', showInLeft: true, showInTabs: false },
-    { key: 'groups', label: 'Groups', to: '/groups', icon: 'heroicons-outline:user-group', iconActive: 'heroicons-solid:user-group', requiresAuth: false, showInLeft: true, showInTabs: false },
-    { key: 'crew', label: crewLabel.value, to: '/crew', icon: 'tabler:shield-check', iconActive: 'tabler:shield-check-filled', requiresAuth: true, requiresVerified: true, showInLeft: true, showInTabs: false },
-    { key: 'bookmarks', label: 'Bookmarks', to: '/bookmarks', icon: 'tabler:bookmark', iconActive: 'tabler:bookmark-filled', requiresAuth: true, showInLeft: false, showInTabs: false },
-    // Keep these as the Heroicons pair (you preferred the filled/outline look here).
-    { key: 'profile', label: 'Profile', to: profileTo.value, icon: 'heroicons-outline:user-circle', iconActive: 'heroicons-solid:user-circle', requiresAuth: true, showInLeft: false, showInTabs: false },
-    { key: 'only-me', label: 'Only me', to: '/only-me', icon: 'heroicons-outline:eye-slash', iconActive: 'heroicons-solid:eye-slash', requiresAuth: true, showInLeft: false, showInTabs: false },
+    { key: 'notifications', label: 'Notifications', to: '/notifications', icon: 'tabler:bell', iconActive: 'tabler:bell-filled', requiresAuth: true, showInPrimaryNav: true, menuSection: 'main' },
+    { key: 'messages', label: 'Chat', to: '/chat', icon: 'tabler:message-circle', iconActive: 'tabler:message-circle-filled', requiresAuth: true, requiresVerified: true, showInPrimaryNav: true, menuSection: 'main' },
     {
       key: 'spaces',
       label: 'Spaces',
@@ -71,17 +75,25 @@ export function useAppNav() {
       iconClass: showMusicIcon.value ? 'moh-slow-bounce' : undefined,
       requiresAuth: true,
       requiresVerified: true,
-      showInLeft: true,
-      showInTabs: true,
+      showInPrimaryNav: true,
+      menuSection: 'main',
     },
-    { key: 'more', label: 'More', to: '/more', icon: 'tabler:dots', iconActive: 'tabler:dots', requiresAuth: true, showInLeft: false, showInTabs: true },
-    { key: 'settings', label: 'Settings and privacy', to: '/settings', icon: 'tabler:settings', iconActive: 'tabler:settings', requiresAuth: true, showInLeft: false, showInTabs: false },
-    { key: 'feedback', label: 'Send feedback', to: '/feedback', icon: 'tabler:message-circle', iconActive: 'tabler:message-circle-filled', requiresAuth: true, showInLeft: false, showInTabs: false },
-    { key: 'admin', label: 'Admin', to: '/admin', icon: 'tabler:shield', iconActive: 'tabler:shield', requiresAuth: true, requiresAdmin: true, showInLeft: false, showInTabs: false },
+    // Use Tabler magnifying glass for Explore (Tabler doesn't provide a filled variant for search).
+    { key: 'explore', label: 'Explore', to: '/explore', icon: 'tabler:search', iconActive: 'tabler:search', showInPrimaryNav: true, menuSection: 'main' },
+    { key: 'articles', label: 'Articles', to: '/articles', icon: 'tabler:article', iconActive: 'tabler:article-filled', showInPrimaryNav: true, menuSection: 'main' },
+    { key: 'groups', label: 'Groups', to: '/groups', icon: 'heroicons-outline:user-group', iconActive: 'heroicons-solid:user-group', requiresAuth: false, showInPrimaryNav: true, menuSection: 'main' },
+    { key: 'crew', label: crewLabel.value, to: '/crew', icon: 'tabler:shield-check', iconActive: 'tabler:shield-check-filled', requiresAuth: true, requiresVerified: true, showInPrimaryNav: true, menuSection: 'main' },
+    { key: 'bookmarks', label: 'Bookmarks', to: '/bookmarks', icon: 'tabler:bookmark', iconActive: 'tabler:bookmark-filled', requiresAuth: true, showInPrimaryNav: true, menuSection: 'main' },
+    // Keep these as the Heroicons pair (you preferred the filled/outline look here).
+    { key: 'profile', label: 'Profile', to: profileTo.value, icon: 'heroicons-outline:user-circle', iconActive: 'heroicons-solid:user-circle', requiresAuth: true, showInPrimaryNav: true, menuSection: 'main' },
+    { key: 'only-me', label: 'Only me', to: '/only-me', icon: 'heroicons-outline:eye-slash', iconActive: 'heroicons-solid:eye-slash', requiresAuth: true, showInPrimaryNav: true, menuSection: 'main' },
+    { key: 'settings', label: 'Settings and privacy', to: '/settings', icon: 'tabler:settings', iconActive: 'tabler:settings', requiresAuth: true, showInPrimaryNav: true, menuSection: 'footer' },
+    { key: 'feedback', label: 'Send feedback', to: '/feedback', icon: 'tabler:message-circle', iconActive: 'tabler:message-circle-filled', requiresAuth: true, showInPrimaryNav: true, menuSection: 'footer' },
+    { key: 'admin', label: 'Admin', to: '/admin', icon: 'tabler:shield', iconActive: 'tabler:shield', requiresAuth: true, requiresAdmin: true, showInPrimaryNav: true, menuSection: 'footer' },
 
     // Misc
-    { key: 'about', label: 'About', to: '/about', icon: 'tabler:info-circle', iconActive: 'tabler:info-circle-filled', showInLeft: false, showInTabs: false },
-    { key: 'status', label: 'Status', to: '/status', icon: 'tabler:bolt', iconActive: 'tabler:bolt', showInLeft: false, showInTabs: false }
+    { key: 'about', label: 'About', to: '/about', icon: 'tabler:info-circle', iconActive: 'tabler:info-circle-filled', showInPrimaryNav: false, menuSection: 'footer' },
+    { key: 'status', label: 'Status', to: '/status', icon: 'tabler:bolt', iconActive: 'tabler:bolt', showInPrimaryNav: false, menuSection: 'footer' }
   ])
 
   const isAdmin = computed(() => Boolean(user.value?.siteAdmin))
@@ -94,22 +106,13 @@ export function useAppNav() {
     return true
   }
 
-  const leftItems = computed(() => allItems.value.filter((i) => i.showInLeft && visible(i)))
-  // When the user is signed out, the bottom tab bar mirrors the left rail.
-  // Otherwise the tab bar would degrade to just `home` (every other `showInTabs: true`
-  // item — notifications, messages, spaces, more — is `requiresAuth: true` and filters
-  // out), leaving anonymous mobile visitors with no way to reach Explore / Articles /
-  // Groups from the primary nav. Logged-in users still get the curated tab set
-  // (home, notifications, messages, spaces, more).
+  const primaryItems = computed(() => allItems.value.filter((i) => i.showInPrimaryNav && visible(i)))
   const tabItems = computed(() => {
-    if (!isAuthed.value) {
-      return allItems.value.filter((i) => i.showInLeft && visible(i))
-    }
-    return allItems.value.filter((i) => i.showInTabs && visible(i))
+    const items = primaryItems.value
+    if (items.length <= 5) return items
+    return [...items.slice(0, 4), moreItem.value]
   })
-  const moreMenuKeys = new Set(['bookmarks', 'profile', 'only-me'])
-  const moreItems = computed(() => allItems.value.filter((i) => moreMenuKeys.has(i.key) && visible(i)))
 
-  return { isAuthed, profileTo, allItems, leftItems, tabItems, moreItems, isItemVisible: visible }
+  return { isAuthed, profileTo, allItems, primaryItems, tabItems, moreItem, isItemVisible: visible }
 }
 
