@@ -464,9 +464,8 @@ export function usePostsFeed(options: UsePostsFeedOptions = {}) {
 
   function collapsedSiblingReplyCountFor(post: FeedPost): number {
     const cached = postCache.get(post)
-    const collapsed = collapsedSiblingReplyCountForPost(cached)
-    const liveCommentCount = Math.max(0, Math.floor(cached.commentCount ?? 0)) + getCommentCountBump(cached.id)
-    return Math.max(collapsed, liveCommentCount)
+    if ((cached.threadCollapsedCount ?? 0) > 0) return collapsedSiblingReplyCountForPost(cached)
+    return Math.max(0, Math.floor(cached.commentCount ?? 0)) + getCommentCountBump(cached.id)
   }
 
   const displayItems = computed<PostsFeedDisplayItem[]>(() => {

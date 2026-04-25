@@ -217,9 +217,10 @@ function liveCommentCountFor(post: FeedPost): number {
 
 const collapsedSiblingRepliesCount = computed(() => {
   const rawCollapsed = Math.max(0, Math.floor(props.collapsedSiblingRepliesCount ?? 0))
+  if (rawCollapsed > 0) return rawCollapsed
   const root = chain.value[0]
-  if (!root) return rawCollapsed
-  return Math.max(rawCollapsed, liveCommentCountFor(root))
+  if (!root) return 0
+  return liveCommentCountFor(root)
 })
 const rootPostId = computed(() => chain.value[0]?.id ?? null)
 const showCollapsedFooter = computed(() => Boolean(props.showCollapsedRepliesFooter && collapsedSiblingRepliesCount.value > 0 && rootPostId.value))
@@ -238,10 +239,10 @@ const collapsedRepliesLabel = computed(() => collapsedRepliesLabelFor(collapsedS
 function hiddenRepliesForIndex(i: number): number {
   const node = chain.value[i]
   if (!node?.id) return 0
+  if ((node.threadCollapsedCount ?? 0) > 0) return node.threadCollapsedCount!
   const total = liveCommentCountFor(node)
   const hasVisibleChild = i < chain.value.length - 1
-  const hiddenDirectReplies = Math.max(0, total - (hasVisibleChild ? 1 : 0))
-  return Math.max(node.threadCollapsedCount ?? 0, hiddenDirectReplies)
+  return Math.max(0, total - (hasVisibleChild ? 1 : 0))
 }
 
 /** Root post visibility (primary post in the thread) for tier-based styling. */
