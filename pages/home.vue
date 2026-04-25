@@ -223,6 +223,7 @@
                     :post="item.post"
                     :activate-video-on-mount="item.post.id === newlyPostedVideoPostId"
                     :collapsed-sibling-replies-count="collapsedSiblingReplyCountFor(item.post)"
+                    :show-collapsed-replies-footer="activeHomeFeedTab !== 'posts'"
                     :replies-sort="feedSort"
                     @deleted="removePost"
                     @edited="onFeedPostEdited"
@@ -482,6 +483,7 @@ type HomeFeedTabKey = 'posts' | 'replies' | 'media'
 
 const activeHomeFeedTab = useState<HomeFeedTabKey>('home-feed-tab', () => 'posts')
 const mediaOnlyFeed = computed(() => activeHomeFeedTab.value === 'media')
+const topLevelOnlyFeed = computed(() => activeHomeFeedTab.value === 'posts')
 const {
   feedScope,
   feedFilter,
@@ -517,7 +519,7 @@ const {
   setFeedSort,
   resetFilters,
   onFeedScopeChange,
-} = useHomeFeed({ mediaOnly: mediaOnlyFeed })
+} = useHomeFeed({ mediaOnly: mediaOnlyFeed, topLevelOnly: topLevelOnlyFeed })
 
 type HomeMediaItem = {
   id: string
@@ -562,11 +564,7 @@ function setHomeFeedTab(key: HomeFeedTabKey) {
 }
 
 const activeHomeFeedDisplayItems = computed(() => {
-  if (activeHomeFeedTab.value !== 'posts') return displayItems.value
-  return displayItems.value.filter((item) => {
-    if (item.kind === 'ad') return true
-    return !String(item.post.parentId ?? '').trim()
-  })
+  return displayItems.value
 })
 
 function collectHomeMediaItem(post: FeedPost, media: PostMedia): HomeMediaItem | null {

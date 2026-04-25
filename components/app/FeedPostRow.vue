@@ -156,6 +156,8 @@ const props = withDefaults(
     feedGroup?: CommunityGroupShell | null
     /** Softer bottom border between rows (e.g. combined groups feed). */
     subtleBorderBottom?: boolean
+    /** Hide the extra thread footer when the surrounding feed already shows comment counts. */
+    showCollapsedRepliesFooter?: boolean
   }>(),
   {
     highlightedPostId: null,
@@ -165,10 +167,13 @@ const props = withDefaults(
     groupWall: null,
     feedGroup: null,
     subtleBorderBottom: false,
+    showCollapsedRepliesFooter: true,
   },
 )
 
 const { user: authUser } = useAuth()
+const postCache = usePostCache()
+const { getCommentCountBump } = usePostCountBumps()
 
 // ── Flat repost detection ────────────────────────────────────────────────────
 const isFlatRepost = computed(() => props.post.kind === 'repost' && Boolean(props.post.repostedPost))
@@ -198,7 +203,7 @@ const { onEnter: onReposterEnter, onMove: onReposterMove, onLeave: onReposterLea
 /** Ordered chain [root, ..., post] by walking parent up. */
 const chain = computed(() => {
   const out: FeedPost[] = []
-  let p: FeedPost | undefined = props.post
+  let p: FeedPost | undefined = postCache.get(props.post)
   while (p) {
     out.unshift(p)
     p = p.parent
@@ -206,9 +211,18 @@ const chain = computed(() => {
   return out
 })
 
-const collapsedSiblingRepliesCount = computed(() => Math.max(0, Math.floor(props.collapsedSiblingRepliesCount ?? 0)))
+function liveCommentCountFor(post: FeedPost): number {
+  return Math.max(0, Math.floor(post.commentCount ?? 0)) + getCommentCountBump(post.id)
+}
+
+const collapsedSiblingRepliesCount = computed(() => {
+  const rawCollapsed = Math.max(0, Math.floor(props.collapsedSiblingRepliesCount ?? 0))
+  const root = chain.value[0]
+  if (!root) return rawCollapsed
+  return Math.max(rawCollapsed, liveCommentCountFor(root))
+})
 const rootPostId = computed(() => chain.value[0]?.id ?? null)
-const showCollapsedFooter = computed(() => Boolean(collapsedSiblingRepliesCount.value > 0 && rootPostId.value))
+const showCollapsedFooter = computed(() => Boolean(props.showCollapsedRepliesFooter && collapsedSiblingRepliesCount.value > 0 && rootPostId.value))
 
 function collapsedRepliesLabelFor(n: number, omitSortQualifier = false) {
   const noun = n === 1 ? 'reply' : 'replies'
@@ -224,13 +238,10 @@ const collapsedRepliesLabel = computed(() => collapsedRepliesLabelFor(collapsedS
 function hiddenRepliesForIndex(i: number): number {
   const node = chain.value[i]
   if (!node?.id) return 0
-  // Root node (i===0): prefer threadCollapsedCount when available (trending/new-aware).
-  if (i === 0 && (node.threadCollapsedCount ?? 0) > 0) {
-    return node.threadCollapsedCount!
-  }
-  const total = node.commentCount ?? 0
+  const total = liveCommentCountFor(node)
   const hasVisibleChild = i < chain.value.length - 1
-  return Math.max(0, total - (hasVisibleChild ? 1 : 0))
+  const hiddenDirectReplies = Math.max(0, total - (hasVisibleChild ? 1 : 0))
+  return Math.max(node.threadCollapsedCount ?? 0, hiddenDirectReplies)
 }
 
 /** Root post visibility (primary post in the thread) for tier-based styling. */

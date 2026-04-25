@@ -115,7 +115,7 @@ export type UsePostsFeedOptions = {
   mediaOnly?: Ref<boolean>
   /** When false, clears the feed and skips refresh (e.g. wait until group shell + membership are known). */
   enabled?: Ref<boolean>
-  /** When true and a group-scoped request, only top-level (non-reply) posts are returned. */
+  /** When true, only top-level (non-reply) posts are returned. */
   topLevelOnly?: Ref<boolean>
 }
 
@@ -123,6 +123,21 @@ function normalizeAuthorIds(ids: string[] | null | undefined): string[] | null {
   if (!ids) return null
   const cleaned = ids.map((id) => (id ?? '').trim()).filter(Boolean)
   return cleaned.length > 0 ? cleaned.slice(0, 50) : null
+}
+
+function postAndParentChainIds(post: FeedPost): string[] {
+  const ids: string[] = []
+  let node: FeedPost | undefined = post
+  while (node) {
+    if (node.id) ids.push(node.id)
+    if (node.parent) {
+      node = node.parent
+      continue
+    }
+    if (node.parentId) ids.push(node.parentId)
+    break
+  }
+  return ids
 }
 
 function postsFeedListQuery(opts: {
@@ -161,6 +176,7 @@ function postsFeedListQuery(opts: {
           visibility: opts.visibility,
           ...(!isForYou && opts.followingOnly ? { followingOnly: true } : {}),
           ...(authorIds ? { authorIds: authorIds.join(',') } : {}),
+          ...(opts.topLevelOnly ? { topLevelOnly: true } : {}),
         }),
     ...(opts.mediaOnly ? { mediaOnly: true } : {}),
     ...(isForYou ? { sort: 'forYou' } : opts.sort === 'trending' ? { sort: 'trending' } : {}),
@@ -171,7 +187,8 @@ function postsFeedListQuery(opts: {
 export function usePostsFeed(options: UsePostsFeedOptions = {}) {
   const { apiFetch, apiFetchData } = useApiClient()
   const middleScrollerEl = useMiddleScroller()
-  const { clearBumpsForPostIds, bumpCommentCount } = usePostCountBumps()
+  const { clearBumpsForPostIds, bumpCommentCount, getCommentCountBump } = usePostCountBumps()
+  const postCache = usePostCache()
   const loadingIndicator = useLoadingIndicator()
   const { user: me } = useAuth()
   const { addPostsCallback, removePostsCallback, subscribePosts, unsubscribePosts } = usePresence()
@@ -233,7 +250,7 @@ export function usePostsFeed(options: UsePostsFeedOptions = {}) {
       if (pending.length !== localInserts.value.length) localInserts.value = pending
       return applyLocalFeedInserts(live, pending)
     },
-    onDataLoaded: (data) => clearBumpsForPostIds(data.map((p) => p.id)),
+    onDataLoaded: (data) => clearBumpsForPostIds(data.flatMap(postAndParentChainIds)),
   })
 
   const posts = feed.items
@@ -264,6 +281,53 @@ export function usePostsFeed(options: UsePostsFeedOptions = {}) {
   let postObserver: IntersectionObserver | null = null
   let unsubscribeTimer: ReturnType<typeof setTimeout> | null = null
   const pendingUnsub = new Set<string>()
+  const subscribedIdsByVisibleRowId = new Map<string, string[]>()
+
+  function uniqueIds(ids: Array<string | null | undefined>): string[] {
+    return [...new Set(ids.map((id) => (id ?? '').trim()).filter(Boolean))]
+  }
+
+  function chainSubscriptionIdsForVisibleRow(rowId: string): string[] {
+    const row = posts.value.find((p) => (p.id ?? '').trim() === rowId)
+    if (!row) return [rowId]
+
+    return uniqueIds(postAndParentChainIds(row))
+  }
+
+  function isSubscribedByAnotherVisibleRow(postId: string): boolean {
+    for (const ids of subscribedIdsByVisibleRowId.values()) {
+      if (ids.includes(postId)) return true
+    }
+    return false
+  }
+
+  function subscribePostIds(ids: string[]) {
+    const uniqueSubIds = uniqueIds(ids)
+    if (uniqueSubIds.length === 0) return
+    for (const id of uniqueSubIds) pendingUnsub.delete(id)
+    subscribePosts(uniqueSubIds)
+  }
+
+  function refreshVisibleChainSubscriptions() {
+    const toSub: string[] = []
+    const toUnsub: string[] = []
+    for (const rowId of visiblePostIds.value) {
+      const nextIds = chainSubscriptionIdsForVisibleRow(rowId)
+      const prevIds = subscribedIdsByVisibleRowId.get(rowId) ?? [rowId]
+      const nextSet = new Set(nextIds)
+      const prevSet = new Set(prevIds)
+      for (const id of nextIds) {
+        if (!prevSet.has(id)) toSub.push(id)
+      }
+      for (const id of prevIds) {
+        if (!nextSet.has(id)) toUnsub.push(id)
+      }
+      subscribedIdsByVisibleRowId.set(rowId, nextIds)
+    }
+    subscribePostIds(toSub)
+    const uniqueUnsubIds = uniqueIds(toUnsub).filter((id) => !isSubscribedByAnotherVisibleRow(id))
+    if (uniqueUnsubIds.length) scheduleUnsub(uniqueUnsubIds)
+  }
 
   function flushUnsub() {
     if (pendingUnsub.size === 0) return
@@ -272,10 +336,12 @@ export function usePostsFeed(options: UsePostsFeedOptions = {}) {
     unsubscribePosts(ids)
   }
 
-  function scheduleUnsub(postId: string) {
-    const id = (postId ?? '').trim()
-    if (!id) return
-    pendingUnsub.add(id)
+  function scheduleUnsub(postIds: string | string[]) {
+    const ids = uniqueIds(Array.isArray(postIds) ? postIds : [postIds])
+    if (ids.length === 0) return
+    for (const id of ids) {
+      pendingUnsub.add(id)
+    }
     if (unsubscribeTimer) return
     unsubscribeTimer = setTimeout(() => {
       unsubscribeTimer = null
@@ -345,18 +411,23 @@ export function usePostsFeed(options: UsePostsFeedOptions = {}) {
             if (entry.isIntersecting) {
               if (!visiblePostIds.value.has(id)) {
                 visiblePostIds.value = new Set([...visiblePostIds.value, id])
-                toSub.push(id)
+                const ids = chainSubscriptionIdsForVisibleRow(id)
+                subscribedIdsByVisibleRowId.set(id, ids)
+                toSub.push(...ids)
               }
             } else {
               if (visiblePostIds.value.has(id)) {
                 const next = new Set(visiblePostIds.value)
                 next.delete(id)
                 visiblePostIds.value = next
-                scheduleUnsub(id)
+                const ids = subscribedIdsByVisibleRowId.get(id) ?? [id]
+                subscribedIdsByVisibleRowId.delete(id)
+                const safeToUnsub = ids.filter((subscriptionId) => !isSubscribedByAnotherVisibleRow(subscriptionId))
+                scheduleUnsub(safeToUnsub)
               }
             }
           }
-          if (toSub.length > 0) subscribePosts(toSub)
+          subscribePostIds(toSub)
         },
         {
           root: middleScrollerEl.value ?? null,
@@ -368,16 +439,22 @@ export function usePostsFeed(options: UsePostsFeedOptions = {}) {
       void nextTick(() => rescanAndObserve())
     })
     watch(
-      // Re-scan when feed items change; avoid referencing displayItems here (TDZ during setup).
-      () => posts.value.length,
-      () => void nextTick(() => rescanAndObserve()),
+      // Re-scan when feed rows or their parent chains change; avoid referencing displayItems here (TDZ during setup).
+      () => posts.value.map((p) => `${p.id}:${p.parentId ?? ''}:${p.parent?.id ?? ''}`).join('|'),
+      () => void nextTick(() => {
+        rescanAndObserve()
+        refreshVisibleChainSubscriptions()
+      }),
     )
     onBeforeUnmount(() => {
       postObserver?.disconnect()
       postObserver = null
       if (unsubscribeTimer) clearTimeout(unsubscribeTimer)
       unsubscribeTimer = null
+      const ids = uniqueIds([...pendingUnsub, ...subscribedIdsByVisibleRowId.values()].flat())
+      if (ids.length) unsubscribePosts(ids)
       pendingUnsub.clear()
+      subscribedIdsByVisibleRowId.clear()
     })
   }
 
@@ -386,7 +463,10 @@ export function usePostsFeed(options: UsePostsFeedOptions = {}) {
   )
 
   function collapsedSiblingReplyCountFor(post: FeedPost): number {
-    return collapsedSiblingReplyCountForPost(post)
+    const cached = postCache.get(post)
+    const collapsed = collapsedSiblingReplyCountForPost(cached)
+    const liveCommentCount = Math.max(0, Math.floor(cached.commentCount ?? 0)) + getCommentCountBump(cached.id)
+    return Math.max(collapsed, liveCommentCount)
   }
 
   const displayItems = computed<PostsFeedDisplayItem[]>(() => {

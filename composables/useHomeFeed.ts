@@ -16,7 +16,7 @@ function normalizeHomeScope(value: unknown): FeedScope {
   return DEFAULT_HOME_SCOPE
 }
 
-export function useHomeFeed(options?: { mediaOnly?: Ref<boolean> }) {
+export function useHomeFeed(options?: { mediaOnly?: Ref<boolean>; topLevelOnly?: Ref<boolean> }) {
   const { user, isAuthed } = useAuth()
   const { apiFetchData } = useApiClient()
   const middleScrollerEl = useMiddleScroller()
@@ -114,6 +114,7 @@ export function useHomeFeed(options?: { mediaOnly?: Ref<boolean> }) {
     sort: effectiveSort,
     forYou,
     mediaOnly: options?.mediaOnly,
+    topLevelOnly: options?.topLevelOnly,
     showAds,
   })
 
