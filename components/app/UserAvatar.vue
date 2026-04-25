@@ -24,6 +24,7 @@
     <ClientOnly>
       <button
         v-if="activeStatus"
+        ref="statusButtonEl"
         type="button"
         class="moh-avatar-status-bubble moh-focus absolute -right-1 -top-1 z-20 inline-flex h-5 w-5 items-center justify-center rounded-full bg-white text-[var(--p-primary-color)] shadow-[0_2px_8px_rgba(0,0,0,0.18)] ring-1 ring-black/10 transition-[transform,opacity] duration-150 hover:scale-[1.04] active:scale-[0.96] dark:bg-zinc-900 dark:ring-white/15"
         :aria-label="`${displayName}'s status`"
@@ -31,25 +32,29 @@
       >
         <Icon name="tabler:message-circle-filled" size="13" aria-hidden="true" />
       </button>
-      <Transition
-        enter-active-class="transition-[opacity,transform] duration-150 ease-out"
-        enter-from-class="opacity-0 translate-y-1 scale-95"
-        enter-to-class="opacity-100 translate-y-0 scale-100"
-        leave-active-class="transition-[opacity,transform] duration-100 ease-in"
-        leave-from-class="opacity-100 translate-y-0 scale-100"
-        leave-to-class="opacity-0 translate-y-1 scale-95"
-      >
-        <div
-          v-if="statusPopoverOpen && activeStatus"
-          class="absolute left-1/2 top-full z-50 mt-2 w-56 -translate-x-1/2 rounded-2xl bg-white p-3 text-left shadow-[0_12px_32px_rgba(0,0,0,0.18)] ring-1 ring-black/10 dark:bg-zinc-950 dark:ring-white/15"
-          role="dialog"
-          @click.stop
+      <Teleport to="body">
+        <Transition
+          enter-active-class="transition-[opacity,transform] duration-150 ease-out"
+          enter-from-class="opacity-0 translate-y-1 scale-95"
+          enter-to-class="opacity-100 translate-y-0 scale-100"
+          leave-active-class="transition-[opacity,transform] duration-100 ease-in"
+          leave-from-class="opacity-100 translate-y-0 scale-100"
+          leave-to-class="opacity-0 translate-y-1 scale-95"
         >
-          <div class="text-xs font-semibold text-gray-500 dark:text-gray-400">{{ displayName }}</div>
-          <div class="mt-1 text-sm font-medium leading-snug text-gray-900 dark:text-gray-50">{{ activeStatus.text }}</div>
-          <div class="mt-2 text-xs text-gray-500 dark:text-gray-400">{{ statusMeta }}</div>
-        </div>
-      </Transition>
+          <div
+            v-if="statusPopoverOpen && activeStatus"
+            ref="statusPopoverEl"
+            class="fixed z-[9999] w-56 origin-top rounded-2xl bg-white p-3 text-left shadow-[0_12px_32px_rgba(0,0,0,0.18)] ring-1 ring-black/10 dark:bg-zinc-950 dark:ring-white/15"
+            :style="statusPopoverStyle"
+            role="dialog"
+            @click.stop
+          >
+            <div class="text-xs font-semibold text-gray-500 dark:text-gray-400">{{ displayName }}</div>
+            <div class="mt-1 text-sm font-medium leading-snug text-gray-900 dark:text-gray-50">{{ activeStatus.text }}</div>
+            <div class="mt-2 text-xs text-gray-500 dark:text-gray-400">{{ statusMeta }}</div>
+          </div>
+        </Transition>
+      </Teleport>
     </ClientOnly>
   </span>
 </template>
@@ -107,7 +112,10 @@ const { selectedSpaceId } = useSpaceLobby()
 const { user: u } = useUserOverlay(computed(() => props.user))
 const { nowMs } = useNowTicker({ everyMs: 30_000 })
 const wrapEl = ref<HTMLElement | null>(null)
+const statusButtonEl = ref<HTMLElement | null>(null)
+const statusPopoverEl = ref<HTMLElement | null>(null)
 const statusPopoverOpen = ref(false)
+const statusPopoverPosition = ref({ top: 0, left: 0 })
 
 const avatarUrl = computed(() => u.value?.avatarUrl ?? null)
 const name = computed(() => u.value?.name ?? null)
@@ -150,9 +158,34 @@ function closeStatusPopover() {
   statusPopoverOpen.value = false
 }
 
-function toggleStatusPopover() {
-  statusPopoverOpen.value = !statusPopoverOpen.value
+function updateStatusPopoverPosition() {
+  if (!import.meta.client) return
+  const button = statusButtonEl.value
+  if (!button) return
+
+  const rect = button.getBoundingClientRect()
+  const popoverWidth = statusPopoverEl.value?.offsetWidth || 224
+  const margin = 12
+  const centeredLeft = rect.left + rect.width / 2 - popoverWidth / 2
+  const maxLeft = window.innerWidth - popoverWidth - margin
+  statusPopoverPosition.value = {
+    top: Math.round(rect.bottom + 8),
+    left: Math.round(Math.min(Math.max(margin, centeredLeft), Math.max(margin, maxLeft))),
+  }
 }
+
+async function toggleStatusPopover() {
+  statusPopoverOpen.value = !statusPopoverOpen.value
+  if (statusPopoverOpen.value) {
+    await nextTick()
+    updateStatusPopoverPosition()
+  }
+}
+
+const statusPopoverStyle = computed(() => ({
+  top: `${statusPopoverPosition.value.top}px`,
+  left: `${statusPopoverPosition.value.left}px`,
+}))
 
 function onDocumentClick(event: MouseEvent) {
   const target = event.target
@@ -169,6 +202,7 @@ onMounted(() => {
   document.addEventListener('click', onDocumentClick)
   document.addEventListener('keydown', onKeydown)
   window.addEventListener('scroll', closeStatusPopover, true)
+  window.addEventListener('resize', closeStatusPopover)
 })
 
 onBeforeUnmount(() => {
@@ -176,6 +210,7 @@ onBeforeUnmount(() => {
   document.removeEventListener('click', onDocumentClick)
   document.removeEventListener('keydown', onKeydown)
   window.removeEventListener('scroll', closeStatusPopover, true)
+  window.removeEventListener('resize', closeStatusPopover)
 })
 
 watch(activeStatus, (status) => {
