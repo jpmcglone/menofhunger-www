@@ -23,39 +23,29 @@
     />
     <ClientOnly>
       <button
-        v-if="showStatusButton"
-        ref="statusButtonEl"
+        v-if="showStatusButton && statusBehavior === 'custom'"
         type="button"
         :class="statusButtonClass"
         :aria-label="activeStatus ? `${displayName}'s status` : 'Set status'"
         @click.prevent.stop="onStatusButtonClick"
-        @mouseenter.stop="onStatusEnter"
-        @mousemove.stop
-        @mouseleave.stop="onStatusLeave"
       >
-        <Icon :name="activeStatus ? 'tabler:message-circle-filled' : 'tabler:message-circle'" size="13" aria-hidden="true" />
+        <Icon
+          :name="activeStatus ? 'tabler:message-circle-filled' : 'tabler:message-circle'"
+          :class="statusIconClass"
+          aria-hidden="true"
+        />
       </button>
-      <Teleport to="body">
-        <Transition
-          enter-active-class="transition-[opacity,transform] duration-150 ease-out"
-          enter-from-class="opacity-0 translate-y-1 scale-95"
-          enter-to-class="opacity-100 translate-y-0 scale-100"
-          leave-active-class="transition-[opacity,transform] duration-100 ease-in"
-          leave-from-class="opacity-100 translate-y-0 scale-100"
-          leave-to-class="opacity-0 translate-y-1 scale-95"
-        >
-          <div
-            v-if="statusPopoverOpen && activeStatus"
-            ref="statusPopoverEl"
-            class="fixed z-[9999] w-56 origin-top rounded-2xl bg-black/75 p-3 text-left shadow-[0_18px_48px_rgba(0,0,0,0.35)] ring-1 ring-white/15 backdrop-blur-xl"
-            :style="statusPopoverStyle"
-            role="dialog"
-            @click.stop
-          >
-            <div class="text-sm font-semibold leading-snug text-white">{{ activeStatus.text }}</div>
-          </div>
-        </Transition>
-      </Teleport>
+      <span
+        v-else-if="showStatusButton"
+        :class="statusButtonClass"
+        aria-hidden="true"
+      >
+        <Icon
+          :name="activeStatus ? 'tabler:message-circle-filled' : 'tabler:message-circle'"
+          :class="statusIconClass"
+          aria-hidden="true"
+        />
+      </span>
     </ClientOnly>
   </span>
 </template>
@@ -98,6 +88,12 @@ const props = withDefaults(
     showEmptyStatus?: boolean
     /** Use `custom` when the parent wants to open an editor instead of the read-only status card. */
     statusBehavior?: 'view' | 'custom'
+    /** Override the status bubble position for larger avatar contexts. */
+    statusPositionClass?: string
+    /** Override the status bubble size for larger avatar contexts. */
+    statusSizeClass?: string
+    /** Override the status icon size. */
+    statusIconClass?: string
     /** Override presence (e.g. 'connecting' for current user while socket is connecting). */
     presenceStatusOverride?: 'online' | 'idle' | 'connecting' | 'offline'
     /** Presence dot size as fraction of avatar diameter (default 0.25). Use smaller for large avatars. */
@@ -113,6 +109,9 @@ const props = withDefaults(
     showStatus: true,
     showEmptyStatus: false,
     statusBehavior: 'view',
+    statusPositionClass: '-right-1 -top-1',
+    statusSizeClass: 'h-5 w-5',
+    statusIconClass: 'text-[13px]',
     presenceScale: 0.25,
     presenceInsetRatio: 0.5,
   },
@@ -124,11 +123,6 @@ const { user: authUser } = useAuth()
 const { selectedSpaceId } = useSpaceLobby()
 const { user: u } = useUserOverlay(computed(() => props.user))
 const wrapEl = ref<HTMLElement | null>(null)
-const statusButtonEl = ref<HTMLElement | null>(null)
-const statusPopoverEl = ref<HTMLElement | null>(null)
-const statusPopoverOpen = ref(false)
-const statusPopoverPinned = ref(false)
-const statusPopoverPosition = ref({ top: 0, left: 0 })
 
 const avatarUrl = computed(() => u.value?.avatarUrl ?? null)
 const name = computed(() => u.value?.name ?? null)
@@ -155,107 +149,20 @@ const activeStatus = computed(() => {
 
 const showStatusButton = computed(() => Boolean(props.showStatus && props.showPresence !== false && (activeStatus.value || props.showEmptyStatus)))
 const statusButtonClass = computed(() => [
-  'moh-avatar-status-bubble moh-focus absolute -right-1 -top-1 z-20 inline-flex h-5 w-5 items-center justify-center rounded-full transition-[transform,opacity] duration-150 hover:scale-[1.04] active:scale-[0.96]',
+  'moh-avatar-status-bubble moh-focus absolute z-20 inline-flex items-center justify-center rounded-full transition-[transform,opacity] duration-150 hover:scale-[1.04] active:scale-[0.96]',
+  props.statusPositionClass,
+  props.statusSizeClass,
   activeStatus.value
     ? 'bg-zinc-950 text-white shadow-[0_2px_8px_rgba(0,0,0,0.22)] ring-1 ring-white/20 dark:bg-black dark:text-white dark:ring-white/25'
     : 'border border-dashed border-white/80 bg-zinc-950 text-white shadow-[0_2px_8px_rgba(0,0,0,0.22)] ring-1 ring-white/20 dark:border-white/80 dark:bg-black dark:text-white',
 ])
 
-function closeStatusPopover() {
-  statusPopoverOpen.value = false
-  statusPopoverPinned.value = false
-}
-
-function updateStatusPopoverPosition() {
-  if (!import.meta.client) return
-  const button = statusButtonEl.value
-  if (!button) return
-
-  const rect = button.getBoundingClientRect()
-  const popoverWidth = statusPopoverEl.value?.offsetWidth || 224
-  const margin = 12
-  const centeredLeft = rect.left + rect.width / 2 - popoverWidth / 2
-  const maxLeft = window.innerWidth - popoverWidth - margin
-  statusPopoverPosition.value = {
-    top: Math.round(rect.bottom + 8),
-    left: Math.round(Math.min(Math.max(margin, centeredLeft), Math.max(margin, maxLeft))),
-  }
-}
-
-async function toggleStatusPopover() {
-  statusPopoverOpen.value = !statusPopoverOpen.value
-  if (statusPopoverOpen.value) {
-    await nextTick()
-    updateStatusPopoverPosition()
-  }
-}
-
 function onStatusButtonClick() {
   onLeave()
   if (props.statusBehavior === 'custom') {
     emit('statusClick')
-    return
-  }
-  if (activeStatus.value) {
-    statusPopoverPinned.value = true
-    statusPopoverOpen.value = true
-    void nextTick(updateStatusPopoverPosition)
   }
 }
-
-function onStatusEnter() {
-  onLeave()
-  if (props.statusBehavior !== 'view' || !activeStatus.value) return
-  statusPopoverOpen.value = true
-  void nextTick(updateStatusPopoverPosition)
-}
-
-function onStatusLeave(event: MouseEvent) {
-  if (props.statusBehavior !== 'view') return
-  if (statusPopoverPinned.value) return
-  closeStatusPopover()
-
-  const nextTarget = event.relatedTarget
-  if (!(nextTarget instanceof Node)) return
-  if (!wrapEl.value?.contains(nextTarget)) return
-  if (statusButtonEl.value?.contains(nextTarget)) return
-  onEnter(event)
-}
-
-const statusPopoverStyle = computed(() => ({
-  top: `${statusPopoverPosition.value.top}px`,
-  left: `${statusPopoverPosition.value.left}px`,
-}))
-
-function onDocumentClick(event: MouseEvent) {
-  const target = event.target
-  if (target instanceof Node && wrapEl.value?.contains(target)) return
-  closeStatusPopover()
-}
-
-function onKeydown(event: KeyboardEvent) {
-  if (event.key === 'Escape') closeStatusPopover()
-}
-
-onMounted(() => {
-  if (!import.meta.client) return
-  document.addEventListener('click', onDocumentClick)
-  document.addEventListener('keydown', onKeydown)
-  window.addEventListener('scroll', closeStatusPopover, true)
-  window.addEventListener('resize', closeStatusPopover)
-})
-
-onBeforeUnmount(() => {
-  if (!import.meta.client) return
-  document.removeEventListener('click', onDocumentClick)
-  document.removeEventListener('keydown', onKeydown)
-  window.removeEventListener('scroll', closeStatusPopover, true)
-  window.removeEventListener('resize', closeStatusPopover)
-})
-
-watch(activeStatus, (status) => {
-  if (!status) closeStatusPopover()
-})
 
 // Show the Spaces gradient ring when a user is in a space.
 // For the current user, check both local lobby state and the presence-tracked map

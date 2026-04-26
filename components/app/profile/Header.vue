@@ -130,6 +130,12 @@
             bg-class="bg-gray-200 dark:bg-zinc-800"
             :presence-scale="0.15"
             :presence-inset-ratio="0.25"
+            :show-empty-status="isSelf"
+            :status-behavior="isSelf ? 'custom' : 'view'"
+            :status-position-class="isSelf ? '-right-2 -top-2' : '-right-1 -top-1'"
+            :status-size-class="isSelf ? 'h-8 w-8' : 'h-5 w-5'"
+            :status-icon-class="isSelf ? 'text-[18px]' : 'text-[13px]'"
+            @status-click="openStatusEditor"
           />
           <div
             v-if="profileAvatarUrl"
@@ -371,6 +377,19 @@
     </template>
   </Menu>
 
+  <AppStatusEditorDialog
+    :open="statusEditorOpen"
+    :draft="statusDraft"
+    :active-status="Boolean(activeStatus)"
+    :saving="statusSaving"
+    :error="statusError"
+    title-id="profile-status-editor-title"
+    @update:open="(open) => { if (!open) closeStatusEditor() }"
+    @update:draft="statusDraft = $event"
+    @save="saveStatus"
+    @clear="clearStatus"
+  />
+
   <AppReportDialog
     v-model:visible="reportOpen"
     target-type="user"
@@ -418,6 +437,7 @@ import { tinyTooltip } from '~/utils/tiny-tooltip'
 import type { MenuItem } from 'primevue/menuitem'
 import { useUserOverlay } from '~/composables/useUserOverlay'
 import { avatarRoundClass as getAvatarRoundClass, crewAvatarRoundClass } from '~/utils/avatar-rounding'
+import { getApiErrorMessage } from '~/utils/api-error'
 
 const crewAvatarRound = crewAvatarRoundClass()
 import { userColorTier } from '~/utils/user-tier'
@@ -982,7 +1002,7 @@ function onReportSubmitted() {
   // toast + close handled in dialog
 }
 
-const { addInterest, removeInterest, getPresenceStatus, isPresenceKnown } = usePresence()
+const { addInterest, removeInterest, getPresenceStatus, getUserStatus, setMyStatus, clearMyStatus, isPresenceKnown } = usePresence()
 const lastProfileId = ref<string | null>(null)
 watch(
   () => profile.value?.id ?? null,
@@ -1007,6 +1027,57 @@ const presenceStatus = computed(() => {
 })
 
 const showOnlineNow = computed(() => presenceStatus.value !== 'offline')
+
+const statusEditorOpen = ref(false)
+const statusDraft = ref('')
+const statusSaving = ref(false)
+const statusError = ref<string | null>(null)
+const activeStatus = computed(() => {
+  const id = profile.value?.id
+  return id ? getUserStatus(id) : null
+})
+
+function openStatusEditor() {
+  if (!isSelf.value) return
+  statusDraft.value = activeStatus.value?.text ?? ''
+  statusError.value = null
+  statusEditorOpen.value = true
+}
+
+function closeStatusEditor() {
+  statusEditorOpen.value = false
+  statusError.value = null
+}
+
+async function saveStatus() {
+  const text = statusDraft.value.trim()
+  if (!text) return
+  statusSaving.value = true
+  statusError.value = null
+  try {
+    await setMyStatus(text)
+    closeStatusEditor()
+  } catch (e) {
+    statusError.value = getApiErrorMessage(e) || 'Could not save status.'
+  } finally {
+    statusSaving.value = false
+  }
+}
+
+async function clearStatus() {
+  if (!activeStatus.value) return
+  statusSaving.value = true
+  statusError.value = null
+  try {
+    await clearMyStatus()
+    statusDraft.value = ''
+    closeStatusEditor()
+  } catch (e) {
+    statusError.value = getApiErrorMessage(e) || 'Could not clear status.'
+  } finally {
+    statusSaving.value = false
+  }
+}
 
 const viewerCanSeeLastOnline = computed(() => {
   const status = authUser.value?.verifiedStatus ?? 'none'

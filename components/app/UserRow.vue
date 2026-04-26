@@ -19,8 +19,10 @@
                 </div>
               </template>
             </AppUserIdentityLine>
-            <div v-if="activeStatus" class="mt-0.5 truncate text-xs text-gray-500 dark:text-gray-400">
-              {{ activeStatus.text }}
+            <div v-if="activeStatus || currentSpaceId" class="mt-0.5 flex min-w-0 items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
+              <span v-if="activeStatus" class="truncate">{{ activeStatus.text }}</span>
+              <span v-if="activeStatus && currentSpaceId" class="shrink-0 opacity-60">·</span>
+              <span v-if="currentSpaceId" class="shrink-0">In a space</span>
             </div>
           </div>
         </div>
@@ -39,8 +41,10 @@
                 </div>
               </template>
             </AppUserIdentityLine>
-            <div v-if="activeStatus" class="mt-0.5 truncate text-xs text-gray-500 dark:text-gray-400">
-              {{ activeStatus.text }}
+            <div v-if="activeStatus || currentSpaceId" class="mt-0.5 flex min-w-0 items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
+              <span v-if="activeStatus" class="truncate">{{ activeStatus.text }}</span>
+              <span v-if="activeStatus && currentSpaceId" class="shrink-0 opacity-60">·</span>
+              <span v-if="currentSpaceId" class="shrink-0">In a space</span>
             </div>
           </div>
         </div>
@@ -81,8 +85,9 @@ const { isAuthed } = useAuth()
 const showFollowButton = computed(() => props.showFollowButton !== false && (isAuthed.value || props.allowLoggedOutFollowButton === true))
 
 const nameMeta = computed(() => (props.nameMeta ?? '').trim() || null)
-const { getUserStatus, addInterest, removeInterest } = usePresence()
+const { getUserStatus, getCurrentSpaceForUser, addInterest, removeInterest } = usePresence()
 const activeStatus = computed(() => getUserStatus(user.value?.id ?? ''))
+const currentSpaceId = computed(() => getCurrentSpaceForUser(user.value?.id ?? ''))
 const profilePath = computed(() => {
   if (!user.value?.username) return null
   return `/u/${encodeURIComponent(user.value.username)}`

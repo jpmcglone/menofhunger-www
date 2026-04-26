@@ -183,6 +183,43 @@
       </div>
 
       <div
+        v-if="activeStatus || currentSpaceId"
+        class="mt-3 rounded-xl border moh-border bg-[color:var(--moh-surface-2)] px-3 py-2.5"
+      >
+        <div v-if="activeStatus" class="flex min-w-0 items-start gap-2">
+          <Icon name="tabler:message-circle-filled" class="mt-0.5 shrink-0 text-sm moh-text-muted" aria-hidden="true" />
+          <div class="min-w-0 text-sm font-medium leading-snug moh-text">
+            {{ activeStatus.text }}
+          </div>
+        </div>
+        <div
+          v-if="currentSpaceId"
+          :class="[
+            'flex min-w-0 items-center gap-2',
+            activeStatus ? 'mt-2 border-t moh-border pt-2' : '',
+          ]"
+        >
+          <Icon name="tabler:layout-grid" class="shrink-0 text-sm moh-text-muted" aria-hidden="true" />
+          <div class="min-w-0 flex-1">
+            <div class="truncate text-xs font-semibold moh-text">
+              {{ currentSpace?.title || 'In a space' }}
+            </div>
+            <div class="text-[11px] moh-text-muted">
+              Live now
+            </div>
+          </div>
+          <button
+            v-if="currentSpace"
+            type="button"
+            class="moh-pressable shrink-0 rounded-lg bg-[var(--p-primary-color)] px-2.5 py-1.5 text-xs font-semibold text-white transition-[opacity,transform] active:scale-[0.96]"
+            @click.stop.prevent="joinCurrentSpace"
+          >
+            Join
+          </button>
+        </div>
+      </div>
+
+      <div
         v-if="user.bio"
         class="mt-3 moh-body whitespace-pre-wrap break-words max-h-[4.5rem] overflow-hidden"
       >
@@ -465,7 +502,9 @@ async function onNudgePrimary() {
   }
 }
 
-const { addInterest, removeInterest, getPresenceStatus, isPresenceKnown } = usePresence()
+const { addInterest, removeInterest, getPresenceStatus, getUserStatus, getCurrentSpaceForUser, isPresenceKnown } = usePresence()
+const { select: selectSpace } = useSpaceLobby()
+const { getById: getSpaceById } = useSpaces()
 const lastUserId = ref<string | null>(null)
 watch(
   () => user.value.id ?? null,
@@ -489,6 +528,9 @@ const presenceStatus = computed(() => {
   return getPresenceStatus(id)
 })
 const showOnlineNow = computed(() => presenceStatus.value !== 'offline')
+const activeStatus = computed(() => getUserStatus(user.value.id ?? ''))
+const currentSpaceId = computed(() => getCurrentSpaceForUser(user.value.id ?? ''))
+const currentSpace = computed(() => getSpaceById(currentSpaceId.value))
 
 const viewerCanSeeLastOnline = computed(() => {
   const status = authUser.value?.verifiedStatus ?? 'none'
@@ -532,6 +574,13 @@ const displayName = computed(() => {
 const pop = useUserPreviewPopover()
 function onNavigate() {
   pop.close()
+}
+
+async function joinCurrentSpace() {
+  const spaceId = currentSpaceId.value
+  if (!spaceId) return
+  pop.close()
+  await selectSpace(spaceId)
 }
 
 const messageTier = computed(() => userColorTier(user.value))

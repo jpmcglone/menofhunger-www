@@ -61,6 +61,7 @@ const MESSAGE_SOUND_PATH = '/sounds/new-message.mp3'
 const NOTIFICATION_SOUND_COOLDOWN_MS = 3000
 const MESSAGE_SOUND_COOLDOWN_MS = 1800
 const STATUS_FETCH_TTL_MS = 60_000
+let statusExpiryTimer: ReturnType<typeof setTimeout> | null = null
 
 export type PresenceOnlinePayload = { userId: string; user?: FollowListUser & { status?: UserStatus | null }; lastConnectAt?: number; idle?: boolean }
 export type PresenceOfflinePayload = { userId: string }
@@ -406,6 +407,7 @@ export function usePresence() {
       ...statusFetchedAtByUserId.value,
       [uid]: Date.now(),
     }
+    scheduleStatusExpiryPrune()
   }
 
   function clearUserStatus(userId: string) {
@@ -418,6 +420,7 @@ export function usePresence() {
       ...statusFetchedAtByUserId.value,
       [uid]: Date.now(),
     }
+    scheduleStatusExpiryPrune()
   }
 
   function getUserStatus(userId: string): UserStatus | null {
@@ -426,6 +429,42 @@ export function usePresence() {
     const status = statusByUserId.value[uid] ?? null
     if (!isStatusActive(status)) return null
     return status
+  }
+
+  function pruneExpiredStatuses() {
+    const next = { ...statusByUserId.value }
+    let changed = false
+    for (const [uid, status] of Object.entries(next)) {
+      if (!isStatusActive(status)) {
+        delete next[uid]
+        changed = true
+      }
+    }
+    if (changed) statusByUserId.value = next
+  }
+
+  function scheduleStatusExpiryPrune() {
+    if (!import.meta.client) return
+    if (statusExpiryTimer) {
+      clearTimeout(statusExpiryTimer)
+      statusExpiryTimer = null
+    }
+
+    const now = Date.now()
+    let nextExpiryMs = Number.POSITIVE_INFINITY
+    for (const status of Object.values(statusByUserId.value)) {
+      const expiresAtMs = Date.parse(status.expiresAt)
+      if (Number.isFinite(expiresAtMs) && expiresAtMs > now) {
+        nextExpiryMs = Math.min(nextExpiryMs, expiresAtMs)
+      }
+    }
+    if (!Number.isFinite(nextExpiryMs)) return
+
+    statusExpiryTimer = setTimeout(() => {
+      statusExpiryTimer = null
+      pruneExpiredStatuses()
+      scheduleStatusExpiryPrune()
+    }, Math.max(0, nextExpiryMs - now + 50))
   }
 
   function addStatusesFromRest(statuses: Array<UserStatus | null | undefined>) {
@@ -475,6 +514,16 @@ export function usePresence() {
     await apiFetchData<{ cleared: true }>('/presence/status', { method: 'DELETE' })
     const id = user.value?.id
     if (id) clearUserStatus(id)
+  }
+
+  function clearCurrentSpaceForUser(userId: string) {
+    const uid = String(userId ?? '').trim()
+    if (!uid) return
+    if (userCurrentSpaceById.value[uid] == null) return
+    userCurrentSpaceById.value = {
+      ...userCurrentSpaceById.value,
+      [uid]: null,
+    }
   }
 
   const { user } = useAuth()
@@ -858,6 +907,7 @@ export function usePresence() {
       if (id) {
         markPresenceKnown(id)
         applyUserPresence(id, false, false)
+        clearCurrentSpaceForUser(id)
       }
       if (onlineFeedSubscribed.value && onlineFeedCallbacks.value.size > 0) {
         for (const cb of onlineFeedCallbacks.value) {
