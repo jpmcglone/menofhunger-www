@@ -404,17 +404,21 @@ input[type="reset"] {
     --moh-surface-hover: rgba(255, 255, 255, 0.06);
   }
 
-  /* Post row hover: white layer, 0 by default, opacity up on hover (light = darken, dark = lighten) */
+  /* Post row hover: public is neutral; gated tiers use their accent color. */
   .moh-post-row-hover-bg {
+    background-color: var(--moh-post-row-hover-bg-light, #000000);
     opacity: 0;
     transition: opacity 0.2s ease;
   }
+  html.dark .moh-post-row-hover-bg {
+    background-color: var(--moh-post-row-hover-bg-dark, #ffffff);
+  }
   @media (hover: hover) {
     .group:hover .moh-post-row-hover-bg {
-      opacity: 0.06;
+      opacity: 0.1;
     }
     html.dark .group:hover .moh-post-row-hover-bg {
-      opacity: 0.12;
+      opacity: var(--moh-post-row-hover-opacity-dark, 0.01);
     }
   }
   .moh-border {

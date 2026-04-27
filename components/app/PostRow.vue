@@ -13,7 +13,7 @@
         : subtleBorderBottom
           ? 'border-b border-gray-100 dark:border-white/[0.06]'
           : 'border-b moh-border',
-      clickable ? 'cursor-pointer rounded-lg group' : '',
+      clickable ? 'cursor-pointer group' : '',
       highlight ? highlightClass : '',
       pendingStatus === 'posting' ? 'opacity-70' : '',
       pendingStatus === 'failed' ? 'opacity-90' : '',
@@ -29,8 +29,8 @@
     <!-- Animated background: transparent at 0, opacity up on hover (main.css), back to 0 on mouse out -->
     <div
       v-if="clickable"
-      class="moh-post-row-hover-bg pointer-events-none absolute inset-0 z-0 rounded-lg"
-      :style="{ backgroundColor: hoverBgColor }"
+      class="moh-post-row-hover-bg pointer-events-none absolute inset-0 z-0"
+      :style="hoverBgStyle"
       aria-hidden="true"
     />
     <!-- Full-row background link: sits above the hover bg (z-[1]) but below all content (z-10+).
@@ -38,7 +38,7 @@
     <NuxtLink
       v-if="clickable && postPermalink"
       :to="postPermalink"
-      class="absolute inset-0 z-[1] rounded-lg"
+      class="absolute inset-0 z-[1]"
       tabindex="-1"
       aria-hidden="true"
     />
@@ -649,7 +649,7 @@ import { useUserOverlay } from '~/composables/useUserOverlay'
 import { MOH_OPEN_COMPOSER_FROM_ONLYME_KEY, MOH_OPEN_COMPOSER_KEY } from '~/utils/injection-keys'
 import { isPendingLocalId } from '~/composables/usePendingPostsManager'
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   post: FeedPost
   clickable?: boolean
   /** When true, visually highlight this row (e.g. the post being viewed on /p/:id). */
@@ -676,7 +676,9 @@ const props = defineProps<{
   feedGroup?: CommunityGroupShell | null
   /** Lighter row separator (matches home/profile feel vs default moh-border). */
   subtleBorderBottom?: boolean
-}>()
+}>(), {
+  clickable: true,
+})
 const emit = defineEmits<{
   (e: 'deleted', id: string): void
   (e: 'edited', payload: { id: string; post: FeedPost }): void
@@ -779,12 +781,22 @@ const highlightClass = computed(() => {
   return 'moh-post-highlight'
 })
 
-const hoverBgColor = computed(() => {
+const hoverBgStyle = computed(() => {
   const v = postView.value.visibility
-  if (v === 'premiumOnly') return 'var(--moh-premium)'
-  if (v === 'verifiedOnly') return 'var(--moh-verified)'
-  if (v === 'onlyMe') return 'var(--moh-onlyme)'
-  return '#ffffff'
+  const tierColor =
+    v === 'premiumOnly'
+      ? 'var(--moh-premium)'
+      : v === 'verifiedOnly'
+        ? 'var(--moh-verified)'
+        : v === 'onlyMe'
+          ? 'var(--moh-onlyme)'
+          : null
+  const darkOpacity = v === 'premiumOnly' || v === 'verifiedOnly' ? '0.05' : '0.01'
+  return {
+    '--moh-post-row-hover-bg-light': tierColor ?? '#000000',
+    '--moh-post-row-hover-bg-dark': tierColor ?? '#ffffff',
+    '--moh-post-row-hover-opacity-dark': darkOpacity,
+  }
 })
 
 // Thread line overlays: 2px; stay within row, gap between line and avatar (no overextend).
@@ -1091,7 +1103,10 @@ function goToPost() {
 }
 
 function isInteractiveTarget(target: EventTarget | null): boolean {
-  const el = target as HTMLElement | null
+  const raw = target as Node | null
+  const el = raw instanceof Element
+    ? raw
+    : raw?.parentElement ?? null
   if (!el) return false
   // Ignore clicks on any interactive element inside the row.
   return Boolean(

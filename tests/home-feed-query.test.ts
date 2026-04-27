@@ -108,8 +108,12 @@ describe('home feed refresh guardrails', () => {
     const postRow = readFromRepo('components/app/PostRow.vue')
     const linkPreview = readFromRepo('components/app/post/PostRowLinkPreview.vue')
 
+    expect(postRow).toContain('withDefaults(defineProps<')
+    expect(postRow).toContain('clickable: true')
     expect(postRow).toContain('@click.capture="onRowClick"')
     expect(postRow).toContain('@auxclick.capture="onRowAuxClick"')
+    expect(postRow).toContain('raw instanceof Element')
+    expect(postRow).toContain("raw?.parentElement ?? null")
     expect(postRow).toContain("'[data-post-row-interactive]'")
     expect(postRow).not.toContain('<div v-if="$slots.threadFooter" class="mt-1" @click.stop>')
     expect(linkPreview).toContain('data-post-row-interactive')

@@ -20,6 +20,7 @@
     "postinstall": "nuxt prepare",
     "test": "vitest --run",
     "validate-api-types": "node scripts/validate-api-types.mjs",
+    "check:post-row-click": "node scripts/check-post-row-click.mjs",
     "check:hydration": "node scripts/check-hydration.mjs"
   },
   "dependencies": {
