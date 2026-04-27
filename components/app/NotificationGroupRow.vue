@@ -28,43 +28,43 @@
         shouldAnimate ? 'transition-[padding] duration-150 ease-out' : '',
       ]"
     >
-      <!-- Left: notification type icon, separate from actor avatars (X-style). -->
-      <div class="flex w-9 shrink-0 justify-center pt-0.5" aria-hidden="true">
-        <div class="flex h-8 w-8 items-center justify-center">
+      <!-- Left rail: notification icon + actors stay centered as one unit. -->
+      <div class="flex w-[5.25rem] shrink-0 items-start gap-2">
+        <div class="flex h-10 w-8 shrink-0 items-center justify-center" aria-hidden="true">
           <svg v-if="group.kind === 'boost'" viewBox="0 0 24 24" :class="['h-5 w-5', actorTierIconTextClass(group)]">
             <path fill="currentColor" d="M12 4.5L3.75 12.25h5.25V20h6V12.25h5.25L12 4.5z" />
           </svg>
           <Icon v-else :name="groupIconName(group)" :class="['text-[22px]', actorTierIconTextClass(group)]" aria-hidden="true" />
         </div>
-      </div>
 
-      <!-- Actor avatars -->
-      <div class="relative flex shrink-0 items-start" @click.stop>
-        <div class="flex shrink-0 -space-x-2">
-          <template v-for="a in group.actors.slice(0, 5)" :key="a.id">
-            <NuxtLink
-              v-if="a.id && a.username"
-              :to="`/u/${a.username}`"
-              class="block"
-              @click.stop
-            >
+        <!-- Actor avatars -->
+        <div class="relative flex min-w-0 shrink-0 items-start" @click.stop>
+          <div class="flex w-10 shrink-0 -space-x-2 overflow-visible">
+            <template v-for="a in group.actors.slice(0, 2)" :key="a.id">
+              <NuxtLink
+                v-if="a.id && a.username"
+                :to="`/u/${a.username}`"
+                class="block"
+                @click.stop
+              >
+                <AppUserAvatar
+                  :user="{ id: a.id, username: a.username, name: a.name, avatarUrl: a.avatarUrl }"
+                  size-class="h-10 w-10"
+                />
+              </NuxtLink>
               <AppUserAvatar
+                v-else-if="a.id"
                 :user="{ id: a.id, username: a.username, name: a.name, avatarUrl: a.avatarUrl }"
                 size-class="h-10 w-10"
               />
-            </NuxtLink>
-            <AppUserAvatar
-              v-else-if="a.id"
-              :user="{ id: a.id, username: a.username, name: a.name, avatarUrl: a.avatarUrl }"
-              size-class="h-10 w-10"
-            />
-          </template>
-          <div
-            v-if="group.actorCount > 5"
-            class="flex h-10 w-10 items-center justify-center rounded-full border border-gray-200 bg-gray-100 text-xs font-semibold tabular-nums text-gray-700 dark:border-zinc-700 dark:bg-zinc-900 dark:text-gray-200"
-            aria-hidden="true"
-          >
-            +{{ group.actorCount - 5 }}
+            </template>
+            <div
+              v-if="group.actorCount > 2"
+              class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-gray-200 bg-gray-100 text-xs font-semibold tabular-nums text-gray-700 dark:border-zinc-700 dark:bg-zinc-900 dark:text-gray-200"
+              aria-hidden="true"
+            >
+              +{{ group.actorCount - 2 }}
+            </div>
           </div>
         </div>
       </div>

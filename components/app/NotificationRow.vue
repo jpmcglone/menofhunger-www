@@ -34,9 +34,9 @@
         shouldAnimate ? 'transition-[padding] duration-150 ease-out' : '',
       ]"
     >
-      <!-- Left: notification type icon, separate from the actor avatar (X-style). -->
-      <div class="flex w-9 shrink-0 justify-center pt-0.5" aria-hidden="true">
-        <div class="flex h-8 w-8 items-center justify-center">
+      <!-- Left rail: notification icon + actor avatar stay centered as one unit. -->
+      <div class="flex w-[5.25rem] shrink-0 items-start gap-2">
+        <div class="flex h-9 w-8 shrink-0 items-center justify-center sm:h-10" aria-hidden="true">
           <svg
             v-if="notification.kind === 'boost'"
             viewBox="0 0 24 24"
@@ -58,17 +58,27 @@
             aria-hidden="true"
           />
         </div>
-      </div>
 
-      <!-- Actor avatar -->
-      <div class="relative flex shrink-0 items-start" @click.stop>
-        <NuxtLink
-          v-if="notification.actor?.id && notification.actor?.username"
-          :to="`/u/${notification.actor.username}`"
-          class="block"
-          @click.stop
-        >
+        <!-- Actor avatar -->
+        <div class="relative flex shrink-0 items-start" @click.stop>
+          <NuxtLink
+            v-if="notification.actor?.id && notification.actor?.username"
+            :to="`/u/${notification.actor.username}`"
+            class="block"
+            @click.stop
+          >
+            <AppUserAvatar
+              :user="{
+                id: notification.actor.id,
+                username: notification.actor.username,
+                name: notification.actor.name,
+                avatarUrl: notification.actor.avatarUrl,
+              }"
+              size-class="h-9 w-9 sm:h-10 sm:w-10"
+            />
+          </NuxtLink>
           <AppUserAvatar
+            v-else-if="notification.actor?.id"
             :user="{
               id: notification.actor.id,
               username: notification.actor.username,
@@ -77,22 +87,12 @@
             }"
             size-class="h-9 w-9 sm:h-10 sm:w-10"
           />
-        </NuxtLink>
-        <AppUserAvatar
-          v-else-if="notification.actor?.id"
-          :user="{
-            id: notification.actor.id,
-            username: notification.actor.username,
-            name: notification.actor.name,
-            avatarUrl: notification.actor.avatarUrl,
-          }"
-          size-class="h-9 w-9 sm:h-10 sm:w-10"
-        />
-        <div
-          v-else
-          class="h-9 w-9 rounded-full bg-gray-200 dark:bg-zinc-800 sm:h-10 sm:w-10"
-          aria-hidden="true"
-        />
+          <div
+            v-else
+            class="h-9 w-9 rounded-full bg-gray-200 dark:bg-zinc-800 sm:h-10 sm:w-10"
+            aria-hidden="true"
+          />
+        </div>
       </div>
 
       <!-- Center: main content -->
