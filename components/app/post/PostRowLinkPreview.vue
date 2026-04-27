@@ -4,6 +4,7 @@
     <div
       v-if="youtubeEmbedUrl || isPreviewLinkRumble"
       class="overflow-hidden rounded-xl border moh-border bg-black/5 dark:bg-white/5"
+      data-post-row-interactive
     >
       <!-- YouTube: fixed 16:9. Rumble: use oEmbed dimensions (fallback 854x480). -->
       <div
@@ -114,7 +115,7 @@
          AppArticleShareCard directly in that case to avoid a duplicate card. -->
     <template v-if="embeddedArticleId && !preloadedArticle">
       <!-- Resolved -->
-      <div v-if="embeddedArticle" @click.stop>
+      <div v-if="embeddedArticle" data-post-row-interactive @click.stop>
         <AppArticleShareCard :article="embeddedArticle" />
       </div>
       <!-- Skeleton: matches AppArticleShareCard layout so the row height is stable -->
@@ -122,7 +123,6 @@
         v-else-if="rowInView"
         class="mt-2 overflow-hidden rounded-xl border border-gray-200 dark:border-zinc-700 animate-pulse"
         aria-hidden="true"
-        @click.stop
       >
         <!-- Thumbnail placeholder (16:9) -->
         <div class="aspect-[16/9] w-full bg-gray-200 dark:bg-zinc-800" />
@@ -147,7 +147,7 @@
 
     <!-- Stop propagation so the parent PostRow's row-click handler never fires when
          clicking the embedded preview — the NuxtLink inside handles navigation. -->
-    <div v-if="embeddedPostId" @click.stop>
+    <div v-if="embeddedPostId" data-post-row-interactive @click.stop>
       <AppEmbeddedPostPreview
         :post-id="embeddedPostId"
         :enabled="embeddedPreviewEnabled"
@@ -161,7 +161,6 @@
         v-if="!embeddedSpace"
         class="overflow-hidden rounded-xl border moh-border animate-pulse"
         aria-hidden="true"
-        @click.stop
       >
         <div class="flex items-center gap-3 px-4 py-2.5">
           <div class="h-8 w-8 shrink-0 rounded-full bg-black/10 dark:bg-white/10" />
@@ -172,13 +171,13 @@
         </div>
       </div>
       <!-- Resolved space -->
-      <div v-else class="overflow-hidden rounded-xl border moh-border" @click.stop>
+      <div v-else class="overflow-hidden rounded-xl border moh-border" data-post-row-interactive @click.stop>
         <AppSpaceRow :space="embeddedSpace" preview />
       </div>
     </template>
 
     <!-- User profile link → compact user card -->
-    <div v-if="embeddedUsername && rowInView" @click.stop>
+    <div v-if="embeddedUsername && rowInView" data-post-row-interactive @click.stop>
       <AppUserLinkCard :username="embeddedUsername" :enabled="rowInView" />
     </div>
 

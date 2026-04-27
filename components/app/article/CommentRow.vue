@@ -126,7 +126,7 @@
             <button
               type="button"
               class="inline-flex h-8 w-8 items-center justify-center text-gray-400 transition-colors hover:text-gray-700 dark:text-zinc-500 dark:hover:text-zinc-300"
-              aria-label="Share comment"
+              aria-label="Share reply"
               v-tooltip.bottom="shareTooltip"
               @click="toggleShareMenu($event)"
             >
@@ -268,7 +268,7 @@
         v-if="confirmingDelete"
         class="absolute inset-x-0 bottom-0 flex items-center gap-2 rounded-b-xl bg-red-50 px-3 py-2 dark:bg-red-950/40"
       >
-        <span class="flex-1 text-xs text-gray-600 dark:text-zinc-300">Delete this comment?</span>
+        <span class="flex-1 text-xs text-gray-600 dark:text-zinc-300">Delete this reply?</span>
         <button
           type="button"
           class="rounded px-2.5 py-1 text-xs font-semibold text-red-600 hover:bg-red-100 dark:hover:bg-red-900/40"
@@ -500,9 +500,9 @@ async function onShare() {
   const url = `${window.location.origin}/a/${props.articleId}#comment-${props.comment.id}`
   try {
     await copyToClipboard(url)
-    toast.push({ title: 'Link copied!', message: 'Comment link copied to clipboard.', tone: 'success' })
+    toast.push({ title: 'Link copied!', message: 'Reply link copied to clipboard.', tone: 'success' })
   } catch {
-    toast.push({ title: 'Comment link', message: url })
+    toast.push({ title: 'Reply link', message: url })
   }
 }
 

@@ -71,7 +71,7 @@
             type="button"
             class="hover:underline underline-offset-2"
             @click="guardedScrollToComments"
-          >· {{ displayCommentCount }} {{ displayCommentCount === 1 ? 'comment' : 'comments' }}</button>
+          >· {{ displayCommentCount }} {{ displayCommentCount === 1 ? 'reply' : 'replies' }}</button>
         </div>
 
         <!-- Tags -->
@@ -183,7 +183,7 @@
               <button
                 type="button"
                 class="moh-tap inline-flex h-10 w-10 items-center justify-center rounded-full transition-colors moh-surface-hover"
-                aria-label="Jump to comments"
+                aria-label="Jump to replies"
                 @click="guardedScrollToComments"
               >
                 <Icon name="tabler:message-circle" class="text-[18px]" aria-hidden="true" />
@@ -464,7 +464,7 @@
     <Dialog
       v-model:visible="shareCommentModalOpen"
       modal
-      header="Share with comment"
+      header="Share with note"
       :style="{ width: '32rem', maxWidth: '95vw' }"
     >
       <div class="space-y-3">
@@ -472,7 +472,7 @@
         <textarea
           v-model="shareCommentText"
           class="w-full rounded-xl border moh-border bg-transparent px-3 py-2 text-sm text-gray-900 dark:text-gray-100 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[var(--p-primary-color)]/30 resize-none min-h-[80px]"
-          placeholder="Add a comment (optional)…"
+          placeholder="Add a note (optional)…"
           rows="3"
         />
         <div class="flex justify-end gap-2">
@@ -960,7 +960,7 @@ const shareMenuItems = computed(() => {
       command: () => void onShareToFeed(),
     })
     items.push({
-      label: 'Share with comment',
+      label: 'Share with note',
       iconName: 'tabler:message-share',
       command: () => onShareWithComment(),
     })

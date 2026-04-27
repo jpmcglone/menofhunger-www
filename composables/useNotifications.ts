@@ -323,6 +323,24 @@ export function useNotifications() {
     return actorTierIconBgClass(n)
   }
 
+  function notificationTypeIconTextClass(n: Notification): string {
+    if (n.kind === 'mention') {
+      const u = me.value
+      return userTierTextClass(userColorTier(u), { fallback: 'text-gray-500 dark:text-gray-400' })
+    }
+    if (n.kind === 'coin_transfer') return 'text-amber-500'
+    if (n.kind === 'generic') return 'text-gray-500 dark:text-gray-400'
+    if (n.kind === 'poll_results_ready') {
+      const v = n.subjectPostVisibility ?? null
+      if (v === 'premiumOnly') return 'text-[var(--moh-premium)]'
+      if (v === 'verifiedOnly') return 'text-[var(--moh-verified)]'
+      if (v === 'onlyMe') return 'text-[var(--moh-onlyme)]'
+      return 'text-gray-500 dark:text-gray-400'
+    }
+    const a = n.actor?.id ? (usersStore.overlay(n.actor as any) as any) : n.actor
+    return userTierTextClass(userColorTier(a), { fallback: 'text-rose-500' })
+  }
+
   /** Row highlight when unread. When read: no highlight. */
   function subjectTierRowClass(n: Notification): string {
     if (n.readAt) return ''
@@ -336,7 +354,7 @@ export function useNotifications() {
     if (n.title) return n.title
     switch (n.kind) {
       case 'comment':
-        return n.subjectArticleId ? 'commented on your article' : 'replied to your post'
+        return n.subjectArticleId ? 'replied to your article' : 'replied to your post'
       case 'boost':
         return 'boosted your post'
       case 'repost':
@@ -465,7 +483,7 @@ export function useNotifications() {
     if (n.kind === 'generic' && n.body) return n.body
     switch (n.kind) {
       case 'comment':
-        return n.subjectArticleId ? 'Article comment' : 'Reply'
+        return n.subjectArticleId ? 'Article reply' : 'Reply'
       case 'boost':
         return 'Boost'
       case 'follow':
@@ -511,16 +529,43 @@ export function useNotifications() {
 
   function formatWhen(createdAt: string): string {
     const d = new Date(createdAt)
+    if (Number.isNaN(d.getTime())) return ''
     const now = new Date()
     const diffMs = now.getTime() - d.getTime()
     const diffM = Math.floor(diffMs / 60000)
     const diffH = Math.floor(diffMs / 3600000)
-    const diffD = Math.floor(diffMs / 86400000)
-    if (diffM < 1) return 'Just now'
-    if (diffM < 60) return `${diffM}m`
-    if (diffH < 24) return `${diffH}h`
-    if (diffD < 7) return `${diffD}d`
-    return d.toLocaleDateString()
+    const sameDay =
+      d.getFullYear() === now.getFullYear() &&
+      d.getMonth() === now.getMonth() &&
+      d.getDate() === now.getDate()
+    if (sameDay) {
+      if (diffM < 1) return 'now'
+      if (diffM < 60) return `${diffM}m`
+      return `${Math.max(1, diffH)}h`
+    }
+    const sameYear = d.getFullYear() === now.getFullYear()
+    return d.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: sameYear ? undefined : 'numeric',
+    })
+  }
+
+  function formatWhenFull(createdAt: string): string {
+    const d = new Date(createdAt)
+    if (Number.isNaN(d.getTime())) return ''
+    const rawTime = d.toLocaleTimeString('en-US', {
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+    })
+    const time = rawTime.replace(/\s/g, '').toLowerCase()
+    const date = d.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    })
+    return `${time} - ${date}`
   }
 
   function rowHref(n: Notification): string | null {
@@ -617,6 +662,7 @@ export function useNotifications() {
     actorTierClass,
     actorTierIconBgClass,
     notificationTypeIconBgClass,
+    notificationTypeIconTextClass,
     subjectPostVisibilityTextClass,
     subjectTierRowClass,
     titleSuffix,
@@ -624,6 +670,7 @@ export function useNotifications() {
     notificationContext,
     notificationIconName,
     formatWhen,
+    formatWhenFull,
     rowHref,
     groupHref,
     itemHref,

@@ -103,4 +103,15 @@ describe('home feed refresh guardrails', () => {
     expect(src).toContain('const hiddenDirectReplies = Math.max(0, total - (hasVisibleChild ? 1 : 0))')
     expect(src).toContain('if (collapsed > 0) return Math.min(collapsed, hiddenDirectReplies)')
   })
+
+  it('keeps feed post rows clickable before child stop handlers can swallow clicks', () => {
+    const postRow = readFromRepo('components/app/PostRow.vue')
+    const linkPreview = readFromRepo('components/app/post/PostRowLinkPreview.vue')
+
+    expect(postRow).toContain('@click.capture="onRowClick"')
+    expect(postRow).toContain('@auxclick.capture="onRowAuxClick"')
+    expect(postRow).toContain("'[data-post-row-interactive]'")
+    expect(postRow).not.toContain('<div v-if="$slots.threadFooter" class="mt-1" @click.stop>')
+    expect(linkPreview).toContain('data-post-row-interactive')
+  })
 })

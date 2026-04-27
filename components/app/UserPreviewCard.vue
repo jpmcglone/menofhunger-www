@@ -201,11 +201,11 @@
         >
           <Icon name="tabler:layout-grid" class="shrink-0 text-sm moh-text-muted" aria-hidden="true" />
           <div class="min-w-0 flex-1">
-            <div class="truncate text-xs font-semibold moh-text">
-              {{ currentSpace?.title || 'In a space' }}
+            <div class="text-[11px] font-semibold uppercase tracking-wide moh-text-muted">
+              In a space
             </div>
-            <div class="text-[11px] moh-text-muted">
-              Live now
+            <div class="mt-0.5 truncate text-xs font-medium moh-text">
+              {{ currentSpace?.title || 'Live now' }}
             </div>
           </div>
           <button
@@ -214,7 +214,7 @@
             class="moh-pressable shrink-0 rounded-lg bg-[var(--p-primary-color)] px-2.5 py-1.5 text-xs font-semibold text-white transition-[opacity,transform] active:scale-[0.96]"
             @click.stop.prevent="joinCurrentSpace"
           >
-            Join
+            Join space
           </button>
         </div>
       </div>

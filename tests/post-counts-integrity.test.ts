@@ -248,8 +248,9 @@ describe('usePostsFeed.addReply', () => {
     expect(bumps.getCommentCountBump(root.id)).toBe(0)
   })
 
-  it('still bumps even when the parent is not in the current feed array', async () => {
-    // The bump is shared global state; PostRows on other pages will pick it up.
+  it('does not bump when the parent is not in the current feed array', async () => {
+    // Background/kept-alive feeds can still receive reply-modal callbacks.
+    // They must not bump counts for notification-embedded posts they do not own.
     const feed = await makeFeed()
     const bumps = await runInSetup(usePostCountBumps)
     const offFeedParentId = uid('off')
@@ -257,7 +258,7 @@ describe('usePostsFeed.addReply', () => {
 
     feed.addReply(offFeedParentId, reply, makePost({ id: offFeedParentId }))
 
-    expect(bumps.getCommentCountBump(offFeedParentId)).toBe(1)
+    expect(bumps.getCommentCountBump(offFeedParentId)).toBe(0)
   })
 
   it('replaces the parent slot with the reply at the same index', async () => {

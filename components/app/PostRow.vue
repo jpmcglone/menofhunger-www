@@ -19,8 +19,12 @@
       pendingStatus === 'failed' ? 'opacity-90' : '',
     ]"
     :style="rowStyle"
-    @click="onRowClick"
-    @auxclick="onRowAuxClick"
+    :role="clickable && postPermalink ? 'link' : undefined"
+    :tabindex="clickable && postPermalink ? 0 : undefined"
+    @click.capture="onRowClick"
+    @auxclick.capture="onRowAuxClick"
+    @keydown.enter.prevent="onRowKeydown"
+    @keydown.space.prevent="onRowKeydown"
   >
     <!-- Animated background: transparent at 0, opacity up on hover (main.css), back to 0 on mouse out -->
     <div
@@ -359,8 +363,7 @@
         />
 
         <div v-if="!isDeletedPost && !isGatedPost && metaTags.length" class="mt-3.5 flex items-center justify-between gap-3">
-          <!-- Stop propagation so Cmd/Ctrl+Click behaves like a normal link (new tab), not row navigation. -->
-          <div class="flex items-center gap-2" @click.stop>
+          <div class="flex items-center gap-2">
             <template v-for="t in metaTags" :key="t.key">
               <NuxtLink
                 v-if="t.to"
@@ -587,7 +590,7 @@
         </div>
 
         <!-- Thread footer content (e.g. "View X more replies") -->
-        <div v-if="$slots.threadFooter" class="mt-1" @click.stop>
+        <div v-if="$slots.threadFooter" class="mt-1">
           <slot name="threadFooter" />
         </div>
       </div>
@@ -771,7 +774,7 @@ const highlightClass = computed(() => {
   if (!props.highlight) return ''
   const v = postView.value.visibility
   if (v === 'verifiedOnly') return 'moh-post-highlight moh-post-highlight-verified'
-  if (v === 'premiumOnly') return 'moh-post-highlight'
+  if (v === 'premiumOnly') return 'moh-post-highlight moh-post-highlight-premium'
   if (v === 'onlyMe') return 'moh-post-highlight moh-post-highlight-onlyme'
   return 'moh-post-highlight'
 })
@@ -1097,11 +1100,16 @@ function isInteractiveTarget(target: EventTarget | null): boolean {
         'a',
         'button',
         'iframe',
+        'video',
+        'audio',
         'input',
         'textarea',
         'select',
+        '[role="button"]',
         '[role="menu"]',
         '[role="menuitem"]',
+        '[contenteditable="true"]',
+        '[data-post-row-interactive]',
         '[data-pc-section]',
       ].join(','),
     ),
@@ -1124,6 +1132,12 @@ function onRowAuxClick(e: MouseEvent) {
   if (isInteractiveTarget(e.target)) return
   e.preventDefault()
   window.open(postPermalink.value, '_blank')
+}
+
+function onRowKeydown(e: KeyboardEvent) {
+  if (!clickable.value) return
+  if (isInteractiveTarget(e.target)) return
+  void goToPost()
 }
 
 const createdAtDate = computed(() => new Date(postView.value.createdAt))

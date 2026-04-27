@@ -4,7 +4,7 @@
     :style="{ '--article-accent': accentColor }"
   >
     <h2 class="mb-4 text-base font-semibold text-gray-900 dark:text-gray-100">
-      Comments
+      Replies
       <span v-if="(totalCount ?? 0) > 0" class="ml-1 text-sm font-normal text-gray-500 dark:text-zinc-400">({{ totalCount }})</span>
     </h2>
 
@@ -19,7 +19,7 @@
             <AppArticleCommentTextarea
               ref="composeTextareaEl"
               v-model="newCommentBody"
-              placeholder="Write a comment…"
+              placeholder="Write a reply…"
               :maxlength="commentMaxLength"
               :disabled="submitting"
               :priority-users="composePriorityUsers"
@@ -65,7 +65,7 @@
         <Icon name="tabler:rosette-discount-check" class="mt-0.5 shrink-0 text-gray-400 dark:text-zinc-500" size="20" />
         <div class="flex-1 min-w-0">
           <p class="text-sm font-medium text-gray-900 dark:text-gray-100">Want to join the conversation?</p>
-          <p class="mt-0.5 text-sm text-gray-500 dark:text-zinc-400">Verification lets you comment and reply on articles.</p>
+          <p class="mt-0.5 text-sm text-gray-500 dark:text-zinc-400">Verification lets you reply on articles.</p>
           <div class="mt-2">
             <NuxtLink
               to="/verification"
@@ -83,7 +83,7 @@
         <Icon name="tabler:crown" class="mt-0.5 shrink-0 text-amber-500" size="20" />
         <div class="flex-1 min-w-0">
           <p class="text-sm font-medium text-gray-900 dark:text-gray-100">Want to join the conversation?</p>
-          <p class="mt-0.5 text-sm text-gray-500 dark:text-zinc-400">Premium members can comment on all articles.</p>
+          <p class="mt-0.5 text-sm text-gray-500 dark:text-zinc-400">Premium members can reply on all articles.</p>
           <div class="mt-2">
             <NuxtLink
               to="/settings/billing"
@@ -184,11 +184,11 @@
         class="w-full rounded-xl border border-gray-200 py-2.5 text-sm text-gray-500 transition-colors hover:bg-gray-50 dark:border-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-900"
         @click="loadMore"
       >
-        Load more comments
+        Load more replies
       </button>
 
       <p v-if="!loading && comments.length === 0" class="py-6 text-center text-sm text-gray-400 dark:text-zinc-500">
-        No comments yet. Be the first!
+        No replies yet. Be the first!
       </p>
     </div>
   </section>
@@ -439,7 +439,7 @@ async function submitComment() {
     await nextTick()
     scrollToComment(comment.id)
   } catch (e: any) {
-    toast.push({ title: e?.data?.meta?.errors?.[0]?.message ?? 'Could not post comment.', tone: 'error' })
+    toast.push({ title: e?.data?.meta?.errors?.[0]?.message ?? 'Could not post reply.', tone: 'error' })
   }
 }
 
@@ -475,7 +475,7 @@ async function handleDelete(commentId: string, parentId?: string | null) {
   try {
     await deleteComment(commentId, parentId)
   } catch (e: any) {
-    toast.push({ title: e?.data?.meta?.errors?.[0]?.message ?? 'Could not delete comment.', tone: 'error' })
+    toast.push({ title: e?.data?.meta?.errors?.[0]?.message ?? 'Could not delete reply.', tone: 'error' })
   }
 }
 

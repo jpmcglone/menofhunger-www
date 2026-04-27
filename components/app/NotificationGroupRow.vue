@@ -28,46 +28,43 @@
         shouldAnimate ? 'transition-[padding] duration-150 ease-out' : '',
       ]"
     >
-      <!-- Left: avatar stack with type icon -->
+      <!-- Left: notification type icon, separate from actor avatars (X-style). -->
+      <div class="flex w-9 shrink-0 justify-center pt-0.5" aria-hidden="true">
+        <div class="flex h-8 w-8 items-center justify-center">
+          <svg v-if="group.kind === 'boost'" viewBox="0 0 24 24" :class="['h-5 w-5', actorTierIconTextClass(group)]">
+            <path fill="currentColor" d="M12 4.5L3.75 12.25h5.25V20h6V12.25h5.25L12 4.5z" />
+          </svg>
+          <Icon v-else :name="groupIconName(group)" :class="['text-[22px]', actorTierIconTextClass(group)]" aria-hidden="true" />
+        </div>
+      </div>
+
+      <!-- Actor avatars -->
       <div class="relative flex shrink-0 items-start" @click.stop>
-        <div class="relative shrink-0">
-          <div class="flex shrink-0 -space-x-2">
-            <template v-for="a in group.actors.slice(0, 5)" :key="a.id">
-              <NuxtLink
-                v-if="a.id && a.username"
-                :to="`/u/${a.username}`"
-                class="block"
-                @click.stop
-              >
-                <AppUserAvatar
-                  :user="{ id: a.id, username: a.username, name: a.name, avatarUrl: a.avatarUrl }"
-                  size-class="h-10 w-10"
-                />
-              </NuxtLink>
+        <div class="flex shrink-0 -space-x-2">
+          <template v-for="a in group.actors.slice(0, 5)" :key="a.id">
+            <NuxtLink
+              v-if="a.id && a.username"
+              :to="`/u/${a.username}`"
+              class="block"
+              @click.stop
+            >
               <AppUserAvatar
-                v-else-if="a.id"
                 :user="{ id: a.id, username: a.username, name: a.name, avatarUrl: a.avatarUrl }"
                 size-class="h-10 w-10"
               />
-            </template>
-            <div
-              v-if="group.actorCount > 5"
-              class="h-10 w-10 rounded-full border border-gray-200 dark:border-zinc-700 bg-gray-100 dark:bg-zinc-900 flex items-center justify-center text-xs font-semibold text-gray-700 dark:text-gray-200 tabular-nums"
-              aria-hidden="true"
-            >
-              +{{ group.actorCount - 5 }}
-            </div>
-          </div>
-
+            </NuxtLink>
+            <AppUserAvatar
+              v-else-if="a.id"
+              :user="{ id: a.id, username: a.username, name: a.name, avatarUrl: a.avatarUrl }"
+              size-class="h-10 w-10"
+            />
+          </template>
           <div
-            class="absolute -bottom-3 -left-2 z-10 flex h-7 w-7 items-center justify-center rounded-full border-2 border-white dark:border-black shadow-sm"
-            :class="actorTierIconBgClass(group)"
+            v-if="group.actorCount > 5"
+            class="flex h-10 w-10 items-center justify-center rounded-full border border-gray-200 bg-gray-100 text-xs font-semibold tabular-nums text-gray-700 dark:border-zinc-700 dark:bg-zinc-900 dark:text-gray-200"
             aria-hidden="true"
           >
-            <svg v-if="group.kind === 'boost'" viewBox="0 0 24 24" class="h-4 w-4 text-white">
-              <path fill="currentColor" d="M12 4.5L3.75 12.25h5.25V20h6V12.25h5.25L12 4.5z" />
-            </svg>
-            <Icon v-else :name="groupIconName(group)" class="text-xs text-white" aria-hidden="true" />
+            +{{ group.actorCount - 5 }}
           </div>
         </div>
       </div>
@@ -78,7 +75,7 @@
           <div class="min-w-0 flex-1">
             <div :class="['min-w-0 max-w-full line-clamp-2 text-sm', group.readAt ? 'font-medium' : 'font-semibold']">
               <template v-if="group.kind === 'followed_post' && group.actorCount === 1 && group.count > 1">
-                <span class="whitespace-nowrap tabular-nums">{{ group.count }} new posts</span>
+                <span class="whitespace-nowrap tabular-nums">{{ group.count }} posts</span>
                 <span class="ml-1">from</span>
                 <span
                   class="ml-1 whitespace-nowrap"
@@ -100,9 +97,23 @@
                 </span>
                 <span class="ml-1">{{ titleSuffix(group) }}</span>
               </template>
-              <template v-if="group.kind === 'comment' && group.latestBody">
-                <span class="ml-1 italic text-gray-600 dark:text-gray-300">"{{ group.latestBody }}"</span>
-              </template>
+              <ClientOnly>
+                <template #fallback>
+                  <span aria-hidden="true">&nbsp;</span>
+                </template>
+                <span
+                  v-tooltip.bottom="tinyTooltip(formatWhenFull(group.createdAt))"
+                  class="ml-1 whitespace-nowrap font-normal text-gray-500 dark:text-gray-400 tabular-nums"
+                >
+                  · {{ formatWhen(group.createdAt) }}
+                </span>
+              </ClientOnly>
+            </div>
+            <div
+              v-if="group.kind === 'comment' && group.latestBody"
+              class="mt-0.5 line-clamp-2 text-sm text-gray-600 dark:text-gray-300"
+            >
+              {{ group.latestBody }}
             </div>
             <div v-if="!group.latestBody && !group.latestSubjectPostPreview?.media?.length" class="mt-1 text-xs text-gray-500 dark:text-gray-400">
               {{ contextLabel(group) }}
@@ -194,15 +205,6 @@
                 </Menu>
               </template>
             </div>
-
-            <div class="shrink-0 text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
-              <ClientOnly>
-                <template #fallback>
-                  <span aria-hidden="true">&nbsp;</span>
-                </template>
-                {{ formatWhen(group.createdAt) }}
-              </ClientOnly>
-            </div>
           </div>
         </div>
       </div>
@@ -214,12 +216,12 @@
 import type { FollowSummaryResponse, NotificationActor, NotificationGroup } from '~/types/api'
 import { tinyTooltip } from '~/utils/tiny-tooltip'
 import type { MenuItem } from 'primevue/menuitem'
-import { userColorTier, userTierBgClass, type UserColorTier } from '~/utils/user-tier'
+import { userColorTier, userTierBgClass, userTierTextClass, type UserColorTier } from '~/utils/user-tier'
 import { stableListKey } from '~/utils/stable-list-key'
 
 const multiTrigger = useUserPreviewMultiTrigger()
 
-const { formatWhen } = useNotifications()
+const { formatWhen, formatWhenFull } = useNotifications()
 
 const shouldAnimate = ref(false)
 onMounted(() => {
@@ -343,6 +345,20 @@ function actorTierIconBgClass(g: NotificationGroup): string {
   return userTierBgClass(topTier, { fallback: 'bg-gray-500' })
 }
 
+function actorTierIconTextClass(g: NotificationGroup): string {
+  const actors = g.actors ?? []
+  // Highest tier wins (organization > premium > verified > normal).
+  const hasTier = (tier: UserColorTier) => actors.some((a) => userColorTier(a as any) === tier)
+  const topTier: UserColorTier = hasTier('organization')
+    ? 'organization'
+    : hasTier('premium')
+      ? 'premium'
+      : hasTier('verified')
+        ? 'verified'
+        : 'normal'
+  return userTierTextClass(topTier, { fallback: 'text-rose-500' })
+}
+
 function subjectTierRowClass(g: NotificationGroup): string {
   if (g.readAt) return ''
   const t = g.subjectTier ?? null
@@ -396,7 +412,7 @@ function titleSuffix(g: NotificationGroup): string {
     case 'boost':
       return 'boosted your post'
     case 'comment':
-      return 'commented on your post'
+      return 'replied to your post'
     case 'follow':
       return 'followed you'
     case 'followed_post':
@@ -417,7 +433,7 @@ function contextLabel(g: NotificationGroup): string {
     case 'follow':
       return 'New followers'
     case 'followed_post':
-      return 'New posts'
+      return 'Posts'
     case 'nudge':
       return 'Nudge'
     default:

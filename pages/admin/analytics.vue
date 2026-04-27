@@ -285,7 +285,7 @@
                   <th class="px-4 py-3 font-medium text-right">Views</th>
                   <th class="px-4 py-3 font-medium text-right">Boosts</th>
                   <th class="px-4 py-3 font-medium text-right">Reactions</th>
-                  <th class="px-4 py-3 font-medium text-right">Comments</th>
+                  <th class="px-4 py-3 font-medium text-right">Replies</th>
                   <th class="px-4 py-3 font-medium text-right">Published</th>
                 </tr>
               </thead>
@@ -332,7 +332,7 @@
                   <th class="px-4 py-3 font-medium">Post</th>
                   <th class="px-4 py-3 font-medium text-right">Views</th>
                   <th class="px-4 py-3 font-medium text-right">Boosts</th>
-                  <th class="px-4 py-3 font-medium text-right">Comments</th>
+                  <th class="px-4 py-3 font-medium text-right">Replies</th>
                   <th class="px-4 py-3 font-medium text-right">Reactions</th>
                   <th class="px-4 py-3 font-medium text-right">Created</th>
                 </tr>
@@ -1251,7 +1251,7 @@ const articleKpiCards = computed(() => {
     { label: 'Avg Views',   value: k.avgViewsPerArticle.toLocaleString(),     sub: `per article (${r})` },
     { label: 'Boosts',      value: k.totalBoostsInRange.toLocaleString(),     sub: r },
     { label: 'Reactions',   value: k.totalReactionsInRange.toLocaleString(),  sub: r },
-    { label: 'Comments',    value: k.totalCommentsInRange.toLocaleString(),   sub: r },
+    { label: 'Replies',     value: k.totalCommentsInRange.toLocaleString(),   sub: r },
   ]
 })
 

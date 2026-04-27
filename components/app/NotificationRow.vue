@@ -34,28 +34,41 @@
         shouldAnimate ? 'transition-[padding] duration-150 ease-out' : '',
       ]"
     >
-
-      <!-- Left: avatar with notification type icon -->
-      <div class="relative flex shrink-0 items-start">
-        <div class="relative shrink-0" @click.stop>
-          <NuxtLink
-            v-if="notification.actor?.id && notification.actor?.username"
-            :to="`/u/${notification.actor.username}`"
-            class="block"
-            @click.stop
+      <!-- Left: notification type icon, separate from the actor avatar (X-style). -->
+      <div class="flex w-9 shrink-0 justify-center pt-0.5" aria-hidden="true">
+        <div class="flex h-8 w-8 items-center justify-center">
+          <svg
+            v-if="notification.kind === 'boost'"
+            viewBox="0 0 24 24"
+            :class="['h-5 w-5', notificationTypeIconTextClass(notification)]"
           >
-            <AppUserAvatar
-              :user="{
-                id: notification.actor.id,
-                username: notification.actor.username,
-                name: notification.actor.name,
-                avatarUrl: notification.actor.avatarUrl,
-              }"
-              size-class="h-9 w-9 sm:h-10 sm:w-10"
+            <path
+              fill="currentColor"
+              d="M12 4.5L3.75 12.25h5.25V20h6V12.25h5.25L12 4.5z"
             />
-          </NuxtLink>
+          </svg>
+          <Icon
+            v-else
+            :name="notificationIconName(notification)"
+            :class="[
+              'text-[22px]',
+              notificationTypeIconTextClass(notification),
+              notification.kind === 'poll_results_ready' ? 'rotate-90' : '',
+            ]"
+            aria-hidden="true"
+          />
+        </div>
+      </div>
+
+      <!-- Actor avatar -->
+      <div class="relative flex shrink-0 items-start" @click.stop>
+        <NuxtLink
+          v-if="notification.actor?.id && notification.actor?.username"
+          :to="`/u/${notification.actor.username}`"
+          class="block"
+          @click.stop
+        >
           <AppUserAvatar
-            v-else-if="notification.actor?.id"
             :user="{
               id: notification.actor.id,
               username: notification.actor.username,
@@ -64,39 +77,22 @@
             }"
             size-class="h-9 w-9 sm:h-10 sm:w-10"
           />
-          <div
-            v-else
-            class="h-9 w-9 sm:h-10 sm:w-10 rounded-full bg-gray-200 dark:bg-zinc-800"
-            aria-hidden="true"
-          />
-          <!-- Notification type icon: mention = viewer tier; otherwise actor tier -->
-          <div
-            class="absolute -bottom-3 -left-2 z-10 flex h-6 w-6 sm:h-7 sm:w-7 items-center justify-center rounded-full border-2 border-white dark:border-black shadow-sm"
-            :class="notificationTypeIconBgClass(notification)"
-            aria-hidden="true"
-          >
-            <!-- Boost icon (custom SVG) -->
-            <svg
-              v-if="notification.kind === 'boost'"
-              viewBox="0 0 24 24"
-              class="h-4 w-4 text-white"
-            >
-              <path
-                fill="currentColor"
-                d="M12 4.5L3.75 12.25h5.25V20h6V12.25h5.25L12 4.5z"
-              />
-            </svg>
-            <Icon
-              v-else
-              :name="notificationIconName(notification)"
-              :class="[
-                'text-xs text-white',
-                notification.kind === 'poll_results_ready' ? 'rotate-90' : '',
-              ]"
-              aria-hidden="true"
-            />
-          </div>
-        </div>
+        </NuxtLink>
+        <AppUserAvatar
+          v-else-if="notification.actor?.id"
+          :user="{
+            id: notification.actor.id,
+            username: notification.actor.username,
+            name: notification.actor.name,
+            avatarUrl: notification.actor.avatarUrl,
+          }"
+          size-class="h-9 w-9 sm:h-10 sm:w-10"
+        />
+        <div
+          v-else
+          class="h-9 w-9 rounded-full bg-gray-200 dark:bg-zinc-800 sm:h-10 sm:w-10"
+          aria-hidden="true"
+        />
       </div>
 
       <!-- Center: main content -->
@@ -113,7 +109,7 @@
               >{{ actorDisplay(notification) }}</span>
               <template v-if="notification.kind === 'comment'">
                 <template v-if="notification.subjectArticleId">
-                  <span class="ml-1">commented on your</span>
+                  <span class="ml-1">replied to your</span>
                   <span class="ml-1 font-semibold text-orange-600 dark:text-orange-400">article</span>
                 </template>
                 <template v-else>
@@ -172,9 +168,23 @@
               <template v-else>
                 <span class="ml-1">{{ titleSuffix(notification) }}</span>
               </template>
-              <template v-if="(notification.kind === 'comment' || notification.kind === 'mention') && notification.body">
-                <span class="ml-1 italic text-gray-600 dark:text-gray-300">"{{ notification.body }}"</span>
-              </template>
+              <ClientOnly>
+                <template #fallback>
+                  <span aria-hidden="true">&nbsp;</span>
+                </template>
+                <span
+                  v-tooltip.bottom="tinyTooltip(formatWhenFull(notification.createdAt))"
+                  class="ml-1 whitespace-nowrap font-normal text-gray-500 dark:text-gray-400 tabular-nums"
+                >
+                  · {{ formatWhen(notification.createdAt) }}
+                </span>
+              </ClientOnly>
+            </div>
+            <div
+              v-if="(notification.kind === 'comment' || notification.kind === 'mention') && notification.body"
+              class="mt-0.5 line-clamp-2 text-[13px] sm:text-sm text-gray-600 dark:text-gray-300"
+            >
+              {{ notification.body }}
             </div>
             <!-- Fallback for other kinds with body -->
             <div
@@ -449,15 +459,6 @@
                 />
               </template>
             </div>
-
-            <div class="shrink-0 text-[11px] sm:text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
-              <ClientOnly>
-                <template #fallback>
-                  <span aria-hidden="true">&nbsp;</span>
-                </template>
-                {{ formatWhen(notification.createdAt) }}
-              </ClientOnly>
-            </div>
           </div>
         </div>
       </div>
@@ -475,7 +476,7 @@ import type { MenuItem } from 'primevue/menuitem'
 const {
   actorDisplay,
   actorTierClass,
-  notificationTypeIconBgClass,
+  notificationTypeIconTextClass,
   actorTierIconBgClass,
   subjectPostVisibilityTextClass,
   subjectTierRowClass,
@@ -483,6 +484,7 @@ const {
   notificationContext,
   notificationIconName,
   formatWhen,
+  formatWhenFull,
 } = useNotifications()
 
 const shouldAnimate = ref(false)

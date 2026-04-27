@@ -897,11 +897,13 @@ export function usePostsFeed(options: UsePostsFeedOptions = {}) {
   function addReply(parentId: string, replyPost: FeedPost, parentPostFromFeed: FeedPost) {
     const pid = (parentId ?? '').trim()
     if (!pid) return
-    // Bump the shared optimistic counter for the direct parent so any PostRow rendering it
-    // reflects the new reply immediately, regardless of whether the parent is in this feed.
-    bumpCommentCount(pid)
     const idx = posts.value.findIndex((p) => p.id === pid)
     if (idx < 0) return
+    // Only the feed that actually owns the parent should apply the optimistic bump.
+    // Background/kept-alive feeds can also receive reply-modal callbacks; if they
+    // bumped before confirming ownership, notification-embedded PostRows could
+    // double-count replies from unrelated feed handlers.
+    bumpCommentCount(pid)
     const replyWithParent: FeedPost = { ...replyPost, parent: parentPostFromFeed }
     posts.value = [...posts.value.slice(0, idx), replyWithParent, ...posts.value.slice(idx + 1)]
     rememberLocalInsert({ kind: 'replaceParent', post: replyWithParent, parentId: pid })

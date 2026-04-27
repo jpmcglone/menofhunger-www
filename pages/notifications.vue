@@ -58,10 +58,12 @@
             :class="itemHref(item) ? 'cursor-pointer' : ''"
             :role="itemHref(item) ? 'link' : undefined"
             :tabindex="itemHref(item) ? 0 : undefined"
+            @click.capture="onNotificationInteractionCapture(item)"
+            @auxclick.capture="onNotificationInteractionCapture(item)"
             @click="onNotificationClick(item, $event)"
             @auxclick="onNotificationAuxClick(item, $event)"
-            @keydown.enter.prevent="itemHref(item) ? navigateTo(itemHref(item)!) : undefined"
-            @keydown.space.prevent="itemHref(item) ? navigateTo(itemHref(item)!) : undefined"
+            @keydown.enter.prevent="onNotificationKeydown(item)"
+            @keydown.space.prevent="onNotificationKeydown(item)"
           >
             <!-- Background anchor: aria-hidden so it's invisible to assistive tech and
                  tabindex="-1" so it's skipped by keyboard, but present in the DOM so
@@ -74,8 +76,15 @@
               aria-hidden="true"
             />
             <div class="relative z-[2]">
+              <AppPostRow
+                v-if="item.type === 'single' && item.notification.post"
+                :post="item.notification.post"
+                :clickable="false"
+                :highlight="stickyUnreadNotificationIds.has(item.notification.id)"
+                no-border-bottom
+              />
               <AppNotificationRow
-                v-if="item.type === 'single'"
+                v-else-if="item.type === 'single'"
                 :notification="item.notification"
                 :nudge-is-topmost="nudgeIsTopmostByIndex[idx] ?? false"
               />
@@ -148,11 +157,11 @@ const {
 
 const kindChips: { label: string; kind: NotificationKind | null }[] = [
   { label: 'All', kind: null },
+  { label: 'Replies', kind: 'comment' },
   { label: 'Mentions', kind: 'mention' },
-  { label: 'Comments', kind: 'comment' },
+  { label: 'Posts', kind: 'followed_post' },
   { label: 'Follows', kind: 'follow' },
   { label: 'Boosts', kind: 'boost' },
-  { label: 'New Posts', kind: 'followed_post' },
 ]
 
 const router = useRouter()
@@ -181,9 +190,25 @@ const {
 } = usePresence()
 const loadingMore = ref(false)
 const markingAllRead = ref(false)
+const stickyUnreadNotificationIds = ref<Set<string>>(new Set())
 // Show the full-page loader until the first fetch completes. After that, keep
 // existing data visible during background refreshes — never blank the list mid-flight.
 const showInitialLoader = computed(() => !hasFetched.value)
+
+watch(
+  notifications,
+  (items) => {
+    const next = new Set(stickyUnreadNotificationIds.value)
+    for (const item of items) {
+      if (item.type !== 'single') continue
+      if (!item.notification.post) continue
+      if (item.notification.readAt) continue
+      next.add(item.notification.id)
+    }
+    stickyUnreadNotificationIds.value = next
+  },
+  { immediate: true },
+)
 
 function chipHasUnseenNotifications(kind: NotificationKind | null): boolean {
   const key = kind ?? 'all'
@@ -319,6 +344,7 @@ async function onMarkAllRead() {
   try {
     await markAllRead()
     clearUnreadKind('all')
+    stickyUnreadNotificationIds.value = new Set()
     const now = new Date().toISOString()
     notifications.value = notifications.value.map((item) => {
       if (item.type === 'single') {
@@ -347,7 +373,21 @@ function isInteractiveTarget(target: EventTarget | null): boolean {
   if (!el) return false
   return Boolean(
     el.closest(
-      ['a', 'button', 'iframe', 'input', 'textarea', 'select', '[role="menu"]', '[role="menuitem"]', '[data-pc-section]'].join(','),
+      [
+        'a',
+        'button',
+        'iframe',
+        'video',
+        'audio',
+        'input',
+        'textarea',
+        'select',
+        '[role="button"]',
+        '[role="menu"]',
+        '[role="menuitem"]',
+        '[contenteditable="true"]',
+        '[data-pc-section]',
+      ].join(','),
     ),
   )
 }
@@ -367,12 +407,14 @@ function markItemReadOptimistic(item: (typeof notifications.value)[number]) {
   const now = new Date().toISOString()
   let id: string | null = null
   let unreadKind: NotificationKind | null = null
+  let changed = false
   notifications.value = notifications.value.map((curr) => {
-    if (curr !== item) return curr
     if (curr.type === 'single') {
+      if (item.type !== 'single' || curr.notification.id !== item.notification.id) return curr
       id = curr.notification.id
       if (curr.notification.readAt) return curr
       unreadKind = curr.notification.kind
+      changed = true
       return {
         ...curr,
         notification: {
@@ -383,24 +425,34 @@ function markItemReadOptimistic(item: (typeof notifications.value)[number]) {
       }
     }
     if (curr.type === 'group') {
+      if (item.type !== 'group' || curr.group.id !== item.group.id) return curr
       id = curr.group.id
       if (curr.group.readAt) return curr
       unreadKind = curr.group.kind
+      changed = true
       return {
         ...curr,
         group: { ...curr.group, readAt: now, deliveredAt: curr.group.deliveredAt ?? now },
       }
     }
+    if (item.type !== 'followed_posts_rollup' || curr.rollup.id !== item.rollup.id) return curr
     if (curr.rollup.readAt) return curr
     unreadKind = 'followed_post'
+    changed = true
     return {
       ...curr,
       rollup: { ...curr.rollup, readAt: now, deliveredAt: curr.rollup.deliveredAt ?? now },
     }
   })
-  decrementUnreadKind(unreadKind)
+  if (changed) decrementUnreadKind(unreadKind)
   if (id) void markReadById(id)
   closeBrowserNotificationsForHref(itemHref(item))
+}
+
+function onNotificationInteractionCapture(item: (typeof notifications.value)[number]) {
+  if (item.type !== 'single') return
+  if (!item.notification.post) return
+  markItemReadOptimistic(item)
 }
 
 function onNotificationClick(item: (typeof notifications.value)[number], e: MouseEvent) {
@@ -424,6 +476,13 @@ function onNotificationAuxClick(item: (typeof notifications.value)[number], e: M
   e.preventDefault()
   markItemReadOptimistic(item)
   window.open(href, '_blank')
+}
+
+function onNotificationKeydown(item: (typeof notifications.value)[number]) {
+  const href = itemHref(item)
+  if (!href) return
+  markItemReadOptimistic(item)
+  void navigateTo(href)
 }
 
 function kindFromQuery(): NotificationKind | null {

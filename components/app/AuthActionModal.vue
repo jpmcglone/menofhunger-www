@@ -21,7 +21,7 @@ const title = computed(() => {
   if (kind.value === 'premium') {
     if (action.value === 'article-boost') return 'Premium required to boost'
     if (action.value === 'article-react') return 'Premium required to react'
-    if (action.value === 'article-comment') return 'Premium required to comment'
+    if (action.value === 'article-comment') return 'Premium required to reply'
     return 'Premium required'
   }
   if (kind.value === 'verify') {
@@ -29,7 +29,7 @@ const title = computed(() => {
     if (action.value === 'poll') return 'Verify to vote'
     if (action.value === 'article-boost') return 'Verify to boost'
     if (action.value === 'article-react') return 'Verify to react'
-    if (action.value === 'article-comment') return 'Verify to comment'
+    if (action.value === 'article-comment') return 'Verify to reply'
     return 'Verify to reply'
   }
   if (kind.value === 'setUsername') return 'Set a username to boost'
@@ -39,7 +39,7 @@ const title = computed(() => {
 const message = computed(() => {
   if (kind.value === 'login') {
     if (action.value === 'post') return 'You need to log in to post.'
-    if (action.value === 'comment' || action.value === 'article-comment') return 'You need to log in to comment.'
+    if (action.value === 'comment' || action.value === 'article-comment') return 'You need to log in to reply.'
     if (action.value === 'bookmark') return 'You need to log in to save posts.'
     if (action.value === 'poll') return 'You need to log in to vote on polls.'
     if (action.value === 'article-boost') return 'You need to log in to boost this article.'
@@ -49,7 +49,7 @@ const message = computed(() => {
   if (kind.value === 'premium') {
     if (action.value === 'article-boost') return 'Boosting this article is for premium members. Upgrade to interact with premium content.'
     if (action.value === 'article-react') return 'Reacting to this article is for premium members. Upgrade to interact with premium content.'
-    if (action.value === 'article-comment') return 'Commenting on this article is for premium members. Upgrade to interact with premium content.'
+    if (action.value === 'article-comment') return 'Replying on this article is for premium members. Upgrade to interact with premium content.'
     return 'This content is for premium members. Upgrade to access.'
   }
   if (kind.value === 'verify') {
@@ -61,7 +61,7 @@ const message = computed(() => {
     }
     if (action.value === 'article-boost') return 'Boosting articles is for verified members. Verify your account to continue.'
     if (action.value === 'article-react') return 'Reacting to articles is for verified members. Verify your account to continue.'
-    if (action.value === 'article-comment') return 'Commenting on articles is for verified members. Verify your account to continue.'
+    if (action.value === 'article-comment') return 'Replying on articles is for verified members. Verify your account to continue.'
     return 'Replying is for verified members. Verify your account to reply.'
   }
   return "Boosting is available once you've set your username."

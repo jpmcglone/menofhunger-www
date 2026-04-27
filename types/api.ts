@@ -1187,6 +1187,8 @@ export type Notification = {
   title: string | null
   body: string | null
   subjectPostPreview?: SubjectPostPreview | null
+  /** Full post row payload for notifications that render as posts. */
+  post?: FeedPost | null
   /** When subject is an article (followed_article), article card preview. */
   subjectArticlePreview?: SubjectArticlePreview | null
   /** When subject is a post, its visibility (used for UI tinting). */
