@@ -236,9 +236,7 @@
                   class="transition-opacity duration-150"
                   :class="feedRefreshingOverlay ? 'opacity-60 pointer-events-none' : 'opacity-100'"
                 >
-                  <TransitionGroup
-                    name="media-grid"
-                    tag="div"
+                  <div
                     class="grid gap-0.5 bg-gray-200 dark:bg-zinc-800"
                     style="grid-template-columns: repeat(auto-fill, minmax(min(120px, 100%), 1fr))"
                   >
@@ -249,18 +247,27 @@
                       class="relative aspect-square overflow-hidden bg-gray-100 transition-opacity hover:opacity-90 dark:bg-zinc-900"
                     >
                       <img
-                        :src="item.kind === 'video' ? (item.thumbnailUrl ?? item.url) : item.url"
+                        :src="mediaTileSrc(item)"
                         :alt="item.alt || (item.kind === 'video' ? 'Video' : 'Photo')"
                         class="absolute inset-0 h-full w-full object-cover moh-img-outline"
                         loading="lazy"
+                        decoding="async"
+                        fetchpriority="low"
+                        sizes="(min-width: 1024px) 160px, (min-width: 640px) 25vw, 33vw"
                       />
                       <div v-if="item.kind === 'video'" class="absolute inset-0 flex items-center justify-center">
                         <div class="rounded-full bg-black/50 p-2">
                           <Icon name="tabler:player-play-filled" class="text-lg text-white" aria-hidden="true" />
                         </div>
                       </div>
+                      <div
+                        v-else-if="item.kind === 'gif'"
+                        class="absolute bottom-1.5 right-1.5 rounded bg-black/65 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white"
+                      >
+                        GIF
+                      </div>
                     </NuxtLink>
-                  </TransitionGroup>
+                  </div>
                 </div>
                 <p
                   v-if="initialFeedResolved && !loading && homeMediaItems.length === 0"
@@ -579,6 +586,10 @@ function collectHomeMediaItem(post: FeedPost, media: PostMedia): HomeMediaItem |
     thumbnailUrl: (media.thumbnailUrl ?? '').trim() || null,
     alt: media.alt ?? null,
   }
+}
+
+function mediaTileSrc(item: HomeMediaItem): string {
+  return item.thumbnailUrl || item.url
 }
 
 const homeMediaItems = computed<HomeMediaItem[]>(() => {

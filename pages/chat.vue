@@ -63,6 +63,7 @@
             @open-blocks="navigateTo('/settings/blocked')"
             @load-more="loadMoreConversations"
             @search-query="handleConversationSearchQuery"
+            @presence-visible="onConversationRowPresenceVisible"
           />
 
           <!-- Right column: chat for selected thread (edge-to-edge column, consistent content margins) -->
@@ -230,6 +231,7 @@
               @touchmove.passive="markUserScrollIntent"
             >
               <ChatMessageList
+                ref="chatMessageListRef"
                 :messages-ready="messagesReady"
                 :messages-loading="messagesLoading"
                 :messages-next-cursor="messagesNextCursor"
@@ -247,12 +249,12 @@
                 :animate-rows="animateMessageList"
                 :is-group-chat="isGroupChat"
                 :me-id="me?.id ?? null"
+                :scroller-el="messagesScroller"
                 :format-message-time="formatMessageTime"
                 :format-message-time-full="formatMessageTimeFull"
                 :bubble-shape-class="bubbleShapeClass"
                 :bubble-class="bubbleClass"
                 :register-divider-el="registerDividerEl"
-                :register-bubble-el="registerBubbleEl"
                 :should-show-incoming-avatar="shouldShowIncomingAvatar"
                 :go-to-profile="goToProfile"
                 :available-reactions="availableReactions"
@@ -471,6 +473,7 @@ import { useChatTimeFormatting } from '~/composables/chat/useChatTimeFormatting'
 import { useChatTyping } from '~/composables/chat/useChatTyping'
 import { useChatScroll } from '~/composables/chat/useChatScroll'
 import { useChatRealtime } from '~/composables/chat/useChatRealtime'
+import { useRefcountedInterest } from '~/composables/chat/useRefcountedInterest'
 import ChatConversationList from '~/components/app/chat/ChatConversationList.vue'
 import ChatMessageList from '~/components/app/chat/ChatMessageList.vue'
 import ChatMessageInfoModal from '~/components/app/chat/ChatMessageInfoModal.vue'
@@ -564,10 +567,18 @@ const activeTab = ref<'primary' | 'requests'>('primary')
 type MessageTone = UserColorTier
 type MessageConversationWithTone = MessageConversation & { unreadTone?: MessageTone }
 
-const conversations = ref<{ primary: MessageConversationWithTone[]; requests: MessageConversationWithTone[] }>({
+// `shallowRef` so deep-reactive proxying doesn't walk every conversation /
+// participant / lastMessage on first paint. Mutations call `commitConversations()`
+// (which delegates to `triggerRef`) — full-tab replacements reassign `.value`
+// to a fresh wrapper object so the shallowRef triggers naturally.
+const conversations = shallowRef<{ primary: MessageConversationWithTone[]; requests: MessageConversationWithTone[] }>({
   primary: [],
   requests: [],
 })
+
+function commitConversations() {
+  triggerRef(conversations)
+}
 const nextCursorByTab = ref<{ primary: string | null; requests: string | null }>({ primary: null, requests: null })
 const listLoadingByTab = ref<{ primary: boolean; requests: boolean }>({ primary: false, requests: false })
 const loadingMore = ref(false)
@@ -582,7 +593,25 @@ const selectedConversation = computed(() =>
 const isDraftChat = computed(() => selectedChatKey.value === 'draft')
 
 type ChatMessage = Message & { __clientKey?: string }
-const messages = ref<ChatMessage[]>([])
+// `shallowRef` so deep-reactive tracking doesn't walk every message body /
+// reaction / reactor on first paint. Mutations to individual rows go through
+// `mutateMessageAt` (or full-array reassignment) which calls `triggerRef` so
+// downstream computeds (`messagesWithDividers`, `latestMyMessageId`, …) stay
+// in sync.
+const messages = shallowRef<ChatMessage[]>([])
+
+/**
+ * Replace the message at `idx` with a new object and notify dependents.
+ * Returns true when the index was in-bounds. Used by reaction toggles, edits,
+ * deletes — anywhere we mutate exactly one row.
+ */
+function mutateMessageAt(idx: number, next: ChatMessage): boolean {
+  const arr = messages.value
+  if (idx < 0 || idx >= arr.length) return false
+  arr[idx] = next
+  triggerRef(messages)
+  return true
+}
 const { buildMessagesWithDividers, formatListTime, formatMessageTime, formatMessageTimeFull } = useChatTimeFormatting()
 const messagesWithDividers = computed(() => buildMessagesWithDividers(messages.value))
 const stickyDividerLabel = ref<string | null>(null)
@@ -613,6 +642,11 @@ const composerUser = computed(() =>
     : null,
 )
 const messagesScroller = ref<HTMLElement | null>(null)
+// Exposed by ChatMessageList — `scrollToMessageId(id, { align })` brings a
+// virtualized off-screen row into the viewport. We need this for jump-to-reply
+// because querying `[data-message-id="..."]` on the scroller no longer works
+// (the off-screen row hasn't been mounted yet).
+const chatMessageListRef = ref<{ scrollToMessageId: (id: string, opts?: { align?: 'start' | 'center' | 'end' | 'auto' }) => boolean } | null>(null)
 const dmComposerRef = ref<{ focus?: () => void; getMedia?: () => import('~/composables/composer/types').CreateMediaPayload[]; clearMedia?: () => void } | null>(null)
 const messagesReady = ref(false)
 const animateMessageList = ref(true)
@@ -678,9 +712,21 @@ const pendingNewTier = computed((): MessageTone => {
   return getConversationLastMessageTier(conversation)
 })
 
-// Track recently-added messages so we can animate them reliably (even if scroll-to-bottom happens same frame).
-const recentAnimatedMessageIds = ref<Set<string>>(new Set())
+// Track recently-added messages so we can animate them reliably (even if
+// scroll-to-bottom happens same frame). `shallowRef` + `triggerRef` so a
+// burst of N incoming messages collapses into ONE reactive write per tick
+// instead of N Set clones + N ref reassignments.
+const recentAnimatedMessageIds = shallowRef<Set<string>>(new Set())
 const recentAnimatedTimers = new Map<string, ReturnType<typeof setTimeout>>()
+let _animatedFlushScheduled = false
+function flushAnimatedSet() {
+  if (_animatedFlushScheduled) return
+  _animatedFlushScheduled = true
+  void nextTick(() => {
+    _animatedFlushScheduled = false
+    triggerRef(recentAnimatedMessageIds)
+  })
+}
 const sendingMessageIds = ref<Set<string>>(new Set())
 const latestMyMessageId = computed<string | null>(() => {
   const myId = me.value?.id ?? null
@@ -710,7 +756,15 @@ function replaceOptimisticAtIndex(list: ChatMessage[], idx: number, serverMsg: M
 /**
  * Update a conversation row in both tab lists.
  * Returns true if the conversation was found in at least one tab.
- * Pass `moveToTop: true` to splice it to the front (e.g. when a new message arrives).
+ *
+ * In-place when possible:
+ *   - When the row stays in the same position, write to `arr[idx]` directly.
+ *   - When `moveToTop: true` AND idx !== 0, splice in place rather than
+ *     allocating a fresh full-length array.
+ *
+ * Avoiding the full-array re-allocation removes the per-incoming-message
+ * O(n) write amplification that used to invalidate every conversation-list
+ * derived computed (requestsBadgeCount, displayList) on every socket event.
  */
 function patchConversation(
   conversationId: string,
@@ -719,19 +773,20 @@ function patchConversation(
 ): boolean {
   let found = false
   for (const tab of ['primary', 'requests'] as const) {
-    const idx = conversations.value[tab].findIndex((c) => c.id === conversationId)
+    const arr = conversations.value[tab]
+    const idx = arr.findIndex((c) => c.id === conversationId)
     if (idx === -1) continue
-    const next = [...conversations.value[tab]]
-    const updated = updater(next[idx]!)
-    if (opts?.moveToTop) {
-      next.splice(idx, 1)
-      next.unshift(updated)
+    const updated = updater(arr[idx]!)
+    if (opts?.moveToTop && idx !== 0) {
+      arr.splice(idx, 1)
+      arr.unshift(updated)
     } else {
-      next[idx] = updated
+      arr[idx] = updated
     }
-    conversations.value[tab] = next
     found = true
   }
+  // shallowRef won't see in-place array mutations; trigger explicitly.
+  if (found) commitConversations()
   return found
 }
 
@@ -794,20 +849,18 @@ function mergeServerMessageIntoOptimistic(localId: string, serverMsg: Message): 
 function markMessageAnimated(id: string) {
   const mid = (id ?? '').trim()
   if (!mid) return
-  const next = new Set(recentAnimatedMessageIds.value)
-  next.add(mid)
-  recentAnimatedMessageIds.value = next
+  recentAnimatedMessageIds.value.add(mid)
+  flushAnimatedSet()
   const existing = recentAnimatedTimers.get(mid)
   if (existing) clearTimeout(existing)
   recentAnimatedTimers.set(mid, setTimeout(() => {
-    const n = new Set(recentAnimatedMessageIds.value)
-    n.delete(mid)
-    recentAnimatedMessageIds.value = n
+    recentAnimatedMessageIds.value.delete(mid)
     recentAnimatedTimers.delete(mid)
+    flushAnimatedSet()
   }, 420))
 }
 
-const { bubbleShapeClass, registerBubbleEl } = useChatBubbleShape()
+const { bubbleShapeClass } = useChatBubbleShape()
 
 const {
   resetTyping,
@@ -1038,16 +1091,36 @@ onBeforeUnmount(() => {
     scrollPillRo.disconnect()
     scrollPillRo = null
   }
+  if (_stickyRafHandle !== null) {
+    cancelAnimationFrame(_stickyRafHandle)
+    _stickyRafHandle = null
+  }
 })
+
+// Throttle viewer-side mark-read so a burst of incoming messages while the
+// chat is open doesn't fire one POST per arrival (each of which fans out a
+// `messages:read` broadcast to every participant + a `messages:updated`
+// emit back to the viewer). The optimistic `updateConversationUnread(id, 0)`
+// keeps the UI correct between the throttled HTTP calls.
+const MARK_READ_THROTTLE_MS = 250
+const lastMarkReadAtByConvoId = new Map<string, number>()
 
 function markSelectedConversationReadIfVisible(conversationId: string) {
   const id = (conversationId ?? '').trim()
   if (!id) return
   if (typeof document === 'undefined' || document.visibilityState !== 'visible') return
+
+  // Always patch the local count to zero — cheap and keeps the badge in sync.
+  updateConversationUnread(id, 0)
+
+  const now = Date.now()
+  const lastAt = lastMarkReadAtByConvoId.get(id) ?? 0
+  if (now - lastAt < MARK_READ_THROTTLE_MS) return
+  lastMarkReadAtByConvoId.set(id, now)
+
   void apiFetch(`/messages/conversations/${id}/mark-read`, { method: 'POST' }).catch(() => {
     // Non-fatal: badge will eventually sync from server.
   })
-  updateConversationUnread(id, 0)
 }
 
 function getMessageTier(message: Message): MessageTone {
@@ -1060,9 +1133,16 @@ function onMessagesScroll() {
   scrollEventHandler({ hadPending })
 }
 
-watch(messages, () => {
-  void nextTick().then(() => updateStickyDivider())
-})
+// NOTE: We intentionally do NOT `watch(messages, …) → updateStickyDivider()`.
+// Reading `el.offsetTop` on every divider after every messages mutation forces
+// a layout per burst event, and combined with the bubble-shape and bottom-
+// anchor ResizeObservers it produced a measurable layout-thrash loop on chats
+// with many messages. The sticky divider is fully maintained by:
+//   - `onMessagesScroll` (every scroll tick),
+//   - `loadOlderMessages` (one-shot after older messages prepend),
+//   - `onMessagesScrollerMounted` (when the scroller first attaches).
+// New incoming messages while at-bottom auto-scroll, which fires the scroll
+// handler and refreshes the divider for free.
 
 function onPendingButtonClick() {
   // Eagerly mark at-bottom so the pending button disappears before the smooth scroll completes.
@@ -1095,7 +1175,11 @@ function registerDividerEl(dayKey: string, label: string, el: unknown) {
   dividerEls.set(dayKey, { label, el })
 }
 
-function updateStickyDivider() {
+// Coalesce all updateStickyDivider triggers into a single rAF read so we
+// don't force a fresh layout on every scroll / mutation / observer fire.
+let _stickyRafHandle: number | null = null
+function performStickyDividerRead() {
+  _stickyRafHandle = null
   if (!import.meta.client) return
   const scroller = messagesScroller.value
   if (!scroller) return
@@ -1108,6 +1192,12 @@ function updateStickyDivider() {
     }
   }
   stickyDividerLabel.value = active?.label ?? null
+}
+
+function updateStickyDivider() {
+  if (!import.meta.client) return
+  if (_stickyRafHandle !== null) return
+  _stickyRafHandle = requestAnimationFrame(performStickyDividerRead)
 }
 
 function getDirectUser(conversation: MessageConversation) {
@@ -1214,8 +1304,12 @@ async function fetchConversations(tab: 'primary' | 'requests', opts?: { cursor?:
       query: { tab, cursor: cursor || undefined },
     })
     const list = res.data ?? []
-    if (cursor) conversations.value[tab] = [...conversations.value[tab], ...list]
-    else conversations.value[tab] = list
+    // shallowRef won't trigger on `.value.primary = ...` — reassign the whole
+    // wrapper to a fresh object instead, which IS a `.value` write.
+    conversations.value = {
+      ...conversations.value,
+      [tab]: cursor ? [...conversations.value[tab], ...list] : list,
+    }
     nextCursorByTab.value = { ...nextCursorByTab.value, [tab]: res.pagination?.nextCursor ?? null }
   } finally {
     listLoadingByTab.value = { ...listLoadingByTab.value, [tab]: false }
@@ -1417,19 +1511,38 @@ async function loadNewerMessages() {
   }
 }
 
-/** Scroll the scroller to the jump-target message row and briefly highlight it. */
+/**
+ * Scroll the scroller to the jump-target message row and briefly highlight it.
+ *
+ * With the virtualized message list, the off-screen target row may not exist
+ * in the DOM yet, so we delegate to the virtualizer's `scrollToIndex` (via
+ * `chatMessageListRef.scrollToMessageId`). The virtualizer will mount the
+ * target row, after which the parent's scroll-position helpers stay accurate.
+ *
+ * Falls back to a direct DOM lookup when the ref isn't ready (defensive — the
+ * old non-virtualized rendering still worked that way).
+ */
 function scrollToJumpTarget() {
   const targetId = jumpTargetMessageId.value
   if (!targetId || !messagesScroller.value) return
-  const el = messagesScroller.value.querySelector<HTMLElement>(`[data-message-id="${targetId}"]`)
-  if (!el) return
-  // Scroll the element into the center of the viewport.
-  const scrollerRect = messagesScroller.value.getBoundingClientRect()
-  const elRect = el.getBoundingClientRect()
-  const offset = elRect.top - scrollerRect.top - scrollerRect.height / 2 + elRect.height / 2
-  messagesScroller.value.scrollTop += offset
-  refreshAtBottomFromScroller()
-  updateScrollPill()
+
+  const used = chatMessageListRef.value?.scrollToMessageId(targetId, { align: 'center' }) ?? false
+  if (!used) {
+    const el = messagesScroller.value.querySelector<HTMLElement>(`[data-message-id="${targetId}"]`)
+    if (!el) return
+    const scrollerRect = messagesScroller.value.getBoundingClientRect()
+    const elRect = el.getBoundingClientRect()
+    const offset = elRect.top - scrollerRect.top - scrollerRect.height / 2 + elRect.height / 2
+    messagesScroller.value.scrollTop += offset
+  }
+
+  // The virtualizer scrolls asynchronously (it may need a frame to mount the
+  // target row). Wait one frame before refreshing scroll-anchor state so the
+  // `atBottom` signal stays accurate.
+  void nextTick().then(() => {
+    refreshAtBottomFromScroller()
+    updateScrollPill()
+  })
   // Clear the highlight after 2.5s so the flash is visible but not permanent.
   if (jumpHighlightTimer) clearTimeout(jumpHighlightTimer)
   jumpHighlightTimer = setTimeout(() => {
@@ -1685,11 +1798,7 @@ async function handleReact(message: Message, reactionId: string) {
         }
       }
     }
-    messages.value = [
-      ...messages.value.slice(0, idx),
-      { ...msg, reactions },
-      ...messages.value.slice(idx + 1),
-    ]
+    mutateMessageAt(idx, { ...msg, reactions })
   }
 
   try {
@@ -1707,26 +1816,14 @@ async function handleDeleteForMe(message: Message) {
   const conversationId = message.conversationId
   const idx = messages.value.findIndex((m) => m.id === message.id)
   if (idx !== -1) {
-    const msg = messages.value[idx]!
-    messages.value = [
-      ...messages.value.slice(0, idx),
-      { ...msg, deletedForMe: true },
-      ...messages.value.slice(idx + 1),
-    ]
+    mutateMessageAt(idx, { ...messages.value[idx]!, deletedForMe: true })
   }
   try {
     await apiFetch(`/messages/conversations/${conversationId}/messages/${message.id}`, { method: 'DELETE' })
   } catch {
-    // Revert on failure
     if (idx !== -1) {
       const msg = messages.value[idx]
-      if (msg) {
-        messages.value = [
-          ...messages.value.slice(0, idx),
-          { ...msg, deletedForMe: false },
-          ...messages.value.slice(idx + 1),
-        ]
-      }
+      if (msg) mutateMessageAt(idx, { ...msg, deletedForMe: false })
     }
   }
 }
@@ -1735,26 +1832,14 @@ async function handleRestore(message: Message) {
   const conversationId = message.conversationId
   const idx = messages.value.findIndex((m) => m.id === message.id)
   if (idx !== -1) {
-    const msg = messages.value[idx]!
-    messages.value = [
-      ...messages.value.slice(0, idx),
-      { ...msg, deletedForMe: false },
-      ...messages.value.slice(idx + 1),
-    ]
+    mutateMessageAt(idx, { ...messages.value[idx]!, deletedForMe: false })
   }
   try {
     await apiFetch(`/messages/conversations/${conversationId}/messages/${message.id}/restore`, { method: 'POST' })
   } catch {
-    // Revert on failure
     if (idx !== -1) {
       const msg = messages.value[idx]
-      if (msg) {
-        messages.value = [
-          ...messages.value.slice(0, idx),
-          { ...msg, deletedForMe: true },
-          ...messages.value.slice(idx + 1),
-        ]
-      }
+      if (msg) mutateMessageAt(idx, { ...msg, deletedForMe: true })
     }
   }
 }
@@ -1778,11 +1863,7 @@ async function handleEditSubmit() {
   const idx = messages.value.findIndex((m) => m.id === msg.id)
   const originalBody = msg.body
   if (idx !== -1) {
-    messages.value = [
-      ...messages.value.slice(0, idx),
-      { ...messages.value[idx]!, body, editedAt: new Date().toISOString() },
-      ...messages.value.slice(idx + 1),
-    ]
+    mutateMessageAt(idx, { ...messages.value[idx]!, body, editedAt: new Date().toISOString() })
   }
   composerText.value = ''
   editingMessage.value = null
@@ -1793,15 +1874,10 @@ async function handleEditSubmit() {
       body: { body },
     })
   } catch {
-    // Revert on failure
     if (idx !== -1) {
       const current = messages.value[idx]
       if (current) {
-        messages.value = [
-          ...messages.value.slice(0, idx),
-          { ...current, body: originalBody, editedAt: msg.editedAt },
-          ...messages.value.slice(idx + 1),
-        ]
+        mutateMessageAt(idx, { ...current, body: originalBody, editedAt: msg.editedAt })
       }
     }
     composerText.value = body
@@ -1813,25 +1889,14 @@ async function handleDeleteForAll(message: Message) {
   const conversationId = message.conversationId
   const idx = messages.value.findIndex((m) => m.id === message.id)
   if (idx !== -1) {
-    messages.value = [
-      ...messages.value.slice(0, idx),
-      { ...messages.value[idx]!, deletedForAll: true, body: '' },
-      ...messages.value.slice(idx + 1),
-    ]
+    mutateMessageAt(idx, { ...messages.value[idx]!, deletedForAll: true, body: '' })
   }
   try {
     await apiFetch(`/messages/conversations/${conversationId}/messages/${message.id}/all`, { method: 'DELETE' })
   } catch {
-    // Revert on failure
     if (idx !== -1) {
       const msg = messages.value[idx]
-      if (msg) {
-        messages.value = [
-          ...messages.value.slice(0, idx),
-          { ...msg, deletedForAll: false, body: message.body },
-          ...messages.value.slice(idx + 1),
-        ]
-      }
+      if (msg) mutateMessageAt(idx, { ...msg, deletedForAll: false, body: message.body })
     }
   }
 }
@@ -1891,10 +1956,15 @@ async function toggleMuteConversation() {
 }
 
 function removeConversationFromList(conversationId: string) {
+  let removed = false
   for (const tab of ['primary', 'requests'] as const) {
     const idx = conversations.value[tab].findIndex((c) => c.id === conversationId)
-    if (idx !== -1) conversations.value[tab].splice(idx, 1)
+    if (idx !== -1) {
+      conversations.value[tab].splice(idx, 1)
+      removed = true
+    }
   }
+  if (removed) commitConversations()
 }
 
 async function deleteSelectedConversation() {
@@ -2067,36 +2137,27 @@ async function blockDirectUser() {
   await clearSelection({ replace: true })
 }
 
-const presenceInterestIds = computed(() => {
-  const ids = new Set<string>()
-  for (const list of [conversations.value.primary, conversations.value.requests]) {
-    for (const convo of list) {
-      if (convo.type !== 'direct') continue
-      const other = getDirectUser(convo)
-      if (other?.id) ids.add(other.id)
-    }
-  }
-  return [...ids]
+// --- Viewport-gated presence subscription -----------------------------------
+//
+// Previously this page eagerly built a `presenceInterestIds` set from EVERY
+// direct conversation the user had and `addInterest`-d all of them on first
+// paint. With ~80+ chat partners that meant a socket-subscribe storm + an
+// HTTP fan-out (presence-server resolves online/lastSeen) before the first
+// pixel was even interactive — one of the freezing causes.
+//
+// Now `ChatConversationList` emits `presence-visible(userId, visible)` from
+// its `useViewportIdsObserver`, and we feed those events into a refcount +
+// per-frame coalesced flush via `useRefcountedInterest`. The composable
+// owns: dedupe (same userId across multiple convos), 0↔1 edge detection,
+// per-frame batching of add/remove, and final teardown on unmount.
+const presenceInterest = useRefcountedInterest({
+  add: (ids) => addInterest(ids),
+  remove: (ids) => removeInterest(ids),
 })
 
-const presenceAddedIds = ref<Set<string>>(new Set())
-watch(
-  presenceInterestIds,
-  (newIds) => {
-    const added = presenceAddedIds.value
-    const toRemove = [...added].filter((id) => !newIds.includes(id))
-    const toAdd = newIds.filter((id) => !added.has(id))
-    if (toRemove.length) {
-      removeInterest(toRemove)
-      toRemove.forEach((id) => added.delete(id))
-    }
-    if (toAdd.length) {
-      addInterest(toAdd)
-      toAdd.forEach((id) => added.add(id))
-    }
-  },
-  { immediate: true },
-)
+function onConversationRowPresenceVisible(userId: string, visible: boolean) {
+  presenceInterest.setVisible(userId, visible)
+}
 
 const meId = computed(() => me.value?.id ?? null)
 
@@ -2127,8 +2188,10 @@ const { register: registerRealtime, teardown: teardownRealtime } = useChatRealti
       const isIncoming = msg.sender.id !== me.value?.id
       if (typeof document !== 'undefined' && document.visibilityState === 'visible' && shouldStick) {
         if (isIncoming) suppressMessageUnreadBumpsForMs(900)
-        void apiFetch(`/messages/conversations/${msg.conversationId}/mark-read`, { method: 'POST' })
-        updateConversationUnread(msg.conversationId, 0)
+        // Routes through the throttled helper: bursts of incoming messages
+        // collapse to one POST per 250ms per conversation; the optimistic
+        // local zeroing keeps the badge accurate in between.
+        markSelectedConversationReadIfVisible(msg.conversationId)
       }
     },
 
@@ -2137,11 +2200,7 @@ const { register: registerRealtime, teardown: teardownRealtime } = useChatRealti
       const idx = messages.value.findIndex((m) => m.id === msg.id)
       if (idx !== -1) {
         const existing = messages.value[idx]!
-        messages.value = [
-          ...messages.value.slice(0, idx),
-          { ...existing, reactions: msg.reactions ?? [] },
-          ...messages.value.slice(idx + 1),
-        ]
+        mutateMessageAt(idx, { ...existing, reactions: msg.reactions ?? [] })
       }
       if (infoMessage.value?.id === msg.id) {
         infoMessage.value = { ...infoMessage.value, reactions: msg.reactions ?? [] }
@@ -2152,11 +2211,7 @@ const { register: registerRealtime, teardown: teardownRealtime } = useChatRealti
       if (!isSelected) return
       const idx = messages.value.findIndex((m) => m.id === msg.id)
       if (idx !== -1) {
-        messages.value = [
-          ...messages.value.slice(0, idx),
-          { ...messages.value[idx]!, body: msg.body, editedAt: msg.editedAt ?? null },
-          ...messages.value.slice(idx + 1),
-        ]
+        mutateMessageAt(idx, { ...messages.value[idx]!, body: msg.body, editedAt: msg.editedAt ?? null })
       }
       if (infoMessage.value?.id === msg.id) {
         infoMessage.value = { ...infoMessage.value, body: msg.body, editedAt: msg.editedAt ?? null }
@@ -2167,11 +2222,7 @@ const { register: registerRealtime, teardown: teardownRealtime } = useChatRealti
       if (isSelected) {
         const idx = messages.value.findIndex((m) => m.id === messageId)
         if (idx !== -1) {
-          messages.value = [
-            ...messages.value.slice(0, idx),
-            { ...messages.value[idx]!, deletedForAll: true, body: '' },
-            ...messages.value.slice(idx + 1),
-          ]
+          mutateMessageAt(idx, { ...messages.value[idx]!, deletedForAll: true, body: '' })
         }
       }
 
@@ -2240,6 +2291,11 @@ onMounted(() => {
     }
     revealChatScreenAfterFade()
 
+    // Presence subscriptions are now driven by ChatConversationList's
+    // IntersectionObserver — rows in the viewport call addInterest, rows that
+    // scroll out call removeInterest. There's no eager bulk seed here anymore.
+    // (See `onConversationRowPresenceVisible` / `flushPresenceDelta`.)
+
     // Fetch requests tab after revealing so the screen appears quickly.
     await fetchConversations('requests', { forceRefresh: true }).catch(() => { /* ignore */ })
 
@@ -2262,6 +2318,8 @@ onBeforeUnmount(() => {
   if (searchDebounceTimer) { clearTimeout(searchDebounceTimer); searchDebounceTimer = null }
   if (jumpHighlightTimer) { clearTimeout(jumpHighlightTimer); jumpHighlightTimer = null }
   teardownRealtime()
+  // `presenceInterest` cleans itself up via its own `onBeforeUnmount` hook
+  // (see `useRefcountedInterest`).
   emitMessagesScreen(false)
   for (const t of recentAnimatedTimers.values()) clearTimeout(t)
   recentAnimatedTimers.clear()

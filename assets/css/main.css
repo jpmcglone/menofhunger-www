@@ -912,6 +912,11 @@ input[type="reset"] {
   .moh-chat-item-enter {
     animation: none;
   }
+  .moh-chat-row-enter-active,
+  .moh-chat-row-leave-active,
+  .moh-chat-row-move {
+    transition: none !important;
+  }
 }
 
 /* Tooltips are rendered to <body> but need to clear full-screen overlays (z-9999) */

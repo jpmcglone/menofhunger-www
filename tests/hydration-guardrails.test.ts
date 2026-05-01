@@ -84,5 +84,102 @@ describe('hydration guardrails (structural)', () => {
     // heroResolved itself must require both `hydrated` AND a known checkin state (or unauth viewer).
     expect(home).toMatch(/const heroResolved = computed\(\(\) => {[\s\S]*?if \(!hydrated\.value\) return false[\s\S]*?if \(!isAuthed\.value\) return true[\s\S]*?return checkinState\.value !== null/)
   })
+
+  // ---- Chat performance guardrails (Phase 2 of the freeze fix) -------------
+  //
+  // Together these assertions encode the invariants that keep the chat page
+  // from freezing under realistic loads. Removing any of them without a
+  // replacement is a regression — the fix is to update the relevant rule, not
+  // the test.
+
+  it('virtualizes the chat message list (no full DOM tree per message)', () => {
+    const list = readFromRepo('components/app/chat/ChatMessageList.vue')
+    expect(list).toMatch(/from '@tanstack\/vue-virtual'/)
+    expect(list).toMatch(/useVirtualizer\(/)
+    // The virtualizer needs a scroll container handle; the parent passes the
+    // messagesScroller down explicitly.
+    expect(list).toMatch(/scrollerEl/)
+    // We rely on dynamic measurement, not hard-coded row heights.
+    expect(list).toMatch(/measureElement/)
+  })
+
+  it('does not wrap the virtualized message list in TransitionGroup', () => {
+    // A `TransitionGroup` around virtualized rows tracks every row for
+    // enter/leave/move animations and defeats the whole point of windowing.
+    const list = readFromRepo('components/app/chat/ChatMessageList.vue')
+    expect(list).not.toMatch(/<TransitionGroup/)
+  })
+
+  it('uses a static CSS bubble-shape heuristic (no ResizeObserver per bubble)', () => {
+    const shape = readFromRepo('composables/chat/useChatBubbleShape.ts')
+    // The composable explains its history in a JSDoc comment, so we look for
+    // actual *usage* rather than any mention.
+    expect(shape).not.toMatch(/new ResizeObserver/)
+    expect(shape).not.toMatch(/\.getBoundingClientRect\(\)/)
+    // The heuristic is a pure exported function (testable without a Vue
+    // setup context) — see `tests/chat/pick-bubble-shape.test.ts`.
+    expect(shape).toMatch(/export function pickBubbleShape\(message: Message\)/)
+    expect(shape).toMatch(/export function bubbleShapeClass\(message: Message\)/)
+  })
+
+  it('does not eagerly subscribe presence interest for the entire conversation list', () => {
+    const chat = readFromRepo('pages/chat.vue')
+    // The old eager-subscribe machinery is gone:
+    expect(chat).not.toMatch(/const presenceInterestIds = computed/)
+    expect(chat).not.toMatch(/syncPresenceInterests\(/)
+    // The new viewport-driven subscription delegates to
+    // `useRefcountedInterest`, which owns the refcount + per-frame
+    // coalesced flush + teardown (and is unit-tested in isolation).
+    expect(chat).toMatch(/useRefcountedInterest\(/)
+    expect(chat).toMatch(/onConversationRowPresenceVisible/)
+  })
+
+  it('creates the conversation-row IntersectionObserver eagerly, not in onMounted', () => {
+    // Vue invokes `:ref` function callbacks during the patch phase, BEFORE
+    // `onMounted` fires. If the observer were created in onMounted the very
+    // first batch of rows would mount, fire their refs against a null
+    // observer, and never get observed (stable function refs don't re-fire
+    // on subsequent renders) — silently breaking presence subscriptions.
+    // We avoid that by extracting the IO bookkeeping into
+    // `useViewportIdsObserver`, which constructs the observer in `setup`.
+    const list = readFromRepo('components/app/chat/ChatConversationList.vue')
+    expect(list).toMatch(/useViewportIdsObserver\(/)
+    expect(list).not.toMatch(/new IntersectionObserver/)
+    const tracker = readFromRepo('composables/chat/useViewportIdsObserver.ts')
+    expect(tracker).toMatch(/new IntersectionObserver/)
+    // The observer must be created at module-setup time (synchronously),
+    // not lazily inside onMounted.
+    expect(tracker).not.toMatch(/onMounted\([^)]*new IntersectionObserver/)
+  })
+
+  it('keys chat conversation rows by stable conversation id and animates reorder (TransitionGroup)', () => {
+    const list = readFromRepo('components/app/chat/ChatConversationList.vue')
+    expect(list).toMatch(/<TransitionGroup/)
+    expect(list).toMatch(/name="moh-chat-row"/)
+    // Stable key — list order changes constantly; `:key="c.id"` is what lets
+    // Vue reuse row instances and TransitionGroup FLIP-move them.
+    expect(list).toMatch(/:key="c\.id"/)
+    expect(list).not.toMatch(/:key="index"/)
+    expect(list).not.toMatch(/:key="i\b/)
+  })
+
+  it('uses shallowRef for the chat conversations + messages stores', () => {
+    // Deep reactivity over message bodies, sender chains, and reactions was
+    // walking 100s of objects on every patch. shallowRef + manual triggerRef
+    // keeps the reactive footprint to the wrapper only.
+    const chat = readFromRepo('pages/chat.vue')
+    expect(chat).toMatch(/const conversations = shallowRef</)
+    expect(chat).toMatch(/const messages = shallowRef</)
+    expect(chat).toMatch(/triggerRef\(conversations\)/)
+    expect(chat).toMatch(/triggerRef\(messages\)/)
+  })
+
+  it('viewport-gates the rich body side effects (link metadata, mentions, embeds)', () => {
+    const body = readFromRepo('components/app/chat/ChatMessageRichBody.vue')
+    // useElementVisibility + an `everVisible` latch are both required so a
+    // 500-message thread doesn't fan out 500 metadata requests on first paint.
+    expect(body).toMatch(/useElementVisibility/)
+    expect(body).toMatch(/everVisible/)
+  })
 })
 

@@ -4,14 +4,18 @@
  * Shared via useState — one cache for the whole session. No size cap; usernames are tiny.
  *
  * Ways a username enters the cache:
- *   1. Background validation via /users/:username/preview triggered by @mention in chat.
+ *   1. Background validation triggered by @mention in chat. Lookups are
+ *      coalesced into a single POST /users/preview/batch per animation frame
+ *      so a chat with 50 messages full of @mentions costs ONE request, not 50.
  *   2. markValid() called by the hover-preview popover (full tier data available).
  *   3. markValid() called by any profile-page or search-result load.
  */
 
 import { userColorTier, type UserColorTier, type UserTierLike } from '~/utils/user-tier'
+import type { UserPreviewBatchEntry } from '~/types/api'
 
 const MENTION_RE = /@([a-zA-Z0-9_]+)/g
+const BATCH_MAX = 50
 
 type TierLike = UserTierLike
 
@@ -22,11 +26,17 @@ type TierLike = UserTierLike
 // in every mounted ChatMessageRichBody — causing O(messages × mentions) re-renders
 // that freeze the browser.
 //
-// Instead we accumulate updates here and flush them all in a single nextTick,
-// collapsing the cascade to ONE re-render wave regardless of how many lookups land.
+// We accumulate updates in two places:
+//   1. _pendingLookups — usernames we still need to ask the server about. Flushed
+//      as ONE batch request per animation frame.
+//   2. _pendingValid / _pendingTier — resolved data waiting to land in the
+//      reactive caches. Flushed as ONE reactive write per nextTick.
 const _pendingValid = new Set<string>()
 const _pendingTier = new Map<string, UserColorTier>()
-let _flushScheduled = false
+let _flushReactiveScheduled = false
+
+const _pendingLookups = new Set<string>()
+let _lookupFlushScheduled = false
 
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -38,17 +48,15 @@ export function useValidatedChatUsernames() {
   // Negative cache: confirmed not found. Prevents re-fetching 404s.
   const invalidSet = useState<Set<string>>('chat-invalid-usernames', () => new Set())
   // In-flight lookups — deduplicate concurrent requests (plain Set, not reactive).
-  const pending = new Set<string>()
+  const inFlight = new Set<string>()
   // Tier per username — populated alongside validation. Enables colored @mention rendering.
   const tierMap = useState<Map<string, UserColorTier>>('chat-username-tiers', () => new Map())
 
-  // Flush all batched valid/tier updates as a single reactive write, so many
-  // concurrent lookups resolving at once only cause one re-render wave.
-  function flushBatch() {
-    if (_flushScheduled) return
-    _flushScheduled = true
+  function flushReactive() {
+    if (_flushReactiveScheduled) return
+    _flushReactiveScheduled = true
     void nextTick(() => {
-      _flushScheduled = false
+      _flushReactiveScheduled = false
       if (_pendingValid.size > 0) {
         validSet.value = new Set([...validSet.value, ..._pendingValid])
         _pendingValid.clear()
@@ -87,30 +95,72 @@ export function useValidatedChatUsernames() {
     return tierMap.value.get((username ?? '').toLowerCase().trim()) ?? 'normal'
   }
 
-  async function lookupOne(username: string) {
-    const un = username.toLowerCase().trim()
-    if (!un) return
-    if (validSet.value.has(un) || _pendingValid.has(un) || invalidSet.value.has(un) || pending.has(un)) return
+  function flushLookups() {
+    if (_lookupFlushScheduled) return
+    _lookupFlushScheduled = true
 
-    pending.add(un)
-    try {
-      const data = await apiFetchData<TierLike & { id?: string }>(
-        `/users/${encodeURIComponent(un)}/preview`,
-        { method: 'GET' },
-      )
-      if (data?.id) {
-        _pendingValid.add(un)
-        const tier = userColorTier(data)
-        if (tier !== 'normal' || tierMap.value.has(un)) _pendingTier.set(un, tier)
-        flushBatch()
-      } else {
-        invalidSet.value = new Set([...invalidSet.value, un])
+    const dispatch = async () => {
+      _lookupFlushScheduled = false
+      if (_pendingLookups.size === 0) return
+
+      const all = [..._pendingLookups]
+      _pendingLookups.clear()
+
+      // Chunk into batches of BATCH_MAX so very large mention waves still work.
+      for (let i = 0; i < all.length; i += BATCH_MAX) {
+        const batch = all.slice(i, i + BATCH_MAX)
+        for (const un of batch) inFlight.add(un)
+        try {
+          const res = await apiFetchData<{ results: UserPreviewBatchEntry[] }>(
+            '/users/preview/batch',
+            { method: 'POST', body: { usernames: batch } },
+          )
+          const results = res?.results ?? []
+          const seen = new Set<string>()
+          for (const entry of results) {
+            const un = (entry.username ?? '').toLowerCase().trim()
+            if (!un) continue
+            seen.add(un)
+            if (entry.id) {
+              _pendingValid.add(un)
+              const tier = userColorTier(entry as TierLike)
+              if (tier !== 'normal' || tierMap.value.has(un)) _pendingTier.set(un, tier)
+            } else {
+              invalidSet.value.add(un)
+            }
+          }
+          // Anything in the batch that the server didn't echo back counts as invalid.
+          for (const un of batch) {
+            if (!seen.has(un)) invalidSet.value.add(un)
+          }
+          flushReactive()
+        } catch {
+          // Network failure — treat as transient: don't poison the invalid cache.
+          // Future renders will retry on the next mention scan.
+        } finally {
+          for (const un of batch) inFlight.delete(un)
+        }
       }
-    } catch {
-      invalidSet.value = new Set([...invalidSet.value, un])
-    } finally {
-      pending.delete(un)
     }
+
+    // Wait one animation frame so a single chat-mount mention-scan wave
+    // collapses into ONE request rather than fanning out per row.
+    if (typeof requestAnimationFrame === 'function') {
+      requestAnimationFrame(() => { void dispatch() })
+    } else {
+      setTimeout(() => { void dispatch() }, 0)
+    }
+  }
+
+  function enqueueLookup(username: string) {
+    const un = (username ?? '').toLowerCase().trim()
+    if (!un) return
+    if (validSet.value.has(un)) return
+    if (invalidSet.value.has(un)) return
+    if (inFlight.has(un)) return
+    if (_pendingLookups.has(un)) return
+    _pendingLookups.add(un)
+    flushLookups()
   }
 
   /**
@@ -121,7 +171,7 @@ export function useValidatedChatUsernames() {
     if (!import.meta.client || !body) return
     for (const m of body.matchAll(MENTION_RE)) {
       const un = m[1]!.toLowerCase()
-      if (!knownUsernames.has(un)) void lookupOne(un)
+      if (!knownUsernames.has(un)) enqueueLookup(un)
     }
   }
 

@@ -450,6 +450,26 @@ export type PublicProfile = {
   inCrew?: boolean
 }
 
+/**
+ * Compact entry from POST /users/preview/batch — used by chat to validate
+ * @mentions in bulk without firing one HTTP per username.
+ */
+export type UserPreviewBatchEntry = {
+  /** Echoed back lowercased. */
+  username: string
+  /** `null` when the username does not resolve to a real user. */
+  id: string | null
+  premium?: boolean
+  premiumPlus?: boolean
+  isOrganization?: boolean
+  stewardBadgeEnabled?: boolean
+  verifiedStatus?: 'none' | 'identity' | 'manual'
+}
+
+export type UserPreviewBatchResponse = {
+  data: { results: UserPreviewBatchEntry[] }
+}
+
 /** Hover preview payload from GET /users/:username/preview */
 export type UserPreview = {
   id: string

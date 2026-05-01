@@ -7,7 +7,18 @@ import {
 } from '~/utils/time-format'
 
 export type ChatListDivider = { type: 'divider'; key: string; dayKey: string; label: string }
-export type ChatListMessage = { type: 'message'; key: string; message: Message; index: number }
+export type ChatListMessage = {
+  type: 'message'
+  key: string
+  message: Message
+  index: number
+  /**
+   * Precomputed `Date.parse(message.createdAt)` so downstream consumers
+   * (read-indicator computation, message clustering) don't `Date.parse`
+   * the same string per recompute. NaN-safe: 0 when the timestamp is bogus.
+   */
+  createdAtMs: number
+}
 export type ChatListItem = ChatListDivider | ChatListMessage
 
 function getDayKey(iso: string) {
@@ -17,6 +28,11 @@ function getDayKey(iso: string) {
   const m = `${date.getMonth() + 1}`.padStart(2, '0')
   const d = `${date.getDate()}`.padStart(2, '0')
   return `${y}-${m}-${d}`
+}
+
+function parseMs(iso: string): number {
+  const t = Date.parse(iso)
+  return Number.isFinite(t) ? t : 0
 }
 
 export function useChatTimeFormatting() {
@@ -38,7 +54,13 @@ export function useChatTimeFormatting() {
         })
         lastDayKey = key
       }
-      output.push({ type: 'message', key: stableId, message, index })
+      output.push({
+        type: 'message',
+        key: stableId,
+        message,
+        index,
+        createdAtMs: parseMs(message.createdAt),
+      })
     })
     return output
   }

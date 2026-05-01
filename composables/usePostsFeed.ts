@@ -203,7 +203,7 @@ export function usePostsFeed(options: UsePostsFeedOptions = {}) {
   const sort = options.sort ?? ref<FeedSort>('new')
   const forYou = options.forYou ?? ref(false)
   const mediaOnly = options.mediaOnly ?? ref(false)
-  const pageLimit = computed(() => (mediaOnly.value ? 40 : 30))
+  const pageLimit = computed(() => (mediaOnly.value ? 24 : 30))
   const showAds = options.showAds ?? computed(() => true)
   const lastHardRefreshMs = useState<number>(`${feedStateKey}-last-hard-refresh-ms`, () => 0)
   const lastHardRefreshRequestKey = useState<string>(`${feedStateKey}-last-hard-refresh-request-key`, () => '')

@@ -88,6 +88,14 @@
       <template v-else>{{ activeTab === 'requests' ? 'No chat requests yet.' : 'No chats yet.' }}</template>
     </div>
 
+    <!--
+      TransitionGroup gives FLIP `move` transitions when socket events reorder
+      conversations (e.g. new message bubbles a thread to the top). Keys MUST
+      stay on stable conversation ids so Vue reuses row state and only animates
+      position. Enter/leave are kept short in CSS; the important part is
+      `.moh-chat-row-move`. Users with `prefers-reduced-motion` get no list
+      motion (see `main.css`).
+    -->
     <TransitionGroup
       v-else
       name="moh-chat-row"
@@ -97,6 +105,7 @@
       <NuxtLink
         v-for="c in displayList"
         :key="c.id"
+        :ref="bindPresenceRow(c)"
         :to="conversationPath(c.id)"
         class="block w-full text-left"
         @click="onConversationClick(c, $event)"
@@ -231,6 +240,7 @@ import type { PropType } from 'vue'
 import type { MessageConversation, MessageUser } from '~/types/api'
 import type { TypingUserDisplay } from '~/composables/chat/useChatTyping'
 import { useUsersStore } from '~/composables/useUsersStore'
+import { useViewportIdsObserver } from '~/composables/chat/useViewportIdsObserver'
 import { crewAvatarRoundClass } from '~/utils/avatar-rounding'
 
 const crewAvatarRound = crewAvatarRoundClass()
@@ -269,6 +279,10 @@ const emit = defineEmits<{
   (e: 'open-blocks'): void
   (e: 'load-more'): void
   (e: 'search-query', q: string): void
+  /** Fires whenever a direct conversation row enters/leaves the viewport.
+   *  Parent uses this to scope presence subscriptions to visible rows only,
+   *  instead of subscribing to every direct partner in the list eagerly. */
+  (e: 'presence-visible', userId: string, visible: boolean): void
 }>()
 
 const searchQuery = ref('')
@@ -310,5 +324,41 @@ function onConversationClick(c: MessageConversation, event: MouseEvent) {
   } else {
     emit('select', c.id)
   }
+}
+
+// --- Presence visibility tracking -------------------------------------------
+//
+// Previously the chat page eagerly subscribed presence interest for EVERY
+// direct conversation partner the user had on first paint (~80 socket emits +
+// an HTTP fan-out before the page was even interactive). Now we only emit
+// `presence-visible(userId, visible)` for rows actually in the viewport, and
+// the parent (chat.vue) refcounts userIds and talks to the gateway from
+// there.
+//
+// The IntersectionObserver bookkeeping lives in `useViewportIdsObserver`,
+// keyed by conversation id. We map convoId → partner userId at emit time so
+// crew/group rows (which have no single "partner") are silently skipped.
+
+const partnerUserIdByConvo = new Map<string, string | null>()
+
+const visibilityObserver = useViewportIdsObserver({
+  rootMargin: '100px 0px',
+  onVisible: (convoId, visible) => {
+    const userId = partnerUserIdByConvo.get(convoId)
+    if (!userId) return
+    emit('presence-visible', userId, visible)
+  },
+})
+
+/**
+ * Template-side binder: keeps `partnerUserIdByConvo` synced for the row and
+ * returns the stable per-row `:ref` from the observer. Vue dedupes binding
+ * by function reference, so the same row mounted across renders won't
+ * thrash observe/unobserve.
+ */
+function bindPresenceRow(c: MessageConversation): (el: unknown) => void {
+  const userId = c.type === 'direct' ? (props.getDirectUser(c)?.id ?? null) : null
+  partnerUserIdByConvo.set(c.id, userId)
+  return visibilityObserver.bindRow(c.id)
 }
 </script>

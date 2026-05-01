@@ -1,5 +1,5 @@
 <template>
-  <div class="min-w-0 max-w-full">
+  <div ref="rootEl" class="min-w-0 max-w-full">
     <p class="whitespace-pre-wrap break-words">
       <template v-for="(seg, idx) in displayBodySegments" :key="bodySegmentKey(seg, idx)">
         <a
@@ -42,7 +42,7 @@
 
     <!-- MoH internal link — branded card, navigates in-app -->
     <NuxtLink
-      v-if="showLinkPreview && isMohInternalLink && mohInternalPath"
+      v-if="everVisible && showLinkPreview && isMohInternalLink && mohInternalPath"
       :to="mohInternalPath"
       class="group mt-2 flex min-w-0 max-w-full items-center gap-2.5 overflow-hidden rounded-lg border border-current/20 bg-black/5 p-2 transition-colors hover:bg-black/10 dark:bg-white/5 dark:hover:bg-white/10"
       aria-label="Open page"
@@ -65,7 +65,7 @@
 
     <!-- Generic external link preview -->
     <a
-      v-else-if="showLinkPreview"
+      v-else-if="everVisible && showLinkPreview"
       :href="previewLink || undefined"
       target="_blank"
       rel="noopener noreferrer"
@@ -99,17 +99,17 @@
     </a>
 
     <!-- Post embed — same component as posts, viewport-gated via enabled prop -->
-    <div v-if="embeddedPostId" @click.stop>
+    <div v-if="everVisible && embeddedPostId" @click.stop>
       <AppEmbeddedPostPreview :post-id="embeddedPostId" :enabled="true" />
     </div>
 
     <!-- Article embed -->
-    <div v-if="embeddedArticleId && embeddedArticle" @click.stop>
+    <div v-if="everVisible && embeddedArticleId && embeddedArticle" @click.stop>
       <AppArticleShareCard :article="embeddedArticle" />
     </div>
 
     <!-- Space preview — compact single-line variant for chat bubbles -->
-    <template v-if="embeddedSpaceId">
+    <template v-if="everVisible && embeddedSpaceId">
       <!-- Skeleton while the space store is loading -->
       <div
         v-if="!embeddedSpace"
@@ -132,7 +132,7 @@
     </template>
 
     <!-- User profile link → compact user card -->
-    <div v-if="embeddedUsername" @click.stop>
+    <div v-if="everVisible && embeddedUsername" @click.stop>
       <AppUserLinkCard :username="embeddedUsername" />
     </div>
   </div>
@@ -147,6 +147,7 @@ const _linkify = new LinkifyIt()
 </script>
 
 <script setup lang="ts">
+import { useElementVisibility } from '@vueuse/core'
 import { extractLinksFromText, safeUrlDisplay, safeUrlHostname, isMohUrl, mohUrlPath, extractMohPostId, extractMohArticleId, extractMohSpaceId, extractMohUsername } from '~/utils/link-utils'
 import logoLight from '~/assets/images/logo-white-bg-small.png'
 import logoDark from '~/assets/images/logo-black-bg-small.png'
@@ -180,6 +181,16 @@ const props = defineProps<{
 
 const { validSet, tierForUsername, validateMentionsInBody } = useValidatedChatUsernames()
 
+// ── Viewport gating ─────────────────────────────────────────────────────────
+// Heavy per-message side effects (mention validation HTTP calls, link metadata
+// fetches, article/space/post embed mounting) only fire once this row has been
+// near the viewport. This collapses the mount-time burst from "every message
+// in the chat" to "the ~10 messages currently on screen".
+const rootEl = ref<HTMLElement | null>(null)
+const visible = useElementVisibility(rootEl, { rootMargin: '600px' })
+const everVisible = ref(false)
+watch(visible, (v) => { if (v) everVisible.value = true }, { immediate: true })
+
 // Hover preview
 const hoveredMention = ref('')
 const { onEnter: _onMentionEnterRaw, onMove: onMentionMove, onLeave: _onMentionLeaveRaw } = useUserPreviewTrigger({
@@ -196,10 +207,16 @@ function onMentionLeave() {
 
 const hashtagColor = computed(() => userTierColorVar(props.senderTier ?? 'normal') ?? 'var(--p-primary-color)')
 
-// Trigger background validation for any @mentions in this message.
-watch(() => props.body, (body) => {
-  if (body) validateMentionsInBody(body, validSet.value)
-}, { immediate: true })
+// Trigger background validation for any @mentions in this message — only once
+// the row has been near the viewport.
+watch(
+  [() => props.body, everVisible],
+  ([body, v]) => {
+    if (!v || !body) return
+    validateMentionsInBody(body, validSet.value)
+  },
+  { immediate: true },
+)
 
 function escapeRegExp(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
@@ -234,15 +251,15 @@ const { apiFetchData } = useApiClient()
 const DWELL_MS = 400
 
 watch(
-  embeddedArticleId,
-  (articleId, _old, onCleanup) => {
+  [embeddedArticleId, everVisible],
+  ([articleId, v], _old, onCleanup) => {
     let cancelled = false
     let timer: ReturnType<typeof setTimeout> | null = null
     onCleanup(() => {
       cancelled = true
       if (timer) clearTimeout(timer)
     })
-    if (!articleId) return
+    if (!v || !articleId) return
     if (embeddedArticle.value?.id === articleId) return
     embeddedArticle.value = null
     timer = setTimeout(async () => {
@@ -272,6 +289,7 @@ const { loadedOnce: spacesLoadedOnce, loadSpaces, getById: getSpaceById } = useS
 const embeddedSpace = computed(() => (embeddedSpaceId.value ? getSpaceById(embeddedSpaceId.value) : null))
 
 watchEffect(() => {
+  if (!everVisible.value) return
   if (!embeddedSpaceId.value || spacesLoadedOnce.value) return
   void loadSpaces()
 })
@@ -391,11 +409,11 @@ function bodySegmentKey(seg: TextSegment, idx: number): string {
 
 const linkMeta = ref<LinkMetadata | null>(null)
 watch(
-  previewLink,
-  async (url) => {
+  [previewLink, everVisible],
+  async ([url, v]) => {
     linkMeta.value = null
     if (!import.meta.client) return
-    if (!url) return
+    if (!v || !url) return
     linkMeta.value = await getLinkMetadata(url)
   },
   { immediate: true },
