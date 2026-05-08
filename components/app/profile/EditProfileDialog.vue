@@ -321,7 +321,7 @@ function clearBannerCropState() {
 }
 
 function openBannerPicker() {
-  if (!isSelf.value) return
+  if (!canEdit.value) return
   bannerInputEl.value?.click()
 }
 
@@ -333,7 +333,7 @@ function onBannerInputChange(e: Event) {
 }
 
 function handleBannerSelectedFile(file: File) {
-  if (!isSelf.value) return
+  if (!canEdit.value) return
 
   const allowed = new Set(['image/jpeg', 'image/png', 'image/webp'])
   if (!allowed.has(file.type)) {
