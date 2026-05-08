@@ -15,14 +15,6 @@
     role="region"
     aria-label="Marv controls"
   >
-    <span
-      class="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-800 dark:bg-amber-500/15 dark:text-amber-300"
-      title="Marv is an AI helper, available with premium."
-    >
-      <Icon name="tabler:robot" class="text-[10px]" aria-hidden="true" />
-      Bot
-    </span>
-
     <!-- Mode segmented control -->
     <div
       class="inline-flex items-center rounded-full bg-gray-100 p-0.5 text-xs dark:bg-zinc-900"

@@ -172,21 +172,6 @@ function onClick(event: MouseEvent) {
 <style>
 .moh-marv-pinned-surface {
   position: relative;
-  background: linear-gradient(
-    135deg,
-    rgba(245, 158, 11, 0.06),
-    rgba(244, 114, 182, 0.06) 50%,
-    rgba(139, 92, 246, 0.06)
-  );
-}
-:root.dark .moh-marv-pinned-surface,
-.dark .moh-marv-pinned-surface {
-  background: linear-gradient(
-    135deg,
-    rgba(245, 158, 11, 0.10),
-    rgba(244, 114, 182, 0.10) 50%,
-    rgba(139, 92, 246, 0.10)
-  );
 }
 
 /*

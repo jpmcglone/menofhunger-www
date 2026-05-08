@@ -1317,6 +1317,7 @@ export type MessageUser = {
   stewardBadgeEnabled: boolean
   verifiedStatus: 'none' | 'identity' | 'manual'
   avatarUrl: string | null
+  isBot?: boolean
 }
 
 export type MessageParticipant = {

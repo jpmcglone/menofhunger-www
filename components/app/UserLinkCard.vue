@@ -2,7 +2,7 @@
   <NuxtLink
     v-if="preview && username"
     :to="`/u/${encodeURIComponent(username)}`"
-    class="group mt-2 block overflow-hidden rounded-xl border moh-border transition-colors moh-surface-hover"
+    class="group mt-2 block overflow-hidden rounded-xl border moh-border moh-surface transition-colors moh-surface-hover"
     @click.stop
   >
     <div class="flex items-center gap-3 p-3">
@@ -51,7 +51,7 @@
   <!-- Skeleton while loading -->
   <div
     v-else-if="loading"
-    class="mt-2 overflow-hidden rounded-xl border moh-border animate-pulse"
+    class="mt-2 overflow-hidden rounded-xl border moh-border moh-surface animate-pulse"
     aria-hidden="true"
   >
     <div class="flex items-center gap-3 p-3">
@@ -60,6 +60,17 @@
         <div class="h-3 w-2/5 rounded bg-black/10 dark:bg-white/10" />
         <div class="h-2.5 w-1/4 rounded bg-black/10 dark:bg-white/10" />
       </div>
+    </div>
+  </div>
+
+  <!-- Fallback when preview couldn't be loaded (profile private, fetch error, etc.) -->
+  <div
+    v-else-if="username"
+    class="mt-2 overflow-hidden rounded-xl border moh-border moh-surface"
+  >
+    <div class="flex items-center gap-2 px-3 py-2 text-xs moh-text-muted">
+      <Icon name="tabler:user" class="shrink-0 text-[13px]" aria-hidden="true" />
+      <span>@{{ username }}</span>
     </div>
   </div>
 </template>

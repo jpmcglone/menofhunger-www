@@ -5,7 +5,7 @@
   <a
     :href="permalink ?? undefined"
     :class="[
-      'mt-3 block overflow-hidden rounded-xl border moh-border transition-colors moh-surface-hover',
+      'mt-3 block overflow-hidden rounded-xl border moh-border moh-surface transition-colors moh-surface-hover',
       permalink ? 'cursor-pointer' : 'pointer-events-none',
     ]"
     role="group"

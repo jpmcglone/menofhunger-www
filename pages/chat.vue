@@ -119,6 +119,7 @@
                               :premium-plus="headerDirectUser.premiumPlus"
                               :is-organization="headerDirectUser.isOrganization"
                               :steward-badge-enabled="headerDirectUser.stewardBadgeEnabled ?? true"
+                              :is-bot="headerDirectUser.isBot"
                             />
                           </template>
                           <template v-else-if="selectedConversation?.type === 'group' && !selectedConversation?.title">
@@ -212,7 +213,7 @@
                   </div>
                   <div class="flex items-center gap-2">
                     <Button
-                      v-if="selectedConversation"
+                      v-if="selectedConversation && !isSelectedConversationMarv"
                       v-tooltip.bottom="muteButtonTooltip"
                       text
                       severity="secondary"
