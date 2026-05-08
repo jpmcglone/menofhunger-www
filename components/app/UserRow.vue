@@ -68,8 +68,10 @@
 import type { FollowListUser } from '~/types/api'
 import { useUserOverlay } from '~/composables/useUserOverlay'
 
+type UserRowUser = FollowListUser & { isBot?: boolean }
+
 const props = defineProps<{
-  user: FollowListUser
+  user: UserRowUser
   showFollowButton?: boolean
   /** When true, show follow button even while logged out (click routes to login). */
   allowLoggedOutFollowButton?: boolean

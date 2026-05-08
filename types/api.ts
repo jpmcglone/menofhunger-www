@@ -400,6 +400,7 @@ export type PostAuthor = {
   verifiedStatus: 'none' | 'identity' | 'manual'
   avatarUrl: string | null
   orgAffiliations?: OrgAffiliation[]
+  isBot?: boolean
   /** When true, author is banned; id/username/name/avatar are redacted. */
   authorBanned?: boolean
 }
@@ -448,6 +449,7 @@ export type PublicProfile = {
   userHasBlockedViewer?: boolean
   /** True when this user is an active member of any Crew. */
   inCrew?: boolean
+  isBot?: boolean
 }
 
 /**
@@ -491,6 +493,7 @@ export type UserPreview = {
   followerCount: number | null
   followingCount: number | null
   orgAffiliations?: OrgAffiliation[]
+  isBot?: boolean
 }
 
 /** Compact group card for gated posts and discovery. */
@@ -1011,7 +1014,16 @@ export type UserStatus = {
   expiresAt: string
 }
 
-export type OnlineUser = FollowListUser & { lastConnectAt?: number; idle?: boolean; status?: UserStatus | null }
+export type OnlineUser = FollowListUser & {
+  lastConnectAt?: number
+  idle?: boolean
+  status?: UserStatus | null
+  /**
+   * True only for the synthetic Marv pin row injected by the API when Marv is enabled.
+   * The frontend uses this to sort bots to the top and render a small badge.
+   */
+  isBot?: boolean
+}
 
 /** Data type for GET /presence/online (array); totalOnline in pagination. */
 export type GetPresenceOnlineData = OnlineUser[]
@@ -2327,4 +2339,134 @@ export type CrewBySlugResponse = {
   crew: CrewPublic
   redirectedFromSlug: string | null
   viewerMembership: CrewBySlugViewerMembership | null
+}
+
+// ─── Marv (AI helper) ────────────────────────────────────────────────────────
+
+/** User-facing reply-mode tier; mirrors the API's `MarvinMode` enum. */
+export type MarvinModeDto = 'auto' | 'fast' | 'regular' | 'smart'
+/** Source channel; mirrors the API's `MarvinSource` enum. */
+export type MarvinSourceDto = 'public_thread' | 'private_session'
+
+/** Snapshot of the requester's Marv credit bucket. Returned by `GET /marvin/me`. */
+export type MarvinCreditSummaryDto = {
+  credits: number
+  maxCredits: number
+  creditsPerDay: number
+  /** ISO timestamp. */
+  lastRefilledAt: string
+}
+
+/** `GET /marvin/me` response body. Used by chat page + settings + composer mode pill. */
+export type MarvinMeDto = {
+  enabled: boolean
+  isPremium: boolean
+  preferredMode: MarvinModeDto
+  credits: MarvinCreditSummaryDto
+  marv: {
+    userId: string
+    username: string
+    displayName: string
+    avatarUrl: string | null
+  } | null
+}
+
+/** Body for `PATCH /marvin/me/preferences`. */
+export type MarvinUpdatePreferencesBodyDto = {
+  preferredMode?: MarvinModeDto
+}
+
+/** A single Marv interaction event (success, canned, or failure). */
+export type MarvinUsageEventDto = {
+  id: string
+  userId: string
+  source: MarvinSourceDto
+  sourceId: string
+  rootPostId: string | null
+  requestedMode: MarvinModeDto
+  effectiveMode: MarvinModeDto
+  creditsSpent: number
+  inputTokens: number | null
+  outputTokens: number | null
+  cachedInputTokens: number | null
+  modelUsed: string | null
+  estimatedCostUsd: number | null
+  responseId: string | null
+  routingReason: string | null
+  errorCode: string | null
+  latencyMs: number | null
+  /** ISO timestamp. */
+  createdAt: string
+}
+
+/** Realtime payload for `marv:credits-updated`. Same shape as `MarvinCreditSummaryDto`. */
+export type MarvCreditsUpdatedPayloadDto = MarvinCreditSummaryDto
+
+// Admin-only Marv types — used by `pages/admin/marv.vue`. Mirror what the
+// API's `MarvinAdminService` returns; keep field names identical so we can
+// pass rows straight through without re-shaping.
+
+export type MarvAdminGlobalSettingsDto = {
+  enabled: boolean
+  fastCost: number | null
+  regularCost: number | null
+  smartCost: number | null
+  fastModel: string | null
+  regularModel: string | null
+  smartModel: string | null
+  /** ISO timestamp. */
+  updatedAt: string
+}
+
+export type MarvAdminGlobalSettingsPatchDto = Partial<{
+  enabled: boolean
+  fastCost: number | null
+  regularCost: number | null
+  smartCost: number | null
+  fastModel: string | null
+  regularModel: string | null
+  smartModel: string | null
+}>
+
+export type MarvAdminUserRowDto = {
+  userId: string
+  username: string | null
+  displayName: string | null
+  premium: boolean
+  premiumPlus: boolean
+  isBot: boolean
+  credits: number
+  /** ISO timestamp or null. */
+  creditsLastRefilledAt: string | null
+  preferredMode: MarvinModeDto
+  disabledByAdmin: boolean
+  totalCreditsSpent30d: number
+  totalEvents30d: number
+}
+
+export type MarvAdminUserPatchDto = Partial<{
+  credits: number
+  disabled: boolean
+}>
+
+export type MarvAdminUserPatchResponseDto = {
+  credits?: MarvinCreditSummaryDto
+  disabledByAdmin?: boolean
+}
+
+export type MarvAdminContextCardDto = {
+  cardText: string | null
+  source: string | null
+  /** ISO timestamp or null. */
+  updatedAt: string | null
+}
+
+export type MarvAdminDailyCostRowDto = {
+  /** YYYY-MM-DD UTC. */
+  dayKey: string
+  totalRequests: number
+  totalCreditsSpent: number
+  totalInputTokens: number
+  totalOutputTokens: number
+  totalCostUsd: number
 }

@@ -147,6 +147,7 @@
               :premium-plus="user.premiumPlus"
               :is-organization="user.isOrganization"
               :steward-badge-enabled="user.stewardBadgeEnabled ?? true"
+              :is-bot="user.isBot"
             />
             <AppOrgAffiliationAvatars
               v-if="!user.isOrganization && user.orgAffiliations && user.orgAffiliations.length > 0"

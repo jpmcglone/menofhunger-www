@@ -86,6 +86,13 @@ describe('pickBubbleShape', () => {
     expect(pickBubbleShape(makeMessage({ body: '   ' }))).toBe('rect')
     expect(pickBubbleShape(makeMessage({ body: '' }))).toBe('rect')
   })
+
+  it('returns "rect" for a message containing a URL (will render a link preview card)', () => {
+    expect(pickBubbleShape(makeMessage({ body: 'https://fandemicapp.com/ < this link' }))).toBe('rect')
+    expect(pickBubbleShape(makeMessage({ body: 'http://example.com' }))).toBe('rect')
+    // Short URL-only message — still rect because the preview card makes it tall
+    expect(pickBubbleShape(makeMessage({ body: 'https://x.co' }))).toBe('rect')
+  })
 })
 
 describe('bubbleShapeClass', () => {

@@ -62,6 +62,7 @@
           :hide-avatar-during-banner="hideAvatarDuringBanner"
           :relationship-tag-label="relationshipTagLabel"
           :is-self="isSelf"
+          :can-edit-profile="canEditProfile"
           :follow-relationship="followRelationship"
           :nudge="followSummary?.nudge ?? null"
           :show-follow-counts="showFollowCounts"
@@ -493,6 +494,7 @@
         v-model="editOpen"
         :profile="profile"
         :is-self="isSelf"
+        :target-user-id="adminEditTargetUserId"
         :profile-avatar-url="profileAvatarUrl"
         :profile-banner-url="profileBannerUrl"
         @patch-profile="patchPublicProfile"
@@ -648,6 +650,9 @@ watch(
 )
 
 const isSelf = computed(() => Boolean(authUser.value?.id && profile.value?.id && authUser.value.id === profile.value.id))
+const isViewerAdmin = computed(() => Boolean(authUser.value?.siteAdmin))
+const canEditProfile = computed(() => isSelf.value || isViewerAdmin.value)
+const adminEditTargetUserId = computed(() => (!isSelf.value && isViewerAdmin.value && profile.value?.id) ? profile.value.id : undefined)
 
 const effectivePinnedPostId = computed(() => {
   const profilePid = profile.value?.pinnedPostId ?? null

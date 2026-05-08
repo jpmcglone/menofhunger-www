@@ -276,6 +276,7 @@
                 persistent
                 @select="insertEmoji"
               />
+              <!-- Marv mode is always auto in post threads — no picker shown. -->
             </div>
             <div class="flex items-center gap-2">
             <div
@@ -565,6 +566,12 @@ const { apiFetchData } = useApiClient()
 const { getUserStatus, setMyStatus, clearMyStatus } = usePresence()
 const toast = useAppToast()
 
+// ─── Marv: detect @marv mention ──────────────────────────────────────────────
+// Mode is always auto in post threads — no picker, no header sent.
+const marv = useMarv()
+
+const marvUsernameLower = computed(() => (marv.marvUsername.value ?? '').toLowerCase())
+
 const STREAK_MULTIPLIER_MILESTONES = new Set([8, 15, 22])
 function pushStreakToast(reward: PostStreakReward) {
   const isMilestone = STREAK_MULTIPLIER_MILESTONES.has(reward.streakDays)
@@ -682,6 +689,23 @@ const composerTextareaEl = ref<HTMLTextAreaElement | null>(null)
 const composerMirrorEl = ref<HTMLDivElement | null>(null)
 const emojiPickerEl = ref<{ close: () => void } | null>(null)
 const initialTextApplied = ref(false)
+
+/**
+ * True iff the body contains @marv (case-insensitive). We re-derive directly
+ * from the textarea contents instead of waiting for the mention-autocomplete
+ * resolve cycle so the pill appears the instant the user finishes typing the
+ * username — even before mention resolution lands.
+ */
+const bodyMentionsMarv = computed(() => {
+  const lower = marvUsernameLower.value
+  if (!lower) return false
+  const text = (draft.value ?? '').toLowerCase()
+  if (!text.includes(`@${lower}`)) return false
+  // Word-boundary check so `@marvelous` doesn't match `@marv`.
+  const re = new RegExp(`(^|[^a-z0-9_])@${lower}([^a-z0-9_]|$)`, 'i')
+  return re.test(draft.value ?? '')
+})
+
 
 const mention = useMentionAutocomplete({
   el: composerTextareaEl,
@@ -1215,6 +1239,7 @@ function performCreate(submitBody: string, vis: PostVisibility, mediaPayload: Cr
   if (props.createPost) {
     return props.createPost(submitBody, vis, mediaPayload, pollPayload)
   }
+  // No x-marv-mode header — Marv always uses auto routing in post threads.
   return apiFetchData<CreatePostData>('/posts', {
     method: 'POST',
     body: props.replyTo

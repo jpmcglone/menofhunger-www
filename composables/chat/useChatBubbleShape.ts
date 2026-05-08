@@ -34,6 +34,9 @@ export function pickBubbleShape(message: Message): 'pill' | 'rect' {
   if (!body) return 'rect'
   if (body.includes('\n')) return 'rect'
   if (body.length > PILL_MAX_CHARS) return 'rect'
+  // Any URL in the body will render a link preview card below the text,
+  // making the bubble tall — pill corners look wrong on tall bubbles.
+  if (/https?:\/\//i.test(body)) return 'rect'
   return 'pill'
 }
 

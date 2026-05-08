@@ -174,6 +174,7 @@
             :is-organization="author.isOrganization"
             :steward-badge-enabled="author.stewardBadgeEnabled ?? true"
             :org-affiliations="(author as any).orgAffiliations ?? postView.author?.orgAffiliations"
+            :is-bot="postView.author?.isBot ?? false"
             :edited-at="postView.editedAt ?? null"
             :hide-edited-badge="postView.visibility === 'onlyMe'"
             :profile-path="authorProfilePath"
@@ -182,6 +183,26 @@
             :created-at-short="createdAtShort"
             :created-at-tooltip="createdAtTooltip"
           />
+
+          <!-- "Replying to" label — shown only when the prop is set (e.g. Notifications page) -->
+          <div
+            v-if="showReplyingTo && replyingToTargets.length > 0"
+            class="mt-0.5 flex flex-wrap items-center gap-x-1 text-[13px] leading-snug text-gray-500 dark:text-gray-400"
+          >
+            <span>Replying to</span>
+            <template v-for="(target, idx) in replyingToTargets" :key="target.username">
+              <NuxtLink
+                :to="`/u/${encodeURIComponent(target.username)}`"
+                class="font-medium hover:underline underline-offset-2"
+                :class="target.tierClass"
+                @mouseenter="target.onEnter"
+                @mousemove="target.onMove"
+                @mouseleave="target.onLeave"
+              >@{{ target.username }}</NuxtLink>
+              <span v-if="idx < replyingToTargets.length - 2" class="select-none">,</span>
+              <span v-else-if="idx === replyingToTargets.length - 2" class="select-none">and</span>
+            </template>
+          </div>
 
           <!-- Viewer count chip: just left of the more (⋯) button -->
           <Transition name="viewer-count-appear" appear>
@@ -635,6 +656,7 @@
 import { inject } from 'vue'
 import type { CommunityGroupShell, FeedPost } from '~/types/api'
 import { groupPreviewToFeedShell } from '~/utils/community-group-preview'
+import { userColorTier, userTierTextClass } from '~/utils/user-tier'
 import { groupAvatarRoundClass as getGroupAvatarRoundClass } from '~/utils/avatar-rounding'
 import { visibilityTagClasses, visibilityTagLabel } from '~/utils/post-visibility'
 import type { MenuItem } from 'primevue/menuitem'
@@ -676,6 +698,12 @@ const props = withDefaults(defineProps<{
   feedGroup?: CommunityGroupShell | null
   /** Lighter row separator (matches home/profile feel vs default moh-border). */
   subtleBorderBottom?: boolean
+  /**
+   * When true, show a "Replying to @username" line between the header and body
+   * when this post is a reply (has a parentId / parent author). Intended for the
+   * Notifications page so viewers know whose post they are replying to.
+   */
+  showReplyingTo?: boolean
 }>(), {
   clickable: true,
 })
@@ -747,6 +775,32 @@ const author = computed(() => authorOverlay.value ?? authorSnapshot.value ?? ({
 } as any))
 const isDeletedPost = computed(() => Boolean(postView.value.deletedAt))
 const isGatedPost = computed(() => postView.value.viewerCanAccess === false)
+
+// "Replying to" targets: derived from the parent post's author (and the parent's parent, etc.)
+// We collect up to 3 unique usernames from the parent chain so the label stays readable.
+const replyingToTargets = computed(() => {
+  if (!props.showReplyingTo || !postView.value.parentId) return []
+
+  const seen = new Set<string>()
+  const targets: Array<ReturnType<typeof useUserPreviewTrigger> & { username: string; tierClass: string }> = []
+
+  // Walk the pre-loaded parent chain (parent → parent.parent → …)
+  let node: import('~/types/api').FeedPost | undefined = postView.value.parent
+  while (node && targets.length < 3) {
+    const username = node.author?.username ?? null
+    if (username && !seen.has(username)) {
+      seen.add(username)
+      const u = username
+      const tier = userColorTier(node.author ?? null)
+      const tierClass = userTierTextClass(tier, { fallback: 'text-blue-500 dark:text-blue-400' })
+      const { onEnter, onMove, onLeave } = useUserPreviewTrigger({ username: computed(() => u) })
+      targets.push({ username: u, tierClass, onEnter, onMove, onLeave })
+    }
+    node = node.parent
+  }
+
+  return targets
+})
 
 function onGatedRightSideClick() {
   const kind = postView.value.visibility === 'premiumOnly' ? 'premium' : 'verify'

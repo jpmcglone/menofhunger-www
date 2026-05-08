@@ -854,6 +854,10 @@
                 <SettingsLinksSection />
               </div>
 
+              <div v-if="showsBlock('marv')" class="space-y-4">
+                <SettingsMarvSection />
+              </div>
+
               <div v-if="composedBlocks.length === 0" class="text-sm text-gray-600 dark:text-gray-300">
                 Choose a section from the left.
               </div>
@@ -936,7 +940,7 @@ type BirthdayVisibility = 'none' | 'monthDay' | 'full'
 // The previous narrower keys (`verification`, `blocked`, `links`) are kept as
 // "blocks" that the merged sections compose (see `composedBlocks` below) and
 // as legacy URL aliases that redirect to their new home.
-type SettingsSection = 'account' | 'notifications' | 'privacy' | 'billing'
+type SettingsSection = 'account' | 'notifications' | 'privacy' | 'billing' | 'marv'
 type SettingsBlock =
   | 'account'
   | 'verification'
@@ -945,6 +949,7 @@ type SettingsBlock =
   | 'notifications'
   | 'blocked'
   | 'links'
+  | 'marv'
 
 const isDev = import.meta.dev
 const { user: authUser, ensureLoaded, me } = useAuth()
@@ -1077,7 +1082,7 @@ async function sendPushTest() {
   }
 }
 
-const allowedSections: SettingsSection[] = ['account', 'notifications', 'privacy', 'billing']
+const allowedSections: SettingsSection[] = ['account', 'notifications', 'privacy', 'billing', 'marv']
 
 // Old narrower URL keys redirect into one of the 4 top-level sections.
 const sectionAlias: Record<string, SettingsSection> = {
@@ -1146,6 +1151,11 @@ const sections = computed(() => [
     key: 'billing' as const,
     label: 'Billing',
     description: 'Premium and Premium+ subscriptions.'
+  },
+  {
+    key: 'marv' as const,
+    label: 'Marv (AI helper)',
+    description: 'Preferred reply mode, credits, and recent activity.'
   }
 ])
 
@@ -1158,6 +1168,7 @@ const sectionToBlocks: Record<SettingsSection, ReadonlyArray<SettingsBlock>> = {
   notifications: ['notifications'],
   privacy: ['privacy', 'blocked'],
   billing: ['billing'],
+  marv: ['marv'],
 }
 
 const composedBlocks = computed<ReadonlyArray<SettingsBlock>>(() => {

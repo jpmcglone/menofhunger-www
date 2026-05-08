@@ -81,6 +81,7 @@
                 :post="item.notification.post"
                 :clickable="false"
                 :highlight="stickyUnreadNotificationIds.has(item.notification.id)"
+                show-replying-to
                 no-border-bottom
               />
               <AppNotificationRow

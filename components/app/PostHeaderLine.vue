@@ -35,6 +35,7 @@
           :premium-plus="premiumPlus"
           :is-organization="isOrganization"
           :steward-badge-enabled="stewardBadgeEnabled"
+          :is-bot="isBot"
         />
       </NuxtLink>
       <AppVerifiedBadge
@@ -45,6 +46,7 @@
         :premium-plus="premiumPlus"
         :is-organization="isOrganization"
         :steward-badge-enabled="stewardBadgeEnabled"
+        :is-bot="isBot"
       />
 
       <AppOrgAffiliationAvatars
@@ -109,6 +111,7 @@ const props = defineProps<{
   isOrganization?: boolean
   stewardBadgeEnabled?: boolean
   orgAffiliations?: OrgAffiliation[] | null
+  isBot?: boolean
   editedAt?: string | null
   /** Hide the inline "edited" marker (e.g. for onlyMe notes/drafts). */
   hideEditedBadge?: boolean

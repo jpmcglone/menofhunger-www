@@ -3,7 +3,7 @@
     :model-value="modelValue"
     title="Edit profile"
     :saving="saving"
-    :can-submit="isSelf"
+    :can-submit="canEdit"
     @update:model-value="emit('update:modelValue', $event)"
     @submit="saveProfile"
   >
@@ -28,7 +28,7 @@
                 rounded
                 severity="secondary"
                 :aria-label="pendingBannerFile ? 'Reset banner change' : 'Edit banner'"
-                :disabled="saving || !isSelf"
+                :disabled="saving || !canEdit"
                 @click="pendingBannerFile ? clearPendingBanner() : openBannerPicker()"
               >
                 <template #icon>
@@ -67,7 +67,7 @@
                 rounded
                 severity="secondary"
                 :aria-label="pendingAvatarFile ? 'Reset avatar change' : 'Edit avatar'"
-                :disabled="saving || !isSelf"
+                :disabled="saving || !canEdit"
                 @click="pendingAvatarFile ? clearPendingAvatar() : openAvatarPicker()"
               >
                 <template #icon>
@@ -99,7 +99,7 @@
         type="file"
         accept="image/png,image/jpeg,image/webp"
         class="hidden"
-        :disabled="saving || !isSelf"
+        :disabled="saving || !canEdit"
         @change="onBannerInputChange"
       >
       <input
@@ -107,7 +107,7 @@
         type="file"
         accept="image/png,image/jpeg,image/webp"
         class="hidden"
-        :disabled="saving || !isSelf"
+        :disabled="saving || !canEdit"
         @change="onAvatarInputChange"
       >
 
@@ -202,6 +202,8 @@ const props = defineProps<{
   modelValue: boolean
   profile: PublicProfile | null
   isSelf: boolean
+  /** When set, the editing session is admin-acting-on-behalf-of. Calls admin endpoints. */
+  targetUserId?: string
   profileAvatarUrl: string | null
   profileBannerUrl: string | null
 }>()
@@ -243,6 +245,8 @@ function syncUserCaches(
 }
 
 const isSelf = computed(() => Boolean(props.isSelf))
+const isAdminMode = computed(() => Boolean(props.targetUserId))
+const canEdit = computed(() => isSelf.value || isAdminMode.value)
 const profileAvatarUrl = computed(() => props.profileAvatarUrl ?? null)
 const profileBannerUrl = computed(() => props.profileBannerUrl ?? null)
 
@@ -375,7 +379,7 @@ function onBannerCropped(file: File) {
 }
 
 function openAvatarPicker() {
-  if (!isSelf.value) return
+  if (!canEdit.value) return
   avatarInputEl.value?.click()
 }
 
@@ -387,7 +391,7 @@ function onAvatarInputChange(e: Event) {
 }
 
 function handleAvatarSelectedFile(file: File) {
-  if (!isSelf.value) return
+  if (!canEdit.value) return
 
   // Basic client-side checks (server also validates).
   const allowed = new Set(['image/jpeg', 'image/png', 'image/webp'])
@@ -432,14 +436,21 @@ watch(
 
 const { submit: saveProfile, submitting: saving } = useFormSubmit(
   async () => {
-    if (!isSelf.value) return
+    if (!canEdit.value) return
     editError.value = null
+
+    const adminId = props.targetUserId ?? null
+    const bannerInitUrl = adminId ? `/admin/users/${adminId}/uploads/banner/init` : '/uploads/banner/init'
+    const bannerCommitUrl = adminId ? `/admin/users/${adminId}/uploads/banner/commit` : '/uploads/banner/commit'
+    const avatarInitUrl = adminId ? `/admin/users/${adminId}/uploads/avatar/init` : '/uploads/avatar/init'
+    const avatarCommitUrl = adminId ? `/admin/users/${adminId}/uploads/avatar/commit` : '/uploads/avatar/commit'
+    const profilePatchUrl = adminId ? `/admin/users/${adminId}/profile` : '/users/me/profile'
 
     // If a banner is staged, upload + commit it first.
     if (pendingBannerFile.value) {
       const file = pendingBannerFile.value
       const init = await apiFetchData<{ key: string; uploadUrl: string; headers: Record<string, string>; maxBytes?: number }>(
-        '/uploads/banner/init',
+        bannerInitUrl,
         {
           method: 'POST',
           body: { contentType: file.type }
@@ -453,14 +464,16 @@ const { submit: saveProfile, submitting: saving } = useFormSubmit(
       })
       if (!putRes.ok) throw new Error('Failed to upload banner.')
 
-      const committed = await apiFetchData<{ user: import('~/composables/useAuth').AuthUser }>('/uploads/banner/commit', {
+      const committed = await apiFetchData<{ user: import('~/composables/useAuth').AuthUser }>(bannerCommitUrl, {
         method: 'POST',
         body: { key: init.key },
       })
 
-      const previousUsername = authUser.value?.username ?? null
-      authUser.value = committed?.user ?? authUser.value
-      syncUserCaches(committed?.user, previousUsername)
+      if (!adminId) {
+        const previousUsername = authUser.value?.username ?? null
+        authUser.value = committed?.user ?? authUser.value
+        syncUserCaches(committed?.user, previousUsername)
+      }
       emit('patchProfile', { bannerUrl: committed?.user?.bannerUrl ?? null })
       clearPendingBanner()
     }
@@ -469,7 +482,7 @@ const { submit: saveProfile, submitting: saving } = useFormSubmit(
     if (pendingAvatarFile.value) {
       const file = pendingAvatarFile.value
       const init = await apiFetchData<{ key: string; uploadUrl: string; headers: Record<string, string>; maxBytes?: number }>(
-        '/uploads/avatar/init',
+        avatarInitUrl,
         {
           method: 'POST',
           body: { contentType: file.type }
@@ -483,44 +496,67 @@ const { submit: saveProfile, submitting: saving } = useFormSubmit(
       })
       if (!putRes.ok) throw new Error('Failed to upload avatar.')
 
-      const committed = await apiFetchData<{ user: import('~/composables/useAuth').AuthUser }>('/uploads/avatar/commit', {
+      const committed = await apiFetchData<{ user: import('~/composables/useAuth').AuthUser }>(avatarCommitUrl, {
         method: 'POST',
         body: { key: init.key },
       })
 
-      const previousUsername = authUser.value?.username ?? null
-      authUser.value = committed.user ?? authUser.value
-      syncUserCaches(committed?.user, previousUsername)
+      if (!adminId) {
+        const previousUsername = authUser.value?.username ?? null
+        authUser.value = committed.user ?? authUser.value
+        syncUserCaches(committed?.user, previousUsername)
+      }
       emit('patchProfile', { avatarUrl: committed.user?.avatarUrl ?? null })
-      // Avatar is now persisted; clear staged state so UI reflects "applied".
       clearPendingAvatar()
     }
 
-    const result = await apiFetchData<{ user: import('~/composables/useAuth').AuthUser }>('/users/me/profile', {
-      method: 'PATCH',
-      body: {
-        name: editName.value,
-        bio: editBio.value,
-        locationQuery: editLocationQuery.value,
-        website: editWebsite.value,
-      }
-    })
+    if (adminId) {
+      // Admin editing another user's profile — response is the full UserDto (not wrapped under `user`).
+      const result = await apiFetchData<import('~/types/api').UserDto>(profilePatchUrl, {
+        method: 'PATCH',
+        body: {
+          name: editName.value,
+          bio: editBio.value,
+          locationQuery: editLocationQuery.value,
+          website: editWebsite.value,
+        }
+      })
+      emit('patchProfile', {
+        name: result?.name ?? null,
+        bio: result?.bio ?? null,
+        website: result?.website ?? null,
+        locationDisplay: result?.locationDisplay ?? null,
+        locationCity: result?.locationCity ?? null,
+        locationCounty: result?.locationCounty ?? null,
+        locationState: result?.locationState ?? null,
+        locationCountry: result?.locationCountry ?? null,
+      })
+    } else {
+      const result = await apiFetchData<{ user: import('~/composables/useAuth').AuthUser }>(profilePatchUrl, {
+        method: 'PATCH',
+        body: {
+          name: editName.value,
+          bio: editBio.value,
+          locationQuery: editLocationQuery.value,
+          website: editWebsite.value,
+        }
+      })
+      const u = result.user
+      const previousUsername = authUser.value?.username ?? null
+      emit('patchProfile', {
+        name: u?.name ?? null,
+        bio: u?.bio ?? null,
+        website: u?.website ?? null,
+        locationDisplay: u?.locationDisplay ?? null,
+        locationCity: u?.locationCity ?? null,
+        locationCounty: u?.locationCounty ?? null,
+        locationState: u?.locationState ?? null,
+        locationCountry: u?.locationCountry ?? null,
+      })
+      authUser.value = u ?? authUser.value
+      syncUserCaches(u, previousUsername)
+    }
 
-    // Update profile state (public view) and auth user state (self).
-    const u = result.user
-    const previousUsername = authUser.value?.username ?? null
-    emit('patchProfile', {
-      name: u?.name ?? null,
-      bio: u?.bio ?? null,
-      website: u?.website ?? null,
-      locationDisplay: u?.locationDisplay ?? null,
-      locationCity: u?.locationCity ?? null,
-      locationCounty: u?.locationCounty ?? null,
-      locationState: u?.locationState ?? null,
-      locationCountry: u?.locationCountry ?? null,
-    })
-    authUser.value = u ?? authUser.value
-    syncUserCaches(u, previousUsername)
     emit('update:modelValue', false)
   },
   {

@@ -172,6 +172,7 @@
               :premium-plus="profile?.premiumPlus"
               :is-organization="profile?.isOrganization"
               :steward-badge-enabled="profile?.stewardBadgeEnabled ?? true"
+              :is-bot="profile?.isBot"
             />
             <AppOrgAffiliationAvatars
               v-if="!profile?.isOrganization && profile?.orgAffiliations && profile.orgAffiliations.length > 0"
@@ -194,7 +195,7 @@
 
         <div class="shrink-0 flex items-center gap-2">
           <Button
-            v-if="isSelf"
+            v-if="isSelf || canEditProfile"
             label="Edit profile"
             severity="secondary"
             rounded
@@ -275,8 +276,8 @@
         </button>
       </div>
 
-      <div v-if="profile?.bio" class="mt-4 whitespace-pre-wrap break-words text-gray-800 dark:text-gray-200">
-        {{ profile.bio }}
+      <div v-if="profile?.bio" class="mt-4 text-gray-800 dark:text-gray-200">
+        <AppBioText :text="profile.bio" />
       </div>
       <div v-else class="mt-4 text-sm text-gray-500 dark:text-gray-400">
         No bio yet.
@@ -453,6 +454,7 @@ const props = defineProps<{
   hideAvatarDuringBanner: boolean
   relationshipTagLabel: string | null
   isSelf: boolean
+  canEditProfile?: boolean
   followRelationship: FollowRelationship | null
   nudge: NudgeState | null
   showFollowCounts: boolean

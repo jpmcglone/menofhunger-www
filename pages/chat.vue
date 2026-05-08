@@ -64,7 +64,16 @@
             @load-more="loadMoreConversations"
             @search-query="handleConversationSearchQuery"
             @presence-visible="onConversationRowPresenceVisible"
-          />
+          >
+            <template #pinned>
+              <ChatMarvPinnedRow
+                :is-selected="isSelectedConversationMarv"
+                :conversation-id="marvConversationId"
+                :unread-count="marvUnreadCount"
+                @select="selectConversation"
+              />
+            </template>
+          </ChatConversationList>
 
           <!-- Right column: chat for selected thread (edge-to-edge column, consistent content margins) -->
           <section v-if="showChatPane" class="h-full overflow-hidden">
@@ -217,6 +226,8 @@
                   </div>
                 </div>
               </div>
+
+              <ChatMarvChatStrip v-if="isSelectedConversationMarv" />
 
           <div v-if="selectedChatKey" class="relative flex-1 min-h-0 flex flex-col">
             <div
@@ -477,6 +488,8 @@ import { useRefcountedInterest } from '~/composables/chat/useRefcountedInterest'
 import ChatConversationList from '~/components/app/chat/ChatConversationList.vue'
 import ChatMessageList from '~/components/app/chat/ChatMessageList.vue'
 import ChatMessageInfoModal from '~/components/app/chat/ChatMessageInfoModal.vue'
+import ChatMarvPinnedRow from '~/components/app/chat/ChatMarvPinnedRow.vue'
+import ChatMarvChatStrip from '~/components/app/chat/ChatMarvChatStrip.vue'
 import { useKeyboardHeight } from '~/composables/useKeyboardHeight'
 import { userColorTier, type UserColorTier } from '~/utils/user-tier'
 import { tinyTooltip } from '~/utils/tiny-tooltip'
@@ -562,6 +575,7 @@ const {
   isSocketConnected,
 } = usePresence()
 const { showRequests, displayRequests, toneClass } = useMessagesBadge()
+const marv = useMarv()
 
 const activeTab = ref<'primary' | 'requests'>('primary')
 type MessageTone = UserColorTier
@@ -908,7 +922,18 @@ const draftRecipients = ref<FollowListUser[]>([])
 
 const blockState = useBlockState()
 
-const activeList = computed(() => conversations.value[activeTab.value])
+const activeList = computed(() => {
+  const list = conversations.value[activeTab.value]
+  // On the primary tab, the Marv pinned row already surfaces the Marv DM. Hide
+  // the regular conversation row so Marv never appears twice in the list.
+  const marvId = marv.marvUserId.value
+  if (activeTab.value === 'primary' && marv.enabled.value && marvId) {
+    return list.filter(
+      (c) => !(c.type === 'direct' && c.participants.some((p) => p.user.id === marvId)),
+    )
+  }
+  return list
+})
 const nextCursor = computed(() => nextCursorByTab.value[activeTab.value])
 const listLoading = computed(() => listLoadingByTab.value[activeTab.value])
 
@@ -1203,6 +1228,39 @@ function updateStickyDivider() {
 function getDirectUser(conversation: MessageConversation) {
   return conversation.participants.find((p) => p.user.id !== me.value?.id)?.user ?? null
 }
+
+/**
+ * Marv lives as a regular `direct` conversation in the user's list. We surface
+ * a pinned row above the conversation list (premium-styled), and when the
+ * selected chat IS Marv we render the mode picker / credits chip.
+ *
+ * `marvConversation` walks the existing primary list — we don't need to fetch
+ * separately because the conversation list already contains the marv DM if
+ * one exists. When it doesn't yet, the pinned row routes to `?marv=1` which
+ * is resolved on demand when the user clicks it (see `openMarvChat`).
+ */
+const marvConversation = computed<MessageConversation | null>(() => {
+  const marvId = marv.marvUserId.value
+  if (!marvId) return null
+  for (const c of conversations.value.primary) {
+    if (c.type !== 'direct') continue
+    if (c.participants.some((p) => p.user.id === marvId)) return c
+  }
+  for (const c of conversations.value.requests) {
+    if (c.type !== 'direct') continue
+    if (c.participants.some((p) => p.user.id === marvId)) return c
+  }
+  return null
+})
+
+const marvConversationId = computed(() => marvConversation.value?.id ?? null)
+const marvUnreadCount = computed(() => marvConversation.value?.unreadCount ?? 0)
+const isSelectedConversationMarv = computed(() => {
+  const marvId = marv.marvUserId.value
+  if (!marvId) return false
+  if (selectedConversation.value?.type !== 'direct') return false
+  return selectedConversation.value.participants.some((p) => p.user.id === marvId)
+})
 
 const viewerCrew = useViewerCrew()
 
@@ -2004,6 +2062,13 @@ async function createConversation() {
     return
   }
   newConversationError.value = null
+
+  // Marv can only be in a 1:1 DM, never a group chat.
+  const marvId = marv.marvUserId.value
+  if (marvId && newDialogRecipients.value.some((u) => u.id === marvId) && newDialogRecipients.value.length > 1) {
+    newConversationError.value = 'Marv can only be in a 1-on-1 conversation, not a group chat.'
+    return
+  }
   try {
     const recipients = [...newDialogRecipients.value]
     newDialogVisible.value = false
@@ -2070,6 +2135,19 @@ async function openDraftChatWithRecipient(recipient: FollowListUser) {
   renderedChatKey.value = 'draft'
 }
 
+/**
+ * Open (or create-on-first-message) the marv DM. Resolves the marv username
+ * from `useMarv()` (it comes back from `GET /marvin/me`) and forwards to
+ * `openChatToUsername`. Used by the pinned marv row when the conversation
+ * doesn't yet exist (route lands as `?marv=1`).
+ */
+async function openMarvChat() {
+  await marv.ensureLoaded().catch(() => null)
+  const username = marv.marvUsername.value
+  if (!username) return
+  await openChatToUsername(username)
+}
+
 async function openChatToUsername(username: string) {
   const u = (username ?? '').trim()
   if (!u) return
@@ -2113,6 +2191,22 @@ async function openChatToUsername(username: string) {
     // Non-fatal: ignore
   }
 }
+
+// Handle `/chat?marv=1` changes while already on /chat.
+watch(
+  () => route.query.marv === '1',
+  async (isMarv) => {
+    if (!isMarv) return
+    try { await openMarvChat() } catch { /* ignore */ }
+    const next: Record<string, string | string[]> = {}
+    for (const [k, v] of Object.entries(route.query)) {
+      if (k === 'marv') continue
+      if (typeof v === 'string') next[k] = v
+      else if (Array.isArray(v)) next[k] = v.filter((x): x is string => typeof x === 'string')
+    }
+    await router.replace({ query: next })
+  },
+)
 
 // Handle `/chat?to=<username>` changes while already on /chat.
 // (Without this, clicking “Send message” from within chat only updates the URL.)
@@ -2270,6 +2364,14 @@ onMounted(() => {
     // when the auth composable hasn't resolved yet at mount time.
     try { await ensureLoaded() } catch { /* ignore */ }
 
+    // Marv: load the viewer's Marv state (preferences, credits, marv user id) and
+    // subscribe to `marv:credits-updated` so the credits chip in the chat strip /
+    // pinned row stays live without polling. Safe to call regardless of premium —
+    // the API gates non-premium responses, and the pinned row component renders a
+    // CTA in that case.
+    try { await marv.ensureLoaded() } catch { /* ignore */ }
+    marv.startRealtime()
+
     if (!viewerIsVerified.value && !viewerIsPremium.value) return
 
     registerRealtime()
@@ -2286,8 +2388,30 @@ onMounted(() => {
     if (toUsername) {
       try { await openChatToUsername(toUsername) } catch { /* ignore */ }
     }
+    if (route.query.marv === '1') {
+      try { await openMarvChat() } catch { /* ignore */ }
+      const next: Record<string, string | string[]> = {}
+      for (const [k, v] of Object.entries(route.query)) {
+        if (k === 'marv') continue
+        if (typeof v === 'string') next[k] = v
+        else if (Array.isArray(v)) next[k] = v.filter((x): x is string => typeof x === 'string')
+      }
+      await router.replace({ query: next })
+    }
     if (selectedConversationId.value) {
       try { await selectConversation(selectedConversationId.value, { replace: true }) } catch { /* ignore */ }
+    } else if (!isTinyViewport.value) {
+      // Desktop two-pane mode: auto-select the first non-Marv conversation so the
+      // right pane is never blank. On mobile we leave nothing selected so the user
+      // sees the list first (tap to open a chat).
+      const marvId = marv.marvUserId.value
+      const first = conversations.value.primary.find((c) => {
+        if (!marvId) return true
+        return !c.participants.some((p) => p.user.id === marvId)
+      }) ?? null
+      if (first) {
+        try { await selectConversation(first.id, { replace: true }) } catch { /* ignore */ }
+      }
     }
     revealChatScreenAfterFade()
 
@@ -2318,6 +2442,7 @@ onBeforeUnmount(() => {
   if (searchDebounceTimer) { clearTimeout(searchDebounceTimer); searchDebounceTimer = null }
   if (jumpHighlightTimer) { clearTimeout(jumpHighlightTimer); jumpHighlightTimer = null }
   teardownRealtime()
+  marv.stopRealtime()
   // `presenceInterest` cleans itself up via its own `onBeforeUnmount` hook
   // (see `useRefcountedInterest`).
   emitMessagesScreen(false)

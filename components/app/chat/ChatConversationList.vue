@@ -79,6 +79,17 @@
       </div>
     </div>
 
+    <!--
+      Pinned row(s) above the regular conversation list. Currently used for the
+      "Talk to Marv" entry, which gets its own premium-styled surface and is
+      always visible at the top regardless of search/scroll state. Kept as a
+      slot so chat.vue owns marv state without ChatConversationList knowing
+      about marv at all.
+    -->
+    <div v-if="$slots.pinned && activeTab === 'primary'" class="border-b moh-border">
+      <slot name="pinned" />
+    </div>
+
     <div v-if="listLoading" class="px-4 pt-2 pb-4 text-sm text-gray-500 dark:text-gray-400">
       Loading…
     </div>

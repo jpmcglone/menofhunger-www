@@ -207,6 +207,11 @@ const feedCallback: {
 }
 
 function sortByRecent(a: OnlineUser, b: OnlineUser) {
+  // Bots (Marv) always pin to the top, even if a real user just connected at the
+  // same instant. The API marks Marv with `isBot: true` only when MARV_ENABLED is
+  // true, so this guarantees he's the first row whenever he's listed at all.
+  if (a.isBot && !b.isBot) return -1
+  if (!a.isBot && b.isBot) return 1
   const ta = a.lastConnectAt ?? 0
   const tb = b.lastConnectAt ?? 0
   return tb - ta

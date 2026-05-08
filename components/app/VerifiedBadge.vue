@@ -1,7 +1,8 @@
 <template>
-  <span v-if="isVerified || showSteward" class="inline-flex shrink-0 align-middle items-center gap-1">
+  <span v-if="isBot || isVerified || showSteward" class="inline-flex shrink-0 align-middle items-center gap-1">
+    <AppAiBadge v-if="isBot" :size="size" :show-tooltip="showTooltip" />
     <span
-      v-if="isVerified"
+      v-else-if="isVerified"
       ref="verifiedEl"
       :class="['inline-block', sizeClass]"
       :style="iconStyle"
@@ -36,8 +37,9 @@ const props = withDefaults(
     stewardBadgeEnabled?: boolean
     size?: Size
     showTooltip?: boolean
+    isBot?: boolean
   }>(),
-  { size: 'sm', premium: false, premiumPlus: false, isOrganization: false, stewardBadgeEnabled: true, showTooltip: true }
+  { size: 'sm', premium: false, premiumPlus: false, isOrganization: false, stewardBadgeEnabled: true, showTooltip: true, isBot: false }
 )
 
 // Use semantic CSS variables so the accent stays consistent across the app theme.

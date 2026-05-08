@@ -11,6 +11,7 @@
         :is-organization="Boolean(user.isOrganization)"
         :steward-badge-enabled="user.stewardBadgeEnabled ?? true"
         :size="badgeSize"
+        :is-bot="Boolean(user.isBot)"
       />
       <AppOrgAffiliationAvatars
         v-if="orgAffiliations && orgAffiliations.length > 0"
@@ -38,6 +39,7 @@ type UserLike = {
   isOrganization?: boolean | null
   stewardBadgeEnabled?: boolean | null
   orgAffiliations?: OrgAffiliation[] | null
+  isBot?: boolean | null
 }
 
 const props = withDefaults(

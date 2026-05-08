@@ -163,6 +163,37 @@ describe('hydration guardrails (structural)', () => {
     expect(list).not.toMatch(/:key="i\b/)
   })
 
+  it('pins isBot rows to the top of /online (Marv always-online)', () => {
+    // The API marks the synthetic Marv row with `isBot: true` only when MARV_ENABLED
+    // is on. Whenever Marv is present in the list, the frontend's sort comparator
+    // must put him before any real user, even if a real user just connected at the
+    // same instant. If this guardrail breaks, Marv silently sinks down the list.
+    const online = readFromRepo('pages/online.vue')
+    // The sort must check `isBot` BEFORE the lastConnectAt comparison.
+    expect(online).toMatch(/if \(a\.isBot && !b\.isBot\) return -1/)
+    expect(online).toMatch(/if \(!a\.isBot && b\.isBot\) return 1/)
+  })
+
+  it('renders the AI badge via AppVerifiedBadge when user.isBot is true (no Bot pill in UserRow)', () => {
+    // The "Bot" pill was replaced with an AI badge rendered inside AppVerifiedBadge / AppAiBadge.
+    // UserRow passes isBot through AppUserIdentityLine → AppVerifiedBadge → AppAiBadge.
+    const userRow = readFromRepo('components/app/UserRow.vue')
+    // UserRow must NOT have a standalone bot pill — the badge lives in the identity line.
+    expect(userRow).not.toMatch(/tabler:robot/)
+    expect(userRow).not.toMatch(/>Bot</)
+    // The identity line component receives the user object which carries isBot.
+    expect(userRow).toMatch(/AppUserIdentityLine/)
+
+    // AppVerifiedBadge must have an isBot prop and delegate to AppAiBadge.
+    const verifiedBadge = readFromRepo('components/app/VerifiedBadge.vue')
+    expect(verifiedBadge).toMatch(/isBot/)
+    expect(verifiedBadge).toMatch(/AppAiBadge/)
+
+    // AiBadge itself must exist.
+    const aiBadge = readFromRepo('components/app/AiBadge.vue')
+    expect(aiBadge).toMatch(/tabler:sparkles/)
+  })
+
   it('uses shallowRef for the chat conversations + messages stores', () => {
     // Deep reactivity over message bodies, sender chains, and reactions was
     // walking 100s of objects on every patch. shallowRef + manual triggerRef
@@ -180,6 +211,58 @@ describe('hydration guardrails (structural)', () => {
     // 500-message thread doesn't fan out 500 metadata requests on first paint.
     expect(body).toMatch(/useElementVisibility/)
     expect(body).toMatch(/everVisible/)
+  })
+
+  // ---- Marv (AI helper) guardrails ----------------------------------------
+  //
+  // These tests encode invariants that prevent SSR/client drift on the chat
+  // page's pinned Marv row and the in-chat marv strip. The marv-related state
+  // lives in `useState` keys inside `useMarv()` so SSR matches the client's
+  // first patch (instead of `null` -> populated drift).
+
+  it('keys marv state via useState so SSR matches the first client paint', () => {
+    const marv = readFromRepo('composables/useMarv.ts')
+    // All state keys are namespaced under `marv:*` and built with useState so
+    // hydration sees the same initial values on both sides.
+    expect(marv).toMatch(/useState<MarvinMeDto \| null>\(`\$\{stateKey\}:me`/)
+    expect(marv).toMatch(/useState<boolean>\(`\$\{stateKey\}:hasFetched`/)
+    expect(marv).toMatch(/useState<boolean>\(`\$\{stateKey\}:subscribed`/)
+  })
+
+  it('only registers the marv websocket subscription on the client', () => {
+    // Calling `addMarvCallback` during SSR would race against socket.io's
+    // browser-only init and produce a hydration warning. The subscription is
+    // gated behind `import.meta.client`.
+    const marv = readFromRepo('composables/useMarv.ts')
+    expect(marv).toMatch(/function startRealtime\(\)\s*{[\s\S]*?if \(!import\.meta\.client\) return/)
+  })
+
+  it('renders the pinned marv row above the conversation list via a slot, only on the primary tab', () => {
+    const list = readFromRepo('components/app/chat/ChatConversationList.vue')
+    // The list owns the slot but doesn't know about marv specifically — chat.vue
+    // owns the marv state. Critical for SSR: when the slot has no content the
+    // wrapper isn't rendered (`v-if="$slots.pinned"`), which avoids an empty
+    // `<div>` mismatch when the page route renders this component without the
+    // slot during SSR (e.g. an unauthenticated SSR pass).
+    expect(list).toMatch(/<div v-if="\$slots\.pinned && activeTab === 'primary'"/)
+  })
+
+  it('uses real <NuxtLink> anchors for the pinned marv row (right-click / cmd-click)', () => {
+    // Per `40-internal-links.mdc`, every internal navigation must produce a
+    // real <a> in the DOM. Both the premium row and the non-premium CTA must
+    // render NuxtLink, not a button + navigateTo.
+    const row = readFromRepo('components/app/chat/ChatMarvPinnedRow.vue')
+    expect(row).toMatch(/<NuxtLink[\s\S]*?:to="conversationPath"/)
+    expect(row).toMatch(/<NuxtLink[\s\S]*?to="\/tiers"/)
+  })
+
+  it('does NOT inject an x-marv-mode header from the post composer (Marv always uses auto mode for replies)', () => {
+    // Post-reply mode selection was removed: Marv always auto-routes for thread replies.
+    // The composer must not set x-marv-mode so the server handles routing exclusively.
+    const composer = readFromRepo('components/app/PostComposer.vue')
+    // No assignment of the header — only a comment mentioning it is acceptable.
+    expect(composer).not.toMatch(/\['x-marv-mode'\]\s*=/)
+    expect(composer).not.toMatch(/showMarvModePill/)
   })
 })
 

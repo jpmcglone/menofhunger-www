@@ -37,6 +37,7 @@ import type {
   WsCheckinAnsweredTodayPayload,
   GetPresenceStatusesData,
   UserStatus,
+  MarvCreditsUpdatedPayloadDto,
 } from '~/types/api'
 import { useUsersStore } from '~/composables/useUsersStore'
 
@@ -127,6 +128,15 @@ export type NotificationsCallback = {
   onUpdated?: (payload: WsNotificationsUpdatedPayload) => void
   onNew?: (payload: WsNotificationsNewPayload) => void
   onDeleted?: (payload: WsNotificationsDeletedPayload) => void
+}
+
+/**
+ * Marv (AI helper) realtime callbacks. Currently we only fire `onCreditsUpdated`, emitted
+ * after every Marv reply (or admin credit adjustment) so the credits chip in the chat page
+ * / settings can patch state in place without polling.
+ */
+export type MarvCallback = {
+  onCreditsUpdated?: (payload: MarvCreditsUpdatedPayloadDto) => void
 }
 
 export type FollowsCallback = {
@@ -317,6 +327,7 @@ export function usePresence() {
   const crewCallbacks = useState<Set<CrewCallback>>('presence-crew-callbacks', () => new Set())
   const groupInviteCallbacks = useState<Set<GroupInviteCallback>>('presence-group-invite-callbacks', () => new Set())
   const checkinsCallbacks = useState<Set<CheckinsCallback>>('presence-checkins-callbacks', () => new Set())
+  const marvCallbacks = useState<Set<MarvCallback>>('presence-marv-callbacks', () => new Set())
   const articleSubRefs = ref(new Set<string>())
   const postSubRefs = ref(new Set<string>())
   const onlineFeedSubscribed = useState(PRESENCE_ONLINE_FEED_SUBSCRIBED_KEY, () => false)
@@ -678,6 +689,14 @@ export function usePresence() {
     notificationsCallbacks.value.delete(cb)
   }
 
+  function addMarvCallback(cb: MarvCallback) {
+    marvCallbacks.value.add(cb)
+  }
+
+  function removeMarvCallback(cb: MarvCallback) {
+    marvCallbacks.value.delete(cb)
+  }
+
   function addFollowsCallback(cb: FollowsCallback) {
     followsCallbacks.value.add(cb)
   }
@@ -995,6 +1014,13 @@ export function usePresence() {
       if (!notificationsCallbacks.value.size) return
       for (const cb of notificationsCallbacks.value) {
         cb.onDeleted?.(data)
+      }
+    })
+
+    socket.on('marv:credits-updated', (data: MarvCreditsUpdatedPayloadDto) => {
+      if (!marvCallbacks.value.size) return
+      for (const cb of marvCallbacks.value) {
+        cb.onCreditsUpdated?.(data)
       }
     })
 
@@ -1669,6 +1695,8 @@ export function usePresence() {
     removeGroupInviteCallback,
     addCheckinsCallback,
     removeCheckinsCallback,
+    addMarvCallback,
+    removeMarvCallback,
     emitRadioJoin(stationId: string) {
       const socket = socketRef.value
       const id = (stationId ?? '').trim()
