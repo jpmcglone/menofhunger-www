@@ -1,4 +1,4 @@
-import { AsYouType } from 'libphonenumber-js'
+import { AsYouType, parsePhoneNumberFromString } from 'libphonenumber-js'
 
 function keepLeadingPlusAndDigits(input: string): string {
   const trimmed = (input ?? '').trim()
@@ -19,15 +19,21 @@ export function formatPhoneAsYouType(input: string, defaultCountry: string = 'US
 /**
  * Normalize a phone input string for the API.
  *
- * Mirrors the API's current `normalizePhone()` behavior:
- * - accept E.164-ish +[8-15 digits]
- * - if 10 digits, assume US and prefix +1
- * - if 8-15 digits, prefix +
+ * Uses libphonenumber-js with the selected country to produce accurate E.164.
+ * Falls back to the API's legacy heuristics for numbers that don't parse cleanly.
+ *
+ * @param input  The raw phone string the user typed (national or international format).
+ * @param country ISO 3166-1 alpha-2 country code used to interpret national numbers (default 'US').
  */
-export function normalizePhoneForApi(input: string): string {
+export function normalizePhoneForApi(input: string, country: string = 'US'): string {
   const trimmed = (input ?? '').trim()
   if (!trimmed) return ''
 
+  const parsed = parsePhoneNumberFromString(trimmed, country as any)
+  if (parsed?.isValid()) return parsed.format('E.164')
+
+  // Legacy fallback: mirrors the API's normalizePhone() behavior so the server
+  // can still do its own validation pass.
   const hasPlus = trimmed.startsWith('+')
   const digits = trimmed.replace(/\D/g, '')
   const normalized = hasPlus ? `+${digits}` : digits

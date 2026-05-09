@@ -23,21 +23,52 @@
       <div class="space-y-2">
         <label class="text-sm font-medium text-gray-700 dark:text-gray-200">Phone number</label>
 
-        <div v-if="step === 'phone'" class="flex flex-col gap-2 sm:flex-row sm:items-center">
-          <InputText
-            ref="phoneInputRef"
-            v-model="phoneInput"
-            class="w-full"
-            placeholder="+1 (555) 555-5555"
-            autocomplete="tel"
-            inputmode="tel"
-            :disabled="phoneSubmitting"
-            @input="onPhoneInput"
-            @keydown.enter.prevent="submitPhone"
-          />
+        <div v-if="step === 'phone'" class="flex flex-col gap-2">
+          <div class="flex items-stretch gap-1">
+            <Select
+              v-model="selectedCountry"
+              :options="countries"
+              option-label="name"
+              option-value="code"
+              filter
+              filter-placeholder="Search country…"
+              class="shrink-0 w-[108px] font-mono text-sm"
+              :pt="{
+                root: { class: 'h-11' },
+                label: { class: 'flex items-center gap-1 py-0 leading-none text-sm' },
+              }"
+              :disabled="phoneSubmitting"
+            >
+              <template #value="{ value }">
+                <span v-if="value" class="flex items-center gap-1 leading-none">
+                  <span class="text-base leading-none">{{ countryByCode(value)?.flag }}</span>
+                  <span class="text-xs text-gray-500 dark:text-gray-400">+{{ countryByCode(value)?.callingCode }}</span>
+                </span>
+              </template>
+              <template #option="{ option }">
+                <span class="flex items-center gap-2 w-full">
+                  <span class="text-base leading-none">{{ option.flag }}</span>
+                  <span class="flex-1 truncate text-sm">{{ option.name }}</span>
+                  <span class="text-xs text-gray-400 shrink-0">+{{ option.callingCode }}</span>
+                </span>
+              </template>
+            </Select>
+            <InputText
+              ref="phoneInputRef"
+              v-model="phoneInput"
+              class="flex-1"
+              placeholder="Phone number"
+              autocomplete="tel-national"
+              inputmode="tel"
+              :disabled="phoneSubmitting"
+              @input="onPhoneInput"
+              @keydown.enter.prevent="submitPhone"
+            />
+          </div>
+          <div class="flex justify-end">
           <button
             type="button"
-            class="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-black text-white transition-opacity hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-white dark:text-black self-end sm:self-auto"
+            class="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-black text-white transition-opacity hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-white dark:text-black"
             :disabled="phoneSubmitting || !phoneInput.trim()"
             aria-label="Send"
             @click="submitPhone"
@@ -47,6 +78,7 @@
               <path fill="currentColor" d="M13.2 5.2L20 12l-6.8 6.8-1.6-1.6L15.6 13H4v-2h11.6l-4-4.2 1.6-1.6z" />
             </svg>
           </button>
+          </div>
         </div>
 
         <div v-else class="flex items-center justify-between gap-3 rounded-lg border border-gray-200 px-3 py-2 dark:border-zinc-800">
@@ -180,6 +212,7 @@ type Step = 'phone' | 'code'
 const { apiFetchData } = useApiClient()
 import { useFormSubmit } from '~/composables/useFormSubmit'
 import { countDigitsBeforeIndex, formatPhoneAsYouType, indexFromDigitCount, normalizePhoneForApi } from '~/utils/phone'
+import { COUNTRIES_US_FIRST, countryByCode } from '~/utils/countries'
 import { isSafeRedirect } from '~/utils/url'
 const route = useRoute()
 const { capturedReferralCode, captureReferralFromRoute, markReferralApplied } = useReferralCapture()
@@ -195,6 +228,9 @@ function dismissBanned() {
 }
 
 const step = ref<Step>('phone')
+
+const selectedCountry = ref('US')
+const countries = COUNTRIES_US_FIRST
 
 const phoneInput = ref('')
 const phoneCommitted = ref('')
@@ -280,7 +316,7 @@ async function startOtp(phone: string) {
 
   inlineError.value = null
   introError.value = null
-  phoneCommitted.value = formatPhoneAsYouType(phoneInput.value.trim()) || phone
+  phoneCommitted.value = formatPhoneAsYouType(phoneInput.value.trim(), selectedCountry.value) || phone
   phoneCommittedNormalized.value = phone
   step.value = 'code'
   codeInput.value = ''
@@ -298,7 +334,7 @@ function onPhoneInput(e: Event) {
   const selectionStart = el.selectionStart ?? raw.length
   const digitsBefore = countDigitsBeforeIndex(raw, selectionStart)
 
-  const formatted = formatPhoneAsYouType(raw)
+  const formatted = formatPhoneAsYouType(raw, selectedCountry.value)
   if (formatted === raw) return
 
   isPhoneFormatting = true
@@ -319,7 +355,7 @@ const { submit: submitPhone, submitting: submitPhoneSubmitting } = useFormSubmit
   async () => {
     inlineError.value = null
     introError.value = null
-    const phone = normalizePhoneForApi(phoneInput.value)
+    const phone = normalizePhoneForApi(phoneInput.value, selectedCountry.value)
     if (!phone) return
 
     const existsRes = await apiFetchData<{ exists: boolean }>('/auth/phone/exists', {
