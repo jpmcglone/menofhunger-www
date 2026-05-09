@@ -28,7 +28,7 @@
             placeholder="username"
           >
             <template #label>
-              <label class="text-sm font-medium moh-text">
+              <label class="text-sm font-medium" :class="usernameInvalid ? 'text-red-500 dark:text-red-400' : 'moh-text'">
                 Username<span class="ml-0.5">*</span>
               </label>
             </template>
@@ -38,30 +38,37 @@
             <InputText v-model="name" class="w-full" placeholder="Name" :disabled="submitting" />
           </AppFormField>
 
-          <AppFormField label="Email" optional tone="moh" helper="Optional. Helps us reach you for account support.">
-            <InputText v-model="email" type="email" class="w-full" placeholder="you@example.com" autocomplete="email" :disabled="submitting" />
+          <AppFormField
+            label="Email"
+            optional
+            tone="moh"
+            :helper="emailInvalid ? 'Enter a valid email address.' : 'Optional. Helps us reach you for account support.'"
+            :helper-tone="emailInvalid ? 'error' : undefined"
+          >
+            <InputText v-model="email" type="email" class="w-full" placeholder="you@example.com" autocomplete="email" :disabled="submitting" :invalid="emailInvalid" />
           </AppFormField>
 
           <div class="space-y-2">
-            <label class="text-sm font-medium moh-text">
+            <label class="text-sm font-medium" :class="birthdateInvalid ? 'text-red-500 dark:text-red-400' : 'moh-text'">
               Birthday<span v-if="!birthdateLocked" class="ml-0.5">*</span>
             </label>
-            <InputText v-if="!birthdateLocked" v-model="birthdate" type="date" class="w-full" :disabled="submitting" />
+            <InputText v-if="!birthdateLocked" v-model="birthdate" type="date" class="w-full" :disabled="submitting" :invalid="birthdateInvalid" />
             <div v-else class="w-full rounded-xl border moh-border px-3 py-2 text-sm moh-text">
               {{ birthdatePretty }}
             </div>
-            <div class="text-xs moh-text-muted">
+            <div class="text-xs" :class="birthdateInvalid ? 'text-red-500 dark:text-red-400' : 'moh-text-muted'">
               <span v-if="birthdateLocked">Birthday is locked once set.</span>
+              <span v-else-if="birthdateInvalid">{{ birthdateErrorText }}</span>
               <span v-else>Must be 18+ to join.</span>
             </div>
           </div>
 
           <div class="space-y-2">
             <div class="flex items-baseline justify-between gap-3">
-              <label class="text-sm font-medium moh-text">
+              <label class="text-sm font-medium" :class="interestsInvalid ? 'text-red-500 dark:text-red-400' : 'moh-text'">
                 Life arenas<span class="ml-0.5">*</span>
               </label>
-              <div class="text-xs moh-text-muted">Pick at least 1</div>
+              <div class="text-xs" :class="interestsInvalid ? 'text-red-500 dark:text-red-400' : 'moh-text-muted'">Pick at least 1</div>
             </div>
             <AppInterestsPicker
               v-model="interests"
@@ -74,7 +81,7 @@
           </div>
 
           <div class="space-y-2">
-            <label class="text-sm font-medium moh-text">
+            <label class="text-sm font-medium" :class="communityInvalid ? 'text-red-500 dark:text-red-400' : 'moh-text'">
               Community<span v-if="!menConfirmLocked" class="ml-0.5">*</span>
             </label>
             <!-- Make the whole row tappable (fixes iOS delayed visual updates). -->
@@ -134,11 +141,13 @@
           </div>
 
           <div class="flex items-center justify-between gap-3 pt-1">
-            <div class="text-xs moh-text-muted">Required to continue.</div>
+            <div class="text-xs" :class="!canSubmit ? 'text-red-500 dark:text-red-400' : 'moh-text-muted'">
+              {{ !canSubmit ? firstBlockerMessage : 'Required to continue.' }}
+            </div>
             <Button
               :label="VOICE.onboarding.ctaStart"
               :loading="submitting"
-              :disabled="submitting || !canSubmit"
+              :disabled="submitting"
               @click="submit"
             >
               <template #icon>
@@ -282,6 +291,50 @@ watch(
 const error = ref<string | null>(null)
 const submitting = ref(false)
 
+const birthdateInvalid = computed(() => {
+  if (birthdateLocked.value) return false
+  return !birthdate.value || !isBirthdate18Plus(birthdate.value)
+})
+
+const birthdateErrorText = computed(() => {
+  if (!birthdate.value) return 'Birthday is required.'
+  const d = new Date(`${birthdate.value}T00:00:00.000Z`)
+  if (!Number.isNaN(d.getTime()) && d > new Date()) return 'Birthday can\'t be in the future.'
+  return 'You must be at least 18 years old to join.'
+})
+
+const interestsInvalid = computed(() =>
+  !Array.isArray(interests.value) || interests.value.length === 0,
+)
+
+const communityInvalid = computed(() =>
+  !menConfirmLocked.value && !menOnlyConfirmed.value,
+)
+
+function isValidEmail(v: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v)
+}
+
+const emailInvalid = computed(() => {
+  const v = email.value.trim()
+  return v.length > 0 && !isValidEmail(v)
+})
+
+const usernameInvalid = computed(() => {
+  if (usernameLocked.value) return false
+  const s = usernameStatus.value
+  return s !== 'available' && s !== 'checking' && s !== 'same'
+})
+
+const firstBlockerMessage = computed(() => {
+  if (canSubmit.value) return ''
+  if (emailInvalid.value) return 'Enter a valid email address.'
+  if (birthdateInvalid.value) return birthdateErrorText.value
+  if (interestsInvalid.value) return 'Pick at least one life arena.'
+  if (communityInvalid.value) return 'Please confirm the community agreement.'
+  return 'Please complete all required fields.'
+})
+
 const canSubmit = computed(() => {
   if (!menConfirmLocked.value && menOnlyConfirmed.value !== true) return false
   const needsUsername = !user.value?.usernameIsSet
@@ -296,6 +349,7 @@ const canSubmit = computed(() => {
   if (!birthdateLocked.value && !birthdate.value) return false
   if (!birthdateLocked.value && birthdate.value && !isBirthdate18Plus(birthdate.value)) return false
   if (!Array.isArray(interests.value) || interests.value.length < 1) return false
+  if (emailInvalid.value) return false
   return true
 })
 
