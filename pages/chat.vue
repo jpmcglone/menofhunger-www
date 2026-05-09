@@ -1421,6 +1421,7 @@ async function selectConversation(id: string, opts?: { replace?: boolean; jumpTo
   dividerEls.clear()
   selectedConversationId.value = id
   selectedChatKey.value = id
+  emitMessagesScreen(true, id)
   draftRecipients.value = []
   messagesReady.value = false
   animateMessageList.value = false
@@ -1501,6 +1502,7 @@ async function clearSelection(opts?: { replace?: boolean; preserveDraft?: boolea
   dividerEls.clear()
   selectedConversationId.value = null
   selectedChatKey.value = null
+  emitMessagesScreen(true, null)
   if (!opts?.preserveDraft) {
     draftRecipients.value = []
   }
@@ -2402,7 +2404,7 @@ onMounted(() => {
     if (!viewerIsVerified.value && !viewerIsPremium.value) return
 
     registerRealtime()
-    emitMessagesScreen(true)
+    emitMessagesScreen(true, selectedConversationId.value)
 
     // Pre-fetch allowed reactions (used by the reaction picker)
     apiFetchData<MessageReaction[]>('/messages/reactions').then((reactions) => {
@@ -2479,7 +2481,7 @@ onBeforeUnmount(() => {
 
 watch(isSocketConnected, (connected) => {
   if (!viewerIsVerified.value && !viewerIsPremium.value) return
-  if (connected && route.path === '/chat') emitMessagesScreen(true)
+  if (connected && route.path === '/chat') emitMessagesScreen(true, selectedConversationId.value)
 })
 
 watch(

@@ -1835,10 +1835,13 @@ export function usePresence() {
       if (!socket?.connected || !id) return
       socket.emit('spaces:announceMode', { spaceId: id, ...data })
     },
-    emitMessagesScreen(active: boolean) {
+    emitMessagesScreen(active: boolean, conversationId?: string | null) {
       const socket = socketRef.value
       if (!socket?.connected) return
-      socket.emit('messages:screen', { active: Boolean(active) })
+      socket.emit('messages:screen', {
+        active: Boolean(active),
+        ...(active && conversationId ? { conversationId } : {}),
+      })
     },
     emitMessagesTyping(conversationId: string, typing: boolean) {
       const socket = socketRef.value
