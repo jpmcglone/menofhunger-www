@@ -1,25 +1,13 @@
 <template>
   <AppPageContent bottom="standard">
-  <div class="py-4 space-y-4">
-    <div class="px-4">
-      <AppPageHeader title="Users" icon="tabler:users" description="Search and edit users.">
+    <AppPageHeader sticky class="px-4 pt-4 pb-3" title="Users"  description="Search and edit users.">
       <template #leading>
-        <!-- Only show back on mobile; desktop has the admin left pane. -->
-        <Button
-          as="NuxtLink"
-          to="/admin"
-          class="md:hidden"
-          text
-          severity="secondary"
-          aria-label="Back"
-        >
-          <template #icon>
-            <Icon name="tabler:chevron-left" aria-hidden="true" />
-          </template>
+        <Button as="NuxtLink" to="/admin" class="md:hidden" text severity="secondary" aria-label="Back">
+          <template #icon><Icon name="tabler:chevron-left" aria-hidden="true" /></template>
         </Button>
       </template>
-      </AppPageHeader>
-    </div>
+    </AppPageHeader>
+  <div class="py-4 space-y-4">
 
     <div class="px-4">
       <div class="rounded-2xl border border-gray-200 bg-gray-50/70 p-4 dark:border-zinc-800 dark:bg-zinc-950/30">

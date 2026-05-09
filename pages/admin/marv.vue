@@ -1,42 +1,42 @@
 <template>
   <AppPageContent bottom="standard">
-    <div class="py-4 space-y-6">
-      <div class="px-4">
-        <AppPageHeader
-          title="Marv"
-          icon="tabler:robot"
-          description="AI helper config, usage, and cost."
+    <AppPageHeader
+      sticky
+      class="px-4 pt-4 pb-3"
+      title="Marv"
+      
+      description="AI helper config, usage, and cost."
+    >
+      <template #leading>
+        <Button
+          as="NuxtLink"
+          to="/admin"
+          class="md:hidden"
+          text
+          severity="secondary"
+          aria-label="Back"
         >
-          <template #leading>
-            <Button
-              as="NuxtLink"
-              to="/admin"
-              class="md:hidden"
-              text
-              severity="secondary"
-              aria-label="Back"
-            >
-              <template #icon>
-                <Icon name="tabler:chevron-left" aria-hidden="true" />
-              </template>
-            </Button>
+          <template #icon>
+            <Icon name="tabler:chevron-left" aria-hidden="true" />
           </template>
-          <template #trailing>
-            <Button
-              text
-              severity="secondary"
-              :loading="loading"
-              aria-label="Refresh"
-              @click="loadAll()"
-            >
-              <template #icon>
-                <Icon name="tabler:refresh" aria-hidden="true" />
-              </template>
-            </Button>
+        </Button>
+      </template>
+      <template #trailing>
+        <Button
+          text
+          severity="secondary"
+          :loading="loading"
+          aria-label="Refresh"
+          @click="loadAll()"
+        >
+          <template #icon>
+            <Icon name="tabler:refresh" aria-hidden="true" />
           </template>
-        </AppPageHeader>
-      </div>
+        </Button>
+      </template>
+    </AppPageHeader>
 
+    <div class="space-y-6 py-4">
       <AppInlineAlert v-if="loadError" severity="danger" :message="loadError" class="mx-4" />
 
       <!-- Global controls -->
@@ -89,8 +89,20 @@
 
       <!-- Cost rollups -->
       <section class="px-4 space-y-3">
-        <div class="flex items-center justify-between">
-          <div class="font-semibold text-sm">Daily cost (last {{ costSinceDays }} days)</div>
+        <div class="flex items-center justify-between gap-2">
+          <div class="flex items-center gap-2">
+            <div class="font-semibold text-sm">Daily cost (last {{ costSinceDays }} days)</div>
+            <button
+              type="button"
+              class="inline-flex items-center justify-center h-6 w-6 rounded-md text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-zinc-800 transition-colors"
+              :class="loadingCost ? 'animate-spin opacity-60 pointer-events-none' : ''"
+              :aria-label="loadingCost ? 'Refreshing…' : 'Refresh cost data'"
+              :disabled="loadingCost"
+              @click="loadCost"
+            >
+              <Icon name="tabler:refresh" size="14" aria-hidden="true" />
+            </button>
+          </div>
           <div class="inline-flex rounded-lg border moh-border overflow-hidden text-xs">
             <button
               v-for="opt in costRangeOptions"
@@ -106,7 +118,7 @@
         <div class="rounded-xl border moh-border p-4 space-y-3">
           <div v-if="loadingCost && !costRows.length" class="text-sm text-gray-500 dark:text-gray-400">Loading…</div>
           <div v-else-if="!costRows.length" class="text-sm text-gray-500 dark:text-gray-400 italic">
-            No usage rolled up yet. Rollups run daily at 02:15 UTC.
+            No usage data yet. Today's data is always live; historical days roll up nightly at 02:15 UTC.
           </div>
           <template v-else>
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -124,7 +136,8 @@
               </div>
             </div>
 
-            <table class="w-full text-sm">
+            <div class="overflow-x-auto -mx-4 px-4">
+            <table class="w-full text-sm min-w-[28rem]">
               <thead>
                 <tr class="text-left text-xs text-gray-500 dark:text-gray-400 uppercase">
                   <th class="py-1 pr-3 font-semibold">Day (UTC)</th>
@@ -150,6 +163,7 @@
                 </tr>
               </tbody>
             </table>
+            </div>
           </template>
         </div>
       </section>
@@ -179,7 +193,8 @@
         <div class="rounded-xl border moh-border overflow-hidden">
           <div v-if="loadingUsers && !userRows.length" class="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">Loading…</div>
           <div v-else-if="!userRows.length" class="px-4 py-3 text-sm text-gray-500 dark:text-gray-400 italic">No Marv users yet.</div>
-          <table v-else class="w-full text-sm">
+          <div v-else class="overflow-x-auto">
+          <table class="w-full text-sm">
             <thead class="bg-gray-50 dark:bg-zinc-900/50">
               <tr class="text-left text-xs text-gray-500 dark:text-gray-400 uppercase">
                 <th class="px-3 py-2 font-semibold">User</th>
@@ -237,6 +252,7 @@
               </tr>
             </tbody>
           </table>
+          </div>
         </div>
         <div v-if="usersNextCursor" class="px-1">
           <Button

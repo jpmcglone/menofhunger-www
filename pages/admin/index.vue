@@ -1,9 +1,6 @@
 <template>
   <AppPageContent bottom="standard">
-  <div class="space-y-6">
-    <div class="px-4 pt-4">
-      <AppPageHeader title="Admin" icon="tabler:shield" description="Admin-only tools." />
-    </div>
+    <AppPageHeader sticky class="px-4 pt-4 pb-3" title="Admin" description="Admin-only tools." />
 
     <div class="divide-y divide-gray-200 dark:divide-zinc-800 pb-4">
       <NuxtLink to="/admin/site-settings" class="block px-4 py-3 transition-colors hover:bg-gray-50 dark:hover:bg-zinc-900">
@@ -109,7 +106,7 @@
         <div class="flex items-center gap-3">
           <Icon name="tabler:robot" class="text-lg" aria-hidden="true" />
           <div class="min-w-0 flex-1">
-            <div class="font-semibold truncate">Marv</div>
+            <div class="font-semibold truncate">M.A.R.V.</div>
             <div class="text-sm text-gray-600 dark:text-gray-300 truncate">AI helper config, usage, and cost</div>
           </div>
           <Icon name="tabler:chevron-right" class="text-gray-400" aria-hidden="true" />
@@ -117,7 +114,6 @@
       </NuxtLink>
 
     </div>
-  </div>
   </AppPageContent>
 </template>
 

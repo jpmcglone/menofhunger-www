@@ -1,24 +1,13 @@
 <template>
   <AppPageContent bottom="standard">
-  <div class="py-4 space-y-4">
-    <div class="px-4">
-      <AppPageHeader title="Search" icon="tabler:search" description="Recent user searches.">
+    <AppPageHeader sticky class="px-4 pt-4 pb-3" title="Search"  description="Recent user searches.">
       <template #leading>
-        <Button
-          as="NuxtLink"
-          to="/admin"
-          class="md:hidden"
-          text
-          severity="secondary"
-          aria-label="Back"
-        >
-          <template #icon>
-            <Icon name="tabler:chevron-left" aria-hidden="true" />
-          </template>
+        <Button as="NuxtLink" to="/admin" class="md:hidden" text severity="secondary" aria-label="Back">
+          <template #icon><Icon name="tabler:chevron-left" aria-hidden="true" /></template>
         </Button>
       </template>
-      </AppPageHeader>
-    </div>
+    </AppPageHeader>
+  <div class="py-4 space-y-4">
 
     <div class="px-4 flex items-center gap-2">
       <InputText

@@ -1,23 +1,14 @@
 <template>
-  <AppPageContent bottom="standard" class="px-4 py-4 space-y-4">
-    <AppPageHeader title="Media review" icon="tabler:photo" description="Review and delete uploaded images and videos.">
+  <AppPageContent bottom="standard" class="space-y-4">
+    <AppPageHeader sticky class="px-4 pt-4 pb-3" title="Media review" description="Review and delete uploaded images and videos.">
       <template #leading>
-        <Button
-          as="NuxtLink"
-          to="/admin"
-          class="md:hidden"
-          text
-          severity="secondary"
-          aria-label="Back"
-        >
-          <template #icon>
-            <Icon name="tabler:chevron-left" aria-hidden="true" />
-          </template>
+        <Button as="NuxtLink" to="/admin" class="md:hidden" text severity="secondary" aria-label="Back">
+          <template #icon><Icon name="tabler:chevron-left" aria-hidden="true" /></template>
         </Button>
       </template>
     </AppPageHeader>
 
-    <div class="flex flex-wrap items-center gap-2">
+    <div class="px-4 flex flex-wrap items-center gap-2">
       <Select
         v-model="mediaKindFilter"
         :options="kindOptions"
@@ -27,16 +18,47 @@
         class="w-[8.5rem]"
       />
       <InputText v-model="mediaQuery" class="w-full sm:w-72" placeholder="Search by key…" @keydown.enter.prevent="loadMedia(true)" />
-      <div class="flex items-center gap-2">
-        <label class="inline-flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
-          <input v-model="mediaShowDeleted" type="checkbox" class="accent-current" />
-          Show deleted
-        </label>
-        <label class="inline-flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
-          <input v-model="mediaOnlyOrphans" type="checkbox" class="accent-current" />
-          Orphans only
-        </label>
+
+      <div class="flex items-center gap-1.5 flex-wrap">
+        <!-- Orphans quick-filter toggle -->
+        <button
+          type="button"
+          class="inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors"
+          :class="mediaOnlyOrphans
+            ? 'bg-amber-500 border-amber-500 text-white dark:bg-amber-600 dark:border-amber-600'
+            : 'moh-border moh-surface moh-text hover:bg-gray-100 dark:hover:bg-zinc-800'"
+          @click="toggleOrphans"
+        >
+          <Icon name="tabler:unlink" size="14" aria-hidden="true" />
+          Orphans
+        </button>
+
+        <button
+          type="button"
+          class="inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors"
+          :class="mediaShowDeleted
+            ? 'bg-red-600 border-red-600 text-white dark:bg-red-700 dark:border-red-700'
+            : 'moh-border moh-surface moh-text hover:bg-gray-100 dark:hover:bg-zinc-800'"
+          @click="toggleShowDeleted"
+        >
+          <Icon name="tabler:trash" size="14" aria-hidden="true" />
+          Deleted
+        </button>
+
+        <!-- Multi-select toggle -->
+        <button
+          type="button"
+          class="inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors"
+          :class="selectionMode
+            ? 'bg-blue-600 border-blue-600 text-white dark:bg-blue-700 dark:border-blue-700'
+            : 'moh-border moh-surface moh-text hover:bg-gray-100 dark:hover:bg-zinc-800'"
+          @click="toggleSelectionMode"
+        >
+          <Icon name="tabler:checkbox" size="14" aria-hidden="true" />
+          Select
+        </button>
       </div>
+
       <Button
         label="Search"
         severity="secondary"
@@ -63,19 +85,85 @@
       </Button>
     </div>
 
+    <!-- Bulk action bar -->
+    <Transition
+      enter-active-class="transition-all duration-150"
+      enter-from-class="opacity-0 -translate-y-2"
+      enter-to-class="opacity-100 translate-y-0"
+      leave-active-class="transition-all duration-100"
+      leave-from-class="opacity-100 translate-y-0"
+      leave-to-class="opacity-0 -translate-y-2"
+    >
+      <div
+        v-if="selectionMode && mediaItems.length > 0"
+        class="mx-4 flex items-center gap-3 rounded-xl border moh-border moh-surface px-4 py-2.5"
+      >
+        <button
+          type="button"
+          class="inline-flex items-center gap-1.5 text-sm moh-text-muted hover:moh-text transition-colors"
+          @click="toggleSelectAll"
+        >
+          <div
+            class="h-4 w-4 rounded border-2 flex items-center justify-center transition-colors"
+            :class="allSelected
+              ? 'bg-blue-600 border-blue-600'
+              : someSelected
+                ? 'bg-blue-400 border-blue-400'
+                : 'border-gray-400 dark:border-zinc-500'"
+          >
+            <Icon v-if="allSelected" name="tabler:check" size="10" class="text-white" aria-hidden="true" />
+            <div v-else-if="someSelected" class="h-1.5 w-1.5 rounded-sm bg-white" />
+          </div>
+          {{ allSelected ? 'Deselect all' : 'Select all' }}
+        </button>
+
+        <span class="text-sm moh-text-muted">
+          {{ selectedIds.size === 0 ? 'None selected' : `${selectedIds.size} selected` }}
+        </span>
+
+        <div class="flex-1" />
+
+        <Button
+          v-if="selectedIds.size > 0"
+          :label="`Delete ${selectedIds.size}`"
+          severity="danger"
+          size="small"
+          :loading="bulkDeleting"
+          :disabled="bulkDeleting"
+          @click="confirmBulkDelete"
+        >
+          <template #icon>
+            <Icon name="tabler:trash" aria-hidden="true" />
+          </template>
+        </Button>
+      </div>
+    </Transition>
+
     <AppInlineAlert v-if="mediaError" severity="danger">
       {{ mediaError }}
     </AppInlineAlert>
 
-    <div v-else class="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+    <div v-else class="px-4 grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
       <button
         v-for="it in mediaItems"
         :key="it.id"
         type="button"
         class="group relative aspect-square overflow-hidden rounded-xl border moh-border moh-surface hover:opacity-95 transition-opacity"
-        :aria-label="`View ${it.kind === 'video' ? 'video' : 'media'} ${it.id}`"
-        @click="openDetails(it.id)"
+        :class="selectedIds.has(it.id) ? 'ring-2 ring-blue-500 ring-offset-1 dark:ring-offset-zinc-950' : ''"
+        :aria-label="`${selectionMode ? (selectedIds.has(it.id) ? 'Deselect' : 'Select') : 'View'} ${it.kind === 'video' ? 'video' : 'media'} ${it.id}`"
+        @click="selectionMode ? toggleSelect(it.id) : openDetails(it.id)"
       >
+        <!-- Selection checkbox overlay -->
+        <div
+          v-if="selectionMode"
+          class="absolute top-1.5 left-1.5 z-10 h-5 w-5 rounded-full border-2 flex items-center justify-center transition-colors pointer-events-none"
+          :class="selectedIds.has(it.id)
+            ? 'bg-blue-600 border-blue-600'
+            : 'bg-black/30 border-white/70'"
+        >
+          <Icon v-if="selectedIds.has(it.id)" name="tabler:check" size="11" class="text-white" aria-hidden="true" />
+        </div>
+
         <template v-if="it.kind === 'video'">
           <video
             v-if="it.publicUrl"
@@ -157,7 +245,7 @@
       </button>
     </div>
 
-    <div class="flex items-center justify-center pt-2">
+    <div class="px-4 flex items-center justify-center pt-2">
       <Button
         v-if="mediaNextCursor"
         label="Load more"
@@ -360,6 +448,50 @@
       <Button label="Close" severity="secondary" @click="detailsOpen = false" />
     </template>
   </Dialog>
+
+  <!-- Bulk delete confirmation dialog -->
+  <Dialog
+    v-model:visible="bulkDeleteConfirmOpen"
+    modal
+    header="Delete selected media"
+    :draggable="false"
+    class="w-[min(32rem,calc(100vw-2rem))]"
+  >
+    <div class="space-y-4">
+      <p class="text-sm moh-text">
+        You're about to permanently delete <strong>{{ selectedIds.size }}</strong> media asset{{ selectedIds.size === 1 ? '' : 's' }}.
+        This will also remove associated post media references and unset profile photos where applicable.
+      </p>
+      <div class="space-y-1">
+        <label class="text-sm font-medium moh-text" for="bulk-delete-reason">Reason</label>
+        <InputText
+          id="bulk-delete-reason"
+          v-model="bulkDeleteReason"
+          class="w-full"
+          placeholder="e.g. Orphan cleanup"
+          :disabled="bulkDeleting"
+          @keydown.enter.prevent="executeBulkDelete"
+        />
+      </div>
+      <AppInlineAlert v-if="bulkDeleteError" severity="danger">
+        {{ bulkDeleteError }}
+      </AppInlineAlert>
+    </div>
+    <template #footer>
+      <Button label="Cancel" severity="secondary" :disabled="bulkDeleting" @click="bulkDeleteConfirmOpen = false" />
+      <Button
+        :label="`Delete ${selectedIds.size}`"
+        severity="danger"
+        :loading="bulkDeleting"
+        :disabled="bulkDeleting || !bulkDeleteReason.trim()"
+        @click="executeBulkDelete"
+      >
+        <template #icon>
+          <Icon name="tabler:trash" aria-hidden="true" />
+        </template>
+      </Button>
+    </template>
+  </Dialog>
   </AppPageContent>
 </template>
 
@@ -400,6 +532,84 @@ const mediaLoadingMore = ref(false)
 const mediaSyncing = ref(false)
 const mediaError = ref<string | null>(null)
 
+// Selection state
+const selectionMode = ref(false)
+const selectedIds = ref(new Set<string>())
+
+const allSelected = computed(
+  () => mediaItems.value.length > 0 && mediaItems.value.every((it) => selectedIds.value.has(it.id)),
+)
+const someSelected = computed(
+  () => !allSelected.value && mediaItems.value.some((it) => selectedIds.value.has(it.id)),
+)
+
+function toggleSelectionMode() {
+  selectionMode.value = !selectionMode.value
+  if (!selectionMode.value) selectedIds.value = new Set()
+}
+
+function toggleSelect(id: string) {
+  const next = new Set(selectedIds.value)
+  if (next.has(id)) next.delete(id)
+  else next.add(id)
+  selectedIds.value = next
+}
+
+function toggleSelectAll() {
+  if (allSelected.value) {
+    selectedIds.value = new Set()
+  } else {
+    selectedIds.value = new Set(mediaItems.value.map((it) => it.id))
+  }
+}
+
+// Bulk delete
+const bulkDeleteConfirmOpen = ref(false)
+const bulkDeleteReason = ref('Orphan cleanup')
+const bulkDeleting = ref(false)
+const bulkDeleteError = ref<string | null>(null)
+
+function confirmBulkDelete() {
+  bulkDeleteError.value = null
+  bulkDeleteConfirmOpen.value = true
+}
+
+async function executeBulkDelete() {
+  if (!bulkDeleteReason.value.trim()) return
+  if (bulkDeleting.value) return
+  bulkDeleting.value = true
+  bulkDeleteError.value = null
+  try {
+    const ids = [...selectedIds.value]
+    await apiFetch('/admin/media-review/bulk-delete', {
+      method: 'POST',
+      body: { ids, reason: bulkDeleteReason.value.trim() },
+    })
+    // Remove deleted items from the grid and clear selection
+    const deletedSet = new Set(ids)
+    mediaItems.value = mediaItems.value.filter((it) => !deletedSet.has(it.id))
+    selectedIds.value = new Set()
+    bulkDeleteConfirmOpen.value = false
+    selectionMode.value = false
+  } catch (e: unknown) {
+    bulkDeleteError.value = getApiErrorMessage(e) || 'Bulk delete failed.'
+  } finally {
+    bulkDeleting.value = false
+  }
+}
+
+// Filters
+function toggleOrphans() {
+  mediaOnlyOrphans.value = !mediaOnlyOrphans.value
+  void loadMedia(true)
+}
+
+function toggleShowDeleted() {
+  mediaShowDeleted.value = !mediaShowDeleted.value
+  void loadMedia(true)
+}
+
+// Details dialog
 const detailsOpen = ref(false)
 const detailsId = ref<string | null>(null)
 const detailsLoading = ref(false)
@@ -442,6 +652,7 @@ async function loadMedia(reset: boolean) {
     if (reset) {
       mediaItems.value = []
       mediaNextCursor.value = null
+      selectedIds.value = new Set()
     }
     const res = await apiFetch<AdminImageReviewListData>('/admin/media-review', {
       method: 'GET',
@@ -505,7 +716,6 @@ async function loadDetails() {
     detailsLoading.value = false
   }
 }
-
 
 async function syncMedia() {
   if (mediaSyncing.value) return

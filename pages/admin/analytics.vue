@@ -1,38 +1,42 @@
 <template>
   <AppPageContent bottom="standard">
-    <div class="py-4 space-y-6">
-      <div class="px-4">
-        <AppPageHeader title="Analytics" icon="tabler:chart-bar" description="KPIs, engagement trends, and monetization.">
-          <template #leading>
-            <Button
-              as="NuxtLink"
-              to="/admin"
-              class="md:hidden"
-              text
-              severity="secondary"
-              aria-label="Back"
-            >
-              <template #icon>
-                <Icon name="tabler:chevron-left" aria-hidden="true" />
-              </template>
-            </Button>
+    <AppPageHeader
+      sticky
+      class="px-4 pt-4 pb-3"
+      title="Analytics"
+      
+      description="KPIs, engagement trends, and monetization."
+    >
+      <template #leading>
+        <Button
+          as="NuxtLink"
+          to="/admin"
+          class="md:hidden"
+          text
+          severity="secondary"
+          aria-label="Back"
+        >
+          <template #icon>
+            <Icon name="tabler:chevron-left" aria-hidden="true" />
           </template>
-          <template #trailing>
-            <Button
-              text
-              severity="secondary"
-              :loading="loading"
-              aria-label="Refresh"
-              @click="load"
-            >
-              <template #icon>
-                <Icon name="tabler:refresh" aria-hidden="true" />
-              </template>
-            </Button>
+        </Button>
+      </template>
+      <template #trailing>
+        <Button
+          text
+          severity="secondary"
+          :loading="loading"
+          aria-label="Refresh"
+          @click="load"
+        >
+          <template #icon>
+            <Icon name="tabler:refresh" aria-hidden="true" />
           </template>
-        </AppPageHeader>
-      </div>
+        </Button>
+      </template>
+    </AppPageHeader>
 
+    <div class="py-4 space-y-6">
       <!-- Range selector -->
       <div class="px-4">
         <div class="inline-flex rounded-lg border moh-border overflow-hidden text-sm">
@@ -67,7 +71,7 @@
         <!-- Growth chart -->
         <div class="px-4 space-y-2">
           <div class="font-semibold text-sm">New Signups <span class="text-gray-400 font-normal">({{ rangeLabel }})</span></div>
-          <div class="rounded-xl border moh-border p-4">
+          <div class="rounded-xl border moh-border p-4" style="touch-action: pan-y;">
             <canvas ref="signupsCanvas" height="180" />
           </div>
         </div>
@@ -75,7 +79,7 @@
         <!-- Content chart -->
         <div class="px-4 space-y-2">
           <div class="font-semibold text-sm">Content Created <span class="text-gray-400 font-normal">({{ rangeLabel }})</span></div>
-          <div class="rounded-xl border moh-border p-4">
+          <div class="rounded-xl border moh-border p-4" style="touch-action: pan-y;">
             <canvas ref="contentCanvas" height="180" />
           </div>
         </div>
@@ -118,7 +122,7 @@
         <!-- Connections chart -->
         <div class="px-4 space-y-2">
           <div class="font-semibold text-sm">Messages & Follows <span class="text-gray-400 font-normal">({{ rangeLabel }})</span></div>
-          <div class="rounded-xl border moh-border p-4">
+          <div class="rounded-xl border moh-border p-4" style="touch-action: pan-y;">
             <canvas ref="connectionsCanvas" height="180" />
           </div>
         </div>
@@ -140,7 +144,7 @@
         <!-- Coins minted chart -->
         <div class="px-4 space-y-2">
           <div class="font-semibold text-sm">Coins Minted from Streaks <span class="text-gray-400 font-normal">({{ rangeLabel }})</span></div>
-          <div class="rounded-xl border moh-border p-4">
+          <div class="rounded-xl border moh-border p-4" style="touch-action: pan-y;">
             <canvas ref="coinsMintedCanvas" height="180" />
           </div>
         </div>
@@ -540,7 +544,7 @@
           </div>
 
           <!-- Interactions time series chart -->
-          <div v-if="data.ai.interactions.length > 0" class="rounded-xl border moh-border p-4">
+          <div v-if="data.ai.interactions.length > 0" class="rounded-xl border moh-border p-4" style="touch-action: pan-y;">
             <div class="text-xs font-semibold text-gray-600 dark:text-gray-300 mb-3">Successful Interactions Over Time</div>
             <canvas ref="aiInteractionsCanvas" height="160" />
           </div>
@@ -1074,6 +1078,13 @@ function buildBucketAxis(
   const asOf = new Date(asOfIso)
   if (Number.isNaN(asOf.getTime())) return []
 
+  // Use the viewer's local date for the axis end so we never show a date that
+  // hasn't arrived yet in the viewer's timezone (e.g. showing "May 9" at 11 PM Eastern).
+  // Backend bucket keys are UTC YYYY-MM-DD strings, so we construct a UTC midnight
+  // Date using the local year/month/day — the axis key will then match correctly.
+  const localNow = new Date()
+  const localTodayUtc = new Date(Date.UTC(localNow.getFullYear(), localNow.getMonth(), localNow.getDate()))
+
   const isAll = range === 'all'
   const rangeDays = analyticsRangeDays(range)
   let startDate: Date
@@ -1084,12 +1095,12 @@ function buildBucketAxis(
     if (allBuckets.length === 0) return []
     const sorted = [...new Set(allBuckets)].sort()
     startDate = parseUtcBucket(sorted[0]!)
-    endDate = truncateToGranularity(asOf, granularity)
+    endDate = truncateToGranularity(localTodayUtc, granularity)
   } else {
     // Match backend range semantics: since = now - N days.
     const since = new Date(asOf.getTime() - (rangeDays * 86400000))
     startDate = truncateToGranularity(since, granularity)
-    endDate = truncateToGranularity(asOf, granularity)
+    endDate = truncateToGranularity(localTodayUtc, granularity)
   }
 
   if (startDate.getTime() > endDate.getTime()) {
@@ -1173,6 +1184,8 @@ function lineChartOptions(gridColor: string, tickColor: string) {
   return {
     responsive: true,
     maintainAspectRatio: true,
+    // Exclude touch events so Chart.js doesn't capture swipes — lets the page scroll normally on mobile.
+    events: ['mousemove', 'mouseout', 'click', 'mouseenter', 'mouseleave'] as (keyof HTMLElementEventMap)[],
     interaction: { mode: 'index' as const, intersect: false },
     plugins: { legend: { labels: { color: tickColor, boxWidth: 12, font: { size: 12 } } } },
     scales: {

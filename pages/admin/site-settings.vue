@@ -1,22 +1,13 @@
 <template>
   <AppPageContent bottom="standard">
-  <div class="px-4 py-4 space-y-6">
-    <AppPageHeader title="Site settings" icon="tabler:settings" description="Admin-only configuration for the site.">
+    <AppPageHeader sticky class="px-4 pt-4 pb-3" title="Site settings"  description="Admin-only configuration for the site.">
       <template #leading>
-        <Button
-          as="NuxtLink"
-          to="/admin"
-          class="md:hidden"
-          text
-          severity="secondary"
-          aria-label="Back"
-        >
-          <template #icon>
-            <Icon name="tabler:chevron-left" aria-hidden="true" />
-          </template>
+        <Button as="NuxtLink" to="/admin" class="md:hidden" text severity="secondary" aria-label="Back">
+          <template #icon><Icon name="tabler:chevron-left" aria-hidden="true" /></template>
         </Button>
       </template>
     </AppPageHeader>
+  <div class="px-4 py-4 space-y-6">
 
     <div class="space-y-2">
       <div class="text-sm font-semibold text-gray-900 dark:text-gray-50">Post rate limits</div>

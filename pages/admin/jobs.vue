@@ -1,22 +1,13 @@
 <template>
   <AppPageContent bottom="standard">
+    <AppPageHeader sticky class="px-4 pt-4 pb-3" title="Jobs"  description="Run maintenance, scoring, and backfill jobs.">
+      <template #leading>
+        <Button as="NuxtLink" to="/admin" class="md:hidden" text severity="secondary" aria-label="Back">
+          <template #icon><Icon name="tabler:chevron-left" aria-hidden="true" /></template>
+        </Button>
+      </template>
+    </AppPageHeader>
     <div class="px-4 py-4 space-y-6">
-      <AppPageHeader title="Jobs" icon="tabler:terminal-2" description="Run maintenance, scoring, and backfill jobs.">
-        <template #leading>
-          <Button
-            as="NuxtLink"
-            to="/admin"
-            class="md:hidden"
-            text
-            severity="secondary"
-            aria-label="Back"
-          >
-            <template #icon>
-              <Icon name="tabler:chevron-left" aria-hidden="true" />
-            </template>
-          </Button>
-        </template>
-      </AppPageHeader>
 
       <div class="grid gap-3">
         <div class="rounded-xl border moh-border moh-bg p-4 space-y-3">

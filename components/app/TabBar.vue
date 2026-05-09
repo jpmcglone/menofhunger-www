@@ -58,8 +58,8 @@
     v-if="isMobileHydrated"
     v-model="moreOpen"
     title="More"
-    :panel-class="'inset-x-0 bottom-0 max-w-none rounded-t-2xl shadow-2xl moh-bg moh-text moh-texture border-t moh-border min-h-[min(28rem,60vh)]'"
-    :content-class="'px-0 pb-0 pt-2 min-h-0 flex-1 flex flex-col'"
+    :panel-class="'inset-x-0 bottom-0 max-w-none rounded-t-2xl shadow-2xl moh-bg moh-text moh-texture border-t moh-border min-h-[min(28rem,60vh)] max-h-[90dvh]'"
+    :content-class="'px-0 pb-0 pt-2 min-h-0 flex-1 flex flex-col overflow-y-auto'"
   >
     <div class="w-full min-h-[12rem] flex flex-col">
 

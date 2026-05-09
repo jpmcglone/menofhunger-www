@@ -1,24 +1,13 @@
 <template>
   <AppPageContent bottom="standard">
+    <AppPageHeader sticky class="px-4 pt-4 pb-3" title="Reports"  description="Review and triage reported posts and users.">
+      <template #leading>
+        <Button as="NuxtLink" to="/admin" class="md:hidden" text severity="secondary" aria-label="Back">
+          <template #icon><Icon name="tabler:chevron-left" aria-hidden="true" /></template>
+        </Button>
+      </template>
+    </AppPageHeader>
   <div class="py-4 space-y-4">
-    <div class="px-4">
-      <AppPageHeader title="Reports" icon="tabler:flag" description="Review and triage reported posts and users.">
-        <template #leading>
-          <Button
-            as="NuxtLink"
-            to="/admin"
-            class="md:hidden"
-            text
-            severity="secondary"
-            aria-label="Back"
-          >
-            <template #icon>
-              <Icon name="tabler:chevron-left" aria-hidden="true" />
-            </template>
-          </Button>
-        </template>
-      </AppPageHeader>
-    </div>
 
     <div class="px-4 flex flex-wrap items-center gap-2">
       <Select
