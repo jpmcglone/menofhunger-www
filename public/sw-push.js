@@ -178,10 +178,10 @@ self.addEventListener('push', function (event) {
 
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function (clients) {
-      const hasVisibleWindow = clients.some(function (client) {
-        return client.visibilityState === 'visible'
+      const isActivelyInApp = clients.some(function (client) {
+        return client.visibilityState === 'visible' && client.focused
       })
-      if (!isTest && hasVisibleWindow) return
+      if (!isTest && isActivelyInApp) return
       return self.registration.showNotification(title, {
         body,
         tag,
