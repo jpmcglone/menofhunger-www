@@ -1966,6 +1966,29 @@ export type AdminAnalyticsSpaces = {
   topSpaces: AdminAnalyticsSpacesTopRow[]
 }
 
+export type AdminAnalyticsAI = {
+  /** All MarvinUsageEvent rows in range (success + errors). */
+  totalInteractionsInRange: number
+  /** Rows where errorCode IS NULL (actual AI responses delivered). */
+  successfulInteractionsInRange: number
+  /** Distinct users who triggered Marv in range. */
+  uniqueUsersInRange: number
+  /** Sum of creditsSpent for all events in range. */
+  creditsSpentInRange: number
+  /** Sum of estimatedCostUsd in range; null when no cost data yet. */
+  estimatedCostUsdInRange: number | null
+  /** Average latencyMs for successful events; null when no data. */
+  avgLatencyMsInRange: number | null
+  /** Count by MarvinSource: "public_thread" | "private_session". */
+  bySource: Record<string, number>
+  /** Count by effectiveMode for successful events: "fast" | "regular" | "smart". */
+  byEffectiveMode: Record<string, number>
+  /** Count by outcome for all events: "success" | errorCode string. */
+  byOutcome: Record<string, number>
+  /** Time series of successful interactions per granularity bucket. */
+  interactions: AdminAnalyticsTimeSeriesPoint[]
+}
+
 export type AdminAnalytics = {
   range: AnalyticsRange
   granularity: AnalyticsGranularity
@@ -1974,9 +1997,15 @@ export type AdminAnalytics = {
   /** Top public regular posts by all-time denormalized view count. */
   topPostsAllTime: AdminAnalyticsTopPost[]
   postsByVisibility: Record<string, number>
+  /** Time series of regular posts by human (non-bot) users. */
   posts: AdminAnalyticsTimeSeriesPoint[]
+  /** Time series of regular posts by AI/bot users. */
+  aiPosts: AdminAnalyticsTimeSeriesPoint[]
   checkins: AdminAnalyticsTimeSeriesPoint[]
+  /** Time series of messages sent by human (non-bot) users. */
   messages: AdminAnalyticsTimeSeriesPoint[]
+  /** Time series of messages sent by AI/bot users. */
+  aiMessages: AdminAnalyticsTimeSeriesPoint[]
   follows: AdminAnalyticsTimeSeriesPoint[]
   retention: AdminAnalyticsRetentionRow[]
   engagement: AdminAnalyticsEngagement
@@ -1985,6 +2014,7 @@ export type AdminAnalytics = {
   articles: AdminAnalyticsArticles
   groups: AdminAnalyticsGroups
   spaces: AdminAnalyticsSpaces
+  ai: AdminAnalyticsAI
   asOf: string
 }
 

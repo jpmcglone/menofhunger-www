@@ -12,12 +12,12 @@
   >
     <div
       :class="[
-        'moh-marv-pinned-surface w-full px-4 py-2 transition-colors',
+        'moh-marv-pinned-surface w-full px-4 py-2.5 transition-colors',
         isSelected ? 'moh-pane-row-active' : 'hover:bg-amber-50/40 dark:hover:bg-amber-500/10',
       ]"
     >
       <div class="flex items-center gap-3">
-        <!-- Marv's real avatar with a subtle AI sparkle overlay -->
+        <!-- Avatar with AI sparkle — sparkle only pulses when Marv is active -->
         <div class="relative shrink-0">
           <AppUserAvatar
             :user="marvUser"
@@ -26,9 +26,11 @@
             :show-presence="false"
             :show-status="false"
           />
-          <!-- AI indicator: small sparkle, tucked into the bottom-right of the avatar -->
           <span
-            class="moh-marv-ai-spark pointer-events-none absolute -bottom-0.5 -right-0.5 inline-flex h-4 w-4 items-center justify-center rounded-full border-2 border-white bg-gradient-to-br from-amber-400 via-rose-400 to-violet-500 text-white shadow-sm dark:border-zinc-950"
+            :class="[
+              'pointer-events-none absolute -bottom-0.5 -right-0.5 inline-flex h-4 w-4 items-center justify-center rounded-full border-2 border-white bg-gradient-to-br from-amber-400 via-rose-400 to-violet-500 text-white shadow-sm dark:border-zinc-950',
+              typingStatus ? 'moh-marv-ai-spark' : '',
+            ]"
             aria-label="AI"
             title="AI helper"
           >
@@ -37,20 +39,48 @@
         </div>
 
         <div class="min-w-0 flex-1">
+          <!-- Name row -->
           <div class="flex items-center gap-2">
-            <div class="font-semibold truncate moh-text moh-marv-name">{{ displayName }}</div>
+            <div
+              :class="['font-semibold truncate moh-text', typingStatus ? 'moh-marv-name' : '']"
+            >{{ displayName }}</div>
             <div
               v-if="creditsLabel"
-              class="ml-auto shrink-0 text-xs tabular-nums text-gray-500 dark:text-gray-400"
+              class="ml-auto shrink-0 text-xs tabular-nums text-gray-400 dark:text-gray-500"
             >
               {{ creditsLabel }}
             </div>
+          </div>
+          <!-- Preview / typing row -->
+          <div class="mt-0.5 flex items-center gap-1 text-xs truncate">
+            <Transition name="moh-fade" mode="out-in">
+              <span
+                v-if="typingStatus === 'thinking'"
+                key="thinking"
+                class="text-violet-500 dark:text-violet-400 font-medium"
+              >M.A.R.V. is thinking…</span>
+              <span
+                v-else-if="typingStatus === 'typing'"
+                key="typing"
+                class="text-gray-500 dark:text-gray-400"
+              >M.A.R.V. is typing…</span>
+              <span
+                v-else-if="lastMessagePreview"
+                key="preview"
+                class="truncate text-gray-500 dark:text-gray-400"
+              >{{ lastMessagePreview }}</span>
+              <span
+                v-else
+                key="empty"
+                class="text-gray-400 dark:text-gray-500 italic"
+              >No messages yet</span>
+            </Transition>
           </div>
         </div>
 
         <span
           v-if="unreadCount > 0"
-          class="ml-2 inline-flex min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold leading-[18px] justify-center text-center tabular-nums bg-violet-600 text-white"
+          class="ml-1 inline-flex min-w-[18px] h-[18px] shrink-0 px-1 rounded-full text-[10px] font-bold leading-[18px] justify-center text-center tabular-nums bg-violet-600 text-white"
           aria-label="Unread messages"
         >
           {{ unreadCount > 99 ? '99+' : unreadCount }}
@@ -111,6 +141,10 @@ const props = defineProps({
   conversationId: { type: [String, null] as PropType<string | null>, default: null },
   /** Number of unread messages from Marv. */
   unreadCount: { type: Number, default: 0 },
+  /** Last message body for the preview line. */
+  lastMessagePreview: { type: [String, null] as PropType<string | null>, default: null },
+  /** 'thinking' while the AI is processing; 'typing' when composing the reply; null when idle. */
+  typingStatus: { type: [String, null] as PropType<'thinking' | 'typing' | null>, default: null },
   /** For testing/QA hooks. */
   dataTestid: { type: String, default: 'chat-marv-pinned-row' },
 })

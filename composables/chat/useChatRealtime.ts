@@ -11,7 +11,7 @@ export interface ChatRealtimeHandlers {
   onReaction: (msg: Message, isSelected: boolean) => void
   onMessageEdited: (msg: Message, isSelected: boolean) => void
   onMessageDeletedForAll: (conversationId: string, messageId: string, isSelected: boolean) => void
-  onTyping: (convoId: string, userId: string, typing: boolean) => void
+  onTyping: (convoId: string, userId: string, typing: boolean, status?: string) => void
   onRead: (convoId: string, userId: string | undefined, lastReadAt: string | undefined) => void
 }
 
@@ -66,7 +66,7 @@ export function useChatRealtime(opts: UseChatRealtimeOptions) {
       const userId = payload?.userId ?? null
       if (!convoId || !userId) return
       if (userId === meId.value) return
-      handlers.onTyping(convoId, userId, payload?.typing ?? true)
+      handlers.onTyping(convoId, userId, payload?.typing ?? true, payload?.status)
     },
 
     onRead(payload) {

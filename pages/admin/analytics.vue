@@ -518,6 +518,112 @@
           </div>
         </div>
 
+        <!-- ─── M.A.R.V. / AI ──────────────────────────────────────────── -->
+
+        <div v-if="data.ai" class="px-4 space-y-3">
+          <div class="font-semibold text-sm">
+            M.A.R.V. / AI
+            <span class="text-gray-400 font-normal">({{ rangeLabel }})</span>
+          </div>
+
+          <!-- KPI cards -->
+          <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+            <div
+              v-for="c in aiKpiCards"
+              :key="c.label"
+              class="rounded-xl border moh-border p-4 space-y-1"
+            >
+              <div class="text-xs text-gray-500 dark:text-gray-400 font-medium truncate">{{ c.label }}</div>
+              <div class="text-xl font-bold tabular-nums leading-tight">{{ c.value }}</div>
+              <div class="text-xs text-gray-500 dark:text-gray-400">{{ c.sub }}</div>
+            </div>
+          </div>
+
+          <!-- Interactions time series chart -->
+          <div v-if="data.ai.interactions.length > 0" class="rounded-xl border moh-border p-4">
+            <div class="text-xs font-semibold text-gray-600 dark:text-gray-300 mb-3">Successful Interactions Over Time</div>
+            <canvas ref="aiInteractionsCanvas" height="160" />
+          </div>
+          <div v-else class="rounded-xl border moh-border p-4 text-sm text-gray-400 dark:text-gray-500 italic">
+            No successful interactions in this period.
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <!-- Source breakdown -->
+            <div class="rounded-xl border moh-border p-4 space-y-3">
+              <div class="text-xs font-semibold text-gray-600 dark:text-gray-300">By Source</div>
+              <div v-if="!aiSourceRows.length" class="text-sm text-gray-400 dark:text-gray-500 italic">No data.</div>
+              <template v-else>
+                <div v-for="row in aiSourceRows" :key="row.key" class="space-y-1">
+                  <div class="flex items-center justify-between text-sm">
+                    <div class="flex items-center gap-2">
+                      <span class="inline-block w-2.5 h-2.5 rounded-full" :class="row.dot" />
+                      <span class="font-medium">{{ row.label }}</span>
+                    </div>
+                    <div class="flex items-center gap-3 tabular-nums">
+                      <span class="text-xs text-gray-500 dark:text-gray-400">{{ row.pct }}%</span>
+                      <span class="font-semibold">{{ row.count.toLocaleString() }}</span>
+                    </div>
+                  </div>
+                  <div class="h-1.5 rounded-full bg-gray-100 dark:bg-zinc-800 overflow-hidden">
+                    <div class="h-full rounded-full transition-[width]" :class="row.bar" :style="{ width: row.pct + '%' }" />
+                  </div>
+                </div>
+              </template>
+            </div>
+
+            <!-- Mode breakdown -->
+            <div class="rounded-xl border moh-border p-4 space-y-3">
+              <div class="text-xs font-semibold text-gray-600 dark:text-gray-300">By Effective Mode <span class="font-normal text-gray-400">(successful only)</span></div>
+              <div v-if="!aiModeRows.length" class="text-sm text-gray-400 dark:text-gray-500 italic">No data.</div>
+              <template v-else>
+                <div v-for="row in aiModeRows" :key="row.key" class="space-y-1">
+                  <div class="flex items-center justify-between text-sm">
+                    <div class="flex items-center gap-2">
+                      <span class="inline-block w-2.5 h-2.5 rounded-full" :class="row.dot" />
+                      <span class="font-medium">{{ row.label }}</span>
+                    </div>
+                    <div class="flex items-center gap-3 tabular-nums">
+                      <span class="text-xs text-gray-500 dark:text-gray-400">{{ row.pct }}%</span>
+                      <span class="font-semibold">{{ row.count.toLocaleString() }}</span>
+                    </div>
+                  </div>
+                  <div class="h-1.5 rounded-full bg-gray-100 dark:bg-zinc-800 overflow-hidden">
+                    <div class="h-full rounded-full transition-[width]" :class="row.bar" :style="{ width: row.pct + '%' }" />
+                  </div>
+                </div>
+              </template>
+            </div>
+          </div>
+
+          <!-- Outcome breakdown -->
+          <div class="rounded-xl border moh-border p-4 space-y-3">
+            <div class="text-xs font-semibold text-gray-600 dark:text-gray-300">Outcome Breakdown <span class="font-normal text-gray-400">(all interactions)</span></div>
+            <div v-if="!aiOutcomeRows.length" class="text-sm text-gray-400 dark:text-gray-500 italic">No data.</div>
+            <template v-else>
+              <div v-for="row in aiOutcomeRows" :key="row.key" class="space-y-1">
+                <div class="flex items-center justify-between text-sm">
+                  <div class="flex items-center gap-2">
+                    <span class="inline-block w-2.5 h-2.5 rounded-full" :class="row.dot" />
+                    <span class="font-medium">{{ row.label }}</span>
+                  </div>
+                  <div class="flex items-center gap-3 tabular-nums">
+                    <span class="text-xs text-gray-500 dark:text-gray-400">{{ row.pct }}%</span>
+                    <span class="font-semibold">{{ row.count.toLocaleString() }}</span>
+                  </div>
+                </div>
+                <div class="h-1.5 rounded-full bg-gray-100 dark:bg-zinc-800 overflow-hidden">
+                  <div
+                    class="h-full rounded-full transition-[width]"
+                    :class="row.key === 'success' ? 'bg-green-500' : 'bg-red-400'"
+                    :style="{ width: row.pct + '%' }"
+                  />
+                </div>
+              </div>
+            </template>
+          </div>
+        </div>
+
         <!-- ─────────────────────────────────────────────────────────────── -->
 
         <!-- Retention table (always 10-week window) -->
@@ -866,11 +972,13 @@ const signupsCanvas = ref<HTMLCanvasElement | null>(null)
 const contentCanvas = ref<HTMLCanvasElement | null>(null)
 const connectionsCanvas = ref<HTMLCanvasElement | null>(null)
 const coinsMintedCanvas = ref<HTMLCanvasElement | null>(null)
+const aiInteractionsCanvas = ref<HTMLCanvasElement | null>(null)
 
 let signupsChart: Chart | null = null
 let contentChart: Chart | null = null
 let connectionsChart: Chart | null = null
 let coinsMintedChart: Chart | null = null
+let aiInteractionsChart: Chart | null = null
 
 const colorMode = useColorMode()
 const isDark = computed(() => colorMode.value === 'dark')
@@ -1100,7 +1208,7 @@ function renderCharts() {
 
   if (contentCanvas.value) {
     const { labels, counts, totalPoints } = alignSeries(
-      [data.value.posts, data.value.checkins, data.value.articles.published],
+      [data.value.posts, data.value.checkins, data.value.articles.published, data.value.aiPosts],
       granularity,
       selectedRange.value,
       data.value.asOf,
@@ -1114,6 +1222,7 @@ function renderCharts() {
           makeLineDataset('Posts', counts[0] ?? [], '#10b981', totalPoints),
           makeLineDataset('Check-ins', counts[1] ?? [], '#f59e0b', totalPoints),
           makeLineDataset('Articles', counts[2] ?? [], '#a855f7', totalPoints),
+          makeLineDataset('M.A.R.V. Posts', counts[3] ?? [], '#6366f1', totalPoints),
         ],
       },
       options: opts,
@@ -1122,7 +1231,7 @@ function renderCharts() {
 
   if (connectionsCanvas.value) {
     const { labels, counts, totalPoints } = alignSeries(
-      [data.value.messages, data.value.follows],
+      [data.value.messages, data.value.aiMessages, data.value.follows],
       granularity,
       selectedRange.value,
       data.value.asOf,
@@ -1134,8 +1243,27 @@ function renderCharts() {
         labels,
         datasets: [
           makeLineDataset('Messages', counts[0] ?? [], '#8b5cf6', totalPoints),
-          makeLineDataset('Follows', counts[1] ?? [], '#ec4899', totalPoints),
+          makeLineDataset('M.A.R.V. Messages', counts[1] ?? [], '#06b6d4', totalPoints),
+          makeLineDataset('Follows', counts[2] ?? [], '#ec4899', totalPoints),
         ],
+      },
+      options: opts,
+    })
+  }
+
+  if (aiInteractionsCanvas.value && data.value.ai.interactions.length > 0) {
+    const { labels, counts, totalPoints } = alignSeries(
+      [data.value.ai.interactions],
+      granularity,
+      selectedRange.value,
+      data.value.asOf,
+    )
+    aiInteractionsChart?.destroy()
+    aiInteractionsChart = new Chart(aiInteractionsCanvas.value, {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [makeLineDataset('Successful interactions', counts[0] ?? [], '#6366f1', totalPoints)],
       },
       options: opts,
     })
@@ -1308,6 +1436,81 @@ const spaceKpiCards = computed(() => {
   ]
 })
 
+const aiKpiCards = computed(() => {
+  if (!data.value?.ai) return []
+  const ai = data.value.ai
+  const r = rangeLabel.value
+  return [
+    { label: 'Total Interactions', value: ai.totalInteractionsInRange.toLocaleString(), sub: r },
+    { label: 'Successful', value: ai.successfulInteractionsInRange.toLocaleString(), sub: 'AI responses delivered' },
+    { label: 'Unique Users', value: ai.uniqueUsersInRange.toLocaleString(), sub: `used M.A.R.V. in ${r}` },
+    { label: 'Credits Spent', value: Math.round(ai.creditsSpentInRange).toLocaleString(), sub: r },
+    {
+      label: 'Est. Cost (USD)',
+      value: ai.estimatedCostUsdInRange != null ? `$${ai.estimatedCostUsdInRange.toFixed(4)}` : '—',
+      sub: r,
+    },
+    {
+      label: 'Avg Latency',
+      value: ai.avgLatencyMsInRange != null ? `${ai.avgLatencyMsInRange.toLocaleString()} ms` : '—',
+      sub: 'successful replies',
+    },
+  ]
+})
+
+const AI_SOURCE_META: Record<string, { label: string; dot: string; bar: string }> = {
+  public_thread:   { label: 'Public Thread',  dot: 'bg-blue-500',   bar: 'bg-blue-500' },
+  private_session: { label: 'Private DM',     dot: 'bg-violet-500', bar: 'bg-violet-500' },
+}
+
+const aiSourceRows = computed(() => {
+  if (!data.value?.ai) return []
+  const bySource = data.value.ai.bySource
+  const total = Object.values(bySource).reduce((a, b) => a + b, 0)
+  return Object.entries(bySource).map(([key, count]) => {
+    const meta = AI_SOURCE_META[key] ?? { label: key, dot: 'bg-gray-400', bar: 'bg-gray-400' }
+    return { key, ...meta, count, pct: total > 0 ? Math.round((count / total) * 100) : 0 }
+  }).sort((a, b) => b.count - a.count)
+})
+
+const AI_MODE_META: Record<string, { label: string; dot: string; bar: string }> = {
+  fast:    { label: 'Fast',    dot: 'bg-green-500',  bar: 'bg-green-500' },
+  regular: { label: 'Regular', dot: 'bg-blue-500',   bar: 'bg-blue-500' },
+  smart:   { label: 'Smart',   dot: 'bg-violet-500', bar: 'bg-violet-500' },
+  auto:    { label: 'Auto',    dot: 'bg-gray-400',   bar: 'bg-gray-400' },
+}
+
+const aiModeRows = computed(() => {
+  if (!data.value?.ai) return []
+  const byMode = data.value.ai.byEffectiveMode
+  const total = Object.values(byMode).reduce((a, b) => a + b, 0)
+  return Object.entries(byMode).map(([key, count]) => {
+    const meta = AI_MODE_META[key] ?? { label: key, dot: 'bg-gray-400', bar: 'bg-gray-400' }
+    return { key, ...meta, count, pct: total > 0 ? Math.round((count / total) * 100) : 0 }
+  }).sort((a, b) => b.count - a.count)
+})
+
+const AI_OUTCOME_META: Record<string, { label: string; dot: string }> = {
+  success:       { label: 'Success',          dot: 'bg-green-500' },
+  not_premium:   { label: 'Not Premium',       dot: 'bg-gray-400' },
+  no_credits:    { label: 'No Credits',        dot: 'bg-amber-500' },
+  rate_limited:  { label: 'Rate Limited',      dot: 'bg-orange-500' },
+  ai_error:      { label: 'AI Error',          dot: 'bg-red-500' },
+  not_configured:{ label: 'Not Configured',    dot: 'bg-red-400' },
+  banned:        { label: 'Banned User',        dot: 'bg-zinc-500' },
+  deduped:       { label: 'Deduped',           dot: 'bg-zinc-400' },
+}
+
+const aiOutcomeRows = computed(() => {
+  if (!data.value?.ai) return []
+  const byOutcome = data.value.ai.byOutcome
+  const total = Object.values(byOutcome).reduce((a, b) => a + b, 0)
+  return Object.entries(byOutcome).map(([key, count]) => {
+    const meta = AI_OUTCOME_META[key] ?? { label: key, dot: 'bg-gray-400' }
+    return { key, ...meta, count, pct: total > 0 ? Math.round((count / total) * 100) : 0 }
+  }).sort((a, b) => b.count - a.count)
+})
+
 const SPACE_MODE_META: Record<string, { label: string; dot: string; bar: string }> = {
   NONE:        { label: 'Idle',        dot: 'bg-gray-400',   bar: 'bg-gray-400' },
   WATCH_PARTY: { label: 'Watch Party', dot: 'bg-purple-500', bar: 'bg-purple-500' },
@@ -1448,5 +1651,6 @@ onUnmounted(() => {
   contentChart?.destroy()
   connectionsChart?.destroy()
   coinsMintedChart?.destroy()
+  aiInteractionsChart?.destroy()
 })
 </script>

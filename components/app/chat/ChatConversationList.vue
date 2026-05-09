@@ -189,7 +189,7 @@
                       <span class="font-semibold" :class="typingNameClass(typingUsersByConversationId[c.id]![0]!)">
                         @{{ typingUsersByConversationId[c.id]![0]!.username }}
                       </span>
-                      <span class="ml-1">is typing…</span>
+                      <span class="ml-1">{{ typingUsersByConversationId[c.id]![0]!.status === 'thinking' ? 'is thinking…' : 'is typing…' }}</span>
                     </template>
                     <template v-else>
                       <span class="font-semibold" :class="typingNameClass(typingUsersByConversationId[c.id]![0]!)">

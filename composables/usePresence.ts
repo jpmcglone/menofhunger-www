@@ -114,7 +114,7 @@ export type MessagesCallback = {
   onReaction?: (payload: { conversationId?: string; message?: unknown }) => void
   onMessageEdited?: (payload: { conversationId?: string; message?: unknown }) => void
   onMessageDeletedForAll?: (payload: { conversationId?: string; messageId?: string }) => void
-  onTyping?: (payload: { conversationId?: string; userId?: string; typing?: boolean }) => void
+  onTyping?: (payload: { conversationId?: string; userId?: string; typing?: boolean; status?: string }) => void
   onRead?: (payload: { conversationId?: string; userId?: string; lastReadAt?: string }) => void
 }
 
@@ -1222,7 +1222,7 @@ export function usePresence() {
       }
     })
 
-    socket.on('messages:typing', (data: { conversationId?: string; userId?: string; typing?: boolean }) => {
+    socket.on('messages:typing', (data: { conversationId?: string; userId?: string; typing?: boolean; status?: string }) => {
       if (!messagesCallbacks.value.size) return
       for (const cb of messagesCallbacks.value) {
         cb.onTyping?.(data)

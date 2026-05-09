@@ -70,6 +70,8 @@
                 :is-selected="isSelectedConversationMarv"
                 :conversation-id="marvConversationId"
                 :unread-count="marvUnreadCount"
+                :last-message-preview="marvLastMessagePreview"
+                :typing-status="marvTypingStatus"
                 @select="selectConversation"
               />
             </template>
@@ -297,7 +299,18 @@
                         <span class="font-semibold" :class="typingNameClass(typingUsersForDisplay[0]!)">
                           @{{ typingUsersForDisplay[0]!.username }}
                         </span>
-                        <span class="ml-1">is typing…</span>
+                        <Transition name="moh-fade" mode="out-in">
+                          <span
+                            v-if="typingUsersForDisplay[0]!.status === 'thinking'"
+                            key="thinking"
+                            class="ml-1"
+                          >is <span class="text-violet-500 dark:text-violet-400">thinking</span>…</span>
+                          <span
+                            v-else
+                            key="typing"
+                            class="ml-1"
+                          >is typing…</span>
+                        </Transition>
                       </template>
                       <template v-else>
                         <span class="font-semibold" :class="typingNameClass(typingUsersForDisplay[0]!)">
@@ -1256,6 +1269,18 @@ const marvConversation = computed<MessageConversation | null>(() => {
 
 const marvConversationId = computed(() => marvConversation.value?.id ?? null)
 const marvUnreadCount = computed(() => marvConversation.value?.unreadCount ?? 0)
+const marvLastMessagePreview = computed<string | null>(() => {
+  const body = marvConversation.value?.lastMessage?.body ?? null
+  return body ? body.trim() || null : null
+})
+const marvTypingStatus = computed<'thinking' | 'typing' | null>(() => {
+  const cid = marvConversationId.value
+  if (!cid) return null
+  const typingUsers = typingUsersByConversationId.value[cid] ?? []
+  const marvEntry = typingUsers.find((u) => u.userId === marv.marvUserId.value)
+  if (!marvEntry) return null
+  return marvEntry.status === 'thinking' || marvEntry.status === 'typing' ? marvEntry.status : 'typing'
+})
 const isSelectedConversationMarv = computed(() => {
   const marvId = marv.marvUserId.value
   if (!marvId) return false
@@ -1312,7 +1337,7 @@ function getConversationLastMessageTier(conversation: MessageConversationWithTon
 
 const ORG_CHAT_SILVER_DOT_CLASS = 'bg-[#313643] text-white'
 const ORG_CHAT_SILVER_UNREAD_CLASS = 'bg-[rgba(49,54,67,0.24)] dark:bg-[rgba(49,54,67,0.34)]'
-const ORG_CHAT_SILVER_FILLED_BUBBLE_CLASS = 'bg-[#313643] text-white'
+const ORG_CHAT_SILVER_FILLED_BUBBLE_CLASS = 'bg-[rgba(49,54,67,0.65)] backdrop-blur-sm text-white'
 const ORG_CHAT_SILVER_OUTLINE_BUBBLE_CLASS = 'bg-transparent border border-[rgba(49,54,67,0.96)] text-gray-900 dark:text-gray-100'
 
 function conversationDotClass(conversation: MessageConversation): string {
@@ -1340,13 +1365,14 @@ function bubbleClass(m: Message) {
   const tier = userColorTier(m.sender as any)
 
   if (isMe) {
+    // Outgoing: frosted glass — semi-transparent tier color + backdrop blur.
     if (tier === 'organization') return ORG_CHAT_SILVER_FILLED_BUBBLE_CLASS
-    if (tier === 'premium') return 'bg-[var(--moh-premium)] text-white'
-    if (tier === 'verified') return 'bg-[var(--moh-verified)] text-white'
-    return 'bg-gray-100 text-gray-800 dark:bg-zinc-900 dark:text-gray-200'
+    if (tier === 'premium') return 'bg-[rgba(var(--moh-premium-rgb),0.72)] backdrop-blur-sm text-white'
+    if (tier === 'verified') return 'bg-[rgba(var(--moh-verified-rgb),0.72)] backdrop-blur-sm text-white'
+    return 'bg-gray-500/60 backdrop-blur-sm text-white dark:bg-zinc-600/60'
   }
 
-  // Incoming: outlined bubble (X-like).
+  // Incoming: outlined bubble.
   if (tier === 'organization') return ORG_CHAT_SILVER_OUTLINE_BUBBLE_CLASS
   if (tier === 'premium') return 'bg-transparent border border-[rgba(var(--moh-premium-rgb),0.55)] text-gray-900 dark:text-gray-100'
   if (tier === 'verified') return 'bg-transparent border border-[rgba(var(--moh-verified-rgb),0.55)] text-gray-900 dark:text-gray-100'
@@ -2339,9 +2365,9 @@ const { register: registerRealtime, teardown: teardownRealtime } = useChatRealti
       })
     },
 
-    onTyping(convoId, userId, typing) {
+    onTyping(convoId, userId, typing, status) {
       if (route.path !== '/chat') return
-      setRemoteTyping(convoId, userId, typing)
+      setRemoteTyping(convoId, userId, typing, status)
     },
 
     onRead(convoId, userId, lastReadAt) {

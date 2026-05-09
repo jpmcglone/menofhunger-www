@@ -6,6 +6,8 @@ export type TypingUserDisplay = {
   userId: string
   username: string
   tier: 'organization' | 'premium' | 'verified' | 'normal'
+  /** For AI users (Marv): 'thinking' while the AI is processing, 'typing' while composing the reply. */
+  status?: 'thinking' | 'typing'
 }
 
 type UseChatTypingOptions = {
@@ -25,7 +27,7 @@ export function useChatTyping({
   composerText,
   emitMessagesTyping,
 }: UseChatTypingOptions) {
-  const typingByConversationId = ref<Map<string, Map<string, number>>>(new Map())
+  const typingByConversationId = ref<Map<string, Map<string, { exp: number; status?: 'thinking' | 'typing' }>>>(new Map())
   const typingSweepTimer = ref<ReturnType<typeof setInterval> | null>(null)
   const TYPING_TTL_MS = 3500
 
@@ -43,7 +45,9 @@ export function useChatTyping({
       const username = (u?.username ?? '').trim()
       if (!username) continue
       const tier: TypingUserDisplay['tier'] = userColorTier(u as any)
-      result.push({ userId: uid, username, tier })
+      const entry = typingMap.get(uid)
+      const status = entry?.status
+      result.push({ userId: uid, username, tier, status })
     }
     return result
   }
@@ -73,12 +77,12 @@ export function useChatTyping({
     const m = typingByConversationId.value
     if (!m.size) return
     let changed = false
-    const next = new Map<string, Map<string, number>>()
+    const next = new Map<string, Map<string, { exp: number; status?: 'thinking' | 'typing' }>>()
     for (const [convoId, inner] of m.entries()) {
       const innerNext = new Map(inner)
       let innerChanged = false
-      for (const [uid, exp] of innerNext.entries()) {
-        if (now > exp) {
+      for (const [uid, entry] of innerNext.entries()) {
+        if (now > entry.exp) {
           innerNext.delete(uid)
           innerChanged = true
         }
@@ -93,14 +97,16 @@ export function useChatTyping({
     if (changed) typingByConversationId.value = next
   }
 
-  function setRemoteTyping(conversationId: string, userId: string, typing?: boolean) {
+  function setRemoteTyping(conversationId: string, userId: string, typing?: boolean, status?: string) {
     const now = Date.now()
     const next = new Map(typingByConversationId.value)
     const inner = new Map(next.get(conversationId) ?? [])
     if (typing === false) {
       inner.delete(userId)
     } else {
-      inner.set(userId, now + TYPING_TTL_MS)
+      const resolvedStatus =
+        status === 'thinking' || status === 'typing' ? (status as 'thinking' | 'typing') : undefined
+      inner.set(userId, { exp: now + TYPING_TTL_MS, status: resolvedStatus })
     }
     if (inner.size > 0) next.set(conversationId, inner)
     else next.delete(conversationId)
