@@ -2,9 +2,11 @@
   <AppPageContent bottom="standard" class="space-y-4">
     <AppPageHeader sticky class="px-4 pt-4 pb-3" title="Media review" description="Review and delete uploaded images and videos.">
       <template #leading>
-        <Button as="NuxtLink" to="/admin" class="md:hidden" text severity="secondary" aria-label="Back">
-          <template #icon><Icon name="tabler:chevron-left" aria-hidden="true" /></template>
-        </Button>
+        <div class="md:hidden">
+          <Button as="NuxtLink" to="/admin" text severity="secondary" aria-label="Back">
+            <template #icon><Icon name="tabler:chevron-left" aria-hidden="true" /></template>
+          </Button>
+        </div>
       </template>
     </AppPageHeader>
 

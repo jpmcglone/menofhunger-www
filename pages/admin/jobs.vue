@@ -2,9 +2,11 @@
   <AppPageContent bottom="standard">
     <AppPageHeader sticky class="px-4 pt-4 pb-3" title="Jobs"  description="Run maintenance, scoring, and backfill jobs.">
       <template #leading>
-        <Button as="NuxtLink" to="/admin" class="md:hidden" text severity="secondary" aria-label="Back">
-          <template #icon><Icon name="tabler:chevron-left" aria-hidden="true" /></template>
-        </Button>
+        <div class="md:hidden">
+          <Button as="NuxtLink" to="/admin" text severity="secondary" aria-label="Back">
+            <template #icon><Icon name="tabler:chevron-left" aria-hidden="true" /></template>
+          </Button>
+        </div>
       </template>
     </AppPageHeader>
     <div class="px-4 py-4 space-y-6">

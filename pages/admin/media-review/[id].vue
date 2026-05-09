@@ -8,18 +8,19 @@
         <div class="mt-1 text-xs font-mono moh-text-muted break-all">{{ data?.asset.r2Key ?? '—' }}</div>
       </div>
       <div class="shrink-0 flex items-center gap-2">
-        <Button
-          as="NuxtLink"
-          to="/admin/media-review"
-          class="md:hidden"
-          text
-          severity="secondary"
-          aria-label="Back"
-        >
-          <template #icon>
-            <Icon name="tabler:chevron-left" aria-hidden="true" />
-          </template>
-        </Button>
+        <div class="md:hidden">
+          <Button
+            as="NuxtLink"
+            to="/admin/media-review"
+            text
+            severity="secondary"
+            aria-label="Back"
+          >
+            <template #icon>
+              <Icon name="tabler:chevron-left" aria-hidden="true" />
+            </template>
+          </Button>
+        </div>
         <Button
           label="Delete"
           severity="danger"
