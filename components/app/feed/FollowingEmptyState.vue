@@ -87,7 +87,6 @@
           to="/verification"
           :label="VOICE.actions.verify"
           size="small"
-          severity="secondary"
           rounded
           class="shrink-0 !h-8 !min-h-8 !px-3 !py-0 !text-xs !leading-none whitespace-nowrap"
         />

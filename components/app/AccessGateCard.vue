@@ -30,7 +30,6 @@
           :to="ctaTo"
           :label="ctaLabel"
           size="small"
-          severity="secondary"
           rounded
         />
       </div>

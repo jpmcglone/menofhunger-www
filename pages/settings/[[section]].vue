@@ -261,36 +261,54 @@
                   {{ verificationError }}
                 </AppInlineAlert>
 
-                <div class="flex flex-wrap items-center gap-3">
+                <!-- Already verified -->
+                <div
+                  v-if="(authUser?.verifiedStatus ?? 'none') !== 'none'"
+                  class="flex items-start gap-2 rounded-lg border border-emerald-200 bg-emerald-50 dark:border-emerald-500/25 dark:bg-emerald-500/8 px-3 py-2.5 text-sm"
+                >
+                  <Icon name="tabler:rosette-discount-check" class="mt-0.5 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
+                  <span class="moh-text">You’re verified. Thanks for being part of Men of Hunger.</span>
+                </div>
+
+                <!-- Pending request -->
+                <div
+                  v-else-if="verificationLatestRequest?.status === 'pending'"
+                  class="flex items-start gap-2 rounded-lg border border-yellow-300 bg-yellow-50 dark:border-yellow-500/25 dark:bg-yellow-500/8 px-3 py-2.5 text-sm"
+                >
+                  <Icon name="tabler:clock" class="mt-0.5 shrink-0 text-yellow-600 dark:text-yellow-400" aria-hidden="true" />
+                  <span class="moh-text">
+                    Verification requested <span class="font-medium">{{ requestSubmittedAtLabel }}</span>. We’ll review it soon — no action needed.
+                  </span>
+                </div>
+
+                <!-- Request CTA -->
+                <div v-else class="flex flex-wrap items-center gap-3">
                   <Button
-                    label="Start verification"
-                    :loading="verificationStarting"
-                    :disabled="verificationStarting || verificationStartDisabled"
-                    @click="startVerification()"
+                    label="Request Verification"
+                    :disabled="verificationStarting"
+                    @click="verificationConfirmVisible = true"
                   >
                     <template #icon>
                       <Icon name="tabler:id-badge" aria-hidden="true" />
                     </template>
                   </Button>
-                  <Button
-                    label="Refresh"
-                    severity="secondary"
-                    :loading="verificationRefreshing"
-                    :disabled="verificationRefreshing"
-                    @click="refreshVerification()"
-                  >
-                    <template #icon>
-                      <Icon name="tabler:refresh" aria-hidden="true" />
-                    </template>
-                  </Button>
-                  <div v-if="verificationStartDisabledReason" class="text-sm moh-text-muted">
-                    {{ verificationStartDisabledReason }}
-                  </div>
                 </div>
 
-                <div class="text-xs moh-text-muted">
-                  Provider integration isn’t live yet. For now, your request will show as pending until an admin manually reviews it.
+                <div v-if="(authUser?.verifiedStatus ?? 'none') === 'none' && verificationLatestRequest?.status !== 'pending'" class="text-xs moh-text-muted">
+                  An admin will review your request manually. You’ll see your verified badge once it’s approved.
                 </div>
+
+                <AppConfirmDialog
+                  v-model:visible="verificationConfirmVisible"
+                  header="Request Verification?"
+                  message="This sends a verification request to the Men of Hunger team. An admin will review your account and approve or reject it. You can only have one open request at a time."
+                  cancel-label="Not now"
+                  confirm-label="Submit request"
+                  confirm-severity="primary"
+                  confirm-icon="tabler:id-badge"
+                  :loading="verificationStarting"
+                  @confirm="confirmStartVerification()"
+                />
 
                 <div
                   v-if="authUser?.premiumPlus"
@@ -1635,6 +1653,9 @@ watch(
   { immediate: true },
 )
 
+// AppConfirmDialog closes itself on confirm — no need to toggle visibility here.
+const verificationConfirmVisible = ref(false)
+
 const { submit: startVerification, submitting: verificationStarting } = useFormSubmit(
   async () => {
     verificationError.value = null
@@ -1651,6 +1672,10 @@ const { submit: startVerification, submitting: verificationStarting } = useFormS
     },
   },
 )
+
+function confirmStartVerification() {
+  void startVerification()
+}
 
 const verificationStatusLabel = computed(() => {
   const s = authUser.value?.verifiedStatus ?? 'none'
@@ -1685,15 +1710,6 @@ const requestStatusSeverity = computed(() => {
 
 const requestSubmittedAtLabel = computed(() => formatDateTime(verificationLatestRequest.value?.createdAt, { fallback: '—' }))
 const requestReviewedAtLabel = computed(() => formatDateTime(verificationLatestRequest.value?.reviewedAt, { fallback: '—' }))
-
-const verificationStartDisabledReason = computed(() => {
-  const verified = (authUser.value?.verifiedStatus ?? 'none') !== 'none'
-  if (verified) return 'You’re already verified.'
-  if (verificationLatestRequest.value?.status === 'pending') return 'Your request is pending review.'
-  return ''
-})
-
-const verificationStartDisabled = computed(() => Boolean(verificationStartDisabledReason.value))
 
 const usernameInput = ref('')
 const emailInput = ref('')
