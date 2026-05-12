@@ -11,7 +11,7 @@
       >
         <div
           v-if="open"
-          class="fixed inset-0 z-[1200]"
+          class="fixed inset-0 z-[10001]"
           role="dialog"
           aria-modal="true"
           :aria-label="header"

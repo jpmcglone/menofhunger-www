@@ -196,14 +196,15 @@
         <div class="shrink-0 flex items-center gap-2">
           <Button
             v-if="isSelf || canEditProfile"
-            label="Edit profile"
-            severity="secondary"
+            v-tooltip.bottom="isAdminOverride ? tinyTooltip('Edit as site admin') : undefined"
+            :label="isAdminOverride ? 'Edit as admin' : 'Edit profile'"
+            :severity="isAdminOverride ? 'warn' : 'secondary'"
             rounded
-            :class="showEditProfileNudge ? ['moh-edit-profile-nudge', editProfileNudgeToneClass] : ''"
+            :class="showEditProfileNudge && !isAdminOverride ? ['moh-edit-profile-nudge', editProfileNudgeToneClass] : ''"
             @click="emit('edit')"
           >
             <template #icon>
-              <Icon name="tabler:pencil" aria-hidden="true" />
+              <Icon :name="isAdminOverride ? 'tabler:shield' : 'tabler:pencil'" aria-hidden="true" />
             </template>
           </Button>
           <Button
@@ -455,6 +456,11 @@ const props = defineProps<{
   relationshipTagLabel: string | null
   isSelf: boolean
   canEditProfile?: boolean
+  /**
+   * Whether the viewer can edit this profile only because they are a site
+   * admin (not the profile owner). Drives a visual cue on the Edit button.
+   */
+  isAdminOverride?: boolean
   followRelationship: FollowRelationship | null
   nudge: NudgeState | null
   showFollowCounts: boolean
@@ -491,6 +497,7 @@ const hasAvatar = computed(() => Boolean((profileAvatarUrl.value ?? '').trim()))
 const hasBanner = computed(() => Boolean((profileBannerUrl.value ?? '').trim()))
 const relationshipTagLabel = computed(() => props.relationshipTagLabel ?? null)
 const isSelf = computed(() => Boolean(props.isSelf))
+const isAdminOverride = computed(() => Boolean(props.isAdminOverride))
 const showEditProfileNudge = computed(() => isSelf.value && !hasAvatar.value && !hasBanner.value)
 const editProfileNudgeToneClass = computed(() => {
   const p = profile.value

@@ -14,6 +14,7 @@
           :shell="shell"
           :is-member="isMember"
           :is-owner="isOwner"
+          :can-edit="canEditGroup"
           :can-leave="canLeave"
           :cover-url="shell.coverImageUrl"
           :avatar-url="shell.avatarImageUrl"
@@ -38,6 +39,7 @@
           v-model="editOpen"
           :shell="shell"
           :is-owner="isOwner"
+          :is-admin-override="isAdminOverride"
           @updated="onGroupShellUpdated"
         />
 
@@ -318,7 +320,7 @@ import { siteConfig } from '~/config/site'
 
 const route = useRoute()
 const { apiFetchData } = useApiClient()
-const { isAuthed, isVerified } = useAuth()
+const { isAuthed, isVerified, user: authUser } = useAuth()
 const { markReadBySubject } = useNotifications()
 
 const slug = computed(() => String(route.params.slug ?? '').trim())
@@ -381,6 +383,12 @@ const isMod = computed(() => {
   return m.role === 'owner' || m.role === 'moderator'
 })
 const isOwner = computed(() => shell.value?.viewerMembership?.role === 'owner')
+// Site admins can edit any group (mirrors the same affordance on profiles).
+// `isAdminOverride` only flips true when the viewer is admin AND not the owner —
+// the dialog and Edit button switch to an admin-styled affordance in that case.
+const isViewerAdmin = computed(() => Boolean(authUser.value?.siteAdmin))
+const canEditGroup = computed(() => isOwner.value || isViewerAdmin.value)
+const isAdminOverride = computed(() => isViewerAdmin.value && !isOwner.value)
 
 const canLeave = computed(() => {
   const m = shell.value?.viewerMembership

@@ -35,6 +35,31 @@ export function useCrew() {
     return res.crew
   }
 
+  /**
+   * Edit any crew by id. Owners can use this in place of `updateMyCrew`; the
+   * primary caller is the site-admin "Edit Crew" path on `/c/:slug` (admins
+   * who are not members of the crew). The API enforces owner-or-admin and
+   * returns the same {@link CrewPrivate} shape so the dialog can patch local
+   * state without an extra fetch.
+   */
+  async function updateCrew(
+    crewId: string,
+    patch: Partial<{
+      name: string | null
+      tagline: string | null
+      bio: string | null
+      avatarImageUrl: string | null
+      coverImageUrl: string | null
+      designatedSuccessorUserId: string | null
+    }>,
+  ): Promise<CrewPrivate> {
+    const res = await apiFetchData<{ crew: CrewPrivate }>(`/crew/${encodeURIComponent(crewId)}`, {
+      method: 'PATCH',
+      body: patch,
+    })
+    return res.crew
+  }
+
   async function leaveCrew(): Promise<void> {
     await apiFetchData('/crew/me/leave', { method: 'POST', body: {} })
   }
@@ -129,6 +154,7 @@ export function useCrew() {
   return {
     getMyCrew,
     updateMyCrew,
+    updateCrew,
     leaveCrew,
     disbandCrew,
     kickMember,

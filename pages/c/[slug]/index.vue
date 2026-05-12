@@ -63,15 +63,19 @@
               </span>
             </NuxtLink>
             <Button
-              v-if="isOwner"
-              label="Edit Crew"
+              v-if="canEditCrew"
+              v-tooltip.bottom="isAdminOverride ? tinyTooltip('Edit as site admin') : undefined"
+              :label="isAdminOverride ? 'Edit as admin' : 'Edit Crew'"
               rounded
               size="small"
-              severity="secondary"
+              :severity="isAdminOverride ? 'warn' : 'secondary'"
               @click="editCrewOpen = true"
             >
               <template #icon>
-                <Icon name="tabler:edit" aria-hidden="true" />
+                <Icon
+                  :name="isAdminOverride ? 'tabler:shield' : 'tabler:edit'"
+                  aria-hidden="true"
+                />
               </template>
             </Button>
             <Button
@@ -182,6 +186,8 @@
       v-model="editCrewOpen"
       :crew="crew"
       :is-owner="isOwner"
+      :is-admin-override="isAdminOverride"
+      :target-crew-id="isAdminOverride ? crew.id : null"
       :designated-successor-user-id="viewerMembership?.designatedSuccessorUserId ?? null"
       @updated="onCrewUpdated"
       @disbanded="onCrewDisbanded"
@@ -227,6 +233,7 @@ import { getApiErrorMessage } from '~/utils/api-error'
 import { crewAvatarRoundClass } from '~/utils/avatar-rounding'
 import type { ProfilePostsFilter } from '~/utils/post-visibility'
 import type { FeedVisibilityFilter } from '~/composables/useFeedFilters'
+import { tinyTooltip } from '~/utils/tiny-tooltip'
 
 const crewAvatarRound = crewAvatarRoundClass()
 
@@ -259,6 +266,12 @@ const crewName = computed(() => {
 
 const isMember = computed(() => Boolean(viewerMembership.value))
 const isOwner = computed(() => viewerMembership.value?.role === 'owner')
+// Site admins can edit any crew (mirrors the same affordance on profiles + groups).
+// `isAdminOverride` is true when the viewer is admin AND not the owner — the
+// Edit button + dialog switch to an admin-styled affordance in that case.
+const isViewerAdmin = computed(() => Boolean(meUser.value?.siteAdmin))
+const canEditCrew = computed(() => isOwner.value || isViewerAdmin.value)
+const isAdminOverride = computed(() => isViewerAdmin.value && !isOwner.value)
 
 const editCrewOpen = ref(false)
 const addMemberOpen = ref(false)

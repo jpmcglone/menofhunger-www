@@ -22,12 +22,24 @@
               >
             </div>
 
-            <div class="absolute right-3 top-3">
+            <div class="absolute right-3 top-3 flex gap-2">
+              <Button
+                v-if="showBannerTrash"
+                rounded
+                :severity="pendingBannerRemoval ? 'secondary' : 'danger'"
+                :aria-label="pendingBannerRemoval ? 'Undo cover removal' : 'Remove cover'"
+                :disabled="saving || !canEdit"
+                @click="pendingBannerRemoval ? undoPendingBannerRemoval() : requestBannerRemoval()"
+              >
+                <template #icon>
+                  <Icon :name="pendingBannerRemoval ? 'tabler:arrow-back-up' : 'tabler:trash'" aria-hidden="true" />
+                </template>
+              </Button>
               <Button
                 rounded
                 severity="secondary"
-                :aria-label="pendingBannerFile ? 'Reset banner change' : 'Edit banner'"
-                :disabled="saving || !isOwner"
+                :aria-label="pendingBannerFile ? 'Discard cover change' : 'Edit cover'"
+                :disabled="saving || !canEdit"
                 @click="pendingBannerFile ? clearPendingBanner() : openBannerPicker()"
               >
                 <template #icon>
@@ -37,14 +49,14 @@
             </div>
 
             <div
-              v-if="pendingBannerFile"
+              v-if="pendingBannerFile || pendingBannerRemoval"
               class="absolute inset-x-0 bottom-0 px-3 py-2"
             >
               <div
                 class="mx-auto w-fit rounded-lg bg-black/45 px-2.5 py-1 text-xs font-semibold text-white shadow-sm"
                 style="text-shadow: 0 1px 2px rgba(0,0,0,.55);"
               >
-                Pending
+                {{ pendingBannerRemoval ? 'Will be removed' : 'Pending' }}
               </div>
             </div>
           </div>
@@ -64,12 +76,25 @@
               decoding="async"
             >
 
-            <div class="absolute inset-0 flex items-center justify-center">
+            <div class="absolute inset-0 flex items-center justify-center gap-1.5">
+              <Button
+                v-if="showAvatarTrash"
+                rounded
+                size="small"
+                :severity="pendingAvatarRemoval ? 'secondary' : 'danger'"
+                :aria-label="pendingAvatarRemoval ? 'Undo avatar removal' : 'Remove avatar'"
+                :disabled="saving || !canEdit"
+                @click="pendingAvatarRemoval ? undoPendingAvatarRemoval() : requestAvatarRemoval()"
+              >
+                <template #icon>
+                  <Icon :name="pendingAvatarRemoval ? 'tabler:arrow-back-up' : 'tabler:trash'" aria-hidden="true" />
+                </template>
+              </Button>
               <Button
                 rounded
                 severity="secondary"
-                :aria-label="pendingAvatarFile ? 'Reset avatar change' : 'Edit avatar'"
-                :disabled="saving || !isOwner"
+                :aria-label="pendingAvatarFile ? 'Discard avatar change' : 'Edit avatar'"
+                :disabled="saving || !canEdit"
                 @click="pendingAvatarFile ? clearPendingAvatar() : openAvatarPicker()"
               >
                 <template #icon>
@@ -79,14 +104,14 @@
             </div>
 
             <div
-              v-if="pendingAvatarFile"
+              v-if="pendingAvatarFile || pendingAvatarRemoval"
               class="absolute inset-x-0 bottom-0 px-2 pb-2"
             >
               <div
                 class="mx-auto w-fit rounded-lg bg-black/45 px-2 py-0.5 text-[11px] font-semibold text-white shadow-sm"
                 style="text-shadow: 0 1px 2px rgba(0,0,0,.55);"
               >
-                Pending
+                {{ pendingAvatarRemoval ? 'Will be removed' : 'Pending' }}
               </div>
             </div>
           </div>
@@ -100,7 +125,7 @@
         type="file"
         accept="image/png,image/jpeg,image/webp"
         class="hidden"
-        :disabled="saving || !isOwner"
+        :disabled="saving || !canEdit"
         @change="onBannerInputChange"
       >
       <input
@@ -108,7 +133,7 @@
         type="file"
         accept="image/png,image/jpeg,image/webp"
         class="hidden"
-        :disabled="saving || !isOwner"
+        :disabled="saving || !canEdit"
         @change="onAvatarInputChange"
       >
 
@@ -167,7 +192,7 @@
             rounded
             size="small"
             :severity="editJoinPolicy === 'open' ? 'primary' : 'secondary'"
-            :disabled="saving || !isOwner || isCurrentlyPrivate"
+            :disabled="saving || !canEdit || isCurrentlyPrivate"
             @click="editJoinPolicy = 'open'"
           />
           <Button
@@ -175,7 +200,7 @@
             rounded
             size="small"
             :severity="editJoinPolicy === 'approval' ? 'primary' : 'secondary'"
-            :disabled="saving || !isOwner"
+            :disabled="saving || !canEdit"
             @click="editJoinPolicy = 'approval'"
           >
             <template #icon>
@@ -216,7 +241,16 @@ import { groupAvatarRoundClass } from '~/utils/avatar-rounding'
 const props = defineProps<{
   modelValue: boolean
   shell: CommunityGroupShell | null
+  /**
+   * Whether the viewer is the group's owner (regular member-level edit path).
+   */
   isOwner: boolean
+  /**
+   * Whether the viewer can edit this group as a site admin override (i.e. they
+   * are not the owner but `siteAdmin` is true on `/auth/me`). Controls the
+   * "admin action" affordance only — the API enforces the same gate server-side.
+   */
+  isAdminOverride?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -228,6 +262,8 @@ const { apiFetchData } = useApiClient()
 const { assetUrl } = useAssets()
 
 const isOwner = computed(() => Boolean(props.isOwner))
+const isAdminOverride = computed(() => Boolean(props.isAdminOverride))
+const canEdit = computed(() => isOwner.value || isAdminOverride.value)
 const isCurrentlyPrivate = computed(() => props.shell?.joinPolicy === 'approval')
 const avatarRoundClass = groupAvatarRoundClass()
 const { confirm } = useAppConfirm()
@@ -247,10 +283,14 @@ const editError = ref<string | null>(null)
 const avatarInputEl = ref<HTMLInputElement | null>(null)
 const pendingAvatarFile = ref<File | null>(null)
 const pendingAvatarPreviewUrl = ref<string | null>(null)
+// Staged removal flag. On Save, sends `avatarImageUrl: null` to clear the
+// stored image. Mutually exclusive with `pendingAvatarFile` (upload wins).
+const pendingAvatarRemoval = ref(false)
 
 const bannerInputEl = ref<HTMLInputElement | null>(null)
 const pendingBannerFile = ref<File | null>(null)
 const pendingBannerPreviewUrl = ref<string | null>(null)
+const pendingBannerRemoval = ref(false)
 
 const avatarCropOpen = ref(false)
 const avatarCropFile = ref<File | null>(null)
@@ -258,12 +298,33 @@ const avatarCropFile = ref<File | null>(null)
 const bannerCropOpen = ref(false)
 const bannerCropFile = ref<File | null>(null)
 
-const editAvatarPreviewUrl = computed(() => pendingAvatarPreviewUrl.value || avatarUrl.value)
-const editBannerPreviewUrl = computed(() => pendingBannerPreviewUrl.value || coverUrl.value)
+const editAvatarPreviewUrl = computed(() => {
+  if (pendingAvatarFile.value && pendingAvatarPreviewUrl.value) return pendingAvatarPreviewUrl.value
+  if (pendingAvatarRemoval.value) return null
+  return avatarUrl.value
+})
+const editBannerPreviewUrl = computed(() => {
+  if (pendingBannerFile.value && pendingBannerPreviewUrl.value) return pendingBannerPreviewUrl.value
+  if (pendingBannerRemoval.value) return null
+  return coverUrl.value
+})
+
+const showAvatarTrash = computed(
+  () =>
+    canEdit.value
+    && (Boolean(avatarUrl.value) || pendingAvatarRemoval.value)
+    && !pendingAvatarFile.value,
+)
+const showBannerTrash = computed(
+  () =>
+    canEdit.value
+    && (Boolean(coverUrl.value) || pendingBannerRemoval.value)
+    && !pendingBannerFile.value,
+)
 
 const canSubmit = computed(
   () =>
-    isOwner.value
+    canEdit.value
     && editName.value.trim().length > 0
     && editDescription.value.trim().length > 0
     && !nameCharCount.isOver.value
@@ -303,16 +364,52 @@ function stageAvatarFile(file: File) {
   if (pendingAvatarPreviewUrl.value) URL.revokeObjectURL(pendingAvatarPreviewUrl.value)
   pendingAvatarFile.value = file
   pendingAvatarPreviewUrl.value = URL.createObjectURL(file)
+  pendingAvatarRemoval.value = false
 }
 
 function stageBannerFile(file: File) {
   if (pendingBannerPreviewUrl.value) URL.revokeObjectURL(pendingBannerPreviewUrl.value)
   pendingBannerFile.value = file
   pendingBannerPreviewUrl.value = URL.createObjectURL(file)
+  pendingBannerRemoval.value = false
+}
+
+async function requestAvatarRemoval() {
+  if (!canEdit.value) return
+  const ok = await confirm({
+    header: 'Remove group avatar?',
+    message: 'The group photo will be cleared when you save. The change is reversible until you save.',
+    confirmLabel: 'Remove',
+    confirmSeverity: 'danger',
+  })
+  if (!ok) return
+  clearPendingAvatar()
+  pendingAvatarRemoval.value = true
+}
+
+function undoPendingAvatarRemoval() {
+  pendingAvatarRemoval.value = false
+}
+
+async function requestBannerRemoval() {
+  if (!canEdit.value) return
+  const ok = await confirm({
+    header: 'Remove group cover?',
+    message: 'The cover image will be cleared when you save. The change is reversible until you save.',
+    confirmLabel: 'Remove',
+    confirmSeverity: 'danger',
+  })
+  if (!ok) return
+  clearPendingBanner()
+  pendingBannerRemoval.value = true
+}
+
+function undoPendingBannerRemoval() {
+  pendingBannerRemoval.value = false
 }
 
 function openBannerPicker() {
-  if (!isOwner.value) return
+  if (!canEdit.value) return
   bannerInputEl.value?.click()
 }
 
@@ -324,7 +421,7 @@ function onBannerInputChange(e: Event) {
 }
 
 function handleBannerSelectedFile(file: File) {
-  if (!isOwner.value) return
+  if (!canEdit.value) return
 
   const allowed = new Set(['image/jpeg', 'image/png', 'image/webp'])
   if (!allowed.has(file.type)) {
@@ -370,7 +467,7 @@ function onBannerCropped(file: File) {
 }
 
 function openAvatarPicker() {
-  if (!isOwner.value) return
+  if (!canEdit.value) return
   avatarInputEl.value?.click()
 }
 
@@ -382,7 +479,7 @@ function onAvatarInputChange(e: Event) {
 }
 
 function handleAvatarSelectedFile(file: File) {
-  if (!isOwner.value) return
+  if (!canEdit.value) return
 
   const allowed = new Set(['image/jpeg', 'image/png', 'image/webp'])
   if (!allowed.has(file.type)) {
@@ -433,6 +530,8 @@ watch(
       clearBannerCropState()
       clearPendingAvatar()
       clearPendingBanner()
+      pendingAvatarRemoval.value = false
+      pendingBannerRemoval.value = false
       return
     }
     editError.value = null
@@ -445,12 +544,14 @@ watch(
     clearBannerCropState()
     clearPendingAvatar()
     clearPendingBanner()
+    pendingAvatarRemoval.value = false
+    pendingBannerRemoval.value = false
   },
 )
 
 const { submit: saveGroup, submitting: saving } = useFormSubmit(
   async () => {
-    if (!isOwner.value) return
+    if (!canEdit.value) return
     const s = props.shell
     if (!s?.id) return
     editError.value = null
@@ -468,16 +569,23 @@ const { submit: saveGroup, submitting: saving } = useFormSubmit(
       if (!ok) return
     }
 
-    let coverImageUrl: string | undefined
-    let avatarImageUrl: string | undefined
+    // null  -> "clear this image"
+    // string -> "set to this URL"
+    // undefined -> "leave as-is" (omitted from payload)
+    let coverImageUrl: string | null | undefined
+    let avatarImageUrl: string | null | undefined
 
     if (pendingBannerFile.value) {
       coverImageUrl = await uploadImageFile(pendingBannerFile.value)
       clearPendingBanner()
+    } else if (pendingBannerRemoval.value) {
+      coverImageUrl = null
     }
     if (pendingAvatarFile.value) {
       avatarImageUrl = await uploadImageFile(pendingAvatarFile.value)
       clearPendingAvatar()
+    } else if (pendingAvatarRemoval.value) {
+      avatarImageUrl = null
     }
 
     const updated = await apiFetchData<CommunityGroupShell>(`/groups/${encodeURIComponent(s.id)}`, {
@@ -491,6 +599,9 @@ const { submit: saveGroup, submitting: saving } = useFormSubmit(
         ...(avatarImageUrl !== undefined ? { avatarImageUrl } : {}),
       },
     })
+
+    pendingBannerRemoval.value = false
+    pendingAvatarRemoval.value = false
 
     emit('updated', updated)
     emit('update:modelValue', false)

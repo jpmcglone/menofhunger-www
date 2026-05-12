@@ -63,6 +63,7 @@
           :relationship-tag-label="relationshipTagLabel"
           :is-self="isSelf"
           :can-edit-profile="canEditProfile"
+          :is-admin-override="isAdminOverride"
           :follow-relationship="followRelationship"
           :nudge="followSummary?.nudge ?? null"
           :show-follow-counts="showFollowCounts"
@@ -652,6 +653,7 @@ watch(
 const isSelf = computed(() => Boolean(authUser.value?.id && profile.value?.id && authUser.value.id === profile.value.id))
 const isViewerAdmin = computed(() => Boolean(authUser.value?.siteAdmin))
 const canEditProfile = computed(() => isSelf.value || isViewerAdmin.value)
+const isAdminOverride = computed(() => !isSelf.value && isViewerAdmin.value)
 const adminEditTargetUserId = computed(() => (!isSelf.value && isViewerAdmin.value && profile.value?.id) ? profile.value.id : undefined)
 
 const effectivePinnedPostId = computed(() => {

@@ -22,12 +22,24 @@
               >
             </div>
 
-            <div class="absolute right-3 top-3">
+            <div class="absolute right-3 top-3 flex gap-2">
+              <Button
+                v-if="showBannerTrash"
+                rounded
+                :severity="pendingBannerRemoval ? 'secondary' : 'danger'"
+                :aria-label="pendingBannerRemoval ? 'Undo cover removal' : 'Remove cover'"
+                :disabled="saving || !canEdit"
+                @click="pendingBannerRemoval ? undoPendingBannerRemoval() : requestBannerRemoval()"
+              >
+                <template #icon>
+                  <Icon :name="pendingBannerRemoval ? 'tabler:arrow-back-up' : 'tabler:trash'" aria-hidden="true" />
+                </template>
+              </Button>
               <Button
                 rounded
                 severity="secondary"
-                :aria-label="pendingBannerFile ? 'Reset cover change' : 'Edit cover'"
-                :disabled="saving || !isOwner"
+                :aria-label="pendingBannerFile ? 'Discard cover change' : 'Edit cover'"
+                :disabled="saving || !canEdit"
                 @click="pendingBannerFile ? clearPendingBanner() : openBannerPicker()"
               >
                 <template #icon>
@@ -37,14 +49,14 @@
             </div>
 
             <div
-              v-if="pendingBannerFile"
+              v-if="pendingBannerFile || pendingBannerRemoval"
               class="absolute inset-x-0 bottom-0 px-3 py-2"
             >
               <div
                 class="mx-auto w-fit rounded-lg bg-black/45 px-2.5 py-1 text-xs font-semibold text-white shadow-sm"
                 style="text-shadow: 0 1px 2px rgba(0,0,0,.55);"
               >
-                Pending
+                {{ pendingBannerRemoval ? 'Will be removed' : 'Pending' }}
               </div>
             </div>
           </div>
@@ -64,12 +76,25 @@
               decoding="async"
             >
 
-            <div class="absolute inset-0 flex items-center justify-center">
+            <div class="absolute inset-0 flex items-center justify-center gap-1.5">
+              <Button
+                v-if="showAvatarTrash"
+                rounded
+                size="small"
+                :severity="pendingAvatarRemoval ? 'secondary' : 'danger'"
+                :aria-label="pendingAvatarRemoval ? 'Undo avatar removal' : 'Remove avatar'"
+                :disabled="saving || !canEdit"
+                @click="pendingAvatarRemoval ? undoPendingAvatarRemoval() : requestAvatarRemoval()"
+              >
+                <template #icon>
+                  <Icon :name="pendingAvatarRemoval ? 'tabler:arrow-back-up' : 'tabler:trash'" aria-hidden="true" />
+                </template>
+              </Button>
               <Button
                 rounded
                 severity="secondary"
-                :aria-label="pendingAvatarFile ? 'Reset avatar change' : 'Edit avatar'"
-                :disabled="saving || !isOwner"
+                :aria-label="pendingAvatarFile ? 'Discard avatar change' : 'Edit avatar'"
+                :disabled="saving || !canEdit"
                 @click="pendingAvatarFile ? clearPendingAvatar() : openAvatarPicker()"
               >
                 <template #icon>
@@ -79,14 +104,14 @@
             </div>
 
             <div
-              v-if="pendingAvatarFile"
+              v-if="pendingAvatarFile || pendingAvatarRemoval"
               class="absolute inset-x-0 bottom-0 px-2 pb-2"
             >
               <div
                 class="mx-auto w-fit rounded-lg bg-black/45 px-2 py-0.5 text-[11px] font-semibold text-white shadow-sm"
                 style="text-shadow: 0 1px 2px rgba(0,0,0,.55);"
               >
-                Pending
+                {{ pendingAvatarRemoval ? 'Will be removed' : 'Pending' }}
               </div>
             </div>
           </div>
@@ -100,7 +125,7 @@
         type="file"
         accept="image/png,image/jpeg,image/webp"
         class="hidden"
-        :disabled="saving || !isOwner"
+        :disabled="saving || !canEdit"
         @change="onBannerInputChange"
       >
       <input
@@ -108,7 +133,7 @@
         type="file"
         accept="image/png,image/jpeg,image/webp"
         class="hidden"
-        :disabled="saving || !isOwner"
+        :disabled="saving || !canEdit"
         @change="onAvatarInputChange"
       >
 
@@ -134,7 +159,7 @@
           v-model="editName"
           class="w-full"
           :maxlength="80"
-          :disabled="!isOwner"
+          :disabled="!canEdit"
           placeholder="Untitled Crew"
         />
         <template #helper>
@@ -148,7 +173,7 @@
           v-model="editTagline"
           class="w-full"
           :maxlength="160"
-          :disabled="!isOwner"
+          :disabled="!canEdit"
           placeholder="One-line pitch"
         />
         <template #helper>{{ taglineCharCount.display }}</template>
@@ -161,7 +186,7 @@
           rows="4"
           auto-resize
           :maxlength="4000"
-          :disabled="!isOwner"
+          :disabled="!canEdit"
           placeholder="What's your Crew about?"
         />
         <template #helper>{{ bioCharCount.display }}</template>
@@ -171,7 +196,7 @@
         <select
           v-model="editSuccessorId"
           class="w-full border moh-border rounded-lg p-2 bg-transparent"
-          :disabled="!isOwner"
+          :disabled="!canEdit"
         >
           <option :value="null">(None &mdash; longest-tenured member inherits)</option>
           <option
@@ -226,6 +251,19 @@ const props = defineProps<{
   modelValue: boolean
   crew: CrewPublic | null
   isOwner: boolean
+  /**
+   * Whether the viewer can edit this crew as a site admin override (i.e. they
+   * are not the owner but `siteAdmin` is true on `/auth/me`). Controls a
+   * visual cue only — the API enforces the same gate server-side.
+   */
+  isAdminOverride?: boolean
+  /**
+   * If set, save via `PATCH /crew/:crewId` (admin path). Otherwise the dialog
+   * falls back to `PATCH /crew/me` (owner path). The owner can use either
+   * path, but we keep `/crew/me` as the default because it's the older
+   * stable shape and exercised by more tests.
+   */
+  targetCrewId?: string | null
   /** Currently designated successor user id, if any. */
   designatedSuccessorUserId?: string | null
 }>()
@@ -241,6 +279,8 @@ const { assetUrl } = useAssets()
 const crewApi = useCrew()
 
 const isOwner = computed(() => Boolean(props.isOwner))
+const isAdminOverride = computed(() => Boolean(props.isAdminOverride))
+const canEdit = computed(() => isOwner.value || isAdminOverride.value)
 const avatarRoundClass = crewAvatarRoundClass()
 
 const coverUrl = computed(() => props.crew?.coverUrl ?? null)
@@ -269,10 +309,14 @@ const editError = ref<string | null>(null)
 const avatarInputEl = ref<HTMLInputElement | null>(null)
 const pendingAvatarFile = ref<File | null>(null)
 const pendingAvatarPreviewUrl = ref<string | null>(null)
+// Staged removal: Save will send `avatarImageUrl: null` to clear the stored
+// image. Mutually exclusive with a staged file (upload wins, see stageAvatarFile).
+const pendingAvatarRemoval = ref(false)
 
 const bannerInputEl = ref<HTMLInputElement | null>(null)
 const pendingBannerFile = ref<File | null>(null)
 const pendingBannerPreviewUrl = ref<string | null>(null)
+const pendingBannerRemoval = ref(false)
 
 const avatarCropOpen = ref(false)
 const avatarCropFile = ref<File | null>(null)
@@ -280,14 +324,37 @@ const avatarCropFile = ref<File | null>(null)
 const bannerCropOpen = ref(false)
 const bannerCropFile = ref<File | null>(null)
 
-const editAvatarPreviewUrl = computed(() => pendingAvatarPreviewUrl.value || avatarUrl.value)
-const editBannerPreviewUrl = computed(() => pendingBannerPreviewUrl.value || coverUrl.value)
+const editAvatarPreviewUrl = computed(() => {
+  if (pendingAvatarFile.value && pendingAvatarPreviewUrl.value) return pendingAvatarPreviewUrl.value
+  if (pendingAvatarRemoval.value) return null
+  return avatarUrl.value
+})
+const editBannerPreviewUrl = computed(() => {
+  if (pendingBannerFile.value && pendingBannerPreviewUrl.value) return pendingBannerPreviewUrl.value
+  if (pendingBannerRemoval.value) return null
+  return coverUrl.value
+})
+
+const showAvatarTrash = computed(
+  () =>
+    canEdit.value
+    && (Boolean(avatarUrl.value) || pendingAvatarRemoval.value)
+    && !pendingAvatarFile.value,
+)
+const showBannerTrash = computed(
+  () =>
+    canEdit.value
+    && (Boolean(coverUrl.value) || pendingBannerRemoval.value)
+    && !pendingBannerFile.value,
+)
+
+const { confirm: confirmRemoval } = useAppConfirm()
 
 // Crew name is allowed to be blank ("Untitled Crew"); only block on
-// over-limit fields. Non-owners can never submit.
+// over-limit fields. Submissions require either owner OR site admin.
 const canSubmit = computed(
   () =>
-    isOwner.value
+    canEdit.value
     && !nameCharCount.isOver.value
     && !taglineCharCount.isOver.value
     && !bioCharCount.isOver.value,
@@ -325,16 +392,52 @@ function stageAvatarFile(file: File) {
   if (pendingAvatarPreviewUrl.value) URL.revokeObjectURL(pendingAvatarPreviewUrl.value)
   pendingAvatarFile.value = file
   pendingAvatarPreviewUrl.value = URL.createObjectURL(file)
+  pendingAvatarRemoval.value = false
 }
 
 function stageBannerFile(file: File) {
   if (pendingBannerPreviewUrl.value) URL.revokeObjectURL(pendingBannerPreviewUrl.value)
   pendingBannerFile.value = file
   pendingBannerPreviewUrl.value = URL.createObjectURL(file)
+  pendingBannerRemoval.value = false
+}
+
+async function requestAvatarRemoval() {
+  if (!canEdit.value) return
+  const ok = await confirmRemoval({
+    header: 'Remove Crew avatar?',
+    message: 'The Crew photo will be cleared when you save. The change is reversible until you save.',
+    confirmLabel: 'Remove',
+    confirmSeverity: 'danger',
+  })
+  if (!ok) return
+  clearPendingAvatar()
+  pendingAvatarRemoval.value = true
+}
+
+function undoPendingAvatarRemoval() {
+  pendingAvatarRemoval.value = false
+}
+
+async function requestBannerRemoval() {
+  if (!canEdit.value) return
+  const ok = await confirmRemoval({
+    header: 'Remove Crew cover?',
+    message: 'The cover image will be cleared when you save. The change is reversible until you save.',
+    confirmLabel: 'Remove',
+    confirmSeverity: 'danger',
+  })
+  if (!ok) return
+  clearPendingBanner()
+  pendingBannerRemoval.value = true
+}
+
+function undoPendingBannerRemoval() {
+  pendingBannerRemoval.value = false
 }
 
 function openBannerPicker() {
-  if (!isOwner.value) return
+  if (!canEdit.value) return
   bannerInputEl.value?.click()
 }
 
@@ -346,7 +449,7 @@ function onBannerInputChange(e: Event) {
 }
 
 function handleBannerSelectedFile(file: File) {
-  if (!isOwner.value) return
+  if (!canEdit.value) return
 
   const allowed = new Set(['image/jpeg', 'image/png', 'image/webp'])
   if (!allowed.has(file.type)) {
@@ -392,7 +495,7 @@ function onBannerCropped(file: File) {
 }
 
 function openAvatarPicker() {
-  if (!isOwner.value) return
+  if (!canEdit.value) return
   avatarInputEl.value?.click()
 }
 
@@ -404,7 +507,7 @@ function onAvatarInputChange(e: Event) {
 }
 
 function handleAvatarSelectedFile(file: File) {
-  if (!isOwner.value) return
+  if (!canEdit.value) return
 
   const allowed = new Set(['image/jpeg', 'image/png', 'image/webp'])
   if (!allowed.has(file.type)) {
@@ -457,6 +560,8 @@ watch(
       clearBannerCropState()
       clearPendingAvatar()
       clearPendingBanner()
+      pendingAvatarRemoval.value = false
+      pendingBannerRemoval.value = false
       return
     }
     editError.value = null
@@ -469,36 +574,53 @@ watch(
     clearBannerCropState()
     clearPendingAvatar()
     clearPendingBanner()
+    pendingAvatarRemoval.value = false
+    pendingBannerRemoval.value = false
   },
 )
 
 const { submit: saveCrew, submitting: saving } = useFormSubmit(
   async () => {
-    if (!isOwner.value) return
+    if (!canEdit.value) return
     if (!props.crew) return
     editError.value = null
 
+    // null  -> "clear this image"
+    // string -> "set to this URL"
+    // undefined -> "leave as-is" (omitted from payload)
     let coverImageUrl: string | null | undefined
     let avatarImageUrl: string | null | undefined
 
     if (pendingBannerFile.value) {
       coverImageUrl = await uploadImageFile(pendingBannerFile.value)
       clearPendingBanner()
+    } else if (pendingBannerRemoval.value) {
+      coverImageUrl = null
     }
     if (pendingAvatarFile.value) {
       avatarImageUrl = await uploadImageFile(pendingAvatarFile.value)
       clearPendingAvatar()
+    } else if (pendingAvatarRemoval.value) {
+      avatarImageUrl = null
     }
 
-    const updated = await crewApi.updateMyCrew({
+    const patch = {
       name: editName.value.trim() || null,
       tagline: editTagline.value.trim() || null,
       bio: editBio.value.trim() || null,
       designatedSuccessorUserId: editSuccessorId.value,
       ...(coverImageUrl !== undefined ? { coverImageUrl } : {}),
       ...(avatarImageUrl !== undefined ? { avatarImageUrl } : {}),
-    })
+    }
 
+    // If a target crew id is provided (admin override path), use the
+    // `/crew/:crewId` endpoint. Otherwise the owner path uses `/crew/me`.
+    const updated = props.targetCrewId
+      ? await crewApi.updateCrew(props.targetCrewId, patch)
+      : await crewApi.updateMyCrew(patch)
+
+    pendingBannerRemoval.value = false
+    pendingAvatarRemoval.value = false
     emit('updated', updated)
     emit('update:modelValue', false)
   },

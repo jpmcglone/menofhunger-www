@@ -171,6 +171,23 @@
             />
           </template>
           <!--
+            Site admins moderating a group they don't belong to still need the
+            Edit affordance. Styled with `severity="warn"` + shield icon so it's
+            visually clear this action is only available because of admin rights.
+          -->
+          <Button
+            v-if="isAdminOverride"
+            v-tooltip.bottom="tinyTooltip('Edit as site admin')"
+            label="Edit as admin"
+            severity="warn"
+            rounded
+            @click="$emit('edit')"
+          >
+            <template #icon>
+              <Icon name="tabler:shield" aria-hidden="true" />
+            </template>
+          </Button>
+          <!--
             Share is always available so anyone (including non-members and
             visitors logged out) can grab a link to the group.
           -->
@@ -236,14 +253,18 @@
             </template>
           </Button>
           <Button
-            v-if="isOwner"
-            label="Edit group"
-            severity="secondary"
+            v-if="canEdit"
+            v-tooltip.bottom="isAdminOverride ? tinyTooltip('Edit as site admin') : undefined"
+            :label="isAdminOverride ? 'Edit as admin' : 'Edit group'"
+            :severity="isAdminOverride ? 'warn' : 'secondary'"
             rounded
             @click="$emit('edit')"
           >
             <template #icon>
-              <Icon name="tabler:pencil" aria-hidden="true" />
+              <Icon
+                :name="isAdminOverride ? 'tabler:shield' : 'tabler:pencil'"
+                aria-hidden="true"
+              />
             </template>
           </Button>
           <!--
@@ -331,6 +352,7 @@ import type { MenuItem } from 'primevue/menuitem'
 import type { CommunityGroupShell } from '~/types/api'
 import { groupAvatarRoundClass } from '~/utils/avatar-rounding'
 import { useCopyToClipboard } from '~/composables/useCopyToClipboard'
+import { tinyTooltip } from '~/utils/tiny-tooltip'
 
 type MenuItemWithIcon = MenuItem & { iconName?: string }
 
@@ -338,6 +360,13 @@ const props = withDefaults(defineProps<{
   shell: CommunityGroupShell
   isMember: boolean
   isOwner?: boolean
+  /**
+   * Whether the viewer is allowed to open the Edit Group dialog. Defaults to
+   * `isOwner`, but is also true for site admins viewing a group they do not
+   * own. The button styling switches to an admin-override affordance when this
+   * is true but `isOwner` is false.
+   */
+  canEdit?: boolean
   canLeave: boolean
   coverUrl: string | null
   avatarUrl: string | null
@@ -357,6 +386,9 @@ const props = withDefaults(defineProps<{
   viewerIsLoggedIn: true,
   viewerIsVerified: true,
 })
+
+const canEdit = computed(() => Boolean(props.canEdit ?? props.isOwner))
+const isAdminOverride = computed(() => canEdit.value && !props.isOwner)
 
 const emit = defineEmits<{
   (

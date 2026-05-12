@@ -23,11 +23,23 @@
               >
             </div>
 
-            <div class="absolute right-3 top-3">
+            <div class="absolute right-3 top-3 flex gap-2">
+              <Button
+                v-if="showBannerTrash"
+                rounded
+                :severity="pendingBannerRemoval ? 'secondary' : 'danger'"
+                :aria-label="pendingBannerRemoval ? 'Undo banner removal' : 'Remove banner'"
+                :disabled="saving || !canEdit"
+                @click="pendingBannerRemoval ? undoPendingBannerRemoval() : requestBannerRemoval()"
+              >
+                <template #icon>
+                  <Icon :name="pendingBannerRemoval ? 'tabler:arrow-back-up' : 'tabler:trash'" aria-hidden="true" />
+                </template>
+              </Button>
               <Button
                 rounded
                 severity="secondary"
-                :aria-label="pendingBannerFile ? 'Reset banner change' : 'Edit banner'"
+                :aria-label="pendingBannerFile ? 'Discard banner change' : 'Edit banner'"
                 :disabled="saving || !canEdit"
                 @click="pendingBannerFile ? clearPendingBanner() : openBannerPicker()"
               >
@@ -38,14 +50,14 @@
             </div>
 
             <div
-              v-if="pendingBannerFile"
+              v-if="pendingBannerFile || pendingBannerRemoval"
               class="absolute inset-x-0 bottom-0 px-3 py-2"
             >
               <div
                 class="mx-auto w-fit rounded-lg bg-black/45 px-2.5 py-1 text-xs font-semibold text-white shadow-sm"
                 style="text-shadow: 0 1px 2px rgba(0,0,0,.55);"
               >
-                Pending
+                {{ pendingBannerRemoval ? 'Will be removed' : 'Pending' }}
               </div>
             </div>
           </div>
@@ -62,11 +74,24 @@
               decoding="async"
             >
 
-            <div class="absolute inset-0 flex items-center justify-center">
+            <div class="absolute inset-0 flex items-center justify-center gap-1.5">
+              <Button
+                v-if="showAvatarTrash"
+                rounded
+                :severity="pendingAvatarRemoval ? 'secondary' : 'danger'"
+                size="small"
+                :aria-label="pendingAvatarRemoval ? 'Undo avatar removal' : 'Remove avatar'"
+                :disabled="saving || !canEdit"
+                @click="pendingAvatarRemoval ? undoPendingAvatarRemoval() : requestAvatarRemoval()"
+              >
+                <template #icon>
+                  <Icon :name="pendingAvatarRemoval ? 'tabler:arrow-back-up' : 'tabler:trash'" aria-hidden="true" />
+                </template>
+              </Button>
               <Button
                 rounded
                 severity="secondary"
-                :aria-label="pendingAvatarFile ? 'Reset avatar change' : 'Edit avatar'"
+                :aria-label="pendingAvatarFile ? 'Discard avatar change' : 'Edit avatar'"
                 :disabled="saving || !canEdit"
                 @click="pendingAvatarFile ? clearPendingAvatar() : openAvatarPicker()"
               >
@@ -77,14 +102,14 @@
             </div>
 
             <div
-              v-if="pendingAvatarFile"
+              v-if="pendingAvatarFile || pendingAvatarRemoval"
               class="absolute inset-x-0 bottom-0 px-2 pb-2"
             >
               <div
                 class="mx-auto w-fit rounded-lg bg-black/45 px-2 py-0.5 text-[11px] font-semibold text-white shadow-sm"
                 style="text-shadow: 0 1px 2px rgba(0,0,0,.55);"
               >
-                Pending
+                {{ pendingAvatarRemoval ? 'Will be removed' : 'Pending' }}
               </div>
             </div>
           </div>
@@ -262,18 +287,48 @@ const editError = ref<string | null>(null)
 const avatarInputEl = ref<HTMLInputElement | null>(null)
 const pendingAvatarFile = ref<File | null>(null)
 const pendingAvatarPreviewUrl = ref<string | null>(null)
+// When true, the user has asked to clear the existing avatar and Save will
+// issue a DELETE. Mutually exclusive with `pendingAvatarFile` (uploading wins).
+const pendingAvatarRemoval = ref(false)
 
 // Banner staged upload
 const bannerInputEl = ref<HTMLInputElement | null>(null)
 const pendingBannerFile = ref<File | null>(null)
 const pendingBannerPreviewUrl = ref<string | null>(null)
+const pendingBannerRemoval = ref(false)
 
 // Crop step (Twitter-like): choose file -> crop -> stage cropped file
 const avatarCropOpen = ref(false)
 const avatarCropFile = ref<File | null>(null)
 
-const editAvatarPreviewUrl = computed(() => pendingAvatarPreviewUrl.value || profileAvatarUrl.value)
-const editBannerPreviewUrl = computed(() => pendingBannerPreviewUrl.value || profileBannerUrl.value)
+const editAvatarPreviewUrl = computed(() => {
+  if (pendingAvatarFile.value && pendingAvatarPreviewUrl.value) return pendingAvatarPreviewUrl.value
+  if (pendingAvatarRemoval.value) return null
+  return profileAvatarUrl.value
+})
+const editBannerPreviewUrl = computed(() => {
+  if (pendingBannerFile.value && pendingBannerPreviewUrl.value) return pendingBannerPreviewUrl.value
+  if (pendingBannerRemoval.value) return null
+  return profileBannerUrl.value
+})
+
+// Show the trash button only when there is an image to act on (current image
+// or a staged file) AND we're not already mid-upload. The button doubles as
+// "undo" once removal has been staged.
+const showAvatarTrash = computed(
+  () =>
+    canEdit.value
+    && (Boolean(profileAvatarUrl.value) || pendingAvatarRemoval.value)
+    && !pendingAvatarFile.value,
+)
+const showBannerTrash = computed(
+  () =>
+    canEdit.value
+    && (Boolean(profileBannerUrl.value) || pendingBannerRemoval.value)
+    && !pendingBannerFile.value,
+)
+
+const { confirm } = useAppConfirm()
 
 function clearPendingAvatar() {
   pendingAvatarFile.value = null
@@ -303,12 +358,50 @@ function stageAvatarFile(file: File) {
   if (pendingAvatarPreviewUrl.value) URL.revokeObjectURL(pendingAvatarPreviewUrl.value)
   pendingAvatarFile.value = file
   pendingAvatarPreviewUrl.value = URL.createObjectURL(file)
+  // Picking a new file supersedes a staged removal — the new image is the
+  // user's latest intent.
+  pendingAvatarRemoval.value = false
 }
 
 function stageBannerFile(file: File) {
   if (pendingBannerPreviewUrl.value) URL.revokeObjectURL(pendingBannerPreviewUrl.value)
   pendingBannerFile.value = file
   pendingBannerPreviewUrl.value = URL.createObjectURL(file)
+  pendingBannerRemoval.value = false
+}
+
+async function requestAvatarRemoval() {
+  if (!canEdit.value) return
+  const ok = await confirm({
+    header: 'Remove avatar?',
+    message: 'Your profile photo will be cleared when you save. The change is reversible until you save.',
+    confirmLabel: 'Remove',
+    confirmSeverity: 'danger',
+  })
+  if (!ok) return
+  clearPendingAvatar()
+  pendingAvatarRemoval.value = true
+}
+
+function undoPendingAvatarRemoval() {
+  pendingAvatarRemoval.value = false
+}
+
+async function requestBannerRemoval() {
+  if (!canEdit.value) return
+  const ok = await confirm({
+    header: 'Remove banner?',
+    message: 'Your cover image will be cleared when you save. The change is reversible until you save.',
+    confirmLabel: 'Remove',
+    confirmSeverity: 'danger',
+  })
+  if (!ok) return
+  clearPendingBanner()
+  pendingBannerRemoval.value = true
+}
+
+function undoPendingBannerRemoval() {
+  pendingBannerRemoval.value = false
 }
 
 // Banner crop state
@@ -419,6 +512,8 @@ watch(
       clearBannerCropState()
       clearPendingAvatar()
       clearPendingBanner()
+      pendingAvatarRemoval.value = false
+      pendingBannerRemoval.value = false
       return
     }
     editError.value = null
@@ -430,7 +525,8 @@ watch(
     clearBannerCropState()
     clearPendingAvatar()
     clearPendingBanner()
-
+    pendingAvatarRemoval.value = false
+    pendingBannerRemoval.value = false
   }
 )
 
@@ -442,9 +538,26 @@ const { submit: saveProfile, submitting: saving } = useFormSubmit(
     const adminId = props.targetUserId ?? null
     const bannerInitUrl = adminId ? `/admin/users/${adminId}/uploads/banner/init` : '/uploads/banner/init'
     const bannerCommitUrl = adminId ? `/admin/users/${adminId}/uploads/banner/commit` : '/uploads/banner/commit'
+    const bannerDeleteUrl = adminId ? `/admin/users/${adminId}/uploads/banner` : '/uploads/banner'
     const avatarInitUrl = adminId ? `/admin/users/${adminId}/uploads/avatar/init` : '/uploads/avatar/init'
     const avatarCommitUrl = adminId ? `/admin/users/${adminId}/uploads/avatar/commit` : '/uploads/avatar/commit'
+    const avatarDeleteUrl = adminId ? `/admin/users/${adminId}/uploads/avatar` : '/uploads/avatar'
     const profilePatchUrl = adminId ? `/admin/users/${adminId}/profile` : '/users/me/profile'
+
+    // Banner removal: a staged file always wins (the file was picked AFTER
+    // removal was asked for, by mutual-exclusion in stageBannerFile).
+    if (pendingBannerRemoval.value && !pendingBannerFile.value) {
+      const committed = await apiFetchData<{ user: import('~/composables/useAuth').AuthUser }>(bannerDeleteUrl, {
+        method: 'DELETE',
+      })
+      if (!adminId) {
+        const previousUsername = authUser.value?.username ?? null
+        authUser.value = committed?.user ?? authUser.value
+        syncUserCaches(committed?.user, previousUsername)
+      }
+      emit('patchProfile', { bannerUrl: committed?.user?.bannerUrl ?? null })
+      pendingBannerRemoval.value = false
+    }
 
     // If a banner is staged, upload + commit it first.
     if (pendingBannerFile.value) {
@@ -476,6 +589,20 @@ const { submit: saveProfile, submitting: saving } = useFormSubmit(
       }
       emit('patchProfile', { bannerUrl: committed?.user?.bannerUrl ?? null })
       clearPendingBanner()
+    }
+
+    // Avatar removal: same precedence rules as the banner.
+    if (pendingAvatarRemoval.value && !pendingAvatarFile.value) {
+      const committed = await apiFetchData<{ user: import('~/composables/useAuth').AuthUser }>(avatarDeleteUrl, {
+        method: 'DELETE',
+      })
+      if (!adminId) {
+        const previousUsername = authUser.value?.username ?? null
+        authUser.value = committed?.user ?? authUser.value
+        syncUserCaches(committed?.user, previousUsername)
+      }
+      emit('patchProfile', { avatarUrl: committed?.user?.avatarUrl ?? null })
+      pendingAvatarRemoval.value = false
     }
 
     // If an avatar is staged, upload + commit it first.
