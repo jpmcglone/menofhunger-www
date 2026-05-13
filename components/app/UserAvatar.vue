@@ -24,6 +24,7 @@
     <ClientOnly>
       <button
         v-if="showStatusButton && statusBehavior === 'custom'"
+        v-tooltip.bottom="statusTooltip"
         type="button"
         :class="statusButtonClass"
         :aria-label="activeStatus ? `${displayName}'s status` : 'Set status'"
@@ -37,6 +38,7 @@
       </button>
       <span
         v-else-if="showStatusButton"
+        v-tooltip.bottom="statusTooltip"
         :class="statusButtonClass"
         aria-hidden="true"
       >
@@ -59,6 +61,7 @@
  */
 import { useUserOverlay } from '~/composables/useUserOverlay'
 import { avatarRoundClass } from '~/utils/avatar-rounding'
+import { tinyTooltip } from '~/utils/tiny-tooltip'
 
 export type UserAvatarUser = {
   id: string
@@ -148,6 +151,13 @@ const activeStatus = computed(() => {
 })
 
 const showStatusButton = computed(() => Boolean(props.showStatus && props.showPresence !== false && (activeStatus.value || props.showEmptyStatus)))
+const statusTooltip = computed(() => {
+  // Only show a tooltip when there is actual status text to surface; the
+  // empty/dashed affordance speaks for itself via the dashed border.
+  const text = activeStatus.value?.text?.trim()
+  if (!text) return null
+  return tinyTooltip(text)
+})
 const statusButtonClass = computed(() => [
   'moh-avatar-status-bubble moh-focus absolute z-20 inline-flex items-center justify-center rounded-full transition-[transform,opacity] duration-150 hover:scale-[1.04] active:scale-[0.96]',
   props.statusPositionClass,

@@ -196,6 +196,14 @@ html.dark .moh-vignette::after {
   /* Lodge accent (brass) — used sparingly for focus + subtle highlights */
   --moh-brass: #a37422;
   --moh-brass-rgb: 163, 116, 34;
+
+  /* Media tile system — used by every post media surface (single image,
+     single video, multi-image grid, gif). Keeping these centralized means
+     the rounded corners, letterbox color, and inter-tile seam all stay in
+     lockstep across components. */
+  --moh-media-radius: 1rem;          /* matches Tailwind rounded-2xl */
+  --moh-media-bg: rgba(0, 0, 0, 0.04);
+  --moh-media-seam: rgba(0, 0, 0, 0.10);
 }
 
 html.dark {
@@ -244,6 +252,12 @@ html.dark {
   --moh-group-rgb: 56, 189, 248;
   --moh-group-soft: rgba(56, 189, 248, 0.14);
   --moh-group-ring: rgba(56, 189, 248, 0.32);
+
+  /* Media tile system — dark mode overrides. Letterbox + seam read against
+     the page bg (charcoal), so they're white at low opacity rather than
+     black. Radius stays the same. */
+  --moh-media-bg: rgba(255, 255, 255, 0.04);
+  --moh-media-seam: rgba(255, 255, 255, 0.08);
 }
 
 /* NOTE: Do NOT remap premium → org based on the viewer.
@@ -346,6 +360,23 @@ input[type="reset"] {
 
   .moh-squircle {
     corner-shape: squircle;
+  }
+
+  /* Single source of truth for any post-media surface — single image,
+     single video, multi-image grid, gif. The CONTAINER owns the radius
+     and clipping; <img>/<video>/cell elements inside stay flush with no
+     per-element rounded corners or outlines. Keeps every kind/count of
+     media looking identical. */
+  .moh-media-frame {
+    position: relative;
+    overflow: hidden;
+    border-radius: var(--moh-media-radius);
+    background-color: var(--moh-media-bg);
+    corner-shape: squircle;
+  }
+  .moh-media-frame--video {
+    /* Videos letterbox against pure black instead of the neutral surface tint. */
+    background-color: #000;
   }
 
   /* Pause icon on listener avatars: plain icon, white with shadow for readability on photos */

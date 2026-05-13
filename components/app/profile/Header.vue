@@ -277,24 +277,34 @@
         </button>
       </div>
 
+      <button
+        v-if="activeStatus && isSelf"
+        v-tooltip.bottom="tinyTooltip('Update status')"
+        type="button"
+        class="moh-pressable mt-4 flex w-full items-start gap-2.5 rounded-xl border moh-border bg-[color:var(--moh-surface-2)] px-3.5 py-2.5 text-left transition-[background-color,transform] hover:bg-[color:var(--moh-surface-3)] active:scale-[0.995]"
+        :aria-label="`Update your status: ${activeStatus.text}`"
+        @click="openStatusEditor"
+      >
+        <Icon name="tabler:message-circle-filled" class="mt-0.5 shrink-0 text-base moh-text-muted" aria-hidden="true" />
+        <div class="min-w-0 flex-1 text-sm font-medium leading-snug moh-text">
+          {{ activeStatus.text }}
+        </div>
+      </button>
+      <div
+        v-else-if="activeStatus"
+        class="mt-4 flex items-start gap-2.5 rounded-xl border moh-border bg-[color:var(--moh-surface-2)] px-3.5 py-2.5"
+      >
+        <Icon name="tabler:message-circle-filled" class="mt-0.5 shrink-0 text-base moh-text-muted" aria-hidden="true" />
+        <div class="min-w-0 flex-1 text-sm font-medium leading-snug moh-text">
+          {{ activeStatus.text }}
+        </div>
+      </div>
+
       <div v-if="profile?.bio" class="mt-4 text-gray-800 dark:text-gray-200">
         <AppBioText :text="profile.bio" />
       </div>
       <div v-else class="mt-4 text-sm text-gray-500 dark:text-gray-400">
         No bio yet.
-      </div>
-
-      <!-- Posting streak milestone badges + status label -->
-      <div v-if="(profile?.longestStreakDays ?? 0) >= 2" class="mt-3 flex items-center gap-2 flex-wrap">
-        <AppStatusLabel :longest-streak-days="profile!.longestStreakDays" />
-        <AppStreakBadge v-if="(profile?.longestStreakDays ?? 0) >= 7" :longest-streak-days="profile!.longestStreakDays" />
-        <span
-          v-if="profile!.checkinStreakDays > 0"
-          class="inline-flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400"
-        >
-          <Icon name="tabler:flame" class="text-[11px]" style="color: var(--moh-checkin)" aria-hidden="true" />
-          {{ profile!.checkinStreakDays }}-day streak
-        </span>
       </div>
 
       <div class="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-gray-600 dark:text-gray-300">

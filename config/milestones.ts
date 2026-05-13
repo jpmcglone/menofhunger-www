@@ -1,71 +1,73 @@
 /**
- * Men of Hunger milestone + status label system.
+ * Men of Hunger badge + milestone system.
  *
- * Status labels are derived purely from existing data — no new scoring model.
- * Labels appear in profile headers and can be shown in feed metadata.
+ * Badges are earned through `longestStreakDays` so they never regress once
+ * unlocked. They show up behind a single "Badges" entry point on the profile —
+ * not as inline tags — and the dialog renders the full set with locked tiles
+ * for tiers the user hasn't earned yet (Reddit/video-game style).
  *
  * Guiding principles:
- *   - Labels reflect discipline + consistency, not clout
- *   - Thresholds are achievable but meaningful
- *   - No negative labels (system stays invisible at zero)
+ *   - Badges reflect discipline + consistency, not clout.
+ *   - Thresholds are achievable but meaningful.
+ *   - No negative badges. Locked tiers are simply dim, never punitive.
  */
 
-export type StatusLabel = {
+export type BadgeTier = 'bronze' | 'silver' | 'gold'
+
+export type Badge = {
   id: string
-  label: string
-  icon: string
-  /** CSS custom property color variable or tailwind color class prefix */
-  color: 'amber' | 'blue' | 'orange' | 'red' | 'green' | 'gray'
+  name: string
+  /** Short, plain description shown on hover/tap. */
   description: string
-  /** Minimum streak days required */
+  /** Iconify name (Tabler set). */
+  icon: string
+  tier: BadgeTier
+  /** Minimum `longestStreakDays` required to earn this badge. */
   minStreakDays: number
 }
 
 /**
- * Ordered from highest to lowest. Use the first one the user qualifies for.
- * All thresholds are based on `longestStreakDays` so they never regress.
+ * Ordered ascending so the dialog renders bronze → silver → gold in reading
+ * order. Add new tiers here only when there's something genuinely worth
+ * chasing — every additional tile dilutes the rarer badges.
  */
-export const STATUS_LABELS: StatusLabel[] = [
-  {
-    id: 'centurion',
-    label: 'Centurion',
-    icon: 'tabler:shield-star',
-    color: 'amber',
-    description: '100-day streak or longer — exceptional consistency.',
-    minStreakDays: 100,
-  },
-  {
-    id: 'iron',
-    label: 'Iron',
-    icon: 'tabler:bolt',
-    color: 'orange',
-    description: '30-day streak — forged through discipline.',
-    minStreakDays: 30,
-  },
+export const BADGES: readonly Badge[] = [
   {
     id: 'builder',
-    label: 'Builder',
+    name: 'Builder',
+    description: 'Hit a 7-day posting streak. The work is starting to compound.',
     icon: 'tabler:hammer',
-    color: 'blue',
-    description: '7-day streak — putting in the work.',
+    tier: 'bronze',
     minStreakDays: 7,
   },
   {
-    id: 'on_track',
-    label: 'On Track',
-    icon: 'tabler:trending-up',
-    color: 'green',
-    description: 'Active streak — keep going.',
-    minStreakDays: 2,
+    id: 'iron',
+    name: 'Iron',
+    description: 'Hit a 30-day posting streak. Forged through discipline.',
+    icon: 'tabler:bolt',
+    tier: 'silver',
+    minStreakDays: 30,
+  },
+  {
+    id: 'centurion',
+    name: 'Centurion',
+    description: 'Hit a 100-day posting streak. Exceptional consistency.',
+    icon: 'tabler:shield-star',
+    tier: 'gold',
+    minStreakDays: 100,
   },
 ] as const
 
-/**
- * Return the highest status label a user has earned, or null if none.
- * Uses `longestStreakDays` so the label doesn't disappear when streak resets.
- */
-export function getStatusLabel(longestStreakDays: number): StatusLabel | null {
-  return STATUS_LABELS.find((s) => longestStreakDays >= s.minStreakDays) ?? null
+export function isBadgeEarned(badge: Badge, longestStreakDays: number): boolean {
+  return longestStreakDays >= badge.minStreakDays
+}
+
+export function getEarnedBadges(longestStreakDays: number): Badge[] {
+  return BADGES.filter((b) => isBadgeEarned(b, longestStreakDays))
+}
+
+export function hasAnyBadge(longestStreakDays: number): boolean {
+  return getEarnedBadges(longestStreakDays).length > 0
 }
 
 // ── Weekly Mission ──────────────────────────────────────────────────────────

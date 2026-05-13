@@ -134,32 +134,18 @@
             </Transition>
           </div>
 
-          <!-- Badges popover — only shown if at least one milestone is earned -->
-          <div v-if="hasEarnedBadges" ref="badgesWrapperEl" class="relative inline-block">
-            <button
-              type="button"
-              class="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold border moh-border moh-surface moh-text hover:opacity-80 transition-opacity"
-              @click="toggleBadges"
-            >
-              <Icon name="tabler:award" class="text-[14px] moh-text-muted" aria-hidden="true" />
-              Badges
-            </button>
-            <Transition
-              enter-active-class="transition-[opacity,transform] duration-150 ease-out"
-              enter-from-class="opacity-0 scale-95"
-              enter-to-class="opacity-100 scale-100"
-              leave-active-class="transition-[opacity,transform] duration-100 ease-in"
-              leave-from-class="opacity-100 scale-100"
-              leave-to-class="opacity-0 scale-95"
-            >
-              <div
-                v-if="badgesOpen"
-                class="absolute left-0 top-full mt-2 z-50 rounded-xl border moh-border moh-bg shadow-lg p-3 origin-top-left"
-              >
-                <AppStreakBadge :longest-streak-days="streakLongestDays" />
-              </div>
-            </Transition>
-          </div>
+          <!-- Badges entry point — opens a modal grid of all badge tiers
+               (earned + locked). Only surfaced when the user has at least one
+               earned badge so empty profiles don't dangle a meaningless link. -->
+          <button
+            v-if="hasEarnedBadges"
+            type="button"
+            class="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold border moh-border moh-surface moh-text hover:opacity-80 transition-opacity"
+            @click="badgesOpen = true"
+          >
+            <Icon name="tabler:award" class="text-[14px] moh-text-muted" aria-hidden="true" />
+            Badges
+          </button>
         </div>
       </div>
 
@@ -501,6 +487,12 @@
         @patch-profile="patchPublicProfile"
       />
 
+      <AppBadgesDialog
+        :open="badgesOpen"
+        :longest-streak-days="streakLongestDays"
+        @update:open="badgesOpen = $event"
+      />
+
     </div>
   </div>
   </AppPageContent>
@@ -516,6 +508,7 @@ import { tinyTooltip } from '~/utils/tiny-tooltip'
 import type { UserPostsFilter } from '~/composables/useUserPosts'
 import { userColorTier, userTierColorVar } from '~/utils/user-tier'
 import { collectChainIds } from '~/utils/feed-patch'
+import { hasAnyBadge } from '~/config/milestones'
 
 definePageMeta({
   layout: 'app',
@@ -611,7 +604,6 @@ function formatCount(n: unknown): string {
 const streaksOpen = ref(false)
 const badgesOpen = ref(false)
 const streaksWrapperEl = ref<HTMLElement | null>(null)
-const badgesWrapperEl = ref<HTMLElement | null>(null)
 
 const streakCurrentDays = computed(() =>
   Math.max(0, Math.floor((isSelf.value ? authUser.value?.checkinStreakDays : (profile.value as any)?.checkinStreakDays) ?? 0))
@@ -619,25 +611,19 @@ const streakCurrentDays = computed(() =>
 const streakLongestDays = computed(() =>
   Math.max(0, Math.floor((isSelf.value ? authUser.value?.longestStreakDays : (profile.value as any)?.longestStreakDays) ?? 0))
 )
-// AppStreakBadge lowest milestone is 7 days
-const hasEarnedBadges = computed(() => streakLongestDays.value >= 7)
+const hasEarnedBadges = computed(() => hasAnyBadge(streakLongestDays.value))
 
 function toggleStreaks() {
-  badgesOpen.value = false
   streaksOpen.value = !streaksOpen.value
 }
-function toggleBadges() {
-  streaksOpen.value = false
-  badgesOpen.value = !badgesOpen.value
-}
 
+// Streaks is the only popover left on this row — close it on outside taps.
+// (Badges is now a dialog and manages its own dismissal.)
 function onProfileStatPointerDown(e: PointerEvent) {
   const target = e.target
   if (!(target instanceof Node)) return
   const inStreaks = streaksWrapperEl.value?.contains(target) ?? false
-  const inBadges = badgesWrapperEl.value?.contains(target) ?? false
   if (!inStreaks) streaksOpen.value = false
-  if (!inBadges) badgesOpen.value = false
 }
 const usersStore = useUsersStore()
 const { invalidateUserPreviewCache } = useUserPreview()

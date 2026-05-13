@@ -2,6 +2,11 @@ import type { CrewPrivate } from '~/types/api'
 
 export type ViewerCrewMembership = {
   crewId: string
+  /**
+   * Slug of the viewer's crew. Used to keep the Crew nav item highlighted while
+   * the viewer is browsing their own crew's detail pages (`/c/<slug>...`).
+   */
+  crewSlug: string
   role: 'owner' | 'member'
 } | null
 
@@ -23,8 +28,10 @@ export function useViewerCrew() {
 
   const { isAuthed, isVerified } = useAuth()
 
-  function setFromCrew(crew: Pick<CrewPrivate, 'id' | 'viewerRole'> | null) {
-    membership.value = crew ? { crewId: crew.id, role: crew.viewerRole } : null
+  function setFromCrew(crew: Pick<CrewPrivate, 'id' | 'slug' | 'viewerRole'> | null) {
+    membership.value = crew
+      ? { crewId: crew.id, crewSlug: crew.slug, role: crew.viewerRole }
+      : null
     loaded.value = true
   }
 

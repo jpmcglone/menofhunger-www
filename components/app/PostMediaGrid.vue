@@ -1,5 +1,7 @@
 <template>
-  <!-- Single media -->
+  <!-- Single media. Container owns the corner radius; the <img>/<video>
+       inside is just pixels filling the frame. Same rule applies in the
+       multi-item branch below, so single/grid feel consistent. -->
   <div
     v-if="items.length === 1"
     class="mt-3 flex justify-start"
@@ -9,9 +11,8 @@
     <div
       v-if="items[0]?.kind === 'video'"
       ref="singleVideoContainerRef"
-      :class="singleBoxClass"
+      :class="[singleBoxClass, 'moh-media-frame moh-media-frame--video']"
       :style="singleBoxStyle"
-      class="moh-squircle relative overflow-hidden rounded-2xl bg-black"
     >
       <video
         v-if="interactive && items[0]?.url"
@@ -76,8 +77,9 @@
       :type="interactive ? 'button' : undefined"
       :class="[
         singleBoxClass,
+        'moh-media-frame',
         interactive
-          ? 'moh-tap cursor-zoom-in select-none text-left !bg-transparent !border-0 !p-0 focus:outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20 dark:focus-visible:ring-white/20'
+          ? 'moh-tap cursor-zoom-in select-none text-left !border-0 !p-0 focus:outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20 dark:focus-visible:ring-white/20'
           : 'select-none',
       ]"
       :style="singleBoxStyle"
@@ -87,7 +89,7 @@
       <div class="absolute inset-0" aria-hidden="true" />
       <AppImg
         :src="items[0]?.url"
-        class="absolute inset-0 h-full w-full object-contain moh-img-outline"
+        class="absolute inset-0 h-full w-full object-contain"
         :class="hideThumbs ? 'opacity-0 transition-opacity duration-150' : 'opacity-100'"
         :width="singleWidth ?? undefined"
         :height="singleHeight ?? undefined"
@@ -105,7 +107,7 @@
         width: '100%',
         maxWidth: MAX_WIDTH_REM != null ? `${MAX_WIDTH_REM}rem` : undefined,
       }"
-      class="moh-squircle flex shrink-0 items-center justify-center rounded-2xl border moh-border moh-surface"
+      class="moh-media-frame flex shrink-0 items-center justify-center border moh-border moh-surface"
       aria-label="Deleted media"
     >
       <div class="flex flex-col items-center gap-2 text-sm moh-text-muted select-none">
@@ -120,8 +122,15 @@
     class="mt-3"
     :class="{ 'pointer-events-none': !interactive }"
   >
-    <div class="moh-squircle w-full overflow-hidden rounded-2xl" :style="gridWrapperStyle">
-      <div class="grid" :class="gridClass" :style="gridStyle">
+    <!-- Outer frame owns the radius + clipping. Inner cells are flush
+         (no per-tile rounded corners, no per-image outline) so the grid
+         reads as one continuous surface, not 2-4 separate cards. -->
+    <div class="moh-media-frame w-full" :style="gridWrapperStyle">
+      <div
+        class="grid h-full w-full gap-px bg-[color:var(--moh-media-seam)]"
+        :class="gridClass"
+        :style="gridStyle"
+      >
         <template v-for="(m, idx) in items" :key="m.id || idx">
           <component
             :is="interactive ? 'button' : 'div'"
@@ -139,7 +148,7 @@
             <AppImg
               v-if="m.kind !== 'video'"
               :src="m.url"
-              class="block h-full w-full bg-black/3 dark:bg-white/3 object-cover object-center moh-img-outline"
+              class="block h-full w-full object-cover object-center"
               :class="[imgClass(idx), hideThumbs ? 'opacity-0 transition-opacity duration-150' : 'opacity-100']"
               :alt="m.alt ?? ''"
               sizes="(max-width: 640px) 50vw, 360px"
@@ -149,7 +158,7 @@
             <template v-else>
               <AppImg
                 :src="posterFor(m) || m.url"
-                class="block h-full w-full bg-black/3 dark:bg-white/3 object-cover object-center moh-img-outline"
+                class="block h-full w-full object-cover object-center"
                 :class="[imgClass(idx), hideThumbs ? 'opacity-0 transition-opacity duration-150' : 'opacity-100']"
                 :alt="m.alt ?? ''"
                 sizes="(max-width: 640px) 50vw, 360px"
@@ -423,17 +432,13 @@ const singleBoxStyle = computed<CSSProperties>(() => {
   }
 })
 const singleBoxClass = computed(() => {
-  const heightRem = FIXED_HEIGHT_REM.value
-  const maxW = MAX_WIDTH_REM.value
   if (!single.value) return ''
-  if (!singleWidth.value || !singleHeight.value) {
-    // Fallback: use style for dynamic dimensions
-    return 'moh-squircle relative overflow-hidden rounded-2xl w-full shrink-0'
-  }
-  if (singleIsVeryWide.value) {
-    return 'moh-squircle relative overflow-hidden rounded-2xl w-full shrink-0'
-  }
-  return 'moh-squircle relative overflow-hidden rounded-2xl shrink-0'
+  // moh-media-frame on the consuming element supplies radius + clipping.
+  // We just hand back the width/shrink behaviour appropriate for the box's
+  // aspect ratio.
+  if (!singleWidth.value || !singleHeight.value) return 'relative w-full shrink-0'
+  if (singleIsVeryWide.value) return 'relative w-full shrink-0'
+  return 'relative shrink-0'
 })
 
 const gridClass = computed(() => {
