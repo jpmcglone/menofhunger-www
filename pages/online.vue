@@ -7,10 +7,10 @@
           <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-500 opacity-75" />
           <span class="relative inline-flex h-3 w-3 rounded-full bg-green-500" />
         </span>
-        Here now
+        Online now
       </h1>
       <p class="mt-1 text-sm text-gray-600 dark:text-gray-300">
-        <span v-if="totalOnline !== null">{{ totalOnline }} {{ totalOnline === 1 ? 'person is' : 'people are' }} here now.</span>
+        <span v-if="totalOnline !== null">{{ totalOnline }} {{ totalOnline === 1 ? 'person is' : 'people are' }} online now.</span>
         <span v-else>People currently active or recently around. Updates in real time.</span>
       </p>
     </div>
@@ -106,7 +106,7 @@ definePageMeta({
 })
 
 usePageSeo({
-  title: 'Here now',
+  title: 'Online now',
   description: 'People currently active or recently around.',
   canonicalPath: '/online',
   noindex: true,
@@ -305,7 +305,7 @@ async function fetchOnlinePage() {
     }
 
     if (viewerCanSeeLastOnline.value) {
-      const recent = (res?.data?.recent ?? []) as RecentlyOnlineUser[]
+      const recent = ((res?.data?.recent ?? []) as RecentlyOnlineUser[]).filter((u) => !u.isBot)
       const next = (res as any)?.pagination?.recentNextCursor ?? null
       recentUsers.value = recent
       addStatusesFromRest(recent.map((u) => u.status))
@@ -340,8 +340,8 @@ async function fetchRecent(params?: { cursor?: string | null }) {
     const data = res.data ?? []
     addStatusesFromRest(data.map((u) => u.status))
     const next = res.pagination?.nextCursor ?? null
-    if (params?.cursor) recentUsers.value = [...recentUsers.value, ...data]
-    else recentUsers.value = data
+    if (params?.cursor) recentUsers.value = [...recentUsers.value, ...data.filter((u) => !u.isBot)]
+    else recentUsers.value = data.filter((u) => !u.isBot)
     recentNextCursor.value = typeof next === 'string' && next.trim() ? next : null
   } catch (e: unknown) {
     recentError.value = getApiErrorMessage(e) || 'Failed to load recently online.'

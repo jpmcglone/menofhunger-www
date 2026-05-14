@@ -124,10 +124,12 @@
   >
     <!-- Outer frame owns the radius + clipping. Inner cells are flush
          (no per-tile rounded corners, no per-image outline) so the grid
-         reads as one continuous surface, not 2-4 separate cards. -->
+         reads as one continuous surface, not 2-4 separate cards.
+         No gap between cells: the seam would make each corner cell
+         appear individually rounded (from the outer squircle clip). -->
     <div class="moh-media-frame w-full" :style="gridWrapperStyle">
       <div
-        class="grid h-full w-full gap-px bg-[color:var(--moh-media-seam)]"
+        class="grid h-full w-full"
         :class="gridClass"
         :style="gridStyle"
       >

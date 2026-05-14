@@ -1028,7 +1028,12 @@ export type OnlineUser = FollowListUser & {
 /** Data type for GET /presence/online (array); totalOnline in pagination. */
 export type GetPresenceOnlineData = OnlineUser[]
 
-export type RecentlyOnlineUser = FollowListUser & { lastOnlineAt: string | null; status?: UserStatus | null }
+export type RecentlyOnlineUser = FollowListUser & {
+  lastOnlineAt: string | null
+  status?: UserStatus | null
+  /** True for bot accounts (e.g. Marv). Bots are always online and must not appear in the "recently around" section. */
+  isBot?: boolean
+}
 
 /** Data type for GET /presence/recent (array); nextCursor in pagination. */
 export type GetPresenceRecentData = RecentlyOnlineUser[]
