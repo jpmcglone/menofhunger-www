@@ -374,6 +374,7 @@
           :row-in-view="rowInView"
           :activate-video-on-mount="activateVideoOnMount"
           :preloaded-article="postView.article ?? null"
+          :quoted-post="postView.quotedPost ?? null"
         />
 
         <!-- Article share card: rendered directly from API data (no fetch needed).

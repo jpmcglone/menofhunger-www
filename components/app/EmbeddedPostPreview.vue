@@ -177,6 +177,7 @@ const pollTextStyle = computed((): Record<string, string> => {
 const mediaItems = computed(() => (post.value?.media ?? []).filter((m) => Boolean(m?.url)).slice(0, 4))
 
 const key = computed(() => `embedded-post:${id.value || 'none'}`)
+const fetchAttempted = ref(false)
 
 const { data, pending, error, refresh } = useAsyncData(
   key,
@@ -206,14 +207,20 @@ const showSkeleton = computed(() => {
   if (!id.value) return false
   if (post.value) return false
   if (errorMessage.value) return false
-  // If disabled (not near viewport), show placeholder but don't fetch yet.
+  // Show placeholder while waiting to scroll into view.
   if (!enabled.value) return true
+  // Keep showing skeleton until the dwell timer fires and the first fetch begins.
+  // Without this, there is a ~400ms window after the row enters the viewport where
+  // pending=false, post=null → the "Post unavailable" fallback briefly flashes.
+  if (!fetchAttempted.value) return true
   return Boolean(pending.value)
 })
 
 watch(
   [enabled, id],
   ([en, pid], _old, onCleanup) => {
+    // Reset on every id/enabled change so re-entering the viewport triggers a fresh skeleton.
+    fetchAttempted.value = false
     let timer: ReturnType<typeof setTimeout> | null = null
     onCleanup(() => {
       if (timer) clearTimeout(timer)
@@ -227,6 +234,7 @@ watch(
     if (errorMessage.value) return
 
     timer = setTimeout(() => {
+      fetchAttempted.value = true
       void refresh()
     }, PREVIEW_FETCH_DWELL_MS)
   },

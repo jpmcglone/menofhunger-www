@@ -150,6 +150,7 @@
     <div v-if="embeddedPostId" data-post-row-interactive @click.stop>
       <AppEmbeddedPostPreview
         :post-id="embeddedPostId"
+        :preloaded-post="props.quotedPost ?? undefined"
         :enabled="embeddedPreviewEnabled"
       />
     </div>
@@ -217,6 +218,8 @@ const props = defineProps<{
   activateVideoOnMount?: boolean
   /** When provided, used immediately as the article preview — no fetch needed. */
   preloadedArticle?: ArticleSharePreview | null
+  /** When provided, used immediately as the embedded post preview — no fetch needed. */
+  quotedPost?: import('~/types/api').FeedPost | null
 }>()
 
 const postId = computed(() => props.postId)
