@@ -1,13 +1,16 @@
 <template>
-  <Transition name="moh-typing-fade">
+  <Transition name="typing-expand">
     <div
       v-if="displayUsers.length > 0"
-      class="text-sm text-gray-500 dark:text-gray-400"
-      :class="size === 'compact' ? 'py-1' : 'py-2'"
-      role="status"
-      aria-live="polite"
+      class="typing-expand-outer"
     >
-      <div class="flex items-center gap-1 flex-wrap truncate">
+      <div
+        class="typing-expand-inner text-sm text-gray-500 dark:text-gray-400"
+        :class="size === 'compact' ? 'py-1' : 'py-2'"
+        role="status"
+        aria-live="polite"
+      >
+        <div class="flex items-center gap-1 flex-wrap truncate">
         <!-- First user -->
         <component
           :is="hoverPreview ? NuxtLink : 'span'"
@@ -55,6 +58,7 @@
             :style="{ animationDelay: `${i * 60}ms` }"
           >{{ char }}</span></span></span>
         </template>
+        </div>
       </div>
     </div>
   </Transition>
@@ -99,6 +103,36 @@ function tierClass(user: TypingUserDisplay): string {
 </script>
 
 <style scoped>
+/* ── Height + fade slide-in ─────────────────────────────────────────────── */
+.typing-expand-outer {
+  display: grid;
+  grid-template-rows: 1fr;
+}
+
+.typing-expand-inner {
+  overflow: hidden;
+}
+
+.typing-expand-enter-active,
+.typing-expand-leave-active {
+  transition:
+    grid-template-rows 0.28s ease,
+    opacity 0.22s ease;
+}
+
+.typing-expand-enter-from,
+.typing-expand-leave-to {
+  grid-template-rows: 0fr;
+  opacity: 0;
+}
+
+.typing-expand-enter-to,
+.typing-expand-leave-from {
+  grid-template-rows: 1fr;
+  opacity: 1;
+}
+
+/* ── Wave animation ─────────────────────────────────────────────────────── */
 .typing-wave {
   display: inline;
 }
