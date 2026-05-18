@@ -154,8 +154,12 @@
             <!-- Animated sliding underline -->
             <span
               class="absolute bottom-0 h-[2px] rounded-full"
-              :class="hubUnderlineReady ? 'transition-[left,width] duration-250 ease-in-out' : ''"
-              :style="{ left: `${hubUnderlineLeft}px`, width: `${hubUnderlineWidth}px`, backgroundColor: 'var(--moh-group)' }"
+              :style="{
+                left: `${hubUnderlineLeft}px`,
+                width: `${hubUnderlineWidth}px`,
+                backgroundColor: 'var(--moh-group)',
+                transition: hubUnderlineReady ? 'left 220ms ease-in-out, width 220ms ease-in-out' : 'none',
+              }"
               aria-hidden="true"
             />
           </div>

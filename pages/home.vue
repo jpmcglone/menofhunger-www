@@ -139,7 +139,6 @@
         :scope="feedScope"
         :sort="feedSort"
         :filter="feedFilter"
-        :scope-tabs="scopeTabs"
         :viewer-is-verified="viewerIsVerified"
         :viewer-is-premium="viewerIsPremium"
         :show-reset="feedFilter !== 'all' || (feedScope !== 'forYou' && feedSort !== 'new')"
@@ -165,8 +164,11 @@
         </button>
         <span
           class="absolute bottom-0 h-[2px] rounded-full bg-[var(--p-primary-500,#b45309)]"
-          :class="homeFeedUnderlineReady ? 'transition-[left,width] duration-250 ease-in-out' : ''"
-          :style="{ left: `${homeFeedUnderlineLeft}px`, width: `${homeFeedUnderlineWidth}px` }"
+          :style="{
+            left: `${homeFeedUnderlineLeft}px`,
+            width: `${homeFeedUnderlineWidth}px`,
+            transition: homeFeedUnderlineReady ? 'left 220ms ease-in-out, width 220ms ease-in-out' : 'none',
+          }"
           aria-hidden="true"
         />
       </div>
@@ -496,7 +498,6 @@ const {
   feedScope,
   feedFilter,
   feedSort,
-  scopeTabs,
   posts,
   displayPosts,
   collapsedSiblingReplyCountFor,

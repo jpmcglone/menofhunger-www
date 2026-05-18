@@ -50,15 +50,6 @@ export function useHomeFeed(options?: { mediaOnly?: Ref<boolean>; topLevelOnly?:
     },
   })
 
-  const scopeTabs = computed(() => {
-    if (!isAuthed.value) return [{ key: DEFAULT_HOME_SCOPE, label: 'For You', disabled: false }]
-    return [
-      { key: 'forYou', label: 'For You', disabled: false },
-      { key: 'following', label: 'Following', disabled: false },
-      { key: 'all', label: 'All', disabled: false },
-    ]
-  })
-
   const followingOnly = computed(() => Boolean(isAuthed.value && feedScope.value === 'following'))
   const forYou = computed(() => feedScope.value === 'forYou')
   const showAds = computed(() => !user.value?.premium)
@@ -205,7 +196,6 @@ export function useHomeFeed(options?: { mediaOnly?: Ref<boolean>; topLevelOnly?:
     feedFilter,
     feedScope,
     feedSort,
-    scopeTabs,
     posts,
     displayPosts,
     displayItems,

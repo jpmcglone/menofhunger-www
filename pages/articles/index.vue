@@ -95,8 +95,12 @@
       <!-- Animated sliding underline -->
       <span
         class="absolute bottom-0 h-[2px] rounded-full"
-        :class="underlineReady ? 'transition-[left,width] duration-250 ease-in-out' : ''"
-        :style="{ left: `${underlineLeft}px`, width: `${underlineWidth}px`, backgroundColor: activeTabColor }"
+        :style="{
+          left: `${underlineLeft}px`,
+          width: `${underlineWidth}px`,
+          backgroundColor: activeTabColor,
+          transition: underlineReady ? 'left 220ms ease-in-out, width 220ms ease-in-out' : 'none',
+        }"
         aria-hidden="true"
       />
     </div>
