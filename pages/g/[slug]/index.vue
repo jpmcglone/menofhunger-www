@@ -150,7 +150,7 @@
           </div>
 
           <!-- Animated tab bar -->
-          <div ref="groupTabBarEl" class="relative flex gap-0 border-b border-gray-200 dark:border-zinc-800">
+          <div ref="groupTabBarEl" class="sticky top-[var(--moh-title-bar-height,0px)] z-10 moh-surface flex gap-0 border-b border-gray-200 dark:border-zinc-800">
             <button
               v-for="tab in groupTabs"
               :key="tab.key"
@@ -176,6 +176,7 @@
               aria-hidden="true"
             />
           </div>
+          <div ref="groupFeedContentEl" class="h-0 overflow-hidden" aria-hidden="true" />
 
           <!-- ─── Posts tab (top-level only) ─────────────────────────────── -->
           <div v-if="tabActivated.posts" v-show="activeGroupTab === 'posts'" class="min-h-[75vh]">
@@ -405,10 +406,12 @@ const { sort: groupSort } = useUrlFeedFilters({ historyBacked: true })
 
 function onGroupSortChange(next: 'new' | 'trending') {
   groupSort.value = next
+  scrollFeedToTop()
 }
 
 function onGroupSortReset() {
   groupSort.value = 'new'
+  scrollFeedToTop()
 }
 
 // ─── Tab state ─────────────────────────────────────────────────────────────────
@@ -443,6 +446,8 @@ const groupTabs = computed<Array<{ key: GroupTabKey; label: string }>>(() => [
 
 // ─── Animated tab underline ────────────────────────────────────────────────────
 const groupTabBarEl = ref<HTMLElement | null>(null)
+const groupFeedContentEl = ref<HTMLElement | null>(null)
+const { scrollToTop: scrollFeedToTop } = useFeedScrollToTop(groupFeedContentEl, groupTabBarEl)
 const groupTabButtonEls = new Map<GroupTabKey, HTMLElement>()
 const groupUnderlineLeft = ref(0)
 const groupUnderlineWidth = ref(0)
@@ -486,6 +491,7 @@ function setGroupTab(key: GroupTabKey) {
   if (activeGroupTab.value === key) return
   const path = key === 'posts' ? baseGroupPath.value : `${baseGroupPath.value}/${key}`
   pushGroupPath(path)
+  scrollFeedToTop()
 }
 
 onMounted(() => nextTick(() => {

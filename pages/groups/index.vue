@@ -137,7 +137,7 @@
           </div>
 
           <!-- Animated tab bar -->
-          <div ref="hubTabBarEl" class="relative flex gap-0 border-b border-gray-200 dark:border-zinc-800">
+          <div ref="hubTabBarEl" class="sticky top-[var(--moh-title-bar-height,0px)] z-10 moh-surface flex gap-0 border-b border-gray-200 dark:border-zinc-800">
             <button
               v-for="tab in hubTabs"
               :key="tab.key"
@@ -163,6 +163,7 @@
               aria-hidden="true"
             />
           </div>
+          <div ref="hubFeedContentEl" class="h-0 overflow-hidden" aria-hidden="true" />
 
           <!-- ─── Posts tab (top-level only) ─────────────────────────────── -->
           <div v-if="tabActivated.posts" v-show="activeHubTab === 'posts'" class="min-h-[75vh]">
@@ -332,10 +333,12 @@ const { sort: hubSort } = useUrlFeedFilters({ historyBacked: true })
 
 function onHubSortChange(next: 'new' | 'trending') {
   hubSort.value = next
+  scrollFeedToTop()
 }
 
 function onHubSortReset() {
   hubSort.value = 'new'
+  scrollFeedToTop()
 }
 
 // ─── Tab state ─────────────────────────────────────────────────────────────────
@@ -379,6 +382,8 @@ const hubTabs = computed<Array<{ key: HubTabKey; label: string }>>(() => [
 
 // ─── Animated tab underline ────────────────────────────────────────────────────
 const hubTabBarEl = ref<HTMLElement | null>(null)
+const hubFeedContentEl = ref<HTMLElement | null>(null)
+const { scrollToTop: scrollFeedToTop } = useFeedScrollToTop(hubFeedContentEl, hubTabBarEl)
 const hubTabButtonEls = new Map<HubTabKey, HTMLElement>()
 const hubUnderlineLeft = ref(0)
 const hubUnderlineWidth = ref(0)
@@ -422,6 +427,7 @@ function setHubTab(key: HubTabKey) {
   if (activeHubTab.value === key) return
   const path = key === 'posts' ? basePath : `${basePath}/${key}`
   pushHubPath(path)
+  scrollFeedToTop()
 }
 
 onMounted(() => nextTick(() => {

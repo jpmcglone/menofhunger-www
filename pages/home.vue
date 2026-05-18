@@ -142,13 +142,13 @@
         :viewer-is-verified="viewerIsVerified"
         :viewer-is-premium="viewerIsPremium"
         :show-reset="feedFilter !== 'all' || (feedScope !== 'forYou' && feedSort !== 'new')"
-        @update:scope="onFeedScopeChange"
-        @update:sort="setFeedSort"
-        @update:filter="setFeedFilter"
-        @reset="() => void resetFilters()"
+        @update:scope="handleFeedScopeChange"
+        @update:sort="handleFeedSortChange"
+        @update:filter="handleFeedFilterChange"
+        @reset="handleFeedReset"
       />
 
-      <div v-if="isAuthed" ref="homeFeedTabBarEl" class="relative flex gap-0 border-b border-gray-200 dark:border-zinc-800">
+      <div v-if="isAuthed" ref="homeFeedTabBarEl" class="sticky top-[var(--moh-title-bar-height,0px)] z-10 moh-surface flex gap-0 border-b border-gray-200 dark:border-zinc-800">
         <button
           v-for="tab in homeFeedTabs"
           :key="tab.key"
@@ -172,6 +172,7 @@
           aria-hidden="true"
         />
       </div>
+      <div ref="homeFeedContentEl" class="h-0 overflow-hidden" aria-hidden="true" />
 
       <!-- Daily quote: demoted from the top stack so the check-in hero owns the daily slot.
            Kept mobile-only since the right rail still surfaces it on desktop. -->
@@ -546,6 +547,8 @@ const homeFeedTabs: Array<{ key: HomeFeedTabKey; label: string }> = [
 ]
 
 const homeFeedTabBarEl = ref<HTMLElement | null>(null)
+const homeFeedContentEl = ref<HTMLElement | null>(null)
+const { scrollToTop: scrollFeedToTop } = useFeedScrollToTop(homeFeedContentEl, homeFeedTabBarEl)
 const homeFeedTabButtonEls = new Map<HomeFeedTabKey, HTMLElement>()
 const homeFeedUnderlineLeft = ref(0)
 const homeFeedUnderlineWidth = ref(0)
@@ -570,6 +573,24 @@ function updateHomeFeedUnderline() {
 function setHomeFeedTab(key: HomeFeedTabKey) {
   if (activeHomeFeedTab.value === key) return
   activeHomeFeedTab.value = key
+  scrollFeedToTop()
+}
+
+function handleFeedScopeChange(scope: Parameters<typeof onFeedScopeChange>[0]) {
+  onFeedScopeChange(scope)
+  scrollFeedToTop()
+}
+function handleFeedSortChange(sort: Parameters<typeof setFeedSort>[0]) {
+  setFeedSort(sort)
+  scrollFeedToTop()
+}
+function handleFeedFilterChange(filter: Parameters<typeof setFeedFilter>[0]) {
+  setFeedFilter(filter)
+  scrollFeedToTop()
+}
+function handleFeedReset() {
+  resetFilters()
+  scrollFeedToTop()
 }
 
 const activeHomeFeedDisplayItems = computed(() => {

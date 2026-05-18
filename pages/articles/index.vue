@@ -28,7 +28,7 @@
             :model-value="scope"
             aria-label="Article scope"
             :tabs="scopeTabs"
-            @update:model-value="scope = $event as 'all' | 'following'"
+            @update:model-value="onArticlesScopeChange($event as 'all' | 'following')"
           />
         </div>
         <div v-else class="flex-1" />
@@ -42,9 +42,9 @@
         :viewer-is-premium="isPremium"
         :show-reset="activeTab === 'drafts' ? visibilityFilter !== 'all' : sort !== 'new' || visibilityFilter !== 'all'"
         :hide-sort="activeTab === 'drafts'"
-        @update:sort="sort = $event"
+        @update:sort="onArticlesSortChange"
         @update:filter="onArticlesFilterChange"
-        @reset="resetFilters"
+        @reset="onArticlesReset"
       />
     </div>
 
@@ -71,7 +71,7 @@
     </Transition>
 
     <!-- Content tabs (Published | Drafts) for premium users -->
-    <div v-if="isPremium" ref="tabBarEl" role="tablist" class="relative flex gap-0 border-b border-gray-200 dark:border-zinc-800">
+    <div v-if="isPremium" ref="tabBarEl" role="tablist" class="sticky top-[var(--moh-title-bar-height,0px)] z-10 moh-surface flex gap-0 border-b border-gray-200 dark:border-zinc-800">
       <button
         v-for="tab in tabs"
         :key="tab.key"
@@ -83,7 +83,7 @@
         :class="activeTab === tab.key
           ? 'text-gray-900 dark:text-gray-100'
           : 'text-gray-400 dark:text-zinc-500 hover:text-gray-600 dark:hover:text-zinc-300'"
-        @click="setTab(tab.key)"
+        @click="onArticlesTabChange(tab.key)"
       >
         {{ tab.label }}
         <span
@@ -104,6 +104,7 @@
         aria-hidden="true"
       />
     </div>
+    <div ref="articlesFeedContentEl" class="h-0 overflow-hidden" aria-hidden="true" />
 
     <!-- Published articles feed -->
     <div v-if="tabActivated.published" v-show="activeTab === 'published'" role="tabpanel">
@@ -344,9 +345,33 @@ async function confirmDelete(id: string) {
   await draftsState.deleteDraft(id)
 }
 
+const articlesFeedContentEl = ref<HTMLElement | null>(null)
+const { scrollToTop: scrollFeedToTop } = useFeedScrollToTop(articlesFeedContentEl, tabBarEl)
+
+function onArticlesScopeChange(next: 'all' | 'following') {
+  scope.value = next
+  scrollFeedToTop()
+}
+
+function onArticlesSortChange(next: 'new' | 'trending') {
+  sort.value = next
+  scrollFeedToTop()
+}
+
 function onArticlesFilterChange(next: ProfilePostsFilter) {
   // Articles feed visibility does not support onlyMe.
   visibilityFilter.value = next === 'onlyMe' ? 'all' : next
+  scrollFeedToTop()
+}
+
+function onArticlesReset() {
+  resetFilters()
+  scrollFeedToTop()
+}
+
+function onArticlesTabChange(key: TabKey) {
+  setTab(key)
+  scrollFeedToTop()
 }
 </script>
 

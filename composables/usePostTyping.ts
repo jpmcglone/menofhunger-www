@@ -55,6 +55,7 @@ export function usePostTyping(postIdRef: Ref<string | null | undefined>) {
         userId: uid,
         username: payload.user.username ?? uid,
         tier,
+        status: payload.status,
       }
       next.set(uid, { exp: now + TYPING_TTL_MS, display })
     }

@@ -1820,6 +1820,9 @@ function updateTitleBarHeightVar() {
 watch([titleBarEl, hideTopBar], () => {
   if (!hideTopBar.value && titleBarEl.value) {
     nextTick(() => updateTitleBarHeightVar())
+  } else if (hideTopBar.value) {
+    // Reset the var so sticky tab bars on hideTopBar pages use top: 0.
+    middleScrollerEl.value?.style.setProperty('--moh-title-bar-height', '0px')
   }
 }, { immediate: true })
 

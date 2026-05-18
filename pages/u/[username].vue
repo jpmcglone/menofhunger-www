@@ -226,7 +226,7 @@
       </div>
 
       <!-- Animated tab bar -->
-      <div ref="profileTabBarEl" class="relative flex gap-0 border-b border-gray-200 dark:border-zinc-800">
+      <div ref="profileTabBarEl" class="sticky top-[var(--moh-title-bar-height,0px)] z-10 moh-surface flex gap-0 border-b border-gray-200 dark:border-zinc-800">
         <button
           v-for="tab in profileTabs"
           :key="tab.key"
@@ -252,6 +252,7 @@
           aria-hidden="true"
         />
       </div>
+      <div ref="profileFeedContentEl" class="h-0 overflow-hidden" aria-hidden="true" />
 
       <div v-if="effectiveProfileCtaKind === 'verify'" class="mx-3 mt-3 sm:mx-4 sm:mt-4">
         <AppAccessGateCard kind="verify" />
@@ -733,6 +734,7 @@ function setProfileTab(key: ProfileTabKey) {
   if (activeProfileTab.value === key) return
   const path = key === 'posts' ? baseProfilePath.value : `${baseProfilePath.value}/${key}`
   pushProfilePath(path)
+  scrollFeedToTop()
 }
 
 onMounted(() => nextTick(() => {
@@ -1213,32 +1215,23 @@ useLoadMoreObserver(profileLoadMoreSentinelEl, middleScrollerEl, computed(() => 
 useLoadMoreObserver(postsOnlyLoadMoreSentinelEl, middleScrollerEl, computed(() => Boolean(postsOnlyNextCursor.value)), postsOnlyLoadMore)
 useLoadMoreObserver(mediaLoadMoreSentinelEl, middleScrollerEl, computed(() => Boolean(profileMediaFeed.nextCursor.value)), profileMediaFeed.loadMore)
 
-async function preserveMiddleScrollAfter<T>(fn: () => Promise<T>): Promise<T> {
-  if (!import.meta.client) return await fn()
-  const scroller = middleScrollerEl.value
-  if (!scroller) return await fn()
-  const prevTop = scroller.scrollTop
-  const res = await fn()
-  await nextTick()
-  const el = middleScrollerEl.value
-  if (!el?.parentNode) return res
-  const maxTop = Math.max(0, el.scrollHeight - el.clientHeight)
-  el.scrollTop = Math.min(prevTop, maxTop)
-  return res
+const profileFeedContentEl = ref<HTMLElement | null>(null)
+const { scrollToTop: scrollFeedToTop } = useFeedScrollToTop(profileFeedContentEl, profileTabBarEl)
+
+function onUserPostsSortChange(next: 'new' | 'trending') {
+  profileSort.value = next
+  scrollFeedToTop()
 }
 
-async function onUserPostsSortChange(next: 'new' | 'trending') {
-  await preserveMiddleScrollAfter(async () => { profileSort.value = next })
-}
-
-async function onUserPostsFilterChange(next: ProfilePostsFilter) {
+function onUserPostsFilterChange(next: ProfilePostsFilter) {
   // onlyMe is not a valid feed filter; treat it as 'all'
-  const safeNext = next === 'onlyMe' ? 'all' : (next as 'all' | 'public' | 'verifiedOnly' | 'premiumOnly')
-  await preserveMiddleScrollAfter(async () => { profileFilter.value = safeNext })
+  profileFilter.value = next === 'onlyMe' ? 'all' : (next as 'all' | 'public' | 'verifiedOnly' | 'premiumOnly')
+  scrollFeedToTop()
 }
 
-async function onUserPostsReset() {
-  await preserveMiddleScrollAfter(async () => { resetProfileFilters() })
+function onUserPostsReset() {
+  resetProfileFilters()
+  scrollFeedToTop()
 }
 
 const profileAvatarUrl = computed(() => profile.value?.avatarUrl ?? null)

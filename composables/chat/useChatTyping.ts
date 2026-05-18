@@ -6,8 +6,8 @@ export type TypingUserDisplay = {
   userId: string
   username: string
   tier: 'organization' | 'premium' | 'verified' | 'normal'
-  /** For AI users (Marv): 'thinking' while the AI is processing, 'typing' while composing the reply. */
-  status?: 'thinking' | 'typing'
+  /** For AI users (Marv): 'thinking' while the AI is processing, 'typing'/'replying' while composing. */
+  status?: 'thinking' | 'typing' | 'replying'
 }
 
 type UseChatTypingOptions = {

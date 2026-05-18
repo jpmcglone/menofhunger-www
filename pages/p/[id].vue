@@ -129,7 +129,7 @@
           </AppPostComposer>
         </div>
 
-        <div class="border-b border-gray-200 dark:border-zinc-800">
+        <div ref="commentsFeedTopEl" class="border-b border-gray-200 dark:border-zinc-800">
           <div class="px-4 py-3 flex flex-wrap items-center justify-between gap-3 border-b border-gray-200 dark:border-zinc-800">
             <div class="text-sm font-semibold moh-text">
               Replies
@@ -146,8 +146,8 @@
               :sort-count="commentCountDisplay"
               :show-reset="commentsSort !== 'new'"
               :show-visibility-filter="false"
-              @update:sort="onCommentsSortChange"
-              @reset="onCommentsFilterReset"
+              @update:sort="onCommentsSortChangeWithScroll"
+              @reset="onCommentsFilterResetWithScroll"
             />
           </div>
           <AppSubtleSectionLoader :loading="commentsInitialLoading" min-height-class="min-h-[140px]">
@@ -316,6 +316,17 @@ const {
   isOnlyMe,
 })
 const commentsInitialLoading = computed(() => commentsLoading.value && comments.value.length === 0)
+
+const commentsFeedTopEl = ref<HTMLElement | null>(null)
+const { scrollToTop: scrollFeedToTop } = useFeedScrollToTop(commentsFeedTopEl)
+async function onCommentsSortChangeWithScroll(next: 'new' | 'trending') {
+  await onCommentsSortChange(next)
+  scrollFeedToTop()
+}
+async function onCommentsFilterResetWithScroll() {
+  await onCommentsFilterReset()
+  scrollFeedToTop()
+}
 
 // Realtime: subscribe to this post while on-screen, and refresh replies when needed.
 // Content patches (counts, body, flags) also flow through the global cache plugin so

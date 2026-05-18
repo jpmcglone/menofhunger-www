@@ -131,7 +131,7 @@
              on the server (viewer only sees what they're allowed to see). Behaves
              like the home feed scoped to this crew's roster. -->
         <section class="mt-6">
-          <div class="sticky top-0 z-20 -mx-4 px-4 py-1.5 border-b moh-border moh-surface flex justify-between items-center mb-3">
+          <div ref="crewFeedTopEl" class="sticky top-[var(--moh-title-bar-height,0px)] z-20 -mx-4 px-4 py-1.5 border-b moh-border moh-surface flex justify-between items-center mb-3">
             <h2 class="text-sm font-semibold moh-text uppercase tracking-wide">Posts</h2>
             <AppFeedFiltersBar
               :sort="feedSort"
@@ -139,11 +139,12 @@
               :viewer-is-verified="viewerIsVerified"
               :viewer-is-premium="viewerIsPremium"
               :show-reset="isFiltered"
-              @update:sort="feedSort = $event"
+              @update:sort="onCrewFeedSortChange"
               @update:filter="onCrewFeedFilterChange"
-              @reset="resetFilters()"
+              @reset="onCrewFeedReset"
             />
           </div>
+          <div ref="crewFeedContentEl" class="h-0 overflow-hidden" aria-hidden="true" />
 
           <AppInlineAlert v-if="feedError" class="mb-3" severity="danger">
             {{ feedError }}
@@ -461,8 +462,23 @@ const {
 // FeedFiltersBar emits the wider ProfilePostsFilter (which includes 'onlyMe'),
 // but the crew feed only supports the FeedVisibilityFilter set. Coerce 'onlyMe'
 // to 'all' so the assignment type-checks and the URL stays in a valid state.
+const crewFeedTopEl = ref<HTMLElement | null>(null)
+const crewFeedContentEl = ref<HTMLElement | null>(null)
+const { scrollToTop: scrollFeedToTop } = useFeedScrollToTop(crewFeedContentEl, crewFeedTopEl)
+
+function onCrewFeedSortChange(next: 'new' | 'trending') {
+  feedSort.value = next
+  scrollFeedToTop()
+}
+
 function onCrewFeedFilterChange(next: ProfilePostsFilter) {
   feedFilter.value = next === 'onlyMe' ? 'all' : (next as FeedVisibilityFilter)
+  scrollFeedToTop()
+}
+
+function onCrewFeedReset() {
+  resetFilters()
+  scrollFeedToTop()
 }
 
 const seoDescription = computed(

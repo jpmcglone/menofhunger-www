@@ -160,22 +160,20 @@ export function useHomeFeed(options?: { mediaOnly?: Ref<boolean>; topLevelOnly?:
     return res
   }
 
-  async function setFeedFilter(next: ProfilePostsFilter) {
+  function setFeedFilter(next: ProfilePostsFilter) {
     const safe = next === 'onlyMe' ? 'all' : (next as FeedVisibilityFilter)
-    await preserveMiddleScrollAfter(async () => { feedFilter.value = safe })
+    feedFilter.value = safe
   }
 
-  async function setFeedSort(next: 'new' | 'trending') {
-    await preserveMiddleScrollAfter(async () => { feedSort.value = next })
+  function setFeedSort(next: 'new' | 'trending') {
+    feedSort.value = next
   }
 
-  async function resetFilters() {
+  function resetFilters() {
     // resetUrlFilters patches sort + filter atomically in one router.replace call,
     // avoiding the race condition of two separate setter calls reading stale route.query.
-    await preserveMiddleScrollAfter(async () => {
-      feedScope.value = DEFAULT_HOME_SCOPE
-      resetUrlFilters()
-    })
+    feedScope.value = DEFAULT_HOME_SCOPE
+    resetUrlFilters()
   }
 
   function onFeedScopeChange(next: FeedScope) {
