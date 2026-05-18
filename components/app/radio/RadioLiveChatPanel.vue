@@ -28,32 +28,9 @@
         </div>
         <RadioLiveChatMessageList v-else :messages="messages" />
 
-        <Transition name="moh-typing-fade">
-          <div
-            v-if="spaceId && typingUsersTotalCount > 0"
-            class="px-3 py-2 text-sm text-gray-500 dark:text-gray-400 truncate"
-            role="status"
-            aria-live="polite"
-          >
-            <template v-if="typingUsersTotalCount === 1">
-              <span class="font-semibold" :class="typingNameClass(typingUsersForDisplay[0]!)">
-                @{{ typingUsersForDisplay[0]!.username }}
-              </span>
-              <span class="ml-1">is typing…</span>
-            </template>
-            <template v-else>
-              <span class="font-semibold" :class="typingNameClass(typingUsersForDisplay[0]!)">
-                @{{ typingUsersForDisplay[0]!.username }}
-              </span>
-              <span class="mx-1">and</span>
-              <span class="font-semibold" :class="typingNameClass(typingUsersForDisplay[1]!)">
-                @{{ typingUsersForDisplay[1]!.username }}
-              </span>
-              <span v-if="typingUsersTotalCount > 2" class="ml-1">and others</span>
-              <span class="ml-1">are typing…</span>
-            </template>
-          </div>
-        </Transition>
+        <div v-if="spaceId" class="px-3">
+          <AppTypingIndicator :users="typingUsersAll" verb="typing" size="compact" />
+        </div>
       </div>
 
       <!-- Custom thin pill scrollbar (native scrollbar hidden) -->
@@ -114,7 +91,7 @@ withDefaults(defineProps<{ showHeader?: boolean }>(), {
   showHeader: true,
 })
 
-const { spaceId, messages, isLoadingMessages, sendMessage, typingNameClass, typingUsersForDisplay, typingUsersTotalCount } = useSpaceLiveChat({
+const { spaceId, messages, isLoadingMessages, sendMessage, typingUsersAll, typingUsersTotalCount } = useSpaceLiveChat({
   passive: true,
 })
 const { currentSpace, members } = useSpaceLobby()

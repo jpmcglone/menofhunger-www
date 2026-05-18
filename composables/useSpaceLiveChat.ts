@@ -347,6 +347,7 @@ export function useSpaceLiveChat(options: { passive?: boolean } = {}) {
     messages,
     isLoadingMessages,
     typingNameClass,
+    typingUsersAll,
     typingUsersForDisplay,
     typingUsersTotalCount,
     subscribedSpaceId: readonly(subscribedSpaceId),

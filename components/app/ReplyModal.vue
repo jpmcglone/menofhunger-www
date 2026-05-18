@@ -172,10 +172,11 @@ const replyModalBorderClass = computed(() => {
 })
 
 function close() {
+  stopTyping()
   replyModal.hide()
 }
 
-const replyComposerRef = ref<{ hasUnsavedContent: boolean } | null>(null)
+const replyComposerRef = ref<{ hasUnsavedContent: boolean; draftText?: string } | null>(null)
 
 async function onSheetClick(event: MouseEvent) {
   const target = event.target instanceof Element ? event.target : null
@@ -268,7 +269,16 @@ watch(
 const { bumpCommentCount } = usePostCountBumps()
 const pendingPosts = usePendingPostsManager()
 
+// ─── Typing presence ─────────────────────────────────────────────────────────
+const { notifyTyping, stopTyping } = usePostTyping(computed(() => parentPost.value?.id))
+
+watch(
+  () => replyComposerRef.value?.draftText ?? '',
+  (text) => notifyTyping(text),
+)
+
 function onReplyPosted(payload: ReplyPostedPayload) {
+  stopTyping()
   const cbs = replyModal.onReplyPostedCallbacks.value
   if (cbs.length) {
     for (const cb of cbs) cb(payload)
@@ -335,6 +345,7 @@ function onReplyPending(payload: {
       },
     })
   }
+  stopTyping()
   replyModal.hide()
 }
 </script>

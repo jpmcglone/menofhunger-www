@@ -1099,7 +1099,9 @@ function focus() {
   composerTextareaEl.value?.focus()
 }
 
-defineExpose({ hasUnsavedContent, draftSnapshot, clearComposer, focus })
+/** Expose draft text as a readonly string ref for consumers that need to watch typing (e.g. ReplyModal typing presence). */
+const draftText = computed(() => draft.value)
+defineExpose({ hasUnsavedContent, draftSnapshot, clearComposer, focus, draftText })
 
 const shouldRegisterUnsavedGuard = computed(() =>
   // Register for create + reply composers so refresh/close warns about losing work.

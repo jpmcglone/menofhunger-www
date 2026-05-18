@@ -31,6 +31,7 @@ import type {
   WsPostsInteractionPayload,
   WsPostsCommentAddedPayload,
   WsPostsCommentDeletedPayload,
+  WsPostsTypingPayload,
   WsUsersMeUpdatedPayload,
   WsUsersSelfUpdatedPayload,
   WsUsersSpaceChangedPayload,
@@ -150,6 +151,8 @@ export type PostsCallback = {
   onCommentDeleted?: (payload: WsPostsCommentDeletedPayload) => void
   /** New top-level post from a followed user; home feed uses this to prepend in real time. */
   onFeedNewPost?: (payload: WsFeedNewPostPayload) => void
+  /** Someone is composing a reply to a post the viewer is subscribed to. */
+  onTyping?: (payload: WsPostsTypingPayload) => void
 }
 
 export type ArticlesCallback = {
@@ -1271,6 +1274,13 @@ export function usePresence() {
       }
     })
 
+    socket.on('posts:typing', (data: WsPostsTypingPayload) => {
+      if (!postsCallbacks.value.size) return
+      for (const cb of postsCallbacks.value) {
+        cb.onTyping?.(data)
+      }
+    })
+
     socket.on('feed:newPost', (data: WsFeedNewPostPayload) => {
       if (!postsCallbacks.value.size) return
       for (const cb of postsCallbacks.value) {
@@ -1842,6 +1852,12 @@ export function usePresence() {
         active: Boolean(active),
         ...(active && conversationId ? { conversationId } : {}),
       })
+    },
+    emitPostsTyping(postId: string, typing: boolean) {
+      const socket = socketRef.value
+      const id = (postId ?? '').trim()
+      if (!socket?.connected || !id) return
+      socket.emit('posts:typing', { postId: id, typing: Boolean(typing) })
     },
     emitMessagesTyping(conversationId: string, typing: boolean) {
       const socket = socketRef.value

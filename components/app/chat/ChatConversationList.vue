@@ -185,23 +185,13 @@
               <div class="text-sm text-gray-600 dark:text-gray-300 truncate">
                 <Transition name="moh-fade" mode="out-in">
                   <div v-if="typingUsersByConversationId[c.id]?.length" :key="`typing-${c.id}`" class="truncate">
-                    <template v-if="typingUsersByConversationId[c.id]?.length === 1">
-                      <span class="font-semibold" :class="typingNameClass(typingUsersByConversationId[c.id]![0]!)">
-                        @{{ typingUsersByConversationId[c.id]![0]!.username }}
-                      </span>
-                      <span class="ml-1">{{ typingUsersByConversationId[c.id]![0]!.status === 'thinking' ? 'is thinking…' : 'is typing…' }}</span>
-                    </template>
-                    <template v-else>
-                      <span class="font-semibold" :class="typingNameClass(typingUsersByConversationId[c.id]![0]!)">
-                        @{{ typingUsersByConversationId[c.id]![0]!.username }}
-                      </span>
-                      <span class="mx-1">and</span>
-                      <span class="font-semibold" :class="typingNameClass(typingUsersByConversationId[c.id]![1]!)">
-                        @{{ typingUsersByConversationId[c.id]![1]!.username }}
-                      </span>
-                      <span v-if="typingUsersByConversationId[c.id]!.length > 2" class="ml-1">and others</span>
-                      <span class="ml-1">are typing…</span>
-                    </template>
+                    <!-- Inline list row: no padding, no outer transition (parent handles it) -->
+                    <AppTypingIndicator
+                      :users="typingUsersByConversationId[c.id]!"
+                      verb="typing"
+                      size="compact"
+                      :hover-preview="false"
+                    />
                   </div>
                   <div v-else-if="c.matchedMessage" :key="`match-${c.id}`" class="truncate italic text-gray-500 dark:text-gray-400">
                     "{{ c.matchedMessage.body.slice(0, 80) }}"
@@ -273,7 +263,6 @@ const props = defineProps({
   getConversationTitle: { type: Function as PropType<(c: MessageConversation) => string>, required: true },
   getConversationPreview: { type: Function as PropType<(c: MessageConversation) => string>, required: true },
   getDirectUser: { type: Function as PropType<(c: MessageConversation) => MessageUser | null>, required: true },
-  typingNameClass: { type: Function as PropType<(u: TypingUserDisplay) => string>, required: true },
   conversationUnreadHighlightClass: { type: Function as PropType<(c: MessageConversation) => string>, required: true },
   conversationDotClass: { type: Function as PropType<(c: MessageConversation) => string>, required: true },
   /** API search results — non-null when the parent has returned results for the current query. */

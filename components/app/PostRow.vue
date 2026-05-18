@@ -367,6 +367,31 @@
           </span>
         </div>
 
+        <!-- Typing indicator: who is currently composing a reply -->
+        <AppTypingIndicator
+          v-if="!isDeletedPost && !isPendingRow && typingUsers.length > 0"
+          :users="typingUsers"
+          verb="replying"
+          size="compact"
+          class="mt-1"
+          @click.stop
+        />
+
+        <!-- New-reply pill: transient "+N new" badge while viewing a feed row -->
+        <div
+          v-if="!isDeletedPost && !isPendingRow && newRepliesSinceMount > 0 && !isOnPermalink"
+          class="mt-1"
+          @click.stop
+        >
+          <NuxtLink
+            :to="postPermalink"
+            class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold border border-gray-200 dark:border-zinc-700 text-gray-600 dark:text-gray-300 bg-white/80 dark:bg-zinc-900/80 hover:opacity-80 transition-opacity"
+          >
+            <Icon name="tabler:message-circle" class="text-[10px]" aria-hidden="true" />
+            +{{ newRepliesSinceMount }} new
+          </NuxtLink>
+        </div>
+
         <div
           v-else-if="!isDeletedPost && !isOnlyMe"
           class="mt-2.5 sm:mt-3 flex items-center justify-between sm:justify-start gap-1 moh-text-muted"
@@ -1806,6 +1831,42 @@ const shareMenuItems = computed<MenuItemWithIcon[]>(() => [
     },
   },
 ])
+
+// ─── Live "is replying" indicator ────────────────────────────────────────────
+const { typingUsers } = usePostTyping(computed(() => postView.value.id))
+
+// ─── Transient "+N new" pill ─────────────────────────────────────────────────
+// Show a pill when a new reply arrives while this row is on screen.
+// Hidden on the permalink page (where the reply prepends inline) and for the
+// viewer's own replies (already handled optimistically).
+const newRepliesSinceMount = ref(0)
+let newRepliesPillTimer: ReturnType<typeof setTimeout> | null = null
+
+const isOnPermalink = computed(() => route.path === postPermalink.value)
+
+const { addPostsCallback: addPostsCallbackForPill, removePostsCallback: removePostsCallbackForPill } = usePresence()
+const newRepliesCb = {
+  onCommentAdded(p: { parentPostId: string; comment: { author?: { id?: string } } }) {
+    if (p.parentPostId !== postView.value.id) return
+    if (p.comment?.author?.id === user.value?.id) return
+    if (isOnPermalink.value) return
+    newRepliesSinceMount.value += 1
+    if (newRepliesPillTimer) clearTimeout(newRepliesPillTimer)
+    newRepliesPillTimer = setTimeout(() => {
+      newRepliesSinceMount.value = 0
+      newRepliesPillTimer = null
+    }, 6000)
+  },
+}
+
+onMounted(() => {
+  if (!import.meta.client) return
+  addPostsCallbackForPill(newRepliesCb as any)
+})
+onBeforeUnmount(() => {
+  removePostsCallbackForPill(newRepliesCb as any)
+  if (newRepliesPillTimer) { clearTimeout(newRepliesPillTimer); newRepliesPillTimer = null }
+})
 </script>
 
 <style scoped>

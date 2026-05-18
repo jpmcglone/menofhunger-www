@@ -103,11 +103,12 @@
         <div v-if="showReplyComposer" class="border-b border-gray-200 dark:border-zinc-800">
           <AppPostComposer
             v-if="replyContext"
+            ref="permalinkComposerRef"
             :reply-to="replyContext"
             :create-post="createComment"
             auto-focus
             :show-divider="false"
-            @posted="onReplyPosted"
+            @posted="onPermalinkReplyPosted"
           >
             <template #above-textarea>
               <span v-if="replyingToDisplay.length">
@@ -401,6 +402,21 @@ async function createComment(
     },
   })
   return res ?? null
+}
+
+const permalinkComposerRef = ref<{ draftText?: string; hasUnsavedContent?: boolean } | null>(null)
+
+// Typing presence for the inline reply composer on the permalink page.
+const { notifyTyping: notifyPermalinkTyping, stopTyping: stopPermalinkTyping } = usePostTyping(postId)
+
+watch(
+  () => permalinkComposerRef.value?.draftText ?? '',
+  (text) => notifyPermalinkTyping(text),
+)
+
+function onPermalinkReplyPosted(payload: { id: string; post?: FeedPost }) {
+  stopPermalinkTyping()
+  onReplyPosted(payload)
 }
 
 function onReplyPosted(payload: { id: string; post?: FeedPost }) {

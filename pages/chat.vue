@@ -51,7 +51,6 @@
             :get-conversation-title="getConversationTitle"
             :get-conversation-preview="getConversationPreview"
             :get-direct-user="getDirectUser"
-            :typing-name-class="typingNameClass"
             :conversation-unread-highlight-class="conversationUnreadHighlightClass"
             :conversation-dot-class="conversationDotClass"
             :search-results="conversationSearchResults"
@@ -285,48 +284,9 @@
                 @scroll-to-reply="handleScrollToReply"
               />
 
-              <Transition name="moh-typing-fade">
-                <div
-                  v-if="typingUsersTotalCount > 0"
-                  class="w-full px-4 pb-2 mt-3 text-sm text-gray-500 dark:text-gray-400"
-                  role="status"
-                  aria-live="polite"
-                >
-                  <div class="flex w-full items-center gap-2">
-                    <div class="h-7 w-7 shrink-0" aria-hidden="true" />
-                    <div class="truncate">
-                      <template v-if="typingUsersTotalCount === 1">
-                        <span class="font-semibold" :class="typingNameClass(typingUsersForDisplay[0]!)">
-                          @{{ typingUsersForDisplay[0]!.username }}
-                        </span>
-                        <Transition name="moh-fade" mode="out-in">
-                          <span
-                            v-if="typingUsersForDisplay[0]!.status === 'thinking'"
-                            key="thinking"
-                            class="ml-1"
-                          >is <span class="text-violet-500 dark:text-violet-400">thinking</span>…</span>
-                          <span
-                            v-else
-                            key="typing"
-                            class="ml-1"
-                          >is typing…</span>
-                        </Transition>
-                      </template>
-                      <template v-else>
-                        <span class="font-semibold" :class="typingNameClass(typingUsersForDisplay[0]!)">
-                          @{{ typingUsersForDisplay[0]!.username }}
-                        </span>
-                        <span class="mx-1">and</span>
-                        <span class="font-semibold" :class="typingNameClass(typingUsersForDisplay[1]!)">
-                          @{{ typingUsersForDisplay[1]!.username }}
-                        </span>
-                        <span v-if="typingUsersTotalCount > 2" class="ml-1">and others</span>
-                        <span class="ml-1">are typing…</span>
-                      </template>
-                    </div>
-                  </div>
-                </div>
-              </Transition>
+              <div class="w-full px-4">
+                <AppTypingIndicator :users="typingUsersAll" verb="typing" />
+              </div>
             </div>
             <div
               v-else
@@ -893,9 +853,8 @@ const { bubbleShapeClass } = useChatBubbleShape()
 const {
   resetTyping,
   setRemoteTyping,
-  typingNameClass,
   typingUsersByConversationId,
-  typingUsersForDisplay,
+  typingUsersAll,
   typingUsersTotalCount,
 } = useChatTyping({
   me,

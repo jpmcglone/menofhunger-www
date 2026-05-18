@@ -69,8 +69,11 @@ function onKeydown(e: KeyboardEvent, idx: number) {
   else if (e.key === 'Home') { e.preventDefault(); targetIdx = 0 }
   else if (e.key === 'End') { e.preventDefault(); targetIdx = len - 1 }
   if (targetIdx !== null) {
-    select(TABS[targetIdx].key)
-    tabEls.get(TABS[targetIdx].key)?.focus()
+    const tab = TABS[targetIdx]
+    if (tab) {
+      select(tab.key)
+      tabEls.get(tab.key)?.focus()
+    }
   }
 }
 

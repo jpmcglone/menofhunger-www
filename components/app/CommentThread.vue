@@ -33,7 +33,7 @@
 </template>
 
 <script setup lang="ts">
-import type { FeedPost, GetPostCommentsData } from '~/types/api'
+import type { FeedPost, GetPostCommentsData, WsPostsCommentAddedPayload } from '~/types/api'
 import type { ReplyPostedPayload } from '~/composables/useReplyModal'
 
 const props = withDefaults(
@@ -49,6 +49,7 @@ const emit = defineEmits<{
 
 const { apiFetch } = useApiClient()
 const replyModal = useReplyModal()
+const { user } = useAuth()
 
 const previewReplies = ref<FeedPost[]>([])
 const previewLoading = ref(false)
@@ -99,6 +100,20 @@ function onNestedDeleted(id: string) {
 }
 
 let unregisterReplyPosted: null | (() => void) = null
+const { addPostsCallback, removePostsCallback, subscribePosts, unsubscribePosts } = usePresence()
+
+const liveReplyCb = {
+  onCommentAdded(payload: WsPostsCommentAddedPayload) {
+    if (payload.parentPostId !== props.comment.id) return
+    // The local `registerOnReplyPosted` already handles the viewer's own reply optimistically.
+    if (payload.comment?.author?.id === user.value?.id) return
+    previewReplies.value = [
+      payload.comment,
+      ...previewReplies.value.filter((p) => p.id !== payload.comment.id),
+    ].slice(0, 3)
+  },
+}
+
 onMounted(() => {
   if (!import.meta.client) return
 
@@ -112,10 +127,16 @@ onMounted(() => {
     previewReplies.value = [p, ...previewReplies.value.filter((x) => x.id !== p.id)].slice(0, 3)
   }
   unregisterReplyPosted = replyModal.registerOnReplyPosted(cb)
+
+  // Subscribe to the comment's own post room so we receive live nested replies.
+  subscribePosts([props.comment.id])
+  addPostsCallback(liveReplyCb)
 })
 onBeforeUnmount(() => {
   unregisterReplyPosted?.()
   unregisterReplyPosted = null
+  removePostsCallback(liveReplyCb)
+  unsubscribePosts([props.comment.id])
 })
 
 watch(

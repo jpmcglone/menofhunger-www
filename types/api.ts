@@ -1560,6 +1560,23 @@ export type WsPostsCommentDeletedPayload = {
   commentId: string
 }
 
+/**
+ * Live "someone is replying to this post" indicator.
+ * Emitted to `post:{postId}` room subscribers (excluding the sender) while a user is composing a reply.
+ */
+export type WsPostsTypingPayload = {
+  postId: string
+  user: {
+    id: string
+    username: string | null
+    verifiedStatus: string | null
+    premium: boolean
+    premiumPlus: boolean
+    isOrganization: boolean
+  }
+  typing: boolean
+}
+
 /** New top-level post from someone the viewer follows; pushed to each follower's user room. */
 export type WsFeedNewPostPayload = {
   post: FeedPost
