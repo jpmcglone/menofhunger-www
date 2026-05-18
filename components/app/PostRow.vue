@@ -204,86 +204,6 @@
             </template>
           </div>
 
-          <!-- Viewer count chip: just left of the more (⋯) button -->
-          <Transition name="viewer-count-appear" appear>
-            <div
-              v-if="viewerCount > 0 && !isOnlyMe"
-              class="absolute right-10 sm:right-9 -top-2.5 z-30 flex items-center pointer-events-auto"
-            >
-              <div class="relative">
-                <button
-                  ref="viewerCountBtnEl"
-                  type="button"
-                  class="inline-flex h-10 w-auto sm:h-9 items-center gap-0.5 px-1.5 rounded-full text-[11px] tabular-nums moh-text-muted transition-colors moh-surface-hover cursor-default select-none"
-                  :aria-label="`${viewerCount} ${viewerCount === 1 ? 'person' : 'people'} saw this post`"
-                  @mouseenter="onViewerCountHover"
-                  @focus="onViewerCountHover"
-                  @mouseleave="hideViewerBreakdown"
-                  @blur="hideViewerBreakdown"
-                >
-                  <svg viewBox="0 0 24 24" class="h-3.5 w-3.5 shrink-0" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                  </svg>
-                  <AppAnimatedCount :value="viewerCount" :format="formatShortCount" />
-                </button>
-
-                <!-- Breakdown popover: teleported to body so it's never clipped by a parent stacking context -->
-                <Teleport to="body">
-                  <Transition name="viewer-breakdown">
-                    <div
-                      v-if="viewerBreakdownVisible"
-                      ref="viewerBreakdownEl"
-                      class="fixed z-[9999] min-w-[10rem] rounded-lg border moh-border moh-surface shadow-lg px-3 py-2.5 text-[11px] sm:text-xs"
-                      :style="viewerBreakdownStyle"
-                      role="tooltip"
-                    >
-                      <p class="mb-1.5 font-semibold moh-text tabular-nums">
-                        <AppAnimatedCount :value="viewerCount" />
-                        {{ viewerCount === 1 ? 'person' : 'people' }} saw this
-                      </p>
-                      <template v-if="viewerBreakdown">
-                        <div class="flex flex-col gap-1 moh-text-muted">
-                          <div v-if="viewerBreakdown.premium > 0" class="flex items-center justify-between gap-3">
-                            <span class="flex items-center gap-1.5">
-                              <span class="inline-block h-2 w-2 rounded-full bg-yellow-400 shrink-0" aria-hidden="true" />
-                              Premium
-                            </span>
-                            <span class="tabular-nums font-medium moh-text">{{ viewerBreakdown.premium }}</span>
-                          </div>
-                          <div v-if="viewerBreakdown.verified > 0" class="flex items-center justify-between gap-3">
-                            <span class="flex items-center gap-1.5">
-                              <span class="inline-block h-2 w-2 rounded-full bg-blue-400 shrink-0" aria-hidden="true" />
-                              Verified
-                            </span>
-                            <span class="tabular-nums font-medium moh-text">{{ viewerBreakdown.verified }}</span>
-                          </div>
-                          <div v-if="viewerBreakdown.unverified > 0" class="flex items-center justify-between gap-3">
-                            <span class="flex items-center gap-1.5">
-                              <span class="inline-block h-2 w-2 rounded-full bg-gray-400 shrink-0" aria-hidden="true" />
-                              Unverified
-                            </span>
-                            <span class="tabular-nums font-medium moh-text">{{ viewerBreakdown.unverified }}</span>
-                          </div>
-                          <div v-if="viewerBreakdown.guest > 0" class="flex items-center justify-between gap-3">
-                            <span class="flex items-center gap-1.5">
-                              <span class="inline-block h-2 w-2 rounded-full bg-gray-500/60 shrink-0" aria-hidden="true" />
-                              Guests
-                            </span>
-                            <span class="tabular-nums font-medium moh-text">{{ viewerBreakdown.guest }}</span>
-                          </div>
-                        </div>
-                      </template>
-                      <template v-else>
-                        <div class="moh-text-muted animate-pulse">Loading…</div>
-                      </template>
-                    </div>
-                  </Transition>
-                </Teleport>
-              </div>
-            </div>
-          </Transition>
-
           <AppPostRowMoreMenu v-if="!isPendingRow" :items="moreMenuItems" :tooltip="moreTooltip" />
         </div>
 
@@ -447,167 +367,246 @@
           </span>
         </div>
 
-        <div v-else-if="!isDeletedPost" class="mt-2.5 sm:mt-3 flex items-center justify-between moh-text-muted">
-          <div class="flex items-center gap-1">
-            <!-- Reply: hidden for only-me posts -->
-            <div v-if="!isOnlyMe" class="inline-flex w-14 items-center justify-start">
-              <button
-                type="button"
-                class="moh-tap moh-pressable inline-flex h-10 w-10 items-center justify-center rounded-full transition-colors moh-surface-hover"
-                :class="commentClickable ? 'cursor-pointer' : 'cursor-default opacity-60'"
-                aria-label="Reply"
-                v-tooltip.bottom="commentTooltip"
-                @click.stop="onCommentClick"
-              >
-                <Icon name="tabler:message-circle" class="text-[18px]" aria-hidden="true" />
-              </button>
-              <NuxtLink
-                :to="postPermalink"
-                class="ml-0 inline-block min-w-[1.5rem] select-none text-left text-[11px] sm:text-xs tabular-nums moh-text-muted hover:underline moh-count-gutter"
-                :class="displayedCommentCount > 0 ? 'opacity-100' : 'opacity-0 pointer-events-none'"
-                :aria-hidden="displayedCommentCount === 0 ? 'true' : undefined"
-                :tabindex="displayedCommentCount === 0 ? -1 : undefined"
-                aria-label="View replies"
-              >
-                <AppAnimatedCount :value="displayedCommentCount" :format="formatCountOrBlank" />
-              </NuxtLink>
-            </div>
-
-            <div v-if="!isOnlyMe" class="inline-flex w-14 items-center justify-start">
-              <button
-                type="button"
-                class="moh-tap moh-pressable inline-flex h-10 w-10 items-center justify-center rounded-full transition-colors moh-surface-hover"
-                :class="boostClickable ? 'cursor-pointer' : 'cursor-default opacity-60'"
-                :aria-label="isBoosted ? 'Remove upvote' : 'Upvote'"
-                v-tooltip.bottom="upvoteTooltip"
-                @click.stop="onBoostClick"
-              >
-                <svg
-                  viewBox="0 0 24 24"
-                  class="h-5 w-5"
-                  aria-hidden="true"
-                  :style="isBoosted ? { color: 'var(--p-primary-color)' } : undefined"
-                >
-                  <!-- Imgur-ish upvote: arrowhead + stem -->
-                  <path
-                    v-if="isBoosted"
-                    fill="currentColor"
-                    d="M12 4.5L3.75 12.25h5.25V20h6V12.25h5.25L12 4.5z"
-                  />
-                  <path
-                    v-else
-                    d="M12 4.5L3.75 12.25h5.25V20h6V12.25h5.25L12 4.5z"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="1.9"
-                    stroke-linejoin="round"
-                  />
-                </svg>
-              </button>
-              <span
-                class="ml-0 inline-block w-6 select-none text-left text-[11px] sm:text-xs tabular-nums moh-text-muted moh-count-gutter"
-                :class="boostCount > 0 ? 'opacity-100' : 'opacity-0'"
-                aria-hidden="true"
-              >
-                <AppAnimatedCount :value="boostCount" :format="formatCountOrBlank" />
-              </span>
-            </div>
-
-            <!-- Repost button + menu -->
-            <div v-if="!isOnlyMe" class="relative inline-flex w-14 items-center justify-start">
-              <button
-                type="button"
-                class="moh-tap moh-pressable inline-flex h-10 w-10 items-center justify-center rounded-full transition-colors moh-surface-hover"
-                :class="viewerCanInteract ? 'cursor-pointer' : 'cursor-default opacity-60'"
-                :aria-label="isReposted ? 'Repost options' : 'Repost'"
-                v-tooltip.bottom="repostTooltip"
-                @click.stop="onRepostClick"
-              >
-                <Icon
-                  name="tabler:repeat"
-                  class="text-[19px]"
-                  aria-hidden="true"
-                  :style="isReposted ? { color: repostActiveColor } : undefined"
-                />
-              </button>
-              <span
-                class="ml-0 inline-block w-6 select-none text-left text-[11px] sm:text-xs tabular-nums moh-text-muted moh-count-gutter"
-                :class="repostCount > 0 ? 'opacity-100' : 'opacity-0'"
-                aria-hidden="true"
-              >
-                <AppAnimatedCount :value="repostCount" :format="formatCountOrBlank" />
-              </span>
-
-              <!-- Repost menu popup -->
-              <Teleport to="body">
-                <div
-                  v-if="repostMenuOpen"
-                  class="fixed inset-0 z-[9998]"
-                  @click.stop="repostMenuOpen = false"
-                />
-                <div
-                  v-if="repostMenuOpen"
-                  ref="repostMenuEl"
-                  class="fixed z-[9999] min-w-[160px] rounded-xl border moh-border moh-surface shadow-lg overflow-hidden"
-                  :style="repostMenuStyle"
-                  @click.stop
-                >
-                  <button
-                    type="button"
-                    class="flex w-full items-center gap-2 px-4 py-2.5 text-sm moh-text hover:moh-surface-hover transition-colors cursor-pointer"
-                    @click.stop="onRepostMenuRepost"
-                  >
-                    <Icon name="tabler:repeat" class="text-base shrink-0" aria-hidden="true" />
-                    {{ isReposted ? 'Un-repost' : 'Repost' }}
-                  </button>
-                  <button
-                    type="button"
-                    class="flex w-full items-center gap-2 px-4 py-2.5 text-sm moh-text hover:moh-surface-hover transition-colors border-t moh-border cursor-pointer"
-                    @click.stop="onRepostMenuQuote"
-                  >
-                    <Icon name="tabler:quote" class="text-base shrink-0" aria-hidden="true" />
-                    Quote
-                  </button>
-                </div>
-              </Teleport>
-            </div>
+        <div
+          v-else-if="!isDeletedPost && !isOnlyMe"
+          class="mt-2.5 sm:mt-3 flex items-center justify-between sm:justify-start gap-1 moh-text-muted"
+        >
+          <!-- Reply -->
+          <div class="inline-flex items-center">
+            <button
+              type="button"
+              class="moh-tap moh-pressable inline-flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-full transition-colors moh-surface-hover"
+              :class="commentClickable ? 'cursor-pointer' : 'cursor-default opacity-60'"
+              aria-label="Reply"
+              v-tooltip.bottom="commentTooltip"
+              @click.stop="onCommentClick"
+            >
+              <Icon name="tabler:message-circle" class="text-[18px]" aria-hidden="true" />
+            </button>
+            <NuxtLink
+              :to="postPermalink"
+              class="ml-0 inline-block sm:min-w-[1.5rem] select-none text-left text-[11px] sm:text-xs tabular-nums moh-text-muted hover:underline moh-count-gutter"
+              :class="displayedCommentCount > 0 ? 'opacity-100' : 'opacity-0 pointer-events-none'"
+              :aria-hidden="displayedCommentCount === 0 ? 'true' : undefined"
+              :tabindex="displayedCommentCount === 0 ? -1 : undefined"
+              aria-label="View replies"
+            >
+              <AppAnimatedCount :value="displayedCommentCount" :format="formatCountOrBlank" />
+            </NuxtLink>
           </div>
 
-          <div v-if="!isOnlyMe" class="relative flex items-center gap-2 justify-end">
+          <!-- Repost button + menu -->
+          <div class="relative inline-flex items-center">
+            <button
+              type="button"
+              class="moh-tap moh-pressable inline-flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-full transition-colors moh-surface-hover"
+              :class="viewerCanInteract ? 'cursor-pointer' : 'cursor-default opacity-60'"
+              :aria-label="isReposted ? 'Repost options' : 'Repost'"
+              v-tooltip.bottom="repostTooltip"
+              @click.stop="onRepostClick"
+            >
+              <Icon
+                name="tabler:repeat"
+                class="text-[19px]"
+                aria-hidden="true"
+                :style="isReposted ? { color: repostActiveColor } : undefined"
+              />
+            </button>
             <span
-              class="mr-0 inline-block w-6 select-none text-right text-[11px] sm:text-xs tabular-nums moh-text-muted moh-count-gutter"
+              class="ml-0 inline-block sm:min-w-[1.5rem] select-none text-left text-[11px] sm:text-xs tabular-nums moh-text-muted moh-count-gutter"
+              :class="repostCount > 0 ? 'opacity-100' : 'opacity-0'"
+              aria-hidden="true"
+            >
+              <AppAnimatedCount :value="repostCount" :format="formatCountOrBlank" />
+            </span>
+
+            <!-- Repost menu popup -->
+            <Teleport to="body">
+              <div
+                v-if="repostMenuOpen"
+                class="fixed inset-0 z-[9998]"
+                @click.stop="repostMenuOpen = false"
+              />
+              <div
+                v-if="repostMenuOpen"
+                ref="repostMenuEl"
+                class="fixed z-[9999] min-w-[160px] rounded-xl border moh-border moh-surface shadow-lg overflow-hidden"
+                :style="repostMenuStyle"
+                @click.stop
+              >
+                <button
+                  type="button"
+                  class="flex w-full items-center gap-2 px-4 py-2.5 text-sm moh-text hover:moh-surface-hover transition-colors cursor-pointer"
+                  @click.stop="onRepostMenuRepost"
+                >
+                  <Icon name="tabler:repeat" class="text-base shrink-0" aria-hidden="true" />
+                  {{ isReposted ? 'Un-repost' : 'Repost' }}
+                </button>
+                <button
+                  type="button"
+                  class="flex w-full items-center gap-2 px-4 py-2.5 text-sm moh-text hover:moh-surface-hover transition-colors border-t moh-border cursor-pointer"
+                  @click.stop="onRepostMenuQuote"
+                >
+                  <Icon name="tabler:quote" class="text-base shrink-0" aria-hidden="true" />
+                  Quote
+                </button>
+              </div>
+            </Teleport>
+          </div>
+
+          <!-- Upvote -->
+          <div class="inline-flex items-center">
+            <button
+              type="button"
+              class="moh-tap moh-pressable inline-flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-full transition-colors moh-surface-hover"
+              :class="boostClickable ? 'cursor-pointer' : 'cursor-default opacity-60'"
+              :aria-label="isBoosted ? 'Remove upvote' : 'Upvote'"
+              v-tooltip.bottom="upvoteTooltip"
+              @click.stop="onBoostClick"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                class="h-5 w-5"
+                aria-hidden="true"
+                :style="isBoosted ? { color: 'var(--p-primary-color)' } : undefined"
+              >
+                <path
+                  v-if="isBoosted"
+                  fill="currentColor"
+                  d="M12 4.5L3.75 12.25h5.25V20h6V12.25h5.25L12 4.5z"
+                />
+                <path
+                  v-else
+                  d="M12 4.5L3.75 12.25h5.25V20h6V12.25h5.25L12 4.5z"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.9"
+                  stroke-linejoin="round"
+                />
+              </svg>
+            </button>
+            <span
+              class="ml-0 inline-block sm:min-w-[1.5rem] select-none text-left text-[11px] sm:text-xs tabular-nums moh-text-muted moh-count-gutter"
+              :class="boostCount > 0 ? 'opacity-100' : 'opacity-0'"
+              aria-hidden="true"
+            >
+              <AppAnimatedCount :value="boostCount" :format="formatCountOrBlank" />
+            </span>
+          </div>
+
+          <!-- Views -->
+          <div class="relative inline-flex items-center">
+            <button
+              ref="viewerCountBtnEl"
+              type="button"
+              class="moh-tap inline-flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-full transition-colors"
+              :class="viewerCount > 0 ? 'moh-surface-hover cursor-default' : 'cursor-default opacity-60'"
+              :aria-label="viewerCount > 0 ? `${viewerCount} ${viewerCount === 1 ? 'person' : 'people'} saw this post` : 'Views'"
+              :tabindex="viewerCount > 0 ? 0 : -1"
+              @mouseenter="onViewerCountHover"
+              @focus="onViewerCountHover"
+              @mouseleave="hideViewerBreakdown"
+              @blur="hideViewerBreakdown"
+              @click.stop
+            >
+              <svg viewBox="0 0 24 24" class="h-[18px] w-[18px]" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+              </svg>
+            </button>
+            <span
+              class="ml-0 inline-block sm:min-w-[1.5rem] select-none text-left text-[11px] sm:text-xs tabular-nums moh-text-muted moh-count-gutter"
+              :class="viewerCount > 0 ? 'opacity-100' : 'opacity-0'"
+              aria-hidden="true"
+            >
+              <AppAnimatedCount :value="viewerCount" :format="formatCountOrBlank" />
+            </span>
+
+            <!-- Breakdown popover: teleported to body so it's never clipped by a parent stacking context -->
+            <Teleport to="body">
+              <Transition name="viewer-breakdown">
+                <div
+                  v-if="viewerBreakdownVisible"
+                  ref="viewerBreakdownEl"
+                  class="fixed z-[9999] min-w-[10rem] rounded-lg border moh-border moh-surface shadow-lg px-3 py-2.5 text-[11px] sm:text-xs"
+                  :style="viewerBreakdownStyle"
+                  role="tooltip"
+                >
+                  <p class="mb-1.5 font-semibold moh-text tabular-nums">
+                    <AppAnimatedCount :value="viewerCount" />
+                    {{ viewerCount === 1 ? 'person' : 'people' }} saw this
+                  </p>
+                  <template v-if="viewerBreakdown">
+                    <div class="flex flex-col gap-1 moh-text-muted">
+                      <div v-if="viewerBreakdown.premium > 0" class="flex items-center justify-between gap-3">
+                        <span class="flex items-center gap-1.5">
+                          <span class="inline-block h-2 w-2 rounded-full bg-yellow-400 shrink-0" aria-hidden="true" />
+                          Premium
+                        </span>
+                        <span class="tabular-nums font-medium moh-text">{{ viewerBreakdown.premium }}</span>
+                      </div>
+                      <div v-if="viewerBreakdown.verified > 0" class="flex items-center justify-between gap-3">
+                        <span class="flex items-center gap-1.5">
+                          <span class="inline-block h-2 w-2 rounded-full bg-blue-400 shrink-0" aria-hidden="true" />
+                          Verified
+                        </span>
+                        <span class="tabular-nums font-medium moh-text">{{ viewerBreakdown.verified }}</span>
+                      </div>
+                      <div v-if="viewerBreakdown.unverified > 0" class="flex items-center justify-between gap-3">
+                        <span class="flex items-center gap-1.5">
+                          <span class="inline-block h-2 w-2 rounded-full bg-gray-400 shrink-0" aria-hidden="true" />
+                          Unverified
+                        </span>
+                        <span class="tabular-nums font-medium moh-text">{{ viewerBreakdown.unverified }}</span>
+                      </div>
+                      <div v-if="viewerBreakdown.guest > 0" class="flex items-center justify-between gap-3">
+                        <span class="flex items-center gap-1.5">
+                          <span class="inline-block h-2 w-2 rounded-full bg-gray-500/60 shrink-0" aria-hidden="true" />
+                          Guests
+                        </span>
+                        <span class="tabular-nums font-medium moh-text">{{ viewerBreakdown.guest }}</span>
+                      </div>
+                    </div>
+                  </template>
+                  <template v-else>
+                    <div class="moh-text-muted animate-pulse">Loading…</div>
+                  </template>
+                </div>
+              </Transition>
+            </Teleport>
+          </div>
+
+          <!-- Spacer: hidden on mobile (justify-between handles spacing), grows on desktop -->
+          <div class="hidden sm:block sm:flex-1" aria-hidden="true" />
+
+          <!-- Bookmark + count: count right of icon on mobile, left of icon on desktop -->
+          <div
+            class="inline-flex items-center sm:flex-row-reverse"
+            @click.capture="onMaybeGatedRightSideClick"
+          >
+            <AppPostRowBookmarkButton
+              :post-id="postView.id"
+              :viewer-can-interact="viewerCanInteract"
+              :initial-has-bookmarked="Boolean(postView.viewerHasBookmarked)"
+              :initial-collection-ids="(postView.viewerBookmarkCollectionIds ?? []).filter(Boolean)"
+              @bookmark-count-delta="onBookmarkCountDelta"
+              @bookmark-state-changed="onBookmarkStateChanged"
+            />
+            <span
+              class="inline-block sm:min-w-[1.5rem] select-none text-left sm:text-right text-[11px] sm:text-xs tabular-nums moh-text-muted moh-count-gutter"
               :class="bookmarkCountValue > 0 ? 'opacity-100' : 'opacity-0'"
               aria-hidden="true"
             >
               <AppAnimatedCount :value="bookmarkCountValue" :format="formatCountOrBlank" />
             </span>
-            <!-- For gated posts: intercept click before it reaches the child components -->
-            <div
-              v-if="isGatedPost"
-              class="contents"
-              @click.capture.stop="onGatedRightSideClick"
-            >
-              <AppPostRowBookmarkButton
-                :post-id="postView.id"
-                :viewer-can-interact="viewerCanInteract"
-                :initial-has-bookmarked="Boolean(postView.viewerHasBookmarked)"
-                :initial-collection-ids="(postView.viewerBookmarkCollectionIds ?? []).filter(Boolean)"
-                @bookmark-count-delta="onBookmarkCountDelta"
-                @bookmark-state-changed="onBookmarkStateChanged"
-              />
-              <AppPostRowShareMenu :can-share="canShare" :tooltip="shareTooltip" :items="shareMenuItems" />
-            </div>
-            <template v-else>
-              <AppPostRowBookmarkButton
-                :post-id="postView.id"
-                :viewer-can-interact="viewerCanInteract"
-                :initial-has-bookmarked="Boolean(postView.viewerHasBookmarked)"
-                :initial-collection-ids="(postView.viewerBookmarkCollectionIds ?? []).filter(Boolean)"
-                @bookmark-count-delta="onBookmarkCountDelta"
-                @bookmark-state-changed="onBookmarkStateChanged"
-              />
-              <AppPostRowShareMenu :can-share="canShare" :tooltip="shareTooltip" :items="shareMenuItems" />
-            </template>
+          </div>
+
+          <!-- Share -->
+          <div
+            class="inline-flex items-center"
+            @click.capture="onMaybeGatedRightSideClick"
+          >
+            <AppPostRowShareMenu :can-share="canShare" :tooltip="shareTooltip" :items="shareMenuItems" />
           </div>
         </div>
 
@@ -806,6 +805,15 @@ const replyingToTargets = computed(() => {
 function onGatedRightSideClick() {
   const kind = postView.value.visibility === 'premiumOnly' ? 'premium' : 'verify'
   showAuthActionModal({ kind, action: 'bookmark' })
+}
+// Click-capture guard for the bookmark + share items: only intercepts clicks when the
+// post is gated, so the unauth-prompt fires instead of letting the inner button toggle.
+// For non-gated posts the event passes through untouched.
+function onMaybeGatedRightSideClick(event: MouseEvent) {
+  if (!isGatedPost.value) return
+  event.stopPropagation()
+  event.preventDefault()
+  onGatedRightSideClick()
 }
 const pendingStatus = computed<'posting' | 'failed' | null>(() => {
   const s = postView.value._pending
@@ -1807,15 +1815,6 @@ const shareMenuItems = computed<MenuItemWithIcon[]>(() => [
    "rolls in" and fades up together (and rolls out + fades down). */
 .moh-count-gutter {
   transition: opacity 240ms cubic-bezier(0.2, 0.8, 0.2, 1);
-}
-
-/* Viewer count chip: fade + scale in when it first appears (0 → 1) */
-.viewer-count-appear-enter-active {
-  transition: opacity 0.25s ease, transform 0.25s ease;
-}
-.viewer-count-appear-enter-from {
-  opacity: 0;
-  transform: scale(0.7);
 }
 
 /* Breakdown popover: slide up and fade */
