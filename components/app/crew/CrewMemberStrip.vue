@@ -13,6 +13,7 @@
           :user="member.user"
           size-class="h-12 w-12"
           :enable-preview="false"
+          :show-status="false"
         />
         <span
           v-if="member.role === 'owner'"
@@ -33,6 +34,7 @@
           :user="member.user"
           size-class="h-12 w-12"
           :enable-preview="false"
+          :show-status="false"
         />
         <span
           v-if="member.role === 'owner'"
@@ -59,6 +61,7 @@
           :user="inv.invitee"
           size-class="h-12 w-12"
           :enable-preview="false"
+          :show-status="false"
           class="opacity-40 saturate-0"
         />
         <span

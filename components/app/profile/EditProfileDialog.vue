@@ -312,12 +312,12 @@ const editBannerPreviewUrl = computed(() => {
   return profileBannerUrl.value
 })
 
-// Show the trash button only when there is an image to act on (current image
-// or a staged file) AND we're not already mid-upload. The button doubles as
-// "undo" once removal has been staged.
+// Avatars are intentionally replace-only for the owner — only a site admin
+// acting in admin-override mode can clear an avatar. Banners stay removable
+// by the owner (any editor with `canEdit`).
 const showAvatarTrash = computed(
   () =>
-    canEdit.value
+    isAdminMode.value
     && (Boolean(profileAvatarUrl.value) || pendingAvatarRemoval.value)
     && !pendingAvatarFile.value,
 )

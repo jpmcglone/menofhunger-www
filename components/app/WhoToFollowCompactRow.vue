@@ -10,14 +10,14 @@
       @mouseleave="onLeave"
     >
       <div :class="['shrink-0 ring-2 ring-[color:var(--moh-surface-3)]', avatarRoundClass]">
-        <AppUserAvatar :user="user" size-class="h-9 w-9" />
+        <AppUserAvatar :user="user" size-class="h-9 w-9" :show-status="false" />
       </div>
       <AppUserIdentityLine :user="user" badge-size="xs" />
     </NuxtLink>
 
     <div v-else class="min-w-0 flex items-center gap-2.5">
       <div :class="['shrink-0 ring-2 ring-[color:var(--moh-surface-3)]', avatarRoundClass]">
-        <AppUserAvatar :user="user" size-class="h-9 w-9" />
+        <AppUserAvatar :user="user" size-class="h-9 w-9" :show-status="false" />
       </div>
       <AppUserIdentityLine :user="user" badge-size="xs" />
     </div>

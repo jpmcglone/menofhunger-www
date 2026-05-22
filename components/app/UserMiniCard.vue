@@ -9,14 +9,14 @@
         @mousemove="onMove"
         @mouseleave="onLeave"
       >
-        <AppUserAvatar :user="user" size-class="h-10 w-10" />
+        <AppUserAvatar :user="user" size-class="h-10 w-10" :show-status="false" />
         <AppUserIdentityLine :user="user" name-class="" handle-class="text-sm" />
       </NuxtLink>
       <div
         v-else
         class="min-w-0 flex items-center gap-3 text-left"
       >
-        <AppUserAvatar :user="user" size-class="h-10 w-10" />
+        <AppUserAvatar :user="user" size-class="h-10 w-10" :show-status="false" />
         <AppUserIdentityLine :user="user" name-class="" handle-class="text-sm" />
       </div>
 

@@ -27,7 +27,7 @@
         :title="!isSelectable(u) ? hintFor(u) : undefined"
         @click="pick(u)"
       >
-        <AppUserAvatar :user="u" size-class="h-8 w-8" />
+        <AppUserAvatar :user="u" size-class="h-8 w-8" :show-status="false" />
         <div class="min-w-0 flex-1">
           <AppUserIdentityLine :user="u" class="min-w-0" />
           <p
@@ -55,7 +55,7 @@
         class="inline-flex items-center gap-1.5 rounded-full px-2 py-1 text-xs"
         :style="search.tagStyle(u)"
       >
-        <AppUserAvatar :user="u" size-class="h-5 w-5" />
+        <AppUserAvatar :user="u" size-class="h-5 w-5" :show-status="false" />
         <span class="font-medium">@{{ u.username }}</span>
         <button
           type="button"
@@ -73,7 +73,7 @@
         class="inline-flex items-center gap-1.5 rounded-full px-2 py-1 text-xs"
         :style="search.tagStyle(selectedUsers[0]!)"
       >
-        <AppUserAvatar :user="selectedUsers[0]!" size-class="h-5 w-5" />
+        <AppUserAvatar :user="selectedUsers[0]!" size-class="h-5 w-5" :show-status="false" />
         <span class="font-medium">@{{ selectedUsers[0]!.username }}</span>
         <button
           type="button"

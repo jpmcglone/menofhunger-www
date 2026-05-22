@@ -34,6 +34,7 @@
             :user="author"
             size-class="h-5 w-5"
             bg-class="moh-surface"
+            :show-status="false"
           />
           <span class="text-sm font-semibold moh-text truncate leading-none">
             {{ author?.name || author?.username || 'User' }}

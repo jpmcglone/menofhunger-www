@@ -52,7 +52,7 @@
           :title="!isSelectable(row) ? hintFor(row) : undefined"
           @click="onPick(row)"
         >
-          <AppUserAvatar :user="row.user" size-class="h-9 w-9" />
+          <AppUserAvatar :user="row.user" size-class="h-9 w-9" :show-status="false" />
           <div class="min-w-0 flex-1">
             <AppUserIdentityLine :user="row.user" class="min-w-0" />
             <p

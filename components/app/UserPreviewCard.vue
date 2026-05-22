@@ -88,6 +88,7 @@
               size-class="h-16 w-16"
               bg-class="moh-surface"
               :enable-preview="false"
+              :show-status="false"
               :presence-scale="0.22"
               :presence-inset-ratio="0.4"
             />
@@ -98,11 +99,44 @@
             size-class="h-16 w-16"
             bg-class="moh-surface"
             :enable-preview="false"
+            :show-status="false"
             :presence-scale="0.22"
             :presence-inset-ratio="0.4"
           />
         </div>
       </div>
+
+      <!-- Status pill: bottom-aligned with banner bottom, immediately right of the avatar.
+           Capped width keeps it clear of the online/last-online pill that peeks up on the right.
+           Text clamps to 2 lines max. Shape adapts: pill on 1 line, rounded
+           rectangle when wrapped to 2 lines. Rendered as a NuxtLink so that
+           right-click / cmd+click / middle-click on the status open the
+           profile in a new tab — see `40-internal-links.mdc`. -->
+      <ClientOnly>
+        <NuxtLink
+          v-if="activeStatus && profilePath"
+          :to="profilePath"
+          :aria-label="`View @${user.username} profile — status: ${activeStatus.text}`"
+          :class="[
+            'moh-focus absolute z-20 left-[6.25rem] bottom-2 inline-flex max-w-[10rem] items-center gap-1.5 bg-white px-2.5 py-1 shadow-[0_2px_10px_rgba(0,0,0,0.25)] ring-1 ring-black/5 transition-[transform,border-radius] duration-200 ease-out motion-safe:hover:scale-[1.04] active:scale-[0.97]',
+            statusIsMultiline ? 'rounded-xl' : 'rounded-full',
+          ]"
+          @click="onNavigate"
+        >
+          <Icon name="tabler:message-circle-filled" class="shrink-0 text-[11px] text-zinc-950" aria-hidden="true" />
+          <span ref="statusTextEl" class="moh-clamp-2 min-w-0 text-[11px] font-semibold leading-snug text-zinc-950 text-left">{{ activeStatus.text }}</span>
+        </NuxtLink>
+        <div
+          v-else-if="activeStatus"
+          :class="[
+            'absolute z-20 left-[6.25rem] bottom-2 inline-flex max-w-[10rem] items-center gap-1.5 bg-white px-2.5 py-1 shadow-[0_2px_10px_rgba(0,0,0,0.25)] ring-1 ring-black/5 transition-[transform,border-radius] duration-200 ease-out motion-safe:hover:scale-[1.04]',
+            statusIsMultiline ? 'rounded-xl' : 'rounded-full',
+          ]"
+        >
+          <Icon name="tabler:message-circle-filled" class="shrink-0 text-[11px] text-zinc-950" aria-hidden="true" />
+          <span ref="statusTextEl" class="moh-clamp-2 min-w-0 text-[11px] font-semibold leading-snug text-zinc-950 text-left">{{ activeStatus.text }}</span>
+        </div>
+      </ClientOnly>
     </div>
 
     <div class="px-4 pb-4 pt-12">
@@ -184,40 +218,26 @@
       </div>
 
       <div
-        v-if="activeStatus || currentSpaceId"
-        class="mt-3 rounded-xl border moh-border bg-[color:var(--moh-surface-2)] px-3 py-2.5"
+        v-if="currentSpaceId"
+        class="mt-3 flex min-w-0 items-center gap-2 rounded-xl border moh-border bg-[color:var(--moh-surface-2)] px-3 py-2.5"
       >
-        <div v-if="activeStatus" class="flex min-w-0 items-start gap-2">
-          <Icon name="tabler:message-circle-filled" class="mt-0.5 shrink-0 text-sm moh-text-muted" aria-hidden="true" />
-          <div class="min-w-0 text-sm font-medium leading-snug moh-text">
-            {{ activeStatus.text }}
+        <Icon name="tabler:layout-grid" class="shrink-0 text-sm moh-text-muted" aria-hidden="true" />
+        <div class="min-w-0 flex-1">
+          <div class="text-[11px] font-semibold uppercase tracking-wide moh-text-muted">
+            In a space
+          </div>
+          <div class="mt-0.5 truncate text-xs font-medium moh-text">
+            {{ currentSpace?.title || 'Live now' }}
           </div>
         </div>
-        <div
-          v-if="currentSpaceId"
-          :class="[
-            'flex min-w-0 items-center gap-2',
-            activeStatus ? 'mt-2 border-t moh-border pt-2' : '',
-          ]"
+        <button
+          v-if="currentSpace"
+          type="button"
+          class="moh-pressable shrink-0 rounded-lg bg-[var(--p-primary-color)] px-2.5 py-1.5 text-xs font-semibold text-white transition-[opacity,transform] active:scale-[0.96]"
+          @click.stop.prevent="joinCurrentSpace"
         >
-          <Icon name="tabler:layout-grid" class="shrink-0 text-sm moh-text-muted" aria-hidden="true" />
-          <div class="min-w-0 flex-1">
-            <div class="text-[11px] font-semibold uppercase tracking-wide moh-text-muted">
-              In a space
-            </div>
-            <div class="mt-0.5 truncate text-xs font-medium moh-text">
-              {{ currentSpace?.title || 'Live now' }}
-            </div>
-          </div>
-          <button
-            v-if="currentSpace"
-            type="button"
-            class="moh-pressable shrink-0 rounded-lg bg-[var(--p-primary-color)] px-2.5 py-1.5 text-xs font-semibold text-white transition-[opacity,transform] active:scale-[0.96]"
-            @click.stop.prevent="joinCurrentSpace"
-          >
-            Join space
-          </button>
-        </div>
+          Join space
+        </button>
       </div>
 
       <div
@@ -530,6 +550,13 @@ const presenceStatus = computed(() => {
 })
 const showOnlineNow = computed(() => presenceStatus.value !== 'offline')
 const activeStatus = computed(() => getUserStatus(user.value.id ?? ''))
+
+// Status pill shape adapts to wrapped text: pill (rounded-full) when the
+// status fits on one line, rounded rectangle (rounded-xl) when it wraps to
+// two lines. Measurement runs on the span so we react to width changes from
+// the pop-over resizing as well as text edits.
+const statusTextEl = ref<HTMLElement | null>(null)
+const { isMultiline: statusIsMultiline } = useIsMultiline(statusTextEl)
 const currentSpaceId = computed(() => getCurrentSpaceForUser(user.value.id ?? ''))
 const currentSpace = computed(() => getSpaceById(currentSpaceId.value))
 

@@ -22,6 +22,28 @@
           alt=""
           class="h-full w-full object-cover"
         >
+        <!-- Site-admin edit affordance: small amber pill anchored to the
+             banner's bottom-right. Mirrors the profile header pattern so
+             "edit as admin" reads the same everywhere. Lives inside the banner
+             (vs. profile/groups, where it sits just below) because the crew
+             meta wrapper overlaps the area under the banner. -->
+        <div
+          v-if="isAdminOverride"
+          class="absolute inset-x-0 bottom-3 z-10 pointer-events-none"
+        >
+          <div class="mx-auto max-w-3xl moh-gutter-x flex justify-end">
+            <button
+              v-tooltip.bottom="tinyTooltip('Edit as site admin')"
+              type="button"
+              class="pointer-events-auto inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold shadow-sm backdrop-blur-sm bg-amber-500/90 text-white hover:bg-amber-500 transition-colors"
+              aria-label="Edit as admin"
+              @click="editCrewOpen = true"
+            >
+              <Icon name="tabler:shield" class="text-[10px]" aria-hidden="true" />
+              Edit
+            </button>
+          </div>
+        </div>
       </div>
 
       <!-- Header (avatar + name + tagline + meta + actions) -->
@@ -62,20 +84,18 @@
                 <AppAnimatedCount :value="unreadChatCount" :format="(n) => (n > 99 ? '99+' : String(n))" />
               </span>
             </NuxtLink>
+            <!-- Owner-only Edit Crew button. Site-admin override uses the amber
+                 pill anchored to the banner above (matches profile header pattern). -->
             <Button
-              v-if="canEditCrew"
-              v-tooltip.bottom="isAdminOverride ? tinyTooltip('Edit as site admin') : undefined"
-              :label="isAdminOverride ? 'Edit as admin' : 'Edit Crew'"
+              v-if="canEditCrew && !isAdminOverride"
+              label="Edit Crew"
               rounded
               size="small"
-              :severity="isAdminOverride ? 'warn' : 'secondary'"
+              severity="secondary"
               @click="editCrewOpen = true"
             >
               <template #icon>
-                <Icon
-                  :name="isAdminOverride ? 'tabler:shield' : 'tabler:edit'"
-                  aria-hidden="true"
-                />
+                <Icon name="tabler:edit" aria-hidden="true" />
               </template>
             </Button>
             <Button

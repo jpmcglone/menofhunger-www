@@ -10,7 +10,7 @@
         @mouseleave="onLeave"
       >
         <div class="flex items-center gap-3 min-w-0">
-          <AppUserAvatar :user="user" size-class="h-10 w-10" />
+          <AppUserAvatar :user="user" size-class="h-10 w-10" :show-status="false" />
           <div class="min-w-0 flex-1">
             <AppUserIdentityLine :user="user">
               <template v-if="nameMeta" #after-name>
@@ -32,7 +32,7 @@
         class="min-w-0 flex-1 text-left"
       >
         <div class="flex items-center gap-3 min-w-0">
-          <AppUserAvatar :user="user" size-class="h-10 w-10" />
+          <AppUserAvatar :user="user" size-class="h-10 w-10" :show-status="false" />
           <div class="min-w-0 flex-1">
             <AppUserIdentityLine :user="user">
               <template v-if="nameMeta" #after-name>

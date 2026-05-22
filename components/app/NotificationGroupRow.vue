@@ -50,12 +50,14 @@
                 <AppUserAvatar
                   :user="{ id: a.id, username: a.username, name: a.name, avatarUrl: a.avatarUrl }"
                   size-class="h-10 w-10"
+                  :show-status="false"
                 />
               </NuxtLink>
               <AppUserAvatar
                 v-else-if="a.id"
                 :user="{ id: a.id, username: a.username, name: a.name, avatarUrl: a.avatarUrl }"
                 size-class="h-10 w-10"
+                :show-status="false"
               />
             </template>
             <div

@@ -143,7 +143,8 @@
             bg-class="bg-gray-200 dark:bg-zinc-800"
             :presence-scale="0.15"
             :presence-inset-ratio="0.25"
-            :show-empty-status="isSelf"
+            :show-empty-status="isSelf && !activeStatus"
+            :show-status="!activeStatus"
             :status-behavior="isSelf ? 'custom' : 'view'"
             :status-position-class="isSelf ? '-right-2 -top-2' : '-right-1 -top-1'"
             :status-size-class="isSelf ? 'h-8 w-8' : 'h-5 w-5'"
@@ -170,6 +171,42 @@
           />
         </div>
       </div>
+
+      <!-- Status pill: bottom-aligned with banner, immediately right of the avatar.
+           Always white/dark to read as a clear "status" callout in either theme.
+           Text clamps to 2 lines max. Shape switches from pill (1 line) to
+           rounded rectangle (2 lines) so a wrapped status doesn't read as a
+           tall stadium.
+           Self: click opens editor. Others: click opens a read-only status modal. -->
+      <ClientOnly>
+        <button
+          v-if="activeStatus && isSelf"
+          v-tooltip.bottom="tinyTooltip('Update status')"
+          type="button"
+          :class="[
+            'cursor-pointer absolute z-20 left-[8.75rem] bottom-3 inline-flex max-w-[calc(100%-9.75rem)] items-center gap-1.5 bg-white px-3 py-1.5 shadow-[0_2px_10px_rgba(0,0,0,0.25)] ring-1 ring-black/5 transition-[transform,border-radius] duration-200 ease-out motion-safe:hover:scale-[1.04] active:scale-[0.96]',
+            statusIsMultiline ? 'rounded-xl' : 'rounded-full',
+          ]"
+          :aria-label="`Update your status: ${activeStatus.text}`"
+          @click.stop="openStatusEditor"
+        >
+          <Icon name="tabler:message-circle-filled" class="shrink-0 text-[13px] text-zinc-950" aria-hidden="true" />
+          <span ref="statusTextEl" class="moh-clamp-2 min-w-0 text-xs font-semibold leading-snug text-zinc-950 text-left">{{ activeStatus.text }}</span>
+        </button>
+        <button
+          v-else-if="activeStatus"
+          type="button"
+          :class="[
+            'cursor-pointer absolute z-20 left-[8.75rem] bottom-3 inline-flex max-w-[calc(100%-9.75rem)] items-center gap-1.5 bg-white px-3 py-1.5 shadow-[0_2px_10px_rgba(0,0,0,0.25)] ring-1 ring-black/5 transition-[transform,border-radius] duration-200 ease-out motion-safe:hover:scale-[1.04] active:scale-[0.96]',
+            statusIsMultiline ? 'rounded-xl' : 'rounded-full',
+          ]"
+          :aria-label="`View ${profileName}'s status`"
+          @click.stop="statusViewOpen = true"
+        >
+          <Icon name="tabler:message-circle-filled" class="shrink-0 text-[13px] text-zinc-950" aria-hidden="true" />
+          <span ref="statusTextEl" class="moh-clamp-2 min-w-0 text-xs font-semibold leading-snug text-zinc-950 text-left">{{ activeStatus.text }}</span>
+        </button>
+      </ClientOnly>
     </div>
 
     <div class="px-4 pb-5 pt-14">
@@ -289,29 +326,6 @@
         </button>
       </div>
 
-      <button
-        v-if="activeStatus && isSelf"
-        v-tooltip.bottom="tinyTooltip('Update status')"
-        type="button"
-        class="moh-pressable mt-4 flex w-full items-start gap-2.5 rounded-xl border moh-border bg-[color:var(--moh-surface-2)] px-3.5 py-2.5 text-left transition-[background-color,transform] hover:bg-[color:var(--moh-surface-3)] active:scale-[0.995]"
-        :aria-label="`Update your status: ${activeStatus.text}`"
-        @click="openStatusEditor"
-      >
-        <Icon name="tabler:message-circle-filled" class="mt-0.5 shrink-0 text-base moh-text-muted" aria-hidden="true" />
-        <div class="min-w-0 flex-1 text-sm font-medium leading-snug moh-text">
-          {{ activeStatus.text }}
-        </div>
-      </button>
-      <div
-        v-else-if="activeStatus"
-        class="mt-4 flex items-start gap-2.5 rounded-xl border moh-border bg-[color:var(--moh-surface-2)] px-3.5 py-2.5"
-      >
-        <Icon name="tabler:message-circle-filled" class="mt-0.5 shrink-0 text-base moh-text-muted" aria-hidden="true" />
-        <div class="min-w-0 flex-1 text-sm font-medium leading-snug moh-text">
-          {{ activeStatus.text }}
-        </div>
-      </div>
-
       <div v-if="profile?.bio" class="mt-4 text-gray-800 dark:text-gray-200">
         <AppBioText :text="profile.bio" />
       </div>
@@ -412,6 +426,14 @@
     @update:draft="statusDraft = $event"
     @save="saveStatus"
     @clear="clearStatus"
+  />
+
+  <AppStatusViewDialog
+    v-if="!isSelf && activeStatus"
+    :open="statusViewOpen"
+    :status-text="activeStatus.text"
+    :profile="profile"
+    @update:open="statusViewOpen = $event"
   />
 
   <AppReportDialog
@@ -1060,6 +1082,7 @@ const presenceStatus = computed(() => {
 const showOnlineNow = computed(() => presenceStatus.value !== 'offline')
 
 const statusEditorOpen = ref(false)
+const statusViewOpen = ref(false)
 const statusDraft = ref('')
 const statusSaving = ref(false)
 const statusError = ref<string | null>(null)
@@ -1067,6 +1090,13 @@ const activeStatus = computed(() => {
   const id = profile.value?.id
   return id ? getUserStatus(id) : null
 })
+
+// Pill shape adapts to wrapped text: pill (rounded-full) when the status fits
+// on a single line, rounded rectangle when it wraps to two lines. The ref is
+// shared by both the self (button) and view-only (div) branches because only
+// one is mounted at a time.
+const statusTextEl = ref<HTMLElement | null>(null)
+const { isMultiline: statusIsMultiline } = useIsMultiline(statusTextEl)
 
 function openStatusEditor() {
   if (!isSelf.value) return

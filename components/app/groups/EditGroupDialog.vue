@@ -309,9 +309,12 @@ const editBannerPreviewUrl = computed(() => {
   return coverUrl.value
 })
 
+// Avatars are intentionally replace-only for the owner — only a site admin
+// acting in admin-override mode can clear a group avatar. Covers stay
+// removable by the owner (any editor with `canEdit`).
 const showAvatarTrash = computed(
   () =>
-    canEdit.value
+    isAdminOverride.value
     && (Boolean(avatarUrl.value) || pendingAvatarRemoval.value)
     && !pendingAvatarFile.value,
 )

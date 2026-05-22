@@ -57,8 +57,20 @@ export function isGroupsHubPath(path: string): boolean {
   return path === '/groups' || path.startsWith('/groups/')
 }
 
+// Topic landing pages (/topics/:slug) are browsable while logged out — the
+// page itself only shows publicly visible articles for guests because the
+// articles API gates visibility on the viewer.
+export function isTopicPath(path: string): boolean {
+  return path === '/topics' || path.startsWith('/topics/')
+}
+
 export function isLoggedOutAllowedPath(path: string): boolean {
-  return LOGGED_OUT_ALLOWED_PATHS.has(path) || isGroupDetailPath(path) || isGroupsHubPath(path)
+  return (
+    LOGGED_OUT_ALLOWED_PATHS.has(path)
+    || isGroupDetailPath(path)
+    || isGroupsHubPath(path)
+    || isTopicPath(path)
+  )
 }
 
 export function isAuthAllowedAfterLogoutPath(path: string): boolean {

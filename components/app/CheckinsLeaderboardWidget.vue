@@ -27,11 +27,11 @@
             :to="`/u/${encodeURIComponent(u.username)}`"
             class="flex-1 min-w-0 flex items-center gap-2 hover:opacity-90"
           >
-            <AppUserAvatar :user="u" size-class="h-8 w-8" />
+            <AppUserAvatar :user="u" size-class="h-8 w-8" :show-status="false" />
             <AppUserIdentityLine :user="u" badge-size="xs" />
           </NuxtLink>
           <div v-else class="flex-1 min-w-0 flex items-center gap-2">
-            <AppUserAvatar :user="u" size-class="h-8 w-8" />
+            <AppUserAvatar :user="u" size-class="h-8 w-8" :show-status="false" />
             <AppUserIdentityLine :user="u" badge-size="xs" />
           </div>
 

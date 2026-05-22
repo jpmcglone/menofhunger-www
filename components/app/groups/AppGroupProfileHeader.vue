@@ -51,6 +51,29 @@
         </div>
       </div>
 
+      <!-- Site-admin edit affordance: small amber pill anchored just below the
+           banner edge on the right side. Mirrors `app/profile/Header.vue` so the
+           "edit as admin" experience reads the same wherever it appears.
+           Wrapped in a max-w-3xl flex so the pill lines up with the action
+           cluster in the title row on wide screens. -->
+      <div
+        v-if="isAdminOverride"
+        class="absolute inset-x-0 bottom-0 z-10 translate-y-[36px] pointer-events-none"
+      >
+        <div class="mx-auto max-w-3xl px-4 flex justify-end">
+          <button
+            v-tooltip.bottom="tinyTooltip('Edit as site admin')"
+            type="button"
+            class="pointer-events-auto inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold shadow-sm backdrop-blur-sm bg-amber-500/90 text-white hover:bg-amber-500 transition-colors"
+            aria-label="Edit as admin"
+            @click="$emit('edit')"
+          >
+            <Icon name="tabler:shield" class="text-[10px]" aria-hidden="true" />
+            Edit
+          </button>
+        </div>
+      </div>
+
       <div
         :class="[
           'absolute left-4 bottom-0 z-10 translate-y-1/2 transition-opacity duration-200',
@@ -171,22 +194,10 @@
             />
           </template>
           <!--
-            Site admins moderating a group they don't belong to still need the
-            Edit affordance. Styled with `severity="warn"` + shield icon so it's
-            visually clear this action is only available because of admin rights.
+            Site admins moderating a group they don't belong to get the
+            admin-only Edit affordance via the amber pill anchored to the
+            banner (mirrors `app/profile/Header.vue`).
           -->
-          <Button
-            v-if="isAdminOverride"
-            v-tooltip.bottom="tinyTooltip('Edit as site admin')"
-            label="Edit as admin"
-            severity="warn"
-            rounded
-            @click="$emit('edit')"
-          >
-            <template #icon>
-              <Icon name="tabler:shield" aria-hidden="true" />
-            </template>
-          </Button>
           <!--
             Share is always available so anyone (including non-members and
             visitors logged out) can grab a link to the group.
@@ -252,19 +263,17 @@
               <Icon name="tabler:user-plus" aria-hidden="true" />
             </template>
           </Button>
+          <!-- Owner-only Edit button. Site-admin override uses the amber pill
+               anchored to the banner above (matches profile header pattern). -->
           <Button
-            v-if="canEdit"
-            v-tooltip.bottom="isAdminOverride ? tinyTooltip('Edit as site admin') : undefined"
-            :label="isAdminOverride ? 'Edit as admin' : 'Edit group'"
-            :severity="isAdminOverride ? 'warn' : 'secondary'"
+            v-if="canEdit && !isAdminOverride"
+            label="Edit group"
+            severity="secondary"
             rounded
             @click="$emit('edit')"
           >
             <template #icon>
-              <Icon
-                :name="isAdminOverride ? 'tabler:shield' : 'tabler:pencil'"
-                aria-hidden="true"
-              />
+              <Icon name="tabler:pencil" aria-hidden="true" />
             </template>
           </Button>
           <!--

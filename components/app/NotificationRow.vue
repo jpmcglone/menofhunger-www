@@ -68,6 +68,7 @@
             @click.stop
           >
             <AppUserAvatar
+              :show-status="false"
               :user="{
                 id: notification.actor.id,
                 username: notification.actor.username,
@@ -86,6 +87,7 @@
               avatarUrl: notification.actor.avatarUrl,
             }"
             size-class="h-9 w-9 sm:h-10 sm:w-10"
+            :show-status="false"
           />
           <div
             v-else

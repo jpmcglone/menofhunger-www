@@ -22,32 +22,40 @@
       :presence-inset-ratio="props.presenceInsetRatio"
     />
     <ClientOnly>
-      <button
-        v-if="showStatusButton && statusBehavior === 'custom'"
-        v-tooltip.bottom="statusTooltip"
-        type="button"
-        :class="statusButtonClass"
-        :aria-label="activeStatus ? `${displayName}'s status` : 'Set status'"
-        @click.prevent.stop="onStatusButtonClick"
-      >
-        <Icon
-          :name="activeStatus ? 'tabler:message-circle-filled' : 'tabler:message-circle'"
-          :class="statusIconClass"
+      <Transition name="moh-status-bubble-fade" appear>
+        <button
+          v-if="showStatusButton && statusBehavior === 'custom'"
+          v-tooltip.bottom="statusTooltip"
+          type="button"
+          :class="statusButtonClass"
+          :aria-label="activeStatus ? `${displayName}'s status` : 'Set status'"
+          @mouseenter.stop="onStatusEnter"
+          @mousemove.stop
+          @mouseleave="onStatusLeave"
+          @click.prevent.stop="onStatusButtonClick"
+        >
+          <Icon
+            :name="activeStatus ? 'tabler:message-circle-filled' : 'tabler:message-circle'"
+            :class="statusIconClass"
+            aria-hidden="true"
+          />
+        </button>
+        <span
+          v-else-if="showStatusButton"
+          v-tooltip.bottom="statusTooltip"
+          :class="statusButtonClass"
           aria-hidden="true"
-        />
-      </button>
-      <span
-        v-else-if="showStatusButton"
-        v-tooltip.bottom="statusTooltip"
-        :class="statusButtonClass"
-        aria-hidden="true"
-      >
-        <Icon
-          :name="activeStatus ? 'tabler:message-circle-filled' : 'tabler:message-circle'"
-          :class="statusIconClass"
-          aria-hidden="true"
-        />
-      </span>
+          @mouseenter.stop="onStatusEnter"
+          @mousemove.stop
+          @mouseleave="onStatusLeave"
+        >
+          <Icon
+            :name="activeStatus ? 'tabler:message-circle-filled' : 'tabler:message-circle'"
+            :class="statusIconClass"
+            aria-hidden="true"
+          />
+        </span>
+      </Transition>
     </ClientOnly>
   </span>
 </template>
@@ -121,7 +129,7 @@ const props = withDefaults(
 )
 
 const route = useRoute()
-const { getPresenceStatus, getCurrentSpaceForUser, getUserStatus } = usePresence()
+const { getPresenceStatus, getCurrentSpaceForUser, getUserStatus, isPresenceKnown } = usePresence()
 const { user: authUser } = useAuth()
 const { selectedSpaceId } = useSpaceLobby()
 const { user: u } = useUserOverlay(computed(() => props.user))
@@ -150,13 +158,31 @@ const activeStatus = computed(() => {
   return getUserStatus(uid)
 })
 
-const showStatusButton = computed(() => Boolean(props.showStatus && props.showPresence !== false && (activeStatus.value || props.showEmptyStatus)))
+// Presence data is loaded asynchronously. We know it's ready once the user id
+// appears in `presenceKnownUserIds`. Until then we suppress the status bubble
+// entirely rather than showing the dotted "no status" affordance prematurely.
+const presenceReady = computed(() => {
+  const uid = u.value?.id
+  if (!uid) return false
+  return isPresenceKnown(uid)
+})
+
+const showStatusButton = computed(() =>
+  Boolean(
+    props.showStatus
+    && props.showPresence !== false
+    && presenceReady.value
+    && (activeStatus.value || props.showEmptyStatus),
+  )
+)
 const statusTooltip = computed(() => {
   // Only show a tooltip when there is actual status text to surface; the
   // empty/dashed affordance speaks for itself via the dashed border.
   const text = activeStatus.value?.text?.trim()
   if (!text) return null
-  return tinyTooltip(text)
+  // Use the white-pill tooltip skin so the hover popup reads as the same
+  // visual element as the status pill that sits next to the avatar on profiles.
+  return tinyTooltip(text, { class: 'moh-tooltip-status' })
 })
 const statusButtonClass = computed(() => [
   'moh-avatar-status-bubble moh-focus absolute z-20 inline-flex items-center justify-center rounded-full transition-[transform,opacity] duration-150 hover:scale-[1.04] active:scale-[0.96]',
@@ -166,6 +192,25 @@ const statusButtonClass = computed(() => [
     ? 'bg-zinc-950 text-white shadow-[0_2px_8px_rgba(0,0,0,0.22)] ring-1 ring-white/20 dark:bg-black dark:text-white dark:ring-white/25'
     : 'border border-dashed border-white/80 bg-zinc-950 text-white shadow-[0_2px_8px_rgba(0,0,0,0.22)] ring-1 ring-white/20 dark:border-white/80 dark:bg-black dark:text-white',
 ])
+
+// When the mouse enters the status bubble, close any pending/open profile
+// preview and stop the event from bubbling up to the wrapper (which would
+// re-trigger onEnter).
+function onStatusEnter(_e: MouseEvent) {
+  onLeave()
+}
+
+// When the mouse leaves the status bubble, check whether it moved back onto
+// the avatar (relatedTarget is still inside the wrapper). If so, re-trigger
+// the profile preview — the wrapper's mouseenter won't fire again because the
+// mouse never fully left the <span>.
+function onStatusLeave(e: MouseEvent) {
+  const wrapper = wrapEl.value
+  const related = e.relatedTarget
+  if (wrapper && related instanceof Node && wrapper.contains(related)) {
+    onEnter(e)
+  }
+}
 
 function onStatusButtonClick() {
   onLeave()

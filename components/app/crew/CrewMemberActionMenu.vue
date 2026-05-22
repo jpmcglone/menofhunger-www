@@ -15,6 +15,7 @@
             :user="target.user"
             size-class="h-8 w-8"
             :enable-preview="false"
+            :show-status="false"
           />
           <AppUserIdentityLine
             :user="target.user"
