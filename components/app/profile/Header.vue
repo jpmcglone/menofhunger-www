@@ -26,22 +26,35 @@
           aria-label="View banner"
           @click="emit('openImage', { event: $event, url: profileBannerUrl, title: 'Banner', kind: 'banner' })"
         />
-        <div
-          v-if="showOnlineNow || showLastOnline"
-          v-tooltip.bottom="showLastOnline ? tinyTooltip(lastOnlineTooltip) : undefined"
-          class="absolute right-4 bottom-0 translate-y-[36px] rounded-full px-2 py-0.5 text-[11px] shadow-sm backdrop-blur-sm"
-          :class="
-            showOnlineNow
-              ? 'bg-green-600/90 text-white dark:bg-green-500/20 dark:text-green-200'
-              : 'bg-white/70 text-gray-600 dark:bg-black/60 dark:text-gray-400 tabular-nums'
-          "
-        >
-          <template v-if="showOnlineNow">
-            Online now
-          </template>
-          <template v-else>
-            Last online {{ lastOnlineShort }}
-          </template>
+        <div class="absolute right-4 bottom-0 translate-y-[36px] flex items-center gap-1.5">
+          <button
+            v-if="isAdminOverride"
+            v-tooltip.bottom="tinyTooltip('Edit as site admin')"
+            type="button"
+            class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold shadow-sm backdrop-blur-sm bg-amber-500/90 text-white hover:bg-amber-500 transition-colors"
+            aria-label="Edit as admin"
+            @click="emit('edit')"
+          >
+            <Icon name="tabler:shield" class="text-[10px]" aria-hidden="true" />
+            Edit
+          </button>
+          <div
+            v-if="showOnlineNow || showLastOnline"
+            v-tooltip.bottom="showLastOnline ? tinyTooltip(lastOnlineTooltip) : undefined"
+            class="rounded-full px-2 py-0.5 text-[11px] shadow-sm backdrop-blur-sm"
+            :class="
+              showOnlineNow
+                ? 'bg-green-600/90 text-white dark:bg-green-500/20 dark:text-green-200'
+                : 'bg-white/70 text-gray-600 dark:bg-black/60 dark:text-gray-400 tabular-nums'
+            "
+          >
+            <template v-if="showOnlineNow">
+              Online now
+            </template>
+            <template v-else>
+              Last online {{ lastOnlineShort }}
+            </template>
+          </div>
         </div>
         <!-- Nudge overlay (top-right), fully inside banner with consistent margin -->
         <div v-if="showNudge" class="pointer-events-none absolute inset-4 z-20 flex justify-end">
@@ -159,9 +172,9 @@
       </div>
     </div>
 
-    <div class="mx-auto max-w-3xl px-4 pb-5 pt-14">
-      <div class="flex items-start justify-between gap-4 mt-1">
-        <div class="min-w-0">
+    <div class="px-4 pb-5 pt-14">
+      <div class="flex flex-wrap items-start gap-x-4 gap-y-2 mt-1">
+        <div class="min-w-0" style="flex: 1 1 10rem">
           <div class="flex items-center gap-2 min-w-0">
             <div class="text-xl font-bold leading-none text-gray-900 dark:text-gray-50 truncate">
               {{ profileName }}
@@ -193,18 +206,17 @@
           </div>
         </div>
 
-        <div class="shrink-0 flex items-center gap-2">
+        <div class="shrink-0 flex flex-wrap items-center gap-2">
           <Button
-            v-if="isSelf || canEditProfile"
-            v-tooltip.bottom="isAdminOverride ? tinyTooltip('Edit as site admin') : undefined"
-            :label="isAdminOverride ? 'Edit as admin' : 'Edit profile'"
-            :severity="isAdminOverride ? 'warn' : 'secondary'"
+            v-if="isSelf && !isAdminOverride"
+            label="Edit profile"
+            severity="secondary"
             rounded
-            :class="showEditProfileNudge && !isAdminOverride ? ['moh-edit-profile-nudge', editProfileNudgeToneClass] : ''"
+            :class="showEditProfileNudge ? ['moh-edit-profile-nudge', editProfileNudgeToneClass] : ''"
             @click="emit('edit')"
           >
             <template #icon>
-              <Icon :name="isAdminOverride ? 'tabler:shield' : 'tabler:pencil'" aria-hidden="true" />
+              <Icon name="tabler:pencil" aria-hidden="true" />
             </template>
           </Button>
           <Button

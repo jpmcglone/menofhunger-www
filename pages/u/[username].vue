@@ -47,7 +47,7 @@
         <template #fallback>
           <div>
             <div class="aspect-[3.25/1] w-full bg-gray-200 dark:bg-zinc-900" />
-            <div class="mx-auto max-w-3xl px-4 pb-5 pt-14">
+            <div class="px-4 pb-5 pt-14">
               <div class="h-20" />
             </div>
           </div>
@@ -79,7 +79,7 @@
         />
       </ClientOnly>
 
-      <div v-if="profile" class="mx-auto max-w-3xl px-4 mt-3">
+      <div v-if="profile" class="px-4 mt-3">
         <div class="flex items-center gap-2">
           <!-- Streaks popover -->
           <div ref="streaksWrapperEl" class="relative inline-block">
@@ -185,7 +185,7 @@
       </div>
 
       <!-- Block indicator: shown when a block exists between viewer and profile user -->
-      <div v-if="!isSelf && isBlockedWithProfile" class="mx-auto max-w-3xl px-4 mb-2">
+      <div v-if="!isSelf && isBlockedWithProfile" class="px-4 mb-2">
         <div class="flex items-start gap-3 rounded-xl border border-zinc-700 bg-zinc-900 px-4 py-3.5 text-sm text-zinc-300">
           <Icon name="tabler:ban" class="mt-0.5 shrink-0 text-zinc-400" aria-hidden="true" />
           <div class="min-w-0 flex-1">

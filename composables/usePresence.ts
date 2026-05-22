@@ -1865,6 +1865,12 @@ export function usePresence() {
       if (!socket?.connected || !id) return
       socket.emit('messages:typing', { conversationId: id, typing: Boolean(typing) })
     },
+    /** Force an immediate presence:active ping (e.g. right after onboarding completes). */
+    emitActivity() {
+      const socket = socketRef.value
+      if (!socket?.connected) return
+      socket.emit('presence:active')
+    },
     connect,
     disconnect,
     emitLogout,

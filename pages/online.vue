@@ -141,10 +141,7 @@ const nuxtApp = useNuxtApp()
 
 const { user: authUser } = useAuth()
 const { nowMs } = useNowTicker({ everyMs: 15_000 })
-const viewerCanSeeLastOnline = computed(() => {
-  const status = authUser.value?.verifiedStatus ?? 'none'
-  return Boolean(authUser.value?.siteAdmin) || (typeof status === 'string' && status !== 'none')
-})
+const viewerCanSeeLastOnline = computed(() => Boolean(authUser.value))
 
 function recentLastOnlineLabel(lastOnlineAt: string | null) {
   if (!viewerCanSeeLastOnline.value) return null

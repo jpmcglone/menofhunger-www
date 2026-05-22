@@ -172,6 +172,7 @@ import { formatDateOnly } from '~/utils/time-format'
 const { user, ensureLoaded } = useAuth()
 const { apiFetchData } = useApiClient()
 const route = useRoute()
+const { whenSocketConnected, emitActivity } = usePresence()
 const {
   capturedReferralCode,
   appliedReferralCode,
@@ -403,6 +404,10 @@ async function submit() {
       body: payload,
     })
     user.value = res.user ?? user.value
+
+    // Presence: ping the socket so the user shows up in "Online now" immediately.
+    // whenSocketConnected returns as soon as the socket is ready (or times out).
+    void whenSocketConnected(5000).then(() => emitActivity())
 
     useNuxtApp().$posthog?.capture('onboarding_completed', {
       arena_count: interests.value.length,
