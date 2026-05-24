@@ -98,53 +98,20 @@
           @drop.prevent="onComposerDrop"
         >
           <!-- Textarea wrapper: border/background live on wrapper so it stays visually consistent -->
-          <div class="moh-composer-field relative rounded-xl border moh-border-subtle moh-surface-2">
-            <div
-              ref="composerMirrorEl"
-              class="pointer-events-none absolute inset-0 overflow-x-hidden overflow-y-auto rounded-xl px-3 py-2 text-[16px] leading-6 whitespace-pre-wrap break-words moh-text"
-              :style="composerTextareaVars"
-              aria-hidden="true"
-            >
-              <template v-for="(seg, i) in composerBodySegments" :key="composerSegmentKey(seg, i)">
-                <!-- IMPORTANT: avoid font-weight changes in mirror; it desyncs caret alignment vs textarea -->
-                <span
-                  v-if="seg.type === 'mention'"
-                  :style="mentionTierToStyle(seg.tier)"
-                >{{ seg.value }}</span>
-                <span
-                  v-else-if="seg.type === 'hashtag'"
-                  :style="{ ...(mentionTierToStyle(seg.tier) ?? {}), opacity: '0.9' }"
-                >{{ seg.value }}</span>
-                <span v-else>{{ seg.value }}</span>
-              </template>
-            </div>
-            <textarea
-              ref="composerTextareaEl"
-              v-model="draft"
-              rows="3"
-              enterkeyhint="enter"
-              inputmode="text"
-              class="moh-composer-textarea relative z-10 w-full resize-none overflow-hidden rounded-xl bg-transparent px-3 py-2 text-[16px] leading-6 text-transparent caret-[color:var(--moh-text)] placeholder:text-[color:var(--moh-text-muted)] placeholder:opacity-70 focus:outline-none"
-              :style="composerTextareaVars"
+          <div
+            class="moh-composer-field relative rounded-xl border moh-border-subtle moh-surface-2"
+            @paste.capture="onComposerPaste"
+          >
+            <AppStyledTextarea
+              ref="composerEditorEl"
+              :model-value="draft"
               :placeholder="composerPlaceholder"
-              @input="onComposerInput"
-              @keydown="onComposerKeydown"
-              @paste="onComposerPaste"
-              @scroll="syncComposerMirrorScroll"
-            />
-
-            <AppMentionAutocompletePopover
-              v-bind="mention.popoverProps"
-              @select="mention.onSelect"
-              @highlight="mention.onHighlight"
-              @requestClose="mention.onRequestClose"
-            />
-
-            <AppHashtagAutocompletePopover
-              v-bind="hashtag.popoverProps"
-              @select="hashtag.onSelect"
-              @highlight="hashtag.onHighlight"
-              @requestClose="hashtag.onRequestClose"
+              :auto-focus="props.autoFocus"
+              :hashtag-color="composerHashtagColor"
+              submit-trigger="cmd-enter"
+              class="moh-composer-styled-textarea"
+              @update:model-value="onDraftChange"
+              @send="submit"
             />
 
             <!-- Drag overlay (no media): hug just the textarea, less bottom inset to avoid extra padding -->
@@ -451,11 +418,6 @@ import { tinyTooltip } from '~/utils/tiny-tooltip'
 import { visibilityTagClasses, visibilityTagLabel } from '~/utils/post-visibility'
 import { getApiErrorMessage } from '~/utils/api-error'
 import { useFormSubmit } from '~/composables/useFormSubmit'
-import { useMentionAutocomplete } from '~/composables/useMentionAutocomplete'
-import { useHashtagAutocomplete } from '~/composables/useHashtagAutocomplete'
-import { segmentComposerBodyWithMentionAndHashtagTiers } from '~/utils/mention-composer-segments'
-import { mentionTierToStyle } from '~/utils/mention-tier-style'
-import { stableListKey } from '~/utils/stable-list-key'
 
 // In-memory draft cache (survives SPA navigation, not a full reload).
 // Keep module-scoped so it persists across route changes.
@@ -685,16 +647,14 @@ const myProfilePath = computed(() => {
   return username ? `/u/${encodeURIComponent(username)}` : null
 })
 const draft = ref('')
-const composerTextareaEl = ref<HTMLTextAreaElement | null>(null)
-const composerMirrorEl = ref<HTMLDivElement | null>(null)
+const composerEditorEl = ref<{ focus: () => void; insertAtCursor: (text: string) => void; clear: () => void } | null>(null)
 const emojiPickerEl = ref<{ close: () => void } | null>(null)
 const initialTextApplied = ref(false)
 
 /**
  * True iff the body contains @marv (case-insensitive). We re-derive directly
- * from the textarea contents instead of waiting for the mention-autocomplete
- * resolve cycle so the pill appears the instant the user finishes typing the
- * username — even before mention resolution lands.
+ * from the draft text so the pill appears the instant the user finishes typing
+ * the username.
  */
 const bodyMentionsMarv = computed(() => {
   const lower = marvUsernameLower.value
@@ -706,98 +666,24 @@ const bodyMentionsMarv = computed(() => {
   return re.test(draft.value ?? '')
 })
 
-
-const mention = useMentionAutocomplete({
-  el: composerTextareaEl,
-  getText: () => draft.value,
-  setText: (next) => {
-    draft.value = next
-    void nextTick().then(() => resizeComposerTextarea())
-  },
-  contextUsernames: computed(() => props.replyTo?.mentionUsernames ?? []),
-  debounceMs: 200,
-  limit: 10,
+/** Hashtag color passed to StyledTextarea, derived from effective visibility. */
+const composerHashtagColor = computed(() => {
+  if (useGroupScopeChrome.value) return 'var(--moh-group)'
+  const v = effectiveVisibility.value
+  if (v === 'premiumOnly') return 'var(--moh-premium)'
+  if (v === 'verifiedOnly') return 'var(--moh-verified)'
+  if (v === 'onlyMe') return 'var(--moh-onlyme)'
+  return 'var(--p-primary-color)'
 })
 
-const hashtag = useHashtagAutocomplete({
-  el: composerTextareaEl,
-  getText: () => draft.value,
-  setText: (next) => {
-    draft.value = next
-    void nextTick().then(() => resizeComposerTextarea())
-  },
-  debounceMs: 200,
-  limit: 10,
-})
-
-/** Segments with tier for mirror: use highlightedUser tier while arrowing, mentionTiers after selection. */
-const composerBodySegments = computed(() => {
-  const highlightedUser = mention.highlightedUser.value
-  const vis = effectiveVisibility.value
-  const hashtagTier = vis === 'premiumOnly' ? 'premium' : vis === 'verifiedOnly' ? 'verified' : 'normal'
-  return segmentComposerBodyWithMentionAndHashtagTiers({
-    text: draft.value ?? '',
-    mentionTiers: mention.mentionTiers.value,
-    activeAtIndex: mention.active.value?.atIndex ?? null,
-    highlightedTier: highlightedUser ? tierFromMentionUser(highlightedUser) : null,
-    hashtagTier,
-  })
-})
-
-function syncComposerMirrorScroll() {
-  const ta = composerTextareaEl.value
-  const mirror = composerMirrorEl.value
-  if (ta && mirror) mirror.scrollTop = ta.scrollTop
+function onDraftChange(value: string) {
+  draft.value = value
 }
 
 function insertEmoji(emoji: string) {
   const e = (emoji ?? '').trim()
   if (!e) return
-  const el = composerTextareaEl.value
-  const value = draft.value ?? ''
-  if (el && typeof el.selectionStart === 'number' && typeof el.selectionEnd === 'number') {
-    const start = el.selectionStart
-    const end = el.selectionEnd
-    const next = value.slice(0, start) + e + value.slice(end)
-    draft.value = next
-    void nextTick().then(() => {
-      el.focus?.()
-      try {
-        const pos = start + e.length
-        el.setSelectionRange?.(pos, pos)
-      } catch {
-        // ignore
-      }
-    })
-  } else {
-    const next = value + e
-    draft.value = next
-    void nextTick().then(() => {
-      el?.focus?.()
-      try {
-        const pos = next.length
-        el?.setSelectionRange?.(pos, pos)
-      } catch {
-        // ignore
-      }
-    })
-  }
-}
-
-function resizeComposerTextarea() {
-  if (!import.meta.client) return
-  const el = composerTextareaEl.value
-  if (!el) return
-  // Auto-grow: reset to auto, then fit content height.
-  el.style.height = 'auto'
-  el.style.height = `${Math.max(el.scrollHeight, 0)}px`
-}
-
-function onComposerInput() {
-  // Keep height in sync and recompute mention suggestions based on caret.
-  resizeComposerTextarea()
-  mention.recompute()
-  hashtag.recompute()
+  composerEditorEl.value?.insertAtCursor(e)
 }
 
 type ComposerPollPayload = import('~/composables/composer/types').ComposerPollPayload
@@ -845,7 +731,6 @@ const {
   toCreatePayload,
   clearAll,
 } = useComposerMedia({
-  textareaEl: composerTextareaEl,
   maxSlots: 4,
   canAcceptImages: computed(() => Boolean(isPremium.value && !disableMedia.value && !hasPoll.value)),
   canAcceptVideo: computed(() => Boolean(isPremium.value && !disableMedia.value && !hasPoll.value)),
@@ -1068,10 +953,6 @@ const composerPlaceholder = computed(
 )
 const postCharCount = computed(() => draft.value.length)
 
-function composerSegmentKey(seg: { type?: string; value?: string; tier?: string }, i: number): string {
-  return stableListKey(seg.type ?? 'text', seg.tier ?? '', seg.value ?? '', i)
-}
-
 function onUpdateAltText(localId: string, value: string) {
   patchComposerMedia(localId, { altText: value })
 }
@@ -1089,14 +970,14 @@ function draftSnapshot(): import('~/composables/useUnsavedDraftGuard').UnsavedDr
 }
 
 function clearComposer() {
+  composerEditorEl.value?.clear()
   draft.value = ''
   clearAll()
   clearPoll()
-  void nextTick().then(() => resizeComposerTextarea())
 }
 
 function focus() {
-  composerTextareaEl.value?.focus()
+  composerEditorEl.value?.focus()
 }
 
 /** Expose draft text as a readonly string ref for consumers that need to watch typing (e.g. ReplyModal typing presence). */
@@ -1313,10 +1194,7 @@ const { submit: submitPost, submitting, submitError } = useFormSubmit(
     const created = await performCreate(submitBody, vis, mediaPayload, pollPayload)
     const { post, streakReward } = unwrapCreated(created)
 
-    draft.value = ''
-    clearAll()
-    clearPoll()
-    void nextTick().then(() => resizeComposerTextarea())
+    clearComposer()
 
     if (post?.id) {
       emit('posted', { id: post.id, visibility: vis, post })
@@ -1402,11 +1280,8 @@ function submitOptimistic(): boolean {
   })
 
   // Clear immediately so the user can keep typing / scrolling.
-  draft.value = ''
-  clearAll()
-  clearPoll()
+  clearComposer()
   submitError.value = null
-  void nextTick().then(() => resizeComposerTextarea())
   return true
 }
 
@@ -1476,13 +1351,6 @@ const submit = async () => {
   await submitPost()
 }
 
-function onComposerKeydown(e: KeyboardEvent) {
-  if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
-    e.preventDefault()
-    void submit()
-  }
-}
-
 const loginTo = computed(() => {
   const redirect = encodeURIComponent(route.fullPath || '/home')
   return `/login?redirect=${redirect}`
@@ -1511,19 +1379,7 @@ onMounted(() => {
   restoreDraftFromCacheIfNeeded()
   applyInitialTextIfNeeded()
   seedInitialMediaIfNeeded()
-  if (!props.autoFocus) return
-  void nextTick().then(() => {
-    resizeComposerTextarea()
-    const el = composerTextareaEl.value
-    el?.focus?.()
-    // Place caret at end (useful for "@username " prefills).
-    try {
-      const end = (el?.value ?? '').length
-      el?.setSelectionRange?.(end, end)
-    } catch {
-      // ignore
-    }
-  })
+  // autoFocus is already handled by StyledTextarea's autoFocus prop.
 })
 
 watch(
@@ -1542,14 +1398,6 @@ watch(
   },
 )
 
-watch(
-  draft,
-  () => {
-    // Keep height in sync with content changes (typing, paste, programmatic clears).
-    void nextTick().then(() => resizeComposerTextarea())
-  },
-  { flush: 'post' },
-)
 </script>
 
 <style scoped>
@@ -1589,6 +1437,18 @@ watch(
   transform: translateZ(0);
   will-change: left, top;
   opacity: 0.98;
+}
+
+/* Override StyledTextarea's DM-specific padding for use in PostComposer (no inline emoji/send buttons).
+   max-height + overflow-y: auto lets the editor grow to fill natural space, then scroll internally
+   rather than pushing the modal beyond the viewport. */
+.moh-composer-styled-textarea :deep(.moh-styled-textarea-editor) {
+  min-height: 4.5rem; /* 3 visual rows */
+  max-height: 40vh;
+  overflow-y: auto;
+  padding: 0.5rem 0.75rem; /* px-3 py-2 — matches the old textarea */
+  font-size: 16px;
+  line-height: 1.5rem; /* leading-6 */
 }
 
 .moh-upload-indeterminate {

@@ -21,7 +21,7 @@ import { useEditor, EditorContent, Extension, mergeAttributes } from '@tiptap/vu
 import StarterKit from '@tiptap/starter-kit'
 import Mention from '@tiptap/extension-mention'
 import Placeholder from '@tiptap/extension-placeholder'
-import type { Editor as CoreEditor } from '@tiptap/core'
+import type { Editor as CoreEditor, KeyboardShortcutCommand } from '@tiptap/core'
 import type { SuggestionProps, SuggestionKeyDownProps } from '@tiptap/suggestion'
 import type { FollowListUser, HashtagResult } from '~/types/api'
 import type { MentionSection } from '~/composables/useMentionAutocomplete'
@@ -41,6 +41,12 @@ const props = withDefaults(
     prioritySectionTitle?: string
     /** CSS color value for hashtag nodes (defaults to primary color). */
     hashtagColor?: string
+    /**
+     * Keyboard submit mode.
+     * - 'enter' (default, DM): Enter sends; Shift/Alt/Ctrl-Enter inserts newline.
+     * - 'cmd-enter' (post composer): Enter inserts newline; Cmd/Ctrl-Enter sends.
+     */
+    submitTrigger?: 'enter' | 'cmd-enter'
   }>(),
   {
     placeholder: 'Type a chat…',
@@ -49,6 +55,7 @@ const props = withDefaults(
     priorityUsers: null,
     prioritySectionTitle: undefined,
     hashtagColor: 'var(--p-primary-color)',
+    submitTrigger: 'enter',
   },
 )
 
@@ -353,7 +360,21 @@ const insertNewline = ({ editor: ed }: { editor: CoreEditor }) => {
 
 const SendOnEnter = Extension.create({
   name: 'sendOnEnter',
-  addKeyboardShortcuts() {
+  addKeyboardShortcuts(): Record<string, KeyboardShortcutCommand> {
+    if (props.submitTrigger === 'cmd-enter') {
+      // Post-composer mode: Enter inserts newline; Cmd/Ctrl-Enter sends.
+      return {
+        'Mod-Enter': () => {
+          if (mentionPopover.open || hashtagPopover.open) return false
+          emit('send')
+          return true
+        },
+        Enter: insertNewline,
+        'Shift-Enter': insertNewline,
+        'Alt-Enter': insertNewline,
+      }
+    }
+    // Default DM mode: Enter sends, Shift/Alt/Ctrl-Enter insert newline.
     return {
       Enter: () => {
         if (mentionPopover.open || hashtagPopover.open) return false
@@ -438,11 +459,15 @@ function insertAtCursor(text: string) {
   editor.value.chain().focus().insertContent(text).run()
 }
 
+function clear() {
+  editor.value?.commands.clearContent(true)
+}
+
 onMounted(() => {
   if (props.autoFocus) nextTick(() => focus())
 })
 
-defineExpose({ focus, insertAtCursor, editor })
+defineExpose({ focus, insertAtCursor, clear, editor })
 </script>
 
 <style>
