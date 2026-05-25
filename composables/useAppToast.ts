@@ -1,5 +1,5 @@
 import { PRIMARY_ONLYME_PURPLE, PRIMARY_PREMIUM_ORANGE, PRIMARY_VERIFIED_BLUE } from '~/utils/theme-tint'
-import { getApiErrorMessage } from '~/utils/api-error'
+import { getSafeUserErrorMessage } from '~/utils/api-error'
 
 export type AppToastTone = 'public' | 'verifiedOnly' | 'premiumOnly' | 'onlyMe' | 'success' | 'error'
 
@@ -147,7 +147,8 @@ export function useAppToast() {
   }
 
   function pushError(e: unknown, fallback = 'Something went wrong.'): string {
-    return push({ title: getApiErrorMessage(e) || fallback, tone: 'error' })
+    // Uses the hardened path; technical strings are never used as toast titles.
+    return push({ title: getSafeUserErrorMessage(e, fallback), tone: 'error' })
   }
 
   function dismiss(id: string) {

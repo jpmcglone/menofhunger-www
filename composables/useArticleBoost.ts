@@ -28,7 +28,7 @@ export function useArticleBoost(articleId: Ref<string>, initialBoosted: Ref<bool
       if (lastIntent !== intent) return
       boosted.value = !next
       count.value = Math.max(0, count.value + (next ? -1 : 1))
-      toast.push({ title: e?.data?.meta?.errors?.[0]?.message ?? 'Something went wrong.', tone: 'error' })
+      toast.pushError(e, 'Something went wrong.')
     }
   }
 

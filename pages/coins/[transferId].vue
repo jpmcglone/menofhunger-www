@@ -2,6 +2,7 @@
 definePageMeta({ layout: 'app', title: 'Coin Receipt', ssr: false, hideTopBar: true })
 
 import type { CoinTransferItem, CoinTransferReceipt } from '~/types/api'
+import { getSafeUserErrorMessage } from '~/utils/api-error'
 
 const route = useRoute()
 const { apiFetchData, apiFetch } = useApiClient()
@@ -101,10 +102,10 @@ async function loadReceipt() {
       if (fromHistory) {
         fallbackTransfer.value = fromHistory
       } else {
-        error.value = e?.data?.meta?.errors?.[0]?.message ?? 'Could not find this transfer.'
+        error.value = getSafeUserErrorMessage(e, 'Could not find this transfer.')
       }
     } catch {
-      error.value = e?.data?.meta?.errors?.[0]?.message ?? 'Could not load this transfer.'
+      error.value = getSafeUserErrorMessage(e, 'Could not load this transfer.')
     }
   } finally {
     isLoading.value = false

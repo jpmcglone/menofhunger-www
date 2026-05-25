@@ -196,6 +196,7 @@
 
 <script setup lang="ts">
 import type { ArticleComment, ArticleAuthor, FollowListUser } from '~/types/api'
+import { getSafeUserErrorMessage } from '~/utils/api-error'
 
 const props = defineProps<{
   articleId: string
@@ -439,7 +440,7 @@ async function submitComment() {
     await nextTick()
     scrollToComment(comment.id)
   } catch (e: any) {
-    toast.push({ title: e?.data?.meta?.errors?.[0]?.message ?? 'Could not post reply.', tone: 'error' })
+    toast.push({ title: getSafeUserErrorMessage(e, 'Could not post reply.'), tone: 'error' })
   }
 }
 
@@ -457,7 +458,7 @@ async function submitReply(parentId: string) {
     await nextTick()
     scrollToComment(reply.id)
   } catch (e: any) {
-    toast.push({ title: e?.data?.meta?.errors?.[0]?.message ?? 'Could not post reply.', tone: 'error' })
+    toast.push({ title: getSafeUserErrorMessage(e, 'Could not post reply.'), tone: 'error' })
   }
 }
 
@@ -475,7 +476,8 @@ async function handleDelete(commentId: string, parentId?: string | null) {
   try {
     await deleteComment(commentId, parentId)
   } catch (e: any) {
-    toast.push({ title: e?.data?.meta?.errors?.[0]?.message ?? 'Could not delete reply.', tone: 'error' })
+    toast.push({ title: getSafeUserErrorMessage(e, 'Could not delete reply.')
+, tone: 'error' })
   }
 }
 

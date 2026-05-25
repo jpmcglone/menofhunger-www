@@ -59,8 +59,8 @@
       </div>
 
       <div v-else class="text-sm moh-text-muted">
-        <p v-if="error">{{ error }}</p>
-        <p v-else>No streaks yet.</p>
+        <UserErrorMessage :error="error" fallback="Failed to load leaderboard." />
+        <p v-if="!error">No streaks yet.</p>
       </div>
     </template>
   </Card>

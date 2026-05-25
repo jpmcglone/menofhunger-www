@@ -61,6 +61,7 @@
              Without this, errors set on inlineError were silently invisible until the user
              advanced to the code step. -->
         <AppInlineAlert v-if="step === 'phone' && inlineError" severity="danger">
+          <!-- inlineError comes from useFormSubmit → getApiErrorMessage (hardened against technical strings) -->
           {{ inlineError }}
         </AppInlineAlert>
       </div>
@@ -98,6 +99,7 @@
           </div>
 
           <AppInlineAlert v-if="inlineError" severity="danger">
+            <!-- sanitized at source -->
             {{ inlineError }}
           </AppInlineAlert>
 

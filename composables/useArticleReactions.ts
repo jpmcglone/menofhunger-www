@@ -32,7 +32,7 @@ export function useArticleReactions(
       } catch (e: any) {
         if (existing) { existing.count += 1; existing.viewerHasReacted = true }
         else reactions.value.push({ reactionId, emoji, count: 1, viewerHasReacted: true })
-        toast.push({ title: e?.data?.meta?.errors?.[0]?.message ?? 'Something went wrong.', tone: 'error' })
+        toast.pushError(e, 'Something went wrong.')
       }
     } else {
       if (existing) {
@@ -46,7 +46,7 @@ export function useArticleReactions(
       } catch (e: any) {
         if (existing) { existing.count = Math.max(0, existing.count - 1); existing.viewerHasReacted = false }
         else reactions.value = reactions.value.filter((r) => r.reactionId !== reactionId)
-        toast.push({ title: e?.data?.meta?.errors?.[0]?.message ?? 'Something went wrong.', tone: 'error' })
+        toast.pushError(e, 'Something went wrong.')
       }
     }
   }

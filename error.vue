@@ -5,7 +5,7 @@
         {{ error?.statusCode === 404 ? 'Page not found' : 'Something went wrong' }}
       </h1>
       <p class="text-sm moh-text-muted">
-        {{ error?.statusCode === 404 ? 'The page you’re looking for doesn’t exist or was moved.' : (error?.message || 'An unexpected error occurred. Please try again.') }}
+        {{ error?.statusCode === 404 ? 'The page you’re looking for doesn’t exist or was moved.' : getSafeUserErrorMessage(props.error, 'An unexpected error occurred. Please try again.') }}
       </p>
       <div class="flex flex-wrap items-center justify-center gap-3">
         <NuxtLink
@@ -35,6 +35,8 @@
 
 <script setup lang="ts">
 import { siteConfig } from '~/config/site'
+import { getSafeUserErrorMessage } from '~/utils/api-error'
+
 const props = defineProps<{
   error: { statusCode?: number; message?: string } | null
 }>()

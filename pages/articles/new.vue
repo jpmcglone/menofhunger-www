@@ -12,6 +12,7 @@
 
 <script setup lang="ts">
 import type { Article } from '~/types/api'
+import { getSafeUserErrorMessage } from '~/utils/api-error'
 
 definePageMeta({ layout: 'app', title: 'New Article', hideTopBar: true, ssr: false })
 
@@ -35,7 +36,7 @@ onMounted(async () => {
     // Navigate to the edit page directly — no double-mount, no wasted re-fetch
     await navigateTo(`/articles/edit/${draft.id}`, { replace: true })
   } catch (e: any) {
-    createError.value = e?.data?.meta?.errors?.[0]?.message ?? 'Could not create article. Please try again.'
+    createError.value = getSafeUserErrorMessage(e, 'Could not create article. Please try again.')
     creating.value = false
   }
 })

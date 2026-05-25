@@ -1,4 +1,5 @@
 import type { CheckinAllowedVisibility, CreateCheckinResponse, GetCheckinsTodayResponse } from '~/types/api'
+import { getSafeUserErrorMessage } from '~/utils/api-error'
 
 const TODAY_CHECKIN_CACHE_TTL_MS = 30_000
 
@@ -39,7 +40,7 @@ export function useDailyCheckin() {
       state.value = next
       if (key) cache.value = { ...cache.value, [key]: { expiresAt: Date.now() + TODAY_CHECKIN_CACHE_TTL_MS, data: next } }
     } catch (e: any) {
-      error.value = e?.data?.meta?.errors?.[0]?.message ?? e?.message ?? 'Failed to load check-in.'
+      error.value = getSafeUserErrorMessage(e, 'Failed to load check-in.')
       state.value = null
     } finally {
       loading.value = false

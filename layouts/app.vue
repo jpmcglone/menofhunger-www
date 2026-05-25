@@ -682,8 +682,8 @@
                         </div>
 
                         <div v-else class="text-sm moh-text-muted">
-                          <p v-if="whoToFollowError">{{ whoToFollowError }}</p>
-                          <p v-else>No suggestions yet.</p>
+                          <UserErrorMessage :error="whoToFollowError" fallback="Failed to load suggestions." />
+                          <p v-if="!whoToFollowError">No suggestions yet.</p>
                           <NuxtLink to="/explore" class="inline-block mt-2 font-medium hover:underline">
                             Explore people
                           </NuxtLink>
