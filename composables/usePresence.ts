@@ -294,11 +294,32 @@ function pickPublicUserEntity(u: unknown): import('~/composables/useUsersStore')
   }
 }
 
+/**
+ * Convert the (possibly versioned) API base URL to a bare WebSocket origin.
+ *
+ * Returns only the protocol + host (e.g. "wss://api.menofhunger.com").
+ * The Socket.IO engine path is always passed separately as `/socket.io` and is
+ * mounted at the server root, independent of the REST API version prefix (/v1, /v2, ...).
+ *
+ * This ensures realtime connections continue to work when clients point their
+ * REST base URL at a versioned root (the version applies only to HTTP routes).
+ */
 function apiBaseUrlToWsUrl(apiBaseUrl: string): string {
-  const trimmed = apiBaseUrl.replace(/\/+$/, '').trim()
-  if (trimmed.startsWith('https://')) return `wss://${trimmed.slice(8)}`
-  if (trimmed.startsWith('http://')) return `ws://${trimmed.slice(7)}`
-  return trimmed
+  try {
+    const u = new URL(apiBaseUrl)
+    const wsProto = u.protocol === 'https:' ? 'wss:' : 'ws:'
+    return `${wsProto}//${u.host}`
+  } catch {
+    // Fallback for malformed input (dev, tests, or unusual bases)
+    const trimmed = apiBaseUrl.replace(/\/+$/, '').trim()
+    if (trimmed.startsWith('https://')) {
+      return `wss://${trimmed.slice(8).split('/')[0]}`
+    }
+    if (trimmed.startsWith('http://')) {
+      return `ws://${trimmed.slice(7).split('/')[0]}`
+    }
+    return trimmed
+  }
 }
 
 /**
@@ -843,6 +864,10 @@ export function usePresence() {
     }
 
     isSocketConnecting.value = true
+    // Socket.IO engine path is intentionally mounted at the server root (/socket.io),
+    // not under the REST API version prefix. We therefore always target the bare origin
+    // for the WS host and hard-set (or pass) the engine path as '/socket.io'.
+    // This is independent of whether clients point their REST base at /v1, /v2, etc.
     const wsUrl = apiBaseUrlToWsUrl(apiBaseUrl)
     const socket = io(wsUrl, {
       path: '/socket.io',

@@ -27,8 +27,8 @@ cp env.example .env   # then fill in real values
 
 Required env vars (minimum for local dev):
 
-- `NUXT_PUBLIC_API_BASE_URL` — browser-facing API base URL (e.g. `http://localhost:3001`)
-- `NUXT_API_BASE_URL` — SSR-side API base URL (useful when containerized; defaults to `NUXT_PUBLIC_API_BASE_URL`)
+- `NUXT_PUBLIC_API_BASE_URL` — browser-facing API base URL. This must include the `/v1` path segment because all product routes live under the version prefix (e.g. `http://localhost:3001/v1` or `https://api.menofhunger.com/v1`).
+- `NUXT_API_BASE_URL` — SSR-side API base URL (useful when containerized; defaults to `NUXT_PUBLIC_API_BASE_URL`). Use the same versioned value.
 
 Optional but commonly set:
 

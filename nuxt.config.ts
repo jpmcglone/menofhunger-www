@@ -22,13 +22,15 @@ export default defineNuxtConfig({
 
   runtimeConfig: {
     // Server-side base URL for calling the API during SSR.
+    // Point this at the *versioned* API root (all product routes live under /v1).
     // Useful when the web server runs in a container/VM where `localhost` differs from the browser.
-    // Configure via `.env`: NUXT_API_BASE_URL=http://api:3001
-    apiBaseUrl: process.env.NUXT_API_BASE_URL || process.env.NUXT_PUBLIC_API_BASE_URL || 'http://localhost:3001',
+    // Configure via `.env`: NUXT_API_BASE_URL=http://api:3001/v1
+    apiBaseUrl: process.env.NUXT_API_BASE_URL || process.env.NUXT_PUBLIC_API_BASE_URL || 'http://localhost:3001/v1',
     public: {
-      // Used by the website to call the API (e.g. health checks).
-      // Configure via `.env`: NUXT_PUBLIC_API_BASE_URL=http://localhost:3001
-      apiBaseUrl: process.env.NUXT_PUBLIC_API_BASE_URL || 'http://localhost:3001',
+      // Used by the website to call the API (e.g. health checks, presence).
+      // The base should include the /v1 path segment so that `useApiClient().apiUrl('/posts')` resolves to the correct versioned endpoint.
+      // Configure via `.env`: NUXT_PUBLIC_API_BASE_URL=http://localhost:3001/v1
+      apiBaseUrl: process.env.NUXT_PUBLIC_API_BASE_URL || 'http://localhost:3001/v1',
       sentry: {
         // DSN is safe to be public; Render should set this in prod.
         // Local dev can omit it to disable Sentry, or set it to test.

@@ -28,6 +28,32 @@ export type ApiHealthResponse = {
 }
 
 import type { ApiEnvelope } from '~/types/api'
+import { joinUrl } from '~/utils/url'
+
+/**
+ * Return the bare origin (protocol + host) for an API base URL, stripping any
+ * REST version prefix (/v1, /v2, ...) and path segment.
+ *
+ * Only the following operational endpoints are unversioned and live at the
+ * document root on the server (see menofhunger-api/src/main.ts setGlobalPrefix exclude list):
+ *   - health, health/config
+ *   - billing/webhook
+ *   - .well-known/apple-app-site-association
+ *   - (root identity)
+ *
+ * This helper ensures the health probe (and any future similar infra calls) always
+ * target the correct unversioned URL even when the configured base includes /vN.
+ */
+function getUnversionedApiOrigin(base: string): string {
+  if (!base) return ''
+  try {
+    const u = new URL(base)
+    return u.origin
+  } catch {
+    // Best-effort fallback for malformed bases (dev, tests)
+    return base.replace(/\/v\d+.*$/, '').replace(/\/+$/, '')
+  }
+}
 
 const HEALTH_DATA_KEY = 'api-health-data'
 const HEALTH_PENDING_KEY = 'api-health-pending'
@@ -35,8 +61,11 @@ const HEALTH_ERROR_KEY = 'api-health-error'
 const HEALTH_STATUS_KEY = 'api-health-status'
 
 export function useApiHealth() {
-  const { apiBaseUrl, apiUrl, apiFetch } = useApiClient()
-  const url = apiUrl('/health')
+  const { apiBaseUrl } = useApiClient()
+  // Health (and the other unversioned infra endpoints) live at the raw host root.
+  // Use the helper to guarantee we never accidentally append /vN.
+  const healthOrigin = getUnversionedApiOrigin(apiBaseUrl || '')
+  const url = healthOrigin ? joinUrl(healthOrigin, '/health') : ''
 
   const data = useState<ApiEnvelope<ApiHealthResponse> | null>(HEALTH_DATA_KEY, () => null)
   const pending = useState<boolean>(HEALTH_PENDING_KEY, () => false)
@@ -44,10 +73,30 @@ export function useApiHealth() {
   const status = useState<number | null>(HEALTH_STATUS_KEY, () => null)
 
   async function fetchHealth() {
+    if (!url) {
+      error.value = new Error('API base URL is not configured')
+      status.value = null
+      return
+    }
     pending.value = true
     error.value = null
     try {
-      const res = await apiFetch<ApiHealthResponse>('/health', { method: 'GET' })
+      // Use a direct $fetch against the explicitly unversioned health URL.
+      // (apiFetch would incorrectly append /v1 because the client base now includes the version.)
+      // SSR forwards cookies + request id exactly like the main client for consistency.
+      let ssrHeaders: HeadersInit | undefined
+      if (import.meta.server) {
+        ssrHeaders = useRequestHeaders(['cookie'])
+        const event = useRequestEvent()
+        const requestId = (event?.context as { requestId?: string } | undefined)?.requestId
+        if (requestId) ssrHeaders = { ...(ssrHeaders || {}), 'x-request-id': requestId }
+      }
+      const res = await $fetch<ApiEnvelope<ApiHealthResponse>>(url, {
+        method: 'GET',
+        credentials: 'include',
+        headers: ssrHeaders,
+        timeout: 15_000,
+      })
       data.value = res
       status.value = 200
     } catch (e) {

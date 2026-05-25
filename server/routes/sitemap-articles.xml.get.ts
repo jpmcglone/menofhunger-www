@@ -58,7 +58,7 @@ function urlEntry(article: ArticleRow, today: string): string {
 
 export default defineEventHandler(async (event) => {
   const config = useRuntimeConfig(event)
-  const apiBase = (config.apiBaseUrl as string) || 'http://localhost:3001'
+  const apiBase = (config.apiBaseUrl as string) || 'http://localhost:3001/v1'
 
   let articles: ArticleRow[] = []
   try {

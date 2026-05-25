@@ -13,7 +13,8 @@ import { describe, expect, it } from 'vitest'
  *   - $fetch(<anything containing apiBaseUrl>)
  *
  * Allow-listed files are legitimate infrastructure (the client itself,
- * SSR sitemap routes, presence WebSocket URL construction, etc.).
+ * health probe (special unversioned), SSR sitemap routes (now receive versioned bases),
+ * presence WebSocket URL construction, etc.).
  */
 
 const REPO_ROOT = resolve(process.cwd())
@@ -22,13 +23,16 @@ const REPO_ROOT = resolve(process.cwd())
 const ALLOW_LIST = new Set<string>([
   // The client itself defines and uses the URL.
   'composables/useApiClient.ts',
-  // Exposes apiBaseUrl from useApiClient() (no direct fetch to it).
+  // Exposes apiBaseUrl from useApiClient() and performs a special unversioned health probe
+  // (strips any /vN suffix because /health lives at the raw host root).
   'composables/useApiHealth.ts',
   // Turns apiBaseUrl into a WebSocket URL (Socket.IO), not a fetch.
   'composables/usePresence.ts',
-  // Nuxt config defines runtimeConfig.apiBaseUrl.
+  // Nuxt config defines runtimeConfig.apiBaseUrl (now expected to include /v1 for product routes).
   'nuxt.config.ts',
   // SSR-only sitemap routes (Nitro server routes, not product API features).
+  // They receive the (versioned) apiBase from runtimeConfig and automatically call the correct
+  // /v1/... endpoints for articles and top-users.
   'server/routes/sitemap-articles.xml.get.ts',
   'server/routes/sitemap-profiles.xml.get.ts',
 ])
