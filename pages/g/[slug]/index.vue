@@ -194,8 +194,7 @@
                     v-else
                     :post="item.post"
                     :group-wall="shell && isOwner ? { groupId: shell.id, viewerIsOwner: true } : null"
-                    :collapsed-sibling-replies-count="postsFeedCollapsedSiblingReplyCountFor(item.post)"
-                    :replies-sort="groupSort"
+                    :show-collapsed-replies-footer="false"
                     @deleted="postsFeedRemovePost"
                     @edited="onPostsTabEdited"
                     @group-pin-changed="onGroupPinChanged"
@@ -231,8 +230,7 @@
                     v-else
                     :post="item.post"
                     :group-wall="shell && isOwner ? { groupId: shell.id, viewerIsOwner: true } : null"
-                    :collapsed-sibling-replies-count="repliesFeedCollapsedSiblingReplyCountFor(item.post)"
-                    :replies-sort="groupSort"
+                    :show-collapsed-replies-footer="false"
                     @deleted="repliesFeedRemovePost"
                     @edited="onRepliesTabEdited"
                     @group-pin-changed="onGroupPinChanged"
@@ -504,7 +502,6 @@ onMounted(() => nextTick(() => {
 const {
   posts: postsFeedPosts,
   displayItems: postsFeedDisplayItems,
-  collapsedSiblingReplyCountFor: postsFeedCollapsedSiblingReplyCountFor,
   nextCursor: postsFeedNextCursor,
   loading: postsFeedLoading,
   loadingMore: postsFeedLoadingMore,
@@ -537,7 +534,6 @@ const {
 const {
   posts: repliesFeedPosts,
   displayItems: repliesFeedDisplayItems,
-  collapsedSiblingReplyCountFor: repliesFeedCollapsedSiblingReplyCountFor,
   nextCursor: repliesFeedNextCursor,
   loading: repliesFeedLoading,
   loadingMore: repliesFeedLoadingMore,

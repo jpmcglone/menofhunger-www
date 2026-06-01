@@ -176,7 +176,7 @@
               <div
                 :class="['rounded-none overflow-hidden', postHighlightClasses(pinnedPostForDisplay.visibility)]"
               >
-                <AppFeedPostRow :post="pinnedPostForDisplay" @deleted="onPinnedPostDeleted" @edited="onProfilePostEdited" />
+                <AppFeedPostRow :post="pinnedPostForDisplay" :show-collapsed-replies-footer="false" @deleted="onPinnedPostDeleted" @edited="onProfilePostEdited" />
               </div>
             </div>
           </template>
@@ -286,7 +286,7 @@
                   <AppFeedPostRow
                     v-else
                     :post="item.post"
-                    :replies-sort="profileSort"
+                    :show-collapsed-replies-footer="false"
                     @deleted="postsOnlyRemovePost"
                     @edited="(p) => postsOnlyReplacePost(p.post)"
                   />
@@ -329,7 +329,7 @@
                   <AppFeedPostRow
                     v-else
                     :post="item.post"
-                    :replies-sort="profileSort"
+                    :show-collapsed-replies-footer="false"
                     @deleted="profileRemovePost"
                     @edited="onProfilePostEdited"
                   />
