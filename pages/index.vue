@@ -370,7 +370,7 @@
             <div
               v-for="(post, i) in featuredTopPosts"
               :key="post.id"
-              class="landing-top-post-card group relative min-h-[12.5rem] cursor-pointer overflow-hidden rounded-2xl border border-gray-200 bg-white/80 shadow-sm shadow-black/[0.04] transition-[border-color,box-shadow] duration-200 ease-out hover:border-orange-300/70 hover:shadow-[0_18px_50px_rgba(15,23,42,0.10)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-500 dark:border-white/[0.08] dark:bg-zinc-950/55 dark:shadow-black/25 dark:hover:border-orange-300/30"
+              class="landing-top-post-card group relative min-h-[12.5rem] cursor-pointer overflow-hidden rounded-2xl border border-gray-200 bg-white/80 shadow-sm shadow-black/[0.04] transition-[border-color,box-shadow] duration-200 ease-out hover:border-gray-300 hover:shadow-[0_18px_50px_rgba(15,23,42,0.10)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-400 dark:border-white/[0.08] dark:bg-zinc-950/55 dark:shadow-black/25 dark:hover:border-white/[0.18]"
               role="link"
               tabindex="0"
               :style="{ '--landing-top-post-delay': `${i * 45}ms` }"
@@ -379,7 +379,7 @@
               @keydown.enter.prevent="navigateTo(postHref(post))"
               @keydown.space.prevent="navigateTo(postHref(post))"
             >
-              <div class="pointer-events-none absolute inset-0 z-0 bg-orange-500/[0.03] opacity-0 transition-opacity duration-200 group-hover:opacity-100 dark:bg-orange-300/[0.04]" aria-hidden="true" />
+              <div class="pointer-events-none absolute inset-0 z-0 bg-gray-500/[0.02] opacity-0 transition-opacity duration-200 group-hover:opacity-100 dark:bg-white/[0.02]" aria-hidden="true" />
               <NuxtLink
                 :to="postHref(post)"
                 class="absolute inset-0 z-[1] rounded-2xl"
@@ -431,7 +431,18 @@
                   </span>
                 </div>
 
-                <p class="mt-3 line-clamp-4 text-[15px] leading-6 moh-text group-hover:underline">
+                <div
+                  v-if="post.parentId && post.parent?.author?.username"
+                  class="mt-2 flex flex-wrap items-center gap-x-1 text-[12px] leading-snug text-gray-500 dark:text-gray-400"
+                >
+                  <span>Replying to</span>
+                  <span
+                    class="font-medium"
+                    :class="userTierTextClass(userColorTier(post.parent.author), { fallback: 'text-gray-600 dark:text-gray-300' })"
+                  >@{{ post.parent.author.username }}</span>
+                </div>
+
+                <p class="mt-3 line-clamp-4 text-[15px] leading-6 moh-text">
                   {{ post.body }}
                 </p>
 
@@ -740,6 +751,7 @@
 </template>
 
 <script setup lang="ts">
+import { userColorTier, userTierTextClass } from '~/utils/user-tier'
 import { siteConfig } from '~/config/site'
 import { VOICE } from '~/config/voice'
 import { formatDailyQuoteAttribution } from '~/utils/daily-quote'
