@@ -1587,6 +1587,12 @@ export type WsFeedNewPostPayload = {
   post: FeedPost
 }
 
+/** New top-level post (or repost) in a community group; pushed to the `group:{id}` room. */
+export type WsGroupNewPostPayload = {
+  groupId: string
+  post: FeedPost
+}
+
 /**
  * Live "someone in your circle just answered today's check-in" event.
  * Emitted to followers + crew members of the actor when a `kind: 'checkin'` post is created.

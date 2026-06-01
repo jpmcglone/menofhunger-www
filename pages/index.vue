@@ -368,7 +368,7 @@
             class="mt-6 grid grid-cols-1 gap-3 lg:grid-cols-3 lg:gap-4"
           >
             <div
-              v-for="(post, i) in topPostsThisWeek"
+              v-for="(post, i) in featuredTopPosts"
               :key="post.id"
               class="landing-top-post-card group relative min-h-[12.5rem] cursor-pointer overflow-hidden rounded-2xl border border-gray-200 bg-white/80 shadow-sm shadow-black/[0.04] transition-[border-color,box-shadow] duration-200 ease-out hover:border-orange-300/70 hover:shadow-[0_18px_50px_rgba(15,23,42,0.10)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-500 dark:border-white/[0.08] dark:bg-zinc-950/55 dark:shadow-black/25 dark:hover:border-orange-300/30"
               role="link"
@@ -388,10 +388,10 @@
               />
 
               <div class="relative z-[2] flex h-full flex-col p-4 sm:p-5">
-                <div class="flex items-start gap-3">
+                <div class="flex items-start gap-2.5 sm:gap-3">
                   <NuxtLink
                     :to="authorHref(post)"
-                    class="relative shrink-0 rounded-full"
+                    class="shrink-0"
                     :aria-label="`View @${post.author.username || 'member'} profile`"
                     @click.stop
                   >
@@ -402,11 +402,11 @@
                       :enable-preview="false"
                     />
                   </NuxtLink>
-                  <div class="min-w-0 flex-1 pt-0.5">
+                  <div class="min-w-0 flex-1">
                     <div class="flex min-w-0 items-center gap-1.5">
                       <NuxtLink
                         :to="authorHref(post)"
-                        class="truncate text-sm font-semibold text-gray-900 hover:underline dark:text-gray-50"
+                        class="truncate text-sm font-semibold moh-text hover:underline"
                         @click.stop
                       >
                         {{ post.author.name || post.author.username || 'Member' }}
@@ -419,13 +419,8 @@
                         :show-tooltip="false"
                       />
                     </div>
-                    <div class="mt-0.5 flex min-w-0 items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
-                      <span class="truncate">@{{ post.author.username || 'member' }}</span>
-                      <span aria-hidden="true">·</span>
-                      <span class="inline-flex items-center gap-1 tabular-nums">
-                        <Icon name="tabler:eye" class="h-3.5 w-3.5" aria-hidden="true" />
-                        {{ formatLandingCount(post.weeklyViewCount || post.viewerCount || 0) }}
-                      </span>
+                    <div class="mt-0.5 truncate text-xs moh-text-muted">
+                      @{{ post.author.username || 'member' }}
                     </div>
                   </div>
                   <span
@@ -436,20 +431,29 @@
                   </span>
                 </div>
 
-                <p class="mt-4 line-clamp-4 text-[15px] font-medium leading-6 text-gray-900 group-hover:underline dark:text-gray-50">
+                <p class="mt-3 line-clamp-4 text-[15px] leading-6 moh-text group-hover:underline">
                   {{ post.body }}
                 </p>
 
-                <div class="mt-auto flex items-center gap-4 pt-5 text-xs font-medium text-gray-500 dark:text-gray-400">
-                  <span class="inline-flex items-center gap-1 tabular-nums">
-                    <Icon name="tabler:rocket" class="h-3.5 w-3.5" aria-hidden="true" />
-                    {{ formatLandingCount(post.boostCount) }}
-                  </span>
-                  <span class="inline-flex items-center gap-1 tabular-nums">
+                <div class="mt-auto flex items-center gap-3.5 pt-4 text-xs moh-text-muted">
+                  <span class="inline-flex items-center gap-1.5 tabular-nums">
                     <Icon name="tabler:message-circle" class="h-3.5 w-3.5" aria-hidden="true" />
                     {{ formatLandingCount(post.commentCount ?? 0) }}
                   </span>
-                  <span class="ml-auto inline-flex items-center gap-1 font-semibold text-gray-700 dark:text-gray-200">
+                  <span class="inline-flex items-center gap-1.5 tabular-nums">
+                    <svg viewBox="0 0 24 24" class="h-3.5 w-3.5" aria-hidden="true">
+                      <path d="M12 4.5L3.75 12.25h5.25V20h6V12.25h5.25L12 4.5z" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round" />
+                    </svg>
+                    {{ formatLandingCount(post.boostCount) }}
+                  </span>
+                  <span class="inline-flex items-center gap-1.5 tabular-nums">
+                    <svg viewBox="0 0 24 24" class="h-3.5 w-3.5" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                    </svg>
+                    {{ formatLandingCount(post.weeklyViewCount || post.viewerCount || 0) }}
+                  </span>
+                  <span class="ml-auto inline-flex items-center gap-1 font-semibold moh-text">
                     Read
                     <Icon name="tabler:arrow-up-right" class="h-3.5 w-3.5 transition-transform duration-200 group-hover:translate-x-0.5 group-hover:-translate-y-0.5" aria-hidden="true" />
                   </span>
@@ -795,6 +799,45 @@ const recentlyActiveMen = computed(() => landingSnapshot.value?.recentlyActiveMe
 const topPostsThisWeek = computed(() => landingSnapshot.value?.topPostsThisWeek ?? [])
 const trendingArticles = computed(() => landingSnapshot.value?.trendingArticles ?? [])
 const landingArticlePreviews = computed(() => trendingArticles.value.slice(0, 3))
+
+// Pick up to `count` posts with distinct authors from an ordered pool.
+function pickDistinctAuthorPosts(pool: LandingTopPost[], count: number): LandingTopPost[] {
+  const seen = new Set<string>()
+  const result: LandingTopPost[] = []
+  for (const post of pool) {
+    if (result.length >= count) break
+    const authorId = post.author?.id ?? post.id
+    if (!seen.has(authorId)) {
+      seen.add(authorId)
+      result.push(post)
+    }
+  }
+  // Backfill if fewer than `count` distinct authors exist.
+  for (const post of pool) {
+    if (result.length >= count) break
+    if (!result.includes(post)) result.push(post)
+  }
+  return result
+}
+
+// SSR-safe: initialized deterministically (first 3 distinct-author posts in pool order).
+// Re-shuffled on the client after mount so each page load shows a different mix.
+const clientFeaturedTopPosts = ref<LandingTopPost[] | null>(null)
+const featuredTopPosts = computed<LandingTopPost[]>(() => {
+  if (clientFeaturedTopPosts.value) return clientFeaturedTopPosts.value
+  return pickDistinctAuthorPosts(topPostsThisWeek.value, 3)
+})
+
+onMounted(() => {
+  const pool = [...topPostsThisWeek.value]
+  for (let i = pool.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    const tmp = pool[i] as LandingTopPost
+    pool[i] = pool[j] as LandingTopPost
+    pool[j] = tmp
+  }
+  clientFeaturedTopPosts.value = pickDistinctAuthorPosts(pool, 3)
+})
 
 function formatLandingCount(value: number): string {
   return new Intl.NumberFormat('en-US', { notation: value >= 10_000 ? 'compact' : 'standard', maximumFractionDigits: 1 }).format(value)

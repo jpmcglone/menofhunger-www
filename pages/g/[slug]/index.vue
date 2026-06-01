@@ -319,6 +319,7 @@ import type { ComposerPollPayload } from '~/composables/composer/types'
 import { useLoadMoreObserver } from '~/composables/useLoadMoreObserver'
 import { useMiddleScroller } from '~/composables/useMiddleScroller'
 import { useGroupMedia } from '~/composables/useGroupMedia'
+import type { GroupFeedCallback } from '~/composables/usePresence'
 import { getApiErrorMessage } from '~/utils/api-error'
 import { MOH_GROUP_COMPOSER_KEY } from '~/utils/injection-keys'
 import { siteConfig } from '~/config/site'
@@ -858,6 +859,64 @@ function stopGroupFeedAutoRefresh() {
   stopAutoSoftRefreshReplies = null
 }
 
+// ─── Realtime: live group posts over websocket ────────────────────────────────
+// The 12s soft-refresh above is the backstop; sockets make new posts/reposts appear
+// instantly. HTTP fetch on mount/activate is the on-load sync (per realtime-first).
+const { addGroupFeedCallback, removeGroupFeedCallback, subscribeGroups, unsubscribeGroups } = usePresence()
+
+function prependLiveGroupPost(post: FeedPost) {
+  if (!post?.id) return
+  // group:newPost only carries top-level posts and reposts — both belong in the
+  // Posts feed and the Replies feed. Dedupe by id so the actor's optimistic insert
+  // (createGroupPost) and the socket echo don't double up.
+  if (!postsFeedPosts.value.some((p) => p.id === post.id)) {
+    postsFeedPosts.value = [post, ...postsFeedPosts.value]
+  }
+  if (!repliesFeedPosts.value.some((p) => p.id === post.id)) {
+    repliesFeedPosts.value = [post, ...repliesFeedPosts.value]
+  }
+}
+
+const groupFeedCb: GroupFeedCallback = {
+  onNewPost: (payload) => {
+    if (!payload?.post) return
+    if (payload.groupId !== shell.value?.id) return
+    prependLiveGroupPost(payload.post)
+  },
+}
+
+let groupRealtimeActive = false
+let subscribedGroupId: string | null = null
+
+function syncGroupRealtimeSubscription() {
+  if (!import.meta.client || !groupRealtimeActive) return
+  const gid = groupFeedEnabled.value ? (shell.value?.id ?? null) : null
+  if (subscribedGroupId === gid) return
+  if (subscribedGroupId) unsubscribeGroups([subscribedGroupId])
+  subscribedGroupId = gid
+  if (gid) subscribeGroups([gid])
+}
+
+function startGroupRealtime() {
+  if (!import.meta.client) return
+  groupRealtimeActive = true
+  addGroupFeedCallback(groupFeedCb)
+  syncGroupRealtimeSubscription()
+}
+
+function stopGroupRealtime() {
+  if (!import.meta.client) return
+  groupRealtimeActive = false
+  removeGroupFeedCallback(groupFeedCb)
+  if (subscribedGroupId) {
+    unsubscribeGroups([subscribedGroupId])
+    subscribedGroupId = null
+  }
+}
+
+// Re-target the room when the group id resolves or the viewer's read access changes.
+watch([groupFeedEnabled, () => shell.value?.id], () => syncGroupRealtimeSubscription())
+
 // ─── Notification read-mark ───────────────────────────────────────────────────
 watch(
   () => shell.value?.id ?? null,
@@ -877,12 +936,14 @@ onMounted(() => {
   }
   registerReplyPostedHandler()
   startGroupFeedAutoRefresh()
+  startGroupRealtime()
 })
 
 onActivated(() => {
   if (!import.meta.client) return
   registerReplyPostedHandler()
   startGroupFeedAutoRefresh()
+  startGroupRealtime()
   if (postsFeedPosts.value.length > 0) {
     setTimeout(() => void postsFeedSoftRefreshNewer(), 300)
   } else if (groupFeedEnabled.value) {
@@ -896,11 +957,13 @@ onActivated(() => {
 onDeactivated(() => {
   unregisterReplyPostedHandler()
   stopGroupFeedAutoRefresh()
+  stopGroupRealtime()
 })
 
 onBeforeUnmount(() => {
   unregisterReplyPostedHandler()
   stopGroupFeedAutoRefresh()
+  stopGroupRealtime()
   if (appHeader.value?.title === (shell.value?.name || 'Group')) appHeader.value = null
 })
 </script>

@@ -25,6 +25,7 @@ import type {
   WsNotificationsDeletedPayload,
   WsNotificationsNewPayload,
   WsFeedNewPostPayload,
+  WsGroupNewPostPayload,
   WsPresenceStatusClearedPayload,
   WsPresenceStatusUpdatedPayload,
   WsPostsLiveUpdatedPayload,
@@ -253,6 +254,15 @@ export type GroupInviteCallback = {
 }
 
 /**
+ * Community-group feed realtime. A page subscribes to one or more group ids (room handshake);
+ * the server pushes the full post DTO when a new top-level post or repost lands in that group,
+ * so the feed can prepend it in place without a refetch.
+ */
+export type GroupFeedCallback = {
+  onNewPost?: (payload: WsGroupNewPostPayload) => void
+}
+
+/**
  * Daily check-in social-proof realtime. Emitted to the actor's followers + crew members when
  * someone in the viewer's circle answers today's question. The home hero uses this to bump
  * `totalToday` and prepend a face without polling.
@@ -350,10 +360,12 @@ export function usePresence() {
   const usersCallbacks = useState<Set<UsersCallback>>('presence-users-callbacks', () => new Set())
   const crewCallbacks = useState<Set<CrewCallback>>('presence-crew-callbacks', () => new Set())
   const groupInviteCallbacks = useState<Set<GroupInviteCallback>>('presence-group-invite-callbacks', () => new Set())
+  const groupFeedCallbacks = useState<Set<GroupFeedCallback>>('presence-group-feed-callbacks', () => new Set())
   const checkinsCallbacks = useState<Set<CheckinsCallback>>('presence-checkins-callbacks', () => new Set())
   const marvCallbacks = useState<Set<MarvCallback>>('presence-marv-callbacks', () => new Set())
   const articleSubRefs = ref(new Set<string>())
   const postSubRefs = ref(new Set<string>())
+  const groupFeedSubRefs = ref(new Set<string>())
   const onlineFeedSubscribed = useState(PRESENCE_ONLINE_FEED_SUBSCRIBED_KEY, () => false)
   const disconnectedDueToIdle = useState<boolean>(PRESENCE_DISCONNECTED_DUE_TO_IDLE_KEY, () => false)
   const notificationUndeliveredCount = useState<number>(NOTIFICATIONS_UNDELIVERED_COUNT_KEY, () => 0)
@@ -773,6 +785,44 @@ export function usePresence() {
     if (cleaned.length === 0) return
     for (const id of cleaned) articleSubRefs.value.delete(id)
     emitArticlesUnsubscribe(cleaned)
+  }
+
+  function addGroupFeedCallback(cb: GroupFeedCallback) {
+    groupFeedCallbacks.value.add(cb)
+  }
+
+  function removeGroupFeedCallback(cb: GroupFeedCallback) {
+    groupFeedCallbacks.value.delete(cb)
+  }
+
+  function emitGroupsSubscribe(groupIds: string[]) {
+    const socket = socketRef.value
+    if (socket?.connected && groupIds.length > 0) {
+      socket.emit('groups:subscribe', { groupIds })
+    }
+  }
+
+  function emitGroupsUnsubscribe(groupIds: string[]) {
+    const socket = socketRef.value
+    if (socket?.connected && groupIds.length > 0) {
+      socket.emit('groups:unsubscribe', { groupIds })
+    }
+  }
+
+  function subscribeGroups(groupIds: string[]) {
+    if (!import.meta.client) return
+    const cleaned = (groupIds ?? []).map((s) => String(s ?? '').trim()).filter(Boolean)
+    if (cleaned.length === 0) return
+    for (const id of cleaned) groupFeedSubRefs.value.add(id)
+    emitGroupsSubscribe(cleaned)
+  }
+
+  function unsubscribeGroups(groupIds: string[]) {
+    if (!import.meta.client) return
+    const cleaned = (groupIds ?? []).map((s) => String(s ?? '').trim()).filter(Boolean)
+    if (cleaned.length === 0) return
+    for (const id of cleaned) groupFeedSubRefs.value.delete(id)
+    emitGroupsUnsubscribe(cleaned)
   }
 
   function addAdminCallback(cb: AdminCallback) {
@@ -1313,6 +1363,13 @@ export function usePresence() {
       }
     })
 
+    socket.on('groups:newPost', (data: WsGroupNewPostPayload) => {
+      if (!groupFeedCallbacks.value.size) return
+      for (const cb of groupFeedCallbacks.value) {
+        cb.onNewPost?.(data)
+      }
+    })
+
     socket.on('articles:liveUpdated', (data: WsArticlesLiveUpdatedPayload) => {
       if (!articlesCallbacks.value.size) return
       for (const cb of articlesCallbacks.value) {
@@ -1456,6 +1513,10 @@ export function usePresence() {
       const pRefs = postSubRefs.value
       if (pRefs.size > 0) {
         emitPostsSubscribe([...pRefs])
+      }
+      const gRefs = groupFeedSubRefs.value
+      if (gRefs.size > 0) {
+        emitGroupsSubscribe([...gRefs])
       }
     }
     socket.on('connect', () => {
@@ -1728,6 +1789,10 @@ export function usePresence() {
     removeCrewCallback,
     addGroupInviteCallback,
     removeGroupInviteCallback,
+    addGroupFeedCallback,
+    removeGroupFeedCallback,
+    subscribeGroups,
+    unsubscribeGroups,
     addCheckinsCallback,
     removeCheckinsCallback,
     addMarvCallback,
