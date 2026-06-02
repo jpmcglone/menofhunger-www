@@ -29,7 +29,7 @@
         >
           <div
             :class="[
-              'relative overflow-hidden rounded-2xl moh-popover moh-card-matte',
+              'relative overflow-hidden rounded-2xl moh-card moh-card-matte',
               replyModalBorderClass,
             ]"
           >

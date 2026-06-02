@@ -8,6 +8,46 @@
       />
     </div>
     <div class="min-w-0 flex-1">
+      <!-- Group context chip (matches PostRow) — shows which group this post lives in. -->
+      <div
+        v-if="feedGroupTag"
+        class="relative mb-1.5 flex items-center"
+      >
+        <NuxtLink
+          :to="`/g/${encodeURIComponent(feedGroupTag.slug)}`"
+          class="inline-flex max-w-full items-center gap-1.5 rounded-full border moh-border bg-black/[0.025] py-0.5 pl-0.5 pr-2 -ml-0.5 text-left shadow-sm shadow-black/[0.03] transition-colors hover:bg-black/[0.05] dark:bg-white/[0.045] dark:shadow-black/20 dark:hover:bg-white/[0.075]"
+          :aria-label="`Group: ${feedGroupTag.name}`"
+          @click.stop
+          @mouseenter="onGroupEnter"
+          @mousemove="onGroupMove"
+          @mouseleave="onGroupLeave"
+        >
+          <div
+            class="h-[18px] w-[18px] shrink-0 overflow-hidden bg-gray-200 dark:bg-zinc-700 moh-img-outline"
+            :class="groupAvatarRoundClass"
+          >
+            <img
+              v-if="feedGroupTag.avatarImageUrl"
+              :src="feedGroupTag.avatarImageUrl"
+              alt=""
+              class="h-full w-full object-cover"
+              loading="lazy"
+            >
+            <div
+              v-else
+              class="flex h-full w-full items-center justify-center text-[8px] font-bold text-gray-500 dark:text-zinc-400"
+            >
+              {{ feedGroupInitials }}
+            </div>
+          </div>
+          <span class="text-[10px] font-semibold uppercase tracking-wide text-gray-400 dark:text-zinc-500" aria-hidden="true">
+            in
+          </span>
+          <span class="whitespace-nowrap text-xs font-semibold text-gray-700 dark:text-zinc-200">
+            {{ feedGroupTag.name }}
+          </span>
+        </NuxtLink>
+      </div>
       <div class="flex min-w-0 items-baseline gap-2 leading-[1.15] flex-wrap">
         <NuxtLink
           v-if="authorProfilePath"
@@ -78,6 +118,25 @@
         </NuxtLink>
         <span v-else class="shrink-0 text-sm moh-text-muted whitespace-nowrap">{{ createdAtShort }}</span>
       </div>
+      <!-- "Replying to" line (matches PostRow) — when this post is itself a reply. -->
+      <div
+        v-if="replyingToTargets.length > 0"
+        class="mt-0.5 flex flex-wrap items-center gap-x-1 text-[13px] leading-snug text-gray-500 dark:text-gray-400"
+      >
+        <span>Replying to</span>
+        <template v-for="(target, idx) in replyingToTargets" :key="target.username">
+          <NuxtLink
+            :to="`/u/${encodeURIComponent(target.username)}`"
+            class="font-medium hover:underline underline-offset-2"
+            :class="target.tierClass"
+            @mouseenter="target.onEnter"
+            @mousemove="target.onMove"
+            @mouseleave="target.onLeave"
+          >@{{ target.username }}</NuxtLink>
+          <span v-if="idx < replyingToTargets.length - 2" class="select-none">,</span>
+          <span v-else-if="idx === replyingToTargets.length - 2" class="select-none">and</span>
+        </template>
+      </div>
       <AppPostRowBody
         :body="post.body"
         :has-media="Boolean(post.media?.length)"
@@ -94,8 +153,11 @@
 </template>
 
 <script setup lang="ts">
-import type { FeedPost } from '~/types/api'
+import type { CommunityGroupShell, FeedPost } from '~/types/api'
 import { useUserOverlay } from '~/composables/useUserOverlay'
+import { groupPreviewToFeedShell } from '~/utils/community-group-preview'
+import { groupAvatarRoundClass as getGroupAvatarRoundClass } from '~/utils/avatar-rounding'
+import { userColorTier, userTierTextClass } from '~/utils/user-tier'
 
 const props = withDefaults(
   defineProps<{
@@ -105,6 +167,52 @@ const props = withDefaults(
   }>(),
   { contentOnly: false }
 )
+
+const groupAvatarRoundClass = getGroupAvatarRoundClass()
+
+// Group context for the post being replied to — mirrors PostRow's chip.
+// Unlike a feed row, this preview lives in a floating reply composer that can be
+// opened from anywhere (incl. the group's own wall), so we always show the chip:
+// the surrounding context isn't visible behind the sheet.
+const feedGroupTag = computed((): CommunityGroupShell | null => {
+  const gp = props.post.groupPreview ?? null
+  return gp ? groupPreviewToFeedShell(gp) : null
+})
+const feedGroupInitials = computed(() => {
+  const n = (feedGroupTag.value?.name ?? '').trim()
+  if (!n) return '?'
+  const parts = n.split(/\s+/).filter(Boolean)
+  if (parts.length >= 2) return (parts[0]![0]! + parts[1]![0]!).toUpperCase()
+  return n.slice(0, 2).toUpperCase()
+})
+const { onEnter: onGroupEnter, onMove: onGroupMove, onLeave: onGroupLeave } = useGroupPreviewTrigger({
+  shell: feedGroupTag,
+})
+
+// "Replying to" targets when the previewed post is itself a reply — mirrors PostRow.
+// Walk the pre-loaded parent chain and collect up to 3 unique, tier-colored usernames.
+const replyingToTargets = computed(() => {
+  if (!props.post.parentId) return []
+
+  const seen = new Set<string>()
+  const targets: Array<ReturnType<typeof useUserPreviewTrigger> & { username: string; tierClass: string }> = []
+
+  let node: FeedPost | undefined = props.post.parent
+  while (node && targets.length < 3) {
+    const username = node.author?.username ?? null
+    if (username && !seen.has(username)) {
+      seen.add(username)
+      const u = username
+      const tier = userColorTier(node.author ?? null)
+      const tierClass = userTierTextClass(tier, { fallback: 'text-blue-500 dark:text-blue-400' })
+      const { onEnter, onMove, onLeave } = useUserPreviewTrigger({ username: computed(() => u) })
+      targets.push({ username: u, tierClass, onEnter, onMove, onLeave })
+    }
+    node = node.parent
+  }
+
+  return targets
+})
 
 const { user: author } = useUserOverlay(computed(() => props.post.author))
 const displayName = computed(() => author.value?.name || author.value?.username || 'User')
