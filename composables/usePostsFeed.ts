@@ -202,6 +202,7 @@ export function usePostsFeed(options: UsePostsFeedOptions = {}) {
   const followingOnly = options.followingOnly ?? ref(false)
   const sort = options.sort ?? ref<FeedSort>('new')
   const forYou = options.forYou ?? ref(false)
+  const { flush: flushViews } = usePostViewTracker()
   const mediaOnly = options.mediaOnly ?? ref(false)
   const pageLimit = computed(() => (mediaOnly.value ? 24 : 30))
   const showAds = options.showAds ?? computed(() => true)
@@ -529,6 +530,13 @@ export function usePostsFeed(options: UsePostsFeedOptions = {}) {
     loadingIndicator.start()
     hardRefreshPromiseKey = requestKey
     hardRefreshPromise = (async () => {
+      // Flush pending view reports so the server has up-to-date PostView records before
+      // re-ranking. Without this the seen-decay score multiplier applies to the next request
+      // only after the 4-second batch timer fires, causing the same posts to appear on
+      // consecutive refreshes. Non-blocking: a flush failure must not prevent the fetch.
+      if (forYou.value && import.meta.client) {
+        try { await flushViews() } catch { /* non-blocking */ }
+      }
       await feedRefresh()
       loadedRequestKey = requestKey
       lastHardRefreshRequestKey.value = loadedRequestKey

@@ -155,5 +155,17 @@ export function usePostViewTracker() {
     })
   }
 
-  return { observe, markEngaged }
+  /**
+   * Immediately flush any pending view reports. Call before a hard feed refresh so the
+   * server has up-to-date PostView records and seen-decay applies to the very next request.
+   */
+  async function flush() {
+    await flushPending(apiFetchData as any, {
+      isAuthed: isAuthed.value,
+      anonId: anonViewId.value,
+      source: 'feed_scroll',
+    })
+  }
+
+  return { observe, markEngaged, flush }
 }
