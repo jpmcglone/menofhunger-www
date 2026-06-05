@@ -200,10 +200,10 @@ html.dark .moh-vignette::after {
   /* Media tile system — used by every post media surface (single image,
      single video, multi-image grid, gif). Keeping these centralized means
      the rounded corners and letterbox color stay in lockstep across components. */
-  --moh-media-radius: 1.5rem;        /* generous, soft squircle corners */
-  /* Opaque, tier-independent letterbox so a post's tier highlight (e.g. the
-     premium orange wash) never bleeds through the frame or transparent PNGs. */
-  --moh-media-bg: #efece5;
+  --moh-media-radius: 3rem;          /* large squircle — clips image corner decorations cleanly */
+  /* Use the primary surface token so the letterbox is always tone-matched to
+     the page surface and no tier highlight (e.g. premium orange) can bleed through. */
+  --moh-media-bg: var(--moh-surface-1);
 }
 
 html.dark {
@@ -253,10 +253,9 @@ html.dark {
   --moh-group-soft: rgba(56, 189, 248, 0.14);
   --moh-group-ring: rgba(56, 189, 248, 0.32);
 
-  /* Media tile system — dark mode overrides. Opaque charcoal so the letterbox
-     stays neutral and a post's tier highlight never bleeds through the frame
-     or transparent PNGs. Radius stays the same (set in :root). */
-  --moh-media-bg: #20262d;
+  /* Media tile system — dark mode: surface-1 token so letterbox matches the
+     page background and no tier highlight bleeds through. Radius set in :root. */
+  --moh-media-bg: var(--moh-surface-1);
 }
 
 /* NOTE: Do NOT remap premium → org based on the viewer.
