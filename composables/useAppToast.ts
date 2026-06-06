@@ -1,7 +1,7 @@
 import { PRIMARY_ONLYME_PURPLE, PRIMARY_PREMIUM_ORANGE, PRIMARY_VERIFIED_BLUE } from '~/utils/theme-tint'
 import { getSafeUserErrorMessage } from '~/utils/api-error'
 
-export type AppToastTone = 'public' | 'verifiedOnly' | 'premiumOnly' | 'onlyMe' | 'success' | 'error'
+export type AppToastTone = 'public' | 'verifiedOnly' | 'premiumOnly' | 'onlyMe' | 'group' | 'success' | 'error'
 
 export type AppToastAction = {
   /** Stable id for keying. Optional. */
@@ -107,6 +107,7 @@ function toneToBg(tone: AppToastTone): string {
   if (tone === 'verifiedOnly') return PRIMARY_VERIFIED_BLUE[500]
   if (tone === 'premiumOnly') return PRIMARY_PREMIUM_ORANGE[500]
   if (tone === 'onlyMe') return PRIMARY_ONLYME_PURPLE[500]
+  if (tone === 'group') return '#0ea5e9'
   if (tone === 'success') return '#16A34A'
   if (tone === 'error') return '#DC2626'
   // public / default: deep neutral
@@ -169,6 +170,8 @@ export function useAppToast() {
     if (toast.tone === 'premiumOnly') return '#ffffff'
     // Verified blue reads best with white text.
     if (toast.tone === 'verifiedOnly') return '#ffffff'
+    // Group sky blue reads best with white text.
+    if (toast.tone === 'group') return '#ffffff'
     const bg = bgFor(toast)
     return pickTextColorForBg(bg)
   }

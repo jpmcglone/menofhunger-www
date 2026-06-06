@@ -1,5 +1,6 @@
 import type { FeedPost } from '~/types/api'
 import { getApiErrorMessage } from '~/utils/api-error'
+import { buildPostedToastParams } from '~/utils/posted-toast'
 
 /**
  * Centralized manager for optimistic post submissions.
@@ -113,6 +114,9 @@ export function usePendingPostsManager() {
       entry.callbacks.replace(entry.localId, real)
       entry.onSuccess?.(real)
       REGISTRY.delete(entry.localId)
+      // Show a clickable "Posted · Tap to view" toast (skip replies and check-ins).
+      const toastParams = buildPostedToastParams(real, { skipReplies: true })
+      if (toastParams) toast.push(toastParams)
     } catch (e: unknown) {
       const msg = getApiErrorMessage(e) || 'Failed to post.'
       entry.status = 'failed'

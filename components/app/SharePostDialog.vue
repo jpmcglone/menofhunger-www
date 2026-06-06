@@ -1,0 +1,192 @@
+<template>
+  <ClientOnly>
+    <Teleport to="body">
+      <Transition
+        enter-active-class="transition-opacity duration-150 ease-out"
+        enter-from-class="opacity-0"
+        enter-to-class="opacity-100"
+        leave-active-class="transition-opacity duration-100 ease-in"
+        leave-from-class="opacity-100"
+        leave-to-class="opacity-0"
+      >
+        <div
+          v-if="open"
+          class="fixed inset-0 z-[9999] flex items-end justify-center bg-black/45 backdrop-blur-sm sm:items-center sm:px-4 sm:py-6"
+          role="presentation"
+          @click.self="close"
+        >
+          <Transition
+            appear
+            enter-active-class="transition-[opacity,transform] duration-200 ease-out"
+            enter-from-class="opacity-0 translate-y-4 sm:translate-y-2 sm:scale-95"
+            enter-to-class="opacity-100 translate-y-0 sm:scale-100"
+            leave-active-class="transition-[opacity,transform] duration-150 ease-in"
+            leave-from-class="opacity-100 translate-y-0 sm:scale-100"
+            leave-to-class="opacity-0 translate-y-4 sm:translate-y-2 sm:scale-95"
+          >
+            <section
+              v-if="open"
+              class="relative w-full max-w-md rounded-t-3xl bg-white text-left shadow-[0_24px_80px_rgba(0,0,0,0.35)] ring-1 ring-black/10 sm:rounded-3xl dark:bg-[color:var(--moh-surface-2)] dark:ring-white/15"
+              :style="{ paddingBottom: `calc(var(--moh-safe-bottom, 0px) + 1.5rem)` }"
+              role="dialog"
+              aria-modal="true"
+              :aria-labelledby="titleId"
+              @click.stop
+            >
+              <!-- Header -->
+              <header class="flex items-start justify-between gap-3 px-5 pt-5 pb-2">
+                <div class="min-w-0">
+                  <h2 :id="titleId" class="text-lg font-semibold tracking-tight text-gray-900 dark:text-gray-50">
+                    Share this post
+                  </h2>
+                  <p v-if="isCheckin && checkinPrompt" class="mt-0.5 text-xs moh-text-muted line-clamp-2">
+                    {{ checkinPrompt }}
+                  </p>
+                  <p v-else class="mt-0.5 text-xs moh-text-muted">
+                    Let others see what you wrote.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  class="-mr-1 -mt-1 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-gray-500 transition-colors hover:bg-black/5 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-white/10 dark:hover:text-gray-50"
+                  aria-label="Close"
+                  @click="close"
+                >
+                  <Icon name="tabler:x" aria-hidden="true" />
+                </button>
+              </header>
+
+              <!-- Post preview -->
+              <div class="px-5">
+                <AppEmbeddedPostPreview :preloaded-post="post" :enabled="false" />
+              </div>
+
+              <!-- Actions -->
+              <div class="mt-4 flex flex-col gap-2.5 px-5">
+                <button
+                  type="button"
+                  class="flex w-full items-center justify-center gap-2 rounded-2xl py-3 px-4 text-sm font-semibold transition-opacity active:opacity-75"
+                  :class="shareButtonClass"
+                  :disabled="sharing"
+                  @click="onShare"
+                >
+                  <Icon
+                    :name="canNativeShare ? 'tabler:share' : 'tabler:link'"
+                    class="text-base shrink-0"
+                    aria-hidden="true"
+                  />
+                  {{ canNativeShare ? 'Share' : 'Copy link' }}
+                </button>
+
+                <button
+                  v-if="canNativeShare"
+                  type="button"
+                  class="flex w-full items-center justify-center gap-2 rounded-2xl border moh-border py-3 px-4 text-sm font-semibold moh-text transition-opacity active:opacity-75 hover:bg-black/[0.04] dark:hover:bg-white/[0.06]"
+                  :disabled="copying"
+                  @click="onCopy"
+                >
+                  <Icon name="tabler:link" class="text-base shrink-0" aria-hidden="true" />
+                  Copy link
+                </button>
+              </div>
+            </section>
+          </Transition>
+        </div>
+      </Transition>
+    </Teleport>
+  </ClientOnly>
+</template>
+
+<script setup lang="ts">
+import type { FeedPost } from '~/types/api'
+import { siteConfig } from '~/config/site'
+
+const props = defineProps<{
+  open: boolean
+  post: FeedPost
+}>()
+
+const emit = defineEmits<{
+  (e: 'update:open', value: boolean): void
+}>()
+
+const titleId = `moh-share-post-${useId()}`
+const toast = useAppToast()
+const { share: nativeShare, isSupported: isNativeShareSupported } = useWebShare()
+const { copyText } = useCopyToClipboard()
+
+const isCheckin = computed(() => props.post.kind === 'checkin')
+const checkinPrompt = computed(() => (props.post.checkinPrompt ?? '').trim() || null)
+
+const shareUrl = computed(
+  () => `${siteConfig.url}/p/${encodeURIComponent(props.post.id)}`,
+)
+
+const canNativeShare = computed(() => isNativeShareSupported.value)
+
+const visibility = computed(() => props.post.visibility)
+
+const shareButtonClass = computed(() => {
+  if (props.post.communityGroupId) {
+    return 'bg-[color:var(--moh-group)] text-white'
+  }
+  if (visibility.value === 'premiumOnly') return 'moh-btn-premium moh-btn-tone text-white'
+  if (visibility.value === 'verifiedOnly') return 'moh-btn-verified moh-btn-tone text-white'
+  if (visibility.value === 'onlyMe') return 'moh-btn-onlyme moh-btn-tone text-white'
+  return 'bg-gray-900 text-white dark:bg-white dark:text-gray-900'
+})
+
+const sharing = ref(false)
+const copying = ref(false)
+
+async function onShare() {
+  if (sharing.value) return
+  sharing.value = true
+  try {
+    const shared = await nativeShare({
+      title: 'Men of Hunger',
+      text: props.post.body?.slice(0, 120) || 'Check out this post on Men of Hunger',
+      url: shareUrl.value,
+    })
+    // Only close the modal on a real share — not when the user cancels the share sheet.
+    if (shared) close()
+  } finally {
+    sharing.value = false
+  }
+}
+
+async function onCopy() {
+  if (copying.value) return
+  copying.value = true
+  try {
+    await copyText(shareUrl.value)
+    toast.push({ title: 'Link copied', tone: 'success', durationMs: 1600 })
+    close()
+  } catch {
+    toast.push({ title: 'Could not copy link', tone: 'error', durationMs: 1800 })
+  } finally {
+    copying.value = false
+  }
+}
+
+function close() {
+  emit('update:open', false)
+}
+
+useModalEscape(toRef(props, 'open'), close)
+
+watch(
+  () => props.open,
+  (open) => {
+    if (!import.meta.client) return
+    const root = document.documentElement
+    if (open) root.style.overflow = 'hidden'
+    else root.style.overflow = ''
+  },
+)
+
+onBeforeUnmount(() => {
+  if (!import.meta.client) return
+  document.documentElement.style.overflow = ''
+})
+</script>

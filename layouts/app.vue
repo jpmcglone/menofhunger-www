@@ -1469,6 +1469,12 @@ function onComposerPosted(payload: { id: string; visibility: string; post?: impo
     if (route.path !== '/only-me') {
       navigateTo('/only-me?posted=1')
     }
+  } else if (payload.post && payload.post.id && payload.post.kind === 'checkin') {
+    // Check-in posts: prepend to home feed, then navigate to the permalink so the
+    // share modal can open there and the user can share their answer right away.
+    prependToHomeFeed(payload.post)
+    prependToProfileFeed(payload.post)
+    navigateTo(`/p/${encodeURIComponent(payload.post.id)}?share=1`)
   } else if (payload.post && payload.post.id && !payload.post.communityGroupId) {
     // Prepend to home feed immediately and track in localInserts so it survives
     // the next hard refresh (home page uses keepalive → onActivated → refresh()).

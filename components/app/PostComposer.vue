@@ -401,6 +401,7 @@
 <script setup lang="ts">
 import { makeLocalId } from '~/composables/composer/types'
 import type { CreatePostData, PostStreakReward, PostVisibility, FeedPost, PostAuthor } from '~/types/api'
+import { buildPostedToastParams } from '~/utils/posted-toast'
 import { siteConfig } from '~/config/site'
 import type { CreateMediaPayload } from '~/composables/useComposerMedia'
 import { buildOptimisticPost } from '~/utils/optimistic-post'
@@ -1198,7 +1199,7 @@ const { submit: submitPost, submitting, submitError } = useFormSubmit(
 
     if (post?.id) {
       emit('posted', { id: post.id, visibility: vis, post })
-      pushPostedToast(vis, post.id)
+      pushPostedToast(post)
       if (streakReward) pushStreakToast(streakReward)
     }
   },
@@ -1210,28 +1211,9 @@ const { submit: submitPost, submitting, submitError } = useFormSubmit(
   },
 )
 
-function pushPostedToast(vis: PostVisibility, postId: string) {
-  toast.push({
-    title: props.replyTo ? 'Reply posted' : 'Posted',
-    message:
-      vis === 'premiumOnly'
-        ? 'Premium-only · Tap to view'
-        : vis === 'verifiedOnly'
-          ? 'Verified-only · Tap to view'
-          : vis === 'onlyMe'
-            ? 'Only you can see this · Tap to view'
-            : 'Tap to view',
-    tone:
-      vis === 'premiumOnly'
-        ? 'premiumOnly'
-        : vis === 'verifiedOnly'
-          ? 'verifiedOnly'
-          : vis === 'onlyMe'
-            ? 'onlyMe'
-            : 'public',
-    to: `/p/${encodeURIComponent(postId)}`,
-    durationMs: 2600,
-  })
+function pushPostedToast(post: FeedPost) {
+  const params = buildPostedToastParams(post, { isReply: Boolean(props.replyTo) })
+  if (params) toast.push(params)
 }
 
 /**

@@ -181,6 +181,12 @@
     </div>
   </div>
   </AppPageContent>
+
+  <AppSharePostDialog
+    v-if="post"
+    v-model:open="shareDialogOpen"
+    :post="post"
+  />
 </template>
 
 <script setup lang="ts">
@@ -269,6 +275,19 @@ function onDeleted() {
 
 const routeQuery = computed(() => route.query)
 const showReplyComposer = computed(() => routeQuery.value?.reply === '1' && !isOnlyMe.value && !isDeleted.value)
+
+// Share dialog: open automatically when ?share=1 is in the URL (e.g. after posting a check-in).
+const shareDialogOpen = ref(false)
+if (import.meta.client) {
+  onMounted(() => {
+    if (route.query.share === '1' && post.value) {
+      shareDialogOpen.value = true
+      // Strip the query param so a reload doesn't reopen the dialog.
+      const { share: _share, ...rest } = route.query
+      history.replaceState(history.state, '', route.path + (Object.keys(rest).length ? `?${new URLSearchParams(rest as Record<string, string>).toString()}` : ''))
+    }
+  })
+}
 
 const {
   threadParticipants,
