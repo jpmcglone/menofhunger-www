@@ -20,6 +20,7 @@ export function buildPostedToastParams(
   options: { isReply?: boolean; skipReplies?: boolean } = {},
 ): PostedToastParams | null {
   if (post.kind === 'checkin') return null
+  const isRepost = post.kind === 'repost'
   if (options.skipReplies && (options.isReply || Boolean(post.parentId))) return null
 
   const isGroup = Boolean(post.communityGroupId)
@@ -34,6 +35,11 @@ export function buildPostedToastParams(
         : vis === 'onlyMe'
           ? 'onlyMe'
           : 'public'
+
+  // Reposts get their own short copy — no visibility context, no edit hint.
+  if (isRepost) {
+    return { title: 'Reposted', message: 'Tap to view', tone, to: `/p/${encodeURIComponent(post.id)}`, durationMs: 4000 }
+  }
 
   // Top-level non-onlyMe posts can be edited within 30 minutes of creation (max 3 edits).
   // onlyMe posts have no time limit, so we skip the hint for them.
@@ -60,6 +66,6 @@ export function buildPostedToastParams(
     message,
     tone,
     to: `/p/${encodeURIComponent(post.id)}`,
-    durationMs: 3200,
+    durationMs: 4000,
   }
 }
