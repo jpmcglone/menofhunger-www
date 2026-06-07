@@ -188,8 +188,8 @@
 
       <template v-else>
         <AppInlineAlert v-if="error" class="mx-3 mt-3 sm:mx-4 sm:mt-4" severity="danger">
-          <!-- Demonstrates wrapping UserErrorMessage for prominent alert style while reusing sanitization -->
-          <UserErrorMessage :error="error" fallback="Failed to load feed." />
+          <!-- Demonstrates wrapping AppUserErrorMessage for prominent alert style while reusing sanitization -->
+          <AppUserErrorMessage :error="error" fallback="Failed to load feed." />
         </AppInlineAlert>
 
         <AppSubtleSectionLoader :loading="showMainLoader" min-height-class="min-h-[240px]">

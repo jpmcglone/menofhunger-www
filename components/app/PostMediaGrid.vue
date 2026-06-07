@@ -141,8 +141,8 @@
             :class="[
               itemClass(idx),
               interactive
-                ? 'moh-tap relative min-w-0 min-h-0 cursor-zoom-in overflow-hidden !bg-transparent !border-0 !p-0 focus:outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20 dark:focus-visible:ring-white/20'
-                : 'relative min-w-0 min-h-0 overflow-hidden',
+                ? 'moh-tap relative min-w-0 min-h-0 cursor-zoom-in overflow-hidden !rounded-none !bg-transparent !border-0 !p-0 focus:outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20 dark:focus-visible:ring-white/20'
+                : 'relative min-w-0 min-h-0 overflow-hidden !rounded-none',
             ]"
             :aria-label="interactive ? (m.kind === 'video' ? `View video ${idx + 1} of ${items.length}` : `View image ${idx + 1} of ${items.length}`) : undefined"
             @click.stop="interactive ? openAt($event, idx) : undefined"
@@ -150,7 +150,7 @@
             <AppImg
               v-if="m.kind !== 'video'"
               :src="m.url"
-              class="block h-full w-full object-cover object-center"
+              class="block h-full w-full object-cover object-center !rounded-none"
               :class="[imgClass(idx), hideThumbs ? 'opacity-0 transition-opacity duration-150' : 'opacity-100']"
               :alt="m.alt ?? ''"
               sizes="(max-width: 640px) 50vw, 360px"
@@ -160,7 +160,7 @@
             <template v-else>
               <AppImg
                 :src="posterFor(m) || m.url"
-                class="block h-full w-full object-cover object-center"
+                class="block h-full w-full object-cover object-center !rounded-none"
                 :class="[imgClass(idx), hideThumbs ? 'opacity-0 transition-opacity duration-150' : 'opacity-100']"
                 :alt="m.alt ?? ''"
                 sizes="(max-width: 640px) 50vw, 360px"

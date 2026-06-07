@@ -201,9 +201,10 @@ html.dark .moh-vignette::after {
      single video, multi-image grid, gif). Keeping these centralized means
      the rounded corners and letterbox color stay in lockstep across components. */
   --moh-media-radius: 3rem;          /* large squircle — clips image corner decorations cleanly */
-  /* Use the primary surface token so the letterbox is always tone-matched to
-     the page surface and no tier highlight (e.g. premium orange) can bleed through. */
-  --moh-media-bg: var(--moh-surface-1);
+  /* Transparent letterbox: the container frame should be invisible ("clear"),
+     so media reads as just the picture/video with rounded corners — never a
+     tinted box behind it. The frame still owns the radius + clipping. */
+  --moh-media-bg: transparent;
 }
 
 html.dark {
@@ -253,9 +254,9 @@ html.dark {
   --moh-group-soft: rgba(56, 189, 248, 0.14);
   --moh-group-ring: rgba(56, 189, 248, 0.32);
 
-  /* Media tile system — dark mode: surface-1 token so letterbox matches the
-     page background and no tier highlight bleeds through. Radius set in :root. */
-  --moh-media-bg: var(--moh-surface-1);
+  /* Media tile system — dark mode: transparent letterbox so the frame is
+     "clear" and only the media shows. Radius set in :root. */
+  --moh-media-bg: transparent;
 }
 
 /* NOTE: Do NOT remap premium → org based on the viewer.
@@ -373,8 +374,9 @@ input[type="reset"] {
     corner-shape: squircle;
   }
   .moh-media-frame--video {
-    /* Videos letterbox against pure black instead of the neutral surface tint. */
-    background-color: #000;
+    /* Keep the video frame transparent ("clear") to match images — any
+       letterbox area shows the page, not a tinted/black box. */
+    background-color: transparent;
   }
 
   /* Pause icon on listener avatars: plain icon, white with shadow for readability on photos */

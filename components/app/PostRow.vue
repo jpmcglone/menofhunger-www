@@ -204,12 +204,12 @@
             </template>
           </div>
 
-          <AppPostRowMoreMenu v-if="!isPendingRow" :items="moreMenuItems" :tooltip="moreTooltip" />
+          <AppPostRowMoreMenu v-if="!isPendingRow" :items="moreMenuItems" :tooltip="moreTooltip" :on-before-open="ensureAuthorFollowLoaded" />
         </div>
 
         <div
           v-if="!isDeletedPost && postView.kind === 'checkin' && postView.checkinPrompt"
-          class="mt-3 mb-3 flex items-start gap-2.5 rounded-xl border px-3 py-2.5"
+          class="mt-3 mb-3 inline-flex min-w-[12rem] max-w-full items-start gap-2.5 rounded-xl border px-3 py-2.5"
           style="background-color: var(--moh-checkin-soft); border-color: rgba(var(--moh-checkin-rgb), 0.3)"
         >
           <div
@@ -218,7 +218,7 @@
           >
             <Icon name="tabler:calendar-check" class="text-[13px]" aria-hidden="true" style="color: var(--moh-checkin)" />
           </div>
-          <div class="min-w-0 flex-1">
+          <div class="min-w-0">
             <div class="text-[10px] font-semibold uppercase tracking-wide" style="color: var(--moh-checkin); opacity: 0.75">{{ checkinPromptEyebrow }}</div>
             <div class="mt-0.5 text-xs sm:text-[13px] leading-snug moh-text">{{ postView.checkinPrompt }}</div>
           </div>
@@ -631,7 +631,11 @@
             class="inline-flex items-center"
             @click.capture="onMaybeGatedRightSideClick"
           >
-            <AppPostRowShareMenu :can-share="canShare" :tooltip="shareTooltip" :items="shareMenuItems" />
+            <AppPostRowShareMenu
+              :can-share="canShare"
+              :tooltip="shareTooltip"
+              :items="shareMenuItems"
+            />
           </div>
         </div>
 
@@ -1055,6 +1059,8 @@ const { apiFetchData } = useApiClient()
 const { show: showAuthActionModal } = useAuthActionModal()
 const boostState = useBoostState()
 const blockState = useBlockState()
+const followState = useFollowState()
+const { fetchUserPreview } = useUserPreview()
 
 const isOnlyMe = computed(() => postView.value.visibility === 'onlyMe')
 const viewerIsAdmin = computed(() => Boolean(user.value?.siteAdmin))
@@ -1064,6 +1070,27 @@ const viewerCanInteract = computed(() => {
   if (isOnlyMe.value && viewerIsAdmin.value && !isSelf.value) return false
   return true
 })
+
+// Follow status for the post author (sourced from shared follow state).
+const authorFollowRel = computed(() => followState.get(author.value?.id ?? null))
+const viewerFollowsAuthor = computed(() => Boolean(authorFollowRel.value?.viewerFollowsUser))
+
+const followPrefetchInflight = ref(false)
+async function ensureAuthorFollowLoaded() {
+  const id = author.value?.id
+  const username = author.value?.username
+  if (!id || !username || isSelf.value) return
+  if (followState.get(id) !== null || followPrefetchInflight.value) return
+  followPrefetchInflight.value = true
+  try {
+    const preview = await fetchUserPreview(username)
+    followState.set(id, preview.relationship)
+  } catch {
+    // leave label defaulted to Follow
+  } finally {
+    followPrefetchInflight.value = false
+  }
+}
 
 // Block status from the post's API response (server-computed).
 const viewerBlockStatus = computed(() => postView.value.viewerBlockStatus ?? null)
@@ -1300,6 +1327,18 @@ const moreMenuItems = computed<MenuItemWithIcon[]>(() => {
     })
   }
 
+  if (isAuthed.value && !isSelf.value && !authorBanned.value) {
+    const authorId = author.value?.id ?? null
+    const authorUsername = author.value?.username ?? null
+    if (authorId && authorUsername) {
+      items.push({
+        label: viewerFollowsAuthor.value ? `Unfollow @${authorUsername}` : `Follow @${authorUsername}`,
+        iconName: viewerFollowsAuthor.value ? 'tabler:user-minus' : 'tabler:user-plus',
+        command: () => void onToggleFollowAuthor(),
+      })
+    }
+  }
+
   if (isAuthed.value && !isSelf.value && !isGatedPost.value) {
     items.push({
       label: 'Report post',
@@ -1313,8 +1352,9 @@ const moreMenuItems = computed<MenuItemWithIcon[]>(() => {
     if (authorUserId && !authorBanned.value) {
       const isBlocked = blockState.isBlockedByMe(authorUserId)
         || viewerBlockStatus.value === 'viewer_blocked'
+      const blockHandle = author.value?.username ? `@${author.value.username}` : 'user'
       items.push({
-        label: isBlocked ? 'Unblock user' : 'Block user',
+        label: isBlocked ? `Unblock ${blockHandle}` : `Block ${blockHandle}`,
         iconName: isBlocked ? 'tabler:ban-off' : 'tabler:ban',
         class: isBlocked ? '' : 'text-red-600 dark:text-red-400',
         command: () => {
@@ -1769,6 +1809,34 @@ function onCommentClick() {
   showReplyModal(post)
 }
 
+async function onToggleFollowAuthor() {
+  const userId = author.value?.id
+  const username = author.value?.username
+  if (!userId || !username) return
+  if (viewerFollowsAuthor.value) {
+    const ok = await confirm({
+      header: 'Unfollow?',
+      message: `Unfollow @${username}?`,
+      confirmLabel: 'Unfollow',
+      confirmSeverity: 'danger',
+    })
+    if (!ok) return
+    try {
+      await followState.unfollow({ userId, username })
+      toast.push({ title: `Unfollowed @${username}`, tone: 'success', durationMs: 1400 })
+    } catch (e: unknown) {
+      toast.pushError(e, 'Failed to unfollow.')
+    }
+  } else {
+    try {
+      await followState.follow({ userId, username })
+      toast.push({ title: `Following @${username}`, tone: 'success', durationMs: 1400 })
+    } catch (e: unknown) {
+      toast.pushError(e, 'Failed to follow.')
+    }
+  }
+}
+
 async function handleBlockUser(userId: string) {
   try {
     await blockState.blockUser(userId)
@@ -1809,6 +1877,11 @@ onBeforeUnmount(() => {
 })
 
 const { copyText: copyToClipboard } = useCopyToClipboard()
+const { isPremium: viewerIsPremium } = useAuth()
+const { isSupported: nativeShareSupported } = useWebShare()
+const { openDialog: openSendViaChat } = useSendViaChat()
+const { openDialog: openBookmarkDialog } = useBookmarkDialog()
+
 function toastToneForPostVisibility(): import('~/composables/useAppToast').AppToastTone {
   const v = postView.value.visibility
   if (v === 'verifiedOnly') return 'verifiedOnly'
@@ -1816,8 +1889,27 @@ function toastToneForPostVisibility(): import('~/composables/useAppToast').AppTo
   if (v === 'onlyMe') return 'onlyMe'
   return 'public'
 }
-const shareMenuItems = computed<MenuItemWithIcon[]>(() => [
-  {
+
+const postMediaItems = computed(() => postView.value.media ?? [])
+const postHasVideo = computed(() => postMediaItems.value.some((m) => m.kind === 'video'))
+const postHasImage = computed(() => postMediaItems.value.some((m) => m.kind === 'image' || m.kind === 'gif'))
+
+const shareMenuItems = computed<MenuItemWithIcon[]>(() => {
+  const items: MenuItemWithIcon[] = []
+
+  // Send via chat — verified or premium users only
+  if (isAuthed.value && (viewerIsVerified.value || viewerIsPremium.value)) {
+    items.push({
+      label: 'Send via chat',
+      iconName: 'tabler:send',
+      command: () => {
+        openSendViaChat(props.post)
+      },
+    })
+  }
+
+  // Copy link — always visible when canShare
+  items.push({
     label: 'Copy link',
     iconName: 'tabler:link',
     command: async () => {
@@ -1829,8 +1921,68 @@ const shareMenuItems = computed<MenuItemWithIcon[]>(() => [
         toast.push({ title: 'Copy failed', tone: 'error', durationMs: 1800 })
       }
     },
-  },
-])
+  })
+
+  // Share via OS sheet — only when the browser supports navigator.share().
+  // We await nextTick so the menu finishes closing before the sheet opens;
+  // modern browsers preserve user activation across microtasks so navigator.share()
+  // remains permitted after the await.
+  if (nativeShareSupported.value) {
+    const url = postShareUrl.value
+    items.push({
+      label: 'Share via…',
+      iconName: 'tabler:share-2',
+      command: async () => {
+        if (!import.meta.client || !navigator.share) return
+        await nextTick()
+        navigator.share({ title: 'Men of Hunger', url }).catch(() => {})
+      },
+    })
+  }
+
+  // Bookmark to folder — authed users only
+  if (isAuthed.value) {
+    items.push({
+      label: 'Bookmark to folder',
+      iconName: 'tabler:bookmark',
+      command: () => {
+        openBookmarkDialog({
+          post: props.post,
+          hasBookmarked: Boolean(postView.value.viewerHasBookmarked),
+          collectionIds: (postView.value.viewerBookmarkCollectionIds ?? []).filter(Boolean),
+          onChange(state, delta) {
+            onBookmarkStateChanged({ hasBookmarked: state.hasBookmarked, collectionIds: state.collectionIds })
+            if (delta !== 0) onBookmarkCountDelta(delta)
+          },
+        })
+      },
+    })
+  }
+
+  // Post video / Post image — verified viewers, only when the post has that media type
+  if (viewerIsVerified.value) {
+    if (postHasVideo.value) {
+      items.push({
+        label: 'Post video',
+        iconName: 'tabler:video',
+        command: () => {
+          onRepostMenuQuote()
+        },
+      })
+    }
+    if (postHasImage.value) {
+      items.push({
+        label: 'Post image',
+        iconName: 'tabler:photo',
+        command: () => {
+          onRepostMenuQuote()
+        },
+      })
+    }
+  }
+
+  return items
+})
 
 // ─── Live "is replying" indicator ────────────────────────────────────────────
 const { typingUsers } = usePostTyping(computed(() => postView.value.id))

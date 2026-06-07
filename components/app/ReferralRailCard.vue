@@ -20,9 +20,9 @@
         </p>
 
         <template v-if="referralCode">
-          <div class="rounded-2xl border moh-border bg-[rgba(var(--moh-premium-rgb),0.07)] px-4 py-3 text-center dark:bg-[rgba(var(--moh-premium-rgb),0.12)]">
-            <div class="text-[10px] font-semibold uppercase tracking-wide moh-text-muted">Your code</div>
-            <div class="mt-1 font-mono text-2xl font-black tracking-[0.16em] text-[var(--moh-premium)]">
+          <div class="rounded-2xl bg-[var(--moh-premium)] px-4 py-3 text-center">
+            <div class="text-[10px] font-semibold uppercase tracking-wide text-white/70">Your code</div>
+            <div class="mt-1 font-mono font-black tracking-[0.16em] text-white leading-tight" :style="{ fontSize: codeFontSize }">
               {{ referralCode }}
             </div>
           </div>
@@ -107,6 +107,14 @@ const showCard = computed(() => {
 })
 
 const referralCode = computed(() => (billingMe.value?.referralCode ?? '').trim())
+const codeFontSize = computed(() => {
+  const len = referralCode.value.length
+  if (len <= 6) return '1.5rem'
+  if (len <= 10) return '1.25rem'
+  if (len <= 14) return '1rem'
+  if (len <= 17) return '0.875rem'
+  return '0.75rem'
+})
 const shareUrl = computed(() => {
   const code = referralCode.value
   if (!code) return ''

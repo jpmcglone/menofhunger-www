@@ -59,7 +59,7 @@
       </div>
 
       <div v-else class="text-sm moh-text-muted">
-        <UserErrorMessage :error="error" fallback="Failed to load leaderboard." />
+        <AppUserErrorMessage :error="error" fallback="Failed to load leaderboard." />
         <p v-if="!error">No streaks yet.</p>
       </div>
     </template>

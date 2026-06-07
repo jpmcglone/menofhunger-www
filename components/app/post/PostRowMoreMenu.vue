@@ -7,7 +7,7 @@
       aria-label="More"
       aria-haspopup="true"
       v-tooltip.bottom="tooltip"
-      @click.stop="toggle($event)"
+      @click.stop="onButtonClick($event)"
     >
       <Icon name="tabler:dots" class="text-[18px]" aria-hidden="true" />
     </button>
@@ -31,11 +31,22 @@ const props = defineProps<{
   // PrimeVue tooltip binding accepts objects; keep this flexible.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   tooltip: any
+  onBeforeOpen?: () => void | Promise<void>
 }>()
 
 const items = computed(() => props.items ?? [])
 const tooltip = computed(() => props.tooltip)
 
 const { mounted, menuRef, toggle } = useAutoToggleMenu()
+
+function onButtonClick(event: MouseEvent) {
+  // Toggle must be called synchronously so PrimeVue can anchor the overlay to
+  // the click event. Fire the prefetch in the background — since menu items are
+  // reactive, the label updates in the already-open menu once the fetch settles.
+  toggle(event)
+  if (props.onBeforeOpen) {
+    void Promise.resolve(props.onBeforeOpen())
+  }
+}
 </script>
 

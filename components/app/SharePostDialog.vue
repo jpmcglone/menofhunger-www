@@ -56,9 +56,9 @@
                 </button>
               </header>
 
-              <!-- Post preview -->
-              <div class="px-5">
-                <AppEmbeddedPostPreview :preloaded-post="post" :enabled="false" />
+              <!-- Post preview — tapping navigates to the post and closes the dialog -->
+              <div class="px-5" @click="close">
+                <AppEmbeddedPostPreview :preloaded-post="post" />
               </div>
 
               <!-- Actions -->

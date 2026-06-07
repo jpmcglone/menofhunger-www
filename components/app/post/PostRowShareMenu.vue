@@ -1,15 +1,15 @@
 <template>
-  <div>
+  <div class="flex items-center">
     <button
+      ref="shareButtonRef"
       type="button"
       class="moh-tap moh-pressable inline-flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-full transition-colors moh-surface-hover"
       :class="canShare ? 'cursor-pointer' : 'cursor-default opacity-60'"
       aria-label="Share"
       v-tooltip.bottom="tooltip"
-      @click="canShare ? toggle($event) : null"
+      @click="onShareButtonClick"
     >
       <svg viewBox="0 0 24 24" class="h-5 w-5" aria-hidden="true">
-        <!-- Twitter-ish share: arrow up out of tray -->
         <path
           d="M12 3v10"
           fill="none"
@@ -35,7 +35,8 @@
         />
       </svg>
     </button>
-    <Menu v-if="mounted" ref="menuRef" :model="items" popup>
+
+    <Menu v-if="mounted" ref="menuRef" :model="menuItems" popup>
       <template #item="{ item, props }">
         <a v-bind="props.action" class="flex items-center gap-2">
           <Icon v-if="item.iconName" :name="item.iconName" aria-hidden="true" />
@@ -50,21 +51,23 @@
 import type { MenuItem } from 'primevue/menuitem'
 import { useAutoToggleMenu } from '~/composables/useAutoToggleMenu'
 
+type MenuItemWithIcon = MenuItem & { iconName?: string }
+
 const props = defineProps<{
   canShare: boolean
-  items: MenuItem[]
+  items: MenuItemWithIcon[]
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   tooltip: any
 }>()
 
-const emit = defineEmits<{
-  (e: 'copyLink'): void
-}>()
-
 const canShare = computed(() => Boolean(props.canShare))
-const tooltip = computed(() => props.tooltip)
-const items = computed(() => props.items ?? [])
+const menuItems = computed(() => props.items ?? [])
 
 const { mounted, menuRef, toggle } = useAutoToggleMenu()
-</script>
+const shareButtonRef = ref<HTMLButtonElement | null>(null)
 
+function onShareButtonClick(event: MouseEvent) {
+  if (!canShare.value) return
+  toggle(event)
+}
+</script>

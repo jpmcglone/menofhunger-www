@@ -2,7 +2,9 @@
  * Tracks which posts the logged-in user has seen and reports them to the API.
  *
  * Scroll-based views: attach an IntersectionObserver per post element.
- * A post is considered "viewed" when ≥50% of it is visible for ≥1 second.
+ * A post is considered "viewed" when it stays visible for ≥1 continuous second —
+ * either ≥50% of the row is on screen, or (for posts taller than the viewport
+ * allows) at least VISIBLE_PX_FALLBACK pixels of it are on screen.
  *
  * Engagement-based views (boost, bookmark, comment): call markEngaged(postId)
  * directly — these are flushed immediately rather than batched.
@@ -13,6 +15,15 @@
 const FLUSH_INTERVAL_MS = 4_000
 const VISIBILITY_THRESHOLD = 0.5
 const VISIBILITY_DWELL_MS = 1_000
+/**
+ * Tall-post fallback: a post taller than the viewport can never reach
+ * VISIBILITY_THRESHOLD on screen at once, so it also counts as viewable once at
+ * least this many CSS pixels are continuously visible (mirrors the MRC
+ * large-creative viewability exception). Keeps long posts from being undercounted.
+ */
+const VISIBLE_PX_FALLBACK = 400
+/** Fine-grained thresholds so the observer fires often enough to evaluate the pixel fallback while scrolling. */
+const OBSERVER_THRESHOLDS = Array.from({ length: 21 }, (_, i) => i / 20)
 const BATCH_MAX = 50
 /** Don't re-send the same post within this window (reduces redundant API calls on scroll bounce). */
 const DEDUPE_WINDOW_MS = 60_000
@@ -89,7 +100,8 @@ export function usePostViewTracker() {
 
   /**
    * Attach an IntersectionObserver to a post element.
-   * When ≥50% is visible for ≥1s all postIds are added to the batch queue.
+   * When the element stays visible for ≥1s (≥50% of the row, or ≥VISIBLE_PX_FALLBACK
+   * pixels for tall posts) all postIds are added to the batch queue.
    * Returns a cleanup function — call it on unmount or when el changes.
    * Pass multiple postIds to track a thread chain (all enqueued together).
    */
@@ -110,7 +122,13 @@ export function usePostViewTracker() {
         const entry = entries[0]
         if (!entry) return
 
-        if (entry.isIntersecting && entry.intersectionRatio >= VISIBILITY_THRESHOLD) {
+        // Count as on-screen when at least half the row is visible, OR enough raw
+        // pixels are visible (so tall posts that can't fit 50% on screen still count).
+        const visibleEnough
+          = entry.intersectionRatio >= VISIBILITY_THRESHOLD
+          || entry.intersectionRect.height >= VISIBLE_PX_FALLBACK
+
+        if (entry.isIntersecting && visibleEnough) {
           if (!dwellTimer) {
             dwellTimer = setTimeout(() => {
               enqueuePosts(ids)
@@ -124,7 +142,7 @@ export function usePostViewTracker() {
           }
         }
       },
-      { threshold: VISIBILITY_THRESHOLD },
+      { threshold: OBSERVER_THRESHOLDS },
     )
 
     observer.observe(el)

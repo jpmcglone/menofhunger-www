@@ -121,6 +121,13 @@
     <AppPremiumMediaModal />
     <AppUnsavedDraftPromptModal />
     <AppReplyModal />
+    <AppSharePostDialog
+      v-if="sharePost"
+      v-model:open="shareDialogOpen"
+      :post="sharePost"
+    />
+    <AppPostSendViaChatDialog />
+    <AppPostBookmarkFolderDialog />
     <AppKeyboardShortcutsModal />
 
     <!-- Global full-screen emoji float overlay — rendered outside any clipping ancestor.
@@ -682,7 +689,7 @@
                         </div>
 
                         <div v-else class="text-sm moh-text-muted">
-                          <UserErrorMessage :error="whoToFollowError" fallback="Failed to load suggestions." />
+                          <AppUserErrorMessage :error="whoToFollowError" fallback="Failed to load suggestions." />
                           <p v-if="!whoToFollowError">No suggestions yet.</p>
                           <NuxtLink to="/explore" class="inline-block mt-2 font-medium hover:underline">
                             Explore people
@@ -1156,6 +1163,9 @@ const composerInitialText = ref<string | null>(null)
 const composerSourceOnlyMePost = ref<FeedPost | null>(null)
 const composerIsFromOnlyMe = computed(() => Boolean(composerSourceOnlyMePost.value?.id))
 const composerCustomPlaceholder = ref<string | null>(null)
+
+const shareDialogOpen = ref(false)
+const sharePost = ref<FeedPost | null>(null)
 const composerCustomGroupName = ref<string | null>(null)
 const composerCustomAllowedVisibilities = ref<PostVisibility[] | null>(null)
 const composerCustomDisableMedia = ref(false)
@@ -1470,11 +1480,12 @@ function onComposerPosted(payload: { id: string; visibility: string; post?: impo
       navigateTo('/only-me?posted=1')
     }
   } else if (payload.post && payload.post.id && payload.post.kind === 'checkin') {
-    // Check-in posts: prepend to home feed, then navigate to the permalink so the
-    // share modal can open there and the user can share their answer right away.
+    // Check-in posts: prepend to home feed and open the share dialog in place —
+    // no navigation so the user stays on the current page.
     prependToHomeFeed(payload.post)
     prependToProfileFeed(payload.post)
-    navigateTo(`/p/${encodeURIComponent(payload.post.id)}?share=1`)
+    sharePost.value = payload.post
+    shareDialogOpen.value = true
   } else if (payload.post && payload.post.id && !payload.post.communityGroupId) {
     // Prepend to home feed immediately and track in localInserts so it survives
     // the next hard refresh (home page uses keepalive → onActivated → refresh()).
