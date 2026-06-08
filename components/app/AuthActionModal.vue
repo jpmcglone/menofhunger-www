@@ -17,7 +17,10 @@
 const { open, kind, action, hide } = useAuthActionModal()
 
 const title = computed(() => {
-  if (kind.value === 'login') return 'Log in to continue'
+  if (kind.value === 'login') {
+    if (action.value === 'read') return 'Log in to read'
+    return 'Log in to continue'
+  }
   if (kind.value === 'premium') {
     if (action.value === 'article-boost') return 'Premium required to boost'
     if (action.value === 'article-react') return 'Premium required to react'
@@ -38,6 +41,7 @@ const title = computed(() => {
 
 const message = computed(() => {
   if (kind.value === 'login') {
+    if (action.value === 'read') return 'This post is for members. Log in to read it.'
     if (action.value === 'post') return 'You need to log in to post.'
     if (action.value === 'comment' || action.value === 'article-comment') return 'You need to log in to reply.'
     if (action.value === 'bookmark') return 'You need to log in to save posts.'

@@ -385,12 +385,7 @@ const { dayKey: etDayKey } = useEasternMidnightRollover()
 
 const { state: checkinState, loading: checkinLoading, error: checkinError, refresh: refreshCheckin, create: createCheckin } = useDailyCheckin()
 const checkinVisibility = ref<CheckinAllowedVisibility>('verifiedOnly')
-const composerVisibility = useCookie<PostVisibility>('moh.post.visibility.v1', {
-  default: () => 'public',
-  sameSite: 'lax',
-  path: '/',
-  maxAge: 60 * 60 * 24 * 365,
-})
+const { visibility: composerVisibility } = useComposerVisibility()
 
 const checkinAllowedVisibilities = computed<CheckinAllowedVisibility[]>(() => {
   const allowed = checkinState.value?.allowedVisibilities ?? []

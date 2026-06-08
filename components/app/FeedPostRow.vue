@@ -68,7 +68,7 @@
       @edited="$emit('edited', $event)"
       @group-pin-changed="$emit('groupPinChanged')"
     >
-      <template v-if="showCollapsedFooter" #threadFooter>
+      <template v-if="showCollapsedFooter && !hideReplyFooters" #threadFooter>
         <NuxtLink
           :to="`/p/${encodeURIComponent(rootPostId!)}`"
           class="inline-flex items-center gap-2 rounded-lg px-2 py-1 text-sm font-semibold text-gray-700 transition-colors moh-surface-hover dark:text-gray-200 tabular-nums"
@@ -115,8 +115,9 @@
       >
         <!-- Suppress the "View N more replies" footer on the highlighted leaf:
              on /p/:id those replies are already rendered in the Replies section
-             below, so the footer would be a misleading self-link. -->
-        <template v-if="hiddenRepliesForIndex(i) > 0 && chain[i]!.id !== highlightedPostId" #threadFooter>
+             below, so the footer would be a misleading self-link.
+             Also suppressed when hideReplyFooters is set (e.g. check-in day feeds). -->
+        <template v-if="!hideReplyFooters && hiddenRepliesForIndex(i) > 0 && chain[i]!.id !== highlightedPostId" #threadFooter>
           <NuxtLink
             :to="`/p/${encodeURIComponent(chain[i]!.id)}`"
             class="inline-flex items-center gap-2 rounded-lg px-2 py-1 text-sm font-semibold text-gray-700 transition-colors moh-surface-hover dark:text-gray-200 tabular-nums"
@@ -158,6 +159,8 @@ const props = withDefaults(
     subtleBorderBottom?: boolean
     /** Hide the extra thread footer when the surrounding feed already shows comment counts. */
     showCollapsedRepliesFooter?: boolean
+    /** Suppress all "View N more replies" footers (e.g. on day-specific check-in feeds). */
+    hideReplyFooters?: boolean
   }>(),
   {
     highlightedPostId: null,

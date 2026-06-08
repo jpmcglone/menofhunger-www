@@ -1,5 +1,3 @@
-import type { PostVisibility } from '~/types/api'
-
 /**
  * Injects global CSS variables `--moh-scope-bg` and `--moh-scope-text` onto <html>
  * that mirror the active composer visibility. Because useHead runs its reactive
@@ -12,11 +10,7 @@ import type { PostVisibility } from '~/types/api'
  * Call this once from app.vue (the layout) so it is always active.
  */
 export function useComposerScopeTint() {
-  const visibility = useCookie<PostVisibility>('moh.post.visibility.v1', {
-    default: () => 'public',
-    sameSite: 'lax',
-    path: '/',
-  })
+  const { visibility } = useComposerVisibility()
 
   useHead({
     style: [

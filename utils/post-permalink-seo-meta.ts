@@ -143,6 +143,10 @@ export function computePostPermalinkSeo(input: PostPermalinkSeoInput): PostPerma
   const isOnlyMePost = visibility === 'onlyMe'
   const pollMetaPublic = pollMetaPublicFromPost(post, isPublicPost)
 
+  // Check-in metadata — always public regardless of gating level.
+  const isCheckin = post?.kind === 'checkin'
+  const checkinPrompt = (post?.checkinPrompt ?? '').trim() || null
+
   // Resolve a usable group reference. We only surface group info on non-private
   // posts — onlyMe shares should not leak which group an author belongs to.
   const groupRef = (() => {
@@ -183,6 +187,12 @@ export function computePostPermalinkSeo(input: PostPermalinkSeoInput): PostPerma
     const at = atAuthor(p)
     if (isOnlyMePost) {
       title = at ? `Private post — ${at}` : 'Private post'
+    } else if (isCheckin && checkinPrompt) {
+      // For check-in posts, the prompt is always the primary title signal — it is
+      // public metadata regardless of tier gating and must never be truncated.
+      const bodyText = (bodyTextSansLinks ?? '').trim()
+      const answerSnip = !isTierGated && bodyText ? ` — ${excerpt(bodyText, 60)}` : ''
+      title = at ? `${checkinPrompt}${answerSnip} · ${at}` : `${checkinPrompt}${answerSnip}`
     } else if (isTierGated) {
       const snip = tierShareSnippet(p)
       if (snip) title = at ? `${excerpt(snip, 58)} — ${at}` : excerpt(snip, 72)
@@ -238,6 +248,14 @@ export function computePostPermalinkSeo(input: PostPermalinkSeoInput): PostPerma
     const at = atAuthor(p)
     if (isOnlyMePost) {
       description = at ? `Private post by ${at} on ${siteConfig.name}.` : 'This post is private.'
+    } else if (isCheckin && checkinPrompt) {
+      // Check-in prompt is always the leading line. The user's answer (body) follows
+      // for public posts; a tier hint follows for gated ones.
+      const gate = isTierGated ? ` ${gateLine}` : ''
+      const bodyText = (bodyTextSansLinks ?? '').trim()
+      const snip = isTierGated ? tierShareSnippet(p) : bodyText
+      const answerPart = snip ? ` ${excerpt(snip, DESC_PUBLIC_MAX - checkinPrompt.length - gate.length - 4)}` : ''
+      description = excerpt(`${checkinPrompt}${answerPart}${gate}`, DESC_PUBLIC_MAX) || checkinPrompt
     } else if (isTierGated) {
       const snip = tierShareSnippet(p)
       const gate = gateLine
@@ -412,7 +430,9 @@ export function computePostPermalinkSeo(input: PostPermalinkSeoInput): PostPerma
       const v = p.visibility
       const isAccessibleForFree = v !== 'verifiedOnly' && v !== 'premiumOnly' && v !== 'onlyMe'
       const headline = isTierGated
-        ? excerpt(tierShareSnippet(p) || `Post by @${username || 'user'}`, 90)
+        ? (isCheckin && checkinPrompt)
+            ? checkinPrompt
+            : excerpt(tierShareSnippet(p) || `Post by @${username || 'user'}`, 90)
         : `Private post — @${username || 'user'}`
       const article: any = {
         '@type': 'Article',
@@ -460,7 +480,9 @@ export function computePostPermalinkSeo(input: PostPermalinkSeoInput): PostPerma
     if (!images.length && avatarUrl) images.push(toAbs(avatarUrl))
     images.push(toAbs(POST_PERMALINK_LOGO_OG))
 
-    const headlineBase = excerpt(bodyTextSansLinks || 'Post', 90)
+    const headlineBase = (isCheckin && checkinPrompt)
+      ? checkinPrompt
+      : excerpt(bodyTextSansLinks || 'Post', 90)
     const headline = pollMetaPublic ? `Poll: ${headlineBase}` : headlineBase
     const article: any = {
       '@type': 'Article',

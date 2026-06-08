@@ -121,6 +121,7 @@ const { items: posts, nextCursor, loading, loadingMore, error, refresh, loadMore
       kind: 'checkin',
       visibility: 'all',
       followingOnly: false,
+      includeSelf: true,
     },
   }),
   getItemId: (p) => p.id,

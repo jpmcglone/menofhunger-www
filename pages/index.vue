@@ -370,6 +370,7 @@
             <div
               v-for="(post, i) in featuredTopPosts"
               :key="post.id"
+              :ref="(el) => setLandingPostCardEl(i, el)"
               class="landing-top-post-card group relative min-h-[12.5rem] cursor-pointer overflow-hidden rounded-2xl border border-gray-200 bg-white/80 shadow-sm shadow-black/[0.04] transition-[border-color,box-shadow] duration-200 ease-out hover:border-gray-300 hover:shadow-[0_18px_50px_rgba(15,23,42,0.10)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-400 dark:border-white/[0.08] dark:bg-zinc-950/55 dark:shadow-black/25 dark:hover:border-white/[0.18]"
               role="link"
               tabindex="0"
@@ -840,7 +841,25 @@ const featuredTopPosts = computed<LandingTopPost[]>(() => {
   return pickDistinctAuthorPosts(topPostsThisWeek.value, 3)
 })
 
-onMounted(() => {
+const { observe: observePost } = usePostViewTracker()
+const landingPostCardEls: Array<HTMLElement | null> = []
+const landingPostCleanups: Array<() => void> = []
+
+function setLandingPostCardEl(i: number, el: unknown) {
+  landingPostCardEls[i] = el instanceof HTMLElement ? el : null
+}
+
+function attachLandingPostObservers() {
+  for (const fn of landingPostCleanups.splice(0)) fn()
+  featuredTopPosts.value.forEach((post, i) => {
+    const el = landingPostCardEls[i] ?? null
+    if (!el || post.viewerCanAccess === false) return
+    const cleanup = observePost(post.id, el)
+    if (cleanup) landingPostCleanups.push(cleanup)
+  })
+}
+
+onMounted(async () => {
   const pool = [...topPostsThisWeek.value]
   for (let i = pool.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1))
@@ -849,6 +868,12 @@ onMounted(() => {
     pool[j] = tmp
   }
   clientFeaturedTopPosts.value = pickDistinctAuthorPosts(pool, 3)
+  await nextTick()
+  attachLandingPostObservers()
+})
+
+onBeforeUnmount(() => {
+  for (const fn of landingPostCleanups.splice(0)) fn()
 })
 
 function formatLandingCount(value: number): string {

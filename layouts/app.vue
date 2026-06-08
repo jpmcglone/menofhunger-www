@@ -1210,25 +1210,14 @@ const composerSheetPlacementStyle = computed<Record<string, string>>(() => {
   // always a top-of-screen modal aligned with the center column.
   return { top: '0.75rem', bottom: 'auto' }
 })
-const composerVisibility = useCookie<'public' | 'verifiedOnly' | 'premiumOnly' | 'onlyMe'>('moh.post.visibility.v1', {
-  default: () => 'public',
-  sameSite: 'lax',
-  path: '/',
-  maxAge: 60 * 60 * 24 * 365,
-})
+const { visibility: composerVisibility, feedVisibility: composerNonOnlyMeVisibility } = useComposerVisibility()
 
 // Drives --moh-scope-bg / --moh-scope-text on <html> synchronously so that
 // .moh-btn-scope buttons (nav Post, check-in) snap to the new color at the
 // same instant as the PostComposer tint, without waiting for a Vue render flush.
 useComposerScopeTint()
 
-// Persist the last non-onlyMe posting visibility so "publish from drafts" never defaults to onlyMe.
-const composerNonOnlyMeVisibility = useCookie<'public' | 'verifiedOnly' | 'premiumOnly'>('moh.post.visibility.feed.v1', {
-  default: () => 'public',
-  sameSite: 'lax',
-  path: '/',
-  maxAge: 60 * 60 * 24 * 365,
-})
+// Keep the non-onlyMe shadow in sync so "publish from drafts" never defaults to onlyMe.
 watch(
   composerVisibility,
   (v) => {

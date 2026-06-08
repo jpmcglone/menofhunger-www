@@ -245,11 +245,12 @@ watch(
 
 // Direct permalink visit = user saw this post (and full thread if a reply).
 // Gated posts (viewerCanAccess === false) are excluded — viewer hasn't read the content.
+// Logged-out visitors are tracked via the anon_id cookie (handled inside usePostViewTracker).
 const { markEngaged } = usePostViewTracker()
 watch(
   () => post.value,
   (p) => {
-    if (!import.meta.client || !p?.id || !isAuthed.value) return
+    if (!import.meta.client || !p?.id) return
     const chainIds: string[] = []
     let cur: FeedPost | undefined = p
     while (cur?.id) {

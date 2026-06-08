@@ -207,10 +207,14 @@
           <AppPostRowMoreMenu v-if="!isPendingRow" :items="moreMenuItems" :tooltip="moreTooltip" :on-before-open="ensureAuthorFollowLoaded" />
         </div>
 
-        <div
+        <component
+          :is="postView.checkinDayKey ? NuxtLink : 'div'"
           v-if="!isDeletedPost && postView.kind === 'checkin' && postView.checkinPrompt"
-          class="mt-3 mb-3 inline-flex min-w-[12rem] max-w-full items-start gap-2.5 rounded-xl border px-3 py-2.5"
+          :to="postView.checkinDayKey ? `/check-ins/day/${postView.checkinDayKey}` : undefined"
+          class="mt-3 mb-3 inline-flex min-w-[12rem] max-w-full items-start gap-2.5 rounded-xl border px-3 py-2.5 transition-opacity hover:opacity-80"
+          :class="postView.checkinDayKey ? 'cursor-pointer' : ''"
           style="background-color: var(--moh-checkin-soft); border-color: rgba(var(--moh-checkin-rgb), 0.3)"
+          @click.stop
         >
           <div
             class="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full"
@@ -222,7 +226,7 @@
             <div class="text-[10px] font-semibold uppercase tracking-wide" style="color: var(--moh-checkin); opacity: 0.75">{{ checkinPromptEyebrow }}</div>
             <div class="mt-0.5 text-xs sm:text-[13px] leading-snug moh-text">{{ postView.checkinPrompt }}</div>
           </div>
-        </div>
+        </component>
 
         <div
           v-if="isDeletedPost"
@@ -245,11 +249,13 @@
               :visibility="postView.visibility"
             />
           </div>
-          <div
-            class="mt-2 flex items-center gap-2.5 rounded-xl border px-3.5 py-3"
+          <button
+            type="button"
+            class="mt-2 flex w-full items-center gap-2.5 rounded-xl border px-3.5 py-3 text-left transition-opacity duration-150 hover:opacity-80 active:opacity-60"
             :class="postView.visibility === 'premiumOnly'
               ? 'border-orange-200 bg-orange-50 dark:border-orange-900/30 dark:bg-orange-950/20'
               : 'border-blue-200 bg-blue-50 dark:border-blue-900/30 dark:bg-blue-950/20'"
+            @click.stop="onGatedBannerClick"
           >
             <Icon
               name="tabler:lock"
@@ -258,12 +264,18 @@
               aria-hidden="true"
             />
             <span
-              class="text-[13px] font-medium"
+              class="flex-1 text-[13px] font-medium"
               :class="postView.visibility === 'premiumOnly' ? 'text-orange-700 dark:text-orange-400' : 'text-blue-700 dark:text-blue-400'"
             >
               {{ postView.visibility === 'premiumOnly' ? 'Become premium to read' : 'Verify to read' }}
             </span>
-          </div>
+            <Icon
+              name="tabler:arrow-right"
+              class="shrink-0 text-[14px]"
+              :class="postView.visibility === 'premiumOnly' ? 'text-orange-400 dark:text-orange-500' : 'text-blue-400 dark:text-blue-500'"
+              aria-hidden="true"
+            />
+          </button>
         </template>
 
         <AppPostRowBody
@@ -310,8 +322,8 @@
               <NuxtLink
                 v-if="t.to"
                 :to="t.to"
-                class="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold border cursor-pointer hover:opacity-90 moh-focus"
-                :class="t.class"
+                class="inline-flex items-center rounded-full py-0.5 text-[11px] font-semibold border cursor-pointer hover:opacity-90 moh-focus"
+                :class="[t.class, t.icon ? 'pl-2 pr-2.5' : 'px-2']"
                 v-tooltip.bottom="t.tooltip"
               >
                 <Icon v-if="t.icon" :name="t.icon" class="mr-1 text-[10px]" aria-hidden="true" />
@@ -319,8 +331,8 @@
               </NuxtLink>
               <span
                 v-else
-                class="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold border cursor-default"
-                :class="t.class"
+                class="inline-flex items-center rounded-full py-0.5 text-[11px] font-semibold border cursor-default"
+                :class="[t.class, t.icon ? 'pl-2 pr-2.5' : 'px-2']"
                 v-tooltip.bottom="t.tooltip"
               >
                 <Icon v-if="t.icon" :name="t.icon" class="mr-1 text-[10px]" aria-hidden="true" />
@@ -593,8 +605,11 @@
                       </div>
                     </div>
                   </template>
-                  <template v-else>
+                  <template v-else-if="viewerBreakdownLoading">
                     <div class="moh-text-muted animate-pulse">Loading…</div>
+                  </template>
+                  <template v-else-if="viewerBreakdownFailed">
+                    <div class="moh-text-muted text-[11px]">Couldn't load breakdown.</div>
                   </template>
                 </div>
               </Transition>
@@ -834,6 +849,18 @@ const replyingToTargets = computed(() => {
 function onGatedRightSideClick() {
   const kind = postView.value.visibility === 'premiumOnly' ? 'premium' : 'verify'
   showAuthActionModal({ kind, action: 'bookmark' })
+}
+
+function onGatedBannerClick() {
+  if (!isAuthed.value) {
+    showAuthActionModal({ kind: 'login', action: 'read' })
+    return
+  }
+  if (postView.value.visibility === 'premiumOnly') {
+    void navigateTo('/tiers')
+  } else {
+    void navigateTo('/settings/verification')
+  }
 }
 // Click-capture guard for the bookmark + share items: only intercepts clicks when the
 // post is gated, so the unauth-prompt fires instead of letting the inner button toggle.
@@ -1168,6 +1195,8 @@ function easternDayKeyNow(): string {
   }
 }
 
+const NuxtLink = resolveComponent('NuxtLink')
+
 const checkinPromptEyebrow = computed(() => {
   const dk = (postView.value.checkinDayKey ?? '').trim()
   if (dk && dk === easternDayKeyNow()) return "TODAY'S PROMPT"
@@ -1203,7 +1232,7 @@ const metaTags = computed(() => {
       class: 'moh-tag-checkin',
       tooltip: tinyTooltip('Daily check-in'),
       icon: 'tabler:calendar-check',
-      to: '/check-ins',
+      to: '/check-ins/new',
     })
   }
 
@@ -1645,6 +1674,7 @@ const viewerCountBtnEl = ref<HTMLElement | null>(null)
 const viewerBreakdownVisible = ref(false)
 const viewerBreakdown = ref<import('~/types/api').PostViewBreakdown | null>(null)
 const viewerBreakdownLoading = ref(false)
+const viewerBreakdownFailed = ref(false)
 let viewerBreakdownRequestSeq = 0
 
 const {
@@ -1670,6 +1700,7 @@ async function onViewerCountHover(event?: Event) {
   viewerBreakdownVisible.value = true
   placeViewerBreakdownFrom(anchorEl)
   if (viewerBreakdownLoading.value) return
+  viewerBreakdownFailed.value = false
   viewerBreakdownLoading.value = true
   const requestSeq = ++viewerBreakdownRequestSeq
   try {
@@ -1678,6 +1709,7 @@ async function onViewerCountHover(event?: Event) {
     )
     if (requestSeq === viewerBreakdownRequestSeq) {
       viewerBreakdown.value = result
+      viewerBreakdownFailed.value = false
       // Fresh breakdown is the newest source of truth; sync row chip count immediately.
       const nextTotal = Math.max(0, Math.floor(Number(result?.total ?? 0)))
       if (nextTotal !== Math.max(0, Math.floor(Number(postState.value.viewerCount ?? 0)))) {
@@ -1685,7 +1717,9 @@ async function onViewerCountHover(event?: Event) {
       }
     }
   } catch {
-    // keep last known breakdown; try again on next hover
+    if (requestSeq === viewerBreakdownRequestSeq) {
+      viewerBreakdownFailed.value = true
+    }
   } finally {
     if (requestSeq === viewerBreakdownRequestSeq) {
       viewerBreakdownLoading.value = false

@@ -817,12 +817,7 @@ const composerAcceptTypes = computed(
 )
 
 // Visibility + rules
-const visibility = useCookie<PostVisibility>('moh.post.visibility.v1', {
-  default: () => 'public',
-  sameSite: 'lax',
-  path: '/',
-  maxAge: 60 * 60 * 24 * 365,
-})
+const { visibility } = useComposerVisibility()
 
 const lockedVisibility = computed<PostVisibility | null>(() => props.lockedVisibility ?? null)
 
