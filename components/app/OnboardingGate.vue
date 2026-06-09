@@ -108,6 +108,49 @@
             </button>
           </div>
 
+          <!-- ZIP code — optional, surfaces state preview -->
+          <div class="space-y-2">
+            <label class="text-sm font-medium moh-text">
+              ZIP code <span class="moh-text-muted font-normal">(optional)</span>
+            </label>
+            <InputText
+              v-model="locationZipInput"
+              inputmode="numeric"
+              maxlength="5"
+              placeholder="5-digit ZIP code"
+              class="w-full"
+              :invalid="locationPreviewNotFound"
+              @input="onLocationZipInput"
+            />
+            <Transition
+              enter-active-class="transition-all duration-200 ease-out"
+              enter-from-class="opacity-0 -translate-y-1"
+              enter-to-class="opacity-100 translate-y-0"
+              leave-active-class="transition-all duration-150 ease-in"
+              leave-from-class="opacity-100 translate-y-0"
+              leave-to-class="opacity-0 -translate-y-1"
+            >
+              <div v-if="locationPreview" class="flex items-center gap-2 py-0.5">
+                <ClientOnly>
+                  <AppStateShape
+                    v-if="locationPreview.state"
+                    :state="locationPreview.state"
+                    class="h-4 w-4 shrink-0 opacity-80"
+                  />
+                </ClientOnly>
+                <span class="text-sm font-medium moh-text">{{ locationPreview.stateDisplay ?? locationPreview.state }}</span>
+                <span v-if="locationPreview.city" class="text-sm moh-text-muted">· {{ locationPreview.city }}</span>
+              </div>
+              <div v-else-if="locationPreviewLoading" class="flex items-center gap-1.5 py-0.5">
+                <Icon name="tabler:loader-2" class="animate-spin moh-text-muted h-4 w-4" />
+              </div>
+              <div v-else-if="locationPreviewNotFound" class="py-0.5">
+                <span class="text-xs text-red-500">ZIP code not found</span>
+              </div>
+            </Transition>
+            <p class="text-xs moh-text-muted">Helps you connect with men in your state.</p>
+          </div>
+
           <!-- Referral code — optional, only actionable if no recruiter already set -->
           <div class="rounded-xl border moh-border p-4 moh-surface space-y-2">
             <div class="text-sm font-medium moh-text">Referred by someone?</div>
@@ -268,6 +311,39 @@ const {
   },
 })
 
+const locationZipInput = ref('')
+const locationPreview = ref<import('~/types/api').LocationPreviewResponse | null>(null)
+const locationPreviewLoading = ref(false)
+const locationPreviewNotFound = ref(false)
+
+let locationPreviewDebounce: ReturnType<typeof setTimeout> | null = null
+
+function onLocationZipInput() {
+  locationPreview.value = null
+  locationPreviewNotFound.value = false
+  if (locationPreviewDebounce) clearTimeout(locationPreviewDebounce)
+  const zip = locationZipInput.value.replace(/\D/g, '').slice(0, 5)
+  locationZipInput.value = zip
+  if (zip.length !== 5) return
+  locationPreviewDebounce = setTimeout(() => void fetchLocationPreview(zip), 300)
+}
+
+async function fetchLocationPreview(zip: string) {
+  locationPreviewLoading.value = true
+  locationPreviewNotFound.value = false
+  try {
+    locationPreview.value = await apiFetchData<import('~/types/api').LocationPreviewResponse>(
+      '/users/location-preview',
+      { method: 'GET', query: { zip } },
+    )
+  } catch {
+    locationPreview.value = null
+    locationPreviewNotFound.value = true
+  } finally {
+    locationPreviewLoading.value = false
+  }
+}
+
 const referralCodeInput = ref('')
 const referralError = ref<string | null>(null)
 const referralAlreadyApplied = computed(() => Boolean(appliedReferralCode.value))
@@ -398,6 +474,9 @@ async function submit() {
     if (!user.value?.usernameIsSet) payload.username = usernameInput.value.trim()
     if (!birthdateLocked.value) payload.birthdate = birthdate.value
     if (!menConfirmLocked.value) payload.menOnlyConfirmed = Boolean(menOnlyConfirmed.value)
+    if (locationPreview.value && locationZipInput.value.length === 5) {
+      payload.locationQuery = locationZipInput.value
+    }
 
     const res = await apiFetchData<{ user: import('~/composables/useAuth').AuthUser }>('/users/me/onboarding', {
       method: 'PATCH',

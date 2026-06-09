@@ -116,6 +116,7 @@
     </Transition>
 
     <AppOnboardingGate />
+    <AppLocationPromptModal />
     <AppConfirmMount />
     <AppAuthActionModal />
     <AppPremiumMediaModal />

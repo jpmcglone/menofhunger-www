@@ -148,14 +148,16 @@
 
                 <div class="space-y-3">
                   <AppFormField
-                    label="Location"
+                    label="ZIP code"
                     optional
-                    helper="Zipcode, city, or city/state. We normalize this to your profile location."
+                    helper="Your state will be shown on your profile."
                   >
                     <InputText
                       v-model="locationQueryInput"
                       class="w-full"
-                      placeholder="e.g. Roanoke, VA or 24011"
+                      placeholder="e.g. 24011"
+                      inputmode="numeric"
+                      maxlength="5"
                       :disabled="profileDetailsSaving"
                     />
                   </AppFormField>
@@ -1783,7 +1785,7 @@ watch(
 )
 
 watch(
-  () => authUser.value?.locationDisplay ?? null,
+  () => authUser.value?.locationZip ?? null,
   (v) => {
     if (locationQueryInput.value.trim()) return
     if (typeof v !== 'string' || !v.trim()) return
@@ -1811,7 +1813,7 @@ const emailDirty = computed(() => {
 const emailIsVerified = computed(() => Boolean(authUser.value?.email && authUser.value?.emailVerifiedAt))
 
 const profileDetailsDirty = computed(() => {
-  const currentLocation = (authUser.value?.locationDisplay ?? '').trim().toLowerCase()
+  const currentLocation = (authUser.value?.locationZip ?? '').trim().toLowerCase()
   const desiredLocation = locationQueryInput.value.trim().toLowerCase()
   if (currentLocation !== desiredLocation) return true
 

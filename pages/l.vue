@@ -22,7 +22,8 @@
       <!-- Results -->
       <template v-else-if="data">
         <template v-for="section in visibleSections" :key="section.key">
-          <div class="px-4 pt-6 pb-2">
+          <!-- Only show section label when there are multiple sections (zip/city/county breakdown) -->
+          <div v-if="visibleSections.length > 1" class="px-4 pt-6 pb-2">
             <h2 class="text-base font-bold tracking-tight moh-h2">
               {{ section.label }}
             </h2>
@@ -63,8 +64,14 @@ const route = useRoute()
 const { apiFetchData } = useApiClient()
 const { header } = useAppHeader()
 
-// Build a human-readable title from query params.
+const loading = ref(false)
+const error = ref<string | null>(null)
+const data = ref<LocationBrowseResponse | null>(null)
+
+// Build a human-readable title — prefer the full state name returned by the API,
+// fall back to query params while loading.
 const locationTitle = computed(() => {
+  if (data.value?.location?.stateDisplay) return data.value.location.stateDisplay
   const city = typeof route.query.city === 'string' ? route.query.city.trim() : ''
   const state = typeof route.query.state === 'string' ? route.query.state.trim() : ''
   if (city && state) return `${city}, ${state}`
@@ -78,10 +85,6 @@ watchEffect(() => {
 
 usePageSeo({ title: computed(() => locationTitle.value) })
 
-const loading = ref(false)
-const error = ref<string | null>(null)
-const data = ref<LocationBrowseResponse | null>(null)
-
 const visibleSections = computed(() =>
   (data.value?.sections ?? []).filter((s) => s.users.length > 0),
 )
@@ -93,7 +96,7 @@ async function fetchLocation() {
   loading.value = true
   error.value = null
   try {
-    const query: Record<string, string | number> = { state, limit: 15 }
+    const query: Record<string, string | number> = { state, limit: 50 }
     if (typeof route.query.zip === 'string' && route.query.zip.trim()) query.zip = route.query.zip.trim()
     if (typeof route.query.city === 'string' && route.query.city.trim()) query.city = route.query.city.trim()
     if (typeof route.query.county === 'string' && route.query.county.trim()) query.county = route.query.county.trim()

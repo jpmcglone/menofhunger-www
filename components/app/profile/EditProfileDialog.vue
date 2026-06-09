@@ -169,15 +169,16 @@
         <template #helper>{{ bioCharCount.display }}</template>
       </AppFormField>
 
-      <AppFormField label="Location">
+      <AppFormField label="ZIP code">
         <InputText
           v-model="editLocationQuery"
           class="w-full"
-          :maxlength="120"
-          placeholder="ZIP code or city/state"
+          :maxlength="5"
+          inputmode="numeric"
+          placeholder="e.g. 24011"
         />
         <template #helper>
-          Optional. Leave blank to hide.
+          Optional. Your state will be shown on your profile.
         </template>
       </AppFormField>
 
@@ -212,6 +213,7 @@ type PublicProfile = {
   bio: string | null
   website?: string | null
   locationDisplay?: string | null
+  locationZip?: string | null
   locationCity?: string | null
   locationCounty?: string | null
   locationState?: string | null
@@ -519,7 +521,7 @@ watch(
     editError.value = null
     editName.value = props.profile?.name || ''
     editBio.value = props.profile?.bio || ''
-    editLocationQuery.value = (props.profile?.locationDisplay ?? '') || ''
+    editLocationQuery.value = (props.profile?.locationZip ?? '') || ''
     editWebsite.value = (props.profile?.website ?? '') || ''
     clearAvatarCropState()
     clearBannerCropState()

@@ -22,6 +22,7 @@ export type AuthUser = {
   locationCounty?: string | null
   locationState?: string | null
   locationCountry?: string | null
+  locationPromptSkipped?: boolean
   birthdate?: string | null
   interests?: string[]
   menOnlyConfirmed?: boolean

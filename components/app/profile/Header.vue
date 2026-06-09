@@ -339,11 +339,31 @@
           :to="locationTo"
           class="inline-flex items-center gap-1.5 min-w-0 hover:underline underline-offset-2"
         >
-          <Icon name="tabler:map-pin" class="shrink-0" aria-hidden="true" />
+          <ClientOnly>
+            <AppStateShape
+              v-if="locationState"
+              :state="locationState"
+              class="h-4 w-4 shrink-0 opacity-80"
+            />
+            <template #fallback>
+              <Icon name="tabler:map-pin" class="shrink-0" aria-hidden="true" />
+            </template>
+          </ClientOnly>
+          <Icon v-if="!locationState" name="tabler:map-pin" class="shrink-0" aria-hidden="true" />
           <span class="truncate">{{ locationLabel }}</span>
         </NuxtLink>
         <div v-else-if="locationLabel" class="inline-flex items-center gap-1.5 min-w-0">
-          <Icon name="tabler:map-pin" class="shrink-0" aria-hidden="true" />
+          <ClientOnly>
+            <AppStateShape
+              v-if="locationState"
+              :state="locationState"
+              class="h-4 w-4 shrink-0 opacity-80"
+            />
+            <template #fallback>
+              <Icon name="tabler:map-pin" class="shrink-0" aria-hidden="true" />
+            </template>
+          </ClientOnly>
+          <Icon v-if="!locationState" name="tabler:map-pin" class="shrink-0" aria-hidden="true" />
           <span class="truncate">{{ locationLabel }}</span>
         </div>
 
@@ -577,14 +597,15 @@ const locationLabel = computed(() => {
   return v ? v : null
 })
 
+const locationState = computed(() => {
+  const s = (profile.value as any)?.locationState ?? null
+  return typeof s === 'string' && s.trim() ? s.trim().toUpperCase() : null
+})
+
 const locationTo = computed(() => {
   const p = profile.value as any
   if (!p?.locationState) return null
-  const query: Record<string, string> = { state: p.locationState }
-  if (p.locationCity) query.city = p.locationCity
-  if (p.locationCounty) query.county = p.locationCounty
-  if (p.locationZip) query.zip = p.locationZip
-  return { path: '/l', query }
+  return { path: '/l', query: { state: p.locationState } }
 })
 
 const websiteHref = computed(() => {

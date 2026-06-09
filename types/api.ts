@@ -1656,6 +1656,7 @@ export type UserDto = {
   locationCounty: string | null
   locationState: string | null
   locationCountry: string | null
+  locationPromptSkipped: boolean
   birthdate: string | null
   interests: string[]
   menOnlyConfirmed: boolean
@@ -2312,6 +2313,15 @@ export type TransferCoinsResponse = {
   senderBalanceAfter: number
 }
 
+/** Response from GET /users/location-preview */
+export type LocationPreviewResponse = {
+  zip: string | null
+  city: string | null
+  state: string | null
+  stateDisplay: string | null
+  display: string | null
+}
+
 /** Response from GET /users/by-location */
 export type LocationBrowseSection = {
   key: string
@@ -2325,6 +2335,7 @@ export type LocationBrowseResponse = {
     city?: string
     county?: string
     state: string
+    stateDisplay?: string
   }
   sections: LocationBrowseSection[]
 }
