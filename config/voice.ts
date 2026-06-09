@@ -12,9 +12,9 @@
 
 export const VOICE = {
   // ── Identity ────────────────────────────────────────────────────────────────
-  tagline: 'A trusted community for men who want measurable progress in life.',
+  tagline: 'A trusted community for men who want real conversation, not more noise.',
   lodgeDescription:
-    'The town square is for reach. Men of Hunger is the lodge — real dialogue, accountability, and outcomes.',
+    'The town square is for reach. Men of Hunger is the lodge — honest dialogue, accountability, and no noise.',
 
   // ── Onboarding ──────────────────────────────────────────────────────────────
   onboarding: {

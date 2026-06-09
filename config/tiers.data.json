@@ -1,11 +1,11 @@
 {
   "intro": {
     "label": "Membership",
-    "tagline": "A trusted community for men who want measurable progress in life.",
+    "tagline": "A trusted community for men who want real conversation, not more noise.",
     "title": "Unverified, Verified, Premium, and Premium+ — how the tiers work.",
-    "description": "Unverified: read. Verified: real, but limited. Premium: full access to the core product (posting, media, chat, spaces, and quality signal loops). Premium+: steward and support."
+    "description": "Unverified: read. Verified: real, but limited. Premium: full access to the platform (posting, media, chat, spaces, groups, articles, and accountability loops). Premium+: steward and support."
   },
-  "metaDescription": "Men of Hunger: a trusted community for measurable progress. Tiers: Unverified (read), Verified (real but limited), Premium (personal growth ecosystem), Premium+ (steward).",
+  "metaDescription": "Men of Hunger tiers: Unverified (read-only), Verified (identity-verified, free), Premium ($25/mo — full access), Premium+ ($75/mo — steward). Real conversation, no noise.",
   "tiers": [
     {
       "id": "unverified",
@@ -100,6 +100,9 @@
         },
         {
           "text": "Join groups with limited participation"
+        },
+        {
+          "text": "Earn coins and check in daily for streaks"
         }
       ],
       "cannot": [
@@ -122,7 +125,7 @@
           "text": "Access subscriber-only areas"
         },
         {
-          "text": "Monetize or promote content"
+          "text": "Post with media (images, GIFs, video)"
         }
       ],
       "why": [
@@ -143,8 +146,7 @@
         "amount": "$25",
         "interval": "/ month"
       },
-      "priceNote": "Save with quarterly ($65) or annual ($250) in Settings → Billing.",
-      "who": "Men who want measurable progress — committed to the full personal growth ecosystem, not just a feed.",
+      "who": "Men who want real conversation and accountability — committed to the platform, not just a feed.",
       "can": [
         {
           "text": "Everything Verified can do"
@@ -171,7 +173,34 @@
           "text": "Create polls"
         },
         {
+          "text": "Publish longform articles"
+        },
+        {
+          "text": "Participate fully in groups"
+        },
+        {
           "text": "Use bookmarks folders / collections"
+        },
+        {
+          "text": "Invite friends — when someone you refer verifies, they get a free month of premium"
+        },
+        {
+          "text": "Compete in check-ins + leaderboard consistency loops"
+        },
+        {
+          "text": "Earn coins from daily streaks with escalating multipliers (1x–4x)"
+        },
+        {
+          "text": "Send coins to other verified members"
+        },
+        {
+          "text": "Tightly moderated quality — no noise, no pay-to-win"
+        },
+        {
+          "text": "See no ads while you're Premium"
+        },
+        {
+          "text": "Edit posts within a reasonable window"
         },
         {
           "text": "Monthly structured conversations and accountability systems",
@@ -182,39 +211,8 @@
           "comingSoon": true
         },
         {
-          "text": "Premium longform playbooks and resources",
-          "comingSoon": true
-        },
-        {
-          "text": "Tightly moderated quality — no noise, no pay-to-win"
-        },
-        {
-          "text": "Baseline ranking (unverified/verified may be slightly suppressed)"
-        },
-        {
           "text": "Start and participate in Dialogues",
           "comingSoon": true
-        },
-        {
-          "text": "Publish longform articles"
-        },
-        {
-          "text": "Participate fully in groups"
-        },
-        {
-          "text": "See no ads while you’re Premium"
-        },
-        {
-          "text": "Edit posts within a reasonable window"
-        },
-        {
-          "text": "Compete in check-ins + leaderboard consistency loops"
-        },
-        {
-          "text": "Earn coins from daily streaks with escalating multipliers (1x–4x)"
-        },
-        {
-          "text": "Send coins to other verified members"
         }
       ],
       "cannot": [
@@ -236,7 +234,7 @@
       ],
       "why": [
         "This is the economic engine",
-        "This is where culture and outcomes live",
+        "This is where culture and conversations live",
         "This is where trust compounds",
         "If you can speak here, you've paid the price to care."
       ],
@@ -317,10 +315,6 @@
           "comingSoon": true
         },
         {
-          "text": "Concierge onboarding (optional / limited)",
-          "comingSoon": true
-        },
-        {
           "text": "Ability to create one private group",
           "comingSoon": true
         },
@@ -364,5 +358,5 @@
       }
     }
   ],
-  "footerNote": "Verification is free and required to post publicly. Premium and Premium+ are paid subscriptions - pricing and billing in Settings."
+  "footerNote": "Verification is free and required to post publicly. Premium and Premium+ are paid subscriptions — pricing and billing in Settings."
 }

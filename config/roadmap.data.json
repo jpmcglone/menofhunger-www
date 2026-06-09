@@ -1,10 +1,10 @@
 {
-  "asOfDate": "Apr. 5, 2026",
+  "asOfDate": "Jun. 9, 2026",
   "originalAsOfDate": "Feb. 3, 2026",
   "intro": {
     "label": "Product roadmap",
     "title": "Where we're headed",
-    "description": "We’re building a personal growth ecosystem: trust, tier access, and safety first; then content depth, discovery, and daily consistency loops; then structured conversations, cohorts, workshops, and stewardship."
+    "description": "The core platform is live: verification, posting, groups, chat, spaces, radio, articles, coins, and the full discovery surface. Now we're building the native iOS app and shipping the remaining safety, compliance, and community depth features."
   },
   "phases": [
     {
@@ -28,7 +28,7 @@
               "done": true
             },
             {
-              "text": "**Premium requires verified** — You can’t subscribe to (or keep) premium unless you’re verified. This is enforced in upgrade flow and in premium-only actions (member areas, media, etc.).",
+              "text": "**Premium requires verified** — You can't subscribe to (or keep) premium unless you're verified. This is enforced in upgrade flow and in premium-only actions (member areas, media, etc.).",
               "done": true
             }
           ]
@@ -68,14 +68,14 @@
           "items": [
             {
               "text": "**Landing & onboarding** — Clear homepage and signup; smooth onboarding so you can post and follow in your first session.",
-              "inProgress": true
-            },
-            {
-              "text": "**Discover / non-empty feed** — When you have zero follows, a “Discover” or “For you” feed (trending or recent public posts) so your home feed is never empty.",
               "done": true
             },
             {
-              "text": "**Suggested users / who to follow** — Real “who to follow” (by interests or activity) so you fill your feed fast and see content that matters.",
+              "text": "**Discover / non-empty feed** — When you have zero follows, a \"Discover\" or \"For you\" feed (trending or recent public posts) so your home feed is never empty.",
+              "done": true
+            },
+            {
+              "text": "**Suggested users / who to follow** — Real \"who to follow\" (by interests or activity) so you fill your feed fast and see content that matters.",
               "done": true
             },
             {
@@ -87,8 +87,8 @@
               "done": true
             },
             {
-              "text": "**Invite a friend** — Shareable signup or invite link (“Join me on Men of Hunger”) so you can bring friends and grow the circle. **Premium members:** when someone you invite verifies, they get **a free month of premium**.",
-              "inProgress": true
+              "text": "**Invite a friend / referrals** — Shareable invite code and referral link; track your recruits in Settings → Billing; when someone you refer verifies, they get a free month of premium.",
+              "done": true
             },
             {
               "text": "**Pinned profile post** — Pin one post to the top of your profile so visitors see what matters most.",
@@ -121,7 +121,7 @@
               "done": true
             },
             {
-              "text": "**Email re-engagement (v1)** — Daily digest, “you have new notifications” nudges, and instant high-signal emails (provider: Resend).",
+              "text": "**Email re-engagement (v1)** — Daily digest, \"you have new notifications\" nudges, and instant high-signal emails (provider: Resend).",
               "done": true
             },
             {
@@ -134,7 +134,7 @@
           "title": "Reporting (minimal for launch)",
           "items": [
             {
-              "text": "**Report post / Report user** — “Report” in the post menu and on profiles; pick a reason and add details; we store it and admins can triage. A fuller queue and resolution flow follows in April.",
+              "text": "**Report post / Report user** — \"Report\" in the post menu and on profiles; pick a reason and add details; we store it and admins can triage.",
               "done": true
             }
           ]
@@ -147,15 +147,15 @@
               "done": true
             },
             {
-              "text": "**Reliability** — Rate limits and clear “try again later” when needed; we test sign up → onboard → post → upgrade so the core flow works.",
+              "text": "**Reliability** — Rate limits and clear \"try again later\" when needed; we test sign up → onboard → post → upgrade so the core flow works.",
               "done": true
             },
             {
-              "text": "**Sentry** — Error tracking is wired up for the web app; API Sentry still needs to be added so we catch regressions end-to-end.",
+              "text": "**Sentry** — Error tracking wired up for the web app; API Sentry integration in progress.",
               "inProgress": true
             },
             {
-              "text": "**Third-party analytics (minimal)** — Track the key funnel events (join, verify submitted/approved, first post, follow, upgrade) so we can measure what’s working.",
+              "text": "**Third-party analytics (minimal)** — Track the key funnel events (join, verify submitted/approved, first post, follow, upgrade) so we can measure what's working.",
               "done": true
             },
             {
@@ -183,7 +183,7 @@
           "title": "Discovery",
           "items": [
             {
-              "text": "Explore / trending with real data — Trending or popular posts and “who to follow” in Explore or the right rail, so discovery feels alive.",
+              "text": "Explore / trending with real data — Trending or popular posts and \"who to follow\" in Explore or the right rail, so discovery feels alive.",
               "done": true
             },
             {
@@ -200,7 +200,7 @@
               "done": true
             },
             {
-              "text": "**Drafts + autosave (posts)** — Save drafts automatically and resume across devices so you don’t lose work.",
+              "text": "**Drafts + autosave (posts)** — Save drafts automatically and resume across devices so you don't lose work. Articles have full autosave; post draft persistence is in progress.",
               "inProgress": true
             },
             {
@@ -223,10 +223,14 @@
               "done": true
             },
             {
-              "text": "**Gift premium** — Pay for someone else’s subscription; send them a month (or more) of premium as a gift."
+              "text": "**Gift premium** — Pay for someone else's subscription; send them a month (or more) of premium as a gift."
             },
             {
               "text": "**Weekly missions** — Milestone-style weekly goals surfaced in the home feed to encourage consistent engagement.",
+              "done": true
+            },
+            {
+              "text": "**Marv AI** — @marv is a wise, brief AI helper; mention him in any thread or chat with him directly (Premium only).",
               "done": true
             }
           ]
@@ -239,7 +243,7 @@
               "done": true
             },
             {
-              "text": "Optional: we notify you when we’ve taken action (or you can check report status in-app), so you know we’re on it."
+              "text": "Optional: we notify you when we've taken action (or you can check report status in-app), so you know we're on it."
             }
           ]
         },
@@ -313,7 +317,7 @@
       "id": "may-2026",
       "date": "May 1, 2026",
       "datetime": "2026-05-01",
-      "badge": "Phase 2 — Depth & trust",
+      "badge": "Phase 3 — Depth & trust",
       "title": "Groups, Chat, safety & data",
       "description": "Ship deeper ways to connect (groups, dialogues, chat), strengthen safety controls, and add the first longform publishing path (articles). Add real-time post-thread updates so conversations feel alive. Keep compliance minimal but real (delete/export).",
       "isHighlight": false,
@@ -323,6 +327,10 @@
           "items": [
             {
               "text": "Groups (v1) — Create and join groups; group feed or group-scoped posts so you have pockets of accountability and conversation.",
+              "done": true
+            },
+            {
+              "text": "**Crew / Founding Circles** — Small private invite-only communities; founding members invite each other, share a dedicated wall, and can grow with a waitlist.",
               "done": true
             },
             {
@@ -356,11 +364,11 @@
           "title": "Safety & control",
           "items": [
             {
-              "text": "Block user — Block so they can’t see your posts, chat you, or appear in your feed; manage your block list in settings.",
+              "text": "Block user — Block so they can't see your posts, chat you, or appear in your feed; manage your block list in settings.",
               "done": true
             },
             {
-              "text": "Mute user — “See less”; hide their posts in your feed without unfollowing."
+              "text": "Mute user — \"See less\"; hide their posts in your feed without unfollowing."
             }
           ]
         },
@@ -368,22 +376,13 @@
           "title": "Account & data",
           "items": [
             {
-              "text": "Delete / deactivate account — “Delete my account” in settings; we soft-delete or fully erase and revoke sessions."
+              "text": "Delete / deactivate account — \"Delete my account\" in settings; we soft-delete or fully erase and revoke sessions."
             },
             {
               "text": "Download my data — Export your posts, profile, and bookmarks so you own your data."
             },
             {
-              "text": "Active sessions / devices — See where you’re logged in and revoke other sessions in settings."
-            }
-          ]
-        },
-        {
-          "title": "Mobile apps",
-          "items": [
-            {
-              "text": "PWA polish — If not fully done in March: installable, app-like experience on mobile (icon, splash, offline where useful).",
-              "done": true
+              "text": "Active sessions / devices — See where you're logged in and revoke other sessions in settings."
             }
           ]
         },
@@ -393,6 +392,98 @@
             {
               "text": "Public status page or link so you can check uptime; in-app Help/Contact so you can reach us.",
               "done": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "june-2026",
+      "date": "June 2026",
+      "datetime": "2026-06-01",
+      "badge": "Phase 4 — Native iOS",
+      "title": "Native iOS app",
+      "description": "A full native iOS app that brings the platform to the App Store. Core social (feed, explore, notifications, profile, bookmarks) is live now. Community features (groups, articles, check-ins, chat, spaces, radio, coins) are shipping through the rest of 2026.",
+      "isHighlight": false,
+      "chunks": [
+        {
+          "title": "Core social",
+          "items": [
+            {
+              "text": "**Home feed** — Read, post, reply, and boost; real-time updates via websockets.",
+              "done": true
+            },
+            {
+              "text": "**Post detail + threads** — Full thread view, nested replies, post actions.",
+              "done": true
+            },
+            {
+              "text": "**Composer** — Create posts with text and basic formatting.",
+              "done": true
+            },
+            {
+              "text": "**Repost / quote post** — One-tap repost or quote with your own commentary.",
+              "done": true
+            },
+            {
+              "text": "**Explore + search** — Discover trending posts, people, and topics.",
+              "done": true
+            },
+            {
+              "text": "**Notifications** — Real-time push and in-app notification feed.",
+              "done": true
+            },
+            {
+              "text": "**Profile** — View and edit your profile; see any member's wall.",
+              "done": true
+            },
+            {
+              "text": "**Bookmarks** — Save and view bookmarked posts.",
+              "done": true
+            },
+            {
+              "text": "**Verification** — Submit and track your verification status in-app.",
+              "done": true
+            }
+          ]
+        },
+        {
+          "title": "Community features (in progress)",
+          "items": [
+            {
+              "text": "**Groups** — Browse and join groups from Explore; full group detail and feed screens.",
+              "inProgress": true
+            },
+            {
+              "text": "**Articles** — Read longform articles from the community; article detail screen.",
+              "inProgress": true
+            },
+            {
+              "text": "**Daily check-ins** — Check in each day, view the check-ins feed, and track your streak.",
+              "inProgress": true
+            },
+            {
+              "text": "**Settings depth** — Notification preferences, privacy controls, and billing management.",
+              "inProgress": true
+            },
+            {
+              "text": "**Chat / DMs** — Direct messages and conversation list."
+            },
+            {
+              "text": "**Spaces** — Join live audio rooms."
+            },
+            {
+              "text": "**Radio** — Listen to and host live audio streams."
+            },
+            {
+              "text": "**Coins** — View balance, earn from streaks, send to other members."
+            },
+            {
+              "text": "**Crew / Founding Circles** — View and participate in your founding circle."
+            },
+            {
+              "text": "**Deep linking** — Open any post, profile, or group from a shared link.",
+              "inProgress": true
             }
           ]
         }
@@ -446,27 +537,19 @@
         ]
       },
       {
-        "title": "Mobile & platform",
-        "items": [
-          {
-            "text": "Native iOS / Android — Native apps in the app stores so you get a first-class experience on your phone."
-          },
-          {
-            "text": "Deep linking (open a post or profile from a link in the app); app store optimization when native apps ship."
-          }
-        ]
-      },
-      {
         "title": "Notifications",
         "items": [
           {
-            "text": "More email — per-event emails (e.g. “Email me when someone replies”), daily digests, and better deliverability tooling (suppression, bounces)."
+              "text": "More email — per-event emails (e.g. \"Email me when someone replies\"), daily digests, and better deliverability tooling (suppression, bounces)."
           }
         ]
       },
       {
         "title": "Integrations",
         "items": [
+          {
+            "text": "Webhooks (v1) — Signed, retrying webhooks for key events (user, identity, content, billing)."
+          },
           {
             "text": "Webhook expansion — more event types, per-endpoint filters, replay tooling, and a small developer portal."
           }
@@ -476,13 +559,13 @@
         "title": "Monetization",
         "items": [
           {
-            "text": "**Unified purchases** — One commerce flow that supports premium subscriptions plus one-off purchases (cosmetics/badges), refunds, and entitlements."
-          },
-          {
             "text": "**Coin spending** — Give coins a purpose beyond transfers: boost a post for visibility, unlock cosmetics, tip article authors, or redeem for other in-app perks."
           },
           {
             "text": "**Coins leaderboard** — Top coin holders and top earners this week so the economy has visible social proof."
+          },
+          {
+            "text": "**Gift premium** — Pay for someone else's subscription; send them a month or more of premium as a gift."
           }
         ]
       },
@@ -504,13 +587,13 @@
         "title": "Acquisition & growth",
         "items": [
           {
-            "text": "**Lead magnet funnel** — E.g. “7 Daily Habits That Transform a Man’s Life”, “Weekly Accountability Tracker”, “90-day Life Reset Framework”; collect emails, then convert to Premium."
+            "text": "**Lead magnet funnel** — Collect emails and convert to Premium through content upgrades (guides, frameworks, trackers)."
           },
           {
-            "text": "**Acquisition channels** — Targeted podcasts, YouTube (discipline, relationships, career), partner with aligned creators/influencers, paid ads targeting men’s growth interests."
+            "text": "**Acquisition channels** — Targeted podcasts, YouTube, aligned creators/influencers, paid ads targeting men's growth interests."
           },
           {
-            "text": "**Structured cohorts & facilitated programming** — Monthly structured conversations, accountability systems, small group cohorts, workshops & live calls (not just open forums)."
+            "text": "**Structured cohorts & facilitated programming** — Monthly structured conversations, accountability systems, small group cohorts, workshops & live calls."
           }
         ]
       },
@@ -577,5 +660,5 @@
     ]
   },
   "footerDisclaimer": "Dates are targets, not promises. We'll update this page as we lock in or shift milestones.",
-  "metaDescription": "See what we're building and when. Men of Hunger product roadmap — trust, tiers, personal growth ecosystem, and community features."
+  "metaDescription": "See what we're building and when. Men of Hunger product roadmap — trust, tiers, real conversation, community features, and native iOS."
 }
