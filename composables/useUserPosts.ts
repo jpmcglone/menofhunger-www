@@ -3,6 +3,7 @@ import {
   collapsedSiblingReplyCountForPost,
   mergeFeedThreadsForDisplay,
 } from '~/utils/merge-feed-threads-for-display'
+import { collectChainIds } from '~/utils/feed-patch'
 import { useCursorFeed } from '~/composables/useCursorFeed'
 import { usePostCountBumps } from '~/composables/usePostCountBumps'
 import { useFeedFilters, type FeedVisibilityFilter } from '~/composables/useFeedFilters'
@@ -38,6 +39,12 @@ export function useUserPosts(
     externalSort?: Ref<'new' | 'trending'>
     /** When true, include posts of all visibility tiers; restricted posts are returned with viewerCanAccess=false. */
     includeRestricted?: boolean
+    /**
+     * When true, keep the loaded posts (and their parent chains) subscribed to
+     * realtime post rooms via usePresence() while the owning component is mounted,
+     * so the server delivers liveUpdated/interaction/comment events for them.
+     */
+    realtime?: boolean
   } = {},
 ) {
   const { user: me, isVerified: authIsVerified, isPremium: authIsPremium } = useAuth()
@@ -386,6 +393,36 @@ export function useUserPosts(
       if (!enabled.value) return
       void fetch(filter.value, next)
     }, { flush: 'post' })
+  }
+
+  // Realtime post-room subscriptions: keep every loaded post (and its parent
+  // chain, so parents embedded in reply rows still get events) subscribed
+  // while the owning component is mounted. Subscriptions are refcounted in
+  // usePresence, so multiple feeds on one page can overlap safely.
+  if (opts.realtime && import.meta.client) {
+    const { subscribePosts, unsubscribePosts } = usePresence()
+    let subscribedIds = new Set<string>()
+
+    function syncPostSubscriptions() {
+      const ids = new Set<string>()
+      for (const p of posts.value) for (const id of collectChainIds(p)) ids.add(id)
+      const toSub = [...ids].filter((id) => !subscribedIds.has(id))
+      const toUnsub = [...subscribedIds].filter((id) => !ids.has(id))
+      if (toSub.length > 0) subscribePosts(toSub)
+      if (toUnsub.length > 0) unsubscribePosts(toUnsub)
+      subscribedIds = ids
+    }
+
+    onMounted(() => {
+      void nextTick(() => syncPostSubscriptions())
+    })
+    watch(posts, () => {
+      void nextTick(() => syncPostSubscriptions())
+    })
+    onBeforeUnmount(() => {
+      if (subscribedIds.size > 0) unsubscribePosts([...subscribedIds])
+      subscribedIds.clear()
+    })
   }
 
   return {

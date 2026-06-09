@@ -126,45 +126,7 @@
 
       <div class="relative z-10 min-w-0 flex-1">
         <div class="relative">
-          <div
-            v-if="feedGroupTagForRow"
-            class="relative mb-1.5 flex items-center"
-          >
-            <NuxtLink
-              :to="`/g/${encodeURIComponent(feedGroupTagForRow.slug)}`"
-              class="inline-flex max-w-full items-center gap-1.5 rounded-full border moh-border bg-black/[0.025] py-0.5 pl-0.5 pr-2 -ml-0.5 text-left shadow-sm shadow-black/[0.03] transition-colors hover:bg-black/[0.05] dark:bg-white/[0.045] dark:shadow-black/20 dark:hover:bg-white/[0.075]"
-              :aria-label="`Group: ${feedGroupTagForRow.name}`"
-              @click.stop
-              @mouseenter="onFeedGroupEnter"
-              @mousemove="onFeedGroupMove"
-              @mouseleave="onFeedGroupLeave"
-            >
-              <div
-                class="h-[18px] w-[18px] shrink-0 overflow-hidden bg-gray-200 dark:bg-zinc-700 moh-img-outline"
-                :class="groupAvatarRoundClass"
-              >
-                <img
-                  v-if="feedGroupTagForRow.avatarImageUrl"
-                  :src="feedGroupTagForRow.avatarImageUrl"
-                  alt=""
-                  class="h-full w-full object-cover"
-                  loading="lazy"
-                >
-                <div
-                  v-else
-                  class="flex h-full w-full items-center justify-center text-[8px] font-bold text-gray-500 dark:text-zinc-400"
-                >
-                  {{ feedGroupInitials }}
-                </div>
-              </div>
-              <span class="text-[10px] font-semibold uppercase tracking-wide text-gray-400 dark:text-zinc-500" aria-hidden="true">
-                in
-              </span>
-              <span class="whitespace-nowrap text-xs font-semibold text-gray-700 dark:text-zinc-200">
-                {{ feedGroupTagForRow.name }}
-              </span>
-            </NuxtLink>
-          </div>
+          <AppPostRowGroupTag v-if="feedGroupTagForRow" :group="feedGroupTagForRow" />
           <AppPostHeaderLine
             :display-name="author.name || author.username || 'User'"
             :username="author.username || ''"
@@ -185,24 +147,7 @@
           />
 
           <!-- "Replying to" label — shown only when the prop is set (e.g. Notifications page) -->
-          <div
-            v-if="showReplyingTo && replyingToTargets.length > 0"
-            class="mt-0.5 flex flex-wrap items-center gap-x-1 text-[13px] leading-snug text-gray-500 dark:text-gray-400"
-          >
-            <span>Replying to</span>
-            <template v-for="(target, idx) in replyingToTargets" :key="target.username">
-              <NuxtLink
-                :to="`/u/${encodeURIComponent(target.username)}`"
-                class="font-medium hover:underline underline-offset-2"
-                :class="target.tierClass"
-                @mouseenter="target.onEnter"
-                @mousemove="target.onMove"
-                @mouseleave="target.onLeave"
-              >@{{ target.username }}</NuxtLink>
-              <span v-if="idx < replyingToTargets.length - 2" class="select-none">,</span>
-              <span v-else-if="idx === replyingToTargets.length - 2" class="select-none">and</span>
-            </template>
-          </div>
+          <AppPostRowReplyingTo v-if="showReplyingTo" :post="postView" />
 
           <AppPostRowMoreMenu v-if="!isPendingRow" :items="moreMenuItems" :tooltip="moreTooltip" :on-before-open="ensureAuthorFollowLoaded" />
         </div>
@@ -321,19 +266,19 @@
             <template v-for="t in metaTags" :key="t.key">
               <NuxtLink
                 v-if="t.to"
+                v-tooltip.bottom="t.tooltip"
                 :to="t.to"
                 class="inline-flex items-center rounded-full py-0.5 text-[11px] font-semibold border cursor-pointer hover:opacity-90 moh-focus"
                 :class="[t.class, t.icon ? 'pl-2 pr-2.5' : 'px-2']"
-                v-tooltip.bottom="t.tooltip"
               >
                 <Icon v-if="t.icon" :name="t.icon" class="mr-1 text-[10px]" aria-hidden="true" />
                 {{ t.label }}
               </NuxtLink>
               <span
                 v-else
+                v-tooltip.bottom="t.tooltip"
                 class="inline-flex items-center rounded-full py-0.5 text-[11px] font-semibold border cursor-default"
                 :class="[t.class, t.icon ? 'pl-2 pr-2.5' : 'px-2']"
-                v-tooltip.bottom="t.tooltip"
               >
                 <Icon v-if="t.icon" :name="t.icon" class="mr-1 text-[10px]" aria-hidden="true" />
                 {{ t.label }}
@@ -342,317 +287,19 @@
           </div>
         </div>
 
-        <div
-          v-if="isPendingRow"
-          class="mt-2.5 sm:mt-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border px-3 py-2 text-sm"
-          :class="pendingStatus === 'failed'
-            ? 'border-red-300/70 bg-red-50/70 text-red-800 dark:border-red-800/60 dark:bg-red-950/30 dark:text-red-200'
-            : 'border-gray-200 bg-gray-50 text-gray-700 dark:border-zinc-800 dark:bg-zinc-900/60 dark:text-gray-300'"
-          @click.stop
-        >
-          <span class="inline-flex items-center gap-2">
-            <template v-if="pendingStatus === 'posting'">
-              <Icon name="tabler:loader-2" class="animate-spin text-base" aria-hidden="true" />
-              <span>Posting…</span>
-            </template>
-            <template v-else>
-              <Icon name="tabler:alert-triangle" class="text-base" aria-hidden="true" />
-              <span>{{ pendingErrorText }}</span>
-            </template>
-          </span>
-          <span v-if="pendingStatus === 'failed'" class="inline-flex items-center gap-2">
-            <Button
-              label="Retry"
-              size="small"
-              severity="secondary"
-              rounded
-              @click.stop="onRetryPending"
-            />
-            <Button
-              label="Discard"
-              size="small"
-              severity="secondary"
-              text
-              rounded
-              @click.stop="onDiscardPending"
-            />
-          </span>
-        </div>
+        <AppPostRowPendingBanner v-if="pendingStatus" :post="postView" :status="pendingStatus" />
 
-        <!-- Typing indicator: who is currently composing a reply -->
-        <AppTypingIndicator
-          v-if="!isDeletedPost && !isPendingRow && typingUsers.length > 0"
-          :users="typingUsers"
-          verb="replying"
-          size="compact"
-          class="mt-1"
-          @click.stop
+        <!-- Engagement: typing indicator, "+N new" pill, and the action bar -->
+        <AppPostRowActionBar
+          :post="postView"
+          :source-post="post"
+          :author="author"
+          :viewer-can-interact="viewerCanInteract"
+          :is-gated-post="isGatedPost"
+          @bookmark-count-delta="onBookmarkCountDelta"
+          @bookmark-state-changed="onBookmarkStateChanged"
+          @viewer-count-synced="onViewerCountSynced"
         />
-
-        <!-- New-reply pill: transient "+N new" badge while viewing a feed row -->
-        <div
-          v-if="!isDeletedPost && !isPendingRow && newRepliesSinceMount > 0 && !isOnPermalink"
-          class="mt-1"
-          @click.stop
-        >
-          <NuxtLink
-            :to="postPermalink"
-            class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold border border-gray-200 dark:border-zinc-700 text-gray-600 dark:text-gray-300 bg-white/80 dark:bg-zinc-900/80 hover:opacity-80 transition-opacity"
-          >
-            <Icon name="tabler:message-circle" class="text-[10px]" aria-hidden="true" />
-            +{{ newRepliesSinceMount }} new
-          </NuxtLink>
-        </div>
-
-        <div
-          v-else-if="!isDeletedPost && !isOnlyMe"
-          class="mt-2.5 sm:mt-3 flex items-center justify-between sm:justify-start gap-1 moh-text-muted"
-        >
-          <!-- Reply -->
-          <div class="inline-flex items-center">
-            <button
-              type="button"
-              class="moh-tap moh-pressable inline-flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-full transition-colors moh-surface-hover"
-              :class="commentClickable ? 'cursor-pointer' : 'cursor-default opacity-60'"
-              aria-label="Reply"
-              v-tooltip.bottom="commentTooltip"
-              @click.stop="onCommentClick"
-            >
-              <Icon name="tabler:message-circle" class="text-[18px]" aria-hidden="true" />
-            </button>
-            <NuxtLink
-              :to="postPermalink"
-              class="ml-0 inline-block sm:min-w-[1.5rem] select-none text-left text-[11px] sm:text-xs tabular-nums moh-text-muted hover:underline moh-count-gutter"
-              :class="displayedCommentCount > 0 ? 'opacity-100' : 'opacity-0 pointer-events-none'"
-              :aria-hidden="displayedCommentCount === 0 ? 'true' : undefined"
-              :tabindex="displayedCommentCount === 0 ? -1 : undefined"
-              aria-label="View replies"
-            >
-              <AppAnimatedCount :value="displayedCommentCount" :format="formatCountOrBlank" />
-            </NuxtLink>
-          </div>
-
-          <!-- Repost button + menu -->
-          <div class="relative inline-flex items-center">
-            <button
-              type="button"
-              class="moh-tap moh-pressable inline-flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-full transition-colors moh-surface-hover"
-              :class="viewerCanInteract ? 'cursor-pointer' : 'cursor-default opacity-60'"
-              :aria-label="isReposted ? 'Repost options' : 'Repost'"
-              v-tooltip.bottom="repostTooltip"
-              @click.stop="onRepostClick"
-            >
-              <Icon
-                name="tabler:repeat"
-                class="text-[19px]"
-                aria-hidden="true"
-                :style="isReposted ? { color: repostActiveColor } : undefined"
-              />
-            </button>
-            <span
-              class="ml-0 inline-block sm:min-w-[1.5rem] select-none text-left text-[11px] sm:text-xs tabular-nums moh-text-muted moh-count-gutter"
-              :class="repostCount > 0 ? 'opacity-100' : 'opacity-0'"
-              aria-hidden="true"
-            >
-              <AppAnimatedCount :value="repostCount" :format="formatCountOrBlank" />
-            </span>
-
-            <!-- Repost menu popup -->
-            <Teleport to="body">
-              <div
-                v-if="repostMenuOpen"
-                class="fixed inset-0 z-[9998]"
-                @click.stop="repostMenuOpen = false"
-              />
-              <div
-                v-if="repostMenuOpen"
-                ref="repostMenuEl"
-                class="fixed z-[9999] min-w-[160px] rounded-xl border moh-border moh-surface shadow-lg overflow-hidden"
-                :style="repostMenuStyle"
-                @click.stop
-              >
-                <button
-                  type="button"
-                  class="flex w-full items-center gap-2 px-4 py-2.5 text-sm moh-text hover:moh-surface-hover transition-colors cursor-pointer"
-                  @click.stop="onRepostMenuRepost"
-                >
-                  <Icon name="tabler:repeat" class="text-base shrink-0" aria-hidden="true" />
-                  {{ isReposted ? 'Un-repost' : 'Repost' }}
-                </button>
-                <button
-                  type="button"
-                  class="flex w-full items-center gap-2 px-4 py-2.5 text-sm moh-text hover:moh-surface-hover transition-colors border-t moh-border cursor-pointer"
-                  @click.stop="onRepostMenuQuote"
-                >
-                  <Icon name="tabler:quote" class="text-base shrink-0" aria-hidden="true" />
-                  Quote
-                </button>
-              </div>
-            </Teleport>
-          </div>
-
-          <!-- Upvote -->
-          <div class="inline-flex items-center">
-            <button
-              type="button"
-              class="moh-tap moh-pressable inline-flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-full transition-colors moh-surface-hover"
-              :class="boostClickable ? 'cursor-pointer' : 'cursor-default opacity-60'"
-              :aria-label="isBoosted ? 'Remove upvote' : 'Upvote'"
-              v-tooltip.bottom="upvoteTooltip"
-              @click.stop="onBoostClick"
-            >
-              <svg
-                viewBox="0 0 24 24"
-                class="h-5 w-5"
-                aria-hidden="true"
-                :style="isBoosted ? { color: 'var(--p-primary-color)' } : undefined"
-              >
-                <path
-                  v-if="isBoosted"
-                  fill="currentColor"
-                  d="M12 4.5L3.75 12.25h5.25V20h6V12.25h5.25L12 4.5z"
-                />
-                <path
-                  v-else
-                  d="M12 4.5L3.75 12.25h5.25V20h6V12.25h5.25L12 4.5z"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="1.9"
-                  stroke-linejoin="round"
-                />
-              </svg>
-            </button>
-            <span
-              class="ml-0 inline-block sm:min-w-[1.5rem] select-none text-left text-[11px] sm:text-xs tabular-nums moh-text-muted moh-count-gutter"
-              :class="boostCount > 0 ? 'opacity-100' : 'opacity-0'"
-              aria-hidden="true"
-            >
-              <AppAnimatedCount :value="boostCount" :format="formatCountOrBlank" />
-            </span>
-          </div>
-
-          <!-- Views -->
-          <div class="relative inline-flex items-center">
-            <button
-              ref="viewerCountBtnEl"
-              type="button"
-              class="moh-tap inline-flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-full transition-colors"
-              :class="viewerCount > 0 ? 'moh-surface-hover cursor-default' : 'cursor-default opacity-60'"
-              :aria-label="viewerCount > 0 ? `${viewerCount} ${viewerCount === 1 ? 'person' : 'people'} saw this post` : 'Views'"
-              :tabindex="viewerCount > 0 ? 0 : -1"
-              @mouseenter="onViewerCountHover"
-              @focus="onViewerCountHover"
-              @mouseleave="hideViewerBreakdown"
-              @blur="hideViewerBreakdown"
-              @click.stop
-            >
-              <svg viewBox="0 0 24 24" class="h-[18px] w-[18px]" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-              </svg>
-            </button>
-            <span
-              class="ml-0 inline-block sm:min-w-[1.5rem] select-none text-left text-[11px] sm:text-xs tabular-nums moh-text-muted moh-count-gutter"
-              :class="viewerCount > 0 ? 'opacity-100' : 'opacity-0'"
-              aria-hidden="true"
-            >
-              <AppAnimatedCount :value="viewerCount" :format="formatCountOrBlank" />
-            </span>
-
-            <!-- Breakdown popover: teleported to body so it's never clipped by a parent stacking context -->
-            <Teleport to="body">
-              <Transition name="viewer-breakdown">
-                <div
-                  v-if="viewerBreakdownVisible"
-                  ref="viewerBreakdownEl"
-                  class="fixed z-[9999] min-w-[10rem] rounded-lg border moh-border moh-surface shadow-lg px-3 py-2.5 text-[11px] sm:text-xs"
-                  :style="viewerBreakdownStyle"
-                  role="tooltip"
-                >
-                  <p class="mb-1.5 font-semibold moh-text tabular-nums">
-                    <AppAnimatedCount :value="viewerCount" />
-                    {{ viewerCount === 1 ? 'person' : 'people' }} saw this
-                  </p>
-                  <template v-if="viewerBreakdown">
-                    <div class="flex flex-col gap-1 moh-text-muted">
-                      <div v-if="viewerBreakdown.premium > 0" class="flex items-center justify-between gap-3">
-                        <span class="flex items-center gap-1.5">
-                          <span class="inline-block h-2 w-2 rounded-full bg-yellow-400 shrink-0" aria-hidden="true" />
-                          Premium
-                        </span>
-                        <span class="tabular-nums font-medium moh-text">{{ viewerBreakdown.premium }}</span>
-                      </div>
-                      <div v-if="viewerBreakdown.verified > 0" class="flex items-center justify-between gap-3">
-                        <span class="flex items-center gap-1.5">
-                          <span class="inline-block h-2 w-2 rounded-full bg-blue-400 shrink-0" aria-hidden="true" />
-                          Verified
-                        </span>
-                        <span class="tabular-nums font-medium moh-text">{{ viewerBreakdown.verified }}</span>
-                      </div>
-                      <div v-if="viewerBreakdown.unverified > 0" class="flex items-center justify-between gap-3">
-                        <span class="flex items-center gap-1.5">
-                          <span class="inline-block h-2 w-2 rounded-full bg-gray-400 shrink-0" aria-hidden="true" />
-                          Unverified
-                        </span>
-                        <span class="tabular-nums font-medium moh-text">{{ viewerBreakdown.unverified }}</span>
-                      </div>
-                      <div v-if="viewerBreakdown.guest > 0" class="flex items-center justify-between gap-3">
-                        <span class="flex items-center gap-1.5">
-                          <span class="inline-block h-2 w-2 rounded-full bg-gray-500/60 shrink-0" aria-hidden="true" />
-                          Guests
-                        </span>
-                        <span class="tabular-nums font-medium moh-text">{{ viewerBreakdown.guest }}</span>
-                      </div>
-                    </div>
-                  </template>
-                  <template v-else-if="viewerBreakdownLoading">
-                    <div class="moh-text-muted animate-pulse">Loading…</div>
-                  </template>
-                  <template v-else-if="viewerBreakdownFailed">
-                    <div class="moh-text-muted text-[11px]">Couldn't load breakdown.</div>
-                  </template>
-                </div>
-              </Transition>
-            </Teleport>
-          </div>
-
-          <!-- Spacer: hidden on mobile (justify-between handles spacing), grows on desktop -->
-          <div class="hidden sm:block sm:flex-1" aria-hidden="true" />
-
-          <!-- Bookmark + count: count right of icon on mobile, left of icon on desktop -->
-          <div
-            class="inline-flex items-center sm:flex-row-reverse"
-            @click.capture="onMaybeGatedRightSideClick"
-          >
-            <AppPostRowBookmarkButton
-              :post-id="postView.id"
-              :viewer-can-interact="viewerCanInteract"
-              :initial-has-bookmarked="Boolean(postView.viewerHasBookmarked)"
-              :initial-collection-ids="(postView.viewerBookmarkCollectionIds ?? []).filter(Boolean)"
-              @bookmark-count-delta="onBookmarkCountDelta"
-              @bookmark-state-changed="onBookmarkStateChanged"
-            />
-            <span
-              class="inline-block sm:min-w-[1.5rem] select-none text-left sm:text-right text-[11px] sm:text-xs tabular-nums moh-text-muted moh-count-gutter"
-              :class="bookmarkCountValue > 0 ? 'opacity-100' : 'opacity-0'"
-              aria-hidden="true"
-            >
-              <AppAnimatedCount :value="bookmarkCountValue" :format="formatCountOrBlank" />
-            </span>
-          </div>
-
-          <!-- Share -->
-          <div
-            class="inline-flex items-center"
-            @click.capture="onMaybeGatedRightSideClick"
-          >
-            <AppPostRowShareMenu
-              :can-share="canShare"
-              :tooltip="shareTooltip"
-              :items="shareMenuItems"
-            />
-          </div>
-        </div>
 
         <!-- Thread footer content (e.g. "View X more replies") -->
         <div v-if="$slots.threadFooter" class="mt-1">
@@ -697,22 +344,14 @@
 </template>
 
 <script setup lang="ts">
-import { inject } from 'vue'
 import type { CommunityGroupShell, FeedPost } from '~/types/api'
 import { groupPreviewToFeedShell } from '~/utils/community-group-preview'
-import { userColorTier, userTierTextClass } from '~/utils/user-tier'
-import { groupAvatarRoundClass as getGroupAvatarRoundClass } from '~/utils/avatar-rounding'
 import { visibilityTagClasses, visibilityTagLabel } from '~/utils/post-visibility'
-import type { MenuItem } from 'primevue/menuitem'
-import { siteConfig } from '~/config/site'
 import { tinyTooltip } from '~/utils/tiny-tooltip'
-import { formatShortCount } from '~/utils/text'
-const formatCountOrBlank = (n: number) => n === 0 ? ' ' : formatShortCount(n)
-import { useCopyToClipboard } from '~/composables/useCopyToClipboard'
-import { usePostCountBumps } from '~/composables/usePostCountBumps'
 import { useInViewOnce } from '~/composables/useInViewOnce'
 import { useUserOverlay } from '~/composables/useUserOverlay'
-import { MOH_OPEN_COMPOSER_FROM_ONLYME_KEY, MOH_OPEN_COMPOSER_KEY } from '~/utils/injection-keys'
+import { usePostRowMenus } from '~/composables/post-row/usePostRowMenus'
+import { usePostRowThreadLines } from '~/composables/post-row/usePostRowThreadLines'
 import { isPendingLocalId } from '~/composables/usePendingPostsManager'
 
 const props = withDefaults(defineProps<{
@@ -772,8 +411,6 @@ watch(
 const postCache = usePostCache()
 const postView = computed(() => postCache.get(postState.value))
 
-const groupAvatarRoundClass = getGroupAvatarRoundClass()
-
 const feedGroupForRow = computed((): CommunityGroupShell | null => {
   if (props.feedGroup) return props.feedGroup
   const gp = postView.value.groupPreview ?? null
@@ -787,18 +424,6 @@ const feedGroupTagForRow = computed((): CommunityGroupShell | null => {
   // On a single group wall page, the group context is already obvious.
   if (/^\/g\/[^/]+\/?$/.test(route.path)) return null
   return group
-})
-
-const feedGroupInitials = computed(() => {
-  const n = (feedGroupForRow.value?.name ?? '').trim()
-  if (!n) return '?'
-  const parts = n.split(/\s+/).filter(Boolean)
-  if (parts.length >= 2) return (parts[0]![0]! + parts[1]![0]!).toUpperCase()
-  return n.slice(0, 2).toUpperCase()
-})
-
-const { onEnter: onFeedGroupEnter, onMove: onFeedGroupMove, onLeave: onFeedGroupLeave } = useGroupPreviewTrigger({
-  shell: feedGroupForRow,
 })
 
 function onPollUpdated(poll: any) {
@@ -820,37 +445,6 @@ const author = computed(() => authorOverlay.value ?? authorSnapshot.value ?? ({
 const isDeletedPost = computed(() => Boolean(postView.value.deletedAt))
 const isGatedPost = computed(() => postView.value.viewerCanAccess === false)
 
-// "Replying to" targets: derived from the parent post's author (and the parent's parent, etc.)
-// We collect up to 3 unique usernames from the parent chain so the label stays readable.
-const replyingToTargets = computed(() => {
-  if (!props.showReplyingTo || !postView.value.parentId) return []
-
-  const seen = new Set<string>()
-  const targets: Array<ReturnType<typeof useUserPreviewTrigger> & { username: string; tierClass: string }> = []
-
-  // Walk the pre-loaded parent chain (parent → parent.parent → …)
-  let node: import('~/types/api').FeedPost | undefined = postView.value.parent
-  while (node && targets.length < 3) {
-    const username = node.author?.username ?? null
-    if (username && !seen.has(username)) {
-      seen.add(username)
-      const u = username
-      const tier = userColorTier(node.author ?? null)
-      const tierClass = userTierTextClass(tier, { fallback: 'text-blue-500 dark:text-blue-400' })
-      const { onEnter, onMove, onLeave } = useUserPreviewTrigger({ username: computed(() => u) })
-      targets.push({ username: u, tierClass, onEnter, onMove, onLeave })
-    }
-    node = node.parent
-  }
-
-  return targets
-})
-
-function onGatedRightSideClick() {
-  const kind = postView.value.visibility === 'premiumOnly' ? 'premium' : 'verify'
-  showAuthActionModal({ kind, action: 'bookmark' })
-}
-
 function onGatedBannerClick() {
   if (!isAuthed.value) {
     showAuthActionModal({ kind: 'login', action: 'read' })
@@ -862,33 +456,12 @@ function onGatedBannerClick() {
     void navigateTo('/settings/verification')
   }
 }
-// Click-capture guard for the bookmark + share items: only intercepts clicks when the
-// post is gated, so the unauth-prompt fires instead of letting the inner button toggle.
-// For non-gated posts the event passes through untouched.
-function onMaybeGatedRightSideClick(event: MouseEvent) {
-  if (!isGatedPost.value) return
-  event.stopPropagation()
-  event.preventDefault()
-  onGatedRightSideClick()
-}
+
 const pendingStatus = computed<'posting' | 'failed' | null>(() => {
   const s = postView.value._pending
   return s === 'posting' || s === 'failed' ? s : null
 })
 const isPendingRow = computed(() => pendingStatus.value !== null)
-const pendingErrorText = computed(() => (postView.value._pendingError ?? '').trim() || 'Failed to post.')
-
-const pendingPostsManager = usePendingPostsManager()
-function onRetryPending() {
-  const lid = (postView.value._localId ?? '').trim()
-  if (!lid) return
-  void pendingPostsManager.retry(lid)
-}
-function onDiscardPending() {
-  const lid = (postView.value._localId ?? '').trim()
-  if (!lid) return
-  pendingPostsManager.discard(lid)
-}
 
 const clickable = computed(() => props.clickable !== false && !isPendingRow.value)
 const highlightClass = computed(() => {
@@ -918,115 +491,6 @@ const hoverBgStyle = computed(() => {
   }
 })
 
-// Thread line overlays: 2px; stay within row, gap between line and avatar (no overextend).
-const THREAD_LINE_GAP = 4
-const FALLBACK_AVATAR_H = 40
-
-const avatarEl = ref<HTMLElement | null>(null)
-const avatarTopPx = ref(0)
-const avatarHPx = ref(FALLBACK_AVATAR_H)
-let avatarRo: ResizeObserver | null = null
-let avatarResizeRaf = 0
-
-function recomputeAvatarMetrics() {
-  if (!import.meta.client) return
-  const row = rowEl.value
-  const avatar = avatarEl.value
-  if (!row || !avatar) return
-  const rowRect = row.getBoundingClientRect()
-  const avatarRect = avatar.getBoundingClientRect()
-  // Clamp to avoid negative top from fractional rounding / transforms.
-  avatarTopPx.value = Math.max(0, Math.round(avatarRect.top - rowRect.top))
-  avatarHPx.value = Math.max(0, Math.round(avatarRect.height)) || FALLBACK_AVATAR_H
-}
-
-function scheduleAvatarMetricsRecompute() {
-  if (!import.meta.client) return
-  if (avatarResizeRaf) cancelAnimationFrame(avatarResizeRaf)
-  avatarResizeRaf = requestAnimationFrame(() => {
-    avatarResizeRaf = 0
-    recomputeAvatarMetrics()
-  })
-}
-
-onMounted(() => {
-  scheduleAvatarMetricsRecompute()
-  if (!import.meta.client) return
-  try {
-    avatarRo = new ResizeObserver(() => scheduleAvatarMetricsRecompute())
-    if (rowEl.value) avatarRo.observe(rowEl.value)
-    if (avatarEl.value) avatarRo.observe(avatarEl.value)
-    window.addEventListener('resize', scheduleAvatarMetricsRecompute, { passive: true })
-  } catch {
-    // ignore
-  }
-  if (
-    rowEl.value
-    && postView.value.id
-    && postView.value.viewerCanAccess !== false
-    && !isPendingLocalId(postView.value.id)
-  ) {
-    stopViewObserve = observeView([postView.value.id], rowEl.value)
-  }
-})
-
-watch(
-  avatarEl,
-  (el, prev) => {
-    if (!import.meta.client) return
-    if (!avatarRo) return
-    if (prev) avatarRo.unobserve(prev)
-    if (el) {
-      avatarRo.observe(el)
-      scheduleAvatarMetricsRecompute()
-    }
-  },
-  { flush: 'post' },
-)
-
-onBeforeUnmount(() => {
-  if (!import.meta.client) return
-  if (avatarResizeRaf) cancelAnimationFrame(avatarResizeRaf)
-  avatarResizeRaf = 0
-  try {
-    window.removeEventListener('resize', scheduleAvatarMetricsRecompute)
-  } catch {
-    // ignore
-  }
-  if (avatarRo) {
-    try {
-      if (rowEl.value) avatarRo.unobserve(rowEl.value)
-      if (avatarEl.value) avatarRo.unobserve(avatarEl.value)
-      avatarRo.disconnect()
-    } catch {
-      // ignore
-    } finally {
-      avatarRo = null
-    }
-  }
-  stopViewObserve?.()
-  stopViewObserve = null
-})
-
-// When showThreadLineAboveAvatar: line should end THREAD_LINE_GAP px above the avatar.
-const threadLineAboveOverlayStyle = computed(() => ({ top: '0' }))
-const threadLineAboveOverlayHeight = computed(() => `${Math.max(0, avatarTopPx.value - THREAD_LINE_GAP)}px`)
-const threadLineAboveStyle = computed(() => {
-  const base = { height: threadLineAboveOverlayHeight.value }
-  if (props.threadLineTint === 'verified') return { ...base, backgroundColor: 'var(--moh-verified)' }
-  if (props.threadLineTint === 'premium') return { ...base, backgroundColor: 'var(--moh-premium)' }
-  return base
-})
-const threadLineBelowStyle = computed(() => {
-  if (props.threadLineTint === 'verified') return { backgroundColor: 'var(--moh-verified)' }
-  if (props.threadLineTint === 'premium') return { backgroundColor: 'var(--moh-premium)' }
-  return undefined
-})
-// Line below starts (avatar bottom + gap), based on measured avatar position.
-const threadLineBelowOverlayStyle = computed(() => {
-  const top = avatarTopPx.value + avatarHPx.value + THREAD_LINE_GAP
-  return { top: `${top}px`, bottom: '0' }
-})
 const rowStyle = computed(() => ({
   contentVisibility: 'auto' as const,
   containIntrinsicSize: '240px',
@@ -1037,57 +501,48 @@ const rowStyle = computed(() => ({
 const rowEl = ref<HTMLElement | null>(null)
 const { inView: rowInView } = useInViewOnce(rowEl, { root: null, rootMargin: '800px 0px', threshold: 0.01 })
 
+// Thread connector lines: measured against the avatar inside this row.
+const avatarEl = ref<HTMLElement | null>(null)
+const {
+  threadLineAboveOverlayStyle,
+  threadLineAboveStyle,
+  threadLineBelowOverlayStyle,
+  threadLineBelowStyle,
+} = usePostRowThreadLines({
+  rowEl,
+  avatarEl,
+  threadLineTint: () => props.threadLineTint,
+})
+
 // View tracking: report when this row is ≥50% visible for ≥1s.
 // FeedPostRow also tracks the full thread chain; deduplication in usePostViewTracker handles overlap.
 const { observe: observeView } = usePostViewTracker()
 let stopViewObserve: (() => void) | null = null
-const { user, me: refetchMe, isAuthed, isVerified: viewerIsVerified } = useAuth()
-const viewerHasUsername = computed(() => Boolean(user.value?.usernameIsSet))
+
+onMounted(() => {
+  if (!import.meta.client) return
+  if (
+    rowEl.value
+    && postView.value.id
+    && postView.value.viewerCanAccess !== false
+    && !isPendingLocalId(postView.value.id)
+  ) {
+    stopViewObserve = observeView([postView.value.id], rowEl.value)
+  }
+})
+
+onBeforeUnmount(() => {
+  stopViewObserve?.()
+  stopViewObserve = null
+})
+
+const { user, isAuthed } = useAuth()
+const { show: showAuthActionModal } = useAuthActionModal()
 const isSelf = computed(() => {
   const viewerId = user.value?.id ?? null
   const authorId = author.value?.id ?? authorSnapshot.value?.id ?? null
   return Boolean(viewerId && authorId && viewerId === authorId)
 })
-
-// Avatar context menu: shown when viewing your own post and you're in a space (but not on /spaces).
-const { selectedSpaceId, currentSpace: currentSpaceForNav } = useSpaceLobby()
-const showAvatarMenu = computed(() => {
-  if (!isSelf.value) return false
-  if (!selectedSpaceId.value) return false
-  if (route.path.startsWith('/spaces') || route.path.startsWith('/s/')) return false
-  return true
-})
-const avatarMenuRef = ref()
-type AvatarMenuItem = MenuItem & { iconName?: string }
-const avatarMenuItems = computed<AvatarMenuItem[]>(() => {
-  const items: AvatarMenuItem[] = []
-  const ownerUsername = currentSpaceForNav.value?.owner?.username
-  if (ownerUsername) {
-    items.push({
-      label: 'Go to space',
-      iconName: 'tabler:layout-grid',
-      command: () => navigateTo(`/s/${encodeURIComponent(ownerUsername)}`),
-    })
-  }
-  if (authorProfilePath.value) {
-    items.push({
-      label: 'View profile',
-      iconName: 'tabler:user',
-      command: () => navigateTo(authorProfilePath.value!),
-    })
-  }
-  return items
-})
-function toggleAvatarMenu(event: Event) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  ;(avatarMenuRef.value as any)?.toggle(event)
-}
-const { apiFetchData } = useApiClient()
-const { show: showAuthActionModal } = useAuthActionModal()
-const boostState = useBoostState()
-const blockState = useBlockState()
-const followState = useFollowState()
-const { fetchUserPreview } = useUserPreview()
 
 const isOnlyMe = computed(() => postView.value.visibility === 'onlyMe')
 const viewerIsAdmin = computed(() => Boolean(user.value?.siteAdmin))
@@ -1096,86 +551,6 @@ const viewerCanInteract = computed(() => {
   // Admin viewing someone else's Only-me post should be read-only.
   if (isOnlyMe.value && viewerIsAdmin.value && !isSelf.value) return false
   return true
-})
-
-// Follow status for the post author (sourced from shared follow state).
-const authorFollowRel = computed(() => followState.get(author.value?.id ?? null))
-const viewerFollowsAuthor = computed(() => Boolean(authorFollowRel.value?.viewerFollowsUser))
-
-const followPrefetchInflight = ref(false)
-async function ensureAuthorFollowLoaded() {
-  const id = author.value?.id
-  const username = author.value?.username
-  if (!id || !username || isSelf.value) return
-  if (followState.get(id) !== null || followPrefetchInflight.value) return
-  followPrefetchInflight.value = true
-  try {
-    const preview = await fetchUserPreview(username)
-    followState.set(id, preview.relationship)
-  } catch {
-    // leave label defaulted to Follow
-  } finally {
-    followPrefetchInflight.value = false
-  }
-}
-
-// Block status from the post's API response (server-computed).
-const viewerBlockStatus = computed(() => postView.value.viewerBlockStatus ?? null)
-const isBlockedWithAuthor = computed(() => viewerBlockStatus.value !== null)
-const blockReasonText = computed(() => {
-  if (viewerBlockStatus.value === 'viewer_blocked') {
-    const handle = author.value?.username ? `@${author.value.username}` : 'this user'
-    return `You've blocked ${handle}. Unblock them to engage with their posts.`
-  }
-  if (viewerBlockStatus.value === 'viewer_blocked_by') {
-    const handle = author.value?.username ? `@${author.value.username}` : 'This user'
-    return `${handle} has blocked you. You can view their posts but can't engage with them.`
-  }
-  return null
-})
-
-const canBoost = computed(() => {
-  // Only-me posts don't need boosts.
-  if (isOnlyMe.value) return false
-  if (isBlockedWithAuthor.value) return false
-  return viewerCanInteract.value && isAuthed.value && viewerHasUsername.value
-})
-const canComment = computed(() => {
-  if (isBlockedWithAuthor.value) return false
-  return viewerCanInteract.value && isAuthed.value && viewerIsVerified.value
-})
-const canShare = computed(() => {
-  // Sharing private posts is confusing; keep it read-only.
-  if (isOnlyMe.value) return false
-  return viewerCanInteract.value
-})
-
-const upvoteTooltip = computed(() => {
-  if (isOnlyMe.value) return tinyTooltip('Boosts are not available for Only me posts')
-  if (!viewerCanInteract.value) return tinyTooltip('Boost')
-  if (!isAuthed.value) return tinyTooltip('Log in to boost')
-  if (!viewerHasUsername.value) return tinyTooltip('Set a username to boost')
-  if (isBlockedWithAuthor.value) return tinyTooltip('Blocked')
-  const text = isBoosted.value ? 'Unboost' : 'Boost'
-  return tinyTooltip(text)
-})
-const shareTooltip = computed(() => tinyTooltip('Share'))
-const moreTooltip = computed(() => tinyTooltip('More'))
-const commentTooltip = computed(() => {
-  if (!viewerCanInteract.value) return tinyTooltip('Reply')
-  if (!isAuthed.value) return tinyTooltip('Log in to reply')
-  if (!viewerIsVerified.value) return tinyTooltip('Verify to reply')
-  if (isBlockedWithAuthor.value) return tinyTooltip('Blocked')
-  return tinyTooltip('Reply')
-})
-
-const boostClickable = computed(() => {
-  if (isBlockedWithAuthor.value) return true  // clickable but shows block toast
-  return viewerCanInteract.value && (!isAuthed.value || viewerHasUsername.value)
-})
-const commentClickable = computed(() => {
-  if (isBlockedWithAuthor.value) return true  // clickable but shows block toast
-  return viewerCanInteract.value
 })
 
 const authorBanned = computed(() => Boolean(postView.value.authorBanned ?? postView.value.author?.authorBanned))
@@ -1240,7 +615,6 @@ const metaTags = computed(() => {
 })
 
 const postPermalink = computed(() => `/p/${encodeURIComponent(postView.value.id)}`)
-const postShareUrl = computed(() => `${siteConfig.url}${postPermalink.value}`)
 
 function goToPost() {
   return navigateTo(postPermalink.value)
@@ -1324,180 +698,29 @@ function formatShortDate(d: Date, nowMs: number): string {
   return sameYear ? `${month} ${day}` : `${month} ${day}, ${d.getFullYear()}`
 }
 
-type MenuItemWithIcon = MenuItem & { iconName?: string }
-
-const openComposerFromOnlyMe = inject(MOH_OPEN_COMPOSER_FROM_ONLYME_KEY, null)
-
-const moreMenuItems = computed<MenuItemWithIcon[]>(() => {
-  const items: MenuItemWithIcon[] = []
-  if (!authorBanned.value) {
-    items.push({
-      label: author.value?.username ? `View @${author.value.username}` : 'View profile',
-      iconName: 'tabler:user',
-      command: () => {
-        if (!authorProfilePath.value) return
-        return navigateTo(authorProfilePath.value)
-      },
-    })
-  } else {
-    items.push({ label: 'User is banned', iconName: 'tabler:user-off', disabled: true })
-  }
-
-  if (isDeletedPost.value) {
-    return items
-  }
-
-  if (viewerIsAdmin.value) {
-    items.push({ separator: true })
-    items.push({
-      label: adminScoreLabel.value ?? '—',
-      iconName: 'tabler:chart-line',
-      disabled: true
-    })
-  }
-
-  if (isAuthed.value && !isSelf.value && !authorBanned.value) {
-    const authorId = author.value?.id ?? null
-    const authorUsername = author.value?.username ?? null
-    if (authorId && authorUsername) {
-      items.push({
-        label: viewerFollowsAuthor.value ? `Unfollow @${authorUsername}` : `Follow @${authorUsername}`,
-        iconName: viewerFollowsAuthor.value ? 'tabler:user-minus' : 'tabler:user-plus',
-        command: () => void onToggleFollowAuthor(),
-      })
-    }
-  }
-
-  if (isAuthed.value && !isSelf.value && !isGatedPost.value) {
-    items.push({
-      label: 'Report post',
-      iconName: 'tabler:flag',
-      command: () => {
-        reportOpen.value = true
-      },
-    })
-
-    const authorUserId = author.value?.id ?? null
-    if (authorUserId && !authorBanned.value) {
-      const isBlocked = blockState.isBlockedByMe(authorUserId)
-        || viewerBlockStatus.value === 'viewer_blocked'
-      const blockHandle = author.value?.username ? `@${author.value.username}` : 'user'
-      items.push({
-        label: isBlocked ? `Unblock ${blockHandle}` : `Block ${blockHandle}`,
-        iconName: isBlocked ? 'tabler:ban-off' : 'tabler:ban',
-        class: isBlocked ? '' : 'text-red-600 dark:text-red-400',
-        command: () => {
-          if (isBlocked) {
-            void handleUnblockUser(authorUserId)
-          } else {
-            void handleBlockUser(authorUserId)
-          }
-        },
-      })
-    }
-  }
-
-  if (
-    props.groupWall?.viewerIsOwner &&
-    !isDeletedPost.value &&
-    !postView.value.parentId &&
-    postView.value.communityGroupId === props.groupWall.groupId
-  ) {
-    items.push({ separator: true })
-    const isGpinned = Boolean(postView.value.pinnedInGroupAt)
-    items.push({
-      label: isGpinned ? 'Unpin from group top' : 'Pin to group top',
-      iconName: isGpinned ? 'tabler:x' : 'tabler:pinned',
-      command: () => void (isGpinned ? unpinGroupWall() : pinGroupWall()),
-    })
-  }
-
-  if (isSelf.value) {
-    items.push({ separator: true })
-    if (!isDeletedPost.value && postView.value.visibility === 'onlyMe') {
-      items.push({
-        label: 'Use as draft',
-        iconName: 'tabler:copy',
-        command: () => {
-          if (!viewerIsVerified.value) {
-            showAuthActionModal({ kind: 'verify', action: 'useAsDraft' })
-            return
-          }
-          if (openComposerFromOnlyMe) {
-            openComposerFromOnlyMe(postView.value)
-            return
-          }
-          toast.push({
-            title: 'Could not open draft composer',
-            message: 'Please try again from the Only me page.',
-            tone: 'error',
-            durationMs: 2400,
-          })
-        },
-      })
-    }
-    if (canEditPost.value) {
-      items.push({
-        label: 'Edit post',
-        iconName: 'tabler:edit',
-        command: () => {
-          editOpen.value = true
-        },
-      })
-    }
-    const pinnedPostId = user.value?.pinnedPostId ?? null
-    const isPinned = pinnedPostId === postView.value.id
-    const canPin = postView.value.visibility !== 'onlyMe'
-    if (isPinned || canPin) {
-      items.push({
-        label: isPinned ? 'Unpin from profile' : 'Pin to profile',
-        iconName: isPinned ? 'tabler:x' : 'tabler:pin',
-        command: () => (isPinned ? unpinFromProfile() : pinToProfile()),
-      })
-    }
-    items.push({
-      label: 'Delete post',
-      iconName: 'tabler:trash',
-      class: 'text-red-600 dark:text-red-400',
-      command: () => openDeleteConfirm(),
-    })
-  }
-
-  return items
+// More menu + avatar context menu + their actions (follow/block/pin/edit/delete).
+const {
+  moreMenuItems,
+  moreTooltip,
+  ensureAuthorFollowLoaded,
+  editOpen,
+  reportOpen,
+  showAvatarMenu,
+  avatarMenuRef,
+  avatarMenuItems,
+  toggleAvatarMenu,
+} = usePostRowMenus({
+  postView,
+  author,
+  isSelf,
+  isDeletedPost,
+  isGatedPost,
+  authorBanned,
+  authorProfilePath,
+  groupWall: () => props.groupWall,
+  onDeleted: (id) => emit('deleted', id),
+  onGroupPinChanged: () => emit('groupPinChanged'),
 })
-
-const toast = useAppToast()
-const editOpen = ref(false)
-
-const canEditPost = computed(() => {
-  if (!isSelf.value) return false
-  if (isDeletedPost.value) return false
-  // Replies are never editable (for anyone, including admins).
-  if (postView.value.parentId) return false
-  // Only-me posts are notes/drafts: allow unlimited edits (no age/edit-count cap).
-  if (postView.value.visibility === 'onlyMe') return true
-  // Site admins can always edit their own top-level posts with no time/count limit.
-  if (viewerIsAdmin.value) return true
-  const createdAt = new Date(postView.value.createdAt)
-  const ageMs = nowMs.value - createdAt.getTime()
-  if (!Number.isFinite(ageMs) || ageMs > 30 * 60 * 1000) return false
-  const editCount = Math.max(0, Math.floor(postView.value.editCount ?? 0))
-  return editCount < 3
-})
-const deleting = ref(false)
-const { confirm } = useAppConfirm()
-
-async function openDeleteConfirm() {
-  const ok = await confirm({
-    header: 'Delete post?',
-    message: 'This post will show as deleted, but replies will remain visible.',
-    confirmLabel: 'Delete',
-    confirmSeverity: 'danger',
-    confirmIcon: 'tabler:trash',
-  })
-  if (ok) await deletePost()
-}
-const reportOpen = ref(false)
 
 function onEdited(payload: { id: string; post: FeedPost }) {
   if (payload?.id !== postView.value.id) return
@@ -1508,228 +731,6 @@ function onEdited(payload: { id: string; post: FeedPost }) {
 
 function onReportSubmitted() {
   // toast + close handled in dialog
-}
-
-async function pinToProfile() {
-  if (postView.value.visibility === 'onlyMe') {
-    toast.push({ title: 'Only-me posts cannot be pinned', tone: 'error', durationMs: 2200 })
-    return
-  }
-  try {
-    await apiFetchData<{ pinnedPostId: string }>('/users/me/pinned-post', {
-      method: 'PUT',
-      body: { postId: postView.value.id },
-    })
-    await refetchMe()
-    toast.push({ title: 'Pinned to profile', tone: 'success', durationMs: 1400 })
-  } catch (e: unknown) {
-    toast.pushError(e, 'Failed to pin.')
-  }
-}
-
-async function pinGroupWall() {
-  const gw = props.groupWall
-  if (!gw) return
-  try {
-    await apiFetchData(`/groups/${encodeURIComponent(gw.groupId)}/pin/${encodeURIComponent(postView.value.id)}`, {
-      method: 'POST',
-      body: {},
-    })
-    toast.push({ title: 'Pinned to group', tone: 'success', durationMs: 1400 })
-    emit('groupPinChanged')
-  } catch (e: unknown) {
-    toast.pushError(e, 'Failed to pin.')
-  }
-}
-
-async function unpinGroupWall() {
-  const gw = props.groupWall
-  if (!gw) return
-  try {
-    await apiFetchData(`/groups/${encodeURIComponent(gw.groupId)}/pin`, { method: 'DELETE' })
-    toast.push({ title: 'Unpinned from group', tone: 'success', durationMs: 1400 })
-    emit('groupPinChanged')
-  } catch (e: unknown) {
-    toast.pushError(e, 'Failed to unpin.')
-  }
-}
-
-async function unpinFromProfile() {
-  try {
-    await apiFetchData<{ pinnedPostId: null }>('/users/me/pinned-post', { method: 'DELETE' })
-    await refetchMe()
-    toast.push({ title: 'Unpinned from profile', tone: 'success', durationMs: 1400 })
-  } catch (e: unknown) {
-    toast.pushError(e, 'Failed to unpin.')
-  }
-}
-
-async function deletePost() {
-  if (deleting.value) return
-  deleting.value = true
-  try {
-    await apiFetchData<{ success: true }>('/posts/' + encodeURIComponent(postView.value.id), { method: 'DELETE' })
-    emit('deleted', postView.value.id)
-    toast.push({ title: 'Post deleted', tone: postView.value.visibility, durationMs: 1400 })
-  } catch (e: unknown) {
-    toast.pushError(e, 'Failed to delete post.')
-  } finally {
-    deleting.value = false
-  }
-}
-
-const { getCommentCountBump } = usePostCountBumps()
-const boostEntry = computed(() => boostState.get(postView.value))
-const isBoosted = computed(() => boostEntry.value.viewerHasBoosted)
-const boostCount = computed(() => boostEntry.value.boostCount)
-const boostCountLabel = computed(() => {
-  const n = boostCount.value
-  if (!n) return null
-  return formatShortCount(n)
-})
-
-// ── Repost state ─────────────────────────────────────────────────────────────
-const repostState = useRepostState()
-const repostEntry = computed(() => repostState.get(postView.value))
-const isReposted = computed(() => repostEntry.value.viewerHasReposted)
-const repostActiveColor = computed(() => {
-  const v = postView.value.visibility
-  if (v === 'verifiedOnly') return 'var(--moh-verified)'
-  if (v === 'premiumOnly') return 'var(--moh-premium)'
-  if (v === 'onlyMe') return 'var(--moh-onlyme)'
-  return 'var(--p-primary-color)'
-})
-const repostCount = computed(() => repostEntry.value.repostCount)
-const repostCountLabel = computed(() => {
-  const n = repostCount.value
-  if (!n) return null
-  return formatShortCount(n)
-})
-const repostTooltip = computed(() => {
-  if (!isAuthed.value) return tinyTooltip('Log in to repost')
-  if (!viewerIsVerified.value) return tinyTooltip('Verify to repost')
-  if (!viewerHasUsername.value) return tinyTooltip('Set a username to repost')
-  return isReposted.value ? tinyTooltip('Repost options') : tinyTooltip('Repost')
-})
-
-const repostMenuOpen = ref(false)
-const { style: repostMenuStyle, menuEl: repostMenuEl, place: placeRepostMenu } = useMenuPosition()
-
-const openComposerKey = inject(MOH_OPEN_COMPOSER_KEY, null)
-
-function onRepostClick(e: MouseEvent) {
-  if (!viewerCanInteract.value) return
-  if (isGatedPost.value) {
-    const kind = postView.value.visibility === 'premiumOnly' ? 'premium' : 'verify'
-    showAuthActionModal({ kind, action: 'boost' })
-    return
-  }
-  if (!isAuthed.value) {
-    showAuthActionModal({ kind: 'login', action: 'repost' as any })
-    return
-  }
-  if (!viewerIsVerified.value) {
-    showAuthActionModal({ kind: 'verify', action: 'repost' as any })
-    return
-  }
-  if (!viewerHasUsername.value) {
-    showAuthActionModal({ kind: 'setUsername', action: 'repost' as any })
-    return
-  }
-  const btn = e.currentTarget as HTMLElement
-  placeRepostMenu(btn, { menuWidth: 180, menuHeight: 96 })
-  repostMenuOpen.value = !repostMenuOpen.value
-}
-
-async function onRepostMenuRepost() {
-  repostMenuOpen.value = false
-  try {
-    await repostState.toggleRepost(postView.value)
-  } catch (e: unknown) {
-    toast.pushError(e, 'Failed to repost.')
-  }
-}
-
-function onRepostMenuQuote() {
-  repostMenuOpen.value = false
-  if (!openComposerKey) {
-    toast.push({ title: 'Could not open composer', tone: 'error', durationMs: 2000 })
-    return
-  }
-  openComposerKey({ quotedPost: props.post })
-}
-
-const bookmarkCountValue = computed(() =>
-  Math.max(0, Math.floor(Number(postView.value.bookmarkCount ?? 0))),
-)
-const bookmarkCountLabel = computed(() => {
-  const n = bookmarkCountValue.value
-  if (!n) return null
-  return formatShortCount(n)
-})
-
-const viewerCount = computed(() => Math.max(0, Math.floor(Number(postView.value.viewerCount ?? 0))))
-
-const viewerCountBtnEl = ref<HTMLElement | null>(null)
-const viewerBreakdownVisible = ref(false)
-const viewerBreakdown = ref<import('~/types/api').PostViewBreakdown | null>(null)
-const viewerBreakdownLoading = ref(false)
-const viewerBreakdownFailed = ref(false)
-let viewerBreakdownRequestSeq = 0
-
-const {
-  style: viewerBreakdownStyle,
-  menuEl: viewerBreakdownEl,
-  place: placeViewerBreakdown,
-  reset: resetViewerBreakdownPosition,
-} = useMenuPosition()
-
-function placeViewerBreakdownFrom(anchorEl: HTMLElement | null) {
-  if (!anchorEl) return
-  placeViewerBreakdown(anchorEl, {
-    align: 'end',
-    gap: 6,
-    menuWidth: 176,
-    menuHeight: 120,
-  })
-}
-
-async function onViewerCountHover(event?: Event) {
-  const anchorEl = event?.currentTarget instanceof HTMLElement ? event.currentTarget : viewerCountBtnEl.value
-  placeViewerBreakdownFrom(anchorEl)
-  viewerBreakdownVisible.value = true
-  placeViewerBreakdownFrom(anchorEl)
-  if (viewerBreakdownLoading.value) return
-  viewerBreakdownFailed.value = false
-  viewerBreakdownLoading.value = true
-  const requestSeq = ++viewerBreakdownRequestSeq
-  try {
-    const result = await apiFetchData<import('~/types/api').PostViewBreakdown>(
-      `/posts/${encodeURIComponent(postView.value.id)}/views/breakdown?fresh=1`,
-    )
-    if (requestSeq === viewerBreakdownRequestSeq) {
-      viewerBreakdown.value = result
-      viewerBreakdownFailed.value = false
-      // Fresh breakdown is the newest source of truth; sync row chip count immediately.
-      const nextTotal = Math.max(0, Math.floor(Number(result?.total ?? 0)))
-      if (nextTotal !== Math.max(0, Math.floor(Number(postState.value.viewerCount ?? 0)))) {
-        postState.value = { ...postState.value, viewerCount: nextTotal }
-      }
-    }
-  } catch {
-    if (requestSeq === viewerBreakdownRequestSeq) {
-      viewerBreakdownFailed.value = true
-    }
-  } finally {
-    if (requestSeq === viewerBreakdownRequestSeq) {
-      viewerBreakdownLoading.value = false
-    }
-  }
-}
-
-function hideViewerBreakdown() {
-  viewerBreakdownVisible.value = false
-  resetViewerBreakdownPosition()
 }
 
 function onBookmarkCountDelta(delta: number) {
@@ -1753,144 +754,14 @@ function onBookmarkStateChanged(payload: { hasBookmarked: boolean; collectionIds
     collectionIds: nextCollectionIds,
   })
 }
-const displayedCommentCount = computed(
-  () => (postView.value.commentCount ?? 0) + getCommentCountBump(postView.value.id),
-)
-const commentCountLabel = computed(() => {
-  const n = displayedCommentCount.value
-  if (n === 0) return null
-  return formatShortCount(n)
-})
-const mentionsList = computed(() => {
-  const m = postView.value.mentions
-  if (!m?.length) return []
-  return m.map((x) => x.username).filter(Boolean)
-})
-const mentionsLabel = computed(() => mentionsList.value.length > 0)
-const mentionsTooltip = computed(() => {
-  const list = mentionsList.value
-  if (!list.length) return null
-  return tinyTooltip(list.map((u) => `@${u}`).join(', '))
-})
-const adminScoreLabel = computed(() => {
-  if (!viewerIsAdmin.value) return null
-  const overall = postView.value.internal?.score
-  const boost = postView.value.internal?.boostScore
-  const hasOverall = typeof overall === 'number'
-  const hasBoost = typeof boost === 'number'
-  if (hasOverall && hasBoost) return `Score: ${overall.toFixed(2)} (boost: ${boost.toFixed(2)})`
-  if (hasOverall) return `Score: ${overall.toFixed(2)}`
-  if (hasBoost) return `Boost score: ${boost.toFixed(2)}`
-  return '—'
-})
 
-async function onBoostClick() {
-  if (!viewerCanInteract.value) return
-  if (isGatedPost.value) {
-    const kind = postView.value.visibility === 'premiumOnly' ? 'premium' : 'verify'
-    showAuthActionModal({ kind, action: 'boost' })
-    return
-  }
-  if (isBlockedWithAuthor.value && blockReasonText.value) {
-    toast.push({ title: 'Can\'t boost', message: blockReasonText.value, tone: 'error', durationMs: 3500 })
-    return
-  }
-  if (!isAuthed.value) {
-    showAuthActionModal({ kind: 'login', action: 'boost' })
-    return
-  }
-  if (!viewerHasUsername.value) {
-    showAuthActionModal({ kind: 'setUsername', action: 'boost' })
-    return
-  }
-  try {
-    await boostState.toggleBoost(postView.value)
-  } catch (e: unknown) {
-    toast.pushError(e, 'Failed to boost.')
+function onViewerCountSynced(nextTotal: number) {
+  if (nextTotal !== Math.max(0, Math.floor(Number(postState.value.viewerCount ?? 0)))) {
+    postState.value = { ...postState.value, viewerCount: nextTotal }
   }
 }
 
-const { show: showReplyModal } = useReplyModal()
-
-function onCommentClick() {
-  if (!viewerCanInteract.value) return
-  if (isGatedPost.value) {
-    const kind = postView.value.visibility === 'premiumOnly' ? 'premium' : 'verify'
-    showAuthActionModal({ kind, action: 'comment' })
-    return
-  }
-  if (isBlockedWithAuthor.value && blockReasonText.value) {
-    toast.push({ title: 'Can\'t reply', message: blockReasonText.value, tone: 'error', durationMs: 3500 })
-    return
-  }
-  if (!isAuthed.value) {
-    showAuthActionModal({ kind: 'login', action: 'comment' })
-    return
-  }
-  if (!viewerIsVerified.value) {
-    showAuthActionModal({ kind: 'verify', action: 'comment' })
-    return
-  }
-
-  // Flat repost: reply goes to the original post, but also mentions the reposter.
-  const post = postView.value
-  if (post.kind === 'repost' && post.repostedPost) {
-    const reposterUsername = post.author?.username
-    showReplyModal(post.repostedPost, reposterUsername ? [reposterUsername] : [])
-    return
-  }
-
-  showReplyModal(post)
-}
-
-async function onToggleFollowAuthor() {
-  const userId = author.value?.id
-  const username = author.value?.username
-  if (!userId || !username) return
-  if (viewerFollowsAuthor.value) {
-    const ok = await confirm({
-      header: 'Unfollow?',
-      message: `Unfollow @${username}?`,
-      confirmLabel: 'Unfollow',
-      confirmSeverity: 'danger',
-    })
-    if (!ok) return
-    try {
-      await followState.unfollow({ userId, username })
-      toast.push({ title: `Unfollowed @${username}`, tone: 'success', durationMs: 1400 })
-    } catch (e: unknown) {
-      toast.pushError(e, 'Failed to unfollow.')
-    }
-  } else {
-    try {
-      await followState.follow({ userId, username })
-      toast.push({ title: `Following @${username}`, tone: 'success', durationMs: 1400 })
-    } catch (e: unknown) {
-      toast.pushError(e, 'Failed to follow.')
-    }
-  }
-}
-
-async function handleBlockUser(userId: string) {
-  try {
-    await blockState.blockUser(userId)
-    const handle = author.value?.username ? `@${author.value.username}` : 'User'
-    toast.push({ title: `${handle} blocked`, message: 'They can still see your posts but can\'t engage with them.', tone: 'success', durationMs: 3000 })
-  } catch (e: unknown) {
-    toast.pushError(e, 'Failed to block user.')
-  }
-}
-
-async function handleUnblockUser(userId: string) {
-  try {
-    await blockState.unblockUser(userId)
-    const handle = author.value?.username ? `@${author.value.username}` : 'User'
-    toast.push({ title: `${handle} unblocked`, message: 'You can now engage with their posts.', tone: 'success', durationMs: 3000 })
-  } catch (e: unknown) {
-    toast.pushError(e, 'Failed to unblock user.')
-  }
-}
-
+// Presence interest: keep the author's online status fresh while the row is mounted.
 const { addInterest, removeInterest } = usePresence()
 const authorId = computed(() => props.post?.author?.id)
 watch(
@@ -1909,170 +780,4 @@ onBeforeUnmount(() => {
   const id = authorId.value
   if (id) removeInterest([id])
 })
-
-const { copyText: copyToClipboard } = useCopyToClipboard()
-const { isPremium: viewerIsPremium } = useAuth()
-const { isSupported: nativeShareSupported } = useWebShare()
-const { openDialog: openSendViaChat } = useSendViaChat()
-const { openDialog: openBookmarkDialog } = useBookmarkDialog()
-
-function toastToneForPostVisibility(): import('~/composables/useAppToast').AppToastTone {
-  const v = postView.value.visibility
-  if (v === 'verifiedOnly') return 'verifiedOnly'
-  if (v === 'premiumOnly') return 'premiumOnly'
-  if (v === 'onlyMe') return 'onlyMe'
-  return 'public'
-}
-
-const postMediaItems = computed(() => postView.value.media ?? [])
-const postHasVideo = computed(() => postMediaItems.value.some((m) => m.kind === 'video'))
-const postHasImage = computed(() => postMediaItems.value.some((m) => m.kind === 'image' || m.kind === 'gif'))
-
-const shareMenuItems = computed<MenuItemWithIcon[]>(() => {
-  const items: MenuItemWithIcon[] = []
-
-  // Send via chat — verified or premium users only
-  if (isAuthed.value && (viewerIsVerified.value || viewerIsPremium.value)) {
-    items.push({
-      label: 'Send via chat',
-      iconName: 'tabler:send',
-      command: () => {
-        openSendViaChat(props.post)
-      },
-    })
-  }
-
-  // Copy link — always visible when canShare
-  items.push({
-    label: 'Copy link',
-    iconName: 'tabler:link',
-    command: async () => {
-      if (!import.meta.client) return
-      try {
-        await copyToClipboard(postShareUrl.value)
-        toast.push({ title: 'Post link copied', tone: toastToneForPostVisibility(), durationMs: 1400 })
-      } catch {
-        toast.push({ title: 'Copy failed', tone: 'error', durationMs: 1800 })
-      }
-    },
-  })
-
-  // Share via OS sheet — only when the browser supports navigator.share().
-  // We await nextTick so the menu finishes closing before the sheet opens;
-  // modern browsers preserve user activation across microtasks so navigator.share()
-  // remains permitted after the await.
-  if (nativeShareSupported.value) {
-    const url = postShareUrl.value
-    items.push({
-      label: 'Share via…',
-      iconName: 'tabler:share-2',
-      command: async () => {
-        if (!import.meta.client || !navigator.share) return
-        await nextTick()
-        navigator.share({ title: 'Men of Hunger', url }).catch(() => {})
-      },
-    })
-  }
-
-  // Bookmark to folder — authed users only
-  if (isAuthed.value) {
-    items.push({
-      label: 'Bookmark to folder',
-      iconName: 'tabler:bookmark',
-      command: () => {
-        openBookmarkDialog({
-          post: props.post,
-          hasBookmarked: Boolean(postView.value.viewerHasBookmarked),
-          collectionIds: (postView.value.viewerBookmarkCollectionIds ?? []).filter(Boolean),
-          onChange(state, delta) {
-            onBookmarkStateChanged({ hasBookmarked: state.hasBookmarked, collectionIds: state.collectionIds })
-            if (delta !== 0) onBookmarkCountDelta(delta)
-          },
-        })
-      },
-    })
-  }
-
-  // Post video / Post image — verified viewers, only when the post has that media type
-  if (viewerIsVerified.value) {
-    if (postHasVideo.value) {
-      items.push({
-        label: 'Post video',
-        iconName: 'tabler:video',
-        command: () => {
-          onRepostMenuQuote()
-        },
-      })
-    }
-    if (postHasImage.value) {
-      items.push({
-        label: 'Post image',
-        iconName: 'tabler:photo',
-        command: () => {
-          onRepostMenuQuote()
-        },
-      })
-    }
-  }
-
-  return items
-})
-
-// ─── Live "is replying" indicator ────────────────────────────────────────────
-const { typingUsers } = usePostTyping(computed(() => postView.value.id))
-
-// ─── Transient "+N new" pill ─────────────────────────────────────────────────
-// Show a pill when a new reply arrives while this row is on screen.
-// Hidden on the permalink page (where the reply prepends inline) and for the
-// viewer's own replies (already handled optimistically).
-const newRepliesSinceMount = ref(0)
-let newRepliesPillTimer: ReturnType<typeof setTimeout> | null = null
-
-const isOnPermalink = computed(() => route.path === postPermalink.value)
-
-const { addPostsCallback: addPostsCallbackForPill, removePostsCallback: removePostsCallbackForPill } = usePresence()
-const newRepliesCb = {
-  onCommentAdded(p: { parentPostId: string; comment: { author?: { id?: string } } }) {
-    if (p.parentPostId !== postView.value.id) return
-    if (p.comment?.author?.id === user.value?.id) return
-    if (isOnPermalink.value) return
-    newRepliesSinceMount.value += 1
-    if (newRepliesPillTimer) clearTimeout(newRepliesPillTimer)
-    newRepliesPillTimer = setTimeout(() => {
-      newRepliesSinceMount.value = 0
-      newRepliesPillTimer = null
-    }, 6000)
-  },
-}
-
-onMounted(() => {
-  if (!import.meta.client) return
-  addPostsCallbackForPill(newRepliesCb as any)
-})
-onBeforeUnmount(() => {
-  removePostsCallbackForPill(newRepliesCb as any)
-  if (newRepliesPillTimer) { clearTimeout(newRepliesPillTimer); newRepliesPillTimer = null }
-})
 </script>
-
-<style scoped>
-/* Count gutters (replies/boost/repost/bookmark): always render the digit so
-   AppAnimatedCount's slide animation runs on the 0↔1 transitions too. The
-   opacity fade is timed to match the digit slide (~240ms) so the number
-   "rolls in" and fades up together (and rolls out + fades down). */
-.moh-count-gutter {
-  transition: opacity 240ms cubic-bezier(0.2, 0.8, 0.2, 1);
-}
-
-/* Breakdown popover: slide up and fade */
-.viewer-breakdown-enter-active,
-.viewer-breakdown-leave-active {
-  transition: opacity 0.12s ease, transform 0.12s ease;
-}
-.viewer-breakdown-enter-from,
-.viewer-breakdown-leave-to {
-  opacity: 0;
-  transform: translateY(-4px);
-}
-</style>
-

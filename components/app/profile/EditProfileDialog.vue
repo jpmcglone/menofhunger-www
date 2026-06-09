@@ -239,7 +239,7 @@ const emit = defineEmits<{
   (e: 'update:modelValue', v: boolean): void
   (e: 'patchProfile', patch: Partial<Pick<
     PublicProfile,
-    'name' | 'bio' | 'avatarUrl' | 'bannerUrl' | 'website' | 'locationDisplay' | 'locationCity' | 'locationCounty' | 'locationState' | 'locationCountry'
+    'name' | 'bio' | 'avatarUrl' | 'bannerUrl' | 'website' | 'locationZip' | 'locationDisplay' | 'locationCity' | 'locationCounty' | 'locationState' | 'locationCountry'
   >>): void
 }>()
 
@@ -654,6 +654,7 @@ const { submit: saveProfile, submitting: saving } = useFormSubmit(
         name: result?.name ?? null,
         bio: result?.bio ?? null,
         website: result?.website ?? null,
+        locationZip: result?.locationZip ?? null,
         locationDisplay: result?.locationDisplay ?? null,
         locationCity: result?.locationCity ?? null,
         locationCounty: result?.locationCounty ?? null,
@@ -676,6 +677,7 @@ const { submit: saveProfile, submitting: saving } = useFormSubmit(
         name: u?.name ?? null,
         bio: u?.bio ?? null,
         website: u?.website ?? null,
+        locationZip: u?.locationZip ?? null,
         locationDisplay: u?.locationDisplay ?? null,
         locationCity: u?.locationCity ?? null,
         locationCounty: u?.locationCounty ?? null,

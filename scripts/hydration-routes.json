@@ -1,5 +1,5 @@
 {
-  "comment": "Routes the runtime hydration check visits. Add public/SSR routes whose hydration must stay clean. Auth-gated pages with definePageMeta({ ssr: false }) do NOT need to be listed (they have nothing to hydrate). When you add or significantly change a public page, add it here.",
+  "comment": "Routes the runtime hydration check visits. Add public/SSR routes whose hydration must stay clean. Auth-gated pages with definePageMeta({ ssr: false }) do NOT need to be listed (they have nothing to hydrate). When you add or significantly change a public page, add it here. The app-shell and not-found entries use anonymous viewers and deterministic 404 slugs so the check passes with or without a live API (it exercises SSR shell + error-path hydration, not data rendering).",
   "routes": [
     "/",
     "/about",
@@ -8,6 +8,12 @@
     "/roadmap",
     "/privacy",
     "/terms",
-    "/login"
+    "/login",
+    "/home",
+    "/explore",
+    "/articles",
+    "/u/this-user-does-not-exist",
+    "/p/this-post-does-not-exist",
+    "/a/this-article-does-not-exist"
   ]
 }

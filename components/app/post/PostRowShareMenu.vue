@@ -2,11 +2,11 @@
   <div class="flex items-center">
     <button
       ref="shareButtonRef"
+      v-tooltip.bottom="tooltip"
       type="button"
       class="moh-tap moh-pressable inline-flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-full transition-colors moh-surface-hover"
       :class="canShare ? 'cursor-pointer' : 'cursor-default opacity-60'"
       aria-label="Share"
-      v-tooltip.bottom="tooltip"
       @click="onShareButtonClick"
     >
       <svg viewBox="0 0 24 24" class="h-5 w-5" aria-hidden="true">
@@ -56,7 +56,7 @@ type MenuItemWithIcon = MenuItem & { iconName?: string }
 const props = defineProps<{
   canShare: boolean
   items: MenuItemWithIcon[]
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   tooltip: any
 }>()
 

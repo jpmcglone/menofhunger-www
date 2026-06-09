@@ -1,11 +1,11 @@
 <template>
   <div class="relative">
     <button
+      v-tooltip.bottom="bookmarkTooltip"
       type="button"
       class="moh-tap moh-pressable inline-flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-full transition-colors moh-surface-hover"
       :class="bookmark.loading.value ? 'cursor-default opacity-60' : (viewerCanInteract ? 'cursor-pointer' : 'cursor-default opacity-60')"
       :aria-label="bookmark.hasBookmarked.value ? 'Edit bookmark' : 'Save post'"
-      v-tooltip.bottom="bookmarkTooltip"
       @click.stop="onButtonClick"
     >
       <Icon

@@ -8,8 +8,8 @@
     >
       <!-- YouTube: fixed 16:9. Rumble: use oEmbed dimensions (fallback 854x480). -->
       <div
-        class="relative w-full"
         ref="videoBoxEl"
+        class="relative w-full"
         :style="youtubeEmbedUrl ? undefined : { aspectRatio: rumbleAspectRatio }"
         :class="youtubeEmbedUrl ? 'aspect-video' : ''"
         @click.stop="activateEmbeddedVideo"
@@ -22,7 +22,7 @@
           alt=""
           loading="lazy"
           aria-hidden="true"
-        />
+        >
         <iframe
           :src="videoIframeSrc"
           class="relative z-10 h-full w-full transition-opacity duration-250"
@@ -58,8 +58,8 @@
       <div class="relative flex items-center gap-3 p-3">
         <div class="pointer-events-none absolute inset-0 bg-white/10" aria-hidden="true" />
         <div class="relative z-10 h-12 w-12 shrink-0 overflow-hidden rounded-lg border moh-border" aria-hidden="true">
-          <img :src="logoLight" class="h-full w-full object-cover dark:hidden" alt="" loading="lazy" />
-          <img :src="logoDark" class="h-full w-full object-cover hidden dark:block" alt="" loading="lazy" />
+          <img :src="logoLight" class="h-full w-full object-cover dark:hidden" alt="" loading="lazy" >
+          <img :src="logoDark" class="h-full w-full object-cover hidden dark:block" alt="" loading="lazy" >
         </div>
         <div class="relative z-10 min-w-0 flex-1">
           <div class="text-sm font-semibold moh-text truncate">
@@ -91,7 +91,7 @@
           class="relative z-10 h-16 w-16 shrink-0 overflow-hidden rounded-lg bg-gray-100 dark:bg-zinc-900"
           aria-hidden="true"
         >
-          <img :src="linkMeta.imageUrl" class="h-full w-full object-cover" alt="" loading="lazy" />
+          <img :src="linkMeta.imageUrl" class="h-full w-full object-cover" alt="" loading="lazy" >
         </div>
         <div class="relative z-10 min-w-0 flex-1">
           <div class="text-sm font-semibold moh-text truncate">

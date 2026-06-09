@@ -1,13 +1,19 @@
+/**
+ * Hand-maintained API mirror types.
+ *
+ * Types that exactly match the API contract are thin aliases over
+ * `./api-contracts.gen.ts` (generated from the API repo's DTO sources via
+ * `npm run emit:contracts`). www-specific composites (client-only fields,
+ * looser optionality) stay hand-written and are structurally checked against
+ * the generated contracts in `./api-contract-check.ts`.
+ */
+import type * as Contracts from './api-contracts.gen'
+
 /** Success envelope: payload in `data`, optional cursor/counts in `pagination`. */
 export type ApiEnvelope<T> = { data: T; pagination?: ApiPagination }
 
 /** Minimal org account shown alongside affiliated users. */
-export type OrgAffiliation = {
-  id: string
-  username: string | null
-  name: string | null
-  avatarUrl: string | null
-}
+export type OrgAffiliation = Contracts.OrgAffiliationDto
 
 export type ApiPagination = {
   nextCursor?: string | null
@@ -39,18 +45,10 @@ export type ApiErrorEnvelope = {
   }
 }
 
-export type BillingTier = 'premium' | 'premiumPlus'
-export type SubscriptionGrantSource = 'admin' | 'referral'
+export type BillingTier = Contracts.BillingTier
+export type SubscriptionGrantSource = Contracts.SubscriptionGrantSource
 
-export type ActiveSubscriptionGrant = {
-  id: string
-  tier: BillingTier
-  source: SubscriptionGrantSource
-  months: number
-  startsAt: string
-  endsAt: string
-  reason: string | null
-}
+export type ActiveSubscriptionGrant = Contracts.ActiveSubscriptionGrantDto
 
 
 export type BillingMe = {
@@ -339,55 +337,23 @@ export type AdminEmailSampleSendResult = {
   type: AdminEmailSampleType
 }
 
-export type FeedbackCategory = 'bug' | 'feature' | 'account' | 'other'
-export type FeedbackStatus = 'new' | 'triaged' | 'resolved'
+export type FeedbackCategory = Contracts.FeedbackCategory
+export type FeedbackStatus = Contracts.FeedbackStatus
 
-export type ReportTargetType = 'post' | 'user'
-export type ReportReason = 'spam' | 'harassment' | 'hate' | 'sexual' | 'violence' | 'illegal' | 'other'
-export type ReportStatus = 'pending' | 'dismissed' | 'actionTaken'
+export type ReportTargetType = Contracts.ReportTargetType
+export type ReportReason = Contracts.ReportReason
+export type ReportStatus = Contracts.ReportStatus
 
-export type PostVisibility = 'public' | 'verifiedOnly' | 'premiumOnly' | 'onlyMe'
+export type PostVisibility = Contracts.PostVisibility
 
-export type PostMediaKind = 'image' | 'gif' | 'video'
-export type PostMediaSource = 'upload' | 'giphy'
+export type PostMediaKind = Contracts.PostMediaKind
+export type PostMediaSource = Contracts.PostMediaSource
 
-export type PostMedia = {
-  id: string
-  kind: PostMediaKind
-  source: PostMediaSource
-  url: string
-  mp4Url: string | null
-  /** Video poster image URL (from thumbnailR2Key). */
-  thumbnailUrl?: string | null
-  width: number | null
-  height: number | null
-  /** Video duration in seconds. */
-  durationSeconds?: number | null
-  /** Optional alt text for accessibility. */
-  alt: string | null
-  deletedAt: string | null
-}
+export type PostMedia = Contracts.PostMediaDto
 
-export type PostPollOption = {
-  id: string
-  text: string
-  imageUrl: string | null
-  width: number | null
-  height: number | null
-  alt: string | null
-  voteCount: number
-  percent: number
-}
+export type PostPollOption = Contracts.PostPollOptionDto
 
-export type PostPoll = {
-  id: string
-  endsAt: string
-  ended: boolean
-  totalVoteCount: number
-  viewerHasVoted: boolean
-  viewerVotedOptionId: string | null
-  options: PostPollOption[]
-}
+export type PostPoll = Contracts.PostPollDto
 
 export type PostAuthor = {
   id: string
@@ -405,15 +371,7 @@ export type PostAuthor = {
   authorBanned?: boolean
 }
 
-export type PostMention = {
-  id: string
-  username: string
-  verifiedStatus?: 'none' | 'identity' | 'manual'
-  premium?: boolean
-  premiumPlus?: boolean
-  isOrganization?: boolean
-  stewardBadgeEnabled?: boolean
-}
+export type PostMention = Contracts.PostMentionDto
 
 /** Public profile payload from GET /users/:username */
 export type PublicProfile = {
@@ -767,7 +725,7 @@ export type AdminReportItem = ReportItem & {
 /** Data type for GET /admin/reports (array); pagination in envelope. */
 export type AdminReportListData = AdminReportItem[]
 
-export type VerificationRequestStatus = 'pending' | 'approved' | 'rejected' | 'cancelled'
+export type VerificationRequestStatus = Contracts.VerificationRequestStatus
 
 export type VerificationRequestPublic = {
   id: string
@@ -915,8 +873,8 @@ export type GiphyItem = {
 /** Data type for GET /giphy/search and /giphy/trending (array). */
 export type GiphySearchResponse = GiphyItem[]
 
-export type FollowVisibility = 'all' | 'verified' | 'premium' | 'none'
-export type BirthdayVisibility = 'none' | 'monthDay' | 'full'
+export type FollowVisibility = Contracts.FollowVisibility
+export type BirthdayVisibility = Contracts.BirthdayVisibility
 
 export type FollowRelationship = {
   viewerFollowsUser: boolean
@@ -1007,12 +965,7 @@ export type GetFollowRecommendationsData = FollowListUser[]
 /** Data type for GET /users/newest (array). */
 export type GetNewestUsersData = FollowListUser[]
 
-export type UserStatus = {
-  userId: string
-  text: string
-  setAt: string
-  expiresAt: string
-}
+export type UserStatus = Contracts.UserStatusDto
 
 export type OnlineUser = FollowListUser & {
   lastConnectAt?: number
@@ -1110,64 +1063,15 @@ export type GetTopicOptionsData = TopicOption[]
 /** Data type for GET /hashtags/trending (array); pagination in envelope. */
 export type GetTrendingHashtagsData = HashtagResult[]
 
-export type NotificationKind =
-  | 'comment'
-  | 'boost'
-  | 'repost'
-  | 'follow'
-  | 'followed_post'
-  | 'followed_article'
-  | 'mention'
-  | 'nudge'
-  | 'poll_results_ready'
-  | 'generic'
-  | 'coin_transfer'
-  | 'message'
-  | 'group_join_request'
-  | 'community_group_member_joined'
-  | 'community_group_join_approved'
-  | 'community_group_join_rejected'
-  | 'community_group_member_removed'
-  | 'community_group_disbanded'
-  | 'crew_invite_received'
-  | 'crew_invite_accepted'
-  | 'crew_invite_declined'
-  | 'crew_invite_cancelled'
-  | 'crew_member_joined'
-  | 'crew_member_left'
-  | 'crew_member_kicked'
-  | 'crew_owner_transferred'
-  | 'crew_owner_transfer_vote'
-  | 'crew_wall_mention'
-  | 'crew_disbanded'
-  | 'community_group_invite_received'
-  | 'community_group_invite_accepted'
-  | 'community_group_invite_declined'
-  | 'community_group_invite_cancelled'
+export type NotificationKind = Contracts.NotificationKind
 
 export type NotificationGroupKind = 'comment' | 'boost' | 'repost' | 'follow' | 'followed_post' | 'nudge'
 
-export type NotificationActor = {
-  id: string
-  username: string | null
-  name: string | null
-  avatarUrl: string | null
-  premium?: boolean
-  isOrganization?: boolean
-  verifiedStatus?: 'none' | 'identity' | 'manual' | null
-}
+export type NotificationActor = Contracts.NotificationActorDto
 
-export type SubjectPostPreview = {
-  bodySnippet: string | null
-  media: Array<{ url: string; thumbnailUrl: string | null; kind: string }>
-}
+export type SubjectPostPreview = Contracts.SubjectPostPreviewDto
 
-export type SubjectArticlePreview = {
-  title: string | null
-  excerpt: string | null
-  thumbnailUrl: string | null
-  visibility: string | null
-}
+export type SubjectArticlePreview = Contracts.SubjectArticlePreviewDto
 
 /** Tier of the notification subject (post visibility or user tier) for unseen row highlight. */
 export type SubjectTier = 'premium' | 'verified' | null
@@ -1341,12 +1245,7 @@ export type MessageReactionSummary = {
   reactors: { id: string; username: string | null; avatarUrl: string | null }[]
 }
 
-export type MessageReplySnippet = {
-  id: string
-  senderUsername: string | null
-  bodyPreview: string
-  mediaThumbnailUrl: string | null
-}
+export type MessageReplySnippet = Contracts.MessageReplySnippetDto
 
 export type MessageReaction = {
   id: string
@@ -1354,18 +1253,7 @@ export type MessageReaction = {
   label: string
 }
 
-export type MessageMedia = {
-  id: string
-  kind: PostMediaKind
-  source: PostMediaSource
-  url: string
-  mp4Url: string | null
-  thumbnailUrl: string | null
-  width: number | null
-  height: number | null
-  durationSeconds: number | null
-  alt: string | null
-}
+export type MessageMedia = Contracts.MessageMediaDto
 
 export type Message = {
   id: string
@@ -2145,8 +2033,9 @@ export type CommunityGroupInvite = {
   /** ISO; only set when the invitee previously declined this same row. */
   lastDeclinedAt: string | null
   group: CommunityGroupInviteGroupRef
-  invitedBy: FollowListUser
-  invitee: FollowListUser
+  /** List-user without viewer relationship (the API doesn't compute it for invites). */
+  invitedBy: Omit<FollowListUser, 'relationship'> & { relationship?: FollowRelationship }
+  invitee: Omit<FollowListUser, 'relationship'> & { relationship?: FollowRelationship }
 }
 
 /**

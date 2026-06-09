@@ -65,7 +65,7 @@
                     autocomplete="off"
                     autocorrect="off"
                     @keydown.escape.prevent="close"
-                  />
+                  >
                 </div>
               </div>
 

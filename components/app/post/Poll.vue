@@ -41,7 +41,7 @@
           role="button"
           aria-label="View image"
           @click.stop="openOptionImage($event, opt.id)"
-        />
+        >
 
         <div class="relative z-10 min-w-0 flex-1 flex items-center justify-between gap-3">
           <div
@@ -81,7 +81,7 @@
           role="button"
           aria-label="View image"
           @click.stop="openOptionImage($event, opt.id)"
-        />
+        >
         <div class="min-w-0 flex-1 text-sm moh-text font-semibold truncate">
           {{ opt.text }}
         </div>

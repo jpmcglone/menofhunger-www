@@ -18,139 +18,12 @@
   <div class="fixed inset-0 z-0 moh-bg moh-texture" aria-hidden="true" />
 
   <div class="relative z-10">
-    <!-- Single root inside ClientOnly avoids Vue 3.5 slot / hydration edge cases with multi-node default slots. -->
-    <ClientOnly>
-      <div class="contents">
-        <AppToastStack />
-        <AppUserPreviewPopover />
-        <AppGroupPreviewPopover />
-        <AppCrewPreviewPopover />
-        <AppWordDefinitionPopover />
-        <AppOnlineCountPopover />
-        <AppSpaceLiveChatOverlay
-          v-if="radioChatSheetOpen && radioHasStation && !showRadioChat"
-          v-model="radioChatSheetOpen"
-          :space-name="radioChatStationName"
-          :member-count="members.length"
-        />
-      </div>
-    </ClientOnly>
-    <Transition
-      enter-active-class="transition-[opacity,transform] duration-200 ease-out"
-      enter-from-class="opacity-0 -translate-y-2"
-      enter-to-class="opacity-100 translate-y-0"
-      leave-active-class="transition-[opacity,transform] duration-150 ease-in"
-      leave-from-class="opacity-100 translate-y-0"
-      leave-to-class="opacity-0 -translate-y-2"
-    >
-      <div
-        v-if="isAuthed && (disconnectedDueToIdle || connectionBarJustConnected || (socketDisconnectedWhileVisible && !isSocketConnected))"
-        :class="[
-          'fixed left-0 right-0 top-0 z-50 flex items-center justify-center gap-3 border-b px-4 pb-2.5 pt-[calc(0.625rem+var(--moh-safe-top,0px))] text-center text-sm backdrop-blur-sm',
-          connectionBarJustConnected
-            ? 'border-green-500/60 bg-green-100/95 text-green-900 dark:border-green-500/50 dark:bg-green-900/30 dark:text-green-100'
-            : isSocketConnecting
-              ? 'border-amber-400/70 bg-amber-50/95 text-amber-900 dark:border-amber-500/50 dark:bg-amber-900/25 dark:text-amber-100'
-              : 'border-red-500/60 bg-red-100/95 text-red-900 dark:border-red-500/50 dark:bg-red-900/30 dark:text-red-100'
-        ]"
-        role="status"
-        aria-live="polite"
-      >
-        <template v-if="connectionBarJustConnected">
-          <span>Reconnected.</span>
-        </template>
-        <template v-else-if="isSocketConnecting">
-          <span>Reconnecting…</span>
-        </template>
-        <template v-else>
-          <span>You've been disconnected.</span>
-          <span class="ml-1.5">Scroll or tap anywhere to reconnect.</span>
-          <Button
-            label="Reconnect"
-            size="small"
-            severity="secondary"
-            class="ml-2 !bg-white/80 dark:!bg-zinc-800/80"
-            @click="onReconnectClick"
-          />
-        </template>
-      </div>
-    </Transition>
-    <!-- API connectivity banner: shown when REST API is unreachable (network error, server down). -->
-    <!-- Keeps the user in a logged-in appearance during brief outages or rolling deploys. -->
-    <Transition
-      enter-active-class="transition-[opacity,transform] duration-200 ease-out"
-      enter-from-class="opacity-0 -translate-y-2"
-      enter-to-class="opacity-100 translate-y-0"
-      leave-active-class="transition-[opacity,transform] duration-150 ease-in"
-      leave-from-class="opacity-100 translate-y-0"
-      leave-to-class="opacity-0 -translate-y-2"
-    >
-      <div
-        v-if="apiUnreachable && !apiJustReconnected"
-        :class="[
-          'fixed left-0 right-0 top-0 z-50 flex items-center justify-center gap-3 border-b px-4 pb-2.5 pt-[calc(0.625rem+var(--moh-safe-top,0px))] text-center text-sm backdrop-blur-sm',
-          'border-amber-400/70 bg-amber-50/95 text-amber-900 dark:border-amber-500/50 dark:bg-amber-900/25 dark:text-amber-100',
-        ]"
-        role="status"
-        aria-live="polite"
-      >
-        <span>Trouble connecting to the server.</span>
-        <span class="hidden sm:inline moh-text-muted text-amber-700 dark:text-amber-300">Some features may be unavailable.</span>
-        <Button
-          label="Retry"
-          size="small"
-          severity="secondary"
-          class="ml-2 !bg-white/80 dark:!bg-zinc-800/80"
-          :loading="apiRetrying"
-          @click="onApiRetryClick"
-        />
-      </div>
-      <div
-        v-else-if="apiJustReconnected"
-        class="fixed left-0 right-0 top-0 z-50 flex items-center justify-center gap-3 border-b px-4 pb-2.5 pt-[calc(0.625rem+var(--moh-safe-top,0px))] text-center text-sm backdrop-blur-sm border-green-500/60 bg-green-100/95 text-green-900 dark:border-green-500/50 dark:bg-green-900/30 dark:text-green-100"
-        role="status"
-        aria-live="polite"
-      >
-        <span>Reconnected.</span>
-      </div>
-    </Transition>
+    <!-- Global popovers, modals, emoji floats, lightbox. -->
+    <AppLayoutGlobalOverlays :show-radio-chat="showRadioChat" />
 
-    <AppOnboardingGate />
-    <AppLocationPromptModal />
-    <AppConfirmMount />
-    <AppAuthActionModal />
-    <AppPremiumMediaModal />
-    <AppUnsavedDraftPromptModal />
-    <AppReplyModal />
-    <AppSharePostDialog
-      v-if="sharePost"
-      v-model:open="shareDialogOpen"
-      :post="sharePost"
-    />
-    <AppPostSendViaChatDialog />
-    <AppPostBookmarkFolderDialog />
-    <AppKeyboardShortcutsModal />
+    <!-- Socket + API connectivity banners. -->
+    <AppLayoutConnectionBanners />
 
-    <!-- Global full-screen emoji float overlay — rendered outside any clipping ancestor.
-         Covers both the spaces page and the radio bar in the layout. -->
-    <ClientOnly>
-      <Teleport to="body">
-        <div class="fixed inset-0 pointer-events-none overflow-hidden" style="z-index: 9990;" aria-hidden="true">
-          <span
-            v-for="r in allPositionedFloating"
-            :key="r.key"
-            :class="r.variant === 'bar' ? 'moh-emoji-float-bar' : 'moh-emoji-float'"
-            :style="{
-              left: `${r.startX}px`,
-              top: `${r.startY}px`,
-              '--fw-sway': `${r.sway}px`,
-              '--fw-om': r.opacityMid,
-              ...(r.color ? { color: r.color } : {}),
-            }"
-          >{{ r.emoji }}</span>
-        </div>
-      </Teleport>
-    </ClientOnly>
     <div
       ref="layoutViewportEl"
       :class="['overflow-hidden moh-bg moh-text moh-texture moh-vignette', showStatusBg ? 'moh-status-tone' : '']"
@@ -158,273 +31,12 @@
     >
       <div class="mx-auto flex h-full w-full max-w-6xl xl:max-w-7xl">
         <!-- Left Nav (independent scroll) -->
-        <aside
-          ref="leftRailEl"
-          :class="[
-            'hidden md:block shrink-0 h-full border-r moh-border moh-texture overflow-hidden'
-          ]"
-        >
-        <!-- IMPORTANT: no `h-full` + no `overflow-hidden` here, or the rail can't actually scroll -->
-        <AppLeftRailContent :compact="navCompactMode">
-          <div
-            ref="leftNavViewportRef"
-            :class="[
-              'min-h-0 flex-1 no-scrollbar',
-              'overflow-hidden',
-            ]"
-          >
-          <div ref="leftNavLogoRef" class="mb-3">
-            <NuxtLink
-              :to="'/home'"
-              :class="[
-                'flex items-center moh-focus',
-                isAuthed && (user?.premium || (user?.verifiedStatus && user.verifiedStatus !== 'none')) && !navCompactMode ? 'gap-1.5' : 'gap-2'
-              ]"
-              aria-label="Home"
-              @click="onHomeClick"
-            >
-              <div class="flex h-12 w-12 shrink-0 items-center justify-center">
-                <AppLogo
-                  :alt="siteConfig.name"
-                  :light-src="logoLightSmall"
-                  :dark-src="logoDarkSmall"
-                  :width="32"
-                  :height="32"
-                  imgClass="h-8 w-8 rounded"
-                />
-              </div>
-              <span
-                v-if="isAuthed && (user?.premiumPlus || user?.premium) && !navCompactMode"
-                class="hidden xl:inline text-[10px] font-bold tracking-[0.2em] text-[var(--moh-premium)] uppercase"
-              >
-                {{ user?.premiumPlus ? 'PREMIUM+' : 'PREMIUM' }}
-              </span>
-              <span
-                v-else-if="isAuthed && user?.verifiedStatus && user.verifiedStatus !== 'none' && !navCompactMode"
-                class="hidden xl:inline text-[10px] font-bold tracking-[0.2em] text-[var(--moh-verified)] uppercase"
-              >
-                VERIFIED
-              </span>
-            </NuxtLink>
-          </div>
-
-          <nav class="space-y-1 flex-1">
-            <template v-for="item in leftVisibleNavItems" :key="item.key">
-
-              <NuxtLink
-                :to="item.to"
-                :class="[
-                  // NOTE: Don't use `moh-text` here; it overrides per-item color accents (e.g. Only me).
-                  'group flex h-12 items-center rounded-xl transition-colors moh-focus',
-                  // Add breathing room between icon and label (label only shows in wide mode).
-                  !navCompactMode ? 'gap-2' : '',
-                  'w-full',
-                  isActiveNav(item.to)
-                    ? (item.key === 'only-me' ? 'font-bold' : 'moh-surface font-bold')
-                    : 'font-semibold',
-                  // Default nav tone
-                  item.key !== 'only-me' ? 'text-gray-900 dark:text-gray-100 moh-surface-hover' : '',
-                  item.key === 'only-me'
-                    ? (isActiveNav(item.to) ? 'moh-nav-onlyme-active' : 'moh-nav-onlyme')
-                    : ''
-                ]"
-                @click="(e) => onLeftNavClick(item.to, e)"
-              >
-                <span class="relative flex h-12 w-12 shrink-0 items-center justify-center">
-                  <ClientOnly v-if="item.key === 'bookmarks'">
-                    <Icon
-                      :name="(hasBookmarks || isActiveNav(item.to)) ? 'tabler:bookmark-filled' : 'tabler:bookmark'"
-                      size="28"
-                      class="opacity-90"
-                      :style="hasBookmarks ? { color: 'var(--p-primary-color)' } : undefined"
-                      aria-hidden="true"
-                    />
-                    <template #fallback>
-                      <Icon name="tabler:bookmark" size="28" class="opacity-90" aria-hidden="true" />
-                    </template>
-                  </ClientOnly>
-                  <Icon
-                    v-else
-                    :name="isActiveNav(item.to) ? (item.iconActive || item.icon) : item.icon"
-                    size="28"
-                    :class="['opacity-90', item.iconClass]"
-                    aria-hidden="true"
-                  />
-                  <div
-                    v-if="item.key === 'crew' || item.key === 'spaces'"
-                    class="pointer-events-none absolute -bottom-1 left-1/2 -translate-x-1/2 z-20"
-                  >
-                    <AppNewBadge label="BETA" variant="beta" />
-                  </div>
-                  <AppNotificationBadge v-if="item.key === 'notifications'" />
-                  <AppMessagesBadge v-if="item.key === 'messages'" />
-                  <AppCrewInvitesBadge v-if="item.key === 'crew'" />
-                  <span
-                    v-if="item.key === 'home' && (Number(notificationUnreadCommentCount) || 0) > 0"
-                    class="pointer-events-none absolute right-1 top-1 h-2.5 w-2.5 rounded-full bg-orange-500 ring-2 ring-[var(--moh-bg)]"
-                    aria-label="A reply is waiting on you"
-                  />
-                </span>
-                <span
-                  v-if="!navCompactMode"
-                  :class="[
-                    'hidden xl:inline-flex items-center gap-2 whitespace-nowrap overflow-hidden text-lg max-w-[220px]',
-                    isActiveNav(item.to) ? 'font-bold' : 'font-semibold'
-                  ]"
-                >
-                  {{ item.label }}
-                  <ClientOnly>
-                    <span
-                      v-if="item.key === 'spaces' && totalLobbyCount > 0"
-                      class="text-sm font-medium moh-meta tabular-nums"
-                    >({{ totalLobbyCount }})</span>
-                  </ClientOnly>
-                </span>
-              </NuxtLink>
-
-            </template>
-
-            <!-- More button + popover (height overflow from the ordered nav list) -->
-            <div v-if="leftOverflowNavItems.length" class="relative">
-              <button
-                ref="moreButtonRef"
-                type="button"
-                :class="[
-                  'group flex h-12 items-center rounded-xl transition-colors moh-focus w-full text-gray-900 dark:text-gray-100 moh-surface-hover',
-                  !navCompactMode ? 'gap-2' : '',
-                  morePopoverOpen || moreNavHasActiveRoute ? 'moh-surface font-bold' : 'font-semibold',
-                ]"
-                @click="morePopoverOpen = !morePopoverOpen"
-              >
-                <span class="relative flex h-12 w-12 shrink-0 items-center justify-center">
-                  <Icon name="tabler:dots" size="28" class="opacity-90" aria-hidden="true" />
-                </span>
-                <span
-                  v-if="!navCompactMode"
-                  class="hidden xl:inline whitespace-nowrap text-lg"
-                  :class="morePopoverOpen || moreNavHasActiveRoute ? 'font-bold' : 'font-semibold'"
-                >
-                  More
-                </span>
-              </button>
-              <Transition
-                enter-active-class="transition-[opacity,transform] duration-150 ease-out"
-                enter-from-class="opacity-0 scale-95"
-                enter-to-class="opacity-100 scale-100"
-                leave-active-class="transition-[opacity,transform] duration-100 ease-in"
-                leave-from-class="opacity-100 scale-100"
-                leave-to-class="opacity-0 scale-95"
-              >
-                <div
-                  v-if="morePopoverOpen"
-                  ref="morePopoverRef"
-                  class="absolute left-0 bottom-full mb-2 z-50 min-w-[12rem] rounded-xl border moh-border bg-white p-1.5 shadow-lg dark:bg-zinc-900"
-                >
-                  <NuxtLink
-                    v-for="mi in leftOverflowNavItems"
-                    :key="mi.key"
-                    :to="mi.to"
-                    :class="[
-                      'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors moh-focus',
-                      mi.key === 'only-me'
-                        ? (isActiveNav(mi.to) ? 'moh-nav-onlyme-active font-bold' : 'moh-nav-onlyme')
-                        : (isActiveNav(mi.to) ? 'moh-surface font-bold text-gray-900 dark:text-gray-100' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-zinc-800'),
-                    ]"
-                    @click="(e) => { morePopoverOpen = false; onLeftNavClick(mi.to, e) }"
-                  >
-                    <span class="relative flex h-6 w-6 shrink-0 items-center justify-center">
-                      <ClientOnly v-if="mi.key === 'bookmarks'">
-                        <Icon
-                          :name="(hasBookmarks || isActiveNav(mi.to)) ? 'tabler:bookmark-filled' : 'tabler:bookmark'"
-                          size="22"
-                          :style="hasBookmarks ? { color: 'var(--p-primary-color)' } : undefined"
-                          aria-hidden="true"
-                        />
-                        <template #fallback>
-                          <Icon name="tabler:bookmark" size="22" aria-hidden="true" />
-                        </template>
-                      </ClientOnly>
-                      <Icon
-                        v-else
-                        :name="isActiveNav(mi.to) ? (mi.iconActive || mi.icon) : mi.icon"
-                        size="22"
-                        :class="mi.iconClass"
-                        aria-hidden="true"
-                      />
-                      <AppNotificationBadge v-if="mi.key === 'notifications'" />
-                      <AppMessagesBadge v-if="mi.key === 'messages'" />
-                      <AppCrewInvitesBadge v-if="mi.key === 'crew'" />
-                    </span>
-                    <span>{{ mi.label }}</span>
-                    <ClientOnly>
-                      <span
-                        v-if="mi.key === 'spaces' && totalLobbyCount > 0"
-                        class="ml-auto text-xs font-medium moh-meta tabular-nums"
-                      >({{ totalLobbyCount }})</span>
-                    </ClientOnly>
-                  </NuxtLink>
-                </div>
-              </Transition>
-            </div>
-
-            <div ref="leftNavPostRef" class="pt-2">
-              <Transition
-                enter-active-class="transition-opacity duration-150 ease-out"
-                enter-from-class="opacity-0"
-                enter-to-class="opacity-100"
-                leave-active-class="transition-opacity duration-150 ease-in"
-                leave-from-class="opacity-100"
-                leave-to-class="opacity-0"
-              >
-                <button
-                  v-if="canOpenComposer && isComposerEntrypointRoute"
-                  type="button"
-                  aria-label="Post"
-                  :class="[
-                    'moh-pressable group flex h-12 items-center rounded-xl text-white hover:opacity-95 w-full moh-focus',
-                    fabButtonClass,
-                    'mt-1',
-                  ]"
-                  :style="fabButtonStyle"
-                  @click="openComposerForCurrentRoute()"
-                >
-                  <span class="flex h-12 w-12 shrink-0 items-center justify-center">
-                    <Icon name="tabler:plus" size="26" class="opacity-95" aria-hidden="true" />
-                  </span>
-                  <span v-if="!navCompactMode" class="hidden xl:inline text-base font-semibold">Post</span>
-                </button>
-              </Transition>
-            </div>
-
-          </nav>
-          </div>
-
-          <div class="shrink-0 border-t border-black/10 dark:border-white/10 pt-2">
-            <ClientOnly>
-              <AppUserCard v-if="isAuthed" :compact="navCompactMode" />
-              <NuxtLink
-                v-else
-                to="/login"
-                aria-label="Log in"
-                :class="[
-                  // Match the Post button shape/style (rounded rect).
-                  'group flex h-12 items-center rounded-xl bg-black text-white hover:opacity-95 dark:bg-white dark:text-black moh-focus',
-                  navCompactMode ? 'w-12 mx-auto justify-center' : 'w-full',
-                  'mt-2'
-                ]"
-              >
-                <span class="flex h-12 w-12 shrink-0 items-center justify-center">
-                  <Icon name="tabler:arrow-right" class="text-[22px] opacity-95" aria-hidden="true" />
-                </span>
-                <span v-if="!navCompactMode" class="hidden xl:inline text-base font-semibold">Log in</span>
-              </NuxtLink>
-              <template #fallback>
-                <div class="mt-2 h-12 w-full" />
-              </template>
-            </ClientOnly>
-          </div>
-        </AppLeftRailContent>
-        </aside>
+        <AppLayoutLeftRail
+          ref="leftRailRef"
+          :compact="navCompactMode"
+          :composer="composer"
+          :scroll-middle-to-top="scrollMiddleToTop"
+        />
 
         <!-- Columns 2 + 3: separate scroll zones (independent). -->
         <div class="flex min-w-0 flex-1 min-h-0">
@@ -452,19 +64,7 @@
                 class="sticky top-0 z-50 shrink-0 moh-frosted"
               >
                 <!-- Email verification banner should sit ABOVE the title bar (when title bar is shown). -->
-                <button
-                  v-if="showEmailUnverifiedBar"
-                  type="button"
-                  class="w-full border-b moh-border px-4 py-2 text-left text-sm backdrop-blur-sm bg-amber-50/95 text-amber-900 hover:bg-amber-50 dark:bg-amber-900/25 dark:text-amber-100 dark:hover:bg-amber-900/35"
-                  :disabled="emailVerifResending"
-                  @click="resendEmailVerificationFromBanner"
-                >
-                  <span class="font-semibold">Email not verified.</span>
-                  <span class="ml-2">
-                    <span class="font-mono">{{ (user?.email ?? '').trim() }}</span>
-                    <span class="ml-2 opacity-90">{{ emailVerifResending ? 'Sending…' : 'Tap to resend verification email.' }}</span>
-                  </span>
-                </button>
+                <AppLayoutEmailUnverifiedBanner />
 
                 <div class="border-b moh-border">
                   <AppTitleBar>
@@ -496,19 +96,10 @@
               </div>
 
               <!-- If a page hides the title bar, keep the banner at the top of the scroller. -->
-              <button
-                v-if="hideTopBar && showEmailUnverifiedBar"
-                type="button"
-                class="sticky top-0 z-50 w-full border-b moh-border px-4 py-2 text-left text-sm backdrop-blur-sm bg-amber-50/95 text-amber-900 hover:bg-amber-50 dark:bg-amber-900/25 dark:text-amber-100 dark:hover:bg-amber-900/35"
-                :disabled="emailVerifResending"
-                @click="resendEmailVerificationFromBanner"
-              >
-                <span class="font-semibold">Email not verified.</span>
-                <span class="ml-2">
-                  <span class="font-mono">{{ (user?.email ?? '').trim() }}</span>
-                  <span class="ml-2 opacity-90">{{ emailVerifResending ? 'Sending…' : 'Tap to resend verification email.' }}</span>
-                </span>
-              </button>
+              <AppLayoutEmailUnverifiedBanner
+                v-if="hideTopBar"
+                class="sticky top-0 z-50"
+              />
 
             <div
               ref="middleContentEl"
@@ -568,188 +159,13 @@
           </main>
 
           <!-- Right rail (scroll zone #3). Visible on a custom breakpoint (~962px). -->
-          <aside
-            id="moh-right-rail-scroller"
-            ref="rightRailEl"
-            :class="[
-              // Layout should not add padding; right-rail content owns its gutters.
-              'relative no-scrollbar shrink-0 w-[var(--moh-right-rail-w)] h-full moh-bg moh-texture',
-              // Single native scroller: the rail itself scrolls; search floats above the entire layout.
-              // IMPORTANT: `min-h-0` is required so the rail can scroll in a flex row.
-              'min-h-0',
-              anyOverlayOpen || showRadioChat ? 'overflow-hidden' : 'overflow-y-auto overscroll-y-contain',
-              isRightRailForcedHidden ? 'hidden' : 'hidden min-[962px]:block'
-            ]"
-          >
-            <!-- Offset the scroller content so it doesn't sit under the floating search bar. -->
-            <div
-              :class="[
-                'transition-[padding-top] duration-200 ease-out',
-                hideRightRailSearch ? 'pt-0' : 'pt-16',
-                showRadioChat ? 'h-full' : '',
-              ]"
-            >
-              <Transition
-                mode="out-in"
-                enter-active-class="transition-[opacity,transform] duration-200 ease-out"
-                enter-from-class="opacity-0 translate-y-1"
-                enter-to-class="opacity-100 translate-y-0"
-                leave-active-class="transition-[opacity,transform] duration-150 ease-in"
-                leave-from-class="opacity-100 translate-y-0"
-                leave-to-class="opacity-0 translate-y-1"
-              >
-                <div v-if="showRadioChat" key="radioChat" class="h-full min-h-0 flex flex-col">
-                  <AppRadioLiveChatPanel class="flex-1 min-h-0" />
-                </div>
-
-                <div v-else key="rightRailDefault">
-                  <AppRightRailContent>
-                  <div
-                    v-if="dailyQuote"
-                    class="my-8 py-2 text-center text-sm leading-relaxed text-gray-700 dark:text-gray-200"
-                  >
-                    <figure>
-                      <blockquote class="italic moh-serif">
-                        “{{ dailyQuote.text }}”
-                      </blockquote>
-                      <figcaption class="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                        <span class="font-semibold">
-                          {{ dailyQuoteAttribution }}
-                        </span>
-                        <span v-if="dailyQuote.isParaphrase" class="ml-1">(paraphrase)</span>
-                      </figcaption>
-                    </figure>
-                    <div class="mt-8 h-[1px] w-32 mx-auto bg-gradient-to-r from-transparent via-gray-400 dark:via-gray-600 to-transparent" />
-                  </div>
-                  <!-- Quote placeholder while daily content loads -->
-                  <div v-else class="my-8 py-2 text-center space-y-2.5 animate-pulse" aria-hidden="true">
-                    <div class="h-3.5 bg-gray-200 dark:bg-zinc-800 rounded-full mx-auto w-64" />
-                    <div class="h-3.5 bg-gray-200 dark:bg-zinc-800 rounded-full mx-auto w-56" />
-                    <div class="h-3.5 bg-gray-200 dark:bg-zinc-800 rounded-full mx-auto w-44" />
-                    <div class="mt-3 h-3 bg-gray-200 dark:bg-zinc-800 rounded-full mx-auto w-28" />
-                    <div class="mt-6 h-[1px] w-32 mx-auto bg-gray-200 dark:bg-zinc-800" />
-                  </div>
-
-                  <div class="space-y-4 transition-[transform] duration-200 ease-out">
-                  <AppReferralRailCard />
-
-                  <!-- Order matters here: Who-to-follow renders before Trending so the
-                       most actionable rail card (real people you can follow right now)
-                       is the first thing the eye lands on after the daily quote. -->
-                  <div class="space-y-1">
-                    <div class="flex justify-end px-2">
-                      <NuxtLink
-                        to="/online"
-                        class="inline-flex items-center gap-1 text-sm hover:underline underline-offset-2"
-                        @mouseenter="onOnlineLinkEnter"
-                        @mousemove="onOnlineLinkMove"
-                        @mouseleave="onOnlineLinkLeave"
-                        @click="onOnlineLinkClick"
-                      >
-                        <template v-if="typeof onlineCount === 'number'">
-                          <span class="font-semibold text-gray-900 dark:text-white tabular-nums">
-                            <AppAnimatedCount :value="onlineCount" />
-                          </span>
-                          <span class="moh-text-muted">online</span>
-                        </template>
-                        <template v-else>
-                          <span class="moh-text-muted">Online</span>
-                        </template>
-                      </NuxtLink>
-                    </div>
-
-                  <!-- Who to follow (real data) -->
-                    <Card class="moh-card moh-card-matte !rounded-2xl">
-                      <template #title>
-                        <span class="moh-h2">Who to follow</span>
-                      </template>
-                      <template #content>
-                        <div v-if="whoToFollowLoading && whoToFollowUsers.length === 0" class="space-y-3 animate-pulse py-1">
-                          <div v-for="i in 3" :key="i" class="flex items-center gap-2.5">
-                            <div class="h-9 w-9 rounded-full bg-gray-200 dark:bg-zinc-800 shrink-0" />
-                            <div class="flex-1 space-y-1.5">
-                              <div class="h-3 bg-gray-200 dark:bg-zinc-800 rounded-full w-2/3" />
-                              <div class="h-2.5 bg-gray-200 dark:bg-zinc-800 rounded-full w-1/2" />
-                            </div>
-                          </div>
-                        </div>
-
-                        <div v-else-if="whoToFollowUsers.length > 0">
-                          <AppWhoToFollowCompactRow
-                            v-for="u in whoToFollowUsers"
-                            :key="u.id"
-                            :user="u"
-                          />
-                          <NuxtLink
-                            to="/who-to-follow"
-                            class="inline-block pt-3 text-sm font-medium hover:underline underline-offset-2"
-                            :class="tierCtaTextClass"
-                          >
-                            Show more
-                          </NuxtLink>
-                        </div>
-
-                        <div v-else class="text-sm moh-text-muted">
-                          <AppUserErrorMessage :error="whoToFollowError" fallback="Failed to load suggestions." />
-                          <p v-if="!whoToFollowError">No suggestions yet.</p>
-                          <NuxtLink to="/explore" class="inline-block mt-2 font-medium hover:underline">
-                            Explore people
-                          </NuxtLink>
-                        </div>
-                      </template>
-                    </Card>
-                  </div>
-
-                  <AppWebsters1828WordOfDayCard />
-
-                  <!-- Unified trending card replaces the previous three:
-                       AppTrendingArticlesCard / AppTrendingTagsCard / AppTrendingHashtagsCard.
-                       One label, three tabs (Articles / Topics / Hashtags). -->
-                  <AppRailTrendingCard />
-
-                  <!-- ClientOnly avoids hydration mismatch: widget shares leaderboard state with page,
-                       and SSR streaming can send layout before page fetch completes. -->
-                  <ClientOnly>
-                    <AppCheckinsLeaderboardWidget />
-                  </ClientOnly>
-
-                  <AppSupportDonateCard />
-
-                  <!-- Ads can mutate DOM; keep the mount point client-only. -->
-                  <ClientOnly>
-                    <AppAdSlot placement="rail" />
-                  </ClientOnly>
-
-                  <Card class="moh-card moh-card-matte !rounded-2xl">
-                    <template #title>
-                      <span class="moh-h2">Groups</span>
-                    </template>
-                    <template #content>
-                      <ClientOnly>
-                        <AppGroupsRailCard />
-                      </ClientOnly>
-                    </template>
-                  </Card>
-
-                  <div class="px-2 pb-6 text-xs moh-text-muted space-x-2">
-                    <NuxtLink to="/about" class="hover:underline">About</NuxtLink>
-                    <span>·</span>
-                    <NuxtLink to="/privacy" class="hover:underline">Privacy</NuxtLink>
-                    <span>·</span>
-                    <NuxtLink to="/terms" class="hover:underline">Terms</NuxtLink>
-                    <span>·</span>
-                    <NuxtLink to="/status" class="hover:underline">Status</NuxtLink>
-                    <span>·</span>
-                    <button type="button" class="hover:underline" @click="openShortcutsModal">Shortcuts</button>
-                    <span>·</span>
-                    <span>&copy; {{ currentYear }} {{ siteConfig.name }}</span>
-                  </div>
-                </div>
-                  </AppRightRailContent>
-                </div>
-              </Transition>
-            </div>
-          </aside>
+          <AppLayoutRightRail
+            ref="rightRailRef"
+            :any-overlay-open="anyOverlayOpen"
+            :show-radio-chat="showRadioChat"
+            :forced-hidden="isRightRailForcedHidden"
+            :hide-search="hideRightRailSearch"
+          />
         </div>
       </div>
     </div>
@@ -810,131 +226,35 @@
       </button>
     </Transition>
 
-    <ClientOnly>
-      <Transition
-        enter-active-class="transition-opacity duration-200 ease-out"
-        enter-from-class="opacity-0"
-        enter-to-class="opacity-100"
-        leave-active-class="transition-opacity duration-150 ease-in"
-        leave-from-class="opacity-100"
-        leave-to-class="opacity-0"
-      >
-        <div
-          v-if="composerModalOpen"
-          class="fixed inset-0 z-[1000]"
-          aria-label="Post composer overlay"
-          role="dialog"
-          aria-modal="true"
-        >
-          <!-- Backdrop -->
-          <div
-            class="absolute inset-0 bg-black/55"
-            aria-hidden="true"
-            @click="closeComposerModal"
-          />
-
-          <!-- Composer sheet -->
-          <div
-            class="absolute"
-            :style="[composerSheetStyle, composerSheetPlacementStyle]"
-          >
-            <div
-              :class="[
-                'relative overflow-hidden rounded-2xl border bg-white p-3 moh-card-matte dark:bg-black',
-                composerModalBorderClass,
-              ]"
-            >
-              <div class="relative z-10">
-                <AppPostComposer
-                  auto-focus
-                  :show-divider="false"
-                  :initial-text="composerInitialText ?? undefined"
-                  :placeholder="composerCustomPlaceholder ?? undefined"
-                  :initial-media="composerIsFromOnlyMe ? (composerSourceOnlyMePost?.media ?? []) : undefined"
-                  :locked-visibility="composerLockedVisibility ?? undefined"
-                  :hide-visibility-picker="Boolean(composerLockedVisibility) || composerIsGroupMode"
-                  :allowed-visibilities="composerAllowedVisibilities ?? undefined"
-                  :disable-media="composerCustomDisableMedia"
-                  :create-post="composerCreatePost ?? undefined"
-                  :quoted-post="composerQuotedPost ?? undefined"
-                  :group-composer="composerIsGroupMode"
-                  :group-name="composerIsGroupMode ? (composerGroupName ?? undefined) : undefined"
-                  :disable-poll="composerIsGroupMode"
-                  persist-key="post-modal"
-                  :register-unsaved-guard="false"
-                  @posted="onComposerPosted"
-                  @pending="onComposerPending"
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-      </Transition>
-    </ClientOnly>
-
-    <AppImageLightbox
-      :visible="lightbox.visible.value"
-      :backdrop-visible="lightbox.backdropVisible.value"
-      :src="lightbox.src.value"
-      :alt="lightbox.alt.value"
-      :kind="lightbox.kind.value"
-      :current-media-item="lightbox.currentMediaItem.value"
-      :target="lightbox.target.value"
-      :image-style="lightbox.imageStyle.value"
-      :show-nav="lightbox.kind.value === 'media' && (lightbox.items.value?.length ?? 0) > 1"
-      :can-prev="lightbox.canPrev.value"
-      :can-next="lightbox.canNext.value"
-      :counter-label="
-        lightbox.kind.value === 'media' && (lightbox.items.value?.length ?? 0) > 1
-          ? `${lightbox.index.value + 1} / ${lightbox.items.value.length}`
-          : null
-      "
-      :on-prev="lightbox.prev"
-      :on-next="lightbox.next"
-      :on-close="lightbox.close"
-      :on-transition-end="lightbox.onTransitionEnd"
-    />
+    <!-- Composer modal + post-checkin share dialog. -->
+    <AppLayoutComposerModalOverlay :composer="composer" />
   </div>
 </template>
 
 <script setup lang="ts">
 import { siteConfig } from '~/config/site'
-import logoLightSmall from '~/assets/images/logo-white-bg-small.png'
-import logoDarkSmall from '~/assets/images/logo-black-bg-small.png'
-import { primaryTintCssForUser, spacesGradientStyle } from '~/utils/theme-tint'
-import { formatDailyQuoteAttribution } from '~/utils/daily-quote'
-import AppBottomSheet from '~/components/app/BottomSheet.vue'
+import { primaryTintCssForUser } from '~/utils/theme-tint'
 import {
-  MOH_HOME_COMPOSER_IN_VIEW_KEY,
   MOH_FOCUS_HOME_COMPOSER_KEY,
   MOH_MIDDLE_SCROLLER_KEY,
-  MOH_OPEN_COMPOSER_KEY,
-  MOH_OPEN_COMPOSER_FROM_ONLYME_KEY,
-  type ComposerOpenOptions,
-  type ComposerVisibility,
 } from '~/utils/injection-keys'
 import { useBookmarkCollections } from '~/composables/useBookmarkCollections'
 import { useKeyboardHeight } from '~/composables/useKeyboardHeight'
-import { useOnlyMePosts } from '~/composables/useOnlyMePosts'
-import { useReplyModal } from '~/composables/useReplyModal'
 import type {
-  DailyContentToday,
-  DailyQuote,
-  FeedPost,
   GetMessagesUnreadCountResponse,
   GetNotificationsUnreadCountResponse,
-  PostVisibility,
 } from '~/types/api'
-import { isComposerEntrypointPath, routeHeaderDefaultsFor, isAdminPath, isSettingsPath } from '~/config/routes'
-import { MOH_GROUP_COMPOSER_KEY } from '~/utils/injection-keys'
-import { userColorTier, userTierTextClass } from '~/utils/user-tier'
-import { ClientOnly, NuxtLink } from '#components'
-import type { AppNavItem } from '~/composables/useAppNav'
+import { routeHeaderDefaultsFor, isAdminPath, isSettingsPath } from '~/config/routes'
+import { useAppLayoutComposer } from '~/composables/layout/useAppLayoutComposer'
+import AppLayoutGlobalOverlays from '~/components/app/layout/GlobalOverlays.vue'
+import AppLayoutConnectionBanners from '~/components/app/layout/ConnectionBanners.vue'
+import AppLayoutEmailUnverifiedBanner from '~/components/app/layout/EmailUnverifiedBanner.vue'
+import AppLayoutComposerModalOverlay from '~/components/app/layout/ComposerModalOverlay.vue'
+import AppLayoutLeftRail from '~/components/app/layout/LeftRail.vue'
+import AppLayoutRightRail from '~/components/app/layout/RightRail.vue'
 
 const route = useRoute()
-const { isActive: isActiveNav } = useRouteMatch(route)
 const colorMode = useColorMode()
-const currentYear = new Date().getUTCFullYear()
 
 // Keep Safari iOS browser chrome (top/bottom bars) aligned with our in-app theme toggle.
 // This is the main fix for the “white bar” in dark mode while scrolling.
@@ -942,87 +262,17 @@ const safariThemeColor = computed(() => (colorMode.value === 'dark' ? '#0F1113' 
 useHead({
   meta: [{ key: 'moh-theme-color', name: 'theme-color', content: safariThemeColor }],
 })
-const { initAuth, user, me: fetchMe, isVerified: viewerIsVerified, apiUnreachable } = useAuth()
-const { isAuthed, profileTo, primaryItems: primaryNavItems, tabItems } = useAppNav()
+const { initAuth, user } = useAuth()
+const { isAuthed, tabItems } = useAppNav()
 const notifBadge = useNotificationsBadge()
 const {
-  disconnectedDueToIdle,
-  wasSocketConnectedOnce,
-  socketDisconnectedWhileVisible,
-  isSocketConnected,
-  connectionBarJustConnected,
-  isSocketConnecting,
   setNotificationUndeliveredCount,
   setNotificationUnreadCommentCount,
-  notificationUnreadCommentCount,
   setMessageUnreadCounts,
-  reconnect,
 } = usePresence()
 
 // App icon badge (PWA): notifications + chat unread. Works on Android/Chrome; no-op on iOS.
 useAppIconBadge()
-
-function onReconnectClick() {
-  reconnect()
-}
-
-// API connectivity banner state
-const apiRetrying = ref(false)
-const apiJustReconnected = ref(false)
-let apiReconnectedTimer: ReturnType<typeof setTimeout> | null = null
-
-async function onApiRetryClick() {
-  if (apiRetrying.value) return
-  apiRetrying.value = true
-  try {
-    await fetchMe()
-    if (!apiUnreachable.value) {
-      apiJustReconnected.value = true
-      if (apiReconnectedTimer) clearTimeout(apiReconnectedTimer)
-      apiReconnectedTimer = setTimeout(() => {
-        apiJustReconnected.value = false
-      }, 2500)
-    }
-  } finally {
-    apiRetrying.value = false
-  }
-}
-
-// Auto-clear the "just reconnected" flash when apiUnreachable goes false on its own (e.g. next page nav).
-watch(apiUnreachable, (unreachable, wasUnreachable) => {
-  if (!unreachable && wasUnreachable && !apiJustReconnected.value) {
-    apiJustReconnected.value = true
-    if (apiReconnectedTimer) clearTimeout(apiReconnectedTimer)
-    apiReconnectedTimer = setTimeout(() => {
-      apiJustReconnected.value = false
-    }, 2500)
-  }
-})
-
-// When disconnected bar is visible, scroll or tap anywhere should reconnect.
-function onScrollOrTapReconnect() {
-  const showBanner = disconnectedDueToIdle.value || (socketDisconnectedWhileVisible.value && !isSocketConnected.value)
-  if (showBanner && !isSocketConnecting.value) reconnect()
-}
-
-watch(
-  () => isAuthed && (disconnectedDueToIdle.value || (socketDisconnectedWhileVisible.value && !isSocketConnected.value)),
-  (shouldListen, _, onCleanup) => {
-    if (!import.meta.client || !shouldListen) return
-    const opts = { capture: true }
-    document.addEventListener('scroll', onScrollOrTapReconnect, opts)
-    document.addEventListener('click', onScrollOrTapReconnect, opts)
-    document.addEventListener('touchstart', onScrollOrTapReconnect, opts)
-    document.addEventListener('keydown', onScrollOrTapReconnect, opts)
-    onCleanup(() => {
-      document.removeEventListener('scroll', onScrollOrTapReconnect, opts)
-      document.removeEventListener('click', onScrollOrTapReconnect, opts)
-      document.removeEventListener('touchstart', onScrollOrTapReconnect, opts)
-      document.removeEventListener('keydown', onScrollOrTapReconnect, opts)
-    })
-  },
-  { immediate: true },
-)
 
 const { hideTopBar, navCompactMode: _navCompactModeBase, isRightRailForcedHidden: _isRightRailForcedHiddenBase, isRightRailSearchHidden, title } = useLayoutRules(route)
 const isMessagesPage = computed(() => route.path === '/chat')
@@ -1032,98 +282,7 @@ const { keyboardHeight } = useKeyboardHeight()
 // fixed composer bar (e.g. chat). This mirrors the native iOS sheet behaviour where
 // the tab bar is outside the modal hierarchy and never rises with the keyboard.
 const hideTabBarForKeyboard = computed(() => (isMessagesPage.value || isArticleEditorPage.value) && keyboardHeight.value > 0)
-const isOnlyMePage = computed(() => route.path === '/only-me')
 
-const morePopoverOpen = ref(false)
-const moreButtonRef = ref<HTMLElement | null>(null)
-const morePopoverRef = ref<HTMLElement | null>(null)
-const leftNavViewportRef = ref<HTMLElement | null>(null)
-const leftNavLogoRef = ref<HTMLElement | null>(null)
-const leftNavPostRef = ref<HTMLElement | null>(null)
-const leftNavCapacity = ref(99)
-const leftRailNavItems = computed(() => primaryNavItems.value.filter((item) => item.menuSection !== 'footer'))
-const leftVisibleNavItems = computed<AppNavItem[]>(() => {
-  const items = leftRailNavItems.value
-  if (items.length <= leftNavCapacity.value) return items
-  return items.slice(0, Math.max(0, leftNavCapacity.value - 1))
-})
-const leftOverflowNavItems = computed<AppNavItem[]>(() => {
-  const items = leftRailNavItems.value
-  if (items.length <= leftNavCapacity.value) return []
-  return items.slice(Math.max(0, leftNavCapacity.value - 1))
-})
-const moreNavHasActiveRoute = computed(() => leftOverflowNavItems.value.some((item) => isActiveNav(item.to)))
-function onDocClickForMore(e: MouseEvent) {
-  if (!morePopoverOpen.value) return
-  const t = e.target as Node | null
-  if (moreButtonRef.value?.contains(t)) return
-  if (morePopoverRef.value?.contains(t)) return
-  morePopoverOpen.value = false
-}
-function updateLeftNavCapacity() {
-  const viewport = leftNavViewportRef.value
-  if (!viewport) return
-  const itemHeight = 52 // h-12 plus space-y-1 gap.
-  const logoHeight = leftNavLogoRef.value?.offsetHeight ?? 0
-  const postHeight = leftNavPostRef.value?.offsetHeight ?? 0
-  const available = Math.max(0, viewport.clientHeight - logoHeight - postHeight)
-  leftNavCapacity.value = Math.max(1, Math.floor((available + 4) / itemHeight))
-}
-let leftNavResizeObserver: ResizeObserver | null = null
-onMounted(() => {
-  document.addEventListener('click', onDocClickForMore, true)
-  updateLeftNavCapacity()
-  leftNavResizeObserver = new ResizeObserver(() => updateLeftNavCapacity())
-  if (leftNavViewportRef.value) leftNavResizeObserver.observe(leftNavViewportRef.value)
-  if (leftNavLogoRef.value) leftNavResizeObserver.observe(leftNavLogoRef.value)
-  if (leftNavPostRef.value) leftNavResizeObserver.observe(leftNavPostRef.value)
-  window.addEventListener('resize', updateLeftNavCapacity)
-})
-onBeforeUnmount(() => {
-  document.removeEventListener('click', onDocClickForMore, true)
-  window.removeEventListener('resize', updateLeftNavCapacity)
-  leftNavResizeObserver?.disconnect()
-  leftNavResizeObserver = null
-})
-watch(
-  primaryNavItems,
-  () => nextTick(updateLeftNavCapacity),
-  { flush: 'post' },
-)
-const isGroupPage = computed(() => /^\/g\/[^/]+$/.test(route.path))
-const groupComposerCtx = ref<import('~/utils/injection-keys').GroupComposerContext | null>(null)
-provide(MOH_GROUP_COMPOSER_KEY, groupComposerCtx)
-
-const showEmailUnverifiedBar = computed(() => {
-  if (!isAuthed.value) return false
-  // Avoid redundancy: this banner is meant to drive people *to* settings.
-  if (route.path.startsWith('/settings')) return false
-  // Also avoid redundancy on email flow pages (verify/unsubscribe, etc).
-  if (route.path.startsWith('/email')) return false
-  const email = (user.value?.email ?? '').trim()
-  if (!email) return false
-  return !user.value?.emailVerifiedAt
-})
-
-const emailVerifResending = ref(false)
-const appToast = useAppToast()
-async function resendEmailVerificationFromBanner() {
-  if (emailVerifResending.value) return
-  emailVerifResending.value = true
-  try {
-    await apiFetchData<{ sent: boolean }>('/email/verification/resend', { method: 'POST' })
-    appToast.push({ title: 'Verification email sent', message: 'Check your inbox.', tone: 'success' })
-  } catch {
-    appToast.push({ title: 'Could not send email', message: 'Please try again later.', tone: 'error' })
-  } finally {
-    emailVerifResending.value = false
-  }
-}
-
-// Post entrypoints (left-nav button + mobile FAB): only render on these routes.
-const isComposerEntrypointRoute = computed(() => {
-  return isComposerEntrypointPath({ path: route.path, profileTo: profileTo.value })
-})
 const { header: appHeader } = useAppHeader()
 // Prevent SSR hydration mismatches: render route meta during hydration, then swap to appHeader after mount.
 const hydrated = ref(false)
@@ -1132,150 +291,28 @@ onMounted(() => {
   void loadLobbyCounts()
 })
 const {
-  totalCount: bookmarkTotalCount,
   loaded: bookmarksLoaded,
   loading: bookmarksLoading,
-  errorMessage: bookmarksErrorMessage,
   ensureLoaded: ensureBookmarkCollectionsLoaded,
 } = useBookmarkCollections()
 
-const hasBookmarks = computed(() => Math.max(0, Math.floor(bookmarkTotalCount.value ?? 0)) > 0)
+// ── Composer surface (modal state, entry points, provides) ────────────────────
 
-// Ref owned by layout; home page injects and updates it when its composer is in view (so we can hide the FAB).
-const homeComposerInViewRef = ref(false)
-provide(MOH_HOME_COMPOSER_IN_VIEW_KEY, homeComposerInViewRef)
-const hideFabForHomeComposer = computed(
-  () => route.path === '/home' && homeComposerInViewRef.value,
-)
+const middleContentEl = ref<HTMLElement | null>(null)
+const middleScrollerEl = ref<HTMLElement | null>(null)
 
-// Only show the nav Post button when onboarding is complete (user can actually post).
-const canOpenComposer = computed(() => {
-  const u = user.value
-  if (!u?.id) return false
-  if (!u.usernameIsSet) return false
-  if (!u.birthdate) return false
-  if (!u.menOnlyConfirmed) return false
-  if (!Array.isArray(u.interests) || u.interests.length < 1) return false
-  return true
-})
+const composer = useAppLayoutComposer({ middleContentEl, middleScrollerEl })
+const {
+  canOpenComposer,
+  isComposerEntrypointRoute,
+  hideFabForHomeComposer,
+  homeComposerInViewRef,
+  anyOverlayOpen,
+  fabButtonClass,
+  openComposerForCurrentRoute,
+} = composer
 
-const composerModalOpen = ref(false)
-const composerInitialText = ref<string | null>(null)
-const composerSourceOnlyMePost = ref<FeedPost | null>(null)
-const composerIsFromOnlyMe = computed(() => Boolean(composerSourceOnlyMePost.value?.id))
-const composerCustomPlaceholder = ref<string | null>(null)
-
-const shareDialogOpen = ref(false)
-const sharePost = ref<FeedPost | null>(null)
-const composerCustomGroupName = ref<string | null>(null)
-const composerCustomAllowedVisibilities = ref<PostVisibility[] | null>(null)
-const composerCustomDisableMedia = ref(false)
-const composerQuotedPost = ref<FeedPost | null>(null)
-type ComposerCreatePostFn = (
-  body: string,
-  visibility: PostVisibility,
-  media: import('~/composables/useComposerMedia').CreateMediaPayload[],
-  poll?: import('~/composables/composer/types').ComposerPollPayload | null,
-) => Promise<{ id: string } | FeedPost | null>
-const composerCustomCreatePost = ref<ComposerCreatePostFn | null>(null)
-
-const replyModal = useReplyModal()
-const replyModalOpen = computed(() => Boolean(replyModal.open.value))
-const replyModalHasParent = computed(() => Boolean(replyModal.parentPost.value?.id))
-
-// Failsafe: if reply modal is "open" without a parent post, it will lock scrolling
-// (via `anyOverlayOpen`) while rendering nothing. Auto-heal this inconsistent state.
-watch(
-  () => [replyModalOpen.value, replyModalHasParent.value] as const,
-  ([open, hasParent]) => {
-    if (open && !hasParent) replyModal.hide()
-  },
-  { immediate: true },
-)
-
-const composerIsGroupMode = computed(() => Boolean(composerCustomGroupName.value) || Boolean(groupComposerCtx.value))
-const composerGroupName = computed(() => {
-  const custom = (composerCustomGroupName.value ?? '').trim()
-  if (custom) return custom
-  const ctx = (groupComposerCtx.value?.groupName ?? '').trim()
-  return ctx || null
-})
-
-const anyOverlayOpen = computed(() => composerModalOpen.value || (replyModalOpen.value && replyModalHasParent.value))
-
-useScrollLock(anyOverlayOpen)
-const composerSheetStyle = ref<Record<string, string>>({ left: '0px', right: '0px', width: 'auto' })
-
-const composerSheetPlacementStyle = computed<Record<string, string>>(() => {
-  // Keep composer placement consistent across breakpoints:
-  // always a top-of-screen modal aligned with the center column.
-  return { top: '0.75rem', bottom: 'auto' }
-})
-const { visibility: composerVisibility, feedVisibility: composerNonOnlyMeVisibility } = useComposerVisibility()
-
-// Drives --moh-scope-bg / --moh-scope-text on <html> synchronously so that
-// .moh-btn-scope buttons (nav Post, check-in) snap to the new color at the
-// same instant as the PostComposer tint, without waiting for a Vue render flush.
-useComposerScopeTint()
-
-// Keep the non-onlyMe shadow in sync so "publish from drafts" never defaults to onlyMe.
-watch(
-  composerVisibility,
-  (v) => {
-    if (v && v !== 'onlyMe') composerNonOnlyMeVisibility.value = v
-  },
-  { immediate: true },
-)
-
-const composerLockedVisibility = computed<PostVisibility | null>(() => {
-  if (composerIsFromOnlyMe.value) return null
-  if (composerIsGroupMode.value) return 'public'
-  if (!viewerIsVerified.value) return 'onlyMe'
-  if (isOnlyMePage.value) return 'onlyMe'
-  // Quote-reposts are locked to the original post's visibility.
-  if (composerQuotedPost.value?.visibility) return composerQuotedPost.value.visibility as PostVisibility
-  return null
-})
-
-const composerAllowedVisibilities = computed<PostVisibility[] | null>(() => {
-  if (composerCustomAllowedVisibilities.value?.length) return composerCustomAllowedVisibilities.value
-  if (groupComposerCtx.value) return ['public']
-  if (composerIsFromOnlyMe.value) return ['public', 'verifiedOnly', 'premiumOnly']
-  if (!viewerIsVerified.value) return ['onlyMe']
-  if (isOnlyMePage.value) return ['onlyMe']
-  // Left-nav/FAB modal composer: never allow Only me outside the Only me screen.
-  return ['public', 'verifiedOnly', 'premiumOnly']
-})
-const composerCreatePost = computed<ComposerCreatePostFn | null>(() => {
-  if (composerCustomCreatePost.value) return composerCustomCreatePost.value
-  if (groupComposerCtx.value?.createPost) return groupComposerCtx.value.createPost as ComposerCreatePostFn
-  if (composerIsFromOnlyMe.value) return createPostFromOnlyMeDraft
-  return null
-})
-
-function resetComposerCustomOptions() {
-  composerCustomPlaceholder.value = null
-  composerCustomGroupName.value = null
-  composerCustomAllowedVisibilities.value = null
-  composerCustomDisableMedia.value = false
-  composerCustomCreatePost.value = null
-  composerQuotedPost.value = null
-}
-
-function applyComposerCustomOptions(options?: ComposerOpenOptions | null) {
-  resetComposerCustomOptions()
-  if (!options) return
-  composerCustomPlaceholder.value = (options.placeholder ?? '').trim() || null
-  composerCustomGroupName.value = (options.groupName ?? '').trim() || null
-  composerCustomAllowedVisibilities.value = Array.isArray(options.allowedVisibilities)
-    ? options.allowedVisibilities.filter(Boolean) as PostVisibility[]
-    : null
-  composerCustomDisableMedia.value = Boolean(options.disableMedia)
-  composerCustomCreatePost.value = (options.createPost as ComposerCreatePostFn | undefined) ?? null
-  composerQuotedPost.value = options.quotedPost ?? null
-}
-
-const { apiFetch, apiFetchData } = useApiClient()
+const { apiFetchData } = useApiClient()
 const criticalBadgeCountsLoaded = useState<boolean>('critical-badge-counts-loaded', () => false)
 
 async function loadCriticalBadgeCounts(opts?: { force?: boolean }) {
@@ -1325,201 +362,7 @@ async function loadCriticalBadgeCounts(opts?: { force?: boolean }) {
 
   criticalBadgeCountsLoaded.value = true
 }
-async function createPostFromOnlyMeDraft(
-  body: string,
-  visibility: PostVisibility,
-  media: import('~/composables/useComposerMedia').CreateMediaPayload[],
-  poll?: import('~/composables/composer/types').ComposerPollPayload | null,
-) {
-  if (poll) {
-    // This flow hits /publish-from-only-me, which does not support polls.
-    throw new Error('Polls cannot be added when publishing an Only me draft. Create a new post instead.')
-  }
-  const sourceId = composerSourceOnlyMePost.value?.id
-  if (!sourceId) throw new Error('Missing source post.')
-  return await apiFetchData<FeedPost>(`/posts/${encodeURIComponent(sourceId)}/publish-from-only-me`, {
-    method: 'POST',
-    body: { body, visibility, media },
-  })
-}
 
-function defaultComposerInitialTextForRoute(): string | null {
-  // On /u/:username, prefill @username unless it’s the current user.
-  const m = route.path.match(/^\/u\/([^/]+)$/)
-  if (!m?.[1]) return null
-  const profileUsername = decodeURIComponent(m[1]).trim()
-  if (!profileUsername) return null
-  const myUsername = (user.value?.username ?? '').trim()
-  if (myUsername && profileUsername.toLowerCase() === myUsername.toLowerCase()) return null
-  return `@${profileUsername} `
-}
-
-function openComposerModal(initialText?: string | null) {
-  resetComposerCustomOptions()
-  if (viewerIsVerified.value && !isOnlyMePage.value && composerVisibility.value === 'onlyMe') {
-    composerVisibility.value = composerNonOnlyMeVisibility.value ?? 'public'
-  }
-  composerInitialText.value = (initialText ?? defaultComposerInitialTextForRoute()) || null
-  composerModalOpen.value = true
-}
-function openComposerWithVisibility(visibilityOrOptions?: ComposerVisibility | ComposerOpenOptions, initialText?: string | null) {
-  const options: ComposerOpenOptions | null =
-    visibilityOrOptions && typeof visibilityOrOptions === 'object'
-      ? visibilityOrOptions
-      : null
-  const visibility = typeof visibilityOrOptions === 'string' ? visibilityOrOptions : options?.visibility
-  const nextInitialText = options ? options.initialText : initialText
-  applyComposerCustomOptions(options)
-  if (visibility) {
-    const next = !viewerIsVerified.value
-      ? 'onlyMe'
-      : visibility === 'onlyMe' && !isOnlyMePage.value
-        ? (composerNonOnlyMeVisibility.value ?? 'public')
-        : visibility
-    composerVisibility.value = next
-  }
-  composerInitialText.value = (nextInitialText ?? (options?.quotedPost ? null : defaultComposerInitialTextForRoute())) || null
-  composerModalOpen.value = true
-}
-function openComposerForCurrentRoute(initialText?: string | null) {
-  if (isOnlyMePage.value || !viewerIsVerified.value) {
-    openComposerWithVisibility('onlyMe', initialText)
-    return
-  }
-  const gCtx = groupComposerCtx.value
-  if (gCtx) {
-    openComposerWithVisibility({
-      visibility: 'public',
-      allowedVisibilities: ['public'],
-      placeholder: `Post to ${gCtx.groupName}…`,
-      groupName: gCtx.groupName,
-      createPost: gCtx.createPost,
-    }, initialText)
-    return
-  }
-  openComposerModal(initialText)
-}
-provide(MOH_OPEN_COMPOSER_KEY, openComposerWithVisibility)
-
-function openComposerFromOnlyMe(post: FeedPost) {
-  resetComposerCustomOptions()
-  composerSourceOnlyMePost.value = post
-  // Publishing from only-me should never use onlyMe visibility. Use last non-onlyMe (or public).
-  if (composerVisibility.value === 'onlyMe') composerVisibility.value = composerNonOnlyMeVisibility.value ?? 'public'
-  composerInitialText.value = (post?.body ?? '').trim() || null
-  composerModalOpen.value = true
-}
-provide(MOH_OPEN_COMPOSER_FROM_ONLYME_KEY, openComposerFromOnlyMe)
-
-function closeComposerModal() {
-  composerModalOpen.value = false
-  composerInitialText.value = null
-  composerSourceOnlyMePost.value = null
-  resetComposerCustomOptions()
-}
-
-const { prependPost: prependOnlyMePost } = useOnlyMePosts()
-const {
-  prependToHomeFeed,
-  prependOptimisticToHomeFeed,
-  replaceOptimisticInHomeFeed,
-  markOptimisticFailedInHomeFeed,
-  markOptimisticPostingInHomeFeed,
-  removeOptimisticFromHomeFeed,
-} = useHomeFeedPrepend()
-const { prependToProfileFeed } = useProfileFeedPrepend()
-const pendingPosts = usePendingPostsManager()
-
-function onComposerPending(payload: {
-  localId: string
-  optimisticPost: import('~/types/api').FeedPost
-  perform: () => Promise<import('~/types/api').FeedPost | { id: string } | null | undefined>
-}) {
-  // Close the modal immediately so the user can keep working.
-  composerModalOpen.value = false
-  composerInitialText.value = null
-  composerSourceOnlyMePost.value = null
-  resetComposerCustomOptions()
-  pendingPosts.submit({
-    localId: payload.localId,
-    optimisticPost: payload.optimisticPost,
-    perform: payload.perform,
-    callbacks: {
-      insert: (p) => prependOptimisticToHomeFeed(p),
-      replace: (lid, real) => {
-        replaceOptimisticInHomeFeed(lid, real)
-        // Also prepend to the profile feed in case the viewer is on their own profile.
-        if (real.id && real.visibility !== 'onlyMe' && !real.communityGroupId) {
-          prependToProfileFeed(real)
-        }
-      },
-      markFailed: (lid, msg) => markOptimisticFailedInHomeFeed(lid, msg),
-      markPosting: (lid) => markOptimisticPostingInHomeFeed(lid),
-      remove: (lid) => removeOptimisticFromHomeFeed(lid),
-    },
-  })
-}
-function onComposerPosted(payload: { id: string; visibility: string; post?: import('~/types/api').FeedPost }) {
-  composerModalOpen.value = false
-  composerInitialText.value = null
-  composerSourceOnlyMePost.value = null
-  resetComposerCustomOptions()
-  if (payload.visibility === 'onlyMe' && payload.post) {
-    prependOnlyMePost(payload.post)
-    if (route.path !== '/only-me') {
-      navigateTo('/only-me?posted=1')
-    }
-  } else if (payload.post && payload.post.id && payload.post.kind === 'checkin') {
-    // Check-in posts: prepend to home feed and open the share dialog in place —
-    // no navigation so the user stays on the current page.
-    prependToHomeFeed(payload.post)
-    prependToProfileFeed(payload.post)
-    sharePost.value = payload.post
-    shareDialogOpen.value = true
-  } else if (payload.post && payload.post.id && !payload.post.communityGroupId) {
-    // Prepend to home feed immediately and track in localInserts so it survives
-    // the next hard refresh (home page uses keepalive → onActivated → refresh()).
-    prependToHomeFeed(payload.post)
-    // Also push to the profile feed in case the viewer is on their own profile.
-    prependToProfileFeed(payload.post)
-  }
-}
-
-const composerModalBorderClass = computed(() => {
-  if (isGroupPage.value && groupComposerCtx.value) return 'border-[color:var(--moh-group)]'
-  const v = composerLockedVisibility.value ?? (
-    composerVisibility.value === 'onlyMe' && !isOnlyMePage.value
-      ? (composerNonOnlyMeVisibility.value ?? 'public')
-      : composerVisibility.value
-  )
-  if (v === 'verifiedOnly') return 'moh-thread-verified'
-  if (v === 'premiumOnly') return 'moh-thread-premium'
-  if (v === 'onlyMe') return 'moh-thread-onlyme'
-  return 'border-gray-200 dark:border-zinc-800'
-})
-
-// Post button (FAB + left nav): color matches composer scope. Public = black/white (light) or white/black (dark).
-const fabButtonClass = computed(() => {
-  if (isGroupPage.value && groupComposerCtx.value) return 'moh-btn-tone'
-  // On /only-me, always present the "Only me" purple button and default the composer to onlyMe.
-  // (We don't permanently change the cookie just by visiting the page.)
-  if (isOnlyMePage.value || !viewerIsVerified.value) return 'moh-btn-onlyme moh-btn-tone'
-  const v = composerVisibility.value === 'onlyMe'
-    ? (composerNonOnlyMeVisibility.value ?? 'public')
-    : composerVisibility.value
-  // Use .moh-btn-scope for verified/premium: its background reads --moh-scope-bg which
-  // is updated synchronously by useComposerScopeTint (via Unhead), so the button color
-  // snaps in the same CSS-cascade tick as the composer tint rather than waiting for
-  // Vue's async render flush.
-  if (v === 'verifiedOnly' || v === 'premiumOnly') return 'moh-btn-scope moh-btn-tone'
-  return 'bg-black text-white dark:bg-white dark:text-black'
-})
-const fabButtonStyle = computed(() => {
-  if (isGroupPage.value && groupComposerCtx.value) {
-    return { backgroundColor: 'var(--moh-group)', color: '#fff' }
-  }
-  return {}
-})
 // FAB sits above tab bar, and above radio bar too when it’s visible (mobile only).
 const fabBottomStyle = computed<Record<string, string>>(() => {
   // Match the horizontal inset (`right-4`) with a bottom inset too.
@@ -1533,10 +376,9 @@ const fabBottomStyle = computed<Record<string, string>>(() => {
   return { bottom: base }
 })
 
-const middleContentEl = ref<HTMLElement | null>(null)
+// ── Spaces / radio chrome ─────────────────────────────────────────────────────
 
-const { selectedSpaceId, currentSpace, members, totalLobbyCount, loadLobbyCounts } = useSpaceLobby()
-const { allPositionedFloating } = useSpaceReactions()
+const { selectedSpaceId, loadLobbyCounts } = useSpaceLobby()
 const radioHasStation = computed(() => Boolean(selectedSpaceId.value))
 useSpacePlayPauseShortcut(radioHasStation)
 
@@ -1551,7 +393,6 @@ const navCompactMode = computed(() => {
 
 // Global keyboard shortcuts
 const searchInputRef = ref<{ $el: HTMLElement } | HTMLElement | null>(null)
-const { openShortcutsModal } = useKeyboardShortcuts()
 const focusHomeComposer = inject(MOH_FOCUS_HOME_COMPOSER_KEY, null)
 useKeyboardShortcutsHandler({
   openComposer: () => {
@@ -1591,11 +432,6 @@ useSpaceLiveChat()
 // Mobile bottom-sheet chat
 const radioChatSheetOpen = useState<boolean>('space-chat-sheet-open', () => false)
 const radioChat = useSpaceLiveChat({ passive: true })
-const radioChatStationName = computed(() => currentSpace.value?.title ?? 'Place')
-const radioChatSheetTitle = computed(() => 'Live chat')
-const radioChatMessageCount = computed(() => {
-  return Math.max(0, radioChat.messages.value.length)
-})
 watch(
   () => radioHasStation.value,
   (has) => {
@@ -1658,41 +494,7 @@ watch(
   { immediate: true },
 )
 
-function updateComposerSheetStyle() {
-  if (!import.meta.client) return
-  const el = middleContentEl.value ?? middleScrollerEl.value
-  if (!el) return
-  const r = el.getBoundingClientRect()
-
-  // Match the actual center-column content area so it lines up with posts/cards.
-  composerSheetStyle.value = {
-    left: `${Math.max(0, Math.floor(r.left))}px`,
-    width: `${Math.max(0, Math.floor(r.width))}px`,
-  }
-}
-
-useModalEscape(composerModalOpen, closeComposerModal)
-
-watch(
-  composerModalOpen,
-  (open) => {
-    if (!import.meta.client) return
-
-    if (open) {
-      requestAnimationFrame(() => updateComposerSheetStyle())
-      window.addEventListener('resize', updateComposerSheetStyle)
-    }
-
-    return () => {
-      window.removeEventListener('resize', updateComposerSheetStyle)
-    }
-  },
-  { flush: 'post' },
-)
-
-onMounted(() => {
-  if (!import.meta.client) return
-})
+// ── Header ────────────────────────────────────────────────────────────────────
 
 const headerTitle = computed(() => {
   // During SSR + initial hydration, prefer route meta title for stable markup.
@@ -1793,6 +595,8 @@ useHead({
   style: [{ key: 'moh-primary-tint', textContent: primaryCssVars }],
 })
 
+// ── Right-rail search ─────────────────────────────────────────────────────────
+
 const rightRailSearchQuery = ref('')
 function goToExploreSearch() {
   const q = (rightRailSearchQuery.value ?? '').trim()
@@ -1808,14 +612,16 @@ watch(
   { immediate: true },
 )
 
-const middleScrollerEl = ref<HTMLElement | null>(null)
+// ── Scrollers + title bar height ──────────────────────────────────────────────
+
 const titleBarEl = ref<HTMLElement | null>(null)
 const layoutViewportEl = ref<HTMLElement | null>(null)
-const leftRailEl = ref<HTMLElement | null>(null)
-const rightRailEl = ref<HTMLElement | null>(null)
+const leftRailRef = ref<{ el: HTMLElement | null } | null>(null)
+const rightRailRef = ref<{ el: HTMLElement | null } | null>(null)
+const leftRailEl = computed(() => leftRailRef.value?.el ?? null)
+const rightRailEl = computed(() => rightRailRef.value?.el ?? null)
 
 provide(MOH_MIDDLE_SCROLLER_KEY, middleScrollerEl)
-
 
 function updateTitleBarHeightVar() {
   if (!import.meta.client) return
@@ -1901,92 +707,14 @@ onBeforeUnmount(() => {
   layoutViewportEl.value?.removeEventListener('wheel', onLayoutWheel)
 })
 
-const lightbox = useImageLightbox()
-
 // Status page uses a custom “ops” background only in dark mode.
 const showStatusBg = computed(() => route.path === '/status' && colorMode.value === 'dark')
-
-const { dayKey: dailyContentDayKey } = useEasternMidnightRollover()
-const {
-  data: dailyContent,
-  refresh: refreshDailyContent,
-} = useLazyAsyncData<DailyContentToday | null>(
-  'daily-content:today',
-  async () => {
-    return await apiFetchData<DailyContentToday>('/meta/daily-content/today', {
-      method: 'GET',
-      mohCache: { ttlMs: 60 * 60 * 1000, staleWhileRevalidateMs: 60 * 60 * 1000 },
-    })
-  },
-  {
-    server: false,
-    default: () => null,
-  },
-)
-
-const dailyQuote = computed<DailyQuote | null>(() => dailyContent.value?.quote ?? null)
-const dailyQuoteAttribution = computed(() => (dailyQuote.value ? formatDailyQuoteAttribution(dailyQuote.value as any) : ''))
-
-watch(
-  () => dailyContentDayKey.value,
-  async (next, prev) => {
-    if (!import.meta.client) return
-    if (!prev) return
-    if (next === prev) return
-    await refreshDailyContent()
-  },
-)
-
-const {
-  users: whoToFollowUsers,
-  loading: whoToFollowLoading,
-  error: whoToFollowError,
-  refresh: refreshWhoToFollow,
-} = useWhoToFollow({
-  enabled: computed(() => hydrated.value && !isRightRailForcedHidden.value),
-  defaultLimit: 4,
-})
-
-const { count: onlineCount, onlineCountPopover } = useOnlineCount({
-  enabled: computed(() => !isRightRailForcedHidden.value),
-})
-
-function onOnlineLinkEnter(e: MouseEvent) {
-  onlineCountPopover.onTriggerEnter(e)
-}
-function onOnlineLinkMove(e: MouseEvent) {
-  onlineCountPopover.onTriggerMove(e)
-}
-function onOnlineLinkLeave() {
-  onlineCountPopover.onTriggerLeave()
-}
-function onOnlineLinkClick() {
-  onlineCountPopover.close()
-}
-
-const tierCtaTextClass = computed(() => {
-  return userTierTextClass(userColorTier(user.value), { fallback: 'text-gray-700 dark:text-gray-200' })
-})
 
 function scrollMiddleToTop() {
   const middle = middleScrollerEl.value
   const right = rightRailEl.value
   if (middle) middle.scrollTo({ top: 0, behavior: 'smooth' })
   if (right) right.scrollTo({ top: 0, behavior: 'smooth' })
-}
-
-function onHomeClick(e: MouseEvent) {
-  if (route.path === '/home') {
-    e.preventDefault()
-    scrollMiddleToTop()
-  }
-}
-
-function onLeftNavClick(to: string, e: MouseEvent) {
-  if (!isActiveNav(to)) return
-  e.preventDefault()
-  e.stopPropagation()
-  if (to === '/home') scrollMiddleToTop()
 }
 </script>
 
@@ -2070,4 +798,3 @@ function onLeftNavClick(to: string, e: MouseEvent) {
     #000;
 }
 </style>
-

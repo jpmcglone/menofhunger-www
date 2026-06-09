@@ -1,64 +1,84 @@
 #!/usr/bin/env node
 /**
- * Validates that key types in types/api.ts have expected properties.
+ * API contract drift gate (www side).
+ *
+ * The contract pipeline:
+ *   1. The API repo generates `types/api-contracts.gen.ts` from its DTO
+ *      sources (`npm run emit:contracts` in menofhunger-api). API CI fails if
+ *      the committed file differs from a fresh emit.
+ *   2. `types/api-contract-check.ts` statically asserts (via `Satisfies<>`)
+ *      that every generated DTO is assignable to its hand-maintained mirror in
+ *      `types/api.ts`. That check runs as part of `npx nuxi typecheck`.
+ *
+ * This script validates the pipeline's wiring (cheap, no TS compile):
+ *   - the generated contracts file exists and contains the core DTOs
+ *   - the contract-check file exists and still asserts the core types
+ *     (so the gate can't be silently deleted)
+ *
  * Run from menofhunger-www root: node scripts/validate-api-types.mjs
- * Exits 1 if a required property is missing from a type block.
  */
 
-import { readFileSync } from 'node:fs'
+import { readFileSync, existsSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
-const typesPath = join(__dirname, '..', 'types', 'api.ts')
-const content = readFileSync(typesPath, 'utf8')
-
-/** For each type name, list required property names that must appear in its type block. */
-const REQUIRED = {
-  FeedPost: ['id', 'author', 'media', 'visibility', 'createdAt', 'body', 'boostCount', 'bookmarkCount'],
-  PostAuthor: ['id', 'username', 'name', 'premium', 'verifiedStatus', 'avatarUrl'],
-  PostMedia: ['id', 'kind', 'source', 'url'],
-  ApiEnvelope: ['data'],
-  ApiPagination: ['nextCursor'],
-  SearchBookmarkItem: ['bookmarkId', 'post', 'collectionIds'],
-}
-
-function extractTypeBlock(name) {
-  const re = new RegExp(`(export\\s+)?type\\s+${name}\\s*(<[^>]*>)?\\s*=\\s*\\{`)
-  const match = content.match(re)
-  if (!match) return null
-  const start = match.index + match[0].length
-  let depth = 1
-  let i = start
-  while (i < content.length && depth > 0) {
-    const c = content[i]
-    if (c === '{') depth++
-    else if (c === '}') depth--
-    i++
-  }
-  return content.slice(start, i - 1)
-}
+const genPath = join(__dirname, '..', 'types', 'api-contracts.gen.ts')
+const checkPath = join(__dirname, '..', 'types', 'api-contract-check.ts')
 
 let failed = false
-for (const [typeName, props] of Object.entries(REQUIRED)) {
-  const block = extractTypeBlock(typeName)
-  if (!block) {
-    console.error(`validate-api-types: type "${typeName}" not found in types/api.ts`)
-    failed = true
-    continue
+
+function fail(msg) {
+  console.error(`validate-api-types: ${msg}`)
+  failed = true
+}
+
+// ── 1. Generated contracts file ─────────────────────────────────────────────
+if (!existsSync(genPath)) {
+  fail('types/api-contracts.gen.ts is missing — run `npm run emit:contracts` in menofhunger-api')
+} else {
+  const gen = readFileSync(genPath, 'utf8')
+  const requiredGenTypes = [
+    'PostDto',
+    'PostAuthorDto',
+    'PostMediaDto',
+    'PublicProfileDto',
+    'NotificationDto',
+    'MessageDto',
+    'MessageConversationDto',
+    'BillingMeDto',
+    'UserDto',
+    'NotificationKind',
+    'PostVisibility',
+  ]
+  for (const name of requiredGenTypes) {
+    if (!new RegExp(`export type ${name}\\b`).test(gen)) {
+      fail(`generated contracts file is missing "export type ${name}" — re-run \`npm run emit:contracts\` in menofhunger-api`)
+    }
   }
-  for (const prop of props) {
-    const hasProp =
-      block.includes(prop + ':') ||
-      block.includes(prop + '?') ||
-      block.includes(prop + ' :') ||
-      new RegExp(`\\b${prop}\\s*[?:]`).test(block)
-    if (!hasProp) {
-      console.error(`validate-api-types: type "${typeName}" is missing expected property "${prop}"`)
-      failed = true
+}
+
+// ── 2. Contract-check file (the actual structural gate) ─────────────────────
+if (!existsSync(checkPath)) {
+  fail('types/api-contract-check.ts is missing — the structural drift gate has been deleted')
+} else {
+  const check = readFileSync(checkPath, 'utf8')
+  if (!check.includes('Satisfies<')) {
+    fail('types/api-contract-check.ts no longer contains Satisfies<> assertions')
+  }
+  const requiredAssertions = [
+    'Api.PostDto',
+    'Api.PublicProfileDto',
+    'Api.NotificationDto',
+    'Api.MessageDto',
+    'Api.BillingMeDto',
+  ]
+  for (const ref of requiredAssertions) {
+    if (!check.includes(ref)) {
+      fail(`types/api-contract-check.ts no longer asserts against ${ref}`)
     }
   }
 }
 
 if (failed) process.exit(1)
-console.log('API types validation OK')
+console.log('API contract gate wiring OK (structural check runs in `nuxi typecheck`)')

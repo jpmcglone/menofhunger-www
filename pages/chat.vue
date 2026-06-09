@@ -79,172 +79,25 @@
           <!-- Right column: chat for selected thread (edge-to-edge column, consistent content margins) -->
           <section v-if="showChatPane" class="h-full overflow-hidden">
             <div class="flex h-full min-h-0 flex-col">
-              <div class="shrink-0 border-b border-gray-200 px-4 py-2 sm:py-3 dark:border-zinc-800">
-                <div class="flex items-center justify-between gap-3">
-                  <div class="flex min-w-0 items-start gap-2">
-                    <Button
-                      v-if="isTinyViewport && selectedChatKey"
-                      text
-                      severity="secondary"
-                      aria-label="Back"
-                      @click="clearSelection({ replace: true })"
-                    >
-                      <template #icon>
-                        <Icon name="tabler:chevron-left" aria-hidden="true" />
-                      </template>
-                    </Button>
-                    <div class="flex items-center gap-3 min-w-0">
-                      <button
-                        v-if="headerAvatarUser"
-                        type="button"
-                        class="rounded-full cursor-pointer transition-opacity hover:opacity-90"
-                        :aria-label="headerAvatarUser.username ? `View @${headerAvatarUser.username}` : 'View profile'"
-                        @click="goToProfile(headerAvatarUser)"
-                      >
-                        <AppUserAvatar :user="headerAvatarUser" size-class="h-9 w-9 sm:h-10 sm:w-10" />
-                      </button>
-                      <div class="min-w-0">
-                        <div class="font-semibold min-w-0 flex items-center gap-2">
-                          <template v-if="selectedConversation?.type === 'direct' && headerDirectUser">
-                            <button
-                              type="button"
-                              class="min-w-0 truncate hover:underline cursor-pointer text-left"
-                              :aria-label="headerDirectUser.username ? `View @${headerDirectUser.username}` : 'View profile'"
-                              @click="goToProfile(headerDirectUser)"
-                            >
-                              {{ headerDirectUser.name || headerDirectUser.username || 'User' }}
-                            </button>
-                            <AppVerifiedBadge
-                              :status="headerDirectUser.verifiedStatus"
-                              :premium="headerDirectUser.premium"
-                              :premium-plus="headerDirectUser.premiumPlus"
-                              :is-organization="headerDirectUser.isOrganization"
-                              :steward-badge-enabled="headerDirectUser.stewardBadgeEnabled ?? true"
-                              :is-bot="headerDirectUser.isBot"
-                            />
-                          </template>
-                          <template v-else-if="selectedConversation?.type === 'group' && !selectedConversation?.title">
-                            <span class="min-w-0 truncate">
-                              <template v-if="headerMembers.length">
-                                <template v-for="(member, index) in headerMembers" :key="`header-title-${member.id}`">
-                                  <button
-                                    type="button"
-                                    class="hover:underline cursor-pointer"
-                                    :aria-label="member.username ? `View @${member.username}` : 'View profile'"
-                                    @click="goToProfile(member.user)"
-                                    @mouseenter="(e) => onUserPreviewEnter(member.username, e)"
-                                    @mousemove="onUserPreviewMove"
-                                    @mouseleave="onUserPreviewLeave"
-                                  >
-                                    {{ member.label }}
-                                  </button>
-                                  <span v-if="index < headerMembers.length - 1">, </span>
-                                </template>
-                              </template>
-                              <template v-else>
-                                Group chat
-                              </template>
-                            </span>
-                          </template>
-                          <template v-else>
-                            <span class="min-w-0 truncate">
-                              {{
-                                selectedConversation
-                                  ? getConversationTitle(selectedConversation)
-                                : isDraftChat
-                                  ? (draftRecipients.length === 1
-                                      ? (draftRecipients[0]?.name || draftRecipients[0]?.username || 'User')
-                                    : draftGroupTitle)
-                                    : 'Select a conversation'
-                              }}
-                            </span>
-                          </template>
-                        </div>
-                        <div class="text-xs text-gray-500 dark:text-gray-400 truncate">
-                          <template v-if="selectedConversation?.type === 'group' || selectedConversation?.type === 'crew_wall'">
-                            <template v-if="headerMembers.length">
-                              <template v-for="(member, index) in headerMembers" :key="member.id">
-                                <button
-                                  type="button"
-                                  class="font-semibold hover:underline cursor-pointer"
-                                  :class="member.toneClass"
-                                  :aria-label="member.username ? `View @${member.username}` : 'View profile'"
-                                  @click="goToProfile(member.user)"
-                                  @mouseenter="(e) => onUserPreviewEnter(member.username, e)"
-                                  @mousemove="onUserPreviewMove"
-                                  @mouseleave="onUserPreviewLeave"
-                                >
-                                  {{ member.label }}
-                                </button>
-                                <span v-if="index < headerMembers.length - 1">, </span>
-                              </template>
-                            </template>
-                            <template v-else>
-                              {{ selectedConversation?.type === 'crew_wall' ? 'Crew chat' : 'Group chat' }}
-                            </template>
-                          </template>
-                          <template v-else-if="selectedConversation?.type === 'direct'">
-                            <button
-                              v-if="headerDirectUser?.username"
-                              type="button"
-                              class="hover:underline cursor-pointer"
-                              :aria-label="`View @${headerDirectUser.username}`"
-                              @click="goToProfile(headerDirectUser)"
-                              @mouseenter="(e) => onUserPreviewEnter(headerDirectUser?.username, e)"
-                              @mousemove="onUserPreviewMove"
-                              @mouseleave="onUserPreviewLeave"
-                            >
-                              @{{ headerDirectUser.username }}
-                            </button>
-                            <span v-else>Chat</span>
-                          </template>
-                          <template v-else-if="isDraftChat">
-                            {{
-                              draftRecipients.length === 1
-                                ? (draftRecipients[0]?.username ? `@${draftRecipients[0].username}` : 'New chat')
-                                : `${draftRecipients.length} recipients`
-                            }}
-                          </template>
-                          <template v-else>
-                            Pick a conversation from the left.
-                          </template>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  <div class="flex items-center gap-2">
-                    <Button
-                      v-if="selectedConversation && !isSelectedConversationMarv"
-                      v-tooltip.bottom="muteButtonTooltip"
-                      text
-                      severity="secondary"
-                      :aria-label="selectedConversation.isMuted ? 'Unmute notifications' : 'Mute notifications'"
-                      @click="toggleMuteConversation"
-                    >
-                      <template #icon>
-                        <Icon :name="selectedConversation.isMuted ? 'tabler:bell-off' : 'tabler:bell'" aria-hidden="true" />
-                      </template>
-                    </Button>
-                  </div>
-                </div>
-              </div>
+              <ChatThreadHeader
+                :conversation="selectedConversation"
+                :is-draft-chat="isDraftChat"
+                :draft-recipients="draftRecipients"
+                :show-back="isTinyViewport && !!selectedChatKey"
+                :is-marv-conversation="isSelectedConversationMarv"
+                :get-conversation-title="getConversationTitle"
+                @back="clearSelection({ replace: true })"
+                @toggle-mute="toggleMuteConversation"
+              />
 
               <ChatMarvChatStrip v-if="isSelectedConversationMarv && marv.isAvailable.value" />
 
-          <div v-if="selectedChatKey" class="relative flex-1 min-h-0 flex flex-col">
-            <div
-              v-if="renderedChatKey"
-              :key="renderedChatKey"
-              ref="messagesScroller"
-              data-chat-scroller="1"
-              class="min-h-0 flex-1 overflow-y-auto py-4 moh-chat-scroll-hide"
-              @scroll="onMessagesScroll"
-              @wheel.passive="markUserScrollIntent"
-              @touchstart.passive="markUserScrollIntent"
-              @touchmove.passive="markUserScrollIntent"
-            >
-              <ChatMessageList
-                ref="chatMessageListRef"
+              <ChatThreadPane
+                v-if="selectedChatKey"
+                ref="threadPaneRef"
+                :rendered-chat-key="renderedChatKey"
+                :pane-state="messagesPaneState"
+                :fade-ms="MESSAGES_PANE_FADE_MS"
                 :messages-ready="messagesReady"
                 :messages-loading="messagesLoading"
                 :messages-next-cursor="messagesNextCursor"
@@ -262,7 +115,6 @@
                 :animate-rows="animateMessageList"
                 :is-group-chat="isGroupChat"
                 :me-id="me?.id ?? null"
-                :scroller-el="messagesScroller"
                 :format-message-time="formatMessageTime"
                 :format-message-time-full="formatMessageTimeFull"
                 :bubble-shape-class="bubbleShapeClass"
@@ -272,6 +124,16 @@
                 :go-to-profile="goToProfile"
                 :available-reactions="availableReactions"
                 :participants="otherParticipants"
+                :typing-users="typingUsersAll"
+                :scroll-pill-needed="scrollPillNeeded"
+                :scroll-pill-visible="scrollPillVisible"
+                :scroll-pill-thumb-style="scrollPillThumbStyle"
+                :show-scroll-to-bottom-button="showScrollToBottomButton"
+                :pending-button-class="pendingButtonClass"
+                :pending-new-label="pendingNewLabel"
+                :scroll-to-bottom-button-style="scrollToBottomButtonStyle"
+                @scroll="onMessagesScroll"
+                @scroll-intent="markUserScrollIntent"
                 @load-older="loadOlderMessages"
                 @load-newer="loadNewerMessages"
                 @react="handleReact"
@@ -282,103 +144,38 @@
                 @delete-for-all="handleDeleteForAll"
                 @restore="handleRestore"
                 @scroll-to-reply="handleScrollToReply"
+                @pending-click="onPendingButtonClick"
               />
-
-              <div class="w-full px-4">
-                <AppTypingIndicator :users="typingUsersAll" verb="typing" />
-              </div>
-            </div>
-            <div
-              v-else
-              key="loading"
-              class="h-full flex items-center justify-center transition-opacity ease-out"
-              :class="messagesPaneState === 'fading' ? 'opacity-0' : 'opacity-100'"
-              :style="{ transitionDuration: `${MESSAGES_PANE_FADE_MS}ms` }"
-            >
-              <AppLogoLoader />
-            </div>
-            <!-- Custom thin pill scrollbar (native scrollbar hidden) -->
-            <div
-              v-if="renderedChatKey && scrollPillNeeded"
-              class="pointer-events-none absolute right-1 top-2 bottom-2 z-10 w-[4px] transition-opacity duration-200 ease-out"
-              :class="scrollPillVisible ? 'opacity-90' : 'opacity-0'"
-              aria-hidden="true"
-            >
-              <div
-                class="w-full rounded-full transition-[height,transform] duration-150 ease-out will-change-transform"
-                :style="scrollPillThumbStyle"
-              />
-            </div>
-            <Transition name="moh-fade">
-              <button
-                v-if="showScrollToBottomButton"
-                type="button"
-                class="absolute left-1/2 bottom-4 z-10 flex -translate-x-1/2 items-center gap-2 rounded-full px-4 py-2 text-xs font-semibold shadow-lg cursor-pointer"
-                :class="pendingButtonClass"
-                :style="scrollToBottomButtonStyle"
-                @click="onPendingButtonClick"
-              >
-                <Icon name="tabler:arrow-down" class="text-xs" aria-hidden="true" />
-                <span class="tabular-nums">{{ pendingNewLabel }}</span>
-              </button>
-            </Transition>
-          </div>
-          <div v-else class="flex-1 flex items-center justify-center px-4 py-12">
-            <div class="w-full max-w-lg">
-              <div class="rounded-2xl border moh-border moh-bg p-5 shadow-sm">
-                <div class="text-lg font-semibold moh-text">Select a conversation</div>
-                <div class="mt-1 text-sm moh-text-muted">
-                  Pick a conversation from the left, or start a new one.
+              <div v-else class="flex-1 flex items-center justify-center px-4 py-12">
+                <div class="w-full max-w-lg">
+                  <div class="rounded-2xl border moh-border moh-bg p-5 shadow-sm">
+                    <div class="text-lg font-semibold moh-text">Select a conversation</div>
+                    <div class="mt-1 text-sm moh-text-muted">
+                      Pick a conversation from the left, or start a new one.
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
-          </div>
 
-          <div v-if="selectedChatKey" class="shrink-0 border-t border-gray-200 px-4 py-2 sm:py-2.5 dark:border-zinc-800" :style="composerBarStyle">
-            <div v-if="selectedConversation?.viewerStatus === 'pending'" class="mb-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-200">
-              This is a chat request. Replying accepts it and moves it to your inbox.
-              <div class="mt-2 flex items-center gap-2">
-                <Button label="Accept" size="small" severity="secondary" @click="acceptSelectedConversation" />
-                <Button label="Delete" size="small" text severity="secondary" @click="deleteSelectedConversation" />
-              </div>
+              <ChatComposerBar
+                v-if="selectedChatKey"
+                ref="composerBarRef"
+                v-model="composerText"
+                :conversation="selectedConversation"
+                :direct-user="composerDirectUser"
+                :send-error="sendError"
+                :editing-message="editingMessage"
+                :reply-to-message="replyToMessage"
+                :sending="sending"
+                :auto-focus="!isTabBarMode"
+                @send="sendCurrentMessage"
+                @cancel-edit="cancelEdit"
+                @cancel-reply="replyToMessage = null"
+                @accept="acceptSelectedConversation"
+                @delete-conversation="deleteSelectedConversation"
+              />
             </div>
-            <div
-              v-if="selectedConversation?.isBlockedWith"
-              class="mb-3 flex items-center gap-2 rounded-xl border border-zinc-700 bg-zinc-900 px-4 py-3 text-sm text-zinc-300 dark:border-zinc-700 dark:bg-zinc-900"
-            >
-              <Icon name="tabler:ban" class="shrink-0 text-zinc-400" aria-hidden="true" />
-              <span v-if="headerDirectUser && blockState.isBlockedByMe(headerDirectUser.id)">
-                You've blocked <strong class="font-semibold text-white">@{{ headerDirectUser.username }}</strong>. You can read past messages but can't send new ones.
-                <NuxtLink to="/settings/blocked" class="ml-1 underline text-zinc-300">Manage in Settings.</NuxtLink>
-              </span>
-              <span v-else>
-                <strong class="font-semibold text-white">@{{ headerDirectUser?.username }}</strong> has blocked you. You can read past messages but can't send new ones.
-              </span>
-            </div>
-            <AppInlineAlert v-if="sendError" class="mb-2" severity="danger">{{ sendError }}</AppInlineAlert>
-            <!-- Edit mode banner -->
-            <div v-if="editingMessage" class="mb-2 flex items-center justify-between gap-2 rounded-lg bg-amber-50 px-3 py-1.5 text-xs text-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
-              <div class="flex items-center gap-1.5">
-                <Icon name="tabler:pencil" class="shrink-0" aria-hidden="true" />
-                <span>Editing message</span>
-              </div>
-              <button type="button" class="underline hover:no-underline shrink-0" @click="cancelEdit">Cancel</button>
-            </div>
-            <AppDmComposer
-              v-if="!selectedConversation?.isBlockedWith"
-              ref="dmComposerRef"
-              v-model="composerText"
-              :user="composerUser"
-              :placeholder="editingMessage ? 'Edit message…' : 'Type a chat…'"
-              :loading="sending"
-              :auto-focus="!isTabBarMode"
-              :reply-to="!editingMessage && replyToMessage ? { id: replyToMessage.id, senderUsername: replyToMessage.sender.username, bodyPreview: replyToMessage.body.slice(0, 200), mediaThumbnailUrl: replyToMessage.media?.[0]?.thumbnailUrl ?? replyToMessage.media?.[0]?.url ?? null } : null"
-              @send="sendCurrentMessage"
-              @cancel-reply="replyToMessage = null"
-            />
-          </div>
-        </div>
-      </section>
+          </section>
     </div>
 
     <ChatMessageInfoModal
@@ -446,11 +243,6 @@ import type {
   LookupMessageConversationResponse,
   Message,
   MessageUser,
-  MessageConversation,
-  MessageReaction,
-  SendMessageResponse,
-  CreateMessageConversationResponse,
-  UserPreview,
 } from '~/types/api'
 import { getApiErrorMessage } from '~/utils/api-error'
 import { useChatBubbleShape } from '~/composables/chat/useChatBubbleShape'
@@ -458,55 +250,37 @@ import { useChatTimeFormatting } from '~/composables/chat/useChatTimeFormatting'
 import { useChatTyping } from '~/composables/chat/useChatTyping'
 import { useChatScroll } from '~/composables/chat/useChatScroll'
 import { useChatRealtime } from '~/composables/chat/useChatRealtime'
+import { useChatConversations, type MessageTone } from '~/composables/chat/useChatConversations'
+import { useChatThread, MESSAGES_PANE_FADE_MS } from '~/composables/chat/useChatThread'
+import { useChatRouteSync } from '~/composables/chat/useChatRouteSync'
 import { useRefcountedInterest } from '~/composables/chat/useRefcountedInterest'
 import ChatConversationList from '~/components/app/chat/ChatConversationList.vue'
-import ChatMessageList from '~/components/app/chat/ChatMessageList.vue'
+import ChatThreadHeader from '~/components/app/chat/ChatThreadHeader.vue'
+import ChatThreadPane from '~/components/app/chat/ChatThreadPane.vue'
+import ChatComposerBar from '~/components/app/chat/ChatComposerBar.vue'
 import ChatMessageInfoModal from '~/components/app/chat/ChatMessageInfoModal.vue'
 import ChatMarvPinnedRow from '~/components/app/chat/ChatMarvPinnedRow.vue'
 import ChatMarvChatStrip from '~/components/app/chat/ChatMarvChatStrip.vue'
-import { useKeyboardHeight } from '~/composables/useKeyboardHeight'
-import { userColorTier, type UserColorTier } from '~/utils/user-tier'
-import { tinyTooltip } from '~/utils/tiny-tooltip'
+import { userColorTier } from '~/utils/user-tier'
 
 const { apiFetch, apiFetchData } = useApiClient()
 const route = useRoute()
-const router = useRouter()
 const { user: me, ensureLoaded } = useAuth()
 const viewerIsVerified = computed(() => (me.value?.verifiedStatus ?? 'none') !== 'none')
 const viewerIsPremium = computed(() => Boolean(me.value?.premium || me.value?.premiumPlus))
 // Any verified or premium user can start new chats; non-premium can't start with premium recipients (API enforces).
 const viewerCanStartChats = computed(() => viewerIsVerified.value || viewerIsPremium.value)
+const viewerCanUseChat = computed(() => viewerIsVerified.value || viewerIsPremium.value)
+
 const CHAT_BOOT_FADE_MS = 160
-const MESSAGES_PANE_FADE_MS = 160
 const prefersReducedMotion = ref(false)
 const chatBootState = ref<'loading' | 'fading' | 'ready'>('loading')
-const messagesPaneState = ref<'loading' | 'fading' | 'ready'>('loading')
 let chatBootTimer: ReturnType<typeof setTimeout> | null = null
-let messagesPaneTimer: ReturnType<typeof setTimeout> | null = null
-
-const { keyboardHeight } = useKeyboardHeight()
-
-// When the keyboard is open, offset the composer bar up by the keyboard height so it
-// sits directly above the keyboard. When closed, use the normal safe-area bottom inset.
-const composerBarStyle = computed<Record<string, string>>(() => {
-  if (keyboardHeight.value > 0) {
-    return { paddingBottom: `${keyboardHeight.value}px` }
-  }
-  return { paddingBottom: 'calc(var(--moh-safe-bottom, 0px) - 4px)' }
-})
-const scrollToBottomButtonStyle = computed<Record<string, string>>(() => ({
-  bottom: 'calc(var(--moh-safe-bottom, 0px) + 1rem)',
-}))
 
 function clearChatBootTimer() {
   if (!chatBootTimer) return
   clearTimeout(chatBootTimer)
   chatBootTimer = null
-}
-function clearMessagesPaneTimer() {
-  if (!messagesPaneTimer) return
-  clearTimeout(messagesPaneTimer)
-  messagesPaneTimer = null
 }
 
 function revealChatScreenAfterFade() {
@@ -523,21 +297,10 @@ function revealChatScreenAfterFade() {
   }, CHAT_BOOT_FADE_MS)
 }
 
-function revealMessagesPaneAfterFade(key: string) {
-  // Mount the messages scroller only after the loader has faded out.
-  if (prefersReducedMotion.value) {
-    messagesPaneState.value = 'ready'
-    renderedChatKey.value = key
-    return
-  }
-  messagesPaneState.value = 'fading'
-  clearMessagesPaneTimer()
-  messagesPaneTimer = setTimeout(() => {
-    messagesPaneTimer = null
-    messagesPaneState.value = 'ready'
-    renderedChatKey.value = key
-  }, MESSAGES_PANE_FADE_MS)
-}
+const scrollToBottomButtonStyle = computed<Record<string, string>>(() => ({
+  bottom: 'calc(var(--moh-safe-bottom, 0px) + 1rem)',
+}))
+
 const {
   addInterest,
   removeInterest,
@@ -548,113 +311,47 @@ const {
   suppressMessageUnreadBumpsForMs,
   isSocketConnected,
 } = usePresence()
-const { showRequests, displayRequests, toneClass } = useMessagesBadge()
+const { toneClass } = useMessagesBadge()
+const badgeToneClass = computed(() => toneClass.value)
 const marv = useMarv()
 
-const activeTab = ref<'primary' | 'requests'>('primary')
-type MessageTone = UserColorTier
-type MessageConversationWithTone = MessageConversation & { unreadTone?: MessageTone }
-
-// `shallowRef` so deep-reactive proxying doesn't walk every conversation /
-// participant / lastMessage on first paint. Mutations call `commitConversations()`
-// (which delegates to `triggerRef`) — full-tab replacements reassign `.value`
-// to a fresh wrapper object so the shallowRef triggers naturally.
-const conversations = shallowRef<{ primary: MessageConversationWithTone[]; requests: MessageConversationWithTone[] }>({
-  primary: [],
-  requests: [],
-})
-
-function commitConversations() {
-  triggerRef(conversations)
-}
-const nextCursorByTab = ref<{ primary: string | null; requests: string | null }>({ primary: null, requests: null })
-const listLoadingByTab = ref<{ primary: boolean; requests: boolean }>({ primary: false, requests: false })
-const loadingMore = ref(false)
+// ─── Selection refs (shared across the chat composables) ─────────────────────
 
 // Seed selection from URL so refresh doesn't "pop" the chat pane in after mount.
 const selectedConversationId = ref<string | null>(typeof route.query.c === 'string' ? route.query.c : null)
 // Two-pane layout key: either a real conversation id, 'draft' for a not-yet-created chat, or null.
 const selectedChatKey = ref<string | null>(selectedConversationId.value)
-const selectedConversation = computed(() =>
-  [...conversations.value.primary, ...conversations.value.requests].find((c) => c.id === selectedConversationId.value) ?? null,
-)
 const isDraftChat = computed(() => selectedChatKey.value === 'draft')
+const draftRecipients = ref<FollowListUser[]>([])
 
-type ChatMessage = Message & { __clientKey?: string }
-// `shallowRef` so deep-reactive tracking doesn't walk every message body /
-// reaction / reactor on first paint. Mutations to individual rows go through
-// `mutateMessageAt` (or full-array reassignment) which calls `triggerRef` so
-// downstream computeds (`messagesWithDividers`, `latestMyMessageId`, …) stay
-// in sync.
-const messages = shallowRef<ChatMessage[]>([])
+// ─── Pane / composer instance refs ───────────────────────────────────────────
 
-/**
- * Replace the message at `idx` with a new object and notify dependents.
- * Returns true when the index was in-bounds. Used by reaction toggles, edits,
- * deletes — anywhere we mutate exactly one row.
- */
-function mutateMessageAt(idx: number, next: ChatMessage): boolean {
-  const arr = messages.value
-  if (idx < 0 || idx >= arr.length) return false
-  arr[idx] = next
-  triggerRef(messages)
-  return true
-}
-const { buildMessagesWithDividers, formatListTime, formatMessageTime, formatMessageTimeFull } = useChatTimeFormatting()
-const messagesWithDividers = computed(() => buildMessagesWithDividers(messages.value))
-const stickyDividerLabel = ref<string | null>(null)
-const messagesNextCursor = ref<string | null>(null)
-const messagesNewerCursor = ref<string | null>(null)
-const messagesLoading = ref(false)
-const loadingOlder = ref(false)
-const loadingNewer = ref(false)
-/** The message ID the user jumped to from search. Highlighted until cleared. */
-const jumpTargetMessageId = ref<string | null>(null)
-let jumpHighlightTimer: ReturnType<typeof setTimeout> | null = null
-const sending = ref(false)
-const composerText = ref('')
-const sendError = ref<string | null>(null)
-
-// Message actions
-const replyToMessage = ref<Message | null>(null)
-const editingMessage = ref<Message | null>(null)
-const infoMessage = ref<Message | null>(null)
-const infoModalVisible = ref(false)
-const availableReactions = ref<import('~/types/api').MessageReaction[]>([])
-const composerUser = computed(() =>
-  me.value
-    ? {
-        premium: Boolean(me.value.premium),
-        verifiedStatus: me.value.verifiedStatus ?? 'none',
-      }
-    : null,
-)
-const messagesScroller = ref<HTMLElement | null>(null)
-// Exposed by ChatMessageList — `scrollToMessageId(id, { align })` brings a
-// virtualized off-screen row into the viewport. We need this for jump-to-reply
-// because querying `[data-message-id="..."]` on the scroller no longer works
-// (the off-screen row hasn't been mounted yet).
-const chatMessageListRef = ref<{ scrollToMessageId: (id: string, opts?: { align?: 'start' | 'center' | 'end' | 'auto' }) => boolean } | null>(null)
-const dmComposerRef = ref<{ focus?: () => void; getMedia?: () => import('~/composables/composer/types').CreateMediaPayload[]; clearMedia?: () => void } | null>(null)
-const messagesReady = ref(false)
-const animateMessageList = ref(true)
-const renderedChatKey = ref<string | null>(null)
+const threadPaneRef = ref<InstanceType<typeof ChatThreadPane> | null>(null)
+const messagesScroller = computed<HTMLElement | null>(() => threadPaneRef.value?.scrollerEl ?? null)
+const composerBarRef = ref<InstanceType<typeof ChatComposerBar> | null>(null)
 
 // ─── Scroll management (via useChatScroll) ───────────────────────────────────
+
+const scrollApi = useChatScroll({
+  messagesScroller,
+  selectedChatKey,
+  selectedConversationId,
+  prefersReducedMotion,
+  me,
+  onUpdateStickyDivider: () => thread.updateStickyDivider(),
+  onReachedBottom: (convoId, _hadPending) => conversationsApi.markConversationReadIfVisible(convoId),
+  onScrollerMountedReady: () => {
+    thread.animateMessageList.value = true
+    thread.scrollToJumpTarget()
+  },
+})
+
 const {
   atBottom,
-  isAutoScrollingToBottom,
-  scrollPillTopPx,
-  scrollPillHeightPx,
   scrollPillVisible,
   scrollPillNeeded,
-  scrollPillColor,
   scrollPillThumbStyle,
   showScrollToBottomButton,
-  cacheCurrentChatScrollPosition,
-  getCachedScrollTopForChatKey,
-  normalizeChatKey,
-  isAtBottom,
   stickToBottom,
   setAtBottomState,
   refreshAtBottomFromScroller,
@@ -663,206 +360,182 @@ const {
   observeScrollerForBottomAnchoring,
   onMessagesScrollerMounted,
   onMessagesScroll: scrollEventHandler,
-  teardown: teardownScroll,
-} = useChatScroll({
-  messagesScroller,
-  selectedChatKey,
+} = scrollApi
+
+// ─── Conversation lists (via useChatConversations) ───────────────────────────
+
+const conversationsApi = useChatConversations({
+  me,
+  marv,
   selectedConversationId,
-  prefersReducedMotion,
-  me: me as any,
-  onUpdateStickyDivider: () => updateStickyDivider(),
-  onReachedBottom: (convoId, _hadPending) => markSelectedConversationReadIfVisible(convoId),
-  onScrollerMountedReady: () => {
-    animateMessageList.value = true
-    scrollToJumpTarget()
-  },
+  atBottom,
 })
-
-// Derived from conversation.unreadCount + atBottom — no manual sync needed.
-const pendingNewCount = computed(() => {
-  if (atBottom.value) return 0
-  const conversation = selectedConversation.value
-  if (!conversation) return 0
-  return Math.max(0, Math.floor(Number(conversation.unreadCount) || 0))
-})
-const pendingNewTier = computed((): MessageTone => {
-  const count = pendingNewCount.value
-  if (count <= 0) return 'normal'
-  const conversation = selectedConversation.value
-  if (!conversation) return 'normal'
-  if (conversation.unreadTone) return conversation.unreadTone
-  const myId = me.value?.id ?? null
-  for (let i = messages.value.length - 1; i >= 0; i--) {
-    const msg = messages.value[i]
-    if (!msg) continue
-    if (msg.sender.id !== myId) return getMessageTier(msg)
-  }
-  return getConversationLastMessageTier(conversation)
-})
-
-// Track recently-added messages so we can animate them reliably (even if
-// scroll-to-bottom happens same frame). `shallowRef` + `triggerRef` so a
-// burst of N incoming messages collapses into ONE reactive write per tick
-// instead of N Set clones + N ref reassignments.
-const recentAnimatedMessageIds = shallowRef<Set<string>>(new Set())
-const recentAnimatedTimers = new Map<string, ReturnType<typeof setTimeout>>()
-let _animatedFlushScheduled = false
-function flushAnimatedSet() {
-  if (_animatedFlushScheduled) return
-  _animatedFlushScheduled = true
-  void nextTick(() => {
-    _animatedFlushScheduled = false
-    triggerRef(recentAnimatedMessageIds)
-  })
-}
-const sendingMessageIds = ref<Set<string>>(new Set())
-const latestMyMessageId = computed<string | null>(() => {
-  const myId = me.value?.id ?? null
-  if (!myId) return null
-  for (let i = messages.value.length - 1; i >= 0; i--) {
-    const m = messages.value[i]!
-    if (m.sender.id === myId) return m.id
-  }
-  return null
-})
-
-// --- Helpers ---
-
-function clearSendingId(localId: string) {
-  const next = new Set(sendingMessageIds.value)
-  next.delete(localId)
-  sendingMessageIds.value = next
-}
-
-/** Swap an optimistic row in-place and deduplicate any server-message that already landed elsewhere. */
-function replaceOptimisticAtIndex(list: ChatMessage[], idx: number, serverMsg: Message, localId: string): ChatMessage[] {
-  const next = [...list]
-  next[idx] = { ...serverMsg, __clientKey: localId } as ChatMessage
-  return next.filter((m, j) => j === idx || m.id !== serverMsg.id)
-}
-
-/**
- * Update a conversation row in both tab lists.
- * Returns true if the conversation was found in at least one tab.
- *
- * In-place when possible:
- *   - When the row stays in the same position, write to `arr[idx]` directly.
- *   - When `moveToTop: true` AND idx !== 0, splice in place rather than
- *     allocating a fresh full-length array.
- *
- * Avoiding the full-array re-allocation removes the per-incoming-message
- * O(n) write amplification that used to invalidate every conversation-list
- * derived computed (requestsBadgeCount, displayList) on every socket event.
- */
-function patchConversation(
-  conversationId: string,
-  updater: (c: MessageConversationWithTone) => MessageConversationWithTone,
-  opts?: { moveToTop?: boolean },
-): boolean {
-  let found = false
-  for (const tab of ['primary', 'requests'] as const) {
-    const arr = conversations.value[tab]
-    const idx = arr.findIndex((c) => c.id === conversationId)
-    if (idx === -1) continue
-    const updated = updater(arr[idx]!)
-    if (opts?.moveToTop && idx !== 0) {
-      arr.splice(idx, 1)
-      arr.unshift(updated)
-    } else {
-      arr[idx] = updated
-    }
-    found = true
-  }
-  // shallowRef won't see in-place array mutations; trigger explicitly.
-  if (found) commitConversations()
-  return found
-}
-
-/** Last non–deleted-for-all message in the open thread (for list preview after delete). */
-function lastVisibleMessageSnapshot(list: ChatMessage[]): NonNullable<MessageConversation['lastMessage']> | null {
-  for (let i = list.length - 1; i >= 0; i--) {
-    const m = list[i]!
-    if (m.deletedForAll) continue
-    return {
-      id: m.id,
-      body: m.body,
-      createdAt: m.createdAt,
-      senderId: m.sender.id,
-    }
-  }
-  return null
-}
-
-async function refreshAllConversationTabs() {
-  await Promise.all([
-    fetchConversations('primary', { forceRefresh: true }),
-    fetchConversations('requests', { forceRefresh: true }),
-  ])
-  // If the user is on the primary tab with nothing in it but requests has conversations,
-  // auto-switch so inbound chat requests don't silently pile up out of view.
-  if (activeTab.value === 'primary' && conversations.value.primary.length === 0 && conversations.value.requests.length > 0) {
-    activeTab.value = 'requests'
-  }
-}
-
-// --- Optimistic message reconciliation ---
-
-function reconcileOptimisticSend(serverMsg: Message): boolean {
-  const myId = me.value?.id ?? null
-  if (!myId || serverMsg.sender.id !== myId || !serverMsg.conversationId) return false
-  const sendingIds = sendingMessageIds.value
-  if (!sendingIds.size) return false
-
-  const list = messages.value
-  for (let i = list.length - 1; i >= 0; i--) {
-    const m = list[i]!
-    if (!sendingIds.has(m.id) || !m.id.startsWith('local-')) continue
-    if (m.conversationId !== serverMsg.conversationId) continue
-    if (m.body.trim() !== serverMsg.body.trim()) continue
-
-    messages.value = replaceOptimisticAtIndex(list, i, serverMsg, m.id)
-    clearSendingId(m.id)
-    return true
-  }
-  return false
-}
-
-function mergeServerMessageIntoOptimistic(localId: string, serverMsg: Message): boolean {
-  const list = messages.value
-  const idx = list.findIndex((m) => m.id === localId)
-  if (idx === -1) return false
-  messages.value = replaceOptimisticAtIndex(list, idx, serverMsg, localId)
-  return true
-}
-function markMessageAnimated(id: string) {
-  const mid = (id ?? '').trim()
-  if (!mid) return
-  recentAnimatedMessageIds.value.add(mid)
-  flushAnimatedSet()
-  const existing = recentAnimatedTimers.get(mid)
-  if (existing) clearTimeout(existing)
-  recentAnimatedTimers.set(mid, setTimeout(() => {
-    recentAnimatedMessageIds.value.delete(mid)
-    recentAnimatedTimers.delete(mid)
-    flushAnimatedSet()
-  }, 420))
-}
-
-const { bubbleShapeClass } = useChatBubbleShape()
 
 const {
-  resetTyping,
-  setRemoteTyping,
-  typingUsersByConversationId,
-  typingUsersAll,
-  typingUsersTotalCount,
-} = useChatTyping({
+  activeTab,
+  conversations,
+  selectedConversation,
+  activeList,
+  nextCursor,
+  listLoading,
+  loadingMore,
+  showRequestsBadge,
+  requestsBadgeText,
+  fetchConversations,
+  loadMoreConversations,
+  refreshAllConversationTabs,
+  setTab,
+  patchConversation,
+  removeConversationFromList,
+  updateConversationParticipantRead,
+  updateConversationUnread,
+  updateConversationForMessage,
+  markConversationReadIfVisible,
+  getMessageTier,
+  getDirectUser,
+  getConversationTitle,
+  getConversationPreview,
+  getConversationLastMessageTier,
+  conversationDotClass,
+  conversationUnreadHighlightClass,
+  lastVisibleMessageSnapshot,
+  conversationSearchResults,
+  conversationSearchLoading,
+  handleConversationSearchQuery,
+  marvConversationId,
+  marvUnreadCount,
+  marvLastMessagePreview,
+  isSelectedConversationMarv,
+  toggleMuteConversation,
+} = conversationsApi
+
+const isGroupChat = computed(() => {
+  if (selectedConversation.value?.type === 'group') {
+    return (selectedConversation.value.participants?.length ?? 0) >= 3
+  }
+  if (isDraftChat.value) {
+    return draftRecipients.value.length + 1 >= 3
+  }
+  return false
+})
+
+const { confirm } = useAppConfirm()
+
+async function showCantStartChat() {
+  await confirm({
+    header: "Can't start this chat",
+    message: 'You need a verified account to send messages.',
+    confirmLabel: 'Got it',
+    confirmSeverity: 'primary',
+    showCancel: false,
+  })
+}
+
+// ─── Open thread (via useChatThread) ─────────────────────────────────────────
+
+const thread = useChatThread({
+  me,
+  selectedConversationId,
+  selectedChatKey,
+  isDraftChat,
+  isGroupChat,
+  draftRecipients,
+  viewerCanStartChats,
+  showCantStartChat,
+  prefersReducedMotion,
+  messagesScroller,
+  scrollToMessageInList: (id, opts) => threadPaneRef.value?.scrollToMessageId(id, opts) ?? false,
+  composer: {
+    focus: () => { composerBarRef.value?.focus() },
+    getMedia: () => composerBarRef.value?.getMedia() ?? [],
+    clearMedia: () => { composerBarRef.value?.clearMedia() },
+  },
+  scroll: {
+    stickToBottom,
+    setAtBottomState,
+    refreshAtBottomFromScroller,
+    isAtBottom: scrollApi.isAtBottom,
+    updateScrollPill,
+  },
+  conversationsApi: {
+    conversations,
+    activeTab,
+    selectedConversation,
+    updateConversationForMessage,
+    updateConversationIsBlockedWith: conversationsApi.updateConversationIsBlockedWith,
+    refreshAllConversationTabs,
+  },
+  resetTyping: () => typingApi.resetTyping(),
+  emitMessagesTyping,
+  selectConversation: (id, opts) => routeSync.selectConversation(id, opts),
+})
+
+const {
+  messages,
+  messagesWithDividers,
+  messagesNextCursor,
+  messagesNewerCursor,
+  messagesLoading,
+  loadingOlder,
+  loadingNewer,
+  jumpTargetMessageId,
+  latestMyMessageId,
+  messagesReady,
+  animateMessageList,
+  renderedChatKey,
+  messagesPaneState,
+  sending,
+  composerText,
+  sendError,
+  replyToMessage,
+  editingMessage,
+  infoMessage,
+  infoModalVisible,
+  availableReactions,
+  recentAnimatedMessageIds,
+  sendingMessageIds,
+  stickyDividerLabel,
+  registerDividerEl,
+  shouldShowIncomingAvatar,
+  loadOlderMessages,
+  loadNewerMessages,
+  sendCurrentMessage,
+  cancelEdit,
+  handleReply,
+  handleInfo,
+  handleReact,
+  handleDeleteForMe,
+  handleDeleteForAll,
+  handleRestore,
+  handleEdit,
+  handleScrollToReply,
+} = thread
+
+// ─── Typing indicators (via useChatTyping) ───────────────────────────────────
+
+const typingApi = useChatTyping({
   me,
   conversations,
   selectedConversation,
   selectedConversationId,
   composerText,
   emitMessagesTyping,
+})
+
+const {
+  setRemoteTyping,
+  typingUsersByConversationId,
+  typingUsersAll,
+  typingUsersTotalCount,
+} = typingApi
+
+const marvTypingStatus = computed<'thinking' | 'typing' | null>(() => {
+  const cid = marvConversationId.value
+  if (!cid) return null
+  const typingUsers = typingUsersByConversationId.value[cid] ?? []
+  const marvEntry = typingUsers.find((u) => u.userId === marv.marvUserId.value)
+  if (!marvEntry) return null
+  return marvEntry.status === 'thinking' || marvEntry.status === 'typing' ? marvEntry.status : 'typing'
 })
 
 watch(
@@ -876,84 +549,51 @@ watch(
   { flush: 'post' },
 )
 
-const newDialogVisible = ref(false)
-const { confirm } = useAppConfirm()
+// ─── URL ↔ selection sync (via useChatRouteSync) ─────────────────────────────
 
-async function showCantStartChat() {
-  await confirm({
-    header: "Can't start this chat",
-    message: 'You need a verified account to send messages.',
-    confirmLabel: 'Got it',
-    confirmSeverity: 'primary',
-    showCancel: false,
-  })
-}
-const newConversationError = ref<string | null>(null)
-const newDialogRecipients = ref<FollowListUser[]>([])
-
-const draftRecipients = ref<FollowListUser[]>([])
-
-const blockState = useBlockState()
-
-const activeList = computed(() => {
-  const list = conversations.value[activeTab.value]
-  // On the primary tab, the Marv pinned row already surfaces the Marv DM. Hide
-  // the regular conversation row so Marv never appears twice in the list.
-  const marvId = marv.marvUserId.value
-  if (activeTab.value === 'primary' && marv.enabled.value && marvId) {
-    return list.filter(
-      (c) => !(c.type === 'direct' && c.participants.some((p) => p.user.id === marvId)),
-    )
-  }
-  return list
+const routeSync = useChatRouteSync({
+  selectedConversationId,
+  selectedChatKey,
+  draftRecipients,
+  viewerCanUseChat,
+  marv,
+  ensureAuthLoaded: ensureLoaded,
+  emitMessagesScreen,
+  cacheCurrentChatScrollPosition: scrollApi.cacheCurrentChatScrollPosition,
+  conversationsApi: { refreshAllConversationTabs },
+  thread: {
+    jumpTargetMessageId,
+    beginThreadSwitch: thread.beginThreadSwitch,
+    loadThread: thread.loadThread,
+    resetThread: thread.resetThread,
+    showDraftPane: thread.showDraftPane,
+  },
 })
-const nextCursor = computed(() => nextCursorByTab.value[activeTab.value])
-const listLoading = computed(() => listLoadingByTab.value[activeTab.value])
 
-// ─── Conversation search ─────────────────────────────────────────────────────
-const conversationSearchResults = ref<import('~/types/api').MessageConversation[] | null>(null)
-const conversationSearchLoading = ref(false)
-let searchDebounceTimer: ReturnType<typeof setTimeout> | null = null
+const { selectConversation, clearSelection, openDraftChatWithRecipients } = routeSync
 
-function handleConversationSearchQuery(q: string) {
-  if (searchDebounceTimer) { clearTimeout(searchDebounceTimer); searchDebounceTimer = null }
-  const trimmed = q.trim()
-  if (!trimmed) {
-    conversationSearchResults.value = null
-    conversationSearchLoading.value = false
-    return
+// ─── Pending-new button (derived from unreadCount + atBottom) ────────────────
+
+const pendingNewCount = computed(() => {
+  if (atBottom.value) return 0
+  const conversation = selectedConversation.value
+  if (!conversation) return 0
+  return Math.max(0, Math.floor(Number(conversation.unreadCount) || 0))
+})
+
+const pendingNewTier = computed((): MessageTone => {
+  const count = pendingNewCount.value
+  if (count <= 0) return 'normal'
+  const conversation = selectedConversation.value
+  if (!conversation) return 'normal'
+  if (conversation.unreadTone) return conversation.unreadTone
+  const myId = me.value?.id ?? null
+  for (let i = messages.value.length - 1; i >= 0; i--) {
+    const msg = messages.value[i]
+    if (!msg) continue
+    if (msg.sender.id !== myId) return getMessageTier(msg)
   }
-  conversationSearchLoading.value = true
-  conversationSearchResults.value = null
-  searchDebounceTimer = setTimeout(async () => {
-    searchDebounceTimer = null
-    try {
-      const result = await apiFetchData<import('~/types/api').MessageConversation[]>(
-        `/messages/conversations/search?q=${encodeURIComponent(trimmed)}`,
-      )
-      conversationSearchResults.value = Array.isArray(result) ? result : []
-    } catch {
-      conversationSearchResults.value = []
-    } finally {
-      conversationSearchLoading.value = false
-    }
-  }, 300)
-}
-
-// Drive the requests tab badge from local state so it clears immediately when a request
-// is accessed (unreadCount → 0) or deleted (removed from the list). The global nav badge
-// still uses the server-pushed count from useMessagesBadge.
-const requestsBadgeCount = computed(() => conversations.value.requests.filter((c) => c.unreadCount > 0).length)
-const showRequestsBadge = computed(() => requestsBadgeCount.value > 0)
-const requestsBadgeText = computed(() => (requestsBadgeCount.value >= 99 ? '99+' : String(requestsBadgeCount.value)))
-const badgeToneClass = computed(() => toneClass.value)
-
-const muteButtonTooltip = computed(() => {
-  const c = selectedConversation.value
-  if (!c) return null
-  return c.isMuted
-    ? tinyTooltip('Unmute — turn notifications back on for this chat')
-    : tinyTooltip('Mute — silence notifications for this chat')
+  return getConversationLastMessageTier(conversation)
 })
 
 const pendingButtonClass = computed(() => {
@@ -974,6 +614,26 @@ const pendingNewLabel = computed(() => {
   return 'Scroll to bottom'
 })
 
+function onPendingButtonClick() {
+  // Eagerly mark at-bottom so the pending button disappears before the smooth scroll completes.
+  setAtBottomState(true)
+  stickToBottom({ behavior: 'smooth', userInitiated: true })
+  const convoId = selectedConversationId.value
+  if (convoId) {
+    void nextTick().then(() => {
+      requestAnimationFrame(() => markConversationReadIfVisible(convoId))
+    })
+  }
+}
+
+function onMessagesScroll() {
+  // Capture pending count BEFORE the composable updates atBottom (which zeroes the computed).
+  const hadPending = pendingNewCount.value > 0
+  scrollEventHandler({ hadPending })
+}
+
+// ─── Layout ──────────────────────────────────────────────────────────────────
+
 const isTabBarMode = useHydratedMediaQuery('(max-width: 639px)')
 
 const { isTinyViewport, showListPane, showDetailPane: showChatPane, gridStyle } = useTwoPaneLayout(selectedChatKey, {
@@ -986,53 +646,16 @@ const { isTinyViewport, showListPane, showDetailPane: showChatPane, gridStyle } 
   minHeight: 0,
 })
 
-const headerAvatarUser = computed(() => {
-  if (selectedConversation?.value?.type === 'direct') {
-    return getDirectUser(selectedConversation.value)
-  }
-  if (isDraftChat.value && draftRecipients.value.length === 1) {
-    return draftRecipients.value[0] ?? null
-  }
-  return null
-})
+// ─── Header / bubble presentation ────────────────────────────────────────────
 
-const headerDirectUser = computed(() => {
-  if (selectedConversation?.value?.type === 'direct') {
+const { formatListTime, formatMessageTime, formatMessageTimeFull } = useChatTimeFormatting()
+const { bubbleShapeClass } = useChatBubbleShape()
+
+const composerDirectUser = computed(() => {
+  if (selectedConversation.value?.type === 'direct') {
     return getDirectUser(selectedConversation.value)
   }
   return null
-})
-
-function userToneClass(u: MessageUser | null | undefined): string {
-  const tier = userColorTier(u as any)
-  if (tier === 'organization') return 'text-[var(--moh-org)]'
-  if (tier === 'premium') return 'text-[var(--moh-premium)]'
-  if (tier === 'verified') return 'text-[var(--moh-verified)]'
-  return 'text-gray-700 dark:text-gray-200'
-}
-
-const headerMembers = computed(() => {
-  // Both group chats and crew chats render a comma-separated list of the
-  // other participants under the header title (and as the title itself when
-  // the group chat has no custom name). Crew chats always have a name (the
-  // crew's name, populated by the backend), so we only use this list for the
-  // subtitle on crews — the title row keeps showing the crew name.
-  const type = selectedConversation.value?.type
-  if (type !== 'group' && type !== 'crew_wall') return []
-  return selectedConversation.value!.participants
-    .map((p) => p.user ?? null)
-    .filter((u): u is MessageUser => Boolean(u))
-    .filter((u) => u.id !== me.value?.id)
-    .map((u) => {
-    const label = u.name || u.username || 'User'
-    return {
-      id: u.id,
-      label,
-      username: u.username ?? '',
-      user: u,
-      toneClass: userToneClass(u),
-    }
-    })
 })
 
 const lastMessage = computed(() => messages.value[messages.value.length - 1] ?? null)
@@ -1049,279 +672,14 @@ const otherParticipants = computed(() => {
   return all
 })
 
-const isGroupChat = computed(() => {
-  if (selectedConversation.value?.type === 'group') {
-    return (selectedConversation.value.participants?.length ?? 0) >= 3
-  }
-  if (isDraftChat.value) {
-    return draftRecipients.value.length + 1 >= 3
-  }
-  return false
-})
-
-const draftGroupTitle = computed(() => {
-  const names = draftRecipients.value.map((u) => u.name || u.username || 'User')
-  if (names.length <= 2) return names.join(' and ')
-  const [first, second, ...rest] = names
-  return `${first}, ${second}, and ${rest.length} others`
-})
-
-// Scroll pill resize observer — tracks scroller resizes to update the pill position.
-let scrollPillRo: ResizeObserver | null = null
-watch(
-  messagesScroller,
-  (el, prev) => {
-    if (!import.meta.client) return
-    if (!scrollPillRo) scrollPillRo = new ResizeObserver(() => updateScrollPill())
-    if (prev) scrollPillRo.unobserve(prev)
-    if (el) {
-      scrollPillRo.observe(el)
-      observeScrollerForBottomAnchoring(el)
-      requestAnimationFrame(() => { updateScrollPill() })
-    }
-  },
-  { flush: 'post' },
-)
-
-onBeforeUnmount(() => {
-  teardownScroll()
-  if (scrollPillRo) {
-    scrollPillRo.disconnect()
-    scrollPillRo = null
-  }
-  if (_stickyRafHandle !== null) {
-    cancelAnimationFrame(_stickyRafHandle)
-    _stickyRafHandle = null
-  }
-})
-
-// Throttle viewer-side mark-read so a burst of incoming messages while the
-// chat is open doesn't fire one POST per arrival (each of which fans out a
-// `messages:read` broadcast to every participant + a `messages:updated`
-// emit back to the viewer). The optimistic `updateConversationUnread(id, 0)`
-// keeps the UI correct between the throttled HTTP calls.
-const MARK_READ_THROTTLE_MS = 250
-const lastMarkReadAtByConvoId = new Map<string, number>()
-
-function markSelectedConversationReadIfVisible(conversationId: string) {
-  const id = (conversationId ?? '').trim()
-  if (!id) return
-  if (typeof document === 'undefined' || document.visibilityState !== 'visible') return
-
-  // Always patch the local count to zero — cheap and keeps the badge in sync.
-  updateConversationUnread(id, 0)
-
-  const now = Date.now()
-  const lastAt = lastMarkReadAtByConvoId.get(id) ?? 0
-  if (now - lastAt < MARK_READ_THROTTLE_MS) return
-  lastMarkReadAtByConvoId.set(id, now)
-
-  void apiFetch(`/messages/conversations/${id}/mark-read`, { method: 'POST' }).catch(() => {
-    // Non-fatal: badge will eventually sync from server.
-  })
-}
-
-function getMessageTier(message: Message): MessageTone {
-  return userColorTier(message.sender as any)
-}
-
-function onMessagesScroll() {
-  // Capture pending count BEFORE the composable updates atBottom (which zeroes the computed).
-  const hadPending = pendingNewCount.value > 0
-  scrollEventHandler({ hadPending })
-}
-
-// NOTE: We intentionally do NOT `watch(messages, …) → updateStickyDivider()`.
-// Reading `el.offsetTop` on every divider after every messages mutation forces
-// a layout per burst event, and combined with the bubble-shape and bottom-
-// anchor ResizeObservers it produced a measurable layout-thrash loop on chats
-// with many messages. The sticky divider is fully maintained by:
-//   - `onMessagesScroll` (every scroll tick),
-//   - `loadOlderMessages` (one-shot after older messages prepend),
-//   - `onMessagesScrollerMounted` (when the scroller first attaches).
-// New incoming messages while at-bottom auto-scroll, which fires the scroll
-// handler and refreshes the divider for free.
-
-function onPendingButtonClick() {
-  // Eagerly mark at-bottom so the pending button disappears before the smooth scroll completes.
-  setAtBottomState(true)
-  stickToBottom({ behavior: 'smooth', userInitiated: true })
-  const convoId = selectedConversationId.value
-  if (convoId) {
-    void nextTick().then(() => {
-      requestAnimationFrame(() => markSelectedConversationReadIfVisible(convoId))
-    })
-  }
-}
-
-function shouldShowIncomingAvatar(message: Message, index: number) {
-  if (!isGroupChat.value) return false
-  if (message.sender.id === me.value?.id) return false
-  const next = messages.value[index + 1]
-  if (!next) return true
-  return next.sender.id !== message.sender.id
-}
-
-const dividerEls = new Map<string, { label: string; el: HTMLElement }>()
-
-function registerDividerEl(dayKey: string, label: string, el: unknown) {
-  if (!dayKey) return
-  if (!el || !(el instanceof HTMLElement)) {
-    dividerEls.delete(dayKey)
-    return
-  }
-  dividerEls.set(dayKey, { label, el })
-}
-
-// Coalesce all updateStickyDivider triggers into a single rAF read so we
-// don't force a fresh layout on every scroll / mutation / observer fire.
-let _stickyRafHandle: number | null = null
-function performStickyDividerRead() {
-  _stickyRafHandle = null
-  if (!import.meta.client) return
-  const scroller = messagesScroller.value
-  if (!scroller) return
-  const target = scroller.scrollTop + 1
-  let active: { label: string; top: number } | null = null
-  for (const { label, el } of dividerEls.values()) {
-    const top = el.offsetTop
-    if (top <= target && (!active || top > active.top)) {
-      active = { label, top }
-    }
-  }
-  stickyDividerLabel.value = active?.label ?? null
-}
-
-function updateStickyDivider() {
-  if (!import.meta.client) return
-  if (_stickyRafHandle !== null) return
-  _stickyRafHandle = requestAnimationFrame(performStickyDividerRead)
-}
-
-function getDirectUser(conversation: MessageConversation) {
-  return conversation.participants.find((p) => p.user.id !== me.value?.id)?.user ?? null
-}
-
-/**
- * Marv lives as a regular `direct` conversation in the user's list. We surface
- * a pinned row above the conversation list (premium-styled), and when the
- * selected chat IS Marv we render the mode picker / credits chip.
- *
- * `marvConversation` walks the existing primary list — we don't need to fetch
- * separately because the conversation list already contains the marv DM if
- * one exists. When it doesn't yet, the pinned row routes to `?marv=1` which
- * is resolved on demand when the user clicks it (see `openMarvChat`).
- */
-const marvConversation = computed<MessageConversation | null>(() => {
-  const marvId = marv.marvUserId.value
-  if (!marvId) return null
-  for (const c of conversations.value.primary) {
-    if (c.type !== 'direct') continue
-    if (c.participants.some((p) => p.user.id === marvId)) return c
-  }
-  for (const c of conversations.value.requests) {
-    if (c.type !== 'direct') continue
-    if (c.participants.some((p) => p.user.id === marvId)) return c
-  }
-  return null
-})
-
-const marvConversationId = computed(() => marvConversation.value?.id ?? null)
-const marvUnreadCount = computed(() => marvConversation.value?.unreadCount ?? 0)
-const marvLastMessagePreview = computed<string | null>(() => {
-  const body = marvConversation.value?.lastMessage?.body ?? null
-  return body ? body.trim() || null : null
-})
-const marvTypingStatus = computed<'thinking' | 'typing' | null>(() => {
-  const cid = marvConversationId.value
-  if (!cid) return null
-  const typingUsers = typingUsersByConversationId.value[cid] ?? []
-  const marvEntry = typingUsers.find((u) => u.userId === marv.marvUserId.value)
-  if (!marvEntry) return null
-  return marvEntry.status === 'thinking' || marvEntry.status === 'typing' ? marvEntry.status : 'typing'
-})
-const isSelectedConversationMarv = computed(() => {
-  const marvId = marv.marvUserId.value
-  if (!marvId) return false
-  if (selectedConversation.value?.type !== 'direct') return false
-  return selectedConversation.value.participants.some((p) => p.user.id === marvId)
-})
-
-const viewerCrew = useViewerCrew()
-
-function getConversationTitle(conversation: MessageConversation) {
-  if (conversation.type === 'crew_wall') {
-    const crewName = (conversation.crew?.name ?? '').trim()
-    if (crewName) return crewName
-    return viewerCrew.membership.value?.role === 'owner' ? 'Your Crew' : 'My Crew'
-  }
-  if (conversation.type === 'group') {
-    return conversation.title || conversation.participants.map((p) => p.user.name || p.user.username || 'User').join(', ')
-  }
-  const other = getDirectUser(conversation)
-  return other?.name || other?.username || 'Chat'
-}
-
-function getConversationPreview(conversation: MessageConversation) {
-  return conversation.lastMessage?.body || 'No chats yet.'
-}
-
-const pop = useUserPreviewPopover()
-const { onMove: onUserPreviewMove, onLeave: onUserPreviewLeave } = useUserPreviewTrigger({ username: '' })
-function onUserPreviewEnter(username: string | null | undefined, event: MouseEvent) {
-  const u = (username ?? '').trim()
-  if (!u) return
-  pop.onTriggerEnter({ username: u, event })
-}
-
-function goToProfile(user: MessageUser | null | undefined) {
-  const username = (user?.username ?? '').trim()
-  if (!username) return
-  void navigateTo(`/u/${username}`)
-}
-
-function goPremium() {
-  return navigateTo('/tiers')
-}
-
-function getConversationLastMessageTier(conversation: MessageConversationWithTone): MessageTone {
-  // If there are unread messages and we've tracked the last incoming tier, prefer it for unread indicators.
-  const tracked = conversation.unreadTone
-  if (conversation.unreadCount > 0 && tracked) return tracked
-  const senderId = conversation.lastMessage?.senderId ?? null
-  if (!senderId) return 'normal'
-  const sender = conversation.participants.find((p) => p.user.id === senderId)?.user
-  return userColorTier(sender as any)
-}
-
-const ORG_CHAT_SILVER_DOT_CLASS = 'bg-[#313643] text-white'
-const ORG_CHAT_SILVER_UNREAD_CLASS = 'bg-[rgba(49,54,67,0.24)] dark:bg-[rgba(49,54,67,0.34)]'
 const ORG_CHAT_SILVER_FILLED_BUBBLE_CLASS = 'bg-[rgba(49,54,67,0.65)] backdrop-blur-sm text-white'
 const ORG_CHAT_SILVER_OUTLINE_BUBBLE_CLASS = 'bg-transparent border border-[rgba(49,54,67,0.96)] text-gray-900 dark:text-gray-100'
-
-function conversationDotClass(conversation: MessageConversation): string {
-  const tier = getConversationLastMessageTier(conversation)
-  if (tier === 'organization') return ORG_CHAT_SILVER_DOT_CLASS
-  if (tier === 'premium') return 'bg-[var(--moh-premium)] text-white'
-  if (tier === 'verified') return 'bg-[var(--moh-verified)] text-white'
-  return 'bg-gray-700 text-white dark:bg-white dark:text-black'
-}
-
-function conversationUnreadHighlightClass(conversation: MessageConversation): string {
-  const tier = getConversationLastMessageTier(conversation)
-  if (tier === 'organization') return ORG_CHAT_SILVER_UNREAD_CLASS
-  if (tier === 'premium') return 'bg-[rgba(var(--moh-premium-rgb),0.06)] dark:bg-[rgba(var(--moh-premium-rgb),0.09)]'
-  if (tier === 'verified') {
-    return 'bg-[rgba(var(--moh-verified-rgb),0.06)] dark:bg-[rgba(var(--moh-verified-rgb),0.09)]'
-  }
-  return 'bg-gray-100/40 dark:bg-white/6'
-}
 
 function bubbleClass(m: Message) {
   const isMe = Boolean(m.sender.id && m.sender.id === me.value?.id)
 
   // Tier color always corresponds to the sender's tier.
-  const tier = userColorTier(m.sender as any)
+  const tier = userColorTier(m.sender as Parameters<typeof userColorTier>[0])
 
   if (isMe) {
     // Outgoing: frosted glass — semi-transparent tier color + backdrop blur.
@@ -1338,679 +696,17 @@ function bubbleClass(m: Message) {
   return 'bg-transparent border border-gray-200 text-gray-900 dark:border-zinc-600 dark:text-gray-100'
 }
 
-async function fetchConversations(tab: 'primary' | 'requests', opts?: { cursor?: string | null; forceRefresh?: boolean }) {
-  const cursor = opts?.cursor ?? null
-  const forceRefresh = opts?.forceRefresh ?? false
-  if (!forceRefresh && !cursor && conversations.value[tab].length > 0) return
-  listLoadingByTab.value = { ...listLoadingByTab.value, [tab]: true }
-  try {
-    const res = await apiFetch<MessageConversationWithTone[]>('/messages/conversations', {
-      query: { tab, cursor: cursor || undefined },
-    })
-    const list = res.data ?? []
-    // shallowRef won't trigger on `.value.primary = ...` — reassign the whole
-    // wrapper to a fresh object instead, which IS a `.value` write.
-    conversations.value = {
-      ...conversations.value,
-      [tab]: cursor ? [...conversations.value[tab], ...list] : list,
-    }
-    nextCursorByTab.value = { ...nextCursorByTab.value, [tab]: res.pagination?.nextCursor ?? null }
-  } finally {
-    listLoadingByTab.value = { ...listLoadingByTab.value, [tab]: false }
-  }
+function goToProfile(user: MessageUser | null | undefined) {
+  const username = (user?.username ?? '').trim()
+  if (!username) return
+  void navigateTo(`/u/${username}`)
 }
 
-let selectConversationReqSeq = 0
-let loadOlderReqSeq = 0
-
-async function loadMoreConversations() {
-  if (!nextCursor.value || loadingMore.value) return
-  loadingMore.value = true
-  try {
-    await fetchConversations(activeTab.value, { cursor: nextCursor.value })
-  } finally {
-    loadingMore.value = false
-  }
-}
-
-async function selectConversation(id: string, opts?: { replace?: boolean; jumpToMessageId?: string }) {
-  cacheCurrentChatScrollPosition()
-  const reqSeq = ++selectConversationReqSeq
-  clearMessagesPaneTimer()
-  dividerEls.clear()
-  selectedConversationId.value = id
-  selectedChatKey.value = id
-  emitMessagesScreen(true, id)
-  draftRecipients.value = []
-  messagesReady.value = false
-  animateMessageList.value = false
-  renderedChatKey.value = null
-  messagesPaneState.value = 'loading'
-  setAtBottomState(true)
-  loadingOlder.value = false
-  loadingNewer.value = false
-  messagesNewerCursor.value = null
-  if (jumpHighlightTimer) { clearTimeout(jumpHighlightTimer); jumpHighlightTimer = null }
-  jumpTargetMessageId.value = opts?.jumpToMessageId ?? null
-
-  const replace = opts?.replace ?? false
-  const currentC = typeof route.query.c === 'string' ? route.query.c : null
-  const currentM = typeof route.query.m === 'string' ? route.query.m : null
-  const targetMsgId = opts?.jumpToMessageId ?? null
-  if (currentC !== id || currentM !== (targetMsgId ?? null)) {
-    const nextQuery: Record<string, string> = { ...route.query as any, c: id }
-    if (targetMsgId) nextQuery.m = targetMsgId
-    else delete nextQuery.m
-    if (replace) await router.replace({ query: nextQuery })
-    else await router.push({ query: nextQuery })
-  }
-  messagesLoading.value = true
-  resetTyping()
-  sendingMessageIds.value = new Set()
-  try {
-    if (targetMsgId) {
-      // Jump to a specific message — fetch a window centered on it.
-      const res = await apiFetch<{
-        messages: Message[]
-        olderCursor: string | null
-        newerCursor: string | null
-        targetMessageId: string
-      }>(`/messages/conversations/${id}/messages/around/${targetMsgId}`)
-      if (reqSeq !== selectConversationReqSeq || selectedConversationId.value !== id) return
-      messages.value = res.data?.messages ?? []
-      messagesNextCursor.value = res.data?.olderCursor ?? null
-      messagesNewerCursor.value = res.data?.newerCursor ?? null
-      // atBottom false so the pending button isn't shown (we're in mid-history)
-      setAtBottomState(!messagesNewerCursor.value)
-    } else {
-      // Normal latest-messages fetch.
-      const res = await apiFetch<{ conversation: MessageConversation; messages: Message[] }>(
-        `/messages/conversations/${id}`,
-        { query: { limit: 50 } },
-      )
-      if (reqSeq !== selectConversationReqSeq || selectedConversationId.value !== id) return
-      const list = res.data?.messages ?? []
-      messages.value = [...list].reverse()
-      messagesNextCursor.value = res.pagination?.nextCursor ?? null
-      messagesNewerCursor.value = null
-      if (typeof res.data?.conversation?.isBlockedWith === 'boolean') {
-        updateConversationIsBlockedWith(id, res.data.conversation.isBlockedWith)
-      }
-    }
-    messagesReady.value = true
-    messagesLoading.value = false
-    if (selectedChatKey.value === id) {
-      revealMessagesPaneAfterFade(id)
-    }
-  } finally {
-    if (reqSeq === selectConversationReqSeq) {
-      messagesLoading.value = false
-      if (!messagesReady.value) messagesReady.value = true
-    }
-  }
-}
-
-async function clearSelection(opts?: { replace?: boolean; preserveDraft?: boolean }) {
-  cacheCurrentChatScrollPosition()
-  selectConversationReqSeq++
-  loadingOlder.value = false
-  loadingNewer.value = false
-  if (jumpHighlightTimer) { clearTimeout(jumpHighlightTimer); jumpHighlightTimer = null }
-  jumpTargetMessageId.value = null
-  clearMessagesPaneTimer()
-  dividerEls.clear()
-  selectedConversationId.value = null
-  selectedChatKey.value = null
-  emitMessagesScreen(true, null)
-  if (!opts?.preserveDraft) {
-    draftRecipients.value = []
-  }
-  messages.value = []
-  messagesNextCursor.value = null
-  messagesNewerCursor.value = null
-  messagesReady.value = false
-  animateMessageList.value = false
-  renderedChatKey.value = null
-  messagesPaneState.value = 'loading'
-  setAtBottomState(true)
-  resetTyping()
-  sendingMessageIds.value = new Set()
-  replyToMessage.value = null
-  messagesLoading.value = false
-  const replace = opts?.replace ?? false
-  const q = { ...route.query } as Record<string, any>
-  delete q.c
-  delete q.m
-  if (replace) await router.replace({ query: q })
-  else await router.push({ query: q })
-}
-
-function syncSelectedFromRoute() {
-  const c = typeof route.query.c === 'string' ? route.query.c : null
-  const m = typeof route.query.m === 'string' ? route.query.m : null
-  if (c && (c !== selectedConversationId.value || m !== jumpTargetMessageId.value)) {
-    void selectConversation(c, { replace: true, jumpToMessageId: m ?? undefined })
-    return
-  }
-  if (!c && selectedConversationId.value) {
-    void clearSelection({ replace: true })
-  }
-}
-
-async function loadOlderMessages() {
-  if (!selectedConversationId.value || !messagesNextCursor.value || loadingOlder.value) return
-  const reqSeq = ++loadOlderReqSeq
-  const conversationId = selectedConversationId.value
-  const cursor = messagesNextCursor.value
-  const scroller = messagesScroller.value
-  const previousScrollHeight = scroller?.scrollHeight ?? 0
-  const previousScrollTop = scroller?.scrollTop ?? 0
-  loadingOlder.value = true
-  try {
-    const res = await apiFetch<Message[]>(`/messages/conversations/${conversationId}/messages`, {
-      query: { cursor, limit: 50 },
-    })
-    // If the user switched threads (or another newer older-messages request ran), ignore this response.
-    if (reqSeq !== loadOlderReqSeq || selectedConversationId.value !== conversationId) return
-    const list = res.data ?? []
-    const ordered = [...list].reverse()
-    messages.value = [...ordered, ...messages.value]
-    messagesNextCursor.value = res.pagination?.nextCursor ?? null
-    await nextTick()
-    if (!scroller || messagesScroller.value !== scroller) return
-    const grewBy = scroller.scrollHeight - previousScrollHeight
-    if (grewBy > 0) {
-      scroller.scrollTop = previousScrollTop + grewBy
-      refreshAtBottomFromScroller()
-      updateStickyDivider()
-      updateScrollPill()
-    }
-  } finally {
-    if (reqSeq === loadOlderReqSeq) loadingOlder.value = false
-  }
-}
-
-let loadNewerReqSeq = 0
-
-async function loadNewerMessages() {
-  if (!selectedConversationId.value || !messagesNewerCursor.value || loadingNewer.value) return
-  const reqSeq = ++loadNewerReqSeq
-  const conversationId = selectedConversationId.value
-  const cursor = messagesNewerCursor.value
-  loadingNewer.value = true
-  try {
-    const res = await apiFetch<Message[]>(`/messages/conversations/${conversationId}/messages/newer`, {
-      query: { cursor, limit: 50 },
-    })
-    if (reqSeq !== loadNewerReqSeq || selectedConversationId.value !== conversationId) return
-    const list = res.data ?? []
-    messages.value = [...messages.value, ...list]
-    const newerCursor = (res as any).pagination?.newerCursor ?? null
-    messagesNewerCursor.value = newerCursor
-    if (!newerCursor) {
-      // We've caught up to the present — the chat is now live at the bottom.
-      await nextTick()
-      setAtBottomState(isAtBottom())
-    }
-  } finally {
-    if (reqSeq === loadNewerReqSeq) loadingNewer.value = false
-  }
-}
-
-/**
- * Scroll the scroller to the jump-target message row and briefly highlight it.
- *
- * With the virtualized message list, the off-screen target row may not exist
- * in the DOM yet, so we delegate to the virtualizer's `scrollToIndex` (via
- * `chatMessageListRef.scrollToMessageId`). The virtualizer will mount the
- * target row, after which the parent's scroll-position helpers stay accurate.
- *
- * Falls back to a direct DOM lookup when the ref isn't ready (defensive — the
- * old non-virtualized rendering still worked that way).
- */
-function scrollToJumpTarget() {
-  const targetId = jumpTargetMessageId.value
-  if (!targetId || !messagesScroller.value) return
-
-  const used = chatMessageListRef.value?.scrollToMessageId(targetId, { align: 'center' }) ?? false
-  if (!used) {
-    const el = messagesScroller.value.querySelector<HTMLElement>(`[data-message-id="${targetId}"]`)
-    if (!el) return
-    const scrollerRect = messagesScroller.value.getBoundingClientRect()
-    const elRect = el.getBoundingClientRect()
-    const offset = elRect.top - scrollerRect.top - scrollerRect.height / 2 + elRect.height / 2
-    messagesScroller.value.scrollTop += offset
-  }
-
-  // The virtualizer scrolls asynchronously (it may need a frame to mount the
-  // target row). Wait one frame before refreshing scroll-anchor state so the
-  // `atBottom` signal stays accurate.
-  void nextTick().then(() => {
-    refreshAtBottomFromScroller()
-    updateScrollPill()
-  })
-  // Clear the highlight after 2.5s so the flash is visible but not permanent.
-  if (jumpHighlightTimer) clearTimeout(jumpHighlightTimer)
-  jumpHighlightTimer = setTimeout(() => {
-    jumpHighlightTimer = null
-    jumpTargetMessageId.value = null
-  }, 2500)
-}
-
-function updateConversationParticipantRead(conversationId: string, userId: string, lastReadAt: string) {
-  patchConversation(conversationId, (c) => ({
-    ...c,
-    participants: c.participants.map((p) =>
-      p.user.id === userId ? { ...p, lastReadAt } : p,
-    ),
-  }))
-}
-
-function updateConversationIsBlockedWith(conversationId: string, isBlockedWith: boolean) {
-  patchConversation(conversationId, (c) => ({ ...c, isBlockedWith }))
-}
-
-function updateConversationUnread(conversationId: string, unreadCount: number) {
-  patchConversation(conversationId, (c) => ({
-    ...c,
-    unreadCount,
-    // Clear the unread tone when the conversation is marked read.
-    ...(unreadCount <= 0 ? { unreadTone: undefined } : {}),
-  }))
-}
-
-function updateConversationForMessage(message: Message) {
-  const unreadInc = message.sender.id === me.value?.id ? 0 : 1
-  const incomingTier = getMessageTier(message)
-  const found = patchConversation(message.conversationId, (existing) => {
-    const isSelectedConversation = selectedConversationId.value === message.conversationId
-    const isUnreadIncoming = unreadInc === 1 && (!isSelectedConversation || !atBottom.value)
-    let nextUnreadCount = existing.unreadCount
-    if (isSelectedConversation) {
-      if (atBottom.value) nextUnreadCount = 0
-      else if (unreadInc === 1) nextUnreadCount = existing.unreadCount + unreadInc
-      else nextUnreadCount = existing.unreadCount
-    } else if (unreadInc === 1) {
-      nextUnreadCount = existing.unreadCount + unreadInc
-    }
-    const updated: MessageConversationWithTone = {
-      ...existing,
-      lastMessageAt: message.createdAt,
-      updatedAt: message.createdAt,
-      lastMessage: { id: message.id, body: message.body, createdAt: message.createdAt, senderId: message.sender.id },
-      unreadCount: nextUnreadCount,
-    }
-    if (isUnreadIncoming) updated.unreadTone = incomingTier
-    else if (nextUnreadCount <= 0) updated.unreadTone = undefined
-    return updated
-  }, { moveToTop: true })
-  if (!found) void refreshAllConversationTabs()
-}
-
-async function sendCurrentMessage() {
-  // If in edit mode, submit the edit instead of sending a new message.
-  if (editingMessage.value) {
-    await handleEditSubmit()
-    return
-  }
-  const hasText = composerText.value.trim().length > 0
-  const hasMedia = (dmComposerRef.value?.getMedia?.() ?? []).length > 0
-  if ((!hasText && !hasMedia) || sending.value) return
-  sendError.value = null
-  sending.value = true
-  try {
-    if (!selectedConversationId.value && isDraftChat.value) {
-      await sendFirstMessage()
-    } else {
-      await sendMessage()
-    }
-  } finally {
-    sending.value = false
-  }
-}
-
-function cancelEdit() {
-  composerText.value = ''
-  editingMessage.value = null
-}
-
-/** Draft path: creates the conversation and sends the first message. */
-async function sendFirstMessage() {
-  if (!viewerCanStartChats.value) {
-    void showCantStartChat()
-    return
-  }
-  const body = composerText.value
-  const mediaPayload = dmComposerRef.value?.getMedia?.() ?? []
-  try {
-    const res = await apiFetchData<CreateMessageConversationResponse['data']>('/messages/conversations', {
-      method: 'POST',
-      body: {
-        user_ids: draftRecipients.value.map((u) => u.id),
-        title: undefined,
-        body,
-        ...(mediaPayload.length > 0 ? { media: mediaPayload } : {}),
-      },
-    })
-    composerText.value = ''
-    dmComposerRef.value?.clearMedia?.()
-    await refreshAllConversationTabs()
-    const conversationId = res?.conversationId
-    if (conversationId) {
-      const inPrimary = conversations.value.primary.some((c) => c.id === conversationId)
-      const inRequests = conversations.value.requests.some((c) => c.id === conversationId)
-      activeTab.value = inRequests && !inPrimary ? 'requests' : 'primary'
-      await selectConversation(conversationId, { replace: true })
-    }
-  } catch (e) {
-    sendError.value = getApiErrorMessage(e) || 'Failed to send message.'
-  }
-}
-
-/** Normal send path: optimistically adds the message and reconciles with the server response. */
-async function sendMessage() {
-  // Snapshot the conversation ID now — the user could switch threads while the request is in flight.
-  const conversationId = selectedConversationId.value
-  if (!conversationId) return
-  const my = me.value
-  if (!my) return
-
-  const body = composerText.value
-  const mediaPayload = dmComposerRef.value?.getMedia?.() ?? []
-  let localId: string | null = null
-  try {
-    try { emitMessagesTyping(conversationId, false) } catch { /* ignore */ }
-
-    // Add the optimistic row.
-    localId = `local-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
-    const optimisticSender: MessageUser = {
-      id: my.id,
-      username: my.username ?? null,
-      name: my.name ?? null,
-      premium: Boolean(my.premium),
-      premiumPlus: Boolean(my.premiumPlus),
-      isOrganization: Boolean((my as any).isOrganization),
-      stewardBadgeEnabled: my.stewardBadgeEnabled ?? true,
-      verifiedStatus: (my.verifiedStatus ?? 'none') as 'none' | 'identity' | 'manual',
-      avatarUrl: my.avatarUrl ?? null,
-    }
-    const replySnippet = replyToMessage.value
-      ? { id: replyToMessage.value.id, senderUsername: replyToMessage.value.sender.username, bodyPreview: replyToMessage.value.body.slice(0, 200) }
-      : null
-    const capturedReplyToId = replyToMessage.value?.id ?? null
-    messages.value = [
-      ...messages.value,
-      { id: localId, createdAt: new Date().toISOString(), body, conversationId, sender: optimisticSender, reactions: [], deletedForMe: false, deletedForAll: false, editedAt: null, replyTo: replySnippet, media: [], __clientKey: localId } as ChatMessage,
-    ]
-    sendingMessageIds.value = new Set([...sendingMessageIds.value, localId])
-    composerText.value = ''
-    dmComposerRef.value?.clearMedia?.()
-    replyToMessage.value = null
-    await nextTick()
-    stickToBottom({ behavior: 'smooth' })
-
-    const res = await apiFetchData<SendMessageResponse['data']>(
-      `/messages/conversations/${conversationId}/messages`,
-      {
-        method: 'POST',
-        body: {
-          body,
-          ...(capturedReplyToId ? { replyToId: capturedReplyToId } : {}),
-          ...(mediaPayload.length > 0 ? { media: mediaPayload } : {}),
-        },
-      },
-    )
-
-    // Guard: user switched conversations while this was in flight — remove the stale optimistic row.
-    if (selectedConversationId.value !== conversationId) {
-      messages.value = messages.value.filter((m) => m.id !== localId)
-      clearSendingId(localId)
-      return
-    }
-
-    const msg = res?.message
-    if (msg) {
-      // Replace the optimistic row in-place (stable key), or append if it was already reconciled away.
-      if (!mergeServerMessageIntoOptimistic(localId, msg)) {
-        if (!messages.value.some((m) => m.id === msg.id)) {
-          messages.value = [...messages.value, msg]
-          markMessageAnimated(msg.id)
-        }
-      }
-      clearSendingId(localId)
-      updateConversationForMessage(msg)
-      await nextTick()
-      stickToBottom({ behavior: 'smooth' })
-    } else {
-      // API returned no message — remove the optimistic row and restore the composer.
-      messages.value = messages.value.filter((m) => m.id !== localId)
-      clearSendingId(localId)
-      composerText.value = body
-    }
-
-    if (selectedConversation.value?.viewerStatus === 'pending') {
-      await refreshAllConversationTabs()
-    }
-  } catch (e) {
-    if (localId) {
-      messages.value = messages.value.filter((m) => m.id !== localId)
-      clearSendingId(localId)
-    }
-    if (body && !composerText.value.trim()) composerText.value = body
-    sendError.value = getApiErrorMessage(e) || 'Failed to send message.'
-  }
-}
-
-// ─── Message action handlers ──────────────────────────────────────────────────
-
-function handleReply(message: Message) {
-  replyToMessage.value = message
-  nextTick(() => dmComposerRef.value?.focus?.())
-}
-
-function handleInfo(message: Message) {
-  infoMessage.value = message
-  infoModalVisible.value = true
-}
-
-async function handleReact(message: Message, reactionId: string) {
-  const conversationId = message.conversationId
-  const existingGroup = message.reactions?.find((r) => r.reactionId === reactionId)
-  const isToggleOff = existingGroup?.reactedByMe
-
-  // Optimistic update
-  const idx = messages.value.findIndex((m) => m.id === message.id)
-  if (idx !== -1) {
-    const msg = messages.value[idx]!
-    let reactions = [...(msg.reactions ?? [])]
-    if (isToggleOff) {
-      reactions = reactions
-        .map((r) => r.reactionId === reactionId
-          ? { ...r, count: r.count - 1, reactedByMe: false, reactors: r.reactors.filter((reactor) => reactor.id !== me.value?.id) }
-          : r,
-        )
-        .filter((r) => r.count > 0)
-    } else {
-      const existing = reactions.find((r) => r.reactionId === reactionId)
-      if (existing) {
-        reactions = reactions.map((r) => r.reactionId === reactionId
-          ? { ...r, count: r.count + 1, reactedByMe: true, reactors: [...r.reactors, { id: me.value?.id ?? '', username: me.value?.username ?? null, avatarUrl: me.value?.avatarUrl ?? null }] }
-          : r,
-        )
-      } else {
-        const reaction = availableReactions.value.find((r) => r.id === reactionId)
-        if (reaction) {
-          reactions = [...reactions, { reactionId, emoji: reaction.emoji, count: 1, reactedByMe: true, reactors: [{ id: me.value?.id ?? '', username: me.value?.username ?? null, avatarUrl: me.value?.avatarUrl ?? null }] }]
-        }
-      }
-    }
-    mutateMessageAt(idx, { ...msg, reactions })
-  }
-
-  try {
-    if (isToggleOff) {
-      await apiFetch(`/messages/conversations/${conversationId}/messages/${message.id}/reactions/${reactionId}`, { method: 'DELETE' })
-    } else {
-      await apiFetch(`/messages/conversations/${conversationId}/messages/${message.id}/reactions`, { method: 'POST', body: { reactionId } })
-    }
-  } catch {
-    // Revert optimistic update on failure by re-fetching is too complex; the socket event will re-sync.
-  }
-}
-
-async function handleDeleteForMe(message: Message) {
-  const conversationId = message.conversationId
-  const idx = messages.value.findIndex((m) => m.id === message.id)
-  if (idx !== -1) {
-    mutateMessageAt(idx, { ...messages.value[idx]!, deletedForMe: true })
-  }
-  try {
-    await apiFetch(`/messages/conversations/${conversationId}/messages/${message.id}`, { method: 'DELETE' })
-  } catch {
-    if (idx !== -1) {
-      const msg = messages.value[idx]
-      if (msg) mutateMessageAt(idx, { ...msg, deletedForMe: false })
-    }
-  }
-}
-
-async function handleRestore(message: Message) {
-  const conversationId = message.conversationId
-  const idx = messages.value.findIndex((m) => m.id === message.id)
-  if (idx !== -1) {
-    mutateMessageAt(idx, { ...messages.value[idx]!, deletedForMe: false })
-  }
-  try {
-    await apiFetch(`/messages/conversations/${conversationId}/messages/${message.id}/restore`, { method: 'POST' })
-  } catch {
-    if (idx !== -1) {
-      const msg = messages.value[idx]
-      if (msg) mutateMessageAt(idx, { ...msg, deletedForMe: true })
-    }
-  }
-}
-
-function handleEdit(message: Message) {
-  editingMessage.value = message
-  composerText.value = message.body
-  nextTick(() => dmComposerRef.value?.focus?.())
-}
-
-async function handleEditSubmit() {
-  const msg = editingMessage.value
-  if (!msg || !composerText.value.trim()) {
-    editingMessage.value = null
-    return
-  }
-  const body = composerText.value.trim()
-  const conversationId = msg.conversationId
-
-  // Optimistic update
-  const idx = messages.value.findIndex((m) => m.id === msg.id)
-  const originalBody = msg.body
-  if (idx !== -1) {
-    mutateMessageAt(idx, { ...messages.value[idx]!, body, editedAt: new Date().toISOString() })
-  }
-  composerText.value = ''
-  editingMessage.value = null
-
-  try {
-    await apiFetch(`/messages/conversations/${conversationId}/messages/${msg.id}`, {
-      method: 'PATCH',
-      body: { body },
-    })
-  } catch {
-    if (idx !== -1) {
-      const current = messages.value[idx]
-      if (current) {
-        mutateMessageAt(idx, { ...current, body: originalBody, editedAt: msg.editedAt })
-      }
-    }
-    composerText.value = body
-    editingMessage.value = msg
-  }
-}
-
-async function handleDeleteForAll(message: Message) {
-  const conversationId = message.conversationId
-  const idx = messages.value.findIndex((m) => m.id === message.id)
-  if (idx !== -1) {
-    mutateMessageAt(idx, { ...messages.value[idx]!, deletedForAll: true, body: '' })
-  }
-  try {
-    await apiFetch(`/messages/conversations/${conversationId}/messages/${message.id}/all`, { method: 'DELETE' })
-  } catch {
-    if (idx !== -1) {
-      const msg = messages.value[idx]
-      if (msg) mutateMessageAt(idx, { ...msg, deletedForAll: false, body: message.body })
-    }
-  }
-}
-
-function handleScrollToReply(messageId: string) {
-  const scroller = messagesScroller.value
-  const el = scroller?.querySelector(`[data-message-id="${messageId}"]`) as HTMLElement | null
-  if (!el) return
-  el.scrollIntoView({ behavior: 'smooth', block: 'center' })
-
-  // Overlay that bleeds 16px beyond the row on each side (compensates for the px-4
-  // padding on the ChatMessageList container) so the highlight goes edge to edge.
-  const overlay = document.createElement('div')
-  overlay.style.cssText = [
-    'position: absolute',
-    'inset: 0',
-    'left: -1rem',
-    'right: -1rem',
-    'pointer-events: none',
-    'z-index: 0',
-  ].join('; ')
-  el.appendChild(overlay)
-
-  overlay.animate(
-    [
-      { backgroundColor: 'transparent', offset: 0 },
-      { backgroundColor: 'color-mix(in srgb, var(--p-primary-color) 14%, transparent)', offset: 0.25 },
-      { backgroundColor: 'color-mix(in srgb, var(--p-primary-color) 14%, transparent)', offset: 0.65 },
-      { backgroundColor: 'transparent', offset: 1 },
-    ],
-    { duration: 1800, easing: 'ease-in-out', fill: 'none' },
-  ).finished.then(() => overlay.remove())
-}
-
-// ─── End message action handlers ──────────────────────────────────────────────
+// ─── Selected-conversation actions ───────────────────────────────────────────
 
 async function acceptSelectedConversation() {
   if (!selectedConversationId.value) return
-  await apiFetch(`/messages/conversations/${selectedConversationId.value}/accept`, { method: 'POST' })
-  await refreshAllConversationTabs()
-}
-
-async function toggleMuteConversation() {
-  const convo = selectedConversation.value
-  if (!convo) return
-  const newMuted = !convo.isMuted
-  // Optimistic update
-  patchConversation(convo.id, (c) => ({ ...c, isMuted: newMuted }))
-  try {
-    await apiFetch(`/messages/conversations/${convo.id}/mute`, {
-      method: newMuted ? 'POST' : 'DELETE',
-    })
-  } catch {
-    // Revert on failure
-    patchConversation(convo.id, (c) => ({ ...c, isMuted: !newMuted }))
-  }
-}
-
-function removeConversationFromList(conversationId: string) {
-  let removed = false
-  for (const tab of ['primary', 'requests'] as const) {
-    const idx = conversations.value[tab].findIndex((c) => c.id === conversationId)
-    if (idx !== -1) {
-      conversations.value[tab].splice(idx, 1)
-      removed = true
-    }
-  }
-  if (removed) commitConversations()
+  await conversationsApi.acceptConversation(selectedConversationId.value)
 }
 
 async function deleteSelectedConversation() {
@@ -2023,10 +719,11 @@ async function deleteSelectedConversation() {
   })
 }
 
-function setTab(tab: 'primary' | 'requests') {
-  activeTab.value = tab
-  void fetchConversations(tab, { forceRefresh: true })
-}
+// ─── New-chat dialog ─────────────────────────────────────────────────────────
+
+const newDialogVisible = ref(false)
+const newConversationError = ref<string | null>(null)
+const newDialogRecipients = ref<FollowListUser[]>([])
 
 function openNewDialog() {
   if (!viewerCanStartChats.value) {
@@ -2070,165 +767,16 @@ async function createConversation() {
       return
     }
 
-    draftRecipients.value = recipients
-    // Clear any selected existing chat and show draft pane.
-    await clearSelection({ replace: true, preserveDraft: true })
-    selectedChatKey.value = 'draft'
-    messagesReady.value = true
-    animateMessageList.value = false
-    messagesPaneState.value = 'ready'
-    renderedChatKey.value = 'draft'
+    await openDraftChatWithRecipients(recipients)
   } catch (e) {
     newConversationError.value = getApiErrorMessage(e) || 'Failed to send message.'
-  } finally {
-    // no-op
   }
 }
 
-function normalizeToUsernameParam(val: unknown): string | null {
-  const u = typeof val === 'string' ? val.trim() : ''
-  return u ? u : null
-}
-
-function mapPreviewToFollowListUser(preview: UserPreview): FollowListUser {
-  return {
-    id: preview.id,
-    username: preview.username,
-    name: preview.name,
-    premium: Boolean(preview.premium),
-    premiumPlus: Boolean(preview.premiumPlus),
-    isOrganization: Boolean(preview.isOrganization),
-    stewardBadgeEnabled: Boolean(preview.stewardBadgeEnabled ?? true),
-    verifiedStatus: preview.verifiedStatus ?? 'none',
-    avatarUrl: preview.avatarUrl ?? null,
-    relationship: preview.relationship,
-  }
-}
-
-async function clearToQueryParam() {
-  const q = { ...route.query } as Record<string, any>
-  if (!('to' in q)) return
-  delete q.to
-  await router.replace({ query: q })
-}
-
-async function openDraftChatWithRecipient(recipient: FollowListUser) {
-  draftRecipients.value = [recipient]
-  // Clear any selected existing chat and show draft pane.
-  await clearSelection({ replace: true, preserveDraft: true })
-  selectedChatKey.value = 'draft'
-  messagesReady.value = true
-  animateMessageList.value = false
-  messagesPaneState.value = 'ready'
-  renderedChatKey.value = 'draft'
-}
-
-/**
- * Open (or create-on-first-message) the marv DM. Resolves the marv username
- * from `useMarv()` (it comes back from `GET /marvin/me`) and forwards to
- * `openChatToUsername`. Used by the pinned marv row when the conversation
- * doesn't yet exist (route lands as `?marv=1`).
- */
-async function openMarvChat() {
-  await marv.ensureLoaded().catch(() => null)
-  const username = marv.marvUsername.value
-  if (!username) return
-  await openChatToUsername(username)
-}
-
-async function openChatToUsername(username: string) {
-  const u = (username ?? '').trim()
-  if (!u) return
-
-  await ensureLoaded().catch(() => null)
-
-  // If user can't use chat at all, bail (screen already shows verify gate).
-  if (!viewerIsVerified.value && !viewerIsPremium.value) {
-    return
-  }
-
-  try {
-    const preview = await apiFetchData<UserPreview>(`/users/${encodeURIComponent(u)}/preview`, { method: 'GET' })
-    if (!preview?.id) {
-      return
-    }
-    const recipient = mapPreviewToFollowListUser(preview)
-    const targetIsVerified = userColorTier(preview) !== 'normal'
-
-    const lookup = await apiFetchData<LookupMessageConversationResponse['data']>('/messages/lookup', {
-      method: 'POST',
-      body: { user_ids: [recipient.id] },
-    })
-    const conversationId = lookup?.conversationId ?? null
-    if (conversationId) {
-      // Ensure convo exists in lists (selectConversation doesn't upsert into lists).
-      await refreshAllConversationTabs()
-      // Set `c` and remove `to` in a single URL update (avoid the extra jump).
-      const nextQuery = { ...(route.query as Record<string, any>), c: conversationId } as Record<string, any>
-      delete nextQuery['to']
-      await router.replace({ query: nextQuery })
-      await selectConversation(conversationId, { replace: true })
-      return
-    }
-
-    // No existing chat: don't allow starting a chat with an unverified user.
-    if (!targetIsVerified) return
-
-    await openDraftChatWithRecipient(recipient)
-  } catch {
-    // Non-fatal: ignore
-  }
-}
-
-// Handle `/chat?marv=1` changes while already on /chat.
-watch(
-  () => route.query.marv === '1',
-  async (isMarv) => {
-    if (!isMarv) return
-    try { await openMarvChat() } catch { /* ignore */ }
-    const next: Record<string, string | string[]> = {}
-    for (const [k, v] of Object.entries(route.query)) {
-      if (k === 'marv') continue
-      if (typeof v === 'string') next[k] = v
-      else if (Array.isArray(v)) next[k] = v.filter((x): x is string => typeof x === 'string')
-    }
-    await router.replace({ query: next })
-  },
-)
-
-// Handle `/chat?to=<username>` changes while already on /chat.
-// (Without this, clicking “Send message” from within chat only updates the URL.)
-const lastHandledToUsername = ref<string | null>(null)
-watch(
-  () => normalizeToUsernameParam(route.query.to),
-  (toUsername) => {
-    if (!toUsername) return
-    if (toUsername === lastHandledToUsername.value) return
-    lastHandledToUsername.value = toUsername
-    void openChatToUsername(toUsername)
-  },
-)
-
-async function blockDirectUser() {
-  const convo = selectedConversation.value
-  if (!convo || convo.type !== 'direct') return
-  const other = getDirectUser(convo)
-  if (!other?.id) return
-  await blockState.blockUser(other.id)
-  await refreshAllConversationTabs()
-  await clearSelection({ replace: true })
-}
-
-// --- Viewport-gated presence subscription -----------------------------------
+// ─── Viewport-gated presence subscription ────────────────────────────────────
 //
-// Previously this page eagerly built a `presenceInterestIds` set from EVERY
-// direct conversation the user had and `addInterest`-d all of them on first
-// paint. With ~80+ chat partners that meant a socket-subscribe storm + an
-// HTTP fan-out (presence-server resolves online/lastSeen) before the first
-// pixel was even interactive — one of the freezing causes.
-//
-// Now `ChatConversationList` emits `presence-visible(userId, visible)` from
-// its `useViewportIdsObserver`, and we feed those events into a refcount +
+// `ChatConversationList` emits `presence-visible(userId, visible)` from its
+// `useViewportIdsObserver`, and we feed those events into a refcount +
 // per-frame coalesced flush via `useRefcountedInterest`. The composable
 // owns: dedupe (same userId across multiple convos), 0↔1 edge detection,
 // per-frame batching of add/remove, and final teardown on unmount.
@@ -2240,6 +788,8 @@ const presenceInterest = useRefcountedInterest({
 function onConversationRowPresenceVisible(userId: string, visible: boolean) {
   presenceInterest.setVisible(userId, visible)
 }
+
+// ─── Realtime wiring ─────────────────────────────────────────────────────────
 
 const meId = computed(() => me.value?.id ?? null)
 
@@ -2255,12 +805,12 @@ const { register: registerRealtime, teardown: teardownRealtime } = useChatRealti
       if (!isSelected) return
       const shouldStick = wasAtBottom
       setAtBottomState(shouldStick)
-      const reconciled = reconcileOptimisticSend(msg)
+      const reconciled = thread.reconcileOptimisticSend(msg)
       const exists = messages.value.some((m) => m.id === msg.id)
       if (!exists) {
         messages.value = [...messages.value, msg]
         const myOwnUnreconciled = !reconciled && msg.sender.id === me.value?.id && sendingMessageIds.value.size > 0
-        if (!myOwnUnreconciled) markMessageAnimated(msg.id)
+        if (!myOwnUnreconciled) thread.markMessageAnimated(msg.id)
       }
       if (shouldStick) {
         void nextTick().then(() => {
@@ -2273,7 +823,7 @@ const { register: registerRealtime, teardown: teardownRealtime } = useChatRealti
         // Routes through the throttled helper: bursts of incoming messages
         // collapse to one POST per 250ms per conversation; the optimistic
         // local zeroing keeps the badge accurate in between.
-        markSelectedConversationReadIfVisible(msg.conversationId)
+        markConversationReadIfVisible(msg.conversationId)
       }
     },
 
@@ -2282,7 +832,7 @@ const { register: registerRealtime, teardown: teardownRealtime } = useChatRealti
       const idx = messages.value.findIndex((m) => m.id === msg.id)
       if (idx !== -1) {
         const existing = messages.value[idx]!
-        mutateMessageAt(idx, { ...existing, reactions: msg.reactions ?? [] })
+        thread.mutateMessageAt(idx, { ...existing, reactions: msg.reactions ?? [] })
       }
       if (infoMessage.value?.id === msg.id) {
         infoMessage.value = { ...infoMessage.value, reactions: msg.reactions ?? [] }
@@ -2293,7 +843,7 @@ const { register: registerRealtime, teardown: teardownRealtime } = useChatRealti
       if (!isSelected) return
       const idx = messages.value.findIndex((m) => m.id === msg.id)
       if (idx !== -1) {
-        mutateMessageAt(idx, { ...messages.value[idx]!, body: msg.body, editedAt: msg.editedAt ?? null })
+        thread.mutateMessageAt(idx, { ...messages.value[idx]!, body: msg.body, editedAt: msg.editedAt ?? null })
       }
       if (infoMessage.value?.id === msg.id) {
         infoMessage.value = { ...infoMessage.value, body: msg.body, editedAt: msg.editedAt ?? null }
@@ -2304,7 +854,7 @@ const { register: registerRealtime, teardown: teardownRealtime } = useChatRealti
       if (isSelected) {
         const idx = messages.value.findIndex((m) => m.id === messageId)
         if (idx !== -1) {
-          mutateMessageAt(idx, { ...messages.value[idx]!, deletedForAll: true, body: '' })
+          thread.mutateMessageAt(idx, { ...messages.value[idx]!, deletedForAll: true, body: '' })
         }
       }
 
@@ -2341,6 +891,27 @@ const { register: registerRealtime, teardown: teardownRealtime } = useChatRealti
   },
 })
 
+// ─── Scroller observers ──────────────────────────────────────────────────────
+
+// Scroll pill resize observer — tracks scroller resizes to update the pill position.
+let scrollPillRo: ResizeObserver | null = null
+watch(
+  messagesScroller,
+  (el, prev) => {
+    if (!import.meta.client) return
+    if (!scrollPillRo) scrollPillRo = new ResizeObserver(() => updateScrollPill())
+    if (prev) scrollPillRo.unobserve(prev)
+    if (el) {
+      scrollPillRo.observe(el)
+      observeScrollerForBottomAnchoring(el)
+      requestAnimationFrame(() => { updateScrollPill() })
+    }
+  },
+  { flush: 'post' },
+)
+
+// ─── Lifecycle ───────────────────────────────────────────────────────────────
+
 onMounted(() => {
   try {
     prefersReducedMotion.value = Boolean(window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches)
@@ -2360,32 +931,18 @@ onMounted(() => {
     try { await marv.ensureLoaded() } catch { /* ignore */ }
     marv.startRealtime()
 
-    if (!viewerIsVerified.value && !viewerIsPremium.value) return
+    if (!viewerCanUseChat.value) return
 
     registerRealtime()
     emitMessagesScreen(true, selectedConversationId.value)
 
     // Pre-fetch allowed reactions (used by the reaction picker)
-    apiFetchData<MessageReaction[]>('/messages/reactions').then((reactions) => {
-      availableReactions.value = reactions ?? []
-    }).catch(() => { /* ignore */ })
+    thread.loadAvailableReactions()
 
     await fetchConversations('primary', { forceRefresh: true }).catch(() => { /* ignore */ })
 
-    const toUsername = normalizeToUsernameParam(route.query.to)
-    if (toUsername) {
-      try { await openChatToUsername(toUsername) } catch { /* ignore */ }
-    }
-    if (route.query.marv === '1') {
-      try { await openMarvChat() } catch { /* ignore */ }
-      const next: Record<string, string | string[]> = {}
-      for (const [k, v] of Object.entries(route.query)) {
-        if (k === 'marv') continue
-        if (typeof v === 'string') next[k] = v
-        else if (Array.isArray(v)) next[k] = v.filter((x): x is string => typeof x === 'string')
-      }
-      await router.replace({ query: next })
-    }
+    await routeSync.handleInitialQueryParams()
+
     if (selectedConversationId.value) {
       try { await selectConversation(selectedConversationId.value, { replace: true }) } catch { /* ignore */ }
     } else if (!isTinyViewport.value) {
@@ -2403,10 +960,10 @@ onMounted(() => {
     }
     revealChatScreenAfterFade()
 
-    // Presence subscriptions are now driven by ChatConversationList's
+    // Presence subscriptions are driven by ChatConversationList's
     // IntersectionObserver — rows in the viewport call addInterest, rows that
-    // scroll out call removeInterest. There's no eager bulk seed here anymore.
-    // (See `onConversationRowPresenceVisible` / `flushPresenceDelta`.)
+    // scroll out call removeInterest. There's no eager bulk seed here.
+    // (See `onConversationRowPresenceVisible`.)
 
     // Fetch requests tab after revealing so the screen appears quickly.
     await fetchConversations('requests', { forceRefresh: true }).catch(() => { /* ignore */ })
@@ -2426,38 +983,33 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   clearChatBootTimer()
-  clearMessagesPaneTimer()
-  if (searchDebounceTimer) { clearTimeout(searchDebounceTimer); searchDebounceTimer = null }
-  if (jumpHighlightTimer) { clearTimeout(jumpHighlightTimer); jumpHighlightTimer = null }
+  conversationsApi.teardown()
+  thread.teardown()
+  scrollApi.teardown()
+  if (scrollPillRo) {
+    scrollPillRo.disconnect()
+    scrollPillRo = null
+  }
   teardownRealtime()
   marv.stopRealtime()
   // `presenceInterest` cleans itself up via its own `onBeforeUnmount` hook
   // (see `useRefcountedInterest`).
   emitMessagesScreen(false)
-  for (const t of recentAnimatedTimers.values()) clearTimeout(t)
-  recentAnimatedTimers.clear()
 })
 
 watch(isSocketConnected, (connected) => {
-  if (!viewerIsVerified.value && !viewerIsPremium.value) return
+  if (!viewerCanUseChat.value) return
   if (connected && route.path === '/chat') emitMessagesScreen(true, selectedConversationId.value)
 })
-
-watch(
-  () => route.query.c,
-  () => {
-    syncSelectedFromRoute()
-  },
-)
 
 watch(
   () => selectedChatKey.value,
   () => {
     if (!import.meta.client) return
-    if (!viewerIsVerified.value && !viewerIsPremium.value) return
+    if (!viewerCanUseChat.value) return
     // Keep focus on non-mobile layouts; when the tab bar is visible, avoid opening the keyboard.
     if (isTabBarMode.value) return
-    void nextTick(() => dmComposerRef.value?.focus?.())
+    void nextTick(() => composerBarRef.value?.focus())
   },
   { flush: 'post' },
 )
@@ -2491,50 +1043,3 @@ watch(
   { flush: 'post' },
 )
 </script>
-
-<style scoped>
-.moh-chat-row-surface {
-  transition: background-color 180ms ease, color 180ms ease;
-}
-
-.moh-chat-row-dot {
-  transition: opacity 180ms ease;
-}
-
-.moh-dot-enter-active,
-.moh-dot-leave-active {
-  transition: opacity 180ms ease;
-}
-
-.moh-dot-enter-from,
-.moh-dot-leave-to {
-  opacity: 0;
-}
-
-.moh-chat-row-move {
-  transition: transform 220ms ease;
-}
-
-.moh-chat-scroll-hide {
-  scrollbar-width: thin;
-  scrollbar-color: rgba(128, 128, 128, 0.35) transparent;
-}
-
-.moh-chat-scroll-hide::-webkit-scrollbar {
-  width: 6px;
-}
-
-.moh-chat-scroll-hide::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.moh-chat-scroll-hide::-webkit-scrollbar-thumb {
-  background-color: rgba(128, 128, 128, 0.35);
-  border-radius: 3px;
-}
-
-.moh-chat-scroll-hide::-webkit-scrollbar-thumb:hover {
-  background-color: rgba(128, 128, 128, 0.6);
-}
-</style>
-

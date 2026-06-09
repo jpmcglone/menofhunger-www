@@ -27,7 +27,7 @@ const ALLOW_LIST = new Set<string>([
   // (strips any /vN suffix because /health lives at the raw host root).
   'composables/useApiHealth.ts',
   // Turns apiBaseUrl into a WebSocket URL (Socket.IO), not a fetch.
-  'composables/usePresence.ts',
+  'composables/presence/usePresenceSocketCore.ts',
   // Nuxt config defines runtimeConfig.apiBaseUrl (now expected to include /v1 for product routes).
   'nuxt.config.ts',
   // SSR-only sitemap routes (Nitro server routes, not product API features).

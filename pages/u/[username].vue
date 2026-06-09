@@ -512,7 +512,6 @@ import { visibilityTagClasses, postHighlightClasses } from '~/utils/post-visibil
 import { tinyTooltip } from '~/utils/tiny-tooltip'
 import type { UserPostsFilter } from '~/composables/useUserPosts'
 import { userColorTier, userTierColorVar } from '~/utils/user-tier'
-import { collectChainIds } from '~/utils/feed-patch'
 import { hasAnyBadge } from '~/config/milestones'
 
 definePageMeta({
@@ -744,7 +743,6 @@ onMounted(() => nextTick(() => {
 
 // ─── Posts-only feed (top-level, no replies) ──────────────────────────────────
 const {
-  posts: postsOnlyPosts,
   displayItems: postsOnlyItems,
   counts: postsOnlyCounts,
   loading: postsOnlyLoading,
@@ -764,6 +762,7 @@ const {
   externalFilter: profileFilter as Ref<UserPostsFilter>,
   externalSort: profileSort,
   includeRestricted: true,
+  realtime: true,
 })
 
 // ─── Replies feed (all posts including replies) ───────────────────────────────
@@ -789,6 +788,7 @@ const {
   externalFilter: profileFilter as Ref<UserPostsFilter>,
   externalSort: profileSort,
   includeRestricted: true,
+  realtime: true,
 })
 
 // ─── Articles feed ────────────────────────────────────────────────────────────
@@ -973,7 +973,7 @@ const showFollowCounts = computed(() => {
 // Realtime nudges: if you are already viewing this user's profile and they nudge you,
 // update the local followSummary.nudge immediately so the header shows "Nudge back",
 // then refresh from the API to keep outbound/inbound state consistent.
-const { addNotificationsCallback, removeNotificationsCallback, addPostsCallback, removePostsCallback, subscribePosts, unsubscribePosts } = usePresence()
+const { addNotificationsCallback, removeNotificationsCallback } = usePresence()
 const notificationsCb = {
   onNew: (payload: any) => {
     const n = payload?.notification ?? null
@@ -1010,32 +1010,13 @@ const pendingPosts = usePendingPostsManager()
 
 // Content patches (counts, body, flags, boost) for posts on this profile are handled
 // globally by plugins/post-cache.client.ts — PostRow reads fresh data from usePostCache.
-// The profile still subscribes to post rooms so the server knows to deliver events,
-// and the callback object below exists only to satisfy the PostsCallback type while
-// keeping the subscription lifecycle clean.
-const profilePostsCb = {}
+// Post-room subscriptions (so the server delivers those events for the posts on
+// screen) are wired by useUserPosts via `realtime: true` above.
 
 if (import.meta.client) {
-  // Subscribe all currently loaded post IDs; update when the posts list grows.
-  let subscribedIds = new Set<string>()
-  function syncProfilePostSubscriptions() {
-    const ids = new Set<string>()
-    // Walk each post's full .parent chain so that parent posts embedded in reply rows
-    // are subscribed even when they are no longer a top-level feed entry.
-    for (const p of postsOnlyPosts.value) for (const id of collectChainIds(p)) ids.add(id)
-    for (const p of profilePosts.value) for (const id of collectChainIds(p)) ids.add(id)
-    const toSub = [...ids].filter((id) => !subscribedIds.has(id))
-    const toUnsub = [...subscribedIds].filter((id) => !ids.has(id))
-    if (toSub.length > 0) subscribePosts(toSub)
-    if (toUnsub.length > 0) unsubscribePosts(toUnsub)
-    subscribedIds = ids
-  }
-
   onMounted(() => {
     addNotificationsCallback(notificationsCb as any)
-    addPostsCallback(profilePostsCb)
     document.addEventListener('pointerdown', onProfileStatPointerDown, { capture: true })
-    void nextTick(() => syncProfilePostSubscriptions())
     if (isSelf.value) {
       unregisterProfilePrepend = registerProfilePrepend((post) => {
         if (!post.parentId) {
@@ -1107,14 +1088,8 @@ if (import.meta.client) {
       unregisterReplyPending = replyModal.registerOnReplyPending(replyCb)
     }
   })
-  watch([postsOnlyPosts, profilePosts], () => {
-    void nextTick(() => syncProfilePostSubscriptions())
-  })
   onBeforeUnmount(() => {
     removeNotificationsCallback(notificationsCb as any)
-    removePostsCallback(profilePostsCb)
-    if (subscribedIds.size > 0) unsubscribePosts([...subscribedIds])
-    subscribedIds.clear()
     document.removeEventListener('pointerdown', onProfileStatPointerDown, true)
     unregisterProfilePrepend?.()
     unregisterProfilePrepend = null
@@ -1267,7 +1242,7 @@ function onOpenProfileImage(payload: {
 
 function patchPublicProfile(patch: Partial<Pick<
   PublicProfile,
-  'name' | 'bio' | 'avatarUrl' | 'bannerUrl' | 'website' | 'locationDisplay' | 'locationCity' | 'locationCounty' | 'locationState' | 'locationCountry'
+  'name' | 'bio' | 'avatarUrl' | 'bannerUrl' | 'website' | 'locationZip' | 'locationDisplay' | 'locationCity' | 'locationCounty' | 'locationState' | 'locationCountry'
 >>) {
   if (!data.value) return
   data.value = { ...(data.value as PublicProfile), ...patch }

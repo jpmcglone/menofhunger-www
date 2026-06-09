@@ -28,7 +28,7 @@ const pathData = computed(() => {
   return entry?.path ?? ''
 })
 
-onMounted(() => {
+function updateViewBox() {
   const el = pathEl.value
   if (!el || !pathData.value) return
   try {
@@ -40,5 +40,13 @@ onMounted(() => {
   } catch {
     // getBBox can fail in some environments; fall back to full map viewBox
   }
+}
+
+onMounted(updateViewBox)
+
+watch(pathData, async () => {
+  viewBox.value = '8 6 920 585'
+  await nextTick()
+  updateViewBox()
 })
 </script>

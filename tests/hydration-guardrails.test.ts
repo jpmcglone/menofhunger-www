@@ -15,8 +15,8 @@ describe('hydration guardrails (structural)', () => {
   })
 
   it('keeps rail ad mount point behind a client-only boundary', () => {
-    const layout = readFromRepo('layouts/app.vue')
-    expect(layout).toMatch(/<ClientOnly>[\s\S]*<AppAdSlot\s+placement="rail"\s*\/>/)
+    const rail = readFromRepo('components/app/layout/RightRail.vue')
+    expect(rail).toMatch(/<ClientOnly>[\s\S]*<AppAdSlot\s+placement="rail"\s*\/>/)
   })
 
   it('keeps AppAdSlot free of ClientOnly/Suspense and guards provider DOM behind onMounted', () => {
@@ -51,8 +51,8 @@ describe('hydration guardrails (structural)', () => {
   })
 
   it('gates right-rail who-to-follow fetch until after hydration', () => {
-    const layout = readFromRepo('layouts/app.vue')
-    expect(layout).toMatch(/useWhoToFollow\(\{[\s\S]*enabled:\s*computed\(\(\)\s*=>\s*hydrated\.value\s*&&\s*!isRightRailForcedHidden\.value\)/)
+    const rail = readFromRepo('components/app/layout/RightRail.vue')
+    expect(rail).toMatch(/useWhoToFollow\(\{[\s\S]*enabled:\s*computed\(\(\)\s*=>\s*hydrated\.value\s*&&\s*!props\.forcedHidden\)/)
   })
 
   it('gates mobile bottom-sheet mounting with hydrated media query helper', () => {
@@ -197,12 +197,15 @@ describe('hydration guardrails (structural)', () => {
   it('uses shallowRef for the chat conversations + messages stores', () => {
     // Deep reactivity over message bodies, sender chains, and reactions was
     // walking 100s of objects on every patch. shallowRef + manual triggerRef
-    // keeps the reactive footprint to the wrapper only.
-    const chat = readFromRepo('pages/chat.vue')
-    expect(chat).toMatch(/const conversations = shallowRef</)
-    expect(chat).toMatch(/const messages = shallowRef</)
-    expect(chat).toMatch(/triggerRef\(conversations\)/)
-    expect(chat).toMatch(/triggerRef\(messages\)/)
+    // keeps the reactive footprint to the wrapper only. The stores now live
+    // in the chat composables (extracted from pages/chat.vue).
+    const conversationsStore = readFromRepo('composables/chat/useChatConversations.ts')
+    expect(conversationsStore).toMatch(/const conversations = shallowRef</)
+    expect(conversationsStore).toMatch(/triggerRef\(conversations\)/)
+
+    const threadStore = readFromRepo('composables/chat/useChatThread.ts')
+    expect(threadStore).toMatch(/const messages = shallowRef</)
+    expect(threadStore).toMatch(/triggerRef\(messages\)/)
   })
 
   it('viewport-gates the rich body side effects (link metadata, mentions, embeds)', () => {
