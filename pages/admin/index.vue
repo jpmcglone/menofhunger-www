@@ -113,6 +113,17 @@
         </div>
       </NuxtLink>
 
+      <NuxtLink to="/admin/affiliates" class="block px-4 py-3 transition-colors hover:bg-gray-50 dark:hover:bg-zinc-900">
+        <div class="flex items-center gap-3">
+          <Icon name="tabler:coins" class="text-lg" aria-hidden="true" />
+          <div class="min-w-0 flex-1">
+            <div class="font-semibold truncate">Referral Pilot</div>
+            <div class="text-sm text-gray-600 dark:text-gray-300 truncate">Manage pilot members and settle payouts</div>
+          </div>
+          <Icon name="tabler:chevron-right" class="text-gray-400" aria-hidden="true" />
+        </div>
+      </NuxtLink>
+
     </div>
   </AppPageContent>
 </template>

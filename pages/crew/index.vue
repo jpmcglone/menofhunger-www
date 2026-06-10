@@ -39,7 +39,7 @@
           <h2 class="text-lg font-semibold moh-text">You’re not in a Crew yet</h2>
           <p class="text-sm moh-text-muted max-w-md mx-auto">
             Crews form when a verified man invites another, and the other
-            accepts. Invite the brother who pushes you hardest.
+            accepts. Invite the man who pushes you hardest.
           </p>
           <div class="flex flex-wrap justify-center gap-2 pt-2">
             <Button
@@ -53,6 +53,68 @@
             </Button>
           </div>
         </div>
+
+        <!-- Open-to-crew toggle -->
+        <div class="rounded-2xl border p-4 flex items-start justify-between gap-4" style="border-color: rgba(var(--moh-checkin-rgb), 0.35); background-color: var(--moh-checkin-soft)">
+          <div class="flex-1 min-w-0">
+            <div class="font-semibold" style="color: var(--moh-checkin)">Open to joining a crew</div>
+            <div class="text-xs moh-text-muted mt-0.5">
+              Show up in the directory so other verified men can invite you.
+            </div>
+          </div>
+          <Checkbox
+            v-model="openToCrew"
+            binary
+            :disabled="availabilityLoading"
+            aria-label="Open to joining a crew"
+            @update:model-value="onAvailabilityToggle"
+          />
+        </div>
+
+        <!-- Men looking for a crew -->
+        <section class="space-y-3">
+          <h3 class="text-sm font-semibold moh-text uppercase tracking-wide">Men looking for a crew</h3>
+
+          <div v-if="openMembersLoading" class="flex justify-center py-8">
+            <AppLogoLoader compact />
+          </div>
+
+          <div v-else-if="displayedOpenMembers.length === 0" class="rounded-xl border moh-border moh-surface p-4 text-center text-sm moh-text-muted">
+            No one has listed themselves as open yet — be the first.
+          </div>
+
+          <div v-else class="divide-y divide-gray-100 dark:divide-white/5 rounded-xl border moh-border">
+            <div
+              v-for="entry in displayedOpenMembers"
+              :key="entry.user.id"
+              class="p-3 flex items-start gap-3"
+            >
+              <AppUserAvatar :user="entry.user" size-class="h-10 w-10" />
+              <div class="flex-1 min-w-0">
+                <AppUserIdentityLine :user="entry.user" />
+                <div v-if="entry.sharedInterests.length > 0" class="mt-1 flex flex-wrap gap-1">
+                  <span
+                    v-for="arena in entry.sharedInterests.slice(0, 3)"
+                    :key="arena"
+                    class="text-[10px] font-medium uppercase tracking-wide px-1.5 py-0.5 rounded-full moh-surface border moh-border moh-text-muted"
+                  >{{ arena }}</span>
+                </div>
+              </div>
+              <span
+                v-if="entry.user.id === authUser?.id"
+                class="shrink-0 text-[11px] font-medium moh-text-muted self-center"
+              >You</span>
+              <Button
+                v-else
+                label="Invite"
+                size="small"
+                rounded
+                class="shrink-0"
+                @click="openInviteDialogFor(entry.user)"
+              />
+            </div>
+          </div>
+        </section>
 
         <section v-if="inbox.length > 0" class="space-y-2">
           <h3 class="text-sm font-semibold moh-text uppercase tracking-wide">
@@ -150,7 +212,7 @@
           v-model="inviteCrewName"
           class="w-full"
           maxlength="80"
-          placeholder="e.g. The Iron Brotherhood"
+          placeholder="e.g. The Hungry Five"
           :disabled="sendingInvite"
         />
         <p class="text-[11px] moh-text-muted -mt-1">
@@ -198,7 +260,7 @@
 </template>
 
 <script setup lang="ts">
-import type { CrewInvite, FollowListUser } from '~/types/api'
+import type { CrewInvite, CrewUserSummary, FollowListUser, OpenCrewMember } from '~/types/api'
 import { getApiErrorMessage } from '~/utils/api-error'
 
 definePageMeta({
@@ -214,8 +276,9 @@ usePageSeo({
   noindex: true,
 })
 
-const { isVerified } = useAuth()
+const { isVerified, user: authUser } = useAuth()
 
+const router = useRouter()
 const crewApi = useCrew()
 const viewerCrew = useViewerCrew()
 const { addCrewCallback, removeCrewCallback } = usePresence()
@@ -254,6 +317,74 @@ watch(openInviteDialog, (open) => {
 
 const actingInviteId = ref<string | null>(null)
 
+// Open-to-crew directory
+const openToCrew = ref(false)
+
+// Seed open-to-crew toggle from the auth user if already known.
+watch(authUser, (u) => {
+  if (u && typeof u.openToCrew === 'boolean') openToCrew.value = u.openToCrew
+}, { immediate: true })
+const availabilityLoading = ref(false)
+const openMembers = ref<OpenCrewMember[]>([])
+const openMembersLoading = ref(false)
+
+// Synthesize the viewer's own entry so they can see themselves in the directory.
+const viewerEntry = computed<OpenCrewMember | null>(() => {
+  const u = authUser.value
+  if (!u || !openToCrew.value) return null
+  return {
+    user: {
+      id: u.id,
+      username: u.username ?? null,
+      name: u.name ?? null,
+      premium: u.premium ?? false,
+      premiumPlus: u.premiumPlus ?? false,
+      isOrganization: u.isOrganization ?? false,
+      stewardBadgeEnabled: u.stewardBadgeEnabled ?? false,
+      verifiedStatus: u.verifiedStatus ?? 'none',
+      avatarUrl: u.avatarUrl ?? null,
+    },
+    sharedInterests: [],
+  }
+})
+
+// Viewer appears at the top when open, de-duped against whatever the API returned.
+const displayedOpenMembers = computed<OpenCrewMember[]>(() => {
+  const base = openMembers.value.filter((m) => m.user.id !== authUser.value?.id)
+  return viewerEntry.value ? [viewerEntry.value, ...base] : base
+})
+
+async function loadOpenMembers() {
+  openMembersLoading.value = true
+  try {
+    openMembers.value = await crewApi.listOpenMembers()
+  } catch {
+    // Non-critical — directory is a best-effort surface.
+  } finally {
+    openMembersLoading.value = false
+  }
+}
+
+async function onAvailabilityToggle(val: boolean) {
+  availabilityLoading.value = true
+  try {
+    await crewApi.setAvailability(val)
+    // Refresh the directory after toggling so the viewer appears/disappears.
+    void loadOpenMembers()
+  } catch (e) {
+    // Roll back the optimistic toggle.
+    openToCrew.value = !val
+    error.value = getApiErrorMessage(e) ?? 'Could not update availability.'
+  } finally {
+    availabilityLoading.value = false
+  }
+}
+
+function openInviteDialogFor(user: CrewUserSummary) {
+  inviteUser.value = user as unknown as FollowListUser
+  openInviteDialog.value = true
+}
+
 /**
  * Resolve the viewer's crew status. If they're already in a crew, redirect to
  * the crew's public page (`/c/<slug>`) — that page now hosts the wall, members,
@@ -266,7 +397,7 @@ async function load() {
     const crew = await crewApi.getMyCrew()
     viewerCrew.setFromCrew(crew)
     if (crew) {
-      void navigateTo(`/c/${encodeURIComponent(crew.slug)}`, { replace: true })
+      void router.replace(`/c/${encodeURIComponent(crew.slug)}`)
       return
     }
     const [inb, out] = await Promise.all([
@@ -275,6 +406,8 @@ async function load() {
     ])
     inbox.value = inb
     outbox.value = out
+    // Load open-members directory alongside invite lists (non-blocking).
+    void loadOpenMembers()
   } catch (e) {
     error.value = getApiErrorMessage(e) || 'Could not load your Crew.'
   } finally {

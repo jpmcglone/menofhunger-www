@@ -166,6 +166,15 @@
             </div>
             <div class="flex items-start justify-between gap-4">
               <div>
+                <div class="font-medium">Streak reminder</div>
+                <div class="text-xs moh-text-muted">
+                  An evening nudge when your check-in streak is at risk.
+                </div>
+              </div>
+              <Checkbox v-model="notifPrefs.emailStreakReminder" binary :disabled="notifPrefsSaving || !emailIsVerified" />
+            </div>
+            <div class="flex items-start justify-between gap-4">
+              <div>
                 <div class="font-medium">New articles from people you follow</div>
                 <div class="text-xs moh-text-muted">
                   Get an email when someone you follow publishes a new article.

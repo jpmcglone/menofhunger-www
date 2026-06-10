@@ -44,8 +44,8 @@
     </div>
 
     <div class="px-4 pb-4 pt-12">
-      <div class="flex items-start justify-between gap-3">
-        <div class="min-w-0">
+      <div class="flex items-start justify-between gap-3 min-h-[2.25rem]">
+        <div class="min-w-0 flex items-start">
           <NuxtLink
             :to="groupPath"
             class="min-w-0 truncate hover:underline underline-offset-2 font-bold moh-text moh-focus block"
@@ -76,11 +76,8 @@
         </div>
       </div>
 
-      <div
-        v-if="preview.descriptionPreview"
-        class="mt-2 text-sm moh-body whitespace-pre-wrap break-words max-h-[3rem] overflow-hidden line-clamp-2"
-      >
-        {{ preview.descriptionPreview }}
+      <div class="mt-2 h-[3rem] text-sm moh-body whitespace-pre-wrap break-words overflow-hidden line-clamp-2">
+        {{ preview.descriptionPreview ?? '' }}
       </div>
 
       <div class="mt-3 flex items-center gap-4 text-sm text-gray-600 dark:text-gray-300">

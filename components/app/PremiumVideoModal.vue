@@ -4,7 +4,7 @@
     header="Premium required"
     message="Video uploads are for premium members. Upgrade to post videos."
     cancel-label="Not now"
-    confirm-label="Go to settings"
+    confirm-label="See plans"
     confirm-severity="primary"
     @update:visible="!$event && hide()"
     @confirm="onGoToSettings"
@@ -17,6 +17,6 @@ const { open, hide } = usePremiumVideoModal()
 
 async function onGoToSettings() {
   hide()
-  await navigateTo('/settings')
+  await navigateTo('/tiers')
 }
 </script>

@@ -19,6 +19,7 @@ const { open, kind, action, hide } = useAuthActionModal()
 const title = computed(() => {
   if (kind.value === 'login') {
     if (action.value === 'read') return 'Log in to read'
+    if (action.value === 'follow') return 'Log in to follow'
     return 'Log in to continue'
   }
   if (kind.value === 'premium') {
@@ -46,6 +47,7 @@ const message = computed(() => {
     if (action.value === 'comment' || action.value === 'article-comment') return 'You need to log in to reply.'
     if (action.value === 'bookmark') return 'You need to log in to save posts.'
     if (action.value === 'poll') return 'You need to log in to vote on polls.'
+    if (action.value === 'follow') return 'Join Men of Hunger to follow this person and see their posts in your feed.'
     if (action.value === 'article-boost') return 'You need to log in to boost this article.'
     if (action.value === 'article-react') return 'You need to log in to react to this article.'
     return 'You need to log in to boost posts.'
@@ -73,8 +75,8 @@ const message = computed(() => {
 
 const primaryLabel = computed(() => {
   if (kind.value === 'login') return 'Log in'
-  if (kind.value === 'premium') return 'Upgrade to Premium'
-  if (kind.value === 'verify') return 'Go to settings'
+  if (kind.value === 'premium') return 'See plans'
+  if (kind.value === 'verify') return 'Get verified'
   if (kind.value === 'setUsername') return 'Go to settings'
   return 'Continue'
 })
@@ -82,7 +84,7 @@ const primaryLabel = computed(() => {
 const primaryIconName = computed(() => {
   if (kind.value === 'login') return 'tabler:arrow-right'
   if (kind.value === 'premium') return 'tabler:star'
-  if (kind.value === 'verify') return 'tabler:settings'
+  if (kind.value === 'verify') return 'tabler:shield-check'
   if (kind.value === 'setUsername') return 'tabler:settings'
   return undefined
 })
@@ -94,7 +96,11 @@ async function onPrimary() {
     return
   }
   if (kind.value === 'premium') {
-    await navigateTo('/settings/billing')
+    await navigateTo('/tiers')
+    return
+  }
+  if (kind.value === 'verify') {
+    await navigateTo('/settings/verification')
     return
   }
   await navigateTo('/settings')

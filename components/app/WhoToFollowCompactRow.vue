@@ -1,23 +1,23 @@
 <template>
-  <div class="flex items-center justify-between gap-3 py-1.5">
+  <div class="flex items-center justify-between gap-3 py-3">
     <NuxtLink
       v-if="user.username"
       :to="`/u/${encodeURIComponent(user.username)}`"
-      class="min-w-0 flex items-center gap-2.5 hover:opacity-95"
+      class="min-w-0 flex items-center gap-3 hover:opacity-95"
       :aria-label="`View @${user.username} profile`"
       @mouseenter="onEnter"
       @mousemove="onMove"
       @mouseleave="onLeave"
     >
-      <div :class="['shrink-0 ring-2 ring-[color:var(--moh-surface-3)]', avatarRoundClass]">
-        <AppUserAvatar :user="user" size-class="h-9 w-9" :show-status="false" />
+      <div :class="['shrink-0 flex ring-2 ring-[color:var(--moh-surface-3)]', avatarRoundClass]">
+        <AppUserAvatar :user="user" size-class="h-10 w-10" :show-status="false" />
       </div>
       <AppUserIdentityLine :user="user" badge-size="xs" />
     </NuxtLink>
 
-    <div v-else class="min-w-0 flex items-center gap-2.5">
-      <div :class="['shrink-0 ring-2 ring-[color:var(--moh-surface-3)]', avatarRoundClass]">
-        <AppUserAvatar :user="user" size-class="h-9 w-9" :show-status="false" />
+    <div v-else class="min-w-0 flex items-center gap-3">
+      <div :class="['shrink-0 flex ring-2 ring-[color:var(--moh-surface-3)]', avatarRoundClass]">
+        <AppUserAvatar :user="user" size-class="h-10 w-10" :show-status="false" />
       </div>
       <AppUserIdentityLine :user="user" badge-size="xs" />
     </div>

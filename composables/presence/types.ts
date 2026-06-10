@@ -1,6 +1,7 @@
 import type {
   CommunityGroupInviteStatus,
   FollowListUser,
+  Recruit,
   RadioChatMessage,
   RadioChatSnapshot,
   RadioLobbyCounts,
@@ -240,4 +241,17 @@ export type GroupFeedCallback = {
  */
 export type CheckinsCallback = {
   onAnsweredToday?: (payload: WsCheckinAnsweredTodayPayload) => void
+}
+
+/**
+ * Referral recruit updated realtime. Emitted to the recruiter when a recruit
+ * reaches a new milestone (signup / verified / premium). Pages can subscribe
+ * via `addReferralCallback` to patch the recruit list in place.
+ */
+export type WsReferralRecruitUpdatedPayload = {
+  recruit: Recruit
+}
+
+export type ReferralCallback = {
+  onRecruitUpdated?: (payload: WsReferralRecruitUpdatedPayload) => void
 }

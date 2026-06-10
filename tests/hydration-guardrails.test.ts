@@ -85,6 +85,22 @@ describe('hydration guardrails (structural)', () => {
     expect(home).toMatch(/const heroResolved = computed\(\(\) => {[\s\S]*?if \(!hydrated\.value\) return false[\s\S]*?if \(!isAuthed\.value\) return true[\s\S]*?return checkinState\.value !== null/)
   })
 
+  it('JoinBanner gates visibility on a hydrated ref so SSR never renders the logged-out banner', () => {
+    const banner = readFromRepo('components/app/JoinBanner.vue')
+    // Must use a local `hydrated` ref set in onMounted so SSR emits nothing
+    // and the client shows the banner only after confirming !isAuthed.
+    expect(banner).toMatch(/hydrated\s*=\s*ref\(false\)/)
+    expect(banner).toMatch(/onMounted[\s\S]*?hydrated\.value\s*=\s*true/)
+    expect(banner).toMatch(/hydrated\.value && !isAuthed\.value/)
+  })
+
+  it('wraps the check-in hero loading skeleton in ClientOnly so SSR emits nothing', () => {
+    const home = readFromRepo('pages/home.vue')
+    // The skeleton must be inside <ClientOnly> to prevent SSR from rendering it
+    // (which would cause a hydration mismatch when the client replaces it with the real hero).
+    expect(home).toMatch(/<ClientOnly>[\s\S]*?v-if="isAuthed && !heroResolved"[\s\S]*?<\/ClientOnly>/)
+  })
+
   // ---- Chat performance guardrails (Phase 2 of the freeze fix) -------------
   //
   // Together these assertions encode the invariants that keep the chat page

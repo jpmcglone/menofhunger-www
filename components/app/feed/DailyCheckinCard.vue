@@ -10,7 +10,7 @@
         class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full"
         style="background-color: rgba(127, 127, 127, 0.18)"
       >
-        <Icon name="tabler:flame" class="text-sm moh-text-muted" aria-hidden="true" />
+        <Icon name="tabler:flame" class="text-sm text-orange-500 dark:text-orange-400" aria-hidden="true" />
       </div>
       <div class="flex-1 min-w-0">
         <span class="text-sm font-semibold moh-text">Streak intact</span>

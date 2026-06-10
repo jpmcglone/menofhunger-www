@@ -172,14 +172,14 @@ definePageMeta({ layout: 'app', title: 'Articles', hideTopBar: true })
 
 usePageSeo({
   title: 'Articles',
-  description: 'Read and discover articles on Men of Hunger — longform writing on discipline, ambition, growth, and brotherhood.',
+  description: 'Read and discover articles on Men of Hunger — longform writing on discipline, ambition, growth, and community.',
   jsonLdGraph: computed(() => [
     {
       '@type': 'CollectionPage',
       '@id': 'https://menofhunger.com/articles#webpage',
       url: 'https://menofhunger.com/articles',
       name: 'Articles — Men of Hunger',
-      description: 'Longform articles on discipline, ambition, personal growth, and brotherhood from the Men of Hunger community.',
+      description: 'Longform articles on discipline, ambition, personal growth, and community from the Men of Hunger community.',
       isPartOf: { '@id': 'https://menofhunger.com/#website' },
       inLanguage: 'en-US',
     },

@@ -19,6 +19,23 @@
       :on-login-to-answer="goToLoginForCheckin"
     />
 
+    <!-- Skeleton shown while the check-in state is still loading.
+         ClientOnly keeps SSR output empty (same as the hero gates above).
+         The min-h matches the full hero so the page doesn't jump on resolve. -->
+    <ClientOnly>
+      <div
+        v-if="isAuthed && !heroResolved"
+        class="animate-pulse border-b moh-border"
+        aria-hidden="true"
+      >
+        <div class="moh-gutter-x py-6 space-y-3">
+          <div class="h-3 w-1/3 rounded-full bg-gray-200 dark:bg-zinc-700" />
+          <div class="h-10 w-full rounded-xl bg-gray-200 dark:bg-zinc-700" />
+          <div class="h-8 w-28 rounded-full bg-gray-200 dark:bg-zinc-700" />
+        </div>
+      </div>
+    </ClientOnly>
+
     <!-- Layout: Composer at top, feed below. Wrapper ref used to detect when composer is in view (hides mobile FAB). -->
     <div ref="homeComposerEl" class="min-h-0">
       <AppPostComposer
@@ -198,6 +215,7 @@
               :following-count="followingCount"
               :show-checkin-cta="showCheckinPromptBar"
               @find-people="navigateTo('/explore')"
+              @post="homeComposerRef?.focus()"
               @check-in="openCheckinComposer"
             />
             <AppFeedAllEmptyState

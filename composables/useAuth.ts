@@ -44,6 +44,7 @@ export type AuthUser = {
   checkinStreakDays?: number
   lastCheckinDayKey?: string | null
   longestStreakDays?: number
+  openToCrew?: boolean
   notificationUndeliveredCount?: number
   messageUnreadCounts?: { primary: number; requests: number }
 }

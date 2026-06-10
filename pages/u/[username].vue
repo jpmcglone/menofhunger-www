@@ -1,6 +1,7 @@
 <template>
   <!-- Profile pages use the app-standard gutter (px-4). Banner cancels it for full-bleed. -->
   <AppPageContent bottom="standard">
+  <AppJoinBanner />
   <div class="w-full">
     <div v-if="profileBanned" class="px-4 mx-auto max-w-3xl py-10">
       <div class="text-2xl font-bold tracking-tight text-gray-900 dark:text-gray-50">

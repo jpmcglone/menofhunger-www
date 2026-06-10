@@ -209,6 +209,8 @@ export function usePresence() {
     removeCheckinsCallback: domains.checkins.remove,
     addMarvCallback: domains.marv.add,
     removeMarvCallback: domains.marv.remove,
+    addReferralCallback: domains.referrals.add,
+    removeReferralCallback: domains.referrals.remove,
     ...emitters,
     connect: core.connect,
     disconnect: core.disconnect,

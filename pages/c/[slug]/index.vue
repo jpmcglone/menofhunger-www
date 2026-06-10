@@ -146,60 +146,58 @@
             @pending-click="onPendingClick"
           />
         </section>
-
-        <!-- Posts feed: posts authored by crew members, filtered by visibility
-             on the server (viewer only sees what they're allowed to see). Behaves
-             like the home feed scoped to this crew's roster. -->
-        <section class="mt-6">
-          <div ref="crewFeedTopEl" class="sticky top-[var(--moh-title-bar-height,0px)] z-20 -mx-4 px-4 py-1.5 border-b moh-border moh-surface flex justify-between items-center mb-3">
-            <h2 class="text-sm font-semibold moh-text uppercase tracking-wide">Posts</h2>
-            <AppFeedFiltersBar
-              :sort="feedSort"
-              :filter="feedFilter"
-              :viewer-is-verified="viewerIsVerified"
-              :viewer-is-premium="viewerIsPremium"
-              :show-reset="isFiltered"
-              @update:sort="onCrewFeedSortChange"
-              @update:filter="onCrewFeedFilterChange"
-              @reset="onCrewFeedReset"
-            />
-          </div>
-          <div ref="crewFeedContentEl" class="h-0 overflow-hidden" aria-hidden="true" />
-
-          <AppInlineAlert v-if="feedError" class="mb-3" severity="danger">
-            {{ feedError }}
-          </AppInlineAlert>
-
-          <AppSubtleSectionLoader :loading="feedLoading && !posts.length" min-height-class="min-h-[200px]">
-            <div v-if="!posts.length && !feedLoading" class="px-3 py-6 text-sm moh-text-muted text-center">
-              No posts from this crew yet.
-            </div>
-            <div v-else class="relative">
-              <template v-for="item in displayItems" :key="item.kind === 'ad' ? item.key : (item.post._localId ?? item.post.id)">
-                <AppFeedFakeAdRow v-if="item.kind === 'ad'" />
-                <AppFeedPostRow
-                  v-else
-                  :post="item.post"
-                  :show-collapsed-replies-footer="false"
-                  @deleted="removePost"
-                  @edited="onEdited"
-                />
-              </template>
-            </div>
-          </AppSubtleSectionLoader>
-
-          <div v-if="nextCursor" class="relative flex justify-center items-center py-6 min-h-12">
-            <div ref="loadMoreSentinelEl" class="absolute bottom-0 left-0 right-0 h-px" aria-hidden="true" />
-            <div
-              class="transition-opacity duration-150"
-              :class="loadingMore ? 'opacity-100' : 'opacity-0 pointer-events-none'"
-              :aria-hidden="!loadingMore"
-            >
-              <AppLogoLoader compact />
-            </div>
-          </div>
-        </section>
       </div>
+
+      <!-- Posts feed: edge-to-edge like the home feed, outside the gutter container -->
+      <section class="mt-6">
+        <div ref="crewFeedTopEl" class="sticky top-[var(--moh-title-bar-height,0px)] z-20 moh-gutter-x py-1.5 border-b moh-border moh-surface flex justify-between items-center mb-3">
+          <h2 class="text-sm font-semibold moh-text uppercase tracking-wide">Posts</h2>
+          <AppFeedFiltersBar
+            :sort="feedSort"
+            :filter="feedFilter"
+            :viewer-is-verified="viewerIsVerified"
+            :viewer-is-premium="viewerIsPremium"
+            :show-reset="isFiltered"
+            @update:sort="onCrewFeedSortChange"
+            @update:filter="onCrewFeedFilterChange"
+            @reset="onCrewFeedReset"
+          />
+        </div>
+        <div ref="crewFeedContentEl" class="h-0 overflow-hidden" aria-hidden="true" />
+
+        <AppInlineAlert v-if="feedError" class="moh-gutter-x mb-3" severity="danger">
+          {{ feedError }}
+        </AppInlineAlert>
+
+        <AppSubtleSectionLoader :loading="feedLoading && !posts.length" min-height-class="min-h-[200px]">
+          <div v-if="!posts.length && !feedLoading" class="px-3 py-6 text-sm moh-text-muted text-center">
+            No posts from this crew yet.
+          </div>
+          <div v-else class="relative">
+            <template v-for="item in displayItems" :key="item.kind === 'ad' ? item.key : (item.post._localId ?? item.post.id)">
+              <AppFeedFakeAdRow v-if="item.kind === 'ad'" />
+              <AppFeedPostRow
+                v-else
+                :post="item.post"
+                :show-collapsed-replies-footer="false"
+                @deleted="removePost"
+                @edited="onEdited"
+              />
+            </template>
+          </div>
+        </AppSubtleSectionLoader>
+
+        <div v-if="nextCursor" class="relative flex justify-center items-center py-6 min-h-12">
+          <div ref="loadMoreSentinelEl" class="absolute bottom-0 left-0 right-0 h-px" aria-hidden="true" />
+          <div
+            class="transition-opacity duration-150"
+            :class="loadingMore ? 'opacity-100' : 'opacity-0 pointer-events-none'"
+            :aria-hidden="!loadingMore"
+          >
+            <AppLogoLoader compact />
+          </div>
+        </div>
+      </section>
     </div>
 
     <AppCrewEditCrewDialog

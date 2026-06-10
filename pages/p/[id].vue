@@ -1,5 +1,6 @@
 <template>
   <AppPageContent bottom="standard">
+  <AppJoinBanner />
   <div class="w-full">
     <div v-if="errorText" class="px-4 mt-4">
       <div class="rounded-xl border border-gray-200 bg-gray-50 p-4 dark:border-zinc-800 dark:bg-zinc-950/40">

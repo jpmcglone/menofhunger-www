@@ -56,6 +56,39 @@
                 </button>
               </header>
 
+              <!-- Streak congratulation (check-ins only) — green = accountability, orange flame = streak heat -->
+              <div
+                v-if="isCheckin && streakDays > 0"
+                class="mx-5 mb-3 flex items-center gap-2 rounded-xl border px-3 py-2"
+                style="background-color: var(--moh-checkin-soft); border-color: rgba(var(--moh-checkin-rgb), 0.3)"
+              >
+                <span class="text-lg leading-none" aria-hidden="true">🔥</span>
+                <div class="min-w-0">
+                  <span class="text-sm font-semibold" style="color: var(--moh-checkin)">
+                    {{ streakDays }}-day streak — keep it up!
+                  </span>
+                  <span v-if="streakDays >= 7" class="ml-1.5 text-xs opacity-75" style="color: var(--moh-checkin)">
+                    That's {{ Math.floor(streakDays / 7) === 1 ? 'a full week' : Math.floor(streakDays / 7) + ' weeks' }}.
+                  </span>
+                </div>
+              </div>
+
+              <!-- "See how N others answered" link (check-ins only) -->
+              <NuxtLink
+                v-if="checkinDayKey"
+                :to="`/check-ins/day/${checkinDayKey}`"
+                class="mx-5 mb-3 flex items-center justify-between gap-2 rounded-xl border moh-border px-3 py-2.5 text-sm font-medium moh-text hover:bg-black/[0.03] dark:hover:bg-white/[0.05] transition-colors"
+                @click="close"
+              >
+                <span>
+                  <template v-if="socialProofTotal > 1">
+                    See how {{ socialProofTotal - 1 }} {{ socialProofTotal === 2 ? 'other man' : 'other men' }} answered
+                  </template>
+                  <template v-else>See how others answered</template>
+                </span>
+                <Icon name="tabler:arrow-right" size="16" class="shrink-0 moh-text-muted" aria-hidden="true" />
+              </NuxtLink>
+
               <!-- Post preview — tapping navigates to the post and closes the dialog -->
               <div class="px-5" @click="close">
                 <AppEmbeddedPostPreview :preloaded-post="post" />
@@ -101,6 +134,8 @@
 import type { FeedPost } from '~/types/api'
 import { siteConfig } from '~/config/site'
 
+const { user } = useAuth()
+
 const props = defineProps<{
   open: boolean
   post: FeedPost
@@ -117,6 +152,13 @@ const { copyText } = useCopyToClipboard()
 
 const isCheckin = computed(() => props.post.kind === 'checkin')
 const checkinPrompt = computed(() => (props.post.checkinPrompt ?? '').trim() || null)
+const streakDays = computed(() => (isCheckin.value ? (user.value?.checkinStreakDays ?? 0) : 0))
+
+const checkinDayKey = computed(() => (isCheckin.value ? (props.post.checkinDayKey ?? null) : null))
+
+// Social proof for check-in posts — read from the shared cache populated by useDailyCheckin.
+const { state: checkinState, refresh: refreshCheckin } = useDailyCheckin()
+const socialProofTotal = computed(() => checkinState.value?.socialProof?.totalToday ?? 0)
 
 const shareUrl = computed(
   () => `${siteConfig.url}/p/${encodeURIComponent(props.post.id)}`,
@@ -180,8 +222,13 @@ watch(
   (open) => {
     if (!import.meta.client) return
     const root = document.documentElement
-    if (open) root.style.overflow = 'hidden'
-    else root.style.overflow = ''
+    if (open) {
+      root.style.overflow = 'hidden'
+      // Prime the social-proof count from cache (near-free TTL hit right after posting).
+      if (isCheckin.value) void refreshCheckin()
+    } else {
+      root.style.overflow = ''
+    }
   },
 )
 

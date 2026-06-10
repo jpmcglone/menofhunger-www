@@ -44,6 +44,7 @@ import type {
   NotificationsCallback,
   PostsCallback,
   RadioCallback,
+  ReferralCallback,
   SpacesCallback,
   UsersCallback,
   WsCrewDisbandedPayload,
@@ -56,6 +57,7 @@ import type {
   WsCrewUpdatedPayload,
   WsCrewWallPayload,
   WsGroupInviteUpdatedPayload,
+  WsReferralRecruitUpdatedPayload,
 } from './types'
 import { useUsersStore } from '~/composables/useUsersStore'
 
@@ -107,6 +109,7 @@ export function usePresenceDomains() {
   const groupFeedCallbacks = useState<Set<GroupFeedCallback>>('presence-group-feed-callbacks', () => new Set())
   const checkinsCallbacks = useState<Set<CheckinsCallback>>('presence-checkins-callbacks', () => new Set())
   const marvCallbacks = useState<Set<MarvCallback>>('presence-marv-callbacks', () => new Set())
+  const referralCallbacks = useState<Set<ReferralCallback>>('presence-referral-callbacks', () => new Set())
 
   function makeRegistry<T>(set: Ref<Set<T>>) {
     return {
@@ -133,6 +136,7 @@ export function usePresenceDomains() {
   const groupFeeds = makeRegistry(groupFeedCallbacks)
   const checkins = makeRegistry(checkinsCallbacks)
   const marv = makeRegistry(marvCallbacks)
+  const referrals = makeRegistry(referralCallbacks)
 
   function registerSocketHandlers(socket: Socket) {
     // ── Notifications / Marv ──────────────────────────────────────────
@@ -540,6 +544,12 @@ export function usePresenceDomains() {
       if (!checkinsCallbacks.value.size) return
       for (const cb of checkinsCallbacks.value) cb.onAnsweredToday?.(data)
     })
+
+    // ── Referrals ─────────────────────────────────────────────────────
+    socket.on('referrals:recruit-updated', (data: WsReferralRecruitUpdatedPayload) => {
+      if (!referralCallbacks.value.size) return
+      for (const cb of referralCallbacks.value) cb.onRecruitUpdated?.(data)
+    })
   }
 
   return {
@@ -557,6 +567,7 @@ export function usePresenceDomains() {
     groupFeeds,
     checkins,
     marv,
+    referrals,
     registerSocketHandlers,
   }
 }

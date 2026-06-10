@@ -37,7 +37,7 @@
           </li>
           <li class="flex gap-2">
             <Icon name="tabler:check" class="mt-1 text-sm text-gray-500 dark:text-gray-400" aria-hidden="true" />
-            <span><strong class="text-gray-900 dark:text-gray-100">Brotherhood</strong> over isolation.</span>
+            <span><strong class="text-gray-900 dark:text-gray-100">Community</strong> over isolation.</span>
           </li>
         </ul>
       </div>
@@ -102,7 +102,7 @@ definePageMeta({
 usePageSeo({
   title: 'About',
   description:
-    'Men of Hunger is a trusted community for men who want real conversation, not more noise — accountability, honest dialogue, and brotherhood.',
+    'Men of Hunger is a trusted community for men who want real conversation, not more noise — accountability, honest dialogue, and community.',
   canonicalPath: '/about',
   ogType: 'website',
   image: '/images/banner.png',

@@ -299,6 +299,37 @@
         </div>
       </div>
 
+      <!-- Referral Pilot card -->
+      <div v-if="user" class="px-4">
+        <div class="rounded-2xl border border-gray-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 p-4 space-y-3">
+          <div class="flex items-center justify-between gap-2">
+            <div class="text-sm font-semibold text-gray-900 dark:text-gray-50">Referral Pilot</div>
+            <NuxtLink to="/admin/affiliates" class="text-xs text-blue-600 dark:text-blue-400 hover:underline">View all pilot members</NuxtLink>
+          </div>
+          <div class="flex items-center justify-between gap-3 text-sm">
+            <div class="moh-text-muted">Cash pilot membership</div>
+            <div class="flex items-center gap-2">
+              <span :class="isAffiliate ? 'text-green-600 dark:text-green-400' : 'text-gray-400'">
+                {{ isAffiliate ? 'Enabled' : 'Disabled' }}
+              </span>
+              <Button
+                :label="isAffiliate ? 'Disable' : 'Enable'"
+                size="small"
+                :severity="isAffiliate ? 'danger' : 'contrast'"
+                :loading="affiliateSaving"
+                outlined
+                @click="toggleAffiliate"
+              />
+            </div>
+          </div>
+          <AppInlineAlert v-if="affiliateError" severity="danger" class="text-xs">{{ affiliateError }}</AppInlineAlert>
+          <p class="text-xs text-gray-400 dark:text-gray-500">
+            Pilot members earn $1 signup / +$3 verified / +$10 first Premium month / +$10 still Premium at 60 days.
+            Max $24 per recruit, $1,000 per member. Only recruits who join <em>after</em> enabling count for cash.
+          </p>
+        </div>
+      </div>
+
       <!-- Recent cards -->
       <div class="px-4 grid gap-4 lg:grid-cols-3">
         <!-- Posts -->
@@ -432,6 +463,9 @@ const recentPosts = ref<AdminUserRecentPost[]>([])
 const recentArticles = ref<AdminUserRecentArticle[]>([])
 const recentSearches = ref<AdminUserRecentSearch[]>([])
 const referralInfo = ref<AdminReferralInfo | null>(null)
+const isAffiliate = ref(false)
+const affiliateSaving = ref(false)
+const affiliateError = ref<string | null>(null)
 
 const verifiedStatusOptions: Array<{ label: string; value: 'none' | 'identity' | 'manual' }> = [
   { label: 'None', value: 'none' },
@@ -532,9 +566,14 @@ async function loadPage() {
     sensitiveRevealed.value = false
     revealedSensitive.value = null
     resetEditForm()
-    // Load referral info separately (best-effort, non-blocking).
+    // Load referral + affiliate info separately (best-effort, non-blocking).
     try {
-      referralInfo.value = await apiFetchData<AdminReferralInfo>(`/admin/users/${encodeURIComponent(detail.id)}/referral`)
+      const [referral, affiliateRes] = await Promise.all([
+        apiFetchData<AdminReferralInfo>(`/admin/users/${encodeURIComponent(detail.id)}/referral`),
+        apiFetchData<{ userId: string; isAffiliate: boolean; affiliateAt: string | null }>(`/admin/users/${encodeURIComponent(detail.id)}/affiliate`).catch(() => ({ userId: detail.id, isAffiliate: false, affiliateAt: null })),
+      ])
+      referralInfo.value = referral
+      isAffiliate.value = affiliateRes.isAffiliate
     } catch {
       referralInfo.value = null
     }
@@ -542,6 +581,25 @@ async function loadPage() {
     loadError.value = getApiErrorMessage(e) || 'Failed to load user.'
   } finally {
     loading.value = false
+  }
+}
+
+async function toggleAffiliate() {
+  const userId = user.value?.id
+  if (!userId || affiliateSaving.value) return
+  affiliateSaving.value = true
+  affiliateError.value = null
+  const newValue = !isAffiliate.value
+  try {
+    await apiFetchData(`/admin/users/${encodeURIComponent(userId)}/affiliate`, {
+      method: 'PATCH',
+      body: { enabled: newValue },
+    })
+    isAffiliate.value = newValue
+  } catch (e) {
+    affiliateError.value = getApiErrorMessage(e) || 'Failed to update affiliate status.'
+  } finally {
+    affiliateSaving.value = false
   }
 }
 

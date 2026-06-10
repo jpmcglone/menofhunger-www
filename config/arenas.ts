@@ -56,7 +56,7 @@ export const LIFE_ARENAS: LifeArena[] = [
     key: 'family',
     label: 'Family',
     icon: 'tabler:users',
-    description: 'Fatherhood, marriage, brotherhood, community',
+    description: 'Fatherhood, marriage, community, connection',
     categoryKey: 'relationships',
     featuredInterests: [
       'fatherhood',

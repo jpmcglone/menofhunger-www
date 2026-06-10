@@ -107,7 +107,7 @@ export const interestOptions: InterestOption[] = [
   { value: 'fatherhood', label: 'Fatherhood', group: 'Relationships', keywords: ['dad', 'dads', 'parenting'] },
   { value: 'family', label: 'Family', group: 'Relationships', keywords: ['kids', 'parenting'] },
   { value: 'friendship', label: 'Friendship', group: 'Relationships', keywords: ['friends'] },
-  { value: 'brotherhood', label: 'Brotherhood', group: 'Relationships', keywords: ["men's groups", 'mens groups', 'mens_groups', "men's group", 'brotherhood'] },
+  { value: 'brotherhood', label: 'Community', group: 'Relationships', keywords: ["men's groups", 'mens groups', 'mens_groups', "men's group", 'brotherhood'] },
   { value: 'mentorship', label: 'Mentorship', group: 'Relationships', keywords: ['mentoring', 'mentor', 'coaching'] },
   { value: 'community', label: 'Community', group: 'Relationships', keywords: ['volunteering', 'service', 'volunteer', 'charity', 'nonprofit'] },
   { value: 'communication', label: 'Communication', group: 'Relationships', keywords: ['listening'] },

@@ -44,8 +44,8 @@ const props = defineProps<{
   ctaTo?: string
 }>()
 
-const ctaLabel = computed(() => props.ctaLabel ?? 'Go to settings')
-const ctaTo = computed(() => props.ctaTo ?? '/settings')
+const ctaLabel = computed(() => props.ctaLabel ?? (props.kind === 'verify' ? 'Get verified' : 'See plans'))
+const ctaTo = computed(() => props.ctaTo ?? (props.kind === 'verify' ? '/settings/verification' : '/tiers'))
 
 const title = computed(() => {
   if (props.kind === 'verify') return 'Verified members only'

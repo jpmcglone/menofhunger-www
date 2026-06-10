@@ -3,6 +3,7 @@ import type {
   CrewInvite,
   CrewPrivate,
   CrewPublic,
+  OpenCrewMember,
 } from '~/types/api'
 
 type ApiFetchData = ReturnType<typeof useApiClient>['apiFetchData']
@@ -151,6 +152,18 @@ export function useCrew() {
     await apiFetchData(`/crew/me/transfer-votes/${encodeURIComponent(voteId)}`, { method: 'DELETE' })
   }
 
+  async function setAvailability(open: boolean): Promise<{ open: boolean }> {
+    return await apiFetchData<{ open: boolean }>('/crew/availability', {
+      method: 'PUT',
+      body: { open },
+    })
+  }
+
+  async function listOpenMembers(): Promise<OpenCrewMember[]> {
+    const res = await apiFetchData<{ members: OpenCrewMember[] }>('/crew/open-members')
+    return res?.members ?? []
+  }
+
   return {
     getMyCrew,
     updateMyCrew,
@@ -171,6 +184,8 @@ export function useCrew() {
     openTransferVote,
     castTransferBallot,
     cancelTransferVote,
+    setAvailability,
+    listOpenMembers,
   }
 }
 

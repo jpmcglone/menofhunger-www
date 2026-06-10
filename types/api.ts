@@ -81,12 +81,11 @@ export type BillingMe = {
   referralBonusGranted: boolean
 }
 
-export type Recruit = {
-  id: string
-  username: string | null
-  name: string | null
-  avatarKey: string | null
+export type Recruit = Omit<FollowListUser, 'relationship'> & {
+  relationship?: FollowRelationship
   recruitedAt: string
+  /** @deprecated use verifiedStatus !== 'none' */
+  isVerified: boolean
   isPremium: boolean
   bonusGranted: boolean
 }
@@ -113,6 +112,61 @@ export type AdminReferralAnalytics = {
   conversionRatePct: number
   recruitsOverTime: Array<{ bucket: string; count: number }>
   topRecruiters: Array<{ userId: string; username: string | null; name: string | null; recruitCount: number }>
+}
+
+// ─── Affiliate program (Referral Pilot) ──────────────────────────────────────
+
+export type AffiliateEarningType = 'signup' | 'verified' | 'premium' | 'premium60d'
+
+export type AffiliateEarning = {
+  id: string
+  recruitUserId: string
+  recruitUsername: string | null
+  recruitName: string | null
+  type: AffiliateEarningType
+  /** Amount in cents (USD). */
+  amountCents: number
+  createdAt: string
+  settledAt: string | null
+}
+
+export type AffiliateSummary =
+  | { isAffiliate: false }
+  | {
+      isAffiliate: true
+      pendingCents: number
+      settledCents: number
+      /** Total lifetime earnings (pending + settled). */
+      totalCents: number
+      /** Minimum pending balance required to trigger a payout. */
+      minPayoutCents: number
+      /** Per-member lifetime earnings cap. */
+      capCents: number
+      /** True when totalCents >= capCents. */
+      capReached: boolean
+      counts: { signups: number; verified: number; premium: number; premium60d: number }
+      earnings: AffiliateEarning[]
+    }
+
+export type AdminAffiliateUser = {
+  userId: string
+  username: string | null
+  name: string | null
+  affiliateAt: string
+  recruitCount: number
+  pendingCents: number
+  settledCents: number
+  /** Total lifetime earnings (pending + settled). */
+  totalCents: number
+  /** Per-member lifetime earnings cap. */
+  capCents: number
+  /** True when totalCents >= capCents. */
+  capReached: boolean
+}
+
+export type AdminAffiliateSettle = {
+  settledCount: number
+  settledCents: number
 }
 
 /** Summary of banked free months for admin grant management UI. */
@@ -1569,6 +1623,8 @@ export type UserDto = {
   checkinStreakDays: number
   lastCheckinDayKey: string | null
   longestStreakDays: number
+  /** True when the user has opted in to the crew-discovery directory. */
+  openToCrew: boolean
   /** Included by /auth/me bootstrap response for fast badge hydration. */
   notificationUndeliveredCount?: number
   /** Included by /auth/me bootstrap response for fast badge hydration. */
@@ -2303,6 +2359,12 @@ export type CrewBySlugResponse = {
   crew: CrewPublic
   redirectedFromSlug: string | null
   viewerMembership: CrewBySlugViewerMembership | null
+}
+
+/** An entry in the open-to-crew discovery directory. */
+export type OpenCrewMember = {
+  user: CrewUserSummary
+  sharedInterests: string[]
 }
 
 // ─── Marv (AI helper) ────────────────────────────────────────────────────────

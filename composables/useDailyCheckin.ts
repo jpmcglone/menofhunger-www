@@ -3,10 +3,21 @@ import { getSafeUserErrorMessage } from '~/utils/api-error'
 
 const TODAY_CHECKIN_CACHE_TTL_MS = 30_000
 
+/**
+ * Global crew streak state populated whenever /checkins/today loads.
+ * Readable from any component (e.g. the nav) without an extra fetch.
+ */
+export function useCrewCheckinStreak() {
+  const days = useState<number | null>('moh.checkin.crew-streak-days', () => null)
+  function set(n: number | null) { days.value = n }
+  return { days, set }
+}
+
 export function useDailyCheckin() {
   const { apiFetchData } = useApiClient()
   const { user } = useAuth()
   const { dayKey } = useEasternMidnightRollover()
+  const crewStreak = useCrewCheckinStreak()
 
   const state = ref<GetCheckinsTodayResponse | null>(null)
   const loading = ref(false)
@@ -24,6 +35,7 @@ export function useDailyCheckin() {
     const hit = key ? cache.value[key] : null
     if (hit && hit.expiresAt > Date.now()) {
       state.value = hit.data
+      crewStreak.set(hit.data.crew?.currentStreakDays ?? null)
       error.value = null
       return
     }
@@ -38,6 +50,7 @@ export function useDailyCheckin() {
     try {
       const next = await apiFetchData<GetCheckinsTodayResponse>('/checkins/today', { method: 'GET' })
       state.value = next
+      crewStreak.set(next.crew?.currentStreakDays ?? null)
       if (key) cache.value = { ...cache.value, [key]: { expiresAt: Date.now() + TODAY_CHECKIN_CACHE_TTL_MS, data: next } }
     } catch (e: any) {
       error.value = getSafeUserErrorMessage(e, 'Failed to load check-in.')
@@ -70,6 +83,9 @@ export function useDailyCheckin() {
           m.isViewer && !m.answeredToday ? { ...m, answeredToday: true } : m,
         )
       }
+      // Keep global crew streak state in sync (real crew streak advances only after
+      // all members check in; for now just preserve the existing value).
+      crewStreak.set(state.value.crew?.currentStreakDays ?? null)
     } else {
       // State never loaded (initial GET failed). Bootstrap from the create response
       // so the compact card renders after answering rather than staying invisible.

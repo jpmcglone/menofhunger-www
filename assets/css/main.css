@@ -378,6 +378,15 @@ input[type="reset"] {
        letterbox area shows the page, not a tinted/black box. */
     background-color: transparent;
   }
+  /* PrimeVue's ripple ink (.p-ink) paints with the primary color — which is
+     the premium orange for premium viewers. The media button is a zoom
+     target, not a tactile button, and with a transparent letterbox the ink
+     bleeds through transparent PNGs (e.g. rounded-corner share images) and is
+     "left behind" in the post-row slot when the image zooms into the lightbox.
+     Suppress it so transparent media stays truly clear. */
+  .moh-media-frame .p-ink {
+    display: none;
+  }
 
   /* Pause icon on listener avatars: plain icon, white with shadow for readability on photos */
   .moh-avatar-pause .pi {

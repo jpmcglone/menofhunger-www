@@ -300,6 +300,13 @@
             @unfollowed="emit('unfollowed')"
           />
           <Button
+            v-else-if="!isAuthed && profile?.id"
+            label="Follow"
+            rounded
+            size="small"
+            @click="showAuthActionModal({ kind: 'login', action: 'follow' })"
+          />
+          <Button
             v-if="canOpenMenu"
             type="button"
             severity="secondary"
@@ -588,6 +595,7 @@ const followerLabel = computed(() => (followerCountN.value === 1 ? 'Follower' : 
 
 const { user: authUser } = useAuth()
 const isAuthed = computed(() => Boolean(authUser.value?.id))
+const { show: showAuthActionModal } = useAuthActionModal()
 const viewerCanStartChats = computed(() => Boolean(authUser.value?.premium || authUser.value?.premiumPlus))
 const viewerIsVerified = computed(() => (authUser.value?.verifiedStatus ?? 'none') !== 'none')
 

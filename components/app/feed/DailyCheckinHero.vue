@@ -39,7 +39,7 @@
           <div class="flex items-center gap-2">
             <span
               class="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full"
-              style="background: rgba(16, 185, 129, 0.12); color: rgb(16, 185, 129)"
+              style="background: rgba(var(--moh-checkin-rgb), 0.12); color: var(--moh-checkin)"
               aria-hidden="true"
             >
               <Icon name="tabler:check" size="11" />
@@ -90,7 +90,7 @@
                 v-for="m in crewMembers"
                 :key="m.userId"
                 class="h-2 w-2 rounded-full"
-                :class="m.answeredToday ? 'bg-emerald-500' : 'bg-gray-300 dark:bg-gray-600'"
+                :class="m.answeredToday ? 'bg-[var(--moh-checkin)]' : 'bg-gray-300 dark:bg-gray-600'"
                 :title="m.answeredToday ? `${m.displayName ?? m.username ?? 'Member'} · answered` : `${m.displayName ?? m.username ?? 'Member'} · waiting`"
               />
             </div>
@@ -110,9 +110,11 @@
                 />
               </div>
             </div>
-            <p class="text-xs moh-text-muted truncate min-w-0 flex-1">
-              {{ compactSocialProofLine }}
-            </p>
+            <NuxtLink
+              :to="`/check-ins/day/${props.state?.dayKey ?? etDayKey}`"
+              class="text-xs moh-text-muted truncate min-w-0 flex-1 hover:underline relative z-10"
+              @click.stop
+            >{{ compactSocialProofLine }}</NuxtLink>
           </div>
         </div>
       </div>
@@ -140,17 +142,22 @@
 
         <div
           class="relative z-[2] shrink-0 flex h-11 w-11 flex-col items-center justify-center rounded-xl"
+          :style="weeklyMission.status === 'complete'
+            ? undefined
+            : { background: 'rgba(var(--moh-checkin-rgb), 0.1)' }"
           :class="weeklyMission.status === 'complete'
             ? 'bg-amber-100 dark:bg-amber-500/15'
-            : 'bg-gray-100 dark:bg-zinc-800'"
+            : ''"
         >
           <span
             class="text-lg font-black leading-none tabular-nums"
-            :class="weeklyMission.status === 'complete' ? 'text-amber-600 dark:text-amber-400' : 'moh-text'"
+            :class="weeklyMission.status === 'complete' ? 'text-amber-600 dark:text-amber-400' : ''"
+            :style="weeklyMission.status !== 'complete' ? { color: 'var(--moh-checkin)' } : undefined"
           >{{ effectivePersonalStreak }}</span>
           <span
             class="text-[9px] font-semibold uppercase tracking-wide leading-none mt-0.5"
-            :class="weeklyMission.status === 'complete' ? 'text-amber-500 dark:text-amber-400' : 'moh-text-muted'"
+            :class="weeklyMission.status === 'complete' ? 'text-amber-500 dark:text-amber-400' : ''"
+            :style="weeklyMission.status !== 'complete' ? { color: 'var(--moh-checkin)', opacity: '0.8' } : undefined"
           >{{ effectivePersonalStreak === 1 ? 'day' : 'days' }}</span>
         </div>
 
@@ -232,7 +239,7 @@
           {{ promptText }}
         </h1>
 
-        <!-- Answered: show the user's own answer + quiet confirmation. -->
+        <!-- Answered: show the user's own answer + quiet confirmation + day-page link. -->
         <div v-if="hasAnswered" class="mt-4">
           <div class="flex items-center gap-2 text-sm font-semibold moh-text">
             <Icon name="tabler:check" class="text-emerald-500" size="16" aria-hidden="true" />
@@ -244,6 +251,13 @@
           >
             "{{ myCheckinSnippet }}"
           </p>
+          <NuxtLink
+            :to="`/check-ins/day/${props.state?.dayKey ?? etDayKey}`"
+            class="mt-3 inline-flex items-center gap-1.5 text-sm font-medium moh-text-muted hover:moh-text transition-colors"
+          >
+            See today's answers
+            <Icon name="tabler:arrow-right" size="14" aria-hidden="true" />
+          </NuxtLink>
         </div>
 
         <!-- Not answered: single primary action. Logged-out users go to login wall. -->
@@ -297,7 +311,7 @@
               />
               <span
                 v-if="m.answeredToday"
-                class="absolute -bottom-0.5 -right-0.5 inline-flex h-3.5 w-3.5 items-center justify-center rounded-full bg-emerald-500 ring-2 ring-[var(--moh-bg)]"
+                class="absolute -bottom-0.5 -right-0.5 inline-flex h-3.5 w-3.5 items-center justify-center rounded-full bg-[var(--moh-checkin)] ring-2 ring-[var(--moh-bg)]"
                 aria-hidden="true"
               >
                 <Icon name="tabler:check" size="9" class="text-white" />
@@ -443,7 +457,7 @@ const headerLabel = computed(() => (crew.value ? "Your crew's question today" : 
 const crewHref = computed(() => (crew.value ? `/c/${crew.value.slug}` : '/c'))
 
 function displayCrewMemberName(member: CheckinCrewMemberStatus): string {
-  return (member.displayName ?? member.username ?? 'A brother').trim()
+  return (member.displayName ?? member.username ?? 'A member').trim()
 }
 
 function formatCrewNames(names: string[], max = 2): string {
@@ -577,18 +591,19 @@ const compactSocialProofLine = computed(() => {
   }
   // Mirror the full hero's wording but tightened for one line.
   const total = totalToday.value
-  if (total <= 1) return "You're the first today."
+  if (total <= 1) return isAuthed.value ? "You're the first today." : 'No one has answered yet today.'
+  // Subtract 1 for the viewer (compact variant is only shown when the viewer has answered).
   const others = Math.max(0, total - 1)
-  return `${others.toLocaleString()} other${others === 1 ? '' : 's'} answered today.`
+  return `${others.toLocaleString()} other ${others === 1 ? 'man' : 'men'} answered today.`
 })
 
 const socialProofLine = computed(() => {
   const total = totalToday.value
   const list = recentAnswerers.value
   if (total <= 0) {
-    return hasAnswered.value
-      ? "You're the first today. Nice work."
-      : 'Be the first to answer today.'
+    if (hasAnswered.value) return "You're the first today. Nice work."
+    if (!isAuthed.value) return 'No one has answered yet today.'
+    return 'Be the first to answer today.'
   }
   if (list.length === 0) {
     return total === 1

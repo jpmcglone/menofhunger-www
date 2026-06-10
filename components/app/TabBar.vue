@@ -36,7 +36,10 @@
               <Icon
                 :name="isActive(item.to) ? (item.iconActive || item.icon) : item.icon"
                 size="24"
-                :class="['opacity-90', item.iconClass]"
+                :class="['opacity-90', item.iconClass, item.key === 'check-ins' ? '!opacity-100' : '']"
+                :style="item.key === 'check-ins'
+                  ? `color: var(--moh-checkin); opacity: ${viewerCrewMembership !== null ? '1' : '0.75'}`
+                  : undefined"
                 aria-hidden="true"
               />
               <AppNotificationBadge v-if="item.key === 'notifications'" />
@@ -92,9 +95,30 @@
               <Icon name="tabler:coin" size="13" aria-hidden="true" />
               {{ moreUser.coins!.toLocaleString() }} coins
             </NuxtLink>
-            <span v-if="(moreUser.checkinStreakDays ?? 0) > 0" class="flex items-center gap-1 text-xs font-medium text-orange-500 dark:text-orange-400 tabular-nums">
+            <!-- Personal streak (orange) + crew streak (green) when in a crew -->
+            <span v-if="viewerCrewMembership && moreCrewStreakDays !== null" class="flex items-center gap-1 tabular-nums">
+              <span class="flex items-center gap-0.5 text-xs font-medium text-orange-500 dark:text-orange-400">
+                <Icon name="tabler:flame" size="13" aria-hidden="true" />
+                {{ moreUser?.checkinStreakDays ?? 0 }}d
+              </span>
+              <span class="text-gray-400 dark:text-gray-500 font-normal text-xs">·</span>
+              <NuxtLink
+                :to="viewerCrewMembership.crewSlug ? `/c/${viewerCrewMembership.crewSlug}` : '/crew'"
+                class="flex items-center gap-0.5 text-xs font-semibold hover:underline"
+                style="color: var(--moh-checkin)"
+                @click.stop
+              >
+                <Icon name="tabler:users" size="13" class="opacity-80" aria-hidden="true" />
+                {{ moreCrewStreakDays }}d crew
+              </NuxtLink>
+            </span>
+            <!-- Personal streak only (no crew) -->
+            <span
+              v-else-if="(moreUser?.checkinStreakDays ?? 0) > 0"
+              class="flex items-center gap-1 text-xs font-medium text-orange-500 dark:text-orange-400 tabular-nums"
+            >
               <Icon name="tabler:flame" size="13" aria-hidden="true" />
-              {{ moreUser.checkinStreakDays }}d streak
+              {{ moreUser!.checkinStreakDays }}d streak
             </span>
           </div>
         </div>
@@ -119,7 +143,10 @@
                 <Icon
                   :name="moreMenuIconName(mi)"
                   size="20"
-                  :class="['opacity-90', mi.iconClass]"
+                  :class="['opacity-90', mi.iconClass, mi.key === 'check-ins' ? '!opacity-100' : '']"
+                  :style="mi.key === 'check-ins'
+                    ? `color: var(--moh-checkin); opacity: ${viewerCrewMembership !== null ? '1' : '0.75'}`
+                    : undefined"
                   aria-hidden="true"
                 />
                 <div
@@ -225,6 +252,8 @@ const route = useRoute()
 const { isActive } = useRouteMatch(route)
 const { requestLogout } = useUserMenu()
 const { user } = useAuth()
+const { membership: viewerCrewMembership } = useViewerCrew()
+const { days: moreCrewStreakDays } = useCrewCheckinStreak()
 const middleScrollerRef = useMiddleScroller()
 const haptics = useHaptics()
 const { notificationUnreadCommentCount } = usePresence()

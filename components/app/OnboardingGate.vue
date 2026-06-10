@@ -511,12 +511,10 @@ async function submit() {
       clearReferralCapture()
     }
 
-    // Post-signup: once onboarding is complete, send them to their profile (preserve capitalization).
+    // Post-signup: land on Home so the welcome card, who-to-follow rows, and
+    // check-in hero are the guaranteed first screen instead of an empty profile.
     if (route.query.welcome === '1') {
-      const username = (user.value?.username ?? '').trim()
-      if (username) {
-        await navigateTo(`/u/${encodeURIComponent(username)}`)
-      }
+      await navigateTo('/home', { replace: true })
     }
   } catch (e: unknown) {
     error.value = getApiErrorMessage(e) || 'Failed to save. Please try again.'

@@ -67,7 +67,7 @@
           severity="secondary"
           rounded
           class="shrink-0 !h-8 !min-h-8 !px-3 !py-0 !text-xs !leading-none whitespace-nowrap"
-          @click="$emit('find-people')"
+          @click="$emit('post')"
         />
       </div>
     </div>
@@ -105,6 +105,7 @@ defineProps<{
 
 defineEmits<{
   (e: 'find-people'): void
+  (e: 'post'): void
   (e: 'check-in'): void
 }>()
 

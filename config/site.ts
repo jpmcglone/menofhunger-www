@@ -22,7 +22,7 @@ export const siteConfig = {
     'Leadership',
     'Ambition',
     'Men\'s community',
-    'Brotherhood',
+    'Community',
     'Fitness',
     'Business',
     'Faith',

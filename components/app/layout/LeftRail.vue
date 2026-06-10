@@ -88,7 +88,10 @@
                   v-else
                   :name="isActiveNav(item.to) ? (item.iconActive || item.icon) : item.icon"
                   size="28"
-                  :class="['opacity-90', item.iconClass]"
+                  :class="['opacity-90', item.iconClass, item.key === 'check-ins' ? '!opacity-100' : '']"
+                  :style="item.key === 'check-ins'
+                    ? `color: var(--moh-checkin); opacity: ${viewerCrewMembership !== null ? '1' : '0.75'}`
+                    : undefined"
                   aria-hidden="true"
                 />
                 <div
@@ -119,6 +122,31 @@
                     v-if="item.key === 'spaces' && totalLobbyCount > 0"
                     class="text-sm font-medium moh-meta tabular-nums"
                   >({{ totalLobbyCount }})</span>
+                  <!-- In a crew: personal streak (orange) + crew streak (green) -->
+                  <span
+                    v-if="item.key === 'check-ins' && viewerCrewMembership !== null && crewStreakDays !== null"
+                    class="inline-flex items-center gap-1.5"
+                  >
+                    <span class="text-sm font-medium text-orange-500 dark:text-orange-400 tabular-nums">
+                      🔥 {{ user?.checkinStreakDays ?? 0 }}d
+                    </span>
+                    <span class="text-xs moh-text-muted font-normal opacity-50">·</span>
+                    <NuxtLink
+                      :to="viewerCrewMembership.crewSlug ? `/c/${viewerCrewMembership.crewSlug}` : '/crew'"
+                      class="inline-flex items-center gap-0.5 text-sm font-semibold tabular-nums hover:underline"
+                      style="color: var(--moh-checkin)"
+                      title="Crew streak"
+                      @click.stop
+                    >
+                      <Icon name="tabler:users" size="13" class="shrink-0 opacity-80" aria-hidden="true" />
+                      {{ crewStreakDays }}d
+                    </NuxtLink>
+                  </span>
+                  <!-- No crew (or crew streak not yet loaded): just personal streak -->
+                  <span
+                    v-else-if="item.key === 'check-ins' && (user?.checkinStreakDays ?? 0) > 0"
+                    class="text-sm font-medium text-orange-500 dark:text-orange-400 tabular-nums"
+                  >{{ user!.checkinStreakDays }}d</span>
                 </ClientOnly>
               </span>
             </NuxtLink>
@@ -189,7 +217,10 @@
                       v-else
                       :name="isActiveNav(mi.to) ? (mi.iconActive || mi.icon) : mi.icon"
                       size="22"
-                      :class="mi.iconClass"
+                      :class="[mi.iconClass, mi.key === 'check-ins' ? '!opacity-100' : '']"
+                      :style="mi.key === 'check-ins'
+                        ? `color: var(--moh-checkin); opacity: ${viewerCrewMembership !== null ? '1' : '0.75'}`
+                        : undefined"
                       aria-hidden="true"
                     />
                     <AppNotificationBadge v-if="mi.key === 'notifications'" />
@@ -289,6 +320,8 @@ const props = defineProps<{
 const route = useRoute()
 const { isActive: isActiveNav } = useRouteMatch(route)
 const { user } = useAuth()
+const { membership: viewerCrewMembership } = useViewerCrew()
+const { days: crewStreakDays } = useCrewCheckinStreak()
 const { isAuthed, primaryItems: primaryNavItems } = useAppNav()
 const { notificationUnreadCommentCount } = usePresence()
 const { totalLobbyCount } = useSpaceLobby()

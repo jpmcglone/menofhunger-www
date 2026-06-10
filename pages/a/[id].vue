@@ -1,5 +1,6 @@
 <template>
   <AppPageContent bottom="standard">
+    <AppJoinBanner />
     <!-- Reading progress bar (hidden for gated articles) -->
     <ClientOnly>
       <AppArticleProgressBar v-if="article && article.viewerCanAccess !== false" :visibility="article.visibility" />
@@ -154,14 +155,14 @@
             </p>
           </div>
           <NuxtLink
-            to="/settings/billing"
+            :to="article.visibility === 'premiumOnly' ? '/tiers' : '/settings/verification'"
             :class="[
               'mt-2 inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold text-white shadow transition-opacity hover:opacity-90',
               article.visibility === 'premiumOnly' ? 'bg-orange-500' : 'bg-blue-500',
             ]"
           >
             <Icon name="tabler:arrow-right" aria-hidden="true" />
-            {{ article.visibility === 'premiumOnly' ? 'Upgrade to Premium' : 'Get Verified' }}
+            {{ article.visibility === 'premiumOnly' ? 'See plans' : 'Get verified' }}
           </NuxtLink>
         </div>
         </template>
@@ -410,24 +411,40 @@
                   />
                 </NuxtLink>
                 <div
-                  v-if="isAuthed && !viewerIsAuthor && article.author.id && article.author.username"
+                  v-if="!viewerIsAuthor && article.author.id && article.author.username"
                   class="hidden sm:block shrink-0"
                 >
                   <AppFollowButton
+                    v-if="isAuthed"
                     :user-id="article.author.id"
                     :username="article.author.username"
                     size="small"
                   />
+                  <Button
+                    v-else
+                    label="Follow"
+                    rounded
+                    size="small"
+                    @click="showAuthActionModal({ kind: 'login', action: 'follow' })"
+                  />
                 </div>
               </div>
               <div
-                v-if="isAuthed && !viewerIsAuthor && article.author.id && article.author.username"
+                v-if="!viewerIsAuthor && article.author.id && article.author.username"
                 class="mt-2 sm:hidden"
               >
                 <AppFollowButton
+                  v-if="isAuthed"
                   :user-id="article.author.id"
                   :username="article.author.username"
                   size="small"
+                />
+                <Button
+                  v-else
+                  label="Follow"
+                  rounded
+                  size="small"
+                  @click="showAuthActionModal({ kind: 'login', action: 'follow' })"
                 />
               </div>
               <p v-if="authorBio" class="mt-2 text-sm text-gray-600 dark:text-zinc-400 line-clamp-4">
