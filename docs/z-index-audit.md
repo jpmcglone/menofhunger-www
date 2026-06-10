@@ -16,7 +16,7 @@ Single source of truth for stacking order. All values are for `position: fixed` 
 | **App overlays** | `1000` | Composer overlay (layout), ToastStack, ReplyModal. |
 | **Popovers (low)** | `1100` | MetricsPopover, OnlineCountPopover, EmojiPickerButton. |
 | **Modals / autocomplete** | `1200` | AppModal, MentionAutocompletePopover, HashtagAutocompletePopover. |
-| **Popovers (high)** | `1300` | UserPreviewPopover, WordDefinitionPopover. |
+| **Popovers (high)** | `1300` | UserPreviewPopover. |
 | **Drag feedback** | `2000` | PostComposer drag ghost (CSS). |
 | **Full-screen takeover** | `9000` | SpaceLiveChatOverlay, ImageLightbox. |
 | **Sheets** | `10000`–`10001` | BottomSheet backdrop (10000), panel (10001). |
@@ -45,7 +45,6 @@ Single source of truth for stacking order. All values are for `position: fixed` 
 | **Components (popovers)** | | |
 | `components/app/ToastStack.vue` | 1000 | Toast container (pointer-events-none). |
 | `components/app/UserPreviewPopover.vue` | 1300 | User preview card. |
-| `components/app/WordDefinitionPopover.vue` | 1300 | Definition popover. |
 | `components/app/MetricsPopover.vue` | 1100 | Metrics popover. |
 | `components/app/OnlineCountPopover.vue` | 1100 | Online count popover. |
 | `components/app/EmojiPickerButton.vue` | 1100 | Emoji picker. |

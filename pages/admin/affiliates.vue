@@ -36,7 +36,7 @@
       </div>
 
       <!-- Pilot members list -->
-      <div v-else class="divide-y moh-divide">
+      <div v-else class="divide-y divide-gray-200 dark:divide-zinc-800">
         <div
           v-for="aff in affiliates"
           :key="aff.userId"

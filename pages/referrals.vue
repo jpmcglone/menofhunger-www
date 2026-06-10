@@ -42,6 +42,7 @@
               <div class="text-sm font-semibold moh-text">Change your code</div>
               <div class="flex gap-2">
                 <InputText
+                  ref="claimCodeInputRef"
                   v-model="codeInput"
                   class="min-w-0 flex-1 font-mono"
                   placeholder="YOURNAME"
@@ -149,6 +150,7 @@
               </div>
               <div class="flex gap-2">
                 <InputText
+                  ref="claimCodeInputRef"
                   v-model="codeInput"
                   class="min-w-0 flex-1 font-mono"
                   placeholder="YOURNAME"
@@ -346,7 +348,7 @@
                 <span class="text-[11px] font-semibold uppercase tracking-wide moh-text-muted">{{ group.label }}</span>
                 <span class="text-[11px] moh-text-muted opacity-60 tabular-nums">{{ group.recruits.length }}</span>
               </div>
-              <div class="divide-y moh-divide border-b moh-border">
+              <div class="divide-y divide-gray-200 dark:divide-zinc-800 border-b moh-border">
                 <AppUserRow
                   v-for="recruit in group.recruits"
                   :key="recruit.id"
@@ -390,6 +392,16 @@ const codeError = ref<string | null>(null)
 const editingCode = ref(false)
 const copied = ref(false)
 let copiedTimer: ReturnType<typeof setTimeout> | null = null
+
+// Template ref for the claim/edit code input — used to autofocus on arrival and on edit.
+const claimCodeInputRef = ref<{ $el: HTMLInputElement } | null>(null)
+
+function focusCodeInput() {
+  nextTick(() => {
+    const el = claimCodeInputRef.value?.$el
+    el?.focus()
+  })
+}
 
 const isPremium = computed(() => Boolean(user.value?.premium || user.value?.premiumPlus))
 
@@ -447,6 +459,7 @@ async function load() {
     if (affiliateData.isAffiliate) {
       affiliate.value = affiliateData
     }
+    if (!referralCode.value) focusCodeInput()
   } catch (e) {
     error.value = getApiErrorMessage(e) || 'Failed to load referrals.'
   } finally {
@@ -460,6 +473,7 @@ function startEditCode() {
   codeInput.value = referralCode.value ?? ''
   codeError.value = null
   editingCode.value = true
+  focusCodeInput()
 }
 
 function cancelEditCode() {

@@ -152,6 +152,10 @@ export default defineNuxtConfig({
         // Google services used for AdSense / Fonts / etc.
         { rel: 'dns-prefetch', href: 'https://fonts.gstatic.com' },
         { rel: 'dns-prefetch', href: 'https://pagead2.googlesyndication.com' },
+        // Feed autodiscovery — tells feed readers and browsers that feeds exist.
+        { rel: 'alternate', type: 'application/rss+xml', title: 'Men of Hunger — Articles (RSS)', href: `${siteConfig.url}/articles/feed.xml` },
+        { rel: 'alternate', type: 'application/atom+xml', title: 'Men of Hunger — Articles (Atom)', href: `${siteConfig.url}/articles/feed.atom` },
+        { rel: 'alternate', type: 'application/feed+json', title: 'Men of Hunger — Articles (JSON Feed)', href: `${siteConfig.url}/articles/feed.json` },
       ],
       title: siteConfig.meta.title
     }
@@ -216,6 +220,7 @@ export default defineNuxtConfig({
         'heroicons-outline:eye-slash',
         'heroicons-solid:eye-slash',
         // Common core actions
+        'tabler:rss',
         'tabler:plus',
         'tabler:door-enter',
         'tabler:door-exit',

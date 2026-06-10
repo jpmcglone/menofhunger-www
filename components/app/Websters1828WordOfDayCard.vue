@@ -1,71 +1,124 @@
 <template>
-  <Card class="moh-card moh-card-matte !rounded-2xl">
-    <template #content>
-      <div class="flex items-center justify-between gap-3">
-        <div class="flex items-center gap-0.5">
-          <span
-            class="inline-flex items-center rounded-full border border-black/10 bg-white/55 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-gray-900 dark:border-white/10 dark:bg-white/5 dark:text-gray-100 translate-y-[1px]"
-          >
-            Word
-          </span>
-          <span class="text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 tracking-[0.14em] translate-x-[-1px] translate-y-[1px]">
-            of the Day
-          </span>
+  <div class="moh-card moh-card-matte overflow-hidden rounded-2xl">
+    <ClientOnly>
+      <!-- Loading skeleton -->
+      <div v-if="pending" class="animate-pulse px-4 py-4" aria-hidden="true">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-1">
+            <div class="h-4 w-11 rounded-full bg-gray-200 dark:bg-zinc-800" />
+            <div class="h-3 w-16 rounded-full bg-gray-200 dark:bg-zinc-800" />
+          </div>
+        </div>
+        <div class="mt-3 h-6 w-28 rounded bg-gray-200 dark:bg-zinc-800" />
+        <div class="mt-2.5 space-y-1.5">
+          <div class="h-3 w-full rounded-full bg-gray-200 dark:bg-zinc-800" />
+          <div class="h-3 w-5/6 rounded-full bg-gray-200 dark:bg-zinc-800" />
+          <div class="h-3 w-4/6 rounded-full bg-gray-200 dark:bg-zinc-800" />
         </div>
       </div>
 
-      <ClientOnly>
-        <div v-if="pending" class="mt-5 animate-pulse" aria-hidden="true">
-          <div class="flex items-end gap-3">
-            <div class="h-9 w-1.5 rounded-full bg-gray-200 dark:bg-zinc-800 shrink-0" />
-            <div class="h-8 w-32 bg-gray-200 dark:bg-zinc-800 rounded" />
+      <!-- Error state -->
+      <div v-else-if="error" class="px-4 py-4 text-sm text-red-700 dark:text-red-300">
+        Couldn't load the word of the day.
+      </div>
+
+      <!-- Content -->
+      <template v-else-if="data?.word">
+        <div class="px-4 pb-4 pt-4">
+          <!-- Header row: pill label + external link -->
+          <div class="flex items-center justify-between gap-3">
+            <div class="flex items-center gap-0.5">
+              <span
+                class="inline-flex translate-y-[1px] items-center rounded-full border border-black/10 bg-white/55 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-gray-900 dark:border-white/10 dark:bg-white/5 dark:text-gray-100"
+              >
+                Word
+              </span>
+              <span class="translate-x-[-1px] translate-y-[1px] text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500 dark:text-gray-400">
+                of the Day
+              </span>
+            </div>
+            <a
+              v-if="data.dictionaryUrl"
+              :href="data.dictionaryUrl"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="moh-text-muted hover:moh-text inline-flex items-center gap-0.5 text-[11px] transition-colors"
+              aria-label="Open in Webster's 1828 Dictionary"
+              @click.stop
+            >
+              <Icon name="tabler:external-link" class="text-[11px]" aria-hidden="true" />
+            </a>
           </div>
-          <div class="mt-3 flex justify-end">
-            <div class="h-3 w-24 bg-gray-200 dark:bg-zinc-800 rounded-full" />
-          </div>
-        </div>
-        <div v-else-if="error" class="mt-4 text-sm text-red-700 dark:text-red-300">
-          Couldn’t load the word of the day.
-        </div>
-        <div v-else-if="data?.word" class="mt-5 flex items-end gap-3">
-          <!-- Vertical pill marker -->
-          <div class="h-9 w-1.5 rounded-full bg-gray-900 dark:bg-white opacity-20 shrink-0 translate-y-[1px]" aria-hidden="true" />
+
+          <!-- Word -->
           <div
-            class="text-3xl font-semibold tracking-tight moh-text"
+            class="moh-text mt-2.5 text-2xl font-semibold tracking-tight"
             style="font-family: var(--moh-font-serif);"
           >
             {{ data.word }}
           </div>
+
+          <!-- Definition area -->
+          <div v-if="hasDefinition" class="relative mt-1.5">
+            <!-- Animated height wrapper -->
+            <div
+              class="overflow-hidden transition-[max-height] duration-300 ease-out motion-reduce:transition-none"
+              :style="wrapperStyle"
+            >
+              <!-- Unclamped inner content — measured by ResizeObserver -->
+              <div ref="contentEl">
+                <div
+                  v-if="definitionHtml"
+                  class="moh-wotd-definition moh-text text-sm leading-relaxed"
+                  v-html="definitionHtml"
+                />
+                <div v-else class="moh-text space-y-2 text-sm leading-relaxed">
+                  <p v-for="(p, idx) in paragraphs" :key="idx" class="whitespace-pre-wrap">{{ p }}</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Fade overlay when collapsed -->
+            <div
+              v-if="canExpand"
+              class="pointer-events-none absolute inset-x-0 bottom-0 h-8 transition-opacity duration-300"
+              :class="expanded ? 'opacity-0' : 'opacity-100'"
+              :style="{ background: 'linear-gradient(to top, var(--moh-surface-2), transparent)' }"
+              aria-hidden="true"
+            />
+          </div>
         </div>
 
-        <div v-if="data?.dictionaryUrl" class="mt-3 flex justify-end">
-          <button
-            type="button"
-            class="inline-flex items-center gap-1 text-[11px] font-medium moh-text-muted hover:moh-text transition-colors"
-            @mouseenter="onDefinitionTriggerEnter(data, $event)"
-            @mousemove="onDefinitionTriggerMove"
-            @mouseleave="onDefinitionTriggerLeave"
-            @click="onDefinitionTriggerClick(data, $event)"
-          >
-            See definition
-            <Icon name="tabler:chevron-right" class="text-[10px]" aria-hidden="true" />
-          </button>
-        </div>
-      </ClientOnly>
-    </template>
-  </Card>
+        <!-- Expand / collapse bar — only when content overflows collapsed height -->
+        <button
+          v-if="canExpand"
+          type="button"
+          class="moh-border moh-text-muted hover:moh-text flex h-7 w-full items-center justify-center border-t transition-colors"
+          :aria-expanded="expanded"
+          :aria-label="expanded ? 'Collapse definition' : 'Expand definition'"
+          @click="expanded = !expanded"
+        >
+          <Icon
+            name="tabler:chevron-down"
+            class="text-sm transition-transform duration-300"
+            :class="{ 'rotate-180': expanded }"
+            aria-hidden="true"
+          />
+        </button>
+      </template>
+    </ClientOnly>
+  </div>
 </template>
 
 <script setup lang="ts">
 import type { Websters1828WordOfDay } from '~/types/api'
 
 const { apiFetchData } = useApiClient()
-const defPop = useWordDefinitionPopover()
 
 const { data, pending, error, refresh } = useAsyncData<Websters1828WordOfDay>(
   'websters1828:wotd',
   async () => {
-    return await apiFetchData<Websters1828WordOfDay>('/meta/websters1828/wotd?includeDefinition=0', { method: 'GET' })
+    return await apiFetchData<Websters1828WordOfDay>('/meta/websters1828/wotd?includeDefinition=1', { method: 'GET' })
   },
   { server: false, lazy: true },
 )
@@ -77,119 +130,84 @@ watch(
     if (!import.meta.client) return
     if (!prev) return
     if (next === prev) return
+    expanded.value = false
     await refresh()
-  }
+  },
 )
 
-type HydratedDefinition = {
-  definition: string | null
-  definitionHtml: string | null
-}
+const definitionHtml = computed(() => {
+  const html = data.value?.definitionHtml ?? null
+  return html && html.trim() ? html : null
+})
 
-const hydratedDefinitionByWord = ref<Record<string, HydratedDefinition>>({})
-const definitionLoadByWord = new Map<string, Promise<HydratedDefinition>>()
+const paragraphs = computed(() => {
+  const def = data.value?.definition ?? null
+  if (!def) return []
+  return def
+    .split(/\n{2,}/g)
+    .map((s) => s.trim())
+    .filter(Boolean)
+})
 
-async function loadDefinitionForWord(payload: Websters1828WordOfDay): Promise<HydratedDefinition> {
-  const wordKey = (payload.word ?? '').trim().toLowerCase()
-  if (!wordKey) return { definition: null, definitionHtml: null }
-  if (payload.definition?.trim() || payload.definitionHtml?.trim()) {
-    return {
-      definition: payload.definition?.trim() ? payload.definition : null,
-      definitionHtml: payload.definitionHtml?.trim() ? payload.definitionHtml : null,
-    }
-  }
-  const cached = hydratedDefinitionByWord.value[wordKey]
-  const cachedHasHtml = typeof cached?.definitionHtml === 'string' && cached.definitionHtml.trim().length > 0
-  // If we previously cached only plain text (older behavior), allow re-fetch to hydrate HTML styling.
-  if (cached !== undefined && cachedHasHtml) {
-    return cached
-  }
-  const existing = definitionLoadByWord.get(wordKey)
-  if (existing) return await existing
+const hasDefinition = computed(() => Boolean(definitionHtml.value || paragraphs.value.length))
 
-  const p = apiFetchData<Websters1828WordOfDay>('/meta/websters1828/wotd?includeDefinition=1', { method: 'GET' })
-    .then((next) => {
-      // Guardrail: if caches drift (or the API "heals" to a new WOTD), never attach a definition to the wrong word.
-      const nextWordKey = (next?.word ?? '').trim().toLowerCase()
-      if (nextWordKey && nextWordKey !== wordKey) {
-        // Refresh the base card so UI stays API-driven and consistent.
-        void refresh()
-        return { definition: null, definitionHtml: null }
-      }
-      const hydrated: HydratedDefinition = {
-        definition: next?.definition?.trim() ? next.definition : null,
-        definitionHtml: next?.definitionHtml?.trim() ? next.definitionHtml : null,
-      }
-      hydratedDefinitionByWord.value = {
-        ...hydratedDefinitionByWord.value,
-        [wordKey]: hydrated,
-      }
-      return hydrated
-    })
-    .catch(() => ({ definition: null, definitionHtml: null }))
-    .finally(() => {
-      definitionLoadByWord.delete(wordKey)
-    })
+// Collapse / expand
+const expanded = ref(false)
+const contentEl = ref<HTMLElement | null>(null)
+const contentHeight = ref(0)
+const COLLAPSED_MAX_PX = 96
 
-  definitionLoadByWord.set(wordKey, p)
-  return await p
-}
+const canExpand = computed(() => contentHeight.value > COLLAPSED_MAX_PX + 8)
 
-function onDefinitionTriggerEnter(payload: Websters1828WordOfDay, e: MouseEvent) {
-  const hasRenderableDefinition = (v: string | null | undefined): boolean => {
-    return typeof v === 'string' && v.trim().length > 0
-  }
-  const wordKey = (payload.word ?? '').trim().toLowerCase()
-  const cached = wordKey ? hydratedDefinitionByWord.value[wordKey] : undefined
-  defPop.onTriggerEnter({
-    payload: {
-      word: payload.word,
-      definition: cached !== undefined ? cached.definition : (payload.definition ?? null),
-      definitionHtml: cached !== undefined ? cached.definitionHtml : (payload.definitionHtml ?? null),
-      sourceUrl: payload.sourceUrl || payload.dictionaryUrl,
-    },
-    event: e,
+const wrapperStyle = computed(() => {
+  if (!canExpand.value) return undefined
+  return { maxHeight: expanded.value ? `${contentHeight.value}px` : `${COLLAPSED_MAX_PX}px` }
+})
+
+let ro: ResizeObserver | null = null
+
+function attachObserver() {
+  if (!contentEl.value) return
+  ro?.disconnect()
+  ro = new ResizeObserver((entries) => {
+    const entry = entries[0]
+    if (entry) contentHeight.value = Math.round(entry.contentRect.height)
   })
-
-  // Prefer HTML styling. If we only have plain text cached, fetch once to hydrate HTML.
-  const hasKnownStyledDefinition = cached !== undefined
-    ? hasRenderableDefinition(cached.definitionHtml)
-    : hasRenderableDefinition(payload.definitionHtml)
-  if (hasKnownStyledDefinition) return
-
-  void loadDefinitionForWord(payload).then((hydrated) => {
-    if (!hydrated.definition && !hydrated.definitionHtml) return
-    const current = defPop.state.value.payload
-    if (!current) return
-    if ((current.word ?? '').trim().toLowerCase() !== wordKey) return
-    defPop.state.value.payload = {
-      ...current,
-      definition: hydrated.definition,
-      definitionHtml: hydrated.definitionHtml,
-    }
-  })
-}
-function onDefinitionTriggerMove(e: MouseEvent) {
-  defPop.onTriggerMove(e)
-}
-function onDefinitionTriggerLeave() {
-  defPop.onTriggerLeave()
+  ro.observe(contentEl.value)
 }
 
-function onDefinitionTriggerClick(payload: Websters1828WordOfDay, e: MouseEvent) {
-  // Mobile: no hover, so click should open the popover.
-  e.preventDefault()
-  e.stopPropagation()
+onMounted(() => {
+  attachObserver()
+})
 
-  const wordLower = (payload.word ?? '').trim().toLowerCase()
-  const openWordLower = (defPop.state.value.payload?.word ?? '').trim().toLowerCase()
-  if (defPop.state.value.open && wordLower && openWordLower === wordLower) {
-    defPop.close()
-    return
-  }
+watch(
+  () => data.value?.word,
+  async () => {
+    expanded.value = false
+    await nextTick()
+    attachObserver()
+  },
+)
 
-  onDefinitionTriggerEnter(payload, e)
-  defPop.lock()
-}
+onBeforeUnmount(() => {
+  ro?.disconnect()
+  ro = null
+})
 </script>
 
+<style scoped>
+.moh-wotd-definition :deep(p) {
+  margin: 0 0 0.75rem 0;
+}
+.moh-wotd-definition :deep(p:last-child) {
+  margin-bottom: 0;
+}
+.moh-wotd-definition :deep(strong),
+.moh-wotd-definition :deep(b) {
+  font-weight: 700;
+}
+.moh-wotd-definition :deep(em),
+.moh-wotd-definition :deep(i) {
+  font-style: italic;
+}
+</style>

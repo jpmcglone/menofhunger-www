@@ -581,29 +581,19 @@ const { data: article, pending } = useAsyncData<Article>(
 // SEO / OG
 useArticleSeo(article)
 
-// Lazily load Tiptap rendering deps to keep them out of the main page chunk
+// Lazily load Tiptap rendering deps to keep them out of the main page chunk.
+// The shared factory in ~/utils/tiptap-render-extensions is also used by
+// the server-side RSS feed builder (server/utils/article-feed.ts).
 let _generateHTML: typeof import('@tiptap/html')['generateHTML'] | null = null
 let _extensions: any[] | null = null
 
 async function getTiptapRenderer() {
   if (_generateHTML && _extensions) return { generateHTML: _generateHTML, extensions: _extensions }
-  const [{ generateHTML }, { default: StarterKit }, { default: Image }, { default: Youtube }, { Callout }] = await Promise.all([
+  const [{ generateHTML }, { buildTiptapExtensions }] = await Promise.all([
     import('@tiptap/html'),
-    import('@tiptap/starter-kit'),
-    import('@tiptap/extension-image'),
-    import('@tiptap/extension-youtube'),
-    import('~/utils/tiptap-callout'),
+    import('~/utils/tiptap-render-extensions'),
   ])
-  _extensions = [
-    StarterKit.configure({
-      heading: { levels: [2, 3] },
-      link: { openOnClick: true },
-      underline: {},
-    }),
-    Image,
-    Youtube,
-    Callout,
-  ]
+  _extensions = buildTiptapExtensions()
   _generateHTML = generateHTML
   return { generateHTML: _generateHTML, extensions: _extensions }
 }

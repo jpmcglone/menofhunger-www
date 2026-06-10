@@ -3,15 +3,26 @@
     <!-- Header -->
     <div class="flex items-center justify-between px-4 pt-4 pb-3">
       <h1 class="text-xl font-bold text-gray-900 dark:text-gray-100">Articles</h1>
-      <NuxtLink
-        v-if="isPremium"
-        to="/articles/new"
-        class="inline-flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90"
-        :style="{ backgroundColor: activeTabColor }"
-      >
-        <Icon name="tabler:pencil" class="text-[14px]" aria-hidden="true" />
-        Write
-      </NuxtLink>
+      <div class="flex items-center gap-2">
+        <button
+          v-tooltip.bottom="'Copy RSS feed link'"
+          type="button"
+          class="inline-flex items-center justify-center w-8 h-8 rounded-full text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
+          aria-label="Copy RSS feed link"
+          @click="copyArticlesRss"
+        >
+          <Icon name="tabler:rss" class="text-base" aria-hidden="true" />
+        </button>
+        <NuxtLink
+          v-if="isPremium"
+          to="/articles/new"
+          class="inline-flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90"
+          :style="{ backgroundColor: activeTabColor }"
+        >
+          <Icon name="tabler:pencil" class="text-[14px]" aria-hidden="true" />
+          Write
+        </NuxtLink>
+      </div>
     </div>
 
     <!-- Scope + Filter bar -->
@@ -167,6 +178,7 @@
 <script setup lang="ts">
 import type { ProfilePostsFilter } from '~/utils/post-visibility'
 import { userColorTier, userTierColorVar } from '~/utils/user-tier'
+import { useCopyToClipboard } from '~/composables/useCopyToClipboard'
 
 definePageMeta({ layout: 'app', title: 'Articles', hideTopBar: true })
 
@@ -194,6 +206,19 @@ usePageSeo({
 })
 
 const { isPremium, isVerified, isAuthed, user } = useAuth()
+
+const { copyText: copyTextRaw } = useCopyToClipboard()
+const articlesToast = useAppToast()
+const { origin: siteOrigin } = useRequestURL()
+
+async function copyArticlesRss() {
+  try {
+    await copyTextRaw(`${siteOrigin}/articles/feed.xml`)
+    articlesToast.push({ title: 'RSS feed link copied', tone: 'success', durationMs: 1400 })
+  } catch {
+    articlesToast.push({ title: 'Copy failed', tone: 'error', durationMs: 1800 })
+  }
+}
 
 const activeTabColor = computed(() => {
   const tier = userColorTier(user.value)

@@ -141,29 +141,13 @@
             </p>
           </div>
 
-          <div class="flex gap-2">
-            <InputText
-              v-model="referralCodeDraft"
-              class="min-w-0 flex-1 font-mono"
-              placeholder="YOURNAME"
-              spellcheck="false"
-              autocomplete="off"
-              maxlength="20"
-              :disabled="saving"
-              @keydown.enter.prevent="saveReferralCode"
-            />
-            <Button
-              label="Set"
-              :loading="saving"
-              :disabled="!referralCodeDraft.trim() || saving"
-              @click="saveReferralCode"
-            />
-          </div>
-
-          <AppInlineAlert v-if="error" severity="danger">
-            {{ error }}
-          </AppInlineAlert>
-          <p class="text-[11px] moh-text-muted">4–20 characters. Letters, numbers, hyphens, underscores.</p>
+          <Button
+            as="NuxtLink"
+            to="/referrals"
+            label="Set up referrals"
+            class="w-full active:scale-[0.96] transition-transform duration-100"
+            severity="contrast"
+          />
         </template>
       </div>
     </template>
@@ -187,9 +171,7 @@ const { referralCode: sharedCode, setReferralCode } = useReferralCode()
 const referralData = ref<ReferralMe | null>(null)
 const affiliateData = ref<AffiliateSummary | null>(null)
 const loading = ref(false)
-const saving = ref(false)
 const error = ref<string | null>(null)
-const referralCodeDraft = ref('')
 const copied = ref(false)
 let copiedTimer: ReturnType<typeof setTimeout> | null = null
 
@@ -262,28 +244,6 @@ async function refresh() {
 }
 
 // ─── Actions ─────────────────────────────────────────────────────────────────
-
-async function saveReferralCode() {
-  const code = referralCodeDraft.value.trim()
-  if (!code || saving.value) return
-  saving.value = true
-  error.value = null
-  try {
-    const res = await apiFetchData<{ referralCode: string }>('/billing/referral/code', {
-      method: 'PUT',
-      body: { code },
-    })
-    if (referralData.value) {
-      referralData.value = { ...referralData.value, referralCode: res.referralCode }
-    }
-    setReferralCode(res.referralCode)
-    referralCodeDraft.value = ''
-  } catch (e: unknown) {
-    error.value = getApiErrorMessage(e) || 'Failed to save referral code.'
-  } finally {
-    saving.value = false
-  }
-}
 
 async function copyShareLink() {
   const url = shareUrl.value

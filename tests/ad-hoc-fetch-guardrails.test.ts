@@ -35,6 +35,21 @@ const ALLOW_LIST = new Set<string>([
   // /v1/... endpoints for articles and top-users.
   'server/routes/sitemap-articles.xml.get.ts',
   'server/routes/sitemap-profiles.xml.get.ts',
+  // SSR-only feed routes (Nitro server routes, same pattern as sitemaps — RSS, Atom, JSON Feed).
+  'server/routes/articles/feed.xml.get.ts',
+  'server/routes/articles/feed.atom.get.ts',
+  'server/routes/articles/feed.json.get.ts',
+  'server/routes/u/[username]/articles/feed.xml.get.ts',
+  'server/routes/u/[username]/articles/feed.atom.get.ts',
+  'server/routes/u/[username]/articles/feed.json.get.ts',
+  'server/routes/topics/[slug]/feed.xml.get.ts',
+  'server/routes/topics/[slug]/feed.atom.get.ts',
+  'server/routes/topics/[slug]/feed.json.get.ts',
+  'server/routes/u/[username]/posts/feed.xml.get.ts',
+  'server/routes/u/[username]/posts/feed.atom.get.ts',
+  'server/routes/u/[username]/posts/feed.json.get.ts',
+  // OPML directory (static, no API call needed).
+  'server/routes/opml.xml.get.ts',
 ])
 
 // Directories to scan. We skip tests, build output, node_modules, config, etc.

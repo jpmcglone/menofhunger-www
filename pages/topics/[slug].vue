@@ -1,22 +1,35 @@
 <template>
   <AppPageContent bottom="standard">
     <div class="px-4 pt-4 pb-3 border-b border-gray-200 dark:border-zinc-800">
-      <div class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-zinc-400">
-        Topic
-      </div>
-      <div class="mt-1 flex items-center gap-2">
-        <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">
-          {{ termLabel }}
-        </h1>
-        <span
-          class="inline-flex items-center rounded-full border border-gray-200 dark:border-zinc-700 px-2 py-0.5 text-xs text-gray-500 dark:text-zinc-400"
+      <div class="flex items-start justify-between gap-2">
+        <div class="min-w-0">
+          <div class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-zinc-400">
+            Topic
+          </div>
+          <div class="mt-1 flex items-center gap-2">
+            <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">
+              {{ termLabel }}
+            </h1>
+            <span
+              class="inline-flex items-center rounded-full border border-gray-200 dark:border-zinc-700 px-2 py-0.5 text-xs text-gray-500 dark:text-zinc-400"
+            >
+              {{ feed.articles.value.length }} article{{ feed.articles.value.length === 1 ? '' : 's' }}
+            </span>
+          </div>
+          <p class="mt-1 text-sm text-gray-500 dark:text-zinc-400">
+            Articles connected to {{ termLabel }}.
+          </p>
+        </div>
+        <button
+          v-tooltip.bottom="'Copy RSS feed link'"
+          type="button"
+          class="mt-1 inline-flex items-center justify-center w-8 h-8 rounded-full text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors shrink-0"
+          aria-label="Copy RSS feed link"
+          @click="copyTopicRss"
         >
-          {{ feed.articles.value.length }} article{{ feed.articles.value.length === 1 ? '' : 's' }}
-        </span>
+          <Icon name="tabler:rss" class="text-base" aria-hidden="true" />
+        </button>
       </div>
-      <p class="mt-1 text-sm text-gray-500 dark:text-zinc-400">
-        Articles connected to {{ termLabel }}.
-      </p>
     </div>
 
     <AppSubtleSectionLoader :loading="initialLoading" min-height-class="min-h-[220px]">
@@ -61,6 +74,21 @@ type TaxonomyMatch = {
 
 const route = useRoute()
 const { apiFetchData } = useApiClient()
+
+const { copyText: copyTextRaw } = useCopyToClipboard()
+const topicToast = useAppToast()
+const { origin: siteOrigin } = useRequestURL()
+
+async function copyTopicRss() {
+  const slug = termSlug.value
+  if (!slug) return
+  try {
+    await copyTextRaw(`${siteOrigin}/topics/${encodeURIComponent(slug)}/feed.xml`)
+    topicToast.push({ title: 'RSS feed link copied', tone: 'success', durationMs: 1400 })
+  } catch {
+    topicToast.push({ title: 'Copy failed', tone: 'error', durationMs: 1800 })
+  }
+}
 
 const termSlug = computed(() => String(route.params.slug ?? '').trim().toLowerCase())
 
@@ -113,6 +141,19 @@ usePageSeo({
     },
   ]),
 })
+
+// Feed autodiscovery — per-topic articles feeds in all three formats.
+useHead(computed(() => {
+  const t = encodeURIComponent(termSlug.value)
+  const base = `${siteOrigin}/topics/${t}`
+  return {
+    link: [
+      { rel: 'alternate', type: 'application/rss+xml', title: `${termLabel.value} — Articles (RSS)`, href: `${base}/feed.xml` },
+      { rel: 'alternate', type: 'application/atom+xml', title: `${termLabel.value} — Articles (Atom)`, href: `${base}/feed.atom` },
+      { rel: 'alternate', type: 'application/feed+json', title: `${termLabel.value} — Articles (JSON Feed)`, href: `${base}/feed.json` },
+    ],
+  }
+}))
 
 watch(termSlug, async () => {
   await feed.load({ force: true })

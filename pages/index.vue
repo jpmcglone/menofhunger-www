@@ -117,7 +117,9 @@
                   </div>
                 </div>
                 <div v-if="landingSnapshot" class="text-sm text-gray-600 dark:text-gray-300">
-                  <span class="font-semibold text-gray-900 dark:text-gray-50">{{ formatLandingCount(landingSnapshot.stats.verifiedMenCount) }}+</span> verified men building together
+                  <span class="font-semibold text-gray-900 dark:text-gray-50">{{ formatLandingCount(landingSnapshot.stats.verifiedMenCount) }}+ men</span>
+                  <span class="mx-1.5 opacity-40">·</span>
+                  <span class="font-semibold text-gray-900 dark:text-gray-50">{{ formatLandingCount(landingSnapshot.stats.publicPostCount) }}+ posts</span>
                 </div>
               </div>
             </div>
@@ -204,28 +206,6 @@
           </figure>
           <div class="mx-auto mt-6 h-px w-32 bg-gradient-to-r from-transparent via-gray-400 to-transparent dark:via-gray-600" />
         </div>
-
-        <!-- ── Community is active (stats bar) ───────────────────────── -->
-        <section v-if="landingSnapshot" class="py-4">
-          <div class="rounded-2xl border border-gray-200 bg-white/70 p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-950/40 sm:p-8">
-            <div class="text-[10px] font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">The community is active</div>
-            <div class="mt-5 flex flex-wrap items-center gap-8">
-              <div>
-                <div class="text-3xl font-black tabular-nums tracking-tight text-gray-900 dark:text-gray-50">
-                  {{ formatLandingCount(landingSnapshot.stats.verifiedMenCount) }}+
-                </div>
-                <div class="mt-0.5 text-xs font-medium text-gray-500 dark:text-gray-400">Verified men</div>
-              </div>
-              <div class="hidden h-8 w-px bg-gray-200 dark:bg-zinc-700 sm:block" aria-hidden="true" />
-              <div>
-                <div class="text-3xl font-black tabular-nums tracking-tight text-gray-900 dark:text-gray-50">
-                  {{ formatLandingCount(landingSnapshot.stats.publicPostCount) }}+
-                </div>
-                <div class="mt-0.5 text-xs font-medium text-gray-500 dark:text-gray-400">Posts this month</div>
-              </div>
-            </div>
-          </div>
-        </section>
 
         <!-- ── How it works ──────────────────────────────────────────── -->
         <section class="py-12 text-center sm:py-16">
@@ -545,6 +525,7 @@
             <NuxtLink to="/articles" class="font-semibold text-gray-700 hover:underline dark:text-gray-200">Articles</NuxtLink>
             <NuxtLink to="/roadmap" class="font-semibold text-gray-700 hover:underline dark:text-gray-200">Roadmap</NuxtLink>
             <NuxtLink to="/status" class="font-semibold text-gray-700 hover:underline dark:text-gray-200">Status</NuxtLink>
+            <NuxtLink to="/feeds" class="font-semibold text-gray-700 hover:underline dark:text-gray-200">RSS</NuxtLink>
             <a
               :href="siteConfig.social.xUrl"
               target="_blank"
@@ -793,7 +774,7 @@ onBeforeUnmount(() => {
 })
 
 function formatLandingCount(value: number): string {
-  return new Intl.NumberFormat('en-US', { notation: value >= 10_000 ? 'compact' : 'standard', maximumFractionDigits: 1 }).format(value)
+  return new Intl.NumberFormat('en-US', { notation: value >= 1_000 ? 'compact' : 'standard', maximumFractionDigits: 1 }).format(value)
 }
 
 function postHref(post: LandingTopPost): string {

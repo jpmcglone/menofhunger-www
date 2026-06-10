@@ -247,6 +247,26 @@
         {{ user.bio }}
       </div>
 
+      <NuxtLink
+        v-if="locationLabel && locationTo"
+        :to="locationTo"
+        class="mt-2 inline-flex items-center gap-1.5 text-sm text-gray-600 dark:text-gray-300 hover:underline underline-offset-2 min-w-0 max-w-full"
+        @click="onNavigate"
+      >
+        <ClientOnly>
+          <AppStateShape
+            v-if="locationState"
+            :state="locationState"
+            class="h-4 w-4 shrink-0 opacity-80"
+          />
+          <template #fallback>
+            <Icon name="tabler:map-pin" class="shrink-0" aria-hidden="true" />
+          </template>
+        </ClientOnly>
+        <Icon v-if="!locationState" name="tabler:map-pin" class="shrink-0" aria-hidden="true" />
+        <span class="truncate">{{ locationLabel }}</span>
+      </NuxtLink>
+
       <div
         v-if="typeof user.followingCount === 'number' && typeof user.followerCount === 'number'"
         class="mt-3 flex items-center gap-4 text-sm text-gray-600 dark:text-gray-300"
@@ -588,6 +608,22 @@ const lastOnlineTooltip = computed(() => {
 const profilePath = computed(() => {
   const u = (user.value.username ?? '').trim()
   return u ? `/u/${encodeURIComponent(u)}` : null
+})
+
+const locationLabel = computed(() => {
+  const s = user.value.locationDisplay ?? null
+  const v = typeof s === 'string' ? s.trim() : ''
+  return v || null
+})
+
+const locationState = computed(() => {
+  const s = user.value.locationState ?? null
+  return typeof s === 'string' && s.trim() ? s.trim().toUpperCase() : null
+})
+
+const locationTo = computed(() => {
+  if (!locationState.value) return null
+  return { path: '/l', query: { state: locationState.value } }
 })
 const followersPath = computed(() => (profilePath.value ? `${profilePath.value}/followers` : null))
 const followingPath = computed(() => (profilePath.value ? `${profilePath.value}/following` : null))

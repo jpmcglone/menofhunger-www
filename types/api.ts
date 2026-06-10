@@ -506,6 +506,8 @@ export type UserPreview = {
   followingCount: number | null
   orgAffiliations?: OrgAffiliation[]
   isBot?: boolean
+  locationDisplay: string | null
+  locationState: string | null
 }
 
 /** Compact group card for gated posts and discovery. */
@@ -995,6 +997,8 @@ export type SearchMixedResult = {
   articles: Article[]
   groups?: CommunityGroupShell[]
   taxonomyMatches?: TaxonomyMatch[]
+  /** Number of posts/articles excluded from results due to visibility gating (for upsell). */
+  gatedResultCount?: number
 }
 
 /** Pagination for mixed search (two cursors). */
@@ -2495,4 +2499,52 @@ export type MarvAdminDailyCostRowDto = {
   totalInputTokens: number
   totalOutputTokens: number
   totalCostUsd: number
+}
+
+// ─── Explore aggregate ───────────────────────────────────────────────────────
+
+/** Recent search entry from GET /search/recent. */
+export type RecentSearch = {
+  id: string
+  query: string
+  createdAt: string
+}
+
+/** Data for GET /search/recent. */
+export type GetRecentSearchesData = RecentSearch[]
+
+/** Aggregate response from GET /explore. */
+export type GetExploreData = {
+  /** Featured posts (always present). */
+  featured: FeedPost[]
+  featuredNextCursor?: string | null
+  /** Topic categories (always). */
+  categories: TopicCategory[]
+  /** Trending articles (always). */
+  trendingArticles: Article[]
+  /** Explore-spotlight groups (always). */
+  groups: { data: CommunityGroupShell[]; pagination?: { nextCursor: string | null } }
+  /** Trending hashtags (always). */
+  trendingHashtags: Array<{ value: string; label: string; usageCount: number }>
+  /** Top users by follower count — always included for "People on MoH" carousel. */
+  topUsers: FollowListUser[]
+  /** Count of currently-online users (approximate). */
+  onlineCount: number
+  // ─── Authenticated-only (null when not signed in) ───────────────────────
+  followedTopics: Topic[] | null
+  recommendations: FollowListUser[] | null
+  newestUsers: FollowListUser[] | null
+  checkin: CheckinTodayState | null
+}
+
+/** Today's check-in state from GET /checkins/today and GET /explore (authed). */
+export type CheckinTodayState = {
+  dayKey: string
+  prompt: string
+  hasCheckedInToday: boolean
+  coins: number
+  checkinStreakDays: number
+  allowedVisibilities: string[]
+  crew?: unknown
+  socialProof?: unknown
 }

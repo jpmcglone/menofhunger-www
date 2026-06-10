@@ -511,6 +511,7 @@ import type { MenuItem } from 'primevue/menuitem'
 import { useUserOverlay } from '~/composables/useUserOverlay'
 import { avatarRoundClass as getAvatarRoundClass, crewAvatarRoundClass } from '~/utils/avatar-rounding'
 import { getApiErrorMessage } from '~/utils/api-error'
+import { useCopyToClipboard } from '~/composables/useCopyToClipboard'
 
 const crewAvatarRound = crewAvatarRoundClass()
 import { userColorTier } from '~/utils/user-tier'
@@ -964,6 +965,20 @@ function onAvatarClick(event: MouseEvent) {
 
 const blockState = useBlockState()
 const toast = useAppToast()
+const { copyText } = useCopyToClipboard()
+const { origin: siteOrigin } = useRequestURL()
+
+async function copyProfileRssFeed() {
+  const username = profile.value?.username
+  if (!username) return
+  const url = `${siteOrigin}/u/${encodeURIComponent(username)}/posts/feed.xml`
+  try {
+    await copyText(url)
+    toast.push({ title: 'RSS feed link copied', tone: 'success', durationMs: 1400 })
+  } catch {
+    toast.push({ title: 'Copy failed', tone: 'error', durationMs: 1800 })
+  }
+}
 
 const viewerHasBlockedProfile = computed(() =>
   Boolean(profile.value?.viewerHasBlockedUser) || blockState.isBlockedByMe(profile.value?.id ?? ''),
@@ -1054,6 +1069,14 @@ const menuItems = computed<MenuItemWithIcon[]>(() => {
       iconName: 'tabler:shield-check',
       class: 'text-amber-600 dark:text-amber-400 font-semibold',
       command: () => openInviteToCrew(),
+    })
+  }
+
+  if (profile.value?.username) {
+    items.push({
+      label: 'Copy RSS feed link',
+      iconName: 'tabler:rss',
+      command: () => void copyProfileRssFeed(),
     })
   }
 

@@ -1,0 +1,45 @@
+/**
+ * Per-Author Articles JSON Feed — GET /u/:username/articles/feed.json
+ */
+import { buildArticleJsonFeed } from '../../../../utils/article-feed'
+import type { FeedArticle } from '../../../../utils/article-feed'
+
+export default defineEventHandler(async (event) => {
+  const username = getRouterParam(event, 'username') ?? ''
+  if (!username) { setResponseStatus(event, 404); return 'Not found' }
+
+  const site = getRequestURL(event).origin
+  const config = useRuntimeConfig(event)
+  const apiBase = (config.apiBaseUrl as string) || 'http://localhost:3001/v1'
+
+  let articles: FeedArticle[] = []
+  let authorName: string | null = null
+  try {
+    const res = await $fetch<{ data: FeedArticle[] }>(`${apiBase}/articles`, {
+      query: { authorUsername: username, limit: 50, sort: 'new', includeRestricted: true },
+      timeout: 10_000,
+    })
+    articles = Array.isArray(res?.data) ? res.data : []
+    if (articles.length > 0) {
+      const a = articles[0]!.author
+      authorName = a?.name ?? a?.username ?? null
+    }
+  } catch { /* return empty feed on API failure */ }
+
+  const displayName = authorName ?? username
+  const u = encodeURIComponent(username)
+
+  const json = buildArticleJsonFeed({
+    feedUrl: `${site}/u/${u}/articles/feed.json`,
+    homePageUrl: `${site}/u/${u}/articles`,
+    title: `${displayName} — Articles on Men of Hunger`,
+    description: `Articles by ${displayName} on Men of Hunger.`,
+    siteUrl: site,
+    articles,
+  })
+
+  setResponseHeader(event, 'Content-Type', 'application/feed+json; charset=utf-8')
+  setResponseHeader(event, 'Cache-Control', 'public, max-age=300, stale-while-revalidate=600')
+  setResponseHeader(event, 'X-Robots-Tag', 'noindex')
+  return json
+})

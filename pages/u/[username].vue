@@ -585,6 +585,26 @@ const isFollowingRoute = computed(() => /\/following\/?$/.test(currentPathname.v
 const { profile, data, notFound, profileBanned, apiError } = await usePublicProfile(normalizedUsername)
 useProfileSeo({ profile, normalizedUsername, notFound, profileBanned })
 
+const { origin: siteOrigin } = useRequestURL()
+
+// Feed autodiscovery — per-author articles and posts feeds in all three formats.
+useHead(computed(() => {
+  if (notFound.value || !usernameParam.value) return {}
+  const displayName = profile.value?.name || usernameParam.value
+  const u = encodeURIComponent(usernameParam.value)
+  const base = `${siteOrigin}/u/${u}`
+  return {
+    link: [
+      { rel: 'alternate', type: 'application/rss+xml', title: `${displayName} — Articles (RSS)`, href: `${base}/articles/feed.xml` },
+      { rel: 'alternate', type: 'application/atom+xml', title: `${displayName} — Articles (Atom)`, href: `${base}/articles/feed.atom` },
+      { rel: 'alternate', type: 'application/feed+json', title: `${displayName} — Articles (JSON Feed)`, href: `${base}/articles/feed.json` },
+      { rel: 'alternate', type: 'application/rss+xml', title: `${displayName} — Posts (RSS)`, href: `${base}/posts/feed.xml` },
+      { rel: 'alternate', type: 'application/atom+xml', title: `${displayName} — Posts (Atom)`, href: `${base}/posts/feed.atom` },
+      { rel: 'alternate', type: 'application/feed+json', title: `${displayName} — Posts (JSON Feed)`, href: `${base}/posts/feed.json` },
+    ],
+  }
+}))
+
 const { header: appHeader } = useAppHeader()
 const profileName = computed(() => profile.value?.name || profile.value?.username || 'User')
 if (!notFound.value && profile.value) {

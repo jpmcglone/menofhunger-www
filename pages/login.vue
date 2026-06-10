@@ -161,6 +161,12 @@
     </AppConfirmDialog>
       </template>
     </div>
+
+    <div class="mt-8 flex items-center justify-center gap-3 text-xs text-gray-400 dark:text-zinc-600">
+      <NuxtLink to="/terms" class="hover:text-gray-500 dark:hover:text-zinc-500 transition-colors">Terms</NuxtLink>
+      <span aria-hidden="true">·</span>
+      <NuxtLink to="/privacy" class="hover:text-gray-500 dark:hover:text-zinc-500 transition-colors">Privacy</NuxtLink>
+    </div>
   </section>
 </template>
 

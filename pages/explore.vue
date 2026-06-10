@@ -18,9 +18,40 @@
               class="w-full h-11 !rounded-full"
               placeholder="Search…"
               @keydown.enter="flushDebounceAndSearch"
+              @focus="onSearchFocus"
+              @blur="onSearchBlur"
             />
           </IconField>
         </div>
+      </div>
+    </div>
+
+    <!-- Recent searches dropdown -->
+    <div
+      v-if="showRecentSearches"
+      class="border-b moh-border moh-surface px-4 py-2"
+    >
+      <div class="flex items-center justify-between gap-2 mb-1.5">
+        <span class="text-xs font-medium moh-text-muted uppercase tracking-wide">Recent searches</span>
+        <button
+          type="button"
+          class="text-xs moh-text-muted hover:text-gray-800 dark:hover:text-gray-200 transition-colors"
+          @click="clearRecentSearches"
+        >
+          Clear
+        </button>
+      </div>
+      <div class="flex flex-col gap-0.5">
+        <button
+          v-for="s in recentSearches.slice(0, 5)"
+          :key="s.id"
+          type="button"
+          class="flex items-center gap-2 w-full text-left px-2 py-1.5 rounded-lg text-sm moh-text hover:bg-gray-100/60 dark:hover:bg-zinc-800/60 transition-colors"
+          @click="applyRecentSearch(s.query)"
+        >
+          <Icon name="tabler:clock" class="text-base moh-text-muted shrink-0" aria-hidden="true" />
+          {{ s.query }}
+        </button>
       </div>
     </div>
 
@@ -99,7 +130,19 @@
               />
             </template>
           </TransitionGroup>
-          <div v-if="loadingMore" class="flex justify-center py-6 px-4">
+          <!-- Gated results upsell -->
+          <div
+            v-if="!loadingMore && !hasMore && gatedResultCount > 0 && !isAuthed"
+            class="mx-4 my-3 rounded-xl border moh-border bg-gray-50/50 dark:bg-zinc-900/30 px-4 py-3 text-center"
+          >
+            <p class="text-sm moh-text-muted">
+              <span class="font-semibold text-gray-800 dark:text-gray-200">{{ gatedResultCount }} more result{{ gatedResultCount === 1 ? '' : 's' }}</span>
+              for verified members.
+              <NuxtLink to="/tiers" class="ml-1 font-medium text-[var(--p-primary-color)] hover:underline underline-offset-2">Upgrade to see them →</NuxtLink>
+            </p>
+          </div>
+
+        <div v-if="loadingMore" class="flex justify-center py-6 px-4">
             <AppLogoLoader />
           </div>
           <div v-else-if="hasMore" class="flex justify-center py-4 px-4">
@@ -331,6 +374,25 @@
           </AppHorizontalScroller>
         </section>
 
+        <!-- Trending hashtags strip -->
+        <section v-if="trendingHashtags.length > 0" class="space-y-2.5">
+          <h2 class="px-4 text-sm font-semibold text-gray-900 dark:text-gray-50">
+            Trending topics
+          </h2>
+          <AppHorizontalScroller scroller-class="no-scrollbar px-4">
+            <div class="flex gap-2 pb-2">
+              <NuxtLink
+                v-for="tag in trendingHashtags.slice(0, 12)"
+                :key="tag.value"
+                :to="`/explore?q=${encodeURIComponent('#' + tag.value)}`"
+                class="h-9 px-3 shrink-0 inline-flex items-center gap-1.5 rounded-full border moh-border bg-white/60 dark:bg-zinc-900/40 text-sm text-gray-800 dark:text-gray-100 hover:bg-white dark:hover:bg-zinc-900 transition whitespace-nowrap"
+              >
+                <span class="text-[var(--p-primary-color)]">#</span>{{ tag.label }}
+              </NuxtLink>
+            </div>
+          </AppHorizontalScroller>
+        </section>
+
         <!-- Groups (featured + largest) -->
         <section v-if="discoverInitialLoading || exploreGroups.length > 0" class="space-y-3">
           <div class="px-4 flex items-center justify-between gap-3">
@@ -477,6 +539,30 @@
                 :key="u.id"
                 :user="u"
                 @followed="removeDiscoverUser(u.id)"
+              />
+            </div>
+          </AppHorizontalScroller>
+        </section>
+
+        <!-- People on Men of Hunger (logged-out viewers) -->
+        <section v-if="!isAuthed && topUsers.length > 0" class="space-y-3">
+          <div class="px-4 flex items-center justify-between gap-3">
+            <h2 class="text-sm font-semibold text-gray-900 dark:text-gray-50">
+              People on Men of Hunger
+            </h2>
+            <NuxtLink
+              to="/login"
+              class="text-sm font-medium hover:underline underline-offset-2 text-[var(--p-primary-color)] moh-focus"
+            >
+              Join to follow
+            </NuxtLink>
+          </div>
+          <AppHorizontalScroller scroller-class="no-scrollbar px-4">
+            <div class="flex gap-3 pb-2">
+              <AppUserMiniCard
+                v-for="u in topUsers.slice(0, 12)"
+                :key="u.id"
+                :user="u"
               />
             </div>
           </AppHorizontalScroller>
@@ -635,6 +721,7 @@ import type {
   Article,
   CommunityGroupShell,
   FeedPost,
+  FollowListUser,
   SearchUserResult,
   SearchMixedResult,
   SearchMixedPagination,
@@ -646,6 +733,8 @@ import type {
   TopicCategory,
   PostVisibility,
   CheckinAllowedVisibility,
+  RecentSearch,
+  GetRecentSearchesData,
 } from '~/types/api'
 import { shellToGroupPreview } from '~/utils/community-group-preview'
 import { getApiErrorMessage } from '~/utils/api-error'
@@ -684,15 +773,37 @@ function onGlobalKeyDown(e: KeyboardEvent) {
   searchInputRef.value?.$el?.focus()
 }
 
+// ─── Realtime: presence online feed ─────────────────────────────────────────
+// Patch onlineUsers in place while the page is open so "Online now" stays
+// current without a manual refresh.
+const { addOnlineFeedCallback, removeOnlineFeedCallback } = usePresence()
+
+const onlineFeedCb = {
+  onOnline: (payload: { userId: string; user?: FollowListUser }) => {
+    const u = payload?.user
+    if (!u?.id) return
+    if (!onlineUsers.value.some((x) => x.id === u.id)) {
+      onlineUsers.value = [u as any, ...onlineUsers.value]
+    }
+  },
+  onOffline: (payload: { userId: string }) => {
+    const id = payload?.userId
+    if (id) onlineUsers.value = onlineUsers.value.filter((x) => x.id !== id)
+  },
+}
+
 onMounted(() => {
   hydrated.value = true
   window.addEventListener('keydown', onGlobalKeyDown)
   document.addEventListener('visibilitychange', onVisibilityChange)
+  addOnlineFeedCallback(onlineFeedCb)
+  if (isAuthed.value && !recentSearchesLoaded.value) void loadRecentSearches()
 })
 
 onBeforeUnmount(() => {
   window.removeEventListener('keydown', onGlobalKeyDown)
   document.removeEventListener('visibilitychange', onVisibilityChange)
+  removeOnlineFeedCallback(onlineFeedCb)
 })
 
 function normalizeQueryParam(v: unknown): string {
@@ -720,13 +831,14 @@ const {
   newestUsers,
   trendingPosts,
   exploreGroups,
+  trendingHashtags,
+  topUsers,
   loading: discoverLoading,
   hasLoadedOnce: discoverHasLoadedOnce,
   error: discoverError,
   refresh: refreshDiscover,
   removeUserById: removeDiscoverUser,
 } = useExploreRecommendations({
-  // Logged out Explore should not attempt any discovery calls.
   enabled: computed(() => !isSearching.value),
   isAuthed: computed(() => isAuthed.value),
 })
@@ -957,6 +1069,7 @@ function clearSearchResults() {
   articles.value = []
   posts.value = []
   tagSuggestions.value = []
+  gatedResultCount.value = 0
   nextUserCursor.value = null
   nextArticleCursor.value = null
   nextPostCursor.value = null
@@ -1052,7 +1165,58 @@ const searchError = ref<string | null>(null)
 const searchedOnce = ref(false)
 const activeSearchSource = ref<'explore' | 'external'>('external')
 const tagSuggestions = ref<TaxonomyMatch[]>([])
+const gatedResultCount = ref(0)
 let searchFetchSeq = 0
+
+// ─── Recent searches ─────────────────────────────────────────────────────────
+const searchInputFocused = ref(false)
+const recentSearches = ref<RecentSearch[]>([])
+const recentSearchesLoaded = ref(false)
+const recentSearchesLoading = ref(false)
+
+const showRecentSearches = computed(
+  () => isAuthed.value && searchInputFocused.value && !searchQueryTrimmed.value && recentSearches.value.length > 0,
+)
+
+async function loadRecentSearches() {
+  if (!isAuthed.value || recentSearchesLoading.value) return
+  recentSearchesLoading.value = true
+  try {
+    const res = await apiFetch<GetRecentSearchesData>('/search/recent', { method: 'GET' })
+    recentSearches.value = (res.data ?? []) as RecentSearch[]
+    recentSearchesLoaded.value = true
+  } catch {
+    recentSearches.value = []
+  } finally {
+    recentSearchesLoading.value = false
+  }
+}
+
+async function clearRecentSearches() {
+  try {
+    await apiFetch('/search/recent', { method: 'DELETE' })
+    recentSearches.value = []
+  } catch {
+    // soft-fail
+  }
+}
+
+function onSearchFocus() {
+  searchInputFocused.value = true
+  if (isAuthed.value && !recentSearchesLoaded.value) void loadRecentSearches()
+}
+
+function onSearchBlur() {
+  window.setTimeout(() => {
+    searchInputFocused.value = false
+  }, 200)
+}
+
+function applyRecentSearch(query: string) {
+  searchQuery.value = query
+  searchInputFocused.value = false
+  flushDebounceAndSearch()
+}
 
 const hasMore = computed(
   () => nextUserCursor.value !== null || nextArticleCursor.value !== null || nextPostCursor.value !== null,
@@ -1141,6 +1305,7 @@ async function fetchPage(params: { append: boolean }) {
       posts.value = dedupeById(newPosts)
       searchGroups.value = dedupeById(newGroups)
       tagSuggestions.value = (data.taxonomyMatches ?? []).slice(0, 5)
+      gatedResultCount.value = data.gatedResultCount ?? 0
     }
 
     nextUserCursor.value = pagination?.nextUserCursor ?? null

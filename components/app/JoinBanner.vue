@@ -9,10 +9,10 @@
   >
     <div
       v-if="visible"
-      class="fixed inset-x-0 bottom-0 z-50 px-3 pb-[calc(var(--moh-safe-bottom,0px)+0.75rem)] pt-3"
+      class="fixed inset-x-0 bottom-0 z-50 px-3 pb-[calc(var(--moh-safe-bottom,0px)+0.75rem)] pt-3 pointer-events-none"
       role="banner"
     >
-      <div class="mx-auto flex max-w-lg items-center gap-3 rounded-2xl border moh-border moh-surface shadow-[0_8px_32px_rgba(0,0,0,0.18)] px-4 py-3">
+      <div class="pointer-events-auto mx-auto flex max-w-lg items-center gap-3 rounded-2xl border moh-border moh-surface shadow-[0_8px_32px_rgba(0,0,0,0.18)] px-4 py-3">
         <div class="flex-1 min-w-0">
           <p class="text-sm font-semibold moh-text leading-snug">Men of Hunger</p>
           <p class="text-xs moh-text-muted mt-0.5 leading-snug">A trusted community for men. Accountability, no noise.</p>
