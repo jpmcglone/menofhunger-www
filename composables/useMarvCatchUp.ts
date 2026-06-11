@@ -24,6 +24,8 @@ export function useMarvCatchUp() {
   const result = useState<MarvinCatchUpDto | null>('marv-catchup:result', () => null)
   const errorMessage = useState<string | null>('marv-catchup:error', () => null)
   const errorReason = useState<string | null>('marv-catchup:error-reason', () => null)
+  // Default ON: images are included unless the user explicitly opts out.
+  const includeImages = useState<boolean>('marv-catchup:includeImages', () => true)
 
   function show(target: FeedPost) {
     const samePost = post.value?.id === target.id
@@ -62,7 +64,7 @@ export function useMarvCatchUp() {
     if (!target?.id || loading.value || peeking.value) return
     peeking.value = true
     try {
-      const body: MarvinCatchUpBodyDto = { mode: preferredMode.value, cacheOnly: true }
+      const body: MarvinCatchUpBodyDto = { mode: preferredMode.value, cacheOnly: true, includeImages: includeImages.value }
       const res = await apiFetch<MarvinCatchUpDto | null>(`/marvin/catch-up/${target.id}`, {
         method: 'POST',
         body,
@@ -83,7 +85,7 @@ export function useMarvCatchUp() {
     errorMessage.value = null
     errorReason.value = null
     try {
-      const body: MarvinCatchUpBodyDto = { mode: preferredMode.value }
+      const body: MarvinCatchUpBodyDto = { mode: preferredMode.value, includeImages: includeImages.value }
       // "Regenerate" must bypass the per-(post, mode) cache and recompute a fresh summary.
       if (opts?.refresh) body.refresh = true
       const res = await apiFetch<MarvinCatchUpDto>(`/marvin/catch-up/${target.id}`, {
@@ -106,6 +108,18 @@ export function useMarvCatchUp() {
     }
   }
 
+  /**
+   * Toggle image inclusion. Same contract as mode switching: reset and re-peek so
+   * a cached summary for the new setting shows instantly and for free; the user
+   * must explicitly press "Catch me up" if there's no cached result.
+   */
+  async function toggleIncludeImages() {
+    if (loading.value || peeking.value) return
+    includeImages.value = !includeImages.value
+    reset()
+    await peek()
+  }
+
   return {
     open,
     post,
@@ -114,10 +128,12 @@ export function useMarvCatchUp() {
     result,
     errorMessage,
     errorReason,
+    includeImages,
     show,
     hide,
     reset,
     peek,
     run,
+    toggleIncludeImages,
   }
 }

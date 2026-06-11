@@ -43,68 +43,69 @@
               </header>
 
               <div class="min-h-0 flex-1 overflow-y-auto px-4 py-4">
-                <!-- Non-premium upsell -->
-                <div
-                  v-if="!isAvailable"
-                  class="rounded-xl border border-amber-300/60 bg-amber-50 p-4 text-sm dark:border-amber-500/30 dark:bg-amber-500/10"
-                >
-                  <p class="font-semibold text-amber-900 dark:text-amber-200">Catch me up is a premium feature</p>
-                  <p class="mt-1 text-amber-800/90 dark:text-amber-200/80">
-                    Upgrade to have M.A.R.V read the whole thread — above and below any post — and summarize it for you.
-                  </p>
-                  <Button
-                    as="NuxtLink"
-                    to="/tiers"
-                    label="View plans"
-                    rounded
-                    class="mt-3"
-                    @click="hide"
-                  />
+                <!-- Mode picker (premium only) -->
+                <div v-if="isAvailable" class="mb-3 flex items-center gap-2">
+                  <div class="flex min-w-0 flex-1 rounded-lg border moh-border p-0.5">
+                    <button
+                      v-for="m in (['auto', 'fast', 'regular', 'smart'] as const)"
+                      :key="m"
+                      type="button"
+                      :disabled="modeBusy || loading || peeking"
+                      class="flex flex-1 items-center justify-center gap-1 rounded-md px-2 py-1 text-xs font-medium transition-colors disabled:opacity-50"
+                      :class="
+                        preferredMode === m
+                          ? 'bg-violet-600 text-white dark:bg-violet-500'
+                          : 'text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-white/5'
+                      "
+                      @click="onPickMode(m)"
+                    >
+                      <Icon :name="modeIcon(m)" class="text-[11px] shrink-0" aria-hidden="true" />
+                      <span>{{ modeLabel(m) }}</span>
+                      <span
+                        v-if="modeCost(m) !== null"
+                        class="inline-flex items-center gap-0.5 tabular-nums opacity-70 text-[10px]"
+                        aria-hidden="true"
+                      >
+                        <Icon name="tabler:bolt" class="text-amber-400 text-[9px]" />{{ modeCost(m) }}
+                      </span>
+                    </button>
+                  </div>
+                  <span
+                    v-if="creditsLabel"
+                    class="shrink-0 inline-flex items-center gap-1 text-[11px] tabular-nums text-gray-500 dark:text-gray-400"
+                  >
+                    <Icon name="tabler:bolt" class="text-[11px] text-amber-500" aria-hidden="true" />
+                    {{ creditsLabel }}
+                  </span>
                 </div>
 
-                <template v-else>
-                  <!-- Mode picker (compact segmented row) -->
-                  <div class="mb-3 flex items-center gap-2">
-                    <div class="flex min-w-0 flex-1 rounded-lg border moh-border p-0.5">
-                      <button
-                        v-for="m in (['auto', 'fast', 'regular', 'smart'] as const)"
-                        :key="m"
-                        type="button"
-                        :disabled="modeBusy || loading || peeking"
-                        class="flex flex-1 items-center justify-center gap-1 rounded-md px-2 py-1 text-xs font-medium transition-colors disabled:opacity-50"
-                        :class="
-                          preferredMode === m
-                            ? 'bg-violet-600 text-white dark:bg-violet-500'
-                            : 'text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-white/5'
-                        "
-                        @click="onPickMode(m)"
-                      >
-                        <Icon :name="modeIcon(m)" class="text-[11px] shrink-0" aria-hidden="true" />
-                        <span>{{ modeLabel(m) }}</span>
-                        <span
-                          v-if="modeCost(m) !== null"
-                          class="inline-flex items-center gap-0.5 tabular-nums opacity-70 text-[10px]"
-                          aria-hidden="true"
-                        >
-                          <Icon name="tabler:bolt" class="text-amber-400 text-[9px]" />{{ modeCost(m) }}
-                        </span>
-                      </button>
-                    </div>
-                    <span
-                      v-if="creditsLabel"
-                      class="shrink-0 inline-flex items-center gap-1 text-[11px] tabular-nums text-gray-500 dark:text-gray-400"
-                    >
-                      <Icon name="tabler:bolt" class="text-[11px] text-amber-500" aria-hidden="true" />
-                      {{ creditsLabel }}
-                    </span>
-                  </div>
+                <!-- Include images toggle -->
+                <div
+                  v-if="post?.media?.length"
+                  class="mb-3 flex items-center justify-between"
+                >
+                  <label class="flex cursor-pointer items-center gap-2 select-none">
+                    <input
+                      type="checkbox"
+                      class="accent-violet-600"
+                      :checked="includeImages"
+                      :disabled="loading || peeking"
+                      @change="toggleIncludeImages"
+                    />
+                    <span class="text-[13px] text-gray-600 dark:text-gray-300">Include images</span>
+                  </label>
+                  <span class="text-[11px] text-gray-400 dark:text-gray-500">
+                    <Icon name="tabler:bolt" class="text-[10px] text-amber-500" aria-hidden="true" />
+                    +{{ me?.costs?.visionPerImage ?? 1 }} per image
+                  </span>
+                </div>
 
-                  <!-- Focal post preview (non-interactive) -->
-                  <div
-                    v-if="post"
-                    class="mb-3 rounded-xl border moh-border p-3"
-                    aria-hidden="true"
-                  >
+                <!-- Focal post preview (always shown) -->
+                <div
+                  v-if="post"
+                  class="mb-3 rounded-xl border moh-border p-3"
+                  aria-hidden="true"
+                >
                     <div class="flex items-start gap-2.5">
                       <AppAvatarCircle
                         :src="post.author.avatarUrl ?? null"
@@ -153,14 +154,52 @@
                     </div>
                   </div>
 
+                <!-- Non-premium upsell (below the post preview) -->
+                <div
+                  v-if="!isAvailable"
+                  class="flex flex-col items-center justify-center py-6 text-center"
+                >
+                  <Icon name="tabler:lock" class="mb-3 text-[28px] moh-text-muted opacity-50" aria-hidden="true" />
+                  <p class="mb-1 text-sm font-semibold text-gray-800 dark:text-gray-100">Premium feature</p>
+                  <p class="mb-5 max-w-xs text-[13px] text-gray-500 dark:text-gray-400">
+                    M.A.R.V reads the full thread — above and below — and gives you the gist in seconds.
+                  </p>
+                  <Button
+                    as="NuxtLink"
+                    to="/tiers"
+                    label="Upgrade to Premium"
+                    rounded
+                    class="w-full max-w-[200px]"
+                    @click="hide"
+                  />
+                  <button
+                    type="button"
+                    class="mt-3 text-[13px] text-gray-400 transition-colors hover:text-gray-600 dark:hover:text-gray-200"
+                    @click="hide"
+                  >
+                    Maybe later
+                  </button>
+                </div>
+
+                <!-- Premium states: result / loading / peeking / error / idle -->
+                <template v-else>
                   <!-- Result -->
                   <div v-if="result" class="rounded-xl border moh-border p-3">
-                    <p class="whitespace-pre-line text-sm leading-relaxed text-gray-800 dark:text-gray-100">{{ result.summary }}</p>
+                    <!-- Two-section layout when the API parsed POST:/REPLIES: markers -->
+                    <template v-if="result.sections">
+                      <p class="mb-0.5 text-[10px] font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500">The post</p>
+                      <p class="whitespace-pre-line text-sm leading-relaxed text-gray-800 dark:text-gray-100">{{ result.sections.post }}</p>
+                      <template v-if="result.sections.replies">
+                        <p class="mb-0.5 mt-3 text-[10px] font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500">The replies</p>
+                        <p class="whitespace-pre-line text-sm leading-relaxed text-gray-800 dark:text-gray-100">{{ result.sections.replies }}</p>
+                      </template>
+                    </template>
+                    <!-- Single-blob fallback (no replies, or model didn't follow the format) -->
+                    <p v-else class="whitespace-pre-line text-sm leading-relaxed text-gray-800 dark:text-gray-100">{{ result.summary }}</p>
                     <p class="mt-3 text-[11px] text-gray-400 dark:text-gray-500">
                       {{ summaryMeta }}
                       <span v-if="result.cached"> · cached</span>
                     </p>
-                    <!-- Cost breakdown — only shown when credits were actually spent -->
                     <p
                       v-if="costBreakdownLabel"
                       class="mt-1 inline-flex items-center gap-1 text-[11px] tabular-nums text-gray-400 dark:text-gray-500"
@@ -202,7 +241,7 @@
                     />
                   </div>
 
-                  <!-- Idle: no cached summary — the user must opt in (spends credits) -->
+                  <!-- Idle: no cached summary — explicit opt-in -->
                   <div v-else class="flex flex-col items-center justify-center py-6 text-center">
                     <AppMarvMark :size="32" class="mb-3 opacity-40" />
                     <p class="mb-4 text-sm font-medium text-gray-700 dark:text-gray-200">
@@ -268,8 +307,22 @@
 import { ClientOnly } from '#components'
 import type { MarvinModeDto } from '~/types/api'
 
-const { open, post, result, loading, peeking, errorMessage, errorReason, hide, run, peek, reset } = useMarvCatchUp()
+const { open, post, result, loading, peeking, errorMessage, errorReason, includeImages, hide, run, peek, reset, toggleIncludeImages } = useMarvCatchUp()
 const { me, isAvailable, preferredMode, credits, setPreferredMode, ensureLoaded, startRealtime } = useMarv()
+
+// Close on Escape — the backdrop div never receives focus so @keydown.escape on it is a no-op.
+// A document-level listener is the reliable approach for modals.
+function onDocKeydown(e: KeyboardEvent) {
+  if (e.key === 'Escape') hide()
+}
+watch(open, (isOpen) => {
+  if (!import.meta.client) return
+  if (isOpen) document.addEventListener('keydown', onDocKeydown)
+  else document.removeEventListener('keydown', onDocKeydown)
+})
+onBeforeUnmount(() => {
+  if (import.meta.client) document.removeEventListener('keydown', onDocKeydown)
+})
 
 const modeBusy = ref(false)
 

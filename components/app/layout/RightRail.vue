@@ -35,12 +35,12 @@
 
         <div v-else key="rightRailDefault">
           <AppRightRailContent>
-          <!-- Daily quote: links to /daily hub; dims when on any /daily* route -->
+          <!-- Daily quote: links to /daily/quote; dims when on /daily or /daily/quote -->
           <component
-            :is="isOnDailyRoute ? 'div' : NuxtLink"
-            :to="isOnDailyRoute ? undefined : '/daily'"
+            :is="isOnDailyQuoteRoute ? 'div' : NuxtLink"
+            :to="isOnDailyQuoteRoute ? undefined : '/daily/quote'"
             class="block transition-opacity duration-200"
-            :class="isOnDailyRoute ? 'opacity-40' : 'hover:opacity-75'"
+            :class="isOnDailyQuoteRoute ? 'opacity-40' : 'hover:opacity-75'"
           >
           <div
             v-if="dailyQuote"
@@ -139,12 +139,12 @@
             </Card>
           </div>
 
-          <!-- Word of the Day: dims when on any /daily* route -->
+          <!-- Word of the Day: dims when on /daily or /daily/word -->
           <div
             class="transition-opacity duration-200"
-            :class="isOnDailyRoute ? 'opacity-40 pointer-events-none' : ''"
+            :class="isOnDailyWordRoute ? 'opacity-40 pointer-events-none' : ''"
           >
-            <AppWebsters1828WordOfDayCard :detail-to="isOnDailyRoute ? undefined : '/daily'" />
+            <AppWebsters1828WordOfDayCard :detail-to="isOnDailyWordRoute ? undefined : '/daily/word'" />
           </div>
 
           <!-- Unified trending card replaces the previous three:
@@ -222,6 +222,8 @@ const currentYear = new Date().getUTCFullYear()
 
 const route = useRoute()
 const isOnDailyRoute = computed(() => route.path === '/daily' || route.path.startsWith('/daily/'))
+const isOnDailyQuoteRoute = computed(() => route.path === '/daily' || route.path === '/daily/quote')
+const isOnDailyWordRoute = computed(() => route.path === '/daily' || route.path === '/daily/word')
 
 const rightRailEl = ref<HTMLElement | null>(null)
 defineExpose({

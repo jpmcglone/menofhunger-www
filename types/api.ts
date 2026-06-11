@@ -2457,6 +2457,11 @@ export type MarvinCatchUpBodyDto = {
    * calls the model. Used to decide whether the modal can show a free summary on open.
    */
   cacheOnly?: boolean
+  /**
+   * When true (default), pass images from the thread to vision-capable models.
+   * When false, skip vision — no images attached, no vision surcharge, cheaper.
+   */
+  includeImages?: boolean
 }
 
 /**
@@ -2466,8 +2471,14 @@ export type MarvinCatchUpBodyDto = {
 export type MarvinCatchUpDto = {
   postId: string
   rootPostId: string | null
-  /** The generated summary text. */
+  /** The generated summary text (markers stripped; always present). */
   summary: string
+  /**
+   * Structured sections when the thread has replies and the model followed the format.
+   * `post` summarises the focal post; `replies` synthesises the replies below.
+   * Null when the AI returned a single-blob response (no markers found).
+   */
+  sections?: { post: string; replies: string | null } | null
   /** The model tier that actually ran (after routing/auto-upgrades). */
   effectiveMode: MarvinModeDto
   /** Credits spent on this request (0 on a cache hit). */

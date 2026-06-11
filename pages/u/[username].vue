@@ -1286,6 +1286,29 @@ function patchPublicProfile(patch: Partial<Pick<
   if (currentUsername) invalidateUserPreviewCache(currentUsername)
 }
 
+// When viewing our own profile, keep the cached PublicProfile tier fields in sync
+// with the live auth user so badges and the tab-color reflect upgrades/verification
+// without requiring a page reload.
+watch(
+  [isSelf, () => authUser.value?.premium, () => authUser.value?.premiumPlus, () => authUser.value?.verifiedStatus],
+  ([self, premium, premiumPlus, verifiedStatus]) => {
+    if (!self || !data.value) return
+    const current = data.value as PublicProfile
+    if (
+      current.premium === premium &&
+      current.premiumPlus === premiumPlus &&
+      current.verifiedStatus === verifiedStatus
+    ) return
+    data.value = {
+      ...current,
+      premium: premium ?? false,
+      premiumPlus: premiumPlus ?? false,
+      verifiedStatus: (verifiedStatus ?? 'none') as 'none' | 'identity' | 'manual',
+    }
+  },
+  { immediate: true },
+)
+
 watch(
   [notFound, profileName, () => profile.value?.verifiedStatus, () => profile.value?.premium, () => postsOnlyCounts.value.all],
   ([nf, name, status, premium, count]) => {

@@ -129,23 +129,65 @@ export function useSettingsBilling() {
   const checkoutSuccessModal = ref(false)
   const checkoutSuccessTier = ref<'premium' | 'premiumPlus'>('premium')
 
+  function stripCheckoutQuery() {
+    const nextQuery = { ...(route.query as Record<string, any>) }
+    delete nextQuery.checkout
+    delete nextQuery.session_id
+    void navigateTo({ path: route.path, query: nextQuery }, { replace: true })
+  }
+
+  function showSuccessModal() {
+    if (billingMe.value?.premiumPlus) {
+      checkoutSuccessTier.value = 'premiumPlus'
+    } else {
+      checkoutSuccessTier.value = 'premium'
+    }
+    checkoutSuccessModal.value = true
+  }
+
   onMounted(() => {
     if (!import.meta.client) return
     if (route.query.checkout !== 'success') return
 
+    const sessionId = typeof route.query.session_id === 'string' ? route.query.session_id.trim() : null
+
+    if (sessionId) {
+      // Fast path: sync from Stripe directly — no polling, works without webhooks.
+      const syncAndShow = async () => {
+        try {
+          const synced = await apiFetchData<BillingMe>('/billing/checkout-session/sync', {
+            method: 'POST',
+            body: { sessionId },
+          })
+          if (synced) billingMe.value = synced
+          if (synced?.premium || synced?.premiumPlus) {
+            // me() updates auth-user; useMarv watches auth-user.premium and will
+            // force-refresh its own state automatically.
+            await me()
+            showSuccessModal()
+          }
+        } catch {
+          // Sync failed — fall through to polling so the UI isn't stuck.
+          void pollForPremium()
+          return
+        }
+        stripCheckoutQuery()
+      }
+      void syncAndShow()
+      return
+    }
+
+    // Fallback polling path for sessions that don't carry a session_id (e.g. inline upgrade).
     const pollForPremium = async (attempts = 0) => {
       await refreshBilling()
       if (billingMe.value?.premium || billingMe.value?.premiumPlus) {
-        checkoutSuccessTier.value = billingMe.value.premiumPlus ? 'premiumPlus' : 'premium'
-        checkoutSuccessModal.value = true
         await me()
+        showSuccessModal()
       } else if (attempts < 5) {
         setTimeout(() => pollForPremium(attempts + 1), 2000)
         return
       }
-      const nextQuery = { ...(route.query as Record<string, any>) }
-      delete nextQuery.checkout
-      void navigateTo({ path: route.path, query: nextQuery }, { replace: true })
+      stripCheckoutQuery()
     }
     void pollForPremium()
   })

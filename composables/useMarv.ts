@@ -117,6 +117,20 @@ export function useMarv() {
     }
   }
 
+  // When the viewer's premium status changes (upgrade/downgrade/verification), the
+  // cached `/marvin/me` payload becomes stale because it carries its own `isPremium`
+  // field. Force a refresh so `isAvailable` and credit display update immediately.
+  if (import.meta.client) {
+    watch(
+      () => me.value?.premium,
+      (isNowPremium, wasPremium) => {
+        if (isNowPremium !== wasPremium && hasFetched.value) {
+          void fetchMe({ forceRefresh: true })
+        }
+      },
+    )
+  }
+
   let registeredCb: MarvCallback | null = null
 
   function startRealtime() {

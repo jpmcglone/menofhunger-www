@@ -5,23 +5,34 @@
        appears at 962px; if we used `lg:hidden` here the center and right-rail
        quotes would both render in the 962px–1023px window. Hiding at `md` keeps
        the quote out of the center column whenever the tab bar is NOT showing. -->
-  <NuxtLink
-    v-if="quote"
-    to="/daily"
-    class="md:hidden block px-3 py-3 text-center text-sm leading-relaxed text-gray-700 dark:text-gray-200 sm:px-4 hover:opacity-80 transition-opacity"
-  >
-    <figure>
-      <blockquote class="italic moh-serif">
-        "{{ quote.text }}"
-      </blockquote>
-      <figcaption class="mt-2 text-xs text-gray-500 dark:text-gray-400">
-        <span class="font-semibold">{{ attribution }}</span>
-        <span v-if="quote.isParaphrase" class="ml-1">(paraphrase)</span>
-      </figcaption>
-    </figure>
-    <div class="mt-8 h-[1px] w-32 mx-auto bg-gradient-to-r from-transparent via-gray-400 dark:via-gray-600 to-transparent" />
-  </NuxtLink>
+  <Transition name="fade" appear>
+    <NuxtLink
+      v-if="quote"
+      to="/daily/quote"
+      class="md:hidden block px-3 py-3 text-center text-sm leading-relaxed text-gray-700 dark:text-gray-200 sm:px-4 hover:opacity-80 transition-opacity"
+    >
+      <figure>
+        <blockquote class="italic moh-serif">
+          "{{ quote.text }}"
+        </blockquote>
+        <figcaption class="mt-2 text-xs text-gray-500 dark:text-gray-400">
+          <span class="font-semibold">{{ attribution }}</span>
+          <span v-if="quote.isParaphrase" class="ml-1">(paraphrase)</span>
+        </figcaption>
+      </figure>
+      <div class="mt-8 h-[1px] w-32 mx-auto bg-gradient-to-r from-transparent via-gray-400 dark:via-gray-600 to-transparent" />
+    </NuxtLink>
+  </Transition>
 </template>
+
+<style scoped>
+.fade-enter-active {
+  transition: opacity 0.4s ease;
+}
+.fade-enter-from {
+  opacity: 0;
+}
+</style>
 
 <script setup lang="ts">
 import type { DailyContentToday } from '~/types/api'
