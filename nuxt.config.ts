@@ -341,6 +341,13 @@ export default defineNuxtConfig({
   },
 
   routeRules: {
+    // ——— iOS universal links ———
+    // Apple's CDN requires the AASA file served as application/json with no redirect.
+    // The file lives in public/.well-known/ (extensionless, so Nitro won't infer a type).
+    '/.well-known/apple-app-site-association': {
+      headers: { 'content-type': 'application/json', 'cache-control': 'public, max-age=3600' },
+    },
+
     // ——— SEO: SSR vs prerender ———
     // • SSR (ssr: true): Page is rendered on the server per request. Crawlers and link unfurlers
     //   get full HTML with correct <title>, og:*, and meta in the initial response. Use for any

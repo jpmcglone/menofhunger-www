@@ -1,0 +1,20 @@
+{
+  "applinks": {
+    "details": [
+      {
+        "appIDs": ["28HAX9NHD8.com.menofhunger.app"],
+        "components": [
+          { "/": "/p/*", "comment": "Post detail" },
+          { "/": "/u/*", "comment": "User profiles" },
+          { "/": "/topics/*", "comment": "Topic feeds" },
+          { "/": "/explore", "comment": "Explore tab" },
+          { "/": "/notifications", "comment": "Notifications tab" },
+          { "/": "/bookmarks", "comment": "Bookmarks tab" }
+        ]
+      }
+    ]
+  },
+  "webcredentials": {
+    "apps": ["28HAX9NHD8.com.menofhunger.app"]
+  }
+}
