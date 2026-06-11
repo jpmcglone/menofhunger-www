@@ -35,6 +35,13 @@
 
         <div v-else key="rightRailDefault">
           <AppRightRailContent>
+          <!-- Daily quote: links to /daily hub; dims when on any /daily* route -->
+          <component
+            :is="isOnDailyRoute ? 'div' : NuxtLink"
+            :to="isOnDailyRoute ? undefined : '/daily'"
+            class="block transition-opacity duration-200"
+            :class="isOnDailyRoute ? 'opacity-40' : 'hover:opacity-75'"
+          >
           <div
             v-if="dailyQuote"
             class="my-8 py-2 text-center text-sm leading-relaxed text-gray-700 dark:text-gray-200"
@@ -60,6 +67,7 @@
             <div class="mt-3 h-3 bg-gray-200 dark:bg-zinc-800 rounded-full mx-auto w-28" />
             <div class="mt-6 h-[1px] w-32 mx-auto bg-gray-200 dark:bg-zinc-800" />
           </div>
+          </component>
 
           <div class="space-y-4 transition-[transform] duration-200 ease-out">
           <AppReferralRailCard />
@@ -131,7 +139,13 @@
             </Card>
           </div>
 
-          <AppWebsters1828WordOfDayCard />
+          <!-- Word of the Day: dims when on any /daily* route -->
+          <div
+            class="transition-opacity duration-200"
+            :class="isOnDailyRoute ? 'opacity-40 pointer-events-none' : ''"
+          >
+            <AppWebsters1828WordOfDayCard :detail-to="isOnDailyRoute ? undefined : '/daily'" />
+          </div>
 
           <!-- Unified trending card replaces the previous three:
                AppTrendingArticlesCard / AppTrendingTagsCard / AppTrendingHashtagsCard.
@@ -205,6 +219,9 @@ const { user } = useAuth()
 const { apiFetchData } = useApiClient()
 const { openShortcutsModal } = useKeyboardShortcuts()
 const currentYear = new Date().getUTCFullYear()
+
+const route = useRoute()
+const isOnDailyRoute = computed(() => route.path === '/daily' || route.path.startsWith('/daily/'))
 
 const rightRailEl = ref<HTMLElement | null>(null)
 defineExpose({

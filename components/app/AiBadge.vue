@@ -49,7 +49,7 @@ function updateTooltipPlacement() {
 const tooltip = computed(() => {
   if (!props.showTooltip) return null
   return {
-    value: 'Marv — AI assistant. Ask him anything by mentioning @marv in a post or opening a direct message.',
+    value: 'M.A.R.V — AI assistant. Ask him anything by mentioning @marv in a post or opening a direct message.',
     class: 'moh-tooltip',
     position: tooltipPlacement.value,
   }

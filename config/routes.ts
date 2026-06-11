@@ -15,6 +15,9 @@ export const AUTH_ALLOWED_AFTER_LOGOUT_PATHS = new Set<string>([
   '/feedback',
   '/articles',
   '/groups',
+  '/daily',
+  '/daily/quote',
+  '/daily/word',
 ])
 
 export function isAdminPath(path: string): boolean {
@@ -64,12 +67,17 @@ export function isTopicPath(path: string): boolean {
   return path === '/topics' || path.startsWith('/topics/')
 }
 
+export function isDailyPath(path: string): boolean {
+  return path === '/daily' || path.startsWith('/daily/')
+}
+
 export function isLoggedOutAllowedPath(path: string): boolean {
   return (
     LOGGED_OUT_ALLOWED_PATHS.has(path)
     || isGroupDetailPath(path)
     || isGroupsHubPath(path)
     || isTopicPath(path)
+    || isDailyPath(path)
   )
 }
 
@@ -146,6 +154,9 @@ export function routeHeaderDefaultsFor(path: string): RouteHeaderDefaults {
   if (path === '/roadmap') return { icon: 'tabler:map', description: 'What we’re building and when.' }
   if (path === '/tiers') return { icon: 'tabler:tags', description: 'Unverified, Verified, and Premium — what you get with each tier.' }
   if (path === '/coins') return { icon: 'tabler:coin', description: 'Your coin balance, transfers, and activity.' }
+  if (path === '/daily') return { icon: 'tabler:sun', description: "Today's quote and word of the day." }
+  if (path === '/daily/quote') return { icon: 'tabler:quote', description: "Today's featured scripture or quote." }
+  if (path === '/daily/word') return { icon: 'tabler:book', description: "Today's word from Webster's 1828 Dictionary." }
   return { icon: undefined, description: undefined }
 }
 

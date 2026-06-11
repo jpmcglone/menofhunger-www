@@ -265,7 +265,7 @@ const sections = computed(() => [
   },
   {
     key: 'marv' as const,
-    label: 'Marv (AI helper)',
+    label: 'M.A.R.V (AI helper)',
     description: 'Preferred reply mode, credits, and recent activity.'
   }
 ])

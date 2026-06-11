@@ -275,6 +275,55 @@ describe('hydration guardrails (structural)', () => {
     expect(row).toMatch(/<NuxtLink[\s\S]*?to="\/tiers"/)
   })
 
+  it('keeps the Marv "Catch me up" modal behind ClientOnly + Teleport (SSR emits nothing)', () => {
+    // The modal reads auth/premium/credit state that only resolves on the client.
+    // Rendering it during SSR would produce a hydration mismatch when the client
+    // replaces the (empty) server output. ClientOnly + Teleport-to-body keeps it
+    // off the SSR tree entirely.
+    const modal = readFromRepo('components/app/MarvCatchUpModal.vue')
+    expect(modal).toMatch(/<ClientOnly>[\s\S]*<Teleport to="body">/)
+    // The open flag lives in useState (shared with the row trigger) so there's a
+    // single source of truth — not a local ref that drifts between instances.
+    const composable = readFromRepo('composables/useMarvCatchUp.ts')
+    expect(composable).toMatch(/useState<boolean>\('marv-catchup:open'/)
+    // Opening the modal must not auto-spend credits. `show()` auto-PEEKs the cache
+    // (cacheOnly: true — free, no model call), never auto-generates. Generation only
+    // happens via `run()`, triggered explicitly by the user.
+    expect(composable).toMatch(/function show\(/)
+    expect(composable).toMatch(/async function run\(opts\?: \{ refresh\?: boolean \}\)/)
+    expect(composable).toMatch(/async function peek\(\)/)
+    expect(composable).toMatch(/cacheOnly: true/)
+    // show() must call peek(), not run(), on open.
+    expect(composable).toMatch(/void peek\(\)/)
+    const showBody = composable.slice(composable.indexOf('function show('), composable.indexOf('function hide('))
+    expect(showBody).not.toMatch(/\brun\(/)
+  })
+
+  it('gates the PostRow Catch-me-up trigger on auth (every real post row, not pending/deleted)', () => {
+    const row = readFromRepo('components/app/PostRow.vue')
+    // Signed-in viewers see it on every real row — catch-up summarizes the post itself
+    // plus broader context, so it's useful even without a surrounding thread.
+    expect(row).toMatch(/isAuthed\.value && !isPendingRow\.value && !isDeletedPost\.value/)
+  })
+
+  it('gates the catch-me-up pill on isMounted so localStorage is never read during SSR', () => {
+    // The pill reads/writes localStorage (lastSeenCount, dismissedCount). On the server that
+    // call would throw. The v-if guard must include `isMounted` so the pill is invisible
+    // during the SSR pass and first client paint, then appears after hydration.
+    const page = readFromRepo('pages/p/[id].vue')
+    expect(page).toMatch(/v-if="isMounted && showCatchMeUpPill/)
+    expect(page).toMatch(/const isMounted = ref\(false\)/)
+    expect(page).toMatch(/onMounted\(\(\)\s*=>\s*\{[\s\S]*?isMounted\.value\s*=\s*true/)
+  })
+
+  it('keeps the modal panel at a fixed height (not content-sized) so it never resizes between states', () => {
+    // A resizing modal feels janky. The panel must declare an explicit h-[34rem]
+    // as well as the viewport-constrained max-h cap.
+    const modal = readFromRepo('components/app/MarvCatchUpModal.vue')
+    expect(modal).toMatch(/h-\[34rem\]/)
+    expect(modal).toMatch(/max-h-\[85vh\]/)
+  })
+
   it('does NOT inject an x-marv-mode header from the post composer (Marv always uses auto mode for replies)', () => {
     // Post-reply mode selection was removed: Marv always auto-routes for thread replies.
     // The composer must not set x-marv-mode so the server handles routing exclusively.

@@ -24,9 +24,9 @@
       <div class="flex items-start gap-3">
         <Icon name="tabler:sparkles" class="text-amber-600 dark:text-amber-300 text-base mt-0.5" aria-hidden="true" />
         <div class="flex-1">
-          <p class="font-semibold moh-text">Marv is a premium benefit.</p>
+          <p class="font-semibold moh-text">M.A.R.V is a premium benefit.</p>
           <p class="mt-1 text-gray-700 dark:text-gray-300">
-            Upgrade to Premium to chat with Marv and have him reply when you mention him in threads.
+            Upgrade to Premium to chat with M.A.R.V and have him reply when you mention him in threads.
           </p>
           <NuxtLink
             to="/tiers"
@@ -44,7 +44,7 @@
       v-else-if="hasFetched && !enabled"
       class="rounded-xl border border-gray-200 bg-gray-50 p-4 text-sm text-gray-700 dark:border-zinc-700 dark:bg-zinc-900 dark:text-gray-300"
     >
-      Marv is currently unavailable. Please check back later.
+      M.A.R.V is currently unavailable. Please check back later.
     </div>
 
     <template v-else-if="hasFetched">
@@ -53,7 +53,7 @@
         <div>
           <div class="text-sm font-semibold moh-text">Preferred reply mode</div>
           <p class="text-xs text-gray-500 dark:text-gray-400">
-            Faster replies cost less. Smart replies are best for tricky questions; Marv may auto-upgrade
+            Faster replies cost less. Smart replies are best for tricky questions; M.A.R.V may auto-upgrade
             for sensitive topics.
           </p>
         </div>
@@ -106,7 +106,7 @@
         <div class="flex items-center justify-between">
           <div>
             <div class="text-sm font-semibold moh-text">Recent activity</div>
-            <p class="text-xs text-gray-500 dark:text-gray-400">Your last 10 Marv interactions.</p>
+            <p class="text-xs text-gray-500 dark:text-gray-400">Your last 10 M.A.R.V interactions.</p>
           </div>
           <button
             type="button"
@@ -184,7 +184,7 @@ const {
 
 const { apiFetch } = useApiClient()
 
-const displayName = computed(() => marvDisplayName.value || 'Marv')
+const displayName = computed(() => marvDisplayName.value || 'M.A.R.V')
 const modeBusy = ref(false)
 const usage = ref<MarvinUsageEventDto[]>([])
 const usageLoading = ref(false)
@@ -203,7 +203,9 @@ function modeDescription(m: MarvinModeDto): string {
 }
 
 function sourceLabel(s: MarvinSourceDto): string {
-  return s === 'private_session' ? 'Direct chat' : 'Public thread'
+  if (s === 'private_session') return 'Direct chat'
+  if (s === 'catch_up') return 'Catch me up'
+  return 'Public thread'
 }
 
 function formatRelative(iso: string): string {

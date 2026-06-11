@@ -130,6 +130,29 @@
           </AppPostComposer>
         </div>
 
+        <!-- Catch me up pill: show on busy threads (≥8 replies) to premium users who haven't dismissed it this visit -->
+        <div
+          v-if="isMounted && showCatchMeUpPill && post"
+          class="flex items-center justify-between gap-3 border-b moh-border px-4 py-2"
+        >
+          <button
+            type="button"
+            class="inline-flex items-center gap-2 rounded-full border moh-border bg-violet-50 px-3 py-1.5 text-xs font-medium text-violet-700 transition-colors hover:bg-violet-100 dark:bg-violet-500/10 dark:text-violet-300 dark:hover:bg-violet-500/20"
+            @click="onCatchMeUpPill"
+          >
+            <Icon name="tabler:sparkles" class="text-[13px]" aria-hidden="true" />
+            Catch me up — {{ commentCountDisplay }} {{ commentCountDisplay === 1 ? 'reply' : 'replies' }}
+          </button>
+          <button
+            type="button"
+            class="inline-flex h-6 w-6 items-center justify-center rounded-full text-gray-400 transition-opacity hover:opacity-70"
+            aria-label="Dismiss"
+            @click="dismissCatchMeUpPill"
+          >
+            <Icon name="tabler:x" class="text-[12px]" aria-hidden="true" />
+          </button>
+        </div>
+
         <div ref="commentsFeedTopEl" class="border-b border-gray-200 dark:border-zinc-800">
           <div class="px-4 py-3 flex flex-wrap items-center justify-between gap-3 border-b border-gray-200 dark:border-zinc-800">
             <div class="text-sm font-semibold moh-text">
@@ -675,6 +698,74 @@ const errorBody = computed(() => {
 function goToLogin() {
   const redirect = encodeURIComponent(route.fullPath)
   return navigateTo(`/login?redirect=${redirect}`)
+}
+
+// ─── Catch me up pill ──────────────────────────────────────────────────────────
+// Shown to authed users on busy threads (≥8 replies), dismissed per-post in
+// localStorage and re-shown when ≥5 new replies arrive since last visit.
+const CATCH_UP_PILL_THRESHOLD = 8
+const CATCH_UP_NEW_REPLY_THRESHOLD = 5
+const CATCH_UP_STORAGE_KEY = 'moh:catch-up-pill'
+
+const isMounted = ref(false)
+onMounted(() => { isMounted.value = true })
+
+const pillDismissed = ref(false)
+
+interface CatchUpPillState { lastSeenCount: number; dismissedCount: number | null }
+function readPillState(pid: string): CatchUpPillState {
+  try {
+    const raw = localStorage.getItem(CATCH_UP_STORAGE_KEY)
+    const map: Record<string, CatchUpPillState> = raw ? JSON.parse(raw) : {}
+    return map[pid] ?? { lastSeenCount: 0, dismissedCount: null }
+  } catch {
+    return { lastSeenCount: 0, dismissedCount: null }
+  }
+}
+function writePillState(pid: string, state: CatchUpPillState) {
+  try {
+    const raw = localStorage.getItem(CATCH_UP_STORAGE_KEY)
+    const map: Record<string, CatchUpPillState> = raw ? JSON.parse(raw) : {}
+    map[pid] = state
+    localStorage.setItem(CATCH_UP_STORAGE_KEY, JSON.stringify(map))
+  } catch { /* ignore */ }
+}
+
+const showCatchMeUpPill = computed(() => {
+  if (!isAuthed.value) return false
+  if (pillDismissed.value) return false
+  const count = commentCountDisplay.value ?? 0
+  if (count < CATCH_UP_PILL_THRESHOLD) return false
+  return true
+})
+
+onMounted(() => {
+  if (!postId.value) return
+  const state = readPillState(postId.value)
+  const count = commentCountDisplay.value ?? 0
+  // Re-show if ≥5 new replies since last seen and was previously dismissed.
+  if (state.dismissedCount !== null && count >= state.dismissedCount + CATCH_UP_NEW_REPLY_THRESHOLD) {
+    pillDismissed.value = false
+    writePillState(postId.value, { lastSeenCount: count, dismissedCount: null })
+  } else if (state.dismissedCount !== null) {
+    pillDismissed.value = true
+  }
+  writePillState(postId.value, { ...state, lastSeenCount: count })
+})
+
+const { show: showMarvCatchUp } = useMarvCatchUp()
+
+function onCatchMeUpPill() {
+  if (!post.value) return
+  showMarvCatchUp(post.value)
+}
+
+function dismissCatchMeUpPill() {
+  pillDismissed.value = true
+  if (postId.value) {
+    const state = readPillState(postId.value)
+    writePillState(postId.value, { ...state, dismissedCount: commentCountDisplay.value ?? 0 })
+  }
 }
 
 function reloadPage() {

@@ -1475,6 +1475,7 @@ const aiKpiCards = computed(() => {
 const AI_SOURCE_META: Record<string, { label: string; dot: string; bar: string }> = {
   public_thread:   { label: 'Public Thread',  dot: 'bg-blue-500',   bar: 'bg-blue-500' },
   private_session: { label: 'Private DM',     dot: 'bg-violet-500', bar: 'bg-violet-500' },
+  catch_up:        { label: 'Catch Me Up',    dot: 'bg-emerald-500', bar: 'bg-emerald-500' },
 }
 
 const aiSourceRows = computed(() => {

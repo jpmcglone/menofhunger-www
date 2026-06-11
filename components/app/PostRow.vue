@@ -149,6 +149,19 @@
           <!-- "Replying to" label — shown only when the prop is set (e.g. Notifications page) -->
           <AppPostRowReplyingTo v-if="showReplyingTo" :post="postView" />
 
+          <!-- Marv "Catch me up" trigger — sits just left of the more-menu button. -->
+          <div v-if="showCatchUpButton" class="absolute right-8 -top-2.5 z-30 pointer-events-auto">
+            <button
+              v-tooltip.bottom="tinyTooltip('Catch me up — M.A.R.V summarizes this thread')"
+              type="button"
+              class="moh-tap moh-pressable inline-flex h-10 w-10 items-center justify-center rounded-full transition-opacity hover:opacity-70"
+              aria-label="Catch me up with M.A.R.V"
+              @click.stop="onCatchMeUp"
+            >
+              <AppMarvMark :size="18" />
+            </button>
+          </div>
+
           <AppPostRowMoreMenu v-if="!isPendingRow" :items="moreMenuItems" :tooltip="moreTooltip" :on-before-open="ensureAuthorFollowLoaded" />
         </div>
 
@@ -543,6 +556,19 @@ const isSelf = computed(() => {
   const authorId = author.value?.id ?? authorSnapshot.value?.id ?? null
   return Boolean(viewerId && authorId && viewerId === authorId)
 })
+
+// Marv "Catch me up": offered to every signed-in viewer on every real post row. Marv
+// summarizes the post itself plus any thread above/below it, and can pull in broader
+// context (web search / current events) so it's useful even on a lone post. Opening the
+// modal is free; generating a summary spends credits (gated server-side; non-premium
+// sees an upsell).
+const { show: showCatchUp } = useMarvCatchUp()
+const showCatchUpButton = computed(
+  () => isAuthed.value && !isPendingRow.value && !isDeletedPost.value,
+)
+function onCatchMeUp() {
+  showCatchUp(postView.value)
+}
 
 const isOnlyMe = computed(() => postView.value.visibility === 'onlyMe')
 const viewerIsAdmin = computed(() => Boolean(user.value?.siteAdmin))

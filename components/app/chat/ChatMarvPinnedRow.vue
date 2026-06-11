@@ -166,7 +166,7 @@ const {
 
 const hidden = computed(() => !enabled.value || !marvUserId.value)
 const showRow = computed(() => isAvailable.value)
-const displayName = computed(() => marvDisplayName.value ?? 'Marv')
+const displayName = computed(() => marvDisplayName.value ?? 'M.A.R.V')
 
 /**
  * Synthetic user object for `AppUserAvatar`. We construct it from the cached

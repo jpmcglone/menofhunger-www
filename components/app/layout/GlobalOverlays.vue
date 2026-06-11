@@ -23,6 +23,7 @@
   <AppPremiumMediaModal />
   <AppUnsavedDraftPromptModal />
   <AppReplyModal />
+  <AppMarvCatchUpModal />
   <AppPostSendViaChatDialog />
   <AppPostBookmarkFolderDialog />
   <AppKeyboardShortcutsModal />

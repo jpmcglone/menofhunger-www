@@ -27,7 +27,21 @@
         <div class="px-4 pb-4 pt-4">
           <!-- Header row: pill label + external link -->
           <div class="flex items-center justify-between gap-3">
-            <div class="flex items-center gap-0.5">
+            <NuxtLink
+              v-if="detailTo"
+              :to="detailTo"
+              class="flex items-center gap-0.5 hover:opacity-75 transition-opacity"
+            >
+              <span
+                class="inline-flex translate-y-[1px] items-center rounded-full border border-black/10 bg-white/55 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-gray-900 dark:border-white/10 dark:bg-white/5 dark:text-gray-100"
+              >
+                Word
+              </span>
+              <span class="translate-x-[-1px] translate-y-[1px] text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500 dark:text-gray-400">
+                of the Day
+              </span>
+            </NuxtLink>
+            <div v-else class="flex items-center gap-0.5">
               <span
                 class="inline-flex translate-y-[1px] items-center rounded-full border border-black/10 bg-white/55 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-gray-900 dark:border-white/10 dark:bg-white/5 dark:text-gray-100"
               >
@@ -112,6 +126,11 @@
 
 <script setup lang="ts">
 import type { Websters1828WordOfDay } from '~/types/api'
+
+defineProps<{
+  /** When provided, the "Word of the Day" label becomes a NuxtLink to this route. */
+  detailTo?: string
+}>()
 
 const { apiFetchData } = useApiClient()
 

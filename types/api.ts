@@ -1961,7 +1961,7 @@ export type AdminAnalyticsAI = {
   estimatedCostUsdInRange: number | null
   /** Average latencyMs for successful events; null when no data. */
   avgLatencyMsInRange: number | null
-  /** Count by MarvinSource: "public_thread" | "private_session". */
+  /** Count by MarvinSource: "public_thread" | "private_session" | "catch_up". */
   bySource: Record<string, number>
   /** Count by effectiveMode for successful events: "fast" | "regular" | "smart". */
   byEffectiveMode: Record<string, number>
@@ -2376,7 +2376,7 @@ export type OpenCrewMember = {
 /** User-facing reply-mode tier; mirrors the API's `MarvinMode` enum. */
 export type MarvinModeDto = 'auto' | 'fast' | 'regular' | 'smart'
 /** Source channel; mirrors the API's `MarvinSource` enum. */
-export type MarvinSourceDto = 'public_thread' | 'private_session'
+export type MarvinSourceDto = 'public_thread' | 'private_session' | 'catch_up'
 
 /** Snapshot of the requester's Marv credit bucket. Returned by `GET /marvin/me`. */
 export type MarvinCreditSummaryDto = {
@@ -2387,12 +2387,27 @@ export type MarvinCreditSummaryDto = {
   lastRefilledAt: string
 }
 
+/** Per-mode credit costs, sourced from server config. Used to preview spend before "Catch me up". */
+export type MarvinCostsDto = {
+  fast: number
+  regular: number
+  smart: number
+  /** Extra credits charged per web-search call the model makes. */
+  webSearchSurcharge: number
+  /** Extra credits charged per image passed to a vision-capable model. */
+  visionPerImage: number
+  /** Extra credits charged per URL the model fetches. */
+  urlFetchSurcharge: number
+}
+
 /** `GET /marvin/me` response body. Used by chat page + settings + composer mode pill. */
 export type MarvinMeDto = {
   enabled: boolean
   isPremium: boolean
   preferredMode: MarvinModeDto
   credits: MarvinCreditSummaryDto
+  /** Per-mode base costs + surcharges, for cost-preview UI. */
+  costs: MarvinCostsDto
   marv: {
     userId: string
     username: string
@@ -2431,6 +2446,54 @@ export type MarvinUsageEventDto = {
 
 /** Realtime payload for `marv:credits-updated`. Same shape as `MarvinCreditSummaryDto`. */
 export type MarvCreditsUpdatedPayloadDto = MarvinCreditSummaryDto
+
+/** Body for `POST /marvin/catch-up/:postId`. */
+export type MarvinCatchUpBodyDto = {
+  mode?: MarvinModeDto
+  /** Skip the cache and regenerate a fresh summary (the "Regenerate" button). Spends credits. */
+  refresh?: boolean
+  /**
+   * Peek mode: return the cached summary if one exists, else `null`. Never spends credits or
+   * calls the model. Used to decide whether the modal can show a free summary on open.
+   */
+  cacheOnly?: boolean
+}
+
+/**
+ * Result of a "Catch me up" request — an AI summary of the conversation above AND
+ * below a focal post. Returned by `POST /marvin/catch-up/:postId`.
+ */
+export type MarvinCatchUpDto = {
+  postId: string
+  rootPostId: string | null
+  /** The generated summary text. */
+  summary: string
+  /** The model tier that actually ran (after routing/auto-upgrades). */
+  effectiveMode: MarvinModeDto
+  /** Credits spent on this request (0 on a cache hit). */
+  creditsSpent: number
+  /**
+   * Breakdown of what drove the total spend (all 0 on a cache hit).
+   * Lets the UI render e.g. "5 credits: 2 model + 2 image + 1 web search".
+   */
+  costBreakdown: {
+    mode: number
+    vision: number
+    webSearch: number
+    urlFetch: number
+  }
+  /** True when this summary was served from cache (no new credits spent). */
+  cached: boolean
+  /** How much of the thread the summary was built from. */
+  included: {
+    ancestors: number
+    descendants: number
+    /** Total descendants discovered within traversal depth (may exceed `descendants`). */
+    totalDescendants: number
+  }
+  /** ISO timestamp of when the underlying summary was generated. */
+  generatedAt: string
+}
 
 // Admin-only Marv types — used by `pages/admin/marv.vue`. Mirror what the
 // API's `MarvinAdminService` returns; keep field names identical so we can
