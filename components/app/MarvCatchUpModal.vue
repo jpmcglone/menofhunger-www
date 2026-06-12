@@ -187,10 +187,10 @@
                   <div v-if="result" class="rounded-xl border moh-border p-3">
                     <!-- Two-section layout when the API parsed POST:/REPLIES: markers -->
                     <template v-if="result.sections">
-                      <p class="mb-0.5 text-[10px] font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500">The post</p>
+                      <p class="mb-0.5 text-[10px] font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500">{{ postSectionLabel }}</p>
                       <p class="whitespace-pre-line text-sm leading-relaxed text-gray-800 dark:text-gray-100">{{ result.sections.post }}</p>
                       <template v-if="result.sections.replies">
-                        <p class="mb-0.5 mt-3 text-[10px] font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500">The replies</p>
+                        <p class="mb-0.5 mt-3 text-[10px] font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500">Replies</p>
                         <p class="whitespace-pre-line text-sm leading-relaxed text-gray-800 dark:text-gray-100">{{ result.sections.replies }}</p>
                       </template>
                     </template>
@@ -408,8 +408,16 @@ const summaryMeta = computed(() => {
   const above = inc.ancestors
   const below = inc.totalDescendants
   const parts: string[] = []
-  parts.push(`${above} ${above === 1 ? 'post' : 'posts'} above`)
-  parts.push(`${below} ${below === 1 ? 'reply' : 'replies'} below`)
+  if (above > 0) parts.push(`${above} ${above === 1 ? 'post' : 'posts'} above`)
+  if (below > 0) parts.push(`${below} ${below === 1 ? 'reply' : 'replies'} below`)
+  if (parts.length === 0) return 'Based on this post'
   return `Based on ${parts.join(' and ')}`
 })
+
+// When the focal post sits under an ancestor path, "The post" summary is read in
+// context of what's above it — signal that so the label isn't mistaken for the
+// post in isolation.
+const postSectionLabel = computed(() =>
+  (result.value?.included?.ancestors ?? 0) > 0 ? 'This post (in context)' : 'This post',
+)
 </script>
