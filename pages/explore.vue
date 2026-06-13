@@ -58,15 +58,16 @@
     <div class="pt-4 pb-0 sm:pb-4 space-y-4">
 
       <!-- Cashtag header: $SPY · company name + live chart -->
-      <div v-if="cashtagHeader" class="border-b moh-border">
+      <!-- Chart renders for any well-formed $SYMBOL; company name is best-effort from the API -->
+      <div v-if="cashtagHeaderSymbol" class="border-b moh-border">
         <div class="moh-gutter-x pt-3 pb-1 flex items-baseline gap-1.5">
-          <span class="text-sm font-bold text-[var(--p-primary-color)]">${{ cashtagHeader.symbol }}</span>
-          <span class="text-sm moh-text-muted">· {{ cashtagHeader.name }}</span>
+          <span class="text-sm font-bold text-[var(--p-primary-color)]">${{ cashtagHeaderSymbol }}</span>
+          <span v-if="cashtagName" class="text-sm moh-text-muted">· {{ cashtagName }}</span>
         </div>
         <ClientOnly>
           <AppCashtagStockWidget
-            :key="`${cashtagHeader.symbol}-${colorMode.value}`"
-            :symbol="cashtagHeader.symbol"
+            :key="`${cashtagHeaderSymbol}-${colorMode.value}`"
+            :symbol="cashtagHeaderSymbol"
             :height="200"
           />
         </ClientOnly>
@@ -985,13 +986,14 @@ const cashtagHeaderSymbol = computed(() => {
   return sym ? sym.toUpperCase() : null
 })
 
-const cashtagHeader = ref<CashtagResult | null>(null)
+const cashtagName = ref<string | null>(null)
 watch(cashtagHeaderSymbol, async (sym) => {
-  if (!sym) { cashtagHeader.value = null; return }
+  if (!sym) { cashtagName.value = null; return }
   try {
-    cashtagHeader.value = await apiFetchData<CashtagResult>(`/cashtags/${encodeURIComponent(sym)}`)
+    const result = await apiFetchData<CashtagResult>(`/cashtags/${encodeURIComponent(sym)}`)
+    cashtagName.value = result?.name ?? null
   } catch {
-    cashtagHeader.value = null
+    cashtagName.value = null
   }
 }, { immediate: true })
 const canShowSearchCheckinHint = computed(
