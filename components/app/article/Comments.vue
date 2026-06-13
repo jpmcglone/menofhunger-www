@@ -208,7 +208,7 @@ const props = defineProps<{
 
 const { user, isAuthed, isVerified, isPremium, isPremiumPlus } = useAuth()
 
-const commentMaxLength = computed(() => (isPremium.value || isPremiumPlus.value) ? 2000 : 500)
+const commentMaxLength = computed(() => (isPremium.value || isPremiumPlus.value) ? 1000 : 500)
 const newCommentBodyOverLimit = computed(() => newCommentBody.value.length > commentMaxLength.value)
 const replyBodyOverLimit = computed(() => replyBody.value.length > commentMaxLength.value)
 

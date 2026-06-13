@@ -3,7 +3,7 @@
     "label": "Membership",
     "tagline": "A trusted community for men who want real conversation, not more noise.",
     "title": "Unverified, Verified, Premium, and Premium+ — how the tiers work.",
-    "description": "Unverified: read and take private notes. Verified: real and free — post (up to 500 chars), react, post images and GIFs, create polls, use bookmark folders, send coins, and start DMs with mutuals. Premium: full access — 2000-char posts, post video, DM any member, create groups, publish longform, and more. Premium+: steward and support."
+    "description": "Unverified: read and take private notes. Verified: real and free — post (up to 500 chars), react, post images and GIFs, create polls, use bookmark folders, send coins, and start DMs with mutuals. Premium: full access — 1000-char posts, post video, DM any member, create groups, publish longform, and more. Premium+: steward and support."
   },
   "metaDescription": "Men of Hunger tiers: Unverified (read-only), Verified (identity-verified, free), Premium ($25/mo — full access), Premium+ ($75/mo — steward). Real conversation, no noise.",
   "tiers": [
@@ -194,7 +194,7 @@
           "text": "Post video (images and GIFs available to all verified)"
         },
         {
-          "text": "Up to 2000 characters per post or comment"
+          "text": "Up to 1000 characters per post or comment"
         },
         {
           "text": "Create polls"

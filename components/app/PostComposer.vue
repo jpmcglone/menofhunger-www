@@ -950,7 +950,7 @@ const composerTextareaVars = computed<Record<string, string>>(() => {
     : { '--moh-compose-accent': 'rgba(0, 0, 0, 0.85)', '--moh-compose-ring': 'rgba(0, 0, 0, 0.18)' }
 })
 
-const postMaxLen = computed(() => (isPremium.value ? 2000 : 500))
+const postMaxLen = computed(() => (isPremium.value ? 1000 : 500))
 const composerPlaceholder = computed(
   () =>
     props.placeholder ??
