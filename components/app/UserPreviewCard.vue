@@ -338,7 +338,7 @@ const avatarRoundClass = computed(() => getAvatarRoundClass(Boolean(user.value?.
 const { user: authUser } = useAuth()
 const isAuthed = computed(() => Boolean(authUser.value?.id))
 const isSelf = computed(() => Boolean(authUser.value?.id && user.value.id && authUser.value.id === user.value.id))
-const viewerCanStartChats = computed(() => Boolean(authUser.value?.premium || authUser.value?.premiumPlus))
+const viewerIsPremium = computed(() => Boolean(authUser.value?.premium || authUser.value?.premiumPlus))
 const previewUserFollowsViewer = computed(() => Boolean(user.value.relationship?.userFollowsViewer))
 const viewerIsVerified = computed(() => (authUser.value?.verifiedStatus ?? 'none') !== 'none')
 const previewUserIsVerified = computed(() => userColorTier(user.value) !== 'normal')
@@ -354,9 +354,9 @@ const shouldCheckExistingChat = computed(() => {
   if (!previewUserIsVerified.value) return false
   if (isSelf.value) return false
   if (!user.value.id) return false
-  // If viewer isn't premium, we need this to know whether to show the button at all.
+  // If viewer can't start a new chat (not premium, not mutual), check for an existing conversation to still show the button.
   if (!viewerCanStartChats.value) return true
-  // If viewer is premium AND the user doesn't follow them, this decides filled vs outline.
+  // Decide filled vs outline based on whether the other user follows back.
   if (!previewUserFollowsViewer.value) return true
   return false
 })
@@ -400,7 +400,7 @@ const canSendMessageFromPreview = computed(() => {
   if (!previewUserIsVerified.value) return false
   if (isSelf.value) return false
   if (!user.value.id || !user.value.username) return false
-  // Premium can always start new chats; non-premium needs an existing conversation.
+  // Verified mutuals and premium can start new chats; others need an existing conversation.
   if (viewerCanStartChats.value) return true
   return hasExistingChat.value
 })
@@ -409,6 +409,9 @@ const isMutualFollow = computed(() => {
   const rel = user.value.relationship
   return Boolean(rel?.viewerFollowsUser && rel?.userFollowsViewer)
 })
+
+// Verified users can start DMs with mutuals; premium users can DM any member.
+const viewerCanStartChats = computed(() => viewerIsPremium.value || isMutualFollow.value)
 
 const showNudge = computed(() => {
   if (!isAuthed.value) return false

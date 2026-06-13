@@ -481,8 +481,8 @@
 
   <AppConfirmDialog
     :visible="startChatInfoVisible"
-    header="Starting new chats"
-    message="To start new chats yourself, upgrade to Premium."
+    header="Can't start this chat"
+    message="You can only message people who follow you back. Upgrade to Premium to message any member."
     cancel-label="Not now"
     confirm-label="Get Premium"
     confirm-severity="primary"
@@ -597,7 +597,13 @@ const followerLabel = computed(() => (followerCountN.value === 1 ? 'Follower' : 
 const { user: authUser } = useAuth()
 const isAuthed = computed(() => Boolean(authUser.value?.id))
 const { show: showAuthActionModal } = useAuthActionModal()
-const viewerCanStartChats = computed(() => Boolean(authUser.value?.premium || authUser.value?.premiumPlus))
+const viewerIsPremium = computed(() => Boolean(authUser.value?.premium || authUser.value?.premiumPlus))
+// Verified users can start DMs with mutuals; premium users can DM any member.
+const viewerCanStartChats = computed(() => {
+  if (viewerIsPremium.value) return true
+  const rel = followRelationship.value
+  return viewerIsVerified.value && Boolean(rel?.viewerFollowsUser && rel?.userFollowsViewer)
+})
 const viewerIsVerified = computed(() => (authUser.value?.verifiedStatus ?? 'none') !== 'none')
 
 const locationLabel = computed(() => {

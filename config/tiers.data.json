@@ -3,7 +3,7 @@
     "label": "Membership",
     "tagline": "A trusted community for men who want real conversation, not more noise.",
     "title": "Unverified, Verified, Premium, and Premium+ — how the tiers work.",
-    "description": "Unverified: read. Verified: real, but limited — post, react, join Spaces, Watch parties, Radio, and Crews. Premium: full access (posting, media, chat, groups, articles, coins, and accountability loops). Premium+: steward and support."
+    "description": "Unverified: read and take private notes. Verified: real and free — post (up to 500 chars), react, post images and GIFs, create polls, use bookmark folders, send coins, and start DMs with mutuals. Premium: full access — 2000-char posts, post video, DM any member, create groups, publish longform, and more. Premium+: steward and support."
   },
   "metaDescription": "Men of Hunger tiers: Unverified (read-only), Verified (identity-verified, free), Premium ($25/mo — full access), Premium+ ($75/mo — steward). Real conversation, no noise.",
   "tiers": [
@@ -56,6 +56,9 @@
         },
         {
           "text": "Participate in dialogues"
+        },
+        {
+          "text": "Bookmark folders / collections (Verified required)"
         }
       ],
       "why": [
@@ -87,10 +90,22 @@
           "text": "Reply in public threads (no dialogues)"
         },
         {
-          "text": "Reply to DMs started with them (cannot start new DMs)"
+          "text": "Post images and GIFs (video is Premium)"
         },
         {
-          "text": "Text + links only (no images/GIFs/video)"
+          "text": "Create polls"
+        },
+        {
+          "text": "Use bookmark folders / collections"
+        },
+        {
+          "text": "Send coins to other verified members"
+        },
+        {
+          "text": "Start DMs with mutuals (people who follow you back); reply to anyone"
+        },
+        {
+          "text": "Up to 500 characters per post or comment"
         },
         {
           "text": "Access men-only read areas"
@@ -111,7 +126,7 @@
           "text": "Join Crews / Founding Circles (invite-only small communities)"
         },
         {
-          "text": "Join groups with limited participation"
+          "text": "Join and fully participate in groups"
         },
         {
           "text": "Earn coins and check in daily for streaks"
@@ -119,7 +134,10 @@
       ],
       "cannot": [
         {
-          "text": "Full posting freedom"
+          "text": "Post video (Premium only)"
+        },
+        {
+          "text": "Start DMs with non-mutuals (Premium only)"
         },
         {
           "text": "Start dialogues"
@@ -131,13 +149,7 @@
           "text": "Create groups"
         },
         {
-          "text": "Start new DMs freely"
-        },
-        {
           "text": "Access subscriber-only areas"
-        },
-        {
-          "text": "Post with media (images, GIFs, video)"
         }
       ],
       "why": [
@@ -176,10 +188,13 @@
           "text": "Access men-only + subscriber-only areas"
         },
         {
-          "text": "DM other members"
+          "text": "DM any verified member"
         },
         {
-          "text": "Create posts with media (images, GIFs, video)"
+          "text": "Post video (images and GIFs available to all verified)"
+        },
+        {
+          "text": "Up to 2000 characters per post or comment"
         },
         {
           "text": "Create polls"
@@ -188,10 +203,10 @@
           "text": "Publish longform articles"
         },
         {
-          "text": "Participate fully in groups"
+          "text": "Create groups"
         },
         {
-          "text": "Use bookmarks folders / collections"
+          "text": "Use bookmark folders / collections"
         },
         {
           "text": "Invite friends — when someone you refer goes Premium, you both get a free month"

@@ -2,7 +2,7 @@
   <AppConfirmDialog
     :visible="open"
     header="Premium required"
-    message="Media posts (images, GIFs, and videos) are for premium members. Upgrade to post media."
+    message="Video posts are for premium members. Upgrade to post video."
     cancel-label="Not now"
     confirm-label="See plans"
     confirm-severity="primary"

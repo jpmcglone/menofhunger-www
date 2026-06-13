@@ -268,7 +268,7 @@ const route = useRoute()
 const { user: me, ensureLoaded } = useAuth()
 const viewerIsVerified = computed(() => (me.value?.verifiedStatus ?? 'none') !== 'none')
 const viewerIsPremium = computed(() => Boolean(me.value?.premium || me.value?.premiumPlus))
-// Any verified or premium user can start new chats; non-premium can't start with premium recipients (API enforces).
+// Verified users can start new chats with mutuals; Premium can DM any verified member. API enforces the mutual rule.
 const viewerCanStartChats = computed(() => viewerIsVerified.value || viewerIsPremium.value)
 const viewerCanUseChat = computed(() => viewerIsVerified.value || viewerIsPremium.value)
 
@@ -424,7 +424,7 @@ const { confirm } = useAppConfirm()
 async function showCantStartChat() {
   await confirm({
     header: "Can't start this chat",
-    message: 'You need a verified account to send messages.',
+    message: 'You need a verified account to send messages. Verified members can message people who follow them back; Premium members can message anyone.',
     confirmLabel: 'Got it',
     confirmSeverity: 'primary',
     showCancel: false,

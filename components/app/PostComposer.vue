@@ -733,7 +733,7 @@ const {
   clearAll,
 } = useComposerMedia({
   maxSlots: 4,
-  canAcceptImages: computed(() => Boolean(isPremium.value && !disableMedia.value && !hasPoll.value)),
+  canAcceptImages: computed(() => Boolean(viewerIsVerified.value && !disableMedia.value && !hasPoll.value)),
   canAcceptVideo: computed(() => Boolean(isPremium.value && !disableMedia.value && !hasPoll.value)),
   onMediaRejectedNeedPremium: () => {
     if (disableMedia.value) return
@@ -776,14 +776,20 @@ function seedInitialMediaIfNeeded() {
 function onClickAddMedia() {
   if (disableMedia.value) return
   if (hasPoll.value) return
-  if (!isPremium.value) return usePremiumMediaModal().show()
+  if (!viewerIsVerified.value) {
+    toast.push({ title: 'Verify your account to post images and GIFs', to: '/tiers', durationMs: 3000 })
+    return
+  }
   openMediaPicker()
 }
 
 function onClickAddGiphy() {
   if (disableMedia.value) return
   if (hasPoll.value) return
-  if (!isPremium.value) return usePremiumMediaModal().show()
+  if (!viewerIsVerified.value) {
+    toast.push({ title: 'Verify your account to use GIF search', to: '/tiers', durationMs: 3000 })
+    return
+  }
   openGiphyPicker((draft.value || '').trim().slice(0, 120))
 }
 
@@ -801,7 +807,10 @@ function onClickAddPoll() {
   if (disableMedia.value) return
   if (props.replyTo) return
   if (hasPoll.value) return
-  if (!isPremium.value) return usePremiumMediaModal().show()
+  if (!viewerIsVerified.value) {
+    toast.push({ title: 'Verify your account to create polls', to: '/tiers', durationMs: 3000 })
+    return
+  }
   if (composerMedia.value.length > 0) return
   poll.value = {
     options: [
@@ -941,7 +950,7 @@ const composerTextareaVars = computed<Record<string, string>>(() => {
     : { '--moh-compose-accent': 'rgba(0, 0, 0, 0.85)', '--moh-compose-ring': 'rgba(0, 0, 0, 0.18)' }
 })
 
-const postMaxLen = computed(() => (isPremium.value ? 1000 : 200))
+const postMaxLen = computed(() => (isPremium.value ? 2000 : 500))
 const composerPlaceholder = computed(
   () =>
     props.placeholder ??

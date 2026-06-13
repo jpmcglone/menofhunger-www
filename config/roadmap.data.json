@@ -41,11 +41,11 @@
               "done": true
             },
             {
-              "text": "**Verified participation limits** — React, post, and reply within limits (rate limits may be lower than Premium; configurable by admins); **text + links only** (no images/GIFs/video); men-only read areas; no dialogues; can reply to DMs started with them but cannot start new DMs.",
+              "text": "**Verified participation** — React, post, and reply within limits (rate limits may be lower than Premium; configurable by admins); post **images and GIFs** (video is Premium); create **polls**; use **bookmark folders/collections**; send **coins** to other verified members; **start DMs with mutuals** (people who follow you back); men-only read areas; no dialogues.",
               "done": true
             },
             {
-              "text": "**Premium baseline access** — Full posting and replies, member-only areas, can start DMs, and can post with media; Premium is baseline (unverified/verified may be slightly suppressed); paid tiers are neutral (no boosted reach).",
+              "text": "**Premium baseline access** — Full posting and replies, member-only areas; **post video** (images/GIFs available to all verified); **DM any verified member** (verified can only DM mutuals); create groups; Premium is baseline (verified may be slightly suppressed); paid tiers are neutral (no boosted reach).",
               "done": true
             },
             {
@@ -108,7 +108,7 @@
               "done": true
             },
             {
-              "text": "**GIF picker (Giphy)** — Browse and attach GIFs in the composer via a server-side Giphy proxy.",
+              "text": "**GIF picker (Giphy)** — Browse and attach GIFs in the composer via a server-side Giphy proxy. Available to all verified members.",
               "done": true
             }
           ]
@@ -211,11 +211,11 @@
               "done": true
             },
             {
-              "text": "**Polls (v1)** — Premium members can create polls; poll results notifications are delivered cleanly in notifications.",
+              "text": "**Polls (v1)** — Verified members can create polls; poll results notifications are delivered cleanly in notifications.",
               "done": true
             },
             {
-              "text": "**Bookmark collections (v1)** — Save posts into folders and manage bookmark organization from a dedicated bookmarks surface.",
+              "text": "**Bookmark collections (v1)** — Verified members can save posts into folders and manage bookmark organization from a dedicated bookmarks surface.",
               "done": true
             },
             {
