@@ -26,6 +26,9 @@ type Satisfies<TWww, TApi extends TWww> = TApi
 // ─── Envelope ────────────────────────────────────────────────────────────────
 type _Pagination = Satisfies<Www.ApiPagination, { nextCursor: string | null }>
 
+// ─── Cashtags ─────────────────────────────────────────────────────────────────
+type _CashtagResult = Satisfies<Www.CashtagResult, Api.CashtagResultDto>
+
 // ─── Posts ───────────────────────────────────────────────────────────────────
 type _FeedPost = Satisfies<Www.FeedPost, Api.PostDto>
 type _PostAuthor = Satisfies<Www.PostAuthor, Api.PostAuthorDto>

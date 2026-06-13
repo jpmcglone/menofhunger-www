@@ -32,6 +32,15 @@
       >
         {{ seg.text }}
       </NuxtLink>
+      <NuxtLink
+        v-else-if="seg.cashtagSymbol"
+        :to="{ path: '/explore', query: { q: `$${seg.cashtagSymbol}` } }"
+        :class="hashtagLinkClass(seg.cashtagTier)"
+        :style="mentionTierToStyle(seg.cashtagTier)"
+        @click.stop
+      >
+        {{ seg.text }}
+      </NuxtLink>
       <span v-else>{{ seg.text }}</span>
     </template>
   </p>
@@ -43,18 +52,21 @@ import { siteConfig } from '~/config/site'
 import { extractLinksFromText } from '~/utils/link-utils'
 import { splitTextByMentionsDisplay } from '~/utils/mention-autocomplete'
 import { splitTextByHashtagsDisplay } from '~/utils/hashtag-autocomplete'
+import { splitTextByCashtagsDisplay } from '~/utils/cashtag-autocomplete'
 import { mentionTierToStyle } from '~/utils/mention-tier-style'
 import { stableListKey } from '~/utils/stable-list-key'
 import { tierFromMentionUser } from '~/composables/useMentionAutocomplete'
 
 type MentionTier = 'normal' | 'verified' | 'premium' | 'organization'
-type TextSegment = { text: string; href?: string; mentionUsername?: string; mentionTier?: MentionTier; hashtagTag?: string; hashtagTier?: MentionTier }
+type TextSegment = { text: string; href?: string; mentionUsername?: string; mentionTier?: MentionTier; hashtagTag?: string; hashtagTier?: MentionTier; cashtagSymbol?: string; cashtagTier?: MentionTier }
 
 const props = defineProps<{
   body: string
   hasMedia: boolean
   /** Usernames from post.mentions; @username in body that match (case-insensitive) become profile links. */
   mentions?: Array<{ id: string; username: string; verifiedStatus?: string; premium?: boolean; isOrganization?: boolean }>
+  /** Kept for API compat but no longer used for gating display. */
+  cashtags?: string[]
   visibility?: import('~/types/api').PostVisibility
 }>()
 
@@ -215,12 +227,24 @@ function splitByMentions(text: string): TextSegment[] {
         continue
       }
     }
-    // Plain text: further split by hashtags.
+    // Plain text: further split by hashtags, then cashtags.
     const hs = splitTextByHashtagsDisplay(seg.text)
     for (const hseg of hs) {
       const h = hseg.hashtag
-      if (!h) out.push({ text: hseg.text })
-      else out.push({ text: hseg.text, hashtagTag: h.tagLower, hashtagTier: postTier.value })
+      if (h) {
+        out.push({ text: hseg.text, hashtagTag: h.tagLower, hashtagTier: postTier.value })
+        continue
+      }
+      // Linkify every $SYMBOL pattern — no server-side validation gate needed.
+      const cs = splitTextByCashtagsDisplay(hseg.text)
+      for (const cseg of cs) {
+        const c = cseg.cashtag
+        if (c) {
+          out.push({ text: cseg.text, cashtagSymbol: c.symbolUpper, cashtagTier: postTier.value })
+        } else {
+          out.push({ text: cseg.text })
+        }
+      }
     }
   }
   return out
@@ -268,6 +292,7 @@ function bodySegmentKey(seg: TextSegment, idx: number): string {
   if (seg.href) return stableListKey('link', seg.href, seg.text, idx)
   if (seg.mentionUsername) return stableListKey('mention', seg.mentionUsername, seg.text, idx)
   if (seg.hashtagTag) return stableListKey('hashtag', seg.hashtagTag, seg.text, idx)
+  if (seg.cashtagSymbol) return stableListKey('cashtag', seg.cashtagSymbol, seg.text, idx)
   return stableListKey('text', seg.text, idx)
 }
 </script>

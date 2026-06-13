@@ -241,6 +241,7 @@
           :body="postView.body"
           :has-media="Boolean(postView.media?.length)"
           :mentions="postView.mentions"
+          :cashtags="postView.cashtags"
           :visibility="postView.visibility"
         />
 

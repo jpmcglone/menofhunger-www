@@ -36,6 +36,14 @@
           :style="onColoredBackground ? undefined : { color: hashtagColor }"
           @click.stop
         >{{ seg.text }}</NuxtLink>
+        <NuxtLink
+          v-else-if="seg.kind === 'cashtag'"
+          :to="{ path: '/explore', query: { q: `$${seg.symbol}` } }"
+          class="moh-cashtag font-medium hover:underline underline-offset-2"
+          :class="onColoredBackground ? 'text-white' : ''"
+          :style="onColoredBackground ? undefined : { color: hashtagColor }"
+          @click.stop
+        >{{ seg.text }}</NuxtLink>
         <span v-else>{{ seg.text }}</span>
       </template>
     </p>
@@ -156,6 +164,7 @@ import { getLinkMetadata } from '~/utils/link-metadata'
 import { stableListKey } from '~/utils/stable-list-key'
 
 import { HASHTAG_IN_TEXT_DISPLAY_RE } from '~/utils/hashtag-autocomplete'
+import { CASHTAG_IN_TEXT_DISPLAY_RE } from '~/utils/cashtag-autocomplete'
 import { userTierColorVar } from '~/utils/user-tier'
 import type { UserColorTier } from '~/utils/user-tier'
 import type { ArticleSharePreview } from '~/types/api'
@@ -165,6 +174,7 @@ type TextSegment =
   | { kind: 'link'; text: string; href: string }
   | { kind: 'mention'; text: string; username: string; isKnown: boolean }
   | { kind: 'hashtag'; text: string; tag: string }
+  | { kind: 'cashtag'; text: string; symbol: string }
 
 const MENTION_RE = /@([a-zA-Z0-9_]+)/g
 
@@ -387,6 +397,18 @@ const displayBodySegments = computed<TextSegment[]>(() => {
     }
   }
 
+  // Cashtag matches (skip ranges already claimed)
+  const cashRe = new RegExp(CASHTAG_IN_TEXT_DISPLAY_RE.source, 'g')
+  for (const m of input.matchAll(cashRe)) {
+    const start = m.index!
+    const end = start + m[0].length
+    const symbol = (m[1]!).toUpperCase()
+    const overlaps = allMatches.some((rm) => start < rm.end && end > rm.start)
+    if (!overlaps) {
+      allMatches.push({ start, end, seg: { kind: 'cashtag', text: m[0], symbol } })
+    }
+  }
+
   allMatches.sort((a, b) => a.start - b.start)
 
   const out: TextSegment[] = []
@@ -404,6 +426,7 @@ function bodySegmentKey(seg: TextSegment, idx: number): string {
   if (seg.kind === 'link') return stableListKey('link', seg.href, seg.text, idx)
   if (seg.kind === 'mention') return stableListKey('mention', seg.username, seg.text, idx)
   if (seg.kind === 'hashtag') return stableListKey('hashtag', seg.tag, seg.text, idx)
+  if (seg.kind === 'cashtag') return stableListKey('cashtag', seg.symbol, seg.text, idx)
   return stableListKey('text', seg.text, idx)
 }
 

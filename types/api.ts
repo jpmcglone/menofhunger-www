@@ -539,6 +539,8 @@ export type FeedPost = {
   topics?: string[]
   /** User-created hashtags parsed from body text (lowercase, without '#'). */
   hashtags?: string[]
+  /** Validated cashtag symbols parsed from body text (uppercase, without '$', e.g. "SPY"). */
+  cashtags?: string[]
   boostCount: number
   bookmarkCount: number
   commentCount?: number
@@ -977,6 +979,13 @@ export type HashtagResult = {
   /** Display label (most common casing). */
   label: string
   usageCount: number
+}
+
+export type CashtagResult = {
+  /** Uppercase ticker symbol (no '$'), e.g. "SPY". */
+  symbol: string
+  /** Full company or ETF name, e.g. "SPDR S&P 500 ETF Trust". */
+  name: string
 }
 
 export type TaxonomyKind = 'topic' | 'subtopic' | 'tag'

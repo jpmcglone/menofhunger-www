@@ -57,6 +57,21 @@
 
     <div class="pt-4 pb-0 sm:pb-4 space-y-4">
 
+      <!-- Cashtag header: $SPY · company name + live chart -->
+      <div v-if="cashtagHeader" class="border-b moh-border">
+        <div class="moh-gutter-x pt-3 pb-1 flex items-baseline gap-1.5">
+          <span class="text-sm font-bold text-[var(--p-primary-color)]">${{ cashtagHeader.symbol }}</span>
+          <span class="text-sm moh-text-muted">· {{ cashtagHeader.name }}</span>
+        </div>
+        <ClientOnly>
+          <AppCashtagStockWidget
+            :key="`${cashtagHeader.symbol}-${colorMode.value}`"
+            :symbol="cashtagHeader.symbol"
+            :height="200"
+          />
+        </ClientOnly>
+      </div>
+
       <!-- Min length hint -->
       <div v-if="searchQueryTrimmed && searchQueryTrimmed.length < 2" class="px-4">
         <div class="rounded-xl border moh-border bg-gray-50/50 dark:bg-zinc-900/30 p-4">
@@ -719,6 +734,7 @@
 import AppGroupPreviewCard from '~/components/app/groups/AppGroupPreviewCard.vue'
 import type {
   Article,
+  CashtagResult,
   CommunityGroupShell,
   FeedPost,
   FollowListUser,
@@ -756,6 +772,7 @@ usePageSeo({
 })
 
 const route = useRoute()
+const colorMode = useColorMode()
 const router = useRouter()
 const { apiFetch, apiFetchData } = useApiClient()
 const { isAuthed, user: authUser } = useAuth()
@@ -960,6 +977,23 @@ function goToCheckinsFeed() {
 }
 
 const isCheckinQuery = computed(() => /\b(check[\s-]?in|streak|prompt|daily)\b/i.test(searchQueryTrimmed.value))
+
+// ─── Cashtag header: $SPY · company name ────────────────────────────────────
+const cashtagHeaderSymbol = computed(() => {
+  const m = searchQueryTrimmed.value.match(/^\$([A-Za-z]{1,6})$/)
+  const sym = m?.[1]
+  return sym ? sym.toUpperCase() : null
+})
+
+const cashtagHeader = ref<CashtagResult | null>(null)
+watch(cashtagHeaderSymbol, async (sym) => {
+  if (!sym) { cashtagHeader.value = null; return }
+  try {
+    cashtagHeader.value = await apiFetchData<CashtagResult>(`/cashtags/${encodeURIComponent(sym)}`)
+  } catch {
+    cashtagHeader.value = null
+  }
+}, { immediate: true })
 const canShowSearchCheckinHint = computed(
   () => Boolean(isAuthed.value && checkinState.value && (hasCheckedInToday.value || canOpenCheckinComposer.value)),
 )

@@ -64,6 +64,13 @@
           :style="{ color: hashtagColor }"
           @click.stop
         >{{ seg.text }}</NuxtLink>
+        <NuxtLink
+          v-else-if="seg.type === 'cashtag'"
+          :to="{ path: '/explore', query: { q: `$${seg.symbol}` } }"
+          class="moh-cashtag font-medium hover:underline underline-offset-2"
+          :style="{ color: hashtagColor }"
+          @click.stop
+        >{{ seg.text }}</NuxtLink>
         <span v-else>{{ seg.text }}</span>
       </template>
     </span>
@@ -86,11 +93,13 @@
 import type { SpaceChatMediaItem, SpaceChatMessage } from '~/types/api'
 import { userColorTier, userTierColorVar, userTierTextClass } from '~/utils/user-tier'
 import { HASHTAG_IN_TEXT_DISPLAY_RE } from '~/utils/hashtag-autocomplete'
+import { CASHTAG_IN_TEXT_DISPLAY_RE } from '~/utils/cashtag-autocomplete'
 
 type BodySegment =
-  | { key: string; type: 'text'; text: string; username?: undefined; tag?: undefined }
-  | { key: string; type: 'mention'; username: string; text?: undefined; tag?: undefined }
-  | { key: string; type: 'hashtag'; tag: string; text: string; username?: undefined }
+  | { key: string; type: 'text'; text: string; username?: undefined; tag?: undefined; symbol?: undefined }
+  | { key: string; type: 'mention'; username: string; text?: undefined; tag?: undefined; symbol?: undefined }
+  | { key: string; type: 'hashtag'; tag: string; text: string; username?: undefined; symbol?: undefined }
+  | { key: string; type: 'cashtag'; symbol: string; text: string; username?: undefined; tag?: undefined }
 
 const props = defineProps<{
   message: SpaceChatMessage
@@ -191,6 +200,18 @@ const bodySegments = computed<BodySegment[]>(() => {
     const overlaps = matches.some((rm) => start < rm.end && end > rm.start)
     if (!overlaps) {
       matches.push({ start, end, seg: { key: `h-${i++}`, type: 'hashtag', tag, text: m[0] } })
+    }
+  }
+
+  // Cashtag matches (skip ranges already claimed)
+  const cashRe = new RegExp(CASHTAG_IN_TEXT_DISPLAY_RE.source, 'g')
+  for (const m of body.matchAll(cashRe)) {
+    const start = m.index!
+    const end = start + m[0].length
+    const symbol = (m[1]!).toUpperCase()
+    const overlaps = matches.some((rm) => start < rm.end && end > rm.start)
+    if (!overlaps) {
+      matches.push({ start, end, seg: { key: `c-${i++}`, type: 'cashtag', symbol, text: m[0] } })
     }
   }
 
