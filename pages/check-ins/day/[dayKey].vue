@@ -137,7 +137,8 @@ const { items: posts, nextCursor, loading, loadingMore, error, refresh, loadMore
       kind: 'checkin',
       checkinDayKey: dayKey.value,
       visibility: 'all',
-      followingOnly: false,
+      // NOTE: do not send `followingOnly: false` — the API parses query booleans and a
+      // literal `false` would otherwise scope the feed to followed authors only. Omit it.
       includeSelf: true,
     },
   }),

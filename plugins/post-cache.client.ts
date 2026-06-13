@@ -48,6 +48,7 @@ export default defineNuxtPlugin(() => {
       if (typeof patch.repostCount === 'number') {
         delta.repostCount = Math.max(0, Math.floor(patch.repostCount))
       }
+      if (patch.poll !== undefined) delta.poll = patch.poll
       postCache.patch(postId, delta)
     },
     onInteraction: (payload: import('~/types/api').WsPostsInteractionPayload) => {

@@ -1458,6 +1458,7 @@ export type WsPostsLiveUpdatedPayload = {
     boostCount: number
     bookmarkCount: number
     repostCount: number
+    poll: PostPoll | null
   }>
 }
 
@@ -1639,7 +1640,7 @@ export type UserDto = {
 }
 
 export type WsUsersMeUpdatedPayload = {
-  user: UserDto
+  user?: UserDto
   reason?: string
 }
 
@@ -2610,6 +2611,9 @@ export type GetExploreData = {
   newestUsers: FollowListUser[] | null
   checkin: CheckinTodayState | null
 }
+
+/** Response from POST /auth/account/delete. */
+export type DeleteAccountResponse = { success: true }
 
 /** Today's check-in state from GET /checkins/today and GET /explore (authed). */
 export type CheckinTodayState = {

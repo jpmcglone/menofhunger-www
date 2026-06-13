@@ -75,6 +75,10 @@ export function useUserPosts(
   const lastFetchKey = ref<string>('')
   let fetchPromise: Promise<void> | null = null
   let inFlightFetchKey = ''
+  // Monotonically increasing counter; incremented whenever the target "identity"
+  // changes (username or enabled→off→on). fetch() captures its value before the
+  // async work and discards results that land after a newer generation has started.
+  let loadGeneration = 0
 
   function fetchKeyFor(nextFilter: UserPostsFilter, nextSort: 'new' | 'trending'): string {
     return [
@@ -201,8 +205,11 @@ export function useUserPosts(
     filter.value = nextFilter
     sort.value = nextSort
     inFlightFetchKey = fetchKey
+    const myGeneration = loadGeneration
     const task = (async () => {
       await refresh()
+      // Discard this result if a newer username/enabled change started after us.
+      if (loadGeneration !== myGeneration) return
       lastFetchKey.value = fetchKey
     })()
     fetchPromise = task
@@ -328,6 +335,8 @@ export function useUserPosts(
     usernameLower,
     () => {
       // IMPORTANT: ensure state keys follow username changes (route reuse /u/a -> /u/b).
+      // Increment generation so any in-flight fetches for the previous user are discarded.
+      loadGeneration += 1
       feedRef.value = useCursorFeed<FeedPost>({
         stateKey: postsKey.value,
         buildRequest: (cursor) => ({
@@ -352,9 +361,11 @@ export function useUserPosts(
         },
       })
       lastFetchKey.value = ''
-      filter.value = 'all'
-      sort.value = 'new'
-      void fetch('all', 'new')
+      // Only reset to defaults when filter/sort are internally managed.
+      // External (URL-backed) refs must not be mutated here — they own their own state.
+      if (!opts.externalFilter) filter.value = 'all'
+      if (!opts.externalSort) sort.value = 'new'
+      void fetch(filter.value, sort.value)
     },
     { flush: 'post' }
   )
@@ -363,6 +374,7 @@ export function useUserPosts(
     enabled,
     (on) => {
       if (!on) {
+        loadGeneration += 1
         posts.value = []
         nextCursor.value = null
         error.value = null

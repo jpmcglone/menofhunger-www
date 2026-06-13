@@ -66,39 +66,55 @@ export function useNotifications() {
     })
   }
 
-  // Realtime: the API now returns grouped feed items, so we refetch when relevant events arrive.
-  const notificationsCb: NotificationsCallback = {
-    onUpdated: () => {
-      if (!isNotificationsPage.value) return
-      if (loading.value) {
-        pendingRefresh.value = true
-        return
-      }
-      void fetchList({ forceRefresh: true })
-    },
-    onNew: (payload) => {
-      const notification = payload?.notification
-      if (!notification?.id) return
-      if (!isNotificationsPage.value) return
-      const patched = prependNotification(notification)
-      if (patched) return
-      if (loading.value) {
-        pendingRefresh.value = true
-        return
-      }
-      // Grouped rows need the server's aggregation shape.
-      void fetchList({ forceRefresh: true })
-    },
-    onDeleted: (payload) => {
-      const ids = Array.isArray(payload?.notificationIds) ? payload.notificationIds : []
-      if (ids.length === 0) return
-      if (!isNotificationsPage.value) return
-      removeNotificationsByIds(ids)
-    },
-  }
+  // Realtime: singleton callback with refcount so mounting N notification rows on
+  // /notifications doesn't fan a single socket event into N fetchList() calls.
+  const wsRefCount = useState<number>('notifications-ws-refcount', () => 0)
+  const wsCbRef = useState<NotificationsCallback | null>('notifications-ws-cb', () => null)
   if (import.meta.client) {
-    onMounted(() => addNotificationsCallback(notificationsCb))
-    onBeforeUnmount(() => removeNotificationsCallback(notificationsCb))
+    wsRefCount.value += 1
+
+    if (!wsCbRef.value) {
+      const notificationsCb: NotificationsCallback = {
+        onUpdated: () => {
+          if (!isNotificationsPage.value) return
+          if (loading.value) {
+            pendingRefresh.value = true
+            return
+          }
+          void fetchList({ forceRefresh: true })
+        },
+        onNew: (payload) => {
+          const notification = payload?.notification
+          if (!notification?.id) return
+          if (!isNotificationsPage.value) return
+          const patched = prependNotification(notification)
+          if (patched) return
+          if (loading.value) {
+            pendingRefresh.value = true
+            return
+          }
+          // Grouped rows need the server's aggregation shape.
+          void fetchList({ forceRefresh: true })
+        },
+        onDeleted: (payload) => {
+          const ids = Array.isArray(payload?.notificationIds) ? payload.notificationIds : []
+          if (ids.length === 0) return
+          if (!isNotificationsPage.value) return
+          removeNotificationsByIds(ids)
+        },
+      }
+      wsCbRef.value = notificationsCb
+      addNotificationsCallback(notificationsCb)
+    }
+
+    onScopeDispose(() => {
+      wsRefCount.value = Math.max(0, wsRefCount.value - 1)
+      if (wsRefCount.value !== 0) return
+      const cb = wsCbRef.value
+      if (!cb) return
+      removeNotificationsCallback(cb)
+      wsCbRef.value = null
+    })
   }
 
   let fetchPromise: Promise<GetNotificationsResponse['pagination'] | undefined> | null = null

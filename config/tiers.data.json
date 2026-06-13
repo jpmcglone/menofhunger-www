@@ -3,7 +3,7 @@
     "label": "Membership",
     "tagline": "A trusted community for men who want real conversation, not more noise.",
     "title": "Unverified, Verified, Premium, and Premium+ — how the tiers work.",
-    "description": "Unverified: read. Verified: real, but limited. Premium: full access to the platform (posting, media, chat, spaces, groups, articles, and accountability loops). Premium+: steward and support."
+    "description": "Unverified: read. Verified: real, but limited — post, react, join Spaces, Watch parties, Radio, and Crews. Premium: full access (posting, media, chat, groups, articles, coins, and accountability loops). Premium+: steward and support."
   },
   "metaDescription": "Men of Hunger tiers: Unverified (read-only), Verified (identity-verified, free), Premium ($25/mo — full access), Premium+ ($75/mo — steward). Real conversation, no noise.",
   "tiers": [
@@ -96,7 +96,19 @@
           "text": "Access men-only read areas"
         },
         {
-          "text": "Join Spaces and live chat (verified+ only)"
+          "text": "Join Spaces and live chat"
+        },
+        {
+          "text": "Host your own Space — invite others in for live audio and chat"
+        },
+        {
+          "text": "Watch parties — sync a YouTube video and chat live with others in a Space"
+        },
+        {
+          "text": "Radio / listening rooms — listen to live audio streams"
+        },
+        {
+          "text": "Join Crews / Founding Circles (invite-only small communities)"
         },
         {
           "text": "Join groups with limited participation"
@@ -149,7 +161,7 @@
       "who": "Men who want real conversation and accountability — committed to the platform, not just a feed.",
       "can": [
         {
-          "text": "Everything Verified can do"
+          "text": "Everything Verified can do (Spaces, Watch parties, Radio, Crews, check-ins, and more)"
         },
         {
           "text": "Talk to Marv — your wise, brief AI helper (mention @marv in threads or chat with him directly)"

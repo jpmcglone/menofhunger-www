@@ -6,7 +6,20 @@
         <span>Login</span>
       </div>
 
-      <template v-if="showBannedNotice">
+      <template v-if="showDeletedNotice">
+        <AppInlineAlert severity="success">
+          Your account has been deleted. Thanks for being part of Men of Hunger.
+        </AppInlineAlert>
+        <Button
+          label="Dismiss"
+          class="w-full sm:w-auto"
+          severity="secondary"
+          rounded
+          @click="dismissDeleted"
+        />
+      </template>
+
+      <template v-else-if="showBannedNotice">
         <AppInlineAlert severity="danger">
           This account was banned. Contact an admin if you think it’s a mistake.
         </AppInlineAlert>
@@ -193,12 +206,19 @@ const route = useRoute()
 const { capturedReferralCode, captureReferralFromRoute, markReferralApplied } = useReferralCapture()
 
 const showBannedNotice = computed(() => String(route.query.banned ?? '') === '1')
+const showDeletedNotice = computed(() => String(route.query.deleted ?? '') === '1')
 
 function dismissBanned() {
   resetToPhone()
   // Preserve other query params like `redirect`, only clear the banned treatment.
   const q = { ...route.query }
   delete q.banned
+  navigateTo({ path: '/login', query: q }, { replace: true })
+}
+
+function dismissDeleted() {
+  const q = { ...route.query }
+  delete q.deleted
   navigateTo({ path: '/login', query: q }, { replace: true })
 }
 

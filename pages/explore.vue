@@ -776,7 +776,7 @@ function onGlobalKeyDown(e: KeyboardEvent) {
 // ─── Realtime: presence online feed ─────────────────────────────────────────
 // Patch onlineUsers in place while the page is open so "Online now" stays
 // current without a manual refresh.
-const { addOnlineFeedCallback, removeOnlineFeedCallback } = usePresence()
+const { addOnlineFeedCallback, removeOnlineFeedCallback, subscribeOnlineFeed, unsubscribeOnlineFeed } = usePresence()
 
 const onlineFeedCb = {
   onOnline: (payload: { userId: string; user?: FollowListUser }) => {
@@ -797,6 +797,7 @@ onMounted(() => {
   window.addEventListener('keydown', onGlobalKeyDown)
   document.addEventListener('visibilitychange', onVisibilityChange)
   addOnlineFeedCallback(onlineFeedCb)
+  subscribeOnlineFeed()
   if (isAuthed.value && !recentSearchesLoaded.value) void loadRecentSearches()
 })
 
@@ -804,6 +805,7 @@ onBeforeUnmount(() => {
   window.removeEventListener('keydown', onGlobalKeyDown)
   document.removeEventListener('visibilitychange', onVisibilityChange)
   removeOnlineFeedCallback(onlineFeedCb)
+  unsubscribeOnlineFeed()
 })
 
 function normalizeQueryParam(v: unknown): string {

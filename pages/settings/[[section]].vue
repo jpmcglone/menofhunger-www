@@ -112,6 +112,15 @@
                 <SettingsMarvSection />
               </div>
 
+              <div v-if="showsBlock('danger')" class="space-y-4">
+                <div class="border-t moh-border pt-6 -mt-2">
+                  <div class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-3">
+                    Danger zone
+                  </div>
+                </div>
+                <SettingsDangerZoneSection />
+              </div>
+
               <div v-if="composedBlocks.length === 0" class="text-sm text-gray-600 dark:text-gray-300">
                 Choose a section from the left.
               </div>
@@ -129,6 +138,7 @@ import SettingsVerificationSection from '~/components/settings/sections/Settings
 import SettingsBillingSection from '~/components/settings/sections/SettingsBillingSection.vue'
 import SettingsPrivacySection from '~/components/settings/sections/SettingsPrivacySection.vue'
 import SettingsNotificationsSection from '~/components/settings/sections/SettingsNotificationsSection.vue'
+import SettingsDangerZoneSection from '~/components/settings/sections/SettingsDangerZoneSection.vue'
 
 definePageMeta({
   layout: 'app',
@@ -162,6 +172,7 @@ type SettingsBlock =
   | 'blocked'
   | 'links'
   | 'marv'
+  | 'danger'
 
 const { ensureLoaded, me } = useAuth()
 const route = useRoute()
@@ -274,7 +285,7 @@ const sections = computed(() => [
 // narrower sections). Rendering them as independent `v-if` siblings (instead of
 // a single `v-if/v-else-if` chain) lets us mount multiple blocks under one URL.
 const sectionToBlocks: Record<SettingsSection, ReadonlyArray<SettingsBlock>> = {
-  account: ['account', 'verification', 'links'],
+  account: ['account', 'verification', 'links', 'danger'],
   notifications: ['notifications'],
   privacy: ['privacy', 'blocked'],
   billing: ['billing'],

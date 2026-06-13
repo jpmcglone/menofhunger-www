@@ -905,13 +905,13 @@ const { apiFetch } = useApiClient()
 const {
   data: followSummaryData,
   refresh: refreshFollowSummary,
-} = useAsyncData(`follow-summary:${normalizedUsername.value}`, async () => {
+} = useAsyncData(() => `follow-summary:${normalizedUsername.value}`, async () => {
   if (notFound.value) return null
   return await apiFetchData<import('~/types/api').FollowSummaryResponse>(
     `/follows/summary/${encodeURIComponent(normalizedUsername.value)}`,
     { method: 'GET' }
   )
-}, { server: false })
+}, { server: false, watch: [normalizedUsername] })
 
 watch(
   () => authUser.value?.id ?? null,
@@ -1060,7 +1060,7 @@ if (import.meta.client) {
         const parentIdx = profilePosts.value.findIndex((p) => p.id === payload.parentPost.id)
         if (parentIdx >= 0) {
           const next = profilePosts.value.slice()
-          next.splice(parentIdx, 1, replyWithParent)
+          next.splice(parentIdx + 1, 0, replyWithParent)
           profilePosts.value = next
         } else {
           profilePosts.value = [replyWithParent, ...profilePosts.value]

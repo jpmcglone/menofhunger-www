@@ -1,5 +1,5 @@
 {
-  "asOfDate": "Jun. 9, 2026",
+  "asOfDate": "Jun. 13, 2026",
   "originalAsOfDate": "Feb. 3, 2026",
   "intro": {
     "label": "Product roadmap",
@@ -151,7 +151,7 @@
               "done": true
             },
             {
-              "text": "**Sentry** — Error tracking wired up for the web app; API Sentry integration in progress.",
+              "text": "**Sentry** — Error tracking live on the web app; API-side integration not yet started.",
               "inProgress": true
             },
             {
@@ -376,7 +376,8 @@
           "title": "Account & data",
           "items": [
             {
-              "text": "Delete / deactivate account — \"Delete my account\" in settings; we soft-delete or fully erase and revoke sessions."
+              "text": "**Delete account** — Permanent self-service account deletion in Settings; anonymizes personal data, cancels any active subscription, and revokes all sessions across devices.",
+              "done": true
             },
             {
               "text": "Download my data — Export your posts, profile, and bookmarks so you own your data."
