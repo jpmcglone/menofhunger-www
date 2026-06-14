@@ -2624,6 +2624,24 @@ export type GetExploreData = {
 /** Response from POST /auth/account/delete. */
 export type DeleteAccountResponse = { success: true }
 
+// ─── Scheduled Posts ─────────────────────────────────────────────────────────
+
+export type ScheduledCommunityGroup = Contracts.ScheduledCommunityGroupDto
+
+export type ScheduledPost = Contracts.ScheduledPostDto
+
+export type ScheduledPostListResponse = ApiEnvelope<ScheduledPost[]> & {
+  pagination: { nextCursor: string | null }
+}
+
+export type ScheduledPostResponse = ApiEnvelope<ScheduledPost>
+
+/** Realtime payload when a scheduled post fires. */
+export type ScheduledPostPublishedPayload = Contracts.ScheduledPostPublishedPayloadDto
+
+/** Realtime payload when a scheduled post fails to publish. */
+export type ScheduledPostFailedPayload = Contracts.ScheduledPostFailedPayloadDto
+
 /** Today's check-in state from GET /checkins/today and GET /explore (authed). */
 export type CheckinTodayState = {
   dayKey: string

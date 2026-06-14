@@ -54,6 +54,7 @@
                 :quoted-post="composerQuotedPost ?? undefined"
                 :group-composer="composerIsGroupMode"
                 :group-name="composerIsGroupMode ? (composerGroupName ?? undefined) : undefined"
+                :community-group-id="composerIsGroupMode ? (composerGroupId ?? null) : null"
                 :disable-poll="composerIsGroupMode"
                 persist-key="post-modal"
                 :register-unsaved-guard="false"
@@ -87,6 +88,7 @@ const {
   composerSourceOnlyMePost,
   composerIsGroupMode,
   composerGroupName,
+  composerGroupId,
   composerLockedVisibility,
   composerAllowedVisibilities,
   composerCustomDisableMedia,

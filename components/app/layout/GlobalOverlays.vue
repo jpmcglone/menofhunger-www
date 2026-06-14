@@ -21,6 +21,7 @@
   <AppConfirmMount />
   <AppAuthActionModal />
   <AppPremiumMediaModal />
+  <AppSchedulePremiumModal />
   <AppUnsavedDraftPromptModal />
   <AppReplyModal />
   <AppMarvCatchUpModal />

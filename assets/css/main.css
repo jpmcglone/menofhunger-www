@@ -959,6 +959,31 @@ input[type="reset"] {
   }
 }
 
+/* Scheduled-posts list enter/leave + FLIP move (Vue <TransitionGroup name="moh-scheduled-row">) */
+.moh-scheduled-row-enter-active,
+.moh-scheduled-row-leave-active {
+  transition: opacity 180ms ease, transform 180ms ease;
+}
+.moh-scheduled-row-enter-from,
+.moh-scheduled-row-leave-to {
+  opacity: 0;
+  transform: translateY(6px);
+}
+.moh-scheduled-row-leave-active {
+  position: absolute;
+  width: 100%;
+}
+.moh-scheduled-row-move {
+  transition: transform 220ms ease;
+}
+@media (prefers-reduced-motion: reduce) {
+  .moh-scheduled-row-enter-active,
+  .moh-scheduled-row-leave-active,
+  .moh-scheduled-row-move {
+    transition: none !important;
+  }
+}
+
 /* Tooltips are rendered to <body> but need to clear full-screen overlays (z-9999) */
 .p-tooltip {
   z-index: 99999 !important;

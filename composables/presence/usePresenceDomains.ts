@@ -45,6 +45,7 @@ import type {
   PostsCallback,
   RadioCallback,
   ReferralCallback,
+  ScheduledCallback,
   SpacesCallback,
   UsersCallback,
   WsCrewDisbandedPayload,
@@ -110,6 +111,7 @@ export function usePresenceDomains() {
   const checkinsCallbacks = useState<Set<CheckinsCallback>>('presence-checkins-callbacks', () => new Set())
   const marvCallbacks = useState<Set<MarvCallback>>('presence-marv-callbacks', () => new Set())
   const referralCallbacks = useState<Set<ReferralCallback>>('presence-referral-callbacks', () => new Set())
+  const scheduledCallbacks = useState<Set<ScheduledCallback>>('presence-scheduled-callbacks', () => new Set())
 
   function makeRegistry<T>(set: Ref<Set<T>>) {
     return {
@@ -137,6 +139,7 @@ export function usePresenceDomains() {
   const checkins = makeRegistry(checkinsCallbacks)
   const marv = makeRegistry(marvCallbacks)
   const referrals = makeRegistry(referralCallbacks)
+  const scheduled = makeRegistry(scheduledCallbacks)
 
   function registerSocketHandlers(socket: Socket) {
     // ── Notifications / Marv ──────────────────────────────────────────
@@ -550,6 +553,16 @@ export function usePresenceDomains() {
       if (!referralCallbacks.value.size) return
       for (const cb of referralCallbacks.value) cb.onRecruitUpdated?.(data)
     })
+
+    // ── Scheduled posts ───────────────────────────────────────────────
+    socket.on('scheduled:published', (data: import('~/types/api').ScheduledPostPublishedPayload) => {
+      if (!scheduledCallbacks.value.size) return
+      for (const cb of scheduledCallbacks.value) cb.onPublished?.(data)
+    })
+    socket.on('scheduled:failed', (data: import('~/types/api').ScheduledPostFailedPayload) => {
+      if (!scheduledCallbacks.value.size) return
+      for (const cb of scheduledCallbacks.value) cb.onFailed?.(data)
+    })
   }
 
   return {
@@ -568,6 +581,7 @@ export function usePresenceDomains() {
     checkins,
     marv,
     referrals,
+    scheduled,
     registerSocketHandlers,
   }
 }

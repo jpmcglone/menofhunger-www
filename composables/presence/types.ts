@@ -2,6 +2,8 @@ import type {
   CommunityGroupInviteStatus,
   FollowListUser,
   Recruit,
+  ScheduledPostPublishedPayload,
+  ScheduledPostFailedPayload,
   RadioChatMessage,
   RadioChatSnapshot,
   RadioLobbyCounts,
@@ -254,4 +256,13 @@ export type WsReferralRecruitUpdatedPayload = {
 
 export type ReferralCallback = {
   onRecruitUpdated?: (payload: WsReferralRecruitUpdatedPayload) => void
+}
+
+/**
+ * Scheduled posts realtime. Emitted to the post owner when the cron publishes
+ * or fails to publish a scheduled holding row.
+ */
+export type ScheduledCallback = {
+  onPublished?: (payload: ScheduledPostPublishedPayload) => void
+  onFailed?: (payload: ScheduledPostFailedPayload) => void
 }

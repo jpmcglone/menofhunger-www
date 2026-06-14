@@ -112,6 +112,7 @@ export function useAppLayoutComposer(opts: UseAppLayoutComposerOptions) {
     const ctx = (groupComposerCtx.value?.groupName ?? '').trim()
     return ctx || null
   })
+  const composerGroupId = computed(() => groupComposerCtx.value?.groupId ?? null)
 
   const anyOverlayOpen = computed(() => composerModalOpen.value || (replyModalOpen.value && replyModalHasParent.value))
 
@@ -439,6 +440,7 @@ export function useAppLayoutComposer(opts: UseAppLayoutComposerOptions) {
     composerIsFromOnlyMe,
     composerIsGroupMode,
     composerGroupName,
+    composerGroupId,
     composerLockedVisibility,
     composerAllowedVisibilities,
     composerCustomDisableMedia,

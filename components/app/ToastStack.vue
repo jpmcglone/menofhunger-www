@@ -144,16 +144,21 @@ watchEffect(() => {
 </script>
 
 <style scoped>
-.moh-toast-enter-active,
+.moh-toast-move {
+  transition: transform 280ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+.moh-toast-enter-active {
+  transition: transform 320ms cubic-bezier(0.16, 1, 0.3, 1), opacity 240ms ease;
+}
 .moh-toast-leave-active {
-  transition: transform 160ms ease, opacity 160ms ease;
+  transition: transform 220ms ease-in, opacity 200ms ease-in;
 }
 .moh-toast-enter-from {
   opacity: 0;
-  transform: translateY(10px) scale(0.98);
+  transform: translateY(16px) scale(0.96);
 }
 .moh-toast-leave-to {
   opacity: 0;
-  transform: translateY(6px) scale(0.98);
+  transform: translateY(8px) scale(0.97);
 }
 </style>

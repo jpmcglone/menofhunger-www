@@ -10,6 +10,8 @@ export type AppNavItem = {
   iconClass?: string
   requiresAuth?: boolean
   requiresVerified?: boolean
+  /** Only show for premium (or premiumPlus) users. */
+  requiresPremium?: boolean
   /** Only show for site admins (e.g. Admin link). */
   requiresAdmin?: boolean
   /**
@@ -88,6 +90,7 @@ export function useAppNav() {
     // Keep these as the Heroicons pair (you preferred the filled/outline look here).
     { key: 'profile', label: 'Profile', to: profileTo.value, icon: 'heroicons-outline:user-circle', iconActive: 'heroicons-solid:user-circle', requiresAuth: true, showInPrimaryNav: true, menuSection: 'main' },
     { key: 'only-me', label: 'Only me', to: '/only-me', icon: 'heroicons-outline:eye-slash', iconActive: 'heroicons-solid:eye-slash', requiresAuth: true, showInPrimaryNav: true, menuSection: 'main' },
+    { key: 'scheduled', label: 'Scheduled', to: '/scheduled', icon: 'tabler:calendar-time', iconActive: 'tabler:calendar-time', requiresAuth: true, requiresPremium: true, showInPrimaryNav: true, menuSection: 'main' },
     { key: 'settings', label: 'Settings and privacy', to: '/settings', icon: 'tabler:settings', iconActive: 'tabler:settings', requiresAuth: true, showInPrimaryNav: true, menuSection: 'footer' },
     { key: 'feedback', label: 'Send feedback', to: '/feedback', icon: 'tabler:message-circle', iconActive: 'tabler:message-circle-filled', requiresAuth: true, showInPrimaryNav: true, menuSection: 'footer' },
     { key: 'admin', label: 'Admin', to: '/admin', icon: 'tabler:shield', iconActive: 'tabler:shield', requiresAuth: true, requiresAdmin: true, showInPrimaryNav: true, menuSection: 'footer' },
@@ -103,6 +106,7 @@ export function useAppNav() {
     if (item.enabled === false) return false
     if (item.requiresAuth && !isAuthed.value) return false
     if (item.requiresVerified && !isVerified.value) return false
+    if (item.requiresPremium && !isPremium.value) return false
     if (item.requiresAdmin && !isAdmin.value) return false
     return true
   }

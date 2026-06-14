@@ -127,7 +127,7 @@ export function useAppToast() {
       ? null
       : (typeof input.durationMs === 'number' && Number.isFinite(input.durationMs)
           ? clamp(Math.floor(input.durationMs), 800, 15000)
-          : 2600)
+          : 3600)
 
     const toast: AppToast = {
       id,

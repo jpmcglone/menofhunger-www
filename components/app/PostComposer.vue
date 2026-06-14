@@ -11,33 +11,50 @@
     ]"
   >
     <div v-if="isAuthed" :class="omitAvatar ? 'flex flex-col gap-2' : 'grid grid-cols-[2.5rem_minmax(0,1fr)] gap-x-3 items-start'">
-      <!-- Row 1: visibility picker, or read-only scope tag (when not omitScopeTagAbove) -->
+      <!-- Row 1: visibility picker (left) + scheduled time chip (right) -->
       <div
-        :class="omitAvatar ? 'flex justify-start' : 'col-start-2 flex justify-start items-end mb-3 sm:mb-2'"
+        :class="omitAvatar ? 'flex justify-between items-center' : 'col-start-2 flex justify-between items-center mb-3 sm:mb-2'"
       >
-        <AppComposerVisibilityPicker
-          v-if="showVisibilityPicker"
-          v-model="visibility"
-          :allowed="allowedComposerVisibilities"
-          :viewer-is-verified="viewerIsVerified"
-          :is-premium="isPremium"
-        />
-        <span
-          v-else
-          class="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold border cursor-default"
-          :class="scopeTagClass ? scopeTagClass : 'moh-text-muted border-gray-300 dark:border-zinc-600'"
-          v-tooltip.bottom="scopeTagTooltip"
-          aria-label="Reply visibility"
-        >
-          <Icon
-            v-if="showGroupScopeIcon"
-            name="tabler:users-group"
-            class="mr-1 text-[10px]"
-            aria-hidden="true"
+        <!-- Left: scope tag or visibility picker -->
+        <div class="flex items-center">
+          <AppComposerVisibilityPicker
+            v-if="showVisibilityPicker"
+            v-model="visibility"
+            :allowed="allowedComposerVisibilities"
+            :viewer-is-verified="viewerIsVerified"
+            :is-premium="isPremium"
           />
-          <Icon v-else-if="effectiveVisibility === 'onlyMe'" name="tabler:eye-off" class="mr-1 text-[10px]" aria-hidden="true" />
-          {{ scopeTagLabel }}
-        </span>
+          <span
+            v-else
+            class="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold border cursor-default"
+            :class="scopeTagClass ? scopeTagClass : 'moh-text-muted border-gray-300 dark:border-zinc-600'"
+            v-tooltip.bottom="scopeTagTooltip"
+            aria-label="Reply visibility"
+          >
+            <Icon
+              v-if="showGroupScopeIcon"
+              name="tabler:users-group"
+              class="mr-1 text-[10px]"
+              aria-hidden="true"
+            />
+            <Icon v-else-if="effectiveVisibility === 'onlyMe'" name="tabler:eye-off" class="mr-1 text-[10px]" aria-hidden="true" />
+            {{ scopeTagLabel }}
+          </span>
+        </div>
+
+        <!-- Right: scheduled time — shown when a time is confirmed -->
+        <button
+          v-if="scheduledAt && isPremium && mode === 'create' && !replyTo && !quotedPost"
+          type="button"
+          class="inline-flex items-center gap-1 text-[11px] font-semibold moh-focus"
+          :style="scheduleAccentColor ? { color: scheduleAccentColor } : {}"
+          :aria-label="`Scheduled for ${scheduledAtDisplay}. Click to change.`"
+          v-tooltip.bottom="`Click to change schedule`"
+          @click="openSchedulePicker"
+        >
+          <Icon name="tabler:calendar-time" class="text-[12px]" aria-hidden="true" />
+          <span>{{ scheduledAtDisplay }}</span>
+        </button>
       </div>
 
       <!-- Row 2: avatar + textarea start aligned (avatar omitted when omitAvatar) -->
@@ -256,8 +273,35 @@
             >
               {{ postCharCount }}/{{ postMaxLen }}
             </div>
+            <!-- Schedule button: visible to verified+, premium-gated via CTA -->
+            <div
+              v-if="(isPremium || viewerIsVerified) && mode === 'create' && !replyTo && !quotedPost"
+              class="relative inline-flex"
+            >
+              <Button
+                text
+                rounded
+                severity="secondary"
+                class="moh-focus"
+                :style="scheduleAccentColor ? { color: scheduleAccentColor } : {}"
+                :aria-label="scheduledAt ? `Scheduled: ${scheduledAtDisplay}` : (scheduledCount > 0 ? `Schedule post. You have ${scheduledCount} scheduled.` : 'Schedule post')"
+                v-tooltip.bottom="scheduledAt ? 'Click to change schedule' : 'Schedule post'"
+                @click="openSchedulePicker"
+              >
+                <template #icon>
+                  <Icon name="tabler:calendar-time" aria-hidden="true" />
+                </template>
+              </Button>
+              <span
+                v-if="scheduledCount > 0"
+                class="pointer-events-none absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold leading-[18px] text-center tabular-nums bg-[var(--moh-premium)] text-black"
+                aria-hidden="true"
+              >
+                {{ scheduledCount > 99 ? '99+' : scheduledCount }}
+              </span>
+            </div>
             <Button
-              :label="mode === 'edit' ? 'Save' : (replyTo ? 'Reply' : 'Post')"
+              :label="mode === 'edit' && scheduledEditId ? 'Save' : (scheduledAt ? 'Schedule' : (mode === 'edit' ? 'Save' : (replyTo ? 'Reply' : 'Post')))"
               rounded
               :outlined="postButtonOutlined"
               severity="secondary"
@@ -265,7 +309,9 @@
               :disabled="
                 submitting ||
                 !canPost ||
-                (mode === 'edit' ? !draft.trim() : (!(draft.trim() || composerMedia.length || hasPoll))) ||
+                (mode === 'edit' && !scheduledEditId
+                  ? !draft.trim()
+                  : !(draft.trim() || composerMedia.length || hasPoll)) ||
                 postCharCount > postMaxLen ||
                 composerUploading ||
                 composerHasFailedMedia ||
@@ -395,12 +441,79 @@
     @search="searchGiphy"
     @select="selectGiphyGif"
   />
+
+  <!-- Schedule picker dialog (premium only) -->
+  <Dialog
+    v-if="isPremium"
+    v-model:visible="schedulePickerOpen"
+    modal
+    header="Schedule post"
+    :style="{ width: '22rem' }"
+    :draggable="false"
+    @hide="schedulePickerOpen = false"
+  >
+    <div class="flex flex-col gap-4 py-2">
+      <label class="text-sm moh-text-muted">Choose when to publish this post:</label>
+      <DatePicker
+        v-model="scheduledAtDraft"
+        show-time
+        hour-format="12"
+        :min-date="scheduleMinDate"
+        :max-date="scheduleMaxDate"
+        date-format="M d, yy"
+        show-icon
+        fluid
+      />
+      <p v-if="scheduledAtDraft && !scheduledAtDraftIsPast" class="text-xs moh-text-muted">
+        Will publish {{ formatScheduledAt(scheduledAtDraft) }}
+      </p>
+      <p v-else-if="scheduledAtDraft && scheduledAtDraftIsPast" class="text-xs text-amber-600 dark:text-amber-400">
+        This time is in the past — post will go live immediately unless you update it.
+      </p>
+      <label class="flex items-center gap-2 cursor-pointer select-none text-sm moh-text-muted">
+        <input v-model="scheduleMore" type="checkbox" class="accent-current rounded" />
+        Schedule more after posting
+      </label>
+      <NuxtLink
+        to="/scheduled"
+        class="inline-flex items-center gap-1.5 self-start text-sm font-medium underline-offset-2 hover:underline moh-text-muted"
+        @click="schedulePickerOpen = false"
+      >
+        <Icon name="tabler:calendar-time" class="w-4 h-4" />
+        <template v-if="scheduledCount > 0">
+          View scheduled posts
+          <span
+            class="min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold leading-[18px] text-center tabular-nums bg-[var(--moh-premium)] text-black"
+          >
+            {{ scheduledCount > 99 ? '99+' : scheduledCount }}
+          </span>
+        </template>
+        <template v-else>You have no scheduled posts</template>
+      </NuxtLink>
+    </div>
+    <template #footer>
+      <div class="flex justify-between gap-2">
+        <Button
+          v-if="scheduledAt"
+          text
+          severity="danger"
+          label="Remove schedule"
+          size="small"
+          @click="clearSchedule"
+        />
+        <div class="flex gap-2 ml-auto">
+          <Button text severity="secondary" label="Cancel" size="small" @click="schedulePickerOpen = false" />
+          <Button label="Confirm" size="small" :disabled="!scheduledAtDraft" @click="confirmSchedule" />
+        </div>
+      </div>
+    </template>
+  </Dialog>
   </div>
 </template>
 
 <script setup lang="ts">
 import { makeLocalId } from '~/composables/composer/types'
-import type { CreatePostData, PostStreakReward, PostVisibility, FeedPost, PostAuthor } from '~/types/api'
+import type { CreatePostData, PostStreakReward, PostVisibility, FeedPost, PostAuthor, ScheduledPost } from '~/types/api'
 import { buildPostedToastParams } from '~/utils/posted-toast'
 import { siteConfig } from '~/config/site'
 import type { CreateMediaPayload } from '~/composables/useComposerMedia'
@@ -420,6 +533,13 @@ import { visibilityTagClasses, visibilityTagLabel } from '~/utils/post-visibilit
 import { getApiErrorMessage } from '~/utils/api-error'
 import { useFormSubmit } from '~/composables/useFormSubmit'
 
+// Both of these survive SPA navigation (module-scoped) but reset on hard refresh.
+// _lastPickedScheduleTime: pre-fills the picker when "Schedule more" reopens it.
+// _scheduleMore: remembers whether the user opted into the "schedule more" loop.
+// Must be a ref so Vue's computed getter can track it reactively.
+let _lastPickedScheduleTime: Date | null = null
+const _scheduleMore = ref(false)
+
 // In-memory draft cache (survives SPA navigation, not a full reload).
 // Keep module-scoped so it persists across route changes.
 type CachedComposerDraft = {
@@ -435,6 +555,10 @@ const COMPOSER_DRAFT_CACHE = new Map<string, CachedComposerDraft>()
 const emit = defineEmits<{
   (e: 'posted', payload: { id: string; visibility: PostVisibility; post?: import('~/types/api').FeedPost }): void
   (e: 'edited', payload: { id: string; post: import('~/types/api').FeedPost }): void
+  /** Fired after a scheduled post is created (new). */
+  (e: 'scheduled', payload: { scheduledPost: ScheduledPost }): void
+  /** Fired after an existing scheduled post is saved (edit mode). */
+  (e: 'scheduled-updated', updated: ScheduledPost): void
   /**
    * Optimistic submission. Fired immediately when the user clicks Post (before
    * the network call). The parent renders `optimisticPost` in its feed and
@@ -470,6 +594,8 @@ const props = defineProps<{
   groupComposer?: boolean
   /** Name shown in the scope tag when groupComposer is true. */
   groupName?: string
+  /** Community group id — used when scheduling a group post. */
+  communityGroupId?: string | null
   // Optional override. Return full FeedPost for replies (so it can be rendered immediately).
   createPost?: (body: string, visibility: PostVisibility, media: CreateMediaPayload[], poll?: ComposerPollPayload | null) => Promise<{ id: string } | import('~/types/api').FeedPost | null>
   // When set, composer is in reply mode: visibility fixed to parent, parent_id + mentions sent.
@@ -521,6 +647,20 @@ const props = defineProps<{
   syncSubmit?: boolean
   /** Home composer only: avatar status bubble opens the status editor instead of read-only status. */
   enableAvatarStatusEditor?: boolean
+  /**
+   * When set, composer is in "edit scheduled post" mode.
+   * Submitting PATCHes /posts/scheduled/:id instead of creating a new post.
+   */
+  editScheduledId?: string
+  /**
+   * Pre-fill poll from an existing scheduled post.
+   * Shape mirrors ScheduledPollPreviewDto: { options: {text}[], durationHours: number }.
+   */
+  initialPoll?: { options: Array<{ text: string }>; durationHours: number } | null
+  /** Pre-fill visibility picker for scheduled-post editing. */
+  initialVisibility?: import('~/types/api').PostVisibility
+  /** Pre-fill the scheduled time chip (ISO string). */
+  initialScheduledAt?: string
 }>()
 
 const route = useRoute()
@@ -528,6 +668,10 @@ const { user, me, isAuthed, isPremium, isVerified: viewerIsVerified } = useAuth(
 const { apiFetchData } = useApiClient()
 const { getUserStatus, setMyStatus, clearMyStatus } = usePresence()
 const toast = useAppToast()
+
+// Shared count of the user's scheduled posts — drives the badge on the
+// Schedule button and the "View scheduled posts" link inside the picker.
+const { count: scheduledCount, increment: incScheduledCount, refresh: refreshScheduledCount } = useScheduledPostsCount()
 
 // ─── Marv: detect @marv mention ──────────────────────────────────────────────
 // Mode is always auto in post threads — no picker, no header sent.
@@ -561,7 +705,107 @@ function pushStreakToast(reward: PostStreakReward) {
 const mode = computed(() => props.mode ?? 'create')
 const editPostId = computed(() => (props.editPostId ?? '').trim() || null)
 const editPostIsDraft = computed(() => Boolean(props.editPostIsDraft))
-const disableMedia = computed(() => Boolean(props.disableMedia) || (mode.value === 'edit' && !editPostIsDraft.value))
+
+// ─── Scheduled posts ──────────────────────────────────────────────────────────
+/** Confirmed scheduled publish time (null = not scheduled). */
+const scheduledAt = ref<Date | null>(null)
+/** Draft value in the picker dialog before user confirms. */
+const scheduledAtDraft = ref<Date | null>(null)
+const schedulePickerOpen = ref(false)
+/** When true, keeps the scheduled time after posting so the user can queue another immediately. */
+const scheduleMore = computed({
+  get: () => _scheduleMore.value,
+  set: (v: boolean) => { _scheduleMore.value = v },
+})
+/**
+ * When set, submitting PATCHes PATCH /posts/scheduled/:id.
+ * Only set when parent passes editScheduledId (edit scheduled post flow).
+ */
+const scheduledEditId = computed(() => (props.editScheduledId ?? '').trim() || null)
+
+const scheduleMinDate = computed(() => {
+  const d = new Date()
+  d.setMinutes(d.getMinutes() + 5)
+  return d
+})
+
+const scheduleMaxDate = computed(() => {
+  const d = new Date()
+  d.setDate(d.getDate() + 60)
+  return d
+})
+
+function formatScheduledAt(d: Date | null): string {
+  if (!d) return ''
+  return d.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short' })
+}
+
+const scheduledAtDisplay = computed(() => formatScheduledAt(scheduledAt.value))
+const scheduledAtDraftIsPast = computed(() => Boolean(scheduledAtDraft.value && scheduledAtDraft.value.getTime() <= Date.now()))
+
+function openSchedulePicker() {
+  if (!isPremium.value) {
+    useSchedulePremiumModal().show()
+    return
+  }
+  // Make sure the picker's "View scheduled posts" count is fresh.
+  refreshScheduledCount()
+  if (scheduledAt.value) {
+    // Editing an already-confirmed schedule.
+    scheduledAtDraft.value = new Date(scheduledAt.value)
+  } else if (_lastPickedScheduleTime) {
+    // "Schedule more" flow — keep the last chosen time so user only tweaks it.
+    scheduledAtDraft.value = new Date(_lastPickedScheduleTime)
+  } else {
+    // First time — default to 5 minutes from now.
+    const d = new Date()
+    d.setMinutes(d.getMinutes() + 5, 0, 0)
+    scheduledAtDraft.value = d
+  }
+  schedulePickerOpen.value = true
+}
+
+function confirmSchedule() {
+  if (!scheduledAtDraft.value) return
+  scheduledAt.value = scheduledAtDraft.value
+  _lastPickedScheduleTime = new Date(scheduledAtDraft.value)
+  schedulePickerOpen.value = false
+}
+
+function clearSchedule() {
+  scheduledAt.value = null
+  scheduledAtDraft.value = null
+  // _lastPickedScheduleTime intentionally kept — survives until hard refresh.
+  schedulePickerOpen.value = false
+}
+
+function toScheduledPollBody(payload: ComposerPollPayload) {
+  const durationHours = Math.max(1, payload.duration.days * 24 + payload.duration.hours + Math.round(payload.duration.minutes / 60))
+  return {
+    options: payload.options.map((o) => ({ text: o.text })),
+    durationHours,
+  }
+}
+
+async function performSchedule(submitBody: string, vis: PostVisibility, mediaPayload: CreateMediaPayload[], pollPayload: ComposerPollPayload | null) {
+  const targetAt = scheduledAt.value
+  if (!targetAt) throw new Error('No schedule time set.')
+  const groupId = props.communityGroupId ?? null
+  const body = {
+    body: submitBody,
+    visibility: vis,
+    scheduled_at: targetAt.toISOString(),
+    ...(mediaPayload.length ? { media: mediaPayload } : {}),
+    ...(pollPayload ? { poll: toScheduledPollBody(pollPayload) } : {}),
+    ...(groupId ? { community_group_id: groupId } : {}),
+  }
+  return apiFetchData<ScheduledPost>('/posts/scheduled', { method: 'POST', body })
+}
+const disableMedia = computed(() =>
+  Boolean(props.disableMedia) ||
+  // Regular edit: disable media unless editing a draft. Scheduled-edit re-enables it.
+  (mode.value === 'edit' && !editPostIsDraft.value && !scheduledEditId.value),
+)
 const disablePoll = computed(() => Boolean(props.disablePoll))
 const showDivider = computed(() => props.showDivider !== false)
 const enableAvatarStatusEditor = computed(() => Boolean(props.enableAvatarStatusEditor))
@@ -911,6 +1155,18 @@ const composerUploadBarColor = computed(() => {
   return 'var(--p-primary-color)'
 })
 
+/** Color for schedule-related UI (top-row time label + bottom calendar icon) when a time is set.
+ *  Public posts use default text color (no override); tiers get their brand color. */
+const scheduleAccentColor = computed<string | null>(() => {
+  if (!scheduledAt.value) return null
+  if (useGroupScopeChrome.value) return 'var(--moh-group)'
+  const v = effectiveVisibility.value
+  if (v === 'verifiedOnly') return 'var(--moh-verified)'
+  if (v === 'premiumOnly') return 'var(--moh-premium)'
+  if (v === 'onlyMe') return 'var(--moh-onlyme)'
+  return null // public: inherit default text color
+})
+
 // Composer tint CSS for moh-composer-tint class (beats global theme overrides).
 const composerTintCss = computed(() => {
   const baseSel = 'html .moh-composer-tint'
@@ -1173,6 +1429,30 @@ function makeOptimisticAuthor(): PostAuthor | null {
 // Composer submit (sync path: edit + reply + opt-out via `syncSubmit`).
 const { submit: submitPost, submitting, submitError } = useFormSubmit(
   async () => {
+    // ── Edit scheduled post ───────────────────────────────────────────────
+    if (scheduledEditId.value) {
+      const id = scheduledEditId.value
+      const vis = effectiveVisibility.value
+      const mediaPayload: CreateMediaPayload[] = hasPoll.value ? [] : toCreatePayload(composerMedia.value)
+      const pollPayload = poll.value ? poll.value : null
+      const groupId = props.communityGroupId ?? null
+      const patchBody: Record<string, unknown> = {
+        body: buildSubmitBody(),
+        visibility: vis,
+        ...(scheduledAt.value ? { scheduled_at: scheduledAt.value.toISOString() } : {}),
+        media: mediaPayload,
+        ...(pollPayload ? { poll: toScheduledPollBody(pollPayload) } : { poll: null }),
+        ...(groupId ? { community_group_id: groupId } : {}),
+      }
+      const updated = await apiFetchData<ScheduledPost>(
+        `/posts/scheduled/${encodeURIComponent(id)}`,
+        { method: 'PATCH', body: patchBody },
+      )
+      emit('scheduled-updated', updated)
+      toast.push({ title: 'Saved', tone: 'success', durationMs: 1600 })
+      return
+    }
+
     if (mode.value === 'edit') {
       const id = editPostId.value
       if (!id) throw new Error('Missing editPostId.')
@@ -1195,6 +1475,30 @@ const { submit: submitPost, submitting, submitError } = useFormSubmit(
     const mediaPayload: CreateMediaPayload[] = hasPoll.value ? [] : toCreatePayload(composerMedia.value)
     const vis = effectiveVisibility.value
     const submitBody = buildSubmitBody()
+
+    // Schedule path: non-optimistic, does not insert into feed.
+    if (scheduledAt.value && !props.replyTo && !props.quotedPost) {
+      // Capture before clearing so the toast message shows the time.
+      const displayTime = scheduledAtDisplay.value
+      const wantsMore = scheduleMore.value
+      const scheduledPost = await performSchedule(submitBody, vis, mediaPayload, pollPayload)
+      incScheduledCount()
+      clearComposer()
+      if (!wantsMore) {
+        clearSchedule()
+      }
+      // When scheduling more, keep scheduledAt intact — the time chip stays visible
+      // and they can write the next post and hit Schedule right away.
+      emit('scheduled', { scheduledPost })
+      toast.push({
+        title: 'Post scheduled',
+        message: `Publishes ${displayTime}`,
+        tone: 'success',
+        to: '/scheduled',
+        durationMs: 4000,
+      })
+      return
+    }
 
     const created = await performCreate(submitBody, vis, mediaPayload, pollPayload)
     const { post, streakReward } = unwrapCreated(created)
@@ -1302,7 +1606,7 @@ const submit = async () => {
     }
     return
   }
-  if (mode.value === 'edit') {
+  if (mode.value === 'edit' && !scheduledEditId.value) {
     if (!draft.value.trim()) return
   } else {
     if (!(draft.value.trim() || composerMedia.value.length || hasPoll.value)) return
@@ -1330,7 +1634,11 @@ const submit = async () => {
   submitError.value = null
   emojiPickerEl.value?.close()
 
-  if (useOptimisticCreate.value) {
+  // Scheduling (new or edit) must use the sync path, not the optimistic path.
+  const isScheduling = Boolean(
+    (scheduledAt.value || scheduledEditId.value) && !props.replyTo && !props.quotedPost,
+  )
+  if (useOptimisticCreate.value && !isScheduling) {
     if (submitOptimistic()) return
     // Author missing (shouldn't happen for authed users) — fall through to sync path.
   }
@@ -1361,10 +1669,69 @@ function applyInitialTextIfNeeded() {
   initialTextApplied.value = true
 }
 
+/** Seed poll from initialPoll (scheduled-post edit). Applied once per mount. */
+const initialPollApplied = ref(false)
+function seedInitialPollIfNeeded() {
+  if (initialPollApplied.value) return
+  const src = props.initialPoll
+  if (!src || !src.options?.length) {
+    initialPollApplied.value = true
+    return
+  }
+  if (poll.value) {
+    initialPollApplied.value = true
+    return
+  }
+  const h = src.durationHours ?? 24
+  poll.value = {
+    options: src.options.map((o) => ({ text: o.text, image: null })),
+    duration: { days: Math.floor(h / 24), hours: h % 24, minutes: 0 },
+  }
+  initialPollApplied.value = true
+}
+
+/** Seed visibility from initialVisibility (scheduled-post edit). Applied once per mount. */
+const initialVisibilityApplied = ref(false)
+function seedInitialVisibilityIfNeeded() {
+  if (initialVisibilityApplied.value) return
+  const v = props.initialVisibility
+  if (!v) {
+    initialVisibilityApplied.value = true
+    return
+  }
+  // Only set if not locked by parent; let allowed-list guard handle the rest.
+  if (!lockedVisibility.value) {
+    visibility.value = v
+  }
+  initialVisibilityApplied.value = true
+}
+
+/** Seed scheduledAt from initialScheduledAt (scheduled-post edit). Applied once per mount. */
+const initialScheduledAtApplied = ref(false)
+function seedInitialScheduledAtIfNeeded() {
+  if (initialScheduledAtApplied.value) return
+  const s = props.initialScheduledAt
+  if (!s) {
+    initialScheduledAtApplied.value = true
+    return
+  }
+  const d = new Date(s)
+  if (isNaN(d.getTime())) {
+    initialScheduledAtApplied.value = true
+    return
+  }
+  scheduledAt.value = d
+  _lastPickedScheduleTime = d
+  initialScheduledAtApplied.value = true
+}
+
 onMounted(() => {
   restoreDraftFromCacheIfNeeded()
   applyInitialTextIfNeeded()
   seedInitialMediaIfNeeded()
+  seedInitialPollIfNeeded()
+  seedInitialVisibilityIfNeeded()
+  seedInitialScheduledAtIfNeeded()
   // autoFocus is already handled by StyledTextarea's autoFocus prop.
 })
 

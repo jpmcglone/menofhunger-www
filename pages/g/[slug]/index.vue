@@ -98,6 +98,7 @@
             hide-visibility-picker
             group-composer
             :group-name="shell?.name"
+            :community-group-id="shell?.id ?? null"
             disable-poll
             :persist-key="shell ? `group-${shell.id}` : 'group-draft'"
             :register-unsaved-guard="false"
