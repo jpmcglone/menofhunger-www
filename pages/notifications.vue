@@ -124,6 +124,8 @@
 
 <script setup lang="ts">
 import type { NotificationKind } from '~/types/api'
+
+const PRIMARY_KINDS = new Set<NotificationKind>(['comment', 'mention', 'followed_post', 'follow', 'boost'])
 import { closeBrowserNotificationsForHref } from '~/utils/browser-notifications'
 
 definePageMeta({
@@ -156,19 +158,20 @@ const {
   itemHref,
 } = useNotifications()
 
-const kindChips: { label: string; kind: NotificationKind | null }[] = [
+const kindChips: { label: string; kind: NotificationKind | 'other' | null }[] = [
   { label: 'All', kind: null },
   { label: 'Replies', kind: 'comment' },
   { label: 'Mentions', kind: 'mention' },
   { label: 'Posts', kind: 'followed_post' },
   { label: 'Follows', kind: 'follow' },
   { label: 'Boosts', kind: 'boost' },
+  { label: 'Other', kind: 'other' },
 ]
 
 const router = useRouter()
 const route = useRoute()
 
-async function onChipSelect(kind: NotificationKind | null) {
+async function onChipSelect(kind: NotificationKind | 'other' | null) {
   await setKind(kind)
   const query = { ...route.query }
   if (kind) {
@@ -211,7 +214,13 @@ watch(
   { immediate: true },
 )
 
-function chipHasUnseenNotifications(kind: NotificationKind | null): boolean {
+function chipHasUnseenNotifications(kind: NotificationKind | 'other' | null): boolean {
+  if (kind === 'other') {
+    const total = Math.max(0, Number(unreadByKind.value.all ?? 0) || 0)
+    const primarySum = (['comment', 'mention', 'followed_post', 'follow', 'boost'] as NotificationKind[])
+      .reduce((sum, k) => sum + Math.max(0, Number(unreadByKind.value[k] ?? 0) || 0), 0)
+    return Math.max(0, total - primarySum) > 0
+  }
   const key = kind ?? 'all'
   return Math.max(0, Number(unreadByKind.value[key] ?? 0) || 0) > 0
 }
@@ -486,8 +495,9 @@ function onNotificationKeydown(item: (typeof notifications.value)[number]) {
   void navigateTo(href)
 }
 
-function kindFromQuery(): NotificationKind | null {
+function kindFromQuery(): NotificationKind | 'other' | null {
   const q = route.query.kind
+  if (q === 'other') return 'other'
   const valid: NotificationKind[] = ['comment', 'boost', 'repost', 'follow', 'followed_post', 'followed_article', 'mention', 'nudge', 'coin_transfer', 'poll_results_ready', 'generic']
   return (typeof q === 'string' && valid.includes(q as NotificationKind)) ? (q as NotificationKind) : null
 }

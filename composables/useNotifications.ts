@@ -1,4 +1,7 @@
 import type { GetNotificationsResponse, Notification, NotificationFeedItem, NotificationGroup, NotificationGroupKind, NotificationKind } from '~/types/api'
+
+/** Mirrors PRIMARY_NOTIFICATION_KINDS on the API side. */
+const PRIMARY_KINDS = new Set<NotificationKind>(['comment', 'mention', 'followed_post', 'follow', 'boost'])
 import type { NotificationsCallback } from '~/composables/usePresence'
 import { useUsersStore } from '~/composables/useUsersStore'
 import { userColorTier, userTierBgClass, userTierTextClass } from '~/utils/user-tier'
@@ -35,7 +38,7 @@ export function useNotifications() {
   const nextCursor = useState<string | null>(`${stateKey}:nextCursor`, () => null)
   const loading = useState<boolean>(`${stateKey}:loading`, () => false)
   const pendingRefresh = useState<boolean>(`${stateKey}:pendingRefresh`, () => false)
-  const activeKind = useState<NotificationKind | null>(`${stateKey}:activeKind`, () => null)
+  const activeKind = useState<NotificationKind | 'other' | null>(`${stateKey}:activeKind`, () => null)
   const unreadByKind = useState<NotificationUnreadByKind>(`${stateKey}:unreadByKind`, () => ({ all: 0 }))
   // True once the first fetch has completed (success or error). Used to distinguish
   // "never fetched yet" (show loader) from "fetched and empty" (show empty state).
@@ -44,7 +47,9 @@ export function useNotifications() {
   const groupedKinds = new Set<NotificationGroupKind>(['comment', 'boost', 'repost', 'follow', 'followed_post', 'nudge'])
 
   function notificationMatchesActiveKind(n: Notification): boolean {
-    return !activeKind.value || n.kind === activeKind.value
+    if (!activeKind.value) return true
+    if (activeKind.value === 'other') return !PRIMARY_KINDS.has(n.kind) && n.kind !== 'message'
+    return n.kind === activeKind.value
   }
 
   function prependNotification(n: Notification): boolean {
@@ -538,7 +543,7 @@ export function useNotifications() {
     }
   }
 
-  async function setKind(kind: NotificationKind | null) {
+  async function setKind(kind: NotificationKind | 'other' | null) {
     activeKind.value = kind
     await fetchList({ forceRefresh: true })
   }
