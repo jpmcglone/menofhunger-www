@@ -47,10 +47,10 @@
       </div>
 
       <!-- Header (avatar + name + tagline + meta + actions) -->
-      <div class="moh-gutter-x -mt-12 md:-mt-14 relative max-w-3xl mx-auto">
+      <div class="moh-gutter-x -mt-16 relative max-w-3xl mx-auto">
         <div class="flex items-end gap-4">
           <div
-            class="h-24 w-24 md:h-28 md:w-28 overflow-hidden ring-4 ring-[var(--moh-bg)] bg-gray-200 dark:bg-zinc-800 shrink-0"
+            class="h-32 w-32 overflow-hidden ring-4 ring-[var(--moh-bg)] bg-gray-200 dark:bg-zinc-800 shrink-0"
             :class="crewAvatarRound"
           >
             <img

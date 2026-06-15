@@ -82,7 +82,7 @@
       >
         <div
           ref="avatarWrapperRef"
-          class="group/av relative h-24 w-24 overflow-hidden bg-gray-200 ring-4 ring-white dark:bg-zinc-800 dark:ring-black"
+          class="group/av relative h-32 w-32 overflow-hidden bg-gray-200 ring-4 ring-white dark:bg-zinc-800 dark:ring-black"
           :class="avatarRoundClass"
         >
           <img
@@ -119,7 +119,7 @@
       </div>
     </div>
 
-    <div class="mx-auto max-w-3xl px-4 pb-5 pt-14">
+    <div class="mx-auto max-w-3xl px-4 pb-5 pt-20">
       <div class="flex items-start justify-between gap-4 mt-1">
         <div class="min-w-0">
           <h1 class="text-xl font-bold leading-none text-gray-900 dark:text-gray-50 truncate">

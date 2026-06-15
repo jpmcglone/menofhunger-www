@@ -139,7 +139,7 @@
           <AppUserAvatar
             v-show="!hideAvatarThumb"
             :user="profile"
-            size-class="h-24 w-24"
+            size-class="h-32 w-32"
             bg-class="bg-gray-200 dark:bg-zinc-800"
             :presence-scale="0.15"
             :presence-inset-ratio="0.25"
@@ -184,7 +184,7 @@
           v-tooltip.bottom="tinyTooltip('Update status')"
           type="button"
           :class="[
-            'cursor-pointer absolute z-20 left-[8.75rem] bottom-3 inline-flex max-w-[calc(100%-9.75rem)] items-center gap-1.5 bg-white px-3 py-1.5 shadow-[0_2px_10px_rgba(0,0,0,0.25)] ring-1 ring-black/5 transition-[transform,border-radius] duration-200 ease-out motion-safe:hover:scale-[1.04] active:scale-[0.96]',
+            'cursor-pointer absolute z-20 left-[10rem] bottom-3 inline-flex max-w-[calc(100%-11rem)] items-center gap-1.5 bg-white px-3 py-1.5 shadow-[0_2px_10px_rgba(0,0,0,0.25)] ring-1 ring-black/5 transition-[transform,border-radius] duration-200 ease-out motion-safe:hover:scale-[1.04] active:scale-[0.96]',
             statusIsMultiline ? 'rounded-xl' : 'rounded-full',
           ]"
           :aria-label="`Update your status: ${activeStatus.text}`"
@@ -197,7 +197,7 @@
           v-else-if="activeStatus"
           type="button"
           :class="[
-            'cursor-pointer absolute z-20 left-[8.75rem] bottom-3 inline-flex max-w-[calc(100%-9.75rem)] items-center gap-1.5 bg-white px-3 py-1.5 shadow-[0_2px_10px_rgba(0,0,0,0.25)] ring-1 ring-black/5 transition-[transform,border-radius] duration-200 ease-out motion-safe:hover:scale-[1.04] active:scale-[0.96]',
+            'cursor-pointer absolute z-20 left-[10rem] bottom-3 inline-flex max-w-[calc(100%-11rem)] items-center gap-1.5 bg-white px-3 py-1.5 shadow-[0_2px_10px_rgba(0,0,0,0.25)] ring-1 ring-black/5 transition-[transform,border-radius] duration-200 ease-out motion-safe:hover:scale-[1.04] active:scale-[0.96]',
             statusIsMultiline ? 'rounded-xl' : 'rounded-full',
           ]"
           :aria-label="`View ${profileName}'s status`"
@@ -209,7 +209,7 @@
       </ClientOnly>
     </div>
 
-    <div class="px-4 pb-5 pt-14">
+    <div class="px-4 pb-5 pt-20">
       <div class="flex flex-wrap items-start gap-x-4 gap-y-2 mt-1">
         <div class="min-w-0" style="flex: 1 1 10rem">
           <div class="flex items-center gap-2 min-w-0">
@@ -322,17 +322,6 @@
         </div>
       </div>
 
-      <div v-if="showFollowCounts" class="mt-4 flex items-center gap-4 text-sm text-gray-600 dark:text-gray-300">
-        <button type="button" class="cursor-pointer hover:underline" @click="emit('openFollowing')">
-          <span class="font-semibold text-gray-900 dark:text-gray-50 tabular-nums">{{ followingCount ?? 0 }}</span>
-          <span class="ml-1 text-gray-600 dark:text-gray-400">Following</span>
-        </button>
-        <button type="button" class="cursor-pointer hover:underline" @click="emit('openFollowers')">
-          <span class="font-semibold text-gray-900 dark:text-gray-50 tabular-nums">{{ followerCountN }}</span>
-          <span class="ml-1 text-gray-600 dark:text-gray-400">{{ followerLabel }}</span>
-        </button>
-      </div>
-
       <div v-if="profile?.bio" class="mt-4 text-gray-800 dark:text-gray-200">
         <AppBioText :text="profile.bio" />
       </div>
@@ -394,6 +383,17 @@
           <Icon name="tabler:calendar" class="shrink-0" aria-hidden="true" />
           <span class="truncate">Joined {{ joinedLabel }}</span>
         </div>
+      </div>
+
+      <div v-if="showFollowCounts" class="mt-4 flex items-center gap-4 text-sm text-gray-600 dark:text-gray-300">
+        <button type="button" class="cursor-pointer hover:underline" @click="emit('openFollowing')">
+          <span class="font-semibold text-gray-900 dark:text-gray-50 tabular-nums">{{ followingCount ?? 0 }}</span>
+          <span class="ml-1 text-gray-600 dark:text-gray-400">Following</span>
+        </button>
+        <button type="button" class="cursor-pointer hover:underline" @click="emit('openFollowers')">
+          <span class="font-semibold text-gray-900 dark:text-gray-50 tabular-nums">{{ followerCountN }}</span>
+          <span class="ml-1 text-gray-600 dark:text-gray-400">{{ followerLabel }}</span>
+        </button>
       </div>
 
       <NuxtLink

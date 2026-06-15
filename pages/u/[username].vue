@@ -48,7 +48,7 @@
         <template #fallback>
           <div>
             <div class="aspect-[3.25/1] w-full bg-gray-200 dark:bg-zinc-900" />
-            <div class="px-4 pb-5 pt-14">
+            <div class="px-4 pb-5 pt-20">
               <div class="h-20" />
             </div>
           </div>
@@ -212,7 +212,7 @@
       </div>
 
       <!-- Filter bar above tabs, right-aligned -->
-      <div class="flex items-center justify-end px-3 py-1 border-b border-gray-200 dark:border-zinc-800">
+      <div class="moh-surface flex items-center justify-end px-3 py-1 border-b border-gray-200 dark:border-zinc-800">
         <AppFeedFiltersBar
           :sort="profileSort"
           :filter="profileFilter"
@@ -227,7 +227,7 @@
       </div>
 
       <!-- Animated tab bar -->
-      <div ref="profileTabBarEl" class="sticky top-[var(--moh-title-bar-height,0px)] z-10 moh-surface flex gap-0 border-b border-gray-200 dark:border-zinc-800">
+      <div ref="profileTabBarEl" class="sticky top-[var(--moh-title-bar-height,0px)] z-20 moh-surface flex gap-0 border-b border-gray-200 dark:border-zinc-800">
         <button
           v-for="tab in profileTabs"
           :key="tab.key"

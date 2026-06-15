@@ -29,9 +29,9 @@
                 :alt="siteConfig.name"
                 :light-src="logoLightSmall"
                 :dark-src="logoDarkSmall"
-                :width="32"
-                :height="32"
-                imgClass="h-8 w-8 rounded"
+                :width="48"
+                :height="48"
+                imgClass="h-12 w-12 rounded"
               />
             </div>
             <span

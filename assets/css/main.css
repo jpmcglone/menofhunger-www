@@ -152,6 +152,11 @@ html.dark .moh-vignette::after {
   /* Frosted surfaces (used for sticky title bars) */
   --moh-frosted: rgba(243, 242, 238, 0.90);
 
+  /* Muted tag color for hashtags/cashtags on normal-tier posts (matches
+     PostRowBody's `text-gray-500 dark:text-gray-400`). Used in the composer
+     so typing matches the rendered post. */
+  --moh-hashtag-muted: #6b7280; /* gray-500 */
+
   /* Typography */
   --moh-font-serif: Literata, ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
 
@@ -239,6 +244,8 @@ html.dark {
   --moh-shadow-2: none;
 
   --moh-frosted: rgba(20, 24, 28, 0.92);
+
+  --moh-hashtag-muted: #9ca3af; /* gray-400 */
 
   --moh-tooltip-bg: rgba(15, 17, 19, 0.96);
   --moh-tooltip-text: #f4f4f5;

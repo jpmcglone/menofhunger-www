@@ -920,7 +920,8 @@ const composerHashtagColor = computed(() => {
   if (v === 'premiumOnly') return 'var(--moh-premium)'
   if (v === 'verifiedOnly') return 'var(--moh-verified)'
   if (v === 'onlyMe') return 'var(--moh-onlyme)'
-  return 'var(--p-primary-color)'
+  // Regular/public posts: muted gray that matches the rendered post body.
+  return 'var(--moh-hashtag-muted)'
 })
 
 function onDraftChange(value: string) {

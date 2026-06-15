@@ -86,7 +86,12 @@ function mentionLinkClass(tier: MentionTier | undefined): string {
 
 function hashtagLinkClass(tier: MentionTier | undefined): string {
   void tier
-  return 'font-medium no-underline hover:underline'
+  // On regular (normal-tier) posts no inline tier color is applied, so hashtags
+  // would otherwise inherit the full-contrast body color and blend in. Give them
+  // a slightly lower-contrast off-black/off-white tone so they stand out as a
+  // distinct token from surrounding text. Tiered posts (verified/premium/org)
+  // set an inline `color` via `:style`, which overrides these classes.
+  return 'font-medium no-underline hover:underline text-gray-500 dark:text-gray-400'
 }
 
 const postTier = computed<MentionTier>(() => {

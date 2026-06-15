@@ -110,10 +110,7 @@ export function navCompactModePath(path: string): boolean {
     path.startsWith('/tiers/') ||
     path === '/radio' ||
     path.startsWith('/radio/') ||
-    path.startsWith('/a/') ||
-    // User profiles are shareable public pages — give them the full center column
-    // by keeping the nav icon-only so the profile content feels primary.
-    path.startsWith('/u/')
+    path.startsWith('/a/')
   )
 }
 

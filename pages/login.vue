@@ -1,9 +1,28 @@
 <template>
   <section class="w-full max-w-md px-6">
     <div class="space-y-6">
-      <div class="flex items-center gap-2 text-2xl font-semibold tracking-tight">
-        <Icon name="tabler:door-enter" aria-hidden="true" />
-        <span>Login</span>
+      <!-- Brand mark + heading -->
+      <div class="flex flex-col items-center gap-4 text-center">
+        <AppLogo
+          as-link
+          to="/"
+          :alt="siteConfig.name"
+          :light-src="logoLightSmall"
+          :dark-src="logoDarkSmall"
+          :width="80"
+          :height="80"
+          wrapper-class="inline-flex"
+          img-class="h-20 w-20"
+        />
+        <div class="space-y-1.5">
+          <h1 class="text-3xl font-semibold tracking-tight text-balance">Log in or sign up</h1>
+          <p
+            v-if="step === 'phone' && !showBannedNotice && !showDeletedNotice"
+            class="text-sm moh-text-muted text-pretty"
+          >
+            Enter your phone number to continue.
+          </p>
+        </div>
       </div>
 
       <template v-if="showDeletedNotice">
@@ -52,7 +71,7 @@
             type="button"
             class="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-black text-white transition-opacity hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-white dark:text-black self-end sm:self-auto"
             :disabled="phoneSubmitting || !phoneInput.trim()"
-            aria-label="Send"
+            aria-label="Continue"
             @click="submitPhone"
           >
             <!-- Bold right arrow -->
@@ -172,26 +191,44 @@
         <div v-if="introError" class="text-sm text-red-700 dark:text-red-300">{{ introError }}</div>
       </div>
     </AppConfirmDialog>
+
+      <!-- Daily quote — quiet ambient note on the phone step only. -->
+      <Transition name="fade" appear>
+        <div
+          v-if="dailyQuote && step === 'phone'"
+          class="pt-4 text-center text-sm leading-relaxed text-gray-700 dark:text-gray-200"
+        >
+          <figure>
+            <blockquote class="moh-serif italic text-balance">“{{ dailyQuote.text }}”</blockquote>
+            <figcaption class="mt-2 text-xs text-gray-500 dark:text-gray-400">
+              <span class="font-semibold">{{ dailyQuoteAttribution }}</span>
+              <span v-if="dailyQuote.isParaphrase" class="ml-1">(paraphrase)</span>
+            </figcaption>
+          </figure>
+          <div class="mx-auto mt-6 h-px w-32 bg-gradient-to-r from-transparent via-gray-400 to-transparent dark:via-gray-600" />
+        </div>
+      </Transition>
       </template>
     </div>
 
-    <div class="mt-8 flex items-center justify-center gap-3 text-xs text-gray-400 dark:text-zinc-600">
-      <NuxtLink to="/terms" class="hover:text-gray-500 dark:hover:text-zinc-500 transition-colors">Terms</NuxtLink>
-      <span aria-hidden="true">·</span>
-      <NuxtLink to="/privacy" class="hover:text-gray-500 dark:hover:text-zinc-500 transition-colors">Privacy</NuxtLink>
-    </div>
+    <p class="mt-8 text-center text-xs text-gray-400 dark:text-zinc-600 text-pretty">
+      By continuing, you agree to our
+      <NuxtLink to="/terms" class="underline underline-offset-2 hover:text-gray-500 dark:hover:text-zinc-500 transition-colors">Terms</NuxtLink>
+      and
+      <NuxtLink to="/privacy" class="underline underline-offset-2 hover:text-gray-500 dark:hover:text-zinc-500 transition-colors">Privacy&nbsp;Policy</NuxtLink>.
+    </p>
   </section>
 </template>
 
 <script setup lang="ts">
 definePageMeta({
   layout: 'empty',
-  title: 'Login'
+  title: 'Log in or sign up'
 })
 
 usePageSeo({
-  title: 'Login',
-  description: 'Login or sign up using your phone number.',
+  title: 'Log in or sign up',
+  description: 'Log in or sign up using your phone number.',
   canonicalPath: '/login',
   noindex: true
 })
@@ -202,6 +239,21 @@ const { apiFetchData } = useApiClient()
 import { useFormSubmit } from '~/composables/useFormSubmit'
 import { countDigitsBeforeIndex, formatPhoneAsYouType, indexFromDigitCount, normalizePhoneForApi } from '~/utils/phone'
 import { isSafeRedirect } from '~/utils/url'
+import { siteConfig } from '~/config/site'
+import { formatDailyQuoteAttribution } from '~/utils/daily-quote'
+import logoLightSmall from '~/assets/images/logo-white-bg-small.png'
+import logoDarkSmall from '~/assets/images/logo-black-bg-small.png'
+import type { DailyContentToday, DailyQuote } from '~/types/api'
+
+// Quiet ambient touch: the same daily quote the landing page shows. Fetched on
+// SSR so it paints with the page (no client-only pop-in / hydration mismatch).
+const { data: dailyContent } = await useAsyncData<DailyContentToday>(
+  'login:daily-content:today',
+  () => apiFetchData<DailyContentToday>('/meta/daily-content/today', { method: 'GET' }),
+  { server: true },
+)
+const dailyQuote = computed<DailyQuote | null>(() => dailyContent.value?.quote ?? null)
+const dailyQuoteAttribution = computed(() => (dailyQuote.value ? formatDailyQuoteAttribution(dailyQuote.value) : ''))
 const route = useRoute()
 const { capturedReferralCode, captureReferralFromRoute, markReferralApplied } = useReferralCapture()
 
@@ -487,4 +539,13 @@ const { submit: submitCode, submitting: verifying } = useFormSubmit(
   },
 )
 </script>
+
+<style scoped>
+.fade-enter-active {
+  transition: opacity 0.5s ease;
+}
+.fade-enter-from {
+  opacity: 0;
+}
+</style>
 
