@@ -2,7 +2,9 @@
   <!-- Single root inside ClientOnly avoids Vue 3.5 slot / hydration edge cases with multi-node default slots. -->
   <ClientOnly>
     <div class="contents">
-      <AppToastStack />
+      <Teleport to="body">
+        <AppToastStack />
+      </Teleport>
       <AppUserPreviewPopover />
       <AppGroupPreviewPopover />
       <AppCrewPreviewPopover />

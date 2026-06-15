@@ -155,7 +155,7 @@
           <!-- ClientOnly avoids hydration mismatch: widget shares leaderboard state with page,
                and SSR streaming can send layout before page fetch completes. -->
           <ClientOnly>
-            <AppCheckinsLeaderboardWidget />
+            <AppCheckinsLeaderboardWidget v-if="canAccessCheckins" />
           </ClientOnly>
 
           <AppSupportDonateCard />
@@ -215,7 +215,9 @@ const props = defineProps<{
   hideSearch: boolean
 }>()
 
-const { user } = useAuth()
+const { user, isVerified, isPremium } = useAuth()
+// Check-ins leaderboard is verified-only; premium counts as verified.
+const canAccessCheckins = computed(() => isVerified.value || isPremium.value)
 const { apiFetchData } = useApiClient()
 const { openShortcutsModal } = useKeyboardShortcuts()
 const currentYear = new Date().getUTCFullYear()

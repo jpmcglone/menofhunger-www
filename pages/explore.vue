@@ -370,6 +370,18 @@
           </div>
         </section>
 
+        <!-- Verify-to-check-in CTA for authed-but-unverified users. Check-ins are
+             verified-only, so we drive verification instead of the live card.
+             Client-only (ClientOnly) so SSR stays empty and avoids hydration mismatch. -->
+        <ClientOnly>
+          <section v-if="isAuthed && !canAccessCheckins" class="space-y-3">
+            <h2 class="px-4 text-sm font-semibold text-gray-900 dark:text-gray-50">
+              Daily check-in
+            </h2>
+            <AppFeedDailyCheckinHero :prompt="verifyCtaPrompt" verify-cta />
+          </section>
+        </ClientOnly>
+
         <!-- Followed topics -->
         <section v-if="isAuthed && followedTopicsUi.length > 0" class="space-y-3">
           <h2 class="px-4 text-sm font-semibold text-gray-900 dark:text-gray-50">
@@ -756,6 +768,7 @@ import type {
 import { shellToGroupPreview } from '~/utils/community-group-preview'
 import { getApiErrorMessage } from '~/utils/api-error'
 import { MOH_OPEN_COMPOSER_KEY } from '~/utils/injection-keys'
+import { pickCheckinPrompt } from '~/utils/checkin-prompts'
 
 definePageMeta({
   layout: 'app',
@@ -776,7 +789,9 @@ const route = useRoute()
 const colorMode = useColorMode()
 const router = useRouter()
 const { apiFetch, apiFetchData } = useApiClient()
-const { isAuthed, user: authUser } = useAuth()
+const { isAuthed, user: authUser, isVerified, isPremium } = useAuth()
+// Check-ins (feed, streaks, leaderboard) are verified-only; premium counts as verified.
+const canAccessCheckins = computed(() => isVerified.value || isPremium.value)
 const openComposer = inject(MOH_OPEN_COMPOSER_KEY, null)
 const { dayKey: etDayKey } = useEasternMidnightRollover()
 
@@ -923,16 +938,26 @@ const displayCheckinPromptText = computed(() => (hydrated.value ? checkinPromptT
 const displayCheckinStreak = computed(() => (hydrated.value ? (checkinState.value?.checkinStreakDays ?? 0) : 0))
 const displayCheckinCoins = computed(() => (hydrated.value ? (checkinState.value?.coins ?? 0) : 0))
 
+// Verify-CTA prompt: unverified users never load /checkins/today, so derive today's
+// question client-side (deterministic, mirrors the API) for the CTA headline.
+const verifyCtaPrompt = computed(() => {
+  const p = (checkinState.value?.prompt ?? '').trim()
+  if (p) return p
+  return hydrated.value ? pickCheckinPrompt().prompt : 'Write a check-in…'
+})
+
 function onVisibilityChange() {
   if (!import.meta.client || document.hidden) return
-  if (!isAuthed.value) return
+  if (!isAuthed.value || !canAccessCheckins.value) return
   void refreshCheckin()
 }
 
 watch(
-  [isAuthed, etDayKey],
-  ([authed]) => {
-    if (!authed) {
+  [isAuthed, canAccessCheckins, etDayKey],
+  ([authed, canAccess]) => {
+    // Unverified users never hit /checkins/today (it 403s); they see the
+    // verify-CTA hero instead.
+    if (!authed || !canAccess) {
       checkinState.value = null
       return
     }

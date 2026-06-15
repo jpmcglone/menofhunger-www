@@ -171,6 +171,7 @@ definePageMeta({
   layout: 'app',
   title: 'Leaderboard',
   hideTopBar: true,
+  middleware: ['verified'],
   ssr: false,
 })
 

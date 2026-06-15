@@ -19,12 +19,23 @@
       :on-login-to-answer="goToLoginForCheckin"
     />
 
+    <!-- Verify-to-check-in CTA for authed-but-unverified users. The check-ins experience is
+         verified-only, so rather than the live hero we drive verification. Client-only
+         (ClientOnly) so SSR stays empty and there's no hydration mismatch. -->
+    <ClientOnly>
+      <AppFeedDailyCheckinHero
+        v-if="isAuthed && !canAccessCheckins"
+        :prompt="checkinHeroPrompt"
+        verify-cta
+      />
+    </ClientOnly>
+
     <!-- Skeleton shown while the check-in state is still loading.
          ClientOnly keeps SSR output empty (same as the hero gates above).
          The min-h matches the full hero so the page doesn't jump on resolve. -->
     <ClientOnly>
       <div
-        v-if="isAuthed && !heroResolved"
+        v-if="isAuthed && canAccessCheckins && !heroResolved"
         class="animate-pulse border-b moh-border"
         aria-hidden="true"
       >
@@ -649,10 +660,15 @@ onMounted(() => nextTick(() => {
   requestAnimationFrame(() => { homeFeedUnderlineReady.value = true })
 }))
 
+// Check-ins (feed, streaks, leaderboard) are verified-only; premium counts as verified.
+const canAccessCheckins = computed(() => viewerIsVerified.value || viewerIsPremium.value)
+
 watch(
-  [isAuthed, etDayKey],
-  ([authed]) => {
-    if (!authed) {
+  [isAuthed, canAccessCheckins, etDayKey],
+  ([authed, canAccess]) => {
+    // Unverified users never hit /checkins/today (it 403s); they see the
+    // verify-CTA hero instead.
+    if (!authed || !canAccess) {
       checkinState.value = null
       return
     }

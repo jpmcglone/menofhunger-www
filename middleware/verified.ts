@@ -1,13 +1,13 @@
-export default defineNuxtRouteMiddleware(async (to) => {
-  const { user, ensureLoaded } = useAuth()
+export default defineNuxtRouteMiddleware(async () => {
+  const { user, ensureLoaded, isVerified, isPremium } = useAuth()
   await ensureLoaded()
 
   // Let auth middleware handle anonymous users.
   if (!user.value?.id) return
 
-  // Verified+ (or Premium) only.
-  const isVerified = Boolean(user.value?.premium) || (user.value?.verifiedStatus ?? 'none') !== 'none'
-  if (!isVerified) {
+  // Verified+ (or Premium / Premium+) only — mirrors the API VerifiedGuard
+  // (premium || premiumPlus) and the nav's `requiresVerified` predicate.
+  if (!isVerified.value && !isPremium.value) {
     return navigateTo('/settings/verification')
   }
 })

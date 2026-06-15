@@ -98,6 +98,7 @@ definePageMeta({
   layout: 'app',
   title: 'Check-ins',
   hideTopBar: true,
+  middleware: ['verified'],
   ssr: false,
 })
 

@@ -1,5 +1,5 @@
 <template>
-  <div class="pointer-events-none fixed inset-x-0 z-[1000]" :style="stackStyle" aria-live="polite" aria-relevant="additions">
+  <div class="pointer-events-none fixed inset-x-0 z-[1500]" :style="stackStyle" aria-live="polite" aria-relevant="additions">
     <div class="mx-auto w-full max-w-md px-3">
       <TransitionGroup name="moh-toast" tag="div" class="space-y-2">
         <div
@@ -23,15 +23,19 @@
               <span v-if="t.message" class="truncate text-sm opacity-90 leading-none">{{ t.message }}</span>
             </button>
             <!-- Static row (no nav, no buttons OR with buttons): just text. -->
-            <div v-else class="flex min-w-0 flex-1" :class="hasActions(t) ? 'flex-col gap-1' : 'items-center gap-2'">
+            <div
+              v-else
+              class="flex min-w-0 flex-1"
+              :class="hasActions(t) || t.stacked ? 'flex-col gap-0.5' : 'items-center gap-2'"
+            >
               <span
-                class="text-sm font-semibold leading-snug"
-                :class="hasActions(t) ? '' : 'truncate leading-none'"
+                class="text-sm font-semibold"
+                :class="hasActions(t) || t.stacked ? 'line-clamp-1 leading-snug' : 'truncate leading-none'"
               >{{ t.title }}</span>
               <span
                 v-if="t.message"
                 class="text-sm opacity-90"
-                :class="hasActions(t) ? 'leading-snug' : 'truncate leading-none'"
+                :class="hasActions(t) || t.stacked ? 'line-clamp-2 leading-snug' : 'truncate leading-none'"
               >{{ t.message }}</span>
             </div>
 

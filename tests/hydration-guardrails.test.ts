@@ -98,7 +98,19 @@ describe('hydration guardrails (structural)', () => {
     const home = readFromRepo('pages/home.vue')
     // The skeleton must be inside <ClientOnly> to prevent SSR from rendering it
     // (which would cause a hydration mismatch when the client replaces it with the real hero).
-    expect(home).toMatch(/<ClientOnly>[\s\S]*?v-if="isAuthed && !heroResolved"[\s\S]*?<\/ClientOnly>/)
+    // It is also gated on `canAccessCheckins` so unverified users (who never fetch
+    // /checkins/today) see the verify-CTA hero instead of a skeleton that never resolves.
+    expect(home).toMatch(/<ClientOnly>[\s\S]*?v-if="isAuthed && canAccessCheckins && !heroResolved"[\s\S]*?<\/ClientOnly>/)
+  })
+
+  it('shows the verify-to-check-in CTA only client-side for unverified users', () => {
+    const home = readFromRepo('pages/home.vue')
+    // Check-ins are verified-only; unverified authed users get a verify CTA instead of
+    // the live hero. It must be inside <ClientOnly> so SSR emits nothing (no hydration
+    // mismatch on the auth-derived `canAccessCheckins`).
+    expect(home).toMatch(/<ClientOnly>[\s\S]*?<AppFeedDailyCheckinHero[\s\S]*?v-if="isAuthed && !canAccessCheckins"[\s\S]*?verify-cta[\s\S]*?<\/ClientOnly>/)
+    const explore = readFromRepo('pages/explore.vue')
+    expect(explore).toMatch(/<ClientOnly>[\s\S]*?v-if="isAuthed && !canAccessCheckins"[\s\S]*?verify-cta[\s\S]*?<\/ClientOnly>/)
   })
 
   // ---- Chat performance guardrails (Phase 2 of the freeze fix) -------------

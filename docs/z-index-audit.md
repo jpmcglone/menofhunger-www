@@ -13,7 +13,8 @@ Single source of truth for stacking order. All values are for `position: fixed` 
 | **FAB** | `60` | Mobile composer FAB (layout). |
 | **Gates** | `70` | Onboarding gate — must be above FAB so gate blocks entire app. |
 | **Page overlays** | `100`–`199` | Page-specific sheets (e.g. Roanoke on index: backdrop 100, panel 101). |
-| **App overlays** | `1000` | Composer overlay (layout), ToastStack, ReplyModal. |
+| **App overlays** | `1000` | Composer overlay (layout), ReplyModal. |
+| **Toast** | `1500` | ToastStack (teleported to body — must be above modals at 1200). |
 | **Popovers (low)** | `1100` | MetricsPopover, OnlineCountPopover, EmojiPickerButton. |
 | **Modals / autocomplete** | `1200` | AppModal, MentionAutocompletePopover, HashtagAutocompletePopover. |
 | **Popovers (high)** | `1300` | UserPreviewPopover. |
@@ -43,7 +44,7 @@ Single source of truth for stacking order. All values are for `position: fixed` 
 | `components/app/AppModal.vue` | 1200 | Generic app modal. |
 | `components/app/OnboardingGate.vue` | 70 | Gate above FAB (was 60). |
 | **Components (popovers)** | | |
-| `components/app/ToastStack.vue` | 1000 | Toast container (pointer-events-none). |
+| `components/app/ToastStack.vue` | 1500 | Toast container (teleported to body, pointer-events-none). |
 | `components/app/UserPreviewPopover.vue` | 1300 | User preview card. |
 | `components/app/MetricsPopover.vue` | 1100 | Metrics popover. |
 | `components/app/OnlineCountPopover.vue` | 1100 | Online count popover. |

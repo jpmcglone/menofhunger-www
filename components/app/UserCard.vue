@@ -128,7 +128,7 @@ const cardClass = computed(() => [
 ])
 
 const route = useRoute()
-const { user } = useAuth()
+const { user, isVerifiedMember } = useAuth()
 const { getPresenceStatus, getUserStatus, isSocketConnecting, setMyStatus, clearMyStatus } = usePresence()
 const { menuItems } = useUserMenu()
 const { selectedSpaceId, currentSpace: currentSpaceForNav } = useSpaceLobby()
@@ -180,6 +180,8 @@ type MenuItemWithIcon = MenuItem & { iconName?: string }
 // Prepend "Go to space" when the current user is actively in a space (suppressed on /spaces routes).
 const allMenuItems = computed<MenuItemWithIcon[]>(() => {
   const base = menuItems.value as MenuItemWithIcon[]
+  // Setting your own status is a verified-only engagement feature.
+  if (!isVerifiedMember.value) return base
   const statusItem = {
     label: activeStatus.value ? 'Update status' : 'Set status',
     iconName: 'tabler:message-circle',
@@ -209,6 +211,7 @@ function toggleMenu(event: Event) {
 }
 
 function openStatusEditor() {
+  if (!isVerifiedMember.value) return
   ignoreNextStatusEditorDocumentClick = true
   setTimeout(() => {
     ignoreNextStatusEditorDocumentClick = false

@@ -1,4 +1,58 @@
 <template>
+  <!-- Verify-to-check-in CTA: shown to authed-but-unverified users. The check-ins experience
+       (feed, streaks, leaderboard) is verified-only, so instead of the live hero we surface a
+       single CTA that drives verification. No data fetch / realtime in this mode. -->
+  <section
+    v-if="verifyCta"
+    class="moh-checkin-hero relative w-full mb-3 sm:mb-4 px-3 pt-3 sm:px-4 sm:pt-4"
+    aria-labelledby="moh-checkin-hero-verify-title"
+  >
+    <div class="relative overflow-hidden rounded-2xl border moh-border" :style="cardStyle">
+      <div
+        class="pointer-events-none absolute inset-x-0 top-0 h-1"
+        style="background: linear-gradient(90deg, var(--moh-checkin) 0%, transparent 100%); opacity: 0.5"
+        aria-hidden="true"
+      />
+      <div class="px-5 sm:px-6 pt-5 sm:pt-6 pb-4 sm:pb-5">
+        <div class="flex items-center gap-2">
+          <span
+            class="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide"
+            :style="badgeStyle"
+          >
+            <Icon name="tabler:calendar-check" size="11" aria-hidden="true" />
+            Today's question
+          </span>
+        </div>
+
+        <h1
+          id="moh-checkin-hero-verify-title"
+          class="mt-3 text-xl sm:text-2xl font-bold leading-snug moh-text"
+        >
+          {{ promptText }}
+        </h1>
+
+        <p class="mt-2 text-sm leading-relaxed moh-text-muted">
+          Daily check-ins, streaks, and the leaderboard are for verified members. Verify your account to start your streak.
+        </p>
+
+        <div class="mt-5">
+          <Button
+            as="NuxtLink"
+            to="/settings/verification"
+            label="Verify to check in"
+            severity="contrast"
+            rounded
+            class="w-full sm:w-auto"
+          >
+            <template #icon>
+              <Icon name="tabler:rosette-discount-check" size="16" aria-hidden="true" />
+            </template>
+          </Button>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <!-- Compact variant: shown after the user has answered, typically placed under the composer
        on /home so the hero doesn't keep eating top real estate once its job is done.
 
@@ -9,7 +63,7 @@
        middle-click "Open in new tab" all work, while the inner crew-streak pill can still
        stop propagation and navigate to the crew page. -->
   <section
-    v-if="compact"
+    v-else-if="compact"
     class="moh-checkin-hero-compact relative w-full mb-3 sm:mb-4 px-3 pt-3 sm:px-4 sm:pt-4"
     aria-labelledby="moh-checkin-hero-compact-title"
   >
@@ -364,7 +418,7 @@ import { deriveWeeklyMission } from '~/config/milestones'
 const props = defineProps<{
   /** When provided, the hero uses this for the prompt text + answered state instead of fetching. */
   prompt?: string
-  state: {
+  state?: {
     dayKey?: string
     prompt?: string
     hasCheckedInToday?: boolean
@@ -381,11 +435,18 @@ const props = defineProps<{
   /** Last submitted check-in body for the "you answered" echo. Optional. */
   myCheckinBody?: string | null
   /** Whether the viewer can actually create a check-in (verified+). */
-  canAnswer: boolean
+  canAnswer?: boolean
   /** Open the inline composer — owned by the parent page so we don't dictate UX. */
-  onAnswer: () => void
+  onAnswer?: () => void
   /** Login flow trigger for unauth visitors. */
-  onLoginToAnswer: () => void
+  onLoginToAnswer?: () => void
+  /**
+   * Verify-to-check-in CTA mode. The whole check-ins experience (feed, streaks,
+   * leaderboard) is verified-only, so authed-but-unverified users get a single CTA
+   * driving verification instead of the live hero. In this mode the component does
+   * NOT fetch or subscribe — it only needs the (client-derived) `prompt`.
+   */
+  verifyCta?: boolean
   /** Optional preferred visibility for the answer button (only used for messaging today; no UI here). */
   preferredVisibility?: PostVisibility
   /**
@@ -667,12 +728,15 @@ const crewCb = {
 }
 
 onMounted(() => {
+  // Verify-CTA mode is a static promo — no social proof or realtime needed.
+  if (props.verifyCta) return
   refreshSocialProof()
   addCheckinsCallback(answeredCb)
   addCrewCallback(crewCb)
 })
 
 onBeforeUnmount(() => {
+  if (props.verifyCta) return
   removeCheckinsCallback(answeredCb)
   removeCrewCallback(crewCb)
 })
@@ -693,7 +757,7 @@ function handleAnswer() {
   if (answering.value) return
   answering.value = true
   try {
-    props.onAnswer()
+    props.onAnswer?.()
   } finally {
     nextTick(() => {
       answering.value = false
@@ -702,6 +766,6 @@ function handleAnswer() {
 }
 
 function handleLoginToAnswer() {
-  props.onLoginToAnswer()
+  props.onLoginToAnswer?.()
 }
 </script>

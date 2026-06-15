@@ -89,10 +89,17 @@
           />
 
           <div class="flex items-center justify-between gap-3">
-            <div class="text-xs moh-text-muted">
-              {{ draft.length }} selected
-              <span v-if="required && draft.length < min"> · pick at least {{ min }}</span>
-              <span v-if="draft.length >= max"> · max {{ max }}</span>
+            <div
+              class="text-xs font-semibold"
+              :class="atMax ? 'text-amber-600 dark:text-amber-400' : 'moh-text-muted'"
+            >
+              <template v-if="atMax">
+                {{ max }} / {{ max }} &mdash; remove one to add another
+              </template>
+              <template v-else>
+                {{ draft.length }} / {{ max }} selected
+                <span v-if="required && draft.length < min"> &middot; pick at least {{ min }}</span>
+              </template>
             </div>
             <div class="flex items-center gap-2">
               <Button
@@ -109,13 +116,15 @@
 
         <!-- Scrollable tags area (Suggested + More) -->
         <div class="flex-1 min-h-0 overflow-y-auto pt-1 space-y-4">
-          <div v-if="filteredSuggestedGroups.length > 0" class="space-y-2">
-            <div class="text-xs font-semibold uppercase tracking-wide text-gray-600 dark:text-gray-300 text-center">
-              Suggested
+          <div v-if="filteredSuggestedGroups.length > 0" class="space-y-3">
+            <div class="flex items-center gap-2">
+              <div class="flex-1 border-t moh-border" />
+              <span class="text-xs font-bold uppercase tracking-widest moh-text">Suggested</span>
+              <div class="flex-1 border-t moh-border" />
             </div>
             <div class="space-y-4">
               <div v-for="g in filteredSuggestedGroups" :key="`sg-${g.group}`" class="space-y-2">
-                <div class="text-[11px] font-semibold uppercase tracking-wide text-gray-600 dark:text-gray-300 text-center">
+                <div class="text-xs font-semibold uppercase tracking-wide moh-text-muted text-center">
                   {{ g.group }}
                 </div>
                 <div class="flex flex-wrap justify-center gap-2">
@@ -124,13 +133,13 @@
                     :key="`s-${g.group}-${opt.value}`"
                     type="button"
                     class="inline-flex items-center rounded-full border px-3 py-1.5 text-sm font-semibold transition-colors"
-                    :class="draft.includes(opt.value) ? 'bg-transparent' : 'moh-surface-hover'"
+                    :class="chipClass(opt.value)"
                     :style="
                       draft.includes(opt.value)
                         ? { borderColor: 'var(--p-primary-color)', color: 'var(--p-primary-color)' }
                         : { borderColor: 'var(--moh-border)', color: 'var(--moh-text)' }
                     "
-                    :disabled="disabled || (!draft.includes(opt.value) && draft.length >= max)"
+                    :disabled="disabled"
                     @click="toggle(opt.value)"
                   >
                     <span>{{ opt.label }}</span>
@@ -140,9 +149,11 @@
             </div>
           </div>
 
-          <div class="space-y-2">
-            <div class="text-xs font-semibold uppercase tracking-wide text-gray-600 dark:text-gray-300 text-center">
-              More interests
+          <div class="space-y-3">
+            <div class="flex items-center gap-2">
+              <div class="flex-1 border-t moh-border" />
+              <span class="text-xs font-bold uppercase tracking-widest moh-text">More interests</span>
+              <div class="flex-1 border-t moh-border" />
             </div>
             <div class="space-y-6">
               <div
@@ -150,7 +161,7 @@
                 :key="g.group"
                 class="space-y-2"
               >
-                <div class="text-[11px] font-semibold uppercase tracking-wide text-gray-600 dark:text-gray-300 text-center">
+                <div class="text-xs font-semibold uppercase tracking-wide moh-text-muted text-center">
                   {{ g.group }}
                 </div>
                 <TransitionGroup name="moh-interest" tag="div" class="flex flex-wrap justify-center gap-2">
@@ -159,13 +170,13 @@
                     :key="opt.value"
                     type="button"
                     class="inline-flex items-center rounded-full border px-3 py-1.5 text-sm font-semibold transition-colors"
-                    :class="draft.includes(opt.value) ? 'bg-transparent' : 'moh-surface-hover'"
+                    :class="chipClass(opt.value)"
                     :style="
                       draft.includes(opt.value)
                         ? { borderColor: 'var(--p-primary-color)', color: 'var(--p-primary-color)' }
                         : { borderColor: 'var(--moh-border)', color: 'var(--moh-text)' }
                     "
-                    :disabled="disabled || (!draft.includes(opt.value) && draft.length >= max)"
+                    :disabled="disabled"
                     @click="toggle(opt.value)"
                   >
                     <span>{{ opt.label }}</span>
@@ -472,6 +483,36 @@ const filteredSuggestedGroups = computed(() => {
   return groups
 })
 
+const { push: pushToast, toasts, dismiss } = useAppToast()
+
+const atMax = computed(() => draft.value.length >= props.max)
+
+// Stable ID so rapid taps replace rather than stack the same toast.
+const capToastId = ref<string | null>(null)
+
+function showCapToast() {
+  // Dismiss any existing cap toast before pushing a fresh one.
+  if (capToastId.value) {
+    dismiss(capToastId.value)
+    capToastId.value = null
+  }
+  // Guard: don't push if the same message is already visible.
+  const alreadyVisible = toasts.value.some((t) => t.id === capToastId.value)
+  if (alreadyVisible) return
+  capToastId.value = pushToast({
+    title: `Limit reached (${props.max})`,
+    message: 'Remove an interest to add another.',
+    tone: 'error',
+    stacked: true,
+  })
+}
+
+function chipClass(value: string): string {
+  if (draft.value.includes(value)) return 'bg-transparent'
+  if (atMax.value) return 'opacity-40 cursor-not-allowed'
+  return 'moh-surface-hover'
+}
+
 function arenaState(arena: (typeof LIFE_ARENAS)[number]) {
   return arenaSelectionState(arena, draft.value)
 }
@@ -484,15 +525,23 @@ function onToggleArena(arena: (typeof LIFE_ARENAS)[number]) {
     arena: arena.key,
     action: wasActive ? 'deselect' : 'select',
   })
+  // If we were adding and the arena isn't fully selected, some interests were blocked by the cap
+  if (!wasActive && atMax.value && arenaState(arena) !== 'full') {
+    showCapToast()
+  }
 }
 
 function toggle(value: string) {
   const v = String(value ?? '').trim()
   if (!v) return
   const next = new Set(draft.value)
-  if (next.has(v)) next.delete(v)
-  else {
-    if (draft.value.length >= props.max) return
+  if (next.has(v)) {
+    next.delete(v)
+  } else {
+    if (draft.value.length >= props.max) {
+      showCapToast()
+      return
+    }
     next.add(v)
   }
   draft.value = Array.from(next)

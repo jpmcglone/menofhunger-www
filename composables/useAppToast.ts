@@ -42,6 +42,8 @@ export type AppToast = {
   actions?: AppToastAction[] | null
   /** When true, the toast does not auto-dismiss; user must close or act on it. */
   persistent?: boolean
+  /** When true, title and message stack vertically (title 1 line, message up to 2 lines). */
+  stacked?: boolean
 }
 
 function randomId() {
@@ -140,6 +142,7 @@ export function useAppToast() {
       to: actions ? null : (input.to ?? null),
       actions,
       persistent,
+      stacked: input.stacked ?? false,
     }
 
     // Keep the stack small.

@@ -664,7 +664,7 @@ const props = defineProps<{
 }>()
 
 const route = useRoute()
-const { user, me, isAuthed, isPremium, isVerified: viewerIsVerified } = useAuth()
+const { user, me, isAuthed, isPremium, isVerified: viewerIsVerified, isVerifiedMember } = useAuth()
 const { apiFetchData } = useApiClient()
 const { getUserStatus, setMyStatus, clearMyStatus } = usePresence()
 const toast = useAppToast()
@@ -808,7 +808,9 @@ const disableMedia = computed(() =>
 )
 const disablePoll = computed(() => Boolean(props.disablePoll))
 const showDivider = computed(() => props.showDivider !== false)
-const enableAvatarStatusEditor = computed(() => Boolean(props.enableAvatarStatusEditor))
+// Setting your own status is a verified-only engagement feature; unverified
+// users see the read-only avatar status instead of the editor affordance.
+const enableAvatarStatusEditor = computed(() => Boolean(props.enableAvatarStatusEditor) && isVerifiedMember.value)
 const statusEditorOpen = ref(false)
 const statusDraft = ref('')
 const statusSaving = ref(false)

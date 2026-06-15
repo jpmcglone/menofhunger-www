@@ -143,9 +143,9 @@
             bg-class="bg-gray-200 dark:bg-zinc-800"
             :presence-scale="0.15"
             :presence-inset-ratio="0.25"
-            :show-empty-status="isSelf && !activeStatus"
+            :show-empty-status="canSetStatus && !activeStatus"
             :show-status="!activeStatus"
-            :status-behavior="isSelf ? 'custom' : 'view'"
+            :status-behavior="canSetStatus ? 'custom' : 'view'"
             :status-position-class="isSelf ? '-right-2 -top-2' : '-right-1 -top-1'"
             :status-size-class="isSelf ? 'h-8 w-8' : 'h-5 w-5'"
             :status-icon-class="isSelf ? 'text-[18px]' : 'text-[13px]'"
@@ -180,7 +180,7 @@
            Self: click opens editor. Others: click opens a read-only status modal. -->
       <ClientOnly>
         <button
-          v-if="activeStatus && isSelf"
+          v-if="activeStatus && canSetStatus"
           v-tooltip.bottom="tinyTooltip('Update status')"
           type="button"
           :class="[
@@ -594,8 +594,11 @@ const hideAvatarDuringBanner = computed(() => Boolean(props.hideAvatarDuringBann
 const followerCountN = computed(() => Math.max(0, Math.floor(props.followerCount ?? 0)))
 const followerLabel = computed(() => (followerCountN.value === 1 ? 'Follower' : 'Followers'))
 
-const { user: authUser } = useAuth()
+const { user: authUser, isVerifiedMember } = useAuth()
 const isAuthed = computed(() => Boolean(authUser.value?.id))
+// Setting your own status is a verified-only engagement feature. Unverified
+// users still see everyone's statuses (including their own, read-only).
+const canSetStatus = computed(() => isSelf.value && isVerifiedMember.value)
 const { show: showAuthActionModal } = useAuthActionModal()
 const viewerIsPremium = computed(() => Boolean(authUser.value?.premium || authUser.value?.premiumPlus))
 // Verified users can start DMs with mutuals; premium users can DM any member.
@@ -1157,7 +1160,7 @@ const statusTextEl = ref<HTMLElement | null>(null)
 const { isMultiline: statusIsMultiline } = useIsMultiline(statusTextEl)
 
 function openStatusEditor() {
-  if (!isSelf.value) return
+  if (!canSetStatus.value) return
   statusDraft.value = activeStatus.value?.text ?? ''
   statusError.value = null
   statusEditorOpen.value = true

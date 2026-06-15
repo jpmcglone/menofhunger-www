@@ -52,7 +52,7 @@
             <label class="text-sm font-medium" :class="birthdateInvalid ? 'text-red-500 dark:text-red-400' : 'moh-text'">
               Birthday<span v-if="!birthdateLocked" class="ml-0.5">*</span>
             </label>
-            <InputText v-if="!birthdateLocked" v-model="birthdate" type="date" class="w-full" :disabled="submitting" :invalid="birthdateInvalid" />
+            <AppDateOfBirthInput v-if="!birthdateLocked" v-model="birthdate" :disabled="submitting" :invalid="birthdateInvalid" />
             <div v-else class="w-full rounded-xl border moh-border px-3 py-2 text-sm moh-text">
               {{ birthdatePretty }}
             </div>

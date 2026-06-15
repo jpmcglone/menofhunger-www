@@ -273,7 +273,11 @@ export function useAuth() {
   const isVerified = computed(() => (user.value?.verifiedStatus ?? 'none') !== 'none')
   const isPremium = computed(() => Boolean(user.value?.premium || user.value?.premiumPlus))
   const isPremiumPlus = computed(() => Boolean(user.value?.premiumPlus))
+  // Canonical "verified member" predicate — mirrors the API VerifiedGuard
+  // (verifiedStatus !== 'none' || premium || premiumPlus). Use this to gate
+  // verified-only engagement features (e.g. setting your own status).
+  const isVerifiedMember = computed(() => isVerified.value || isPremium.value)
 
-  return { user, me, ensureLoaded, initAuth, logout, handleUnauthorized, isAuthed, isVerified, isPremium, isPremiumPlus, apiUnreachable }
+  return { user, me, ensureLoaded, initAuth, logout, handleUnauthorized, isAuthed, isVerified, isPremium, isPremiumPlus, isVerifiedMember, apiUnreachable }
 }
 

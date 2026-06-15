@@ -83,6 +83,7 @@ definePageMeta({
   layout: 'app',
   title: 'Check-in Day',
   hideTopBar: true,
+  middleware: ['verified'],
   ssr: false,
 })
 
