@@ -32,6 +32,7 @@ import { usePostCache } from '~/composables/usePostCache'
 import { usePostCountBumps } from '~/composables/usePostCountBumps'
 import { usePostsFeed } from '~/composables/usePostsFeed'
 import { useBoostState } from '~/composables/useBoostState'
+import { usePostComments } from '~/composables/usePostComments'
 
 // ── Test harness ──────────────────────────────────────────────────────────────
 
@@ -657,73 +658,73 @@ describe('optimistic comment → server confirmation lifecycle', () => {
   })
 })
 
-// ── 9. usePostComments.prependComment bumpCount option ────────────────────────
+// ── 9. usePostComments.prependComment is list-only (authoritative count) ───────
 //
-// Regression: on /p/:id, the WS `liveUpdated` (with authoritative
-// patch.commentCount) is followed by `commentAdded` (with the new reply DTO).
-// If `prependComment` always bumps `commentsCounts.all`, the post-liveUpdated
-// commentAdded run double-counts (e.g. 0 → 2 instead of 0 → 1). The WS handler
-// must opt out of the bump; the HTTP onReplyPosted path keeps the default bump.
+// Root-cause regression for the "reply count jumped to 2" bug on /p/:id.
+//
+// The server emits, to the post's room, a `posts:liveUpdated` patch carrying the
+// ABSOLUTE post-increment `commentCount`, followed by a `commentAdded` event with
+// the new reply DTO. The commenter ALSO gets the HTTP response. Previously
+// `prependComment` did an optimistic `+1` on `commentsCounts.all`, so when the WS
+// `liveUpdated` set the absolute count (0 → 1) BEFORE the HTTP `onReplyPosted`
+// ran, the HTTP path bumped again (1 → 2).
+//
+// The fix: `prependComment` is list-only. The count is authoritative-only,
+// reconciled solely from `liveUpdated` (mirrored here by writing
+// `commentsCounts.all` directly). This makes the displayed count immune to
+// HTTP-vs-WS arrival order — a single new reply can never show as +2.
 
-describe('usePostComments.prependComment bumpCount option', () => {
-  it('default bump=true increments commentsCounts.all (HTTP onReplyPosted path)', async () => {
-    const { usePostComments } = await import('~/composables/usePostComments')
-    const postId = ref('parent-1')
+describe('usePostComments.prependComment is list-only', () => {
+  function makeApi(parentId: string) {
+    const postId = ref(parentId)
     const post = ref<{ id: string; visibility?: string; commentCount?: number } | null>({
-      id: 'parent-1',
+      id: parentId,
       visibility: 'public',
       commentCount: 0,
     })
     const isOnlyMe = ref(true) // skip initial fetch
-    const api = await runInSetup(() => usePostComments({ postId, post, isOnlyMe }))
+    return runInSetup(() => usePostComments({ postId, post, isOnlyMe }))
+  }
+
+  it('inserts the row but does NOT mutate the count (HTTP onReplyPosted path)', async () => {
+    const api = await makeApi('parent-1')
     api.commentsCounts.value = { all: 0, public: 0, verifiedOnly: 0, premiumOnly: 0 }
 
     const reply = makePost({ id: 'c-1', parentId: 'parent-1' })
     api.prependComment(reply)
 
     expect(api.comments.value).toHaveLength(1)
-    expect(api.commentsCounts.value?.all).toBe(1)
+    // Count is owned by the server patch, not by prependComment.
+    expect(api.commentsCounts.value?.all).toBe(0)
   })
 
-  it('bumpCount=false skips the count bump (WS onCommentAdded path)', async () => {
-    const { usePostComments } = await import('~/composables/usePostComments')
-    const postId = ref('parent-2')
-    const post = ref<{ id: string; visibility?: string; commentCount?: number } | null>({
-      id: 'parent-2',
-      visibility: 'public',
-      commentCount: 0,
-    })
-    const isOnlyMe = ref(true)
-    const api = await runInSetup(() => usePostComments({ postId, post, isOnlyMe }))
-    // Simulate the authoritative liveUpdated arriving first.
-    api.commentsCounts.value = { all: 1, public: 1, verifiedOnly: 0, premiumOnly: 0 }
-
-    const reply = makePost({ id: 'c-2', parentId: 'parent-2' })
-    api.prependComment(reply, { bumpCount: false })
-
-    expect(api.comments.value).toHaveLength(1)
-    // Count stays at 1 (set by liveUpdated), no double-bump from commentAdded.
-    expect(api.commentsCounts.value?.all).toBe(1)
-  })
-
-  it('liveUpdated → commentAdded race: end-state count is 1 (no double-bump)', async () => {
-    const { usePostComments } = await import('~/composables/usePostComments')
-    const postId = ref('parent-3')
-    const post = ref<{ id: string; visibility?: string; commentCount?: number } | null>({
-      id: 'parent-3',
-      visibility: 'public',
-      commentCount: 0,
-    })
-    const isOnlyMe = ref(true)
-    const api = await runInSetup(() => usePostComments({ postId, post, isOnlyMe }))
+  it('WS liveUpdated FIRST, then HTTP onReplyPosted: end-state count is 1 (no +2)', async () => {
+    const api = await makeApi('parent-2')
     api.commentsCounts.value = { all: 0, public: 0, verifiedOnly: 0, premiumOnly: 0 }
 
-    // 1. liveUpdated (authoritative) sets all=1.
-    api.commentsCounts.value = { ...api.commentsCounts.value, all: 1 }
-    // 2. commentAdded prepends without bump (the fix).
+    // 1. WS liveUpdated (authoritative) sets all=1.
+    api.commentsCounts.value = { ...api.commentsCounts.value!, all: 1 }
+    // 2. WS commentAdded prepends the row (list-only).
+    const reply = makePost({ id: 'c-2', parentId: 'parent-2' })
+    api.prependComment(reply)
+    // 3. HTTP onReplyPosted prepends the same id — deduped, list-only.
+    api.prependComment(reply)
+
+    expect(api.comments.value).toHaveLength(1)
+    expect(api.commentsCounts.value?.all).toBe(1) // ← the bug would have made this 2
+  })
+
+  it('HTTP onReplyPosted FIRST, then WS liveUpdated: end-state count is 1', async () => {
+    const api = await makeApi('parent-3')
+    api.commentsCounts.value = { all: 0, public: 0, verifiedOnly: 0, premiumOnly: 0 }
+
+    // 1. HTTP onReplyPosted prepends the row (list-only, no count change).
     const reply = makePost({ id: 'c-3', parentId: 'parent-3' })
-    api.prependComment(reply, { bumpCount: false })
-    // 3. HTTP onReplyPosted runs prependComment(real) — finds existing id, no bump.
+    api.prependComment(reply)
+    expect(api.commentsCounts.value?.all).toBe(0)
+    // 2. WS liveUpdated (authoritative) sets the absolute count.
+    api.commentsCounts.value = { ...api.commentsCounts.value!, all: 1 }
+    // 3. WS commentAdded — deduped, list-only.
     api.prependComment(reply)
 
     expect(api.comments.value).toHaveLength(1)
@@ -731,77 +732,71 @@ describe('usePostComments.prependComment bumpCount option', () => {
   })
 })
 
-// ── 10. usePostComments.onCommentDeleted double-fire guard ────────────────────
+// ── 10. usePostComments.onCommentDeleted is list-only (authoritative count) ────
 //
-// Regression: when the deleting user removes their own reply, the local
-// `<PostRow @deleted>` event AND the server-emitted `posts:commentDeleted` WS
-// event both call `onCommentDeleted` with the same id. Without the guard, the
-// second call decrements `commentsCounts.all` again — leaving the displayed
-// count one too low until the next fetch.
+// Symmetric to the create path. When the deleting user removes their own reply,
+// the local `<PostRow @deleted>` event AND the WS `posts:commentDeleted` event
+// both fire with the same id, AND the server emits `posts:liveUpdated` with the
+// absolute post-DECREMENT count. If `onCommentDeleted` decremented locally too,
+// it would double-decrement whenever the WS patch landed first (e.g. 5 → 4 from
+// the patch, then 4 → 3 locally).
 //
-// The fix only decrements when an entry was actually removed from
-// `comments.value`. The paired `posts:liveUpdated` (with patch.commentCount)
-// remains the authoritative reconciliation path for the count.
+// The fix: `onCommentDeleted` only removes the row. The count is reconciled
+// solely from the authoritative `posts:liveUpdated` patch.
 
-describe('usePostComments.onCommentDeleted double-fire guard', () => {
-  it('decrements exactly once when the comment is in the list', async () => {
-    const { usePostComments } = await import('~/composables/usePostComments')
-    const postId = ref('parent-d1')
+describe('usePostComments.onCommentDeleted is list-only', () => {
+  function makeApi(parentId: string, startCount: number) {
+    const postId = ref(parentId)
     const post = ref<{ id: string; visibility?: string; commentCount?: number } | null>({
-      id: 'parent-d1',
+      id: parentId,
       visibility: 'public',
-      commentCount: 1,
+      commentCount: startCount,
     })
     const isOnlyMe = ref(true)
-    const api = await runInSetup(() => usePostComments({ postId, post, isOnlyMe }))
+    return runInSetup(() => usePostComments({ postId, post, isOnlyMe }))
+  }
+
+  it('removes the row without mutating the count (count reconciled by liveUpdated)', async () => {
+    const api = await makeApi('parent-d1', 1)
     api.commentsCounts.value = { all: 1, public: 1, verifiedOnly: 0, premiumOnly: 0 }
 
     const reply = makePost({ id: 'c-d1', parentId: 'parent-d1' })
-    api.prependComment(reply, { bumpCount: false })
+    api.prependComment(reply)
     expect(api.comments.value).toHaveLength(1)
 
     api.onCommentDeleted('c-d1')
     expect(api.comments.value).toHaveLength(0)
+    // Count unchanged by the local removal — the authoritative patch owns it.
+    expect(api.commentsCounts.value?.all).toBe(1)
+    // The server's liveUpdated patch then reconciles to the post-decrement value.
+    api.commentsCounts.value = { ...api.commentsCounts.value!, all: 0 }
     expect(api.commentsCounts.value?.all).toBe(0)
   })
 
-  it('does NOT decrement on a second call for an already-removed comment', async () => {
-    const { usePostComments } = await import('~/composables/usePostComments')
-    const postId = ref('parent-d2')
-    const post = ref<{ id: string; visibility?: string; commentCount?: number } | null>({
-      id: 'parent-d2',
-      visibility: 'public',
-      commentCount: 1,
-    })
-    const isOnlyMe = ref(true)
-    const api = await runInSetup(() => usePostComments({ postId, post, isOnlyMe }))
-    api.commentsCounts.value = { all: 1, public: 1, verifiedOnly: 0, premiumOnly: 0 }
-
+  it('WS liveUpdated FIRST then local @deleted: no double-decrement (count stays at server value)', async () => {
+    const api = await makeApi('parent-d2', 5)
+    api.commentsCounts.value = { all: 5, public: 5, verifiedOnly: 0, premiumOnly: 0 }
     const reply = makePost({ id: 'c-d2', parentId: 'parent-d2' })
-    api.prependComment(reply, { bumpCount: false })
+    api.prependComment(reply)
 
-    // First fire: local @deleted from PostRow.
+    // 1. WS liveUpdated (authoritative) sets the post-decrement count.
+    api.commentsCounts.value = { ...api.commentsCounts.value!, all: 4 }
+    // 2. Local @deleted removes the row — must NOT decrement again to 3.
     api.onCommentDeleted('c-d2')
-    expect(api.commentsCounts.value?.all).toBe(0)
 
-    // Second fire: WS posts:commentDeleted for the same id. Must be a no-op.
-    api.onCommentDeleted('c-d2')
-    expect(api.commentsCounts.value?.all).toBe(0)
+    expect(api.comments.value).toHaveLength(0)
+    expect(api.commentsCounts.value?.all).toBe(4) // ← the bug would have made this 3
   })
 
-  it('does NOT decrement when called for an unknown comment id', async () => {
-    const { usePostComments } = await import('~/composables/usePostComments')
-    const postId = ref('parent-d3')
-    const post = ref<{ id: string; visibility?: string; commentCount?: number } | null>({
-      id: 'parent-d3',
-      visibility: 'public',
-      commentCount: 2,
-    })
-    const isOnlyMe = ref(true)
-    const api = await runInSetup(() => usePostComments({ postId, post, isOnlyMe }))
-    api.commentsCounts.value = { all: 2, public: 2, verifiedOnly: 0, premiumOnly: 0 }
+  it('a repeated delete fire for the same id is a no-op on the list', async () => {
+    const api = await makeApi('parent-d3', 1)
+    api.commentsCounts.value = { all: 1, public: 1, verifiedOnly: 0, premiumOnly: 0 }
+    const reply = makePost({ id: 'c-d3', parentId: 'parent-d3' })
+    api.prependComment(reply)
 
-    api.onCommentDeleted('does-not-exist')
-    expect(api.commentsCounts.value?.all).toBe(2)
+    api.onCommentDeleted('c-d3') // local @deleted
+    api.onCommentDeleted('c-d3') // WS posts:commentDeleted for the same id
+
+    expect(api.comments.value).toHaveLength(0)
   })
 })

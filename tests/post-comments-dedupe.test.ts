@@ -50,7 +50,7 @@ function makePost(p: Partial<FeedPost> & { id: string }): FeedPost {
 }
 
 describe('usePostComments prependComment dedupe', () => {
-  it('upserts duplicate comment IDs without incrementing count twice', async () => {
+  it('upserts duplicate comment IDs and never mutates the authoritative count', async () => {
     const postId = ref('post-1')
     const post = ref<{ id: string; visibility?: string; commentCount?: number } | null>({
       id: 'post-1',
@@ -61,9 +61,11 @@ describe('usePostComments prependComment dedupe', () => {
 
     const commentsApi = await runInSetup(() => usePostComments({ postId, post, isOnlyMe }))
 
+    // The authoritative count is owned by the server (via `posts:liveUpdated`).
+    // Simulate that the WS patch already set it to 1 before/while the row arrives.
     commentsApi.commentsCounts.value = {
-      all: 0,
-      public: 0,
+      all: 1,
+      public: 1,
       verifiedOnly: 0,
       premiumOnly: 0,
     }
@@ -77,6 +79,7 @@ describe('usePostComments prependComment dedupe', () => {
     expect(commentsApi.comments.value).toHaveLength(1)
     expect(commentsApi.comments.value[0]?.id).toBe('c1')
     expect(commentsApi.comments.value[0]?.body).toBe('updated body')
+    // prependComment is list-only: it must NOT touch the count in either call.
     expect(commentsApi.commentsCounts.value?.all).toBe(1)
   })
 })

@@ -408,11 +408,9 @@ const postsCb: PostsCallback = {
   onCommentAdded: (payload) => {
     if (String(payload?.parentPostId ?? '').trim() !== postId.value) return
     if (!payload?.comment) return
-    // prependComment deduplicates by ID, so the commenter's own HTTP response is a no-op.
-    // Skip the count bump: the paired `liveUpdated` event (emitted just before this
-    // one server-side) already set commentsCounts.all to the authoritative post-
-    // increment value. Bumping here on top of that would double-count (0 → 2).
-    prependComment(payload.comment, { bumpCount: false })
+    // List-only insert (dedupes by id with the commenter's own HTTP response).
+    // The count is reconciled by the paired `liveUpdated` event above, never here.
+    prependComment(payload.comment)
   },
   onCommentDeleted: (payload) => {
     if (String(payload?.parentPostId ?? '').trim() !== postId.value) return
@@ -475,20 +473,16 @@ function onPermalinkReplyPosted(payload: { id: string; post?: FeedPost }) {
 }
 
 function onReplyPosted(payload: { id: string; post?: FeedPost }) {
+  // Insert the reply row immediately for instant feedback. We deliberately do NOT
+  // touch the reply count here. The count is authoritative-only: the server emits
+  // `posts:liveUpdated` (reason `comment_created`) carrying the absolute post-
+  // increment count to this post's room, which `onLiveUpdated` above applies to
+  // both `commentsCounts.all` and `data.commentCount`. Adding an optimistic +1
+  // here is what double-counted (0 → 2) whenever that WS patch arrived first.
   if (payload.post) {
     prependComment(payload.post)
   } else {
     void fetchComments(null)
-  }
-  // Sync data.value.commentCount with the single source of truth (commentsCounts).
-  // Doing this after prependComment ensures we read the already-bumped value,
-  // so both the AppPostRow comment bubble and the "Replies X" header show the
-  // same number in the same render cycle — no perceived double-increment.
-  if (data.value) {
-    const synced = commentsCounts.value
-      ? commentsCounts.value.all
-      : (data.value.commentCount ?? 0) + 1
-    data.value = { ...data.value, commentCount: synced }
   }
   void fetchThreadParticipants()
 }

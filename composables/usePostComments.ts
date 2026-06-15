@@ -78,23 +78,26 @@ export function usePostComments(options: {
     await fetchComments(null)
   }
 
+  // List-only: remove the reply row for instant feedback. The displayed count is
+  // authoritative-only — the server emits `posts:liveUpdated` (reason
+  // `comment_deleted`) carrying the post-decrement count to this post's room, and
+  // the permalink page reconciles `commentsCounts.all` from it. Decrementing here
+  // too would double-decrement when the WS patch and the local `@deleted` event
+  // race (e.g. 5 → 4 from WS, then 4 → 3 locally).
   function onCommentDeleted(commentId: string) {
-    // Guard the decrement on actually removing a row. The deleting client gets the
-    // local `@deleted` event AND the WS `posts:commentDeleted` event for the same id;
-    // without this guard the second fire double-decrements `commentsCounts.all`.
-    const before = comments.value.length
     comments.value = comments.value.filter((c) => c.id !== commentId)
-    const removed = comments.value.length < before
-    if (removed && commentsCounts.value) {
-      commentsCounts.value = { ...commentsCounts.value, all: Math.max(0, commentsCounts.value.all - 1) }
-    }
   }
 
-  // `bumpCount` defaults to true for the optimistic local path (HTTP onReplyPosted)
-  // so the "Replies N" header animates immediately. WS `commentAdded` callers must
-  // pass `false`: the paired `liveUpdated` event already carries the authoritative
-  // post-increment count, so an extra bump here would double-count (e.g. 0 → 2).
-  function prependComment(newPost: FeedPost, options?: { bumpCount?: boolean }) {
+  // List-only: insert (or upsert, deduping by id) a reply row. This is called by
+  // BOTH the commenter's HTTP response (onReplyPosted) and the WS `commentAdded`
+  // echo; deduping by id makes whichever arrives second a no-op.
+  //
+  // The reply COUNT is intentionally NOT mutated here. It is authoritative-only:
+  // the server emits `posts:liveUpdated` with the absolute post-increment count to
+  // this post's room (which the permalink page subscribes to), and that is the
+  // single source of truth for `commentsCounts.all`. Bumping here as well used to
+  // double-count (0 → 2) whenever the WS patch landed before the HTTP handler.
+  function prependComment(newPost: FeedPost) {
     const existingIdx = comments.value.findIndex((c) => c.id === newPost.id)
     if (existingIdx >= 0) {
       // Realtime/fetch may have inserted this comment already; upsert in place.
@@ -102,10 +105,6 @@ export function usePostComments(options: {
       return
     }
     comments.value = [newPost, ...comments.value]
-    const bumpCount = options?.bumpCount !== false
-    if (bumpCount && commentsCounts.value) {
-      commentsCounts.value = { ...commentsCounts.value, all: commentsCounts.value.all + 1 }
-    }
   }
 
   watch(
