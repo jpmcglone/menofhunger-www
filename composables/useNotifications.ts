@@ -31,7 +31,7 @@ export function useNotifications() {
   const route = useRoute()
   const { user: me } = useAuth()
   const usersStore = useUsersStore()
-  const { addNotificationsCallback, removeNotificationsCallback, setNotificationUndeliveredCount } = usePresence()
+  const { addNotificationsCallback, removeNotificationsCallback, setNotificationUndeliveredCount, groupsUnread, setGroupsUnread } = usePresence()
 
   const stateKey = `notifications:${me.value?.id ?? 'anon'}`
   const notifications = useState<NotificationFeedItem[]>(`${stateKey}:items`, () => [])
@@ -205,6 +205,32 @@ export function useNotifications() {
     } catch (e: unknown) {
       if (import.meta.dev) {
         console.warn('[notifications] markReadBySubject failed', e)
+      }
+    }
+  }
+
+  /**
+   * Mark all `community_group_post` badge rows for a specific group as seen
+   * (deliveredAt set, NOT readAt). Called when the user opens a group page.
+   * Posts become "read" only when actually viewed on screen.
+   * Optimistically clears the per-group count in the shared `groupsUnread` state
+   * so the badge disappears immediately; the server will emit the authoritative
+   * `groups:unreadChanged` event shortly after.
+   */
+  async function markGroupPostsSeen(groupId: string) {
+    if (!groupId) return
+    // Optimistic clear so the badge disappears immediately.
+    const prev = groupsUnread.value
+    const byGroupId = { ...prev.byGroupId }
+    const cleared = byGroupId[groupId] ?? 0
+    delete byGroupId[groupId]
+    setGroupsUnread({ total: Math.max(0, prev.total - cleared), byGroupId })
+    // Fire-and-forget; the server emits groups:unreadChanged to confirm.
+    try {
+      await apiFetch(`/notifications/groups/${encodeURIComponent(groupId)}/mark-delivered`, { method: 'POST' })
+    } catch (e: unknown) {
+      if (import.meta.dev) {
+        console.warn('[notifications] markGroupPostsSeen failed', e)
       }
     }
   }
@@ -674,6 +700,7 @@ export function useNotifications() {
     fetchList,
     markDelivered,
     markReadBySubject,
+    markGroupPostsSeen,
     markReadById,
     markAllRead,
     markNewPostsRead,

@@ -27,8 +27,6 @@
             <div class="flex h-12 w-12 shrink-0 items-center justify-center">
               <AppLogo
                 :alt="siteConfig.name"
-                :light-src="logoLightSmall"
-                :dark-src="logoDarkSmall"
                 :width="48"
                 :height="48"
                 imgClass="h-12 w-12 rounded"
@@ -103,11 +101,7 @@
                 <AppNotificationBadge v-if="item.key === 'notifications'" />
                 <AppMessagesBadge v-if="item.key === 'messages'" />
                 <AppCrewInvitesBadge v-if="item.key === 'crew'" />
-                <span
-                  v-if="item.key === 'home' && (Number(notificationUnreadCommentCount) || 0) > 0"
-                  class="pointer-events-none absolute right-1 top-1 h-2.5 w-2.5 rounded-full bg-orange-500 ring-2 ring-[var(--moh-bg)]"
-                  aria-label="A reply is waiting on you"
-                />
+                <AppGroupsBadge v-if="item.key === 'groups'" />
               </span>
               <span
                 v-if="!compact"
@@ -226,6 +220,7 @@
                     <AppNotificationBadge v-if="mi.key === 'notifications'" />
                     <AppMessagesBadge v-if="mi.key === 'messages'" />
                     <AppCrewInvitesBadge v-if="mi.key === 'crew'" />
+                    <AppGroupsBadge v-if="mi.key === 'groups'" />
                   </span>
                   <span>{{ mi.label }}</span>
                   <ClientOnly>
@@ -301,8 +296,6 @@
 
 <script setup lang="ts">
 import { siteConfig } from '~/config/site'
-import logoLightSmall from '~/assets/images/logo-white-bg-small.png'
-import logoDarkSmall from '~/assets/images/logo-black-bg-small.png'
 import { useBookmarkCollections } from '~/composables/useBookmarkCollections'
 import { ClientOnly, NuxtLink } from '#components'
 import type { AppNavItem } from '~/composables/useAppNav'
@@ -323,7 +316,6 @@ const { user } = useAuth()
 const { membership: viewerCrewMembership } = useViewerCrew()
 const { days: crewStreakDays } = useCrewCheckinStreak()
 const { isAuthed, primaryItems: primaryNavItems } = useAppNav()
-const { notificationUnreadCommentCount } = usePresence()
 const { totalLobbyCount } = useSpaceLobby()
 const { totalCount: bookmarkTotalCount } = useBookmarkCollections()
 const hasBookmarks = computed(() => Math.max(0, Math.floor(bookmarkTotalCount.value ?? 0)) > 0)

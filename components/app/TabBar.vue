@@ -18,7 +18,7 @@
             <div class="relative h-10 w-10 flex items-center justify-center">
               <Icon :name="item.icon" size="24" class="opacity-90" aria-hidden="true" />
               <span
-                v-if="hasPendingCrewInvites"
+                v-if="moreHasAlert"
                 class="pointer-events-none absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-amber-500 ring-2 ring-[var(--moh-bg)]"
                 aria-hidden="true"
               />
@@ -44,11 +44,7 @@
               />
               <AppNotificationBadge v-if="item.key === 'notifications'" />
               <AppMessagesBadge v-if="item.key === 'messages'" />
-              <span
-                v-if="item.key === 'home' && showWaitingDot"
-                class="pointer-events-none absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-orange-500 ring-2 ring-[var(--moh-bg)]"
-                aria-label="A reply is waiting on you"
-              />
+              <AppGroupsBadge v-if="item.key === 'groups'" />
             </div>
           </NuxtLink>
         </template>
@@ -156,6 +152,7 @@
                   <AppNewBadge small />
                 </div>
                 <AppCrewInvitesBadge v-if="mi.key === 'crew'" />
+                <AppGroupsBadge v-if="mi.key === 'groups'" />
               </div>
               <div class="min-w-0">
                 <div class="text-sm font-semibold truncate">
@@ -256,22 +253,21 @@ const { membership: viewerCrewMembership } = useViewerCrew()
 const { days: moreCrewStreakDays } = useCrewCheckinStreak()
 const middleScrollerRef = useMiddleScroller()
 const haptics = useHaptics()
-const { notificationUnreadCommentCount } = usePresence()
-/**
- * Dot-only "waiting on you" indicator next to the Home tab. We deliberately do not show
- * a number — the count creates anxiety and we just want the user to know "someone replied;
- * tap home to see it." When the user reads the reply, the count drops to 0 and the dot disappears.
- */
-const showWaitingDot = computed(() => Number(notificationUnreadCommentCount.value ?? 0) > 0)
-
 // Crew invites are surfaced inside the More sheet on mobile, so we add a tiny
 // dot to the More button itself when the viewer has pending invites — without
 // it, mobile users would never discover the badge.
 const { count: pendingCrewInviteCount } = useCrewInvitesBadge()
+const { total: groupsUnreadTotal } = useGroupsBadge()
 const hasPendingCrewInvites = computed(() => pendingCrewInviteCount.value > 0)
-const moreAriaLabel = computed(() =>
-  hasPendingCrewInvites.value ? 'More — pending crew invite' : 'More',
-)
+// If Groups is in the More sheet (not a visible tab), surface the dot so users
+// know there are unread group posts without opening the sheet.
+const groupsInMore = computed(() => mainMenuItems.value.some((mi) => mi.key === 'groups'))
+const moreHasAlert = computed(() => hasPendingCrewInvites.value || (groupsInMore.value && groupsUnreadTotal.value > 0))
+const moreAriaLabel = computed(() => {
+  if (hasPendingCrewInvites.value) return 'More — pending crew invite'
+  if (groupsInMore.value && groupsUnreadTotal.value > 0) return 'More — unread group posts'
+  return 'More'
+})
 
 // User data exposed to the "More" bottom sheet.
 const moreUser = computed(() => user.value ?? null)

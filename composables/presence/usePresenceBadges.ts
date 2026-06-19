@@ -3,6 +3,7 @@ import type { Socket } from 'socket.io-client'
 const NOTIFICATIONS_UNDELIVERED_COUNT_KEY = 'notifications-undelivered-count'
 const NOTIFICATIONS_UNREAD_COMMENT_COUNT_KEY = 'notifications-unread-comment-count'
 const MESSAGES_UNREAD_COUNTS_KEY = 'messages-unread-counts'
+const GROUPS_UNREAD_KEY = 'groups-unread'
 const NOTIFICATION_SOUND_PATH = '/sounds/notification.mp3'
 const MESSAGE_SOUND_PATH = '/sounds/new-message.mp3'
 /** Min ms between plays so we don't ding repeatedly (e.g. multiple sockets on mobile or burst of events). */
@@ -43,6 +44,11 @@ export function usePresenceBadges() {
   const messageUnreadCounts = useState<{ primary: number; requests: number }>(MESSAGES_UNREAD_COUNTS_KEY, () => ({
     primary: 0,
     requests: 0,
+  }))
+  /** Groups badge: total undelivered count + per-group breakdown. Updated via `groups:unreadChanged`. */
+  const groupsUnread = useState<{ total: number; byGroupId: Record<string, number> }>(GROUPS_UNREAD_KEY, () => ({
+    total: 0,
+    byGroupId: {},
   }))
   // When the viewer is actively reading a chat, the server may briefly bump unread counts
   // before the client's mark-read request is processed. Suppress those transient increases.
@@ -99,6 +105,18 @@ export function usePresenceBadges() {
     messageUnreadCounts.value = { primary: nextPrimary, requests: nextRequests }
   }
 
+  function setGroupsUnread(data: { total?: number; byGroupId?: Record<string, number> }) {
+    const total = Math.max(0, Math.floor(Number(data?.total)) || 0)
+    const byGroupId: Record<string, number> = {}
+    if (data?.byGroupId && typeof data.byGroupId === 'object') {
+      for (const [id, count] of Object.entries(data.byGroupId)) {
+        const n = Math.max(0, Math.floor(Number(count)) || 0)
+        if (n > 0) byGroupId[id] = n
+      }
+    }
+    groupsUnread.value = { total, byGroupId }
+  }
+
   function registerSocketHandlers(socket: Socket) {
     socket.on('notifications:updated', (data: { undeliveredCount?: number }) => {
       const raw = typeof data?.undeliveredCount === 'number' ? data.undeliveredCount : 0
@@ -135,6 +153,10 @@ export function usePresenceBadges() {
       messageUnreadCounts.value = incoming
     })
 
+    socket.on('groups:unreadChanged', (data: { total?: number; byGroupId?: Record<string, number> }) => {
+      setGroupsUnread(data)
+    })
+
     socket.on('messages:new', (data: { conversationId?: string; message?: unknown }) => {
       // Play sound only for realtime deliveries (not initial unread count sync).
       // Avoid playing for your own sent message when sender id is present.
@@ -150,10 +172,12 @@ export function usePresenceBadges() {
     notificationUndeliveredCount,
     notificationUnreadCommentCount,
     messageUnreadCounts,
+    groupsUnread,
     suppressMessageUnreadBumpsForMs,
     setNotificationUndeliveredCount,
     setNotificationUnreadCommentCount,
     setMessageUnreadCounts,
+    setGroupsUnread,
     onSocketConnected,
     registerSocketHandlers,
   }

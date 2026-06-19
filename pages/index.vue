@@ -14,8 +14,6 @@
           <div class="flex shrink-0 items-center gap-3">
             <AppLogo
               :alt="siteConfig.name"
-              :light-src="logoLightSmall"
-              :dark-src="logoDarkSmall"
               :width="40"
               :height="40"
               img-class="h-10 w-10 rounded"
@@ -584,8 +582,6 @@
               <div class="flex items-center gap-3">
                 <AppLogo
                   :alt="siteConfig.name"
-                  :light-src="logoLightSmall"
-                  :dark-src="logoDarkSmall"
                   :width="32"
                   :height="32"
                   img-class="h-8 w-8 rounded"
@@ -640,8 +636,6 @@ import { userColorTier, userTierTextClass } from '~/utils/user-tier'
 import { siteConfig } from '~/config/site'
 import { VOICE } from '~/config/voice'
 import { formatDailyQuoteAttribution } from '~/utils/daily-quote'
-import logoLightSmall from '~/assets/images/logo-white-bg-small.png'
-import logoDarkSmall from '~/assets/images/logo-black-bg-small.png'
 import landingLight from '~/assets/images/landing-light.png'
 import landingDark from '~/assets/images/landing-dark.png'
 import mountainLight from '~/assets/images/mountain-light.png'

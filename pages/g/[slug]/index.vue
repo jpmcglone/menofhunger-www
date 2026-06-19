@@ -326,7 +326,7 @@ import { siteConfig } from '~/config/site'
 const route = useRoute()
 const { apiFetchData } = useApiClient()
 const { isAuthed, isVerified, user: authUser } = useAuth()
-const { markReadBySubject } = useNotifications()
+const { markReadBySubject, markGroupPostsSeen } = useNotifications()
 
 const slug = computed(() => String(route.params.slug ?? '').trim())
 
@@ -921,6 +921,7 @@ watch(
     if (!import.meta.client) return
     if (!groupId) return
     void markReadBySubject({ group_id: groupId })
+    void markGroupPostsSeen(groupId)
   },
   { immediate: true },
 )

@@ -7,8 +7,6 @@
           as-link
           to="/"
           :alt="siteConfig.name"
-          :light-src="logoLightSmall"
-          :dark-src="logoDarkSmall"
           :width="80"
           :height="80"
           wrapper-class="inline-flex"
@@ -241,8 +239,6 @@ import { countDigitsBeforeIndex, formatPhoneAsYouType, indexFromDigitCount, norm
 import { isSafeRedirect } from '~/utils/url'
 import { siteConfig } from '~/config/site'
 import { formatDailyQuoteAttribution } from '~/utils/daily-quote'
-import logoLightSmall from '~/assets/images/logo-white-bg-small.png'
-import logoDarkSmall from '~/assets/images/logo-black-bg-small.png'
 import type { DailyContentToday, DailyQuote } from '~/types/api'
 
 // Quiet ambient touch: the same daily quote the landing page shows. Fetched on

@@ -56,6 +56,15 @@
       :aria-label="`You own ${group.name}`"
     />
 
+    <!-- Unread group posts badge (dense variant) -->
+    <ClientOnly>
+      <span
+        v-if="unreadCount > 0"
+        class="absolute top-2 left-2 z-[4] min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold leading-[18px] text-center tabular-nums moh-notif-badge-normal"
+        :aria-label="`${unreadCount} unread post${unreadCount > 1 ? 's' : ''}`"
+      >{{ unreadCount >= 99 ? '99+' : unreadCount }}</span>
+    </ClientOnly>
+
     <div class="absolute inset-x-0 bottom-0 z-[3] px-2.5 pb-2 pt-3">
       <div class="line-clamp-2 text-[13px] font-semibold leading-tight text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.6)]">
         {{ group.name }}
@@ -95,6 +104,15 @@
       :title="`You own ${group.name}`"
       :aria-label="`You own ${group.name}`"
     />
+
+    <!-- Unread group posts badge (non-dense variant) -->
+    <ClientOnly>
+      <span
+        v-if="unreadCount > 0"
+        class="absolute top-2 left-2 z-[3] min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold leading-[18px] text-center tabular-nums moh-notif-badge-normal"
+        :aria-label="`${unreadCount} unread post${unreadCount > 1 ? 's' : ''}`"
+      >{{ unreadCount >= 99 ? '99+' : unreadCount }}</span>
+    </ClientOnly>
 
     <div class="relative z-[2]">
       <!-- 3:1 banner. aspect-ratio (vs fixed h-20) keeps the proportion stable
@@ -169,6 +187,11 @@ const props = withDefaults(defineProps<{
 }>(), {
   dense: false,
 })
+
+// Read directly from the shared presence state — no HTTP refresh side-effects.
+// The nav badge component (AppGroupsBadge) handles fetching; we just need reactivity.
+const { groupsUnread } = usePresence()
+const unreadCount = computed(() => groupsUnread.value.byGroupId[props.group.id] ?? 0)
 
 const avatarRoundClass = groupAvatarRoundClass()
 

@@ -200,8 +200,6 @@
 
 <script setup lang="ts">
 import { extractLinksFromText, getYouTubeEmbedUrl, getYouTubePosterUrl, isRumbleShortsUrl, isRumbleUrl, safeUrlDisplay, safeUrlHostname, isMohUrl, mohUrlPath, extractMohPostId, extractMohArticleId, extractMohSpaceId, extractMohUsername } from '~/utils/link-utils'
-import logoLight from '~/assets/images/logo-white-bg-small.png'
-import logoDark from '~/assets/images/logo-black-bg-small.png'
 import type { LinkMetadata } from '~/utils/link-metadata'
 import { getLinkMetadata } from '~/utils/link-metadata'
 import type { RumbleEmbedInfo } from '~/utils/rumble-embed'
@@ -209,6 +207,11 @@ import { resolveRumbleEmbedInfo } from '~/utils/rumble-embed'
 import { useEmbeddedVideoManager } from '~/composables/useEmbeddedVideoManager'
 import { usePreviewFetchLimiter } from '~/composables/usePreviewFetchLimiter'
 import type { ArticleSharePreview } from '~/types/api'
+
+// Stable public paths (not `~/assets` imports) so the URL is identical on
+// server and client — avoids the Vite dev `?t=<timestamp>` hydration mismatch.
+const logoLight = '/images/logo-white-bg-small.png'
+const logoDark = '/images/logo-black-bg-small.png'
 
 const props = defineProps<{
   postId: string

@@ -13,8 +13,6 @@
           <NuxtLink to="/" class="flex shrink-0 items-center gap-3">
             <AppLogo
               :alt="siteConfig.name"
-              :light-src="logoLightSmall"
-              :dark-src="logoDarkSmall"
               :width="40"
               :height="40"
               img-class="h-10 w-10 rounded"
@@ -97,8 +95,6 @@
 
 <script setup lang="ts">
 import { siteConfig } from '~/config/site'
-import logoLightSmall from '~/assets/images/logo-white-bg-small.png'
-import logoDarkSmall from '~/assets/images/logo-black-bg-small.png'
 import { primaryTintCssForUser } from '~/utils/theme-tint'
 
 const { isAuthed, user } = useAuth()

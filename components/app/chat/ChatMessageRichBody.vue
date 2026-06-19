@@ -157,8 +157,6 @@ const _linkify = new LinkifyIt()
 <script setup lang="ts">
 import { useElementVisibility } from '@vueuse/core'
 import { extractLinksFromText, safeUrlDisplay, safeUrlHostname, isMohUrl, mohUrlPath, extractMohPostId, extractMohArticleId, extractMohSpaceId, extractMohUsername } from '~/utils/link-utils'
-import logoLight from '~/assets/images/logo-white-bg-small.png'
-import logoDark from '~/assets/images/logo-black-bg-small.png'
 import type { LinkMetadata } from '~/utils/link-metadata'
 import { getLinkMetadata } from '~/utils/link-metadata'
 import { stableListKey } from '~/utils/stable-list-key'
@@ -168,6 +166,11 @@ import { CASHTAG_IN_TEXT_DISPLAY_RE } from '~/utils/cashtag-autocomplete'
 import { userTierColorVar } from '~/utils/user-tier'
 import type { UserColorTier } from '~/utils/user-tier'
 import type { ArticleSharePreview } from '~/types/api'
+
+// Stable public paths (not `~/assets` imports) so the URL is identical on
+// server and client — avoids the Vite dev `?t=<timestamp>` hydration mismatch.
+const logoLight = '/images/logo-white-bg-small.png'
+const logoDark = '/images/logo-black-bg-small.png'
 
 type TextSegment =
   | { kind: 'text'; text: string }
