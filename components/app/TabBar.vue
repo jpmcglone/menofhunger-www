@@ -19,9 +19,9 @@
               <Icon :name="item.icon" size="24" class="opacity-90" aria-hidden="true" />
               <span
                 v-if="moreHasAlert"
-                class="pointer-events-none absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-amber-500 ring-2 ring-[var(--moh-bg)]"
+                class="pointer-events-none absolute -right-0.5 -top-0.5 flex min-w-[1.125rem] h-[1.125rem] items-center justify-center rounded-full bg-amber-500 px-1 text-[10px] font-bold leading-none text-white ring-2 ring-[var(--moh-bg)]"
                 aria-hidden="true"
-              />
+              >{{ moreBadgeTotal > 99 ? '99+' : moreBadgeTotal }}</span>
             </div>
           </button>
 
@@ -258,14 +258,23 @@ const haptics = useHaptics()
 // it, mobile users would never discover the badge.
 const { count: pendingCrewInviteCount } = useCrewInvitesBadge()
 const { total: groupsUnreadTotal } = useGroupsBadge()
-const hasPendingCrewInvites = computed(() => pendingCrewInviteCount.value > 0)
-// If Groups is in the More sheet (not a visible tab), surface the dot so users
-// know there are unread group posts without opening the sheet.
-const groupsInMore = computed(() => mainMenuItems.value.some((mi) => mi.key === 'groups'))
-const moreHasAlert = computed(() => hasPendingCrewInvites.value || (groupsInMore.value && groupsUnreadTotal.value > 0))
+const { count: notificationsCount } = useNotificationsBadge()
+const { totalCount: messagesTotal } = useMessagesBadge()
+
+// Sum badges only for items hidden in the More sheet (not visible as tabs).
+const moreBadgeTotal = computed(() => {
+  const keysInMore = new Set(mainMenuItems.value.map((mi) => mi.key))
+  let sum = 0
+  if (keysInMore.has('notifications')) sum += notificationsCount.value
+  if (keysInMore.has('messages')) sum += messagesTotal.value
+  if (keysInMore.has('crew')) sum += pendingCrewInviteCount.value
+  if (keysInMore.has('groups')) sum += groupsUnreadTotal.value
+  return sum
+})
+const moreHasAlert = computed(() => moreBadgeTotal.value > 0)
 const moreAriaLabel = computed(() => {
-  if (hasPendingCrewInvites.value) return 'More — pending crew invite'
-  if (groupsInMore.value && groupsUnreadTotal.value > 0) return 'More — unread group posts'
+  const n = moreBadgeTotal.value
+  if (n > 0) return `More — ${n} unread`
   return 'More'
 })
 

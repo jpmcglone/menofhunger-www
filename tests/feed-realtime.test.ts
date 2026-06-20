@@ -132,6 +132,50 @@ describe('useHomeFeedPrepend.prependToHomeFeed', () => {
   })
 })
 
+// ── onFeedNewPost group-post guard ────────────────────────────────────────────
+// pages/home.vue gates on post.communityGroupId before calling prependToHomeFeed.
+// This test exercises that guard inline to confirm group posts are never prepended.
+
+describe('onFeedNewPost guard: group posts are not prepended to the home feed', () => {
+  /** Mirrors the guard in pages/home.vue onFeedNewPost handler. */
+  function simulateOnFeedNewPost(
+    post: FeedPost | null | undefined,
+    prepend: (p: FeedPost) => void,
+  ) {
+    if (!post?.id) return
+    if (post.communityGroupId) return
+    prepend(post)
+  }
+
+  it('prepends a non-group post to the home feed', async () => {
+    const { prependToHomeFeed } = await runInSetup(useHomeFeedPrepend)
+    const { useState } = await import('#app/composables/state')
+    const posts = useState<FeedPost[]>('posts-feed-guard-1', () => [])
+    posts.value = []
+    simulateOnFeedNewPost(makePost({ id: 'ng1' }), (p) => posts.value = [p, ...posts.value])
+    expect(posts.value.map((p) => p.id)).toContain('ng1')
+  })
+
+  it('does not prepend a group post to the home feed', async () => {
+    const { useState } = await import('#app/composables/state')
+    const posts = useState<FeedPost[]>('posts-feed-guard-2', () => [])
+    posts.value = []
+    simulateOnFeedNewPost(
+      makePost({ id: 'gp1', communityGroupId: 'group-xyz' }),
+      (p) => posts.value = [p, ...posts.value],
+    )
+    expect(posts.value).toHaveLength(0)
+  })
+
+  it('does not prepend when post is null', async () => {
+    const { useState } = await import('#app/composables/state')
+    const posts = useState<FeedPost[]>('posts-feed-guard-3', () => [])
+    posts.value = []
+    simulateOnFeedNewPost(null, (p) => posts.value = [p, ...posts.value])
+    expect(posts.value).toHaveLength(0)
+  })
+})
+
 // ── useProfileFeedPrepend ──────────────────────────────────────────────────────
 
 describe('useProfileFeedPrepend', () => {

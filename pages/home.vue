@@ -790,6 +790,8 @@ const feedNewPostCb = {
   onFeedNewPost: (payload: import('~/types/api').WsFeedNewPostPayload) => {
     const post = payload?.post
     if (!post?.id) return
+    // Group posts never appear on the home feed; the Groups badge is the signal.
+    if (post.communityGroupId) return
     prependToHomeFeed(post)
   },
 }
