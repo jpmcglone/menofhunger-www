@@ -345,6 +345,7 @@
                         :status="post.author.verifiedStatus"
                         :premium="post.author.premium"
                         :premium-plus="post.author.premiumPlus"
+                        :steward-badge-enabled="false"
                         :show-tooltip="false"
                       />
                     </div>
@@ -352,12 +353,6 @@
                       @{{ post.author.username || 'member' }}
                     </div>
                   </div>
-                  <span
-                    class="flex h-7 min-w-7 shrink-0 items-center justify-center rounded-full px-2 text-xs font-black tabular-nums"
-                    :class="i === 0 ? 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300' : 'bg-gray-100 text-gray-600 dark:bg-white/10 dark:text-gray-300'"
-                  >
-                    {{ i + 1 }}
-                  </span>
                 </div>
 
                 <div
