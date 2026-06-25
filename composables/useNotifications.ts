@@ -460,6 +460,8 @@ export function useNotifications() {
         return 'You were removed from a group'
       case 'community_group_disbanded':
         return 'A group you were in was disbanded'
+      case 'marv_not_in_group':
+        return n.title ?? '@marv is not in this group'
       case 'message':
         return 'sent you a message'
       case 'generic':
@@ -515,6 +517,8 @@ export function useNotifications() {
       case 'crew_wall_mention':
       case 'crew_disbanded':
         return 'tabler:shield-check'
+      case 'marv_not_in_group':
+        return 'tabler:robot-off'
       case 'generic':
         return 'tabler:bell'
       default:
@@ -562,6 +566,8 @@ export function useNotifications() {
         return 'Removed from group'
       case 'community_group_disbanded':
         return 'Group disbanded'
+      case 'marv_not_in_group':
+        return 'Marv unavailable'
       case 'message':
         return 'Direct message'
       default:
@@ -663,6 +669,9 @@ export function useNotifications() {
     )) {
       const hash = n.subjectArticleCommentId ? `#comment-${n.subjectArticleCommentId}` : ''
       return `/a/${encodeURIComponent(n.subjectArticleId)}${hash}`
+    }
+    if (n.kind === 'marv_not_in_group' && n.actorPostId) {
+      return `/p/${encodeURIComponent(n.actorPostId)}`
     }
     if ((n.kind === 'comment' || n.kind === 'followed_post' || n.kind === 'mention' || n.kind === 'repost') && n.actorPostId) {
       return `/p/${encodeURIComponent(n.actorPostId)}`

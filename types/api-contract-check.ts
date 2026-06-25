@@ -84,6 +84,7 @@ type _WsPostsCommentAdded = Satisfies<Www.WsPostsCommentAddedPayload, Api.PostsC
 type _WsPostsCommentDeleted = Satisfies<Www.WsPostsCommentDeletedPayload, Api.PostsCommentDeletedPayloadDto>
 type _WsFeedNewPost = Satisfies<Www.WsFeedNewPostPayload, Api.FeedNewPostPayloadDto>
 type _WsGroupNewPost = Satisfies<Www.WsGroupNewPostPayload, Api.GroupNewPostPayloadDto>
+type _WsGroupMarvChanged = Satisfies<Www.WsGroupMarvChangedPayload, Api.GroupMarvChangedPayloadDto>
 type _WsUsersMeUpdated = Satisfies<Www.WsUsersMeUpdatedPayload, Api.UsersMeUpdatedPayloadDto>
 type _WsUsersSelfUpdated = Satisfies<Www.WsUsersSelfUpdatedPayload, Api.UsersSelfUpdatedPayloadDto>
 type _WsAdminUpdated = Satisfies<Www.WsAdminUpdatedPayload, Api.AdminUpdatedPayloadDto>

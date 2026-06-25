@@ -167,6 +167,13 @@
                   class="ml-1 font-semibold"
                 >{{ notification.subjectGroupName }}</span>
               </template>
+              <template v-else-if="notification.kind === 'marv_not_in_group'">
+                <span class="ml-1">{{ titleSuffix(notification) }}</span>
+                <span
+                  v-if="notification.subjectGroupName"
+                  class="ml-1 font-semibold"
+                >{{ notification.subjectGroupName }}</span>
+              </template>
               <template v-else>
                 <span class="ml-1">{{ titleSuffix(notification) }}</span>
               </template>

@@ -1549,6 +1549,11 @@ export type WsGroupNewPostPayload = {
   post: FeedPost
 }
 
+export type WsGroupMarvChangedPayload = {
+  groupId: string
+  isMember: boolean
+}
+
 /**
  * Live "someone in your circle just answered today's check-in" event.
  * Emitted to followers + crew members of the actor when a `kind: 'checkin'` post is created.
@@ -2054,6 +2059,8 @@ export type CommunityGroupShell = {
   pendingMemberCount?: number
   /** Number of pending outbound invites the group still has open. Only populated for owners and moderators. */
   pendingInviteCount?: number
+  /** Marv bot membership status. Only populated on getShellBySlug; null when Marv is not configured. */
+  marv?: { userId: string; username: string | null; isMember: boolean } | null
 }
 
 export type CommunityGroupMemberListItem = {

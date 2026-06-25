@@ -42,12 +42,12 @@ export const MOH_FOCUS_HOME_COMPOSER_KEY: InjectionKey<() => void> = Symbol('moh
 export type GroupComposerContext = {
   groupId: string
   groupName: string
-  createPost: (
-    body: string,
-    visibility: ComposerVisibility,
-    media?: unknown[] | null,
-    poll?: unknown | null,
-  ) => Promise<{ id: string } | import('~/types/api').FeedPost | null>
+  /** Optimistic pending handler — same contract as PostComposer `@pending`. */
+  onComposerPending: (payload: {
+    localId: string
+    optimisticPost: import('~/types/api').FeedPost
+    perform: () => Promise<import('~/types/api').FeedPost | { id: string } | null | undefined>
+  }) => void
 }
 export const MOH_GROUP_COMPOSER_KEY: InjectionKey<Ref<GroupComposerContext | null>> = Symbol('moh-group-composer')
 

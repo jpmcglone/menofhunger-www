@@ -161,7 +161,7 @@ export function useAppLayoutComposer(opts: UseAppLayoutComposerOptions) {
   })
   const composerCreatePost = computed<ComposerCreatePostFn | null>(() => {
     if (composerCustomCreatePost.value) return composerCustomCreatePost.value
-    if (groupComposerCtx.value?.createPost) return groupComposerCtx.value.createPost as ComposerCreatePostFn
+    // Group posts use optimistic pending via groupComposerCtx.onComposerPending.
     if (composerIsFromOnlyMe.value) return createPostFromOnlyMeDraft
     return null
   })
@@ -258,7 +258,6 @@ export function useAppLayoutComposer(opts: UseAppLayoutComposerOptions) {
         allowedVisibilities: ['public'],
         placeholder: `Post to ${gCtx.groupName}…`,
         groupName: gCtx.groupName,
-        createPost: gCtx.createPost,
       }, initialText)
       return
     }
@@ -307,6 +306,11 @@ export function useAppLayoutComposer(opts: UseAppLayoutComposerOptions) {
     composerInitialText.value = null
     composerSourceOnlyMePost.value = null
     resetComposerCustomOptions()
+    const groupPending = groupComposerCtx.value?.onComposerPending
+    if (groupPending) {
+      groupPending(payload)
+      return
+    }
     pendingPosts.submit({
       localId: payload.localId,
       optimisticPost: payload.optimisticPost,

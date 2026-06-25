@@ -26,6 +26,7 @@ import type {
   WsNotificationsDeletedPayload,
   WsNotificationsNewPayload,
   WsFeedNewPostPayload,
+  WsGroupMarvChangedPayload,
   WsGroupNewPostPayload,
   WsPostsLiveUpdatedPayload,
   WsPostsInteractionPayload,
@@ -234,6 +235,7 @@ export type GroupInviteCallback = {
  */
 export type GroupFeedCallback = {
   onNewPost?: (payload: WsGroupNewPostPayload) => void
+  onMarvChanged?: (payload: WsGroupMarvChangedPayload) => void
 }
 
 /**

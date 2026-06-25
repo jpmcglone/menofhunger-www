@@ -1402,6 +1402,7 @@ function performCreate(submitBody: string, vis: PostVisibility, mediaPayload: Cr
           visibility: vis,
           media: mediaPayload,
           ...(pollPayload ? { poll: pollPayload } : {}),
+          ...(props.communityGroupId ? { community_group_id: props.communityGroupId } : {}),
         },
   })
 }
@@ -1551,6 +1552,7 @@ function submitOptimistic(): boolean {
     media: composerMedia.value,
     poll: pollPayload,
     parentId: props.replyTo?.parentId ?? null,
+    communityGroupId: props.communityGroupId ?? null,
     author,
   })
 

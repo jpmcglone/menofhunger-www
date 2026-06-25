@@ -19,6 +19,7 @@ import type {
   WsNotificationsDeletedPayload,
   WsNotificationsNewPayload,
   WsFeedNewPostPayload,
+  WsGroupMarvChangedPayload,
   WsGroupNewPostPayload,
   WsPostsLiveUpdatedPayload,
   WsPostsInteractionPayload,
@@ -414,6 +415,13 @@ export function usePresenceDomains() {
       if (!groupFeedCallbacks.value.size) return
       for (const cb of groupFeedCallbacks.value) {
         cb.onNewPost?.(data)
+      }
+    })
+
+    socket.on('groups:marv-changed', (data: WsGroupMarvChangedPayload) => {
+      if (!groupFeedCallbacks.value.size) return
+      for (const cb of groupFeedCallbacks.value) {
+        cb.onMarvChanged?.(data)
       }
     })
 

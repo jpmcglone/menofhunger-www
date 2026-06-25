@@ -92,7 +92,6 @@
 
         <div v-if="isMember" class="border-b moh-border">
           <AppPostComposer
-            :create-post="createGroupPost"
             :allowed-visibilities="['public']"
             locked-visibility="public"
             hide-visibility-picker
@@ -104,6 +103,7 @@
             :register-unsaved-guard="false"
             placeholder="Post to this group…"
             show-divider
+            @pending="onGroupComposerPending"
           />
         </div>
         <!--
@@ -309,12 +309,8 @@
 import AppGroupProfileHeader from '~/components/app/groups/AppGroupProfileHeader.vue'
 import type {
   CommunityGroupShell,
-  CreatePostData,
   FeedPost,
-  PostVisibility,
 } from '~/types/api'
-import type { CreateMediaPayload } from '~/composables/useComposerMedia'
-import type { ComposerPollPayload } from '~/composables/composer/types'
 import { useLoadMoreObserver } from '~/composables/useLoadMoreObserver'
 import { useMiddleScroller } from '~/composables/useMiddleScroller'
 import { useGroupMedia } from '~/composables/useGroupMedia'
@@ -514,6 +510,7 @@ const {
   removePost: postsFeedRemovePost,
   replacePost: postsFeedReplacePost,
   addReply: postsFeedAddReply,
+  prependOptimisticPost: postsFeedPrependOptimistic,
   replaceOptimistic: postsFeedReplaceOptimistic,
   markOptimisticFailed: postsFeedMarkOptimisticFailed,
   markOptimisticPosting: postsFeedMarkOptimisticPosting,
@@ -546,6 +543,7 @@ const {
   removePost: repliesFeedRemovePost,
   replacePost: repliesFeedReplacePost,
   addReply: repliesFeedAddReply,
+  prependOptimisticPost: repliesFeedPrependOptimistic,
   replaceOptimistic: repliesFeedReplaceOptimistic,
   markOptimisticFailed: repliesFeedMarkOptimisticFailed,
   markOptimisticPosting: repliesFeedMarkOptimisticPosting,
@@ -696,40 +694,41 @@ async function doCancelRequest() {
   }
 }
 
-// ─── Create post ──────────────────────────────────────────────────────────────
-async function createGroupPost(
-  body: string,
-  visibility: PostVisibility,
-  media?: CreateMediaPayload[] | null,
-  _poll?: ComposerPollPayload | null,
-): Promise<{ id: string } | FeedPost | null> {
-  const s = shell.value
-  if (!s) return null
-  const trimmed = (body ?? '').trim()
-  const filtered = (media ?? []).filter((m) => (m as { source?: string })?.source !== 'existing') as CreateMediaPayload[]
-  const hasMedia = Boolean(filtered.length)
-  if (!trimmed && !hasMedia) return null
-  try {
-    const result = await apiFetchData<CreatePostData>('/posts', {
-      method: 'POST',
-      body: {
-        body: trimmed || '',
-        visibility,
-        community_group_id: s.id,
-        ...(filtered.length ? { media: filtered } : {}),
+// ─── Composer pending (optimistic) ────────────────────────────────────────────
+const pendingPosts = usePendingPostsManager()
+
+function onGroupComposerPending(payload: {
+  localId: string
+  optimisticPost: FeedPost
+  perform: () => Promise<FeedPost | { id: string } | null | undefined>
+}) {
+  pendingPosts.submit({
+    localId: payload.localId,
+    optimisticPost: payload.optimisticPost,
+    perform: payload.perform,
+    callbacks: {
+      insert: (p) => {
+        postsFeedPrependOptimistic(p)
+        repliesFeedPrependOptimistic(p)
       },
-    })
-    const post = result.post
-    // Prepend into both posts (top-level) and replies feeds
-    if (post) {
-      postsFeedPosts.value = [post, ...postsFeedPosts.value]
-      repliesFeedPosts.value = [post, ...repliesFeedPosts.value]
-    }
-    return post?.id ? { id: post.id } : null
-  } catch (e: unknown) {
-    console.error(getApiErrorMessage(e) || 'Failed to post.')
-    throw e
-  }
+      replace: (lid, real) => {
+        postsFeedReplaceOptimistic(lid, real)
+        repliesFeedReplaceOptimistic(lid, real)
+      },
+      markFailed: (lid, msg) => {
+        postsFeedMarkOptimisticFailed(lid, msg)
+        repliesFeedMarkOptimisticFailed(lid, msg)
+      },
+      markPosting: (lid) => {
+        postsFeedMarkOptimisticPosting(lid)
+        repliesFeedMarkOptimisticPosting(lid)
+      },
+      remove: (lid) => {
+        postsFeedRemoveOptimistic(lid)
+        repliesFeedRemoveOptimistic(lid)
+      },
+    },
+  })
 }
 
 // ─── Composer injection for global layout ─────────────────────────────────────
@@ -745,7 +744,7 @@ watch(
     groupComposerRef.value = {
       groupId: s.id,
       groupName: s.name,
-      createPost: createGroupPost as import('~/utils/injection-keys').GroupComposerContext['createPost'],
+      onComposerPending: onGroupComposerPending,
     }
   },
   { immediate: true },
@@ -794,7 +793,6 @@ useLoadMoreObserver(
 
 // ─── Reply pending handler ────────────────────────────────────────────────────
 const replyModal = useReplyModal()
-const pendingPosts = usePendingPostsManager()
 let unregisterReplyPending: null | (() => void) = null
 
 function registerReplyPostedHandler() {
@@ -864,8 +862,7 @@ const { addGroupFeedCallback, removeGroupFeedCallback, subscribeGroups, unsubscr
 function prependLiveGroupPost(post: FeedPost) {
   if (!post?.id) return
   // group:newPost only carries top-level posts and reposts — both belong in the
-  // Posts feed and the Replies feed. Dedupe by id so the actor's optimistic insert
-  // (createGroupPost) and the socket echo don't double up.
+  // Posts feed and the Replies feed. Dedupe by id so soft-refresh overlap doesn't double up.
   if (!postsFeedPosts.value.some((p) => p.id === post.id)) {
     postsFeedPosts.value = [post, ...postsFeedPosts.value]
   }
@@ -878,6 +875,11 @@ const groupFeedCb: GroupFeedCallback = {
   onNewPost: (payload) => {
     if (!payload?.post) return
     if (payload.groupId !== shell.value?.id) return
+    // Skip the actor's own posts — they're already in the feed via optimistic pending
+    // (mirrors home feed, where emitFeedNewPost excludes the author).
+    const authorId = payload.post.author?.id ?? null
+    const viewerId = authUser.value?.id ?? null
+    if (authorId && viewerId && authorId === viewerId) return
     prependLiveGroupPost(payload.post)
   },
 }

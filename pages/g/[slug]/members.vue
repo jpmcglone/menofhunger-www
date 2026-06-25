@@ -91,6 +91,21 @@
               >
                 {{ roleLabel(m.role) }}
               </span>
+              <!-- Remove member action (owner/mod only, not for the owner row) -->
+              <Button
+                v-if="isAdminViewer && m.role !== 'owner'"
+                text
+                rounded
+                size="small"
+                severity="secondary"
+                class="shrink-0 !p-1.5"
+                aria-label="Member actions"
+                @click.stop="openMemberMenu($event, m)"
+              >
+                <template #icon>
+                  <Icon name="tabler:dots-vertical" class="text-base" aria-hidden="true" />
+                </template>
+              </Button>
             </li>
           </ul>
           <p v-else-if="!loading" class="text-sm moh-text-muted py-6 text-center">
@@ -104,11 +119,13 @@
       </template>
     </div>
   </AppPageContent>
+  <ContextMenu ref="memberMenu" :model="memberMenuItems" />
 </template>
 
 <script setup lang="ts">
 import type { CommunityGroupMemberListItem, CommunityGroupShell } from '~/types/api'
 import { getApiErrorMessage } from '~/utils/api-error'
+import ContextMenu from 'primevue/contextmenu'
 
 const route = useRoute()
 const slug = computed(() => String(route.params.slug ?? '').trim())
@@ -137,6 +154,10 @@ const shellError = computed(() =>
 )
 
 const isMember = computed(() => shell.value?.viewerMembership?.status === 'active')
+const isAdminViewer = computed(() => {
+  const role = shell.value?.viewerMembership?.role
+  return role === 'owner' || role === 'moderator'
+})
 
 const pendingCopy = computed(() => {
   const status = shell.value?.viewerMembership?.status
@@ -250,6 +271,43 @@ function flushSearch() {
 
 function goProfile(m: CommunityGroupMemberListItem) {
   if (m.username) void navigateTo(`/u/${encodeURIComponent(m.username)}`)
+}
+
+const memberMenu = ref<InstanceType<typeof ContextMenu> | null>(null)
+const menuTargetMember = ref<CommunityGroupMemberListItem | null>(null)
+const removingUserId = ref<string | null>(null)
+
+const memberMenuItems = computed(() => {
+  const m = menuTargetMember.value
+  if (!m) return []
+  return [
+    {
+      label: 'Remove from group',
+      icon: 'tabler:user-minus',
+      command: () => removeMember(m),
+    },
+  ]
+})
+
+function openMemberMenu(event: Event, m: CommunityGroupMemberListItem) {
+  menuTargetMember.value = m
+  memberMenu.value?.show(event)
+}
+
+async function removeMember(m: CommunityGroupMemberListItem) {
+  const s = shell.value
+  if (!s || removingUserId.value) return
+  removingUserId.value = m.userId
+  try {
+    await apiFetchData(`/groups/${encodeURIComponent(s.id)}/members/${encodeURIComponent(m.userId)}`, {
+      method: 'DELETE',
+    })
+    rows.value = rows.value.filter((r) => r.userId !== m.userId)
+  } catch (e: unknown) {
+    error.value = getApiErrorMessage(e) || 'Failed to remove member.'
+  } finally {
+    removingUserId.value = null
+  }
 }
 
 onMounted(async () => {

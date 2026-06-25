@@ -77,8 +77,8 @@
             />
             <div class="relative z-[2]">
               <AppPostRow
-                v-if="item.type === 'single' && item.notification.post"
-                :post="item.notification.post"
+                v-if="item.type === 'single' && notificationShowsPostRow(item.notification)"
+                :post="item.notification.post!"
                 :clickable="false"
                 :highlight="stickyUnreadNotificationIds.has(item.notification.id)"
                 show-replying-to
@@ -123,10 +123,15 @@
 </template>
 
 <script setup lang="ts">
-import type { NotificationKind } from '~/types/api'
-
-const PRIMARY_KINDS = new Set<NotificationKind>(['comment', 'mention', 'followed_post', 'follow', 'boost'])
+import type { Notification, NotificationKind } from '~/types/api'
 import { closeBrowserNotificationsForHref } from '~/utils/browser-notifications'
+
+/** Kinds that render as a full AppPostRow when `notification.post` is hydrated. */
+const POST_ROW_KINDS = new Set<NotificationKind>(['comment', 'mention', 'followed_post', 'repost'])
+
+function notificationShowsPostRow(n: Notification): boolean {
+  return Boolean(n.post && POST_ROW_KINDS.has(n.kind))
+}
 
 definePageMeta({
   layout: 'app',
@@ -205,7 +210,7 @@ watch(
     const next = new Set(stickyUnreadNotificationIds.value)
     for (const item of items) {
       if (item.type !== 'single') continue
-      if (!item.notification.post) continue
+      if (!notificationShowsPostRow(item.notification)) continue
       if (item.notification.readAt) continue
       next.add(item.notification.id)
     }
@@ -461,7 +466,7 @@ function markItemReadOptimistic(item: (typeof notifications.value)[number]) {
 
 function onNotificationInteractionCapture(item: (typeof notifications.value)[number]) {
   if (item.type !== 'single') return
-  if (!item.notification.post) return
+  if (!notificationShowsPostRow(item.notification)) return
   markItemReadOptimistic(item)
 }
 
