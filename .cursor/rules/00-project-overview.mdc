@@ -12,6 +12,7 @@ alwaysApply: true
 - Update API DTOs: `menofhunger-api/src/common/dto/**`
 - Update web types: `menofhunger-www/types/api.ts`
 - Run `npx nuxi typecheck` + `node scripts/validate-api-types.mjs`
+- If iOS consumes the response, update the matching `menofhunger-ios/MenOfHunger/**/Model` type and add/adjust a decoding test.
 
 ## Layout rule (pick one)
 - Never show both the layout title bar **and** an in-page header

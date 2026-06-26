@@ -1,7 +1,7 @@
 ---
 description: Pages must feel edge-to-edge. Never wrap an entire page or full section in a single bordered/rounded card.
 globs: pages/**/*.vue
-alwaysApply: true
+alwaysApply: false
 ---
 
 # Edge-to-edge pages, no full-screen card wrappers

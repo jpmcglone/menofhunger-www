@@ -89,6 +89,7 @@ When the **viewer** initiated the change (sent an invite, posted a comment, acce
 - Static / marketing pages (`/`, `/about`, `/tiers`, `/privacy`, …).
 - Pages whose content is fully derived from URL params and never mutated server-side mid-session (e.g. a static article archive).
 - One-shot flows that close immediately (composer dialogs, confirm modals).
+- Product-scoped secondary surfaces where fetch-on-mount/activation is explicitly enough. If you choose this, leave a short comment or PR note explaining why the live socket tax is not justified.
 
 If you skip socket wiring for a page that displays mutable state, leave a one-line comment explaining why. That's the contract that keeps the real-time surface honest.
 

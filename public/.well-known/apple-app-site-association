@@ -6,6 +6,7 @@
         "components": [
           { "/": "/p/*", "comment": "Post detail" },
           { "/": "/u/*", "comment": "User profiles" },
+          { "/": "/g/*", "comment": "Community groups" },
           { "/": "/topics/*", "comment": "Topic feeds" },
           { "/": "/explore", "comment": "Explore tab" },
           { "/": "/notifications", "comment": "Notifications tab" },

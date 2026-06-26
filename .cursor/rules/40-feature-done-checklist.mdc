@@ -20,9 +20,10 @@ A change is "substantive" if it touches: `pages/**`, `components/**`, `layouts/*
 4. **Production build** — `npm run build`
    - Must succeed. Catches SSR-only crashes and missing imports that dev mode hides.
    - The `prebuild` hook re-runs typecheck + validate-api-types + tests. Don't comment it out.
-5. **Runtime hydration check** — `npm run check:hydration`
+5. **Runtime hydration check** — `npm run check:hydration` (public/SSR page changes only)
    - Spins up the freshly-built server and visits the routes in `scripts/hydration-routes.json` with a headless browser. Fails on any `[Vue warn] Hydration` console message or page error.
    - If you added or significantly changed a public/SSR page, **add it to `scripts/hydration-routes.json`**.
+ - If the work only touches `ssr: false` authenticated app surfaces, non-rendering composables, tests, scripts, docs, or types, say why the hydration check is irrelevant instead of running it by rote.
    - On failure: read the `runtime-hydration-check` skill and the `ssr-hydration` skill, fix, re-run.
 
 ## When something fails

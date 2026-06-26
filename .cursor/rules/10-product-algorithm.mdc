@@ -1,0 +1,27 @@
+---
+description: Apply the Men of Hunger product simplification algorithm before adding or changing web behavior
+alwaysApply: true
+---
+
+# Product Simplification Algorithm
+
+Before adding UI, routes, composables, realtime wiring, or config, assume parity and completeness are not automatic goals. Apply this order:
+
+1. **Question the requirement**
+   - What core user loop does this serve: feed, groups, profile, notifications, auth, or payments?
+   - Who specifically needs it now? What does it replace?
+   - Is this core, secondary, or experimental/legacy?
+2. **Delete before simplifying**
+   - Prefer removing dead/scaffold pages, unused modules, empty toggles, duplicate redirects, and stale wrappers before refactoring them.
+   - Demote secondary surfaces from primary nav before polishing them.
+3. **Simplify what remains**
+   - Prefer fewer feed concepts: posts, replies, media, sort, visibility, cursor.
+   - Prefer one component primitive over variants and one page job over mixed modes.
+   - Keep realtime wiring for mutable state, but share reducers/composables instead of duplicating page glue.
+4. **Accelerate cycle time**
+   - Avoid adding checks or SSR/hydration complexity unless the route needs it.
+   - Remove duplicated CI/build gates before adding new automation.
+5. **Automate last**
+   - Automate API contracts, hydration checks, and guardrails after the product surface is smaller and stable.
+
+If a web change adds a top-level route/nav item, feature toggle, new feed mode, new websocket callback, or large component branch, explicitly state why it should exist instead of deleting, demoting, or folding it into an existing path.
