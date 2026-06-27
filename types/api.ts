@@ -2629,7 +2629,7 @@ export type GetExploreData = {
 }
 
 /** Response from POST /auth/account/delete. */
-export type DeleteAccountResponse = { success: true }
+export type DeleteAccountResponse = { success: true; deletionScheduledAt: string }
 
 // ─── Scheduled Posts ─────────────────────────────────────────────────────────
 

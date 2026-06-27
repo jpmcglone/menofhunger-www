@@ -4,7 +4,8 @@
       <div class="space-y-1">
         <div class="text-sm font-semibold text-red-800 dark:text-red-300">Delete account</div>
         <p class="text-xs text-red-700 dark:text-red-400 leading-relaxed">
-          This is permanent. Your account will be anonymized, your public posts removed, any active Premium subscription cancelled, and all sessions revoked immediately. There is no undo.
+          This signs you out immediately and schedules your account for deletion in 30 days.
+          Log back in before then to cancel.
         </p>
       </div>
 
@@ -18,7 +19,7 @@
       />
     </div>
 
-    <!-- Confirmation dialog: type username to confirm -->
+    <!-- Confirmation dialog: type DELETE to confirm -->
     <Dialog
       v-model:visible="confirmVisible"
       modal
@@ -29,19 +30,23 @@
     >
       <div class="space-y-4">
         <p class="text-sm moh-text leading-relaxed">
-          This will permanently delete your account, anonymize your data, cancel any active subscription, and log you out everywhere.
-          <strong>This cannot be undone.</strong>
+          This will hide your profile, sign you out everywhere, and schedule permanent
+          anonymization for 30 days from now. You can cancel by logging back in before then.
         </p>
 
-        <AppFormField :label="`Type your username to confirm`" :helper="confirmHint">
+        <div class="rounded-lg border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/30 p-3 text-xs leading-relaxed text-red-800 dark:text-red-300">
+          To continue, type <span class="font-mono font-semibold">DELETE</span> below.
+        </div>
+
+        <AppFormField label="Confirmation" helper="Type DELETE exactly">
           <InputText
-            v-model="usernameConfirm"
+            v-model="deleteConfirm"
             class="w-full font-mono"
-            :placeholder="authUser?.username ?? 'your username'"
+            placeholder="DELETE"
             :disabled="deleting"
             autocomplete="off"
             autocorrect="off"
-            autocapitalize="off"
+            autocapitalize="characters"
             spellcheck="false"
             @keydown.enter.prevent="submit"
           />
@@ -94,27 +99,22 @@
 <script setup lang="ts">
 import { useDeleteAccount } from '~/composables/settings/useDeleteAccount'
 
-const { user: authUser } = useAuth()
 const { deleting, error: deleteError, deleteAccount } = useDeleteAccount()
 
 const confirmVisible = ref(false)
-const usernameConfirm = ref('')
+const deleteConfirm = ref('')
 const reason = ref('')
 const details = ref('')
 
-const confirmHint = computed(() => {
-  const un = authUser.value?.username
-  return un ? `Enter "${un}" exactly` : undefined
-})
+const requiredConfirmation = 'DELETE'
 
 const canSubmit = computed(() => {
-  const expected = (authUser.value?.username ?? '').trim()
-  return Boolean(expected) && usernameConfirm.value.trim() === expected && !deleting.value
+  return deleteConfirm.value.trim() === requiredConfirmation && !deleting.value
 })
 
 function onDialogHide() {
   if (deleting.value) return
-  usernameConfirm.value = ''
+  deleteConfirm.value = ''
   reason.value = ''
   details.value = ''
   deleteError.value = null
