@@ -117,6 +117,8 @@ export type UsePostsFeedOptions = {
   enabled?: Ref<boolean>
   /** When true, only top-level (non-reply) posts are returned. */
   topLevelOnly?: Ref<boolean>
+  /** Filter posts by author's US state code (e.g. "VA"). Phase 0 API contract. */
+  authorLocationState?: Ref<string | null | undefined>
 }
 
 function normalizeAuthorIds(ids: string[] | null | undefined): string[] | null {
@@ -152,6 +154,8 @@ export function postsFeedListQuery(opts: {
   mediaOnly?: boolean
   limit?: number
   topLevelOnly?: boolean
+  /** Filter posts by author's US state code (e.g. "VA"). Phase 0 API contract. */
+  authorLocationState?: string | null
 }): Record<string, string | number | boolean | undefined> {
   const gid = (opts.communityGroupId ?? '').trim()
   const groupScoped = Boolean(opts.groupsHub || gid)
@@ -181,6 +185,7 @@ export function postsFeedListQuery(opts: {
     ...(opts.mediaOnly ? { mediaOnly: true } : {}),
     ...(isForYou ? { sort: 'forYou' } : opts.sort === 'trending' ? { sort: 'trending' } : {}),
     ...(opts.cursor ? { cursor: opts.cursor } : {}),
+    ...(opts.authorLocationState ? { authorLocationState: opts.authorLocationState } : {}),
   }
 }
 
@@ -240,6 +245,7 @@ export function usePostsFeed(options: UsePostsFeedOptions = {}) {
         mediaOnly: mediaOnly.value,
         limit: pageLimit.value,
         topLevelOnly: options.topLevelOnly?.value,
+        authorLocationState: options.authorLocationState?.value ?? null,
       }),
     }),
     defaultErrorMessage: 'Failed to load posts.',
@@ -614,6 +620,7 @@ export function usePostsFeed(options: UsePostsFeedOptions = {}) {
             mediaOnly: mediaOnly.value,
             limit: pageLimit.value,
             topLevelOnly: options.topLevelOnly?.value,
+            authorLocationState: options.authorLocationState?.value ?? null,
           }),
         })
         const fresh = (res.data ?? []).filter((p: FeedPost) => !p.deletedAt)

@@ -16,7 +16,10 @@ describe('group feed realtime dedupe', () => {
 
   it('PostComposer sends community_group_id when communityGroupId prop is set', () => {
     const source = readFile('components/app/PostComposer.vue')
-    expect(source).toContain('community_group_id: props.communityGroupId')
+    // effectiveGroupId falls back to props.communityGroupId when no group is selected by the picker.
+    expect(source).toContain('props.communityGroupId')
+    expect(source).toContain('effectiveGroupId')
+    expect(source).toContain('community_group_id')
   })
 
   it('marv_not_in_group uses NotificationRow, not AppPostRow', () => {

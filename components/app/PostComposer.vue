@@ -273,6 +273,49 @@
             >
               {{ postCharCount }}/{{ postMaxLen }}
             </div>
+            <!-- Group audience picker: only when composing a top-level post outside a group wall -->
+            <div
+              v-if="mode === 'create' && !replyTo && !quotedPost && !communityGroupId && isAuthed && myGroups.length > 0"
+              class="relative"
+            >
+              <Button
+                text
+                rounded
+                severity="secondary"
+                class="moh-focus"
+                :aria-label="selectedGroupName ? `Posting to ${selectedGroupName}` : 'Post to a group'"
+                v-tooltip.bottom="selectedGroupName ? `Posting to: ${selectedGroupName}` : 'Post to a group'"
+                :style="selectedGroupId ? { color: 'var(--moh-brass)' } : {}"
+                @click="groupPickerOpen = !groupPickerOpen"
+              >
+                <template #icon>
+                  <Icon name="tabler:users-group" aria-hidden="true" />
+                </template>
+              </Button>
+              <div
+                v-if="groupPickerOpen"
+                class="absolute bottom-full right-0 mb-2 z-50 w-56 rounded-xl border moh-border moh-surface shadow-lg py-1"
+              >
+                <button
+                  class="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-zinc-800 transition-colors"
+                  :class="!selectedGroupId ? 'font-semibold text-[var(--moh-brass)]' : ''"
+                  @click="selectGroup(null)"
+                >
+                  All followers
+                </button>
+                <div class="border-t moh-border my-1" />
+                <button
+                  v-for="g in myGroups"
+                  :key="g.id"
+                  class="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-zinc-800 transition-colors"
+                  :class="selectedGroupId === g.id ? 'font-semibold text-[var(--moh-brass)]' : ''"
+                  @click="selectGroup(g.id)"
+                >
+                  {{ g.name }}
+                </button>
+              </div>
+            </div>
+
             <!-- Schedule button: visible to verified+, premium-gated via CTA -->
             <div
               v-if="(isPremium || viewerIsVerified) && mode === 'create' && !replyTo && !quotedPost"
@@ -667,6 +710,35 @@ const route = useRoute()
 const { user, me, isAuthed, isPremium, isVerified: viewerIsVerified, isVerifiedMember } = useAuth()
 const { apiFetchData } = useApiClient()
 const { getUserStatus, setMyStatus, clearMyStatus } = usePresence()
+
+// Group audience picker — lets viewer target one of their groups when composing from the main feed.
+// Only used when `props.communityGroupId` is not already set (group-wall context already pins it).
+const selectedGroupId = ref<string | null>(null)
+const groupPickerOpen = ref(false)
+const myGroups = ref<import('~/types/api').CommunityGroupShell[]>([])
+const myGroupsLoaded = ref(false)
+const effectiveGroupId = computed(() => selectedGroupId.value ?? props.communityGroupId ?? null)
+
+async function loadMyGroups() {
+  if (myGroupsLoaded.value || props.communityGroupId) return
+  try {
+    myGroups.value = (await apiFetchData<import('~/types/api').CommunityGroupShell[]>('/groups/me')) ?? []
+  } catch {
+    myGroups.value = []
+  }
+  myGroupsLoaded.value = true
+}
+
+function selectGroup(id: string | null) {
+  selectedGroupId.value = id
+  groupPickerOpen.value = false
+}
+
+const selectedGroupName = computed(() => {
+  const gid = selectedGroupId.value
+  if (!gid) return null
+  return myGroups.value.find((g) => g.id === gid)?.name ?? null
+})
 const toast = useAppToast()
 
 // Shared count of the user's scheduled posts — drives the badge on the
@@ -790,7 +862,7 @@ function toScheduledPollBody(payload: ComposerPollPayload) {
 async function performSchedule(submitBody: string, vis: PostVisibility, mediaPayload: CreateMediaPayload[], pollPayload: ComposerPollPayload | null) {
   const targetAt = scheduledAt.value
   if (!targetAt) throw new Error('No schedule time set.')
-  const groupId = props.communityGroupId ?? null
+  const groupId = effectiveGroupId.value
   const body = {
     body: submitBody,
     visibility: vis,
@@ -1274,6 +1346,9 @@ function registerUnsavedGuardIfNeeded() {
 
 onMounted(() => {
   registerUnsavedGuardIfNeeded()
+  if (isAuthed.value && !props.communityGroupId) {
+    loadMyGroups()
+  }
 })
 
 onActivated(() => {
@@ -1402,7 +1477,7 @@ function performCreate(submitBody: string, vis: PostVisibility, mediaPayload: Cr
           visibility: vis,
           media: mediaPayload,
           ...(pollPayload ? { poll: pollPayload } : {}),
-          ...(props.communityGroupId ? { community_group_id: props.communityGroupId } : {}),
+          ...(effectiveGroupId.value ? { community_group_id: effectiveGroupId.value } : {}),
         },
   })
 }
@@ -1439,7 +1514,7 @@ const { submit: submitPost, submitting, submitError } = useFormSubmit(
       const vis = effectiveVisibility.value
       const mediaPayload: CreateMediaPayload[] = hasPoll.value ? [] : toCreatePayload(composerMedia.value)
       const pollPayload = poll.value ? poll.value : null
-      const groupId = props.communityGroupId ?? null
+      const groupId = effectiveGroupId.value
       const patchBody: Record<string, unknown> = {
         body: buildSubmitBody(),
         visibility: vis,
@@ -1552,7 +1627,7 @@ function submitOptimistic(): boolean {
     media: composerMedia.value,
     poll: pollPayload,
     parentId: props.replyTo?.parentId ?? null,
-    communityGroupId: props.communityGroupId ?? null,
+    communityGroupId: effectiveGroupId.value,
     author,
   })
 

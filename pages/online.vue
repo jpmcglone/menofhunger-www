@@ -35,7 +35,7 @@
       tag="div"
       class="divide-y divide-gray-200 dark:divide-zinc-800 transition-opacity duration-150"
     >
-      <AppUserRow v-for="u in users" :key="u.id" :user="u" :show-follow-button="true" />
+      <AppUserRow v-for="u in users" :key="u.id" :user="u" :show-follow-button="true" :platforms="u.platforms" />
     </TransitionGroup>
 
     <!-- Recently online (verified viewers only) -->

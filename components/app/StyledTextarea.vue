@@ -75,7 +75,7 @@ const emit = defineEmits<{
 // ─── Shared utilities ─────────────────────────────────────────
 
 const { apiFetchData } = useApiClient()
-const { markValid } = useValidatedChatUsernames()
+const { markValid, validSet, tierMap, tierForUsername, validateMentionsInBody } = useValidatedChatUsernames()
 
 function norm(s: string): string {
   return (s ?? '').toString().trim().toLowerCase().replace(/\s+/g, ' ')
@@ -93,6 +93,35 @@ function anchorFromEditor(ed: CoreEditor): CaretPoint | null {
 
 // ─── Mention: custom extension with per-node color ────────────
 
+// Decorates plain-text @username spans that weren't autocompleted. Only confirmed-existing
+// users (in validSet) are colored — matching chat rendering — and tier colors come from the
+// shared username→tier cache (resolved via POST /users/preview/batch). Unknown usernames stay
+// plain until validation lands; the watch below re-runs decorations once tiers resolve.
+const mentionDecoPlugin = new Plugin({
+  key: new PluginKey('mentionDecorations'),
+  props: {
+    decorations(state) {
+      const decos: Decoration[] = []
+      const re = /(?:^|(?<=[^A-Za-z0-9_@]))@([A-Za-z][A-Za-z0-9_]{0,14})/g
+      state.doc.descendants((node, pos) => {
+        if (!node.isText) return
+        const text = node.text ?? ''
+        re.lastIndex = 0
+        let m: RegExpExecArray | null
+        while ((m = re.exec(text)) !== null) {
+          const username = (m[1] ?? '').toLowerCase()
+          if (!validSet.value.has(username)) continue
+          const colorVar = userTierColorVar(tierForUsername(username))
+          const attrs: Record<string, string> = { class: 'moh-mention' }
+          if (colorVar) attrs.style = `color: ${colorVar}`
+          decos.push(Decoration.inline(pos + m.index, pos + m.index + m[0].length, attrs))
+        }
+      })
+      return DecorationSet.create(state.doc, decos)
+    },
+  },
+})
+
 const MentionWithColor = Mention.extend({
   addAttributes() {
     return {
@@ -105,6 +134,9 @@ const MentionWithColor = Mention.extend({
   },
   renderText({ node }) {
     return `@${node.attrs.label ?? node.attrs.id}`
+  },
+  addProseMirrorPlugins() {
+    return [mentionDecoPlugin, ...((this.parent?.() as Plugin[] | undefined) ?? [])]
   },
 })
 
@@ -591,9 +623,20 @@ const editor = useEditor({
   onUpdate: ({ editor: ed }) => {
     const text = getPlainText(ed)
     lastEmittedText = text
+    // Kick off batched tier validation for any typed @mentions; decorations recolor once resolved.
+    validateMentionsInBody(text, validSet.value)
     emit('update:modelValue', text)
   },
 })
+
+// Re-run mention decorations when username tiers resolve asynchronously (an empty meta
+// transaction forces ProseMirror to recompute the decoration set).
+function refreshMentionDecorations() {
+  const ed = editor.value
+  if (!ed) return
+  ed.view.dispatch(ed.state.tr.setMeta('mentionTierRefresh', Date.now()))
+}
+watch([validSet, tierMap], () => refreshMentionDecorations())
 
 // Sync external modelValue changes (e.g. cleared after send).
 let lastEmittedText = props.modelValue ?? ''
@@ -608,6 +651,7 @@ watch(
       editor.value.commands.clearContent(true)
     } else {
       editor.value.commands.setContent(`<p>${escapeHtml(incoming)}</p>`)
+      validateMentionsInBody(incoming, validSet.value)
     }
   },
 )
@@ -627,6 +671,8 @@ function clear() {
 
 onMounted(() => {
   if (props.autoFocus) nextTick(() => focus())
+  // Seed tier validation for any prefilled @mentions (e.g. composer opened with @username).
+  if (props.modelValue) validateMentionsInBody(props.modelValue, validSet.value)
 })
 
 defineExpose({ focus, insertAtCursor, clear, editor })

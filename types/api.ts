@@ -1043,6 +1043,12 @@ export type OnlineUser = FollowListUser & {
    * The frontend uses this to sort bots to the top and render a small badge.
    */
   isBot?: boolean
+  /**
+   * Deduped list of client platforms this user is currently connected from
+   * (e.g. ['ios', 'web']). Populated from the in-memory presence service on the
+   * responding instance; may be empty for multi-instance deployments.
+   */
+  platforms?: string[]
 }
 
 /** Data type for GET /presence/online (array); totalOnline in pagination. */

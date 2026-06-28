@@ -50,8 +50,41 @@
         </div>
       </div>
 
-      <div v-if="showFollowButton" class="ml-auto shrink-0">
+      <div class="ml-auto shrink-0 flex items-center gap-2">
+        <div v-if="props.platforms && props.platforms.length > 0" class="flex items-center gap-1 text-gray-400 dark:text-gray-500" aria-label="Active platforms">
+          <template v-for="p in props.platforms" :key="p">
+            <Icon
+              v-if="p === 'ios'"
+              name="tabler:device-iphone"
+              class="h-3.5 w-3.5"
+              :title="'iOS'"
+              aria-hidden="true"
+            />
+            <Icon
+              v-else-if="p === 'android'"
+              name="tabler:device-mobile"
+              class="h-3.5 w-3.5"
+              :title="'Android'"
+              aria-hidden="true"
+            />
+            <Icon
+              v-else-if="p === 'web'"
+              name="tabler:world"
+              class="h-3.5 w-3.5"
+              :title="'Web'"
+              aria-hidden="true"
+            />
+            <Icon
+              v-else
+              name="tabler:device-desktop"
+              class="h-3.5 w-3.5"
+              :title="p"
+              aria-hidden="true"
+            />
+          </template>
+        </div>
         <AppFollowButton
+          v-if="showFollowButton"
           :user-id="user.id"
           :username="user.username"
           :initial-relationship="user.relationship"
@@ -77,6 +110,8 @@ const props = defineProps<{
   allowLoggedOutFollowButton?: boolean
   /** Optional label displayed inline next to name + badges. */
   nameMeta?: string | null
+  /** Deduped list of client platforms (e.g. ["ios", "web"]). Shows small icon badges. */
+  platforms?: string[] | null
 }>()
 
 const { user } = useUserOverlay(computed(() => props.user))
