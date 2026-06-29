@@ -33,18 +33,25 @@
               :aria-labelledby="titleId"
               @click.stop
             >
-              <!-- Header -->
-              <header class="flex items-start justify-between gap-3 px-5 pt-5 pb-2">
-                <div class="min-w-0">
-                  <h2 :id="titleId" class="text-lg font-semibold tracking-tight text-gray-900 dark:text-gray-50">
-                    Share this post
-                  </h2>
-                  <p v-if="isCheckin && checkinPrompt" class="mt-0.5 text-xs moh-text-muted line-clamp-2">
-                    {{ checkinPrompt }}
-                  </p>
-                  <p v-else class="mt-0.5 text-xs moh-text-muted">
-                    Let others see what you wrote.
-                  </p>
+              <!-- Header. For a check-in the streak IS the headline (the emotional payoff);
+                   otherwise it's a plain "Share this post". The prompt is intentionally not
+                   repeated here — it already shows inside the post preview below. -->
+              <header class="flex items-start justify-between gap-3 px-5 pt-5 pb-3">
+                <div class="flex min-w-0 items-start gap-3">
+                  <span
+                    v-if="showStreakHero"
+                    class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-xl leading-none"
+                    style="background-color: var(--moh-checkin-soft)"
+                    aria-hidden="true"
+                  >🔥</span>
+                  <div class="min-w-0">
+                    <h2 :id="titleId" class="text-lg font-semibold tracking-tight text-gray-900 dark:text-gray-50">
+                      {{ headerTitle }}
+                    </h2>
+                    <p class="mt-0.5 text-xs moh-text-muted text-pretty">
+                      {{ headerSubtitle }}
+                    </p>
+                  </div>
                 </div>
                 <button
                   type="button"
@@ -55,38 +62,6 @@
                   <Icon name="tabler:x" aria-hidden="true" />
                 </button>
               </header>
-
-              <!-- Streak congratulation (check-ins only) — green = accountability, orange flame = streak heat -->
-              <div
-                v-if="isCheckin && streakDays > 0"
-                class="mx-5 mb-3 flex items-center gap-2 rounded-xl border px-3 py-2"
-                style="background-color: var(--moh-checkin-soft); border-color: rgba(var(--moh-checkin-rgb), 0.3)"
-              >
-                <span class="text-lg leading-none" aria-hidden="true">🔥</span>
-                <div class="min-w-0">
-                  <span class="text-sm font-semibold" style="color: var(--moh-checkin)">
-                    {{ streakDays }}-day streak — keep it up!
-                  </span>
-                  <span v-if="streakDays >= 7" class="ml-1.5 text-xs opacity-75" style="color: var(--moh-checkin)">
-                    That's {{ Math.floor(streakDays / 7) === 1 ? 'a full week' : Math.floor(streakDays / 7) + ' weeks' }}.
-                  </span>
-                </div>
-              </div>
-
-              <!-- "See how N others answered" link (check-ins only) -->
-              <NuxtLink
-                v-if="checkinDayKey"
-                :to="`/check-ins/day/${checkinDayKey}`"
-                class="mx-5 mb-3 flex items-center justify-between gap-2 rounded-xl border moh-border px-3 py-2.5 text-sm font-medium moh-text hover:bg-black/[0.03] dark:hover:bg-white/[0.05] transition-colors"
-              >
-                <span>
-                  <template v-if="socialProofTotal > 1">
-                    See how {{ socialProofTotal - 1 }} {{ socialProofTotal === 2 ? 'other man' : 'other men' }} answered
-                  </template>
-                  <template v-else>See how others answered</template>
-                </span>
-                <Icon name="tabler:arrow-right" size="16" class="shrink-0 moh-text-muted" aria-hidden="true" />
-              </NuxtLink>
 
               <!-- Post preview — tapping navigates to the post and closes the dialog -->
               <div class="px-5" @click="close">
@@ -127,6 +102,17 @@
                   Copy link
                 </button>
               </div>
+
+              <!-- Quiet "see how others answered" link (check-ins only). A leave-this-flow action,
+                   so it sits below the primary actions instead of competing with them. -->
+              <NuxtLink
+                v-if="checkinDayKey"
+                :to="`/check-ins/day/${checkinDayKey}`"
+                class="mt-3 flex items-center justify-center gap-1.5 px-5 text-[13px] font-medium moh-text-muted transition-colors hover:moh-text"
+              >
+                <span>{{ seeOthersLabel }}</span>
+                <Icon name="tabler:arrow-right" size="14" class="shrink-0" aria-hidden="true" />
+              </NuxtLink>
             </section>
           </Transition>
         </div>
@@ -156,7 +142,6 @@ const { share: nativeShare, isSupported: isNativeShareSupported } = useWebShare(
 const { copyText } = useCopyToClipboard()
 
 const isCheckin = computed(() => props.post.kind === 'checkin')
-const checkinPrompt = computed(() => (props.post.checkinPrompt ?? '').trim() || null)
 const streakDays = computed(() => (isCheckin.value ? (user.value?.checkinStreakDays ?? 0) : 0))
 
 const checkinDayKey = computed(() => (isCheckin.value ? (props.post.checkinDayKey ?? null) : null))
@@ -164,6 +149,28 @@ const checkinDayKey = computed(() => (isCheckin.value ? (props.post.checkinDayKe
 // Social proof for check-in posts — read from the shared cache populated by useDailyCheckin.
 const { state: checkinState, refresh: refreshCheckin } = useDailyCheckin()
 const socialProofTotal = computed(() => checkinState.value?.socialProof?.totalToday ?? 0)
+
+// Header: the streak is the hero for a check-in; everything else is a plain share.
+const showStreakHero = computed(() => isCheckin.value && streakDays.value > 0)
+const headerTitle = computed(() =>
+  showStreakHero.value ? `${streakDays.value}-day streak` : 'Share this post',
+)
+const headerSubtitle = computed(() => {
+  if (!showStreakHero.value) return 'Let others see what you wrote.'
+  if (streakDays.value >= 7) {
+    const weeks = Math.floor(streakDays.value / 7)
+    return `That's ${weeks === 1 ? 'a full week' : `${weeks} weeks`}. Keep it going.`
+  }
+  return 'Keep it going tomorrow.'
+})
+
+const seeOthersLabel = computed(() => {
+  const others = socialProofTotal.value - 1
+  if (others >= 1) {
+    return `See how ${others} other ${others === 1 ? 'man' : 'men'} answered`
+  }
+  return 'See how others answered'
+})
 
 const shareUrl = computed(
   () => `${siteConfig.url}/p/${encodeURIComponent(props.post.id)}`,

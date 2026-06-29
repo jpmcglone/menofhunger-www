@@ -13,8 +13,8 @@
         style="background: linear-gradient(90deg, var(--moh-checkin) 0%, transparent 100%); opacity: 0.5"
         aria-hidden="true"
       />
-      <div class="px-5 sm:px-6 pt-5 sm:pt-6 pb-4 sm:pb-5">
-        <div class="flex items-center gap-2">
+      <div class="px-4 sm:px-5 pt-3 sm:pt-4 pb-3 sm:pb-4">
+        <div class="flex items-center gap-2 flex-wrap">
           <span
             class="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide"
             :style="badgeStyle"
@@ -22,20 +22,27 @@
             <Icon name="tabler:calendar-check" size="11" aria-hidden="true" />
             Today's question
           </span>
+          <span
+            v-if="displayCoins > 0"
+            class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold tabular-nums moh-text-muted moh-surface-2"
+          >
+            <Icon name="tabler:coin" size="12" class="text-[var(--moh-brass)]" aria-hidden="true" />
+            {{ displayCoins.toLocaleString() }}
+          </span>
         </div>
 
         <h1
           id="moh-checkin-hero-verify-title"
-          class="mt-3 text-xl sm:text-2xl font-bold leading-snug moh-text"
+          class="mt-2 text-base sm:text-lg font-bold leading-snug moh-text"
         >
           {{ promptText }}
         </h1>
 
-        <p class="mt-2 text-sm leading-relaxed moh-text-muted">
+        <p class="mt-1.5 text-sm leading-relaxed moh-text-muted">
           Daily check-ins, streaks, and the leaderboard are for verified members. Verify your account to start your streak.
         </p>
 
-        <div class="mt-5">
+        <div class="mt-3">
           <Button
             as="NuxtLink"
             to="/settings/verification"
@@ -90,7 +97,7 @@
 
         <div class="relative z-[2]">
           <!-- Header row: label + streak pill. -->
-          <div class="flex items-center gap-2">
+          <div class="flex items-center gap-2 flex-wrap">
             <span
               class="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full"
               style="background: rgba(var(--moh-checkin-rgb), 0.12); color: var(--moh-checkin)"
@@ -100,6 +107,13 @@
             </span>
             <span class="text-[10px] font-semibold uppercase tracking-wide moh-text-muted">
               {{ compactLabel }}
+            </span>
+            <span
+              v-if="displayCoins > 0"
+              class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold tabular-nums moh-text-muted moh-surface-2 shrink-0"
+            >
+              <Icon name="tabler:coin" size="12" class="text-[var(--moh-brass)]" aria-hidden="true" />
+              {{ displayCoins.toLocaleString() }}
             </span>
             <NuxtLink
               v-if="crew && effectiveCrewStreak > 0"
@@ -178,7 +192,7 @@
            post-answer surface is one card instead of two. The chevron hints "tap for leaderboard". -->
       <div
         v-if="weeklyMission"
-        class="relative border-t moh-border cursor-pointer transition-colors hover:bg-black/[0.02] dark:hover:bg-white/[0.03] px-4 pt-3 pb-3 sm:px-5 sm:pb-3.5 flex items-center gap-3"
+        class="relative border-t moh-border cursor-pointer transition-colors hover:bg-black/[0.02] dark:hover:bg-white/[0.03] px-4 py-2.5 sm:px-5 sm:py-3 flex items-center gap-2.5"
         role="link"
         tabindex="0"
         aria-label="Open the leaderboard to see your streak progress"
@@ -195,7 +209,7 @@
         />
 
         <div
-          class="relative z-[2] shrink-0 flex h-11 w-11 flex-col items-center justify-center rounded-xl"
+          class="relative z-[2] shrink-0 flex h-9 w-9 flex-col items-center justify-center rounded-lg"
           :style="weeklyMission.status === 'complete'
             ? undefined
             : { background: 'rgba(var(--moh-checkin-rgb), 0.1)' }"
@@ -204,7 +218,7 @@
             : ''"
         >
           <span
-            class="text-lg font-black leading-none tabular-nums"
+            class="text-base font-black leading-none tabular-nums"
             :class="weeklyMission.status === 'complete' ? 'text-amber-600 dark:text-amber-400' : ''"
             :style="weeklyMission.status !== 'complete' ? { color: 'var(--moh-checkin)' } : undefined"
           >{{ effectivePersonalStreak }}</span>
@@ -216,13 +230,13 @@
         </div>
 
         <div class="relative z-[2] flex-1 min-w-0">
-          <div class="text-sm font-semibold moh-text leading-snug">{{ weeklyMission.headline }}</div>
-          <div class="text-[11px] moh-text-muted mt-0.5 leading-snug">{{ weeklyMission.subline }}</div>
-          <div class="mt-1.5 flex items-center gap-1.5" aria-hidden="true">
+          <div class="text-[13px] font-semibold moh-text leading-snug">{{ weeklyMission.headline }}</div>
+          <div class="text-[10px] moh-text-muted mt-0.5 leading-snug">{{ weeklyMission.subline }}</div>
+          <div class="mt-1 flex items-center gap-1" aria-hidden="true">
             <span
               v-for="d in weeklyMission.daysTarget"
               :key="d"
-              class="h-2 w-2 rounded-full transition-colors"
+              class="h-1.5 w-1.5 rounded-full transition-colors"
               :class="d <= weeklyMission.daysCompleted
                 ? weeklyMission.status === 'complete' ? 'bg-amber-500' : 'bg-[var(--moh-checkin)]'
                 : 'bg-gray-200 dark:bg-zinc-700'"
@@ -256,15 +270,22 @@
         aria-hidden="true"
       />
 
-      <div class="px-5 sm:px-6 pt-5 sm:pt-6 pb-4 sm:pb-5">
+      <div class="px-4 sm:px-5 pt-3 sm:pt-4 pb-3 sm:pb-4">
         <!-- Header tag — small, low-key. The prompt itself is the headline. -->
-        <div class="flex items-center gap-2">
+        <div class="flex items-center gap-2 flex-wrap">
           <span
             class="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide"
             :style="badgeStyle"
           >
             <Icon name="tabler:calendar-check" size="11" aria-hidden="true" />
             {{ headerLabel }}
+          </span>
+          <span
+            v-if="displayCoins > 0"
+            class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold tabular-nums moh-text-muted moh-surface-2"
+          >
+            <Icon name="tabler:coin" size="12" class="text-[var(--moh-brass)]" aria-hidden="true" />
+            {{ displayCoins.toLocaleString() }}
           </span>
           <!-- Crew streak pill (preferred when in a crew); falls back to personal streak otherwise. -->
           <NuxtLink
@@ -288,26 +309,26 @@
         <!-- Big prompt — the only thing the eye should land on. -->
         <h1
           id="moh-checkin-hero-title"
-          class="mt-3 text-xl sm:text-2xl font-bold leading-snug moh-text"
+          class="mt-2 text-base sm:text-lg font-bold leading-snug moh-text"
         >
           {{ promptText }}
         </h1>
 
         <!-- Answered: show the user's own answer + quiet confirmation + day-page link. -->
-        <div v-if="hasAnswered" class="mt-4">
+        <div v-if="hasAnswered" class="mt-3">
           <div class="flex items-center gap-2 text-sm font-semibold moh-text">
             <Icon name="tabler:check" class="text-emerald-500" size="16" aria-hidden="true" />
             <span>You answered today.</span>
           </div>
           <p
             v-if="myCheckinSnippet"
-            class="mt-2 text-[15px] leading-relaxed moh-text-muted"
+            class="mt-1.5 text-[13px] leading-snug moh-text-muted line-clamp-2"
           >
             "{{ myCheckinSnippet }}"
           </p>
           <NuxtLink
             :to="`/check-ins/day/${props.state?.dayKey ?? etDayKey}`"
-            class="mt-3 inline-flex items-center gap-1.5 text-sm font-medium moh-text-muted hover:moh-text transition-colors"
+            class="mt-2 inline-flex items-center gap-1.5 text-sm font-medium moh-text-muted hover:moh-text transition-colors"
           >
             See today's answers
             <Icon name="tabler:arrow-right" size="14" aria-hidden="true" />
@@ -315,7 +336,7 @@
         </div>
 
         <!-- Not answered: single primary action. Logged-out users go to login wall. -->
-        <div v-else class="mt-5">
+        <div v-else class="mt-3 flex flex-wrap items-center gap-2">
           <Button
             v-if="!isAuthed"
             label="Log in to answer"
@@ -347,37 +368,39 @@
 
         <!-- Social proof footer: facepile + count line, OR crew status row. Always present (never
              collapses) so the hero stays the same height before/after answering. -->
-        <div v-if="crew" class="mt-5">
-          <div class="flex items-center gap-2">
-            <div
-              v-for="m in crewMembers"
-              :key="m.userId"
-              class="relative"
-              :title="m.answeredToday ? `${m.displayName ?? m.username ?? 'Member'} · answered` : `${m.displayName ?? m.username ?? 'Member'} · waiting`"
-            >
-              <AppAvatarCircle
-                :src="m.avatarUrl"
-                :name="m.displayName"
-                :username="m.username"
-                size-class="h-8 w-8"
-                :show-presence="false"
-                :class="m.answeredToday ? '' : 'opacity-40 grayscale'"
-              />
-              <span
-                v-if="m.answeredToday"
-                class="absolute -bottom-0.5 -right-0.5 inline-flex h-3.5 w-3.5 items-center justify-center rounded-full bg-[var(--moh-checkin)] ring-2 ring-[var(--moh-bg)]"
-                aria-hidden="true"
+        <div v-if="crew" class="mt-3">
+          <div class="flex items-center gap-2 min-w-0">
+            <div class="flex items-center gap-1.5 shrink-0">
+              <div
+                v-for="m in crewMembers"
+                :key="m.userId"
+                class="relative"
+                :title="m.answeredToday ? `${m.displayName ?? m.username ?? 'Member'} · answered` : `${m.displayName ?? m.username ?? 'Member'} · waiting`"
               >
-                <Icon name="tabler:check" size="9" class="text-white" />
-              </span>
+                <AppAvatarCircle
+                  :src="m.avatarUrl"
+                  :name="m.displayName"
+                  :username="m.username"
+                  size-class="h-6 w-6"
+                  :show-presence="false"
+                  :class="m.answeredToday ? '' : 'opacity-40 grayscale'"
+                />
+                <span
+                  v-if="m.answeredToday"
+                  class="absolute -bottom-0.5 -right-0.5 inline-flex h-3 w-3 items-center justify-center rounded-full bg-[var(--moh-checkin)] ring-2 ring-[var(--moh-bg)]"
+                  aria-hidden="true"
+                >
+                  <Icon name="tabler:check" size="8" class="text-white" />
+                </span>
+              </div>
             </div>
+            <p class="text-xs moh-text-muted truncate min-w-0 flex-1">
+              {{ crewStatusLine }}
+            </p>
           </div>
-          <p class="mt-2 text-sm moh-text-muted">
-            {{ crewStatusLine }}
-          </p>
         </div>
-        <div v-else class="mt-5 flex items-center gap-3">
-          <div v-if="facepile.length" class="flex -space-x-2">
+        <div v-else class="mt-3 flex items-center gap-2 min-w-0">
+          <div v-if="facepile.length" class="flex -space-x-1.5 shrink-0">
             <div
               v-for="(person, idx) in facepile"
               :key="person.id"
@@ -388,12 +411,12 @@
                 :src="person.avatarUrl"
                 :name="person.displayName"
                 :username="person.username"
-                size-class="h-7 w-7"
+                size-class="h-6 w-6"
                 :show-presence="false"
               />
             </div>
           </div>
-          <p class="text-sm moh-text-muted truncate min-w-0 flex-1">
+          <p class="text-xs moh-text-muted truncate min-w-0 flex-1">
             {{ socialProofLine }}
           </p>
         </div>
@@ -434,6 +457,8 @@ const props = defineProps<{
   } | null
   /** Last submitted check-in body for the "you answered" echo. Optional. */
   myCheckinBody?: string | null
+  /** Hydrated coin balance from parent (mirrors state.coins once loaded). */
+  coins?: number
   /** Whether the viewer can actually create a check-in (verified+). */
   canAnswer?: boolean
   /** Open the inline composer — owned by the parent page so we don't dictate UX. */
@@ -513,6 +538,10 @@ const promptText = computed(() => {
   const p = (props.prompt ?? props.state?.prompt ?? '').trim()
   return p || "How are you doing today?"
 })
+
+const displayCoins = computed(() =>
+  Math.max(0, Number(props.coins ?? props.state?.coins ?? 0) || 0),
+)
 
 const headerLabel = computed(() => (crew.value ? "Your crew's question today" : "Today's question"))
 const crewHref = computed(() => (crew.value ? `/c/${crew.value.slug}` : '/c'))

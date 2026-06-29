@@ -51,15 +51,25 @@ export type SubscriptionGrantSource = Contracts.SubscriptionGrantSource
 export type ActiveSubscriptionGrant = Contracts.ActiveSubscriptionGrantDto
 
 
+/**
+ * Where the active premium entitlement comes from.
+ * Web: disable IAP CTA when source === 'apple'; show "managed on iOS".
+ */
+export type BillingSource = 'stripe' | 'apple' | 'grant' | null
+
 export type BillingMe = {
   premium: boolean
   premiumPlus: boolean
   verified: boolean
+  /** Where the active premium entitlement originates. */
+  source: BillingSource
   subscriptionStatus: string | null
   cancelAtPeriodEnd: boolean
   /** When the current Stripe billing period ends (null if no active Stripe sub). */
   currentPeriodEnd: string | null
-  /** Latest access expiry across Stripe + active grants. */
+  /** Apple IAP subscription expiry (null if no active Apple sub). */
+  appleExpiresAt: string | null
+  /** Latest access expiry across Stripe + Apple + active grants. */
   effectiveExpiresAt: string | null
   /** Active (non-expired, non-revoked) subscription grants. */
   grants: ActiveSubscriptionGrant[]
