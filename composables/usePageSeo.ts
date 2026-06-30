@@ -71,7 +71,7 @@ export function usePageSeo(options: PageSeoOptions = {}) {
   })
  
   // Default to dark/black logo for social previews unless a page overrides it.
-  const image = computed(() => toAbsoluteUrl(unref(options.image) || '/images/logo-black-bg.png'))
+  const image = computed(() => toAbsoluteUrl(unref(options.image) || '/images/logo-black-bg-small.png'))
   const imageAlt = computed(() => (unref(options.imageAlt) || `${siteConfig.name} logo`).slice(0, 200))
   const twitterCard = computed(() => unref(options.twitterCard) || 'summary_large_image')
   const robots = computed(() =>
@@ -151,7 +151,7 @@ export function usePageSeo(options: PageSeoOptions = {}) {
           description: siteConfig.meta.description,
           logo: {
             '@type': 'ImageObject',
-            url: toAbsoluteUrl('/images/logo-black-bg.png'),
+            url: toAbsoluteUrl('/images/logo-black-bg-small.png'),
             width: 512,
             height: 512,
           },

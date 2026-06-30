@@ -194,6 +194,7 @@
                 v-model="rightRailSearchQuery"
                 class="w-full h-11 !rounded-full moh-focus"
                 placeholder="Search…"
+                aria-label="Search"
                 @keydown.enter="goToExploreSearch"
               />
             </IconField>

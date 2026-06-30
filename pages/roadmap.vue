@@ -207,7 +207,7 @@ usePageSeo({
   description: roadmapMetaDescription,
   canonicalPath,
   ogType: 'website',
-  image: '/images/logo-black-bg.png',
+  image: '/images/logo-black-bg-small.png',
   jsonLdGraph: [roadmapJsonLd],
 })
 

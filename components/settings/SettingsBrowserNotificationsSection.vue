@@ -14,6 +14,8 @@ defineProps<{
   pushErrorMessage: string | null
   pushTestMessage: string | null
 }>()
+
+const iosAppLink = useIosAppLink()
 </script>
 
 <template>
@@ -38,7 +40,20 @@ defineProps<{
     </div>
     <div v-else class="flex flex-col items-start gap-3">
       <div v-if="pushRequiresInstall" class="text-sm text-gray-600 dark:text-gray-400">
-        On iOS Safari, install this site to your Home Screen to enable notifications. Tap Share → Add to Home Screen, then reopen the app.
+        <template v-if="iosAppLink.isConfigured">
+          iOS Safari can't send push notifications directly.
+          <a
+            :href="iosAppLink.url"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="font-medium underline"
+            @click="iosAppLink.trackClick('settings')"
+          >Get the app</a>
+          for notifications, or install this site to your Home Screen (Tap Share → Add to Home Screen, then reopen) as a fallback.
+        </template>
+        <template v-else>
+          On iOS Safari, install this site to your Home Screen to enable notifications. Tap Share → Add to Home Screen, then reopen the app.
+        </template>
       </div>
       <div v-if="pushInitialStateChecked" class="flex flex-wrap items-center gap-3">
         <Button

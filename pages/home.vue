@@ -361,7 +361,7 @@ usePageSeo({
   noindex: true,
   ogType: 'website',
   // When sharing /home, always use the Men of Hunger logo (avoid scrapers picking a random in-feed image).
-  image: '/images/logo-black-bg.png',
+  image: '/images/logo-black-bg-small.png',
 })
 
 const homeComposerEl = ref<HTMLElement | null>(null)

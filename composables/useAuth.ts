@@ -1,6 +1,6 @@
 import type { UsersCallback } from '~/composables/usePresence'
 import { useUsersStore } from '~/composables/useUsersStore'
-import { clearAuthClientState } from '~/composables/auth/authState'
+import { bumpAuthGeneration, clearAuthClientState, getAuthGeneration } from '~/composables/auth/authState'
 import { clearMohCacheAll } from '~/composables/useApiClient'
 
 export type AuthUser = {
@@ -50,7 +50,6 @@ export type AuthUser = {
 }
 
 let clientMePromise: Promise<AuthUser | null> | null = null
-let authGeneration = 0
 
 function getErrorStatus(e: unknown): number | null {
   const anyErr = e as any
@@ -150,11 +149,11 @@ export function useAuth() {
   }
 
   async function me(): Promise<AuthUser | null> {
-    const gen = authGeneration
+    const gen = getAuthGeneration()
     try {
       const result = await apiFetch<AuthUser | null>('/auth/me', { method: 'GET' })
       // If auth state was reset while this request was in flight (logout/401), ignore.
-      if (gen !== authGeneration) return null
+      if (gen !== getAuthGeneration()) return null
       apiUnreachable.value = false
       user.value = result.data
       if (result.data?.id) {
@@ -180,7 +179,7 @@ export function useAuth() {
       // Keep an existing authenticated user on transient/non-auth failures (mobile
       // background/wake network flaps are common). A 401 is handled by api client
       // unauthorized flow, which clears auth state explicitly.
-      if (gen === authGeneration) {
+      if (gen === getAuthGeneration()) {
         const status = getErrorStatus(e)
         if (status === 401) {
           user.value = null
@@ -192,7 +191,7 @@ export function useAuth() {
       }
       return user.value
     } finally {
-      if (gen === authGeneration) didAttempt.value = true
+      if (gen === getAuthGeneration()) didAttempt.value = true
     }
   }
 
@@ -233,7 +232,7 @@ export function useAuth() {
   }
 
   function handleUnauthorized() {
-    authGeneration += 1
+    bumpAuthGeneration()
     clientMePromise = null
     clearMohCacheAll()
     clearAuthClientState({ resetViewerCaches: true })
@@ -244,7 +243,7 @@ export function useAuth() {
   }
 
   async function logout() {
-    authGeneration += 1
+    bumpAuthGeneration()
     clientMePromise = null
     const { emitLogout } = usePresence()
     emitLogout()

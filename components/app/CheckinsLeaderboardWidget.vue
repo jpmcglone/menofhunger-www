@@ -4,8 +4,18 @@
       <span class="moh-h2">Streak Leaderboard</span>
     </template>
     <template #content>
-      <div v-if="loading && users.length === 0" class="flex justify-center py-4">
-        <AppLogoLoader compact />
+      <div v-if="loading && users.length === 0" class="space-y-0 animate-pulse" aria-hidden="true">
+        <div v-for="i in 3" :key="i" class="flex items-center gap-2.5 py-2">
+          <div class="h-7 w-7 rounded-lg bg-gray-200 dark:bg-zinc-800 shrink-0" />
+          <div class="flex-1 min-w-0 flex items-center gap-2">
+            <div class="h-8 w-8 rounded-full bg-gray-200 dark:bg-zinc-800 shrink-0" />
+            <div class="h-3 w-24 bg-gray-200 dark:bg-zinc-800 rounded-full" />
+          </div>
+          <div class="shrink-0 space-y-1">
+            <div class="h-3 w-8 bg-gray-200 dark:bg-zinc-800 rounded-full" />
+            <div class="h-2.5 w-12 bg-gray-200 dark:bg-zinc-800 rounded-full" />
+          </div>
+        </div>
       </div>
 
       <div v-else-if="users.length > 0" class="space-y-0">

@@ -84,7 +84,9 @@ export function usePushNotifications() {
       return false
     }
     if (requiresInstall.value) {
-      errorMessage.value = 'Install this site to your Home Screen to enable notifications on iOS Safari.'
+      errorMessage.value = useIosAppLink().isConfigured
+        ? 'Get the app to enable notifications on iOS, or install this site to your Home Screen.'
+        : 'Install this site to your Home Screen to enable notifications on iOS Safari.'
       return false
     }
     if (typeof Notification === 'undefined' || !('PushManager' in self)) {

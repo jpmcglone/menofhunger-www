@@ -20,6 +20,11 @@
       </div>
     </div>
 
+    <!-- Error -->
+    <div v-else-if="error" class="px-4 pb-4 text-sm moh-text-muted">
+      {{ error }}
+    </div>
+
     <!-- Empty -->
     <div v-else-if="articles.length === 0" class="px-4 pb-4 text-sm moh-text-muted">
       No trending articles yet.
@@ -82,14 +87,17 @@
 <script setup lang="ts">
 import type { Article } from '~/types/api'
 import { articleVisibilityBarClass, articleVisibilityHoverClass } from '~/utils/article-visibility'
+import { getApiErrorMessage } from '~/utils/api-error'
 
 const { apiFetchData } = useApiClient()
 
 const articles = ref<Article[]>([])
 const loading = ref(true)
+const error = ref<string | null>(null)
 
 async function refresh() {
   loading.value = true
+  error.value = null
   try {
     const res = await apiFetchData<Article[]>('/articles', {
       query: {
@@ -99,7 +107,8 @@ async function refresh() {
       },
     })
     articles.value = Array.isArray(res) ? res : []
-  } catch {
+  } catch (e: unknown) {
+    error.value = getApiErrorMessage(e) || 'Failed to load trending articles.'
     articles.value = []
   } finally {
     loading.value = false

@@ -67,6 +67,8 @@
                   ? (isActiveNav(item.to) ? 'moh-nav-onlyme-active' : 'moh-nav-onlyme')
                   : ''
               ]"
+              :aria-label="item.label"
+              :aria-current="isActiveNav(item.to) ? 'page' : undefined"
               @click="(e) => onLeftNavClick(item.to, e)"
             >
               <span class="relative flex h-12 w-12 shrink-0 items-center justify-center">
@@ -157,6 +159,9 @@
                 !compact ? 'gap-2' : '',
                 morePopoverOpen || moreNavHasActiveRoute ? 'moh-surface font-bold' : 'font-semibold',
               ]"
+              aria-label="More"
+              :aria-expanded="morePopoverOpen"
+              aria-haspopup="true"
               @click="morePopoverOpen = !morePopoverOpen"
             >
               <span class="relative flex h-12 w-12 shrink-0 items-center justify-center">

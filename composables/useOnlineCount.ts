@@ -14,6 +14,7 @@ export function useOnlineCount(options: { enabled: Ref<boolean> }) {
   const onlineCountPopover = useOnlineCountPopover()
 
   const count = ref<number | null>(null)
+  const recentlyOnlineCount = ref<number | null>(null)
 
   async function refresh() {
     try {
@@ -29,6 +30,11 @@ export function useOnlineCount(options: { enabled: Ref<boolean> }) {
             ? res.data.length
             : null
       count.value = typeof n === 'number' ? Math.max(0, Math.floor(n)) : null
+
+      recentlyOnlineCount.value =
+        typeof res?.pagination?.recentlyOnlineCount === 'number'
+          ? Math.max(0, Math.floor(res.pagination.recentlyOnlineCount))
+          : null
 
       const users = Array.isArray(res?.data) ? res.data : []
       let premiumPlus = 0
@@ -73,5 +79,5 @@ export function useOnlineCount(options: { enabled: Ref<boolean> }) {
     },
   )
 
-  return { count, refresh, onlineCountPopover }
+  return { count, recentlyOnlineCount, refresh, onlineCountPopover }
 }

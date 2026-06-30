@@ -106,6 +106,14 @@
       {{ pollView.totalVoteCount }} vote{{ pollView.totalVoteCount === 1 ? '' : 's' }}
       <span v-if="showResults && endedNow" class="ml-2">· Final results</span>
       <span v-else-if="showResults && pollView.viewerHasVoted" class="ml-2">(Results so far)</span>
+      <button
+        v-else-if="showResults && isAuthed && !viewerIsVerified"
+        type="button"
+        class="ml-2 font-medium underline-offset-2 hover:underline"
+        @click="onVerifyPrompt"
+      >
+        Verify your account to vote
+      </button>
     </div>
   </div>
 </template>
@@ -231,8 +239,11 @@ onBeforeUnmount(() => {
 })
 
 const endedNow = computed(() => Boolean(pollView.value.ended || endedForce.value))
+// Unverified members (and anonymous viewers, once logged in) can never cast a vote — see
+// PollsService.voteOnPoll's verification gate — so show them the read-only results view
+// directly instead of clickable options that just bounce into a "verify" modal on tap.
 const showResults = computed(() =>
-  Boolean(endedNow.value || pollView.value.viewerHasVoted),
+  Boolean(endedNow.value || pollView.value.viewerHasVoted || (isAuthed.value && !viewerIsVerified.value)),
 )
 const voting = ref(false)
 const skipping = ref(false)
@@ -273,6 +284,10 @@ function openOptionImage(e: MouseEvent, optionId: string) {
     .filter(Boolean)
   const idx = Math.max(0, urls.findIndex((u) => u === url))
   viewer.openGalleryFromEvent(e, urls, idx, 'Image', { mediaStartMode: 'fitAnchored' })
+}
+
+function onVerifyPrompt() {
+  showAuthActionModal({ kind: 'verify', action: 'poll' })
 }
 
 async function onVote(optionId: string) {

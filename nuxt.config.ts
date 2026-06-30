@@ -46,6 +46,10 @@ export default defineNuxtConfig({
       facebookAppId: process.env.NUXT_PUBLIC_FACEBOOK_APP_ID || '',
       posthogKey: (process.env.NUXT_PUBLIC_POSTHOG_KEY || '').trim(),
       posthogHost: (process.env.NUXT_PUBLIC_POSTHOG_HOST || 'https://us.i.posthog.com').trim(),
+      // iOS App Store numeric ID — enables the Smart App Banner (see app.vue) once the app is published.
+      iosAppStoreId: (process.env.NUXT_PUBLIC_IOS_APP_STORE_ID || '').trim(),
+      // Destination for "Get the app" links (App Store or TestFlight URL). Empty hides those links.
+      iosAppUrl: (process.env.NUXT_PUBLIC_IOS_APP_URL || '').trim(),
       adsense: {
         // Keep ads off in local dev to avoid noisy browser "Issues" coming from ad iframes
         // (e.g. Quirks Mode documents injected by the provider). Use ADTEST=true if you need to test.
@@ -118,12 +122,9 @@ export default defineNuxtConfig({
         // Prefer default status bar behavior in iOS standalone.
         { name: 'apple-mobile-web-app-status-bar-style', content: 'default' },
         { name: 'apple-mobile-web-app-title', content: siteConfig.name },
-        // Smart App Banner — prompts iOS Safari users to open in the native app.
-        // Replace XXXXXX with the App Store numeric ID once the app is published.
-        // The `app-argument` passes the current URL so deep links work via the banner.
-        ...(process.env.NUXT_PUBLIC_IOS_APP_STORE_ID
-          ? [{ name: 'apple-itunes-app', content: `app-id=${process.env.NUXT_PUBLIC_IOS_APP_STORE_ID}` }]
-          : []),
+        // Smart App Banner (apple-itunes-app) is set reactively per-route in app.vue —
+        // it needs `app-argument` to carry the current path so the banner deep-links
+        // into the right screen instead of just opening the App Store root.
       ],
       // NOTE: Do NOT inject the AdSense loader into the initial HTML.
       // It can mutate the server-rendered DOM before Vue hydrates, causing hydration mismatches.

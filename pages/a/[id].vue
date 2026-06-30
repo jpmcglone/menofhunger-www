@@ -11,10 +11,17 @@
       <AppLogoLoader />
     </div>
 
-    <!-- Error / not found -->
-    <div v-else-if="!article" class="px-4 py-20 text-center">
+    <!-- Not found (404) -->
+    <div v-else-if="!article && articleIsNotFound" class="px-4 py-20 text-center">
       <p class="text-lg font-semibold text-gray-600 dark:text-zinc-400">Article not found.</p>
       <NuxtLink to="/articles" class="mt-3 inline-block text-sm text-orange-500 hover:underline">Browse articles</NuxtLink>
+    </div>
+
+    <!-- Real load failure (network/5xx) — don't claim the article doesn't exist -->
+    <div v-else-if="!article" class="px-4 py-20 text-center">
+      <p class="text-lg font-semibold text-gray-600 dark:text-zinc-400">Couldn't load this article.</p>
+      <p class="mt-1 text-sm moh-text-muted">{{ getApiErrorMessage(articleError) || 'Please try again.' }}</p>
+      <Button label="Retry" severity="secondary" class="mt-3" @click="refreshArticle()" />
     </div>
 
     <!-- Article -->
@@ -506,6 +513,7 @@ import Menu from 'primevue/menu'
 import type { Article, ArticleSharePreview } from '~/types/api'
 import { useAutoToggleMenu } from '~/composables/useAutoToggleMenu'
 import { siteConfig } from '~/config/site'
+import { getApiErrorMessage } from '~/utils/api-error'
 
 definePageMeta({ layout: 'app', hideTopBar: true })
 
@@ -573,10 +581,18 @@ function onArticleBodyClick(e: MouseEvent) {
   void openLightbox({ currentTarget: img } as unknown as MouseEvent, src, img.alt || '', 'media')
 }
 
-const { data: article, pending } = useAsyncData<Article>(
+const { data: article, pending, error: articleError, refresh: refreshArticle } = useAsyncData<Article>(
   `article-${id.value}`,
   () => apiFetchData<Article>(`/articles/${id.value}`),
 )
+
+// Distinguish "not found" (404) from real load failures (network/5xx) so we don't
+// tell the user an article doesn't exist when the server/network is actually the problem.
+const articleErrorStatus = computed(() => {
+  const err = articleError.value as { statusCode?: number; status?: number; response?: { status?: number } } | null
+  return Number(err?.statusCode ?? err?.status ?? err?.response?.status ?? 0) || null
+})
+const articleIsNotFound = computed(() => !articleError.value || articleErrorStatus.value === 404)
 
 // SEO / OG
 useArticleSeo(article)

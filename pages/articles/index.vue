@@ -7,7 +7,7 @@
         <button
           v-tooltip.bottom="'Copy RSS feed link'"
           type="button"
-          class="inline-flex items-center justify-center w-8 h-8 rounded-full text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
+          class="inline-flex items-center justify-center w-10 h-10 rounded-full text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
           aria-label="Copy RSS feed link"
           @click="copyArticlesRss"
         >

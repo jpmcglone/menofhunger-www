@@ -76,6 +76,16 @@
             <NuxtLink to="/terms" class="font-semibold text-gray-700 hover:underline dark:text-gray-200">Terms</NuxtLink>
             <NuxtLink to="/feeds" class="font-semibold text-gray-700 hover:underline dark:text-gray-200">RSS</NuxtLink>
             <a
+              v-if="iosAppLink.isConfigured"
+              :href="iosAppLink.url"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="font-semibold text-gray-700 hover:underline dark:text-gray-200"
+              @click="iosAppLink.trackClick('footer')"
+            >
+              Get the app
+            </a>
+            <a
               :href="siteConfig.social.xUrl"
               target="_blank"
               rel="noopener noreferrer"
@@ -99,6 +109,7 @@ import { primaryTintCssForUser } from '~/utils/theme-tint'
 
 const { isAuthed, user } = useAuth()
 const currentYear = new Date().getUTCFullYear()
+const iosAppLink = useIosAppLink()
 
 const primaryCssVars = computed(() => primaryTintCssForUser(user.value ?? null))
 useHead({

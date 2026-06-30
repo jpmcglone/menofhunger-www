@@ -790,6 +790,7 @@ const colorMode = useColorMode()
 const router = useRouter()
 const { apiFetch, apiFetchData } = useApiClient()
 const { isAuthed, user: authUser, isVerified, isPremium } = useAuth()
+const toast = useAppToast()
 // Check-ins (feed, streaks, leaderboard) are verified-only; premium counts as verified.
 const canAccessCheckins = computed(() => isVerified.value || isPremium.value)
 const openComposer = inject(MOH_OPEN_COMPOSER_KEY, null)
@@ -890,8 +891,8 @@ async function joinExploreGroup(g: CommunityGroupShell) {
     await apiFetch(`/groups/${encodeURIComponent(id)}/join`, { method: 'POST', body: {} })
     void refreshDiscover()
     if (isSearching.value) void fetchPage({ append: false })
-  } catch {
-    // soft-fail; card still links to group
+  } catch (e: unknown) {
+    toast.pushError(e, 'Could not join group.')
   } finally {
     joinExploreGroupId.value = null
   }

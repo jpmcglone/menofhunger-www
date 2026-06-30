@@ -603,7 +603,7 @@ async function onGroupShellUpdated(_next: CommunityGroupShell) {
 const seoImage = computed(() => {
   const avatar = shell.value?.avatarImageUrl
   const cover = shell.value?.coverImageUrl
-  return avatar || cover || '/images/logo-black-bg.png'
+  return avatar || cover || '/images/logo-black-bg-small.png'
 })
 
 const seoDescription = computed(() => {

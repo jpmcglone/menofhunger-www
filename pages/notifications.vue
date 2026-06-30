@@ -27,6 +27,7 @@
             :class="activeKind === chip.kind
               ? 'bg-gray-900 text-white dark:bg-white dark:text-gray-900'
               : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-zinc-800 dark:text-gray-400 dark:hover:bg-zinc-700'"
+            :aria-pressed="activeKind === chip.kind"
             @click="onChipSelect(chip.kind)"
           >
             <span

@@ -4,7 +4,7 @@ import { siteConfig } from '~/config/site'
 import { safeUrlHostname } from '~/utils/link-utils'
 import { excerpt, gatedPostBodyPreview, normalizeForMeta } from '~/utils/text'
 
-export const POST_PERMALINK_LOGO_OG = '/images/logo-black-bg.png'
+export const POST_PERMALINK_LOGO_OG = '/images/logo-black-bg-small.png'
 const DESC_PUBLIC_MAX = 280
 const TITLE_SNIP = 72
 // When the post belongs to a community group we suffix the title with `· {group}`.

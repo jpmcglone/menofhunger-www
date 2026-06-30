@@ -5,6 +5,25 @@
  * - Must not depend on `useApiClient()` (to avoid circular deps).
  * - Safe to call on server (it will just touch per-request Nuxt state).
  */
+
+// Module-level "auth epoch" counter. Both useAuth() and useApiClient() bump this
+// whenever they clear auth state client-side (401, logout, ban). In-flight
+// /auth/me calls compare their captured generation against the current one before
+// writing `user.value`, so a request that started before a 401-triggered clear
+// can never resurrect stale auth state after the clear has already happened.
+// Lives here (not in useAuth.ts) so useApiClient.ts can bump it without a
+// circular import.
+let authGeneration = 0
+
+export function getAuthGeneration(): number {
+  return authGeneration
+}
+
+export function bumpAuthGeneration(): number {
+  authGeneration += 1
+  return authGeneration
+}
+
 export function clearAuthClientState(params?: { resetViewerCaches?: boolean }) {
   const resetViewerCaches = params?.resetViewerCaches ?? true
   const prevUser = useState<any>('auth-user', () => null).value

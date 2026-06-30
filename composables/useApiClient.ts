@@ -1,5 +1,5 @@
 import type { ApiEnvelope } from '~/types/api'
-import { clearAuthClientState } from '~/composables/auth/authState'
+import { bumpAuthGeneration, clearAuthClientState } from '~/composables/auth/authState'
 import { joinUrl } from '~/utils/url'
 import { isAdminPath, isArticlePermalinkPath, isLoggedOutAllowedPath, isPostPermalinkPath, isPublicPath, isSpacePermalinkPath, isUserProfilePath } from '~/config/routes'
 
@@ -165,6 +165,10 @@ export function useApiClient() {
   }
 
   function handleUnauthorizedClientSide(opts?: { banned?: boolean }) {
+    // Bump the shared auth epoch first so any /auth/me call already in flight
+    // (started before this 401 landed) discards its result instead of
+    // re-writing `user.value` right after we clear it below.
+    bumpAuthGeneration()
     clearMohCacheAll()
     clearAuthClientState({ resetViewerCaches: true })
     if (!import.meta.client) return

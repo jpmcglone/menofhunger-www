@@ -25,6 +25,11 @@ export type ApiPagination = {
   } | null
   /** Total online users — only populated by /presence/online and /presence/online-page. */
   totalOnline?: number
+  /**
+   * Count of users active within the last hour who aren't currently online.
+   * Only populated by /presence/online.
+   */
+  recentlyOnlineCount?: number
 }
 
 /** Extended pagination shape for /presence/online-page which also returns a recent-users cursor. */

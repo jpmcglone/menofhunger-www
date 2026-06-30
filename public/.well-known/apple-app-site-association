@@ -10,7 +10,11 @@
           { "/": "/topics/*", "comment": "Topic feeds" },
           { "/": "/explore", "comment": "Explore tab" },
           { "/": "/notifications", "comment": "Notifications tab" },
-          { "/": "/bookmarks", "comment": "Bookmarks tab" }
+          { "/": "/bookmarks", "comment": "Bookmarks tab" },
+          { "/": "/home", "comment": "Home tab (web 'Open app' button links here)" },
+          { "/": "/a/*", "comment": "Articles — opens in-app authenticated web view" },
+          { "/": "/groups", "comment": "Groups hub — opens in-app authenticated web view" },
+          { "/": "/c/*", "comment": "Crews — opens in-app authenticated web view" }
         ]
       }
     ]

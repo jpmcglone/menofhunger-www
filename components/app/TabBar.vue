@@ -30,6 +30,8 @@
             :to="item.to"
             class="flex h-full w-full flex-col items-center justify-center touch-manipulation transition-transform duration-100 active:scale-[0.98] moh-focus"
             :class="isActive(item.to) ? 'moh-text' : 'moh-text-muted'"
+            :aria-label="item.label"
+            :aria-current="isActive(item.to) ? 'page' : undefined"
             @click="(e) => { haptics.tap(); onNavClick(item.to, e) }"
           >
             <div class="relative h-10 w-10 flex items-center justify-center">

@@ -55,9 +55,9 @@ export function useArticleSeo(article: Ref<Article | null | undefined>) {
   })
 
   const seoImage = computed(() => {
-    if (isRestricted.value) return '/images/logo-black-bg.png'
+    if (isRestricted.value) return '/images/logo-black-bg-small.png'
     const a = article.value
-    if (!a) return '/images/logo-black-bg.png'
+    if (!a) return '/images/logo-black-bg-small.png'
     const thumb = (a.thumbnailUrl ?? '').trim()
     if (thumb) return thumb
     const avatar = (a.author?.avatarUrl ?? '').trim()

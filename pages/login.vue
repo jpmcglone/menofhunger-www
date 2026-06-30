@@ -111,6 +111,10 @@
           </div>
 
           <div class="space-y-3">
+          <AppInlineAlert v-if="codeAlreadyPending" severity="info">
+            We already texted you a code a moment ago — check your messages.
+          </AppInlineAlert>
+
           <div class="flex items-center gap-2">
             <InputText
               ref="codeInputRef"
@@ -309,6 +313,9 @@ onMounted(() => {
 
 const resendRemainingSeconds = ref(0)
 let resendTimer: ReturnType<typeof setInterval> | null = null
+// True when /auth/phone/start reused an already-pending code instead of sending a new text
+// (resend cooldown is shared by phone number across devices/tabs/apps).
+const codeAlreadyPending = ref(false)
 
 function startResendCountdown(seconds: number) {
   resendRemainingSeconds.value = Math.max(0, Math.floor(seconds))
@@ -338,6 +345,7 @@ function resetToPhone() {
   introError.value = null
   introContinuing.value = false
   verifying.value = false
+  codeAlreadyPending.value = false
   startResendCountdown(0)
 }
 
@@ -349,7 +357,7 @@ function closeIntro() {
 }
 
 async function startOtp(phone: string) {
-  const result = await apiFetchData<{ retryAfterSeconds: number }>('/auth/phone/start', {
+  const result = await apiFetchData<{ sent: boolean; retryAfterSeconds: number }>('/auth/phone/start', {
     method: 'POST',
     body: { phone }
   })
@@ -360,6 +368,10 @@ async function startOtp(phone: string) {
   phoneCommittedNormalized.value = phone
   step.value = 'code'
   codeInput.value = ''
+  // A code can already be pending for this phone (e.g. requested moments ago from
+  // another device/tab/app) — the resend cooldown is shared by phone number, not
+  // per-session. In that case no new text was sent, so say so instead of implying one was.
+  codeAlreadyPending.value = result.sent === false
 
   startResendCountdown(result.retryAfterSeconds ?? 30)
 }

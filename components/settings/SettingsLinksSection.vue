@@ -1,6 +1,17 @@
 <template>
   <div class="space-y-4">
     <div class="flex flex-col gap-3">
+      <a
+        v-if="iosAppLink.isConfigured"
+        :href="iosAppLink.url"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="inline-flex items-center gap-3 text-gray-800 hover:underline dark:text-gray-200"
+        @click="iosAppLink.trackClick('settings')"
+      >
+        <Icon name="tabler:device-mobile" class="text-gray-500 dark:text-gray-400" aria-hidden="true" />
+        <span class="font-medium">Get the app</span>
+      </a>
       <NuxtLink to="/about" class="inline-flex items-center gap-3 text-gray-800 hover:underline dark:text-gray-200">
         <Icon name="tabler:info-circle" class="text-gray-500 dark:text-gray-400" aria-hidden="true" />
         <span class="font-medium">About</span>
@@ -31,5 +42,6 @@
 
 <script setup lang="ts">
 const { requestLogout } = useUserMenu()
+const iosAppLink = useIosAppLink()
 </script>
 

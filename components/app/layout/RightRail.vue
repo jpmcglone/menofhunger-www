@@ -90,6 +90,12 @@
                     <AppAnimatedCount :value="onlineCount" />
                   </span>
                   <span class="moh-text-muted">online</span>
+                  <span
+                    v-if="typeof recentlyOnlineCount === 'number' && recentlyOnlineCount > 0"
+                    class="text-gray-400 dark:text-zinc-500"
+                  >
+                    (+{{ recentlyOnlineCount }} recently)
+                  </span>
                 </template>
                 <template v-else>
                   <span class="moh-text-muted">Online</span>
@@ -279,7 +285,7 @@ const {
   defaultLimit: 4,
 })
 
-const { count: onlineCount, onlineCountPopover } = useOnlineCount({
+const { count: onlineCount, recentlyOnlineCount, onlineCountPopover } = useOnlineCount({
   enabled: computed(() => !props.forcedHidden),
 })
 
