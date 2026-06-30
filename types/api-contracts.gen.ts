@@ -466,16 +466,32 @@ export type ActiveSubscriptionGrantDto = {
   reason: string | null;
 };
 
+/**
+ * Where the user's premium entitlement comes from.
+ * - 'stripe' — paid via Stripe (web/desktop checkout)
+ * - 'apple'  — paid via Apple IAP (StoreKit 2)
+ * - 'grant'  — admin or referral grant
+ * - null     — not premium
+ *
+ * Clients use this to show/hide the correct purchase CTA:
+ * iOS should disable the Stripe flow if source == 'stripe', and vice versa on web.
+ */
+export type BillingSource = 'stripe' | 'apple' | 'grant' | null;
+
 export type BillingMeDto = {
   premium: boolean;
   premiumPlus: boolean;
   verified: boolean;
+  /** Where the active premium entitlement originates (see BillingSource). */
+  source: BillingSource;
   /** Stripe subscription status (when known). */
   subscriptionStatus: string | null;
   cancelAtPeriodEnd: boolean;
   /** When the current Stripe billing period ends (null if no active Stripe sub). */
   currentPeriodEnd: string | null;
-  /** Latest access expiry across Stripe + active grants. */
+  /** Apple IAP subscription expiry (null if no active Apple sub). */
+  appleExpiresAt: string | null;
+  /** Latest access expiry across Stripe + Apple + active grants. */
   effectiveExpiresAt: string | null;
   /** Active (non-expired, non-revoked) subscription grants. */
   grants: ActiveSubscriptionGrantDto[];
@@ -610,7 +626,10 @@ export type CommunityGroupShellDto = {
   pendingMemberCount?: number;
   /** Number of pending outbound invites issued for this group. Only populated for owners and moderators. */
   pendingInviteCount?: number;
-  /** Marv bot membership status. Only populated on getShellBySlug; null when Marv is not configured. */
+  /**
+   * Marv bot membership status for this group. Only populated on the full shell
+   * (getShellBySlug); null when Marv is not configured on this server.
+   */
   marv?: { userId: string; username: string | null; isMember: boolean } | null;
 };
 
@@ -1253,6 +1272,12 @@ export type OnlineUserDto = UserListDto & {
    * the row with a small "bot" badge.
    */
   isBot?: boolean;
+  /**
+   * Deduped list of client platforms this user is currently connected from,
+   * ordered by most-recent connection (e.g. ['ios', 'web']). Empty when the user
+   * is tracked only via Redis and the in-memory service has no sockets on this instance.
+   */
+  platforms?: string[];
 };
 
 export type RecentlyOnlineUserDto = UserListDto & {
