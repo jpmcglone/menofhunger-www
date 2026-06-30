@@ -335,7 +335,7 @@
           </NuxtLink>
         </div>
 
-        <!-- Not answered: single primary action. Logged-out users go to login wall. -->
+        <!-- Not answered: primary action + secondary "see today's answers" link. -->
         <div v-else class="mt-3 flex flex-wrap items-center gap-2">
           <Button
             v-if="!isAuthed"
@@ -364,6 +364,14 @@
           >
             Verify your account to answer today's question.
           </p>
+          <NuxtLink
+            v-if="isAuthed && canAnswer"
+            :to="`/check-ins/day/${props.state?.dayKey ?? etDayKey}`"
+            class="inline-flex items-center gap-1.5 text-sm moh-text-muted hover:moh-text transition-colors"
+          >
+            See today's answers
+            <Icon name="tabler:arrow-right" size="14" aria-hidden="true" />
+          </NuxtLink>
         </div>
 
         <!-- Social proof footer: facepile + count line, OR crew status row. Always present (never

@@ -140,13 +140,16 @@ export function useAppLayoutComposer(opts: UseAppLayoutComposerOptions) {
     { immediate: true },
   )
 
+  // Ascending exclusivity rank: public(0) < verifiedOnly(1) < premiumOnly(2) < onlyMe(3).
+  const VISIBILITY_RANK: Record<PostVisibility, number> = { public: 0, verifiedOnly: 1, premiumOnly: 2, onlyMe: 3 }
+
   const composerLockedVisibility = computed<PostVisibility | null>(() => {
     if (composerIsFromOnlyMe.value) return null
     if (composerIsGroupMode.value) return 'public'
     if (!viewerIsVerified.value) return 'onlyMe'
     if (isOnlyMePage.value) return 'onlyMe'
-    // Quote-reposts are locked to the original post's visibility.
-    if (composerQuotedPost.value?.visibility) return composerQuotedPost.value.visibility as PostVisibility
+    // Only lock when quoting an onlyMe post — private content can't be broadcast.
+    if (composerQuotedPost.value?.visibility === 'onlyMe') return 'onlyMe'
     return null
   })
 
@@ -156,8 +159,14 @@ export function useAppLayoutComposer(opts: UseAppLayoutComposerOptions) {
     if (composerIsFromOnlyMe.value) return ['public', 'verifiedOnly', 'premiumOnly']
     if (!viewerIsVerified.value) return ['onlyMe']
     if (isOnlyMePage.value) return ['onlyMe']
-    // Left-nav/FAB modal composer: never allow Only me outside the Only me screen.
-    return ['public', 'verifiedOnly', 'premiumOnly']
+    const base: PostVisibility[] = ['public', 'verifiedOnly', 'premiumOnly']
+    // Quote floor: the picker only offers tiers >= the quoted post's tier (never more open).
+    const quotedVis = composerQuotedPost.value?.visibility as PostVisibility | undefined
+    if (quotedVis && quotedVis !== 'onlyMe') {
+      const floorRank = VISIBILITY_RANK[quotedVis] ?? 0
+      return base.filter(v => (VISIBILITY_RANK[v] ?? 0) >= floorRank)
+    }
+    return base
   })
   const composerCreatePost = computed<ComposerCreatePostFn | null>(() => {
     if (composerCustomCreatePost.value) return composerCustomCreatePost.value
@@ -241,6 +250,10 @@ export function useAppLayoutComposer(opts: UseAppLayoutComposerOptions) {
           ? (composerNonOnlyMeVisibility.value ?? 'public')
           : visibility
       composerVisibility.value = next
+    } else if (options?.quotedPost?.visibility && options.quotedPost.visibility !== 'onlyMe') {
+      // Default the composer to the quoted post's tier so the user starts equal to the quote.
+      const qv = options.quotedPost.visibility as PostVisibility
+      composerVisibility.value = qv
     }
     composerInitialText.value = (nextInitialText ?? (options?.quotedPost ? null : defaultComposerInitialTextForRoute())) || null
     composerModalOpen.value = true
