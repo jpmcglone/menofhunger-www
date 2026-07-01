@@ -360,7 +360,6 @@
             v-if="showExploreCheckinCard"
             :prompt="displayCheckinPromptText"
             :streak="displayCheckinStreak"
-            :coins="displayCheckinCoins"
             :has-checked-in-today="hasCheckedInToday"
             :error="checkinError"
             @check-in="openCheckinComposer"
@@ -937,7 +936,6 @@ const checkinPromptText = computed(() => {
 
 const displayCheckinPromptText = computed(() => (hydrated.value ? checkinPromptText.value : 'Write a check-in…'))
 const displayCheckinStreak = computed(() => (hydrated.value ? (checkinState.value?.checkinStreakDays ?? 0) : 0))
-const displayCheckinCoins = computed(() => (hydrated.value ? (checkinState.value?.coins ?? 0) : 0))
 
 // Verify-CTA prompt: unverified users never load /checkins/today, so derive today's
 // question client-side (deterministic, mirrors the API) for the CTA headline.

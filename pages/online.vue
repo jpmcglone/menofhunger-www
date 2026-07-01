@@ -38,14 +38,14 @@
       <AppUserRow v-for="u in users" :key="u.id" :user="u" :show-follow-button="true" :platforms="u.platforms" />
     </TransitionGroup>
 
-    <!-- Recently online (verified viewers only) -->
+    <!-- Recently / older online (verified viewers only) -->
     <template v-if="viewerCanSeeLastOnline">
       <div class="px-4 pt-8 pb-2">
         <h2 class="text-base font-bold tracking-tight text-gray-900 dark:text-gray-50">
-          Recently around
+          Recently
         </h2>
         <p class="mt-1 text-sm text-gray-600 dark:text-gray-300">
-          Men who were around recently.
+          Men who were online within the last hour.
         </p>
       </div>
 
@@ -63,19 +63,50 @@
         No one recently around.
       </div>
 
-      <TransitionGroup
-        v-else
-        name="online-users-list"
-        tag="div"
-        class="divide-y divide-gray-200 dark:divide-zinc-800 transition-opacity duration-150"
-      >
-        <AppUserRow
-          v-for="u in recentUsers"
-          :key="u.id"
-          :user="u"
-          :show-follow-button="true"
-          :name-meta="recentLastOnlineLabel(u.lastOnlineAt)"
-        />
+      <template v-else>
+        <TransitionGroup
+          v-if="recentlyOnlineUsers.length"
+          name="online-users-list"
+          tag="div"
+          class="divide-y divide-gray-200 dark:divide-zinc-800 transition-opacity duration-150"
+        >
+          <AppUserRow
+            v-for="u in recentlyOnlineUsers"
+            :key="u.id"
+            :user="u"
+            :show-follow-button="true"
+            :name-meta="recentLastOnlineLabel(u.lastOnlineAt)"
+          />
+        </TransitionGroup>
+
+        <div v-else class="px-4 py-6 text-sm text-gray-500 dark:text-gray-400">
+          No one in the last hour.
+        </div>
+
+        <div v-if="olderOnlineUsers.length" class="px-4 pt-8 pb-2">
+          <h2 class="text-base font-bold tracking-tight text-gray-900 dark:text-gray-50">
+            Older
+          </h2>
+          <p class="mt-1 text-sm text-gray-600 dark:text-gray-300">
+            Men who were around earlier.
+          </p>
+        </div>
+
+        <TransitionGroup
+          v-if="olderOnlineUsers.length"
+          name="online-users-list"
+          tag="div"
+          class="divide-y divide-gray-200 dark:divide-zinc-800 transition-opacity duration-150"
+        >
+          <AppUserRow
+            v-for="u in olderOnlineUsers"
+            :key="u.id"
+            :user="u"
+            :show-follow-button="true"
+            :name-meta="recentLastOnlineLabel(u.lastOnlineAt)"
+          />
+        </TransitionGroup>
+
         <div class="py-4 flex justify-center">
           <Button
             v-if="recentNextCursor"
@@ -87,7 +118,7 @@
             @click="loadMoreRecent"
           />
         </div>
-      </TransitionGroup>
+      </template>
     </template>
   </div>
   </AppPageContent>
@@ -142,6 +173,22 @@ const nuxtApp = useNuxtApp()
 const { user: authUser } = useAuth()
 const { nowMs } = useNowTicker({ everyMs: 15_000 })
 const viewerCanSeeLastOnline = computed(() => Boolean(authUser.value))
+const RECENTLY_ONLINE_MS = 60 * 60 * 1000
+
+function lastOnlineMs(lastOnlineAt: string | null): number | null {
+  if (!lastOnlineAt) return null
+  const value = Date.parse(lastOnlineAt)
+  return Number.isFinite(value) ? value : null
+}
+
+function isRecentlyOnline(user: RecentlyOnlineUser) {
+  const value = lastOnlineMs(user.lastOnlineAt)
+  if (value == null) return false
+  return nowMs.value - value <= RECENTLY_ONLINE_MS
+}
+
+const recentlyOnlineUsers = computed(() => recentUsers.value.filter(isRecentlyOnline))
+const olderOnlineUsers = computed(() => recentUsers.value.filter((u) => !isRecentlyOnline(u)))
 
 function recentLastOnlineLabel(lastOnlineAt: string | null) {
   if (!viewerCanSeeLastOnline.value) return null

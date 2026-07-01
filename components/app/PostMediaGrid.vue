@@ -30,7 +30,6 @@
         aria-label="Video"
         @contextmenu.prevent
         @play="onSingleVideoPlay"
-        @pause="onSingleVideoPause"
         @volumechange="onSingleVideoVolumeChange"
       />
       <!-- Non-interactive: poster/thumbnail only -->
@@ -257,11 +256,6 @@ function formatDuration(seconds: number): string {
 
 function onSingleVideoPlay() {
   if (props.postId) videoManager.activate(props.postId)
-}
-
-function onSingleVideoPause() {
-  // When user pauses, treat as mute preference so other players stay muted.
-  appWideSoundOn.value = false
 }
 
 function onSingleVideoVolumeChange() {

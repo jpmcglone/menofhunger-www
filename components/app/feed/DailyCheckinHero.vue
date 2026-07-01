@@ -22,13 +22,6 @@
             <Icon name="tabler:calendar-check" size="11" aria-hidden="true" />
             Today's question
           </span>
-          <span
-            v-if="displayCoins > 0"
-            class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold tabular-nums moh-text-muted moh-surface-2"
-          >
-            <Icon name="tabler:coin" size="12" class="text-[var(--moh-brass)]" aria-hidden="true" />
-            {{ displayCoins.toLocaleString() }}
-          </span>
         </div>
 
         <h1
@@ -108,13 +101,6 @@
             <span class="text-[10px] font-semibold uppercase tracking-wide moh-text-muted">
               {{ compactLabel }}
             </span>
-            <span
-              v-if="displayCoins > 0"
-              class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold tabular-nums moh-text-muted moh-surface-2 shrink-0"
-            >
-              <Icon name="tabler:coin" size="12" class="text-[var(--moh-brass)]" aria-hidden="true" />
-              {{ displayCoins.toLocaleString() }}
-            </span>
             <NuxtLink
               v-if="crew && effectiveCrewStreak > 0"
               :to="crewHref"
@@ -151,39 +137,6 @@
             "{{ myCheckinSnippet }}"
           </p>
 
-          <!-- Compact social proof: tiny crew dots OR mini facepile + one-liner. -->
-          <div class="mt-2 flex items-center gap-2 min-w-0">
-            <div v-if="crew" class="flex items-center gap-1 shrink-0" aria-hidden="true">
-              <span
-                v-for="m in crewMembers"
-                :key="m.userId"
-                class="h-2 w-2 rounded-full"
-                :class="m.answeredToday ? 'bg-[var(--moh-checkin)]' : 'bg-gray-300 dark:bg-gray-600'"
-                :title="m.answeredToday ? `${m.displayName ?? m.username ?? 'Member'} · answered` : `${m.displayName ?? m.username ?? 'Member'} · waiting`"
-              />
-            </div>
-            <div v-else-if="compactFacepile.length" class="flex -space-x-1.5 shrink-0">
-              <div
-                v-for="(person, idx) in compactFacepile"
-                :key="person.id"
-                class="rounded-full ring-2 ring-[var(--moh-bg)]"
-                :style="{ zIndex: compactFacepile.length - idx }"
-              >
-                <AppAvatarCircle
-                  :src="person.avatarUrl"
-                  :name="person.displayName"
-                  :username="person.username"
-                  size-class="h-5 w-5"
-                  :show-presence="false"
-                />
-              </div>
-            </div>
-            <NuxtLink
-              :to="`/check-ins/day/${props.state?.dayKey ?? etDayKey}`"
-              class="text-xs moh-text-muted truncate min-w-0 flex-1 hover:underline relative z-10"
-              @click.stop
-            >{{ compactSocialProofLine }}</NuxtLink>
-          </div>
         </div>
       </div>
 
@@ -280,13 +233,6 @@
             <Icon name="tabler:calendar-check" size="11" aria-hidden="true" />
             {{ headerLabel }}
           </span>
-          <span
-            v-if="displayCoins > 0"
-            class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold tabular-nums moh-text-muted moh-surface-2"
-          >
-            <Icon name="tabler:coin" size="12" class="text-[var(--moh-brass)]" aria-hidden="true" />
-            {{ displayCoins.toLocaleString() }}
-          </span>
           <!-- Crew streak pill (preferred when in a crew); falls back to personal streak otherwise. -->
           <NuxtLink
             v-if="crew && effectiveCrewStreak > 0"
@@ -373,61 +319,6 @@
             <Icon name="tabler:arrow-right" size="14" aria-hidden="true" />
           </NuxtLink>
         </div>
-
-        <!-- Social proof footer: facepile + count line, OR crew status row. Always present (never
-             collapses) so the hero stays the same height before/after answering. -->
-        <div v-if="crew" class="mt-3">
-          <div class="flex items-center gap-2 min-w-0">
-            <div class="flex items-center gap-1.5 shrink-0">
-              <div
-                v-for="m in crewMembers"
-                :key="m.userId"
-                class="relative"
-                :title="m.answeredToday ? `${m.displayName ?? m.username ?? 'Member'} · answered` : `${m.displayName ?? m.username ?? 'Member'} · waiting`"
-              >
-                <AppAvatarCircle
-                  :src="m.avatarUrl"
-                  :name="m.displayName"
-                  :username="m.username"
-                  size-class="h-6 w-6"
-                  :show-presence="false"
-                  :class="m.answeredToday ? '' : 'opacity-40 grayscale'"
-                />
-                <span
-                  v-if="m.answeredToday"
-                  class="absolute -bottom-0.5 -right-0.5 inline-flex h-3 w-3 items-center justify-center rounded-full bg-[var(--moh-checkin)] ring-2 ring-[var(--moh-bg)]"
-                  aria-hidden="true"
-                >
-                  <Icon name="tabler:check" size="8" class="text-white" />
-                </span>
-              </div>
-            </div>
-            <p class="text-xs moh-text-muted truncate min-w-0 flex-1">
-              {{ crewStatusLine }}
-            </p>
-          </div>
-        </div>
-        <div v-else class="mt-3 flex items-center gap-2 min-w-0">
-          <div v-if="facepile.length" class="flex -space-x-1.5 shrink-0">
-            <div
-              v-for="(person, idx) in facepile"
-              :key="person.id"
-              class="rounded-full ring-2 ring-[var(--moh-bg)]"
-              :style="{ zIndex: facepile.length - idx }"
-            >
-              <AppAvatarCircle
-                :src="person.avatarUrl"
-                :name="person.displayName"
-                :username="person.username"
-                size-class="h-6 w-6"
-                :show-presence="false"
-              />
-            </div>
-          </div>
-          <p class="text-xs moh-text-muted truncate min-w-0 flex-1">
-            {{ socialProofLine }}
-          </p>
-        </div>
       </div>
     </div>
   </section>
@@ -435,12 +326,10 @@
 
 <script setup lang="ts">
 import type {
-  CheckinAnswerer,
   CheckinAllowedVisibility,
   CheckinCrewBlock,
   CheckinCrewMemberStatus,
   PostVisibility,
-  WsCheckinAnsweredTodayPayload,
 } from '~/types/api'
 import type { WsCrewStreakAdvancedPayload, WsCrewStreakBrokenPayload } from '~/composables/usePresence'
 import { MOH_OPEN_COMPOSER_KEY } from '~/utils/injection-keys'
@@ -454,19 +343,11 @@ const props = defineProps<{
     prompt?: string
     hasCheckedInToday?: boolean
     checkinStreakDays?: number
-    coins?: number
     allowedVisibilities?: CheckinAllowedVisibility[]
     crew?: CheckinCrewBlock | null
-    socialProof?: {
-      dayKey: string
-      totalToday: number
-      recentAnswerers: CheckinAnswerer[]
-    } | null
   } | null
   /** Last submitted check-in body for the "you answered" echo. Optional. */
   myCheckinBody?: string | null
-  /** Hydrated coin balance from parent (mirrors state.coins once loaded). */
-  coins?: number
   /** Whether the viewer can actually create a check-in (verified+). */
   canAnswer?: boolean
   /** Open the inline composer — owned by the parent page so we don't dictate UX. */
@@ -502,13 +383,11 @@ const props = defineProps<{
 }>()
 
 const { isAuthed } = useAuth()
-const { addCheckinsCallback, removeCheckinsCallback, addCrewCallback, removeCrewCallback } = usePresence()
+const { addCrewCallback, removeCrewCallback } = usePresence()
 const { dayKey: etDayKey } = useEasternMidnightRollover()
 const _openComposer = inject(MOH_OPEN_COMPOSER_KEY, null) // referenced for parity; parent owns onAnswer
 
 const answering = ref(false)
-const totalToday = ref(0)
-const recentAnswerers = ref<CheckinAnswerer[]>([])
 
 // Local mirrors of crew streak state so realtime updates don't have to wait for
 // the parent page to re-fetch /checkins/today. Falls back to the prop value.
@@ -521,13 +400,6 @@ const crewMembers = computed<CheckinCrewMemberStatus[]>(() => crew.value?.member
 const crewAnsweredCount = computed(() => crewMembers.value.filter((m) => m.answeredToday).length)
 const crewMemberCount = computed(() => crewMembers.value.length)
 const crewAllAnswered = computed(() => crewMemberCount.value > 0 && crewAnsweredCount.value === crewMemberCount.value)
-const crewMissingCount = computed(() => Math.max(0, crewMemberCount.value - crewAnsweredCount.value))
-const crewAnsweredNames = computed(() =>
-  crewMembers.value
-    .filter((m) => m.answeredToday)
-    .map((m) => displayCrewMemberName(m))
-    .filter(Boolean),
-)
 
 const effectiveCrewStreak = computed(() => {
   if (localCrewStreak.value != null) return localCrewStreak.value
@@ -547,50 +419,8 @@ const promptText = computed(() => {
   return p || "How are you doing today?"
 })
 
-const displayCoins = computed(() =>
-  Math.max(0, Number(props.coins ?? props.state?.coins ?? 0) || 0),
-)
-
 const headerLabel = computed(() => (crew.value ? "Your crew's question today" : "Today's question"))
 const crewHref = computed(() => (crew.value ? `/c/${crew.value.slug}` : '/c'))
-
-function displayCrewMemberName(member: CheckinCrewMemberStatus): string {
-  return (member.displayName ?? member.username ?? 'A member').trim()
-}
-
-function formatCrewNames(names: string[], max = 2): string {
-  const cleaned = names.map((n) => n.trim()).filter(Boolean)
-  if (cleaned.length === 0) return ''
-  if (cleaned.length === 1) return cleaned[0]!
-  if (cleaned.length === 2) return `${cleaned[0]} and ${cleaned[1]}`
-  const visible = cleaned.slice(0, max)
-  const others = cleaned.length - visible.length
-  if (visible.length === 1) return `${visible[0]} and ${others} other${others === 1 ? '' : 's'}`
-  return `${visible[0]}, ${visible[1]}, and ${others} other${others === 1 ? '' : 's'}`
-}
-
-function missingCrewSuffix(missing: number): string {
-  if (missing <= 0) return "Everyone's in."
-  return `${missing} still need${missing === 1 ? 's' : ''} to check in.`
-}
-
-const crewStatusLine = computed(() => {
-  const total = crewMemberCount.value
-  if (total === 0) return ''
-  const answered = crewAnsweredCount.value
-  const missing = crewMissingCount.value
-  const answeredNames = formatCrewNames(crewAnsweredNames.value)
-  if (crewAllAnswered.value) {
-    const days = effectiveCrewStreak.value
-    const prefix = answeredNames
-      ? `${answeredNames} from your crew checked in.`
-      : `All ${total} from your crew checked in.`
-    if (days >= 2) return `${prefix} Day ${days} locked in.`
-    return `${prefix} Day 1 on the board.`
-  }
-  if (answered === 0) return `No one from your crew has checked in yet. ${missingCrewSuffix(missing)}`
-  return `${answeredNames} from your crew checked in. ${missingCrewSuffix(missing)}`
-})
 
 const hasAnswered = computed(() => Boolean(props.state?.hasCheckedInToday))
 const myCheckinSnippet = computed(() => {
@@ -598,9 +428,6 @@ const myCheckinSnippet = computed(() => {
   if (!raw) return null
   return raw.length > 220 ? `${raw.slice(0, 217)}…` : raw
 })
-
-const facepile = computed(() => recentAnswerers.value.slice(0, 5))
-const compactFacepile = computed(() => recentAnswerers.value.slice(0, 3))
 
 // Personal streak shown in the weekly-mission badge. Use the stronger of: prop value (from
 // /checkins/today) and what's in the answeredToday realtime payloads. We don't have a
@@ -674,80 +501,6 @@ const compactLabel = computed(() => {
   return "Today's question · answered"
 })
 
-const compactSocialProofLine = computed(() => {
-  if (crew.value) {
-    const total = crewMemberCount.value
-    if (total === 0) return 'Your crew is waiting to check in.'
-    const answeredNames = formatCrewNames(crewAnsweredNames.value, 1)
-    if (crewAllAnswered.value) {
-      return answeredNames
-        ? `${answeredNames} from your crew checked in. Everyone's in.`
-        : `All ${total} from your crew checked in.`
-    }
-    if (!answeredNames) return `No one from your crew has checked in yet. ${missingCrewSuffix(crewMissingCount.value)}`
-    return `${answeredNames} from your crew checked in. ${missingCrewSuffix(crewMissingCount.value)}`
-  }
-  // Mirror the full hero's wording but tightened for one line.
-  const total = totalToday.value
-  if (total <= 1) return isAuthed.value ? "You're the first today." : 'No one has answered yet today.'
-  // Subtract 1 for the viewer (compact variant is only shown when the viewer has answered).
-  const others = Math.max(0, total - 1)
-  return `${others.toLocaleString()} other ${others === 1 ? 'man' : 'men'} answered today.`
-})
-
-const socialProofLine = computed(() => {
-  const total = totalToday.value
-  const list = recentAnswerers.value
-  if (total <= 0) {
-    if (hasAnswered.value) return "You're the first today. Nice work."
-    if (!isAuthed.value) return 'No one has answered yet today.'
-    return 'Be the first to answer today.'
-  }
-  if (list.length === 0) {
-    return total === 1
-      ? '1 person answered today.'
-      : `${total.toLocaleString()} answered today.`
-  }
-  const names = list.slice(0, 2).map((p) => p.displayName ?? p.username ?? 'Someone').filter(Boolean)
-  const remainder = Math.max(0, total - names.length)
-  if (remainder === 0) {
-    if (names.length === 1) return `${names[0]} answered today.`
-    return `${names[0]} and ${names[1]} answered today.`
-  }
-  if (names.length === 1) {
-    return `${names[0]} and ${remainder.toLocaleString()} other${remainder === 1 ? '' : 's'} answered today.`
-  }
-  return `${names[0]}, ${names[1]}, and ${remainder.toLocaleString()} other${remainder === 1 ? '' : 's'} answered today.`
-})
-
-function refreshSocialProof() {
-  const data = props.state?.socialProof ?? null
-  totalToday.value = Math.max(0, Number(data?.totalToday ?? 0) || 0)
-  recentAnswerers.value = Array.isArray(data?.recentAnswerers) ? data.recentAnswerers : []
-}
-
-const answeredCb = {
-  onAnsweredToday: (payload: WsCheckinAnsweredTodayPayload) => {
-    if (!payload?.dayKey || payload.dayKey !== (props.state?.dayKey ?? etDayKey.value)) return
-    totalToday.value = Math.max(totalToday.value, Number(payload.totalToday ?? 0) || 0)
-    const a = payload.answerer
-    if (!a?.id) return
-    const exists = recentAnswerers.value.some((p) => p.id === a.id)
-    if (exists) return
-    recentAnswerers.value = [
-      {
-        id: a.id,
-        username: a.username ?? null,
-        displayName: a.displayName ?? null,
-        avatarUrl: a.avatarUrl ?? null,
-        answeredAt: new Date().toISOString(),
-        isFollowed: a.isFollowed,
-      },
-      ...recentAnswerers.value,
-    ].slice(0, 5)
-  },
-}
-
 // Crew streak realtime: bump local mirrors when the server signals an advance/break.
 // The full /checkins/today payload is owned by the parent page; we only need to keep
 // the streak pill / member-status copy in sync without a refetch.
@@ -765,30 +518,22 @@ const crewCb = {
 }
 
 onMounted(() => {
-  // Verify-CTA mode is a static promo — no social proof or realtime needed.
+  // Verify-CTA mode is a static promo — no realtime needed.
   if (props.verifyCta) return
-  refreshSocialProof()
-  addCheckinsCallback(answeredCb)
   addCrewCallback(crewCb)
 })
 
 onBeforeUnmount(() => {
   if (props.verifyCta) return
-  removeCheckinsCallback(answeredCb)
   removeCrewCallback(crewCb)
 })
 
 watch(etDayKey, () => {
-  refreshSocialProof()
   // New day — drop any local streak overrides; trust the next /checkins/today payload.
   localCrewStreak.value = null
   localCrewLongest.value = null
   localCrewLastCompletedDayKey.value = null
 })
-
-watch(() => props.state?.socialProof, () => refreshSocialProof(), { immediate: true })
-
-defineExpose({ refreshSocialProof })
 
 function handleAnswer() {
   if (answering.value) return

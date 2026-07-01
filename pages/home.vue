@@ -14,7 +14,6 @@
       :state="checkinState"
       :prompt="checkinHeroPrompt"
       :my-checkin-body="lastCheckinBody"
-      :coins="displayCheckinCoins"
       :can-answer="canAnswerCheckin"
       :on-answer="openCheckinComposer"
       :on-login-to-answer="goToLoginForCheckin"
@@ -102,7 +101,6 @@
       :state="checkinState"
       :prompt="checkinHeroPrompt"
       :my-checkin-body="lastCheckinBody"
-      :coins="displayCheckinCoins"
       :can-answer="canAnswerCheckin"
       :on-answer="openCheckinComposer"
       :on-login-to-answer="goToLoginForCheckin"
@@ -490,7 +488,6 @@ const checkinPromptText = computed(() => {
 const hydrated = ref(false)
 const displayCheckinPromptText = computed(() => (hydrated.value ? checkinPromptText.value : 'Write a check-in…'))
 const displayCheckinStreak = computed(() => (hydrated.value ? (checkinState.value?.checkinStreakDays ?? 0) : 0))
-const displayCheckinCoins = computed(() => (hydrated.value ? (checkinState.value?.coins ?? 0) : 0))
 
 
 const middleScrollerRef = useMiddleScroller()
