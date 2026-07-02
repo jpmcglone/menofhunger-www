@@ -63,13 +63,13 @@
       </div>
     </Transition>
 
-    <!-- Visibility (optional: e.g. replies inherit parent post visibility) -->
+    <!-- Scope (optional: e.g. replies inherit parent post visibility) -->
     <div v-if="showVisibilityFilter" ref="filterWrapEl">
       <button
         type="button"
         class="inline-flex cursor-pointer items-center gap-1.5 rounded-full border px-2 py-1 sm:px-2.5 sm:py-1.5 text-[11px] sm:text-[12px] font-semibold leading-none transition-colors"
         :class="filterPillClass"
-        aria-label="Change feed visibility"
+        aria-label="Change feed scope"
         @click="toggleFilterPopover"
       >
         <template v-if="filter === 'all'">
@@ -95,10 +95,10 @@
         class="fixed z-[9999] w-56 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-lg dark:border-zinc-800 dark:bg-black"
         :style="filterMenuStyle"
         role="menu"
-        aria-label="Feed visibility"
+        aria-label="Feed scope"
       >
         <div class="px-3 pt-2 pb-1 text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
-          Visibility
+          Scope
         </div>
         <button
           type="button"
@@ -165,7 +165,7 @@ const props = withDefaults(
     showReset: boolean
     /**
      * Optional noun to include in the sort label (e.g. "reply/replies").
-     * When provided, label becomes "Newest reply/replies" or "Trending reply/replies" based on `sortCount`.
+     * When provided, label becomes "Recent reply/replies" or "Trending reply/replies" based on `sortCount`.
      */
     sortNoun?: { singular: string; plural: string }
     /** Optional count used to pick singular vs plural form for `sortNoun`. */
@@ -213,7 +213,7 @@ const viewerIsVerified = computed(() => Boolean(props.viewerIsVerified))
 const viewerIsPremium = computed(() => Boolean(props.viewerIsPremium))
 
 function formatSortLabel(v: 'new' | 'trending'): string {
-  const base = v === 'trending' ? 'Trending' : 'Newest'
+  const base = v === 'trending' ? 'Trending' : 'Recent'
   const noun = props.sortNoun
   if (!noun) return base
   const c = props.sortCount
