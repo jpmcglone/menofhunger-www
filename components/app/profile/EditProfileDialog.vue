@@ -17,7 +17,7 @@
                 v-if="editBannerPreviewUrl"
                 :src="editBannerPreviewUrl"
                 alt=""
-                class="h-full w-full object-contain"
+                class="h-full w-full object-cover"
                 loading="lazy"
                 decoding="async"
               >
@@ -50,14 +50,20 @@
             </div>
 
             <div
-              v-if="pendingBannerFile || pendingBannerRemoval"
+              v-if="pendingBannerFile || pendingBannerRemoval || (saving && pendingBannerFile)"
               class="absolute inset-x-0 bottom-0 px-3 py-2"
             >
               <div
                 class="mx-auto w-fit rounded-lg bg-black/45 px-2.5 py-1 text-xs font-semibold text-white shadow-sm"
                 style="text-shadow: 0 1px 2px rgba(0,0,0,.55);"
               >
-                {{ pendingBannerRemoval ? 'Will be removed' : 'Pending' }}
+                {{
+                  pendingBannerRemoval
+                    ? 'Will be removed'
+                    : saving
+                      ? 'Uploading…'
+                      : 'Not saved yet'
+                }}
               </div>
             </div>
           </div>
@@ -102,14 +108,20 @@
             </div>
 
             <div
-              v-if="pendingAvatarFile || pendingAvatarRemoval"
+              v-if="pendingAvatarFile || pendingAvatarRemoval || (saving && pendingAvatarFile)"
               class="absolute inset-x-0 bottom-0 px-2 pb-2"
             >
               <div
                 class="mx-auto w-fit rounded-lg bg-black/45 px-2 py-0.5 text-[11px] font-semibold text-white shadow-sm"
                 style="text-shadow: 0 1px 2px rgba(0,0,0,.55);"
               >
-                {{ pendingAvatarRemoval ? 'Will be removed' : 'Pending' }}
+                {{
+                  pendingAvatarRemoval
+                    ? 'Will be removed'
+                    : saving
+                      ? 'Uploading…'
+                      : 'Not saved yet'
+                }}
               </div>
             </div>
           </div>
@@ -162,7 +174,7 @@
           v-model="editBio"
           class="w-full"
           rows="4"
-          autoResize
+          auto-resize
           :maxlength="160"
           placeholder="Tell people a bit about yourself…"
         />
@@ -202,8 +214,9 @@
 </template>
 
 <script setup lang="ts">
-import { Cropper, CircleStencil } from 'vue-advanced-cropper'
 import { useFormSubmit } from '~/composables/useFormSubmit'
+import { useSyncUserCaches } from '~/composables/settings/useSyncUserCaches'
+import { putPresignedFile } from '~/utils/put-presigned-file'
 
 type PublicProfile = {
   id: string
@@ -245,31 +258,7 @@ const emit = defineEmits<{
 
 const { apiFetchData } = useApiClient()
 const { user: authUser } = useAuth()
-const { invalidateUserPreviewCache } = useUserPreview()
-const usersStore = useUsersStore()
-
-function syncUserCaches(
-  nextUser: import('~/composables/useAuth').AuthUser | null | undefined,
-  previousUsername?: string | null,
-) {
-  const prev = (previousUsername ?? '').trim().toLowerCase()
-  const next = (nextUser?.username ?? '').trim().toLowerCase()
-  if (prev) invalidateUserPreviewCache(prev)
-  if (next) invalidateUserPreviewCache(next)
-  if (!nextUser?.id) return
-  usersStore.upsert({
-    id: nextUser.id,
-    username: nextUser.username ?? null,
-    name: nextUser.name ?? null,
-    bio: nextUser.bio ?? null,
-    premium: nextUser.premium,
-    premiumPlus: nextUser.premiumPlus,
-    verifiedStatus: nextUser.verifiedStatus,
-    avatarUrl: nextUser.avatarUrl ?? null,
-    bannerUrl: nextUser.bannerUrl ?? null,
-    pinnedPostId: nextUser.pinnedPostId ?? null,
-  })
-}
+const syncUserCaches = useSyncUserCaches()
 
 const isSelf = computed(() => Boolean(props.isSelf))
 const isAdminMode = computed(() => Boolean(props.targetUserId))
@@ -461,6 +450,7 @@ function onAvatarCropCancelled() {
 function onAvatarCropped(file: File) {
   stageAvatarFile(file)
   clearAvatarCropState()
+  if (avatarInputEl.value) avatarInputEl.value.value = ''
 }
 
 function onBannerCropCancelled() {
@@ -471,6 +461,7 @@ function onBannerCropCancelled() {
 function onBannerCropped(file: File) {
   stageBannerFile(file)
   clearBannerCropState()
+  if (bannerInputEl.value) bannerInputEl.value.value = ''
 }
 
 function openAvatarPicker() {
@@ -571,13 +562,11 @@ const { submit: saveProfile, submitting: saving } = useFormSubmit(
           body: { contentType: file.type }
         }
       )
+      if (init.maxBytes && file.size > init.maxBytes) {
+        throw new Error(`Banner is too large after cropping (max ${Math.max(1, Math.floor(init.maxBytes / (1024 * 1024)))}MB).`)
+      }
 
-      const putRes = await fetch(init.uploadUrl, {
-        method: 'PUT',
-        headers: init.headers,
-        body: file,
-      })
-      if (!putRes.ok) throw new Error('Failed to upload banner.')
+      await putPresignedFile(init.uploadUrl, init.headers, file)
 
       const committed = await apiFetchData<{ user: import('~/composables/useAuth').AuthUser }>(bannerCommitUrl, {
         method: 'POST',
@@ -617,13 +606,11 @@ const { submit: saveProfile, submitting: saving } = useFormSubmit(
           body: { contentType: file.type }
         }
       )
+      if (init.maxBytes && file.size > init.maxBytes) {
+        throw new Error(`Avatar is too large after cropping (max ${Math.max(1, Math.floor(init.maxBytes / (1024 * 1024)))}MB).`)
+      }
 
-      const putRes = await fetch(init.uploadUrl, {
-        method: 'PUT',
-        headers: init.headers,
-        body: file,
-      })
-      if (!putRes.ok) throw new Error('Failed to upload avatar.')
+      await putPresignedFile(init.uploadUrl, init.headers, file)
 
       const committed = await apiFetchData<{ user: import('~/composables/useAuth').AuthUser }>(avatarCommitUrl, {
         method: 'POST',

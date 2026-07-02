@@ -273,14 +273,14 @@
           </Button>
           <Button
             v-if="showPostBell"
-            v-tooltip.bottom="tinyTooltip(bellEnabled ? 'Every post/reply from this user (standalone, no rollup)' : 'Enable every post/reply from this user')"
+            v-tooltip.bottom="tinyTooltip(bellEnabled ? 'You’ll get their replies too' : 'Get their replies too')"
             type="button"
             severity="secondary"
             rounded
             text
             class="!px-2"
             :disabled="bellInflight"
-            :aria-label="bellEnabled ? 'Disable every-post notifications for this user' : 'Enable every-post notifications for this user'"
+            :aria-label="bellEnabled ? `Turn off reply notifications for @${profile?.username ?? 'this user'}` : `Turn on reply notifications for @${profile?.username ?? 'this user'}`"
             @click="togglePostBell"
           >
             <template #icon>

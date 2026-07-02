@@ -2236,6 +2236,8 @@ export type ArticleSharePreview = {
   visibility: PostVisibility
   publishedAt: string | null
   author: Pick<ArticleAuthor, 'id' | 'username' | 'name' | 'avatarUrl' | 'verifiedStatus' | 'premium' | 'premiumPlus'>
+  /** Present when the preview comes from /articles/:id; false means media should be blurred/locked. */
+  viewerCanAccess?: boolean
 }
 
 export type ArticleComment = {

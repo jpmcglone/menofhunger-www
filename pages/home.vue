@@ -176,30 +176,6 @@
         @reset="handleFeedReset"
       />
 
-      <div v-if="isAuthed" ref="homeFeedTabBarEl" class="sticky top-[var(--moh-title-bar-height,0px)] z-10 moh-surface flex gap-0 border-b border-gray-200 dark:border-zinc-800">
-        <button
-          v-for="tab in homeFeedTabs"
-          :key="tab.key"
-          :ref="(el) => setHomeFeedTabButtonRef(tab.key, el as HTMLElement | null)"
-          type="button"
-          class="relative cursor-pointer px-5 py-3 text-sm font-semibold transition-colors"
-          :class="activeHomeFeedTab === tab.key
-            ? 'text-gray-900 dark:text-gray-100'
-            : 'text-gray-400 dark:text-zinc-500 hover:text-gray-600 dark:hover:text-zinc-300'"
-          @click="setHomeFeedTab(tab.key)"
-        >
-          {{ tab.label }}
-        </button>
-        <span
-          class="absolute bottom-0 h-[2px] rounded-full bg-[var(--p-primary-500,#b45309)]"
-          :style="{
-            left: `${homeFeedUnderlineLeft}px`,
-            width: `${homeFeedUnderlineWidth}px`,
-            transition: homeFeedUnderlineReady ? 'left 220ms ease-in-out, width 220ms ease-in-out' : 'none',
-          }"
-          aria-hidden="true"
-        />
-      </div>
       <div ref="homeFeedContentEl" class="h-0 overflow-hidden" aria-hidden="true" />
 
       <!-- Daily quote: demoted from the top stack so the check-in hero owns the daily slot.
@@ -244,7 +220,6 @@
                 <AppLogoLoader compact />
               </div>
               <TransitionGroup
-                v-if="activeHomeFeedTab !== 'media'"
                 name="feed-post"
                 tag="div"
                 class="transition-opacity duration-150"
@@ -257,60 +232,15 @@
                     :post="item.post"
                     :activate-video-on-mount="item.post.id === newlyPostedVideoPostId"
                     :collapsed-sibling-replies-count="collapsedSiblingReplyCountFor(item.post)"
-                    :show-collapsed-replies-footer="activeHomeFeedTab !== 'posts'"
+                    :show-collapsed-replies-footer="true"
                     :replies-sort="feedSort"
                     @deleted="removePost"
                     @edited="onFeedPostEdited"
                   />
                 </template>
               </TransitionGroup>
-              <div v-else>
-                <div
-                  class="transition-opacity duration-150"
-                  :class="feedRefreshingOverlay ? 'opacity-60 pointer-events-none' : 'opacity-100'"
-                >
-                  <div
-                    class="grid gap-0.5 bg-gray-200 dark:bg-zinc-800"
-                    style="grid-template-columns: repeat(auto-fill, minmax(min(120px, 100%), 1fr))"
-                  >
-                    <NuxtLink
-                      v-for="item in homeMediaItems"
-                      :key="item.id"
-                      :to="`/p/${encodeURIComponent(item.postId)}`"
-                      class="relative aspect-square overflow-hidden bg-gray-100 transition-opacity hover:opacity-90 dark:bg-zinc-900"
-                    >
-                      <img
-                        :src="mediaTileSrc(item)"
-                        :alt="item.alt || (item.kind === 'video' ? 'Video' : 'Photo')"
-                        class="absolute inset-0 h-full w-full object-cover moh-img-outline"
-                        loading="lazy"
-                        decoding="async"
-                        fetchpriority="low"
-                        sizes="(min-width: 1024px) 160px, (min-width: 640px) 25vw, 33vw"
-                      />
-                      <div v-if="item.kind === 'video'" class="absolute inset-0 flex items-center justify-center">
-                        <div class="rounded-full bg-black/50 p-2">
-                          <Icon name="tabler:player-play-filled" class="text-lg text-white" aria-hidden="true" />
-                        </div>
-                      </div>
-                      <div
-                        v-else-if="item.kind === 'gif'"
-                        class="absolute bottom-1.5 right-1.5 rounded bg-black/65 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white"
-                      >
-                        GIF
-                      </div>
-                    </NuxtLink>
-                  </div>
-                </div>
-                <p
-                  v-if="initialFeedResolved && !loading && homeMediaItems.length === 0"
-                  class="px-4 py-12 text-center text-sm text-gray-400 dark:text-zinc-500"
-                >
-                  No photos or videos yet.
-                </p>
-              </div>
               <p
-                v-if="activeHomeFeedTab !== 'media' && initialFeedResolved && !loading && activeHomeFeedDisplayItems.length === 0"
+                v-if="initialFeedResolved && !loading && activeHomeFeedDisplayItems.length === 0"
                 class="px-4 py-12 text-center text-sm text-gray-400 dark:text-zinc-500"
               >
                 No posts in this filter yet.
@@ -339,7 +269,7 @@
 </template>
 
 <script setup lang="ts">
-import type { CommunityGroupShell, FeedPost, PostMedia, PostVisibility, CheckinAllowedVisibility  } from '~/types/api'
+import type { CommunityGroupShell, PostVisibility, CheckinAllowedVisibility  } from '~/types/api'
 import { postBodyHasVideoEmbed } from '~/utils/link-utils'
 import { pickCheckinPrompt } from '~/utils/checkin-prompts'
 import { MOH_HOME_COMPOSER_IN_VIEW_KEY, MOH_OPEN_COMPOSER_KEY, MOH_FOCUS_HOME_COMPOSER_KEY } from '~/utils/injection-keys'
@@ -514,17 +444,14 @@ onMounted(() => {
 
 const newlyPostedVideoPostId = ref<string | null>(null)
 let newlyPostedVideoPostTimer: ReturnType<typeof setTimeout> | null = null
-type HomeFeedTabKey = 'posts' | 'replies' | 'media'
 
-const activeHomeFeedTab = useState<HomeFeedTabKey>('home-feed-tab', () => 'posts')
-const mediaOnlyFeed = computed(() => activeHomeFeedTab.value === 'media')
-const topLevelOnlyFeed = computed(() => activeHomeFeedTab.value === 'posts')
+const mediaOnlyFeed = computed(() => false)
+const topLevelOnlyFeed = computed(() => false)
 const {
   feedScope,
   feedFilter,
   feedSort,
   posts,
-  displayPosts,
   collapsedSiblingReplyCountFor,
   nextCursor,
   loading,
@@ -555,50 +482,8 @@ const {
   onFeedScopeChange,
 } = useHomeFeed({ mediaOnly: mediaOnlyFeed, topLevelOnly: topLevelOnlyFeed })
 
-type HomeMediaItem = {
-  id: string
-  postId: string
-  kind: PostMedia['kind']
-  url: string
-  thumbnailUrl: string | null
-  alt: string | null
-}
-
-const homeFeedTabs: Array<{ key: HomeFeedTabKey; label: string }> = [
-  { key: 'posts', label: 'Posts' },
-  { key: 'replies', label: 'Replies' },
-  { key: 'media', label: 'Media' },
-]
-
-const homeFeedTabBarEl = ref<HTMLElement | null>(null)
 const homeFeedContentEl = ref<HTMLElement | null>(null)
-const { scrollToTop: scrollFeedToTop } = useFeedScrollToTop(homeFeedContentEl, homeFeedTabBarEl)
-const homeFeedTabButtonEls = new Map<HomeFeedTabKey, HTMLElement>()
-const homeFeedUnderlineLeft = ref(0)
-const homeFeedUnderlineWidth = ref(0)
-const homeFeedUnderlineReady = ref(false)
-
-function setHomeFeedTabButtonRef(key: HomeFeedTabKey, el: HTMLElement | null) {
-  if (el) homeFeedTabButtonEls.set(key, el)
-  else homeFeedTabButtonEls.delete(key)
-}
-
-function updateHomeFeedUnderline() {
-  if (!import.meta.client) return
-  const bar = homeFeedTabBarEl.value
-  const btn = homeFeedTabButtonEls.get(activeHomeFeedTab.value)
-  if (!bar || !btn) return
-  const barRect = bar.getBoundingClientRect()
-  const btnRect = btn.getBoundingClientRect()
-  homeFeedUnderlineLeft.value = Math.round(btnRect.left - barRect.left)
-  homeFeedUnderlineWidth.value = Math.round(btnRect.width)
-}
-
-function setHomeFeedTab(key: HomeFeedTabKey) {
-  if (activeHomeFeedTab.value === key) return
-  activeHomeFeedTab.value = key
-  scrollFeedToTop()
-}
+const { scrollToTop: scrollFeedToTop } = useFeedScrollToTop(homeFeedContentEl)
 
 function handleFeedScopeChange(scope: Parameters<typeof onFeedScopeChange>[0]) {
   onFeedScopeChange(scope)
@@ -620,44 +505,6 @@ function handleFeedReset() {
 const activeHomeFeedDisplayItems = computed(() => {
   return displayItems.value
 })
-
-function collectHomeMediaItem(post: FeedPost, media: PostMedia): HomeMediaItem | null {
-  const url = (media.url ?? '').trim()
-  if (!url) return null
-  return {
-    id: `${post.id}:${media.id}`,
-    postId: post.id,
-    kind: media.kind,
-    url,
-    thumbnailUrl: (media.thumbnailUrl ?? '').trim() || null,
-    alt: media.alt ?? null,
-  }
-}
-
-function mediaTileSrc(item: HomeMediaItem): string {
-  return item.thumbnailUrl || item.url
-}
-
-const homeMediaItems = computed<HomeMediaItem[]>(() => {
-  const out: HomeMediaItem[] = []
-  const seen = new Set<string>()
-  for (const post of displayPosts.value) {
-    for (const media of post.media ?? []) {
-      if (media.deletedAt) continue
-      const item = collectHomeMediaItem(post, media)
-      if (!item || seen.has(item.id)) continue
-      seen.add(item.id)
-      out.push(item)
-    }
-  }
-  return out
-})
-
-watch(activeHomeFeedTab, () => nextTick(updateHomeFeedUnderline))
-onMounted(() => nextTick(() => {
-  updateHomeFeedUnderline()
-  requestAnimationFrame(() => { homeFeedUnderlineReady.value = true })
-}))
 
 // Check-ins (feed, streaks, leaderboard) are verified-only; premium counts as verified.
 const canAccessCheckins = computed(() => viewerIsVerified.value || viewerIsPremium.value)

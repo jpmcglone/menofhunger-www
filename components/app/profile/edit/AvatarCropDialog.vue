@@ -5,7 +5,7 @@
     :header="dialogHeader"
     :draggable="false"
     :style="{ width: 'min(60rem, 96vw)' }"
-    @update:visible="(v) => emit('update:modelValue', Boolean(v))"
+    @update:visible="handleVisibleUpdate"
   >
     <div class="grid gap-4 sm:grid-cols-[1fr_16rem]">
       <div class="min-w-0 rounded-xl border border-gray-200 bg-white p-3 dark:border-zinc-800 dark:bg-black/20">
@@ -35,7 +35,7 @@
           class="mx-auto h-32 w-32 overflow-hidden bg-gray-200 dark:bg-zinc-800"
           :class="previewRoundClass"
         >
-          <img v-if="cropPreviewUrl" :src="cropPreviewUrl" alt="" class="h-full w-full object-cover" />
+          <img v-if="cropPreviewUrl" :src="cropPreviewUrl" alt="" class="h-full w-full object-cover">
         </div>
         <template v-if="!isGroupVariant">
           <AppInlineAlert severity="info" title="Tip">
@@ -65,12 +65,15 @@
         >
           This is how your avatar will appear. The saved image remains a square (best for future layouts), but it’s displayed as a circle.
         </div>
+        <AppInlineAlert v-if="cropApplyError" severity="warning">
+          {{ cropApplyError }}
+        </AppInlineAlert>
       </div>
     </div>
 
     <template #footer>
       <Button label="Cancel" text severity="secondary" :disabled="disabled" @click="cancelCrop" />
-      <Button label="Apply" severity="secondary" :disabled="disabled || !cropHasSelection" @click="applyCrop">
+      <Button label="Apply" severity="secondary" :disabled="disabled || !cropperReady || !cropHasSelection" @click="applyCrop">
         <template #icon>
           <Icon name="tabler:check" aria-hidden="true" />
         </template>
@@ -122,7 +125,8 @@ const dialogHeader = computed(() =>
 const cropSrc = ref<string | null>(null)
 const cropPreviewUrl = ref<string | null>(null)
 const cropHasSelection = ref(false)
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const cropperReady = ref(false)
+const cropApplyError = ref<string | null>(null)
 const cropperRef = ref<any>(null)
 let cropPreviewRaf: number | null = null
 let faceDetector: any | null = null
@@ -131,12 +135,10 @@ const faceDetecting = ref(false)
 const faceDetectError = ref<string | null>(null)
 const autoFaceOnOpen = ref(true)
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const avatarDefaultSize = ({ imageSize }: any) => {
   const size = Math.floor(Math.min(imageSize.width, imageSize.height) * 0.98)
   return { width: size, height: size }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const avatarDefaultPosition = ({ coordinates, imageSize }: any) => {
   return {
     left: Math.round(imageSize.width / 2 - coordinates.width / 2),
@@ -146,6 +148,8 @@ const avatarDefaultPosition = ({ coordinates, imageSize }: any) => {
 
 function clearInternalState() {
   cropHasSelection.value = false
+  cropperReady.value = false
+  cropApplyError.value = null
   faceDetectError.value = null
   autoFaceOnOpen.value = true
 
@@ -174,7 +178,6 @@ watch(
     clearInternalState()
     if (file) {
       cropSrc.value = URL.createObjectURL(file)
-      cropHasSelection.value = true
       autoFaceOnOpen.value = true
     }
   },
@@ -185,7 +188,6 @@ onBeforeUnmount(() => {
   clearInternalState()
 })
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function onCropChange(e: any) {
   const canvas: HTMLCanvasElement | null = e?.canvas ?? null
   cropHasSelection.value = Boolean(canvas)
@@ -217,7 +219,6 @@ function onCropChange(e: any) {
 async function ensureFaceDetector() {
   if (faceDetector) return faceDetector
   // Lazy-load on client only.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const mod: any = await import('@mediapipe/tasks-vision')
   const FilesetResolver = mod.FilesetResolver
   const FaceDetector = mod.FaceDetector
@@ -244,6 +245,7 @@ function clamp(n: number, min: number, max: number) {
 }
 
 async function onCropperReady() {
+  cropperReady.value = true
   if (isGroupVariant.value) return
   if (!autoFaceOnOpen.value) return
   autoFaceOnOpen.value = false
@@ -322,12 +324,27 @@ function cancelCrop() {
   emit('update:modelValue', false)
 }
 
+function handleVisibleUpdate(value: boolean) {
+  if (value) {
+    emit('update:modelValue', true)
+    return
+  }
+  cancelCrop()
+}
+
 async function applyCrop() {
-  if (!cropHasSelection.value) return
+  cropApplyError.value = null
+  if (!cropperReady.value || !cropHasSelection.value) {
+    cropApplyError.value = 'Cropper is not ready yet. Please wait a moment and try again.'
+    return
+  }
   const cropper = cropperRef.value
   const result = cropper?.getResult?.()
   const canvas: HTMLCanvasElement | null = result?.canvas ?? null
-  if (!canvas) return
+  if (!canvas) {
+    cropApplyError.value = 'Could not read the crop selection. Please adjust the frame and try again.'
+    return
+  }
 
   const original = props.file
   const outType = (original?.type === 'image/png' || original?.type === 'image/webp') ? original.type : 'image/jpeg'
@@ -335,7 +352,10 @@ async function applyCrop() {
   const blob: Blob | null = await new Promise((resolve) => {
     canvas.toBlob((b) => resolve(b), outType, outType === 'image/jpeg' ? 0.92 : undefined)
   })
-  if (!blob) return
+  if (!blob) {
+    cropApplyError.value = 'Could not export the cropped image. Please try again.'
+    return
+  }
 
   const ext = outType === 'image/png' ? 'png' : outType === 'image/webp' ? 'webp' : 'jpg'
   const filename = `avatar.${ext}`

@@ -5,7 +5,7 @@
     header="Crop banner"
     :draggable="false"
     :style="{ width: 'min(72rem, 96vw)' }"
-    @update:visible="(v) => emit('update:modelValue', Boolean(v))"
+    @update:visible="handleVisibleUpdate"
   >
     <div class="space-y-3">
       <div class="min-w-0 rounded-xl border border-gray-200 bg-white p-3 dark:border-zinc-800 dark:bg-black/20">
@@ -28,11 +28,14 @@
       <div class="text-xs text-gray-500 dark:text-gray-400">
         Banners must be 3:1. We’ll save a 1500×500 image.
       </div>
+      <AppInlineAlert v-if="cropApplyError" severity="warning">
+        {{ cropApplyError }}
+      </AppInlineAlert>
     </div>
 
     <template #footer>
       <Button label="Cancel" text severity="secondary" :disabled="disabled" @click="cancelCrop" />
-      <Button label="Apply" severity="secondary" :disabled="disabled || !cropHasSelection" @click="applyCrop">
+      <Button label="Apply" severity="secondary" :disabled="disabled || !cropperReady || !cropHasSelection" @click="applyCrop">
         <template #icon>
           <Icon name="tabler:check" aria-hidden="true" />
         </template>
@@ -61,11 +64,11 @@ const disabled = computed(() => Boolean(props.disabled))
 
 const cropSrc = ref<string | null>(null)
 const cropHasSelection = ref(false)
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const cropperReady = ref(false)
+const cropApplyError = ref<string | null>(null)
 const cropperRef = ref<any>(null)
 const maxOnOpen = ref(true)
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const bannerDefaultSize = ({ imageSize }: any) => {
   const width = Number(imageSize?.width ?? 0)
   const height = Number(imageSize?.height ?? 0)
@@ -74,7 +77,6 @@ const bannerDefaultSize = ({ imageSize }: any) => {
   const h = Math.floor(w / 3)
   return { width: w, height: h }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const bannerDefaultPosition = ({ coordinates, imageSize }: any) => {
   return {
     left: Math.round(imageSize.width / 2 - coordinates.width / 2),
@@ -84,6 +86,8 @@ const bannerDefaultPosition = ({ coordinates, imageSize }: any) => {
 
 function clearInternalState() {
   cropHasSelection.value = false
+  cropperReady.value = false
+  cropApplyError.value = null
   maxOnOpen.value = true
   if (cropSrc.value) {
     URL.revokeObjectURL(cropSrc.value)
@@ -102,7 +106,6 @@ watch(
     clearInternalState()
     if (file) {
       cropSrc.value = URL.createObjectURL(file)
-      cropHasSelection.value = true
       maxOnOpen.value = true
     }
   },
@@ -113,13 +116,13 @@ onBeforeUnmount(() => {
   clearInternalState()
 })
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function onCropChange(e: any) {
   const canvas: HTMLCanvasElement | null = e?.canvas ?? null
   cropHasSelection.value = Boolean(canvas)
 }
 
 async function onCropperReady() {
+  cropperReady.value = true
   if (!maxOnOpen.value) return
   maxOnOpen.value = false
   const cropper = cropperRef.value
@@ -146,12 +149,27 @@ function cancelCrop() {
   emit('update:modelValue', false)
 }
 
+function handleVisibleUpdate(value: boolean) {
+  if (value) {
+    emit('update:modelValue', true)
+    return
+  }
+  cancelCrop()
+}
+
 async function applyCrop() {
-  if (!cropHasSelection.value) return
+  cropApplyError.value = null
+  if (!cropperReady.value || !cropHasSelection.value) {
+    cropApplyError.value = 'Cropper is not ready yet. Please wait a moment and try again.'
+    return
+  }
   const cropper = cropperRef.value
   const result = cropper?.getResult?.()
   const canvas: HTMLCanvasElement | null = result?.canvas ?? null
-  if (!canvas) return
+  if (!canvas) {
+    cropApplyError.value = 'Could not read the crop selection. Please adjust the frame and try again.'
+    return
+  }
 
   const original = props.file
   const outType = (original?.type === 'image/png' || original?.type === 'image/webp') ? original.type : 'image/jpeg'
@@ -159,7 +177,10 @@ async function applyCrop() {
   const blob: Blob | null = await new Promise((resolve) => {
     canvas.toBlob((b) => resolve(b), outType, outType === 'image/jpeg' ? 0.9 : undefined)
   })
-  if (!blob) return
+  if (!blob) {
+    cropApplyError.value = 'Could not export the cropped image. Please try again.'
+    return
+  }
 
   const ext = outType === 'image/png' ? 'png' : outType === 'image/webp' ? 'webp' : 'jpg'
   const filename = `banner.${ext}`

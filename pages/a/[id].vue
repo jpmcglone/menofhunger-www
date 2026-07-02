@@ -1054,6 +1054,7 @@ const articleSharePreview = computed<ArticleSharePreview | null>(() => {
     visibility: a.visibility,
     publishedAt: a.publishedAt,
     author: a.author,
+    viewerCanAccess: a.viewerCanAccess,
   }
 })
 

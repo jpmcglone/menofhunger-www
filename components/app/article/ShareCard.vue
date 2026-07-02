@@ -5,12 +5,22 @@
     @click.stop
   >
     <!-- Thumbnail -->
-    <div v-if="article.thumbnailUrl" class="aspect-[16/9] w-full overflow-hidden bg-gray-100 dark:bg-zinc-800">
+    <div v-if="article.thumbnailUrl" class="relative aspect-[16/9] w-full overflow-hidden bg-gray-100 dark:bg-zinc-800">
       <img
         :src="article.thumbnailUrl"
         :alt="article.title"
-        class="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+        :class="[
+          'h-full w-full object-cover transition-transform duration-300',
+          isGated ? 'scale-110 blur-xl' : 'group-hover:scale-105',
+        ]"
       />
+      <div
+        v-if="isGated"
+        class="absolute inset-0 flex items-center justify-center bg-black/40"
+        aria-hidden="true"
+      >
+        <Icon name="tabler:lock" class="text-3xl text-white drop-shadow-lg" aria-hidden="true" />
+      </div>
     </div>
 
     <!-- Content -->
@@ -70,8 +80,12 @@ const readingTime = computed(() => {
   return `${minutes} min read`
 })
 
-// The excerpt is stripped server-side when the viewer's tier doesn't permit access.
-const isGated = computed(() => !props.article.excerpt && props.article.visibility !== 'public')
+// Linked article previews fetched from /articles/:id carry the same access flag
+// as the full article page. Older/share-post previews fall back to the legacy
+// stripped-excerpt signal.
+const isGated = computed(() =>
+  props.article.viewerCanAccess === false || (!props.article.excerpt && props.article.visibility !== 'public'),
+)
 const gateLabel = computed(() => {
   if (props.article.visibility === 'premiumOnly') return 'Premium'
   if (props.article.visibility === 'verifiedOnly') return 'Members only'
