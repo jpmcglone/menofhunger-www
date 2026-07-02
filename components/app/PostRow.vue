@@ -363,6 +363,7 @@ import { groupPreviewToFeedShell } from '~/utils/community-group-preview'
 import { visibilityTagClasses, visibilityTagLabel } from '~/utils/post-visibility'
 import { tinyTooltip } from '~/utils/tiny-tooltip'
 import { useInViewOnce } from '~/composables/useInViewOnce'
+import { useMiddleScroller } from '~/composables/useMiddleScroller'
 import { useUserOverlay } from '~/composables/useUserOverlay'
 import { usePostRowMenus } from '~/composables/post-row/usePostRowMenus'
 import { usePostRowThreadLines } from '~/composables/post-row/usePostRowThreadLines'
@@ -512,8 +513,11 @@ const rowStyle = computed(() => ({
 }))
 
 // Resource preservation: only do heavy work (metadata fetch + embeds) when the row is near viewport.
+// Use the middle scroller as IntersectionObserver root so margin is relative to the visible pane,
+// not the document viewport. 250px gives one-ish row of pre-load without triggering work 800px away.
 const rowEl = ref<HTMLElement | null>(null)
-const { inView: rowInView } = useInViewOnce(rowEl, { root: null, rootMargin: '800px 0px', threshold: 0.01 })
+const middleScrollerEl = useMiddleScroller()
+const { inView: rowInView } = useInViewOnce(rowEl, { root: middleScrollerEl, rootMargin: '250px 0px', threshold: 0.01 })
 
 // Thread connector lines: measured against the avatar inside this row.
 const avatarEl = ref<HTMLElement | null>(null)

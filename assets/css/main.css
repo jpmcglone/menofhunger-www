@@ -205,7 +205,7 @@ html.dark .moh-vignette::after {
   /* Media tile system — used by every post media surface (single image,
      single video, multi-image grid, gif). Keeping these centralized means
      the rounded corners and letterbox color stay in lockstep across components. */
-  --moh-media-radius: 3rem;          /* large squircle — clips image corner decorations cleanly */
+  --moh-media-radius: 0.75rem;       /* large squircle — clips image corner decorations cleanly */
   /* Transparent letterbox: the container frame should be invisible ("clear"),
      so media reads as just the picture/video with rounded corners — never a
      tinted box behind it. The frame still owns the radius + clipping. */
@@ -451,16 +451,22 @@ input[type="reset"] {
     --moh-surface-hover: rgba(255, 255, 255, 0.06);
   }
 
-  /* Post row hover: public is neutral; gated tiers use their accent color. */
+  /* Post row hover: public is neutral; gated tiers use their accent color.
+     Hidden entirely on touch/stylus devices (pointer: coarse) — no compositor
+     layer cost on mobile, where hover is meaningless. */
   .moh-post-row-hover-bg {
-    background-color: var(--moh-post-row-hover-bg-light, #000000);
-    opacity: 0;
-    transition: opacity 0.2s ease;
+    display: none;
   }
-  html.dark .moh-post-row-hover-bg {
-    background-color: var(--moh-post-row-hover-bg-dark, #ffffff);
-  }
-  @media (hover: hover) {
+  @media (hover: hover) and (pointer: fine) {
+    .moh-post-row-hover-bg {
+      display: block;
+      background-color: var(--moh-post-row-hover-bg-light, #000000);
+      opacity: 0;
+      transition: opacity 0.2s ease;
+    }
+    html.dark .moh-post-row-hover-bg {
+      background-color: var(--moh-post-row-hover-bg-dark, #ffffff);
+    }
     .group:hover .moh-post-row-hover-bg {
       opacity: 0.1;
     }

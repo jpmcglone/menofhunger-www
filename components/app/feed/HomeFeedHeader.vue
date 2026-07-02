@@ -1,10 +1,11 @@
 <template>
   <div
-    class="sticky top-0 z-20 moh-surface relative shadow-[0_6px_16px_rgba(20,18,16,0.06)] dark:shadow-none"
+    class="sticky top-0 z-20 moh-surface relative border-b moh-border"
   >
     <AppFeedScopeSelector
       :model-value="scope"
       @update:model-value="$emit('update:scope', $event as FeedScope)"
+      @reselect="$emit('reselect', $event as FeedScope)"
     />
 
     <!-- Filters bar — floated to the right, vertically centered in the tab row -->
@@ -41,6 +42,7 @@ defineProps<{
 
 defineEmits<{
   (e: 'update:scope', v: FeedScope): void
+  (e: 'reselect', v: FeedScope): void
   (e: 'update:sort', v: 'new' | 'trending'): void
   (e: 'update:filter', v: ProfilePostsFilter): void
   (e: 'reset'): void

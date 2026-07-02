@@ -1,18 +1,17 @@
 <template>
-  <!-- Single media. Container owns the corner radius; the <img>/<video>
-       inside is just pixels filling the frame. Same rule applies in the
-       multi-item branch below, so single/grid feel consistent. -->
+  <!-- Single media -->
   <div
     v-if="items.length === 1"
     class="mt-3 flex justify-start"
     :class="{ 'pointer-events-none': !interactive }"
   >
-    <!-- Single video: interactive = inline player; non-interactive = poster only -->
+    <!-- Single video -->
     <div
       v-if="items[0]?.kind === 'video'"
       ref="singleVideoContainerRef"
-      :class="[singleBoxClass, 'moh-media-frame moh-media-frame--video']"
-      :style="singleBoxStyle"
+      class="relative overflow-hidden bg-transparent"
+      :class="singleBoxClass"
+      :style="[singleBoxStyle, mediaFrameStyle]"
     >
       <video
         v-if="interactive && items[0]?.url"
@@ -32,7 +31,6 @@
         @play="onSingleVideoPlay"
         @volumechange="onSingleVideoVolumeChange"
       />
-      <!-- Non-interactive: poster/thumbnail only -->
       <AppImg
         v-else-if="items[0]?.url"
         :src="posterFor(items[0]) || items[0]?.url"
@@ -42,7 +40,6 @@
         loading="lazy"
         decoding="async"
       />
-      <!-- Small corner controls only (no dimming). Safari requires user gesture to unmute. -->
       <button
         v-if="interactive && singleVideoActive && singleVideoMuted"
         type="button"
@@ -69,23 +66,17 @@
         {{ formatDuration(items[0].durationSeconds) }}
       </span>
     </div>
-    <!-- Single image (interactive: button for lightbox; non-interactive: div) -->
-    <component
-      :is="interactive ? 'button' : 'div'"
-      v-else-if="items[0]?.url"
-      :type="interactive ? 'button' : undefined"
-      :class="[
-        singleBoxClass,
-        'moh-media-frame',
-        interactive
-          ? 'moh-tap cursor-zoom-in select-none text-left !border-0 !p-0 focus:outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20 dark:focus-visible:ring-white/20'
-          : 'select-none',
-      ]"
-      :style="singleBoxStyle"
-      :aria-label="interactive ? 'View image' : undefined"
-      @click.stop="interactive ? openAt($event, 0) : undefined"
+
+    <!-- Single image — interactive: button opens lightbox; non-interactive: plain div -->
+    <button
+      v-else-if="items[0]?.url && interactive"
+      type="button"
+      class="relative overflow-hidden bg-transparent border-0 p-0 m-0 cursor-zoom-in select-none focus:outline-none focus-visible:ring-2 focus-visible:ring-black/20 dark:focus-visible:ring-white/20"
+      :class="singleBoxClass"
+      :style="[singleBoxStyle, mediaFrameStyle]"
+      aria-label="View image"
+      @click.stop="openAt($event, 0)"
     >
-      <div class="absolute inset-0" aria-hidden="true" />
       <AppImg
         :src="items[0]?.url"
         class="absolute inset-0 h-full w-full object-contain"
@@ -97,16 +88,36 @@
         loading="lazy"
         decoding="async"
       />
-    </component>
+    </button>
+    <div
+      v-else-if="items[0]?.url"
+      class="relative overflow-hidden bg-transparent select-none"
+      :class="singleBoxClass"
+      :style="[singleBoxStyle, mediaFrameStyle]"
+    >
+      <AppImg
+        :src="items[0]?.url"
+        class="absolute inset-0 h-full w-full object-contain"
+        :class="hideThumbs ? 'opacity-0 transition-opacity duration-150' : 'opacity-100'"
+        :width="singleWidth ?? undefined"
+        :height="singleHeight ?? undefined"
+        :alt="items[0]?.alt ?? ''"
+        sizes="(max-width: 640px) 100vw, 720px"
+        loading="lazy"
+        decoding="async"
+      />
+    </div>
+
+    <!-- Deleted single media placeholder -->
     <div
       v-else
-      :style="{
+      class="flex shrink-0 items-center justify-center overflow-hidden border moh-border moh-surface"
+      :style="[{
         maxHeight: `${FIXED_HEIGHT_REM}rem`,
         minHeight: '6rem',
         width: '100%',
         maxWidth: MAX_WIDTH_REM != null ? `${MAX_WIDTH_REM}rem` : undefined,
-      }"
-      class="moh-media-frame flex shrink-0 items-center justify-center border moh-border moh-surface"
+      }, mediaFrameStyle]"
       aria-label="Deleted media"
     >
       <div class="flex flex-col items-center gap-2 text-sm moh-text-muted select-none">
@@ -116,41 +127,35 @@
     </div>
   </div>
 
+  <!-- Multi-media grid -->
   <div
     v-else-if="items.length > 1"
     class="mt-3"
     :class="{ 'pointer-events-none': !interactive }"
   >
-    <!-- Outer frame owns the radius + clipping. Inner cells are flush
-         (no per-tile rounded corners, no per-image outline) so the grid
-         reads as one continuous surface, not 2-4 separate cards.
-         No gap between cells: the seam would make each corner cell
-         appear individually rounded (from the outer squircle clip). -->
-    <div class="moh-media-frame w-full" :style="gridWrapperStyle">
-      <div
-        class="grid h-full w-full"
-        :class="gridClass"
-        :style="gridStyle"
-      >
+    <!-- Outer container owns radius + clipping; inner cells are flush so the
+         grid reads as one surface. No gap between cells — seam would make
+         corner cells appear individually rounded from the clip. -->
+    <div
+      class="relative w-full overflow-hidden bg-transparent"
+      :style="[gridWrapperStyle, mediaFrameStyle]"
+    >
+      <div class="grid h-full w-full" :class="gridClass" :style="gridStyle">
         <template v-for="(m, idx) in items" :key="m.id || idx">
-          <component
-            :is="interactive ? 'button' : 'div'"
-            v-if="m.url"
-            :type="interactive ? 'button' : undefined"
-            :class="[
-              itemClass(idx),
-              interactive
-                ? 'moh-tap relative min-w-0 min-h-0 cursor-zoom-in overflow-hidden !rounded-none !bg-transparent !border-0 !p-0 focus:outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20 dark:focus-visible:ring-white/20'
-                : 'relative min-w-0 min-h-0 overflow-hidden !rounded-none',
-            ]"
-            :aria-label="interactive ? (m.kind === 'video' ? `View video ${idx + 1} of ${items.length}` : `View image ${idx + 1} of ${items.length}`) : undefined"
-            @click.stop="interactive ? openAt($event, idx) : undefined"
+          <!-- Valid media cell — interactive -->
+          <button
+            v-if="m.url && interactive"
+            type="button"
+            class="relative min-w-0 min-h-0 overflow-hidden bg-transparent border-0 p-0 m-0 block cursor-zoom-in focus:outline-none focus-visible:ring-2 focus-visible:ring-black/20 dark:focus-visible:ring-white/20"
+            :class="itemClass(idx)"
+            :aria-label="m.kind === 'video' ? `View video ${idx + 1} of ${items.length}` : `View image ${idx + 1} of ${items.length}`"
+            @click.stop="openAt($event, idx)"
           >
             <AppImg
               v-if="m.kind !== 'video'"
               :src="m.url"
-              class="block h-full w-full object-cover object-center !rounded-none"
-              :class="[imgClass(idx), hideThumbs ? 'opacity-0 transition-opacity duration-150' : 'opacity-100']"
+              class="block h-full w-full object-cover object-center"
+              :class="hideThumbs ? 'opacity-0 transition-opacity duration-150' : 'opacity-100'"
               :alt="m.alt ?? ''"
               sizes="(max-width: 640px) 50vw, 360px"
               loading="lazy"
@@ -159,8 +164,8 @@
             <template v-else>
               <AppImg
                 :src="posterFor(m) || m.url"
-                class="block h-full w-full object-cover object-center !rounded-none"
-                :class="[imgClass(idx), hideThumbs ? 'opacity-0 transition-opacity duration-150' : 'opacity-100']"
+                class="block h-full w-full object-cover object-center"
+                :class="hideThumbs ? 'opacity-0 transition-opacity duration-150' : 'opacity-100'"
                 :alt="m.alt ?? ''"
                 sizes="(max-width: 640px) 50vw, 360px"
                 loading="lazy"
@@ -171,11 +176,44 @@
               </div>
             </template>
             <div
-              v-if="interactive"
               class="pointer-events-none absolute inset-0 bg-black/0 transition-colors duration-200 hover:bg-black/10"
               aria-hidden="true"
             />
-          </component>
+          </button>
+
+          <!-- Valid media cell — display-only -->
+          <div
+            v-else-if="m.url"
+            class="relative min-w-0 min-h-0 overflow-hidden bg-transparent"
+            :class="itemClass(idx)"
+          >
+            <AppImg
+              v-if="m.kind !== 'video'"
+              :src="m.url"
+              class="block h-full w-full object-cover object-center"
+              :class="hideThumbs ? 'opacity-0 transition-opacity duration-150' : 'opacity-100'"
+              :alt="m.alt ?? ''"
+              sizes="(max-width: 640px) 50vw, 360px"
+              loading="lazy"
+              decoding="async"
+            />
+            <template v-else>
+              <AppImg
+                :src="posterFor(m) || m.url"
+                class="block h-full w-full object-cover object-center"
+                :class="hideThumbs ? 'opacity-0 transition-opacity duration-150' : 'opacity-100'"
+                :alt="m.alt ?? ''"
+                sizes="(max-width: 640px) 50vw, 360px"
+                loading="lazy"
+                decoding="async"
+              />
+              <div class="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/20" aria-hidden="true">
+                <Icon name="tabler:play" class="text-2xl text-white drop-shadow" aria-hidden="true" />
+              </div>
+            </template>
+          </div>
+
+          <!-- Deleted media cell -->
           <div
             v-else
             class="relative min-w-0 min-h-0 overflow-hidden flex items-center justify-center moh-surface"
@@ -333,6 +371,8 @@ watch(appWideSoundOn, (soundOn) => {
     singleVideoMuted.value = true
   }
 })
+
+const mediaFrameStyle = { borderRadius: 'var(--moh-media-radius)' }
 
 const items = computed(() => (props.media ?? []).filter((m) => Boolean(m?.url) || Boolean(m?.deletedAt)).slice(0, 4))
 const hideThumbs = computed(() => viewer.kind.value === 'media' && viewer.hideOrigin.value)

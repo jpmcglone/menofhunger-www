@@ -23,7 +23,7 @@ const VISIBILITY_DWELL_MS = 1_000
  */
 const VISIBLE_PX_FALLBACK = 400
 /** Fine-grained thresholds so the observer fires often enough to evaluate the pixel fallback while scrolling. */
-const OBSERVER_THRESHOLDS = Array.from({ length: 21 }, (_, i) => i / 20)
+const OBSERVER_THRESHOLDS = [0, 0.5, 1]
 const BATCH_MAX = 50
 /** Don't re-send the same post within this window (reduces redundant API calls on scroll bounce). */
 const DEDUPE_WINDOW_MS = 60_000

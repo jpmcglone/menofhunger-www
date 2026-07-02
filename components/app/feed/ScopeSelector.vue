@@ -54,10 +54,12 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: 'update:modelValue', v: FeedScope): void
+  (e: 'reselect', v: FeedScope): void
 }>()
 
 function select(key: FeedScope) {
   if (props.modelValue !== key) emit('update:modelValue', key)
+  else emit('reselect', key)
 }
 
 // ── keyboard navigation (roving tabindex pattern) ─────────────────────────────

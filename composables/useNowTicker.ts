@@ -32,7 +32,7 @@ export function useNowTicker(opts?: { everyMs?: number }) {
 
   if (import.meta.client && !started) {
     started = true
-    startTicker(nowMs, opts?.everyMs ?? 15_000)
+    startTicker(nowMs, opts?.everyMs ?? 60_000)
   }
 
   return { nowMs, now }

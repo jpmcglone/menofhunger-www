@@ -1,5 +1,5 @@
 type InViewOnceOptions = {
-  root?: Element | null
+  root?: Ref<Element | null> | Element | null
   rootMargin?: string
   threshold?: number | number[]
 }
@@ -54,7 +54,7 @@ export function useInViewOnce(elRef: Ref<HTMLElement | null>, opts: InViewOnceOp
         }
       },
       {
-        root: opts.root ?? null,
+        root: (isRef(opts.root) ? opts.root.value : opts.root) ?? null,
         rootMargin: opts.rootMargin ?? '0px',
         threshold: opts.threshold ?? 0,
       },

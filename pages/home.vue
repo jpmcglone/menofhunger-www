@@ -49,7 +49,7 @@
 
     <!-- Layout: Composer at top, feed below. Wrapper ref used to detect when composer is in view (hides mobile FAB). -->
     <div ref="homeComposerEl" class="min-h-0">
-      <AppPostComposer
+      <LazyAppPostComposer
         v-if="isAuthed && !showOnlyMeHomeComposerCard"
         ref="homeComposerRef"
         :allowed-visibilities="['public', 'verifiedOnly', 'premiumOnly']"
@@ -171,6 +171,7 @@
         :viewer-is-premium="viewerIsPremium"
         :show-reset="feedFilter !== 'all' || (feedScope !== 'forYou' && feedSort !== 'new')"
         @update:scope="handleFeedScopeChange"
+        @reselect="handleFeedScopeReselect"
         @update:sort="handleFeedSortChange"
         @update:filter="handleFeedFilterChange"
         @reset="handleFeedReset"
@@ -211,7 +212,7 @@
               @who-to-follow="navigateTo('/who-to-follow')"
             />
 
-            <div class="relative mt-3">
+            <div ref="feedVirtualListContainerEl" class="relative mt-3">
               <div
                 class="absolute inset-x-0 top-3 z-20 flex justify-center transition-opacity duration-150"
                 :class="feedRefreshingOverlay ? 'opacity-100' : 'opacity-0 pointer-events-none'"
@@ -219,27 +220,57 @@
               >
                 <AppLogoLoader compact />
               </div>
-              <TransitionGroup
-                name="feed-post"
-                tag="div"
-                class="transition-opacity duration-150"
-                :class="feedRefreshingOverlay ? 'opacity-60 pointer-events-none' : 'opacity-100'"
+
+              <!--
+                Virtualized feed list — only ~OVERSCAN+visible rows are mounted at any time.
+                Mirrors the chat list pattern (ChatMessageList.vue / @tanstack/vue-virtual).
+                The outer div is height-stable (feedTotalSize px); each row is absolutely
+                positioned at its measured offset so the scroller's scrollTop still works.
+                TransitionGroup is dropped: off-screen rows have no DOM, so FLIP measurement
+                is meaningless. New-post enter animation is handled via CSS on the row itself.
+              -->
+              <div
+                :style="{
+                  height: feedTotalSize + 'px',
+                  width: '100%',
+                  position: 'relative',
+                  transition: 'opacity 150ms',
+                  opacity: feedRefreshingOverlay ? 0.6 : 1,
+                  pointerEvents: feedRefreshingOverlay ? 'none' : 'auto',
+                }"
               >
-                <template v-for="item in activeHomeFeedDisplayItems" :key="item.kind === 'ad' ? item.key : (item.post._localId ?? item.post.id)">
-                  <AppFeedFakeAdRow v-if="item.kind === 'ad'" />
-                  <AppFeedPostRow
-                    v-else
-                    :post="item.post"
-                    collapse-ancestors
-                    :activate-video-on-mount="item.post.id === newlyPostedVideoPostId"
-                    :collapsed-sibling-replies-count="collapsedSiblingReplyCountFor(item.post)"
-                    :show-collapsed-replies-footer="true"
-                    :replies-sort="feedSort"
-                    @deleted="removePost"
-                    @edited="onFeedPostEdited"
-                  />
-                </template>
-              </TransitionGroup>
+                <div
+                  v-for="virtualRow in feedVirtualItems"
+                  :key="String(virtualRow.key)"
+                  :ref="measureFeedRow"
+                  :data-index="virtualRow.index"
+                  :style="{
+                    position: 'absolute',
+                    top: '0px',
+                    left: '0px',
+                    width: '100%',
+                    transform: `translateY(${virtualRow.start - feedListScrollMargin}px)`,
+                  }"
+                >
+                  <template v-if="activeHomeFeedDisplayItems[virtualRow.index]">
+                    <AppFeedFakeAdRow
+                      v-if="activeHomeFeedDisplayItems[virtualRow.index]!.kind === 'ad'"
+                    />
+                    <AppFeedPostRow
+                      v-else-if="activeHomeFeedDisplayItems[virtualRow.index]!.kind === 'post'"
+                      :post="feedItemPost(activeHomeFeedDisplayItems[virtualRow.index])!"
+                      collapse-ancestors
+                      :activate-video-on-mount="feedItemPost(activeHomeFeedDisplayItems[virtualRow.index])?.id === newlyPostedVideoPostId"
+                      :collapsed-sibling-replies-count="collapsedSiblingReplyCountFor(feedItemPost(activeHomeFeedDisplayItems[virtualRow.index])!)"
+                      :show-collapsed-replies-footer="true"
+                      :replies-sort="feedSort"
+                      @deleted="removePost"
+                      @edited="onFeedPostEdited"
+                    />
+                  </template>
+                </div>
+              </div>
+
               <p
                 v-if="initialFeedResolved && !loading && activeHomeFeedDisplayItems.length === 0"
                 class="px-4 py-12 text-center text-sm text-gray-400 dark:text-zinc-500"
@@ -271,6 +302,10 @@
 
 <script setup lang="ts">
 import type { CommunityGroupShell, PostVisibility, CheckinAllowedVisibility  } from '~/types/api'
+import type { ComponentPublicInstance } from 'vue'
+import type { PostsFeedDisplayItem } from '~/composables/usePostsFeed'
+import type { FeedThreadDisplayPost } from '~/utils/merge-feed-threads-for-display'
+import { useVirtualizer } from '@tanstack/vue-virtual'
 import { postBodyHasVideoEmbed } from '~/utils/link-utils'
 import { pickCheckinPrompt } from '~/utils/checkin-prompts'
 import { MOH_HOME_COMPOSER_IN_VIEW_KEY, MOH_OPEN_COMPOSER_KEY, MOH_FOCUS_HOME_COMPOSER_KEY } from '~/utils/injection-keys'
@@ -426,6 +461,12 @@ const middleScrollerRef = useMiddleScroller()
 onMounted(() => {
   if (!import.meta.client) return
   hydrated.value = true
+
+  // Initial scroll margin + ResizeObserver to update it when header height changes
+  computeFeedScrollMargin()
+  scrollMarginObserver = new ResizeObserver(computeFeedScrollMargin)
+  if (homeComposerEl.value) scrollMarginObserver.observe(homeComposerEl.value)
+
   const el = homeComposerEl.value
   const root = middleScrollerRef.value
   if (!el || !root || !homeComposerInViewRef) return
@@ -440,6 +481,8 @@ onMounted(() => {
   onBeforeUnmount(() => {
     obs.disconnect()
     homeComposerInViewRef.value = false
+    scrollMarginObserver?.disconnect()
+    scrollMarginObserver = null
   })
 })
 
@@ -460,6 +503,7 @@ const {
   error,
   refresh,
   softRefreshNewer,
+  notifyVisibleRowIds,
   loadMore,
   addReply,
   removePost,
@@ -490,6 +534,14 @@ function handleFeedScopeChange(scope: Parameters<typeof onFeedScopeChange>[0]) {
   onFeedScopeChange(scope)
   scrollFeedToTop()
 }
+// Re-tapping the already-active scope tab is the "give me something new" gesture — most useful
+// on For You, where a plain refresh can otherwise return the exact same order once the viewer
+// has seen everything. The API mints a fresh shuffle seed on every cursor-less request, so a
+// hard refresh here is enough; no special-casing per scope needed.
+function handleFeedScopeReselect() {
+  scrollFeedToTop()
+  void refresh()
+}
 function handleFeedSortChange(sort: Parameters<typeof setFeedSort>[0]) {
   setFeedSort(sort)
   scrollFeedToTop()
@@ -505,6 +557,94 @@ function handleFeedReset() {
 
 const activeHomeFeedDisplayItems = computed(() => {
   return displayItems.value
+})
+
+/** Type-safe accessor: returns the post from a feed display item when kind === 'post'. */
+function feedItemPost(item: PostsFeedDisplayItem | undefined): FeedThreadDisplayPost | undefined {
+  return item?.kind === 'post' ? item.post : undefined
+}
+
+// ── Feed virtualizer ───────────────────────────────────────────────────────────
+// Mirrors the chat list pattern (ChatMessageList.vue). Only ~OVERSCAN+visible
+// rows are mounted at any time; off-screen rows are unmounted. The outer div
+// is height-stable (feedTotalSize px); each row is absolutely positioned.
+//
+// scrollMargin = distance from the middle scroller's top to the feed list
+// container's top. This accounts for the variable-height header stack above
+// the feed (composer, check-in hero, welcome card, etc.). It's recomputed
+// via ResizeObserver whenever the header resizes and via watchEffect whenever
+// reactive state that drives header height changes.
+
+const FEED_ESTIMATED_ROW_PX = 280
+const FEED_OVERSCAN = 3
+
+const feedVirtualListContainerEl = ref<HTMLElement | null>(null)
+const feedListScrollMargin = ref(0)
+
+function computeFeedScrollMargin() {
+  const container = feedVirtualListContainerEl.value
+  const scroller = middleScrollerRef.value
+  if (!container || !scroller) {
+    feedListScrollMargin.value = 0
+    return
+  }
+  const scrollerRect = scroller.getBoundingClientRect()
+  const containerRect = container.getBoundingClientRect()
+  // Distance from scroll-container's content start to the list container top.
+  const offset = containerRect.top - scrollerRect.top + scroller.scrollTop
+  feedListScrollMargin.value = Math.max(0, Math.floor(offset))
+}
+
+let scrollMarginObserver: ResizeObserver | null = null
+
+const initialFeedLoadStarted = ref(false)
+const initialFeedResolved = ref(false)
+
+// Recompute when anything that changes header height changes reactively
+// (check-in hero visible/collapsed, composer mounted/unmounted, etc.).
+watchEffect(async () => {
+  const _deps = [
+    hasCheckedInToday.value,
+    heroResolved.value,
+    isAuthed.value,
+    feedCtaKind.value,
+    initialFeedResolved.value,
+  ]
+  if (!import.meta.client) return
+  await nextTick()
+  computeFeedScrollMargin()
+})
+
+const feedVirtualizer = useVirtualizer({
+  get count() { return activeHomeFeedDisplayItems.value.length },
+  getScrollElement: () => middleScrollerRef.value ?? null,
+  estimateSize: () => FEED_ESTIMATED_ROW_PX,
+  overscan: FEED_OVERSCAN,
+  get scrollMargin() { return feedListScrollMargin.value },
+  getItemKey: (index) => {
+    const item = activeHomeFeedDisplayItems.value[index]
+    if (!item) return index
+    return item.kind === 'ad' ? item.key : (item.post._localId ?? item.post.id)
+  },
+})
+
+const feedVirtualItems = computed(() => feedVirtualizer.value.getVirtualItems())
+const feedTotalSize = computed(() => feedVirtualizer.value.getTotalSize())
+
+function measureFeedRow(el: Element | ComponentPublicInstance | null) {
+  if (!el || !(el instanceof Element)) return
+  feedVirtualizer.value.measureElement(el)
+}
+
+// Drive realtime subscriptions from visible virtualizer rows instead of DOM scan.
+watch(feedVirtualItems, (items) => {
+  const visibleIds = items
+    .map(row => {
+      const item = activeHomeFeedDisplayItems.value[row.index]
+      return item?.kind === 'post' ? item.post.id : null
+    })
+    .filter((id): id is string => Boolean(id))
+  notifyVisibleRowIds(visibleIds)
 })
 
 // Check-ins (feed, streaks, leaderboard) are verified-only; premium counts as verified.
@@ -603,8 +743,6 @@ onBeforeUnmount(() => {
 })
 
 const showOnlyMeHomeComposerCard = computed(() => isAuthed.value && !viewerIsVerified.value)
-const initialFeedLoadStarted = ref(false)
-const initialFeedResolved = ref(false)
 
 watchEffect(() => {
   if (initialFeedResolved.value) return
@@ -652,7 +790,16 @@ onActivated(() => {
     // current head and prepends them, preserving the scroll position via anchor adjustment.
     // We delay by 300ms so this runs after the scroll-restoration plugin's 200ms re-apply,
     // preventing the two position adjustments from conflicting.
-    setTimeout(() => void softRefreshNewer(), 300)
+    // `onPrepend` adjusts scrollTop by N * estimated row height to keep the current view stable
+    // (the virtualizer uses absolute positioning, so a prepend shifts all row offsets down).
+    setTimeout(() => void softRefreshNewer({
+      onPrepend: (addedCount) => {
+        const scroller = middleScrollerRef.value
+        if (scroller && addedCount > 0) {
+          scroller.scrollTop += addedCount * FEED_ESTIMATED_ROW_PX
+        }
+      },
+    }), 300)
   } else {
     // No posts yet (e.g. first activation, auth change) — do a full refresh.
     void refresh()
@@ -725,31 +872,6 @@ function onComposerPending(payload: {
 </script>
 
 <style scoped>
-/* Enter animation for newly prepended feed posts (real-time from followed users or soft-refresh). */
-.feed-post-enter-active {
-  transition: opacity 350ms ease, transform 350ms ease;
-}
-.feed-post-enter-from {
-  opacity: 0;
-  transform: translateY(-10px);
-}
-.feed-post-enter-to {
-  opacity: 1;
-  transform: translateY(0);
-}
-/* Existing rows must not animate when something is added/removed above them, and rows being
-   removed (e.g. parent post replaced by an optimistic reply) should disappear instantly so the
-   new row is the only thing the eye tracks. Vue's TransitionGroup defaults to a 0.5s move
-   transform; we override it here. */
-.feed-post-move,
-.feed-post-leave-active {
-  transition: none !important;
-}
-.feed-post-leave-from,
-.feed-post-leave-to {
-  opacity: 0;
-}
-
 .media-grid-enter-active,
 .media-grid-leave-active {
   transition: opacity 0.2s ease;

@@ -246,15 +246,19 @@ export default defineNuxtConfig({
       {
         name: 'Inter',
         provider: 'google',
-        weights: [400, 500, 600, 700],
+        // 400 for body, 600 for semibold UI, 700 for bold headings. Weight 500
+        // removed — it saves a font variant download and the visual diff is negligible.
+        weights: [400, 600, 700],
         styles: ['normal'],
         subsets: ['latin'],
       },
       {
         // Serif headings: quiet authority, long-form vibe.
+        // Reduced to 400/700 (dropped 600) — saves one variant download; feed
+        // headings only need regular + bold.
         name: 'Literata',
         provider: 'google',
-        weights: [400, 600, 700],
+        weights: [400, 700],
         styles: ['normal'],
         subsets: ['latin'],
       },
@@ -394,7 +398,7 @@ export default defineNuxtConfig({
     // after a new build → the browser gets a 404 → Safari reports "Importing a module
     // script failed". The /_nuxt/** chunk files already carry `immutable` + 1-year max-age
     // (content-addressed), so only the HTML needs no-store.
-    '/home': { ssr: true, headers: { 'cache-control': 'no-store' } },
+    '/home': { ssr: false, headers: { 'cache-control': 'no-store' } },
     '/explore': { ssr: true, headers: { 'cache-control': 'no-store' } },
     // ——— Auth-gated / private routes ———
     // X-Robots-Tag: noindex prevents crawlers from indexing these even if they sneak past robots.txt.

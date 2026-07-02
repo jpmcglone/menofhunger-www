@@ -368,6 +368,39 @@ export function usePostsFeed(options: UsePostsFeedOptions = {}) {
     }
   }
 
+  /**
+   * Explicit visibility update — called by feed surfaces that manage their own
+   * visibility model (e.g. a virtualizer). Drives the same subscribe/unsubscribe
+   * diffing that the internal IntersectionObserver uses, but without a DOM scan.
+   * Safe to call alongside the IO: both update `visiblePostIds` idempotently.
+   */
+  function notifyVisibleRowIds(rowIds: string[]) {
+    const newSet = new Set(rowIds.map(id => (id ?? '').trim()).filter(Boolean))
+    const toSub: string[] = []
+    const toUnsub: string[] = []
+
+    for (const rowId of newSet) {
+      if (!visiblePostIds.value.has(rowId)) {
+        const ids = chainSubscriptionIdsForVisibleRow(rowId)
+        subscribedIdsByVisibleRowId.set(rowId, ids)
+        toSub.push(...ids)
+      }
+    }
+
+    for (const rowId of visiblePostIds.value) {
+      if (!newSet.has(rowId)) {
+        const ids = subscribedIdsByVisibleRowId.get(rowId) ?? [rowId]
+        subscribedIdsByVisibleRowId.delete(rowId)
+        const safeToUnsub = ids.filter(id => !isSubscribedByAnotherVisibleRow(id))
+        toUnsub.push(...safeToUnsub)
+      }
+    }
+
+    visiblePostIds.value = newSet
+    subscribePostIds(uniqueIds(toSub))
+    if (toUnsub.length) scheduleUnsub(uniqueIds(toUnsub))
+  }
+
   const postsCb: PostsCallback = {
     // Content patches (counts, body, flags) are handled globally by plugins/post-cache.client.ts.
     // Per-feed callbacks only handle structural changes: deletions remove rows from the array.
@@ -588,7 +621,15 @@ export function usePostsFeed(options: UsePostsFeedOptions = {}) {
   }
 
   let softRefreshPromise: Promise<void> | null = null
-  async function softRefreshNewer(opts?: { scroller?: HTMLElement | null }) {
+  async function softRefreshNewer(opts?: {
+    scroller?: HTMLElement | null
+    /**
+     * Called after new posts are prepended with the count of added items.
+     * When provided, replaces the default DOM-based scroll-anchor logic
+     * (suitable for virtualizer-backed feeds that compute their own offset).
+     */
+    onPrepend?: (addedCount: number) => void
+  }) {
     if (!import.meta.client) return
     if (softRefreshPromise) return await softRefreshPromise
     if (loading.value || loadingMore.value) return
@@ -601,7 +642,7 @@ export function usePostsFeed(options: UsePostsFeedOptions = {}) {
       const headId = existing[0]?.id ?? null
       if (!headId) return
 
-      const anchor = pickAnchor(scroller)
+      const anchor = opts?.onPrepend ? null : pickAnchor(scroller)
 
       try {
         const res = await apiFetch<GetPostsData>('/posts', {
@@ -634,7 +675,11 @@ export function usePostsFeed(options: UsePostsFeedOptions = {}) {
 
         const existingLive = existing.filter((p: FeedPost) => !p.deletedAt)
         posts.value = [...newOnes, ...existingLive]
-        if (anchor) await restoreAnchor(scroller, anchor)
+        if (opts?.onPrepend) {
+          opts.onPrepend(newOnes.length)
+        } else if (anchor) {
+          await restoreAnchor(scroller, anchor)
+        }
       } catch {
         // Soft refresh should be silent; avoid disrupting the feed.
       }
@@ -966,6 +1011,7 @@ export function usePostsFeed(options: UsePostsFeedOptions = {}) {
     error,
     refresh,
     softRefreshNewer,
+    notifyVisibleRowIds,
     startAutoSoftRefresh,
     loadMore,
     addPost,
