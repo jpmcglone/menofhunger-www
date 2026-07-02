@@ -98,10 +98,13 @@ describe('home feed refresh guardrails', () => {
     expect(src).toContain('() => [feedEnabled(), currentRequestKey()] as const')
   })
 
-  it('clamps collapsed reply footers to hidden direct replies', () => {
+  it('clamps the collapsed reply footer count and only shows it when positive', () => {
     const src = readFromRepo('components/app/FeedPostRow.vue')
-    expect(src).toContain('const hiddenDirectReplies = Math.max(0, total - (hasVisibleChild ? 1 : 0))')
-    expect(src).toContain('if (collapsed > 0) return Math.min(collapsed, hiddenDirectReplies)')
+    // Count now comes from `threadCollapsedCount` (stamped by feed dedupe) via the
+    // `collapsedSiblingRepliesCount` prop, not derived inside the row. It must be
+    // clamped non-negative and the footer only renders when the count is > 0.
+    expect(src).toContain('Math.max(0, Math.floor(props.collapsedSiblingRepliesCount ?? 0))')
+    expect(src).toContain('collapsedSiblingRepliesCount.value > 0 && rootPostId.value')
   })
 
   it('keeps feed post rows clickable before child stop handlers can swallow clicks', () => {
