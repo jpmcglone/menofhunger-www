@@ -287,7 +287,10 @@
                   <AppFeedPostRow
                     v-else
                     :post="item.post"
-                    :show-collapsed-replies-footer="false"
+                    collapse-ancestors
+                    :show-collapsed-replies-footer="profileSort === 'trending'"
+                    :collapsed-sibling-replies-count="postsOnlyCollapsedSiblingReplyCountFor(item.post)"
+                    :replies-sort="profileSort"
                     @deleted="postsOnlyRemovePost"
                     @edited="(p) => postsOnlyReplacePost(p.post)"
                   />
@@ -330,7 +333,10 @@
                   <AppFeedPostRow
                     v-else
                     :post="item.post"
-                    :show-collapsed-replies-footer="false"
+                    collapse-ancestors
+                    :show-collapsed-replies-footer="profileSort === 'trending'"
+                    :collapsed-sibling-replies-count="profileCollapsedSiblingReplyCountFor(item.post)"
+                    :replies-sort="profileSort"
                     @deleted="profileRemovePost"
                     @edited="onProfilePostEdited"
                   />
@@ -765,6 +771,7 @@ onMounted(() => nextTick(() => {
 // ─── Posts-only feed (top-level, no replies) ──────────────────────────────────
 const {
   displayItems: postsOnlyItems,
+  collapsedSiblingReplyCountFor: postsOnlyCollapsedSiblingReplyCountFor,
   counts: postsOnlyCounts,
   loading: postsOnlyLoading,
   loadingMore: postsOnlyLoadingMore,
@@ -792,6 +799,7 @@ const {
   posts: profilePosts,
   displayPosts: profileDisplayPosts,
   displayItems: profileDisplayItems,
+  collapsedSiblingReplyCountFor: profileCollapsedSiblingReplyCountFor,
   counts: profileCounts,
   loading: profileLoading,
   loadingMore: profileLoadingMore,

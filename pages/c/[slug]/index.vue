@@ -179,7 +179,10 @@
               <AppFeedPostRow
                 v-else
                 :post="item.post"
-                :show-collapsed-replies-footer="false"
+                collapse-ancestors
+                :show-collapsed-replies-footer="feedSort === 'trending'"
+                :collapsed-sibling-replies-count="collapsedSiblingReplyCountFor(item.post)"
+                :replies-sort="feedSort"
                 @deleted="removePost"
                 @edited="onEdited"
               />
@@ -456,6 +459,7 @@ const {
 const {
   posts,
   displayItems,
+  collapsedSiblingReplyCountFor,
   nextCursor,
   loading: feedLoading,
   loadingMore,

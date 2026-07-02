@@ -230,6 +230,7 @@
                   <AppFeedPostRow
                     v-else
                     :post="item.post"
+                    collapse-ancestors
                     :activate-video-on-mount="item.post.id === newlyPostedVideoPostId"
                     :collapsed-sibling-replies-count="collapsedSiblingReplyCountFor(item.post)"
                     :show-collapsed-replies-footer="true"

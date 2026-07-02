@@ -141,6 +141,7 @@
               <AppFeedPostRow
                 v-else
                 :post="item.post"
+                collapse-ancestors
                 @deleted="onSearchPostDeleted"
                 @edited="onSearchPostEdited"
               />
@@ -244,6 +245,7 @@
             v-for="p in topicPosts"
             :key="p.id"
             :post="p"
+            collapse-ancestors
           />
           <div v-if="topicLoadingMore" class="flex justify-center py-6 px-4">
             <AppLogoLoader />
@@ -320,6 +322,7 @@
             v-for="p in categoryPosts"
             :key="p.id"
             :post="p"
+            collapse-ancestors
           />
           <div v-if="categoryLoadingMore" class="flex justify-center py-6 px-4">
             <AppLogoLoader />
@@ -523,6 +526,7 @@
               v-for="p in featuredPosts"
               :key="p.id"
               :post="p"
+              collapse-ancestors
             />
           </div>
         </section>
@@ -643,6 +647,7 @@
                   v-for="p in trendingBefore"
                   :key="p.id"
                   :post="p"
+                  collapse-ancestors
                 />
               </div>
 
@@ -669,6 +674,7 @@
                   v-for="p in trendingAfter"
                   :key="p.id"
                   :post="p"
+                  collapse-ancestors
                 />
               </div>
             </div>

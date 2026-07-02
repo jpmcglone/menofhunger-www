@@ -5,6 +5,7 @@ import type { FeedPost } from '~/types/api'
 import { usePostsFeed } from '~/composables/usePostsFeed'
 import { useUserPosts } from '~/composables/useUserPosts'
 import { mergeFeedThreadsForDisplay } from '~/utils/merge-feed-threads-for-display'
+import { buildThreadDisplayChain, hiddenThreadGapLabel, postAfterGapInDisplayChain } from '~/utils/feed-thread-display-chain'
 
 async function runInSetup<T>(fn: () => T): Promise<T> {
   let result: T | null = null
@@ -60,29 +61,22 @@ function makeFeed() {
 }
 
 // ---------------------------------------------------------------------------
-// 1. collapsedSiblingReplyCountFor must use commentCount, NOT feed-page counts
+// 1. collapsedSiblingReplyCountFor uses threadCollapsedCount only (dedupe)
 // ---------------------------------------------------------------------------
-// This was the root cause: the old code counted how many replies appeared in
-// the current feed page (always 0-1 after collapseByRoot), instead of using
-// the API-provided commentCount.  If this test ever fails, it means someone
-// re-introduced feed-page counting.
-describe('collapsedSiblingReplyCountFor uses commentCount (regression)', () => {
-  it('returns the post\'s own commentCount regardless of how many replies are in the feed page', async () => {
+describe('collapsedSiblingReplyCountFor uses threadCollapsedCount only', () => {
+  it('returns 0 when threadCollapsedCount is absent even if commentCount is large', async () => {
     const feed = await makeFeed()
 
     const root = makePost({ id: 'root', parentId: null, commentCount: 7 })
     const reply = makePost({ id: 'reply', parentId: 'root', parent: root, commentCount: 3 })
 
-    // Only 1 reply in the feed page, but root has 7 total comments
     feed.posts.value = [reply]
-
-    expect(feed.collapsedSiblingReplyCountFor(reply)).toBe(3)
-    // Root isn't in the page, but if it were, its count should still be 7
+    expect(feed.collapsedSiblingReplyCountFor(reply)).toBe(0)
     feed.posts.value = [root, reply]
-    expect(feed.collapsedSiblingReplyCountFor(root)).toBe(7)
+    expect(feed.collapsedSiblingReplyCountFor(root)).toBe(0)
   })
 
-  it('is not affected by adding/removing sibling replies from the feed page', async () => {
+  it('is not affected by how many sibling replies appear in the feed page', async () => {
     const feed = await makeFeed()
 
     const root = makePost({ id: 'root', parentId: null, commentCount: 10 })
@@ -90,35 +84,26 @@ describe('collapsedSiblingReplyCountFor uses commentCount (regression)', () => {
     const r2 = makePost({ id: 'r2', parentId: 'root', parent: root, commentCount: 0 })
     const r3 = makePost({ id: 'r3', parentId: 'root', parent: root, commentCount: 0 })
 
-    // 1 reply in page
     feed.posts.value = [r1]
-    expect(feed.collapsedSiblingReplyCountFor(root)).toBe(10)
+    expect(feed.collapsedSiblingReplyCountFor(r1)).toBe(0)
 
-    // 3 replies in page — count must stay the same (commentCount, not page count)
     feed.posts.value = [r1, r2, r3]
-    expect(feed.collapsedSiblingReplyCountFor(root)).toBe(10)
+    expect(feed.collapsedSiblingReplyCountFor(r1)).toBe(0)
   })
 
-  it('returns 0 for a post with commentCount 0', async () => {
+  it('returns threadCollapsedCount when the feed deduped siblings', async () => {
     const feed = await makeFeed()
-    const leaf = makePost({ id: 'leaf', parentId: 'x', commentCount: 0 })
-    feed.posts.value = [leaf]
-    expect(feed.collapsedSiblingReplyCountFor(leaf)).toBe(0)
-  })
-
-  it('clamps negative commentCount to 0', async () => {
-    const feed = await makeFeed()
-    const weird = makePost({ id: 'w', commentCount: -3 })
-    feed.posts.value = [weird]
-    expect(feed.collapsedSiblingReplyCountFor(weird)).toBe(0)
+    const post = makePost({ id: 'p1', commentCount: 100, threadCollapsedCount: 3 })
+    feed.posts.value = [post]
+    expect(feed.collapsedSiblingReplyCountFor(post)).toBe(3)
   })
 })
 
 // ---------------------------------------------------------------------------
-// 2. useUserPosts collapsed count also uses commentCount
+// 2. useUserPosts collapsed count also uses threadCollapsedCount only
 // ---------------------------------------------------------------------------
-describe('useUserPosts collapsedSiblingReplyCountFor (regression)', () => {
-  it('uses commentCount, not feed-page reply tallies', async () => {
+describe('useUserPosts collapsedSiblingReplyCountFor (dedupe only)', () => {
+  it('returns 0 without threadCollapsedCount, even when commentCount > 0', async () => {
     const usernameLower = ref(`u-${Math.random().toString(36).slice(2, 8)}`)
     const userFeed = await runInSetup(() =>
       useUserPosts(usernameLower, {
@@ -133,8 +118,22 @@ describe('useUserPosts collapsedSiblingReplyCountFor (regression)', () => {
 
     userFeed.posts.value = [reply]
 
-    expect(userFeed.collapsedSiblingReplyCountFor(reply)).toBe(2)
-    expect(userFeed.collapsedSiblingReplyCountFor(root)).toBe(5)
+    expect(userFeed.collapsedSiblingReplyCountFor(reply)).toBe(0)
+    expect(userFeed.collapsedSiblingReplyCountFor(root)).toBe(0)
+  })
+
+  it('returns threadCollapsedCount when present', async () => {
+    const usernameLower = ref(`u-${Math.random().toString(36).slice(2, 8)}`)
+    const userFeed = await runInSetup(() =>
+      useUserPosts(usernameLower, {
+        enabled: computed(() => false),
+        defaultToNewestAndAll: true,
+        cookieKeyPrefix: `test-${Math.random().toString(36).slice(2, 8)}`,
+      }),
+    )
+    const post = makePost({ id: 'p4', commentCount: 10, threadCollapsedCount: 2 })
+    userFeed.posts.value = [post]
+    expect(userFeed.collapsedSiblingReplyCountFor(post)).toBe(2)
   })
 })
 
@@ -179,14 +178,14 @@ describe('orphan reply safety', () => {
     feed.posts.value = [orphan]
 
     expect(() => feed.collapsedSiblingReplyCountFor(orphan)).not.toThrow()
-    expect(feed.collapsedSiblingReplyCountFor(orphan)).toBe(4)
+    expect(feed.collapsedSiblingReplyCountFor(orphan)).toBe(0)
   })
 })
 
 // ---------------------------------------------------------------------------
-// NEW: threadCollapsedCount takes priority over commentCount
+// threadCollapsedCount-only footer count (no commentCount fallback)
 // ---------------------------------------------------------------------------
-describe('collapsedSiblingReplyCountFor prefers threadCollapsedCount', () => {
+describe('collapsedSiblingReplyCountFor threadCollapsedCount only', () => {
   it('returns threadCollapsedCount when > 0, even if commentCount is larger', async () => {
     const feed = await makeFeed()
     const post = makePost({ id: 'p1', commentCount: 100, threadCollapsedCount: 3 })
@@ -194,39 +193,25 @@ describe('collapsedSiblingReplyCountFor prefers threadCollapsedCount', () => {
     expect(feed.collapsedSiblingReplyCountFor(post)).toBe(3)
   })
 
-  it('never returns more collapsed replies than the post can actually have', async () => {
+  it('returns threadCollapsedCount even when commentCount is 0', async () => {
     const feed = await makeFeed()
     const post = makePost({ id: 'p0', commentCount: 0, threadCollapsedCount: 2 })
+    feed.posts.value = [post]
+    expect(feed.collapsedSiblingReplyCountFor(post)).toBe(2)
+  })
+
+  it('returns 0 when threadCollapsedCount is 0', async () => {
+    const feed = await makeFeed()
+    const post = makePost({ id: 'p2', commentCount: 7, threadCollapsedCount: 0 })
     feed.posts.value = [post]
     expect(feed.collapsedSiblingReplyCountFor(post)).toBe(0)
   })
 
-  it('falls back to commentCount when threadCollapsedCount is 0', async () => {
-    const feed = await makeFeed()
-    const post = makePost({ id: 'p2', commentCount: 7, threadCollapsedCount: 0 })
-    feed.posts.value = [post]
-    expect(feed.collapsedSiblingReplyCountFor(post)).toBe(7)
-  })
-
-  it('falls back to commentCount when threadCollapsedCount is absent', async () => {
+  it('returns 0 when threadCollapsedCount is absent', async () => {
     const feed = await makeFeed()
     const post = makePost({ id: 'p3', commentCount: 5 })
     feed.posts.value = [post]
-    expect(feed.collapsedSiblingReplyCountFor(post)).toBe(5)
-  })
-
-  it('useUserPosts also prioritizes threadCollapsedCount', async () => {
-    const usernameLower = ref(`u-${Math.random().toString(36).slice(2, 8)}`)
-    const userFeed = await runInSetup(() =>
-      useUserPosts(usernameLower, {
-        enabled: computed(() => false),
-        defaultToNewestAndAll: true,
-        cookieKeyPrefix: `test-${Math.random().toString(36).slice(2, 8)}`,
-      }),
-    )
-    const post = makePost({ id: 'p4', commentCount: 10, threadCollapsedCount: 2 })
-    userFeed.posts.value = [post]
-    expect(userFeed.collapsedSiblingReplyCountFor(post)).toBe(2)
+    expect(feed.collapsedSiblingReplyCountFor(post)).toBe(0)
   })
 })
 
@@ -353,6 +338,108 @@ describe('displayPosts thread merge', () => {
 })
 
 // ---------------------------------------------------------------------------
+// NEW: pinnedAncestorIds — ancestors independently surfaced elsewhere in the
+// feed must stay visible even when FeedPostRow collapses the primary's chain.
+// ---------------------------------------------------------------------------
+describe('mergeFeedThreadsForDisplay pinnedAncestorIds', () => {
+  it('records an absorbed sibling that sits on the primary chain as pinned (no threadCollapsedCount bump)', () => {
+    const root = makePost({ id: 'root' })
+    const r1 = makePost({ id: 'r1', parentId: 'root', parent: root })
+    const r2 = makePost({ id: 'r2', parentId: 'r1', parent: r1 })
+    const merged = mergeFeedThreadsForDisplay([r2, r1])
+    expect(merged.map((p) => p.id)).toEqual(['r2'])
+    expect(merged[0]?.pinnedAncestorIds).toEqual(['r1'])
+    expect(merged[0]?.threadCollapsedCount ?? 0).toBe(0)
+  })
+
+  it('does not set pinnedAncestorIds for an off-chain sibling branch', () => {
+    const root = makePost({ id: 'root' })
+    const r1 = makePost({ id: 'r1', parentId: 'root', parent: root })
+    const r2 = makePost({ id: 'r2', parentId: 'root', parent: root })
+    const merged = mergeFeedThreadsForDisplay([r1, r2])
+    expect(merged[0]?.pinnedAncestorIds).toBeUndefined()
+    expect(merged[0]?.threadCollapsedCount).toBe(1)
+  })
+
+  it('pins a deep ancestor (A..G) when independently returned as its own feed row', () => {
+    const A = makePost({ id: 'A' })
+    const B = makePost({ id: 'B', parentId: 'A', parent: A })
+    const C = makePost({ id: 'C', parentId: 'B', parent: B })
+    const D = makePost({ id: 'D', parentId: 'C', parent: C })
+    const E = makePost({ id: 'E', parentId: 'D', parent: D })
+    const F = makePost({ id: 'F', parentId: 'E', parent: E })
+    const G = makePost({ id: 'G', parentId: 'F', parent: F })
+    // Feed independently returned G (deepest, chain A..G) and C (chain A..C).
+    const merged = mergeFeedThreadsForDisplay([G, C])
+    expect(merged.map((p) => p.id)).toEqual(['G'])
+    expect(merged[0]?.pinnedAncestorIds).toEqual(['C'])
+  })
+})
+
+// ---------------------------------------------------------------------------
+// NEW: buildThreadDisplayChain — the pure collapsing algorithm FeedPostRow uses
+// to compact a long ancestor chain to root + parent + leaf (+ pins).
+// ---------------------------------------------------------------------------
+describe('buildThreadDisplayChain', () => {
+  function chainItems(ids: string[]): { id: string }[] {
+    return ids.map((id) => ({ id }))
+  }
+
+  function kinds(out: ReturnType<typeof buildThreadDisplayChain<{ id: string }>>): string[] {
+    return out.map((e) => (e.kind === 'post' ? e.item.id : 'gap'))
+  }
+
+  it('returns the full chain unchanged when collapse is false', () => {
+    const out = buildThreadDisplayChain(chainItems(['A', 'B', 'C', 'D']), undefined, false)
+    expect(kinds(out)).toEqual(['A', 'B', 'C', 'D'])
+  })
+
+  it('returns the full chain unchanged when length is 3 or fewer', () => {
+    const out = buildThreadDisplayChain(chainItems(['A', 'B', 'C']), undefined, true)
+    expect(kinds(out)).toEqual(['A', 'B', 'C'])
+  })
+
+  it('collapses a long chain to root + parent + leaf with one gap', () => {
+    const out = buildThreadDisplayChain(chainItems(['A', 'B', 'C', 'D', 'E', 'F', 'G']), undefined, true)
+    expect(kinds(out)).toEqual(['A', 'gap', 'F', 'G'])
+    const gap = out.find((e) => e.kind === 'gap')
+    expect(gap?.kind === 'gap' && gap.hiddenCount).toBe(4)
+  })
+
+  it('keeps a pinned ancestor visible and splits the gap around it', () => {
+    const out = buildThreadDisplayChain(chainItems(['A', 'B', 'C', 'D', 'E', 'F', 'G']), ['C'], true)
+    expect(kinds(out)).toEqual(['A', 'gap', 'C', 'gap', 'F', 'G'])
+    const gaps = out.filter((e) => e.kind === 'gap')
+    expect(gaps.map((e) => (e.kind === 'gap' ? e.hiddenCount : 0))).toEqual([1, 2])
+  })
+
+  it('gap keys are stable and unique across separate gaps', () => {
+    const out = buildThreadDisplayChain(chainItems(['A', 'B', 'C', 'D', 'E', 'F', 'G']), ['C'], true)
+    const gapKeys = out.filter((e) => e.kind === 'gap').map((e) => (e.kind === 'gap' ? e.key : ''))
+    expect(new Set(gapKeys).size).toBe(gapKeys.length)
+  })
+})
+
+describe('hiddenThreadGapLabel', () => {
+  it('pluralizes collapsed ancestor copy', () => {
+    expect(hiddenThreadGapLabel(1)).toBe('1 reply')
+    expect(hiddenThreadGapLabel(4)).toBe('4 replies')
+  })
+})
+
+describe('postAfterGapInDisplayChain', () => {
+  it('returns the next visible post below a gap', () => {
+    const chain = buildThreadDisplayChain(
+      [{ id: 'A' }, { id: 'B' }, { id: 'C' }, { id: 'D' }, { id: 'E' }, { id: 'F' }, { id: 'G' }],
+      ['C'],
+      true,
+    )
+    expect(postAfterGapInDisplayChain(chain, 1)?.id).toBe('C')
+    expect(postAfterGapInDisplayChain(chain, 3)?.id).toBe('F')
+  })
+})
+
+// ---------------------------------------------------------------------------
 // displayItems: must follow merged display rows (no duplicate visible chains)
 // ---------------------------------------------------------------------------
 describe('displayItems thread merge alignment', () => {
@@ -449,9 +536,8 @@ describe('end-to-end: 40 comments but only N are in the new feed', () => {
     expect(out[0]!.id).toBe('peter')
     // Nick was on-chain, so no extra increment. API's 2 stays.
     expect((out[0] as any).threadCollapsedCount).toBe(2)
-    // Peter has no hidden direct replies, so the root-thread collapse hint should not
-    // render a misleading "View 2 more replies" footer under Peter.
-    expect(feed.collapsedSiblingReplyCountFor(out[0]!)).toBe(0)
+    // API collapsed 2; nick was on-chain so no client increment.
+    expect(feed.collapsedSiblingReplyCountFor(out[0]!)).toBe(2)
   })
 
   it('API keeps 2 sibling replies → threadCollapsedCount=2, client absorbs off-chain sibling → footer=3', async () => {
@@ -472,11 +558,10 @@ describe('end-to-end: 40 comments but only N are in the new feed', () => {
     expect(out[0]!.id).toBe('nick') // first in feed, same chain length
     // API said 2 collapsed + bob is off-chain sibling absorbed client-side = 3
     expect((out[0] as any).threadCollapsedCount).toBe(3)
-    // Nick has no hidden direct replies; bob was a sibling branch under John.
-    expect(feed.collapsedSiblingReplyCountFor(out[0]!)).toBe(0)
+    expect(feed.collapsedSiblingReplyCountFor(out[0]!)).toBe(3)
   })
 
-  it('single reply in feed with no threadCollapsedCount falls back to commentCount', async () => {
+  it('single reply in feed with no threadCollapsedCount does not show a dedupe footer count', async () => {
     const feed = await makeFeed()
 
     // Only 1 reply from this thread appeared in the feed — no collapsing
@@ -488,11 +573,10 @@ describe('end-to-end: 40 comments but only N are in the new feed', () => {
 
     const out = feed.displayPosts.value
     expect(out).toHaveLength(1)
-    // No threadCollapsedCount → falls back to nick's own commentCount
-    expect(feed.collapsedSiblingReplyCountFor(out[0]!)).toBe(5)
+    expect(feed.collapsedSiblingReplyCountFor(out[0]!)).toBe(0)
   })
 
-  it('top-level trending post with threadCollapsedCount=0 falls back to commentCount', async () => {
+  it('top-level trending post with threadCollapsedCount=0 does not show a dedupe footer count', async () => {
     const feed = await makeFeed()
 
     // Post is in the trending feed but no other trending items share its root.
@@ -500,7 +584,7 @@ describe('end-to-end: 40 comments but only N are in the new feed', () => {
     const post = makePost({ id: 'post', commentCount: 40, threadCollapsedCount: 0 })
     feed.posts.value = [post]
 
-    expect(feed.collapsedSiblingReplyCountFor(post)).toBe(40)
+    expect(feed.collapsedSiblingReplyCountFor(post)).toBe(0)
   })
 })
 
@@ -532,9 +616,9 @@ describe('full pipeline: multiple threads with different collapse scenarios', ()
     // Thread C: dave is alone → stays
     expect(out.map((p) => p.id)).toEqual(['peter', 'sue', 'dave'])
 
-    // Thread A: peter has no hidden direct replies, so no footer under peter.
-    expect(feed.collapsedSiblingReplyCountFor(out[0]!)).toBe(0)
-    // Thread B footer: no threadCollapsedCount → sue's commentCount (0)
+    // Thread A: peter kept the API collapsed count after nick was absorbed.
+    expect(feed.collapsedSiblingReplyCountFor(out[0]!)).toBe(2)
+    // Thread B: no dedupe count on sue.
     expect(feed.collapsedSiblingReplyCountFor(out[1]!)).toBe(0)
     // Thread C: no replies at all
     expect(feed.collapsedSiblingReplyCountFor(out[2]!)).toBe(0)

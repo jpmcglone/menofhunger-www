@@ -2,6 +2,7 @@ import type { ApiPagination, FeedPost } from '~/types/api'
 import {
   collapsedSiblingReplyCountForPost,
   mergeFeedThreadsForDisplay,
+  type FeedThreadDisplayPost,
 } from '~/utils/merge-feed-threads-for-display'
 import { collectChainIds } from '~/utils/feed-patch'
 import { useCursorFeed } from '~/composables/useCursorFeed'
@@ -13,7 +14,7 @@ export type UserPostsFilter = FeedVisibilityFilter
 type PostCounts = NonNullable<ApiPagination['counts']>
 
 export type UserPostsDisplayItem =
-  | { kind: 'post'; post: FeedPost }
+  | { kind: 'post'; post: FeedThreadDisplayPost }
   | { kind: 'ad'; key: string }
 
 const EMPTY_COUNTS: PostCounts = {

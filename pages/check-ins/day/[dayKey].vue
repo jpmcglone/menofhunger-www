@@ -53,6 +53,7 @@
               v-for="p in posts"
               :key="p.id"
               :post="p"
+              collapse-ancestors
               hide-reply-footers
               @deleted="(id) => onDeleted(id)"
               @edited="onEdited"

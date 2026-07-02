@@ -26,7 +26,7 @@
           <template v-for="post in displayPosts" :key="post._localId ?? post.id">
             <AppFeedPostRow
               :post="post"
-              :replies-sort="'new'"
+              collapse-ancestors
             />
           </template>
         </div>

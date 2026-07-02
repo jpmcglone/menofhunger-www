@@ -180,10 +180,12 @@
                   <AppFeedPostRow
                     v-else
                     :post="item.post"
+                    collapse-ancestors
                     :feed-group="shellForPost(item.post) ?? null"
                     subtle-border-bottom
                     :group-wall="null"
                     :collapsed-sibling-replies-count="postsFeedCollapsedSiblingReplyCountFor(item.post)"
+                    :show-collapsed-replies-footer="hubSort === 'trending'"
                     :replies-sort="hubSort"
                     @deleted="postsFeedRemovePost"
                     @edited="onPostsTabEdited"
@@ -219,10 +221,12 @@
                   <AppFeedPostRow
                     v-else
                     :post="item.post"
+                    collapse-ancestors
                     :feed-group="shellForPost(item.post) ?? null"
                     subtle-border-bottom
                     :group-wall="null"
                     :collapsed-sibling-replies-count="repliesFeedCollapsedSiblingReplyCountFor(item.post)"
+                    :show-collapsed-replies-footer="hubSort === 'trending'"
                     :replies-sort="hubSort"
                     @deleted="repliesFeedRemovePost"
                     @edited="onRepliesTabEdited"

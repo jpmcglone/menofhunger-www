@@ -56,6 +56,7 @@
               v-for="p in posts"
               :key="p.id"
               :post="p"
+              collapse-ancestors
               @deleted="(id) => onDeleted(id)"
               @edited="onEdited"
             />

@@ -4,6 +4,7 @@ import { getApiErrorMessage } from '~/utils/api-error'
 import {
   collapsedSiblingReplyCountForPost,
   mergeFeedThreadsForDisplay,
+  type FeedThreadDisplayPost,
 } from '~/utils/merge-feed-threads-for-display'
 import { useCursorFeed } from '~/composables/useCursorFeed'
 import { useMiddleScroller } from '~/composables/useMiddleScroller'
@@ -19,7 +20,7 @@ export type LocalFeedInsert =
   | { kind: 'replaceParent'; post: FeedPost; parentId: string }
 
 export type PostsFeedDisplayItem =
-  | { kind: 'post'; post: FeedPost }
+  | { kind: 'post'; post: FeedThreadDisplayPost }
   | { kind: 'ad'; key: string }
 
 function upsertLocalFeedInsert(inserts: LocalFeedInsert[], nextInsert: LocalFeedInsert): LocalFeedInsert[] {
@@ -465,16 +466,13 @@ export function usePostsFeed(options: UsePostsFeedOptions = {}) {
     })
   }
 
-  const displayPosts = computed<FeedPost[]>(() =>
+  const displayPosts = computed<FeedThreadDisplayPost[]>(() =>
     mergeFeedThreadsForDisplay(posts.value),
   )
 
   function collapsedSiblingReplyCountFor(post: FeedPost): number {
     const cached = postCache.get(post)
-    const liveCommentCount = Math.max(0, Math.floor(cached.commentCount ?? 0)) + getCommentCountBump(cached.id)
-    const collapsedCount = Math.max(0, Math.floor(cached.threadCollapsedCount ?? 0))
-    if (collapsedCount > 0) return Math.min(collapsedCount, liveCommentCount)
-    return liveCommentCount
+    return Math.max(0, Math.floor(cached.threadCollapsedCount ?? 0))
   }
 
   const displayItems = computed<PostsFeedDisplayItem[]>(() => {

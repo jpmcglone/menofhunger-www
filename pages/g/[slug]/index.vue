@@ -194,8 +194,11 @@
                   <AppFeedPostRow
                     v-else
                     :post="item.post"
+                    collapse-ancestors
                     :group-wall="shell && isOwner ? { groupId: shell.id, viewerIsOwner: true } : null"
-                    :show-collapsed-replies-footer="false"
+                    :show-collapsed-replies-footer="groupSort === 'trending'"
+                    :collapsed-sibling-replies-count="postsFeedCollapsedSiblingReplyCountFor(item.post)"
+                    :replies-sort="groupSort"
                     @deleted="postsFeedRemovePost"
                     @edited="onPostsTabEdited"
                     @group-pin-changed="onGroupPinChanged"
@@ -230,8 +233,11 @@
                   <AppFeedPostRow
                     v-else
                     :post="item.post"
+                    collapse-ancestors
                     :group-wall="shell && isOwner ? { groupId: shell.id, viewerIsOwner: true } : null"
-                    :show-collapsed-replies-footer="false"
+                    :show-collapsed-replies-footer="groupSort === 'trending'"
+                    :collapsed-sibling-replies-count="repliesFeedCollapsedSiblingReplyCountFor(item.post)"
+                    :replies-sort="groupSort"
                     @deleted="repliesFeedRemovePost"
                     @edited="onRepliesTabEdited"
                     @group-pin-changed="onGroupPinChanged"
@@ -499,6 +505,7 @@ onMounted(() => nextTick(() => {
 const {
   posts: postsFeedPosts,
   displayItems: postsFeedDisplayItems,
+  collapsedSiblingReplyCountFor: postsFeedCollapsedSiblingReplyCountFor,
   nextCursor: postsFeedNextCursor,
   loading: postsFeedLoading,
   loadingMore: postsFeedLoadingMore,
@@ -532,6 +539,7 @@ const {
 const {
   posts: repliesFeedPosts,
   displayItems: repliesFeedDisplayItems,
+  collapsedSiblingReplyCountFor: repliesFeedCollapsedSiblingReplyCountFor,
   nextCursor: repliesFeedNextCursor,
   loading: repliesFeedLoading,
   loadingMore: repliesFeedLoadingMore,

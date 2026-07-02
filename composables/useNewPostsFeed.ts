@@ -1,6 +1,6 @@
 import type { FeedPost } from '~/types/api'
 import { useCursorFeed } from '~/composables/useCursorFeed'
-import { mergeFeedThreadsForDisplay } from '~/utils/merge-feed-threads-for-display'
+import { mergeFeedThreadsForDisplay, type FeedThreadDisplayPost } from '~/utils/merge-feed-threads-for-display'
 
 export function useNewPostsFeed() {
   const feed = useCursorFeed<FeedPost>({
@@ -21,7 +21,7 @@ export function useNewPostsFeed() {
   })
 
   const posts = feed.items
-  const displayPosts = computed<FeedPost[]>(() =>
+  const displayPosts = computed<FeedThreadDisplayPost[]>(() =>
     mergeFeedThreadsForDisplay(posts.value),
   )
 
