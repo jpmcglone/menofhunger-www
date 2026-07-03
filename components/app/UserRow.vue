@@ -51,8 +51,8 @@
       </div>
 
       <div class="ml-auto shrink-0 flex items-center gap-2">
-        <div v-if="props.platforms && props.platforms.length > 0" class="flex items-center gap-1 text-gray-400 dark:text-gray-500" aria-label="Active platforms">
-          <template v-for="p in props.platforms" :key="p">
+        <div v-if="uniquePlatforms.length > 0" class="flex items-center gap-1 text-gray-400 dark:text-gray-500" aria-label="Active platforms">
+          <template v-for="p in uniquePlatforms" :key="p">
             <Icon
               v-if="p === 'ios'"
               name="tabler:device-iphone"
@@ -117,6 +117,16 @@ const props = defineProps<{
 const { user } = useUserOverlay(computed(() => props.user))
 
 const { isAuthed } = useAuth()
+
+// Deduplicate platforms while preserving order (first = most recently connected).
+const uniquePlatforms = computed(() => {
+  const seen = new Set<string>()
+  return (props.platforms ?? []).filter((p) => {
+    if (seen.has(p)) return false
+    seen.add(p)
+    return true
+  })
+})
 
 // When signed out, never show follow controls anywhere.
 const showFollowButton = computed(() => props.showFollowButton !== false && (isAuthed.value || props.allowLoggedOutFollowButton === true))
