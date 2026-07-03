@@ -245,16 +245,22 @@ export function useAuth() {
   async function logout() {
     bumpAuthGeneration()
     clientMePromise = null
-    const { emitLogout } = usePresence()
-    emitLogout()
+    const { emitLogout, disconnect } = usePresence()
     const { onLogout } = usePushNotifications()
 
-    // Best-effort server/session cleanup: still clear local auth state even if network fails.
+    // REST first: revoke the session row on the server before emitting the socket event.
+    // If the socket handler runs first it would try to revoke an already-dead token.
     try {
       await apiFetch<{ success: true }>('/auth/logout', { method: 'POST' })
     } catch {
-      // No-op: proceed with local cleanup.
+      // Best-effort — proceed with local cleanup even if the network call fails.
     }
+
+    // Emit the logout event so the server can broadcast to other sockets, then tear
+    // down this client's socket so it doesn't linger as an anonymous connection.
+    emitLogout()
+    disconnect()
+
     await onLogout().catch(() => undefined)
 
     clearMohCacheAll()
@@ -263,6 +269,35 @@ export function useAuth() {
     didAttempt.value = true
 
     // Redirect to home feed after explicit logout (home is accessible logged-out).
+    if (import.meta.client) {
+      await navigateTo('/home', { replace: true })
+    }
+  }
+
+  async function logoutEverywhere() {
+    bumpAuthGeneration()
+    clientMePromise = null
+    const { emitLogout, disconnect } = usePresence()
+    const { onLogout } = usePushNotifications()
+
+    // Revoke all sessions server-side (not just the current token).
+    // The API also disconnects all sockets for this user on other instances.
+    try {
+      await apiFetch<{ success: true }>('/auth/sessions/revoke-all', { method: 'POST' })
+    } catch {
+      // Best-effort — proceed with local cleanup.
+    }
+
+    emitLogout()
+    disconnect()
+
+    await onLogout().catch(() => undefined)
+
+    clearMohCacheAll()
+    clearAuthClientState({ resetViewerCaches: true })
+    user.value = null
+    didAttempt.value = true
+
     if (import.meta.client) {
       await navigateTo('/home', { replace: true })
     }
@@ -277,6 +312,6 @@ export function useAuth() {
   // verified-only engagement features (e.g. setting your own status).
   const isVerifiedMember = computed(() => isVerified.value || isPremium.value)
 
-  return { user, me, ensureLoaded, initAuth, logout, handleUnauthorized, isAuthed, isVerified, isPremium, isPremiumPlus, isVerifiedMember, apiUnreachable }
+  return { user, me, ensureLoaded, initAuth, logout, logoutEverywhere, handleUnauthorized, isAuthed, isVerified, isPremium, isPremiumPlus, isVerifiedMember, apiUnreachable }
 }
 

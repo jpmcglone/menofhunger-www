@@ -97,6 +97,9 @@ export function clearAuthClientState(params?: { resetViewerCaches?: boolean }) {
 
   useState<any>('app-header', () => null).value = null
 
+  // Reset push subscription binding so a future login re-registers for the correct user.
+  useState<string | null>('push-subscribed-user-id', () => null).value = null
+
   // Client-persisted viewer cache keys that are outside Nuxt state.
   if (import.meta.client) {
     try {

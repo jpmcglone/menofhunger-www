@@ -1,5 +1,25 @@
 <template>
   <div class="space-y-4">
+    <!-- Log out on all devices -->
+    <div class="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900/40 p-4 space-y-3">
+      <div class="space-y-1">
+        <div class="text-sm font-semibold moh-text">Log out on all devices</div>
+        <p class="text-xs moh-text-muted leading-relaxed">
+          Revokes your session on every browser, phone, and tablet. You'll need to log in again everywhere.
+        </p>
+      </div>
+
+      <Button
+        label="Log out everywhere…"
+        severity="secondary"
+        size="small"
+        outlined
+        :loading="loggingOutEverywhere"
+        @click="requestLogoutEverywhere"
+      />
+    </div>
+
+    <!-- Delete account -->
     <div class="rounded-xl border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/30 p-4 space-y-3">
       <div class="space-y-1">
         <div class="text-sm font-semibold text-red-800 dark:text-red-300">Delete account</div>
@@ -100,11 +120,14 @@
 import { useDeleteAccount } from '~/composables/settings/useDeleteAccount'
 
 const { deleting, error: deleteError, deleteAccount } = useDeleteAccount()
+const { logoutEverywhere } = useAuth()
+const { confirm } = useAppConfirm()
 
 const confirmVisible = ref(false)
 const deleteConfirm = ref('')
 const reason = ref('')
 const details = ref('')
+const loggingOutEverywhere = ref(false)
 
 const requiredConfirmation = 'DELETE'
 
@@ -126,5 +149,22 @@ async function submit() {
     reason: reason.value.trim() || null,
     details: details.value.trim() || null,
   })
+}
+
+async function requestLogoutEverywhere() {
+  const ok = await confirm({
+    header: 'Log out on all devices?',
+    message: "This will end your session on every browser, phone, and tablet. You'll need to log in again.",
+    confirmLabel: 'Log out everywhere',
+    confirmSeverity: 'secondary',
+    confirmIcon: 'tabler:devices-off',
+  })
+  if (!ok) return
+  loggingOutEverywhere.value = true
+  try {
+    await logoutEverywhere()
+  } finally {
+    loggingOutEverywhere.value = false
+  }
 }
 </script>
