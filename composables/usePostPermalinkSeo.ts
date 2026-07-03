@@ -53,6 +53,7 @@ export function usePostPermalinkSeo(opts: {
     imageAlt: computed(() => seo.value.imageAlt),
     imageWidth: computed(() => seo.value.imageWidth),
     imageHeight: computed(() => seo.value.imageHeight),
+    twitterCard: computed(() => seo.value.twitterCard),
     noindex: computed(() => seo.value.noindex),
     author: computed(() => seo.value.author),
     jsonLdGraph: computed(() => seo.value.jsonLdGraph),

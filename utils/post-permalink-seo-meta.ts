@@ -62,6 +62,13 @@ export type PostPermalinkSeoComputed = {
   ogType: 'article' | 'website'
   imageWidth?: number
   imageHeight?: number
+  /**
+   * Twitter (and Discord) card type.
+   * `summary_large_image` — real landscape/unknown-ratio post media or link preview images.
+   * `summary`             — square/portrait fallbacks (avatars, group avatars, logo, portrait media).
+   *                         Prevents Discord from stretching a square avatar into a wide banner.
+   */
+  twitterCard: 'summary' | 'summary_large_image'
   /** Absolute URLs for secondary og:image (public posts only). */
   ogImageSecondaryAbsoluteUrls: string[]
   ogVideoAbsoluteUrl: string | null
@@ -394,6 +401,23 @@ export function computePostPermalinkSeo(input: PostPermalinkSeoInput): PostPerma
   const imageWidth = isPublicPost ? primaryMedia?.width ?? undefined : undefined
   const imageHeight = isPublicPost ? primaryMedia?.height ?? undefined : undefined
 
+  // Use summary_large_image only when we have real landscape (or unknown-ratio) post
+  // media, or a link-preview image. For everything else — avatars, group avatars, the
+  // site logo, and portrait media — fall back to `summary` so Discord/Twitter render
+  // a small square thumbnail instead of stretching a square image into a wide banner.
+  const hasRealMedia = isPublicPost && Boolean(
+    (primaryMedia?.thumbnailUrl ?? primaryMedia?.url ?? '').trim() ||
+    (linkMeta?.imageUrl ?? '').trim() ||
+    (pollMetaPublic?.firstOptionImage ?? '').trim(),
+  )
+  const isPortraitMedia =
+    hasRealMedia &&
+    primaryMedia?.width != null && primaryMedia.width > 0 &&
+    primaryMedia?.height != null && primaryMedia.height > 0 &&
+    primaryMedia.height > primaryMedia.width
+  const twitterCard: 'summary' | 'summary_large_image' =
+    hasRealMedia && !isPortraitMedia ? 'summary_large_image' : 'summary'
+
   const ogImageSecondaryAbsoluteUrls = isPublicPost ? extraOgMediaUrls.map(toAbs) : []
   let ogVideoAbsoluteUrl: string | null = null
   if (isPublicPost && primaryVideo?.url) {
@@ -534,6 +558,7 @@ export function computePostPermalinkSeo(input: PostPermalinkSeoInput): PostPerma
     ogType,
     imageWidth,
     imageHeight,
+    twitterCard,
     ogImageSecondaryAbsoluteUrls,
     ogVideoAbsoluteUrl,
     jsonLdGraph,
