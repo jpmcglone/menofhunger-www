@@ -5,7 +5,7 @@
  */
 export type ThreadDisplayChainEntry<T> =
   | { kind: 'post'; item: T; index: number }
-  | { kind: 'gap'; key: string; hiddenCount: number }
+  | { kind: 'gap'; key: string; hiddenCount: number; hiddenItems: T[] }
 
 /**
  * Compacts `chain` (ordered `[root, …, leaf]`) to root + immediate parent + leaf,
@@ -46,6 +46,7 @@ export function buildThreadDisplayChain<T extends { id: string }>(
       kind: 'gap',
       key: `gap-${chain[index]!.id}-${chain[end - 1]!.id}`,
       hiddenCount: end - index,
+      hiddenItems: chain.slice(index, end),
     })
     index = end
   }

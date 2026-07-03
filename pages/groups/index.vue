@@ -130,9 +130,7 @@
               :viewer-is-verified="false"
               :viewer-is-premium="false"
               :show-visibility-filter="false"
-              :show-reset="hubSort !== 'new'"
               @update:sort="onHubSortChange"
-              @reset="onHubSortReset"
             />
           </div>
 

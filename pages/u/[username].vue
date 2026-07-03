@@ -218,11 +218,9 @@
           :filter="profileFilter"
           :viewer-is-verified="profileViewerIsVerified"
           :viewer-is-premium="profileViewerIsPremium"
-          :show-reset="profileSort !== 'new' || profileFilter !== 'all'"
           :show-visibility-filter="activeProfileTab !== 'media'"
           @update:sort="onUserPostsSortChange"
           @update:filter="onUserPostsFilterChange"
-          @reset="onUserPostsReset"
         />
       </div>
 

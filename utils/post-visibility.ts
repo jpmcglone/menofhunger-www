@@ -30,6 +30,23 @@ export function postHighlightClasses(v: PostVisibility): string {
   return 'moh-post-highlight'
 }
 
+/** Tint for the circular feed filter trigger (sort icon colored by scope). */
+export function feedFilterButtonColor(kind: ProfilePostsFilter): string {
+  if (kind === 'verifiedOnly') return 'var(--moh-verified)'
+  if (kind === 'premiumOnly') return 'var(--moh-premium)'
+  if (kind === 'public') return 'var(--moh-text-muted)'
+  // 'all' — neutral text, outline style
+  return 'var(--moh-text)'
+}
+
+/** Background for the circular feed filter trigger. Filled for active scopes, transparent for "all". */
+export function feedFilterButtonBg(kind: ProfilePostsFilter): string {
+  if (kind === 'verifiedOnly') return 'rgba(var(--moh-verified-rgb), 0.15)'
+  if (kind === 'premiumOnly') return 'rgba(var(--moh-premium-rgb), 0.15)'
+  if (kind === 'public') return 'rgba(var(--moh-text-rgb, 255,255,255), 0.1)'
+  return 'transparent'
+}
+
 export function filterPillClasses(kind: ProfilePostsFilter, active: boolean): string {
   if (kind === 'all') {
     // All: inverted

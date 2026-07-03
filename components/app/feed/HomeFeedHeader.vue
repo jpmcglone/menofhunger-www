@@ -16,11 +16,9 @@
           :filter="filter"
           :viewer-is-verified="viewerIsVerified"
           :viewer-is-premium="viewerIsPremium"
-          :show-reset="showReset"
           :hide-sort="scope === 'forYou'"
           @update:sort="$emit('update:sort', $event)"
           @update:filter="$emit('update:filter', $event)"
-          @reset="$emit('reset')"
         />
       </div>
     </div>
@@ -37,7 +35,6 @@ defineProps<{
   filter: ProfilePostsFilter
   viewerIsVerified: boolean
   viewerIsPremium: boolean
-  showReset: boolean
 }>()
 
 defineEmits<{
@@ -45,6 +42,5 @@ defineEmits<{
   (e: 'reselect', v: FeedScope): void
   (e: 'update:sort', v: 'new' | 'trending'): void
   (e: 'update:filter', v: ProfilePostsFilter): void
-  (e: 'reset'): void
 }>()
 </script>

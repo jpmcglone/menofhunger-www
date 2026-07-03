@@ -144,9 +144,7 @@
               :viewer-is-verified="false"
               :viewer-is-premium="false"
               :show-visibility-filter="false"
-              :show-reset="groupSort !== 'new'"
               @update:sort="onGroupSortChange"
-              @reset="onGroupSortReset"
             />
           </div>
 

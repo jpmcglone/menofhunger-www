@@ -168,10 +168,8 @@
               :viewer-is-premium="viewerIsPremium"
               :sort-noun="{ singular: 'reply', plural: 'replies' }"
               :sort-count="commentCountDisplay"
-              :show-reset="commentsSort !== 'new'"
               :show-visibility-filter="false"
               @update:sort="onCommentsSortChangeWithScroll"
-              @reset="onCommentsFilterResetWithScroll"
             />
           </div>
           <AppSubtleSectionLoader :loading="commentsInitialLoading" min-height-class="min-h-[140px]">

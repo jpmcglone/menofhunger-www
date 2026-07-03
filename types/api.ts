@@ -597,6 +597,8 @@ export type FeedPost = {
    * "View N more trending replies" footers.
    */
   threadCollapsedCount?: number
+  /** Unique authors of collapsed sibling replies (feed order). */
+  threadCollapsedAuthors?: PostAuthor[]
   internal?: {
     boostScore: number | null
     boostScoreUpdatedAt: string | null

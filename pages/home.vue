@@ -169,12 +169,10 @@
         :filter="feedFilter"
         :viewer-is-verified="viewerIsVerified"
         :viewer-is-premium="viewerIsPremium"
-        :show-reset="feedFilter !== 'all' || (feedScope !== 'forYou' && feedSort !== 'new')"
         @update:scope="handleFeedScopeChange"
         @reselect="handleFeedScopeReselect"
         @update:sort="handleFeedSortChange"
         @update:filter="handleFeedFilterChange"
-        @reset="handleFeedReset"
       />
 
       <div ref="homeFeedContentEl" class="h-0 overflow-hidden" aria-hidden="true" />

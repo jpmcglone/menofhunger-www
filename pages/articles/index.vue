@@ -51,11 +51,9 @@
         :filter="visibilityFilter"
         :viewer-is-verified="isVerified"
         :viewer-is-premium="isPremium"
-        :show-reset="activeTab === 'drafts' ? visibilityFilter !== 'all' : sort !== 'new' || visibilityFilter !== 'all'"
         :hide-sort="activeTab === 'drafts'"
         @update:sort="onArticlesSortChange"
         @update:filter="onArticlesFilterChange"
-        @reset="onArticlesReset"
       />
     </div>
 

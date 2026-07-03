@@ -1,160 +1,129 @@
 <template>
-  <div class="flex items-center gap-2">
+  <div ref="filterWrapEl">
     <button
-      v-if="showReset"
       type="button"
-      :class="resetButtonClass"
-      :style="resetButtonStyle"
-      aria-label="Reset feed filters"
-      @click="onResetClick"
+      class="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-full transition-colors hover:opacity-80"
+      :class="filter === 'all' ? 'ring-1 ring-current/40' : ''"
+      :style="filterButtonStyle"
+      aria-label="Feed filters"
+      @click="toggleFilterPopover"
     >
-      <span class="inline-flex h-4 w-4 items-center justify-center text-[14px] font-bold leading-none" aria-hidden="true">×</span>
+      <Icon :name="sortIconName" class="text-[22px]" aria-hidden="true" />
     </button>
-    <span v-if="showReset" class="h-6 w-px bg-gray-200 dark:bg-zinc-800" aria-hidden="true" />
 
-    <!-- Order (sort) -->
-    <Transition name="feed-sort-pill">
-      <div v-if="!hideSort" ref="sortWrapEl">
-        <button
-          type="button"
-          class="inline-flex cursor-pointer items-center gap-1.5 rounded-full border px-2 py-1 sm:px-2.5 sm:py-1.5 text-[11px] sm:text-[12px] font-semibold leading-none transition-colors border-gray-200 text-gray-700 hover:bg-gray-50 dark:border-zinc-800 dark:text-gray-200 dark:hover:bg-zinc-900"
-          aria-label="Change feed sort order"
-          @click="toggleSortPopover"
-        >
-          <Icon :name="sortIconName" class="text-[10px] opacity-80" aria-hidden="true" />
-          <span>{{ sortLabel }}</span>
-          <Icon name="tabler:chevron-down" class="text-[10px] opacity-70" aria-hidden="true" />
-        </button>
-
-        <Teleport to="body">
-        <div
-          v-if="sortPopoverOpen"
-          ref="sortMenuEl"
-          class="fixed z-[9999] w-56 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-lg dark:border-zinc-800 dark:bg-black"
-          :style="sortMenuStyle"
-          role="menu"
-          aria-label="Feed sort"
-        >
-          <div class="px-3 pt-2 pb-1 text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+    <Teleport to="body">
+      <div
+        v-if="filterPopoverOpen"
+        ref="filterMenuEl"
+        class="fixed z-[9999] w-52 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-lg dark:border-zinc-800 dark:bg-black"
+        :style="filterMenuStyle"
+        role="menu"
+        aria-label="Feed filters"
+      >
+        <template v-if="!hideSort">
+          <div class="px-3 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-wide text-gray-400 dark:text-zinc-500">
             Order
           </div>
           <button
             type="button"
-            class="w-full cursor-pointer text-left px-2.5 py-1.5 sm:px-3 sm:py-2 text-[13px] sm:text-sm font-semibold transition-colors text-gray-900 hover:bg-gray-50 dark:text-gray-50 dark:hover:bg-zinc-900 flex items-center gap-2"
+            class="w-full cursor-pointer text-left px-3 py-2 text-[13px] font-semibold transition-colors text-gray-900 hover:bg-gray-50 dark:text-gray-50 dark:hover:bg-zinc-900 flex items-center gap-2"
             role="menuitem"
             @click="setSort('new')"
           >
-            <Icon name="tabler:clock" class="text-[14px] opacity-70 shrink-0" aria-hidden="true" />
+            <Icon name="tabler:clock" class="text-[15px] opacity-60 shrink-0" aria-hidden="true" />
             <span class="flex-1 text-left">{{ formatSortLabel('new') }}</span>
-            <Icon v-if="sort === 'new'" name="tabler:check" class="text-[12px] opacity-70 shrink-0" aria-hidden="true" />
+            <Icon v-if="sort === 'new'" name="tabler:check" class="text-[12px] opacity-60 shrink-0" aria-hidden="true" />
           </button>
           <button
             type="button"
-            class="w-full cursor-pointer text-left px-2.5 py-1.5 sm:px-3 sm:py-2 text-[13px] sm:text-sm font-semibold transition-colors text-gray-900 hover:bg-gray-50 dark:text-gray-50 dark:hover:bg-zinc-900 flex items-center gap-2"
+            class="w-full cursor-pointer text-left px-3 py-2 text-[13px] font-semibold transition-colors text-gray-900 hover:bg-gray-50 dark:text-gray-50 dark:hover:bg-zinc-900 flex items-center gap-2"
             role="menuitem"
             @click="setSort('trending')"
           >
-            <Icon name="tabler:bolt" class="text-[14px] opacity-70 shrink-0" aria-hidden="true" />
+            <Icon name="tabler:bolt" class="text-[15px] opacity-60 shrink-0" aria-hidden="true" />
             <span class="flex-1 text-left">{{ formatSortLabel('trending') }}</span>
-            <Icon v-if="sort === 'trending'" name="tabler:check" class="text-[12px] opacity-70 shrink-0" aria-hidden="true" />
+            <Icon v-if="sort === 'trending'" name="tabler:check" class="text-[12px] opacity-60 shrink-0" aria-hidden="true" />
           </button>
-        </div>
-        </Teleport>
-      </div>
-    </Transition>
+        </template>
 
-    <!-- Scope (optional: e.g. replies inherit parent post visibility) -->
-    <div v-if="showVisibilityFilter" ref="filterWrapEl">
-      <button
-        type="button"
-        class="inline-flex cursor-pointer items-center gap-1.5 rounded-full border px-2 py-1 sm:px-2.5 sm:py-1.5 text-[11px] sm:text-[12px] font-semibold leading-none transition-colors"
-        :class="filterPillClass"
-        aria-label="Change feed scope"
-        @click="toggleFilterPopover"
-      >
-        <template v-if="filter === 'all'">
-          <Icon name="tabler:layout-grid" class="text-[10px] opacity-80" aria-hidden="true" />
+        <template v-if="showVisibilityFilter">
+          <div
+            class="px-3 pb-1 text-[10px] font-semibold uppercase tracking-wide text-gray-400 dark:text-zinc-500"
+            :class="hideSort ? 'pt-2' : 'pt-3 border-t border-gray-100 dark:border-zinc-900 mt-1'"
+          >
+            Scope
+          </div>
+          <button
+            type="button"
+            class="w-full cursor-pointer text-left px-3 py-2 text-[13px] font-semibold transition-colors text-gray-900 hover:bg-gray-50 dark:text-gray-50 dark:hover:bg-zinc-900 flex items-center gap-2"
+            role="menuitem"
+            @click="setFilter('all')"
+          >
+            <Icon name="tabler:layout-grid" class="text-[15px] opacity-60 shrink-0" aria-hidden="true" />
+            <span class="flex-1 text-left">All</span>
+            <Icon v-if="filter === 'all'" name="tabler:check" class="text-[12px] opacity-60 shrink-0" aria-hidden="true" />
+          </button>
+          <button
+            type="button"
+            class="w-full cursor-pointer text-left px-3 py-2 text-[13px] font-semibold transition-colors text-gray-900 hover:bg-gray-50 dark:text-gray-50 dark:hover:bg-zinc-900 flex items-center gap-2"
+            role="menuitem"
+            @click="setFilter('public')"
+          >
+            <Icon name="tabler:world" class="text-[15px] opacity-60 shrink-0" aria-hidden="true" />
+            <span class="flex-1 text-left">Public</span>
+            <Icon v-if="filter === 'public'" name="tabler:check" class="text-[12px] opacity-60 shrink-0" aria-hidden="true" />
+          </button>
+          <button
+            type="button"
+            class="w-full cursor-pointer text-left px-3 py-2 text-[13px] font-semibold transition-colors moh-menuitem-verified flex items-center gap-2"
+            role="menuitem"
+            @click="setFilter('verifiedOnly')"
+          >
+            <AppVerifiedBadge status="identity" :premium="false" :show-tooltip="false" />
+            <span class="flex-1 text-left">
+              Verified
+              <span v-if="!viewerIsVerified" class="ml-2 font-mono text-[10px] opacity-70" aria-hidden="true">LOCKED</span>
+            </span>
+            <Icon v-if="filter === 'verifiedOnly'" name="tabler:check" class="text-[12px] opacity-60 shrink-0" aria-hidden="true" />
+          </button>
+          <button
+            type="button"
+            class="w-full cursor-pointer text-left px-3 py-2 text-[13px] font-semibold transition-colors moh-menuitem-premium flex items-center gap-2"
+            role="menuitem"
+            @click="setFilter('premiumOnly')"
+          >
+            <AppVerifiedBadge status="identity" :premium="true" :show-tooltip="false" />
+            <span class="flex-1 text-left">
+              Premium
+              <span v-if="!viewerIsPremium" class="ml-2 font-mono text-[10px] opacity-70" aria-hidden="true">LOCKED</span>
+            </span>
+            <Icon v-if="filter === 'premiumOnly'" name="tabler:check" class="text-[12px] opacity-60 shrink-0" aria-hidden="true" />
+          </button>
         </template>
-        <template v-else-if="filter === 'public'">
-          <Icon name="tabler:world" class="text-[10px] opacity-80" aria-hidden="true" />
-        </template>
-        <template v-else-if="filter === 'verifiedOnly'">
-          <AppVerifiedBadge status="identity" :premium="false" :show-tooltip="false" />
-        </template>
-        <template v-else-if="filter === 'premiumOnly'">
-          <AppVerifiedBadge status="identity" :premium="true" :show-tooltip="false" />
-        </template>
-        <span>{{ filterLabel }}</span>
-        <Icon name="tabler:chevron-down" class="text-[10px] opacity-70" aria-hidden="true" />
-      </button>
 
-      <Teleport to="body">
-      <div
-        v-if="filterPopoverOpen"
-        ref="filterMenuEl"
-        class="fixed z-[9999] w-56 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-lg dark:border-zinc-800 dark:bg-black"
-        :style="filterMenuStyle"
-        role="menu"
-        aria-label="Feed scope"
-      >
-        <div class="px-3 pt-2 pb-1 text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
-          Scope
-        </div>
-        <button
-          type="button"
-          class="w-full cursor-pointer text-left px-2.5 py-1.5 sm:px-3 sm:py-2 text-[13px] sm:text-sm font-semibold transition-colors text-gray-900 hover:bg-gray-50 dark:text-gray-50 dark:hover:bg-zinc-900 flex items-center gap-2"
-          role="menuitem"
-          @click="setFilter('all')"
-        >
-          <Icon name="tabler:layout-grid" class="text-[14px] opacity-70 shrink-0" aria-hidden="true" />
-          <span class="flex-1 text-left">All</span>
-          <Icon v-if="filter === 'all'" name="tabler:check" class="text-[12px] opacity-70 shrink-0" aria-hidden="true" />
-        </button>
-        <button
-          type="button"
-          class="w-full cursor-pointer text-left px-2.5 py-1.5 sm:px-3 sm:py-2 text-[13px] sm:text-sm font-semibold transition-colors text-gray-900 hover:bg-gray-50 dark:text-gray-50 dark:hover:bg-zinc-900 flex items-center gap-2"
-          role="menuitem"
-          @click="setFilter('public')"
-        >
-          <Icon name="tabler:world" class="text-[14px] opacity-70 shrink-0" aria-hidden="true" />
-          <span class="flex-1 text-left">Public</span>
-          <Icon v-if="filter === 'public'" name="tabler:check" class="text-[12px] opacity-70 shrink-0" aria-hidden="true" />
-        </button>
-        <button
-          type="button"
-          class="w-full cursor-pointer text-left px-2.5 py-1.5 sm:px-3 sm:py-2 text-[13px] sm:text-sm font-semibold transition-colors moh-menuitem-verified flex items-center gap-2"
-          role="menuitem"
-          @click="setFilter('verifiedOnly')"
-        >
-          <AppVerifiedBadge status="identity" :premium="false" :show-tooltip="false" />
-          <span class="flex-1 text-left">
-            Verified
-            <span v-if="!viewerIsVerified" class="ml-2 font-mono text-[10px] opacity-80" aria-hidden="true">LOCKED</span>
-          </span>
-          <Icon v-if="filter === 'verifiedOnly'" name="tabler:check" class="text-[12px] opacity-70 shrink-0" aria-hidden="true" />
-        </button>
-        <button
-          type="button"
-          class="w-full cursor-pointer text-left px-2.5 py-1.5 sm:px-3 sm:py-2 text-[13px] sm:text-sm font-semibold transition-colors moh-menuitem-premium flex items-center gap-2"
-          role="menuitem"
-          @click="setFilter('premiumOnly')"
-        >
-          <AppVerifiedBadge status="identity" :premium="true" :show-tooltip="false" />
-          <span class="flex-1 text-left">
-            Premium
-            <span v-if="!viewerIsPremium" class="ml-2 font-mono text-[10px] opacity-80" aria-hidden="true">LOCKED</span>
-          </span>
-          <Icon v-if="filter === 'premiumOnly'" name="tabler:check" class="text-[12px] opacity-70 shrink-0" aria-hidden="true" />
-        </button>
+        <div class="h-1.5" />
+
+        <template v-if="isNonDefault">
+          <div class="border-t border-gray-100 dark:border-zinc-900 mx-2" />
+          <button
+            type="button"
+            class="w-full cursor-pointer text-left px-3 py-2 text-[13px] font-semibold transition-colors text-gray-400 hover:bg-gray-50 dark:text-zinc-500 dark:hover:bg-zinc-900 flex items-center gap-2"
+            role="menuitem"
+            @click="clearFilters"
+          >
+            <Icon name="tabler:x" class="text-[14px] shrink-0" aria-hidden="true" />
+            <span>Clear</span>
+          </button>
+          <div class="h-1" />
+        </template>
       </div>
-      </Teleport>
-    </div>
+    </Teleport>
   </div>
 </template>
 
 <script setup lang="ts">
 import type { ProfilePostsFilter } from '~/utils/post-visibility'
-import { filterPillClasses } from '~/utils/post-visibility'
+import { feedFilterButtonColor, feedFilterButtonBg } from '~/utils/post-visibility'
 
 const props = withDefaults(
   defineProps<{
@@ -162,7 +131,6 @@ const props = withDefaults(
     filter: ProfilePostsFilter
     viewerIsVerified: boolean
     viewerIsPremium: boolean
-    showReset: boolean
     /**
      * Optional noun to include in the sort label (e.g. "reply/replies").
      * When provided, label becomes "Recent reply/replies" or "Trending reply/replies" based on `sortCount`.
@@ -172,7 +140,7 @@ const props = withDefaults(
     sortCount?: number | null
     /** When false, hide visibility filter (e.g. for replies that inherit parent post visibility). */
     showVisibilityFilter?: boolean
-    /** When true, fade out the sort pill (it has no effect in this context). */
+    /** When true, hide the sort section in the menu (For You, drafts). Icon defaults to clock. */
     hideSort?: boolean
   }>(),
   {
@@ -186,20 +154,11 @@ const props = withDefaults(
 const emit = defineEmits<{
   (e: 'update:sort', v: 'new' | 'trending'): void
   (e: 'update:filter', v: ProfilePostsFilter): void
-  (e: 'reset'): void
 }>()
 
-const sortWrapEl = ref<HTMLElement | null>(null)
 const filterWrapEl = ref<HTMLElement | null>(null)
-const sortPopoverOpen = ref(false)
 const filterPopoverOpen = ref(false)
 
-const {
-  style: sortMenuStyle,
-  menuEl: sortMenuEl,
-  place: placeSortMenu,
-  reset: resetSortMenu,
-} = useMenuPosition()
 const {
   style: filterMenuStyle,
   menuEl: filterMenuEl,
@@ -221,145 +180,93 @@ function formatSortLabel(v: 'new' | 'trending'): string {
   return `${base} ${word}`
 }
 
-const sortLabel = computed(() => formatSortLabel(sort.value))
-const sortIconName = computed(() => (sort.value === 'trending' ? 'tabler:bolt' : 'tabler:clock'))
-
-const filterLabel = computed(() => {
-  if (filter.value === 'public') return 'Public'
-  if (filter.value === 'verifiedOnly') return 'Verified'
-  if (filter.value === 'premiumOnly') return 'Premium'
-  return 'All'
-})
-
-const filterPillClass = computed(() => {
-  // Color-coordinate with the selected visibility filter (subtle tint).
-  return `${filterPillClasses(filter.value, false)} bg-transparent hover:bg-transparent dark:hover:bg-transparent`
-})
-
-const resetTone = computed<'normal' | 'verified' | 'premium'>(() => {
-  if (filter.value === 'verifiedOnly') return 'verified'
-  if (filter.value === 'premiumOnly') return 'premium'
-  return 'normal'
-})
-
-const resetButtonStyle = computed<Record<string, string> | undefined>(() => {
-  if (resetTone.value === 'verified') {
-    return { backgroundColor: 'var(--moh-verified)', borderColor: 'var(--moh-verified)' }
+const effectiveSort = computed(() => (props.hideSort ? 'new' : sort.value))
+const sortIconName = computed(() => {
+  if (props.hideSort) {
+    // For You: show the scope icon instead of sort
+    if (filter.value === 'verifiedOnly') return 'tabler:rosette-discount-check'
+    if (filter.value === 'premiumOnly') return 'tabler:rosette-discount-check'
+    if (filter.value === 'public') return 'tabler:world'
+    return 'tabler:layout-grid'
   }
-  if (resetTone.value === 'premium') {
-    // Premium+ is also orange; use the same premium theme color.
-    return { backgroundColor: 'var(--moh-premium)', borderColor: 'var(--moh-premium)' }
-  }
-  return undefined
+  return effectiveSort.value === 'trending' ? 'tabler:bolt' : 'tabler:clock'
 })
 
-const resetButtonClass = computed(() => {
-  const base = 'inline-flex h-6 w-6 cursor-pointer items-center justify-center rounded-full border transition-colors'
-  if (resetTone.value === 'verified' || resetTone.value === 'premium') {
-    return `${base} text-white hover:opacity-95`
-  }
-  // Normal: in dark mode, white background + black text (matches app contrast).
-  return `${base} bg-gray-50 border-gray-200 text-gray-900 hover:bg-gray-100 dark:bg-white dark:text-black dark:border-zinc-800 dark:hover:bg-gray-100`
+const filterButtonStyle = computed(() => ({
+  color: feedFilterButtonColor(filter.value),
+  background: feedFilterButtonBg(filter.value),
+}))
+
+const filterMenuHeight = computed(() => {
+  const sortH = props.hideSort ? 0 : 100
+  const scopeH = props.showVisibilityFilter ? 188 : 0
+  return 16 + sortH + scopeH
 })
 
-function closeSortPopover() {
-  sortPopoverOpen.value = false
-  resetSortMenu()
-}
 function closeFilterPopover() {
   filterPopoverOpen.value = false
   resetFilterMenu()
 }
-function toggleSortPopover(e: MouseEvent) {
-  closeFilterPopover()
-  const next = !sortPopoverOpen.value
-  if (next) {
-    const btn = e.currentTarget as HTMLElement
-    placeSortMenu(btn, { align: 'end', menuWidth: 224, menuHeight: 132 })
-  }
-  sortPopoverOpen.value = next
-}
+
 function toggleFilterPopover(e: MouseEvent) {
-  closeSortPopover()
   const next = !filterPopoverOpen.value
   if (next) {
     const btn = e.currentTarget as HTMLElement
-    placeFilterMenu(btn, { align: 'end', menuWidth: 224, menuHeight: 220 })
+    placeFilterMenu(btn, { align: 'end', menuWidth: 208, menuHeight: filterMenuHeight.value })
+  } else {
+    closeFilterPopover()
+    return
   }
   filterPopoverOpen.value = next
 }
 
 function setSort(v: 'new' | 'trending') {
   emit('update:sort', v)
-  closeSortPopover()
+  closeFilterPopover()
 }
+
 function setFilter(v: ProfilePostsFilter) {
   emit('update:filter', v)
   closeFilterPopover()
 }
-function onResetClick() {
-  emit('reset')
-  closeSortPopover()
+
+const isNonDefault = computed(
+  () => sort.value !== 'new' || filter.value !== 'all',
+)
+
+function clearFilters() {
+  if (sort.value !== 'new') emit('update:sort', 'new')
+  if (filter.value !== 'all') emit('update:filter', 'all')
   closeFilterPopover()
 }
 
-function installOutsideClose(
-  openRef: Ref<boolean>,
-  wrapEl: Ref<HTMLElement | null>,
-  menuEl: Ref<HTMLElement | null>,
-  close: () => void,
-) {
-  watch(
-    openRef,
-    (open) => {
-      if (!import.meta.client) return
-      if (!open) return
-
-      const onPointerDown = (e: Event) => {
-        const target = e.target as Node | null
-        if (!target) return
-        if (wrapEl.value && wrapEl.value.contains(target)) return
-        if (menuEl.value && menuEl.value.contains(target)) return
-        close()
-      }
-      const onKeyDown = (e: KeyboardEvent) => {
-        if (e.key === 'Escape') close()
-      }
-
-      window.addEventListener('mousedown', onPointerDown, true)
-      window.addEventListener('touchstart', onPointerDown, true)
-      window.addEventListener('keydown', onKeyDown)
-
-      return () => {
-        window.removeEventListener('mousedown', onPointerDown, true)
-        window.removeEventListener('touchstart', onPointerDown, true)
-        window.removeEventListener('keydown', onKeyDown)
-      }
-    },
-    { flush: 'post' },
-  )
-}
-
-installOutsideClose(sortPopoverOpen, sortWrapEl, sortMenuEl, closeSortPopover)
-installOutsideClose(filterPopoverOpen, filterWrapEl, filterMenuEl, closeFilterPopover)
-
 watch(
-  () => props.hideSort,
-  (hidden) => {
-    if (hidden) closeSortPopover()
+  filterPopoverOpen,
+  (open) => {
+    if (!import.meta.client) return
+    if (!open) return
+
+    const onPointerDown = (e: Event) => {
+      const target = e.target as Node | null
+      if (!target) return
+      if (filterWrapEl.value && filterWrapEl.value.contains(target)) return
+      if (filterMenuEl.value && filterMenuEl.value.contains(target)) return
+      closeFilterPopover()
+    }
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') closeFilterPopover()
+    }
+
+    window.addEventListener('mousedown', onPointerDown, true)
+    window.addEventListener('touchstart', onPointerDown, true)
+    window.addEventListener('keydown', onKeyDown)
+
+    return () => {
+      window.removeEventListener('mousedown', onPointerDown, true)
+      window.removeEventListener('touchstart', onPointerDown, true)
+      window.removeEventListener('keydown', onKeyDown)
+    }
   },
+  { flush: 'post' },
 )
 </script>
-
-<style scoped>
-.feed-sort-pill-enter-active,
-.feed-sort-pill-leave-active {
-  transition: opacity 160ms cubic-bezier(0.2, 0, 0, 1);
-}
-
-.feed-sort-pill-enter-from,
-.feed-sort-pill-leave-to {
-  opacity: 0;
-}
-</style>
-

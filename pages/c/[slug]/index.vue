@@ -157,10 +157,8 @@
             :filter="feedFilter"
             :viewer-is-verified="viewerIsVerified"
             :viewer-is-premium="viewerIsPremium"
-            :show-reset="isFiltered"
             @update:sort="onCrewFeedSortChange"
             @update:filter="onCrewFeedFilterChange"
-            @reset="onCrewFeedReset"
           />
         </div>
         <div ref="crewFeedContentEl" class="h-0 overflow-hidden" aria-hidden="true" />

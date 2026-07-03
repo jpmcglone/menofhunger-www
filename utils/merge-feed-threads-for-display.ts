@@ -1,4 +1,5 @@
-import type { FeedPost } from '~/types/api'
+import type { FeedPost, PostAuthor } from '~/types/api'
+import { mergeReplyAuthorPreviews, uniqueReplyAuthorsFromPosts } from '~/utils/thread-reply-authors'
 
 /**
  * Client-only display shape: a `FeedPost` plus the ancestor ids (if any) that
@@ -22,6 +23,37 @@ function rootIdOf(p: FeedPost): string {
   let c: FeedPost | undefined = p
   while (c?.parent) c = c.parent
   return c?.id ?? p.id
+}
+
+function mergeThreadCollapsedAuthors(
+  existing: PostAuthor[] | undefined,
+  extraPosts: FeedPost[],
+): PostAuthor[] | undefined {
+  const previews = mergeReplyAuthorPreviews(
+    existing?.map((author) => ({
+      id: author.id,
+      username: author.username,
+      name: author.name,
+      avatarUrl: author.avatarUrl,
+      isOrganization: author.isOrganization,
+    })),
+    uniqueReplyAuthorsFromPosts(extraPosts),
+  )
+  if (!previews.length) return existing
+  const byId = new Map<string, PostAuthor>()
+  for (const author of existing ?? []) byId.set(author.id, author)
+  for (const post of extraPosts) {
+    if (post.author?.id) byId.set(post.author.id, post.author)
+  }
+  return previews
+    .map((preview) => byId.get(preview.id) ?? ({
+      ...preview,
+      premium: false,
+      premiumPlus: false,
+      stewardBadgeEnabled: false,
+      verifiedStatus: 'none' as const,
+      orgAffiliations: [],
+    }))
 }
 
 function chainIds(p: FeedPost): Set<string> {
@@ -79,9 +111,16 @@ export function mergeFeedThreadsForDisplay(raw: FeedPost[]): FeedThreadDisplayPo
     }
 
     if (extraCollapsed > 0 || pinnedAncestorIds.length > 0) {
+      const absorbedSiblingPosts = group.filter(
+        (item) => item.id !== primary.id && !primaryIds.has(item.id),
+      )
       overrides.set(primary.id, {
         ...primary,
         threadCollapsedCount: (primary.threadCollapsedCount ?? 0) + extraCollapsed,
+        threadCollapsedAuthors: mergeThreadCollapsedAuthors(
+          primary.threadCollapsedAuthors,
+          absorbedSiblingPosts,
+        ),
         ...(pinnedAncestorIds.length > 0 ? { pinnedAncestorIds } : {}),
       })
     }

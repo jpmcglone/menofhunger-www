@@ -73,6 +73,10 @@
           :to="`/p/${encodeURIComponent(rootPostId!)}`"
           class="inline-flex items-center gap-2 rounded-lg px-2 py-1 text-sm font-semibold text-gray-700 transition-colors moh-surface-hover dark:text-gray-200 tabular-nums"
         >
+          <AppAvatarFacepile
+            v-if="collapsedReplyAuthors.length"
+            :authors="collapsedReplyAuthors"
+          />
           <Icon name="tabler:message-circle" class="text-[14px] opacity-70" aria-hidden="true" />
           {{ collapsedRepliesLabelFor(collapsedSiblingRepliesCount) }}
         </NuxtLink>
@@ -122,10 +126,14 @@
           />
         </div>
         <p
-          class="relative z-[2] text-xs font-medium"
+          class="relative z-[2] flex items-center gap-2 text-xs font-medium"
           :class="gapLabelClass"
           :style="gapLabelStyle"
         >
+          <AppAvatarFacepile
+            v-if="gapReplyAuthors(entry).length"
+            :authors="gapReplyAuthors(entry)"
+          />
           {{ hiddenThreadGapLabel(entry.hiddenCount) }}
         </p>
       </div>
@@ -160,6 +168,10 @@
               :to="`/p/${encodeURIComponent(rootPostId!)}`"
               class="inline-flex items-center gap-2 rounded-lg px-2 py-1 text-sm font-semibold text-gray-700 transition-colors moh-surface-hover dark:text-gray-200 tabular-nums"
             >
+              <AppAvatarFacepile
+                v-if="collapsedReplyAuthors.length"
+                :authors="collapsedReplyAuthors"
+              />
               <Icon name="tabler:message-circle" class="text-[14px] opacity-70" aria-hidden="true" />
               {{ collapsedRepliesLabelFor(collapsedSiblingRepliesCount) }}
             </NuxtLink>
@@ -174,6 +186,7 @@
 import type { CommunityGroupShell, FeedPost } from '~/types/api'
 import type { FeedThreadDisplayPost } from '~/utils/merge-feed-threads-for-display'
 import { buildThreadDisplayChain, hiddenThreadGapLabel, postAfterGapInDisplayChain } from '~/utils/feed-thread-display-chain'
+import { replyAuthorsFromFeedPost, uniqueReplyAuthorsFromPosts } from '~/utils/thread-reply-authors'
 import { userColorTier, userTierColorVar } from '~/utils/user-tier'
 import { isPendingLocalId } from '~/composables/usePendingPostsManager'
 
@@ -265,6 +278,11 @@ const chain = computed(() => {
 const collapsedSiblingRepliesCount = computed(() =>
   Math.max(0, Math.floor(props.collapsedSiblingRepliesCount ?? 0)),
 )
+const collapsedReplyAuthors = computed(() => replyAuthorsFromFeedPost(props.post))
+
+function gapReplyAuthors(entry: Extract<typeof displayChain.value[number], { kind: 'gap' }>) {
+  return uniqueReplyAuthorsFromPosts(entry.hiddenItems ?? [])
+}
 const rootPostId = computed(() => chain.value[0]?.id ?? null)
 const showCollapsedFooter = computed(() =>
   Boolean(props.showCollapsedRepliesFooter && collapsedSiblingRepliesCount.value > 0 && rootPostId.value),
