@@ -196,7 +196,7 @@
             @click="editJoinPolicy = 'open'"
           />
           <Button
-            label="Private"
+            label="Request to join"
             rounded
             size="small"
             :severity="editJoinPolicy === 'approval' ? 'primary' : 'secondary'"
@@ -210,17 +210,17 @@
         </div>
         <template #helper>
           <template v-if="isCurrentlyPrivate">
-            <span class="moh-text-muted">A private group cannot be made open. This is permanent.</span>
+            <span class="moh-text-muted">An approval-required group cannot be made open. This is permanent.</span>
           </template>
           <template v-else-if="editJoinPolicy === 'open'">
             Any verified member can find this group and read its posts.
           </template>
           <template v-else>
             <span>
-              Only members can see posts. New members are approved by you or a moderator.
+              People request to join and are approved by you or a moderator. Posts stay hidden from non-members.
             </span>
             <span class="block mt-1 text-amber-700 dark:text-amber-400">
-              Heads up: once a group is private, it can never be made open again.
+              Heads up: once a group requires approval, it can never be made open again.
             </span>
           </template>
         </template>
@@ -564,9 +564,9 @@ const { submit: saveGroup, submitting: saving } = useFormSubmit(
     // API rejects any future attempt to revert. Spell that out plainly.
     if (s.joinPolicy === 'open' && editJoinPolicy.value === 'approval') {
       const ok = await confirm({
-        header: 'Make this group private?',
-        message: "Posts will be hidden from non-members and new members will need approval. This can't be undone — a private group can never be made open again.",
-        confirmLabel: 'Make private',
+        header: 'Require approval to join?',
+        message: "Posts will be hidden from non-members and new members will need approval. This can't be undone — the group can never be made open again.",
+        confirmLabel: 'Require approval',
         confirmSeverity: 'danger',
       })
       if (!ok) return

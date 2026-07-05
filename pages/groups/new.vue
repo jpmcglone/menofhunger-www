@@ -73,7 +73,7 @@
               />
               <Button
                 type="button"
-                label="Private"
+                label="Request to join"
                 rounded
                 size="small"
                 :severity="joinPolicy === 'approval' ? 'primary' : 'secondary'"
@@ -88,7 +88,7 @@
               {{
                 joinPolicy === 'open'
                   ? 'Any verified member can find and join this group, and read its posts.'
-                  : 'Only members can see posts. New members are approved by you or a moderator. Heads up: a private group can never be made open later.'
+                  : 'People request to join and are approved by you or a moderator. Posts stay hidden from non-members. Heads up: this can never be switched back to open.'
               }}
             </p>
           </div>

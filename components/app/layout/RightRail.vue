@@ -69,7 +69,7 @@
           </div>
           </component>
 
-          <div class="space-y-4 transition-[transform] duration-200 ease-out">
+          <div class="space-y-4 transition-[transform] duration-200 ease-out rail-cards">
           <AppReferralRailCard />
 
           <!-- Order matters here: Who-to-follow renders before Trending so the
@@ -306,3 +306,12 @@ const tierCtaTextClass = computed(() => {
   return userTierTextClass(userColorTier(user.value), { fallback: 'text-gray-700 dark:text-gray-200' })
 })
 </script>
+
+<style scoped>
+/* Remove card borders + shadows inside the rail — the textured background
+   and card backgrounds already provide enough depth without visible outlines. */
+.rail-cards :deep(.moh-card) {
+  border-color: transparent;
+  box-shadow: none;
+}
+</style>

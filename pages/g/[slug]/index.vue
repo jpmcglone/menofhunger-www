@@ -616,7 +616,7 @@ const seoDescription = computed(() => {
   const s = shell.value
   if (!s) return siteConfig.meta.description
   const memberStr = `${s.memberCount.toLocaleString()} member${s.memberCount === 1 ? '' : 's'}`
-  const policy = s.joinPolicy === 'approval' ? 'private group' : 'open group'
+  const policy = s.joinPolicy === 'approval' ? 'approval-required group' : 'open group'
   const desc = (s.description ?? '').trim()
   if (desc) return `${desc.slice(0, 140)} · ${memberStr} · ${policy}`
   return `${s.name} on ${siteConfig.name} · ${memberStr} · ${policy}`

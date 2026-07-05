@@ -15,7 +15,7 @@
             <div class="min-w-0">
               <h1 class="moh-h1">Explore groups</h1>
               <p class="mt-1 moh-meta max-w-xl">
-                Find communities to join — public ones are open, private ones need approval.
+                Find communities to join — some are open, others require approval to join.
               </p>
             </div>
           </div>
@@ -70,7 +70,7 @@
             <InputText
               v-model="searchInput"
               class="w-full"
-              :placeholder="isAuthed ? 'Search groups by name…' : 'Search public groups by name…'"
+              :placeholder="isAuthed ? 'Search groups by name…' : 'Search open groups by name…'"
               autocomplete="off"
               aria-label="Search groups"
             />
@@ -174,7 +174,7 @@
                   class="inline-flex items-center gap-1 text-[10px] uppercase tracking-wide font-semibold px-1.5 py-0.5 rounded border moh-border moh-text-muted"
                 >
                   <Icon name="tabler:lock" class="text-[10px]" aria-hidden="true" />
-                  Private
+                  Approval
                 </span>
                 <span
                   v-else

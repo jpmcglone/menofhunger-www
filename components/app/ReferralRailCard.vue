@@ -6,8 +6,7 @@
         <NuxtLink to="/referrals" aria-label="View referrals" tabindex="-1">
           <Icon
             name="tabler:gift"
-            class="transition-colors duration-350 ease-in-out"
-            :class="onReferralsPage ? 'text-gray-400 dark:text-zinc-500' : 'text-[var(--moh-premium)]'"
+            class="text-gray-400 dark:text-zinc-500"
             aria-hidden="true"
           />
         </NuxtLink>
@@ -81,7 +80,8 @@
           <Button
             :label="copied ? 'Copied!' : 'Share invite'"
             class="w-full active:scale-[0.96] transition-transform duration-100"
-            severity="contrast"
+            severity="secondary"
+            outlined
             @click="shareReferral"
           />
 
@@ -146,7 +146,8 @@
             to="/referrals"
             label="Set up referrals"
             class="w-full active:scale-[0.96] transition-transform duration-100"
-            severity="contrast"
+            severity="secondary"
+            outlined
           />
         </template>
       </div>

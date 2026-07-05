@@ -87,7 +87,7 @@
         </div>
         <div v-if="preview.joinPolicy === 'approval'" class="inline-flex items-center gap-1 text-xs moh-text-muted">
           <Icon name="tabler:lock" class="text-[12px]" aria-hidden="true" />
-          Private
+          Approval required
         </div>
       </div>
     </div>

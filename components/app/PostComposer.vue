@@ -10,7 +10,31 @@
       showDivider ? 'border-b moh-border' : ''
     ]"
   >
-    <div v-if="isAuthed" :class="omitAvatar ? 'flex flex-col gap-2' : 'grid grid-cols-[2.5rem_minmax(0,1fr)] gap-x-3 items-start'">
+    <div v-if="isAuthed">
+      <!-- Collapsed placeholder — only in collapsible mode before the user opens the composer -->
+      <div
+        v-if="collapsible && !isExpanded"
+        class="flex items-center gap-3 cursor-text"
+        @click="expandComposer"
+      >
+        <NuxtLink
+          v-if="myProfilePath"
+          :to="myProfilePath"
+          class="shrink-0"
+          aria-label="View your profile"
+          @click.stop
+        >
+          <div class="transition-opacity duration-200 hover:opacity-80">
+            <AppUserAvatar :user="user" size-class="h-9 w-9" />
+          </div>
+        </NuxtLink>
+        <div class="flex-1 min-w-0 rounded-full border moh-border-subtle moh-surface-2 px-4 py-2.5 text-sm moh-text-muted select-none">
+          {{ composerPlaceholder }}
+        </div>
+      </div>
+
+      <!-- Full composer -->
+      <div v-else :class="omitAvatar ? 'flex flex-col gap-2' : 'grid grid-cols-[2.5rem_minmax(0,1fr)] gap-x-3 items-start'">
       <!-- Row 1: visibility picker (left) + scheduled time chip (right) -->
       <div
         :class="omitAvatar ? 'flex justify-between items-center' : 'col-start-2 flex justify-between items-center mb-3 sm:mb-2'"
@@ -376,6 +400,7 @@
           </p>
         </div>
       </div>
+      </div>
     </div>
 
     <!-- Logged-out: full disabled composer. Clicking it shows a login prompt; the Log in button navigates directly. -->
@@ -620,6 +645,8 @@ const emit = defineEmits<{
 
 const props = defineProps<{
   autoFocus?: boolean
+  /** Renders a compact single-line placeholder that expands to the full composer on click/focus. */
+  collapsible?: boolean
   showDivider?: boolean
   /** Override textarea placeholder (e.g. "Reply to @john…" in reply modal). */
   placeholder?: string
@@ -1298,6 +1325,15 @@ const hasUnsavedContent = computed(
   () => (draft.value?.trim() ?? '') !== '' || (composerMedia.value?.length ?? 0) > 0 || hasPoll.value,
 )
 
+// ─── Collapsible mode ─────────────────────────────────────────────────────────
+const composerExpanded = ref(false)
+const isExpanded = computed(() => !props.collapsible || composerExpanded.value || hasUnsavedContent.value)
+
+function expandComposer() {
+  composerExpanded.value = true
+  nextTick(() => composerEditorEl.value?.focus())
+}
+
 function draftSnapshot(): import('~/composables/useUnsavedDraftGuard').UnsavedDraftSnapshot {
   return {
     body: String(draft.value ?? ''),
@@ -1310,6 +1346,7 @@ function clearComposer() {
   draft.value = ''
   clearAll()
   clearPoll()
+  composerExpanded.value = false
 }
 
 function focus() {

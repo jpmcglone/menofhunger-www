@@ -5,15 +5,20 @@
         "appIDs": ["28HAX9NHD8.com.menofhunger.app"],
         "components": [
           { "/": "/p/*", "comment": "Post detail" },
-          { "/": "/u/*", "comment": "User profiles" },
+          { "/": "/u/*", "comment": "User profiles, follower/following lists" },
           { "/": "/g/*", "comment": "Community groups" },
           { "/": "/topics/*", "comment": "Topic feeds" },
           { "/": "/explore", "comment": "Explore tab" },
           { "/": "/notifications", "comment": "Notifications tab" },
           { "/": "/bookmarks", "comment": "Bookmarks tab" },
-          { "/": "/home", "comment": "Home tab (web 'Open app' button links here)" },
+          { "/": "/home", "comment": "Home tab" },
+          { "/": "/groups", "comment": "Groups hub" },
+          { "/": "/settings", "comment": "Settings" },
+          { "/": "/feedback", "comment": "Send feedback" },
+          { "/": "/check-ins", "comment": "Check-ins hub" },
+          { "/": "/daily", "comment": "Daily word / quote hub" },
+          { "/": "/daily/*", "comment": "Daily sub-pages (word, quote)" },
           { "/": "/a/*", "comment": "Articles — opens in-app authenticated web view" },
-          { "/": "/groups", "comment": "Groups hub — opens in-app authenticated web view" },
           { "/": "/c/*", "comment": "Crews — opens in-app authenticated web view" }
         ]
       }

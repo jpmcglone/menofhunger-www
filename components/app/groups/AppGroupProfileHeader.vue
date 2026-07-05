@@ -152,7 +152,7 @@
                 class="text-[13px] opacity-80"
                 aria-hidden="true"
               />
-              {{ shell.joinPolicy === 'approval' ? 'Private' : 'Open' }}
+              {{ shell.joinPolicy === 'approval' ? 'Approval required' : 'Open' }}
             </span>
           </div>
         </div>
