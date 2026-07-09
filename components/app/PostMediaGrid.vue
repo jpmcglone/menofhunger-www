@@ -67,28 +67,36 @@
       </span>
     </div>
 
-    <!-- Single image — interactive: button opens lightbox; non-interactive: plain div -->
-    <button
+    <!-- Single image — interactive: the HoverZoom IS the outer box so the whole
+         container (including border-radius) scales as a unit on hover. -->
+    <AppHoverZoom
       v-else-if="items[0]?.url && interactive"
-      type="button"
-      class="relative overflow-hidden bg-transparent border-0 p-0 m-0 cursor-zoom-in select-none focus:outline-none focus-visible:ring-2 focus-visible:ring-black/20 dark:focus-visible:ring-white/20"
-      :class="singleBoxClass"
-      :style="[singleBoxStyle, mediaFrameStyle]"
-      aria-label="View image"
-      @click.stop="openAt($event, 0)"
+      mode="frame"
+      :scale="1.02"
+      :max-translate-px="4"
+      pan-axes="xy"
+      :root-class="`overflow-hidden bg-transparent ${singleBoxClass}`"
+      :root-style="[singleBoxStyle, mediaFrameStyle]"
     >
-      <AppImg
-        :src="items[0]?.url"
-        class="absolute inset-0 h-full w-full object-contain"
-        :class="hideThumbs ? 'opacity-0 transition-opacity duration-150' : 'opacity-100'"
-        :width="singleWidth ?? undefined"
-        :height="singleHeight ?? undefined"
-        :alt="items[0]?.alt ?? ''"
-        sizes="(max-width: 640px) 100vw, 720px"
-        loading="lazy"
-        decoding="async"
-      />
-    </button>
+      <button
+        type="button"
+        class="absolute inset-0 m-0 block h-full w-full cursor-zoom-in select-none border-0 bg-transparent p-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-black/20 dark:focus-visible:ring-white/20"
+        aria-label="View image"
+        @click.stop="openAt($event, 0)"
+      >
+        <AppImg
+          :src="items[0]?.url"
+          class="absolute inset-0 h-full w-full object-contain"
+          :class="hideThumbs ? 'opacity-0 transition-opacity duration-150' : 'opacity-100'"
+          :width="singleWidth ?? undefined"
+          :height="singleHeight ?? undefined"
+          :alt="items[0]?.alt ?? ''"
+          sizes="(max-width: 640px) 100vw, 720px"
+          loading="lazy"
+          decoding="async"
+        />
+      </button>
+    </AppHoverZoom>
     <div
       v-else-if="items[0]?.url"
       class="relative overflow-hidden bg-transparent select-none"
@@ -142,7 +150,7 @@
     >
       <div class="grid h-full w-full" :class="gridClass" :style="gridStyle">
         <template v-for="(m, idx) in items" :key="m.id || idx">
-          <!-- Valid media cell — interactive -->
+          <!-- Valid media cell — interactive. Image/GIF cells use contain hover zoom. -->
           <button
             v-if="m.url && interactive"
             type="button"
@@ -151,16 +159,26 @@
             :aria-label="m.kind === 'video' ? `View video ${idx + 1} of ${items.length}` : `View image ${idx + 1} of ${items.length}`"
             @click.stop="openAt($event, idx)"
           >
-            <AppImg
+            <AppHoverZoom
               v-if="m.kind !== 'video'"
-              :src="m.url"
-              class="block h-full w-full object-cover object-center"
-              :class="hideThumbs ? 'opacity-0 transition-opacity duration-150' : 'opacity-100'"
-              :alt="m.alt ?? ''"
-              sizes="(max-width: 640px) 50vw, 360px"
-              loading="lazy"
-              decoding="async"
-            />
+              mode="contain"
+              :scale="1.04"
+              root-class="overflow-hidden"
+              :root-style="{ position: 'absolute', top: '0', right: '0', bottom: '0', left: '0' }"
+            >
+              <template #default="{ style: zoomStyle }">
+                <AppImg
+                  :src="m.url"
+                  class="block h-full w-full object-cover object-center"
+                  :class="hideThumbs ? 'opacity-0 transition-opacity duration-150' : 'opacity-100'"
+                  :style="zoomStyle"
+                  :alt="m.alt ?? ''"
+                  sizes="(max-width: 640px) 50vw, 360px"
+                  loading="lazy"
+                  decoding="async"
+                />
+              </template>
+            </AppHoverZoom>
             <template v-else>
               <AppImg
                 :src="posterFor(m) || m.url"

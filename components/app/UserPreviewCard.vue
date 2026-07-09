@@ -348,6 +348,14 @@ const dmLookupCache = useState<Record<string, string | null>>('moh-dm-lookup-cac
 const dmLookupConversationId = ref<string | null>(null)
 const dmLookupInflight = ref(false)
 
+const isMutualFollow = computed(() => {
+  const rel = user.value.relationship
+  return Boolean(rel?.viewerFollowsUser && rel?.userFollowsViewer)
+})
+
+// Verified users can start DMs with mutuals; premium users can DM any member.
+const viewerCanStartChats = computed(() => viewerIsPremium.value || isMutualFollow.value)
+
 const shouldCheckExistingChat = computed(() => {
   if (!isAuthed.value) return false
   if (!viewerIsVerified.value) return false
@@ -404,14 +412,6 @@ const canSendMessageFromPreview = computed(() => {
   if (viewerCanStartChats.value) return true
   return hasExistingChat.value
 })
-
-const isMutualFollow = computed(() => {
-  const rel = user.value.relationship
-  return Boolean(rel?.viewerFollowsUser && rel?.userFollowsViewer)
-})
-
-// Verified users can start DMs with mutuals; premium users can DM any member.
-const viewerCanStartChats = computed(() => viewerIsPremium.value || isMutualFollow.value)
 
 const showNudge = computed(() => {
   if (!isAuthed.value) return false

@@ -125,16 +125,14 @@
             :style="gapDotStyle"
           />
         </div>
-        <p
-          class="relative z-[2] flex items-center gap-2 text-xs font-medium"
-          :class="gapLabelClass"
-          :style="gapLabelStyle"
-        >
+        <p class="relative z-[2] flex items-center gap-2 text-xs font-medium">
           <AppAvatarFacepile
             v-if="gapReplyAuthors(entry).length"
             :authors="gapReplyAuthors(entry)"
           />
-          {{ hiddenThreadGapLabel(entry.hiddenCount) }}
+          <span :class="gapLabelClass" :style="gapLabelStyle">
+            {{ hiddenThreadGapLabel(entry.hiddenCount) }}
+          </span>
         </p>
       </div>
       <div
@@ -340,11 +338,11 @@ const gapDotBgClass = computed(() =>
 
 const gapLabelStyle = computed(() => {
   const color = gapTintColor.value
-  return color ? { color, opacity: '0.55' } : undefined
+  return color ? { color } : undefined
 })
 
 const gapLabelClass = computed(() =>
-  gapTintColor.value ? '' : 'text-gray-400 opacity-60 dark:text-zinc-500',
+  gapTintColor.value ? '' : 'text-gray-500 dark:text-zinc-400',
 )
 
 function gapPermalink(displayIndex: number): string | null {
@@ -427,11 +425,18 @@ onMounted(() => {
   // Observe the wrapper: when ≥50% visible for ≥1s, mark accessible chain posts as viewed.
   // Gated posts (viewerCanAccess === false) are excluded — viewer hasn't read the content.
   if (wrapperEl.value) {
-    const postIds = chain.value
-      .filter((p) => p.viewerCanAccess !== false && !isPendingLocalId(p.id))
-      .map((p) => p.id)
-      .filter(Boolean)
-    if (postIds.length) stopObserve = observe(postIds, wrapperEl.value)
+    const accessible = chain.value.filter((p) => p.viewerCanAccess !== false && !isPendingLocalId(p.id))
+    const postIds = accessible.map((p) => p.id).filter(Boolean)
+    const groupIdByPostId: Record<string, string> = {}
+    for (const p of accessible) {
+      const gid = (p.communityGroupId ?? '').trim()
+      if (gid && p.id) groupIdByPostId[p.id] = gid
+    }
+    if (postIds.length) {
+      stopObserve = observe(postIds, wrapperEl.value, {
+        groupIdByPostId: Object.keys(groupIdByPostId).length ? groupIdByPostId : undefined,
+      })
+    }
   }
 })
 

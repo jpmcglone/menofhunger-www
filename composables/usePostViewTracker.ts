@@ -9,6 +9,9 @@
  * Engagement-based views (boost, bookmark, comment): call markEngaged(postId)
  * directly — these are flushed immediately rather than batched.
  *
+ * Group posts: when a viewed post has a communityGroupId, optimistically decrement
+ * the groups unread badge and flush immediately so `groups:unreadChanged` confirms quickly.
+ *
  * The API endpoint is idempotent, so duplicate calls are harmless.
  */
 
@@ -34,15 +37,20 @@ let flushTimer: ReturnType<typeof setInterval> | null = null
 const pendingPostIds = new Set<string>()
 /** postId -> last sent timestamp; entries older than DEDUPE_WINDOW_MS are skipped when enqueueing. */
 const recentlySent = new Map<string, number>()
+/** postIds already used for an optimistic groups-badge decrement this session. */
+const optimisticGroupBadgeApplied = new Set<string>()
 
-function enqueuePosts(ids: string[]) {
+function enqueuePosts(ids: string[]): string[] {
   const now = Date.now()
   const cutoff = now - DEDUPE_WINDOW_MS
+  const added: string[] = []
   for (const id of ids) {
     const last = recentlySent.get(id)
     if (last != null && last > cutoff) continue
+    if (!pendingPostIds.has(id)) added.push(id)
     pendingPostIds.add(id)
   }
+  return added
 }
 
 async function flushPending(
@@ -71,10 +79,33 @@ async function flushPending(
   }
 }
 
+/**
+ * Optimistically decrement groups unread for a single group post view.
+ * Socket `groups:unreadChanged` remains authoritative and will overwrite shortly.
+ */
+function optimisticDecrementGroupBadge(
+  groupId: string,
+  postId: string,
+  setGroupsUnread: (data: { total?: number; byGroupId?: Record<string, number> }) => void,
+  groupsUnread: { total: number; byGroupId: Record<string, number> },
+) {
+  if (!groupId || !postId) return
+  if (optimisticGroupBadgeApplied.has(postId)) return
+  const current = groupsUnread.byGroupId[groupId] ?? 0
+  if (current <= 0) return
+  optimisticGroupBadgeApplied.add(postId)
+  const byGroupId = { ...groupsUnread.byGroupId }
+  const next = current - 1
+  if (next <= 0) delete byGroupId[groupId]
+  else byGroupId[groupId] = next
+  setGroupsUnread({ total: Math.max(0, groupsUnread.total - 1), byGroupId })
+}
+
 export function usePostViewTracker() {
   const { apiFetchData } = useApiClient()
   const { isAuthed } = useAuth()
   const anonViewId = useAnonViewId()
+  const { groupsUnread, setGroupsUnread } = usePresence()
 
   // Start the periodic flush timer once (shared across all callers on this page).
   if (import.meta.client && !flushTimer) {
@@ -104,11 +135,18 @@ export function usePostViewTracker() {
    * pixels for tall posts) all postIds are added to the batch queue.
    * Returns a cleanup function — call it on unmount or when el changes.
    * Pass multiple postIds to track a thread chain (all enqueued together).
+   *
+   * When `groupIdByPostId` maps a viewed post to a community group, optimistically
+   * decrement that group's unread badge and flush immediately.
    */
   function observe(
     postIds: string | string[],
     el: HTMLElement | null,
-    opts?: { canTrack?: boolean },
+    opts?: {
+      canTrack?: boolean
+      /** Map of postId → communityGroupId for group-badge optimistic decrement. */
+      groupIdByPostId?: Record<string, string>
+    },
   ): () => void {
     if (!import.meta.client || !el) return () => {}
     if (opts?.canTrack === false) return () => {}
@@ -131,8 +169,27 @@ export function usePostViewTracker() {
         if (entry.isIntersecting && visibleEnough) {
           if (!dwellTimer) {
             dwellTimer = setTimeout(() => {
-              enqueuePosts(ids)
+              const added = enqueuePosts(ids)
               dwellTimer = null
+
+              // Group posts: optimistic badge + immediate flush for snappy UI.
+              const groupMap = opts?.groupIdByPostId
+              let hasGroupPost = false
+              if (groupMap && isAuthed.value) {
+                for (const id of added.length ? added : ids) {
+                  const gid = groupMap[id]
+                  if (!gid) continue
+                  hasGroupPost = true
+                  optimisticDecrementGroupBadge(gid, id, setGroupsUnread, groupsUnread.value)
+                }
+              }
+              if (hasGroupPost) {
+                void flushPending(apiFetchData as any, {
+                  isAuthed: isAuthed.value,
+                  anonId: anonViewId.value,
+                  source: 'groups_hub_scroll',
+                })
+              }
             }, VISIBILITY_DWELL_MS)
           }
         } else {

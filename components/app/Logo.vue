@@ -2,7 +2,7 @@
   <component :is="asLink ? NuxtLink : 'div'" :to="asLink ? to : undefined" :class="wrapperClass">
     <img
       class="moh-logo--light"
-      :src="lightSrc"
+      :src="resolvedLightSrc"
       :alt="alt"
       :width="width"
       :height="height"
@@ -14,7 +14,7 @@
     >
     <img
       class="moh-logo--dark"
-      :src="darkSrc"
+      :src="resolvedDarkSrc"
       :alt="alt"
       :width="width"
       :height="height"
@@ -29,14 +29,16 @@
 
 <script setup lang="ts">
 import type { CSSProperties } from 'vue'
+import logoLightDefault from '~/assets/images/logo-white-bg-small.png'
+import logoDarkDefault from '~/assets/images/logo-black-bg-small.png'
 
-withDefaults(
+const props = withDefaults(
   defineProps<{
     alt: string
     /** Render as a link (NuxtLink) */
     asLink?: boolean
     to?: string
-    /** Image sources (from /public) */
+    /** Optional overrides (defaults come from ~/assets/images) */
     lightSrc?: string
     darkSrc?: string
     /** Explicit size to prevent "unstyled huge image" flash on hard reload */
@@ -49,16 +51,19 @@ withDefaults(
   {
     asLink: false,
     to: '/',
-    lightSrc: '/images/logo-white-bg-small.png',
-    darkSrc: '/images/logo-black-bg-small.png',
+    lightSrc: undefined,
+    darkSrc: undefined,
     width: 400,
     height: 400,
     wrapperClass: '',
-    imgClass: ''
-  }
+    imgClass: '',
+  },
 )
 
 const NuxtLink = resolveComponent('NuxtLink')
+
+const resolvedLightSrc = computed(() => props.lightSrc || logoLightDefault)
+const resolvedDarkSrc = computed(() => props.darkSrc || logoDarkDefault)
 
 // Inline styles apply even before Tailwind loads.
 const imgStyle = computed(() => {
@@ -67,7 +72,7 @@ const imgStyle = computed(() => {
     height: 'auto',
     userSelect: 'none',
     // Not part of standard CSSProperties in all TS lib versions.
-    WebkitUserDrag: 'none'
+    WebkitUserDrag: 'none',
   } as CSSProperties
 })
 </script>

@@ -545,7 +545,10 @@ onMounted(() => {
     && postView.value.viewerCanAccess !== false
     && !isPendingLocalId(postView.value.id)
   ) {
-    stopViewObserve = observeView([postView.value.id], rowEl.value)
+    const gid = (postView.value.communityGroupId ?? '').trim()
+    stopViewObserve = observeView([postView.value.id], rowEl.value, {
+      groupIdByPostId: gid ? { [postView.value.id]: gid } : undefined,
+    })
   }
 })
 

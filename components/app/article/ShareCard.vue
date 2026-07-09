@@ -5,23 +5,32 @@
     @click.stop
   >
     <!-- Thumbnail -->
-    <div v-if="article.thumbnailUrl" class="relative aspect-[16/9] w-full overflow-hidden bg-gray-100 dark:bg-zinc-800">
-      <img
-        :src="article.thumbnailUrl"
-        :alt="article.title"
-        :class="[
-          'h-full w-full object-cover transition-transform duration-300',
-          isGated ? 'scale-110 blur-xl' : 'group-hover:scale-105',
-        ]"
-      />
-      <div
-        v-if="isGated"
-        class="absolute inset-0 flex items-center justify-center bg-black/40"
-        aria-hidden="true"
-      >
-        <Icon name="tabler:lock" class="text-3xl text-white drop-shadow-lg" aria-hidden="true" />
-      </div>
-    </div>
+    <AppHoverZoom
+      v-if="article.thumbnailUrl"
+      mode="contain"
+      :enabled="!isGated"
+      :scale="1.04"
+      root-class="aspect-[16/9] w-full overflow-hidden bg-gray-100 dark:bg-zinc-800"
+    >
+      <template #default="{ style: zoomStyle }">
+        <img
+          :src="article.thumbnailUrl"
+          :alt="article.title"
+          :class="[
+            'h-full w-full object-cover',
+            isGated ? 'scale-110 blur-xl' : '',
+          ]"
+          :style="isGated ? undefined : zoomStyle"
+        />
+        <div
+          v-if="isGated"
+          class="absolute inset-0 flex items-center justify-center bg-black/40"
+          aria-hidden="true"
+        >
+          <Icon name="tabler:lock" class="text-3xl text-white drop-shadow-lg" aria-hidden="true" />
+        </div>
+      </template>
+    </AppHoverZoom>
 
     <!-- Content -->
     <div class="p-3">

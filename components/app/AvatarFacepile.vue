@@ -12,7 +12,7 @@
       :enable-preview="false"
       :show-status="false"
       :show-presence="false"
-      class="ring-2 ring-[var(--moh-bg)]"
+      class="rounded-full ring-2 ring-[var(--moh-bg)]"
       :class="index > 0 ? overlapClass : undefined"
       :style="{ zIndex: authors.length - index }"
     />
