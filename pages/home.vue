@@ -54,7 +54,6 @@
         ref="homeComposerRef"
         :allowed-visibilities="['public', 'verifiedOnly', 'premiumOnly']"
         persist-key="home"
-        collapsible
         enable-avatar-status-editor
         :register-unsaved-guard="false"
         @pending="onComposerPending"
@@ -347,7 +346,7 @@ const groupsNudgeDismissed = useCookie('moh.groups-nudge.dismissed', {
 const myGroupsCount = ref<number | null>(null)
 
 async function refreshMyGroupsCount() {
-  if (!isAuthed.value) {
+  if (!isAuthed.value || groupsNudgeDismissed.value) {
     myGroupsCount.value = null
     return
   }
@@ -369,11 +368,6 @@ const showGroupsOnboardingNudge = computed(() => {
 function dismissGroupsNudge() {
   groupsNudgeDismissed.value = '1'
 }
-
-watch(isAuthed, (a) => {
-  if (a) void refreshMyGroupsCount()
-  else myGroupsCount.value = null
-}, { immediate: true })
 
 const { dayKey: etDayKey } = useEasternMidnightRollover()
 
@@ -759,6 +753,20 @@ watchEffect(() => {
   }
 })
 
+watch(
+  [isAuthed, initialFeedResolved, groupsNudgeDismissed],
+  ([authed, feedResolved, dismissed]) => {
+    if (!authed) {
+      myGroupsCount.value = null
+      return
+    }
+    if (feedResolved && !dismissed && myGroupsCount.value === null) {
+      void refreshMyGroupsCount()
+    }
+  },
+  { immediate: true },
+)
+
 const showMainLoader = computed(() => !initialFeedResolved.value && !error.value && posts.value.length === 0)
 const feedRefreshingOverlay = computed(() => loading.value && initialFeedResolved.value && displayItems.value.length > 0)
 
@@ -783,7 +791,6 @@ const feedNewPostCb = {
 let unregisterReplyPending: null | (() => void) = null
 onActivated(() => {
   if (!import.meta.client) return
-  if (isAuthed.value) void refreshMyGroupsCount()
   if (posts.value.length > 0) {
     // Posts are already in memory (keepalive). Soft-refresh only fetches posts newer than the
     // current head and prepends them, preserving the scroll position via anchor adjustment.

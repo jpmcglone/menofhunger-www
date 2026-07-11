@@ -679,7 +679,7 @@ const effectivePinnedPostId = computed(() => {
   return profilePid
 })
 
-const showAds = computed(() => !authUser.value?.premium)
+const showAds = computed(() => false)
 
 // ─── Shared filter/sort state for all profile tabs — synced to URL params ─────
 const {

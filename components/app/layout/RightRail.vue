@@ -164,8 +164,6 @@
             <AppCheckinsLeaderboardWidget v-if="canAccessCheckins" />
           </ClientOnly>
 
-          <AppSupportDonateCard />
-
           <!-- Ads can mutate DOM; keep the mount point client-only. -->
           <ClientOnly>
             <AppAdSlot placement="rail" />

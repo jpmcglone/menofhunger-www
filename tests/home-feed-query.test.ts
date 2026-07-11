@@ -93,6 +93,27 @@ describe('home feed query shape', () => {
 })
 
 describe('home feed refresh guardrails', () => {
+  it('always renders the full home composer', () => {
+    const home = readFromRepo('pages/home.vue')
+    const composer = readFromRepo('components/app/PostComposer.vue')
+    expect(home).not.toMatch(/<LazyAppPostComposer[\s\S]*?\bcollapsible\b[\s\S]*?\/>/)
+    expect(composer).not.toContain('collapsible?: boolean')
+    expect(composer).not.toContain('composerExpanded')
+  })
+
+  it('keeps signed-out home on the cacheable trending feed and pauses ad rows', () => {
+    const src = readFromRepo('composables/useHomeFeed.ts')
+    expect(src).toContain("const forYou = computed(() => isAuthed.value && feedScope.value === 'forYou')")
+    expect(src).toContain('const showAds = computed(() => false)')
+  })
+
+  it('waits for the initial feed before fetching the groups onboarding count', () => {
+    const src = readFromRepo('pages/home.vue')
+    expect(src).toContain('[isAuthed, initialFeedResolved, groupsNudgeDismissed]')
+    expect(src).toContain('if (feedResolved && !dismissed && myGroupsCount.value === null)')
+    expect(src).not.toMatch(/watch\(isAuthed,[\s\S]*refreshMyGroupsCount/)
+  })
+
   it('refreshes from the canonical request key', () => {
     const src = readFromRepo('composables/usePostsFeed.ts')
     expect(src).toContain('() => [feedEnabled(), currentRequestKey()] as const')

@@ -84,7 +84,7 @@
             aria-label="Avatar options"
             @click.stop="toggleAvatarMenu"
           >
-            <div ref="avatarEl">
+            <div ref="avatarEl" class="flex h-10 w-10 shrink-0 leading-none">
               <AppUserAvatar
                 :user="author"
                 size-class="h-10 w-10"
@@ -107,7 +107,7 @@
           class="group shrink-0"
           :aria-label="`View @${author?.username} profile`"
         >
-          <div ref="avatarEl">
+          <div ref="avatarEl" class="flex h-10 w-10 shrink-0 leading-none">
             <AppUserAvatar
               :user="author"
               size-class="h-10 w-10"
@@ -115,7 +115,7 @@
             />
           </div>
         </NuxtLink>
-        <div v-else ref="avatarEl">
+        <div v-else ref="avatarEl" class="flex h-10 w-10 shrink-0 leading-none">
           <AppUserAvatar
             :user="author"
             size-class="h-10 w-10"

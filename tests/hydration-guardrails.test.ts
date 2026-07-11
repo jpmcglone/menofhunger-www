@@ -67,6 +67,14 @@ describe('hydration guardrails (structural)', () => {
     expect(landing).toMatch(/currentYear = new Date\(\)\.getUTCFullYear\(\)/)
   })
 
+  it('keeps optimized landing theme images stable through first hydration', () => {
+    const landing = readFromRepo('pages/index.vue')
+    expect(landing).toMatch(/<NuxtImg[\s\S]*:src="landingHeroSrc"[\s\S]*format="webp"/)
+    expect(landing).toMatch(/const landingThemeReady = ref\(false\)/)
+    expect(landing).toMatch(/landingThemeReady\.value && colorMode\.value === 'light'/)
+    expect(landing).toMatch(/onMounted\(\(\) => {\s*landingThemeReady\.value = true/)
+  })
+
   it('uses stable non-index keys for notification media previews', () => {
     const row = readFromRepo('components/app/NotificationRow.vue')
     const group = readFromRepo('components/app/NotificationGroupRow.vue')

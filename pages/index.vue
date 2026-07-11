@@ -122,18 +122,20 @@
               </div>
             </div>
 
-            <!-- Right: hero image (light/dark swap via CSS) -->
+            <!-- Right: one optimized hero image for the active theme. -->
             <div class="relative min-h-[280px] overflow-hidden rounded-2xl shadow-2xl shadow-black/25 lg:min-h-0">
-              <img
-                :src="landingLight"
-                alt="Men standing on a mountain path"
-                class="moh-landing-hero--light absolute inset-0 h-full w-full object-cover"
-                draggable="false"
-              />
-              <img
-                :src="landingDark"
-                alt="Men standing on a mountain path at night"
-                class="moh-landing-hero--dark absolute inset-0 h-full w-full object-cover"
+              <NuxtImg
+                :src="landingHeroSrc"
+                :alt="landingHeroAlt"
+                class="absolute inset-0 h-full w-full object-cover"
+                format="webp"
+                quality="82"
+                sizes="100vw lg:50vw"
+                width="1448"
+                height="1086"
+                loading="eager"
+                decoding="async"
+                fetchpriority="high"
                 draggable="false"
               />
             </div>
@@ -458,18 +460,19 @@
         <section class="mt-16 sm:mt-20">
           <div class="relative overflow-hidden rounded-2xl bg-gray-100 text-center dark:bg-gray-950">
             <!-- Mountain background (low opacity, aspect fill) -->
-            <img
-              :src="mountainLight"
+            <NuxtImg
+              :src="mountainHeroSrc"
               alt=""
               aria-hidden="true"
-              class="moh-mountain-bg--light pointer-events-none absolute inset-0 h-full w-full object-cover opacity-50"
-              draggable="false"
-            />
-            <img
-              :src="mountainDark"
-              alt=""
-              aria-hidden="true"
-              class="moh-mountain-bg--dark pointer-events-none absolute inset-0 h-full w-full object-cover opacity-40"
+              class="pointer-events-none absolute inset-0 h-full w-full object-cover"
+              :class="useLightLandingImages ? 'opacity-50' : 'opacity-40'"
+              format="webp"
+              quality="78"
+              sizes="100vw"
+              width="1916"
+              height="821"
+              loading="lazy"
+              decoding="async"
               draggable="false"
             />
             <!-- Gradient overlay to keep text readable -->
@@ -648,6 +651,20 @@ useHead({
 const roanokeMeetupUrl = siteConfig.social.meetup
 const currentYear = new Date().getUTCFullYear()
 const isRoanokeOpen = ref(false)
+const colorMode = useColorMode()
+const landingThemeReady = ref(false)
+const useLightLandingImages = computed(() => landingThemeReady.value && colorMode.value === 'light')
+const landingHeroSrc = computed(() => (useLightLandingImages.value ? landingLight : landingDark))
+const landingHeroAlt = computed(() => (
+  useLightLandingImages.value
+    ? 'Men standing on a mountain path'
+    : 'Men standing on a mountain path at night'
+))
+const mountainHeroSrc = computed(() => (useLightLandingImages.value ? mountainLight : mountainDark))
+
+onMounted(() => {
+  landingThemeReady.value = true
+})
 
 watch(isRoanokeOpen, (open) => {
   if (import.meta.client) {

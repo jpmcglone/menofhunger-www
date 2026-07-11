@@ -35,9 +35,6 @@ const props = defineProps<{
   placement: 'rail' | 'feed'
 }>()
 
-const { user } = useAuth()
-const isPremiumViewer = computed(() => Boolean(user.value?.premium || user.value?.premiumPlus))
-
 const config = useRuntimeConfig()
 const adsenseEnabled = computed(() => Boolean(config.public.adsense?.enabled))
 const adsenseClient = computed(() => String(config.public.adsense?.client ?? '').trim())
@@ -47,10 +44,10 @@ const adsenseAdtest = computed(() => Boolean(config.public.adsense?.adtest))
 
 const slot = computed(() => (props.placement === 'rail' ? adsenseRailSlot.value : adsenseFeedSlot.value))
 
-const shouldShowAd = computed(() => !isPremiumViewer.value)
+// Ads are paused for every viewer. Keep the integration intact for a later re-enable.
+const shouldShowAd = computed(() => false)
 const mounted = ref(false)
-// SSR/hydration-safe: always reserve the slot space until mounted, then respect viewer tier.
-const shouldRender = computed(() => (!mounted.value ? true : shouldShowAd.value))
+const shouldRender = computed(() => false)
 function isValidAdsenseClient(v: string): boolean {
   // AdSense client format: ca-pub-1234567890123456
   return /^ca-pub-\d+$/.test((v ?? '').trim())

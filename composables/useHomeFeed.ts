@@ -51,8 +51,8 @@ export function useHomeFeed(options?: { mediaOnly?: Ref<boolean>; topLevelOnly?:
   })
 
   const followingOnly = computed(() => Boolean(isAuthed.value && feedScope.value === 'following'))
-  const forYou = computed(() => feedScope.value === 'forYou')
-  const showAds = computed(() => !user.value?.premium)
+  const forYou = computed(() => isAuthed.value && feedScope.value === 'forYou')
+  const showAds = computed(() => false)
 
   // Signed-out home defaults to trending (instead of the chronological "new") so
   // first-time visitors land on the most engaging content. Once a visitor explicitly
