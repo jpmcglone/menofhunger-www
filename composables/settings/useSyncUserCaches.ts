@@ -5,6 +5,10 @@ import { useUsersStore } from '~/composables/useUsersStore'
  * After a profile/settings save, invalidate every cache that may hold a stale
  * copy of the viewer (user preview, public profile, follow summary) and push
  * the fresh entity into the normalized users store.
+ *
+ * Important: use `refreshNuxtData` (not `clearNuxtData`) for live profile pages.
+ * Clearing empties the active `useAsyncData` payload without refetching, which
+ * blanks the profile header ("?") until a full navigation.
  */
 export function useSyncUserCaches() {
   const { invalidateUserPreviewCache } = useUserPreview()
@@ -20,12 +24,12 @@ export function useSyncUserCaches() {
     if (next) invalidateUserPreviewCache(next)
     if (import.meta.client) {
       if (prev) {
-        clearNuxtData(`public-profile:${prev}`)
-        clearNuxtData(`follow-summary:${prev}`)
+        void refreshNuxtData(`public-profile:${prev}`)
+        void refreshNuxtData(`follow-summary:${prev}`)
       }
-      if (next) {
-        clearNuxtData(`public-profile:${next}`)
-        clearNuxtData(`follow-summary:${next}`)
+      if (next && next !== prev) {
+        void refreshNuxtData(`public-profile:${next}`)
+        void refreshNuxtData(`follow-summary:${next}`)
       }
     }
     if (!nextUser?.id) return

@@ -543,12 +543,13 @@ const { submit: saveProfile, submitting: saving } = useFormSubmit(
       const committed = await apiFetchData<{ user: import('~/composables/useAuth').AuthUser }>(bannerDeleteUrl, {
         method: 'DELETE',
       })
+      // Patch the live profile page first so cache refresh cannot blank the header.
+      emit('patchProfile', { bannerUrl: committed?.user?.bannerUrl ?? null })
       if (!adminId) {
         const previousUsername = authUser.value?.username ?? null
         authUser.value = committed?.user ?? authUser.value
         syncUserCaches(committed?.user, previousUsername)
       }
-      emit('patchProfile', { bannerUrl: committed?.user?.bannerUrl ?? null })
       pendingBannerRemoval.value = false
     }
 
@@ -573,12 +574,13 @@ const { submit: saveProfile, submitting: saving } = useFormSubmit(
         body: { key: init.key },
       })
 
+      // Patch the live profile page first so cache refresh cannot blank the header.
+      emit('patchProfile', { bannerUrl: committed?.user?.bannerUrl ?? null })
       if (!adminId) {
         const previousUsername = authUser.value?.username ?? null
         authUser.value = committed?.user ?? authUser.value
         syncUserCaches(committed?.user, previousUsername)
       }
-      emit('patchProfile', { bannerUrl: committed?.user?.bannerUrl ?? null })
       clearPendingBanner()
     }
 
@@ -587,12 +589,12 @@ const { submit: saveProfile, submitting: saving } = useFormSubmit(
       const committed = await apiFetchData<{ user: import('~/composables/useAuth').AuthUser }>(avatarDeleteUrl, {
         method: 'DELETE',
       })
+      emit('patchProfile', { avatarUrl: committed?.user?.avatarUrl ?? null })
       if (!adminId) {
         const previousUsername = authUser.value?.username ?? null
         authUser.value = committed?.user ?? authUser.value
         syncUserCaches(committed?.user, previousUsername)
       }
-      emit('patchProfile', { avatarUrl: committed?.user?.avatarUrl ?? null })
       pendingAvatarRemoval.value = false
     }
 
@@ -617,12 +619,12 @@ const { submit: saveProfile, submitting: saving } = useFormSubmit(
         body: { key: init.key },
       })
 
+      emit('patchProfile', { avatarUrl: committed.user?.avatarUrl ?? null })
       if (!adminId) {
         const previousUsername = authUser.value?.username ?? null
         authUser.value = committed.user ?? authUser.value
         syncUserCaches(committed?.user, previousUsername)
       }
-      emit('patchProfile', { avatarUrl: committed.user?.avatarUrl ?? null })
       clearPendingAvatar()
     }
 

@@ -31,4 +31,23 @@ describe('profile visibility filters (structural)', () => {
     const pinnedComposable = readFromRepo('composables/useProfilePinnedPost.ts')
     expect(pinnedComposable).toMatch(/if \(activeFilter\.value !== 'all' && p\.visibility !== activeFilter\.value\) return null/)
   })
+
+  it('refreshes public profile caches after save instead of clearing them empty', () => {
+    const sync = readFromRepo('composables/settings/useSyncUserCaches.ts')
+    // clearNuxtData blanks the live /u/:username payload and leaves "?" avatars until remount.
+    expect(sync).not.toMatch(/clearNuxtData\(`public-profile:/)
+    expect(sync).toMatch(/refreshNuxtData\(`public-profile:/)
+    expect(sync).toMatch(/refreshNuxtData\(`follow-summary:/)
+  })
+
+  it('patches the live profile before syncing caches on banner/avatar commit', () => {
+    const dialog = readFromRepo('components/app/profile/EditProfileDialog.vue')
+    // Banner commit must emit patchProfile before syncUserCaches so the page keeps name/avatar.
+    expect(dialog).toMatch(
+      /emit\('patchProfile',\s*\{\s*bannerUrl:[\s\S]*?\}\)\s*\n\s*if \(!adminId\) \{[\s\S]*?syncUserCaches\(committed\?\.user/,
+    )
+    expect(dialog).toMatch(
+      /emit\('patchProfile',\s*\{\s*avatarUrl:[\s\S]*?\}\)\s*\n\s*if \(!adminId\) \{[\s\S]*?syncUserCaches\(committed\?\.user/,
+    )
+  })
 })
