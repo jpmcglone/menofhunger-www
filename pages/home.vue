@@ -299,7 +299,7 @@
 </template>
 
 <script setup lang="ts">
-import type { CommunityGroupShell, PostVisibility, CheckinAllowedVisibility  } from '~/types/api'
+import type { PostVisibility, CheckinAllowedVisibility } from '~/types/api'
 import type { ComponentPublicInstance } from 'vue'
 import type { PostsFeedDisplayItem } from '~/composables/usePostsFeed'
 import type { FeedThreadDisplayPost } from '~/utils/merge-feed-threads-for-display'
@@ -336,7 +336,7 @@ provide(MOH_FOCUS_HOME_COMPOSER_KEY, () => {
   homeComposerRef.value?.focus()
 })
 const { isAuthed, user: authUser } = useAuth()
-const { apiFetchData } = useApiClient()
+const { groups: myGroups, load: loadMyGroups } = useMyGroups()
 const groupsNudgeDismissed = useCookie('moh.groups-nudge.dismissed', {
   default: () => '',
   path: '/',
@@ -345,14 +345,20 @@ const groupsNudgeDismissed = useCookie('moh.groups-nudge.dismissed', {
 })
 const myGroupsCount = ref<number | null>(null)
 
+watch(myGroups, (groups) => {
+  if (isAuthed.value && !groupsNudgeDismissed.value) {
+    myGroupsCount.value = groups.length
+  }
+})
+
 async function refreshMyGroupsCount() {
   if (!isAuthed.value || groupsNudgeDismissed.value) {
     myGroupsCount.value = null
     return
   }
   try {
-    const list = await apiFetchData<CommunityGroupShell[]>('/groups/me')
-    myGroupsCount.value = Array.isArray(list) ? list.length : 0
+    await loadMyGroups()
+    myGroupsCount.value = myGroups.value.length
   } catch {
     myGroupsCount.value = null
   }
@@ -591,7 +597,10 @@ function computeFeedScrollMargin() {
 let scrollMarginObserver: ResizeObserver | null = null
 
 const initialFeedLoadStarted = ref(false)
-const initialFeedResolved = ref(false)
+const {
+  initialFeedResolved,
+  markInitialFeedResolved,
+} = useHomeLoadState()
 
 // Recompute when anything that changes header height changes reactively
 // (check-in hero visible/collapsed, composer mounted/unmounted, etc.).
@@ -740,7 +749,7 @@ const showOnlyMeHomeComposerCard = computed(() => isAuthed.value && !viewerIsVer
 watchEffect(() => {
   if (initialFeedResolved.value) return
   if (posts.value.length > 0 || Boolean(error.value)) {
-    initialFeedResolved.value = true
+    markInitialFeedResolved()
     return
   }
   if (loading.value) {
@@ -749,7 +758,7 @@ watchEffect(() => {
   }
   if (initialFeedLoadStarted.value && !loading.value) {
     // First request completed with an empty feed (no error).
-    initialFeedResolved.value = true
+    markInitialFeedResolved()
   }
 })
 

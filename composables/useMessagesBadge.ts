@@ -4,8 +4,7 @@ import { userColorTier } from '~/utils/user-tier'
 export function useMessagesBadge() {
   const { user } = useAuth()
   const { apiFetchData } = useApiClient()
-  const { messageUnreadCounts, setMessageUnreadCounts, isSocketConnected } = usePresence()
-  const criticalBadgeCountsLoaded = useState<boolean>('critical-badge-counts-loaded', () => false)
+  const { messageUnreadCounts, setMessageUnreadCounts } = usePresence()
 
   const primaryCount = computed(() => Math.max(0, Number(messageUnreadCounts.value.primary) || 0))
   const requestCount = computed(() => Math.max(0, Number(messageUnreadCounts.value.requests) || 0))
@@ -34,38 +33,17 @@ export function useMessagesBadge() {
   })
 
   async function fetchUnreadCounts() {
-    if (!user.value?.id) return
+    const userId = user.value?.id
+    if (!userId) return
     try {
       const res = await apiFetchData<GetMessagesUnreadCountResponse['data']>('/messages/unread-count')
+      if (user.value?.id !== userId) return
       const primary = Math.max(0, Number(res?.primary ?? 0) || 0)
       const requests = Math.max(0, Number(res?.requests ?? 0) || 0)
       setMessageUnreadCounts({ primary, requests })
     } catch {
       // Ignore; badge will update on next socket event or page load
     }
-  }
-
-  watch(
-    () => user.value?.id,
-    (userId) => {
-      if (userId) {
-        if (!criticalBadgeCountsLoaded.value) void fetchUnreadCounts()
-      }
-      else setMessageUnreadCounts({ primary: 0, requests: 0 })
-    },
-    { immediate: true },
-  )
-
-  watch(isSocketConnected, (connected) => {
-    if (connected && user.value?.id) void fetchUnreadCounts()
-  })
-
-  if (import.meta.client) {
-    const onVisible = () => {
-      if (document.visibilityState === 'visible' && user.value?.id) void fetchUnreadCounts()
-    }
-    onMounted(() => document.addEventListener('visibilitychange', onVisible))
-    onBeforeUnmount(() => document.removeEventListener('visibilitychange', onVisible))
   }
 
   return {

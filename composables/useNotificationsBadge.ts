@@ -8,9 +8,7 @@ export function useNotificationsBadge() {
     notificationUndeliveredCount,
     setNotificationUndeliveredCount,
     setNotificationUnreadCommentCount,
-    isSocketConnected,
   } = usePresence()
-  const criticalBadgeCountsLoaded = useState<boolean>('critical-badge-counts-loaded', () => false)
 
   const count = computed(() => Math.max(0, Number(notificationUndeliveredCount.value) || 0))
   /** Only show badge when there is at least one unseen notification (never show for 0). */
@@ -29,9 +27,11 @@ export function useNotificationsBadge() {
   })
 
   async function fetchUndeliveredCount() {
-    if (!user.value?.id) return
+    const userId = user.value?.id
+    if (!userId) return
     try {
       const res = await apiFetch<GetNotificationsUnreadCountResponse['data']>('/notifications/unread-count')
+      if (user.value?.id !== userId) return
       const raw = res?.data?.count ?? 0
       setNotificationUndeliveredCount(raw)
       // Same endpoint also seeds the "waiting on you" dot so we don't pay for a second round-trip.
@@ -40,34 +40,6 @@ export function useNotificationsBadge() {
     } catch {
       // Ignore; badge will update on next socket event or page load
     }
-  }
-
-  watch(
-    () => user.value?.id,
-    (userId) => {
-      if (userId) {
-        if (!criticalBadgeCountsLoaded.value) void fetchUndeliveredCount()
-      }
-      else {
-        setNotificationUndeliveredCount(0)
-        setNotificationUnreadCommentCount(0)
-      }
-    },
-    { immediate: true },
-  )
-
-  // Refetch when socket connects/reconnects (catches missed events)
-  watch(isSocketConnected, (connected) => {
-    if (connected && user.value?.id) void fetchUndeliveredCount()
-  })
-
-  // Refetch when tab becomes visible (recovers from missed socket events)
-  if (import.meta.client) {
-    const onVisible = () => {
-      if (document.visibilityState === 'visible' && user.value?.id) void fetchUndeliveredCount()
-    }
-    onMounted(() => document.addEventListener('visibilitychange', onVisible))
-    onBeforeUnmount(() => document.removeEventListener('visibilitychange', onVisible))
   }
 
   return { count, show, displayCount, toneClass, fetchUndeliveredCount }

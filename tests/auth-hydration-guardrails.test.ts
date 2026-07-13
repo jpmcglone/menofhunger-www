@@ -7,22 +7,39 @@ function readFromRepo(relativePath: string): string {
 }
 
 describe('useAuth hydration guardrails (structural)', () => {
-  it('keeps auth badge count useState refs at setup scope', () => {
-    const src = readFromRepo('composables/useAuth.ts')
-    expect(src).toMatch(/const\s+notifCount\s*=\s*useState<number>\('notifications-undelivered-count'/)
-    expect(src).toMatch(
-      /const\s+messageUnreadCounts\s*=\s*useState<\{\s*primary:\s*number;\s*requests:\s*number\s*\}>\('messages-unread-counts'/,
-    )
+  it('keeps badge hydration in one layout-owned composable', () => {
+    const auth = readFromRepo('composables/useAuth.ts')
+    const hydration = readFromRepo('composables/useBadgeHydration.ts')
+    const layout = readFromRepo('layouts/app.vue')
+    expect(auth).not.toMatch(/notifications-undelivered-count|messages-unread-counts/)
+    expect(layout.match(/useBadgeHydration\(\)/g)).toHaveLength(1)
+    expect(hydration).toMatch(/notificationUndeliveredCount/)
+    expect(hydration).toMatch(/messageUnreadCounts/)
+    expect(hydration).toMatch(/notificationUnreadCommentCount/)
+    expect(hydration).toMatch(/groupsUnread/)
+    expect(hydration).toMatch(/crewInviteInboxCount/)
   })
 
-  it('does not call useState inside me\(\) after awaiting /auth/me', () => {
+  it('keeps badge display composables free of automatic recovery side effects', () => {
+    for (const path of [
+      'composables/useNotificationsBadge.ts',
+      'composables/useMessagesBadge.ts',
+      'composables/useGroupsBadge.ts',
+      'composables/useCrewInvitesBadge.ts',
+    ]) {
+      const src = readFromRepo(path)
+      expect(src).not.toMatch(/\bwatch\(/)
+      expect(src).not.toMatch(/visibilitychange/)
+      expect(src).not.toMatch(/isSocketConnected/)
+    }
+  })
+
+  it('does not call useState inside me() after awaiting /auth/me', () => {
     const src = readFromRepo('composables/useAuth.ts')
     const meBlock =
       src.match(/async function me\(\): Promise<AuthUser \| null> \{[\s\S]*?\n {2}\}\n\n {2}async function ensureLoaded/)?.[0] ?? ''
     expect(meBlock).toContain(`await apiFetch<AuthUser | null>('/auth/me'`)
     expect(meBlock).not.toMatch(/useState<|useState\(/)
-    expect(meBlock).toMatch(/notifCount\.value\s*=/)
-    expect(meBlock).toMatch(/messageUnreadCounts\.value\s*=/)
   })
 
   it('keeps SSR auth init cookie-gated before /auth/me fetch', () => {

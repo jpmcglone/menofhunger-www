@@ -14,6 +14,7 @@ import type {
  */
 export function useGroupInvites() {
   const { apiFetchData } = useApiClient()
+  const { invalidate: invalidateMyGroups } = useMyGroups()
 
   /** Pending invites issued for `groupId` (owner/mod view). */
   async function listGroupInvites(groupId: string): Promise<CommunityGroupInvite[]> {
@@ -75,10 +76,12 @@ export function useGroupInvites() {
   }
 
   async function acceptInvite(inviteId: string): Promise<{ groupId: string; groupSlug: string }> {
-    return await apiFetchData<{ groupId: string; groupSlug: string }>(
+    const accepted = await apiFetchData<{ groupId: string; groupSlug: string }>(
       `/groups/invites/${encodeURIComponent(inviteId)}/accept`,
       { method: 'POST', body: {} },
     )
+    invalidateMyGroups()
+    return accepted
   }
 
   async function declineInvite(inviteId: string): Promise<void> {

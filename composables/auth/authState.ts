@@ -62,6 +62,12 @@ export function clearAuthClientState(params?: { resetViewerCaches?: boolean }) {
   useState<Record<string, boolean>>('follow-inflight', () => ({})).value = {}
   useState<string | null>('follow-state-error', () => null).value = null
 
+  useState<any[]>('my-groups:items', () => []).value = []
+  useState<string | null>('my-groups:user-id', () => null).value = null
+  useState<number>('my-groups:fetched-at', () => 0).value = 0
+  useState<boolean>('my-groups:loading', () => false).value = false
+  useState<string | null>('my-groups:error', () => null).value = null
+
   useState<any[]>('posts-feed', () => []).value = []
   useState<string | null>('posts-feed-next', () => null).value = null
   useState<boolean>('posts-feed-loading', () => false).value = false

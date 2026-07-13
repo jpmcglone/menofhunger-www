@@ -325,6 +325,7 @@ import { siteConfig } from '~/config/site'
 
 const route = useRoute()
 const { apiFetchData } = useApiClient()
+const { invalidate: invalidateMyGroups } = useMyGroups()
 const { isAuthed, isVerified, user: authUser } = useAuth()
 const { markReadBySubject, markGroupPostsSeen } = useNotifications()
 
@@ -659,6 +660,7 @@ async function doJoin() {
   joinBusy.value = true
   try {
     await apiFetchData(`/groups/${encodeURIComponent(s.id)}/join`, { method: 'POST', body: {} })
+    invalidateMyGroups()
     await loadShell()
     if (isMember.value) await postsFeedRefresh()
   } catch (e: unknown) {
@@ -674,6 +676,7 @@ async function doLeave() {
   leaveBusy.value = true
   try {
     await apiFetchData(`/groups/${encodeURIComponent(s.id)}/leave`, { method: 'POST', body: {} })
+    invalidateMyGroups()
     postsFeedPosts.value = []
     postsFeedNextCursor.value = null
     repliesFeedPosts.value = []

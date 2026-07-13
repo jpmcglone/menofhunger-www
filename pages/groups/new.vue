@@ -125,6 +125,7 @@ usePageSeo({
 
 const { user, ensureLoaded } = useAuth()
 const { apiFetchData } = useApiClient()
+const { invalidate: invalidateMyGroups } = useMyGroups()
 
 const authReady = ref(false)
 
@@ -168,6 +169,7 @@ async function submit() {
         joinPolicy: joinPolicy.value,
       },
     })
+    invalidateMyGroups()
     await navigateTo(`/g/${encodeURIComponent(created.slug)}`)
   } catch (e: unknown) {
     error.value = getApiErrorMessage(e) || 'Could not create group.'

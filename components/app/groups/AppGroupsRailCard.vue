@@ -67,11 +67,15 @@ import type { CommunityGroupShell } from '~/types/api'
 import { groupAvatarRoundClass } from '~/utils/avatar-rounding'
 
 const { apiFetchData } = useApiClient()
+const { groups: mine, fetchedAt: myGroupsFetchedAt, load: loadMyGroups } = useMyGroups()
 
-const mine = ref<CommunityGroupShell[]>([])
 const featured = ref<CommunityGroupShell[]>([])
 const loading = ref(true)
 const avatarRoundClass = groupAvatarRoundClass()
+
+watch(myGroupsFetchedAt, (next, previous) => {
+  if (next === 0 && previous > 0) void loadMyGroups()
+})
 
 const displayRows = computed(() => {
   const rows: CommunityGroupShell[] = []
@@ -102,11 +106,10 @@ function initials(name: string) {
 onMounted(async () => {
   loading.value = true
   try {
-    const [myList, featList] = await Promise.all([
-      apiFetchData<CommunityGroupShell[]>('/groups/me').catch(() => []),
+    const [, featList] = await Promise.all([
+      loadMyGroups().catch(() => []),
       apiFetchData<CommunityGroupShell[]>('/groups/featured').catch(() => []),
     ])
-    mine.value = Array.isArray(myList) ? myList : []
     featured.value = Array.isArray(featList) ? featList : []
   } finally {
     loading.value = false

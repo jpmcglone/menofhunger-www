@@ -113,6 +113,7 @@ import { getApiErrorMessage } from '~/utils/api-error'
 const route = useRoute()
 const slug = computed(() => String(route.params.slug ?? '').trim())
 const { apiFetchData } = useApiClient()
+const { invalidate: invalidateMyGroups } = useMyGroups()
 const { addGroupFeedCallback, removeGroupFeedCallback, subscribeGroups, unsubscribeGroups } = usePresence()
 
 definePageMeta({ layout: 'app', title: 'Group settings', hideTopBar: true, ssr: false })
@@ -206,6 +207,7 @@ async function doLeave() {
   leaveBusy.value = true
   try {
     await apiFetchData(`/groups/${encodeURIComponent(s.id)}/leave`, { method: 'POST', body: {} })
+    invalidateMyGroups()
     await navigateTo('/groups')
   } catch (e: unknown) {
     loadError.value = getApiErrorMessage(e) || 'Could not leave.'

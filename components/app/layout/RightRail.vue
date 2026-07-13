@@ -34,7 +34,7 @@
         </div>
 
         <div v-else key="rightRailDefault">
-          <AppRightRailContent>
+          <AppRightRailContent v-if="secondaryLoadsEnabled">
           <!-- Daily quote: links to /daily/quote; dims when on /daily or /daily/quote -->
           <component
             :is="isOnDailyQuoteRoute ? 'div' : NuxtLink"
@@ -227,6 +227,8 @@ const { openShortcutsModal } = useKeyboardShortcuts()
 const currentYear = new Date().getUTCFullYear()
 
 const route = useRoute()
+const { initialFeedResolved } = useHomeLoadState()
+const secondaryLoadsEnabled = computed(() => route.path !== '/home' || initialFeedResolved.value)
 const isOnDailyRoute = computed(() => route.path === '/daily' || route.path.startsWith('/daily/'))
 const isOnDailyQuoteRoute = computed(() => route.path === '/daily' || route.path === '/daily/quote')
 const isOnDailyWordRoute = computed(() => route.path === '/daily' || route.path === '/daily/word')
@@ -257,8 +259,17 @@ const {
   },
   {
     server: false,
+    immediate: false,
     default: () => null,
   },
+)
+
+watch(
+  secondaryLoadsEnabled,
+  (enabled) => {
+    if (enabled && dailyContent.value == null) void refreshDailyContent()
+  },
+  { immediate: true },
 )
 
 const dailyQuote = computed<DailyQuote | null>(() => dailyContent.value?.quote ?? null)
@@ -270,6 +281,10 @@ watch(
     if (!import.meta.client) return
     if (!prev) return
     if (next === prev) return
+    if (!secondaryLoadsEnabled.value) {
+      dailyContent.value = null
+      return
+    }
     await refreshDailyContent()
   },
 )
@@ -279,12 +294,12 @@ const {
   loading: whoToFollowLoading,
   error: whoToFollowError,
 } = useWhoToFollow({
-  enabled: computed(() => hydrated.value && !props.forcedHidden),
+  enabled: computed(() => hydrated.value && secondaryLoadsEnabled.value && !props.forcedHidden),
   defaultLimit: 4,
 })
 
 const { count: onlineCount, recentlyOnlineCount, onlineCountPopover } = useOnlineCount({
-  enabled: computed(() => !props.forcedHidden),
+  enabled: computed(() => secondaryLoadsEnabled.value && !props.forcedHidden),
 })
 
 function onOnlineLinkEnter(e: MouseEvent) {

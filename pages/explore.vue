@@ -794,6 +794,7 @@ const route = useRoute()
 const colorMode = useColorMode()
 const router = useRouter()
 const { apiFetch, apiFetchData } = useApiClient()
+const { invalidate: invalidateMyGroups } = useMyGroups()
 const { isAuthed, user: authUser, isVerified, isPremium } = useAuth()
 const toast = useAppToast()
 // Check-ins (feed, streaks, leaderboard) are verified-only; premium counts as verified.
@@ -894,6 +895,7 @@ async function joinExploreGroup(g: CommunityGroupShell) {
   joinExploreGroupId.value = id
   try {
     await apiFetch(`/groups/${encodeURIComponent(id)}/join`, { method: 'POST', body: {} })
+    invalidateMyGroups()
     void refreshDiscover()
     if (isSearching.value) void fetchPage({ append: false })
   } catch (e: unknown) {

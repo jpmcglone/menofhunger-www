@@ -47,6 +47,9 @@ export type AuthUser = {
   openToCrew?: boolean
   notificationUndeliveredCount?: number
   messageUnreadCounts?: { primary: number; requests: number }
+  notificationUnreadCommentCount?: number
+  groupsUnread?: { total: number; byGroupId: Record<string, number> }
+  crewInviteInboxCount?: number
 }
 
 let clientMePromise: Promise<AuthUser | null> | null = null
@@ -79,13 +82,6 @@ export function useAuth() {
   // True when the last /auth/me failed due to a network/server error (not a 401).
   // Keeps the user in their current page in degraded mode instead of redirecting to login.
   const apiUnreachable = useState<boolean>('auth-api-unreachable', () => false)
-  // Hoist these to the setup scope so they survive `await` inside me() —
-  // calling useState after an await loses the Nuxt instance context on SSR.
-  // Guardrail: never add new useState() calls inside `me()` after its first await.
-  const notifCount = useState<number>('notifications-undelivered-count', () => 0)
-  const messageUnreadCounts = useState<{ primary: number; requests: number }>('messages-unread-counts', () => ({ primary: 0, requests: 0 }))
-  const criticalBadgeCountsLoaded = useState<boolean>('critical-badge-counts-loaded', () => false)
-
   // Realtime: keep user tier/profile in sync across tabs/devices.
   const wsHooked = useState<boolean>('auth-ws-users-self-updated-hooked', () => false)
   if (import.meta.client && !wsHooked.value) {
@@ -156,18 +152,6 @@ export function useAuth() {
       if (gen !== getAuthGeneration()) return null
       apiUnreachable.value = false
       user.value = result.data
-      if (result.data?.id) {
-        const bootNotif = Number(result.data.notificationUndeliveredCount)
-        const bootPrimary = Number(result.data.messageUnreadCounts?.primary)
-        const bootRequests = Number(result.data.messageUnreadCounts?.requests)
-        const hasBootCounts = Number.isFinite(bootNotif) && Number.isFinite(bootPrimary) && Number.isFinite(bootRequests)
-        notifCount.value = Math.max(0, Math.floor(bootNotif || 0))
-        messageUnreadCounts.value = {
-          primary: Math.max(0, Math.floor(bootPrimary || 0)),
-          requests: Math.max(0, Math.floor(bootRequests || 0)),
-        }
-        criticalBadgeCountsLoaded.value = hasBootCounts
-      }
       return result.data
     } catch (e: unknown) {
       if (import.meta.dev) {

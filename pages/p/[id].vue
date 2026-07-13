@@ -237,6 +237,7 @@ const route = useRoute()
 const requestURL = useRequestURL()
 const postId = computed(() => String(route.params.id || '').trim())
 const { apiFetchData } = useApiClient()
+const { invalidate: invalidateMyGroups } = useMyGroups()
 const { push: pushToast } = useAppToast()
 const highlightedPostRef = ref<HTMLElement | null>(null)
 
@@ -556,6 +557,7 @@ async function joinGroupFromPreview() {
   groupJoinBusy.value = true
   try {
     await apiFetchData(`/groups/${encodeURIComponent(gp.id)}/join`, { method: 'POST', body: {} })
+    invalidateMyGroups()
     await refreshPost()
   } catch (e: unknown) {
     pushToast({

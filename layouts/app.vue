@@ -241,10 +241,6 @@ import {
 } from '~/utils/injection-keys'
 import { useBookmarkCollections } from '~/composables/useBookmarkCollections'
 import { useKeyboardHeight } from '~/composables/useKeyboardHeight'
-import type {
-  GetMessagesUnreadCountResponse,
-  GetNotificationsUnreadCountResponse,
-} from '~/types/api'
 import { routeHeaderDefaultsFor, isAdminPath, isSettingsPath } from '~/config/routes'
 import { useAppLayoutComposer } from '~/composables/layout/useAppLayoutComposer'
 import AppLayoutGlobalOverlays from '~/components/app/layout/GlobalOverlays.vue'
@@ -266,11 +262,7 @@ useHead({
 const { initAuth, user } = useAuth()
 const { isAuthed, tabItems } = useAppNav()
 const notifBadge = useNotificationsBadge()
-const {
-  setNotificationUndeliveredCount,
-  setNotificationUnreadCommentCount,
-  setMessageUnreadCounts,
-} = usePresence()
+const badgeHydration = useBadgeHydration()
 
 // App icon badge (PWA): notifications + chat unread. Works on Android/Chrome; no-op on iOS.
 useAppIconBadge()
@@ -312,57 +304,6 @@ const {
   fabButtonClass,
   openComposerForCurrentRoute,
 } = composer
-
-const { apiFetchData } = useApiClient()
-const criticalBadgeCountsLoaded = useState<boolean>('critical-badge-counts-loaded', () => false)
-
-async function loadCriticalBadgeCounts(opts?: { force?: boolean }) {
-  if (!isAuthed.value || !user.value?.id) {
-    setNotificationUndeliveredCount(0)
-    setNotificationUnreadCommentCount(0)
-    setMessageUnreadCounts({ primary: 0, requests: 0 })
-    criticalBadgeCountsLoaded.value = true
-    return
-  }
-  if (criticalBadgeCountsLoaded.value && !opts?.force) return
-
-  // Fast path: hydrate from /auth/me payload when available.
-  const bootNotif = Number((user.value as any)?.notificationUndeliveredCount)
-  const bootPrimary = Number((user.value as any)?.messageUnreadCounts?.primary)
-  const bootRequests = Number((user.value as any)?.messageUnreadCounts?.requests)
-  const hasBootCounts =
-    Number.isFinite(bootNotif)
-    && Number.isFinite(bootPrimary)
-    && Number.isFinite(bootRequests)
-  if (hasBootCounts) {
-    setNotificationUndeliveredCount(Math.max(0, Math.floor(bootNotif || 0)))
-    setMessageUnreadCounts({
-      primary: Math.max(0, Math.floor(bootPrimary || 0)),
-      requests: Math.max(0, Math.floor(bootRequests || 0)),
-    })
-    criticalBadgeCountsLoaded.value = true
-    return
-  }
-
-  const [notifRes, messagesRes] = await Promise.allSettled([
-    apiFetchData<GetNotificationsUnreadCountResponse['data']>('/notifications/unread-count'),
-    apiFetchData<GetMessagesUnreadCountResponse['data']>('/messages/unread-count'),
-  ])
-
-  if (notifRes.status === 'fulfilled') {
-    const undelivered = Math.max(0, Number(notifRes.value?.count ?? 0) || 0)
-    setNotificationUndeliveredCount(undelivered)
-    const waiting = Math.max(0, Number(notifRes.value?.unreadCommentCount ?? 0) || 0)
-    setNotificationUnreadCommentCount(waiting)
-  }
-  if (messagesRes.status === 'fulfilled') {
-    const primary = Math.max(0, Number(messagesRes.value?.primary ?? 0) || 0)
-    const requests = Math.max(0, Number(messagesRes.value?.requests ?? 0) || 0)
-    setMessageUnreadCounts({ primary, requests })
-  }
-
-  criticalBadgeCountsLoaded.value = true
-}
 
 // FAB sits above tab bar, and above radio bar too when it’s visible (mobile only).
 const fabBottomStyle = computed<Record<string, string>>(() => {
@@ -526,10 +467,9 @@ function formatCompactNumber(n: number): string {
 // Initialize here too so SSR and first client render agree on auth-dependent layout branches.
 if (import.meta.server) {
   await initAuth()
-  // Badge counts are high-priority; preload on SSR so they render in initial HTML.
-  await loadCriticalBadgeCounts()
+  await badgeHydration.refresh()
 } else {
-  void initAuth().then(() => loadCriticalBadgeCounts()).catch(() => undefined)
+  void initAuth().then(() => badgeHydration.refresh()).catch(() => undefined)
 }
 // nav items are provided by useAppNav() so mobile + desktop stay in sync
 

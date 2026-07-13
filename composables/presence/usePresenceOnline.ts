@@ -23,7 +23,14 @@ const PRESENCE_USER_CURRENT_SPACE_KEY = 'presence-user-current-space-by-id'
 const PRESENCE_STATUS_BY_USER_ID_KEY = 'presence-status-by-user-id'
 const PRESENCE_STATUS_FETCHED_AT_KEY = 'presence-status-fetched-at'
 const STATUS_FETCH_TTL_MS = 60_000
+const INTEREST_BATCH_MS = 50
+const SOCKET_STATUS_FALLBACK_MS = 400
 let statusExpiryTimer: ReturnType<typeof setTimeout> | null = null
+let interestBatchTimer: ReturnType<typeof setTimeout> | null = null
+let socketStatusFallbackTimer: ReturnType<typeof setTimeout> | null = null
+const pendingInterestIds = new Set<string>()
+const socketStatusFallbackAtById = new Map<string, number>()
+const statusFetchInFlightIds = new Set<string>()
 
 /**
  * Who-is-online state: online/idle/known user ids, per-user statuses, current
@@ -169,12 +176,10 @@ export function usePresenceOnline(socketRef: Ref<Socket | null>) {
     const now = Date.now()
     const ids = Array.from(new Set((userIds ?? []).map((id) => String(id ?? '').trim()).filter(Boolean)))
       .filter((id) => now - (statusFetchedAtByUserId.value[id] ?? 0) > STATUS_FETCH_TTL_MS)
+      .filter((id) => !statusFetchInFlightIds.has(id))
       .slice(0, 100)
     if (ids.length === 0) return
-    statusFetchedAtByUserId.value = {
-      ...statusFetchedAtByUserId.value,
-      ...Object.fromEntries(ids.map((id) => [id, now])),
-    }
+    for (const id of ids) statusFetchInFlightIds.add(id)
     try {
       const statuses = await apiFetchData<GetPresenceStatusesData>('/presence/statuses', {
         method: 'GET',
@@ -188,6 +193,8 @@ export function usePresenceOnline(socketRef: Ref<Socket | null>) {
       }
     } catch {
       // Status bubbles are contextual; presence itself should not fail if this fetch does.
+    } finally {
+      for (const id of ids) statusFetchInFlightIds.delete(id)
     }
   }
 
@@ -248,6 +255,51 @@ export function usePresenceOnline(socketRef: Ref<Socket | null>) {
     }
   }
 
+  function armSocketStatusFallback() {
+    if (socketStatusFallbackTimer) {
+      clearTimeout(socketStatusFallbackTimer)
+      socketStatusFallbackTimer = null
+    }
+    if (socketStatusFallbackAtById.size === 0) return
+    const nextFallbackAt = Math.min(...socketStatusFallbackAtById.values())
+    socketStatusFallbackTimer = setTimeout(() => {
+      socketStatusFallbackTimer = null
+      const now = Date.now()
+      const unresolved: string[] = []
+      for (const [id, fallbackAt] of socketStatusFallbackAtById) {
+        if (fallbackAt > now) continue
+        unresolved.push(id)
+        socketStatusFallbackAtById.delete(id)
+      }
+      if (unresolved.length > 0) void fetchStatusesForUsers(unresolved)
+      armSocketStatusFallback()
+    }, Math.max(0, nextFallbackAt - Date.now()))
+  }
+
+  function scheduleSocketStatusFallback(userIds: string[]) {
+    const fallbackAt = Date.now() + SOCKET_STATUS_FALLBACK_MS
+    for (const id of userIds) socketStatusFallbackAtById.set(id, fallbackAt)
+    armSocketStatusFallback()
+  }
+
+  function queueSubscribe(userIds: string[]) {
+    for (const id of userIds) pendingInterestIds.add(id)
+    if (interestBatchTimer) return
+    interestBatchTimer = setTimeout(() => {
+      interestBatchTimer = null
+      const ids = [...pendingInterestIds].filter((id) => interestRefs.value.has(id))
+      pendingInterestIds.clear()
+      if (ids.length === 0) return
+      const socket = socketRef.value
+      if (!socket?.connected) {
+        void fetchStatusesForUsers(ids)
+        return
+      }
+      emitSubscribe(ids)
+      scheduleSocketStatusFallback(ids)
+    }, INTEREST_BATCH_MS)
+  }
+
   function addInterest(userIds: string[]) {
     if (!import.meta.client) return
     const refs = interestRefs.value
@@ -259,8 +311,7 @@ export function usePresenceOnline(socketRef: Ref<Socket | null>) {
     }
     trimInterestIfNeeded(refs)
     if (toAdd.length > 0) {
-      emitSubscribe(toAdd)
-      void fetchStatusesForUsers(toAdd)
+      queueSubscribe(toAdd)
     }
   }
 
@@ -272,6 +323,8 @@ export function usePresenceOnline(socketRef: Ref<Socket | null>) {
       const count = refs.get(uid) ?? 0
       if (count <= 1) {
         refs.delete(uid)
+        pendingInterestIds.delete(uid)
+        socketStatusFallbackAtById.delete(uid)
         toRemove.push(uid)
       } else {
         refs.set(uid, count - 1)
@@ -356,7 +409,9 @@ export function usePresenceOnline(socketRef: Ref<Socket | null>) {
   function syncPresenceSubscriptions(socket: Socket) {
     const refs = interestRefs.value
     if (refs.size > 0) {
-      emitSubscribe([...refs.keys()])
+      const ids = [...refs.keys()]
+      socket.emit('presence:subscribe', { userIds: ids })
+      scheduleSocketStatusFallback(ids)
     }
     if (onlineFeedSubscribed.value) {
       socket.emit('presence:subscribeOnlineFeed')
@@ -376,6 +431,7 @@ export function usePresenceOnline(socketRef: Ref<Socket | null>) {
         if ('status' in u) {
           if (u.status) applyUserStatus(u.status)
           else clearUserStatus(id)
+          socketStatusFallbackAtById.delete(id)
         }
         if ('spaceId' in u) {
           nextSpaces[id] = u.spaceId ?? null

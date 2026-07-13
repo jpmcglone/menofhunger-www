@@ -1674,6 +1674,15 @@ export type UserDto = {
     primary: number
     requests: number
   }
+  /** Included by /auth/me bootstrap response for fast badge hydration. */
+  notificationUnreadCommentCount?: number
+  /** Included by /auth/me bootstrap response for fast badge hydration. */
+  groupsUnread?: {
+    total: number
+    byGroupId: Record<string, number>
+  }
+  /** Included by /auth/me bootstrap response for fast badge hydration. */
+  crewInviteInboxCount?: number
 }
 
 export type WsUsersMeUpdatedPayload = {

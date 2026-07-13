@@ -718,19 +718,21 @@ const { getUserStatus, setMyStatus, clearMyStatus } = usePresence()
 // Only used when `props.communityGroupId` is not already set (group-wall context already pins it).
 const selectedGroupId = ref<string | null>(null)
 const groupPickerOpen = ref(false)
-const myGroups = ref<import('~/types/api').CommunityGroupShell[]>([])
-const myGroupsLoaded = ref(false)
+const { groups: myGroups, load: loadSharedMyGroups } = useMyGroups()
 const effectiveGroupId = computed(() => selectedGroupId.value ?? props.communityGroupId ?? null)
 
 async function loadMyGroups() {
-  if (myGroupsLoaded.value || props.communityGroupId) return
+  if (props.communityGroupId) return
   try {
-    myGroups.value = (await apiFetchData<import('~/types/api').CommunityGroupShell[]>('/groups/me')) ?? []
+    await loadSharedMyGroups()
   } catch {
-    myGroups.value = []
+    // The picker can remain empty; a later open retries through the shared cache.
   }
-  myGroupsLoaded.value = true
 }
+
+watch(groupPickerOpen, (open) => {
+  if (open) void loadMyGroups()
+})
 
 function selectGroup(id: string | null) {
   selectedGroupId.value = id
@@ -1359,6 +1361,7 @@ onActivated(() => {
   registerUnsavedGuardIfNeeded()
   // If the component was kept alive and re-activated, ensure we rehydrate from cache if needed.
   restoreDraftFromCacheIfNeeded()
+  if (isAuthed.value && !props.communityGroupId) void loadMyGroups()
 })
 
 onBeforeUnmount(() => {

@@ -329,6 +329,7 @@ const metaLoading = ref(true)
 const error = ref<string | null>(null)
 const mine = ref<CommunityGroupShell[]>([])
 const spotlight = ref<CommunityGroupShell[]>([])
+const { groups: sharedMyGroups, load: loadMyGroups } = useMyGroups()
 
 // ─── URL-backed sort ───────────────────────────────────────────────────────────
 const { sort: hubSort } = useUrlFeedFilters({ historyBacked: true })
@@ -555,22 +556,25 @@ async function redirectIfLegacyMyTab(): Promise<boolean> {
   return true
 }
 
+function applyMyGroups(rows: readonly CommunityGroupShell[]) {
+  const rank = (group: CommunityGroupShell) => {
+    const role = group.viewerMembership?.role
+    if (role === 'owner') return 0
+    if (role === 'moderator') return 1
+    return 2
+  }
+  mine.value = [...rows].sort((a, b) => rank(a) - rank(b))
+}
+
 async function loadMeta() {
   metaLoading.value = true
   error.value = null
   try {
-    const [m, e] = await Promise.all([
-      apiFetchData<CommunityGroupShell[]>('/groups/me'),
+    const [, e] = await Promise.all([
+      loadMyGroups(),
       apiFetchData<CommunityGroupShell[]>('/groups/explore?excludeMine=1&limit=24'),
     ])
-    const rows = Array.isArray(m) ? m : []
-    const rank = (g: CommunityGroupShell) => {
-      const role = g.viewerMembership?.role
-      if (role === 'owner') return 0
-      if (role === 'moderator') return 1
-      return 2
-    }
-    mine.value = [...rows].sort((a, b) => rank(a) - rank(b))
+    applyMyGroups(sharedMyGroups.value)
     spotlight.value = Array.isArray(e) ? e : []
   } catch (e: unknown) {
     error.value = getApiErrorMessage(e) || 'Failed to load your groups.'
@@ -731,6 +735,11 @@ onActivated(() => {
   if (!import.meta.client) return
   registerReplyPostedHandler()
   startHubAutoRefresh()
+  if (isAuthed.value) {
+    void loadMyGroups()
+      .then(() => applyMyGroups(sharedMyGroups.value))
+      .catch(() => undefined) // Keep the last successful membership list while offline.
+  }
   if (postsFeedPosts.value.length > 0) {
     setTimeout(() => void postsFeedSoftRefreshNewer(), 300)
   }

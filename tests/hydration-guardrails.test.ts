@@ -52,7 +52,33 @@ describe('hydration guardrails (structural)', () => {
 
   it('gates right-rail who-to-follow fetch until after hydration', () => {
     const rail = readFromRepo('components/app/layout/RightRail.vue')
-    expect(rail).toMatch(/useWhoToFollow\(\{[\s\S]*enabled:\s*computed\(\(\)\s*=>\s*hydrated\.value\s*&&\s*!props\.forcedHidden\)/)
+    expect(rail).toMatch(/useWhoToFollow\(\{[\s\S]*enabled:\s*computed\(\(\)\s*=>\s*hydrated\.value\s*&&\s*secondaryLoadsEnabled\.value\s*&&\s*!props\.forcedHidden\)/)
+  })
+
+  it('defers home right-rail secondary loads until the first feed resolves', () => {
+    const home = readFromRepo('pages/home.vue')
+    const rail = readFromRepo('components/app/layout/RightRail.vue')
+    expect(home).toMatch(/useHomeLoadState\(\)/)
+    expect(home).toMatch(/markInitialFeedResolved\(\)/)
+    expect(rail).toMatch(/route\.path !== '\/home' \|\| initialFeedResolved\.value/)
+    expect(rail).toMatch(/<AppRightRailContent v-if="secondaryLoadsEnabled">/)
+    expect(rail).toMatch(/immediate:\s*false/)
+  })
+
+  it('shares the my-groups request across home surfaces', () => {
+    const cache = readFromRepo('composables/useMyGroups.ts')
+    expect(cache).toMatch(/inFlightByApp/)
+    expect(cache).toMatch(/MY_GROUPS_FRESH_MS/)
+    for (const path of [
+      'pages/home.vue',
+      'components/app/PostComposer.vue',
+      'components/app/groups/AppGroupsRailCard.vue',
+      'pages/groups/index.vue',
+    ]) {
+      const src = readFromRepo(path)
+      expect(src).toMatch(/useMyGroups\(\)/)
+      expect(src).not.toMatch(/apiFetchData<[^>]+>\('\/groups\/me'\)/)
+    }
   })
 
   it('gates mobile bottom-sheet mounting with hydrated media query helper', () => {
