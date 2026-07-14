@@ -219,14 +219,14 @@ const feedCallback: {
             lastConnectAt,
             platforms: platforms ?? userData?.platforms ?? u.platforms,
           }
-        : u).sort(sortByRecent)
+        : u).sort(sortOnlineUsers)
       return
     }
     addInterest([userId])
     if (typeof totalOnline.value === 'number') totalOnline.value += 1
     if (userData) {
       const withTime = { ...userData, lastConnectAt, platforms: platforms ?? userData.platforms }
-      const next = [withTime, ...users.value].sort(sortByRecent)
+      const next = [withTime, ...users.value].sort(sortOnlineUsers)
       users.value = next
       addStatusesFromRest([withTime.status])
     } else {
@@ -257,7 +257,7 @@ const feedCallback: {
         ...user,
         platforms: user.platforms ?? previousById.get(user.id)?.platforms,
       }))
-      .sort(sortByRecent)
+      .sort(sortOnlineUsers)
     users.value = snapOnline
     const ids = snapOnline.map((x) => x.id).filter(Boolean)
     if (ids.length) {
@@ -281,15 +281,16 @@ const feedCallback: {
   },
 }
 
-function sortByRecent(a: OnlineUser, b: OnlineUser) {
+function sortOnlineUsers(a: OnlineUser, b: OnlineUser) {
   // Bots (Marv) always pin to the top, even if a real user just connected at the
   // same instant. The API marks Marv with `isBot: true` only when MARV_ENABLED is
   // true, so this guarantees he's the first row whenever he's listed at all.
   if (a.isBot && !b.isBot) return -1
   if (!a.isBot && b.isBot) return 1
-  const ta = a.lastConnectAt ?? 0
-  const tb = b.lastConnectAt ?? 0
-  return tb - ta
+  const ta = a.lastConnectAt ?? Number.POSITIVE_INFINITY
+  const tb = b.lastConnectAt ?? Number.POSITIVE_INFINITY
+  if (ta !== tb) return ta - tb
+  return a.id.localeCompare(b.id)
 }
 
 let mergeRefetchTimeout: ReturnType<typeof setTimeout> | null = null
@@ -312,7 +313,7 @@ async function mergeUserFromRefetch(userId: string) {
       addStatusesFromRest(fromApi.map((u) => u.status))
       if (typeof res?.pagination?.totalOnline === 'number') totalOnline.value = res.pagination.totalOnline
       if (next.length !== users.value.length) {
-        users.value = next.sort(sortByRecent)
+        users.value = next.sort(sortOnlineUsers)
         const ids = next.map((u) => u.id).filter(Boolean)
         addOnlineIdsFromRest(ids)
         const idleIds = next.filter((u) => u.idle && u.id).map((u) => u.id)
@@ -330,7 +331,7 @@ async function fetchOnline() {
   error.value = null
   try {
     const res = await apiFetch<GetPresenceOnlineData>('/presence/online', { method: 'GET', query: { includeSelf: '1' } })
-    users.value = (res?.data ?? []).sort(sortByRecent)
+    users.value = (res?.data ?? []).sort(sortOnlineUsers)
     totalOnline.value = typeof res?.pagination?.totalOnline === 'number' ? res.pagination.totalOnline : users.value.length
     if (users.value.length > 0) {
       const ids = users.value.map((u) => u.id).filter(Boolean)
@@ -366,7 +367,7 @@ async function fetchOnlinePage() {
       },
     })
     const online = (res?.data?.online ?? []) as OnlineUser[]
-    users.value = online.sort(sortByRecent)
+    users.value = online.sort(sortOnlineUsers)
     totalOnline.value =
       typeof res?.pagination?.totalOnline === 'number' ? res.pagination.totalOnline : users.value.length
 

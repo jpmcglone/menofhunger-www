@@ -11,6 +11,7 @@ type RepostStateMap = Record<string, RepostStateEntry>
 export function useRepostState() {
   const { apiFetchData } = useApiClient()
   const { prependToHomeFeed } = useHomeFeedPrepend()
+  const { prependToProfileFeed } = useProfileFeedPrepend()
 
   const state = useState<RepostStateMap>('repost-state', () => ({}))
   const inflight = useState<Record<string, boolean>>('repost-inflight', () => ({}))
@@ -92,7 +93,10 @@ export function useRepostState() {
         if (result.reposted && result.repostId) {
           void apiFetchData<FeedPost>(`/posts/${encodeURIComponent(result.repostId)}`)
             .then((repostPost) => {
-              if (repostPost?.id) prependToHomeFeed(repostPost)
+              if (repostPost?.id) {
+                prependToHomeFeed(repostPost)
+                prependToProfileFeed(repostPost)
+              }
             })
             .catch(() => {
               // Silent — the repost was created; just won't appear instantly.
