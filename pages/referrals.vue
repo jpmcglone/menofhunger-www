@@ -4,7 +4,7 @@
     <div class="moh-gutter-x border-b moh-border pt-4 pb-4">
       <h1 class="moh-h1" style="text-wrap: balance">Referrals</h1>
       <p class="mt-1 text-sm moh-text-muted" style="text-wrap: pretty">
-        Share your code — you both get 1 month Premium free when they go Premium.
+        Invite a man. After his first Premium payment, his second month is free — and you receive one free month too.
       </p>
     </div>
 
@@ -27,7 +27,7 @@
         <Icon name="tabler:gift" class="text-4xl text-[var(--moh-premium)]" aria-hidden="true" />
         <h2 class="text-lg font-semibold moh-text" style="text-wrap: balance">Premium required</h2>
         <p class="text-sm moh-text-muted max-w-xs mx-auto" style="text-wrap: pretty">
-          Upgrade to Premium to claim a referral code and start earning free months.
+          Upgrade to Premium to claim a referral code. When a recruit makes his first Premium payment, his second month is free and you receive one free month too.
         </p>
         <Button as="NuxtLink" to="/tiers" label="Upgrade to Premium" rounded class="mt-2" />
       </div>
@@ -145,7 +145,7 @@
               <div>
                 <div class="text-sm font-semibold moh-text">Claim your code</div>
                 <p class="mt-1 text-xs moh-text-muted" style="text-wrap: pretty">
-                  Friends enter it when they join — you both get a free month when they go Premium.
+                  Friends enter it when they join. After a recruit’s first Premium payment, his second month is free and you receive one free month too.
                 </p>
               </div>
               <div class="flex gap-2">
@@ -326,7 +326,7 @@
                     <span class="text-[10px] font-bold text-white">2</span>
                   </div>
                   <div class="text-sm moh-text-muted" style="text-wrap: pretty">
-                    They sign up and upgrade to Premium.
+                    They sign up, verify, and complete their first Premium payment.
                   </div>
                 </div>
                 <div class="flex gap-3 items-start">
@@ -334,7 +334,7 @@
                     <span class="text-[10px] font-bold text-white">3</span>
                   </div>
                   <div class="text-sm moh-text-muted" style="text-wrap: pretty">
-                    You both get a free month of Premium. No catches.
+                    Their second month is free, and you receive one free month too.
                   </div>
                 </div>
               </div>
@@ -423,7 +423,7 @@ const shareUrl = computed(() => {
 const shareMessage = computed(() => {
   const code = referralCode.value
   if (!code) return 'Join me on Men of Hunger.'
-  return `Join me on Men of Hunger. Use my code ${code} — we'll both get 1 month free when you go Premium.`
+  return `Join me on Men of Hunger. Use my code ${code}. After your first Premium payment, your second month is free — and I get a month too.`
 })
 
 // ─── Pilot progress ───────────────────────────────────────────────────────────

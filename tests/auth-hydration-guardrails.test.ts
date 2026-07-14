@@ -34,6 +34,15 @@ describe('useAuth hydration guardrails (structural)', () => {
     }
   })
 
+  it('never renders a badge or indicator on the Home navigation item', () => {
+    const tabBar = readFromRepo('components/app/TabBar.vue')
+    const leftRail = readFromRepo('components/app/layout/LeftRail.vue')
+
+    expect(tabBar).not.toMatch(/item\.key === ['"]home['"]/)
+    expect(leftRail).not.toMatch(/item\.key === ['"]home['"]/)
+    expect(`${tabBar}\n${leftRail}`).not.toMatch(/AppHomeBadge/)
+  })
+
   it('does not call useState inside me() after awaiting /auth/me', () => {
     const src = readFromRepo('composables/useAuth.ts')
     const meBlock =

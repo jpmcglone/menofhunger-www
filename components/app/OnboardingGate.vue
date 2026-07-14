@@ -159,7 +159,7 @@
                 Your signup link already set this referral. It can’t be changed here.
               </template>
               <template v-else>
-                Enter their referral code. You'll automatically follow them and both earn +1 free month when you go premium.
+                Enter his referral code and you'll automatically follow him. After your first Premium payment, your second month is free and he receives one free month too.
               </template>
             </p>
             <div class="flex gap-2">

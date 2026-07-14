@@ -1,36 +1,30 @@
 <template>
   <NuxtLink
     :to="`/a/${article.id}`"
-    class="group mt-2 block overflow-hidden rounded-xl border border-gray-200 transition-colors hover:border-gray-300 dark:border-zinc-700 dark:hover:border-zinc-600"
+    class="group mt-2 block overflow-hidden rounded-xl border border-gray-200 dark:border-zinc-700"
     @click.stop
   >
     <!-- Thumbnail -->
-    <AppHoverZoom
+    <div
       v-if="article.thumbnailUrl"
-      mode="contain"
-      :enabled="!isGated"
-      :scale="1.04"
-      root-class="aspect-[16/9] w-full overflow-hidden bg-gray-100 dark:bg-zinc-800"
+      class="relative aspect-[16/9] w-full overflow-hidden bg-gray-100 dark:bg-zinc-800"
     >
-      <template #default="{ style: zoomStyle }">
-        <img
-          :src="article.thumbnailUrl"
-          :alt="article.title"
-          :class="[
-            'h-full w-full object-cover',
-            isGated ? 'scale-110 blur-xl' : '',
-          ]"
-          :style="isGated ? undefined : zoomStyle"
-        />
-        <div
-          v-if="isGated"
-          class="absolute inset-0 flex items-center justify-center bg-black/40"
-          aria-hidden="true"
-        >
-          <Icon name="tabler:lock" class="text-3xl text-white drop-shadow-lg" aria-hidden="true" />
-        </div>
-      </template>
-    </AppHoverZoom>
+      <img
+        :src="article.thumbnailUrl"
+        :alt="article.title"
+        :class="[
+          'h-full w-full object-cover transition-[filter] duration-200 ease-out group-hover:brightness-[1.08]',
+          isGated ? 'scale-110 blur-xl' : '',
+        ]"
+      />
+      <div
+        v-if="isGated"
+        class="absolute inset-0 flex items-center justify-center bg-black/40"
+        aria-hidden="true"
+      >
+        <Icon name="tabler:lock" class="text-3xl text-white drop-shadow-lg" aria-hidden="true" />
+      </div>
+    </div>
 
     <!-- Content -->
     <div class="p-3">

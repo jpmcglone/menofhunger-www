@@ -56,7 +56,12 @@
             v-for="(item, idx) in notifications"
             :key="itemKey(item)"
             class="relative hover:bg-gray-50 dark:hover:bg-zinc-900"
-            :class="itemHref(item) ? 'cursor-pointer' : ''"
+            :class="[
+              itemHref(item) ? 'cursor-pointer' : '',
+              stickyHighlightedItemKeys.has(itemKey(item))
+                ? 'bg-gray-50/80 dark:bg-zinc-900/40'
+                : '',
+            ]"
             :role="itemHref(item) ? 'link' : undefined"
             :tabindex="itemHref(item) ? 0 : undefined"
             @click.capture="onNotificationInteractionCapture(item)"
@@ -81,7 +86,7 @@
                 v-if="item.type === 'single' && notificationShowsPostRow(item.notification)"
                 :post="item.notification.post!"
                 :clickable="false"
-                :highlight="stickyUnreadNotificationIds.has(item.notification.id)"
+                :highlight="stickyHighlightedItemKeys.has(itemKey(item))"
                 show-replying-to
                 no-border-bottom
               />
@@ -200,25 +205,10 @@ const {
 } = usePresence()
 const loadingMore = ref(false)
 const markingAllRead = ref(false)
-const stickyUnreadNotificationIds = ref<Set<string>>(new Set())
+const stickyHighlightedItemKeys = ref<Set<string>>(new Set())
 // Show the full-page loader until the first fetch completes. After that, keep
 // existing data visible during background refreshes — never blank the list mid-flight.
 const showInitialLoader = computed(() => !hasFetched.value)
-
-watch(
-  notifications,
-  (items) => {
-    const next = new Set(stickyUnreadNotificationIds.value)
-    for (const item of items) {
-      if (item.type !== 'single') continue
-      if (!notificationShowsPostRow(item.notification)) continue
-      if (item.notification.readAt) continue
-      next.add(item.notification.id)
-    }
-    stickyUnreadNotificationIds.value = next
-  },
-  { immediate: true },
-)
 
 function chipHasUnseenNotifications(kind: NotificationKind | 'other' | null): boolean {
   if (kind === 'other') {
@@ -245,6 +235,26 @@ function itemKey(item: (typeof notifications.value)[number]): string {
   if (item.type === 'single') return `single:${item.notification.id}`
   if (item.type === 'group') return `group:${item.group.id}`
   return `rollup:${item.rollup.id}`
+}
+
+function itemDeliveredAt(item: (typeof notifications.value)[number]): string | null {
+  if (item.type === 'single') return item.notification.deliveredAt
+  if (item.type === 'group') return item.group.deliveredAt
+  return item.rollup.deliveredAt
+}
+
+function pinEntryHighlights(count: number) {
+  const targetCount = Math.max(0, Math.floor(count))
+  if (targetCount === 0) return
+
+  const undelivered = notifications.value.filter(item => !itemDeliveredAt(item))
+  const delivered = notifications.value.filter(item => itemDeliveredAt(item))
+  const next = new Set(stickyHighlightedItemKeys.value)
+  const candidates = [...undelivered, ...delivered].filter(item => !next.has(itemKey(item)))
+  for (const item of candidates.slice(0, targetCount)) {
+    next.add(itemKey(item))
+  }
+  stickyHighlightedItemKeys.value = next
 }
 
 // Only show the "Nudge back" action on the newest nudge row/group per actor.
@@ -360,7 +370,7 @@ async function onMarkAllRead() {
   try {
     await markAllRead()
     clearUnreadKind('all')
-    stickyUnreadNotificationIds.value = new Set()
+    stickyHighlightedItemKeys.value = new Set()
     const now = new Date().toISOString()
     notifications.value = notifications.value.map((item) => {
       if (item.type === 'single') {
@@ -420,6 +430,10 @@ function isInteractiveTarget(target: EventTarget | null): boolean {
  * page's `markReadBySubject` will then clear the rest server-side.
  */
 function markItemReadOptimistic(item: (typeof notifications.value)[number]) {
+  const nextHighlights = new Set(stickyHighlightedItemKeys.value)
+  nextHighlights.delete(itemKey(item))
+  stickyHighlightedItemKeys.value = nextHighlights
+
   const now = new Date().toISOString()
   let id: string | null = null
   let unreadKind: NotificationKind | null = null
@@ -509,27 +523,46 @@ function kindFromQuery(): NotificationKind | 'other' | null {
 }
 
 let lastDeliveredMarkAt = 0
-function markDeliveredInBackground() {
+function markDeliveredInBackground(force = false) {
   if (import.meta.client && document.visibilityState !== 'visible') return
   const now = Date.now()
-  if (now - lastDeliveredMarkAt < 1_000) return
+  if (!force && now - lastDeliveredMarkAt < 1_000) return
   lastDeliveredMarkAt = now
   void markDelivered()
   setNotificationUndeliveredCount(0)
 }
 
-onMounted(async () => {
-  markDeliveredInBackground()
-  await setKind(kindFromQuery())
+let entrySyncPromise: Promise<void> | null = null
+function syncNotificationsOnEntry() {
+  if (entrySyncPromise) return entrySyncPromise
+  entrySyncPromise = (async () => {
+    const badgeCountAtEntry = notifBadge.count.value
+    const kind = kindFromQuery()
+    if (kind !== activeKind.value || !hasFetched.value) {
+      await setKind(kind)
+    } else {
+      await fetchList({ forceRefresh: true })
+    }
+    pinEntryHighlights(badgeCountAtEntry)
+    markDeliveredInBackground(true)
+  })().finally(() => {
+    entrySyncPromise = null
+  })
+  return entrySyncPromise
+}
+
+onMounted(() => {
+  void syncNotificationsOnEntry()
 })
 
-onActivated(async () => {
-  markDeliveredInBackground()
+onActivated(() => {
+  void syncNotificationsOnEntry()
+})
+
+watch(() => route.query.kind, async () => {
   const kind = kindFromQuery()
   if (kind !== activeKind.value) {
     await setKind(kind)
-  } else {
-    await fetchList({ forceRefresh: true })
   }
 })
 
@@ -545,7 +578,11 @@ const { notificationUndeliveredCount } = usePresence()
 watch(notificationUndeliveredCount, (newVal, oldVal) => {
   if (typeof newVal === 'number' && typeof oldVal === 'number' && newVal > oldVal) {
     if (import.meta.client && document.visibilityState !== 'visible') return
-    markDeliveredInBackground()
+    const addedCount = newVal - oldVal
+    void fetchList({ forceRefresh: true }).then(() => {
+      pinEntryHighlights(addedCount)
+      markDeliveredInBackground(true)
+    })
   }
 })
 

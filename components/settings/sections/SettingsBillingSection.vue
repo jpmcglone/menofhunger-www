@@ -150,7 +150,7 @@
             >{{ referralCodeCopied ? 'Copied!' : 'Copy' }}</button>
           </div>
           <p v-if="billingMe.referralCode" class="text-xs text-gray-500 dark:text-gray-400">
-            Share this code. Anyone who uses it will automatically follow you — and when they go premium you both earn +1 free month.
+            Share this code. Anyone who uses it will automatically follow you. After his first Premium payment, his second month is free and you receive one free month too.
           </p>
           <div class="flex gap-2">
             <InputText
@@ -229,10 +229,10 @@
             <Icon name="tabler:user-check" class="h-4 w-4 text-green-600 shrink-0" aria-hidden="true" />
             <span>{{ billingMe.recruiter.name ?? 'Unknown' }}</span>
           </div>
-          <p class="text-xs text-gray-500 dark:text-gray-400">Your recruiter is locked in. When you make your first premium payment, you both receive +1 free month.</p>
+          <p class="text-xs text-gray-500 dark:text-gray-400">Your recruiter is locked in. After your first Premium payment, your second month is free and your recruiter receives one free month too.</p>
         </template>
         <template v-else>
-          <p class="text-xs text-gray-500 dark:text-gray-400">Enter a referral code to link a recruiter. You'll automatically follow them — and when you go premium you both earn +1 free month. Once set, it cannot be changed.</p>
+          <p class="text-xs text-gray-500 dark:text-gray-400">Enter a referral code to link a recruiter. You'll automatically follow him. After your first Premium payment, your second month is free and he receives one free month too. Once set, it cannot be changed.</p>
           <div class="flex gap-2">
             <InputText
               v-model="recruiterCodeDraft"

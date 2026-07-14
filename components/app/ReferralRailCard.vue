@@ -25,7 +25,7 @@
       <div v-else-if="referralData" class="space-y-3">
         <!-- Value prop -->
         <p class="text-xs leading-relaxed moh-text-muted" style="text-wrap: pretty">
-          You and your referral get <span class="font-semibold moh-text">1 month free</span> after their first premium payment.
+          After his first Premium payment, your referral’s <span class="font-semibold moh-text">second month is free</span> — and you receive one free month too.
         </p>
 
         <!-- ─── Has code ─────────────────────────────────────────────────── -->
@@ -137,7 +137,7 @@
           <div>
             <div class="text-sm font-semibold moh-text">Claim your code</div>
             <p class="mt-1 text-xs leading-relaxed moh-text-muted">
-              Friends use it when they join — you both get a month free.
+              Give a recruit his second month free and receive one free month too.
             </p>
           </div>
 
@@ -220,7 +220,7 @@ const shareUrl = computed(() => {
 const shareMessage = computed(() => {
   const code = referralCode.value
   if (!code) return 'Join me on Men of Hunger.'
-  return `Join me on Men of Hunger. Use my code ${code} and we'll both get 1 month free when you go Premium.`
+  return `Join me on Men of Hunger. Use my code ${code}. After your first Premium payment, your second month is free — and I get a month too.`
 })
 
 // ─── Data loading ─────────────────────────────────────────────────────────────

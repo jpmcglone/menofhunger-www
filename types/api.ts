@@ -15,6 +15,9 @@ export type ApiEnvelope<T> = { data: T; pagination?: ApiPagination }
 /** Minimal org account shown alongside affiliated users. */
 export type OrgAffiliation = Contracts.OrgAffiliationDto
 
+/** Short-lived URL for transferring an authenticated native session to the browser. */
+export type BrowserHandoff = Contracts.BrowserHandoffDto
+
 export type ApiPagination = {
   nextCursor?: string | null
   counts?: {
