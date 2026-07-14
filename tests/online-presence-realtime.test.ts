@@ -24,11 +24,11 @@ describe('online presence realtime wiring', () => {
     expect(page).toContain('recentUsers.value = [')
   })
 
-  it('matches the API and iOS longest-online-first ordering', () => {
+  it('sorts most-recently-connected first, matching iOS', () => {
     const page = readFileSync(resolve(root, 'pages/online.vue'), 'utf8')
 
-    expect(page).toContain('const ta = a.lastConnectAt ?? Number.POSITIVE_INFINITY')
-    expect(page).toContain('if (ta !== tb) return ta - tb')
-    expect(page).not.toContain('return tb - ta')
+    expect(page).toContain('const ta = a.lastConnectAt ?? 0')
+    expect(page).toContain('if (ta !== tb) return tb - ta')
+    expect(page).not.toContain('return ta - tb')
   })
 })

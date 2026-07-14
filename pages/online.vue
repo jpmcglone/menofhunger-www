@@ -287,9 +287,9 @@ function sortOnlineUsers(a: OnlineUser, b: OnlineUser) {
   // true, so this guarantees he's the first row whenever he's listed at all.
   if (a.isBot && !b.isBot) return -1
   if (!a.isBot && b.isBot) return 1
-  const ta = a.lastConnectAt ?? Number.POSITIVE_INFINITY
-  const tb = b.lastConnectAt ?? Number.POSITIVE_INFINITY
-  if (ta !== tb) return ta - tb
+  const ta = a.lastConnectAt ?? 0
+  const tb = b.lastConnectAt ?? 0
+  if (ta !== tb) return tb - ta
   return a.id.localeCompare(b.id)
 }
 
