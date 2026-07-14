@@ -472,6 +472,8 @@ export type PublicProfile = {
   lastOnlineAt: string | null
   checkinStreakDays: number
   longestStreakDays: number
+  postCount?: number
+  articleCount?: number
   orgAffiliations?: OrgAffiliation[]
   /** True when the viewer has blocked this user. */
   viewerHasBlockedUser?: boolean
@@ -1623,6 +1625,11 @@ export type WsPresenceStatusClearedPayload = {
   userId: string
 }
 
+export type WsPresencePlatformsChangedPayload = {
+  userId: string
+  platforms: string[]
+}
+
 // Canonical self-only auth/settings snapshot (matches API `/auth/me` user DTO).
 export type UserDto = {
   id: string
@@ -1686,6 +1693,9 @@ export type UserDto = {
   }
   /** Included by /auth/me bootstrap response for fast badge hydration. */
   crewInviteInboxCount?: number
+  /** Canonical authored-content totals returned by /auth/me. */
+  postCount?: number | null
+  articleCount?: number | null
 }
 
 export type WsUsersMeUpdatedPayload = {

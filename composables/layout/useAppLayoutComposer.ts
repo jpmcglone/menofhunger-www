@@ -14,6 +14,7 @@ import { useOnlyMePosts } from '~/composables/useOnlyMePosts'
 import { useReplyModal } from '~/composables/useReplyModal'
 import type { CreateMediaPayload } from '~/composables/useComposerMedia'
 import type { ComposerPollPayload } from '~/composables/composer/types'
+import { needsOnboarding } from '~/utils/onboarding'
 
 export type ComposerCreatePostFn = (
   body: string,
@@ -68,11 +69,7 @@ export function useAppLayoutComposer(opts: UseAppLayoutComposerOptions) {
   const canOpenComposer = computed(() => {
     const u = user.value
     if (!u?.id) return false
-    if (!u.usernameIsSet) return false
-    if (!u.birthdate) return false
-    if (!u.menOnlyConfirmed) return false
-    if (!Array.isArray(u.interests) || u.interests.length < 1) return false
-    return true
+    return !needsOnboarding(u)
   })
 
   // ─── Modal state ─────────────────────────────────────────────────────────────

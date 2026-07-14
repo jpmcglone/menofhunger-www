@@ -50,6 +50,8 @@ export type AuthUser = {
   notificationUnreadCommentCount?: number
   groupsUnread?: { total: number; byGroupId: Record<string, number> }
   crewInviteInboxCount?: number
+  postCount?: number | null
+  articleCount?: number | null
 }
 
 let clientMePromise: Promise<AuthUser | null> | null = null
@@ -122,6 +124,8 @@ export function useAuth() {
               avatarUrl: u.avatarUrl,
               bannerUrl: u.bannerUrl,
               pinnedPostId: u.pinnedPostId,
+              ...(typeof u.postCount === 'number' ? { postCount: u.postCount } : {}),
+              ...(typeof u.articleCount === 'number' ? { articleCount: u.articleCount } : {}),
             }
           }
         },

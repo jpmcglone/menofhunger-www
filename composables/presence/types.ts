@@ -39,15 +39,28 @@ import type {
   WsCheckinAnsweredTodayPayload,
   UserStatus,
   MarvCreditsUpdatedPayloadDto,
+  OnlineUser,
+  WsPresencePlatformsChangedPayload,
 } from '~/types/api'
 
-export type PresenceOnlinePayload = { userId: string; user?: FollowListUser & { status?: UserStatus | null }; lastConnectAt?: number; idle?: boolean }
-export type PresenceOfflinePayload = { userId: string }
-export type PresenceOnlineFeedSnapshotPayload = { users: Array<FollowListUser & { lastConnectAt?: number; idle?: boolean; status?: UserStatus | null }>; totalOnline?: number }
+export type PresenceOnlinePayload = {
+  userId: string
+  user?: OnlineUser
+  lastConnectAt?: number
+  idle?: boolean
+  platforms?: string[]
+}
+export type PresenceOfflinePayload = {
+  userId: string
+  user?: FollowListUser
+  lastOnlineAt?: string
+}
+export type PresenceOnlineFeedSnapshotPayload = { users: OnlineUser[]; totalOnline?: number }
 export type OnlineFeedCallback = {
   onOnline?: (payload: PresenceOnlinePayload) => void
   onOffline?: (payload: PresenceOfflinePayload) => void
   onSnapshot?: (payload: PresenceOnlineFeedSnapshotPayload) => void
+  onPlatformsChanged?: (payload: WsPresencePlatformsChangedPayload) => void
 }
 
 export type RadioListenersPayload = { stationId: string; listeners: RadioListener[] }

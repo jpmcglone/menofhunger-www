@@ -84,6 +84,7 @@
 <script setup lang="ts">
 import type { LocationPreviewResponse, UserDto } from '~/types/api'
 import { getApiErrorMessage } from '~/utils/api-error'
+import { needsOnboarding } from '~/utils/onboarding'
 
 const { user } = useAuth()
 const { apiFetchData } = useApiClient()
@@ -94,8 +95,7 @@ const open = computed({
   get: () => {
     const u = user.value
     if (!u?.id) return false
-    const needsOnboarding = !u.usernameIsSet || !u.birthdate || !Array.isArray(u.interests) || u.interests.length < 1 || !u.menOnlyConfirmed
-    if (needsOnboarding) return false
+    if (needsOnboarding(u)) return false
     return !u.locationZip && !u.locationPromptSkipped
   },
   set: () => {},

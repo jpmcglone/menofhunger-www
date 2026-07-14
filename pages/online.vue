@@ -200,20 +200,32 @@ function recentLastOnlineLabel(lastOnlineAt: string | null) {
 }
 
 const feedCallback: {
-  onOnline?: (p: { userId: string; user?: OnlineUser; lastConnectAt?: number }) => void
-  onOffline?: (p: { userId: string }) => void
+  onOnline?: (p: { userId: string; user?: OnlineUser; lastConnectAt?: number; platforms?: string[] }) => void
+  onOffline?: (p: { userId: string; user?: OnlineUser; lastOnlineAt?: string }) => void
   onSnapshot?: (p: { users: OnlineUser[]; totalOnline?: number }) => void
+  onPlatformsChanged?: (p: { userId: string; platforms: string[] }) => void
 } = {
   onOnline(payload) {
-    const { userId, user: userData, lastConnectAt = Date.now() } = payload
+    const { userId, user: userData, lastConnectAt = Date.now(), platforms } = payload
     if (!userId) return
     // Remove from "recently online" -- they're online now.
     recentUsers.value = recentUsers.value.filter((u) => u.id !== userId)
-    if (users.value.some((u) => u.id === userId)) return
+    const existing = users.value.find((u) => u.id === userId)
+    if (existing) {
+      users.value = users.value.map((u) => u.id === userId
+        ? {
+            ...u,
+            ...userData,
+            lastConnectAt,
+            platforms: platforms ?? userData?.platforms ?? u.platforms,
+          }
+        : u).sort(sortByRecent)
+      return
+    }
     addInterest([userId])
     if (typeof totalOnline.value === 'number') totalOnline.value += 1
     if (userData) {
-      const withTime = { ...userData, lastConnectAt }
+      const withTime = { ...userData, lastConnectAt, platforms: platforms ?? userData.platforms }
       const next = [withTime, ...users.value].sort(sortByRecent)
       users.value = next
       addStatusesFromRest([withTime.status])
@@ -222,16 +234,30 @@ const feedCallback: {
     }
   },
   onOffline(payload) {
-    const { userId } = payload
+    const { userId, user: userData, lastOnlineAt } = payload
     if (!userId) return
+    const existing = users.value.find((u) => u.id === userId)
     users.value = users.value.filter((u) => u.id !== userId)
     if (typeof totalOnline.value === 'number') totalOnline.value = Math.max(0, totalOnline.value - 1)
     removeInterest([userId])
+    const recentUser = userData ?? existing
+    if (recentUser && !recentUser.isBot) {
+      recentUsers.value = [
+        { ...recentUser, lastOnlineAt: lastOnlineAt ?? new Date().toISOString() },
+        ...recentUsers.value.filter((u) => u.id !== userId),
+      ]
+    }
   },
   onSnapshot(payload) {
     const snap = payload?.users ?? []
     // Replace the online list with the authoritative snapshot (handles reconnect staleness).
-    const snapOnline = (snap as OnlineUser[]).sort(sortByRecent)
+    const previousById = new Map(users.value.map((user) => [user.id, user]))
+    const snapOnline = (snap as OnlineUser[])
+      .map((user) => ({
+        ...user,
+        platforms: user.platforms ?? previousById.get(user.id)?.platforms,
+      }))
+      .sort(sortByRecent)
     users.value = snapOnline
     const ids = snapOnline.map((x) => x.id).filter(Boolean)
     if (ids.length) {
@@ -247,6 +273,11 @@ const feedCallback: {
       recentUsers.value = recentUsers.value.filter((u) => !snapIds.has(u.id))
     }
     if (typeof payload?.totalOnline === 'number') totalOnline.value = payload.totalOnline
+  },
+  onPlatformsChanged(payload) {
+    users.value = users.value.map((user) =>
+      user.id === payload.userId ? { ...user, platforms: payload.platforms } : user,
+    )
   },
 }
 

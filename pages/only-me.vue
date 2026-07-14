@@ -71,6 +71,7 @@
 
 <script setup lang="ts">
 import type { FeedPost } from '~/types/api'
+import { needsOnboarding } from '~/utils/onboarding'
 
 definePageMeta({
   layout: 'app',
@@ -90,7 +91,7 @@ const { user } = useAuth()
 const canPost = computed(() => {
   const u = user.value
   if (!u?.id) return false
-  return Boolean(u.usernameIsSet && u.birthdate && u.menOnlyConfirmed && Array.isArray(u.interests) && u.interests.length >= 1)
+  return !needsOnboarding(u)
 })
 
 const route = useRoute()

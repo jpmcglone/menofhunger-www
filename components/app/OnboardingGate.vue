@@ -210,6 +210,7 @@
 <script setup lang="ts">
 import { VOICE } from '~/config/voice'
 import { getApiErrorMessage } from '~/utils/api-error'
+import { needsOnboarding } from '~/utils/onboarding'
 import { formatDateOnly } from '~/utils/time-format'
 
 const { user, ensureLoaded } = useAuth()
@@ -228,11 +229,7 @@ await ensureLoaded()
 const show = computed(() => {
   const u = user.value
   if (!u?.id) return false
-  const needsUsername = !u.usernameIsSet
-  const needsBirthdate = !u.birthdate
-  const needsInterests = !Array.isArray(u.interests) || u.interests.length < 1
-  const needsMenConfirm = !u.menOnlyConfirmed
-  return needsUsername || needsBirthdate || needsInterests || needsMenConfirm
+  return needsOnboarding(u)
 })
 
 const missingParts = computed(() => {
