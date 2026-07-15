@@ -71,6 +71,63 @@
       </div>
     </NuxtLink>
 
+    <!-- Pickax post preview — author + body -->
+    <a
+      v-else-if="everVisible && showLinkPreview && isPickaxPostPreview"
+      :href="previewLink || undefined"
+      target="_blank"
+      rel="noopener noreferrer"
+      class="moh-pickax-preview group mt-2 block w-full max-w-full overflow-hidden rounded-lg border border-current/20 transition-colors"
+      aria-label="Open Pickax post"
+      @click.stop
+    >
+      <div class="flex min-w-0 max-w-full gap-2.5 p-2">
+        <div class="h-9 w-9 shrink-0 overflow-hidden rounded-full bg-black/10 dark:bg-white/10" aria-hidden="true">
+          <img
+            v-if="pickaxAvatarUrl"
+            :src="pickaxAvatarUrl"
+            class="h-full w-full object-cover"
+            alt=""
+            loading="lazy"
+            referrerpolicy="no-referrer"
+          >
+          <div
+            v-else
+            class="flex h-full w-full items-center justify-center text-xs font-semibold opacity-70"
+          >
+            {{ pickaxAuthorInitial }}
+          </div>
+        </div>
+        <div class="min-w-0 flex-1">
+          <div class="flex items-start gap-2">
+            <div class="min-w-0 flex-1">
+              <div class="break-words text-[12px] font-semibold leading-4">
+                {{ pickaxAuthorName }}
+              </div>
+              <div v-if="pickaxHandle" class="break-all text-[11px] opacity-70">
+                {{ pickaxHandle }}
+              </div>
+            </div>
+            <img
+              :src="PICKAX_LOGO_SRC"
+              alt="Pickax"
+              class="mt-0.5 h-4 w-4 shrink-0 rounded-[3px] object-cover"
+              loading="lazy"
+            >
+          </div>
+          <div
+            v-if="pickaxBody"
+            class="mt-1 line-clamp-[12] whitespace-pre-wrap break-words text-pretty text-[12px] leading-snug"
+          >
+            {{ pickaxBody }}
+          </div>
+          <div class="mt-2 text-[9px] font-semibold tracking-[0.08em] opacity-60">
+            PICKAX
+          </div>
+        </div>
+      </div>
+    </a>
+
     <!-- Generic external link preview -->
     <a
       v-else-if="everVisible && showLinkPreview"
@@ -156,7 +213,7 @@ const _linkify = new LinkifyIt()
 
 <script setup lang="ts">
 import { useElementVisibility } from '@vueuse/core'
-import { extractLinksFromText, safeUrlDisplay, safeUrlHostname, isMohUrl, mohUrlPath, extractMohPostId, extractMohArticleId, extractMohSpaceId, extractMohUsername } from '~/utils/link-utils'
+import { extractLinksFromText, safeUrlDisplay, safeUrlHostname, isMohUrl, mohUrlPath, extractMohPostId, extractMohArticleId, extractMohSpaceId, extractMohUsername, isPickaxPostUrl, PICKAX_LOGO_SRC } from '~/utils/link-utils'
 import type { LinkMetadata } from '~/utils/link-metadata'
 import { getLinkMetadata } from '~/utils/link-metadata'
 import { stableListKey } from '~/utils/stable-list-key'
@@ -444,4 +501,47 @@ watch(
   },
   { immediate: true },
 )
+
+function stripPickaxPostedSuffix(title: string | null | undefined): string | null {
+  const t = (title ?? '').trim()
+  if (!t) return null
+  const m = t.match(/^(.+?)\s+posted\.?$/i)
+  return (m?.[1] ?? t).trim() || null
+}
+
+const pickaxAvatarUrl = computed(() => {
+  const img = (linkMeta.value?.imageUrl ?? '').trim()
+  if (!img) return null
+  if (!img.toLowerCase().includes('img.pickax.com')) return null
+  return img
+})
+
+const pickaxHandle = computed(() => {
+  const site = (linkMeta.value?.siteName ?? '').trim()
+  if (site.startsWith('@') && site.length > 1) return site
+  return null
+})
+
+const pickaxAuthorName = computed(() => {
+  return (
+    stripPickaxPostedSuffix(linkMeta.value?.title) ||
+    pickaxHandle.value?.replace(/^@/, '') ||
+    'Pickax post'
+  )
+})
+
+const pickaxAuthorInitial = computed(() => {
+  const name = pickaxAuthorName.value.trim()
+  return name ? name.charAt(0).toUpperCase() : 'P'
+})
+
+const pickaxBody = computed(() => (linkMeta.value?.description ?? '').trim() || null)
+
+const isPickaxPostPreview = computed(() => {
+  if (!previewLink.value || !isPickaxPostUrl(previewLink.value)) return false
+  if (!linkMeta.value) return false
+  const normalizedTitle = (linkMeta.value.title ?? '').trim()
+  const hasReaderBody = Boolean(pickaxBody.value && !/\s+posted\.?$/i.test(normalizedTitle))
+  return Boolean(pickaxAvatarUrl.value || pickaxHandle.value || hasReaderBody)
+})
 </script>

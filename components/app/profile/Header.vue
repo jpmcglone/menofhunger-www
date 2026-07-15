@@ -333,7 +333,7 @@
         <NuxtLink
           v-if="locationLabel && locationTo"
           :to="locationTo"
-          class="inline-flex items-center gap-1.5 min-w-0 hover:underline underline-offset-2"
+          class="inline-flex items-center gap-1.5 min-w-0 text-gray-600 dark:text-gray-300 hover:underline underline-offset-2"
         >
           <ClientOnly>
             <AppStateShape
@@ -348,7 +348,7 @@
           <Icon v-if="!locationState" name="tabler:map-pin" class="shrink-0" aria-hidden="true" />
           <span class="truncate">{{ locationLabel }}</span>
         </NuxtLink>
-        <div v-else-if="locationLabel" class="inline-flex items-center gap-1.5 min-w-0">
+        <div v-else-if="locationLabel" class="inline-flex items-center gap-1.5 min-w-0 text-gray-600 dark:text-gray-300">
           <ClientOnly>
             <AppStateShape
               v-if="locationState"
@@ -368,7 +368,7 @@
           :href="websiteHref"
           target="_blank"
           rel="noopener noreferrer nofollow"
-          class="inline-flex items-center gap-1.5 min-w-0 hover:underline"
+          class="inline-flex items-center gap-1.5 min-w-0 text-[var(--moh-link)] hover:underline underline-offset-2"
         >
           <Icon name="tabler:link" class="shrink-0" aria-hidden="true" />
           <span class="truncate max-w-[18rem]">{{ websiteLabel }}</span>
@@ -622,8 +622,10 @@ const locationState = computed(() => {
 
 const locationTo = computed(() => {
   const p = profile.value as any
-  if (!p?.locationState) return null
-  return { path: '/l', query: { state: p.locationState } }
+  const state = typeof p?.locationState === 'string' ? p.locationState.trim().toUpperCase() : ''
+  if (!state) return null
+  // State posts feed (with members facepile); "See all" there opens /l.
+  return `/state/${state.toLowerCase()}`
 })
 
 const websiteHref = computed(() => {

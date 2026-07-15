@@ -201,6 +201,24 @@ export function isRumbleShortsUrl(url: string): boolean {
   }
 }
 
+/** True for Pickax post permalinks (`https://pickax.com/post/:id`). */
+export function isPickaxPostUrl(url: string): boolean {
+  try {
+    const u = new URL(url)
+    const host = u.hostname.replace(/^www\./i, '').toLowerCase()
+    if ((u.protocol !== 'http:' && u.protocol !== 'https:') || host !== 'pickax.com') return false
+    return /^\/post\/\d+\/?$/i.test(u.pathname)
+  } catch {
+    return false
+  }
+}
+
+/** Bundled Pickax wordmark for deliberate integration chrome in previews. */
+export const PICKAX_LOGO_SRC = '/images/integrations/pickax.png'
+
+/** Official Pickax CDN/hotlink-friendly logo (same asset as their favicon). */
+export const PICKAX_LOGO_REMOTE_URL = 'https://pickax.com/favicon.png'
+
 /** True if the post body (with no media) would show a video embed (YouTube or Rumble). */
 export function postBodyHasVideoEmbed(body: string, hasMedia: boolean): boolean {
   if (hasMedia) return false

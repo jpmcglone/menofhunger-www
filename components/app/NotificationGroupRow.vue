@@ -86,6 +86,16 @@
                   @mouseleave="multiTrigger.onLeave"
                 >{{ actorLabel(group.actors?.[0] as any) }}</span>
               </template>
+              <template v-else-if="group.kind === 'nudge' && group.count > 1">
+                <span
+                  class="whitespace-nowrap"
+                  @mouseenter="(e) => multiTrigger.onEnter(group.actors?.[0]?.username, e)"
+                  @mousemove="multiTrigger.onMove"
+                  @mouseleave="multiTrigger.onLeave"
+                >{{ actorLabel(group.actors?.[0] as any) }}</span>
+                <span class="ml-1">nudged you</span>
+                <span class="ml-1 whitespace-nowrap tabular-nums">×{{ group.count }}</span>
+              </template>
               <template v-else>
                 <span v-for="(part, idx) in actorDisplayParts(group)" :key="actorDisplayPartKey(part, idx)">
                   <span
@@ -420,7 +430,8 @@ function titleSuffix(g: NotificationGroup): string {
     case 'followed_post':
       return g.count > 1 ? `shared ${g.count} posts` : 'shared a post'
     case 'nudge':
-      return `nudged you ×${g.count}`
+      // Groups only form for count > 1; keep the plain suffix as a safe fallback.
+      return g.count > 1 ? `nudged you ×${g.count}` : 'nudged you'
     default:
       return 'Notification'
   }

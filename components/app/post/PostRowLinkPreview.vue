@@ -73,6 +73,68 @@
       </div>
     </NuxtLink>
 
+    <!-- Pickax post preview — author + body, closer to a native Pickax post card -->
+    <a
+      v-else-if="showLinkPreview && isPickaxPostPreview"
+      :href="previewLink || undefined"
+      target="_blank"
+      rel="noopener noreferrer"
+      class="moh-pickax-preview group block overflow-hidden rounded-xl border moh-border transition-colors moh-focus"
+      aria-label="Open Pickax post"
+      @click.stop
+    >
+      <div class="relative p-3">
+        <div class="relative z-10 flex items-start gap-3">
+          <div
+            class="h-10 w-10 shrink-0 overflow-hidden rounded-full bg-gray-100 dark:bg-zinc-800"
+            aria-hidden="true"
+          >
+            <img
+              v-if="pickaxAvatarUrl"
+              :src="pickaxAvatarUrl"
+              class="h-full w-full object-cover"
+              alt=""
+              loading="lazy"
+              referrerpolicy="no-referrer"
+            >
+            <div
+              v-else
+              class="flex h-full w-full items-center justify-center text-sm font-semibold moh-text-muted"
+            >
+              {{ pickaxAuthorInitial }}
+            </div>
+          </div>
+          <div class="min-w-0 flex-1">
+            <div class="flex items-start gap-2">
+              <div class="min-w-0 flex-1">
+                <div class="break-words text-sm font-semibold moh-text">
+                  {{ pickaxAuthorName }}
+                </div>
+                <div v-if="pickaxHandle" class="mt-0.5 break-all text-xs moh-text-muted">
+                  {{ pickaxHandle }}
+                </div>
+              </div>
+              <img
+                :src="PICKAX_LOGO_SRC"
+                alt="Pickax"
+                class="mt-0.5 h-5 w-5 shrink-0 rounded-[4px] object-cover ring-1 ring-black/10 dark:ring-white/10"
+                loading="lazy"
+              >
+            </div>
+            <div
+              v-if="pickaxBody"
+              class="mt-2 whitespace-pre-wrap break-words text-pretty text-[15px] leading-snug moh-text line-clamp-[20]"
+            >
+              {{ pickaxBody }}
+            </div>
+            <div class="mt-3 text-[10px] font-semibold tracking-[0.08em] moh-text-muted">
+              PICKAX
+            </div>
+          </div>
+        </div>
+      </div>
+    </a>
+
     <!-- Generic link preview (last link only, external sites) -->
     <a
       v-else-if="showLinkPreview"
@@ -199,7 +261,7 @@
 </template>
 
 <script setup lang="ts">
-import { extractLinksFromText, getYouTubeEmbedUrl, getYouTubePosterUrl, isRumbleShortsUrl, isRumbleUrl, safeUrlDisplay, safeUrlHostname, isMohUrl, mohUrlPath, extractMohPostId, extractMohArticleId, extractMohSpaceId, extractMohUsername } from '~/utils/link-utils'
+import { extractLinksFromText, getYouTubeEmbedUrl, getYouTubePosterUrl, isRumbleShortsUrl, isRumbleUrl, safeUrlDisplay, safeUrlHostname, isMohUrl, mohUrlPath, extractMohPostId, extractMohArticleId, extractMohSpaceId, extractMohUsername, isPickaxPostUrl, PICKAX_LOGO_SRC } from '~/utils/link-utils'
 import type { LinkMetadata } from '~/utils/link-metadata'
 import { getLinkMetadata } from '~/utils/link-metadata'
 import type { RumbleEmbedInfo } from '~/utils/rumble-embed'
@@ -505,6 +567,53 @@ const mohInternalTitle = computed(() => {
   const segment = p.split('/').filter(Boolean)[0]
   if (!segment) return 'Men of Hunger'
   return segment.charAt(0).toUpperCase() + segment.slice(1).replace(/-/g, ' ')
+})
+
+const isPickaxPostLink = computed(() => Boolean(previewLink.value && isPickaxPostUrl(previewLink.value)))
+
+function stripPickaxPostedSuffix(title: string | null | undefined): string | null {
+  const t = (title ?? '').trim()
+  if (!t) return null
+  const m = t.match(/^(.+?)\s+posted\.?$/i)
+  return (m?.[1] ?? t).trim() || null
+}
+
+const pickaxAvatarUrl = computed(() => {
+  const img = (linkMeta.value?.imageUrl ?? '').trim()
+  if (!img) return null
+  // Only Pickax CDN avatars — OG serves the site favicon/logo.
+  if (!img.toLowerCase().includes('img.pickax.com')) return null
+  return img
+})
+
+const pickaxHandle = computed(() => {
+  const site = (linkMeta.value?.siteName ?? '').trim()
+  if (site.startsWith('@') && site.length > 1) return site
+  return null
+})
+
+const pickaxAuthorName = computed(() => {
+  return (
+    stripPickaxPostedSuffix(linkMeta.value?.title) ||
+    pickaxHandle.value?.replace(/^@/, '') ||
+    'Pickax post'
+  )
+})
+
+const pickaxAuthorInitial = computed(() => {
+  const name = pickaxAuthorName.value.trim()
+  return name ? name.charAt(0).toUpperCase() : 'P'
+})
+
+const pickaxBody = computed(() => (linkMeta.value?.description ?? '').trim() || null)
+
+/** Use the post-like card once enrichment recovered identity or a full reader body. */
+const isPickaxPostPreview = computed(() => {
+  if (!isPickaxPostLink.value) return false
+  if (!linkMeta.value) return false
+  const normalizedTitle = (linkMeta.value.title ?? '').trim()
+  const hasReaderBody = Boolean(pickaxBody.value && !/\s+posted\.?$/i.test(normalizedTitle))
+  return Boolean(pickaxAvatarUrl.value || pickaxHandle.value || hasReaderBody)
 })
 
 // Embedded MOH post: always show block so SSR can fetch and render the preview before first paint.

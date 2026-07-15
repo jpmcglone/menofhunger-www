@@ -626,7 +626,7 @@ const locationState = computed(() => {
 
 const locationTo = computed(() => {
   if (!locationState.value) return null
-  return { path: '/l', query: { state: locationState.value } }
+  return `/state/${String(locationState.value).toLowerCase()}`
 })
 const followersPath = computed(() => (profilePath.value ? `${profilePath.value}/followers` : null))
 const followingPath = computed(() => (profilePath.value ? `${profilePath.value}/following` : null))

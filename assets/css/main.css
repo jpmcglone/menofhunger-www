@@ -170,6 +170,10 @@ html.dark .moh-vignette::after {
   --moh-verified-ring: rgba(43, 123, 185, 0.38);
   --moh-verified-soft: rgba(43, 123, 185, 0.12);
 
+  /* External / bio website links (distinct from verified blue). */
+  --moh-link: #3b82f6;
+  --moh-link-rgb: 59, 130, 246;
+
   /* Darker premium orange so white text remains readable (WCAG-friendly). */
   --moh-premium: #b45309;
   --moh-premium-rgb: 180, 83, 9;
@@ -440,9 +444,22 @@ input[type="reset"] {
   .moh-surface-3 {
     background-color: var(--moh-surface-3);
   }
+  .moh-pickax-preview {
+    background-color: var(--moh-surface-1);
+  }
+  html.dark .moh-pickax-preview {
+    /* Pickax's own `bg-dark2` post surface. */
+    background-color: #222a39;
+  }
   @media (hover: hover) {
     .moh-surface-hover:hover {
       background-color: var(--moh-surface-hover);
+    }
+    .moh-pickax-preview:hover {
+      background-color: var(--moh-surface-hover);
+    }
+    html.dark .moh-pickax-preview:hover {
+      background-color: #293347;
     }
   }
 

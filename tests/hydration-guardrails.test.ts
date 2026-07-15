@@ -106,6 +106,8 @@ describe('hydration guardrails (structural)', () => {
     const group = readFromRepo('components/app/NotificationGroupRow.vue')
     expect(row).toMatch(/:key="notificationMediaPreviewKey\(m, idx\)"/)
     expect(group).toMatch(/:key="groupMediaPreviewKey\(m, idx\)"/)
+    expect(group).toMatch(/group\.kind === 'nudge' && group\.count > 1/)
+    expect(group).toMatch(/×\{\{ group\.count \}\}/)
   })
 
   it('gates the daily check-in hero on `heroResolved` so SSR never renders the wrong variant', () => {
@@ -117,6 +119,11 @@ describe('hydration guardrails (structural)', () => {
     expect(home).toMatch(/<AppFeedDailyCheckinHero\s+v-if="heroResolved && hasCheckedInToday"[\s\S]*?compact/)
     // heroResolved itself must require both `hydrated` AND a known checkin state (or unauth viewer).
     expect(home).toMatch(/const heroResolved = computed\(\(\) => {[\s\S]*?if \(!hydrated\.value\) return false[\s\S]*?if \(!isAuthed\.value\) return true[\s\S]*?return checkinState\.value !== null/)
+    // Check-in (answered or not) stays above the composer.
+    const answeredHero = home.indexOf('v-if="heroResolved && hasCheckedInToday"')
+    const composer = home.indexOf('ref="homeComposerEl"')
+    expect(answeredHero).toBeGreaterThan(-1)
+    expect(composer).toBeGreaterThan(answeredHero)
   })
 
   it('JoinBanner gates visibility on a hydrated ref so SSR never renders the logged-out banner', () => {

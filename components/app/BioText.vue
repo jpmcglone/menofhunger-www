@@ -6,7 +6,7 @@
         :href="seg.href"
         target="_blank"
         rel="noopener noreferrer"
-        class="underline decoration-gray-300 underline-offset-2 hover:decoration-gray-500 dark:decoration-zinc-700 dark:hover:decoration-zinc-500"
+        class="text-[var(--moh-link)] underline decoration-[var(--moh-link)]/35 underline-offset-2 hover:decoration-[var(--moh-link)]"
         @click.stop
       >{{ seg.text }}</a>
       <NuxtLink

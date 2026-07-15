@@ -1,14 +1,10 @@
 <template>
   <!-- hideTopBar page: no top padding here -->
   <AppPageContent bottom="standard">
-    <!-- Daily check-in hero is the page's purpose statement. It renders full-bleed at the top
-         until the user has answered (drives the "answer this" intent for the day). After they
-         answer, the hero collapses to a compact strip placed under the composer so the home
-         page can give the composer + feed back the prime real estate.
-
-         Both variants are gated on `heroResolved` so we never flash the full hero before we
-         know whether the user has already answered. SSR renders nothing for either; on mount,
-         the right one appears in the right slot. See 45-hydration-safe-defaults.mdc. -->
+    <!-- Daily check-in stays above the composer whether answered or not. Unanswered uses the
+         full hero; answered collapses to compact. Both are gated on `heroResolved` so we never
+         flash the wrong variant before we know. SSR renders nothing; on mount the right one
+         appears. See 45-hydration-safe-defaults.mdc. -->
     <AppFeedDailyCheckinHero
       v-if="heroResolved && !hasCheckedInToday"
       :state="checkinState"
@@ -17,6 +13,22 @@
       :can-answer="canAnswerCheckin"
       :on-answer="openCheckinComposer"
       :on-login-to-answer="goToLoginForCheckin"
+    />
+
+    <!-- Compact hero once today's question is answered. Same component + realtime hooks as the
+         full hero, just collapsed. When the viewer has a streak, `weekly-mission-streak-days`
+         folds the weekly-mission progress INTO this card (one surface → /leaderboard). The
+         standalone AppFeedWeeklyMissionCard below only fires when this fold-in doesn't. -->
+    <AppFeedDailyCheckinHero
+      v-if="heroResolved && hasCheckedInToday"
+      :state="checkinState"
+      :prompt="checkinHeroPrompt"
+      :my-checkin-body="lastCheckinBody"
+      :can-answer="canAnswerCheckin"
+      :on-answer="openCheckinComposer"
+      :on-login-to-answer="goToLoginForCheckin"
+      :weekly-mission-streak-days="displayCheckinStreak"
+      compact
     />
 
     <!-- Verify-to-check-in CTA for authed-but-unverified users. The check-ins experience is
@@ -47,7 +59,7 @@
       </div>
     </ClientOnly>
 
-    <!-- Layout: Composer at top, feed below. Wrapper ref used to detect when composer is in view (hides mobile FAB). -->
+    <!-- Composer sits under check-in. Wrapper ref detects when it's in view (hides mobile FAB). -->
     <div ref="homeComposerEl" class="min-h-0">
       <LazyAppPostComposer
         v-if="isAuthed && !showOnlyMeHomeComposerCard"
@@ -86,27 +98,6 @@
         </div>
       </div>
     </div>
-
-    <!-- Compact hero shown under the composer once today's question is answered. Same component
-         + realtime hooks as the full hero, just collapsed. Hidden for logged-out viewers since
-         they never have an answered state. Gated on `heroResolved` so SSR renders nothing
-         here and we don't briefly show the full hero on top before this collapses in.
-
-         When the viewer is verified and has a streak, we also pass `weekly-mission-streak-days`
-         which folds the weekly-mission progress card INTO this card (one combined clickable
-         surface → /leaderboard) instead of showing a second card below. The standalone
-         AppFeedWeeklyMissionCard render below is gated to only fire when this fold-in doesn't. -->
-    <AppFeedDailyCheckinHero
-      v-if="heroResolved && hasCheckedInToday"
-      :state="checkinState"
-      :prompt="checkinHeroPrompt"
-      :my-checkin-body="lastCheckinBody"
-      :can-answer="canAnswerCheckin"
-      :on-answer="openCheckinComposer"
-      :on-login-to-answer="goToLoginForCheckin"
-      :weekly-mission-streak-days="displayCheckinStreak"
-      compact
-    />
 
     <!-- Welcome card: shown to all new users who haven't dismissed it (localStorage) -->
     <ClientOnly>

@@ -1,3 +1,5 @@
+import { isPickaxPostUrl } from '~/utils/link-utils'
+
 export type LinkMetadata = {
   url: string
   title: string | null
@@ -16,6 +18,19 @@ const inFlight = new Map<string, Promise<LinkMetadata | null>>()
 function normalizeText(v: string | null | undefined): string | null {
   const s = (v ?? '').trim()
   return s ? s : null
+}
+
+/** OG/microlink alone is not enough for a deliberate Pickax post card. */
+function isEnrichedPickaxMeta(meta: LinkMetadata): boolean {
+  const img = (meta.imageUrl ?? '').toLowerCase()
+  const site = (meta.siteName ?? '').trim()
+  const body = (meta.description ?? '').trim()
+  const title = (meta.title ?? '').trim()
+  return Boolean(body && title && !/posted\.?$/i.test(title) && (
+    img.includes('img.pickax.com') ||
+    site.startsWith('@') ||
+    /^pickax(?:\.com)?$/i.test(site)
+  ))
 }
 
 function isAbortError(e: unknown): boolean {
@@ -53,11 +68,41 @@ function parseJinaReaderFirstImage(md: string): string | null {
   return normalizeText(m?.[1])
 }
 
+function parsePickaxBodyFromJina(md: string): string | null {
+  const marker = /Markdown Content:\s*/i.exec(md)
+  const section = marker?.index != null ? md.slice(marker.index + marker[0].length) : md
+  const author = section.match(
+    /\[!\[[^\]]*\]\((https:\/\/img\.pickax\.com\/[^)\s]+)\)\]\((https:\/\/(?:www\.)?pickax\.com\/[^)\s]+)\)/i,
+  )
+  const beforeAuthor = author?.index != null
+    ? section.slice(0, author.index).replace(/^\s*Warning:.*$/gim, '').trim()
+    : ''
+  const bodyStart = author?.index != null && !beforeAuthor
+    ? section.slice(author.index + author[0].length)
+    : section
+  const nextReply = bodyStart.search(
+    /\[!\[[^\]]*\]\(https:\/\/img\.pickax\.com\/user-[^)\s]+\)\]\(https:\/\/(?:www\.)?pickax\.com\/[^)\s]+\)/i,
+  )
+  const body = (nextReply >= 0 ? bodyStart.slice(0, nextReply) : bodyStart)
+    .replace(/^\s*(?:Title|URL Source|Markdown Content):.*$/gim, '')
+    .replace(/^\s*Warning:.*$/gim, '')
+    .replace(/\[([^\]]+)\]\(https?:\/\/(?:www\.)?pickax\.com\/[^)\s]+\)/gi, '$1')
+    .replace(/^\s*\u00ad\s*$/gm, '')
+    .trim()
+  return normalizeText(body)
+}
+
 export async function getLinkMetadata(url: string, opts: GetLinkMetadataOptions = {}): Promise<LinkMetadata | null> {
   const key = (url ?? '').trim()
   if (!key) return null
 
-  if (cache.has(key)) return cache.get(key) ?? null
+  if (cache.has(key)) {
+    const cached = cache.get(key) ?? null
+    if (!(isPickaxPostUrl(key) && cached && !isEnrichedPickaxMeta(cached))) {
+      return cached
+    }
+    cache.delete(key)
+  }
   if (inFlight.has(key)) return await inFlight.get(key)!
 
   const job = (async () => {
@@ -87,8 +132,11 @@ export async function getLinkMetadata(url: string, opts: GetLinkMetadataOptions 
             siteName: normalizeText(data.siteName),
             imageUrl: normalizeText(data.imageUrl),
           }
-          cache.set(key, meta)
-          return meta
+          // Weak Pickax OG (favicon / "X posted") — keep trying client enrichers.
+          if (!(isPickaxPostUrl(meta.url) && !isEnrichedPickaxMeta(meta))) {
+            cache.set(key, meta)
+            return meta
+          }
         }
       } catch (e: unknown) {
         if (isAbortError(e)) {
@@ -115,8 +163,11 @@ export async function getLinkMetadata(url: string, opts: GetLinkMetadataOptions 
               siteName: normalizeText(json.data.publisher) ?? normalizeText(json.data.author),
               imageUrl: normalizeText(img),
             }
-            cache.set(key, meta)
-            return meta
+            if (!(isPickaxPostUrl(meta.url) && !isEnrichedPickaxMeta(meta))) {
+              cache.set(key, meta)
+              return meta
+            }
+            // Weak Pickax microlink — fall through to Jina for avatar/handle.
           }
         }
       } catch (e: unknown) {
@@ -135,12 +186,32 @@ export async function getLinkMetadata(url: string, opts: GetLinkMetadataOptions 
       const title = parseJinaReaderTitle(md)
       const imageUrl = parseJinaReaderFirstImage(md)
 
-      const meta: LinkMetadata = {
+      let meta: LinkMetadata = {
         url: u.toString(),
         title,
         description: null,
         siteName: normalizeText(u.hostname.replace(/^www\./, '')),
         imageUrl,
+      }
+
+      if (isPickaxPostUrl(u.toString())) {
+        const author = md.match(
+          /!\[[^\]]*\]\((https:\/\/img\.pickax\.com\/[^)\s]+)\)\]\((https:\/\/(?:www\.)?pickax\.com\/([^)/\s?#]+))\)/i,
+        )
+        const avatarUrl = normalizeText(author?.[1] ?? null) ?? imageUrl
+        const username = normalizeText(author?.[3] ?? null)
+        const handle =
+          username && !/^(post|api|login|signup|settings|top-users)$/i.test(username)
+            ? `@${username}`
+            : null
+        const authorName = title?.replace(/\s+posted\.?$/i, '').trim() || title
+        meta = {
+          url: u.toString(),
+          title: normalizeText(authorName),
+          description: parsePickaxBodyFromJina(md),
+          siteName: handle ?? meta.siteName,
+          imageUrl: avatarUrl?.includes('img.pickax.com') ? avatarUrl : null,
+        }
       }
 
       cache.set(key, meta)

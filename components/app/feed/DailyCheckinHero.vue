@@ -53,8 +53,8 @@
     </div>
   </section>
 
-  <!-- Compact variant: shown after the user has answered, typically placed under the composer
-       on /home so the hero doesn't keep eating top real estate once its job is done.
+  <!-- Compact variant: shown after the user has answered. Kept above the composer on /home
+       so check-in context stays first whether answered or not.
 
        The card is split into two independently clickable halves:
        · Top (question + answer + social proof) → /check-ins
