@@ -68,7 +68,26 @@ function parseJinaReaderFirstImage(md: string): string | null {
   return normalizeText(m?.[1])
 }
 
+function isPickaxGatedMarkdown(md: string): boolean {
+  const text = (md ?? '').toString()
+  const signals = [
+    /Own your audience\.\s*Post without algorithms/i,
+    /Email\s*\*/,
+    /Password\s*\*/,
+    /Free to join\.\s*No algorithms/i,
+    /No algorithms or shadow bans/i,
+    /Anti-Robot check/i,
+  ]
+  let hits = 0
+  for (const re of signals) {
+    if (re.test(text)) hits++
+    if (hits >= 2) return true
+  }
+  return false
+}
+
 function parsePickaxBodyFromJina(md: string): string | null {
+  if (isPickaxGatedMarkdown(md)) return null
   const marker = /Markdown Content:\s*/i.exec(md)
   const section = marker?.index != null ? md.slice(marker.index + marker[0].length) : md
   const author = section.match(
@@ -182,6 +201,9 @@ export async function getLinkMetadata(url: string, opts: GetLinkMetadataOptions 
       const res = await fetch(proxied, { method: 'GET', signal: opts.signal })
       if (!res.ok) return null
       const md = await res.text()
+
+      // Jina can return Pickax's signup/auth wall instead of the post content.
+      if (isPickaxPostUrl(u.toString()) && isPickaxGatedMarkdown(md)) return null
 
       const title = parseJinaReaderTitle(md)
       const imageUrl = parseJinaReaderFirstImage(md)
