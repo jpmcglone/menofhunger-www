@@ -22,8 +22,8 @@ describe('marv_not_in_group notification wiring', () => {
     // marv_not_in_group must appear at least twice: once for titleSuffix and once for icon
     const occurrences = (source.match(/case 'marv_not_in_group':/g) ?? []).length
     expect(occurrences).toBeGreaterThanOrEqual(2)
-    // The icon (tabler:robot-off) must appear in the file
-    expect(source).toContain("'tabler:robot-off'")
+    // The icon (tabler:sparkles) must appear in the file
+    expect(source).toContain("'tabler:sparkles'")
   })
 
   it('titleSuffix has a non-empty fallback for marv_not_in_group', () => {
