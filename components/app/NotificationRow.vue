@@ -35,8 +35,20 @@
       ]"
     >
       <!-- Left rail: notification icon + actor avatar stay centered as one unit. -->
-      <div class="flex w-[5.25rem] shrink-0 items-start gap-2">
-        <div class="flex h-9 w-8 shrink-0 items-center justify-center sm:h-10" aria-hidden="true">
+      <div
+        :class="[
+          'flex shrink-0 items-start gap-2',
+          (notification.kind === 'marv_not_in_group' || notification.kind === 'poll_results_ready')
+            ? 'w-[2.75rem]'
+            : 'w-[5.25rem]',
+        ]"
+      >
+        <!-- System notifications carry their type inside the avatar circle; no separate type icon needed. -->
+        <div
+          v-if="notification.kind !== 'marv_not_in_group' && notification.kind !== 'poll_results_ready'"
+          class="flex h-9 w-8 shrink-0 items-center justify-center sm:h-10"
+          aria-hidden="true"
+        >
           <svg
             v-if="notification.kind === 'boost'"
             viewBox="0 0 24 24"
@@ -50,19 +62,50 @@
           <Icon
             v-else
             :name="notificationIconName(notification)"
-            :class="[
-              'text-[22px]',
-              notificationTypeIconTextClass(notification),
-              notification.kind === 'poll_results_ready' ? 'rotate-90' : '',
-            ]"
+            :class="['text-[22px]', notificationTypeIconTextClass(notification)]"
             aria-hidden="true"
           />
         </div>
 
         <!-- Actor avatar -->
         <div class="relative flex shrink-0 items-start" @click.stop>
+          <!-- Marv system notification: group avatar with Marv sparkle badge -->
+          <div
+            v-if="notification.kind === 'marv_not_in_group'"
+            class="relative shrink-0"
+            aria-hidden="true"
+          >
+            <!-- Group avatar (or gradient placeholder if no avatar) -->
+            <img
+              v-if="notification.subjectGroupAvatarUrl"
+              :src="notification.subjectGroupAvatarUrl"
+              class="h-9 w-9 rounded-full object-cover sm:h-10 sm:w-10 moh-img-outline"
+              alt=""
+            />
+            <div
+              v-else
+              class="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-violet-500 to-indigo-600 sm:h-10 sm:w-10"
+            >
+              <Icon name="tabler:sparkles" class="text-white text-base" />
+            </div>
+            <!-- Marv sparkle badge: only when showing a real group avatar -->
+            <div
+              v-if="notification.subjectGroupAvatarUrl"
+              class="absolute -bottom-1 -left-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-gradient-to-br from-violet-500 to-indigo-600 ring-2 ring-[var(--moh-bg)]"
+            >
+              <Icon name="tabler:sparkles" class="text-white text-[9px]" />
+            </div>
+          </div>
+          <!-- Poll results system notification: avatar shows the chart, colored by visibility -->
+          <div
+            v-else-if="notification.kind === 'poll_results_ready'"
+            :class="['flex h-9 w-9 items-center justify-center rounded-full sm:h-10 sm:w-10', notificationTypeIconBgClass(notification)]"
+            aria-hidden="true"
+          >
+            <Icon name="tabler:chart-bar" class="text-white text-base" aria-hidden="true" />
+          </div>
           <NuxtLink
-            v-if="notification.actor?.id && notification.actor?.username"
+            v-else-if="notification.actor?.id && notification.actor?.username"
             :to="`/u/${notification.actor.username}`"
             class="block"
             @click.stop
@@ -104,6 +147,7 @@
             <!-- Title + quoted message: up to 2 lines with truncation -->
             <div :class="['min-w-0 max-w-full line-clamp-2 text-[13px] sm:text-sm', notification.readAt ? 'font-medium' : 'font-semibold']">
               <span
+                v-if="notification.kind !== 'marv_not_in_group' && notification.kind !== 'poll_results_ready'"
                 :class="actorTierClass(notification)"
                 @mouseenter="onActorEnter"
                 @mousemove="onActorMove"
@@ -162,17 +206,17 @@
               </template>
               <template v-else-if="notification.kind === 'community_group_join_approved' || notification.kind === 'community_group_join_rejected' || notification.kind === 'community_group_member_removed' || notification.kind === 'community_group_disbanded'">
                 <span class="ml-1">{{ titleSuffix(notification) }}</span>
-                <span
-                  v-if="notification.subjectGroupName"
-                  class="ml-1 font-semibold"
-                >{{ notification.subjectGroupName }}</span>
               </template>
               <template v-else-if="notification.kind === 'marv_not_in_group'">
-                <span class="ml-1">{{ titleSuffix(notification) }}</span>
+                <span>Marv is not in</span>
                 <span
                   v-if="notification.subjectGroupName"
                   class="ml-1 font-semibold"
                 >{{ notification.subjectGroupName }}</span>
+                <span v-else class="ml-1">this group</span>
+              </template>
+              <template v-else-if="notification.kind === 'poll_results_ready'">
+                <span>{{ titleSuffix(notification) }}</span>
               </template>
               <template v-else>
                 <span class="ml-1">{{ titleSuffix(notification) }}</span>
@@ -195,10 +239,30 @@
             >
               {{ notification.body }}
             </div>
-            <!-- Fallback for other kinds with body -->
+            <!-- Fallback for other kinds with body (renders **bold** segments) -->
             <div
-              v-if="notification.body && notification.kind !== 'comment' && notification.kind !== 'mention' && notification.kind !== 'followed_article'"
+              v-if="notification.body && notification.kind !== 'comment' && notification.kind !== 'mention' && notification.kind !== 'followed_article' && notification.kind !== 'poll_results_ready'"
               class="mt-0.5 line-clamp-2 text-[13px] sm:text-sm text-gray-600 dark:text-gray-300"
+            >
+              <template v-for="(seg, i) in parseBoldSegments(notification.body)" :key="i">
+                <!-- For Marv notifications, make the bold segment a hoverable group link -->
+                <NuxtLink
+                  v-if="seg.bold && notification.kind === 'marv_not_in_group' && notification.subjectGroupSlug"
+                  :to="`/g/${encodeURIComponent(notification.subjectGroupSlug)}`"
+                  class="font-semibold text-gray-800 dark:text-gray-100 hover:underline underline-offset-2"
+                  @click.stop
+                  @mouseenter="onGroupEnter"
+                  @mousemove="onGroupMove"
+                  @mouseleave="onGroupLeave"
+                >{{ seg.text }}</NuxtLink>
+                <strong v-else-if="seg.bold" class="font-semibold text-gray-800 dark:text-gray-100">{{ seg.text }}</strong>
+                <span v-else>{{ seg.text }}</span>
+              </template>
+            </div>
+            <!-- Poll name chip -->
+            <div
+              v-if="notification.kind === 'poll_results_ready' && notification.body"
+              class="mt-1.5 line-clamp-1 rounded-lg border border-gray-200 bg-gray-50 px-2.5 py-1.5 text-[12px] sm:text-[13px] leading-snug text-gray-600 dark:border-zinc-700/70 dark:bg-zinc-800/60 dark:text-gray-300"
             >
               {{ notification.body }}
             </div>
@@ -287,20 +351,22 @@
             >
               <span
                 v-if="nudgeActionState === 'gotit'"
-                class="text-sm font-semibold text-gray-600 dark:text-gray-300 whitespace-nowrap"
+                class="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
               >
+                <Icon name="tabler:check" class="text-[11px]" aria-hidden="true" />
                 Got it
               </span>
               <span
                 v-else-if="notification.ignoredAt || nudgeActionState === 'ignored'"
-                class="text-sm font-semibold text-gray-600 dark:text-gray-300 whitespace-nowrap"
+                class="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium bg-gray-100 text-gray-500 dark:bg-zinc-800 dark:text-gray-400"
               >
-                Ignored
+                Dismissed
               </span>
               <span
                 v-else-if="notification.nudgedBackAt || nudgeActionState === 'nudged'"
-                class="text-sm font-semibold text-gray-600 dark:text-gray-300 whitespace-nowrap"
+                class="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
               >
+                <Icon name="tabler:hand-click" class="text-[11px]" aria-hidden="true" />
                 Nudged back
               </span>
               <template v-else-if="nudgeIsTopmost && (canShowNudgeBack || !notification.readAt)">
@@ -386,21 +452,23 @@
             >
               <span
                 v-if="crewInviteDisplayState === 'accepted'"
-                class="text-sm font-medium text-gray-500 dark:text-gray-400 whitespace-nowrap"
+                class="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
               >
+                <Icon name="tabler:check" class="text-[11px]" aria-hidden="true" />
                 Joined
               </span>
               <span
                 v-else-if="crewInviteDisplayState === 'declined'"
-                class="text-sm font-medium text-gray-500 dark:text-gray-400 whitespace-nowrap"
+                class="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium bg-gray-100 text-gray-500 dark:bg-zinc-800 dark:text-gray-400"
               >
-                Rejected
+                Declined
               </span>
               <span
                 v-else-if="crewInviteDisplayState === 'cancelled' || crewInviteDisplayState === 'expired'"
-                class="text-sm font-medium text-gray-500 dark:text-gray-400 whitespace-nowrap"
+                class="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium bg-amber-100 text-amber-700 dark:bg-amber-900/25 dark:text-amber-400"
               >
-                No longer available
+                <Icon name="tabler:clock" class="text-[11px]" aria-hidden="true" />
+                Expired
               </span>
               <template v-else>
                 <Button
@@ -432,21 +500,23 @@
             >
               <span
                 v-if="groupInviteDisplayState === 'accepted'"
-                class="text-sm font-medium text-gray-500 dark:text-gray-400 whitespace-nowrap"
+                class="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
               >
+                <Icon name="tabler:check" class="text-[11px]" aria-hidden="true" />
                 Joined
               </span>
               <span
                 v-else-if="groupInviteDisplayState === 'declined'"
-                class="text-sm font-medium text-gray-500 dark:text-gray-400 whitespace-nowrap"
+                class="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium bg-gray-100 text-gray-500 dark:bg-zinc-800 dark:text-gray-400"
               >
                 Declined
               </span>
               <span
                 v-else-if="groupInviteDisplayState === 'cancelled' || groupInviteDisplayState === 'expired'"
-                class="text-sm font-medium text-gray-500 dark:text-gray-400 whitespace-nowrap"
+                class="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium bg-amber-100 text-amber-700 dark:bg-amber-900/25 dark:text-amber-400"
               >
-                No longer available
+                <Icon name="tabler:clock" class="text-[11px]" aria-hidden="true" />
+                Expired
               </span>
               <template v-else>
                 <Button
@@ -477,7 +547,7 @@
 </template>
 
 <script setup lang="ts">
-import type { FollowSummaryResponse, Notification } from '~/types/api'
+import type { CommunityGroupShell, FollowSummaryResponse, Notification } from '~/types/api'
 import { tinyTooltip } from '~/utils/tiny-tooltip'
 import { stableListKey } from '~/utils/stable-list-key'
 import type { MenuItem } from 'primevue/menuitem'
@@ -486,6 +556,7 @@ const {
   actorDisplay,
   actorTierClass,
   notificationTypeIconTextClass,
+  notificationTypeIconBgClass,
   actorTierIconBgClass,
   subjectPostVisibilityTextClass,
   subjectTierRowClass,
@@ -505,6 +576,16 @@ onMounted(() => {
 })
 
 const props = defineProps<{ notification: Notification; nudgeIsTopmost?: boolean }>()
+
+/** Splits a string like "foo **bar** baz" into bold/plain segments for inline rendering. */
+function parseBoldSegments(text: string): Array<{ text: string; bold: boolean }> {
+  const segments: Array<{ text: string; bold: boolean }> = []
+  const parts = text.split(/\*\*/)
+  for (let i = 0; i < parts.length; i++) {
+    if (parts[i]) segments.push({ text: parts[i]!, bold: i % 2 === 1 })
+  }
+  return segments
+}
 const localReadAt = ref<string | null>(null)
 const notification = computed<Notification>(() => {
   if (!localReadAt.value) return props.notification
@@ -513,6 +594,32 @@ const notification = computed<Notification>(() => {
 
 const { onEnter: onActorEnter, onMove: onActorMove, onLeave: onActorLeave } = useUserPreviewTrigger({
   username: computed(() => props.notification.actor?.username ?? ''),
+})
+
+// Minimal shell for the marv_not_in_group group-name hover preview.
+const marvGroupShell = computed<CommunityGroupShell | null>(() => {
+  const n = notification.value
+  if (n.kind !== 'marv_not_in_group') return null
+  if (!n.subjectGroupId || !n.subjectGroupSlug || !n.subjectGroupName) return null
+  return {
+    id: n.subjectGroupId,
+    slug: n.subjectGroupSlug,
+    name: n.subjectGroupName,
+    description: '',
+    rules: null,
+    coverImageUrl: null,
+    avatarImageUrl: n.subjectGroupAvatarUrl ?? null,
+    joinPolicy: 'open',
+    memberCount: 0,
+    isFeatured: false,
+    featuredOrder: 0,
+    createdAt: '',
+    viewerMembership: null,
+    viewerPendingApproval: false,
+  }
+})
+const { onEnter: onGroupEnter, onMove: onGroupMove, onLeave: onGroupLeave } = useGroupPreviewTrigger({
+  shell: marvGroupShell,
 })
 const nudgeIsTopmost = computed(() => props.nudgeIsTopmost !== false)
 
@@ -685,7 +792,7 @@ async function onAcceptCrewInvite() {
   try {
     const inviteId = await getCrewInviteId()
     if (!inviteId) {
-      pushToast({ title: 'This invite is no longer available.', tone: 'error' })
+      crewInviteLocalState.value = 'declined'
       return
     }
     await crewApi.acceptInvite(inviteId)
@@ -721,7 +828,7 @@ async function onDeclineCrewInvite() {
   try {
     const inviteId = await getCrewInviteId()
     if (!inviteId) {
-      pushToast({ title: 'This invite is no longer available.', tone: 'error' })
+      crewInviteLocalState.value = 'declined'
       return
     }
     await crewApi.declineInvite(inviteId)
@@ -760,7 +867,7 @@ async function onAcceptGroupInvite() {
   if (groupInviteInflight.value) return
   const inviteId = notification.value.subjectCommunityGroupInviteId
   if (!inviteId) {
-    pushToast({ title: 'This invite is no longer available.', tone: 'error' })
+    groupInviteLocalState.value = 'declined'
     return
   }
   groupInviteInflight.value = true
@@ -790,7 +897,7 @@ async function onDeclineGroupInvite() {
   if (groupInviteInflight.value) return
   const inviteId = notification.value.subjectCommunityGroupInviteId
   if (!inviteId) {
-    pushToast({ title: 'This invite is no longer available.', tone: 'error' })
+    groupInviteLocalState.value = 'declined'
     return
   }
   groupInviteInflight.value = true

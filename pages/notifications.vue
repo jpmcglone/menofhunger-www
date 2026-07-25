@@ -82,8 +82,19 @@
               aria-hidden="true"
             />
             <div class="relative z-[2]">
+              <!-- Flat repost: "X reposted" header + the original post content -->
+              <template v-if="item.type === 'single' && notificationIsFlatRepost(item.notification)">
+                <AppPostRepostHeader :post="item.notification.post!" />
+                <AppPostRow
+                  :post="item.notification.post!.repostedPost!"
+                  :clickable="false"
+                  :highlight="stickyHighlightedItemKeys.has(itemKey(item))"
+                  no-padding-top
+                  no-border-bottom
+                />
+              </template>
               <AppPostRow
-                v-if="item.type === 'single' && notificationShowsPostRow(item.notification)"
+                v-else-if="item.type === 'single' && notificationShowsPostRow(item.notification)"
                 :post="item.notification.post!"
                 :clickable="false"
                 :highlight="stickyHighlightedItemKeys.has(itemKey(item))"
@@ -136,7 +147,17 @@ import { closeBrowserNotificationsForHref } from '~/utils/browser-notifications'
 const POST_ROW_KINDS = new Set<NotificationKind>(['comment', 'mention', 'followed_post', 'repost'])
 
 function notificationShowsPostRow(n: Notification): boolean {
-  return Boolean(n.post && POST_ROW_KINDS.has(n.kind))
+  if (!n.post || !POST_ROW_KINDS.has(n.kind)) return false
+  // A flat repost (kind=repost, no body) only renders usefully when repostedPost is hydrated.
+  // Without it PostRow shows an empty shell; fall back to NotificationRow which shows the snippet.
+  if (n.kind === 'repost' && n.post.kind === 'repost' && !n.post.repostedPost) return false
+  return true
+}
+
+function notificationIsFlatRepost(n: Notification): boolean {
+  return Boolean(
+    n.post && n.kind === 'repost' && n.post.kind === 'repost' && n.post.repostedPost,
+  )
 }
 
 definePageMeta({

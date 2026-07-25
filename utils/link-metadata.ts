@@ -1,11 +1,48 @@
 import { isPickaxPostUrl } from '~/utils/link-utils'
 
+export type SocialPostAuthor = {
+  name: string
+  handle: string
+  avatarUrl: string | null
+  verified: boolean
+}
+
+export type SocialPostMedia = {
+  type: 'image' | 'video'
+  url: string
+  previewUrl: string | null
+  width: number | null
+  height: number | null
+  alt: string | null
+}
+
+export type SocialPostEmbed = {
+  id: string
+  url: string
+  text: string
+  createdAt: string | null
+  author: SocialPostAuthor
+  media: SocialPostMedia[]
+}
+
+export type SocialPostMetadata = SocialPostEmbed & {
+  platform: 'x'
+  quote: SocialPostEmbed | null
+  metrics: {
+    replies: number | null
+    reposts: number | null
+    likes: number | null
+    views: number | null
+  }
+}
+
 export type LinkMetadata = {
   url: string
   title: string | null
   description: string | null
   imageUrl: string | null
   siteName: string | null
+  socialPost: SocialPostMetadata | null
 }
 
 export type GetLinkMetadataOptions = {
@@ -139,7 +176,7 @@ export async function getLinkMetadata(url: string, opts: GetLinkMetadataOptions 
         const { apiFetchData } = useApiClient()
         const data = await apiFetchData<LinkMetadata | null>('/link-metadata', {
           method: 'GET',
-          query: { url: u.toString() },
+          query: { url: u.toString(), v: 2 },
           signal: opts.signal,
           mohDedupe: true,
         })
@@ -150,6 +187,7 @@ export async function getLinkMetadata(url: string, opts: GetLinkMetadataOptions 
             description: normalizeText(data.description),
             siteName: normalizeText(data.siteName),
             imageUrl: normalizeText(data.imageUrl),
+            socialPost: data.socialPost ?? null,
           }
           // Weak Pickax OG (favicon / "X posted") — keep trying client enrichers.
           if (!(isPickaxPostUrl(meta.url) && !isEnrichedPickaxMeta(meta))) {
@@ -181,6 +219,7 @@ export async function getLinkMetadata(url: string, opts: GetLinkMetadataOptions 
               description: normalizeText(json.data.description),
               siteName: normalizeText(json.data.publisher) ?? normalizeText(json.data.author),
               imageUrl: normalizeText(img),
+              socialPost: null,
             }
             if (!(isPickaxPostUrl(meta.url) && !isEnrichedPickaxMeta(meta))) {
               cache.set(key, meta)
@@ -214,6 +253,7 @@ export async function getLinkMetadata(url: string, opts: GetLinkMetadataOptions 
         description: null,
         siteName: normalizeText(u.hostname.replace(/^www\./, '')),
         imageUrl,
+        socialPost: null,
       }
 
       if (isPickaxPostUrl(u.toString())) {
@@ -233,6 +273,7 @@ export async function getLinkMetadata(url: string, opts: GetLinkMetadataOptions 
           description: parsePickaxBodyFromJina(md),
           siteName: handle ?? meta.siteName,
           imageUrl: avatarUrl?.includes('img.pickax.com') ? avatarUrl : null,
+          socialPost: null,
         }
       }
 

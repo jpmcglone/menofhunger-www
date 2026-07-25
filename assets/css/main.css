@@ -444,22 +444,9 @@ input[type="reset"] {
   .moh-surface-3 {
     background-color: var(--moh-surface-3);
   }
-  .moh-pickax-preview {
-    background-color: var(--moh-surface-1);
-  }
-  html.dark .moh-pickax-preview {
-    /* Pickax's own `bg-dark2` post surface. */
-    background-color: #222a39;
-  }
   @media (hover: hover) {
     .moh-surface-hover:hover {
       background-color: var(--moh-surface-hover);
-    }
-    .moh-pickax-preview:hover {
-      background-color: var(--moh-surface-hover);
-    }
-    html.dark .moh-pickax-preview:hover {
-      background-color: #293347;
     }
   }
 

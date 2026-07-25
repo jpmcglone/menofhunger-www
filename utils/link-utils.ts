@@ -213,11 +213,19 @@ export function isPickaxPostUrl(url: string): boolean {
   }
 }
 
-/** Bundled Pickax wordmark for deliberate integration chrome in previews. */
-export const PICKAX_LOGO_SRC = '/images/integrations/pickax.png'
-
-/** Official Pickax CDN/hotlink-friendly logo (same asset as their favicon). */
-export const PICKAX_LOGO_REMOTE_URL = 'https://pickax.com/favicon.png'
+/** True for X/Twitter post permalinks (`/:handle/status/:id`). */
+export function isXPostUrl(url: string): boolean {
+  try {
+    const u = new URL(url)
+    const host = u.hostname.replace(/^(?:www|mobile)\./i, '').toLowerCase()
+    if ((u.protocol !== 'http:' && u.protocol !== 'https:') || !['x.com', 'twitter.com'].includes(host)) {
+      return false
+    }
+    return /^\/[^/]+\/status\/\d+(?:\/.*)?$/i.test(u.pathname)
+  } catch {
+    return false
+  }
+}
 
 /** True if the post body (with no media) would show a video embed (YouTube or Rumble). */
 export function postBodyHasVideoEmbed(body: string, hasMedia: boolean): boolean {

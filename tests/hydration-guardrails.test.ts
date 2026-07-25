@@ -285,6 +285,16 @@ describe('hydration guardrails (structural)', () => {
     expect(body).toMatch(/everVisible/)
   })
 
+  it('keeps X post previews metadata-driven and backed by a real external anchor', () => {
+    const card = readFromRepo('components/app/XPostPreviewCard.vue')
+    const postPreview = readFromRepo('components/app/post/PostRowLinkPreview.vue')
+    const chatPreview = readFromRepo('components/app/chat/ChatMessageRichBody.vue')
+    expect(card).toMatch(/<a[\s\S]*?:href="href"/)
+    expect(card).not.toMatch(/import\.meta\.client|window\.|document\./)
+    expect(postPreview).toMatch(/linkMeta\.value\?\.socialPost/)
+    expect(chatPreview).toMatch(/linkMeta\.value\?\.socialPost/)
+  })
+
   // ---- Marv (AI helper) guardrails ----------------------------------------
   //
   // These tests encode invariants that prevent SSR/client drift on the chat
@@ -384,6 +394,26 @@ describe('hydration guardrails (structural)', () => {
     // No assignment of the header — only a comment mentioning it is acceptable.
     expect(composer).not.toMatch(/\['x-marv-mode'\]\s*=/)
     expect(composer).not.toMatch(/showMarvModePill/)
+  })
+
+  it('renders flat reposts correctly in the notifications page (repost header + original post)', () => {
+    const page = readFromRepo('pages/notifications.vue')
+    // notificationIsFlatRepost guard must be present
+    expect(page).toMatch(/notificationIsFlatRepost/)
+    // The repost header component must be used for flat reposts
+    expect(page).toMatch(/AppPostRepostHeader/)
+    // notificationShowsPostRow must fall back for flat reposts without repostedPost
+    expect(page).toMatch(/n\.post\.repostedPost/)
+  })
+
+  it('NotificationGroupRow avatar cluster is content-sized (no fixed-width rail that causes overflow)', () => {
+    const row = readFromRepo('components/app/NotificationGroupRow.vue')
+    // Must NOT have the old fixed w-[5.25rem] rail that was too narrow
+    expect(row).not.toMatch(/w-\[5\.25rem\]/)
+    // Must NOT have overflow-visible on the avatar container (avatars should stay inside their column)
+    expect(row).not.toMatch(/overflow-visible/)
+    // Must still have the avatar cap (two actors + optional overflow chip)
+    expect(row).toMatch(/actors\.slice\(0,\s*2\)/)
   })
 })
 

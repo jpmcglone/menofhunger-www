@@ -377,6 +377,7 @@ export function useNotifications() {
     }
     if (n.kind === 'coin_transfer') return 'text-amber-500'
     if (n.kind === 'generic') return 'text-gray-500 dark:text-gray-400'
+    if (n.kind === 'marv_not_in_group') return 'text-violet-500'
     if (n.kind === 'poll_results_ready') {
       const v = n.subjectPostVisibility ?? null
       if (v === 'premiumOnly') return 'text-[var(--moh-premium)]'
@@ -421,7 +422,7 @@ export function useNotifications() {
       case 'group_join_request':
         return 'requests to join your group'
       case 'crew_invite_received':
-        return 'invited you to their crew'
+        return n.subjectCrewName ? `invited you to ${n.subjectCrewName}` : 'invited you to their crew'
       case 'crew_invite_accepted':
         return 'accepted your crew invite'
       case 'crew_invite_declined':
@@ -443,7 +444,7 @@ export function useNotifications() {
       case 'crew_disbanded':
         return 'Your crew was disbanded'
       case 'community_group_invite_received':
-        return 'invited you to their group'
+        return n.subjectGroupName ? `invited you to ${n.subjectGroupName}` : 'invited you to their group'
       case 'community_group_invite_accepted':
         return 'accepted your group invite'
       case 'community_group_invite_declined':
@@ -451,15 +452,15 @@ export function useNotifications() {
       case 'community_group_invite_cancelled':
         return 'cancelled their group invite'
       case 'community_group_member_joined':
-        return 'joined the group'
+        return n.subjectGroupName ? `joined ${n.subjectGroupName}` : 'joined the group'
       case 'community_group_join_approved':
-        return 'Your join request was approved'
+        return n.subjectGroupName ? `Your join request for ${n.subjectGroupName} was approved` : 'Your join request was approved'
       case 'community_group_join_rejected':
-        return 'Your join request was not accepted'
+        return n.subjectGroupName ? `Your join request for ${n.subjectGroupName} was not accepted` : 'Your join request was not accepted'
       case 'community_group_member_removed':
-        return 'You were removed from a group'
+        return n.subjectGroupName ? `You were removed from ${n.subjectGroupName}` : 'You were removed from a group'
       case 'community_group_disbanded':
-        return 'A group you were in was disbanded'
+        return n.subjectGroupName ? `${n.subjectGroupName} was disbanded` : 'A group you were in was disbanded'
       case 'marv_not_in_group':
         return n.title ?? '@marv is not in this group'
       case 'message':
@@ -518,7 +519,7 @@ export function useNotifications() {
       case 'crew_disbanded':
         return 'tabler:shield-check'
       case 'marv_not_in_group':
-        return 'tabler:robot-off'
+        return 'tabler:sparkles'
       case 'generic':
         return 'tabler:bell'
       default:
