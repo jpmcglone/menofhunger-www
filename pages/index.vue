@@ -28,6 +28,15 @@
             <NuxtLink to="/about" class="text-sm font-medium text-gray-600 transition-colors hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-50">About</NuxtLink>
             <NuxtLink to="/roadmap" class="text-sm font-medium text-gray-600 transition-colors hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-50">Roadmap</NuxtLink>
             <NuxtLink to="/articles" class="text-sm font-medium text-gray-600 transition-colors hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-50">Articles</NuxtLink>
+            <a
+              href="https://merch.menofhunger.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="inline-flex items-center gap-1 rounded-full bg-white px-3.5 py-1.5 text-sm font-semibold text-gray-900 transition-opacity hover:opacity-85"
+            >
+              Merch
+              <Icon name="tabler:arrow-up-right" class="text-xs opacity-60" aria-hidden="true" />
+            </a>
           </nav>
 
           <!-- Right: Log in + Join now -->
@@ -456,6 +465,45 @@
           </div>
         </section>
 
+        <!-- ── Merch ──────────────────────────────────────────────────── -->
+        <section class="mt-16 sm:mt-20">
+          <a
+            href="https://merch.menofhunger.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="group relative flex flex-col items-center justify-center overflow-hidden rounded-2xl px-8 py-12 text-center sm:flex-row sm:justify-between sm:py-10 sm:px-12 sm:text-left"
+            style="background: linear-gradient(135deg, #1c1410 0%, #2d1f0e 50%, #1a1208 100%)"
+          >
+            <!-- Subtle grain overlay -->
+            <div class="pointer-events-none absolute inset-0 opacity-[0.03]" style="background-image: url('data:image/svg+xml,%3Csvg viewBox%3D%220 0 256 256%22 xmlns%3D%22http%3A//www.w3.org/2000/svg%22%3E%3Cfilter id%3D%22n%22%3E%3CfeTurbulence type%3D%22fractalNoise%22 baseFrequency%3D%220.9%22 numOctaves%3D%224%22 stitchTiles%3D%22stitch%22/%3E%3C/filter%3E%3Crect width%3D%22100%25%22 height%3D%22100%25%22 filter%3D%22url(%23n)%22/%3E%3C/svg%3E')" aria-hidden="true" />
+            <!-- Warm glow -->
+            <div class="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full blur-3xl" style="background: radial-gradient(circle, rgba(180,100,20,0.35), transparent 70%)" aria-hidden="true" />
+
+            <!-- Left: copy -->
+            <div class="relative z-10">
+              <div class="mb-1 text-[10px] font-bold uppercase tracking-[0.2em]" style="color: #c8882a">
+                Official Merch
+              </div>
+              <h2 class="text-2xl font-black leading-tight text-white sm:text-3xl">
+                Wear what you stand for.
+              </h2>
+              <p class="mt-2 text-sm leading-relaxed" style="color: rgba(255,255,255,0.55)">
+                Men of Hunger gear. Built for men who show up.
+              </p>
+            </div>
+
+            <!-- Right: CTA -->
+            <div class="relative z-10 mt-6 shrink-0 sm:mt-0 sm:ml-8">
+              <span
+                class="inline-flex items-center gap-2 rounded-full bg-white px-6 py-2.5 text-sm font-bold text-gray-900 transition-all duration-150 group-hover:brightness-95"
+              >
+                Shop now
+                <Icon name="tabler:arrow-up-right" class="text-base" aria-hidden="true" />
+              </span>
+            </div>
+          </a>
+        </section>
+
         <!-- ── Bottom CTA ─────────────────────────────────────────────── -->
         <section class="mt-16 sm:mt-20">
           <div class="relative overflow-hidden rounded-2xl bg-gray-100 text-center dark:bg-gray-950">
@@ -522,6 +570,14 @@
             <NuxtLink to="/roadmap" class="font-semibold text-gray-700 hover:underline dark:text-gray-200">Roadmap</NuxtLink>
             <NuxtLink to="/status" class="font-semibold text-gray-700 hover:underline dark:text-gray-200">Status</NuxtLink>
             <NuxtLink to="/feeds" class="font-semibold text-gray-700 hover:underline dark:text-gray-200">RSS</NuxtLink>
+            <a
+              href="https://merch.menofhunger.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="font-semibold text-amber-700 hover:underline dark:text-amber-400"
+            >
+              Merch
+            </a>
             <a
               :href="siteConfig.social.xUrl"
               target="_blank"

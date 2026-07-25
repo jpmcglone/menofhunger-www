@@ -169,6 +169,26 @@
             <AppAdSlot placement="rail" />
           </ClientOnly>
 
+          <!-- Merch card -->
+          <a
+            href="https://merch.menofhunger.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="group relative block overflow-hidden rounded-2xl px-4 py-4 transition-opacity duration-150 hover:opacity-90"
+            style="background: linear-gradient(135deg, #1c1410 0%, #2d1f0e 60%, #1a1208 100%)"
+          >
+            <div class="pointer-events-none absolute -right-6 -top-6 h-24 w-24 rounded-full blur-2xl" style="background: radial-gradient(circle, rgba(200,136,42,0.4), transparent 70%)" aria-hidden="true" />
+            <div class="relative z-10">
+              <div class="text-[10px] font-bold uppercase tracking-[0.18em]" style="color: #c8882a">Official Merch</div>
+              <div class="mt-0.5 text-sm font-bold leading-snug text-white">Wear what you stand for.</div>
+              <div class="mt-0.5 text-xs" style="color: rgba(255,255,255,0.5)">Men of Hunger gear.</div>
+              <div class="mt-3 flex items-center justify-center gap-1.5 rounded-full bg-white py-1.5 text-sm font-bold text-gray-900 transition-opacity duration-150 group-hover:opacity-90">
+                Shop now
+                <Icon name="tabler:arrow-up-right" class="text-xs" aria-hidden="true" />
+              </div>
+            </div>
+          </a>
+
           <Card class="moh-card moh-card-matte !rounded-2xl">
             <template #title>
               <span class="moh-h2">Groups</span>
