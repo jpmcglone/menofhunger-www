@@ -16,6 +16,8 @@ export type AuthUser = {
   name?: string | null
   bio?: string | null
   website?: string | null
+  xUsername?: string | null
+  pickaxUsername?: string | null
   locationInput?: string | null
   locationDisplay?: string | null
   locationZip?: string | null

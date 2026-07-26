@@ -75,6 +75,7 @@
             <NuxtLink to="/privacy" class="font-semibold text-gray-700 hover:underline dark:text-gray-200">Privacy</NuxtLink>
             <NuxtLink to="/terms" class="font-semibold text-gray-700 hover:underline dark:text-gray-200">Terms</NuxtLink>
             <NuxtLink to="/feeds" class="font-semibold text-gray-700 hover:underline dark:text-gray-200">RSS</NuxtLink>
+            <NuxtLink to="/api" class="font-semibold text-gray-700 hover:underline dark:text-gray-200">API</NuxtLink>
             <a
               v-if="iosAppLink.isConfigured"
               :href="iosAppLink.url"

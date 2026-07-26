@@ -457,9 +457,23 @@ export type BrowserHandoffDto = {
   expiresAt: string;
 };
 
+/**
+ * Present on `GET /auth/me` when the current session was created by a site admin
+ * impersonating the signed-in user. Describes the admin really driving the session,
+ * so clients can show an exit affordance.
+ */
+export type ImpersonationDto = {
+  adminUserId: string;
+  adminUsername: string | null;
+  adminName: string | null;
+  adminAvatarUrl: string | null;
+};
+
 export type AuthMeDto = UserDto & {
   postCount: number | null;
   articleCount: number | null;
+  /** Non-null only while a site admin is impersonating this user. */
+  impersonation: ImpersonationDto | null;
   notificationUndeliveredCount: number;
   notificationUnreadCommentCount: number;
   groupsUnread: {
@@ -1458,6 +1472,8 @@ export type PublicProfileDto = {
   name: string | null;
   bio: string | null;
   website: string | null;
+  xUsername: string | null;
+  pickaxUsername: string | null;
   locationDisplay: string | null;
   locationZip: string | null;
   locationCity: string | null;
@@ -2132,6 +2148,8 @@ export type UserDto = {
   name: string | null;
   bio: string | null;
   website: string | null;
+  xUsername: string | null;
+  pickaxUsername: string | null;
   locationInput: string | null;
   locationDisplay: string | null;
   locationZip: string | null;
@@ -2424,6 +2442,8 @@ export type NotificationDto = {
   subjectGroupSlug: string | null;
   /** Display name of the subject group (only populated for group_join_request notifications). */
   subjectGroupName: string | null;
+  /** Avatar URL of the subject group (populated for marv_not_in_group and group_join_request). */
+  subjectGroupAvatarUrl: string | null;
   /** Crew this notification is about (set for any crew_* kind that has a real crew). */
   subjectCrewId: string | null;
   /**

@@ -206,6 +206,32 @@
         </template>
       </AppFormField>
 
+      <AppFormField label="X (Twitter)">
+        <InputText
+          v-model="editXUsername"
+          class="w-full"
+          :maxlength="200"
+          placeholder="@yourhandle"
+          autocomplete="off"
+        />
+        <template #helper>
+          Optional. Leave blank to hide. You can paste your full profile URL.
+        </template>
+      </AppFormField>
+
+      <AppFormField label="Pickax">
+        <InputText
+          v-model="editPickaxUsername"
+          class="w-full"
+          :maxlength="200"
+          placeholder="@yourhandle"
+          autocomplete="off"
+        />
+        <template #helper>
+          Optional. Leave blank to hide. You can paste your full profile URL.
+        </template>
+      </AppFormField>
+
       <AppInlineAlert v-if="editError" severity="danger">
         {{ editError }}
       </AppInlineAlert>
@@ -225,6 +251,8 @@ type PublicProfile = {
   name: string | null
   bio: string | null
   website?: string | null
+  xUsername?: string | null
+  pickaxUsername?: string | null
   locationDisplay?: string | null
   locationZip?: string | null
   locationCity?: string | null
@@ -252,7 +280,7 @@ const emit = defineEmits<{
   (e: 'update:modelValue', v: boolean): void
   (e: 'patchProfile', patch: Partial<Pick<
     PublicProfile,
-    'name' | 'bio' | 'avatarUrl' | 'bannerUrl' | 'website' | 'locationZip' | 'locationDisplay' | 'locationCity' | 'locationCounty' | 'locationState' | 'locationCountry'
+    'name' | 'bio' | 'avatarUrl' | 'bannerUrl' | 'website' | 'xUsername' | 'pickaxUsername' | 'locationZip' | 'locationDisplay' | 'locationCity' | 'locationCounty' | 'locationState' | 'locationCountry'
   >>): void
 }>()
 
@@ -270,6 +298,8 @@ const editName = ref('')
 const editBio = ref('')
 const editLocationQuery = ref('')
 const editWebsite = ref('')
+const editXUsername = ref('')
+const editPickaxUsername = ref('')
 const nameCharCount = useFormCharCount(editName, 50)
 const bioCharCount = useFormCharCount(editBio, 160)
 const editError = ref<string | null>(null)
@@ -514,6 +544,8 @@ watch(
     editBio.value = props.profile?.bio || ''
     editLocationQuery.value = (props.profile?.locationZip ?? '') || ''
     editWebsite.value = (props.profile?.website ?? '') || ''
+    editXUsername.value = (props.profile?.xUsername ?? '') || ''
+    editPickaxUsername.value = (props.profile?.pickaxUsername ?? '') || ''
     clearAvatarCropState()
     clearBannerCropState()
     clearPendingAvatar()
@@ -637,12 +669,16 @@ const { submit: saveProfile, submitting: saving } = useFormSubmit(
           bio: editBio.value,
           locationQuery: editLocationQuery.value,
           website: editWebsite.value,
+          xUsername: editXUsername.value,
+          pickaxUsername: editPickaxUsername.value,
         }
       })
       emit('patchProfile', {
         name: result?.name ?? null,
         bio: result?.bio ?? null,
         website: result?.website ?? null,
+        xUsername: result?.xUsername ?? null,
+        pickaxUsername: result?.pickaxUsername ?? null,
         locationZip: result?.locationZip ?? null,
         locationDisplay: result?.locationDisplay ?? null,
         locationCity: result?.locationCity ?? null,
@@ -658,6 +694,8 @@ const { submit: saveProfile, submitting: saving } = useFormSubmit(
           bio: editBio.value,
           locationQuery: editLocationQuery.value,
           website: editWebsite.value,
+          xUsername: editXUsername.value,
+          pickaxUsername: editPickaxUsername.value,
         }
       })
       const u = result.user
@@ -666,6 +704,8 @@ const { submit: saveProfile, submitting: saving } = useFormSubmit(
         name: u?.name ?? null,
         bio: u?.bio ?? null,
         website: u?.website ?? null,
+        xUsername: u?.xUsername ?? null,
+        pickaxUsername: u?.pickaxUsername ?? null,
         locationZip: u?.locationZip ?? null,
         locationDisplay: u?.locationDisplay ?? null,
         locationCity: u?.locationCity ?? null,

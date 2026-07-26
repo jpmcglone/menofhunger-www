@@ -14,6 +14,10 @@ const PAGES = [
   { path: '/who-to-follow',changefreq: 'daily',   priority: '0.6' },
   { path: '/tiers',        changefreq: 'monthly', priority: '0.6' },
   { path: '/about',        changefreq: 'monthly', priority: '0.6' },
+  { path: '/api',          changefreq: 'monthly', priority: '0.5' },
+  { path: '/api/posts',    changefreq: 'monthly', priority: '0.4' },
+  { path: '/api/profiles', changefreq: 'monthly', priority: '0.4' },
+  { path: '/api/errors',   changefreq: 'monthly', priority: '0.3' },
   { path: '/terms',        changefreq: 'yearly',  priority: '0.3' },
   { path: '/privacy',      changefreq: 'yearly',  priority: '0.3' },
 ]

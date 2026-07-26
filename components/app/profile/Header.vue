@@ -374,6 +374,20 @@
           <span class="truncate max-w-[18rem]">{{ websiteLabel }}</span>
         </a>
 
+        <a
+          v-for="link in socialLinks"
+          :key="link.network"
+          :href="link.href"
+          target="_blank"
+          rel="noopener noreferrer nofollow"
+          v-tooltip.bottom="tinyTooltip(link.label)"
+          class="inline-flex items-center gap-1.5 min-w-0 text-[var(--moh-link)] hover:underline underline-offset-2"
+        >
+          <Icon v-if="link.icon" :name="link.icon" class="shrink-0 text-gray-600 dark:text-gray-300" aria-hidden="true" />
+          <img v-else :src="link.image!" class="h-4 w-4 shrink-0 rounded-[3px]" alt="" aria-hidden="true" />
+          <span class="truncate max-w-[12rem]">@{{ link.handle }}</span>
+        </a>
+
         <div v-if="birthdayLabel" class="inline-flex items-center gap-1.5 min-w-0">
           <Icon name="tabler:cake" class="shrink-0" aria-hidden="true" />
           <span class="truncate">Born {{ birthdayLabel }}</span>
@@ -506,6 +520,7 @@
 import AppImg from '~/components/app/AppImg.vue'
 import type { FollowRelationship, NudgeState, PublicProfile } from '~/types/api'
 import { formatDateTime, formatListTime } from '~/utils/time-format'
+import { buildSocialLinks } from '~/utils/social-links'
 import { tinyTooltip } from '~/utils/tiny-tooltip'
 import type { MenuItem } from 'primevue/menuitem'
 import { useUserOverlay } from '~/composables/useUserOverlay'
@@ -632,6 +647,14 @@ const websiteHref = computed(() => {
   const s = (profile.value as any)?.website ?? null
   const v = typeof s === 'string' ? s.trim() : ''
   return v ? v : null
+})
+
+const socialLinks = computed(() => {
+  const p = profile.value as any
+  return buildSocialLinks({
+    xUsername: p?.xUsername ?? null,
+    pickaxUsername: p?.pickaxUsername ?? null,
+  })
 })
 
 const websiteLabel = computed(() => {

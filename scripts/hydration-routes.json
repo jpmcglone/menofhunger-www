@@ -13,6 +13,10 @@
     "/explore",
     "/articles",
     "/feeds",
+    "/api",
+    "/api/posts",
+    "/api/profiles",
+    "/api/errors",
     "/u/this-user-does-not-exist",
     "/p/this-post-does-not-exist",
     "/a/this-article-does-not-exist"

@@ -1269,7 +1269,7 @@ function onOpenProfileImage(payload: {
 
 function patchPublicProfile(patch: Partial<Pick<
   PublicProfile,
-  'name' | 'bio' | 'avatarUrl' | 'bannerUrl' | 'website' | 'locationZip' | 'locationDisplay' | 'locationCity' | 'locationCounty' | 'locationState' | 'locationCountry'
+  'name' | 'bio' | 'avatarUrl' | 'bannerUrl' | 'website' | 'xUsername' | 'pickaxUsername' | 'locationZip' | 'locationDisplay' | 'locationCity' | 'locationCounty' | 'locationState' | 'locationCountry'
 >>) {
   if (!data.value) return
   data.value = { ...(data.value as PublicProfile), ...patch }

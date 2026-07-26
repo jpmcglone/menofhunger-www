@@ -382,6 +382,13 @@ export default defineNuxtConfig({
     '/a/**': { ssr: true, headers: { 'cache-control': 'no-store' } },
     '/articles': { ssr: true, headers: { 'cache-control': 'no-store' } },
 
+    // Public API docs. Listed as exact paths (not '/api/**') on purpose: @nuxt/icon
+    // serves its runtime icon bundle from /api/_nuxt_icon/* and must keep its own caching.
+    '/api': { ssr: true, headers: { 'cache-control': 'no-store' } },
+    '/api/posts': { ssr: true, headers: { 'cache-control': 'no-store' } },
+    '/api/profiles': { ssr: true, headers: { 'cache-control': 'no-store' } },
+    '/api/errors': { ssr: true, headers: { 'cache-control': 'no-store' } },
+
     // Static content: prerender to ship ready-to-serve HTML at build time.
     '/terms': { prerender: true },
     '/privacy': { prerender: true },
