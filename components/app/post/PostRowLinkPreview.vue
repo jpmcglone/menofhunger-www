@@ -73,7 +73,7 @@
       </div>
     </NuxtLink>
 
-    <XPostPreviewCard
+    <AppXPostPreviewCard
       v-else-if="showLinkPreview && xPostMeta && previewLink"
       :post="xPostMeta"
       :href="previewLink"

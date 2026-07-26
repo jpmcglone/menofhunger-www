@@ -1,131 +1,68 @@
 <template>
   <AppPageContent class="h-full min-h-0" bottom="standard">
-  <div class="h-full min-h-0">
-    <template v-if="isFullWidthRoute">
-      <main class="h-full overflow-y-auto">
-        <NuxtPage />
-      </main>
-    </template>
-
-    <div v-else class="grid h-full min-h-0 grid-cols-1 md:grid-cols-[22rem_1fr]">
-      <!-- Left: admin areas -->
-      <aside class="hidden md:block h-full overflow-y-auto border-r moh-border">
-        <div class="py-4">
-          <div class="px-4 text-lg font-semibold">Admin</div>
-          <div class="mt-4 divide-y divide-gray-200 dark:divide-zinc-800">
-            <NuxtLink to="/admin/site-settings" :class="areaRowClass('site-settings')">
-              <div class="flex items-center gap-3">
-                <Icon name="tabler:settings" class="text-lg" aria-hidden="true" />
-                <div class="min-w-0 flex-1">
-                  <div class="font-semibold truncate">Site settings</div>
-                  <div class="text-sm text-gray-600 dark:text-gray-300 truncate">Configure post rate limits</div>
-                </div>
-              </div>
-            </NuxtLink>
-
-            <NuxtLink to="/admin/users" :class="areaRowClass('users')">
-              <div class="flex items-center gap-3">
-                <Icon name="tabler:users" class="text-lg" aria-hidden="true" />
-                <div class="min-w-0 flex-1">
-                  <div class="font-semibold truncate">Users</div>
-                  <div class="text-sm text-gray-600 dark:text-gray-300 truncate">Search and edit users</div>
-                </div>
-              </div>
-            </NuxtLink>
-
-            <NuxtLink to="/admin/verification" :class="areaRowClass('verification')">
-              <div class="flex items-center gap-3">
-                <Icon name="tabler:rosette-discount-check" class="text-lg" aria-hidden="true" />
-                <div class="min-w-0 flex-1">
-                  <div class="font-semibold truncate">Verification</div>
-                  <div class="text-sm text-gray-600 dark:text-gray-300 truncate">Review pending verification requests</div>
-                </div>
-              </div>
-            </NuxtLink>
-
-            <NuxtLink to="/admin/media-review" :class="areaRowClass('media-review')">
-              <div class="flex items-center gap-3">
-                <Icon name="tabler:photo" class="text-lg" aria-hidden="true" />
-                <div class="min-w-0 flex-1">
-                  <div class="font-semibold truncate">Media review</div>
-                  <div class="text-sm text-gray-600 dark:text-gray-300 truncate">Review and delete uploaded images and videos</div>
-                </div>
-              </div>
-            </NuxtLink>
-
-            <NuxtLink to="/admin/feedback" :class="areaRowClass('feedback')">
-              <div class="flex items-center gap-3">
-                <Icon name="tabler:inbox" class="text-lg" aria-hidden="true" />
-                <div class="min-w-0 flex-1">
-                  <div class="font-semibold truncate">Feedback</div>
-                  <div class="text-sm text-gray-600 dark:text-gray-300 truncate">Triaged feedback from users</div>
-                </div>
-              </div>
-            </NuxtLink>
-
-            <NuxtLink to="/admin/reports" :class="areaRowClass('reports')">
-              <div class="flex items-center gap-3">
-                <Icon name="tabler:flag" class="text-lg" aria-hidden="true" />
-                <div class="min-w-0 flex-1">
-                  <div class="font-semibold truncate">Reports</div>
-                  <div class="text-sm text-gray-600 dark:text-gray-300 truncate">Review reported posts and users</div>
-                </div>
-              </div>
-            </NuxtLink>
-
-            <NuxtLink to="/admin/search" :class="areaRowClass('search')">
-              <div class="flex items-center gap-3">
-                <Icon name="tabler:search" class="text-lg" aria-hidden="true" />
-                <div class="min-w-0 flex-1">
-                  <div class="font-semibold truncate">Search</div>
-                  <div class="text-sm text-gray-600 dark:text-gray-300 truncate">Recent user searches</div>
-                </div>
-              </div>
-            </NuxtLink>
-
-            <NuxtLink to="/admin/jobs" :class="areaRowClass('jobs')">
-              <div class="flex items-center gap-3">
-                <Icon name="tabler:terminal-2" class="text-lg" aria-hidden="true" />
-                <div class="min-w-0 flex-1">
-                  <div class="font-semibold truncate">Jobs</div>
-                  <div class="text-sm text-gray-600 dark:text-gray-300 truncate">Run maintenance and backfill jobs</div>
-                </div>
-              </div>
-            </NuxtLink>
-
-            <NuxtLink to="/admin/analytics" :class="areaRowClass('analytics')">
-              <div class="flex items-center gap-3">
-                <Icon name="tabler:chart-bar" class="text-lg" aria-hidden="true" />
-                <div class="min-w-0 flex-1">
-                  <div class="font-semibold truncate">Analytics</div>
-                  <div class="text-sm text-gray-600 dark:text-gray-300 truncate">KPIs, engagement trends, and monetization</div>
-                </div>
-              </div>
-            </NuxtLink>
-
-            <NuxtLink to="/admin/marv" :class="areaRowClass('marv')">
-              <div class="flex items-center gap-3">
-                <Icon name="tabler:robot" class="text-lg" aria-hidden="true" />
-                <div class="min-w-0 flex-1">
-                  <div class="font-semibold truncate">M.A.R.V.</div>
-                  <div class="text-sm text-gray-600 dark:text-gray-300 truncate">AI helper config, usage, and cost</div>
-                </div>
-              </div>
-            </NuxtLink>
-          </div>
-        </div>
-      </aside>
-
-      <!-- Right: active admin route -->
-      <main class="h-full overflow-y-auto">
-        <!-- On desktop, the left pane is the "admin home"; keep the right pane empty on `/admin`. -->
-        <!-- On mobile, the left pane is hidden, so `/admin` should still render its contents. -->
-        <div :class="route.path === '/admin' ? 'md:hidden' : ''">
+    <div class="h-full min-h-0">
+      <template v-if="isFullWidthRoute">
+        <main class="h-full overflow-y-auto">
           <NuxtPage />
-        </div>
-      </main>
+        </main>
+      </template>
+
+      <div v-else class="grid h-full min-h-0 grid-cols-1 md:grid-cols-[22rem_1fr]">
+        <!-- Desktop sidebar -->
+        <aside class="hidden md:block h-full overflow-y-auto border-r moh-border">
+          <div class="py-4">
+            <div class="px-4 text-lg font-semibold">Admin</div>
+            <div class="mt-4 divide-y divide-gray-200 dark:divide-zinc-800">
+              <NuxtLink
+                v-for="item in adminNavItems"
+                :key="item.key"
+                :to="item.to"
+                :class="sidebarRowClass(item)"
+              >
+                <div class="flex items-center gap-3">
+                  <Icon :name="item.icon" class="text-lg" aria-hidden="true" />
+                  <div class="min-w-0 flex-1">
+                    <div class="font-semibold truncate">{{ item.label }}</div>
+                    <div class="text-sm text-gray-600 dark:text-gray-300 truncate">{{ item.description }}</div>
+                  </div>
+                </div>
+              </NuxtLink>
+            </div>
+          </div>
+        </aside>
+
+        <!-- Right pane: child route, or the mobile-only home list -->
+        <main class="h-full overflow-y-auto">
+          <template v-if="route.path === '/admin'">
+            <!-- Desktop: right pane stays empty — sidebar is the nav -->
+            <!-- Mobile: render the full nav list as the home screen -->
+            <div class="md:hidden">
+              <AppPageHeader sticky class="px-4 pt-4 pb-3" title="Admin" description="Admin-only tools." />
+              <div class="divide-y divide-gray-200 dark:divide-zinc-800 pb-4">
+                <NuxtLink
+                  v-for="item in adminNavItems"
+                  :key="item.key"
+                  :to="item.to"
+                  class="block px-4 py-3 transition-colors hover:bg-gray-50 dark:hover:bg-zinc-900"
+                >
+                  <div class="flex items-center gap-3">
+                    <Icon :name="item.icon" class="text-lg" aria-hidden="true" />
+                    <div class="min-w-0 flex-1">
+                      <div class="font-semibold truncate">{{ item.label }}</div>
+                      <div class="text-sm text-gray-600 dark:text-gray-300 truncate">{{ item.description }}</div>
+                    </div>
+                    <Icon name="tabler:chevron-right" class="text-gray-400" aria-hidden="true" />
+                  </div>
+                </NuxtLink>
+              </div>
+            </div>
+          </template>
+          <template v-else>
+            <NuxtPage />
+          </template>
+        </main>
+      </div>
     </div>
-  </div>
   </AppPageContent>
 </template>
 
@@ -138,34 +75,39 @@ definePageMeta({
 
 const route = useRoute()
 
+const adminNavItems = [
+  { key: 'site-settings', to: '/admin/site-settings', icon: 'tabler:settings', label: 'Site settings', description: 'Configure post rate limits' },
+  { key: 'users', to: '/admin/users', icon: 'tabler:users', label: 'Users', description: 'Search and edit users' },
+  { key: 'impersonate', to: '/admin/impersonate', icon: 'tabler:eye', label: 'Log in as user', description: 'See the app exactly as a member sees it' },
+  { key: 'verification', to: '/admin/verification', icon: 'tabler:rosette-discount-check', label: 'Verification', description: 'Review pending verification requests' },
+  { key: 'media-review', to: '/admin/media-review', icon: 'tabler:photo', label: 'Media review', description: 'Review and delete uploaded images and videos' },
+  { key: 'feedback', to: '/admin/feedback', icon: 'tabler:inbox', label: 'Feedback', description: 'Triaged feedback from users' },
+  { key: 'reports', to: '/admin/reports', icon: 'tabler:flag', label: 'Reports', description: 'Review reported posts and users' },
+  { key: 'search', to: '/admin/search', icon: 'tabler:search', label: 'Search', description: 'Recent user searches' },
+  { key: 'jobs', to: '/admin/jobs', icon: 'tabler:terminal-2', label: 'Jobs', description: 'Run maintenance and backfill jobs' },
+  { key: 'analytics', to: '/admin/analytics', icon: 'tabler:chart-bar', label: 'Analytics', description: 'KPIs, engagement trends, and monetization' },
+  { key: 'marv', to: '/admin/marv', icon: 'tabler:robot', label: 'M.A.R.V.', description: 'AI helper config, usage, and cost' },
+  { key: 'affiliates', to: '/admin/affiliates', icon: 'tabler:coins', label: 'Referral Pilot', description: 'Manage pilot members and settle payouts' },
+] as const
+
+type NavKey = typeof adminNavItems[number]['key']
+
 const isFullWidthRoute = computed(() => {
   const p = route.path
   return /^\/admin\/users\/[^/]+/.test(p) && p !== '/admin/users'
 })
 
-function isActiveArea(key: 'site-settings' | 'users' | 'verification' | 'media-review' | 'feedback' | 'reports' | 'search' | 'jobs' | 'analytics' | 'marv') {
+function isActiveArea(item: { key: NavKey; to: string }) {
   const p = route.path
-  if (key === 'site-settings') return p === '/admin/site-settings'
-  if (key === 'users') return p === '/admin/users'
-  if (key === 'verification') return p === '/admin/verification'
-  if (key === 'media-review') return p === '/admin/media-review' || p.startsWith('/admin/media-review/')
-  if (key === 'feedback') return p === '/admin/feedback'
-  if (key === 'reports') return p === '/admin/reports'
-  if (key === 'search') return p === '/admin/search'
-  if (key === 'jobs') return p === '/admin/jobs'
-  if (key === 'analytics') return p === '/admin/analytics'
-  if (key === 'marv') return p === '/admin/marv'
-  return false
+  if (item.key === 'media-review') return p === item.to || p.startsWith('/admin/media-review/')
+  if (item.key === 'users') return p === item.to || p.startsWith('/admin/users/')
+  return p === item.to
 }
 
-function areaRowClass(key: 'site-settings' | 'users' | 'verification' | 'media-review' | 'feedback' | 'reports' | 'search' | 'jobs' | 'analytics' | 'marv') {
-  const active = isActiveArea(key)
+function sidebarRowClass(item: { key: NavKey; to: string }) {
   return [
     'block px-4 py-3 transition-colors',
-    active
-      ? 'moh-pane-row-active'
-      : 'hover:bg-gray-50 dark:hover:bg-zinc-900',
+    isActiveArea(item) ? 'moh-pane-row-active' : 'hover:bg-gray-50 dark:hover:bg-zinc-900',
   ]
 }
 </script>
-

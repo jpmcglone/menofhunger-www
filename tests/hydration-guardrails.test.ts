@@ -61,7 +61,7 @@ describe('hydration guardrails (structural)', () => {
     expect(home).toMatch(/useHomeLoadState\(\)/)
     expect(home).toMatch(/markInitialFeedResolved\(\)/)
     expect(rail).toMatch(/route\.path !== '\/home' \|\| initialFeedResolved\.value/)
-    expect(rail).toMatch(/<AppRightRailContent v-if="secondaryLoadsEnabled">/)
+    expect(rail).toMatch(/<AppRightRailContent v-if="hydrated && secondaryLoadsEnabled">/)
     expect(rail).toMatch(/immediate:\s*false/)
   })
 

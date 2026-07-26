@@ -124,14 +124,16 @@ export function useBadgeHydration() {
     onInviteUpdated: () => { void crewInvites.refresh() },
   }
 
-  onMounted(() => {
-    addCrewCallback(crewCallback)
-    document.addEventListener('visibilitychange', onVisibilityChange)
-  })
-  onBeforeUnmount(() => {
-    removeCrewCallback(crewCallback)
-    document.removeEventListener('visibilitychange', onVisibilityChange)
-  })
+  if (getCurrentInstance()) {
+    onMounted(() => {
+      addCrewCallback(crewCallback)
+      document.addEventListener('visibilitychange', onVisibilityChange)
+    })
+    onBeforeUnmount(() => {
+      removeCrewCallback(crewCallback)
+      document.removeEventListener('visibilitychange', onVisibilityChange)
+    })
+  }
 
   function onVisibilityChange() {
     if (document.visibilityState === 'visible' && user.value?.id) {

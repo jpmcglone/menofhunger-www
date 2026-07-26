@@ -17,7 +17,9 @@ export function useUserOverlay<T extends { id?: string | null }>(
     () => src.value,
     (u) => {
       if (!u?.id) return
-      users.upsert(u as any as Partial<PublicUserEntity>)
+      // seed, not upsert: a stale embedded snapshot (e.g. a KeepAlive'd feed row) must never
+      // overwrite a fresher value already written by realtime or a post-save upsert.
+      users.seed(u as any as Partial<PublicUserEntity>)
     },
     { immediate: true, deep: false },
   )

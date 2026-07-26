@@ -463,6 +463,8 @@ export function useNotifications() {
         return n.subjectGroupName ? `${n.subjectGroupName} was disbanded` : 'A group you were in was disbanded'
       case 'marv_not_in_group':
         return n.title ?? '@marv is not in this group'
+      case 'status_update':
+        return 'updated their status'
       case 'message':
         return 'sent you a message'
       case 'generic':
@@ -520,6 +522,8 @@ export function useNotifications() {
         return 'tabler:shield-check'
       case 'marv_not_in_group':
         return 'tabler:sparkles'
+      case 'status_update':
+        return 'tabler:message-circle'
       case 'generic':
         return 'tabler:bell'
       default:
@@ -569,6 +573,8 @@ export function useNotifications() {
         return 'Group disbanded'
       case 'marv_not_in_group':
         return 'Marv unavailable'
+      case 'status_update':
+        return 'Status'
       case 'message':
         return 'Direct message'
       default:
@@ -670,6 +676,9 @@ export function useNotifications() {
     )) {
       const hash = n.subjectArticleCommentId ? `#comment-${n.subjectArticleCommentId}` : ''
       return `/a/${encodeURIComponent(n.subjectArticleId)}${hash}`
+    }
+    if (n.kind === 'status_update' && n.actor?.username) {
+      return `/u/${encodeURIComponent(n.actor.username)}`
     }
     if (n.kind === 'marv_not_in_group' && n.actorPostId) {
       return `/p/${encodeURIComponent(n.actorPostId)}`

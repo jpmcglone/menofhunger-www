@@ -63,6 +63,8 @@
                 ref="titleBarEl"
                 class="sticky top-0 z-50 shrink-0 moh-frosted"
               >
+                <!-- Admin impersonation sits above everything: it changes who "you" are. -->
+                <AppLayoutImpersonationBanner />
                 <!-- Email verification banner should sit ABOVE the title bar (when title bar is shown). -->
                 <AppLayoutEmailUnverifiedBanner />
 
@@ -95,11 +97,11 @@
                 </div>
               </div>
 
-              <!-- If a page hides the title bar, keep the banner at the top of the scroller. -->
-              <AppLayoutEmailUnverifiedBanner
-                v-if="hideTopBar"
-                class="sticky top-0 z-50"
-              />
+              <!-- If a page hides the title bar, keep the banners at the top of the scroller. -->
+              <div v-if="hideTopBar" class="sticky top-0 z-50">
+                <AppLayoutImpersonationBanner />
+                <AppLayoutEmailUnverifiedBanner />
+              </div>
 
             <div
               ref="middleContentEl"

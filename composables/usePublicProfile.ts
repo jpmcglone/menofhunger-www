@@ -6,6 +6,7 @@ import type { PublicProfile } from '~/types/api'
 
 export async function usePublicProfile(normalizedUsername: Ref<string>) {
   const { apiFetchData } = useApiClient()
+  const usersStore = useUsersStore()
 
   const { data, error } = await useAsyncData(
     () => `public-profile:${normalizedUsername.value}`,
@@ -25,13 +26,21 @@ export async function usePublicProfile(normalizedUsername: Ref<string>) {
   const profileBanned = computed(
     () => Boolean(data.value && typeof data.value === 'object' && 'banned' in data.value && (data.value as { banned?: boolean }).banned === true)
   )
-  /** When banned, profile is null so consumers can treat it like "no profile"; use profileBanned for the message. */
+
+  /**
+   * Store-overlaid profile so realtime updates (avatar, banner, name, tier) propagate
+   * immediately without waiting for a refetch. The store is the single source of truth
+   * for mutable display fields; useAsyncData provides the initial load and static fields.
+   */
   const profile = computed((): PublicProfile | null => {
     if (profileBanned.value) return null
     const d = data.value
-    if (d && typeof d === 'object' && 'banned' in d) return null
-    return (d as PublicProfile) ?? null
+    if (!d || typeof d === 'object' && 'banned' in d) return null
+    const p = d as PublicProfile
+    if (!p?.id) return p ?? null
+    return usersStore.overlay(p) as PublicProfile
   })
+
   const notFound = computed(() => {
     if (profileBanned.value) return false
     const e = error.value as { statusCode?: number; message?: string } | null

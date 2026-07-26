@@ -2,6 +2,7 @@ import type { UsersCallback } from '~/composables/usePresence'
 import { useUsersStore } from '~/composables/useUsersStore'
 import { bumpAuthGeneration, clearAuthClientState, getAuthGeneration } from '~/composables/auth/authState'
 import { clearMohCacheAll } from '~/composables/useApiClient'
+import type { Impersonation } from '~/types/api'
 
 export type AuthUser = {
   id: string
@@ -52,6 +53,8 @@ export type AuthUser = {
   crewInviteInboxCount?: number
   postCount?: number | null
   articleCount?: number | null
+  /** Non-null only while a site admin is impersonating this user. */
+  impersonation?: Impersonation | null
 }
 
 let clientMePromise: Promise<AuthUser | null> | null = null
@@ -75,7 +78,7 @@ function isNuxtComposableContextError(e: unknown): boolean {
 }
 
 export function useAuth() {
-  const { apiFetch } = useApiClient()
+  const { apiFetch, apiFetchData } = useApiClient()
   const usersStore = useUsersStore()
 
   const user = useState<AuthUser | null>('auth-user', () => null)
@@ -291,7 +294,78 @@ export function useAuth() {
     }
   }
 
+  /**
+   * Swap client state over to a different identity after the server has already
+   * rotated the `moh_session` cookie. Shared by impersonation start and stop.
+   *
+   * The socket must be fully torn down and reopened (not `reconnect()`): the existing
+   * connection authenticated with the previous cookie and is still joined to the previous
+   * user's rooms. `emitLogout()` is deliberately NOT called — that would revoke the
+   * brand-new session server-side.
+   */
+  async function applyIdentitySwap(nextUser: AuthUser | null) {
+    bumpAuthGeneration()
+    clientMePromise = null
+
+    const { disconnect, connect } = usePresence()
+    disconnect()
+
+    clearMohCacheAll()
+    clearAuthClientState({ resetViewerCaches: true })
+
+    user.value = nextUser
+    didAttempt.value = true
+    apiUnreachable.value = false
+
+    // Re-read from the server so badge counts and impersonation metadata are authoritative.
+    // Must call me() directly — ensureLoaded() early-returns when didAttempt is true.
+    await me().catch(() => undefined)
+
+    connect()
+    await useBadgeHydration().refresh({ force: true }).catch(() => undefined)
+  }
+
+  /**
+   * Site admin only: begin acting as `username`. The API validates admin rights and
+   * rotates this client's session cookie to a session owned by the target user.
+   */
+  async function startImpersonation(username: string) {
+    const cleaned = String(username ?? '').trim().replace(/^@/, '')
+    if (!cleaned) throw new Error('Enter a username.')
+
+    const result = await apiFetchData<{ user: AuthUser }>('/admin/impersonate', {
+      method: 'POST',
+      body: { username: cleaned },
+    })
+
+    await applyIdentitySwap(result?.user ?? null)
+    return result?.user ?? null
+  }
+
+  /** Exit impersonation and return to the admin's own account. */
+  async function stopImpersonation() {
+    const result = await apiFetchData<{ user: AuthUser | null; signedOut: boolean }>(
+      '/auth/impersonate/stop',
+      { method: 'POST' },
+    )
+
+    if (result?.signedOut || !result?.user) {
+      // The admin account is gone or banned — the server cleared the cookie.
+      handleUnauthorized()
+      const { disconnect } = usePresence()
+      disconnect()
+      if (import.meta.client) await navigateTo('/login', { replace: true })
+      return null
+    }
+
+    await applyIdentitySwap(result.user)
+    return result.user
+  }
+
   const isAuthed = computed(() => Boolean(user.value?.id))
+  /** The admin driving this session, or null when this is an ordinary session. */
+  const impersonation = computed<Impersonation | null>(() => user.value?.impersonation ?? null)
+  const isImpersonating = computed(() => Boolean(impersonation.value))
   const isVerified = computed(() => (user.value?.verifiedStatus ?? 'none') !== 'none')
   const isPremium = computed(() => Boolean(user.value?.premium || user.value?.premiumPlus))
   const isPremiumPlus = computed(() => Boolean(user.value?.premiumPlus))
@@ -300,6 +374,6 @@ export function useAuth() {
   // verified-only engagement features (e.g. setting your own status).
   const isVerifiedMember = computed(() => isVerified.value || isPremium.value)
 
-  return { user, me, ensureLoaded, initAuth, logout, logoutEverywhere, handleUnauthorized, isAuthed, isVerified, isPremium, isPremiumPlus, isVerifiedMember, apiUnreachable }
+  return { user, me, ensureLoaded, initAuth, logout, logoutEverywhere, handleUnauthorized, isAuthed, isVerified, isPremium, isPremiumPlus, isVerifiedMember, apiUnreachable, impersonation, isImpersonating, startImpersonation, stopImpersonation }
 }
 

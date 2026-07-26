@@ -1698,6 +1698,19 @@ export type UserDto = {
   /** Canonical authored-content totals returned by /auth/me. */
   postCount?: number | null
   articleCount?: number | null
+  /**
+   * Non-null only while a site admin is impersonating this user ("log in as user").
+   * Describes the admin really driving the session.
+   */
+  impersonation?: Impersonation | null
+}
+
+/** Mirrors `ImpersonationDto` in menofhunger-api/src/common/dto/auth.dto.ts. */
+export type Impersonation = {
+  adminUserId: string
+  adminUsername: string | null
+  adminName: string | null
+  adminAvatarUrl: string | null
 }
 
 export type WsUsersMeUpdatedPayload = {

@@ -53,6 +53,26 @@ export function useUsersStore() {
     byId.value = { ...byId.value, [id]: merged }
   }
 
+  /**
+   * Seed: fill only keys that are not yet present in the store entry.
+   * Use for stale embedded snapshots (e.g. feed rows) so they populate the store
+   * on first mount without ever overwriting a fresher value written by upsert.
+   */
+  function seed(user: Partial<PublicUserEntity> | null | undefined) {
+    if (!user) return
+    const id = String(user?.id ?? '').trim()
+    if (!id) return
+    const prev = byId.value[id] ?? {}
+    const patch: Partial<PublicUserEntity> = {}
+    for (const k of Object.keys(user) as Array<keyof PublicUserEntity>) {
+      if (!(k in prev)) (patch as Record<string, unknown>)[k] = user[k]
+    }
+    if (Object.keys(patch).length === 0) return
+    const merged = mergeDefined(prev, patch)
+    if (shallowEqual(prev, merged)) return
+    byId.value = { ...byId.value, [id]: merged }
+  }
+
   function get(userId: string | null | undefined): Partial<PublicUserEntity> | null {
     const id = String(userId ?? '').trim()
     if (!id) return null
@@ -67,6 +87,6 @@ export function useUsersStore() {
     return { ...snapshot, ...cached } as T
   }
 
-  return { byId, upsert, get, overlay }
+  return { byId, upsert, seed, get, overlay }
 }
 

@@ -34,7 +34,7 @@
         </div>
 
         <div v-else key="rightRailDefault">
-          <AppRightRailContent v-if="secondaryLoadsEnabled">
+          <AppRightRailContent v-if="hydrated && secondaryLoadsEnabled">
           <!-- Daily quote: links to /daily/quote; dims when on /daily or /daily/quote -->
           <component
             :is="isOnDailyQuoteRoute ? 'div' : NuxtLink"

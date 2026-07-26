@@ -85,7 +85,7 @@
             <div class="flex items-start justify-between gap-4">
               <div>
                 <div class="font-medium">Posts and bell activity</div>
-                <div class="text-xs moh-text-muted">Posts and articles from people you follow, plus replies from profiles you bell.</div>
+                <div class="text-xs moh-text-muted">Posts, articles, and status updates from people you follow, plus replies from profiles you bell.</div>
               </div>
               <Checkbox v-model="notifPrefs.pushFollowedPost" binary :disabled="notifPrefsSaving" />
             </div>
