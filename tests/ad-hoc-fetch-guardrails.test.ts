@@ -50,6 +50,12 @@ const ALLOW_LIST = new Set<string>([
   'server/routes/u/[username]/posts/feed.json.get.ts',
   // OPML directory (static, no API call needed).
   'server/routes/opml.xml.get.ts',
+  // API docs UI — renders apiBaseUrl as display text (curl examples, URL previews).
+  // No fetch calls; these are read-only display components for the /api docs section.
+  'config/api-docs.ts',
+  'components/api-docs/Endpoint.vue',
+  'components/api-docs/Try.vue',
+  'pages/api/index.vue',
 ])
 
 // Directories to scan. We skip tests, build output, node_modules, config, etc.
