@@ -795,7 +795,7 @@ const colorMode = useColorMode()
 const router = useRouter()
 const { apiFetch, apiFetchData } = useApiClient()
 const { invalidate: invalidateMyGroups } = useMyGroups()
-const { isAuthed, user: authUser, isVerified, isPremium } = useAuth()
+const { isAuthed, user: authUser, patchUser, isVerified, isPremium } = useAuth()
 const toast = useAppToast()
 // Check-ins (feed, streaks, leaderboard) are verified-only; premium counts as verified.
 const canAccessCheckins = computed(() => isVerified.value || isPremium.value)
@@ -1089,7 +1089,7 @@ async function saveEditInterests() {
       method: 'PATCH',
       body: { interests: normalizeInterests(editInterestsInput.value) },
     })
-    authUser.value = result.data.user ?? authUser.value
+    patchUser(result.data.user)
     editInterestsOpen.value = false
     await Promise.resolve(refreshDiscover())
   } catch (e: unknown) {

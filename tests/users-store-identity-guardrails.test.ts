@@ -23,6 +23,48 @@ describe('applyIdentitySwap guardrail (structural)', () => {
   })
 })
 
+describe('auth user patch-vs-replace guardrail', () => {
+  // Only /auth/me returns the full AuthMeDto. Every other endpoint and the
+  // users:meUpdated socket event return a bare UserDto, which carries no
+  // session-scoped `impersonation` and none of the me-only badge counts.
+  // Assigning one of those wholesale made the impersonation banner vanish
+  // until a hard refresh after saving a profile.
+  it('only /auth/me and the identity swap replace the auth user wholesale', () => {
+    const src = readFromRepo('composables/useAuth.ts')
+    const assignments = (src.match(/^\s*user\.value = (?!null)(?!current)(?!\{)\S.*$/gm) ?? []).map(
+      (line) => line.trim(),
+    )
+    // Two legitimate full replaces, both authoritative:
+    //   - `result.data` in me() is the full AuthMeDto.
+    //   - `nextUser` in applyIdentitySwap seeds the new identity and is immediately
+    //     followed by a me() call that re-reads the authoritative payload.
+    expect(assignments).toEqual(['user.value = result.data', 'user.value = nextUser'])
+  })
+
+  it('the users:meUpdated socket handler patches instead of replacing', () => {
+    const src = readFromRepo('composables/useAuth.ts')
+    const block = src.match(/onMeUpdated:[\s\S]*?\n {8}\},/)?.[0] ?? ''
+    expect(block).toBeTruthy()
+    expect(block).toMatch(/patchUser\(me\)/)
+    expect(block).not.toMatch(/user\.value = me/)
+  })
+
+  it('no caller replaces the auth user with a bare endpoint payload', () => {
+    for (const file of [
+      'components/settings/sections/SettingsPrivacySection.vue',
+      'components/settings/sections/SettingsVerificationSection.vue',
+      'components/app/profile/EditProfileDialog.vue',
+      'composables/settings/useSettingsAccount.ts',
+      'pages/explore.vue',
+    ]) {
+      const src = readFromRepo(file)
+      expect(src, `${file} must not replace authUser with an endpoint payload`).not.toMatch(
+        /authUser\.value = (result|committed|u)\b/,
+      )
+    }
+  })
+})
+
 describe('useUserOverlay stale-snapshot guardrail (structural)', () => {
   it('seeds the store from embedded snapshots instead of upsertting, so stale props never clobber fresh values', () => {
     const src = readFromRepo('composables/useUserOverlay.ts')

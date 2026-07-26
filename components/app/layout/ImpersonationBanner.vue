@@ -45,7 +45,7 @@ async function onExit() {
     const admin = await stopImpersonation()
     if (admin) {
       appToast.push({ title: `Back to @${admin.username ?? 'your account'}`, tone: 'success' })
-      await navigateTo('/admin', { replace: true })
+      await navigateTo('/admin/impersonate', { replace: true })
     }
   } catch {
     appToast.push({

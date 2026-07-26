@@ -150,7 +150,7 @@ withDefaults(defineProps<{
   showDivider?: boolean
 }>(), { showDivider: false })
 
-const { user: authUser } = useAuth()
+const { user: authUser, patchUser } = useAuth()
 const { apiFetchData } = useApiClient()
 const syncUserCaches = useSyncUserCaches()
 
@@ -268,7 +268,7 @@ const { save: saveStewardBadgeRequest, saving: stewardBadgeSaving, saved: stewar
       method: 'PATCH',
       body: { stewardBadgeEnabled: stewardBadgeEnabledInput.value },
     })
-    authUser.value = result.user ?? authUser.value
+    patchUser(result.user)
     syncUserCaches(result.user, previousUsername)
   },
   {

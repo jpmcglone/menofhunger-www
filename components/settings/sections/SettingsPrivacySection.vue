@@ -63,7 +63,7 @@ import { useSyncUserCaches } from '~/composables/settings/useSyncUserCaches'
 type FollowVisibility = 'all' | 'verified' | 'premium' | 'none'
 type BirthdayVisibility = 'none' | 'monthDay' | 'full'
 
-const { user: authUser } = useAuth()
+const { user: authUser, patchUser } = useAuth()
 const { apiFetchData } = useApiClient()
 const syncUserCaches = useSyncUserCaches()
 
@@ -114,7 +114,7 @@ const { save: savePrivacyRequest, saving: privacySaving, saved: privacySaved } =
         birthdayVisibility: birthdayVisibilityInput.value,
       },
     })
-    authUser.value = result.user ?? authUser.value
+    patchUser(result.user)
     syncUserCaches(result.user, previousUsername)
   },
   {

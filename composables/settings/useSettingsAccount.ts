@@ -11,7 +11,7 @@ const EMAIL_RESEND_COOLDOWN_SECONDS = 30
  * (ZIP / website), and interests.
  */
 export function useSettingsAccount() {
-  const { user: authUser, me } = useAuth()
+  const { user: authUser, patchUser, me } = useAuth()
   const { apiFetchData } = useApiClient()
   const syncUserCaches = useSyncUserCaches()
 
@@ -62,7 +62,7 @@ export function useSettingsAccount() {
         method: 'PATCH',
         body: { username },
       })
-      authUser.value = result.user ?? authUser.value
+      patchUser(result.user)
       syncUserCaches(result.user, previousUsername)
     },
     {
@@ -174,7 +174,7 @@ export function useSettingsAccount() {
         method: 'PATCH',
         body,
       })
-      authUser.value = result.user ?? authUser.value
+      patchUser(result.user)
       syncUserCaches(result.user, previousUsername)
 
       // If they set/changed email, server marks it unverified and sends verification.
@@ -281,7 +281,7 @@ export function useSettingsAccount() {
           website: websiteInput.value.trim(),
         },
       })
-      authUser.value = result.user ?? authUser.value
+      patchUser(result.user)
       syncUserCaches(result.user, previousUsername)
     },
     {
@@ -339,7 +339,7 @@ export function useSettingsAccount() {
         method: 'PATCH',
         body,
       })
-      authUser.value = result.user ?? authUser.value
+      patchUser(result.user)
       syncUserCaches(result.user, previousUsername)
     },
     {

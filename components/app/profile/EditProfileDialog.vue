@@ -257,7 +257,7 @@ const emit = defineEmits<{
 }>()
 
 const { apiFetchData } = useApiClient()
-const { user: authUser } = useAuth()
+const { user: authUser, patchUser } = useAuth()
 const syncUserCaches = useSyncUserCaches()
 
 const isSelf = computed(() => Boolean(props.isSelf))
@@ -547,7 +547,7 @@ const { submit: saveProfile, submitting: saving } = useFormSubmit(
       emit('patchProfile', { bannerUrl: committed?.user?.bannerUrl ?? null })
       if (!adminId) {
         const previousUsername = authUser.value?.username ?? null
-        authUser.value = committed?.user ?? authUser.value
+        patchUser(committed?.user)
         syncUserCaches(committed?.user, previousUsername)
       }
       pendingBannerRemoval.value = false
@@ -578,7 +578,7 @@ const { submit: saveProfile, submitting: saving } = useFormSubmit(
       emit('patchProfile', { bannerUrl: committed?.user?.bannerUrl ?? null })
       if (!adminId) {
         const previousUsername = authUser.value?.username ?? null
-        authUser.value = committed?.user ?? authUser.value
+        patchUser(committed?.user)
         syncUserCaches(committed?.user, previousUsername)
       }
       clearPendingBanner()
@@ -592,7 +592,7 @@ const { submit: saveProfile, submitting: saving } = useFormSubmit(
       emit('patchProfile', { avatarUrl: committed?.user?.avatarUrl ?? null })
       if (!adminId) {
         const previousUsername = authUser.value?.username ?? null
-        authUser.value = committed?.user ?? authUser.value
+        patchUser(committed?.user)
         syncUserCaches(committed?.user, previousUsername)
       }
       pendingAvatarRemoval.value = false
@@ -622,7 +622,7 @@ const { submit: saveProfile, submitting: saving } = useFormSubmit(
       emit('patchProfile', { avatarUrl: committed.user?.avatarUrl ?? null })
       if (!adminId) {
         const previousUsername = authUser.value?.username ?? null
-        authUser.value = committed.user ?? authUser.value
+        patchUser(committed?.user)
         syncUserCaches(committed?.user, previousUsername)
       }
       clearPendingAvatar()
@@ -673,7 +673,7 @@ const { submit: saveProfile, submitting: saving } = useFormSubmit(
         locationState: u?.locationState ?? null,
         locationCountry: u?.locationCountry ?? null,
       })
-      authUser.value = u ?? authUser.value
+      patchUser(u)
       syncUserCaches(u, previousUsername)
     }
 

@@ -38,14 +38,14 @@
       <div
         :class="[
           'flex shrink-0 items-start gap-2',
-          (notification.kind === 'marv_not_in_group' || notification.kind === 'poll_results_ready')
+          (notification.kind === 'marv_not_in_group' || notification.kind === 'poll_results_ready' || notification.kind === 'status_update')
             ? 'w-[2.75rem]'
             : 'w-[5.25rem]',
         ]"
       >
-        <!-- System notifications carry their type inside the avatar circle; no separate type icon needed. -->
+        <!-- System notifications and status_update carry their context elsewhere; no type icon here. -->
         <div
-          v-if="notification.kind !== 'marv_not_in_group' && notification.kind !== 'poll_results_ready'"
+          v-if="notification.kind !== 'marv_not_in_group' && notification.kind !== 'poll_results_ready' && notification.kind !== 'status_update'"
           class="flex h-9 w-8 shrink-0 items-center justify-center sm:h-10"
           aria-hidden="true"
         >
@@ -239,9 +239,15 @@
             >
               {{ notification.body }}
             </div>
+            <!-- Status update: status text in a white bubble matching the profile header pill -->
+            <AppStatusBubble
+              v-if="notification.kind === 'status_update' && notification.body"
+              :text="notification.body"
+              class="mt-1.5"
+            />
             <!-- Fallback for other kinds with body (renders **bold** segments) -->
             <div
-              v-if="notification.body && notification.kind !== 'comment' && notification.kind !== 'mention' && notification.kind !== 'followed_article' && notification.kind !== 'poll_results_ready'"
+              v-if="notification.body && notification.kind !== 'comment' && notification.kind !== 'mention' && notification.kind !== 'followed_article' && notification.kind !== 'poll_results_ready' && notification.kind !== 'status_update'"
               class="mt-0.5 line-clamp-2 text-[13px] sm:text-sm text-gray-600 dark:text-gray-300"
             >
               <template v-for="(seg, i) in parseBoldSegments(notification.body)" :key="i">

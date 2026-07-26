@@ -42,7 +42,7 @@
         >
           <div class="min-w-0">
             <div class="mt-0.5 flex items-center min-w-0">
-              <div class="font-semibold truncate text-gray-900 dark:text-gray-50">{{ displayName }}</div>
+              <div class="font-semibold line-clamp-2 break-words text-gray-900 dark:text-gray-50 leading-snug">{{ displayName }}</div>
             </div>
           </div>
         </div>
@@ -72,7 +72,7 @@
         >
           <div class="min-w-0 pr-1">
             <div class="mt-0.5 flex items-center min-w-0">
-              <div class="font-semibold truncate text-gray-900 dark:text-gray-50">{{ displayName }}</div>
+              <div class="font-semibold line-clamp-2 break-words text-gray-900 dark:text-gray-50 leading-snug">{{ displayName }}</div>
             </div>
           </div>
         </div>

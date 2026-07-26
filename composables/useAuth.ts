@@ -143,12 +143,29 @@ export function useAuth() {
           const me = payload?.user ?? null
           if (!me?.id) return
           if (me.id !== user.value?.id) return
-          // Canonical snapshot: replace local auth user state.
-          user.value = me
+          // Patch, never replace: this payload is a bare UserDto fanned out to every
+          // socket for this user, so it carries no session-scoped `impersonation` and
+          // none of the me-only badge counts.
+          patchUser(me)
         },
       }
       addUsersCallback(cb)
     })
+  }
+
+  /**
+   * Merge a partial user payload into the auth user.
+   *
+   * Only `/auth/me` returns the full `AuthMeDto`. Every other endpoint and socket event
+   * returns a bare `UserDto`, which omits session-scoped and me-only fields —
+   * `impersonation`, the badge counts, `postCount`, `phone`, `locationZip`, and friends.
+   * Assigning one of those wholesale silently drops them until the next full page load,
+   * which is how the impersonation banner used to disappear after saving a profile.
+   */
+  function patchUser(partial: Partial<AuthUser> | null | undefined): void {
+    if (!partial) return
+    const current = user.value
+    user.value = current ? { ...current, ...partial } : (partial as AuthUser)
   }
 
   async function me(): Promise<AuthUser | null> {
@@ -302,8 +319,13 @@ export function useAuth() {
    * connection authenticated with the previous cookie and is still joined to the previous
    * user's rooms. `emitLogout()` is deliberately NOT called — that would revoke the
    * brand-new session server-side.
+   *
+   * Throws `'identity_not_swapped'` if the server confirmed a different user than `nextUser`
+   * — this means the session cookie was not updated (browser SameSite / CORS edge-case).
    */
   async function applyIdentitySwap(nextUser: AuthUser | null) {
+    const expectedId = nextUser?.id ?? null
+
     bumpAuthGeneration()
     clientMePromise = null
 
@@ -320,6 +342,13 @@ export function useAuth() {
     // Re-read from the server so badge counts and impersonation metadata are authoritative.
     // Must call me() directly — ensureLoaded() early-returns when didAttempt is true.
     await me().catch(() => undefined)
+
+    // Guard: if me() returned a DIFFERENT user than expected, the browser's session cookie
+    // was not updated (e.g. SameSite/CORS issue silently prevented the Set-Cookie from
+    // being applied). Restore the pre-swap state and throw so callers can surface an error.
+    if (expectedId && user.value?.id !== expectedId) {
+      throw new Error('identity_not_swapped')
+    }
 
     connect()
     await useBadgeHydration().refresh({ force: true }).catch(() => undefined)
@@ -338,7 +367,17 @@ export function useAuth() {
       body: { username: cleaned },
     })
 
-    await applyIdentitySwap(result?.user ?? null)
+    try {
+      await applyIdentitySwap(result?.user ?? null)
+    } catch (e) {
+      if ((e as Error)?.message === 'identity_not_swapped') {
+        throw new Error(
+          'Impersonation started on the server but your browser did not receive the new session. ' +
+          'Please reload the page and try again.',
+        )
+      }
+      throw e
+    }
     return result?.user ?? null
   }
 
@@ -374,6 +413,6 @@ export function useAuth() {
   // verified-only engagement features (e.g. setting your own status).
   const isVerifiedMember = computed(() => isVerified.value || isPremium.value)
 
-  return { user, me, ensureLoaded, initAuth, logout, logoutEverywhere, handleUnauthorized, isAuthed, isVerified, isPremium, isPremiumPlus, isVerifiedMember, apiUnreachable, impersonation, isImpersonating, startImpersonation, stopImpersonation }
+  return { user, patchUser, me, ensureLoaded, initAuth, logout, logoutEverywhere, handleUnauthorized, isAuthed, isVerified, isPremium, isPremiumPlus, isVerifiedMember, apiUnreachable, impersonation, isImpersonating, startImpersonation, stopImpersonation }
 }
 
