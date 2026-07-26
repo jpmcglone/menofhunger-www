@@ -32,7 +32,7 @@
 
     <section class="space-y-3">
       <h2 class="text-base font-semibold text-gray-900 dark:text-gray-50">Endpoints</h2>
-      <div class="divide-y moh-border-subtle overflow-hidden rounded-lg border moh-border">
+      <div class="divide-y divide-[var(--moh-border-subtle)] overflow-hidden rounded-lg border border-[var(--moh-border-subtle)]">
         <NuxtLink
           v-for="endpoint in endpoints"
           :key="endpoint.to"

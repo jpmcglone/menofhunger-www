@@ -1,5 +1,5 @@
 <template>
-  <div class="rounded-lg border moh-border">
+  <div class="rounded-lg border border-[var(--moh-border-subtle)]">
     <form class="flex flex-col gap-2 p-3 sm:flex-row sm:items-start" @submit.prevent="onSubmit">
       <div class="relative min-w-0 flex-1">
         <label class="sr-only" :for="inputId">{{ label }}</label>
@@ -15,7 +15,7 @@
           :aria-expanded="suggestUsers ? open : undefined"
           :aria-controls="suggestUsers && open ? listboxId : undefined"
           :aria-activedescendant="activeOptionId"
-          class="w-full rounded-md border moh-border bg-transparent px-3 py-2 font-mono text-sm text-gray-900 outline-none placeholder:font-sans placeholder:text-gray-400 focus:border-gray-400 dark:text-gray-50 dark:placeholder:text-zinc-500 dark:focus:border-zinc-600"
+          class="w-full rounded-md border border-[var(--moh-border-subtle)] bg-transparent px-3 py-2 font-mono text-sm text-gray-900 outline-none placeholder:font-sans placeholder:text-gray-400 focus:border-gray-400 dark:text-gray-50 dark:placeholder:text-zinc-500 dark:focus:border-zinc-600"
           @input="onInput"
           @keydown="onKeydown"
           @blur="close"
@@ -26,7 +26,7 @@
           :id="listboxId"
           role="listbox"
           aria-label="Matching profiles"
-          class="absolute inset-x-0 top-full z-10 mt-1 overflow-hidden rounded-md border moh-border bg-white shadow-lg dark:bg-zinc-900"
+          class="absolute inset-x-0 top-full z-10 mt-1 overflow-hidden rounded-md border border-[var(--moh-border-subtle)] bg-white shadow-lg dark:bg-zinc-900"
         >
           <button
             v-for="(user, index) in results"
@@ -78,18 +78,18 @@
       </code>
       <button
         type="button"
-        class="absolute right-2.5 top-1/2 -translate-y-1/2 rounded border border-[var(--moh-border)] bg-white/80 px-2 py-0.5 text-xs font-medium text-gray-500 transition-colors hover:text-gray-900 dark:bg-zinc-900/80 dark:text-zinc-400 dark:hover:text-zinc-100"
+        class="absolute right-2.5 top-1/2 -translate-y-1/2 rounded border border-[var(--moh-border-subtle)] bg-white/80 px-2 py-0.5 text-xs font-medium text-gray-500 transition-colors hover:text-gray-900 dark:bg-zinc-900/80 dark:text-zinc-400 dark:hover:text-zinc-100"
         @click="copyCurl"
       >
         {{ curlCopied ? 'Copied' : 'Copy' }}
       </button>
     </div>
 
-    <div v-if="result" class="border-t moh-border">
+    <div v-if="result" class="border-t border-[var(--moh-border-subtle)]">
       <p class="px-3 py-2 text-xs font-semibold" :class="result.ok ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'">
         {{ result.status }}
       </p>
-      <pre class="max-h-96 overflow-auto border-t moh-border px-4 py-3 text-[13px] leading-relaxed"><code class="font-mono text-gray-800 dark:text-gray-200">{{ result.body }}</code></pre>
+      <pre class="max-h-96 overflow-auto border-t border-[var(--moh-border-subtle)] px-4 py-3 text-[13px] leading-relaxed"><code class="font-mono text-gray-800 dark:text-gray-200">{{ result.body }}</code></pre>
     </div>
   </div>
 </template>
