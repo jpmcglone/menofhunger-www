@@ -127,56 +127,97 @@ export function extractMohUsername(url: string): string | null {
   }
 }
 
-export function getYouTubeEmbedUrl(url: string, opts?: { autoplay?: boolean }): string | null {
+export interface YouTubeVideoInfo {
+  id: string
+  /** True for /shorts/ URLs — display in portrait aspect ratio */
+  isShort: boolean
+  /** Start offset in seconds (from t= / start= params or the 1h2m3s notation) */
+  startSeconds: number | null
+}
+
+/** Parse a YouTube timestamp string like "1h2m3s", "2m3s", "90", "90s" into total seconds. */
+function parseYouTubeTimestamp(raw: string | null): number | null {
+  if (!raw) return null
+  const n = Number(raw)
+  if (!isNaN(n) && raw.trim() !== '') return n > 0 ? Math.floor(n) : null
+  const match = raw.match(/^(?:(\d+)h)?(?:(\d+)m)?(?:(\d+)s?)?$/)
+  if (!match) return null
+  const h = parseInt(match[1] ?? '0', 10)
+  const m = parseInt(match[2] ?? '0', 10)
+  const s = parseInt(match[3] ?? '0', 10)
+  const total = h * 3600 + m * 60 + s
+  return total > 0 ? total : null
+}
+
+/** Determine the video ID and metadata from any supported YouTube URL. Returns null for unrecognized shapes. */
+export function parseYouTubeUrl(url: string): YouTubeVideoInfo | null {
   try {
     const u = new URL(url)
     const host = u.hostname.replace(/^www\./, '').toLowerCase()
 
     let id: string | null = null
+    let isShort = false
 
     if (host === 'youtu.be') {
       id = u.pathname.split('/').filter(Boolean)[0] ?? null
     } else if (host === 'youtube.com' || host === 'm.youtube.com' || host === 'music.youtube.com') {
-      if (u.pathname === '/watch') id = u.searchParams.get('v')
-      else if (u.pathname.startsWith('/shorts/')) id = u.pathname.split('/')[2] ?? null
-      else if (u.pathname.startsWith('/embed/')) id = u.pathname.split('/')[2] ?? null
+      if (u.pathname === '/watch') {
+        id = u.searchParams.get('v')
+      } else if (u.pathname.startsWith('/shorts/')) {
+        id = u.pathname.split('/')[2] ?? null
+        isShort = true
+      } else if (u.pathname.startsWith('/embed/')) {
+        id = u.pathname.split('/')[2] ?? null
+      } else if (u.pathname.startsWith('/live/')) {
+        id = u.pathname.split('/')[2] ?? null
+      }
     }
 
     if (!id) return null
+    // Strip any extra query-string suffix that got attached to the ID
+    id = id.split('?')[0] ?? id
     if (!/^[a-zA-Z0-9_-]{6,20}$/.test(id)) return null
 
-    const params = new URLSearchParams({
-      autoplay: opts?.autoplay ? '1' : '0',
-      modestbranding: '1',
-      rel: '0',
-      playsinline: '1',
-    })
-    return `https://www.youtube-nocookie.com/embed/${encodeURIComponent(id)}?${params.toString()}`
+    const rawTimestamp = u.searchParams.get('t') ?? u.searchParams.get('start')
+    const startSeconds = parseYouTubeTimestamp(rawTimestamp)
+
+    return { id, isShort, startSeconds }
   } catch {
     return null
   }
 }
 
-export function getYouTubePosterUrl(url: string): string | null {
-  try {
-    const u = new URL(url)
-    const host = u.hostname.replace(/^www\./, '').toLowerCase()
+export function getYouTubeEmbedUrl(url: string, opts?: { autoplay?: boolean }): string | null {
+  const info = parseYouTubeUrl(url)
+  if (!info) return null
 
-    let id: string | null = null
-    if (host === 'youtu.be') {
-      id = u.pathname.split('/').filter(Boolean)[0] ?? null
-    } else if (host === 'youtube.com' || host === 'm.youtube.com' || host === 'music.youtube.com') {
-      if (u.pathname === '/watch') id = u.searchParams.get('v')
-      else if (u.pathname.startsWith('/shorts/')) id = u.pathname.split('/')[2] ?? null
-      else if (u.pathname.startsWith('/embed/')) id = u.pathname.split('/')[2] ?? null
-    }
+  const params = new URLSearchParams({
+    autoplay: opts?.autoplay ? '1' : '0',
+    rel: '0',
+    playsinline: '1',
+  })
+  if (info.startSeconds != null) params.set('start', String(info.startSeconds))
 
-    if (!id) return null
-    if (!/^[a-zA-Z0-9_-]{6,20}$/.test(id)) return null
-    return `https://i.ytimg.com/vi/${encodeURIComponent(id)}/hqdefault.jpg`
-  } catch {
-    return null
+  return `https://www.youtube-nocookie.com/embed/${encodeURIComponent(info.id)}?${params.toString()}`
+}
+
+/**
+ * Returns poster URLs for a YouTube video: maxres first, hqdefault as fallback.
+ * The caller should try maxres and fall back to hqdefault if the image fails to load.
+ */
+export function getYouTubePosterUrls(url: string): { maxres: string; fallback: string } | null {
+  const info = parseYouTubeUrl(url)
+  if (!info) return null
+  const base = `https://i.ytimg.com/vi/${encodeURIComponent(info.id)}`
+  return {
+    maxres: `${base}/maxresdefault.jpg`,
+    fallback: `${base}/hqdefault.jpg`,
   }
+}
+
+/** @deprecated Use getYouTubePosterUrls instead */
+export function getYouTubePosterUrl(url: string): string | null {
+  return getYouTubePosterUrls(url)?.fallback ?? null
 }
 
 export function isRumbleUrl(url: string): boolean {
@@ -233,6 +274,6 @@ export function postBodyHasVideoEmbed(body: string, hasMedia: boolean): boolean 
   const links = extractLinksFromText(body)
   const last = links[links.length - 1]
   if (!last) return false
-  return Boolean(getYouTubeEmbedUrl(last) || (isRumbleUrl(last) && !isRumbleShortsUrl(last)))
+  return Boolean(parseYouTubeUrl(last) || (isRumbleUrl(last) && !isRumbleShortsUrl(last)))
 }
 

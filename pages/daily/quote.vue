@@ -75,12 +75,44 @@ definePageMeta({
 })
 
 const { apiFetchData } = useApiClient()
+const { user: authUser } = useAuth()
+const { markReadByKind } = useNotifications()
+const { addNotificationsCallback, removeNotificationsCallback } = usePresence()
 
-const { data: dailyContent } = await useAsyncData<DailyContentToday | null>(
+const { data: dailyContent, refresh: refreshDailyContent } = await useAsyncData<DailyContentToday | null>(
   'daily-content:today',
   () => apiFetchData<DailyContentToday>('/meta/daily-content/today', { method: 'GET' }),
   { default: () => null },
 )
+
+function clearQuoteNotification() {
+  if (authUser.value) {
+    void markReadByKind('quote_of_the_day')
+  }
+}
+
+// Refetch and clear the notification when a new quote_of_the_day notification arrives.
+const notificationsCb = {
+  onNew: (payload: any) => {
+    if (payload?.notification?.kind === 'quote_of_the_day') {
+      void refreshDailyContent()
+      clearQuoteNotification()
+    }
+  },
+}
+
+if (import.meta.client) {
+  onMounted(() => {
+    addNotificationsCallback(notificationsCb as any)
+    clearQuoteNotification()
+  })
+  onActivated(() => {
+    clearQuoteNotification()
+  })
+  onBeforeUnmount(() => {
+    removeNotificationsCallback(notificationsCb as any)
+  })
+}
 
 const dailyQuote = computed<DailyQuote | null>(() => dailyContent.value?.quote ?? null)
 const attribution = computed(() =>

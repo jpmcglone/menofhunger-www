@@ -214,7 +214,10 @@ export type NotificationPreferences = {
   pushReplyNudge: boolean
   /** Crew streak: push when the strict crew streak advances or breaks. Highest-signal push in the product. */
   pushCrewStreak: boolean
-  emailDigestDaily: boolean
+  /** Group activity: push for join, approve/reject, remove, disband events. */
+  pushGroupActivity: boolean
+  /** Word of the day + quote of the day push (fires at 9:00am / 9:30am ET). */
+  pushDailyContent: boolean
   emailDigestWeekly: boolean
   emailNewNotifications: boolean
   emailInstantHighSignal: boolean
@@ -399,10 +402,11 @@ export type DailyContentToday = {
   quoteRefreshedAt: string | null
   websters1828: Websters1828WordOfDay | null
   websters1828RefreshedAt: string | null
-  websters1828RecheckedAt: string | null
+  /** UTC ISO timestamp of the next content publish boundary (9:00am ET for word, 9:30am ET for quote). */
+  nextPublishAt: string | null
 }
 
-export type AdminEmailSampleType = 'daily_digest' | 'weekly_digest' | 'new_notifications' | 'instant_high_signal' | 'streak_reminder'
+export type AdminEmailSampleType = 'weekly_digest' | 'new_notifications' | 'instant_high_signal' | 'streak_reminder'
 export type AdminEmailSampleSendResult = {
   sent: boolean
   reason: string | null

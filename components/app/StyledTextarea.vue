@@ -591,6 +591,10 @@ function getPlainText(ed: CoreEditor): string {
   return ed.getText({ blockSeparator: '\n' })
 }
 
+// Set when a decoration refresh is skipped because an IME composition was active;
+// flushed on compositionend. See `refreshMentionDecorations`.
+let pendingDecorationRefresh = false
+
 const editor = useEditor({
   extensions: [
     StarterKit.configure({
@@ -617,6 +621,16 @@ const editor = useEditor({
       class: 'moh-styled-textarea-editor',
       'aria-label': props.placeholder,
     },
+    handleDOMEvents: {
+      compositionend: () => {
+        if (!pendingDecorationRefresh) return false
+        pendingDecorationRefresh = false
+        // Defer past ProseMirror's own post-composition flush so `view.composing`
+        // has actually cleared by the time we dispatch.
+        setTimeout(() => refreshMentionDecorations(), 0)
+        return false
+      },
+    },
   },
   editable: !props.disabled,
   content: props.modelValue ? `<p>${escapeHtml(props.modelValue)}</p>` : '',
@@ -634,6 +648,14 @@ const editor = useEditor({
 function refreshMentionDecorations() {
   const ed = editor.value
   if (!ed) return
+  // Rebuilding inline decorations mid-composition replaces the DOM text nodes under the
+  // composing range. Android IMEs edit those nodes directly and fire `selectionchange`
+  // before ProseMirror syncs the mutation into its own state, so the forced re-render can
+  // leave ProseMirror collapsing the selection past the end of the shortened node.
+  if (ed.view.composing) {
+    pendingDecorationRefresh = true
+    return
+  }
   ed.view.dispatch(ed.state.tr.setMeta('mentionTierRefresh', Date.now()))
 }
 watch([validSet, tierMap], () => refreshMentionDecorations())

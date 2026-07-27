@@ -146,7 +146,7 @@
 </template>
 
 <script setup lang="ts">
-import type { Websters1828WordOfDay } from '~/types/api'
+import type { Websters1828WordOfDay, DailyContentToday } from '~/types/api'
 
 defineProps<{
   /** When provided, the "Word of the Day" label becomes a NuxtLink to this route. */
@@ -163,17 +163,22 @@ const { data, pending, error, refresh } = useAsyncData<Websters1828WordOfDay>(
   { server: false, lazy: true },
 )
 
-const { dayKey } = useEasternMidnightRollover()
-watch(
-  () => dayKey.value,
-  async (next, prev) => {
-    if (!import.meta.client) return
-    if (!prev) return
-    if (next === prev) return
-    expanded.value = false
-    await refresh()
-  },
-)
+// Read from the shared daily-content key (populated by the parent page or RightRail)
+// to get `nextPublishAt` for the word boundary. Falls back gracefully when not yet loaded.
+const { data: dailyContent } = useAsyncData<DailyContentToday | null>('daily-content:today', () => Promise.resolve(null), { server: false, immediate: false })
+
+const { scheduleFromNextPublishAt } = usePublishBoundaryRollover(async () => {
+  expanded.value = false
+  await refresh()
+})
+
+if (import.meta.client) {
+  watch(
+    () => (dailyContent.value as DailyContentToday | null)?.nextPublishAt ?? null,
+    (nextPublishAt) => scheduleFromNextPublishAt(nextPublishAt),
+    { immediate: true },
+  )
+}
 
 const definitionHtml = computed(() => {
   const html = data.value?.definitionHtml ?? null

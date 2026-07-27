@@ -109,13 +109,6 @@
 
       <div class="flex flex-wrap gap-2">
         <Button
-          label="Daily digest"
-          severity="secondary"
-          :loading="emailSampleSending === 'daily_digest'"
-          :disabled="!viewerHasVerifiedEmail || Boolean(emailSampleSending)"
-          @click="sendEmailSample('daily_digest')"
-        />
-        <Button
           label="Weekly digest"
           severity="secondary"
           :loading="emailSampleSending === 'weekly_digest'"

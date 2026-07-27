@@ -160,6 +160,12 @@ export function useNotifications() {
         }
         nextCursor.value = pagination?.nextCursor ?? null
         return pagination
+      } catch (e: unknown) {
+        // useApiClient handles 401 (clears auth state, redirects to login). Don't re-throw it
+        // here so it doesn't escape the `void fetchList()` call sites as an unhandled rejection.
+        const status = (e as any)?.status ?? (e as any)?.statusCode ?? (e as any)?.response?.status
+        if (status === 401) return undefined
+        throw e
       } finally {
         loading.value = false
         hasFetched.value = true
@@ -260,6 +266,16 @@ export function useNotifications() {
     } catch (e: unknown) {
       if (import.meta.dev) {
         console.warn('[notifications] markAllRead failed', e)
+      }
+    }
+  }
+
+  async function markReadByKind(kind: 'word_of_the_day' | 'quote_of_the_day') {
+    try {
+      await apiFetch('/notifications/mark-read-by-kind', { method: 'POST', body: { kind } })
+    } catch (e: unknown) {
+      if (import.meta.dev) {
+        console.warn('[notifications] markReadByKind failed', e)
       }
     }
   }
@@ -461,6 +477,10 @@ export function useNotifications() {
         return n.subjectGroupName ? `You were removed from ${n.subjectGroupName}` : 'You were removed from a group'
       case 'community_group_disbanded':
         return n.subjectGroupName ? `${n.subjectGroupName} was disbanded` : 'A group you were in was disbanded'
+      case 'word_of_the_day':
+        return n.body ?? n.title ?? 'Word of the Day'
+      case 'quote_of_the_day':
+        return n.body ?? n.title ?? 'Quote of the Day'
       case 'marv_not_in_group':
         return n.title ?? '@marv is not in this group'
       case 'status_update':
@@ -520,6 +540,10 @@ export function useNotifications() {
       case 'crew_wall_mention':
       case 'crew_disbanded':
         return 'tabler:shield-check'
+      case 'word_of_the_day':
+        return 'tabler:book'
+      case 'quote_of_the_day':
+        return 'tabler:quote'
       case 'marv_not_in_group':
         return 'tabler:sparkles'
       case 'status_update':
@@ -629,6 +653,8 @@ export function useNotifications() {
   }
 
   function rowHref(n: Notification): string | null {
+    if (n.kind === 'word_of_the_day') return '/daily/word'
+    if (n.kind === 'quote_of_the_day') return '/daily/quote'
     if (n.kind === 'coin_transfer') return '/coins'
     if (n.kind === 'message' && n.subjectConversationId) {
       return `/messages/${encodeURIComponent(n.subjectConversationId)}`
@@ -721,6 +747,7 @@ export function useNotifications() {
     markReadBySubject,
     markGroupPostsSeen,
     markReadById,
+    markReadByKind,
     markAllRead,
     markNewPostsRead,
     clearUnreadKind,

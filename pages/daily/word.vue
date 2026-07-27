@@ -74,6 +74,9 @@ definePageMeta({
 })
 
 const { apiFetchData } = useApiClient()
+const { user: authUser } = useAuth()
+const { markReadByKind } = useNotifications()
+const { addNotificationsCallback, removeNotificationsCallback } = usePresence()
 
 const { data } = await useAsyncData<Websters1828WordOfDay | null>(
   'websters1828:wotd',
@@ -82,11 +85,40 @@ const { data } = await useAsyncData<Websters1828WordOfDay | null>(
 )
 
 // Also warm the daily-content cache (used by the right rail) so it doesn't double-fetch.
-const { data: dailyContent } = await useAsyncData<DailyContentToday | null>(
+const { data: dailyContent, refresh: refreshDailyContent } = await useAsyncData<DailyContentToday | null>(
   'daily-content:today',
   () => apiFetchData<DailyContentToday>('/meta/daily-content/today', { method: 'GET' }),
   { default: () => null },
 )
+
+function clearWordNotification() {
+  if (authUser.value) {
+    void markReadByKind('word_of_the_day')
+  }
+}
+
+// Refetch and clear the notification when a new word_of_the_day notification arrives.
+const notificationsCb = {
+  onNew: (payload: any) => {
+    if (payload?.notification?.kind === 'word_of_the_day') {
+      void refreshDailyContent()
+      clearWordNotification()
+    }
+  },
+}
+
+if (import.meta.client) {
+  onMounted(() => {
+    addNotificationsCallback(notificationsCb as any)
+    clearWordNotification()
+  })
+  onActivated(() => {
+    clearWordNotification()
+  })
+  onBeforeUnmount(() => {
+    removeNotificationsCallback(notificationsCb as any)
+  })
+}
 
 const definitionHtml = computed(() => {
   const html = data.value?.definitionHtml ?? null

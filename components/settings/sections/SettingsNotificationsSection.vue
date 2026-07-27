@@ -103,18 +103,19 @@
               </div>
               <Checkbox v-model="notifPrefs.pushCrewStreak" binary :disabled="notifPrefsSaving" />
             </div>
+            <div class="flex items-start justify-between gap-4">
+              <div>
+                <div class="font-medium">Word &amp; quote of the day</div>
+                <div class="text-xs moh-text-muted">Daily 9am word and 9:30am quote push notifications.</div>
+              </div>
+              <Checkbox v-model="notifPrefs.pushDailyContent" binary :disabled="notifPrefsSaving" />
+            </div>
           </div>
         </div>
 
         <div class="space-y-2">
           <div class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
             Email
-          </div>
-          <div
-            v-if="route.query.digest_unsubscribed === '1'"
-            class="rounded-lg border moh-border p-2 text-sm moh-surface"
-          >
-            Daily digest disabled. You can re-enable it below.
           </div>
           <div v-if="!authUser?.email" class="text-sm text-gray-600 dark:text-gray-300">
             Add an email in <NuxtLink to="/settings/account" class="font-medium hover:underline">Your account</NuxtLink> to enable email notifications.
@@ -133,13 +134,6 @@
                   Go to account settings to verify →
                 </NuxtLink>
               </div>
-            </div>
-            <div class="flex items-start justify-between gap-4">
-              <div>
-                <div class="font-medium">Daily digest</div>
-                <div class="text-xs moh-text-muted">A daily recap (recommended).</div>
-              </div>
-              <Checkbox v-model="notifPrefs.emailDigestDaily" binary :disabled="notifPrefsSaving || !emailIsVerified" />
             </div>
             <div class="flex items-start justify-between gap-4">
               <div>
@@ -228,7 +222,6 @@ import { getApiErrorMessage } from '~/utils/api-error'
 
 const { user: authUser } = useAuth()
 const { apiFetch, apiFetchData } = useApiClient()
-const route = useRoute()
 
 const emailIsVerified = computed(() => Boolean(authUser.value?.email && authUser.value?.emailVerifiedAt))
 

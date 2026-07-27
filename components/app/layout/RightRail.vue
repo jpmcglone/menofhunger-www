@@ -265,7 +265,6 @@ onMounted(() => {
   hydrated.value = true
 })
 
-const { dayKey: dailyContentDayKey } = useEasternMidnightRollover()
 const {
   data: dailyContent,
   refresh: refreshDailyContent,
@@ -295,19 +294,22 @@ watch(
 const dailyQuote = computed<DailyQuote | null>(() => dailyContent.value?.quote ?? null)
 const dailyQuoteAttribution = computed(() => (dailyQuote.value ? formatDailyQuoteAttribution(dailyQuote.value as any) : ''))
 
-watch(
-  () => dailyContentDayKey.value,
-  async (next, prev) => {
-    if (!import.meta.client) return
-    if (!prev) return
-    if (next === prev) return
-    if (!secondaryLoadsEnabled.value) {
-      dailyContent.value = null
-      return
-    }
-    await refreshDailyContent()
-  },
-)
+// Refresh when the next publish boundary (9:00am ET for word, 9:30am ET for quote) is crossed.
+const { scheduleFromNextPublishAt: scheduleRightRailRefresh } = usePublishBoundaryRollover(async () => {
+  if (!secondaryLoadsEnabled.value) {
+    dailyContent.value = null
+    return
+  }
+  await refreshDailyContent()
+})
+
+if (import.meta.client) {
+  watch(
+    () => dailyContent.value?.nextPublishAt ?? null,
+    (nextPublishAt) => scheduleRightRailRefresh(nextPublishAt),
+    { immediate: true },
+  )
+}
 
 const {
   users: whoToFollowUsers,

@@ -38,14 +38,14 @@
       <div
         :class="[
           'flex shrink-0 items-start gap-2',
-          (notification.kind === 'marv_not_in_group' || notification.kind === 'poll_results_ready' || notification.kind === 'status_update')
+          (notification.kind === 'marv_not_in_group' || notification.kind === 'poll_results_ready' || notification.kind === 'status_update' || notification.kind === 'word_of_the_day' || notification.kind === 'quote_of_the_day')
             ? 'w-[2.75rem]'
             : 'w-[5.25rem]',
         ]"
       >
         <!-- System notifications and status_update carry their context elsewhere; no type icon here. -->
         <div
-          v-if="notification.kind !== 'marv_not_in_group' && notification.kind !== 'poll_results_ready' && notification.kind !== 'status_update'"
+          v-if="notification.kind !== 'marv_not_in_group' && notification.kind !== 'poll_results_ready' && notification.kind !== 'status_update' && notification.kind !== 'word_of_the_day' && notification.kind !== 'quote_of_the_day'"
           class="flex h-9 w-8 shrink-0 items-center justify-center sm:h-10"
           aria-hidden="true"
         >
@@ -104,6 +104,21 @@
           >
             <Icon name="tabler:chart-bar" class="text-white text-base" aria-hidden="true" />
           </div>
+          <!-- Daily content system notifications -->
+          <div
+            v-else-if="notification.kind === 'word_of_the_day'"
+            class="flex h-9 w-9 items-center justify-center rounded-full bg-amber-500 sm:h-10 sm:w-10"
+            aria-hidden="true"
+          >
+            <Icon name="tabler:book" class="text-white text-base" aria-hidden="true" />
+          </div>
+          <div
+            v-else-if="notification.kind === 'quote_of_the_day'"
+            class="flex h-9 w-9 items-center justify-center rounded-full bg-indigo-500 sm:h-10 sm:w-10"
+            aria-hidden="true"
+          >
+            <Icon name="tabler:quote" class="text-white text-base" aria-hidden="true" />
+          </div>
           <NuxtLink
             v-else-if="notification.actor?.id && notification.actor?.username"
             :to="`/u/${notification.actor.username}`"
@@ -147,7 +162,7 @@
             <!-- Title + quoted message: up to 2 lines with truncation -->
             <div :class="['min-w-0 max-w-full line-clamp-2 text-[13px] sm:text-sm', notification.readAt ? 'font-medium' : 'font-semibold']">
               <span
-                v-if="notification.kind !== 'marv_not_in_group' && notification.kind !== 'poll_results_ready'"
+                v-if="notification.kind !== 'marv_not_in_group' && notification.kind !== 'poll_results_ready' && notification.kind !== 'word_of_the_day' && notification.kind !== 'quote_of_the_day'"
                 :class="actorTierClass(notification)"
                 @mouseenter="onActorEnter"
                 @mousemove="onActorMove"
@@ -216,6 +231,9 @@
                 <span v-else class="ml-1">this group</span>
               </template>
               <template v-else-if="notification.kind === 'poll_results_ready'">
+                <span>{{ titleSuffix(notification) }}</span>
+              </template>
+              <template v-else-if="notification.kind === 'word_of_the_day' || notification.kind === 'quote_of_the_day'">
                 <span>{{ titleSuffix(notification) }}</span>
               </template>
               <template v-else>

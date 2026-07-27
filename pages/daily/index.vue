@@ -144,8 +144,11 @@ definePageMeta({
 })
 
 const { apiFetchData } = useApiClient()
+const { user: authUser } = useAuth()
+const { markReadByKind } = useNotifications()
+const { addNotificationsCallback, removeNotificationsCallback } = usePresence()
 
-const [{ data: dailyContent }, { data: wotd }] = await Promise.all([
+const [{ data: dailyContent, refresh: refreshDailyContent }, { data: wotd, refresh: refreshWotd }] = await Promise.all([
   useAsyncData<DailyContentToday | null>(
     'daily-content:today',
     () => apiFetchData<DailyContentToday>('/meta/daily-content/today', { method: 'GET' }),
@@ -157,6 +160,39 @@ const [{ data: dailyContent }, { data: wotd }] = await Promise.all([
     { default: () => null },
   ),
 ])
+
+function clearDailyNotifications() {
+  if (!authUser.value) return
+  void markReadByKind('word_of_the_day')
+  void markReadByKind('quote_of_the_day')
+}
+
+// Refetch content and clear the matching notification when a daily content event arrives.
+const notificationsCb = {
+  onNew: (payload: any) => {
+    const kind = payload?.notification?.kind
+    if (kind === 'word_of_the_day') {
+      void refreshWotd()
+      void markReadByKind('word_of_the_day')
+    } else if (kind === 'quote_of_the_day') {
+      void refreshDailyContent()
+      void markReadByKind('quote_of_the_day')
+    }
+  },
+}
+
+if (import.meta.client) {
+  onMounted(() => {
+    addNotificationsCallback(notificationsCb as any)
+    clearDailyNotifications()
+  })
+  onActivated(() => {
+    clearDailyNotifications()
+  })
+  onBeforeUnmount(() => {
+    removeNotificationsCallback(notificationsCb as any)
+  })
+}
 
 // Quote
 const dailyQuote = computed<DailyQuote | null>(() => dailyContent.value?.quote ?? null)

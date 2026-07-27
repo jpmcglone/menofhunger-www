@@ -5,9 +5,20 @@ alwaysApply: true
 
 # Feature "Done" Checklist (menofhunger-www)
 
-After **substantive** work in this repo (new feature, refactor, page/component changes, composable changes, route/middleware/plugin changes), run this gate **before declaring the task complete**. Don't skip steps because they are slow — they are the contract.
+After **substantive** work in this repo (new feature, refactor, page/component changes, composable changes, route/middleware/plugin changes), run this gate **before declaring the task complete**.
 
 A change is "substantive" if it touches: `pages/**`, `components/**`, `layouts/**`, `composables/**`, `middleware/**`, `plugins/**`, `server/**`, `nuxt.config.ts`, `app.vue`, `error.vue`, `app.config.ts`, or any `.ts`/`.vue` outside `tests/` and `scripts/`.
+
+## Multi-phase plan mode
+
+When implementing a **multi-phase plan** (a `.plan.md` file, or a todo list with multiple phases across which you are progressing):
+
+- **Between phases** (todos remain): run only **steps 1–2** (lint + typecheck). Skip unit tests, production build, and hydration check.
+- **After the final phase** (no more pending todos): run the **complete checklist** including all slow steps.
+
+Rationale: `npm run build` triggers a multi-minute prebuild (typecheck + validate-api + tests). In a multi-phase plan this compounds badly. Lint + typecheck catch errors fast; the full suite at the end validates the integrated whole.
+
+**Single task (no plan, or this is the only todo):** run all steps as usual.
 
 ## Run, in order, from `menofhunger-www/`
 
@@ -15,15 +26,15 @@ A change is "substantive" if it touches: `pages/**`, `components/**`, `layouts/*
    - Fix every error. Warnings: fix new ones you introduced; ignore pre-existing.
 2. **Types** — `npx nuxi typecheck`
    - Zero errors. If types broke because the API changed, also update `types/api.ts` and re-run `node scripts/validate-api-types.mjs`.
-3. **Unit tests** — `npm test`
+3. **Unit tests** — `npm test` *(skip between phases in a multi-phase plan; always run after the final phase)*
    - All green. If you added client-conditional rendering, browser-API access, or new auth-gated UI, **add a structural guardrail test** to `tests/hydration-guardrails.test.ts` (or a new file) before this step.
-4. **Production build** — `npm run build`
+4. **Production build** — `npm run build` *(skip between phases in a multi-phase plan; always run after the final phase)*
    - Must succeed. Catches SSR-only crashes and missing imports that dev mode hides.
    - The `prebuild` hook re-runs typecheck + validate-api-types + tests. Don't comment it out.
-5. **Runtime hydration check** — `npm run check:hydration` (public/SSR page changes only)
+5. **Runtime hydration check** — `npm run check:hydration` (public/SSR page changes only) *(skip between phases; always run after the final phase if relevant)*
    - Spins up the freshly-built server and visits the routes in `scripts/hydration-routes.json` with a headless browser. Fails on any `[Vue warn] Hydration` console message or page error.
    - If you added or significantly changed a public/SSR page, **add it to `scripts/hydration-routes.json`**.
- - If the work only touches `ssr: false` authenticated app surfaces, non-rendering composables, tests, scripts, docs, or types, say why the hydration check is irrelevant instead of running it by rote.
+   - If the work only touches `ssr: false` authenticated app surfaces, non-rendering composables, tests, scripts, docs, or types, say why the hydration check is irrelevant instead of running it by rote.
    - On failure: read the `runtime-hydration-check` skill and the `ssr-hydration` skill, fix, re-run.
 
 ## When something fails

@@ -6,42 +6,63 @@
       class="overflow-hidden rounded-xl border moh-border bg-black/5 dark:bg-white/5"
       data-post-row-interactive
     >
-      <!-- YouTube: fixed 16:9. Rumble: use oEmbed dimensions (fallback 854x480). -->
+      <!-- YouTube: 16:9 landscape or 9:16 portrait for Shorts. Rumble: oEmbed dimensions (fallback 854x480). -->
       <div
         ref="videoBoxEl"
         class="relative w-full"
         :style="youtubeEmbedUrl ? undefined : { aspectRatio: rumbleAspectRatio }"
-        :class="youtubeEmbedUrl ? 'aspect-video' : ''"
+        :class="youtubeVideoInfo?.isShort ? 'aspect-[9/16] max-h-[480px]' : (youtubeEmbedUrl ? 'aspect-video' : '')"
+        role="button"
+        tabindex="0"
+        :aria-label="youtubeOEmbed?.title ? `Play ${youtubeOEmbed.title}` : 'Play video'"
         @click.stop="activateEmbeddedVideo"
+        @keydown.enter.prevent="activateEmbeddedVideo"
+        @keydown.space.prevent="activateEmbeddedVideo"
       >
+        <!-- Poster image: try maxres, fall back to hqdefault -->
         <img
-          v-if="youtubePosterUrl || rumblePosterUrl"
-          :src="youtubePosterUrl || rumblePosterUrl || ''"
+          v-if="youtubePosterSrc || rumblePosterUrl"
+          :src="youtubePosterSrc || rumblePosterUrl || ''"
           class="absolute inset-0 z-0 h-full w-full object-cover transition-opacity duration-250"
           :class="desiredVideoSrc && videoIframeLoaded ? 'opacity-0' : 'opacity-90'"
           alt=""
           loading="lazy"
           aria-hidden="true"
+          @error="onPosterError"
         >
         <iframe
           :src="videoIframeSrc"
           class="relative z-10 h-full w-full transition-opacity duration-250"
           :class="desiredVideoSrc && videoIframeLoaded ? 'opacity-100' : 'opacity-0 pointer-events-none'"
-          title="Embedded video"
+          :title="youtubeOEmbed?.title ? youtubeOEmbed.title : 'Embedded video'"
           loading="lazy"
           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
           allowfullscreen
           @load="onVideoIframeLoad"
         />
-        <!-- Thin black film + click-to-play when video is not yet active -->
+        <!-- Play overlay — hidden once the video is active -->
         <div
           v-if="!videoIsPlayable"
-          class="absolute inset-0 z-20 flex items-center justify-center bg-black/10"
+          class="absolute inset-0 z-20 flex flex-col justify-between pointer-events-none"
           aria-hidden="true"
         >
-          <div class="flex flex-col items-center gap-2 rounded-full bg-black/50 px-4 py-3">
-            <Icon name="tabler:play" class="text-2xl text-white" aria-hidden="true" />
-            <span class="text-xs font-medium text-white/90">Click to play</span>
+          <!-- Title / channel strip at the bottom (YouTube only) -->
+          <div
+            v-if="youtubeOEmbed"
+            class="mt-auto px-3 pb-3 pt-8 bg-gradient-to-t from-black/70 to-transparent"
+          >
+            <div class="text-sm font-semibold text-white line-clamp-2 leading-snug">
+              {{ youtubeOEmbed.title }}
+            </div>
+            <div class="mt-0.5 text-xs text-white/70">
+              {{ youtubeOEmbed.authorName }}
+            </div>
+          </div>
+          <!-- Play button (centred) -->
+          <div class="absolute inset-0 flex items-center justify-center">
+            <div class="rounded-full bg-black/60 p-3.5">
+              <Icon name="tabler:player-play-filled" class="text-2xl text-white" aria-hidden="true" />
+            </div>
           </div>
         </div>
       </div>
@@ -205,7 +226,7 @@
 </template>
 
 <script setup lang="ts">
-import { extractLinksFromText, getYouTubeEmbedUrl, getYouTubePosterUrl, isRumbleShortsUrl, isRumbleUrl, safeUrlDisplay, safeUrlHostname, isMohUrl, mohUrlPath, extractMohPostId, extractMohArticleId, extractMohSpaceId, extractMohUsername, isXPostUrl } from '~/utils/link-utils'
+import { extractLinksFromText, getYouTubeEmbedUrl, getYouTubePosterUrls, parseYouTubeUrl, isRumbleShortsUrl, isRumbleUrl, safeUrlDisplay, safeUrlHostname, isMohUrl, mohUrlPath, extractMohPostId, extractMohArticleId, extractMohSpaceId, extractMohUsername, isXPostUrl } from '~/utils/link-utils'
 import type { LinkMetadata } from '~/utils/link-metadata'
 import { getLinkMetadata } from '~/utils/link-metadata'
 import type { RumbleEmbedInfo } from '~/utils/rumble-embed'
@@ -367,6 +388,7 @@ const showLinkPreview = computed(() => Boolean(previewLink.value && !hasMedia.va
 const previewLinkHost = computed(() => (previewLink.value ? safeUrlHostname(previewLink.value) : null))
 const previewLinkDisplay = computed(() => (previewLink.value ? safeUrlDisplay(previewLink.value) : ''))
 
+const youtubeVideoInfo = computed(() => (previewLink.value ? parseYouTubeUrl(previewLink.value) : null))
 const youtubeEmbedUrl = computed(() => (previewLink.value ? getYouTubeEmbedUrl(previewLink.value) : null))
 const isPreviewLinkRumble = computed(() => {
   const u = (previewLink.value ?? '').trim()
@@ -386,7 +408,45 @@ const rumbleAspectRatio = computed(() => {
   return `${w} / ${h}`
 })
 const rumblePosterUrl = computed(() => rumbleEmbedInfo.value?.thumbnailUrl ?? null)
-const youtubePosterUrl = computed(() => (previewLink.value ? getYouTubePosterUrl(previewLink.value) : null))
+
+const youtubePosterUrls = computed(() => (previewLink.value ? getYouTubePosterUrls(previewLink.value) : null))
+// Start with maxres; onPosterError() drops it to the hqdefault fallback.
+const youtubePosterUsingMaxres = ref(true)
+const youtubePosterSrc = computed(() => {
+  if (!youtubePosterUrls.value) return null
+  return youtubePosterUsingMaxres.value
+    ? youtubePosterUrls.value.maxres
+    : youtubePosterUrls.value.fallback
+})
+function onPosterError() {
+  if (youtubePosterUsingMaxres.value) youtubePosterUsingMaxres.value = false
+}
+// Reset whenever the link changes.
+watch(() => previewLink.value, () => { youtubePosterUsingMaxres.value = true })
+
+// YouTube oEmbed: keyless public endpoint — gives us title + channel without an API key.
+type YouTubeOEmbed = { title: string; authorName: string }
+const youtubeOEmbed = ref<YouTubeOEmbed | null>(null)
+watch(
+  [youtubeVideoInfo, rowInView],
+  ([info, inView], _old, onCleanup) => {
+    youtubeOEmbed.value = null
+    if (!info || !inView || !import.meta.client) return
+    let cancelled = false
+    onCleanup(() => { cancelled = true })
+    const oEmbedUrl = `https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${encodeURIComponent(info.id)}&format=json`
+    fetch(oEmbedUrl)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((json) => {
+        if (cancelled || !json) return
+        const title = (json.title ?? '').trim()
+        const authorName = (json.author_name ?? '').trim()
+        if (title) youtubeOEmbed.value = { title, authorName }
+      })
+      .catch(() => { /* best-effort */ })
+  },
+  { immediate: true },
+)
 
 const { activePostId, register: registerEmbeddedVideo, unregister: unregisterEmbeddedVideo, activate: activateEmbeddedVideoById } =
   useEmbeddedVideoManager()
@@ -398,7 +458,10 @@ const desiredVideoSrc = computed(() => {
   if (!rowInView.value) return null
   if (!hasEmbeddedVideo.value) return null
   if (activePostId.value !== postId.value) return null
-  if (youtubeEmbedUrl.value) return youtubeEmbedUrl.value
+  if (previewLink.value && youtubeEmbedUrl.value) {
+    // Pass autoplay:true — the click is a user gesture, so the browser will honour it.
+    return getYouTubeEmbedUrl(previewLink.value, { autoplay: true })
+  }
   if (isPreviewLinkRumble.value) return rumbleEmbedUrl.value
   return null
 })

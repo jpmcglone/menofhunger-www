@@ -742,7 +742,6 @@ const taglineParts = computed(() => {
 })
 
 const { apiFetchData } = useApiClient()
-const { dayKey: dailyContentDayKey } = useEasternMidnightRollover()
 
 const {
   data: dailyContent,
@@ -755,15 +754,16 @@ const {
 const dailyQuote = computed<DailyQuote | null>(() => dailyContent.value?.quote ?? null)
 const dailyQuoteAttribution = computed(() => (dailyQuote.value ? formatDailyQuoteAttribution(dailyQuote.value) : ''))
 
-watch(
-  () => dailyContentDayKey.value,
-  async (next, prev) => {
-    if (!import.meta.client) return
-    if (!prev) return
-    if (next === prev) return
-    await refreshDailyContent()
-  },
-)
+// Refresh when the next publish boundary (9:00am ET for word, 9:30am ET for quote) is crossed.
+const { scheduleFromNextPublishAt: scheduleLandingRefresh } = usePublishBoundaryRollover(() => refreshDailyContent())
+
+if (import.meta.client) {
+  watch(
+    () => dailyContent.value?.nextPublishAt ?? null,
+    (nextPublishAt) => scheduleLandingRefresh(nextPublishAt),
+    { immediate: true },
+  )
+}
 
 const { data: landingSnapshotData } = await useAsyncData<LandingSnapshot>(
   'landing:snapshot',

@@ -192,6 +192,16 @@ onMounted(() => {
   })
 })
 
+// Silently strip the dead ?digest_unsubscribed=1 param from old daily-digest unsubscribe links.
+// The daily digest was retired; no new emails will carry this param, but old ones already sent may.
+onMounted(() => {
+  if (!import.meta.client) return
+  if (route.query.digest_unsubscribed !== '1') return
+  const nextQuery = { ...(route.query as Record<string, any>) }
+  delete nextQuery.digest_unsubscribed
+  void navigateTo({ path: route.path, query: nextQuery }, { replace: true })
+})
+
 // Show a one-time toast after email verification redirect.
 onMounted(() => {
   if (!import.meta.client) return
