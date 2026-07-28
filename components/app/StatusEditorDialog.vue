@@ -46,7 +46,7 @@
                   Keeps current expiry.
                   <button
                     type="button"
-                    class="ml-1 font-medium text-[var(--p-primary-color)] hover:underline"
+                    class="ml-1 font-medium text-gray-900 hover:underline dark:text-gray-100"
                     @click="isReplacing = true"
                   >
                     Replace instead
@@ -61,7 +61,7 @@
                 rows="3"
                 maxlength="120"
                 placeholder="What are you up to?"
-                class="mt-4 min-h-28 w-full resize-none rounded-2xl border border-black/10 bg-white px-4 py-3 text-base leading-6 text-gray-900 outline-none transition-shadow placeholder:text-gray-400 focus:ring-2 focus:ring-[var(--p-primary-color)]/30 dark:border-white/10 dark:bg-[color:var(--moh-surface-1)] dark:text-gray-50 dark:placeholder:text-gray-500"
+                class="mt-4 min-h-28 w-full resize-none rounded-2xl border border-black/10 bg-white px-4 py-3 text-base leading-6 text-gray-900 outline-none transition-shadow placeholder:text-gray-400 focus:ring-2 focus:ring-black/20 dark:border-white/10 dark:bg-[color:var(--moh-surface-1)] dark:text-gray-50 dark:placeholder:text-gray-500 dark:focus:ring-white/20"
                 @input="onInput"
               ></textarea>
 
@@ -79,7 +79,7 @@
                       type="button"
                       class="rounded-full border px-3 py-1 text-sm font-medium transition-colors"
                       :class="selectedDuration === h
-                        ? 'border-[var(--p-primary-color)] bg-[var(--p-primary-color)] text-white'
+                        ? 'border-gray-900 bg-gray-900 text-white dark:border-white dark:bg-white dark:text-gray-900'
                         : 'border-black/10 text-gray-700 hover:border-black/20 dark:border-white/15 dark:text-gray-300 dark:hover:border-white/25'"
                       @click="selectedDuration = h"
                     >
@@ -100,14 +100,16 @@
                     type="button"
                     role="switch"
                     :aria-checked="createsPost"
-                    class="relative h-6 w-10 shrink-0 rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--p-primary-color)]/40"
-                    :class="createsPost ? 'bg-[var(--p-primary-color)]' : 'bg-gray-300 dark:bg-gray-600'"
+                    class="relative h-6 w-10 shrink-0 rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-black/30 dark:focus-visible:ring-white/30"
+                    :class="createsPost ? 'bg-gray-900 dark:bg-white' : 'bg-gray-300 dark:bg-gray-600'"
                     @click="createsPost = !createsPost"
                   >
                     <!-- Track 40x24, knob 20 → 2px inset all round; travel = 40-20-(2*2) = 16px. -->
                     <span
-                      class="absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform"
-                      :class="createsPost ? 'translate-x-4' : 'translate-x-0'"
+                      class="absolute left-0.5 top-0.5 h-5 w-5 rounded-full shadow transition-[transform,background-color]"
+                      :class="createsPost
+                        ? ['translate-x-4', 'bg-white dark:bg-gray-900']
+                        : ['translate-x-0', 'bg-white']"
                     />
                   </button>
                 </label>
@@ -138,7 +140,7 @@
                   </button>
                   <button
                     type="submit"
-                    class="moh-pressable rounded-xl bg-[var(--p-primary-color)] px-4 py-2 text-sm font-semibold text-white transition-[opacity,transform] active:scale-[0.96] disabled:opacity-60"
+                    class="moh-pressable rounded-xl bg-gray-900 px-4 py-2 text-sm font-semibold text-white transition-[opacity,transform] active:scale-[0.96] disabled:opacity-60 dark:bg-white dark:text-gray-900"
                     :disabled="saving || !draft.trim() || (isEditMode && draft.trim() === openedDraft.trim())"
                   >
                     {{ saving ? 'Saving…' : submitLabel }}

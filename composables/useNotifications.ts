@@ -503,9 +503,9 @@ export function useNotifications() {
       case 'community_group_disbanded':
         return n.subjectGroupName ? `${n.subjectGroupName} was disbanded` : 'A group you were in was disbanded'
       case 'word_of_the_day':
-        return n.body ?? n.title ?? 'Word of the Day'
+        return n.title ?? n.body ?? 'Word of the Day'
       case 'quote_of_the_day':
-        return n.body ?? n.title ?? 'Quote of the Day'
+        return n.title ?? n.body ?? 'Quote of the Day'
       case 'marv_not_in_group':
         return n.title ?? '@marv is not in this group'
       case 'status_update':
