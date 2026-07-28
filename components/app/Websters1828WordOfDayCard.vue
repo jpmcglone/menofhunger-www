@@ -83,12 +83,22 @@
                 </a>
               </div>
 
-              <!-- Word -->
-              <div
-                class="moh-text mt-2.5 text-2xl font-semibold tracking-tight"
-                style="font-family: var(--moh-font-serif);"
-              >
-                {{ data.word }}
+              <!-- Word + like count -->
+              <div class="mt-2.5 flex items-center justify-between gap-2">
+                <div
+                  class="moh-text text-2xl font-semibold tracking-tight"
+                  style="font-family: var(--moh-font-serif);"
+                >
+                  {{ data.word }}
+                </div>
+                <div
+                  v-if="likeCount > 0"
+                  class="inline-flex items-center gap-1 shrink-0 text-[11px] moh-text-muted tabular-nums"
+                  :title="`${likeCount} ${likeCount === 1 ? 'like' : 'likes'}`"
+                >
+                  <Icon name="tabler:thumb-up" class="h-3 w-3 shrink-0" aria-hidden="true" />
+                  <AppAnimatedCount :value="likeCount" />
+                </div>
               </div>
 
               <!-- Definition area -->
@@ -154,6 +164,9 @@ defineProps<{
 }>()
 
 const { data, pending, error, refresh } = useWebsters1828Wotd({ server: false, lazy: true })
+
+// Like count from the shared cache — updated in real-time when WotdLikeButton toggles
+const likeCount = computed(() => data.value?.likeCount ?? 0)
 
 // Read from the shared daily-content state (populated by the parent page or RightRail).
 // useNuxtData reads the cached value without registering a competing handler.

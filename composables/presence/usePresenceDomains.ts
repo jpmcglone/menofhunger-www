@@ -580,6 +580,16 @@ export function usePresenceDomains() {
       if (!dailyContentCallbacks.value.size) return
       for (const cb of dailyContentCallbacks.value) cb.onPublished?.(data.item, data.dayKey)
     })
+
+    socket.on('wotd:like-updated', (data: { likeCount: number }) => {
+      // Patch the shared WOTD Nuxt data cache so every component reading from it
+      // (the full word page, the right-rail card) updates without a refetch.
+      const cached = useNuxtData<import('~/types/api').Websters1828WordOfDay>('websters1828:wotd')
+      if (cached.data.value) {
+        cached.data.value = { ...cached.data.value, likeCount: data.likeCount }
+      }
+      for (const cb of dailyContentCallbacks.value) cb.onLikeUpdated?.(data.likeCount)
+    })
   }
 
   return {

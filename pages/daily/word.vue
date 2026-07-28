@@ -46,9 +46,18 @@
             </div>
           </div>
 
-          <p v-if="dayLabel" class="mt-10 text-xs text-gray-400 dark:text-gray-500">
-            {{ dayLabel }}
-          </p>
+          <!-- Like button + day label row -->
+          <div class="mt-10 flex items-center justify-between gap-4">
+            <p v-if="dayLabel" class="text-xs text-gray-400 dark:text-gray-500">
+              {{ dayLabel }}
+            </p>
+            <AppWotdLikeButton
+              v-if="data"
+              :initial-count="likeCount"
+              :initial-liked="viewerHasLiked"
+              @like-toggled="onLikeToggled"
+            />
+          </div>
 
           <!-- Countdown to next word -->
           <p v-if="countdown" class="mt-3 text-[11px] text-gray-300 dark:text-gray-600 tabular-nums select-none">
@@ -71,7 +80,7 @@
 </template>
 
 <script setup lang="ts">
-import type { Websters1828WordOfDay, DailyContentToday } from '~/types/api'
+import type { WotdLikeToggle } from '~/types/api'
 import { siteConfig } from '~/config/site'
 
 definePageMeta({
@@ -87,6 +96,22 @@ const { data, refresh: refreshWord } = await useWebsters1828Wotd()
 
 // Also warm the daily-content cache (used by the right rail) so it doesn't double-fetch.
 const { data: dailyContent, refresh: refreshDailyContent } = await useDailyContentToday()
+
+// Like state — synced from the WOTD response
+const likeCount = ref(data.value?.likeCount ?? 0)
+const viewerHasLiked = ref(data.value?.viewerHasLiked ?? false)
+
+watch(() => data.value, (wotd) => {
+  if (wotd) {
+    likeCount.value = wotd.likeCount
+    viewerHasLiked.value = wotd.viewerHasLiked
+  }
+})
+
+function onLikeToggled(result: WotdLikeToggle) {
+  likeCount.value = result.likeCount
+  viewerHasLiked.value = result.liked
+}
 
 // --- OG / social metadata ---
 const ogTitle = computed(() =>
@@ -139,10 +164,13 @@ const notificationsCb = {
   },
 }
 
-// Refetch immediately when the server broadcasts that the word has been published.
+// Refetch on publish; patch like count in real time from other users' likes.
 const dailyContentCb = {
   onPublished: (item: 'word' | 'quote') => {
     if (item === 'word') void onWordPublished()
+  },
+  onLikeUpdated: (count: number) => {
+    likeCount.value = count
   },
 }
 

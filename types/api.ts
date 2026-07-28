@@ -380,6 +380,20 @@ export type Websters1828WordOfDay = {
   definitionHtml: string | null
   sourceUrl: string
   fetchedAt: string
+  likeCount: number
+  viewerHasLiked: boolean
+}
+
+export type WotdLikeBreakdown = {
+  premium: number
+  verified: number
+  unverified: number
+  total: number
+}
+
+export type WotdLikeToggle = {
+  liked: boolean
+  likeCount: number
 }
 
 export type DailyQuoteKind = 'scripture' | 'quote' | 'paraphrase'
