@@ -146,26 +146,18 @@
 </template>
 
 <script setup lang="ts">
-import type { Websters1828WordOfDay, DailyContentToday } from '~/types/api'
+import type { DailyContentToday } from '~/types/api'
 
 defineProps<{
   /** When provided, the "Word of the Day" label becomes a NuxtLink to this route. */
   detailTo?: string
 }>()
 
-const { apiFetchData } = useApiClient()
+const { data, pending, error, refresh } = useWebsters1828Wotd({ server: false, lazy: true })
 
-const { data, pending, error, refresh } = useAsyncData<Websters1828WordOfDay>(
-  'websters1828:wotd',
-  async () => {
-    return await apiFetchData<Websters1828WordOfDay>('/meta/websters1828/wotd?includeDefinition=1', { method: 'GET' })
-  },
-  { server: false, lazy: true },
-)
-
-// Read from the shared daily-content key (populated by the parent page or RightRail)
-// to get `nextPublishAt` for the word boundary. Falls back gracefully when not yet loaded.
-const { data: dailyContent } = useAsyncData<DailyContentToday | null>('daily-content:today', () => Promise.resolve(null), { server: false, immediate: false })
+// Read from the shared daily-content state (populated by the parent page or RightRail).
+// useNuxtData reads the cached value without registering a competing handler.
+const { data: dailyContent } = useNuxtData<DailyContentToday | null>('daily-content:today')
 
 const { scheduleFromNextPublishAt } = usePublishBoundaryRollover(async () => {
   expanded.value = false

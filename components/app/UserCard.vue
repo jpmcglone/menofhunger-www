@@ -97,7 +97,8 @@
       title-id="status-editor-title"
       @update:open="(open) => { if (!open) closeStatusEditor() }"
       @update:draft="statusDraft = $event"
-      @save="saveStatus"
+      @save="saveStatus($event)"
+      @edit="editStatus"
       @clear="clearStatus"
     />
 
@@ -129,7 +130,7 @@ const cardClass = computed(() => [
 
 const route = useRoute()
 const { user, isVerifiedMember } = useAuth()
-const { getPresenceStatus, getUserStatus, isSocketConnecting, setMyStatus, clearMyStatus } = usePresence()
+const { getPresenceStatus, getUserStatus, isSocketConnecting, setMyStatus, editMyStatus, clearMyStatus } = usePresence()
 const { menuItems } = useUserMenu()
 const { selectedSpaceId, currentSpace: currentSpaceForNav } = useSpaceLobby()
 const { openShortcutsModal } = useKeyboardShortcuts()
@@ -226,16 +227,31 @@ function closeStatusEditor() {
   statusError.value = null
 }
 
-async function saveStatus() {
+async function saveStatus(opts?: { durationHours?: 1 | 3 | 6 | 12 | 24; createsPost?: boolean }) {
   const text = statusDraft.value.trim()
   if (!text) return
   statusSaving.value = true
   statusError.value = null
   try {
-    await setMyStatus(text)
+    await setMyStatus(text, opts)
     closeStatusEditor()
   } catch (e) {
     statusError.value = getApiErrorMessage(e) || 'Could not save status.'
+  } finally {
+    statusSaving.value = false
+  }
+}
+
+async function editStatus() {
+  const text = statusDraft.value.trim()
+  if (!text) return
+  statusSaving.value = true
+  statusError.value = null
+  try {
+    await editMyStatus(text)
+    closeStatusEditor()
+  } catch (e) {
+    statusError.value = getApiErrorMessage(e) || 'Could not update status.'
   } finally {
     statusSaving.value = false
   }

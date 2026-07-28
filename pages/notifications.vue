@@ -144,7 +144,7 @@ import type { Notification, NotificationKind } from '~/types/api'
 import { closeBrowserNotificationsForHref } from '~/utils/browser-notifications'
 
 /** Kinds that render as a full AppPostRow when `notification.post` is hydrated. */
-const POST_ROW_KINDS = new Set<NotificationKind>(['comment', 'mention', 'followed_post', 'repost'])
+const POST_ROW_KINDS = new Set<NotificationKind>(['comment', 'mention', 'followed_post', 'checkin_post', 'repost'])
 
 function notificationShowsPostRow(n: Notification): boolean {
   if (!n.post || !POST_ROW_KINDS.has(n.kind)) return false
@@ -195,6 +195,8 @@ const kindChips: { label: string; kind: NotificationKind | 'other' | null }[] = 
   { label: 'Replies', kind: 'comment' },
   { label: 'Mentions', kind: 'mention' },
   { label: 'Posts', kind: 'followed_post' },
+  { label: 'Statuses', kind: 'status_update' },
+  { label: 'Check-ins', kind: 'checkin_post' },
   { label: 'Follows', kind: 'follow' },
   { label: 'Boosts', kind: 'boost' },
   { label: 'Other', kind: 'other' },
@@ -234,7 +236,7 @@ const showInitialLoader = computed(() => !hasFetched.value)
 function chipHasUnseenNotifications(kind: NotificationKind | 'other' | null): boolean {
   if (kind === 'other') {
     const total = Math.max(0, Number(unreadByKind.value.all ?? 0) || 0)
-    const primarySum = (['comment', 'mention', 'followed_post', 'follow', 'boost'] as NotificationKind[])
+    const primarySum = (['comment', 'mention', 'followed_post', 'status_update', 'checkin_post', 'follow', 'boost'] as NotificationKind[])
       .reduce((sum, k) => sum + Math.max(0, Number(unreadByKind.value[k] ?? 0) || 0), 0)
     return Math.max(0, total - primarySum) > 0
   }
@@ -539,7 +541,7 @@ function onNotificationKeydown(item: (typeof notifications.value)[number]) {
 function kindFromQuery(): NotificationKind | 'other' | null {
   const q = route.query.kind
   if (q === 'other') return 'other'
-  const valid: NotificationKind[] = ['comment', 'boost', 'repost', 'follow', 'followed_post', 'followed_article', 'mention', 'nudge', 'coin_transfer', 'poll_results_ready', 'generic']
+  const valid: NotificationKind[] = ['comment', 'boost', 'repost', 'follow', 'followed_post', 'followed_article', 'mention', 'nudge', 'coin_transfer', 'poll_results_ready', 'generic', 'status_update', 'checkin_post']
   return (typeof q === 'string' && valid.includes(q as NotificationKind)) ? (q as NotificationKind) : null
 }
 

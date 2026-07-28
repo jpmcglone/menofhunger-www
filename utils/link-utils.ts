@@ -268,6 +268,21 @@ export function isXPostUrl(url: string): boolean {
   }
 }
 
+/** True for Substack post permalinks (`https://{subdomain}.substack.com/p/{slug}`). */
+export function isSubstackPostUrl(url: string): boolean {
+  try {
+    const u = new URL(url)
+    if (u.protocol !== 'http:' && u.protocol !== 'https:') return false
+    const host = u.hostname.toLowerCase()
+    if (!host.endsWith('.substack.com')) return false
+    const subdomain = host.replace(/\.substack\.com$/, '')
+    if (!subdomain || subdomain.includes('.')) return false
+    return /^\/p\/[^/]+/.test(u.pathname)
+  } catch {
+    return false
+  }
+}
+
 /** True if the post body (with no media) would show a video embed (YouTube or Rumble). */
 export function postBodyHasVideoEmbed(body: string, hasMedia: boolean): boolean {
   if (hasMedia) return false

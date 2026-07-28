@@ -23,7 +23,7 @@ export type FeedbackStatus = 'new' | 'triaged' | 'resolved'
 export type FollowVisibility = 'none' | 'all' | 'verified' | 'premium'
 export type MessageParticipantRole = 'owner' | 'member'
 export type MessageParticipantStatus = 'pending' | 'accepted'
-export type NotificationKind = 'comment' | 'boost' | 'repost' | 'follow' | 'followed_post' | 'followed_article' | 'mention' | 'nudge' | 'poll_results_ready' | 'generic' | 'coin_transfer' | 'message' | 'group_join_request' | 'community_group_member_joined' | 'community_group_join_approved' | 'community_group_join_rejected' | 'community_group_member_removed' | 'community_group_disbanded' | 'crew_invite_received' | 'crew_invite_accepted' | 'crew_invite_declined' | 'crew_invite_cancelled' | 'crew_member_joined' | 'crew_member_left' | 'crew_member_kicked' | 'crew_owner_transferred' | 'crew_owner_transfer_vote' | 'crew_wall_mention' | 'crew_disbanded' | 'community_group_invite_received' | 'community_group_invite_accepted' | 'community_group_invite_declined' | 'community_group_invite_cancelled' | 'community_group_post' | 'marv_not_in_group' | 'status_update' | 'word_of_the_day' | 'quote_of_the_day'
+export type NotificationKind = 'comment' | 'boost' | 'repost' | 'follow' | 'followed_post' | 'followed_article' | 'mention' | 'nudge' | 'poll_results_ready' | 'generic' | 'coin_transfer' | 'message' | 'group_join_request' | 'community_group_member_joined' | 'community_group_join_approved' | 'community_group_join_rejected' | 'community_group_member_removed' | 'community_group_disbanded' | 'crew_invite_received' | 'crew_invite_accepted' | 'crew_invite_declined' | 'crew_invite_cancelled' | 'crew_member_joined' | 'crew_member_left' | 'crew_member_kicked' | 'crew_owner_transferred' | 'crew_owner_transfer_vote' | 'crew_wall_mention' | 'crew_disbanded' | 'community_group_invite_received' | 'community_group_invite_accepted' | 'community_group_invite_declined' | 'community_group_invite_cancelled' | 'community_group_post' | 'marv_not_in_group' | 'status_update' | 'checkin_post' | 'word_of_the_day' | 'quote_of_the_day'
 export type PostMediaKind = 'image' | 'gif' | 'video'
 export type PostMediaSource = 'upload' | 'giphy'
 export type PostVisibility = 'public' | 'verifiedOnly' | 'premiumOnly' | 'onlyMe'
@@ -1232,7 +1232,7 @@ export type PostDto = {
   editCount: number;
   body: string;
   deletedAt: string | null;
-  kind: 'regular' | 'checkin' | 'repost' | 'articleShare';
+  kind: 'regular' | 'checkin' | 'repost' | 'articleShare' | 'status';
   checkinDayKey: string | null;
   checkinPrompt: string | null;
   visibility: PostVisibility;
@@ -1304,6 +1304,8 @@ export type UserStatusDto = {
   text: string;
   setAt: string;
   expiresAt: string;
+  /** ID of the `kind: 'status'` post created when createsPost was true. Null when no post was generated. */
+  postId: string | null;
 };
 
 export type OnlineUserDto = UserListDto & {

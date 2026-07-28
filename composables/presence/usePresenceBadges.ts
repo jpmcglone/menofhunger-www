@@ -123,7 +123,10 @@ export function usePresenceBadges() {
       notificationUndeliveredCount.value = Math.max(0, Math.floor(raw))
     })
 
-    socket.on('notifications:new', () => {
+    socket.on('notifications:new', (data: { silent?: boolean }) => {
+      // Silent events only repaint a row the viewer has already seen (e.g. a status
+      // reworded in place) — no arrival to announce.
+      if (data?.silent) return
       // Play sound for realtime arrivals, even if viewer is on /notifications.
       // (Count updates can be suppressed if the page marks delivered immediately.)
       maybePlayNotificationSound()

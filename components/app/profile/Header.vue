@@ -465,7 +465,8 @@
     title-id="profile-status-editor-title"
     @update:open="(open) => { if (!open) closeStatusEditor() }"
     @update:draft="statusDraft = $event"
-    @save="saveStatus"
+    @save="saveStatus($event)"
+    @edit="editStatus"
     @clear="clearStatus"
   />
 
@@ -1141,7 +1142,7 @@ function onReportSubmitted() {
   // toast + close handled in dialog
 }
 
-const { addInterest, removeInterest, getPresenceStatus, getUserStatus, setMyStatus, clearMyStatus, isPresenceKnown } = usePresence()
+const { addInterest, removeInterest, getPresenceStatus, getUserStatus, setMyStatus, editMyStatus, clearMyStatus, isPresenceKnown } = usePresence()
 const lastProfileId = ref<string | null>(null)
 watch(
   () => profile.value?.id ?? null,
@@ -1196,16 +1197,31 @@ function closeStatusEditor() {
   statusError.value = null
 }
 
-async function saveStatus() {
+async function saveStatus(opts?: { durationHours?: 1 | 3 | 6 | 12 | 24; createsPost?: boolean }) {
   const text = statusDraft.value.trim()
   if (!text) return
   statusSaving.value = true
   statusError.value = null
   try {
-    await setMyStatus(text)
+    await setMyStatus(text, opts)
     closeStatusEditor()
   } catch (e) {
     statusError.value = getApiErrorMessage(e) || 'Could not save status.'
+  } finally {
+    statusSaving.value = false
+  }
+}
+
+async function editStatus() {
+  const text = statusDraft.value.trim()
+  if (!text) return
+  statusSaving.value = true
+  statusError.value = null
+  try {
+    await editMyStatus(text)
+    closeStatusEditor()
+  } catch (e) {
+    statusError.value = getApiErrorMessage(e) || 'Could not update status.'
   } finally {
     statusSaving.value = false
   }

@@ -242,7 +242,6 @@ const props = defineProps<{
 const { user, isVerified, isPremium } = useAuth()
 // Check-ins leaderboard is verified-only; premium counts as verified.
 const canAccessCheckins = computed(() => isVerified.value || isPremium.value)
-const { apiFetchData } = useApiClient()
 const { openShortcutsModal } = useKeyboardShortcuts()
 const currentYear = new Date().getUTCFullYear()
 
@@ -268,20 +267,7 @@ onMounted(() => {
 const {
   data: dailyContent,
   refresh: refreshDailyContent,
-} = useLazyAsyncData<DailyContentToday | null>(
-  'daily-content:today',
-  async () => {
-    return await apiFetchData<DailyContentToday>('/meta/daily-content/today', {
-      method: 'GET',
-      mohCache: { ttlMs: 60 * 60 * 1000, staleWhileRevalidateMs: 60 * 60 * 1000 },
-    })
-  },
-  {
-    server: false,
-    immediate: false,
-    default: () => null,
-  },
-)
+} = useDailyContentToday({ server: false, immediate: false })
 
 watch(
   secondaryLoadsEnabled,
@@ -303,12 +289,22 @@ const { scheduleFromNextPublishAt: scheduleRightRailRefresh } = usePublishBounda
   await refreshDailyContent()
 })
 
+// Also refresh instantly when the server broadcasts a publish event via websocket.
+const { addDailyContentCallback, removeDailyContentCallback } = usePresence()
+const dailyContentCb = {
+  onPublished: (_item: 'word' | 'quote') => {
+    if (secondaryLoadsEnabled.value) void refreshDailyContent()
+  },
+}
+
 if (import.meta.client) {
   watch(
     () => dailyContent.value?.nextPublishAt ?? null,
     (nextPublishAt) => scheduleRightRailRefresh(nextPublishAt),
     { immediate: true },
   )
+  onMounted(() => addDailyContentCallback(dailyContentCb))
+  onBeforeUnmount(() => removeDailyContentCallback(dailyContentCb))
 }
 
 const {

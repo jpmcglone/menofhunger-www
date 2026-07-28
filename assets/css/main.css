@@ -196,6 +196,11 @@ html.dark .moh-vignette::after {
   --moh-checkin-rgb: 31, 157, 99;
   --moh-checkin-soft: rgba(31, 157, 99, 0.12);
 
+  /* Status post accent (warm indigo — distinct from checkin green). */
+  --moh-status: #7c3aed;
+  --moh-status-rgb: 124, 58, 237;
+  --moh-status-soft: rgba(124, 58, 237, 0.10);
+
   /* Community groups (cyan / baby-blue — distinct from verified blue). */
   --moh-group: #0ea5e9;
   --moh-group-rgb: 14, 165, 233;
@@ -730,6 +735,11 @@ input[type="reset"] {
     border-color: rgba(var(--moh-checkin-rgb), 0.35);
     background-color: rgba(var(--moh-checkin-rgb), 0.10);
     color: var(--moh-checkin);
+  }
+  .moh-tag-status {
+    border-color: rgba(var(--moh-status-rgb), 0.35);
+    background-color: rgba(var(--moh-status-rgb), 0.10);
+    color: var(--moh-status);
   }
 
   .moh-menuitem-verified {

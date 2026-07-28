@@ -36,6 +36,14 @@ export type SocialPostMetadata = SocialPostEmbed & {
   }
 }
 
+export type VideoEmbedMetadata = {
+  platform: 'rumble'
+  embedUrl: string
+  thumbnailUrl: string | null
+  width: number
+  height: number
+}
+
 export type LinkMetadata = {
   url: string
   title: string | null
@@ -43,6 +51,7 @@ export type LinkMetadata = {
   imageUrl: string | null
   siteName: string | null
   socialPost: SocialPostMetadata | null
+  videoEmbed: VideoEmbedMetadata | null
 }
 
 export type GetLinkMetadataOptions = {
@@ -188,6 +197,7 @@ export async function getLinkMetadata(url: string, opts: GetLinkMetadataOptions 
             siteName: normalizeText(data.siteName),
             imageUrl: normalizeText(data.imageUrl),
             socialPost: data.socialPost ?? null,
+            videoEmbed: data.videoEmbed ?? null,
           }
           // Weak Pickax OG (favicon / "X posted") — keep trying client enrichers.
           if (!(isPickaxPostUrl(meta.url) && !isEnrichedPickaxMeta(meta))) {
@@ -220,6 +230,7 @@ export async function getLinkMetadata(url: string, opts: GetLinkMetadataOptions 
               siteName: normalizeText(json.data.publisher) ?? normalizeText(json.data.author),
               imageUrl: normalizeText(img),
               socialPost: null,
+              videoEmbed: null,
             }
             if (!(isPickaxPostUrl(meta.url) && !isEnrichedPickaxMeta(meta))) {
               cache.set(key, meta)
@@ -254,6 +265,7 @@ export async function getLinkMetadata(url: string, opts: GetLinkMetadataOptions 
         siteName: normalizeText(u.hostname.replace(/^www\./, '')),
         imageUrl,
         socialPost: null,
+        videoEmbed: null,
       }
 
       if (isPickaxPostUrl(u.toString())) {
@@ -274,6 +286,7 @@ export async function getLinkMetadata(url: string, opts: GetLinkMetadataOptions 
           siteName: handle ?? meta.siteName,
           imageUrl: avatarUrl?.includes('img.pickax.com') ? avatarUrl : null,
           socialPost: null,
+          videoEmbed: null,
         }
       }
 

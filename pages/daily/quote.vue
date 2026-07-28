@@ -36,6 +36,11 @@
               {{ dayLabel }}
             </p>
 
+            <!-- Countdown to next quote -->
+            <p v-if="countdown" class="text-[11px] text-gray-300 dark:text-gray-600 tabular-nums select-none">
+              Next quote in {{ countdown }}
+            </p>
+
             <p v-if="dailyQuote.note" class="text-xs text-gray-500 dark:text-gray-400 italic max-w-sm mx-auto leading-relaxed">
               {{ dailyQuote.note }}
             </p>
@@ -68,22 +73,51 @@
 <script setup lang="ts">
 import type { DailyContentToday, DailyQuote } from '~/types/api'
 import { formatDailyQuoteAttribution } from '~/utils/daily-quote'
+import { siteConfig } from '~/config/site'
 
 definePageMeta({
   layout: 'app',
   hideTopBar: true,
 })
 
-const { apiFetchData } = useApiClient()
 const { user: authUser } = useAuth()
 const { markReadByKind } = useNotifications()
-const { addNotificationsCallback, removeNotificationsCallback } = usePresence()
+const { addNotificationsCallback, removeNotificationsCallback, addDailyContentCallback, removeDailyContentCallback } = usePresence()
 
-const { data: dailyContent, refresh: refreshDailyContent } = await useAsyncData<DailyContentToday | null>(
-  'daily-content:today',
-  () => apiFetchData<DailyContentToday>('/meta/daily-content/today', { method: 'GET' }),
-  { default: () => null },
-)
+const { data: dailyContent, refresh: refreshDailyContent } = await useDailyContentToday()
+
+// --- OG / social metadata ---
+const ogTitle = computed(() => {
+  const q = dailyContent.value?.quote
+  if (!q) return 'Quote of the Day'
+  const attr = formatDailyQuoteAttribution(q as any)
+  return `"${q.text.slice(0, 60)}${q.text.length > 60 ? '…' : ''}" — ${attr}`
+})
+const ogDescription = computed(() => {
+  const q = dailyContent.value?.quote
+  if (!q) return `Daily wisdom and scripture, brought to you by ${siteConfig.name}.`
+  const attr = formatDailyQuoteAttribution(q as any)
+  return `${q.text} — ${attr}`
+})
+
+useSeoMeta({
+  title: () => `Quote of the Day | ${siteConfig.name}`,
+  description: () => ogDescription.value,
+  ogTitle: () => ogTitle.value,
+  ogDescription: () => ogDescription.value,
+  ogType: 'article',
+  ogUrl: `${siteConfig.url}/daily/quote`,
+  ogImage: `${siteConfig.url}/images/logo-black-bg.png`,
+  twitterCard: 'summary_large_image',
+  twitterTitle: () => ogTitle.value,
+  twitterDescription: () => ogDescription.value,
+  twitterImage: `${siteConfig.url}/images/logo-black-bg.png`,
+  twitterSite: '@menofhunger',
+})
+
+// --- Countdown ---
+const nextQuotePublishAt = computed(() => dailyContent.value?.nextQuotePublishAt ?? null)
+const { remaining: countdown } = usePublishCountdown(nextQuotePublishAt)
 
 function clearQuoteNotification() {
   if (authUser.value) {
@@ -91,19 +125,31 @@ function clearQuoteNotification() {
   }
 }
 
+async function onQuotePublished() {
+  await refreshDailyContent()
+  clearQuoteNotification()
+}
+
 // Refetch and clear the notification when a new quote_of_the_day notification arrives.
 const notificationsCb = {
   onNew: (payload: any) => {
     if (payload?.notification?.kind === 'quote_of_the_day') {
-      void refreshDailyContent()
-      clearQuoteNotification()
+      void onQuotePublished()
     }
+  },
+}
+
+// Refetch immediately when the server broadcasts that the quote has been published.
+const dailyContentCb = {
+  onPublished: (item: 'word' | 'quote') => {
+    if (item === 'quote') void onQuotePublished()
   },
 }
 
 if (import.meta.client) {
   onMounted(() => {
     addNotificationsCallback(notificationsCb as any)
+    addDailyContentCallback(dailyContentCb)
     clearQuoteNotification()
   })
   onActivated(() => {
@@ -111,6 +157,7 @@ if (import.meta.client) {
   })
   onBeforeUnmount(() => {
     removeNotificationsCallback(notificationsCb as any)
+    removeDailyContentCallback(dailyContentCb)
   })
 }
 

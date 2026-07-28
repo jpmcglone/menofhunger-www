@@ -49,6 +49,11 @@
           <p v-if="dayLabel" class="mt-10 text-xs text-gray-400 dark:text-gray-500">
             {{ dayLabel }}
           </p>
+
+          <!-- Countdown to next word -->
+          <p v-if="countdown" class="mt-3 text-[11px] text-gray-300 dark:text-gray-600 tabular-nums select-none">
+            Next word in {{ countdown }}
+          </p>
         </template>
 
         <!-- Loading skeleton -->
@@ -67,29 +72,52 @@
 
 <script setup lang="ts">
 import type { Websters1828WordOfDay, DailyContentToday } from '~/types/api'
+import { siteConfig } from '~/config/site'
 
 definePageMeta({
   layout: 'app',
   hideTopBar: true,
 })
 
-const { apiFetchData } = useApiClient()
 const { user: authUser } = useAuth()
 const { markReadByKind } = useNotifications()
-const { addNotificationsCallback, removeNotificationsCallback } = usePresence()
+const { addNotificationsCallback, removeNotificationsCallback, addDailyContentCallback, removeDailyContentCallback } = usePresence()
 
-const { data } = await useAsyncData<Websters1828WordOfDay | null>(
-  'websters1828:wotd',
-  () => apiFetchData<Websters1828WordOfDay>('/meta/websters1828/wotd?includeDefinition=1', { method: 'GET' }),
-  { default: () => null },
-)
+const { data, refresh: refreshWord } = await useWebsters1828Wotd()
 
 // Also warm the daily-content cache (used by the right rail) so it doesn't double-fetch.
-const { data: dailyContent, refresh: refreshDailyContent } = await useAsyncData<DailyContentToday | null>(
-  'daily-content:today',
-  () => apiFetchData<DailyContentToday>('/meta/daily-content/today', { method: 'GET' }),
-  { default: () => null },
+const { data: dailyContent, refresh: refreshDailyContent } = await useDailyContentToday()
+
+// --- OG / social metadata ---
+const ogTitle = computed(() =>
+  data.value?.word
+    ? `${data.value.word.charAt(0).toUpperCase() + data.value.word.slice(1)}: Word of the Day`
+    : 'Word of the Day',
 )
+const ogDescription = computed(() => {
+  const def = data.value?.definition ?? null
+  if (!def) return `Today's word from Webster's 1828 Dictionary, brought to you by ${siteConfig.name}.`
+  return def.replace(/<[^>]+>/g, '').slice(0, 200).trim()
+})
+
+useSeoMeta({
+  title: () => `${ogTitle.value} | ${siteConfig.name}`,
+  description: () => ogDescription.value,
+  ogTitle: () => ogTitle.value,
+  ogDescription: () => ogDescription.value,
+  ogType: 'article',
+  ogUrl: `${siteConfig.url}/daily/word`,
+  ogImage: `${siteConfig.url}/images/logo-black-bg.png`,
+  twitterCard: 'summary_large_image',
+  twitterTitle: () => ogTitle.value,
+  twitterDescription: () => ogDescription.value,
+  twitterImage: `${siteConfig.url}/images/logo-black-bg.png`,
+  twitterSite: '@menofhunger',
+})
+
+// --- Countdown ---
+const nextWordPublishAt = computed(() => dailyContent.value?.nextWordPublishAt ?? null)
+const { remaining: countdown } = usePublishCountdown(nextWordPublishAt)
 
 function clearWordNotification() {
   if (authUser.value) {
@@ -97,19 +125,31 @@ function clearWordNotification() {
   }
 }
 
+async function onWordPublished() {
+  await Promise.all([refreshWord(), refreshDailyContent()])
+  clearWordNotification()
+}
+
 // Refetch and clear the notification when a new word_of_the_day notification arrives.
 const notificationsCb = {
   onNew: (payload: any) => {
     if (payload?.notification?.kind === 'word_of_the_day') {
-      void refreshDailyContent()
-      clearWordNotification()
+      void onWordPublished()
     }
+  },
+}
+
+// Refetch immediately when the server broadcasts that the word has been published.
+const dailyContentCb = {
+  onPublished: (item: 'word' | 'quote') => {
+    if (item === 'word') void onWordPublished()
   },
 }
 
 if (import.meta.client) {
   onMounted(() => {
     addNotificationsCallback(notificationsCb as any)
+    addDailyContentCallback(dailyContentCb)
     clearWordNotification()
   })
   onActivated(() => {
@@ -117,6 +157,7 @@ if (import.meta.client) {
   })
   onBeforeUnmount(() => {
     removeNotificationsCallback(notificationsCb as any)
+    removeDailyContentCallback(dailyContentCb)
   })
 }
 

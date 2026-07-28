@@ -143,22 +143,13 @@ definePageMeta({
   hideTopBar: true,
 })
 
-const { apiFetchData } = useApiClient()
 const { user: authUser } = useAuth()
 const { markReadByKind } = useNotifications()
 const { addNotificationsCallback, removeNotificationsCallback } = usePresence()
 
 const [{ data: dailyContent, refresh: refreshDailyContent }, { data: wotd, refresh: refreshWotd }] = await Promise.all([
-  useAsyncData<DailyContentToday | null>(
-    'daily-content:today',
-    () => apiFetchData<DailyContentToday>('/meta/daily-content/today', { method: 'GET' }),
-    { default: () => null },
-  ),
-  useAsyncData<Websters1828WordOfDay | null>(
-    'websters1828:wotd',
-    () => apiFetchData<Websters1828WordOfDay>('/meta/websters1828/wotd?includeDefinition=1', { method: 'GET' }),
-    { default: () => null },
-  ),
+  useDailyContentToday(),
+  useWebsters1828Wotd(),
 ])
 
 function clearDailyNotifications() {

@@ -281,3 +281,12 @@ export type ScheduledCallback = {
   onPublished?: (payload: ScheduledPostPublishedPayload) => void
   onFailed?: (payload: ScheduledPostFailedPayload) => void
 }
+
+/**
+ * Daily content realtime. Broadcast to ALL connected clients when the word or
+ * quote of the day is freshly published. Pages on the WOTD/QOTD routes (and
+ * the right-rail) subscribe to this to auto-refresh without a reload.
+ */
+export type DailyContentCallback = {
+  onPublished?: (item: 'word' | 'quote', dayKey: string) => void
+}

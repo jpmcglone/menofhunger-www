@@ -1,7 +1,7 @@
 import type { GetNotificationsResponse, Notification, NotificationFeedItem, NotificationGroup, NotificationGroupKind, NotificationKind } from '~/types/api'
 
 /** Mirrors PRIMARY_NOTIFICATION_KINDS on the API side. */
-const PRIMARY_KINDS = new Set<NotificationKind>(['comment', 'mention', 'followed_post', 'follow', 'boost'])
+const PRIMARY_KINDS = new Set<NotificationKind>(['comment', 'mention', 'followed_post', 'checkin_post', 'status_update', 'follow', 'boost'])
 import type { NotificationsCallback } from '~/composables/usePresence'
 import { useUsersStore } from '~/composables/useUsersStore'
 import { userColorTier, userTierBgClass, userTierTextClass } from '~/utils/user-tier'
@@ -61,6 +61,23 @@ export function useNotifications() {
     return true
   }
 
+  /**
+   * Replace an already-rendered notification's contents without moving it in the list.
+   * Used for `silent` arrivals (e.g. a status reworded in place) where reordering the row
+   * to the top would read as fresh activity. Returns false when the row isn't loaded.
+   */
+  function patchNotificationInPlace(n: Notification): boolean {
+    if (!n?.id) return false
+    let found = false
+    const next = notifications.value.map((item) => {
+      if (item.type !== 'single' || item.notification.id !== n.id) return item
+      found = true
+      return { type: 'single' as const, notification: n }
+    })
+    if (found) notifications.value = next
+    return found
+  }
+
   function removeNotificationsByIds(ids: string[]): void {
     const idSet = new Set(ids.map((id) => (id ?? '').trim()).filter(Boolean))
     if (!idSet.size) return
@@ -92,6 +109,12 @@ export function useNotifications() {
           const notification = payload?.notification
           if (!notification?.id) return
           if (!isNotificationsPage.value) return
+          // Silent events repaint a row the viewer has already seen. Patch it where it sits
+          // and never refetch — moving it to the top would look like new activity.
+          if (payload.silent) {
+            patchNotificationInPlace(notification)
+            return
+          }
           const patched = prependNotification(notification)
           if (patched) return
           if (loading.value) {
@@ -326,7 +349,7 @@ export function useNotifications() {
       if (typeof res.data?.undeliveredCount === 'number') {
         setNotificationUndeliveredCount(res.data.undeliveredCount)
       }
-      closeBrowserNotifications({ kinds: ['followed_post'] })
+      closeBrowserNotifications({ kinds: ['followed_post', 'checkin_post'] })
     } catch (e: unknown) {
       if (import.meta.dev) {
         console.warn('[notifications] markNewPostsRead failed', e)
@@ -427,6 +450,8 @@ export function useNotifications() {
         return 'followed you'
       case 'followed_post':
         return 'shared a post'
+      case 'checkin_post':
+        return 'checked in'
       case 'followed_article':
         return 'published an article'
       case 'mention':
@@ -505,6 +530,8 @@ export function useNotifications() {
         return 'tabler:user-plus'
       case 'followed_post':
         return 'tabler:file-text'
+      case 'checkin_post':
+        return 'tabler:calendar-check'
       case 'followed_article':
         return 'tabler:article'
       case 'mention':
@@ -570,6 +597,8 @@ export function useNotifications() {
         return 'New follower'
       case 'followed_post':
         return 'New post'
+      case 'checkin_post':
+        return 'Check-in'
       case 'followed_article':
         return 'New article'
       case 'mention':
@@ -703,13 +732,15 @@ export function useNotifications() {
       const hash = n.subjectArticleCommentId ? `#comment-${n.subjectArticleCommentId}` : ''
       return `/a/${encodeURIComponent(n.subjectArticleId)}${hash}`
     }
-    if (n.kind === 'status_update' && n.actor?.username) {
-      return `/u/${encodeURIComponent(n.actor.username)}`
+    if (n.kind === 'status_update') {
+      // If a status post was created, deep-link to it; otherwise go to the actor's profile.
+      if (n.subjectPostId) return `/p/${encodeURIComponent(n.subjectPostId)}`
+      if (n.actor?.username) return `/u/${encodeURIComponent(n.actor.username)}`
     }
     if (n.kind === 'marv_not_in_group' && n.actorPostId) {
       return `/p/${encodeURIComponent(n.actorPostId)}`
     }
-    if ((n.kind === 'comment' || n.kind === 'followed_post' || n.kind === 'mention' || n.kind === 'repost') && n.actorPostId) {
+    if ((n.kind === 'comment' || n.kind === 'followed_post' || n.kind === 'checkin_post' || n.kind === 'mention' || n.kind === 'repost') && n.actorPostId) {
       return `/p/${encodeURIComponent(n.actorPostId)}`
     }
     if (n.subjectPostId) return `/p/${encodeURIComponent(n.subjectPostId)}`

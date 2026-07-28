@@ -186,6 +186,12 @@
           </div>
         </component>
 
+        <!-- Status post: eyebrow + bubble -->
+        <template v-if="!isDeletedPost && postView.kind === 'status' && postView.body">
+          <p class="mt-2 mb-1.5 text-[11px] text-zinc-400 dark:text-zinc-500 select-none">updated their status</p>
+          <AppStatusBubble :text="postView.body" />
+        </template>
+
         <div
           v-if="isDeletedPost"
           class="mt-2 rounded-lg border border-gray-200 bg-gray-50 px-2.5 py-1.5 sm:px-3 sm:py-2 text-sm font-semibold text-gray-700 dark:border-zinc-800 dark:bg-black dark:text-white"
@@ -237,7 +243,7 @@
         </template>
 
         <AppPostRowBody
-          v-else
+          v-else-if="postView.kind !== 'status'"
           :body="postView.body"
           :has-media="Boolean(postView.media?.length)"
           :mentions="postView.mentions"
@@ -595,6 +601,7 @@ const authorProfilePath = computed(() => {
 })
 
 const isCheckinPost = computed(() => !isDeletedPost.value && postView.value.kind === 'checkin')
+const isStatusPost = computed(() => !isDeletedPost.value && postView.value.kind === 'status')
 
 function easternDayKeyNow(): string {
   try {

@@ -138,6 +138,7 @@ export function usePresence() {
     addStatusesFromRest: online.addStatusesFromRest,
     fetchStatusesForUsers: online.fetchStatusesForUsers,
     setMyStatus: online.setMyStatus,
+    editMyStatus: online.editMyStatus,
     clearMyStatus: online.clearMyStatus,
     userCurrentSpaceById: readonly(online.userCurrentSpaceById),
     getCurrentSpaceForUser(userId: string): string | null {
@@ -215,6 +216,8 @@ export function usePresence() {
     removeReferralCallback: domains.referrals.remove,
     addScheduledCallback: domains.scheduled.add,
     removeScheduledCallback: domains.scheduled.remove,
+    addDailyContentCallback: domains.dailyContent.add,
+    removeDailyContentCallback: domains.dailyContent.remove,
     ...emitters,
     connect: core.connect,
     disconnect: core.disconnect,

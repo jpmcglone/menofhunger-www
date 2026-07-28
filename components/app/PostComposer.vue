@@ -470,7 +470,8 @@
     title-id="composer-status-editor-title"
     @update:open="(open) => { if (!open) closeStatusEditor() }"
     @update:draft="statusDraft = $event"
-    @save="saveStatus"
+    @save="saveStatus($event)"
+    @edit="editStatus"
     @clear="clearStatus"
   />
 
@@ -712,7 +713,7 @@ const props = defineProps<{
 const route = useRoute()
 const { user, me, isAuthed, isPremium, isVerified: viewerIsVerified, isVerifiedMember } = useAuth()
 const { apiFetchData } = useApiClient()
-const { getUserStatus, setMyStatus, clearMyStatus } = usePresence()
+const { getUserStatus, setMyStatus, editMyStatus, clearMyStatus } = usePresence()
 
 // Group audience picker — lets viewer target one of their groups when composing from the main feed.
 // Only used when `props.communityGroupId` is not already set (group-wall context already pins it).
@@ -909,16 +910,31 @@ function closeStatusEditor() {
   statusError.value = null
 }
 
-async function saveStatus() {
+async function saveStatus(opts?: { durationHours?: 1 | 3 | 6 | 12 | 24; createsPost?: boolean }) {
   const text = statusDraft.value.trim()
   if (!text) return
   statusSaving.value = true
   statusError.value = null
   try {
-    await setMyStatus(text)
+    await setMyStatus(text, opts)
     closeStatusEditor()
   } catch (e) {
     statusError.value = getApiErrorMessage(e) || 'Could not save status.'
+  } finally {
+    statusSaving.value = false
+  }
+}
+
+async function editStatus() {
+  const text = statusDraft.value.trim()
+  if (!text) return
+  statusSaving.value = true
+  statusError.value = null
+  try {
+    await editMyStatus(text)
+    closeStatusEditor()
+  } catch (e) {
+    statusError.value = getApiErrorMessage(e) || 'Could not update status.'
   } finally {
     statusSaving.value = false
   }

@@ -100,6 +100,12 @@
       :href="previewLink"
     />
 
+    <AppSubstackPostCard
+      v-else-if="showLinkPreview && substackMeta && substackMeta.title && previewLink"
+      :meta="substackMeta"
+      :href="previewLink"
+    />
+
     <!-- Generic link preview (last link only, external sites) -->
     <a
       v-else-if="showLinkPreview"
@@ -136,6 +142,13 @@
         </div>
       </div>
     </a>
+
+    <!-- Scripture preview card: lowest priority, only when slot is otherwise empty and
+         exactly one scripture reference is present in the post body. -->
+    <AppScriptureVerseCard
+      v-if="singleScriptureRef && rowInView"
+      :reference="singleScriptureRef"
+    />
 
     <!-- MOH article link → article share card (or skeleton while fetching) -->
     <!-- Suppressed when a preloaded article is passed in — the parent PostRow renders
@@ -226,14 +239,14 @@
 </template>
 
 <script setup lang="ts">
-import { extractLinksFromText, getYouTubeEmbedUrl, getYouTubePosterUrls, parseYouTubeUrl, isRumbleShortsUrl, isRumbleUrl, safeUrlDisplay, safeUrlHostname, isMohUrl, mohUrlPath, extractMohPostId, extractMohArticleId, extractMohSpaceId, extractMohUsername, isXPostUrl } from '~/utils/link-utils'
+import { extractLinksFromText, getYouTubeEmbedUrl, getYouTubePosterUrls, parseYouTubeUrl, isRumbleShortsUrl, isRumbleUrl, safeUrlDisplay, safeUrlHostname, isMohUrl, mohUrlPath, extractMohPostId, extractMohArticleId, extractMohSpaceId, extractMohUsername, isXPostUrl, isSubstackPostUrl } from '~/utils/link-utils'
 import type { LinkMetadata } from '~/utils/link-metadata'
 import { getLinkMetadata } from '~/utils/link-metadata'
 import type { RumbleEmbedInfo } from '~/utils/rumble-embed'
-import { resolveRumbleEmbedInfo } from '~/utils/rumble-embed'
 import { useEmbeddedVideoManager } from '~/composables/useEmbeddedVideoManager'
 import { usePreviewFetchLimiter } from '~/composables/usePreviewFetchLimiter'
 import type { ArticleSharePreview } from '~/types/api'
+import { splitTextByScriptureDisplay } from '~/utils/scripture-reference'
 
 // Stable public paths (not `~/assets` imports) so the URL is identical on
 // server and client — avoids the Vite dev `?t=<timestamp>` hydration mismatch.
@@ -543,10 +556,18 @@ watch(
       // Special cases (embed) do not need metadata.
       if (getYouTubeEmbedUrl(url)) return
       if (isRumbleUrl(url) && !isRumbleShortsUrl(url)) {
-        void runLimited(() => resolveRumbleEmbedInfo(url))
-          .then((info) => {
+        void runLimited(() => getLinkMetadata(url, { signal: controller.signal }))
+          .then((meta) => {
             if (cancelled) return
-            rumbleEmbedInfo.value = info
+            const embed = meta?.videoEmbed
+            if (embed?.platform === 'rumble' && embed.embedUrl) {
+              rumbleEmbedInfo.value = {
+                src: embed.embedUrl,
+                width: embed.width,
+                height: embed.height,
+                thumbnailUrl: embed.thumbnailUrl,
+              }
+            }
           })
         return
       }
@@ -581,17 +602,34 @@ const xPostMeta = computed(() => {
   return linkMeta.value?.socialPost?.platform === 'x' ? linkMeta.value.socialPost : null
 })
 
+const substackMeta = computed(() => {
+  if (!previewLink.value || !isSubstackPostUrl(previewLink.value)) return null
+  return linkMeta.value ?? null
+})
+
 // Embedded MOH post: always show block so SSR can fetch and render the preview before first paint.
 // Space/article/user preview: show skeleton while loading, resolved card when ready (both require rowInView).
 // External link preview: only show when row is in view (avoid metadata fetch for off-screen rows).
 // Article: when preloadedArticle is provided, PostRow renders the card directly — skip showing anything here.
+// Scripture preview card: rendered at lowest priority — only when the link preview slot is
+// completely empty and the post has exactly one scripture reference.
+const singleScriptureRef = computed(() => {
+  if (showLinkPreview.value) return null
+  if (embeddedPostId.value || embeddedArticleId.value || embeddedSpaceId.value || embeddedUsername.value) return null
+  if (hasMedia.value) return null
+  const segments = splitTextByScriptureDisplay(body.value)
+  const refs = segments.filter(s => s.scripture).map(s => s.scripture!.reference)
+  return refs.length === 1 ? refs[0] : null
+})
+
 const showAny = computed(() =>
   Boolean(
     embeddedPostId.value ||
     (embeddedArticleId.value && !preloadedArticle.value && rowInView.value) ||
     (embeddedSpaceId.value && rowInView.value) ||
     (embeddedUsername.value && rowInView.value) ||
-    (showLinkPreview.value && rowInView.value),
+    (showLinkPreview.value && rowInView.value) ||
+    (singleScriptureRef.value && rowInView.value),
   )
 )
 </script>

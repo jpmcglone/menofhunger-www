@@ -404,6 +404,10 @@ export type DailyContentToday = {
   websters1828RefreshedAt: string | null
   /** UTC ISO timestamp of the next content publish boundary (9:00am ET for word, 9:30am ET for quote). */
   nextPublishAt: string | null
+  /** UTC ISO timestamp of when today's word-of-the-day will (or did) publish: 09:00 ET. */
+  nextWordPublishAt: string | null
+  /** UTC ISO timestamp of when today's quote-of-the-day will (or did) publish: 09:30 ET. */
+  nextQuotePublishAt: string | null
 }
 
 export type AdminEmailSampleType = 'weekly_digest' | 'new_notifications' | 'instant_high_signal' | 'streak_reminder'
@@ -557,7 +561,7 @@ export type FeedPost = {
   editCount?: number
   body: string
   deletedAt: string | null
-  kind?: 'regular' | 'checkin' | 'repost' | 'articleShare'
+  kind?: 'regular' | 'checkin' | 'repost' | 'articleShare' | 'status'
   checkinDayKey?: string | null
   checkinPrompt?: string | null
   visibility: PostVisibility
@@ -1457,6 +1461,12 @@ export type GetMessageBlocksResponse = {
 
 export type WsNotificationsNewPayload = {
   notification: Notification
+  /**
+   * True when this event only re-renders an already-seen notification (e.g. the actor
+   * reworded their active status). The row's unread state and the bell count are
+   * untouched, so clients must patch quietly: no sound, no badge change, no highlight.
+   */
+  silent?: boolean
 }
 
 export type WsNotificationsDeletedPayload = {
@@ -2729,4 +2739,19 @@ export type CheckinTodayState = {
   allowedVisibilities: string[]
   crew?: unknown
   socialProof?: unknown
+}
+
+// ─── Scripture ───────────────────────────────────────────────────────────────
+
+export type ScriptureVerse = {
+  number: number
+  text: string
+}
+
+export type ScriptureRef = {
+  reference: string
+  translation: string
+  translationName: string
+  verses: ScriptureVerse[]
+  text: string
 }

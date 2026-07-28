@@ -37,6 +37,7 @@ import type {
   ArticlesCallback,
   CheckinsCallback,
   CrewCallback,
+  DailyContentCallback,
   FollowsCallback,
   GroupFeedCallback,
   GroupInviteCallback,
@@ -113,6 +114,7 @@ export function usePresenceDomains() {
   const marvCallbacks = useState<Set<MarvCallback>>('presence-marv-callbacks', () => new Set())
   const referralCallbacks = useState<Set<ReferralCallback>>('presence-referral-callbacks', () => new Set())
   const scheduledCallbacks = useState<Set<ScheduledCallback>>('presence-scheduled-callbacks', () => new Set())
+  const dailyContentCallbacks = useState<Set<DailyContentCallback>>('presence-daily-content-callbacks', () => new Set())
 
   function makeRegistry<T>(set: Ref<Set<T>>) {
     return {
@@ -141,6 +143,7 @@ export function usePresenceDomains() {
   const marv = makeRegistry(marvCallbacks)
   const referrals = makeRegistry(referralCallbacks)
   const scheduled = makeRegistry(scheduledCallbacks)
+  const dailyContent = makeRegistry(dailyContentCallbacks)
 
   function registerSocketHandlers(socket: Socket) {
     // ── Notifications / Marv ──────────────────────────────────────────
@@ -571,6 +574,12 @@ export function usePresenceDomains() {
       if (!scheduledCallbacks.value.size) return
       for (const cb of scheduledCallbacks.value) cb.onFailed?.(data)
     })
+
+    // ── Daily content ─────────────────────────────────────────────────
+    socket.on('daily:content-published', (data: { item: 'word' | 'quote'; dayKey: string }) => {
+      if (!dailyContentCallbacks.value.size) return
+      for (const cb of dailyContentCallbacks.value) cb.onPublished?.(data.item, data.dayKey)
+    })
   }
 
   return {
@@ -590,6 +599,7 @@ export function usePresenceDomains() {
     marv,
     referrals,
     scheduled,
+    dailyContent,
     registerSocketHandlers,
   }
 }

@@ -199,10 +199,27 @@ export function usePresenceOnline(socketRef: Ref<Socket | null>) {
     }
   }
 
-  async function setMyStatus(text: string): Promise<UserStatus> {
+  async function setMyStatus(
+    text: string,
+    opts?: { durationHours?: 1 | 3 | 6 | 12 | 24; createsPost?: boolean },
+  ): Promise<UserStatus> {
     const cleanText = String(text ?? '').trim()
     const status = await apiFetchData<UserStatus>('/presence/status', {
       method: 'PUT',
+      body: {
+        text: cleanText,
+        durationHours: opts?.durationHours ?? 24,
+        createsPost: opts?.createsPost ?? true,
+      },
+    })
+    applyUserStatus(status)
+    return status
+  }
+
+  async function editMyStatus(text: string): Promise<UserStatus> {
+    const cleanText = String(text ?? '').trim()
+    const status = await apiFetchData<UserStatus>('/presence/status', {
+      method: 'PATCH',
       body: { text: cleanText },
     })
     applyUserStatus(status)
@@ -536,6 +553,7 @@ export function usePresenceOnline(socketRef: Ref<Socket | null>) {
     addStatusesFromRest,
     fetchStatusesForUsers,
     setMyStatus,
+    editMyStatus,
     clearMyStatus,
     addInterest,
     removeInterest,

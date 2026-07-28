@@ -1,4 +1,10 @@
 <template>
+  <AppScriptureVersePopover
+    v-if="scripturePopoverRef"
+    :reference="scripturePopoverRef"
+    :target="scripturePopoverTarget"
+    @close="scripturePopoverRef = null; scripturePopoverTarget = null"
+  />
   <p class="mt-0.5 whitespace-pre-wrap break-words moh-text">
     <template v-for="(seg, idx) in displayBodySegments" :key="bodySegmentKey(seg, idx)">
       <a
@@ -41,6 +47,12 @@
       >
         {{ seg.text }}
       </NuxtLink>
+      <button
+        v-else-if="seg.scriptureRef"
+        type="button"
+        class="font-medium text-amber-700 dark:text-amber-400 hover:underline underline-offset-2 cursor-pointer"
+        @click.stop="onScriptureClick(seg.scriptureRef!, $event)"
+      >{{ seg.text }}</button>
       <span v-else>{{ seg.text }}</span>
     </template>
   </p>
@@ -53,12 +65,23 @@ import { extractLinksFromText } from '~/utils/link-utils'
 import { splitTextByMentionsDisplay } from '~/utils/mention-autocomplete'
 import { splitTextByHashtagsDisplay } from '~/utils/hashtag-autocomplete'
 import { splitTextByCashtagsDisplay } from '~/utils/cashtag-autocomplete'
+import { splitTextByScriptureDisplay } from '~/utils/scripture-reference'
 import { mentionTierToStyle } from '~/utils/mention-tier-style'
 import { stableListKey } from '~/utils/stable-list-key'
 import { tierFromMentionUser } from '~/composables/useMentionAutocomplete'
 
 type MentionTier = 'normal' | 'verified' | 'premium' | 'organization'
-type TextSegment = { text: string; href?: string; mentionUsername?: string; mentionTier?: MentionTier; hashtagTag?: string; hashtagTier?: MentionTier; cashtagSymbol?: string; cashtagTier?: MentionTier }
+type TextSegment = {
+  text: string
+  href?: string
+  mentionUsername?: string
+  mentionTier?: MentionTier
+  hashtagTag?: string
+  hashtagTier?: MentionTier
+  cashtagSymbol?: string
+  cashtagTier?: MentionTier
+  scriptureRef?: string
+}
 
 const props = defineProps<{
   body: string
@@ -247,12 +270,28 @@ function splitByMentions(text: string): TextSegment[] {
         if (c) {
           out.push({ text: cseg.text, cashtagSymbol: c.symbolUpper, cashtagTier: postTier.value })
         } else {
-          out.push({ text: cseg.text })
+          // Finally, split by scripture references (pure regex, zero network).
+          const ss = splitTextByScriptureDisplay(cseg.text)
+          for (const sseg of ss) {
+            if (sseg.scripture) {
+              out.push({ text: sseg.text, scriptureRef: sseg.scripture.reference })
+            } else {
+              out.push({ text: sseg.text })
+            }
+          }
         }
       }
     }
   }
   return out
+}
+
+const scripturePopoverTarget = ref<HTMLElement | null>(null)
+const scripturePopoverRef = ref<string | null>(null)
+
+function onScriptureClick(reference: string, event: MouseEvent) {
+  scripturePopoverRef.value = reference
+  scripturePopoverTarget.value = event.currentTarget as HTMLElement
 }
 
 const displayBodySegments = computed<TextSegment[]>(() => {
@@ -298,6 +337,7 @@ function bodySegmentKey(seg: TextSegment, idx: number): string {
   if (seg.mentionUsername) return stableListKey('mention', seg.mentionUsername, seg.text, idx)
   if (seg.hashtagTag) return stableListKey('hashtag', seg.hashtagTag, seg.text, idx)
   if (seg.cashtagSymbol) return stableListKey('cashtag', seg.cashtagSymbol, seg.text, idx)
+  if (seg.scriptureRef) return stableListKey('scripture', seg.scriptureRef, seg.text, idx)
   return stableListKey('text', seg.text, idx)
 }
 </script>
