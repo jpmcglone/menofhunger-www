@@ -289,5 +289,5 @@ export type ScheduledCallback = {
  */
 export type DailyContentCallback = {
   onPublished?: (item: 'word' | 'quote', dayKey: string) => void
-  onLikeUpdated?: (likeCount: number) => void
+  onLikeUpdated?: (likeCount: number, viewerHasLiked: boolean) => void
 }

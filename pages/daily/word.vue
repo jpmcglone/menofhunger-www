@@ -169,8 +169,9 @@ const dailyContentCb = {
   onPublished: (item: 'word' | 'quote') => {
     if (item === 'word') void onWordPublished()
   },
-  onLikeUpdated: (count: number) => {
+  onLikeUpdated: (count: number, viewerLiked: boolean) => {
     likeCount.value = count
+    viewerHasLiked.value = viewerLiked
   },
 }
 

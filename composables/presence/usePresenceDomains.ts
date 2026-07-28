@@ -96,6 +96,7 @@ function pickPublicUserEntity(u: unknown): import('~/composables/useUsersStore')
  */
 export function usePresenceDomains() {
   const usersStore = useUsersStore()
+  const { user: authUser } = useAuth()
   const userCurrentSpaceById = useState<Record<string, string | null>>(PRESENCE_USER_CURRENT_SPACE_KEY, () => ({}))
 
   const messagesCallbacks = useState<Set<MessagesCallback>>('presence-messages-callbacks', () => new Set())
@@ -581,14 +582,19 @@ export function usePresenceDomains() {
       for (const cb of dailyContentCallbacks.value) cb.onPublished?.(data.item, data.dayKey)
     })
 
-    socket.on('wotd:like-updated', (data: { likeCount: number }) => {
+    socket.on('wotd:like-updated', (data: { likeCount: number; actorUserId: string; liked: boolean }) => {
       // Patch the shared WOTD Nuxt data cache so every component reading from it
       // (the full word page, the right-rail card) updates without a refetch.
+      const isMe = authUser.value?.id === data.actorUserId
       const cached = useNuxtData<import('~/types/api').Websters1828WordOfDay>('websters1828:wotd')
       if (cached.data.value) {
-        cached.data.value = { ...cached.data.value, likeCount: data.likeCount }
+        cached.data.value = {
+          ...cached.data.value,
+          likeCount: data.likeCount,
+          ...(isMe ? { viewerHasLiked: data.liked } : {}),
+        }
       }
-      for (const cb of dailyContentCallbacks.value) cb.onLikeUpdated?.(data.likeCount)
+      for (const cb of dailyContentCallbacks.value) cb.onLikeUpdated?.(data.likeCount, isMe ? data.liked : (cached.data.value?.viewerHasLiked ?? false))
     })
   }
 
