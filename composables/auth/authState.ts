@@ -101,6 +101,9 @@ export function clearAuthClientState(params?: { resetViewerCaches?: boolean }) {
     clearNuxtData(`follow-summary:${prevUsername}`)
   }
 
+  // Clear the persistent WOTD state so viewerHasLiked doesn't leak to the next account.
+  useState<any>('wotd:data', () => null).value = null
+
   useState<any>('app-header', () => null).value = null
 
   // Reset push subscription binding so a future login re-registers for the correct user.
