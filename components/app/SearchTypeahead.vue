@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { FollowListUser, CommunityGroupShell, RecentSearch } from '~/types/api'
+import { groupAvatarRoundClass } from '~/utils/avatar-rounding'
 
 const props = withDefaults(defineProps<{
   modelValue?: string
@@ -31,6 +32,7 @@ const query = computed({
   set: (v) => emit('update:modelValue', v),
 })
 const queryTrimmed = computed(() => (query.value ?? '').trim())
+const groupRoundClass = groupAvatarRoundClass()
 
 // ── People + Groups typeahead ─────────────────────────────────────────────────
 const people = ref<FollowListUser[]>([])
@@ -312,7 +314,7 @@ defineExpose({
                 />
               </div>
               <!-- Group avatar or icon -->
-              <div v-else-if="r.group" class="shrink-0 h-8 w-8 rounded-full overflow-hidden bg-gray-100 dark:bg-zinc-800 flex items-center justify-center">
+              <div v-else-if="r.group" class="shrink-0 h-8 w-8 overflow-hidden bg-gray-100 dark:bg-zinc-800 flex items-center justify-center" :class="groupRoundClass">
                 <img v-if="r.group.avatarImageUrl" :src="r.group.avatarImageUrl" :alt="r.group.name" class="h-full w-full object-cover" />
                 <Icon v-else name="tabler:users-group" class="text-base moh-text-muted" aria-hidden="true" />
               </div>
@@ -457,7 +459,7 @@ defineExpose({
                 @click.capture="() => { focused = false; void recordGroup(g) }"
               />
               <div class="relative z-[2] flex items-center gap-2.5 w-full min-w-0 pointer-events-none">
-                <div class="shrink-0 h-8 w-8 rounded-full overflow-hidden bg-gray-100 dark:bg-zinc-800 flex items-center justify-center">
+                <div class="shrink-0 h-8 w-8 overflow-hidden bg-gray-100 dark:bg-zinc-800 flex items-center justify-center" :class="groupRoundClass">
                   <img v-if="g.avatarImageUrl" :src="g.avatarImageUrl" :alt="g.name" class="h-full w-full object-cover" />
                   <Icon v-else name="tabler:users-group" class="text-base moh-text-muted" aria-hidden="true" />
                 </div>
