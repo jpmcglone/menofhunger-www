@@ -218,6 +218,8 @@ export type NotificationPreferences = {
   pushGroupActivity: boolean
   /** Word of the day + quote of the day push (fires at 9:00am / 9:30am ET). */
   pushDailyContent: boolean
+  /** 6pm ET reminder to complete today's check-in (skipped if user already checked in). */
+  pushCheckinReminder: boolean
   emailDigestWeekly: boolean
   emailNewNotifications: boolean
   emailInstantHighSignal: boolean
@@ -608,6 +610,8 @@ export type FeedPost = {
   viewerBookmarkCollectionIds?: string[]
   /** True if the viewer has flat-reposted this post. */
   viewerHasReposted?: boolean
+  /** True if the viewer has viewed this post (exists in PostView table). */
+  viewerHasViewed?: boolean
   /** Set when a block exists between viewer and author. */
   viewerBlockStatus?: 'viewer_blocked' | 'viewer_blocked_by' | null
   /** For kind='repost': the original post being reshared. */
@@ -2173,6 +2177,8 @@ export type CommunityGroupShell = {
   pendingInviteCount?: number
   /** Marv bot membership status. Only populated on getShellBySlug; null when Marv is not configured. */
   marv?: { userId: string; username: string | null; isMember: boolean } | null
+  /** ISO timestamp of the viewer's most recent post/reply in this group. Only populated on listMine. */
+  lastViewerPostAt?: string | null
 }
 
 export type CommunityGroupMemberListItem = {
@@ -2708,11 +2714,39 @@ export type MarvAdminDailyCostRowDto = {
 
 // ─── Explore aggregate ───────────────────────────────────────────────────────
 
+/** Minimal user shape returned on a recent search entry. */
+export type RecentSearchUser = {
+  id: string
+  username: string | null
+  name: string | null
+  premium: boolean
+  premiumPlus: boolean
+  isOrganization: boolean
+  stewardBadgeEnabled: boolean
+  verifiedStatus: 'none' | 'identity' | 'manual'
+  avatarUrl: string | null
+  orgAffiliations?: OrgAffiliation[]
+  relationship?: FollowRelationship
+}
+
+/** Minimal group info on a recent search entry (group tap). */
+export type RecentSearchGroup = {
+  id: string
+  slug: string
+  name: string
+  avatarImageUrl: string | null
+  memberCount: number
+}
+
 /** Recent search entry from GET /search/recent. */
 export type RecentSearch = {
   id: string
   query: string
   createdAt: string
+  /** Populated when this entry was a profile tap rather than a typed query. */
+  user: RecentSearchUser | null
+  /** Populated when this entry was a group tap rather than a typed query. */
+  group: RecentSearchGroup | null
 }
 
 /** Data for GET /search/recent. */

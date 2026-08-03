@@ -142,6 +142,54 @@ describe('computePostPermalinkSeo — public posts', () => {
     expect(article.video.contentUrl).toBe(mp4)
   })
 
+  it('youtube-only post uses yt thumbnail as og:image (SSR-derivable, no fetch)', () => {
+    const ytUrl = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ'
+    const post = basePost({ body: ytUrl, media: [] })
+    const r = computePostPermalinkSeo(
+      input({
+        post,
+        previewLink: ytUrl,
+        bodyTextSansLinks: '',
+        linkMeta: null,
+      }),
+    )
+    expect(r.image).toBe('https://i.ytimg.com/vi/dQw4w9WgXcQ/maxresdefault.jpg')
+    expect(r.imageAlt).toContain('YouTube video')
+    expect(r.twitterCard).toBe('summary_large_image')
+    const article = r.jsonLdGraph.find((x: any) => x?.['@type'] === 'Article') as any
+    expect(article?.image).toContain('https://i.ytimg.com/vi/dQw4w9WgXcQ/maxresdefault.jpg')
+  })
+
+  it('youtube post: linkMeta.imageUrl is ignored in favour of yt thumbnail', () => {
+    const ytUrl = 'https://youtu.be/dQw4w9WgXcQ'
+    const post = basePost({ body: ytUrl, media: [] })
+    const r = computePostPermalinkSeo(
+      input({
+        post,
+        previewLink: ytUrl,
+        bodyTextSansLinks: '',
+        linkMeta: { url: ytUrl, imageUrl: 'https://cdn.example/link-og.jpg', title: 'Rick Roll', description: null, siteName: null, socialPost: null, videoEmbed: null },
+      }),
+    )
+    expect(r.image).toBe('https://i.ytimg.com/vi/dQw4w9WgXcQ/maxresdefault.jpg')
+    expect(r.imageAlt).toContain('YouTube video: Rick Roll')
+  })
+
+  it('youtube post: uploaded media still wins over yt thumbnail', () => {
+    const ytUrl = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ'
+    const post = basePost({ body: `check this out ${ytUrl}` })
+    const photoUrl = 'https://cdn.example/photo.jpg'
+    const r = computePostPermalinkSeo(
+      input({
+        post,
+        previewLink: ytUrl,
+        bodyTextSansLinks: 'check this out',
+        primaryMedia: { url: photoUrl, kind: 'image', width: 1200, height: 800 },
+      }),
+    )
+    expect(r.image).toBe(photoUrl)
+  })
+
   it('text-only uses avatar then logo', () => {
     const post = basePost({
       body: 'short',

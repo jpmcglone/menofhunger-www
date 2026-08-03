@@ -452,6 +452,15 @@ onMounted(() => {
   if (!import.meta.client) return
   hydrated.value = true
 
+  // Deep-link from the check-in reminder push notification: open the composer immediately,
+  // then strip the param so back-navigation / refresh doesn't re-open it.
+  const route = useRoute()
+  if (route.query.checkin === '1') {
+    history.replaceState(null, '', location.pathname)
+    // Wait a tick for openComposer injection and checkinState to settle.
+    nextTick(() => { openCheckinComposer() })
+  }
+
   // Initial scroll margin + ResizeObserver to update it when header height changes
   computeFeedScrollMargin()
   scrollMarginObserver = new ResizeObserver(computeFeedScrollMargin)

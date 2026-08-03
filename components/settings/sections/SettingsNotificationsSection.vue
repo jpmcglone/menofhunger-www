@@ -110,6 +110,13 @@
               </div>
               <Checkbox v-model="notifPrefs.pushDailyContent" binary :disabled="notifPrefsSaving" />
             </div>
+            <div class="flex items-start justify-between gap-4">
+              <div>
+                <div class="font-medium">Check-in reminder</div>
+                <div class="text-xs moh-text-muted">6pm reminder if you haven't checked in yet today.</div>
+              </div>
+              <Checkbox v-model="notifPrefs.pushCheckinReminder" binary :disabled="notifPrefsSaving" />
+            </div>
           </div>
         </div>
 

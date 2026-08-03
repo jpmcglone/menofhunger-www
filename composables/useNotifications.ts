@@ -293,7 +293,7 @@ export function useNotifications() {
     }
   }
 
-  async function markReadByKind(kind: 'word_of_the_day' | 'quote_of_the_day') {
+  async function markReadByKind(kind: 'word_of_the_day' | 'quote_of_the_day' | 'checkin_reminder' | 'on_this_day') {
     try {
       await apiFetch('/notifications/mark-read-by-kind', { method: 'POST', body: { kind } })
     } catch (e: unknown) {
@@ -508,6 +508,10 @@ export function useNotifications() {
         return n.title ?? n.body ?? 'Quote of the Day'
       case 'account_verified':
         return n.title ?? "You're verified"
+      case 'checkin_reminder':
+        return n.title ?? 'Have you checked in today?'
+      case 'on_this_day':
+        return n.title ?? 'On this day'
       case 'marv_not_in_group':
         return n.title ?? '@marv is not in this group'
       case 'status_update':
@@ -573,6 +577,10 @@ export function useNotifications() {
         return 'tabler:book'
       case 'quote_of_the_day':
         return 'tabler:quote'
+      case 'checkin_reminder':
+        return 'tabler:calendar-event'
+      case 'on_this_day':
+        return 'tabler:calendar-stats'
       case 'account_verified':
         return 'tabler:rosette-discount-check'
       case 'marv_not_in_group':
@@ -632,6 +640,10 @@ export function useNotifications() {
         return 'Marv unavailable'
       case 'account_verified':
         return 'Verified'
+      case 'checkin_reminder':
+        return 'Check-in reminder'
+      case 'on_this_day':
+        return 'On this day'
       case 'status_update':
         return 'Status'
       case 'message':
@@ -690,6 +702,8 @@ export function useNotifications() {
   function rowHref(n: Notification): string | null {
     if (n.kind === 'word_of_the_day') return '/daily/word'
     if (n.kind === 'quote_of_the_day') return '/daily/quote'
+    if (n.kind === 'checkin_reminder') return '/home?checkin=1'
+    if (n.kind === 'on_this_day' && n.subjectPostId) return `/p/${encodeURIComponent(n.subjectPostId)}`
     if (n.kind === 'account_verified') return '/verification'
     if (n.kind === 'coin_transfer') return '/coins'
     if (n.kind === 'message' && n.subjectConversationId) {

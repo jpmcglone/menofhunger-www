@@ -5,7 +5,9 @@
       type="button"
       class="moh-tap inline-flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-full transition-colors"
       :class="viewerCount > 0 ? 'moh-surface-hover cursor-default' : 'cursor-default opacity-60'"
-      :aria-label="viewerCount > 0 ? `${viewerCount} ${viewerCount === 1 ? 'person' : 'people'} saw this post` : 'Views'"
+      :aria-label="hasViewed
+        ? `You viewed this — ${viewerCount} ${viewerCount === 1 ? 'person' : 'people'} saw this post`
+        : (viewerCount > 0 ? `${viewerCount} ${viewerCount === 1 ? 'person' : 'people'} saw this post` : 'Views')"
       :tabindex="viewerCount > 0 ? 0 : -1"
       @mouseenter="onViewerCountHover"
       @focus="onViewerCountHover"
@@ -13,14 +15,22 @@
       @blur="hideViewerBreakdown"
       @click.stop
     >
-      <svg viewBox="0 0 24 24" class="h-[18px] w-[18px]" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8">
+      <svg
+        viewBox="0 0 24 24"
+        class="h-[18px] w-[18px] transition-colors duration-500 ease-out"
+        :class="[hasViewed ? 'moh-text' : '', justViewed ? 'moh-view-pop' : '']"
+        aria-hidden="true"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="1.8"
+      >
         <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
         <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
       </svg>
     </button>
     <span
-      class="ml-0 inline-block sm:min-w-[1.5rem] select-none text-left text-[11px] sm:text-xs tabular-nums moh-text-muted moh-count-gutter"
-      :class="viewerCount > 0 ? 'opacity-100' : 'opacity-0'"
+      class="ml-0 inline-block sm:min-w-[1.5rem] select-none text-left text-[11px] sm:text-xs tabular-nums moh-count-gutter transition-colors duration-500 ease-out"
+      :class="[viewerCount > 0 ? 'opacity-100' : 'opacity-0', hasViewed ? 'moh-text' : 'moh-text-muted']"
       aria-hidden="true"
     >
       <AppAnimatedCount :value="viewerCount" :format="formatCountOrBlank" />
@@ -91,6 +101,7 @@ import { formatShortCount } from '~/utils/text'
 const props = defineProps<{
   postId: string
   viewerCount: number
+  hasViewed?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -99,6 +110,21 @@ const emit = defineEmits<{
 }>()
 
 const formatCountOrBlank = (n: number) => n === 0 ? ' ' : formatShortCount(n)
+
+// ─── "Just viewed" pulse ──────────────────────────────────────────────────────
+// Only animates when hasViewed flips from false→true while the component is live.
+// Already-viewed posts (loaded from server) never animate on mount.
+const justViewed = ref(false)
+let justViewedTimer: ReturnType<typeof setTimeout> | null = null
+watch(() => props.hasViewed, (v, prev) => {
+  if (!v || prev) return
+  justViewed.value = true
+  if (justViewedTimer) clearTimeout(justViewedTimer)
+  justViewedTimer = setTimeout(() => { justViewed.value = false }, 600)
+})
+onBeforeUnmount(() => {
+  if (justViewedTimer) clearTimeout(justViewedTimer)
+})
 
 const { apiFetchData } = useApiClient()
 
@@ -177,4 +203,13 @@ function hideViewerBreakdown() {
   opacity: 0;
   transform: translateY(-4px);
 }
+
+/* View pop: brief scale-up when the eye first lights up. */
+@keyframes moh-view-pop {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.22); }
+  100% { transform: scale(1); }
+}
+.moh-view-pop { animation: moh-view-pop 420ms cubic-bezier(0.2, 0.8, 0.2, 1); }
+@media (prefers-reduced-motion: reduce) { .moh-view-pop { animation: none; } }
 </style>

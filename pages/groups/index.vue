@@ -324,6 +324,7 @@ usePageSeo({
 const route = useRoute()
 const { apiFetchData } = useApiClient()
 const { user, isAuthed } = useAuth()
+const { groupsUnread } = usePresence()
 
 const metaLoading = ref(true)
 const error = ref<string | null>(null)
@@ -557,13 +558,26 @@ async function redirectIfLegacyMyTab(): Promise<boolean> {
 }
 
 function applyMyGroups(rows: readonly CommunityGroupShell[]) {
-  const rank = (group: CommunityGroupShell) => {
-    const role = group.viewerMembership?.role
-    if (role === 'owner') return 0
-    if (role === 'moderator') return 1
-    return 2
-  }
-  mine.value = [...rows].sort((a, b) => rank(a) - rank(b))
+  const unreadByGroup = groupsUnread.value.byGroupId
+  mine.value = [...rows].sort((a, b) => {
+    // Owners always first
+    const aOwner = a.viewerMembership?.role === 'owner'
+    const bOwner = b.viewerMembership?.role === 'owner'
+    if (aOwner !== bOwner) return aOwner ? -1 : 1
+
+    // Most unread activity first
+    const aUnread = unreadByGroup[a.id] ?? 0
+    const bUnread = unreadByGroup[b.id] ?? 0
+    if (aUnread !== bUnread) return bUnread - aUnread
+
+    // Most recently posted in first
+    const aLastPost = a.lastViewerPostAt ? new Date(a.lastViewerPostAt).getTime() : 0
+    const bLastPost = b.lastViewerPostAt ? new Date(b.lastViewerPostAt).getTime() : 0
+    if (aLastPost !== bLastPost) return bLastPost - aLastPost
+
+    // Fallback: newest group first
+    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  })
 }
 
 async function loadMeta() {
@@ -584,6 +598,13 @@ async function loadMeta() {
     metaLoading.value = false
   }
 }
+
+// Re-sort whenever unread badge counts change (new group activity arrives via socket)
+watch(
+  () => groupsUnread.value.byGroupId,
+  () => { if (mine.value.length) applyMyGroups(sharedMyGroups.value) },
+  { deep: true },
+)
 
 // Snap carousels back to first card on data changes
 type ScrollerHandle = { scrollToStart: () => void } | null
@@ -736,7 +757,8 @@ onActivated(() => {
   registerReplyPostedHandler()
   startHubAutoRefresh()
   if (isAuthed.value) {
-    void loadMyGroups()
+    // Force-refresh so lastViewerPostAt reflects any posts made since the last visit.
+    void loadMyGroups({ force: true })
       .then(() => applyMyGroups(sharedMyGroups.value))
       .catch(() => undefined) // Keep the last successful membership list while offline.
   }

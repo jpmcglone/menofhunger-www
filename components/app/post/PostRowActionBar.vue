@@ -129,6 +129,7 @@
     <AppPostRowViewerBreakdown
       :post-id="post.id"
       :viewer-count="viewerCount"
+      :has-viewed="hasViewed"
       @count-synced="$emit('viewerCountSynced', $event)"
     />
 
@@ -244,6 +245,11 @@ const {
 
 // ─── Live "is replying" indicator ────────────────────────────────────────────
 const { typingUsers } = usePostTyping(computed(() => postView.value.id))
+
+const { hasViewedLocally } = usePostViewTracker()
+const hasViewed = computed(() =>
+  postView.value.viewerHasViewed === true || hasViewedLocally(postView.value.id),
+)
 
 // ─── Transient "+N new" pill ─────────────────────────────────────────────────
 // Show a pill when a new reply arrives while this row is on screen.

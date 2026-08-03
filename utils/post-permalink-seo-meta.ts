@@ -1,7 +1,7 @@
 import type { CommunityGroupPreview, FeedPost } from '~/types/api'
 import type { LinkMetadata } from '~/utils/link-metadata'
 import { siteConfig } from '~/config/site'
-import { safeUrlHostname } from '~/utils/link-utils'
+import { parseYouTubeUrl, safeUrlHostname } from '~/utils/link-utils'
 import { excerpt, gatedPostBodyPreview, normalizeForMeta } from '~/utils/text'
 
 export const POST_PERMALINK_LOGO_OG = '/images/logo-black-bg-small.png'
@@ -144,6 +144,16 @@ export function computePostPermalinkSeo(input: PostPermalinkSeoInput): PostPerma
   } = input
 
   const canonicalPath = `/p/${encodeURIComponent(postId)}`
+
+  // Derive YouTube thumbnail from previewLink — no HTTP fetch needed, available at SSR time.
+  // i.ytimg.com thumbnails are deterministic from the video ID.
+  const ytThumbnail = (() => {
+    if (!previewLink) return null
+    const info = parseYouTubeUrl(previewLink)
+    if (!info) return null
+    return `https://i.ytimg.com/vi/${encodeURIComponent(info.id)}/maxresdefault.jpg`
+  })()
+
   const visibility = post?.visibility
   const isPublicPost = visibility === 'public'
   const isTierGated = visibility === 'verifiedOnly' || visibility === 'premiumOnly'
@@ -346,7 +356,9 @@ export function computePostPermalinkSeo(input: PostPermalinkSeoInput): PostPerma
       if (posterUrl) image = posterUrl
       else if (mediaUrl) image = mediaUrl
       else {
-        const linkImage = (linkMeta?.imageUrl ?? '').trim()
+        // ytThumbnail is preferred over linkMeta.imageUrl because it's available
+        // at SSR time (no extra HTTP fetch), giving crawlers the correct image.
+        const linkImage = ytThumbnail || (linkMeta?.imageUrl ?? '').trim()
         if (linkImage) image = linkImage
         else {
           const pollImage = (pollMetaPublic?.firstOptionImage ?? '').trim()
@@ -385,8 +397,13 @@ export function computePostPermalinkSeo(input: PostPermalinkSeoInput): PostPerma
           imageAlt = at ? `${kind} shared by ${at}` : `${kind} on ${siteConfig.name}`
         }
       } else if (external) {
-        const t = (linkMeta?.title ?? '').trim()
-        imageAlt = t ? `Shared link: ${t}` : at ? `Link shared by ${at}` : `Shared link on ${siteConfig.name}`
+        if (ytThumbnail) {
+          const t = (linkMeta?.title ?? '').trim()
+          imageAlt = t ? `YouTube video: ${t}` : at ? `YouTube video shared by ${at}` : 'YouTube video'
+        } else {
+          const t = (linkMeta?.title ?? '').trim()
+          imageAlt = t ? `Shared link: ${t}` : at ? `Link shared by ${at}` : `Shared link on ${siteConfig.name}`
+        }
       } else imageAlt = at ? `Post shared by ${at}` : `Post on ${siteConfig.name}`
     }
   }
@@ -407,6 +424,7 @@ export function computePostPermalinkSeo(input: PostPermalinkSeoInput): PostPerma
   // a small square thumbnail instead of stretching a square image into a wide banner.
   const hasRealMedia = isPublicPost && Boolean(
     (primaryMedia?.thumbnailUrl ?? primaryMedia?.url ?? '').trim() ||
+    ytThumbnail ||
     (linkMeta?.imageUrl ?? '').trim() ||
     (pollMetaPublic?.firstOptionImage ?? '').trim(),
   )
@@ -494,7 +512,7 @@ export function computePostPermalinkSeo(input: PostPermalinkSeoInput): PostPerma
     const primaryMediaUrl = (primaryMedia?.url ?? '').trim()
     if (primaryMediaUrl && primaryMediaUrl !== primaryImgUrl) images.push(toAbs(primaryMediaUrl))
     for (const u of extraOgMediaUrls) images.push(toAbs(u))
-    const linkImage = (linkMeta?.imageUrl ?? '').trim()
+    const linkImage = ytThumbnail || (linkMeta?.imageUrl ?? '').trim()
     if (!images.length && linkImage) images.push(toAbs(linkImage))
     const pollImage = (pollMetaPublic?.firstOptionImage ?? '').trim()
     if (!images.length && pollImage) images.push(toAbs(pollImage))

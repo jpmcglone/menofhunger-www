@@ -39,6 +39,12 @@ const pendingPostIds = new Set<string>()
 const recentlySent = new Map<string, number>()
 /** postIds already used for an optimistic groups-badge decrement this session. */
 const optimisticGroupBadgeApplied = new Set<string>()
+/**
+ * Post IDs the authenticated viewer has viewed this session (local-only, additive).
+ * Intentionally not backed by storage — initializes empty on every page load so SSR
+ * and client hydration produce identical markup. Immune to postCache.clear() resets.
+ */
+const locallyViewedPostIds = new Set<string>()
 
 function enqueuePosts(ids: string[]): string[] {
   const now = Date.now()
@@ -172,6 +178,13 @@ export function usePostViewTracker() {
               const added = enqueuePosts(ids)
               dwellTimer = null
 
+              // Mark locally viewed so the eye icon lights up immediately, before the
+              // batch API call confirms. Gated on isAuthed so anon viewers don't get
+              // a state that silently resets on reload.
+              if (isAuthed.value) {
+                for (const id of ids) locallyViewedPostIds.add(id)
+              }
+
               // Group posts: optimistic badge + immediate flush for snappy UI.
               const groupMap = opts?.groupIdByPostId
               let hasGroupPost = false
@@ -223,6 +236,9 @@ export function usePostViewTracker() {
     const ids = (Array.isArray(postIds) ? postIds : [postIds]).filter(Boolean)
     if (ids.length === 0) return
     enqueuePosts(ids)
+    if (isAuthed.value) {
+      for (const id of ids) locallyViewedPostIds.add(id)
+    }
     void flushPending(apiFetchData as any, {
       isAuthed: isAuthed.value,
       anonId: anonViewId.value,
@@ -242,5 +258,14 @@ export function usePostViewTracker() {
     })
   }
 
-  return { observe, markEngaged, flush }
+  /**
+   * Returns true if the viewer has viewed this post in the current session
+   * (local-only; does not require an API round-trip).
+   * Authenticated viewers only — always false for anon.
+   */
+  function hasViewedLocally(postId: string): boolean {
+    return isAuthed.value && locallyViewedPostIds.has(postId)
+  }
+
+  return { observe, markEngaged, flush, hasViewedLocally }
 }

@@ -4,54 +4,13 @@
     <!-- Sticky search bar (replaces layout title bar) -->
     <div class="sticky top-0 z-10 border-b moh-border moh-frosted">
       <div class="px-4 py-3">
-        <div class="flex flex-col gap-3 sm:flex-row sm:items-stretch">
-          <IconField iconPosition="left" class="w-full min-w-0 flex-1">
-            <InputIcon>
-              <Icon name="tabler:search" class="text-lg opacity-70" aria-hidden="true" />
-            </InputIcon>
-            <InputText
-              ref="searchInputRef"
-              v-model="searchQuery"
-              id="explore-search"
-              name="q"
-              aria-label="Search"
-              class="w-full h-11 !rounded-full"
-              placeholder="Search…"
-              @keydown.enter="flushDebounceAndSearch"
-              @focus="onSearchFocus"
-              @blur="onSearchBlur"
-            />
-          </IconField>
-        </div>
-      </div>
-    </div>
-
-    <!-- Recent searches dropdown -->
-    <div
-      v-if="showRecentSearches"
-      class="border-b moh-border moh-surface px-4 py-2"
-    >
-      <div class="flex items-center justify-between gap-2 mb-1.5">
-        <span class="text-xs font-medium moh-text-muted uppercase tracking-wide">Recent searches</span>
-        <button
-          type="button"
-          class="text-xs moh-text-muted hover:text-gray-800 dark:hover:text-gray-200 transition-colors"
-          @click="clearRecentSearches"
-        >
-          Clear
-        </button>
-      </div>
-      <div class="flex flex-col gap-0.5">
-        <button
-          v-for="s in recentSearches.slice(0, 5)"
-          :key="s.id"
-          type="button"
-          class="flex items-center gap-2 w-full text-left px-2 py-1.5 rounded-lg text-sm moh-text hover:bg-gray-100/60 dark:hover:bg-zinc-800/60 transition-colors"
-          @click="applyRecentSearch(s.query)"
-        >
-          <Icon name="tabler:clock" class="text-base moh-text-muted shrink-0" aria-hidden="true" />
-          {{ s.query }}
-        </button>
+        <AppSearchTypeahead
+          ref="searchInputRef"
+          v-model="searchQuery"
+          placeholder="Search…"
+          :pill="true"
+          @submit="flushDebounceAndSearch"
+        />
       </div>
     </div>
 
@@ -767,8 +726,6 @@ import type {
   TopicCategory,
   PostVisibility,
   CheckinAllowedVisibility,
-  RecentSearch,
-  GetRecentSearchesData,
 } from '~/types/api'
 import { shellToGroupPreview } from '~/utils/community-group-preview'
 import { getApiErrorMessage } from '~/utils/api-error'
@@ -802,7 +759,7 @@ const canAccessCheckins = computed(() => isVerified.value || isPremium.value)
 const openComposer = inject(MOH_OPEN_COMPOSER_KEY, null)
 const { dayKey: etDayKey } = useEasternMidnightRollover()
 
-const searchInputRef = ref<{ $el: HTMLInputElement } | null>(null)
+const searchInputRef = ref<{ focus: () => void } | null>(null)
 const hydrated = ref(false)
 
 function onGlobalKeyDown(e: KeyboardEvent) {
@@ -810,7 +767,7 @@ function onGlobalKeyDown(e: KeyboardEvent) {
   const target = e.target as HTMLElement
   if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) return
   e.preventDefault()
-  searchInputRef.value?.$el?.focus()
+  searchInputRef.value?.focus()
 }
 
 // ─── Realtime: presence online feed ─────────────────────────────────────────
@@ -838,7 +795,6 @@ onMounted(() => {
   document.addEventListener('visibilitychange', onVisibilityChange)
   addOnlineFeedCallback(onlineFeedCb)
   subscribeOnlineFeed()
-  if (isAuthed.value && !recentSearchesLoaded.value) void loadRecentSearches()
 })
 
 onBeforeUnmount(() => {
@@ -1166,18 +1122,20 @@ function setRouteQueryQ(nextQ: string) {
     })
 }
 
-function flushDebounceAndSearch() {
+function flushDebounceAndSearch(submittedQuery?: string) {
   if (debounceTimer != null) {
     clearTimeout(debounceTimer)
     debounceTimer = null
   }
-    const q = searchQueryTrimmed.value
-    if (q.length >= 2) {
-      setRouteQueryQ(q)
-    } else {
-      setRouteQueryQ(q)
-      clearSearchResults()
-    }
+  // Use the explicitly submitted query (from the typeahead row click) if provided.
+  const q = (submittedQuery ?? searchQueryTrimmed.value).trim()
+  if (q) searchQuery.value = q
+  if (q.length >= 2) {
+    setRouteQueryQ(q)
+  } else {
+    setRouteQueryQ(q)
+    clearSearchResults()
+  }
 }
 
 function selectTopic(topic: string) {
@@ -1238,55 +1196,6 @@ const tagSuggestions = ref<TaxonomyMatch[]>([])
 const gatedResultCount = ref(0)
 let searchFetchSeq = 0
 
-// ─── Recent searches ─────────────────────────────────────────────────────────
-const searchInputFocused = ref(false)
-const recentSearches = ref<RecentSearch[]>([])
-const recentSearchesLoaded = ref(false)
-const recentSearchesLoading = ref(false)
-
-const showRecentSearches = computed(
-  () => isAuthed.value && searchInputFocused.value && !searchQueryTrimmed.value && recentSearches.value.length > 0,
-)
-
-async function loadRecentSearches() {
-  if (!isAuthed.value || recentSearchesLoading.value) return
-  recentSearchesLoading.value = true
-  try {
-    const res = await apiFetch<GetRecentSearchesData>('/search/recent', { method: 'GET' })
-    recentSearches.value = (res.data ?? []) as RecentSearch[]
-    recentSearchesLoaded.value = true
-  } catch {
-    recentSearches.value = []
-  } finally {
-    recentSearchesLoading.value = false
-  }
-}
-
-async function clearRecentSearches() {
-  try {
-    await apiFetch('/search/recent', { method: 'DELETE' })
-    recentSearches.value = []
-  } catch {
-    // soft-fail
-  }
-}
-
-function onSearchFocus() {
-  searchInputFocused.value = true
-  if (isAuthed.value && !recentSearchesLoaded.value) void loadRecentSearches()
-}
-
-function onSearchBlur() {
-  window.setTimeout(() => {
-    searchInputFocused.value = false
-  }, 200)
-}
-
-function applyRecentSearch(query: string) {
-  searchQuery.value = query
-  searchInputFocused.value = false
-  flushDebounceAndSearch()
-}
 
 const hasMore = computed(
   () => nextUserCursor.value !== null || nextArticleCursor.value !== null || nextPostCursor.value !== null,

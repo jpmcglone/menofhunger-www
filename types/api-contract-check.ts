@@ -37,6 +37,11 @@ type _PostMention = Satisfies<Www.PostMention, Api.PostMentionDto>
 type _PostPoll = Satisfies<Www.PostPoll, Api.PostPollDto>
 type _PostPollOption = Satisfies<Www.PostPollOption, Api.PostPollOptionDto>
 
+// ─── Search ───────────────────────────────────────────────────────────────────
+type _RecentSearchUser = Satisfies<Www.RecentSearchUser, Api.UserListDto>
+type _RecentSearchGroup = Satisfies<Www.RecentSearchGroup, Api.RecentSearchGroupDto>
+type _RecentSearch = Satisfies<Www.RecentSearch, Api.RecentSearchDto>
+
 // ─── Users / profiles ────────────────────────────────────────────────────────
 type _PublicProfile = Satisfies<Www.PublicProfile, Api.PublicProfileDto>
 type _UserDto = Satisfies<Www.UserDto, Api.UserDto>

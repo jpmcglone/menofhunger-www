@@ -187,19 +187,13 @@
       <div class="mx-auto w-full max-w-6xl xl:max-w-7xl flex justify-end">
         <div class="pointer-events-auto w-[var(--moh-right-rail-w)] border-b moh-border moh-bg moh-texture">
           <div class="moh-gutter-x h-16 flex items-center">
-            <IconField iconPosition="left" class="w-full">
-              <InputIcon>
-                <Icon name="tabler:search" class="text-lg opacity-70" aria-hidden="true" />
-              </InputIcon>
-              <InputText
-                ref="searchInputRef"
-                v-model="rightRailSearchQuery"
-                class="w-full h-11 !rounded-full moh-focus"
-                placeholder="Search…"
-                aria-label="Search"
-                @keydown.enter="goToExploreSearch"
-              />
-            </IconField>
+            <AppSearchTypeahead
+              ref="searchInputRef"
+              v-model="rightRailSearchQuery"
+              placeholder="Search…"
+              :pill="true"
+              @submit="goToExploreSearch"
+            />
           </div>
         </div>
       </div>
@@ -336,7 +330,7 @@ const navCompactMode = computed(() => {
 })
 
 // Global keyboard shortcuts
-const searchInputRef = ref<{ $el: HTMLElement } | HTMLElement | null>(null)
+const searchInputRef = ref<{ focus: () => void } | null>(null)
 const focusHomeComposer = inject(MOH_FOCUS_HOME_COMPOSER_KEY, null)
 useKeyboardShortcutsHandler({
   openComposer: () => {
@@ -349,9 +343,7 @@ useKeyboardShortcutsHandler({
     }
   },
   focusSearch: () => {
-    const el = searchInputRef.value
-    const input = el instanceof HTMLElement ? el : (el as { $el: HTMLElement } | null)?.$el
-    input?.focus()
+    searchInputRef.value?.focus()
   },
 })
 
@@ -541,9 +533,9 @@ useHead({
 // ── Right-rail search ─────────────────────────────────────────────────────────
 
 const rightRailSearchQuery = ref('')
-function goToExploreSearch() {
-  const q = (rightRailSearchQuery.value ?? '').trim()
-  void navigateTo({ path: '/explore', query: q ? { q } : {} })
+function goToExploreSearch(q?: string) {
+  const query = (q ?? rightRailSearchQuery.value ?? '').trim()
+  void navigateTo({ path: '/explore', query: query ? { q: query } : {} })
 }
 watch(
   [() => route.path, () => route.query.q],
