@@ -15,6 +15,59 @@
         <div class="rounded-xl border moh-border moh-bg p-4 space-y-3">
           <div class="flex flex-wrap items-start justify-between gap-3">
             <div class="min-w-0">
+              <div class="text-sm font-semibold moh-text">Queues</div>
+              <div class="text-xs moh-text-muted">
+                Notifications, pushes, and fan-out all run on these. A queue with no worker means
+                that work is piling up and nobody is doing it.
+              </div>
+            </div>
+            <Button
+              label="Refresh"
+              severity="secondary"
+              :loading="queuesLoading"
+              :disabled="queuesLoading"
+              @click="refreshQueues"
+            />
+          </div>
+
+          <div
+            v-if="queues && !queues.allQueuesHaveWorkers"
+            class="rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-800 dark:border-red-900/40 dark:bg-red-950/30 dark:text-red-200"
+          >
+            At least one queue has no registered worker. Check that a process is running with
+            <code>RUN_JOB_CONSUMERS=true</code>.
+          </div>
+
+          <div v-if="queues" class="grid gap-3 sm:grid-cols-3">
+            <div v-for="q in queues.queues" :key="q.name" class="rounded-lg border moh-border p-3 text-xs">
+              <div class="flex items-center justify-between gap-2">
+                <span class="font-mono moh-text truncate">{{ q.name }}</span>
+                <span
+                  class="shrink-0 rounded-full px-2 py-0.5 font-semibold"
+                  :class="q.workers > 0
+                    ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200'
+                    : 'bg-red-100 text-red-800 dark:bg-red-950/40 dark:text-red-200'"
+                >
+                  {{ q.workers }} worker{{ q.workers === 1 ? '' : 's' }}
+                </span>
+              </div>
+              <dl class="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 moh-text-muted">
+                <div class="flex justify-between"><dt>waiting</dt><dd class="tabular-nums moh-text">{{ q.waiting }}</dd></div>
+                <div class="flex justify-between"><dt>active</dt><dd class="tabular-nums moh-text">{{ q.active }}</dd></div>
+                <div class="flex justify-between"><dt>delayed</dt><dd class="tabular-nums moh-text">{{ q.delayed }}</dd></div>
+                <div class="flex justify-between"><dt>failed</dt><dd class="tabular-nums moh-text">{{ q.failed }}</dd></div>
+              </dl>
+              <div v-if="q.paused" class="mt-2 font-semibold text-amber-700 dark:text-amber-300">Paused</div>
+              <div v-if="q.error" class="mt-2 text-red-700 dark:text-red-300">{{ q.error }}</div>
+            </div>
+          </div>
+
+          <div v-else class="text-xs moh-text-muted">Status not loaded yet.</div>
+        </div>
+
+        <div class="rounded-xl border moh-border moh-bg p-4 space-y-3">
+          <div class="flex flex-wrap items-start justify-between gap-3">
+            <div class="min-w-0">
               <div class="text-sm font-semibold moh-text">Daily content</div>
               <div class="text-xs moh-text-muted">
                 Force refresh the Word of the Day + Daily quote (overwrites caches for today).
@@ -201,6 +254,13 @@
               :disabled="Boolean(runningKey)"
               @click="runJob('notificationsOrphans', 'Notifications orphan cleanup', '/admin/jobs/notifications-orphan-cleanup')"
             />
+            <Button
+              label="Dedupe word/quote of the day"
+              severity="secondary"
+              :loading="runningKey === 'dailyContentDedupe'"
+              :disabled="Boolean(runningKey)"
+              @click="runDailyContentDedupe()"
+            />
           </div>
         </div>
 
@@ -340,7 +400,7 @@
 </template>
 
 <script setup lang="ts">
-import type { AdminHashtagBackfillStatus, DailyContentToday } from '~/types/api'
+import type { AdminHashtagBackfillStatus, AdminQueuesHealth, DailyContentToday } from '~/types/api'
 
 definePageMeta({
   layout: 'app',
@@ -361,6 +421,7 @@ type JobKey =
   | 'search'
   | 'notifications'
   | 'notificationsOrphans'
+  | 'dailyContentDedupe'
   | 'hashtagsCleanup'
   | 'topics'
   | 'topicsNormalize'
@@ -384,6 +445,20 @@ const hashtagBackfillRunning = ref(false)
 
 const dailyContent = ref<DailyContentToday | null>(null)
 const dailyContentLoading = ref(false)
+
+const queues = ref<AdminQueuesHealth | null>(null)
+const queuesLoading = ref(false)
+
+async function refreshQueues() {
+  queuesLoading.value = true
+  try {
+    queues.value = await apiFetchData<AdminQueuesHealth>('/admin/jobs/queues', { method: 'GET' })
+  } catch (e: unknown) {
+    toast.pushError(e, 'Failed to load queue health.')
+  } finally {
+    queuesLoading.value = false
+  }
+}
 
 async function refreshDailyContentStatus() {
   dailyContentLoading.value = true
@@ -423,6 +498,21 @@ async function runJob(key: JobKey, label: string, path: string, body?: Record<st
     toast.push({ title: label, tone: 'success', durationMs: 1600 })
   } catch (e: unknown) {
     toast.pushError(e, `${label} failed.`)
+  } finally {
+    runningKey.value = null
+  }
+}
+
+async function runDailyContentDedupe() {
+  runningKey.value = 'dailyContentDedupe'
+  try {
+    const result = await apiFetchData<{ ok: boolean; kept: number; deleted: number }>(
+      '/admin/jobs/notifications-dedupe-daily-content',
+      { method: 'POST' },
+    )
+    toast.push({ title: `Daily content deduped — ${result.deleted} deleted, ${result.kept} kept`, tone: 'success', durationMs: 3000 })
+  } catch (e: unknown) {
+    toast.pushError(e, 'Daily content dedupe failed.')
   } finally {
     runningKey.value = null
   }
@@ -531,6 +621,7 @@ async function runCoinsReset() {
 }
 
 onMounted(() => {
+  void refreshQueues()
   void refreshHashtagBackfillStatus()
   void refreshDailyContentStatus()
 })

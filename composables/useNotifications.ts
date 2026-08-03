@@ -506,6 +506,8 @@ export function useNotifications() {
         return n.title ?? n.body ?? 'Word of the Day'
       case 'quote_of_the_day':
         return n.title ?? n.body ?? 'Quote of the Day'
+      case 'account_verified':
+        return n.title ?? "You're verified"
       case 'marv_not_in_group':
         return n.title ?? '@marv is not in this group'
       case 'status_update':
@@ -571,6 +573,8 @@ export function useNotifications() {
         return 'tabler:book'
       case 'quote_of_the_day':
         return 'tabler:quote'
+      case 'account_verified':
+        return 'tabler:rosette-discount-check'
       case 'marv_not_in_group':
         return 'tabler:sparkles'
       case 'status_update':
@@ -626,6 +630,8 @@ export function useNotifications() {
         return 'Group disbanded'
       case 'marv_not_in_group':
         return 'Marv unavailable'
+      case 'account_verified':
+        return 'Verified'
       case 'status_update':
         return 'Status'
       case 'message':
@@ -684,6 +690,7 @@ export function useNotifications() {
   function rowHref(n: Notification): string | null {
     if (n.kind === 'word_of_the_day') return '/daily/word'
     if (n.kind === 'quote_of_the_day') return '/daily/quote'
+    if (n.kind === 'account_verified') return '/verification'
     if (n.kind === 'coin_transfer') return '/coins'
     if (n.kind === 'message' && n.subjectConversationId) {
       return `/messages/${encodeURIComponent(n.subjectConversationId)}`

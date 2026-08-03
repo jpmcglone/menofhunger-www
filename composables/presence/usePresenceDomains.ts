@@ -1,5 +1,6 @@
 import type { Ref } from 'vue'
 import type { Socket } from 'socket.io-client'
+import { useWotdData } from '~/composables/useWebsters1828Wotd'
 import type {
   RadioChatMessage,
   RadioListener,
@@ -583,17 +584,22 @@ export function usePresenceDomains() {
     })
 
     socket.on('wotd:like-updated', (data: { likeCount: number; actorUserId: string; liked: boolean }) => {
-      // Patch the shared WOTD Nuxt data cache so every component reading from it
-      // (the full word page, the right-rail card) updates without a refetch.
       const isMe = authUser.value?.id === data.actorUserId
+      const update = { likeCount: data.likeCount, ...(isMe ? { viewerHasLiked: data.liked } : {}) }
+
+      // Patch the useAsyncData reactive ref (read by word.vue and the like-button).
       const cached = useNuxtData<import('~/types/api').Websters1828WordOfDay>('websters1828:wotd')
       if (cached.data.value) {
-        cached.data.value = {
-          ...cached.data.value,
-          likeCount: data.likeCount,
-          ...(isMe ? { viewerHasLiked: data.liked } : {}),
-        }
+        cached.data.value = { ...cached.data.value, ...update }
       }
+
+      // Also patch the useState persistent copy so the count survives page
+      // navigation (useAsyncData.clear() resets its ref; useState never does).
+      const persistent = useWotdData()
+      if (persistent.value) {
+        persistent.value = { ...persistent.value, ...update }
+      }
+
       for (const cb of dailyContentCallbacks.value) cb.onLikeUpdated?.(data.likeCount, isMe ? data.liked : (cached.data.value?.viewerHasLiked ?? false))
     })
   }

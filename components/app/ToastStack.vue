@@ -87,27 +87,9 @@ function hasActions(t: AppToast): boolean {
   return Array.isArray(t.actions) && t.actions.length > 0
 }
 
-const isSmUp = ref(false)
-function updateIsSmUp() {
-  if (!import.meta.client || typeof window === 'undefined') return
-  isSmUp.value = window.matchMedia('(min-width: 640px)').matches
-}
-onMounted(() => {
-  updateIsSmUp()
-  if (!import.meta.client || typeof window === 'undefined') return
-  window.addEventListener('resize', updateIsSmUp, { passive: true })
-})
-onBeforeUnmount(() => {
-  if (!import.meta.client || typeof window === 'undefined') return
-  window.removeEventListener('resize', updateIsSmUp as any)
-})
-
 const stackStyle = computed<Record<string, string>>(() => {
-  // On mobile, keep clearance above the fixed tab bar (and safe area).
-  // On sm+ the tab bar is hidden, so keep it tighter.
-  return isSmUp.value
-    ? { bottom: 'calc(var(--moh-safe-bottom, 0px) + 1rem)' }
-    : { bottom: 'calc(var(--moh-tabbar-height, 4.5rem) + var(--moh-safe-bottom, 0px) + 1rem)' }
+  // Sit just below the safe-area notch / status bar.
+  return { top: 'calc(var(--moh-safe-top, 0px) + 0.75rem)' }
 })
 
 function onToastClick(t: AppToast) {
@@ -159,10 +141,10 @@ watchEffect(() => {
 }
 .moh-toast-enter-from {
   opacity: 0;
-  transform: translateY(16px) scale(0.96);
+  transform: translateY(-20px) scale(0.96);
 }
 .moh-toast-leave-to {
   opacity: 0;
-  transform: translateY(8px) scale(0.97);
+  transform: translateY(-10px) scale(0.97);
 }
 </style>

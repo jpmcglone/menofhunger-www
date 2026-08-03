@@ -415,5 +415,20 @@ describe('hydration guardrails (structural)', () => {
     // Must still have the avatar cap (two actors + optional overflow chip)
     expect(row).toMatch(/actors\.slice\(0,\s*2\)/)
   })
+
+  it('shows a full-screen API-down overlay (not a thin banner) when apiUnreachable', () => {
+    const banners = readFromRepo('components/app/layout/ConnectionBanners.vue')
+    const layout = readFromRepo('layouts/app.vue')
+    expect(layout).toMatch(/AppLayoutConnectionBanners/)
+    // Overlay gates on the shared auth flag and covers the viewport.
+    expect(banners).toMatch(/v-if="apiUnreachable && !apiJustReconnected"/)
+    expect(banners).toMatch(/fixed inset-0 z-\[80\]/)
+    expect(banners).toMatch(/Can't reach the server/)
+    expect(banners).toMatch(/to="\/status"/)
+    // Successful Retry must reload so stuck widget error states clear.
+    expect(banners).toMatch(/reloadNuxtApp\(\{\s*force:\s*true\s*\}\)/)
+    // Must not regress to the thin amber connectivity strip for API outages.
+    expect(banners).not.toMatch(/Trouble connecting to the server/)
+  })
 })
 

@@ -940,6 +940,26 @@ export type AdminHashtagBackfillStatus = {
   updatedAt: string
 }
 
+/** One queue's worker liveness + backlog depth, from GET /admin/jobs/queues. */
+export type AdminQueueHealth = {
+  name: string
+  /** Consumers registered with Redis for this queue. Zero means nothing is draining it. */
+  workers: number
+  waiting: number
+  active: number
+  delayed: number
+  failed: number
+  paused: boolean
+  /** Set when the readout itself failed (Redis down); counts are then all zero. */
+  error: string | null
+}
+
+/** Data payload for GET /admin/jobs/queues. */
+export type AdminQueuesHealth = {
+  queues: AdminQueueHealth[]
+  allQueuesHaveWorkers: boolean
+}
+
 export type PostStreakReward = {
   coinsEarned: number
   streakDays: number
@@ -2769,3 +2789,11 @@ export type ScriptureRef = {
   verses: ScriptureVerse[]
   text: string
 }
+
+// ─── Admin site config / auto-verify ─────────────────────────────────────────
+
+export type SiteConfigAutoVerifyRecruiterDto = Contracts.SiteConfigAutoVerifyRecruiterDto
+export type SiteConfigDto = Contracts.SiteConfigDto
+export type AutoVerifyPreviewUserDto = Contracts.AutoVerifyPreviewUserDto
+export type AutoVerifyPreviewDto = Contracts.AutoVerifyPreviewDto
+export type AutoVerifyApplyDto = Contracts.AutoVerifyApplyDto

@@ -23,7 +23,7 @@ export type FeedbackStatus = 'new' | 'triaged' | 'resolved'
 export type FollowVisibility = 'none' | 'all' | 'verified' | 'premium'
 export type MessageParticipantRole = 'owner' | 'member'
 export type MessageParticipantStatus = 'pending' | 'accepted'
-export type NotificationKind = 'comment' | 'boost' | 'repost' | 'follow' | 'followed_post' | 'followed_article' | 'mention' | 'nudge' | 'poll_results_ready' | 'generic' | 'coin_transfer' | 'message' | 'group_join_request' | 'community_group_member_joined' | 'community_group_join_approved' | 'community_group_join_rejected' | 'community_group_member_removed' | 'community_group_disbanded' | 'crew_invite_received' | 'crew_invite_accepted' | 'crew_invite_declined' | 'crew_invite_cancelled' | 'crew_member_joined' | 'crew_member_left' | 'crew_member_kicked' | 'crew_owner_transferred' | 'crew_owner_transfer_vote' | 'crew_wall_mention' | 'crew_disbanded' | 'community_group_invite_received' | 'community_group_invite_accepted' | 'community_group_invite_declined' | 'community_group_invite_cancelled' | 'community_group_post' | 'marv_not_in_group' | 'status_update' | 'checkin_post' | 'word_of_the_day' | 'quote_of_the_day'
+export type NotificationKind = 'comment' | 'boost' | 'repost' | 'follow' | 'followed_post' | 'followed_article' | 'mention' | 'nudge' | 'poll_results_ready' | 'generic' | 'coin_transfer' | 'message' | 'group_join_request' | 'community_group_member_joined' | 'community_group_join_approved' | 'community_group_join_rejected' | 'community_group_member_removed' | 'community_group_disbanded' | 'crew_invite_received' | 'crew_invite_accepted' | 'crew_invite_declined' | 'crew_invite_cancelled' | 'crew_member_joined' | 'crew_member_left' | 'crew_member_kicked' | 'crew_owner_transferred' | 'crew_owner_transfer_vote' | 'crew_wall_mention' | 'crew_disbanded' | 'community_group_invite_received' | 'community_group_invite_accepted' | 'community_group_invite_declined' | 'community_group_invite_cancelled' | 'community_group_post' | 'marv_not_in_group' | 'status_update' | 'checkin_post' | 'word_of_the_day' | 'quote_of_the_day' | 'account_verified'
 export type PostMediaKind = 'image' | 'gif' | 'video'
 export type PostMediaSource = 'upload' | 'giphy'
 export type PostVisibility = 'public' | 'verifiedOnly' | 'premiumOnly' | 'onlyMe'
@@ -815,8 +815,16 @@ export type DailyContentTodayDto = {
   quoteRefreshedAt: string | null;
   websters1828: Websters1828WordOfDayDto | null;
   websters1828RefreshedAt: string | null;
-  /** UTC ISO timestamp of the next content publish boundary (9:00am ET for word, 9:30am ET for quote). */
+  /**
+   * ISO timestamp of the next daily-content publish boundary (whichever of
+   * 09:00 ET word or 09:30 ET quote comes first). Use `nextWordPublishAt` /
+   * `nextQuotePublishAt` for per-item countdowns.
+   */
   nextPublishAt: string | null;
+  /** ISO timestamp of when today's word-of-the-day will (or did) publish: 09:00 ET. */
+  nextWordPublishAt: string | null;
+  /** ISO timestamp of when today's quote-of-the-day will (or did) publish: 09:30 ET. */
+  nextQuotePublishAt: string | null;
 };
 
 // ─── src/common/dto/feedback.dto.ts ────────────────────────────────────────────
@@ -1304,7 +1312,7 @@ export type UserStatusDto = {
   text: string;
   setAt: string;
   expiresAt: string;
-  /** ID of the `kind: 'status'` post created when createsPost was true. Null when no post was generated. */
+  /** ID of the `kind: 'status'` post created when `createsPost` was true. Null when no post was generated. */
   postId: string | null;
 };
 
@@ -1422,6 +1430,12 @@ export type RadioChatSnapshotDto = {
 
 export type NotificationsNewPayloadDto = {
   notification: NotificationDto;
+  /**
+   * True when this event only re-renders an already-seen notification (e.g. the actor
+   * reworded their active status). The row's unread state and the bell count are
+   * untouched, so clients must patch quietly: no sound, no badge change, no highlight.
+   */
+  silent?: boolean;
 };
 
 export type NotificationsDeletedPayloadDto = {
@@ -1939,6 +1953,47 @@ export type ScheduledPostDto = {
   scheduledFailedAt: string | null;
 };
 
+// ─── src/common/dto/site-config.dto.ts ─────────────────────────────────────────
+
+export type SiteConfigAutoVerifyRecruiterDto = {
+  id: string;
+  username: string | null;
+  name: string | null;
+  referralCode: string | null;
+};
+
+export type SiteConfigDto = {
+  id: number;
+  postsPerWindow: number;
+  windowSeconds: number;
+  verifiedPostsPerWindow: number;
+  verifiedWindowSeconds: number;
+  premiumPostsPerWindow: number;
+  premiumWindowSeconds: number;
+  autoVerifyNewUsers: boolean;
+  autoVerifyRecruiter: SiteConfigAutoVerifyRecruiterDto | null;
+};
+
+export type AutoVerifyPreviewUserDto = {
+  id: string;
+  username: string | null;
+  name: string | null;
+  avatarUrl: string | null;
+  createdAt: string;
+  recruitedAt: string | null;
+};
+
+export type AutoVerifyPreviewDto = {
+  recruiter: SiteConfigAutoVerifyRecruiterDto;
+  total: number;
+  users: AutoVerifyPreviewUserDto[];
+};
+
+export type AutoVerifyApplyDto = {
+  verifiedCount: number;
+  remaining: number;
+};
+
 // ─── src/common/dto/spaces.dto.ts ──────────────────────────────────────────────
 
 export type SpaceOwnerDto = {
@@ -2300,6 +2355,20 @@ export type Websters1828WordOfDayDto = {
   definitionHtml: string | null;
   sourceUrl: string;
   fetchedAt: string;
+  likeCount: number;
+  viewerHasLiked: boolean;
+};
+
+export type WotdLikeBreakdownDto = {
+  premium: number;
+  verified: number;
+  unverified: number;
+  total: number;
+};
+
+export type WotdLikeToggleDto = {
+  liked: boolean;
+  likeCount: number;
 };
 
 // ─── src/modules/messages/message.dto.ts ───────────────────────────────────────

@@ -541,7 +541,7 @@ function onNotificationKeydown(item: (typeof notifications.value)[number]) {
 function kindFromQuery(): NotificationKind | 'other' | null {
   const q = route.query.kind
   if (q === 'other') return 'other'
-  const valid: NotificationKind[] = ['comment', 'boost', 'repost', 'follow', 'followed_post', 'followed_article', 'mention', 'nudge', 'coin_transfer', 'poll_results_ready', 'generic', 'status_update', 'checkin_post']
+  const valid: NotificationKind[] = ['comment', 'boost', 'repost', 'follow', 'followed_post', 'followed_article', 'mention', 'nudge', 'coin_transfer', 'poll_results_ready', 'generic', 'status_update', 'checkin_post', 'account_verified']
   return (typeof q === 'string' && valid.includes(q as NotificationKind)) ? (q as NotificationKind) : null
 }
 
