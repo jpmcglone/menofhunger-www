@@ -59,6 +59,18 @@
         </div>
       </header>
 
+      <!-- Subtle feed nudge -->
+      <div class="flex justify-center pt-5 pb-1">
+        <NuxtLink
+          to="/home"
+          class="group inline-flex items-center gap-1.5 text-xs font-medium text-gray-400 transition-colors duration-150 hover:text-gray-600 dark:text-zinc-500 dark:hover:text-zinc-300"
+        >
+          <Icon name="tabler:layout-grid" class="h-3.5 w-3.5 opacity-70 transition-transform duration-200 group-hover:scale-110" aria-hidden="true" />
+          <span>Take me to the feed</span>
+          <Icon name="tabler:arrow-right" class="h-3 w-3 opacity-60 transition-transform duration-200 group-hover:translate-x-0.5" aria-hidden="true" />
+        </NuxtLink>
+      </div>
+
       <main>
         <!-- ── Hero ─────────────────────────────────────────────────── -->
         <section class="pb-10 pt-12 sm:pb-14 sm:pt-16">
@@ -124,9 +136,17 @@
                   </div>
                 </div>
                 <div v-if="landingSnapshot" class="text-sm text-gray-600 dark:text-gray-300">
-                  <span class="font-semibold text-gray-900 dark:text-gray-50">{{ formatLandingCount(landingSnapshot.stats.verifiedMenCount) }}+ men</span>
+                  <AppLandingStatBreakdown
+                    :title="`${landingSnapshot.stats.men.total.toLocaleString('en-US')} verified men`"
+                    :ariaLabel="`${formatLandingCount(landingSnapshot.stats.men.total)}+ men — hover for breakdown`"
+                    :rows="menBreakdownRows"
+                  >{{ formatLandingCount(landingSnapshot.stats.men.total) }}+ men</AppLandingStatBreakdown>
                   <span class="mx-1.5 opacity-40">·</span>
-                  <span class="font-semibold text-gray-900 dark:text-gray-50">{{ formatLandingCount(landingSnapshot.stats.publicPostCount) }}+ posts</span>
+                  <AppLandingStatBreakdown
+                    :title="`${landingSnapshot.stats.posts.total.toLocaleString('en-US')} posts`"
+                    :ariaLabel="`${formatLandingCount(landingSnapshot.stats.posts.total)}+ posts — hover for breakdown`"
+                    :rows="postsBreakdownRows"
+                  >{{ formatLandingCount(landingSnapshot.stats.posts.total) }}+ posts</AppLandingStatBreakdown>
                 </div>
               </div>
             </div>
@@ -694,6 +714,7 @@ import landingLight from '~/assets/images/landing-light.png'
 import landingDark from '~/assets/images/landing-dark.png'
 import mountainLight from '~/assets/images/mountain-light.png'
 import mountainDark from '~/assets/images/mountain-dark.png'
+import type { BreakdownRow } from '~/components/app/LandingStatBreakdown.vue'
 import type { DailyContentToday, DailyQuote, LandingSnapshot, LandingTopPost } from '~/types/api'
 
 definePageMeta({
@@ -838,6 +859,25 @@ onBeforeUnmount(() => {
 function formatLandingCount(value: number): string {
   return new Intl.NumberFormat('en-US', { notation: value >= 1_000 ? 'compact' : 'standard', maximumFractionDigits: 1 }).format(value)
 }
+
+const menBreakdownRows = computed<BreakdownRow[]>(() => {
+  const s = landingSnapshot.value?.stats.men
+  if (!s) return []
+  return [
+    { key: 'premium', label: 'Premium', count: s.premium, dotClass: 'bg-yellow-400' },
+    { key: 'verified', label: 'Verified', count: s.verified, dotClass: 'bg-blue-400' },
+  ]
+})
+
+const postsBreakdownRows = computed<BreakdownRow[]>(() => {
+  const s = landingSnapshot.value?.stats.posts
+  if (!s) return []
+  return [
+    { key: 'public', label: 'Public', count: s.public, dotClass: 'bg-gray-400' },
+    { key: 'verified', label: 'Verified', count: s.verified, dotClass: 'bg-blue-400' },
+    { key: 'premium', label: 'Premium', count: s.premium, dotClass: 'bg-yellow-400' },
+  ]
+})
 
 function postHref(post: LandingTopPost): string {
   return `/p/${encodeURIComponent(post.id)}`

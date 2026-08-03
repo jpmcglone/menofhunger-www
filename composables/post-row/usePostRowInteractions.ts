@@ -185,19 +185,19 @@ export function usePostRowInteractions(opts: {
     if (!viewerCanInteract.value) return
     if (isGatedPost.value) {
       const kind = postView.value.visibility === 'premiumOnly' ? 'premium' : 'verify'
-      showAuthActionModal({ kind, action: 'boost' })
+      showAuthActionModal({ kind, action: 'repost' })
       return
     }
     if (!isAuthed.value) {
-      showAuthActionModal({ kind: 'login', action: 'repost' as any })
+      showAuthActionModal({ kind: 'login', action: 'repost' })
       return
     }
     if (!viewerIsVerified.value) {
-      showAuthActionModal({ kind: 'verify', action: 'repost' as any })
+      showAuthActionModal({ kind: 'verify', action: 'repost' })
       return
     }
     if (!viewerHasUsername.value) {
-      showAuthActionModal({ kind: 'setUsername', action: 'repost' as any })
+      showAuthActionModal({ kind: 'setUsername', action: 'repost' })
       return
     }
     opts.toggleRepostMenu(e.currentTarget as HTMLElement)

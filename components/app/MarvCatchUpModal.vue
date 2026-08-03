@@ -154,39 +154,76 @@
                     </div>
                   </div>
 
-                <!-- Non-premium upsell (below the post preview) -->
-                <div
-                  v-if="!isAvailable"
-                  class="flex flex-col items-center justify-center py-6 text-center"
-                >
-                  <Icon name="tabler:lock" class="mb-3 text-[28px] moh-text-muted opacity-50" aria-hidden="true" />
-                  <p class="mb-1 text-sm font-semibold text-gray-800 dark:text-gray-100">Premium feature</p>
-                  <p class="mb-5 max-w-xs text-[13px] text-gray-500 dark:text-gray-400">
-                    M.A.R.V reads the full thread — above and below — and gives you the gist in seconds.
-                  </p>
-                  <Button
-                    as="NuxtLink"
-                    to="/tiers"
-                    label="Upgrade to Premium"
-                    rounded
-                    class="w-full max-w-[200px]"
-                    @click="hide"
-                  />
-                  <button
-                    type="button"
-                    class="mt-3 text-[13px] text-gray-400 transition-colors hover:text-gray-600 dark:hover:text-gray-200"
-                    @click="hide"
-                  >
-                    Maybe later
-                  </button>
+                <!--
+                  Non-premium. Two shapes: if someone already summarized this thread we show
+                  their summary (free, already cached) with the upgrade CTA underneath — real
+                  output beats a locked door as a funnel. Otherwise the plain upsell.
+                -->
+                <div v-if="!isAvailable">
+                  <div v-if="result" class="rounded-xl border moh-border p-3">
+                    <p class="whitespace-pre-line text-sm leading-relaxed text-gray-800 dark:text-gray-100">{{ result.summary }}</p>
+                    <p class="mt-3 text-[11px] text-gray-400 dark:text-gray-500">{{ stalenessLabel || summaryMeta }}</p>
+                  </div>
+                  <div class="flex flex-col items-center justify-center py-6 text-center">
+                    <Icon
+                      v-if="!result"
+                      name="tabler:lock"
+                      class="mb-3 text-[28px] moh-text-muted opacity-50"
+                      aria-hidden="true"
+                    />
+                    <p class="mb-1 text-sm font-semibold text-gray-800 dark:text-gray-100">
+                      {{ result ? 'Want your own?' : 'Premium feature' }}
+                    </p>
+                    <p class="mb-5 max-w-xs text-[13px] text-gray-500 dark:text-gray-400">
+                      {{
+                        result
+                          ? 'A member summarized this thread. Premium lets you catch up on any thread, any time.'
+                          : 'M.A.R.V reads the full thread — above and below — and gives you the gist in seconds.'
+                      }}
+                    </p>
+                    <Button
+                      as="NuxtLink"
+                      to="/tiers"
+                      label="Upgrade to Premium"
+                      rounded
+                      class="w-full max-w-[200px]"
+                      @click="hide"
+                    />
+                    <button
+                      type="button"
+                      class="mt-3 text-[13px] text-gray-400 transition-colors hover:text-gray-600 dark:hover:text-gray-200"
+                      @click="hide"
+                    >
+                      Maybe later
+                    </button>
+                  </div>
                 </div>
 
                 <!-- Premium states: result / loading / peeking / error / idle -->
                 <template v-else>
                   <!-- Result -->
                   <div v-if="result" class="rounded-xl border moh-border p-3">
+                    <!--
+                      Stale banner: the thread moved on since this summary. Shown above the
+                      text so the reader knows what they're looking at before they read it.
+                    -->
+                    <p
+                      v-if="result.stale"
+                      class="mb-2 inline-flex items-center gap-1.5 rounded-md bg-amber-50 px-2 py-1 text-[11px] font-medium text-amber-700 dark:bg-amber-500/10 dark:text-amber-300"
+                    >
+                      <Icon name="tabler:clock" class="text-[11px] shrink-0" aria-hidden="true" />
+                      {{ stalenessLabel }}
+                    </p>
                     <!-- Two-section layout when the API parsed POST:/REPLIES: markers -->
                     <template v-if="result.sections">
+                      <!--
+                        Delta first: when the viewer had already summarized this thread, what
+                        changed since is the only part they haven't read.
+                      -->
+                      <template v-if="result.sections.since">
+                        <p class="mb-0.5 text-[10px] font-semibold uppercase tracking-wide text-violet-500 dark:text-violet-400">What's new</p>
+                        <p class="mb-3 whitespace-pre-line text-sm leading-relaxed text-gray-800 dark:text-gray-100">{{ result.sections.since }}</p>
+                      </template>
                       <p class="mb-0.5 text-[10px] font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500">{{ postSectionLabel }}</p>
                       <p class="whitespace-pre-line text-sm leading-relaxed text-gray-800 dark:text-gray-100">{{ result.sections.post }}</p>
                       <template v-if="result.sections.replies">
@@ -272,8 +309,22 @@
               <!-- Footer actions -->
               <footer v-if="isAvailable" class="flex items-center justify-end gap-2 border-t moh-border px-4 py-3">
                 <template v-if="result">
-                  <Button label="Regenerate" severity="secondary" text :disabled="loading" @click="regenerate" />
-                  <Button label="Done" rounded @click="hide" />
+                  <!--
+                    When the thread has moved on, updating is the useful action and gets
+                    primary weight. When nothing has changed, say so and keep regenerate
+                    quiet — spending credits to re-summarize an unchanged thread is waste.
+                  -->
+                  <span v-if="!result.stale" class="mr-auto text-[11px] text-gray-400 dark:text-gray-500">
+                    Nothing new since this summary
+                  </span>
+                  <template v-if="result.stale">
+                    <Button label="Done" severity="secondary" text @click="hide" />
+                    <Button :label="updateLabel" :loading="loading" rounded @click="regenerate" />
+                  </template>
+                  <template v-else>
+                    <Button label="Regenerate" severity="secondary" text :disabled="loading" @click="regenerate" />
+                    <Button label="Done" rounded @click="hide" />
+                  </template>
                 </template>
                 <template v-else-if="errorMessage">
                   <!-- Error state: offer a retry + close -->
@@ -400,6 +451,26 @@ const costBreakdownLabel = computed(() => {
   if (bd.urlFetch > 0) parts.push(`${bd.urlFetch} link`)
   if (parts.length === 0) return `${r.creditsSpent} credits`
   return `${r.creditsSpent} credit${r.creditsSpent !== 1 ? 's' : ''}: ${parts.join(' + ')}`
+})
+
+/**
+ * How far the thread has drifted since this summary was written. The API serves stale
+ * summaries free rather than paywalling them, so the label is what makes the trade-off
+ * legible: read this now, or spend to bring it current.
+ */
+const stalenessLabel = computed(() => {
+  const r = result.value
+  if (!r?.stale) return null
+  if (r.newReplies > 0) {
+    return `${r.newReplies} new ${r.newReplies === 1 ? 'reply' : 'replies'} since this summary`
+  }
+  return 'The thread was edited since this summary'
+})
+
+const updateLabel = computed(() => {
+  if (loading.value) return 'Summarizing…'
+  const n = result.value?.newReplies ?? 0
+  return n > 0 ? `Update — ${n} new` : 'Update'
 })
 
 const summaryMeta = computed(() => {

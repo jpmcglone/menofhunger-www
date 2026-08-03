@@ -92,6 +92,8 @@
         />
       </div>
 
+      <div v-else-if="isDeletedPost" class="text-sm font-semibold moh-text-muted">Post deleted.</div>
+
       <div v-else class="text-sm moh-text-muted">Post unavailable.</div>
     </div>
   </a>
@@ -201,6 +203,7 @@ const { data, pending, error, refresh } = useAsyncData(
 )
 
 const post = computed<FeedPost | null>(() => preloadedPost.value ?? (data.value as FeedPost | null) ?? null)
+const isDeletedPost = computed(() => Boolean(post.value?.deletedAt))
 const { user: author } = useUserOverlay(computed(() => post.value?.author ?? null))
 const errorMessage = computed(() => (error.value ? getApiErrorMessage(error.value) || 'Failed to load embedded post.' : null))
 

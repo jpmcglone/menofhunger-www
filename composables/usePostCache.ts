@@ -86,6 +86,8 @@ export function usePostCache() {
         viewerHasBoosted: p.viewerHasBoosted,
         bookmarkCount: p.bookmarkCount,
         viewerHasBookmarked: p.viewerHasBookmarked,
+        repostCount: p.repostCount,
+        viewerHasReposted: p.viewerHasReposted,
       }
       changed = true
     }

@@ -1,7 +1,7 @@
 import type { GetNotificationsResponse, Notification, NotificationFeedItem, NotificationGroup, NotificationGroupKind, NotificationKind } from '~/types/api'
 
 /** Mirrors PRIMARY_NOTIFICATION_KINDS on the API side. */
-const PRIMARY_KINDS = new Set<NotificationKind>(['comment', 'mention', 'followed_post', 'checkin_post', 'status_update', 'follow', 'boost'])
+const PRIMARY_KINDS = new Set<NotificationKind>(['comment', 'mention', 'followed_post', 'checkin_post', 'status_update', 'follow', 'boost', 'repost'])
 import type { NotificationsCallback } from '~/composables/usePresence'
 import { useUsersStore } from '~/composables/useUsersStore'
 import { userColorTier, userTierBgClass, userTierTextClass } from '~/utils/user-tier'
@@ -512,6 +512,10 @@ export function useNotifications() {
         return n.title ?? 'Have you checked in today?'
       case 'on_this_day':
         return n.title ?? 'On this day'
+      case 'premium_started':
+        return n.title ?? n.body ?? "You're Premium"
+      case 'premium_ended':
+        return n.title ?? n.body ?? 'Your Premium ended'
       case 'marv_not_in_group':
         return n.title ?? '@marv is not in this group'
       case 'status_update':
@@ -532,6 +536,8 @@ export function useNotifications() {
         return 'tabler:message-circle'
       case 'boost':
         return '' // Custom SVG
+      case 'repost':
+        return 'tabler:repeat'
       case 'follow':
         return 'tabler:user-plus'
       case 'followed_post':
@@ -583,6 +589,10 @@ export function useNotifications() {
         return 'tabler:calendar-stats'
       case 'account_verified':
         return 'tabler:rosette-discount-check'
+      case 'premium_started':
+        return 'tabler:crown'
+      case 'premium_ended':
+        return 'tabler:crown-off'
       case 'marv_not_in_group':
         return 'tabler:sparkles'
       case 'status_update':
@@ -705,6 +715,8 @@ export function useNotifications() {
     if (n.kind === 'checkin_reminder') return '/home?checkin=1'
     if (n.kind === 'on_this_day' && n.subjectPostId) return `/p/${encodeURIComponent(n.subjectPostId)}`
     if (n.kind === 'account_verified') return '/verification'
+    if (n.kind === 'premium_started' && me.value?.username) return `/u/${encodeURIComponent(me.value.username)}`
+    if (n.kind === 'premium_ended') return '/tiers'
     if (n.kind === 'coin_transfer') return '/coins'
     if (n.kind === 'message' && n.subjectConversationId) {
       return `/messages/${encodeURIComponent(n.subjectConversationId)}`

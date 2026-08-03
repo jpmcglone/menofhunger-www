@@ -140,6 +140,20 @@
           >
             <Icon name="tabler:calendar-stats" class="text-white text-base" aria-hidden="true" />
           </div>
+          <div
+            v-else-if="notification.kind === 'premium_started'"
+            class="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--moh-premium,#f59e0b)] sm:h-10 sm:w-10"
+            aria-hidden="true"
+          >
+            <Icon name="tabler:crown" class="text-white text-base" aria-hidden="true" />
+          </div>
+          <div
+            v-else-if="notification.kind === 'premium_ended'"
+            class="flex h-9 w-9 items-center justify-center rounded-full bg-gray-400 dark:bg-zinc-600 sm:h-10 sm:w-10"
+            aria-hidden="true"
+          >
+            <Icon name="tabler:crown-off" class="text-white text-base" aria-hidden="true" />
+          </div>
           <NuxtLink
             v-else-if="notification.actor?.id && notification.actor?.username"
             :to="`/u/${notification.actor.username}`"
@@ -254,7 +268,7 @@
               <template v-else-if="notification.kind === 'poll_results_ready'">
                 <span>{{ titleSuffix(notification) }}</span>
               </template>
-              <template v-else-if="notification.kind === 'word_of_the_day' || notification.kind === 'quote_of_the_day' || notification.kind === 'account_verified' || notification.kind === 'checkin_reminder' || notification.kind === 'on_this_day'">
+              <template v-else-if="notification.kind === 'word_of_the_day' || notification.kind === 'quote_of_the_day' || notification.kind === 'account_verified' || notification.kind === 'checkin_reminder' || notification.kind === 'on_this_day' || notification.kind === 'premium_started' || notification.kind === 'premium_ended'">
                 <span>{{ titleSuffix(notification) }}</span>
               </template>
               <template v-else>

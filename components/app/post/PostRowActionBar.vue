@@ -69,12 +69,21 @@
           :style="isReposted ? { color: repostActiveColor } : undefined"
         />
       </button>
-      <span
-        class="ml-0 inline-block sm:min-w-[1.5rem] select-none text-left text-[11px] sm:text-xs tabular-nums moh-text-muted moh-count-gutter"
-        :class="repostCount > 0 ? 'opacity-100' : 'opacity-0'"
-        aria-hidden="true"
+      <button
+        v-if="repostCount > 0"
+        type="button"
+        class="ml-0 inline-block sm:min-w-[1.5rem] select-none text-left text-[11px] sm:text-xs tabular-nums moh-text-muted moh-count-gutter hover:underline underline-offset-2"
+        :aria-label="`${repostCount} repost${repostCount === 1 ? '' : 's'} — view who reposted`"
+        @click.stop="$emit('openReposters')"
       >
         <AppAnimatedCount :value="repostCount" :format="formatCountOrBlank" />
+      </button>
+      <span
+        v-else
+        class="ml-0 inline-block sm:min-w-[1.5rem] select-none text-left text-[11px] sm:text-xs tabular-nums moh-text-muted moh-count-gutter opacity-0"
+        aria-hidden="true"
+      >
+        0
       </span>
 
       <AppPostRowRepostMenu
@@ -191,6 +200,7 @@ const emit = defineEmits<{
   bookmarkCountDelta: [delta: number]
   bookmarkStateChanged: [payload: { hasBookmarked: boolean; collectionIds: string[] }]
   viewerCountSynced: [total: number]
+  openReposters: []
 }>()
 
 const formatCountOrBlank = (n: number) => n === 0 ? ' ' : formatShortCount(n)

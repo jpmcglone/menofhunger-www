@@ -12,6 +12,71 @@ import type { FeedPost, MarvinCatchUpBodyDto, MarvinCatchUpDto } from '~/types/a
  * State lives in `useState` so the row trigger and the globally-mounted modal share one
  * source of truth.
  */
+
+// ---------------------------------------------------------------------------
+// Persistent "summary is waiting" registry — localStorage, client-only.
+//
+// Post rows can't peek the server cache (a peek walks the thread with recursive
+// CTEs, which is far too expensive to do per row), so the row icon relies on this
+// local record of posts we've seen a summary for. Entries are timestamped and
+// expire on the same schedule as the server cache, because an icon that promises
+// a free summary after the server has dropped it is worse than no icon at all.
+// ---------------------------------------------------------------------------
+const CAUGHT_UP_KEY = 'moh:marv-caught-up'
+const CAUGHT_UP_MAX = 300
+/** Must track SUMMARY_CACHE_TTL_SECONDS in the API's marvin-catch-up.service.ts. */
+const CAUGHT_UP_TTL_MS = 6 * 60 * 60 * 1000
+
+/** postId → epoch ms when we last saw a summary for it. */
+type CaughtUpRecord = Record<string, number>
+
+function readCaughtUp(): CaughtUpRecord {
+  if (!import.meta.client) return {}
+  try {
+    const raw = localStorage.getItem(CAUGHT_UP_KEY)
+    const parsed = raw ? (JSON.parse(raw) as unknown) : null
+    // Ignore the previous string[] format rather than migrating it: those entries
+    // carry no timestamp, so they can't be expiry-checked and would resurrect the
+    // false-promise problem this format exists to fix.
+    if (!parsed || Array.isArray(parsed) || typeof parsed !== 'object') return {}
+    return parsed as CaughtUpRecord
+  } catch {
+    return {}
+  }
+}
+
+function writeCaughtUp(record: CaughtUpRecord): void {
+  if (!import.meta.client) return
+  try {
+    // Drop expired entries, then keep the most recent CAUGHT_UP_MAX so this never grows
+    // unbounded for someone who reads a lot of threads.
+    const cutoff = Date.now() - CAUGHT_UP_TTL_MS
+    const kept = Object.entries(record)
+      .filter(([, at]) => at > cutoff)
+      .sort(([, a], [, b]) => b - a)
+      .slice(0, CAUGHT_UP_MAX)
+    localStorage.setItem(CAUGHT_UP_KEY, JSON.stringify(Object.fromEntries(kept)))
+  } catch {
+    // Ignore quota / private-browsing errors.
+  }
+}
+
+/** Record that this post has a summary (called after any successful peek or run). */
+function markPostCaughtUp(postId: string): void {
+  const record = readCaughtUp()
+  record[postId] = Date.now()
+  writeCaughtUp(record)
+}
+
+/**
+ * True if we've seen a summary for this post recently enough that the server cache should
+ * still hold it. Survives reloads; goes false once the server would have dropped the entry.
+ */
+export function isPostCaughtUp(postId: string): boolean {
+  const at = readCaughtUp()[postId]
+  return typeof at === 'number' && Date.now() - at < CAUGHT_UP_TTL_MS
+}
+
 export function useMarvCatchUp() {
   const { apiFetch } = useApiClient()
   const { preferredMode } = useMarv()
@@ -70,7 +135,10 @@ export function useMarvCatchUp() {
         body,
         timeout: 20_000,
       })
-      if (res?.data) result.value = res.data
+      if (res?.data) {
+        result.value = res.data
+        markPostCaughtUp(target.id)
+      }
     } catch {
       // A failed peek is silent — fall back to the idle CTA. Nothing was spent.
     } finally {
@@ -94,7 +162,10 @@ export function useMarvCatchUp() {
         // Smart-mode summaries can take a while; the modal owns the wait UX.
         timeout: 60_000,
       })
-      if (res?.data) result.value = res.data
+      if (res?.data) {
+        result.value = res.data
+        markPostCaughtUp(target.id)
+      }
     } catch (err) {
       const anyErr = err as {
         data?: { meta?: { errors?: Array<{ message?: string; reason?: string }> } }

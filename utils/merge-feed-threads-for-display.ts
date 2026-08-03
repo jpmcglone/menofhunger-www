@@ -29,22 +29,20 @@ function mergeThreadCollapsedAuthors(
   existing: PostAuthor[] | undefined,
   extraPosts: FeedPost[],
 ): PostAuthor[] | undefined {
+  // An absorbed row contributes its own author plus the authors the API already
+  // flagged as hidden behind it — both are unreachable once the rows merge.
+  const absorbed: PostAuthor[] = []
+  for (const post of extraPosts) {
+    if (post.author) absorbed.push(post.author)
+    for (const author of post.threadCollapsedAuthors ?? []) absorbed.push(author)
+  }
   const previews = mergeReplyAuthorPreviews(
-    existing?.map((author) => ({
-      id: author.id,
-      username: author.username,
-      name: author.name,
-      avatarUrl: author.avatarUrl,
-      isOrganization: author.isOrganization,
-    })),
-    uniqueReplyAuthorsFromPosts(extraPosts),
+    uniqueReplyAuthorsFromPosts((existing ?? []).map((author) => ({ author }))),
+    uniqueReplyAuthorsFromPosts(absorbed.map((author) => ({ author }))),
   )
   if (!previews.length) return existing
   const byId = new Map<string, PostAuthor>()
-  for (const author of existing ?? []) byId.set(author.id, author)
-  for (const post of extraPosts) {
-    if (post.author?.id) byId.set(post.author.id, post.author)
-  }
+  for (const author of [...(existing ?? []), ...absorbed]) byId.set(author.id, author)
   return previews
     .map((preview) => byId.get(preview.id) ?? ({
       ...preview,
@@ -75,6 +73,11 @@ function chainIds(p: FeedPost): Set<string> {
  * surfaced that post — e.g. it ranked highly on its own) is recorded in
  * `pinnedAncestorIds` instead of bumping the collapsed count, so `FeedPostRow` keeps
  * it visible rather than folding it into a collapsed connector.
+ *
+ * The invariant behind both branches: `threadCollapsedCount` only ever counts posts
+ * that render nowhere in the merged row. Anything the viewer can see in the thread —
+ * including an ancestor folded behind the dashed connector, which labels itself — is
+ * excluded, on the API side and here.
  */
 export function mergeFeedThreadsForDisplay(raw: FeedPost[]): FeedThreadDisplayPost[] {
   if (!raw.length) return raw
@@ -106,7 +109,12 @@ export function mergeFeedThreadsForDisplay(raw: FeedPost[]): FeedThreadDisplayPo
       if (primaryIds.has(item.id)) {
         pinnedAncestorIds.push(item.id)
       } else {
-        extraCollapsed++
+        // This row renders nowhere once merged, so it counts — and so do the
+        // replies the API already told *it* were hidden. Those can't double-count
+        // the primary's own hidden set: the API only ever returns an anchor plus
+        // its ancestors per thread, so an off-chain row here came from a
+        // different collapse group with a disjoint set of hidden replies.
+        extraCollapsed += 1 + Math.max(0, Math.floor(item.threadCollapsedCount ?? 0))
       }
     }
 

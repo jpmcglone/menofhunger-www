@@ -618,6 +618,14 @@ export type FeedPost = {
   repostedPost?: FeedPost
   /** For posts containing an embedded post link: the quoted post (preloaded). */
   quotedPost?: FeedPost
+  /**
+   * When multiple followed accounts reposted the same original on this feed page,
+   * the repost rows are collapsed into one. Lists the reposting authors (followed
+   * accounts first, up to 5). Present only when ≥ 2 were collapsed.
+   */
+  repostedByAuthors?: PostAuthor[]
+  /** Total number of repost rows collapsed into this one. Present only when > 1. */
+  repostedByCount?: number
   /** For kind='articleShare': the shared article preview. */
   article?: ArticleSharePreview
   /** When true, post body/media/mentions/poll are redacted and author is placeholder. */
@@ -1523,7 +1531,7 @@ export type WsFollowsChangedPayload = {
   viewerFollowsUser: boolean
 }
 
-export type WsPostInteractionKind = 'boost' | 'bookmark'
+export type WsPostInteractionKind = 'boost' | 'bookmark' | 'repost'
 export type WsPostsInteractionPayload = {
   postId: string
   actorUserId: string
@@ -1531,6 +1539,7 @@ export type WsPostsInteractionPayload = {
   active: boolean
   boostCount?: number
   bookmarkCount?: number
+  repostCount?: number
 }
 
 export type WsPostsSubscribedPayload = {
@@ -2131,11 +2140,29 @@ export type AdminAnalytics = {
   asOf: string
 }
 
+export type LandingMenBreakdown = {
+  /** premium OR premiumPlus. */
+  premium: number
+  /** verifiedStatus != 'none' AND NOT (premium OR premiumPlus). */
+  verified: number
+  /** premium + verified. */
+  total: number
+}
+
+export type LandingPostBreakdown = {
+  /** visibility = 'public'. */
+  public: number
+  /** visibility = 'verifiedOnly'. */
+  verified: number
+  /** visibility = 'premiumOnly'. */
+  premium: number
+  /** public + verified + premium (onlyMe excluded). */
+  total: number
+}
+
 export type LandingStats = {
-  /** All-time public, regular, non-draft, non-deleted posts. */
-  publicPostCount: number
-  /** Verified, non-org, non-banned users with completed usernames. */
-  verifiedMenCount: number
+  men: LandingMenBreakdown
+  posts: LandingPostBreakdown
 }
 
 export type LandingTopPost = FeedPost & {
@@ -2613,9 +2640,11 @@ export type MarvinCatchUpDto = {
   /**
    * Structured sections when the thread has replies and the model followed the format.
    * `post` summarises the focal post; `replies` synthesises the replies below.
+   * `since` is present only when this summary was generated over a thread the viewer had
+   * already summarized — it's the delta, i.e. what changed since then, so lead with it.
    * Null when the AI returned a single-blob response (no markers found).
    */
-  sections?: { post: string; replies: string | null } | null
+  sections?: { post: string; replies: string | null; since?: string | null } | null
   /** The model tier that actually ran (after routing/auto-upgrades). */
   effectiveMode: MarvinModeDto
   /** Credits spent on this request (0 on a cache hit). */
@@ -2632,6 +2661,17 @@ export type MarvinCatchUpDto = {
   }
   /** True when this summary was served from cache (no new credits spent). */
   cached: boolean
+  /**
+   * True when the thread changed after this summary was generated. The summary is still
+   * served for free — show it immediately and label it, so regenerating is an informed
+   * choice rather than a paywall. Always false on a freshly generated summary.
+   */
+  stale: boolean
+  /**
+   * Replies added since this summary was generated. 0 when fresh, and also 0 when `stale`
+   * is true but only edits (no new replies) caused the drift.
+   */
+  newReplies: number
   /** How much of the thread the summary was built from. */
   included: {
     ancestors: number

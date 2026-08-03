@@ -48,7 +48,10 @@ export function useWebsters1828Wotd(
       // Client-side: skip the HTTP fetch when we already have data in memory.
       // This is the key guard against stale browser-HTTP-cache responses
       // (the API sets Cache-Control which lets browsers cache old likeCount values).
-      getCachedData: (_key, nuxtApp) => {
+      getCachedData: (_key, nuxtApp, ctx) => {
+        // Let refresh() and hook-driven refreshes always re-fetch so publish-boundary
+        // rollovers and realtime events actually see the latest word.
+        if (ctx.cause === 'refresh:manual' || ctx.cause === 'refresh:hook') return undefined
         if (import.meta.client && wotdData.value !== null) return wotdData.value
         // SSR / first hydration: fall back to the Nuxt payload.
         return nuxtApp.payload.data[_key] ?? nuxtApp.static.data[_key]

@@ -1,5 +1,5 @@
 export type AuthAction =
-  | 'comment' | 'boost' | 'bookmark' | 'useAsDraft' | 'poll' | 'post' | 'read' | 'follow'
+  | 'comment' | 'boost' | 'bookmark' | 'useAsDraft' | 'poll' | 'post' | 'read' | 'follow' | 'repost'
   | 'article-comment' | 'article-boost' | 'article-react'
 export type AuthActionModalKind = 'login' | 'verify' | 'setUsername' | 'premium'
 

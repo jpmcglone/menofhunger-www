@@ -6,18 +6,35 @@
       aria-hidden="true"
       :style="repostHeaderColor ? { color: repostHeaderColor } : undefined"
     />
-    <NuxtLink
-      v-if="reposterUsername"
-      :to="`/u/${encodeURIComponent(reposterUsername)}`"
-      class="font-semibold truncate hover:underline"
-      :style="reposterNameColor ? { color: reposterNameColor } : undefined"
-      @click.stop
-      @mouseenter="onReposterEnter"
-      @mousemove="onReposterMove"
-      @mouseleave="onReposterLeave"
-    >{{ reposterName }}</NuxtLink>
-    <span v-else class="font-semibold truncate" :style="reposterNameColor ? { color: reposterNameColor } : undefined">{{ reposterName }}</span>
-    <span :style="repostHeaderColor ? { color: repostHeaderColor } : undefined">reposted</span>
+    <!-- Multi-reposter collapsed label: "Alice, Bob and 3 others reposted" -->
+    <template v-if="collapsedAuthors.length >= 2">
+      <span :style="repostHeaderColor ? { color: repostHeaderColor } : undefined">
+        <NuxtLink
+          v-for="(a, idx) in collapsedAuthors.slice(0, 2)"
+          :key="a.id"
+          :to="`/u/${encodeURIComponent(a.username ?? a.id)}`"
+          class="font-semibold hover:underline"
+          @click.stop
+        >{{ authorLabel(a) }}<template v-if="idx === 0 && collapsedAuthors.length >= 2">, </template></NuxtLink>
+        <template v-if="remainingCount > 0"> and {{ remainingCount }} {{ remainingCount === 1 ? 'other' : 'others' }}</template>
+        reposted
+      </span>
+    </template>
+    <!-- Single reposter (default) -->
+    <template v-else>
+      <NuxtLink
+        v-if="reposterUsername"
+        :to="`/u/${encodeURIComponent(reposterUsername)}`"
+        class="font-semibold truncate hover:underline"
+        :style="reposterNameColor ? { color: reposterNameColor } : undefined"
+        @click.stop
+        @mouseenter="onReposterEnter"
+        @mousemove="onReposterMove"
+        @mouseleave="onReposterLeave"
+      >{{ reposterName }}</NuxtLink>
+      <span v-else class="font-semibold truncate" :style="reposterNameColor ? { color: reposterNameColor } : undefined">{{ reposterName }}</span>
+      <span :style="repostHeaderColor ? { color: repostHeaderColor } : undefined">reposted</span>
+    </template>
   </div>
 </template>
 
@@ -29,6 +46,18 @@ const props = defineProps<{ post: FeedPost }>()
 
 const { user: authUser } = useAuth()
 
+// ── Multi-reposter collapse ────────────────────────────────────────────────
+const collapsedAuthors = computed(() => props.post.repostedByAuthors ?? [])
+const remainingCount = computed(() => {
+  const total = props.post.repostedByCount ?? collapsedAuthors.value.length
+  return Math.max(0, total - 2)
+})
+function authorLabel(a: { id: string; name?: string | null; username?: string | null }): string {
+  if (authUser.value?.id === a.id) return 'You'
+  return a.name || a.username || 'Someone'
+}
+
+// ── Single reposter (existing behaviour) ──────────────────────────────────
 const reposterUsername = computed(() => props.post.author?.username ?? null)
 const reposterIsMe = computed(() =>
   Boolean(authUser.value?.id && authUser.value.id === props.post.author?.id),

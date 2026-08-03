@@ -25,6 +25,13 @@ export type UseCursorFeedOptions<T> = {
    * (for example, preserving optimistic rows until the backend catches up).
    */
   mergeOnRefresh?: (incoming: T[], existing: T[]) => T[]
+  /**
+   * Optional hook called on `loadMore` before new items are appended to existing ones.
+   * Use for cross-page deduplication logic that requires knowledge of the item shape
+   * (e.g. dropping a post whose content is already visible via an embedded repost shell).
+   * The result is then fed into `mergeUnique` for final ID-based dedup.
+   */
+  mergeOnLoadMore?: (incoming: T[], existing: T[]) => T[]
 }
 
 /**
@@ -116,7 +123,8 @@ export function useCursorFeed<T>(options: UseCursorFeedOptions<T>) {
       const { path, query } = options.buildRequest(nextCursor.value)
       const res = await apiFetch<T[]>(path, { method: 'GET', query })
       const data = res.data ?? []
-      items.value = mergeUnique(items.value, data)
+      const filtered = options.mergeOnLoadMore ? options.mergeOnLoadMore(data, items.value) : data
+      items.value = mergeUnique(items.value, filtered)
       nextCursor.value = res.pagination?.nextCursor ?? null
       options.onDataLoaded?.(data)
       options.onResponse?.(res)

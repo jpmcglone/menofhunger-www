@@ -140,7 +140,8 @@
             class="inline-flex items-center gap-2 rounded-full border moh-border bg-violet-50 px-3 py-1.5 text-xs font-medium text-violet-700 transition-colors hover:bg-violet-100 dark:bg-violet-500/10 dark:text-violet-300 dark:hover:bg-violet-500/20"
             @click="onCatchMeUpPill"
           >
-            <Icon name="tabler:sparkles" class="text-[13px]" aria-hidden="true" />
+            <!-- Same mark as the post-row trigger: one feature should not have two glyphs. -->
+            <AppMarvMark :size="13" tone="inherit" />
             Catch me up — {{ commentCountDisplay }} {{ commentCountDisplay === 1 ? 'reply' : 'replies' }}
           </button>
           <button
@@ -151,6 +152,53 @@
           >
             <Icon name="tabler:x" class="text-[12px]" aria-hidden="true" />
           </button>
+        </div>
+
+        <!-- Quotes section: lazy-loaded when the post has quoteCount > 0 -->
+        <div
+          v-if="post && (post as any).quoteCount > 0"
+          class="border-b moh-border"
+        >
+          <button
+            type="button"
+            class="flex w-full items-center justify-between gap-3 px-4 py-3 text-left hover:bg-gray-50 dark:hover:bg-zinc-900 transition-colors"
+            @click="quotesOpen = !quotesOpen"
+          >
+            <div class="text-sm font-semibold moh-text">
+              Quotes
+              <span class="ml-2 text-xs font-medium text-gray-500 dark:text-gray-400 tabular-nums">
+                {{ (post as any).quoteCount }}
+              </span>
+            </div>
+            <Icon
+              :name="quotesOpen ? 'tabler:chevron-up' : 'tabler:chevron-down'"
+              class="text-sm moh-text-muted shrink-0"
+              aria-hidden="true"
+            />
+          </button>
+          <div v-if="quotesOpen">
+            <div v-if="quotesLoading && !quotePosts.length" class="flex items-center justify-center py-6">
+              <AppLoadingSpinner />
+            </div>
+            <template v-else>
+              <AppFeedPostRow
+                v-for="q in quotePosts"
+                :key="q.id"
+                :post="q"
+              />
+              <div v-if="quotesNextCursor" class="flex justify-center px-4 py-3">
+                <Button
+                  label="Load more quotes"
+                  severity="secondary"
+                  rounded
+                  size="small"
+                  :loading="quotesLoading"
+                  :disabled="quotesLoading"
+                  @click="loadMoreQuotes"
+                />
+              </div>
+            </template>
+          </div>
         </div>
 
         <div ref="commentsFeedTopEl" class="border-b border-gray-200 dark:border-zinc-800">
@@ -240,6 +288,41 @@ const { apiFetchData } = useApiClient()
 const { invalidate: invalidateMyGroups } = useMyGroups()
 const { push: pushToast } = useAppToast()
 const highlightedPostRef = ref<HTMLElement | null>(null)
+
+// ─── Quotes section ───────────────────────────────────────────────────────────
+const quotesOpen = ref(false)
+const quotePosts = ref<FeedPost[]>([])
+const quotesNextCursor = ref<string | null>(null)
+const quotesLoading = ref(false)
+
+async function fetchQuotes(cur: string | null) {
+  quotesLoading.value = true
+  try {
+    const res = await apiFetchData<{ data: FeedPost[]; pagination: { nextCursor: string | null } }>(
+      `/posts/${encodeURIComponent(postId.value)}/quotes`,
+      { method: 'GET', query: cur ? { cursor: cur, limit: 20 } : { limit: 20 } },
+    )
+    if (cur) {
+      quotePosts.value = [...quotePosts.value, ...res.data]
+    } else {
+      quotePosts.value = res.data
+    }
+    quotesNextCursor.value = res.pagination.nextCursor
+  } catch {
+    // silently fail
+  } finally {
+    quotesLoading.value = false
+  }
+}
+
+async function loadMoreQuotes() {
+  if (!quotesNextCursor.value) return
+  await fetchQuotes(quotesNextCursor.value)
+}
+
+watch(quotesOpen, (val) => {
+  if (val && !quotePosts.value.length) fetchQuotes(null)
+})
 
 const { user, ensureLoaded, isAuthed, isVerified: viewerIsVerified, isPremium: viewerIsPremium } = useAuth()
 if (import.meta.client) {

@@ -369,6 +369,34 @@ describe('hydration guardrails (structural)', () => {
     expect(row).toMatch(/isAuthed\.value && !isPendingRow\.value && !isDeletedPost\.value/)
   })
 
+  it('defers the PostRow catch-up icon localStorage read until after mount', () => {
+    // The high-contrast icon state comes from localStorage, which does not exist during SSR.
+    // Reading it in `setup` (or via an `immediate: true` watcher) would render a different
+    // icon class than the server emitted — a hydration mismatch on every public feed page.
+    // The initial read must happen in onMounted; the watcher exists only to re-read when a
+    // row is recycled for a different post while scrolling.
+    const row = readFromRepo('components/app/PostRow.vue')
+    expect(row).toMatch(/const catchUpPersistedReady = ref\(false\)/)
+    expect(row).toMatch(/onMounted\(\(\) => \{\s*catchUpPersistedReady\.value = isPostCaughtUp\(/)
+    // Match the watcher's full shape: it must close right after the callback, with no options
+    // object. An `{ immediate: true }` would fire during setup and reintroduce the mismatch.
+    expect(row).toMatch(
+      /watch\(\s*\(\) => postView\.value\.id,\s*\(id\) => \{\s*catchUpPersistedReady\.value = isPostCaughtUp\(id\)\s*\},\s*\)/,
+    )
+  })
+
+  it('expires the catch-up localStorage registry so the icon cannot outlive the server cache', () => {
+    // The row icon promises "a summary is waiting". The server drops cached summaries on a
+    // TTL, so a registry entry that never expires turns that promise into a lie: the user
+    // taps a bright icon and lands on a paid regenerate prompt. Entries are timestamped and
+    // the read is expiry-checked.
+    const composable = readFromRepo('composables/useMarvCatchUp.ts')
+    expect(composable).toMatch(/CAUGHT_UP_TTL_MS/)
+    expect(composable).toMatch(/Date\.now\(\) - at < CAUGHT_UP_TTL_MS/)
+    // Guard against regressing to the original un-timestamped string[] format.
+    expect(composable).toMatch(/type CaughtUpRecord = Record<string, number>/)
+  })
+
   it('gates the catch-me-up pill on isMounted so localStorage is never read during SSR', () => {
     // The pill reads/writes localStorage (lastSeenCount, dismissedCount). On the server that
     // call would throw. The v-if guard must include `isMounted` so the pill is invisible

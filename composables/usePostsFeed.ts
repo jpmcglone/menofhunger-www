@@ -56,6 +56,38 @@ function pruneAckedLocalFeedInserts(inserts: LocalFeedInsert[], incoming: FeedPo
   return inserts.filter((it) => !incomingIds.has((it.post.id ?? '').trim()))
 }
 
+/**
+ * Cross-page repost deduplication for loadMore appends.
+ *
+ * When page N is appended to the already-loaded pages:
+ *   1. Drop a standalone post from `incoming` if the existing feed already shows it
+ *      embedded as `repostedPost` inside a repost shell (the content is already visible).
+ *   2. Drop a repost shell from `incoming` if the existing feed already has its
+ *      `repostedPost.id` as a standalone top-level row (reverse case).
+ */
+function dedupeIncomingPageWithExisting(incoming: FeedPost[], existing: FeedPost[]): FeedPost[] {
+  // IDs of originals already embedded inside a repost row in the current feed.
+  const embeddedOriginalIds = new Set<string>()
+  // Top-level post IDs already in the feed.
+  const existingTopLevelIds = new Set<string>()
+  for (const p of existing) {
+    const pid = (p.id ?? '').trim()
+    if (pid) existingTopLevelIds.add(pid)
+    const repostedId = ((p as { repostedPost?: { id?: string } }).repostedPost?.id ?? '').trim()
+    if (repostedId) embeddedOriginalIds.add(repostedId)
+  }
+
+  return incoming.filter((p) => {
+    const pid = (p.id ?? '').trim()
+    // Case 1: standalone post already visible as an embedded original.
+    if (pid && embeddedOriginalIds.has(pid)) return false
+    // Case 2: repost shell whose original is already a top-level row.
+    const repostedId = ((p as { repostedPost?: { id?: string } }).repostedPost?.id ?? '').trim()
+    if (repostedId && existingTopLevelIds.has(repostedId)) return false
+    return true
+  })
+}
+
 function applyLocalFeedInserts(incoming: FeedPost[], inserts: LocalFeedInsert[]): FeedPost[] {
   if (!inserts.length) return incoming.length ? [...incoming] : []
   const out = incoming.length ? [...incoming] : []
@@ -258,6 +290,8 @@ export function usePostsFeed(options: UsePostsFeedOptions = {}) {
       if (pending.length !== localInserts.value.length) localInserts.value = pending
       return applyLocalFeedInserts(live, pending)
     },
+    mergeOnLoadMore: (incoming, existing) =>
+      dedupeIncomingPageWithExisting(incoming, existing),
     onDataLoaded: (data) => clearBumpsForPostIds(data.flatMap(postAndParentChainIds)),
   })
 

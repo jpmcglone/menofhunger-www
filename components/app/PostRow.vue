@@ -152,13 +152,13 @@
           <!-- Marv "Catch me up" trigger — sits just left of the more-menu button. -->
           <div v-if="showCatchUpButton" class="absolute right-8 -top-2.5 z-30 pointer-events-auto">
             <button
-              v-tooltip.bottom="tinyTooltip('Catch me up — M.A.R.V summarizes this thread')"
+              v-tooltip.bottom="tinyTooltip(catchUpResultReady ? 'Catch me up — summary ready' : 'Catch me up — M.A.R.V summarizes this thread')"
               type="button"
               class="moh-tap moh-pressable inline-flex h-10 w-10 items-center justify-center rounded-full transition-opacity hover:opacity-70"
               aria-label="Catch me up with M.A.R.V"
               @click.stop="onCatchMeUp"
             >
-              <AppMarvMark :size="18" />
+              <AppMarvMark :size="18" :tone="catchUpResultReady ? 'active' : 'muted'" />
             </button>
           </div>
 
@@ -319,6 +319,7 @@
           @bookmark-count-delta="onBookmarkCountDelta"
           @bookmark-state-changed="onBookmarkStateChanged"
           @viewer-count-synced="onViewerCountSynced"
+          @open-reposters="repostersPostId = post.id"
         />
 
         <!-- Thread footer content (e.g. "View X more replies") -->
@@ -360,6 +361,13 @@
     :subject-post-id="postView.id"
     :subject-label="`@${author.username || 'user'}`"
     @submitted="onReportSubmitted"
+  />
+
+  <AppPostRepostersModal
+    v-if="repostersPostId"
+    :open="Boolean(repostersPostId)"
+    :post-id="repostersPostId"
+    @close="repostersPostId = null"
   />
 </template>
 
@@ -576,10 +584,30 @@ const isSelf = computed(() => {
 // context (web search / current events) so it's useful even on a lone post. Opening the
 // modal is free; generating a summary spends credits (gated server-side; non-premium
 // sees an upsell).
-const { show: showCatchUp } = useMarvCatchUp()
+const { show: showCatchUp, post: catchUpPost, result: catchUpResult } = useMarvCatchUp()
 const showCatchUpButton = computed(
   () => isAuthed.value && !isPendingRow.value && !isDeletedPost.value,
 )
+// In-session signal: this post's summary is already loaded in global state.
+const catchUpSessionReady = computed(
+  () => catchUpPost.value?.id === postView.value.id && !!catchUpResult.value,
+)
+// Persisted signal: we saw a summary for this post recently enough that the server cache
+// should still have it. The initial read is deferred to onMounted because localStorage is
+// client-only and reading it during setup would render a different icon class than SSR
+// emitted. The watcher covers this row being recycled for a different post while scrolling.
+const catchUpPersistedReady = ref(false)
+onMounted(() => {
+  catchUpPersistedReady.value = isPostCaughtUp(postView.value.id)
+})
+watch(
+  () => postView.value.id,
+  (id) => {
+    catchUpPersistedReady.value = isPostCaughtUp(id)
+  },
+)
+// Combined: high-contrast icon when a result is either in-session or should still be cached.
+const catchUpResultReady = computed(() => catchUpSessionReady.value || catchUpPersistedReady.value)
 function onCatchMeUp() {
   showCatchUp(postView.value)
 }
@@ -769,6 +797,8 @@ function onEdited(payload: { id: string; post: FeedPost }) {
   editOpen.value = false
   emit('edited', payload)
 }
+
+const repostersPostId = ref<string | null>(null)
 
 function onReportSubmitted() {
   // toast + close handled in dialog

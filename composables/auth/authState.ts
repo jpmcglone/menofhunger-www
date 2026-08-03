@@ -58,6 +58,10 @@ export function clearAuthClientState(params?: { resetViewerCaches?: boolean }) {
   useState<Record<string, boolean>>('boost-inflight', () => ({})).value = {}
   useState<Record<string, boolean>>('boost-pending', () => ({})).value = {}
   useState<string | null>('boost-state-error', () => null).value = null
+  useState<Record<string, any>>('repost-state', () => ({})).value = {}
+  useState<Record<string, boolean>>('repost-inflight', () => ({})).value = {}
+  useState<Record<string, boolean>>('repost-pending', () => ({})).value = {}
+  useState<string | null>('repost-state-error', () => null).value = null
   useState<Record<string, any>>('follow-state', () => ({})).value = {}
   useState<Record<string, boolean>>('follow-inflight', () => ({})).value = {}
   useState<string | null>('follow-state-error', () => null).value = null
@@ -100,6 +104,9 @@ export function clearAuthClientState(params?: { resetViewerCaches?: boolean }) {
     clearNuxtData(`public-profile:${prevUsername}`)
     clearNuxtData(`follow-summary:${prevUsername}`)
   }
+
+  // Clear the persistent WOTD state so viewerHasLiked doesn't leak to the next account.
+  useState<any>('wotd:data', () => null).value = null
 
   useState<any>('app-header', () => null).value = null
 

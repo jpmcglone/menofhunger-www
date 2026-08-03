@@ -1,6 +1,8 @@
 import type { FeedPost, RepostResponse, UnrepostResponse } from '~/types/api'
 import { getApiErrorMessage } from '~/utils/api-error'
 
+type GetPostData = { data: FeedPost }
+
 export type RepostStateEntry = {
   viewerHasReposted: boolean
   repostCount: number
@@ -10,6 +12,7 @@ type RepostStateMap = Record<string, RepostStateEntry>
 
 export function useRepostState() {
   const { apiFetchData } = useApiClient()
+  const postCache = usePostCache()
   const { prependToHomeFeed } = useHomeFeedPrepend()
   const { prependToProfileFeed } = useProfileFeedPrepend()
 
@@ -17,6 +20,10 @@ export function useRepostState() {
   const inflight = useState<Record<string, boolean>>('repost-inflight', () => ({}))
   const pending = useState<Record<string, boolean>>('repost-pending', () => ({}))
   const error = useState<string | null>('repost-state-error', () => null)
+
+  // Maps original post id → viewer's flat-repost post id, so we can tombstone the
+  // shell row when the user un-reposts without needing to walk the feed array.
+  const repostIdByOriginal = useState<Record<string, string>>('repost-id-by-original', () => ({}))
 
   function get(post: Pick<FeedPost, 'id' | 'repostCount' | 'viewerHasReposted'>): RepostStateEntry {
     const existing = state.value[post.id]
@@ -29,6 +36,11 @@ export function useRepostState() {
 
   function set(postId: string, entry: RepostStateEntry) {
     state.value = { ...state.value, [postId]: entry }
+    // Keep the post cache in sync so PostRow reflects the server-confirmed state.
+    postCache.patch(postId, {
+      viewerHasReposted: entry.viewerHasReposted,
+      repostCount: entry.repostCount,
+    })
   }
 
   function ingest(posts: Array<Pick<FeedPost, 'id' | 'repostCount' | 'viewerHasReposted'>>) {
@@ -88,19 +100,27 @@ export function useRepostState() {
           repostCount: result.repostCount,
         })
 
-        // After a successful repost, fetch the new flat-repost post and prepend
-        // it to the home feed so it appears immediately without waiting for a refresh.
-        if (result.reposted && result.repostId) {
-          void apiFetchData<FeedPost>(`/posts/${encodeURIComponent(result.repostId)}`)
-            .then((repostPost) => {
-              if (repostPost?.id) {
-                prependToHomeFeed(repostPost)
-                prependToProfileFeed(repostPost)
-              }
-            })
-            .catch(() => {
-              // Silent — the repost was created; just won't appear instantly.
-            })
+        if (result.reposted) {
+          // Track the repost shell id so we can tombstone it on un-repost.
+          if (result.repostId) {
+            repostIdByOriginal.value = { ...repostIdByOriginal.value, [postId]: result.repostId }
+            // Prepend the new repost shell to the actor's home and profile feeds
+            // so it appears live without a page refresh. Best-effort — a failure
+            // here only means the actor refreshes to see their repost.
+            void apiFetchData<GetPostData>(`/posts/${encodeURIComponent(result.repostId)}`).then(({ data: repostPost }) => {
+              prependToHomeFeed(repostPost)
+              prependToProfileFeed(repostPost)
+            }).catch(() => { /* best-effort */ })
+          }
+        } else {
+          // Un-repost: tombstone the viewer's flat-repost shell row so it disappears.
+          const repostShellId = repostIdByOriginal.value[postId]
+          if (repostShellId) {
+            postCache.patch(repostShellId, { deletedAt: new Date().toISOString() })
+            const next = { ...repostIdByOriginal.value }
+            delete next[postId]
+            repostIdByOriginal.value = next
+          }
         }
       }
     } catch (e: unknown) {

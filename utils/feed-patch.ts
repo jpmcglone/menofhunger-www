@@ -105,5 +105,9 @@ export function applyInteractionPatch(
     next.bookmarkCount = Math.max(0, Math.floor(payload.bookmarkCount))
     if (isMe) next.viewerHasBookmarked = Boolean(payload.active)
   }
+  if (payload.kind === 'repost' && typeof payload.repostCount === 'number') {
+    next.repostCount = Math.max(0, Math.floor(payload.repostCount))
+    if (isMe) next.viewerHasReposted = Boolean(payload.active)
+  }
   return next
 }

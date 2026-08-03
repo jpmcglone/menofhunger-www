@@ -73,6 +73,18 @@ export default defineNuxtPlugin(() => {
         delta.bookmarkCount = Math.max(0, Math.floor(payload.bookmarkCount))
         if (isMe) delta.viewerHasBookmarked = Boolean(payload.active)
       }
+      if (payload.kind === 'repost' && typeof payload.repostCount === 'number') {
+        delta.repostCount = Math.max(0, Math.floor(payload.repostCount))
+        if (isMe) {
+          delta.viewerHasReposted = Boolean(payload.active)
+          // Keep useRepostState in sync so rollback/optimistic logic has an accurate
+          // server-confirmed baseline.
+          useRepostState().set(postId, {
+            viewerHasReposted: Boolean(payload.active),
+            repostCount: delta.repostCount,
+          })
+        }
+      }
       postCache.patch(postId, delta)
     },
   }
