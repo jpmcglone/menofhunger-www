@@ -27,12 +27,24 @@ const { recents, loaded, loading, load, recordUser, recordGroup, remove, clearAl
 
 const inputRef = ref<{ $el?: HTMLElement } | null>(null)
 const focused = ref(false)
+let blurTimer: ReturnType<typeof setTimeout> | null = null
 const query = computed({
   get: () => props.modelValue,
   set: (v) => emit('update:modelValue', v),
 })
 const queryTrimmed = computed(() => (query.value ?? '').trim())
 const groupRoundClass = groupAvatarRoundClass()
+
+function getInputEl(): HTMLInputElement | null {
+  const raw = inputRef.value?.$el ?? (inputRef.value as unknown as HTMLElement | null)
+  if (raw instanceof HTMLInputElement) return raw
+  if (raw instanceof HTMLElement) {
+    return raw.tagName === 'INPUT'
+      ? (raw as HTMLInputElement)
+      : raw.querySelector('input')
+  }
+  return null
+}
 
 // ── People + Groups typeahead ─────────────────────────────────────────────────
 const people = ref<FollowListUser[]>([])
@@ -162,7 +174,7 @@ function onKeydown(e: KeyboardEvent) {
       if (group) selectGroup(group)
     }
   } else if (e.key === 'Escape') {
-    focused.value = false
+    closePanel()
   }
 }
 
@@ -170,11 +182,23 @@ watch(queryTrimmed, () => { highlightedIndex.value = -1 })
 
 // ── Actions ──────────────────────────────────────────────────────────────────
 
+function closePanel() {
+  if (blurTimer) {
+    clearTimeout(blurTimer)
+    blurTimer = null
+  }
+  focused.value = false
+  // Drop DOM focus so Vue state and the input stay in sync. Without this,
+  // @mousedown.prevent on result rows leaves the input focused while the panel
+  // is closed — browser back then restores a focused field with no dropdown.
+  getInputEl()?.blur()
+}
+
 function submitSearch(q: string) {
   if (!q.trim()) return
   emit('submit', q.trim())
   invalidate()
-  focused.value = false
+  closePanel()
 }
 
 function applyRecent(r: RecentSearch) {
@@ -184,39 +208,87 @@ function applyRecent(r: RecentSearch) {
     emit('update:modelValue', r.query)
     emit('submit', r.query)
   }
-  focused.value = false
+  closePanel()
 }
 
 async function selectPerson(user: FollowListUser) {
-  focused.value = false
+  closePanel()
   void recordUser(user)
   void useRouter().push(`/u/${encodeURIComponent(user.username ?? '')}`)
 }
 
 async function selectGroup(group: CommunityGroupShell) {
-  focused.value = false
+  closePanel()
   void recordGroup(group)
   void useRouter().push(`/groups/${encodeURIComponent(group.slug)}`)
 }
 
 // ── Focus / blur ─────────────────────────────────────────────────────────────
 function onFocus() {
+  if (blurTimer) {
+    clearTimeout(blurTimer)
+    blurTimer = null
+  }
   focused.value = true
   if (isAuthed.value && !loaded.value) void load()
+  // Back-nav / focus restoration can land in a focused input without re-running
+  // the query watcher; refill results if the field still has a query.
+  if (queryTrimmed.value.length >= 1 && people.value.length === 0 && groups.value.length === 0) {
+    scheduleFetch(queryTrimmed.value)
+  }
 }
 
 function onBlur() {
   // Longer delay so the panel stays visible while recents are being fetched and
   // so that @mousedown.prevent on panel buttons has time to fire before we close.
-  window.setTimeout(() => { focused.value = false }, 300)
+  if (blurTimer) clearTimeout(blurTimer)
+  blurTimer = setTimeout(() => {
+    focused.value = false
+    blurTimer = null
+  }, 300)
 }
+
+/**
+ * Browser history / bfcache can restore focus to the input without firing a
+ * focus event. Reconcile Vue `focused` with the real active element.
+ */
+function syncFocusedFromDom() {
+  if (!import.meta.client) return
+  const input = getInputEl()
+  if (!input) return
+  if (document.activeElement !== input) return
+  if (!focused.value) onFocus()
+}
+
+const router = useRouter()
+let stopAfterEach: (() => void) | null = null
+
+onMounted(() => {
+  syncFocusedFromDom()
+  window.addEventListener('popstate', syncFocusedFromDom)
+  window.addEventListener('pageshow', syncFocusedFromDom)
+  stopAfterEach = router.afterEach(() => {
+    // Focus restoration runs after the navigation settles.
+    void nextTick(() => syncFocusedFromDom())
+  })
+})
+
+onBeforeUnmount(() => {
+  if (blurTimer) {
+    clearTimeout(blurTimer)
+    blurTimer = null
+  }
+  window.removeEventListener('popstate', syncFocusedFromDom)
+  window.removeEventListener('pageshow', syncFocusedFromDom)
+  stopAfterEach?.()
+  stopAfterEach = null
+})
 
 // ── Public API ───────────────────────────────────────────────────────────────
 defineExpose({
   focus() {
-    const el = inputRef.value?.$el ?? (inputRef.value as any)
-    if (el instanceof HTMLElement) el.focus()
-    else if (el?.focus) el.focus()
+    const el = getInputEl()
+    if (el) el.focus()
   },
 })
 </script>
@@ -287,7 +359,7 @@ defineExpose({
               class="absolute inset-0 z-[1]"
               tabindex="-1"
               aria-hidden="true"
-              @click.capture="() => { focused = false }"
+              @click.capture="closePanel"
             />
             <NuxtLink
               v-else-if="r.group?.slug"
@@ -295,7 +367,7 @@ defineExpose({
               class="absolute inset-0 z-[1]"
               tabindex="-1"
               aria-hidden="true"
-              @click.capture="() => { focused = false }"
+              @click.capture="closePanel"
             />
             <div
               v-else
@@ -409,7 +481,7 @@ defineExpose({
                 class="absolute inset-0 z-[1]"
                 tabindex="-1"
                 aria-hidden="true"
-                @click.capture="() => { focused = false; void recordUser(u) }"
+                @click.capture="() => { closePanel(); void recordUser(u) }"
               />
               <div class="relative z-[2] flex items-center gap-2.5 w-full min-w-0 pointer-events-none">
                 <AppUserAvatar
@@ -458,7 +530,7 @@ defineExpose({
                 class="absolute inset-0 z-[1]"
                 tabindex="-1"
                 aria-hidden="true"
-                @click.capture="() => { focused = false; void recordGroup(g) }"
+                @click.capture="() => { closePanel(); void recordGroup(g) }"
               />
               <div class="relative z-[2] flex items-center gap-2.5 w-full min-w-0 pointer-events-none">
                 <div class="shrink-0 h-8 w-8 overflow-hidden bg-gray-100 dark:bg-zinc-800 flex items-center justify-center" :class="groupRoundClass">
