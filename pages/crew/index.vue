@@ -291,6 +291,7 @@ const outbox = ref<CrewInvite[]>([])
 
 // Invite dialog
 const openInviteDialog = ref(false)
+useOverlayDismiss(openInviteDialog, () => (openInviteDialog.value = false))
 const inviteUser = ref<FollowListUser | null>(null)
 const inviteMessage = ref('')
 const sendingInvite = ref(false)

@@ -5,7 +5,7 @@
       class="typing-expand-outer"
     >
       <div
-        class="typing-expand-inner text-xs text-gray-500 dark:text-gray-400"
+        class="typing-expand-inner typing-legible text-xs text-gray-500 dark:text-gray-400"
         :class="size === 'compact' ? 'py-1' : 'py-2'"
         role="status"
         aria-live="polite"
@@ -130,6 +130,18 @@ function tierClass(user: TypingUserDisplay): string {
 .typing-expand-leave-from {
   grid-template-rows: 1fr;
   opacity: 1;
+}
+
+/* ── Legibility halo ────────────────────────────────────────────────────── */
+/* In the chat thread this floats over message bubbles rather than sitting on a
+   surface of its own, so it carries its own contrast instead of trusting whatever
+   is behind it. Uses the page background, so it reads as a halo over content and
+   disappears against a plain surface — and flips automatically in dark mode. */
+.typing-legible {
+  text-shadow:
+    0 0 2px var(--moh-bg),
+    0 0 5px var(--moh-bg),
+    0 0 10px var(--moh-bg);
 }
 
 /* ── Wave animation ─────────────────────────────────────────────────────── */

@@ -43,7 +43,7 @@
 </template>
 
 <script setup lang="ts">
-withDefaults(
+const props = withDefaults(
   defineProps<{
     modelValue: boolean
     title: string
@@ -56,8 +56,20 @@ withDefaults(
   { showSubmit: true, submitLabel: 'Save', saving: false, canSubmit: true },
 )
 
-defineEmits<{
+const emit = defineEmits<{
   (e: 'update:modelValue', v: boolean): void
   (e: 'submit'): void
 }>()
+
+const open = computed(() => Boolean(props.modelValue))
+
+function close() {
+  // Mirrors the header X, which is disabled mid-save.
+  if (props.saving) return
+  emit('update:modelValue', false)
+}
+
+// Escape, the Android/browser Back button, and route changes all dismiss this.
+// PrimeVue's own Escape handling is off here because `closable` is false.
+useOverlayDismiss(open, close)
 </script>

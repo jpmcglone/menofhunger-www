@@ -59,7 +59,7 @@ function close() {
   emit('update:modelValue', false)
 }
 
-useModalEscape(visible, close)
+useOverlayDismiss(visible, close)
 
 watch(
   () => visible.value,

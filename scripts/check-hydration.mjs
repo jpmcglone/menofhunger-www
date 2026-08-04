@@ -99,8 +99,13 @@ async function spawnPreviewServer() {
 function isHydrationMessage(text) {
   if (!text) return false
   const t = String(text)
+  // Dev builds warn per mismatch: "[Vue warn] Hydration children mismatch ...".
   if (/\[Vue warn\][^\n]*[Hh]ydration/.test(t)) return true
-  if (/Hydration (?:node|children|class|style|attribute|text content) mismatch/i.test(t)) return true
+  // Production builds drop the prefix and the detail, emitting a single
+  // console.error("Hydration completed but contains mismatches."). Since this
+  // script checks the production server, missing that string meant the check
+  // could only ever pass. Match both shapes.
+  if (/hydration[^\n]*mismatch/i.test(t)) return true
   return false
 }
 

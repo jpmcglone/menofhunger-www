@@ -98,6 +98,8 @@ const visible = computed({
   set: (v) => emit('update:modelValue', v),
 })
 
+useOverlayDismiss(visible, () => (visible.value = false))
+
 const senderForAvatar = computed(() => {
   if (!props.message?.sender) return null
   return {

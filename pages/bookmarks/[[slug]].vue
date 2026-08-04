@@ -333,10 +333,12 @@ function onBookmarkUpdated(
 }
 
 const newFolderOpen = ref(false)
+useOverlayDismiss(newFolderOpen, () => (newFolderOpen.value = false))
 const newFolderName = ref('')
 const creatingFolder = ref(false)
 
 const manageFolderOpen = ref(false)
+useOverlayDismiss(manageFolderOpen, () => (manageFolderOpen.value = false))
 const manageFolderName = ref('')
 const renamingFolder = ref(false)
 const deletingFolder = ref(false)

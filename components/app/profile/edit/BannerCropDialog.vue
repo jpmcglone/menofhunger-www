@@ -157,6 +157,8 @@ function handleVisibleUpdate(value: boolean) {
   cancelCrop()
 }
 
+useOverlayDismiss(() => props.modelValue, cancelCrop)
+
 async function applyCrop() {
   cropApplyError.value = null
   if (!cropperReady.value || !cropHasSelection.value) {

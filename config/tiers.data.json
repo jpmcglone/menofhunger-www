@@ -108,6 +108,9 @@
           "text": "Up to 500 characters per post or comment"
         },
         {
+          "text": "Edit a post up to 3 times within 30 minutes"
+        },
+        {
           "text": "Access men-only read areas"
         },
         {
@@ -221,13 +224,10 @@
           "text": "Send coins to other verified members"
         },
         {
+          "text": "Schedule posts to publish later"
+        },
+        {
           "text": "Tightly moderated quality — no noise, no pay-to-win"
-        },
-        {
-          "text": "See no ads while you're Premium"
-        },
-        {
-          "text": "Edit posts within a reasonable window"
         },
         {
           "text": "Monthly structured conversations and accountability systems",
@@ -301,9 +301,6 @@
         {
           "text": "Early access to new features / betas",
           "comingSoon": true
-        },
-        {
-          "text": "No ads anywhere while logged in"
         },
         {
           "text": "Better feed defaults (verified + subscribed first)",

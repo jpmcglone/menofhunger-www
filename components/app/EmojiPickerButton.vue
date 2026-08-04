@@ -196,7 +196,7 @@ watch(open, (v, _old, onCleanup) => {
   }
 })
 
-useModalEscape(open, close)
+useOverlayDismiss(open, close)
 
 defineExpose({ close })
 

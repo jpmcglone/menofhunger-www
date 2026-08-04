@@ -81,6 +81,7 @@ const showInitialLoader = computed(() => loading.value && items.value.length ===
 // ─── Edit modal ───────────────────────────────────────────────────────────────
 const editing = ref<ScheduledPost | null>(null)
 const editDialogOpen = ref(false)
+useOverlayDismiss(editDialogOpen, () => (editDialogOpen.value = false))
 
 function openEdit(item: ScheduledPost) {
   editing.value = item

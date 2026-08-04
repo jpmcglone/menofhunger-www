@@ -57,6 +57,8 @@ const emit = defineEmits<{
 }>()
 
 const modelValue = computed(() => Boolean(props.modelValue))
+
+useOverlayDismiss(modelValue, () => emit('update:modelValue', false))
 const disabled = computed(() => Boolean(props.disabled))
 
 const cropSrc = ref<string | null>(null)

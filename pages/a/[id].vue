@@ -964,6 +964,7 @@ function scrollToComments() {
 const toast = useAppToast()
 const sharing = ref(false)
 const shareCommentModalOpen = ref(false)
+useOverlayDismiss(shareCommentModalOpen, () => (shareCommentModalOpen.value = false))
 const shareCommentText = ref('')
 
 const { mounted: shareMenuMounted, menuRef: shareMenuRef, toggle: toggleShareMenu } = useAutoToggleMenu()

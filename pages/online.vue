@@ -49,7 +49,9 @@
         </p>
       </div>
 
-      <div v-if="recentError" class="px-4 pb-4">
+      <!-- Only take over the section when there is nothing to show. A failure while
+           paginating keeps the rows already on screen and retries inline below. -->
+      <div v-if="recentError && recentUsers.length === 0" class="px-4 pb-4">
         <AppInlineAlert severity="danger">
           {{ recentError }}
         </AppInlineAlert>
@@ -107,16 +109,32 @@
           />
         </TransitionGroup>
 
-        <div class="py-4 flex justify-center">
-          <Button
-            v-if="recentNextCursor"
-            label="Load more"
-            severity="secondary"
-            rounded
-            :loading="recentLoading"
-            :disabled="recentLoading"
-            @click="loadMoreRecent"
+        <!-- Auto-pagination sentinel. It sits one viewport ahead of the real bottom
+             (useLoadMoreObserver's default rootMargin), so the next page is usually
+             already in flight by the time the viewer gets there. -->
+        <div
+          v-if="recentNextCursor"
+          class="relative flex justify-center items-center py-6 min-h-12"
+        >
+          <div
+            ref="loadMoreSentinelEl"
+            class="absolute bottom-0 left-0 right-0 h-px"
+            aria-hidden="true"
           />
+          <div v-if="recentLoadMoreFailed" class="flex flex-col items-center gap-2 px-4">
+            <p class="text-sm text-gray-500 dark:text-gray-400">
+              {{ recentError || 'Failed to load more.' }}
+            </p>
+            <Button label="Try again" severity="secondary" rounded @click="loadMoreRecent" />
+          </div>
+          <div
+            v-else
+            class="transition-opacity duration-150"
+            :class="recentLoading ? 'opacity-100' : 'opacity-0 pointer-events-none'"
+            :aria-hidden="!recentLoading"
+          >
+            <AppLogoLoader compact />
+          </div>
         </div>
       </template>
     </template>
@@ -143,7 +161,7 @@ usePageSeo({
   noindex: true,
 })
 
-const { apiFetch, apiFetchData } = useApiClient()
+const { apiFetch } = useApiClient()
 const {
   subscribeOnlineFeed,
   unsubscribeOnlineFeed,
@@ -168,7 +186,6 @@ const recentUsers = useState<RecentlyOnlineUser[]>('online-page-recent-users', (
 const recentNextCursor = useState<string | null>('online-page-recent-next-cursor', () => null)
 const recentLoading = useState<boolean>('online-page-recent-loading', () => false)
 const recentError = useState<string | null>('online-page-recent-error', () => null)
-const nuxtApp = useNuxtApp()
 
 const { user: authUser } = useAuth()
 const { nowMs } = useNowTicker({ everyMs: 15_000 })
@@ -326,30 +343,6 @@ async function mergeUserFromRefetch(userId: string) {
   }, 100)
 }
 
-async function fetchOnline() {
-  loading.value = true
-  error.value = null
-  try {
-    const res = await apiFetch<GetPresenceOnlineData>('/presence/online', { method: 'GET', query: { includeSelf: '1' } })
-    users.value = (res?.data ?? []).sort(sortOnlineUsers)
-    totalOnline.value = typeof res?.pagination?.totalOnline === 'number' ? res.pagination.totalOnline : users.value.length
-    if (users.value.length > 0) {
-      const ids = users.value.map((u) => u.id).filter(Boolean)
-      addOnlineIdsFromRest(ids)
-      addStatusesFromRest(users.value.map((u) => u.status))
-      const idleIds = users.value.filter((u) => u.idle && u.id).map((u) => u.id)
-      if (idleIds.length) addIdleFromRest(idleIds)
-      addInterest(ids)
-    }
-  } catch (e: unknown) {
-    error.value = getApiErrorMessage(e) || 'Failed to load online users.'
-    users.value = []
-    totalOnline.value = null
-  } finally {
-    loading.value = false
-  }
-}
-
 async function fetchOnlinePage() {
   loading.value = true
   error.value = null
@@ -401,8 +394,9 @@ async function fetchOnlinePage() {
   }
 }
 
-async function fetchRecent(params?: { cursor?: string | null }) {
-  if (!viewerCanSeeLastOnline.value) return
+/** Resolves to whether the fetch succeeded, so the caller can stop auto-paginating. */
+async function fetchRecent(params?: { cursor?: string | null }): Promise<boolean> {
+  if (!viewerCanSeeLastOnline.value) return false
   recentLoading.value = true
   recentError.value = null
   try {
@@ -419,23 +413,49 @@ async function fetchRecent(params?: { cursor?: string | null }) {
     if (params?.cursor) recentUsers.value = [...recentUsers.value, ...data.filter((u) => !u.isBot)]
     else recentUsers.value = data.filter((u) => !u.isBot)
     recentNextCursor.value = typeof next === 'string' && next.trim() ? next : null
+    return true
   } catch (e: unknown) {
     recentError.value = getApiErrorMessage(e) || 'Failed to load recently online.'
     if (!params?.cursor) {
       recentUsers.value = []
       recentNextCursor.value = null
     }
+    return false
   } finally {
     recentLoading.value = false
   }
 }
 
+/**
+ * A failed page leaves the cursor intact and the sentinel on screen, so without
+ * this latch the observer would re-fire the moment loading flips false and spin
+ * the API in a tight loop. Cleared only when the viewer retries by hand.
+ */
+const recentLoadMoreFailed = ref(false)
+
 async function loadMoreRecent() {
   if (!viewerCanSeeLastOnline.value) return
   if (!recentNextCursor.value) return
   if (recentLoading.value) return
-  await fetchRecent({ cursor: recentNextCursor.value })
+  // Release the latch up front so a retry shows the inline spinner, not the button.
+  recentLoadMoreFailed.value = false
+  const ok = await fetchRecent({ cursor: recentNextCursor.value })
+  recentLoadMoreFailed.value = !ok
 }
+
+const loadMoreSentinelEl = ref<HTMLElement | null>(null)
+const middleScrollerRef = useMiddleScroller()
+
+useLoadMoreObserver(
+  loadMoreSentinelEl,
+  middleScrollerRef,
+  computed(
+    () => Boolean(recentNextCursor.value) && !recentLoading.value && !recentLoadMoreFailed.value,
+  ),
+  () => {
+    void loadMoreRecent()
+  },
+)
 
 onMounted(async () => {
   addOnlineFeedCallback(feedCallback)

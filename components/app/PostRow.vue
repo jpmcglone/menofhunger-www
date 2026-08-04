@@ -791,6 +791,9 @@ const {
   onGroupPinChanged: () => emit('groupPinChanged'),
 })
 
+// Report dialog registers its own dismissal; only the edit dialog is owned here.
+useOverlayDismiss(editOpen, () => (editOpen.value = false))
+
 function onEdited(payload: { id: string; post: FeedPost }) {
   if (payload?.id !== postView.value.id) return
   postState.value = payload.post

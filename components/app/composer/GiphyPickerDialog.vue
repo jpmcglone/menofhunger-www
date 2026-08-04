@@ -53,6 +53,8 @@ const emit = defineEmits<{
 }>()
 
 const open = computed(() => Boolean(props.open))
+
+useOverlayDismiss(open, () => emit('update:open', false))
 const query = computed(() => props.query ?? '')
 const loading = computed(() => Boolean(props.loading))
 const error = computed(() => props.error ?? null)

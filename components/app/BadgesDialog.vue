@@ -88,7 +88,7 @@ function close() {
   emit('update:open', false)
 }
 
-useModalEscape(toRef(props, 'open'), close)
+useOverlayDismiss(toRef(props, 'open'), close)
 
 watch(
   () => props.open,

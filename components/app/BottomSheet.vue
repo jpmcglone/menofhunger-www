@@ -118,7 +118,7 @@ function onMaskClick() {
   close()
 }
 
-useModalEscape(visible, close)
+useOverlayDismiss(visible, close)
 
 watch(
   () => visible.value,

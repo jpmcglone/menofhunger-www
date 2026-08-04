@@ -53,6 +53,9 @@ const emit = defineEmits<{
 
 const openComposer = inject(MOH_OPEN_COMPOSER_KEY, null)
 
+// Mounted only while it should be shown, so it is open for its whole lifetime.
+useOverlayDismiss(() => true, () => emit('close'))
+
 function shareToFeed() {
   const articleUrl = `${window.location.origin}/a/${props.article.id}`
   // Articles support public / verifiedOnly / premiumOnly (never onlyMe).

@@ -119,10 +119,6 @@ function close() {
   emit('update:open', false)
 }
 
-function onKeydown(e: KeyboardEvent) {
-  if (e.key === 'Escape') close()
-}
-
-onMounted(() => window.addEventListener('keydown', onKeydown))
-onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
+// Escape, the Android/browser Back button, and route changes all dismiss this.
+useOverlayDismiss(toRef(props, 'open'), close)
 </script>

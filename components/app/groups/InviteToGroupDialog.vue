@@ -119,6 +119,8 @@ const visible = computed({
   set: (v) => emit('update:modelValue', v),
 })
 
+useOverlayDismiss(visible, () => (visible.value = false))
+
 const groupInvites = useGroupInvites()
 const { push: pushToast } = useAppToast()
 

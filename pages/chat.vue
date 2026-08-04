@@ -695,6 +695,7 @@ async function deleteSelectedConversation() {
 // ─── New-chat dialog ─────────────────────────────────────────────────────────
 
 const newDialogVisible = ref(false)
+useOverlayDismiss(newDialogVisible, () => (newDialogVisible.value = false))
 const newConversationError = ref<string | null>(null)
 const newDialogRecipients = ref<FollowListUser[]>([])
 

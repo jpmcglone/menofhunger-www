@@ -1,10 +1,10 @@
 {
-  "asOfDate": "Jun. 13, 2026",
+  "asOfDate": "Aug. 4, 2026",
   "originalAsOfDate": "Feb. 3, 2026",
   "intro": {
     "label": "Product roadmap",
     "title": "Where we're headed",
-    "description": "The core platform is live: verification, posting, groups, chat, spaces, radio, articles, coins, and the full discovery surface. Now we're building the native iOS app and shipping the remaining safety, compliance, and community depth features."
+    "description": "The web platform is live: verification, posting, groups, chat, spaces, radio, articles, coins, check-ins, and the full discovery surface. The native iOS app covers feed, groups, explore, notifications, profile, and bookmarks, with chat, articles, coins, and crew still opening on the web. What's left is safety depth, account data controls, and the remaining native screens."
   },
   "phases": [
     {
@@ -87,7 +87,7 @@
               "done": true
             },
             {
-              "text": "**Invite a friend / referrals** — Shareable invite code and referral link; track your recruits in Settings → Billing. Once a recruit verifies and completes his first Premium payment, his second month is free and you receive one free month too.",
+              "text": "**Invite a friend / referrals** — Shareable invite code and referral link; track your recruits in Settings → Billing. When a recruit verifies and his subscription goes active, you get a free month. He gets one too, as long as you're a paying subscriber yourself.",
               "done": true
             },
             {
@@ -189,6 +189,10 @@
             {
               "text": "Hashtags & topics (v1) — Add hashtags to posts and simple topic pages so you can find and follow themes that matter to you.",
               "done": true
+            },
+            {
+              "text": "**Local discovery** — State and location feeds so you can find men near you.",
+              "done": true
             }
           ]
         },
@@ -200,14 +204,14 @@
               "done": true
             },
             {
-              "text": "**Drafts + autosave (posts)** — Save drafts automatically and resume across devices so you don't lose work. Articles have full autosave; post draft persistence is in progress.",
+              "text": "**Drafts + autosave (posts)** — Save drafts automatically and resume across devices so you don't lose work. Articles autosave continuously; an unfinished post is saved when you navigate away, but continuous post autosave and a drafts list are still to come.",
               "inProgress": true
             },
             {
               "text": "**Admin-only restore** — Restore soft-deleted posts (admin-only for now)."
             },
             {
-              "text": "**Member experience (v1)** — Premium members see no ads; paid tiers remain neutral (no boosted reach).",
+              "text": "**No ads, no pay-to-win** — There are no ads anywhere on the platform for anyone, and paid tiers stay neutral (no boosted reach).",
               "done": true
             },
             {
@@ -223,7 +227,12 @@
               "done": true
             },
             {
-              "text": "**Gift premium** — Pay for someone else's subscription; send them a month (or more) of premium as a gift."
+              "text": "**Scheduled posts** — Write now, publish later; manage everything queued from a dedicated screen. On web and iOS.",
+              "done": true
+            },
+            {
+              "text": "**Member status** — Set a short, expiring status on your profile so people know what you're working on.",
+              "done": true
             },
             {
               "text": "**Weekly missions** — Milestone-style weekly goals surfaced in the home feed to encourage consistent engagement.",
@@ -265,10 +274,15 @@
           ]
         },
         {
-          "title": "Integrations (essential)",
+          "title": "Open surfaces",
           "items": [
             {
-              "text": "**Webhooks (v1)** — Signed, retrying webhooks for key events (user, identity, content, billing). Built to be reliable and idempotent."
+              "text": "**RSS / Atom / JSON feeds** — Subscribe to articles, topics, and any member's public posts in your own reader; browsable feed directory.",
+              "done": true
+            },
+            {
+              "text": "**Public read API** — Documented read-only endpoints for public posts and profiles.",
+              "done": true
             }
           ]
         },
@@ -383,7 +397,8 @@
               "text": "Download my data — Export your posts, profile, and bookmarks so you own your data."
             },
             {
-              "text": "Active sessions / devices — See where you're logged in and revoke other sessions in settings."
+              "text": "Active sessions / devices — See where you're logged in and revoke individual sessions. Signing out everywhere already works; the per-device list is what's missing.",
+              "inProgress": true
             }
           ]
         },
@@ -404,30 +419,30 @@
       "datetime": "2026-06-01",
       "badge": "Phase 4 — Native iOS",
       "title": "Native iOS app",
-      "description": "A full native iOS app that brings the platform to the App Store. Core social (feed, explore, notifications, profile, bookmarks) is live now. Community features (groups, articles, check-ins, chat, spaces, radio, coins) are shipping through the rest of 2026.",
+      "description": "A native iOS app on the same API. Feed, groups, explore, notifications, profile, and bookmarks are fully native today. Chat, articles, coins, crew, and spaces still open in the authenticated web while we build them natively — that handoff is deliberate, not a gap we forgot.",
       "isHighlight": false,
       "chunks": [
         {
-          "title": "Core social",
+          "title": "Core social (native)",
           "items": [
             {
               "text": "**Home feed** — Read, post, reply, and boost; real-time updates via websockets.",
               "done": true
             },
             {
-              "text": "**Post detail + threads** — Full thread view, nested replies, post actions.",
+              "text": "**Post detail + threads** — Full thread view with the whole ancestor chain, paginated replies, and post actions. Deeper nesting opens as its own screen rather than an inline tree.",
               "done": true
             },
             {
-              "text": "**Composer** — Create posts with text and basic formatting.",
+              "text": "**Composer** — Write posts, replies, quotes, and check-ins.",
               "done": true
             },
             {
-              "text": "**Repost / quote post** — One-tap repost or quote with your own commentary.",
+              "text": "**Repost / quote post** — One-tap repost or quote with your own commentary; see everyone who reposted.",
               "done": true
             },
             {
-              "text": "**Explore + search** — Discover trending posts, people, and topics.",
+              "text": "**Explore + search** — Discover trending posts, people, groups, and topics.",
               "done": true
             },
             {
@@ -435,11 +450,11 @@
               "done": true
             },
             {
-              "text": "**Profile** — View and edit your profile; see any member's wall.",
+              "text": "**Profile** — View and edit your profile, set a status, and browse any member's wall, followers, and following.",
               "done": true
             },
             {
-              "text": "**Bookmarks** — Save and view bookmarked posts.",
+              "text": "**Bookmarks** — Save posts and organize them into collections.",
               "done": true
             },
             {
@@ -449,42 +464,62 @@
           ]
         },
         {
-          "title": "Community features (in progress)",
+          "title": "Also native today",
           "items": [
             {
-              "text": "**Groups** — Browse and join groups from Explore; full group detail and feed screens.",
+              "text": "**Groups** — Browse, search, and join from Explore; group feed, creation, settings, members, invites, and join requests.",
+              "done": true
+            },
+            {
+              "text": "**Settings** — Notification preferences, privacy controls, blocked-user management, and feedback.",
+              "done": true
+            },
+            {
+              "text": "**Premium via the App Store** — StoreKit purchase and restore. Subscriptions started on the web are managed on the web.",
+              "done": true
+            },
+            {
+              "text": "**Deep linking** — Posts, profiles, groups, and topics open natively from a shared link or a push notification; anything without a native screen falls back to the web.",
+              "done": true
+            },
+            {
+              "text": "**Only Me + scheduled posts** — Private notes and scheduled posting, same as the web.",
+              "done": true
+            },
+            {
+              "text": "**Discovery extras** — Online Now, Word of the Day, Daily Quote, and topic, category, and state feeds.",
+              "done": true
+            },
+            {
+              "text": "**Report and block** — Report sheets across every feed plus blocked-user management.",
+              "done": true
+            },
+            {
+              "text": "**Daily check-ins** — Check in and track your streak from the home feed. The day feed and leaderboard still open on the web.",
               "inProgress": true
+            }
+          ]
+        },
+        {
+          "title": "Still handed off to the web",
+          "items": [
+            {
+              "text": "**Chat / DMs** — Conversation list and messages. Opens the authenticated web today."
             },
             {
-              "text": "**Articles** — Read longform articles from the community; article detail screen.",
-              "inProgress": true
+              "text": "**Articles** — Reading longform natively. Opens the authenticated web today."
             },
             {
-              "text": "**Daily check-ins** — Check in each day, view the check-ins feed, and track your streak.",
-              "inProgress": true
+              "text": "**Coins** — Balance, streak earnings, and transfers. Opens the authenticated web today."
             },
             {
-              "text": "**Settings depth** — Notification preferences, privacy controls, and billing management.",
-              "inProgress": true
+              "text": "**Crew / Founding Circles** — Opens the authenticated web today."
             },
             {
-              "text": "**Chat / DMs** — Direct messages and conversation list."
+              "text": "**Spaces** — Live audio rooms. Opens the authenticated web today."
             },
             {
-              "text": "**Spaces** — Join live audio rooms."
-            },
-            {
-              "text": "**Radio** — Listen to and host live audio streams."
-            },
-            {
-              "text": "**Coins** — View balance, earn from streaks, send to other members."
-            },
-            {
-              "text": "**Crew / Founding Circles** — View and participate in your founding circle."
-            },
-            {
-              "text": "**Deep linking** — Open any post, profile, or group from a shared link.",
-              "inProgress": true
+              "text": "**Radio** — No iOS path yet; listening rooms are web-only."
             }
           ]
         }
@@ -521,8 +556,11 @@
             "done": true
           },
           {
-            "text": "**Word definitions** — Tap any word in a post or article to get an inline dictionary definition (Webster's 1828).",
+            "text": "**Webster's 1828 Word of the Day** — A daily dictionary word and definition, on the web and in the iOS app.",
             "done": true
+          },
+          {
+            "text": "**Inline word definitions** — Tap any word in a post or article to get its Webster's 1828 definition without leaving the page."
           }
         ]
       },
@@ -533,7 +571,8 @@
             "text": "Deeper topics — follow topics, trending topics, and topic moderation (spam/abuse resistance)."
           },
           {
-            "text": "Share to Twitter/X or other apps."
+            "text": "Share to Twitter/X or other apps — Copy link and the native share sheet work today; direct per-network share targets are still to come.",
+            "inProgress": true
           }
         ]
       },
@@ -635,7 +674,8 @@
             "text": "**Purchasable customizations** — Themes, profile accents, or other app/profile customizations you can buy to personalize your experience."
           },
           {
-            "text": "**Profile badges** — Badges and achievements (e.g. early supporter, verified, streak, top contributor) that show on your profile and in the app."
+            "text": "**Profile badges** — Milestone badges and achievements (streaks, contribution, supporter) shown on your profile.",
+            "done": true
           },
           {
             "text": "**Simple games** — Lightweight games for logged-in users to play with one another (e.g. quick challenges or mini-games in-app)."

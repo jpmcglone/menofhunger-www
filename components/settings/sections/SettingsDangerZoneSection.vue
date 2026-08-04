@@ -124,6 +124,7 @@ const { logoutEverywhere } = useAuth()
 const { confirm } = useAppConfirm()
 
 const confirmVisible = ref(false)
+useOverlayDismiss(confirmVisible, () => (confirmVisible.value = false))
 const deleteConfirm = ref('')
 const reason = ref('')
 const details = ref('')

@@ -95,7 +95,7 @@ function close() {
   dialog.close()
 }
 
-useModalEscape(open, close)
+useOverlayDismiss(open, close)
 
 watch(open, (isOpen) => {
   if (!import.meta.client) return

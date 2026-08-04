@@ -89,6 +89,8 @@ const visibleProxy = computed({
   set: (v: boolean) => emit('update:visible', v),
 })
 
+useOverlayDismiss(visibleProxy, () => (visibleProxy.value = false))
+
 const headerText = computed(() => {
   const label = (props.subjectLabel ?? '').trim()
   if (props.targetType === 'post') return label ? `Report post (${label})` : 'Report post'

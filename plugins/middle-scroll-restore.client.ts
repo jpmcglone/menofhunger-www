@@ -47,7 +47,16 @@ export default defineNuxtPlugin((nuxtApp) => {
   // Detect back/forward: Vue Router's savedPosition is only set when we return a position from scrollBehavior.
   // We use a custom scroll container, so we never return one — detect popstate instead.
   let isPopStateNavigation = false
+  let lastFullPath = route.fullPath
+  router.afterEach((to) => {
+    lastFullPath = to.fullPath
+  })
   window.addEventListener('popstate', () => {
+    // Overlay back-dismissal (`useOverlayDismiss`) keeps a throwaway history entry at the
+    // *same* URL and pops it to close a modal. That never navigates, so arming scroll
+    // restoration here would leak into the next real navigation and stop it resetting to top.
+    const target = window.location.pathname + window.location.search + window.location.hash
+    if (target === lastFullPath) return
     isPopStateNavigation = true
   })
 

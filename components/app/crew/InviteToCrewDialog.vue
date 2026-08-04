@@ -72,6 +72,8 @@ const visible = computed({
   set: (v) => emit('update:modelValue', v),
 })
 
+useOverlayDismiss(visible, () => (visible.value = false))
+
 const message = ref('')
 const sending = ref(false)
 const error = ref<string | null>(null)

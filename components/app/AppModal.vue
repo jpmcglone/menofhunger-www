@@ -117,7 +117,7 @@ function onMaskClick() {
   close()
 }
 
-useModalEscape(open, close)
+useOverlayDismiss(open, close)
 
 const panelStyle = computed<CSSProperties>(() => ({
   maxHeight: props.maxHeight,

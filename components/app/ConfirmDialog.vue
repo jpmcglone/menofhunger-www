@@ -112,7 +112,7 @@ const open = computed({
 })
 
 useScrollLock(open)
-useModalEscape(open, () => onCancel())
+useOverlayDismiss(open, () => onCancel())
 
 watch(open, (visible) => {
   if (visible) {

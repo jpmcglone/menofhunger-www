@@ -394,7 +394,7 @@ export function useImageLightbox() {
   }
 
   function onKeydown(e: KeyboardEvent) {
-    // Escape is handled by the global modal stack (useModalEscape below).
+    // Escape and the Back button are handled by the global stack (useOverlayDismiss below).
     if (!visible.value) return
     if (kind.value !== 'media') return
     if ((items.value?.length ?? 0) < 2) return
@@ -410,7 +410,7 @@ export function useImageLightbox() {
     }
   }
 
-  useModalEscape(visible, close)
+  useOverlayDismiss(visible, close)
 
   if (import.meta.client && !didInitKeydown) {
     didInitKeydown = true

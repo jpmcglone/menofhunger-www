@@ -790,6 +790,7 @@ const scheduledAt = ref<Date | null>(null)
 /** Draft value in the picker dialog before user confirms. */
 const scheduledAtDraft = ref<Date | null>(null)
 const schedulePickerOpen = ref(false)
+useOverlayDismiss(schedulePickerOpen, () => (schedulePickerOpen.value = false))
 /** When true, keeps the scheduled time after posting so the user can queue another immediately. */
 const scheduleMore = computed({
   get: () => _scheduleMore.value,

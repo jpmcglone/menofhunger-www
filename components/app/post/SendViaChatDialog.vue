@@ -276,7 +276,7 @@ function close() {
 
 // ─── Lifecycle ────────────────────────────────────────────────────────────────
 
-useModalEscape(open, close)
+useOverlayDismiss(open, close)
 
 watch(open, async (isOpen) => {
   if (!import.meta.client) return

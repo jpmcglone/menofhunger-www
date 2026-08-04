@@ -361,19 +361,10 @@ import type { MarvinModeDto } from '~/types/api'
 const { open, post, result, loading, peeking, errorMessage, errorReason, includeImages, hide, run, peek, reset, toggleIncludeImages } = useMarvCatchUp()
 const { me, isAvailable, preferredMode, credits, setPreferredMode, ensureLoaded, startRealtime } = useMarv()
 
-// Close on Escape — the backdrop div never receives focus so @keydown.escape on it is a no-op.
-// A document-level listener is the reliable approach for modals.
-function onDocKeydown(e: KeyboardEvent) {
-  if (e.key === 'Escape') hide()
-}
-watch(open, (isOpen) => {
-  if (!import.meta.client) return
-  if (isOpen) document.addEventListener('keydown', onDocKeydown)
-  else document.removeEventListener('keydown', onDocKeydown)
-})
-onBeforeUnmount(() => {
-  if (import.meta.client) document.removeEventListener('keydown', onDocKeydown)
-})
+// Escape, the Android/browser Back button, and route changes all dismiss this.
+// The backdrop div never receives focus, so the template's @keydown.escape is a no-op
+// on its own — the shared stack is what actually closes this.
+useOverlayDismiss(open, hide)
 
 const modeBusy = ref(false)
 

@@ -80,6 +80,8 @@ const visible = computed({
   set: (v) => emit('update:modelValue', v),
 })
 
+useOverlayDismiss(visible, () => (visible.value = false))
+
 const selectedUser = ref<FollowListUser | null>(null)
 const message = ref('')
 const sending = ref(false)

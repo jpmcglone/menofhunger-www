@@ -247,7 +247,7 @@ watch(
   { immediate: true },
 )
 
-useModalEscape(replyModal.open, close)
+useOverlayDismiss(replyModal.open, close)
 
 watch(
   () => replyModal.open.value,

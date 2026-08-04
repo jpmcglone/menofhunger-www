@@ -1,5 +1,11 @@
 <template>
-  <div class="flex items-center gap-1.5 px-4 pt-4 pb-0 text-xs moh-text-muted lg:pt-2">
+  <!--
+    The gap below this header is 16px at every width, but it comes from two places:
+    below `sm` this element supplies it, and at `sm` and up the post row's own
+    `sm:py-4` does (its `noPaddingTop` only wins under `sm`, where no media query
+    outranks it). Dropping `pb` at `sm` is what keeps the two from stacking to 32px.
+  -->
+  <div class="flex items-center gap-1.5 px-4 pt-4 pb-4 text-xs moh-text-muted sm:pb-0 lg:pt-2">
     <Icon
       name="tabler:repeat"
       class="text-[13px] shrink-0"

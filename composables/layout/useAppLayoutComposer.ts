@@ -420,7 +420,7 @@ export function useAppLayoutComposer(opts: UseAppLayoutComposerOptions) {
     }
   }
 
-  useModalEscape(composerModalOpen, closeComposerModal)
+  useOverlayDismiss(composerModalOpen, closeComposerModal)
 
   watch(
     composerModalOpen,

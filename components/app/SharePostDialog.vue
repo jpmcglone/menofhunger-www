@@ -223,84 +223,18 @@ async function onCopy() {
   }
 }
 
-// Track whether we have a history entry pushed for this dialog.
-// Not reactive — used only as an internal guard.
-let hasPushedState = false
-// Set to true before emitting open from popstate to prevent double-pushing.
-let skipNextHistoryPush = false
-
-const route = useRoute()
+const open = toRef(props, 'open')
 
 function close() {
-  if (hasPushedState) {
-    hasPushedState = false
-    history.back()
-    // history.back() is async; popstate will fire after the URL changes but we
-    // also emit synchronously so the parent can start closing the dialog immediately.
-  }
   emit('update:open', false)
 }
 
-function onPopState(event: PopStateEvent) {
-  if (!import.meta.client) return
-  if (event.state?._mohShareDialog && !props.open && hasPushedState) {
-    // User pressed forward (or back) and landed on our pushed entry → reopen.
-    skipNextHistoryPush = true
-    emit('update:open', true)
-  } else if (!event.state?._mohShareDialog && hasPushedState && props.open) {
-    // User pressed back past our entry → close.
-    hasPushedState = false
-    emit('update:open', false)
-  }
-}
+// Escape, the Android/browser Back button, and route changes all dismiss this.
+useOverlayDismiss(open, close)
+useScrollLock(open)
 
-useModalEscape(toRef(props, 'open'), close)
-
-watch(
-  () => props.open,
-  (open) => {
-    if (!import.meta.client) return
-    const root = document.documentElement
-    if (open) {
-      root.style.overflow = 'hidden'
-      if (!skipNextHistoryPush) {
-        history.pushState({ _mohShareDialog: true }, '')
-        hasPushedState = true
-      }
-      skipNextHistoryPush = false
-      // Prime the social-proof count from cache (near-free TTL hit right after posting).
-      if (isCheckin.value) void refreshCheckin()
-    } else {
-      root.style.overflow = ''
-    }
-  },
-)
-
-// When the route changes (e.g. user taps "See how others answered"), close the dialog
-// WITHOUT popping the history entry so pressing back can restore it.
-watch(
-  () => route.fullPath,
-  (newPath, oldPath) => {
-    if (!import.meta.client) return
-    if (props.open && newPath !== oldPath) {
-      emit('update:open', false)
-    }
-  },
-)
-
-onMounted(() => {
-  if (!import.meta.client) return
-  window.addEventListener('popstate', onPopState)
-})
-
-onBeforeUnmount(() => {
-  if (!import.meta.client) return
-  window.removeEventListener('popstate', onPopState)
-  document.documentElement.style.overflow = ''
-  // Clean up the pushed history entry if the component is destroyed while open.
-  if (hasPushedState) {
-    hasPushedState = false
-    history.back()
-  }
+watch(open, (isOpen) => {
+  // Prime the social-proof count from cache (near-free TTL hit right after posting).
+  if (isOpen && isCheckin.value) void refreshCheckin()
 })
 </script>
