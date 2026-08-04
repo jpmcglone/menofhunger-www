@@ -171,9 +171,16 @@ const editor = useEditor({
       class: 'focus:outline-none min-h-[72vh] prose prose-gray dark:prose-invert max-w-none article-body pb-16',
     },
     handlePaste(_view, event) {
-      const items = Array.from(event.clipboardData?.items ?? [])
-      const imageFiles = items
-        .filter((item) => item.type.startsWith('image/'))
+      const clipboard = event.clipboardData
+      if (!clipboard) return false
+      // Rich copies (Word, Google Docs, Outlook, many web pages) put a rendered
+      // bitmap on the clipboard *alongside* the text. Claiming those as an image
+      // paste would swallow what the author actually copied, so real text always
+      // wins. A screenshot or "Copy image" carries no text and still uploads.
+      if (clipboard.getData('text/plain').trim()) return false
+
+      const imageFiles = Array.from(clipboard.items ?? [])
+        .filter((item) => item.kind === 'file' && item.type.startsWith('image/'))
         .map((item) => item.getAsFile())
         .filter((f): f is File => f !== null)
       if (imageFiles.length === 0) return false
