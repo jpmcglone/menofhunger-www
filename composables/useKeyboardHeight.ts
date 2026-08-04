@@ -48,6 +48,13 @@ function hasCoarsePointer(): boolean {
 export function useKeyboardHeight() {
   const keyboardHeight = ref(0)
   /**
+   * Height reported by the VirtualKeyboard API (Chrome/Android only).
+   * This is non-zero when the keyboard physically overlays content — the visual
+   * viewport does NOT shrink in this case so `viewportHeight` is still full-screen.
+   * The layout uses this to distinguish the Chrome overlay path from the iOS pan path.
+   */
+  const virtualKeyboardHeight = ref(0)
+  /**
    * Live visual-viewport geometry, used to pin a `position: fixed` app shell to the
    * *visible* area. iOS anchors fixed elements to the layout viewport, so when the
    * keyboard opens and iOS slides the visual viewport down inside it, a fixed shell
@@ -89,6 +96,9 @@ export function useKeyboardHeight() {
       viewportHeight.value = height
       viewportOffsetTop.value = Math.round(vv.offsetTop)
     }
+    // Expose the VirtualKeyboard API reading separately so the layout can choose
+    // the right pinning strategy per platform (overlay vs. pan).
+    virtualKeyboardHeight.value = Math.round(Math.max(0, fromVirtualKeyboard))
   }
 
   onMounted(() => {
@@ -119,5 +129,5 @@ export function useKeyboardHeight() {
     window.removeEventListener('scroll', update)
   })
 
-  return { keyboardHeight, viewportHeight, viewportOffsetTop }
+  return { keyboardHeight, virtualKeyboardHeight, viewportHeight, viewportOffsetTop }
 }

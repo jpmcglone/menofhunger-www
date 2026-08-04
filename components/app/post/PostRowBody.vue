@@ -173,6 +173,24 @@ function tryExtractLocalPostId(url: string): string | null {
 
 const capturedLinks = computed(() => extractLinksFromText((props.body ?? '').toString()))
 
+/**
+ * Map from normalized URL (https://…) → the raw text that appeared in the body.
+ * linkify normalizes bare hostnames like `menofhunger.com/chat` to
+ * `https://menofhunger.com/chat`, so using the normalized form in the strip regex
+ * would never match the body text as typed. We prefer the raw form when available.
+ */
+const rawTextByUrl = computed(() => {
+  const body = (props.body ?? '').toString()
+  const matches = linkify.match(body) ?? []
+  const map = new Map<string, string>()
+  for (const m of matches) {
+    const url = (m.url ?? '').trim()
+    const raw = (m.raw ?? '').trim()
+    if (url && raw) map.set(url, raw)
+  }
+  return map
+})
+
 const embeddedPostLink = computed(() => {
   const xs = capturedLinks.value
   for (let i = xs.length - 1; i >= 0; i--) {
@@ -223,9 +241,11 @@ const displayBody = computed(() => {
   const last = (tailLinkToStrip.value ?? '').trim()
   if (!last) return body
 
-  // If the last link is literally the last thing in the post (ignoring trailing whitespace),
-  // omit it from the rendered body. We still render the preview/embed below.
-  const re = new RegExp(String.raw`(?:\s*)${escapeRegExp(last)}\s*$`)
+  // Prefer the raw text the author typed (e.g. "menofhunger.com/chat") over the
+  // linkify-normalized form (e.g. "https://menofhunger.com/chat") so the regex
+  // matches what's actually in the body string.
+  const toMatch = rawTextByUrl.value.get(last) ?? last
+  const re = new RegExp(String.raw`(?:\s*)${escapeRegExp(toMatch)}\s*$`)
   if (!re.test(body)) return body
   return body.replace(re, '').replace(/\s+$/, '')
 })

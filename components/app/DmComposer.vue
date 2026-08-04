@@ -60,6 +60,7 @@
           aria-label="Attach image or video"
           :disabled="disabled || (canSendMedia && !canAddMoreMedia)"
           class="flex h-8 w-8 items-center justify-center rounded-full text-gray-500 transition-colors hover:bg-gray-100 dark:text-zinc-400 dark:hover:bg-zinc-800 disabled:opacity-40 disabled:cursor-not-allowed"
+          @mousedown.prevent
           @click="onMediaPickerClick"
         >
           <Icon name="tabler:photo" size="18" aria-hidden="true" />
@@ -71,6 +72,7 @@
           aria-label="Add a GIF"
           :disabled="disabled || (canSendMedia && !canAddMoreMedia)"
           class="flex h-8 items-center justify-center rounded-full px-1.5 text-gray-500 transition-colors hover:bg-gray-100 dark:text-zinc-400 dark:hover:bg-zinc-800 disabled:opacity-40 disabled:cursor-not-allowed"
+          @mousedown.prevent
           @click="onGifPickerClick"
         >
           <span
@@ -192,6 +194,7 @@
               :disabled="loading || composerUploading"
               class="absolute right-2 bottom-2 flex h-8 w-8 items-center justify-center rounded-full transition-colors disabled:opacity-50"
               :class="sendButtonClass"
+              @mousedown.prevent
               @click="emitSend"
             >
               <Icon v-if="loading || composerUploading" name="tabler:loader" class="text-sm animate-spin" aria-hidden="true" />

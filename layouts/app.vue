@@ -273,7 +273,7 @@ useAppIconBadge()
 
 const { hideTopBar, navCompactMode: _navCompactModeBase, isRightRailForcedHidden: _isRightRailForcedHiddenBase, isRightRailSearchHidden, title } = useLayoutRules(route)
 const isMessagesPage = computed(() => route.path === '/chat')
-const { keyboardHeight, viewportHeight, viewportOffsetTop } = useKeyboardHeight()
+const { keyboardHeight, virtualKeyboardHeight, viewportHeight, viewportOffsetTop } = useKeyboardHeight()
 /**
  * Mobile bottom chrome slides away whenever the software keyboard is open.
  * iOS pans the whole page up to reveal the focused input, which would
@@ -293,20 +293,39 @@ const isKeyboardOpen = computed(() => keyboardHeight.value > 0)
  * correct and SSR-stable.
  */
 const shellStyle = computed(() => {
-  // A non-zero offsetTop means the visual viewport has already been slid down inside the
-  // layout viewport, which is the exact condition that pushes the shell off screen — so it
-  // is honored on its own, even if keyboard height detection came back empty.
-  const shouldPin = viewportHeight.value > 0 && (isKeyboardOpen.value || viewportOffsetTop.value > 0)
-  if (!shouldPin) {
+  if (!viewportHeight.value) {
+    // Pre-mount / SSR: stable fallback identical on server and client.
     return { position: 'fixed' as const, inset: '0' }
   }
-  return {
-    position: 'fixed' as const,
-    left: '0',
-    right: '0',
-    top: `${viewportOffsetTop.value}px`,
-    height: `${viewportHeight.value}px`,
+
+  if (virtualKeyboardHeight.value > 0) {
+    // Chrome / Android: `interactive-widget=overlays-content` keeps vv.height at full
+    // screen — the keyboard physically overlays from the bottom. Shrink the shell by
+    // exactly the keyboard height so the bottom of the shell sits above the keyboard.
+    return {
+      position: 'fixed' as const,
+      left: '0',
+      right: '0',
+      top: '0',
+      height: `${viewportHeight.value - virtualKeyboardHeight.value}px`,
+    }
   }
+
+  const shouldPin = viewportHeight.value > 0 && (isKeyboardOpen.value || viewportOffsetTop.value > 0)
+  if (shouldPin) {
+    // iOS Safari: the visual viewport has been panned or shrunk. Fixed elements anchor
+    // to the layout viewport, so we explicitly pin the shell to the visual viewport
+    // so the header stays put and the content area fills what's visible.
+    return {
+      position: 'fixed' as const,
+      left: '0',
+      right: '0',
+      top: `${viewportOffsetTop.value}px`,
+      height: `${viewportHeight.value}px`,
+    }
+  }
+
+  return { position: 'fixed' as const, inset: '0' }
 })
 
 const { header: appHeader } = useAppHeader()

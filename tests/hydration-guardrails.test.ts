@@ -505,14 +505,16 @@ describe('hydration guardrails (structural)', () => {
   it('pins the fixed app shell to the visual viewport while the keyboard is open', () => {
     const layout = readFromRepo('layouts/app.vue')
     const composable = readFromRepo('composables/useKeyboardHeight.ts')
-    // The composable must expose visual-viewport geometry, not just keyboard height.
+    // The composable must expose visual-viewport geometry AND the VirtualKeyboard API height.
     expect(composable).toMatch(/viewportHeight/)
     expect(composable).toMatch(/viewportOffsetTop/)
-    // The shell must be fixed so page scroll can't move it...
+    expect(composable).toMatch(/virtualKeyboardHeight/)
+    // The shell must be fixed so page scroll can't move it.
     expect(layout).toMatch(/position:\s*'fixed'/)
-    // ...and must offset by the visual viewport top while the keyboard is open, because
-    // iOS anchors fixed elements to the layout viewport and slides the visual viewport
-    // down inside it, which would otherwise push the header off screen.
+    // Chrome path: keyboard overlays content, shrink shell by virtualKeyboardHeight.
+    expect(layout).toMatch(/virtualKeyboardHeight\.value\s*>\s*0/)
+    expect(layout).toMatch(/viewportHeight\.value\s*-\s*virtualKeyboardHeight\.value/)
+    // iOS path: visual viewport panned, pin top+height to visual viewport.
     expect(layout).toMatch(/top:\s*`\$\{viewportOffsetTop\.value\}px`/)
     expect(layout).toMatch(/height:\s*`\$\{viewportHeight\.value\}px`/)
     // Must stay SSR-stable: unmeasured (height 0) falls back to plain inset.
