@@ -13,7 +13,7 @@
 <script setup lang="ts">
 import type { Article } from '~/types/api'
 
-definePageMeta({ layout: 'app', title: 'Edit Article', hideTopBar: true, middleware: 'premium', ssr: false })
+definePageMeta({ layout: 'app', title: 'Edit Article', hideTopBar: true, middleware: 'verified', ssr: false })
 
 usePageSeo({ title: 'Edit Article', noindex: true })
 

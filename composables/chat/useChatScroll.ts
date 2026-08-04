@@ -44,8 +44,10 @@ export function useChatScroll(opts: UseChatScrollOptions) {
   let autoScrollToBottomTimer: ReturnType<typeof setTimeout> | null = null
   let lastUserScrollIntentAt = 0
   let bottomAnchorRo: ResizeObserver | null = null
+  let scrollerSizeRo: ResizeObserver | null = null
   let observedScrollerContentEl: HTMLElement | null = null
   let lastMeasuredScrollHeight = 0
+  let lastScrollerClientHeight = 0
 
   // ─── Computed ────────────────────────────────────────────────────────────────
 
@@ -254,17 +256,36 @@ export function useChatScroll(opts: UseChatScrollOptions) {
     if (observedScrollerContentEl === contentEl) return
 
     bottomAnchorRo?.disconnect()
+    scrollerSizeRo?.disconnect()
     observedScrollerContentEl = contentEl
     lastMeasuredScrollHeight = scroller.scrollHeight
+    lastScrollerClientHeight = scroller.clientHeight
 
     if (typeof ResizeObserver === 'undefined') return
 
+    // Watch message content growth (new messages added, images load, etc.).
     bottomAnchorRo = new ResizeObserver(() => {
       if (messagesScroller.value === scroller) {
         maybeStickToBottomOnContentGrowth(scroller)
       }
     })
     bottomAnchorRo.observe(contentEl)
+
+    // Watch the scroller viewport itself. When it shrinks — keyboard opens,
+    // composer grows taller as the user types multi-line — the visible area
+    // decreases without any content change, so the content observer never fires.
+    // If the user was pinned to the bottom, re-anchor so the latest message
+    // stays visible.
+    scrollerSizeRo = new ResizeObserver(() => {
+      if (messagesScroller.value !== scroller) return
+      const currentHeight = scroller.clientHeight
+      const shrank = currentHeight < lastScrollerClientHeight
+      lastScrollerClientHeight = currentHeight
+      if (shrank && atBottom.value) {
+        stickToBottom({ behavior: 'auto' })
+      }
+    })
+    scrollerSizeRo.observe(scroller)
   }
 
   function onMessagesScrollerMounted(scroller: HTMLElement, chatKey: string | null | undefined) {
@@ -310,6 +331,8 @@ export function useChatScroll(opts: UseChatScrollOptions) {
   function teardown() {
     bottomAnchorRo?.disconnect()
     bottomAnchorRo = null
+    scrollerSizeRo?.disconnect()
+    scrollerSizeRo = null
     observedScrollerContentEl = null
     if (scrollPillHideTimer) { clearTimeout(scrollPillHideTimer); scrollPillHideTimer = null }
     if (autoScrollToBottomTimer) { clearTimeout(autoScrollToBottomTimer); autoScrollToBottomTimer = null }

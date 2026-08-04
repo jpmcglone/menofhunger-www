@@ -353,13 +353,15 @@ const isMutualFollow = computed(() => {
   return Boolean(rel?.viewerFollowsUser && rel?.userFollowsViewer)
 })
 
-// Verified users can start DMs with mutuals; premium users can DM any member.
-const viewerCanStartChats = computed(() => viewerIsPremium.value || isMutualFollow.value)
+const viewerIsAdmin = computed(() => Boolean(authUser.value?.siteAdmin))
+
+// Verified users can start DMs with mutuals; premium users and admins can DM any member.
+const viewerCanStartChats = computed(() => viewerIsPremium.value || viewerIsAdmin.value || isMutualFollow.value)
 
 const shouldCheckExistingChat = computed(() => {
   if (!isAuthed.value) return false
-  if (!viewerIsVerified.value) return false
-  if (!previewUserIsVerified.value) return false
+  if (!viewerIsVerified.value && !viewerIsAdmin.value) return false
+  if (!previewUserIsVerified.value && !viewerIsAdmin.value) return false
   if (isSelf.value) return false
   if (!user.value.id) return false
   // If viewer can't start a new chat (not premium, not mutual), check for an existing conversation to still show the button.
@@ -404,8 +406,8 @@ const hasExistingChat = computed(() => Boolean(dmLookupConversationId.value))
 
 const canSendMessageFromPreview = computed(() => {
   if (!isAuthed.value) return false
-  if (!viewerIsVerified.value) return false
-  if (!previewUserIsVerified.value) return false
+  if (!viewerIsVerified.value && !viewerIsAdmin.value) return false
+  if (!previewUserIsVerified.value && !viewerIsAdmin.value) return false
   if (isSelf.value) return false
   if (!user.value.id || !user.value.username) return false
   // Verified mutuals and premium can start new chats; others need an existing conversation.

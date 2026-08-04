@@ -14,7 +14,7 @@
           <Icon name="tabler:rss" class="text-base" aria-hidden="true" />
         </button>
         <NuxtLink
-          v-if="isPremium"
+          v-if="isVerifiedMember"
           to="/articles/new"
           class="inline-flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90"
           :style="{ backgroundColor: activeTabColor }"
@@ -79,8 +79,8 @@
       </div>
     </Transition>
 
-    <!-- Content tabs (Published | Drafts) for premium users -->
-    <div v-if="isPremium" ref="tabBarEl" role="tablist" class="sticky top-[var(--moh-title-bar-height,0px)] z-10 moh-surface flex gap-0 border-b border-gray-200 dark:border-zinc-800">
+    <!-- Content tabs (Published | Drafts) for verified+ users -->
+    <div v-if="isVerifiedMember" ref="tabBarEl" role="tablist" class="sticky top-[var(--moh-title-bar-height,0px)] z-10 moh-surface flex gap-0 border-b border-gray-200 dark:border-zinc-800">
       <button
         v-for="tab in tabs"
         :key="tab.key"
@@ -140,7 +140,7 @@
           </button>
           <p v-if="publishedFeed.hasLoadedOnce.value && publishedFeed.articles.value.length === 0" class="py-12 text-center text-sm text-gray-400 dark:text-zinc-500">
             No articles found.
-            <template v-if="isPremium">
+            <template v-if="isVerifiedMember">
               <NuxtLink to="/articles/new" class="hover:underline" :style="{ color: activeTabColor }">Write the first one!</NuxtLink>
             </template>
           </p>
@@ -203,7 +203,7 @@ usePageSeo({
   ]),
 })
 
-const { isPremium, isVerified, isAuthed, user } = useAuth()
+const { isPremium, isVerified, isVerifiedMember, isAuthed, user } = useAuth()
 
 const { copyText: copyTextRaw } = useCopyToClipboard()
 const articlesToast = useAppToast()
@@ -258,7 +258,7 @@ const route = useRoute()
 const router = useRouter()
 
 function tabFromQuery(): TabKey {
-  return route.query.tab === 'drafts' && isPremium.value ? 'drafts' : 'published'
+  return route.query.tab === 'drafts' && isVerifiedMember.value ? 'drafts' : 'published'
 }
 
 const activeTab = computed<TabKey>(() => tabFromQuery())
@@ -275,7 +275,7 @@ const tabs = computed<Array<{ key: TabKey; label: string; count?: number }>>(() 
       count: publishedFeed.articles.value.length || undefined,
     },
   ]
-  if (isPremium.value) {
+  if (isVerifiedMember.value) {
     t.push({
       key: 'drafts',
       label: 'Drafts',
@@ -325,7 +325,7 @@ const publishedFeed = useArticleFeed({
   tag: activeTag,
   includeRestricted: isAuthed,
 })
-const draftsState = useArticleDrafts({ visibility: visibilityFilter, enabled: isPremium })
+const draftsState = useArticleDrafts({ visibility: visibilityFilter, enabled: isVerifiedMember })
 const publishedInitialLoading = computed(
   () => (publishedFeed.loading.value || !publishedFeed.hasLoadedOnce.value) && publishedFeed.articles.value.length === 0,
 )
@@ -339,7 +339,7 @@ onMounted(() => {
     return
   }
   publishedFeed.load()
-  if (isPremium.value) draftsState.load()
+  if (isVerifiedMember.value) draftsState.load()
 })
 
 watch(activeTab, (tab) => {
@@ -350,8 +350,8 @@ watch(activeTab, (tab) => {
   }
 }, { immediate: true })
 
-watch(isPremium, (premium) => {
-  if (premium) return
+watch(isVerifiedMember, (member) => {
+  if (member) return
   if (route.query.tab === 'drafts') {
     void router.replace({ path: route.path, query: { ...route.query, tab: undefined } })
   }

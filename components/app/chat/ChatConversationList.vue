@@ -96,6 +96,11 @@
 
     <div v-else-if="displayList.length === 0" class="px-4 pt-2 pb-4 text-sm text-gray-500 dark:text-gray-400">
       <template v-if="searchEmptyMessage">{{ searchEmptyMessage }}</template>
+      <template v-else-if="!canStartNew && activeTab === 'primary'">
+        <span>No chats yet. </span>
+        <NuxtLink to="/settings/verification" class="underline">Verify your account</NuxtLink>
+        <span> to start chatting.</span>
+      </template>
       <template v-else>{{ activeTab === 'requests' ? 'No chat requests yet.' : 'No chats yet.' }}</template>
     </div>
 

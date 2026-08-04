@@ -618,8 +618,9 @@ const canSetStatus = computed(() => isSelf.value && isVerifiedMember.value)
 const { show: showAuthActionModal } = useAuthActionModal()
 const viewerIsPremium = computed(() => Boolean(authUser.value?.premium || authUser.value?.premiumPlus))
 // Verified users can start DMs with mutuals; premium users can DM any member.
+const viewerIsAdmin = computed(() => Boolean(authUser.value?.siteAdmin))
 const viewerCanStartChats = computed(() => {
-  if (viewerIsPremium.value) return true
+  if (viewerIsPremium.value || viewerIsAdmin.value) return true
   const rel = followRelationship.value
   return viewerIsVerified.value && Boolean(rel?.viewerFollowsUser && rel?.userFollowsViewer)
 })
@@ -759,11 +760,11 @@ async function togglePostBell() {
 
 const showChatButton = computed(() => {
   if (!isAuthed.value) return false
-  if (!viewerIsVerified.value) return false
+  if (!viewerIsVerified.value && !viewerIsAdmin.value) return false
   if (isSelf.value) return false
   if (!profile.value?.username) return false
-  // Can't start chats with unverified accounts.
-  if (userColorTier(profile.value) === 'normal') return false
+  // Admins can message anyone; non-admins can't start chats with unverified accounts.
+  if (!viewerIsAdmin.value && userColorTier(profile.value) === 'normal') return false
   return true
 })
 

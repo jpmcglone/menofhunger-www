@@ -271,6 +271,7 @@ const emojiPickerEl = ref<{ close: () => void } | null>(null)
 const isMultiline = ref(false)
 
 const isPremium = computed(() => Boolean(props.user?.premium || props.user?.premiumPlus))
+const isVerified = computed(() => props.user?.verifiedStatus !== 'none' && props.user?.verifiedStatus != null)
 const canSendMedia = computed(() => props.canSendMedia !== false)
 const canAcceptVideoRef = computed(() => isPremium.value)
 
@@ -335,7 +336,7 @@ const sendButtonClass = computed(() => {
 })
 
 function onMediaPickerClick() {
-  if (!isPremium.value || !canSendMedia.value) {
+  if (!isVerified.value || !canSendMedia.value) {
     usePremiumMediaModal().show()
     return
   }
@@ -343,7 +344,7 @@ function onMediaPickerClick() {
 }
 
 function onGifPickerClick() {
-  if (!isPremium.value || !canSendMedia.value) {
+  if (!isVerified.value || !canSendMedia.value) {
     usePremiumMediaModal().show()
     return
   }
@@ -351,7 +352,7 @@ function onGifPickerClick() {
 }
 
 function guardedOnMediaFilesSelected(e: Event) {
-  if (!isPremium.value || !canSendMedia.value) return
+  if (!isVerified.value || !canSendMedia.value) return
   onMediaFilesSelected(e)
 }
 

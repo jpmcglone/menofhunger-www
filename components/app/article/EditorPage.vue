@@ -159,16 +159,23 @@ const props = defineProps<{
 const { isVerified, isPremium } = useAuth()
 
 // Visibility can only be increased (public → verified → premium), never decreased.
-// For drafts all options remain available since no visibility is "committed" yet.
+// For drafts, the tier ceiling applies. For published, floor + ceiling both apply.
 const VISIBILITY_RANK: Record<string, number> = { public: 0, verifiedOnly: 1, premiumOnly: 2 }
 const ALL_ARTICLE_VISIBILITIES = ['public', 'verifiedOnly', 'premiumOnly'] as const
 type ArticleVisibility = (typeof ALL_ARTICLE_VISIBILITIES)[number]
 
 const allowedVisibilities = computed<ArticleVisibility[]>(() => {
+  // Tier ceiling: premium can set all three; verified non-premium can only set public/verifiedOnly
+  const tierAllowed: ArticleVisibility[] = isPremium.value
+    ? ['public', 'verifiedOnly', 'premiumOnly']
+    : ['public', 'verifiedOnly']
+
   const isDraft = editor.article.value?.isDraft !== false
-  if (isDraft) return [...ALL_ARTICLE_VISIBILITIES]
+  if (isDraft) return tierAllowed
+
+  // For published articles: also enforce floor (can only increase visibility, not decrease)
   const originalRank = VISIBILITY_RANK[initialArticleRef.value?.visibility ?? 'public'] ?? 0
-  return ALL_ARTICLE_VISIBILITIES.filter(v => (VISIBILITY_RANK[v] ?? 0) >= originalRank)
+  return tierAllowed.filter(v => (VISIBILITY_RANK[v] ?? 0) >= originalRank)
 })
 const { apiFetchData } = useApiClient()
 const toast = useAppToast()
@@ -283,9 +290,16 @@ function onTitleInput() {
 }
 
 async function handlePublish() {
-  const published = await editor.publish()
-  if (published) {
-    justPublished.value = published
+  try {
+    const published = await editor.publish()
+    if (published) {
+      justPublished.value = published
+    }
+  } catch (e: unknown) {
+    const msg = (e as any)?.data?.meta?.errors?.[0]?.message
+      ?? (e as any)?.message
+      ?? 'Could not publish. Please try again.'
+    toast.push({ title: msg, tone: 'error' })
   }
 }
 

@@ -187,14 +187,26 @@
             </div>
           </div>
 
-          <button
-            type="button"
-            class="shrink-0 rounded-full p-2 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-zinc-800 dark:hover:text-gray-200"
-            aria-label="Edit user"
-            @click.stop="openEdit(u)"
-          >
-            <Icon name="tabler:pencil" aria-hidden="true" />
-          </button>
+          <div class="flex shrink-0 items-center gap-1">
+            <NuxtLink
+              v-if="u.usernameIsSet && u.username"
+              :to="{ path: '/chat', query: { to: u.username } }"
+              class="inline-flex shrink-0 rounded-full p-2 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-zinc-800 dark:hover:text-gray-200"
+              aria-label="Message user"
+              tabindex="0"
+              @click.stop
+            >
+              <Icon name="tabler:message-circle" aria-hidden="true" />
+            </NuxtLink>
+            <button
+              type="button"
+              class="shrink-0 rounded-full p-2 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-zinc-800 dark:hover:text-gray-200"
+              aria-label="Edit user"
+              @click.stop="openEdit(u)"
+            >
+              <Icon name="tabler:pencil" aria-hidden="true" />
+            </button>
+          </div>
         </div>
       </div>
     </div>

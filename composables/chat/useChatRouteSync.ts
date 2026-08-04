@@ -6,8 +6,10 @@ export interface UseChatRouteSyncOptions {
   selectedConversationId: Ref<string | null>
   selectedChatKey: Ref<string | null>
   draftRecipients: Ref<FollowListUser[]>
-  /** Whether the viewer is allowed to use chat at all (verified or premium). */
+  /** Whether the viewer is allowed to use chat at all (authenticated). */
   viewerCanUseChat: ComputedRef<boolean>
+  /** Whether the viewer is a site admin (bypasses unverified-recipient gate). */
+  viewerIsAdmin: ComputedRef<boolean>
   marv: ReturnType<typeof useMarv>
   ensureAuthLoaded: () => Promise<unknown>
   emitMessagesScreen: (visible: boolean, conversationId?: string | null) => void
@@ -39,6 +41,7 @@ export function useChatRouteSync(opts: UseChatRouteSyncOptions) {
     selectedChatKey,
     draftRecipients,
     viewerCanUseChat,
+    viewerIsAdmin,
     marv,
     ensureAuthLoaded,
     emitMessagesScreen,
@@ -106,6 +109,10 @@ export function useChatRouteSync(opts: UseChatRouteSyncOptions) {
 
   // ─── Draft / deep-link flows ─────────────────────────────────────────────────
 
+  // Dedupes `/chat?to=` handling while the param is still present; cleared when we
+  // strip `to` after opening the draft/conversation so the same username can re-trigger.
+  const lastHandledToUsername = ref<string | null>(null)
+
   function normalizeToUsernameParam(val: unknown): string | null {
     const u = typeof val === 'string' ? val.trim() : ''
     return u ? u : null
@@ -153,7 +160,7 @@ export function useChatRouteSync(opts: UseChatRouteSyncOptions) {
 
     await ensureAuthLoaded().catch(() => null)
 
-    // If user can't use chat at all, bail (screen already shows verify gate).
+    // If user is not authenticated, bail (screen already shows verify gate).
     if (!viewerCanUseChat.value) {
       return
     }
@@ -177,15 +184,24 @@ export function useChatRouteSync(opts: UseChatRouteSyncOptions) {
         // Set `c` and remove `to` in a single URL update (avoid the extra jump).
         const nextQuery: Record<string, unknown> = { ...(route.query as Record<string, unknown>), c: conversationId }
         delete nextQuery['to']
+        lastHandledToUsername.value = null
         await router.replace({ query: nextQuery as Record<string, string> })
         await selectConversation(conversationId, { replace: true })
         return
       }
 
-      // No existing chat: don't allow starting a chat with an unverified user.
-      if (!targetIsVerified) return
+      // No existing chat: don't allow starting a chat with an unverified user (unless admin).
+      if (!targetIsVerified && !viewerIsAdmin.value) return
 
       await openDraftChatWithRecipients([recipient])
+      // Drop `to` so a later visit with the same `?to=` re-triggers the watcher,
+      // and so boot auto-select doesn't race a leftover deep-link param.
+      if (normalizeToUsernameParam(route.query.to)) {
+        const nextQuery: Record<string, unknown> = { ...(route.query as Record<string, unknown>) }
+        delete nextQuery['to']
+        lastHandledToUsername.value = null
+        await router.replace({ query: nextQuery as Record<string, string> })
+      }
     } catch {
       // Non-fatal: ignore
     }
@@ -234,7 +250,6 @@ export function useChatRouteSync(opts: UseChatRouteSyncOptions) {
 
   // Handle `/chat?to=<username>` changes while already on /chat.
   // (Without this, clicking “Send message” from within chat only updates the URL.)
-  const lastHandledToUsername = ref<string | null>(null)
   watch(
     () => normalizeToUsernameParam(route.query.to),
     (toUsername) => {

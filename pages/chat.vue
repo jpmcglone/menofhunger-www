@@ -1,20 +1,6 @@
 <template>
   <AppPageContent class="flex min-h-0 flex-1 flex-col">
-    <div v-if="!viewerIsVerified && !viewerIsPremium" class="flex min-h-0 flex-1 items-center justify-center px-4 py-12">
-      <div class="w-full max-w-md">
-        <div class="rounded-2xl border moh-border moh-bg p-5 shadow-sm">
-          <div class="text-lg font-semibold moh-text">Verify to use chat</div>
-          <div class="mt-1 text-sm moh-text-muted">
-            Chat is only available for verified members.
-          </div>
-          <div class="mt-4 flex items-center justify-end">
-            <Button as="NuxtLink" to="/tiers" label="View tiers" severity="secondary" />
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div v-else class="flex min-h-0 flex-1 flex-col">
+    <div class="flex min-h-0 flex-1 flex-col">
       <!-- Data-first: don't mount the chat screen until initial data is ready.
            When ready, fade OUT the loading screen, then mount the chat screen (no chat animation). -->
       <div
@@ -197,8 +183,8 @@
             v-model="newDialogRecipients"
             multiple
             show="all"
-            require-verified
-            unselectable-hint="Only verified men can receive messages."
+            :require-verified="!viewerIsAdmin"
+            :unselectable-hint="viewerIsAdmin ? '' : 'Only verified men can receive messages.'"
             placeholder="Search for a username or display name…"
             autofocus
           />
@@ -268,9 +254,11 @@ const route = useRoute()
 const { user: me, ensureLoaded } = useAuth()
 const viewerIsVerified = computed(() => (me.value?.verifiedStatus ?? 'none') !== 'none')
 const viewerIsPremium = computed(() => Boolean(me.value?.premium || me.value?.premiumPlus))
+const viewerIsAdmin = computed(() => Boolean(me.value?.siteAdmin))
 // Verified users can start new chats with mutuals; Premium can DM any verified member. API enforces the mutual rule.
-const viewerCanStartChats = computed(() => viewerIsVerified.value || viewerIsPremium.value)
-const viewerCanUseChat = computed(() => viewerIsVerified.value || viewerIsPremium.value)
+const viewerCanStartChats = computed(() => viewerIsVerified.value || viewerIsPremium.value || viewerIsAdmin.value)
+// Any authenticated user can use chat — unverified users can read/reply in admin-initiated threads.
+const viewerCanUseChat = computed(() => Boolean(me.value?.id))
 
 const CHAT_BOOT_FADE_MS = 160
 const prefersReducedMotion = ref(false)
@@ -556,6 +544,7 @@ const routeSync = useChatRouteSync({
   selectedChatKey,
   draftRecipients,
   viewerCanUseChat,
+  viewerIsAdmin,
   marv,
   ensureAuthLoaded: ensureLoaded,
   emitMessagesScreen,
@@ -945,10 +934,11 @@ onMounted(() => {
 
     if (selectedConversationId.value) {
       try { await selectConversation(selectedConversationId.value, { replace: true }) } catch { /* ignore */ }
-    } else if (!isTinyViewport.value) {
+    } else if (!isTinyViewport.value && !isDraftChat.value) {
       // Desktop two-pane mode: auto-select the first non-Marv conversation so the
-      // right pane is never blank. On mobile we leave nothing selected so the user
-      // sees the list first (tap to open a chat).
+      // right pane is never blank. Skip when `?to=` opened a draft chat (no history
+      // yet) — otherwise we'd clobber the compose-to-user pane with the most recent thread.
+      // On mobile we leave nothing selected so the user sees the list first (tap to open).
       const marvId = marv.marvUserId.value
       const first = conversations.value.primary.find((c) => {
         if (!marvId) return true

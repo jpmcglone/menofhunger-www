@@ -104,6 +104,18 @@
               <Icon name="tabler:eye" aria-hidden="true" />
             </template>
           </Button>
+          <Button
+            v-if="item.user.username"
+            as="NuxtLink"
+            :to="{ path: '/chat', query: { to: item.user.username } }"
+            label="Message"
+            text
+            severity="secondary"
+          >
+            <template #icon>
+              <Icon name="tabler:message-circle" aria-hidden="true" />
+            </template>
+          </Button>
         </div>
       </div>
     </div>
@@ -219,6 +231,18 @@
 
     <template #footer>
       <Button label="Close" severity="secondary" text :disabled="saving" @click="detailsOpen = false" />
+      <Button
+        v-if="selected?.user?.username"
+        as="NuxtLink"
+        :to="{ path: '/chat', query: { to: selected.user.username } }"
+        label="Message"
+        severity="secondary"
+        text
+      >
+        <template #icon>
+          <Icon name="tabler:message-circle" aria-hidden="true" />
+        </template>
+      </Button>
       <Button
         label="Reject"
         severity="danger"

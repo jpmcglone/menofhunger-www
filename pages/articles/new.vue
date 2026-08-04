@@ -18,7 +18,7 @@ definePageMeta({ layout: 'app', title: 'New Article', hideTopBar: true, ssr: fal
 
 usePageSeo({ title: 'New Article', noindex: true })
 
-const { isPremium, ensureLoaded } = useAuth()
+const { isVerifiedMember, ensureLoaded } = useAuth()
 const { apiFetchData } = useApiClient()
 
 const creating = ref(true)
@@ -27,7 +27,7 @@ const article = ref<Article | null>(null)
 
 onMounted(async () => {
   await ensureLoaded()
-  if (!isPremium.value) {
+  if (!isVerifiedMember.value) {
     await navigateTo('/articles', { replace: true })
     return
   }
