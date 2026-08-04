@@ -339,6 +339,14 @@
           </button>
         </template>
       </div>
+
+      <!-- Read receipt — 1:1 chats only. Shows "Read" beneath the latest message I sent once the other person has read it. -->
+      <div
+        v-if="!isGroupChat && messageItem.message.sender.id === meId && latestMyMessageId && messageItem.message.id === latestMyMessageId && isLatestMyMessageRead"
+        class="flex justify-end"
+      >
+        <span class="text-[10px] moh-text-muted tabular-nums">Read</span>
+      </div>
     </div>
   </div>
 </template>

@@ -173,18 +173,20 @@
             />
           </div>
 
-          <AppStyledTextarea
-            ref="styledTextareaEl"
-            :model-value="modelValue"
-            :placeholder="placeholder"
-            :disabled="disabled"
-            :auto-focus="autoFocus"
-            :priority-users="priorityUsers"
-            :priority-section-title="prioritySectionTitle"
-            :hashtag-color="userHashtagColor"
-            @update:model-value="onTextChange"
-            @send="onSend"
-          />
+          <div class="dm-composer-textarea-scroll w-full overflow-y-auto">
+            <AppStyledTextarea
+              ref="styledTextareaEl"
+              :model-value="modelValue"
+              :placeholder="placeholder"
+              :disabled="disabled"
+              :auto-focus="autoFocus"
+              :priority-users="priorityUsers"
+              :priority-section-title="prioritySectionTitle"
+              :hashtag-color="userHashtagColor"
+              @update:model-value="onTextChange"
+              @send="onSend"
+            />
+          </div>
 
           <Transition name="moh-fade">
             <button
@@ -200,6 +202,17 @@
               <Icon v-if="loading || composerUploading" name="tabler:loader" class="text-sm animate-spin" aria-hidden="true" />
               <Icon v-else name="tabler:arrow-up" class="text-sm" aria-hidden="true" />
             </button>
+          </Transition>
+
+          <!-- Char counter — only visible when approaching the limit -->
+          <Transition name="moh-fade">
+            <span
+              v-if="showCharCount"
+              class="absolute right-2 top-1.5 text-[10px] tabular-nums leading-none select-none pointer-events-none"
+              :class="charsRemaining <= 0 ? 'text-red-500' : charsRemaining <= 50 ? 'text-amber-500 dark:text-amber-400' : 'text-gray-400 dark:text-zinc-500'"
+              aria-live="polite"
+              :aria-label="`${charsRemaining} characters remaining`"
+            >{{ charsRemaining }}</span>
           </Transition>
 
           <!-- Drop overlay -->
@@ -235,6 +248,8 @@ import type { FollowListUser, MessageReplySnippet } from '~/types/api'
 import type { CreateMediaPayload } from '~/composables/composer/types'
 import { userColorTier, userTierColorVar } from '~/utils/user-tier'
 import { useComposerMedia } from '~/composables/useComposerMedia'
+
+const MAX_CHARS = 10_000
 
 const props = withDefaults(
   defineProps<{
@@ -317,6 +332,8 @@ const acceptTypes = computed(() =>
 
 const hasText = computed(() => (props.modelValue ?? '').trim().length > 0)
 const hasContent = computed(() => hasText.value || composerMedia.value.length > 0)
+const charsRemaining = computed(() => MAX_CHARS - (props.modelValue?.length ?? 0))
+const showCharCount = computed(() => charsRemaining.value <= 200)
 
 const userTier = computed(() => userColorTier(props.user))
 const userHashtagColor = computed(() => userTierColorVar(userTier.value) ?? 'var(--p-primary-color)')
@@ -360,6 +377,7 @@ function guardedOnMediaFilesSelected(e: Event) {
 }
 
 function onTextChange(text: string) {
+  if (text.length > MAX_CHARS) return
   emit('update:modelValue', text)
   checkMultiline()
 }
@@ -416,6 +434,12 @@ defineExpose({ focus, getMedia, clearMedia })
   height: 32px;
   width: 32px;
   padding: 0;
+}
+
+/* Cap the composer at ~5 lines (5 × ~24px line-height + top/bottom padding ≈ 160px).
+   Beyond that the content scrolls inside the pill so the bar never takes over the screen. */
+.dm-composer-textarea-scroll {
+  max-height: 160px;
 }
 
 .dm-upload-indeterminate {
