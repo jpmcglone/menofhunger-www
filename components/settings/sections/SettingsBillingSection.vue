@@ -131,51 +131,22 @@
     <div v-if="billingMe" class="space-y-4 border-t border-gray-200 pt-4 dark:border-zinc-800">
       <div class="text-sm font-semibold text-gray-900 dark:text-gray-50">Referrals</div>
 
-      <!-- Your referral code (premium-only) -->
-      <div class="rounded-xl border moh-border p-4 moh-surface space-y-3 text-sm">
+      <!-- Invite — link to the dedicated /invite page -->
+      <div class="rounded-xl border moh-border p-4 moh-surface text-sm">
         <div class="flex items-center justify-between gap-3">
-          <div class="font-medium text-gray-700 dark:text-gray-200">Your referral code</div>
+          <div>
+            <div class="font-medium text-gray-700 dark:text-gray-200">Your referral code</div>
+            <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
+              <template v-if="billingMe.referralCode">
+                Code: <span class="font-mono font-semibold">{{ billingMe.referralCode }}</span>
+              </template>
+              <template v-else>
+                Not set
+              </template>
+            </p>
+          </div>
+          <Button as="NuxtLink" to="/invite" label="Manage" severity="secondary" outlined size="small" />
         </div>
-        <template v-if="billingMe.premium">
-          <div v-if="billingMe.referralCode" class="flex items-center gap-2">
-            <span class="font-mono text-base font-semibold tracking-wide">{{ billingMe.referralCode }}</span>
-            <button
-              type="button"
-              class="text-xs underline transition-colors"
-              :class="referralCodeCopied
-                ? 'text-green-600 dark:text-green-400 cursor-default'
-                : 'text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-100'"
-              :disabled="referralCodeCopied"
-              @click="copyReferralCode"
-            >{{ referralCodeCopied ? 'Copied!' : 'Copy' }}</button>
-          </div>
-          <p v-if="billingMe.referralCode" class="text-xs text-gray-500 dark:text-gray-400">
-            Share this code. Anyone who uses it will automatically follow you. After his first Premium payment, his second month is free and you receive one free month too.
-          </p>
-          <div class="flex gap-2">
-            <InputText
-              v-model="referralCodeDraft"
-              class="flex-1 font-mono"
-              :placeholder="billingMe.referralCode ? 'Change code' : 'Set your code (e.g. YOURNAME)'"
-              spellcheck="false"
-              autocomplete="off"
-              maxlength="20"
-              :disabled="referralCodeSaving"
-            />
-            <Button
-              :label="billingMe.referralCode ? 'Update' : 'Set'"
-              :loading="referralCodeSaving"
-              :disabled="!referralCodeDraft.trim() || referralCodeSaving"
-              @click="saveReferralCode"
-            />
-          </div>
-          <AppInlineAlert v-if="referralCodeError" severity="danger">{{ referralCodeError }}</AppInlineAlert>
-          <div v-if="referralCodeSaved" class="text-xs text-green-700 dark:text-green-400">Referral code saved.</div>
-          <p class="text-xs text-gray-400 dark:text-gray-500">3–20 characters. Letters, numbers, hyphens, underscores only.</p>
-        </template>
-        <p v-else class="text-sm text-gray-500 dark:text-gray-400">
-          Become a premium member to get a referral code.
-        </p>
       </div>
 
       <!-- Recruiter -->
@@ -229,10 +200,10 @@
             <Icon name="tabler:user-check" class="h-4 w-4 text-green-600 shrink-0" aria-hidden="true" />
             <span>{{ billingMe.recruiter.name ?? 'Unknown' }}</span>
           </div>
-          <p class="text-xs text-gray-500 dark:text-gray-400">Your recruiter is locked in. After your first Premium payment, your second month is free and your recruiter receives one free month too.</p>
+          <p class="text-xs text-gray-500 dark:text-gray-400">Your recruiter is locked in. When you pay for your first month of Premium, you may earn a free month.</p>
         </template>
         <template v-else>
-          <p class="text-xs text-gray-500 dark:text-gray-400">Enter a referral code to link a recruiter. You'll automatically follow him. After your first Premium payment, your second month is free and he receives one free month too. Once set, it cannot be changed.</p>
+          <p class="text-xs text-gray-500 dark:text-gray-400">Enter a referral code to link a recruiter. You'll automatically follow him. Once set, it cannot be changed.</p>
           <div class="flex gap-2">
             <InputText
               v-model="recruiterCodeDraft"

@@ -301,6 +301,20 @@
           >
             {{ premiumTier.cta.label }}
           </NuxtLink>
+          <!-- Recruit bonus eligible: shown when the user was invited by a paying subscriber -->
+          <p
+            v-if="recruitBonusEligible && !isPremium"
+            class="mt-2 text-center text-xs moh-text-muted"
+            style="text-wrap: pretty"
+          >
+            <Icon name="tabler:gift" class="inline-block text-[var(--moh-premium)] mr-0.5" aria-hidden="true" />
+            <template v-if="recruiterName">
+              Your first month unlocks a free second month, thanks to @{{ recruiterName }}.
+            </template>
+            <template v-else>
+              Your first month unlocks a free second month.
+            </template>
+          </p>
         </div>
         </div>
         <p
@@ -461,7 +475,7 @@ usePageSeo({
   ogType: 'website',
 })
 
-const { user } = useAuth()
+const { user, isAuthed } = useAuth()
 const isVerified = computed(() => (user.value?.verifiedStatus ?? 'none') !== 'none')
 const isPremiumPlus = computed(() => Boolean(user.value?.premiumPlus))
 // Inclusive so CTAs behave correctly even if data is inconsistent.
@@ -484,4 +498,20 @@ const unverifiedTier = tierMap.unverified
 const verifiedTier = tierMap.verified
 const premiumTier = tierMap.premium
 const premiumPlusTier = tierMap.premiumPlus
+
+// Recruit bonus — fetch billing data client-side only when the user is logged in and not
+// already premium (that's the only scenario where showing the bonus is relevant).
+import type { BillingMe } from '~/types/api'
+const { apiFetchData } = useApiClient()
+const recruitBonusEligible = ref(false)
+const recruiterName = ref<string | null>(null)
+
+onMounted(async () => {
+  if (!isAuthed.value || isPremium.value) return
+  try {
+    const billing = await apiFetchData<BillingMe>('/billing/me', { method: 'GET' })
+    recruitBonusEligible.value = Boolean(billing.recruitBonusEligible)
+    recruiterName.value = billing.recruiter?.username ?? billing.recruiter?.name ?? null
+  } catch { /* best-effort */ }
+})
 </script>

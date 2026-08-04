@@ -211,8 +211,11 @@ describe('hydration guardrails (structural)', () => {
   })
 
   it('does not wrap the chat message list in TransitionGroup', () => {
-    // A `TransitionGroup` around virtualized rows tracks every row for
-    // enter/leave/move animations and defeats the whole point of windowing.
+    // TransitionGroup runs FLIP on every element it tracks. With 200+ chat rows
+    // that means recording and animating all of them whenever a single message
+    // lands — noticeable jank on mid-range devices. Individual rows animate via
+    // the `moh-chat-item-enter` CSS class applied by `markMessageAnimated`;
+    // that costs only one style recalc for the new row.
     const list = readFromRepo('components/app/chat/ChatMessageList.vue')
     expect(list).not.toMatch(/<TransitionGroup/)
   })
@@ -480,6 +483,69 @@ describe('hydration guardrails (structural)', () => {
     expect(row).not.toMatch(/overflow-visible/)
     // Must still have the avatar cap (two actors + optional overflow chip)
     expect(row).toMatch(/actors\.slice\(0,\s*2\)/)
+  })
+
+  it('useKeyboardHeight infers keyboard height from a baseline, not from window.innerHeight', () => {
+    const composable = readFromRepo('composables/useKeyboardHeight.ts')
+    // iOS reports innerHeight inconsistently (it tracks the layout viewport when the
+    // document is scrollable but collapses onto the visual viewport when it is not), so
+    // differencing it against vv.height silently returns 0 for a fixed-shell layout.
+    // The keyboard-closed baseline has no such coupling.
+    expect(composable).toMatch(/baselineHeight\s*-\s*height/)
+    expect(composable).not.toMatch(/window\.innerHeight\s*-\s*vv\.height/)
+    // Subtracting offsetTop is also wrong: iOS panning makes it positive, which would
+    // cancel out the height delta.
+    expect(composable).not.toMatch(/-\s*vv\.offsetTop/)
+    // Baseline must be re-learned on width change (rotation/resize), never on keyboard open.
+    expect(composable).toMatch(/width\s*!==\s*baselineWidth/)
+    // Desktop must not be able to trip the baseline path by resizing the window.
+    expect(composable).toMatch(/hasCoarsePointer/)
+  })
+
+  it('pins the fixed app shell to the visual viewport while the keyboard is open', () => {
+    const layout = readFromRepo('layouts/app.vue')
+    const composable = readFromRepo('composables/useKeyboardHeight.ts')
+    // The composable must expose visual-viewport geometry, not just keyboard height.
+    expect(composable).toMatch(/viewportHeight/)
+    expect(composable).toMatch(/viewportOffsetTop/)
+    // The shell must be fixed so page scroll can't move it...
+    expect(layout).toMatch(/position:\s*'fixed'/)
+    // ...and must offset by the visual viewport top while the keyboard is open, because
+    // iOS anchors fixed elements to the layout viewport and slides the visual viewport
+    // down inside it, which would otherwise push the header off screen.
+    expect(layout).toMatch(/top:\s*`\$\{viewportOffsetTop\.value\}px`/)
+    expect(layout).toMatch(/height:\s*`\$\{viewportHeight\.value\}px`/)
+    // Must stay SSR-stable: unmeasured (height 0) falls back to plain inset.
+    expect(layout).toMatch(/viewportHeight\.value\s*>\s*0/)
+    // A panned viewport must be corrected on its own, even if keyboard detection is empty.
+    expect(layout).toMatch(/viewportOffsetTop\.value\s*>\s*0/)
+  })
+
+  it('no surface pads itself by the full keyboard height (the pinned shell already does)', () => {
+    // The shell is pinned to the visual viewport, so it ends at the top of the keyboard.
+    // A surface that also pads by keyboardHeight double-counts and leaves a keyboard-sized
+    // gap. Padding by a bare keyboardHeight interpolation is therefore always a bug.
+    for (const file of ['components/app/chat/ChatComposerBar.vue', 'components/app/article/EditorPage.vue']) {
+      expect(readFromRepo(file)).not.toMatch(/paddingBottom:\s*`\$\{keyboardHeight\.value/)
+    }
+  })
+
+  it('keyboard hide is app-wide (isKeyboardOpen, not gated to specific routes)', () => {
+    const layout = readFromRepo('layouts/app.vue')
+    // The computed must only check keyboardHeight, not any specific page/route.
+    expect(layout).toMatch(/isKeyboardOpen\s*=\s*computed\(\(\)\s*=>\s*keyboardHeight\.value\s*>\s*0\)/)
+    // The old route-gated expression must be gone.
+    expect(layout).not.toMatch(/isArticleEditorPage/)
+    expect(layout).not.toMatch(/hideTabBarForKeyboard/)
+  })
+
+  it('mobile bottom chrome wrapper keeps overflow-hidden to clip the keyboard-dismiss collapse', () => {
+    const layout = readFromRepo('layouts/app.vue')
+    // The wrapper must have overflow-hidden so max-h-0 doesn't produce stray scrollbars.
+    expect(layout).toMatch(/overflow-hidden/)
+    // The wrapper must collapse to max-h-0 when the keyboard is open (eliminates the blank gap
+    // that a translate-only approach leaves behind since transforms don't affect layout flow).
+    expect(layout).toMatch(/isKeyboardOpen.*max-h-0/)
   })
 
   it('shows a full-screen API-down overlay (not a thin banner) when apiUnreachable', () => {

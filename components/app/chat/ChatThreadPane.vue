@@ -5,7 +5,7 @@
       :key="renderedChatKey"
       ref="scrollerEl"
       data-chat-scroller="1"
-      class="min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-y-contain py-4 moh-chat-scroll-hide"
+      class="relative min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-y-contain py-4 moh-chat-scroll-hide"
       @scroll="emit('scroll')"
     >
       <ChatMessageList
@@ -47,13 +47,22 @@
         @restore="emit('restore', $event)"
         @scroll-to-reply="emit('scrollToReply', $event)"
       />
-
-      <div class="w-full px-4">
-        <AppTypingIndicator :users="typingUsers" verb="typing" />
-      </div>
     </div>
+
+    <!-- Typing indicator: lives outside the scroll container so it never
+         shifts messages. Floats over the bottom-left of the chat area. -->
+    <Transition name="moh-fade">
+      <div
+        v-if="renderedChatKey && typingUsers.length > 0"
+        class="pointer-events-none absolute bottom-0 left-0 z-[5] px-5 pb-2"
+        aria-live="polite"
+      >
+        <AppTypingIndicator :users="typingUsers" verb="typing" :hover-preview="false" size="compact" />
+      </div>
+    </Transition>
+
     <div
-      v-else
+      v-if="!renderedChatKey"
       key="loading"
       class="h-full flex items-center justify-center transition-opacity ease-out"
       :class="paneState === 'fading' ? 'opacity-0' : 'opacity-100'"

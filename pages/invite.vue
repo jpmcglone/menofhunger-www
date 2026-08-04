@@ -2,15 +2,14 @@
   <AppPageContent bottom="standard">
     <!-- Header -->
     <div class="moh-gutter-x border-b moh-border pt-4 pb-4">
-      <h1 class="moh-h1" style="text-wrap: balance">Referrals</h1>
+      <h1 class="moh-h1" style="text-wrap: balance">Invite</h1>
       <p class="mt-1 text-sm moh-text-muted" style="text-wrap: pretty">
-        Invite a man. After his first Premium payment, his second month is free — and you receive one free month too.
+        {{ reward.headline }}
       </p>
     </div>
 
     <!-- Loading -->
     <div v-if="loading" class="space-y-px">
-      <!-- hero skeleton -->
       <div class="moh-gutter-x py-5 space-y-3 animate-pulse">
         <div class="h-24 rounded-2xl bg-gray-200 dark:bg-zinc-800" />
         <div class="h-10 rounded-xl bg-gray-200 dark:bg-zinc-800" />
@@ -22,14 +21,14 @@
     </AppInlineAlert>
 
     <template v-else>
-      <!-- Not premium -->
-      <div v-if="!isPremium" class="moh-gutter-x py-12 text-center space-y-3">
+      <!-- Not verified / not allowed to invite -->
+      <div v-if="!canInvite" class="moh-gutter-x py-12 text-center space-y-3">
         <Icon name="tabler:gift" class="text-4xl text-[var(--moh-premium)]" aria-hidden="true" />
-        <h2 class="text-lg font-semibold moh-text" style="text-wrap: balance">Premium required</h2>
+        <h2 class="text-lg font-semibold moh-text" style="text-wrap: balance">Verification required</h2>
         <p class="text-sm moh-text-muted max-w-xs mx-auto" style="text-wrap: pretty">
-          Upgrade to Premium to claim a referral code. When a recruit makes his first Premium payment, his second month is free and you receive one free month too.
+          Verify your account to claim a referral code and start inviting men to Men of Hunger.
         </p>
-        <Button as="NuxtLink" to="/tiers" label="Upgrade to Premium" rounded class="mt-2" />
+        <Button as="NuxtLink" to="/settings" label="Go to settings" rounded class="mt-2" />
       </div>
 
       <template v-else>
@@ -74,6 +73,12 @@
 
             <!-- Has code -->
             <template v-else-if="referralCode">
+              <!-- Months earned badge -->
+              <div v-if="monthsEarned > 0" class="flex items-center gap-1.5 text-xs font-medium text-[var(--moh-premium)]">
+                <Icon name="tabler:gift" class="text-sm shrink-0" aria-hidden="true" />
+                <span>{{ monthsEarned }} free month{{ monthsEarned !== 1 ? 's' : '' }} earned from referrals</span>
+              </div>
+
               <!-- Tap-to-copy code block -->
               <button
                 type="button"
@@ -91,7 +96,6 @@
                   >
                     {{ referralCode }}
                   </div>
-                  <!-- copy ↔ check cross-fade -->
                   <div class="relative shrink-0 w-5 h-5">
                     <Icon
                       name="tabler:copy"
@@ -145,7 +149,7 @@
               <div>
                 <div class="text-sm font-semibold moh-text">Claim your code</div>
                 <p class="mt-1 text-xs moh-text-muted" style="text-wrap: pretty">
-                  Friends enter it when they join. After a recruit’s first Premium payment, his second month is free and you receive one free month too.
+                  {{ reward.valueProp }}
                 </p>
               </div>
               <div class="flex gap-2">
@@ -177,7 +181,6 @@
         <section v-if="affiliate?.isAffiliate" class="border-b moh-border">
           <div class="moh-gutter-x pt-5 pb-5 space-y-4">
 
-            <!-- Cap reached: celebration banner -->
             <div
               v-if="affiliate.capReached"
               class="rounded-2xl bg-[var(--moh-premium)] p-5 text-center space-y-1.5"
@@ -189,15 +192,12 @@
               </div>
             </div>
 
-            <!-- Section title -->
             <div class="flex items-center gap-2">
               <Icon name="tabler:coins" class="text-[var(--moh-premium)] text-lg shrink-0" aria-hidden="true" />
               <span class="text-sm font-semibold moh-text">Referral Pilot earnings</span>
             </div>
 
-            <!-- Pending + Settled cards -->
             <div class="grid grid-cols-2 gap-3">
-              <!-- Pending -->
               <div class="rounded-xl border moh-border moh-surface p-4 space-y-2">
                 <div class="text-xs moh-text-muted uppercase tracking-wide">Pending</div>
                 <div
@@ -206,7 +206,6 @@
                 >
                   {{ formatCents(affiliate.pendingCents) }}
                 </div>
-                <!-- Progress toward min payout or cap -->
                 <div class="space-y-1">
                   <div class="h-1 rounded-full bg-gray-200 dark:bg-zinc-700 overflow-hidden">
                     <div
@@ -226,7 +225,6 @@
                 </div>
               </div>
 
-              <!-- Settled -->
               <div class="rounded-xl border moh-border moh-surface p-4 space-y-1">
                 <div class="text-xs moh-text-muted uppercase tracking-wide">Settled</div>
                 <div class="text-xl font-bold moh-text tabular-nums">{{ formatCents(affiliate.settledCents) }}</div>
@@ -234,7 +232,6 @@
               </div>
             </div>
 
-            <!-- Milestone counts -->
             <div class="flex flex-wrap gap-x-4 gap-y-1 text-xs moh-text-muted tabular-nums">
               <span>Signups: <span class="font-semibold moh-text">{{ affiliate.counts.signups }}</span></span>
               <span>Verified: <span class="font-semibold moh-text">{{ affiliate.counts.verified }}</span></span>
@@ -242,7 +239,6 @@
               <span>60-day: <span class="font-semibold moh-text">{{ affiliate.counts.premium60d }}</span></span>
             </div>
 
-            <!-- How payouts work — collapsed by default -->
             <details class="group rounded-xl border moh-border moh-surface">
               <summary
                 class="flex items-center justify-between moh-gutter-x py-3 cursor-pointer select-none list-none
@@ -291,7 +287,6 @@
 
         <!-- ─── Recruits ────────────────────────────────────────────────────── -->
         <section>
-          <!-- Stats strip (when there are set-up recruits) -->
           <div v-if="recruitStats.total > 0" class="moh-gutter-x pt-5 pb-3 flex flex-wrap gap-x-4 gap-y-1 text-sm moh-text-muted tabular-nums">
             <span class="font-semibold moh-text">Your recruits</span>
             <span>{{ recruitStats.total }} joined</span>
@@ -313,29 +308,15 @@
             <div class="rounded-2xl border moh-border moh-surface px-5 py-6 space-y-4">
               <div class="text-sm font-semibold moh-text">How it works</div>
               <div class="space-y-3">
-                <div class="flex gap-3 items-start">
+                <div
+                  v-for="(step, i) in reward.steps"
+                  :key="i"
+                  class="flex gap-3 items-start"
+                >
                   <div class="shrink-0 w-5 h-5 rounded-full bg-[var(--moh-premium)] flex items-center justify-center mt-0.5">
-                    <span class="text-[10px] font-bold text-white">1</span>
+                    <span class="text-[10px] font-bold text-white">{{ i + 1 }}</span>
                   </div>
-                  <div class="text-sm moh-text-muted" style="text-wrap: pretty">
-                    Share your referral code or link with men you think belong here.
-                  </div>
-                </div>
-                <div class="flex gap-3 items-start">
-                  <div class="shrink-0 w-5 h-5 rounded-full bg-[var(--moh-premium)] flex items-center justify-center mt-0.5">
-                    <span class="text-[10px] font-bold text-white">2</span>
-                  </div>
-                  <div class="text-sm moh-text-muted" style="text-wrap: pretty">
-                    They sign up, verify, and complete their first Premium payment.
-                  </div>
-                </div>
-                <div class="flex gap-3 items-start">
-                  <div class="shrink-0 w-5 h-5 rounded-full bg-[var(--moh-premium)] flex items-center justify-center mt-0.5">
-                    <span class="text-[10px] font-bold text-white">3</span>
-                  </div>
-                  <div class="text-sm moh-text-muted" style="text-wrap: pretty">
-                    Their second month is free, and you receive one free month too.
-                  </div>
+                  <div class="text-sm moh-text-muted" style="text-wrap: pretty">{{ step }}</div>
                 </div>
               </div>
             </div>
@@ -366,16 +347,17 @@
 </template>
 
 <script setup lang="ts">
-import type { AffiliateSummary, Recruit, FollowListUser } from '~/types/api'
+import type { AffiliateSummary, Recruit, ReferralMe, FollowListUser } from '~/types/api'
 import type { ReferralCallback } from '~/composables/presence/types'
 import { getApiErrorMessage } from '~/utils/api-error'
+import { useInviteReward } from '~/composables/useInviteReward'
 
-definePageMeta({ layout: 'app', ssr: false })
+definePageMeta({ layout: 'app', ssr: false, alias: ['/referrals'] })
 
-useHead({ title: 'Referrals' })
+useHead({ title: 'Invite' })
 
 const { apiFetchData } = useApiClient()
-const { user } = useAuth()
+const { user, isVerified: isVerifiedBase, isPremium } = useAuth()
 const { addReferralCallback, removeReferralCallback } = usePresence()
 const { setReferralCode } = useReferralCode()
 
@@ -383,7 +365,7 @@ const { setReferralCode } = useReferralCode()
 
 const loading = ref(true)
 const error = ref<string | null>(null)
-const referralCode = ref<string | null>(null)
+const referralData = ref<ReferralMe | null>(null)
 const recruits = ref<Recruit[]>([])
 const affiliate = ref<Extract<AffiliateSummary, { isAffiliate: true }> | null>(null)
 const codeInput = ref('')
@@ -393,7 +375,6 @@ const editingCode = ref(false)
 const copied = ref(false)
 let copiedTimer: ReturnType<typeof setTimeout> | null = null
 
-// Template ref for the claim/edit code input — used to autofocus on arrival and on edit.
 const claimCodeInputRef = ref<{ $el: HTMLInputElement } | null>(null)
 
 function focusCodeInput() {
@@ -403,7 +384,17 @@ function focusCodeInput() {
   })
 }
 
-const isPremium = computed(() => Boolean(user.value?.premium || user.value?.premiumPlus))
+// Verified or premium — either can hold a referral code.
+const canInviteLocal = computed(() => isPremium.value || isVerifiedBase.value)
+// After load, use the API-confirmed value; fall back to the local check while loading.
+const canInvite = computed(() =>
+  referralData.value !== null ? Boolean(referralData.value.canInvite) : canInviteLocal.value,
+)
+
+const referralCode = computed(() => referralData.value?.referralCode ?? null)
+const monthsEarned = computed(() => referralData.value?.monthsEarned ?? 0)
+
+const reward = computed(() => useInviteReward(referralData.value))
 
 const codeFontSize = computed(() => {
   const len = (referralCode.value ?? '').length
@@ -423,7 +414,7 @@ const shareUrl = computed(() => {
 const shareMessage = computed(() => {
   const code = referralCode.value
   if (!code) return 'Join me on Men of Hunger.'
-  return `Join me on Men of Hunger. Use my code ${code}. After your first Premium payment, your second month is free — and I get a month too.`
+  return reward.value.shareMessage(code)
 })
 
 // ─── Pilot progress ───────────────────────────────────────────────────────────
@@ -432,7 +423,6 @@ const pendingProgressPct = computed(() => {
   const a = affiliate.value
   if (!a) return 0
   if (a.pendingCents >= a.minPayoutCents) {
-    // Past min payout: show progress toward cap
     return Math.min(100, Math.round((a.pendingCents / a.capCents) * 100))
   }
   return Math.min(99, Math.round((a.pendingCents / a.minPayoutCents) * 100))
@@ -441,7 +431,7 @@ const pendingProgressPct = computed(() => {
 // ─── Load ────────────────────────────────────────────────────────────────────
 
 async function load() {
-  if (!isPremium.value) {
+  if (!canInviteLocal.value) {
     loading.value = false
     return
   }
@@ -449,12 +439,12 @@ async function load() {
   error.value = null
   try {
     const [billingData, recruitsData, affiliateData] = await Promise.all([
-      apiFetchData<{ referralCode: string | null }>('/billing/referral', { method: 'GET' }),
+      apiFetchData<ReferralMe>('/billing/referral', { method: 'GET' }),
       apiFetchData<Recruit[]>('/billing/referral/recruits', { method: 'GET' }),
       apiFetchData<AffiliateSummary>('/billing/affiliate', { method: 'GET' }),
     ])
-    referralCode.value = billingData.referralCode ?? null
-    setReferralCode(referralCode.value)
+    referralData.value = billingData
+    setReferralCode(billingData.referralCode ?? null)
     recruits.value = recruitsData
     if (affiliateData.isAffiliate) {
       affiliate.value = affiliateData
@@ -497,7 +487,9 @@ async function saveCode() {
       method: 'PUT',
       body: { code },
     })
-    referralCode.value = res.referralCode
+    if (referralData.value) {
+      referralData.value = { ...referralData.value, referralCode: res.referralCode }
+    }
     setReferralCode(res.referralCode)
     codeInput.value = ''
     editingCode.value = false
@@ -564,9 +556,9 @@ function toUserRowUser(recruit: Recruit): FollowListUser & { isBot?: boolean } {
 }
 
 function recruitTier(r: Recruit): 0 | 1 | 2 {
-  if (r.premium || r.premiumPlus) return 0  // Premium
-  if (r.verifiedStatus !== 'none') return 1  // Verified
-  return 2                                   // Joined
+  if (r.premium || r.premiumPlus) return 0
+  if (r.verifiedStatus !== 'none') return 1
+  return 2
 }
 
 const RECRUIT_GROUP_LABELS: Record<0 | 1 | 2, string> = {

@@ -82,11 +82,14 @@ const composerUser = computed(() =>
     : null,
 )
 
-// When the keyboard is open, offset the composer bar up by the keyboard height so it
-// sits directly above the keyboard. When closed, use the normal safe-area bottom inset.
+// The app shell is pinned to the visual viewport, so while the keyboard is open the
+// shell already ends at the top of the keyboard and the composer needs no offset of its
+// own — adding one here would double-count and leave a keyboard-sized gap under the
+// input. The safe-area inset only applies when the keyboard is closed, since the home
+// indicator is covered by the keyboard while it is up.
 const composerBarStyle = computed<Record<string, string>>(() => {
   if (keyboardHeight.value > 0) {
-    return { paddingBottom: `${keyboardHeight.value}px` }
+    return { paddingBottom: '0px' }
   }
   return { paddingBottom: 'calc(var(--moh-safe-bottom, 0px) - 4px)' }
 })

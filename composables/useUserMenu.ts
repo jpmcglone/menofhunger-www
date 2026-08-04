@@ -55,6 +55,12 @@ export function useUserMenu() {
     },
     { separator: true },
     {
+      label: 'Invite friends',
+      iconName: 'tabler:gift',
+      url: '/invite',
+      command: () => navigateTo('/invite'),
+    },
+    {
       label: 'Feature requests',
       iconName: 'tabler:bulb',
       url: '/feedback',

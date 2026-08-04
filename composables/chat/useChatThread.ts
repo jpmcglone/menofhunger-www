@@ -580,6 +580,7 @@ export function useChatThread(opts: UseChatThreadOptions) {
         ...messages.value,
         { id: localId, createdAt: new Date().toISOString(), body, conversationId, sender: optimisticSender, reactions: [], deletedForMe: false, deletedForAll: false, editedAt: null, replyTo: replySnippet, media: [], __clientKey: localId } as ChatMessage,
       ]
+      markMessageAnimated(localId)
       sendingMessageIds.value = new Set([...sendingMessageIds.value, localId])
       composerText.value = ''
       composer.clearMedia()

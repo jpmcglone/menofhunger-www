@@ -2,8 +2,8 @@
   <Card v-if="showCard" class="moh-card moh-card-matte !rounded-2xl overflow-hidden">
     <template #title>
       <div class="flex items-center justify-between gap-2">
-        <NuxtLink to="/referrals" class="moh-h2 hover:underline">Referrals</NuxtLink>
-        <NuxtLink to="/referrals" aria-label="View referrals" tabindex="-1">
+        <NuxtLink to="/invite" class="moh-h2 hover:underline">Invite</NuxtLink>
+        <NuxtLink to="/invite" aria-label="View invite page" tabindex="-1">
           <Icon
             name="tabler:gift"
             class="text-gray-400 dark:text-zinc-500"
@@ -23,9 +23,9 @@
       </div>
 
       <div v-else-if="referralData" class="space-y-3">
-        <!-- Value prop -->
+        <!-- Value prop — state-aware copy from useInviteReward -->
         <p class="text-xs leading-relaxed moh-text-muted" style="text-wrap: pretty">
-          After his first Premium payment, your referral’s <span class="font-semibold moh-text">second month is free</span> — and you receive one free month too.
+          {{ reward.valueProp }}
         </p>
 
         <!-- ─── Has code ─────────────────────────────────────────────────── -->
@@ -35,7 +35,7 @@
             type="button"
             class="w-full rounded-xl px-4 py-3 text-center select-none active:scale-[0.96]
                    focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 border"
-            :class="onReferralsPage
+            :class="onInvitePage
               ? 'bg-gray-100 dark:bg-zinc-800 border-gray-200 dark:border-zinc-700 focus-visible:ring-gray-400'
               : 'bg-[var(--moh-premium)] border-transparent focus-visible:ring-[var(--moh-premium)]'"
             style="transition: background-color 0.35s ease, border-color 0.35s ease, transform 0.1s ease"
@@ -44,14 +44,14 @@
           >
             <div
               class="text-[10px] font-semibold uppercase tracking-wide transition-colors duration-350 ease-in-out"
-              :class="onReferralsPage ? 'text-gray-500 dark:text-zinc-400' : 'text-white/70'"
+              :class="onInvitePage ? 'text-gray-500 dark:text-zinc-400' : 'text-white/70'"
             >
               Your code
             </div>
             <div class="flex items-center justify-center gap-2 mt-1">
               <div
                 class="font-mono font-black tracking-[0.16em] leading-tight transition-colors duration-350 ease-in-out"
-                :class="onReferralsPage ? 'text-gray-900 dark:text-white' : 'text-white'"
+                :class="onInvitePage ? 'text-gray-900 dark:text-white' : 'text-white'"
                 :style="{ fontSize: codeFontSize }"
               >
                 {{ referralCode }}
@@ -61,14 +61,14 @@
                 <Icon
                   name="tabler:copy"
                   class="absolute inset-0 transition-[opacity,scale,filter,color] duration-200 ease-[cubic-bezier(0.2,0,0,1)]"
-                  :class="onReferralsPage ? 'text-gray-400 dark:text-zinc-500' : 'text-white/70'"
+                  :class="onInvitePage ? 'text-gray-400 dark:text-zinc-500' : 'text-white/70'"
                   :style="{ opacity: copied ? 0 : 1, scale: copied ? '0.25' : '1', filter: copied ? 'blur(4px)' : 'none' }"
                   aria-hidden="true"
                 />
                 <Icon
                   name="tabler:check"
                   class="absolute inset-0 transition-[opacity,scale,filter,color] duration-200 ease-[cubic-bezier(0.2,0,0,1)]"
-                  :class="onReferralsPage ? 'text-gray-600 dark:text-zinc-300' : 'text-white'"
+                  :class="onInvitePage ? 'text-gray-600 dark:text-zinc-300' : 'text-white'"
                   :style="{ opacity: copied ? 1 : 0, scale: copied ? '1' : '0.25', filter: copied ? 'none' : 'blur(4px)' }"
                   aria-hidden="true"
                 />
@@ -88,21 +88,21 @@
           <!-- Progress line + pilot earnings -->
           <div class="space-y-1.5">
             <component
-              :is="onReferralsPage ? 'span' : NuxtLink"
-              to="/referrals"
+              :is="onInvitePage ? 'span' : NuxtLink"
+              to="/invite"
               class="flex items-center justify-between text-xs moh-text-muted transition-colors group"
-              :class="{ 'hover:moh-text': !onReferralsPage }"
+              :class="{ 'hover:moh-text': !onInvitePage }"
             >
               <span class="tabular-nums">
                 <template v-if="recruitCount > 0">
                   {{ recruitCount }} joined<template v-if="pilotPremiumCount !== null"> · {{ pilotPremiumCount }} Premium</template>
                 </template>
                 <template v-else>
-                  View your referrals
+                  View your invites
                 </template>
               </span>
               <Icon
-                v-if="!onReferralsPage"
+                v-if="!onInvitePage"
                 name="tabler:chevron-right"
                 class="text-[10px] moh-text-muted group-hover:translate-x-0.5 transition-transform duration-150"
                 aria-hidden="true"
@@ -112,12 +112,12 @@
             <!-- Referral Pilot earnings row (pilot members only) -->
             <NuxtLink
               v-if="pilotPendingCents !== null"
-              to="/referrals"
+              to="/invite"
               class="flex items-center justify-between text-xs group hover:opacity-80 transition-opacity"
             >
               <span
                 class="flex items-center gap-1.5 transition-colors duration-350 ease-in-out"
-                :class="onReferralsPage ? 'moh-text-muted' : 'text-[var(--moh-premium)]'"
+                :class="onInvitePage ? 'moh-text-muted' : 'text-[var(--moh-premium)]'"
               >
                 <Icon name="tabler:coins" class="text-sm shrink-0" aria-hidden="true" />
                 <span class="tabular-nums font-semibold">{{ formatCents(pilotPendingCents) }} pending</span>
@@ -137,14 +137,14 @@
           <div>
             <div class="text-sm font-semibold moh-text">Claim your code</div>
             <p class="mt-1 text-xs leading-relaxed moh-text-muted">
-              Give a recruit his second month free and receive one free month too.
+              Set up your referral code to start inviting men.
             </p>
           </div>
 
           <Button
             as="NuxtLink"
-            to="/referrals"
-            label="Set up referrals"
+            to="/invite"
+            label="Set up invite"
             class="w-full active:scale-[0.96] transition-transform duration-100"
             severity="secondary"
             outlined
@@ -159,12 +159,13 @@
 import type { ReferralMe, AffiliateSummary } from '~/types/api'
 import type { ReferralCallback } from '~/composables/presence/types'
 import { getApiErrorMessage } from '~/utils/api-error'
+import { useInviteReward } from '~/composables/useInviteReward'
 
 const NuxtLink = resolveComponent('NuxtLink')
 const route = useRoute()
-const onReferralsPage = computed(() => route.path === '/referrals')
+const onInvitePage = computed(() => route.path === '/invite' || route.path === '/referrals')
 
-const { user, isAuthed } = useAuth()
+const { user, isAuthed, isVerified } = useAuth()
 const { apiFetchData } = useApiClient()
 const { addReferralCallback, removeReferralCallback } = usePresence()
 const { referralCode: sharedCode, setReferralCode } = useReferralCode()
@@ -176,12 +177,15 @@ const error = ref<string | null>(null)
 const copied = ref(false)
 let copiedTimer: ReturnType<typeof setTimeout> | null = null
 
+// Open to verified users (identity or manual) and premium users.
 const showCard = computed(() => {
   const u = user.value
-  return Boolean(isAuthed.value && (u?.premium || u?.premiumPlus))
+  return Boolean(isAuthed.value && (isVerified.value || u?.premium || u?.premiumPlus))
 })
 
-// Prefer the shared state (updated instantly by the /referrals page); fall back to local fetch result.
+const reward = computed(() => useInviteReward(referralData.value))
+
+// Prefer the shared state (updated instantly by the /invite page); fall back to local fetch result.
 const referralCode = computed(() => {
   if (sharedCode.value !== undefined) return sharedCode.value ?? ''
   return (referralData.value?.referralCode ?? '').trim()
@@ -220,7 +224,7 @@ const shareUrl = computed(() => {
 const shareMessage = computed(() => {
   const code = referralCode.value
   if (!code) return 'Join me on Men of Hunger.'
-  return `Join me on Men of Hunger. Use my code ${code}. After your first Premium payment, your second month is free — and I get a month too.`
+  return reward.value.shareMessage(code)
 })
 
 // ─── Data loading ─────────────────────────────────────────────────────────────

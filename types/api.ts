@@ -97,6 +97,11 @@ export type BillingMe = {
   recruitCount: number
   /** Whether the one-time referral bonus has been granted to this user. */
   referralBonusGranted: boolean
+  /**
+   * True when the viewer was recruited by a paying subscriber and has not yet triggered
+   * the bonus — meaning their first Premium payment will also earn them a free month.
+   */
+  recruitBonusEligible: boolean
 }
 
 export type Recruit = Omit<FollowListUser, 'relationship'> & {
@@ -113,6 +118,12 @@ export type ReferralMe = {
   recruiter: { username: string | null; name: string | null } | null
   recruitCount: number
   referralBonusGranted: boolean
+  /** True when the viewer can claim and share a referral code (verified or premium). */
+  canInvite: boolean
+  /** True when the viewer has an active paid subscription (Stripe or Apple IAP). */
+  isPayingPremium: boolean
+  /** Total months earned from referral grants (all time). */
+  monthsEarned: number
 }
 
 export type AdminReferralInfo = {

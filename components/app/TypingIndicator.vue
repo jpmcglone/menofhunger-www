@@ -5,7 +5,7 @@
       class="typing-expand-outer"
     >
       <div
-        class="typing-expand-inner text-sm text-gray-500 dark:text-gray-400"
+        class="typing-expand-inner text-xs text-gray-500 dark:text-gray-400"
         :class="size === 'compact' ? 'py-1' : 'py-2'"
         role="status"
         aria-live="polite"

@@ -440,6 +440,29 @@ const effectiveBubbleShapeClass = computed(() => {
 </script>
 
 <style scoped>
+/*
+ * New-message entrance: translate + fade only (no height change) so the
+ * ResizeObserver sees the final row height immediately and the bottom-pin
+ * logic stays stable throughout the animation.
+ *
+ * The class is applied for 420ms via markMessageAnimated; the animation
+ * duration intentionally matches so the class is removed as it completes.
+ */
+.moh-chat-item-enter {
+  animation: moh-chat-item-enter 280ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes moh-chat-item-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .moh-jump-target {
   animation: moh-jump-flash 2.5s ease forwards;
   border-radius: 0.5rem;

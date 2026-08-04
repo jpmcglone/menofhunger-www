@@ -27,7 +27,7 @@
     <div
       ref="layoutViewportEl"
       :class="['overflow-hidden moh-bg moh-text moh-texture moh-vignette', showStatusBg ? 'moh-status-tone' : '']"
-      style="height: var(--moh-viewport-h, 100vh);"
+      :style="shellStyle"
     >
       <div class="mx-auto flex h-full w-full max-w-6xl xl:max-w-7xl">
         <!-- Left Nav (independent scroll) -->
@@ -118,9 +118,17 @@
 
             <!-- Mobile bottom chrome lives inside the center column (no fixed overlap). -->
             <!-- Radio sits above tab bar when playing. -->
-            <!-- hideTabBarForKeyboard: hide on chat when the software keyboard is open so the -->
-            <!-- tab bar doesn't rise with the keyboard (mirrors native iOS sheet behaviour). -->
-            <div v-if="!anyOverlayOpen && !hideTabBarForKeyboard" class="md:hidden shrink-0">
+            <!-- max-h collapses the wrapper to 0 when the keyboard is open, eliminating the    -->
+            <!-- blank gap that translate-only leaves behind (transforms don't affect layout).  -->
+            <!-- overflow-hidden clips the collapsing content and prevents stray scrollbars.    -->
+            <!-- inert removes the hidden chrome from tab order + screen readers.               -->
+            <div
+              v-if="!anyOverlayOpen"
+              class="md:hidden shrink-0 overflow-hidden transition-[max-height] duration-200 ease-out motion-reduce:transition-none"
+              :class="isKeyboardOpen ? 'max-h-0' : 'max-h-36'"
+              :aria-hidden="isKeyboardOpen || undefined"
+              :inert="isKeyboardOpen || undefined"
+            >
               <Transition
                 enter-active-class="transition-[opacity,transform] duration-200 ease-out"
                 enter-from-class="opacity-0 translate-y-[30px]"
@@ -209,7 +217,7 @@
       leave-to-class="opacity-0"
     >
       <button
-        v-if="canOpenComposer && isComposerEntrypointRoute && !hideFabForHomeComposer && !anyOverlayOpen"
+        v-if="canOpenComposer && isComposerEntrypointRoute && !hideFabForHomeComposer && !anyOverlayOpen && !isKeyboardOpen"
         type="button"
         aria-label="New post"
         :class="[
@@ -265,12 +273,41 @@ useAppIconBadge()
 
 const { hideTopBar, navCompactMode: _navCompactModeBase, isRightRailForcedHidden: _isRightRailForcedHiddenBase, isRightRailSearchHidden, title } = useLayoutRules(route)
 const isMessagesPage = computed(() => route.path === '/chat')
-const isArticleEditorPage = computed(() => route.path === '/articles/new' || route.path.startsWith('/articles/edit/'))
-const { keyboardHeight } = useKeyboardHeight()
-// Hide the mobile tab bar when the software keyboard is open on screens that have a
-// fixed composer bar (e.g. chat). This mirrors the native iOS sheet behaviour where
-// the tab bar is outside the modal hierarchy and never rises with the keyboard.
-const hideTabBarForKeyboard = computed(() => (isMessagesPage.value || isArticleEditorPage.value) && keyboardHeight.value > 0)
+const { keyboardHeight, viewportHeight, viewportOffsetTop } = useKeyboardHeight()
+/**
+ * Mobile bottom chrome slides away whenever the software keyboard is open.
+ * iOS pans the whole page up to reveal the focused input, which would
+ * otherwise drag the tab bar into view directly above the keyboard.
+ */
+const isKeyboardOpen = computed(() => keyboardHeight.value > 0)
+
+/**
+ * The shell is `position: fixed` so page scroll can never move it. That alone is not
+ * enough on iOS: fixed elements anchor to the *layout* viewport, and when the keyboard
+ * opens iOS slides the visual viewport down inside the layout viewport, carrying the
+ * shell's top edge off screen. While the keyboard is open we therefore pin the shell
+ * to the measured visual viewport so the header stays put and only the content area
+ * gives up the space.
+ *
+ * Everywhere else (and before the first client measurement) plain `inset: 0` is both
+ * correct and SSR-stable.
+ */
+const shellStyle = computed(() => {
+  // A non-zero offsetTop means the visual viewport has already been slid down inside the
+  // layout viewport, which is the exact condition that pushes the shell off screen — so it
+  // is honored on its own, even if keyboard height detection came back empty.
+  const shouldPin = viewportHeight.value > 0 && (isKeyboardOpen.value || viewportOffsetTop.value > 0)
+  if (!shouldPin) {
+    return { position: 'fixed' as const, inset: '0' }
+  }
+  return {
+    position: 'fixed' as const,
+    left: '0',
+    right: '0',
+    top: `${viewportOffsetTop.value}px`,
+    height: `${viewportHeight.value}px`,
+  }
+})
 
 const { header: appHeader } = useAppHeader()
 // Prevent SSR hydration mismatches: render route meta during hydration, then swap to appHeader after mount.

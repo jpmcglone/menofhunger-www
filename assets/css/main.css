@@ -10,8 +10,6 @@
     Arial, "Apple Color Emoji", "Segoe UI Emoji";
 
   /* Safe-area + mobile layout constants (used across fixed UI). */
-  /* Viewport height helper: avoids iOS `100vh` quirks in standalone/app-like contexts. */
-  --moh-viewport-h: 100vh;
   --moh-safe-top: env(safe-area-inset-top, 0px);
   --moh-safe-right: env(safe-area-inset-right, 0px);
   /*
@@ -36,12 +34,6 @@
     --moh-tabbar-height: 4.25rem;
     --moh-radio-bar-height: 3.75rem;
     --moh-gutter-x: 0.875rem;
-  }
-}
-
-@supports (height: 100dvh) {
-  :root {
-    --moh-viewport-h: 100dvh;
   }
 }
 

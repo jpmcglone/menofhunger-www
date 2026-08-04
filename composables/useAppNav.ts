@@ -91,6 +91,7 @@ export function useAppNav() {
     { key: 'profile', label: 'Profile', to: profileTo.value, icon: 'heroicons-outline:user-circle', iconActive: 'heroicons-solid:user-circle', requiresAuth: true, showInPrimaryNav: true, menuSection: 'main' },
     { key: 'only-me', label: 'Only me', to: '/only-me', icon: 'heroicons-outline:eye-slash', iconActive: 'heroicons-solid:eye-slash', requiresAuth: true, showInPrimaryNav: true, menuSection: 'main' },
     { key: 'scheduled', label: 'Scheduled', to: '/scheduled', icon: 'tabler:calendar-time', iconActive: 'tabler:calendar-time', requiresAuth: true, requiresPremium: true, showInPrimaryNav: true, menuSection: 'main' },
+    { key: 'invite', label: 'Invite', to: '/invite', icon: 'tabler:gift', iconActive: 'tabler:gift', requiresAuth: true, requiresVerified: true, showInPrimaryNav: true, menuSection: 'footer' },
     { key: 'settings', label: 'Settings and privacy', to: '/settings', icon: 'tabler:settings', iconActive: 'tabler:settings', requiresAuth: true, showInPrimaryNav: true, menuSection: 'footer' },
     { key: 'feedback', label: 'Send feedback', to: '/feedback', icon: 'tabler:message-circle', iconActive: 'tabler:message-circle-filled', requiresAuth: true, showInPrimaryNav: true, menuSection: 'footer' },
     { key: 'admin', label: 'Admin', to: '/admin', icon: 'tabler:shield', iconActive: 'tabler:shield', requiresAuth: true, requiresAdmin: true, showInPrimaryNav: true, menuSection: 'footer' },

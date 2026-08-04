@@ -225,8 +225,10 @@ onBeforeUnmount(() => {
 
 const editorViewportStyle = computed(() => {
   if (hydrated.value && keyboardHeight.value > 0) {
-    // Keep last lines above the software keyboard while composing on mobile.
-    return { paddingBottom: `${keyboardHeight.value + 24}px` }
+    // The app shell is pinned to the visual viewport, so it already ends at the top of
+    // the keyboard. Only breathing room is needed here; padding the full keyboard height
+    // would double-count and leave a keyboard-sized gap below the last line.
+    return { paddingBottom: '24px' }
   }
   return undefined
 })
