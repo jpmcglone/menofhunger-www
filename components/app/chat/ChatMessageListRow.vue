@@ -340,9 +340,9 @@
         </template>
       </div>
 
-      <!-- Read receipt — 1:1 chats only. Shows "Read" beneath the latest message I sent once the other person has read it. -->
+      <!-- Read receipt — 1:1 chats only. Shows "Read" beneath the last message I sent that they've read. -->
       <div
-        v-if="!isGroupChat && messageItem.message.sender.id === meId && latestMyMessageId && messageItem.message.id === latestMyMessageId && isLatestMyMessageRead"
+        v-if="!isGroupChat && messageItem.message.sender.id === meId && lastReadMyMessageId && messageItem.message.id === lastReadMyMessageId"
         class="flex justify-end"
       >
         <span class="text-[10px] moh-text-muted tabular-nums">Read</span>
@@ -369,6 +369,8 @@ const props = defineProps({
   sendingMessageIds: { type: Object as PropType<Set<string>>, required: true },
   latestMyMessageId: { type: [String, null] as PropType<string | null>, required: true },
   isLatestMyMessageRead: { type: Boolean, required: true },
+  /** 1:1 chats only: ID of the most recent message I sent that the other person has read (may differ from latestMyMessageId). */
+  lastReadMyMessageId: { type: [String, null] as PropType<string | null>, required: false, default: null },
   isGroupChat: { type: Boolean, required: true },
   meId: { type: [String, null] as PropType<string | null>, required: true },
   hoveredId: { type: [String, null] as PropType<string | null>, required: true },

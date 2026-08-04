@@ -36,6 +36,7 @@
         :sending-message-ids="sendingMessageIds"
         :latest-my-message-id="latestMyMessageId"
         :is-latest-my-message-read="isLatestMyMessageRead"
+        :last-read-my-message-id="lastReadMyMessageId"
         :is-group-chat="isGroupChat"
         :me-id="meId"
         :hovered-id="hoveredId"
@@ -204,6 +205,24 @@ const isLatestMyMessageRead = computed(() => {
   if (!latestMsgItem) return false
   const latestMsgMs = latestMsgItem.createdAtMs
   return props.participants.some((p) => !!p.lastReadAt && Date.parse(p.lastReadAt) >= latestMsgMs)
+})
+
+// For 1:1 chats: the most recent message *I* sent that the other person has actually read.
+// This may be an older message if my newest one hasn't been read yet.
+const lastReadMyMessageId = computed<string | null>(() => {
+  if (props.isGroupChat || !props.participants.length || !props.meId) return null
+  const lastReadMs = props.participants.reduce((best, p) => {
+    const ms = p.lastReadAt ? Date.parse(p.lastReadAt) : -Infinity
+    return Number.isFinite(ms) ? Math.max(best, ms) : best
+  }, -Infinity)
+  if (!Number.isFinite(lastReadMs) || lastReadMs === -Infinity) return null
+  for (let i = props.messagesWithDividers.length - 1; i >= 0; i--) {
+    const item = props.messagesWithDividers[i]!
+    if (item.type !== 'message') continue
+    if (item.message.sender.id !== props.meId) continue
+    if (item.createdAtMs <= lastReadMs) return item.message.id
+  }
+  return null
 })
 
 function getReadIndicatorsFor(item: ChatListItem): MessageParticipant[] | null {
