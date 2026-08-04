@@ -3,9 +3,9 @@ import { ref, computed, type Ref } from 'vue'
 export const BOTTOM_THRESHOLD = 24
 
 // ─── Debug tracing ────────────────────────────────────────────────────────────
-// Set to true locally to trace every scroll mutation in the browser console.
+// Flip to true locally to trace every scroll mutation in the browser console.
 // Each line is prefixed [chat-scroll] so you can filter in devtools.
-const DEBUG = true
+const DEBUG = false
 
 function dbg(msg: string, extra?: Record<string, unknown>) {
   if (!DEBUG) return
