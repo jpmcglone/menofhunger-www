@@ -24,8 +24,8 @@
             <Icon name="tabler:loader-2" class="animate-spin text-[10px] mr-0.5" aria-hidden="true" />
             Saving…
           </span>
-          <span v-else-if="editor.lastSavedLabel.value">{{ editor.lastSavedLabel.value }}</span>
           <span v-else-if="editor.saveStatus.value === 'error'" class="text-red-500">Save failed</span>
+          <span v-else-if="editor.lastSavedLabel.value">{{ editor.lastSavedLabel.value }}</span>
           <span v-else>&nbsp;</span>
         </p>
 
@@ -153,8 +153,11 @@
 import type { Article } from '~/types/api'
 
 const props = defineProps<{
-  article: Article
+  /** Null on `/articles/new`: the draft row is created lazily, on the first real content. */
+  article: Article | null
 }>()
+
+const emit = defineEmits<{ created: [article: Article] }>()
 
 const { isVerified, isPremium } = useAuth()
 
@@ -181,8 +184,10 @@ const { apiFetchData } = useApiClient()
 const toast = useAppToast()
 const { assetUrl } = useAssets()
 
-const initialArticleRef = ref<Article>({ ...props.article })
-const editor = useArticleEditor(initialArticleRef as Ref<Article | null>)
+const initialArticleRef = ref<Article | null>(props.article ? { ...props.article } : null)
+const editor = useArticleEditor(initialArticleRef as Ref<Article | null>, {
+  onCreated: (created) => emit('created', created),
+})
 
 const justPublished = ref<Article | null>(null)
 const thumbnailInputEl = ref<HTMLInputElement | null>(null)
@@ -234,7 +239,8 @@ const primaryActionLabel = computed(() => {
 
 const primaryActionDisabled = computed(() => {
   const isDraft = editor.article.value?.isDraft !== false
-  if (isDraft) return !editor.article.value?.title?.trim() || editor.publishing.value
+  // Live title, not the last-saved one: Publish shouldn't stay dead through the autosave debounce.
+  if (isDraft) return !editor.title.value.trim() || editor.publishing.value
   return !editor.isDirty.value || editor.saveStatus.value === 'saving'
 })
 

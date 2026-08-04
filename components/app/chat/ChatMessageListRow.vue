@@ -297,7 +297,7 @@
           :class="[
             'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs border transition-[border-color,background-color,color] duration-150 ease-out',
             group.reactedByMe
-              ? 'border-[var(--p-primary-color)] bg-[var(--p-primary-color)] bg-opacity-10 text-[var(--p-primary-color)]'
+              ? 'border-[var(--p-primary-color)] bg-[var(--p-primary-color)]/10 text-[var(--p-primary-color)]'
               : 'border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-700 dark:text-gray-300 hover:border-gray-300 dark:hover:border-zinc-600',
           ]"
           @click.stop="emit('react', messageItem!.message, group.reactionId)"

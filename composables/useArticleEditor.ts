@@ -2,7 +2,17 @@ import type { Article, ArticleTag, PostVisibility  } from '~/types/api'
 
 type SaveStatus = 'idle' | 'saving' | 'saved' | 'error'
 
-export function useArticleEditor(initialArticle: Ref<Article | null>) {
+/** Quiet period after the last edit before autosaving. */
+const AUTOSAVE_DEBOUNCE_MS = 2000
+/** Ceiling on the debounce so sustained typing still checkpoints on a fixed cadence. */
+const AUTOSAVE_MAX_WAIT_MS = 10000
+
+type ArticleEditorOptions = {
+  /** Called once the draft row is first persisted, so the page can swap `/articles/new` for the edit URL. */
+  onCreated?: (article: Article) => void
+}
+
+export function useArticleEditor(initialArticle: Ref<Article | null>, options: ArticleEditorOptions = {}) {
   const { apiFetchData } = useApiClient()
 
   const article = ref<Article | null>(initialArticle.value ? { ...initialArticle.value } : null)
@@ -49,25 +59,91 @@ export function useArticleEditor(initialArticle: Ref<Article | null>) {
     }
   }
 
+  /**
+   * Anything a reader would perceive as work. The draft row is not created until this
+   * is true, so opening the editor and walking away leaves nothing behind.
+   */
+  const hasContent = computed(
+    () =>
+      title.value.trim().length > 0
+      || !isBodyEmpty(body.value)
+      || !!thumbnailR2Key.value
+      || tags.value.length > 0,
+  )
+
   let debounceTimer: ReturnType<typeof setTimeout> | null = null
+  let maxWaitTimer: ReturnType<typeof setTimeout> | null = null
+  let inFlight: Promise<void> | null = null
+  let resaveQueued = false
+  let createRequest: Promise<Article | null> | null = null
+
+  function clearTimers() {
+    if (debounceTimer) { clearTimeout(debounceTimer); debounceTimer = null }
+    if (maxWaitTimer) { clearTimeout(maxWaitTimer); maxWaitTimer = null }
+  }
 
   function markDirty() {
     isDirty.value = true
-    scheduleAutoSave()
-  }
-
-  function scheduleAutoSave(delay = 3000) {
     if (debounceTimer) clearTimeout(debounceTimer)
-    debounceTimer = setTimeout(() => save(), delay)
+    debounceTimer = setTimeout(() => void save(), AUTOSAVE_DEBOUNCE_MS)
+    if (!maxWaitTimer) maxWaitTimer = setTimeout(() => void save(), AUTOSAVE_MAX_WAIT_MS)
   }
 
-  async function save() {
-    if (debounceTimer) { clearTimeout(debounceTimer); debounceTimer = null }
-    if (!article.value?.id) return
-    if (!title.value.trim() && isBodyEmpty(body.value)) return
-    saveStatus.value = 'saving'
+  async function createDraft(): Promise<Article | null> {
+    if (article.value?.id) return article.value
+    if (!createRequest) {
+      createRequest = apiFetchData<Article>('/articles', {
+        method: 'POST',
+        body: { title: title.value.trim(), visibility: visibility.value },
+      })
+        .then((created) => {
+          article.value = created
+          options.onCreated?.(created)
+          return created
+        })
+        .catch(() => {
+          // Let the next autosave retry instead of wedging the editor permanently.
+          createRequest = null
+          return null
+        })
+    }
+    return createRequest
+  }
+
+  async function save(): Promise<void> {
+    clearTimers()
+    // Emptiness gates creation only. Once the row exists every save must go through,
+    // otherwise clearing an article back to nothing would never persist.
+    if (!article.value?.id && !hasContent.value) {
+      isDirty.value = false
+      return
+    }
+    if (inFlight) {
+      // Coalesce: fold this call into the running save and re-run once afterwards.
+      resaveQueued = true
+      return inFlight
+    }
+    inFlight = runSave()
     try {
-      const updated = await apiFetchData<Article>(`/articles/${article.value.id}/save`, {
+      await inFlight
+    } finally {
+      inFlight = null
+      if (resaveQueued) {
+        resaveQueued = false
+        void save()
+      }
+    }
+  }
+
+  async function runSave(): Promise<void> {
+    saveStatus.value = 'saving'
+    const target = article.value?.id ? article.value : await createDraft()
+    if (!target?.id) {
+      saveStatus.value = 'error'
+      return
+    }
+    try {
+      const updated = await apiFetchData<Article>(`/articles/${target.id}/save`, {
         method: 'PATCH',
         body: {
           title: title.value,
@@ -90,11 +166,12 @@ export function useArticleEditor(initialArticle: Ref<Article | null>) {
   }
 
   async function publish() {
-    if (!article.value?.id) return null
-    if (isDirty.value) await save()
+    if (isDirty.value || !article.value?.id) await save()
+    const articleId = article.value?.id
+    if (!articleId) return null
     publishing.value = true
     try {
-      const updated = await apiFetchData<Article>(`/articles/${article.value.id}/publish`, { method: 'POST' })
+      const updated = await apiFetchData<Article>(`/articles/${articleId}/publish`, { method: 'POST' })
       article.value = updated
       isDirty.value = false
       return updated
@@ -108,16 +185,34 @@ export function useArticleEditor(initialArticle: Ref<Article | null>) {
     return `Saved at ${lastSavedAt.value.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
   })
 
-  // Bug 3 fix: flush dirty changes on unmount instead of silently dropping them
+  /** Persist pending edits now, skipping the debounce. Safe to call repeatedly. */
+  function flush() {
+    if (!isDirty.value) return
+    void save()
+  }
+
+  // `visibilitychange` is the only teardown signal mobile browsers fire reliably —
+  // `beforeunload` is skipped when a tab is discarded or the app is backgrounded.
+  function onVisibilityChange() {
+    if (document.visibilityState === 'hidden') flush()
+  }
+
+  onMounted(() => {
+    document.addEventListener('visibilitychange', onVisibilityChange)
+    window.addEventListener('pagehide', flush)
+  })
+
   onBeforeUnmount(() => {
-    if (debounceTimer) clearTimeout(debounceTimer)
-    if (isDirty.value && article.value?.id) {
-      void save()
-    }
+    document.removeEventListener('visibilitychange', onVisibilityChange)
+    window.removeEventListener('pagehide', flush)
+    clearTimers()
+    // In-app navigation: the request outlives the component, so a plain save is enough.
+    flush()
   })
 
   return {
     article,
+    hasContent,
     title,
     body,
     thumbnailUrl,

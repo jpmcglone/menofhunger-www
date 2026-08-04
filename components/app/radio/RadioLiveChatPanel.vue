@@ -41,7 +41,7 @@
         aria-hidden="true"
       >
         <div
-          class="w-full rounded-full transition-[height,transform] duration-150 ease-out will-change-transform"
+          class="w-full rounded-full transition-[height] duration-150 ease-out will-change-transform"
           :style="scrollPillThumbStyle"
         />
       </div>
@@ -86,6 +86,7 @@ import { userColorTier } from '~/utils/user-tier'
 import type { CreateMediaPayload } from '~/composables/composer/types'
 import type { FollowListUser, SpaceChatMediaItem } from '~/types/api'
 import { useSpaceChatUnread } from '~/composables/useSpaceChatUnread'
+import { useScrollPill } from '~/composables/useScrollPill'
 
 withDefaults(defineProps<{ showHeader?: boolean }>(), {
   showHeader: true,
@@ -181,24 +182,11 @@ function mediaPayloadsToChat(payloads: CreateMediaPayload[]): SpaceChatMediaItem
   return out
 }
 
-const scrollPillTopPx = ref(0)
-const scrollPillHeightPx = ref(0)
-const scrollPillVisible = ref(false)
-let scrollPillHideTimer: ReturnType<typeof setTimeout> | null = null
-let lastUserScrollIntentAt = 0
-const USER_SCROLL_GRACE_MS = 2000
-
 function scheduleAfterFrame(fn: () => void) {
   if (!import.meta.client) return
   if (typeof requestAnimationFrame === 'function') requestAnimationFrame(fn)
   else setTimeout(fn, 0)
 }
-
-const scrollPillNeeded = computed(() => {
-  const el = scrollerEl.value
-  if (!el) return false
-  return el.scrollHeight > el.clientHeight + 1
-})
 
 const scrollPillColor = computed(() => {
   const tier = userColorTier(user.value as any)
@@ -208,64 +196,15 @@ const scrollPillColor = computed(() => {
   return 'rgba(148, 163, 184, 0.9)' // neutral
 })
 
-const scrollPillThumbStyle = computed<Record<string, string>>(() => {
-  const h = Math.max(0, Math.floor(scrollPillHeightPx.value))
-  const y = Math.max(0, Math.floor(scrollPillTopPx.value))
-  return {
-    height: `${h}px`,
-    transform: `translateY(${y}px)`,
-    background: scrollPillColor.value,
-  }
-})
-
-function updateScrollPill() {
-  const el = scrollerEl.value
-  if (!el) return
-  // Overlay track is `top-2 bottom-2` => 8px inset each side.
-  const insetPx = 8
-  const trackH = Math.max(0, el.clientHeight - insetPx * 2)
-  const scrollable = Math.max(1, el.scrollHeight - el.clientHeight)
-  if (trackH <= 0 || el.scrollHeight <= el.clientHeight + 1) {
-    scrollPillHeightPx.value = 0
-    scrollPillTopPx.value = 0
-    scrollPillVisible.value = false
-    return
-  }
-  const ratio = el.clientHeight / el.scrollHeight
-  const minThumb = 18
-  const thumbH = Math.min(trackH, Math.max(minThumb, Math.floor(trackH * ratio)))
-  const maxTop = Math.max(0, trackH - thumbH)
-  const scrollRatio = el.scrollTop / scrollable
-  scrollPillHeightPx.value = thumbH
-  scrollPillTopPx.value = Math.floor(maxTop * scrollRatio)
-}
-
-function kickScrollPillVisibility() {
-  if (!scrollPillNeeded.value) {
-    scrollPillVisible.value = false
-    return
-  }
-  scrollPillVisible.value = true
-  if (scrollPillHideTimer) clearTimeout(scrollPillHideTimer)
-  scrollPillHideTimer = setTimeout(() => {
-    scrollPillHideTimer = null
-    scrollPillVisible.value = false
-  }, 1200)
-}
-
-function markUserScrollIntent() {
-  if (!import.meta.client) return
-  lastUserScrollIntentAt = Date.now()
-  kickScrollPillVisibility()
-}
-
-function onScrollerScroll() {
-  updateScrollPill()
-  // Only show pill for user-driven scrolling (programmatic scrolls shouldn't surface it).
-  if (import.meta.client && Date.now() - lastUserScrollIntentAt < USER_SCROLL_GRACE_MS) {
-    kickScrollPillVisibility()
-  }
-}
+const {
+  needed: scrollPillNeeded,
+  visible: scrollPillVisible,
+  thumbStyle: scrollPillThumbStyle,
+  measure: updateScrollPill,
+  onScroll: onScrollerScroll,
+  markUserScrollIntent,
+  teardown: teardownScrollPill,
+} = useScrollPill({ scroller: scrollerEl, color: scrollPillColor })
 
 let scrollPillRo: ResizeObserver | null = null
 watch(
@@ -437,10 +376,7 @@ watch(
 )
 
 onBeforeUnmount(() => {
-  if (scrollPillHideTimer) {
-    clearTimeout(scrollPillHideTimer)
-    scrollPillHideTimer = null
-  }
+  teardownScrollPill()
   if (scrollPillRo) {
     scrollPillRo.disconnect()
     scrollPillRo = null

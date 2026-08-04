@@ -1,29 +1,22 @@
 <template>
   <div>
-    <div v-if="creating" class="flex min-h-screen items-center justify-center">
+    <div v-if="checkingAccess" class="flex min-h-screen items-center justify-center">
       <Icon name="tabler:loader-2" class="animate-spin text-2xl text-gray-400" aria-hidden="true" />
     </div>
-    <div v-else-if="createError" class="flex min-h-screen items-center justify-center px-4 text-center text-sm text-red-500">
-      {{ createError }}
-    </div>
-    <AppArticleEditorPage v-else-if="article" :article="article" />
+    <AppArticleEditorPage v-else :article="null" @created="onDraftCreated" />
   </div>
 </template>
 
 <script setup lang="ts">
 import type { Article } from '~/types/api'
-import { getSafeUserErrorMessage } from '~/utils/api-error'
 
 definePageMeta({ layout: 'app', title: 'New Article', hideTopBar: true, ssr: false })
 
 usePageSeo({ title: 'New Article', noindex: true })
 
 const { isVerifiedMember, ensureLoaded } = useAuth()
-const { apiFetchData } = useApiClient()
 
-const creating = ref(true)
-const createError = ref<string | null>(null)
-const article = ref<Article | null>(null)
+const checkingAccess = ref(true)
 
 onMounted(async () => {
   await ensureLoaded()
@@ -31,13 +24,13 @@ onMounted(async () => {
     await navigateTo('/articles', { replace: true })
     return
   }
-  try {
-    const draft = await apiFetchData<Article>('/articles', { method: 'POST', body: { title: '' } })
-    // Navigate to the edit page directly — no double-mount, no wasted re-fetch
-    await navigateTo(`/articles/edit/${draft.id}`, { replace: true })
-  } catch (e: any) {
-    createError.value = getSafeUserErrorMessage(e, 'Could not create article. Please try again.')
-    creating.value = false
-  }
+  checkingAccess.value = false
 })
+
+// The editor creates the draft row on its first real content, not on mount. Swap the URL
+// in place so a refresh lands on the saved article; a router navigation would remount the
+// editor and drop the caret mid-sentence.
+function onDraftCreated(article: Article) {
+  window.history.replaceState(window.history.state, '', `/articles/edit/${article.id}`)
+}
 </script>

@@ -5,9 +5,9 @@
  */
 
 // IMPORTANT: bump this whenever caching logic changes so old caches are purged.
-self.__MOH_SW_VERSION = 'moh-sw-dev-1785795257790';
+self.__MOH_SW_VERSION = 'moh-sw-dev-1785811088891';
 const CACHE_PREFIX = 'moh-sw'
-const NUxT_ASSETS_CACHE = `${CACHE_PREFIX}:nuxt:${self.__MOH_SW_VERSION}`
+const NUXT_ASSETS_CACHE = `${CACHE_PREFIX}:nuxt:${self.__MOH_SW_VERSION}`
 const STATIC_ASSETS_CACHE = `${CACHE_PREFIX}:static:${self.__MOH_SW_VERSION}`
 
 function isCacheablePath(pathname) {
@@ -23,18 +23,29 @@ function isCacheablePath(pathname) {
     host === '::1' ||
     host.endsWith('.local')
 
-  if (!isLocalhost && pathname.startsWith('/_nuxt/')) return { cacheName: NUxT_ASSETS_CACHE }
+  // Nuxt's app manifest lives under /_nuxt/ but is NOT content-addressed: it is a
+  // fixed path rewritten every build, and the file Nuxt polls to detect a new
+  // deployment. Cache-first here would serve the stale manifest indefinitely, so
+  // the app would never learn a new build shipped. Must always hit the network.
+  if (pathname.startsWith('/_nuxt/builds/')) return null
+
+  if (!isLocalhost && pathname.startsWith('/_nuxt/')) return { cacheName: NUXT_ASSETS_CACHE }
   if (pathname.startsWith('/images/')) return { cacheName: STATIC_ASSETS_CACHE }
   // DEV SAFETY: don't cache sounds on localhost (otherwise edits can appear "stuck" due to SW cache).
   if (!isLocalhost && pathname.startsWith('/sounds/')) return { cacheName: STATIC_ASSETS_CACHE }
   if (pathname.startsWith('/cursors/')) return { cacheName: STATIC_ASSETS_CACHE }
 
-  // Icons/manifest
+  // Same problem as /_nuxt/builds/ above: a fixed path whose contents change between
+  // deploys. Cache-first would pin the app's name, start_url, and icons to whatever
+  // shipped the first time a visitor loaded the site. It is a few hundred bytes and is
+  // requested rarely, so always go to the network.
+  if (pathname === '/site.webmanifest') return null
+
+  // Icons
   // DEV SAFETY:
   // Avoid caching these on localhost because browsers can request favicons in surprising ways
   // (and "hard reload" semantics differ from normal reload), leading to confusing stale icons.
   if (!isLocalhost) {
-    if (pathname === '/site.webmanifest') return { cacheName: STATIC_ASSETS_CACHE }
     if (pathname.startsWith('/android-chrome-')) return { cacheName: STATIC_ASSETS_CACHE }
     if (pathname.startsWith('/apple-touch-icon')) return { cacheName: STATIC_ASSETS_CACHE }
     if (pathname.startsWith('/favicon')) return { cacheName: STATIC_ASSETS_CACHE }
@@ -100,8 +111,10 @@ async function cacheFirst(request, cacheName) {
   if (cached) return cached
 
   const res = await fetch(request)
-  // Only cache successful same-origin GETs.
-  if (res && res.ok) {
+  // Status 200 specifically, not `res.ok`: that also covers 206 Partial Content
+  // (range requests against /sounds/), which `cache.put` rejects outright. The
+  // rejection was swallowed below, so this just avoids the pointless clone.
+  if (res && res.status === 200) {
     cache.put(request, res.clone()).catch(function () {})
   }
   return res
@@ -120,7 +133,7 @@ self.addEventListener('activate', function (event) {
           return Promise.all(
             keys
               .filter(function (k) {
-                return k.startsWith(CACHE_PREFIX) && k !== NUxT_ASSETS_CACHE && k !== STATIC_ASSETS_CACHE
+                return k.startsWith(CACHE_PREFIX) && k !== NUXT_ASSETS_CACHE && k !== STATIC_ASSETS_CACHE
               })
               .map(function (k) {
                 return caches.delete(k)
@@ -146,10 +159,13 @@ self.addEventListener('fetch', function (event) {
   // Never cache API requests (cookie-auth + personalized responses).
   if (url.origin === self.location.origin && url.pathname.startsWith('/api/')) return
 
-  // If cookies are present, bypass cache to avoid leaking personalized responses.
-  if (req.headers.get('cookie')) return
-
   // Only cache same-origin static assets.
+  //
+  // Note: there is deliberately no cookie check here. `Cookie` is a forbidden
+  // header name, so it is never exposed on a Request in a fetch handler and any
+  // such test would silently always pass. What actually keeps personalized
+  // responses out of the cache is `isCacheablePath` being a strict allowlist of
+  // static asset prefixes — keep it that way.
   if (url.origin !== self.location.origin) return
 
   const cacheInfo = isCacheablePath(url.pathname)

@@ -73,7 +73,7 @@
       aria-hidden="true"
     >
       <div
-        class="w-full rounded-full transition-[height,transform] duration-150 ease-out will-change-transform"
+        class="w-full rounded-full transition-[height] duration-150 ease-out will-change-transform"
         :style="scrollPillThumbStyle"
       />
     </div>

@@ -1,9 +1,14 @@
 import { ref, computed, type Ref, type ComputedRef } from 'vue'
 import { userColorTier } from '~/utils/user-tier'
+import { useScrollPill } from '~/composables/useScrollPill'
 import type { AuthUser } from '~/composables/useAuth'
 
 export const BOTTOM_THRESHOLD = 24
-const USER_SCROLL_GRACE_MS = 2000
+/**
+ * A gesture within this window counts as the user driving the scroll, which is
+ * the only thing allowed to release the bottom anchor.
+ */
+const USER_GESTURE_WINDOW_MS = 2000
 
 export interface UseChatScrollOptions {
   messagesScroller: Ref<HTMLElement | null>
@@ -35,14 +40,27 @@ export function useChatScroll(opts: UseChatScrollOptions) {
 
   const atBottom = ref(true)
   const isAutoScrollingToBottom = ref(false)
-  const scrollPillTopPx = ref(0)
-  const scrollPillHeightPx = ref(0)
-  const scrollPillVisible = ref(false)
+
+  /**
+   * Whether the view is anchored to the newest message.
+   *
+   * This is an *intent*, deliberately not derived from the measured scroll
+   * position. The message list is virtualized: rows mount at an estimated
+   * height and are remeasured over the following frames, so right after a chat
+   * opens the measured position is unreliable and frequently reads as "not at
+   * the bottom" purely because the content grew underneath us. Deriving the
+   * anchor from that measurement is what stranded chats mid-history — once the
+   * position drifted, the thing meant to recover it had already concluded the
+   * user was reading history and gave up.
+   *
+   * So: while this is true, any content growth re-pins to the bottom, which is
+   * what makes content appear to grow upward. Only a real user gesture clears it.
+   */
+  const pinnedToBottom = ref(true)
+  let lastUserGestureAt = 0
 
   const scrollTopByChatKey = new Map<string, number>()
-  let scrollPillHideTimer: ReturnType<typeof setTimeout> | null = null
   let autoScrollToBottomTimer: ReturnType<typeof setTimeout> | null = null
-  let lastUserScrollIntentAt = 0
   let bottomAnchorRo: ResizeObserver | null = null
   let scrollerSizeRo: ResizeObserver | null = null
   let observedScrollerContentEl: HTMLElement | null = null
@@ -50,12 +68,6 @@ export function useChatScroll(opts: UseChatScrollOptions) {
   let lastScrollerClientHeight = 0
 
   // ─── Computed ────────────────────────────────────────────────────────────────
-
-  const scrollPillNeeded = computed(() => {
-    const el = messagesScroller.value
-    if (!el) return false
-    return el.scrollHeight > el.clientHeight + 1
-  })
 
   const scrollPillColor = computed(() => {
     const tier = userColorTier(me.value as any)
@@ -65,14 +77,30 @@ export function useChatScroll(opts: UseChatScrollOptions) {
     return 'rgba(148, 163, 184, 0.9)'
   })
 
-  const scrollPillThumbStyle = computed<Record<string, string>>(() => {
-    const h = Math.max(0, Math.floor(scrollPillHeightPx.value))
-    const y = Math.max(0, Math.floor(scrollPillTopPx.value))
-    return {
-      height: `${h}px`,
-      transform: `translateY(${y}px)`,
-      background: scrollPillColor.value,
-    }
+  // `hadPending` must be sampled by the caller before `atBottom` updates. Scroll
+  // work is coalesced per frame, so stash it here and let the frame consume it.
+  let coalescedHadPending = false
+
+  const pill = useScrollPill({
+    scroller: messagesScroller,
+    color: scrollPillColor,
+    onFrame: () => {
+      const hadPending = coalescedHadPending
+      coalescedHadPending = false
+      const wasAtBottom = atBottom.value
+      const bottom = refreshAtBottomFromScroller()
+      if (bottom) {
+        const convoId = selectedConversationId.value
+        if (!wasAtBottom && convoId) onReachedBottom?.(convoId, hadPending)
+      }
+      // Only a user gesture moves the anchor. Programmatic scrolls and the
+      // reflow from virtualized rows being remeasured must not release it,
+      // otherwise remeasurement during open would unpin us immediately.
+      if (Date.now() - lastUserGestureAt < USER_GESTURE_WINDOW_MS) {
+        pinnedToBottom.value = bottom
+      }
+      onUpdateStickyDivider?.()
+    },
   })
 
   const showScrollToBottomButton = computed(() =>
@@ -98,40 +126,6 @@ export function useChatScroll(opts: UseChatScrollOptions) {
     let b = behavior
     if (b === 'smooth' && (prefersReducedMotion.value || typeof window === 'undefined')) b = 'auto'
     el.scrollTo({ top: el.scrollHeight, behavior: b })
-  }
-
-  function updateScrollPill() {
-    const el = messagesScroller.value
-    if (!el) return
-    const insetPx = 8
-    const trackH = Math.max(0, el.clientHeight - insetPx * 2)
-    const scrollable = Math.max(1, el.scrollHeight - el.clientHeight)
-    if (trackH <= 0 || el.scrollHeight <= el.clientHeight + 1) {
-      scrollPillHeightPx.value = 0
-      scrollPillTopPx.value = 0
-      scrollPillVisible.value = false
-      return
-    }
-    const ratio = el.clientHeight / el.scrollHeight
-    const minThumb = 18
-    const thumbH = Math.min(trackH, Math.max(minThumb, Math.floor(trackH * ratio)))
-    const maxTop = Math.max(0, trackH - thumbH)
-    const scrollRatio = el.scrollTop / scrollable
-    scrollPillHeightPx.value = thumbH
-    scrollPillTopPx.value = Math.floor(maxTop * scrollRatio)
-  }
-
-  function kickScrollPillVisibility() {
-    if (!scrollPillNeeded.value) {
-      scrollPillVisible.value = false
-      return
-    }
-    scrollPillVisible.value = true
-    if (scrollPillHideTimer) clearTimeout(scrollPillHideTimer)
-    scrollPillHideTimer = setTimeout(() => {
-      scrollPillHideTimer = null
-      scrollPillVisible.value = false
-    }, 1200)
   }
 
   function clearAutoScrollToBottomState() {
@@ -199,6 +193,9 @@ export function useChatScroll(opts: UseChatScrollOptions) {
     if (ifNearBottom && !atBottom.value && !isAtBottom()) return false
     if (userInitiated && behavior === 'smooth') beginAutoScrollToBottomState()
 
+    // Any deliberate jump to the bottom re-establishes the anchor, so content
+    // that reflows afterwards keeps the newest message in view.
+    pinnedToBottom.value = true
     scrollToBottom(behavior)
     requestAnimationFrame(() => {
       if (includeExtraFrame) {
@@ -206,47 +203,55 @@ export function useChatScroll(opts: UseChatScrollOptions) {
         requestAnimationFrame(() => {
           scrollToBottom('auto')
           refreshAtBottomFromScroller()
-          updateScrollPill()
+          pill.measure()
         })
         return
       }
       refreshAtBottomFromScroller()
-      updateScrollPill()
+      pill.measure()
     })
     return true
   }
 
   function markUserScrollIntent() {
     if (!import.meta.client) return
+    // Opens the window in which the resulting scroll position is allowed to
+    // move the anchor. Where they land is resolved by the next scroll frame.
+    lastUserGestureAt = Date.now()
     if (isAutoScrollingToBottom.value) clearAutoScrollToBottomState()
-    lastUserScrollIntentAt = Date.now()
-    kickScrollPillVisibility()
+    pill.markUserScrollIntent()
   }
 
   function getScrollerContentEl(scroller: HTMLElement): HTMLElement | null {
     return (scroller.firstElementChild as HTMLElement | null) ?? null
   }
 
+  /**
+   * Re-pin to the bottom whenever content grows while anchored.
+   *
+   * Runs inside the ResizeObserver callback, which fires after layout but before
+   * paint, so the correction lands in the same frame as the growth. The user
+   * never sees an intermediate position — the content simply appears to extend
+   * upward while the newest message stays put.
+   */
   function maybeStickToBottomOnContentGrowth(scroller: HTMLElement) {
     const contentEl = getScrollerContentEl(scroller)
     if (!contentEl) return
 
     const previousHeight = lastMeasuredScrollHeight
     const nowHeight = scroller.scrollHeight
-    const grew = nowHeight > previousHeight
 
     // Keep the baseline in sync on both growth and shrink so future growth checks
     // remain accurate even when content reflows in both directions.
     lastMeasuredScrollHeight = nowHeight
 
-    if (!grew) return
+    if (nowHeight <= previousHeight) return
+    if (!pinnedToBottom.value) return
 
-    // Anchor when we were pinned (or near-pinned) before growth. This keeps the
-    // viewport glued to the latest messages as bubble content re-measures.
-    const wasNearBottomBeforeGrowth = previousHeight - scroller.scrollTop - scroller.clientHeight <= BOTTOM_THRESHOLD
-    if (!atBottom.value && !wasNearBottomBeforeGrowth) return
-
-    stickToBottom({ behavior: 'auto', ifNearBottom: true })
+    // Only move the scroller. The resulting scroll event drives `atBottom` and
+    // the not-at-bottom -> at-bottom transition that marks the chat read; setting
+    // it here would swallow that edge and leave the conversation unread.
+    scroller.scrollTop = nowHeight
   }
 
   function observeScrollerForBottomAnchoring(scroller: HTMLElement) {
@@ -281,8 +286,8 @@ export function useChatScroll(opts: UseChatScrollOptions) {
       const currentHeight = scroller.clientHeight
       const shrank = currentHeight < lastScrollerClientHeight
       lastScrollerClientHeight = currentHeight
-      if (shrank && atBottom.value) {
-        stickToBottom({ behavior: 'auto' })
+      if (shrank && pinnedToBottom.value) {
+        scroller.scrollTop = scroller.scrollHeight
       }
     })
     scrollerSizeRo.observe(scroller)
@@ -300,7 +305,7 @@ export function useChatScroll(opts: UseChatScrollOptions) {
       scroller.scrollTop = nextTop
       observeScrollerForBottomAnchoring(scroller)
       onUpdateStickyDivider?.()
-      updateScrollPill()
+      pill.measure()
       const bottom = refreshAtBottomFromScroller()
       if (bottom) {
         const normalizedChatKey = normalizeChatKey(chatKey)
@@ -308,24 +313,17 @@ export function useChatScroll(opts: UseChatScrollOptions) {
           onReachedBottom?.(normalizedChatKey, false)
         }
       }
+      // Anchor when opening at the latest message, or when the restored position
+      // was itself the bottom. A restored mid-history position is a deliberate
+      // target, so anchoring there would throw the user's place away.
+      pinnedToBottom.value = cachedTop == null || bottom
       onScrollerMountedReady?.()
     })
   }
 
   function onMessagesScroll(opts: { hadPending: boolean }) {
-    const wasAtBottom = atBottom.value
-    const bottom = refreshAtBottomFromScroller()
-    if (bottom) {
-      const convoId = selectedConversationId.value
-      if (!wasAtBottom && convoId) {
-        onReachedBottom?.(convoId, opts.hadPending)
-      }
-    }
-    onUpdateStickyDivider?.()
-    updateScrollPill()
-    if (import.meta.client && Date.now() - lastUserScrollIntentAt < USER_SCROLL_GRACE_MS) {
-      kickScrollPillVisibility()
-    }
+    if (opts.hadPending) coalescedHadPending = true
+    pill.onScroll()
   }
 
   function teardown() {
@@ -334,7 +332,7 @@ export function useChatScroll(opts: UseChatScrollOptions) {
     scrollerSizeRo?.disconnect()
     scrollerSizeRo = null
     observedScrollerContentEl = null
-    if (scrollPillHideTimer) { clearTimeout(scrollPillHideTimer); scrollPillHideTimer = null }
+    pill.teardown()
     if (autoScrollToBottomTimer) { clearTimeout(autoScrollToBottomTimer); autoScrollToBottomTimer = null }
   }
 
@@ -342,13 +340,13 @@ export function useChatScroll(opts: UseChatScrollOptions) {
     // State
     atBottom,
     isAutoScrollingToBottom,
-    scrollPillTopPx,
-    scrollPillHeightPx,
-    scrollPillVisible,
+    scrollPillTopPx: pill.topPx,
+    scrollPillHeightPx: pill.heightPx,
+    scrollPillVisible: pill.visible,
     // Computed
-    scrollPillNeeded,
+    scrollPillNeeded: pill.needed,
     scrollPillColor,
-    scrollPillThumbStyle,
+    scrollPillThumbStyle: pill.thumbStyle,
     showScrollToBottomButton,
     // Cache helpers
     cacheScrollTopForChatKey,
@@ -362,8 +360,8 @@ export function useChatScroll(opts: UseChatScrollOptions) {
     setAtBottomState,
     refreshAtBottomFromScroller,
     markUserScrollIntent,
-    kickScrollPillVisibility,
-    updateScrollPill,
+    kickScrollPillVisibility: pill.kickVisibility,
+    updateScrollPill: pill.measure,
     // Mount/observer
     observeScrollerForBottomAnchoring,
     onMessagesScrollerMounted,

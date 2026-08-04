@@ -449,6 +449,17 @@ export default defineNuxtConfig({
         'cache-control': 'public, max-age=31536000, immutable',
       },
     },
+    // Exception to the `immutable` rule above. This is Nuxt's app manifest — a
+    // fixed path whose contents change every build, and the file Nuxt polls
+    // (`experimental.checkOutdatedBuildInterval`) to notice a new deployment.
+    // Serving it `immutable` pins clients to the build they first loaded and
+    // silently disables outdated-build detection. Sibling `builds/meta/<id>.json`
+    // files ARE content-addressed, so they keep the long-lived rule.
+    '/_nuxt/builds/latest.json': {
+      headers: {
+        'cache-control': 'public, max-age=0, must-revalidate',
+      },
+    },
     // Nuxt Image (IPX) transformation output. Safe to cache at the edge (URLs include params).
     '/_ipx/**': {
       headers: {

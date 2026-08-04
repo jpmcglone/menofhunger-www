@@ -10,7 +10,7 @@
         :class="[
           'flex h-9 w-9 items-center justify-center rounded-xl text-lg transition-[transform,background-color,box-shadow] duration-150 ease-out',
           activeReactionIds.has(reaction.id)
-            ? 'bg-[var(--p-primary-color)] bg-opacity-20 scale-110 ring-1 ring-[var(--p-primary-color)] ring-opacity-40'
+            ? 'bg-[var(--p-primary-color)]/20 scale-110 ring-1 ring-[var(--p-primary-color)]/40'
             : 'hover:bg-gray-100 dark:hover:bg-zinc-700 hover:scale-110 active:scale-95',
         ]"
         @click="onSelect(reaction.id)"
