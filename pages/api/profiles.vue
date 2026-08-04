@@ -96,7 +96,7 @@ const fields: ApiDocsField[] = [
   { name: 'verifiedStatus', type: '"none" | "identity" | "manual"' },
   { name: 'premium / premiumPlus / isOrganization', type: 'boolean' },
   { name: 'locationDisplay', type: 'string | null', note: 'Whatever the member chose to show publicly.' },
-  { name: 'postCount / articleCount', type: 'number' },
+  { name: 'postCount / articleCount', type: 'number', note: 'Published totals. Drafts, deleted items, and private "only me" posts are not counted.' },
   { name: 'checkinStreakDays / longestStreakDays', type: 'number' },
   { name: 'pinnedPostId', type: 'string | null', note: 'Feed it back into /public/posts/:id.' },
   { name: 'createdAt', type: 'ISO 8601 string' },

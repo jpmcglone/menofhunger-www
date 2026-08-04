@@ -91,6 +91,8 @@ export type BillingMe = {
     avatarUrl: string | null
     premium: boolean
     premiumPlus: boolean
+    /** The recruiter's own opt-out for the steward shield; clients must honor it. */
+    stewardBadgeEnabled: boolean
     verifiedStatus: 'none' | 'identity' | 'manual'
   } | null
   /** How many users this user has recruited. */

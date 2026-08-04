@@ -179,6 +179,7 @@
                   :status="billingMe.recruiter.verifiedStatus"
                   :premium="billingMe.recruiter.premium"
                   :premium-plus="billingMe.recruiter.premiumPlus"
+                  :steward-badge-enabled="billingMe.recruiter.stewardBadgeEnabled"
                   size="xs"
                 />
               </div>

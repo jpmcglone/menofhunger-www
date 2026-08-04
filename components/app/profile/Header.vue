@@ -284,9 +284,14 @@
             @click="togglePostBell"
           >
             <template #icon>
+              <!--
+                Tabler's bell is 16 grid units wide against message-circle's 18, so at a
+                shared 1em it reads smaller than the icons beside it. Colour is inherited
+                like its neighbours; filled vs outline carries the on/off state.
+              -->
               <Icon
                 :name="bellEnabled ? 'tabler:bell-filled' : 'tabler:bell'"
-                :class="bellEnabled ? bellEnabledIconClass : ''"
+                class="text-[1.1em]"
                 aria-hidden="true"
               />
             </template>
@@ -531,7 +536,6 @@ import { useCopyToClipboard } from '~/composables/useCopyToClipboard'
 
 const crewAvatarRound = crewAvatarRoundClass()
 import { userColorTier } from '~/utils/user-tier'
-import { PRIMARY_PREMIUM_ORANGE, PRIMARY_VERIFIED_BLUE } from '~/utils/theme-tint'
 
 const props = defineProps<{
   profile: PublicProfile | null
@@ -735,19 +739,6 @@ const showPostBell = computed(() => {
   if (isSelf.value) return false
   if (!profile.value?.id || !profile.value?.username) return false
   return viewerFollowsUser.value
-})
-
-const profileTier = computed(() => userColorTier(profile.value))
-const bellEnabledIconClass = computed(() => {
-  if (!bellEnabled.value) return ''
-  const tier = profileTier.value
-  // Orgs are silver.
-  if (tier === 'organization') return '!text-[#313643]'
-  // Use fixed colors so org viewer theme can't override target tier.
-  if (tier === 'premium') return `!text-[${PRIMARY_PREMIUM_ORANGE[500]}]`
-  if (tier === 'verified') return `!text-[${PRIMARY_VERIFIED_BLUE[500]}]`
-  // Normal: neutral foreground
-  return '!text-gray-900 dark:!text-gray-50'
 })
 
 const bellInflight = computed(() => Boolean(followState.inflight.value[`follow-bell:${profile.value?.id ?? ''}`]))

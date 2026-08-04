@@ -470,6 +470,7 @@ export type ImpersonationDto = {
 };
 
 export type AuthMeDto = UserDto & {
+  /** Published, non-deleted posts excluding only-me. Matches the profile total. */
   postCount: number | null;
   articleCount: number | null;
   /** Non-null only while a site admin is impersonating this user. */
@@ -542,6 +543,8 @@ export type BillingMeDto = {
     avatarUrl: string | null;
     premium: boolean;
     premiumPlus: boolean;
+    /** The recruiter's own opt-out for the steward shield; clients must honor it. */
+    stewardBadgeEnabled: boolean;
     verifiedStatus: 'none' | 'identity' | 'manual';
   } | null;
   /** How many users this user has recruited. */
@@ -549,8 +552,10 @@ export type BillingMeDto = {
   /** Whether the one-time referral bonus has been granted to this user. */
   referralBonusGranted: boolean;
   /**
-   * True when the viewer was recruited by a paying subscriber and has not yet triggered
-   * the bonus — meaning their first Premium payment will also earn them a free month.
+   * True when the viewer was recruited by someone who is currently a paying subscriber,
+   * meaning their first Premium payment will earn them a free second month.
+   * False when there is no recruiter, the recruiter is not paying, or the bonus has
+   * already been granted.
    */
   recruitBonusEligible: boolean;
 };
@@ -1572,7 +1577,7 @@ export type PublicProfileDto = {
   lastOnlineAt: string | null;
   checkinStreakDays: number;
   longestStreakDays: number;
-  /** All published, non-deleted posts; present on full HTTP profiles. */
+  /** Published, non-deleted posts excluding only-me; present on full HTTP profiles. */
   postCount?: number;
   /** Published article total; present on full HTTP profiles and optional on realtime patches. */
   articleCount?: number;

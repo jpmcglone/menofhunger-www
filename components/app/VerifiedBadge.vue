@@ -34,12 +34,18 @@ const props = withDefaults(
     premium?: boolean
     premiumPlus?: boolean
     isOrganization?: boolean
+    /**
+     * The member's own opt-out for the steward shield. Defaults to `false`: a
+     * caller that forgets to pass it hides the badge rather than advertising a
+     * status the member may have switched off. Any caller that passes
+     * `premiumPlus` must pass this too — enforced by `tests/steward-badge-guardrails.test.ts`.
+     */
     stewardBadgeEnabled?: boolean
     size?: Size
     showTooltip?: boolean
     isBot?: boolean
   }>(),
-  { size: 'sm', premium: false, premiumPlus: false, isOrganization: false, stewardBadgeEnabled: true, showTooltip: true, isBot: false }
+  { size: 'sm', premium: false, premiumPlus: false, isOrganization: false, stewardBadgeEnabled: false, showTooltip: true, isBot: false }
 )
 
 // Use semantic CSS variables so the accent stays consistent across the app theme.
@@ -51,7 +57,7 @@ const badgeOrgLowContrast = 'var(--moh-org)'
 
 const isVerified = computed(() => Boolean(props.status && props.status !== 'none'))
 const isPremium = computed(() => Boolean(props.premium || props.premiumPlus))
-const showSteward = computed(() => Boolean(props.premiumPlus) && props.stewardBadgeEnabled !== false)
+const showSteward = computed(() => Boolean(props.premiumPlus && props.stewardBadgeEnabled))
 const isOrganization = computed(() => Boolean(props.isOrganization))
 
 const badgeColor = computed(() => {

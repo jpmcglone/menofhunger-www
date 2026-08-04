@@ -332,6 +332,7 @@ defineExpose({
                       :premium="r.user.premium"
                       :premium-plus="r.user.premiumPlus"
                       :is-organization="r.user.isOrganization"
+                      :steward-badge-enabled="r.user.stewardBadgeEnabled"
                     />
                   </div>
                   <div class="text-xs moh-text-muted truncate">@{{ r.user.username }}</div>
@@ -426,6 +427,7 @@ defineExpose({
                       :premium="u.premium"
                       :premium-plus="u.premiumPlus"
                       :is-organization="u.isOrganization"
+                      :steward-badge-enabled="u.stewardBadgeEnabled"
                     />
                   </div>
                   <div class="text-xs moh-text-muted truncate">@{{ u.username }}</div>
