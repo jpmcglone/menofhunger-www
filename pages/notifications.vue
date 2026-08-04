@@ -229,9 +229,11 @@ const {
 const loadingMore = ref(false)
 const markingAllRead = ref(false)
 const stickyHighlightedItemKeys = ref<Set<string>>(new Set())
-// Show the full-page loader until the first fetch completes. After that, keep
-// existing data visible during background refreshes — never blank the list mid-flight.
-const showInitialLoader = computed(() => !hasFetched.value)
+// Show the full-page loader on first visit (never fetched) OR when arriving with
+// unread badge count > 0 — new notifications came in while we were away and we
+// don't want to flash the stale list before the fresh fetch lands.
+const entryPending = ref(false)
+const showInitialLoader = computed(() => !hasFetched.value || entryPending.value)
 
 function chipHasUnseenNotifications(kind: NotificationKind | 'other' | null): boolean {
   if (kind === 'other') {
@@ -575,11 +577,13 @@ function syncNotificationsOnEntry() {
 }
 
 onMounted(() => {
-  void syncNotificationsOnEntry()
+  if (notifBadge.count.value > 0) entryPending.value = true
+  void syncNotificationsOnEntry().finally(() => { entryPending.value = false })
 })
 
 onActivated(() => {
-  void syncNotificationsOnEntry()
+  if (notifBadge.count.value > 0) entryPending.value = true
+  void syncNotificationsOnEntry().finally(() => { entryPending.value = false })
 })
 
 watch(() => route.query.kind, async () => {

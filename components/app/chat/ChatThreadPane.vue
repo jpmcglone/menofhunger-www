@@ -54,7 +54,7 @@
     <Transition name="moh-fade">
       <div
         v-if="renderedChatKey && typingUsers.length > 0"
-        class="pointer-events-none absolute bottom-0 left-0 z-[5] px-5 pb-2"
+        class="pointer-events-none absolute bottom-0 left-0 z-[5] px-5 pb-2 translate-y-[3px]"
         aria-live="polite"
       >
         <AppTypingIndicator :users="typingUsers" verb="typing" :hover-preview="false" size="compact" />
