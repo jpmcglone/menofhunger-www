@@ -111,15 +111,11 @@
                 :available-reactions="availableReactions"
                 :participants="otherParticipants"
                 :typing-users="typingUsersAll"
-                :scroll-pill-needed="scrollPillNeeded"
-                :scroll-pill-visible="scrollPillVisible"
-                :scroll-pill-thumb-style="scrollPillThumbStyle"
                 :show-scroll-to-bottom-button="showScrollToBottomButton"
                 :pending-button-class="pendingButtonClass"
                 :pending-new-label="pendingNewLabel"
                 :scroll-to-bottom-button-style="scrollToBottomButtonStyle"
                 @scroll="onMessagesScroll"
-                @scroll-intent="markUserScrollIntent"
                 @load-older="loadOlderMessages"
                 @load-newer="loadNewerMessages"
                 @react="handleReact"
@@ -325,9 +321,8 @@ const scrollApi = useChatScroll({
   selectedChatKey,
   selectedConversationId,
   prefersReducedMotion,
-  me,
   onUpdateStickyDivider: () => thread.updateStickyDivider(),
-  onReachedBottom: (convoId, _hadPending) => conversationsApi.markConversationReadIfVisible(convoId),
+  onReachedBottom: (convoId) => conversationsApi.markConversationReadIfVisible(convoId),
   onScrollerMountedReady: () => {
     thread.animateMessageList.value = true
     thread.scrollToJumpTarget()
@@ -336,16 +331,10 @@ const scrollApi = useChatScroll({
 
 const {
   atBottom,
-  scrollPillVisible,
-  scrollPillNeeded,
-  scrollPillThumbStyle,
   showScrollToBottomButton,
   stickToBottom,
   setAtBottomState,
   refreshAtBottomFromScroller,
-  markUserScrollIntent,
-  updateScrollPill,
-  observeScrollerForBottomAnchoring,
   onMessagesScrollerMounted,
   onMessagesScroll: scrollEventHandler,
 } = scrollApi
@@ -432,7 +421,6 @@ const thread = useChatThread({
   showCantStartChat,
   prefersReducedMotion,
   messagesScroller,
-  scrollToMessageInList: (id, opts) => threadPaneRef.value?.scrollToMessageId(id, opts) ?? false,
   composer: {
     focus: () => { composerBarRef.value?.focus() },
     getMedia: () => composerBarRef.value?.getMedia() ?? [],
@@ -443,7 +431,6 @@ const thread = useChatThread({
     setAtBottomState,
     refreshAtBottomFromScroller,
     isAtBottom: scrollApi.isAtBottom,
-    updateScrollPill,
   },
   conversationsApi: {
     conversations,
@@ -532,7 +519,7 @@ watch(
     if (!import.meta.client) return
     if (!selectedChatKey.value) return
     if (!atBottom.value) return
-    stickToBottom({ behavior: 'auto', ifNearBottom: true })
+    stickToBottom({ behavior: 'auto', ifNearBottom: true, reason: 'typing-indicator-change' })
   },
   { flush: 'post' },
 )
@@ -548,7 +535,6 @@ const routeSync = useChatRouteSync({
   marv,
   ensureAuthLoaded: ensureLoaded,
   emitMessagesScreen,
-  cacheCurrentChatScrollPosition: scrollApi.cacheCurrentChatScrollPosition,
   conversationsApi: { refreshAllConversationTabs },
   thread: {
     jumpTargetMessageId,
@@ -606,7 +592,7 @@ const pendingNewLabel = computed(() => {
 function onPendingButtonClick() {
   // Eagerly mark at-bottom so the pending button disappears before the smooth scroll completes.
   setAtBottomState(true)
-  stickToBottom({ behavior: 'smooth', userInitiated: true })
+  stickToBottom({ behavior: 'smooth', userInitiated: true, reason: 'pending-button-click' })
   const convoId = selectedConversationId.value
   if (convoId) {
     void nextTick().then(() => {
@@ -616,9 +602,7 @@ function onPendingButtonClick() {
 }
 
 function onMessagesScroll() {
-  // Capture pending count BEFORE the composable updates atBottom (which zeroes the computed).
-  const hadPending = pendingNewCount.value > 0
-  scrollEventHandler({ hadPending })
+  scrollEventHandler()
 }
 
 // ─── Layout ──────────────────────────────────────────────────────────────────
@@ -803,7 +787,7 @@ const { register: registerRealtime, teardown: teardownRealtime } = useChatRealti
       }
       if (shouldStick) {
         void nextTick().then(() => {
-          stickToBottom({ behavior: 'auto', ifNearBottom: true, includeExtraFrame: true })
+          stickToBottom({ behavior: 'auto', ifNearBottom: true, reason: 'new-message-realtime' })
         })
       }
       const isIncoming = msg.sender.id !== me.value?.id
@@ -879,25 +863,6 @@ const { register: registerRealtime, teardown: teardownRealtime } = useChatRealti
     },
   },
 })
-
-// ─── Scroller observers ──────────────────────────────────────────────────────
-
-// Scroll pill resize observer — tracks scroller resizes to update the pill position.
-let scrollPillRo: ResizeObserver | null = null
-watch(
-  messagesScroller,
-  (el, prev) => {
-    if (!import.meta.client) return
-    if (!scrollPillRo) scrollPillRo = new ResizeObserver(() => updateScrollPill())
-    if (prev) scrollPillRo.unobserve(prev)
-    if (el) {
-      scrollPillRo.observe(el)
-      observeScrollerForBottomAnchoring(el)
-      requestAnimationFrame(() => { updateScrollPill() })
-    }
-  },
-  { flush: 'post' },
-)
 
 // ─── Lifecycle ───────────────────────────────────────────────────────────────
 
@@ -976,10 +941,6 @@ onBeforeUnmount(() => {
   conversationsApi.teardown()
   thread.teardown()
   scrollApi.teardown()
-  if (scrollPillRo) {
-    scrollPillRo.disconnect()
-    scrollPillRo = null
-  }
   teardownRealtime()
   marv.stopRealtime()
   // `presenceInterest` cleans itself up via its own `onBeforeUnmount` hook
@@ -1011,7 +972,7 @@ watch(
     if (!key) return
     void nextTick().then(() => {
       const el = messagesScroller.value
-      if (el) onMessagesScrollerMounted(el, key)
+      if (el) onMessagesScrollerMounted(el, key, { hasJumpTarget: Boolean(jumpTargetMessageId.value) })
     })
   },
   { flush: 'post' },
@@ -1027,7 +988,11 @@ watch(
     // Re-apply initial scroller snap when the shell becomes ready.
     void nextTick().then(() => {
       const el = messagesScroller.value
-      if (el) onMessagesScrollerMounted(el, renderedChatKey.value)
+      if (el) {
+        onMessagesScrollerMounted(el, renderedChatKey.value, {
+          hasJumpTarget: Boolean(jumpTargetMessageId.value),
+        })
+      }
     })
   },
   { flush: 'post' },

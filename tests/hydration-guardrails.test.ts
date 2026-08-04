@@ -154,25 +154,63 @@ describe('hydration guardrails (structural)', () => {
     expect(explore).toMatch(/<ClientOnly>[\s\S]*?v-if="isAuthed && !canAccessCheckins"[\s\S]*?verify-cta[\s\S]*?<\/ClientOnly>/)
   })
 
-  // ---- Chat performance guardrails (Phase 2 of the freeze fix) -------------
+  // ---- Chat performance guardrails ------------------------------------------
   //
-  // Together these assertions encode the invariants that keep the chat page
-  // from freezing under realistic loads. Removing any of them without a
-  // replacement is a regression — the fix is to update the relevant rule, not
-  // the test.
+  // These assertions encode the invariants that keep the chat page from
+  // freezing or mis-scrolling under load.
+  //
+  // History:
+  //  Phase 1 – freeze fix used @tanstack/vue-virtual.
+  //  Phase 2 – scroll fix replaced the virtualizer with a plain v-for list.
+  //  Phase 3 – CSS containment (content-visibility with "auto") was tried for
+  //             browser-native windowing but REJECTED: the 72px intrinsic-size
+  //             estimate wildly underestimates media rows (actual 280-320px),
+  //             causing scrollHeight to be wrong on first open and landing the
+  //             user in the middle of a media-heavy chat. Do NOT re-add it
+  //             without solving the estimate problem first.
+  //  Phase 4 – the per-conversation scroll-offset cache was REMOVED. It had to
+  //             be written while the thread was still growing (images decode
+  //             after first paint), so it recorded a mid-load offset, replayed
+  //             it on the next open, and pinned atBottom=false — which then
+  //             blocked the ResizeObserver from ever correcting. The wrong
+  //             position fed itself. Chat always opens on the newest message.
 
-  it('virtualizes the chat message list (no full DOM tree per message)', () => {
-    const list = readFromRepo('components/app/chat/ChatMessageList.vue')
-    expect(list).toMatch(/from '@tanstack\/vue-virtual'/)
-    expect(list).toMatch(/useVirtualizer\(/)
-    // The virtualizer needs a scroll container handle; the parent passes the
-    // messagesScroller down explicitly.
-    expect(list).toMatch(/scrollerEl/)
-    // We rely on dynamic measurement, not hard-coded row heights.
-    expect(list).toMatch(/measureElement/)
+  it('chat always opens at the bottom (no per-conversation scroll-offset cache)', () => {
+    const scroll = readFromRepo('composables/chat/useChatScroll.ts')
+    // A cache of scrollTop keyed by conversation is self-poisoning — see above.
+    expect(scroll).not.toMatch(/scrollTopByChatKey/)
+    expect(scroll).not.toMatch(/getCachedScrollTopForChatKey/)
+    expect(scroll).not.toMatch(/cacheCurrentChatScrollPosition/)
   })
 
-  it('does not wrap the virtualized message list in TransitionGroup', () => {
+  it('disables browser scroll anchoring on the chat scroller', () => {
+    // Chrome's overflow-anchor repositions scrollTop (with sub-pixel values)
+    // when content above the viewport grows, and fires a scroll event doing so.
+    // That made our own bottom-pin measure as "user scrolled away", clearing
+    // atBottom and stranding the user mid-history. useChatScroll's
+    // ResizeObserver owns bottom anchoring, so the browser's must stay off.
+    const pane = readFromRepo('components/app/chat/ChatThreadPane.vue')
+    expect(pane).toMatch(/overflow-anchor:\s*none/)
+  })
+
+  it('keeps the chat scroller vertical-only', () => {
+    // overflow-y-auto alone computes overflow-x from `visible` to `auto`, so
+    // any overflowing bubble silently enables horizontal scrolling.
+    const pane = readFromRepo('components/app/chat/ChatThreadPane.vue')
+    expect(pane).toMatch(/overflow-x-hidden/)
+  })
+
+  it('does NOT use content-visibility on chat rows (causes scrollHeight estimation bug with media)', () => {
+    const list = readFromRepo('components/app/chat/ChatMessageList.vue')
+    // content-visibility: auto is banned — see comment above.
+    expect(list).not.toMatch(/content-visibility:\s*auto/)
+    expect(list).not.toMatch(/contain-intrinsic-size/)
+    // Virtualizer is still gone.
+    expect(list).not.toMatch(/from '@tanstack\/vue-virtual'/)
+    expect(list).not.toMatch(/useVirtualizer\(/)
+  })
+
+  it('does not wrap the chat message list in TransitionGroup', () => {
     // A `TransitionGroup` around virtualized rows tracks every row for
     // enter/leave/move animations and defeats the whole point of windowing.
     const list = readFromRepo('components/app/chat/ChatMessageList.vue')

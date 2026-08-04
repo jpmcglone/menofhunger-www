@@ -29,19 +29,16 @@ export interface UseChatThreadOptions {
   showCantStartChat: () => Promise<void>
   prefersReducedMotion: Ref<boolean>
   messagesScroller: Ref<HTMLElement | null> | ComputedRef<HTMLElement | null>
-  /** Delegates to the virtualized list's scrollToIndex (via ChatThreadPane). */
-  scrollToMessageInList: (id: string, opts?: { align?: 'start' | 'center' | 'end' | 'auto' }) => boolean
   composer: {
     focus: () => void
     getMedia: () => CreateMediaPayload[]
     clearMedia: () => void
   }
   scroll: {
-    stickToBottom: (opts?: { behavior?: ScrollBehavior; ifNearBottom?: boolean; includeExtraFrame?: boolean; userInitiated?: boolean }) => boolean | void
+    stickToBottom: (opts?: { behavior?: ScrollBehavior; ifNearBottom?: boolean; userInitiated?: boolean; reason?: string }) => boolean | void
     setAtBottomState: (next: boolean) => void
     refreshAtBottomFromScroller: () => boolean
     isAtBottom: () => boolean
-    updateScrollPill: () => void
   }
   conversationsApi: {
     conversations: Ref<{ primary: MessageConversationWithTone[]; requests: MessageConversationWithTone[] }>
@@ -75,7 +72,6 @@ export function useChatThread(opts: UseChatThreadOptions) {
     showCantStartChat,
     prefersReducedMotion,
     messagesScroller,
-    scrollToMessageInList,
     composer,
     scroll,
     conversationsApi,
@@ -430,7 +426,6 @@ export function useChatThread(opts: UseChatThreadOptions) {
         scroller.scrollTop = previousScrollTop + grewBy
         scroll.refreshAtBottomFromScroller()
         updateStickyDivider()
-        scroll.updateScrollPill()
       }
     } finally {
       if (reqSeq === loadOlderReqSeq) loadingOlder.value = false
@@ -464,37 +459,23 @@ export function useChatThread(opts: UseChatThreadOptions) {
 
   /**
    * Scroll the scroller to the jump-target message row and briefly highlight it.
-   *
-   * With the virtualized message list, the off-screen target row may not exist
-   * in the DOM yet, so we delegate to the virtualizer's `scrollToIndex` (via
-   * `scrollToMessageInList`). The virtualizer will mount the target row, after
-   * which the parent's scroll-position helpers stay accurate.
-   *
-   * Falls back to a direct DOM lookup when the ref isn't ready (defensive — the
-   * old non-virtualized rendering still worked that way).
+   * All messages are in the DOM (no virtualization), so a direct DOM query works.
    */
   function scrollToJumpTarget() {
     const targetId = jumpTargetMessageId.value
     if (!targetId || !messagesScroller.value) return
 
-    const used = scrollToMessageInList(targetId, { align: 'center' })
-    if (!used) {
-      const el = messagesScroller.value.querySelector<HTMLElement>(`[data-message-id="${targetId}"]`)
-      if (!el) return
+    const el = messagesScroller.value.querySelector<HTMLElement>(`[data-message-id="${targetId}"]`)
+    if (el) {
       const scrollerRect = messagesScroller.value.getBoundingClientRect()
       const elRect = el.getBoundingClientRect()
       const offset = elRect.top - scrollerRect.top - scrollerRect.height / 2 + elRect.height / 2
       messagesScroller.value.scrollTop += offset
     }
 
-    // The virtualizer scrolls asynchronously (it may need a frame to mount the
-    // target row). Wait one frame before refreshing scroll-anchor state so the
-    // `atBottom` signal stays accurate.
     void nextTick().then(() => {
       scroll.refreshAtBottomFromScroller()
-      scroll.updateScrollPill()
     })
-    // Clear the highlight after 2.5s so the flash is visible but not permanent.
     if (jumpHighlightTimer) clearTimeout(jumpHighlightTimer)
     jumpHighlightTimer = setTimeout(() => {
       jumpHighlightTimer = null
@@ -604,7 +585,7 @@ export function useChatThread(opts: UseChatThreadOptions) {
       composer.clearMedia()
       replyToMessage.value = null
       await nextTick()
-      scroll.stickToBottom({ behavior: 'smooth' })
+      scroll.stickToBottom({ behavior: 'smooth', reason: 'send-message-optimistic' })
 
       const res = await apiFetchData<SendMessageResponse['data']>(
         `/messages/conversations/${conversationId}/messages`,
@@ -637,7 +618,7 @@ export function useChatThread(opts: UseChatThreadOptions) {
         clearSendingId(localId)
         conversationsApi.updateConversationForMessage(msg)
         await nextTick()
-        scroll.stickToBottom({ behavior: 'smooth' })
+        scroll.stickToBottom({ behavior: 'smooth', reason: 'send-message-reconciled' })
       } else {
         // API returned no message — remove the optimistic row and restore the composer.
         messages.value = messages.value.filter((m) => m.id !== localId)

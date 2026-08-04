@@ -5,11 +5,8 @@
       :key="renderedChatKey"
       ref="scrollerEl"
       data-chat-scroller="1"
-      class="min-h-0 flex-1 overflow-y-auto py-4 moh-chat-scroll-hide"
+      class="min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-y-contain py-4 moh-chat-scroll-hide"
       @scroll="emit('scroll')"
-      @wheel.passive="emit('scrollIntent')"
-      @touchstart.passive="emit('scrollIntent')"
-      @touchmove.passive="emit('scrollIntent')"
     >
       <ChatMessageList
         ref="chatMessageListRef"
@@ -30,7 +27,6 @@
         :animate-rows="animateRows"
         :is-group-chat="isGroupChat"
         :me-id="meId"
-        :scroller-el="scrollerEl"
         :format-message-time="formatMessageTime"
         :format-message-time-full="formatMessageTimeFull"
         :bubble-shape-class="bubbleShapeClass"
@@ -65,18 +61,6 @@
     >
       <AppLogoLoader />
     </div>
-    <!-- Custom thin pill scrollbar (native scrollbar hidden) -->
-    <div
-      v-if="renderedChatKey && scrollPillNeeded"
-      class="pointer-events-none absolute right-1 top-2 bottom-2 z-10 w-[4px] transition-opacity duration-200 ease-out"
-      :class="scrollPillVisible ? 'opacity-90' : 'opacity-0'"
-      aria-hidden="true"
-    >
-      <div
-        class="w-full rounded-full transition-[height] duration-150 ease-out will-change-transform"
-        :style="scrollPillThumbStyle"
-      />
-    </div>
     <Transition name="moh-fade">
       <button
         v-if="showScrollToBottomButton"
@@ -97,9 +81,6 @@
 import type { Message, MessageParticipant, MessageReaction, MessageUser } from '~/types/api'
 import type { ChatListItem } from '~/composables/chat/useChatTimeFormatting'
 import type { TypingUserDisplay } from '~/composables/chat/useChatTyping'
-// Sibling file — explicit import because Nuxt registers `~/components/app/chat/*`
-// as `App*` prefixed names (`AppChatMessageList`), which does not satisfy the
-// `<ChatMessageList>` tag Vue looks up at runtime.
 import ChatMessageList from './ChatMessageList.vue'
 
 defineProps<{
@@ -133,9 +114,6 @@ defineProps<{
   availableReactions: MessageReaction[]
   participants: MessageParticipant[]
   typingUsers: TypingUserDisplay[]
-  scrollPillNeeded: boolean
-  scrollPillVisible: boolean
-  scrollPillThumbStyle: Record<string, string>
   showScrollToBottomButton: boolean
   pendingButtonClass: string
   pendingNewLabel: string
@@ -144,7 +122,6 @@ defineProps<{
 
 const emit = defineEmits<{
   scroll: []
-  scrollIntent: []
   loadOlder: []
   loadNewer: []
   react: [message: Message, reactionId: string]
@@ -160,19 +137,26 @@ const emit = defineEmits<{
 
 /** The scroll container — exposed so the page's useChatScroll can drive it. */
 const scrollerEl = ref<HTMLElement | null>(null)
-const chatMessageListRef = ref<{ scrollToMessageId: (id: string, opts?: { align?: 'start' | 'center' | 'end' | 'auto' }) => boolean } | null>(null)
 
-defineExpose({
-  scrollerEl,
-  scrollToMessageId: (id: string, opts?: { align?: 'start' | 'center' | 'end' | 'auto' }) =>
-    chatMessageListRef.value?.scrollToMessageId(id, opts) ?? false,
-})
+defineExpose({ scrollerEl })
 </script>
 
 <style scoped>
 .moh-chat-scroll-hide {
   scrollbar-width: thin;
   scrollbar-color: rgba(128, 128, 128, 0.35) transparent;
+  /*
+   * Disable Chrome's scroll-anchor heuristic on this element.
+   *
+   * Without this, when images/content load above the current viewport, Chrome
+   * adjusts scrollTop upward (with a fractional value) to keep its chosen
+   * "anchor element" stable. That adjustment fires a scroll event; our rAF
+   * handler then sees scrollTop != scrollHeight - clientHeight and sets
+   * atBottom = false — which blocks the ResizeObserver from re-pinning to
+   * the true bottom. Our ResizeObserver + atBottom flag give us precise
+   * bottom-anchoring, so we don't need the browser's auto-anchoring at all.
+   */
+  overflow-anchor: none;
 }
 
 .moh-chat-scroll-hide::-webkit-scrollbar {

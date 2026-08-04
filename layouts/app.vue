@@ -535,7 +535,8 @@ useHead({
 const rightRailSearchQuery = ref('')
 function goToExploreSearch(q?: string) {
   const query = (q ?? rightRailSearchQuery.value ?? '').trim()
-  void navigateTo({ path: '/explore', query: query ? { q: query } : {} })
+  if (!query) return
+  void navigateTo({ path: '/explore', query: { q: query } })
 }
 watch(
   [() => route.path, () => route.query.q],

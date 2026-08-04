@@ -171,7 +171,7 @@
           </div>
           <AppInlineAlert v-if="referralCodeError" severity="danger">{{ referralCodeError }}</AppInlineAlert>
           <div v-if="referralCodeSaved" class="text-xs text-green-700 dark:text-green-400">Referral code saved.</div>
-          <p class="text-xs text-gray-400 dark:text-gray-500">4–20 characters. Letters, numbers, hyphens, underscores only.</p>
+          <p class="text-xs text-gray-400 dark:text-gray-500">3–20 characters. Letters, numbers, hyphens, underscores only.</p>
         </template>
         <p v-else class="text-sm text-gray-500 dark:text-gray-400">
           Become a premium member to get a referral code.

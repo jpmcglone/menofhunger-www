@@ -68,7 +68,7 @@
               </div>
               <AppInlineAlert v-if="codeError" severity="danger">{{ codeError }}</AppInlineAlert>
               <p class="text-xs moh-text-muted" style="text-wrap: pretty">
-                4–20 characters. Letters, numbers, hyphens, underscores. Existing links with your old code will stop working.
+                3–20 characters. Letters, numbers, hyphens, underscores. Existing links with your old code will stop working.
               </p>
             </template>
 
@@ -168,7 +168,7 @@
                 />
               </div>
               <AppInlineAlert v-if="codeError" severity="danger">{{ codeError }}</AppInlineAlert>
-              <p class="text-xs moh-text-muted">4–20 characters. Letters, numbers, hyphens, underscores.</p>
+              <p class="text-xs moh-text-muted">3–20 characters. Letters, numbers, hyphens, underscores.</p>
             </template>
           </div>
         </section>

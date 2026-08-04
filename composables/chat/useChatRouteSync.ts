@@ -13,7 +13,6 @@ export interface UseChatRouteSyncOptions {
   marv: ReturnType<typeof useMarv>
   ensureAuthLoaded: () => Promise<unknown>
   emitMessagesScreen: (visible: boolean, conversationId?: string | null) => void
-  cacheCurrentChatScrollPosition: () => void
   conversationsApi: {
     refreshAllConversationTabs: () => Promise<void>
   }
@@ -45,7 +44,6 @@ export function useChatRouteSync(opts: UseChatRouteSyncOptions) {
     marv,
     ensureAuthLoaded,
     emitMessagesScreen,
-    cacheCurrentChatScrollPosition,
     conversationsApi,
     thread,
   } = opts
@@ -57,7 +55,6 @@ export function useChatRouteSync(opts: UseChatRouteSyncOptions) {
   // ─── Selection ───────────────────────────────────────────────────────────────
 
   async function selectConversation(id: string, selectOpts?: { replace?: boolean; jumpToMessageId?: string }) {
-    cacheCurrentChatScrollPosition()
     const targetMsgId = selectOpts?.jumpToMessageId ?? null
     thread.beginThreadSwitch({ jumpToMessageId: targetMsgId })
     selectedConversationId.value = id
@@ -79,7 +76,6 @@ export function useChatRouteSync(opts: UseChatRouteSyncOptions) {
   }
 
   async function clearSelection(clearOpts?: { replace?: boolean; preserveDraft?: boolean }) {
-    cacheCurrentChatScrollPosition()
     thread.resetThread()
     selectedConversationId.value = null
     selectedChatKey.value = null

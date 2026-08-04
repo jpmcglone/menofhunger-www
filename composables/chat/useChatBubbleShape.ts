@@ -23,8 +23,16 @@ import type { Message } from '~/types/api'
 
 export const PILL_MAX_CHARS = 42
 
-const PILL_CLASS = 'rounded-full px-3.5 py-1.5 sm:px-4 sm:py-2'
-const RECT_CLASS = 'rounded-2xl p-2.5 sm:p-3'
+/**
+ * Tighter threshold used when the timestamp will be rendered inline as a
+ * float-right tail. A typical timestamp ("11:19 PM ✓") consumes roughly 12
+ * character-widths of space on the same line, so we shrink the pill budget
+ * from 42 to 28 to avoid the float forcing a wrap inside a pill bubble.
+ */
+export const PILL_MAX_CHARS_WITH_META = 28
+
+export const PILL_CLASS = 'rounded-full px-3.5 py-1.5 sm:px-4 sm:py-2'
+export const RECT_CLASS = 'rounded-2xl p-2.5 sm:p-3'
 
 export function pickBubbleShape(message: Message): 'pill' | 'rect' {
   if (message.deletedForMe || message.deletedForAll) return 'rect'

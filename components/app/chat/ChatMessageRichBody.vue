@@ -45,8 +45,7 @@
           @click.stop
         >{{ seg.text }}</NuxtLink>
         <span v-else>{{ seg.text }}</span>
-      </template>
-    </p>
+      </template><slot name="tail" /></p>
 
     <!-- MoH internal link — branded card, navigates in-app -->
     <NuxtLink

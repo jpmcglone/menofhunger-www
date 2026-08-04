@@ -18,36 +18,17 @@
     :data-message-id="messageItem.message.id"
     :class="[
       animateRows && recentAnimatedMessageIds.has(messageItem.key) ? 'moh-chat-item-enter' : '',
-      'group relative flex w-full items-end gap-1',
+      'group relative flex w-full min-w-0 items-end gap-1',
       messageItem.message.sender.id === meId ? 'justify-end' : 'justify-start',
-      isGroupChat && messageItem.message.sender.id !== meId ? 'pl-10' : '',
       messageItem.message.id === jumpTargetMessageId ? 'moh-jump-target' : '',
     ]"
     @mouseenter="emit('mouseenter', messageItem.message.id)"
     @mouseleave="emit('mouseleave', messageItem.message.id)"
   >
-    <!-- Avatar (incoming) -->
-    <NuxtLink
-      v-if="shouldShowIncomingAvatar(messageItem.message, messageItem.index) && messageItem.message.sender.username"
-      :to="`/u/${encodeURIComponent(messageItem.message.sender.username)}`"
-      class="absolute left-0 bottom-0 translate-y-[-6px] rounded-full cursor-pointer transition-opacity hover:opacity-90"
-      :aria-label="messageItem.message.sender.username ? `View @${messageItem.message.sender.username}` : 'View profile'"
-    >
-      <AppUserAvatar :user="senderOverlay(messageItem.message.sender)" size-class="h-7 w-7" />
-    </NuxtLink>
-    <button
-      v-else-if="shouldShowIncomingAvatar(messageItem.message, messageItem.index)"
-      type="button"
-      class="absolute left-0 bottom-0 translate-y-[-6px] rounded-full cursor-pointer transition-opacity hover:opacity-90"
-      aria-label="View profile"
-      @click="goToProfile(messageItem.message.sender)"
-    >
-      <AppUserAvatar :user="senderOverlay(messageItem.message.sender)" size-class="h-7 w-7" />
-    </button>
 
     <!-- Reply snippet + (action bar + bubble) + reactions, all stacked -->
     <div
-      class="flex flex-col gap-1"
+      class="flex min-w-0 flex-col gap-1"
       :class="messageItem.message.sender.id === meId ? 'items-end' : 'items-start'"
       style="max-width: 85%;"
     >
@@ -191,18 +172,25 @@
             v-if="showTextBubble"
             :class="[
               (messageItem.message.deletedForMe || messageItem.message.deletedForAll)
-                ? 'max-w-full min-w-0 px-3 py-2 italic opacity-60 border border-dashed border-gray-300 dark:border-zinc-600 text-gray-500 dark:text-gray-400 bg-transparent ' + bubbleShapeClass(messageItem.message)
-                : 'max-w-full min-w-0 ' + bubbleShapeClass(messageItem.message) + ' ' + bubbleClass(messageItem.message),
+                ? 'max-w-full min-w-0 px-3 py-2 italic opacity-60 border border-dashed border-gray-300 dark:border-zinc-600 text-gray-500 dark:text-gray-400 bg-transparent ' + effectiveBubbleShapeClass
+                : 'max-w-full min-w-0 ' + effectiveBubbleShapeClass + ' ' + bubbleClass(messageItem.message),
             ]"
           >
-            <div class="space-y-1 px-0">
-              <!-- Deleted for all -->
-              <div v-if="messageItem.message.deletedForAll" class="text-xs">
-                <span>This message was deleted for everyone</span>
+            <!-- Deleted for all -->
+            <div v-if="messageItem.message.deletedForAll" class="text-xs">
+              <span>This message was deleted for everyone</span>
+              <div v-if="shouldShowMessageMeta" class="mt-0.5 flex justify-end">
+                <time
+                  class="inline-flex items-center gap-1 text-xs opacity-75 whitespace-nowrap tabular-nums"
+                  :datetime="messageItem.message.createdAt"
+                  :title="formatMessageTimeFull(messageItem.message.createdAt)"
+                >{{ formatMessageTime(messageItem.message.createdAt) }}</time>
               </div>
+            </div>
 
-              <!-- Deleted for me -->
-              <div v-else-if="messageItem.message.deletedForMe" class="flex items-center justify-between gap-2 text-xs">
+            <!-- Deleted for me -->
+            <div v-else-if="messageItem.message.deletedForMe" class="text-xs">
+              <div class="flex items-center justify-between gap-2">
                 <span>This message was deleted</span>
                 <button
                   type="button"
@@ -212,28 +200,34 @@
                   Undo
                 </button>
               </div>
+              <div v-if="shouldShowMessageMeta" class="mt-0.5 flex justify-end">
+                <time
+                  class="inline-flex items-center gap-1 text-xs opacity-75 whitespace-nowrap tabular-nums"
+                  :datetime="messageItem.message.createdAt"
+                  :title="formatMessageTimeFull(messageItem.message.createdAt)"
+                >{{ formatMessageTime(messageItem.message.createdAt) }}</time>
+              </div>
+            </div>
 
-              <!-- Normal body -->
-              <AppChatMessageRichBody
-                v-else
-                :body="messageItem.message.body"
-                :sender-tier="userColorTier(messageItem.message.sender as any)"
-                :on-colored-background="messageItem.message.sender.id === meId && userColorTier(messageItem.message.sender as any) !== 'normal'"
-              />
-
-              <!-- Timestamp (when there's a text bubble) -->
-              <div
-                v-if="shouldShowMessageMeta"
-                class="flex justify-end"
-              >
-                <div class="inline-flex items-center gap-1 text-xs opacity-75 whitespace-nowrap tabular-nums">
-                  <span v-if="messageItem.message.editedAt && !messageItem.message.deletedForAll" class="italic">edited</span>
+            <!-- Normal body: timestamp injected as float-right tail inside the <p> -->
+            <AppChatMessageRichBody
+              v-else
+              :body="messageItem.message.body"
+              :sender-tier="userColorTier(messageItem.message.sender as any)"
+              :on-colored-background="messageItem.message.sender.id === meId && userColorTier(messageItem.message.sender as any) !== 'normal'"
+            >
+              <!--
+                Timestamp tail — floats to the right at the end of the last text line.
+                When the text + timestamp fit on one line (pill case) it's inline;
+                when the text wraps it falls to the bottom-right of the last line.
+              -->
+              <template v-if="shouldShowMessageMeta" #tail>
+                <span class="float-right clear-none ml-2 mt-0.5 -mb-0.5 inline-flex items-center gap-1 text-xs opacity-75 whitespace-nowrap tabular-nums not-italic align-bottom">
+                  <span v-if="messageItem.message.editedAt" class="italic">edited</span>
                   <time
                     :datetime="messageItem.message.createdAt"
                     :title="formatMessageTimeFull(messageItem.message.createdAt)"
-                  >
-                    {{ formatMessageTime(messageItem.message.createdAt) }}
-                  </time>
+                  >{{ formatMessageTime(messageItem.message.createdAt) }}</time>
                   <template v-if="messageItem.message.sender.id === meId">
                     <span
                       v-if="sendingMessageIds.has(messageItem.message.id)"
@@ -249,9 +243,9 @@
                       aria-hidden="true"
                     />
                   </template>
-                </div>
-              </div>
-            </div>
+                </span>
+              </template>
+            </AppChatMessageRichBody>
           </div>
         </div>
 
@@ -354,6 +348,7 @@ import type { PropType } from 'vue'
 import type { Message, MessageMedia, MessageUser, MessageParticipant } from '~/types/api'
 import type { ChatListItem } from '~/composables/chat/useChatTimeFormatting'
 import { userColorTier } from '~/utils/user-tier'
+import { PILL_CLASS, RECT_CLASS, PILL_MAX_CHARS_WITH_META, pickBubbleShape } from '~/composables/chat/useChatBubbleShape'
 
 const props = defineProps({
   /** The flat list item — divider or message. */
@@ -422,6 +417,25 @@ function computeHasTextBubble(message: Message): boolean {
 const showTextBubble = computed(() => {
   const m = messageItem.value
   return m ? computeHasTextBubble(m.message) : false
+})
+
+/**
+ * When the timestamp is shown inline (shouldShowMessageMeta=true), tighten the
+ * pill threshold so a float-right timestamp doesn't force a line-wrap inside a
+ * pill bubble. For messages without a visible timestamp keep the normal limit.
+ */
+const effectiveBubbleShapeClass = computed(() => {
+  const m = messageItem.value?.message
+  if (!m) return ''
+  if (props.shouldShowMessageMeta) {
+    const shape = pickBubbleShape(m)
+    if (shape === 'pill') {
+      const body = (m.body ?? '').trim()
+      if (body.length > PILL_MAX_CHARS_WITH_META) return RECT_CLASS
+    }
+    return shape === 'pill' ? PILL_CLASS : RECT_CLASS
+  }
+  return props.bubbleShapeClass(m)
 })
 </script>
 

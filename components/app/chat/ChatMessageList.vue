@@ -23,68 +23,44 @@
       <div class="flex-1 border-t border-gray-200 dark:border-zinc-800" />
     </div>
 
-    <!--
-      Virtualized message list. The outer div is height-stable (`totalSize`);
-      only the rows currently visible (+ a small overscan buffer) are mounted.
-      Each row is absolutely positioned at its measured offset, so the parent
-      scroll container's `scrollTop` / `scrollHeight` semantics still work
-      cleanly — useChatScroll's bottom-anchoring + stickToBottom logic is
-      unchanged.
-
-      We also dropped TransitionGroup: with virtualization, off-screen rows
-      have no DOM, so FLIP measurement is meaningless. The newest message's
-      enter animation is driven by the `recentAnimatedMessageIds` set + the
-      `moh-chat-item-enter` class on the row itself.
-    -->
-    <div :style="{ height: totalSize + 'px', width: '100%', position: 'relative' }">
-      <div
-        v-for="virtualRow in virtualItems"
-        :key="String(virtualRow.key)"
-        :data-virtual-row-index="virtualRow.index"
-        :ref="measureRow"
-        :style="{
-          position: 'absolute',
-          top: '0px',
-          left: '0px',
-          width: '100%',
-          transform: `translateY(${virtualRow.start}px)`,
-          paddingTop: '6px',
-          paddingBottom: '6px',
-        }"
-      >
-        <ChatMessageListRow
-          :item="messagesWithDividers[virtualRow.index]!"
-          :animate-rows="animateRows"
-          :recent-animated-message-ids="recentAnimatedMessageIds"
-          :sending-message-ids="sendingMessageIds"
-          :latest-my-message-id="latestMyMessageId"
-          :is-latest-my-message-read="isLatestMyMessageRead"
-          :is-group-chat="isGroupChat"
-          :me-id="meId"
-          :hovered-id="hoveredId"
-          :chat-hide-thumbs="chatHideThumbs"
-          :loaded-media-ids="loadedMediaIds"
-          :jump-target-message-id="jumpTargetMessageId"
-          :read-indicators="getReadIndicatorsFor(messagesWithDividers[virtualRow.index]!)"
-          :should-show-message-meta="shouldShowMessageMeta(messagesWithDividers[virtualRow.index]!, virtualRow.index)"
-          :format-message-time="formatMessageTime"
-          :format-message-time-full="formatMessageTimeFull"
-          :bubble-shape-class="bubbleShapeClass"
-          :bubble-class="bubbleClass"
-          :register-divider-el="registerDividerEl"
-          :should-show-incoming-avatar="shouldShowIncomingAvatar"
-          :go-to-profile="goToProfile"
-          :sender-overlay="senderOverlay"
-          @mouseenter="(id: string) => (hoveredId = id)"
-          @mouseleave="onRowLeave"
-          @reply-snippet-click="(id: string) => emit('scroll-to-reply', id)"
-          @open-media="openMessageMedia"
-          @open-reaction-picker="openReactionPicker"
-          @open-menu="openMenu"
-          @react="(message: Message, reactionId: string) => emit('react', message, reactionId)"
-          @restore="(message: Message) => emit('restore', message)"
-        />
-      </div>
+    <!-- Plain normal-flow list — no virtualizer, no CSS containment. -->
+    <div
+      v-for="(item, index) in messagesWithDividers"
+      :key="item.key"
+      class="moh-chat-row"
+    >
+      <ChatMessageListRow
+        :item="item"
+        :animate-rows="animateRows"
+        :recent-animated-message-ids="recentAnimatedMessageIds"
+        :sending-message-ids="sendingMessageIds"
+        :latest-my-message-id="latestMyMessageId"
+        :is-latest-my-message-read="isLatestMyMessageRead"
+        :is-group-chat="isGroupChat"
+        :me-id="meId"
+        :hovered-id="hoveredId"
+        :chat-hide-thumbs="chatHideThumbs"
+        :loaded-media-ids="loadedMediaIds"
+        :jump-target-message-id="jumpTargetMessageId"
+        :read-indicators="getReadIndicatorsFor(item)"
+        :should-show-message-meta="shouldShowMessageMeta(item, index)"
+        :format-message-time="formatMessageTime"
+        :format-message-time-full="formatMessageTimeFull"
+        :bubble-shape-class="bubbleShapeClass"
+        :bubble-class="bubbleClass"
+        :register-divider-el="registerDividerEl"
+        :should-show-incoming-avatar="shouldShowIncomingAvatar"
+        :go-to-profile="goToProfile"
+        :sender-overlay="senderOverlay"
+        @mouseenter="(id: string) => (hoveredId = id)"
+        @mouseleave="onRowLeave"
+        @reply-snippet-click="(id: string) => emit('scroll-to-reply', id)"
+        @open-media="openMessageMedia"
+        @open-reaction-picker="openReactionPicker"
+        @open-menu="openMenu"
+        @react="(message: Message, reactionId: string) => emit('react', message, reactionId)"
+        @restore="(message: Message) => emit('restore', message)"
+      />
     </div>
 
     <!-- Shared popovers (one instance, repositioned on open) -->
@@ -116,14 +92,10 @@
 </template>
 
 <script setup lang="ts">
-import type { ComponentPublicInstance, PropType } from 'vue'
-import { useVirtualizer } from '@tanstack/vue-virtual'
+import type { PropType } from 'vue'
 import type { Message, MessageMedia, MessageUser, MessageReaction, MessageParticipant } from '~/types/api'
 import type { ChatListItem } from '~/composables/chat/useChatTimeFormatting'
 import { useUsersStore } from '~/composables/useUsersStore'
-// Sibling file — explicit import because Nuxt registers `~/components/app/chat/*`
-// as `App*` prefixed names (`AppChatMessageListRow`), which does not satisfy
-// the `<ChatMessageListRow>` tag Vue looks up at runtime.
 import ChatMessageListRow from './ChatMessageListRow.vue'
 
 const toast = useAppToast()
@@ -131,8 +103,6 @@ const colorMode = useColorMode()
 const viewer = useImageLightbox()
 const chatHideThumbs = computed(() => viewer.kind.value === 'media' && viewer.hideOrigin.value)
 
-// Track which media IDs have finished loading so we can fade them in without
-// layout shift. reactive(Set) lets Vue track .has() calls reactively.
 const loadedMediaIds = reactive(new Set<string>())
 
 const props = defineProps({
@@ -159,71 +129,10 @@ const props = defineProps({
   goToProfile: { type: Function as PropType<(u: MessageUser | null | undefined) => void>, required: true },
   availableReactions: { type: Array as PropType<MessageReaction[]>, required: false, default: () => [] },
   participants: { type: Array as PropType<MessageParticipant[]>, required: false, default: () => [] },
-  /** Message ID to highlight (jump target from search). */
   jumpTargetMessageId: { type: [String, null] as PropType<string | null>, required: false, default: null },
   messagesNewerCursor: { type: [String, null] as PropType<string | null>, required: false, default: null },
   loadingNewer: { type: Boolean, required: false, default: false },
-  /**
-   * The scroll container that wraps this list. Required for virtualization —
-   * the virtualizer attaches its scroll listener and ResizeObserver here.
-   * Provided as a reactive ref from the parent so the virtualizer can pick
-   * it up the moment the parent's `<div ref="messagesScroller">` mounts.
-   */
-  scrollerEl: { type: [Object, null] as PropType<HTMLElement | null>, required: false, default: null },
 })
-
-// ─── Virtualizer ─────────────────────────────────────────────────────────────
-// Render only the rows currently visible (+ a small overscan buffer). For
-// long chats this drops the active DOM node count from O(history) to ~10–20
-// and removes the per-message ResizeObserver / per-message RichBody side-
-// effect cost.
-
-const ESTIMATED_ROW_PX = 72
-const OVERSCAN_ROWS = 5
-
-const virtualizer = useVirtualizer({
-  // Reactive accessors — the virtualizer re-derives when these change.
-  get count() {
-    return props.messagesWithDividers.length
-  },
-  getScrollElement: () => props.scrollerEl ?? null,
-  estimateSize: () => ESTIMATED_ROW_PX,
-  overscan: OVERSCAN_ROWS,
-  // Stable per-row keys so re-orders / inserts reuse measurements.
-  getItemKey: (index) => props.messagesWithDividers[index]?.key ?? index,
-  indexAttribute: 'data-virtual-row-index',
-})
-
-const virtualItems = computed(() => virtualizer.value.getVirtualItems())
-const totalSize = computed(() => virtualizer.value.getTotalSize())
-
-/**
- * Ref callback applied to every visible row; lets the virtualizer measure the
- * real height. Vue's template `:ref` invokes this with `Element | ComponentPublicInstance | null`.
- */
-function measureRow(el: Element | ComponentPublicInstance | null) {
-  if (!el) return
-  if (!(el instanceof Element)) return
-  virtualizer.value.measureElement(el)
-}
-
-/**
- * Imperative scroll-to-message helper. Used by the parent for jump-to-reply
- * (search result, replied-to message). With virtualization the off-screen row
- * may not exist in the DOM, so we ask the virtualizer to bring it into range
- * first; the parent's existing flash-highlight then fires once the row mounts.
- */
-function scrollToMessageId(messageId: string, opts?: { align?: 'start' | 'center' | 'end' | 'auto' }) {
-  if (!messageId) return false
-  const idx = props.messagesWithDividers.findIndex(
-    (it) => it.type === 'message' && it.message.id === messageId,
-  )
-  if (idx < 0) return false
-  virtualizer.value.scrollToIndex(idx, { align: opts?.align ?? 'center' })
-  return true
-}
-
-defineExpose({ scrollToMessageId })
 
 const CLUSTER_GAP_MS = 5 * 60 * 1000
 const usersStore = useUsersStore()
@@ -239,11 +148,6 @@ const activeReactionIds = computed<Set<string>>(() => {
   return new Set(pickerMessage.value.reactions.filter((r) => r.reactedByMe).map((r) => r.reactionId))
 })
 
-// For each participant, find the latest message they've read and map it.
-// O(m + p log p): pre-sort participants by lastReadAt, walk message items
-// once, and assign each participant to the last message <= their lastReadAt
-// via a 2-pointer sweep. DM chats short-circuit since read indicators are
-// only rendered for group/crew chats anyway.
 const readIndicatorsByMessageId = computed(() => {
   const map = new Map<string, MessageParticipant[]>()
   if (!props.isGroupChat) return map
@@ -345,7 +249,6 @@ async function onCopy(message: Message) {
   try {
     await navigator.clipboard.writeText(message.body)
   } catch {
-    // Fallback for environments where clipboard API is unavailable.
     const ta = document.createElement('textarea')
     ta.value = message.body
     ta.style.position = 'fixed'
@@ -425,3 +328,21 @@ const emit = defineEmits<{
   (e: 'scroll-to-reply', messageId: string): void
 }>()
 </script>
+
+<style scoped>
+/*
+ * Vertical padding between chat rows.
+ *
+ * NOTE: CSS containment (content-visibility with the "auto" value) was tried
+ * here for browser-native windowing but caused a critical scroll bug: the
+ * 72px intrinsic-size estimate wildly underestimates media rows (actual
+ * 280-320px), making scrollHeight wrong on first open and landing users in
+ * the middle of a media-heavy chat. Image wrappers carry aspect-ratio so
+ * heights are predetermined; the ResizeObserver in useChatScroll handles
+ * any remaining layout changes. Do NOT restore CSS containment here without
+ * first solving the intrinsic-size estimate problem.
+ */
+.moh-chat-row {
+  padding-block: 6px;
+}
+</style>
