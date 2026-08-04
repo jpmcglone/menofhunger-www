@@ -5,9 +5,6 @@
     :class="[
       'relative overflow-visible moh-gutter-x transition-colors',
       compact ? 'py-1.5 sm:py-2' : 'py-3 sm:py-4',
-      noPaddingBottom ? 'pb-0' : '',
-      noPaddingTop ? 'pt-0' : '',
-      showThreadLineAboveAvatar && !noPaddingTop ? 'pt-3' : '',
       noBorderBottom
         ? ''
         : subtleBorderBottom
@@ -70,10 +67,7 @@
     </div>
     <div
       class="relative z-[2] flex gap-2.5 sm:gap-3"
-      :class="{
-        'mt-2': showThreadLineAboveAvatar && noPaddingTop,
-        'pt-3': showThreadLineAboveAvatar && !noPaddingTop,
-      }"
+      :class="{ 'mt-2': showThreadLineAboveAvatar }"
     >
       <div class="relative z-20 shrink-0 flex flex-col w-10">
         <!-- Own post + in a space: show context menu instead of direct navigation -->
@@ -394,10 +388,6 @@ const props = withDefaults(defineProps<{
   showThreadLineBelowAvatar?: boolean
   /** When true, show a vertical line from the top of the row down to the top of the avatar (reply in a thread). */
   showThreadLineAboveAvatar?: boolean
-  /** When true, omit bottom padding (e.g. parent in a thread block). */
-  noPaddingBottom?: boolean
-  /** When true, omit top padding (e.g. reply in a thread so lines connect). */
-  noPaddingTop?: boolean
   /** When true, activate this post's video as soon as it's ready (e.g. newly posted). */
   activateVideoOnMount?: boolean
   /** When true, use tighter vertical padding (e.g. in reply lists). */

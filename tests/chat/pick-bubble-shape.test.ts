@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import type { Message } from '~/types/api'
 import {
-  PILL_MAX_CHARS,
+  PILL_MAX_EMS,
+  PILL_MAX_EMS_WITH_META,
+  estimateTextEms,
   pickBubbleShape,
   bubbleShapeClass,
 } from '~/composables/chat/useChatBubbleShape'
@@ -45,14 +47,24 @@ describe('pickBubbleShape', () => {
     expect(pickBubbleShape(makeMessage({ body: 'hey there' }))).toBe('pill')
   })
 
-  it('returns "pill" at the boundary length (PILL_MAX_CHARS chars exactly)', () => {
-    const body = 'a'.repeat(PILL_MAX_CHARS)
+  it('returns "pill" for a body that lands right under the width budget', () => {
+    const body = 'a'.repeat(Math.floor(PILL_MAX_EMS / estimateTextEms('a')))
+    expect(estimateTextEms(body)).toBeLessThanOrEqual(PILL_MAX_EMS)
     expect(pickBubbleShape(makeMessage({ body }))).toBe('pill')
   })
 
-  it('returns "rect" one character past the pill boundary', () => {
-    const body = 'a'.repeat(PILL_MAX_CHARS + 1)
+  it('returns "rect" once the body crosses the width budget', () => {
+    const body = 'a'.repeat(Math.ceil(PILL_MAX_EMS / estimateTextEms('a')) + 1)
+    expect(estimateTextEms(body)).toBeGreaterThan(PILL_MAX_EMS)
     expect(pickBubbleShape(makeMessage({ body }))).toBe('rect')
+  })
+
+  it('measures width, not length — wide glyphs lose the pill sooner than narrow ones', () => {
+    // Same character count, very different rendered width.
+    const narrow = 'l'.repeat(36)
+    const wide = 'W'.repeat(36)
+    expect(pickBubbleShape(makeMessage({ body: narrow }))).toBe('pill')
+    expect(pickBubbleShape(makeMessage({ body: wide }))).toBe('rect')
   })
 
   it('returns "rect" for any message containing a newline', () => {
@@ -104,5 +116,28 @@ describe('bubbleShapeClass', () => {
   it('emits the rect class for a multi-line message', () => {
     const cls = bubbleShapeClass(makeMessage({ body: 'line one\nline two' }))
     expect(cls).toContain('rounded-2xl')
+  })
+})
+
+describe('estimateTextEms', () => {
+  it('orders glyphs by rendered width rather than counting them', () => {
+    expect(estimateTextEms('lllll')).toBeLessThan(estimateTextEms('aaaaa'))
+    expect(estimateTextEms('aaaaa')).toBeLessThan(estimateTextEms('WWWWW'))
+  })
+
+  it('keeps the pill for a single-line message that a raw 28-char cap rejected', () => {
+    // ChatMessageListRow applies PILL_MAX_EMS_WITH_META when the timestamp is
+    // rendered inline. This body is 29 characters, so the old length cap
+    // dropped it to a rect even though it renders comfortably on one line.
+    const body = 'btw group chats work here too'
+    expect(body.length).toBeGreaterThan(28)
+    expect(pickBubbleShape(makeMessage({ body }))).toBe('pill')
+    expect(estimateTextEms(body)).toBeLessThanOrEqual(PILL_MAX_EMS_WITH_META)
+  })
+
+  it('still denies the pill to a same-length body made of wide glyphs', () => {
+    const body = 'MMM WWWWW MMMMM WWWW MMMM WWW'
+    expect(body.length).toBe(29)
+    expect(estimateTextEms(body)).toBeGreaterThan(PILL_MAX_EMS_WITH_META)
   })
 })

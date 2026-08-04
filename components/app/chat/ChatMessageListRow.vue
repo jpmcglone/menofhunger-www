@@ -356,7 +356,7 @@ import type { PropType } from 'vue'
 import type { Message, MessageMedia, MessageUser, MessageParticipant } from '~/types/api'
 import type { ChatListItem } from '~/composables/chat/useChatTimeFormatting'
 import { userColorTier } from '~/utils/user-tier'
-import { PILL_CLASS, RECT_CLASS, PILL_MAX_CHARS_WITH_META, pickBubbleShape } from '~/composables/chat/useChatBubbleShape'
+import { PILL_CLASS, RECT_CLASS, PILL_MAX_EMS_WITH_META, estimateTextEms, pickBubbleShape } from '~/composables/chat/useChatBubbleShape'
 
 const props = defineProps({
   /** The flat list item — divider or message. */
@@ -441,7 +441,7 @@ const effectiveBubbleShapeClass = computed(() => {
     const shape = pickBubbleShape(m)
     if (shape === 'pill') {
       const body = (m.body ?? '').trim()
-      if (body.length > PILL_MAX_CHARS_WITH_META) return RECT_CLASS
+      if (estimateTextEms(body) > PILL_MAX_EMS_WITH_META) return RECT_CLASS
     }
     return shape === 'pill' ? PILL_CLASS : RECT_CLASS
   }

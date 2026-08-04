@@ -23,7 +23,6 @@
         :key="r.id"
         :post="r"
         compact
-        no-padding-top
         show-thread-line-above-avatar
         :show-thread-line-below-avatar="idx < visibleReplies.length - 1"
         @deleted="onNestedDeleted"

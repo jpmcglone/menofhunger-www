@@ -13,7 +13,6 @@
     <!-- Original post content -->
     <AppPostRow
       :post="repostedPost"
-      :no-padding-top="true"
       :no-border-bottom="false"
       :subtle-border-bottom="subtleBorderBottom"
       :activate-video-on-mount="activateVideoOnMount"
@@ -38,7 +37,6 @@
     <AppPostRow
       :post="post"
       :highlight="highlightedPostId === post.id"
-      :no-padding-top="noPaddingTop"
       :no-border-bottom="false"
       :subtle-border-bottom="subtleBorderBottom"
       :activate-video-on-mount="activateVideoOnMount"
@@ -124,8 +122,6 @@
           :post="entry.item"
           :highlight="highlightedPostId === entry.item.id"
           :no-border-bottom="displayIndex < displayChain.length - 1"
-          :no-padding-top="noPaddingTop || displayIndex > 0"
-          :no-padding-bottom="displayIndex < displayChain.length - 1"
           :show-thread-line-above-avatar="displayIndex > 0"
           :show-thread-line-below-avatar="displayIndex < displayChain.length - 1"
           :thread-line-tint="threadLineTint"
@@ -183,8 +179,6 @@ const props = withDefaults(
     repliesSort?: 'new' | 'trending' | null
     /** When set, the post with this id is highlighted (e.g. the post being viewed on /p/:id). */
     highlightedPostId?: string | null
-    /** Remove top padding from the first row (e.g. on post permalink page). */
-    noPaddingTop?: boolean
     groupWall?: { groupId: string; viewerIsOwner: boolean } | null
     feedGroup?: CommunityGroupShell | null
     /** Softer bottom border between rows (e.g. combined groups feed). */
@@ -203,7 +197,6 @@ const props = withDefaults(
   }>(),
   {
     highlightedPostId: null,
-    noPaddingTop: false,
     collapsedSiblingRepliesCount: 0,
     repliesSort: null,
     groupWall: null,

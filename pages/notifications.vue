@@ -89,7 +89,6 @@
                   :post="item.notification.post!.repostedPost!"
                   :clickable="false"
                   :highlight="stickyHighlightedItemKeys.has(itemKey(item))"
-                  no-padding-top
                   no-border-bottom
                 />
               </template>
