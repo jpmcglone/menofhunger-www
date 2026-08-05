@@ -20,6 +20,7 @@ describe('overlay dismissal', () => {
   it('handles Escape, Back, and route changes from one LIFO stack', () => {
     expect(composable).toContain("document.addEventListener('keydown', onGlobalEscape, { capture: true })")
     expect(composable).toContain("window.addEventListener('popstate', onPopState)")
+    expect(composable).toContain('router.beforeEach')
     expect(composable).toContain('router.afterEach')
     // Only the topmost overlay closes on Escape/Back; a route change tears down all of them.
     expect(composable).toContain('function dismissTop()')
@@ -37,31 +38,70 @@ describe('overlay dismissal', () => {
 
   it('does not pop a history entry the user has already navigated past', () => {
     // A route change buries our entry; calling history.back() then would undo their navigation.
-    // guardArmed and guardedPath are cleared before dismissAll().
-    expect(composable).toMatch(/guardArmed = false\n {4}guardedPath = null\n {4}dismissAll\(\)/)
+    // afterEach still dismisses overlays and belt-and-suspenders clears guardArmed.
+    expect(composable).toContain('router.afterEach')
+    expect(composable).toContain('dismissAll()')
   })
 
-  it('does not reverse an in-overlay NuxtLink navigation', () => {
-    // Bug: When the Vue flush:pre watcher fires (closing the overlay) BEFORE afterEach
-    // completes, guardArmed is still true and unwindGuard() calls history.back(), undoing
-    // the navigation the user just triggered. Fix: record the URL at arm time and skip
-    // history.back() if the URL already changed.
+  it('disarms the guard in beforeEach so NuxtLink clicks inside an overlay navigate correctly', () => {
+    // Root cause: when a NuxtLink inside a bottom sheet is tapped:
+    //   1. router.push('/new-route') fires — navigation guard pipeline starts.
+    //   2. The overlay's @click sets open=false → Vue watcher → syncGuard → deferred timer.
+    //
+    // Previously the timer's unwindGuard() relied on afterEach setting guardArmed=false.
+    // In practice this race could go either way: navigation cancelled (never got to articles)
+    // or navigation completed then reversed (loaded articles, then went back).
+    //
+    // Fix: router.beforeEach fires at the very start of every navigation, synchronously,
+    // before any async guards. It immediately sets guardArmed=false and cancels the timer.
+    // By the time the timer would fire, guardArmed is already false → history.back() skipped.
+    const beforeIdx = composable.indexOf('router.beforeEach')
+    expect(beforeIdx).toBeGreaterThan(-1)
+    const beforeEnd = composable.indexOf('\n  })', beforeIdx + 10)
+    const beforeBody = composable.slice(beforeIdx, beforeEnd)
+    expect(beforeBody).toContain('guardArmed = false')
+    expect(beforeBody).toContain('cancelPendingUnwind()')
+  })
+
+  it('keeps history.back() deferred so X/backdrop dismissals still clean up the guard entry', () => {
+    // When an overlay closes WITHOUT navigation (X / Escape / backdrop), no beforeEach fires.
+    // guardArmed stays true and the deferred timer must still call history.back() to pop the
+    // throwaway entry — otherwise the user's next back press appears to do nothing.
+    expect(composable).toContain('unwindTimer')
+    expect(composable).toContain('setTimeout(')
+    const syncIdx = composable.indexOf('function syncGuard()')
+    const syncEnd = composable.indexOf('\n}', syncIdx + 10)
+    const syncBody = composable.slice(syncIdx, syncEnd)
+    expect(syncBody).toContain('unwindTimer')
+    expect(syncBody).toContain('setTimeout(')
+  })
+
+  it('cancels a pending unwind when the back button fires first', () => {
+    // If history.back() is pending in a timer and the user presses the physical Back
+    // button (which consumes the guard entry via popstate), the timer must be cancelled
+    // to avoid a double-back that looks like an extra navigation to the previous page.
+    const popIdx = composable.indexOf('function onPopState()')
+    const popEnd = composable.indexOf('\n}', popIdx + 10)
+    const popBody = composable.slice(popIdx, popEnd)
+    expect(popBody).toContain('cancelPendingUnwind()')
+  })
+
+  it('belt-and-suspenders: unwindGuard skips history.back() if the URL already changed', () => {
+    // Even if beforeEach fires late or is bypassed, the secondary URL check in unwindGuard
+    // ensures history.back() is never called when the URL has already moved on.
     expect(composable).toContain('guardedPath')
-    // guardedPath must be set in armGuard
     const armIdx = composable.indexOf('function armGuard()')
-    const armBody = composable.slice(armIdx, composable.indexOf('\n}', armIdx))
+    const armBody = composable.slice(armIdx, composable.indexOf('\n}', armIdx + 10))
     expect(armBody).toContain('guardedPath =')
-    // unwindGuard must compare currentPath against guardedPath before the actual history.back() call.
-    // We search for "history.back()" as a statement (not inside a comment) by looking for it
-    // indented with spaces (the comment uses it inline in a sentence — no leading spaces).
     const unwindIdx = composable.indexOf('function unwindGuard()')
-    const unwindBody = composable.slice(unwindIdx, composable.indexOf('\n}', unwindIdx))
+    const unwindEnd = composable.indexOf('\n}', unwindIdx + 10)
+    const unwindBody = composable.slice(unwindIdx, unwindEnd)
+    expect(unwindBody).toContain('currentPath !== guardedPath')
+    // history.back() must come AFTER the URL check, not before
     const compareIdx = unwindBody.indexOf('currentPath !== guardedPath')
-    // The actual call is indented; avoid matching the comment that mentions history.back() inline.
     const backCallIdx = unwindBody.indexOf('  history.back()')
     expect(compareIdx).toBeGreaterThan(-1)
     expect(backCallIdx).toBeGreaterThan(-1)
-    // The guard check must come before the actual history.back() call
     expect(compareIdx).toBeLessThan(backCallIdx)
   })
 
