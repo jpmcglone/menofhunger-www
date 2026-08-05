@@ -80,6 +80,9 @@ async function settle() {
 
 describe('useOverlayDismiss – navigation from inside an overlay', () => {
   beforeEach(() => {
+    // Reset module state (routeHookInstalled, guardArmed, closers, etc.) so each test
+    // gets a fresh useOverlayDismiss with the route hook properly re-installed.
+    vi.resetModules()
     beforeEachHooks.length = 0
     afterEachHooks.length = 0
     currentRoute.value = { fullPath: '/home' }
