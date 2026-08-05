@@ -14,6 +14,8 @@ export type AppNavItem = {
   requiresPremium?: boolean
   /** Only show for site admins (e.g. Admin link). */
   requiresAdmin?: boolean
+  /** Only show when the viewer has this feature toggle enabled. */
+  requiresFeatureToggle?: import('~/config/app-feature-toggles').AppFeatureToggle
   /**
    * Hard kill-switch. When `false`, the item is hidden everywhere (left rail,
    * tab bar, mobile "More" sheet) regardless of auth/verification. The route
@@ -28,6 +30,7 @@ export type AppNavItem = {
 
 export function useAppNav() {
   const { user, isAuthed, isVerified: isVerifiedBase, isPremium } = useAuth()
+  const { hasFeature } = useAppFeatures()
   // A user is "verified" for nav purposes if they have premium OR verified status.
   const isVerified = computed(() => isPremium.value || isVerifiedBase.value)
   const { activeSpaceId, isPlaying: musicIsPlaying } = useSpaceAudio()
@@ -84,6 +87,7 @@ export function useAppNav() {
     },
     { key: 'articles', label: 'Articles', to: '/articles', icon: 'tabler:article', iconActive: 'tabler:article-filled', showInPrimaryNav: true, menuSection: 'main' },
     { key: 'check-ins', label: 'Check-ins', to: '/check-ins', icon: 'tabler:flame', iconActive: 'tabler:flame-filled', requiresAuth: true, requiresVerified: true, showInPrimaryNav: true, menuSection: 'main' },
+    { key: 'fitness', label: 'Fitness', to: '/fitness', icon: 'tabler:heart-rate-monitor', iconActive: 'tabler:heart-rate-monitor', requiresAuth: true, requiresVerified: true, showInPrimaryNav: true, menuSection: 'main' },
     { key: 'groups', label: 'Groups', to: '/groups', icon: 'heroicons-outline:user-group', iconActive: 'heroicons-solid:user-group', requiresAuth: false, showInPrimaryNav: true, menuSection: 'main' },
     { key: 'crew', label: crewLabel.value, to: '/crew', icon: 'tabler:shield-check', iconActive: 'tabler:shield-check-filled', requiresAuth: true, requiresVerified: true, showInPrimaryNav: true, menuSection: 'main' },
     { key: 'bookmarks', label: 'Bookmarks', to: '/bookmarks', icon: 'tabler:bookmark', iconActive: 'tabler:bookmark-filled', requiresAuth: true, showInPrimaryNav: true, menuSection: 'main' },
@@ -109,6 +113,7 @@ export function useAppNav() {
     if (item.requiresVerified && !isVerified.value) return false
     if (item.requiresPremium && !isPremium.value) return false
     if (item.requiresAdmin && !isAdmin.value) return false
+    if (item.requiresFeatureToggle && !hasFeature(item.requiresFeatureToggle)) return false
     return true
   }
 

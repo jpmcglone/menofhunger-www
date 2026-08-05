@@ -112,6 +112,8 @@
                 <SettingsMarvSection />
               </div>
 
+              <SettingsFitnessSection v-if="showsBlock('fitness')" />
+
               <div v-if="showsBlock('danger')" class="space-y-4">
                 <div class="border-t moh-border pt-6 -mt-2">
                   <div class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-3">
@@ -139,6 +141,7 @@ import SettingsBillingSection from '~/components/settings/sections/SettingsBilli
 import SettingsPrivacySection from '~/components/settings/sections/SettingsPrivacySection.vue'
 import SettingsNotificationsSection from '~/components/settings/sections/SettingsNotificationsSection.vue'
 import SettingsDangerZoneSection from '~/components/settings/sections/SettingsDangerZoneSection.vue'
+import SettingsFitnessSection from '~/components/settings/sections/SettingsFitnessSection.vue'
 
 definePageMeta({
   layout: 'app',
@@ -162,7 +165,7 @@ usePageSeo({
 // The previous narrower keys (`verification`, `blocked`, `links`) are kept as
 // "blocks" that the merged sections compose (see `composedBlocks` below) and
 // as legacy URL aliases that redirect to their new home.
-type SettingsSection = 'account' | 'notifications' | 'privacy' | 'billing' | 'marv'
+type SettingsSection = 'account' | 'notifications' | 'privacy' | 'billing' | 'marv' | 'fitness'
 type SettingsBlock =
   | 'account'
   | 'verification'
@@ -173,6 +176,7 @@ type SettingsBlock =
   | 'links'
   | 'marv'
   | 'danger'
+  | 'fitness'
 
 const { ensureLoaded, me } = useAuth()
 const route = useRoute()
@@ -214,7 +218,7 @@ onMounted(() => {
   void navigateTo({ path: route.path, query: nextQuery }, { replace: true })
 })
 
-const allowedSections: SettingsSection[] = ['account', 'notifications', 'privacy', 'billing', 'marv']
+const allowedSections: SettingsSection[] = ['account', 'notifications', 'privacy', 'billing', 'marv', 'fitness']
 
 // Old narrower URL keys redirect into one of the top-level sections.
 const sectionAlias: Record<string, SettingsSection> = {
@@ -288,7 +292,8 @@ const sections = computed(() => [
     key: 'marv' as const,
     label: 'M.A.R.V (AI helper)',
     description: 'Preferred reply mode, credits, and recent activity.'
-  }
+  },
+  { key: 'fitness' as const, label: 'Fitness', description: 'Track weight, connect Apple Health, and more.' },
 ])
 
 // Each top-level section is composed from one or more "blocks" (the original
@@ -300,6 +305,7 @@ const sectionToBlocks: Record<SettingsSection, ReadonlyArray<SettingsBlock>> = {
   privacy: ['privacy', 'blocked'],
   billing: ['billing'],
   marv: ['marv'],
+  fitness: ['fitness'],
 }
 
 const composedBlocks = computed<ReadonlyArray<SettingsBlock>>(() => {

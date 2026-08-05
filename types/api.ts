@@ -590,7 +590,7 @@ export type FeedPost = {
   editCount?: number
   body: string
   deletedAt: string | null
-  kind?: 'regular' | 'checkin' | 'repost' | 'articleShare' | 'status'
+  kind?: 'regular' | 'checkin' | 'repost' | 'articleShare' | 'status' | 'fitnessShare'
   checkinDayKey?: string | null
   checkinPrompt?: string | null
   visibility: PostVisibility
@@ -641,6 +641,8 @@ export type FeedPost = {
   repostedByCount?: number
   /** For kind='articleShare': the shared article preview. */
   article?: ArticleSharePreview
+  /** For kind='fitnessShare': the frozen fitness share snapshot. */
+  fitnessShare?: FitnessSharePreview
   /** When true, post body/media/mentions/poll are redacted and author is placeholder. */
   authorBanned?: boolean
   /** False when the viewer's tier does not grant access; body/media stripped. */
@@ -2375,6 +2377,127 @@ export type ArticleSharePreview = {
   author: Pick<ArticleAuthor, 'id' | 'username' | 'name' | 'avatarUrl' | 'verifiedStatus' | 'premium' | 'premiumPlus'>
   /** Present when the preview comes from /articles/:id; false means media should be blurred/locked. */
   viewerCanAccess?: boolean
+}
+
+// ─── Fitness types ────────────────────────────────────────────────────────────
+
+export type FitnessProvider = 'strava' | 'apple_health'
+export type FitnessActivityType = 'run' | 'ride' | 'walk' | 'swim' | 'workout' | 'hike' | 'yoga' | 'other'
+export type FitnessUnits = 'us' | 'metric'
+export type FitnessShareType = 'activity' | 'weight' | 'progress'
+
+export type FitnessConnection = {
+  provider: FitnessProvider
+  status: string
+  lastSyncAt: string | null
+  lastManualSyncAt: string | null
+  providerUserId: string | null
+}
+
+export type FitnessActivity = {
+  id: string
+  provider: FitnessProvider
+  activityType: FitnessActivityType
+  startedAt: string
+  endedAt: string | null
+  durationSec: number
+  distanceM: number | null
+  effortScore: number | null
+  stepsCount: number | null
+  calories: number | null
+  avgHeartrate: number | null
+  maxHeartrate: number | null
+}
+
+export type FitnessDailySummary = {
+  dayKey: string
+  stepsCount: number | null
+  workoutMinutes: number | null
+  distanceM: number | null
+  effortScore: number | null
+  sleepMinutes?: number | null
+  hrvMs?: number | null
+}
+
+export type FitnessBodyMetric = {
+  id: string
+  /** "weight" | "vo2max" */
+  kind: string
+  /** kg for weight; ml/kg/min for vo2max */
+  weightKg: number
+  measuredAt: string
+  source: string
+}
+
+export type FitnessGoal = {
+  id: string
+  kind: string
+  startKg: number | null
+  targetKg: number | null
+  startedAt: string
+  completedAt: string | null
+}
+
+export type FitnessActivitySnapshot = {
+  activityType: FitnessActivityType
+  startedAt: string
+  durationSec: number
+  distanceM: number | null
+  effortScore: number | null
+  stepsCount: number | null
+  calories: number | null
+  avgHeartrate: number | null
+  maxHeartrate: number | null
+}
+
+export type FitnessWeightSnapshot = {
+  weightKg: number
+  measuredAt: string
+  previousWeightKg: number | null
+  deltaKg: number | null
+}
+
+export type FitnessProgressSnapshot = {
+  startKg: number | null
+  currentKg: number | null
+  targetKg: number | null
+  startedAt: string
+}
+
+export type FitnessShareSnapshot =
+  | { type: 'activity'; data: FitnessActivitySnapshot }
+  | { type: 'weight'; data: FitnessWeightSnapshot }
+  | { type: 'progress'; data: FitnessProgressSnapshot }
+
+export type FitnessSharePreview = {
+  id: string
+  shareType: FitnessShareType
+  snapshot: FitnessShareSnapshot
+}
+
+export type FitnessWeekSummary = {
+  weekStart: string
+  weekEnd: string
+  totalSteps: number
+  totalWorkoutMinutes: number
+  totalDistanceM: number
+  totalEffort: number
+  activityCount: number
+  days: FitnessDailySummary[]
+}
+
+export type FitnessPage = {
+  connections: FitnessConnection[]
+  weekSummary: FitnessWeekSummary
+  recentActivities: FitnessActivity[]
+  units: FitnessUnits
+  /** True when the viewer has the 'fitnessStrava' feature toggle. */
+  stravaEnabled: boolean
+  latestWeight: FitnessBodyMetric | null
+  weightHistory: FitnessBodyMetric[]
+  latestVo2Max: FitnessBodyMetric | null
+  vo2maxHistory: FitnessBodyMetric[]
+  activeGoal: FitnessGoal | null
 }
 
 export type ArticleComment = {

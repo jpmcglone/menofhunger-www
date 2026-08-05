@@ -1,6 +1,7 @@
 <template>
   <div ref="wrapEl" class="relative">
     <button
+      ref="btnEl"
       type="button"
       class="inline-flex items-center rounded-full border px-2 py-1 text-[11px] font-semibold leading-none transition-colors"
       :class="pillClass"
@@ -28,12 +29,15 @@
       <Icon v-if="viewerIsVerified" name="tabler:chevron-down" class="ml-1 text-[9px] opacity-80" aria-hidden="true" />
     </button>
 
-    <div
-      v-if="open"
-      class="absolute left-0 top-full z-30 mt-2 w-56 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-lg dark:border-zinc-800 dark:bg-black"
-      role="menu"
-      aria-label="Post visibility"
-    >
+    <!-- Teleport so overflow:hidden on parent modals/containers doesn't clip the panel -->
+    <Teleport to="body">
+      <div
+        v-if="open"
+        class="fixed z-[2000] w-56 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-lg dark:border-zinc-800 dark:bg-black"
+        :style="dropdownStyle"
+        role="menu"
+        aria-label="Post visibility"
+      >
       <button
         v-if="allowed.includes('public')"
         type="button"
@@ -90,7 +94,8 @@
           <span>Only me</span>
         </span>
       </button>
-    </div>
+      </div>
+    </Teleport>
   </div>
 </template>
 
@@ -125,6 +130,19 @@ const pillClass = computed(() => `${filterPillClasses(modelValue.value, false)} 
 
 const open = ref(false)
 const wrapEl = ref<HTMLElement | null>(null)
+const btnEl = ref<HTMLElement | null>(null)
+
+// Position the teleported panel relative to the button (opens upward when near bottom).
+const dropdownStyle = computed(() => {
+  if (!open.value || !btnEl.value) return {}
+  const r = btnEl.value.getBoundingClientRect()
+  const panelH = 180 // estimated max panel height
+  const spaceBelow = window.innerHeight - r.bottom
+  const openUp = spaceBelow < panelH + 8
+  return openUp
+    ? { bottom: `${window.innerHeight - r.top + 4}px`, left: `${r.left}px` }
+    : { top: `${r.bottom + 4}px`, left: `${r.left}px` }
+})
 
 function set(v: PostVisibility) {
   emit('update:modelValue', v)

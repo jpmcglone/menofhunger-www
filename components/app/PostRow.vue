@@ -275,6 +275,12 @@
           :article="postView.article"
         />
 
+        <!-- Fitness share card: rendered directly from API data (no fetch needed). -->
+        <AppFitnessShareCard
+          v-if="!isDeletedPost && !isGatedPost && postView.kind === 'fitnessShare' && postView.fitnessShare"
+          :share="postView.fitnessShare"
+        />
+
         <div v-if="!isDeletedPost && !isGatedPost && metaTags.length" class="mt-3.5 flex items-center justify-between gap-3">
           <div class="flex items-center gap-2">
             <template v-for="t in metaTags" :key="t.key">

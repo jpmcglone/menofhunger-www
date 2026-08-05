@@ -38,14 +38,14 @@
       <div
         :class="[
           'flex shrink-0 items-start gap-2',
-          (notification.kind === 'marv_not_in_group' || notification.kind === 'poll_results_ready' || notification.kind === 'status_update' || notification.kind === 'word_of_the_day' || notification.kind === 'quote_of_the_day' || notification.kind === 'account_verified' || notification.kind === 'checkin_reminder' || notification.kind === 'on_this_day')
+          (notification.kind === 'marv_not_in_group' || notification.kind === 'poll_results_ready' || notification.kind === 'status_update' || notification.kind === 'word_of_the_day' || notification.kind === 'quote_of_the_day' || notification.kind === 'account_verified' || notification.kind === 'checkin_reminder' || notification.kind === 'on_this_day' || notification.kind === 'premium_started' || notification.kind === 'premium_ended')
             ? 'w-[2.75rem]'
             : 'w-[5.25rem]',
         ]"
       >
         <!-- System notifications and status_update carry their context elsewhere; no type icon here. -->
         <div
-          v-if="notification.kind !== 'marv_not_in_group' && notification.kind !== 'poll_results_ready' && notification.kind !== 'status_update' && notification.kind !== 'word_of_the_day' && notification.kind !== 'quote_of_the_day' && notification.kind !== 'account_verified' && notification.kind !== 'checkin_reminder' && notification.kind !== 'on_this_day'"
+          v-if="notification.kind !== 'marv_not_in_group' && notification.kind !== 'poll_results_ready' && notification.kind !== 'status_update' && notification.kind !== 'word_of_the_day' && notification.kind !== 'quote_of_the_day' && notification.kind !== 'account_verified' && notification.kind !== 'checkin_reminder' && notification.kind !== 'on_this_day' && notification.kind !== 'premium_started' && notification.kind !== 'premium_ended'"
           class="flex h-9 w-8 shrink-0 items-center justify-center sm:h-10"
           aria-hidden="true"
         >
