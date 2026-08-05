@@ -8,6 +8,11 @@ export type ComposerOpenOptions = {
   visibility?: ComposerVisibility
   initialText?: string | null
   placeholder?: string | null
+  /**
+   * When set, renders the check-in prompt block above the textarea (same card
+   * as on the post). The textarea placeholder falls back to "Write a check-in…".
+   */
+  checkinPrompt?: string | null
   /** Optional group scope label for composer mode (e.g. group wall modal). */
   groupName?: string | null
   allowedVisibilities?: ComposerVisibility[] | null

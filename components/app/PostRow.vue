@@ -175,7 +175,14 @@
             <Icon name="tabler:calendar-check" class="text-[13px]" aria-hidden="true" style="color: var(--moh-checkin)" />
           </div>
           <div class="min-w-0">
-            <div class="text-[10px] font-semibold uppercase tracking-wide" style="color: var(--moh-checkin); opacity: 0.75">{{ checkinPromptEyebrow }}</div>
+            <div class="flex items-center gap-1.5">
+              <span class="text-[10px] font-semibold uppercase tracking-wide" style="color: var(--moh-checkin); opacity: 0.75">Prompt</span>
+              <span
+                v-if="isCheckinPromptToday"
+                class="rounded-full px-1.5 py-px text-[9px] font-bold uppercase tracking-wide border"
+                style="color: var(--moh-checkin); border-color: rgba(var(--moh-checkin-rgb), 0.35); background-color: rgba(var(--moh-checkin-rgb), 0.1)"
+              >Today</span>
+            </div>
             <div class="mt-0.5 text-xs sm:text-[13px] leading-snug moh-text">{{ postView.checkinPrompt }}</div>
           </div>
         </component>
@@ -637,10 +644,9 @@ function easternDayKeyNow(): string {
 
 const NuxtLink = resolveComponent('NuxtLink')
 
-const checkinPromptEyebrow = computed(() => {
+const isCheckinPromptToday = computed(() => {
   const dk = (postView.value.checkinDayKey ?? '').trim()
-  if (dk && dk === easternDayKeyNow()) return "TODAY'S PROMPT"
-  return 'PROMPT'
+  return Boolean(dk && dk === easternDayKeyNow())
 })
 const metaTags = computed(() => {
   const out: Array<{ key: string; label: string; class: string; tooltip: any; icon?: string | null; to?: string | null }> = []

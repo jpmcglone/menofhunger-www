@@ -79,6 +79,7 @@ export function useAppLayoutComposer(opts: UseAppLayoutComposerOptions) {
   const composerSourceOnlyMePost = ref<FeedPost | null>(null)
   const composerIsFromOnlyMe = computed(() => Boolean(composerSourceOnlyMePost.value?.id))
   const composerCustomPlaceholder = ref<string | null>(null)
+  const composerCheckinPrompt = ref<string | null>(null)
 
   const shareDialogOpen = ref(false)
   const sharePost = ref<FeedPost | null>(null)
@@ -174,6 +175,7 @@ export function useAppLayoutComposer(opts: UseAppLayoutComposerOptions) {
 
   function resetComposerCustomOptions() {
     composerCustomPlaceholder.value = null
+    composerCheckinPrompt.value = null
     composerCustomGroupName.value = null
     composerCustomAllowedVisibilities.value = null
     composerCustomDisableMedia.value = false
@@ -185,6 +187,7 @@ export function useAppLayoutComposer(opts: UseAppLayoutComposerOptions) {
     resetComposerCustomOptions()
     if (!options) return
     composerCustomPlaceholder.value = (options.placeholder ?? '').trim() || null
+    composerCheckinPrompt.value = (options.checkinPrompt ?? '').trim() || null
     composerCustomGroupName.value = (options.groupName ?? '').trim() || null
     composerCustomAllowedVisibilities.value = Array.isArray(options.allowedVisibilities)
       ? options.allowedVisibilities.filter(Boolean) as PostVisibility[]
@@ -450,6 +453,7 @@ export function useAppLayoutComposer(opts: UseAppLayoutComposerOptions) {
     composerModalOpen,
     composerInitialText,
     composerCustomPlaceholder,
+    composerCheckinPrompt,
     composerSourceOnlyMePost,
     composerIsFromOnlyMe,
     composerIsGroupMode,

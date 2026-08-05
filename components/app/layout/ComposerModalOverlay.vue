@@ -45,6 +45,7 @@
                 :show-divider="false"
                 :initial-text="composerInitialText ?? undefined"
                 :placeholder="composerCustomPlaceholder ?? undefined"
+                :checkin-prompt="composerCheckinPrompt ?? undefined"
                 :initial-media="composerIsFromOnlyMe ? (composerSourceOnlyMePost?.media ?? []) : undefined"
                 :locked-visibility="composerLockedVisibility ?? undefined"
                 :hide-visibility-picker="Boolean(composerLockedVisibility) || composerIsGroupMode"
@@ -84,6 +85,7 @@ const {
   composerModalOpen,
   composerInitialText,
   composerCustomPlaceholder,
+  composerCheckinPrompt,
   composerIsFromOnlyMe,
   composerSourceOnlyMePost,
   composerIsGroupMode,

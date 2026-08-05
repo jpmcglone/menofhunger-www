@@ -35,6 +35,8 @@ let routeHookInstalled = false
 
 /** True while a throwaway entry we pushed is the current history entry. */
 let guardArmed = false
+/** The URL at the time we armed the guard — used to detect in-overlay navigation. */
+let guardedPath: string | null = null
 /** True while we are popping our own entry, so the resulting popstate is ignored. */
 let unwinding = false
 
@@ -49,13 +51,25 @@ function armGuard() {
   // Same URL, so Vue Router resolves the resulting popstate as a duplicate navigation and
   // no route change occurs — the entry exists purely to be consumed by a back press.
   // Vue Router's own state fields are preserved so its position tracking stays intact.
+  guardedPath = location.pathname + location.search + location.hash
   history.pushState({ ...history.state, [GUARD_KEY]: true }, '')
   guardArmed = true
 }
 
 function unwindGuard() {
   if (!guardArmed) return
+  // If the URL changed since we armed (a NuxtLink inside the overlay navigated before the
+  // watcher could fire), don't call history.back() — that would undo their navigation.
+  // The afterEach hook already cleared guardArmed for this case; this guard protects against
+  // the race where the Vue flush:pre watcher runs before afterEach completes.
+  const currentPath = location.pathname + location.search + location.hash
+  if (guardedPath !== null && currentPath !== guardedPath) {
+    guardArmed = false
+    guardedPath = null
+    return
+  }
   guardArmed = false
+  guardedPath = null
   unwinding = true
   history.back()
 }
@@ -98,6 +112,7 @@ function onPopState() {
   if (!guardArmed) return
   // The back press consumed our entry rather than navigating.
   guardArmed = false
+  guardedPath = null
   dismissTop()
   // The closer unregisters on watcher flush; re-arm afterwards if any overlay remains.
   void nextTick(syncGuard)
@@ -124,6 +139,7 @@ function ensureRouteHook() {
     // The guard entry is now buried behind the page the user navigated to.
     // Popping it would undo their navigation, so forget it instead of unwinding.
     guardArmed = false
+    guardedPath = null
     dismissAll()
   })
 }

@@ -187,7 +187,7 @@ function openCheckinComposer() {
   const preferred: CheckinAllowedVisibility = allowed.includes('premiumOnly') ? 'premiumOnly' : 'verifiedOnly'
   openComposer({
     visibility: preferred,
-    placeholder: checkinState.value?.prompt ? checkinState.value.prompt : 'Write a check-in…',
+    checkinPrompt: checkinState.value?.prompt ?? null,
     allowedVisibilities: allowed,
     disableMedia: true,
     createPost: createCheckinViaComposer,

@@ -13,9 +13,12 @@
     <div v-if="isAuthed">
       <!-- Full composer -->
       <div :class="omitAvatar ? 'flex flex-col gap-2' : 'grid grid-cols-[2.5rem_minmax(0,1fr)] gap-x-3 items-start'">
-      <!-- Row 1: visibility picker (left) + scheduled time chip (right) -->
+      <!-- Row 1: visibility picker (left) + checkin prompt / scheduled time (right) -->
       <div
-        :class="omitAvatar ? 'flex justify-between items-center' : 'col-start-2 flex justify-between items-center mb-3 sm:mb-2'"
+        :class="[
+          omitAvatar ? 'flex justify-between' : 'col-start-2 flex justify-between mb-3 sm:mb-2',
+          checkinPrompt ? 'items-end' : 'items-center',
+        ]"
       >
         <!-- Left: scope tag or visibility picker -->
         <div class="flex items-center">
@@ -44,9 +47,33 @@
           </span>
         </div>
 
-        <!-- Right: scheduled time — shown when a time is confirmed -->
+        <!-- Right: check-in prompt card (when composing a check-in) -->
+        <div
+          v-if="checkinPrompt"
+          class="inline-flex max-w-[55%] items-start gap-2 rounded-xl border px-2.5 py-2"
+          style="background-color: var(--moh-checkin-soft); border-color: rgba(var(--moh-checkin-rgb), 0.3)"
+        >
+          <div
+            class="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full"
+            style="background-color: rgba(var(--moh-checkin-rgb), 0.18)"
+          >
+            <Icon name="tabler:calendar-check" class="text-[11px]" aria-hidden="true" style="color: var(--moh-checkin)" />
+          </div>
+          <div class="min-w-0">
+            <div class="flex items-center gap-1">
+              <span class="text-[9px] font-bold uppercase tracking-wide" style="color: var(--moh-checkin); opacity: 0.8">Prompt</span>
+              <span
+                class="rounded-full px-1 py-px text-[8px] font-bold uppercase tracking-wide border"
+                style="color: var(--moh-checkin); border-color: rgba(var(--moh-checkin-rgb), 0.35); background-color: rgba(var(--moh-checkin-rgb), 0.1)"
+              >Today</span>
+            </div>
+            <div class="mt-0.5 text-[11px] leading-snug moh-text line-clamp-2">{{ checkinPrompt }}</div>
+          </div>
+        </div>
+
+        <!-- Right: scheduled time — shown when a time is confirmed (not applicable for check-ins) -->
         <button
-          v-if="scheduledAt && isPremium && mode === 'create' && !replyTo && !quotedPost"
+          v-else-if="scheduledAt && isPremium && mode === 'create' && !replyTo && !quotedPost"
           type="button"
           class="inline-flex items-center gap-1 text-[11px] font-semibold moh-focus"
           :style="scheduleAccentColor ? { color: scheduleAccentColor } : {}"
@@ -708,6 +735,12 @@ const props = defineProps<{
   initialVisibility?: import('~/types/api').PostVisibility
   /** Pre-fill the scheduled time chip (ISO string). */
   initialScheduledAt?: string
+  /**
+   * When set, the check-in prompt card is shown inline to the right of the
+   * visibility picker (bottom-aligned). The prompt is also used as the
+   * textarea placeholder.
+   */
+  checkinPrompt?: string
 }>()
 
 const route = useRoute()
@@ -1306,6 +1339,7 @@ const composerTextareaVars = computed<Record<string, string>>(() => {
 const postMaxLen = computed(() => (isPremium.value ? 1000 : 500))
 const composerPlaceholder = computed(
   () =>
+    props.checkinPrompt ??
     props.placeholder ??
     (props.replyTo ? 'Post your reply…' : (hasPoll.value ? 'Ask a question' : "What's happening?")),
 )

@@ -954,7 +954,7 @@ function openCheckinComposer() {
   const preferred = preferredCheckinVisibility()
   openComposer?.({
     visibility: preferred,
-    placeholder: checkinState.value?.prompt ? checkinState.value.prompt : 'Write a check-in…',
+    checkinPrompt: checkinState.value?.prompt ?? null,
     allowedVisibilities: checkinAllowedVisibilities.value,
     disableMedia: true,
     createPost: createCheckinViaComposer,

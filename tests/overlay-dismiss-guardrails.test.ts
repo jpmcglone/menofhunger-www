@@ -37,7 +37,32 @@ describe('overlay dismissal', () => {
 
   it('does not pop a history entry the user has already navigated past', () => {
     // A route change buries our entry; calling history.back() then would undo their navigation.
-    expect(composable).toMatch(/guardArmed = false\n {4}dismissAll\(\)/)
+    // guardArmed and guardedPath are cleared before dismissAll().
+    expect(composable).toMatch(/guardArmed = false\n {4}guardedPath = null\n {4}dismissAll\(\)/)
+  })
+
+  it('does not reverse an in-overlay NuxtLink navigation', () => {
+    // Bug: When the Vue flush:pre watcher fires (closing the overlay) BEFORE afterEach
+    // completes, guardArmed is still true and unwindGuard() calls history.back(), undoing
+    // the navigation the user just triggered. Fix: record the URL at arm time and skip
+    // history.back() if the URL already changed.
+    expect(composable).toContain('guardedPath')
+    // guardedPath must be set in armGuard
+    const armIdx = composable.indexOf('function armGuard()')
+    const armBody = composable.slice(armIdx, composable.indexOf('\n}', armIdx))
+    expect(armBody).toContain('guardedPath =')
+    // unwindGuard must compare currentPath against guardedPath before the actual history.back() call.
+    // We search for "history.back()" as a statement (not inside a comment) by looking for it
+    // indented with spaces (the comment uses it inline in a sentence — no leading spaces).
+    const unwindIdx = composable.indexOf('function unwindGuard()')
+    const unwindBody = composable.slice(unwindIdx, composable.indexOf('\n}', unwindIdx))
+    const compareIdx = unwindBody.indexOf('currentPath !== guardedPath')
+    // The actual call is indented; avoid matching the comment that mentions history.back() inline.
+    const backCallIdx = unwindBody.indexOf('  history.back()')
+    expect(compareIdx).toBeGreaterThan(-1)
+    expect(backCallIdx).toBeGreaterThan(-1)
+    // The guard check must come before the actual history.back() call
+    expect(compareIdx).toBeLessThan(backCallIdx)
   })
 
   it('has replaced the Escape-only composable entirely', () => {

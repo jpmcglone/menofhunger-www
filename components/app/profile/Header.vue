@@ -786,7 +786,10 @@ const showNudge = computed(() => {
   if (!isAuthed.value) return false
   if (isSelf.value) return false
   if (!profile.value?.id || !profile.value?.username) return false
-  return isMutualFollow.value
+  if (!isMutualFollow.value) return false
+  // Unverified users can only nudge back — hide the button unless there's an inbound pending
+  if (!viewerIsVerified.value && !nudgeState.value?.inboundPending) return false
+  return true
 })
 
 const nudgeState = ref<NudgeState | null>(nudgeFromProps.value)
