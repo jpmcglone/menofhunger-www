@@ -11,8 +11,32 @@
     <template v-else-if="fitnessPage">
       <!-- ─── Week summary ──────────────────────────────────────────────── -->
       <div class="moh-gutter-x py-4 border-b moh-border">
-        <div class="text-xs font-semibold uppercase tracking-wide mb-3" :class="accentText">
-          This week
+        <div class="flex items-center mb-3">
+          <span class="text-xs font-semibold uppercase tracking-wide" :class="accentText">This week</span>
+          <span v-if="lastSyncedText" class="ml-auto text-[10px] text-gray-400 dark:text-gray-500">{{ lastSyncedText }}</span>
+          <button
+            v-if="stravaConnection"
+            :disabled="syncing"
+            class="ml-2 p-1 rounded text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors disabled:opacity-40"
+            title="Sync Strava"
+            @click="syncStrava"
+          >
+            <svg
+              class="w-3.5 h-3.5 transition-transform"
+              :class="syncing ? 'animate-spin' : ''"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.5"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
+              <path d="M21 3v5h-5" />
+              <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" />
+              <path d="M8 16H3v5" />
+            </svg>
+          </button>
         </div>
 
         <!-- 4-stat row -->
@@ -554,6 +578,7 @@ const toast = useAppToast()
 const fitnessPage = ref<FitnessPage | null>(null)
 const loading = ref(true)
 
+
 // Weight log
 const showLogWeight = ref(false)
 const logWeightInput = ref('')
@@ -589,6 +614,39 @@ const allowedVisibilities = computed<PostVisibility[]>(() => [
   ...(isVerified.value ? ['verifiedOnly' as PostVisibility] : []),
   ...(isPremium.value ? ['premiumOnly' as PostVisibility] : []),
 ])
+
+// ─── Sync ────────────────────────────────────────────────────────────────────
+
+const syncing = ref(false)
+
+const stravaConnection = computed(() =>
+  fitnessPage.value?.connections.find((c) => c.provider === 'strava' && c.status === 'active'),
+)
+
+const lastSyncedText = computed(() => {
+  const conns = fitnessPage.value?.connections ?? []
+  const dates = conns.flatMap((c) => (c.lastSyncAt ? [new Date(c.lastSyncAt)] : []))
+  if (dates.length === 0) return null
+  const latest = new Date(Math.max(...dates.map((d) => d.getTime())))
+  const elapsed = (Date.now() - latest.getTime()) / 1000
+  if (elapsed < 60) return 'Just now'
+  if (elapsed < 3600) return `Synced ${Math.floor(elapsed / 60)}m ago`
+  if (elapsed < 86400) return `Synced ${Math.floor(elapsed / 3600)}h ago`
+  return 'Synced yesterday'
+})
+
+async function syncStrava() {
+  if (syncing.value) return
+  syncing.value = true
+  try {
+    await apiFetchData<unknown>('/fitness/sync', { method: 'POST', body: { provider: 'strava' } })
+    await loadPage()
+  } catch (e: unknown) {
+    toast.pushError(e, 'Sync failed')
+  } finally {
+    syncing.value = false
+  }
+}
 
 async function loadPage() {
   loading.value = true

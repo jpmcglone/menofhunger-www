@@ -33,6 +33,7 @@
     <Teleport to="body">
       <div
         v-if="open"
+        ref="panelEl"
         class="fixed z-[2000] w-56 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-lg dark:border-zinc-800 dark:bg-black"
         :style="dropdownStyle"
         role="menu"
@@ -131,6 +132,7 @@ const pillClass = computed(() => `${filterPillClasses(modelValue.value, false)} 
 const open = ref(false)
 const wrapEl = ref<HTMLElement | null>(null)
 const btnEl = ref<HTMLElement | null>(null)
+const panelEl = ref<HTMLElement | null>(null)
 
 // Position the teleported panel relative to the button (opens upward when near bottom).
 const dropdownStyle = computed(() => {
@@ -156,9 +158,12 @@ function toggle() {
 function onDocPointerDown(e: PointerEvent) {
   if (!open.value) return
   const el = wrapEl.value
+  const panel = panelEl.value
   const t = e.target as Node | null
   if (!el || !t) return
-  if (el.contains(t)) return
+  // The panel is teleported to <body> so it is not inside wrapEl — treat it
+  // as "inside" so that option clicks aren't swallowed before @click fires.
+  if (el.contains(t) || panel?.contains(t)) return
   open.value = false
 }
 
