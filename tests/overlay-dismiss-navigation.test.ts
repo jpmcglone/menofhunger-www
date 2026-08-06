@@ -1,20 +1,19 @@
 /**
  * Behavioral regression test for the "links inside an overlay don't navigate" bug.
  *
- * Repro (mobile): tap the More tab → bottom sheet opens → tap "Articles" → the sheet
+ * Repro (mobile): tap the More tab → bottom sheet opens → tap "Spaces" → the sheet
  * closes but the route never changes (or navigates then immediately goes back).
  *
- * Cause: a NuxtLink tap does two things in the same browser event:
- *   1. RouterLink calls `router.push('/articles')`. Vue Router runs its guard pipeline.
- *   2. The sheet's `@click` sets `open = false`, queueing the Vue watcher inside
- *      `useOverlayDismiss` that unwinds the back-button guard entry.
+ * Root cause: `/spaces` and `/check-ins` declare `middleware: ['verified']`. Nuxt
+ * registers its global-middleware runner as a `router.beforeEach` hook at router init.
+ * `useOverlayDismiss` registers its own `router.beforeEach` lazily (first call), so it
+ * is always LATER in the queue. While `verified` awaits `ensureLoaded()`, the deferred
+ * unwind timer fires with `guardArmed` still true, calling `history.back()` and
+ * cancelling the navigation.
  *
- * If `history.back()` fires while the navigation is in flight (or after it completes),
- * the guard entry gets popped and the navigation is cancelled or reversed.
- *
- * Fix: `router.beforeEach` is called synchronously at the very start of every navigation,
- * before async guards run. It immediately sets `guardArmed = false` and cancels any
- * pending unwind timer. By the time the timer fires, the guard is already disarmed.
+ * Fix: `middleware/00-overlay-guard.global.ts` calls `notifyOverlayNavigationStart()`
+ * at the very start of the middleware pipeline (before any async work), disarming the
+ * guard synchronously. The mock router below models this realistic hook ordering.
  */
 
 import { describe, expect, it, vi, beforeEach } from 'vitest'
@@ -23,37 +22,58 @@ import { mount } from '@vue/test-utils'
 import { mockNuxtImport } from '@nuxt/test-utils/runtime'
 
 type RouteLike = { fullPath: string }
+type NavigationFailure = { type: number }
 
-const beforeEachHooks: Array<(to: RouteLike) => boolean | void> = []
-const afterEachHooks: Array<(to: RouteLike) => void> = []
+const beforeEachHooks: Array<(to: RouteLike) => boolean | void | Promise<boolean | void>> = []
+const afterEachHooks: Array<(to: RouteLike, from: RouteLike, failure?: NavigationFailure) => void> = []
 const currentRoute = ref<RouteLike>({ fullPath: '/home' })
 
 /**
- * Mimics Vue Router 4: beforeEach fires synchronously at the start of push(),
- * afterEach fires after all guards and pushState have completed.
+ * Realistic mock of Nuxt's router guard pipeline:
+ * - Hooks run in registration order.
+ * - An async "Nuxt middleware" hook is registered FIRST (simulating auth.global /
+ *   verified), awaiting several microtasks before continuing.
+ * - The overlay's `beforeEach` registers LATE (lazily, on first useOverlayDismiss call).
+ * - `middleware/00-overlay-guard.global.ts` is modelled by calling
+ *   `notifyOverlayNavigationStart` at the very start of push(), before any hooks run.
  */
 const router = {
   currentRoute,
-  beforeEach: (fn: (to: RouteLike) => boolean | void) => {
+  beforeEach: (fn: (to: RouteLike) => boolean | void | Promise<boolean | void>) => {
     beforeEachHooks.push(fn)
     return () => {}
   },
-  afterEach: (fn: (to: RouteLike) => void) => {
+  afterEach: (fn: (to: RouteLike, from: RouteLike, failure?: NavigationFailure) => void) => {
     afterEachHooks.push(fn)
     return () => {}
   },
-  push: async (to: string) => {
-    // beforeEach runs synchronously at the start of navigation.
+  push: async (to: string, { simulateAsyncMiddleware = false } = {}) => {
     const dest = { fullPath: to }
-    for (const fn of beforeEachHooks) fn(dest)
-    // Guard pipeline hops (async — navigation guards, resolve, enter guards…).
-    await Promise.resolve()
-    await Promise.resolve()
-    await Promise.resolve()
+    const from = currentRoute.value
+
+    // Model `00-overlay-guard.global.ts`: the very first thing in the pipeline,
+    // synchronously, before any hook runs.
+    const { notifyOverlayNavigationStart } = await import('~/composables/useOverlayDismiss')
+    notifyOverlayNavigationStart(to)
+
+    if (simulateAsyncMiddleware) {
+      // Simulate a slow async Nuxt middleware (e.g. verified awaiting ensureLoaded).
+      // The overlay's beforeEach hasn't disarmed anything yet at this point —
+      // that's what caused the bug. The global middleware above already disarmed it.
+      await Promise.resolve()
+      await Promise.resolve()
+      await Promise.resolve()
+    }
+
+    // Now run all registered beforeEach hooks in order.
+    for (const fn of beforeEachHooks) {
+      await fn(dest)
+    }
+
     // finalizeNavigation: URL changes after all guards pass.
     history.pushState({}, '', to)
     currentRoute.value = dest
-    for (const fn of afterEachHooks) fn(dest)
+    for (const fn of afterEachHooks) fn(dest, from)
   },
 }
 
@@ -90,7 +110,7 @@ describe('useOverlayDismiss – navigation from inside an overlay', () => {
     vi.restoreAllMocks()
   })
 
-  it('does not cancel navigation when a link inside the overlay is tapped', async () => {
+  it('does not cancel navigation when a link inside the overlay is tapped (sync middleware)', async () => {
     const backSpy = vi.spyOn(history, 'back')
     const open = ref(false)
     await mountOverlay(open, () => {
@@ -112,6 +132,38 @@ describe('useOverlayDismiss – navigation from inside an overlay', () => {
     // The guard must never pop the entry out from under an in-flight navigation.
     expect(backSpy).not.toHaveBeenCalled()
     expect(location.pathname).toBe('/articles')
+  })
+
+  it('does not cancel navigation to a route with async middleware (regression: Spaces/Check-ins)', async () => {
+    // This is the exact scenario that caused the bug:
+    // - Overlay is open, guard is armed.
+    // - User taps "Spaces" (a route with verified middleware that awaits).
+    // - Sheet @click fires open=false → Vue watcher → deferred unwind timer.
+    // - Without the global middleware fix, history.back() would fire DURING the await,
+    //   cancelling the navigation.
+    const backSpy = vi.spyOn(history, 'back')
+    const open = ref(false)
+    await mountOverlay(open, () => {
+      open.value = false
+    })
+
+    open.value = true
+    await nextTick()
+
+    // Navigate AND close the sheet simultaneously (same event).
+    const navigation = router.push('/spaces', { simulateAsyncMiddleware: true })
+    open.value = false
+    await nextTick()
+
+    // Let the deferred unwind timer fire — it must be a no-op because the global
+    // middleware already disarmed the guard.
+    await settle()
+
+    await navigation
+    await settle()
+
+    expect(backSpy).not.toHaveBeenCalled()
+    expect(location.pathname).toBe('/spaces')
   })
 
   it('still unwinds the guard entry on a plain dismiss (X / Escape / backdrop)', async () => {

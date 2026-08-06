@@ -36,15 +36,21 @@
  * The deferred `history.back()` must not fire when a navigation is in flight —
  * it would pop back to the guard entry (same URL) and undo the navigation.
  *
- * The fix: `router.beforeEach` is the earliest possible hook. When a real route
- * change begins, it immediately sets `guardArmed = false` and cancels any pending
- * unwind timer. By the time the Vue watcher's deferred timer fires, the guard is
- * already disarmed and `history.back()` is skipped.
+ * The original approach — a lazy `router.beforeEach` registered the first time this
+ * composable is called — is insufficient for routes that declare async Nuxt middleware
+ * (e.g. `verified`). Nuxt registers its global-middleware runner as a `beforeEach` hook
+ * at router init, so our lazily-registered hook is always later in the queue. While the
+ * async middleware awaits (e.g. `ensureLoaded()` inside `verified`), the deferred unwind
+ * timer fires with `guardArmed` still true, calling `history.back()` and cancelling the
+ * navigation.
  *
- * `beforeEach` fires synchronously at the start of the navigation guard pipeline —
- * before any async guards, before `history.pushState`, and before Vue flushes the
- * watcher that schedules the timer. So even if the watcher runs between two guard
- * hops, `guardArmed` is already `false` and no timer is scheduled.
+ * The real fix is `middleware/00-overlay-guard.global.ts`: a Nuxt global middleware file
+ * whose `00-` prefix causes it to run at the very start of the middleware pipeline —
+ * before `auth.global` and before any named middleware. It calls
+ * `notifyOverlayNavigationStart()` synchronously, disarming the guard before any `await`.
+ *
+ * The `router.beforeEach` below is kept as a belt-and-suspenders fallback for navigations
+ * that do not involve Nuxt async middleware.
  */
 
 type Closer = () => void
@@ -53,6 +59,12 @@ type Closer = () => void
 const closers: Closer[] = []
 let listenersInstalled = false
 let routeHookInstalled = false
+/**
+ * Full path of the last committed route. Kept at module scope so that
+ * `notifyOverlayNavigationStart` (called from global middleware) can compare
+ * before `ensureRouteHook` has even been called.
+ */
+let lastPath = ''
 
 /** True while a throwaway entry we pushed is the current history entry. */
 let guardArmed = false
@@ -171,30 +183,52 @@ function cancelPendingUnwind() {
   }
 }
 
+/**
+ * Called from `middleware/00-overlay-guard.global.ts` at the very start of every
+ * navigation — before any async Nuxt middleware runs. Disarms the guard so the
+ * deferred unwind timer cannot fire `history.back()` on top of an in-flight
+ * navigation to a route with async middleware (e.g. `verified`).
+ *
+ * Safe to call server-side: all guarded state is default-false/null there.
+ */
+export function notifyOverlayNavigationStart(toFullPath: string): void {
+  if (toFullPath === lastPath) return
+  if (!guardArmed) return
+  guardArmed = false
+  guardedPath = null
+  cancelPendingUnwind()
+}
+
 function ensureRouteHook() {
   if (routeHookInstalled) return
   routeHookInstalled = true
   const router = useRouter()
-  let lastPath = router.currentRoute.value.fullPath
+  lastPath = router.currentRoute.value.fullPath
 
-  // beforeEach fires at the very start of every navigation — before any async
-  // guards run and before the Vue watcher flush that schedules the unwind timer.
-  // When a real route change begins, immediately disarm the guard so that
-  // history.back() is never called on top of a completed navigation.
+  // Belt-and-suspenders fallback: fires in registration order, which means it
+  // runs AFTER Nuxt's global middleware hook. For routes with no async Nuxt
+  // middleware this is still the first disarm point; for routes with async
+  // middleware, `middleware/00-overlay-guard.global.ts` disarms earlier.
   router.beforeEach((to) => {
-    if (to.fullPath === lastPath) return true
-    if (!guardArmed) return true
-    guardArmed = false
-    guardedPath = null
-    cancelPendingUnwind()
+    notifyOverlayNavigationStart(to.fullPath)
     return true
   })
 
-  router.afterEach((to) => {
+  router.afterEach((to, _from, failure) => {
     // afterEach also fires for the duplicate navigation our own guard entry
     // provokes (popstate to the same URL). Only a real path change should
     // tear overlays down.
     if (to.fullPath === lastPath) return
+
+    if (failure) {
+      // Navigation was aborted (e.g. redirected or cancelled by a guard).
+      // The guard was already disarmed in beforeEach/global-middleware, but
+      // navigation never completed — re-arm if overlays are still open so the
+      // back button still works.
+      if (closers.length > 0) void nextTick(syncGuard)
+      return
+    }
+
     lastPath = to.fullPath
     // guardArmed was already cleared in beforeEach. Repeat here as a
     // belt-and-suspenders fallback (e.g. a redirect that bypassed our check).

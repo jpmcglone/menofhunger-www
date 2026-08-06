@@ -105,6 +105,25 @@ describe('overlay dismissal', () => {
     expect(compareIdx).toBeLessThan(backCallIdx)
   })
 
+  it('exports notifyOverlayNavigationStart for the global middleware to call', () => {
+    // The global middleware (00-overlay-guard.global.ts) needs to call this function
+    // synchronously at the start of every navigation so the guard is disarmed before
+    // any async Nuxt middleware runs.
+    expect(composable).toContain('export function notifyOverlayNavigationStart(')
+    expect(composable).toContain('cancelPendingUnwind()')
+  })
+
+  it('has 00-overlay-guard.global.ts wired as global middleware', () => {
+    // The middleware must synchronously call notifyOverlayNavigationStart so the
+    // guard is disarmed before any async Nuxt middleware (e.g. verified) awaits.
+    // It must be a defineNuxtRouteMiddleware so Nuxt runs it alphabetically first.
+    // It must also guard execution client-side only (import.meta.client) since
+    // history/DOM are not available on the server — reviewed manually or in CI.
+    const guard = read('middleware/00-overlay-guard.global.ts')
+    expect(guard).toContain('notifyOverlayNavigationStart')
+    expect(guard).toContain('defineNuxtRouteMiddleware')
+  })
+
   it('has replaced the Escape-only composable entirely', () => {
     expect(() => read('composables/useModalEscape.ts')).toThrow()
   })

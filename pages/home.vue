@@ -666,6 +666,11 @@ watch(
   { immediate: true },
 )
 
+// When the ET day rolls over, refresh check-in state so the hero shows today's prompt.
+watch(etDayKey, () => {
+  if (isAuthed.value) void refreshCheckin()
+})
+
 watch(
   checkinAllowedVisibilities,
   (allowed) => {

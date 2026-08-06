@@ -13,6 +13,13 @@ export function useCrewCheckinStreak() {
   return { days, set }
 }
 
+class StaleCheckinPromptError extends Error {
+  constructor() {
+    super("Today's check-in prompt has changed. Please close the composer and try again.")
+    this.name = 'StaleCheckinPromptError'
+  }
+}
+
 export function useDailyCheckin() {
   const { apiFetchData } = useApiClient()
   const { user } = useAuth()
@@ -61,9 +68,19 @@ export function useDailyCheckin() {
   }
 
   async function create(params: { body: string; visibility: CheckinAllowedVisibility }) {
+    // Guard: if state is from a previous day, refresh to get today's state. Then
+    // throw — the prompt in the open composer is stale and must not be submitted.
+    if (state.value?.dayKey && state.value.dayKey !== dayKey.value) {
+      await refresh()
+      throw new StaleCheckinPromptError()
+    }
+
+    // Include the prompt the user was actually shown so the server stores the right
+    // prompt text even if the submission crosses ET midnight.
+    const prompt = state.value?.prompt || undefined
     const res = await apiFetchData<CreateCheckinResponse>('/checkins', {
       method: 'POST',
-      body: { body: params.body, visibility: params.visibility },
+      body: { body: params.body, visibility: params.visibility, ...(prompt ? { prompt } : {}) },
     })
     // Update state immediately so the compact card (streak pill + mission section +
     // "X of N answered" crew copy) renders correctly without needing a full refresh.

@@ -9,106 +9,115 @@
     </div>
 
     <template v-else-if="fitnessPage">
-      <!-- ─── Week summary ──────────────────────────────────────────────── -->
-      <div class="moh-gutter-x py-4 border-b moh-border">
-        <div class="flex items-center mb-3">
-          <span class="text-xs font-semibold uppercase tracking-wide" :class="accentText">This week</span>
-          <span v-if="lastSyncedText" class="ml-auto text-[10px] text-gray-400 dark:text-gray-500">{{ lastSyncedText }}</span>
-          <button
-            v-if="stravaConnection"
-            :disabled="syncing"
-            class="ml-2 p-1 rounded text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors disabled:opacity-40"
-            title="Sync Strava"
-            @click="syncStrava"
-          >
-            <svg
-              class="w-3.5 h-3.5 transition-transform"
-              :class="syncing ? 'animate-spin' : ''"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2.5"
-              stroke-linecap="round"
-              stroke-linejoin="round"
+      <!-- ─── Card 1: This Week + Recovery ───────────────────────────────── -->
+      <div class="moh-gutter-x py-3">
+        <div class="rounded-xl border moh-border moh-surface-2 p-4 space-y-4">
+          <!-- Week summary header -->
+          <div class="flex items-center">
+            <span class="text-xs font-semibold uppercase tracking-wide" :class="accentText">This week</span>
+            <span v-if="lastSyncedText" class="ml-auto text-[10px] text-gray-400 dark:text-gray-500">{{ lastSyncedText }}</span>
+            <button
+              v-if="stravaConnection"
+              :disabled="syncing"
+              class="ml-2 p-1 rounded text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors disabled:opacity-40"
+              title="Sync Strava"
+              @click="syncStrava"
             >
-              <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
-              <path d="M21 3v5h-5" />
-              <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" />
-              <path d="M8 16H3v5" />
-            </svg>
-          </button>
-        </div>
+              <svg
+                class="w-3.5 h-3.5 transition-transform"
+                :class="syncing ? 'animate-spin' : ''"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
+                <path d="M21 3v5h-5" />
+                <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" />
+                <path d="M8 16H3v5" />
+              </svg>
+            </button>
+          </div>
 
-        <!-- 4-stat row -->
-        <div class="grid grid-cols-4 gap-3 mb-4">
-          <div class="text-center">
-            <div class="text-xl font-bold tabular-nums">
-              <span v-if="fitnessPage.weekSummary.totalSteps > 0">{{ formatSteps(fitnessPage.weekSummary.totalSteps) }}</span>
-              <span v-else class="text-gray-400 font-normal">—</span>
+          <!-- 4-stat row -->
+          <div class="grid grid-cols-4 gap-3">
+            <div class="text-center">
+              <div class="text-xl font-bold tabular-nums">
+                <span v-if="fitnessPage.weekSummary.totalSteps > 0">{{ formatSteps(fitnessPage.weekSummary.totalSteps) }}</span>
+                <span v-else class="text-gray-400 font-normal">—</span>
+              </div>
+              <div class="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">steps</div>
             </div>
-            <div class="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">steps</div>
-          </div>
-          <div class="text-center">
-            <div class="text-xl font-bold tabular-nums">
-              <span v-if="fitnessPage.weekSummary.totalWorkoutMinutes > 0">{{ fitnessPage.weekSummary.totalWorkoutMinutes }}</span>
-              <span v-else class="text-gray-400 font-normal">—</span>
+            <div class="text-center">
+              <div class="text-xl font-bold tabular-nums">
+                <span v-if="fitnessPage.weekSummary.totalWorkoutMinutes > 0">{{ fitnessPage.weekSummary.totalWorkoutMinutes }}</span>
+                <span v-else class="text-gray-400 font-normal">—</span>
+              </div>
+              <div class="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">min active</div>
             </div>
-            <div class="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">min active</div>
-          </div>
-          <div class="text-center">
-            <div class="text-xl font-bold tabular-nums">
-              <span v-if="fitnessPage.weekSummary.totalDistanceM > 0">{{ formatDistance(fitnessPage.weekSummary.totalDistanceM) }}</span>
-              <span v-else class="text-gray-400 font-normal">—</span>
+            <div class="text-center">
+              <div class="text-xl font-bold tabular-nums">
+                <span v-if="fitnessPage.weekSummary.totalDistanceM > 0">{{ formatDistance(fitnessPage.weekSummary.totalDistanceM) }}</span>
+                <span v-else class="text-gray-400 font-normal">—</span>
+              </div>
+              <div class="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">{{ fitnessPage.units === 'us' ? 'miles' : 'km' }}</div>
             </div>
-            <div class="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">{{ fitnessPage.units === 'us' ? 'miles' : 'km' }}</div>
-          </div>
-          <div class="text-center">
-            <div class="text-xl font-bold tabular-nums">
-              <span v-if="fitnessPage.weekSummary.totalEffort > 0">{{ fitnessPage.weekSummary.totalEffort }}</span>
-              <span v-else class="text-gray-400 font-normal">—</span>
+            <div class="text-center">
+              <div class="text-xl font-bold tabular-nums">
+                <span v-if="fitnessPage.weekSummary.totalEffort > 0">{{ fitnessPage.weekSummary.totalEffort }}</span>
+                <span v-else class="text-gray-400 font-normal">—</span>
+              </div>
+              <div class="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">effort</div>
             </div>
-            <div class="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">effort</div>
           </div>
-        </div>
 
-        <!-- Day bars (steps + active-day indicator) -->
-        <div class="flex items-end gap-1">
-          <div
-            v-for="day in fitnessPage.weekSummary.days"
-            :key="day.dayKey"
-            class="flex-1 flex flex-col items-center gap-1"
-          >
+          <!-- Day bars (steps + active-day indicator) -->
+          <div class="flex items-end gap-1">
             <div
-              class="w-full rounded-sm transition-all"
-              :class="(day.workoutMinutes ?? 0) > 0 ? accentBg : accentBarRest"
-              :style="{ height: dayBarHeight(day) }"
-            />
-            <span class="text-[10px] text-gray-400">{{ dayLabel(day.dayKey) }}</span>
+              v-for="day in fitnessPage.weekSummary.days"
+              :key="day.dayKey"
+              class="flex-1 flex flex-col items-center gap-1"
+            >
+              <div
+                class="w-full rounded-sm transition-all"
+                :class="dayBarClass(day)"
+                :style="{ height: dayBarHeight(day) }"
+              />
+              <!-- Day label — brighter for today -->
+              <span
+                class="text-[10px] transition-colors"
+                :class="isDayToday(day) ? 'text-white font-semibold' : 'text-gray-500 dark:text-gray-500'"
+              >{{ dayLabel(day.dayKey) }}</span>
+              <!-- Today dot — always rendered to keep column heights equal; hidden via opacity -->
+              <span
+                class="w-1 h-1 rounded-full -mt-0.5 transition-opacity"
+                :class="[accentBg, isDayToday(day) ? 'opacity-100' : 'opacity-0']"
+              />
+            </div>
           </div>
-        </div>
-        <!-- Legend -->
-        <div class="mt-2 flex items-center gap-3 text-[10px] text-gray-400">
-          <span><span class="inline-block w-2 h-2 rounded-sm mr-1 align-middle" :class="accentBg" />active day</span>
-          <span><span class="inline-block w-2 h-2 rounded-sm mr-1 align-middle" :class="accentBarRest" />rest</span>
-        </div>
-      </div>
+          <!-- Legend -->
+          <div class="flex items-center gap-3 text-[10px] text-gray-400">
+            <span><span class="inline-block w-2 h-2 rounded-sm mr-1 align-middle" :class="accentBg" />active day</span>
+            <span><span class="inline-block w-2 h-2 rounded-sm mr-1 align-middle bg-gray-300 dark:bg-zinc-600" />no data</span>
+          </div>
 
-      <!-- ─── Recovery strip (premium: sleep + HRV) ────────────────────── -->
-      <div
-        v-if="recoveryDays.length > 0"
-        class="moh-gutter-x py-3 border-b moh-border"
-      >
-        <div class="text-xs font-semibold uppercase tracking-wide mb-2" :class="accentText">
-          Recovery (7-day avg)
-        </div>
-        <div class="flex gap-6">
-          <div v-if="avgSleep !== null">
-            <span class="text-base font-bold tabular-nums">{{ avgSleep }}</span>
-            <span class="text-xs text-gray-500 dark:text-gray-400 ml-1">hrs sleep</span>
-          </div>
-          <div v-if="avgHrv !== null">
-            <span class="text-base font-bold tabular-nums">{{ avgHrv }}</span>
-            <span class="text-xs text-gray-500 dark:text-gray-400 ml-1">ms HRV</span>
+          <!-- Recovery strip (premium: sleep + HRV) — inside the same card -->
+          <div v-if="recoveryDays.length > 0" class="pt-1 border-t moh-border">
+            <div class="text-xs font-semibold uppercase tracking-wide mb-2" :class="accentText">
+              Recovery (7-day avg)
+            </div>
+            <div class="flex gap-6">
+              <div v-if="avgSleep !== null">
+                <span class="text-base font-bold tabular-nums">{{ avgSleep }}</span>
+                <span class="text-xs text-gray-500 dark:text-gray-400 ml-1">hrs sleep</span>
+              </div>
+              <div v-if="avgHrv !== null">
+                <span class="text-base font-bold tabular-nums">{{ avgHrv }}</span>
+                <span class="text-xs text-gray-500 dark:text-gray-400 ml-1">ms HRV</span>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -137,13 +146,18 @@
 
       <!-- ─── Recent activity ───────────────────────────────────────────── -->
       <div class="border-b moh-border">
-        <div class="moh-gutter-x pt-4 pb-2">
+        <div class="moh-gutter-x pt-4 pb-2 flex items-center justify-between">
           <div class="text-xs font-semibold uppercase tracking-wide" :class="accentText">
             Recent activity
             <span v-if="fitnessPage.weekSummary.activityCount > 0" class="normal-case font-normal text-gray-400 ml-1">
               · {{ fitnessPage.weekSummary.activityCount }} session{{ fitnessPage.weekSummary.activityCount !== 1 ? 's' : '' }} this week
             </span>
           </div>
+          <button
+            v-if="hasMoreActivities"
+            class="text-xs text-gray-400 hover:text-gray-200 transition-colors"
+            @click="showAllActivities = !showAllActivities"
+          >{{ showAllActivities ? 'Show less' : 'See all' }}</button>
         </div>
 
         <div v-if="fitnessPage.recentActivities.length === 0" class="moh-gutter-x py-6 text-sm text-gray-500 dark:text-gray-400">
@@ -157,7 +171,7 @@
 
         <div v-else class="divide-y divide-gray-100 dark:divide-white/[0.05]">
           <div
-            v-for="activity in fitnessPage.recentActivities"
+            v-for="activity in displayedActivities"
             :key="activity.id"
             class="moh-gutter-x py-3 flex items-start gap-3"
           >
@@ -198,7 +212,7 @@
                 </div>
               </div>
 
-              <!-- Row 2: duration · distance · pace -->
+              <!-- Row 2: duration · distance · pace · elevation -->
               <div class="text-xs text-gray-500 dark:text-gray-400 mt-1 flex items-center gap-2 flex-wrap">
                 <span class="font-medium text-gray-700 dark:text-gray-300">{{ formatDuration(activity.durationSec) }}</span>
                 <template v-if="activity.distanceM">
@@ -208,6 +222,13 @@
                 <template v-if="activityPace(activity)">
                   <span class="text-gray-300 dark:text-gray-600">·</span>
                   <span>{{ activityPace(activity) }}<span class="text-gray-400">/{{ fitnessPage.units === 'us' ? 'mi' : 'km' }}</span></span>
+                </template>
+                <template v-if="activity.totalElevationM != null && activity.totalElevationM > 0">
+                  <span class="text-gray-300 dark:text-gray-600">·</span>
+                  <span class="flex items-center gap-0.5">
+                    <Icon name="tabler:trending-up" class="text-gray-400 text-[11px]" />
+                    {{ formatElevation(activity.totalElevationM) }}
+                  </span>
                 </template>
               </div>
 
@@ -248,11 +269,22 @@
               </div>
             </div>
           </div>
+          <!-- Bottom "See all" / "Show less" button -->
+          <div v-if="hasMoreActivities" class="py-2 flex justify-center">
+            <button
+              class="text-xs text-gray-500 dark:text-gray-500 hover:text-gray-300 dark:hover:text-gray-300 px-3 py-1 rounded transition-colors"
+              @click="showAllActivities = !showAllActivities"
+            >{{ showAllActivities ? 'Show less' : 'See all activities' }}</button>
+          </div>
         </div>
       </div>
 
-      <!-- ─── Weight ─────────────────────────────────────────────────────── -->
-      <div class="moh-gutter-x py-4 border-b moh-border space-y-3">
+      <!-- ─── Card 2: Weight + VO2 Max + Goal ────────────────────────────── -->
+      <div class="moh-gutter-x py-3">
+        <div class="rounded-xl border moh-border moh-surface-2 divide-y moh-border">
+
+      <!-- Weight -->
+      <div class="p-4 space-y-3">
         <div class="flex items-center justify-between">
           <div class="text-xs font-semibold uppercase tracking-wide" :class="accentText">Weight</div>
           <div class="flex items-center gap-3">
@@ -351,8 +383,8 @@
         </div>
       </div>
 
-      <!-- ─── VO2 Max ─────────────────────────────────────────────────────── -->
-      <div v-if="fitnessPage.latestVo2Max || fitnessPage.vo2maxHistory.length > 0" class="moh-gutter-x py-4 border-b moh-border space-y-3">
+      <!-- VO2 Max (conditional — omitted when empty so no orphan divider) -->
+      <div v-if="fitnessPage.latestVo2Max || fitnessPage.vo2maxHistory.length > 0" class="p-4 space-y-3">
         <div class="text-xs font-semibold uppercase tracking-wide" :class="accentText">VO2 Max</div>
 
         <div v-if="fitnessPage.latestVo2Max" class="flex items-end justify-between">
@@ -397,8 +429,8 @@
         </div>
       </div>
 
-      <!-- ─── Goal ───────────────────────────────────────────────────────── -->
-      <div class="moh-gutter-x py-4 border-b moh-border space-y-3">
+      <!-- Goal -->
+      <div class="p-4 space-y-3">
         <div class="flex items-center justify-between">
           <div class="text-xs font-semibold uppercase tracking-wide" :class="accentText">Goal</div>
           <div class="flex items-center gap-3">
@@ -487,7 +519,9 @@
             </button>
           </div>
         </div>
-      </div>
+      </div><!-- /Goal -->
+        </div><!-- /card inner -->
+      </div><!-- /Card 2 outer -->
 
       <!-- ─── Apple Health compact nudge ───────────────────────────────── -->
       <!-- Show only when something is connected but Apple Health is not -->
@@ -557,6 +591,7 @@
 
 <script setup lang="ts">
 import type { FitnessPage, FitnessActivityType, FitnessDailySummary, FitnessSharePreview, PostVisibility } from '~/types/api'
+import { easternDateKey } from '~/utils/eastern-time'
 
 definePageMeta({
   layout: 'app',
@@ -577,6 +612,17 @@ const toast = useAppToast()
 
 const fitnessPage = ref<FitnessPage | null>(null)
 const loading = ref(true)
+
+const ACTIVITY_PREVIEW_COUNT = 5
+const showAllActivities = ref(false)
+const displayedActivities = computed(() =>
+  showAllActivities.value
+    ? (fitnessPage.value?.recentActivities ?? [])
+    : (fitnessPage.value?.recentActivities ?? []).slice(0, ACTIVITY_PREVIEW_COUNT),
+)
+const hasMoreActivities = computed(
+  () => (fitnessPage.value?.recentActivities.length ?? 0) > ACTIVITY_PREVIEW_COUNT,
+)
 
 
 // Weight log
@@ -897,6 +943,7 @@ function openShare(type: 'activity' | 'weight' | 'progress', refId: string) {
             calories: act.calories,
             avgHeartrate: act.avgHeartrate,
             maxHeartrate: act.maxHeartrate,
+            totalElevationM: act.totalElevationM,
           },
         },
       }
@@ -1047,6 +1094,12 @@ function formatSteps(n: number): string {
   return String(n)
 }
 
+function formatElevation(meters: number): string {
+  const page = fitnessPage.value
+  if (page?.units === 'us') return `${Math.round(meters * 3.28084)} ft`
+  return `${Math.round(meters)} m`
+}
+
 function formatDistance(meters: number | null): string {
   if (!meters) return '0'
   const page = fitnessPage.value
@@ -1077,8 +1130,25 @@ const maxSteps = computed(() => {
   return Math.max(1, ...fitnessPage.value.weekSummary.days.map((d) => d.stepsCount ?? 0))
 })
 
+const { now } = useEasternMidnightRollover()
+const todayKey = computed(() => easternDateKey(now.value))
+
+function isDayToday(day: FitnessDailySummary): boolean {
+  return day.dayKey === todayKey.value
+}
+function isDayFuture(day: FitnessDailySummary): boolean {
+  return day.dayKey > todayKey.value
+}
+
+function dayBarClass(day: FitnessDailySummary): string {
+  if ((day.workoutMinutes ?? 0) > 0) return accentBg.value
+  if (isDayFuture(day)) return 'bg-gray-200/30 dark:bg-white/10'
+  return 'bg-gray-300 dark:bg-zinc-600'
+}
+
 function dayBarHeight(day: FitnessDailySummary): string {
   const hasActivity = (day.workoutMinutes ?? 0) > 0
+  if (isDayFuture(day)) return '4px'
   const ratio = (day.stepsCount ?? 0) / maxSteps.value
   // Active days get a minimum height bump so the color difference is obvious
   return `${hasActivity ? Math.max(12, 4 + ratio * 36) : Math.max(4, ratio * 36)}px`

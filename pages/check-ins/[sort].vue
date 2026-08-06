@@ -200,10 +200,16 @@ function goToLoginForCheckin() {
 
 // ─── Lifecycle ───────────────────────────────────────────────────────────────
 
+const { dayKey: etDayKey } = useEasternMidnightRollover()
+
 onMounted(() => {
   if (posts.value.length === 0 && !loading.value) void refresh()
   if (isAuthed.value && !checkinState.value && !checkinLoading.value) void refreshCheckin()
 })
 
 watch(sort, () => void refresh())
+// When the ET day rolls over, refresh so the hero shows today's prompt.
+watch(etDayKey, () => {
+  if (isAuthed.value) void refreshCheckin()
+})
 </script>
