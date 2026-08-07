@@ -7,9 +7,11 @@ alwaysApply: true
 - **No Nuxt server API** for product features (`server/api/**`): use `menofhunger-api`
 - Call the backend via `useApiClient()` (no ad-hoc fetch/base URLs)
 - Success envelope: `{ data: T }` (+ optional `pagination` for lists)
+- Error envelope: `{ meta: { status, errors } }`. Surface it with `getSafeUserErrorMessage`
+  (`utils/api-error.ts`) — never render raw fetch/HTTP/stack text to users.
 
 ## When you add/change an API response
-- Update API DTOs: `menofhunger-api/src/common/dto/**`
+- Update the owning API DTO: `menofhunger-api/src/common/dto/**` or its domain `*.dto.ts`
 - Update web types: `menofhunger-www/types/api.ts`
 - Run `npx nuxi typecheck` + `node scripts/validate-api-types.mjs`
 - If iOS consumes the response, update the matching `menofhunger-ios/MenOfHunger/**/Model` type and add/adjust a decoding test.
