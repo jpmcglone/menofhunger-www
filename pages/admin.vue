@@ -124,6 +124,7 @@ const adminSections: AdminSection[] = [
     items: [
       { key: 'search', to: '/admin/search', icon: 'tabler:search', label: 'Search', description: 'Recent user searches' },
       { key: 'analytics', to: '/admin/analytics', icon: 'tabler:chart-bar', label: 'Analytics', description: 'KPIs, engagement trends, and monetization' },
+      { key: 'push', to: '/admin/push', icon: 'tabler:bell-ringing', label: 'Push notifications', description: 'Send a test push on iOS or web' },
       { key: 'jobs', to: '/admin/jobs', icon: 'tabler:terminal-2', label: 'Jobs', description: 'Run maintenance and backfill jobs' },
       { key: 'site-settings', to: '/admin/site-settings', icon: 'tabler:settings', label: 'Site settings', description: 'Configure post rate limits' },
     ],

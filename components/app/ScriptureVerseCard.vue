@@ -4,12 +4,12 @@
     role="article"
     :aria-label="`Scripture: ${reference}`"
   >
-    <div class="p-4 space-y-2">
-      <!-- Header row: reference + translation badge -->
-      <div class="flex items-baseline justify-between gap-2">
-        <span class="text-sm font-semibold moh-text">{{ verseData?.reference ?? reference }}</span>
+    <div class="px-4 py-3">
+      <div class="flex items-baseline justify-between gap-3">
+        <span class="text-[15px] font-semibold leading-5 moh-text">{{ verseData?.reference ?? reference }}</span>
         <span class="shrink-0 text-xs moh-text-muted">{{ verseData?.translationName ?? '' }}</span>
       </div>
+      <div class="my-2.5 border-t border-gray-200/80 dark:border-zinc-700/80" />
 
       <!-- Loading skeleton -->
       <div v-if="loading" class="space-y-1.5 animate-pulse" aria-hidden="true">
@@ -19,15 +19,16 @@
       </div>
 
       <!-- Verse text -->
-      <div v-else-if="verseData" class="space-y-1">
+      <div v-else-if="verseData?.verses.length" class="space-y-1.5">
         <p
           v-for="verse in verseData.verses"
           :key="verse.number"
-          class="text-sm leading-relaxed moh-text-muted"
+          class="grid grid-cols-[auto_1fr] items-start gap-1 text-[15px] leading-6 moh-text"
         >
-          <sup class="mr-0.5 text-[10px] text-gray-400 dark:text-gray-500 select-none">
+          <span class="pt-0.5 text-[10px] font-medium leading-5 moh-text-muted select-none">
             {{ verse.number }}
-          </sup>{{ verse.text }}
+          </span>
+          <span>{{ verse.text }}</span>
         </p>
       </div>
 

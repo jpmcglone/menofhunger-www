@@ -87,6 +87,16 @@ describe('hydration guardrails (structural)', () => {
     expect(tabBar).toMatch(/const isMobileHydrated = useHydratedMediaQuery\('\(max-width: 767px\)'\)/)
   })
 
+  it('keeps scripture overlay primitives behind hydrated breakpoint checks', () => {
+    const scripture = readFromRepo('components/app/ScriptureVersePopover.vue')
+    expect(scripture).toMatch(/<ClientOnly>/)
+    expect(scripture).toMatch(/<Popover v-if="isDesktopHydrated"/)
+    expect(scripture).toMatch(/<AppBottomSheet[\s\S]*v-if="isMobileHydrated"/)
+    expect(scripture).toMatch(/const isMobileHydrated = useHydratedMediaQuery\('\(max-width: 767px\)'\)/)
+    expect(scripture).toMatch(/const isDesktopHydrated = useHydratedMediaQuery\('\(min-width: 768px\)'\)/)
+    expect(scripture).not.toMatch(/window\.(?:innerWidth|matchMedia)/)
+  })
+
   it('avoids inline Date rendering in landing template', () => {
     const landing = readFromRepo('pages/index.vue')
     expect(landing).not.toMatch(/new Date\(\)\.getFullYear\(\)/)

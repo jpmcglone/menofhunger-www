@@ -37,26 +37,28 @@
             aria-modal="true"
             :aria-labelledby="titleId"
           >
-        <header
-          :class="[
-            'flex items-center justify-between gap-3',
-            fullScreen ? 'px-4 pb-3 pt-[calc(1rem+var(--moh-safe-top,0px))] border-b moh-border-subtle' : 'px-5 pt-4',
-          ]"
-        >
-          <div class="min-w-0">
-            <h2 :id="titleId" class="truncate text-lg font-semibold tracking-tight text-gray-900 dark:text-gray-50">
-              {{ title }}
-            </h2>
-          </div>
-          <button
-            type="button"
-            class="inline-flex h-9 w-9 items-center justify-center rounded-full text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-zinc-900 dark:hover:text-gray-50"
-            aria-label="Close"
-            @click="close"
+        <slot name="header" :close="close" :title-id="titleId">
+          <header
+            :class="[
+              'flex items-center justify-between gap-3',
+              fullScreen ? 'px-4 pb-3 pt-[calc(1rem+var(--moh-safe-top,0px))] border-b moh-border-subtle' : 'px-5 pt-4',
+            ]"
           >
-            <Icon name="tabler:x" aria-hidden="true" />
-          </button>
-        </header>
+            <div class="min-w-0">
+              <h2 :id="titleId" class="truncate text-lg font-semibold tracking-tight text-gray-900 dark:text-gray-50">
+                {{ title }}
+              </h2>
+            </div>
+            <button
+              type="button"
+              class="inline-flex h-9 w-9 items-center justify-center rounded-full text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-zinc-900 dark:hover:text-gray-50"
+              aria-label="Close"
+              @click="close"
+            >
+              <Icon name="tabler:x" aria-hidden="true" />
+            </button>
+          </header>
+        </slot>
 
         <div
           :class="[
