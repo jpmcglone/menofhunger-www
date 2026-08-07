@@ -8,6 +8,14 @@ function makeRecommendationSeed(): string {
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`
 }
 
+export function excludeFollowSuggestions<T extends { id: string }>(
+  users: T[],
+  excludedUsers: Array<{ id: string }>,
+): T[] {
+  const excludedIds = new Set(excludedUsers.map(user => user.id))
+  return users.filter(user => !excludedIds.has(user.id))
+}
+
 export function useWhoToFollow(options?: { enabled?: Ref<boolean>; defaultLimit?: number }) {
   const { apiFetch } = useApiClient()
   const { user } = useAuth()

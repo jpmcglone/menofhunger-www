@@ -36,7 +36,7 @@
               Members in {{ stateLabel }}
             </div>
             <div class="text-xs moh-text-muted truncate">
-              Tap to see everyone
+              {{ memberCountText ? `${memberCountText} · Tap to see everyone` : 'Tap to see everyone' }}
             </div>
           </div>
         </NuxtLink>
@@ -91,6 +91,7 @@
 <script setup lang="ts">
 import type { FollowListUser, LocationBrowseResponse } from '~/types/api'
 import type { ReplyAuthorPreview } from '~/utils/thread-reply-authors'
+import { memberCountLabel } from '~/utils/member-count-label'
 
 definePageMeta({
   layout: 'app',
@@ -139,6 +140,8 @@ const {
 })
 
 const previewUsers = ref<FollowListUser[]>([])
+const memberCount = ref<number | null>(null)
+const memberCountText = computed(() => memberCountLabel(memberCount.value))
 const facepileAuthors = computed<ReplyAuthorPreview[]>(() =>
   previewUsers.value.slice(0, 8).map((u) => ({
     id: u.id,
@@ -153,6 +156,7 @@ async function loadMemberPreview() {
   const code = stateCode.value
   if (!code || code.length !== 2) {
     previewUsers.value = []
+    memberCount.value = null
     return
   }
   try {
@@ -163,8 +167,10 @@ async function loadMemberPreview() {
     })
     const stateSection = data?.sections?.find((s) => s.key === 'sameState')
     previewUsers.value = stateSection?.users ?? data?.sections?.[0]?.users ?? []
+    memberCount.value = data?.memberCount ?? null
   } catch {
     previewUsers.value = []
+    memberCount.value = null
   }
 }
 

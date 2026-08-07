@@ -20,7 +20,7 @@
             :user="u"
             :show-follow-button="true"
             allow-logged-out-follow-button
-            @followed="arenaFollows.removeUserById(u.id)"
+            @followed="removeFollowedUser(u.id)"
           />
         </div>
       </section>
@@ -51,13 +51,14 @@
         </div>
 
         <AppSubtleSectionLoader :loading="showInitialLoader" min-height-class="min-h-[220px]">
-          <div v-if="users.length > 0" class="space-y-0 transition-opacity duration-150">
+          <div v-if="moreSuggestions.length > 0" class="space-y-0 transition-opacity duration-150">
             <AppUserRow
-              v-for="u in users"
+              v-for="u in moreSuggestions"
               :key="u.id"
               :user="u"
               :show-follow-button="true"
               allow-logged-out-follow-button
+              @followed="removeFollowedUser(u.id)"
             />
           </div>
 
@@ -96,12 +97,18 @@ usePageSeo({
   image: '/images/banner.png',
 })
 
-const { users, loading, error, refresh } = useWhoToFollow()
+const { users, loading, error, refresh, removeUserById } = useWhoToFollow()
 const arenaFollows = useArenaFollowSuggestions({ limit: 6 })
 const arenaUsers = arenaFollows.users
 const arenaLabel = arenaFollows.arenaLabel
+const moreSuggestions = computed(() => excludeFollowSuggestions(users.value, arenaUsers.value))
 
 const showInitialLoader = computed(() => loading.value && users.value.length === 0)
+
+function removeFollowedUser(userId: string) {
+  arenaFollows.removeUserById(userId)
+  removeUserById(userId)
+}
 
 onMounted(() => {
   void refresh({ limit: 50 })

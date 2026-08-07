@@ -21,6 +21,10 @@
 
       <!-- Results -->
       <template v-else-if="data">
+        <div v-if="stateMemberCountText" class="border-b moh-border px-4 py-3 text-sm moh-text-muted tabular-nums">
+          {{ stateMemberCountText }} in {{ data.location.stateDisplay ?? data.location.state }}
+        </div>
+
         <template v-for="section in visibleSections" :key="section.key">
           <!-- Only show section label when there are multiple sections (zip/city/county breakdown) -->
           <div v-if="visibleSections.length > 1" class="px-4 pt-6 pb-2">
@@ -54,6 +58,7 @@
 <script setup lang="ts">
 import type { LocationBrowseResponse } from '~/types/api'
 import { getApiErrorMessage } from '~/utils/api-error'
+import { memberCountLabel } from '~/utils/member-count-label'
 
 definePageMeta({
   layout: 'app',
@@ -88,6 +93,7 @@ usePageSeo({ title: computed(() => locationTitle.value) })
 const visibleSections = computed(() =>
   (data.value?.sections ?? []).filter((s) => s.users.length > 0),
 )
+const stateMemberCountText = computed(() => memberCountLabel(data.value?.memberCount))
 
 async function fetchLocation() {
   const state = typeof route.query.state === 'string' ? route.query.state.trim() : ''

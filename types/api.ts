@@ -2589,6 +2589,7 @@ export type LocationBrowseResponse = {
     state: string
     stateDisplay?: string
   }
+  memberCount?: number
   sections: LocationBrowseSection[]
 }
 
