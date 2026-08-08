@@ -105,6 +105,7 @@
                   <span
                     v-if="part.kind === 'actor'"
                     class="whitespace-nowrap"
+                    :class="idx > 0 ? 'ml-1' : ''"
                     @mouseenter="(e) => multiTrigger.onEnter(part.username, e)"
                     @mousemove="multiTrigger.onMove"
                     @mouseleave="multiTrigger.onLeave"
@@ -131,7 +132,12 @@
             >
               {{ group.latestBody }}
             </div>
-            <div v-if="!group.latestBody && !group.latestSubjectPostPreview?.media?.length" class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+            <AppStatusBubble
+              v-else-if="isGroupBoostOfStatus(group) && groupStatusBoostText(group)"
+              :text="groupStatusBoostText(group)!"
+              class="mt-1.5"
+            />
+            <div v-else-if="!group.latestBody && !group.latestSubjectPostPreview?.media?.length && !isGroupBoostOfStatus(group)" class="mt-1 text-xs text-gray-500 dark:text-gray-400">
               {{ contextLabel(group) }}
             </div>
             <div v-if="group.latestSubjectPostPreview?.media?.length" class="mt-2 flex shrink-0 -space-x-2">
@@ -426,7 +432,9 @@ function groupMediaPreviewKey(
 function titleSuffix(g: NotificationGroup): string {
   switch (g.kind) {
     case 'boost':
-      return 'boosted your post'
+      return g.latestSubjectPostPreview?.kind === 'status'
+        ? 'boosted your status'
+        : 'boosted your post'
     case 'comment':
       return 'replied to your post'
     case 'follow':
@@ -441,10 +449,22 @@ function titleSuffix(g: NotificationGroup): string {
   }
 }
 
+function isGroupBoostOfStatus(g: NotificationGroup): boolean {
+  return g.kind === 'boost' && g.latestSubjectPostPreview?.kind === 'status'
+}
+
+function groupStatusBoostText(g: NotificationGroup): string | null {
+  if (!isGroupBoostOfStatus(g)) return null
+  const fromPreview = (g.latestSubjectPostPreview?.bodySnippet ?? '').trim()
+  if (fromPreview) return fromPreview
+  const fromBody = (g.latestBody ?? '').trim()
+  return fromBody || null
+}
+
 function contextLabel(g: NotificationGroup): string {
   switch (g.kind) {
     case 'boost':
-      return 'Boost'
+      return isGroupBoostOfStatus(g) ? 'Status' : 'Boost'
     case 'comment':
       return 'Reply'
     case 'follow':

@@ -437,7 +437,26 @@ export function useNotifications() {
     return 'bg-gray-50/80 dark:bg-zinc-900/40'
   }
 
+  function isBoostOfStatus(n: Notification): boolean {
+    return n.kind === 'boost' && n.subjectPostPreview?.kind === 'status'
+  }
+
+  function statusBoostText(n: Notification): string | null {
+    if (!isBoostOfStatus(n)) return null
+    const fromPreview = (n.subjectPostPreview?.bodySnippet ?? '').trim()
+    if (fromPreview) return fromPreview
+    const fromBody = (n.body ?? '').trim()
+    return fromBody || null
+  }
+
+  function boostSubjectNoun(n: Notification): string {
+    if (n.subjectArticleId) return 'article'
+    if (isBoostOfStatus(n)) return 'status'
+    return 'post'
+  }
+
   function titleSuffix(n: Notification): string {
+    if (n.kind === 'boost' && isBoostOfStatus(n)) return 'boosted your status'
     if (n.title) return n.title
     switch (n.kind) {
       case 'comment':
@@ -614,7 +633,7 @@ export function useNotifications() {
       case 'comment':
         return n.subjectArticleId ? 'Article reply' : 'Reply'
       case 'boost':
-        return 'Boost'
+        return isBoostOfStatus(n) ? 'Status' : 'Boost'
       case 'follow':
         return 'New follower'
       case 'followed_post':
@@ -826,6 +845,9 @@ export function useNotifications() {
     titleSuffix,
     notificationTitle,
     notificationContext,
+    isBoostOfStatus,
+    statusBoostText,
+    boostSubjectNoun,
     notificationIconName,
     formatWhen,
     formatWhenFull,

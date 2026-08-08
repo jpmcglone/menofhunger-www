@@ -87,7 +87,7 @@
           @click="syncNow"
         >
           <span v-if="syncing">Syncing...</span>
-          <span v-else-if="syncCooldownRemaining > 0">Sync again in {{ syncCooldownRemaining }}s</span>
+          <span v-else-if="syncCooldownRemaining > 0">Sync again in {{ formatCooldown(syncCooldownRemaining) }}</span>
           <span v-else>Sync now</span>
         </button>
       </template>
@@ -149,6 +149,9 @@ async function loadPage() {
     connections.value = data.connections
     units.value = data.units
     stravaEnabled.value = Boolean(data.stravaEnabled)
+    const strava = data.connections.find((c) => c.provider === 'strava')
+    const remaining = manualSyncRemainingSeconds(strava?.lastManualSyncAt ?? null)
+    if (remaining > 0) startCooldown(remaining)
   } catch {
     // non-fatal
   }
@@ -245,6 +248,19 @@ function startCooldown(seconds: number) {
       cooldownInterval = null
     }
   }, 1000)
+}
+
+function formatCooldown(seconds: number): string {
+  if (seconds >= 60) return `${Math.ceil(seconds / 60)}m`
+  return `${seconds}s`
+}
+
+const MANUAL_SYNC_COOLDOWN_SEC = 5 * 60
+
+function manualSyncRemainingSeconds(lastManualSyncAt: string | null | undefined): number {
+  if (!lastManualSyncAt) return 0
+  const elapsed = Math.floor((Date.now() - new Date(lastManualSyncAt).getTime()) / 1000)
+  return Math.max(0, MANUAL_SYNC_COOLDOWN_SEC - elapsed)
 }
 
 onBeforeUnmount(() => {

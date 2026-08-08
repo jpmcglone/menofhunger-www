@@ -18,9 +18,9 @@
             <span v-if="lastSyncedText" class="ml-auto text-[10px] text-gray-400 dark:text-gray-500">{{ lastSyncedText }}</span>
             <button
               v-if="stravaConnection"
-              :disabled="syncing"
+              :disabled="syncing || stravaCooldownRemaining > 0"
               class="ml-2 p-1 rounded text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors disabled:opacity-40"
-              title="Sync Strava"
+              :title="stravaCooldownRemaining > 0 ? `Sync again in ${formatCooldown(stravaCooldownRemaining)}` : 'Sync Strava'"
               @click="syncStrava"
             >
               <svg
@@ -279,7 +279,7 @@
         </div>
       </div>
 
-      <!-- ─── Card 2: Weight + VO2 Max + Goal ────────────────────────────── -->
+      <!-- ─── Card 2: Weight + Goal ──────────────────────────────────────── -->
       <div class="moh-gutter-x py-3">
         <div class="rounded-xl border moh-border moh-surface-2 divide-y moh-border">
 
@@ -383,52 +383,6 @@
         </div>
       </div>
 
-      <!-- VO2 Max (conditional — omitted when empty so no orphan divider) -->
-      <div v-if="fitnessPage.latestVo2Max || fitnessPage.vo2maxHistory.length > 0" class="p-4 space-y-3">
-        <div class="text-xs font-semibold uppercase tracking-wide" :class="accentText">VO2 Max</div>
-
-        <div v-if="fitnessPage.latestVo2Max" class="flex items-end justify-between">
-          <div class="flex items-baseline gap-2">
-            <span class="text-3xl font-bold tabular-nums">{{ fitnessPage.latestVo2Max.weightKg.toFixed(1) }}</span>
-            <span class="text-sm text-gray-500 dark:text-gray-400">ml/kg/min</span>
-          </div>
-          <div class="text-right">
-            <div class="text-xs font-medium" :class="vo2maxCategory(fitnessPage.latestVo2Max.weightKg).color">
-              {{ vo2maxCategory(fitnessPage.latestVo2Max.weightKg).label }}
-            </div>
-            <div class="text-xs text-gray-400">{{ formatDate(fitnessPage.latestVo2Max.measuredAt) }}</div>
-          </div>
-        </div>
-        <div v-else class="text-sm text-gray-500 dark:text-gray-400">
-          No VO2 max recorded yet. Open the iOS app to sync from Apple Health.
-        </div>
-
-        <!-- VO2 sparkline -->
-        <div v-if="vo2maxPoints.length >= 2" class="relative">
-          <svg
-            viewBox="0 0 300 60"
-            preserveAspectRatio="none"
-            class="w-full h-14"
-            aria-hidden="true"
-          >
-            <defs>
-              <linearGradient id="vo2-grad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stop-color="rgb(99,102,241)" stop-opacity="0.25" />
-                <stop offset="100%" stop-color="rgb(99,102,241)" stop-opacity="0" />
-              </linearGradient>
-            </defs>
-            <path :d="vo2maxAreaPath" fill="url(#vo2-grad)" />
-            <path :d="vo2maxPath" fill="none" stroke="rgb(99,102,241)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-            <circle v-if="vo2maxPoints.length" :cx="vo2maxPoints.at(-1)!.x" :cy="vo2maxPoints.at(-1)!.y" r="3" fill="rgb(99,102,241)" />
-          </svg>
-          <div class="flex justify-between text-[10px] text-gray-400 mt-0.5">
-            <span>{{ formatDate(fitnessPage.vo2maxHistory.at(-1)!.measuredAt) }}</span>
-            <span>{{ fitnessPage.vo2maxHistory.length }} readings</span>
-            <span>{{ formatDate(fitnessPage.vo2maxHistory.at(0)!.measuredAt) }}</span>
-          </div>
-        </div>
-      </div>
-
       <!-- Goal -->
       <div class="p-4 space-y-3">
         <div class="flex items-center justify-between">
@@ -522,6 +476,58 @@
       </div><!-- /Goal -->
         </div><!-- /card inner -->
       </div><!-- /Card 2 outer -->
+
+      <!-- ─── VO2 Max (separate card) ─────────────────────────────────── -->
+      <div
+        v-if="fitnessPage.latestVo2Max || fitnessPage.vo2maxHistory.length > 0"
+        class="moh-gutter-x py-3"
+      >
+        <div class="rounded-xl border moh-border moh-surface-2 p-4 space-y-3">
+        <div class="text-xs font-semibold uppercase tracking-wide" :class="accentText">VO2 Max</div>
+
+        <div v-if="fitnessPage.latestVo2Max" class="flex items-end justify-between">
+          <div class="flex items-baseline gap-2">
+            <span class="text-3xl font-bold tabular-nums">{{ fitnessPage.latestVo2Max.weightKg.toFixed(1) }}</span>
+            <span class="text-sm text-gray-500 dark:text-gray-400">ml/kg/min</span>
+          </div>
+          <div class="text-right">
+            <div class="text-xs font-medium" :class="vo2maxCategory(fitnessPage.latestVo2Max.weightKg).color">
+              {{ vo2maxCategory(fitnessPage.latestVo2Max.weightKg).label }}
+            </div>
+            <div class="text-xs text-gray-400">{{ formatDate(fitnessPage.latestVo2Max.measuredAt) }}</div>
+          </div>
+        </div>
+        <div v-else class="text-sm text-gray-500 dark:text-gray-400">
+          No VO2 max recorded yet. Open the iOS app to sync from Apple Health.
+        </div>
+
+        <!-- VO2 sparkline -->
+        <div v-if="vo2maxPoints.length >= 2" class="relative">
+          <svg
+            viewBox="0 0 300 60"
+            preserveAspectRatio="none"
+            class="w-full h-14"
+            aria-hidden="true"
+          >
+            <defs>
+              <linearGradient id="vo2-grad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="rgb(99,102,241)" stop-opacity="0.25" />
+                <stop offset="100%" stop-color="rgb(99,102,241)" stop-opacity="0" />
+              </linearGradient>
+            </defs>
+            <path :d="vo2maxAreaPath" fill="url(#vo2-grad)" />
+            <path :d="vo2maxPath" fill="none" stroke="rgb(99,102,241)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+            <circle v-if="vo2maxPoints.length" :cx="vo2maxPoints.at(-1)!.x" :cy="vo2maxPoints.at(-1)!.y" r="3" fill="rgb(99,102,241)" />
+          </svg>
+          <div class="flex justify-between text-[10px] text-gray-400 mt-0.5">
+            <span>{{ formatDate(fitnessPage.vo2maxHistory.at(-1)!.measuredAt) }}</span>
+            <span>{{ fitnessPage.vo2maxHistory.length }} readings</span>
+            <span>{{ formatDate(fitnessPage.vo2maxHistory.at(0)!.measuredAt) }}</span>
+          </div>
+        </div>
+        </div>
+      </div>
+
 
       <!-- ─── Apple Health compact nudge ───────────────────────────────── -->
       <!-- Show only when something is connected but Apple Health is not -->
@@ -664,10 +670,43 @@ const allowedVisibilities = computed<PostVisibility[]>(() => [
 // ─── Sync ────────────────────────────────────────────────────────────────────
 
 const syncing = ref(false)
+const stravaCooldownRemaining = ref(0)
+let stravaCooldownInterval: ReturnType<typeof setInterval> | null = null
 
 const stravaConnection = computed(() =>
   fitnessPage.value?.connections.find((c) => c.provider === 'strava' && c.status === 'active'),
 )
+
+const MANUAL_SYNC_COOLDOWN_SEC = 5 * 60
+
+function manualSyncRemainingSeconds(lastManualSyncAt: string | null | undefined): number {
+  if (!lastManualSyncAt) return 0
+  const elapsed = Math.floor((Date.now() - new Date(lastManualSyncAt).getTime()) / 1000)
+  return Math.max(0, MANUAL_SYNC_COOLDOWN_SEC - elapsed)
+}
+
+function formatCooldown(seconds: number): string {
+  if (seconds >= 60) return `${Math.ceil(seconds / 60)}m`
+  return `${seconds}s`
+}
+
+function startStravaCooldown(seconds: number) {
+  stravaCooldownRemaining.value = seconds
+  if (stravaCooldownInterval) clearInterval(stravaCooldownInterval)
+  stravaCooldownInterval = setInterval(() => {
+    stravaCooldownRemaining.value = Math.max(0, stravaCooldownRemaining.value - 1)
+    if (stravaCooldownRemaining.value === 0 && stravaCooldownInterval) {
+      clearInterval(stravaCooldownInterval)
+      stravaCooldownInterval = null
+    }
+  }, 1000)
+}
+
+function refreshStravaCooldown() {
+  const remaining = manualSyncRemainingSeconds(stravaConnection.value?.lastManualSyncAt)
+  if (remaining > 0) startStravaCooldown(remaining)
+  else stravaCooldownRemaining.value = 0
+}
 
 const lastSyncedText = computed(() => {
   const conns = fitnessPage.value?.connections ?? []
@@ -682,13 +721,17 @@ const lastSyncedText = computed(() => {
 })
 
 async function syncStrava() {
-  if (syncing.value) return
+  if (syncing.value || stravaCooldownRemaining.value > 0) return
   syncing.value = true
   try {
     await apiFetchData<unknown>('/fitness/sync', { method: 'POST', body: { provider: 'strava' } })
     await loadPage()
+    startStravaCooldown(MANUAL_SYNC_COOLDOWN_SEC)
   } catch (e: unknown) {
     toast.pushError(e, 'Sync failed')
+    const msg = String((e as { data?: { message?: string } })?.data?.message ?? (e as Error)?.message ?? '')
+    const match = msg.match(/(\d+) more seconds/)
+    if (match) startStravaCooldown(Number(match[1]))
   } finally {
     syncing.value = false
   }
@@ -698,6 +741,7 @@ async function loadPage() {
   loading.value = true
   try {
     fitnessPage.value = await apiFetchData<FitnessPage>('/fitness/me')
+    refreshStravaCooldown()
   } catch {
     // non-fatal
   } finally {
@@ -707,6 +751,9 @@ async function loadPage() {
 
 onMounted(loadPage)
 onActivated(loadPage)
+onBeforeUnmount(() => {
+  if (stravaCooldownInterval) clearInterval(stravaCooldownInterval)
+})
 
 // ─── Weight ──────────────────────────────────────────────────────────────────
 

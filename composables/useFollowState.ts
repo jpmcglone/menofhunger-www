@@ -73,8 +73,8 @@ export function useFollowState() {
       inflight,
       apply: () => {
         const prev = get(userId)
-        // Bell defaults OFF for normal follows.
-        upsert(userId, { viewerFollowsUser: true, viewerPostNotificationsEnabled: false })
+        // Bell defaults ON for normal follows (matches server / DB default).
+        upsert(userId, { viewerFollowsUser: true, viewerPostNotificationsEnabled: true })
         return { prev }
       },
       request: async () => {

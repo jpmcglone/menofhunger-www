@@ -215,7 +215,10 @@
               </template>
             <template v-else-if="notification.kind === 'boost'">
               <span class="ml-1">boosted your</span>
-              <span class="ml-1" :class="notification.subjectArticleId ? 'font-semibold text-orange-600 dark:text-orange-400' : subjectPostVisibilityTextClass(notification)">{{ notification.subjectArticleId ? 'article' : 'post' }}</span>
+              <span
+                class="ml-1"
+                :class="notification.subjectArticleId ? 'font-semibold text-orange-600 dark:text-orange-400' : subjectPostVisibilityTextClass(notification)"
+              >{{ boostSubjectNoun(notification) }}</span>
             </template>
             <template v-else-if="notification.kind === 'followed_post'">
               <span class="ml-1">shared a</span>
@@ -298,9 +301,15 @@
               :text="notification.body"
               class="mt-1.5"
             />
+            <!-- Boost of a status post: same status bubble, not a plain "Boost" label -->
+            <AppStatusBubble
+              v-else-if="isBoostOfStatus(notification) && statusBoostText(notification)"
+              :text="statusBoostText(notification)!"
+              class="mt-1.5"
+            />
             <!-- Fallback for other kinds with body (renders **bold** segments) -->
             <div
-              v-if="notification.body && notification.kind !== 'comment' && notification.kind !== 'mention' && notification.kind !== 'followed_article' && notification.kind !== 'poll_results_ready' && notification.kind !== 'status_update'"
+              v-if="notification.body && notification.kind !== 'comment' && notification.kind !== 'mention' && notification.kind !== 'followed_article' && notification.kind !== 'poll_results_ready' && notification.kind !== 'status_update' && !isBoostOfStatus(notification)"
               class="mt-0.5 line-clamp-2 text-[13px] sm:text-sm text-gray-600 dark:text-gray-300"
             >
               <template v-for="(seg, i) in parseBoldSegments(notification.body)" :key="i">
@@ -331,7 +340,7 @@
             >
               {{ notification.subjectPostPreview.bodySnippet }}
             </div>
-            <div v-if="!notification.body && !notification.subjectPostPreview?.bodySnippet && !notification.subjectPostPreview?.media?.length" class="mt-1 text-[11px] sm:text-xs text-gray-500 dark:text-gray-400">
+            <div v-if="!notification.body && !notification.subjectPostPreview?.bodySnippet && !notification.subjectPostPreview?.media?.length && !isBoostOfStatus(notification)" class="mt-1 text-[11px] sm:text-xs text-gray-500 dark:text-gray-400">
               {{ notificationContext(notification) }}
             </div>
             <!-- Next line: media only (no blockquote) -->
@@ -621,6 +630,9 @@ const {
   subjectTierRowClass,
   titleSuffix,
   notificationContext,
+  isBoostOfStatus,
+  statusBoostText,
+  boostSubjectNoun,
   notificationIconName,
   formatWhen,
   formatWhenFull,

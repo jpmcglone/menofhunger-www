@@ -746,7 +746,17 @@ async function togglePostBell() {
   const id = profile.value?.id ?? null
   const username = profile.value?.username ?? null
   if (!id || !username) return
-  await followState.setPostNotificationsEnabled({ userId: id, username, enabled: !bellEnabled.value })
+  const nextEnabled = !bellEnabled.value
+  if (!nextEnabled) {
+    const ok = await confirm({
+      header: 'Turn off reply notifications?',
+      message: `You won’t be notified when @${username} replies to posts.`,
+      confirmLabel: 'Turn off',
+      confirmSeverity: 'danger',
+    })
+    if (!ok) return
+  }
+  await followState.setPostNotificationsEnabled({ userId: id, username, enabled: nextEnabled })
 }
 
 const showChatButton = computed(() => {
