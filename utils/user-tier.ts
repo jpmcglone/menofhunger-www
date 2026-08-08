@@ -22,6 +22,25 @@ export function userTierColorVar(tier: UserColorTier): string | null {
   return null
 }
 
+/** Strength of the wash behind a message you sent. */
+const OWN_MESSAGE_TINT_PERCENT = 14
+/** Untiered senders have no tier color, so they get a neutral slate wash at the same strength. */
+const OWN_MESSAGE_NEUTRAL_COLOR = 'rgb(148 163 184)'
+
+/**
+ * Background for a message the viewer sent, shared by every chat surface.
+ *
+ * A low-opacity wash of the sender's tier color rather than a solid fill: it marks the message
+ * as yours without turning it into a colored block, so the body keeps normal foreground text
+ * and tier-colored mentions stay legible in both themes.
+ */
+export function ownMessageTintStyle(tier: UserColorTier): { backgroundColor: string } {
+  const color = userTierColorVar(tier) ?? OWN_MESSAGE_NEUTRAL_COLOR
+  return {
+    backgroundColor: `color-mix(in srgb, ${color} ${OWN_MESSAGE_TINT_PERCENT}%, transparent)`,
+  }
+}
+
 export function userTierTextClass(tier: UserColorTier, opts?: { important?: boolean; fallback?: string }): string {
   const bang = opts?.important ? '!' : ''
   if (tier === 'organization') return `${bang}text-[var(--moh-org)]`

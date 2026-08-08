@@ -16,8 +16,7 @@
           v-else-if="seg.kind === 'mention' && seg.isKnown"
           :to="`/u/${seg.username}`"
           class="font-bold hover:underline"
-          :class="onColoredBackground ? 'text-white' : ''"
-          :style="onColoredBackground ? undefined : { color: userTierColorVar(tierForUsername(seg.username!)) ?? 'var(--p-primary-color)' }"
+          :style="{ color: userTierColorVar(tierForUsername(seg.username!)) ?? 'var(--p-primary-color)' }"
           @mouseenter="(e: MouseEvent) => onMentionEnter(e, seg.username!)"
           @mousemove="onMentionMove"
           @mouseleave="onMentionLeave"
@@ -25,23 +24,20 @@
         >{{ seg.text }}</NuxtLink>
         <span
           v-else-if="seg.kind === 'mention'"
-          class="font-bold"
-          :class="onColoredBackground ? 'opacity-70' : 'opacity-60'"
+          class="font-bold opacity-60"
         >{{ seg.text }}</span>
         <NuxtLink
           v-else-if="seg.kind === 'hashtag'"
           :to="{ path: '/explore', query: { q: `#${seg.tag}` } }"
           class="font-medium hover:underline underline-offset-2"
-          :class="onColoredBackground ? 'text-white' : ''"
-          :style="onColoredBackground ? undefined : { color: hashtagColor }"
+          :style="{ color: hashtagColor }"
           @click.stop
         >{{ seg.text }}</NuxtLink>
         <NuxtLink
           v-else-if="seg.kind === 'cashtag'"
           :to="{ path: '/explore', query: { q: `$${seg.symbol}` } }"
           class="moh-cashtag font-medium hover:underline underline-offset-2"
-          :class="onColoredBackground ? 'text-white' : ''"
-          :style="onColoredBackground ? undefined : { color: hashtagColor }"
+          :style="{ color: hashtagColor }"
           @click.stop
         >{{ seg.text }}</NuxtLink>
         <span v-else>{{ seg.text }}</span>
@@ -190,11 +186,6 @@ const MENTION_RE = /@([a-zA-Z0-9_]+)/g
 
 const props = defineProps<{
   body: string
-  /**
-   * True when the bubble this text sits inside has a solid colored background.
-   * Mentions and hashtags render as bold white to stay visible.
-   */
-  onColoredBackground?: boolean
   /** Sender's tier — hashtags are colored to match the sender. */
   senderTier?: UserColorTier
 }>()

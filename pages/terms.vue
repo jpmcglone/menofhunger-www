@@ -5,7 +5,7 @@
         <h1 class="text-2xl sm:text-3xl font-semibold tracking-tight text-gray-900 dark:text-gray-50">
           Terms of Service
         </h1>
-        <p class="text-sm text-gray-500 dark:text-gray-400">Last updated: June 10, 2026</p>
+        <p class="text-sm text-gray-500 dark:text-gray-400">Last updated: August 8, 2026</p>
       </header>
 
       <Divider />
@@ -37,6 +37,7 @@
           <ul class="list-disc pl-5 space-y-1">
             <li>Harass, threaten, or abuse other members.</li>
             <li>Post or share illegal content.</li>
+            <li>Post or share sexually explicit material, nudity, or pornographic content of any kind.</li>
             <li>Impersonate anyone or run scams.</li>
             <li>Spam the feed, groups, or direct messages.</li>
             <li>Attempt to gain unauthorized access to our systems.</li>

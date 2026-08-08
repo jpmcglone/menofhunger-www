@@ -175,6 +175,7 @@
                 ? 'max-w-full min-w-0 px-3 py-2 italic opacity-60 border border-dashed border-gray-300 dark:border-zinc-600 text-gray-500 dark:text-gray-400 bg-transparent ' + effectiveBubbleShapeClass
                 : 'max-w-full min-w-0 ' + effectiveBubbleShapeClass + ' ' + bubbleClass(messageItem.message),
             ]"
+            :style="ownBubbleStyle"
           >
             <!-- Deleted for all -->
             <div v-if="messageItem.message.deletedForAll" class="text-xs">
@@ -214,7 +215,6 @@
               v-else
               :body="messageItem.message.body"
               :sender-tier="userColorTier(messageItem.message.sender as any)"
-              :on-colored-background="messageItem.message.sender.id === meId && userColorTier(messageItem.message.sender as any) !== 'normal'"
             >
               <!--
                 Timestamp tail — floats to the right at the end of the last text line.
@@ -355,7 +355,7 @@
 import type { PropType } from 'vue'
 import type { Message, MessageMedia, MessageUser, MessageParticipant } from '~/types/api'
 import type { ChatListItem } from '~/composables/chat/useChatTimeFormatting'
-import { userColorTier } from '~/utils/user-tier'
+import { ownMessageTintStyle, userColorTier } from '~/utils/user-tier'
 import { PILL_CLASS, RECT_CLASS, PILL_MAX_EMS_WITH_META, estimateTextEms, pickBubbleShape } from '~/composables/chat/useChatBubbleShape'
 
 const props = defineProps({
@@ -427,6 +427,18 @@ function computeHasTextBubble(message: Message): boolean {
 const showTextBubble = computed(() => {
   const m = messageItem.value
   return m ? computeHasTextBubble(m.message) : false
+})
+
+/**
+ * Wash behind a message you sent — the same treatment the Spaces live chat uses, so "mine"
+ * reads identically across chat surfaces. Deleted placeholders keep their dashed transparent
+ * look, and incoming messages stay outlined.
+ */
+const ownBubbleStyle = computed(() => {
+  const message = messageItem.value?.message
+  if (!message || message.sender.id !== props.meId) return undefined
+  if (message.deletedForMe || message.deletedForAll) return undefined
+  return ownMessageTintStyle(userColorTier(message.sender as Parameters<typeof userColorTier>[0]))
 })
 
 /**

@@ -91,7 +91,7 @@
 
 <script setup lang="ts">
 import type { SpaceChatMediaItem, SpaceChatMessage } from '~/types/api'
-import { userColorTier, userTierColorVar, userTierTextClass } from '~/utils/user-tier'
+import { ownMessageTintStyle, userColorTier, userTierColorVar, userTierTextClass } from '~/utils/user-tier'
 import { HASHTAG_IN_TEXT_DISPLAY_RE } from '~/utils/hashtag-autocomplete'
 import { CASHTAG_IN_TEXT_DISPLAY_RE } from '~/utils/cashtag-autocomplete'
 
@@ -154,16 +154,7 @@ const containerClass = computed(() => {
 
 const containerStyle = computed<Record<string, string> | undefined>(() => {
   if (!isMine.value) return undefined
-  const tierVar = userTierColorVar(senderTier.value)
-  if (!tierVar) {
-    return {
-      backgroundColor: 'rgba(148, 163, 184, 0.14)',
-    }
-  }
-  // Subtle tint using the tier color.
-  return {
-    backgroundColor: `color-mix(in srgb, ${tierVar} 14%, transparent)`,
-  }
+  return ownMessageTintStyle(senderTier.value)
 })
 
 const { onEnter, onMove, onLeave } = useUserPreviewTrigger({

@@ -645,24 +645,18 @@ const otherParticipants = computed(() => {
   return all
 })
 
-const ORG_CHAT_SILVER_FILLED_BUBBLE_CLASS = 'bg-[rgba(49,54,67,0.65)] backdrop-blur-sm text-white'
 const ORG_CHAT_SILVER_OUTLINE_BUBBLE_CLASS = 'bg-transparent border border-[rgba(49,54,67,0.96)] text-gray-900 dark:text-gray-100'
 
 function bubbleClass(m: Message) {
   const isMe = Boolean(m.sender.id && m.sender.id === me.value?.id)
 
-  // Tier color always corresponds to the sender's tier.
+  // Outgoing: no border and no fill class. The whole treatment is the tier wash from
+  // `ownMessageTintStyle`, applied as an inline style in ChatMessageListRow because the
+  // color is a computed `color-mix` that Tailwind cannot see as a literal class.
+  if (isMe) return 'text-gray-900 dark:text-gray-100'
+
+  // Incoming: outlined bubble, tinted to the sender's tier.
   const tier = userColorTier(m.sender as Parameters<typeof userColorTier>[0])
-
-  if (isMe) {
-    // Outgoing: frosted glass — semi-transparent tier color + backdrop blur.
-    if (tier === 'organization') return ORG_CHAT_SILVER_FILLED_BUBBLE_CLASS
-    if (tier === 'premium') return 'bg-[rgba(var(--moh-premium-rgb),0.72)] backdrop-blur-sm text-white'
-    if (tier === 'verified') return 'bg-[rgba(var(--moh-verified-rgb),0.72)] backdrop-blur-sm text-white'
-    return 'bg-gray-500/60 backdrop-blur-sm text-white dark:bg-zinc-600/60'
-  }
-
-  // Incoming: outlined bubble.
   if (tier === 'organization') return ORG_CHAT_SILVER_OUTLINE_BUBBLE_CLASS
   if (tier === 'premium') return 'bg-transparent border border-[rgba(var(--moh-premium-rgb),0.55)] text-gray-900 dark:text-gray-100'
   if (tier === 'verified') return 'bg-transparent border border-[rgba(var(--moh-verified-rgb),0.55)] text-gray-900 dark:text-gray-100'
