@@ -10,7 +10,8 @@
     >
       <div
         v-if="replyModal.open.value && parentPost"
-        class="fixed inset-0 z-[1000]"
+        class="z-[1000]"
+        :style="overlayStyle"
         aria-label="Reply modal"
         role="dialog"
         aria-modal="true"
@@ -22,18 +23,18 @@
           @click="close"
         />
 
-        <!-- Reply sheet -->
+        <!-- Reply sheet: max-height is relative to the keyboard-pinned overlay, not 90vh -->
         <div
-          class="absolute top-3"
+          class="absolute top-3 max-h-[calc(100%-0.75rem)]"
           :style="replySheetStyle"
         >
           <div
             :class="[
-              'relative overflow-hidden rounded-2xl moh-card moh-card-matte',
+              'relative overflow-hidden rounded-2xl moh-card moh-card-matte max-h-full',
               replyModalBorderClass,
             ]"
           >
-            <div class="relative z-10 flex flex-col max-h-[min(90vh,40rem)]">
+            <div class="relative z-10 flex flex-col max-h-[min(100%,40rem)]">
               <div
                 class="overflow-y-auto overflow-x-hidden flex flex-col moh-gutter-x pt-4 pb-4"
                 @click.capture="onSheetClick"
@@ -93,6 +94,7 @@ import { usePostCountBumps } from '~/composables/usePostCountBumps'
 import { useMiddleScroller } from '~/composables/useMiddleScroller'
 import { useUserOverlay } from '~/composables/useUserOverlay'
 import { usePendingPostsManager } from '~/composables/usePendingPostsManager'
+import { useKeyboardPinnedFixedStyle } from '~/composables/useKeyboardHeight'
 import { userColorTier, userTierTextClass } from '~/utils/user-tier'
 import { feedPostThreadGroupDisplayName } from '~/utils/community-group-preview'
 
@@ -101,6 +103,8 @@ const multiTrigger = useUserPreviewMultiTrigger()
 const { apiFetchData } = useApiClient()
 const { user } = useAuth()
 const middleScrollerRef = useMiddleScroller()
+// Same pin/shrink as the app shell — this overlay renders *outside* the shell.
+const { style: overlayStyle } = useKeyboardPinnedFixedStyle()
 
 const parentPost = computed(() => replyModal.parentPost.value)
 const { user: parentAuthor } = useUserOverlay(computed(() => parentPost.value?.author ?? null))
@@ -253,18 +257,22 @@ watch(
   () => replyModal.open.value,
   (open) => {
     if (!import.meta.client) return
-
+    window.removeEventListener('resize', updateReplySheetStyle)
+    window.visualViewport?.removeEventListener('resize', updateReplySheetStyle)
     if (open) {
       requestAnimationFrame(() => updateReplySheetStyle())
       window.addEventListener('resize', updateReplySheetStyle)
-    }
-
-    return () => {
-      window.removeEventListener('resize', updateReplySheetStyle)
+      window.visualViewport?.addEventListener('resize', updateReplySheetStyle)
     }
   },
   { flush: 'post' },
 )
+
+onUnmounted(() => {
+  if (!import.meta.client) return
+  window.removeEventListener('resize', updateReplySheetStyle)
+  window.visualViewport?.removeEventListener('resize', updateReplySheetStyle)
+})
 
 const { bumpCommentCount } = usePostCountBumps()
 const pendingPosts = usePendingPostsManager()

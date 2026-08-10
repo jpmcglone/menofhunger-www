@@ -1,4 +1,4 @@
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 
 /**
  * Minimal shape of the VirtualKeyboard API (Chromium-only, not in lib.dom yet).
@@ -21,6 +21,61 @@ function getVirtualKeyboard(): VirtualKeyboardLike | null {
 function hasCoarsePointer(): boolean {
   if (typeof window === 'undefined') return false
   return window.matchMedia?.('(pointer: coarse)').matches === true
+}
+
+export type KeyboardPinnedFixedStyle = {
+  position: 'fixed'
+  inset?: string
+  left?: string
+  right?: string
+  top?: string
+  height?: string
+}
+
+/**
+ * Style for a `position: fixed` full-viewport layer that must stay aligned with the
+ * *visible* area while the software keyboard is open.
+ *
+ * Shared by the app shell and any overlays rendered outside it (reply modal, composer
+ * modal). With `interactive-widget=overlays-content`, Android/Chrome does not shrink
+ * the layout viewport — only this pin keeps fixed layers above the keyboard.
+ */
+export function keyboardPinnedFixedStyle(opts: {
+  viewportHeight: number
+  viewportOffsetTop: number
+  virtualKeyboardHeight: number
+  keyboardOpen: boolean
+}): KeyboardPinnedFixedStyle {
+  const { viewportHeight, viewportOffsetTop, virtualKeyboardHeight, keyboardOpen } = opts
+
+  if (!viewportHeight) {
+    // Pre-mount / SSR: stable fallback identical on server and client.
+    return { position: 'fixed', inset: '0' }
+  }
+
+  if (virtualKeyboardHeight > 0) {
+    // Chrome / Android: keyboard overlays content; shrink the layer by that height.
+    return {
+      position: 'fixed',
+      left: '0',
+      right: '0',
+      top: '0',
+      height: `${viewportHeight - virtualKeyboardHeight}px`,
+    }
+  }
+
+  if (keyboardOpen || viewportOffsetTop > 0) {
+    // iOS Safari: visual viewport panned/shrunk — pin to what the user can see.
+    return {
+      position: 'fixed',
+      left: '0',
+      right: '0',
+      top: `${viewportOffsetTop}px`,
+      height: `${viewportHeight}px`,
+    }
+  }
+
+  return { position: 'fixed', inset: '0' }
 }
 
 /**
@@ -130,4 +185,29 @@ export function useKeyboardHeight() {
   })
 
   return { keyboardHeight, virtualKeyboardHeight, viewportHeight, viewportOffsetTop }
+}
+
+/**
+ * Reactive fixed-layer style that stays above the software keyboard — same contract
+ * as the app shell. Use for overlays rendered *outside* the shell (reply / composer).
+ */
+export function useKeyboardPinnedFixedStyle() {
+  const { keyboardHeight, virtualKeyboardHeight, viewportHeight, viewportOffsetTop } = useKeyboardHeight()
+  const isKeyboardOpen = computed(() => keyboardHeight.value > 0)
+  const style = computed(() =>
+    keyboardPinnedFixedStyle({
+      viewportHeight: viewportHeight.value,
+      viewportOffsetTop: viewportOffsetTop.value,
+      virtualKeyboardHeight: virtualKeyboardHeight.value,
+      keyboardOpen: isKeyboardOpen.value,
+    }),
+  )
+  return {
+    style,
+    keyboardHeight,
+    virtualKeyboardHeight,
+    viewportHeight,
+    viewportOffsetTop,
+    isKeyboardOpen,
+  }
 }

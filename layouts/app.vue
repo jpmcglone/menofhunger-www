@@ -244,7 +244,8 @@ import {
   MOH_MIDDLE_SCROLLER_KEY,
 } from '~/utils/injection-keys'
 import { useBookmarkCollections } from '~/composables/useBookmarkCollections'
-import { useKeyboardHeight } from '~/composables/useKeyboardHeight'
+import { useKeyboardPinnedFixedStyle } from '~/composables/useKeyboardHeight'
+import { useEnsureFocusedInputVisible } from '~/composables/useEnsureFocusedInputVisible'
 import { routeHeaderDefaultsFor, isAdminPath, isSettingsPath } from '~/config/routes'
 import { useAppLayoutComposer } from '~/composables/layout/useAppLayoutComposer'
 import AppLayoutGlobalOverlays from '~/components/app/layout/GlobalOverlays.vue'
@@ -273,60 +274,16 @@ useAppIconBadge()
 
 const { hideTopBar, navCompactMode: _navCompactModeBase, isRightRailForcedHidden: _isRightRailForcedHiddenBase, isRightRailSearchHidden, title } = useLayoutRules(route)
 const isMessagesPage = computed(() => route.path === '/chat')
-const { keyboardHeight, virtualKeyboardHeight, viewportHeight, viewportOffsetTop } = useKeyboardHeight()
 /**
- * Mobile bottom chrome slides away whenever the software keyboard is open.
- * iOS pans the whole page up to reveal the focused input, which would
- * otherwise drag the tab bar into view directly above the keyboard.
+ * Shell + overlays share `useKeyboardPinnedFixedStyle` so fixed layers stay above the
+ * software keyboard (Android overlays-content + iOS visual-viewport pan). See
+ * `composables/useKeyboardHeight.ts`.
  */
-const isKeyboardOpen = computed(() => keyboardHeight.value > 0)
-
-/**
- * The shell is `position: fixed` so page scroll can never move it. That alone is not
- * enough on iOS: fixed elements anchor to the *layout* viewport, and when the keyboard
- * opens iOS slides the visual viewport down inside the layout viewport, carrying the
- * shell's top edge off screen. While the keyboard is open we therefore pin the shell
- * to the measured visual viewport so the header stays put and only the content area
- * gives up the space.
- *
- * Everywhere else (and before the first client measurement) plain `inset: 0` is both
- * correct and SSR-stable.
- */
-const shellStyle = computed(() => {
-  if (!viewportHeight.value) {
-    // Pre-mount / SSR: stable fallback identical on server and client.
-    return { position: 'fixed' as const, inset: '0' }
-  }
-
-  if (virtualKeyboardHeight.value > 0) {
-    // Chrome / Android: `interactive-widget=overlays-content` keeps vv.height at full
-    // screen — the keyboard physically overlays from the bottom. Shrink the shell by
-    // exactly the keyboard height so the bottom of the shell sits above the keyboard.
-    return {
-      position: 'fixed' as const,
-      left: '0',
-      right: '0',
-      top: '0',
-      height: `${viewportHeight.value - virtualKeyboardHeight.value}px`,
-    }
-  }
-
-  const shouldPin = viewportHeight.value > 0 && (isKeyboardOpen.value || viewportOffsetTop.value > 0)
-  if (shouldPin) {
-    // iOS Safari: the visual viewport has been panned or shrunk. Fixed elements anchor
-    // to the layout viewport, so we explicitly pin the shell to the visual viewport
-    // so the header stays put and the content area fills what's visible.
-    return {
-      position: 'fixed' as const,
-      left: '0',
-      right: '0',
-      top: `${viewportOffsetTop.value}px`,
-      height: `${viewportHeight.value}px`,
-    }
-  }
-
-  return { position: 'fixed' as const, inset: '0' }
-})
+const {
+  style: shellStyle,
+  isKeyboardOpen,
+} = useKeyboardPinnedFixedStyle()
+/** Mobile bottom chrome slides away whenever the software keyboard is open. */
 
 const { header: appHeader } = useAppHeader()
 // Prevent SSR hydration mismatches: render route meta during hydration, then swap to appHeader after mount.
@@ -345,6 +302,10 @@ const {
 
 const middleContentEl = ref<HTMLElement | null>(null)
 const middleScrollerEl = ref<HTMLElement | null>(null)
+
+// Inline composers (permalink reply, article comments) live mid-scroller; when the
+// shell shrinks for the keyboard, keep the focused input in the visible area.
+useEnsureFocusedInputVisible(middleScrollerEl)
 
 const composer = useAppLayoutComposer({ middleContentEl, middleScrollerEl })
 const {

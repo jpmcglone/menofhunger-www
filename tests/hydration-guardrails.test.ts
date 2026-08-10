@@ -519,18 +519,40 @@ describe('hydration guardrails (structural)', () => {
     expect(composable).toMatch(/viewportHeight/)
     expect(composable).toMatch(/viewportOffsetTop/)
     expect(composable).toMatch(/virtualKeyboardHeight/)
-    // The shell must be fixed so page scroll can't move it.
-    expect(layout).toMatch(/position:\s*'fixed'/)
-    // Chrome path: keyboard overlays content, shrink shell by virtualKeyboardHeight.
-    expect(layout).toMatch(/virtualKeyboardHeight\.value\s*>\s*0/)
-    expect(layout).toMatch(/viewportHeight\.value\s*-\s*virtualKeyboardHeight\.value/)
-    // iOS path: visual viewport panned, pin top+height to visual viewport.
-    expect(layout).toMatch(/top:\s*`\$\{viewportOffsetTop\.value\}px`/)
-    expect(layout).toMatch(/height:\s*`\$\{viewportHeight\.value\}px`/)
+    // Shared pin helper used by shell + overlays (Android overlay + iOS pan).
+    expect(composable).toMatch(/function keyboardPinnedFixedStyle/)
+    expect(composable).toMatch(/export function useKeyboardPinnedFixedStyle/)
+    expect(composable).toMatch(/virtualKeyboardHeight\s*>\s*0/)
+    expect(composable).toMatch(/viewportHeight\s*-\s*virtualKeyboardHeight/)
+    expect(composable).toMatch(/top:\s*`\$\{viewportOffsetTop\}px`/)
+    expect(composable).toMatch(/height:\s*`\$\{viewportHeight\}px`/)
+    // Layout consumes the shared pin (not a one-off shell-only copy).
+    expect(layout).toMatch(/useKeyboardPinnedFixedStyle/)
+    expect(layout).toMatch(/style:\s*shellStyle/)
     // Must stay SSR-stable: unmeasured (height 0) falls back to plain inset.
-    expect(layout).toMatch(/viewportHeight\.value\s*>\s*0/)
+    expect(composable).toMatch(/inset:\s*'0'/)
     // A panned viewport must be corrected on its own, even if keyboard detection is empty.
-    expect(layout).toMatch(/viewportOffsetTop\.value\s*>\s*0/)
+    expect(composable).toMatch(/viewportOffsetTop\s*>\s*0/)
+  })
+
+  it('reply and composer overlays use the same keyboard pin as the app shell', () => {
+    const reply = readFromRepo('components/app/ReplyModal.vue')
+    const composer = readFromRepo('components/app/layout/ComposerModalOverlay.vue')
+    for (const src of [reply, composer]) {
+      expect(src).toMatch(/useKeyboardPinnedFixedStyle/)
+      expect(src).toMatch(/overlayStyle/)
+      // Must not use plain fixed inset-0 (that ignores the keyboard overlay path).
+      expect(src).not.toMatch(/class="fixed inset-0 z-\[1000\]"/)
+    }
+  })
+
+  it('scrolls mid-scroller inputs into view when the keyboard opens', () => {
+    const layout = readFromRepo('layouts/app.vue')
+    const helper = readFromRepo('composables/useEnsureFocusedInputVisible.ts')
+    expect(layout).toMatch(/useEnsureFocusedInputVisible\(\s*middleScrollerEl\s*\)/)
+    expect(helper).toMatch(/keyboardHeight/)
+    expect(helper).toMatch(/scrollElementIntoScroller/)
+    expect(helper).toMatch(/focusin/)
   })
 
   it('no surface pads itself by the full keyboard height (the pinned shell already does)', () => {
@@ -544,8 +566,10 @@ describe('hydration guardrails (structural)', () => {
 
   it('keyboard hide is app-wide (isKeyboardOpen, not gated to specific routes)', () => {
     const layout = readFromRepo('layouts/app.vue')
-    // The computed must only check keyboardHeight, not any specific page/route.
-    expect(layout).toMatch(/isKeyboardOpen\s*=\s*computed\(\(\)\s*=>\s*keyboardHeight\.value\s*>\s*0\)/)
+    const composable = readFromRepo('composables/useKeyboardHeight.ts')
+    // isKeyboardOpen comes from the shared pin helper and is only derived from keyboardHeight.
+    expect(layout).toMatch(/isKeyboardOpen/)
+    expect(composable).toMatch(/isKeyboardOpen\s*=\s*computed\(\(\)\s*=>\s*keyboardHeight\.value\s*>\s*0\)/)
     // The old route-gated expression must be gone.
     expect(layout).not.toMatch(/isArticleEditorPage/)
     expect(layout).not.toMatch(/hideTabBarForKeyboard/)

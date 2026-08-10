@@ -1,4 +1,4 @@
-import { computed, provide, ref, watch, type Ref } from 'vue'
+import { computed, onUnmounted, provide, ref, watch, type Ref } from 'vue'
 import {
   MOH_GROUP_COMPOSER_KEY,
   MOH_HOME_COMPOSER_IN_VIEW_KEY,
@@ -429,18 +429,22 @@ export function useAppLayoutComposer(opts: UseAppLayoutComposerOptions) {
     composerModalOpen,
     (open) => {
       if (!import.meta.client) return
-
+      window.removeEventListener('resize', updateComposerSheetStyle)
+      window.visualViewport?.removeEventListener('resize', updateComposerSheetStyle)
       if (open) {
         requestAnimationFrame(() => updateComposerSheetStyle())
         window.addEventListener('resize', updateComposerSheetStyle)
-      }
-
-      return () => {
-        window.removeEventListener('resize', updateComposerSheetStyle)
+        window.visualViewport?.addEventListener('resize', updateComposerSheetStyle)
       }
     },
     { flush: 'post' },
   )
+
+  onUnmounted(() => {
+    if (!import.meta.client) return
+    window.removeEventListener('resize', updateComposerSheetStyle)
+    window.visualViewport?.removeEventListener('resize', updateComposerSheetStyle)
+  })
 
   return {
     // Entry points

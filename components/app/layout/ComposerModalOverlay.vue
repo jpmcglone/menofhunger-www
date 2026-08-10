@@ -16,7 +16,8 @@
     >
       <div
         v-if="composerModalOpen"
-        class="fixed inset-0 z-[1000]"
+        class="z-[1000]"
+        :style="overlayStyle"
         aria-label="Post composer overlay"
         role="dialog"
         aria-modal="true"
@@ -28,9 +29,9 @@
           @click="closeComposerModal"
         />
 
-        <!-- Composer sheet -->
+        <!-- Composer sheet: max-height relative to keyboard-pinned overlay -->
         <div
-          class="absolute"
+          class="absolute max-h-[calc(100%-0.75rem)] overflow-y-auto"
           :style="[composerSheetStyle, composerSheetPlacementStyle]"
         >
           <div
@@ -73,11 +74,15 @@
 <script setup lang="ts">
 import { ClientOnly } from '#components'
 import type { AppLayoutComposerApi } from '~/composables/layout/useAppLayoutComposer'
+import { useKeyboardPinnedFixedStyle } from '~/composables/useKeyboardHeight'
 
 const props = defineProps<{
   /** The layout's composer surface — created once by `useAppLayoutComposer` in the app layout. */
   composer: AppLayoutComposerApi
 }>()
+
+// Same pin/shrink as the app shell — this overlay renders *outside* the shell.
+const { style: overlayStyle } = useKeyboardPinnedFixedStyle()
 
 // The composer api object is created once and never replaced, so destructuring
 // its refs in setup is safe and lets the template use them unwrapped.
