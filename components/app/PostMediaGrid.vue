@@ -141,20 +141,19 @@
     class="mt-3"
     :class="{ 'pointer-events-none': !interactive }"
   >
-    <!-- Outer container owns radius + clipping; inner cells are flush so the
-         grid reads as one surface. No gap between cells — seam would make
-         corner cells appear individually rounded from the clip. -->
+    <!-- Outer frame + 1px seams use the same low-contrast divider as post rows
+         (`moh-border`). Parent bg shows through `gap-px`; cells stay opaque. -->
     <div
-      class="relative w-full overflow-hidden bg-transparent"
-      :style="[gridWrapperStyle, mediaFrameStyle]"
+      class="relative w-full overflow-hidden border moh-border"
+      :style="[gridWrapperStyle, mediaFrameStyle, multiGridChromeStyle]"
     >
-      <div class="grid h-full w-full" :class="gridClass" :style="gridStyle">
+      <div class="grid h-full w-full gap-px" :class="gridClass" :style="gridStyle">
         <template v-for="(m, idx) in items" :key="m.id || idx">
           <!-- Valid media cell — interactive. Image/GIF cells use contain hover zoom. -->
           <button
             v-if="m.url && interactive"
             type="button"
-            class="relative min-w-0 min-h-0 overflow-hidden bg-transparent border-0 p-0 m-0 block cursor-zoom-in focus:outline-none focus-visible:ring-2 focus-visible:ring-black/20 dark:focus-visible:ring-white/20"
+            class="relative m-0 block min-h-0 min-w-0 cursor-zoom-in overflow-hidden border-0 moh-surface p-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-black/20 dark:focus-visible:ring-white/20"
             :class="itemClass(idx)"
             :aria-label="m.kind === 'video' ? `View video ${idx + 1} of ${items.length}` : `View image ${idx + 1} of ${items.length}`"
             @click.stop="openAt($event, idx)"
@@ -202,7 +201,7 @@
           <!-- Valid media cell — display-only -->
           <div
             v-else-if="m.url"
-            class="relative min-w-0 min-h-0 overflow-hidden bg-transparent"
+            class="relative min-h-0 min-w-0 overflow-hidden moh-surface"
             :class="itemClass(idx)"
           >
             <AppImg
@@ -391,6 +390,8 @@ watch(appWideSoundOn, (soundOn) => {
 })
 
 const mediaFrameStyle = { borderRadius: 'var(--moh-media-radius)' }
+/** Seam color behind `gap-px` — matches post-row `moh-border`. */
+const multiGridChromeStyle = { backgroundColor: 'var(--moh-border)' }
 
 const items = computed(() => (props.media ?? []).filter((m) => Boolean(m?.url) || Boolean(m?.deletedAt)).slice(0, 4))
 const hideThumbs = computed(() => viewer.kind.value === 'media' && viewer.hideOrigin.value)

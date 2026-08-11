@@ -9,10 +9,11 @@
  * Engagement-based views (boost, bookmark, comment): call markEngaged(postId)
  * directly — these are flushed immediately rather than batched.
  *
- * Group posts: when a viewed post has a communityGroupId, optimistically decrement
- * the groups unread badge and flush immediately so `groups:unreadChanged` confirms quickly.
+ * Group posts: optimistic groups-badge decrement on dwell; network flush stays
+ * on the shared batch timer (not one POST per group post).
  *
- * The API endpoint is idempotent, so duplicate calls are harmless.
+ * After the first successful enqueue for a post this session, the observer
+ * disconnects so scroll bounce cannot re-POST / re-trigger mark-read.
  */
 
 const FLUSH_INTERVAL_MS = 4_000
@@ -28,15 +29,16 @@ const VISIBLE_PX_FALLBACK = 400
 /** Fine-grained thresholds so the observer fires often enough to evaluate the pixel fallback while scrolling. */
 const OBSERVER_THRESHOLDS = [0, 0.5, 1]
 const BATCH_MAX = 50
-/** Don't re-send the same post within this window (reduces redundant API calls on scroll bounce). */
-const DEDUPE_WINDOW_MS = 60_000
 
 // Module-level singleton so the tracker is shared across all PostRow instances
 // on the same page without double-counting or double-flushing.
 let flushTimer: ReturnType<typeof setInterval> | null = null
 const pendingPostIds = new Set<string>()
-/** postId -> last sent timestamp; entries older than DEDUPE_WINDOW_MS are skipped when enqueueing. */
-const recentlySent = new Map<string, number>()
+/**
+ * Session-level "already reported / enqueued" set. Once a post is here we never
+ * enqueue it again this page load (observers disconnect after first dwell).
+ */
+const sessionReportedPostIds = new Set<string>()
 /** postIds already used for an optimistic groups-badge decrement this session. */
 const optimisticGroupBadgeApplied = new Set<string>()
 /**
@@ -47,12 +49,10 @@ const optimisticGroupBadgeApplied = new Set<string>()
 const locallyViewedPostIds = new Set<string>()
 
 function enqueuePosts(ids: string[]): string[] {
-  const now = Date.now()
-  const cutoff = now - DEDUPE_WINDOW_MS
   const added: string[] = []
   for (const id of ids) {
-    const last = recentlySent.get(id)
-    if (last != null && last > cutoff) continue
+    if (sessionReportedPostIds.has(id)) continue
+    sessionReportedPostIds.add(id)
     if (!pendingPostIds.has(id)) added.push(id)
     pendingPostIds.add(id)
   }
@@ -78,8 +78,6 @@ async function flushPending(
         ...(opts.anonId ? { anon_id: opts.anonId } : {}),
       },
     })
-    const now = Date.now()
-    for (const id of ids) recentlySent.set(id, now)
   } catch {
     // Fire-and-forget: silently ignore errors (network hiccups, 204 etc.)
   }
@@ -143,7 +141,7 @@ export function usePostViewTracker() {
    * Pass multiple postIds to track a thread chain (all enqueued together).
    *
    * When `groupIdByPostId` maps a viewed post to a community group, optimistically
-   * decrement that group's unread badge and flush immediately.
+   * decrement that group's unread badge (flush stays batched).
    */
   function observe(
     postIds: string | string[],
@@ -158,11 +156,15 @@ export function usePostViewTracker() {
     if (opts?.canTrack === false) return () => {}
     const ids = (Array.isArray(postIds) ? postIds : [postIds]).filter(Boolean)
     if (ids.length === 0) return () => {}
+    // Already reported this session — no observer work.
+    if (ids.every((id) => sessionReportedPostIds.has(id))) return () => {}
 
     let dwellTimer: ReturnType<typeof setTimeout> | null = null
+    let done = false
 
     const observer = new IntersectionObserver(
       (entries) => {
+        if (done) return
         const entry = entries[0]
         if (!entry) return
 
@@ -175,34 +177,35 @@ export function usePostViewTracker() {
         if (entry.isIntersecting && visibleEnough) {
           if (!dwellTimer) {
             dwellTimer = setTimeout(() => {
-              const added = enqueuePosts(ids)
               dwellTimer = null
+              const pendingIds = ids.filter((id) => !sessionReportedPostIds.has(id))
+              if (pendingIds.length === 0) {
+                done = true
+                observer.disconnect()
+                return
+              }
+              const added = enqueuePosts(pendingIds)
 
               // Mark locally viewed so the eye icon lights up immediately, before the
               // batch API call confirms. Gated on isAuthed so anon viewers don't get
               // a state that silently resets on reload.
               if (isAuthed.value) {
-                for (const id of ids) locallyViewedPostIds.add(id)
+                for (const id of pendingIds) locallyViewedPostIds.add(id)
               }
 
-              // Group posts: optimistic badge + immediate flush for snappy UI.
+              // Group posts: optimistic badge only — flush rides the shared timer.
               const groupMap = opts?.groupIdByPostId
-              let hasGroupPost = false
               if (groupMap && isAuthed.value) {
-                for (const id of added.length ? added : ids) {
+                for (const id of added.length ? added : pendingIds) {
                   const gid = groupMap[id]
                   if (!gid) continue
-                  hasGroupPost = true
                   optimisticDecrementGroupBadge(gid, id, setGroupsUnread, groupsUnread.value)
                 }
               }
-              if (hasGroupPost) {
-                void flushPending(apiFetchData as any, {
-                  isAuthed: isAuthed.value,
-                  anonId: anonViewId.value,
-                  source: 'groups_hub_scroll',
-                })
-              }
+
+              // One dwell per session: stop observing so scroll bounce can't re-POST.
+              done = true
+              observer.disconnect()
             }, VISIBILITY_DWELL_MS)
           }
         } else {
@@ -267,5 +270,17 @@ export function usePostViewTracker() {
     return isAuthed.value && locallyViewedPostIds.has(postId)
   }
 
-  return { observe, markEngaged, flush, hasViewedLocally }
+  /**
+   * Seed session "already reported" from feed payload so we never POST for
+   * posts the API already marks viewerHasViewed.
+   */
+  function noteAlreadyViewed(postIds: string | string[]): void {
+    const ids = (Array.isArray(postIds) ? postIds : [postIds]).filter(Boolean)
+    for (const id of ids) {
+      sessionReportedPostIds.add(id)
+      if (isAuthed.value) locallyViewedPostIds.add(id)
+    }
+  }
+
+  return { observe, markEngaged, flush, hasViewedLocally, noteAlreadyViewed }
 }

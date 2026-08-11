@@ -772,6 +772,14 @@ export type GetPostCommentsResponse = {
   } | null
 }
 
+/** Data type for GET /posts/:id/discover-more (array); pagination in envelope. */
+export type GetPostDiscoverMoreData = FeedPost[]
+
+export type GetPostDiscoverMoreResponse = {
+  posts: FeedPost[]
+  nextCursor: string | null
+}
+
 /** Data type for GET /posts/:id/thread-participants (array). */
 export type GetThreadParticipantsData = Array<{ id: string; username: string }>
 

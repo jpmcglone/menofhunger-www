@@ -18,6 +18,7 @@
       :activate-video-on-mount="activateVideoOnMount"
       :group-wall="groupWall"
       :feed-group="feedGroup"
+      :track-views="false"
       v-bind="$attrs"
       @deleted="$emit('deleted', $event)"
       @edited="$emit('edited', $event)"
@@ -42,6 +43,7 @@
       :activate-video-on-mount="activateVideoOnMount"
       :group-wall="groupWall"
       :feed-group="feedGroup"
+      :track-views="false"
       v-bind="$attrs"
       @deleted="$emit('deleted', $event)"
       @edited="$emit('edited', $event)"
@@ -129,6 +131,7 @@
           :group-wall="entry.index === chain.length - 1 ? groupWall : null"
           :feed-group="feedGroup"
           :subtle-border-bottom="subtleBorderBottom && entry.index === chain.length - 1"
+          :track-views="false"
           v-bind="$attrs"
           @deleted="$emit('deleted', $event)"
           @edited="$emit('edited', $event)"
@@ -342,7 +345,7 @@ function setHighlightedRef(el: unknown) {
 defineExpose({ highlightedRowRef, getHighlightedEl: () => highlightedRowRef.value })
 
 // Post view tracking: observe this row for 50% visibility for 1s
-const { observe } = usePostViewTracker()
+const { observe, noteAlreadyViewed } = usePostViewTracker()
 const wrapperEl = ref<HTMLElement | null>(null)
 let stopObserve: (() => void) | null = null
 
@@ -378,9 +381,15 @@ onMounted(() => {
   // Gated posts (viewerCanAccess === false) are excluded — viewer hasn't read the content.
   if (wrapperEl.value) {
     const accessible = chain.value.filter((p) => p.viewerCanAccess !== false && !isPendingLocalId(p.id))
-    const postIds = accessible.map((p) => p.id).filter(Boolean)
+    const alreadyViewed = accessible.filter((p) => p.viewerHasViewed === true).map((p) => p.id).filter(Boolean)
+    if (alreadyViewed.length) noteAlreadyViewed(alreadyViewed)
+    const postIds = accessible
+      .filter((p) => p.viewerHasViewed !== true)
+      .map((p) => p.id)
+      .filter(Boolean)
     const groupIdByPostId: Record<string, string> = {}
     for (const p of accessible) {
+      if (p.viewerHasViewed === true) continue
       const gid = (p.communityGroupId ?? '').trim()
       if (gid && p.id) groupIdByPostId[p.id] = gid
     }

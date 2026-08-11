@@ -245,6 +245,40 @@
             </template>
           </AppSubtleSectionLoader>
         </div>
+
+        <!-- Discover more: lazy-loaded near end of thread (client-only; not part of SSR). -->
+        <ClientOnly>
+          <div
+            v-if="!isOnlyMe && showDiscoverSection"
+            class="border-b moh-border"
+          >
+            <div ref="discoverSentinelEl" class="h-1 w-full" aria-hidden="true" />
+            <div class="px-4 pt-5 pb-2">
+              <div class="text-base font-bold moh-text">Discover more</div>
+              <div class="mt-0.5 text-sm moh-text-muted">From across Men of Hunger</div>
+            </div>
+            <div v-if="discoverLoading && !discoverPosts.length" class="flex items-center justify-center py-8">
+              <AppLoadingSpinner />
+            </div>
+            <template v-else-if="discoverPosts.length">
+              <AppFeedPostRow
+                v-for="d in discoverPosts"
+                :key="d.id"
+                :post="d"
+              />
+              <div v-if="discoverNextCursor" class="flex justify-center px-4 py-4">
+                <Button
+                  label="Show more"
+                  severity="secondary"
+                  rounded
+                  :loading="discoverLoading"
+                  :disabled="discoverLoading"
+                  @click="loadMoreDiscover"
+                />
+              </div>
+            </template>
+          </div>
+        </ClientOnly>
       </template>
 
       <div class="min-h-[80dvh] shrink-0" aria-hidden="true" />
@@ -268,6 +302,7 @@ import { groupAvatarRoundClass as getGroupAvatarRoundClass } from '~/utils/avata
 import { getApiErrorMessage } from '~/utils/api-error'
 import { usePostPermalink, usePostPermalinkMedia } from '~/composables/usePostPermalink'
 import { usePostComments } from '~/composables/usePostComments'
+import { usePostDiscoverMore } from '~/composables/usePostDiscoverMore'
 import { useThreadParticipants } from '~/composables/useThreadParticipants'
 import { usePostPermalinkSeo } from '~/composables/usePostPermalinkSeo'
 import { useReplyModal } from '~/composables/useReplyModal'
@@ -442,6 +477,44 @@ const {
   isOnlyMe,
 })
 const commentsInitialLoading = computed(() => commentsLoading.value && comments.value.length === 0)
+
+const {
+  posts: discoverPosts,
+  nextCursor: discoverNextCursor,
+  loading: discoverLoading,
+  showSection: showDiscoverSection,
+  arm: armDiscoverMore,
+  loadMore: loadMoreDiscover,
+} = usePostDiscoverMore({ postId })
+
+const discoverSentinelEl = ref<HTMLElement | null>(null)
+let discoverObserver: IntersectionObserver | null = null
+
+onMounted(() => {
+  if (typeof IntersectionObserver === 'undefined') return
+  discoverObserver = new IntersectionObserver(
+    (entries) => {
+      if (entries.some((e) => e.isIntersecting)) {
+        armDiscoverMore()
+      }
+    },
+    { root: null, rootMargin: '240px 0px', threshold: 0 },
+  )
+  watch(
+    discoverSentinelEl,
+    (el, _prev, onCleanup) => {
+      discoverObserver?.disconnect()
+      if (el) discoverObserver?.observe(el)
+      onCleanup(() => discoverObserver?.disconnect())
+    },
+    { immediate: true },
+  )
+})
+
+onBeforeUnmount(() => {
+  discoverObserver?.disconnect()
+  discoverObserver = null
+})
 
 const commentsFeedTopEl = ref<HTMLElement | null>(null)
 const { scrollToTop: scrollFeedToTop } = useFeedScrollToTop(commentsFeedTopEl)

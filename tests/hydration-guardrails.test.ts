@@ -458,6 +458,13 @@ describe('hydration guardrails (structural)', () => {
     expect(page).toMatch(/onMounted\(\(\)\s*=>\s*\{[\s\S]*?isMounted\.value\s*=\s*true/)
   })
 
+  it('keeps Discover more behind ClientOnly + IntersectionObserver (lazy, not SSR)', () => {
+    const page = readFromRepo('pages/p/[id].vue')
+    expect(page).toMatch(/<ClientOnly>[\s\S]*Discover more[\s\S]*<\/ClientOnly>/)
+    expect(page).toMatch(/usePostDiscoverMore/)
+    expect(page).toMatch(/IntersectionObserver/)
+  })
+
   it('keeps the modal panel at a fixed height (not content-sized) so it never resizes between states', () => {
     // A resizing modal feels janky. The panel must declare an explicit h-[34rem]
     // as well as the viewport-constrained max-h cap.

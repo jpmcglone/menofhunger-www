@@ -419,8 +419,14 @@ const props = withDefaults(defineProps<{
    * Notifications page so viewers know whose post they are replying to.
    */
   showReplyingTo?: boolean
+  /**
+   * When false, skip IntersectionObserver view tracking (FeedPostRow already
+   * observes the wrapper for the full chain — avoids duplicate observers).
+   */
+  trackViews?: boolean
 }>(), {
   clickable: true,
+  trackViews: true,
 })
 const emit = defineEmits<{
   (e: 'deleted', id: string): void
@@ -550,18 +556,23 @@ const {
 })
 
 // View tracking: report when this row is ≥50% visible for ≥1s.
-// FeedPostRow also tracks the full thread chain; deduplication in usePostViewTracker handles overlap.
-const { observe: observeView } = usePostViewTracker()
+// FeedPostRow observes the wrapper for the full chain — pass trackViews=false there.
+const { observe: observeView, noteAlreadyViewed } = usePostViewTracker()
 let stopViewObserve: (() => void) | null = null
 
 onMounted(() => {
   if (!import.meta.client) return
+  if (props.trackViews === false) return
   if (
     rowEl.value
     && postView.value.id
     && postView.value.viewerCanAccess !== false
     && !isPendingLocalId(postView.value.id)
   ) {
+    if (postView.value.viewerHasViewed === true) {
+      noteAlreadyViewed(postView.value.id)
+      return
+    }
     const gid = (postView.value.communityGroupId ?? '').trim()
     stopViewObserve = observeView([postView.value.id], rowEl.value, {
       groupIdByPostId: gid ? { [postView.value.id]: gid } : undefined,
