@@ -49,11 +49,27 @@
           :shell="shell"
         />
 
+        <!-- Soft attribution from personalized invite links (?from=username) -->
+        <ClientOnly>
+          <div
+            v-if="invitedByUsername"
+            class="moh-gutter-x py-3 border-b moh-border text-sm moh-text-muted"
+          >
+            Invited by
+            <NuxtLink
+              :to="`/u/${encodeURIComponent(invitedByUsername)}`"
+              class="font-semibold moh-text hover:underline underline-offset-2"
+            >
+              @{{ invitedByUsername }}
+            </NuxtLink>
+          </div>
+        </ClientOnly>
+
         <!-- Logged-out CTA -->
         <div v-if="!isAuthed" class="px-4 py-6 border-b moh-border">
           <div class="rounded-xl border moh-border bg-[var(--moh-surface-2)] px-5 py-6 text-center max-w-lg mx-auto">
             <p class="text-sm font-medium moh-text mb-3">
-              Log in to join <span class="font-bold">{{ shell.name }}</span> and see what members are posting.
+              Join <span class="font-bold">{{ shell.name }}</span> — signup takes a minute, then verify to get in.
             </p>
             <div class="flex justify-center gap-2 flex-wrap">
               <NuxtLink
@@ -63,7 +79,7 @@
                 Log in
               </NuxtLink>
               <NuxtLink
-                to="/login?tab=signup"
+                :to="`/login?tab=signup&redirect=${encodeURIComponent(route.fullPath)}`"
                 class="inline-flex items-center gap-1.5 rounded-full border moh-border px-5 py-2 text-sm font-semibold moh-text hover:bg-[var(--moh-surface-2)] transition-colors"
               >
                 Sign up
@@ -76,14 +92,15 @@
         <div v-else-if="!isVerified && !isMember" class="px-4 py-6 border-b moh-border">
           <div class="rounded-xl border moh-border bg-[var(--moh-surface-2)] px-5 py-6 text-center max-w-lg mx-auto">
             <p class="text-sm font-medium moh-text mb-1">
-              Verification required to join.
+              Verify to join — takes a minute
             </p>
             <p class="text-xs moh-text-muted mb-3">
-              Verify your identity to join <span class="font-semibold">{{ shell.name }}</span> and participate.
+              Then you’re in <span class="font-semibold">{{ shell.name }}</span>.
             </p>
             <NuxtLink
-              to="/settings/verification"
+              :to="verificationJoinTo"
               class="inline-flex items-center gap-1.5 rounded-full bg-[color:var(--moh-group)] px-5 py-2 text-sm font-semibold text-white shadow-sm hover:opacity-90 transition-opacity"
+              @click="rememberJoinIntent"
             >
               Get verified
             </NuxtLink>
@@ -328,9 +345,26 @@ const { apiFetchData } = useApiClient()
 const { invalidate: invalidateMyGroups } = useMyGroups()
 const { isAuthed, isVerified, user: authUser } = useAuth()
 const { markReadBySubject, markGroupPostsSeen } = useNotifications()
+const { setPendingGroupJoin, pendingSlug: pendingGroupSlug } = usePendingGroupJoin()
+const { push: pushToast } = useAppToast()
 
 const slug = computed(() => String(route.params.slug ?? '').trim())
+const invitedByUsername = computed(() => {
+  const raw = Array.isArray(route.query.from) ? route.query.from[0] : route.query.from
+  return String(raw ?? '').trim().replace(/^@/, '') || null
+})
+const hasInviteAttribution = computed(() => {
+  const ref = String(Array.isArray(route.query.ref) ? route.query.ref[0] : route.query.ref ?? '').trim()
+  return Boolean(invitedByUsername.value || ref)
+})
+const verificationJoinTo = computed(() => {
+  const redirect = encodeURIComponent(route.fullPath)
+  return `/settings/verification?redirect=${redirect}`
+})
 
+function rememberJoinIntent() {
+  if (slug.value) setPendingGroupJoin(slug.value)
+}
 definePageMeta({
   layout: 'app',
   title: 'Group',
@@ -663,12 +697,41 @@ async function doJoin() {
     invalidateMyGroups()
     await loadShell()
     if (isMember.value) await postsFeedRefresh()
+    const pending = shell.value?.viewerPendingApproval
+    pushToast({
+      title: pending ? 'Request sent' : 'Joined group',
+      tone: 'public',
+      durationMs: 1800,
+    })
   } catch (e: unknown) {
-    console.error(getApiErrorMessage(e) || 'Could not join.')
+    pushToast({
+      title: 'Could not join',
+      message: getApiErrorMessage(e) || 'Try again.',
+      tone: 'error',
+      durationMs: 4500,
+    })
   } finally {
     joinBusy.value = false
   }
 }
+
+const autoJoinAttempted = ref(false)
+async function maybeAutoJoinFromInvite() {
+  if (!import.meta.client || autoJoinAttempted.value) return
+  if (!shell.value || !isAuthed.value || !isVerified.value || isMember.value) return
+  if (shell.value.viewerPendingApproval) return
+  const pendingMatches = pendingGroupSlug.value && pendingGroupSlug.value === slug.value
+  if (!pendingMatches && !hasInviteAttribution.value) return
+  autoJoinAttempted.value = true
+  setPendingGroupJoin(null)
+  await doJoin()
+}
+
+watch(
+  () => [shell.value?.id, isAuthed.value, isVerified.value, isMember.value] as const,
+  () => { void maybeAutoJoinFromInvite() },
+  { immediate: true },
+)
 
 async function doLeave() {
   const s = shell.value
@@ -940,6 +1003,9 @@ watch(
 // ─── Lifecycle ────────────────────────────────────────────────────────────────
 onMounted(() => {
   if (!import.meta.client) return
+  if (hasInviteAttribution.value && slug.value) {
+    setPendingGroupJoin(slug.value)
+  }
   if (groupFeedEnabled.value && !postsFeedPosts.value.length) {
     void postsFeedRefresh()
   }

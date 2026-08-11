@@ -124,6 +124,7 @@
 <script setup lang="ts">
 import type { FeedPost } from '~/types/api'
 import { siteConfig } from '~/config/site'
+import { postShareText, postShareUrl } from '~/utils/acquisition-share'
 
 const { user } = useAuth()
 
@@ -140,6 +141,7 @@ const titleId = `moh-share-post-${useId()}`
 const toast = useAppToast()
 const { share: nativeShare, isSupported: isNativeShareSupported } = useWebShare()
 const { copyText } = useCopyToClipboard()
+const { referralCode, ensureReferralCode } = useEnsureReferralCode()
 
 const isCheckin = computed(() => props.post.kind === 'checkin')
 const streakDays = computed(() => (isCheckin.value ? (user.value?.checkinStreakDays ?? 0) : 0))
@@ -156,7 +158,7 @@ const headerTitle = computed(() =>
   showStreakHero.value ? `${streakDays.value}-day streak` : 'Share this post',
 )
 const headerSubtitle = computed(() => {
-  if (!showStreakHero.value) return 'Let others see what you wrote.'
+  if (!showStreakHero.value) return 'Invite someone into the conversation.'
   if (streakDays.value >= 7) {
     const weeks = Math.floor(streakDays.value / 7)
     return `That's ${weeks === 1 ? 'a full week' : `${weeks} weeks`}. Keep it going.`
@@ -172,8 +174,16 @@ const seeOthersLabel = computed(() => {
   return 'See how others answered'
 })
 
-const shareUrl = computed(
-  () => `${siteConfig.url}/p/${encodeURIComponent(props.post.id)}`,
+const shareMessage = computed(() =>
+  postShareText({
+    isCheckin: isCheckin.value,
+    streakDays: streakDays.value,
+    commentCount: props.post.commentCount ?? 0,
+  }),
+)
+
+const shareUrl = computed(() =>
+  postShareUrl(props.post.id, referralCode.value ?? null, siteConfig.url),
 )
 
 const canNativeShare = computed(() => isNativeShareSupported.value)
@@ -193,14 +203,20 @@ const shareButtonClass = computed(() => {
 const sharing = ref(false)
 const copying = ref(false)
 
+async function resolveShareUrl() {
+  await ensureReferralCode()
+  return postShareUrl(props.post.id, referralCode.value ?? null, siteConfig.url)
+}
+
 async function onShare() {
   if (sharing.value) return
   sharing.value = true
   try {
+    const url = await resolveShareUrl()
     const shared = await nativeShare({
       title: 'Men of Hunger',
-      text: props.post.body?.slice(0, 120) || 'Check out this post on Men of Hunger',
-      url: shareUrl.value,
+      text: shareMessage.value,
+      url,
     })
     // Only close the modal on a real share — not when the user cancels the share sheet.
     if (shared) close()
@@ -213,7 +229,8 @@ async function onCopy() {
   if (copying.value) return
   copying.value = true
   try {
-    await copyText(shareUrl.value)
+    const url = await resolveShareUrl()
+    await copyText(url)
     toast.push({ title: 'Link copied', tone: 'success', durationMs: 1600 })
     close()
   } catch {
@@ -236,5 +253,6 @@ useScrollLock(open)
 watch(open, (isOpen) => {
   // Prime the social-proof count from cache (near-free TTL hit right after posting).
   if (isOpen && isCheckin.value) void refreshCheckin()
+  if (isOpen) void ensureReferralCode()
 })
 </script>

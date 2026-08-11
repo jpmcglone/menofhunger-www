@@ -14,13 +14,13 @@
     >
       <div class="pointer-events-auto mx-auto flex max-w-lg items-center gap-3 rounded-2xl border moh-border moh-surface shadow-[0_8px_32px_rgba(0,0,0,0.18)] px-4 py-3">
         <div class="flex-1 min-w-0">
-          <p class="text-sm font-semibold moh-text leading-snug">Men of Hunger</p>
-          <p class="text-xs moh-text-muted mt-0.5 leading-snug">A trusted community for men. Accountability, no noise.</p>
+          <p class="text-sm font-semibold moh-text leading-snug">{{ title }}</p>
+          <p class="text-xs moh-text-muted mt-0.5 leading-snug">{{ subtitle }}</p>
         </div>
         <Button
           as="NuxtLink"
-          :to="`/login?redirect=${encodeURIComponent(currentPath)}`"
-          label="Join free"
+          :to="ctaTo"
+          :label="ctaLabel"
           rounded
           size="small"
           class="shrink-0"
@@ -50,6 +50,24 @@ onMounted(() => {
 })
 
 const currentPath = computed(() => route.fullPath)
+const isPostPermalink = computed(() => /^\/p\//.test(route.path))
+const isGroupPage = computed(() => /^\/g\//.test(route.path))
+
+const title = computed(() => 'Men of Hunger')
+const subtitle = computed(() => {
+  if (isPostPermalink.value) return 'Join the conversation — signup takes a minute.'
+  if (isGroupPage.value) return 'Join this group after a quick signup and verify.'
+  return 'A trusted community for men. Accountability, no noise.'
+})
+const ctaLabel = computed(() => (isPostPermalink.value ? 'Join the conversation' : 'Join free'))
+const ctaTo = computed(() => {
+  const redirect = encodeURIComponent(currentPath.value)
+  if (isPostPermalink.value) {
+    return `/login?tab=signup&redirect=${redirect}`
+  }
+  return `/login?redirect=${redirect}`
+})
+
 const visible = computed(() => hydrated.value && !isAuthed.value && !dismissed.value)
 
 function dismiss() {

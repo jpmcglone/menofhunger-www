@@ -335,6 +335,17 @@ export function computePostPermalinkSeo(input: PostPermalinkSeoInput): PostPerma
     description = excerpt(combined, DESC_PUBLIC_MAX) || description
   }
 
+  // Curiosity nudge for unfurls: mention reply volume when the thread has activity.
+  if (!isOnlyMePost && post && description) {
+    const replies = Math.max(0, Math.floor(Number(post.commentCount ?? 0) || 0))
+    if (replies > 0) {
+      const replyLine =
+        replies === 1 ? '1 reply on Men of Hunger.' : `${replies} replies on Men of Hunger.`
+      const combined = `${description.replace(/\s+$/, '')} ${replyLine}`.trim()
+      description = excerpt(combined, DESC_PUBLIC_MAX) || description
+    }
+  }
+
   const author = atAuthor(post) || siteConfig.name
 
   let image: string

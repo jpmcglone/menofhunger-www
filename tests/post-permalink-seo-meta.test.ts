@@ -395,6 +395,12 @@ describe('computePostPermalinkSeo — group affiliation', () => {
     expect(article?.isAccessibleForFree).toBe(false)
   })
 
+  it('public post with replies appends reply count to description', () => {
+    const post = basePost({ commentCount: 7, body: LONG_PUBLIC_BODY })
+    const r = computePostPermalinkSeo(input({ post, bodyTextSansLinks: LONG_PUBLIC_BODY }))
+    expect(r.description).toContain('7 replies on Men of Hunger')
+  })
+
   it('onlyMe post in a group: never leaks group affiliation', () => {
     const g = group()
     const post = basePost({ visibility: 'onlyMe', body: 'private', groupPreview: g })

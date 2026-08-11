@@ -160,7 +160,7 @@
           <!-- Logged-out: prompt to log in -->
           <NuxtLink
             v-if="!viewerIsLoggedIn"
-            to="/login"
+            :to="`/login?redirect=${encodeURIComponent($route.fullPath)}`"
             class="inline-flex items-center gap-1.5 rounded-full bg-[color:var(--moh-group)] px-4 py-2 text-sm font-semibold text-white shadow-sm hover:opacity-90 transition-opacity"
           >
             Log in to join
@@ -168,7 +168,7 @@
           <!-- Logged-in but not verified: prompt to verify -->
           <NuxtLink
             v-else-if="!viewerIsVerified"
-            to="/settings/verification"
+            :to="`/settings/verification?redirect=${encodeURIComponent($route.fullPath)}`"
             class="inline-flex items-center gap-1.5 rounded-full bg-[color:var(--moh-group)] px-4 py-2 text-sm font-semibold text-white shadow-sm hover:opacity-90 transition-opacity"
           >
             Get verified to join
@@ -360,6 +360,7 @@
 import type { MenuItem } from 'primevue/menuitem'
 import type { CommunityGroupShell } from '~/types/api'
 import { groupAvatarRoundClass } from '~/utils/avatar-rounding'
+import { groupShareText, groupShareUrl } from '~/utils/acquisition-share'
 import { useCopyToClipboard } from '~/composables/useCopyToClipboard'
 import { tinyTooltip } from '~/utils/tiny-tooltip'
 
@@ -421,7 +422,10 @@ const avatarRoundClass = groupAvatarRoundClass()
 const avatarWrapperRef = ref<HTMLElement | null>(null)
 const { confirm } = useAppConfirm()
 const { copyText } = useCopyToClipboard()
+const { share: nativeShare, isSupported: nativeShareSupported } = useWebShare()
 const toast = useAppToast()
+const { user } = useAuth()
+const { referralCode, ensureReferralCode } = useEnsureReferralCode()
 
 async function onLeaveClick() {
   const ok = await confirm({
@@ -435,19 +439,44 @@ async function onLeaveClick() {
 
 const moreMenuRef = ref<{ toggle: (event: Event) => void } | null>(null)
 
-const groupShareUrl = computed(() => {
-  if (!import.meta.client) return ''
-  const slug = props.shell?.slug
-  if (!slug) return ''
-  return `${window.location.origin}/g/${encodeURIComponent(slug)}`
-})
+async function resolveGroupShare() {
+  await ensureReferralCode()
+  const slug = props.shell?.slug ?? ''
+  const origin = import.meta.client ? window.location.origin : 'https://menofhunger.com'
+  const url = groupShareUrl(
+    slug,
+    {
+      ref: referralCode.value ?? null,
+      from: user.value?.username ?? null,
+    },
+    origin,
+  )
+  const message = groupShareText(props.shell?.name ?? 'this group')
+  return { url, message }
+}
+
+async function shareGroup() {
+  try {
+    const { url, message } = await resolveGroupShare()
+    if (nativeShareSupported.value) {
+      const shared = await nativeShare({ title: 'Men of Hunger', text: message, url })
+      if (shared) {
+        toast.push({ title: 'Shared', tone: 'public', durationMs: 1200 })
+        return
+      }
+    }
+    await copyText(`${message}\n${url}`)
+    toast.push({ title: 'Invite link copied', tone: 'public', durationMs: 1400 })
+  } catch {
+    toast.push({ title: 'Share failed', tone: 'error', durationMs: 1800 })
+  }
+}
 
 async function copyGroupLink() {
-  const url = groupShareUrl.value
-  if (!url) return
   try {
-    await copyText(url)
-    toast.push({ title: 'Group link copied', tone: 'public', durationMs: 1400 })
+    const { url, message } = await resolveGroupShare()
+    await copyText(`${message}\n${url}`)
+    toast.push({ title: 'Invite link copied', tone: 'public', durationMs: 1400 })
   } catch {
     toast.push({ title: 'Copy failed', tone: 'error', durationMs: 1800 })
   }
@@ -456,7 +485,12 @@ async function copyGroupLink() {
 const moreMenuItems = computed<MenuItemWithIcon[]>(() => {
   const items: MenuItemWithIcon[] = [
     {
-      label: 'Share group',
+      label: nativeShareSupported.value ? 'Share invite…' : 'Copy invite link',
+      iconName: 'tabler:share-2',
+      command: () => void shareGroup(),
+    },
+    {
+      label: 'Copy invite link',
       iconName: 'tabler:link',
       command: () => void copyGroupLink(),
     },

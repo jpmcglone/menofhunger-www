@@ -197,11 +197,21 @@
           </div>
         </div>
 
-        <Icon
-          name="tabler:chevron-right"
-          class="relative z-[2] shrink-0 text-sm moh-text-muted"
-          aria-hidden="true"
-        />
+        <div class="relative z-[2] flex items-center gap-1 shrink-0">
+          <button
+            type="button"
+            class="inline-flex h-8 w-8 items-center justify-center rounded-full moh-text-muted transition-colors hover:bg-black/[0.05] hover:moh-text dark:hover:bg-white/[0.08]"
+            aria-label="Share this week's mission"
+            @click.stop="shareWeeklyMission"
+          >
+            <Icon name="tabler:share-2" class="text-sm" aria-hidden="true" />
+          </button>
+          <Icon
+            name="tabler:chevron-right"
+            class="text-sm moh-text-muted"
+            aria-hidden="true"
+          />
+        </div>
       </div>
 
     </div>
@@ -334,6 +344,8 @@ import type {
 import type { WsCrewStreakAdvancedPayload, WsCrewStreakBrokenPayload } from '~/composables/usePresence'
 import { MOH_OPEN_COMPOSER_KEY } from '~/utils/injection-keys'
 import { deriveWeeklyMission } from '~/config/milestones'
+import { siteConfig } from '~/config/site'
+import { appendShareParams, weeklyMissionShareText } from '~/utils/acquisition-share'
 
 const props = defineProps<{
   /** When provided, the hero uses this for the prompt text + answered state instead of fetching. */
@@ -489,6 +501,27 @@ function onBottomAuxClick(e: MouseEvent) {
   if (isInteractiveTarget(e.target)) return
   e.preventDefault()
   if (typeof window !== 'undefined') window.open('/leaderboard', '_blank')
+}
+
+const { share: nativeShare, isSupported: nativeShareSupported } = useWebShare()
+const { copyText } = useCopyToClipboard()
+const { referralCode, ensureReferralCode } = useEnsureReferralCode()
+const toast = useAppToast()
+
+async function shareWeeklyMission() {
+  try {
+    await ensureReferralCode()
+    const text = weeklyMissionShareText(effectivePersonalStreak.value || 1)
+    const url = appendShareParams(siteConfig.url, { ref: referralCode.value ?? null })
+    if (nativeShareSupported.value) {
+      const shared = await nativeShare({ title: 'Men of Hunger', text, url })
+      if (shared) return
+    }
+    await copyText(`${text}\n${url}`)
+    toast.push({ title: 'Invite copied', tone: 'success', durationMs: 1400 })
+  } catch {
+    toast.push({ title: 'Share failed', tone: 'error', durationMs: 1800 })
+  }
 }
 
 const compactLabel = computed(() => {

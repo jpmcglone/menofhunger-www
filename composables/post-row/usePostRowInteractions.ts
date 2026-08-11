@@ -3,6 +3,7 @@ import type { FeedPost } from '~/types/api'
 import type { MenuItem } from 'primevue/menuitem'
 import { siteConfig } from '~/config/site'
 import { tinyTooltip } from '~/utils/tiny-tooltip'
+import { postShareText, postShareUrl as buildPostShareUrl } from '~/utils/acquisition-share'
 import { useCopyToClipboard } from '~/composables/useCopyToClipboard'
 import { usePostCountBumps } from '~/composables/usePostCountBumps'
 import { MOH_OPEN_COMPOSER_KEY } from '~/utils/injection-keys'
@@ -90,7 +91,17 @@ export function usePostRowInteractions(opts: {
   })
 
   const postPermalink = computed(() => `/p/${encodeURIComponent(postView.value.id)}`)
-  const postShareUrl = computed(() => `${siteConfig.url}${postPermalink.value}`)
+  const { referralCode, ensureReferralCode } = useEnsureReferralCode()
+  const postShareUrl = computed(() =>
+    buildPostShareUrl(postView.value.id, referralCode.value ?? null, siteConfig.url),
+  )
+  const postShareMessage = computed(() =>
+    postShareText({
+      isCheckin: postView.value.kind === 'checkin',
+      streakDays: postView.value.kind === 'checkin' ? (user.value?.checkinStreakDays ?? 0) : 0,
+      commentCount: postView.value.commentCount ?? 0,
+    }),
+  )
 
   // ── Boost ──────────────────────────────────────────────────────────────────
   const { getCommentCountBump } = usePostCountBumps()
@@ -280,7 +291,9 @@ export function usePostRowInteractions(opts: {
       command: async () => {
         if (!import.meta.client) return
         try {
-          await copyToClipboard(postShareUrl.value)
+          await ensureReferralCode()
+          const url = buildPostShareUrl(postView.value.id, referralCode.value ?? null, siteConfig.url)
+          await copyToClipboard(url)
           toast.push({ title: 'Post link copied', tone: toastToneForPostVisibility(), durationMs: 1400 })
         } catch {
           toast.push({ title: 'Copy failed', tone: 'error', durationMs: 1800 })
@@ -293,14 +306,17 @@ export function usePostRowInteractions(opts: {
     // modern browsers preserve user activation across microtasks so navigator.share()
     // remains permitted after the await.
     if (nativeShareSupported.value) {
-      const url = postShareUrl.value
       items.push({
         label: 'Share via…',
         iconName: 'tabler:share-2',
         command: async () => {
           if (!import.meta.client || !navigator.share) return
+          await ensureReferralCode()
+          const url = buildPostShareUrl(postView.value.id, referralCode.value ?? null, siteConfig.url)
           await nextTick()
-          navigator.share({ title: 'Men of Hunger', url }).catch(() => {})
+          navigator
+            .share({ title: 'Men of Hunger', text: postShareMessage.value, url })
+            .catch(() => {})
         },
       })
     }

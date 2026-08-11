@@ -226,24 +226,75 @@
             </div>
             <template v-else>
               <AppCommentThread
-                v-for="c in comments"
+                v-for="c in comments.slice(0, conversationTeaseLimit)"
                 :key="c.id"
                 :comment="c"
                 :replies-sort="commentsSort"
                 @deleted="onCommentDeleted"
               />
-              <div v-if="commentsNextCursor" class="flex justify-center px-4 py-4">
-                <Button
-                  label="Load more replies"
-                  severity="secondary"
-                  rounded
-                  :loading="commentsLoading"
-                  :disabled="commentsLoading"
-                  @click="loadMoreComments"
+              <!-- Full thread for people who can participate; guests/unverified see a tease then CTA. -->
+              <template v-if="!showConversationGate">
+                <AppCommentThread
+                  v-for="c in comments.slice(conversationTeaseLimit)"
+                  :key="c.id"
+                  :comment="c"
+                  :replies-sort="commentsSort"
+                  @deleted="onCommentDeleted"
                 />
+                <div v-if="commentsNextCursor" class="flex justify-center px-4 py-4">
+                  <Button
+                    label="Load more replies"
+                    severity="secondary"
+                    rounded
+                    :loading="commentsLoading"
+                    :disabled="commentsLoading"
+                    @click="loadMoreComments"
+                  />
+                </div>
+              </template>
+              <div
+                v-else-if="comments.length > conversationTeaseLimit || commentsNextCursor"
+                class="px-4 py-3 text-center text-xs moh-text-muted"
+              >
+                {{ Math.max(0, commentCountDisplay - conversationTeaseLimit) }} more
+                {{ commentCountDisplay - conversationTeaseLimit === 1 ? 'reply' : 'replies' }} in the thread
               </div>
             </template>
           </AppSubtleSectionLoader>
+
+          <!-- Acquisition / verify gate: guests + unverified can read a taste, then must sign up / verify. -->
+          <ClientOnly>
+            <div
+              v-if="showConversationGate"
+              class="border-t moh-border px-4 py-6"
+            >
+              <div class="mx-auto max-w-md rounded-2xl border moh-border bg-[var(--moh-surface-2)] px-5 py-6 text-center">
+                <p class="text-sm font-semibold moh-text" style="text-wrap: balance">
+                  {{ conversationGateTitle }}
+                </p>
+                <p class="mt-1.5 text-xs moh-text-muted" style="text-wrap: pretty">
+                  {{ conversationGateSubtitle }}
+                </p>
+                <div class="mt-4 flex flex-wrap items-center justify-center gap-2">
+                  <Button
+                    as="NuxtLink"
+                    :to="conversationGatePrimaryTo"
+                    :label="conversationGatePrimaryLabel"
+                    rounded
+                  />
+                  <Button
+                    v-if="conversationGateSecondaryTo"
+                    as="NuxtLink"
+                    :to="conversationGateSecondaryTo"
+                    :label="conversationGateSecondaryLabel"
+                    severity="secondary"
+                    outlined
+                    rounded
+                  />
+                </div>
+              </div>
+            </div>
+          </ClientOnly>
         </div>
 
         <!-- Discover more: lazy-loaded near end of thread (client-only; not part of SSR). -->
@@ -475,6 +526,52 @@ const {
   isOnlyMe,
 })
 const commentsInitialLoading = computed(() => commentsLoading.value && comments.value.length === 0)
+
+/** Guests see 2 public replies then a CTA; unverified authed users get the same tease + verify CTA. */
+const conversationTeaseLimit = 2
+const showConversationGate = computed(() => {
+  // isGatedPost is defined below; use viewerCanAccess directly here to avoid TDZ.
+  if (isOnlyMe.value || post.value?.viewerCanAccess === false) return false
+  if (!isAuthed.value) return true
+  return !viewerIsVerified.value
+})
+
+const replyRedirectPath = computed(() => {
+  const base = `/p/${encodeURIComponent(postId.value)}?reply=1`
+  const ref = String(route.query.ref ?? '').trim()
+  if (!ref) return base
+  return `${base}&ref=${encodeURIComponent(ref)}`
+})
+
+const conversationGateTitle = computed(() =>
+  isAuthed.value ? 'Verify to join the conversation' : 'Join the conversation',
+)
+const conversationGateSubtitle = computed(() => {
+  const n = commentCountDisplay.value
+  if (isAuthed.value) {
+    return n > 0
+      ? `You're in — verify (takes a minute) to reply to these ${n} ${n === 1 ? 'reply' : 'replies'}.`
+      : 'Verify your account (takes a minute) to reply on this post.'
+  }
+  return n > 0
+    ? `${n} ${n === 1 ? 'reply' : 'replies'} so far. Sign up free, then verify to weigh in.`
+    : 'Sign up free, then verify to leave the first reply.'
+})
+const conversationGatePrimaryLabel = computed(() =>
+  isAuthed.value ? 'Get verified' : 'Join free',
+)
+const conversationGatePrimaryTo = computed(() => {
+  const redirect = encodeURIComponent(replyRedirectPath.value)
+  if (isAuthed.value) {
+    return `/settings/verification?redirect=${redirect}`
+  }
+  return `/login?tab=signup&redirect=${redirect}`
+})
+const conversationGateSecondaryLabel = computed(() => (isAuthed.value ? undefined : 'Log in'))
+const conversationGateSecondaryTo = computed(() => {
+  if (isAuthed.value) return undefined
+  return `/login?redirect=${encodeURIComponent(replyRedirectPath.value)}`
+})
 
 const {
   posts: discoverPosts,
