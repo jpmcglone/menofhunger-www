@@ -1,9 +1,12 @@
 <template>
   <AppPageContent bottom="standard">
-    <div class="moh-gutter-x border-b moh-border pt-4 pb-4 flex items-center justify-between gap-2">
-      <div>
+    <div class="moh-gutter-x border-b moh-border pt-4 pb-4 flex items-start justify-between gap-3">
+      <div class="min-w-0">
         <h1 class="moh-h1">Referral Pilot</h1>
-        <p class="mt-0.5 text-sm moh-text-muted">Cash earnings by pilot member. Settle when ready to pay out (${{ MIN_PAYOUT }} minimum).</p>
+        <p class="mt-0.5 text-sm moh-text-muted">Cash earnings by Premium pilot members (gifted OK). Settle when ready to pay out (${{ MIN_PAYOUT }} minimum).</p>
+        <NuxtLink to="/invite/payouts" class="mt-2 inline-flex text-xs font-medium text-blue-600 dark:text-blue-400 hover:underline">
+          How payouts work
+        </NuxtLink>
       </div>
     </div>
 

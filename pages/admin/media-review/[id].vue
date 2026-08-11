@@ -73,21 +73,26 @@
         </div>
 
         <div class="rounded-2xl border moh-border p-3 moh-surface">
-          <div class="text-xs font-semibold moh-text-muted">References</div>
-          <div class="mt-2 space-y-2 text-sm">
+          <div class="flex items-center justify-between gap-2">
+            <div class="text-xs font-semibold moh-text-muted">References</div>
+            <span class="inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold moh-border moh-text">
+              {{ data.asset.primaryType }}
+            </span>
+          </div>
+          <div class="mt-2 space-y-3 text-sm">
             <div>
               <div class="font-semibold">Posts</div>
               <div v-if="data.references.posts.length === 0" class="moh-text-muted">None</div>
               <div v-else class="mt-1 space-y-1">
                 <NuxtLink
                   v-for="p in data.references.posts"
-                  :key="p.postMediaId"
+                  :key="`${p.postMediaId}-${p.isThumbnail ? 't' : 'm'}`"
                   :to="`/p/${encodeURIComponent(p.postId)}`"
                   class="block rounded-lg border moh-border px-2 py-2 moh-surface-hover"
                 >
                   <div class="flex items-center justify-between gap-2">
                     <div class="min-w-0">
-                      <div class="text-xs moh-text-muted">Post</div>
+                      <div class="text-xs moh-text-muted">{{ p.isThumbnail ? 'Video poster' : 'Post media' }}</div>
                       <div class="font-mono text-xs truncate">{{ p.postId }}</div>
                       <div class="mt-1 text-xs moh-text-muted truncate">
                         <span v-if="p.author.username">@{{ p.author.username }}</span>
@@ -101,17 +106,99 @@
             </div>
 
             <div class="pt-2 border-t moh-border">
+              <div class="font-semibold">Messages</div>
+              <div v-if="data.references.messages.length === 0" class="moh-text-muted">None</div>
+              <div v-else class="mt-1 space-y-1">
+                <div
+                  v-for="m in data.references.messages"
+                  :key="`${m.messageMediaId}-${m.isThumbnail ? 't' : 'm'}`"
+                  class="rounded-lg border moh-border px-2 py-2"
+                >
+                  <div class="text-xs moh-text-muted">{{ m.isThumbnail ? 'Message video poster' : 'Message media' }}</div>
+                  <div class="font-mono text-xs truncate">{{ m.messageId }}</div>
+                  <div class="mt-1 text-xs moh-text-muted truncate">Conversation {{ m.conversationId }}</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="pt-2 border-t moh-border">
               <div class="font-semibold">Profiles</div>
               <div v-if="data.references.users.length === 0" class="moh-text-muted">None</div>
               <div v-else class="mt-1 space-y-1">
                 <NuxtLink
                   v-for="u in data.references.users"
-                  :key="u.id"
+                  :key="`${u.id}-${u.isAvatar ? 'a' : 'b'}`"
                   :to="u.username ? `/u/${encodeURIComponent(u.username)}` : '/admin/users'"
                   class="block rounded-lg border moh-border px-2 py-2 moh-surface-hover"
                 >
                   <div class="font-semibold truncate">{{ u.name || u.username || u.id }}</div>
-                  <div class="text-xs moh-text-muted truncate">@{{ u.username || '—' }}</div>
+                  <div class="text-xs moh-text-muted truncate">
+                    @{{ u.username || '—' }} · {{ u.isAvatar ? 'avatar' : '' }}{{ u.isAvatar && u.isBanner ? ' + ' : '' }}{{ u.isBanner ? 'banner' : '' }}
+                  </div>
+                </NuxtLink>
+              </div>
+            </div>
+
+            <div class="pt-2 border-t moh-border">
+              <div class="font-semibold">Groups</div>
+              <div v-if="data.references.groups.length === 0" class="moh-text-muted">None</div>
+              <div v-else class="mt-1 space-y-1">
+                <NuxtLink
+                  v-for="g in data.references.groups"
+                  :key="`${g.groupId}-${g.isAvatar ? 'a' : 'c'}`"
+                  :to="`/groups/${encodeURIComponent(g.slug)}`"
+                  class="block rounded-lg border moh-border px-2 py-2 moh-surface-hover"
+                >
+                  <div class="font-semibold truncate">{{ g.name }}</div>
+                  <div class="text-xs moh-text-muted">{{ g.isAvatar ? 'avatar' : 'cover' }} · /{{ g.slug }}</div>
+                </NuxtLink>
+              </div>
+            </div>
+
+            <div class="pt-2 border-t moh-border">
+              <div class="font-semibold">Crews</div>
+              <div v-if="data.references.crews.length === 0" class="moh-text-muted">None</div>
+              <div v-else class="mt-1 space-y-1">
+                <NuxtLink
+                  v-for="c in data.references.crews"
+                  :key="`${c.crewId}-${c.isAvatar ? 'a' : 'c'}`"
+                  :to="`/c/${encodeURIComponent(c.slug)}`"
+                  class="block rounded-lg border moh-border px-2 py-2 moh-surface-hover"
+                >
+                  <div class="font-semibold truncate">{{ c.name || c.slug }}</div>
+                  <div class="text-xs moh-text-muted">{{ c.isAvatar ? 'avatar' : 'cover' }} · /{{ c.slug }}</div>
+                </NuxtLink>
+              </div>
+            </div>
+
+            <div class="pt-2 border-t moh-border">
+              <div class="font-semibold">Polls</div>
+              <div v-if="data.references.polls.length === 0" class="moh-text-muted">None</div>
+              <div v-else class="mt-1 space-y-1">
+                <NuxtLink
+                  v-for="p in data.references.polls"
+                  :key="p.pollOptionId"
+                  :to="`/p/${encodeURIComponent(p.postId)}`"
+                  class="block rounded-lg border moh-border px-2 py-2 moh-surface-hover"
+                >
+                  <div class="text-xs moh-text-muted">Poll option image</div>
+                  <div class="font-mono text-xs truncate">{{ p.postId }}</div>
+                </NuxtLink>
+              </div>
+            </div>
+
+            <div class="pt-2 border-t moh-border">
+              <div class="font-semibold">Articles</div>
+              <div v-if="data.references.articles.length === 0" class="moh-text-muted">None</div>
+              <div v-else class="mt-1 space-y-1">
+                <NuxtLink
+                  v-for="a in data.references.articles"
+                  :key="`${a.articleId}-${a.isInline ? 'i' : 't'}`"
+                  :to="`/a/${encodeURIComponent(a.slug || a.articleId)}`"
+                  class="block rounded-lg border moh-border px-2 py-2 moh-surface-hover"
+                >
+                  <div class="font-semibold truncate">{{ a.title || a.articleId }}</div>
+                  <div class="text-xs moh-text-muted">{{ a.isInline ? 'Inline body image' : 'Cover thumbnail' }}</div>
                 </NuxtLink>
               </div>
             </div>

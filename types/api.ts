@@ -801,6 +801,19 @@ export type GetUserPostsResponse = {
   } | null
 }
 
+export type AdminImageReviewBelongsTo =
+  | 'post'
+  | 'post_thumbnail'
+  | 'message'
+  | 'message_thumbnail'
+  | 'user'
+  | 'group'
+  | 'crew'
+  | 'poll'
+  | 'article'
+  | 'article_inline'
+  | 'orphan'
+
 export type AdminImageReviewListItem = {
   id: string
   r2Key: string
@@ -808,11 +821,21 @@ export type AdminImageReviewListItem = {
   lastModified: string
   publicUrl: string | null
   deletedAt: string | null
-  belongsToSummary: 'post' | 'user' | 'orphan'
+  belongsToSummary: AdminImageReviewBelongsTo
   postId: string | null
   authorUsername: string | null
   userId: string | null
   profileUsername: string | null
+  groupId?: string | null
+  groupName?: string | null
+  groupSlug?: string | null
+  crewId?: string | null
+  crewName?: string | null
+  crewSlug?: string | null
+  pollPostId?: string | null
+  articleId?: string | null
+  articleSlug?: string | null
+  messageId?: string | null
 }
 
 export type FeedbackItem = {
@@ -930,6 +953,7 @@ export type AdminImageReviewDetailResponse = {
     deleteReason: string | null
     r2DeletedAt: string | null
     publicUrl: string | null
+    primaryType: AdminImageReviewBelongsTo
   }
   references: {
     posts: Array<{
@@ -939,6 +963,13 @@ export type AdminImageReviewDetailResponse = {
       postVisibility: PostVisibility
       author: { id: string; username: string | null }
       deletedAt: string | null
+      isThumbnail: boolean
+    }>
+    messages: Array<{
+      messageMediaId: string
+      messageId: string
+      conversationId: string
+      isThumbnail: boolean
     }>
     users: Array<{
       id: string
@@ -948,6 +979,34 @@ export type AdminImageReviewDetailResponse = {
       premiumPlus: boolean
       stewardBadgeEnabled: boolean
       verifiedStatus: 'none' | 'identity' | 'manual'
+      isAvatar: boolean
+      isBanner: boolean
+    }>
+    groups: Array<{
+      groupId: string
+      slug: string
+      name: string
+      isAvatar: boolean
+      isCover: boolean
+    }>
+    crews: Array<{
+      crewId: string
+      slug: string
+      name: string | null
+      isAvatar: boolean
+      isCover: boolean
+    }>
+    polls: Array<{
+      pollOptionId: string
+      pollId: string
+      postId: string
+    }>
+    articles: Array<{
+      articleId: string
+      slug: string
+      title: string | null
+      authorId: string
+      isInline: boolean
     }>
   }
 }
@@ -958,7 +1017,16 @@ export type AdminImageReviewDeleteResponse = {
   r2Deleted?: boolean
   error?: string
   postMediaCount?: number
+  postMediaThumbnailCount?: number
+  messageMediaCount?: number
+  messageMediaThumbnailCount?: number
   userCount?: number
+  groupCount?: number
+  crewCount?: number
+  pollOptionCount?: number
+  articleCount?: number
+  articleThumbCount?: number
+  articleInlineCount?: number
 }
 
 /** Status payload for GET /admin/jobs/hashtags/backfill. */
@@ -2160,6 +2228,11 @@ export type AdminAnalytics = {
   follows: AdminAnalyticsTimeSeriesPoint[]
   retention: AdminAnalyticsRetentionRow[]
   engagement: AdminAnalyticsEngagement
+  /**
+   * All-time landing-eligible men/posts/views + authorship concentration.
+   * Same filters as the public homepage stats (not range-filtered).
+   */
+  landing: LandingStats
   monetization: AdminAnalyticsMonetization
   coins: AdminAnalyticsCoins
   articles: AdminAnalyticsArticles
@@ -2178,6 +2251,14 @@ export type LandingMenBreakdown = {
   total: number
   /** Distinct verified men who authored ≥1 landing-eligible post or reply. */
   contributors: number
+  /** Distinct verified men who authored ≥1 landing-eligible original (non-reply) post. */
+  originalAuthors: number
+  /** Integer percent 0–100 of eligible content by the single most prolific author. */
+  topAuthorSharePercent: number
+  /** Integer percent 0–100 of eligible content by the five most prolific authors. */
+  top5SharePercent: number
+  /** Median posts+replies among contributors only. */
+  medianPostsPerContributor: number
 }
 
 export type LandingPostBreakdown = {
@@ -2207,9 +2288,21 @@ export type LandingViewsBreakdown = {
   total: number
 }
 
+/** Published articles by landing-eligible authors (drafts/deleted/onlyMe excluded). */
+export type LandingArticleBreakdown = {
+  public: number
+  verified: number
+  premium: number
+  total: number
+  authors: number
+  /** Sum of Article.viewCount (unique person×article). */
+  views: number
+}
+
 export type LandingStats = {
   men: LandingMenBreakdown
   posts: LandingPostBreakdown
+  articles: LandingArticleBreakdown
   views: LandingViewsBreakdown
 }
 

@@ -49,7 +49,7 @@
                     />
                     {{ row.label }}
                   </span>
-                  <span class="tabular-nums font-medium moh-text">{{ row.count.toLocaleString('en-US') }}</span>
+                  <span class="tabular-nums font-medium moh-text">{{ formatRowValue(row) }}</span>
                 </div>
               </div>
             </template>
@@ -67,6 +67,13 @@ export type BreakdownRow = {
   count: number
   /** Colored swatch. Omit for plain rows (e.g. Original / Replies). */
   dotClass?: string
+  /** Default count. Use `percent` for concentration shares. */
+  format?: 'count' | 'percent'
+  /**
+   * Keep the row when count is 0 (e.g. show "Top author 0%" only when useful).
+   * Default: hide zero counts.
+   */
+  keepZero?: boolean
 }
 
 export type BreakdownSection = BreakdownRow[]
@@ -87,9 +94,14 @@ const activeSections = computed(() => {
     ? props.sections
     : [props.rows ?? []]
   return source
-    .map((section) => section.filter((r) => r.count > 0))
+    .map((section) => section.filter((r) => r.keepZero || r.count > 0))
     .filter((section) => section.length > 0)
 })
+
+function formatRowValue(row: BreakdownRow): string {
+  if (row.format === 'percent') return `${Math.round(row.count)}%`
+  return row.count.toLocaleString('en-US')
+}
 
 const triggerEl = ref<HTMLElement | null>(null)
 const visible = ref(false)
@@ -108,8 +120,8 @@ function placeFrom(anchor: HTMLElement | null) {
   place(anchor, {
     align: 'start',
     gap: 6,
-    // Wide enough for titles like "24 of 37 have posted".
-    menuWidth: 200,
+    // Wide enough for "Top 5 authors" / "24 of 37 have posted".
+    menuWidth: 210,
     // Title + rows + optional section dividers.
     menuHeight: 36 + rowCount * 22 + dividerCount * 14,
   })

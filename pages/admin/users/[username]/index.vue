@@ -317,15 +317,21 @@
                 size="small"
                 :severity="isAffiliate ? 'danger' : 'contrast'"
                 :loading="affiliateSaving"
+                :disabled="!isAffiliate && !userIsPremium"
                 outlined
+                v-tooltip.bottom="!isAffiliate && !userIsPremium ? 'Requires Premium (gifted OK)' : undefined"
                 @click="toggleAffiliate"
               />
             </div>
           </div>
           <AppInlineAlert v-if="affiliateError" severity="danger" class="text-xs">{{ affiliateError }}</AppInlineAlert>
+          <p v-if="!isAffiliate && !userIsPremium" class="text-xs text-amber-600 dark:text-amber-400">
+            User must be Premium (including gifted) before enabling Referral Pilot.
+          </p>
           <p class="text-xs text-gray-400 dark:text-gray-500">
-            Pilot members earn $1 signup / +$3 verified / +$10 first Premium month / +$10 still Premium at 60 days.
+            Pilot members must stay Premium to earn. Rates: $1 signup / +$3 verified / +$10 first Premium month / +$10 still Premium at 60 days.
             Max $24 per recruit, $1,000 per member. Only recruits who join <em>after</em> enabling count for cash.
+            <NuxtLink to="/invite/payouts" class="text-blue-600 dark:text-blue-400 hover:underline">Full guide</NuxtLink>
           </p>
         </div>
       </div>
@@ -466,6 +472,7 @@ const referralInfo = ref<AdminReferralInfo | null>(null)
 const isAffiliate = ref(false)
 const affiliateSaving = ref(false)
 const affiliateError = ref<string | null>(null)
+const userIsPremium = computed(() => Boolean(user.value?.premium || user.value?.premiumPlus))
 
 const verifiedStatusOptions: Array<{ label: string; value: 'none' | 'identity' | 'manual' }> = [
   { label: 'None', value: 'none' },

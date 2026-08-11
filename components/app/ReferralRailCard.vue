@@ -109,26 +109,33 @@
               />
             </component>
 
-            <!-- Referral Pilot earnings row (pilot members only) -->
-            <NuxtLink
-              v-if="pilotPendingCents !== null"
-              to="/invite"
-              class="flex items-center justify-between text-xs group hover:opacity-80 transition-opacity"
-            >
-              <span
-                class="flex items-center gap-1.5 transition-colors duration-350 ease-in-out"
-                :class="onInvitePage ? 'moh-text-muted' : 'text-[var(--moh-premium)]'"
+            <!-- Referral Pilot earnings (pilot members only) -->
+            <template v-if="isPilot">
+              <NuxtLink
+                to="/invite"
+                class="flex items-center justify-between text-xs group hover:opacity-80 transition-opacity"
               >
-                <Icon name="tabler:coins" class="text-sm shrink-0" aria-hidden="true" />
-                <span class="tabular-nums font-semibold">{{ formatCents(pilotPendingCents) }} pending</span>
-                <span class="moh-text-muted font-normal">· Referral Pilot</span>
-              </span>
-              <Icon
-                name="tabler:chevron-right"
-                class="text-[10px] moh-text-muted group-hover:translate-x-0.5 transition-transform duration-150"
-                aria-hidden="true"
-              />
-            </NuxtLink>
+                <span
+                  class="flex items-center gap-1.5 min-w-0 transition-colors duration-350 ease-in-out"
+                  :class="onInvitePage ? 'moh-text-muted' : 'text-[var(--moh-premium)]'"
+                >
+                  <Icon name="tabler:coins" class="text-sm shrink-0" aria-hidden="true" />
+                  <span class="tabular-nums font-semibold">{{ formatCents(pilotTotalCents!) }} earned</span>
+                  <span class="moh-text-muted font-normal truncate">· {{ formatCents(pilotPendingCents!) }} pending</span>
+                </span>
+                <Icon
+                  name="tabler:chevron-right"
+                  class="text-[10px] moh-text-muted shrink-0 group-hover:translate-x-0.5 transition-transform duration-150"
+                  aria-hidden="true"
+                />
+              </NuxtLink>
+              <NuxtLink
+                to="/invite/payouts"
+                class="inline-flex text-[11px] font-medium text-blue-600 dark:text-blue-400 hover:underline"
+              >
+                How payouts work
+              </NuxtLink>
+            </template>
           </div>
         </template>
 
@@ -163,7 +170,11 @@ import { useInviteReward } from '~/composables/useInviteReward'
 
 const NuxtLink = resolveComponent('NuxtLink')
 const route = useRoute()
-const onInvitePage = computed(() => route.path === '/invite' || route.path === '/referrals')
+const onInvitePage = computed(() =>
+  route.path === '/invite'
+  || route.path === '/referrals'
+  || route.path.startsWith('/invite/'),
+)
 
 const { user, isAuthed, isVerified } = useAuth()
 const { apiFetchData } = useApiClient()
@@ -193,10 +204,18 @@ const referralCode = computed(() => {
 const recruitCount = computed(() => referralData.value?.recruitCount ?? 0)
 
 // Pilot-only derived values — null means not a pilot member
+const isPilot = computed(() => Boolean(affiliateData.value?.isAffiliate))
+
 const pilotPendingCents = computed<number | null>(() => {
   const a = affiliateData.value
   if (!a?.isAffiliate) return null
   return a.pendingCents
+})
+
+const pilotTotalCents = computed<number | null>(() => {
+  const a = affiliateData.value
+  if (!a?.isAffiliate) return null
+  return a.totalCents
 })
 
 const pilotPremiumCount = computed<number | null>(() => {

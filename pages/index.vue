@@ -113,8 +113,8 @@
                 </NuxtLink>
               </div>
 
-              <!-- Avatar stack + member count -->
-              <div v-if="recentlyActiveMen.length" class="flex items-center gap-3">
+              <!-- Avatar stack + stats (stacked so the strip stays one line) -->
+              <div v-if="recentlyActiveMen.length" class="flex flex-col items-start gap-2">
                 <div class="flex -space-x-2">
                   <NuxtLink
                     v-for="man in recentlyActiveMen.slice(0, 7)"
@@ -135,11 +135,11 @@
                     M
                   </div>
                 </div>
-                <div v-if="landingSnapshot" class="text-sm text-gray-600 dark:text-gray-300">
+                <div v-if="landingSnapshot" class="whitespace-nowrap text-sm text-gray-600 dark:text-gray-300">
                   <AppLandingStatBreakdown
                     :title="menBreakdownTitle"
                     :ariaLabel="`${formatLandingCount(landingSnapshot.stats.men.total)}+ men — hover for breakdown`"
-                    :rows="menBreakdownRows"
+                    :sections="menBreakdownSections"
                   >{{ formatLandingCount(landingSnapshot.stats.men.total) }}+ men</AppLandingStatBreakdown>
                   <span class="mx-1.5 opacity-40">·</span>
                   <AppLandingStatBreakdown
@@ -147,6 +147,14 @@
                     :ariaLabel="`${formatLandingCount(landingSnapshot.stats.posts.total)}+ posts — hover for breakdown`"
                     :sections="postsBreakdownSections"
                   >{{ formatLandingCount(landingSnapshot.stats.posts.total) }}+ posts</AppLandingStatBreakdown>
+                  <template v-if="landingSnapshot.stats.articles">
+                    <span class="mx-1.5 opacity-40">·</span>
+                    <AppLandingStatBreakdown
+                      :title="`${landingSnapshot.stats.articles.total.toLocaleString('en-US')} articles`"
+                      :ariaLabel="`${formatLandingCount(landingSnapshot.stats.articles.total)}+ articles — hover for breakdown`"
+                      :sections="articlesBreakdownSections"
+                    >{{ formatLandingCount(landingSnapshot.stats.articles.total) }}+ articles</AppLandingStatBreakdown>
+                  </template>
                   <template v-if="landingSnapshot.stats.views">
                     <span class="mx-1.5 opacity-40">·</span>
                     <AppLandingStatBreakdown
@@ -875,12 +883,37 @@ const menBreakdownTitle = computed(() => {
   return `${contributors.toLocaleString('en-US')} of ${s.total.toLocaleString('en-US')} have posted`
 })
 
-const menBreakdownRows = computed<BreakdownRow[]>(() => {
+const menBreakdownSections = computed<BreakdownSection[]>(() => {
   const s = landingSnapshot.value?.stats.men
   if (!s) return []
   return [
-    { key: 'premium', label: 'Premium', count: s.premium, dotClass: 'bg-yellow-400' },
-    { key: 'verified', label: 'Verified', count: s.verified, dotClass: 'bg-blue-400' },
+    [
+      { key: 'premium', label: 'Premium', count: s.premium, dotClass: 'bg-yellow-400' },
+      { key: 'verified', label: 'Verified', count: s.verified, dotClass: 'bg-blue-400' },
+    ],
+    [
+      { key: 'originalAuthors', label: 'Wrote originals', count: s.originalAuthors ?? 0 },
+      {
+        key: 'topAuthor',
+        label: 'Top author',
+        count: s.topAuthorSharePercent ?? 0,
+        format: 'percent',
+        keepZero: (s.contributors ?? 0) > 0,
+      },
+      {
+        key: 'top5',
+        label: 'Top 5 authors',
+        count: s.top5SharePercent ?? 0,
+        format: 'percent',
+        keepZero: (s.contributors ?? 0) > 0,
+      },
+      {
+        key: 'median',
+        label: 'Median each',
+        count: s.medianPostsPerContributor ?? 0,
+        keepZero: (s.contributors ?? 0) > 0,
+      },
+    ],
   ]
 })
 
@@ -891,6 +924,22 @@ const postsBreakdownSections = computed<BreakdownSection[]>(() => {
     [
       { key: 'original', label: 'Original', count: s.original ?? 0 },
       { key: 'replies', label: 'Replies', count: s.replies ?? 0 },
+    ],
+    [
+      { key: 'public', label: 'Public', count: s.public, dotClass: 'bg-gray-400' },
+      { key: 'verified', label: 'Verified', count: s.verified, dotClass: 'bg-blue-400' },
+      { key: 'premium', label: 'Premium', count: s.premium, dotClass: 'bg-yellow-400' },
+    ],
+  ]
+})
+
+const articlesBreakdownSections = computed<BreakdownSection[]>(() => {
+  const s = landingSnapshot.value?.stats.articles
+  if (!s) return []
+  return [
+    [
+      { key: 'authors', label: 'Authors', count: s.authors ?? 0 },
+      { key: 'views', label: 'Unique views', count: s.views ?? 0 },
     ],
     [
       { key: 'public', label: 'Public', count: s.public, dotClass: 'bg-gray-400' },

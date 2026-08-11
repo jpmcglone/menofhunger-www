@@ -224,23 +224,16 @@
             </span>
           </div>
           <div
-            v-if="(it.postId && it.authorUsername) || it.profileUsername"
+            v-if="mediaCaption(it)"
             class="flex flex-wrap gap-1 text-[10px] moh-text-muted truncate pointer-events-auto"
             @click.stop
           >
             <NuxtLink
-              v-if="it.postId && it.authorUsername"
-              :to="`/p/${encodeURIComponent(it.postId)}`"
+              v-if="mediaCaption(it)"
+              :to="mediaCaption(it)!.to"
               class="hover:underline shrink-0"
             >
-              Post by @{{ it.authorUsername }}
-            </NuxtLink>
-            <NuxtLink
-              v-if="it.profileUsername"
-              :to="`/u/${encodeURIComponent(it.profileUsername)}`"
-              class="hover:underline shrink-0"
-            >
-              Profile @{{ it.profileUsername }}
+              {{ mediaCaption(it)!.label }}
             </NuxtLink>
           </div>
         </div>
@@ -537,6 +530,34 @@ const mediaError = ref<string | null>(null)
 // Selection state
 const selectionMode = ref(false)
 const selectedIds = ref(new Set<string>())
+
+function mediaCaption(it: AdminImageReviewListItem): { to: string; label: string } | null {
+  if (it.postId && it.authorUsername) {
+    return { to: `/p/${encodeURIComponent(it.postId)}`, label: `Post by @${it.authorUsername}` }
+  }
+  if (it.pollPostId) {
+    return { to: `/p/${encodeURIComponent(it.pollPostId)}`, label: 'Poll option' }
+  }
+  if (it.profileUsername) {
+    return { to: `/u/${encodeURIComponent(it.profileUsername)}`, label: `Profile @${it.profileUsername}` }
+  }
+  if (it.groupSlug) {
+    return { to: `/groups/${encodeURIComponent(it.groupSlug)}`, label: it.groupName || 'Group' }
+  }
+  if (it.crewSlug) {
+    return { to: `/c/${encodeURIComponent(it.crewSlug)}`, label: it.crewName || 'Crew' }
+  }
+  if (it.articleSlug || it.articleId) {
+    return {
+      to: `/a/${encodeURIComponent(it.articleSlug || it.articleId!)}`,
+      label: it.belongsToSummary === 'article_inline' ? 'Article (inline)' : 'Article',
+    }
+  }
+  if (it.messageId) {
+    return { to: `/admin/media-review/${encodeURIComponent(it.id)}`, label: 'Message media' }
+  }
+  return null
+}
 
 const allSelected = computed(
   () => mediaItems.value.length > 0 && mediaItems.value.every((it) => selectedIds.value.has(it.id)),
