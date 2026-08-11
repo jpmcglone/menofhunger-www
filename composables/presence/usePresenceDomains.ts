@@ -19,6 +19,7 @@ import type {
   WsFollowsChangedPayload,
   WsNotificationsDeletedPayload,
   WsNotificationsNewPayload,
+  WsNotificationsUpdatedPayload,
   WsFeedNewPostPayload,
   WsGroupMarvChangedPayload,
   WsGroupNewPostPayload,
@@ -149,7 +150,7 @@ export function usePresenceDomains() {
 
   function registerSocketHandlers(socket: Socket) {
     // ── Notifications / Marv ──────────────────────────────────────────
-    socket.on('notifications:updated', (data: { undeliveredCount?: number }) => {
+    socket.on('notifications:updated', (data: WsNotificationsUpdatedPayload) => {
       if (!notificationsCallbacks.value.size) return
       for (const cb of notificationsCallbacks.value) {
         cb.onUpdated?.(data)

@@ -108,7 +108,11 @@ export type MessagesCallback = {
   onRead?: (payload: { conversationId?: string; userId?: string; lastReadAt?: string }) => void
 }
 
-export type WsNotificationsUpdatedPayload = { undeliveredCount?: number }
+export type WsNotificationsUpdatedPayload = {
+  undeliveredCount?: number
+  /** Post ids whose related notifications were just marked read (subject or actor). */
+  clearedPostIds?: string[]
+}
 
 export type NotificationsCallback = {
   /**

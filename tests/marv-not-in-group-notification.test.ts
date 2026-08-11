@@ -9,11 +9,17 @@ function readFile(relativePath: string): string {
 describe('marv_not_in_group notification wiring', () => {
   it('rowHref routes marv_not_in_group to /p/:actorPostId', () => {
     const source = readFile('composables/useNotifications.ts')
-    expect(source).toContain("n.kind === 'marv_not_in_group'")
-    expect(source).toContain('/p/')
+    const rowHrefStart = source.indexOf('function rowHref')
+    expect(rowHrefStart).toBeGreaterThan(0)
+    const rowHref = source.slice(rowHrefStart)
+    expect(rowHref).toContain("n.kind === 'marv_not_in_group'")
+    expect(rowHref).toContain('/p/')
     // The marv_not_in_group branch must appear before the generic /p/ fallback
-    const marvIdx = source.indexOf("n.kind === 'marv_not_in_group'")
-    const genericIdx = source.indexOf("n.subjectPostId")
+    const marvIdx = rowHref.indexOf("n.kind === 'marv_not_in_group'")
+    const genericIdx = rowHref.lastIndexOf(
+      'if (n.subjectPostId) return `/p/${encodeURIComponent(n.subjectPostId)}`',
+    )
+    expect(genericIdx).toBeGreaterThan(0)
     expect(marvIdx).toBeLessThan(genericIdx)
   })
 

@@ -228,6 +228,27 @@ const {
 const loadingMore = ref(false)
 const markingAllRead = ref(false)
 const stickyHighlightedItemKeys = ref<Set<string>>(new Set())
+
+// When a post is viewed elsewhere, applyClearedPostIds sets readAt — drop sticky highlight.
+watch(
+  notifications,
+  (list) => {
+    const next = new Set(stickyHighlightedItemKeys.value)
+    let changed = false
+    for (const item of list) {
+      if (item.type === 'single' && item.notification.readAt) {
+        const key = itemKey(item)
+        if (next.delete(key)) changed = true
+      }
+      if (item.type === 'group' && item.group.readAt) {
+        const key = itemKey(item)
+        if (next.delete(key)) changed = true
+      }
+    }
+    if (changed) stickyHighlightedItemKeys.value = next
+  },
+  { deep: true },
+)
 // Show the full-page loader on first visit (never fetched) OR when arriving with
 // unread badge count > 0 — new notifications came in while we were away and we
 // don't want to flash the stale list before the fresh fetch lands.

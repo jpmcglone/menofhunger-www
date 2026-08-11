@@ -501,22 +501,52 @@ const postsCb: PostsCallback = {
   },
 }
 if (import.meta.client) {
+  function permalinkSubscriptionIds(p: FeedPost | null | undefined): string[] {
+    const ids: string[] = []
+    let cur: FeedPost | undefined = p ?? undefined
+    while (cur?.id) {
+      ids.push(cur.id)
+      cur = cur.parent
+    }
+    // Always include the route id even before the post payload lands.
+    const routeId = String(postId.value ?? '').trim()
+    if (routeId && !ids.includes(routeId)) ids.unshift(routeId)
+    return [...new Set(ids)]
+  }
+
+  let subscribedPermalinkIds: string[] = []
+
+  function syncPermalinkSubscriptions(nextPost: FeedPost | null | undefined) {
+    const next = permalinkSubscriptionIds(nextPost)
+    const prevSet = new Set(subscribedPermalinkIds)
+    const nextSet = new Set(next)
+    const toSub = next.filter((id) => !prevSet.has(id))
+    const toUnsub = subscribedPermalinkIds.filter((id) => !nextSet.has(id))
+    if (toUnsub.length) unsubscribePosts(toUnsub)
+    if (toSub.length) subscribePosts(toSub)
+    subscribedPermalinkIds = next
+  }
+
   onMounted(() => {
     addPostsCallback(postsCb)
-    const pid = postId.value
-    if (pid) subscribePosts([pid])
+    syncPermalinkSubscriptions(post.value)
   })
   watch(
+    () => post.value,
+    (p) => {
+      syncPermalinkSubscriptions(p)
+    },
+  )
+  watch(
     () => postId.value,
-    (pid, prev) => {
-      if (prev) unsubscribePosts([prev])
-      if (pid) subscribePosts([pid])
+    () => {
+      syncPermalinkSubscriptions(post.value)
     },
   )
   onBeforeUnmount(() => {
     removePostsCallback(postsCb)
-    const pid = postId.value
-    if (pid) unsubscribePosts([pid])
+    if (subscribedPermalinkIds.length) unsubscribePosts(subscribedPermalinkIds)
+    subscribedPermalinkIds = []
   })
 }
 

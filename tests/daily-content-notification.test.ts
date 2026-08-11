@@ -21,11 +21,17 @@ describe('word_of_the_day / quote_of_the_day notification wiring', () => {
 
   it('daily content rowHref branches appear before the generic subjectPostId fallback', () => {
     const source = readFile('composables/useNotifications.ts')
-    const wordIdx = source.indexOf("n.kind === 'word_of_the_day'")
-    const quoteIdx = source.indexOf("n.kind === 'quote_of_the_day'")
-    const genericIdx = source.indexOf('n.subjectPostId')
+    const rowHrefStart = source.indexOf('function rowHref')
+    expect(rowHrefStart).toBeGreaterThan(0)
+    const rowHref = source.slice(rowHrefStart)
+    const wordIdx = rowHref.indexOf("n.kind === 'word_of_the_day'")
+    const quoteIdx = rowHref.indexOf("n.kind === 'quote_of_the_day'")
+    const genericIdx = rowHref.lastIndexOf(
+      'if (n.subjectPostId) return `/p/${encodeURIComponent(n.subjectPostId)}`',
+    )
     expect(wordIdx).toBeGreaterThan(0)
     expect(quoteIdx).toBeGreaterThan(0)
+    expect(genericIdx).toBeGreaterThan(0)
     expect(wordIdx).toBeLessThan(genericIdx)
     expect(quoteIdx).toBeLessThan(genericIdx)
   })

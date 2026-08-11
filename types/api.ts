@@ -1534,6 +1534,12 @@ export type WsNotificationsDeletedPayload = {
   notificationIds: string[]
 }
 
+export type WsNotificationsUpdatedPayload = {
+  undeliveredCount?: number
+  /** Post ids whose related notifications were just marked read (subject or actor). */
+  clearedPostIds?: string[]
+}
+
 export type WsMessagesReadPayload = {
   conversationId: string
   userId: string

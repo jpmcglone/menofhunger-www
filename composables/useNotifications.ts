@@ -88,6 +88,49 @@ export function useNotifications() {
     })
   }
 
+  /**
+   * When a post is viewed anywhere, the API emits `notifications:updated` with
+   * `clearedPostIds`. Patch matching rows to read so unread bars / sticky highlights
+   * clear without waiting for a full refetch.
+   */
+  function applyClearedPostIds(postIds: string[]): void {
+    const cleared = new Set(postIds.map((id) => (id ?? '').trim()).filter(Boolean))
+    if (!cleared.size) return
+    const now = new Date().toISOString()
+    let mutated = false
+    notifications.value = notifications.value.map((item) => {
+      if (item.type === 'single') {
+        const n = item.notification
+        if (n.readAt) return item
+        const matches =
+          (n.subjectPostId && cleared.has(n.subjectPostId))
+          || (n.actorPostId && cleared.has(n.actorPostId))
+          || (n.post?.id && cleared.has(n.post.id))
+        if (!matches) return item
+        mutated = true
+        decrementUnreadKind(n.kind)
+        return {
+          ...item,
+          notification: {
+            ...n,
+            readAt: now,
+            deliveredAt: n.deliveredAt ?? now,
+          },
+        }
+      }
+      if (item.type === 'group') {
+        const g = item.group
+        if (g.readAt || !g.subjectPostId || !cleared.has(g.subjectPostId)) return item
+        mutated = true
+        return { ...item, group: { ...g, readAt: now, deliveredAt: g.deliveredAt ?? now } }
+      }
+      return item
+    })
+    if (mutated) {
+      // no-op: list already replaced above; callers may prune sticky highlights
+    }
+  }
+
   // Realtime: singleton callback with refcount so mounting N notification rows on
   // /notifications doesn't fan a single socket event into N fetchList() calls.
   const wsRefCount = useState<number>('notifications-ws-refcount', () => 0)
@@ -97,7 +140,15 @@ export function useNotifications() {
 
     if (!wsCbRef.value) {
       const notificationsCb: NotificationsCallback = {
-        onUpdated: () => {
+        onUpdated: (payload) => {
+          const cleared = Array.isArray(payload?.clearedPostIds)
+            ? payload.clearedPostIds.map((id) => String(id ?? '').trim()).filter(Boolean)
+            : []
+          if (cleared.length) {
+            applyClearedPostIds(cleared)
+            // Local patch is enough — avoid a full refetch that races sticky highlights.
+            return
+          }
           if (!isNotificationsPage.value) return
           if (loading.value) {
             pendingRefresh.value = true
@@ -835,6 +886,7 @@ export function useNotifications() {
     markNewPostsRead,
     clearUnreadKind,
     decrementUnreadKind,
+    applyClearedPostIds,
     actorDisplay,
     actorTierClass,
     actorTierIconBgClass,
