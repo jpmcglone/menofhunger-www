@@ -274,22 +274,48 @@
       <div class="shrink-0 border-t border-black/10 dark:border-white/10 pt-2">
         <ClientOnly>
           <AppUserCard v-if="isAuthed" :compact="compact" />
-          <NuxtLink
+          <div
             v-else
-            to="/login"
-            aria-label="Log in"
             :class="[
-              // Match the Post button shape/style (rounded rect).
-              'group flex h-12 items-center rounded-xl bg-black text-white hover:opacity-95 dark:bg-white dark:text-black moh-focus',
-              compact ? 'w-12 mx-auto justify-center' : 'w-full',
-              'mt-2'
+              'mt-2',
+              compact ? 'flex flex-col items-center gap-2' : 'space-y-2',
             ]"
           >
-            <span class="flex h-12 w-12 shrink-0 items-center justify-center">
-              <Icon name="tabler:arrow-right" class="text-[22px] opacity-95" aria-hidden="true" />
-            </span>
-            <span v-if="!compact" class="hidden xl:inline text-base font-semibold">Log in</span>
-          </NuxtLink>
+            <p
+              v-if="!compact"
+              class="hidden xl:block px-1 text-xs leading-snug moh-text-muted"
+              style="text-wrap: pretty"
+            >
+              Chat, notifications, and more after you join.
+            </p>
+            <NuxtLink
+              :to="guestSignupTo"
+              aria-label="Join free"
+              :title="compact ? 'Join free — chat, notifications, and more' : undefined"
+              :class="[
+                'group flex h-12 items-center rounded-xl bg-black text-white hover:opacity-95 dark:bg-white dark:text-black moh-focus',
+                compact ? 'w-12 justify-center' : 'w-full',
+              ]"
+            >
+              <span class="flex h-12 w-12 shrink-0 items-center justify-center">
+                <Icon name="tabler:user-plus" class="text-[22px] opacity-95" aria-hidden="true" />
+              </span>
+              <span v-if="!compact" class="hidden xl:inline text-base font-semibold">Join free</span>
+            </NuxtLink>
+            <NuxtLink
+              :to="guestLoginTo"
+              aria-label="Log in"
+              :class="[
+                'group flex h-12 items-center rounded-xl border moh-border moh-text moh-surface-hover moh-focus',
+                compact ? 'w-12 justify-center' : 'w-full',
+              ]"
+            >
+              <span class="flex h-12 w-12 shrink-0 items-center justify-center">
+                <Icon name="tabler:arrow-right" class="text-[22px] opacity-95" aria-hidden="true" />
+              </span>
+              <span v-if="!compact" class="hidden xl:inline text-base font-semibold">Log in</span>
+            </NuxtLink>
+          </div>
           <template #fallback>
             <div class="mt-2 h-12 w-full" />
           </template>
@@ -324,6 +350,10 @@ const { isAuthed, primaryItems: primaryNavItems } = useAppNav()
 const { totalLobbyCount } = useSpaceLobby()
 const { totalCount: bookmarkTotalCount } = useBookmarkCollections()
 const hasBookmarks = computed(() => Math.max(0, Math.floor(bookmarkTotalCount.value ?? 0)) > 0)
+
+const guestRedirect = computed(() => encodeURIComponent(route.fullPath))
+const guestSignupTo = computed(() => `/login?tab=signup&redirect=${guestRedirect.value}`)
+const guestLoginTo = computed(() => `/login?redirect=${guestRedirect.value}`)
 
 const {
   canOpenComposer,
