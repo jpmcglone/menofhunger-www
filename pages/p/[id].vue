@@ -266,15 +266,13 @@
                 :key="d.id"
                 :post="d"
               />
-              <div v-if="discoverNextCursor" class="flex justify-center px-4 py-4">
-                <Button
-                  label="Show more"
-                  severity="secondary"
-                  rounded
-                  :loading="discoverLoading"
-                  :disabled="discoverLoading"
-                  @click="loadMoreDiscover"
-                />
+              <div
+                v-if="discoverNextCursor || discoverLoading"
+                ref="discoverMoreSentinelEl"
+                class="flex items-center justify-center py-4"
+                aria-hidden="true"
+              >
+                <AppLoadingSpinner v-if="discoverLoading" />
               </div>
             </template>
           </div>
@@ -488,7 +486,9 @@ const {
 } = usePostDiscoverMore({ postId })
 
 const discoverSentinelEl = ref<HTMLElement | null>(null)
+const discoverMoreSentinelEl = ref<HTMLElement | null>(null)
 let discoverObserver: IntersectionObserver | null = null
+let discoverMoreObserver: IntersectionObserver | null = null
 
 onMounted(() => {
   if (typeof IntersectionObserver === 'undefined') return
@@ -500,6 +500,14 @@ onMounted(() => {
     },
     { root: null, rootMargin: '240px 0px', threshold: 0 },
   )
+  discoverMoreObserver = new IntersectionObserver(
+    (entries) => {
+      if (entries.some((e) => e.isIntersecting)) {
+        loadMoreDiscover()
+      }
+    },
+    { root: null, rootMargin: '320px 0px', threshold: 0 },
+  )
   watch(
     discoverSentinelEl,
     (el, _prev, onCleanup) => {
@@ -509,11 +517,22 @@ onMounted(() => {
     },
     { immediate: true },
   )
+  watch(
+    discoverMoreSentinelEl,
+    (el, _prev, onCleanup) => {
+      discoverMoreObserver?.disconnect()
+      if (el) discoverMoreObserver?.observe(el)
+      onCleanup(() => discoverMoreObserver?.disconnect())
+    },
+    { immediate: true },
+  )
 })
 
 onBeforeUnmount(() => {
   discoverObserver?.disconnect()
   discoverObserver = null
+  discoverMoreObserver?.disconnect()
+  discoverMoreObserver = null
 })
 
 const commentsFeedTopEl = ref<HTMLElement | null>(null)

@@ -147,6 +147,14 @@
                     :ariaLabel="`${formatLandingCount(landingSnapshot.stats.posts.total)}+ posts — hover for breakdown`"
                     :rows="postsBreakdownRows"
                   >{{ formatLandingCount(landingSnapshot.stats.posts.total) }}+ posts</AppLandingStatBreakdown>
+                  <template v-if="landingSnapshot.stats.views">
+                    <span class="mx-1.5 opacity-40">·</span>
+                    <AppLandingStatBreakdown
+                      :title="`${landingSnapshot.stats.views.total.toLocaleString('en-US')} unique views`"
+                      :ariaLabel="`${formatLandingCount(landingSnapshot.stats.views.total)}+ unique views — hover for breakdown`"
+                      :rows="viewsBreakdownRows"
+                    >{{ formatLandingCount(landingSnapshot.stats.views.total) }}+ views</AppLandingStatBreakdown>
+                  </template>
                 </div>
               </div>
             </div>
@@ -876,6 +884,17 @@ const postsBreakdownRows = computed<BreakdownRow[]>(() => {
     { key: 'public', label: 'Public', count: s.public, dotClass: 'bg-gray-400' },
     { key: 'verified', label: 'Verified', count: s.verified, dotClass: 'bg-blue-400' },
     { key: 'premium', label: 'Premium', count: s.premium, dotClass: 'bg-yellow-400' },
+  ]
+})
+
+const viewsBreakdownRows = computed<BreakdownRow[]>(() => {
+  const s = landingSnapshot.value?.stats.views
+  if (!s) return []
+  return [
+    { key: 'premium', label: 'Premium', count: s.premium, dotClass: 'bg-yellow-400' },
+    { key: 'verified', label: 'Verified', count: s.verified, dotClass: 'bg-blue-400' },
+    { key: 'unverified', label: 'Unverified', count: s.unverified, dotClass: 'bg-gray-400' },
+    { key: 'guest', label: 'Guests', count: s.guest, dotClass: 'bg-gray-500/60' },
   ]
 })
 

@@ -84,7 +84,8 @@ function placeFrom(anchor: HTMLElement | null) {
     align: 'start',
     gap: 6,
     menuWidth: 180,
-    menuHeight: 100,
+    // Title + up to 4 breakdown rows (views: premium/verified/unverified/guests).
+    menuHeight: 148,
   })
 }
 

@@ -2189,9 +2189,22 @@ export type LandingPostBreakdown = {
   total: number
 }
 
+/**
+ * Site-wide unique views (person×post), matching per-post viewerCount semantics.
+ * Guests are derived as total − authenticated tier counts.
+ */
+export type LandingViewsBreakdown = {
+  premium: number
+  verified: number
+  unverified: number
+  guest: number
+  total: number
+}
+
 export type LandingStats = {
   men: LandingMenBreakdown
   posts: LandingPostBreakdown
+  views: LandingViewsBreakdown
 }
 
 export type LandingTopPost = FeedPost & {

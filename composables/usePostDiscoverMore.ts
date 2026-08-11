@@ -2,9 +2,17 @@ import type { Ref } from 'vue'
 import type { FeedPost } from '~/types/api'
 import { getApiErrorMessage } from '~/utils/api-error'
 
+function newDiscoverShuffleSeed(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID()
+  }
+  return `s-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`
+}
+
 /**
  * Lazy end-of-thread "Discover more" — fetches only when `arm()` is called
  * (typically from an IntersectionObserver near the end of replies).
+ * Further pages load via `loadMore()` (scroll sentinel), using a stable shuffle seed.
  */
 export function usePostDiscoverMore(options: { postId: Ref<string> }) {
   const { postId } = options
@@ -16,14 +24,16 @@ export function usePostDiscoverMore(options: { postId: Ref<string> }) {
   const loaded = ref(false)
   const error = ref<string | null>(null)
   let armedForId: string | null = null
+  let shuffleSeed: string | null = null
 
   async function fetchPage(cursor: string | null) {
     const id = postId.value.trim()
     if (!id || loading.value) return
+    if (!shuffleSeed) shuffleSeed = newDiscoverShuffleSeed()
     loading.value = true
     error.value = null
     try {
-      const params = new URLSearchParams({ limit: '8' })
+      const params = new URLSearchParams({ limit: '8', seed: shuffleSeed })
       if (cursor) params.set('cursor', cursor)
       const res = await apiFetch<FeedPost[]>(
         `/posts/${encodeURIComponent(id)}/discover-more?${params.toString()}`,
@@ -70,6 +80,7 @@ export function usePostDiscoverMore(options: { postId: Ref<string> }) {
     loaded.value = false
     error.value = null
     armedForId = null
+    shuffleSeed = null
   }
 
   watch(postId, () => {
