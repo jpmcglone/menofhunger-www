@@ -2176,6 +2176,8 @@ export type LandingMenBreakdown = {
   verified: number
   /** premium + verified. */
   total: number
+  /** Distinct verified men who authored ≥1 landing-eligible post or reply. */
+  contributors: number
 }
 
 export type LandingPostBreakdown = {
@@ -2185,7 +2187,11 @@ export type LandingPostBreakdown = {
   verified: number
   /** visibility = 'premiumOnly'. */
   premium: number
-  /** public + verified + premium (onlyMe excluded). */
+  /** Top-level posts (parentId IS NULL). */
+  original: number
+  /** Replies/comments (parentId IS NOT NULL). */
+  replies: number
+  /** public + verified + premium (onlyMe excluded). Equals original + replies. */
   total: number
 }
 

@@ -137,7 +137,7 @@
                 </div>
                 <div v-if="landingSnapshot" class="text-sm text-gray-600 dark:text-gray-300">
                   <AppLandingStatBreakdown
-                    :title="`${landingSnapshot.stats.men.total.toLocaleString('en-US')} verified men`"
+                    :title="menBreakdownTitle"
                     :ariaLabel="`${formatLandingCount(landingSnapshot.stats.men.total)}+ men — hover for breakdown`"
                     :rows="menBreakdownRows"
                   >{{ formatLandingCount(landingSnapshot.stats.men.total) }}+ men</AppLandingStatBreakdown>
@@ -145,7 +145,7 @@
                   <AppLandingStatBreakdown
                     :title="`${landingSnapshot.stats.posts.total.toLocaleString('en-US')} posts`"
                     :ariaLabel="`${formatLandingCount(landingSnapshot.stats.posts.total)}+ posts — hover for breakdown`"
-                    :rows="postsBreakdownRows"
+                    :sections="postsBreakdownSections"
                   >{{ formatLandingCount(landingSnapshot.stats.posts.total) }}+ posts</AppLandingStatBreakdown>
                   <template v-if="landingSnapshot.stats.views">
                     <span class="mx-1.5 opacity-40">·</span>
@@ -722,7 +722,7 @@ import landingLight from '~/assets/images/landing-light.png'
 import landingDark from '~/assets/images/landing-dark.png'
 import mountainLight from '~/assets/images/mountain-light.png'
 import mountainDark from '~/assets/images/mountain-dark.png'
-import type { BreakdownRow } from '~/components/app/LandingStatBreakdown.vue'
+import type { BreakdownRow, BreakdownSection } from '~/components/app/LandingStatBreakdown.vue'
 import type { DailyContentToday, DailyQuote, LandingSnapshot, LandingTopPost } from '~/types/api'
 
 definePageMeta({
@@ -868,6 +868,13 @@ function formatLandingCount(value: number): string {
   return new Intl.NumberFormat('en-US', { notation: value >= 1_000 ? 'compact' : 'standard', maximumFractionDigits: 1 }).format(value)
 }
 
+const menBreakdownTitle = computed(() => {
+  const s = landingSnapshot.value?.stats.men
+  if (!s) return 'verified men'
+  const contributors = Math.min(Math.max(0, s.contributors ?? 0), s.total)
+  return `${contributors.toLocaleString('en-US')} of ${s.total.toLocaleString('en-US')} have posted`
+})
+
 const menBreakdownRows = computed<BreakdownRow[]>(() => {
   const s = landingSnapshot.value?.stats.men
   if (!s) return []
@@ -877,13 +884,19 @@ const menBreakdownRows = computed<BreakdownRow[]>(() => {
   ]
 })
 
-const postsBreakdownRows = computed<BreakdownRow[]>(() => {
+const postsBreakdownSections = computed<BreakdownSection[]>(() => {
   const s = landingSnapshot.value?.stats.posts
   if (!s) return []
   return [
-    { key: 'public', label: 'Public', count: s.public, dotClass: 'bg-gray-400' },
-    { key: 'verified', label: 'Verified', count: s.verified, dotClass: 'bg-blue-400' },
-    { key: 'premium', label: 'Premium', count: s.premium, dotClass: 'bg-yellow-400' },
+    [
+      { key: 'original', label: 'Original', count: s.original ?? 0 },
+      { key: 'replies', label: 'Replies', count: s.replies ?? 0 },
+    ],
+    [
+      { key: 'public', label: 'Public', count: s.public, dotClass: 'bg-gray-400' },
+      { key: 'verified', label: 'Verified', count: s.verified, dotClass: 'bg-blue-400' },
+      { key: 'premium', label: 'Premium', count: s.premium, dotClass: 'bg-yellow-400' },
+    ],
   ]
 })
 

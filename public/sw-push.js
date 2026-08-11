@@ -5,7 +5,7 @@
  */
 
 // IMPORTANT: bump this whenever caching logic changes so old caches are purged.
-self.__MOH_SW_VERSION = 'moh-sw-dev-1786465864781';
+self.__MOH_SW_VERSION = 'moh-sw-dev-1786468165322';
 const CACHE_PREFIX = 'moh-sw'
 const NUXT_ASSETS_CACHE = `${CACHE_PREFIX}:nuxt:${self.__MOH_SW_VERSION}`
 const STATIC_ASSETS_CACHE = `${CACHE_PREFIX}:static:${self.__MOH_SW_VERSION}`

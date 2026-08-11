@@ -27,22 +27,32 @@
           <p class="mb-1.5 font-semibold moh-text tabular-nums">
             {{ title }}
           </p>
-          <div class="flex flex-col gap-1 moh-text-muted">
-            <div
-              v-for="row in activeRows"
-              :key="row.key"
-              class="flex items-center justify-between gap-3"
-            >
-              <span class="flex items-center gap-1.5">
-                <span
-                  class="inline-block h-2 w-2 rounded-full shrink-0"
-                  :class="row.dotClass"
-                  aria-hidden="true"
-                />
-                {{ row.label }}
-              </span>
-              <span class="tabular-nums font-medium moh-text">{{ row.count.toLocaleString('en-US') }}</span>
-            </div>
+          <div class="flex flex-col">
+            <template v-for="(section, sectionIndex) in activeSections" :key="sectionIndex">
+              <div
+                v-if="sectionIndex > 0"
+                class="my-1.5 border-t border-gray-200/70 dark:border-white/10"
+                aria-hidden="true"
+              />
+              <div class="flex flex-col gap-1 moh-text-muted">
+                <div
+                  v-for="row in section"
+                  :key="row.key"
+                  class="flex items-center justify-between gap-3"
+                >
+                  <span class="flex items-center gap-1.5">
+                    <span
+                      v-if="row.dotClass"
+                      class="inline-block h-2 w-2 rounded-full shrink-0"
+                      :class="row.dotClass"
+                      aria-hidden="true"
+                    />
+                    {{ row.label }}
+                  </span>
+                  <span class="tabular-nums font-medium moh-text">{{ row.count.toLocaleString('en-US') }}</span>
+                </div>
+              </div>
+            </template>
           </div>
         </div>
       </Transition>
@@ -55,18 +65,31 @@ export type BreakdownRow = {
   key: string
   label: string
   count: number
-  dotClass: string
+  /** Colored swatch. Omit for plain rows (e.g. Original / Replies). */
+  dotClass?: string
 }
+
+export type BreakdownSection = BreakdownRow[]
 
 const props = defineProps<{
   /** Displayed in the popover header, e.g. "32 verified men". */
   title: string
   /** aria-label for the trigger button. */
   ariaLabel: string
-  rows: BreakdownRow[]
+  /** Single-section rows (men / views). Ignored when `sections` is set. */
+  rows?: BreakdownRow[]
+  /** Multi-section rows with low-contrast dividers between groups. */
+  sections?: BreakdownSection[]
 }>()
 
-const activeRows = computed(() => props.rows.filter((r) => r.count > 0))
+const activeSections = computed(() => {
+  const source = props.sections?.length
+    ? props.sections
+    : [props.rows ?? []]
+  return source
+    .map((section) => section.filter((r) => r.count > 0))
+    .filter((section) => section.length > 0)
+})
 
 const triggerEl = ref<HTMLElement | null>(null)
 const visible = ref(false)
@@ -80,12 +103,15 @@ const {
 
 function placeFrom(anchor: HTMLElement | null) {
   if (!anchor) return
+  const rowCount = activeSections.value.reduce((n, s) => n + s.length, 0)
+  const dividerCount = Math.max(0, activeSections.value.length - 1)
   place(anchor, {
     align: 'start',
     gap: 6,
-    menuWidth: 180,
-    // Title + up to 4 breakdown rows (views: premium/verified/unverified/guests).
-    menuHeight: 148,
+    // Wide enough for titles like "24 of 37 have posted".
+    menuWidth: 200,
+    // Title + rows + optional section dividers.
+    menuHeight: 36 + rowCount * 22 + dividerCount * 14,
   })
 }
 
