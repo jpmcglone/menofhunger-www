@@ -22,10 +22,9 @@
       <Transition name="moh-fade">
         <div
           v-if="isPlaying"
-          class="absolute top-3 left-3 inline-flex items-center gap-1.5 rounded-full backdrop-blur-sm px-2.5 py-1 pointer-events-none select-none bg-black/40"
+          class="absolute top-3 left-3 pointer-events-none select-none"
         >
-          <span class="h-1.5 w-1.5 rounded-full animate-pulse" :style="{ backgroundColor: palette.cssTop }" aria-hidden="true" />
-          <span class="text-[10px] font-semibold uppercase tracking-widest" :style="{ color: palette.cssMid }">Live</span>
+          <AppSpaceStatusBadge kind="live" class="!bg-black/40 !text-green-400 backdrop-blur-sm !px-2.5 !py-1 !text-[10px] !tracking-widest" />
         </div>
       </Transition>
 

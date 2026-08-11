@@ -17,27 +17,48 @@
       <template v-else>
         <div class="moh-gutter-x pt-4 pb-3 flex items-start justify-between gap-3 shrink-0">
           <div class="min-w-0">
-            <h1 class="moh-h1">{{ space.title }}</h1>
+            <div class="flex items-center gap-2 flex-wrap">
+              <h1 class="moh-h1">{{ space.title }}</h1>
+              <AppSpaceStatusBadge :kind="spaceStatusKind" size="md" class="!text-[10px] !px-2" />
+            </div>
             <p v-if="space.description" class="mt-1 moh-meta">{{ space.description }}</p>
             <p v-else class="mt-1 moh-meta">
               Hosted by @{{ space.owner?.username ?? 'unknown' }}
+              <template v-if="spaceScheduleLabel && !space.isActive">
+                · {{ spaceScheduleLabel }}
+              </template>
             </p>
           </div>
-          <div v-if="canJoinSpace" class="shrink-0 mt-1 flex items-center gap-2">
-            <AppPostRowShareMenu
-              :can-share="true"
-              :tooltip="spaceShareTooltip"
-              :items="spaceShareMenuItems"
-            />
+          <div class="shrink-0 mt-1 flex items-center gap-2">
             <button
+              v-if="showSpaceNotifyMe"
               type="button"
-              class="moh-tap moh-focus inline-flex items-center gap-1.5 rounded-full border moh-border-subtle px-3 py-1.5 text-xs font-medium moh-meta moh-surface-hover transition-colors"
-              aria-label="Leave space"
-              @click="onLeave"
+              class="moh-tap moh-focus inline-flex items-center justify-center rounded-full px-3 py-1.5 text-xs font-semibold transition-colors"
+              :class="space.viewerSubscribed
+                ? 'bg-[var(--p-primary-color)]/15 text-[var(--p-primary-color)]'
+                : 'border moh-border-subtle moh-meta moh-surface-hover'"
+              :disabled="spaceNotifyBusy"
+              :aria-label="space.viewerSubscribed ? 'Stop notifications' : 'Notify me'"
+              @click="onToggleSpaceNotify"
             >
-              <Icon name="tabler:door-exit" class="text-[14px]" aria-hidden="true" />
-              Leave
+              {{ space.viewerSubscribed ? 'Notifying' : 'Notify me' }}
             </button>
+            <template v-if="canJoinSpace">
+              <AppPostRowShareMenu
+                :can-share="true"
+                :tooltip="spaceShareTooltip"
+                :items="spaceShareMenuItems"
+              />
+              <button
+                type="button"
+                class="moh-tap moh-focus inline-flex items-center gap-1.5 rounded-full border moh-border-subtle px-3 py-1.5 text-xs font-medium moh-meta moh-surface-hover transition-colors"
+                aria-label="Leave space"
+                @click="onLeave"
+              >
+                <Icon name="tabler:door-exit" class="text-[14px]" aria-hidden="true" />
+                Leave
+              </button>
+            </template>
           </div>
         </div>
 
@@ -203,6 +224,8 @@ const username = computed(() => (route.params.username as string)?.trim() ?? '')
 const { fetchSpaceByUsername, upsertSpace } = useSpaces()
 const { selectedSpaceId, select, leave, currentSpace, members, subscribeLobbyCounts, unsubscribeLobbyCounts } = useSpaceLobby()
 const { stop } = useSpaceAudio()
+const { subscribeToSchedule, unsubscribeFromSchedule } = useSpaceOwner()
+const { confirm } = useAppConfirm()
 const spaceChatSheetOpen = useState<boolean>('space-chat-sheet-open', () => false)
 const { user, ensureLoaded, isVerified, isPremium } = useAuth()
 const isAuthed = computed(() => Boolean(user.value?.id))
@@ -213,6 +236,7 @@ const { reactions, loadReactions, addFloating, clearAllFloating } = useSpaceReac
 
 const spaceLoading = ref(true)
 const space = ref<Space | null>(null)
+const spaceNotifyBusy = ref(false)
 /** True only after emitSpacesJoin has completed — gates SpaceYouTubePlayer so its
  *  requestCurrentState fires while we're already in the socket room. */
 const spaceReady = ref(false)
@@ -237,6 +261,32 @@ const { data: ssrSpace } = await useAsyncData(
 const seoSpace = computed(() => space.value ?? ssrSpace.value)
 
 const isOwner = computed(() => Boolean(user.value?.id && space.value?.owner?.id && user.value.id === space.value.owner.id))
+
+const spaceScheduleLabel = computed(() => {
+  const iso = space.value?.scheduledAt
+  if (!iso || space.value?.isActive) return null
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime()) || d.getTime() <= Date.now()) return null
+  return new Intl.DateTimeFormat(undefined, {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  }).format(d)
+})
+
+const spaceStatusKind = computed<'live' | 'scheduled' | null>(() => {
+  if (space.value?.isActive) return 'live'
+  if (spaceScheduleLabel.value) return 'scheduled'
+  return null
+})
+
+const showSpaceNotifyMe = computed(() => {
+  if (!user.value?.id || !space.value) return false
+  if (isOwner.value) return false
+  return spaceStatusKind.value === 'scheduled'
+})
 
 const avatarElMap = new Map<string, HTMLElement>()
 function setAvatarEl(userId: string, el: HTMLElement | null) {
@@ -311,6 +361,37 @@ async function onLeave() {
   await navigateTo('/spaces')
   stop()
   leave()
+}
+
+async function onToggleSpaceNotify() {
+  if (!space.value || spaceNotifyBusy.value) return
+  if (space.value.viewerSubscribed) {
+    const ok = await confirm({
+      header: 'Stop notifications?',
+      message: 'You will no longer get reminders when this space is about to go live.',
+      confirmLabel: 'Stop notifying',
+      confirmSeverity: 'danger',
+      cancelLabel: 'Keep notifying',
+    })
+    if (!ok) return
+  }
+  spaceNotifyBusy.value = true
+  try {
+    const updated = space.value.viewerSubscribed
+      ? await unsubscribeFromSchedule(space.value.id)
+      : await subscribeToSchedule(space.value.id)
+    if (updated) {
+      space.value = updated
+      upsertSpace(updated)
+      toast.push({
+        title: updated.viewerSubscribed ? 'You will be notified' : 'Notifications off',
+        tone: 'public',
+        durationMs: 1400,
+      })
+    }
+  } finally {
+    spaceNotifyBusy.value = false
+  }
 }
 
 async function enterSpace(s: Space) {

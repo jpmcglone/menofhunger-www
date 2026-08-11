@@ -10,7 +10,7 @@
           : 'bg-green-500/10 text-green-600 dark:text-green-400 hover:bg-green-500/20'"
         @click="toggleActive"
       >
-        {{ space.isActive ? 'Deactivate' : 'Activate' }}
+        {{ space.isActive ? 'End' : 'Go live' }}
       </button>
     </div>
 

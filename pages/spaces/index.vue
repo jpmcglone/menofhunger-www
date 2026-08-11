@@ -18,6 +18,14 @@
             <Icon name="tabler:plus" class="text-[16px]" aria-hidden="true" />
             Create Space
           </button>
+          <NuxtLink
+            v-else-if="user && mySpaceHref"
+            :to="mySpaceHref"
+            class="moh-tap moh-focus shrink-0 inline-flex items-center gap-1.5 rounded-full border moh-border-subtle px-4 py-2 text-sm font-semibold moh-meta moh-surface-hover transition-colors"
+          >
+            <Icon name="tabler:door-enter" class="text-[16px]" aria-hidden="true" />
+            My space
+          </NuxtLink>
         </div>
       </div>
 
@@ -27,13 +35,13 @@
         <span>Loading spaces…</span>
       </div>
       <div v-else-if="spaces.length === 0 && !loading" class="moh-gutter-x py-4 moh-meta">
-        No active spaces right now. Be the first to create one!
+        No live or upcoming spaces right now. Be the first to create one!
       </div>
 
-      <!-- Space rows -->
+      <!-- Space rows — API order: own → live → soonest schedule -->
       <TransitionGroup v-else tag="div" class="border-t moh-border" move-class="transition-transform duration-500 ease-in-out">
         <AppSpaceRow
-          v-for="space in sortedSpaces"
+          v-for="space in spaces"
           :key="space.id"
           :space="space"
         />
@@ -68,30 +76,57 @@ usePageSeo({
 
 const { user } = useAuth()
 const { spaces, loading, loadedOnce, loadSpaces } = useSpaces()
-const { currentSpace, members, lobbyCountForSpace, subscribeLobbyCounts, unsubscribeLobbyCounts } = useSpaceLobby()
+const { currentSpace, members, subscribeLobbyCounts, unsubscribeLobbyCounts } = useSpaceLobby()
 const { getMySpace, createSpace } = useSpaceOwner()
+const { addSpacesCallback, removeSpacesCallback } = usePresence()
 
 const mySpace = useState<any>('my-space', () => null)
 
-const sortedSpaces = computed(() =>
-  [...(spaces.value ?? [])].sort((a, b) => (b.listenerCount ?? 0) - (a.listenerCount ?? 0))
-)
+const mySpaceHref = computed(() => {
+  const username = String(mySpace.value?.owner?.username ?? user.value?.username ?? '').trim()
+  if (!username) return null
+  return `/s/${encodeURIComponent(username)}`
+})
 
 async function onCreateSpace() {
   const space = await createSpace({ title: `${user.value?.username ?? 'My'}'s Space` })
   if (space) {
+    mySpace.value = space
     navigateTo(`/s/${encodeURIComponent(space.owner?.username ?? '')}`)
   }
 }
 
+async function refreshSpaces() {
+  await loadSpaces()
+}
+
+let lobbyRefreshTimer: ReturnType<typeof setTimeout> | null = null
+const spacesCb = {
+  onLobbyCounts: () => {
+    // Debounce: live badges / listener counts change while this page is open.
+    if (lobbyRefreshTimer) clearTimeout(lobbyRefreshTimer)
+    lobbyRefreshTimer = setTimeout(() => {
+      lobbyRefreshTimer = null
+      void refreshSpaces()
+    }, 1500)
+  },
+}
+
 onMounted(async () => {
-  if (!loadedOnce.value) void loadSpaces()
+  await refreshSpaces()
   void subscribeLobbyCounts()
+  addSpacesCallback(spacesCb as any)
   const s = await getMySpace()
   if (s) mySpace.value = s
 })
 
+onActivated(() => {
+  void refreshSpaces()
+})
+
 onBeforeUnmount(() => {
+  if (lobbyRefreshTimer) clearTimeout(lobbyRefreshTimer)
   unsubscribeLobbyCounts()
+  removeSpacesCallback(spacesCb as any)
 })
 </script>
