@@ -1,8 +1,11 @@
 import type { SpaceLobbyCounts, SpaceMember } from '~/types/api'
+import type { SpacesCallback } from '~/composables/usePresence'
 
 const SELECTED_SPACE_ID_KEY = 'selected-space-id'
 const SPACE_MEMBERS_KEY = 'space-members'
 const SPACE_LOBBY_COUNTS_KEY = 'space-lobby-counts'
+const SPACES_CB_KEY = 'space-lobby-spaces-cb'
+const SPACES_CB_REFS_KEY = 'space-lobby-spaces-cb-refs'
 
 export function useSpaceLobby() {
   const { ensureLoaded, user } = useAuth()
@@ -14,42 +17,65 @@ export function useSpaceLobby() {
   const members = useState<SpaceMember[]>(SPACE_MEMBERS_KEY, () => [])
   const lobbyCounts = useState<SpaceLobbyCounts>(SPACE_LOBBY_COUNTS_KEY, () => ({ countsBySpaceId: {} }))
 
+  // Singleton callback + refcount: every useSpaceLobby() call used to create a new
+  // spacesCb and addSpacesCallback it forever. Sets are keyed by reference, so those
+  // orphaned handlers stacked on every space page / AppSpaceRow visit.
+  const spacesCbRef = useState<SpacesCallback | null>(SPACES_CB_KEY, () => null)
+  const spacesCbRefs = useState<number>(SPACES_CB_REFS_KEY, () => 0)
+
   const currentSpace = computed(() => getById(selectedSpaceId.value))
 
-  const spacesCb = {
-    onMembers: (payload: { spaceId: string; members: SpaceMember[] }) => {
-      if (!payload?.spaceId) return
-      if (payload.spaceId !== selectedSpaceId.value) return
-      const nextMembers = (payload.members ?? []) as SpaceMember[]
-      const prevIds = new Set(members.value.map((m) => m.id))
-      const nextIds = new Set(nextMembers.map((m) => m.id))
-      const toRemove = [...prevIds].filter((id) => !nextIds.has(id))
-      const toAdd = [...nextIds].filter((id) => !prevIds.has(id))
-      if (toRemove.length) presence.removeInterest(toRemove)
-      if (toAdd.length) presence.addInterest(toAdd)
-      presence.setCurrentSpaceForUsers(
-        nextMembers.map((m) => m.id),
-        payload.spaceId,
-      )
-      members.value = nextMembers
-    },
-    onLobbyCounts: (payload: SpaceLobbyCounts) => {
-      const countsBySpaceId = payload?.countsBySpaceId ?? {}
-      lobbyCounts.value = { countsBySpaceId }
-    },
+  function ensureSpacesCallback() {
+    if (!import.meta.client) return
+    if (spacesCbRef.value) return
+
+    const spacesCb: SpacesCallback = {
+      onMembers: (payload: { spaceId: string; members: SpaceMember[] }) => {
+        if (!payload?.spaceId) return
+        if (payload.spaceId !== selectedSpaceId.value) return
+        const nextMembers = (payload.members ?? []) as SpaceMember[]
+        const prevIds = new Set(members.value.map((m) => m.id))
+        const nextIds = new Set(nextMembers.map((m) => m.id))
+        const toRemove = [...prevIds].filter((id) => !nextIds.has(id))
+        const toAdd = [...nextIds].filter((id) => !prevIds.has(id))
+        if (toRemove.length) presence.removeInterest(toRemove)
+        if (toAdd.length) presence.addInterest(toAdd)
+        presence.setCurrentSpaceForUsers(
+          nextMembers.map((m) => m.id),
+          payload.spaceId,
+        )
+        members.value = nextMembers
+      },
+      onLobbyCounts: (payload: SpaceLobbyCounts) => {
+        const countsBySpaceId = payload?.countsBySpaceId ?? {}
+        lobbyCounts.value = { countsBySpaceId }
+      },
+    }
+    spacesCbRef.value = spacesCb
+    presence.addSpacesCallback(spacesCb)
+  }
+
+  if (import.meta.client) {
+    spacesCbRefs.value += 1
+    ensureSpacesCallback()
+    onScopeDispose(() => {
+      spacesCbRefs.value = Math.max(0, spacesCbRefs.value - 1)
+      if (spacesCbRefs.value !== 0) return
+      const cb = spacesCbRef.value
+      if (!cb) return
+      presence.removeSpacesCallback(cb)
+      spacesCbRef.value = null
+    })
   }
 
   /**
    * Fetch current lobby counts over HTTP (instant, no socket needed) and register
    * the presence callback so real-time WebSocket pushes keep the counts live.
-   * Safe to call from any layout/page — duplicate registrations are harmless because
-   * all instances write to the same shared `lobbyCounts` state.
+   * Safe to call from any layout/page — registrations share one singleton callback.
    */
   async function loadLobbyCounts() {
     if (!import.meta.client) return
-    // Register the callback immediately so we handle the `spaces:lobbyCounts` event
-    // that the server emits to every socket right after connection.
-    presence.addSpacesCallback(spacesCb as any)
+    ensureSpacesCallback()
     // Fetch the current snapshot over HTTP — no socket required, works on first render.
     try {
       const data = await apiFetchData<SpaceLobbyCounts>('/spaces/lobby-counts', { method: 'GET' })
@@ -77,7 +103,7 @@ export function useSpaceLobby() {
     presence.setCurrentSpaceForUsers([user.value.id], spaceId)
     presence.connect()
     await presence.whenSocketConnected(10_000)
-    presence.addSpacesCallback(spacesCb as any)
+    ensureSpacesCallback()
     presence.emitSpacesJoin(spaceId)
   }
 
@@ -100,7 +126,7 @@ export function useSpaceLobby() {
     if (!user.value?.id) return
     presence.connect()
     await presence.whenSocketConnected(10_000)
-    presence.addSpacesCallback(spacesCb as any)
+    ensureSpacesCallback()
     presence.emitSpacesLobbiesSubscribe()
   }
 
@@ -154,4 +180,3 @@ export function useSpaceLobby() {
     unsubscribeLobbyCounts,
   }
 }
-

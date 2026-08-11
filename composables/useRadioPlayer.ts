@@ -1,4 +1,5 @@
 import type { RadioListener, RadioLobbyCounts, RadioStation } from '~/types/api'
+import type { RadioCallback } from '~/composables/usePresence'
 import radioStationsFallback from '~/config/radio-stations.json'
 
 const RADIO_STATION_ID_KEY = 'radio-station-id'
@@ -7,6 +8,8 @@ const RADIO_IS_BUFFERING_KEY = 'radio-is-buffering'
 const RADIO_ERROR_KEY = 'radio-error'
 const RADIO_LISTENERS_KEY = 'radio-listeners'
 const RADIO_LOBBY_COUNTS_KEY = 'radio-lobby-counts'
+const RADIO_CB_KEY = 'radio-player-callback'
+const RADIO_CB_REFS_KEY = 'radio-player-callback-refs'
 // Bump version when changing default behavior so existing cookies don't lock old defaults.
 const RADIO_VOLUME_KEY = 'moh.radio.volume.v2'
 const DEFAULT_RADIO_STATIONS: RadioStation[] = Array.isArray(radioStationsFallback)
@@ -72,27 +75,51 @@ export function useRadioPlayer() {
 
   const isMuted = computed(() => (volume.value ?? 0.5) <= 0.001)
 
-  const radioCb = {
-    onListeners: (payload: { stationId: string; listeners: any[] }) => {
-      if (!payload?.stationId) return
-      if (payload.stationId !== stationId.value) return
-      // API emits {id, username, avatarUrl} (matches RadioListener shape)
-      listeners.value = (payload.listeners ?? []) as RadioListener[]
-    },
-    onLobbyCounts: (payload: { countsByStationId: Record<string, number> }) => {
-      const countsByStationId = payload?.countsByStationId ?? {}
-      lobbyCounts.value = { countsByStationId }
-    },
-    onReplaced: () => {
-      stop()
-      const { push } = useAppToast()
-      push({
-        title: 'Music stopped',
-        message: 'You started playing in another tab.',
-        color: '#000000',
-        durationMs: 3500,
-      })
-    },
+  // Singleton callback + refcount (same pattern as useSpaceLobby / useNotifications).
+  // Per-call radioCb objects were added forever on play/subscribeLobbyCounts.
+  const radioCbRef = useState<RadioCallback | null>(RADIO_CB_KEY, () => null)
+  const radioCbRefs = useState<number>(RADIO_CB_REFS_KEY, () => 0)
+
+  function ensureRadioCallback() {
+    if (!import.meta.client) return
+    if (radioCbRef.value) return
+    const radioCb: RadioCallback = {
+      onListeners: (payload: { stationId: string; listeners: any[] }) => {
+        if (!payload?.stationId) return
+        if (payload.stationId !== stationId.value) return
+        // API emits {id, username, avatarUrl} (matches RadioListener shape)
+        listeners.value = (payload.listeners ?? []) as RadioListener[]
+      },
+      onLobbyCounts: (payload: { countsByStationId: Record<string, number> }) => {
+        const countsByStationId = payload?.countsByStationId ?? {}
+        lobbyCounts.value = { countsByStationId }
+      },
+      onReplaced: () => {
+        stop()
+        const { push } = useAppToast()
+        push({
+          title: 'Music stopped',
+          message: 'You started playing in another tab.',
+          color: '#000000',
+          durationMs: 3500,
+        })
+      },
+    }
+    radioCbRef.value = radioCb
+    presence.addRadioCallback(radioCb)
+  }
+
+  if (import.meta.client) {
+    radioCbRefs.value += 1
+    ensureRadioCallback()
+    onScopeDispose(() => {
+      radioCbRefs.value = Math.max(0, radioCbRefs.value - 1)
+      if (radioCbRefs.value !== 0) return
+      const cb = radioCbRef.value
+      if (!cb) return
+      presence.removeRadioCallback(cb)
+      radioCbRef.value = null
+    })
   }
 
   function bindAudioEvents() {
@@ -178,7 +205,7 @@ export function useRadioPlayer() {
     // Ensure socket is connected before joining room.
     presence.connect()
     await presence.whenSocketConnected(10_000)
-    presence.addRadioCallback(radioCb)
+    ensureRadioCallback()
     presence.emitRadioJoin(station.id)
     // Send current mute state (so other listeners can see it immediately).
     presence.emitRadioMute(isMuted.value)
@@ -223,8 +250,9 @@ export function useRadioPlayer() {
       }
     }
     // Fully leave the station room and clear local state.
+    // Keep the singleton radio callback registered while any consumer is alive
+    // (lobby counts); onScopeDispose removes it when the last scope exits.
     presence.emitRadioLeave()
-    presence.removeRadioCallback(radioCb as any)
     stationId.value = null
     listeners.value = []
     isPlaying.value = false
@@ -250,7 +278,11 @@ export function useRadioPlayer() {
       pause()
       stationId.value = null
       listeners.value = []
-      presence.removeRadioCallback(radioCb as any)
+      const cb = radioCbRef.value
+      if (cb) {
+        presence.removeRadioCallback(cb)
+        radioCbRef.value = null
+      }
     },
   )
 
@@ -265,7 +297,7 @@ export function useRadioPlayer() {
     if (!user.value?.id) return
     presence.connect()
     await presence.whenSocketConnected(10_000)
-    presence.addRadioCallback(radioCb)
+    ensureRadioCallback()
     presence.emitRadioLobbiesSubscribe()
   }
 

@@ -291,9 +291,25 @@ export function useSpaceLiveChat(options: { passive?: boolean } = {}) {
 
   function unsubscribe() {
     if (!import.meta.client) return
-    if (!subscribedSpaceId.value) return
+    const prevId = subscribedSpaceId.value
+    if (!prevId) return
     presence.emitSpacesChatUnsubscribe()
     subscribedSpaceId.value = null
+    // Drop chat history for spaces we've left so long sessions don't accumulate
+    // a Record entry for every visited space (messages are already capped per space).
+    if (messagesBySpace.value[prevId]) {
+      const next = { ...messagesBySpace.value }
+      delete next[prevId]
+      messagesBySpace.value = next
+    }
+    if (typingBySpaceId.value.has(prevId)) {
+      const nextTyping = new Map(typingBySpaceId.value)
+      nextTyping.delete(prevId)
+      typingBySpaceId.value = nextTyping
+    }
+    if (snapshotReceivedForSpaceId.value === prevId) {
+      snapshotReceivedForSpaceId.value = null
+    }
   }
 
   if (!passive) {

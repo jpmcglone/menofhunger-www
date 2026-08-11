@@ -226,6 +226,8 @@ export function useEmbeddedVideoManager() {
       const anyEl = el as any
       if (!anyEl.__mohPipListenersAttached) {
         anyEl.__mohPipListenersAttached = true
+        anyEl.__mohPipOnEnter = onEnter
+        anyEl.__mohPipOnLeave = onLeave
         el.addEventListener('enterpictureinpicture', onEnter)
         el.addEventListener('leavepictureinpicture', onLeave)
       }
@@ -239,7 +241,24 @@ export function useEmbeddedVideoManager() {
     if (!id) return
     if (import.meta.server) return
     if (!registry) return
+    const el = registry.get(id)
+    if (el instanceof HTMLVideoElement) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const anyEl = el as any
+      if (anyEl.__mohPipListenersAttached) {
+        if (typeof anyEl.__mohPipOnEnter === 'function') {
+          el.removeEventListener('enterpictureinpicture', anyEl.__mohPipOnEnter)
+        }
+        if (typeof anyEl.__mohPipOnLeave === 'function') {
+          el.removeEventListener('leavepictureinpicture', anyEl.__mohPipOnLeave)
+        }
+        anyEl.__mohPipListenersAttached = false
+        anyEl.__mohPipOnEnter = null
+        anyEl.__mohPipOnLeave = null
+      }
+    }
     registry.delete(id)
+    if (pipPostId.value === id) pipPostId.value = null
     if (registry.size === 0) {
       removeListeners()
       if (runtime) {
