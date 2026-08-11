@@ -252,48 +252,22 @@
                   />
                 </div>
               </template>
-              <div
-                v-else-if="comments.length > conversationTeaseLimit || commentsNextCursor"
-                class="px-4 py-3 text-center text-xs moh-text-muted"
-              >
-                {{ Math.max(0, commentCountDisplay - conversationTeaseLimit) }} more
-                {{ commentCountDisplay - conversationTeaseLimit === 1 ? 'reply' : 'replies' }} in the thread
-              </div>
             </template>
           </AppSubtleSectionLoader>
 
-          <!-- Acquisition / verify gate: guests + unverified can read a taste, then must sign up / verify. -->
+          <!-- One left-aligned experience: facepile + “N more” + join/verify. -->
           <ClientOnly>
-            <div
+            <AppConversationJoinTeaser
               v-if="showConversationGate"
-              class="border-t moh-border px-4 py-6"
-            >
-              <div class="mx-auto max-w-md rounded-2xl border moh-border bg-[var(--moh-surface-2)] px-5 py-6 text-center">
-                <p class="text-sm font-semibold moh-text" style="text-wrap: balance">
-                  {{ conversationGateTitle }}
-                </p>
-                <p class="mt-1.5 text-xs moh-text-muted" style="text-wrap: pretty">
-                  {{ conversationGateSubtitle }}
-                </p>
-                <div class="mt-4 flex flex-wrap items-center justify-center gap-2">
-                  <Button
-                    as="NuxtLink"
-                    :to="conversationGatePrimaryTo"
-                    :label="conversationGatePrimaryLabel"
-                    rounded
-                  />
-                  <Button
-                    v-if="conversationGateSecondaryTo"
-                    as="NuxtLink"
-                    :to="conversationGateSecondaryTo"
-                    :label="conversationGateSecondaryLabel"
-                    severity="secondary"
-                    outlined
-                    rounded
-                  />
-                </div>
-              </div>
-            </div>
+              :authors="conversationTeaseAuthors"
+              :more-count="conversationMoreCount"
+              :title="conversationGateTitle"
+              :subtitle="conversationGateSubtitle"
+              :primary-label="conversationGatePrimaryLabel"
+              :primary-to="conversationGatePrimaryTo"
+              :secondary-label="conversationGateSecondaryLabel"
+              :secondary-to="conversationGateSecondaryTo"
+            />
           </ClientOnly>
         </div>
 
@@ -349,6 +323,7 @@ import { applyLiveUpdatedPatch } from '~/utils/feed-patch'
 import { feedPostThreadGroupDisplayName } from '~/utils/community-group-preview'
 import { groupAvatarRoundClass as getGroupAvatarRoundClass } from '~/utils/avatar-rounding'
 import { getApiErrorMessage } from '~/utils/api-error'
+import { uniqueReplyAuthorsFromPosts } from '~/utils/thread-reply-authors'
 import { usePostPermalink, usePostPermalinkMedia } from '~/composables/usePostPermalink'
 import { usePostComments } from '~/composables/usePostComments'
 import { usePostDiscoverMore } from '~/composables/usePostDiscoverMore'
@@ -542,6 +517,11 @@ const replyRedirectPath = computed(() => {
   if (!ref) return base
   return `${base}&ref=${encodeURIComponent(ref)}`
 })
+
+const conversationMoreCount = computed(() =>
+  Math.max(0, commentCountDisplay.value - conversationTeaseLimit),
+)
+const conversationTeaseAuthors = computed(() => uniqueReplyAuthorsFromPosts(comments.value))
 
 const conversationGateTitle = computed(() =>
   isAuthed.value ? 'Verify to join the conversation' : 'Join the conversation',
