@@ -104,6 +104,7 @@
                 <AppMessagesBadge v-if="item.key === 'messages'" />
                 <AppCrewInvitesBadge v-if="item.key === 'crew'" />
                 <AppGroupsBadge v-if="item.key === 'groups'" />
+                <AppSpacesNotifyBadge v-if="item.key === 'spaces'" />
               </span>
               <span
                 v-if="!compact"
@@ -226,6 +227,7 @@
                     <AppMessagesBadge v-if="mi.key === 'messages'" />
                     <AppCrewInvitesBadge v-if="mi.key === 'crew'" />
                     <AppGroupsBadge v-if="mi.key === 'groups'" />
+                    <AppSpacesNotifyBadge v-if="mi.key === 'spaces'" />
                   </span>
                   <span>{{ mi.label }}</span>
                   <ClientOnly>

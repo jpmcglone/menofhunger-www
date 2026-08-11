@@ -316,6 +316,7 @@ export type Space = {
   listenerCount: number
   viewerSubscribed: boolean
   subscriberCount: number
+  viewerFollowsOwner: boolean
 }
 
 export type SpaceMember = LobbyMember

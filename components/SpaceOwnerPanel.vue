@@ -91,8 +91,11 @@
     <div class="space-y-2 border-t moh-border-subtle pt-3">
       <div class="flex items-center justify-between gap-2">
         <span class="text-xs font-semibold uppercase tracking-wider moh-meta">Schedule</span>
-        <span v-if="space.subscriberCount > 0" class="text-[11px] moh-meta tabular-nums">
-          {{ space.subscriberCount }} notified
+        <span v-if="space.scheduledAt" class="text-[11px] moh-meta tabular-nums">
+          <template v-if="space.subscriberCount > 0">
+            15-min reminder · {{ space.subscriberCount }} other{{ space.subscriberCount === 1 ? '' : 's' }}
+          </template>
+          <template v-else>15-min reminder for you</template>
         </span>
       </div>
       <p v-if="upcomingLabel" class="text-sm moh-text">

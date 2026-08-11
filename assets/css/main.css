@@ -969,6 +969,31 @@ input[type="reset"] {
   }
 }
 
+/* Spaces lobby list FLIP move when notify/sort tiers change */
+.moh-spaces-row-enter-active,
+.moh-spaces-row-leave-active {
+  transition: opacity 180ms ease, transform 180ms ease;
+}
+.moh-spaces-row-enter-from,
+.moh-spaces-row-leave-to {
+  opacity: 0;
+  transform: translateY(6px);
+}
+.moh-spaces-row-leave-active {
+  position: absolute;
+  width: 100%;
+}
+.moh-spaces-row-move {
+  transition: transform 280ms ease;
+}
+@media (prefers-reduced-motion: reduce) {
+  .moh-spaces-row-enter-active,
+  .moh-spaces-row-leave-active,
+  .moh-spaces-row-move {
+    transition: none !important;
+  }
+}
+
 /* Tooltips are rendered to <body> but need to clear full-screen overlays (z-9999) */
 .p-tooltip {
   z-index: 99999 !important;

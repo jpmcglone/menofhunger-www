@@ -1,4 +1,5 @@
 import type { Space } from '~/types/api'
+import { sortLobbySpaces } from '~/utils/spacesLobbySort'
 
 const SPACES_LIST_KEY = 'spaces-list'
 const SPACES_LOADING_KEY = 'spaces-loading'
@@ -6,16 +7,21 @@ const SPACES_LOADED_ONCE_KEY = 'spaces-loaded-once'
 
 export function useSpaces() {
   const { apiFetchData } = useApiClient()
+  const { user } = useAuth()
   const spaces = useState<Space[]>(SPACES_LIST_KEY, () => [])
   const loading = useState<boolean>(SPACES_LOADING_KEY, () => false)
   const loadedOnce = useState<boolean>(SPACES_LOADED_ONCE_KEY, () => false)
+
+  function applySorted(list: Space[]) {
+    spaces.value = sortLobbySpaces(list, user.value?.id ?? null)
+  }
 
   async function loadSpaces() {
     if (loading.value) return
     loading.value = true
     try {
       const remote = await apiFetchData<Space[]>('/spaces', { method: 'GET' })
-      spaces.value = Array.isArray(remote) ? remote : []
+      applySorted(Array.isArray(remote) ? remote : [])
     } catch {
       spaces.value = spaces.value ?? []
     } finally {
@@ -25,7 +31,7 @@ export function useSpaces() {
   }
 
   function hydrateSpaces(list: Space[] | null | undefined) {
-    spaces.value = Array.isArray(list) ? list : []
+    applySorted(Array.isArray(list) ? list : [])
     loadedOnce.value = true
     loading.value = false
   }
@@ -45,12 +51,11 @@ export function useSpaces() {
   }
 
   function upsertSpace(space: Space) {
-    const idx = spaces.value.findIndex((s) => s.id === space.id)
-    if (idx >= 0) {
-      spaces.value[idx] = space
-    } else {
-      spaces.value.push(space)
-    }
+    const next = [...spaces.value]
+    const idx = next.findIndex((s) => s.id === space.id)
+    if (idx >= 0) next[idx] = space
+    else next.push(space)
+    applySorted(next)
   }
 
   async function fetchSpaceById(id: string): Promise<Space | null> {

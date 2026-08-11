@@ -118,7 +118,7 @@ function loadYouTubeAPIOnce(): Promise<void> {
 
 <script setup lang="ts">
 import type { Space, WatchPartyState } from '~/types/api'
-import { extractVideoId, driftAdjustedTime } from '~/utils/watchPartyMath'
+import { extractVideoId, driftAdjustedTime, expectedPlaybackTime, isSeekJump } from '~/utils/watchPartyMath'
 
 const props = defineProps<{
   space: Space
@@ -154,6 +154,22 @@ let ignoreNextStateChange = false
 let ownerSyncTimer: ReturnType<typeof setInterval> | null = null
 /** Snapshot of last owner emit — atMs is the wall-clock time of the last emit (NOT updated on non-emit ticks). */
 let lastOwnerState: { isPlaying: boolean; currentTime: number; playbackRate: number; atMs: number } | null = null
+/**
+ * Last sampled player position (updated every owner-timer tick). Used to detect
+ * scrub jumps while playing — previously we only detected seeks while paused, and
+ * non-emit ticks overwrote currentTime so Live DVR seeks were silently swallowed.
+ */
+let lastOwnerSample: { currentTime: number; isPlaying: boolean; playbackRate: number; atMs: number } | null = null
+/**
+ * Last remote timeline we applied as a viewer. atMs is the remote sample's
+ * updatedAt so we can tell owner scrubs from natural playback between emits.
+ */
+let lastAppliedRemote: {
+  currentTime: number
+  isPlaying: boolean
+  playbackRate: number
+  atMs: number
+} | null = null
 /** True after the first successful applyState so periodic checkpoints use a relaxed seek threshold. */
 let hasSyncedInitially = false
 /** The video ID currently loaded in the iframe — used to detect URL changes without recreating the player. */
@@ -390,11 +406,18 @@ function emitCurrentState() {
     playbackRate: ytPlayer.getPlaybackRate?.() ?? 1,
   }
   sendControl(props.space.id, nextState)
+  const now = Date.now()
   lastOwnerState = {
     isPlaying: nextState.isPlaying,
     currentTime: nextState.currentTime,
     playbackRate: nextState.playbackRate,
-    atMs: Date.now(),
+    atMs: now,
+  }
+  lastOwnerSample = {
+    isPlaying: nextState.isPlaying,
+    currentTime: nextState.currentTime,
+    playbackRate: nextState.playbackRate,
+    atMs: now,
   }
 }
 
@@ -413,15 +436,16 @@ function startOwnerSyncTimer() {
     const playbackRate = Number(ytPlayer.getPlaybackRate?.() ?? 1)
     const now = Date.now()
 
-    if (!lastOwnerState) {
+    if (!lastOwnerState || !lastOwnerSample) {
       emitCurrentState()
       return
     }
 
-    const pausedSeekDetected =
-      !isPlaying &&
-      !lastOwnerState.isPlaying &&
-      Math.abs(currentTime - lastOwnerState.currentTime) > 1.25
+    // Detect scrub while paused OR while playing (Live DVR / VOD). Compare against
+    // the expected timeline from the last sample — not last emit — so a jump isn't
+    // silently absorbed into lastOwnerState.currentTime on a non-emit tick.
+    const expected = expectedPlaybackTime(lastOwnerSample, now)
+    const seekDetected = isSeekJump(expected, currentTime)
 
     const playbackChanged =
       isPlaying !== lastOwnerState.isPlaying ||
@@ -432,14 +456,13 @@ function startOwnerSyncTimer() {
     // non-emit ticks) so this reliably fires every OWNER_SYNC_INTERVAL_MS.
     const periodicCheckpoint = isPlaying && now - lastOwnerState.atMs > OWNER_SYNC_INTERVAL_MS
 
-    if (pausedSeekDetected || playbackChanged || periodicCheckpoint) {
+    if (seekDetected || playbackChanged || periodicCheckpoint) {
       emitCurrentState()
       return
     }
 
-    // Keep the change-detection snapshot current, but preserve atMs so the
-    // periodic-checkpoint counter isn't reset on every non-emit tick.
-    lastOwnerState = { isPlaying, currentTime, playbackRate, atMs: lastOwnerState.atMs }
+    // No emit — advance the sample clock so the next tick's expected time is correct.
+    lastOwnerSample = { isPlaying, currentTime, playbackRate, atMs: now }
   }, 500)
 }
 
@@ -472,13 +495,26 @@ function applyState(state: WatchPartyState) {
   const currentTime = ytPlayer.getCurrentTime?.() ?? 0
   const drift = Math.abs(currentTime - adjusted)
 
+  // Owner scrubbed the timeline (paused or playing) — always follow, even if the
+  // jump is smaller than the normal playing drift tolerance. Compare against the
+  // expected owner timeline between samples so periodic play checkpoints aren't
+  // treated as seeks.
+  const remoteUpdatedAt = Number(state.updatedAt)
+  const remoteSeek =
+    lastAppliedRemote != null &&
+    Number.isFinite(remoteUpdatedAt) &&
+    remoteUpdatedAt > 0 &&
+    isSeekJump(expectedPlaybackTime(lastAppliedRemote, remoteUpdatedAt), state.currentTime)
+
   // Seek rules:
   //  • First sync ever — always seek (avoids flashing from 0:00).
   //  • Pause event   — always seek to the EXACT pause timestamp (user requirement).
+  //  • Owner scrub   — always seek (Live DVR / VOD seek-while-playing).
   //  • Playing       — only seek when drift exceeds tolerance to avoid micro-stutters.
   const shouldSeek =
     !hasSyncedInitially ||
     !state.isPlaying ||
+    remoteSeek ||
     drift > VIEWER_DRIFT_TOLERANCE_S
 
   if (shouldSeek) {
@@ -493,6 +529,12 @@ function applyState(state: WatchPartyState) {
     ytPlayer.pauseVideo?.()
   }
 
+  lastAppliedRemote = {
+    currentTime: state.currentTime,
+    isPlaying: state.isPlaying,
+    playbackRate: state.playbackRate || 1,
+    atMs: Number.isFinite(remoteUpdatedAt) && remoteUpdatedAt > 0 ? remoteUpdatedAt : Date.now(),
+  }
   hasSyncedInitially = true
 }
 
@@ -717,6 +759,8 @@ onBeforeUnmount(() => {
   ytPlayer = null
   playerReady.value = false
   lastOwnerState = null
+  lastOwnerSample = null
+  lastAppliedRemote = null
   hasSyncedInitially = false
   currentVideoId = null
   pendingApply = null

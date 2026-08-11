@@ -155,6 +155,7 @@
                 </div>
                 <AppCrewInvitesBadge v-if="mi.key === 'crew'" />
                 <AppGroupsBadge v-if="mi.key === 'groups'" />
+                <AppSpacesNotifyBadge v-if="mi.key === 'spaces'" />
               </div>
               <div class="min-w-0">
                 <div class="text-sm font-semibold truncate">

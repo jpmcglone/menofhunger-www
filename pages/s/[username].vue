@@ -30,8 +30,13 @@
             </p>
           </div>
           <div class="shrink-0 mt-1 flex items-center gap-2">
+            <span
+              v-if="showHostReminders"
+              class="inline-flex items-center justify-center rounded-full px-3 py-1.5 text-xs font-semibold bg-[var(--p-primary-color)]/15 text-[var(--p-primary-color)]"
+              title="You'll get a reminder about 15 minutes before"
+            >15-min reminder</span>
             <button
-              v-if="showSpaceNotifyMe"
+              v-else-if="showSpaceNotifyMe"
               type="button"
               class="moh-tap moh-focus inline-flex items-center justify-center rounded-full px-3 py-1.5 text-xs font-semibold transition-colors"
               :class="space.viewerSubscribed
@@ -281,6 +286,8 @@ const spaceStatusKind = computed<'live' | 'scheduled' | null>(() => {
   if (spaceScheduleLabel.value) return 'scheduled'
   return null
 })
+
+const showHostReminders = computed(() => isOwner.value && spaceStatusKind.value === 'scheduled')
 
 const showSpaceNotifyMe = computed(() => {
   if (!user.value?.id || !space.value) return false

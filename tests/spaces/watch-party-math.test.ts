@@ -1,5 +1,10 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
-import { extractVideoId, driftAdjustedTime } from '~/utils/watchPartyMath'
+import {
+  extractVideoId,
+  driftAdjustedTime,
+  expectedPlaybackTime,
+  isSeekJump,
+} from '~/utils/watchPartyMath'
 import type { WatchPartyState } from '~/types/api'
 
 function makeState(override: Partial<WatchPartyState> = {}): WatchPartyState {
@@ -52,6 +57,40 @@ describe('extractVideoId', () => {
   it('returns null for a youtu.be URL with no path', () => {
     expect(extractVideoId('https://youtu.be/')).toBeNull()
   })
+
+  it('extracts id from /live/ URLs', () => {
+    expect(extractVideoId('https://www.youtube.com/live/dQw4w9WgXcQ')).toBe('dQw4w9WgXcQ')
+  })
+})
+
+// ─── seek jump detection ─────────────────────────────────────────────────────
+
+describe('expectedPlaybackTime / isSeekJump', () => {
+  it('advances time while playing', () => {
+    const expected = expectedPlaybackTime(
+      { currentTime: 10, isPlaying: true, playbackRate: 1, atMs: 1000 },
+      3500,
+    )
+    expect(expected).toBeCloseTo(12.5)
+  })
+
+  it('does not advance while paused', () => {
+    const expected = expectedPlaybackTime(
+      { currentTime: 10, isPlaying: false, playbackRate: 1, atMs: 1000 },
+      3500,
+    )
+    expect(expected).toBe(10)
+  })
+
+  it('detects a scrub jump while playing', () => {
+    const expected = expectedPlaybackTime(
+      { currentTime: 100, isPlaying: true, playbackRate: 1, atMs: 0 },
+      500,
+    )
+    // Natural advance ~0.5s; scrub back to 40 is a jump.
+    expect(isSeekJump(expected, 40)).toBe(true)
+    expect(isSeekJump(expected, expected + 0.2)).toBe(false)
+  })
 })
 
 // ─── driftAdjustedTime ───────────────────────────────────────────────────────
@@ -80,13 +119,9 @@ describe('driftAdjustedTime', () => {
   })
 
   it('scales elapsed time by playbackRate when updatedAt is set', () => {
-    vi.setSystemTime(1004) // 4 s after updatedAt=1000
-    const state = makeState({ isPlaying: true, currentTime: 0, updatedAt: 1000, playbackRate: 2 })
-    // elapsed = (1004 - 1000) / 1000 = 0.004 s × 2 = 0.008 — use a clear example:
-    // Let's use times that give clean numbers.
     vi.setSystemTime(5000) // now = 5000, updatedAt = 1000 → elapsed = 4 s
-    const state2 = makeState({ isPlaying: true, currentTime: 0, updatedAt: 1000, playbackRate: 2 })
-    expect(driftAdjustedTime(state2)).toBeCloseTo(8) // 0 + 4×2
+    const state = makeState({ isPlaying: true, currentTime: 0, updatedAt: 1000, playbackRate: 2 })
+    expect(driftAdjustedTime(state)).toBeCloseTo(8) // 0 + 4×2
   })
 
   it('returns currentTime when updatedAt is 0 (falsy)', () => {

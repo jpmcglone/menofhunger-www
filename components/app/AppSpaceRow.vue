@@ -105,8 +105,14 @@
 
       <!-- Right: notify + share + play (radio only) -->
       <div class="shrink-0 flex items-center" :class="compact ? 'gap-0.5' : 'gap-0.5'">
+        <span
+          v-if="showHostReminders"
+          class="inline-flex items-center justify-center rounded-full font-semibold bg-[var(--p-primary-color)]/15 text-[var(--p-primary-color)]"
+          :class="compact ? 'px-1.5 py-0.5 text-[10px]' : 'px-2.5 py-1 text-[11px]'"
+          title="You'll get a reminder about 15 minutes before"
+        >{{ compact ? 'On' : '15-min reminder' }}</span>
         <button
-          v-if="showNotifyMe"
+          v-else-if="showNotifyMe"
           type="button"
           class="moh-tap moh-focus inline-flex items-center justify-center rounded-full font-semibold transition-colors"
           :class="[
@@ -211,10 +217,17 @@ const statusKind = computed<'live' | 'scheduled' | null>(() => {
   return null
 })
 
+const isOwnSpace = computed(() => Boolean(
+  user.value?.id && props.space.owner?.id && props.space.owner.id === user.value.id,
+))
+
+/** Host always gets reminders — locked chip, not a toggle. */
+const showHostReminders = computed(() => statusKind.value === 'scheduled' && isOwnSpace.value)
+
 const showNotifyMe = computed(() => {
   if (!user.value?.id) return false
   if (statusKind.value !== 'scheduled') return false
-  if (props.space.owner?.id && props.space.owner.id === user.value.id) return false
+  if (isOwnSpace.value) return false
   return true
 })
 
