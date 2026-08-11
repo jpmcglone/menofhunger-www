@@ -240,12 +240,16 @@ export default defineNuxtConfig({
   },
 
   fonts: {
+    // Prefer bunny over google: google serves opaque hashed gstatic URLs that
+    // periodically 404 during Render builds (Literata v40 latin did), while
+    // bunny keeps stable paths like literata-latin-400-normal.woff2.
+    priority: ['bunny', 'google'],
     // Social-app friendly: clean, modern sans with strong readability.
     // Loaded with swap to avoid FOIT.
     families: [
       {
         name: 'Inter',
-        provider: 'google',
+        provider: 'bunny',
         // 400 for body, 600 for semibold UI, 700 for bold headings. Weight 500
         // removed — it saves a font variant download and the visual diff is negligible.
         weights: [400, 600, 700],
@@ -257,7 +261,7 @@ export default defineNuxtConfig({
         // Reduced to 400/700 (dropped 600) — saves one variant download; feed
         // headings only need regular + bold.
         name: 'Literata',
-        provider: 'google',
+        provider: 'bunny',
         weights: [400, 700],
         styles: ['normal'],
         subsets: ['latin'],
