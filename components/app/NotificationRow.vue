@@ -221,8 +221,7 @@
               >{{ boostSubjectNoun(notification) }}</span>
             </template>
             <template v-else-if="notification.kind === 'followed_post'">
-              <span class="ml-1">shared a</span>
-              <span class="ml-1 font-semibold" :class="subjectPostVisibilityTextClass(notification)">post</span>
+              <span class="ml-1">posted</span>
             </template>
             <template v-else-if="notification.kind === 'followed_article'">
               <span class="ml-1">published a new</span>

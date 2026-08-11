@@ -519,7 +519,7 @@ export function useNotifications() {
       case 'follow':
         return 'followed you'
       case 'followed_post':
-        return 'shared a post'
+        return 'posted'
       case 'checkin_post':
         return 'checked in'
       case 'followed_article':

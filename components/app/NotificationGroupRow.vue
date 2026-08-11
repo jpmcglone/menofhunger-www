@@ -440,7 +440,7 @@ function titleSuffix(g: NotificationGroup): string {
     case 'follow':
       return 'followed you'
     case 'followed_post':
-      return g.count > 1 ? `shared ${g.count} posts` : 'shared a post'
+      return g.count > 1 ? `posted ${g.count} times` : 'posted'
     case 'nudge':
       // Groups only form for count > 1; keep the plain suffix as a safe fallback.
       return g.count > 1 ? `nudged you ×${g.count}` : 'nudged you'

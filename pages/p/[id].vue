@@ -81,7 +81,7 @@
           @join="joinGroupFromPreview"
         />
       </div>
-      <div ref="highlightedPostRef" class="scroll-mt-0">
+      <div ref="highlightedPostRef">
         <AppFeedPostRow
           v-if="post.parent"
           ref="feedPostRowRef"
@@ -334,6 +334,11 @@ import type { LinkMetadata } from '~/utils/link-metadata'
 import { userColorTier, userTierTextClass } from '~/utils/user-tier'
 import type { PostsCallback } from '~/composables/usePresence'
 import { useMiddleScroller } from '~/composables/useMiddleScroller'
+import {
+  computeAlignDelta,
+  findInnermostPostEl,
+  readTitleBarOffset,
+} from '~/utils/align-highlighted-post-scroll'
 
 definePageMeta({
   layout: 'app',
@@ -1048,39 +1053,111 @@ function reloadPage() {
   if (import.meta.client) globalThis.location?.reload()
 }
 
-// Scroll the highlighted reply into view so its top aligns with the scroller top.
-// Only needed when there are parent posts rendered above the selected post.
+// Scroll the highlighted reply so its top sits just under the sticky title bar.
+// Only needed when parent posts are rendered above the selected post.
 type FeedPostRowExposed = { getHighlightedEl: () => HTMLElement | null }
 const feedPostRowRef = ref<FeedPostRowExposed | null>(null)
 const middleScrollerEl = useMiddleScroller()
 
+function findHighlightedRowEl(): HTMLElement | null {
+  const fromExpose = feedPostRowRef.value?.getHighlightedEl?.() ?? null
+  if (fromExpose) return fromExpose
+  const pid = post.value?.id
+  const root = highlightedPostRef.value
+  if (!pid || !root) return null
+  return findInnermostPostEl(root, pid)
+}
+
+function alignHighlightedPost(): void {
+  if (!post.value?.parent) return
+  const scroller = middleScrollerEl.value
+  const el = findHighlightedRowEl()
+  if (!scroller || !el) return
+  const delta = computeAlignDelta({
+    elTop: el.getBoundingClientRect().top,
+    scrollerTop: scroller.getBoundingClientRect().top,
+    titleBarOffset: readTitleBarOffset(scroller),
+  })
+  if (Math.abs(delta) <= 1) return
+  scroller.scrollTop += delta
+}
+
+let alignHighlightCleanup: (() => void) | null = null
+
+function scheduleHighlightAlign() {
+  alignHighlightCleanup?.()
+  alignHighlightCleanup = null
+  if (!import.meta.client || !post.value?.parent) return
+
+  let cancelled = false
+  let frames = 0
+  const maxFrames = 45 // ~0.75s — covers scroll-restore reset + late layout (link cards, images)
+
+  const tick = () => {
+    if (cancelled) return
+    alignHighlightedPost()
+    frames += 1
+    if (frames < maxFrames) requestAnimationFrame(tick)
+  }
+
+  // middle-scroll-restore resets scrollTop at page:finish + 2 rAFs; start after that.
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      requestAnimationFrame(tick)
+    })
+  })
+
+  const scroller = middleScrollerEl.value
+  const cancelForUser = () => {
+    cancelled = true
+  }
+  scroller?.addEventListener('wheel', cancelForUser, { passive: true })
+  scroller?.addEventListener('touchmove', cancelForUser, { passive: true })
+
+  const root = highlightedPostRef.value
+  let ro: ResizeObserver | null = null
+  if (root && typeof ResizeObserver !== 'undefined') {
+    ro = new ResizeObserver(() => {
+      if (!cancelled) alignHighlightedPost()
+    })
+    ro.observe(root)
+  }
+
+  const stopTimer = window.setTimeout(() => {
+    cancelled = true
+    ro?.disconnect()
+    scroller?.removeEventListener('wheel', cancelForUser)
+    scroller?.removeEventListener('touchmove', cancelForUser)
+  }, 2000)
+
+  alignHighlightCleanup = () => {
+    cancelled = true
+    window.clearTimeout(stopTimer)
+    ro?.disconnect()
+    scroller?.removeEventListener('wheel', cancelForUser)
+    scroller?.removeEventListener('touchmove', cancelForUser)
+  }
+}
+
 if (import.meta.client) {
   const nuxtApp = useNuxtApp()
-  onMounted(() => {
-    // The scroll restoration plugin resets scrollTop to 0 at page:finish + 2 rAFs.
-    // Wait for page:finish + 3 rAFs so we run after that reset, then scroll down
-    // to the highlighted post if it isn't already at the top.
-    nuxtApp.hooks.hookOnce('page:finish', () => {
-      requestAnimationFrame(() =>
-        requestAnimationFrame(() =>
-          requestAnimationFrame(() => {
-            const el = feedPostRowRef.value?.getHighlightedEl()
-            const scroller = middleScrollerEl.value
-            if (!el || !scroller) return
-            const elRect = el.getBoundingClientRect()
-            const scrollerRect = scroller.getBoundingClientRect()
-            // Offset by the sticky title bar height so the post top aligns with
-            // the bottom of the title bar, not the top of the scroller.
-            const titleBarHeight = parseFloat(
-              getComputedStyle(scroller).getPropertyValue('--moh-title-bar-height'),
-            ) || 0
-            const delta = elRect.top - scrollerRect.top - titleBarHeight
-            if (delta <= 1) return
-            scroller.scrollTop = scroller.scrollTop + delta
-          }),
-        ),
-      )
-    })
+  // Register in setup (not onMounted): page:finish can fire before onMounted,
+  // which made the old hookOnce path silently no-op.
+  const removePageFinishHook = nuxtApp.hook('page:finish', () => {
+    void nextTick(() => scheduleHighlightAlign())
+  })
+
+  watch(
+    () => [postId.value, post.value?.parent?.id ?? null] as const,
+    () => {
+      void nextTick(() => scheduleHighlightAlign())
+    },
+  )
+
+  onBeforeUnmount(() => {
+    removePageFinishHook()
+    alignHighlightCleanup?.()
+    alignHighlightCleanup = null
   })
 }
 </script>
