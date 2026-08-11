@@ -42,6 +42,7 @@
           >
             <div class="relative z-10">
               <AppPostComposer
+                :key="composerCheckinPrompt ? 'modal-checkin' : 'modal-regular'"
                 auto-focus
                 :show-divider="false"
                 :initial-text="composerInitialText ?? undefined"
@@ -57,8 +58,8 @@
                 :group-composer="composerIsGroupMode"
                 :group-name="composerIsGroupMode ? (composerGroupName ?? undefined) : undefined"
                 :community-group-id="composerIsGroupMode ? (composerGroupId ?? null) : null"
-                :disable-poll="composerIsGroupMode"
-                persist-key="post-modal"
+                :disable-poll="composerIsGroupMode || Boolean(composerCheckinPrompt)"
+                :persist-key="composerCheckinPrompt ? 'post-modal-checkin' : 'post-modal'"
                 :register-unsaved-guard="false"
                 @posted="onComposerPosted"
                 @pending="onComposerPending"

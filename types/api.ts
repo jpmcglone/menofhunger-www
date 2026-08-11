@@ -308,11 +308,14 @@ export type Space = {
   title: string
   description: string | null
   isActive: boolean
+  scheduledAt: string | null
   mode: 'NONE' | 'WATCH_PARTY' | 'RADIO'
   watchPartyUrl: string | null
   radioStreamUrl: string | null
   owner: SpaceOwner
   listenerCount: number
+  viewerSubscribed: boolean
+  subscriberCount: number
 }
 
 export type SpaceMember = LobbyMember
@@ -1369,6 +1372,10 @@ export type Notification = {
   subjectCommunityGroupInviteStatus?: 'pending' | 'accepted' | 'declined' | 'cancelled' | 'expired' | null
   /** Conversation this notification is about (used for `message` kind). */
   subjectConversationId?: string | null
+  /** Space this notification is about (schedule reminders / live / cancelled). */
+  subjectSpaceId?: string | null
+  /** Owner username for deep-linking to `/s/:username`. */
+  subjectSpaceOwnerUsername?: string | null
   title: string | null
   body: string | null
   subjectPostPreview?: SubjectPostPreview | null

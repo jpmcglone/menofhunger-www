@@ -59,14 +59,23 @@
       </div>
     </ClientOnly>
 
-    <!-- Composer sits under check-in. Wrapper ref detects when it's in view (hides mobile FAB). -->
+    <!-- Composer sits under check-in. When today's check-in is still open, this IS the
+         check-in composer (prompt card + POST /checkins) — otherwise users read the hero
+         prompt and type into the box below as a regular post, which advances the streak
+         but never gets kind=checkin. FAB still opens a regular post. -->
     <div ref="homeComposerEl" class="min-h-0">
       <LazyAppPostComposer
         v-if="isAuthed && !showOnlyMeHomeComposerCard"
+        :key="homeComposerIsCheckin ? 'home-checkin' : 'home-regular'"
         ref="homeComposerRef"
-        :allowed-visibilities="['public', 'verifiedOnly', 'premiumOnly']"
-        persist-key="home"
-        enable-avatar-status-editor
+        :allowed-visibilities="homeComposerAllowedVisibilities"
+        :checkin-prompt="homeComposerCheckinPrompt || undefined"
+        :create-post="homeComposerIsCheckin ? createCheckinViaComposer : undefined"
+        :disable-media="homeComposerIsCheckin"
+        :disable-poll="homeComposerIsCheckin"
+        :placeholder="homeComposerPlaceholder || undefined"
+        :persist-key="homeComposerIsCheckin ? 'home-checkin' : 'home'"
+        :enable-avatar-status-editor="!homeComposerIsCheckin"
         :register-unsaved-guard="false"
         @pending="onComposerPending"
       />
@@ -713,6 +722,29 @@ async function createCheckinViaComposer(
 
 /** Eligibility gate for the hero's primary action — verified users only (or premium). */
 const canAnswerCheckin = computed(() => effectiveCheckinAllowedVisibilities.value.length > 0)
+
+/**
+ * While today's check-in is unanswered, the home inline composer posts as a check-in.
+ * The hero prompt sits directly above this box — without this, typing there creates a
+ * regular post (streak advances, no check-in badge). FAB still opens a normal post.
+ */
+const homeComposerIsCheckin = computed(() =>
+  Boolean(heroResolved.value && !hasCheckedInToday.value && canAnswerCheckin.value),
+)
+
+const homeComposerAllowedVisibilities = computed<PostVisibility[]>(() =>
+  homeComposerIsCheckin.value
+    ? effectiveCheckinAllowedVisibilities.value
+    : ['public', 'verifiedOnly', 'premiumOnly'],
+)
+
+const homeComposerCheckinPrompt = computed(() =>
+  homeComposerIsCheckin.value ? ((checkinState.value?.prompt ?? '').trim() || null) : null,
+)
+
+const homeComposerPlaceholder = computed(() =>
+  homeComposerIsCheckin.value ? "Answer today's check-in…" : null,
+)
 
 /** Hero prompt — falls back to a generic phrasing during SSR / initial load. */
 const checkinHeroPrompt = computed(() => displayCheckinPromptText.value)

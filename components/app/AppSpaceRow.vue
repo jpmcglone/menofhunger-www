@@ -86,6 +86,18 @@
             >
               Active
             </span>
+            <span
+              v-else-if="space.isActive"
+              class="inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider bg-green-500/15 text-green-700 dark:text-green-400"
+            >
+              Live
+            </span>
+            <span
+              v-else-if="scheduleLabel"
+              class="inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider bg-amber-500/15 text-amber-800 dark:text-amber-300"
+            >
+              Scheduled
+            </span>
             <Icon
               v-if="space.mode === 'WATCH_PARTY'"
               name="tabler:device-tv"
@@ -103,12 +115,27 @@
           </div>
           <div class="mt-0.5 text-[11px] moh-meta leading-none">
             <span v-if="space.owner?.username">@{{ space.owner.username }}</span>
+            <span v-if="space.owner?.username && scheduleLabel && !space.isActive"> · </span>
+            <span v-if="scheduleLabel && !space.isActive">{{ scheduleLabel }}</span>
           </div>
         </template>
       </button>
 
-      <!-- Right: share + play (radio only) -->
+      <!-- Right: notify + share + play (radio only) -->
       <div class="shrink-0 flex items-center" :class="compact ? 'gap-0' : 'gap-0.5'">
+        <button
+          v-if="showNotifyMe"
+          type="button"
+          class="moh-tap moh-focus inline-flex items-center justify-center rounded-full px-2.5 py-1 text-[11px] font-semibold transition-colors"
+          :class="space.viewerSubscribed
+            ? 'bg-[var(--p-primary-color)]/15 text-[var(--p-primary-color)]'
+            : 'moh-surface-hover moh-meta'"
+          :disabled="notifyBusy"
+          :aria-label="space.viewerSubscribed ? 'Stop notifications' : 'Notify me'"
+          @click.stop="onToggleNotify"
+        >
+          {{ space.viewerSubscribed ? 'Notifying' : 'Notify me' }}
+        </button>
         <AppPostRowShareMenu
           v-if="!compact"
           :can-share="true"
@@ -149,13 +176,43 @@ const props = defineProps<{
   compact?: boolean
 }>()
 
+const emit = defineEmits<{
+  spaceUpdated: [space: Space]
+}>()
+
 const { selectedSpaceId, select } = useSpaceLobby()
 const { isPlaying, playSpace, pause } = useSpaceAudio()
+const { user } = useAuth()
+const { subscribeToSchedule, unsubscribeFromSchedule } = useSpaceOwner()
+const { upsertSpace } = useSpaces()
 
 const toast = useAppToast()
 const { copyText: copyToClipboard } = useCopyToClipboard()
+const notifyBusy = ref(false)
 
 type MenuItemWithIcon = MenuItem & { iconName?: string }
+
+const scheduleLabel = computed(() => {
+  const iso = props.space.scheduledAt
+  if (!iso || props.space.isActive) return null
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime()) || d.getTime() <= Date.now()) return null
+  return new Intl.DateTimeFormat(undefined, {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  }).format(d)
+})
+
+const showNotifyMe = computed(() => {
+  if (props.compact) return false
+  if (!user.value?.id) return false
+  if (!scheduleLabel.value) return false
+  if (props.space.owner?.id && props.space.owner.id === user.value.id) return false
+  return true
+})
 
 const shareTooltip = tinyTooltip('Share')
 const shareItems = computed<MenuItemWithIcon[]>(() => [
@@ -177,6 +234,26 @@ const shareItems = computed<MenuItemWithIcon[]>(() => [
   },
 ])
 
+async function onToggleNotify() {
+  if (notifyBusy.value) return
+  notifyBusy.value = true
+  try {
+    const updated = props.space.viewerSubscribed
+      ? await unsubscribeFromSchedule(props.space.id)
+      : await subscribeToSchedule(props.space.id)
+    if (updated) {
+      upsertSpace(updated)
+      emit('spaceUpdated', updated)
+      toast.push({
+        title: updated.viewerSubscribed ? 'You will be notified' : 'Notifications off',
+        tone: 'public',
+        durationMs: 1400,
+      })
+    }
+  } finally {
+    notifyBusy.value = false
+  }
+}
 function onEnterSpace() {
   const isSameSpace = selectedSpaceId.value === props.space.id
   const wasPlaying = isPlaying.value

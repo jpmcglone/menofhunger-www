@@ -98,20 +98,39 @@ export function extractMohArticleId(url: string): string | null {
 }
 
 /**
- * Extracts the space ID from a MoH `/spaces/:id` or `/s/:id` URL.
- * The `/s/` short alias is treated identically to `/spaces/`.
+ * Extracts the space ID from a MoH `/spaces/:id` URL.
+ * Canonical share links use `/s/:username` — see `extractMohSpaceUsername`.
  */
 export function extractMohSpaceId(url: string): string | null {
   if (!isMohUrl(url)) return null
   try {
     const parts = new URL(url).pathname.split('/').filter(Boolean)
-    if (parts.length !== 2) return null
-    if (parts[0] !== 'spaces' && parts[0] !== 's') return null
+    if (parts.length !== 2 || parts[0] !== 'spaces') return null
     const id = (parts[1] ?? '').trim()
     return id ? decodeURIComponent(id) : null
   } catch {
     return null
   }
+}
+
+/**
+ * Extracts the owner username from a MoH `/s/:username` permalink.
+ */
+export function extractMohSpaceUsername(url: string): string | null {
+  if (!isMohUrl(url)) return null
+  try {
+    const parts = new URL(url).pathname.split('/').filter(Boolean)
+    if (parts.length !== 2 || parts[0] !== 's') return null
+    const username = (parts[1] ?? '').trim()
+    return username ? decodeURIComponent(username) : null
+  } catch {
+    return null
+  }
+}
+
+/** True when the URL is a MoH space permalink (`/spaces/:id` or `/s/:username`). */
+export function isMohSpaceLink(url: string): boolean {
+  return Boolean(extractMohSpaceId(url) || extractMohSpaceUsername(url))
 }
 
 /** Extracts the username from a MoH `/u/:username` URL. */

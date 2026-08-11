@@ -196,7 +196,7 @@
     </div>
 
     <!-- Space preview — rendered as a card using the exact same row as /spaces -->
-    <template v-if="embeddedSpaceId && rowInView">
+    <template v-if="hasEmbeddedSpace && rowInView">
       <!-- Skeleton while the space store is loading -->
       <div
         v-if="!embeddedSpace"
@@ -239,7 +239,7 @@
 </template>
 
 <script setup lang="ts">
-import { extractLinksFromText, getYouTubeEmbedUrl, getYouTubePosterUrls, parseYouTubeUrl, isRumbleShortsUrl, isRumbleUrl, safeUrlDisplay, safeUrlHostname, isMohUrl, mohUrlPath, extractMohPostId, extractMohArticleId, extractMohSpaceId, extractMohUsername, isXPostUrl, isSubstackPostUrl } from '~/utils/link-utils'
+import { extractLinksFromText, getYouTubeEmbedUrl, getYouTubePosterUrls, parseYouTubeUrl, isRumbleShortsUrl, isRumbleUrl, safeUrlDisplay, safeUrlHostname, isMohUrl, mohUrlPath, extractMohPostId, extractMohArticleId, extractMohSpaceId, extractMohSpaceUsername, isMohSpaceLink, extractMohUsername, isXPostUrl, isSubstackPostUrl } from '~/utils/link-utils'
 import type { LinkMetadata } from '~/utils/link-metadata'
 import { getLinkMetadata } from '~/utils/link-metadata'
 import type { RumbleEmbedInfo } from '~/utils/rumble-embed'
@@ -308,12 +308,14 @@ const embeddedSpaceLink = computed(() => {
   const xs = capturedLinks.value
   for (let i = xs.length - 1; i >= 0; i--) {
     const u = xs[i]
-    if (u && extractMohSpaceId(u)) return u
+    if (u && isMohSpaceLink(u)) return u
   }
   return null
 })
 
 const embeddedSpaceId = computed(() => (embeddedSpaceLink.value ? extractMohSpaceId(embeddedSpaceLink.value) : null))
+const embeddedSpaceUsername = computed(() => (embeddedSpaceLink.value ? extractMohSpaceUsername(embeddedSpaceLink.value) : null))
+const hasEmbeddedSpace = computed(() => Boolean(embeddedSpaceId.value || embeddedSpaceUsername.value))
 
 const embeddedUserLink = computed(() => {
   const xs = capturedLinks.value
@@ -363,21 +365,34 @@ watch(
   { immediate: true },
 )
 
-const { spaces, loadedOnce: spacesLoadedOnce, loadSpaces, getById: getSpaceById } = useSpaces()
+const {
+  getById: getSpaceById,
+  getByOwnerUsername: getSpaceByOwnerUsername,
+  fetchSpaceById,
+  fetchSpaceByUsername,
+} = useSpaces()
 
-const embeddedSpace = computed(() => (embeddedSpaceId.value ? getSpaceById(embeddedSpaceId.value) : null))
+const embeddedSpace = computed(() => {
+  if (embeddedSpaceId.value) return getSpaceById(embeddedSpaceId.value)
+  if (embeddedSpaceUsername.value) return getSpaceByOwnerUsername(embeddedSpaceUsername.value)
+  return null
+})
 
 watch(
-  [embeddedSpaceId, rowInView],
-  ([id, inView], _old, onCleanup) => {
+  [embeddedSpaceId, embeddedSpaceUsername, rowInView],
+  ([id, username, inView], _old, onCleanup) => {
     let timer: ReturnType<typeof setTimeout> | null = null
     onCleanup(() => {
       if (timer) clearTimeout(timer)
       timer = null
     })
-    if (!id || !inView || spacesLoadedOnce.value) return
+    if (!inView || (!id && !username) || embeddedSpace.value) return
     timer = setTimeout(() => {
-      void runLimited(() => loadSpaces())
+      if (id) {
+        void runLimited(() => fetchSpaceById(id))
+      } else if (username) {
+        void runLimited(() => fetchSpaceByUsername(username))
+      }
     }, PREVIEW_FETCH_DWELL_MS)
   },
   { immediate: true },
@@ -390,7 +405,7 @@ const previewLink = computed(() => {
     if (!u) continue
     if (extractMohPostId(u)) continue
     if (extractMohArticleId(u)) continue
-    if (extractMohSpaceId(u)) continue
+    if (isMohSpaceLink(u)) continue
     if (extractMohUsername(u)) continue
     return u
   }
@@ -615,7 +630,7 @@ const substackMeta = computed(() => {
 // completely empty and the post has exactly one scripture reference.
 const singleScriptureRef = computed(() => {
   if (showLinkPreview.value) return null
-  if (embeddedPostId.value || embeddedArticleId.value || embeddedSpaceId.value || embeddedUsername.value) return null
+  if (embeddedPostId.value || embeddedArticleId.value || hasEmbeddedSpace.value || embeddedUsername.value) return null
   if (hasMedia.value) return null
   const segments = splitTextByScriptureDisplay(body.value)
   const refs = segments.filter(s => s.scripture).map(s => s.scripture!.reference)
@@ -626,7 +641,7 @@ const showAny = computed(() =>
   Boolean(
     embeddedPostId.value ||
     (embeddedArticleId.value && !preloadedArticle.value && rowInView.value) ||
-    (embeddedSpaceId.value && rowInView.value) ||
+    (hasEmbeddedSpace.value && rowInView.value) ||
     (embeddedUsername.value && rowInView.value) ||
     (showLinkPreview.value && rowInView.value) ||
     (singleScriptureRef.value && rowInView.value),

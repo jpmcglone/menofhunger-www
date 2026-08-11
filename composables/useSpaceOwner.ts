@@ -71,6 +71,47 @@ export function useSpaceOwner() {
     }
   }
 
+  async function setSchedule(id: string, scheduledAt: string): Promise<Space | null> {
+    try {
+      return await apiFetchData<Space>(`/spaces/${encodeURIComponent(id)}/schedule`, {
+        method: 'POST',
+        body: { scheduledAt },
+      })
+    } catch {
+      return null
+    }
+  }
+
+  async function clearSchedule(id: string): Promise<Space | null> {
+    try {
+      return await apiFetchData<Space>(`/spaces/${encodeURIComponent(id)}/schedule`, {
+        method: 'DELETE',
+      })
+    } catch {
+      return null
+    }
+  }
+
+  async function subscribeToSchedule(id: string): Promise<Space | null> {
+    try {
+      return await apiFetchData<Space>(`/spaces/${encodeURIComponent(id)}/schedule/subscribe`, {
+        method: 'POST',
+      })
+    } catch {
+      return null
+    }
+  }
+
+  async function unsubscribeFromSchedule(id: string): Promise<Space | null> {
+    try {
+      return await apiFetchData<Space>(`/spaces/${encodeURIComponent(id)}/schedule/subscribe`, {
+        method: 'DELETE',
+      })
+    } catch {
+      return null
+    }
+  }
+
   return {
     createSpace,
     updateSpace,
@@ -79,5 +120,9 @@ export function useSpaceOwner() {
     setMode,
     deleteSpace,
     getMySpace,
+    setSchedule,
+    clearSchedule,
+    subscribeToSchedule,
+    unsubscribeFromSchedule,
   }
 }

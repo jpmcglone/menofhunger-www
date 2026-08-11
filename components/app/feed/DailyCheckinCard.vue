@@ -39,8 +39,8 @@
         <div class="flex-1 min-w-0">
           <div class="text-sm font-semibold moh-text leading-snug">{{ prompt }}</div>
           <div class="text-[11px] moh-text-muted mt-0.5 leading-snug">
-            <template v-if="streak > 0">Post today to keep your {{ streak }}-day streak alive.</template>
-            <template v-else>Any post today starts your streak.</template>
+            <template v-if="streak > 0">Answer to keep your {{ streak }}-day streak alive.</template>
+            <template v-else>Answer today's question to start your streak.</template>
           </div>
         </div>
 

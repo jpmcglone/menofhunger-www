@@ -38,6 +38,12 @@ export function useSpaces() {
     return byId.value.get(id) ?? null
   }
 
+  function getByOwnerUsername(usernameRaw: string | null | undefined): Space | null {
+    const username = String(usernameRaw ?? '').trim().toLowerCase()
+    if (!username) return null
+    return (spaces.value ?? []).find((s) => (s.owner?.username ?? '').toLowerCase() === username) ?? null
+  }
+
   function upsertSpace(space: Space) {
     const idx = spaces.value.findIndex((s) => s.id === space.id)
     if (idx >= 0) {
@@ -47,9 +53,21 @@ export function useSpaces() {
     }
   }
 
+  async function fetchSpaceById(id: string): Promise<Space | null> {
+    try {
+      const space = await apiFetchData<Space>(`/spaces/${encodeURIComponent(id)}`, { method: 'GET' })
+      if (space) upsertSpace(space)
+      return space
+    } catch {
+      return null
+    }
+  }
+
   async function fetchSpaceByUsername(username: string): Promise<Space | null> {
     try {
-      return await apiFetchData<Space>(`/spaces/by-username/${encodeURIComponent(username)}`, { method: 'GET' })
+      const space = await apiFetchData<Space>(`/spaces/by-username/${encodeURIComponent(username)}`, { method: 'GET' })
+      if (space) upsertSpace(space)
+      return space
     } catch {
       return null
     }
@@ -63,6 +81,8 @@ export function useSpaces() {
     hydrateSpaces,
     upsertSpace,
     getById,
+    getByOwnerUsername,
+    fetchSpaceById,
     fetchSpaceByUsername,
   }
 }

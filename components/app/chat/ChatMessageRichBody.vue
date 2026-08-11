@@ -120,7 +120,7 @@
     </div>
 
     <!-- Space preview — compact single-line variant for chat bubbles -->
-    <template v-if="everVisible && embeddedSpaceId">
+    <template v-if="everVisible && hasEmbeddedSpace">
       <!-- Skeleton while the space store is loading -->
       <div
         v-if="!embeddedSpace"
@@ -159,7 +159,7 @@ const _linkify = new LinkifyIt()
 
 <script setup lang="ts">
 import { useElementVisibility } from '@vueuse/core'
-import { extractLinksFromText, safeUrlDisplay, safeUrlHostname, isMohUrl, mohUrlPath, extractMohPostId, extractMohArticleId, extractMohSpaceId, extractMohUsername, isXPostUrl } from '~/utils/link-utils'
+import { extractLinksFromText, safeUrlDisplay, safeUrlHostname, isMohUrl, mohUrlPath, extractMohPostId, extractMohArticleId, extractMohSpaceId, extractMohSpaceUsername, isMohSpaceLink, extractMohUsername, isXPostUrl } from '~/utils/link-utils'
 import type { LinkMetadata } from '~/utils/link-metadata'
 import { getLinkMetadata } from '~/utils/link-metadata'
 import { stableListKey } from '~/utils/stable-list-key'
@@ -290,19 +290,34 @@ const embeddedSpaceLink = computed(() => {
   const xs = capturedLinks.value
   for (let i = xs.length - 1; i >= 0; i--) {
     const u = xs[i]
-    if (u && extractMohSpaceId(u)) return u
+    if (u && isMohSpaceLink(u)) return u
   }
   return null
 })
 const embeddedSpaceId = computed(() => (embeddedSpaceLink.value ? extractMohSpaceId(embeddedSpaceLink.value) : null))
+const embeddedSpaceUsername = computed(() => (embeddedSpaceLink.value ? extractMohSpaceUsername(embeddedSpaceLink.value) : null))
+const hasEmbeddedSpace = computed(() => Boolean(embeddedSpaceId.value || embeddedSpaceUsername.value))
 
-const { loadedOnce: spacesLoadedOnce, loadSpaces, getById: getSpaceById } = useSpaces()
-const embeddedSpace = computed(() => (embeddedSpaceId.value ? getSpaceById(embeddedSpaceId.value) : null))
+const {
+  getById: getSpaceById,
+  getByOwnerUsername: getSpaceByOwnerUsername,
+  fetchSpaceById,
+  fetchSpaceByUsername,
+} = useSpaces()
+const embeddedSpace = computed(() => {
+  if (embeddedSpaceId.value) return getSpaceById(embeddedSpaceId.value)
+  if (embeddedSpaceUsername.value) return getSpaceByOwnerUsername(embeddedSpaceUsername.value)
+  return null
+})
 
 watchEffect(() => {
   if (!everVisible.value) return
-  if (!embeddedSpaceId.value || spacesLoadedOnce.value) return
-  void loadSpaces()
+  if ((!embeddedSpaceId.value && !embeddedSpaceUsername.value) || embeddedSpace.value) return
+  if (embeddedSpaceId.value) {
+    void fetchSpaceById(embeddedSpaceId.value)
+  } else if (embeddedSpaceUsername.value) {
+    void fetchSpaceByUsername(embeddedSpaceUsername.value)
+  }
 })
 
 const embeddedUserLink = computed(() => {
@@ -325,7 +340,7 @@ const previewLink = computed(() => {
     if (!u) continue
     if (extractMohPostId(u)) continue
     if (extractMohArticleId(u)) continue
-    if (extractMohSpaceId(u)) continue
+    if (isMohSpaceLink(u)) continue
     if (extractMohUsername(u)) continue
     return u
   }
@@ -347,7 +362,7 @@ const displayBody = computed(() => {
 })
 
 const showLinkPreview = computed(() =>
-  Boolean(previewLink.value && !embeddedSpaceId.value && !embeddedPostId.value && !embeddedArticleId.value && !embeddedUsername.value),
+  Boolean(previewLink.value && !hasEmbeddedSpace.value && !embeddedPostId.value && !embeddedArticleId.value && !embeddedUsername.value),
 )
 const previewLinkHost = computed(() => (previewLink.value ? safeUrlHostname(previewLink.value) : null))
 const previewLinkDisplay = computed(() => (previewLink.value ? safeUrlDisplay(previewLink.value) : ''))

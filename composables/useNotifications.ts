@@ -586,6 +586,11 @@ export function useNotifications() {
         return n.title ?? n.body ?? "You're Premium"
       case 'premium_ended':
         return n.title ?? n.body ?? 'Your Premium ended'
+      case 'space_reminder_day':
+      case 'space_reminder_soon':
+      case 'space_live':
+      case 'space_schedule_cancelled':
+        return n.title ?? n.body ?? 'Space update'
       case 'marv_not_in_group':
         return n.title ?? '@marv is not in this group'
       case 'status_update':
@@ -663,6 +668,11 @@ export function useNotifications() {
         return 'tabler:crown'
       case 'premium_ended':
         return 'tabler:crown-off'
+      case 'space_reminder_day':
+      case 'space_reminder_soon':
+      case 'space_live':
+      case 'space_schedule_cancelled':
+        return 'tabler:broadcast'
       case 'marv_not_in_group':
         return 'tabler:sparkles'
       case 'status_update':
@@ -728,6 +738,14 @@ export function useNotifications() {
         return 'Status'
       case 'message':
         return 'Direct message'
+      case 'space_reminder_day':
+        return 'Space today'
+      case 'space_reminder_soon':
+        return 'Space soon'
+      case 'space_live':
+        return 'Space live'
+      case 'space_schedule_cancelled':
+        return 'Space cancelled'
       default:
         return ''
     }
@@ -787,6 +805,16 @@ export function useNotifications() {
     if (n.kind === 'account_verified') return '/verification'
     if (n.kind === 'premium_started' && me.value?.username) return `/u/${encodeURIComponent(me.value.username)}`
     if (n.kind === 'premium_ended') return '/tiers'
+    if (
+      n.kind === 'space_reminder_day' ||
+      n.kind === 'space_reminder_soon' ||
+      n.kind === 'space_live' ||
+      n.kind === 'space_schedule_cancelled'
+    ) {
+      const username = (n.subjectSpaceOwnerUsername ?? n.actor?.username ?? '').trim()
+      if (username) return `/s/${encodeURIComponent(username)}`
+      return '/spaces'
+    }
     if (n.kind === 'coin_transfer') return '/coins'
     if (n.kind === 'message' && n.subjectConversationId) {
       return `/messages/${encodeURIComponent(n.subjectConversationId)}`
