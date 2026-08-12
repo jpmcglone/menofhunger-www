@@ -104,6 +104,7 @@ let lobbyRefreshTimer: ReturnType<typeof setTimeout> | null = null
 const spacesCb = {
   onLobbyCounts: () => {
     // Debounce: live badges / listener counts change while this page is open.
+    // Notify-me / schedule patches arrive via spaces:updated → useSpaceLobby.patchSpace.
     if (lobbyRefreshTimer) clearTimeout(lobbyRefreshTimer)
     lobbyRefreshTimer = setTimeout(() => {
       lobbyRefreshTimer = null

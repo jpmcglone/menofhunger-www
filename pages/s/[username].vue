@@ -329,6 +329,13 @@ const spacesReactionsCb = {
       upsertSpace(updated)
     }
   },
+  onUpdated: (payload: import('~/types/api').WsSpacesUpdatedPayload) => {
+    if (!payload?.spaceId || payload.spaceId !== space.value?.id) return
+    if (!space.value || !payload.patch) return
+    const updated = { ...space.value, ...payload.patch }
+    space.value = updated
+    upsertSpace(updated)
+  },
 }
 
 const lobbyMembers = computed(() => members.value ?? [])

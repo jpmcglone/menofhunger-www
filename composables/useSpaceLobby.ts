@@ -10,7 +10,7 @@ const SPACES_CB_REFS_KEY = 'space-lobby-spaces-cb-refs'
 export function useSpaceLobby() {
   const { ensureLoaded, user } = useAuth()
   const presence = usePresence()
-  const { spaces, loadSpaces, getById } = useSpaces()
+  const { spaces, loadSpaces, getById, patchSpace } = useSpaces()
   const { apiFetchData } = useApiClient()
 
   const selectedSpaceId = useState<string | null>(SELECTED_SPACE_ID_KEY, () => null)
@@ -49,6 +49,11 @@ export function useSpaceLobby() {
       onLobbyCounts: (payload: SpaceLobbyCounts) => {
         const countsBySpaceId = payload?.countsBySpaceId ?? {}
         lobbyCounts.value = { countsBySpaceId }
+      },
+      onUpdated: (payload) => {
+        const spaceId = String(payload?.spaceId ?? '').trim()
+        if (!spaceId || !payload?.patch) return
+        patchSpace(spaceId, payload.patch as Partial<import('~/types/api').Space>)
       },
     }
     spacesCbRef.value = spacesCb

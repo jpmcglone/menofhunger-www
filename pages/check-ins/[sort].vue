@@ -168,12 +168,13 @@ const lastCheckinBody = ref<string | null>(null)
 
 async function createCheckinViaComposer(
   body: string,
-  visibility: PostVisibility,
+  _visibility: PostVisibility,
 ): Promise<{ id: string } | FeedPost | null> {
   const trimmed = body.trim()
   if (!trimmed) return null
-  const vis: CheckinAllowedVisibility = visibility === 'premiumOnly' ? 'premiumOnly' : 'verifiedOnly'
-  const res = await createCheckin({ body: trimmed, visibility: vis })
+  // Answer always posts verifiedOnly; modal locks that and leaves the session
+  // composer preference untouched.
+  const res = await createCheckin({ body: trimmed, visibility: 'verifiedOnly' })
   lastCheckinBody.value = trimmed
   // Prepend the new post to the feed so the user sees it immediately.
   posts.value = [res.post, ...posts.value.filter((p) => p.id !== res.post.id)]
@@ -182,13 +183,10 @@ async function createCheckinViaComposer(
 
 function openCheckinComposer() {
   if (!openComposer) return
-  const allowed = checkinAllowedVisibilities.value
-  if (!allowed.length) return
-  const preferred: CheckinAllowedVisibility = allowed.includes('premiumOnly') ? 'premiumOnly' : 'verifiedOnly'
+  if (!checkinAllowedVisibilities.value.length) return
   openComposer({
-    visibility: preferred,
     checkinPrompt: checkinState.value?.prompt ?? null,
-    allowedVisibilities: allowed,
+    allowedVisibilities: ['verifiedOnly'],
     disableMedia: true,
     createPost: createCheckinViaComposer,
   })

@@ -33,6 +33,7 @@ import type {
   WsPostsCommentAddedPayload,
   WsPostsCommentDeletedPayload,
   WsPostsTypingPayload,
+  WsSpacesUpdatedPayload,
   WsUsersMeUpdatedPayload,
   WsUsersSelfUpdatedPayload,
   WsUsersSpaceChangedPayload,
@@ -84,6 +85,7 @@ export type SpacesTypingPayload = { spaceId: string; sender: SpaceChatSender; ty
 export type SpacesReactionPayload = SpaceReactionEvent
 export type SpacesWatchPartyStatePayload = { spaceId: string } & WatchPartyState
 export type SpacesModeChangedPayload = SpaceModeChanged
+export type SpacesUpdatedPayload = WsSpacesUpdatedPayload
 export type SpacesCallback = {
   onMembers?: (payload: SpacesMembersPayload) => void
   onLobbyCounts?: (payload: SpacesLobbyCountsPayload) => void
@@ -93,6 +95,8 @@ export type SpacesCallback = {
   onReaction?: (payload: SpacesReactionPayload) => void
   onWatchPartyState?: (payload: SpacesWatchPartyStatePayload) => void
   onModeChanged?: (payload: SpacesModeChangedPayload) => void
+  /** Schedule / Notify-me count / live flags — viewer-agnostic patch. */
+  onUpdated?: (payload: SpacesUpdatedPayload) => void
   /** Fired on a secondary owner tab — this tab should stop sending control events. */
   onWatchPartyOwnerReplaced?: (payload: { spaceId: string }) => void
   /** Fired when this tab is re-elected as primary owner (previous primary disconnected). */

@@ -58,6 +58,22 @@ export function useSpaces() {
     applySorted(next)
   }
 
+  /**
+   * Merge a viewer-agnostic live patch (from `spaces:updated`).
+   * Preserves viewerSubscribed / viewerFollowsOwner on the local row.
+   * If the space isn't cached yet but just got a schedule, fetch it into the lobby list.
+   */
+  function patchSpace(spaceIdRaw: string, patch: Partial<Space>) {
+    const spaceId = String(spaceIdRaw ?? '').trim()
+    if (!spaceId || !patch || typeof patch !== 'object') return
+    const existing = getById(spaceId)
+    if (!existing) {
+      if (patch.scheduledAt) void fetchSpaceById(spaceId)
+      return
+    }
+    upsertSpace({ ...existing, ...patch })
+  }
+
   async function fetchSpaceById(id: string): Promise<Space | null> {
     try {
       const space = await apiFetchData<Space>(`/spaces/${encodeURIComponent(id)}`, { method: 'GET' })
@@ -85,6 +101,7 @@ export function useSpaces() {
     loadSpaces,
     hydrateSpaces,
     upsertSpace,
+    patchSpace,
     getById,
     getByOwnerUsername,
     fetchSpaceById,

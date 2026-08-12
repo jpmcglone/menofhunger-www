@@ -59,23 +59,16 @@
       </div>
     </ClientOnly>
 
-    <!-- Composer sits under check-in. When today's check-in is still open, this IS the
-         check-in composer (prompt card + POST /checkins) — otherwise users read the hero
-         prompt and type into the box below as a regular post, which advances the streak
-         but never gets kind=checkin. FAB still opens a regular post. -->
+    <!-- Composer sits under check-in and is always a regular post. Check-in only opens
+         when the user hits Answer on the hero (or the checkin=1 deep-link). -->
     <div ref="homeComposerEl" class="min-h-0">
       <LazyAppPostComposer
         v-if="isAuthed && !showOnlyMeHomeComposerCard"
-        :key="homeComposerIsCheckin ? 'home-checkin' : 'home-regular'"
+        key="home-regular"
         ref="homeComposerRef"
-        :allowed-visibilities="homeComposerAllowedVisibilities"
-        :checkin-prompt="homeComposerCheckinPrompt || undefined"
-        :create-post="homeComposerIsCheckin ? createCheckinViaComposer : undefined"
-        :disable-media="homeComposerIsCheckin"
-        :disable-poll="homeComposerIsCheckin"
-        :placeholder="homeComposerPlaceholder || undefined"
-        :persist-key="homeComposerIsCheckin ? 'home-checkin' : 'home'"
-        :enable-avatar-status-editor="!homeComposerIsCheckin"
+        :allowed-visibilities="['public', 'verifiedOnly', 'premiumOnly']"
+        persist-key="home"
+        :enable-avatar-status-editor="true"
         :register-unsaved-guard="false"
         @pending="onComposerPending"
       />
@@ -378,8 +371,6 @@ function dismissGroupsNudge() {
 const { dayKey: etDayKey } = useEasternMidnightRollover()
 
 const { state: checkinState, loading: checkinLoading, error: checkinError, refresh: refreshCheckin, create: createCheckin } = useDailyCheckin()
-const checkinVisibility = ref<CheckinAllowedVisibility>('verifiedOnly')
-const { visibility: composerVisibility } = useComposerVisibility()
 
 const checkinAllowedVisibilities = computed<CheckinAllowedVisibility[]>(() => {
   const allowed = checkinState.value?.allowedVisibilities ?? []
@@ -387,16 +378,15 @@ const checkinAllowedVisibilities = computed<CheckinAllowedVisibility[]>(() => {
 })
 
 const fallbackCheckinAllowedVisibilities = computed<CheckinAllowedVisibility[]>(() => {
-  const out: CheckinAllowedVisibility[] = []
-  // Product rule: ONLY verified (and above) can check in.
-  if (!viewerIsVerified.value) return out
-  if (viewerIsPremium.value) out.push('premiumOnly')
-  out.push('verifiedOnly')
-  return out
+  // Product rule: ONLY verified (and above) can check in. Answer always posts as
+  // verifiedOnly (locked in the modal); premiumOnly is not offered for check-ins.
+  if (!viewerIsVerified.value) return []
+  return ['verifiedOnly']
 })
 
 const effectiveCheckinAllowedVisibilities = computed<CheckinAllowedVisibility[]>(() => {
-  return checkinAllowedVisibilities.value.length ? checkinAllowedVisibilities.value : fallbackCheckinAllowedVisibilities.value
+  const fromApi = checkinAllowedVisibilities.value.filter((v) => v === 'verifiedOnly')
+  return fromApi.length ? fromApi : fallbackCheckinAllowedVisibilities.value
 })
 
 // True only when the user has completed today's check-in.
@@ -680,24 +670,6 @@ watch(etDayKey, () => {
   if (isAuthed.value) void refreshCheckin()
 })
 
-watch(
-  checkinAllowedVisibilities,
-  (allowed) => {
-    if (allowed.length && !allowed.includes(checkinVisibility.value)) {
-      checkinVisibility.value = allowed[0]!
-    }
-  },
-  { immediate: true },
-)
-
-function preferredCheckinVisibility(): CheckinAllowedVisibility {
-  const allowed = checkinAllowedVisibilities.value
-  if (!allowed.length) return 'verifiedOnly'
-  const current = composerVisibility.value
-  const preferred: CheckinAllowedVisibility = current === 'premiumOnly' ? 'premiumOnly' : 'verifiedOnly'
-  return allowed.includes(preferred) ? preferred : allowed[0]!
-}
-
 /**
  * Last submitted check-in body for the hero's "you answered today" echo. Cleared on
  * day rollover so it doesn't bleed into tomorrow's prompt state.
@@ -707,14 +679,15 @@ watch(etDayKey, () => { lastCheckinBody.value = null })
 
 async function createCheckinViaComposer(
   body: string,
-  visibility: PostVisibility,
+  _visibility: PostVisibility,
   _media?: unknown[] | null,
   _poll?: unknown,
 ): Promise<{ id: string } | import('~/types/api').FeedPost | null> {
   const trimmed = body.trim()
   if (!trimmed) return null
-  const vis: CheckinAllowedVisibility = visibility === 'premiumOnly' ? 'premiumOnly' : 'verifiedOnly'
-  const res = await createCheckin({ body: trimmed, visibility: vis })
+  // Answer always posts verifiedOnly; modal locks that and leaves the session
+  // composer preference untouched.
+  const res = await createCheckin({ body: trimmed, visibility: 'verifiedOnly' })
   lastCheckinBody.value = trimmed
   posts.value = [res.post, ...posts.value.filter((p) => p.id !== res.post.id)]
   return res.post
@@ -722,29 +695,6 @@ async function createCheckinViaComposer(
 
 /** Eligibility gate for the hero's primary action — verified users only (or premium). */
 const canAnswerCheckin = computed(() => effectiveCheckinAllowedVisibilities.value.length > 0)
-
-/**
- * While today's check-in is unanswered, the home inline composer posts as a check-in.
- * The hero prompt sits directly above this box — without this, typing there creates a
- * regular post (streak advances, no check-in badge). FAB still opens a normal post.
- */
-const homeComposerIsCheckin = computed(() =>
-  Boolean(heroResolved.value && !hasCheckedInToday.value && canAnswerCheckin.value),
-)
-
-const homeComposerAllowedVisibilities = computed<PostVisibility[]>(() =>
-  homeComposerIsCheckin.value
-    ? effectiveCheckinAllowedVisibilities.value
-    : ['public', 'verifiedOnly', 'premiumOnly'],
-)
-
-const homeComposerCheckinPrompt = computed(() =>
-  homeComposerIsCheckin.value ? ((checkinState.value?.prompt ?? '').trim() || null) : null,
-)
-
-const homeComposerPlaceholder = computed(() =>
-  homeComposerIsCheckin.value ? "Answer today's check-in…" : null,
-)
 
 /** Hero prompt — falls back to a generic phrasing during SSR / initial load. */
 const checkinHeroPrompt = computed(() => displayCheckinPromptText.value)
@@ -755,14 +705,10 @@ function goToLoginForCheckin() {
 
 function openCheckinComposer() {
   if (!openComposer) return
-  const allowed = effectiveCheckinAllowedVisibilities.value
-  if (!allowed.length) return
-  const preferred = preferredCheckinVisibility()
-  checkinVisibility.value = preferred
+  if (!effectiveCheckinAllowedVisibilities.value.length) return
   openComposer({
-    visibility: preferred,
     checkinPrompt: checkinState.value?.prompt ?? null,
-    allowedVisibilities: allowed,
+    allowedVisibilities: ['verifiedOnly'],
     disableMedia: true,
     createPost: createCheckinViaComposer,
   })

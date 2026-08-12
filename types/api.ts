@@ -319,6 +319,23 @@ export type Space = {
   viewerFollowsOwner: boolean
 }
 
+/** Viewer-agnostic live patch for lobby / host schedule UI (`spaces:updated`). */
+export type WsSpacesUpdatedPayload = {
+  spaceId: string
+  version: string
+  reason: string
+  patch: Partial<{
+    title: string
+    description: string | null
+    isActive: boolean
+    scheduledAt: string | null
+    mode: 'NONE' | 'WATCH_PARTY' | 'RADIO'
+    watchPartyUrl: string | null
+    radioStreamUrl: string | null
+    subscriberCount: number
+  }>
+}
+
 export type SpaceMember = LobbyMember
 
 export type WatchPartyState = {

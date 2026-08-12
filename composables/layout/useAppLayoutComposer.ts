@@ -142,6 +142,9 @@ export function useAppLayoutComposer(opts: UseAppLayoutComposerOptions) {
   const VISIBILITY_RANK: Record<PostVisibility, number> = { public: 0, verifiedOnly: 1, premiumOnly: 2, onlyMe: 3 }
 
   const composerLockedVisibility = computed<PostVisibility | null>(() => {
+    // Check-in Answer flow: always verified-only, and never touch the session
+    // composer visibility preference (see openComposerWithVisibility).
+    if (composerCheckinPrompt.value) return 'verifiedOnly'
     if (composerIsFromOnlyMe.value) return null
     if (composerIsGroupMode.value) return 'public'
     if (!viewerIsVerified.value) return 'onlyMe'
@@ -243,17 +246,22 @@ export function useAppLayoutComposer(opts: UseAppLayoutComposerOptions) {
     const visibility = typeof visibilityOrOptions === 'string' ? visibilityOrOptions : options?.visibility
     const nextInitialText = options ? options.initialText : initialText
     applyComposerCustomOptions(options)
-    if (visibility) {
-      const next = !viewerIsVerified.value
-        ? 'onlyMe'
-        : visibility === 'onlyMe' && !isOnlyMePage.value
-          ? (composerNonOnlyMeVisibility.value ?? 'public')
-          : visibility
-      composerVisibility.value = next
-    } else if (options?.quotedPost?.visibility && options.quotedPost.visibility !== 'onlyMe') {
-      // Default the composer to the quoted post's tier so the user starts equal to the quote.
-      const qv = options.quotedPost.visibility as PostVisibility
-      composerVisibility.value = qv
+    // Check-in Answer locks visibility on the modal only — do not overwrite the
+    // user's session feed-visibility preference used by the regular composer.
+    const isCheckinOpen = Boolean((options?.checkinPrompt ?? '').trim())
+    if (!isCheckinOpen) {
+      if (visibility) {
+        const next = !viewerIsVerified.value
+          ? 'onlyMe'
+          : visibility === 'onlyMe' && !isOnlyMePage.value
+            ? (composerNonOnlyMeVisibility.value ?? 'public')
+            : visibility
+        composerVisibility.value = next
+      } else if (options?.quotedPost?.visibility && options.quotedPost.visibility !== 'onlyMe') {
+        // Default the composer to the quoted post's tier so the user starts equal to the quote.
+        const qv = options.quotedPost.visibility as PostVisibility
+        composerVisibility.value = qv
+      }
     }
     composerInitialText.value = (nextInitialText ?? (options?.quotedPost ? null : defaultComposerInitialTextForRoute())) || null
     composerModalOpen.value = true

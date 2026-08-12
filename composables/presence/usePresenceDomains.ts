@@ -28,6 +28,7 @@ import type {
   WsPostsCommentAddedPayload,
   WsPostsCommentDeletedPayload,
   WsPostsTypingPayload,
+  WsSpacesUpdatedPayload,
   WsUsersMeUpdatedPayload,
   WsUsersSelfUpdatedPayload,
   WsUsersSpaceChangedPayload,
@@ -346,6 +347,21 @@ export function usePresenceDomains() {
       if (!spaceId) return
       for (const cb of spacesCallbacks.value) {
         cb.onModeChanged?.(data)
+      }
+    })
+
+    socket.on('spaces:updated', (data: WsSpacesUpdatedPayload) => {
+      if (!spacesCallbacks.value.size) return
+      const spaceId = String(data?.spaceId ?? '').trim()
+      if (!spaceId || !data?.patch || typeof data.patch !== 'object') return
+      const payload: WsSpacesUpdatedPayload = {
+        spaceId,
+        version: String(data.version ?? ''),
+        reason: String(data.reason ?? ''),
+        patch: data.patch,
+      }
+      for (const cb of spacesCallbacks.value) {
+        cb.onUpdated?.(payload)
       }
     })
 

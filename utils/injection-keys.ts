@@ -10,7 +10,8 @@ export type ComposerOpenOptions = {
   placeholder?: string | null
   /**
    * When set, renders the check-in prompt block above the textarea (same card
-   * as on the post). The textarea placeholder falls back to "Write a check-in…".
+   * as on the post), locks the modal to verifiedOnly, and does NOT mutate the
+   * session composer visibility preference used by regular compose.
    */
   checkinPrompt?: string | null
   /** Optional group scope label for composer mode (e.g. group wall modal). */
