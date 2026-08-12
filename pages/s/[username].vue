@@ -32,9 +32,9 @@
           <div class="shrink-0 mt-1 flex items-center gap-2">
             <span
               v-if="showHostReminders"
-              class="inline-flex items-center justify-center rounded-full px-3 py-1.5 text-xs font-semibold bg-[var(--p-primary-color)]/15 text-[var(--p-primary-color)]"
-              title="You'll get a reminder about 15 minutes before"
-            >15-min reminder</span>
+              class="inline-flex items-center justify-center rounded-full px-3 py-1.5 text-xs font-semibold bg-[var(--p-primary-color)]/15 text-[var(--p-primary-color)] tabular-nums"
+              :title="hostNotifyTitle"
+            >{{ hostNotifyLabel }}</span>
             <button
               v-else-if="showSpaceNotifyMe"
               type="button"
@@ -288,6 +288,20 @@ const spaceStatusKind = computed<'live' | 'scheduled' | null>(() => {
 })
 
 const showHostReminders = computed(() => isOwner.value && spaceStatusKind.value === 'scheduled')
+
+const hostNotifyCount = computed(() => Math.max(0, Number(space.value?.subscriberCount) || 0))
+
+const hostNotifyLabel = computed(() => {
+  const n = hostNotifyCount.value
+  return n === 1 ? '1 notified' : `${n} notified`
+})
+
+const hostNotifyTitle = computed(() => {
+  const n = hostNotifyCount.value
+  if (n === 0) return 'No one has asked to be notified yet. You still get a 15-min reminder.'
+  if (n === 1) return '1 person asked to be notified. You get a 15-min reminder too.'
+  return `${n} people asked to be notified. You get a 15-min reminder too.`
+})
 
 const showSpaceNotifyMe = computed(() => {
   if (!user.value?.id || !space.value) return false
