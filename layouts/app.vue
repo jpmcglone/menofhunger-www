@@ -598,7 +598,11 @@ useHead({
 const rightRailSearchQuery = ref('')
 function goToExploreSearch(q?: string) {
   const query = (q ?? rightRailSearchQuery.value ?? '').trim()
-  if (!query) return
+  // Empty Enter still opens Explore — just without a prefilled query.
+  if (!query) {
+    void navigateTo({ path: '/explore' })
+    return
+  }
   void navigateTo({ path: '/explore', query: { q: query } })
 }
 watch(

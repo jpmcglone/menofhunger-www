@@ -17,7 +17,7 @@ const props = withDefaults(defineProps<{
 
 const emit = defineEmits<{
   'update:modelValue': [value: string]
-  /** Fired when the user confirms a search query (Enter or clicks the query row). */
+  /** Fired when the user confirms a search (Enter or query row). Empty string = browse Explore. */
   submit: [query: string]
 }>()
 
@@ -155,16 +155,10 @@ const totalItems = computed(() => {
 })
 
 function onKeydown(e: KeyboardEvent) {
-  if (!open.value) return
-  if (e.key === 'ArrowDown') {
+  // Enter always submits (including empty → Explore), even when the panel is closed.
+  if (e.key === 'Enter') {
     e.preventDefault()
-    highlightedIndex.value = Math.min(highlightedIndex.value + 1, totalItems.value - 1)
-  } else if (e.key === 'ArrowUp') {
-    e.preventDefault()
-    highlightedIndex.value = Math.max(highlightedIndex.value - 1, 0)
-  } else if (e.key === 'Enter') {
-    e.preventDefault()
-    if (highlightedIndex.value <= 0) {
+    if (!open.value || highlightedIndex.value <= 0) {
       submitSearch(queryTrimmed.value)
     } else if (highlightedIndex.value <= people.value.length) {
       const person = people.value[highlightedIndex.value - 1]
@@ -173,6 +167,15 @@ function onKeydown(e: KeyboardEvent) {
       const group = groups.value[highlightedIndex.value - 1 - people.value.length]
       if (group) selectGroup(group)
     }
+    return
+  }
+  if (!open.value) return
+  if (e.key === 'ArrowDown') {
+    e.preventDefault()
+    highlightedIndex.value = Math.min(highlightedIndex.value + 1, totalItems.value - 1)
+  } else if (e.key === 'ArrowUp') {
+    e.preventDefault()
+    highlightedIndex.value = Math.max(highlightedIndex.value - 1, 0)
   } else if (e.key === 'Escape') {
     closePanel()
   }
@@ -195,7 +198,6 @@ function closePanel() {
 }
 
 function submitSearch(q: string) {
-  if (!q.trim()) return
   emit('submit', q.trim())
   invalidate()
   closePanel()
