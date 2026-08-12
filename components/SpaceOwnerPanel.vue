@@ -91,15 +91,10 @@
     <div class="space-y-2 border-t moh-border-subtle pt-3">
       <div class="flex items-center justify-between gap-2">
         <span class="text-xs font-semibold uppercase tracking-wider moh-meta">Schedule</span>
-        <span
+        <AppSpaceNotifyCount
           v-if="space.scheduledAt"
-          class="text-[11px] font-semibold tabular-nums text-[var(--p-primary-color)]"
-        >
-          <template v-if="space.subscriberCount > 0">
-            {{ space.subscriberCount }} {{ space.subscriberCount === 1 ? 'person' : 'people' }} notified
-          </template>
-          <template v-else>No one notified yet</template>
-        </span>
+          :count="space.subscriberCount"
+        />
       </div>
       <p v-if="upcomingLabel" class="text-sm moh-text">
         {{ upcomingLabel }}

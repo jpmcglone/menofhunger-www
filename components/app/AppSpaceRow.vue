@@ -105,12 +105,11 @@
 
       <!-- Right: notify + share + play (radio only) -->
       <div class="shrink-0 flex items-center" :class="compact ? 'gap-0.5' : 'gap-0.5'">
-        <span
+        <AppSpaceNotifyCount
           v-if="showHostReminders"
-          class="inline-flex items-center justify-center rounded-full font-semibold bg-[var(--p-primary-color)]/15 text-[var(--p-primary-color)] tabular-nums"
-          :class="compact ? 'px-1.5 py-0.5 text-[10px]' : 'px-2.5 py-1 text-[11px]'"
-          :title="hostNotifyTitle"
-        >{{ hostNotifyLabel }}</span>
+          :count="hostNotifyCount"
+          :compact="compact"
+        />
         <button
           v-else-if="showNotifyMe"
           type="button"
@@ -225,19 +224,6 @@ const isOwnSpace = computed(() => Boolean(
 const showHostReminders = computed(() => statusKind.value === 'scheduled' && isOwnSpace.value)
 
 const hostNotifyCount = computed(() => Math.max(0, Number(props.space.subscriberCount) || 0))
-
-const hostNotifyLabel = computed(() => {
-  const n = hostNotifyCount.value
-  if (props.compact) return n > 0 ? String(n) : '0'
-  return n === 1 ? '1 notified' : `${n} notified`
-})
-
-const hostNotifyTitle = computed(() => {
-  const n = hostNotifyCount.value
-  if (n === 0) return 'No one has asked to be notified yet. You still get a 15-min reminder.'
-  if (n === 1) return '1 person asked to be notified. You get a 15-min reminder too.'
-  return `${n} people asked to be notified. You get a 15-min reminder too.`
-})
 
 const showNotifyMe = computed(() => {
   if (!user.value?.id) return false
