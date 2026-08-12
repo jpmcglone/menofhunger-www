@@ -38,13 +38,14 @@
           'inline-flex items-center justify-center px-1 rounded font-medium tabular-nums shrink-0',
           'moh-text-muted bg-black/10 dark:bg-white/10',
           compact ? 'min-w-[1rem] h-4 text-[10px]' : 'min-w-[1.25rem] h-5 text-[11px]',
-          (space.listenerCount ?? 0) === 0 ? 'invisible' : '',
+          liveListenerCount === 0 ? 'invisible' : '',
         ]"
         aria-hidden="true"
-      >{{ space.listenerCount ?? 0 }}</span>
+      >{{ liveListenerCount }}</span>
 
-      <!-- Left: enter button -->
+      <!-- Left: enter button (preview embeds are non-interactive chrome) -->
       <button
+        v-if="!preview"
         type="button"
         class="min-w-0 flex-1 text-left moh-focus"
         :class="compact ? 'py-0' : 'py-0.5'"
@@ -102,9 +103,34 @@
           </div>
         </template>
       </button>
+      <div
+        v-else
+        class="min-w-0 flex-1"
+        :class="compact ? 'py-0' : 'py-0.5'"
+      >
+        <div v-if="compact" class="flex items-center gap-1.5 leading-none min-w-0">
+          <span class="font-semibold moh-text text-xs truncate">{{ space.title }}</span>
+          <AppSpaceStatusBadge :kind="statusKind" size="sm" />
+        </div>
+        <template v-else>
+          <div class="flex items-center gap-1.5 leading-snug">
+            <span class="font-semibold moh-text text-sm">{{ space.title }}</span>
+            <AppSpaceStatusBadge :kind="statusKind" />
+          </div>
+          <div class="mt-0.5 text-[11px] moh-meta leading-none">
+            <span v-if="space.owner?.username">@{{ space.owner.username }}</span>
+            <span v-if="space.owner?.username && scheduleLabel && statusKind === 'scheduled'"> · </span>
+            <span v-if="scheduleLabel && statusKind === 'scheduled'">{{ scheduleLabel }}</span>
+          </div>
+        </template>
+      </div>
 
-      <!-- Right: notify + share + play (radio only) -->
-      <div class="shrink-0 flex items-center" :class="compact ? 'gap-0.5' : 'gap-0.5'">
+      <!-- Right: notify + share + play (radio only) — hidden in feed preview embeds -->
+      <div
+        v-if="!preview"
+        class="shrink-0 flex items-center"
+        :class="compact ? 'gap-0.5' : 'gap-0.5'"
+      >
         <AppSpaceNotifyCount
           v-if="showHostReminders"
           :count="hostNotifyCount"
@@ -170,7 +196,7 @@ const emit = defineEmits<{
   spaceUpdated: [space: Space]
 }>()
 
-const { selectedSpaceId, select } = useSpaceLobby()
+const { selectedSpaceId, select, lobbyCountForSpace } = useSpaceLobby()
 const { isPlaying, playSpace, pause } = useSpaceAudio()
 const { user } = useAuth()
 const { subscribeToSchedule, unsubscribeFromSchedule } = useSpaceOwner()
@@ -178,6 +204,8 @@ const { upsertSpace } = useSpaces()
 const { confirm } = useAppConfirm()
 
 const toast = useAppToast()
+
+const liveListenerCount = computed(() => lobbyCountForSpace(props.space.id))
 const { copyText: copyToClipboard } = useCopyToClipboard()
 const notifyBusy = ref(false)
 

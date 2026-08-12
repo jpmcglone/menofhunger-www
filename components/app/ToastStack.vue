@@ -88,8 +88,10 @@ function hasActions(t: AppToast): boolean {
 }
 
 const stackStyle = computed<Record<string, string>>(() => {
-  // Sit just below the safe-area notch / status bar.
-  return { top: 'calc(var(--moh-safe-top, 0px) + 0.75rem)' }
+  // Below the sticky title bar (0 when hideTopBar) with a small gap.
+  return {
+    top: 'calc(var(--moh-safe-top, 0px) + var(--moh-title-bar-height, 4rem) + 0.5rem)',
+  }
 })
 
 function onToastClick(t: AppToast) {

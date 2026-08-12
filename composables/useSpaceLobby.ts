@@ -50,10 +50,19 @@ export function useSpaceLobby() {
         const countsBySpaceId = payload?.countsBySpaceId ?? {}
         lobbyCounts.value = { countsBySpaceId }
       },
+      onModeChanged: (payload) => {
+        const spaceId = String(payload?.spaceId ?? '').trim()
+        if (!spaceId) return
+        patchSpace(spaceId, {
+          mode: payload.mode,
+          watchPartyUrl: payload.watchPartyUrl,
+          radioStreamUrl: payload.radioStreamUrl,
+        })
+      },
       onUpdated: (payload) => {
         const spaceId = String(payload?.spaceId ?? '').trim()
         if (!spaceId || !payload?.patch) return
-        patchSpace(spaceId, payload.patch as Partial<import('~/types/api').Space>)
+        patchSpace(spaceId, payload.patch as Partial<import('~/types/api').Space> & { deleted?: boolean })
       },
     }
     spacesCbRef.value = spacesCb

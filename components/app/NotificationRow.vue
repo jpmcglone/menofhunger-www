@@ -38,14 +38,14 @@
       <div
         :class="[
           'flex shrink-0 items-start gap-2',
-          (notification.kind === 'marv_not_in_group' || notification.kind === 'poll_results_ready' || notification.kind === 'status_update' || notification.kind === 'word_of_the_day' || notification.kind === 'quote_of_the_day' || notification.kind === 'account_verified' || notification.kind === 'checkin_reminder' || notification.kind === 'on_this_day' || notification.kind === 'premium_started' || notification.kind === 'premium_ended' || notification.kind === 'space_reminder_day' || notification.kind === 'space_reminder_soon' || notification.kind === 'space_live' || notification.kind === 'space_schedule_cancelled')
+          (notification.kind === 'marv_not_in_group' || notification.kind === 'poll_results_ready' || notification.kind === 'status_update' || notification.kind === 'word_of_the_day' || notification.kind === 'quote_of_the_day' || notification.kind === 'account_verified' || notification.kind === 'checkin_reminder' || notification.kind === 'on_this_day' || notification.kind === 'premium_started' || notification.kind === 'premium_ended' || notification.kind === 'space_reminder_day' || notification.kind === 'space_reminder_soon' || notification.kind === 'space_live' || notification.kind === 'space_schedule_cancelled' || notification.kind === 'space_schedule_rescheduled')
             ? 'w-[2.75rem]'
             : 'w-[5.25rem]',
         ]"
       >
         <!-- System notifications and status_update carry their context elsewhere; no type icon here. -->
         <div
-          v-if="notification.kind !== 'marv_not_in_group' && notification.kind !== 'poll_results_ready' && notification.kind !== 'status_update' && notification.kind !== 'word_of_the_day' && notification.kind !== 'quote_of_the_day' && notification.kind !== 'account_verified' && notification.kind !== 'checkin_reminder' && notification.kind !== 'on_this_day' && notification.kind !== 'premium_started' && notification.kind !== 'premium_ended' && notification.kind !== 'space_reminder_day' && notification.kind !== 'space_reminder_soon' && notification.kind !== 'space_live' && notification.kind !== 'space_schedule_cancelled'"
+          v-if="notification.kind !== 'marv_not_in_group' && notification.kind !== 'poll_results_ready' && notification.kind !== 'status_update' && notification.kind !== 'word_of_the_day' && notification.kind !== 'quote_of_the_day' && notification.kind !== 'account_verified' && notification.kind !== 'checkin_reminder' && notification.kind !== 'on_this_day' && notification.kind !== 'premium_started' && notification.kind !== 'premium_ended' && notification.kind !== 'space_reminder_day' && notification.kind !== 'space_reminder_soon' && notification.kind !== 'space_live' && notification.kind !== 'space_schedule_cancelled' && notification.kind !== 'space_schedule_rescheduled'"
           class="flex h-9 w-8 shrink-0 items-center justify-center sm:h-10"
           aria-hidden="true"
         >
@@ -155,7 +155,7 @@
             <Icon name="tabler:crown-off" class="text-white text-base" aria-hidden="true" />
           </div>
           <div
-            v-else-if="notification.kind === 'space_reminder_day' || notification.kind === 'space_reminder_soon' || notification.kind === 'space_live' || notification.kind === 'space_schedule_cancelled'"
+            v-else-if="notification.kind === 'space_reminder_day' || notification.kind === 'space_reminder_soon' || notification.kind === 'space_live' || notification.kind === 'space_schedule_cancelled' || notification.kind === 'space_schedule_rescheduled'"
             class="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--p-primary-color)] sm:h-10 sm:w-10"
             aria-hidden="true"
           >
@@ -204,7 +204,7 @@
             <!-- Title + quoted message: up to 2 lines with truncation -->
             <div :class="['min-w-0 max-w-full line-clamp-2 text-[13px] sm:text-sm', notification.readAt ? 'font-medium' : 'font-semibold']">
               <span
-                v-if="notification.kind !== 'marv_not_in_group' && notification.kind !== 'poll_results_ready' && notification.kind !== 'word_of_the_day' && notification.kind !== 'quote_of_the_day' && notification.kind !== 'account_verified' && notification.kind !== 'checkin_reminder' && notification.kind !== 'on_this_day' && notification.kind !== 'space_reminder_day' && notification.kind !== 'space_reminder_soon' && notification.kind !== 'space_live' && notification.kind !== 'space_schedule_cancelled'"
+                v-if="notification.kind !== 'marv_not_in_group' && notification.kind !== 'poll_results_ready' && notification.kind !== 'word_of_the_day' && notification.kind !== 'quote_of_the_day' && notification.kind !== 'account_verified' && notification.kind !== 'checkin_reminder' && notification.kind !== 'on_this_day' && notification.kind !== 'space_reminder_day' && notification.kind !== 'space_reminder_soon' && notification.kind !== 'space_live' && notification.kind !== 'space_schedule_cancelled' && notification.kind !== 'space_schedule_rescheduled'"
                 :class="actorTierClass(notification)"
                 @mouseenter="onActorEnter"
                 @mousemove="onActorMove"
@@ -277,7 +277,7 @@
               <template v-else-if="notification.kind === 'poll_results_ready'">
                 <span>{{ titleSuffix(notification) }}</span>
               </template>
-              <template v-else-if="notification.kind === 'word_of_the_day' || notification.kind === 'quote_of_the_day' || notification.kind === 'account_verified' || notification.kind === 'checkin_reminder' || notification.kind === 'on_this_day' || notification.kind === 'premium_started' || notification.kind === 'premium_ended' || notification.kind === 'space_reminder_day' || notification.kind === 'space_reminder_soon' || notification.kind === 'space_live' || notification.kind === 'space_schedule_cancelled'">
+              <template v-else-if="notification.kind === 'word_of_the_day' || notification.kind === 'quote_of_the_day' || notification.kind === 'account_verified' || notification.kind === 'checkin_reminder' || notification.kind === 'on_this_day' || notification.kind === 'premium_started' || notification.kind === 'premium_ended' || notification.kind === 'space_reminder_day' || notification.kind === 'space_reminder_soon' || notification.kind === 'space_live' || notification.kind === 'space_schedule_cancelled' || notification.kind === 'space_schedule_rescheduled'">
                 <span>{{ titleSuffix(notification) }}</span>
               </template>
               <template v-else>

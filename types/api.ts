@@ -333,6 +333,7 @@ export type WsSpacesUpdatedPayload = {
     watchPartyUrl: string | null
     radioStreamUrl: string | null
     subscriberCount: number
+    deleted: boolean
   }>
 }
 

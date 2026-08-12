@@ -100,7 +100,7 @@
         {{ upcomingLabel }}
       </p>
       <p v-if="space.scheduledAt" class="text-[11px] moh-meta">
-        You'll get a reminder about 15 minutes before.
+        Reminder ~15 minutes before. Others who tap Notify me get day-of and soon alerts.
       </p>
       <div class="flex flex-wrap items-center gap-2">
         <input

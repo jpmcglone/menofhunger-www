@@ -226,8 +226,8 @@ import { useCopyToClipboard } from '~/composables/useCopyToClipboard'
 const route = useRoute()
 const username = computed(() => (route.params.username as string)?.trim() ?? '')
 
-const { fetchSpaceByUsername, upsertSpace } = useSpaces()
-const { selectedSpaceId, select, leave, currentSpace, members, subscribeLobbyCounts, unsubscribeLobbyCounts } = useSpaceLobby()
+const { fetchSpaceByUsername, upsertSpace, getById, getByOwnerUsername } = useSpaces()
+const { selectedSpaceId, select, leave, currentSpace, members } = useSpaceLobby()
 const { stop } = useSpaceAudio()
 const { subscribeToSchedule, unsubscribeFromSchedule } = useSpaceOwner()
 const { confirm } = useAppConfirm()
@@ -332,7 +332,12 @@ const spacesReactionsCb = {
   onUpdated: (payload: import('~/types/api').WsSpacesUpdatedPayload) => {
     if (!payload?.spaceId || payload.spaceId !== space.value?.id) return
     if (!space.value || !payload.patch) return
-    const updated = { ...space.value, ...payload.patch }
+    if (payload.patch.deleted) {
+      space.value = null
+      return
+    }
+    const { deleted: _deleted, ...rest } = payload.patch
+    const updated = { ...space.value, ...rest }
     space.value = updated
     upsertSpace(updated)
   },
@@ -459,7 +464,6 @@ onMounted(async () => {
   spaceReady.value = true
   spacesLog('mount:enter-space:done', { spaceId: s.id, spaceReady: spaceReady.value })
   addPageCallbacks()
-  await subscribeLobbyCounts()
   useNuxtApp().callHook('page:loading:end')
   useLoadingIndicator().finish({ force: true })
 })
@@ -467,6 +471,14 @@ onMounted(async () => {
 // KeepAlive lifecycle: restore state when the user navigates back to this page.
 onActivated(async () => {
   registerAvatarPositionResolver(getAvatarPos)
+  const cached =
+    (space.value?.id ? getById(space.value.id) : null) ?? getByOwnerUsername(username.value)
+  if (cached) {
+    space.value = cached
+  } else if (username.value) {
+    const fresh = await fetchSpaceByUsername(username.value)
+    if (fresh) space.value = fresh
+  }
   // If the user explicitly left the space (selectedSpaceId is null) and navigated
   // back, re-enter the space so the socket room and lobby are restored.
   if (space.value && selectedSpaceId.value !== space.value.id) {
@@ -477,15 +489,14 @@ onActivated(async () => {
     }
   }
   addPageCallbacks()
-  void subscribeLobbyCounts()
 })
 
 // KeepAlive lifecycle: clean up callbacks when the user navigates away.
 // The page (and its YouTube player) stays alive, so audio continues.
+// Lobby counts stay subscribed at the app shell while authed / in a space.
 onDeactivated(() => {
   removePageCallbacks()
   registerAvatarPositionResolver(null)
-  unsubscribeLobbyCounts()
 })
 
 // Final cleanup when the page is actually destroyed (evicted from the keepalive
@@ -493,7 +504,6 @@ onDeactivated(() => {
 onBeforeUnmount(() => {
   removePageCallbacks()
   registerAvatarPositionResolver(null)
-  unsubscribeLobbyCounts()
 })
 
 watch(username, async (newUsername) => {
@@ -572,7 +582,11 @@ usePageSeo({
       name: s.title,
       description: s.description || `Live space hosted by @${s.owner?.username ?? 'unknown'}`,
       eventAttendanceMode: 'https://schema.org/OnlineEventAttendanceMode',
-      eventStatus: s.isActive ? 'https://schema.org/EventScheduled' : 'https://schema.org/EventPostponed',
+      eventStatus: s.isActive
+        ? 'https://schema.org/EventScheduled'
+        : s.scheduledAt
+          ? 'https://schema.org/EventScheduled'
+          : 'https://schema.org/EventCancelled',
       location: {
         '@type': 'VirtualLocation',
         url: `${siteConfig.url}/s/${encodeURIComponent(username.value)}`,

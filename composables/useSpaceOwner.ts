@@ -4,14 +4,10 @@ export function useSpaceOwner() {
   const { apiFetchData } = useApiClient()
 
   async function createSpace(data: { title: string; description?: string }): Promise<Space | null> {
-    try {
-      return await apiFetchData<Space>('/spaces', {
-        method: 'POST',
-        body: data,
-      })
-    } catch {
-      return null
-    }
+    return await apiFetchData<Space>('/spaces', {
+      method: 'POST',
+      body: data,
+    })
   }
 
   async function updateSpace(id: string, data: { title?: string; description?: string | null }): Promise<Space | null> {

@@ -58,20 +58,31 @@ export function useSpaces() {
     applySorted(next)
   }
 
+  function removeSpace(spaceIdRaw: string) {
+    const spaceId = String(spaceIdRaw ?? '').trim()
+    if (!spaceId) return
+    applySorted((spaces.value ?? []).filter((s) => s.id !== spaceId))
+  }
+
   /**
    * Merge a viewer-agnostic live patch (from `spaces:updated`).
    * Preserves viewerSubscribed / viewerFollowsOwner on the local row.
    * If the space isn't cached yet but just got a schedule, fetch it into the lobby list.
    */
-  function patchSpace(spaceIdRaw: string, patch: Partial<Space>) {
+  function patchSpace(spaceIdRaw: string, patch: Partial<Space> & { deleted?: boolean }) {
     const spaceId = String(spaceIdRaw ?? '').trim()
     if (!spaceId || !patch || typeof patch !== 'object') return
-    const existing = getById(spaceId)
-    if (!existing) {
-      if (patch.scheduledAt) void fetchSpaceById(spaceId)
+    if (patch.deleted) {
+      removeSpace(spaceId)
       return
     }
-    upsertSpace({ ...existing, ...patch })
+    const { deleted: _deleted, ...rest } = patch
+    const existing = getById(spaceId)
+    if (!existing) {
+      if (rest.scheduledAt) void fetchSpaceById(spaceId)
+      return
+    }
+    upsertSpace({ ...existing, ...rest })
   }
 
   async function fetchSpaceById(id: string): Promise<Space | null> {
@@ -101,6 +112,7 @@ export function useSpaces() {
     loadSpaces,
     hydrateSpaces,
     upsertSpace,
+    removeSpace,
     patchSpace,
     getById,
     getByOwnerUsername,

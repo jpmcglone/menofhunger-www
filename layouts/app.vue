@@ -142,11 +142,12 @@
               >
                 <div
                   v-show="radioHasStation"
+                  id="moh-radio-mobile"
                   class="moh-radio-bar dark relative z-0 flex items-center border-t border-zinc-800 bg-black text-white"
                   :style="{ minHeight: 'var(--moh-radio-bar-height, 4rem)' }"
                 >
                   <div class="w-full">
-                    <AppRadioBar />
+                    <!-- AppRadioBar teleports here on mobile -->
                   </div>
                 </div>
               </Transition>
@@ -159,11 +160,12 @@
             <!-- Radio player row: bottom of the middle column on desktop only. -->
             <div
               v-if="radioHasStation"
+              id="moh-radio-desktop"
               class="moh-radio-bar dark hidden md:flex items-center shrink-0 border-t border-zinc-800 bg-black text-white"
               :style="{ height: 'var(--moh-radio-bar-height, 4rem)' }"
             >
               <div class="w-full">
-                <AppRadioBar />
+                <!-- AppRadioBar teleports here on md+ -->
               </div>
             </div>
           </main>
@@ -233,6 +235,13 @@
 
     <!-- Composer modal + post-checkin share dialog. -->
     <AppLayoutComposerModalOverlay :composer="composer" />
+
+    <!-- Single RadioBar instance: teleport to mobile chrome or desktop column bottom. -->
+    <ClientOnly>
+      <Teleport v-if="radioHasStation && radioTeleportTarget" :to="radioTeleportTarget">
+        <AppRadioBar />
+      </Teleport>
+    </ClientOnly>
   </div>
 </template>
 
@@ -290,7 +299,6 @@ const { header: appHeader } = useAppHeader()
 const hydrated = ref(false)
 onMounted(() => {
   hydrated.value = true
-  void loadLobbyCounts()
 })
 const {
   loaded: bookmarksLoaded,
@@ -333,8 +341,46 @@ const fabBottomStyle = computed<Record<string, string>>(() => {
 
 // ── Spaces / radio chrome ─────────────────────────────────────────────────────
 
-const { selectedSpaceId, loadLobbyCounts } = useSpaceLobby()
+const { selectedSpaceId, loadLobbyCounts, subscribeLobbyCounts, unsubscribeLobbyCounts } = useSpaceLobby()
 const radioHasStation = computed(() => Boolean(selectedSpaceId.value))
+const radioTeleportTarget = ref<string | null>(null)
+
+function syncRadioTeleportTarget() {
+  if (!import.meta.client) {
+    radioTeleportTarget.value = null
+    return
+  }
+  const md = window.matchMedia('(min-width: 768px)').matches
+  radioTeleportTarget.value = md ? '#moh-radio-desktop > div' : '#moh-radio-mobile > div'
+}
+
+watch(
+  () => Boolean(user.value?.id),
+  (authed, wasAuthed) => {
+    if (!import.meta.client) return
+    if (authed) {
+      void loadLobbyCounts()
+      void subscribeLobbyCounts()
+      return
+    }
+    if (wasAuthed) {
+      unsubscribeLobbyCounts()
+    }
+  },
+  { immediate: true },
+)
+
+watch(radioHasStation, (on) => {
+  if (on) nextTick(() => syncRadioTeleportTarget())
+}, { immediate: true })
+
+onMounted(() => {
+  syncRadioTeleportTarget()
+  const mq = window.matchMedia('(min-width: 768px)')
+  const onChange = () => syncRadioTeleportTarget()
+  mq.addEventListener('change', onChange)
+  onBeforeUnmount(() => mq.removeEventListener('change', onChange))
+})
 useSpacePlayPauseShortcut(radioHasStation)
 
 // Force the left nav into compact (icon-only) mode on chat/settings/admin while in a space,

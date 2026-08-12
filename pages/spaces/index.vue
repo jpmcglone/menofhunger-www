@@ -60,6 +60,8 @@
 </template>
 
 <script setup lang="ts">
+import { getSafeUserErrorMessage } from '~/utils/api-error'
+
 definePageMeta({
   layout: 'app',
   title: 'Spaces',
@@ -76,9 +78,9 @@ usePageSeo({
 
 const { user } = useAuth()
 const { spaces, loading, loadedOnce, loadSpaces } = useSpaces()
-const { currentSpace, members, subscribeLobbyCounts, unsubscribeLobbyCounts } = useSpaceLobby()
+const { currentSpace, members } = useSpaceLobby()
 const { getMySpace, createSpace } = useSpaceOwner()
-const { addSpacesCallback, removeSpacesCallback } = usePresence()
+const toast = useAppToast()
 
 const mySpace = useState<any>('my-space', () => null)
 
@@ -89,10 +91,20 @@ const mySpaceHref = computed(() => {
 })
 
 async function onCreateSpace() {
-  const space = await createSpace({ title: `${user.value?.username ?? 'My'}'s Space` })
-  if (space) {
+  try {
+    const space = await createSpace({ title: `${user.value?.username ?? 'My'}'s Space` })
+    if (!space) {
+      toast.push({ title: 'Could not create space', tone: 'error', durationMs: 2200 })
+      return
+    }
     mySpace.value = space
     navigateTo(`/s/${encodeURIComponent(space.owner?.username ?? '')}`)
+  } catch (err) {
+    toast.push({
+      title: getSafeUserErrorMessage(err, 'Could not create space.'),
+      tone: 'error',
+      durationMs: 2200,
+    })
   }
 }
 
@@ -100,34 +112,13 @@ async function refreshSpaces() {
   await loadSpaces()
 }
 
-let lobbyRefreshTimer: ReturnType<typeof setTimeout> | null = null
-const spacesCb = {
-  onLobbyCounts: () => {
-    // Debounce: live badges / listener counts change while this page is open.
-    // Notify-me / schedule patches arrive via spaces:updated → useSpaceLobby.patchSpace.
-    if (lobbyRefreshTimer) clearTimeout(lobbyRefreshTimer)
-    lobbyRefreshTimer = setTimeout(() => {
-      lobbyRefreshTimer = null
-      void refreshSpaces()
-    }, 1500)
-  },
-}
-
 onMounted(async () => {
   await refreshSpaces()
-  void subscribeLobbyCounts()
-  addSpacesCallback(spacesCb as any)
   const s = await getMySpace()
   if (s) mySpace.value = s
 })
 
 onActivated(() => {
   void refreshSpaces()
-})
-
-onBeforeUnmount(() => {
-  if (lobbyRefreshTimer) clearTimeout(lobbyRefreshTimer)
-  unsubscribeLobbyCounts()
-  removeSpacesCallback(spacesCb as any)
 })
 </script>
