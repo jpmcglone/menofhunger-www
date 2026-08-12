@@ -228,7 +228,7 @@ const hostNotifyCount = computed(() => Math.max(0, Number(props.space.subscriber
 
 const hostNotifyLabel = computed(() => {
   const n = hostNotifyCount.value
-  if (compact.value) return n > 0 ? String(n) : '0'
+  if (props.compact) return n > 0 ? String(n) : '0'
   return n === 1 ? '1 notified' : `${n} notified`
 })
 
