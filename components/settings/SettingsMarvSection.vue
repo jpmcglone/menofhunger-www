@@ -13,6 +13,7 @@
       <p class="mt-1 text-sm text-gray-600 dark:text-gray-300">
         Your premium AI helper. Mention <span class="font-semibold">@{{ marvUsername || 'marv' }}</span>
         in a thread or chat with him directly to get a brief, kind, practical reply.
+        Reply mode is controlled in your Marv chat.
       </p>
     </div>
 
@@ -48,42 +49,6 @@
     </div>
 
     <template v-else-if="hasFetched">
-      <!-- Preferred mode -->
-      <section class="space-y-3">
-        <div>
-          <div class="text-sm font-semibold moh-text">Preferred reply mode</div>
-          <p class="text-xs text-gray-500 dark:text-gray-400">
-            Faster replies cost less. Smart replies are best for tricky questions; M.A.R.V may auto-upgrade
-            for sensitive topics.
-          </p>
-        </div>
-        <div
-          class="inline-flex items-center rounded-full bg-gray-100 p-0.5 text-sm dark:bg-zinc-900"
-          role="tablist"
-          aria-label="Preferred Marv reply mode"
-        >
-          <button
-            v-for="mode in (['fast', 'regular', 'smart'] as const)"
-            :key="mode"
-            type="button"
-            :disabled="modeBusy"
-            :class="[
-              'rounded-full px-3 py-1 font-semibold transition-colors',
-              preferredMode === mode
-                ? 'bg-white text-gray-900 shadow-sm dark:bg-zinc-700 dark:text-white'
-                : 'text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white',
-              modeBusy ? 'opacity-60' : '',
-            ]"
-            :aria-selected="preferredMode === mode"
-            role="tab"
-            @click="onPickMode(mode)"
-          >
-            {{ modeLabel(mode) }}
-          </button>
-        </div>
-        <p class="text-xs text-gray-500 dark:text-gray-400">{{ modeDescription(preferredMode) }}</p>
-      </section>
-
       <!-- Credits -->
       <section v-if="credits" class="space-y-2">
         <div class="text-sm font-semibold moh-text">Credits</div>
@@ -98,6 +63,43 @@
             <div v-if="refillEtaLabel">Refills to full in {{ refillEtaLabel }}</div>
             <div v-else>Bucket is full</div>
           </div>
+        </div>
+      </section>
+
+      <!-- What Marv knows -->
+      <section class="space-y-2">
+        <div>
+          <div class="text-sm font-semibold moh-text">What Marv knows about you</div>
+          <p class="text-xs text-gray-500 dark:text-gray-400">
+            Built from your public profile, posts, and media. Private or gated content is never included.
+          </p>
+        </div>
+        <div
+          v-if="cardLoading"
+          class="rounded-xl border moh-border px-4 py-3 text-sm text-gray-500 dark:text-gray-400"
+        >
+          Loading…
+        </div>
+        <div
+          v-else-if="cardError"
+          class="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900/40 dark:bg-red-500/10 dark:text-red-300"
+        >
+          {{ cardError }}
+        </div>
+        <div
+          v-else-if="contextCard"
+          class="rounded-xl border moh-border px-4 py-3 text-sm moh-text whitespace-pre-wrap"
+        >
+          {{ contextCard.cardText }}
+          <div class="mt-2 text-xs text-gray-500 dark:text-gray-400">
+            Updated {{ formatRelative(contextCard.updatedAt) }}
+          </div>
+        </div>
+        <div
+          v-else
+          class="rounded-xl border moh-border px-4 py-3 text-sm text-gray-500 dark:text-gray-400"
+        >
+          Not generated yet. Marv builds this from your public activity over time.
         </div>
       </section>
 
@@ -164,20 +166,17 @@
 </template>
 
 <script setup lang="ts">
-import type { MarvinModeDto, MarvinSourceDto, MarvinUsageEventDto } from '~/types/api'
+import type { MarvinContextCardDto, MarvinSourceDto, MarvinUsageEventDto } from '~/types/api'
 import { onActivated, onMounted } from 'vue'
 
 const {
   enabled,
   isPremium,
-  preferredMode,
   credits,
   marvUsername,
   marvDisplayName,
   hasFetched,
   ensureLoaded,
-  fetchMe,
-  setPreferredMode,
   startRealtime,
   stopRealtime,
 } = useMarv()
@@ -185,22 +184,13 @@ const {
 const { apiFetch } = useApiClient()
 
 const displayName = computed(() => marvDisplayName.value || 'M.A.R.V')
-const modeBusy = ref(false)
 const usage = ref<MarvinUsageEventDto[]>([])
 const usageLoading = ref(false)
 const usageError = ref<string | null>(null)
-
-function modeLabel(m: MarvinModeDto): string {
-  if (m === 'fast') return 'Fast'
-  if (m === 'smart') return 'Smart'
-  return 'Regular'
-}
-
-function modeDescription(m: MarvinModeDto): string {
-  if (m === 'fast') return 'Quickest replies. Light on credits.'
-  if (m === 'smart') return 'Slower, more thoughtful replies. Higher credit cost.'
-  return 'Balanced replies for everyday questions.'
-}
+const contextCard = ref<MarvinContextCardDto | null>(null)
+const cardLoading = ref(false)
+const cardError = ref<string | null>(null)
+const cardFetched = ref(false)
 
 function sourceLabel(s: MarvinSourceDto): string {
   if (s === 'private_session') return 'Direct chat'
@@ -243,19 +233,6 @@ const refillEtaLabel = computed(() => {
   return `${days}d`
 })
 
-async function onPickMode(mode: MarvinModeDto) {
-  if (modeBusy.value) return
-  if (mode === preferredMode.value) return
-  modeBusy.value = true
-  try {
-    await setPreferredMode(mode)
-  } catch {
-    // useMarv reverts; nothing further
-  } finally {
-    modeBusy.value = false
-  }
-}
-
 async function loadUsage() {
   if (usageLoading.value) return
   usageLoading.value = true
@@ -273,16 +250,37 @@ async function loadUsage() {
   }
 }
 
+async function loadContextCard() {
+  if (cardLoading.value) return
+  cardLoading.value = true
+  cardError.value = null
+  try {
+    const res = await apiFetch<MarvinContextCardDto | null>('/marvin/me/context-card', {
+      method: 'GET',
+    })
+    contextCard.value = res?.data ?? null
+    cardFetched.value = true
+  } catch (err) {
+    cardError.value = err instanceof Error ? err.message : 'Failed to load context card'
+  } finally {
+    cardLoading.value = false
+  }
+}
+
 onMounted(async () => {
   startRealtime()
   await ensureLoaded()
-  if (isPremium.value) await loadUsage()
+  if (isPremium.value) {
+    await Promise.all([loadUsage(), loadContextCard()])
+  }
 })
 
 onActivated(async () => {
-  startRealtime()
-  await fetchMe({ forceRefresh: true })
-  if (isPremium.value) await loadUsage()
+  await ensureLoaded()
+  if (isPremium.value) {
+    if (!cardFetched.value) await loadContextCard()
+    if (!usage.value.length) await loadUsage()
+  }
 })
 
 onBeforeUnmount(() => {

@@ -2877,6 +2877,15 @@ export type MarvinUpdatePreferencesBodyDto = {
   preferredMode?: MarvinModeDto
 }
 
+/** `GET /marvin/me/context-card` — what Marv knows about the viewer (or null if not generated). */
+export type MarvinContextCardDto = {
+  cardText: string
+  /** "generated" | "manual" | "hybrid" */
+  source: string
+  /** ISO timestamp. */
+  updatedAt: string
+}
+
 /** A single Marv interaction event (success, canned, or failure). */
 export type MarvinUsageEventDto = {
   id: string
