@@ -336,6 +336,7 @@ import { useLoadMoreObserver } from '~/composables/useLoadMoreObserver'
 import { useMiddleScroller } from '~/composables/useMiddleScroller'
 import { useGroupMedia } from '~/composables/useGroupMedia'
 import type { GroupFeedCallback } from '~/composables/usePresence'
+import { applyCommunityGroupJoin, communityGroupJoinToast } from '~/utils/community-group-preview'
 import { getApiErrorMessage } from '~/utils/api-error'
 import { MOH_GROUP_COMPOSER_KEY } from '~/utils/injection-keys'
 import { siteConfig } from '~/config/site'
@@ -693,16 +694,21 @@ async function doJoin() {
   if (!s || joinBusy.value) return
   joinBusy.value = true
   try {
-    await apiFetchData(`/groups/${encodeURIComponent(s.id)}/join`, { method: 'POST', body: {} })
+    const result = await apiFetchData<{ ok: boolean; status: 'active' | 'pending' }>(
+      `/groups/${encodeURIComponent(s.id)}/join`,
+      { method: 'POST', body: {} },
+    )
+    const status = result?.status === 'pending' ? 'pending' : 'active'
     invalidateMyGroups()
-    await loadShell()
-    if (isMember.value) await postsFeedRefresh()
-    const pending = shell.value?.viewerPendingApproval
-    pushToast({
-      title: pending ? 'Request sent' : 'Joined group',
-      tone: 'public',
-      durationMs: 1800,
-    })
+    try {
+      await loadShell()
+    } catch { /* join already committed; keep the local patch */ }
+    const next = shell.value ?? s
+    shell.value = applyCommunityGroupJoin(next, status)
+    if (status === 'active') {
+      try { await postsFeedRefresh() } catch { /* composer/header already flipped */ }
+    }
+    pushToast(communityGroupJoinToast(status, s.name))
   } catch (e: unknown) {
     pushToast({
       title: 'Could not join',

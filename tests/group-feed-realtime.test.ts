@@ -71,3 +71,24 @@ describe('groups:marv-changed realtime', () => {
     expect(source).toContain('GroupMarvChangedPayloadDto')
   })
 })
+
+describe('group join feedback', () => {
+  it('group page patches membership from the join response, not only a shell refetch', () => {
+    const source = readFile('pages/g/[slug]/index.vue')
+    expect(source).toContain('applyCommunityGroupJoin')
+    expect(source).toContain('communityGroupJoinToast')
+  })
+
+  it('explore join patches local cards and toasts success', () => {
+    const source = readFile('pages/explore.vue')
+    expect(source).toContain('applyCommunityGroupJoin')
+    expect(source).toContain('communityGroupJoinToast')
+  })
+
+  it('gated permalink shows Join and confirms after success', () => {
+    const source = readFile('pages/p/[id].vue')
+    expect(source).toContain(':show-join="isAuthed"')
+    expect(source).toContain('applyCommunityGroupJoin')
+    expect(source).toContain('communityGroupJoinToast')
+  })
+})

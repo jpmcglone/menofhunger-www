@@ -52,3 +52,43 @@ export function shellToGroupPreview(shell: CommunityGroupShell): CommunityGroupP
     viewerPendingApproval: shell.viewerPendingApproval,
   }
 }
+
+type JoinableGroup = {
+  viewerMembership: CommunityGroupShell['viewerMembership']
+  viewerPendingApproval: boolean
+  memberCount: number
+}
+
+/**
+ * Local membership patch after `POST /groups/:id/join`.
+ * Matches the shell DTO: active members get `viewerMembership`; pending
+ * requests get `viewerPendingApproval` and a null membership.
+ */
+export function applyCommunityGroupJoin<T extends JoinableGroup>(group: T, status: string): T {
+  const pending = status === 'pending'
+  const active = status === 'active'
+  const alreadyActive = group.viewerMembership?.status === 'active'
+  const alreadyPending = group.viewerPendingApproval
+  return {
+    ...group,
+    viewerMembership: active
+      ? { status: 'active', role: group.viewerMembership?.role ?? 'member' }
+      : null,
+    viewerPendingApproval: pending,
+    memberCount: active && !alreadyActive && !alreadyPending
+      ? group.memberCount + 1
+      : group.memberCount,
+  }
+}
+
+export function communityGroupJoinToast(status: string, groupName: string) {
+  if (status === 'pending') {
+    return { title: 'Request sent', tone: 'group' as const, durationMs: 3200 }
+  }
+  const name = groupName.trim()
+  return {
+    title: name ? `You're in ${name}` : 'Joined group',
+    tone: 'group' as const,
+    durationMs: 3200,
+  }
+}

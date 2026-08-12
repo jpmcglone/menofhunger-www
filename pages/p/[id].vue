@@ -77,6 +77,7 @@
       <div v-if="isGatedPost && post.groupPreview" class="px-4 pt-4 pb-2">
         <AppGroupPreviewCard
           :preview="post.groupPreview"
+          :show-join="isAuthed"
           :join-busy="groupJoinBusy"
           @join="joinGroupFromPreview"
         />
@@ -320,7 +321,11 @@
 import AppGroupPreviewCard from '~/components/app/groups/AppGroupPreviewCard.vue'
 import type { CommunityGroupPreview, FeedPost } from '~/types/api'
 import { applyLiveUpdatedPatch } from '~/utils/feed-patch'
-import { feedPostThreadGroupDisplayName } from '~/utils/community-group-preview'
+import {
+  applyCommunityGroupJoin,
+  communityGroupJoinToast,
+  feedPostThreadGroupDisplayName,
+} from '~/utils/community-group-preview'
 import { groupAvatarRoundClass as getGroupAvatarRoundClass } from '~/utils/avatar-rounding'
 import { getApiErrorMessage } from '~/utils/api-error'
 import { uniqueReplyAuthorsFromPosts } from '~/utils/thread-reply-authors'
@@ -838,14 +843,33 @@ onBeforeUnmount(() => {
 })
 
 const groupJoinBusy = ref(false)
+
+function patchPostGroupPreview(status: string) {
+  const current = data.value
+  if (!current?.groupPreview) return
+  data.value = {
+    ...current,
+    groupPreview: applyCommunityGroupJoin(current.groupPreview, status),
+  }
+}
+
 async function joinGroupFromPreview() {
   const gp = post.value?.groupPreview
   if (!gp || groupJoinBusy.value) return
   groupJoinBusy.value = true
   try {
-    await apiFetchData(`/groups/${encodeURIComponent(gp.id)}/join`, { method: 'POST', body: {} })
+    const result = await apiFetchData<{ ok: boolean; status: 'active' | 'pending' }>(
+      `/groups/${encodeURIComponent(gp.id)}/join`,
+      { method: 'POST', body: {} },
+    )
+    const status = result?.status === 'pending' ? 'pending' : 'active'
+    patchPostGroupPreview(status)
     invalidateMyGroups()
-    await refreshPost()
+    pushToast(communityGroupJoinToast(status, gp.name))
+    try {
+      await refreshPost()
+      patchPostGroupPreview(status)
+    } catch { /* preview already shows Joined */ }
   } catch (e: unknown) {
     pushToast({
       title: 'Could not join',

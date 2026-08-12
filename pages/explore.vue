@@ -727,7 +727,11 @@ import type {
   PostVisibility,
   CheckinAllowedVisibility,
 } from '~/types/api'
-import { shellToGroupPreview } from '~/utils/community-group-preview'
+import {
+  applyCommunityGroupJoin,
+  communityGroupJoinToast,
+  shellToGroupPreview,
+} from '~/utils/community-group-preview'
 import { getApiErrorMessage } from '~/utils/api-error'
 import { MOH_OPEN_COMPOSER_KEY } from '~/utils/injection-keys'
 import { pickCheckinPrompt } from '~/utils/checkin-prompts'
@@ -850,8 +854,19 @@ async function joinExploreGroup(g: CommunityGroupShell) {
   if (!id) return
   joinExploreGroupId.value = id
   try {
-    await apiFetch(`/groups/${encodeURIComponent(id)}/join`, { method: 'POST', body: {} })
+    const result = await apiFetchData<{ ok: boolean; status: 'active' | 'pending' }>(
+      `/groups/${encodeURIComponent(id)}/join`,
+      { method: 'POST', body: {} },
+    )
+    const status = result?.status === 'pending' ? 'pending' : 'active'
+    exploreGroups.value = exploreGroups.value.map((row) =>
+      row.id === id ? applyCommunityGroupJoin(row, status) : row,
+    )
+    searchGroups.value = searchGroups.value.map((row) =>
+      row.id === id ? applyCommunityGroupJoin(row, status) : row,
+    )
     invalidateMyGroups()
+    toast.push(communityGroupJoinToast(status, g.name))
     void refreshDiscover()
     if (isSearching.value) void fetchPage({ append: false })
   } catch (e: unknown) {

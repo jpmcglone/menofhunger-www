@@ -74,6 +74,13 @@
             disabled
           />
         </div>
+        <div
+          v-else-if="showJoin && preview.viewerMembership?.status === 'active'"
+          class="shrink-0 pt-0.5 inline-flex items-center gap-1 text-xs font-semibold moh-text-muted"
+        >
+          <Icon name="tabler:check" class="text-[12px]" aria-hidden="true" />
+          Joined
+        </div>
       </div>
 
       <div class="mt-2 h-[3rem] text-sm moh-body whitespace-pre-wrap break-words overflow-hidden line-clamp-2">
