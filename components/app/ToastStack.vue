@@ -88,9 +88,11 @@ function hasActions(t: AppToast): boolean {
 }
 
 const stackStyle = computed<Record<string, string>>(() => {
-  // Below the sticky title bar (0 when hideTopBar) with a small gap.
+  // `--moh-toast-clearance` is published on :root by layouts/app.vue so this
+  // Teleport-to-body stack clears the layout title bar OR typical in-page
+  // sticky chrome on hideTopBar routes (home, notifications, …).
   return {
-    top: 'calc(var(--moh-safe-top, 0px) + var(--moh-title-bar-height, 4rem) + 0.5rem)',
+    top: 'calc(var(--moh-safe-top, 0px) + var(--moh-toast-clearance, 3.5rem) + 0.5rem)',
   }
 })
 

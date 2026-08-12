@@ -10,40 +10,53 @@ export type PostedToastParams = {
 }
 
 /**
- * Build the params for the "Posted · Tap to view" success toast.
- * Returns null when no toast should be shown:
- *  - check-in posts (the share modal handles their post-success flow)
- *  - reply posts when `skipReplies` is true (optimistic path keeps replies quiet)
+ * Build the params for the post-success toast ("Posted · Tap to view", etc.).
+ * Covers top-level posts, replies, check-ins, only-me, and group posts.
  */
 export function buildPostedToastParams(
   post: FeedPost,
-  options: { isReply?: boolean; skipReplies?: boolean } = {},
-): PostedToastParams | null {
-  if (post.kind === 'checkin') return null
+  options: { isReply?: boolean } = {},
+): PostedToastParams {
+  const isReply = Boolean(options.isReply || post.parentId)
   const isRepost = post.kind === 'repost'
-  if (options.skipReplies && (options.isReply || Boolean(post.parentId))) return null
-
+  const isCheckin = post.kind === 'checkin'
   const isGroup = Boolean(post.communityGroupId)
   const vis = post.visibility
 
-  const tone: AppToastTone = isGroup
-    ? 'group'
-    : vis === 'premiumOnly'
-      ? 'premiumOnly'
-      : vis === 'verifiedOnly'
-        ? 'verifiedOnly'
-        : vis === 'onlyMe'
-          ? 'onlyMe'
-          : 'public'
+  const tone: AppToastTone = isCheckin
+    ? 'success'
+    : isGroup
+      ? 'group'
+      : vis === 'premiumOnly'
+        ? 'premiumOnly'
+        : vis === 'verifiedOnly'
+          ? 'verifiedOnly'
+          : vis === 'onlyMe'
+            ? 'onlyMe'
+            : 'public'
 
-  // Reposts get their own short copy — no visibility context, no edit hint.
   if (isRepost) {
-    return { title: 'Reposted', message: 'Tap to view', tone, to: `/p/${encodeURIComponent(post.id)}`, durationMs: 4000 }
+    return {
+      title: 'Reposted',
+      message: 'Tap to view',
+      tone,
+      to: `/p/${encodeURIComponent(post.id)}`,
+      durationMs: 4000,
+    }
+  }
+
+  if (isCheckin) {
+    return {
+      title: 'Checked in',
+      message: 'Tap to view',
+      tone,
+      to: `/p/${encodeURIComponent(post.id)}`,
+      durationMs: 4000,
+    }
   }
 
   // Top-level non-onlyMe posts can be edited within 30 minutes of creation (max 3 edits).
-  // onlyMe posts have no time limit, so we skip the hint for them.
-  const isTopLevel = !options.isReply && !post.parentId
+  const isTopLevel = !isReply
   const editHint = isTopLevel && vis !== 'onlyMe' ? '30 min to edit' : null
 
   const contextLabel = isGroup
@@ -59,7 +72,7 @@ export function buildPostedToastParams(
   const messageParts = [contextLabel, editHint, 'Tap to view'].filter(Boolean)
   const message = messageParts.join(' · ')
 
-  const title = options.isReply || post.parentId ? 'Reply posted' : 'Posted'
+  const title = isReply ? 'Reply posted' : 'Posted'
 
   return {
     title,

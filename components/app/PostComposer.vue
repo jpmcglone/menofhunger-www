@@ -1656,16 +1656,15 @@ const { submit: submitPost, submitting, submitError } = useFormSubmit(
 )
 
 function pushPostedToast(post: FeedPost) {
-  const params = buildPostedToastParams(post, { isReply: Boolean(props.replyTo) })
-  if (params) toast.push(params)
+  toast.push(buildPostedToastParams(post, { isReply: Boolean(props.replyTo) }))
 }
 
 /**
- * Fire-and-forget submit for new top-level posts. Builds an optimistic
- * FeedPost, fires `pending` so the parent can render it + run the create via
- * `usePendingPostsManager`, then clears the composer. No toast on success
- * (the row in the feed is the feedback). The streak reward (if any) is
- * surfaced by the parent after the real post lands.
+ * Fire-and-forget submit for new posts/replies. Builds an optimistic FeedPost,
+ * fires `pending` so the parent can render it + run the create via
+ * `usePendingPostsManager`, then clears the composer. Success toast comes from
+ * the pending manager once the server acknowledges. Streak rewards (if any)
+ * are surfaced by the parent after the real post lands.
  */
 function submitOptimistic(): boolean {
   const author = makeOptimisticAuthor()

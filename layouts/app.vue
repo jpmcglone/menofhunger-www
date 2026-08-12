@@ -626,16 +626,42 @@ function updateTitleBarHeightVar() {
   if (!import.meta.client) return
   const main = middleScrollerEl.value
   const bar = titleBarEl.value
-  if (!main || !bar) return
-  main.style.setProperty('--moh-title-bar-height', `${bar.offsetHeight}px`)
-}
-watch([titleBarEl, hideTopBar], () => {
-  if (!hideTopBar.value && titleBarEl.value) {
-    nextTick(() => updateTitleBarHeightVar())
-  } else if (hideTopBar.value) {
-    // Reset the var so sticky tab bars on hideTopBar pages use top: 0.
-    middleScrollerEl.value?.style.setProperty('--moh-title-bar-height', '0px')
+  if (!main) return
+  if (!hideTopBar.value && bar) {
+    main.style.setProperty('--moh-title-bar-height', `${bar.offsetHeight}px`)
+  } else {
+    // Reset so sticky tab bars on hideTopBar pages use top: 0.
+    main.style.setProperty('--moh-title-bar-height', '0px')
   }
+  updateToastClearanceVar()
+}
+
+/** Toast stack is teleported to body — publish clearance on :root so it can see it. */
+function updateToastClearanceVar() {
+  if (!import.meta.client) return
+  let clearancePx = 0
+  if (!hideTopBar.value && titleBarEl.value) {
+    clearancePx = titleBarEl.value.offsetHeight
+  } else {
+    // hideTopBar routes often have their own sticky header (home avatar bar, etc.).
+    // Prefer an explicit anchor; otherwise clear a typical toolbar band so toasts
+    // don't sit on top of chrome.
+    const anchor = middleScrollerEl.value?.querySelector(
+      '[data-moh-toast-anchor]',
+    ) as HTMLElement | null
+    if (anchor) {
+      clearancePx = Math.max(0, Math.round(anchor.getBoundingClientRect().bottom))
+    } else {
+      clearancePx = 56
+    }
+  }
+  document.documentElement.style.setProperty('--moh-toast-clearance', `${clearancePx}px`)
+}
+watch([titleBarEl, hideTopBar, () => route.path], () => {
+  nextTick(() => {
+    updateTitleBarHeightVar()
+    updateToastClearanceVar()
+  })
 }, { immediate: true })
 
 let titleBarRo: ResizeObserver | null = null

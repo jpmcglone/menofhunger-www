@@ -4,6 +4,7 @@ import type { SpacesCallback } from '~/composables/usePresence'
 const SELECTED_SPACE_ID_KEY = 'selected-space-id'
 const SPACE_MEMBERS_KEY = 'space-members'
 const SPACE_LOBBY_COUNTS_KEY = 'space-lobby-counts'
+const SPACE_LOBBY_SOCKET_GEN_KEY = 'space-lobby-socket-gen'
 const SPACES_CB_KEY = 'space-lobby-spaces-cb'
 const SPACES_CB_REFS_KEY = 'space-lobby-spaces-cb-refs'
 
@@ -16,6 +17,8 @@ export function useSpaceLobby() {
   const selectedSpaceId = useState<string | null>(SELECTED_SPACE_ID_KEY, () => null)
   const members = useState<SpaceMember[]>(SPACE_MEMBERS_KEY, () => [])
   const lobbyCounts = useState<SpaceLobbyCounts>(SPACE_LOBBY_COUNTS_KEY, () => ({ countsBySpaceId: {} }))
+  /** Bumped on every socket lobbyCounts push — HTTP must not overwrite a newer seed. */
+  const lobbySocketGen = useState<number>(SPACE_LOBBY_SOCKET_GEN_KEY, () => 0)
 
   // Singleton callback + refcount: every useSpaceLobby() call used to create a new
   // spacesCb and addSpacesCallback it forever. Sets are keyed by reference, so those
@@ -48,6 +51,7 @@ export function useSpaceLobby() {
       },
       onLobbyCounts: (payload: SpaceLobbyCounts) => {
         const countsBySpaceId = payload?.countsBySpaceId ?? {}
+        lobbySocketGen.value += 1
         lobbyCounts.value = { countsBySpaceId }
       },
       onModeChanged: (payload) => {
@@ -90,9 +94,12 @@ export function useSpaceLobby() {
   async function loadLobbyCounts() {
     if (!import.meta.client) return
     ensureSpacesCallback()
+    const genAtStart = lobbySocketGen.value
     // Fetch the current snapshot over HTTP — no socket required, works on first render.
     try {
       const data = await apiFetchData<SpaceLobbyCounts>('/spaces/lobby-counts', { method: 'GET' })
+      // Socket (connect / lobbies subscribe) may have already applied a fresher aggregate.
+      if (lobbySocketGen.value !== genAtStart) return
       if (data?.countsBySpaceId) lobbyCounts.value = { countsBySpaceId: data.countsBySpaceId }
     } catch {
       // best-effort; real-time socket updates will correct any stale state

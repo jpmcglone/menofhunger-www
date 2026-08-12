@@ -117,13 +117,8 @@
               v-else-if="space.mode === 'RADIO' && space.radioStreamUrl"
               class="w-full h-full"
             />
-            <!-- None mode: blank canvas -->
-            <div v-else class="w-full h-full flex items-center justify-center moh-meta">
-              <div class="text-center">
-                <Icon name="tabler:campfire" class="text-[48px] opacity-20" aria-hidden="true" />
-                <p class="mt-2 opacity-50 text-sm">Space is idle</p>
-              </div>
-            </div>
+            <!-- None mode: calm idle hearth -->
+            <AppSpaceIdleAmbiance v-else class="w-full h-full" />
           </div>
 
           <!-- Users + reactions -->

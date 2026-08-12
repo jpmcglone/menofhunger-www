@@ -114,9 +114,8 @@ export function usePendingPostsManager() {
       entry.callbacks.replace(entry.localId, real)
       entry.onSuccess?.(real)
       REGISTRY.delete(entry.localId)
-      // Show a clickable "Posted · Tap to view" toast (skip replies and check-ins).
-      const toastParams = buildPostedToastParams(real, { skipReplies: true })
-      if (toastParams) toast.push(toastParams)
+      // Success toast for every create path (post, reply, check-in, only-me, group).
+      toast.push(buildPostedToastParams(real))
     } catch (e: unknown) {
       const msg = getApiErrorMessage(e) || 'Failed to post.'
       entry.status = 'failed'
