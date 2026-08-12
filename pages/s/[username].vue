@@ -22,11 +22,12 @@
               <AppSpaceStatusBadge :kind="spaceStatusKind" size="md" class="!text-[10px] !px-2" />
             </div>
             <p v-if="space.description" class="mt-1 moh-meta">{{ space.description }}</p>
-            <p v-else class="mt-1 moh-meta">
+            <p v-if="spaceScheduleLabel && !space.isActive" class="mt-1 moh-meta">
+              <template v-if="isOwner">Scheduled {{ spaceScheduleLabel }}</template>
+              <template v-else>Hosted by @{{ space.owner?.username ?? 'unknown' }} · {{ spaceScheduleLabel }}</template>
+            </p>
+            <p v-else-if="!isOwner" class="mt-1 moh-meta">
               Hosted by @{{ space.owner?.username ?? 'unknown' }}
-              <template v-if="spaceScheduleLabel && !space.isActive">
-                · {{ spaceScheduleLabel }}
-              </template>
             </p>
           </div>
           <div class="shrink-0 mt-1 flex items-center gap-2">
