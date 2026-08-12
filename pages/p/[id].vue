@@ -1054,7 +1054,8 @@ function reloadPage() {
 }
 
 // Scroll the highlighted reply so its top sits just under the sticky title bar.
-// Only needed when parent posts are rendered above the selected post.
+// Load-only: run once per post visit while layout settles. Do not re-run when the
+// selected post is patched in place (boost, bookmark, live counts, edits).
 type FeedPostRowExposed = { getHighlightedEl: () => HTMLElement | null }
 const feedPostRowRef = ref<FeedPostRowExposed | null>(null)
 const middleScrollerEl = useMiddleScroller()
@@ -1083,11 +1084,15 @@ function alignHighlightedPost(): void {
 }
 
 let alignHighlightCleanup: (() => void) | null = null
+/** After settle or user scroll for this postId, never snap again until navigation. */
+let highlightAlignFinishedForId: string | null = null
 
 function scheduleHighlightAlign() {
   alignHighlightCleanup?.()
   alignHighlightCleanup = null
   if (!import.meta.client || !post.value?.parent) return
+  const id = String(postId.value ?? '').trim()
+  if (!id || highlightAlignFinishedForId === id) return
 
   let cancelled = false
   let frames = 0
@@ -1108,14 +1113,25 @@ function scheduleHighlightAlign() {
   })
 
   const scroller = middleScrollerEl.value
-  const cancelForUser = () => {
+  let ro: ResizeObserver | null = null
+
+  const finishAlignPass = () => {
     cancelled = true
+    highlightAlignFinishedForId = id
+    ro?.disconnect()
+    scroller?.removeEventListener('wheel', cancelForUser)
+    scroller?.removeEventListener('touchmove', cancelForUser)
+  }
+
+  // Wheel/touch only — do not listen to `scroll`. middle-scroll-restore writes
+  // scrollTop during settle and would finish the pass before the first align.
+  const cancelForUser = () => {
+    finishAlignPass()
   }
   scroller?.addEventListener('wheel', cancelForUser, { passive: true })
   scroller?.addEventListener('touchmove', cancelForUser, { passive: true })
 
   const root = highlightedPostRef.value
-  let ro: ResizeObserver | null = null
   if (root && typeof ResizeObserver !== 'undefined') {
     ro = new ResizeObserver(() => {
       if (!cancelled) alignHighlightedPost()
@@ -1124,13 +1140,11 @@ function scheduleHighlightAlign() {
   }
 
   const stopTimer = window.setTimeout(() => {
-    cancelled = true
-    ro?.disconnect()
-    scroller?.removeEventListener('wheel', cancelForUser)
-    scroller?.removeEventListener('touchmove', cancelForUser)
+    finishAlignPass()
   }, 2000)
 
   alignHighlightCleanup = () => {
+    // Tear down without marking finished — caller may be rescheduling (e.g. page:finish).
     cancelled = true
     window.clearTimeout(stopTimer)
     ro?.disconnect()
@@ -1147,9 +1161,15 @@ if (import.meta.client) {
     void nextTick(() => scheduleHighlightAlign())
   })
 
+  // Watch primitive sources — NOT `() => [postId, parentId]`. A getter that returns a
+  // fresh array retriggers on every `post` identity change (boost/live patch), which
+  // re-snapped the selected reply under the title bar after the page had already settled.
   watch(
-    () => [postId.value, post.value?.parent?.id ?? null] as const,
-    () => {
+    [postId, () => post.value?.parent?.id ?? null],
+    (curr, prev) => {
+      const id = curr[0]
+      const prevId = prev?.[0]
+      if (id !== prevId) highlightAlignFinishedForId = null
       void nextTick(() => scheduleHighlightAlign())
     },
   )
