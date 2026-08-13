@@ -40,8 +40,8 @@
           <!-- Definition -->
           <div v-if="hasDefinition" class="mt-2">
             <!-- eslint-disable-next-line vue/no-v-html -->
-            <div v-if="definitionHtml" class="moh-wotd-definition moh-text text-[15px] leading-relaxed" v-html="definitionHtml" />
-            <div v-else class="moh-text space-y-3 text-[15px] leading-relaxed">
+            <div v-if="definitionHtml" class="moh-wotd-definition moh-text text-base leading-relaxed" v-html="definitionHtml" />
+            <div v-else class="moh-text space-y-3 text-base leading-relaxed">
               <p v-for="(p, idx) in paragraphs" :key="idx" class="whitespace-pre-wrap">{{ p }}</p>
             </div>
           </div>
@@ -60,7 +60,7 @@
           </div>
 
           <!-- Countdown to next word -->
-          <p v-if="countdown" class="mt-3 text-[11px] text-gray-300 dark:text-gray-600 tabular-nums select-none">
+          <p v-if="countdown" class="mt-3 text-[11px] moh-text-muted tabular-nums select-none">
             Next word in {{ countdown }}
           </p>
         </template>

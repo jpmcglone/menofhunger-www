@@ -108,8 +108,8 @@
 
           <div v-if="hasDefinition">
             <!-- eslint-disable-next-line vue/no-v-html -->
-            <div v-if="definitionHtml" class="moh-wotd-definition moh-text text-[15px] leading-relaxed" v-html="definitionHtml" />
-            <div v-else class="moh-text space-y-3 text-[15px] leading-relaxed">
+            <div v-if="definitionHtml" class="moh-wotd-definition moh-text text-base leading-relaxed" v-html="definitionHtml" />
+            <div v-else class="moh-text space-y-3 text-base leading-relaxed">
               <p v-for="(p, idx) in paragraphs" :key="idx" class="whitespace-pre-wrap">{{ p }}</p>
             </div>
           </div>

@@ -37,7 +37,7 @@
             </p>
 
             <!-- Countdown to next quote -->
-            <p v-if="countdown" class="text-[11px] text-gray-300 dark:text-gray-600 tabular-nums select-none">
+            <p v-if="countdown" class="text-[11px] moh-text-muted tabular-nums select-none">
               Next quote in {{ countdown }}
             </p>
 

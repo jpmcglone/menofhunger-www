@@ -9,13 +9,13 @@
     <NuxtLink
       v-if="quote"
       to="/daily/quote"
-      class="md:hidden block px-3 py-3 text-center text-sm leading-relaxed text-gray-700 dark:text-gray-200 sm:px-4 hover:opacity-80 transition-opacity"
+      class="md:hidden block px-3 py-3 text-center text-lg leading-relaxed text-gray-700 dark:text-gray-200 sm:px-4 hover:opacity-80 transition-opacity"
     >
       <figure>
         <blockquote class="italic moh-serif">
           "{{ quote.text }}"
         </blockquote>
-        <figcaption class="mt-2 text-xs text-gray-500 dark:text-gray-400">
+        <figcaption class="mt-2 text-[13px] text-gray-500 dark:text-gray-400">
           <span class="font-semibold">{{ attribution }}</span>
           <span v-if="quote.isParaphrase" class="ml-1">(paraphrase)</span>
         </figcaption>
