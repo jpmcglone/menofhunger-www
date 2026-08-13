@@ -41,7 +41,7 @@
       No searches found.
     </div>
 
-    <div v-else class="divide-y divide-gray-200 dark:divide-zinc-800">
+    <div v-else class="moh-divide">
       <div
         v-for="row in items"
         :key="row.id"

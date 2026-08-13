@@ -33,7 +33,7 @@
       v-else
       name="online-users-list"
       tag="div"
-      class="divide-y divide-gray-200 dark:divide-zinc-800 transition-opacity duration-150"
+      class="moh-divide transition-opacity duration-150"
     >
       <AppUserRow v-for="u in users" :key="u.id" :user="u" :show-follow-button="true" :platforms="u.platforms" />
     </TransitionGroup>
@@ -70,7 +70,7 @@
           v-if="recentlyOnlineUsers.length"
           name="online-users-list"
           tag="div"
-          class="divide-y divide-gray-200 dark:divide-zinc-800 transition-opacity duration-150"
+          class="moh-divide transition-opacity duration-150"
         >
           <AppUserRow
             v-for="u in recentlyOnlineUsers"
@@ -98,7 +98,7 @@
           v-if="olderOnlineUsers.length"
           name="online-users-list"
           tag="div"
-          class="divide-y divide-gray-200 dark:divide-zinc-800 transition-opacity duration-150"
+          class="moh-divide transition-opacity duration-150"
         >
           <AppUserRow
             v-for="u in olderOnlineUsers"

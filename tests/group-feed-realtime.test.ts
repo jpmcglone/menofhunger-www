@@ -91,4 +91,11 @@ describe('group join feedback', () => {
     expect(source).toContain('applyCommunityGroupJoin')
     expect(source).toContain('communityGroupJoinToast')
   })
+
+  it('approval-group invite auto-join shows a waiting-for-approval state, not the feed', () => {
+    const source = readFile('pages/g/[slug]/index.vue')
+    expect(source).toContain('isPendingApproval')
+    expect(source).toContain('once a moderator approves')
+    expect(source).toContain('approval groups stay pending')
+  })
 })

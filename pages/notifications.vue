@@ -51,7 +51,7 @@
         No notifications yet.
       </div>
       <div v-else class="relative z-0">
-        <TransitionGroup name="notifications-list" tag="div" class="divide-y divide-gray-200 dark:divide-zinc-800 transition-opacity duration-150">
+        <TransitionGroup name="notifications-list" tag="div" class="moh-divide transition-opacity duration-150">
           <div
             v-for="(item, idx) in notifications"
             :key="itemKey(item)"

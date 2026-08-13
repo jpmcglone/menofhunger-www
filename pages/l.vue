@@ -32,7 +32,7 @@
               {{ section.label }}
             </h2>
           </div>
-          <div class="divide-y divide-gray-200 dark:divide-zinc-800">
+          <div class="moh-divide">
             <div
               v-for="user in section.users"
               :key="user.id"

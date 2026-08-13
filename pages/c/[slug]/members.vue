@@ -44,7 +44,7 @@
 
       <AppInlineAlert v-if="error" severity="danger">{{ error }}</AppInlineAlert>
 
-      <ul class="divide-y divide-gray-100 dark:divide-white/5 rounded-xl border moh-border">
+      <ul class="moh-divide rounded-xl border moh-border">
         <li v-for="m in crew.members" :key="m.user.id" class="p-3 flex items-center gap-3">
           <NuxtLink
             v-if="m.user.username"

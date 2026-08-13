@@ -1,7 +1,7 @@
 <template>
   <AppPageContent bottom="standard">
-    <div class="w-full max-w-lg mx-auto px-3 py-4 sm:px-4">
-      <div class="flex items-center gap-2 mb-4">
+    <div class="w-full py-4">
+      <div class="moh-gutter-x flex items-center gap-2 mb-4">
         <NuxtLink
           :to="`/g/${encodeURIComponent(slug)}`"
           class="moh-tap flex h-9 w-9 items-center justify-center rounded-full moh-surface-hover"
@@ -25,31 +25,31 @@
         </Button>
       </div>
 
-      <p v-if="!shellLoading && shell" class="text-xs moh-text-muted mb-3">
+      <p v-if="!shellLoading && shell" class="moh-gutter-x text-xs moh-text-muted mb-3">
         People you've invited to <span class="font-semibold moh-text">{{ shell.name }}</span> who
         haven't responded yet. Cancelling an invite removes their notification too.
       </p>
 
-      <AppInlineAlert v-if="error" severity="danger" class="mb-3">
+      <AppInlineAlert v-if="error" severity="danger" class="moh-gutter-x mb-3">
         {{ error }}
       </AppInlineAlert>
 
       <AppSubtleSectionLoader :loading="shellLoading || (loading && !invites.length)" min-height-class="min-h-[120px]">
         <p
           v-if="!shellLoading && !loading && !invites.length"
-          class="text-sm moh-text-muted py-8 text-center"
+          class="moh-gutter-x text-sm moh-text-muted py-8 text-center"
         >
           No pending invites. Tap <span class="font-semibold moh-text">Invite</span> to add someone.
         </p>
 
         <ul
           v-else-if="invites.length"
-          class="divide-y moh-border rounded-xl border moh-border overflow-hidden moh-surface"
+          class="moh-divide"
         >
           <li
             v-for="inv in invites"
             :key="inv.id"
-            class="flex flex-wrap items-start gap-3 px-3 py-3"
+            class="flex flex-wrap items-start gap-3 moh-gutter-x py-3"
           >
             <NuxtLink
               :to="inv.invitee.username ? `/u/${encodeURIComponent(inv.invitee.username)}` : '#'"

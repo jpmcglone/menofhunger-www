@@ -23,7 +23,7 @@
             />
           </div>
 
-          <div class="mt-4 divide-y divide-gray-200 dark:divide-zinc-800">
+          <div class="mt-4 moh-divide">
             <NuxtLink
               v-for="s in filteredSections"
               :key="s.key"

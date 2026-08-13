@@ -239,7 +239,7 @@
         <template v-else-if="recruits.length === 0">
           <p class="text-xs text-gray-500 dark:text-gray-400">No one has used your code yet. Share it!</p>
         </template>
-        <ul v-else class="divide-y divide-gray-100 dark:divide-zinc-800">
+        <ul v-else class="moh-divide">
           <li v-for="r in recruits" :key="r.id" class="flex items-center justify-between gap-3 py-2">
             <div class="flex items-center gap-2 min-w-0">
               <Icon name="tabler:user-plus" class="h-4 w-4 shrink-0 text-gray-400" aria-hidden="true" />

@@ -95,7 +95,12 @@
               Verify to join — takes a minute
             </p>
             <p class="text-xs moh-text-muted mb-3">
-              Then you’re in <span class="font-semibold">{{ shell.name }}</span>.
+              <template v-if="isOpenGroup">
+                Then you’re in <span class="font-semibold">{{ shell.name }}</span>.
+              </template>
+              <template v-else>
+                Then you can request to join <span class="font-semibold">{{ shell.name }}</span>.
+              </template>
             </p>
             <NuxtLink
               :to="verificationJoinTo"
@@ -142,6 +147,19 @@
             :loading="joinBusy"
             @click="doJoin"
           />
+        </div>
+        <div
+          v-else-if="isPendingApproval"
+          class="px-4 py-6 border-b moh-border"
+        >
+          <div class="rounded-xl border moh-border bg-[var(--moh-surface-2)] px-5 py-6 text-center max-w-lg mx-auto">
+            <p class="text-sm font-medium moh-text mb-1">
+              Request sent
+            </p>
+            <p class="text-xs moh-text-muted">
+              You’ll see posts in <span class="font-semibold">{{ shell.name }}</span> once a moderator approves.
+            </p>
+          </div>
         </div>
 
         <template v-if="canReadFeed">
@@ -412,6 +430,7 @@ const leaveBusy = ref(false)
 const cancelBusy = ref(false)
 
 const isMember = computed(() => shell.value?.viewerMembership?.status === 'active')
+const isPendingApproval = computed(() => Boolean(shell.value?.viewerPendingApproval))
 const isOpenGroup = computed(() => shell.value?.joinPolicy === 'open')
 const canReadFeed = computed(() =>
   Boolean(shell.value?.id && (isMember.value || (isOpenGroup.value && isAuthed.value && isVerified.value))),
@@ -725,11 +744,12 @@ const autoJoinAttempted = ref(false)
 async function maybeAutoJoinFromInvite() {
   if (!import.meta.client || autoJoinAttempted.value) return
   if (!shell.value || !isAuthed.value || !isVerified.value || isMember.value) return
-  if (shell.value.viewerPendingApproval) return
+  if (isPendingApproval.value) return
   const pendingMatches = pendingGroupSlug.value && pendingGroupSlug.value === slug.value
   if (!pendingMatches && !hasInviteAttribution.value) return
   autoJoinAttempted.value = true
   setPendingGroupJoin(null)
+  // Same POST /join as the button: open groups become members, approval groups stay pending.
   await doJoin()
 }
 

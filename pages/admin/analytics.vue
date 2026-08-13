@@ -294,7 +294,7 @@
                   <th class="px-4 py-3 font-medium text-right">Published</th>
                 </tr>
               </thead>
-              <tbody class="divide-y divide-gray-100 dark:divide-white/5">
+              <tbody class="moh-divide">
                 <tr
                   v-for="article in data?.articles.topArticles"
                   :key="article.id"
@@ -342,7 +342,7 @@
                   <th class="px-4 py-3 font-medium text-right">Created</th>
                 </tr>
               </thead>
-              <tbody class="divide-y divide-gray-100 dark:divide-white/5">
+              <tbody class="moh-divide">
                 <tr
                   v-for="post in data?.topPostsAllTime"
                   :key="post.id"
@@ -396,7 +396,7 @@
                   <th class="px-4 py-3 font-medium text-right">≥1 reply in 24h</th>
                 </tr>
               </thead>
-              <tbody class="divide-y divide-gray-100 dark:divide-white/5">
+              <tbody class="moh-divide">
                 <tr
                   v-for="g in data.groups.topGroups"
                   :key="g.id"
@@ -482,7 +482,7 @@
                   <th class="px-4 py-3 font-medium text-right">Created</th>
                 </tr>
               </thead>
-              <tbody class="divide-y divide-gray-100 dark:divide-white/5">
+              <tbody class="moh-divide">
                 <tr
                   v-for="s in data.spaces?.topSpaces ?? []"
                   :key="s.id"
@@ -646,7 +646,7 @@
                   <th class="px-4 py-3 font-medium text-right">W4 %</th>
                 </tr>
               </thead>
-              <tbody class="divide-y divide-gray-100 dark:divide-white/5">
+              <tbody class="moh-divide">
                 <tr v-for="row in retentionRows" :key="row.cohortWeek" class="hover:bg-gray-50 dark:hover:bg-zinc-900/50">
                   <td class="px-4 py-3 font-mono text-xs">{{ row.cohortWeek }}</td>
                   <td class="px-4 py-3 text-right tabular-nums">{{ row.size.toLocaleString() }}</td>
@@ -1009,7 +1009,7 @@
             <!-- Top recruiters -->
             <div v-if="referralAnalytics.topRecruiters.length > 0" class="rounded-xl border moh-border p-4 space-y-2">
               <div class="text-xs font-semibold text-gray-600 dark:text-gray-300">Top Recruiters</div>
-              <div class="divide-y divide-gray-100 dark:divide-zinc-800">
+              <div class="moh-divide">
                 <div
                   v-for="(r, i) in referralAnalytics.topRecruiters"
                   :key="r.userId"

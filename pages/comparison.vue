@@ -43,7 +43,7 @@
                 <th class="px-5 py-3.5 font-semibold text-gray-800 dark:text-gray-100">Men of Hunger</th>
               </tr>
             </thead>
-            <tbody class="divide-y divide-gray-200 dark:divide-zinc-700">
+            <tbody class="moh-divide">
               <tr
                 v-for="(row, i) in section.rows"
                 :key="`${row.x}:${row.moh}:${i}`"

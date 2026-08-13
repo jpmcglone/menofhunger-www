@@ -23,7 +23,7 @@
         No trends yet.
       </div>
 
-      <div v-else class="divide-y divide-gray-200 dark:divide-zinc-800">
+      <div v-else class="moh-divide">
         <NuxtLink
           v-for="t in tags"
           :key="t.value"

@@ -125,7 +125,7 @@
         >
           {{ usageError }}
         </div>
-        <ul v-if="usage.length" class="divide-y moh-border rounded-xl border moh-border overflow-hidden">
+        <ul v-if="usage.length" class="moh-divide rounded-xl border moh-border overflow-hidden">
           <li
             v-for="event in usage"
             :key="event.id"

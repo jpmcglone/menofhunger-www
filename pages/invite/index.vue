@@ -309,7 +309,7 @@
                 <span class="text-[11px] font-semibold uppercase tracking-wide moh-text-muted">{{ group.label }}</span>
                 <span class="text-[11px] moh-text-muted opacity-60 tabular-nums">{{ group.recruits.length }}</span>
               </div>
-              <div class="divide-y divide-gray-200 dark:divide-zinc-800 border-b moh-border">
+              <div class="moh-divide border-b moh-border">
                 <AppUserRow
                   v-for="recruit in group.recruits"
                   :key="recruit.id"

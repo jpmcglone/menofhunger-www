@@ -49,7 +49,7 @@
       No verification requests yet.
     </div>
 
-    <div v-else class="divide-y divide-gray-200 dark:divide-zinc-800">
+    <div v-else class="moh-divide">
       <div
         v-for="item in items"
         :key="item.id"

@@ -18,11 +18,15 @@ horizontal space on mobile. It's banned.
 2. Section separators use `border-b moh-border` (or a subtle shadow), not a
    nested rounded card around the whole section.
 3. Lists / feeds / carousels: each row may have its own surface treatment,
-   but the list itself must not be wrapped in an outer rounded card.
-4. Individual cards are fine when they ARE the unit (a single composer card,
+   but the list itself must not be wrapped in an outer rounded card. Row
+   separators are `moh-divide` — never Tailwind `divide-y` (it uses
+   `currentColor` and becomes a high-contrast white line in dark mode).
+4. List pages (members, invites, pending, notifications, online) are
+   full-width. Do not wrap them in `max-w-lg mx-auto`.
+5. Individual cards are fine when they ARE the unit (a single composer card,
    a single empty-state card, a single CTA tile). They are not fine when they
    contain "the whole page".
-5. On mobile, content should reach the viewport edge wherever it improves
+6. On mobile, content should reach the viewport edge wherever it improves
    density (carousels, media, feed rows). Use `moh-gutter-x` for text blocks
    and form fields.
 

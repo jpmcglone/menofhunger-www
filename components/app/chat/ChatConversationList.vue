@@ -116,7 +116,7 @@
       v-else
       name="moh-chat-row"
       tag="div"
-      class="divide-y divide-gray-200 dark:divide-zinc-800"
+      class="moh-divide"
     >
       <NuxtLink
         v-for="c in displayList"

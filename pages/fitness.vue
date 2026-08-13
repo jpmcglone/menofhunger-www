@@ -169,7 +169,7 @@
           </template>
         </div>
 
-        <div v-else class="divide-y divide-gray-100 dark:divide-white/[0.05]">
+        <div v-else class="moh-divide">
           <div
             v-for="activity in displayedActivities"
             :key="activity.id"
@@ -281,7 +281,7 @@
 
       <!-- ─── Card 2: Weight + Goal ──────────────────────────────────────── -->
       <div class="moh-gutter-x py-3">
-        <div class="rounded-xl border moh-border moh-surface-2 divide-y moh-border">
+        <div class="rounded-xl border moh-border moh-surface-2 moh-divide">
 
       <!-- Weight -->
       <div class="p-4 space-y-3">

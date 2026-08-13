@@ -106,7 +106,7 @@
         <!-- Result list — full-bleed divided rows. NO outer card wrapper. -->
         <div
           v-else
-          class="mt-3 divide-y divide-gray-100 dark:divide-white/5"
+          class="mt-3 moh-divide"
         >
           <NuxtLink
             v-for="g in discoverRows"

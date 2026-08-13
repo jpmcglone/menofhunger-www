@@ -1,5 +1,5 @@
 <template>
-  <dl class="divide-y divide-[var(--moh-border-subtle)] overflow-hidden rounded-lg border border-[var(--moh-border-subtle)]">
+  <dl class="moh-divide overflow-hidden rounded-lg border border-[var(--moh-border-subtle)]">
     <div v-for="field in fields" :key="field.name" class="px-4 py-2.5">
       <div class="flex flex-wrap items-baseline gap-x-2.5">
         <dt class="font-mono text-sm font-medium text-gray-900 dark:text-gray-50">{{ field.name }}</dt>

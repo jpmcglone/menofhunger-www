@@ -67,7 +67,7 @@
             No banned users.
           </div>
 
-          <div v-else class="divide-y divide-gray-200 dark:divide-zinc-800 rounded-xl border border-gray-200 dark:border-zinc-800 overflow-hidden">
+          <div v-else class="moh-divide rounded-xl border border-gray-200 dark:border-zinc-800 overflow-hidden">
             <div v-for="u in bannedUsers" :key="u.id" class="bg-white/60 dark:bg-zinc-950/20 px-4 py-3">
               <div class="flex items-start justify-between gap-3">
                 <div class="flex min-w-0 items-start gap-3">
@@ -137,7 +137,7 @@
       No users found.
     </div>
 
-    <div v-else class="divide-y divide-gray-200 dark:divide-zinc-800">
+    <div v-else class="moh-divide">
       <div
         v-for="u in results"
         :key="u.id"

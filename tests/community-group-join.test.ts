@@ -40,6 +40,8 @@ describe('communityGroupJoinToast', () => {
   })
 
   it('uses request-sent copy for approval groups', () => {
-    expect(communityGroupJoinToast('pending', 'Dawn Patrol').title).toBe('Request sent')
+    const t = communityGroupJoinToast('pending', 'Dawn Patrol')
+    expect(t.title).toBe('Request sent')
+    expect(t.message).toMatch(/moderator/i)
   })
 })

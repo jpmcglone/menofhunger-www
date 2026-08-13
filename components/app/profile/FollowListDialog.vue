@@ -12,7 +12,7 @@
     </div>
 
     <div v-else-if="loading && users.length === 0">
-      <div class="divide-y divide-gray-200 dark:divide-zinc-800">
+      <div class="moh-divide">
         <div v-for="i in skeletonRows" :key="i" class="px-4 py-3">
           <div class="flex items-center gap-3 min-w-0">
             <div class="h-10 w-10 shrink-0 rounded-full bg-gray-200 dark:bg-zinc-800" aria-hidden="true" />
@@ -33,7 +33,7 @@
       {{ emptyText }}
     </div>
 
-    <div v-else class="divide-y divide-gray-200 dark:divide-zinc-800">
+    <div v-else class="moh-divide">
       <AppUserRow v-for="u in users" :key="u.id" :user="u" />
     </div>
 

@@ -16,7 +16,7 @@
       You haven't blocked anyone.
     </div>
 
-    <div v-else class="divide-y divide-gray-100 dark:divide-zinc-800 rounded-xl border border-gray-200 dark:border-zinc-800 overflow-hidden">
+    <div v-else class="moh-divide rounded-xl border border-gray-200 dark:border-zinc-800 overflow-hidden">
       <div
         v-for="item in blocks"
         :key="item.blocked.id"

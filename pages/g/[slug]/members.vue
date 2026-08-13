@@ -61,11 +61,11 @@
         </AppInlineAlert>
 
         <AppSubtleSectionLoader :loading="loading && !rows.length" min-height-class="min-h-[120px]">
-          <ul v-if="filteredRows.length">
+          <ul v-if="filteredRows.length" class="moh-divide">
             <li
               v-for="m in filteredRows"
               :key="m.userId"
-              class="flex items-center gap-3 px-3 py-2.5 sm:px-4 border-b border-gray-100 dark:border-zinc-900 last:border-b-0 hover:bg-black/[.03] dark:hover:bg-white/[.03] transition-colors"
+              class="flex items-center gap-3 moh-gutter-x py-2.5 hover:bg-black/[.03] dark:hover:bg-white/[.03] transition-colors"
             >
               <NuxtLink :to="m.username ? `/u/${encodeURIComponent(m.username)}` : '#'" class="shrink-0" @click.prevent="goProfile(m)">
                 <AppUserAvatar
@@ -160,8 +160,7 @@ const isAdminViewer = computed(() => {
 })
 
 const pendingCopy = computed(() => {
-  const status = shell.value?.viewerMembership?.status
-  if (status === 'pending') return 'Your join request is still pending approval.'
+  if (shell.value?.viewerPendingApproval) return 'Your join request is still pending approval.'
   return 'Join the group to see who else is in it.'
 })
 

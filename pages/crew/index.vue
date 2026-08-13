@@ -83,7 +83,7 @@
             No one has listed themselves as open yet — be the first.
           </div>
 
-          <div v-else class="divide-y divide-gray-100 dark:divide-white/5 rounded-xl border moh-border">
+          <div v-else class="moh-divide rounded-xl border moh-border">
             <div
               v-for="entry in displayedOpenMembers"
               :key="entry.user.id"
@@ -120,7 +120,7 @@
           <h3 class="text-sm font-semibold moh-text uppercase tracking-wide">
             Invites received
           </h3>
-          <div class="divide-y divide-gray-100 dark:divide-white/5 rounded-xl border moh-border">
+          <div class="moh-divide rounded-xl border moh-border">
             <div
               v-for="inv in inbox"
               :key="inv.id"
@@ -164,7 +164,7 @@
           <h3 class="text-sm font-semibold moh-text uppercase tracking-wide">
             Invites sent
           </h3>
-          <div class="divide-y divide-gray-100 dark:divide-white/5 rounded-xl border moh-border">
+          <div class="moh-divide rounded-xl border moh-border">
             <div
               v-for="inv in outbox"
               :key="inv.id"

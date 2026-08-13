@@ -484,6 +484,21 @@ input[type="reset"] {
   .moh-border-strong {
     border-color: var(--moh-border-strong);
   }
+  /*
+    List row separators. Tailwind `divide-y` without a divide-* color uses
+    currentColor (near-white text in dark mode) — never do that.
+    Use `moh-divide` and stop thinking about it.
+  */
+  .moh-divide > :not([hidden]) ~ :not([hidden]) {
+    border-top-width: 1px;
+    border-top-style: solid;
+    border-color: var(--moh-border-subtle);
+  }
+  /* Safety net if someone writes `divide-y moh-border` — color children, not currentColor. */
+  .divide-y.moh-border > :not([hidden]) ~ :not([hidden]),
+  .divide-y.moh-border-subtle > :not([hidden]) ~ :not([hidden]) {
+    border-color: var(--moh-border-subtle);
+  }
   .moh-text {
     color: var(--moh-text);
   }

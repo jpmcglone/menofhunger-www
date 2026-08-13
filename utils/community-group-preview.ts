@@ -83,7 +83,12 @@ export function applyCommunityGroupJoin<T extends JoinableGroup>(group: T, statu
 
 export function communityGroupJoinToast(status: string, groupName: string) {
   if (status === 'pending') {
-    return { title: 'Request sent', tone: 'group' as const, durationMs: 3200 }
+    return {
+      title: 'Request sent',
+      message: 'Waiting for a moderator to approve.',
+      tone: 'group' as const,
+      durationMs: 4000,
+    }
   }
   const name = groupName.trim()
   return {

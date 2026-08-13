@@ -22,7 +22,7 @@
         <h2 class="text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-zinc-400 mb-3">
           Global Article Feeds
         </h2>
-        <div class="rounded-lg border border-gray-200 dark:border-zinc-800 divide-y divide-gray-200 dark:divide-zinc-800">
+        <div class="rounded-lg border border-gray-200 dark:border-zinc-800 moh-divide">
           <div
             v-for="row in globalArticleFeeds"
             :key="row.url"
@@ -58,7 +58,7 @@
           <code class="font-mono bg-gray-100 dark:bg-zinc-800 px-1 rounded text-xs">:username</code>
           with any Men of Hunger username.
         </p>
-        <div class="rounded-lg border border-gray-200 dark:border-zinc-800 divide-y divide-gray-200 dark:divide-zinc-800">
+        <div class="rounded-lg border border-gray-200 dark:border-zinc-800 moh-divide">
           <div
             v-for="row in perAuthorFeeds"
             :key="row.url"
@@ -102,7 +102,7 @@
           <code class="font-mono bg-gray-100 dark:bg-zinc-800 px-1 rounded text-xs">fitness</code>, or
           <code class="font-mono bg-gray-100 dark:bg-zinc-800 px-1 rounded text-xs">faith</code>.
         </p>
-        <div class="rounded-lg border border-gray-200 dark:border-zinc-800 divide-y divide-gray-200 dark:divide-zinc-800">
+        <div class="rounded-lg border border-gray-200 dark:border-zinc-800 moh-divide">
           <div
             v-for="row in perTopicFeeds"
             :key="row.url"

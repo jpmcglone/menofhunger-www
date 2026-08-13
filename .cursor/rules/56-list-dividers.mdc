@@ -1,0 +1,38 @@
+---
+description: List row separators use moh-divide (low-contrast). Never Tailwind divide-y.
+globs: **/*.{vue,css}
+alwaysApply: false
+---
+
+# List dividers are `moh-divide`
+
+Do not pick a divider color. Do not use Tailwind `divide-y`.
+
+Tailwind `divide-y` without a `divide-*` color uses `currentColor`. In dark
+mode that is near-white text, so every row gets a high-contrast white line.
+Putting `moh-border` on the parent does **not** color those child borders.
+
+## Use this
+
+```vue
+<ul class="moh-divide">
+  <li class="moh-gutter-x py-3">…</li>
+</ul>
+```
+
+`moh-divide` is defined in `assets/css/main.css` and always uses
+`--moh-border-subtle`.
+
+## Never
+
+```vue
+<!-- currentColor → white lines in dark mode -->
+<ul class="divide-y">
+<ul class="divide-y moh-border">
+
+<!-- still a color decision; use moh-divide -->
+<ul class="divide-y divide-gray-200 dark:divide-zinc-800">
+```
+
+Section chrome (tab bars, sticky headers, composers) may use
+`border-b moh-border`. That is a single edge, not a list of rows.

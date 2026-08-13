@@ -17,7 +17,7 @@
                 <div class="px-4 pt-3 pb-1 text-[11px] font-semibold uppercase tracking-widest text-gray-500 dark:text-gray-400">
                   {{ section.title }}
                 </div>
-                <div class="divide-y divide-gray-200 dark:divide-zinc-800">
+                <div class="moh-divide">
                   <NuxtLink
                     v-for="item in section.items"
                     :key="item.key"
@@ -50,7 +50,7 @@
                   <div class="px-4 pt-4 pb-1 text-[11px] font-semibold uppercase tracking-widest text-gray-500 dark:text-gray-400">
                     {{ section.title }}
                   </div>
-                  <div class="divide-y divide-gray-200 dark:divide-zinc-800">
+                  <div class="moh-divide">
                     <NuxtLink
                       v-for="item in section.items"
                       :key="item.key"

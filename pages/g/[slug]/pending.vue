@@ -1,7 +1,7 @@
 <template>
   <AppPageContent bottom="standard">
-    <div class="w-full max-w-lg mx-auto px-3 py-4 sm:px-4">
-      <div class="flex items-center gap-2 mb-4">
+    <div class="w-full py-4">
+      <div class="moh-gutter-x flex items-center gap-2 mb-4">
         <NuxtLink
           :to="`/g/${encodeURIComponent(slug)}`"
           class="moh-tap flex h-9 w-9 items-center justify-center rounded-full moh-surface-hover"
@@ -14,22 +14,22 @@
         </h1>
       </div>
 
-      <AppInlineAlert v-if="error" severity="danger" class="mb-3">
+      <AppInlineAlert v-if="error" severity="danger" class="moh-gutter-x mb-3">
         {{ error }}
       </AppInlineAlert>
 
       <AppSubtleSectionLoader :loading="shellLoading || loading" min-height-class="min-h-[120px]">
-        <p v-if="!shellLoading && notApplicableReason" class="text-sm moh-text-muted py-6 text-center leading-relaxed">
+        <p v-if="!shellLoading && notApplicableReason" class="moh-gutter-x text-sm moh-text-muted py-6 text-center leading-relaxed">
           {{ notApplicableReason }}
         </p>
-        <p v-else-if="!shellLoading && !loading && !pending.length" class="text-sm moh-text-muted py-6 text-center">
+        <p v-else-if="!shellLoading && !loading && !pending.length" class="moh-gutter-x text-sm moh-text-muted py-6 text-center">
           No pending requests.
         </p>
-        <ul v-else-if="pending.length" class="divide-y moh-border rounded-xl border moh-border overflow-hidden moh-surface">
+        <ul v-else-if="pending.length" class="moh-divide">
           <li
             v-for="row in pending"
             :key="row.userId"
-            class="flex flex-wrap items-center justify-between gap-3 px-3 py-3"
+            class="flex flex-wrap items-center justify-between gap-3 moh-gutter-x py-3"
           >
             <div class="min-w-0">
               <NuxtLink

@@ -28,7 +28,7 @@
           </p>
         </div>
 
-        <ol class="space-y-0 divide-y divide-gray-200 dark:divide-zinc-800 border-y moh-border">
+        <ol class="space-y-0 moh-divide border-y moh-border">
           <li
             v-for="(step, index) in AFFILIATE_PILOT.milestones"
             :key="step.key"
