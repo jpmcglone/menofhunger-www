@@ -1,13 +1,32 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { isViewingSpacePage, navCompactModePath } from '../../config/routes'
+import {
+  isNavActive,
+  isViewingSpacePage,
+  navCompactModePath,
+  shouldInterceptSameNavClick,
+} from '../../config/routes'
 
 function readFromRepo(relativePath: string): string {
   return readFileSync(resolve(process.cwd(), relativePath), 'utf8')
 }
 
 describe('space layout', () => {
+  it('keeps Spaces highlighted on a permalink but still navigates to the lobby', () => {
+    expect(isNavActive({ currentPath: '/s/john', to: '/spaces' })).toBe(true)
+    const plain = { metaKey: false, ctrlKey: false, shiftKey: false, altKey: false, button: 0 }
+    const shift = { ...plain, shiftKey: true }
+    expect(shouldInterceptSameNavClick({ currentPath: '/s/john', to: '/spaces', event: plain })).toBe(false)
+    expect(shouldInterceptSameNavClick({ currentPath: '/s/john', to: '/spaces', event: shift })).toBe(false)
+    expect(shouldInterceptSameNavClick({ currentPath: '/spaces', to: '/spaces', event: plain })).toBe(true)
+    expect(shouldInterceptSameNavClick({ currentPath: '/spaces', to: '/spaces', event: shift })).toBe(false)
+    const rail = readFromRepo('components/app/layout/LeftRail.vue')
+    const tabs = readFromRepo('components/app/TabBar.vue')
+    expect(rail).toMatch(/shouldInterceptSameNavClick/)
+    expect(tabs).toMatch(/shouldInterceptSameNavClick/)
+  })
+
   it('auto-collapses the left nav on space permalinks, not the lobby', () => {
     expect(navCompactModePath('/s/alice')).toBe(true)
     expect(navCompactModePath('/spaces')).toBe(false)
@@ -52,6 +71,9 @@ describe('space layout', () => {
     expect(panel).toMatch(/aria-expanded/)
     expect(panel).toMatch(/rounded-xl border moh-border p-4 moh-bg/)
     expect(panel).not.toMatch(/invisible pointer-events-none/)
-    expect(page).toMatch(/v-if="isOwner" class="moh-gutter-x pb-3"/)
+    expect(page).toMatch(/v-if="isOwner" class="moh-gutter-x pb-2"/)
+    expect(page).toMatch(/flex items-start justify-center/)
+    expect(page).toMatch(/WATCH_PARTY' && space\?\.watchPartyUrl/)
+    expect(page).toMatch(/shrink-0 pb-2/)
   })
 })

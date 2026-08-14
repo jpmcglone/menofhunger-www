@@ -12,6 +12,16 @@ export function useBottomAnchoredList(scroller: Ref<HTMLElement | null>, options
   const atBottom = ref(true)
   const pendingNewCount = ref(0)
 
+  /**
+   * Last scrollTop we wrote ourselves. Content can grow under a stationary
+   * scroller (first reaction, image decode) and measure as "not at bottom"
+   * even though the user never scrolled. Matching this keeps the pin.
+   */
+  let lastProgrammaticTop = -1
+  let resizeObserver: ResizeObserver | null = null
+  let childObserver: MutationObserver | null = null
+  let observedContent: Element | null = null
+
   function scheduleAfterFrame(fn: () => void) {
     if (!import.meta.client) return
     if (typeof requestAnimationFrame === 'function') requestAnimationFrame(fn)
@@ -24,6 +34,11 @@ export function useBottomAnchoredList(scroller: Ref<HTMLElement | null>, options
     return el.scrollHeight - el.scrollTop - el.clientHeight <= bottomThresholdPx
   }
 
+  function pinToBottom(el: HTMLElement) {
+    el.scrollTop = el.scrollHeight
+    lastProgrammaticTop = el.scrollTop
+  }
+
   function scrollToBottom(behavior: ScrollBehavior = 'auto') {
     const el = scroller.value
     if (!el) return
@@ -32,13 +47,58 @@ export function useBottomAnchoredList(scroller: Ref<HTMLElement | null>, options
       const prefersReduced = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches
       if (prefersReduced) nextBehavior = 'auto'
     }
+    if (nextBehavior === 'auto') {
+      pinToBottom(el)
+      return
+    }
     el.scrollTo({ top: el.scrollHeight, behavior: nextBehavior })
   }
 
   function syncAtBottomFromScroll() {
+    const el = scroller.value
     const bottom = isAtBottom()
+    // Content grew under our own pin — stay pinned and let ResizeObserver
+    // land on the new bottom. A real user scroll changes scrollTop.
+    if (!bottom && el && lastProgrammaticTop >= 0 && el.scrollTop === lastProgrammaticTop) {
+      return
+    }
+    lastProgrammaticTop = -1
     atBottom.value = bottom
     if (bottom) pendingNewCount.value = 0
+  }
+
+  function observeContent(el: HTMLElement) {
+    if (!resizeObserver) return
+    const content = el.firstElementChild
+    if (content === observedContent) return
+    if (observedContent) resizeObserver.unobserve(observedContent)
+    observedContent = content
+    if (content) resizeObserver.observe(content)
+  }
+
+  function bindSizeObservers(el: HTMLElement) {
+    unbindSizeObservers()
+    if (typeof ResizeObserver === 'function') {
+      resizeObserver = new ResizeObserver(() => {
+        if (scroller.value !== el) return
+        if (!atBottom.value) return
+        pinToBottom(el)
+      })
+      resizeObserver.observe(el)
+      observeContent(el)
+    }
+    if (typeof MutationObserver === 'function') {
+      childObserver = new MutationObserver(() => observeContent(el))
+      childObserver.observe(el, { childList: true })
+    }
+  }
+
+  function unbindSizeObservers() {
+    resizeObserver?.disconnect()
+    resizeObserver = null
+    childObserver?.disconnect()
+    childObserver = null
+    observedContent = null
   }
 
   function stickToBottomIfPinned(): boolean {
@@ -86,11 +146,15 @@ export function useBottomAnchoredList(scroller: Ref<HTMLElement | null>, options
         removeScrollListener()
         removeScrollListener = null
       }
-      if (!el || typeof el.addEventListener !== 'function') return
+      if (!el || typeof el.addEventListener !== 'function') {
+        unbindSizeObservers()
+        return
+      }
 
       const onScroll = () => syncAtBottomFromScroll()
       el.addEventListener('scroll', onScroll, { passive: true })
       removeScrollListener = () => el.removeEventListener('scroll', onScroll)
+      bindSizeObservers(el)
       // Initial sync.
       scheduleAfterFrame(() => syncAtBottomFromScroll())
     },
@@ -100,6 +164,8 @@ export function useBottomAnchoredList(scroller: Ref<HTMLElement | null>, options
   onBeforeUnmount(() => {
     if (removeScrollListener) removeScrollListener()
     removeScrollListener = null
+    unbindSizeObservers()
+    lastProgrammaticTop = -1
   })
 
   return {

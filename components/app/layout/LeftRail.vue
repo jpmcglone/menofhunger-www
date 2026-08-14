@@ -329,6 +329,7 @@
 
 <script setup lang="ts">
 import { siteConfig } from '~/config/site'
+import { isModifiedNavClick, shouldInterceptSameNavClick } from '~/config/routes'
 import { useBookmarkCollections } from '~/composables/useBookmarkCollections'
 import { ClientOnly, NuxtLink } from '#components'
 import type { AppNavItem } from '~/composables/useAppNav'
@@ -436,6 +437,7 @@ watch(
 // ── Click handlers ────────────────────────────────────────────────────────────
 
 function onHomeClick(e: MouseEvent) {
+  if (isModifiedNavClick(e)) return
   if (route.path === '/home') {
     e.preventDefault()
     props.scrollMiddleToTop()
@@ -443,7 +445,7 @@ function onHomeClick(e: MouseEvent) {
 }
 
 function onLeftNavClick(to: string, e: MouseEvent) {
-  if (!isActiveNav(to)) return
+  if (!shouldInterceptSameNavClick({ currentPath: route.path, to, event: e })) return
   e.preventDefault()
   e.stopPropagation()
   if (to === '/home') props.scrollMiddleToTop()

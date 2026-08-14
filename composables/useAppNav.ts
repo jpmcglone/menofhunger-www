@@ -1,3 +1,5 @@
+import { spacesNavGlyph } from '~/utils/space-display'
+
 export type AppNavItem = {
   key: string
   label: string
@@ -33,8 +35,21 @@ export function useAppNav() {
   const { hasFeature } = useAppFeatures()
   // A user is "verified" for nav purposes if they have premium OR verified status.
   const isVerified = computed(() => isPremium.value || isVerifiedBase.value)
+  const { selectedSpaceId } = useSpaceLobby()
+  const { getById } = useSpaces()
   const { activeSpaceId, isPlaying: musicIsPlaying } = useSpaceAudio()
-  const showMusicIcon = computed(() => Boolean(activeSpaceId.value) && Boolean(musicIsPlaying.value))
+  const spacesGlyph = computed(() =>
+    spacesNavGlyph(getById(selectedSpaceId.value) ?? getById(activeSpaceId.value)),
+  )
+  const spacesNavIcons = computed(() => {
+    if (spacesGlyph.value === 'music') {
+      return { icon: 'tabler:music', iconActive: 'tabler:music-filled' }
+    }
+    if (spacesGlyph.value === 'tv') {
+      return { icon: 'tabler:device-tv', iconActive: 'tabler:device-tv-filled' }
+    }
+    return { icon: 'tabler:layout-grid', iconActive: 'tabler:layout-grid-filled' }
+  })
 
   const profileTo = computed(() => {
     const u = user.value?.username
@@ -77,9 +92,9 @@ export function useAppNav() {
       key: 'spaces',
       label: 'Spaces',
       to: '/spaces',
-      icon: showMusicIcon.value ? 'tabler:music' : 'tabler:layout-grid',
-      iconActive: showMusicIcon.value ? 'tabler:music-filled' : 'tabler:layout-grid-filled',
-      iconClass: showMusicIcon.value ? 'moh-slow-bounce' : undefined,
+      icon: spacesNavIcons.value.icon,
+      iconActive: spacesNavIcons.value.iconActive,
+      iconClass: spacesGlyph.value === 'music' && musicIsPlaying.value ? 'moh-slow-bounce' : undefined,
       requiresAuth: true,
       requiresVerified: true,
       showInPrimaryNav: true,

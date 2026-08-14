@@ -10,7 +10,7 @@
     <div class="relative flex-1 min-h-0">
       <div
         ref="scrollerEl"
-        class="no-scrollbar h-full overflow-y-auto overscroll-y-contain"
+        class="no-scrollbar h-full overflow-y-auto overscroll-y-contain [overflow-anchor:none]"
         @scroll="onScrollerScroll"
         @wheel.passive="markUserScrollIntent"
         @touchstart.passive="markUserScrollIntent"
@@ -313,6 +313,7 @@ function onSend() {
 function onReply(message: SpaceChatMessage) {
   if (message.kind !== 'user') return
   replyToMessage.value = message
+  void nextTick(() => composerRef.value?.focus?.())
 }
 
 function onReact(message: SpaceChatMessage, reactionId: string) {

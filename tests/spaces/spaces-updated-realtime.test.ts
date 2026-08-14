@@ -62,14 +62,25 @@ describe('spaces updated realtime wiring (structural)', () => {
     const spacePage = await read('pages/s/[username].vue')
     const radioBar = await read('components/app/RadioBar.vue')
     expect(row).toMatch(/useSpaceDisplayTitle/)
+    expect(row).toMatch(/spaceLobbyRowKind/)
+    expect(row).toMatch(/showRadioVisualizer/)
     expect(row).toMatch(/rounded-xl border moh-border/)
     expect(row).toMatch(/getYouTubePosterUrls/)
     expect(index).toMatch(/gap-3/)
     expect(index).not.toMatch(/border-t moh-border/)
     expect(preview).toMatch(/AppSpaceRow is already the card/)
     expect(badge).toMatch(/kind === 'idle'/)
+    expect(badge).toMatch(/kind === 'radio'/)
     expect(spacePage).toMatch(/useSpaceDisplayTitle\(space\)/)
     expect(radioBar).toMatch(/useSpaceDisplayTitle/)
+  })
+
+  it('swaps the Spaces nav icon for radio or a live watch party', async () => {
+    const nav = await read('composables/useAppNav.ts')
+    expect(nav).toMatch(/spacesNavGlyph/)
+    expect(nav).toMatch(/tabler:music-filled/)
+    expect(nav).toMatch(/tabler:device-tv-filled/)
+    expect(nav).toMatch(/tabler:layout-grid-filled/)
   })
 
   it('keeps a single AppRadioBar instance via Teleport', async () => {

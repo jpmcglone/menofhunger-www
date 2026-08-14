@@ -244,6 +244,7 @@
 
 <script setup lang="ts">
 import type { AppNavItem } from '~/composables/useAppNav'
+import { shouldInterceptSameNavClick } from '~/config/routes'
 const props = defineProps<{
   items: AppNavItem[]
 }>()
@@ -319,7 +320,7 @@ function moreMenuIconName(mi: AppNavItem): string {
 }
 
 function onNavClick(to: string, e: MouseEvent) {
-  if (!isActive(to)) return
+  if (!shouldInterceptSameNavClick({ currentPath: route.path, to, event: e })) return
   e.preventDefault()
   e.stopPropagation()
   if (to === '/home') {

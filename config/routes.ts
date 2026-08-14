@@ -120,6 +120,30 @@ export function isNavActive(params: { currentPath: string; to: string }): boolea
   return currentPath === to || currentPath.startsWith(`${to}/`)
 }
 
+export function isModifiedNavClick(e: {
+  metaKey: boolean
+  ctrlKey: boolean
+  shiftKey: boolean
+  altKey: boolean
+  button: number
+}): boolean {
+  return e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0
+}
+
+/**
+ * Same-item nav clicks stay put (and may scroll to top). Space permalinks
+ * highlight Spaces but are not the lobby — let the real /spaces link work.
+ */
+export function shouldInterceptSameNavClick(params: {
+  currentPath: string
+  to: string
+  event: { metaKey: boolean; ctrlKey: boolean; shiftKey: boolean; altKey: boolean; button: number }
+}): boolean {
+  if (isModifiedNavClick(params.event)) return false
+  if (params.to === '/spaces' && isSpacePermalinkPath(params.currentPath)) return false
+  return isNavActive({ currentPath: params.currentPath, to: params.to })
+}
+
 export function navCompactModePath(path: string): boolean {
   // Some routes need more horizontal space in the center column.
   // Force the left nav to remain compact (even on desktop) for those routes.

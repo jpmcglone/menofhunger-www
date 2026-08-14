@@ -3,6 +3,8 @@ import {
   formatSpaceScheduleShort,
   spaceCardMetaLine,
   spaceDisplayTitle,
+  spaceLobbyRowKind,
+  spacesNavGlyph,
   spaceStatusKind,
 } from '../../utils/space-display'
 
@@ -86,11 +88,74 @@ describe('spaceDisplayTitle', () => {
 })
 
 describe('spaceStatusKind', () => {
-  it('is live, scheduled, or idle', () => {
+  it('is live, scheduled, radio, or idle', () => {
     expect(spaceStatusKind({ isActive: true, scheduledAt: null })).toBe('live')
     expect(spaceStatusKind({ isActive: false, scheduledAt: '2099-08-16T18:00:00.000Z' })).toBe('scheduled')
+    expect(spaceStatusKind({
+      isActive: false,
+      scheduledAt: null,
+      mode: 'RADIO',
+      radioStreamUrl: 'https://ice1.somafm.com/groovesalad-128-mp3',
+    })).toBe('radio')
     expect(spaceStatusKind({ isActive: false, scheduledAt: null })).toBe('idle')
     expect(spaceStatusKind({ isActive: false, scheduledAt: '2000-01-01T00:00:00.000Z' })).toBe('idle')
+  })
+})
+
+describe('spaceLobbyRowKind', () => {
+  it('uses a watch card only while a watch party is live', () => {
+    expect(spaceLobbyRowKind({
+      ...base,
+      isActive: true,
+      mode: 'WATCH_PARTY',
+      watchPartyUrl: 'https://youtu.be/abc',
+    })).toBe('watch')
+    expect(spaceLobbyRowKind({
+      ...base,
+      mode: 'WATCH_PARTY',
+      watchPartyUrl: 'https://youtu.be/abc',
+    })).toBe('quiet')
+  })
+
+  it('uses a radio card whenever a stream is set', () => {
+    expect(spaceLobbyRowKind({
+      ...base,
+      isActive: true,
+      mode: 'RADIO',
+      radioStreamUrl: 'https://ice1.somafm.com/groovesalad-128-mp3',
+    })).toBe('radio')
+    expect(spaceLobbyRowKind({
+      ...base,
+      mode: 'RADIO',
+      radioStreamUrl: 'https://ice1.somafm.com/groovesalad-128-mp3',
+    })).toBe('radio')
+    expect(spaceLobbyRowKind({
+      ...base,
+      mode: 'RADIO',
+    })).toBe('quiet')
+  })
+})
+
+describe('spacesNavGlyph', () => {
+  it('uses music for radio, TV for a live watch party, otherwise the grid', () => {
+    expect(spacesNavGlyph(null)).toBe('grid')
+    expect(spacesNavGlyph({
+      ...base,
+      mode: 'RADIO',
+      radioStreamUrl: 'https://ice1.somafm.com/groovesalad-128-mp3',
+    })).toBe('music')
+    expect(spacesNavGlyph({
+      ...base,
+      isActive: true,
+      mode: 'WATCH_PARTY',
+      watchPartyUrl: 'https://youtu.be/abc',
+    })).toBe('tv')
+    expect(spacesNavGlyph({
+      ...base,
+      mode: 'WATCH_PARTY',
+      watchPartyUrl: 'https://youtu.be/abc',
+    })).toBe('grid')
+    expect(spacesNavGlyph(base)).toBe('grid')
   })
 })
 
@@ -105,7 +170,7 @@ describe('spaceCardMetaLine', () => {
         { ...base, isActive: true, mode: 'WATCH_PARTY', playbackTitle: 'Talk' },
         { hostUsername: 'john', hereCount: 3 },
       ),
-    ).toBe('Watching · @john · 3 here')
+    ).toBe('Watch party · @john · 3 here')
   })
 
   it('describes live radio', () => {
@@ -115,6 +180,19 @@ describe('spaceCardMetaLine', () => {
         { hostUsername: 'john', hereCount: 1 },
       ),
     ).toBe('Listening · @john · 1 here')
+  })
+
+  it('describes radio that is not on-air as Radio, not Idle', () => {
+    expect(
+      spaceCardMetaLine(
+        {
+          ...base,
+          mode: 'RADIO',
+          radioStreamUrl: 'https://ice1.somafm.com/groovesalad-128-mp3',
+        },
+        { hostUsername: 'john', hereCount: 2 },
+      ),
+    ).toBe('Radio · @john · 2 here')
   })
 
   it('omits the here count on idle when nobody is in the room', () => {

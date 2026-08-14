@@ -91,16 +91,20 @@
 
         <template v-else>
           <!-- Owner controls -->
-          <div v-if="isOwner" class="moh-gutter-x pb-3">
+          <div v-if="isOwner" class="moh-gutter-x pb-2">
             <SpaceOwnerPanel
               :space="space"
               @space-updated="(s) => { space = s; upsertSpace(s) }"
             />
           </div>
 
-          <!-- Canvas area. Watch party is 16:9 (centered) so host chrome above
-               the canvas does not stretch the viewer player to a taller box. -->
-          <div class="moh-gutter-x flex-1 min-h-0 pb-3 min-h-[40vh] flex items-center justify-center">
+          <!-- Watch party hugs the 16:9 player. Radio / idle still fill. -->
+          <div
+            class="moh-gutter-x flex items-start justify-center"
+            :class="space?.mode === 'WATCH_PARTY' && space?.watchPartyUrl
+              ? 'shrink-0 pb-2'
+              : 'flex-1 min-h-0 pb-3 min-h-[40vh]'"
+          >
             <!-- Watch Party mode: YouTube player.
                  ClientOnly prevents hydration mismatches — the server never renders
                  this component (spaceReady=false), so Vue must not try to hydrate it

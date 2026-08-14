@@ -2,14 +2,14 @@
   <div
     class="relative overflow-hidden transition-colors"
     :class="[
-      compact ? '' : 'rounded-xl border moh-border p-2.5',
+      compact ? '' : rowKind === 'quiet' ? 'rounded-xl border moh-border px-2.5 py-1.5' : 'rounded-xl border moh-border p-2.5',
       !compact && selectedSpaceId === space.id ? 'bg-black/[0.03] dark:bg-white/[0.04]' : '',
     ]"
     @click.stop
   >
-    <!-- Visualizer background when this space is playing in radio mode -->
+    <!-- Visualizer behind the row while this radio space is playing -->
     <div
-      v-if="selectedSpaceId === space.id && isPlaying && space.mode === 'RADIO'"
+      v-if="showRadioVisualizer"
       :style="{ opacity: SPACE_VISUALIZER_BACKGROUND_OPACITY }"
       class="absolute inset-0 pointer-events-none"
       aria-hidden="true"
@@ -19,11 +19,10 @@
 
     <div
       class="relative z-10 flex items-center"
-      :class="compact ? 'gap-2 px-3 py-1.5' : 'gap-3'"
+      :class="compact ? 'gap-2 px-3 py-1.5' : rowKind === 'quiet' ? 'gap-2.5' : 'gap-3'"
     >
-      <!-- Media tile: YouTube 16:9 when a watch URL exists; otherwise a small icon -->
       <div
-        v-if="!compact && youtubePosterUrls"
+        v-if="!compact && showWatchPoster"
         class="relative w-32 shrink-0 overflow-hidden rounded-lg aspect-video bg-black/10 dark:bg-white/10"
         aria-hidden="true"
       >
@@ -43,11 +42,18 @@
         </div>
       </div>
       <div
-        v-else-if="!compact"
-        class="flex h-16 w-16 shrink-0 items-center justify-center rounded-lg bg-black/10 dark:bg-white/10 moh-text-muted"
+        v-else-if="!compact && rowKind === 'radio'"
+        class="relative flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-black/10 dark:bg-white/10 moh-text-muted"
         aria-hidden="true"
       >
-        <Icon :name="tileIcon" class="text-[22px] opacity-80" />
+        <Icon :name="tileIcon" class="relative z-10 text-[22px] opacity-80" />
+      </div>
+      <div
+        v-else-if="!compact"
+        class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-black/10 dark:bg-white/10 moh-text-muted"
+        aria-hidden="true"
+      >
+        <Icon :name="tileIcon" class="text-[16px] opacity-70" />
       </div>
 
       <!-- Enter (preview embeds are non-interactive chrome) -->
@@ -149,7 +155,7 @@ import { SPACE_VISUALIZER_BACKGROUND_OPACITY, primeSpaceAudioContext } from '~/c
 import { tinyTooltip } from '~/utils/tiny-tooltip'
 import { useCopyToClipboard } from '~/composables/useCopyToClipboard'
 import { getYouTubePosterUrls } from '~/utils/link-utils'
-import { spaceCardMetaLine, spaceStatusKind } from '~/utils/space-display'
+import { spaceCardMetaLine, spaceLobbyRowKind, spaceStatusKind } from '~/utils/space-display'
 
 const props = defineProps<{
   space: Space
@@ -178,6 +184,7 @@ type MenuItemWithIcon = MenuItem & { iconName?: string }
 
 const displayTitle = useSpaceDisplayTitle(() => props.space)
 const statusKind = computed(() => spaceStatusKind(props.space))
+const rowKind = computed(() => spaceLobbyRowKind(props.space))
 const metaLine = computed(() =>
   spaceCardMetaLine(props.space, {
     hostUsername: props.space.owner?.username ?? null,
@@ -185,8 +192,17 @@ const metaLine = computed(() =>
   }),
 )
 
+const showWatchPoster = computed(() => rowKind.value === 'watch')
+const showRadioVisualizer = computed(() => (
+  props.space.mode === 'RADIO'
+  && selectedSpaceId.value === props.space.id
+  && isPlaying.value
+))
+
 const youtubePosterUrls = computed(() =>
-  props.space.watchPartyUrl ? getYouTubePosterUrls(props.space.watchPartyUrl) : null,
+  showWatchPoster.value && props.space.watchPartyUrl
+    ? getYouTubePosterUrls(props.space.watchPartyUrl)
+    : null,
 )
 const posterTier = ref<'maxres' | 'fallback' | 'none'>('maxres')
 watch(() => props.space.watchPartyUrl, () => {
@@ -203,7 +219,7 @@ function onPosterError() {
 }
 
 const tileIcon = computed(() =>
-  props.space.mode === 'RADIO' ? 'tabler:radio' : 'tabler:flame',
+  props.space.mode === 'RADIO' ? 'tabler:radio' : rowKind.value === 'watch' ? 'tabler:device-tv' : 'tabler:flame',
 )
 
 const isOwnSpace = computed(() => Boolean(

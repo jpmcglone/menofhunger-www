@@ -58,10 +58,13 @@
         </div>
         <!-- Nudge overlay (top-right), fully inside banner with consistent margin -->
         <div v-if="showNudge" class="pointer-events-none absolute inset-4 z-20 flex justify-end">
-          <div class="pointer-events-auto">
+          <div
+            class="pointer-events-auto"
+            v-tooltip.bottom="nudgeDisabledTooltip"
+          >
             <!-- Nudge back split-button (primary action + caret menu) -->
             <div
-              v-if="nudgeState?.inboundPending"
+              v-if="nudgeAction.kind === 'nudgeBack'"
               class="inline-flex overflow-hidden rounded-xl border moh-border"
             >
               <Button
@@ -69,7 +72,7 @@
                 size="small"
                 severity="secondary"
                 class="!rounded-none !border-0 !text-xs"
-                :disabled="nudgeInflight || ignoreInflight"
+                :disabled="nudgePrimaryDisabled"
                 @click="onNudgeBack"
               />
               <Button
@@ -79,7 +82,7 @@
                 class="!rounded-none !border-0 !px-2 !text-xs"
                 aria-label="More nudge actions"
                 aria-haspopup="true"
-                :disabled="nudgeInflight || ignoreInflight"
+                :disabled="nudgePrimaryDisabled"
                 @click="toggleNudgeMenu"
               >
                 <template #icon>
@@ -111,7 +114,7 @@
             <!-- Default nudge button (no inbound pending) -->
             <Button
               v-else
-              :label="nudgePrimaryLabel"
+              :label="nudgeAction.label"
               size="small"
               severity="secondary"
               rounded
@@ -528,6 +531,7 @@ import type { FollowRelationship, NudgeState, PublicProfile } from '~/types/api'
 import { formatDateTime, formatListTime } from '~/utils/time-format'
 import { buildSocialLinks } from '~/utils/social-links'
 import { tinyTooltip } from '~/utils/tiny-tooltip'
+import { resolveNudgeAction } from '~/utils/nudge-action'
 import type { MenuItem } from 'primevue/menuitem'
 import { useUserOverlay } from '~/composables/useUserOverlay'
 import { avatarRoundClass as getAvatarRoundClass, crewAvatarRoundClass } from '~/utils/avatar-rounding'
@@ -792,16 +796,6 @@ const isMutualFollow = computed(() => {
   return Boolean(rel.viewerFollowsUser && rel.userFollowsViewer)
 })
 
-const showNudge = computed(() => {
-  if (!isAuthed.value) return false
-  if (isSelf.value) return false
-  if (!profile.value?.id || !profile.value?.username) return false
-  if (!isMutualFollow.value) return false
-  // Unverified users can only nudge back — hide the button unless there's an inbound pending
-  if (!viewerIsVerified.value && !nudgeState.value?.inboundPending) return false
-  return true
-})
-
 const nudgeState = ref<NudgeState | null>(nudgeFromProps.value)
 watch(
   nudgeFromProps,
@@ -811,6 +805,20 @@ watch(
   { immediate: true },
 )
 
+const nudgeAction = computed(() => resolveNudgeAction({
+  isAuthed: isAuthed.value,
+  isSelf: isSelf.value,
+  hasTarget: Boolean(profile.value?.id && profile.value?.username),
+  isMutualFollow: isMutualFollow.value,
+  viewerIsVerified: viewerIsVerified.value,
+  inboundPending: Boolean(nudgeState.value?.inboundPending),
+  outboundPending: Boolean(nudgeState.value?.outboundPending),
+}))
+const showNudge = computed(() => nudgeAction.value.kind !== 'hidden')
+const nudgeDisabledTooltip = computed(() => (
+  nudgeAction.value.reason ? tinyTooltip(nudgeAction.value.reason) : undefined
+))
+
 const nudgeInflight = ref(false)
 const ignoreInflight = ref(false)
 const { nudgeUser, ackNudge, ignoreNudge, markNudgeNudgedBackById } = useNudge()
@@ -819,20 +827,9 @@ const { push: pushToast } = useAppToast()
 const gotItNudgeTooltip = 'Accepts the nudge. They can nudge you again without you nudging back.'
 const ignoreNudgeTooltip = 'Dismisses it, but they still can’t nudge you again for 24 hours (unless you nudge them back).'
 
-const nudgePrimaryLabel = computed(() => {
-  const s = nudgeState.value
-  if (s?.inboundPending) return 'Nudge back'
-  if (s?.outboundPending) return 'Nudged'
-  return 'Nudge'
-})
-
-const nudgePrimaryDisabled = computed(() => {
-  const s = nudgeState.value
-  if (nudgeInflight.value) return true
-  // Block repeated sends when outbound is pending (unless this is a “nudge back” state).
-  if (s?.outboundPending && !s?.inboundPending) return true
-  return false
-})
+const nudgePrimaryDisabled = computed(() => (
+  nudgeInflight.value || ignoreInflight.value || nudgeAction.value.disabled
+))
 
 type MenuItemWithIcon = MenuItem & { iconName?: string; value?: 'gotit' | 'ignore' }
 const nudgeMenuMounted = ref(false)
@@ -897,6 +894,7 @@ async function onNudgeIgnore() {
 }
 
 async function onNudgeBack() {
+  if (nudgeAction.value.disabled) return
   const username = profile.value?.username ?? null
   const inboundId = nudgeState.value?.inboundNotificationId ?? null
   if (!username || !inboundId) return
@@ -920,6 +918,7 @@ async function onNudgeBack() {
 }
 
 async function onNudgePrimary() {
+  if (nudgeAction.value.disabled) return
   const username = profile.value?.username ?? null
   if (!username) return
 

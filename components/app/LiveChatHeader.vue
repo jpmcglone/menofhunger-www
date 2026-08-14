@@ -10,24 +10,39 @@
     </span>
   </div>
 
-  <!-- Right side: ephemeral indicator + actions -->
   <div class="shrink-0 flex items-center gap-1">
-    <!-- "Not saved" icon with tooltip -->
     <button
-      v-tooltip.bottom="ephemeralTooltip"
       type="button"
-      aria-label="Messages are not saved"
+      aria-label="How live chat works"
+      :aria-expanded="infoOpen"
       class="moh-tap cursor-pointer inline-flex h-8 w-8 items-center justify-center rounded-full text-gray-400 dark:text-gray-500 hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
+      @mouseenter="onInfoEnter"
+      @mouseleave="onInfoLeave"
+      @click="onInfoClick"
     >
-      <Icon name="tabler:clock-off" class="text-[15px]" aria-hidden="true" />
+      <Icon
+        :name="infoOpen ? 'tabler:info-circle-filled' : 'tabler:info-circle'"
+        class="text-[15px]"
+        aria-hidden="true"
+      />
     </button>
+    <Popover
+      ref="infoPopover"
+      :pt="{ root: { class: 'shadow-xl border moh-border moh-popover rounded-2xl p-3 w-64' } }"
+      @hide="onInfoHide"
+    >
+      <div @mouseenter="cancelInfoHide" @mouseleave="onInfoLeave">
+        <p class="text-xs font-semibold text-gray-900 dark:text-gray-50">Live chat</p>
+        <p class="mt-1 text-xs leading-relaxed moh-text-muted">
+          You only see what’s said while you’re here. Messages from before you joined aren’t shown, and nothing is saved after you leave.
+        </p>
+      </div>
+    </Popover>
     <slot name="actions" />
   </div>
 </template>
 
 <script setup lang="ts">
-import { tinyTooltip } from '~/utils/tiny-tooltip'
-
 withDefaults(
   defineProps<{
     title: string
@@ -41,5 +56,53 @@ withDefaults(
   },
 )
 
-const ephemeralTooltip = computed(() => tinyTooltip('Messages are not saved — they disappear when you leave'))
+const infoPopover = ref<{ show: (e: Event) => void; hide: () => void } | null>(null)
+const infoOpen = ref(false)
+const infoPinned = ref(false)
+let hideTimer: ReturnType<typeof setTimeout> | null = null
+
+function cancelInfoHide() {
+  if (hideTimer) {
+    clearTimeout(hideTimer)
+    hideTimer = null
+  }
+}
+
+function onInfoEnter(e: Event) {
+  cancelInfoHide()
+  infoOpen.value = true
+  infoPopover.value?.show(e)
+}
+
+function onInfoLeave() {
+  if (infoPinned.value) return
+  cancelInfoHide()
+  hideTimer = setTimeout(() => {
+    hideTimer = null
+    infoPopover.value?.hide()
+  }, 120)
+}
+
+function onInfoClick(e: Event) {
+  e.stopPropagation()
+  cancelInfoHide()
+  if (infoPinned.value) {
+    infoPinned.value = false
+    infoPopover.value?.hide()
+    return
+  }
+  infoPinned.value = true
+  infoOpen.value = true
+  infoPopover.value?.show(e)
+}
+
+function onInfoHide() {
+  infoOpen.value = false
+  infoPinned.value = false
+  cancelInfoHide()
+}
+
+onBeforeUnmount(() => {
+  cancelInfoHide()
+})
 </script>
