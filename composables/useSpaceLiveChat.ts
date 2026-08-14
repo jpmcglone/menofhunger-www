@@ -102,9 +102,7 @@ export function useSpaceLiveChat(options: { passive?: boolean } = {}) {
   const canSubscribeChat = computed(() => {
     const sid = spaceId.value
     const s = lobby.currentSpace.value
-    if (!sid || !s || s.id !== sid) return false
-    if (s.isActive) return true
-    return Boolean(user.value?.id && s.owner?.id === user.value.id)
+    return Boolean(sid && s && s.id === sid)
   })
 
   const messages = computed<SpaceChatMessage[]>(() => {

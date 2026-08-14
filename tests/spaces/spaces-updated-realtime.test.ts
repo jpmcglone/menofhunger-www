@@ -65,7 +65,7 @@ describe('spaces updated realtime wiring (structural)', () => {
     expect(spacePage).toMatch(/joinNowThatLive/)
     expect(spacePage).toMatch(/requestCurrentState\(s\.id\)/)
     expect(spacePage).toMatch(/spaceReady\.value = true/)
-    expect(spacePage).toMatch(/isOwner\.value \|\| s\.isActive/)
+    expect(spacePage).toMatch(/spaceReady\.value = true/)
     expect(spacePage).toMatch(/isAloneHere/)
     expect(spacePage).not.toMatch(/v-if="space && members\.length === 0"/)
   })
@@ -91,11 +91,10 @@ describe('spaces updated realtime wiring (structural)', () => {
     expect(chat).toMatch(/finalizeMessageList/)
   })
 
-  it('subscribes to space chat only once the space is live (or the viewer is the owner)', async () => {
+  it('subscribes to space chat once the lobby has selected that space', async () => {
     const chat = await read('composables/useSpaceLiveChat.ts')
     expect(chat).toMatch(/canSubscribeChat/)
-    expect(chat).toMatch(/s\.isActive/)
-    expect(chat).toMatch(/s\.owner\?\.id === user\.value\.id/)
+    expect(chat).toMatch(/sid && s && s\.id === sid/)
     expect(chat).toMatch(/if \(sid && canSubscribeChat\.value\)/)
   })
 

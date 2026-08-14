@@ -245,8 +245,7 @@ const { reactions, loadReactions, addFloating, clearAllFloating } = useSpaceReac
 const spaceLoading = ref(true)
 const space = ref<Space | null>(null)
 const spaceNotifyBusy = ref(false)
-/** True only after a join that can actually land us in the presence room
- *  (owner, or space already live). Waiters stay false until go-live re-join. */
+/** True after enterSpace() — the socket room join has been requested. */
 const spaceReady = ref(false)
 
 function spacesLog(...args: unknown[]) {
@@ -436,9 +435,8 @@ async function enterSpace(s: Space) {
   await select(s.id)
 }
 
-function markJoined(s: Space) {
-  // Non-owner join is a silent no-op while inactive — don't pretend we're in the room.
-  spaceReady.value = Boolean(isOwner.value || s.isActive)
+function markJoined(_s: Space) {
+  spaceReady.value = true
 }
 
 async function joinNowThatLive(s: Space) {
