@@ -147,6 +147,10 @@
             </Card>
           </div>
 
+          <ClientOnly>
+            <AppLiveSpacesRailCard />
+          </ClientOnly>
+
           <!-- Word of the Day: dims when on /daily or /daily/word -->
           <div
             class="transition-opacity duration-200"

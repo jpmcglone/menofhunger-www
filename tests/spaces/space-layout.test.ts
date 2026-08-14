@@ -70,6 +70,20 @@ describe('space layout', () => {
     expect(reactions).toMatch(/variant === 'bar' && isViewingSpacePage\(/)
   })
 
+  it('shows Live spaces in the right rail only when a space is live', () => {
+    const rail = readFromRepo('components/app/layout/RightRail.vue')
+    const card = readFromRepo('components/app/AppLiveSpacesRailCard.vue')
+    expect(rail).toMatch(/<AppLiveSpacesRailCard/)
+    expect(card).toMatch(/Live spaces/)
+    expect(card).toMatch(/v-if="displayRows\.length"/)
+    expect(card).toMatch(/if \(!space\.isActive\) continue/)
+    expect(card).toMatch(/`\/s\/\$\{encodeURIComponent\(username\)\}`/)
+    expect(card).toMatch(/<NuxtLink/)
+    expect(card).toMatch(/loadSpaces\(\)/)
+    expect(card).not.toMatch(/You're not in any/)
+    expect(card).not.toMatch(/No live spaces/)
+  })
+
   it('makes the whole lobby space row a real link, with share staying a button', () => {
     const row = readFromRepo('components/app/AppSpaceRow.vue')
     expect(row).toMatch(/absolute inset-0 z-\[1\]/)
