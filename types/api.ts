@@ -2221,6 +2221,7 @@ export type AdminAnalyticsSpacesTopRow = {
   mode: string
   isActive: boolean
   createdAt: string
+  activatedAt: string | null
 }
 
 export type AdminAnalyticsSpaces = {
@@ -2230,6 +2231,14 @@ export type AdminAnalyticsSpaces = {
   activeSpaces: number
   /** Spaces created within the selected range. */
   spacesCreatedInRange: number
+  /** Spaces whose last go-live falls in the selected range. */
+  wentLiveInRange: number
+  /** Currently scheduled (upcoming) and not live. */
+  scheduledSpaces: number
+  /** Notify-me subscribers excluding hosts, all time. */
+  notifyMeSubscribers: number
+  /** Notify-me subscribers (excluding hosts) created in the selected range. */
+  notifyMeSubscribersInRange: number
   /** All-time spaces by current mode (NONE / WATCH_PARTY / RADIO). */
   byMode: Record<string, number>
   /** Time series — spaces created per bucket in the selected range. */

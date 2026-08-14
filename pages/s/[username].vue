@@ -242,6 +242,8 @@ const { requestCurrentState } = useWatchParty()
 const { stop } = useSpaceAudio()
 const { subscribeToSchedule, unsubscribeFromSchedule } = useSpaceOwner()
 const { confirm } = useAppConfirm()
+const { capture } = usePostHog()
+const viewedSpaceId = ref<string | null>(null)
 const spaceChatSheetOpen = useState<boolean>('space-chat-sheet-open', () => false)
 const { user, ensureLoaded, isVerified, isPremium } = useAuth()
 const isAuthed = computed(() => Boolean(user.value?.id))
@@ -256,6 +258,19 @@ const displayTitle = useSpaceDisplayTitle(space)
 const spaceNotifyBusy = ref(false)
 /** True after enterSpace() — the socket room join has been requested. */
 const spaceReady = ref(false)
+
+function trackSpaceViewed(s: Space) {
+  if (viewedSpaceId.value === s.id) return
+  viewedSpaceId.value = s.id
+  capture('space_viewed', {
+    space_id: s.id,
+    mode: s.mode,
+    is_active: s.isActive,
+    is_owner: isOwner.value,
+    can_join: canJoinSpace.value,
+    has_schedule: Boolean(s.scheduledAt),
+  })
+}
 
 function spacesLog(...args: unknown[]) {
   if (!import.meta.client || !import.meta.dev) return
@@ -477,6 +492,7 @@ onMounted(async () => {
   }
   space.value = s
   upsertSpace(s)
+  trackSpaceViewed(s)
   spacesLog('mount:space-loaded', {
     id: s.id,
     mode: s.mode,
@@ -554,6 +570,7 @@ watch(username, async (newUsername) => {
   }
   space.value = s
   upsertSpace(s)
+  trackSpaceViewed(s)
   spacesLog('username:space-loaded', {
     id: s.id,
     mode: s.mode,

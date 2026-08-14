@@ -5,7 +5,7 @@
       class="px-4 pt-4 pb-3"
       title="Analytics"
       
-      description="KPIs, engagement trends, and monetization."
+      description="Growth, engagement, and money first."
     >
       <template #leading>
         <div class="md:hidden">
@@ -37,7 +37,7 @@
       </template>
     </AppPageHeader>
 
-    <div class="py-4 space-y-6">
+    <div class="py-4 space-y-10">
       <!-- Range selector -->
       <div class="px-4">
         <div class="inline-flex rounded-lg border moh-border overflow-hidden text-sm">
@@ -60,6 +60,8 @@
       <div v-if="loading && !data" class="px-4 text-sm text-gray-500 dark:text-gray-400">Loading…</div>
 
       <template v-if="data">
+        <section class="space-y-4">
+        <h2 class="px-4 text-[11px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">Overview</h2>
         <!-- Summary cards -->
         <div class="px-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-3">
           <div v-for="card in summaryCards" :key="card.label" class="rounded-xl border moh-border p-4 space-y-1.5">
@@ -76,6 +78,319 @@
             <canvas ref="signupsCanvas" height="180" />
           </div>
         </div>
+        </section>
+
+        <section class="space-y-4">
+        <h2 class="px-4 text-[11px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">Engagement</h2>
+        <!-- Engagement health (always fixed windows) -->
+        <div class="px-4 space-y-2">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+
+            <!-- D30 Retention -->
+            <div class="rounded-xl border moh-border p-4 space-y-3">
+              <div class="flex items-start justify-between gap-2">
+                <div>
+                  <div class="font-medium text-sm">D30 Retention</div>
+                  <div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Users still active 30 days after signup</div>
+                </div>
+                <div class="text-right shrink-0">
+                  <div v-if="data.engagement.d30RetentionPct !== null" class="text-2xl font-bold tabular-nums" :class="engagementColor(data.engagement.d30RetentionPct, 20, 40)">
+                    {{ data.engagement.d30RetentionPct }}%
+                  </div>
+                  <div v-else class="text-sm text-gray-400 dark:text-gray-500 italic">No data yet</div>
+                </div>
+              </div>
+              <div class="text-xs text-gray-500 dark:text-gray-400">
+                {{ data.engagement.d30RetainedCount.toLocaleString() }} of {{ data.engagement.d30CohortSize.toLocaleString() }} users retained
+              </div>
+              <div class="text-xs text-gray-400 dark:text-gray-500 border-t moh-border pt-2">
+                Benchmark: top apps 25–40%+
+              </div>
+            </div>
+
+            <!-- Activation rate -->
+            <div class="rounded-xl border moh-border p-4 space-y-3">
+              <div class="flex items-start justify-between gap-2">
+                <div>
+                  <div class="font-medium text-sm">Activation Rate</div>
+                  <div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Active within first 7 days of signup</div>
+                </div>
+                <div class="text-right shrink-0">
+                  <div v-if="data.engagement.activationPct !== null" class="text-2xl font-bold tabular-nums" :class="engagementColor(data.engagement.activationPct, 30, 60)">
+                    {{ data.engagement.activationPct }}%
+                  </div>
+                  <div v-else class="text-sm text-gray-400 dark:text-gray-500 italic">No data yet</div>
+                </div>
+              </div>
+              <div class="text-xs text-gray-500 dark:text-gray-400">
+                {{ data.engagement.activationCount.toLocaleString() }} of {{ data.engagement.activationEligibleCount.toLocaleString() }} users activated
+              </div>
+              <div class="text-xs text-gray-400 dark:text-gray-500 border-t moh-border pt-2">
+                Benchmark: strong apps 50–70%+
+              </div>
+            </div>
+
+            <!-- Creator % -->
+            <div class="rounded-xl border moh-border p-4 space-y-3">
+              <div class="flex items-start justify-between gap-2">
+                <div>
+                  <div class="font-medium text-sm">Creator %</div>
+                  <div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">MAU who posted, published an article, or hosted a space (30 days)</div>
+                </div>
+                <div class="text-right shrink-0">
+                  <div v-if="data.engagement.creatorPct !== null" class="text-2xl font-bold tabular-nums" :class="engagementColor(data.engagement.creatorPct, 15, 30)">
+                    {{ data.engagement.creatorPct }}%
+                  </div>
+                  <div v-else class="text-sm text-gray-400 dark:text-gray-500 italic">No data yet</div>
+                </div>
+              </div>
+              <div class="text-xs text-gray-500 dark:text-gray-400">
+                {{ data.engagement.creatorCount.toLocaleString() }} creators out of {{ data.engagement.creatorMauCount.toLocaleString() }} MAU
+              </div>
+              <div class="text-xs text-gray-400 dark:text-gray-500 border-t moh-border pt-2">
+                Benchmark: healthy communities 20–30%+
+              </div>
+            </div>
+
+            <!-- Network density -->
+            <div class="rounded-xl border moh-border p-4 space-y-3">
+              <div class="flex items-start justify-between gap-2">
+                <div>
+                  <div class="font-medium text-sm">Network Density</div>
+                  <div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Connected users (following & followed)</div>
+                </div>
+                <div class="text-right shrink-0">
+                  <div v-if="data.engagement.connectedUserPct !== null" class="text-2xl font-bold tabular-nums" :class="engagementColor(data.engagement.connectedUserPct, 30, 60)">
+                    {{ data.engagement.connectedUserPct }}%
+                  </div>
+                  <div v-else class="text-sm text-gray-400 dark:text-gray-500 italic">No data yet</div>
+                </div>
+              </div>
+              <div class="text-xs text-gray-500 dark:text-gray-400">
+                {{ data.engagement.connectedUserCount.toLocaleString() }} connected &middot; avg {{ data.engagement.avgFollowersPerUser.toLocaleString() }} followers/user
+              </div>
+              <div class="text-xs text-gray-400 dark:text-gray-500 border-t moh-border pt-2">
+                Higher = stronger network effect
+              </div>
+            </div>
+
+            <!-- Verification → Premium funnel -->
+            <div class="rounded-xl border moh-border p-4 space-y-3 sm:col-span-2">
+              <div class="font-medium text-sm">Conversion Funnel</div>
+              <div class="text-xs text-gray-500 dark:text-gray-400 -mt-1">Signup → Verified → Premium</div>
+              <div class="flex items-stretch gap-0 rounded-lg overflow-hidden border moh-border text-center text-sm">
+                <div class="flex-1 px-3 py-3 bg-gray-50 dark:bg-zinc-900/50">
+                  <div class="text-lg font-bold tabular-nums">{{ data.summary.totalUsers.toLocaleString() }}</div>
+                  <div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">All users</div>
+                </div>
+                <div class="flex items-center px-1 text-gray-300 dark:text-zinc-600 select-none">›</div>
+                <div class="flex-1 px-3 py-3">
+                  <div class="text-lg font-bold tabular-nums" :class="engagementColor(verifiedConversionPct, 20, 50)">
+                    {{ data.summary.verifiedUsers.toLocaleString() }}
+                  </div>
+                  <div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Verified ({{ verifiedConversionPct }}%)</div>
+                </div>
+                <div class="flex items-center px-1 text-gray-300 dark:text-zinc-600 select-none">›</div>
+                <div class="flex-1 px-3 py-3">
+                  <div class="text-lg font-bold tabular-nums" :class="engagementColor(premiumOfVerifiedPct, 10, 30)">
+                    {{ data.summary.premiumUsers.toLocaleString() }}
+                  </div>
+                  <div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Premium ({{ premiumOfVerifiedPct }}% of verified)</div>
+                </div>
+              </div>
+              <div class="text-xs text-gray-400 dark:text-gray-500 border-t moh-border pt-2">
+                Verification is required for premium access — this shows your full upgrade path.
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Retention table (always 10-week window) -->
+        <div class="px-4 space-y-2">
+          <div class="font-semibold text-sm">Weekly Cohort Retention <span class="text-gray-500 dark:text-gray-400 font-normal">(last 10 weeks)</span></div>
+          <div class="rounded-xl border moh-border overflow-x-auto">
+            <table class="min-w-full text-sm">
+              <thead>
+                <tr class="border-b moh-border text-left text-gray-600 dark:text-gray-300">
+                  <th class="px-4 py-3 font-medium">Cohort week</th>
+                  <th class="px-4 py-3 font-medium text-right">Users</th>
+                  <th class="px-4 py-3 font-medium text-right">W1 retained</th>
+                  <th class="px-4 py-3 font-medium text-right">W1 %</th>
+                  <th class="px-4 py-3 font-medium text-right">W4 retained</th>
+                  <th class="px-4 py-3 font-medium text-right">W4 %</th>
+                </tr>
+              </thead>
+              <tbody class="moh-divide">
+                <tr v-for="row in retentionRows" :key="row.cohortWeek" class="hover:bg-gray-50 dark:hover:bg-zinc-900/50">
+                  <td class="px-4 py-3 font-mono text-xs">{{ row.cohortWeek }}</td>
+                  <td class="px-4 py-3 text-right tabular-nums">{{ row.size.toLocaleString() }}</td>
+                  <td class="px-4 py-3 text-right tabular-nums">
+                    <span v-if="row.isW1Eligible">{{ row.w1.toLocaleString() }}</span>
+                    <span v-else class="text-gray-500 dark:text-gray-400 font-medium">--</span>
+                  </td>
+                  <td class="px-4 py-3 text-right tabular-nums">
+                    <span v-if="row.isW1Eligible" :class="retentionColor(row.w1Pct)">{{ row.w1Pct }}%</span>
+                    <span v-else class="text-gray-500 dark:text-gray-400 font-medium">--</span>
+                  </td>
+                  <td class="px-4 py-3 text-right tabular-nums">
+                    <span v-if="row.isW4Eligible">{{ row.w4.toLocaleString() }}</span>
+                    <span v-else class="text-gray-500 dark:text-gray-400 font-medium">--</span>
+                  </td>
+                  <td class="px-4 py-3 text-right tabular-nums">
+                    <span v-if="row.isW4Eligible" :class="retentionColor(row.w4Pct)">{{ row.w4Pct }}%</span>
+                    <span v-else class="text-gray-500 dark:text-gray-400 font-medium">--</span>
+                  </td>
+                </tr>
+                <tr v-if="!retentionRows.length">
+                  <td colspan="6" class="px-4 py-6 text-center text-gray-500 dark:text-gray-400 text-sm">No data yet</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        </section>
+
+        <section class="space-y-4">
+        <h2 class="px-4 text-[11px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">Monetization</h2>
+        <!-- Monetization (always all-time) -->
+        <div class="px-4 space-y-2">
+          <div class="font-semibold text-sm">Tier Breakdown <span class="text-gray-400 font-normal">(all time)</span></div>
+          <div class="rounded-xl border moh-border p-4 space-y-5">
+
+            <!-- Paying subscribers -->
+            <div>
+              <div class="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-2">Paying (Stripe)</div>
+              <div class="grid grid-cols-3 gap-3 text-center">
+                <div class="rounded-lg bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-900 p-3">
+                  <div class="text-2xl font-bold tabular-nums text-green-700 dark:text-green-400">{{ totalPaying.toLocaleString() }}</div>
+                  <div class="text-xs text-green-600 dark:text-green-500 mt-1">Total paying</div>
+                </div>
+                <div class="rounded-lg border moh-border p-3">
+                  <div class="text-2xl font-bold tabular-nums">{{ data.monetization.payingPremium.toLocaleString() }}</div>
+                  <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">Premium</div>
+                </div>
+                <div class="rounded-lg border moh-border p-3">
+                  <div class="text-2xl font-bold tabular-nums">{{ data.monetization.payingPremiumPlus.toLocaleString() }}</div>
+                  <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">Premium+</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Comped -->
+            <div>
+              <div class="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-2">Comped (grants)</div>
+              <div class="grid grid-cols-3 gap-3 text-center">
+                <div class="rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900 p-3">
+                  <div class="text-2xl font-bold tabular-nums text-amber-700 dark:text-amber-400">{{ totalComped.toLocaleString() }}</div>
+                  <div class="text-xs text-amber-600 dark:text-amber-500 mt-1">Active comped</div>
+                </div>
+                <div class="rounded-lg border moh-border p-3">
+                  <div class="text-2xl font-bold tabular-nums">{{ data.monetization.compedPremium.toLocaleString() }}</div>
+                  <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">Premium</div>
+                </div>
+                <div class="rounded-lg border moh-border p-3">
+                  <div class="text-2xl font-bold tabular-nums">{{ data.monetization.compedPremiumPlus.toLocaleString() }}</div>
+                  <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">Premium+</div>
+                </div>
+              </div>
+              <div class="mt-2 flex items-center justify-between text-xs text-gray-500 dark:text-gray-400 px-1">
+                <span>Users with banked free months (incl. unverified)</span>
+                <span class="font-semibold tabular-nums">{{ data.summary.usersWithActiveGrants.toLocaleString() }}</span>
+              </div>
+            </div>
+
+            <!-- Free -->
+            <div class="flex items-center justify-between text-sm border-t moh-border pt-4">
+              <span class="text-gray-500 dark:text-gray-400">Free users</span>
+              <span class="font-semibold tabular-nums">{{ data.monetization.free.toLocaleString() }}</span>
+            </div>
+
+            <!-- Visual bar -->
+            <div v-if="data.summary.totalUsers > 0">
+              <div class="flex rounded-full overflow-hidden h-2">
+                <div class="bg-gray-200 dark:bg-zinc-700" :style="{ width: freePct + '%' }" :title="`Free: ${freePct}%`" />
+                <div class="bg-amber-400" :style="{ width: compedPct + '%' }" :title="`Comped: ${compedPct}%`" />
+                <div class="bg-green-500" :style="{ width: payingPct + '%' }" :title="`Paying: ${payingPct}%`" />
+              </div>
+              <div class="flex flex-wrap gap-3 mt-2 text-xs text-gray-500 dark:text-gray-400">
+                <div class="flex items-center gap-1.5"><span class="inline-block w-3 h-3 rounded-full bg-gray-200 dark:bg-zinc-700" />Free ({{ freePct }}%)</div>
+                <div class="flex items-center gap-1.5"><span class="inline-block w-3 h-3 rounded-full bg-amber-400" />Comped ({{ compedPct }}%)</div>
+                <div class="flex items-center gap-1.5"><span class="inline-block w-3 h-3 rounded-full bg-green-500" />Paying ({{ payingPct }}%)</div>
+              </div>
+            </div>
+
+            <!-- Stripe status breakdown (only if Stripe is connected) -->
+            <div v-if="Object.keys(data.monetization.byStatus).length > 0" class="border-t moh-border pt-4 space-y-1">
+              <div class="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">Stripe subscription status</div>
+              <div
+                v-for="(count, status) in data.monetization.byStatus"
+                :key="status"
+                class="flex items-center justify-between text-sm"
+              >
+                <span class="font-mono text-xs">{{ status }}</span>
+                <span class="tabular-nums font-medium">{{ Number(count).toLocaleString() }}</span>
+              </div>
+            </div>
+            <div v-else class="border-t moh-border pt-4 text-xs text-gray-400 dark:text-gray-500 italic">
+              Stripe not yet connected — no subscription data available.
+            </div>
+          </div>
+        </div>
+
+        <!-- ─── Referrals ───────────────────────────────────────────────────── -->
+        <div class="px-4 space-y-4">
+          <div class="font-semibold text-sm">Referrals <span class="text-gray-400 font-normal">(all time)</span></div>
+          <div v-if="referralAnalyticsLoading" class="text-sm text-gray-500 dark:text-gray-400">Loading…</div>
+          <template v-else-if="referralAnalytics">
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div class="rounded-xl border moh-border p-4 space-y-1">
+                <div class="text-xs font-semibold text-gray-600 dark:text-gray-300">Referral Codes</div>
+                <div class="text-2xl font-bold">{{ referralAnalytics.totalCodesCreated.toLocaleString() }}</div>
+              </div>
+              <div class="rounded-xl border moh-border p-4 space-y-1">
+                <div class="text-xs font-semibold text-gray-600 dark:text-gray-300">Total Recruits</div>
+                <div class="text-2xl font-bold">{{ referralAnalytics.totalRecruits.toLocaleString() }}</div>
+              </div>
+              <div class="rounded-xl border moh-border p-4 space-y-1">
+                <div class="text-xs font-semibold text-gray-600 dark:text-gray-300">Bonuses Granted</div>
+                <div class="text-2xl font-bold">{{ referralAnalytics.totalBonusesGranted.toLocaleString() }}</div>
+              </div>
+              <div class="rounded-xl border moh-border p-4 space-y-1">
+                <div class="text-xs font-semibold text-gray-600 dark:text-gray-300">Conversion Rate</div>
+                <div class="text-2xl font-bold">{{ referralAnalytics.conversionRatePct }}%</div>
+                <div class="text-xs text-gray-500 dark:text-gray-400">recruits → premium</div>
+              </div>
+            </div>
+
+            <!-- Top recruiters -->
+            <div v-if="referralAnalytics.topRecruiters.length > 0" class="rounded-xl border moh-border p-4 space-y-2">
+              <div class="text-xs font-semibold text-gray-600 dark:text-gray-300">Top Recruiters</div>
+              <div class="moh-divide">
+                <div
+                  v-for="(r, i) in referralAnalytics.topRecruiters"
+                  :key="r.userId"
+                  class="flex items-center justify-between gap-3 py-1.5 text-sm"
+                >
+                  <div class="flex items-center gap-2 min-w-0">
+                    <span class="text-xs text-gray-400 w-5 text-right shrink-0">{{ i + 1 }}.</span>
+                    <NuxtLink
+                      v-if="r.username"
+                      :to="`/admin/users/${encodeURIComponent(r.username)}`"
+                      class="font-medium hover:underline truncate"
+                    >@{{ r.username }}</NuxtLink>
+                    <span v-else class="truncate text-gray-500">{{ r.name ?? r.userId }}</span>
+                  </div>
+                  <span class="shrink-0 font-semibold text-amber-700 dark:text-amber-300">{{ r.recruitCount }} recruit{{ r.recruitCount === 1 ? '' : 's' }}</span>
+                </div>
+              </div>
+            </div>
+          </template>
+        </div>
+        </section>
+
+        <section class="space-y-4">
+        <h2 class="px-4 text-[11px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">Content</h2>
 
         <!-- Content chart -->
         <div class="px-4 space-y-2">
@@ -127,116 +442,6 @@
             <canvas ref="connectionsCanvas" height="180" />
           </div>
         </div>
-
-        <!-- ─── Coins ────────────────────────────────────────────────── -->
-
-        <!-- Coin KPI cards -->
-        <div class="px-4 space-y-2">
-          <div class="font-semibold text-sm">Coins <span class="text-gray-400 font-normal">({{ rangeLabel }} unless noted)</span></div>
-          <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <div v-for="card in coinKpiCards" :key="card.label" class="rounded-xl border moh-border p-4 space-y-1">
-              <div class="text-xs text-gray-500 dark:text-gray-400 font-medium truncate">{{ card.label }}</div>
-              <div class="text-2xl font-bold tabular-nums" :class="card.color ?? ''">{{ card.value }}</div>
-              <div class="text-xs text-gray-500 dark:text-gray-400">{{ card.sub }}</div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Coins minted chart -->
-        <div class="px-4 space-y-2">
-          <div class="font-semibold text-sm">Coins Minted from Streaks <span class="text-gray-400 font-normal">({{ rangeLabel }})</span></div>
-          <div class="rounded-xl border moh-border p-4" style="touch-action: pan-y;">
-            <canvas ref="coinsMintedCanvas" height="180" />
-          </div>
-        </div>
-
-        <!-- Multiplier breakdown -->
-        <div class="px-4 space-y-2">
-          <div class="font-semibold text-sm">Streak Multiplier Distribution <span class="text-gray-400 font-normal">({{ rangeLabel }})</span></div>
-          <div class="rounded-xl border moh-border p-4 space-y-3">
-            <div v-if="coinMultiplierTotal === 0" class="text-sm text-gray-400 dark:text-gray-500 italic">
-              No streak rewards yet.
-            </div>
-            <template v-else>
-              <div v-for="row in coinMultiplierRows" :key="row.label" class="space-y-1">
-                <div class="flex items-center justify-between text-sm">
-                  <div class="flex items-center gap-2">
-                    <span class="inline-block w-2.5 h-2.5 rounded-full" :class="row.dot" />
-                    <span class="font-medium">{{ row.label }}</span>
-                    <span class="text-xs text-gray-400 dark:text-gray-500">{{ row.desc }}</span>
-                  </div>
-                  <div class="flex items-center gap-3 tabular-nums">
-                    <span class="text-xs text-gray-500 dark:text-gray-400">{{ row.pct }}%</span>
-                    <span class="font-semibold">{{ row.count.toLocaleString() }}</span>
-                  </div>
-                </div>
-                <div class="h-1.5 rounded-full bg-gray-100 dark:bg-zinc-800 overflow-hidden">
-                  <div class="h-full rounded-full transition-[width]" :class="row.bar" :style="{ width: row.pct + '%' }" />
-                </div>
-              </div>
-            </template>
-          </div>
-        </div>
-
-        <!-- Economy health indicators -->
-        <div class="px-4 space-y-2">
-          <div class="font-semibold text-sm">Economy Health <span class="text-gray-400 font-normal">(all-time unless noted)</span></div>
-          <div class="rounded-xl border moh-border p-4 space-y-4">
-            <!-- Velocity ratio -->
-            <div>
-              <div class="flex items-start justify-between gap-2">
-                <div>
-                  <div class="text-xs font-semibold text-gray-700 dark:text-gray-300">Velocity Ratio</div>
-                  <div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                    Coins transferred ÷ coins minted ({{ rangeLabel }}). Higher = coins are circulating; lower = mostly being saved.
-                  </div>
-                </div>
-                <div class="text-xl font-bold tabular-nums shrink-0" :class="velocityColor">
-                  {{ data?.coins.velocityRatio != null ? data.coins.velocityRatio.toFixed(3) : '—' }}
-                </div>
-              </div>
-              <div v-if="data?.coins.velocityRatio != null" class="mt-2 text-xs text-gray-500 dark:text-gray-400 italic">
-                <template v-if="data.coins.velocityRatio < 0.1">Very low — almost no coins are being shared yet.</template>
-                <template v-else-if="data.coins.velocityRatio < 0.4">Low — coins are mostly being saved.</template>
-                <template v-else-if="data.coins.velocityRatio < 0.8">Moderate — healthy mix of saving and spending.</template>
-                <template v-else>High — coins are actively circulating.</template>
-              </div>
-            </div>
-
-            <hr class="moh-border" />
-
-            <!-- Gini coefficient -->
-            <div>
-              <div class="flex items-start justify-between gap-2">
-                <div>
-                  <div class="text-xs font-semibold text-gray-700 dark:text-gray-300">Gini Coefficient</div>
-                  <div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                    Distribution inequality (0 = everyone equal, 1 = one person holds all coins). Computed over all non-banned holders.
-                  </div>
-                </div>
-                <div class="text-xl font-bold tabular-nums shrink-0" :class="giniColor">
-                  {{ data?.coins.giniCoefficient != null ? data.coins.giniCoefficient.toFixed(3) : '—' }}
-                </div>
-              </div>
-              <div v-if="data?.coins.giniCoefficient != null" class="mt-2">
-                <div class="h-2 rounded-full bg-gray-100 dark:bg-zinc-800 overflow-hidden">
-                  <div
-                    class="h-full rounded-full transition-[width]"
-                    :class="giniBarColor"
-                    :style="{ width: (data.coins.giniCoefficient * 100).toFixed(1) + '%' }"
-                  />
-                </div>
-                <div class="mt-1 text-xs text-gray-500 dark:text-gray-400 italic">
-                  <template v-if="data.coins.giniCoefficient < 0.35">Relatively equal distribution.</template>
-                  <template v-else-if="data.coins.giniCoefficient < 0.55">Moderate inequality — typical for early economies.</template>
-                  <template v-else>High inequality — a small group holds most coins.</template>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- ─── Articles ──────────────────────────────────────────────── -->
 
         <!-- Article KPI cards -->
         <div class="px-4 space-y-2">
@@ -368,11 +573,14 @@
             </table>
           </div>
         </div>
+        </section>
 
+        <section class="space-y-4">
+        <h2 class="px-4 text-[11px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">Groups</h2>
         <!-- Community groups -->
         <div class="px-4 space-y-3">
           <div class="font-semibold text-sm">
-            Community groups
+            Activity
             <span class="text-gray-400 font-normal">({{ rangeLabel }})</span>
           </div>
           <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -425,15 +633,14 @@
             </table>
           </div>
         </div>
+        </section>
 
-        <!-- ─── Spaces ──────────────────────────────────────────────────── -->
+        <section class="space-y-4">
+        <h2 class="px-4 text-[11px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">Spaces</h2>
+        <!-- Spaces -->
 
         <!-- Spaces KPI cards -->
         <div class="px-4 space-y-3">
-          <div class="font-semibold text-sm">
-            Spaces
-            <span class="text-gray-400 font-normal">({{ rangeLabel }} unless noted)</span>
-          </div>
           <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             <div
               v-for="c in spaceKpiCards"
@@ -446,31 +653,6 @@
             </div>
           </div>
 
-          <!-- Mode breakdown -->
-          <div class="rounded-xl border moh-border p-4 space-y-3">
-            <div class="text-xs font-semibold text-gray-600 dark:text-gray-300 mb-1">Mode Breakdown <span class="font-normal text-gray-400">(all-time, current state)</span></div>
-            <div v-if="!data.spaces || Object.values(data.spaces.byMode).every(v => v === 0)" class="text-sm text-gray-400 dark:text-gray-500 italic">
-              No spaces yet.
-            </div>
-            <template v-else>
-              <div v-for="row in spaceModeRows" :key="row.key" class="space-y-1">
-                <div class="flex items-center justify-between text-sm">
-                  <div class="flex items-center gap-2">
-                    <span class="inline-block w-2.5 h-2.5 rounded-full" :class="row.dot" />
-                    <span class="font-medium">{{ row.label }}</span>
-                  </div>
-                  <div class="flex items-center gap-3 tabular-nums">
-                    <span class="text-xs text-gray-500 dark:text-gray-400">{{ row.pct }}%</span>
-                    <span class="font-semibold">{{ row.count.toLocaleString() }}</span>
-                  </div>
-                </div>
-                <div class="h-1.5 rounded-full bg-gray-100 dark:bg-zinc-800 overflow-hidden">
-                  <div class="h-full rounded-full transition-[width]" :class="row.bar" :style="{ width: row.pct + '%' }" />
-                </div>
-              </div>
-            </template>
-          </div>
-
           <!-- Currently active spaces table -->
           <div class="rounded-xl border moh-border overflow-x-auto">
             <table class="min-w-full text-sm">
@@ -479,6 +661,7 @@
                   <th class="px-4 py-3 font-medium">Space</th>
                   <th class="px-4 py-3 font-medium">Owner</th>
                   <th class="px-4 py-3 font-medium text-right">Mode</th>
+                  <th class="px-4 py-3 font-medium text-right">Last live</th>
                   <th class="px-4 py-3 font-medium text-right">Created</th>
                 </tr>
               </thead>
@@ -510,11 +693,14 @@
                     </span>
                   </td>
                   <td class="px-4 py-3 text-right text-xs text-gray-400 dark:text-gray-500 whitespace-nowrap">
+                    {{ s.activatedAt ? articleAge(s.activatedAt) : '—' }}
+                  </td>
+                  <td class="px-4 py-3 text-right text-xs text-gray-400 dark:text-gray-500 whitespace-nowrap">
                     {{ articleAge(s.createdAt) }}
                   </td>
                 </tr>
                 <tr v-if="!data.spaces?.topSpaces?.length">
-                  <td colspan="4" class="px-4 py-6 text-center text-gray-500 dark:text-gray-400 text-sm">
+                  <td colspan="5" class="px-4 py-6 text-center text-gray-500 dark:text-gray-400 text-sm">
                     No active spaces
                   </td>
                 </tr>
@@ -522,15 +708,85 @@
             </table>
           </div>
         </div>
+        </section>
 
-        <!-- ─── M.A.R.V. / AI ──────────────────────────────────────────── -->
+        <section class="space-y-4">
+        <h2 class="px-4 text-[11px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">Coins</h2>
+        <!-- Coins -->
+
+        <!-- Coin KPI cards -->
+        <div class="px-4 space-y-2">
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div v-for="card in coinKpiCards" :key="card.label" class="rounded-xl border moh-border p-4 space-y-1">
+              <div class="text-xs text-gray-500 dark:text-gray-400 font-medium truncate">{{ card.label }}</div>
+              <div class="text-2xl font-bold tabular-nums" :class="card.color ?? ''">{{ card.value }}</div>
+              <div class="text-xs text-gray-500 dark:text-gray-400">{{ card.sub }}</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Coins minted chart -->
+        <div class="px-4 space-y-2">
+          <div class="font-semibold text-sm">Coins Minted from Streaks <span class="text-gray-400 font-normal">({{ rangeLabel }})</span></div>
+          <div class="rounded-xl border moh-border p-4" style="touch-action: pan-y;">
+            <canvas ref="coinsMintedCanvas" height="180" />
+          </div>
+        </div>
+
+        <!-- Multiplier breakdown -->
+        <div class="px-4 space-y-2">
+          <div class="font-semibold text-sm">Streak Multiplier Distribution <span class="text-gray-400 font-normal">({{ rangeLabel }})</span></div>
+          <div class="rounded-xl border moh-border p-4 space-y-3">
+            <div v-if="coinMultiplierTotal === 0" class="text-sm text-gray-400 dark:text-gray-500 italic">
+              No streak rewards yet.
+            </div>
+            <template v-else>
+              <div v-for="row in coinMultiplierRows" :key="row.label" class="space-y-1">
+                <div class="flex items-center justify-between text-sm">
+                  <div class="flex items-center gap-2">
+                    <span class="inline-block w-2.5 h-2.5 rounded-full" :class="row.dot" />
+                    <span class="font-medium">{{ row.label }}</span>
+                    <span class="text-xs text-gray-400 dark:text-gray-500">{{ row.desc }}</span>
+                  </div>
+                  <div class="flex items-center gap-3 tabular-nums">
+                    <span class="text-xs text-gray-500 dark:text-gray-400">{{ row.pct }}%</span>
+                    <span class="font-semibold">{{ row.count.toLocaleString() }}</span>
+                  </div>
+                </div>
+                <div class="h-1.5 rounded-full bg-gray-100 dark:bg-zinc-800 overflow-hidden">
+                  <div class="h-full rounded-full transition-[width]" :class="row.bar" :style="{ width: row.pct + '%' }" />
+                </div>
+              </div>
+            </template>
+          </div>
+        </div>
+
+        <!-- Economy health -->
+        <div class="px-4 grid grid-cols-2 gap-3">
+          <div class="rounded-xl border moh-border p-4 space-y-1">
+            <div class="text-xs font-medium text-gray-500 dark:text-gray-400">Velocity</div>
+            <div class="text-2xl font-bold tabular-nums" :class="velocityColor">
+              {{ data?.coins.velocityRatio != null ? data.coins.velocityRatio.toFixed(2) : '—' }}
+            </div>
+            <div class="text-xs text-gray-500 dark:text-gray-400">transferred ÷ minted ({{ rangeLabel }})</div>
+          </div>
+          <div class="rounded-xl border moh-border p-4 space-y-1">
+            <div class="text-xs font-medium text-gray-500 dark:text-gray-400">Gini</div>
+            <div class="text-2xl font-bold tabular-nums" :class="giniColor">
+              {{ data?.coins.giniCoefficient != null ? data.coins.giniCoefficient.toFixed(2) : '—' }}
+            </div>
+            <div class="text-xs text-gray-500 dark:text-gray-400">0 = equal · 1 = one holder</div>
+          </div>
+        </div>
+
+        <!-- ─── Articles ──────────────────────────────────────────────── -->
+        </section>
+
+        <section class="space-y-4">
+        <h2 class="px-4 text-[11px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">M.A.R.V.</h2>
+        <!-- M.A.R.V. / AI -->
 
         <div v-if="data.ai" class="px-4 space-y-3">
-          <div class="font-semibold text-sm">
-            M.A.R.V. / AI
-            <span class="text-gray-400 font-normal">({{ rangeLabel }})</span>
-          </div>
-
           <!-- KPI cards -->
           <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
             <div
@@ -628,179 +884,11 @@
             </template>
           </div>
         </div>
+        </section>
 
-        <!-- ─────────────────────────────────────────────────────────────── -->
-
-        <!-- Retention table (always 10-week window) -->
-        <div class="px-4 space-y-2">
-          <div class="font-semibold text-sm">Weekly Cohort Retention <span class="text-gray-500 dark:text-gray-400 font-normal">(last 10 weeks)</span></div>
-          <div class="rounded-xl border moh-border overflow-x-auto">
-            <table class="min-w-full text-sm">
-              <thead>
-                <tr class="border-b moh-border text-left text-gray-600 dark:text-gray-300">
-                  <th class="px-4 py-3 font-medium">Cohort week</th>
-                  <th class="px-4 py-3 font-medium text-right">Users</th>
-                  <th class="px-4 py-3 font-medium text-right">W1 retained</th>
-                  <th class="px-4 py-3 font-medium text-right">W1 %</th>
-                  <th class="px-4 py-3 font-medium text-right">W4 retained</th>
-                  <th class="px-4 py-3 font-medium text-right">W4 %</th>
-                </tr>
-              </thead>
-              <tbody class="moh-divide">
-                <tr v-for="row in retentionRows" :key="row.cohortWeek" class="hover:bg-gray-50 dark:hover:bg-zinc-900/50">
-                  <td class="px-4 py-3 font-mono text-xs">{{ row.cohortWeek }}</td>
-                  <td class="px-4 py-3 text-right tabular-nums">{{ row.size.toLocaleString() }}</td>
-                  <td class="px-4 py-3 text-right tabular-nums">
-                    <span v-if="row.isW1Eligible">{{ row.w1.toLocaleString() }}</span>
-                    <span v-else class="text-gray-500 dark:text-gray-400 font-medium">--</span>
-                  </td>
-                  <td class="px-4 py-3 text-right tabular-nums">
-                    <span v-if="row.isW1Eligible" :class="retentionColor(row.w1Pct)">{{ row.w1Pct }}%</span>
-                    <span v-else class="text-gray-500 dark:text-gray-400 font-medium">--</span>
-                  </td>
-                  <td class="px-4 py-3 text-right tabular-nums">
-                    <span v-if="row.isW4Eligible">{{ row.w4.toLocaleString() }}</span>
-                    <span v-else class="text-gray-500 dark:text-gray-400 font-medium">--</span>
-                  </td>
-                  <td class="px-4 py-3 text-right tabular-nums">
-                    <span v-if="row.isW4Eligible" :class="retentionColor(row.w4Pct)">{{ row.w4Pct }}%</span>
-                    <span v-else class="text-gray-500 dark:text-gray-400 font-medium">--</span>
-                  </td>
-                </tr>
-                <tr v-if="!retentionRows.length">
-                  <td colspan="6" class="px-4 py-6 text-center text-gray-500 dark:text-gray-400 text-sm">No data yet</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        <!-- Engagement health (always fixed windows) -->
-        <div class="px-4 space-y-2">
-          <div class="font-semibold text-sm">Engagement Health</div>
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-
-            <!-- D30 Retention -->
-            <div class="rounded-xl border moh-border p-4 space-y-3">
-              <div class="flex items-start justify-between gap-2">
-                <div>
-                  <div class="font-medium text-sm">D30 Retention</div>
-                  <div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Users still active 30 days after signup</div>
-                </div>
-                <div class="text-right shrink-0">
-                  <div v-if="data.engagement.d30RetentionPct !== null" class="text-2xl font-bold tabular-nums" :class="engagementColor(data.engagement.d30RetentionPct, 20, 40)">
-                    {{ data.engagement.d30RetentionPct }}%
-                  </div>
-                  <div v-else class="text-sm text-gray-400 dark:text-gray-500 italic">No data yet</div>
-                </div>
-              </div>
-              <div class="text-xs text-gray-500 dark:text-gray-400">
-                {{ data.engagement.d30RetainedCount.toLocaleString() }} of {{ data.engagement.d30CohortSize.toLocaleString() }} users retained
-              </div>
-              <div class="text-xs text-gray-400 dark:text-gray-500 border-t moh-border pt-2">
-                Benchmark: top apps 25–40%+
-              </div>
-            </div>
-
-            <!-- Activation rate -->
-            <div class="rounded-xl border moh-border p-4 space-y-3">
-              <div class="flex items-start justify-between gap-2">
-                <div>
-                  <div class="font-medium text-sm">Activation Rate</div>
-                  <div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Active within first 7 days of signup</div>
-                </div>
-                <div class="text-right shrink-0">
-                  <div v-if="data.engagement.activationPct !== null" class="text-2xl font-bold tabular-nums" :class="engagementColor(data.engagement.activationPct, 30, 60)">
-                    {{ data.engagement.activationPct }}%
-                  </div>
-                  <div v-else class="text-sm text-gray-400 dark:text-gray-500 italic">No data yet</div>
-                </div>
-              </div>
-              <div class="text-xs text-gray-500 dark:text-gray-400">
-                {{ data.engagement.activationCount.toLocaleString() }} of {{ data.engagement.activationEligibleCount.toLocaleString() }} users activated
-              </div>
-              <div class="text-xs text-gray-400 dark:text-gray-500 border-t moh-border pt-2">
-                Benchmark: strong apps 50–70%+
-              </div>
-            </div>
-
-            <!-- Creator % -->
-            <div class="rounded-xl border moh-border p-4 space-y-3">
-              <div class="flex items-start justify-between gap-2">
-                <div>
-                  <div class="font-medium text-sm">Creator %</div>
-                  <div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">MAU who posted, published an article, or hosted a space (30 days)</div>
-                </div>
-                <div class="text-right shrink-0">
-                  <div v-if="data.engagement.creatorPct !== null" class="text-2xl font-bold tabular-nums" :class="engagementColor(data.engagement.creatorPct, 15, 30)">
-                    {{ data.engagement.creatorPct }}%
-                  </div>
-                  <div v-else class="text-sm text-gray-400 dark:text-gray-500 italic">No data yet</div>
-                </div>
-              </div>
-              <div class="text-xs text-gray-500 dark:text-gray-400">
-                {{ data.engagement.creatorCount.toLocaleString() }} creators out of {{ data.engagement.creatorMauCount.toLocaleString() }} MAU
-              </div>
-              <div class="text-xs text-gray-400 dark:text-gray-500 border-t moh-border pt-2">
-                Benchmark: healthy communities 20–30%+
-              </div>
-            </div>
-
-            <!-- Network density -->
-            <div class="rounded-xl border moh-border p-4 space-y-3">
-              <div class="flex items-start justify-between gap-2">
-                <div>
-                  <div class="font-medium text-sm">Network Density</div>
-                  <div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Connected users (following & followed)</div>
-                </div>
-                <div class="text-right shrink-0">
-                  <div v-if="data.engagement.connectedUserPct !== null" class="text-2xl font-bold tabular-nums" :class="engagementColor(data.engagement.connectedUserPct, 30, 60)">
-                    {{ data.engagement.connectedUserPct }}%
-                  </div>
-                  <div v-else class="text-sm text-gray-400 dark:text-gray-500 italic">No data yet</div>
-                </div>
-              </div>
-              <div class="text-xs text-gray-500 dark:text-gray-400">
-                {{ data.engagement.connectedUserCount.toLocaleString() }} connected &middot; avg {{ data.engagement.avgFollowersPerUser.toLocaleString() }} followers/user
-              </div>
-              <div class="text-xs text-gray-400 dark:text-gray-500 border-t moh-border pt-2">
-                Higher = stronger network effect
-              </div>
-            </div>
-
-            <!-- Verification → Premium funnel -->
-            <div class="rounded-xl border moh-border p-4 space-y-3 sm:col-span-2">
-              <div class="font-medium text-sm">Conversion Funnel</div>
-              <div class="text-xs text-gray-500 dark:text-gray-400 -mt-1">Signup → Verified → Premium</div>
-              <div class="flex items-stretch gap-0 rounded-lg overflow-hidden border moh-border text-center text-sm">
-                <div class="flex-1 px-3 py-3 bg-gray-50 dark:bg-zinc-900/50">
-                  <div class="text-lg font-bold tabular-nums">{{ data.summary.totalUsers.toLocaleString() }}</div>
-                  <div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">All users</div>
-                </div>
-                <div class="flex items-center px-1 text-gray-300 dark:text-zinc-600 select-none">›</div>
-                <div class="flex-1 px-3 py-3">
-                  <div class="text-lg font-bold tabular-nums" :class="engagementColor(verifiedConversionPct, 20, 50)">
-                    {{ data.summary.verifiedUsers.toLocaleString() }}
-                  </div>
-                  <div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Verified ({{ verifiedConversionPct }}%)</div>
-                </div>
-                <div class="flex items-center px-1 text-gray-300 dark:text-zinc-600 select-none">›</div>
-                <div class="flex-1 px-3 py-3">
-                  <div class="text-lg font-bold tabular-nums" :class="engagementColor(premiumOfVerifiedPct, 10, 30)">
-                    {{ data.summary.premiumUsers.toLocaleString() }}
-                  </div>
-                  <div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Premium ({{ premiumOfVerifiedPct }}% of verified)</div>
-                </div>
-              </div>
-              <div class="text-xs text-gray-400 dark:text-gray-500 border-t moh-border pt-2">
-                Verification is required for premium access — this shows your full upgrade path.
-              </div>
-            </div>
-
-          </div>
-        </div>
-
-        <!-- Landing content concentration (same filters as public homepage; all-time) -->
+        <section class="space-y-4">
+        <h2 class="px-4 text-[11px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">Homepage</h2>
+        <!-- Landing content concentration -->
         <div v-if="data.landing" class="px-4 space-y-2">
           <div>
             <div class="font-semibold text-sm">Landing content concentration</div>
@@ -895,141 +983,7 @@
             </div>
           </div>
         </div>
-
-        <!-- Monetization (always all-time) -->
-        <div class="px-4 space-y-2">
-          <div class="font-semibold text-sm">Tier Breakdown <span class="text-gray-400 font-normal">(all time)</span></div>
-          <div class="rounded-xl border moh-border p-4 space-y-5">
-
-            <!-- Paying subscribers -->
-            <div>
-              <div class="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-2">Paying (Stripe)</div>
-              <div class="grid grid-cols-3 gap-3 text-center">
-                <div class="rounded-lg bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-900 p-3">
-                  <div class="text-2xl font-bold tabular-nums text-green-700 dark:text-green-400">{{ totalPaying.toLocaleString() }}</div>
-                  <div class="text-xs text-green-600 dark:text-green-500 mt-1">Total paying</div>
-                </div>
-                <div class="rounded-lg border moh-border p-3">
-                  <div class="text-2xl font-bold tabular-nums">{{ data.monetization.payingPremium.toLocaleString() }}</div>
-                  <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">Premium</div>
-                </div>
-                <div class="rounded-lg border moh-border p-3">
-                  <div class="text-2xl font-bold tabular-nums">{{ data.monetization.payingPremiumPlus.toLocaleString() }}</div>
-                  <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">Premium+</div>
-                </div>
-              </div>
-            </div>
-
-            <!-- Comped -->
-            <div>
-              <div class="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-2">Comped (grants)</div>
-              <div class="grid grid-cols-3 gap-3 text-center">
-                <div class="rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900 p-3">
-                  <div class="text-2xl font-bold tabular-nums text-amber-700 dark:text-amber-400">{{ totalComped.toLocaleString() }}</div>
-                  <div class="text-xs text-amber-600 dark:text-amber-500 mt-1">Active comped</div>
-                </div>
-                <div class="rounded-lg border moh-border p-3">
-                  <div class="text-2xl font-bold tabular-nums">{{ data.monetization.compedPremium.toLocaleString() }}</div>
-                  <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">Premium</div>
-                </div>
-                <div class="rounded-lg border moh-border p-3">
-                  <div class="text-2xl font-bold tabular-nums">{{ data.monetization.compedPremiumPlus.toLocaleString() }}</div>
-                  <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">Premium+</div>
-                </div>
-              </div>
-              <div class="mt-2 flex items-center justify-between text-xs text-gray-500 dark:text-gray-400 px-1">
-                <span>Users with banked free months (incl. unverified)</span>
-                <span class="font-semibold tabular-nums">{{ data.summary.usersWithActiveGrants.toLocaleString() }}</span>
-              </div>
-            </div>
-
-            <!-- Free -->
-            <div class="flex items-center justify-between text-sm border-t moh-border pt-4">
-              <span class="text-gray-500 dark:text-gray-400">Free users</span>
-              <span class="font-semibold tabular-nums">{{ data.monetization.free.toLocaleString() }}</span>
-            </div>
-
-            <!-- Visual bar -->
-            <div v-if="data.summary.totalUsers > 0">
-              <div class="flex rounded-full overflow-hidden h-2">
-                <div class="bg-gray-200 dark:bg-zinc-700" :style="{ width: freePct + '%' }" :title="`Free: ${freePct}%`" />
-                <div class="bg-amber-400" :style="{ width: compedPct + '%' }" :title="`Comped: ${compedPct}%`" />
-                <div class="bg-green-500" :style="{ width: payingPct + '%' }" :title="`Paying: ${payingPct}%`" />
-              </div>
-              <div class="flex flex-wrap gap-3 mt-2 text-xs text-gray-500 dark:text-gray-400">
-                <div class="flex items-center gap-1.5"><span class="inline-block w-3 h-3 rounded-full bg-gray-200 dark:bg-zinc-700" />Free ({{ freePct }}%)</div>
-                <div class="flex items-center gap-1.5"><span class="inline-block w-3 h-3 rounded-full bg-amber-400" />Comped ({{ compedPct }}%)</div>
-                <div class="flex items-center gap-1.5"><span class="inline-block w-3 h-3 rounded-full bg-green-500" />Paying ({{ payingPct }}%)</div>
-              </div>
-            </div>
-
-            <!-- Stripe status breakdown (only if Stripe is connected) -->
-            <div v-if="Object.keys(data.monetization.byStatus).length > 0" class="border-t moh-border pt-4 space-y-1">
-              <div class="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">Stripe subscription status</div>
-              <div
-                v-for="(count, status) in data.monetization.byStatus"
-                :key="status"
-                class="flex items-center justify-between text-sm"
-              >
-                <span class="font-mono text-xs">{{ status }}</span>
-                <span class="tabular-nums font-medium">{{ Number(count).toLocaleString() }}</span>
-              </div>
-            </div>
-            <div v-else class="border-t moh-border pt-4 text-xs text-gray-400 dark:text-gray-500 italic">
-              Stripe not yet connected — no subscription data available.
-            </div>
-          </div>
-        </div>
-
-        <!-- ─── Referrals ───────────────────────────────────────────────────── -->
-        <div class="px-4 space-y-4">
-          <div class="text-sm font-semibold text-gray-900 dark:text-gray-50">Referrals (all time)</div>
-          <div v-if="referralAnalyticsLoading" class="text-sm text-gray-500 dark:text-gray-400">Loading…</div>
-          <template v-else-if="referralAnalytics">
-            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              <div class="rounded-xl border moh-border p-4 space-y-1">
-                <div class="text-xs font-semibold text-gray-600 dark:text-gray-300">Referral Codes</div>
-                <div class="text-2xl font-bold">{{ referralAnalytics.totalCodesCreated.toLocaleString() }}</div>
-              </div>
-              <div class="rounded-xl border moh-border p-4 space-y-1">
-                <div class="text-xs font-semibold text-gray-600 dark:text-gray-300">Total Recruits</div>
-                <div class="text-2xl font-bold">{{ referralAnalytics.totalRecruits.toLocaleString() }}</div>
-              </div>
-              <div class="rounded-xl border moh-border p-4 space-y-1">
-                <div class="text-xs font-semibold text-gray-600 dark:text-gray-300">Bonuses Granted</div>
-                <div class="text-2xl font-bold">{{ referralAnalytics.totalBonusesGranted.toLocaleString() }}</div>
-              </div>
-              <div class="rounded-xl border moh-border p-4 space-y-1">
-                <div class="text-xs font-semibold text-gray-600 dark:text-gray-300">Conversion Rate</div>
-                <div class="text-2xl font-bold">{{ referralAnalytics.conversionRatePct }}%</div>
-                <div class="text-xs text-gray-500 dark:text-gray-400">recruits → premium</div>
-              </div>
-            </div>
-
-            <!-- Top recruiters -->
-            <div v-if="referralAnalytics.topRecruiters.length > 0" class="rounded-xl border moh-border p-4 space-y-2">
-              <div class="text-xs font-semibold text-gray-600 dark:text-gray-300">Top Recruiters</div>
-              <div class="moh-divide">
-                <div
-                  v-for="(r, i) in referralAnalytics.topRecruiters"
-                  :key="r.userId"
-                  class="flex items-center justify-between gap-3 py-1.5 text-sm"
-                >
-                  <div class="flex items-center gap-2 min-w-0">
-                    <span class="text-xs text-gray-400 w-5 text-right shrink-0">{{ i + 1 }}.</span>
-                    <NuxtLink
-                      v-if="r.username"
-                      :to="`/admin/users/${encodeURIComponent(r.username)}`"
-                      class="font-medium hover:underline truncate"
-                    >@{{ r.username }}</NuxtLink>
-                    <span v-else class="truncate text-gray-500">{{ r.name ?? r.userId }}</span>
-                  </div>
-                  <span class="shrink-0 font-semibold text-amber-700 dark:text-amber-300">{{ r.recruitCount }} recruit{{ r.recruitCount === 1 ? '' : 's' }}</span>
-                </div>
-              </div>
-            </div>
-          </template>
-        </div>
+        </section>
 
         <div class="px-4 text-xs text-gray-400 dark:text-gray-500">
           Last updated {{ asOfDisplay }}
@@ -1041,7 +995,7 @@
 
 <script setup lang="ts">
 import { Chart, registerables } from 'chart.js'
-import type { AdminAnalytics, AdminAnalyticsEngagement, AdminAnalyticsTopArticle, AdminReferralAnalytics, AnalyticsGranularity, AnalyticsRange } from '~/types/api'
+import type { AdminAnalytics, AdminReferralAnalytics, AnalyticsGranularity, AnalyticsRange } from '~/types/api'
 
 definePageMeta({ middleware: 'admin', layout: 'app', ssr: false })
 
@@ -1441,14 +1395,6 @@ const giniColor = computed(() => {
   return 'text-red-600 dark:text-red-400'
 })
 
-const giniBarColor = computed(() => {
-  const g = data.value?.coins.giniCoefficient
-  if (g == null) return 'bg-gray-400'
-  if (g < 0.35) return 'bg-green-500'
-  if (g < 0.55) return 'bg-amber-500'
-  return 'bg-red-500'
-})
-
 const coinMultiplierRows = computed(() => {
   if (!data.value) return []
   const total = coinMultiplierTotal.value
@@ -1482,14 +1428,12 @@ const articleKpiCards = computed(() => {
   const k = data.value.articles.kpis
   const r = rangeLabel.value
   return [
-    { label: 'Published',   value: k.totalPublished.toLocaleString(),        sub: r },
-    { label: 'Drafts',      value: k.totalDrafts.toLocaleString(),            sub: 'all time (current)' },
-    { label: 'Authors',     value: k.uniqueAuthors.toLocaleString(),          sub: `published in ${r}` },
-    { label: 'Views',       value: k.totalViewsInRange.toLocaleString(),      sub: r },
-    { label: 'Avg Views',   value: k.avgViewsPerArticle.toLocaleString(),     sub: `per article (${r})` },
-    { label: 'Boosts',      value: k.totalBoostsInRange.toLocaleString(),     sub: r },
-    { label: 'Reactions',   value: k.totalReactionsInRange.toLocaleString(),  sub: r },
-    { label: 'Replies',     value: k.totalCommentsInRange.toLocaleString(),   sub: r },
+    { label: 'Published', value: k.totalPublished.toLocaleString(), sub: r },
+    { label: 'Authors', value: k.uniqueAuthors.toLocaleString(), sub: `published in ${r}` },
+    { label: 'Views', value: k.totalViewsInRange.toLocaleString(), sub: r },
+    { label: 'Boosts', value: k.totalBoostsInRange.toLocaleString(), sub: r },
+    { label: 'Reactions', value: k.totalReactionsInRange.toLocaleString(), sub: r },
+    { label: 'Replies', value: k.totalCommentsInRange.toLocaleString(), sub: r },
   ]
 })
 
@@ -1540,9 +1484,16 @@ const spaceKpiCards = computed(() => {
   if (!data.value?.spaces) return []
   const s = data.value.spaces
   return [
-    { label: 'Total Spaces', value: s.totalSpaces.toLocaleString(), sub: 'all time' },
-    { label: 'Active Now', value: s.activeSpaces.toLocaleString(), sub: 'isActive = true' },
-    { label: 'Created in Range', value: s.spacesCreatedInRange.toLocaleString(), sub: rangeLabel.value },
+    { label: 'Live now', value: s.activeSpaces.toLocaleString(), sub: 'currently on' },
+    { label: 'Went live', value: s.wentLiveInRange.toLocaleString(), sub: rangeLabel.value },
+    { label: 'Scheduled', value: s.scheduledSpaces.toLocaleString(), sub: 'upcoming' },
+    {
+      label: 'Notify me',
+      value: s.notifyMeSubscribersInRange.toLocaleString(),
+      sub: `${s.notifyMeSubscribers.toLocaleString()} all time`,
+    },
+    { label: 'Spaces', value: s.totalSpaces.toLocaleString(), sub: 'all time' },
+    { label: 'Created', value: s.spacesCreatedInRange.toLocaleString(), sub: rangeLabel.value },
   ]
 })
 
@@ -1622,22 +1573,6 @@ const aiOutcomeRows = computed(() => {
   }).sort((a, b) => b.count - a.count)
 })
 
-const SPACE_MODE_META: Record<string, { label: string; dot: string; bar: string }> = {
-  NONE:        { label: 'Idle',        dot: 'bg-gray-400',   bar: 'bg-gray-400' },
-  WATCH_PARTY: { label: 'Watch Party', dot: 'bg-purple-500', bar: 'bg-purple-500' },
-  RADIO:       { label: 'Radio',       dot: 'bg-blue-500',   bar: 'bg-blue-500' },
-}
-
-const spaceModeRows = computed(() => {
-  if (!data.value?.spaces) return []
-  const byMode = data.value.spaces.byMode
-  const total = Object.values(byMode).reduce((a, b) => a + b, 0)
-  return Object.entries(byMode).map(([mode, count]) => {
-    const meta = SPACE_MODE_META[mode] ?? { label: mode, dot: 'bg-gray-400', bar: 'bg-gray-400' }
-    return { key: mode, ...meta, count, pct: total > 0 ? Math.round((count / total) * 100) : 0 }
-  }).sort((a, b) => b.count - a.count)
-})
-
 const summaryCards = computed(() => {
   if (!data.value) return []
   const { summary } = data.value
@@ -1645,17 +1580,15 @@ const summaryCards = computed(() => {
   const verifiedPct = summary.totalUsers > 0
     ? Math.round((summary.verifiedUsers / summary.totalUsers) * 100)
     : 0
+  const paying = data.value.monetization.payingPremium + data.value.monetization.payingPremiumPlus
   return [
-    { label: 'Total Users', value: summary.totalUsers.toLocaleString(), sub: undefined },
-    { label: 'Verified', value: summary.verifiedUsers.toLocaleString(), sub: `${verifiedPct}% of all users` },
-    { label: 'Public Posts', value: summary.totalPublicPosts.toLocaleString(), sub: 'all time' },
-    { label: 'Published Articles', value: data.value.articles.kpis.totalPublished.toLocaleString(), sub: 'all time' },
+    { label: 'Users', value: summary.totalUsers.toLocaleString(), sub: undefined },
+    { label: 'Verified', value: summary.verifiedUsers.toLocaleString(), sub: `${verifiedPct}% of users` },
     { label: 'DAU', value: summary.dau.toLocaleString(), sub: `${rangeLabel.value} avg` },
     { label: 'MAU', value: summary.mau.toLocaleString(), sub: '30-day window' },
     { label: 'DAU/MAU', value: dauMauPct + '%', sub: 'Stickiness' },
     { label: 'Premium', value: summary.premiumUsers.toLocaleString(), sub: `incl. ${summary.premiumPlusUsers} Premium+` },
-    { label: 'Banked Grants', value: summary.usersWithActiveGrants.toLocaleString(), sub: 'users w/ free months' },
-    { label: 'Coins in Economy', value: summary.totalCoinsInEconomy.toLocaleString(), sub: 'see Coins section ↓' },
+    { label: 'Paying', value: paying.toLocaleString(), sub: 'Stripe, all time' },
   ]
 })
 

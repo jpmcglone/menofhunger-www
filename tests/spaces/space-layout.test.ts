@@ -33,6 +33,12 @@ describe('space layout', () => {
     expect(navCompactModePath('/spaces/')).toBe(false)
   })
 
+  it('auto-collapses the left nav on admin analytics', () => {
+    expect(navCompactModePath('/admin/analytics')).toBe(true)
+    expect(navCompactModePath('/admin')).toBe(false)
+    expect(navCompactModePath('/admin/users')).toBe(false)
+  })
+
   it('widens the right rail only while live chat is showing', () => {
     const css = readFromRepo('assets/css/main.css')
     const rail = readFromRepo('components/app/layout/RightRail.vue')
@@ -82,6 +88,14 @@ describe('space layout', () => {
     expect(gridIdx).toBeGreaterThan(reactionsIdx)
     expect(page).toMatch(/max-h-52/)
     expect(page).toMatch(/overscroll-contain/)
+  })
+
+  it('tracks a space page view once per space', () => {
+    const page = readFromRepo('pages/s/[username].vue')
+    const helper = readFromRepo('composables/usePostHog.ts')
+    expect(helper).toMatch(/\$posthog\?\.capture/)
+    expect(page).toMatch(/capture\('space_viewed'/)
+    expect(page).toMatch(/viewedSpaceId/)
   })
 
   it('overlays expanded owner controls instead of pushing the player down', () => {
