@@ -1,16 +1,17 @@
 <template>
   <div v-if="message.kind === 'system'" class="py-1.5">
     <div class="max-w-full text-left text-[11px] text-gray-400 dark:text-gray-500">
-      <template v-if="systemUsername && systemProfilePath">
-        <NuxtLink
-          :to="systemProfilePath"
-          class="font-semibold hover:underline underline-offset-2"
+      <template v-if="systemUsername">
+        <button
+          type="button"
+          class="bg-transparent p-0 m-0 border-0 font-semibold hover:underline underline-offset-2 cursor-pointer"
+          @click="onUsernameActivate(systemUsername)"
           @mouseenter="onSystemEnter"
           @mousemove="onSystemMove"
           @mouseleave="onSystemLeave"
         >
           @{{ systemUsername }}
-        </NuxtLink>
+        </button>
       </template>
       <span v-else class="font-semibold">Someone</span>
       <span class="ml-1">has {{ systemVerbPhrase }} the chat</span>
@@ -41,17 +42,18 @@
     </div>
     <div class="flex items-center gap-1">
       <div class="min-w-0 flex-1">
-    <template v-if="profilePath">
-      <NuxtLink
-        :to="profilePath"
-        class="font-semibold hover:underline underline-offset-2"
+    <template v-if="username">
+      <button
+        type="button"
+        class="bg-transparent p-0 m-0 border-0 font-semibold hover:underline underline-offset-2 cursor-pointer"
         :class="usernameClass"
+        @click="onUsernameActivate(username)"
         @mouseenter="onEnter"
         @mousemove="onMove"
         @mouseleave="onLeave"
       >
         {{ displayUsername }}
-      </NuxtLink>
+      </button>
     </template>
     <span v-else class="font-semibold" :class="usernameClass">
       {{ displayUsername }}
@@ -91,16 +93,17 @@
           @mousemove="onLinkMove"
           @mouseleave="onLinkLeave"
         >{{ seg.text }}</a>
-        <NuxtLink
+        <button
           v-else-if="seg.type === 'mention'"
-          :to="`/u/${encodeURIComponent(seg.username!)}`"
-          class="font-semibold hover:underline underline-offset-2"
+          type="button"
+          class="bg-transparent p-0 m-0 border-0 font-semibold hover:underline underline-offset-2 cursor-pointer"
           :class="mentionExtraClass(seg.username!)"
           :style="mentionStyle(seg.username!)"
+          @click="onUsernameActivate(seg.username!)"
           @mouseenter="(e) => onMentionEnter(e, seg.username!)"
           @mousemove="onMentionMove"
           @mouseleave="onMentionLeave"
-        >@{{ seg.username }}</NuxtLink>
+        >@{{ seg.username }}</button>
         <NuxtLink
           v-else-if="seg.type === 'hashtag'"
           :to="{ path: '/explore', query: { q: `#${seg.tag}` } }"
@@ -202,7 +205,14 @@ const emit = defineEmits<{
   react: [reactionId: string]
   'open-reaction-picker': [event: Event]
   'reply-snippet-click': [messageId: string]
+  mention: [username: string]
 }>()
+
+function onUsernameActivate(uname: string) {
+  const next = uname.trim()
+  if (!next) return
+  emit('mention', next)
+}
 
 function onReplySnippetClick() {
   if (props.message.kind !== 'user' || !props.message.replyTo?.id) return
@@ -242,7 +252,6 @@ watch(senderId, () => { redactRevealed.value = false })
 
 const username = computed(() => (props.message?.sender?.username ?? '').trim() || null)
 const displayUsername = computed(() => username.value ?? 'User')
-const profilePath = computed(() => (username.value ? `/u/${encodeURIComponent(username.value)}` : null))
 
 const senderTier = computed(() => userColorTier(props.message?.sender as any))
 const usernameClass = computed(() => {
@@ -391,7 +400,6 @@ const systemUsername = computed(() => {
   if (props.message.kind !== 'system') return null
   return (props.message.system?.username ?? '').trim() || null
 })
-const systemProfilePath = computed(() => (systemUsername.value ? `/u/${encodeURIComponent(systemUsername.value)}` : null))
 const systemVerbPhrase = computed(() => {
   if (props.message.kind !== 'system') return 'joined'
   const first = props.message.system?.firstEvent

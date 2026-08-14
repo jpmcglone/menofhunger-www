@@ -9,6 +9,7 @@
       @react="(reactionId) => emit('react', m, reactionId)"
       @open-reaction-picker="(event) => emit('open-reaction-picker', event, m)"
       @reply-snippet-click="(id) => emit('reply-snippet-click', id)"
+      @mention="(username) => emit('mention', username)"
     />
     <!-- Always reserved so the overlaid typing row never covers the last message. -->
     <div class="h-10 shrink-0" aria-hidden="true" />
@@ -28,6 +29,7 @@ const emit = defineEmits<{
   react: [message: SpaceChatMessage, reactionId: string]
   'open-reaction-picker': [event: Event, message: SpaceChatMessage]
   'reply-snippet-click': [messageId: string]
+  mention: [username: string]
 }>()
 
 const { members } = useSpaceLobby()

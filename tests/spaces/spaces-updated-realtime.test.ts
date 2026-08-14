@@ -51,7 +51,8 @@ describe('spaces updated realtime wiring (structural)', () => {
   it('binds live listener badges and hides preview chrome', async () => {
     const row = await read('components/app/AppSpaceRow.vue')
     expect(row).toMatch(/lobbyCountForSpace/)
-    expect(row).toMatch(/v-if="!preview"/)
+    expect(row).toMatch(/clickable = computed\(\(\) => !props\.preview/)
+    expect(row).toMatch(/v-if="!preview && !compact"/)
   })
 
   it('renders lobby and preview spaces as cards with implied titles', async () => {

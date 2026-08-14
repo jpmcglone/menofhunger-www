@@ -81,6 +81,10 @@ type _CommunityGroupShell = Satisfies<Www.CommunityGroupShell, Api.CommunityGrou
 // ─── Websocket payloads ──────────────────────────────────────────────────────
 type _WsNotificationsNew = Satisfies<Www.WsNotificationsNewPayload, Api.NotificationsNewPayloadDto>
 type _WsNotificationsDeleted = Satisfies<Www.WsNotificationsDeletedPayload, Api.NotificationsDeletedPayloadDto>
+type _WsNotificationsLockScreenClear = Satisfies<
+  Www.WsNotificationsLockScreenClearPayload,
+  Api.NotificationsLockScreenClearPayloadDto
+>
 type _WsMessagesRead = Satisfies<Www.WsMessagesReadPayload, Api.MessagesReadPayloadDto>
 type _WsFollowsChanged = Satisfies<Www.WsFollowsChangedPayload, Api.FollowsChangedPayloadDto>
 type _WsPostsInteraction = Satisfies<Www.WsPostsInteractionPayload, Api.PostsInteractionPayloadDto>

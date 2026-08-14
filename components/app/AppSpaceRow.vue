@@ -4,9 +4,27 @@
     :class="[
       compact ? '' : rowKind === 'quiet' ? 'rounded-xl border moh-border px-2.5 py-1.5' : 'rounded-xl border moh-border p-2.5',
       !compact && selectedSpaceId === space.id ? 'bg-black/[0.03] dark:bg-white/[0.04]' : '',
+      clickable ? 'cursor-pointer moh-focus hover:bg-black/[0.03] dark:hover:bg-white/[0.04]' : '',
     ]"
-    @click.stop
+    :role="clickable ? 'link' : undefined"
+    :tabindex="clickable ? 0 : undefined"
+    :aria-label="clickable ? `Enter ${displayTitle}` : undefined"
+    @click="clickable ? onRowClick($event) : undefined"
+    @auxclick="clickable ? onRowAuxClick($event) : undefined"
+    @keydown.enter.prevent="clickable ? onEnterSpace() : undefined"
+    @keydown.space.prevent="clickable ? onEnterSpace() : undefined"
   >
+    <!-- Real <a> for right-click / open in new tab. Left-click is handled on the row
+         so we can select the lobby before navigating. -->
+    <NuxtLink
+      v-if="clickable && spaceHref"
+      :to="spaceHref"
+      class="absolute inset-0 z-[1]"
+      tabindex="-1"
+      aria-hidden="true"
+      @click.prevent
+    />
+
     <!-- Visualizer behind the row while this radio space is playing -->
     <div
       v-if="showRadioVisualizer"
@@ -18,7 +36,7 @@
     </div>
 
     <div
-      class="relative z-10 flex items-center"
+      class="relative z-[2] flex items-center"
       :class="compact ? 'gap-2 px-3 py-1.5' : rowKind === 'quiet' ? 'gap-2.5' : 'gap-3'"
     >
       <div
@@ -56,29 +74,7 @@
         <Icon :name="tileIcon" class="text-[16px] opacity-70" />
       </div>
 
-      <!-- Enter (preview embeds are non-interactive chrome) -->
-      <button
-        v-if="!preview"
-        type="button"
-        class="min-w-0 flex-1 text-left moh-focus"
-        :class="compact ? 'py-0' : 'py-0.5'"
-        :aria-label="`Enter ${displayTitle}`"
-        @click="onEnterSpace"
-      >
-        <div class="flex items-center gap-1.5 leading-none min-w-0">
-          <span
-            class="font-semibold moh-text truncate"
-            :class="compact ? 'text-xs' : 'text-sm'"
-          >{{ displayTitle }}</span>
-          <AppSpaceStatusBadge :kind="statusKind" :size="compact ? 'sm' : 'md'" />
-        </div>
-        <div
-          v-if="!compact && metaLine"
-          class="mt-1 text-[11px] moh-meta leading-none truncate"
-        >{{ metaLine }}</div>
-      </button>
       <div
-        v-else
         class="min-w-0 flex-1"
         :class="compact ? 'py-0' : 'py-0.5'"
       >
@@ -98,7 +94,8 @@
       <!-- Notify + share + play — hidden in feed preview and compact chat embeds -->
       <div
         v-if="!preview && !compact"
-        class="shrink-0 flex items-center gap-0.5"
+        class="relative z-10 shrink-0 flex items-center gap-0.5"
+        @click.stop.prevent
       >
         <AppSpaceNotifyCount
           v-if="showHostReminders"
@@ -237,6 +234,52 @@ const showNotifyMe = computed(() => {
   if (isOwnSpace.value) return false
   return true
 })
+
+const spaceHref = computed(() => {
+  const username = String(props.space.owner?.username ?? '').trim()
+  if (!username) return null
+  return `/s/${encodeURIComponent(username)}`
+})
+
+const clickable = computed(() => !props.preview && Boolean(spaceHref.value))
+
+function isInteractiveTarget(target: EventTarget | null): boolean {
+  const raw = target as Node | null
+  const el = raw instanceof Element ? raw : raw?.parentElement ?? null
+  if (!el) return false
+  return Boolean(
+    el.closest(
+      [
+        'button',
+        'iframe',
+        'input',
+        'textarea',
+        'select',
+        '[role="menu"]',
+        '[role="menuitem"]',
+        '[data-pc-section]',
+      ].join(','),
+    ),
+  )
+}
+
+function onRowClick(e: MouseEvent) {
+  if (isInteractiveTarget(e.target)) return
+  e.stopPropagation()
+  if (e.metaKey || e.ctrlKey) {
+    if (spaceHref.value) window.open(spaceHref.value, '_blank')
+    return
+  }
+  onEnterSpace()
+}
+
+function onRowAuxClick(e: MouseEvent) {
+  if (e.button !== 1) return
+  if (isInteractiveTarget(e.target)) return
+  e.preventDefault()
+  e.stopPropagation()
+  if (spaceHref.value) window.open(spaceHref.value, '_blank')
+}
 
 const shareTooltip = tinyTooltip('Share')
 const shareItems = computed<MenuItemWithIcon[]>(() => [

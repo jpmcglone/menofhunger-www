@@ -1665,6 +1665,10 @@ export type WsNotificationsUpdatedPayload = {
   clearedPostIds?: string[]
 }
 
+export type WsNotificationsLockScreenClearPayload = {
+  section: 'inbox' | 'groups'
+}
+
 export type WsMessagesReadPayload = {
   conversationId: string
   userId: string

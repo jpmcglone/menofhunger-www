@@ -36,6 +36,7 @@ import type { MentionSection } from '~/composables/useMentionAutocomplete'
 import type { CaretPoint } from '~/utils/textarea-caret'
 import { userTierColorVar } from '~/utils/user-tier'
 import { tierFromMentionUser } from '~/composables/useMentionAutocomplete'
+import { insertMentionAtCaret } from '~/utils/mention-autocomplete'
 
 // ─── Props / Emits ────────────────────────────────────────────
 
@@ -687,6 +688,27 @@ function insertAtCursor(text: string) {
   editor.value.chain().focus().insertContent(text).run()
 }
 
+function insertMention(username: string) {
+  const ed = editor.value
+  if (!ed || props.disabled) return
+  const un = username.trim()
+  if (!un) return
+  const text = getPlainText(ed)
+  const from = ed.state.selection.from
+  const caret = ed.state.doc.textBetween(1, from, '\n').length
+  const next = insertMentionAtCaret(text, caret, un)
+  lastEmittedText = next.text
+  emit('update:modelValue', next.text)
+  if (next.text) {
+    ed.commands.setContent(`<p>${escapeHtml(next.text)}</p>`)
+  } else {
+    ed.commands.clearContent(true)
+  }
+  const pos = Math.max(1, Math.min(next.caret + 1, ed.state.doc.content.size))
+  ed.chain().focus().setTextSelection(pos).run()
+  validateMentionsInBody(next.text, validSet.value)
+}
+
 function clear() {
   editor.value?.commands.clearContent(true)
 }
@@ -697,7 +719,7 @@ onMounted(() => {
   if (props.modelValue) validateMentionsInBody(props.modelValue, validSet.value)
 })
 
-defineExpose({ focus, insertAtCursor, clear, editor })
+defineExpose({ focus, insertAtCursor, insertMention, clear, editor })
 </script>
 
 <style>

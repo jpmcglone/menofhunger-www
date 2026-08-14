@@ -325,6 +325,7 @@ const route = useRoute()
 const { apiFetchData } = useApiClient()
 const { user, isAuthed } = useAuth()
 const { groupsUnread } = usePresence()
+const { clearLockScreen } = useNotifications()
 
 const metaLoading = ref(true)
 const error = ref<string | null>(null)
@@ -750,6 +751,7 @@ onMounted(() => {
   if (!import.meta.client) return
   registerReplyPostedHandler()
   startHubAutoRefresh()
+  if (isAuthed.value) void clearLockScreen('groups')
 })
 
 onActivated(() => {
@@ -757,6 +759,7 @@ onActivated(() => {
   registerReplyPostedHandler()
   startHubAutoRefresh()
   if (isAuthed.value) {
+    void clearLockScreen('groups')
     // Force-refresh so lastViewerPostAt reflects any posts made since the last visit.
     void loadMyGroups({ force: true })
       .then(() => applyMyGroups(sharedMyGroups.value))

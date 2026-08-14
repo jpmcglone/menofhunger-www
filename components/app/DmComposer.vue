@@ -403,6 +403,10 @@ function focus() {
   styledTextareaEl.value?.focus()
 }
 
+function insertMention(username: string) {
+  styledTextareaEl.value?.insertMention(username)
+}
+
 function getMedia(): CreateMediaPayload[] {
   return toCreatePayload(composerMedia.value)
 }
@@ -426,7 +430,7 @@ function checkMultiline() {
 
 watch(() => props.modelValue, checkMultiline)
 
-defineExpose({ focus, getMedia, clearMedia })
+defineExpose({ focus, insertMention, getMedia, clearMedia })
 </script>
 
 <style scoped>

@@ -33,6 +33,7 @@
           @react="onReact"
           @open-reaction-picker="openReactionPicker"
           @reply-snippet-click="scrollToMessage"
+          @mention="onMention"
         />
         <ChatReactionPicker
           ref="reactionPickerRef"
@@ -314,6 +315,17 @@ function onReply(message: SpaceChatMessage) {
   if (message.kind !== 'user') return
   replyToMessage.value = message
   void nextTick(() => composerRef.value?.focus?.())
+}
+
+function onMention(username: string) {
+  const un = username.trim()
+  if (!un) return
+  const mine = (user.value?.username ?? '').trim()
+  if (mine && mine.toLowerCase() === un.toLowerCase()) {
+    void nextTick(() => composerRef.value?.focus?.())
+    return
+  }
+  composerRef.value?.insertMention(un)
 }
 
 function onReact(message: SpaceChatMessage, reactionId: string) {

@@ -268,6 +268,19 @@ export function useNotifications() {
     }
   }
 
+  async function clearLockScreen(section: 'inbox' | 'groups') {
+    try {
+      await apiFetch('/notifications/lock-screen/clear', {
+        method: 'POST',
+        body: { section },
+      })
+    } catch (e: unknown) {
+      if (import.meta.dev) {
+        console.warn('[notifications] clearLockScreen failed', e)
+      }
+    }
+  }
+
   async function markReadBySubject(params: {
     post_id?: string
     user_id?: string
@@ -911,6 +924,7 @@ export function useNotifications() {
     isNotificationsPage,
     fetchList,
     markDelivered,
+    clearLockScreen,
     markReadBySubject,
     markGroupPostsSeen,
     markReadById,

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   extractMentionedUsernames,
+  insertMentionAtCaret,
   parseActiveMention,
   segmentBodyWithMentionsDisplay,
   splitTextByMentionsDisplay,
@@ -39,6 +40,42 @@ describe('mention-autocomplete utils', () => {
       expect(parseActiveMention('@a_', 3)).toMatchObject({ query: 'a_' })
       expect(parseActiveMention('@abcdefghijklmno', 16)).toMatchObject({ query: 'abcdefghijklmno' }) // 15 chars
       expect(parseActiveMention('@abcdefghijklmnop', 17)).toBeNull() // 16 chars
+    })
+  })
+
+  describe('insertMentionAtCaret', () => {
+    it('inserts at the start of an empty draft with a trailing space', () => {
+      expect(insertMentionAtCaret('', 0, 'john')).toEqual({ text: '@john ', caret: 6 })
+    })
+
+    it('adds a leading space when the caret sits after a word', () => {
+      expect(insertMentionAtCaret('hey', 3, 'john')).toEqual({ text: 'hey @john ', caret: 10 })
+    })
+
+    it('inserts at the caret in the middle of a draft', () => {
+      expect(insertMentionAtCaret('hey  there', 4, 'john')).toEqual({
+        text: 'hey @john  there',
+        caret: 10,
+      })
+    })
+
+    it('replaces an in-progress mention token', () => {
+      expect(insertMentionAtCaret('hi @jo', 6, 'john')).toEqual({ text: 'hi @john ', caret: 9 })
+    })
+
+    it('completes a bare @ at the caret', () => {
+      expect(insertMentionAtCaret('hi @', 4, 'john')).toEqual({ text: 'hi @john ', caret: 9 })
+    })
+
+    it('does not duplicate an existing mention; caret lands after it', () => {
+      expect(insertMentionAtCaret('@john hello', 11, 'john')).toEqual({
+        text: '@john hello',
+        caret: 6,
+      })
+    })
+
+    it('ignores invalid usernames', () => {
+      expect(insertMentionAtCaret('hey', 3, '1bad')).toEqual({ text: 'hey', caret: 3 })
     })
   })
 

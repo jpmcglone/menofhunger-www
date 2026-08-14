@@ -132,12 +132,20 @@
             <AppSpaceIdleAmbiance v-else class="w-full h-full" />
           </div>
 
-          <!-- Users + reactions -->
+          <!-- Reactions + who is here -->
           <div class="moh-gutter-x pb-4 pt-2 shrink-0 border-t moh-border">
-            <div class="flex items-center justify-between gap-3 text-sm text-gray-600 dark:text-gray-300">
-              <div class="min-w-0 truncate">
-                <span class="font-semibold tabular-nums text-gray-900 dark:text-gray-100">{{ members.length }}</span>
-                <span> here</span>
+            <div class="flex items-start justify-between gap-3">
+              <div v-if="space" class="flex min-w-0 flex-wrap items-center gap-1.5">
+                <button
+                  v-for="r in reactions"
+                  :key="r.id"
+                  type="button"
+                  class="moh-tap moh-focus rounded-lg p-2 text-xl leading-none transition-transform active:scale-90 moh-surface-hover"
+                  :aria-label="r.label"
+                  @click="onReactionClick(r.id, r.emoji)"
+                >
+                  {{ r.emoji }}
+                </button>
               </div>
               <button
                 type="button"
@@ -150,11 +158,19 @@
               </button>
             </div>
 
+            <div class="mt-4 text-sm text-gray-600 dark:text-gray-300">
+              <span class="font-semibold tabular-nums text-gray-900 dark:text-gray-100">{{ members.length }}</span>
+              <span> here</span>
+            </div>
+
             <div v-if="isAloneHere" class="mt-3 text-sm text-gray-600 dark:text-gray-300">
               You're the first — share the link to invite others.
             </div>
 
-            <div v-else-if="space && members.length" class="mt-2 flex flex-wrap gap-3 py-1">
+            <div
+              v-else-if="space && members.length"
+              class="mt-2 grid max-h-52 grid-cols-[repeat(auto-fill,2.5rem)] gap-3 overflow-y-auto overscroll-contain py-1"
+            >
               <template v-for="u in lobbyMembers" :key="u.id">
                 <NuxtLink
                   v-if="u.username"
@@ -200,19 +216,6 @@
                   </div>
                 </div>
               </template>
-            </div>
-
-            <div v-if="space" class="mt-4 flex flex-wrap items-center gap-1.5">
-              <button
-                v-for="r in reactions"
-                :key="r.id"
-                type="button"
-                class="moh-tap moh-focus rounded-lg p-2 text-xl leading-none transition-transform active:scale-90 moh-surface-hover"
-                :aria-label="r.label"
-                @click="onReactionClick(r.id, r.emoji)"
-              >
-                {{ r.emoji }}
-              </button>
             </div>
           </div>
         </template>

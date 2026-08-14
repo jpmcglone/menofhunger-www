@@ -64,6 +64,26 @@ describe('space layout', () => {
     expect(reactions).toMatch(/variant === 'bar' && isViewingSpacePage\(/)
   })
 
+  it('makes the whole lobby space row a real link, with share staying a button', () => {
+    const row = readFromRepo('components/app/AppSpaceRow.vue')
+    expect(row).toMatch(/absolute inset-0 z-\[1\]/)
+    expect(row).toMatch(/isInteractiveTarget/)
+    expect(row).toMatch(/onRowClick/)
+    expect(row).toMatch(/onRowAuxClick/)
+    expect(row).toMatch(/@click\.stop\.prevent/)
+    expect(row).not.toMatch(/@click="onEnterSpace"/)
+  })
+
+  it('puts reactions above a wrapping presence grid', () => {
+    const page = readFromRepo('pages/s/[username].vue')
+    const reactionsIdx = page.indexOf('v-for="r in reactions"')
+    const gridIdx = page.indexOf('grid-cols-[repeat(auto-fill,2.5rem)]')
+    expect(reactionsIdx).toBeGreaterThan(-1)
+    expect(gridIdx).toBeGreaterThan(reactionsIdx)
+    expect(page).toMatch(/max-h-52/)
+    expect(page).toMatch(/overscroll-contain/)
+  })
+
   it('overlays expanded owner controls instead of pushing the player down', () => {
     const panel = readFromRepo('components/SpaceOwnerPanel.vue')
     const page = readFromRepo('pages/s/[username].vue')

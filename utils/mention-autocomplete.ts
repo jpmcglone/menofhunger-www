@@ -60,6 +60,68 @@ export function parseActiveMention(text: string, caretIndex: number): ActiveMent
   return { atIndex, caretIndex: caret, raw, query, mode: 'username' }
 }
 
+function escapeUsernameForRe(username: string): string {
+  return username.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+function findExistingMentionToken(text: string, username: string): { start: number; end: number } | null {
+  const un = username.trim()
+  if (!un || !USERNAME_PREFIX_RE.test(un)) return null
+  const re = new RegExp(`(^|[^A-Za-z0-9_])@(${escapeUsernameForRe(un)})(?![A-Za-z0-9_])`, 'i')
+  const m = re.exec(text)
+  if (!m) return null
+  const at = m.index + (m[1]?.length ?? 0)
+  return { start: at, end: at + 1 + (m[2]?.length ?? un.length) }
+}
+
+/**
+ * Insert `@username ` at the caret for live-chat "click to mention".
+ * Replaces an in-progress mention, skips a duplicate token, and keeps a
+ * trailing space so the next word is ready to type.
+ */
+export function insertMentionAtCaret(
+  text: string,
+  caretIndex: number,
+  username: string,
+): { text: string; caret: number } {
+  const value = (text ?? '').toString()
+  const un = username.trim()
+  if (!un || !USERNAME_PREFIX_RE.test(un)) {
+    const caret = Math.max(0, Math.min(value.length, Math.floor(caretIndex || 0)))
+    return { text: value, caret }
+  }
+
+  const caret = Math.max(0, Math.min(value.length, Math.floor(caretIndex || 0)))
+  const existing = findExistingMentionToken(value, un)
+  if (existing) {
+    const after = existing.end < value.length && value[existing.end] === ' '
+      ? existing.end + 1
+      : existing.end
+    return { text: value, caret: after }
+  }
+
+  const token = `@${un} `
+  const active = parseActiveMention(value, caret)
+  if (active) {
+    const before = value.slice(0, active.atIndex)
+    const after = value.slice(active.caretIndex)
+    return { text: before + token + after, caret: before.length + token.length }
+  }
+
+  const prev = caret > 0 ? value[caret - 1] ?? '' : ''
+  if (prev === '@' && (caret === 1 || !WORD_CHAR.test(value[caret - 2] ?? ''))) {
+    const before = value.slice(0, caret - 1)
+    const after = value.slice(caret)
+    return { text: before + token + after, caret: before.length + token.length }
+  }
+
+  const before = value.slice(0, caret)
+  const after = value.slice(caret)
+  const needSpaceBefore = before.length > 0 && !/\s$/.test(before)
+  const insertion = (needSpaceBefore ? ' ' : '') + token
+  return { text: before + insertion + after, caret: before.length + insertion.length }
+}
+
 export function extractMentionedUsernames(text: string): string[] {
   const value = (text ?? '').toString()
   const out = new Set<string>()
