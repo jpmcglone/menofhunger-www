@@ -72,9 +72,17 @@ describe('spaces updated realtime wiring (structural)', () => {
 
   it('re-subscribes to spaces lobbies on socket reconnect', async () => {
     const lobby = await read('composables/useSpaceLobby.ts')
+    const presence = await read('composables/usePresence.ts')
+    const emitters = await read('composables/presence/createPresenceEmitters.ts')
     expect(lobby).toMatch(/isSocketConnected/)
     expect(lobby).toMatch(/emitSpacesJoin\(selectedSpaceId\.value\)/)
     expect(lobby).toMatch(/emitSpacesLobbiesSubscribe\(\)/)
+    expect(presence).toMatch(/syncStickyRooms\(emitters\)/)
+    expect(emitters).toMatch(/function syncStickyRooms/)
+    expect(emitters).toMatch(/emitSpacesJoin\(selectedSpaceId\)/)
+    expect(emitters).toMatch(/emitSpacesChatSubscribe/)
+    expect(emitters).toMatch(/emitRadioJoin/)
+    expect(emitters).toMatch(/emitMessagesScreen/)
   })
 
   it('collapses consecutive same-person system lines in live chat', async () => {

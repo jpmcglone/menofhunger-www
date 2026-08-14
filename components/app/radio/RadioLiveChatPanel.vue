@@ -133,6 +133,7 @@ const {
   pendingNewLabel,
   scrollToBottom,
   onNewItemsAppended,
+  stickToBottomIfPinned,
   onScrollToBottomClick: _onScrollToBottomClickBase,
 } = useBottomAnchoredList(scrollerEl)
 
@@ -336,19 +337,30 @@ onBeforeUnmount(() => {
   }
 })
 
+const chatTailKey = computed(() => {
+  const list = messages.value
+  const last = list.at(-1)
+  if (!last) return '0'
+  // Length alone misses collapsed join/leave updates (same row, new createdAt).
+  return `${list.length}:${last.id}:${last.createdAt}`
+})
+
+let prevUserMessageCount = 0
+
 watch(
   spaceId,
   () => {
     didInitScroll.value = false
     pendingNewCount.value = 0
+    prevUserMessageCount = 0
     scheduleAfterFrame(() => scrollToBottom('auto'))
   },
   { immediate: true },
 )
 
 watch(
-  () => messages.value.length,
-  (len, prev) => {
+  chatTailKey,
+  () => {
     if (!import.meta.client) return
     if (!spaceId.value) return
     if (!scrollerEl.value) return
@@ -356,14 +368,21 @@ watch(
     if (!didInitScroll.value) {
       didInitScroll.value = true
       pendingNewCount.value = 0
+      prevUserMessageCount = chatMessageCount.value
       scheduleAfterFrame(() => scrollToBottom('auto'))
       scheduleAfterFrame(() => updateScrollPill())
       return
     }
 
-    const next = Math.max(0, Math.floor(Number(len) || 0))
-    const prevN = Math.max(0, Math.floor(Number(prev) || 0))
-    if (next > prevN) onNewItemsAppended({ count: next - prevN })
+    if (stickToBottomIfPinned()) {
+      prevUserMessageCount = chatMessageCount.value
+      scheduleAfterFrame(() => updateScrollPill())
+      return
+    }
+
+    const userDelta = chatMessageCount.value - prevUserMessageCount
+    prevUserMessageCount = chatMessageCount.value
+    if (userDelta > 0) onNewItemsAppended({ count: userDelta })
     scheduleAfterFrame(() => updateScrollPill())
   },
   { flush: 'post' },

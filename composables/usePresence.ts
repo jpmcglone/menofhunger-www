@@ -4,7 +4,7 @@ import { usePresenceOnline } from '~/composables/presence/usePresenceOnline'
 import { usePresenceBadges } from '~/composables/presence/usePresenceBadges'
 import { usePresenceDomains } from '~/composables/presence/usePresenceDomains'
 import { usePresenceSubscriptions } from '~/composables/presence/usePresenceSubscriptions'
-import { createPresenceEmitters } from '~/composables/presence/createPresenceEmitters'
+import { createPresenceEmitters, syncStickyRooms } from '~/composables/presence/createPresenceEmitters'
 
 // All realtime payload/callback types live in composables/presence/types.ts;
 // re-export them so the many existing `import type { X } from '~/composables/usePresence'`
@@ -43,6 +43,8 @@ export function usePresence() {
     syncSubscriptions: (socket) => {
       online.syncPresenceSubscriptions(socket)
       subscriptions.syncContentSubscriptions()
+      // Process-local rooms (spaces, radio, open chat) die with the old socket.
+      syncStickyRooms(emitters)
     },
     onConnected: () => {
       badges.onSocketConnected()

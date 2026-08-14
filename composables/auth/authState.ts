@@ -110,6 +110,22 @@ export function clearAuthClientState(params?: { resetViewerCaches?: boolean }) {
 
   useState<any>('app-header', () => null).value = null
 
+  // Space / radio / chat rooms are per-identity: don't rejoin the previous account's rooms.
+  useState<string | null>('selected-space-id', () => null).value = null
+  useState<any[]>('space-members', () => []).value = []
+  useState<any>('space-lobby-counts', () => ({ countsBySpaceId: {} })).value = { countsBySpaceId: {} }
+  useState<number>('space-lobby-socket-gen', () => 0).value = 0
+  useState<string | null>('space-live-chat-subscribed-space', () => null).value = null
+  useState<string | null>('space-audio-space-id', () => null).value = null
+  useState<boolean>('space-audio-is-playing', () => false).value = false
+  useState<string | null>('radio-station-id', () => null).value = null
+  useState<boolean>('radio-is-playing', () => false).value = false
+  useState<string | null>('radio-live-chat-subscribed-station', () => null).value = null
+  useState<boolean>('spaces-lobbies-subscribed', () => false).value = false
+  useState<boolean>('radio-lobbies-subscribed', () => false).value = false
+  useState<boolean>('messages-screen-active', () => false).value = false
+  useState<string | null>('messages-screen-conversation-id', () => null).value = null
+
   // Reset push subscription binding so a future login re-registers for the correct user.
   useState<string | null>('push-subscribed-user-id', () => null).value = null
 

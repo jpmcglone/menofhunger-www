@@ -21,6 +21,13 @@ describe('space live chat scroll (structural)', () => {
     const list = await Promise.resolve(read('composables/useBottomAnchoredList.ts'))
     expect(list).toMatch(/atBottom\.value \|\| isAtBottom\(\)/)
   })
+
+  it('treats collapsed join/leave updates like new rows for stick-to-bottom', async () => {
+    const panel = await Promise.resolve(read('components/app/radio/RadioLiveChatPanel.vue'))
+    expect(panel).toMatch(/chatTailKey/)
+    expect(panel).toMatch(/last\.createdAt/)
+    expect(panel).toMatch(/stickToBottomIfPinned/)
+  })
 })
 
 describe('useBottomAnchoredList — stick on append', () => {
@@ -87,6 +94,25 @@ describe('useBottomAnchoredList — stick on append', () => {
     // Message already in the DOM: 80px taller than the 24px threshold.
     scroller.grow(80)
     api.onNewItemsAppended({ count: 1 })
+    await nextTick()
+    flushFrame()
+
+    expect(api.atBottom.value).toBe(true)
+    expect(scroller.scrollTop).toBe(scroller.scrollHeight - scroller.clientHeight)
+    expect(api.pendingNewCount.value).toBe(0)
+  })
+
+  it('pins on a tail update without counting a new message', async () => {
+    const scroller = createScroller({ scrollHeight: 500, clientHeight: 400, scrollTop: 100 })
+    const elRef = ref<HTMLElement | null>(scroller as unknown as HTMLElement)
+    const api = useBottomAnchoredList(elRef)
+    await nextTick()
+    flushFrame()
+
+    expect(api.atBottom.value).toBe(true)
+
+    scroller.grow(28)
+    expect(api.stickToBottomIfPinned()).toBe(true)
     await nextTick()
     flushFrame()
 

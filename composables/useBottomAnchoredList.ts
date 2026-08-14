@@ -41,24 +41,27 @@ export function useBottomAnchoredList(scroller: Ref<HTMLElement | null>, options
     if (bottom) pendingNewCount.value = 0
   }
 
-  function onNewItemsAppended(params?: { count?: number }) {
-    const count = Math.max(1, Math.floor(Number(params?.count ?? 1)) || 1)
+  function stickToBottomIfPinned(): boolean {
     // Prefer the sticky flag: by the time this runs the new row is often already
     // in the DOM, so a live isAtBottom() read can be >threshold even when the
     // user was pinned. Live check still catches the "just scrolled to bottom"
     // case where the flag hasn't flushed yet.
     const shouldStick = atBottom.value || isAtBottom()
-    atBottom.value = shouldStick
-    if (shouldStick) {
-      void nextTick().then(() => {
-        // Avoid smooth scrolling here: it can briefly toggle atBottom and flash the button.
-        scrollToBottom('auto')
-        scheduleAfterFrame(() => scrollToBottom('auto'))
-        pendingNewCount.value = 0
-      })
-    } else {
-      pendingNewCount.value += count
-    }
+    if (!shouldStick) return false
+    atBottom.value = true
+    void nextTick().then(() => {
+      // Avoid smooth scrolling here: it can briefly toggle atBottom and flash the button.
+      scrollToBottom('auto')
+      scheduleAfterFrame(() => scrollToBottom('auto'))
+      pendingNewCount.value = 0
+    })
+    return true
+  }
+
+  function onNewItemsAppended(params?: { count?: number }) {
+    const count = Math.max(1, Math.floor(Number(params?.count ?? 1)) || 1)
+    if (stickToBottomIfPinned()) return
+    pendingNewCount.value += count
   }
 
   const showScrollToBottomButton = computed(() => !atBottom.value)
@@ -108,6 +111,7 @@ export function useBottomAnchoredList(scroller: Ref<HTMLElement | null>, options
     scrollToBottom,
     syncAtBottomFromScroll,
     onNewItemsAppended,
+    stickToBottomIfPinned,
     onScrollToBottomClick,
   }
 }

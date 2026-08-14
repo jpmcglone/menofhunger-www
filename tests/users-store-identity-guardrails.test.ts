@@ -21,6 +21,14 @@ describe('applyIdentitySwap guardrail (structural)', () => {
     expect(block).toMatch(/await me\(\)/)
     expect(block).not.toMatch(/await ensureLoaded\(\)/)
   })
+
+  it('clears space lobby identity so a proxy session does not keep the previous roster', () => {
+    const src = readFromRepo('composables/auth/authState.ts')
+    expect(src).toMatch(/selected-space-id/)
+    expect(src).toMatch(/space-members/)
+    expect(src).toMatch(/radio-station-id/)
+    expect(src).toMatch(/messages-screen-active/)
+  })
 })
 
 describe('auth user patch-vs-replace guardrail', () => {
