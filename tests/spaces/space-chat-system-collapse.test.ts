@@ -103,4 +103,47 @@ describe('collapseAdjacentSpaceChatSystemMessages', () => {
       '@notjohn has left the chat',
     ])
   })
+
+  it('treats join-then-leave after they already chatted as a leave', () => {
+    const out = collapseAdjacentSpaceChatSystemMessages([
+      userMsg('1'),
+      sys('2', 'u-notjohn', 'join'),
+      sys('3', 'u-notjohn', 'leave'),
+    ])
+    expect(out.map((m) => m.body)).toEqual([
+      'hello',
+      '@notjohn has left the chat',
+    ])
+    expect(out[1]).toMatchObject({
+      kind: 'system',
+      system: { firstEvent: 'leave', lastEvent: 'leave', userId: 'u-notjohn' },
+    })
+  })
+
+  it('rewrites a single joined-and-left payload after they already chatted', () => {
+    const out = collapseAdjacentSpaceChatSystemMessages([
+      userMsg('1'),
+      sys('2', 'u-notjohn', 'join', 'leave'),
+    ])
+    expect(out.map((m) => m.body)).toEqual([
+      'hello',
+      '@notjohn has left the chat',
+    ])
+  })
+
+  it('drops a reconnect join when they never left', () => {
+    const out = collapseAdjacentSpaceChatSystemMessages([
+      userMsg('1'),
+      sys('2', 'u-notjohn', 'join'),
+    ])
+    expect(out.map((m) => m.body)).toEqual(['hello'])
+  })
+
+  it('still shows joined and left for a bounce with no prior presence', () => {
+    const out = collapseAdjacentSpaceChatSystemMessages([
+      sys('1', 'u-notjohn', 'join'),
+      sys('2', 'u-notjohn', 'leave'),
+    ])
+    expect(out.map((m) => m.body)).toEqual(['@notjohn has joined and left the chat'])
+  })
 })

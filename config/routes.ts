@@ -48,6 +48,24 @@ export function isSpacePermalinkPath(path: string): boolean {
   return path.startsWith('/s/')
 }
 
+export function spacePermalinkUsername(path: string): string | null {
+  if (!isSpacePermalinkPath(path)) return null
+  const raw = path.slice('/s/'.length).split('/').filter(Boolean)[0] ?? ''
+  if (!raw) return null
+  try {
+    return decodeURIComponent(raw).toLowerCase()
+  } catch {
+    return raw.toLowerCase()
+  }
+}
+
+/** True when this path is the permalink for that space owner. */
+export function isViewingSpacePage(path: string, ownerUsername?: string | null): boolean {
+  const slug = spacePermalinkUsername(path)
+  const owner = String(ownerUsername ?? '').trim().toLowerCase()
+  return Boolean(slug && owner && slug === owner)
+}
+
 export function isPublicPrefixPath(path: string): boolean {
   return isUserProfilePath(path) || isPostPermalinkPath(path) || isArticlePermalinkPath(path) || isSpacePermalinkPath(path)
 }

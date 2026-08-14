@@ -1,5 +1,5 @@
 <template>
-  <div class="space-y-1 px-3 pt-2 pb-1">
+  <div class="space-y-2.5 px-3 pt-2 pb-1">
     <RadioLiveChatMessageRow
       v-for="m in messages"
       :key="m.id"

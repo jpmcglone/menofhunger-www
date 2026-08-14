@@ -150,7 +150,7 @@ export function useSpaceLiveChat(options: { passive?: boolean } = {}) {
     const stored = loadAllSpaceChatLocal(uid)
     const resolved: Record<string, SpaceChatMessage[]> = {}
     for (const sid of Object.keys(stored)) {
-      resolved[sid] = resolveSpaceChatReplies(stored[sid] ?? [])
+      resolved[sid] = finalizeMessageList(resolveSpaceChatReplies(stored[sid] ?? []))
     }
     if (prevOwner && prevOwner !== uid) {
       messagesBySpace.value = resolved

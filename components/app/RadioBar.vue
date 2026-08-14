@@ -218,7 +218,6 @@ import { SPACE_VISUALIZER_BACKGROUND_OPACITY } from '~/composables/useSpaceAudio
 import { useCopyToClipboard } from '~/composables/useCopyToClipboard'
 import { registerBarPositionResolver } from '~/composables/useSpaceReactions'
 import { useSpaceChatUnread } from '~/composables/useSpaceChatUnread'
-import { spaceDisplayTitle } from '~/utils/space-display'
 
 function listenerProfileTo(username: string): string {
   return `/u/${encodeURIComponent(username)}`
@@ -249,8 +248,7 @@ function getAvatarViewportCenter(userId: string): { x: number; y: number } | und
   return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 }
 }
 
-// Expose the bar's avatar lookup as the bar position resolver so the spaces page can
-// trigger optimistic bar floats without waiting for the presence echo.
+// Bar avatar lookup for floats while the viewer is not on this space's page.
 onMounted(() => registerBarPositionResolver(getAvatarViewportCenter))
 onBeforeUnmount(() => registerBarPositionResolver(null))
 
@@ -286,7 +284,7 @@ watch(
   { immediate: true },
 )
 const displaySpace = computed(() => currentSpace.value ?? lastSpace.value)
-const barTitle = computed(() => (displaySpace.value ? spaceDisplayTitle(displaySpace.value) : ''))
+const barTitle = useSpaceDisplayTitle(displaySpace)
 const membersCount = computed(() => (displaySpace.value ? members.value.length : null))
 
 const preMuteVolume = ref<number | null>(null)

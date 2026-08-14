@@ -149,7 +149,7 @@ import { SPACE_VISUALIZER_BACKGROUND_OPACITY, primeSpaceAudioContext } from '~/c
 import { tinyTooltip } from '~/utils/tiny-tooltip'
 import { useCopyToClipboard } from '~/composables/useCopyToClipboard'
 import { getYouTubePosterUrls } from '~/utils/link-utils'
-import { spaceCardMetaLine, spaceDisplayTitle, spaceStatusKind } from '~/utils/space-display'
+import { spaceCardMetaLine, spaceStatusKind } from '~/utils/space-display'
 
 const props = defineProps<{
   space: Space
@@ -176,7 +176,7 @@ const notifyBusy = ref(false)
 
 type MenuItemWithIcon = MenuItem & { iconName?: string }
 
-const displayTitle = computed(() => spaceDisplayTitle(props.space))
+const displayTitle = useSpaceDisplayTitle(() => props.space)
 const statusKind = computed(() => spaceStatusKind(props.space))
 const metaLine = computed(() =>
   spaceCardMetaLine(props.space, {

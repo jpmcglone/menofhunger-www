@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { navCompactModePath } from '../../config/routes'
+import { isViewingSpacePage, navCompactModePath } from '../../config/routes'
 
 function readFromRepo(relativePath: string): string {
   return readFileSync(resolve(process.cwd(), relativePath), 'utf8')
@@ -24,5 +24,34 @@ describe('space layout', () => {
     expect(rail).toMatch(/showRadioChat \? 'w-\[var\(--moh-right-rail-chat-w\)\]' : 'w-\[var\(--moh-right-rail-w\)\]'/)
     expect(layout).toMatch(/showRadioChat \? 'w-\[var\(--moh-right-rail-chat-w\)\]' : 'w-\[var\(--moh-right-rail-w\)\]'/)
     expect(layout).toMatch(/_navCompactModeBase\.value \|\| Boolean\(selectedSpaceId\.value\)/)
+  })
+
+  it('keeps live-chat hover actions on the text line and media left-aligned', () => {
+    const row = readFromRepo('components/app/radio/RadioLiveChatMessageRow.vue')
+    expect(row).toMatch(/flex items-center gap-1/)
+    expect(row).toMatch(/flex h-5 w-5 items-center justify-center/)
+    expect(row).toMatch(/block rounded-lg max-w-\[280px\].*object-left/)
+    expect(row).toMatch(/mt-0\.5 flex flex-wrap gap-1/)
+    expect(row).toMatch(/hasExtras\.value \? 'rounded-lg px-2 py-1\.5 -mx-2'/)
+    expect(readFromRepo('components/app/radio/RadioLiveChatMessageList.vue')).toMatch(/space-y-2\.5/)
+  })
+
+  it('hides bar floats only while viewing that space page', () => {
+    expect(isViewingSpacePage('/s/john', 'john')).toBe(true)
+    expect(isViewingSpacePage('/s/John', 'john')).toBe(true)
+    expect(isViewingSpacePage('/home', 'john')).toBe(false)
+    expect(isViewingSpacePage('/s/other', 'john')).toBe(false)
+    const reactions = readFromRepo('composables/useSpaceReactions.ts')
+    expect(reactions).toMatch(/variant === 'bar' && isViewingSpacePage\(/)
+  })
+
+  it('overlays expanded owner controls instead of pushing the player down', () => {
+    const panel = readFromRepo('components/SpaceOwnerPanel.vue')
+    const page = readFromRepo('pages/s/[username].vue')
+    expect(panel).toMatch(/absolute inset-x-0 top-full z-30/)
+    expect(panel).toMatch(/aria-expanded/)
+    expect(panel).toMatch(/rounded-xl border moh-border p-4 moh-bg/)
+    expect(panel).not.toMatch(/invisible pointer-events-none/)
+    expect(page).toMatch(/v-if="isOwner" class="moh-gutter-x pb-3"/)
   })
 })

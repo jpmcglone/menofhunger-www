@@ -37,6 +37,20 @@ describe('spaceDisplayTitle', () => {
     ).toBe('Watch party')
   })
 
+  it('uses a YouTube oEmbed override when the server title is missing', () => {
+    expect(
+      spaceDisplayTitle(
+        {
+          ...base,
+          isActive: true,
+          mode: 'WATCH_PARTY',
+          playbackTitle: null,
+        },
+        { playbackTitleOverride: 'THE GREAT DEBATE' },
+      ),
+    ).toBe('THE GREAT DEBATE')
+  })
+
   it('uses the station name when radio is live', () => {
     expect(
       spaceDisplayTitle({

@@ -2,7 +2,7 @@
  * Guardrail tests for YouTube URL parsing in link-utils.
  */
 import { describe, it, expect } from 'vitest'
-import { parseYouTubeUrl, getYouTubeEmbedUrl, getYouTubePosterUrls } from '../utils/link-utils'
+import { parseYouTubeUrl, getYouTubeEmbedUrl, getYouTubePosterUrls, youtubeOEmbedRequestUrl } from '../utils/link-utils'
 
 const VIDEO_ID = 'dQw4w9WgXcQ'
 
@@ -110,6 +110,15 @@ describe('getYouTubeEmbedUrl', () => {
 
   it('returns null for non-YouTube URLs', () => {
     expect(getYouTubeEmbedUrl('https://vimeo.com/123456')).toBeNull()
+  })
+})
+
+describe('youtubeOEmbedRequestUrl', () => {
+  it('builds the public oEmbed URL from a watch link', () => {
+    expect(youtubeOEmbedRequestUrl(`https://youtu.be/${VIDEO_ID}`)).toBe(
+      `https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${VIDEO_ID}&format=json`,
+    )
+    expect(youtubeOEmbedRequestUrl('https://example.com')).toBeNull()
   })
 })
 

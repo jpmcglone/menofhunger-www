@@ -22,13 +22,16 @@ export function spaceStatusKind(space: Pick<SpaceDisplayInput, 'isActive' | 'sch
 }
 
 /** Visible title: what's on when live, otherwise the stored identity name. */
-export function spaceDisplayTitle(space: SpaceDisplayInput): string {
+export function spaceDisplayTitle(
+  space: SpaceDisplayInput,
+  extras?: { playbackTitleOverride?: string | null },
+): string {
   if (space.isActive && space.mode === 'WATCH_PARTY') {
-    const playing = space.playbackTitle?.trim()
+    const playing = space.playbackTitle?.trim() || extras?.playbackTitleOverride?.trim()
     return playing || 'Watch party'
   }
   if (space.isActive && space.mode === 'RADIO') {
-    const playing = space.playbackTitle?.trim()
+    const playing = space.playbackTitle?.trim() || extras?.playbackTitleOverride?.trim()
     return playing || 'Radio'
   }
   return space.title

@@ -25,8 +25,11 @@
   >
     <div
       v-if="message.kind === 'user' && (message.replyTo || message.replyToId)"
-      class="mb-1 flex items-center gap-1.5 rounded-lg px-2 py-1 text-[11px] text-gray-500 dark:text-gray-400 bg-gray-100/80 dark:bg-zinc-800/80"
-      :class="message.replyTo ? 'cursor-pointer' : 'cursor-default'"
+      class="mb-0.5 flex items-center gap-1.5 rounded-lg px-2 py-1 text-[11px] text-gray-500 dark:text-gray-400"
+      :class="[
+        isMine ? 'moh-bg' : 'bg-gray-100/80 dark:bg-zinc-800/80',
+        message.replyTo ? 'cursor-pointer' : 'cursor-default',
+      ]"
       @click="onReplySnippetClick"
     >
       <Icon name="tabler:corner-up-right" size="12" class="shrink-0" aria-hidden="true" />
@@ -36,7 +39,7 @@
       </div>
       <span v-else>Reply</span>
     </div>
-    <div class="flex items-start gap-1">
+    <div class="flex items-center gap-1">
       <div class="min-w-0 flex-1">
     <template v-if="profilePath">
       <NuxtLink
@@ -115,6 +118,30 @@
         <span v-else>{{ seg.text }}</span>
       </template>
     </span>
+      </div>
+      <div
+        class="flex shrink-0 items-center gap-0.5 opacity-40 sm:opacity-0 sm:group-hover/row:opacity-100 focus-within:opacity-100 transition-opacity"
+      >
+        <button
+          type="button"
+          title="React"
+          aria-label="Add reaction"
+          class="flex h-5 w-5 items-center justify-center rounded-full text-gray-400 hover:text-gray-600 dark:text-zinc-500 dark:hover:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700"
+          @click.stop="emit('open-reaction-picker', $event)"
+        >
+          <Icon name="tabler:mood-smile" size="13" aria-hidden="true" />
+        </button>
+        <button
+          type="button"
+          title="Reply"
+          aria-label="Reply"
+          class="flex h-5 w-5 items-center justify-center rounded-full text-gray-400 hover:text-gray-600 dark:text-zinc-500 dark:hover:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700"
+          @click.stop="emit('reply')"
+        >
+          <Icon name="tabler:corner-up-right" size="13" aria-hidden="true" />
+        </button>
+      </div>
+    </div>
     <div v-if="messageMedia.length > 0" class="mt-1">
       <img
         v-for="(m, idx) in messageMedia"
@@ -124,36 +151,12 @@
         :width="m.width ?? undefined"
         :height="m.height ?? undefined"
         loading="lazy"
-        class="rounded-lg max-w-[280px] max-h-[200px] object-contain"
+        class="block rounded-lg max-w-[280px] max-h-[200px] object-contain object-left"
       />
-    </div>
-      </div>
-      <div
-        class="flex shrink-0 items-center gap-0.5 pt-0.5 opacity-40 sm:opacity-0 sm:group-hover/row:opacity-100 focus-within:opacity-100 transition-opacity"
-      >
-        <button
-          type="button"
-          title="React"
-          aria-label="Add reaction"
-          class="flex h-7 w-7 items-center justify-center rounded-full text-gray-400 hover:text-gray-600 dark:text-zinc-500 dark:hover:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700"
-          @click.stop="emit('open-reaction-picker', $event)"
-        >
-          <Icon name="tabler:mood-smile" size="14" aria-hidden="true" />
-        </button>
-        <button
-          type="button"
-          title="Reply"
-          aria-label="Reply"
-          class="flex h-7 w-7 items-center justify-center rounded-full text-gray-400 hover:text-gray-600 dark:text-zinc-500 dark:hover:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700"
-          @click.stop="emit('reply')"
-        >
-          <Icon name="tabler:corner-up-right" size="14" aria-hidden="true" />
-        </button>
-      </div>
     </div>
     <div
       v-if="message.kind === 'user' && message.reactions?.length"
-      class="mt-1 flex flex-wrap gap-1"
+      class="mt-0.5 flex flex-wrap gap-1"
     >
       <button
         v-for="group in message.reactions"
@@ -246,10 +249,23 @@ const usernameClass = computed(() => {
   return userTierTextClass(senderTier.value, { fallback: 'text-gray-900 dark:text-gray-100' })
 })
 
+const hasReply = computed(() =>
+  props.message.kind === 'user' && Boolean(props.message.replyTo || props.message.replyToId),
+)
+const hasReactions = computed(() =>
+  props.message.kind === 'user' && Boolean(props.message.reactions?.length),
+)
+const hasExtras = computed(() =>
+  hasReply.value || hasReactions.value || messageMedia.value.length > 0,
+)
+
 const containerClass = computed(() => {
-  if (!isMine.value) return ''
-  // Give the highlight some breathing room without changing overall list width.
-  return 'rounded-lg px-2 py-1 -mx-2'
+  // Reply chips and reaction pills need a padded group so they read as one message,
+  // not as a stray footer on the line above.
+  if (isMine.value) {
+    return hasExtras.value ? 'rounded-lg px-2 py-1.5 -mx-2' : 'rounded-lg px-2 py-0.5 -mx-2'
+  }
+  return hasExtras.value ? 'rounded-lg px-2 py-1.5 -mx-2' : ''
 })
 
 const containerStyle = computed<Record<string, string> | undefined>(() => {

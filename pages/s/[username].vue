@@ -18,7 +18,7 @@
         <div class="moh-gutter-x pt-4 pb-3 flex items-start justify-between gap-3 shrink-0">
           <div class="min-w-0">
             <div class="flex items-center gap-2 flex-wrap">
-              <h1 class="moh-h1">{{ spaceDisplayTitle(space) }}</h1>
+              <h1 class="moh-h1">{{ displayTitle }}</h1>
               <AppSpaceStatusBadge :kind="spaceStatusKind" size="md" class="!text-[10px] !px-2" />
             </div>
             <p v-if="space.description" class="mt-1 moh-meta">{{ space.description }}</p>
@@ -91,12 +91,12 @@
 
         <template v-else>
           <!-- Owner controls -->
-          <SpaceOwnerPanel
-            v-if="isOwner"
-            :space="space"
-            class="moh-gutter-x pb-3"
-            @space-updated="(s) => { space = s; upsertSpace(s) }"
-          />
+          <div v-if="isOwner" class="moh-gutter-x pb-3">
+            <SpaceOwnerPanel
+              :space="space"
+              @space-updated="(s) => { space = s; upsertSpace(s) }"
+            />
+          </div>
 
           <!-- Canvas area. Watch party is 16:9 (centered) so host chrome above
                the canvas does not stretch the viewer player to a taller box. -->
@@ -224,7 +224,7 @@ import { siteConfig } from '~/config/site'
 import { tinyTooltip } from '~/utils/tiny-tooltip'
 import { registerAvatarPositionResolver } from '~/composables/useSpaceReactions'
 import { useCopyToClipboard } from '~/composables/useCopyToClipboard'
-import { spaceDisplayTitle, spaceStatusKind as resolveSpaceStatusKind } from '~/utils/space-display'
+import { spaceStatusKind as resolveSpaceStatusKind } from '~/utils/space-display'
 
 const route = useRoute()
 const username = computed(() => (route.params.username as string)?.trim() ?? '')
@@ -245,6 +245,7 @@ const { reactions, loadReactions, addFloating, clearAllFloating } = useSpaceReac
 
 const spaceLoading = ref(true)
 const space = ref<Space | null>(null)
+const displayTitle = useSpaceDisplayTitle(space)
 const spaceNotifyBusy = ref(false)
 /** True after enterSpace() — the socket room join has been requested. */
 const spaceReady = ref(false)
@@ -388,7 +389,6 @@ function onReactionClick(reactionId: string, emoji: string) {
   const meId = user.value?.id ?? null
   if (meId) {
     addFloating(meId, emoji, getAvatarPos(meId))
-    addFloating(meId, emoji, undefined, undefined, 'bar')
   }
   if (space.value?.id) presence.emitSpacesReaction(space.value.id, reactionId)
 }

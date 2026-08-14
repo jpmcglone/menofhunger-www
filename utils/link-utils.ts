@@ -220,6 +220,13 @@ export function parseYouTubeUrl(url: string): YouTubeVideoInfo | null {
   }
 }
 
+/** Keyless YouTube oEmbed endpoint for a watch/short/embed URL. */
+export function youtubeOEmbedRequestUrl(url: string): string | null {
+  const info = parseYouTubeUrl(url)
+  if (!info) return null
+  return `https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${encodeURIComponent(info.id)}&format=json`
+}
+
 export function getYouTubeEmbedUrl(url: string, opts?: { autoplay?: boolean }): string | null {
   const info = parseYouTubeUrl(url)
   if (!info) return null

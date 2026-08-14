@@ -61,15 +61,15 @@ describe('spaces updated realtime wiring (structural)', () => {
     const badge = await read('components/app/AppSpaceStatusBadge.vue')
     const spacePage = await read('pages/s/[username].vue')
     const radioBar = await read('components/app/RadioBar.vue')
-    expect(row).toMatch(/spaceDisplayTitle/)
+    expect(row).toMatch(/useSpaceDisplayTitle/)
     expect(row).toMatch(/rounded-xl border moh-border/)
     expect(row).toMatch(/getYouTubePosterUrls/)
     expect(index).toMatch(/gap-3/)
     expect(index).not.toMatch(/border-t moh-border/)
     expect(preview).toMatch(/AppSpaceRow is already the card/)
     expect(badge).toMatch(/kind === 'idle'/)
-    expect(spacePage).toMatch(/spaceDisplayTitle\(space\)/)
-    expect(radioBar).toMatch(/spaceDisplayTitle/)
+    expect(spacePage).toMatch(/useSpaceDisplayTitle\(space\)/)
+    expect(radioBar).toMatch(/useSpaceDisplayTitle/)
   })
 
   it('keeps a single AppRadioBar instance via Teleport', async () => {

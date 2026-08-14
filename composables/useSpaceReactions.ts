@@ -1,4 +1,5 @@
 import type { SpaceReaction } from '~/types/api'
+import { isViewingSpacePage } from '~/config/routes'
 import { ALLOWED_REACTIONS } from '~/utils/reactions'
 
 /**
@@ -48,6 +49,8 @@ const REACTIONS_KEY = 'space-reactions'
 
 export function useSpaceReactions() {
   const { apiFetchData } = useApiClient()
+  const route = useRoute()
+  const { currentSpace } = useSpaceLobby()
 
   const reactions = useState<SpaceReaction[]>(REACTIONS_KEY, () => [...ALLOWED_REACTIONS])
 
@@ -92,6 +95,8 @@ export function useSpaceReactions() {
     const userId = String(userIdRaw ?? '').trim()
     const emoji = String(emojiRaw ?? '').trim()
     if (!userId || !emoji) return
+    // On the space page the in-room avatars already float. Don't also fire the bar.
+    if (variant === 'bar' && isViewingSpacePage(route.path, currentSpace.value?.owner?.username)) return
 
     const resolver = variant === 'bar' ? _barPositionResolver : _avatarPositionResolver
     const resolvedPos = pos ?? resolver?.(userId)
@@ -150,10 +155,9 @@ export function useSpaceReactions() {
    * Extract emojis from a chat message body and float each one.
    *
    * `variants` controls which animation layers receive the emoji.
-   * Defaults to both `'default'` (spaces-page arc, requires _avatarPositionResolver)
-   * and `'bar'` (radio-bar quick float, requires _barPositionResolver) so the radio
-   * bar always shows chat emojis regardless of which page the viewer is on.
-   * Either variant silently no-ops if its position resolver isn't currently registered.
+   * Defaults to both `'default'` (space-page arc) and `'bar'` (radio-bar float).
+   * Bar floats are skipped while viewing that space's page. Either variant
+   * no-ops if its position resolver isn't registered.
    */
   function addFloatingEmojisFromText(
     userId: string,
