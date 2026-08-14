@@ -27,11 +27,17 @@
           No messages yet. Say hello.
         </div>
         <RadioLiveChatMessageList v-else :messages="messages" />
-
-        <div v-if="spaceId" class="px-3">
-          <AppTypingIndicator :users="typingUsersAll" verb="typing" size="compact" />
-        </div>
       </div>
+
+      <Transition name="moh-fade">
+        <div
+          v-if="spaceId && typingUsersAll.length > 0"
+          class="pointer-events-none absolute bottom-0 left-0 z-[5] px-3 pb-2"
+          aria-live="polite"
+        >
+          <AppTypingIndicator :users="typingUsersAll" verb="typing" :hover-preview="false" size="compact" />
+        </div>
+      </Transition>
 
       <!-- Custom thin pill scrollbar (native scrollbar hidden) -->
       <div
@@ -92,7 +98,7 @@ withDefaults(defineProps<{ showHeader?: boolean }>(), {
   showHeader: true,
 })
 
-const { spaceId, messages, isLoadingMessages, sendMessage, typingUsersAll, typingUsersTotalCount } = useSpaceLiveChat({
+const { spaceId, messages, isLoadingMessages, sendMessage, typingUsersAll } = useSpaceLiveChat({
   passive: true,
 })
 const { currentSpace, members } = useSpaceLobby()
@@ -237,18 +243,6 @@ onMounted(() => {
   })
   if (chatBarEl.value) chatBarResizeObserver.observe(chatBarEl.value)
 })
-
-watch(
-  () => typingUsersTotalCount.value,
-  () => {
-    if (!import.meta.client) return
-    if (!spaceId.value) return
-    if (!atBottom.value) return
-    scheduleAfterFrame(() => scrollToBottom('auto'))
-    scheduleAfterFrame(() => updateScrollPill())
-  },
-  { flush: 'post' },
-)
 
 onBeforeUnmount(() => {
   if (chatBarResizeObserver) {

@@ -3,15 +3,29 @@ import { siteConfig } from '~/config/site'
 
 const linkify = new LinkifyIt()
 
+export type TextLinkMatch = {
+  start: number
+  end: number
+  text: string
+  href: string
+}
+
 export function extractLinksFromText(text: string): string[] {
+  return matchLinksInText(text).map((m) => m.href)
+}
+
+/** Ranged http(s) matches for in-text link rendering. Skips javascript: and other schemes. */
+export function matchLinksInText(text: string): TextLinkMatch[] {
   const input = (text ?? '').toString()
   const matches = linkify.match(input) ?? []
-  const out: string[] = []
+  const out: TextLinkMatch[] = []
   for (const m of matches) {
-    const url = (m.url ?? '').trim()
-    if (!url) continue
-    if (!/^https?:\/\//i.test(url)) continue
-    out.push(url)
+    const start = typeof m.index === 'number' ? m.index : -1
+    const end = typeof m.lastIndex === 'number' ? m.lastIndex : -1
+    if (start < 0 || end <= start) continue
+    const href = (m.url ?? '').trim()
+    if (!href || !/^https?:\/\//i.test(href)) continue
+    out.push({ start, end, text: input.slice(start, end), href })
   }
   return out
 }

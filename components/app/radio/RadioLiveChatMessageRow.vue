@@ -48,7 +48,27 @@
     <span v-else class="text-gray-900 dark:text-gray-100 break-words">
       <template v-for="seg in bodySegments" :key="seg.key">
         <NuxtLink
-          v-if="seg.type === 'mention'"
+          v-if="seg.type === 'url' && internalPathFor(seg.href)"
+          :to="internalPathFor(seg.href)!"
+          class="underline decoration-current/35 underline-offset-2 hover:decoration-current"
+          @click.stop
+          @mouseenter="(e) => onLinkEnter(seg.href, e)"
+          @mousemove="onLinkMove"
+          @mouseleave="onLinkLeave"
+        >{{ seg.text }}</NuxtLink>
+        <a
+          v-else-if="seg.type === 'url'"
+          :href="seg.href"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="underline decoration-current/35 underline-offset-2 hover:decoration-current"
+          @click.stop
+          @mouseenter="(e) => onLinkEnter(seg.href, e)"
+          @mousemove="onLinkMove"
+          @mouseleave="onLinkLeave"
+        >{{ seg.text }}</a>
+        <NuxtLink
+          v-else-if="seg.type === 'mention'"
           :to="`/u/${encodeURIComponent(seg.username!)}`"
           class="font-semibold hover:underline underline-offset-2"
           :class="mentionExtraClass(seg.username!)"
@@ -94,12 +114,14 @@ import type { SpaceChatMediaItem, SpaceChatMessage } from '~/types/api'
 import { ownMessageTintStyle, userColorTier, userTierColorVar, userTierTextClass } from '~/utils/user-tier'
 import { HASHTAG_IN_TEXT_DISPLAY_RE } from '~/utils/hashtag-autocomplete'
 import { CASHTAG_IN_TEXT_DISPLAY_RE } from '~/utils/cashtag-autocomplete'
+import { isMohUrl, matchLinksInText, mohUrlPath } from '~/utils/link-utils'
 
 type BodySegment =
-  | { key: string; type: 'text'; text: string; username?: undefined; tag?: undefined; symbol?: undefined }
-  | { key: string; type: 'mention'; username: string; text?: undefined; tag?: undefined; symbol?: undefined }
-  | { key: string; type: 'hashtag'; tag: string; text: string; username?: undefined; symbol?: undefined }
-  | { key: string; type: 'cashtag'; symbol: string; text: string; username?: undefined; tag?: undefined }
+  | { key: string; type: 'text'; text: string; username?: undefined; tag?: undefined; symbol?: undefined; href?: undefined }
+  | { key: string; type: 'mention'; username: string; text?: undefined; tag?: undefined; symbol?: undefined; href?: undefined }
+  | { key: string; type: 'hashtag'; tag: string; text: string; username?: undefined; symbol?: undefined; href?: undefined }
+  | { key: string; type: 'cashtag'; symbol: string; text: string; username?: undefined; tag?: undefined; href?: undefined }
+  | { key: string; type: 'url'; text: string; href: string; username?: undefined; tag?: undefined; symbol?: undefined }
 
 const props = defineProps<{
   message: SpaceChatMessage
@@ -171,13 +193,19 @@ const bodySegments = computed<BodySegment[]>(() => {
   const matches: RangedMatch[] = []
   let i = 0
 
-  // Mention matches
+  // URLs first so @mentions inside a URL (e.g. x.com/@user) stay part of the link.
+  for (const m of matchLinksInText(body)) {
+    matches.push({ start: m.start, end: m.end, seg: { key: `u-${i++}`, type: 'url', text: m.text, href: m.href } })
+  }
+
+  // Mention matches (skip ranges already claimed by a link)
   const mentionRe = /@([a-zA-Z0-9_]+)/g
   for (const m of body.matchAll(mentionRe)) {
     const start = m.index!
     const end = start + m[0].length
     const uname = m[1]!
-    if (known.has(uname.toLowerCase())) {
+    const overlaps = matches.some((rm) => start < rm.end && end > rm.start)
+    if (!overlaps && known.has(uname.toLowerCase())) {
       matches.push({ start, end, seg: { key: `m-${i++}`, type: 'mention', username: uname } })
     }
   }
@@ -244,6 +272,13 @@ function mentionStyle(uname: string): Record<string, string> {
 }
 
 const hashtagColor = computed(() => userTierColorVar(senderTier.value) ?? 'var(--p-primary-color)')
+
+const { onEnter: onLinkEnter, onMove: onLinkMove, onLeave: onLinkLeave } = useLinkPreviewTrigger()
+
+function internalPathFor(href: string): string | null {
+  if (!isMohUrl(href)) return null
+  return mohUrlPath(href)
+}
 
 const hoveredMention = ref('')
 const { onEnter: _onMentionEnterRaw, onMove: onMentionMove, onLeave: _onMentionLeaveRaw } = useUserPreviewTrigger({

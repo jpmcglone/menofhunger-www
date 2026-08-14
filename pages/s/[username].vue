@@ -75,13 +75,17 @@
             <p class="mt-1 text-sm moh-meta">
               {{ isAuthed ? 'Upgrade to Verified or Premium to join spaces.' : 'Log in or create an account to join.' }}
             </p>
-            <NuxtLink
+            <Button
+              as="NuxtLink"
               :to="isAuthed ? '/tiers' : `/login?redirect=${encodeURIComponent(route.fullPath)}`"
-              class="mt-4 inline-flex items-center gap-2 rounded-full bg-[var(--p-primary-color)] px-5 py-2.5 text-sm font-semibold text-white hover:opacity-90 transition-opacity"
+              :label="isAuthed ? 'View tiers' : 'Log in'"
+              rounded
+              class="mt-4"
             >
-              <Icon :name="isAuthed ? 'tabler:star' : 'tabler:login'" class="text-[16px]" aria-hidden="true" />
-              {{ isAuthed ? 'View tiers' : 'Log in' }}
-            </NuxtLink>
+              <template #icon>
+                <Icon :name="isAuthed ? 'tabler:star' : 'tabler:login'" aria-hidden="true" />
+              </template>
+            </Button>
           </div>
         </div>
 
@@ -94,8 +98,9 @@
             @space-updated="(s) => { space = s; upsertSpace(s) }"
           />
 
-          <!-- Canvas area -->
-          <div class="moh-gutter-x flex-1 min-h-0 pb-3 min-h-[40vh]">
+          <!-- Canvas area. Watch party is 16:9 (centered) so host chrome above
+               the canvas does not stretch the viewer player to a taller box. -->
+          <div class="moh-gutter-x flex-1 min-h-0 pb-3 min-h-[40vh] flex items-center justify-center">
             <!-- Watch Party mode: YouTube player.
                  ClientOnly prevents hydration mismatches — the server never renders
                  this component (spaceReady=false), so Vue must not try to hydrate it
@@ -104,13 +109,15 @@
                  player's onMounted requestCurrentState fires while we're already in
                  the socket room. -->
             <template v-if="space?.mode === 'WATCH_PARTY' && space?.watchPartyUrl">
-              <ClientOnly>
-                <SpaceYouTubePlayer
-                  :space="space"
-                  :room-ready="spaceReady"
-                  class="w-full h-full"
-                />
-              </ClientOnly>
+              <div class="relative w-full max-h-full aspect-video">
+                <ClientOnly>
+                  <SpaceYouTubePlayer
+                    :space="space"
+                    :room-ready="spaceReady"
+                    class="absolute inset-0 w-full h-full"
+                  />
+                </ClientOnly>
+              </div>
             </template>
             <!-- Radio mode: audio visualizer -->
             <AppSpaceVisualizer
@@ -139,11 +146,11 @@
               </button>
             </div>
 
-            <div v-if="space && members.length === 0" class="mt-3 text-sm text-gray-600 dark:text-gray-300">
+            <div v-if="isAloneHere" class="mt-3 text-sm text-gray-600 dark:text-gray-300">
               You're the first — share the link to invite others.
             </div>
 
-            <div v-else-if="space" class="mt-2 flex flex-wrap gap-3 py-1">
+            <div v-else-if="space && members.length" class="mt-2 flex flex-wrap gap-3 py-1">
               <template v-for="u in lobbyMembers" :key="u.id">
                 <NuxtLink
                   v-if="u.username"
@@ -223,6 +230,7 @@ const username = computed(() => (route.params.username as string)?.trim() ?? '')
 
 const { fetchSpaceByUsername, upsertSpace, getById, getByOwnerUsername } = useSpaces()
 const { selectedSpaceId, select, leave, currentSpace, members } = useSpaceLobby()
+const { requestCurrentState } = useWatchParty()
 const { stop } = useSpaceAudio()
 const { subscribeToSchedule, unsubscribeFromSchedule } = useSpaceOwner()
 const { confirm } = useAppConfirm()
@@ -237,8 +245,8 @@ const { reactions, loadReactions, addFloating, clearAllFloating } = useSpaceReac
 const spaceLoading = ref(true)
 const space = ref<Space | null>(null)
 const spaceNotifyBusy = ref(false)
-/** True only after emitSpacesJoin has completed — gates SpaceYouTubePlayer so its
- *  requestCurrentState fires while we're already in the socket room. */
+/** True only after a join that can actually land us in the presence room
+ *  (owner, or space already live). Waiters stay false until go-live re-join. */
 const spaceReady = ref(false)
 
 function spacesLog(...args: unknown[]) {
@@ -331,14 +339,28 @@ const spacesReactionsCb = {
       space.value = null
       return
     }
+    const wasInactive = !space.value.isActive
     const { deleted: _deleted, ...rest } = payload.patch
     const updated = { ...space.value, ...rest }
     space.value = updated
     upsertSpace(updated)
+    // Non-owner join is a silent no-op while inactive. Re-join now that we're live
+    // so members, watch-party sync, and room events start flowing without a refresh.
+    if (wasInactive && updated.isActive && canJoinSpace.value) {
+      void joinNowThatLive(updated)
+    }
   },
 }
 
 const lobbyMembers = computed(() => members.value ?? [])
+
+/** Empty lobby after a silent join looks like “you're first.” Only say that when we actually joined a live room and we're the only member. */
+const isAloneHere = computed(() => {
+  if (!space.value?.isActive) return false
+  const list = members.value ?? []
+  if (list.length !== 1) return false
+  return list[0]?.id === user.value?.id
+})
 
 const spaceShareUrl = computed(() =>
   username.value ? `${siteConfig.url}/s/${encodeURIComponent(username.value)}` : '',
@@ -414,6 +436,20 @@ async function enterSpace(s: Space) {
   await select(s.id)
 }
 
+function markJoined(s: Space) {
+  // Non-owner join is a silent no-op while inactive — don't pretend we're in the room.
+  spaceReady.value = Boolean(isOwner.value || s.isActive)
+}
+
+async function joinNowThatLive(s: Space) {
+  spacesLog('go-live:rejoin', { spaceId: s.id, mode: s.mode })
+  await enterSpace(s)
+  spaceReady.value = true
+  if (s.mode === 'WATCH_PARTY') {
+    requestCurrentState(s.id)
+  }
+}
+
 function addPageCallbacks() {
   presence.removeSpacesCallback(spacesReactionsCb as any)
   presence.addSpacesCallback(spacesReactionsCb as any)
@@ -454,9 +490,7 @@ onMounted(async () => {
   void loadReactions()
   spacesLog('mount:enter-space:start', { spaceId: s.id })
   await enterSpace(s)
-  // Open the gate AFTER emitSpacesJoin has fired inside enterSpace so the
-  // player's onMounted requestCurrentState always lands while we're in the room.
-  spaceReady.value = true
+  markJoined(s)
   spacesLog('mount:enter-space:done', { spaceId: s.id, spaceReady: spaceReady.value })
   addPageCallbacks()
   useNuxtApp().callHook('page:loading:end')
@@ -479,7 +513,6 @@ onActivated(async () => {
   if (space.value && selectedSpaceId.value !== space.value.id) {
     await enterSpace(space.value)
     if (space.value.mode === 'WATCH_PARTY') {
-      const { requestCurrentState } = useWatchParty()
       requestCurrentState(space.value.id)
     }
   }
@@ -523,7 +556,7 @@ watch(username, async (newUsername) => {
   })
   spacesLog('username:enter-space:start', { spaceId: s.id })
   await enterSpace(s)
-  spaceReady.value = true
+  markJoined(s)
   spacesLog('username:enter-space:done', { spaceId: s.id, spaceReady: spaceReady.value })
 })
 

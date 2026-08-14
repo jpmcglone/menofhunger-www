@@ -34,6 +34,12 @@ async function closeOtherPreviewPopovers() {
   } catch {
     // ignore
   }
+  try {
+    const m = await import('./useLinkPreviewPopover')
+    m.useLinkPreviewPopover().close()
+  } catch {
+    // ignore
+  }
 }
 
 export function useCrewPreviewPopover() {

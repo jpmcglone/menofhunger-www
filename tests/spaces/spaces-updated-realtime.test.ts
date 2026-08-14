@@ -58,4 +58,46 @@ describe('spaces updated realtime wiring (structural)', () => {
     expect(mounts.length).toBe(1)
     expect(layout).toMatch(/<Teleport/)
   })
+
+  it('re-joins the open space when spaces:updated flips isActive true', async () => {
+    const spacePage = await read('pages/s/[username].vue')
+    expect(spacePage).toMatch(/wasInactive && updated\.isActive/)
+    expect(spacePage).toMatch(/joinNowThatLive/)
+    expect(spacePage).toMatch(/requestCurrentState\(s\.id\)/)
+    expect(spacePage).toMatch(/spaceReady\.value = true/)
+    expect(spacePage).toMatch(/isOwner\.value \|\| s\.isActive/)
+    expect(spacePage).toMatch(/isAloneHere/)
+    expect(spacePage).not.toMatch(/v-if="space && members\.length === 0"/)
+  })
+
+  it('re-subscribes to spaces lobbies on socket reconnect', async () => {
+    const lobby = await read('composables/useSpaceLobby.ts')
+    expect(lobby).toMatch(/isSocketConnected/)
+    expect(lobby).toMatch(/emitSpacesJoin\(selectedSpaceId\.value\)/)
+    expect(lobby).toMatch(/emitSpacesLobbiesSubscribe\(\)/)
+  })
+
+  it('collapses consecutive same-person system lines in live chat', async () => {
+    const chat = await read('composables/useSpaceLiveChat.ts')
+    expect(chat).toMatch(/collapseAdjacentSpaceChatSystemMessages/)
+    expect(chat).toMatch(/finalizeMessageList/)
+  })
+
+  it('subscribes to space chat only once the space is live (or the viewer is the owner)', async () => {
+    const chat = await read('composables/useSpaceLiveChat.ts')
+    expect(chat).toMatch(/canSubscribeChat/)
+    expect(chat).toMatch(/s\.isActive/)
+    expect(chat).toMatch(/s\.owner\?\.id === user\.value\.id/)
+    expect(chat).toMatch(/if \(sid && canSubscribeChat\.value\)/)
+  })
+
+  it('locks the watch-party player to 16:9 with an overlaid local volume control', async () => {
+    const spacePage = await read('pages/s/[username].vue')
+    const player = await read('components/SpaceYouTubePlayer.vue')
+    expect(spacePage).toMatch(/aspect-video/)
+    expect(spacePage).toMatch(/flex items-center justify-center/)
+    expect(player).toMatch(/isFollowingPlayback/)
+    expect(player).toMatch(/isReplacedOwner \? 'bottom-12' : 'bottom-3'/)
+    expect(player).toMatch(/:deep\(iframe\)/)
+  })
 })

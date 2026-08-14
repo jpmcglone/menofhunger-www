@@ -8,6 +8,7 @@
       <AppUserPreviewPopover />
       <AppGroupPreviewPopover />
       <AppCrewPreviewPopover />
+      <AppLinkPreviewPopover />
       <AppOnlineCountPopover />
       <AppSpaceLiveChatOverlay
         v-if="radioChatSheetOpen && radioHasStation && !showRadioChat"

@@ -1,11 +1,13 @@
 <template>
-  <div class="space-y-1 px-3 py-2">
+  <div class="space-y-1 px-3 pt-2 pb-1">
     <RadioLiveChatMessageRow
       v-for="m in messages"
       :key="m.id"
       :message="m"
       :known-usernames="knownUsernames"
     />
+    <!-- Always reserved so the overlaid typing row never covers the last message. -->
+    <div class="h-10 shrink-0" aria-hidden="true" />
   </div>
 </template>
 

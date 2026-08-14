@@ -172,15 +172,21 @@ export function useSpaceLobby() {
     return total
   })
 
-  // Re-join the space room whenever the socket reconnects, since Socket.IO creates
-  // a new socket on reconnect and the server-side room membership is lost.
+  // Re-join the space room (and re-subscribe lobbies) whenever the socket
+  // reconnects — Socket.IO creates a new socket and server-side room
+  // membership is lost. Waiting viewers need lobbies to hear go-live.
   if (import.meta.client) {
     let prevConnected = presence.isSocketConnected.value
     watch(
       () => presence.isSocketConnected.value,
       (connected) => {
-        if (connected && !prevConnected && selectedSpaceId.value) {
-          presence.emitSpacesJoin(selectedSpaceId.value)
+        if (connected && !prevConnected) {
+          if (selectedSpaceId.value) {
+            presence.emitSpacesJoin(selectedSpaceId.value)
+          }
+          if (user.value?.id) {
+            presence.emitSpacesLobbiesSubscribe()
+          }
         }
         prevConnected = connected
       },

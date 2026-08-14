@@ -53,4 +53,18 @@ describe('own-message background is shared across chat surfaces', () => {
       'onColoredBackground',
     )
   })
+
+  it('opens space live-chat URLs in a new tab', () => {
+    const row = read('components/app/radio/RadioLiveChatMessageRow.vue')
+    expect(row).toContain('matchLinksInText')
+    expect(row).toMatch(/seg\.type === 'url'/)
+    expect(row).toMatch(/target="_blank"/)
+    expect(row).toMatch(/rel="noopener noreferrer"/)
+  })
+
+  it('shows a hover preview popover for space live-chat URLs', () => {
+    const row = read('components/app/radio/RadioLiveChatMessageRow.vue')
+    expect(row).toContain('useLinkPreviewTrigger')
+    expect(row).toContain('onLinkEnter')
+  })
 })

@@ -118,6 +118,7 @@ export function useUserPreviewPopover() {
     if (!username) return
 
     void import('./useGroupPreviewPopover').then((m) => m.useGroupPreviewPopover().close())
+    void import('./useLinkPreviewPopover').then((m) => m.useLinkPreviewPopover().close())
 
     setMousePos(params.event)
 

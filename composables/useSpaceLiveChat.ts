@@ -1,5 +1,6 @@
 import type { SpacesCallback } from '~/composables/usePresence'
 import type { SpaceChatMessage, SpaceChatSender } from '~/types/api'
+import { collapseAdjacentSpaceChatSystemMessages } from '~/utils/space-chat-system-collapse'
 import { userColorTier, userTierColorVar } from '~/utils/user-tier'
 
 const MAX_MESSAGES_PER_SPACE = 220
@@ -11,8 +12,12 @@ function clampMessageList(list: SpaceChatMessage[]): SpaceChatMessage[] {
   return list.slice(-MAX_MESSAGES_PER_SPACE)
 }
 
+function finalizeMessageList(list: SpaceChatMessage[]): SpaceChatMessage[] {
+  return clampMessageList(collapseAdjacentSpaceChatSystemMessages(list))
+}
+
 function upsertMessages(existing: SpaceChatMessage[], incoming: SpaceChatMessage[]): SpaceChatMessage[] {
-  if (!incoming.length) return existing
+  if (!incoming.length) return finalizeMessageList(existing)
   const byId = new Map(existing.map((m) => [m.id, m]))
   for (const m of incoming) {
     if (!m?.id) continue
@@ -24,7 +29,7 @@ function upsertMessages(existing: SpaceChatMessage[], incoming: SpaceChatMessage
     if (ta !== tb) return ta - tb
     return String(a.id).localeCompare(String(b.id))
   })
-  return clampMessageList(merged)
+  return finalizeMessageList(merged)
 }
 
 
@@ -94,6 +99,14 @@ export function useSpaceLiveChat(options: { passive?: boolean } = {}) {
 
   const spaceId = computed(() => (lobby.selectedSpaceId.value ?? '').trim() || null)
 
+  const canSubscribeChat = computed(() => {
+    const sid = spaceId.value
+    const s = lobby.currentSpace.value
+    if (!sid || !s || s.id !== sid) return false
+    if (s.isActive) return true
+    return Boolean(user.value?.id && s.owner?.id === user.value.id)
+  })
+
   const messages = computed<SpaceChatMessage[]>(() => {
     const sid = spaceId.value
     if (!sid) return []
@@ -103,7 +116,7 @@ export function useSpaceLiveChat(options: { passive?: boolean } = {}) {
   // True while we're waiting for the first snapshot from the server after switching spaces.
   const isLoadingMessages = computed(() => {
     const sid = spaceId.value
-    if (!sid) return false
+    if (!sid || !canSubscribeChat.value) return false
     return snapshotReceivedForSpaceId.value !== sid
   })
 
@@ -112,7 +125,7 @@ export function useSpaceLiveChat(options: { passive?: boolean } = {}) {
     if (!id) return
     messagesBySpace.value = {
       ...messagesBySpace.value,
-      [id]: clampMessageList(next),
+      [id]: finalizeMessageList(next),
     }
   }
 
@@ -123,8 +136,8 @@ export function useSpaceLiveChat(options: { passive?: boolean } = {}) {
     const idx = current.findIndex((m) => m.id === msg.id)
     const next =
       idx >= 0
-        ? clampMessageList([...current.slice(0, idx), msg, ...current.slice(idx + 1)])
-        : clampMessageList([...current, msg])
+        ? finalizeMessageList([...current.slice(0, idx), msg, ...current.slice(idx + 1)])
+        : finalizeMessageList([...current, msg])
     messagesBySpace.value = { ...messagesBySpace.value, [id]: next }
   }
 
@@ -314,15 +327,18 @@ export function useSpaceLiveChat(options: { passive?: boolean } = {}) {
 
   if (!passive) {
     watch(
-      spaceId,
-      async (next, prev) => {
+      [spaceId, canSubscribeChat],
+      async ([next, canSub], [prev] = [null, false]) => {
         if (!import.meta.client) return
         const prevId = (prev ?? '').trim()
         const nextId = (next ?? '').trim()
         if (prevId !== nextId) snapshotReceivedForSpaceId.value = null
         if (prevId && prevId !== nextId) unsubscribe()
-        if (nextId) await subscribeToSpace(nextId)
-        else unsubscribe()
+        if (nextId && canSub) {
+          if (subscribedSpaceId.value !== nextId) await subscribeToSpace(nextId)
+          return
+        }
+        if (!canSub) unsubscribe()
       },
       { immediate: true },
     )
@@ -336,7 +352,7 @@ export function useSpaceLiveChat(options: { passive?: boolean } = {}) {
       async (connected) => {
         if (connected && !prevChatConnected) {
           const sid = spaceId.value
-          if (sid) {
+          if (sid && canSubscribeChat.value) {
             subscribedSpaceId.value = null
             snapshotReceivedForSpaceId.value = null
             await subscribeToSpace(sid)
@@ -352,6 +368,7 @@ export function useSpaceLiveChat(options: { passive?: boolean } = {}) {
     if (!import.meta.client) return
     if (!sid) return
     if (!user.value?.id) return
+    if (!canSubscribeChat.value) return
     const text = String(body ?? '').trim()
     const hasMedia = media && media.length > 0
     if (!text && !hasMedia) return

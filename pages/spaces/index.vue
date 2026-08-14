@@ -51,7 +51,7 @@
         <p v-if="!currentSpace" class="moh-meta">
           Pick a space to see who's here. Share a space link to bring others in.
         </p>
-        <p v-else-if="members.length === 0" class="moh-meta">
+        <p v-else-if="isAloneHere" class="moh-meta">
           You're the first in {{ currentSpace.title }} — share the link to invite others.
         </p>
       </div>
@@ -88,6 +88,13 @@ const mySpaceHref = computed(() => {
   const username = String(mySpace.value?.owner?.username ?? user.value?.username ?? '').trim()
   if (!username) return null
   return `/s/${encodeURIComponent(username)}`
+})
+
+const isAloneHere = computed(() => {
+  if (!currentSpace.value?.isActive) return false
+  const list = members.value ?? []
+  if (list.length !== 1) return false
+  return list[0]?.id === user.value?.id
 })
 
 async function onCreateSpace() {

@@ -47,7 +47,7 @@ function loadYouTubeAPIOnce(): Promise<void> {
 
 <template>
   <div class="relative w-full h-full rounded-lg overflow-hidden bg-black">
-    <div ref="playerContainerRef" class="w-full h-full" />
+    <div ref="playerContainerRef" class="absolute inset-0" />
     <div
       v-if="!playerReady"
       class="absolute inset-0 flex items-center justify-center bg-black"
@@ -63,17 +63,18 @@ function loadYouTubeAPIOnce(): Promise<void> {
       <Icon name="tabler:loader-2" class="text-[12px] animate-spin" aria-hidden="true" />
       <span>Syncing to room state…</span>
     </div>
-    <!-- Overlay for non-owners to prevent click-through to YT interactions -->
+    <!-- Overlay for non-owners (and replaced owner tabs) to prevent click-through to YT -->
     <div
-      v-if="!isOwner && playerReady"
+      v-if="isFollowingPlayback && playerReady"
       class="absolute inset-0 z-10"
       aria-hidden="true"
     />
 
-    <!-- Viewer controls: local volume only -->
+    <!-- Viewer controls: local volume only. Lifted when the replaced-owner banner is up. -->
     <div
-      v-if="!isOwner && playerReady"
-      class="absolute bottom-3 right-3 z-20 flex items-center gap-2 rounded-full bg-black/70 px-2.5 py-1.5 backdrop-blur-sm"
+      v-if="isFollowingPlayback && playerReady"
+      class="absolute right-3 z-40 flex items-center gap-2 rounded-full bg-black/70 px-2.5 py-1.5 backdrop-blur-sm"
+      :class="isReplacedOwner ? 'bottom-12' : 'bottom-3'"
     >
       <button
         type="button"
@@ -177,6 +178,8 @@ let currentVideoId: string | null = null
 
 /** True when a newer owner tab has taken primary control — this tab should not emit control events. */
 const isReplacedOwner = ref(false)
+/** Replaced owner tabs follow the room like viewers — overlay + local volume. */
+const isFollowingPlayback = computed(() => !isOwner.value || isReplacedOwner.value)
 
 // Local (per-viewer/per-tab) volume only — never synced to others.
 const viewerVolume = ref(100)
@@ -769,3 +772,14 @@ onBeforeUnmount(() => {
   ownerSyncChipVisible.value = false
 })
 </script>
+
+<style scoped>
+/* YT.Player bakes pixel width/height once at create time. Pin the iframe to
+   the 16:9 box so a 0-height container at init cannot leave a wrong rectangle. */
+:deep(iframe) {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+</style>

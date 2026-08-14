@@ -43,7 +43,11 @@ export function useBottomAnchoredList(scroller: Ref<HTMLElement | null>, options
 
   function onNewItemsAppended(params?: { count?: number }) {
     const count = Math.max(1, Math.floor(Number(params?.count ?? 1)) || 1)
-    const shouldStick = isAtBottom()
+    // Prefer the sticky flag: by the time this runs the new row is often already
+    // in the DOM, so a live isAtBottom() read can be >threshold even when the
+    // user was pinned. Live check still catches the "just scrolled to bottom"
+    // case where the flag hasn't flushed yet.
+    const shouldStick = atBottom.value || isAtBottom()
     atBottom.value = shouldStick
     if (shouldStick) {
       void nextTick().then(() => {
