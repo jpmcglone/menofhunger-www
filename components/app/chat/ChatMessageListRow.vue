@@ -18,7 +18,7 @@
     :data-message-id="messageItem.message.id"
     :class="[
       animateRows && recentAnimatedMessageIds.has(messageItem.key) ? 'moh-chat-item-enter' : '',
-      'group relative flex w-full min-w-0 items-end gap-1',
+      'group relative flex w-full min-w-0',
       messageItem.message.sender.id === meId ? 'justify-end' : 'justify-start',
       messageItem.message.id === jumpTargetMessageId ? 'moh-jump-target' : '',
     ]"
@@ -40,6 +40,7 @@
           messageItem.message.sender.id === meId
             ? 'bg-black/10 dark:bg-white/10 text-current'
             : 'bg-gray-100 dark:bg-zinc-800 text-gray-600 dark:text-gray-400',
+          groupIncoming ? 'ml-[2.125rem]' : '',
         ]"
         @click="emit('reply-snippet-click', messageItem.message.replyTo.id)"
       >
@@ -58,6 +59,44 @@
         />
       </div>
 
+      <div
+        class="flex min-w-0 items-end gap-1.5"
+        :class="messageItem.message.sender.id === meId ? 'justify-end' : 'justify-start'"
+      >
+        <div v-if="groupIncoming" class="h-7 w-7 shrink-0">
+          <NuxtLink
+            v-if="showIncomingAvatar && senderUsername"
+            :to="`/u/${encodeURIComponent(senderUsername)}`"
+            class="block"
+            :aria-label="`View @${senderUsername}`"
+          >
+            <AppUserAvatar
+              :user="senderOverlay(messageItem.message.sender)"
+              size-class="h-7 w-7"
+              :show-presence="false"
+              :show-status="false"
+            />
+          </NuxtLink>
+          <button
+            v-else-if="showIncomingAvatar"
+            type="button"
+            class="block rounded-full"
+            aria-label="View profile"
+            @click="goToProfile(messageItem.message.sender)"
+          >
+            <AppUserAvatar
+              :user="senderOverlay(messageItem.message.sender)"
+              size-class="h-7 w-7"
+              :show-presence="false"
+              :show-status="false"
+            />
+          </button>
+        </div>
+
+        <div
+          class="flex min-w-0 flex-col gap-1"
+          :class="messageItem.message.sender.id === meId ? 'items-end' : 'items-start'"
+        >
       <!-- Media bubbles -->
       <template v-if="messageItem.message.media?.length && !messageItem.message.deletedForMe && !messageItem.message.deletedForAll">
         <div
@@ -277,11 +316,14 @@
           </button>
         </div>
       </div>
+        </div>
+      </div>
 
       <!-- Reactions row -->
       <div
         v-if="messageItem.message.reactions?.length"
         class="flex flex-wrap gap-1"
+        :class="groupIncoming ? 'ml-[2.125rem]' : ''"
       >
         <button
           v-for="group in messageItem.message.reactions"
@@ -304,7 +346,11 @@
       <!-- Read avatars (group chats only) -->
       <div
         v-if="isGroupChat && (readIndicators?.length ?? 0) > 0"
-        :class="['flex gap-0.5', messageItem.message.sender.id === meId ? 'justify-end' : 'justify-start']"
+        :class="[
+          'flex gap-0.5',
+          messageItem.message.sender.id === meId ? 'justify-end' : 'justify-start',
+          groupIncoming ? 'ml-[2.125rem]' : '',
+        ]"
       >
         <template
           v-for="participant in (readIndicators ?? [])"
@@ -387,7 +433,7 @@ const props = defineProps({
   bubbleShapeClass: { type: Function as PropType<(message: Message) => string>, required: true },
   bubbleClass: { type: Function as PropType<(m: Message) => string>, required: true },
   registerDividerEl: { type: Function as PropType<(dayKey: string, label: string, el: unknown) => void>, required: true },
-  shouldShowIncomingAvatar: { type: Function as PropType<(m: Message, index: number) => boolean>, required: true },
+  showIncomingAvatar: { type: Boolean, required: true },
   goToProfile: { type: Function as PropType<(u: MessageUser | null | undefined) => void>, required: true },
   senderOverlay: { type: Function as PropType<(u: MessageUser | null | undefined) => MessageUser | null>, required: true },
 })
@@ -413,6 +459,13 @@ const dividerItem = computed<ChatListDivider | null>(() =>
 const messageItem = computed<ChatListMessage | null>(() =>
   props.item.type === 'message' ? (props.item as ChatListMessage) : null,
 )
+
+const isMine = computed(() => messageItem.value?.message.sender.id === props.meId)
+const groupIncoming = computed(() => props.isGroupChat && !isMine.value)
+const senderUsername = computed(() => {
+  const username = String(messageItem.value?.message.sender.username ?? '').trim()
+  return username || null
+})
 
 function collapseBlankLines(text: string): string {
   return text.split('\n').filter((line) => line.trim() !== '').join('\n')

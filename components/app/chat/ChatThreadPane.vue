@@ -32,7 +32,6 @@
         :bubble-shape-class="bubbleShapeClass"
         :bubble-class="bubbleClass"
         :register-divider-el="registerDividerEl"
-        :should-show-incoming-avatar="shouldShowIncomingAvatar"
         :go-to-profile="goToProfile"
         :available-reactions="availableReactions"
         :participants="participants"
@@ -118,7 +117,6 @@ defineProps<{
   bubbleShapeClass: (message: Message) => string
   bubbleClass: (m: Message) => string
   registerDividerEl: (dayKey: string, label: string, el: unknown) => void
-  shouldShowIncomingAvatar: (m: Message, index: number) => boolean
   goToProfile: (u: MessageUser | null | undefined) => void
   availableReactions: MessageReaction[]
   participants: MessageParticipant[]

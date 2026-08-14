@@ -46,6 +46,7 @@ export interface UseChatThreadOptions {
     selectedConversation: ComputedRef<MessageConversationWithTone | null>
     updateConversationForMessage: (message: Message) => void
     updateConversationIsBlockedWith: (conversationId: string, isBlockedWith: boolean) => void
+    mergeConversation?: (conversation: MessageConversation) => void
     refreshAllConversationTabs: () => Promise<void>
   }
   resetTyping: () => void
@@ -280,14 +281,6 @@ export function useChatThread(opts: UseChatThreadOptions) {
     stickyRafHandle = requestAnimationFrame(performStickyDividerRead)
   }
 
-  function shouldShowIncomingAvatar(message: Message, index: number) {
-    if (!isGroupChat.value) return false
-    if (message.sender.id === me.value?.id) return false
-    const next = messages.value[index + 1]
-    if (!next) return true
-    return next.sender.id !== message.sender.id
-  }
-
   // ─── Thread switching / loading ──────────────────────────────────────────────
 
   let threadLoadSeq = 0
@@ -352,8 +345,8 @@ export function useChatThread(opts: UseChatThreadOptions) {
         messages.value = [...list].reverse()
         messagesNextCursor.value = res.pagination?.nextCursor ?? null
         messagesNewerCursor.value = null
-        if (typeof res.data?.conversation?.isBlockedWith === 'boolean') {
-          conversationsApi.updateConversationIsBlockedWith(id, res.data.conversation.isBlockedWith)
+        if (res.data?.conversation) {
+          conversationsApi.mergeConversation?.(res.data.conversation)
         }
       }
       messagesReady.value = true
@@ -873,7 +866,6 @@ export function useChatThread(opts: UseChatThreadOptions) {
     stickyDividerLabel,
     registerDividerEl,
     updateStickyDivider,
-    shouldShowIncomingAvatar,
     // Thread switching / loading
     beginThreadSwitch,
     loadThread,

@@ -106,7 +106,6 @@
                 :bubble-shape-class="bubbleShapeClass"
                 :bubble-class="bubbleClass"
                 :register-divider-el="registerDividerEl"
-                :should-show-incoming-avatar="shouldShowIncomingAvatar"
                 :go-to-profile="goToProfile"
                 :available-reactions="availableReactions"
                 :participants="otherParticipants"
@@ -387,12 +386,9 @@ const {
 } = conversationsApi
 
 const isGroupChat = computed(() => {
-  if (selectedConversation.value?.type === 'group') {
-    return (selectedConversation.value.participants?.length ?? 0) >= 3
-  }
-  if (isDraftChat.value) {
-    return draftRecipients.value.length + 1 >= 3
-  }
+  const type = selectedConversation.value?.type
+  if (type === 'group' || type === 'crew_wall') return true
+  if (isDraftChat.value) return draftRecipients.value.length + 1 >= 3
   return false
 })
 
@@ -438,6 +434,7 @@ const thread = useChatThread({
     selectedConversation,
     updateConversationForMessage,
     updateConversationIsBlockedWith: conversationsApi.updateConversationIsBlockedWith,
+    mergeConversation: conversationsApi.mergeConversation,
     refreshAllConversationTabs,
   },
   resetTyping: () => typingApi.resetTyping(),
@@ -471,7 +468,6 @@ const {
   sendingMessageIds,
   stickyDividerLabel,
   registerDividerEl,
-  shouldShowIncomingAvatar,
   loadOlderMessages,
   loadNewerMessages,
   sendCurrentMessage,

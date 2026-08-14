@@ -186,6 +186,20 @@ export function useChatConversations(opts: UseChatConversationsOptions) {
     patchConversation(conversationId, (c) => ({ ...c, isBlockedWith }))
   }
 
+  /** Merge a freshly fetched conversation (participants + lastReadAt) into the list. */
+  function mergeConversation(conversation: MessageConversation) {
+    const found = patchConversation(conversation.id, (c) => ({
+      ...c,
+      ...conversation,
+      unreadTone: c.unreadTone,
+    }))
+    if (found) return
+    conversations.value = {
+      ...conversations.value,
+      primary: [{ ...conversation }, ...conversations.value.primary],
+    }
+  }
+
   function updateConversationUnread(conversationId: string, unreadCount: number) {
     patchConversation(conversationId, (c) => ({
       ...c,
@@ -444,6 +458,7 @@ export function useChatConversations(opts: UseChatConversationsOptions) {
     removeConversationFromList,
     updateConversationParticipantRead,
     updateConversationIsBlockedWith,
+    mergeConversation,
     updateConversationUnread,
     updateConversationForMessage,
     markConversationReadIfVisible,

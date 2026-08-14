@@ -50,7 +50,7 @@
         :bubble-shape-class="bubbleShapeClass"
         :bubble-class="bubbleClass"
         :register-divider-el="registerDividerEl"
-        :should-show-incoming-avatar="shouldShowIncomingAvatar"
+        :show-incoming-avatar="shouldShowIncomingAvatar(index)"
         :go-to-profile="goToProfile"
         :sender-overlay="senderOverlay"
         @mouseenter="(id: string) => (hoveredId = id)"
@@ -96,6 +96,8 @@
 import type { PropType } from 'vue'
 import type { Message, MessageMedia, MessageUser, MessageReaction, MessageParticipant } from '~/types/api'
 import type { ChatListItem } from '~/composables/chat/useChatTimeFormatting'
+import { shouldShowGroupIncomingAvatar } from '~/utils/chat-incoming-avatar'
+import { assignGroupReadIndicators } from '~/utils/chat-read-indicators'
 import { useUsersStore } from '~/composables/useUsersStore'
 import ChatMessageListRow from './ChatMessageListRow.vue'
 
@@ -126,7 +128,6 @@ const props = defineProps({
   bubbleShapeClass: { type: Function as PropType<(message: Message) => string>, required: true },
   bubbleClass: { type: Function as PropType<(m: Message) => string>, required: true },
   registerDividerEl: { type: Function as PropType<(dayKey: string, label: string, el: unknown) => void>, required: true },
-  shouldShowIncomingAvatar: { type: Function as PropType<(m: Message, index: number) => boolean>, required: true },
   goToProfile: { type: Function as PropType<(u: MessageUser | null | undefined) => void>, required: true },
   availableReactions: { type: Array as PropType<MessageReaction[]>, required: false, default: () => [] },
   participants: { type: Array as PropType<MessageParticipant[]>, required: false, default: () => [] },
@@ -149,51 +150,21 @@ const activeReactionIds = computed<Set<string>>(() => {
   return new Set(pickerMessage.value.reactions.filter((r) => r.reactedByMe).map((r) => r.reactionId))
 })
 
-const readIndicatorsByMessageId = computed(() => {
-  const map = new Map<string, MessageParticipant[]>()
-  if (!props.isGroupChat) return map
-  if (!props.participants.length) return map
-
-  type Indexed = { participant: MessageParticipant; lastReadMs: number }
-  const sortedParticipants: Indexed[] = []
-  for (const participant of props.participants) {
-    if (!participant.lastReadAt) continue
-    const lastReadMs = Date.parse(participant.lastReadAt)
-    if (!Number.isFinite(lastReadMs)) continue
-    sortedParticipants.push({ participant, lastReadMs })
-  }
-  if (sortedParticipants.length === 0) return map
-  sortedParticipants.sort((a, b) => a.lastReadMs - b.lastReadMs)
-
-  let pIdx = 0
-  let lastEligibleId: string | null = null
-  let lastEligibleSenderId: string | null = null
-  const attach = (msgId: string, msgSenderId: string | null, p: MessageParticipant) => {
-    if (p.user.id === msgSenderId) return
-    const existing = map.get(msgId)
-    if (existing) existing.push(p)
-    else map.set(msgId, [p])
-  }
-  for (const item of props.messagesWithDividers) {
+const lastMessageIsMine = computed(() => {
+  for (let i = props.messagesWithDividers.length - 1; i >= 0; i--) {
+    const item = props.messagesWithDividers[i]!
     if (item.type !== 'message') continue
-    const ms = item.createdAtMs
-    while (pIdx < sortedParticipants.length && sortedParticipants[pIdx]!.lastReadMs < ms) {
-      if (lastEligibleId) {
-        attach(lastEligibleId, lastEligibleSenderId, sortedParticipants[pIdx]!.participant)
-      }
-      pIdx++
-    }
-    lastEligibleId = item.message.id
-    lastEligibleSenderId = item.message.sender.id ?? null
+    return item.message.sender.id === props.meId
   }
-  while (pIdx < sortedParticipants.length) {
-    if (lastEligibleId) {
-      attach(lastEligibleId, lastEligibleSenderId, sortedParticipants[pIdx]!.participant)
-    }
-    pIdx++
-  }
+  return false
+})
 
-  return map
+const readIndicatorsByMessageId = computed(() => {
+  if (!props.isGroupChat) return new Map<string, MessageParticipant[]>()
+  return assignGroupReadIndicators(props.messagesWithDividers, props.participants, {
+    meId: props.meId,
+    hideViewer: lastMessageIsMine.value,
+  })
 })
 
 const isLatestMyMessageRead = computed(() => {
@@ -306,6 +277,13 @@ function getNextMessageItem(list: ChatListItem[], listIndex: number): ChatListIt
     return it
   }
   return null
+}
+
+function shouldShowIncomingAvatar(listIndex: number): boolean {
+  return shouldShowGroupIncomingAvatar(props.messagesWithDividers, listIndex, {
+    isGroupChat: props.isGroupChat,
+    meId: props.meId,
+  })
 }
 
 function shouldShowMessageMeta(item: ChatListItem, listIndex: number): boolean {
