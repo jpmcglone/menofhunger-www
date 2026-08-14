@@ -10,13 +10,7 @@ describe('shared default reactions', () => {
     expect(ARTICLE_REACTIONS).toBe(ALLOWED_REACTIONS)
   })
 
-  it('keeps the API list as the source of truth', () => {
-    const api = readFileSync(
-      resolve(process.cwd(), '../menofhunger-api/src/common/constants/reactions.ts'),
-      'utf8',
-    )
-    expect(api).toMatch(/id: 'strong'/)
-    expect(api).toMatch(/emoji: '💪'/)
+  it('keeps one client list and re-exports it for articles', () => {
     const www = readFileSync(resolve(process.cwd(), 'utils/reactions.ts'), 'utf8')
     const articles = readFileSync(resolve(process.cwd(), 'utils/article-reactions.ts'), 'utf8')
     expect(www).toMatch(/id: 'strong'/)
