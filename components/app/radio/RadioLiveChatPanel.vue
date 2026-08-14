@@ -35,7 +35,9 @@
           class="pointer-events-none absolute bottom-0 left-0 z-[5] px-3 pb-2"
           aria-live="polite"
         >
-          <AppTypingIndicator :users="typingUsersAll" verb="typing" :hover-preview="false" size="compact" />
+          <div class="inline-flex max-w-full rounded-full px-2 bg-white/90 shadow-sm backdrop-blur-sm dark:bg-zinc-900/90">
+            <AppTypingIndicator :users="typingUsersAll" verb="typing" :hover-preview="false" size="compact" />
+          </div>
         </div>
       </Transition>
 

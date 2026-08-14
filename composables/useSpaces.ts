@@ -1,5 +1,5 @@
 import type { Space } from '~/types/api'
-import { sortLobbySpaces } from '~/utils/spacesLobbySort'
+import { mergeLobbyRefresh, sortLobbySpaces } from '~/utils/spacesLobbySort'
 
 const SPACES_LIST_KEY = 'spaces-list'
 const SPACES_LOADING_KEY = 'spaces-loading'
@@ -21,7 +21,8 @@ export function useSpaces() {
     loading.value = true
     try {
       const remote = await apiFetchData<Space[]>('/spaces', { method: 'GET' })
-      applySorted(Array.isArray(remote) ? remote : [])
+      if (!Array.isArray(remote)) return
+      applySorted(mergeLobbyRefresh(remote, spaces.value ?? []))
     } catch {
       spaces.value = spaces.value ?? []
     } finally {
@@ -79,7 +80,7 @@ export function useSpaces() {
     const { deleted: _deleted, ...rest } = patch
     const existing = getById(spaceId)
     if (!existing) {
-      if (rest.scheduledAt) void fetchSpaceById(spaceId)
+      if (rest.isActive || rest.scheduledAt) void fetchSpaceById(spaceId)
       return
     }
     upsertSpace({ ...existing, ...rest })

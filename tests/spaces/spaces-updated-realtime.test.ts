@@ -25,6 +25,8 @@ describe('spaces updated realtime wiring (structural)', () => {
     expect(lobby).toMatch(/patchSpace\(/)
     expect(spaces).toMatch(/function patchSpace\(/)
     expect(spaces).toMatch(/upsertSpace\(\{\s*\.\.\.existing,\s*\.\.\.rest\s*\}\)/)
+    expect(spaces).toMatch(/mergeLobbyRefresh/)
+    expect(spaces).toMatch(/if \(rest\.isActive \|\| rest\.scheduledAt\)/)
   })
 
   it('patches mode changes and removes deleted spaces from the lobby cache', async () => {
@@ -50,6 +52,24 @@ describe('spaces updated realtime wiring (structural)', () => {
     const row = await read('components/app/AppSpaceRow.vue')
     expect(row).toMatch(/lobbyCountForSpace/)
     expect(row).toMatch(/v-if="!preview"/)
+  })
+
+  it('renders lobby and preview spaces as cards with implied titles', async () => {
+    const row = await read('components/app/AppSpaceRow.vue')
+    const index = await read('pages/spaces/index.vue')
+    const preview = await read('components/app/post/PostRowLinkPreview.vue')
+    const badge = await read('components/app/AppSpaceStatusBadge.vue')
+    const spacePage = await read('pages/s/[username].vue')
+    const radioBar = await read('components/app/RadioBar.vue')
+    expect(row).toMatch(/spaceDisplayTitle/)
+    expect(row).toMatch(/rounded-xl border moh-border/)
+    expect(row).toMatch(/getYouTubePosterUrls/)
+    expect(index).toMatch(/gap-3/)
+    expect(index).not.toMatch(/border-t moh-border/)
+    expect(preview).toMatch(/AppSpaceRow is already the card/)
+    expect(badge).toMatch(/kind === 'idle'/)
+    expect(spacePage).toMatch(/spaceDisplayTitle\(space\)/)
+    expect(radioBar).toMatch(/spaceDisplayTitle/)
   })
 
   it('keeps a single AppRadioBar instance via Teleport', async () => {
@@ -89,6 +109,21 @@ describe('spaces updated realtime wiring (structural)', () => {
     const chat = await read('composables/useSpaceLiveChat.ts')
     expect(chat).toMatch(/collapseAdjacentSpaceChatSystemMessages/)
     expect(chat).toMatch(/finalizeMessageList/)
+  })
+
+  it('keeps same-session space chat history on leave and does not backfill missed lines', async () => {
+    const chat = await read('composables/useSpaceLiveChat.ts')
+    expect(chat).toMatch(/Keep this session's history/)
+    expect(chat).not.toMatch(/delete next\[prevId\]/)
+    expect(chat).toMatch(/return !\(messagesBySpace\.value\[sid\]\?\.length\)/)
+    expect(chat).toMatch(/if \(existing\.length > 0\)/)
+    expect(chat).toMatch(/upsertMessages\(existing, incoming\)/)
+    expect(chat).toMatch(/writeSpaceChatLocal/)
+    expect(chat).toMatch(/loadAllSpaceChatLocal/)
+    expect(chat).toMatch(/hydrateFromLocal/)
+    expect(chat).toMatch(/spaceChatOwnerId/)
+    expect(chat).toMatch(/uid !== hydratedForUserId\.value/)
+    expect(chat).not.toMatch(/impersonation\?\.adminUserId/)
   })
 
   it('subscribes to space chat once the lobby has selected that space', async () => {

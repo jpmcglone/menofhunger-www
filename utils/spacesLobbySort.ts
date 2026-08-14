@@ -5,8 +5,8 @@ import type { Space } from '~/types/api'
  * 1. viewer's own space
  * 2. spaces the viewer is notified about
  * 3. spaces owned by people the viewer follows
- * 4. soonest upcoming schedule (unscheduled last)
- * then live rooms by listener count.
+ * 4. live rooms by listener count
+ * 5. soonest upcoming schedule (unscheduled last)
  */
 export function compareLobbySpaces(
   a: Space,
@@ -26,15 +26,22 @@ export function compareLobbySpaces(
   const bFollow = b.viewerFollowsOwner ? 1 : 0
   if (aFollow !== bFollow) return bFollow - aFollow
 
+  if (a.isActive !== b.isActive) return a.isActive ? -1 : 1
+  if (a.isActive && b.isActive) return (b.listenerCount ?? 0) - (a.listenerCount ?? 0)
+
   const aAt = a.scheduledAt ? Date.parse(a.scheduledAt) : Number.POSITIVE_INFINITY
   const bAt = b.scheduledAt ? Date.parse(b.scheduledAt) : Number.POSITIVE_INFINITY
   const aSched = Number.isFinite(aAt) ? aAt : Number.POSITIVE_INFINITY
   const bSched = Number.isFinite(bAt) ? bAt : Number.POSITIVE_INFINITY
   if (aSched !== bSched) return aSched - bSched
-
-  if (a.isActive !== b.isActive) return a.isActive ? -1 : 1
-  if (a.isActive && b.isActive) return (b.listenerCount ?? 0) - (a.listenerCount ?? 0)
   return a.id.localeCompare(b.id)
+}
+
+/** Keep live rooms the server omitted so a lobby refresh cannot fade them out. */
+export function mergeLobbyRefresh(remote: Space[], previous: Space[]): Space[] {
+  const ids = new Set(remote.map((s) => s.id))
+  const keepLive = previous.filter((s) => s.isActive && !ids.has(s.id))
+  return keepLive.length ? [...remote, ...keepLive] : remote
 }
 
 export function sortLobbySpaces(spaces: Space[], viewerId: string | null | undefined): Space[] {

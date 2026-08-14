@@ -18,7 +18,7 @@
         <div class="moh-gutter-x pt-4 pb-3 flex items-start justify-between gap-3 shrink-0">
           <div class="min-w-0">
             <div class="flex items-center gap-2 flex-wrap">
-              <h1 class="moh-h1">{{ space.title }}</h1>
+              <h1 class="moh-h1">{{ spaceDisplayTitle(space) }}</h1>
               <AppSpaceStatusBadge :kind="spaceStatusKind" size="md" class="!text-[10px] !px-2" />
             </div>
             <p v-if="space.description" class="mt-1 moh-meta">{{ space.description }}</p>
@@ -224,6 +224,7 @@ import { siteConfig } from '~/config/site'
 import { tinyTooltip } from '~/utils/tiny-tooltip'
 import { registerAvatarPositionResolver } from '~/composables/useSpaceReactions'
 import { useCopyToClipboard } from '~/composables/useCopyToClipboard'
+import { spaceDisplayTitle, spaceStatusKind as resolveSpaceStatusKind } from '~/utils/space-display'
 
 const route = useRoute()
 const username = computed(() => (route.params.username as string)?.trim() ?? '')
@@ -283,10 +284,9 @@ const spaceScheduleLabel = computed(() => {
   }).format(d)
 })
 
-const spaceStatusKind = computed<'live' | 'scheduled' | null>(() => {
-  if (space.value?.isActive) return 'live'
-  if (spaceScheduleLabel.value) return 'scheduled'
-  return null
+const spaceStatusKind = computed(() => {
+  if (!space.value) return 'idle'
+  return resolveSpaceStatusKind(space.value)
 })
 
 const showHostReminders = computed(() => isOwner.value && spaceStatusKind.value === 'scheduled')

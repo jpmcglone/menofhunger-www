@@ -17,7 +17,7 @@
       class="min-w-0 flex-1 text-left block"
     >
       <div class="min-w-0">
-        <div class="text-sm font-semibold truncate">{{ displaySpace.title }}</div>
+        <div class="text-sm font-semibold truncate">{{ barTitle }}</div>
         <div class="text-[11px] text-gray-500 dark:text-white/70">
           <span v-if="displaySpace.mode === 'WATCH_PARTY'">Watching</span>
           <span v-else-if="hasRadioStream">
@@ -36,7 +36,7 @@
       class="min-w-0 flex-1 text-left block"
     >
       <div class="min-w-0">
-        <div class="text-sm font-semibold truncate">{{ displaySpace?.title }}</div>
+        <div class="text-sm font-semibold truncate">{{ barTitle }}</div>
         <div class="text-[11px] text-gray-500 dark:text-white/70">
           <span v-if="displaySpace?.mode === 'WATCH_PARTY'">Watching</span>
           <span v-else-if="hasRadioStream">
@@ -218,6 +218,7 @@ import { SPACE_VISUALIZER_BACKGROUND_OPACITY } from '~/composables/useSpaceAudio
 import { useCopyToClipboard } from '~/composables/useCopyToClipboard'
 import { registerBarPositionResolver } from '~/composables/useSpaceReactions'
 import { useSpaceChatUnread } from '~/composables/useSpaceChatUnread'
+import { spaceDisplayTitle } from '~/utils/space-display'
 
 function listenerProfileTo(username: string): string {
   return `/u/${encodeURIComponent(username)}`
@@ -285,6 +286,7 @@ watch(
   { immediate: true },
 )
 const displaySpace = computed(() => currentSpace.value ?? lastSpace.value)
+const barTitle = computed(() => (displaySpace.value ? spaceDisplayTitle(displaySpace.value) : ''))
 const membersCount = computed(() => (displaySpace.value ? members.value.length : null))
 
 const preMuteVolume = ref<number | null>(null)

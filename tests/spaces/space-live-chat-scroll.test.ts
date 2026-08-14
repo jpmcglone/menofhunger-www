@@ -13,6 +13,7 @@ describe('space live chat scroll (structural)', () => {
     const panel = await Promise.resolve(read('components/app/radio/RadioLiveChatPanel.vue'))
     expect(panel).toMatch(/RadioLiveChatMessageList v-else :messages="messages" \/>\s*<\/div>/)
     expect(panel).toMatch(/pointer-events-none absolute bottom-0 left-0[\s\S]*<AppTypingIndicator/)
+    expect(panel).toMatch(/rounded-full[\s\S]*backdrop-blur-sm[\s\S]*<AppTypingIndicator/)
     expect(read('components/app/radio/RadioLiveChatMessageList.vue')).toMatch(/h-10 shrink-0/)
     expect(panel).not.toMatch(/typingUsersTotalCount/)
   })

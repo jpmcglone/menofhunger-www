@@ -1,15 +1,20 @@
 import type { SpacesCallback } from '~/composables/usePresence'
 import type { SpaceChatMessage, SpaceChatSender } from '~/types/api'
 import { collapseAdjacentSpaceChatSystemMessages } from '~/utils/space-chat-system-collapse'
+import {
+  SPACE_CHAT_MAX_PER_SPACE,
+  loadAllSpaceChatLocal,
+  spaceChatOwnerId,
+  writeSpaceChatLocal,
+} from '~/utils/space-chat-local'
 import { userColorTier, userTierColorVar } from '~/utils/user-tier'
 
-const MAX_MESSAGES_PER_SPACE = 220
 const TYPING_TTL_MS = 3500
 
 function clampMessageList(list: SpaceChatMessage[]): SpaceChatMessage[] {
   if (!Array.isArray(list)) return []
-  if (list.length <= MAX_MESSAGES_PER_SPACE) return list
-  return list.slice(-MAX_MESSAGES_PER_SPACE)
+  if (list.length <= SPACE_CHAT_MAX_PER_SPACE) return list
+  return list.slice(-SPACE_CHAT_MAX_PER_SPACE)
 }
 
 function finalizeMessageList(list: SpaceChatMessage[]): SpaceChatMessage[] {
@@ -87,6 +92,7 @@ export function useSpaceLiveChat(options: { passive?: boolean } = {}) {
   const passive = options.passive === true
 
   const messagesBySpace = useState<Record<string, SpaceChatMessage[]>>('space-live-chat-messages', () => ({}))
+  const hydratedForUserId = useState<string | null>('space-live-chat-hydrated-user', () => null)
   const subscribedSpaceId = useState<string | null>('space-live-chat-subscribed-space', () => null)
   const snapshotReceivedForSpaceId = useState<string | null>('space-live-chat-snapshot-received', () => null)
   const callbackRef = useState<SpacesCallback | null>('space-live-chat-callback', () => null)
@@ -98,6 +104,15 @@ export function useSpaceLiveChat(options: { passive?: boolean } = {}) {
   const typingSweepTimer = useState<ReturnType<typeof setInterval> | null>('space-live-chat-typing-sweep', () => null)
 
   const spaceId = computed(() => (lobby.selectedSpaceId.value ?? '').trim() || null)
+
+  watch(
+    () => spaceChatOwnerId(user.value),
+    (uid) => {
+      if (uid) hydrateFromLocal(uid)
+      else hydratedForUserId.value = null
+    },
+    { immediate: true },
+  )
 
   const canSubscribeChat = computed(() => {
     const sid = spaceId.value
@@ -111,23 +126,53 @@ export function useSpaceLiveChat(options: { passive?: boolean } = {}) {
     return messagesBySpace.value[sid] ?? []
   })
 
-  // True while we're waiting for the first snapshot from the server after switching spaces.
+  // True while we're waiting for the first snapshot after switching spaces.
+  // A same-session return already has local history — don't flash "Joining…".
   const isLoadingMessages = computed(() => {
     const sid = spaceId.value
     if (!sid || !canSubscribeChat.value) return false
-    return snapshotReceivedForSpaceId.value !== sid
+    if (snapshotReceivedForSpaceId.value === sid) return false
+    return !(messagesBySpace.value[sid]?.length)
   })
+
+  function persistSpace(sid: string, list: SpaceChatMessage[]) {
+    const uid = spaceChatOwnerId(user.value)
+    if (!uid || uid !== hydratedForUserId.value || list.length === 0) return
+    writeSpaceChatLocal(uid, sid, list)
+  }
+
+  function hydrateFromLocal(uidRaw: string) {
+    if (!import.meta.client) return
+    const uid = String(uidRaw ?? '').trim()
+    if (!uid || hydratedForUserId.value === uid) return
+    const prevOwner = hydratedForUserId.value
+    const stored = loadAllSpaceChatLocal(uid)
+    if (prevOwner && prevOwner !== uid) {
+      messagesBySpace.value = stored
+    } else {
+      const next = { ...messagesBySpace.value }
+      for (const sid of Object.keys(stored)) {
+        next[sid] = upsertMessages(stored[sid] ?? [], next[sid] ?? [])
+      }
+      messagesBySpace.value = next
+    }
+    hydratedForUserId.value = uid
+  }
 
   function setMessagesForSpace(sid: string, next: SpaceChatMessage[]) {
     const id = String(sid ?? '').trim()
     if (!id) return
+    const list = finalizeMessageList(next)
     messagesBySpace.value = {
       ...messagesBySpace.value,
-      [id]: finalizeMessageList(next),
+      [id]: list,
     }
+    persistSpace(id, list)
   }
 
   function appendMessageForSpace(sid: string, msg: SpaceChatMessage) {
+    const uid = spaceChatOwnerId(user.value)
+    if (!uid || uid !== hydratedForUserId.value) return
     const id = String(sid ?? '').trim()
     if (!id || !msg?.id) return
     const current = messagesBySpace.value[id] ?? []
@@ -137,6 +182,7 @@ export function useSpaceLiveChat(options: { passive?: boolean } = {}) {
         ? finalizeMessageList([...current.slice(0, idx), msg, ...current.slice(idx + 1)])
         : finalizeMessageList([...current, msg])
     messagesBySpace.value = { ...messagesBySpace.value, [id]: next }
+    persistSpace(id, next)
   }
 
   function sweepTypingTtl() {
@@ -223,7 +269,14 @@ export function useSpaceLiveChat(options: { passive?: boolean } = {}) {
         const sid = String(payload?.spaceId ?? '').trim()
         if (!sid) return
         const incoming = Array.isArray(payload?.messages) ? payload.messages : []
-        const merged = upsertMessages(messagesBySpace.value[sid] ?? [], incoming)
+        const existing = messagesBySpace.value[sid] ?? []
+        // Same-session return: keep what this tab already received. Don't adopt
+        // snapshot lines from while we were unsubscribed (live-only chat).
+        if (existing.length > 0) {
+          snapshotReceivedForSpaceId.value = sid
+          return
+        }
+        const merged = upsertMessages(existing, incoming)
         messagesBySpace.value = { ...messagesBySpace.value, [sid]: merged }
         snapshotReceivedForSpaceId.value = sid
       },
@@ -306,13 +359,9 @@ export function useSpaceLiveChat(options: { passive?: boolean } = {}) {
     if (!prevId) return
     presence.emitSpacesChatUnsubscribe()
     subscribedSpaceId.value = null
-    // Drop chat history for spaces we've left so long sessions don't accumulate
-    // a Record entry for every visited space (messages are already capped per space).
-    if (messagesBySpace.value[prevId]) {
-      const next = { ...messagesBySpace.value }
-      delete next[prevId]
-      messagesBySpace.value = next
-    }
+    // Keep this session's history. The server snapshot is live-only (empty),
+    // so deleting here would blank the chat on a same-session return. Missed
+    // messages while away never arrive over the socket, which is correct.
     if (typingBySpaceId.value.has(prevId)) {
       const nextTyping = new Map(typingBySpaceId.value)
       nextTyping.delete(prevId)

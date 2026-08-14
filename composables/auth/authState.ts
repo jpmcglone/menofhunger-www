@@ -110,12 +110,20 @@ export function clearAuthClientState(params?: { resetViewerCaches?: boolean }) {
 
   useState<any>('app-header', () => null).value = null
 
-  // Space / radio / chat rooms are per-identity: don't rejoin the previous account's rooms.
+  // Space / radio / chat rooms are per-identity: don't rejoin the previous account's rooms
+  // or flash the previous lobby list (which then fades out on refresh).
+  useState<any[]>('spaces-list', () => []).value = []
+  useState<boolean>('spaces-loaded-once', () => false).value = false
+  useState<boolean>('spaces-loading', () => false).value = false
+  useState<any>('my-space', () => null).value = null
   useState<string | null>('selected-space-id', () => null).value = null
   useState<any[]>('space-members', () => []).value = []
   useState<any>('space-lobby-counts', () => ({ countsBySpaceId: {} })).value = { countsBySpaceId: {} }
   useState<number>('space-lobby-socket-gen', () => 0).value = 0
   useState<string | null>('space-live-chat-subscribed-space', () => null).value = null
+  useState<Record<string, unknown>>('space-live-chat-messages', () => ({})).value = {}
+  useState<string | null>('space-live-chat-hydrated-user', () => null).value = null
+  useState<string | null>('space-live-chat-snapshot-received', () => null).value = null
   useState<string | null>('space-audio-space-id', () => null).value = null
   useState<boolean>('space-audio-is-playing', () => false).value = false
   useState<string | null>('radio-station-id', () => null).value = null

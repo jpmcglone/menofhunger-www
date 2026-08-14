@@ -38,8 +38,8 @@
         No live or upcoming spaces right now. Be the first to create one!
       </div>
 
-      <!-- Space rows — own → notifying → following → soonest schedule -->
-      <TransitionGroup v-else name="moh-spaces-row" tag="div" class="relative border-t moh-border">
+      <!-- Space rows — own → notifying → following → live → soonest schedule -->
+      <TransitionGroup v-else name="moh-spaces-row" tag="div" class="relative flex flex-col gap-3 moh-gutter-x">
         <AppSpaceRow
           v-for="space in spaces"
           :key="space.id"

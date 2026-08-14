@@ -211,8 +211,8 @@
           </div>
         </div>
       </div>
-      <!-- Resolved space -->
-      <div v-else class="overflow-hidden rounded-xl border moh-border" data-post-row-interactive @click.stop>
+      <!-- Resolved space — AppSpaceRow is already the card -->
+      <div v-else data-post-row-interactive @click.stop>
         <AppSpaceRow :space="embeddedSpace" preview />
       </div>
     </template>

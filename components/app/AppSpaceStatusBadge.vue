@@ -19,11 +19,12 @@
  * Space status brand pills — use everywhere (list, feed preview, chat, detail).
  * - Live: space is on-air (`isActive`)
  * - Scheduled: upcoming `scheduledAt`
+ * - Idle: exists but nothing is on
  * Never use "Active" for public status — that's viewer-local "you're in this room".
  */
 const props = withDefaults(
   defineProps<{
-    kind: 'live' | 'scheduled' | null
+    kind: 'live' | 'scheduled' | 'idle' | null
     size?: 'sm' | 'md'
   }>(),
   { size: 'md' },
@@ -32,6 +33,7 @@ const props = withDefaults(
 const label = computed(() => {
   if (props.kind === 'live') return 'Live'
   if (props.kind === 'scheduled') return 'Scheduled'
+  if (props.kind === 'idle') return 'Idle'
   return ''
 })
 
@@ -51,6 +53,9 @@ const kindClass = computed(() => {
   }
   if (props.kind === 'scheduled') {
     return 'bg-amber-500/15 text-amber-800 dark:text-amber-300'
+  }
+  if (props.kind === 'idle') {
+    return 'bg-black/10 text-gray-600 dark:bg-white/10 dark:text-white/55'
   }
   return ''
 })

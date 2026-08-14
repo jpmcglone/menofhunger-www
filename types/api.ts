@@ -312,6 +312,7 @@ export type Space = {
   mode: 'NONE' | 'WATCH_PARTY' | 'RADIO'
   watchPartyUrl: string | null
   radioStreamUrl: string | null
+  playbackTitle: string | null
   owner: SpaceOwner
   listenerCount: number
   viewerSubscribed: boolean
@@ -332,6 +333,7 @@ export type WsSpacesUpdatedPayload = {
     mode: 'NONE' | 'WATCH_PARTY' | 'RADIO'
     watchPartyUrl: string | null
     radioStreamUrl: string | null
+    playbackTitle: string | null
     subscriberCount: number
     deleted: boolean
   }>

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Space } from '~/types/api'
-import { compareLobbySpaces, isScheduledNotifySpace, sortLobbySpaces } from '~/utils/spacesLobbySort'
+import { compareLobbySpaces, isScheduledNotifySpace, mergeLobbyRefresh, sortLobbySpaces } from '~/utils/spacesLobbySort'
 
 function space(partial: Partial<Space> & { id: string }): Space {
   return {
@@ -11,6 +11,7 @@ function space(partial: Partial<Space> & { id: string }): Space {
     mode: 'NONE',
     watchPartyUrl: null,
     radioStreamUrl: null,
+    playbackTitle: null,
     owner: { id: 'other', username: 'other', avatarUrl: null, premium: false, premiumPlus: false, isOrganization: false, verifiedStatus: 'none' },
     listenerCount: 0,
     viewerSubscribed: false,
@@ -48,6 +49,12 @@ describe('sortLobbySpaces', () => {
     ])
   })
 
+  it('ranks a live room above an unfollowed scheduled space', () => {
+    const live = space({ id: 'live', isActive: true, listenerCount: 2 })
+    const soon = space({ id: 'soon', scheduledAt: '2026-08-15T00:00:00.000Z' })
+    expect(sortLobbySpaces([soon, live], 'me').map((s) => s.id)).toEqual(['live', 'soon'])
+  })
+
   it('compareLobbySpaces ranks notifying above following', () => {
     const a = space({ id: 'notify', viewerSubscribed: true, scheduledAt: '2026-08-28T00:00:00.000Z' })
     const b = space({ id: 'follow', viewerFollowsOwner: true, scheduledAt: '2026-08-10T00:00:00.000Z' })
@@ -70,5 +77,18 @@ describe('isScheduledNotifySpace', () => {
       space({ id: 'c', viewerSubscribed: false, scheduledAt: '2026-08-14T00:00:00.000Z' }),
       now,
     )).toBe(false)
+  })
+})
+
+describe('mergeLobbyRefresh', () => {
+  it('keeps a live room the server omitted so it cannot fade out', () => {
+    const live = space({ id: 'john', isActive: true })
+    const scheduled = space({ id: 'soon', scheduledAt: '2026-08-16T00:00:00.000Z' })
+    expect(mergeLobbyRefresh([scheduled], [live, scheduled]).map((s) => s.id)).toEqual(['soon', 'john'])
+  })
+
+  it('does not keep idle rooms the server dropped', () => {
+    const idle = space({ id: 'idle', isActive: false })
+    expect(mergeLobbyRefresh([], [idle])).toEqual([])
   })
 })

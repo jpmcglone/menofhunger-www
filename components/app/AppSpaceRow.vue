@@ -2,7 +2,7 @@
   <div
     class="relative overflow-hidden transition-colors"
     :class="[
-      preview || compact ? '' : 'border-b moh-border',
+      compact ? '' : 'rounded-xl border moh-border p-2.5',
       !compact && selectedSpaceId === space.id ? 'bg-black/[0.03] dark:bg-white/[0.04]' : '',
     ]"
     @click.stop
@@ -17,119 +17,82 @@
       <AppSpaceVisualizer background-only class="w-full h-full" />
     </div>
 
-    <!-- Row content -->
     <div
       class="relative z-10 flex items-center"
-      :class="compact ? 'gap-2 px-3 py-1.5' : 'gap-3 px-4 py-2.5'"
+      :class="compact ? 'gap-2 px-3 py-1.5' : 'gap-3'"
     >
-      <!-- Owner avatar -->
-      <div v-if="!compact" class="shrink-0">
-        <AppUserAvatar
-          :user="{ id: space.owner?.id ?? '', username: space.owner?.username ?? null, avatarUrl: space.owner?.avatarUrl ?? null }"
-          size-class="h-8 w-8"
-          bg-class="moh-surface dark:bg-black"
-          :show-presence="false"
-        />
+      <!-- Media tile: YouTube 16:9 when a watch URL exists; otherwise a small icon -->
+      <div
+        v-if="!compact && youtubePosterUrls"
+        class="relative w-32 shrink-0 overflow-hidden rounded-lg aspect-video bg-black/10 dark:bg-white/10"
+        aria-hidden="true"
+      >
+        <img
+          v-if="posterSrc"
+          :src="posterSrc"
+          class="absolute inset-0 h-full w-full object-cover"
+          alt=""
+          loading="lazy"
+          @error="onPosterError"
+        >
+        <div
+          v-else
+          class="absolute inset-0 flex items-center justify-center moh-text-muted"
+        >
+          <Icon name="tabler:device-tv" class="text-[22px] opacity-70" />
+        </div>
+      </div>
+      <div
+        v-else-if="!compact"
+        class="flex h-16 w-16 shrink-0 items-center justify-center rounded-lg bg-black/10 dark:bg-white/10 moh-text-muted"
+        aria-hidden="true"
+      >
+        <Icon :name="tileIcon" class="text-[22px] opacity-80" />
       </div>
 
-      <!-- Far left: lobby count badge -->
-      <span
-        :class="[
-          'inline-flex items-center justify-center px-1 rounded font-medium tabular-nums shrink-0',
-          'moh-text-muted bg-black/10 dark:bg-white/10',
-          compact ? 'min-w-[1rem] h-4 text-[10px]' : 'min-w-[1.25rem] h-5 text-[11px]',
-          liveListenerCount === 0 ? 'invisible' : '',
-        ]"
-        aria-hidden="true"
-      >{{ liveListenerCount }}</span>
-
-      <!-- Left: enter button (preview embeds are non-interactive chrome) -->
+      <!-- Enter (preview embeds are non-interactive chrome) -->
       <button
         v-if="!preview"
         type="button"
         class="min-w-0 flex-1 text-left moh-focus"
         :class="compact ? 'py-0' : 'py-0.5'"
-        :aria-label="`Enter ${space.title}`"
+        :aria-label="`Enter ${displayTitle}`"
         @click="onEnterSpace"
       >
-        <!-- Compact: single line with Live/Scheduled -->
-        <div v-if="compact" class="flex items-center gap-1.5 leading-none min-w-0">
-          <span class="font-semibold moh-text text-xs truncate">{{ space.title }}</span>
-          <AppSpaceStatusBadge :kind="statusKind" size="sm" />
+        <div class="flex items-center gap-1.5 leading-none min-w-0">
           <span
-            v-if="compactScheduleShort && statusKind === 'scheduled'"
-            class="shrink-0 text-[9px] moh-meta truncate max-w-[5.5rem]"
-          >{{ compactScheduleShort }}</span>
-          <Icon
-            v-if="space.mode === 'WATCH_PARTY'"
-            name="tabler:device-tv"
-            class="shrink-0 text-[10px] moh-meta opacity-70"
-            aria-hidden="true"
-            v-tooltip.top="tinyTooltip('Watch Party')"
-          />
-          <Icon
-            v-else-if="space.mode === 'RADIO'"
-            name="tabler:radio"
-            class="shrink-0 text-[10px] moh-meta opacity-70"
-            aria-hidden="true"
-            v-tooltip.top="tinyTooltip('Radio')"
-          />
+            class="font-semibold moh-text truncate"
+            :class="compact ? 'text-xs' : 'text-sm'"
+          >{{ displayTitle }}</span>
+          <AppSpaceStatusBadge :kind="statusKind" :size="compact ? 'sm' : 'md'" />
         </div>
-
-        <!-- Standard: two lines -->
-        <template v-else>
-          <div class="flex items-center gap-1.5 leading-snug">
-            <span class="font-semibold moh-text text-sm">{{ space.title }}</span>
-            <AppSpaceStatusBadge :kind="statusKind" />
-            <Icon
-              v-if="space.mode === 'WATCH_PARTY'"
-              name="tabler:device-tv"
-              class="shrink-0 text-[13px] moh-meta opacity-60"
-              aria-hidden="true"
-              v-tooltip.top="tinyTooltip('Watch Party')"
-            />
-            <Icon
-              v-else-if="space.mode === 'RADIO'"
-              name="tabler:radio"
-              class="shrink-0 text-[13px] moh-meta opacity-60"
-              aria-hidden="true"
-              v-tooltip.top="tinyTooltip('Radio')"
-            />
-          </div>
-          <div class="mt-0.5 text-[11px] moh-meta leading-none">
-            <span v-if="space.owner?.username">@{{ space.owner.username }}</span>
-            <span v-if="space.owner?.username && scheduleLabel && statusKind === 'scheduled'"> · </span>
-            <span v-if="scheduleLabel && statusKind === 'scheduled'">{{ scheduleLabel }}</span>
-          </div>
-        </template>
+        <div
+          v-if="!compact && metaLine"
+          class="mt-1 text-[11px] moh-meta leading-none truncate"
+        >{{ metaLine }}</div>
       </button>
       <div
         v-else
         class="min-w-0 flex-1"
         :class="compact ? 'py-0' : 'py-0.5'"
       >
-        <div v-if="compact" class="flex items-center gap-1.5 leading-none min-w-0">
-          <span class="font-semibold moh-text text-xs truncate">{{ space.title }}</span>
-          <AppSpaceStatusBadge :kind="statusKind" size="sm" />
+        <div class="flex items-center gap-1.5 leading-none min-w-0">
+          <span
+            class="font-semibold moh-text truncate"
+            :class="compact ? 'text-xs' : 'text-sm'"
+          >{{ displayTitle }}</span>
+          <AppSpaceStatusBadge :kind="statusKind" :size="compact ? 'sm' : 'md'" />
         </div>
-        <template v-else>
-          <div class="flex items-center gap-1.5 leading-snug">
-            <span class="font-semibold moh-text text-sm">{{ space.title }}</span>
-            <AppSpaceStatusBadge :kind="statusKind" />
-          </div>
-          <div class="mt-0.5 text-[11px] moh-meta leading-none">
-            <span v-if="space.owner?.username">@{{ space.owner.username }}</span>
-            <span v-if="space.owner?.username && scheduleLabel && statusKind === 'scheduled'"> · </span>
-            <span v-if="scheduleLabel && statusKind === 'scheduled'">{{ scheduleLabel }}</span>
-          </div>
-        </template>
+        <div
+          v-if="!compact && metaLine"
+          class="mt-1 text-[11px] moh-meta leading-none truncate"
+        >{{ metaLine }}</div>
       </div>
 
-      <!-- Right: notify + share + play (radio only) — hidden in feed preview embeds -->
+      <!-- Notify + share + play — hidden in feed preview and compact chat embeds -->
       <div
-        v-if="!preview"
-        class="shrink-0 flex items-center"
-        :class="compact ? 'gap-0.5' : 'gap-0.5'"
+        v-if="!preview && !compact"
+        class="shrink-0 flex items-center gap-0.5"
       >
         <AppSpaceNotifyCount
           v-if="showHostReminders"
@@ -185,6 +148,8 @@ import { siteConfig } from '~/config/site'
 import { SPACE_VISUALIZER_BACKGROUND_OPACITY, primeSpaceAudioContext } from '~/composables/useSpaceAudio'
 import { tinyTooltip } from '~/utils/tiny-tooltip'
 import { useCopyToClipboard } from '~/composables/useCopyToClipboard'
+import { getYouTubePosterUrls } from '~/utils/link-utils'
+import { spaceCardMetaLine, spaceDisplayTitle, spaceStatusKind } from '~/utils/space-display'
 
 const props = defineProps<{
   space: Space
@@ -211,38 +176,35 @@ const notifyBusy = ref(false)
 
 type MenuItemWithIcon = MenuItem & { iconName?: string }
 
-const scheduleLabel = computed(() => {
-  const iso = props.space.scheduledAt
-  if (!iso || props.space.isActive) return null
-  const d = new Date(iso)
-  if (Number.isNaN(d.getTime()) || d.getTime() <= Date.now()) return null
-  return new Intl.DateTimeFormat(undefined, {
-    weekday: 'short',
-    month: 'short',
-    day: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-  }).format(d)
-})
+const displayTitle = computed(() => spaceDisplayTitle(props.space))
+const statusKind = computed(() => spaceStatusKind(props.space))
+const metaLine = computed(() =>
+  spaceCardMetaLine(props.space, {
+    hostUsername: props.space.owner?.username ?? null,
+    hereCount: liveListenerCount.value,
+  }),
+)
 
-const compactScheduleShort = computed(() => {
-  const iso = props.space.scheduledAt
-  if (!iso || props.space.isActive) return null
-  const d = new Date(iso)
-  if (Number.isNaN(d.getTime()) || d.getTime() <= Date.now()) return null
-  return new Intl.DateTimeFormat(undefined, {
-    weekday: 'short',
-    hour: 'numeric',
-    minute: '2-digit',
-  }).format(d)
+const youtubePosterUrls = computed(() =>
+  props.space.watchPartyUrl ? getYouTubePosterUrls(props.space.watchPartyUrl) : null,
+)
+const posterTier = ref<'maxres' | 'fallback' | 'none'>('maxres')
+watch(() => props.space.watchPartyUrl, () => {
+  posterTier.value = 'maxres'
 })
+const posterSrc = computed(() => {
+  if (!youtubePosterUrls.value || posterTier.value === 'none') return null
+  return posterTier.value === 'fallback'
+    ? youtubePosterUrls.value.fallback
+    : youtubePosterUrls.value.maxres
+})
+function onPosterError() {
+  posterTier.value = posterTier.value === 'maxres' ? 'fallback' : 'none'
+}
 
-/** Public brand status — Live beats Scheduled; never "Active". */
-const statusKind = computed<'live' | 'scheduled' | null>(() => {
-  if (props.space.isActive) return 'live'
-  if (scheduleLabel.value) return 'scheduled'
-  return null
-})
+const tileIcon = computed(() =>
+  props.space.mode === 'RADIO' ? 'tabler:radio' : 'tabler:flame',
+)
 
 const isOwnSpace = computed(() => Boolean(
   user.value?.id && props.space.owner?.id && props.space.owner.id === user.value.id,

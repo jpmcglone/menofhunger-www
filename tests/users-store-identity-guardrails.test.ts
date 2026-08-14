@@ -25,9 +25,21 @@ describe('applyIdentitySwap guardrail (structural)', () => {
   it('clears space lobby identity so a proxy session does not keep the previous roster', () => {
     const src = readFromRepo('composables/auth/authState.ts')
     expect(src).toMatch(/selected-space-id/)
+    expect(src).toMatch(/spaces-list/)
+    expect(src).toMatch(/space-live-chat-messages/)
+    expect(src).toMatch(/space-live-chat-hydrated-user/)
     expect(src).toMatch(/space-members/)
     expect(src).toMatch(/radio-station-id/)
     expect(src).toMatch(/messages-screen-active/)
+  })
+
+  it('binds space chat local history to the active identity, not the admin actor', () => {
+    const chat = readFromRepo('composables/useSpaceLiveChat.ts')
+    const local = readFromRepo('utils/space-chat-local.ts')
+    expect(local).toMatch(/export function spaceChatOwnerId/)
+    expect(local).toMatch(/already the proxied person/)
+    expect(chat).toMatch(/spaceChatOwnerId\(user\.value\)/)
+    expect(chat).not.toMatch(/impersonation\?\.adminUserId/)
   })
 })
 
