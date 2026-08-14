@@ -28,13 +28,34 @@ describe('scripture verse presentation', () => {
   it('matches the compact iOS header, divider, and numbered verse layout', () => {
     const popover = readFromRepo('components/app/ScriptureVersePopover.vue')
     const card = readFromRepo('components/app/ScriptureVerseCard.vue')
+    const list = readFromRepo('components/app/ScriptureVerseList.vue')
 
     for (const source of [popover, card]) {
       expect(source).toMatch(/items-baseline justify-between/)
       expect(source).toMatch(/border-t border-gray-200\/80/)
-      expect(source).toMatch(/grid-cols-\[auto_1fr\]/)
       expect(source).not.toMatch(/<sup/)
     }
+    expect(list).toMatch(/grid-cols-\[auto_1fr\]/)
+    expect(list).not.toMatch(/<sup/)
+  })
+
+  it('caps the feed card at three verses and opens the reader on tap', () => {
+    const card = readFromRepo('components/app/ScriptureVerseCard.vue')
+    const preview = readFromRepo('utils/scripture-preview.ts')
+
+    expect(preview).toMatch(/SCRIPTURE_PEEK_VERSE_LIMIT = 3/)
+    expect(card).toMatch(/peek/)
+    expect(card).toMatch(/data-post-row-interactive/)
+    expect(card).toMatch(/<AppScriptureVersePopover/)
+  })
+
+  it('bounds the overlay and scrolls long passages instead of growing without limit', () => {
+    const popover = readFromRepo('components/app/ScriptureVersePopover.vue')
+
+    expect(popover).toMatch(/max-h-\[min\(22rem,55vh\)\]/)
+    expect(popover).toMatch(/overflow-y-auto/)
+    expect(popover).toMatch(/max-h-\[min\(85dvh,100%\)\]/)
+    expect(popover).toMatch(/overscroll-contain/)
   })
 
   it('keeps the shared bottom-sheet header customizable without changing existing callers', () => {

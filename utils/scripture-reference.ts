@@ -2,8 +2,8 @@
  * Scripture reference parsing for display — mirrors
  * `menofhunger-api/src/common/scripture/scripture-reference.ts`.
  *
- * Matches `Book Chapter:Verse` with optional verse range (e.g. `John 3:16`,
- * `1 Cor 13:4-7`). Chapter-only refs (`Genesis 1`) are not matched.
+ * Matches `Book Chapter:Verse` with optional range (`John 3:16`, `1 Cor 13:4-7`),
+ * comma lists (`Eph 2:1,8`), and chapter-only citations (`Rom 9`, `Psalm 23`).
  *
  * Book table kept in sync with:
  * - `menofhunger-api/src/common/scripture/scripture-reference.ts`
@@ -116,9 +116,72 @@ function buildBookPattern(): string {
 const BOOK_ALT = buildBookPattern()
 
 export const SCRIPTURE_IN_TEXT_RE = new RegExp(
-  `(?<![A-Za-z0-9])(${BOOK_ALT})\\s+(\\d{1,3}):(\\d{1,3})(?:-(\\d{1,3}))?(?![A-Za-z])`,
+  `(?<![A-Za-z0-9])(${BOOK_ALT})\\.?\\s+(\\d{1,3})(?::(\\d{1,3}(?:\\s*-\\s*\\d{1,3})?(?:\\s*,\\s*\\d{1,3}(?:\\s*-\\s*\\d{1,3})?)*))?(?![A-Za-z0-9:])`,
   'gi',
 )
+
+const AMBIGUOUS_CHAPTER_ONLY = new Set([
+  'job',
+  'mark',
+  'john',
+  'luke',
+  'james',
+  'ruth',
+  'amos',
+  'jude',
+  'numbers',
+  'song',
+  'song of solomon',
+])
+
+type VerseSpan = { start: number, end: number | null }
+
+function parseVerseSpec(spec: string | undefined): VerseSpan[] | null {
+  if (!spec) return null
+  const spans: VerseSpan[] = []
+  for (const part of spec.split(/\s*,\s*/)) {
+    const bits = part.split(/\s*-\s*/)
+    const start = parseInt(bits[0] ?? '', 10)
+    if (!Number.isFinite(start)) continue
+    const endRaw = bits[1] !== undefined ? parseInt(bits[1], 10) : null
+    spans.push({ start, end: endRaw !== null && Number.isFinite(endRaw) ? endRaw : null })
+  }
+  return spans.length ? spans : null
+}
+
+function formatScriptureReference(book: string, chapter: number, spans: VerseSpan[] | null): string {
+  if (!spans?.length) return `${book} ${chapter}`
+  const body = spans.map(s => (s.end != null ? `${s.start}-${s.end}` : String(s.start))).join(',')
+  return `${book} ${chapter}:${body}`
+}
+
+function isCitationContext(text: string, start: number, end: number): boolean {
+  const before = text.slice(0, start).trimEnd()
+  const prev = before.charAt(before.length - 1)
+  if (prev === '(' || prev === ';' || prev === '[' || prev === ',') return true
+  const after = text.slice(end).trimStart()
+  const next = after.charAt(0)
+  return next === ')' || next === ';' || next === ']' || next === ',' || next === '.'
+}
+
+function acceptChapterOnly(
+  bookToken: string,
+  canonicalName: string,
+  text: string,
+  start: number,
+  end: number,
+): boolean {
+  if (isCitationContext(text, start, end)) return true
+  const token = bookToken.trim().toLowerCase()
+  const compact = token.replace(/\s+/g, '')
+  if (token === 'ps' || token === 'psa' || token === 'psalm' || token === 'psalms') return true
+  if (AMBIGUOUS_CHAPTER_ONLY.has(token) || AMBIGUOUS_CHAPTER_ONLY.has(canonicalName.toLowerCase())) {
+    return false
+  }
+  const isAlias = token !== canonicalName.toLowerCase()
+  if (isAlias && compact.length >= 3) return true
+  return !isAlias
+}
 
 // ─── Splitter ────────────────────────────────────────────────────────────────
 
@@ -139,17 +202,17 @@ export function splitTextByScriptureDisplay(text: string): ScriptureSegment[] {
     const raw = m[0] ?? ''
     const bookStr = m[1] ?? ''
     const chapter = parseInt(m[2] ?? '0', 10)
-    const verseStart = parseInt(m[3] ?? '0', 10)
-    const verseEnd = m[4] !== undefined ? parseInt(m[4], 10) : null
+    const spans = parseVerseSpec(m[3])
     const start = m.index
 
     if (start > lastEnd) out.push({ text: value.slice(lastEnd, start) })
 
     const entry = _bookLookup.get(bookStr.trim().toLowerCase())
-    if (entry) {
-      const suffix = verseEnd !== null ? `-${verseEnd}` : ''
-      const reference = `${entry.name} ${chapter}:${verseStart}${suffix}`
-      out.push({ text: raw, scripture: { reference } })
+    const keep = Boolean(spans) || (entry
+      ? acceptChapterOnly(bookStr, entry.name, value, start, start + raw.length)
+      : false)
+    if (entry && keep) {
+      out.push({ text: raw, scripture: { reference: formatScriptureReference(entry.name, chapter, spans) } })
     } else {
       out.push({ text: raw })
     }
