@@ -2304,6 +2304,9 @@ export type AdminAnalytics = {
   asOf: string
 }
 
+/** Marv briefing of the already-loaded admin analytics snapshot. */
+export type AdminAnalyticsBrief = Contracts.AdminAnalyticsBriefDto
+
 export type LandingMenBreakdown = {
   /** premium OR premiumPlus. */
   premium: number

@@ -39,7 +39,7 @@
 
     <div class="py-4 space-y-10">
       <!-- Range selector -->
-      <div class="px-4">
+      <div class="px-4 flex flex-wrap items-center justify-between gap-3">
         <div class="inline-flex rounded-lg border moh-border overflow-hidden text-sm">
           <button
             v-for="opt in rangeOptions"
@@ -52,6 +52,36 @@
           >
             {{ opt.label }}
           </button>
+        </div>
+        <Button
+          label="Ask Marv"
+          severity="secondary"
+          rounded
+          :loading="briefLoading"
+          :disabled="!data || briefLoading"
+          aria-label="Ask Marv how the platform is doing"
+          @click="askMarv"
+        >
+          <template #icon>
+            <AppMarvMark :size="16" tone="inherit" />
+          </template>
+        </Button>
+      </div>
+
+      <div v-if="briefLoading || brief || briefError" class="px-4">
+        <div class="rounded-xl border moh-border p-4 space-y-3">
+          <div class="flex items-center gap-2">
+            <AppMarvMark :size="18" :tone="brief ? 'active' : 'muted'" />
+            <div class="text-sm font-semibold">How we're doing</div>
+          </div>
+          <div v-if="briefLoading" class="space-y-2" aria-live="polite">
+            <p class="text-sm text-gray-500 dark:text-gray-400">Reading the numbers…</p>
+            <div class="h-3 w-5/6 animate-pulse rounded bg-gray-200 dark:bg-zinc-800" />
+            <div class="h-3 w-full animate-pulse rounded bg-gray-200 dark:bg-zinc-800" />
+            <div class="h-3 w-2/3 animate-pulse rounded bg-gray-200 dark:bg-zinc-800" />
+          </div>
+          <p v-else-if="briefError" class="text-sm text-rose-700 dark:text-rose-300">{{ briefError }}</p>
+          <p v-else class="whitespace-pre-line text-sm leading-relaxed text-gray-800 dark:text-gray-100">{{ brief }}</p>
         </div>
       </div>
 
@@ -995,7 +1025,8 @@
 
 <script setup lang="ts">
 import { Chart, registerables } from 'chart.js'
-import type { AdminAnalytics, AdminReferralAnalytics, AnalyticsGranularity, AnalyticsRange } from '~/types/api'
+import type { AdminAnalytics, AdminAnalyticsBrief, AdminReferralAnalytics, AnalyticsGranularity, AnalyticsRange } from '~/types/api'
+import { getSafeUserErrorMessage } from '~/utils/api-error'
 
 definePageMeta({ middleware: 'admin', layout: 'app', ssr: false })
 
@@ -1022,6 +1053,9 @@ const loading = ref(false)
 const error = ref<string | null>(null)
 const referralAnalytics = ref<AdminReferralAnalytics | null>(null)
 const referralAnalyticsLoading = ref(false)
+const brief = ref<string | null>(null)
+const briefLoading = ref(false)
+const briefError = ref<string | null>(null)
 
 const signupsCanvas = ref<HTMLCanvasElement | null>(null)
 const contentCanvas = ref<HTMLCanvasElement | null>(null)
@@ -1058,7 +1092,31 @@ const rangeLabel = computed(() => {
 function setRange(range: AnalyticsRange) {
   if (range === selectedRange.value) return
   selectedRange.value = range
+  brief.value = null
+  briefError.value = null
   load()
+}
+
+async function askMarv() {
+  if (!data.value || briefLoading.value) return
+  briefLoading.value = true
+  briefError.value = null
+  try {
+    const result = await apiFetchData<AdminAnalyticsBrief>('/admin/analytics/brief', {
+      method: 'POST',
+      body: {
+        range: selectedRange.value,
+        analytics: data.value,
+        referrals: referralAnalytics.value,
+      },
+    })
+    brief.value = result.brief
+  } catch (e: unknown) {
+    brief.value = null
+    briefError.value = getSafeUserErrorMessage(e, 'Marv could not read these numbers right now.')
+  } finally {
+    briefLoading.value = false
+  }
 }
 
 // ─── Data loading ─────────────────────────────────────────────────────────────

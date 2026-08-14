@@ -39,17 +39,21 @@
     >
       <div class="space-y-1.5">
         <label for="space-owner-type" class="text-xs font-semibold uppercase tracking-wider moh-meta">Type</label>
-        <select
-          id="space-owner-type"
+        <Select
           v-model="draftMode"
-          class="w-full rounded-lg border moh-border-subtle bg-transparent px-3 py-1.5 text-sm moh-text focus:outline-none focus:ring-1 focus:ring-[var(--p-primary-color)]"
-        >
-          <option v-for="m in modes" :key="m.value" :value="m.value">{{ m.label }}</option>
-        </select>
+          input-id="space-owner-type"
+          :options="modes"
+          option-label="label"
+          option-value="value"
+          class="w-full"
+        />
       </div>
 
       <div v-if="draftMode === 'WATCH_PARTY'" class="space-y-1.5">
-        <label for="space-owner-watch-url" class="text-xs font-semibold uppercase tracking-wider moh-meta">YouTube URL</label>
+        <label for="space-owner-watch-url" class="text-xs font-semibold uppercase tracking-wider moh-meta">
+          YouTube URL
+          <span class="ml-1 font-normal normal-case tracking-normal">(optional)</span>
+        </label>
         <input
           id="space-owner-watch-url"
           v-model="watchPartyUrlInput"
@@ -156,7 +160,9 @@ const emit = defineEmits<{
 const expanded = ref(false)
 const closing = ref(false)
 const panelEl = ref<HTMLElement | null>(null)
-onClickOutside(panelEl, () => { void requestClose() })
+onClickOutside(panelEl, () => { void requestClose() }, {
+  ignore: ['.p-select-overlay', '[data-pc-section="overlay"]'],
+})
 onKeyStroke('Escape', () => {
   if (!expanded.value) return
   void requestClose()
@@ -235,7 +241,6 @@ const scheduleError = computed(() => {
 
 const canSave = computed(() => {
   if (!isDirty.value) return false
-  if (draftMode.value === 'WATCH_PARTY' && !normalizedWatchPartyInput.value) return false
   if (draftMode.value === 'RADIO' && !normalizedRadioInput.value) return false
   if (scheduleError.value) return false
   return true
@@ -313,9 +318,7 @@ async function onSave() {
 async function applyAll(): Promise<boolean> {
   if (saveBusy.value) return false
   if (!canSave.value) {
-    if (draftMode.value === 'WATCH_PARTY' && !normalizedWatchPartyInput.value) {
-      toast.push({ title: 'Add a YouTube URL', tone: 'error', durationMs: 1800 })
-    } else if (draftMode.value === 'RADIO' && !normalizedRadioInput.value) {
+    if (draftMode.value === 'RADIO' && !normalizedRadioInput.value) {
       toast.push({ title: 'Add a stream URL', tone: 'error', durationMs: 1800 })
     } else if (scheduleError.value) {
       toast.push({ title: scheduleError.value, tone: 'error', durationMs: 1800 })
@@ -328,7 +331,7 @@ async function applyAll(): Promise<boolean> {
     if (isModeDirty.value) {
       const updated = await setMode(props.space.id, {
         mode: draftMode.value,
-        watchPartyUrl: draftMode.value === 'WATCH_PARTY' ? watchPartyUrlInput.value : null,
+        watchPartyUrl: draftMode.value === 'WATCH_PARTY' ? (normalizedWatchPartyInput.value || null) : null,
         radioStreamUrl: draftMode.value === 'RADIO' ? radioStreamUrlInput.value : null,
       })
       if (!updated) {

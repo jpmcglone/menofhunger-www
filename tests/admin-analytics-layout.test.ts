@@ -44,4 +44,12 @@ describe('admin analytics layout', () => {
     expect(page).not.toMatch(/Mode Breakdown/)
     expect(page).not.toMatch(/spaceModeRows/)
   })
+
+  it('asks Marv to brief the already-loaded analytics snapshot', () => {
+    const page = readAnalyticsPage()
+    expect(page).toMatch(/Ask Marv/)
+    expect(page).toMatch(/\/admin\/analytics\/brief/)
+    expect(page).toMatch(/analytics: data\.value/)
+    expect(page).toMatch(/referrals: referralAnalytics\.value/)
+  })
 })

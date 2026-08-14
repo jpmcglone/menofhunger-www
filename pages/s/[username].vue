@@ -123,6 +123,17 @@
                 </ClientOnly>
               </div>
             </template>
+            <!-- Watch party with no video yet -->
+            <div
+              v-else-if="space.mode === 'WATCH_PARTY'"
+              class="flex w-full h-full min-h-[12rem] items-center justify-center rounded-xl moh-surface"
+              role="status"
+            >
+              <div class="px-4 text-center">
+                <Icon name="tabler:device-tv" class="text-[48px] moh-meta" aria-hidden="true" />
+                <p class="mt-3 text-sm moh-text">No video set yet</p>
+              </div>
+            </div>
             <!-- Radio mode: audio visualizer -->
             <AppSpaceVisualizer
               v-else-if="space.mode === 'RADIO' && space.radioStreamUrl"
