@@ -9,6 +9,7 @@ import type {
   SpaceMember,
   SpaceModeChanged,
   SpaceReactionEvent,
+  SpaceChatReactionEvent,
   WatchPartyState,
   WsAdminUpdatedPayload,
   WsArticlesLiveUpdatedPayload,
@@ -310,6 +311,20 @@ export function usePresenceDomains() {
       const typing = typeof data?.typing === 'boolean' ? data.typing : undefined
       for (const cb of spacesCallbacks.value) {
         cb.onTyping?.({ spaceId, sender, typing })
+      }
+    })
+
+    socket.on('spaces:chatReaction', (data: SpaceChatReactionEvent) => {
+      if (!spacesCallbacks.value.size) return
+      const spaceId = String(data?.spaceId ?? '').trim()
+      const messageId = String(data?.messageId ?? '').trim()
+      const userId = String(data?.userId ?? '').trim()
+      const reactionId = String(data?.reactionId ?? '').trim()
+      const emoji = String(data?.emoji ?? '').trim()
+      if (!spaceId || !messageId || !userId || !reactionId || !emoji) return
+      const username = typeof data?.username === 'string' ? data.username : null
+      for (const cb of spacesCallbacks.value) {
+        cb.onChatReaction?.({ spaceId, messageId, userId, username, reactionId, emoji })
       }
     })
 

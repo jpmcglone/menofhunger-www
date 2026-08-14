@@ -27,6 +27,8 @@
 
   /* Layout sizing */
   --moh-right-rail-w: 20rem;
+  /* Live chat needs a bit more room for reply chips + reaction pills (~20% over the default rail). */
+  --moh-right-rail-chat-w: 24rem;
 }
 
 @media (max-width: 639px) {

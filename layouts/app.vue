@@ -195,7 +195,13 @@
       ]"
     >
       <div class="mx-auto w-full max-w-6xl xl:max-w-7xl flex justify-end">
-        <div class="pointer-events-auto w-[var(--moh-right-rail-w)] border-b moh-border moh-bg moh-texture">
+        <div
+          :class="[
+            'pointer-events-auto border-b moh-border moh-bg moh-texture',
+            'transition-[width] duration-200 ease-out motion-reduce:transition-none',
+            showRadioChat ? 'w-[var(--moh-right-rail-chat-w)]' : 'w-[var(--moh-right-rail-w)]',
+          ]"
+        >
           <div class="moh-gutter-x h-16 flex items-center">
             <AppSearchTypeahead
               ref="searchInputRef"
@@ -383,14 +389,10 @@ onMounted(() => {
 })
 useSpacePlayPauseShortcut(radioHasStation)
 
-// Force the left nav into compact (icon-only) mode on chat/settings/admin while in a space,
-// so the freed horizontal space goes to the center column and the live-chat right rail.
+// Compact the left nav on space-hungry routes, and whenever the viewer is in a space
+// (live chat takes the right rail; icon-only nav frees the rest for the player/feed).
 const isSettingsOrAdminPage = computed(() => isSettingsPath(route.path) || isAdminPath(route.path))
-const navCompactMode = computed(() => {
-  if (_navCompactModeBase.value) return true
-  if (!selectedSpaceId.value) return false
-  return isMessagesPage.value || isSettingsOrAdminPage.value
-})
+const navCompactMode = computed(() => _navCompactModeBase.value || Boolean(selectedSpaceId.value))
 
 // Global keyboard shortcuts
 const searchInputRef = ref<{ focus: () => void } | null>(null)

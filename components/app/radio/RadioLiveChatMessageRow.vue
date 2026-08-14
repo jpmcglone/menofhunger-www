@@ -16,7 +16,28 @@
       <span class="ml-1">has {{ systemVerbPhrase }} the chat</span>
     </div>
   </div>
-  <div v-else class="text-sm leading-5" :class="containerClass" :style="containerStyle">
+  <div
+    v-else
+    :data-message-id="message.id"
+    class="group/row relative text-sm leading-5"
+    :class="containerClass"
+    :style="containerStyle"
+  >
+    <div
+      v-if="message.kind === 'user' && (message.replyTo || message.replyToId)"
+      class="mb-1 flex items-center gap-1.5 rounded-lg px-2 py-1 text-[11px] text-gray-500 dark:text-gray-400 bg-gray-100/80 dark:bg-zinc-800/80"
+      :class="message.replyTo ? 'cursor-pointer' : 'cursor-default'"
+      @click="onReplySnippetClick"
+    >
+      <Icon name="tabler:corner-up-right" size="12" class="shrink-0" aria-hidden="true" />
+      <div v-if="message.replyTo" class="min-w-0 flex-1 overflow-hidden">
+        <span class="font-semibold mr-1">{{ message.replyTo.senderUsername ? `@${message.replyTo.senderUsername}` : 'Unknown' }}</span>
+        <span class="break-words">{{ message.replyTo.bodyPreview }}</span>
+      </div>
+      <span v-else>Reply</span>
+    </div>
+    <div class="flex items-start gap-1">
+      <div class="min-w-0 flex-1">
     <template v-if="profilePath">
       <NuxtLink
         :to="profilePath"
@@ -106,6 +127,51 @@
         class="rounded-lg max-w-[280px] max-h-[200px] object-contain"
       />
     </div>
+      </div>
+      <div
+        class="flex shrink-0 items-center gap-0.5 pt-0.5 opacity-40 sm:opacity-0 sm:group-hover/row:opacity-100 focus-within:opacity-100 transition-opacity"
+      >
+        <button
+          type="button"
+          title="React"
+          aria-label="Add reaction"
+          class="flex h-7 w-7 items-center justify-center rounded-full text-gray-400 hover:text-gray-600 dark:text-zinc-500 dark:hover:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700"
+          @click.stop="emit('open-reaction-picker', $event)"
+        >
+          <Icon name="tabler:mood-smile" size="14" aria-hidden="true" />
+        </button>
+        <button
+          type="button"
+          title="Reply"
+          aria-label="Reply"
+          class="flex h-7 w-7 items-center justify-center rounded-full text-gray-400 hover:text-gray-600 dark:text-zinc-500 dark:hover:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700"
+          @click.stop="emit('reply')"
+        >
+          <Icon name="tabler:corner-up-right" size="14" aria-hidden="true" />
+        </button>
+      </div>
+    </div>
+    <div
+      v-if="message.kind === 'user' && message.reactions?.length"
+      class="mt-1 flex flex-wrap gap-1"
+    >
+      <button
+        v-for="group in message.reactions"
+        :key="group.reactionId"
+        type="button"
+        :title="group.reactors.map((r) => r.username || r.id).join(', ')"
+        :class="[
+          'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs border transition-colors',
+          group.reactedByMe
+            ? 'border-[var(--p-primary-color)] bg-[var(--p-primary-color)]/10 text-[var(--p-primary-color)]'
+            : 'border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-700 dark:text-gray-300',
+        ]"
+        @click.stop="emit('react', group.reactionId)"
+      >
+        <span>{{ group.emoji }}</span>
+        <span class="font-semibold tabular-nums">{{ group.count }}</span>
+      </button>
+    </div>
   </div>
 </template>
 
@@ -127,6 +193,18 @@ const props = defineProps<{
   message: SpaceChatMessage
   knownUsernames?: Set<string>
 }>()
+
+const emit = defineEmits<{
+  reply: []
+  react: [reactionId: string]
+  'open-reaction-picker': [event: Event]
+  'reply-snippet-click': [messageId: string]
+}>()
+
+function onReplySnippetClick() {
+  if (props.message.kind !== 'user' || !props.message.replyTo?.id) return
+  emit('reply-snippet-click', props.message.replyTo.id)
+}
 
 const { user: me } = useAuth()
 const blockState = useBlockState()

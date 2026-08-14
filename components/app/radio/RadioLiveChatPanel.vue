@@ -26,7 +26,20 @@
         <div v-else-if="messages.length === 0" class="px-4 py-6 text-sm text-gray-600 dark:text-gray-300">
           No messages yet. Say hello.
         </div>
-        <RadioLiveChatMessageList v-else :messages="messages" />
+        <RadioLiveChatMessageList
+          v-else
+          :messages="messages"
+          @reply="onReply"
+          @react="onReact"
+          @open-reaction-picker="openReactionPicker"
+          @reply-snippet-click="scrollToMessage"
+        />
+        <ChatReactionPicker
+          ref="reactionPickerRef"
+          :reactions="availableReactions"
+          :active-reaction-ids="activeReactionIds"
+          @select="onReactionSelect"
+        />
       </div>
 
       <Transition name="moh-fade">
@@ -80,6 +93,8 @@
         :placeholder="spaceId ? 'Chat…' : 'Select a space to chat…'"
         :priority-users="lobbyMentionCandidates"
         :priority-section-title="stationName"
+        :reply-to="replyToSnippet"
+        @cancel-reply="replyToMessage = null"
         @send="onSend"
       />
     </div>
@@ -90,9 +105,11 @@
 import { useBottomAnchoredList } from '~/composables/useBottomAnchoredList'
 import RadioLiveChatMessageList from '~/components/app/radio/RadioLiveChatMessageList.vue'
 import AppDmComposer from '~/components/app/DmComposer.vue'
+import ChatReactionPicker from '~/components/app/chat/ChatReactionPicker.vue'
 import { userColorTier } from '~/utils/user-tier'
+import { spaceChatReplySnippetFromParent } from '~/utils/space-chat-social'
 import type { CreateMediaPayload } from '~/composables/composer/types'
-import type { FollowListUser, SpaceChatMediaItem } from '~/types/api'
+import type { FollowListUser, MessageReaction, SpaceChatMediaItem, SpaceChatMessage } from '~/types/api'
 import { useSpaceChatUnread } from '~/composables/useSpaceChatUnread'
 import { useScrollPill } from '~/composables/useScrollPill'
 
@@ -100,9 +117,30 @@ withDefaults(defineProps<{ showHeader?: boolean }>(), {
   showHeader: true,
 })
 
-const { spaceId, messages, isLoadingMessages, sendMessage, typingUsersAll } = useSpaceLiveChat({
+const { spaceId, messages, isLoadingMessages, sendMessage, reactToMessage, typingUsersAll } = useSpaceLiveChat({
   passive: true,
 })
+const { reactions: spaceReactions, loadReactions } = useSpaceReactions()
+const availableReactions = computed<MessageReaction[]>(() =>
+  spaceReactions.value.map((r) => ({ id: r.id, emoji: r.emoji, label: r.label })),
+)
+const replyToMessage = ref<SpaceChatMessage | null>(null)
+const replyToSnippet = computed(() => {
+  const m = replyToMessage.value
+  if (!m || m.kind !== 'user') return null
+  return spaceChatReplySnippetFromParent(m)
+})
+const reactionPickerRef = ref<{ toggle: (e: Event) => void; hide: () => void } | null>(null)
+const pickerMessage = ref<SpaceChatMessage | null>(null)
+const activeReactionIds = computed(() => {
+  if (pickerMessage.value?.kind !== 'user') return new Set<string>()
+  return new Set(
+    (pickerMessage.value.reactions ?? []).filter((r) => r.reactedByMe).map((r) => r.reactionId),
+  )
+})
+
+onMounted(() => { void loadReactions() })
+watch(spaceId, () => { replyToMessage.value = null })
 const { currentSpace, members } = useSpaceLobby()
 const { user } = useAuth()
 
@@ -265,10 +303,39 @@ function onSend() {
   } catch {
     // ignore
   }
-  sendMessage(text, chatMedia.length > 0 ? chatMedia : undefined)
+  sendMessage(text, chatMedia.length > 0 ? chatMedia : undefined, replyToMessage.value?.id ?? null)
+  replyToMessage.value = null
   composerText.value = ''
   composerRef.value?.clearMedia?.()
   scheduleAfterFrame(() => scrollToBottom('auto'))
+}
+
+function onReply(message: SpaceChatMessage) {
+  if (message.kind !== 'user') return
+  replyToMessage.value = message
+}
+
+function onReact(message: SpaceChatMessage, reactionId: string) {
+  if (message.kind !== 'user') return
+  reactToMessage(message.id, reactionId)
+}
+
+function openReactionPicker(event: Event, message: SpaceChatMessage) {
+  pickerMessage.value = message
+  reactionPickerRef.value?.toggle(event)
+}
+
+function onReactionSelect(reactionId: string) {
+  const message = pickerMessage.value
+  if (!message || message.kind !== 'user') return
+  reactToMessage(message.id, reactionId)
+}
+
+function scrollToMessage(messageId: string) {
+  const root = scrollerEl.value
+  if (!root || !messageId) return
+  const el = root.querySelector(`[data-message-id="${CSS.escape(messageId)}"]`)
+  if (el instanceof HTMLElement) el.scrollIntoView({ block: 'center', behavior: 'smooth' })
 }
 
 const didInitScroll = ref(false)

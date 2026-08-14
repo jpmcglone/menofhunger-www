@@ -117,14 +117,29 @@ export function createPresenceEmitters(socketRef: Ref<Socket | null>) {
       if (!socket?.connected) return
       socket.emit('spaces:chatUnsubscribe', {})
     },
-    emitSpacesChatSend(spaceId: string, body: string, media?: Array<{ url: string; width: number | null; height: number | null; alt: string | null }>) {
+    emitSpacesChatSend(
+      spaceId: string,
+      body: string,
+      media?: Array<{ url: string; width: number | null; height: number | null; alt: string | null }>,
+      replyToId?: string | null,
+    ) {
       const socket = socketRef.value
       const id = String(spaceId ?? '').trim()
       const text = String(body ?? '')
       if (!socket?.connected || !id) return
       const payload: Record<string, unknown> = { spaceId: id, body: text }
       if (media && media.length > 0) payload.media = media
+      const parentId = String(replyToId ?? '').trim()
+      if (parentId) payload.replyToId = parentId
       socket.emit('spaces:chatSend', payload)
+    },
+    emitSpacesChatReact(spaceId: string, messageId: string, reactionId: string) {
+      const socket = socketRef.value
+      const sid = String(spaceId ?? '').trim()
+      const mid = String(messageId ?? '').trim()
+      const rid = String(reactionId ?? '').trim()
+      if (!socket?.connected || !sid || !mid || !rid) return
+      socket.emit('spaces:chatReact', { spaceId: sid, messageId: mid, reactionId: rid })
     },
     emitSpacesTyping(spaceId: string, typing: boolean) {
       const socket = socketRef.value

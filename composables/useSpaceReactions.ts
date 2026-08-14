@@ -1,4 +1,5 @@
 import type { SpaceReaction } from '~/types/api'
+import { ALLOWED_REACTIONS } from '~/utils/reactions'
 
 /**
  * Module-level resolver so any component (spaces page) can register avatar positions
@@ -48,7 +49,7 @@ const REACTIONS_KEY = 'space-reactions'
 export function useSpaceReactions() {
   const { apiFetchData } = useApiClient()
 
-  const reactions = useState<SpaceReaction[]>(REACTIONS_KEY, () => [])
+  const reactions = useState<SpaceReaction[]>(REACTIONS_KEY, () => [...ALLOWED_REACTIONS])
 
   async function loadReactions() {
     if (reactions.value.length) return

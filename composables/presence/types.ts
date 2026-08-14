@@ -15,6 +15,7 @@ import type {
   SpaceMember,
   SpaceModeChanged,
   SpaceReactionEvent,
+  SpaceChatReactionEvent,
   WatchPartyState,
   WsAdminUpdatedPayload,
   WsArticlesLiveUpdatedPayload,
@@ -91,6 +92,7 @@ export type SpacesCallback = {
   onLobbyCounts?: (payload: SpacesLobbyCountsPayload) => void
   onChatSnapshot?: (payload: SpacesChatSnapshotPayload) => void
   onChatMessage?: (payload: SpacesChatMessagePayload) => void
+  onChatReaction?: (payload: SpaceChatReactionEvent) => void
   onTyping?: (payload: SpacesTypingPayload) => void
   onReaction?: (payload: SpacesReactionPayload) => void
   onWatchPartyState?: (payload: SpacesWatchPartyStatePayload) => void

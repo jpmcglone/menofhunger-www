@@ -7,6 +7,7 @@ import {
   spaceChatOwnerId,
   writeSpaceChatLocal,
 } from '~/utils/space-chat-local'
+import { applySpaceChatReaction, attachSpaceChatReply, resolveSpaceChatReplies } from '~/utils/space-chat-social'
 import { userColorTier, userTierColorVar } from '~/utils/user-tier'
 
 const TYPING_TTL_MS = 3500
@@ -147,12 +148,16 @@ export function useSpaceLiveChat(options: { passive?: boolean } = {}) {
     if (!uid || hydratedForUserId.value === uid) return
     const prevOwner = hydratedForUserId.value
     const stored = loadAllSpaceChatLocal(uid)
+    const resolved: Record<string, SpaceChatMessage[]> = {}
+    for (const sid of Object.keys(stored)) {
+      resolved[sid] = resolveSpaceChatReplies(stored[sid] ?? [])
+    }
     if (prevOwner && prevOwner !== uid) {
-      messagesBySpace.value = stored
+      messagesBySpace.value = resolved
     } else {
       const next = { ...messagesBySpace.value }
-      for (const sid of Object.keys(stored)) {
-        next[sid] = upsertMessages(stored[sid] ?? [], next[sid] ?? [])
+      for (const sid of Object.keys(resolved)) {
+        next[sid] = resolveSpaceChatReplies(upsertMessages(resolved[sid] ?? [], next[sid] ?? []))
       }
       messagesBySpace.value = next
     }
@@ -176,11 +181,14 @@ export function useSpaceLiveChat(options: { passive?: boolean } = {}) {
     const id = String(sid ?? '').trim()
     if (!id || !msg?.id) return
     const current = messagesBySpace.value[id] ?? []
-    const idx = current.findIndex((m) => m.id === msg.id)
+    const byId = new Map(current.map((m) => [m.id, m]))
+    byId.set(msg.id, msg)
+    const incoming = attachSpaceChatReply(msg, byId)
+    const idx = current.findIndex((m) => m.id === incoming.id)
     const next =
       idx >= 0
-        ? finalizeMessageList([...current.slice(0, idx), msg, ...current.slice(idx + 1)])
-        : finalizeMessageList([...current, msg])
+        ? finalizeMessageList([...current.slice(0, idx), incoming, ...current.slice(idx + 1)])
+        : finalizeMessageList([...current, incoming])
     messagesBySpace.value = { ...messagesBySpace.value, [id]: next }
     persistSpace(id, next)
   }
@@ -279,6 +287,20 @@ export function useSpaceLiveChat(options: { passive?: boolean } = {}) {
         const merged = upsertMessages(existing, incoming)
         messagesBySpace.value = { ...messagesBySpace.value, [sid]: merged }
         snapshotReceivedForSpaceId.value = sid
+      },
+      onChatReaction: (payload) => {
+        const sid = String(payload?.spaceId ?? '').trim()
+        const messageId = String(payload?.messageId ?? '').trim()
+        if (!sid || !messageId) return
+        const current = messagesBySpace.value[sid] ?? []
+        const idx = current.findIndex((m) => m.id === messageId)
+        if (idx < 0) return
+        const nextMsg = applySpaceChatReaction(current[idx]!, payload, user.value?.id ?? null)
+        if (!nextMsg) return
+        const next = [...current]
+        next[idx] = nextMsg
+        messagesBySpace.value = { ...messagesBySpace.value, [sid]: next }
+        persistSpace(sid, next)
       },
       onChatMessage: (payload) => {
         const sid = String(payload?.spaceId ?? '').trim()
@@ -410,7 +432,11 @@ export function useSpaceLiveChat(options: { passive?: boolean } = {}) {
     )
   }
 
-  function sendMessage(body: string, media?: Array<{ url: string; width: number | null; height: number | null; alt: string | null }>) {
+  function sendMessage(
+    body: string,
+    media?: Array<{ url: string; width: number | null; height: number | null; alt: string | null }>,
+    replyToId?: string | null,
+  ) {
     const sid = spaceId.value
     if (!import.meta.client) return
     if (!sid) return
@@ -419,7 +445,16 @@ export function useSpaceLiveChat(options: { passive?: boolean } = {}) {
     const text = String(body ?? '').trim()
     const hasMedia = media && media.length > 0
     if (!text && !hasMedia) return
-    presence.emitSpacesChatSend(sid, text, hasMedia ? media : undefined)
+    presence.emitSpacesChatSend(sid, text, hasMedia ? media : undefined, replyToId)
+  }
+
+  function reactToMessage(messageId: string, reactionId: string) {
+    const sid = spaceId.value
+    if (!import.meta.client || !sid || !canSubscribeChat.value) return
+    const mid = String(messageId ?? '').trim()
+    const rid = String(reactionId ?? '').trim()
+    if (!mid || !rid) return
+    presence.emitSpacesChatReact(sid, mid, rid)
   }
 
   return {
@@ -432,6 +467,7 @@ export function useSpaceLiveChat(options: { passive?: boolean } = {}) {
     typingUsersTotalCount,
     subscribedSpaceId: readonly(subscribedSpaceId),
     sendMessage,
+    reactToMessage,
     setMessagesForSpace,
   }
 }

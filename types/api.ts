@@ -369,6 +369,14 @@ export type SpaceChatMediaItem = {
   alt: string | null
 }
 
+export type SpaceChatReactionSummary = {
+  reactionId: string
+  emoji: string
+  count: number
+  reactedByMe: boolean
+  reactors: { id: string; username: string | null }[]
+}
+
 export type SpaceChatMessage =
   | {
       id: string
@@ -378,6 +386,10 @@ export type SpaceChatMessage =
       media?: SpaceChatMediaItem[]
       createdAt: string
       sender: SpaceChatSender
+      replyToId?: string | null
+      /** Client-resolved. Absent when this browser never had the parent. */
+      replyTo?: MessageReplySnippet | null
+      reactions?: SpaceChatReactionSummary[]
     }
   | {
       id: string
@@ -408,6 +420,15 @@ export type SpaceReaction = {
 export type SpaceReactionEvent = {
   spaceId: string
   userId: string
+  reactionId: string
+  emoji: string
+}
+
+export type SpaceChatReactionEvent = {
+  spaceId: string
+  messageId: string
+  userId: string
+  username: string | null
   reactionId: string
   emoji: string
 }

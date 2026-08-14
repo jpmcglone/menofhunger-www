@@ -4,7 +4,9 @@
     ref="rightRailEl"
     :class="[
       // Layout should not add padding; right-rail content owns its gutters.
-      'relative no-scrollbar shrink-0 w-[var(--moh-right-rail-w)] h-full moh-bg moh-texture',
+      'relative no-scrollbar shrink-0 h-full moh-bg moh-texture',
+      'transition-[width] duration-200 ease-out motion-reduce:transition-none',
+      showRadioChat ? 'w-[var(--moh-right-rail-chat-w)]' : 'w-[var(--moh-right-rail-w)]',
       // Single native scroller: the rail itself scrolls; search floats above the entire layout.
       // IMPORTANT: `min-h-0` is required so the rail can scroll in a flex row.
       'min-h-0',

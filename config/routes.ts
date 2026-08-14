@@ -110,7 +110,8 @@ export function navCompactModePath(path: string): boolean {
     path.startsWith('/tiers/') ||
     path === '/radio' ||
     path.startsWith('/radio/') ||
-    path.startsWith('/a/')
+    path.startsWith('/a/') ||
+    isSpacePermalinkPath(path)
   )
 }
 

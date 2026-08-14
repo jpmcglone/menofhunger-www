@@ -5,6 +5,10 @@
       :key="m.id"
       :message="m"
       :known-usernames="knownUsernames"
+      @reply="emit('reply', m)"
+      @react="(reactionId) => emit('react', m, reactionId)"
+      @open-reaction-picker="(event) => emit('open-reaction-picker', event, m)"
+      @reply-snippet-click="(id) => emit('reply-snippet-click', id)"
     />
     <!-- Always reserved so the overlaid typing row never covers the last message. -->
     <div class="h-10 shrink-0" aria-hidden="true" />
@@ -17,6 +21,13 @@ import RadioLiveChatMessageRow from '~/components/app/radio/RadioLiveChatMessage
 
 const props = defineProps<{
   messages: SpaceChatMessage[]
+}>()
+
+const emit = defineEmits<{
+  reply: [message: SpaceChatMessage]
+  react: [message: SpaceChatMessage, reactionId: string]
+  'open-reaction-picker': [event: Event, message: SpaceChatMessage]
+  'reply-snippet-click': [messageId: string]
 }>()
 
 const { members } = useSpaceLobby()
