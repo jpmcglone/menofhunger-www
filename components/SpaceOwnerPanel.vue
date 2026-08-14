@@ -10,7 +10,7 @@
           class="moh-tap moh-focus inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider moh-meta"
           :aria-expanded="expanded"
           aria-controls="space-owner-controls-body"
-          @click="expanded = !expanded"
+          @click="onToggleExpanded"
         >
           <span>Owner Controls</span>
           <Icon
@@ -37,44 +37,29 @@
       id="space-owner-controls-body"
       class="absolute inset-x-0 top-full z-30 -mt-px space-y-3 rounded-b-xl border-x border-b moh-border px-4 pb-4 moh-bg shadow-lg"
     >
-      <div class="flex items-center gap-2">
-        <button
-          v-for="m in modes"
-          :key="m.value"
-          type="button"
-          class="moh-tap moh-focus text-xs font-medium px-3 py-1.5 rounded-full border transition-colors"
-          :class="currentMode === m.value
-            ? 'border-[var(--p-primary-color)] bg-[var(--p-primary-color)]/10 text-[var(--p-primary-color)]'
-            : 'moh-border-subtle moh-meta moh-surface-hover'"
-          @click="onModeSelect(m.value)"
+      <div class="space-y-1.5">
+        <label for="space-owner-type" class="text-xs font-semibold uppercase tracking-wider moh-meta">Type</label>
+        <select
+          id="space-owner-type"
+          v-model="draftMode"
+          class="w-full rounded-lg border moh-border-subtle bg-transparent px-3 py-1.5 text-sm moh-text focus:outline-none focus:ring-1 focus:ring-[var(--p-primary-color)]"
         >
-          <Icon :name="m.icon" class="text-[13px] mr-1" aria-hidden="true" />
-          {{ m.label }}
-        </button>
+          <option v-for="m in modes" :key="m.value" :value="m.value">{{ m.label }}</option>
+        </select>
       </div>
 
-      <div v-if="currentMode === 'WATCH_PARTY'" class="flex items-center gap-2">
+      <div v-if="draftMode === 'WATCH_PARTY'" class="space-y-1.5">
+        <label for="space-owner-watch-url" class="text-xs font-semibold uppercase tracking-wider moh-meta">YouTube URL</label>
         <input
+          id="space-owner-watch-url"
           v-model="watchPartyUrlInput"
           type="url"
-          placeholder="YouTube URL"
-          class="flex-1 rounded-lg border moh-border-subtle bg-transparent px-3 py-1.5 text-sm moh-text placeholder:moh-meta focus:outline-none focus:ring-1 focus:ring-[var(--p-primary-color)]"
-          @keydown.enter="applyMode"
-        />
-        <button
-          type="button"
-          class="moh-tap moh-focus shrink-0 text-xs font-semibold px-3 py-1.5 rounded-lg transition-opacity"
-          :class="canApplyWatchParty
-            ? 'bg-[var(--p-primary-color)] text-white hover:opacity-90'
-            : 'bg-gray-300/60 text-gray-600 dark:bg-zinc-700 dark:text-zinc-300 cursor-not-allowed'"
-          :disabled="!canApplyWatchParty"
-          @click="applyMode"
+          placeholder="https://youtube.com/watch?v=…"
+          class="w-full rounded-lg border moh-border-subtle bg-transparent px-3 py-1.5 text-sm moh-text placeholder:moh-meta focus:outline-none focus:ring-1 focus:ring-[var(--p-primary-color)]"
         >
-          {{ canApplyWatchParty ? 'Apply' : 'Current URL' }}
-        </button>
       </div>
 
-      <div v-if="currentMode === 'RADIO'" class="space-y-2">
+      <div v-if="draftMode === 'RADIO'" class="space-y-2">
         <div class="flex flex-wrap gap-1.5">
           <button
             v-for="preset in radioPresets"
@@ -89,22 +74,14 @@
             {{ preset.label }}
           </button>
         </div>
-        <div class="flex items-center gap-2">
-          <input
-            v-model="radioStreamUrlInput"
-            type="url"
-            placeholder="MP3 stream URL"
-            class="flex-1 rounded-lg border moh-border-subtle bg-transparent px-3 py-1.5 text-sm moh-text placeholder:moh-meta focus:outline-none focus:ring-1 focus:ring-[var(--p-primary-color)]"
-            @keydown.enter="applyMode"
-          />
-          <button
-            type="button"
-            class="moh-tap moh-focus shrink-0 text-xs font-semibold px-3 py-1.5 rounded-lg bg-[var(--p-primary-color)] text-white hover:opacity-90 transition-opacity"
-            @click="applyMode"
-          >
-            Apply
-          </button>
-        </div>
+        <label for="space-owner-radio-url" class="sr-only">Stream URL</label>
+        <input
+          id="space-owner-radio-url"
+          v-model="radioStreamUrlInput"
+          type="url"
+          placeholder="MP3 stream URL"
+          class="w-full rounded-lg border moh-border-subtle bg-transparent px-3 py-1.5 text-sm moh-text placeholder:moh-meta focus:outline-none focus:ring-1 focus:ring-[var(--p-primary-color)]"
+        >
       </div>
 
       <div class="space-y-2 border-t moh-border-subtle pt-3">
@@ -118,7 +95,7 @@
         <p v-if="upcomingLabel" class="text-sm moh-text">
           {{ upcomingLabel }}
         </p>
-        <p v-if="space.scheduledAt" class="text-[11px] moh-meta">
+        <p v-if="scheduleLocalInput || space.scheduledAt" class="text-[11px] moh-meta">
           Reminder ~15 minutes before. Others who tap Notify me get day-of and soon alerts.
         </p>
         <div class="flex flex-wrap items-center gap-2">
@@ -126,21 +103,12 @@
             v-model="scheduleLocalInput"
             type="datetime-local"
             class="min-w-0 flex-1 rounded-lg border moh-border-subtle bg-transparent px-3 py-1.5 text-sm moh-text focus:outline-none focus:ring-1 focus:ring-[var(--p-primary-color)]"
-          />
-          <button
-            type="button"
-            class="moh-tap moh-focus shrink-0 text-xs font-semibold px-3 py-1.5 rounded-lg bg-[var(--p-primary-color)] text-white hover:opacity-90 transition-opacity disabled:opacity-50"
-            :disabled="!canSaveSchedule || scheduleBusy"
-            @click="saveSchedule"
           >
-            {{ space.scheduledAt ? 'Update' : 'Schedule' }}
-          </button>
           <button
-            v-if="space.scheduledAt"
+            v-if="scheduleLocalInput"
             type="button"
-            class="moh-tap moh-focus shrink-0 text-xs font-medium px-3 py-1.5 rounded-lg border moh-border-subtle moh-meta moh-surface-hover disabled:opacity-50"
-            :disabled="scheduleBusy"
-            @click="onClearSchedule"
+            class="moh-tap moh-focus shrink-0 text-xs font-medium px-3 py-1.5 rounded-lg border moh-border-subtle moh-meta moh-surface-hover"
+            @click="scheduleLocalInput = ''"
           >
             Clear
           </button>
@@ -152,6 +120,17 @@
           @click="shareToFeed"
         >
           Share to feed
+        </button>
+      </div>
+
+      <div class="flex items-center justify-end gap-2 pt-1">
+        <button
+          type="button"
+          class="moh-tap moh-focus text-xs font-semibold px-3 py-1.5 rounded-lg bg-[var(--p-primary-color)] text-white hover:opacity-90 transition-opacity disabled:opacity-50"
+          :disabled="!canSave || saveBusy"
+          @click="onSave"
+        >
+          {{ saveBusy ? 'Saving…' : 'Save' }}
         </button>
       </div>
     </div>
@@ -175,22 +154,24 @@ const emit = defineEmits<{
 }>()
 
 const expanded = ref(false)
+const closing = ref(false)
 const panelEl = ref<HTMLElement | null>(null)
-onClickOutside(panelEl, () => { expanded.value = false })
+onClickOutside(panelEl, () => { void requestClose() })
 onKeyStroke('Escape', () => {
   if (!expanded.value) return
-  expanded.value = false
+  void requestClose()
 })
 
 const { setMode, activateSpace, deactivateSpace, setSchedule, clearSchedule } = useSpaceOwner()
 const presence = usePresence()
 const openComposer = inject(MOH_OPEN_COMPOSER_KEY, null)
 const toast = useAppToast()
+const { confirm } = useAppConfirm()
 
 const modes = [
-  { value: 'NONE' as const, label: 'None', icon: 'tabler:circle-off' },
-  { value: 'WATCH_PARTY' as const, label: 'Watch Party', icon: 'tabler:device-tv' },
-  { value: 'RADIO' as const, label: 'Radio', icon: 'tabler:radio' },
+  { value: 'NONE' as const, label: 'None' },
+  { value: 'WATCH_PARTY' as const, label: 'Watch Party' },
+  { value: 'RADIO' as const, label: 'Radio' },
 ]
 
 const radioPresets = [
@@ -203,20 +184,11 @@ const radioPresets = [
   { label: 'Ancient Faith', url: 'https://tcast.ancientfaith.com/ancientfaithradio.mp3' },
 ]
 
-const currentMode = ref<SpaceMode>(props.space.mode ?? 'NONE')
+const draftMode = ref<SpaceMode>(props.space.mode ?? 'NONE')
 const watchPartyUrlInput = ref(props.space.watchPartyUrl ?? '')
 const radioStreamUrlInput = ref(props.space.radioStreamUrl ?? '')
 const scheduleLocalInput = ref('')
-const scheduleBusy = ref(false)
-const normalizedWatchPartyInput = computed(() => watchPartyUrlInput.value.trim())
-const normalizedCurrentWatchPartyUrl = computed(() => (props.space.watchPartyUrl ?? '').trim())
-const canApplyWatchParty = computed(() => (
-  normalizedWatchPartyInput.value.length > 0
-  && (
-    props.space.mode !== 'WATCH_PARTY'
-    || normalizedWatchPartyInput.value !== normalizedCurrentWatchPartyUrl.value
-  )
-))
+const saveBusy = ref(false)
 
 function toDatetimeLocalValue(iso: string | null | undefined): string {
   if (!iso) return ''
@@ -226,10 +198,53 @@ function toDatetimeLocalValue(iso: string | null | undefined): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 
+function resetDraftFromSpace(s: Space) {
+  draftMode.value = s.mode ?? 'NONE'
+  watchPartyUrlInput.value = s.watchPartyUrl ?? ''
+  radioStreamUrlInput.value = s.radioStreamUrl ?? ''
+  scheduleLocalInput.value = toDatetimeLocalValue(s.scheduledAt)
+}
+
+const normalizedWatchPartyInput = computed(() => watchPartyUrlInput.value.trim())
+const normalizedRadioInput = computed(() => radioStreamUrlInput.value.trim())
+const normalizedCurrentWatchPartyUrl = computed(() => (props.space.watchPartyUrl ?? '').trim())
+const normalizedCurrentRadioUrl = computed(() => (props.space.radioStreamUrl ?? '').trim())
+
+const isModeDirty = computed(() => {
+  if (draftMode.value !== (props.space.mode ?? 'NONE')) return true
+  if (draftMode.value === 'WATCH_PARTY' && normalizedWatchPartyInput.value !== normalizedCurrentWatchPartyUrl.value) return true
+  if (draftMode.value === 'RADIO' && normalizedRadioInput.value !== normalizedCurrentRadioUrl.value) return true
+  return false
+})
+
+const isScheduleDirty = computed(() => (
+  scheduleLocalInput.value !== toDatetimeLocalValue(props.space.scheduledAt)
+))
+
+const isDirty = computed(() => isModeDirty.value || isScheduleDirty.value)
+
+const scheduleError = computed(() => {
+  const raw = scheduleLocalInput.value.trim()
+  if (!raw) return null
+  const d = new Date(raw)
+  if (Number.isNaN(d.getTime()) || d.getTime() <= Date.now() + 60_000) {
+    return 'Pick a time at least a minute from now.'
+  }
+  return null
+})
+
+const canSave = computed(() => {
+  if (!isDirty.value) return false
+  if (draftMode.value === 'WATCH_PARTY' && !normalizedWatchPartyInput.value) return false
+  if (draftMode.value === 'RADIO' && !normalizedRadioInput.value) return false
+  if (scheduleError.value) return false
+  return true
+})
+
 const upcomingLabel = computed(() => {
-  const iso = props.space.scheduledAt
-  if (!iso || props.space.isActive) return null
-  const d = new Date(iso)
+  const raw = scheduleLocalInput.value.trim()
+  if (!raw) return null
+  const d = new Date(raw)
   if (Number.isNaN(d.getTime()) || d.getTime() <= Date.now()) return null
   return new Intl.DateTimeFormat(undefined, {
     weekday: 'short',
@@ -240,21 +255,46 @@ const upcomingLabel = computed(() => {
   }).format(d)
 })
 
-const canSaveSchedule = computed(() => {
-  const raw = scheduleLocalInput.value.trim()
-  if (!raw) return false
-  const d = new Date(raw)
-  return !Number.isNaN(d.getTime()) && d.getTime() > Date.now() + 60_000
-})
-
 watch(() => props.space, (s) => {
-  if (s) {
-    currentMode.value = s.mode ?? 'NONE'
-    watchPartyUrlInput.value = s.watchPartyUrl ?? ''
-    radioStreamUrlInput.value = s.radioStreamUrl ?? ''
-    scheduleLocalInput.value = toDatetimeLocalValue(s.scheduledAt)
-  }
+  if (!s || isDirty.value) return
+  resetDraftFromSpace(s)
 }, { deep: true, immediate: true })
+
+function onToggleExpanded() {
+  if (expanded.value) {
+    void requestClose()
+    return
+  }
+  resetDraftFromSpace(props.space)
+  expanded.value = true
+}
+
+async function requestClose() {
+  if (!expanded.value || closing.value) return
+  if (!isDirty.value) {
+    expanded.value = false
+    return
+  }
+  closing.value = true
+  const result = await confirm({
+    header: 'Save changes?',
+    message: 'You have unsaved owner control changes.',
+    confirmLabel: 'Save',
+    confirmSeverity: 'primary',
+    cancelLabel: 'Keep editing',
+    discardLabel: 'Discard',
+  })
+  closing.value = false
+  if (result === true) {
+    const saved = await applyAll()
+    if (saved) expanded.value = false
+    return
+  }
+  if (result === 'discard') {
+    resetDraftFromSpace(props.space)
+    expanded.value = false
+  }
+}
 
 async function toggleActive() {
   const updated = props.space.isActive
@@ -263,58 +303,62 @@ async function toggleActive() {
   if (updated) emit('spaceUpdated', updated)
 }
 
-function onModeSelect(mode: SpaceMode) {
-  currentMode.value = mode
-  if (mode === 'NONE') {
-    void applyMode()
+async function onSave() {
+  const saved = await applyAll()
+  if (saved) {
+    toast.push({ title: 'Saved', tone: 'public', durationMs: 1400 })
   }
 }
 
-async function applyMode() {
-  if (currentMode.value === 'WATCH_PARTY' && !canApplyWatchParty.value) return
-  const updated = await setMode(props.space.id, {
-    mode: currentMode.value,
-    watchPartyUrl: currentMode.value === 'WATCH_PARTY' ? watchPartyUrlInput.value : null,
-    radioStreamUrl: currentMode.value === 'RADIO' ? radioStreamUrlInput.value : null,
-  })
-  if (updated) {
-    emit('spaceUpdated', updated)
-    presence.emitSpacesAnnounceMode(props.space.id, {
-      mode: updated.mode,
-      watchPartyUrl: updated.watchPartyUrl ?? null,
-      radioStreamUrl: updated.radioStreamUrl ?? null,
-    })
-  }
-}
-
-async function saveSchedule() {
-  if (!canSaveSchedule.value || scheduleBusy.value) return
-  scheduleBusy.value = true
-  try {
-    const d = new Date(scheduleLocalInput.value)
-    const updated = await setSchedule(props.space.id, d.toISOString())
-    if (updated) {
-      emit('spaceUpdated', updated)
-      toast.push({ title: 'Space scheduled', tone: 'public', durationMs: 1600 })
-    } else {
-      toast.push({ title: 'Could not schedule', tone: 'error', durationMs: 2000 })
+async function applyAll(): Promise<boolean> {
+  if (saveBusy.value) return false
+  if (!canSave.value) {
+    if (draftMode.value === 'WATCH_PARTY' && !normalizedWatchPartyInput.value) {
+      toast.push({ title: 'Add a YouTube URL', tone: 'error', durationMs: 1800 })
+    } else if (draftMode.value === 'RADIO' && !normalizedRadioInput.value) {
+      toast.push({ title: 'Add a stream URL', tone: 'error', durationMs: 1800 })
+    } else if (scheduleError.value) {
+      toast.push({ title: scheduleError.value, tone: 'error', durationMs: 1800 })
     }
-  } finally {
-    scheduleBusy.value = false
+    return false
   }
-}
-
-async function onClearSchedule() {
-  if (scheduleBusy.value) return
-  scheduleBusy.value = true
+  saveBusy.value = true
   try {
-    const updated = await clearSchedule(props.space.id)
-    if (updated) {
+    let latest = props.space
+    if (isModeDirty.value) {
+      const updated = await setMode(props.space.id, {
+        mode: draftMode.value,
+        watchPartyUrl: draftMode.value === 'WATCH_PARTY' ? watchPartyUrlInput.value : null,
+        radioStreamUrl: draftMode.value === 'RADIO' ? radioStreamUrlInput.value : null,
+      })
+      if (!updated) {
+        toast.push({ title: 'Could not save type', tone: 'error', durationMs: 2000 })
+        return false
+      }
+      latest = updated
       emit('spaceUpdated', updated)
-      toast.push({ title: 'Schedule cleared', tone: 'public', durationMs: 1400 })
+      presence.emitSpacesAnnounceMode(props.space.id, {
+        mode: updated.mode,
+        watchPartyUrl: updated.watchPartyUrl ?? null,
+        radioStreamUrl: updated.radioStreamUrl ?? null,
+      })
     }
+    if (isScheduleDirty.value) {
+      const raw = scheduleLocalInput.value.trim()
+      const updated = raw
+        ? await setSchedule(props.space.id, new Date(raw).toISOString())
+        : await clearSchedule(props.space.id)
+      if (!updated) {
+        toast.push({ title: raw ? 'Could not schedule' : 'Could not clear schedule', tone: 'error', durationMs: 2000 })
+        return false
+      }
+      latest = updated
+      emit('spaceUpdated', updated)
+    }
+    resetDraftFromSpace(latest)
+    return true
   } finally {
-    scheduleBusy.value = false
+    saveBusy.value = false
   }
 }
 
@@ -322,7 +366,17 @@ function shareToFeed() {
   const username = props.space.owner?.username
   if (!username || !openComposer) return
   const url = `${siteConfig.url}/s/${encodeURIComponent(username)}`
-  const when = upcomingLabel.value
+  const iso = props.space.scheduledAt
+  const d = iso ? new Date(iso) : null
+  const when = d && !Number.isNaN(d.getTime()) && d.getTime() > Date.now()
+    ? new Intl.DateTimeFormat(undefined, {
+        weekday: 'short',
+        month: 'short',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+      }).format(d)
+    : null
   const text = when
     ? `Join me in my Space — ${when}\n${url}`
     : `Join me in my Space\n${url}`
