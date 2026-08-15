@@ -35,6 +35,7 @@
               <span class="moh-meta">{{ statusLabel(item.status) }}</span>
               <span v-if="item.isAd" class="moh-meta">Ad</span>
               <span class="moh-meta">{{ item.placement === 'inline' ? 'Inline' : 'Overlay' }}</span>
+              <span class="moh-meta">{{ item.maxViews }}×</span>
             </div>
             <div class="text-sm moh-text-muted line-clamp-1">
               {{ item.body || 'No body' }}

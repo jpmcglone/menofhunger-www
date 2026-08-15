@@ -61,6 +61,14 @@
       </div>
 
       <div class="space-y-2">
+        <label class="text-sm font-medium moh-text" for="announcement-max-views">Max times per person</label>
+        <select id="announcement-max-views" v-model.number="maxViews" class="w-full rounded-xl border moh-border moh-surface px-3 py-2 text-sm moh-text">
+          <option v-for="n in 10" :key="n" :value="n">{{ n }}</option>
+        </select>
+        <div class="text-xs moh-text-muted">Counted separately on web and iOS. After this they will not see it again.</div>
+      </div>
+
+      <div class="space-y-2">
         <div class="text-sm font-medium moh-text">Placement</div>
         <div class="flex flex-col gap-2">
           <label class="flex items-start gap-2 text-sm moh-text">
@@ -149,6 +157,7 @@ const title = ref('')
 const body = ref('')
 const isAd = ref(false)
 const placement = ref<AnnouncementPlacement>('overlay')
+const maxViews = ref(1)
 const ctaLabel = ref('')
 const ctaHref = ref('')
 const endsAtLocal = ref('')
@@ -186,6 +195,7 @@ function apply(row: AnnouncementAdmin) {
   body.value = row.body ?? ''
   isAd.value = row.isAd
   placement.value = row.placement ?? 'overlay'
+  maxViews.value = row.maxViews ?? 1
   ctaLabel.value = row.ctaLabel ?? ''
   ctaHref.value = row.ctaHref ?? ''
   endsAtLocal.value = toLocalInput(row.endsAt)
@@ -212,6 +222,7 @@ function writeBody() {
     body: body.value.trim() || null,
     isAd: isAd.value,
     placement: placement.value,
+    maxViews: maxViews.value,
     ctaLabel: ctaLabel.value.trim() || null,
     ctaHref: ctaHref.value.trim() || null,
     endsAt: endsAtLocal.value ? new Date(endsAtLocal.value).toISOString() : null,
