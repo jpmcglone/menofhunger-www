@@ -116,5 +116,6 @@ type _Announcement = Satisfies<Www.Announcement, Api.AnnouncementDto>
 type _AnnouncementAdmin = Satisfies<Www.AnnouncementAdmin, Api.AnnouncementAdminDto>
 type _AnnouncementStatus = Satisfies<Www.AnnouncementStatus, Api.AnnouncementStatus>
 type _AnnouncementDismissMethod = Satisfies<Www.AnnouncementDismissMethod, Api.AnnouncementDismissMethod>
+type _AnnouncementPlacement = Satisfies<Www.AnnouncementPlacement, Api.AnnouncementPlacement>
 
 export {}

@@ -28,6 +28,7 @@ export function useAnnouncements() {
   let viewedTimer: ReturnType<typeof setTimeout> | null = null
   let completed = false
   let viewed = false
+  let presented = false
 
   const locationPromptOpen = computed(() => {
     const u = user.value
@@ -85,19 +86,40 @@ export function useAnnouncements() {
       previewing.value = false
       completed = false
       viewed = false
+      presented = false
+      if (data.placement === 'inline') {
+        open.value = false
+        return
+      }
       open.value = true
-      void record('presented')
-      clearTimer()
-      viewedTimer = setTimeout(() => {
-        if (!completed && !viewed) {
-          viewed = true
-          void record('viewed')
-        }
-      }, VIEWED_AFTER_MS)
+      beginView()
     } catch {
       fetchedThisLoad.value = false
     }
   }
+
+  function beginView() {
+    void record('presented')
+    clearTimer()
+    viewedTimer = setTimeout(() => {
+      if (!completed && !viewed) {
+        viewed = true
+        void record('viewed')
+      }
+    }, VIEWED_AFTER_MS)
+  }
+
+  function presentInline() {
+    if (!current.value || current.value.placement !== 'inline' || previewing.value || completed || presented) return
+    presented = true
+    beginView()
+  }
+
+  const inlineAnnouncement = computed(() => {
+    if (previewing.value) return null
+    if (current.value?.placement !== 'inline') return null
+    return current.value
+  })
 
   function showPreview(announcement: Announcement) {
     clearTimer()
@@ -138,7 +160,9 @@ export function useAnnouncements() {
   }
 
   async function onAbandoned() {
-    if (completed || previewing.value || !current.value || !open.value) return
+    if (completed || previewing.value || !current.value) return
+    if (current.value.placement === 'inline' && !open.value) return
+    if (!open.value) return
     await record('abandoned')
   }
 
@@ -147,7 +171,9 @@ export function useAnnouncements() {
     open,
     previewing,
     blockedByGate,
+    inlineAnnouncement,
     fetchPending,
+    presentInline,
     showPreview,
     onDismiss,
     onCta,

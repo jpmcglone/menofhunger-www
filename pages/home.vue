@@ -1,6 +1,22 @@
 <template>
   <!-- hideTopBar page: no top padding here -->
   <AppPageContent bottom="standard">
+    <ClientOnly>
+      <Transition
+        enter-active-class="transition-[opacity,transform] duration-300 ease-out motion-reduce:transition-none"
+        enter-from-class="opacity-0 -translate-y-4"
+        leave-active-class="transition-[opacity,transform] duration-150 ease-in motion-reduce:transition-none"
+        leave-to-class="opacity-0 -translate-y-3"
+      >
+        <AppAnnouncementInlineCard
+          v-if="inlineAnnouncement"
+          :announcement="inlineAnnouncement"
+          @dismiss="onAnnouncementDismiss"
+          @cta="onAnnouncementCta"
+        />
+      </Transition>
+    </ClientOnly>
+
     <!-- Daily check-in stays above the composer whether answered or not. Unanswered is a
          list row; answered collapses to one quiet line. Both are gated on `heroResolved`
          so we never flash the wrong variant before we know. SSR renders nothing; on mount
@@ -315,6 +331,15 @@ provide(MOH_FOCUS_HOME_COMPOSER_KEY, () => {
   homeComposerRef.value?.focus()
 })
 const { isAuthed, user: authUser } = useAuth()
+const {
+  inlineAnnouncement,
+  presentInline,
+  onDismiss: onAnnouncementDismiss,
+  onCta: onAnnouncementCta,
+} = useAnnouncements()
+watch(inlineAnnouncement, (item) => {
+  if (item) presentInline()
+}, { immediate: true })
 const { groups: myGroups, load: loadMyGroups } = useMyGroups()
 const groupsNudgeDismissed = useCookie('moh.groups-nudge.dismissed', {
   default: () => '',

@@ -31,9 +31,10 @@
         <div class="flex items-start justify-between gap-3">
           <div class="min-w-0 space-y-1">
             <div class="flex flex-wrap items-center gap-2">
-              <div class="font-semibold truncate">{{ item.title }}</div>
+              <div class="font-semibold truncate">{{ item.title || 'Untitled' }}</div>
               <span class="moh-meta">{{ statusLabel(item.status) }}</span>
               <span v-if="item.isAd" class="moh-meta">Ad</span>
+              <span class="moh-meta">{{ item.placement === 'inline' ? 'Inline' : 'Overlay' }}</span>
             </div>
             <div class="text-sm moh-text-muted line-clamp-1">
               {{ item.body || 'No body' }}

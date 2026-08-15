@@ -23,7 +23,7 @@
         </button>
       </div>
       <div class="moh-gutter-x py-6 space-y-3" :class="announcement.imageUrl ? '' : 'pr-14'">
-        <h2 class="moh-h1 text-balance">
+        <h2 v-if="announcement.title" class="moh-h1 text-balance">
           {{ announcement.title }}
         </h2>
         <div v-if="announcement.isAd" class="moh-meta">Ad</div>

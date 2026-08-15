@@ -61,6 +61,26 @@
       </div>
 
       <div class="space-y-2">
+        <div class="text-sm font-medium moh-text">Placement</div>
+        <div class="flex flex-col gap-2">
+          <label class="flex items-start gap-2 text-sm moh-text">
+            <input v-model="placement" type="radio" value="overlay" class="mt-1">
+            <span>
+              <span class="font-medium">Overlay</span>
+              <span class="block text-xs moh-text-muted">Modal over the app.</span>
+            </span>
+          </label>
+          <label class="flex items-start gap-2 text-sm moh-text">
+            <input v-model="placement" type="radio" value="inline" class="mt-1">
+            <span>
+              <span class="font-medium">Inline</span>
+              <span class="block text-xs moh-text-muted">Card at the top of Home.</span>
+            </span>
+          </label>
+        </div>
+      </div>
+
+      <div class="space-y-2">
         <label class="text-sm font-medium moh-text" for="announcement-ends">Ends</label>
         <InputText id="announcement-ends" v-model="endsAtLocal" type="datetime-local" class="w-full" />
       </div>
@@ -68,11 +88,20 @@
       <div v-if="saved" class="rounded-xl border moh-border p-3 moh-meta space-y-1">
         <div>{{ saved.stats.uniquePeople }} unique people</div>
         <div>{{ saved.stats.totalViews }} views · {{ saved.stats.clicks }} clicks · {{ saved.stats.abandoned }} abandoned</div>
+        <div>Reset views makes this new again for everyone.</div>
       </div>
 
       <div class="flex flex-wrap gap-2">
-        <Button label="Save" :loading="saving" :disabled="saving || !title.trim()" @click="save" />
-        <Button label="Preview" severity="secondary" :disabled="!title.trim()" @click="preview" />
+        <Button label="Save" :loading="saving" :disabled="saving || !canSave" @click="save" />
+        <Button label="Preview" severity="secondary" :disabled="!canSave" @click="preview" />
+        <Button
+          v-if="saved"
+          label="Reset views"
+          text
+          severity="secondary"
+          :loading="resetting"
+          @click="resetViews"
+        />
         <Button
           v-if="saved && saved.status !== 'published'"
           label="Publish"
@@ -102,7 +131,7 @@
 </template>
 
 <script setup lang="ts">
-import type { Announcement, AnnouncementAdmin } from '~/types/api'
+import type { Announcement, AnnouncementAdmin, AnnouncementPlacement } from '~/types/api'
 import { getSafeUserErrorMessage } from '~/utils/api-error'
 
 definePageMeta({
@@ -119,6 +148,7 @@ const isNew = computed(() => route.params.id === 'new')
 const title = ref('')
 const body = ref('')
 const isAd = ref(false)
+const placement = ref<AnnouncementPlacement>('overlay')
 const ctaLabel = ref('')
 const ctaHref = ref('')
 const endsAtLocal = ref('')
@@ -128,6 +158,8 @@ const saved = ref<AnnouncementAdmin | null>(null)
 const error = ref('')
 const saving = ref(false)
 const publishing = ref(false)
+const resetting = ref(false)
+const canSave = computed(() => Boolean(title.value.trim() || body.value.trim() || imageKey.value || imagePreviewUrl.value))
 const uploading = ref(false)
 const fileInputEl = ref<HTMLInputElement | null>(null)
 const cropOpen = ref(false)
@@ -153,6 +185,7 @@ function apply(row: AnnouncementAdmin) {
   title.value = row.title
   body.value = row.body ?? ''
   isAd.value = row.isAd
+  placement.value = row.placement ?? 'overlay'
   ctaLabel.value = row.ctaLabel ?? ''
   ctaHref.value = row.ctaHref ?? ''
   endsAtLocal.value = toLocalInput(row.endsAt)
@@ -164,7 +197,8 @@ function draftAnnouncement(): Announcement {
   return {
     id: saved.value?.id ?? 'preview',
     isAd: isAd.value,
-    title: title.value.trim() || 'Untitled',
+    placement: placement.value,
+    title: title.value.trim(),
     body: body.value.trim() || null,
     imageUrl: imagePreviewUrl.value,
     ctaLabel: ctaLabel.value.trim() || null,
@@ -177,6 +211,7 @@ function writeBody() {
     title: title.value.trim(),
     body: body.value.trim() || null,
     isAd: isAd.value,
+    placement: placement.value,
     ctaLabel: ctaLabel.value.trim() || null,
     ctaHref: ctaHref.value.trim() || null,
     endsAt: endsAtLocal.value ? new Date(endsAtLocal.value).toISOString() : null,
@@ -233,6 +268,21 @@ async function publish() {
     error.value = getSafeUserErrorMessage(e, 'Failed to publish.')
   } finally {
     publishing.value = false
+  }
+}
+
+async function resetViews() {
+  if (!saved.value) return
+  resetting.value = true
+  error.value = ''
+  try {
+    apply(await apiFetchData<AnnouncementAdmin>(`/admin/announcements/${saved.value.id}/reset`, {
+      method: 'POST',
+    }))
+  } catch (e) {
+    error.value = getSafeUserErrorMessage(e, 'Failed to reset views.')
+  } finally {
+    resetting.value = false
   }
 }
 

@@ -3216,6 +3216,7 @@ export type AutoVerifyApplyDto = Contracts.AutoVerifyApplyDto
 
 export type AnnouncementDismissMethod = Contracts.AnnouncementDismissMethod
 export type AnnouncementStatus = Contracts.AnnouncementStatus
+export type AnnouncementPlacement = Contracts.AnnouncementPlacement
 export type Announcement = Contracts.AnnouncementDto
 export type AnnouncementStats = Contracts.AnnouncementStatsDto
 export type AnnouncementAdmin = Contracts.AnnouncementAdminDto

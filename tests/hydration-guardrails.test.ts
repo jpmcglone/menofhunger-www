@@ -414,6 +414,8 @@ describe('hydration guardrails (structural)', () => {
     expect(modal).toMatch(/<AppModal/)
     expect(modal).toMatch(/max-w-2xl/)
     expect(modal).toMatch(/hide-header/)
+    expect(readFromRepo('pages/home.vue')).toMatch(/AppAnnouncementInlineCard/)
+    expect(readFromRepo('composables/useAnnouncements.ts')).toMatch(/placement === 'inline'/)
     expect(modal).toMatch(/openFromEvent/)
     expect(modal).toMatch(/cursor-zoom-in/)
   })
