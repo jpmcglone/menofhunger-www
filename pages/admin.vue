@@ -117,6 +117,7 @@ const adminSections: AdminSection[] = [
       { key: 'media-review', to: '/admin/media-review', icon: 'tabler:photo', label: 'Media review', description: 'Review and delete uploaded images and videos' },
       { key: 'reports', to: '/admin/reports', icon: 'tabler:flag', label: 'Reports', description: 'Review reported posts and users' },
       { key: 'feedback', to: '/admin/feedback', icon: 'tabler:inbox', label: 'Feedback', description: 'Triaged feedback from users' },
+      { key: 'announcements', to: '/admin/announcements', icon: 'tabler:speakerphone', label: 'Announcements', description: 'Lodge notices and ads' },
     ],
   },
   {
@@ -147,6 +148,7 @@ function isActiveArea(item: AdminNavItem): boolean {
   const p = route.path
   if (item.key === 'media-review') return p === item.to || p.startsWith('/admin/media-review/')
   if (item.key === 'users') return p === item.to || p.startsWith('/admin/users/')
+  if (item.key === 'announcements') return p === item.to || p.startsWith('/admin/announcements/')
   return p === item.to
 }
 

@@ -1,7 +1,7 @@
 <template>
   <AppPageContent bottom="standard">
     <div class="w-full">
-      <!-- Daily check-in hero: full form, only shown when the user hasn't answered today yet.
+      <!-- Daily check-in row: only shown when the user hasn't answered today yet.
            Lets the user complete their check-in without leaving the page. -->
       <AppFeedDailyCheckinHero
         v-if="showHero"

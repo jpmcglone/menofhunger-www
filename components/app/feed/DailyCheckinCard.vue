@@ -20,7 +20,7 @@
     </NuxtLink>
   </div>
 
-  <!-- Prompt state: user hasn't checked in today — layout matches WeeklyMissionCard -->
+  <!-- Prompt state: user hasn't checked in today -->
   <div v-else class="px-3 pb-3 pt-2 sm:px-4">
     <button
       type="button"

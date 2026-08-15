@@ -33,9 +33,12 @@
               :style="panelStyle"
               @click.stop
             >
-              <header class="flex items-center justify-between gap-3 moh-gutter-x py-3 border-b moh-border">
+              <header
+                v-if="!hideHeader"
+                class="flex items-center justify-between gap-3 moh-gutter-x py-3 border-b moh-border"
+              >
                 <div class="min-w-0">
-                  <div class="truncate moh-h2">
+                  <div :class="titleWrap ? 'moh-h2 text-balance' : 'truncate moh-h2'">
                     {{ title }}
                   </div>
                 </div>
@@ -45,11 +48,28 @@
                   class="moh-tap moh-focus inline-flex h-9 w-9 items-center justify-center rounded-full moh-text-muted hover:moh-text moh-surface-hover disabled:opacity-50"
                   aria-label="Close"
                   :disabled="disableClose"
-                  @click="close"
+                  @click="close('close_button')"
                 >
                   <Icon name="tabler:x" aria-hidden="true" />
                 </button>
               </header>
+
+              <button
+                v-else-if="showClose"
+                type="button"
+                class="moh-tap moh-focus absolute top-2.5 right-2.5 z-20 inline-flex h-11 w-11 items-center justify-center rounded-full disabled:opacity-50"
+                aria-label="Close"
+                :disabled="disableClose"
+                @click="close('close_button')"
+              >
+                <Icon
+                  name="tabler:x"
+                  size="22"
+                  class="font-bold text-white"
+                  style="filter: drop-shadow(0 0 1px #000) drop-shadow(0 0 1.5px #000) drop-shadow(0 1px 2px rgba(0,0,0,0.9))"
+                  aria-hidden="true"
+                />
+              </button>
 
               <!-- Scrollable body -->
               <div :class="['min-h-0 flex-1 overflow-y-auto overflow-x-hidden', bodyClass]">
@@ -89,6 +109,10 @@ const props = withDefaults(
     bodyClass?: string
     /** Optional explicit max height override (CSS value). */
     maxHeight?: string
+    /** When true, the title wraps instead of truncating. */
+    titleWrap?: boolean
+    /** Hide the title bar and overlay the close control on the panel. */
+    hideHeader?: boolean
   }>(),
   {
     maxWidthClass: 'max-w-[38rem]',
@@ -97,27 +121,31 @@ const props = withDefaults(
     disableClose: false,
     bodyClass: 'p-0',
     maxHeight: 'min(90vh, 40rem)',
+    titleWrap: false,
+    hideHeader: false,
   },
 )
 
 const emit = defineEmits<{
   (e: 'update:modelValue', v: boolean): void
+  (e: 'dismiss', reason: 'close_button' | 'backdrop' | 'escape'): void
 }>()
 
 const open = computed(() => Boolean(props.modelValue))
 useScrollLock(open)
 
-function close() {
+function close(reason: 'close_button' | 'backdrop' | 'escape' = 'close_button') {
   if (props.disableClose) return
+  emit('dismiss', reason)
   emit('update:modelValue', false)
 }
 
 function onMaskClick() {
   if (!props.dismissableMask) return
-  close()
+  close('backdrop')
 }
 
-useOverlayDismiss(open, close)
+useOverlayDismiss(open, () => close('escape'))
 
 const panelStyle = computed<CSSProperties>(() => ({
   maxHeight: props.maxHeight,

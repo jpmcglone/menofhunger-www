@@ -34,7 +34,7 @@
       <div @mouseenter="cancelInfoHide" @mouseleave="onInfoLeave">
         <p class="text-xs font-semibold text-gray-900 dark:text-gray-50">Live chat</p>
         <p class="mt-1 text-xs leading-relaxed moh-text-muted">
-          You only see what’s said while you’re here. Messages from before you joined aren’t shown, and nothing is saved after you leave.
+          We don’t save the chat. Only you can see what you were here for, and it drops off after 24 hours.
         </p>
       </div>
     </Popover>

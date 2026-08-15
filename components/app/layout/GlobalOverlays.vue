@@ -21,6 +21,7 @@
 
   <AppOnboardingGate />
   <AppLocationPromptModal />
+  <AppAnnouncementHost />
   <AppConfirmMount />
   <AppAuthActionModal />
   <AppPremiumMediaModal />

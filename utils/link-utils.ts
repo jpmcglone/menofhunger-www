@@ -260,6 +260,78 @@ export function getYouTubePosterUrl(url: string): string | null {
   return getYouTubePosterUrls(url)?.fallback ?? null
 }
 
+export type MediaPreviewKind = 'video' | 'image'
+
+export type MediaPreviewInfo = {
+  kind: MediaPreviewKind
+  provider: string
+}
+
+const VIDEO_PREVIEW_HOSTS: Record<string, string> = {
+  'youtube.com': 'YouTube',
+  'm.youtube.com': 'YouTube',
+  'music.youtube.com': 'YouTube',
+  'youtu.be': 'YouTube',
+  'rumble.com': 'Rumble',
+  'vimeo.com': 'Vimeo',
+  'player.vimeo.com': 'Vimeo',
+  'twitch.tv': 'Twitch',
+  'clips.twitch.tv': 'Twitch',
+  'm.twitch.tv': 'Twitch',
+  'streamable.com': 'Streamable',
+  'tiktok.com': 'TikTok',
+  'vm.tiktok.com': 'TikTok',
+  'dailymotion.com': 'Dailymotion',
+  'dai.ly': 'Dailymotion',
+}
+
+const IMAGE_PREVIEW_HOSTS: Record<string, string> = {
+  'imgur.com': 'Imgur',
+  'i.imgur.com': 'Imgur',
+  'giphy.com': 'Giphy',
+  'media.giphy.com': 'Giphy',
+  'i.giphy.com': 'Giphy',
+  'tenor.com': 'Tenor',
+  'media.tenor.com': 'Tenor',
+  'i.redd.it': 'Reddit',
+  'preview.redd.it': 'Reddit',
+}
+
+const DIRECT_IMAGE_PATH = /\.(?:jpe?g|png|gif|webp|avif)$/i
+
+function previewHost(url: string): string | null {
+  try {
+    const u = new URL(url)
+    if (u.protocol !== 'http:' && u.protocol !== 'https:') return null
+    return u.hostname.replace(/^www\./i, '').toLowerCase()
+  } catch {
+    return null
+  }
+}
+
+/** YouTube, Rumble, Vimeo, Twitch, Imgur, and other common video/image shares. */
+export function parseMediaPreviewUrl(url: string): MediaPreviewInfo | null {
+  if (parseYouTubeUrl(url)) return { kind: 'video', provider: 'YouTube' }
+  const host = previewHost(url)
+  if (!host) return null
+  if (host.endsWith('.tiktok.com')) return { kind: 'video', provider: 'TikTok' }
+  if (VIDEO_PREVIEW_HOSTS[host]) return { kind: 'video', provider: VIDEO_PREVIEW_HOSTS[host] }
+  if (IMAGE_PREVIEW_HOSTS[host]) return { kind: 'image', provider: IMAGE_PREVIEW_HOSTS[host] }
+  try {
+    const path = new URL(url).pathname
+    if (DIRECT_IMAGE_PATH.test(path)) return { kind: 'image', provider: host }
+  } catch {
+    return null
+  }
+  return null
+}
+
+export function vimeoOEmbedRequestUrl(url: string): string | null {
+  const host = previewHost(url)
+  if (host !== 'vimeo.com' && host !== 'player.vimeo.com') return null
+  return `https://vimeo.com/api/oembed.json?url=${encodeURIComponent(url)}`
+}
+
 export function isRumbleUrl(url: string): boolean {
   try {
     const u = new URL(url)

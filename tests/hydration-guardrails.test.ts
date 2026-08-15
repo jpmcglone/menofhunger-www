@@ -122,18 +122,32 @@ describe('hydration guardrails (structural)', () => {
 
   it('gates the daily check-in hero on `heroResolved` so SSR never renders the wrong variant', () => {
     const home = readFromRepo('pages/home.vue')
-    // Full and compact hero are both gated on heroResolved + the auth-derived hasCheckedInToday.
-    // Without this gate we'd flash the full hero on first paint, then collapse it into the
-    // compact one as soon as /checkins/today resolves on the client.
+    // Unanswered row and answered compact line are both gated on heroResolved +
+    // the auth-derived hasCheckedInToday. Without this gate we'd flash the
+    // unanswered row on first paint, then collapse it once /checkins/today resolves.
     expect(home).toMatch(/<AppFeedDailyCheckinHero\s+v-if="heroResolved && !hasCheckedInToday"/)
     expect(home).toMatch(/<AppFeedDailyCheckinHero\s+v-if="heroResolved && hasCheckedInToday"[\s\S]*?compact/)
+    expect(home).not.toMatch(/AppFeedWeeklyMissionCard/)
+    expect(home).toMatch(/collapse-until-focus/)
+    const hero = readFromRepo('components/app/feed/DailyCheckinHero.vue')
+    expect(hero).toMatch(/moh-checkin-row/)
+    expect(hero).toMatch(/moh-checkin-row-accent/)
+    expect(hero).toMatch(/to="\/leaderboard"/)
+    expect(hero).not.toMatch(/rounded-2xl/)
+    expect(hero).not.toMatch(/linear-gradient/)
+    const leaderboard = readFromRepo('pages/leaderboard.vue')
+    expect(leaderboard).toMatch(/Share this week's mission/)
+    expect(leaderboard).toMatch(/weeklyMissionShareText/)
+    const composerSource = readFromRepo('components/app/PostComposer.vue')
+    expect(composerSource).toMatch(/collapseUntilFocus/)
+    expect(composerSource).toMatch(/v-show="!showCollapsedComposer"/)
     // heroResolved itself must require both `hydrated` AND a known checkin state (or unauth viewer).
     expect(home).toMatch(/const heroResolved = computed\(\(\) => {[\s\S]*?if \(!hydrated\.value\) return false[\s\S]*?if \(!isAuthed\.value\) return true[\s\S]*?return checkinState\.value !== null/)
     // Check-in (answered or not) stays above the composer.
     const answeredHero = home.indexOf('v-if="heroResolved && hasCheckedInToday"')
-    const composer = home.indexOf('ref="homeComposerEl"')
+    const homeComposer = home.indexOf('ref="homeComposerEl"')
     expect(answeredHero).toBeGreaterThan(-1)
-    expect(composer).toBeGreaterThan(answeredHero)
+    expect(homeComposer).toBeGreaterThan(answeredHero)
   })
 
   it('JoinBanner gates visibility on a hydrated ref so SSR never renders the logged-out banner', () => {
@@ -387,6 +401,21 @@ describe('hydration guardrails (structural)', () => {
     const row = readFromRepo('components/app/chat/ChatMarvPinnedRow.vue')
     expect(row).toMatch(/<NuxtLink[\s\S]*?:to="conversationPath"/)
     expect(row).toMatch(/<NuxtLink[\s\S]*?to="\/tiers"/)
+  })
+
+  it('fetches announcements after mount and renders them through AppModal', () => {
+    const host = readFromRepo('components/app/AnnouncementHost.vue')
+    const modal = readFromRepo('components/app/AnnouncementModal.vue')
+    const overlays = readFromRepo('components/app/layout/GlobalOverlays.vue')
+    expect(overlays).toMatch(/<AppAnnouncementHost\s*\/>/)
+    expect(host).toMatch(/onMounted\(\(\)\s*=>\s*{/)
+    expect(host).toMatch(/fetchPending\(\)/)
+    expect(host).not.toMatch(/onActivated/)
+    expect(modal).toMatch(/<AppModal/)
+    expect(modal).toMatch(/max-w-2xl/)
+    expect(modal).toMatch(/hide-header/)
+    expect(modal).toMatch(/openFromEvent/)
+    expect(modal).toMatch(/cursor-zoom-in/)
   })
 
   it('keeps the Marv "Catch me up" modal behind ClientOnly + Teleport (SSR emits nothing)', () => {

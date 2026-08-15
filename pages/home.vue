@@ -1,10 +1,10 @@
 <template>
   <!-- hideTopBar page: no top padding here -->
   <AppPageContent bottom="standard">
-    <!-- Daily check-in stays above the composer whether answered or not. Unanswered uses the
-         full hero; answered collapses to compact. Both are gated on `heroResolved` so we never
-         flash the wrong variant before we know. SSR renders nothing; on mount the right one
-         appears. See 45-hydration-safe-defaults.mdc. -->
+    <!-- Daily check-in stays above the composer whether answered or not. Unanswered is a
+         list row; answered collapses to one quiet line. Both are gated on `heroResolved`
+         so we never flash the wrong variant before we know. SSR renders nothing; on mount
+         the right one appears. See 45-hydration-safe-defaults.mdc. -->
     <AppFeedDailyCheckinHero
       v-if="heroResolved && !hasCheckedInToday"
       :state="checkinState"
@@ -15,10 +15,8 @@
       :on-login-to-answer="goToLoginForCheckin"
     />
 
-    <!-- Compact hero once today's question is answered. Same component + realtime hooks as the
-         full hero, just collapsed. When the viewer has a streak, `weekly-mission-streak-days`
-         folds the weekly-mission progress INTO this card (one surface → /leaderboard). The
-         standalone AppFeedWeeklyMissionCard below only fires when this fold-in doesn't. -->
+    <!-- Quiet line once today's question is answered. Streak / weekly-mission progress
+         is meta on the row (`14d · 7/7`), not a second banner. -->
     <AppFeedDailyCheckinHero
       v-if="heroResolved && hasCheckedInToday"
       :state="checkinState"
@@ -51,10 +49,9 @@
         class="animate-pulse border-b moh-border"
         aria-hidden="true"
       >
-        <div class="moh-gutter-x py-6 space-y-3">
-          <div class="h-3 w-1/3 rounded-full bg-gray-200 dark:bg-zinc-700" />
-          <div class="h-10 w-full rounded-xl bg-gray-200 dark:bg-zinc-700" />
-          <div class="h-8 w-28 rounded-full bg-gray-200 dark:bg-zinc-700" />
+        <div class="moh-gutter-x py-3 space-y-2">
+          <div class="h-3 w-24 rounded-full bg-gray-200 dark:bg-zinc-700" />
+          <div class="h-4 w-3/4 rounded-full bg-gray-200 dark:bg-zinc-700" />
         </div>
       </div>
     </ClientOnly>
@@ -70,6 +67,7 @@
         persist-key="home"
         :enable-avatar-status-editor="true"
         :register-unsaved-guard="false"
+        collapse-until-focus
         @pending="onComposerPending"
       />
       <div v-else-if="isAuthed" class="px-3 pt-3 sm:px-4 sm:pt-4">
@@ -139,18 +137,6 @@
           </div>
         </div>
       </div>
-    </ClientOnly>
-
-    <!-- Weekly mission card: shown to verified users with an active or recent streak.
-         When the compact daily-check-in hero is visible (viewer answered today), the mission
-         row is folded into that card so the surface stays a single clickable card. We only
-         render this standalone card when the compact hero isn't going to show (i.e. before
-         today's check-in is in). -->
-    <ClientOnly>
-      <AppFeedWeeklyMissionCard
-        v-if="isAuthed && viewerIsVerified && displayCheckinStreak > 0 && !hasCheckedInToday"
-        :checkin-streak-days="displayCheckinStreak"
-      />
     </ClientOnly>
 
     <!-- Feed: header + content -->
@@ -397,9 +383,9 @@ const hasCheckedInToday = computed(() => {
   return Boolean(checkinState.value?.hasCheckedInToday)
 })
 
-// Gates whether either daily-check-in hero (full or compact) is allowed to render.
-// Goal: avoid a SSR/CSR flash where the full hero shows for a moment, then collapses
-// into the compact one once the auth + check-in state finally resolves.
+// Gates whether either daily-check-in row (unanswered or answered) is allowed to render.
+// Goal: avoid a SSR/CSR flash where the unanswered row shows for a moment, then
+// collapses into the quiet line once the auth + check-in state finally resolves.
 //
 // Truthy when:
 //   - SSR has finished and the client has mounted (hydrated), AND
@@ -407,7 +393,7 @@ const hasCheckedInToday = computed(() => {
 //     the check-in state has loaded (success), OR
 //     the initial fetch has settled (even on error) — so the page is never
 //     left blank when the API is slow or fails. In the error case we show the
-//     full hero in a degraded "no crew / no streak" mode; that's always better
+//     unanswered row in a degraded "no crew / no streak" mode; that's always better
 //     than showing nothing.
 //
 // While false (still fetching), both <AppFeedDailyCheckinHero> instances are

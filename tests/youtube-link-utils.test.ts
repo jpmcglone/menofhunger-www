@@ -2,7 +2,7 @@
  * Guardrail tests for YouTube URL parsing in link-utils.
  */
 import { describe, it, expect } from 'vitest'
-import { parseYouTubeUrl, getYouTubeEmbedUrl, getYouTubePosterUrls, youtubeOEmbedRequestUrl } from '../utils/link-utils'
+import { parseYouTubeUrl, getYouTubeEmbedUrl, getYouTubePosterUrls, youtubeOEmbedRequestUrl, parseMediaPreviewUrl, vimeoOEmbedRequestUrl } from '../utils/link-utils'
 
 const VIDEO_ID = 'dQw4w9WgXcQ'
 
@@ -137,5 +137,26 @@ describe('getYouTubePosterUrls', () => {
 
   it('returns null for non-YouTube URLs', () => {
     expect(getYouTubePosterUrls('https://example.com')).toBeNull()
+  })
+})
+
+describe('parseMediaPreviewUrl', () => {
+  it('classifies common video and image hosts', () => {
+    expect(parseMediaPreviewUrl(`https://youtu.be/${VIDEO_ID}`)).toEqual({ kind: 'video', provider: 'YouTube' })
+    expect(parseMediaPreviewUrl('https://rumble.com/v123-hello.html')).toEqual({ kind: 'video', provider: 'Rumble' })
+    expect(parseMediaPreviewUrl('https://vimeo.com/123456')).toEqual({ kind: 'video', provider: 'Vimeo' })
+    expect(parseMediaPreviewUrl('https://www.twitch.tv/videos/123')).toEqual({ kind: 'video', provider: 'Twitch' })
+    expect(parseMediaPreviewUrl('https://i.imgur.com/abc.jpg')).toEqual({ kind: 'image', provider: 'Imgur' })
+    expect(parseMediaPreviewUrl('https://cdn.example.com/shot.webp')).toEqual({ kind: 'image', provider: 'cdn.example.com' })
+    expect(parseMediaPreviewUrl('https://example.com/article')).toBeNull()
+  })
+})
+
+describe('vimeoOEmbedRequestUrl', () => {
+  it('builds the public oEmbed URL', () => {
+    expect(vimeoOEmbedRequestUrl('https://vimeo.com/123456')).toBe(
+      'https://vimeo.com/api/oembed.json?url=https%3A%2F%2Fvimeo.com%2F123456',
+    )
+    expect(vimeoOEmbedRequestUrl('https://youtube.com/watch?v=abc')).toBeNull()
   })
 })

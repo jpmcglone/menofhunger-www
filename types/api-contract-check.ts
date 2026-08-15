@@ -112,5 +112,9 @@ type _ReportStatus = Satisfies<Www.ReportStatus, Api.ReportStatus>
 type _FeedbackCategory = Satisfies<Www.FeedbackCategory, Api.FeedbackCategory>
 type _FeedbackStatus = Satisfies<Www.FeedbackStatus, Api.FeedbackStatus>
 type _BillingTier = Satisfies<Www.BillingTier, Api.BillingTier>
+type _Announcement = Satisfies<Www.Announcement, Api.AnnouncementDto>
+type _AnnouncementAdmin = Satisfies<Www.AnnouncementAdmin, Api.AnnouncementAdminDto>
+type _AnnouncementStatus = Satisfies<Www.AnnouncementStatus, Api.AnnouncementStatus>
+type _AnnouncementDismissMethod = Satisfies<Www.AnnouncementDismissMethod, Api.AnnouncementDismissMethod>
 
 export {}

@@ -9,6 +9,26 @@
         />
       </div>
 
+      <!-- Weekly mission + share live here (not on home). Mobile has no right rail. -->
+      <div
+        v-if="viewerMission"
+        class="flex items-center gap-3 px-4 py-3 border-b moh-border"
+        style="background: var(--moh-checkin-soft)"
+      >
+        <div class="min-w-0 flex-1">
+          <p class="text-sm font-semibold moh-text">{{ viewerMission.headline }}</p>
+          <p class="mt-0.5 moh-meta">{{ viewerMission.subline }}</p>
+        </div>
+        <button
+          type="button"
+          class="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full moh-text-muted transition-colors hover:bg-black/[0.05] hover:moh-text dark:hover:bg-white/[0.08]"
+          aria-label="Share this week's mission"
+          @click="shareWeeklyMission"
+        >
+          <Icon name="tabler:share-2" class="text-base" aria-hidden="true" />
+        </button>
+      </div>
+
       <!-- Tab switcher -->
       <div class="flex px-4 pb-3 gap-1.5">
         <button
@@ -164,6 +184,9 @@
 
 <script setup lang="ts">
 import type { LeaderboardUser, LeaderboardViewerRank } from '~/types/api'
+import { deriveWeeklyMission } from '~/config/milestones'
+import { siteConfig } from '~/config/site'
+import { appendShareParams, weeklyMissionShareText } from '~/utils/acquisition-share'
 
 type TabId = 'all' | 'best' | 'weekly'
 
@@ -204,6 +227,35 @@ const scopeMap = { all: active, best, weekly } as const
 const pending = computed(() => activeTab.value !== displayTab.value)
 const activeError = computed(() => scopeMap[activeTab.value].error.value)
 const tabDescription = computed(() => tabs.find(t => t.id === activeTab.value)?.description ?? '')
+
+const viewerStreakDays = computed(() => {
+  return Math.max(0, Number(displayViewerRank.value?.user.checkinStreakDays ?? 0) || 0)
+})
+const viewerMission = computed(() => {
+  if (viewerStreakDays.value <= 0) return null
+  return deriveWeeklyMission(viewerStreakDays.value)
+})
+
+const { share: nativeShare, isSupported: nativeShareSupported } = useWebShare()
+const { copyText } = useCopyToClipboard()
+const { referralCode, ensureReferralCode } = useEnsureReferralCode()
+const toast = useAppToast()
+
+async function shareWeeklyMission() {
+  try {
+    await ensureReferralCode()
+    const text = weeklyMissionShareText(viewerStreakDays.value || 1)
+    const url = appendShareParams(siteConfig.url, { ref: referralCode.value ?? null })
+    if (nativeShareSupported.value) {
+      const shared = await nativeShare({ title: 'Men of Hunger', text, url })
+      if (shared) return
+    }
+    await copyText(`${text}\n${url}`)
+    toast.push({ title: 'Invite copied', tone: 'success', durationMs: 1400 })
+  } catch {
+    toast.push({ title: 'Share failed', tone: 'error', durationMs: 1800 })
+  }
+}
 
 function commitScope(tabId: TabId) {
   const scope = scopeMap[tabId]

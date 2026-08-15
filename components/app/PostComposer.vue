@@ -11,8 +11,28 @@
     ]"
   >
     <div v-if="isAuthed">
+      <button
+        v-if="showCollapsedComposer"
+        type="button"
+        class="flex min-h-11 w-full items-center gap-3 text-left moh-tap"
+        :aria-label="collapsedComposerLabel"
+        @click="expandCollapsedComposer"
+      >
+        <AppUserAvatar
+          :user="user"
+          size-class="h-8 w-8 sm:h-10 sm:w-10"
+          :show-empty-status="enableAvatarStatusEditor"
+          :status-behavior="enableAvatarStatusEditor ? 'custom' : 'view'"
+        />
+        <span class="min-w-0 flex-1 py-2 text-[16px] leading-6 moh-text-muted">
+          {{ collapsedComposerLabel }}
+        </span>
+      </button>
       <!-- Full composer -->
-      <div :class="omitAvatar ? 'flex flex-col gap-2' : 'grid grid-cols-[2.5rem_minmax(0,1fr)] gap-x-3 items-start'">
+      <div
+        v-show="!showCollapsedComposer"
+        :class="omitAvatar ? 'flex flex-col gap-2' : 'grid grid-cols-[2.5rem_minmax(0,1fr)] gap-x-3 items-start'"
+      >
       <!-- Row 1: visibility picker (left) + checkin prompt / scheduled time (right) -->
       <div
         :class="[
@@ -447,7 +467,7 @@
       >
         <div class="moh-composer-field relative rounded-xl border moh-border-subtle moh-surface-2">
           <div class="px-3 py-2 text-[16px] leading-6 min-h-[4.5rem] text-gray-400 dark:text-zinc-500 opacity-70">
-            What's happening?
+            {{ VOICE.feed.postHeading }}
           </div>
         </div>
 
@@ -590,6 +610,7 @@ import { makeLocalId } from '~/composables/composer/types'
 import type { CreatePostData, PostStreakReward, PostVisibility, FeedPost, PostAuthor, ScheduledPost } from '~/types/api'
 import { buildPostedToastParams } from '~/utils/posted-toast'
 import { siteConfig } from '~/config/site'
+import { VOICE } from '~/config/voice'
 import type { CreateMediaPayload } from '~/composables/useComposerMedia'
 import { buildOptimisticPost } from '~/utils/optimistic-post'
 import { makePendingLocalId } from '~/composables/usePendingPostsManager'
@@ -741,6 +762,11 @@ const props = defineProps<{
    * textarea placeholder.
    */
   checkinPrompt?: string
+  /**
+   * Home feed: start as avatar + "Say something." Expand on click/focus.
+   * Stays expanded while there is a draft, media, poll, or check-in prompt.
+   */
+  collapseUntilFocus?: boolean
 }>()
 
 const route = useRoute()
@@ -1341,7 +1367,7 @@ const composerPlaceholder = computed(
   () =>
     props.checkinPrompt ??
     props.placeholder ??
-    (props.replyTo ? 'Post your reply…' : (hasPoll.value ? 'Ask a question' : "What's happening?")),
+    (props.replyTo ? 'Post your reply…' : (hasPoll.value ? 'Ask a question' : VOICE.feed.postHeading)),
 )
 const postCharCount = computed(() => draft.value.length)
 
@@ -1366,10 +1392,33 @@ function clearComposer() {
   draft.value = ''
   clearAll()
   clearPoll()
+  if (props.collapseUntilFocus) composerExpanded.value = false
+}
+
+const composerExpanded = ref(false)
+const collapsedComposerLabel = VOICE.feed.postHeading
+const showCollapsedComposer = computed(() => {
+  if (!props.collapseUntilFocus) return false
+  if (composerExpanded.value) return false
+  if (props.checkinPrompt) return false
+  if (props.quotedPost) return false
+  if (props.mode === 'edit') return false
+  if (hasUnsavedContent.value) return false
+  return true
+})
+
+function expandCollapsedComposer() {
+  composerExpanded.value = true
+  nextTick(() => {
+    composerEditorEl.value?.focus()
+  })
 }
 
 function focus() {
-  composerEditorEl.value?.focus()
+  if (props.collapseUntilFocus) composerExpanded.value = true
+  nextTick(() => {
+    composerEditorEl.value?.focus()
+  })
 }
 
 /** Expose draft text as a readonly string ref for consumers that need to watch typing (e.g. ReplyModal typing presence). */

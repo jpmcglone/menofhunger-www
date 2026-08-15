@@ -1,6 +1,9 @@
 <template>
-  <div ref="rootEl" class="min-w-0 max-w-full">
-    <p class="whitespace-pre-wrap break-words">
+  <div
+    ref="rootEl"
+    :class="mediaPreviewHref ? 'w-80 max-w-full' : 'min-w-0 max-w-full'"
+  >
+    <p v-if="hasDisplayText" class="whitespace-pre-wrap break-words">
       <template v-for="(seg, idx) in displayBodySegments" :key="bodySegmentKey(seg, idx)">
         <a
           v-if="seg.kind === 'link'"
@@ -41,7 +44,7 @@
           @click.stop
         >{{ seg.text }}</NuxtLink>
         <span v-else>{{ seg.text }}</span>
-      </template><slot name="tail" /></p>
+      </template><slot v-if="!hasBlockPreview" name="tail" /></p>
 
     <!-- MoH internal link — branded card, navigates in-app -->
     <NuxtLink
@@ -65,6 +68,12 @@
         <div class="text-[10px] opacity-70">menofhunger.com</div>
       </div>
     </NuxtLink>
+
+    <AppChatMediaLinkChatCard
+      v-else-if="everVisible && showLinkPreview && mediaPreviewHref"
+      :href="mediaPreviewHref"
+      :enabled="everVisible"
+    />
 
     <AppXPostPreviewCard
       v-else-if="everVisible && showLinkPreview && xPostMeta && previewLink"
@@ -146,6 +155,10 @@
     <div v-if="everVisible && embeddedUsername" @click.stop>
       <AppUserLinkCard :username="embeddedUsername" />
     </div>
+
+    <div v-if="hasBlockPreview">
+      <slot name="tail" />
+    </div>
   </div>
 </template>
 
@@ -159,7 +172,7 @@ const _linkify = new LinkifyIt()
 
 <script setup lang="ts">
 import { useElementVisibility } from '@vueuse/core'
-import { extractLinksFromText, safeUrlDisplay, safeUrlHostname, isMohUrl, mohUrlPath, extractMohPostId, extractMohArticleId, extractMohSpaceId, extractMohSpaceUsername, isMohSpaceLink, extractMohUsername, isXPostUrl } from '~/utils/link-utils'
+import { extractLinksFromText, safeUrlDisplay, safeUrlHostname, isMohUrl, mohUrlPath, extractMohPostId, extractMohArticleId, extractMohSpaceId, extractMohSpaceUsername, isMohSpaceLink, extractMohUsername, isXPostUrl, parseMediaPreviewUrl } from '~/utils/link-utils'
 import type { LinkMetadata } from '~/utils/link-metadata'
 import { getLinkMetadata } from '~/utils/link-metadata'
 import { stableListKey } from '~/utils/stable-list-key'
@@ -368,6 +381,20 @@ const previewLinkHost = computed(() => (previewLink.value ? safeUrlHostname(prev
 const previewLinkDisplay = computed(() => (previewLink.value ? safeUrlDisplay(previewLink.value) : ''))
 const isMohInternalLink = computed(() => Boolean(previewLink.value && isMohUrl(previewLink.value)))
 const mohInternalPath = computed(() => (previewLink.value ? mohUrlPath(previewLink.value) : null))
+const mediaPreviewHref = computed(() => {
+  const url = previewLink.value
+  if (!url || !parseMediaPreviewUrl(url)) return null
+  return url
+})
+
+const hasDisplayText = computed(() => Boolean(displayBody.value.trim()))
+const hasBlockPreview = computed(() => {
+  if (showLinkPreview.value) return true
+  if (embeddedPostId.value || embeddedArticleId.value || hasEmbeddedSpace.value || embeddedUsername.value) {
+    return true
+  }
+  return false
+})
 
 const displayBodySegments = computed<TextSegment[]>(() => {
   const input = (displayBody.value ?? '').toString()
@@ -453,6 +480,8 @@ watch(
     linkMeta.value = null
     if (!import.meta.client) return
     if (!v || !url) return
+    // Media cards fetch their own posters (YouTube oEmbed, Rumble metadata, …).
+    if (parseMediaPreviewUrl(url)) return
     linkMeta.value = await getLinkMetadata(url)
   },
   { immediate: true },

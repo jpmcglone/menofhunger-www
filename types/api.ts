@@ -3211,3 +3211,11 @@ export type SiteConfigDto = Contracts.SiteConfigDto
 export type AutoVerifyPreviewUserDto = Contracts.AutoVerifyPreviewUserDto
 export type AutoVerifyPreviewDto = Contracts.AutoVerifyPreviewDto
 export type AutoVerifyApplyDto = Contracts.AutoVerifyApplyDto
+
+// ─── Announcements / ads ─────────────────────────────────────────────────────
+
+export type AnnouncementDismissMethod = Contracts.AnnouncementDismissMethod
+export type AnnouncementStatus = Contracts.AnnouncementStatus
+export type Announcement = Contracts.AnnouncementDto
+export type AnnouncementStats = Contracts.AnnouncementStatsDto
+export type AnnouncementAdmin = Contracts.AnnouncementAdminDto
