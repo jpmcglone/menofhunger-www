@@ -121,6 +121,16 @@ describe('home feed refresh guardrails', () => {
     expect(src).toContain('() => [feedEnabled(), currentRequestKey()] as const')
   })
 
+  it('re-reports already-viewed feed posts so For You lastSeenAt can move', () => {
+    const feedRow = readFromRepo('components/app/FeedPostRow.vue')
+    const postRow = readFromRepo('components/app/PostRow.vue')
+    const tracker = readFromRepo('composables/usePostViewTracker.ts')
+
+    expect(feedRow).not.toContain('.filter((p) => p.viewerHasViewed !== true)')
+    expect(postRow).not.toMatch(/if \(postView\.value\.viewerHasViewed === true\) \{\s*noteAlreadyViewed\(postView\.value\.id\)\s*return/)
+    expect(tracker).toContain('already-viewed posts still report once this page load')
+  })
+
   it('clamps the collapsed reply footer count and only shows it when positive', () => {
     const src = readFromRepo('components/app/FeedPostRow.vue')
     // Count now comes from `threadCollapsedCount` (stamped by feed dedupe) via the

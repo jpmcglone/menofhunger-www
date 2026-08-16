@@ -377,18 +377,17 @@ function onMouseLeave() {
 
 onMounted(() => {
   registerPost(props.post)
-  // Observe the wrapper: when ≥50% visible for ≥1s, mark accessible chain posts as viewed.
+  // Observe the wrapper: when ≥50% visible for ≥1s, mark accessible chain posts as viewed
+  // (including already-viewed posts, so lastSeenAt can move for For You).
   // Gated posts (viewerCanAccess === false) are excluded — viewer hasn't read the content.
   if (wrapperEl.value) {
     const accessible = chain.value.filter((p) => p.viewerCanAccess !== false && !isPendingLocalId(p.id))
     const alreadyViewed = accessible.filter((p) => p.viewerHasViewed === true).map((p) => p.id).filter(Boolean)
     if (alreadyViewed.length) noteAlreadyViewed(alreadyViewed)
-    const postIds = accessible
-      .filter((p) => p.viewerHasViewed !== true)
-      .map((p) => p.id)
-      .filter(Boolean)
+    const postIds = accessible.map((p) => p.id).filter(Boolean)
     const groupIdByPostId: Record<string, string> = {}
     for (const p of accessible) {
+      // Unread badge already cleared for previously viewed group posts.
       if (p.viewerHasViewed === true) continue
       const gid = (p.communityGroupId ?? '').trim()
       if (gid && p.id) groupIdByPostId[p.id] = gid

@@ -14,6 +14,8 @@
  *
  * After the first successful enqueue for a post this session, the observer
  * disconnects so scroll bounce cannot re-POST / re-trigger mark-read.
+ * Already-viewed posts are still reported once per page load so lastSeenAt
+ * can move; unique viewerCount stays 1.
  */
 
 const FLUSH_INTERVAL_MS = 4_000
@@ -271,15 +273,13 @@ export function usePostViewTracker() {
   }
 
   /**
-   * Seed session "already reported" from feed payload so we never POST for
-   * posts the API already marks viewerHasViewed.
+   * Seed the local eye-icon set from feed payload. Does not skip network —
+   * already-viewed posts still report once this page load so lastSeenAt moves.
    */
   function noteAlreadyViewed(postIds: string | string[]): void {
     const ids = (Array.isArray(postIds) ? postIds : [postIds]).filter(Boolean)
-    for (const id of ids) {
-      sessionReportedPostIds.add(id)
-      if (isAuthed.value) locallyViewedPostIds.add(id)
-    }
+    if (!isAuthed.value) return
+    for (const id of ids) locallyViewedPostIds.add(id)
   }
 
   return { observe, markEngaged, flush, hasViewedLocally, noteAlreadyViewed }

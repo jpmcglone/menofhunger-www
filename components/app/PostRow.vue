@@ -571,7 +571,6 @@ onMounted(() => {
   ) {
     if (postView.value.viewerHasViewed === true) {
       noteAlreadyViewed(postView.value.id)
-      return
     }
     const gid = (postView.value.communityGroupId ?? '').trim()
     stopViewObserve = observeView([postView.value.id], rowEl.value, {
