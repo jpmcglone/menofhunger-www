@@ -539,7 +539,9 @@ describe('hydration guardrails (structural)', () => {
     // document is scrollable but collapses onto the visual viewport when it is not), so
     // differencing it against vv.height silently returns 0 for a fixed-shell layout.
     // The keyboard-closed baseline has no such coupling.
-    expect(composable).toMatch(/baselineHeight\s*-\s*height/)
+    expect(composable).toMatch(/baselineHeight\s*-\s*(height|opts\.viewportHeight)/)
+    expect(composable).toMatch(/KEYBOARD_OPEN_MIN_PX/)
+    expect(composable).toMatch(/inferredKeyboardHeight/)
     expect(composable).not.toMatch(/window\.innerHeight\s*-\s*vv\.height/)
     // Subtracting offsetTop is also wrong: iOS panning makes it positive, which would
     // cancel out the height delta.

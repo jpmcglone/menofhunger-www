@@ -23,6 +23,28 @@ function hasCoarsePointer(): boolean {
   return window.matchMedia?.('(pointer: coarse)').matches === true
 }
 
+/**
+ * iOS Safari chrome (URL bar + bottom toolbar) shrinks the visual viewport by
+ * ~50–150px on tab switches and taps, without a software keyboard. Real
+ * keyboards are ~250px+. Anything below this is treated as chrome, not a keyboard,
+ * so the app tab bar does not collapse.
+ */
+export const KEYBOARD_OPEN_MIN_PX = 180
+
+export function inferredKeyboardHeight(opts: {
+  baselineHeight: number
+  viewportHeight: number
+  virtualKeyboardHeight: number
+  coarsePointer: boolean
+}): number {
+  const fromViewport = opts.coarsePointer
+    ? Math.max(0, opts.baselineHeight - opts.viewportHeight)
+    : 0
+  const raw = Math.max(0, fromViewport, opts.virtualKeyboardHeight)
+  if (raw < KEYBOARD_OPEN_MIN_PX) return 0
+  return Math.round(raw)
+}
+
 export type KeyboardPinnedFixedStyle = {
   position: 'fixed'
   inset?: string
@@ -143,9 +165,13 @@ export function useKeyboardHeight() {
     }
     if (height > baselineHeight) baselineHeight = height
 
-    const fromViewport = hasCoarsePointer() ? Math.max(0, baselineHeight - height) : 0
     const fromVirtualKeyboard = getVirtualKeyboard()?.boundingRect.height ?? 0
-    keyboardHeight.value = Math.round(Math.max(0, fromViewport, fromVirtualKeyboard))
+    keyboardHeight.value = inferredKeyboardHeight({
+      baselineHeight,
+      viewportHeight: height,
+      virtualKeyboardHeight: fromVirtualKeyboard,
+      coarsePointer: hasCoarsePointer(),
+    })
 
     if (vv) {
       viewportHeight.value = height
