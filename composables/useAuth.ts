@@ -29,6 +29,9 @@ export type AuthUser = {
   birthdate?: string | null
   interests?: string[]
   menOnlyConfirmed?: boolean
+  heardAboutUs?: import('~/types/api').HeardAboutUs | null
+  heardAboutUsOther?: string | null
+  hasRecruiter?: boolean
   siteAdmin?: boolean
   featureToggles?: string[]
   premium?: boolean
@@ -258,6 +261,10 @@ export function useAuth() {
     const { emitLogout, disconnect } = usePresence()
     const { onLogout } = usePushNotifications()
 
+    // Drop the push subscription while the session cookie is still valid.
+    // Doing this after /auth/logout 401s and used to look like a real auth wipe.
+    await onLogout().catch(() => undefined)
+
     // REST first: revoke the session row on the server before emitting the socket event.
     // If the socket handler runs first it would try to revoke an already-dead token.
     try {
@@ -270,8 +277,6 @@ export function useAuth() {
     // down this client's socket so it doesn't linger as an anonymous connection.
     emitLogout()
     disconnect()
-
-    await onLogout().catch(() => undefined)
 
     clearMohCacheAll()
     clearAuthClientState({ resetViewerCaches: true })
@@ -290,6 +295,8 @@ export function useAuth() {
     const { emitLogout, disconnect } = usePresence()
     const { onLogout } = usePushNotifications()
 
+    await onLogout().catch(() => undefined)
+
     // Revoke all sessions server-side (not just the current token).
     // The API also disconnects all sockets for this user on other instances.
     try {
@@ -300,8 +307,6 @@ export function useAuth() {
 
     emitLogout()
     disconnect()
-
-    await onLogout().catch(() => undefined)
 
     clearMohCacheAll()
     clearAuthClientState({ resetViewerCaches: true })

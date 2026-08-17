@@ -544,15 +544,15 @@ watch(
   { immediate: true },
 )
 
-watchEffect(() => {
-  if (!import.meta.client) return
-  if (!isAuthed.value) return
-  void ensureBookmarkCollectionsLoaded()
-})
+function canLoadBookmarkCollections() {
+  if (!isAuthed.value) return false
+  const status = user.value?.verifiedStatus
+  return status === 'identity' || status === 'manual'
+}
 
 function maybeRetryBookmarkCollections() {
   if (!import.meta.client) return
-  if (!isAuthed.value) return
+  if (!canLoadBookmarkCollections()) return
   // If we haven't loaded yet (or last attempt errored), retry.
   if (!bookmarksLoaded.value && !bookmarksLoading.value) {
     void ensureBookmarkCollectionsLoaded({ force: true })
@@ -560,11 +560,11 @@ function maybeRetryBookmarkCollections() {
 }
 
 watch(
-  () => isAuthed.value,
-  (authed) => {
+  () => [isAuthed.value, user.value?.verifiedStatus] as const,
+  () => {
     if (!import.meta.client) return
-    if (!authed) return
-    // Force once on authed to avoid “missed” load on hard reload.
+    if (!canLoadBookmarkCollections()) return
+    // Force once when the user can access folders (verified). Avoids 403s during onboarding.
     void ensureBookmarkCollectionsLoaded({ force: true })
   },
   { immediate: true },

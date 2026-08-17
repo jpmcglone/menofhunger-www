@@ -527,6 +527,28 @@ function handleAvatarSelectedFile(file: File) {
   openCropForAvatarFile(file)
 }
 
+function hydrateEditFields() {
+  editError.value = null
+  editName.value = props.profile?.name || ''
+  editBio.value = props.profile?.bio || ''
+  editLocationQuery.value = (props.profile?.locationZip ?? '') || ''
+  editWebsite.value = (props.profile?.website ?? '') || ''
+  editXUsername.value = (props.profile?.xUsername ?? '') || ''
+  editPickaxUsername.value = (props.profile?.pickaxUsername ?? '') || ''
+}
+
+function fillEmptyEditFieldsFromProfile() {
+  if (!props.modelValue) return
+  if (!editName.value && props.profile?.name) editName.value = props.profile.name
+  if (!editBio.value && props.profile?.bio) editBio.value = props.profile.bio
+  if (!editLocationQuery.value && props.profile?.locationZip) editLocationQuery.value = props.profile.locationZip
+  if (!editWebsite.value && props.profile?.website) editWebsite.value = props.profile.website
+  if (!editXUsername.value && props.profile?.xUsername) editXUsername.value = props.profile.xUsername
+  if (!editPickaxUsername.value && props.profile?.pickaxUsername) {
+    editPickaxUsername.value = props.profile.pickaxUsername
+  }
+}
+
 watch(
   () => props.modelValue,
   (open) => {
@@ -539,20 +561,27 @@ watch(
       pendingBannerRemoval.value = false
       return
     }
-    editError.value = null
-    editName.value = props.profile?.name || ''
-    editBio.value = props.profile?.bio || ''
-    editLocationQuery.value = (props.profile?.locationZip ?? '') || ''
-    editWebsite.value = (props.profile?.website ?? '') || ''
-    editXUsername.value = (props.profile?.xUsername ?? '') || ''
-    editPickaxUsername.value = (props.profile?.pickaxUsername ?? '') || ''
+    hydrateEditFields()
     clearAvatarCropState()
     clearBannerCropState()
     clearPendingAvatar()
     clearPendingBanner()
     pendingAvatarRemoval.value = false
     pendingBannerRemoval.value = false
-  }
+  },
+  { immediate: true },
+)
+
+watch(
+  () => [
+    props.profile?.name,
+    props.profile?.bio,
+    props.profile?.locationZip,
+    props.profile?.website,
+    props.profile?.xUsername,
+    props.profile?.pickaxUsername,
+  ] as const,
+  () => fillEmptyEditFieldsFromProfile(),
 )
 
 const { submit: saveProfile, submitting: saving } = useFormSubmit(

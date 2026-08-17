@@ -15,6 +15,7 @@ export function useDeleteAccount() {
     deleting.value = true
     error.value = null
     try {
+      await onLogout().catch(() => undefined)
       await apiFetch<{ success: true }>('/auth/account/delete', {
         method: 'POST',
         body: {
@@ -23,9 +24,8 @@ export function useDeleteAccount() {
         },
       })
 
-      // Best-effort: notify presence + clear push token before nuking local state.
+      // Best-effort: notify presence before nuking local state.
       try { emitLogout() } catch { /* no-op */ }
-      await onLogout().catch(() => undefined)
 
       clearMohCacheAll()
       clearAuthClientState({ resetViewerCaches: true })

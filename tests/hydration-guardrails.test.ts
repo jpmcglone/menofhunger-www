@@ -79,6 +79,25 @@ describe('hydration guardrails (structural)', () => {
       expect(src).toMatch(/useMyGroups\(\)/)
       expect(src).not.toMatch(/apiFetchData<[^>]+>\('\/groups\/me'\)/)
     }
+    const railCard = readFromRepo('components/app/groups/AppGroupsRailCard.vue')
+    expect(railCard).toMatch(/mohUnauthorized: 'ignore'/)
+    expect(railCard).toMatch(/isAuthed\.value \? loadMyGroups/)
+  })
+
+  it('unsubscribes push before logout and ignores a leftover 401', () => {
+    const push = readFromRepo('composables/usePushNotifications.ts')
+    expect(push).toMatch(/\/notifications\/push-unsubscribe/)
+    expect(push).toMatch(/mohUnauthorized: 'ignore'/)
+
+    const auth = readFromRepo('composables/useAuth.ts')
+    const unsubscribeAt = auth.indexOf('await onLogout()')
+    const logoutAt = auth.indexOf("'/auth/logout'")
+    const revokeAt = auth.indexOf("'/auth/sessions/revoke-all'")
+    expect(unsubscribeAt).toBeGreaterThan(-1)
+    expect(logoutAt).toBeGreaterThan(-1)
+    expect(revokeAt).toBeGreaterThan(-1)
+    expect(unsubscribeAt).toBeLessThan(logoutAt)
+    expect(unsubscribeAt).toBeLessThan(revokeAt)
   })
 
   it('gates mobile bottom-sheet mounting with hydrated media query helper', () => {

@@ -67,6 +67,7 @@ import type { CommunityGroupShell } from '~/types/api'
 import { groupAvatarRoundClass } from '~/utils/avatar-rounding'
 
 const { apiFetchData } = useApiClient()
+const { isAuthed } = useAuth()
 const { groups: mine, fetchedAt: myGroupsFetchedAt, load: loadMyGroups } = useMyGroups()
 
 const featured = ref<CommunityGroupShell[]>([])
@@ -74,7 +75,11 @@ const loading = ref(true)
 const avatarRoundClass = groupAvatarRoundClass()
 
 watch(myGroupsFetchedAt, (next, previous) => {
-  if (next === 0 && previous > 0) void loadMyGroups()
+  if (next === 0 && previous > 0 && isAuthed.value) void loadMyGroups()
+})
+
+watch(isAuthed, (authed) => {
+  if (authed) void loadMyGroups().catch(() => [])
 })
 
 const displayRows = computed(() => {
@@ -107,8 +112,8 @@ onMounted(async () => {
   loading.value = true
   try {
     const [, featList] = await Promise.all([
-      loadMyGroups().catch(() => []),
-      apiFetchData<CommunityGroupShell[]>('/groups/featured').catch(() => []),
+      isAuthed.value ? loadMyGroups().catch(() => []) : Promise.resolve([]),
+      apiFetchData<CommunityGroupShell[]>('/groups/featured', { mohUnauthorized: 'ignore' }).catch(() => []),
     ])
     featured.value = Array.isArray(featList) ? featList : []
   } finally {

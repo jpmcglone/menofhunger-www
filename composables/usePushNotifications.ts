@@ -158,7 +158,11 @@ export function usePushNotifications() {
       if (sub) {
         const endpoint = sub.endpoint
         try {
-          await apiFetch('/notifications/push-unsubscribe', { method: 'POST', body: { endpoint } })
+          await apiFetch('/notifications/push-unsubscribe', {
+            method: 'POST',
+            body: { endpoint },
+            mohUnauthorized: 'ignore',
+          })
         } catch {
           // best-effort remove on backend
         }

@@ -1845,6 +1845,8 @@ export type WsPresencePlatformsChangedPayload = {
   platforms: string[]
 }
 
+export type HeardAboutUs = Contracts.HeardAboutUs
+
 // Canonical self-only auth/settings snapshot (matches API `/auth/me` user DTO).
 export type UserDto = {
   id: string
@@ -1871,6 +1873,10 @@ export type UserDto = {
   birthdate: string | null
   interests: string[]
   menOnlyConfirmed: boolean
+  heardAboutUs: HeardAboutUs | null
+  heardAboutUsOther: string | null
+  /** True when a recruiter is already linked (referral code is locked). */
+  hasRecruiter: boolean
   siteAdmin: boolean
   featureToggles: string[]
   bannedAt: string | null

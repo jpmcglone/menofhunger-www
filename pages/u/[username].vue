@@ -586,7 +586,80 @@ async function pushProfilePath(path: string) {
 const isFollowersRoute = computed(() => /\/followers\/?$/.test(currentPathname.value))
 const isFollowingRoute = computed(() => /\/following\/?$/.test(currentPathname.value))
 
-const { profile, data, notFound, profileBanned, apiError } = await usePublicProfile(normalizedUsername)
+const { user: authUser, me: refetchMe, isAuthed } = useAuth()
+
+const {
+  profile: loadedProfile,
+  data,
+  notFound: fetchedNotFound,
+  profileBanned,
+  apiError,
+} = await usePublicProfile(normalizedUsername)
+
+const isOwnUsername = computed(() => {
+  const authName = (authUser.value?.username ?? '').trim().toLowerCase()
+  return Boolean(authName && authName === normalizedUsername.value)
+})
+
+function profileFromAuthUser(u: import('~/composables/useAuth').AuthUser): PublicProfile {
+  return {
+    id: u.id,
+    createdAt: u.createdAt ?? '',
+    username: u.username ?? null,
+    name: u.name ?? null,
+    bio: u.bio ?? null,
+    website: u.website ?? null,
+    xUsername: u.xUsername ?? null,
+    pickaxUsername: u.pickaxUsername ?? null,
+    locationDisplay: u.locationDisplay ?? null,
+    locationZip: u.locationZip ?? null,
+    locationCity: u.locationCity ?? null,
+    locationCounty: u.locationCounty ?? null,
+    locationState: u.locationState ?? null,
+    locationCountry: u.locationCountry ?? null,
+    birthdayDisplay: null,
+    birthdayMonthDay: null,
+    premium: Boolean(u.premium),
+    premiumPlus: Boolean(u.premiumPlus),
+    isOrganization: Boolean(u.isOrganization),
+    stewardBadgeEnabled: u.stewardBadgeEnabled ?? true,
+    verifiedStatus: u.verifiedStatus ?? 'none',
+    avatarUrl: u.avatarUrl ?? null,
+    bannerUrl: u.bannerUrl ?? null,
+    pinnedPostId: u.pinnedPostId ?? null,
+    lastOnlineAt: null,
+    checkinStreakDays: u.checkinStreakDays ?? 0,
+    longestStreakDays: u.longestStreakDays ?? 0,
+  }
+}
+
+const profile = computed(() => {
+  const loaded = loadedProfile.value
+  if (isOwnUsername.value && authUser.value) {
+    const fromAuth = profileFromAuthUser(authUser.value)
+    if (!loaded) return fromAuth
+    return {
+      ...loaded,
+      name: fromAuth.name ?? loaded.name,
+      bio: fromAuth.bio ?? loaded.bio,
+      website: fromAuth.website ?? loaded.website,
+      xUsername: fromAuth.xUsername ?? loaded.xUsername,
+      pickaxUsername: fromAuth.pickaxUsername ?? loaded.pickaxUsername,
+      locationDisplay: fromAuth.locationDisplay ?? loaded.locationDisplay,
+      locationZip: fromAuth.locationZip ?? loaded.locationZip,
+      locationCity: fromAuth.locationCity ?? loaded.locationCity,
+      locationCounty: fromAuth.locationCounty ?? loaded.locationCounty,
+      locationState: fromAuth.locationState ?? loaded.locationState,
+      locationCountry: fromAuth.locationCountry ?? loaded.locationCountry,
+      avatarUrl: fromAuth.avatarUrl ?? loaded.avatarUrl,
+      bannerUrl: fromAuth.bannerUrl ?? loaded.bannerUrl,
+    }
+  }
+  return loaded
+})
+
+const notFound = computed(() => fetchedNotFound.value && !isOwnUsername.value)
+
 useProfileSeo({ profile, normalizedUsername, notFound, profileBanned })
 
 const { origin: siteOrigin } = useRequestURL()
@@ -621,8 +694,6 @@ if (!notFound.value && profile.value) {
     postCount: null,
   }
 }
-
-const { user: authUser, me: refetchMe, isAuthed } = useAuth()
 
 const countFmt = new Intl.NumberFormat('en-US')
 function formatCount(n: unknown): string {
@@ -665,7 +736,10 @@ watch(
   { immediate: true },
 )
 
-const isSelf = computed(() => Boolean(authUser.value?.id && profile.value?.id && authUser.value.id === profile.value.id))
+const isSelf = computed(() => {
+  if (authUser.value?.id && profile.value?.id && authUser.value.id === profile.value.id) return true
+  return isOwnUsername.value
+})
 const isViewerAdmin = computed(() => Boolean(authUser.value?.siteAdmin))
 const canEditProfile = computed(() => isSelf.value || isViewerAdmin.value)
 const isAdminOverride = computed(() => !isSelf.value && isViewerAdmin.value)
@@ -1246,6 +1320,33 @@ const hideAvatarThumb = computed(() => viewer.visible.value && viewer.kind.value
 const hideAvatarDuringBanner = computed(() => viewer.visible.value && viewer.kind.value === 'banner')
 
 const editOpen = ref(false)
+const pendingEditProfile = useState('pending-edit-profile', () => false)
+const consumedEditIntent = ref(false)
+const presentingEditProfile = ref(false)
+
+watch(
+  () => [route.query.edit, pendingEditProfile.value, canEditProfile.value] as const,
+  async ([edit, pending, canEdit]) => {
+    if (consumedEditIntent.value || presentingEditProfile.value || !canEdit) return
+    if (edit !== '1' && !pending) return
+    presentingEditProfile.value = true
+    try {
+      if (isSelf.value) await refetchMe()
+      await refreshNuxtData(`public-profile:${normalizedUsername.value}`)
+      consumedEditIntent.value = true
+      pendingEditProfile.value = false
+      if (edit === '1' && import.meta.client) {
+        const url = new URL(location.href)
+        url.searchParams.delete('edit')
+        history.replaceState(history.state, '', `${url.pathname}${url.search}${url.hash}`)
+      }
+      editOpen.value = true
+    } finally {
+      presentingEditProfile.value = false
+    }
+  },
+  { immediate: true },
+)
 
 function onOpenProfileImage(payload: {
   event: MouseEvent

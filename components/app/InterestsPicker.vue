@@ -12,7 +12,8 @@
 
     <button
       type="button"
-      class="w-full rounded-xl border moh-border p-3 text-left transition-colors moh-surface-hover disabled:opacity-60"
+      class="w-full rounded-xl border p-3 text-left transition-colors moh-surface-hover disabled:opacity-60"
+      :class="invalid ? 'border-red-500 dark:border-red-400' : 'moh-border'"
       :disabled="disabled"
       @click="openDialog"
     >
@@ -229,6 +230,7 @@ const props = withDefaults(defineProps<{
   helperRight?: string
   helperBottom?: string
   showSelectedChips?: boolean
+  invalid?: boolean
 }>(), {
   disabled: false,
   required: true,
@@ -240,6 +242,7 @@ const props = withDefaults(defineProps<{
   helperRight: 'Pick at least 1',
   helperBottom: 'We’ll use these to personalize your experience.',
   showSelectedChips: true,
+  invalid: false,
 })
 
 const emit = defineEmits<{

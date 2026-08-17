@@ -34,6 +34,12 @@ export type MohApiFetchOptions = Omit<ApiFetchOptions, 'query'> & {
    * Defaults to 1 for GET in browser, 0 otherwise.
    */
   mohRetry?: number | false
+  /**
+   * What to do on 401. Default `redirect` clears the session and may send the
+   * user to login. Use `ignore` for optional/secondary fetches (right rail) so a
+   * missing cookie cannot wipe a just-established session.
+   */
+  mohUnauthorized?: 'redirect' | 'ignore'
 }
 
 // Client-only (never shared across SSR requests).
@@ -209,13 +215,14 @@ export function useApiClient() {
     fetchOptions: ApiFetchOptions,
     method: string,
     retryCount: number,
+    unauthorized: 'redirect' | 'ignore' = 'redirect',
   ): Promise<ApiEnvelope<T>> {
     let attempt = 0
     while (true) {
       try {
         return await $fetch<ApiEnvelope<T>>(url, fetchOptions)
       } catch (e) {
-        if (getErrorStatus(e) === 401) {
+        if (getErrorStatus(e) === 401 && unauthorized !== 'ignore') {
           const reason = getErrorReason(e)
           handleUnauthorizedClientSide({ banned: reason === 'account_banned' })
         }
@@ -245,7 +252,8 @@ export function useApiClient() {
     }
     const headers = mergeHeaders(ssrHeaders, options.headers)
 
-    const { mohCache, mohDedupe, mohRetry, ...fetchOptions } = options
+    const { mohCache, mohDedupe, mohRetry, mohUnauthorized, ...fetchOptions } = options
+    const unauthorized = mohUnauthorized === 'ignore' ? 'ignore' : 'redirect'
     const timeout = fetchOptions.timeout ?? defaultTimeoutMs
 
     const method = String(fetchOptions.method || 'GET').toUpperCase()
@@ -284,7 +292,7 @@ export function useApiClient() {
                 credentials: fetchOptions.credentials ?? 'include',
                 headers,
                 timeout,
-              }, method, retryCount)
+              }, method, retryCount, unauthorized)
                 .then((env) => {
                   clientResponseCache.set(cacheKey, {
                     value: env,
@@ -327,7 +335,7 @@ export function useApiClient() {
         credentials: fetchOptions.credentials ?? 'include',
         headers,
         timeout,
-      }, method, retryCount)
+      }, method, retryCount, unauthorized)
         .then((env) => {
           if (import.meta.client && cacheOpt && typeof cacheOpt === 'object' && cacheOpt.ttlMs > 0) {
             const baseKey2 = `${method}:${url}${queryKey}`
@@ -354,7 +362,7 @@ export function useApiClient() {
       credentials: fetchOptions.credentials ?? 'include',
       headers,
       timeout
-    }, method, retryCount)
+    }, method, retryCount, unauthorized)
   }
 
   async function apiFetchData<T>(path: string, options: MohApiFetchOptions = {}): Promise<T> {
