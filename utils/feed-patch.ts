@@ -75,7 +75,8 @@ export function applyLiveUpdatedPatch(
   if (typeof patch.editCount === 'number') next.editCount = patch.editCount
   if (patch.deletedAt !== undefined) next.deletedAt = patch.deletedAt
   if (typeof patch.commentCount === 'number') next.commentCount = patch.commentCount
-  if (typeof patch.viewerCount === 'number') next.viewerCount = patch.viewerCount
+  if (typeof patch.viewerCount === 'number') next.viewerCount = Math.max(next.viewerCount ?? 0, patch.viewerCount)
+  if (typeof patch.totalViewCount === 'number') next.totalViewCount = Math.max(next.totalViewCount ?? next.viewerCount ?? 0, patch.totalViewCount)
   if (typeof patch.boostCount === 'number') next.boostCount = Math.max(0, Math.floor(patch.boostCount))
   if (typeof patch.bookmarkCount === 'number') next.bookmarkCount = Math.max(0, Math.floor(patch.bookmarkCount))
   if (typeof patch.repostCount === 'number') next.repostCount = Math.max(0, Math.floor(patch.repostCount))

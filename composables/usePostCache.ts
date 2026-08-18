@@ -82,6 +82,7 @@ export function usePostCache() {
         deletedAt: p.deletedAt,
         commentCount: p.commentCount,
         viewerCount: p.viewerCount,
+        totalViewCount: p.totalViewCount,
         boostCount: p.boostCount,
         viewerHasBoosted: p.viewerHasBoosted,
         bookmarkCount: p.bookmarkCount,

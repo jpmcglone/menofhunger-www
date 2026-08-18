@@ -12,13 +12,12 @@
  * Group posts: optimistic groups-badge decrement on dwell; network flush stays
  * on the shared batch timer (not one POST per group post).
  *
- * After the first successful enqueue for a post this session, the observer
- * disconnects so scroll bounce cannot re-POST / re-trigger mark-read.
- * Already-viewed posts are still reported once per page load so lastSeenAt
- * can move; unique viewerCount stays 1.
+ * The API decides whether a report counts (unique once; total again after 30s).
+ * Client only skips re-POSTing the same post within 30s to avoid network spam.
  */
 
 const FLUSH_INTERVAL_MS = 4_000
+const REREPORT_INTERVAL_MS = 30_000
 const VISIBILITY_THRESHOLD = 0.5
 const VISIBILITY_DWELL_MS = 1_000
 /**
@@ -36,11 +35,8 @@ const BATCH_MAX = 50
 // on the same page without double-counting or double-flushing.
 let flushTimer: ReturnType<typeof setInterval> | null = null
 const pendingPostIds = new Set<string>()
-/**
- * Session-level "already reported / enqueued" set. Once a post is here we never
- * enqueue it again this page load (observers disconnect after first dwell).
- */
-const sessionReportedPostIds = new Set<string>()
+/** postId → last enqueue time. Re-report allowed after REREPORT_INTERVAL_MS. */
+const sessionReportedAt = new Map<string, number>()
 /** postIds already used for an optimistic groups-badge decrement this session. */
 const optimisticGroupBadgeApplied = new Set<string>()
 /**
@@ -49,12 +45,19 @@ const optimisticGroupBadgeApplied = new Set<string>()
  * and client hydration produce identical markup. Immune to postCache.clear() resets.
  */
 const locallyViewedPostIds = new Set<string>()
+let applyAcksFn: ((acks: import('~/types/api').PostViewAck[]) => void) | null = null
+
+function canReport(id: string, now = Date.now()): boolean {
+  const last = sessionReportedAt.get(id)
+  return last == null || now - last >= REREPORT_INTERVAL_MS
+}
 
 function enqueuePosts(ids: string[]): string[] {
   const added: string[] = []
+  const now = Date.now()
   for (const id of ids) {
-    if (sessionReportedPostIds.has(id)) continue
-    sessionReportedPostIds.add(id)
+    if (!canReport(id, now)) continue
+    sessionReportedAt.set(id, now)
     if (!pendingPostIds.has(id)) added.push(id)
     pendingPostIds.add(id)
   }
@@ -63,7 +66,11 @@ function enqueuePosts(ids: string[]): string[] {
 
 async function flushPending(
   apiFetchData: (url: string, opts: Record<string, unknown>) => Promise<unknown>,
-  opts: { isAuthed: boolean; anonId: string | null; source: string },
+  opts: {
+    isAuthed: boolean
+    anonId: string | null
+    source: string
+  },
 ) {
   if (pendingPostIds.size === 0) return
   if (!opts.isAuthed && !opts.anonId) return
@@ -72,14 +79,15 @@ async function flushPending(
   for (const id of ids) pendingPostIds.delete(id)
 
   try {
-    await apiFetchData('/posts/views', {
+    const acks = await apiFetchData('/posts/views', {
       method: 'POST',
       body: {
         postIds: ids,
         source: opts.source,
         ...(opts.anonId ? { anon_id: opts.anonId } : {}),
       },
-    })
+    }) as import('~/types/api').PostViewAck[] | undefined
+    if (Array.isArray(acks)) applyAcksFn?.(acks)
   } catch {
     // Fire-and-forget: silently ignore errors (network hiccups, 204 etc.)
   }
@@ -112,6 +120,22 @@ export function usePostViewTracker() {
   const { isAuthed } = useAuth()
   const anonViewId = useAnonViewId()
   const { groupsUnread, setGroupsUnread } = usePresence()
+  const postCache = usePostCache()
+
+  function applyAcks(acks: import('~/types/api').PostViewAck[]) {
+    for (const ack of acks) {
+      const current = postCache.get({ id: ack.id } as import('~/types/api').FeedPost)
+      const delta: Partial<import('~/types/api').FeedPost> = {}
+      if (ack.uniqueCounted) {
+        delta.viewerCount = Math.max(current.viewerCount ?? 0, ack.viewerCount)
+        delta.viewerHasViewed = true
+      }
+      if (ack.totalCounted) {
+        delta.totalViewCount = Math.max(current.totalViewCount ?? current.viewerCount ?? 0, ack.totalViewCount)
+      }
+      if (Object.keys(delta).length > 0) postCache.patch(ack.id, delta)
+    }
+  }
 
   // Start the periodic flush timer once (shared across all callers on this page).
   if (import.meta.client && !flushTimer) {
@@ -134,6 +158,8 @@ export function usePostViewTracker() {
       }
     }, { once: false })
   }
+
+  applyAcksFn = applyAcks
 
   /**
    * Attach an IntersectionObserver to a post element.
@@ -158,15 +184,11 @@ export function usePostViewTracker() {
     if (opts?.canTrack === false) return () => {}
     const ids = (Array.isArray(postIds) ? postIds : [postIds]).filter(Boolean)
     if (ids.length === 0) return () => {}
-    // Already reported this session — no observer work.
-    if (ids.every((id) => sessionReportedPostIds.has(id))) return () => {}
 
     let dwellTimer: ReturnType<typeof setTimeout> | null = null
-    let done = false
 
     const observer = new IntersectionObserver(
       (entries) => {
-        if (done) return
         const entry = entries[0]
         if (!entry) return
 
@@ -180,22 +202,15 @@ export function usePostViewTracker() {
           if (!dwellTimer) {
             dwellTimer = setTimeout(() => {
               dwellTimer = null
-              const pendingIds = ids.filter((id) => !sessionReportedPostIds.has(id))
-              if (pendingIds.length === 0) {
-                done = true
-                observer.disconnect()
-                return
-              }
+              const pendingIds = ids.filter((id) => canReport(id))
+              if (pendingIds.length === 0) return
               const added = enqueuePosts(pendingIds)
 
-              // Mark locally viewed so the eye icon lights up immediately, before the
-              // batch API call confirms. Gated on isAuthed so anon viewers don't get
-              // a state that silently resets on reload.
+              // Mark locally viewed so the person icon lights up immediately.
               if (isAuthed.value) {
                 for (const id of pendingIds) locallyViewedPostIds.add(id)
               }
 
-              // Group posts: optimistic badge only — flush rides the shared timer.
               const groupMap = opts?.groupIdByPostId
               if (groupMap && isAuthed.value) {
                 for (const id of added.length ? added : pendingIds) {
@@ -204,10 +219,6 @@ export function usePostViewTracker() {
                   optimisticDecrementGroupBadge(gid, id, setGroupsUnread, groupsUnread.value)
                 }
               }
-
-              // One dwell per session: stop observing so scroll bounce can't re-POST.
-              done = true
-              observer.disconnect()
             }, VISIBILITY_DWELL_MS)
           }
         } else {

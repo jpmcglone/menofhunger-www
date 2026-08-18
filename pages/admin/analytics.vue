@@ -515,13 +515,14 @@
 
         <!-- Top articles table -->
         <div class="px-4 space-y-2">
-          <div class="font-semibold text-sm">Top Articles by Views <span class="text-gray-400 font-normal">({{ rangeLabel }})</span></div>
+          <div class="font-semibold text-sm">Top Articles by Views <span class="text-gray-400 font-normal">({{ rangeLabel }}, people · total)</span></div>
           <div class="rounded-xl border moh-border overflow-x-auto">
             <table class="min-w-full text-sm">
               <thead>
                 <tr class="border-b moh-border text-left text-gray-500 dark:text-gray-400">
                   <th class="px-4 py-3 font-medium">Article</th>
                   <th class="px-4 py-3 font-medium">Tier</th>
+                  <th class="px-4 py-3 font-medium text-right">People</th>
                   <th class="px-4 py-3 font-medium text-right">Views</th>
                   <th class="px-4 py-3 font-medium text-right">Boosts</th>
                   <th class="px-4 py-3 font-medium text-right">Reactions</th>
@@ -548,14 +549,15 @@
                       {{ visibilityLabel(article.visibility) }}
                     </span>
                   </td>
-                  <td class="px-4 py-3 text-right tabular-nums font-semibold">{{ article.viewCount.toLocaleString() }}</td>
+                  <td class="px-4 py-3 text-right tabular-nums font-semibold">{{ (article.uniqueViewCount ?? article.viewCount).toLocaleString() }}</td>
+                  <td class="px-4 py-3 text-right tabular-nums">{{ Math.max(article.uniqueViewCount ?? article.viewCount, article.viewCount).toLocaleString() }}</td>
                   <td class="px-4 py-3 text-right tabular-nums">{{ article.boostCount.toLocaleString() }}</td>
                   <td class="px-4 py-3 text-right tabular-nums">{{ article.reactionCount.toLocaleString() }}</td>
                   <td class="px-4 py-3 text-right tabular-nums">{{ article.commentCount.toLocaleString() }}</td>
                   <td class="px-4 py-3 text-right text-xs text-gray-400 dark:text-gray-500 whitespace-nowrap">{{ articleAge(article.publishedAt) }}</td>
                 </tr>
                 <tr v-if="!data?.articles.topArticles.length">
-                  <td colspan="7" class="px-4 py-6 text-center text-gray-500 dark:text-gray-400 text-sm">No published articles yet</td>
+                  <td colspan="8" class="px-4 py-6 text-center text-gray-500 dark:text-gray-400 text-sm">No published articles yet</td>
                 </tr>
               </tbody>
             </table>
@@ -564,12 +566,13 @@
 
         <!-- Top posts table -->
         <div class="px-4 space-y-2">
-          <div class="font-semibold text-sm">Top Posts by Views <span class="text-gray-400 font-normal">(all time, public)</span></div>
+          <div class="font-semibold text-sm">Top Posts by Views <span class="text-gray-400 font-normal">(all time, public, people · total)</span></div>
           <div class="rounded-xl border moh-border overflow-x-auto">
             <table class="min-w-full text-sm">
               <thead>
                 <tr class="border-b moh-border text-left text-gray-500 dark:text-gray-400">
                   <th class="px-4 py-3 font-medium">Post</th>
+                  <th class="px-4 py-3 font-medium text-right">People</th>
                   <th class="px-4 py-3 font-medium text-right">Views</th>
                   <th class="px-4 py-3 font-medium text-right">Boosts</th>
                   <th class="px-4 py-3 font-medium text-right">Replies</th>
@@ -590,14 +593,15 @@
                     <div class="relative z-[1] line-clamp-2 font-medium">{{ post.bodyPreview || 'Untitled post' }}</div>
                     <div class="relative z-[1] text-xs text-gray-400 dark:text-gray-500">@{{ post.authorUsername || 'unknown' }}</div>
                   </td>
-                  <td class="px-4 py-3 text-right tabular-nums font-semibold">{{ post.viewCount.toLocaleString() }}</td>
+                  <td class="px-4 py-3 text-right tabular-nums font-semibold">{{ (post.uniqueViewCount ?? post.viewCount).toLocaleString() }}</td>
+                  <td class="px-4 py-3 text-right tabular-nums">{{ Math.max(post.uniqueViewCount ?? post.viewCount, post.viewCount).toLocaleString() }}</td>
                   <td class="px-4 py-3 text-right tabular-nums">{{ post.boostCount.toLocaleString() }}</td>
                   <td class="px-4 py-3 text-right tabular-nums">{{ post.commentCount.toLocaleString() }}</td>
                   <td class="px-4 py-3 text-right tabular-nums">{{ post.reactionCount.toLocaleString() }}</td>
                   <td class="px-4 py-3 text-right text-xs text-gray-400 dark:text-gray-500 whitespace-nowrap">{{ articleAge(post.createdAt) }}</td>
                 </tr>
                 <tr v-if="!data?.topPostsAllTime.length">
-                  <td colspan="6" class="px-4 py-6 text-center text-gray-500 dark:text-gray-400 text-sm">No public posts yet</td>
+                  <td colspan="7" class="px-4 py-6 text-center text-gray-500 dark:text-gray-400 text-sm">No public posts yet</td>
                 </tr>
               </tbody>
             </table>
@@ -984,7 +988,11 @@
                 ({{ data.landing.posts.original.toLocaleString() }} original · {{ data.landing.posts.replies.toLocaleString() }} replies)
               </div>
               <div class="text-xs text-gray-400 dark:text-gray-500 border-t moh-border pt-2">
-                {{ data.landing.views.total.toLocaleString() }} unique post views ·
+                {{ data.landing.views.total.toLocaleString() }} total post views
+                <template v-if="data.landing.views.unique != null">
+                  · {{ data.landing.views.unique.toLocaleString() }} people
+                </template>
+                ·
                 {{ data.landing.posts.public.toLocaleString() }} public /
                 {{ data.landing.posts.verified.toLocaleString() }} verified /
                 {{ data.landing.posts.premium.toLocaleString() }} premium
@@ -1003,7 +1011,10 @@
               </div>
               <div class="text-xs text-gray-500 dark:text-gray-400">
                 {{ data.landing.articles.authors.toLocaleString() }} authors ·
-                {{ data.landing.articles.views.toLocaleString() }} unique views
+                {{ data.landing.articles.views.toLocaleString() }} total views
+                <template v-if="data.landing.articles.unique != null">
+                  · {{ data.landing.articles.unique.toLocaleString() }} people
+                </template>
               </div>
               <div class="text-xs text-gray-400 dark:text-gray-500 border-t moh-border pt-2">
                 {{ data.landing.articles.public.toLocaleString() }} public /
@@ -1488,7 +1499,8 @@ const articleKpiCards = computed(() => {
   return [
     { label: 'Published', value: k.totalPublished.toLocaleString(), sub: r },
     { label: 'Authors', value: k.uniqueAuthors.toLocaleString(), sub: `published in ${r}` },
-    { label: 'Views', value: k.totalViewsInRange.toLocaleString(), sub: r },
+    { label: 'People', value: (k.uniqueViewsInRange ?? k.totalViewsInRange).toLocaleString(), sub: `first-time viewers · ${r}` },
+    { label: 'Views', value: Math.max(k.uniqueViewsInRange ?? 0, k.totalViewsInRange).toLocaleString(), sub: `total · ${r}` },
     { label: 'Boosts', value: k.totalBoostsInRange.toLocaleString(), sub: r },
     { label: 'Reactions', value: k.totalReactionsInRange.toLocaleString(), sub: r },
     { label: 'Replies', value: k.totalCommentsInRange.toLocaleString(), sub: r },

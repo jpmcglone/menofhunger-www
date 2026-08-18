@@ -26,14 +26,14 @@
 
   <div
     v-else-if="!isDeletedPost && !isOnlyMe"
-    class="mt-2.5 sm:mt-3 flex items-center justify-between sm:justify-start gap-1 moh-text-muted"
+    class="mt-2.5 flex items-center justify-between sm:justify-start gap-1 moh-text-muted"
   >
     <!-- Reply -->
     <div class="inline-flex items-center">
       <button
         v-tooltip.bottom="commentTooltip"
         type="button"
-        class="moh-tap moh-pressable inline-flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-full transition-colors moh-surface-hover"
+        class="moh-tap moh-pressable inline-flex items-center justify-center p-0.5 transition-colors hover:moh-text"
         :class="commentClickable ? 'cursor-pointer' : 'cursor-default opacity-60'"
         aria-label="Reply"
         @click.stop="onCommentClick"
@@ -57,7 +57,7 @@
       <button
         v-tooltip.bottom="repostTooltip"
         type="button"
-        class="moh-tap moh-pressable inline-flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-full transition-colors moh-surface-hover"
+        class="moh-tap moh-pressable inline-flex items-center justify-center p-0.5 transition-colors hover:moh-text"
         :class="viewerCanInteract ? 'cursor-pointer' : 'cursor-default opacity-60'"
         :aria-label="isReposted ? 'Repost options' : 'Repost'"
         @click.stop="onRepostClick"
@@ -99,7 +99,7 @@
       <button
         v-tooltip.bottom="upvoteTooltip"
         type="button"
-        class="moh-tap moh-pressable inline-flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-full transition-colors moh-surface-hover"
+        class="moh-tap moh-pressable inline-flex items-center justify-center p-0.5 transition-colors hover:moh-text"
         :class="boostClickable ? 'cursor-pointer' : 'cursor-default opacity-60'"
         :aria-label="isBoosted ? 'Remove upvote' : 'Upvote'"
         @click.stop="onBoostClick"
@@ -133,14 +133,6 @@
         <AppAnimatedCount :value="boostCount" :format="formatCountOrBlank" />
       </span>
     </div>
-
-    <!-- Views -->
-    <AppPostRowViewerBreakdown
-      :post-id="post.id"
-      :viewer-count="viewerCount"
-      :has-viewed="hasViewed"
-      @count-synced="$emit('viewerCountSynced', $event)"
-    />
 
     <!-- Spacer: hidden on mobile (justify-between handles spacing), grows on desktop -->
     <div class="hidden sm:block sm:flex-1" aria-hidden="true" />
@@ -199,7 +191,6 @@ const props = defineProps<{
 const emit = defineEmits<{
   bookmarkCountDelta: [delta: number]
   bookmarkStateChanged: [payload: { hasBookmarked: boolean; collectionIds: string[] }]
-  viewerCountSynced: [total: number]
   openReposters: []
 }>()
 
@@ -237,7 +228,6 @@ const {
   upvoteTooltip,
   onBoostClick,
   bookmarkCountValue,
-  viewerCount,
   canShare,
   shareTooltip,
   shareMenuItems,
@@ -255,11 +245,6 @@ const {
 
 // ─── Live "is replying" indicator ────────────────────────────────────────────
 const { typingUsers } = usePostTyping(computed(() => postView.value.id))
-
-const { hasViewedLocally } = usePostViewTracker()
-const hasViewed = computed(() =>
-  postView.value.viewerHasViewed === true || hasViewedLocally(postView.value.id),
-)
 
 // ─── Transient "+N new" pill ─────────────────────────────────────────────────
 // Show a pill when a new reply arrives while this row is on screen.

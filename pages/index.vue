@@ -158,8 +158,8 @@
                   <template v-if="landingSnapshot.stats.views">
                     <span class="mx-1.5 opacity-40">·</span>
                     <AppLandingStatBreakdown
-                      :title="`${landingSnapshot.stats.views.total.toLocaleString('en-US')} unique views`"
-                      :ariaLabel="`${formatLandingCount(landingSnapshot.stats.views.total)}+ unique views — hover for breakdown`"
+                      :title="`${landingSnapshot.stats.views.total.toLocaleString('en-US')} total views`"
+                      :ariaLabel="`${formatLandingCount(landingSnapshot.stats.views.total)}+ views — hover for breakdown`"
                       :rows="viewsBreakdownRows"
                     >{{ formatLandingCount(landingSnapshot.stats.views.total) }}+ views</AppLandingStatBreakdown>
                   </template>
@@ -939,7 +939,8 @@ const articlesBreakdownSections = computed<BreakdownSection[]>(() => {
   return [
     [
       { key: 'authors', label: 'Authors', count: s.authors ?? 0 },
-      { key: 'views', label: 'Unique views', count: s.views ?? 0 },
+      { key: 'views', label: 'Total views', count: s.views ?? 0 },
+      { key: 'unique', label: 'Unique views', count: s.unique ?? 0 },
     ],
     [
       { key: 'public', label: 'Public', count: s.public, dotClass: 'bg-gray-400' },
@@ -953,6 +954,7 @@ const viewsBreakdownRows = computed<BreakdownRow[]>(() => {
   const s = landingSnapshot.value?.stats.views
   if (!s) return []
   return [
+    { key: 'unique', label: 'Unique views', count: s.unique ?? s.total },
     { key: 'premium', label: 'Premium', count: s.premium, dotClass: 'bg-yellow-400' },
     { key: 'verified', label: 'Verified', count: s.verified, dotClass: 'bg-blue-400' },
     { key: 'unverified', label: 'Unverified', count: s.unverified, dotClass: 'bg-gray-400' },

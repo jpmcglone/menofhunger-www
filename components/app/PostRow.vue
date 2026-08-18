@@ -288,8 +288,13 @@
           :share="postView.fitnessShare"
         />
 
-        <div v-if="!isDeletedPost && !isGatedPost && metaTags.length" class="mt-3.5 flex items-center justify-between gap-3">
-          <div class="flex items-center gap-2">
+        <AppPostRowPendingBanner v-if="pendingStatus" :post="postView" :status="pendingStatus" />
+
+        <div
+          v-if="!isDeletedPost && !isGatedPost && (metaTags.length || displayViewerCount > 0)"
+          class="mt-3.5 flex items-center justify-between gap-3"
+        >
+          <div class="flex min-w-0 items-center gap-2">
             <template v-for="t in metaTags" :key="t.key">
               <NuxtLink
                 v-if="t.to"
@@ -312,9 +317,21 @@
               </span>
             </template>
           </div>
+          <AppPostRowViewerBreakdown
+            v-if="displayViewerCount > 0"
+            :entity-id="postView.id"
+            :breakdown-path="`/posts/${encodeURIComponent(postView.id)}/views/breakdown?fresh=1`"
+            :viewer-count="displayViewerCount"
+            :total-view-count="displayTotalViewCount"
+            :has-viewed="hasViewedPost"
+            @count-synced="onViewerCountSynced"
+          />
         </div>
 
-        <AppPostRowPendingBanner v-if="pendingStatus" :post="postView" :status="pendingStatus" />
+        <div
+          v-if="!isDeletedPost && !isOnlyMe"
+          class="mt-2 border-t moh-border"
+        />
 
         <!-- Engagement: typing indicator, "+N new" pill, and the action bar -->
         <AppPostRowActionBar
@@ -325,7 +342,6 @@
           :is-gated-post="isGatedPost"
           @bookmark-count-delta="onBookmarkCountDelta"
           @bookmark-state-changed="onBookmarkStateChanged"
-          @viewer-count-synced="onViewerCountSynced"
           @open-reposters="repostersPostId = post.id"
         />
 
@@ -482,6 +498,13 @@ const author = computed(() => authorOverlay.value ?? authorSnapshot.value ?? ({
 } as any))
 const isDeletedPost = computed(() => Boolean(postView.value.deletedAt))
 const isGatedPost = computed(() => postView.value.viewerCanAccess === false)
+const displayViewerCount = computed(() => Math.max(0, Math.floor(Number(postView.value.viewerCount ?? 0))))
+const displayTotalViewCount = computed(() =>
+  Math.max(displayViewerCount.value, Math.floor(Number(postView.value.totalViewCount ?? displayViewerCount.value))),
+)
+const hasViewedPost = computed(() =>
+  postView.value.viewerHasViewed === true || hasViewedLocally(postView.value.id),
+)
 
 function onGatedBannerClick() {
   if (!isAuthed.value) {
@@ -557,7 +580,7 @@ const {
 
 // View tracking: report when this row is ≥50% visible for ≥1s.
 // FeedPostRow observes the wrapper for the full chain — pass trackViews=false there.
-const { observe: observeView, noteAlreadyViewed } = usePostViewTracker()
+const { observe: observeView, noteAlreadyViewed, hasViewedLocally } = usePostViewTracker()
 let stopViewObserve: (() => void) | null = null
 
 onMounted(() => {
@@ -841,9 +864,16 @@ function onBookmarkStateChanged(payload: { hasBookmarked: boolean; collectionIds
   })
 }
 
-function onViewerCountSynced(nextTotal: number) {
-  if (nextTotal !== Math.max(0, Math.floor(Number(postState.value.viewerCount ?? 0)))) {
-    postState.value = { ...postState.value, viewerCount: nextTotal }
+function onViewerCountSynced(payload: { viewerCount: number, totalViewCount: number }) {
+  const nextUnique = Math.max(0, Math.floor(Number(payload.viewerCount ?? 0)))
+  const nextTotal = Math.max(nextUnique, Math.floor(Number(payload.totalViewCount ?? 0)))
+  const currentUnique = Math.max(0, Math.floor(Number(postState.value.viewerCount ?? 0)))
+  const currentTotal = Math.max(currentUnique, Math.floor(Number(postState.value.totalViewCount ?? currentUnique)))
+  if (nextUnique === currentUnique && nextTotal === currentTotal) return
+  postState.value = {
+    ...postState.value,
+    viewerCount: Math.max(currentUnique, nextUnique),
+    totalViewCount: Math.max(currentTotal, nextTotal),
   }
 }
 

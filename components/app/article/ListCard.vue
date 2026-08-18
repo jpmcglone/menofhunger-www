@@ -95,8 +95,11 @@
                 {{ article.commentCount }}
               </span>
               <span v-if="article.viewCount" class="flex items-center gap-0.5">
-                <Icon name="tabler:eye" class="text-[10px]" aria-hidden="true" />
+                <Icon name="tabler:user" class="text-[10px]" aria-hidden="true" />
                 {{ article.viewCount }}
+                <span class="opacity-70">·</span>
+                <Icon name="tabler:eye" class="text-[10px]" aria-hidden="true" />
+                {{ Math.max(article.viewCount, article.totalViewCount ?? article.viewCount) }}
               </span>
             </template>
           </template>

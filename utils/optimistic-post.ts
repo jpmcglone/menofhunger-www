@@ -52,6 +52,7 @@ export function buildOptimisticPost(input: {
     commentCount: 0,
     repostCount: 0,
     viewerCount: 0,
+    totalViewCount: 0,
     media: optimisticMedia,
     parentId: input.parentId ?? null,
     communityGroupId: input.communityGroupId ?? null,

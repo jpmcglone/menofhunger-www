@@ -69,6 +69,7 @@ function makePost(overrides: Partial<FeedPost> & { id: string }): FeedPost {
     bookmarkCount: overrides.bookmarkCount ?? 0,
     commentCount: overrides.commentCount ?? 0,
     viewerCount: overrides.viewerCount ?? 0,
+    totalViewCount: overrides.totalViewCount ?? overrides.viewerCount ?? 0,
     parentId: (overrides.parentId ?? null) as string | null,
     mentions: [],
     media: [],
@@ -133,6 +134,7 @@ function simulateLiveUpdated(
     bumps.clearBumpsForPostIds([payload.postId])
   }
   if (typeof patch.viewerCount === 'number') delta.viewerCount = patch.viewerCount
+  if (typeof patch.totalViewCount === 'number') delta.totalViewCount = patch.totalViewCount
   cache.patch(payload.postId, delta)
 }
 

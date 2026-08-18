@@ -60,6 +60,7 @@ function makePost(overrides: Partial<FeedPost> & { id: string }): FeedPost {
     bookmarkCount: overrides.bookmarkCount ?? 0,
     commentCount: overrides.commentCount ?? 0,
     viewerCount: overrides.viewerCount ?? 0,
+    totalViewCount: overrides.totalViewCount ?? overrides.viewerCount ?? 0,
     parentId: (overrides.parentId ?? null) as string | null,
     mentions: [],
     media: [],
@@ -404,6 +405,7 @@ describe('global plugin simulation — liveUpdated → cache', () => {
     if (patch.deletedAt !== undefined) delta.deletedAt = patch.deletedAt
     if (typeof patch.commentCount === 'number') delta.commentCount = patch.commentCount
     if (typeof patch.viewerCount === 'number') delta.viewerCount = patch.viewerCount
+    if (typeof patch.totalViewCount === 'number') delta.totalViewCount = patch.totalViewCount
     if (typeof patch.boostCount === 'number') {
       delta.boostCount = Math.max(0, Math.floor(patch.boostCount))
     }

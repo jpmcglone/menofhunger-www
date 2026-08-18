@@ -1,16 +1,16 @@
 <template>
-  <div class="relative">
+  <div class="relative inline-flex items-center leading-none">
     <button
       v-tooltip.bottom="bookmarkTooltip"
       type="button"
-      class="moh-tap moh-pressable inline-flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-full transition-colors moh-surface-hover"
+      class="moh-tap moh-pressable inline-flex h-5 w-5 items-center justify-center transition-colors hover:moh-text"
       :class="bookmark.loading.value ? 'cursor-default opacity-60' : (viewerCanInteract ? 'cursor-pointer' : 'cursor-default opacity-60')"
       :aria-label="bookmark.hasBookmarked.value ? 'Edit bookmark' : 'Save post'"
       @click.stop="onButtonClick"
     >
       <Icon
         :name="bookmark.hasBookmarked.value ? 'tabler:bookmark-filled' : 'tabler:bookmark'"
-        class="text-[18px]"
+        class="text-[18px] translate-y-[1.5px]"
         aria-hidden="true"
         :style="bookmark.hasBookmarked.value ? { color: 'var(--p-primary-color)' } : undefined"
       />

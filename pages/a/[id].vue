@@ -243,70 +243,15 @@
 
           <!-- View count + Share menu -->
           <div class="flex items-center gap-2">
-            <!-- View count with hover breakdown -->
-            <div v-if="displayViewCount > 0" class="relative">
-              <button
-                type="button"
-                class="inline-flex items-center gap-1 text-[11px] sm:text-xs tabular-nums moh-text-muted select-none rounded-full px-1.5 h-9 transition-colors moh-surface-hover cursor-default"
-                :aria-label="`${displayViewCount} ${displayViewCount === 1 ? 'person' : 'people'} read this article`"
-                @mouseenter="onViewCountHover"
-                @focus="onViewCountHover"
-                @mouseleave="viewCountBreakdownVisible = false"
-                @blur="viewCountBreakdownVisible = false"
-              >
-                <Icon name="tabler:eye" class="text-[15px]" aria-hidden="true" />
-                <AppAnimatedCount :value="displayViewCount" :format="(n) => n.toLocaleString()" />
-              </button>
-
-              <!-- Breakdown popover -->
-              <Transition name="viewer-breakdown">
-                <div
-                  v-if="viewCountBreakdownVisible"
-                  class="absolute top-full mt-1.5 right-0 z-50 min-w-[11rem] rounded-lg border moh-border moh-surface shadow-lg px-3 py-2.5 text-[11px] sm:text-xs"
-                  role="tooltip"
-                >
-                  <p class="mb-1.5 font-semibold moh-text tabular-nums">
-                    <AppAnimatedCount :value="displayViewCount" />
-                    {{ displayViewCount === 1 ? 'person' : 'people' }} read this
-                  </p>
-                  <template v-if="viewCountBreakdown">
-                    <div class="flex flex-col gap-1 moh-text-muted">
-                      <div v-if="viewCountBreakdown.premium > 0" class="flex items-center justify-between gap-3">
-                        <span class="flex items-center gap-1.5">
-                          <span class="inline-block h-2 w-2 rounded-full bg-yellow-400 shrink-0" aria-hidden="true" />
-                          Premium
-                        </span>
-                        <span class="tabular-nums font-medium moh-text">{{ viewCountBreakdown.premium }}</span>
-                      </div>
-                      <div v-if="viewCountBreakdown.verified > 0" class="flex items-center justify-between gap-3">
-                        <span class="flex items-center gap-1.5">
-                          <span class="inline-block h-2 w-2 rounded-full bg-blue-400 shrink-0" aria-hidden="true" />
-                          Verified
-                        </span>
-                        <span class="tabular-nums font-medium moh-text">{{ viewCountBreakdown.verified }}</span>
-                      </div>
-                      <div v-if="viewCountBreakdown.unverified > 0" class="flex items-center justify-between gap-3">
-                        <span class="flex items-center gap-1.5">
-                          <span class="inline-block h-2 w-2 rounded-full bg-gray-400 shrink-0" aria-hidden="true" />
-                          Unverified
-                        </span>
-                        <span class="tabular-nums font-medium moh-text">{{ viewCountBreakdown.unverified }}</span>
-                      </div>
-                      <div v-if="viewCountBreakdown.guest > 0" class="flex items-center justify-between gap-3">
-                        <span class="flex items-center gap-1.5">
-                          <span class="inline-block h-2 w-2 rounded-full bg-gray-500/60 shrink-0" aria-hidden="true" />
-                          Guests
-                        </span>
-                        <span class="tabular-nums font-medium moh-text">{{ viewCountBreakdown.guest }}</span>
-                      </div>
-                    </div>
-                  </template>
-                  <template v-else>
-                    <div class="moh-text-muted animate-pulse">Loading…</div>
-                  </template>
-                </div>
-              </Transition>
-            </div>
+            <AppPostRowViewerBreakdown
+              v-if="displayViewCount > 0 && article?.id"
+              :entity-id="article.id"
+              :breakdown-path="`/articles/${encodeURIComponent(article.id)}/views/breakdown`"
+              :viewer-count="displayViewCount"
+              :total-view-count="displayTotalViewCount"
+              people-verb="read this"
+              @count-synced="onArticleViewSynced"
+            />
 
             <button
               type="button"
@@ -752,37 +697,43 @@ const { observe: observeArticleView, trackOnDwell: trackArticleViewOnDwell } = u
 const presence = usePresence()
 const liveCommentCount = ref<number | null>(null)
 const liveViewCount = ref<number | null>(null)
+const liveTotalViewCount = ref<number | null>(null)
+const articleViewAcks = useState<Record<string, { viewCount: number, totalViewCount: number }>>('article-view-acks', () => ({}))
 
 const displayCommentCount = computed(() => liveCommentCount.value ?? article.value?.commentCount ?? 0)
-const displayViewCount = computed(() => liveViewCount.value ?? article.value?.viewCount ?? 0)
+const displayViewCount = computed(() => {
+  const id = article.value?.id
+  const ack = id ? articleViewAcks.value[id] : null
+  return liveViewCount.value ?? ack?.viewCount ?? article.value?.viewCount ?? 0
+})
+const displayTotalViewCount = computed(() => {
+  const id = article.value?.id
+  const ack = id ? articleViewAcks.value[id] : null
+  const unique = displayViewCount.value
+  return Math.max(
+    unique,
+    liveTotalViewCount.value ?? ack?.totalViewCount ?? article.value?.totalViewCount ?? unique,
+  )
+})
 
 const articlesCallback: import('~/composables/usePresence').ArticlesCallback = {
   onLiveUpdated(payload) {
     if (payload.articleId !== article.value?.id) return
     if (payload.patch.commentCount !== undefined) liveCommentCount.value = payload.patch.commentCount
-    if (payload.patch.viewCount !== undefined) liveViewCount.value = payload.patch.viewCount
+    if (payload.patch.viewCount !== undefined) {
+      liveViewCount.value = Math.max(liveViewCount.value ?? 0, payload.patch.viewCount)
+    }
+    if (payload.patch.totalViewCount !== undefined) {
+      liveTotalViewCount.value = Math.max(liveTotalViewCount.value ?? 0, payload.patch.totalViewCount)
+    }
     if (payload.patch.boostCount !== undefined) boostState.count.value = payload.patch.boostCount
     if (payload.patch.reactions !== undefined) reactionState.reactions.value = payload.patch.reactions
   },
 }
 
-// ─── Viewer breakdown (hover) ─────────────────────────────────────────────────
-const viewCountBreakdownVisible = ref(false)
-const viewCountBreakdown = ref<import('~/types/api').ArticleViewBreakdown | null>(null)
-let breakdownFetched = false
-
-async function onViewCountHover() {
-  viewCountBreakdownVisible.value = true
-  if (breakdownFetched) return
-  breakdownFetched = true
-  try {
-    const result = await apiFetchData<import('~/types/api').ArticleViewBreakdown>(
-      `/articles/${article.value?.id}/views/breakdown`,
-    )
-    viewCountBreakdown.value = result
-  } catch {
-    breakdownFetched = false
-  }
+function onArticleViewSynced(payload: { viewerCount: number, totalViewCount: number }) {
+  liveViewCount.value = Math.max(liveViewCount.value ?? 0, payload.viewerCount)
+  liveTotalViewCount.value = Math.max(liveTotalViewCount.value ?? 0, payload.totalViewCount)
 }
 
 let stopObservingView: (() => void) | null = null
@@ -1075,16 +1026,6 @@ const reactionState = useArticleReactions(
 </script>
 
 <style scoped>
-.viewer-breakdown-enter-active,
-.viewer-breakdown-leave-active {
-  transition: opacity 0.12s ease, transform 0.12s ease;
-}
-.viewer-breakdown-enter-from,
-.viewer-breakdown-leave-to {
-  opacity: 0;
-  transform: translateY(-4px);
-}
-
 .tip-pop-enter-active,
 .tip-pop-leave-active {
   transition: opacity 0.15s ease, transform 0.15s ease;

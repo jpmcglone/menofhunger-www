@@ -650,7 +650,10 @@ export type FeedPost = {
   commentCount?: number
   /** Denormalized count of flat reposts + quote reposts referencing this post. */
   repostCount?: number
+  /** Unique people (person × post). */
   viewerCount?: number
+  /** Accepted impressions, including revisits after the 30s gate. */
+  totalViewCount?: number
   parentId?: string | null
   /** When set, post is scoped to a community group (not on global feeds). */
   communityGroupId?: string | null
@@ -718,12 +721,34 @@ export type FeedPost = {
   _pendingError?: string | null
 }
 
+export type PostViewAck = {
+  id: string
+  uniqueCounted: boolean
+  totalCounted: boolean
+  viewerCount: number
+  totalViewCount: number
+}
+
+export type ArticleViewAck = {
+  id: string
+  uniqueCounted: boolean
+  totalCounted: boolean
+  viewCount: number
+  totalViewCount: number
+}
+
 export type PostViewBreakdown = {
   premium: number
   verified: number
   unverified: number
   guest: number
+  /** Unique people. */
   total: number
+  totalViewCount: number
+  premiumTotal: number
+  verifiedTotal: number
+  unverifiedTotal: number
+  guestTotal: number
 }
 
 export type ArticleViewBreakdown = {
@@ -731,7 +756,13 @@ export type ArticleViewBreakdown = {
   verified: number
   unverified: number
   guest: number
+  /** Unique people. */
   total: number
+  totalViewCount: number
+  premiumTotal: number
+  verifiedTotal: number
+  unverifiedTotal: number
+  guestTotal: number
 }
 
 export type BookmarkCollection = {
@@ -1707,6 +1738,7 @@ export type WsPostsLiveUpdatedPayload = {
     deletedAt: string | null
     commentCount: number
     viewerCount: number
+    totalViewCount: number
     boostCount: number
     bookmarkCount: number
     repostCount: number
@@ -1721,6 +1753,7 @@ export type WsArticlesLiveUpdatedPayload = {
   patch: Partial<{
     commentCount: number
     viewCount: number
+    totalViewCount: number
     boostCount: number
     reactions: ArticleReactionSummary[]
   }>
@@ -1974,6 +2007,7 @@ export type AdminUserRecentArticle = {
   isDraft: boolean
   visibility: string
   viewCount: number
+  totalViewCount: number
   boostCount: number
   commentCount: number
 }
@@ -2107,6 +2141,7 @@ export type AdminAnalyticsTopPost = {
   id: string
   bodyPreview: string
   authorUsername: string
+  uniqueViewCount: number
   viewCount: number
   boostCount: number
   commentCount: number
@@ -2172,6 +2207,7 @@ export type AdminAnalyticsTopArticle = {
   slug: string
   visibility: string
   authorUsername: string
+  uniqueViewCount: number
   viewCount: number
   boostCount: number
   commentCount: number
@@ -2183,6 +2219,7 @@ export type AdminAnalyticsArticleKpi = {
   totalPublished: number
   totalDrafts: number
   uniqueAuthors: number
+  uniqueViewsInRange: number
   totalViewsInRange: number
   totalBoostsInRange: number
   totalReactionsInRange: number
@@ -2348,8 +2385,7 @@ export type LandingPostBreakdown = {
 }
 
 /**
- * Site-wide unique views (person×post), matching per-post viewerCount semantics.
- * Guests are derived as total − authenticated tier counts.
+ * Site-wide post views. Tier rows are unique people; `total` is impressions.
  */
 export type LandingViewsBreakdown = {
   premium: number
@@ -2357,6 +2393,7 @@ export type LandingViewsBreakdown = {
   unverified: number
   guest: number
   total: number
+  unique: number
 }
 
 /** Published articles by landing-eligible authors (drafts/deleted/onlyMe excluded). */
@@ -2366,8 +2403,8 @@ export type LandingArticleBreakdown = {
   premium: number
   total: number
   authors: number
-  /** Sum of Article.viewCount (unique person×article). */
   views: number
+  unique: number
 }
 
 export type LandingStats = {
@@ -2555,6 +2592,7 @@ export type Article = {
   boostCount: number
   commentCount: number
   viewCount: number
+  totalViewCount: number
   author: ArticleAuthor
   reactions: ArticleReactionSummary[]
   tags: ArticleTag[]

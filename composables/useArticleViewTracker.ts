@@ -16,8 +16,8 @@
 const DWELL_MS = 2_000
 /** Time-on-page threshold before counting as a view (ms). */
 const PAGE_DWELL_MS = 5_000
-/** Don't re-send the same article within this window. */
-const DEDUPE_WINDOW_MS = 60_000
+/** Don't re-send the same article within this window (API 30s gate is authoritative). */
+const DEDUPE_WINDOW_MS = 30_000
 
 const recentlySent = new Map<string, number>()
 
@@ -37,15 +37,27 @@ export function useArticleViewTracker() {
     if (last != null && now - last < DEDUPE_WINDOW_MS) return
 
     try {
-      await apiFetchData('/articles/views', {
+      const acks = await apiFetchData('/articles/views', {
         method: 'POST',
         body: {
           articleIds: [id],
           source: opts?.source ?? 'article_read_sentinel',
           ...(anonViewId.value ? { anon_id: anonViewId.value } : {}),
         },
-      })
+      }) as import('~/types/api').ArticleViewAck[] | undefined
       recentlySent.set(id, Date.now())
+      const ack = Array.isArray(acks) ? acks.find((row) => row.id === id) : null
+      if (ack && (ack.uniqueCounted || ack.totalCounted)) {
+        const counts = useState<Record<string, { viewCount: number, totalViewCount: number }>>('article-view-acks', () => ({}))
+        const prev = counts.value[id]
+        counts.value = {
+          ...counts.value,
+          [id]: {
+            viewCount: Math.max(prev?.viewCount ?? 0, ack.viewCount),
+            totalViewCount: Math.max(prev?.totalViewCount ?? 0, ack.totalViewCount),
+          },
+        }
+      }
     } catch {
       // Fire-and-forget
     }

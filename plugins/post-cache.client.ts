@@ -35,6 +35,7 @@ export default defineNuxtPlugin(() => {
         clearBumpsForPostIds([postId])
       }
       if (typeof patch.viewerCount === 'number') delta.viewerCount = patch.viewerCount
+      if (typeof patch.totalViewCount === 'number') delta.totalViewCount = patch.totalViewCount
       // boost / bookmark / repost counts are also fanned out via this event so
       // every viewer of the post (not just actor + author) sees them update.
       // The actor's `viewerHasBoosted` / `viewerHasBookmarked` flags continue

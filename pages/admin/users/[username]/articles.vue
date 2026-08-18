@@ -70,6 +70,7 @@ function toArticleRow(item: AdminUserRecentArticle): Article {
     boostCount: item.boostCount,
     commentCount: item.commentCount,
     viewCount: item.viewCount,
+    totalViewCount: item.totalViewCount ?? item.viewCount,
     author: {
       id: author?.id ?? '',
       username: author?.username ?? (username.value || null),

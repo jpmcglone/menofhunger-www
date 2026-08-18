@@ -4,7 +4,7 @@
       ref="shareButtonRef"
       v-tooltip.bottom="tooltip"
       type="button"
-      class="moh-tap moh-pressable inline-flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-full transition-colors moh-surface-hover"
+      class="moh-tap moh-pressable inline-flex items-center justify-center p-0.5 transition-colors hover:moh-text"
       :class="canShare ? 'cursor-pointer' : 'cursor-default opacity-60'"
       aria-label="Share"
       @click="onShareButtonClick"
