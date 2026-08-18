@@ -111,7 +111,6 @@ const senderForAvatar = computed(() => {
     premiumPlus: props.message.sender.premiumPlus,
     isOrganization: props.message.sender.isOrganization,
     verifiedStatus: props.message.sender.verifiedStatus,
-    stewardBadgeEnabled: props.message.sender.stewardBadgeEnabled,
   }
 })
 
@@ -129,7 +128,7 @@ const formattedSentAt = computed(() => {
 
 type ReadReceipt = {
   userId: string
-  user: { id: string; username: string | null; name: string | null; avatarUrl: string | null; premium: boolean; premiumPlus: boolean; isOrganization: boolean; verifiedStatus: 'none' | 'identity' | 'manual'; stewardBadgeEnabled: boolean }
+  user: { id: string; username: string | null; name: string | null; avatarUrl: string | null; premium: boolean; premiumPlus: boolean; isOrganization: boolean; verifiedStatus: 'none' | 'identity' | 'manual' }
   readAt: string
 }
 
@@ -149,7 +148,6 @@ const readReceipts = computed<ReadReceipt[]>(() => {
         premiumPlus: p.user.premiumPlus,
         isOrganization: p.user.isOrganization,
         verifiedStatus: p.user.verifiedStatus,
-        stewardBadgeEnabled: p.user.stewardBadgeEnabled,
       },
       readAt: new Date(p.lastReadAt!).toLocaleString(undefined, { hour: 'numeric', minute: '2-digit' }),
     }))

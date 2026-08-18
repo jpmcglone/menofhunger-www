@@ -96,7 +96,7 @@
               </div>
               <Checkbox v-model="notifPrefs.pushReplyNudge" binary :disabled="notifPrefsSaving" />
             </div>
-            <div class="flex items-start justify-between gap-4">
+            <div v-if="!isPageAccount" class="flex items-start justify-between gap-4">
               <div>
                 <div class="font-medium">Crew streak</div>
                 <div class="text-xs moh-text-muted">When your crew's streak advances or breaks. The single most important push in the app.</div>
@@ -110,7 +110,7 @@
               </div>
               <Checkbox v-model="notifPrefs.pushDailyContent" binary :disabled="notifPrefsSaving" />
             </div>
-            <div class="flex items-start justify-between gap-4">
+            <div v-if="!isPageAccount" class="flex items-start justify-between gap-4">
               <div>
                 <div class="font-medium">Check-in reminder</div>
                 <div class="text-xs moh-text-muted">6pm reminder if you haven't checked in yet today.</div>
@@ -227,7 +227,7 @@
 import type { ArticleTag, NotificationPreferences, TaxonomyPreference } from '~/types/api'
 import { getApiErrorMessage } from '~/utils/api-error'
 
-const { user: authUser } = useAuth()
+const { user: authUser, isPageAccount } = useAuth()
 const { apiFetch, apiFetchData } = useApiClient()
 
 const emailIsVerified = computed(() => Boolean(authUser.value?.email && authUser.value?.emailVerifiedAt))

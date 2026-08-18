@@ -184,7 +184,6 @@
               :premium="user.premium"
               :premium-plus="user.premiumPlus"
               :is-organization="user.isOrganization"
-              :steward-badge-enabled="user.stewardBadgeEnabled ?? true"
               :is-bot="user.isBot"
             />
             <AppOrgAffiliationAvatars

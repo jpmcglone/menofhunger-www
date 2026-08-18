@@ -283,7 +283,6 @@ function relationshipLabel(u: FollowListUser): string {
                 :premium="u.premium"
                 :premium-plus="u.premiumPlus"
                 :is-organization="u.isOrganization"
-                :steward-badge-enabled="u.stewardBadgeEnabled"
               />
             </div>
             <div class="text-xs moh-text-muted truncate">@{{ u.username }}</div>

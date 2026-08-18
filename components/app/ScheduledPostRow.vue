@@ -29,7 +29,6 @@
           :premium="author.premium"
           :premium-plus="author.premiumPlus"
           :is-organization="(author as any).isOrganization ?? false"
-          :steward-badge-enabled="(author as any).stewardBadgeEnabled ?? true"
           :profile-path="null"
           post-id=""
           post-permalink=""

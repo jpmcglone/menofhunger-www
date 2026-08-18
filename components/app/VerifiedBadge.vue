@@ -1,5 +1,5 @@
 <template>
-  <span v-if="isBot || isVerified || showSteward" class="inline-flex shrink-0 align-middle items-center gap-1">
+  <span v-if="isBot || isVerified" class="inline-flex shrink-0 align-middle items-center gap-1">
     <AppAiBadge v-if="isBot" :size="size" :show-tooltip="showTooltip" />
     <span
       v-else-if="isVerified"
@@ -10,15 +10,6 @@
       :aria-label="ariaLabel"
       @mouseenter="updateTooltipPlacement"
     />
-    <span
-      v-if="showSteward"
-      :class="['inline-flex items-center justify-center', sizeClass]"
-      :style="{ color: badgeOrange }"
-      v-tooltip="stewardTooltip"
-      aria-label="Steward (Premium+)"
-    >
-      <Icon name="tabler:shield-star" class="h-full w-full" aria-hidden="true" />
-    </span>
   </span>
 </template>
 
@@ -34,18 +25,11 @@ const props = withDefaults(
     premium?: boolean
     premiumPlus?: boolean
     isOrganization?: boolean
-    /**
-     * The member's own opt-out for the steward shield. Defaults to `false`: a
-     * caller that forgets to pass it hides the badge rather than advertising a
-     * status the member may have switched off. Any caller that passes
-     * `premiumPlus` must pass this too — enforced by `tests/steward-badge-guardrails.test.ts`.
-     */
-    stewardBadgeEnabled?: boolean
     size?: Size
     showTooltip?: boolean
     isBot?: boolean
   }>(),
-  { size: 'sm', premium: false, premiumPlus: false, isOrganization: false, stewardBadgeEnabled: false, showTooltip: true, isBot: false }
+  { size: 'sm', premium: false, premiumPlus: false, isOrganization: false, showTooltip: true, isBot: false }
 )
 
 // Use semantic CSS variables so the accent stays consistent across the app theme.
@@ -57,7 +41,6 @@ const badgeOrgLowContrast = 'var(--moh-org)'
 
 const isVerified = computed(() => Boolean(props.status && props.status !== 'none'))
 const isPremium = computed(() => Boolean(props.premium || props.premiumPlus))
-const showSteward = computed(() => Boolean(props.premiumPlus && props.stewardBadgeEnabled))
 const isOrganization = computed(() => Boolean(props.isOrganization))
 
 const badgeColor = computed(() => {
@@ -116,12 +99,6 @@ const tooltip = computed(() => {
   return { value: text, class: 'moh-tooltip', position: tooltipPlacement.value }
 })
 
-const stewardTooltip = computed(() => {
-  if (!props.showTooltip) return null
-  if (!showSteward.value) return null
-  return { value: 'Steward (Premium+)', class: 'moh-tooltip', position: 'right' as const }
-})
-
 const ariaLabel = computed(() => {
   const base = verificationText.value
   if (!base) return 'Verified'
@@ -152,4 +129,3 @@ const iconStyle = computed<Record<string, string>>(() => {
   }
 })
 </script>
-

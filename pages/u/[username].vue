@@ -82,8 +82,8 @@
 
       <div v-if="profile" class="px-4 mt-3">
         <div class="flex items-center gap-2">
-          <!-- Streaks popover -->
-          <div ref="streaksWrapperEl" class="relative inline-block">
+          <!-- Streaks popover — hidden on page profiles (they don't check in). -->
+          <div v-if="showsProfileStreaks" ref="streaksWrapperEl" class="relative inline-block">
             <button
               type="button"
               class="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold border moh-border moh-surface moh-text hover:opacity-80 transition-opacity"
@@ -586,7 +586,7 @@ async function pushProfilePath(path: string) {
 const isFollowersRoute = computed(() => /\/followers\/?$/.test(currentPathname.value))
 const isFollowingRoute = computed(() => /\/following\/?$/.test(currentPathname.value))
 
-const { user: authUser, me: refetchMe, isAuthed } = useAuth()
+const { user: authUser, me: refetchMe, isAuthed, isPageAccount } = useAuth()
 
 const {
   profile: loadedProfile,
@@ -622,7 +622,6 @@ function profileFromAuthUser(u: import('~/composables/useAuth').AuthUser): Publi
     premium: Boolean(u.premium),
     premiumPlus: Boolean(u.premiumPlus),
     isOrganization: Boolean(u.isOrganization),
-    stewardBadgeEnabled: u.stewardBadgeEnabled ?? true,
     verifiedStatus: u.verifiedStatus ?? 'none',
     avatarUrl: u.avatarUrl ?? null,
     bannerUrl: u.bannerUrl ?? null,
@@ -690,7 +689,6 @@ if (!notFound.value && profile.value) {
     verifiedStatus: profile.value.verifiedStatus ?? null,
     premium: profile.value.premium ?? null,
     premiumPlus: profile.value.premiumPlus ?? null,
-    stewardBadgeEnabled: profile.value.stewardBadgeEnabled ?? null,
     postCount: null,
   }
 }
@@ -704,6 +702,12 @@ function formatCount(n: unknown): string {
 const streaksOpen = ref(false)
 const badgesOpen = ref(false)
 const streaksWrapperEl = ref<HTMLElement | null>(null)
+
+const showsProfileStreaks = computed(() => {
+  if (profile.value?.accountKind === 'page') return false
+  if (isSelf.value && isPageAccount.value) return false
+  return true
+})
 
 const streakCurrentDays = computed(() =>
   Math.max(0, Math.floor((isSelf.value ? authUser.value?.checkinStreakDays : (profile.value as any)?.checkinStreakDays) ?? 0))

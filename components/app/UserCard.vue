@@ -57,13 +57,20 @@
       @click="toggleMenu"
     >
       <div class="flex items-center gap-3">
-        <AppUserAvatar
-          :user="user"
-          :presence-status-override="currentUserPresenceStatus"
-          :size-class="props.compact ? 'mx-auto h-10 w-10' : 'mx-auto xl:mx-0 h-10 w-10'"
-          :enable-preview="false"
-          :show-status="false"
-        />
+        <div class="relative shrink-0">
+          <AppUserAvatar
+            :user="user"
+            :presence-status-override="currentUserPresenceStatus"
+            :size-class="props.compact ? 'mx-auto h-10 w-10' : 'mx-auto xl:mx-0 h-10 w-10'"
+            :enable-preview="false"
+            :show-status="false"
+          />
+          <span
+            v-if="otherAccountsUnread > 0"
+            class="pointer-events-none absolute -right-0.5 -top-0.5 flex min-w-[1.125rem] h-[1.125rem] items-center justify-center rounded-full bg-amber-500 px-1 text-[10px] font-bold leading-none text-white ring-2 ring-[var(--moh-bg)]"
+            aria-hidden="true"
+          >{{ otherAccountsUnread > 99 ? '99+' : otherAccountsUnread }}</span>
+        </div>
         <div
           :class="[
             'min-w-0 flex-1',
@@ -132,6 +139,7 @@ const route = useRoute()
 const { user, isVerifiedMember } = useAuth()
 const { getPresenceStatus, getUserStatus, isSocketConnecting, setMyStatus, editMyStatus, clearMyStatus } = usePresence()
 const { menuItems } = useUserMenu()
+const { accounts, canSwitch, switchingId, otherAccountsUnread, refresh: refreshAccounts, switchTo } = useAccountSwitcher()
 const { selectedSpaceId, currentSpace: currentSpaceForNav } = useSpaceLobby()
 const { openShortcutsModal } = useKeyboardShortcuts()
 const isXlUp = useHydratedMediaQuery('(min-width: 1280px)')
@@ -181,17 +189,35 @@ type MenuItemWithIcon = MenuItem & { iconName?: string }
 // Prepend "Go to space" when the current user is actively in a space (suppressed on /spaces routes).
 const allMenuItems = computed<MenuItemWithIcon[]>(() => {
   const base = menuItems.value as MenuItemWithIcon[]
+  const switchItems: MenuItemWithIcon[] = canSwitch.value
+    ? [
+        ...accounts.value.map((account) => ({
+          label: accountLabel(account),
+          iconName: account.accountKind === 'page' ? 'tabler:news' : 'tabler:user',
+          disabled: account.isCurrent || switchingId.value === account.id,
+          command: () => { void switchTo(account.id) },
+        })),
+        { separator: true } as MenuItemWithIcon,
+      ]
+    : []
   // Setting your own status is a verified-only engagement feature.
-  if (!isVerifiedMember.value) return base
-  const statusItem = {
-    label: activeStatus.value ? 'Update status' : 'Set status',
-    iconName: 'tabler:message-circle',
-    command: () => openStatusEditor(),
-  } as MenuItemWithIcon
-  const withStatus = [statusItem, { separator: true } as MenuItemWithIcon, ...base]
+  const withStatus = isVerifiedMember.value
+    ? ([
+        {
+          label: activeStatus.value ? 'Update status' : 'Set status',
+          iconName: 'tabler:message-circle',
+          command: () => openStatusEditor(),
+        } as MenuItemWithIcon,
+        { separator: true } as MenuItemWithIcon,
+        ...base,
+      ] as MenuItemWithIcon[])
+    : base
   const ownerUsername = currentSpaceForNav.value?.owner?.username
-  if (!ownerUsername || route.path.startsWith('/spaces') || route.path.startsWith('/s/')) return withStatus
+  if (!ownerUsername || route.path.startsWith('/spaces') || route.path.startsWith('/s/')) {
+    return [...switchItems, ...withStatus]
+  }
   return [
+    ...switchItems,
     {
       label: 'Go to space',
       iconName: 'tabler:layout-grid',
@@ -202,10 +228,18 @@ const allMenuItems = computed<MenuItemWithIcon[]>(() => {
   ]
 })
 
+function accountLabel(account: { username: string | null; name: string | null; isCurrent: boolean; unreadBadgeCount?: number }) {
+  const handle = account.username ? `@${account.username}` : (account.name || 'Account')
+  if (account.isCurrent) return `${handle} (current)`
+  const unread = Math.max(0, account.unreadBadgeCount ?? 0)
+  return unread > 0 ? `${handle} (${unread > 99 ? '99+' : unread})` : handle
+}
+
 const menuRef = ref()
 const buttonEl = ref<HTMLElement | null>(null)
 
 function toggleMenu(event: Event) {
+  void refreshAccounts()
   // PrimeVue Menu expects the click event to position the popup.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   ;(menuRef.value as any)?.toggle(event)

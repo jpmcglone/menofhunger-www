@@ -33,6 +33,43 @@ describe('applyIdentitySwap guardrail (structural)', () => {
     expect(src).toMatch(/messages-screen-active/)
   })
 
+  it('clears content-room refs and badge counts before the next socket handshake', () => {
+    const src = readFromRepo('composables/auth/authState.ts')
+    expect(src).toMatch(/presence-post-sub-refs/)
+    expect(src).toMatch(/presence-article-sub-refs/)
+    expect(src).toMatch(/presence-group-feed-sub-refs/)
+    expect(src).toMatch(/presence-interest-refs/)
+    expect(src).toMatch(/notifications-undelivered-count/)
+    expect(src).toMatch(/notifications-unread-comment-count/)
+    expect(src).toMatch(/messages-unread-counts/)
+    expect(src).toMatch(/groups-unread/)
+    expect(src).toMatch(/viewer-crew-membership/)
+  })
+
+  it('reloads immediately on account switch instead of swapping chrome first', () => {
+    const src = readFromRepo('composables/useAuth.ts')
+    const block =
+      src.match(/async function switchAccount[\s\S]*?(?=\n {2}const isAuthed)/)?.[0] ?? ''
+    expect(block).toBeTruthy()
+    expect(block).toMatch(/reloadAsSwitchedIdentity/)
+    expect(block).not.toMatch(/applyIdentitySwap/)
+    expect(src).toMatch(/window\.location\.reload\(\)/)
+    expect(src).toMatch(/window\.location\.replace/)
+  })
+
+  it('bumps a reactive identity version so KeepAlive pages remount after a swap', () => {
+    const auth = readFromRepo('composables/useAuth.ts')
+    const app = readFromRepo('app.vue')
+    const state = readFromRepo('composables/auth/authState.ts')
+    const block =
+      auth.match(/async function applyIdentitySwap[\s\S]*?(?=\n {2}\/\*\*|\n {2}async function)/)?.[0] ?? ''
+    expect(state).toMatch(/export function bumpIdentityVersion/)
+    expect(block).toMatch(/bumpIdentityVersion\(\)/)
+    expect(block).toMatch(/leavePersonOnlyRouteIfNeeded/)
+    expect(block).toMatch(/ensureSubscribedWhenGranted/)
+    expect(app).toMatch(/identity-\$\{identityVersion\}/)
+  })
+
   it('binds space chat local history to the active identity, not the admin actor', () => {
     const chat = readFromRepo('composables/useSpaceLiveChat.ts')
     const local = readFromRepo('utils/space-chat-local.ts')

@@ -74,7 +74,6 @@
                   :premium="Boolean(item.user.premium)"
                   :premium-plus="Boolean(item.user.premiumPlus)"
                   :is-organization="item.user.isOrganization"
-                  :steward-badge-enabled="item.user.stewardBadgeEnabled ?? true"
                 />
               </div>
 

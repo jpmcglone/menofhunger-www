@@ -245,9 +245,7 @@ const props = defineProps<{
   hideSearch: boolean
 }>()
 
-const { user, isVerified, isPremium } = useAuth()
-// Check-ins leaderboard is verified-only; premium counts as verified.
-const canAccessCheckins = computed(() => isVerified.value || isPremium.value)
+const { user, canAccessCheckins } = useAuth()
 const { openShortcutsModal } = useKeyboardShortcuts()
 const currentYear = new Date().getUTCFullYear()
 

@@ -561,7 +561,6 @@ export function useChatThread(opts: UseChatThreadOptions) {
         premium: Boolean(my.premium),
         premiumPlus: Boolean(my.premiumPlus),
         isOrganization: Boolean((my as { isOrganization?: boolean }).isOrganization),
-        stewardBadgeEnabled: my.stewardBadgeEnabled ?? true,
         verifiedStatus: (my.verifiedStatus ?? 'none') as 'none' | 'identity' | 'manual',
         avatarUrl: my.avatarUrl ?? null,
       }

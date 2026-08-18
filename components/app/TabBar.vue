@@ -82,7 +82,7 @@
             name-class="text-base font-bold"
             handle-class="text-sm text-gray-500 dark:text-gray-400"
           />
-          <!-- Stats: coins + streak -->
+          <!-- Stats: coins + streak (streak is person-only) -->
           <div v-if="moreHasStats" class="mt-1 flex items-center gap-3">
             <NuxtLink
               v-if="canUseCoins && (moreUser.coins ?? 0) > 0"
@@ -94,7 +94,7 @@
               {{ moreUser.coins!.toLocaleString() }} coins
             </NuxtLink>
             <!-- Personal streak (orange) + crew streak (green) when in a crew -->
-            <span v-if="viewerCrewMembership && moreCrewStreakDays !== null" class="flex items-center gap-1 tabular-nums">
+            <span v-if="!isPageAccount && viewerCrewMembership && moreCrewStreakDays !== null" class="flex items-center gap-1 tabular-nums">
               <span class="flex items-center gap-0.5 text-xs font-medium text-orange-500 dark:text-orange-400">
                 <Icon name="tabler:flame" size="13" aria-hidden="true" />
                 {{ moreUser?.checkinStreakDays ?? 0 }}d
@@ -112,7 +112,7 @@
             </span>
             <!-- Personal streak only (no crew) -->
             <span
-              v-else-if="(moreUser?.checkinStreakDays ?? 0) > 0"
+              v-else-if="!isPageAccount && (moreUser?.checkinStreakDays ?? 0) > 0"
               class="flex items-center gap-1 text-xs font-medium text-orange-500 dark:text-orange-400 tabular-nums"
             >
               <Icon name="tabler:flame" size="13" aria-hidden="true" />
@@ -122,6 +122,8 @@
         </div>
         <Icon name="tabler:chevron-right" size="16" class="shrink-0 text-gray-400 dark:text-gray-500" aria-hidden="true" />
       </NuxtLink>
+
+      <AppAccountSwitcher :active="moreOpen" />
 
       <div class="flex flex-col">
         <template v-for="mi in mainMenuItems" :key="mi.key">
@@ -252,7 +254,7 @@ const props = defineProps<{
 const route = useRoute()
 const { isActive } = useRouteMatch(route)
 const { requestLogout } = useUserMenu()
-const { user } = useAuth()
+const { user, isPageAccount } = useAuth()
 const { membership: viewerCrewMembership } = useViewerCrew()
 const { days: moreCrewStreakDays } = useCrewCheckinStreak()
 const middleScrollerRef = useMiddleScroller()
@@ -264,8 +266,10 @@ const { count: pendingCrewInviteCount } = useCrewInvitesBadge()
 const { total: groupsUnreadTotal } = useGroupsBadge()
 const { count: notificationsCount } = useNotificationsBadge()
 const { totalCount: messagesTotal } = useMessagesBadge()
+const { otherAccountsUnread } = useAccountSwitcher()
 
-// Sum badges only for items hidden in the More sheet (not visible as tabs).
+// Sum badges only for items hidden in the More sheet (not visible as tabs),
+// plus unread on other identities so the switcher is discoverable.
 const moreBadgeTotal = computed(() => {
   const keysInMore = new Set(mainMenuItems.value.map((mi) => mi.key))
   let sum = 0
@@ -273,7 +277,7 @@ const moreBadgeTotal = computed(() => {
   if (keysInMore.has('messages')) sum += messagesTotal.value
   if (keysInMore.has('crew')) sum += pendingCrewInviteCount.value
   if (keysInMore.has('groups')) sum += groupsUnreadTotal.value
-  return sum
+  return sum + otherAccountsUnread.value
 })
 const moreHasAlert = computed(() => moreBadgeTotal.value > 0)
 const moreAriaLabel = computed(() => {
@@ -286,7 +290,9 @@ const moreAriaLabel = computed(() => {
 const moreUser = computed(() => user.value ?? null)
 const canUseCoins = computed(() => (moreUser.value?.verifiedStatus ?? 'none') !== 'none')
 const moreHasStats = computed(
-  () => (canUseCoins.value && (moreUser.value?.coins ?? 0) > 0) || (moreUser.value?.checkinStreakDays ?? 0) > 0,
+  () =>
+    (canUseCoins.value && (moreUser.value?.coins ?? 0) > 0)
+    || (!isPageAccount.value && (moreUser.value?.checkinStreakDays ?? 0) > 0),
 )
 const { openShortcutsModal } = useKeyboardShortcuts()
 

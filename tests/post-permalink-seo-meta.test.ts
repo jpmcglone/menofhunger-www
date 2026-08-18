@@ -33,7 +33,6 @@ function author(overrides: Partial<FeedPost['author']> = {}): FeedPost['author']
     premium: false,
     premiumPlus: false,
     isOrganization: false,
-    stewardBadgeEnabled: false,
     verifiedStatus: 'manual',
     avatarUrl: 'https://cdn.example/avatars/alice.jpg',
     orgAffiliations: [],

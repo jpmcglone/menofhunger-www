@@ -48,7 +48,6 @@ function mergeThreadCollapsedAuthors(
       ...preview,
       premium: false,
       premiumPlus: false,
-      stewardBadgeEnabled: false,
       verifiedStatus: 'none' as const,
       orgAffiliations: [],
     }))

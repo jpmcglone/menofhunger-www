@@ -335,7 +335,7 @@
              verified-only, so we drive verification instead of the live card.
              Client-only (ClientOnly) so SSR stays empty and avoids hydration mismatch. -->
         <ClientOnly>
-          <section v-if="isAuthed && !canAccessCheckins" class="space-y-3">
+          <section v-if="isAuthed && !isPageAccount && !canAccessCheckins" class="space-y-3">
             <h2 class="px-4 text-sm font-semibold text-gray-900 dark:text-gray-50">
               Daily check-in
             </h2>
@@ -756,10 +756,8 @@ const colorMode = useColorMode()
 const router = useRouter()
 const { apiFetch, apiFetchData } = useApiClient()
 const { invalidate: invalidateMyGroups } = useMyGroups()
-const { isAuthed, user: authUser, patchUser, isVerified, isPremium } = useAuth()
+const { isAuthed, user: authUser, patchUser, isPageAccount, canAccessCheckins } = useAuth()
 const toast = useAppToast()
-// Check-ins (feed, streaks, leaderboard) are verified-only; premium counts as verified.
-const canAccessCheckins = computed(() => isVerified.value || isPremium.value)
 const openComposer = inject(MOH_OPEN_COMPOSER_KEY, null)
 const { dayKey: etDayKey } = useEasternMidnightRollover()
 
@@ -892,14 +890,14 @@ const checkinAllowedVisibilities = computed<CheckinAllowedVisibility[]>(() => {
 })
 
 const showExploreCheckinCard = computed(() => {
-  if (!isAuthed.value) return false
+  if (!isAuthed.value || !canAccessCheckins.value) return false
   if (!checkinState.value) return false
   if (checkinState.value.hasCheckedInToday) return false
   return checkinAllowedVisibilities.value.length > 0
 })
 
 const shouldRenderCheckinSection = computed(() => {
-  if (!isAuthed.value) return false
+  if (!isAuthed.value || !canAccessCheckins.value) return false
   if (checkinLoading.value) return true
   if (!checkinState.value) return false
   if (checkinState.value.hasCheckedInToday) return false
@@ -993,7 +991,7 @@ watch(cashtagHeaderSymbol, async (sym) => {
   }
 }, { immediate: true })
 const canShowSearchCheckinHint = computed(
-  () => Boolean(isAuthed.value && checkinState.value && (hasCheckedInToday.value || canOpenCheckinComposer.value)),
+  () => Boolean(canAccessCheckins.value && checkinState.value && (hasCheckedInToday.value || canOpenCheckinComposer.value)),
 )
 
 const { labelByValue: topicLabelByValue, load: loadTopicOptions } = useTopicOptions()

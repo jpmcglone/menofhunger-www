@@ -16,7 +16,6 @@ function sender(id: string, username = id): Message['sender'] {
     premium: false,
     premiumPlus: false,
     isOrganization: false,
-    stewardBadgeEnabled: false,
     verifiedStatus: 'none',
     avatarUrl: null,
   }

@@ -178,7 +178,7 @@ type SettingsBlock =
   | 'danger'
   | 'fitness'
 
-const { ensureLoaded, me } = useAuth()
+const { ensureLoaded, me, isPageAccount } = useAuth()
 const route = useRoute()
 const toast = useAppToast()
 const emailVerificationUiReady = ref(false)
@@ -218,7 +218,11 @@ onMounted(() => {
   void navigateTo({ path: route.path, query: nextQuery }, { replace: true })
 })
 
-const allowedSections: SettingsSection[] = ['account', 'notifications', 'privacy', 'billing', 'marv', 'fitness']
+const allowedSections = computed<SettingsSection[]>(() =>
+  isPageAccount.value
+    ? ['account', 'notifications', 'privacy', 'marv']
+    : ['account', 'notifications', 'privacy', 'billing', 'marv', 'fitness'],
+)
 
 // Old narrower URL keys redirect into one of the top-level sections.
 const sectionAlias: Record<string, SettingsSection> = {
@@ -229,7 +233,7 @@ const sectionAlias: Record<string, SettingsSection> = {
 
 function normalizeSection(raw: string | null): SettingsSection | null {
   if (!raw) return null
-  if ((allowedSections as string[]).includes(raw)) return raw as SettingsSection
+  if ((allowedSections.value as string[]).includes(raw)) return raw as SettingsSection
   if (raw in sectionAlias) return sectionAlias[raw] ?? null
   return null
 }
@@ -251,6 +255,9 @@ const rawRouteParam = typeof route.params.section === 'string' ? route.params.se
 if (rawRouteParam && rawRouteParam in sectionAlias) {
   await navigateTo(`/settings/${sectionAlias[rawRouteParam]}`, { replace: true })
 }
+if (isPageAccount.value && (rawRouteParam === 'billing' || rawRouteParam === 'fitness')) {
+  await navigateTo('/settings/account', { replace: true })
+}
 
 if (!routeSection.value && legacySection.value) {
   await navigateTo(`/settings/${legacySection.value}`, { replace: true })
@@ -267,34 +274,39 @@ watch(
 
 const sectionQuery = ref('')
 
-const sections = computed(() => [
-  {
-    key: 'account' as const,
-    label: 'Your account',
-    description: 'Username, email, profile, verification, and helpful links.'
-  },
-  {
-    key: 'notifications' as const,
-    label: 'Notifications',
-    description: 'Browser permission and per-event alert preferences.'
-  },
-  {
-    key: 'privacy' as const,
-    label: 'Privacy & Safety',
-    description: 'Visibility settings and blocked users.'
-  },
-  {
-    key: 'billing' as const,
-    label: 'Billing',
-    description: 'Premium and Premium+ subscriptions.'
-  },
-  {
-    key: 'marv' as const,
-    label: 'M.A.R.V (AI helper)',
-    description: 'Preferred reply mode, credits, and recent activity.'
-  },
-  { key: 'fitness' as const, label: 'Fitness', description: 'Track weight, connect Apple Health, and more.' },
-])
+const sections = computed(() => {
+  const all = [
+    {
+      key: 'account' as const,
+      label: 'Your account',
+      description: isPageAccount.value
+        ? 'Username, email, profile, and helpful links.'
+        : 'Username, email, profile, verification, and helpful links.',
+    },
+    {
+      key: 'notifications' as const,
+      label: 'Notifications',
+      description: 'Browser permission and per-event alert preferences.',
+    },
+    {
+      key: 'privacy' as const,
+      label: 'Privacy & Safety',
+      description: 'Visibility settings and blocked users.',
+    },
+    {
+      key: 'billing' as const,
+      label: 'Billing',
+      description: 'Premium and Premium+ subscriptions.',
+    },
+    {
+      key: 'marv' as const,
+      label: 'M.A.R.V (AI helper)',
+      description: 'Preferred reply mode, credits, and recent activity.',
+    },
+    { key: 'fitness' as const, label: 'Fitness', description: 'Track weight, connect Apple Health, and more.' },
+  ]
+  return all.filter((s) => allowedSections.value.includes(s.key))
+})
 
 // Each top-level section is composed from one or more "blocks" (the original
 // narrower sections). Rendering them as independent `v-if` siblings (instead of
@@ -310,7 +322,10 @@ const sectionToBlocks: Record<SettingsSection, ReadonlyArray<SettingsBlock>> = {
 
 const composedBlocks = computed<ReadonlyArray<SettingsBlock>>(() => {
   const s = selectedSection.value
-  return s ? sectionToBlocks[s] : []
+  if (!s) return []
+  const blocks = sectionToBlocks[s]
+  if (!isPageAccount.value) return blocks
+  return blocks.filter((block) => block !== 'verification' && block !== 'danger' && block !== 'billing' && block !== 'fitness')
 })
 
 function showsBlock(block: SettingsBlock): boolean {

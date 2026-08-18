@@ -377,7 +377,6 @@ function authorToMentionUser(a: ArticleAuthor): FollowListUser {
     premium: a.premium,
     premiumPlus: a.premiumPlus,
     isOrganization: a.isOrganization,
-    stewardBadgeEnabled: a.stewardBadgeEnabled,
     verifiedStatus: a.verifiedStatus,
     relationship: EMPTY_RELATIONSHIP,
   }

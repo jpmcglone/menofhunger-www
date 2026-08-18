@@ -184,7 +184,6 @@ async function loadDefaultList() {
           premium: other.user.premium,
           premiumPlus: other.user.premiumPlus,
           isOrganization: other.user.isOrganization,
-          stewardBadgeEnabled: other.user.stewardBadgeEnabled,
           verifiedStatus: other.user.verifiedStatus,
           avatarUrl: other.user.avatarUrl,
           relationship: { viewerFollowsUser: false, userFollowsViewer: false, viewerPostNotificationsEnabled: false },

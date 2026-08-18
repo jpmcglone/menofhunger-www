@@ -78,7 +78,6 @@
             :premium="author?.premium ?? false"
             :premium-plus="author?.premiumPlus ?? false"
             :is-organization="Boolean((author as any)?.isOrganization)"
-            :steward-badge-enabled="author?.stewardBadgeEnabled ?? true"
           />
         </NuxtLink>
         <AppVerifiedBadge
@@ -87,7 +86,6 @@
           :premium="author?.premium ?? false"
           :premium-plus="author?.premiumPlus ?? false"
           :is-organization="Boolean((author as any)?.isOrganization)"
-          :steward-badge-enabled="author?.stewardBadgeEnabled ?? true"
         />
         <NuxtLink
           v-if="authorProfilePath"

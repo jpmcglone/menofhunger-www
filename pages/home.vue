@@ -50,7 +50,7 @@
          (ClientOnly) so SSR stays empty and there's no hydration mismatch. -->
     <ClientOnly>
       <AppFeedDailyCheckinHero
-        v-if="isAuthed && !canAccessCheckins"
+        v-if="isAuthed && !isPageAccount && !canAccessCheckins"
         :prompt="checkinHeroPrompt"
         verify-cta
       />
@@ -330,7 +330,7 @@ const openComposer = inject(MOH_OPEN_COMPOSER_KEY, null)
 provide(MOH_FOCUS_HOME_COMPOSER_KEY, () => {
   homeComposerRef.value?.focus()
 })
-const { isAuthed, user: authUser } = useAuth()
+const { isAuthed, user: authUser, isPageAccount, canAccessCheckins } = useAuth()
 const {
   inlineAnnouncement,
   presentInline,
@@ -425,6 +425,7 @@ const hasCheckedInToday = computed(() => {
 // v-if'd off so SSR produces nothing and there is no wrong-variant flash.
 const heroResolved = computed(() => {
   if (!hydrated.value) return false
+  if (isPageAccount.value) return false
   if (!isAuthed.value) return true
   // Stay hidden while the initial fetch is in-flight to avoid flashing the wrong variant.
   if (checkinLoading.value) return false
@@ -433,7 +434,7 @@ const heroResolved = computed(() => {
 
 // Show the check-in prompt when user is eligible and hasn't posted today.
 const showCheckinPromptBar = computed(() => {
-  if (!isAuthed.value) return false
+  if (!isAuthed.value || isPageAccount.value || !canAccessCheckins.value) return false
   if (feedCtaKind.value) return false
   if (!checkinState.value) return false
   if (checkinState.value.hasCheckedInToday) return false
@@ -468,7 +469,7 @@ onMounted(() => {
   if (route.query.checkin === '1') {
     history.replaceState(null, '', location.pathname)
     // Wait a tick for openComposer injection and checkinState to settle.
-    nextTick(() => { openCheckinComposer() })
+    if (canAccessCheckins.value) nextTick(() => { openCheckinComposer() })
   }
 
   // Initial scroll margin + ResizeObserver to update it when header height changes
@@ -659,9 +660,6 @@ watch(feedVirtualItems, (items) => {
   notifyVisibleRowIds(visibleIds)
 })
 
-// Check-ins (feed, streaks, leaderboard) are verified-only; premium counts as verified.
-const canAccessCheckins = computed(() => viewerIsVerified.value || viewerIsPremium.value)
-
 watch(
   [isAuthed, canAccessCheckins, etDayKey],
   ([authed, canAccess]) => {
@@ -678,7 +676,7 @@ watch(
 
 // When the ET day rolls over, refresh check-in state so the hero shows today's prompt.
 watch(etDayKey, () => {
-  if (isAuthed.value) void refreshCheckin()
+  if (canAccessCheckins.value) void refreshCheckin()
 })
 
 /**
@@ -715,6 +713,7 @@ function goToLoginForCheckin() {
 }
 
 function openCheckinComposer() {
+  if (!canAccessCheckins.value) return
   if (!openComposer) return
   if (!effectiveCheckinAllowedVisibilities.value.length) return
   openComposer({

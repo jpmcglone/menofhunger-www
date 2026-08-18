@@ -45,7 +45,6 @@
             :premium="author?.premium ?? false"
             :premium-plus="author?.premiumPlus ?? false"
             :is-organization="Boolean(author?.isOrganization)"
-            :steward-badge-enabled="author?.stewardBadgeEnabled ?? true"
           />
           <span class="text-sm moh-text-muted truncate leading-none">@{{ author?.username || 'user' }}</span>
           <span class="ml-auto shrink-0 text-xs moh-text-muted leading-none">{{ createdAtShort }}</span>

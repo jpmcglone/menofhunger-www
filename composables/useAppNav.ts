@@ -31,7 +31,7 @@ export type AppNavItem = {
 }
 
 export function useAppNav() {
-  const { user, isAuthed, isVerified: isVerifiedBase, isPremium } = useAuth()
+  const { user, isAuthed, isVerified: isVerifiedBase, isPremium, isPageAccount } = useAuth()
   const { hasFeature } = useAppFeatures()
   // A user is "verified" for nav purposes if they have premium OR verified status.
   const isVerified = computed(() => isPremium.value || isVerifiedBase.value)
@@ -129,6 +129,9 @@ export function useAppNav() {
     if (item.requiresPremium && !isPremium.value) return false
     if (item.requiresAdmin && !isAdmin.value) return false
     if (item.requiresFeatureToggle && !hasFeature(item.requiresFeatureToggle)) return false
+    if (isPageAccount.value && (item.key === 'check-ins' || item.key === 'fitness' || item.key === 'invite')) {
+      return false
+    }
     return true
   }
 

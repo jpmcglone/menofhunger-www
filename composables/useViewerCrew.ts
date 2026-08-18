@@ -26,7 +26,7 @@ export function useViewerCrew() {
   const loaded = useState<boolean>('viewer-crew-loaded', () => false)
   const inflight = useState<boolean>('viewer-crew-inflight', () => false)
 
-  const { isAuthed, isVerified } = useAuth()
+  const { user, isAuthed, isVerified } = useAuth()
 
   function setFromCrew(crew: Pick<CrewPrivate, 'id' | 'slug' | 'viewerRole'> | null) {
     membership.value = crew
@@ -70,16 +70,14 @@ export function useViewerCrew() {
     void refresh()
   }
 
-  // Reset whenever auth/verified status flips off so a logged-out viewer
-  // doesn't briefly see the previous user's "My Crew" label.
+  // Reset whenever auth, verification, or the active identity changes so a
+  // switched page/person cannot keep the previous account's "My Crew" label.
   if (import.meta.client) {
     watch(
-      [isAuthed, isVerified],
-      ([authed, verified]) => {
-        if (!authed || !verified) {
-          membership.value = null
-          loaded.value = false
-        }
+      () => [isAuthed.value, isVerified.value, user.value?.id ?? null] as const,
+      () => {
+        membership.value = null
+        loaded.value = false
       },
       { immediate: false },
     )

@@ -155,7 +155,6 @@ const lobbyMentionCandidates = computed<FollowListUser[]>(() =>
       premium: m.premium,
       premiumPlus: m.premiumPlus,
       isOrganization: m.isOrganization,
-      stewardBadgeEnabled: false,
       verifiedStatus: m.verifiedStatus,
       avatarUrl: m.avatarUrl,
       relationship: { viewerFollowsUser: false, userFollowsViewer: false, viewerPostNotificationsEnabled: false },

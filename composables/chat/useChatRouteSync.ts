@@ -122,7 +122,6 @@ export function useChatRouteSync(opts: UseChatRouteSyncOptions) {
       premium: Boolean(preview.premium),
       premiumPlus: Boolean(preview.premiumPlus),
       isOrganization: Boolean(preview.isOrganization),
-      stewardBadgeEnabled: Boolean(preview.stewardBadgeEnabled ?? true),
       verifiedStatus: preview.verifiedStatus ?? 'none',
       avatarUrl: preview.avatarUrl ?? null,
       relationship: preview.relationship,

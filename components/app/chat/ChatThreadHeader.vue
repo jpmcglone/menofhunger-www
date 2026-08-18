@@ -39,7 +39,6 @@
                   :premium="headerDirectUser.premium"
                   :premium-plus="headerDirectUser.premiumPlus"
                   :is-organization="headerDirectUser.isOrganization"
-                  :steward-badge-enabled="headerDirectUser.stewardBadgeEnabled ?? true"
                   :is-bot="headerDirectUser.isBot"
                 />
               </template>

@@ -125,6 +125,11 @@
           <Icon name="tabler:search" aria-hidden="true" />
         </template>
       </Button>
+      <Button
+        label="Create page"
+        severity="secondary"
+        @click="openCreatePage"
+      />
     </div>
 
     <div v-if="searchError" class="px-4">
@@ -161,13 +166,13 @@
                   <div class="font-semibold truncate">
                     {{ u.name || u.username }}
                   </div>
+                  <Tag v-if="u.accountKind === 'page'" value="Page" severity="secondary" class="!text-xs" />
                   <Tag v-if="u.bannedAt" value="Banned" severity="danger" class="!text-xs" />
                   <AppVerifiedBadge
                     :status="u.verifiedStatus"
                     :premium="u.premium"
                     :premium-plus="u.premiumPlus"
                     :is-organization="u.isOrganization"
-                    :steward-badge-enabled="u.stewardBadgeEnabled ?? true"
                   />
                   <AppOrgAffiliationAvatars
                     v-if="!u.isOrganization && u.orgAffiliations && u.orgAffiliations.length > 0"
@@ -219,9 +224,12 @@
       :style="{ width: '34rem' }"
     >
       <div v-if="editingUser" class="space-y-4">
-        <div class="space-y-2">
+        <div v-if="editingUser.accountKind !== 'page'" class="space-y-2">
           <label class="text-sm font-medium text-gray-700 dark:text-gray-200">Phone</label>
           <InputText v-model="editPhone" class="w-full font-mono" placeholder="+15551234567" />
+        </div>
+        <div v-else class="rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-600 dark:border-zinc-800 dark:bg-zinc-950/40 dark:text-gray-300">
+          Page account — no phone.
         </div>
 
         <div class="space-y-2">
@@ -382,6 +390,142 @@
             </div>
 
             <AppInlineAlert v-if="orgAffsError" severity="danger">{{ orgAffsError }}</AppInlineAlert>
+          </div>
+        </div>
+
+        <div v-if="editingUser.accountKind === 'page'" class="space-y-2">
+          <label class="text-sm font-medium text-gray-700 dark:text-gray-200">Operators</label>
+          <div class="rounded-xl border border-gray-200 bg-gray-50 p-3 dark:border-zinc-800 dark:bg-zinc-950/40 space-y-3">
+            <div class="text-xs text-gray-500 dark:text-gray-400">
+              People who can switch into this page.
+            </div>
+            <div v-if="operatorsLoading" class="text-sm text-gray-500 dark:text-gray-400">Loading…</div>
+            <div v-else-if="operators.length > 0" class="space-y-2">
+              <div
+                v-for="op in operators"
+                :key="op.id"
+                class="flex items-center justify-between gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900"
+              >
+                <div class="min-w-0">
+                  <div class="text-sm font-medium truncate">{{ op.name || op.username || 'Operator' }}</div>
+                  <div v-if="op.username" class="text-xs text-gray-500 dark:text-gray-400">@{{ op.username }}</div>
+                </div>
+                <Button
+                  severity="danger"
+                  size="small"
+                  text
+                  :loading="operatorRemovingId === op.id"
+                  :disabled="!!operatorRemovingId"
+                  @click="removeOperator(op.id)"
+                >
+                  <template #icon>
+                    <Icon name="tabler:x" />
+                  </template>
+                </Button>
+              </div>
+            </div>
+            <div v-else class="text-sm text-gray-500 dark:text-gray-400 italic">No operators.</div>
+            <div class="flex items-center gap-2">
+              <InputText
+                v-model="operatorQuery"
+                class="flex-1 text-sm"
+                placeholder="Search person by username…"
+                @keydown.enter.prevent="searchOperators"
+              />
+              <Button
+                label="Search"
+                severity="secondary"
+                size="small"
+                :loading="operatorSearchLoading"
+                :disabled="operatorSearchLoading || !operatorQuery.trim()"
+                @click="searchOperators"
+              />
+            </div>
+            <div v-if="operatorSearchResults.length > 0" class="space-y-1">
+              <div
+                v-for="r in operatorSearchResults"
+                :key="r.id"
+                class="flex items-center justify-between gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900"
+              >
+                <div class="min-w-0">
+                  <div class="text-sm font-medium truncate">{{ r.name || r.username || 'User' }}</div>
+                  <div v-if="r.username" class="text-xs text-gray-500 dark:text-gray-400">@{{ r.username }}</div>
+                </div>
+                <Button
+                  label="Add"
+                  severity="secondary"
+                  size="small"
+                  :disabled="operators.some((a) => a.id === r.id) || !!operatorAddingId || r.accountKind === 'page'"
+                  :loading="operatorAddingId === r.id"
+                  @click="addOperator(r.id)"
+                />
+              </div>
+            </div>
+            <AppInlineAlert v-if="operatorsError" severity="danger">{{ operatorsError }}</AppInlineAlert>
+          </div>
+        </div>
+
+        <div v-else class="space-y-2">
+          <label class="text-sm font-medium text-gray-700 dark:text-gray-200">Pages</label>
+          <div class="rounded-xl border border-gray-200 bg-gray-50 p-3 dark:border-zinc-800 dark:bg-zinc-950/40 space-y-3">
+            <div class="text-xs text-gray-500 dark:text-gray-400">
+              Pages this person can switch into.
+            </div>
+            <div v-if="operatedPagesLoading" class="text-sm text-gray-500 dark:text-gray-400">Loading…</div>
+            <div v-else-if="operatedPages.length > 0" class="space-y-2">
+              <div
+                v-for="page in operatedPages"
+                :key="page.id"
+                class="rounded-lg border border-gray-200 bg-white px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900"
+              >
+                <div class="text-sm font-medium truncate">{{ page.name || page.username || 'Page' }}</div>
+                <div v-if="page.username" class="text-xs text-gray-500 dark:text-gray-400">@{{ page.username }}</div>
+              </div>
+            </div>
+            <div v-else class="text-sm text-gray-500 dark:text-gray-400 italic">No pages.</div>
+
+            <div v-if="!editingUser.siteAdmin" class="space-y-2 border-t border-gray-200 pt-3 dark:border-zinc-800">
+              <div class="text-xs text-gray-500 dark:text-gray-400">
+                Convert this person into a page. Parks their phone for 90 days and assigns an operator.
+              </div>
+              <div class="flex items-center gap-2">
+                <InputText
+                  v-model="convertOperatorQuery"
+                  class="flex-1 text-sm"
+                  placeholder="Operator username…"
+                  @keydown.enter.prevent="searchConvertOperator"
+                />
+                <Button
+                  label="Search"
+                  severity="secondary"
+                  size="small"
+                  :loading="convertOperatorSearchLoading"
+                  :disabled="convertOperatorSearchLoading || !convertOperatorQuery.trim()"
+                  @click="searchConvertOperator"
+                />
+              </div>
+              <div v-if="convertOperatorResults.length > 0" class="space-y-1">
+                <div
+                  v-for="r in convertOperatorResults"
+                  :key="r.id"
+                  class="flex items-center justify-between gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900"
+                >
+                  <div class="min-w-0">
+                    <div class="text-sm font-medium truncate">{{ r.name || r.username || 'User' }}</div>
+                    <div v-if="r.username" class="text-xs text-gray-500 dark:text-gray-400">@{{ r.username }}</div>
+                  </div>
+                  <Button
+                    label="Convert"
+                    severity="danger"
+                    size="small"
+                    :disabled="r.id === editingUser.id || r.accountKind === 'page' || convertSaving"
+                    :loading="convertSaving && convertOperatorId === r.id"
+                    @click="convertToPage(r.id)"
+                  />
+                </div>
+              </div>
+              <AppInlineAlert v-if="convertError" severity="danger">{{ convertError }}</AppInlineAlert>
+            </div>
           </div>
         </div>
 
@@ -647,6 +791,79 @@
         </Button>
       </template>
     </Dialog>
+
+    <Dialog
+      v-model:visible="createPageOpen"
+      modal
+      header="Create page"
+      :draggable="false"
+      :style="{ width: '28rem' }"
+    >
+      <div class="space-y-4">
+        <div class="space-y-2">
+          <label class="text-sm font-medium text-gray-700 dark:text-gray-200">Username</label>
+          <InputText v-model="createPageUsername" class="w-full font-mono" placeholder="menofhunger" />
+        </div>
+        <div class="space-y-2">
+          <label class="text-sm font-medium text-gray-700 dark:text-gray-200">Name</label>
+          <InputText v-model="createPageName" class="w-full" :maxlength="50" />
+        </div>
+        <div class="flex items-start gap-3 rounded-xl border border-gray-200 bg-gray-50 p-3 dark:border-zinc-800 dark:bg-zinc-950/40">
+          <Checkbox v-model="createPageIsOrg" binary inputId="moh-admin-create-page-org" />
+          <label for="moh-admin-create-page-org" class="text-sm font-semibold text-gray-900 dark:text-gray-50">
+            Organization page
+          </label>
+        </div>
+        <div class="space-y-2">
+          <label class="text-sm font-medium text-gray-700 dark:text-gray-200">Operator</label>
+          <div class="flex items-center gap-2">
+            <InputText
+              v-model="createPageOperatorQuery"
+              class="flex-1 text-sm"
+              placeholder="Search person by username…"
+              @keydown.enter.prevent="searchCreatePageOperator"
+            />
+            <Button
+              label="Search"
+              severity="secondary"
+              size="small"
+              :loading="createPageOperatorSearchLoading"
+              :disabled="createPageOperatorSearchLoading || !createPageOperatorQuery.trim()"
+              @click="searchCreatePageOperator"
+            />
+          </div>
+          <div v-if="createPageOperatorResults.length > 0" class="space-y-1">
+            <button
+              v-for="r in createPageOperatorResults"
+              :key="r.id"
+              type="button"
+              class="flex w-full items-center justify-between gap-2 rounded-lg border px-3 py-2 text-left dark:bg-zinc-900"
+              :class="createPageOperatorId === r.id
+                ? 'border-amber-400 bg-amber-50 dark:border-amber-600 dark:bg-amber-950/40'
+                : 'border-gray-200 bg-white dark:border-zinc-700'"
+              :disabled="r.accountKind === 'page'"
+              @click="createPageOperatorId = r.id"
+            >
+              <div class="min-w-0">
+                <div class="text-sm font-medium truncate">{{ r.name || r.username || 'User' }}</div>
+                <div v-if="r.username" class="text-xs text-gray-500 dark:text-gray-400">@{{ r.username }}</div>
+              </div>
+              <Icon v-if="createPageOperatorId === r.id" name="tabler:check" class="text-amber-600" />
+            </button>
+          </div>
+        </div>
+        <AppInlineAlert v-if="createPageError" severity="danger">{{ createPageError }}</AppInlineAlert>
+      </div>
+      <template #footer>
+        <Button label="Cancel" text severity="secondary" :disabled="createPageSaving" @click="createPageOpen = false" />
+        <Button
+          label="Create"
+          :loading="createPageSaving"
+          :disabled="createPageSaving || !createPageUsername.trim() || !createPageName.trim() || !createPageOperatorId"
+          @click="submitCreatePage"
+        />
+      </template>
+    </Dialog>
   </div>
   </AppPageContent>
 </template>
@@ -669,7 +886,8 @@ usePageSeo({
 type AdminUser = {
   id: string
   createdAt: string
-  phone: string
+  phone: string | null
+  accountKind?: 'person' | 'page'
   email: string | null
   emailVerifiedAt: string | null
   emailVerificationRequestedAt: string | null
@@ -686,7 +904,6 @@ type AdminUser = {
   premium: boolean
   premiumPlus: boolean
   isOrganization: boolean
-  stewardBadgeEnabled: boolean
   verifiedStatus: 'none' | 'identity' | 'manual'
   verifiedAt: string | null
   unverifiedAt: string | null
@@ -698,6 +915,22 @@ type OrgAffiliation = {
   username: string | null
   name: string | null
   avatarUrl: string | null
+}
+
+type PageOperator = {
+  id: string
+  username: string | null
+  name: string | null
+  avatarUrl: string | null
+}
+
+type OperatedPage = {
+  id: string
+  username: string | null
+  name: string | null
+  avatarUrl: string | null
+  accountKind: 'person' | 'page'
+  isOrganization: boolean
 }
 
 const { apiFetch, apiFetchData } = useApiClient()
@@ -914,6 +1147,207 @@ async function removeOrgAff(orgId: string) {
   }
 }
 
+const operators = ref<PageOperator[]>([])
+const operatorsLoading = ref(false)
+const operatorsError = ref<string | null>(null)
+const operatorRemovingId = ref<string | null>(null)
+const operatorAddingId = ref<string | null>(null)
+const operatorQuery = ref('')
+const operatorSearchLoading = ref(false)
+const operatorSearchResults = ref<AdminUser[]>([])
+
+const operatedPages = ref<OperatedPage[]>([])
+const operatedPagesLoading = ref(false)
+const convertOperatorQuery = ref('')
+const convertOperatorSearchLoading = ref(false)
+const convertOperatorResults = ref<AdminUser[]>([])
+const convertOperatorId = ref<string | null>(null)
+const convertSaving = ref(false)
+const convertError = ref<string | null>(null)
+
+const createPageOpen = ref(false)
+const createPageUsername = ref('')
+const createPageName = ref('')
+const createPageIsOrg = ref(false)
+const createPageOperatorQuery = ref('')
+const createPageOperatorSearchLoading = ref(false)
+const createPageOperatorResults = ref<AdminUser[]>([])
+const createPageOperatorId = ref<string | null>(null)
+const createPageSaving = ref(false)
+const createPageError = ref<string | null>(null)
+
+async function loadOperators(userId: string) {
+  operatorsLoading.value = true
+  operatorsError.value = null
+  operatorSearchResults.value = []
+  operatorQuery.value = ''
+  try {
+    const res = await apiFetch<PageOperator[]>(`/admin/users/${encodeURIComponent(userId)}/operators`, { method: 'GET' })
+    operators.value = res.data ?? []
+  } catch (e: unknown) {
+    operatorsError.value = getApiErrorMessage(e) || 'Failed to load operators.'
+  } finally {
+    operatorsLoading.value = false
+  }
+}
+
+async function loadOperatedPages(userId: string) {
+  operatedPagesLoading.value = true
+  convertError.value = null
+  convertOperatorResults.value = []
+  convertOperatorQuery.value = ''
+  try {
+    const res = await apiFetch<OperatedPage[]>(`/admin/users/${encodeURIComponent(userId)}/operated-pages`, { method: 'GET' })
+    operatedPages.value = res.data ?? []
+  } catch (e: unknown) {
+    convertError.value = getApiErrorMessage(e) || 'Failed to load pages.'
+  } finally {
+    operatedPagesLoading.value = false
+  }
+}
+
+async function searchOperators() {
+  const q = operatorQuery.value.trim()
+  if (!q || operatorSearchLoading.value) return
+  operatorSearchLoading.value = true
+  operatorsError.value = null
+  try {
+    const res = await apiFetch<AdminUser[]>('/admin/users/search', { method: 'GET', query: { q, limit: 10 } })
+    operatorSearchResults.value = (res.data ?? []).filter((u) => u.accountKind !== 'page')
+  } catch (e: unknown) {
+    operatorsError.value = getApiErrorMessage(e) || 'Failed to search operators.'
+  } finally {
+    operatorSearchLoading.value = false
+  }
+}
+
+async function addOperator(operatorUserId: string) {
+  const u = editingUser.value
+  if (!u || operatorAddingId.value) return
+  operatorAddingId.value = operatorUserId
+  operatorsError.value = null
+  try {
+    const added = await apiFetchData<PageOperator>(`/admin/users/${encodeURIComponent(u.id)}/operators`, {
+      method: 'POST',
+      body: { operatorUserId },
+    })
+    if (!operators.value.some((a) => a.id === added.id)) {
+      operators.value = [...operators.value, added]
+    }
+    operatorSearchResults.value = operatorSearchResults.value.filter((r) => r.id !== operatorUserId)
+  } catch (e: unknown) {
+    operatorsError.value = getApiErrorMessage(e) || 'Failed to add operator.'
+  } finally {
+    operatorAddingId.value = null
+  }
+}
+
+async function removeOperator(operatorUserId: string) {
+  const u = editingUser.value
+  if (!u || operatorRemovingId.value) return
+  operatorRemovingId.value = operatorUserId
+  operatorsError.value = null
+  try {
+    await apiFetch(`/admin/users/${encodeURIComponent(u.id)}/operators/${encodeURIComponent(operatorUserId)}`, {
+      method: 'DELETE',
+    })
+    operators.value = operators.value.filter((a) => a.id !== operatorUserId)
+  } catch (e: unknown) {
+    operatorsError.value = getApiErrorMessage(e) || 'Failed to remove operator.'
+  } finally {
+    operatorRemovingId.value = null
+  }
+}
+
+async function searchConvertOperator() {
+  const q = convertOperatorQuery.value.trim()
+  if (!q || convertOperatorSearchLoading.value) return
+  convertOperatorSearchLoading.value = true
+  convertError.value = null
+  try {
+    const res = await apiFetch<AdminUser[]>('/admin/users/search', { method: 'GET', query: { q, limit: 10 } })
+    convertOperatorResults.value = (res.data ?? []).filter((u) => u.accountKind !== 'page')
+  } catch (e: unknown) {
+    convertError.value = getApiErrorMessage(e) || 'Failed to search operators.'
+  } finally {
+    convertOperatorSearchLoading.value = false
+  }
+}
+
+async function convertToPage(operatorUserId: string) {
+  const u = editingUser.value
+  if (!u || convertSaving.value) return
+  convertSaving.value = true
+  convertOperatorId.value = operatorUserId
+  convertError.value = null
+  try {
+    await apiFetchData(`/admin/users/${encodeURIComponent(u.id)}/convert-to-page`, {
+      method: 'POST',
+      body: { operatorUserId },
+    })
+    editingUser.value = { ...u, accountKind: 'page', phone: null }
+    await loadOperators(u.id)
+  } catch (e: unknown) {
+    convertError.value = getApiErrorMessage(e) || 'Failed to convert to page.'
+  } finally {
+    convertSaving.value = false
+    convertOperatorId.value = null
+  }
+}
+
+function openCreatePage() {
+  createPageUsername.value = ''
+  createPageName.value = ''
+  createPageIsOrg.value = false
+  createPageOperatorQuery.value = ''
+  createPageOperatorResults.value = []
+  createPageOperatorId.value = null
+  createPageError.value = null
+  createPageOpen.value = true
+}
+
+async function searchCreatePageOperator() {
+  const q = createPageOperatorQuery.value.trim()
+  if (!q || createPageOperatorSearchLoading.value) return
+  createPageOperatorSearchLoading.value = true
+  createPageError.value = null
+  try {
+    const res = await apiFetch<AdminUser[]>('/admin/users/search', { method: 'GET', query: { q, limit: 10 } })
+    createPageOperatorResults.value = (res.data ?? []).filter((u) => u.accountKind !== 'page')
+  } catch (e: unknown) {
+    createPageError.value = getApiErrorMessage(e) || 'Failed to search operators.'
+  } finally {
+    createPageOperatorSearchLoading.value = false
+  }
+}
+
+async function submitCreatePage() {
+  if (createPageSaving.value || !createPageOperatorId.value) return
+  createPageSaving.value = true
+  createPageError.value = null
+  try {
+    const created = await apiFetchData<{ username: string | null }>(
+      '/admin/pages',
+      {
+        method: 'POST',
+        body: {
+          username: createPageUsername.value.trim(),
+          name: createPageName.value.trim(),
+          isOrganization: createPageIsOrg.value,
+          operatorUserId: createPageOperatorId.value,
+        },
+      },
+    )
+    createPageOpen.value = false
+    userQuery.value = created.username ?? createPageUsername.value.trim()
+    await runUserSearch()
+  } catch (e: unknown) {
+    createPageError.value = getApiErrorMessage(e) || 'Failed to create page.'
+  } finally {
+    createPageSaving.value = false
+  }
+}
+
 type UsernameAvailability = 'unknown' | 'checking' | 'available' | 'taken' | 'invalid' | 'same'
 const usernameAvailability = ref<UsernameAvailability>('unknown')
 const usernameHelperText = ref<string | null>(null)
@@ -1046,7 +1480,7 @@ function openEdit(u: AdminUser) {
   banReason.value = ''
   editPremiumMonths.value = 0
   editPremiumPlusMonths.value = 0
-  editPhone.value = u.phone
+  editPhone.value = u.phone ?? ''
   editUsername.value = u.username ?? ''
   editName.value = u.name ?? ''
   editBio.value = u.bio ?? ''
@@ -1062,6 +1496,8 @@ function openEdit(u: AdminUser) {
   // Load org affiliations for non-org users.
   if (!u.isOrganization) void loadOrgAffs(u.id)
   else orgAffs.value = []
+  if (u.accountKind === 'page') void loadOperators(u.id)
+  else void loadOperatedPages(u.id)
   // Load active subscription grants.
   void loadGrants(u.id)
 }
@@ -1206,7 +1642,7 @@ const { submit: saveUser, submitting: saving } = useFormSubmit(
     const updated = await apiFetchData<AdminUser>(`/admin/users/${encodeURIComponent(u.id)}/profile`, {
       method: 'PATCH',
       body: {
-        phone: editPhone.value.trim(),
+        ...(u.accountKind === 'page' ? {} : { phone: editPhone.value.trim() }),
         username: editUsername.value.trim() ? editUsername.value.trim() : null,
         name: editName.value.trim() ? editName.value.trim() : null,
         bio: editBio.value.trim() ? editBio.value.trim() : null,

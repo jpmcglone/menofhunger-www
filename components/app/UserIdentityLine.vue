@@ -9,7 +9,6 @@
         :premium="user.premium ?? undefined"
         :premium-plus="user.premiumPlus ?? undefined"
         :is-organization="Boolean(user.isOrganization)"
-        :steward-badge-enabled="user.stewardBadgeEnabled ?? true"
         :size="badgeSize"
         :is-bot="Boolean(user.isBot)"
       />
@@ -37,7 +36,6 @@ type UserLike = {
   premium?: boolean | null
   premiumPlus?: boolean | null
   isOrganization?: boolean | null
-  stewardBadgeEnabled?: boolean | null
   orgAffiliations?: OrgAffiliation[] | null
   isBot?: boolean | null
 }

@@ -43,6 +43,7 @@ import type {
   MarvCreditsUpdatedPayloadDto,
   OnlineUser,
   WsPresencePlatformsChangedPayload,
+  WsAccountsBadgeUpdatedPayload,
 } from '~/types/api'
 
 export type PresenceOnlinePayload = {
@@ -128,6 +129,10 @@ export type NotificationsCallback = {
   onUpdated?: (payload: WsNotificationsUpdatedPayload) => void
   onNew?: (payload: WsNotificationsNewPayload) => void
   onDeleted?: (payload: WsNotificationsDeletedPayload) => void
+}
+
+export type AccountsCallback = {
+  onBadgeUpdated?: (payload: WsAccountsBadgeUpdatedPayload) => void
 }
 
 /**

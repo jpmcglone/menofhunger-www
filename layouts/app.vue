@@ -82,7 +82,6 @@
                           :premium="Boolean(appHeader?.premium)"
                           :premium-plus="Boolean(appHeader?.premiumPlus)"
                           :is-organization="Boolean((appHeader as any)?.isOrganization)"
-                          :steward-badge-enabled="appHeader?.stewardBadgeEnabled ?? true"
                         />
                       </div>
                       <div v-if="hydrated && typeof appHeader?.postCount === 'number'" class="shrink-0 moh-meta">
@@ -532,11 +531,11 @@ if (import.meta.server) {
 }
 // nav items are provided by useAppNav() so mobile + desktop stay in sync
 
-// When user is logged in, keep subscription state in sync.
+// Rebind web push whenever the active identity changes (login or account switch).
 watch(
-  () => isAuthed.value,
-  (authed) => {
-    if (!authed || !import.meta.client) return
+  () => user.value?.id ?? null,
+  (id) => {
+    if (!id || !import.meta.client) return
     const push = usePushNotifications()
     push.tryAutoPrompt()
     void push.ensureSubscribedWhenGranted()

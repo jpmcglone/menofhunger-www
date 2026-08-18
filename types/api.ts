@@ -18,6 +18,26 @@ export type OrgAffiliation = Contracts.OrgAffiliationDto
 /** Short-lived URL for transferring an authenticated native session to the browser. */
 export type BrowserHandoff = Contracts.BrowserHandoffDto
 
+export type AccountKind = 'person' | 'page'
+
+export type AccountSwitch = {
+  operatorUserId: string
+  operatorUsername: string | null
+  operatorName: string | null
+  operatorAvatarUrl: string | null
+}
+
+export type SwitchableAccount = {
+  id: string
+  username: string | null
+  name: string | null
+  avatarUrl: string | null
+  accountKind: AccountKind
+  isOrganization: boolean
+  isCurrent: boolean
+  unreadBadgeCount: number
+}
+
 export type ApiPagination = {
   nextCursor?: string | null
   counts?: {
@@ -91,8 +111,6 @@ export type BillingMe = {
     avatarUrl: string | null
     premium: boolean
     premiumPlus: boolean
-    /** The recruiter's own opt-out for the steward shield; clients must honor it. */
-    stewardBadgeEnabled: boolean
     verifiedStatus: 'none' | 'identity' | 'manual'
   } | null
   /** How many users this user has recruited. */
@@ -261,7 +279,6 @@ export type LiveChatSender = {
   premiumPlus: boolean
   isOrganization: boolean
   verifiedStatus: 'none' | 'identity' | 'manual'
-  stewardBadgeEnabled: boolean
 }
 
 export type RadioStation = {
@@ -516,7 +533,6 @@ export type PostAuthor = {
   premium: boolean
   premiumPlus: boolean
   isOrganization: boolean
-  stewardBadgeEnabled: boolean
   verifiedStatus: 'none' | 'identity' | 'manual'
   avatarUrl: string | null
   orgAffiliations?: OrgAffiliation[]
@@ -548,7 +564,7 @@ export type PublicProfile = {
   premium: boolean
   premiumPlus: boolean
   isOrganization: boolean
-  stewardBadgeEnabled: boolean
+  accountKind?: AccountKind
   verifiedStatus: 'none' | 'identity' | 'manual'
   avatarUrl: string | null
   bannerUrl: string | null
@@ -580,7 +596,6 @@ export type UserPreviewBatchEntry = {
   premium?: boolean
   premiumPlus?: boolean
   isOrganization?: boolean
-  stewardBadgeEnabled?: boolean
   verifiedStatus?: 'none' | 'identity' | 'manual'
 }
 
@@ -597,7 +612,6 @@ export type UserPreview = {
   premium: boolean
   premiumPlus: boolean
   isOrganization: boolean
-  stewardBadgeEnabled: boolean
   verifiedStatus: 'none' | 'identity' | 'manual'
   avatarUrl: string | null
   bannerUrl: string | null
@@ -987,7 +1001,7 @@ export type MyVerificationStatus = {
 export type AdminVerificationUser = {
   id: string
   createdAt: string
-  phone: string
+  phone: string | null
   email: string | null
   username: string | null
   usernameIsSet: boolean
@@ -996,7 +1010,6 @@ export type AdminVerificationUser = {
   premium: boolean
   premiumPlus: boolean
   isOrganization: boolean
-  stewardBadgeEnabled: boolean
   verifiedStatus: 'none' | 'identity' | 'manual'
   verifiedAt: string | null
   unverifiedAt: string | null
@@ -1053,7 +1066,6 @@ export type AdminImageReviewDetailResponse = {
       name: string | null
       premium: boolean
       premiumPlus: boolean
-      stewardBadgeEnabled: boolean
       verifiedStatus: 'none' | 'identity' | 'manual'
       isAvatar: boolean
       isBanner: boolean
@@ -1206,7 +1218,7 @@ export type FollowListUser = {
   premium: boolean
   premiumPlus: boolean
   isOrganization: boolean
-  stewardBadgeEnabled: boolean
+  accountKind?: AccountKind
   verifiedStatus: 'none' | 'identity' | 'manual'
   avatarUrl: string | null
   orgAffiliations?: OrgAffiliation[]
@@ -1547,7 +1559,6 @@ export type MessageUser = {
   premium: boolean
   premiumPlus: boolean
   isOrganization: boolean
-  stewardBadgeEnabled: boolean
   verifiedStatus: 'none' | 'identity' | 'manual'
   avatarUrl: string | null
   isBot?: boolean
@@ -1698,6 +1709,11 @@ export type WsNotificationsUpdatedPayload = {
 
 export type WsNotificationsLockScreenClearPayload = {
   section: 'inbox' | 'groups'
+}
+
+export type WsAccountsBadgeUpdatedPayload = {
+  userId: string
+  unreadBadgeCount: number
 }
 
 export type WsMessagesReadPayload = {
@@ -1884,7 +1900,8 @@ export type HeardAboutUs = Contracts.HeardAboutUs
 export type UserDto = {
   id: string
   createdAt: string
-  phone: string
+  phone: string | null
+  accountKind?: AccountKind
   email: string | null
   emailVerifiedAt: string | null
   emailVerificationRequestedAt: string | null
@@ -1918,7 +1935,6 @@ export type UserDto = {
   premium: boolean
   premiumPlus: boolean
   isOrganization: boolean
-  stewardBadgeEnabled: boolean
   verifiedStatus: 'none' | 'identity' | 'manual'
   verifiedAt: string | null
   unverifiedAt: string | null
@@ -1957,6 +1973,7 @@ export type UserDto = {
    * Describes the admin really driving the session.
    */
   impersonation?: Impersonation | null
+  accountSwitch?: AccountSwitch | null
 }
 
 /** Mirrors `ImpersonationDto` in menofhunger-api/src/common/dto/auth.dto.ts. */
@@ -1973,7 +1990,7 @@ export type WsUsersMeUpdatedPayload = {
 }
 
 export type AdminUserSensitiveFields = {
-  phone: string
+  phone: string | null
   email: string | null
   birthdate: string | null
 }
@@ -2090,7 +2107,6 @@ export type LeaderboardUser = {
   premium: boolean
   premiumPlus: boolean
   isOrganization: boolean
-  stewardBadgeEnabled: boolean
   verifiedStatus: 'none' | 'identity' | 'manual'
   avatarUrl: string | null
   checkinStreakDays: number
@@ -2548,7 +2564,6 @@ export type ArticleAuthor = {
   premium: boolean
   premiumPlus: boolean
   isOrganization: boolean
-  stewardBadgeEnabled: boolean
   verifiedStatus: 'none' | 'identity' | 'manual'
   orgAffiliations: OrgAffiliation[]
 }
@@ -3146,7 +3161,7 @@ export type RecentSearchUser = {
   premium: boolean
   premiumPlus: boolean
   isOrganization: boolean
-  stewardBadgeEnabled: boolean
+  accountKind?: AccountKind
   verifiedStatus: 'none' | 'identity' | 'manual'
   avatarUrl: string | null
   orgAffiliations?: OrgAffiliation[]

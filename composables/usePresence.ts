@@ -188,6 +188,8 @@ export function usePresence() {
     removeSpacesCallback: domains.spaces.remove,
     addNotificationsCallback: domains.notifications.add,
     removeNotificationsCallback: domains.notifications.remove,
+    addAccountsCallback: domains.accounts.add,
+    removeAccountsCallback: domains.accounts.remove,
     addFollowsCallback: domains.follows.add,
     removeFollowsCallback: domains.follows.remove,
     addPostsCallback: domains.posts.add,

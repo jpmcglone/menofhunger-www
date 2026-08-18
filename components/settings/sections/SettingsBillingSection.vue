@@ -19,7 +19,6 @@
             :premium="Boolean(billingMe?.premium)"
             :premium-plus="Boolean(billingMe?.premiumPlus)"
             :is-organization="Boolean((authUser as any)?.isOrganization)"
-            :steward-badge-enabled="authUser?.stewardBadgeEnabled ?? true"
           />
         </div>
       </div>
@@ -179,7 +178,6 @@
                   :status="billingMe.recruiter.verifiedStatus"
                   :premium="billingMe.recruiter.premium"
                   :premium-plus="billingMe.recruiter.premiumPlus"
-                  :steward-badge-enabled="billingMe.recruiter.stewardBadgeEnabled"
                   size="xs"
                 />
               </div>

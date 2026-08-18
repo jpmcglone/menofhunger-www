@@ -5,7 +5,7 @@
  */
 
 // IMPORTANT: bump this whenever caching logic changes so old caches are purged.
-self.__MOH_SW_VERSION = 'moh-sw-dev-1787065451669';
+self.__MOH_SW_VERSION = 'moh-sw-dev-1787084067463';
 const CACHE_PREFIX = 'moh-sw'
 const NUXT_ASSETS_CACHE = `${CACHE_PREFIX}:nuxt:${self.__MOH_SW_VERSION}`
 const STATIC_ASSETS_CACHE = `${CACHE_PREFIX}:static:${self.__MOH_SW_VERSION}`
@@ -204,7 +204,7 @@ self.addEventListener('push', function (event) {
         icon,
         badge,
         renotify,
-        data: { url, kind, tag }
+        data: { url, kind, tag, recipientUserId: payload.recipientUserId || '' }
       }).catch(function (err) {
         console.error('[sw-push] showNotification failed', err)
       })
@@ -225,8 +225,11 @@ self.addEventListener('notificationclick', function (event) {
   const kind = data.kind || 'generic'
   const tag = data.tag || ''
   // Append click-through params for analytics (client reads and sends to Posthog).
+  const recipientUserId = typeof data.recipientUserId === 'string' ? data.recipientUserId : ''
   const sep = url.includes('?') ? '&' : '?'
-  const fullUrl = new URL(url + sep + 'from=push&kind=' + encodeURIComponent(kind) + '&tag=' + encodeURIComponent(tag), self.location.origin).href
+  let extra = 'from=push&kind=' + encodeURIComponent(kind) + '&tag=' + encodeURIComponent(tag)
+  if (recipientUserId) extra += '&as=' + encodeURIComponent(recipientUserId)
+  const fullUrl = new URL(url + sep + extra, self.location.origin).href
 
   event.waitUntil(
     Promise.resolve()

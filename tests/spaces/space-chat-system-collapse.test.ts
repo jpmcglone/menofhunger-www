@@ -37,7 +37,6 @@ function userMsg(id: string): SpaceChatMessage {
       premiumPlus: false,
       isOrganization: false,
       verifiedStatus: 'none',
-      stewardBadgeEnabled: true,
     },
   }
 }

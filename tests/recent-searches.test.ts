@@ -11,7 +11,6 @@ function makeUser(id: string, username: string): RecentSearchUser {
     premium: false,
     premiumPlus: false,
     isOrganization: false,
-    stewardBadgeEnabled: false,
     verifiedStatus: 'none',
     avatarUrl: null,
   }

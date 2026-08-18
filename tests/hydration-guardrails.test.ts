@@ -192,9 +192,9 @@ describe('hydration guardrails (structural)', () => {
     // Check-ins are verified-only; unverified authed users get a verify CTA instead of
     // the live hero. It must be inside <ClientOnly> so SSR emits nothing (no hydration
     // mismatch on the auth-derived `canAccessCheckins`).
-    expect(home).toMatch(/<ClientOnly>[\s\S]*?<AppFeedDailyCheckinHero[\s\S]*?v-if="isAuthed && !canAccessCheckins"[\s\S]*?verify-cta[\s\S]*?<\/ClientOnly>/)
+    expect(home).toMatch(/<ClientOnly>[\s\S]*?<AppFeedDailyCheckinHero[\s\S]*?v-if="isAuthed && !isPageAccount && !canAccessCheckins"[\s\S]*?verify-cta[\s\S]*?<\/ClientOnly>/)
     const explore = readFromRepo('pages/explore.vue')
-    expect(explore).toMatch(/<ClientOnly>[\s\S]*?v-if="isAuthed && !canAccessCheckins"[\s\S]*?verify-cta[\s\S]*?<\/ClientOnly>/)
+    expect(explore).toMatch(/<ClientOnly>[\s\S]*?v-if="isAuthed && !isPageAccount && !canAccessCheckins"[\s\S]*?verify-cta[\s\S]*?<\/ClientOnly>/)
   })
 
   // ---- Chat performance guardrails ------------------------------------------

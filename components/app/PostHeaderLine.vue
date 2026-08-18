@@ -34,7 +34,6 @@
           :premium="premium"
           :premium-plus="premiumPlus"
           :is-organization="isOrganization"
-          :steward-badge-enabled="stewardBadgeEnabled"
           :is-bot="isBot"
         />
       </NuxtLink>
@@ -45,7 +44,6 @@
         :premium="premium"
         :premium-plus="premiumPlus"
         :is-organization="isOrganization"
-        :steward-badge-enabled="stewardBadgeEnabled"
         :is-bot="isBot"
       />
 
@@ -109,7 +107,6 @@ const props = defineProps<{
   premium?: boolean
   premiumPlus?: boolean
   isOrganization?: boolean
-  stewardBadgeEnabled?: boolean
   orgAffiliations?: OrgAffiliation[] | null
   isBot?: boolean
   editedAt?: string | null
@@ -126,7 +123,6 @@ const props = defineProps<{
 
 const displayName = computed(() => props.displayName || props.username || 'User')
 const username = computed(() => props.username || '')
-const stewardBadgeEnabled = computed(() => props.stewardBadgeEnabled ?? true)
 const isEdited = computed(() => Boolean(props.editedAt) && !props.hideEditedBadge)
 
 const { onEnter, onMove, onLeave } = useUserPreviewTrigger({ username })

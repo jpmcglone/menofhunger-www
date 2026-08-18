@@ -21,7 +21,6 @@ function userMsg(id: string, body: string, extra: Partial<Extract<SpaceChatMessa
       premiumPlus: false,
       isOrganization: false,
       verifiedStatus: 'none',
-      stewardBadgeEnabled: false,
     },
     ...extra,
   }

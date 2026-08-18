@@ -13,7 +13,6 @@
           :premium="Boolean(authUser?.premium)"
           :premium-plus="Boolean(authUser?.premiumPlus)"
           :is-organization="Boolean((authUser as any)?.isOrganization)"
-          :steward-badge-enabled="authUser?.stewardBadgeEnabled ?? true"
         />
       </div>
 
@@ -107,41 +106,12 @@
       @confirm="confirmStartVerification()"
     />
 
-    <div
-      v-if="authUser?.premiumPlus"
-      class="rounded-xl border moh-border p-3 moh-surface space-y-3 text-sm"
-    >
-      <div class="flex items-start justify-between gap-4">
-        <div class="space-y-1">
-          <div class="font-semibold text-gray-900 dark:text-gray-50">Steward badge</div>
-          <div class="text-xs moh-text-muted">
-            Show a Steward (Premium+) badge next to your verified badge across the app.
-          </div>
-        </div>
-        <Checkbox
-          v-model="stewardBadgeEnabledInput"
-          binary
-          input-id="moh-steward-badge-enabled"
-          :disabled="stewardBadgeSaving"
-        />
-      </div>
-
-      <div class="flex flex-wrap items-center gap-3">
-        <AppSaveButton severity="secondary" :loading="stewardBadgeSaving" :disabled="!stewardBadgeDirty" @click="saveStewardBadge" />
-        <div v-if="stewardBadgeSaved" class="text-sm text-green-700 dark:text-green-300">Saved.</div>
-      </div>
-
-      <AppInlineAlert v-if="stewardBadgeError" severity="danger">{{ stewardBadgeError }}</AppInlineAlert>
-    </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import type { MyVerificationStatus, VerificationRequestPublic } from '~/types/api'
-import type { AuthUser } from '~/composables/useAuth'
-import { useFormSave } from '~/composables/useFormSave'
 import { useFormSubmit } from '~/composables/useFormSubmit'
-import { useSyncUserCaches } from '~/composables/settings/useSyncUserCaches'
 import { getApiErrorMessage } from '~/utils/api-error'
 import { formatDateTime } from '~/utils/time-format'
 
@@ -150,9 +120,8 @@ withDefaults(defineProps<{
   showDivider?: boolean
 }>(), { showDivider: false })
 
-const { user: authUser, patchUser } = useAuth()
+const { user: authUser } = useAuth()
 const { apiFetchData } = useApiClient()
-const syncUserCaches = useSyncUserCaches()
 
 const verificationRefreshing = ref(false)
 const verificationError = ref<string | null>(null)
@@ -245,43 +214,4 @@ const requestStatusSeverity = computed(() => {
 
 const requestSubmittedAtLabel = computed(() => formatDateTime(verificationLatestRequest.value?.createdAt, { fallback: '—' }))
 const requestReviewedAtLabel = computed(() => formatDateTime(verificationLatestRequest.value?.reviewedAt, { fallback: '—' }))
-
-// Premium+ steward badge toggle
-const stewardBadgeEnabledInput = ref<boolean>(true)
-const stewardBadgeError = ref<string | null>(null)
-
-watch(
-  () => authUser.value?.stewardBadgeEnabled,
-  (v) => {
-    // ON by default when field is missing (defensive).
-    stewardBadgeEnabledInput.value = v !== false
-  },
-  { immediate: true },
-)
-
-const stewardBadgeDirty = computed(() => (authUser.value?.stewardBadgeEnabled ?? true) !== stewardBadgeEnabledInput.value)
-
-const { save: saveStewardBadgeRequest, saving: stewardBadgeSaving, saved: stewardBadgeSaved } = useFormSave(
-  async () => {
-    const previousUsername = authUser.value?.username ?? null
-    const result = await apiFetchData<{ user: AuthUser }>('/users/me/settings', {
-      method: 'PATCH',
-      body: { stewardBadgeEnabled: stewardBadgeEnabledInput.value },
-    })
-    patchUser(result.user)
-    syncUserCaches(result.user, previousUsername)
-  },
-  {
-    defaultError: 'Failed to save steward badge.',
-    onError: (message) => {
-      stewardBadgeError.value = message
-    },
-  },
-)
-
-async function saveStewardBadge() {
-  stewardBadgeError.value = null
-  stewardBadgeSaved.value = false
-  await saveStewardBadgeRequest()
-}
 </script>

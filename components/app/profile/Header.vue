@@ -224,7 +224,6 @@
               :premium="profile?.premium"
               :premium-plus="profile?.premiumPlus"
               :is-organization="profile?.isOrganization"
-              :steward-badge-enabled="profile?.stewardBadgeEnabled ?? true"
               :is-bot="profile?.isBot"
             />
             <AppOrgAffiliationAvatars

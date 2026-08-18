@@ -291,7 +291,7 @@ function switchTab(tab: TabId) {
 }
 
 function tierColor(u: LeaderboardUser): string {
-  if (u.premiumPlus || u.stewardBadgeEnabled) return 'var(--moh-steward)'
+  if (u.premiumPlus) return 'var(--moh-premium)'
   if (u.premium) return 'var(--moh-premium)'
   if (u.verifiedStatus !== 'none') return 'var(--moh-verified)'
   return 'var(--moh-text-muted)'

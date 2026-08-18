@@ -1605,7 +1605,6 @@ function makeOptimisticAuthor(): PostAuthor | null {
     premium: Boolean(u.premium),
     premiumPlus: Boolean((u as any).premiumPlus),
     isOrganization: Boolean((u as any).isOrganization),
-    stewardBadgeEnabled: Boolean((u as any).stewardBadgeEnabled ?? true),
     verifiedStatus: ((u as any).verifiedStatus ?? 'none') as PostAuthor['verifiedStatus'],
     avatarUrl: (u as any).avatarUrl ?? null,
   }

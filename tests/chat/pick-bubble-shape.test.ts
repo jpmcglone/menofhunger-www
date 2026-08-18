@@ -30,7 +30,6 @@ function makeMessage(override: Partial<Message> = {}): Message {
       premium: false,
       premiumPlus: false,
       isOrganization: false,
-      stewardBadgeEnabled: false,
     } as unknown as Message['sender'],
     reactions: [],
     deletedForMe: false,

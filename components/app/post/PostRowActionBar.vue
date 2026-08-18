@@ -161,7 +161,7 @@
 
     <!-- Share -->
     <div
-      class="inline-flex items-center"
+      class="inline-flex items-center sm:ml-2"
       @click.capture="onMaybeGatedRightSideClick"
     >
       <AppPostRowShareMenu

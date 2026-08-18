@@ -81,7 +81,6 @@ function toArticleRow(item: AdminUserRecentArticle): Article {
       premium: Boolean(author?.premium),
       premiumPlus: Boolean(author?.premiumPlus),
       isOrganization: Boolean(author?.isOrganization),
-      stewardBadgeEnabled: author?.stewardBadgeEnabled ?? true,
       verifiedStatus: author?.verifiedStatus ?? 'none',
       orgAffiliations: author?.orgAffiliations ?? [],
     },

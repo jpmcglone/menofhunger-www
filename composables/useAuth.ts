@@ -1,13 +1,14 @@
 import type { UsersCallback } from '~/composables/usePresence'
 import { useUsersStore } from '~/composables/useUsersStore'
-import { bumpAuthGeneration, clearAuthClientState, getAuthGeneration } from '~/composables/auth/authState'
+import { bumpAuthGeneration, bumpIdentityVersion, clearAuthClientState, getAuthGeneration } from '~/composables/auth/authState'
 import { clearMohCacheAll } from '~/composables/useApiClient'
-import type { Impersonation } from '~/types/api'
+import type { AccountKind, AccountSwitch, Impersonation, SwitchableAccount } from '~/types/api'
 
 export type AuthUser = {
   id: string
   createdAt?: string
-  phone: string
+  phone: string | null
+  accountKind?: AccountKind
   email?: string | null
   emailVerifiedAt?: string | null
   emailVerificationRequestedAt?: string | null
@@ -37,7 +38,6 @@ export type AuthUser = {
   premium?: boolean
   premiumPlus?: boolean
   isOrganization?: boolean
-  stewardBadgeEnabled?: boolean
   followVisibility?: 'all' | 'verified' | 'premium' | 'none'
   birthdayVisibility?: 'none' | 'monthDay' | 'full'
   verifiedStatus?: 'none' | 'identity' | 'manual'
@@ -60,6 +60,7 @@ export type AuthUser = {
   articleCount?: number | null
   /** Non-null only while a site admin is impersonating this user. */
   impersonation?: Impersonation | null
+  accountSwitch?: AccountSwitch | null
 }
 
 let clientMePromise: Promise<AuthUser | null> | null = null
@@ -127,7 +128,6 @@ export function useAuth() {
               premium: u.premium,
               premiumPlus: u.premiumPlus,
               isOrganization: u.isOrganization,
-              stewardBadgeEnabled: u.stewardBadgeEnabled,
               verifiedStatus: u.verifiedStatus,
               avatarUrl: u.avatarUrl,
               bannerUrl: u.bannerUrl,
@@ -318,14 +318,43 @@ export function useAuth() {
     }
   }
 
+  function personOnlyLandingPath(pathname: string): string | null {
+    if (pathname === '/settings/billing' || pathname.startsWith('/settings/billing/')) return '/settings/account'
+    if (pathname === '/settings/fitness' || pathname.startsWith('/settings/fitness/')) return '/settings/account'
+    const personOnlyPrefixes = ['/check-ins', '/fitness', '/invite', '/admin']
+    if (personOnlyPrefixes.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`))) {
+      return '/home'
+    }
+    return null
+  }
+
+  async function leavePersonOnlyRouteIfNeeded(next: AuthUser | null) {
+    if (!import.meta.client) return
+    if (next?.accountKind !== 'page') return
+    const nextPath = personOnlyLandingPath(useRoute().path)
+    if (nextPath) await navigateTo(nextPath, { replace: true })
+  }
+
+  /** Cookie is already rotated — load as the new identity instead of swapping chrome first. */
+  function reloadAsSwitchedIdentity(next: AuthUser | null, then?: string) {
+    if (!import.meta.client) return
+    const dest = typeof then === 'string' && then.startsWith('/') ? then : null
+    const destPath = (dest ? dest.split(/[?#]/)[0] : window.location.pathname) || '/'
+    const landing =
+      next?.accountKind === 'page' ? personOnlyLandingPath(destPath) : null
+    if (landing) window.location.replace(landing)
+    else if (dest) window.location.replace(dest)
+    else window.location.reload()
+  }
+
   /**
    * Swap client state over to a different identity after the server has already
-   * rotated the `moh_session` cookie. Shared by impersonation start and stop.
+   * rotated the `moh_session` cookie. Used by impersonation. Account switch
+   * reloads instead so the new chrome and page appear together.
    *
-   * The socket must be fully torn down and reopened (not `reconnect()`): the existing
-   * connection authenticated with the previous cookie and is still joined to the previous
-   * user's rooms. `emitLogout()` is deliberately NOT called — that would revoke the
-   * brand-new session server-side.
+   * This is a full identity change: caches, content rooms, badge counts, KeepAlive
+   * pages, and the socket handshake all rebuild for `nextUser`. `emitLogout()` is
+   * deliberately NOT called — that would revoke the brand-new session server-side.
    *
    * Throws `'identity_not_swapped'` if the server confirmed a different user than `nextUser`
    * — this means the session cookie was not updated (browser SameSite / CORS edge-case).
@@ -357,8 +386,17 @@ export function useAuth() {
       throw new Error('identity_not_swapped')
     }
 
+    await leavePersonOnlyRouteIfNeeded(user.value)
+    // Bust KeepAlive so the current page remounts and fetches as the new identity.
+    bumpIdentityVersion()
+
+    // Tear down any mid-swap reconnect (user-id watch) and handshake as this user.
+    disconnect()
     connect()
     await useBadgeHydration().refresh({ force: true }).catch(() => undefined)
+    if (import.meta.client) {
+      void usePushNotifications().ensureSubscribedWhenGranted()
+    }
   }
 
   /**
@@ -408,6 +446,19 @@ export function useAuth() {
     return result.user
   }
 
+  async function listSwitchableAccounts(): Promise<SwitchableAccount[]> {
+    return await apiFetchData<SwitchableAccount[]>('/auth/accounts', { method: 'GET' })
+  }
+
+  async function switchAccount(userId: string, opts?: { then?: string }) {
+    const result = await apiFetchData<{ user: AuthUser }>('/auth/switch', {
+      method: 'POST',
+      body: { userId },
+    })
+    reloadAsSwitchedIdentity(result?.user ?? null, opts?.then)
+    return result?.user ?? null
+  }
+
   const isAuthed = computed(() => Boolean(user.value?.id))
   /** The admin driving this session, or null when this is an ordinary session. */
   const impersonation = computed<Impersonation | null>(() => user.value?.impersonation ?? null)
@@ -419,7 +470,10 @@ export function useAuth() {
   // (verifiedStatus !== 'none' || premium || premiumPlus). Use this to gate
   // verified-only engagement features (e.g. setting your own status).
   const isVerifiedMember = computed(() => isVerified.value || isPremium.value)
+  const isPageAccount = computed(() => user.value?.accountKind === 'page')
+  /** Daily check-in / streak loop. Pages cannot participate, so callers should hide the chrome. */
+  const canAccessCheckins = computed(() => !isPageAccount.value && isVerifiedMember.value)
 
-  return { user, patchUser, me, ensureLoaded, initAuth, logout, logoutEverywhere, handleUnauthorized, isAuthed, isVerified, isPremium, isPremiumPlus, isVerifiedMember, apiUnreachable, impersonation, isImpersonating, startImpersonation, stopImpersonation }
+  return { user, patchUser, me, ensureLoaded, initAuth, logout, logoutEverywhere, handleUnauthorized, isAuthed, isVerified, isPremium, isPremiumPlus, isVerifiedMember, isPageAccount, canAccessCheckins, apiUnreachable, impersonation, isImpersonating, startImpersonation, stopImpersonation, listSwitchableAccounts, switchAccount }
 }
 

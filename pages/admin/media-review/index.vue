@@ -380,7 +380,6 @@
                           :status="u.verifiedStatus"
                           :premium="u.premium"
                           :premium-plus="u.premiumPlus"
-                          :steward-badge-enabled="u.stewardBadgeEnabled ?? true"
                         />
                       </div>
                     </div>

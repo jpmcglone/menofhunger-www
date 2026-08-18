@@ -58,7 +58,6 @@
                     :premium="Boolean(u.premium)"
                     :premium-plus="Boolean(u.premiumPlus)"
                     :is-organization="Boolean((u as any).isOrganization)"
-                    :steward-badge-enabled="u.stewardBadgeEnabled ?? true"
                     size="xs"
                   />
                 </div>

@@ -24,11 +24,60 @@ export function bumpAuthGeneration(): number {
   return authGeneration
 }
 
+/** Reactive identity epoch. Pages key on this so KeepAlive cannot keep the previous account mounted. */
+export function useIdentityVersion() {
+  return useState<number>('auth-identity-version', () => 0)
+}
+
+export function bumpIdentityVersion(): number {
+  const version = useIdentityVersion()
+  version.value += 1
+  return version.value
+}
+
+/**
+ * Wipe rooms, interest, and badge counts that would otherwise replay on the next
+ * socket handshake. Must run BEFORE `auth-user` is nulled: `usePresence` watches
+ * that id and may reconnect immediately.
+ */
+function clearIdentityRealtimeState() {
+  useState<Map<string, number>>('presence-post-sub-refs', () => new Map()).value = new Map()
+  useState<Map<string, number>>('presence-article-sub-refs', () => new Map()).value = new Map()
+  useState<Map<string, number>>('presence-group-feed-sub-refs', () => new Map()).value = new Map()
+  useState<Map<string, number>>('presence-interest-refs', () => new Map()).value = new Map()
+  useState<boolean>('presence-online-feed-subscribed', () => false).value = false
+  useState<Set<string>>('presence-online-ids', () => new Set()).value = new Set()
+  useState<Set<string>>('presence-idle-ids', () => new Set()).value = new Set()
+  useState<Set<string>>('presence-known-ids', () => new Set()).value = new Set()
+  useState<Record<string, unknown>>('presence-user-current-space-by-id', () => ({})).value = {}
+  useState<Record<string, unknown>>('presence-status-by-user-id', () => ({})).value = {}
+  useState<Record<string, number>>('presence-status-fetched-at', () => ({})).value = {}
+
+  useState<number>('notifications-undelivered-count', () => 0).value = 0
+  useState<number>('notifications-unread-comment-count', () => 0).value = 0
+  useState<{ primary: number; requests: number }>('messages-unread-counts', () => ({
+    primary: 0,
+    requests: 0,
+  })).value = { primary: 0, requests: 0 }
+  useState<{ total: number; byGroupId: Record<string, number> }>('groups-unread', () => ({
+    total: 0,
+    byGroupId: {},
+  })).value = { total: 0, byGroupId: {} }
+  useState<number>('crew-invites-badge-count', () => 0).value = 0
+  useState<string | null>('badge-hydration:user-id', () => null).value = null
+  useState<number>('badge-hydration:hydrated-at', () => 0).value = 0
+}
+
 export function clearAuthClientState(params?: { resetViewerCaches?: boolean }) {
   const resetViewerCaches = params?.resetViewerCaches ?? true
   const prevUser = useState<any>('auth-user', () => null).value
   const prevUserId = typeof prevUser?.id === 'string' ? prevUser.id : ''
   const prevUsername = typeof prevUser?.username === 'string' ? prevUser.username.trim().toLowerCase() : ''
+
+  // Rooms + badges first so a user-id watch cannot reconnect into the previous account.
+  if (resetViewerCaches && prevUserId) {
+    clearIdentityRealtimeState()
+  }
 
   // Auth user/session state
   useState<any>('auth-user', () => null).value = null
@@ -76,6 +125,14 @@ export function clearAuthClientState(params?: { resetViewerCaches?: boolean }) {
   useState<string | null>('posts-feed-next', () => null).value = null
   useState<boolean>('posts-feed-loading', () => false).value = false
   useState<string | null>('posts-feed-error', () => null).value = null
+  useState<any[]>('posts-feed-local-inserts', () => []).value = []
+  useState<number>('posts-feed-last-hard-refresh-ms', () => 0).value = 0
+  useState<string>('posts-feed-last-hard-refresh-request-key', () => '').value = ''
+  useState<any[]>('crew-feed-local-inserts', () => []).value = []
+
+  useState<any>('viewer-crew-membership', () => null).value = null
+  useState<boolean>('viewer-crew-loaded', () => false).value = false
+  useState<boolean>('viewer-crew-inflight', () => false).value = false
 
   useState<any[]>('posts-only-me', () => []).value = []
   useState<string | null>('posts-only-me-next', () => null).value = null
@@ -94,6 +151,9 @@ export function clearAuthClientState(params?: { resetViewerCaches?: boolean }) {
     useState<string | null>(`notifications:${prevUserId}:nextCursor`, () => null).value = null
     useState<boolean>(`notifications:${prevUserId}:loading`, () => false).value = false
     useState<boolean>(`notifications:${prevUserId}:pendingRefresh`, () => false).value = false
+    useState<boolean>(`notifications:${prevUserId}:hasFetched`, () => false).value = false
+    useState<string | null>(`notifications:${prevUserId}:activeKind`, () => null).value = null
+    useState<Record<string, number>>(`notifications:${prevUserId}:unreadByKind`, () => ({ all: 0 })).value = { all: 0 }
   }
   useState<any[]>('notifications:anon:items', () => []).value = []
   useState<string | null>('notifications:anon:nextCursor', () => null).value = null

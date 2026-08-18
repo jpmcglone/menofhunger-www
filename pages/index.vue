@@ -392,7 +392,6 @@
                         :status="post.author.verifiedStatus"
                         :premium="post.author.premium"
                         :premium-plus="post.author.premiumPlus"
-                        :steward-badge-enabled="false"
                         :show-tooltip="false"
                       />
                     </div>

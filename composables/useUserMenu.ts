@@ -1,7 +1,7 @@
 import type { MenuItem } from 'primevue/menuitem'
 
 export function useUserMenu() {
-  const { user, logout } = useAuth()
+  const { user, logout, isPageAccount } = useAuth()
   const { confirm } = useAppConfirm()
 
   async function requestLogout() {
@@ -30,7 +30,7 @@ export function useUserMenu() {
   })
 
   const menuItems = computed<MenuItemWithIcon[]>(() => [
-    ...(user.value?.siteAdmin
+    ...(user.value?.siteAdmin && !isPageAccount.value
       ? ([
           {
             label: 'Admin',
@@ -47,35 +47,43 @@ export function useUserMenu() {
       url: profileUrl.value,
       command: () => viewProfile(),
     },
-    {
-      label: 'Coins',
-      iconName: 'tabler:coin',
-      url: '/coins',
-      command: () => navigateTo('/coins'),
-    },
-    { separator: true },
-    {
-      label: 'Invite friends',
-      iconName: 'tabler:gift',
-      url: '/invite',
-      command: () => navigateTo('/invite'),
-    },
+    ...(!isPageAccount.value
+      ? ([
+          {
+            label: 'Coins',
+            iconName: 'tabler:coin',
+            url: '/coins',
+            command: () => navigateTo('/coins'),
+          },
+          { separator: true },
+        ] as MenuItemWithIcon[])
+      : []),
+    ...(!isPageAccount.value
+      ? ([
+          {
+            label: 'Invite friends',
+            iconName: 'tabler:gift',
+            url: '/invite',
+            command: () => navigateTo('/invite'),
+          },
+        ] as MenuItemWithIcon[])
+      : []),
     {
       label: 'Feature requests',
       iconName: 'tabler:bulb',
       url: '/feedback',
       command: () => navigateTo('/feedback'),
     },
-    ...(user.value?.premiumPlus
-      ? []
-      : ([
+    ...(!isPageAccount.value && !user.value?.premiumPlus
+      ? ([
           {
             label: 'Upgrade',
             iconName: 'tabler:sparkles',
             url: '/tiers',
             command: () => navigateTo('/tiers'),
           },
-        ] as MenuItemWithIcon[])),
+        ] as MenuItemWithIcon[])
+      : []),
     {
       label: 'Settings & privacy',
       iconName: 'tabler:settings',

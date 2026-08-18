@@ -27,7 +27,6 @@ function msg(id: string, createdAt: string, spaceId = 'space-1'): SpaceChatMessa
       premiumPlus: false,
       isOrganization: false,
       verifiedStatus: 'none',
-      stewardBadgeEnabled: false,
     },
   }
 }

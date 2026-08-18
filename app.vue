@@ -3,7 +3,7 @@
     <!-- Keep SSR/client first paint stable: loading bar tint can update after hydration via CSS vars. -->
     <NuxtLoadingIndicator color="var(--p-primary-color)" :height="4" />
     <NuxtLayout>
-      <NuxtPage />
+      <NuxtPage :key="`identity-${identityVersion}`" />
     </NuxtLayout>
   </div>
 </template>
@@ -13,6 +13,9 @@
 // it creates hydration mismatches when SSR can't know the viewer yet.
 
 import { siteConfig } from '~/config/site'
+import { useIdentityVersion } from '~/composables/auth/authState'
+
+const identityVersion = useIdentityVersion()
 
 // Smart App Banner — prompts iOS Safari users to open in the native app.
 // Reactive (not static in nuxt.config.ts) so `app-argument` always carries the

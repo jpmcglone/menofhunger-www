@@ -128,7 +128,6 @@
             :premium="author.premium"
             :premium-plus="author.premiumPlus"
             :is-organization="author.isOrganization"
-            :steward-badge-enabled="author.stewardBadgeEnabled ?? true"
             :org-affiliations="(author as any).orgAffiliations ?? postView.author?.orgAffiliations"
             :is-bot="postView.author?.isBot ?? false"
             :edited-at="postView.editedAt ?? null"
@@ -494,7 +493,6 @@ const author = computed(() => authorOverlay.value ?? authorSnapshot.value ?? ({
   premium: false,
   premiumPlus: false,
   isOrganization: false,
-  stewardBadgeEnabled: true,
 } as any))
 const isDeletedPost = computed(() => Boolean(postView.value.deletedAt))
 const isGatedPost = computed(() => postView.value.viewerCanAccess === false)

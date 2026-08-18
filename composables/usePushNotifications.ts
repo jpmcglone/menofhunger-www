@@ -30,6 +30,13 @@ function isStandaloneDisplay(): boolean {
   )
 }
 
+function pushOwnerUserId(user: { id?: string; accountKind?: string; accountSwitch?: { operatorUserId?: string } | null } | null | undefined): string | null {
+  if (!user) return null
+  if (user.accountSwitch?.operatorUserId) return user.accountSwitch.operatorUserId
+  if (user.accountKind === 'page') return null
+  return user.id ?? null
+}
+
 function arrayBufferToBase64Url(buffer: ArrayBuffer): string {
   const bytes = new Uint8Array(buffer)
   let binary = ''
@@ -138,7 +145,7 @@ export function usePushNotifications() {
         }
       })
       isSubscribed.value = true
-      subscribedForUserId.value = user.value?.id ?? null
+      subscribedForUserId.value = pushOwnerUserId(user.value)
       return true
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'Failed to subscribe.'
@@ -209,7 +216,7 @@ export function usePushNotifications() {
     // Re-register if: (a) no browser subscription exists, or (b) the subscription is registered
     // for a different user — this handles the case where the browser subscription survived a
     // logout (e.g. network failure) and a new user has since logged in.
-    const alreadyCorrectUser = isSubscribed.value && subscribedForUserId.value === user.value.id
+    const alreadyCorrectUser = isSubscribed.value && subscribedForUserId.value === pushOwnerUserId(user.value)
     if (alreadyCorrectUser) return
     void subscribe()
   }

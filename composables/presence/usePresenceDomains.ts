@@ -35,8 +35,10 @@ import type {
   WsUsersSpaceChangedPayload,
   WsCheckinAnsweredTodayPayload,
   MarvCreditsUpdatedPayloadDto,
+  WsAccountsBadgeUpdatedPayload,
 } from '~/types/api'
 import type {
+  AccountsCallback,
   AdminCallback,
   ArticlesCallback,
   CheckinsCallback,
@@ -107,6 +109,7 @@ export function usePresenceDomains() {
   const radioCallbacks = useState<Set<RadioCallback>>('presence-radio-callbacks', () => new Set())
   const spacesCallbacks = useState<Set<SpacesCallback>>('presence-spaces-callbacks', () => new Set())
   const notificationsCallbacks = useState<Set<NotificationsCallback>>('presence-notifications-callbacks', () => new Set())
+  const accountsCallbacks = useState<Set<AccountsCallback>>('presence-accounts-callbacks', () => new Set())
   const followsCallbacks = useState<Set<FollowsCallback>>('presence-follows-callbacks', () => new Set())
   const postsCallbacks = useState<Set<PostsCallback>>('presence-posts-callbacks', () => new Set())
   const articlesCallbacks = useState<Set<ArticlesCallback>>('presence-articles-callbacks', () => new Set())
@@ -136,6 +139,7 @@ export function usePresenceDomains() {
   const radio = makeRegistry(radioCallbacks)
   const spaces = makeRegistry(spacesCallbacks)
   const notifications = makeRegistry(notificationsCallbacks)
+  const accounts = makeRegistry(accountsCallbacks)
   const follows = makeRegistry(followsCallbacks)
   const posts = makeRegistry(postsCallbacks)
   const articles = makeRegistry(articlesCallbacks)
@@ -170,6 +174,13 @@ export function usePresenceDomains() {
       if (!notificationsCallbacks.value.size) return
       for (const cb of notificationsCallbacks.value) {
         cb.onDeleted?.(data)
+      }
+    })
+
+    socket.on('accounts:badge-updated', (data: WsAccountsBadgeUpdatedPayload) => {
+      if (!accountsCallbacks.value.size) return
+      for (const cb of accountsCallbacks.value) {
+        cb.onBadgeUpdated?.(data)
       }
     })
 
@@ -641,6 +652,7 @@ export function usePresenceDomains() {
     radio,
     spaces,
     notifications,
+    accounts,
     follows,
     posts,
     articles,

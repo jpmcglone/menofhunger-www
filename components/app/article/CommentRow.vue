@@ -34,7 +34,6 @@
           :premium="comment.author.premium"
           :premium-plus="comment.author.premiumPlus"
           :is-organization="comment.author.isOrganization"
-          :steward-badge-enabled="comment.author.stewardBadgeEnabled"
         />
         <AppOrgAffiliationAvatars
           v-if="comment.author.orgAffiliations?.length"

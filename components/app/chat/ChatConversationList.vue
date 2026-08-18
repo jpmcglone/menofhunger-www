@@ -180,7 +180,6 @@
                     :premium="Boolean(getDirectUserOverlay(c)!.premium)"
                     :premium-plus="Boolean(getDirectUserOverlay(c)!.premiumPlus)"
                     :is-organization="Boolean(getDirectUserOverlay(c)!.isOrganization)"
-                    :steward-badge-enabled="getDirectUserOverlay(c)!.stewardBadgeEnabled ?? true"
                   />
                 </div>
                 <div class="text-xs text-gray-500 dark:text-gray-400">
