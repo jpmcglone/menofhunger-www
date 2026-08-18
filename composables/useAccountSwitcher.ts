@@ -45,14 +45,24 @@ export function useAccountSwitcher() {
     )
   }
 
+  function markCurrent(userId: string) {
+    accounts.value = accounts.value.map((account) => ({
+      ...account,
+      isCurrent: account.id === userId,
+    }))
+  }
+
   async function switchTo(userId: string, opts?: { then?: string }) {
     const target = accounts.value.find((a) => a.id === userId)
     if (!target || target.isCurrent || switchingId.value) return
 
+    const previous = accounts.value
     switchingId.value = userId
+    markCurrent(userId)
     try {
       await switchAccount(userId, opts)
     } catch (e) {
+      accounts.value = previous
       toast.push({
         title: getSafeUserErrorMessage(e, 'Could not switch accounts.'),
         tone: 'error',

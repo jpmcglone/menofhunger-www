@@ -12,7 +12,7 @@
  * No-ops when prefers-reduced-motion is set, or when the pointer is not fine/hover-capable.
  */
 
-import { useMouseInElement, usePreferredReducedMotion, useMediaQuery } from '@vueuse/core'
+import { useMouseInElement, usePreferredReducedMotion } from '@vueuse/core'
 import type { Ref, CSSProperties } from 'vue'
 
 export type HoverPanZoomMode = 'contain' | 'frame'
@@ -36,7 +36,9 @@ export type UseHoverPanZoomOptions = {
 
 export function useHoverPanZoom(options: UseHoverPanZoomOptions) {
   const reducedMotion = usePreferredReducedMotion()
-  const canHover = useMediaQuery('(hover: hover) and (pointer: fine)')
+  // VueUse useMediaQuery reads window on first client setup; keep SSR + first
+  // paint on the inactive style (`transform: none`) until after hydration.
+  const canHover = useHydratedMediaQuery('(hover: hover) and (pointer: fine)')
 
   const modeRef = computed(() => options.mode)
 

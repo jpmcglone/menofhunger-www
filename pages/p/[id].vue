@@ -422,10 +422,13 @@ watch(
 // Gated posts (viewerCanAccess === false) are excluded — viewer hasn't read the content.
 // Logged-out visitors are tracked via the anon_id cookie (handled inside usePostViewTracker).
 const { markEngaged } = usePostViewTracker()
+// Wait for app:mounted. An immediate client watch writes locallyViewedPostIds
+// during setup and lights the person icon before hydration finishes.
+const viewTrackerHydrated = useState<boolean>('moh-hydrated', () => false)
 watch(
-  () => post.value,
-  (p) => {
-    if (!import.meta.client || !p?.id) return
+  () => [post.value, viewTrackerHydrated.value] as const,
+  ([p, isHydrated]) => {
+    if (!import.meta.client || !isHydrated || !p?.id) return
     const chainIds: string[] = []
     let cur: FeedPost | undefined = p
     while (cur?.id) {
@@ -434,7 +437,6 @@ watch(
     }
     if (chainIds.length) markEngaged(chainIds)
   },
-  { immediate: true },
 )
 
 function onDeleted() {

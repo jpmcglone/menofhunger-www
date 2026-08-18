@@ -54,6 +54,9 @@
       type="button"
       :class="cardClass"
       :style="cardStyle"
+      :aria-expanded="menuOpen"
+      aria-haspopup="menu"
+      aria-label="Account menu"
       @click="toggleMenu"
     >
       <div class="flex items-center gap-3">
@@ -86,14 +89,51 @@
       </div>
     </button>
 
-    <Menu v-if="!hideMenu" ref="menuRef" :model="allMenuItems" popup>
-      <template #item="{ item, props }">
-        <a v-bind="props.action" class="flex items-center gap-2">
-          <Icon v-if="item.iconName" :name="item.iconName" aria-hidden="true" />
-          <span v-bind="props.label">{{ item.label }}</span>
-        </a>
-      </template>
-    </Menu>
+    <Teleport v-if="!hideMenu" to="body">
+      <div
+        v-if="menuOpen"
+        class="fixed inset-0 z-[9998]"
+        aria-hidden="true"
+        @click="closeMenu"
+      />
+      <div
+        v-if="menuOpen"
+        ref="menuEl"
+        class="fixed z-[9999] w-[min(18rem,calc(100vw-1.5rem))] overflow-hidden rounded-xl border moh-border moh-surface shadow-lg"
+        :style="menuStyle"
+        role="menu"
+        aria-label="Account menu"
+        @click.stop
+      >
+        <AppAccountSwitcher compact :active="menuOpen" />
+        <div v-if="canSwitch && extraMenuItems.length" class="border-t moh-border" />
+        <div class="py-1">
+          <template v-for="(item, index) in extraMenuItems" :key="item.key || index">
+            <div v-if="item.separator" class="my-1 border-t moh-border" />
+            <NuxtLink
+              v-else-if="item.to"
+              :to="item.to"
+              class="flex w-full items-center gap-2.5 px-3.5 py-2 text-sm moh-text hover:bg-gray-100 dark:hover:bg-white/5 transition-colors"
+              role="menuitem"
+              @click="closeMenu"
+            >
+              <Icon v-if="item.iconName" :name="item.iconName" class="text-[15px] shrink-0" aria-hidden="true" />
+              <span>{{ item.label }}</span>
+            </NuxtLink>
+            <button
+              v-else
+              type="button"
+              class="flex w-full items-center gap-2.5 px-3.5 py-2 text-sm moh-text hover:bg-gray-100 dark:hover:bg-white/5 transition-colors"
+              role="menuitem"
+              @click="onMenuAction(item)"
+            >
+              <Icon v-if="item.iconName" :name="item.iconName" class="text-[15px] shrink-0" aria-hidden="true" />
+              <span>{{ item.label }}</span>
+            </button>
+          </template>
+        </div>
+      </div>
+    </Teleport>
 
     <AppStatusEditorDialog
       :open="statusEditorOpen"
@@ -115,6 +155,8 @@
 <script setup lang="ts">
 import type { MenuItem } from 'primevue/menuitem'
 import { getApiErrorMessage } from '~/utils/api-error'
+
+type MenuRow = MenuItem & { iconName?: string; to?: string; key?: string }
 
 const props = withDefaults(
   defineProps<{
@@ -139,8 +181,8 @@ const route = useRoute()
 const { user, isVerifiedMember } = useAuth()
 const { getPresenceStatus, getUserStatus, isSocketConnecting, setMyStatus, editMyStatus, clearMyStatus } = usePresence()
 const { menuItems } = useUserMenu()
-const { accounts, canSwitch, switchingId, otherAccountsUnread, refresh: refreshAccounts, switchTo } = useAccountSwitcher()
-const { selectedSpaceId, currentSpace: currentSpaceForNav } = useSpaceLobby()
+const { canSwitch, otherAccountsUnread } = useAccountSwitcher()
+const { currentSpace: currentSpaceForNav } = useSpaceLobby()
 const { openShortcutsModal } = useKeyboardShortcuts()
 const isXlUp = useHydratedMediaQuery('(min-width: 1280px)')
 
@@ -184,65 +226,60 @@ const activeStatus = computed(() => {
   return id ? getUserStatus(id) : null
 })
 
-type MenuItemWithIcon = MenuItem & { iconName?: string }
+const menuOpen = ref(false)
+const buttonEl = ref<HTMLElement | null>(null)
+const { style: menuStyle, menuEl, place: placeMenu } = useMenuPosition()
+useOverlayDismiss(menuOpen, () => { menuOpen.value = false })
 
-// Prepend "Go to space" when the current user is actively in a space (suppressed on /spaces routes).
-const allMenuItems = computed<MenuItemWithIcon[]>(() => {
-  const base = menuItems.value as MenuItemWithIcon[]
-  const switchItems: MenuItemWithIcon[] = canSwitch.value
+const extraMenuItems = computed<MenuRow[]>(() => {
+  const base = (menuItems.value as MenuRow[]).map((item) => ({
+    ...item,
+    to: typeof item.url === 'string' ? item.url : undefined,
+  }))
+  const withStatus: MenuRow[] = isVerifiedMember.value
     ? [
-        ...accounts.value.map((account) => ({
-          label: accountLabel(account),
-          iconName: account.accountKind === 'page' ? 'tabler:news' : 'tabler:user',
-          disabled: account.isCurrent || switchingId.value === account.id,
-          command: () => { void switchTo(account.id) },
-        })),
-        { separator: true } as MenuItemWithIcon,
-      ]
-    : []
-  // Setting your own status is a verified-only engagement feature.
-  const withStatus = isVerifiedMember.value
-    ? ([
         {
+          key: 'status',
           label: activeStatus.value ? 'Update status' : 'Set status',
           iconName: 'tabler:message-circle',
           command: () => openStatusEditor(),
-        } as MenuItemWithIcon,
-        { separator: true } as MenuItemWithIcon,
+        },
+        { separator: true },
         ...base,
-      ] as MenuItemWithIcon[])
+      ]
     : base
   const ownerUsername = currentSpaceForNav.value?.owner?.username
   if (!ownerUsername || route.path.startsWith('/spaces') || route.path.startsWith('/s/')) {
-    return [...switchItems, ...withStatus]
+    return withStatus
   }
   return [
-    ...switchItems,
     {
+      key: 'space',
       label: 'Go to space',
       iconName: 'tabler:layout-grid',
-      command: () => navigateTo(`/s/${encodeURIComponent(ownerUsername)}`),
-    } as MenuItemWithIcon,
-    { separator: true } as MenuItemWithIcon,
+      to: `/s/${encodeURIComponent(ownerUsername)}`,
+    },
+    { separator: true },
     ...withStatus,
   ]
 })
 
-function accountLabel(account: { username: string | null; name: string | null; isCurrent: boolean; unreadBadgeCount?: number }) {
-  const handle = account.username ? `@${account.username}` : (account.name || 'Account')
-  if (account.isCurrent) return `${handle} (current)`
-  const unread = Math.max(0, account.unreadBadgeCount ?? 0)
-  return unread > 0 ? `${handle} (${unread > 99 ? '99+' : unread})` : handle
+function toggleMenu() {
+  if (menuOpen.value) {
+    menuOpen.value = false
+    return
+  }
+  if (buttonEl.value) placeMenu(buttonEl.value, { menuWidth: 288, menuHeight: 420 })
+  menuOpen.value = true
 }
 
-const menuRef = ref()
-const buttonEl = ref<HTMLElement | null>(null)
+function closeMenu() {
+  menuOpen.value = false
+}
 
-function toggleMenu(event: Event) {
-  void refreshAccounts()
-  // PrimeVue Menu expects the click event to position the popup.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  ;(menuRef.value as any)?.toggle(event)
+function onMenuAction(item: MenuRow) {
+  closeMenu()
+  item.command?.({ originalEvent: new Event('click'), item })
 }
 
 function openStatusEditor() {

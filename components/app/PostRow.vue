@@ -500,8 +500,10 @@ const displayViewerCount = computed(() => Math.max(0, Math.floor(Number(postView
 const displayTotalViewCount = computed(() =>
   Math.max(displayViewerCount.value, Math.floor(Number(postView.value.totalViewCount ?? displayViewerCount.value))),
 )
+const hydrated = useState<boolean>('moh-hydrated', () => false)
 const hasViewedPost = computed(() =>
-  postView.value.viewerHasViewed === true || hasViewedLocally(postView.value.id),
+  postView.value.viewerHasViewed === true
+    || (hydrated.value && hasViewedLocally(postView.value.id)),
 )
 
 function onGatedBannerClick() {

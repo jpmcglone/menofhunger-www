@@ -486,7 +486,7 @@
 
             <div v-if="!editingUser.siteAdmin" class="space-y-2 border-t border-gray-200 pt-3 dark:border-zinc-800">
               <div class="text-xs text-gray-500 dark:text-gray-400">
-                Convert this person into a page. Parks their phone for 90 days and assigns an operator.
+                Convert this person into a page. Removes its phone and assigns an operator.
               </div>
               <div class="flex items-center gap-2">
                 <InputText

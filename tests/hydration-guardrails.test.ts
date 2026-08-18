@@ -643,6 +643,30 @@ describe('hydration guardrails (structural)', () => {
     expect(layout).toMatch(/isKeyboardOpen.*max-h-0/)
   })
 
+  it('keeps hover-zoom transform idle until hydration (media query is client-only)', () => {
+    // useMediaQuery reads window on first client setup, so the hover-ready
+    // transform (translate3d + will-change) must stay gated behind
+    // useHydratedMediaQuery. Otherwise every public post with media mismatches.
+    const zoom = readFromRepo('composables/useHoverPanZoom.ts')
+    expect(zoom).toMatch(/useHydratedMediaQuery\('\(hover: hover\) and \(pointer: fine\)'\)/)
+    expect(zoom).not.toMatch(/useMediaQuery\('\(hover: hover\)/)
+  })
+
+  it('does not light the viewed icon from local session state until after hydration', () => {
+    // markEngaged() writes a module-level Set during client setup. Using that
+    // Set for the person-icon class before app:mounted makes SSR (muted) and
+    // the first client paint (moh-text) disagree on every permalink.
+    const row = readFromRepo('components/app/PostRow.vue')
+    expect(row).toMatch(/useState<boolean>\('moh-hydrated'/)
+    expect(row).toMatch(/hydrated\.value && hasViewedLocally/)
+    const permalink = readFromRepo('pages/p/[id].vue')
+    expect(permalink).toMatch(/useState<boolean>\('moh-hydrated'/)
+    expect(permalink).toMatch(/!isHydrated/)
+    const watchBody = permalink.slice(permalink.indexOf('const { markEngaged }'), permalink.indexOf('function onDeleted'))
+    expect(watchBody).toMatch(/markEngaged\(chainIds\)/)
+    expect(watchBody).not.toMatch(/immediate:\s*true/)
+  })
+
   it('shows a full-screen API-down overlay (not a thin banner) when apiUnreachable', () => {
     const banners = readFromRepo('components/app/layout/ConnectionBanners.vue')
     const layout = readFromRepo('layouts/app.vue')
