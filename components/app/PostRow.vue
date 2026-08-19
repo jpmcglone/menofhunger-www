@@ -48,7 +48,7 @@
     >
       <div
         class="w-[2px]"
-        :class="threadLineTint ? '' : 'bg-gray-200 dark:bg-zinc-700'"
+        :class="threadLineTint ? '' : 'bg-[var(--moh-thread-line)]'"
         :style="threadLineAboveStyle"
       />
     </div>
@@ -61,7 +61,7 @@
     >
       <div
         class="w-[2px] h-full"
-        :class="threadLineTint ? '' : 'bg-gray-200 dark:bg-zinc-700'"
+        :class="threadLineTint ? '' : 'bg-[var(--moh-thread-line)]'"
         :style="threadLineBelowStyle"
       />
     </div>
@@ -329,7 +329,7 @@
 
         <div
           v-if="!isDeletedPost && !isOnlyMe"
-          class="mt-2 border-t moh-border"
+          class="mt-2 border-t moh-border moh-post-actions-divider"
         />
 
         <!-- Engagement: typing indicator, "+N new" pill, and the action bar -->
@@ -545,9 +545,12 @@ const hoverBgStyle = computed(() => {
           ? 'var(--moh-onlyme)'
           : null
   const darkOpacity = v === 'premiumOnly' || v === 'verifiedOnly' ? '0.05' : '0.01'
+  // Public light hover is white-on-bone; it needs more opacity than a black wash to read.
+  const lightOpacity = tierColor ? '0.1' : '0.55'
   return {
-    '--moh-post-row-hover-bg-light': tierColor ?? '#000000',
+    '--moh-post-row-hover-bg-light': tierColor ?? '#ffffff',
     '--moh-post-row-hover-bg-dark': tierColor ?? '#ffffff',
+    '--moh-post-row-hover-opacity-light': lightOpacity,
     '--moh-post-row-hover-opacity-dark': darkOpacity,
   }
 })

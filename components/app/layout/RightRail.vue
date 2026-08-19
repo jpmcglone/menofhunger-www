@@ -343,10 +343,15 @@ const tierCtaTextClass = computed(() => {
 </script>
 
 <style scoped>
-/* Remove card borders + shadows inside the rail — the textured background
-   and card backgrounds already provide enough depth without visible outlines. */
+/* Rail cards sit on bone; a soft lift separates the white paper without a hard edge. */
 .rail-cards :deep(.moh-card) {
   border-color: transparent;
-  box-shadow: none;
+  box-shadow:
+    inset 0 1px 2px rgba(0, 0, 0, 0.06),
+    0 1px 2px rgba(20, 18, 16, 0.04),
+    0 6px 16px rgba(20, 18, 16, 0.05);
+}
+html.dark .rail-cards :deep(.moh-card) {
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.25);
 }
 </style>

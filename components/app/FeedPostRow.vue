@@ -299,7 +299,7 @@ const gapDotStyle = computed(() => {
 })
 
 const gapDotBgClass = computed(() =>
-  gapTintColor.value ? '' : 'bg-gray-200 dark:bg-zinc-700',
+  gapTintColor.value ? '' : 'bg-[var(--moh-thread-line)]',
 )
 
 const gapLabelStyle = computed(() => {

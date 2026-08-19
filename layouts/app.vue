@@ -111,7 +111,7 @@
                 isMessagesPage && hideTopBar ? 'flex h-full min-h-0 flex-col overflow-hidden' : '',
               ]"
             >
-              <PersonAccountSwitchPrompt
+              <AppPersonAccountSwitchPrompt
                 v-if="personOnlyBlockedFeature"
                 :feature="personOnlyBlockedFeature"
               />

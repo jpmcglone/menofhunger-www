@@ -129,6 +129,8 @@ html.dark .moh-vignette::after {
   --moh-border-subtle: #ede9e0;
   --moh-border: #e4dfd4; /* warm divider (alias) */
   --moh-border-strong: #d6d0c4;
+  /* Public thread connector — readable gray on bone (not the faint divider). */
+  --moh-thread-line: rgba(20, 18, 16, 0.12);
 
   /* Text */
   --moh-text: #141210; /* warm near-black */
@@ -232,6 +234,7 @@ html.dark {
   --moh-border-subtle: rgba(255, 255, 255, 0.075);
   --moh-border: rgba(255, 255, 255, 0.095);
   --moh-border-strong: rgba(255, 255, 255, 0.15);
+  --moh-thread-line: rgb(63 63 70); /* zinc-700 */
 
   /* Text */
   --moh-text: #f4f4f5; /* Slightly brighter body for confidence */
@@ -463,7 +466,7 @@ input[type="reset"] {
   @media (hover: hover) and (pointer: fine) {
     .moh-post-row-hover-bg {
       display: block;
-      background-color: var(--moh-post-row-hover-bg-light, #000000);
+      background-color: var(--moh-post-row-hover-bg-light, #ffffff);
       opacity: 0;
       transition: opacity 0.2s ease;
     }
@@ -471,7 +474,7 @@ input[type="reset"] {
       background-color: var(--moh-post-row-hover-bg-dark, #ffffff);
     }
     .group:hover .moh-post-row-hover-bg {
-      opacity: 0.1;
+      opacity: var(--moh-post-row-hover-opacity-light, 0.1);
     }
     html.dark .group:hover .moh-post-row-hover-bg {
       opacity: var(--moh-post-row-hover-opacity-dark, 0.01);
@@ -664,10 +667,14 @@ input[type="reset"] {
   .moh-post-highlight {
     /* Public: neutral bar + tint so highlight does not inherit viewer's theme. */
     box-shadow: inset 3px 0 0 0 var(--moh-border);
-    background-color: color-mix(in srgb, var(--moh-border) 12%, transparent);
+    background-color: color-mix(in srgb, var(--moh-border) 1.5%, transparent);
   }
   html.dark .moh-post-highlight {
     background-color: color-mix(in srgb, var(--moh-border) 18%, transparent);
+  }
+  /* Highlight wash eats the default divider; bump it one step so the action bar still reads. */
+  .moh-post-highlight .moh-post-actions-divider {
+    border-color: var(--moh-border-strong);
   }
   .moh-post-highlight-verified {
     box-shadow: inset 3px 0 0 0 var(--moh-verified);
