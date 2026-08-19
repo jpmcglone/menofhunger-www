@@ -111,7 +111,11 @@
                 isMessagesPage && hideTopBar ? 'flex h-full min-h-0 flex-col overflow-hidden' : '',
               ]"
             >
-              <slot />
+              <PersonAccountSwitchPrompt
+                v-if="personOnlyBlockedFeature"
+                :feature="personOnlyBlockedFeature"
+              />
+              <slot v-else />
             </div>
             </div>
 
@@ -261,6 +265,7 @@ import { useBookmarkCollections } from '~/composables/useBookmarkCollections'
 import { useKeyboardPinnedFixedStyle } from '~/composables/useKeyboardHeight'
 import { useEnsureFocusedInputVisible } from '~/composables/useEnsureFocusedInputVisible'
 import { routeHeaderDefaultsFor, isAdminPath, isSettingsPath } from '~/config/routes'
+import { personOnlyFeatureForPath } from '~/utils/person-only-routes'
 import { useAppLayoutComposer } from '~/composables/layout/useAppLayoutComposer'
 import AppLayoutGlobalOverlays from '~/components/app/layout/GlobalOverlays.vue'
 import AppLayoutConnectionBanners from '~/components/app/layout/ConnectionBanners.vue'
@@ -278,7 +283,10 @@ const safariThemeColor = computed(() => (colorMode.value === 'dark' ? '#0F1113' 
 useHead({
   meta: [{ key: 'moh-theme-color', name: 'theme-color', content: safariThemeColor }],
 })
-const { initAuth, user } = useAuth()
+const { initAuth, user, isPageAccount } = useAuth()
+const personOnlyBlockedFeature = computed(() =>
+  isPageAccount.value ? personOnlyFeatureForPath(route.path) : null,
+)
 const { isAuthed, tabItems } = useAppNav()
 const notifBadge = useNotificationsBadge()
 const badgeHydration = useBadgeHydration()

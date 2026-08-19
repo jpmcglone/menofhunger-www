@@ -332,12 +332,12 @@ import type { ReferralCallback } from '~/composables/presence/types'
 import { getApiErrorMessage } from '~/utils/api-error'
 import { useInviteReward } from '~/composables/useInviteReward'
 
-definePageMeta({ alias: ['/referrals'] })
+definePageMeta({ layout: 'app', alias: ['/referrals'] })
 
 useHead({ title: 'Invite' })
 
 const { apiFetchData } = useApiClient()
-const { user, isVerified: isVerifiedBase, isPremium } = useAuth()
+const { isVerified: isVerifiedBase, isPremium } = useAuth()
 const { addReferralCallback, removeReferralCallback } = usePresence()
 const { setReferralCode } = useReferralCode()
 

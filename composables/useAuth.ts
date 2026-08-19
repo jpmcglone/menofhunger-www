@@ -321,7 +321,19 @@ export function useAuth() {
   function personOnlyLandingPath(pathname: string): string | null {
     if (pathname === '/settings/billing' || pathname.startsWith('/settings/billing/')) return '/settings/account'
     if (pathname === '/settings/fitness' || pathname.startsWith('/settings/fitness/')) return '/settings/account'
-    const personOnlyPrefixes = ['/check-ins', '/fitness', '/invite', '/admin']
+    if (pathname === '/settings/verification' || pathname.startsWith('/settings/verification/')) {
+      return '/settings/account'
+    }
+    const personOnlyPrefixes = [
+      '/check-ins',
+      '/fitness',
+      '/invite',
+      '/referrals',
+      '/coins',
+      '/crew',
+      '/verification',
+      '/admin',
+    ]
     if (personOnlyPrefixes.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`))) {
       return '/home'
     }

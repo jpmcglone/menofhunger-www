@@ -18,6 +18,8 @@ export type AppNavItem = {
   requiresAdmin?: boolean
   /** Only show when the viewer has this feature toggle enabled. */
   requiresFeatureToggle?: import('~/config/app-feature-toggles').AppFeatureToggle
+  /** Hide while acting as a page — these belong to the operator. */
+  requiresPersonAccount?: boolean
   /**
    * Hard kill-switch. When `false`, the item is hidden everywhere (left rail,
    * tab bar, mobile "More" sheet) regardless of auth/verification. The route
@@ -101,19 +103,19 @@ export function useAppNav() {
       menuSection: 'main',
     },
     { key: 'articles', label: 'Articles', to: '/articles', icon: 'tabler:article', iconActive: 'tabler:article-filled', showInPrimaryNav: true, menuSection: 'main' },
-    { key: 'check-ins', label: 'Check-ins', to: '/check-ins', icon: 'tabler:flame', iconActive: 'tabler:flame-filled', requiresAuth: true, requiresVerified: true, showInPrimaryNav: true, menuSection: 'main' },
-    { key: 'fitness', label: 'Fitness', to: '/fitness', icon: 'tabler:heart-rate-monitor', iconActive: 'tabler:heart-rate-monitor', requiresAuth: true, requiresVerified: true, showInPrimaryNav: true, menuSection: 'main' },
+    { key: 'check-ins', label: 'Check-ins', to: '/check-ins', icon: 'tabler:flame', iconActive: 'tabler:flame-filled', requiresAuth: true, requiresVerified: true, requiresPersonAccount: true, showInPrimaryNav: true, menuSection: 'main' },
+    { key: 'fitness', label: 'Fitness', to: '/fitness', icon: 'tabler:heart-rate-monitor', iconActive: 'tabler:heart-rate-monitor', requiresAuth: true, requiresVerified: true, requiresPersonAccount: true, showInPrimaryNav: true, menuSection: 'main' },
     { key: 'groups', label: 'Groups', to: '/groups', icon: 'heroicons-outline:user-group', iconActive: 'heroicons-solid:user-group', requiresAuth: false, showInPrimaryNav: true, menuSection: 'main' },
-    { key: 'crew', label: crewLabel.value, to: '/crew', icon: 'tabler:shield-check', iconActive: 'tabler:shield-check-filled', requiresAuth: true, requiresVerified: true, showInPrimaryNav: true, menuSection: 'main' },
+    { key: 'crew', label: crewLabel.value, to: '/crew', icon: 'tabler:shield-check', iconActive: 'tabler:shield-check-filled', requiresAuth: true, requiresVerified: true, requiresPersonAccount: true, showInPrimaryNav: true, menuSection: 'main' },
     { key: 'bookmarks', label: 'Bookmarks', to: '/bookmarks', icon: 'tabler:bookmark', iconActive: 'tabler:bookmark-filled', requiresAuth: true, showInPrimaryNav: true, menuSection: 'main' },
     // Keep these as the Heroicons pair (you preferred the filled/outline look here).
     { key: 'profile', label: 'Profile', to: profileTo.value, icon: 'heroicons-outline:user-circle', iconActive: 'heroicons-solid:user-circle', requiresAuth: true, showInPrimaryNav: true, menuSection: 'main' },
     { key: 'only-me', label: 'Only me', to: '/only-me', icon: 'heroicons-outline:eye-slash', iconActive: 'heroicons-solid:eye-slash', requiresAuth: true, showInPrimaryNav: true, menuSection: 'main' },
     { key: 'scheduled', label: 'Scheduled', to: '/scheduled', icon: 'tabler:calendar-time', iconActive: 'tabler:calendar-time', requiresAuth: true, requiresPremium: true, showInPrimaryNav: true, menuSection: 'main' },
-    { key: 'invite', label: 'Invite', to: '/invite', icon: 'tabler:gift', iconActive: 'tabler:gift', requiresAuth: true, requiresVerified: true, showInPrimaryNav: true, menuSection: 'footer' },
+    { key: 'invite', label: 'Invite', to: '/invite', icon: 'tabler:gift', iconActive: 'tabler:gift', requiresAuth: true, requiresVerified: true, requiresPersonAccount: true, showInPrimaryNav: true, menuSection: 'footer' },
     { key: 'settings', label: 'Settings and privacy', to: '/settings', icon: 'tabler:settings', iconActive: 'tabler:settings', requiresAuth: true, showInPrimaryNav: true, menuSection: 'footer' },
     { key: 'feedback', label: 'Send feedback', to: '/feedback', icon: 'tabler:message-circle', iconActive: 'tabler:message-circle-filled', requiresAuth: true, showInPrimaryNav: true, menuSection: 'footer' },
-    { key: 'admin', label: 'Admin', to: '/admin', icon: 'tabler:shield', iconActive: 'tabler:shield', requiresAuth: true, requiresAdmin: true, showInPrimaryNav: true, menuSection: 'footer' },
+    { key: 'admin', label: 'Admin', to: '/admin', icon: 'tabler:shield', iconActive: 'tabler:shield', requiresAuth: true, requiresAdmin: true, requiresPersonAccount: true, showInPrimaryNav: true, menuSection: 'footer' },
 
     // Misc
     { key: 'about', label: 'About', to: '/about', icon: 'tabler:info-circle', iconActive: 'tabler:info-circle-filled', showInPrimaryNav: false, menuSection: 'footer' },
@@ -129,9 +131,7 @@ export function useAppNav() {
     if (item.requiresPremium && !isPremium.value) return false
     if (item.requiresAdmin && !isAdmin.value) return false
     if (item.requiresFeatureToggle && !hasFeature(item.requiresFeatureToggle)) return false
-    if (isPageAccount.value && (item.key === 'check-ins' || item.key === 'fitness' || item.key === 'invite')) {
-      return false
-    }
+    if (item.requiresPersonAccount && isPageAccount.value) return false
     return true
   }
 

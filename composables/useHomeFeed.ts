@@ -195,6 +195,7 @@ export function useHomeFeed(options?: { mediaOnly?: Ref<boolean>; topLevelOnly?:
     feedFilter,
     feedScope,
     feedSort,
+    forYou,
     posts,
     displayPosts,
     displayItems,

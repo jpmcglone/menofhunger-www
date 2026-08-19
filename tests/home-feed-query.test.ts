@@ -154,4 +154,44 @@ describe('home feed refresh guardrails', () => {
     expect(postRow).not.toContain('<div v-if="$slots.threadFooter" class="mt-1" @click.stop>')
     expect(linkPreview).toContain('data-post-row-interactive')
   })
+
+  it('sends refresh=true only on cursor-less For You requests', () => {
+    const refreshed = postsFeedListQuery({
+      visibility: 'all',
+      followingOnly: false,
+      sort: 'new',
+      forYou: true,
+      cursor: null,
+      refresh: true,
+    })
+    const paged = postsFeedListQuery({
+      visibility: 'all',
+      followingOnly: false,
+      sort: 'new',
+      forYou: true,
+      cursor: 'abc',
+      refresh: true,
+    })
+    const following = postsFeedListQuery({
+      visibility: 'all',
+      followingOnly: true,
+      sort: 'new',
+      forYou: false,
+      cursor: null,
+      refresh: true,
+    })
+    expect(refreshed).toMatchObject({ sort: 'forYou', refresh: true })
+    expect(paged.refresh).toBeUndefined()
+    expect(following.refresh).toBeUndefined()
+  })
+
+  it('hard-refreshes For You on activate and wires home pull-to-refresh', () => {
+    const src = readFromRepo('pages/home.vue')
+    expect(src).toContain(':seen-aware-collapse="forYou"')
+    expect(src).toContain('if (forYou.value)')
+    expect(src).toContain('void refresh({ forYouRefresh: true })')
+    expect(src).toContain('onHomePullEnd')
+    expect(src).toContain('refresh({ forYouRefresh: Boolean(forYou.value) })')
+    expect(src).toContain('handleFeedScopeReselect')
+  })
 })

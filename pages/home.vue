@@ -253,6 +253,7 @@
                       v-else-if="activeHomeFeedDisplayItems[virtualRow.index]!.kind === 'post'"
                       :post="feedItemPost(activeHomeFeedDisplayItems[virtualRow.index])!"
                       collapse-ancestors
+                      :seen-aware-collapse="forYou"
                       :activate-video-on-mount="feedItemPost(activeHomeFeedDisplayItems[virtualRow.index])?.id === newlyPostedVideoPostId"
                       :collapsed-sibling-replies-count="collapsedSiblingReplyCountFor(feedItemPost(activeHomeFeedDisplayItems[virtualRow.index])!)"
                       :show-collapsed-replies-footer="true"
@@ -505,6 +506,7 @@ const {
   feedScope,
   feedFilter,
   feedSort,
+  forYou,
   posts,
   collapsedSiblingReplyCountFor,
   nextCursor,
@@ -544,14 +546,44 @@ function handleFeedScopeChange(scope: Parameters<typeof onFeedScopeChange>[0]) {
   onFeedScopeChange(scope)
   scrollFeedToTop()
 }
-// Re-tapping the already-active scope tab is the "give me something new" gesture — most useful
-// on For You, where a plain refresh can otherwise return the exact same order once the viewer
-// has seen everything. The API mints a fresh shuffle seed on every cursor-less request, so a
-// hard refresh here is enough; no special-casing per scope needed.
+// Re-tapping the already-active scope tab is the "give me something new" gesture.
 function handleFeedScopeReselect() {
   scrollFeedToTop()
-  void refresh()
+  void refresh({ forYouRefresh: Boolean(forYou.value) })
 }
+
+const HOME_PULL_REFRESH_PX = 72
+let homePullStartY = 0
+let homePullArmed = false
+
+function onHomePullStart(event: TouchEvent) {
+  const scroller = middleScrollerRef.value
+  if (!scroller || scroller.scrollTop > 2 || loading.value) return
+  homePullStartY = event.touches[0]?.clientY ?? 0
+  homePullArmed = true
+}
+
+function onHomePullEnd(event: TouchEvent) {
+  if (!homePullArmed) return
+  homePullArmed = false
+  const y = event.changedTouches[0]?.clientY ?? homePullStartY
+  if (y - homePullStartY < HOME_PULL_REFRESH_PX) return
+  void refresh({ forYouRefresh: Boolean(forYou.value) })
+}
+
+watch(middleScrollerRef, (el, prev) => {
+  if (!import.meta.client) return
+  prev?.removeEventListener('touchstart', onHomePullStart)
+  prev?.removeEventListener('touchend', onHomePullEnd)
+  el?.addEventListener('touchstart', onHomePullStart, { passive: true })
+  el?.addEventListener('touchend', onHomePullEnd, { passive: true })
+}, { immediate: true })
+
+onBeforeUnmount(() => {
+  const el = middleScrollerRef.value
+  el?.removeEventListener('touchstart', onHomePullStart)
+  el?.removeEventListener('touchend', onHomePullEnd)
+})
 function handleFeedSortChange(sort: Parameters<typeof setFeedSort>[0]) {
   setFeedSort(sort)
   scrollFeedToTop()
@@ -794,20 +826,27 @@ let unregisterReplyPending: null | (() => void) = null
 onActivated(() => {
   if (!import.meta.client) return
   if (posts.value.length > 0) {
-    // Posts are already in memory (keepalive). Soft-refresh only fetches posts newer than the
-    // current head and prepends them, preserving the scroll position via anchor adjustment.
-    // We delay by 300ms so this runs after the scroll-restoration plugin's 200ms re-apply,
-    // preventing the two position adjustments from conflicting.
-    // `onPrepend` adjusts scrollTop by N * estimated row height to keep the current view stable
-    // (the virtualizer uses absolute positioning, so a prepend shifts all row offsets down).
-    setTimeout(() => void softRefreshNewer({
-      onPrepend: (addedCount) => {
-        const scroller = middleScrollerRef.value
-        if (scroller && addedCount > 0) {
-          scroller.scrollTop += addedCount * FEED_ESTIMATED_ROW_PX
-        }
-      },
-    }), 300)
+    // For You is a ranked shuffle — "newer than head" prepend is the wrong model.
+    // Hard-replace so returning to the tab actually re-ranks. Following / All stay
+    // on the chrono soft-prepend so scroll position is preserved.
+    if (forYou.value) {
+      void refresh({ forYouRefresh: true })
+    } else {
+      // Posts are already in memory (keepalive). Soft-refresh only fetches posts newer than the
+      // current head and prepends them, preserving the scroll position via anchor adjustment.
+      // We delay by 300ms so this runs after the scroll-restoration plugin's 200ms re-apply,
+      // preventing the two position adjustments from conflicting.
+      // `onPrepend` adjusts scrollTop by N * estimated row height to keep the current view stable
+      // (the virtualizer uses absolute positioning, so a prepend shifts all row offsets down).
+      setTimeout(() => void softRefreshNewer({
+        onPrepend: (addedCount) => {
+          const scroller = middleScrollerRef.value
+          if (scroller && addedCount > 0) {
+            scroller.scrollTop += addedCount * FEED_ESTIMATED_ROW_PX
+          }
+        },
+      }), 300)
+    }
   } else {
     // No posts yet (e.g. first activation, auth change) — do a full refresh.
     void refresh()

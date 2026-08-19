@@ -197,6 +197,11 @@ const props = withDefaults(
      * always stays visible even when collapsing.
      */
     collapseAncestors?: boolean
+    /**
+     * For You only: also roll up still-warm seen middles (`viewerLastSeenAt`)
+     * using the 24h / 48h windows. Following / All omit this.
+     */
+    seenAwareCollapse?: boolean
   }>(),
   {
     highlightedPostId: null,
@@ -207,6 +212,7 @@ const props = withDefaults(
     subtleBorderBottom: false,
     showCollapsedRepliesFooter: false,
     collapseAncestors: false,
+    seenAwareCollapse: false,
   },
 )
 
@@ -272,7 +278,12 @@ const threadLineTint = computed(() => {
 
 /** Compacted `chain` for rendering: root + immediate parent + leaf + pins, gaps collapsed. */
 const displayChain = computed(() =>
-  buildThreadDisplayChain(chain.value, props.post.pinnedAncestorIds, props.collapseAncestors),
+  buildThreadDisplayChain(
+    chain.value,
+    props.post.pinnedAncestorIds,
+    props.collapseAncestors,
+    props.seenAwareCollapse ? { enabled: true } : undefined,
+  ),
 )
 
 const gapTintColor = computed(() => {

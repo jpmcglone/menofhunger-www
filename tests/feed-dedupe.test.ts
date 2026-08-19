@@ -418,6 +418,58 @@ describe('buildThreadDisplayChain', () => {
     const gapKeys = out.filter((e) => e.kind === 'gap').map((e) => (e.kind === 'gap' ? e.key : ''))
     expect(new Set(gapKeys).size).toBe(gapKeys.length)
   })
+
+  it('seen-aware: hot-seen middle on a short chain rolls up to root + leaf', () => {
+    const now = Date.parse('2026-08-19T18:00:00.000Z')
+    const hot = new Date(now - 2 * 60 * 60 * 1000).toISOString()
+    const out = buildThreadDisplayChain(
+      [
+        { id: 'A', viewerLastSeenAt: hot },
+        { id: 'B', viewerLastSeenAt: hot },
+        { id: 'C' },
+      ],
+      undefined,
+      true,
+      { enabled: true, nowMs: now },
+    )
+    expect(kinds(out)).toEqual(['A', 'gap', 'C'])
+  })
+
+  it('seen-aware: cooled lastSeen falls back to structural keep-set', () => {
+    const now = Date.parse('2026-08-19T18:00:00.000Z')
+    const cooled = new Date(now - 72 * 60 * 60 * 1000).toISOString()
+    const out = buildThreadDisplayChain(
+      ['A', 'B', 'C', 'D', 'E', 'F', 'G'].map((id) => ({ id, viewerLastSeenAt: cooled })),
+      undefined,
+      true,
+      { enabled: true, nowMs: now },
+    )
+    expect(kinds(out)).toEqual(['A', 'gap', 'F', 'G'])
+  })
+
+  it('seen-aware: lukewarm keeps the immediate parent on a long chain', () => {
+    const now = Date.parse('2026-08-19T18:00:00.000Z')
+    const lukewarm = new Date(now - 36 * 60 * 60 * 1000).toISOString()
+    const out = buildThreadDisplayChain(
+      ['A', 'B', 'C', 'D', 'E', 'F', 'G'].map((id) => ({ id, viewerLastSeenAt: lukewarm })),
+      undefined,
+      true,
+      { enabled: true, nowMs: now },
+    )
+    expect(kinds(out)).toEqual(['A', 'gap', 'F', 'G'])
+  })
+
+  it('seen-aware: hot-seen parent on a long chain is also rolled up', () => {
+    const now = Date.parse('2026-08-19T18:00:00.000Z')
+    const hot = new Date(now - 1 * 60 * 60 * 1000).toISOString()
+    const out = buildThreadDisplayChain(
+      ['A', 'B', 'C', 'D', 'E', 'F', 'G'].map((id) => ({ id, viewerLastSeenAt: id === 'G' ? undefined : hot })),
+      undefined,
+      true,
+      { enabled: true, nowMs: now },
+    )
+    expect(kinds(out)).toEqual(['A', 'gap', 'G'])
+  })
 })
 
 describe('hiddenThreadGapLabel', () => {

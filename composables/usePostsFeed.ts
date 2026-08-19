@@ -189,6 +189,8 @@ export function postsFeedListQuery(opts: {
   topLevelOnly?: boolean
   /** Filter posts by author's US state code (e.g. "VA"). Phase 0 API contract. */
   authorLocationState?: string | null
+  /** Cursor-less For You pull-to-refresh: skip page-1 cache and apply refresh jitter. */
+  refresh?: boolean
 }): Record<string, string | number | boolean | undefined> {
   const gid = (opts.communityGroupId ?? '').trim()
   const groupScoped = Boolean(opts.groupsHub || gid)
@@ -219,6 +221,7 @@ export function postsFeedListQuery(opts: {
     ...(isForYou ? { sort: 'forYou' } : opts.sort === 'trending' ? { sort: 'trending' } : {}),
     ...(opts.cursor ? { cursor: opts.cursor } : {}),
     ...(opts.authorLocationState ? { authorLocationState: opts.authorLocationState } : {}),
+    ...(isForYou && opts.refresh && !opts.cursor ? { refresh: true } : {}),
   }
 }
 
@@ -279,6 +282,7 @@ export function usePostsFeed(options: UsePostsFeedOptions = {}) {
         limit: pageLimit.value,
         topLevelOnly: options.topLevelOnly?.value,
         authorLocationState: options.authorLocationState?.value ?? null,
+        refresh: pendingForYouRefresh && !cursor,
       }),
     }),
     defaultErrorMessage: 'Failed to load posts.',
@@ -571,8 +575,10 @@ export function usePostsFeed(options: UsePostsFeedOptions = {}) {
   let prevTopLevelOnly: boolean = Boolean(options.topLevelOnly?.value)
   let hardRefreshPromise: Promise<void> | null = null
   let hardRefreshPromiseKey = ''
+  let pendingForYouRefresh = false
 
-  async function refresh() {
+  async function refresh(opts?: { forYouRefresh?: boolean }) {
+    const wantForYouRefresh = Boolean(opts?.forYouRefresh && forYou.value)
     const requestKey = currentRequestKey()
     if (hardRefreshPromise && hardRefreshPromiseKey === requestKey) return await hardRefreshPromise
     if (
@@ -608,7 +614,12 @@ export function usePostsFeed(options: UsePostsFeedOptions = {}) {
       if (forYou.value && import.meta.client) {
         try { await flushViews() } catch { /* non-blocking */ }
       }
-      await feedRefresh()
+      pendingForYouRefresh = wantForYouRefresh
+      try {
+        await feedRefresh()
+      } finally {
+        pendingForYouRefresh = false
+      }
       loadedRequestKey = requestKey
       lastHardRefreshRequestKey.value = loadedRequestKey
       lastHardRefreshMs.value = Date.now()

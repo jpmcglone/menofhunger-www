@@ -687,6 +687,8 @@ export type FeedPost = {
   viewerHasReposted?: boolean
   /** True if the viewer has viewed this post (exists in PostView table). */
   viewerHasViewed?: boolean
+  /** Viewer's last dwell on this post (ISO). For You uses this for seen-aware thread rollup. */
+  viewerLastSeenAt?: string
   /** Set when a block exists between viewer and author. */
   viewerBlockStatus?: 'viewer_blocked' | 'viewer_blocked_by' | null
   /** For kind='repost': the original post being reshared. */
