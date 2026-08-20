@@ -70,19 +70,16 @@ describe('pickBubbleShape', () => {
     expect(pickBubbleShape(makeMessage({ body: 'line one\nline two' }))).toBe('rect')
   })
 
-  it('returns "rect" for a message with a reply snippet', () => {
+  it('returns "pill" for a short caption even when media or a reply sit beside it', () => {
     const replyTo = {
       id: 'm0',
       bodyPreview: 'parent',
       senderUsername: 'bob',
       mediaThumbnailUrl: null,
     } as unknown as Message['replyTo']
-    expect(pickBubbleShape(makeMessage({ body: 'short', replyTo }))).toBe('rect')
-  })
-
-  it('returns "rect" when the message has any media attachment', () => {
     const media = [{ id: 'media-1', kind: 'image' as const, url: 'x' }] as unknown as Message['media']
-    expect(pickBubbleShape(makeMessage({ body: 'short', media }))).toBe('rect')
+    expect(pickBubbleShape(makeMessage({ body: 'Come on video', media }))).toBe('pill')
+    expect(pickBubbleShape(makeMessage({ body: 'short', replyTo }))).toBe('pill')
   })
 
   it('returns "rect" for a tombstone (deleted for me)', () => {
@@ -115,6 +112,7 @@ describe('bubbleShapeClass', () => {
   it('emits the pill class for a short single-line message', () => {
     const cls = bubbleShapeClass(makeMessage({ body: 'hey' }))
     expect(cls).toContain('rounded-full')
+    expect(cls).toContain('w-fit')
   })
 
   it('emits the rect class for a multi-line message', () => {

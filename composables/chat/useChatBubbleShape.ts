@@ -14,11 +14,11 @@ import { extractLinksFromText } from '~/utils/link-utils'
  * time, and estimating its width from the glyphs gets ~95% of the visual
  * quality at zero CPU cost.
  *
- * Heuristic:
- *   - "pill" if the body is narrow enough to fit one line, has no newline,
- *     no reply snippet, no media, and isn't a tombstone ("deleted for me /
- *     for everyone").
- *   - "rect" otherwise.
+ * Heuristic (the *text bubble only* — media cards and reply snippets render
+ * as siblings, so they must not force this chrome):
+ *   - "pill" if the body is a single short line with no link preview and
+ *     isn't a tombstone ("deleted for me / for everyone").
+ *   - "rect" otherwise (wrap, URL unfurl, empty, deleted).
  *
  * Tested in `tests/chat/pick-bubble-shape.test.ts`.
  */
@@ -69,13 +69,11 @@ export const PILL_MAX_EMS = 22
  */
 export const PILL_MAX_EMS_WITH_META = 15
 
-export const PILL_CLASS = 'rounded-full px-3.5 py-1.5 sm:px-4 sm:py-2'
+export const PILL_CLASS = 'w-fit max-w-full rounded-full px-3.5 py-1.5 sm:px-4 sm:py-1.5'
 export const RECT_CLASS = 'rounded-2xl p-2.5 sm:p-3'
 
 export function pickBubbleShape(message: Message): 'pill' | 'rect' {
   if (message.deletedForMe || message.deletedForAll) return 'rect'
-  if (message.replyTo) return 'rect'
-  if (message.media && message.media.length > 0) return 'rect'
   const body = (message.body ?? '').trim()
   if (!body) return 'rect'
   if (body.includes('\n')) return 'rect'
