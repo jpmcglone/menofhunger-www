@@ -7,6 +7,20 @@ function readFromRepo(rel: string): string {
 }
 
 describe('unique people + total views', () => {
+  it('measures feed visibility against the middle scroller, not the window', () => {
+    const tracker = readFromRepo('composables/usePostViewTracker.ts')
+    const postRow = readFromRepo('components/app/PostRow.vue')
+    const feedRow = readFromRepo('components/app/FeedPostRow.vue')
+    const checkinDay = readFromRepo('pages/check-ins/day/[dayKey].vue')
+    const checkinSort = readFromRepo('pages/check-ins/[sort].vue')
+
+    expect(tracker).toContain('root: opts?.root ?? null')
+    expect(postRow).toContain('root: middleScrollerEl.value ?? null')
+    expect(feedRow).toContain('root: middleScrollerEl.value ?? null')
+    expect(checkinDay).toContain('AppFeedPostRow')
+    expect(checkinSort).toContain('AppFeedPostRow')
+  })
+
   it('re-reports after 30s and applies HTTP view acks', () => {
     const tracker = readFromRepo('composables/usePostViewTracker.ts')
     expect(tracker).toContain('REREPORT_INTERVAL_MS = 30_000')

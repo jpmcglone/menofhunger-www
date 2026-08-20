@@ -586,7 +586,9 @@ const {
 const { observe: observeView, noteAlreadyViewed, hasViewedLocally } = usePostViewTracker()
 let stopViewObserve: (() => void) | null = null
 
-onMounted(() => {
+function bindViewObserve() {
+  stopViewObserve?.()
+  stopViewObserve = null
   if (!import.meta.client) return
   if (props.trackViews === false) return
   if (
@@ -601,9 +603,17 @@ onMounted(() => {
     const gid = (postView.value.communityGroupId ?? '').trim()
     stopViewObserve = observeView([postView.value.id], rowEl.value, {
       groupIdByPostId: gid ? { [postView.value.id]: gid } : undefined,
+      root: middleScrollerEl.value ?? null,
     })
   }
-})
+}
+
+watch(
+  [rowEl, middleScrollerEl, () => postView.value.id, () => props.trackViews],
+  () => { bindViewObserve() },
+  { flush: 'post' },
+)
+onMounted(() => { bindViewObserve() })
 
 onBeforeUnmount(() => {
   stopViewObserve?.()

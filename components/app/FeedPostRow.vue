@@ -357,6 +357,7 @@ defineExpose({ highlightedRowRef, getHighlightedEl: () => highlightedRowRef.valu
 
 // Post view tracking: observe this row for 50% visibility for 1s
 const { observe, noteAlreadyViewed } = usePostViewTracker()
+const middleScrollerEl = useMiddleScroller()
 const wrapperEl = ref<HTMLElement | null>(null)
 let stopObserve: (() => void) | null = null
 
@@ -386,30 +387,39 @@ function onMouseLeave() {
   }
 }
 
+function bindFeedViewObserve() {
+  stopObserve?.()
+  stopObserve = null
+  if (!import.meta.client || !wrapperEl.value) return
+  const accessible = chain.value.filter((p) => p.viewerCanAccess !== false && !isPendingLocalId(p.id))
+  const alreadyViewed = accessible.filter((p) => p.viewerHasViewed === true).map((p) => p.id).filter(Boolean)
+  if (alreadyViewed.length) noteAlreadyViewed(alreadyViewed)
+  const postIds = accessible.map((p) => p.id).filter(Boolean)
+  const groupIdByPostId: Record<string, string> = {}
+  for (const p of accessible) {
+    // Unread badge already cleared for previously viewed group posts.
+    if (p.viewerHasViewed === true) continue
+    const gid = (p.communityGroupId ?? '').trim()
+    if (gid && p.id) groupIdByPostId[p.id] = gid
+  }
+  if (postIds.length) {
+    stopObserve = observe(postIds, wrapperEl.value, {
+      groupIdByPostId: Object.keys(groupIdByPostId).length ? groupIdByPostId : undefined,
+      root: middleScrollerEl.value ?? null,
+    })
+  }
+}
+
 onMounted(() => {
   registerPost(props.post)
-  // Observe the wrapper: when ≥50% visible for ≥1s, mark accessible chain posts as viewed
-  // (including already-viewed posts, so lastSeenAt can move for For You).
-  // Gated posts (viewerCanAccess === false) are excluded — viewer hasn't read the content.
-  if (wrapperEl.value) {
-    const accessible = chain.value.filter((p) => p.viewerCanAccess !== false && !isPendingLocalId(p.id))
-    const alreadyViewed = accessible.filter((p) => p.viewerHasViewed === true).map((p) => p.id).filter(Boolean)
-    if (alreadyViewed.length) noteAlreadyViewed(alreadyViewed)
-    const postIds = accessible.map((p) => p.id).filter(Boolean)
-    const groupIdByPostId: Record<string, string> = {}
-    for (const p of accessible) {
-      // Unread badge already cleared for previously viewed group posts.
-      if (p.viewerHasViewed === true) continue
-      const gid = (p.communityGroupId ?? '').trim()
-      if (gid && p.id) groupIdByPostId[p.id] = gid
-    }
-    if (postIds.length) {
-      stopObserve = observe(postIds, wrapperEl.value, {
-        groupIdByPostId: Object.keys(groupIdByPostId).length ? groupIdByPostId : undefined,
-      })
-    }
-  }
+  bindFeedViewObserve()
 })
+
+watch(
+  [wrapperEl, middleScrollerEl, () => chain.value.map((p) => p.id).join(',')],
+  () => { bindFeedViewObserve() },
+  { flush: 'post' },
+)
 
 // When an optimistic post is replaced by the real server post in place (same component
 // instance kept via stable :key), the post id changes. Re-register so keyboard focus

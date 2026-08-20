@@ -178,6 +178,11 @@ export function usePostViewTracker() {
       canTrack?: boolean
       /** Map of postId → communityGroupId for group-badge optimistic decrement. */
       groupIdByPostId?: Record<string, string>
+      /**
+       * Nested app scrollers (home, check-ins, profile, …) must pass the middle
+       * pane. Viewport-root misses rows that are clipped by `overflow-y-auto`.
+       */
+      root?: Element | null
     },
   ): () => void {
     if (!import.meta.client || !el) return () => {}
@@ -228,7 +233,7 @@ export function usePostViewTracker() {
           }
         }
       },
-      { threshold: OBSERVER_THRESHOLDS },
+      { threshold: OBSERVER_THRESHOLDS, root: opts?.root ?? null },
     )
 
     observer.observe(el)
