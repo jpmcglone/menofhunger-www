@@ -178,6 +178,7 @@
               class="moh-composer-styled-textarea"
               @update:model-value="onDraftChange"
               @send="submit"
+              @media-files="(files) => ingestMediaFiles(files, 'paste')"
             />
 
             <!-- Drag overlay (no media): hug just the textarea, less bottom inset to avoid extra padding -->
@@ -1119,6 +1120,7 @@ const {
   onComposerAreaDragLeave,
   onComposerDrop,
   onComposerPaste,
+  ingestMediaFiles,
   onMediaTilePointerDown,
   giphyOpen,
   giphyQuery,

@@ -5,7 +5,7 @@
     @dragover="onComposerAreaDragOver"
     @dragleave="onComposerAreaDragLeave"
     @drop.prevent="onComposerDrop"
-    @paste="onComposerPaste"
+    @paste.capture="onComposerPaste"
   >
     <!-- Hidden file input for media picker -->
     <input
@@ -185,6 +185,7 @@
               :hashtag-color="userHashtagColor"
               @update:model-value="onTextChange"
               @send="onSend"
+              @media-files="(files) => ingestMediaFiles(files, 'paste')"
             />
           </div>
 
@@ -308,6 +309,7 @@ const {
   onComposerAreaDragLeave,
   onComposerDrop,
   onComposerPaste,
+  ingestMediaFiles,
   giphyOpen,
   giphyQuery,
   giphyLoading,
@@ -320,6 +322,7 @@ const {
   clearAll,
 } = useComposerMedia({
   maxSlots: 1,
+  canAcceptImages: computed(() => isVerified.value && canSendMedia.value),
   canAcceptVideo: canAcceptVideoRef,
   onMediaRejectedNeedPremium: () => usePremiumMediaModal().show(),
 })

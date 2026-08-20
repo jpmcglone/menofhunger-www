@@ -55,7 +55,13 @@ export function useNotifications() {
   function prependNotification(n: Notification): boolean {
     if (!n?.id || !notificationMatchesActiveKind(n)) return true
     if (groupedKinds.has(n.kind as NotificationGroupKind)) return false
-    const next = notifications.value.filter((item) => item.type !== 'single' || item.notification.id !== n.id)
+    const causingPostId = n.post?.id ?? null
+    const next = notifications.value.filter((item) => {
+      if (item.type !== 'single') return true
+      if (item.notification.id === n.id) return false
+      if (causingPostId && item.notification.post?.id === causingPostId) return false
+      return true
+    })
     notifications.value = [{ type: 'single', notification: n }, ...next]
     hasFetched.value = true
     return true

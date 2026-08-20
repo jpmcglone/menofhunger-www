@@ -83,6 +83,38 @@ export function makeLocalId(): string {
   }
 }
 
+export function isComposerVideoType(type: string | null | undefined): boolean {
+  const contentType = (type ?? '').toLowerCase().trim()
+  return contentType === 'video/mp4'
+    || contentType === 'video/quicktime'
+    || contentType === 'video/webm'
+    || contentType === 'video/x-m4v'
+}
+
+export function isComposerMediaType(type: string | null | undefined): boolean {
+  const contentType = (type ?? '').toLowerCase()
+  return contentType.startsWith('image/') || isComposerVideoType(contentType)
+}
+
+/** Rich copies (web pages, Docs) attach a bitmap *and* text. Text always wins. */
+export function clipboardHasPlainText(
+  dt: { getData: (type: string) => string } | null | undefined,
+): boolean {
+  return Boolean(dt?.getData('text/plain')?.trim())
+}
+
+export function collectMediaFiles(dt: DataTransfer | null): File[] {
+  if (!dt) return []
+  const fromItems: File[] = []
+  for (const item of Array.from(dt.items ?? [])) {
+    if (item.kind !== 'file' || !isComposerMediaType(item.type)) continue
+    const file = item.getAsFile()
+    if (file) fromItems.push(file)
+  }
+  if (fromItems.length) return fromItems
+  return Array.from(dt.files ?? []).filter((file) => isComposerMediaType(file.type))
+}
+
 export function dataTransferHasImages(dt: DataTransfer | null): boolean {
   if (!dt) return false
   const items = Array.from(dt.items ?? [])
@@ -98,17 +130,12 @@ export function dataTransferHasMedia(
 ): boolean {
   if (!dt) return false
 
-  const isAllowedVideoType = (t: string | null | undefined) => {
-    const ct = (t ?? '').toLowerCase().trim()
-    return ct === 'video/mp4' || ct === 'video/quicktime' || ct === 'video/webm' || ct === 'video/x-m4v'
-  }
-
   const items = Array.from(dt.items ?? [])
   if (opts.includeImages && items.some((it) => it.kind === 'file' && (it.type ?? '').toLowerCase().startsWith('image/'))) return true
-  if (opts.includeVideo && items.some((it) => it.kind === 'file' && isAllowedVideoType(it.type))) return true
+  if (opts.includeVideo && items.some((it) => it.kind === 'file' && isComposerVideoType(it.type))) return true
   const files = Array.from(dt.files ?? [])
   if (opts.includeImages && files.some((f) => ((f.type ?? '').toLowerCase().startsWith('image/')))) return true
-  if (opts.includeVideo && files.some((f) => isAllowedVideoType(f.type))) return true
+  if (opts.includeVideo && files.some((f) => isComposerVideoType(f.type))) return true
   return false
 }
 

@@ -37,6 +37,7 @@ import type { CaretPoint } from '~/utils/textarea-caret'
 import { userTierColorVar } from '~/utils/user-tier'
 import { tierFromMentionUser } from '~/composables/useMentionAutocomplete'
 import { insertMentionAtCaret } from '~/utils/mention-autocomplete'
+import { clipboardHasPlainText, collectMediaFiles, dataTransferHasMedia } from '~/composables/composer/types'
 
 // ─── Props / Emits ────────────────────────────────────────────
 
@@ -71,6 +72,7 @@ const props = withDefaults(
 const emit = defineEmits<{
   'update:modelValue': [value: string]
   send: []
+  'media-files': [files: File[]]
 }>()
 
 // ─── Shared utilities ─────────────────────────────────────────
@@ -622,6 +624,27 @@ const editor = useEditor({
       class: 'moh-styled-textarea-editor',
       'aria-label': props.placeholder,
     },
+    handlePaste(_view, event) {
+      if (clipboardHasPlainText(event.clipboardData)) return false
+      const files = collectMediaFiles(event.clipboardData)
+      if (!files.length) return false
+      // Parent capture handlers (chat/compose) ingest first and preventDefault.
+      // Still claim the paste so TipTap doesn't insert a broken inline image.
+      if (!event.defaultPrevented) {
+        event.preventDefault()
+        emit('media-files', files)
+      }
+      event.stopPropagation()
+      return true
+    },
+    handleDrop(_view, event) {
+      const files = collectMediaFiles(event.dataTransfer)
+      if (!files.length) return false
+      event.preventDefault()
+      event.stopPropagation()
+      emit('media-files', files)
+      return true
+    },
     handleDOMEvents: {
       compositionend: () => {
         if (!pendingDecorationRefresh) return false
@@ -630,6 +653,13 @@ const editor = useEditor({
         // has actually cleared by the time we dispatch.
         setTimeout(() => refreshMentionDecorations(), 0)
         return false
+      },
+      dragover: (_view, event) => {
+        if (!dataTransferHasMedia(event.dataTransfer, { includeImages: true, includeVideo: true })) {
+          return false
+        }
+        event.preventDefault()
+        return true
       },
     },
   },

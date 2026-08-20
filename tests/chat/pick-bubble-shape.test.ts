@@ -104,6 +104,11 @@ describe('pickBubbleShape', () => {
     // Short URL-only message — still rect because the preview card makes it tall
     expect(pickBubbleShape(makeMessage({ body: 'https://x.co' }))).toBe('rect')
   })
+
+  it('returns "rect" for a scheme-less www host that still unfurls a preview', () => {
+    expect(pickBubbleShape(makeMessage({ body: 'Test www.google.com' }))).toBe('rect')
+    expect(pickBubbleShape(makeMessage({ body: 'Test www.menofhunger.com' }))).toBe('rect')
+  })
 })
 
 describe('bubbleShapeClass', () => {
@@ -115,6 +120,12 @@ describe('bubbleShapeClass', () => {
   it('emits the rect class for a multi-line message', () => {
     const cls = bubbleShapeClass(makeMessage({ body: 'line one\nline two' }))
     expect(cls).toContain('rounded-2xl')
+  })
+
+  it('emits the rect class for a scheme-less www host with a preview card', () => {
+    const cls = bubbleShapeClass(makeMessage({ body: 'Test www.google.com' }))
+    expect(cls).toContain('rounded-2xl')
+    expect(cls).not.toContain('rounded-full')
   })
 })
 

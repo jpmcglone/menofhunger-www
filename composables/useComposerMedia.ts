@@ -196,6 +196,7 @@ export function useComposerMedia(opts?: {
     onComposerAreaDragLeave: ingest.onComposerAreaDragLeave,
     onComposerDrop: ingest.onComposerDrop,
     onComposerPaste: ingest.onComposerPaste,
+    ingestMediaFiles: ingest.ingestMediaFiles,
     onMediaTilePointerDown: drag.onMediaTilePointerDown,
     giphyOpen: giphy.giphyOpen,
     giphyQuery: giphy.giphyQuery,

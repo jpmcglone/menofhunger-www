@@ -1,6 +1,12 @@
 import { computed, type Ref } from 'vue'
 import type { ComposerMediaItem } from './types'
-import { dataTransferHasMedia, makeLocalId } from './types'
+import {
+  clipboardHasPlainText,
+  collectMediaFiles,
+  dataTransferHasMedia,
+  isComposerVideoType,
+  makeLocalId,
+} from './types'
 import { appConfig } from '~/config/app'
 import {
   compressVideo,
@@ -31,10 +37,7 @@ export function useComposerImageIngest(opts: {
   const canAcceptImages = opts.canAcceptImages ?? computed(() => true)
   const canAcceptVideo = opts.canAcceptVideo ?? computed(() => false)
 
-  const isAllowedVideoType = (t: string | null | undefined) => {
-    const ct = (t ?? '').toLowerCase().trim()
-    return ct === 'video/mp4' || ct === 'video/quicktime' || ct === 'video/webm' || ct === 'video/x-m4v'
-  }
+  const isAllowedVideoType = isComposerVideoType
 
   const formatBytes = (n: number) => {
     const bytes = Math.max(0, Math.floor(n || 0))
@@ -410,40 +413,17 @@ export function useComposerImageIngest(opts: {
     if (!import.meta.client) return
     const cd = e.clipboardData
     if (!cd) return
-
-    const out: File[] = []
-    let rejectedNeedPremium = false
-    const items = Array.from(cd.items ?? [])
-    for (const it of items) {
-      if (it.kind !== 'file') continue
-      const type = (it.type ?? '').toLowerCase()
-      if (type.startsWith('image/') && !canAcceptImages.value) {
-        rejectedNeedPremium = true
-        continue
-      }
-      if (!type.startsWith('image/') && !(canAcceptVideo.value && type === 'video/mp4')) continue
-      const f = it.getAsFile()
-      if (f) out.push(f)
-    }
-    if (rejectedNeedPremium) {
-      opts.onMediaRejectedNeedPremium?.()
-      return
-    }
-
-    if (!out.length) {
-      out.push(...Array.from(cd.files ?? []).filter(Boolean))
-    }
-
-    const hasImage = out.some((f) => ((f.type ?? '').toLowerCase().startsWith('image/')))
-    const hasVideo = canAcceptVideo.value && out.some((f) => ((f.type ?? '').toLowerCase() === 'video/mp4'))
-    if (!hasImage && !hasVideo) return
-
+    // Same rule as the article editor: a copied paragraph with a trailing
+    // bitmap is text, not an image paste.
+    if (clipboardHasPlainText(cd)) return
+    const files = collectMediaFiles(cd)
+    if (!files.length) return
     try {
       e.preventDefault()
     } catch {
       // ignore
     }
-    addImageFiles(out, 'paste')
+    addImageFiles(files, 'paste')
   }
 
   return {
@@ -456,6 +436,7 @@ export function useComposerImageIngest(opts: {
     onComposerAreaDragLeave,
     onComposerDrop,
     onComposerPaste,
+    ingestMediaFiles: addImageFiles,
   }
 }
 

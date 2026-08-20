@@ -1,4 +1,5 @@
 import type { Message } from '~/types/api'
+import { extractLinksFromText } from '~/utils/link-utils'
 
 /**
  * Bubble-shape heuristic for chat messages. Pure render-time function — no
@@ -81,7 +82,8 @@ export function pickBubbleShape(message: Message): 'pill' | 'rect' {
   if (estimateTextEms(body) > PILL_MAX_EMS) return 'rect'
   // Any URL in the body will render a link preview card below the text,
   // making the bubble tall — pill corners look wrong on tall bubbles.
-  if (/https?:\/\//i.test(body)) return 'rect'
+  // Match `extractLinksFromText` so `www.google.com` (no scheme) counts too.
+  if (extractLinksFromText(body).length > 0) return 'rect'
   return 'pill'
 }
 

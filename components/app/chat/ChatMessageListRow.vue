@@ -121,6 +121,15 @@
               aria-hidden="true"
               @load="loadedMediaIds.add(`thumb-${media.id}`)"
             />
+            <video
+              v-else-if="media.url"
+              :src="media.url"
+              class="block h-full w-full object-cover"
+              muted
+              playsinline
+              preload="metadata"
+              aria-hidden="true"
+            />
             <div v-else class="absolute inset-0 bg-gray-900" aria-hidden="true" />
             <div class="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/20" aria-hidden="true">
               <Icon name="tabler:player-play-filled" class="text-3xl text-white drop-shadow" />
