@@ -54,7 +54,7 @@ const props = withDefaults(
     /**
      * Keyboard submit mode.
      * - 'enter' (default, DM): Enter sends; Shift/Alt/Ctrl-Enter inserts newline.
-     * - 'cmd-enter' (post composer): Enter inserts newline; Cmd/Ctrl-Enter sends.
+     * - 'cmd-enter' (post composer): Enter inserts newline; Shift-Enter (and Cmd/Ctrl-Enter) sends.
      */
     submitTrigger?: 'enter' | 'cmd-enter'
   }>(),
@@ -558,15 +558,17 @@ const SendOnEnter = Extension.create({
   name: 'sendOnEnter',
   addKeyboardShortcuts(): Record<string, KeyboardShortcutCommand> {
     if (props.submitTrigger === 'cmd-enter') {
-      // Post-composer mode: Enter inserts newline; Cmd/Ctrl-Enter sends.
+      const send = () => {
+        if (mentionPopover.open || hashtagPopover.open || cashtagPopover.open) return false
+        emit('send')
+        return true
+      }
+      // Post-composer mode: Enter inserts newline; Shift-Enter sends.
+      // Cmd/Ctrl-Enter still sends so existing muscle memory keeps working.
       return {
-        'Mod-Enter': () => {
-          if (mentionPopover.open || hashtagPopover.open || cashtagPopover.open) return false
-          emit('send')
-          return true
-        },
+        'Shift-Enter': send,
+        'Mod-Enter': send,
         Enter: insertNewline,
-        'Shift-Enter': insertNewline,
         'Alt-Enter': insertNewline,
       }
     }
@@ -671,6 +673,7 @@ const editor = useEditor({
     // Kick off batched tier validation for any typed @mentions; decorations recolor once resolved.
     validateMentionsInBody(text, validSet.value)
     emit('update:modelValue', text)
+    keepCaretInScrollport(ed)
   },
 })
 
@@ -710,6 +713,14 @@ watch(
 )
 
 watch(() => props.disabled, (d) => { editor.value?.setEditable(!d) })
+
+function keepCaretInScrollport(ed: CoreEditor) {
+  if (ed.view.composing) return
+  requestAnimationFrame(() => {
+    if (ed.view.composing) return
+    ed.commands.scrollIntoView()
+  })
+}
 
 function focus() { editor.value?.commands.focus('end') }
 

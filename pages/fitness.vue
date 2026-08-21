@@ -483,7 +483,21 @@
         class="moh-gutter-x py-3"
       >
         <div class="rounded-xl border moh-border moh-surface-2 p-4 space-y-3">
-        <div class="text-xs font-semibold uppercase tracking-wide" :class="accentText">VO2 Max</div>
+        <div class="flex items-center justify-between">
+          <div class="text-xs font-semibold uppercase tracking-wide" :class="accentText">VO2 Max</div>
+          <button
+            v-if="fitnessPage.latestVo2Max"
+            class="inline-flex items-center justify-center w-7 h-7 rounded-full text-white/60 hover:text-white transition-colors"
+            aria-label="Share VO2 max"
+            @click="openShare('vo2max', fitnessPage.latestVo2Max.id)"
+          >
+            <svg viewBox="0 0 24 24" class="h-4 w-4" aria-hidden="true">
+              <path d="M12 3v10" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" />
+              <path d="M7.5 7.5L12 3l4.5 4.5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" />
+              <path d="M5 11.5v7a1.5 1.5 0 0 0 1.5 1.5h11A1.5 1.5 0 0 0 19 18.5v-7" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+          </button>
+        </div>
 
         <div v-if="fitnessPage.latestVo2Max" class="flex items-end justify-between">
           <div class="flex items-baseline gap-2">
@@ -642,7 +656,7 @@ const goalTargetInput = ref('')
 const savingGoal = ref(false)
 
 // Share dialog
-type ShareDialogState = { type: 'activity' | 'weight' | 'progress'; refId: string; preview: FitnessSharePreview }
+type ShareDialogState = { type: 'activity' | 'weight' | 'progress' | 'vo2max'; refId: string; preview: FitnessSharePreview }
 const shareDialog = ref<ShareDialogState | null>(null)
 const shareDialogOpen = computed({
   get: () => shareDialog.value !== null,
@@ -962,11 +976,12 @@ const shareTypeLabel = computed(() => {
     case 'activity': return 'workout'
     case 'weight': return 'weight'
     case 'progress': return 'progress'
+    case 'vo2max': return 'VO2 max'
     default: return ''
   }
 })
 
-function openShare(type: 'activity' | 'weight' | 'progress', refId: string) {
+function openShare(type: 'activity' | 'weight' | 'progress' | 'vo2max', refId: string) {
   const page = fitnessPage.value
   if (!page) return
 
@@ -1031,6 +1046,26 @@ function openShare(type: 'activity' | 'weight' | 'progress', refId: string) {
         },
       }
     }
+  } else if (type === 'vo2max') {
+    const latest = page.vo2maxHistory.find(m => m.id === refId) ?? page.latestVo2Max
+    const oldest = page.vo2maxHistory.at(-1)
+    if (latest) {
+      const start = oldest && oldest.id !== latest.id ? oldest : null
+      preview = {
+        id: 'preview',
+        shareType: 'vo2max',
+        snapshot: {
+          type: 'vo2max',
+          data: {
+            vo2maxMlKgMin: latest.weightKg,
+            measuredAt: latest.measuredAt,
+            startVo2maxMlKgMin: start?.weightKg ?? null,
+            startedAt: start?.measuredAt ?? null,
+            deltaMlKgMin: start ? latest.weightKg - start.weightKg : null,
+          },
+        },
+      }
+    }
   }
 
   if (!preview) return
@@ -1050,7 +1085,7 @@ async function submitShare() {
       visibility: shareVisibility.value,
     }
     if (dialog.type === 'activity') body.activityId = dialog.refId
-    else if (dialog.type === 'weight') body.bodyMetricId = dialog.refId
+    else if (dialog.type === 'weight' || dialog.type === 'vo2max') body.bodyMetricId = dialog.refId
     else if (dialog.type === 'progress') body.goalId = dialog.refId
 
     const result = await apiFetchData<{ post: { id: string } }>('/fitness/share', { method: 'POST', body })

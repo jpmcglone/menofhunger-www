@@ -42,6 +42,27 @@
       </div>
     </template>
 
+    <!-- VO2 max progress share -->
+    <template v-else-if="share.snapshot.type === 'vo2max'">
+      <div class="px-4 py-3 flex items-center gap-3">
+        <Icon name="tabler:lungs" class="text-gray-700 dark:text-gray-100 text-xl flex-shrink-0" />
+        <div class="flex-1 min-w-0">
+          <div class="text-sm font-semibold">
+            {{ share.snapshot.data.vo2maxMlKgMin.toFixed(1) }}
+            <span class="font-normal text-xs text-gray-500 dark:text-gray-400">ml/kg/min</span>
+          </div>
+          <div v-if="share.snapshot.data.deltaMlKgMin !== null" class="text-xs mt-0.5" :class="vo2DeltaClass(share.snapshot.data.deltaMlKgMin)">
+            {{ formatVo2Delta(share.snapshot.data.deltaMlKgMin) }}
+            <template v-if="share.snapshot.data.startedAt"> since {{ formatDate(share.snapshot.data.startedAt) }}</template>
+          </div>
+          <div class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
+            {{ formatDate(share.snapshot.data.measuredAt) }}
+          </div>
+        </div>
+        <span class="text-[10px] font-semibold uppercase tracking-wide text-indigo-500 flex-shrink-0">VO2 Max</span>
+      </div>
+    </template>
+
     <!-- Progress share -->
     <template v-else-if="share.snapshot.type === 'progress'">
       <div class="px-4 py-3">
@@ -100,6 +121,18 @@ function deltaClass(deltaKg: number): string {
   return deltaKg < 0
     ? 'text-green-600 dark:text-green-400'
     : 'text-red-500 dark:text-red-400'
+}
+
+function formatVo2Delta(delta: number): string {
+  const abs = Math.abs(delta).toFixed(1)
+  if (delta === 0) return 'No change'
+  return delta > 0 ? `↑ ${abs}` : `↓ ${abs}`
+}
+
+function vo2DeltaClass(delta: number): string {
+  if (delta > 0) return 'text-green-600 dark:text-green-400'
+  if (delta < 0) return 'text-red-500 dark:text-red-400'
+  return 'text-gray-500 dark:text-gray-400'
 }
 
 function formatDate(iso: string): string {

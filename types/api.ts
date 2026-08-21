@@ -2636,7 +2636,7 @@ export type ArticleSharePreview = {
 export type FitnessProvider = 'strava' | 'apple_health'
 export type FitnessActivityType = 'run' | 'ride' | 'walk' | 'swim' | 'workout' | 'hike' | 'yoga' | 'other'
 export type FitnessUnits = 'us' | 'metric'
-export type FitnessShareType = 'activity' | 'weight' | 'progress'
+export type FitnessShareType = 'activity' | 'weight' | 'progress' | 'vo2max'
 
 export type FitnessConnection = {
   provider: FitnessProvider
@@ -2719,10 +2719,19 @@ export type FitnessProgressSnapshot = {
   startedAt: string
 }
 
+export type FitnessVo2MaxSnapshot = {
+  vo2maxMlKgMin: number
+  measuredAt: string
+  startVo2maxMlKgMin: number | null
+  startedAt: string | null
+  deltaMlKgMin: number | null
+}
+
 export type FitnessShareSnapshot =
   | { type: 'activity'; data: FitnessActivitySnapshot }
   | { type: 'weight'; data: FitnessWeightSnapshot }
   | { type: 'progress'; data: FitnessProgressSnapshot }
+  | { type: 'vo2max'; data: FitnessVo2MaxSnapshot }
 
 export type FitnessSharePreview = {
   id: string

@@ -24,15 +24,20 @@
         :show-status="false"
       />
       <div class="min-w-0 flex-1">
-        <div
-          class="truncate text-gray-900 dark:text-gray-50"
-          :class="compact ? 'text-sm font-medium' : 'text-sm font-semibold'"
-        >
-          {{ account.name || account.username || 'Account' }}
+        <div class="flex min-w-0 items-center gap-1.5">
+          <div
+            class="truncate text-gray-900 dark:text-gray-50"
+            :class="compact ? 'text-sm font-medium' : 'text-sm font-semibold'"
+          >
+            {{ account.name || account.username || 'Account' }}
+          </div>
+          <span
+            v-if="account.accountKind === 'person'"
+            class="shrink-0 rounded-full px-1.5 py-px text-[10px] font-semibold tracking-wide text-[var(--moh-brass)] bg-[rgba(var(--moh-brass-rgb),0.14)]"
+          >Primary</span>
         </div>
-        <div class="text-xs text-gray-500 dark:text-gray-400 truncate">
-          <span v-if="account.username">@{{ account.username }}</span>
-          <span v-if="account.accountKind === 'page'"> · Page</span>
+        <div v-if="account.username" class="text-xs text-gray-500 dark:text-gray-400 truncate">
+          @{{ account.username }}
         </div>
       </div>
       <span

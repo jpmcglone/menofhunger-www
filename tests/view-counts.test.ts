@@ -14,6 +14,9 @@ describe('unique people + total views', () => {
     const checkinDay = readFromRepo('pages/check-ins/day/[dayKey].vue')
     const checkinSort = readFromRepo('pages/check-ins/[sort].vue')
 
+    expect(tracker).toContain('VISIBILITY_THRESHOLD = 0.5')
+    expect(tracker).toContain('entry.intersectionRatio >= VISIBILITY_THRESHOLD')
+    expect(tracker).toContain('entry.intersectionRect.height >= VISIBLE_PX_FALLBACK')
     expect(tracker).toContain('root: opts?.root ?? null')
     expect(postRow).toContain('root: middleScrollerEl.value ?? null')
     expect(feedRow).toContain('root: middleScrollerEl.value ?? null')

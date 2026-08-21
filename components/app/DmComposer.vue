@@ -173,7 +173,7 @@
             />
           </div>
 
-          <div class="dm-composer-textarea-scroll w-full overflow-y-auto">
+          <div class="dm-composer-textarea-scroll w-full min-w-0" :class="{ 'is-capped': isCapped }">
             <AppStyledTextarea
               ref="styledTextareaEl"
               :model-value="modelValue"
@@ -288,6 +288,8 @@ const emit = defineEmits<{
 const styledTextareaEl = ref<InstanceType<typeof import('./StyledTextarea.vue').default> | null>(null)
 const emojiPickerEl = ref<{ close: () => void } | null>(null)
 const isMultiline = ref(false)
+const isCapped = ref(false)
+const EDITOR_MAX_PX = 160
 
 const isPremium = computed(() => Boolean(props.user?.premium || props.user?.premiumPlus))
 const isVerified = computed(() => props.user?.verifiedStatus !== 'none' && props.user?.verifiedStatus != null)
@@ -428,6 +430,9 @@ function checkMultiline() {
     const pb = parseFloat(style.paddingBottom) || 0
     const contentH = Math.max(0, editorEl.scrollHeight - pt - pb)
     isMultiline.value = lh > 0 ? Math.round(contentH / lh) >= 2 : false
+    // iOS Safari will not scroll a parent of a focused contenteditable. Give the
+    // editor a definite height once it hits the cap so the field itself scrolls.
+    isCapped.value = editorEl.scrollHeight > EDITOR_MAX_PX + 0.5
   })
 }
 
@@ -443,10 +448,19 @@ defineExpose({ focus, insertMention, getMedia, clearMedia })
   padding: 0;
 }
 
-/* Cap the composer at ~5 lines (5 × ~24px line-height + top/bottom padding ≈ 160px).
-   Beyond that the content scrolls inside the pill so the bar never takes over the screen. */
-.dm-composer-textarea-scroll {
+/* Cap at ~5 lines. Overflow MUST live on the contenteditable — iOS Safari
+   ignores overflow on a parent of a focused TipTap field, so a wrapper-only
+   scrollport leaves the caret stranded behind the keyboard. */
+.dm-composer-textarea-scroll :deep(.moh-styled-textarea-editor) {
   max-height: 160px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+}
+
+.dm-composer-textarea-scroll.is-capped :deep(.moh-styled-textarea-editor) {
+  height: 160px;
 }
 
 .dm-upload-indeterminate {
