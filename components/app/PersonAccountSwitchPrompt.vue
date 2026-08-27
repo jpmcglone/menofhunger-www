@@ -30,8 +30,8 @@ defineProps<{
 }>()
 
 const route = useRoute()
-const { operatorLabel, operator, switchingId, switchToOperator } = usePersonAccountGate()
-const canSwitch = computed(() => Boolean(operator.value?.operatorUserId))
+const { operatorLabel, operatorUser, switchingId, switchToOperator } = usePersonAccountGate()
+const canSwitch = computed(() => Boolean(operatorUser.value?.id))
 
 async function onSwitch() {
   await switchToOperator(route.fullPath)

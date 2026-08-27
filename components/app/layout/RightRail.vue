@@ -37,6 +37,8 @@
 
         <div v-else key="rightRailDefault">
           <AppRightRailContent v-if="hydrated && secondaryLoadsEnabled">
+          <AppOperatorSwitchRailCard v-if="isPageAccount" class="mt-4 mb-4" />
+
           <!-- Daily quote: links to /daily/quote; dims when on /daily or /daily/quote -->
           <component
             v-if="!isPageAccount"
@@ -73,12 +75,12 @@
           </component>
 
           <div class="space-y-4 transition-[transform] duration-200 ease-out rail-cards">
-          <AppReferralRailCard />
+          <AppReferralRailCard v-if="!isPageAccount" />
 
           <!-- Order matters here: Who-to-follow renders before Trending so the
                most actionable rail card (real people you can follow right now)
                is the first thing the eye lands on after the daily quote. -->
-          <div class="space-y-1" :class="isPageAccount ? 'pt-8' : ''">
+          <div class="space-y-1">
             <div class="flex justify-end px-2">
               <NuxtLink
                 to="/online"
@@ -186,14 +188,24 @@
             style="background: linear-gradient(135deg, #1c1410 0%, #2d1f0e 60%, #1a1208 100%)"
           >
             <div class="pointer-events-none absolute -right-6 -top-6 h-24 w-24 rounded-full blur-2xl" style="background: radial-gradient(circle, rgba(200,136,42,0.4), transparent 70%)" aria-hidden="true" />
-            <div class="relative z-10">
-              <div class="text-[10px] font-bold uppercase tracking-[0.18em]" style="color: #c8882a">Official Merch</div>
-              <div class="mt-0.5 text-sm font-bold leading-snug text-white">Wear what you stand for.</div>
-              <div class="mt-0.5 text-xs" style="color: rgba(255,255,255,0.5)">Men of Hunger gear.</div>
-              <div class="mt-3 flex items-center justify-center gap-1.5 rounded-full bg-white py-1.5 text-sm font-bold text-gray-900 transition-opacity duration-150 group-hover:opacity-90">
-                Shop now
-                <Icon name="tabler:arrow-up-right" class="text-xs" aria-hidden="true" />
+            <div class="relative z-10 flex items-center gap-3">
+              <div class="min-w-0 flex-1">
+                <div class="text-[10px] font-bold uppercase tracking-[0.18em]" style="color: #c8882a">Official Merch</div>
+                <div class="mt-0.5 text-sm font-bold leading-snug text-white">Wear what you stand for.</div>
+                <div class="mt-0.5 text-xs" style="color: rgba(255,255,255,0.5)">Men of Hunger gear.</div>
               </div>
+              <img
+                src="/images/merch-hat.jpg"
+                alt=""
+                width="64"
+                height="64"
+                class="h-16 w-16 shrink-0 object-cover mix-blend-lighten"
+                aria-hidden="true"
+              >
+            </div>
+            <div class="relative z-10 mt-3 flex items-center justify-center gap-1.5 rounded-full bg-white py-1.5 text-sm font-bold text-gray-900 transition-opacity duration-150 group-hover:opacity-90">
+              Shop now
+              <Icon name="tabler:arrow-up-right" class="text-xs" aria-hidden="true" />
             </div>
           </a>
 

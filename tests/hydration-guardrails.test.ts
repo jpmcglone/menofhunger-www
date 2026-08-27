@@ -68,7 +68,27 @@ describe('hydration guardrails (structural)', () => {
   it('keeps padding above who-to-follow when the rail quote is hidden', () => {
     const rail = readFromRepo('components/app/layout/RightRail.vue')
     expect(rail).toMatch(/v-if="!isPageAccount"/)
-    expect(rail).toMatch(/class="space-y-1" :class="isPageAccount \? 'pt-8' : ''"/)
+    expect(rail).toMatch(/<AppOperatorSwitchRailCard v-if="isPageAccount"/)
+  })
+
+  it('replaces the invite rail card with a one-click operator switch for page accounts', () => {
+    const rail = readFromRepo('components/app/layout/RightRail.vue')
+    const invite = readFromRepo('components/app/ReferralRailCard.vue')
+    const switchCard = readFromRepo('components/app/OperatorSwitchRailCard.vue')
+    const gate = readFromRepo('composables/usePersonAccountGate.ts')
+    expect(rail).toMatch(/<AppOperatorSwitchRailCard v-if="isPageAccount" class="mt-4 mb-4"/)
+    expect(rail).toMatch(/<AppReferralRailCard v-if="!isPageAccount"/)
+    expect(invite).toMatch(/!isPageAccount\.value/)
+    expect(switchCard).toMatch(/label="Switch back"/)
+    expect(switchCard).toMatch(/useAppConfirm/)
+    expect(switchCard).toMatch(/confirmLabel: 'Switch back'/)
+    expect(switchCard).toMatch(/w-full !rounded-full/)
+    expect(switchCard).toMatch(/switchToOperator/)
+    expect(switchCard).toMatch(/AppUserAvatar/)
+    expect(switchCard).toMatch(/refreshAccounts/)
+    expect(switchCard).toMatch(/>Primary</)
+    expect(switchCard).toMatch(/text-\[var\(--moh-brass\)\]/)
+    expect(gate).toMatch(/accountKind === 'person' && !account.isCurrent/)
   })
 
   it('shares the my-groups request across home surfaces', () => {
@@ -662,13 +682,11 @@ describe('hydration guardrails (structural)', () => {
     expect(layout).not.toMatch(/hideTabBarForKeyboard/)
   })
 
-  it('mobile bottom chrome wrapper keeps overflow-hidden to clip the keyboard-dismiss collapse', () => {
+  it('mobile bottom chrome clips only while collapsing for the keyboard', () => {
     const layout = readFromRepo('layouts/app.vue')
-    // The wrapper must have overflow-hidden so max-h-0 doesn't produce stray scrollbars.
-    expect(layout).toMatch(/overflow-hidden/)
-    // The wrapper must collapse to max-h-0 when the keyboard is open (eliminates the blank gap
-    // that a translate-only approach leaves behind since transforms don't affect layout flow).
-    expect(layout).toMatch(/isKeyboardOpen.*max-h-0/)
+    // overflow-hidden while max-h-0 so the collapse doesn't leave stray scrollbars.
+    // overflow-visible otherwise so radio-bar avatar glow is not clipped.
+    expect(layout).toMatch(/isKeyboardOpen \? 'max-h-0 overflow-hidden' : 'max-h-36 overflow-visible'/)
   })
 
   it('keeps hover-zoom transform idle until hydration (media query is client-only)', () => {

@@ -312,6 +312,7 @@ async function onSave() {
   const saved = await applyAll()
   if (saved) {
     toast.push({ title: 'Saved', tone: 'public', durationMs: 1400 })
+    expanded.value = false
   }
 }
 

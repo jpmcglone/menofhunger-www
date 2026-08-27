@@ -180,19 +180,20 @@
 
             <div
               v-else-if="space && members.length"
-              class="mt-2 grid max-h-52 grid-cols-[repeat(auto-fill,2.5rem)] gap-3 overflow-y-auto overscroll-contain py-1"
+              class="mt-2 -mx-4 max-h-52 overflow-y-auto overscroll-contain px-4 py-4"
             >
+              <div class="grid grid-cols-[repeat(auto-fill,3.25rem)] justify-items-center gap-2">
               <template v-for="u in lobbyMembers" :key="u.id">
                 <NuxtLink
                   v-if="u.username"
                   :to="`/u/${encodeURIComponent(u.username)}`"
-                  class="group moh-focus rounded-xl"
+                  class="group moh-focus flex h-[3.25rem] w-[3.25rem] items-center justify-center"
                   :aria-label="`View @${u.username}`"
                   v-tooltip.bottom="tinyTooltip(`@${u.username}`)"
                 >
                   <div :ref="(el) => setAvatarEl(u.id, el as HTMLElement | null)" class="relative">
                     <AppUserAvatar
-                      :user="{ id: u.id, username: u.username, avatarUrl: u.avatarUrl }"
+                      :user="u"
                       size-class="h-10 w-10"
                       bg-class="moh-surface dark:bg-black"
                       :show-presence="false"
@@ -214,12 +215,12 @@
                 </NuxtLink>
                 <div
                   v-else
-                  class="group rounded-xl"
+                  class="group flex h-[3.25rem] w-[3.25rem] items-center justify-center"
                   v-tooltip.bottom="tinyTooltip('User')"
                 >
                   <div :ref="(el) => setAvatarEl(u.id, el as HTMLElement | null)" class="relative">
                     <AppUserAvatar
-                      :user="{ id: u.id, username: u.username, avatarUrl: u.avatarUrl }"
+                      :user="u"
                       size-class="h-10 w-10"
                       bg-class="moh-surface dark:bg-black"
                       :show-presence="false"
@@ -227,6 +228,7 @@
                   </div>
                 </div>
               </template>
+              </div>
             </div>
           </div>
         </template>

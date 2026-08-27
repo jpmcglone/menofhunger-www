@@ -97,11 +97,14 @@ describe('space layout', () => {
   it('puts reactions above a wrapping presence grid', () => {
     const page = readFromRepo('pages/s/[username].vue')
     const reactionsIdx = page.indexOf('v-for="r in reactions"')
-    const gridIdx = page.indexOf('grid-cols-[repeat(auto-fill,2.5rem)]')
+    const gridIdx = page.indexOf('grid-cols-[repeat(auto-fill,3.25rem)]')
     expect(reactionsIdx).toBeGreaterThan(-1)
     expect(gridIdx).toBeGreaterThan(reactionsIdx)
+    expect(page).toMatch(/grid-cols-\[repeat\(auto-fill,3\.25rem\)\]/)
     expect(page).toMatch(/max-h-52/)
     expect(page).toMatch(/overscroll-contain/)
+    expect(page).toMatch(/-mx-4 max-h-52 overflow-y-auto overscroll-contain px-4 py-4/)
+    expect(page).toMatch(/flex h-\[3\.25rem\] w-\[3\.25rem\] items-center justify-center/)
   })
 
   it('tracks a space page view once per space', () => {
@@ -110,6 +113,16 @@ describe('space layout', () => {
     expect(helper).toMatch(/\$posthog\?\.capture/)
     expect(page).toMatch(/capture\('space_viewed'/)
     expect(page).toMatch(/viewedSpaceId/)
+  })
+
+  it('does not clip avatar glow with the radio bar container', () => {
+    const bar = readFromRepo('components/app/RadioBar.vue')
+    const layout = readFromRepo('layouts/app.vue')
+    expect(bar).toMatch(/class="absolute inset-0 pointer-events-none overflow-hidden rounded-lg"/)
+    expect(bar).not.toMatch(/sm:px-4 sm:py-2 relative overflow-hidden/)
+    expect(bar).toMatch(/overflow-visible px-2 py-2 -mx-2 -my-2/)
+    expect(layout).toMatch(/id="moh-radio-desktop"[\s\S]*?overflow-visible/)
+    expect(layout).toMatch(/isKeyboardOpen \? 'max-h-0 overflow-hidden' : 'max-h-36 overflow-visible'/)
   })
 
   it('overlays expanded owner controls instead of pushing the player down', () => {
@@ -125,6 +138,9 @@ describe('space layout', () => {
     expect(panel).toMatch(/\(optional\)/)
     expect(panel).toMatch(/discardLabel: 'Discard'/)
     expect(panel).toMatch(/async function applyAll/)
+    expect(panel).toMatch(
+      /async function onSave\(\) \{\s*const saved = await applyAll\(\)\s*if \(saved\) \{\s*toast\.push[\s\S]*?expanded\.value = false/,
+    )
     expect(panel).not.toMatch(/onModeSelect/)
     expect(page).toMatch(/v-if="isOwner" class="moh-gutter-x pb-2"/)
     expect(page).toMatch(/flex items-start justify-center/)

@@ -123,12 +123,13 @@
             <!-- Radio sits above tab bar when playing. -->
             <!-- max-h collapses the wrapper to 0 when the keyboard is open, eliminating the    -->
             <!-- blank gap that translate-only leaves behind (transforms don't affect layout).  -->
-            <!-- overflow-hidden clips the collapsing content and prevents stray scrollbars.    -->
+            <!-- overflow-hidden only while collapsing (keyboard open) so stray scrollbars
+                 don't appear; overflow-visible otherwise so radio avatar glow can paint. -->
             <!-- inert removes the hidden chrome from tab order + screen readers.               -->
             <div
               v-if="!anyOverlayOpen"
-              class="md:hidden shrink-0 overflow-hidden transition-[max-height] duration-200 ease-out motion-reduce:transition-none"
-              :class="isKeyboardOpen ? 'max-h-0' : 'max-h-36'"
+              class="md:hidden shrink-0 transition-[max-height] duration-200 ease-out motion-reduce:transition-none"
+              :class="isKeyboardOpen ? 'max-h-0 overflow-hidden' : 'max-h-36 overflow-visible'"
               :aria-hidden="isKeyboardOpen || undefined"
               :inert="isKeyboardOpen || undefined"
             >
@@ -164,7 +165,7 @@
             <div
               v-if="radioHasStation"
               id="moh-radio-desktop"
-              class="moh-radio-bar dark hidden md:flex items-center shrink-0 border-t border-zinc-800 bg-black text-white"
+              class="moh-radio-bar dark hidden md:flex items-center shrink-0 overflow-visible border-t border-zinc-800 bg-black text-white"
               :style="{ height: 'var(--moh-radio-bar-height, 4rem)' }"
             >
               <div class="w-full">

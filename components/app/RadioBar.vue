@@ -1,11 +1,11 @@
 <template>
   <!-- Own padding so layout containers can stay padding-free. -->
-  <div v-if="displaySpace" class="w-full px-3 py-1.5 sm:px-4 sm:py-2 relative overflow-hidden">
+  <div v-if="displaySpace" class="w-full px-3 py-1.5 sm:px-4 sm:py-2 relative">
     <!-- Subtle visualizer in background when playing -->
     <div
       v-if="isPlaying"
       :style="{ opacity: SPACE_VISUALIZER_BACKGROUND_OPACITY }"
-      class="absolute inset-0 pointer-events-none rounded-lg"
+      class="absolute inset-0 pointer-events-none overflow-hidden rounded-lg"
       aria-hidden="true"
     >
       <AppSpaceVisualizer background-only class="w-full h-full" />
@@ -50,11 +50,11 @@
       </div>
     </NuxtLink>
 
-      <div v-if="showListenerStack" class="pointer-events-none hidden sm:flex items-center gap-2">
+      <div v-if="showListenerStack" class="pointer-events-none hidden sm:flex items-center gap-2 overflow-visible px-2 py-2 -mx-2 -my-2">
         <TransitionGroup
           name="moh-space-stack"
           tag="div"
-          class="relative flex items-center -space-x-2"
+          class="relative flex items-center -space-x-2 overflow-visible"
         >
           <template v-for="u in listenerStack" :key="u.id">
             <NuxtLink
@@ -65,7 +65,7 @@
               v-tooltip.bottom="tinyTooltip(`@${u.username}`)"
             >
               <AppUserAvatar
-                :user="{ id: u.id, username: u.username, avatarUrl: u.avatarUrl }"
+                :user="u"
                 size-class="h-8 w-8"
                 bg-class="moh-surface dark:bg-black"
                 :show-presence="false"
@@ -91,7 +91,7 @@
               v-tooltip.bottom="tinyTooltip('User')"
             >
               <AppUserAvatar
-                :user="{ id: u.id, username: u.username, avatarUrl: u.avatarUrl }"
+                :user="u"
                 size-class="h-8 w-8"
                 bg-class="moh-surface dark:bg-black"
                 :show-presence="false"

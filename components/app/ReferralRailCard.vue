@@ -176,7 +176,7 @@ const onInvitePage = computed(() =>
   || route.path.startsWith('/invite/'),
 )
 
-const { user, isAuthed, isVerified } = useAuth()
+const { user, isAuthed, isVerified, isPageAccount } = useAuth()
 const { apiFetchData } = useApiClient()
 const { addReferralCallback, removeReferralCallback } = usePresence()
 const { referralCode: sharedCode, setReferralCode } = useReferralCode()
@@ -188,10 +188,14 @@ const error = ref<string | null>(null)
 const copied = ref(false)
 let copiedTimer: ReturnType<typeof setTimeout> | null = null
 
-// Open to verified users (identity or manual) and premium users.
+// Open to verified users (identity or manual) and premium users. Pages don't recruit.
 const showCard = computed(() => {
   const u = user.value
-  return Boolean(isAuthed.value && (isVerified.value || u?.premium || u?.premiumPlus))
+  return Boolean(
+    isAuthed.value
+    && !isPageAccount.value
+    && (isVerified.value || u?.premium || u?.premiumPlus),
+  )
 })
 
 const reward = computed(() => useInviteReward(referralData.value))
