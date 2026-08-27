@@ -11,6 +11,7 @@ const PERSON_ONLY: ReadonlyArray<{ prefix: string; feature: string }> = [
   { prefix: '/settings/verification', feature: 'Verification' },
   { prefix: '/verification', feature: 'Verification' },
   { prefix: '/admin', feature: 'Admin' },
+  { prefix: '/daily', feature: 'Daily' },
 ]
 
 export function personOnlyFeatureForPath(pathname: string): string | null {

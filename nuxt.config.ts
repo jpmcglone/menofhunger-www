@@ -450,7 +450,7 @@ export default defineNuxtConfig({
     },
     '/_nuxt/**': {
       headers: {
-        'cache-control': 'public, max-age=31536000, immutable',
+        'cache-control': 'public, max-age=31536000, s-maxage=31536000, immutable',
       },
     },
     // Exception to the `immutable` rule above. This is Nuxt's app manifest — a
@@ -467,12 +467,23 @@ export default defineNuxtConfig({
     // Nuxt Image (IPX) transformation output. Safe to cache at the edge (URLs include params).
     '/_ipx/**': {
       headers: {
-        'cache-control': 'public, max-age=86400, stale-while-revalidate=86400',
+        'cache-control': 'public, max-age=86400, s-maxage=86400, stale-while-revalidate=86400',
+      },
+    },
+    // Pre-encoded landing heroes + other public images (paths are not content-hashed).
+    '/images/**': {
+      headers: {
+        'cache-control': 'public, max-age=86400, s-maxage=86400, stale-while-revalidate=86400',
+      },
+    },
+    '/_fonts/**': {
+      headers: {
+        'cache-control': 'public, max-age=31536000, s-maxage=31536000, immutable',
       },
     },
     '/sounds/**': {
       headers: {
-        'cache-control': 'public, max-age=86400, stale-while-revalidate=86400',
+        'cache-control': 'public, max-age=86400, s-maxage=86400, stale-while-revalidate=86400',
       },
     },
   },

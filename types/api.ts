@@ -53,6 +53,11 @@ export type ApiPagination = {
    * Only populated by /presence/online.
    */
   recentlyOnlineCount?: number
+  /** Tier breakdown of currently-online users. Populated by /presence/online. */
+  premiumPlus?: number
+  premium?: number
+  verified?: number
+  unverified?: number
 }
 
 /** Extended pagination shape for /presence/online-page which also returns a recent-users cursor. */
@@ -2650,6 +2655,7 @@ export type FitnessActivity = {
   id: string
   provider: FitnessProvider
   activityType: FitnessActivityType
+  name: string | null
   startedAt: string
   endedAt: string | null
   durationSec: number
@@ -2661,6 +2667,13 @@ export type FitnessActivity = {
   maxHeartrate: number | null
   /** Total elevation gain in meters. Populated for Strava; null for Apple Health. */
   totalElevationM: number | null
+}
+
+/** Full activity for the detail page. `raw` is the provider payload (or a normalized fallback). */
+export type FitnessActivityDetail = FitnessActivity & {
+  externalId: string
+  raw: unknown
+  units: FitnessUnits
 }
 
 export type FitnessDailySummary = {

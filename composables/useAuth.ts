@@ -333,6 +333,7 @@ export function useAuth() {
       '/crew',
       '/verification',
       '/admin',
+      '/daily',
     ]
     if (personOnlyPrefixes.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`))) {
       return '/home'

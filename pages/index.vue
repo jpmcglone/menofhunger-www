@@ -167,22 +167,19 @@
               </div>
             </div>
 
-            <!-- Right: one optimized hero image for the active theme. -->
+            <!-- Right: one pre-encoded WebP for the active theme (no IPX / Vite PNG preload). -->
             <div class="relative min-h-[280px] overflow-hidden rounded-2xl shadow-2xl shadow-black/25 lg:min-h-0">
-              <NuxtImg
+              <img
                 :src="landingHeroSrc"
                 :alt="landingHeroAlt"
                 class="absolute inset-0 h-full w-full object-cover"
-                format="webp"
-                quality="82"
-                sizes="100vw lg:50vw"
                 width="1448"
                 height="1086"
                 loading="eager"
                 decoding="async"
                 fetchpriority="high"
                 draggable="false"
-              />
+              >
             </div>
           </div>
         </section>
@@ -543,21 +540,18 @@
         <section class="mt-16 sm:mt-20">
           <div class="relative overflow-hidden rounded-2xl bg-gray-100 text-center dark:bg-gray-950">
             <!-- Mountain background (low opacity, aspect fill) -->
-            <NuxtImg
+            <img
               :src="mountainHeroSrc"
               alt=""
               aria-hidden="true"
               class="pointer-events-none absolute inset-0 h-full w-full object-cover"
               :class="useLightLandingImages ? 'opacity-50' : 'opacity-40'"
-              format="webp"
-              quality="78"
-              sizes="100vw"
               width="1916"
               height="821"
               loading="lazy"
               decoding="async"
               draggable="false"
-            />
+            >
             <!-- Gradient overlay to keep text readable -->
             <div class="absolute inset-0 bg-gradient-to-b from-gray-100/60 via-gray-100/40 to-gray-100/70 dark:from-gray-950/60 dark:via-gray-950/40 dark:to-gray-950/70" />
 
@@ -725,10 +719,6 @@ import { userColorTier, userTierTextClass } from '~/utils/user-tier'
 import { siteConfig } from '~/config/site'
 import { VOICE } from '~/config/voice'
 import { formatDailyQuoteAttribution } from '~/utils/daily-quote'
-import landingLight from '~/assets/images/landing-light.png'
-import landingDark from '~/assets/images/landing-dark.png'
-import mountainLight from '~/assets/images/mountain-light.png'
-import mountainDark from '~/assets/images/mountain-dark.png'
 import type { BreakdownRow, BreakdownSection } from '~/components/app/LandingStatBreakdown.vue'
 import type { DailyContentToday, DailyQuote, LandingSnapshot, LandingTopPost } from '~/types/api'
 
@@ -746,13 +736,17 @@ const isRoanokeOpen = ref(false)
 const colorMode = useColorMode()
 const landingThemeReady = ref(false)
 const useLightLandingImages = computed(() => landingThemeReady.value && colorMode.value === 'light')
-const landingHeroSrc = computed(() => (useLightLandingImages.value ? landingLight : landingDark))
+const landingHeroSrc = computed(() => (
+  useLightLandingImages.value ? '/images/landing-light.webp' : '/images/landing-dark.webp'
+))
 const landingHeroAlt = computed(() => (
   useLightLandingImages.value
     ? 'Men standing on a mountain path'
     : 'Men standing on a mountain path at night'
 ))
-const mountainHeroSrc = computed(() => (useLightLandingImages.value ? mountainLight : mountainDark))
+const mountainHeroSrc = computed(() => (
+  useLightLandingImages.value ? '/images/mountain-light.webp' : '/images/mountain-dark.webp'
+))
 
 onMounted(() => {
   landingThemeReady.value = true

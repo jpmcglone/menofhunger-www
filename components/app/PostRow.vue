@@ -329,7 +329,7 @@
 
         <div
           v-if="!isDeletedPost && !isOnlyMe"
-          class="mt-2 border-t moh-border moh-post-actions-divider"
+          class="mt-2 border-t moh-border-subtle moh-post-actions-divider"
         />
 
         <!-- Engagement: typing indicator, "+N new" pill, and the action bar -->

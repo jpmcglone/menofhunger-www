@@ -16,7 +16,7 @@ export default defineEventHandler(async (event) => {
   let authorName: string | null = null
   try {
     const res = await $fetch<{ data: FeedArticle[] }>(`${apiBase}/articles`, {
-      query: { authorUsername: username, limit: 50, sort: 'new', includeRestricted: true },
+      query: { authorUsername: username, limit: 50, sort: 'new', includeRestricted: true, includeBody: '1' },
       timeout: 10_000,
     })
     articles = Array.isArray(res?.data) ? res.data : []

@@ -20,7 +20,7 @@ export function useOnlineCount(options: { enabled: Ref<boolean> }) {
     try {
       const res = await apiFetch<GetPresenceOnlineData>('/presence/online', {
         method: 'GET',
-        query: { includeSelf: '1' },
+        query: { includeSelf: '1', summary: '1' },
         timeout: 8000,
       })
       const n =
@@ -36,16 +36,28 @@ export function useOnlineCount(options: { enabled: Ref<boolean> }) {
           ? Math.max(0, Math.floor(res.pagination.recentlyOnlineCount))
           : null
 
-      const users = Array.isArray(res?.data) ? res.data : []
-      let premiumPlus = 0
-      let premium = 0
-      let verified = 0
-      let unverified = 0
-      for (const u of users) {
-        if (u.premiumPlus) premiumPlus += 1
-        else if (u.premium) premium += 1
-        else if (u.verifiedStatus && u.verifiedStatus !== 'none') verified += 1
-        else unverified += 1
+      const pagination = res?.pagination
+      let premiumPlus = typeof pagination?.premiumPlus === 'number' ? pagination.premiumPlus : 0
+      let premium = typeof pagination?.premium === 'number' ? pagination.premium : 0
+      let verified = typeof pagination?.verified === 'number' ? pagination.verified : 0
+      let unverified = typeof pagination?.unverified === 'number' ? pagination.unverified : 0
+      const hasServerTiers =
+        typeof pagination?.premiumPlus === 'number' ||
+        typeof pagination?.premium === 'number' ||
+        typeof pagination?.verified === 'number' ||
+        typeof pagination?.unverified === 'number'
+      if (!hasServerTiers) {
+        premiumPlus = 0
+        premium = 0
+        verified = 0
+        unverified = 0
+        const users = Array.isArray(res?.data) ? res.data : []
+        for (const u of users) {
+          if (u.premiumPlus) premiumPlus += 1
+          else if (u.premium) premium += 1
+          else if (u.verifiedStatus && u.verifiedStatus !== 'none') verified += 1
+          else unverified += 1
+        }
       }
       const rows = []
       if (premiumPlus > 0) rows.push({ key: 'premiumPlus', label: 'Premium+', count: premiumPlus, tone: 'premium' } as const)

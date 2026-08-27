@@ -39,6 +39,7 @@
           <AppRightRailContent v-if="hydrated && secondaryLoadsEnabled">
           <!-- Daily quote: links to /daily/quote; dims when on /daily or /daily/quote -->
           <component
+            v-if="!isPageAccount"
             :is="isOnDailyQuoteRoute ? 'div' : NuxtLink"
             :to="isOnDailyQuoteRoute ? undefined : '/daily/quote'"
             class="block transition-opacity duration-200"
@@ -153,6 +154,7 @@
 
           <!-- Word of the Day: dims when on /daily or /daily/word -->
           <div
+            v-if="!isPageAccount"
             class="transition-opacity duration-200"
             :class="isOnDailyWordRoute ? 'opacity-40 pointer-events-none' : ''"
           >
@@ -245,7 +247,7 @@ const props = defineProps<{
   hideSearch: boolean
 }>()
 
-const { user, canAccessCheckins } = useAuth()
+const { user, canAccessCheckins, isPageAccount } = useAuth()
 const { openShortcutsModal } = useKeyboardShortcuts()
 const currentYear = new Date().getUTCFullYear()
 
@@ -274,8 +276,9 @@ const {
 } = useDailyContentToday({ server: false, immediate: false })
 
 watch(
-  secondaryLoadsEnabled,
-  (enabled) => {
+  [secondaryLoadsEnabled, isPageAccount],
+  ([enabled, pageAccount]) => {
+    if (pageAccount) return
     if (enabled && dailyContent.value == null) void refreshDailyContent()
   },
   { immediate: true },
@@ -286,7 +289,7 @@ const dailyQuoteAttribution = computed(() => (dailyQuote.value ? formatDailyQuot
 
 // Refresh when the next publish boundary (9:00am ET for word, 9:30am ET for quote) is crossed.
 const { scheduleFromNextPublishAt: scheduleRightRailRefresh } = usePublishBoundaryRollover(async () => {
-  if (!secondaryLoadsEnabled.value) {
+  if (isPageAccount.value || !secondaryLoadsEnabled.value) {
     dailyContent.value = null
     return
   }
@@ -297,6 +300,7 @@ const { scheduleFromNextPublishAt: scheduleRightRailRefresh } = usePublishBounda
 const { addDailyContentCallback, removeDailyContentCallback } = usePresence()
 const dailyContentCb = {
   onPublished: (_item: 'word' | 'quote') => {
+    if (isPageAccount.value) return
     if (secondaryLoadsEnabled.value) void refreshDailyContent()
   },
 }

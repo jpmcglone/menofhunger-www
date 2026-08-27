@@ -103,7 +103,7 @@
               </div>
               <Checkbox v-model="notifPrefs.pushCrewStreak" binary :disabled="notifPrefsSaving" />
             </div>
-            <div class="flex items-start justify-between gap-4">
+            <div v-if="!isPageAccount" class="flex items-start justify-between gap-4">
               <div>
                 <div class="font-medium">Word &amp; quote of the day</div>
                 <div class="text-xs moh-text-muted">Daily 9am word and 9:30am quote push notifications.</div>

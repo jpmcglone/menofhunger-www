@@ -188,6 +188,7 @@ const {
   decrementUnreadKind,
   itemHref,
 } = useNotifications()
+const notificationsTabReturnGate = useTabReturnRefreshGate('notifications')
 
 const kindChips: { label: string; kind: NotificationKind | 'other' | null }[] = [
   { label: 'All', kind: null },
@@ -585,8 +586,10 @@ function syncNotificationsOnEntry() {
     const kind = kindFromQuery()
     if (kind !== activeKind.value || !hasFetched.value) {
       await setKind(kind)
-    } else {
+      notificationsTabReturnGate.markSuccess()
+    } else if (notificationsTabReturnGate.shouldRefresh()) {
       await fetchList({ forceRefresh: true })
+      notificationsTabReturnGate.markSuccess()
     }
     pinEntryHighlights(badgeCountAtEntry)
     markDeliveredInBackground(true)

@@ -173,8 +173,11 @@
       <div ref="homeFeedContentEl" class="h-0 overflow-hidden" aria-hidden="true" />
 
       <!-- Daily quote: demoted from the top stack so the check-in hero owns the daily slot.
-           Kept mobile-only since the right rail still surfaces it on desktop. -->
-      <AppFeedDailyQuoteCard />
+           Kept mobile-only since the right rail still surfaces it on desktop.
+           ClientOnly: page accounts must not flash the quote before auth resolves. -->
+      <ClientOnly>
+        <AppFeedDailyQuoteCard v-if="!isPageAccount" />
+      </ClientOnly>
 
       <div v-if="feedCtaKind === 'verify'" class="mx-3 mt-3 sm:mx-4 sm:mt-4">
         <AppAccessGateCard kind="verify" />
@@ -538,6 +541,7 @@ const {
   resetFilters,
   onFeedScopeChange,
 } = useHomeFeed({ mediaOnly: mediaOnlyFeed, topLevelOnly: topLevelOnlyFeed })
+const homeTabReturnGate = useTabReturnRefreshGate('home')
 
 const homeFeedContentEl = ref<HTMLElement | null>(null)
 const { scrollToTop: scrollFeedToTop } = useFeedScrollToTop(homeFeedContentEl)
@@ -823,14 +827,15 @@ const feedNewPostCb = {
 }
 
 let unregisterReplyPending: null | (() => void) = null
-onActivated(() => {
-  if (!import.meta.client) return
+function catchUpHomeFeed() {
+  if (posts.value.length > 0 && !homeTabReturnGate.shouldRefresh()) return
+  const mark = () => homeTabReturnGate.markSuccess()
   if (posts.value.length > 0) {
     // For You is a ranked shuffle — "newer than head" prepend is the wrong model.
     // Hard-replace so returning to the tab actually re-ranks. Following / All stay
     // on the chrono soft-prepend so scroll position is preserved.
     if (forYou.value) {
-      void refresh({ forYouRefresh: true })
+      void refresh({ forYouRefresh: true }).then(mark)
     } else {
       // Posts are already in memory (keepalive). Soft-refresh only fetches posts newer than the
       // current head and prepends them, preserving the scroll position via anchor adjustment.
@@ -845,12 +850,16 @@ onActivated(() => {
             scroller.scrollTop += addedCount * FEED_ESTIMATED_ROW_PX
           }
         },
-      }), 300)
+      }).then(mark), 300)
     }
   } else {
     // No posts yet (e.g. first activation, auth change) — do a full refresh.
-    void refresh()
+    void refresh().then(mark)
   }
+}
+onActivated(() => {
+  if (!import.meta.client) return
+  catchUpHomeFeed()
   // Real-time: prepend new posts from followed users to the home feed.
   addPostsCallback(feedNewPostCb)
   // Optimistic replies: when the reply modal forwards a pending submit, slot

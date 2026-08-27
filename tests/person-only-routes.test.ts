@@ -9,6 +9,9 @@ describe('person-only routes', () => {
     expect(personOnlyFeatureForPath('/coins/tx-1')).toBe('Coins')
     expect(personOnlyFeatureForPath('/settings/billing')).toBe('Billing')
     expect(personOnlyFeatureForPath('/admin/users')).toBe('Admin')
+    expect(personOnlyFeatureForPath('/daily')).toBe('Daily')
+    expect(personOnlyFeatureForPath('/daily/word')).toBe('Daily')
+    expect(personOnlyFeatureForPath('/daily/quote')).toBe('Daily')
   })
 
   it('leaves page-owned surfaces alone', () => {

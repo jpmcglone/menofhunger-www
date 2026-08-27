@@ -19,24 +19,35 @@ Render’s free tier includes 500 pipeline minutes/month. To reduce usage:
 
 ## CDN
 
-To reduce bandwidth and request load on the www service, put a CDN (e.g. Cloudflare) in front of it:
+Render already sits behind Cloudflare’s proxy, but that layer does **not** cache (`cf-cache-status: DYNAMIC` even on `immutable` `/_nuxt` assets). To actually cut origin bandwidth, put **your own Cloudflare zone** in front later (nameservers + orange-cloud). This pass only sets CDN-ready `Cache-Control` / `s-maxage` headers.
 
-1. **Add Cloudflare** (or similar) as a reverse proxy in front of the www Render service.
-2. **Point your domain** to the CDN; set the CDN origin to your Render www URL (e.g. `https://menofhunger-www.onrender.com`).
-3. The CDN will respect `Cache-Control` headers; no code changes are needed.
+When you do enable a real zone:
+
+1. **Add Cloudflare** as a reverse proxy in front of the www Render service.
+2. **Point the domain** at Cloudflare; set the origin to the Render www URL (e.g. `https://menofhunger-www.onrender.com`).
+3. **Cache Rules** (do not “Cache Everything” on HTML):
+   - Cache `/_nuxt/*` and `/_fonts/*` (already `immutable` + 1y `s-maxage`).
+   - Cache `/images/*`, `/sounds/*`, `/_ipx/*` (24h `s-maxage`).
+   - **Bypass HTML** — SSR documents are `no-store` on purpose (iOS Safari stale JS chunks after a deploy).
+   - Do **not** long-cache `/sw-push.js`.
+4. Optional API zone: cache anonymous `GET /v1/meta/landing`, `/v1/public/*`, `/v1/scripture`, and cookie-less `GET /v1/explore`. Skip cookie-authed JSON (`private, no-store`).
 
 ### Cache headers
 
-The app already sets appropriate headers via [nuxt.config.ts](nuxt.config.ts) routeRules:
+The app sets these via [nuxt.config.ts](nuxt.config.ts) routeRules (`s-maxage` is for a future CDN; browsers use `max-age`):
 
-| Path       | Cache-Control                                           |
-| ---------- | ------------------------------------------------------- |
-| `/_nuxt/**`| `public, max-age=31536000, immutable`                   |
-| `/_ipx/**` | `public, max-age=86400, stale-while-revalidate=86400` |
-| `/sounds/**` | `public, max-age=86400, stale-while-revalidate=86400` |
+| Path | Cache-Control |
+| --- | --- |
+| HTML (`/`, `/u/**`, `/p/**`, …) | `no-store` |
+| `/_nuxt/**` | `public, max-age=31536000, s-maxage=31536000, immutable` |
+| `/_fonts/**` | `public, max-age=31536000, s-maxage=31536000, immutable` |
+| `/images/**` | `public, max-age=86400, s-maxage=86400, stale-while-revalidate=86400` |
+| `/sounds/**` | `public, max-age=86400, s-maxage=86400, stale-while-revalidate=86400` |
+| `/_ipx/**` | `public, max-age=86400, s-maxage=86400, stale-while-revalidate=86400` |
 
-`/_nuxt/*` assets (JS, CSS) are long-lived and immutable. Static assets under `/images` and `/sounds` use 24h cache with stale-while-revalidate.
-Nuxt Image transformations are served under `/_ipx/**` (IPX); those URLs are safe to cache for 24h.
+Landing heroes are pre-encoded WebP under `/images/` (plain `<img>`). They do **not** go through IPX. `/_ipx/**` remains for any leftover Nuxt Image transforms.
+
+`/_nuxt/*` assets (JS, CSS) are long-lived and immutable. `/images` and `/sounds` use 24h cache because those paths are not content-hashed.
 
 ### Service Worker (push notifications)
 

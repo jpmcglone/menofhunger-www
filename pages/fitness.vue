@@ -173,8 +173,21 @@
           <div
             v-for="activity in displayedActivities"
             :key="activity.id"
-            class="moh-gutter-x py-3 flex items-start gap-3"
+            class="relative cursor-pointer hover:bg-gray-50 dark:hover:bg-zinc-900"
+            role="link"
+            tabindex="0"
+            @click="onRowClick(activityHref(activity.id), $event)"
+            @auxclick="onRowAuxClick(activityHref(activity.id), $event)"
+            @keydown.enter.prevent="navigateTo(activityHref(activity.id))"
+            @keydown.space.prevent="navigateTo(activityHref(activity.id))"
           >
+            <NuxtLink
+              :to="activityHref(activity.id)"
+              class="absolute inset-0 z-[1]"
+              tabindex="-1"
+              aria-hidden="true"
+            />
+            <div class="relative z-[2] moh-gutter-x py-3 flex items-start gap-3">
             <!-- icon -->
             <div class="mt-0.5 flex-shrink-0 w-8 h-8 rounded-full bg-gray-100 dark:bg-white/[0.07] flex items-center justify-center">
               <Icon :name="activityIcon(activity.activityType)" class="text-gray-600 dark:text-gray-200 text-base" />
@@ -185,7 +198,7 @@
               <!-- Row 1: type + date + time + share -->
               <div class="flex items-start justify-between gap-2">
                 <div>
-                  <span class="text-sm font-semibold capitalize">{{ activityLabel(activity.activityType) }}</span>
+                  <span class="text-sm font-semibold capitalize">{{ activity.name || activityLabel(activity.activityType) }}</span>
                   <!-- provider badge -->
                   <span
                     class="ml-2 text-[10px] px-1.5 py-0.5 rounded font-medium"
@@ -196,12 +209,12 @@
                     {{ activity.provider === 'strava' ? 'Strava' : 'Health' }}
                   </span>
                 </div>
-                <div class="flex items-center gap-3 flex-shrink-0">
+                <div class="flex items-center gap-3 flex-shrink-0 relative z-10">
                   <span class="text-xs text-gray-400">{{ formatActivityDate(activity.startedAt) }}</span>
                   <button
                     class="inline-flex items-center justify-center w-7 h-7 rounded-full text-white/60 hover:text-white transition-colors"
                     aria-label="Share activity"
-                    @click="openShare('activity', activity.id)"
+                    @click.stop.prevent="openShare('activity', activity.id)"
                   >
                     <svg viewBox="0 0 24 24" class="h-4 w-4" aria-hidden="true">
                       <path d="M12 3v10" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" />
@@ -267,6 +280,7 @@
                   </div>
                 </template>
               </div>
+            </div>
             </div>
           </div>
           <!-- Bottom "See all" / "Show less" button -->
@@ -643,6 +657,37 @@ const displayedActivities = computed(() =>
 const hasMoreActivities = computed(
   () => (fitnessPage.value?.recentActivities.length ?? 0) > ACTIVITY_PREVIEW_COUNT,
 )
+
+function activityHref(id: string) {
+  return `/fitness/activities/${id}`
+}
+
+function isInteractiveTarget(target: EventTarget | null): boolean {
+  const el = target as HTMLElement | null
+  if (!el) return false
+  return Boolean(
+    el.closest(
+      ['a', 'button', 'iframe', 'input', 'textarea', 'select',
+        '[role="menu"]', '[role="menuitem"]', '[data-pc-section]'].join(','),
+    ),
+  )
+}
+
+function onRowClick(href: string, e: MouseEvent) {
+  if (isInteractiveTarget(e.target)) return
+  if (e.metaKey || e.ctrlKey) {
+    window.open(href, '_blank')
+    return
+  }
+  void navigateTo(href)
+}
+
+function onRowAuxClick(href: string, e: MouseEvent) {
+  if (e.button !== 1) return
+  if (isInteractiveTarget(e.target)) return
+  e.preventDefault()
+  window.open(href, '_blank')
+}
 
 
 // Weight log

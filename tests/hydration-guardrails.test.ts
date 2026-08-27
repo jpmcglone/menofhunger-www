@@ -124,7 +124,11 @@ describe('hydration guardrails (structural)', () => {
 
   it('keeps optimized landing theme images stable through first hydration', () => {
     const landing = readFromRepo('pages/index.vue')
-    expect(landing).toMatch(/<NuxtImg[\s\S]*:src="landingHeroSrc"[\s\S]*format="webp"/)
+    expect(landing).toMatch(/<img[\s\S]*:src="landingHeroSrc"/)
+    expect(landing).toMatch(/\/images\/landing-light\.webp/)
+    expect(landing).toMatch(/\/images\/landing-dark\.webp/)
+    expect(landing).not.toMatch(/from '~\/assets\/images\/landing-/)
+    expect(landing).not.toMatch(/<NuxtImg/)
     expect(landing).toMatch(/const landingThemeReady = ref\(false\)/)
     expect(landing).toMatch(/landingThemeReady\.value && colorMode\.value === 'light'/)
     expect(landing).toMatch(/onMounted\(\(\) => {\s*landingThemeReady\.value = true/)
@@ -195,6 +199,11 @@ describe('hydration guardrails (structural)', () => {
     expect(home).toMatch(/<ClientOnly>[\s\S]*?<AppFeedDailyCheckinHero[\s\S]*?v-if="isAuthed && !isPageAccount && !canAccessCheckins"[\s\S]*?verify-cta[\s\S]*?<\/ClientOnly>/)
     const explore = readFromRepo('pages/explore.vue')
     expect(explore).toMatch(/<ClientOnly>[\s\S]*?v-if="isAuthed && !isPageAccount && !canAccessCheckins"[\s\S]*?verify-cta[\s\S]*?<\/ClientOnly>/)
+  })
+
+  it('hides the home daily quote for operated pages without hydrating it', () => {
+    const home = readFromRepo('pages/home.vue')
+    expect(home).toMatch(/<ClientOnly>[\s\S]*?<AppFeedDailyQuoteCard v-if="!isPageAccount"[\s\S]*?<\/ClientOnly>/)
   })
 
   // ---- Chat performance guardrails ------------------------------------------
