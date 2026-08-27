@@ -23,10 +23,12 @@ const ready = {
 }
 
 describe('resolveNudgeAction', () => {
-  it('hides on self, signed out, or missing target', () => {
+  it('hides on self, signed out, missing target, or page accounts', () => {
     expect(resolveNudgeAction({ ...ready, isSelf: true }).kind).toBe('hidden')
     expect(resolveNudgeAction({ ...ready, isAuthed: false }).kind).toBe('hidden')
     expect(resolveNudgeAction({ ...ready, hasTarget: false }).kind).toBe('hidden')
+    expect(resolveNudgeAction({ ...ready, viewerIsPage: true }).kind).toBe('hidden')
+    expect(resolveNudgeAction({ ...ready, targetIsPage: true }).kind).toBe('hidden')
   })
 
   it('shows a disabled nudge instead of hiding when you cannot send', () => {
@@ -88,8 +90,9 @@ describe('resolveNudgeAction', () => {
     const header = readFromRepo('components/app/profile/Header.vue')
     const preview = readFromRepo('components/app/UserPreviewCard.vue')
     expect(header).toMatch(/resolveNudgeAction/)
-    expect(header).toMatch(/v-tooltip\.bottom="nudgeDisabledTooltip"/)
-    expect(preview).toMatch(/resolveNudgeAction/)
-    expect(preview).toMatch(/v-tooltip\.bottom="nudgeDisabledTooltip"/)
+    expect(header).toMatch(/viewerIsPage: isPageAccount\.value/)
+    expect(header).toMatch(/targetIsPage: profile\.value\?\.accountKind === 'page'/)
+    expect(preview).toMatch(/viewerIsPage: isPageAccount\.value/)
+    expect(preview).toMatch(/targetIsPage: user\.value\.accountKind === 'page'/)
   })
 })

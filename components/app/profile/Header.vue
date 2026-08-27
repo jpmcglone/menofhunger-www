@@ -617,7 +617,7 @@ const hideAvatarDuringBanner = computed(() => Boolean(props.hideAvatarDuringBann
 const followerCountN = computed(() => Math.max(0, Math.floor(props.followerCount ?? 0)))
 const followerLabel = computed(() => (followerCountN.value === 1 ? 'Follower' : 'Followers'))
 
-const { user: authUser, isVerifiedMember } = useAuth()
+const { user: authUser, isVerifiedMember, isPageAccount } = useAuth()
 const isAuthed = computed(() => Boolean(authUser.value?.id))
 // Setting your own status is a verified-only engagement feature. Unverified
 // users still see everyone's statuses (including their own, read-only).
@@ -812,6 +812,8 @@ const nudgeAction = computed(() => resolveNudgeAction({
   viewerIsVerified: viewerIsVerified.value,
   inboundPending: Boolean(nudgeState.value?.inboundPending),
   outboundPending: Boolean(nudgeState.value?.outboundPending),
+  viewerIsPage: isPageAccount.value,
+  targetIsPage: profile.value?.accountKind === 'page',
 }))
 const showNudge = computed(() => nudgeAction.value.kind !== 'hidden')
 const nudgeDisabledTooltip = computed(() => (

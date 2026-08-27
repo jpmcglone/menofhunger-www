@@ -75,7 +75,7 @@
               </div>
               <Checkbox v-model="notifPrefs.pushRepost" binary :disabled="notifPrefsSaving" />
             </div>
-            <div class="flex items-start justify-between gap-4">
+            <div v-if="!isPageAccount" class="flex items-start justify-between gap-4">
               <div>
                 <div class="font-medium">Nudges</div>
                 <div class="text-xs moh-text-muted">When someone nudges you.</div>

@@ -246,9 +246,10 @@
             <AppPostRowViewerBreakdown
               v-if="displayViewCount > 0 && article?.id"
               :entity-id="article.id"
-              :breakdown-path="`/articles/${encodeURIComponent(article.id)}/views/breakdown`"
+              :breakdown-path="`/articles/${encodeURIComponent(article.id)}/views/breakdown?fresh=1`"
               :viewer-count="displayViewCount"
               :total-view-count="displayTotalViewCount"
+              :has-viewed="hasViewedArticle"
               people-verb="read this"
               @count-synced="onArticleViewSynced"
             />
@@ -698,7 +699,7 @@ const presence = usePresence()
 const liveCommentCount = ref<number | null>(null)
 const liveViewCount = ref<number | null>(null)
 const liveTotalViewCount = ref<number | null>(null)
-const articleViewAcks = useState<Record<string, { viewCount: number, totalViewCount: number }>>('article-view-acks', () => ({}))
+const articleViewAcks = useState<Record<string, { viewCount: number, totalViewCount: number, uniqueCounted?: boolean }>>('article-view-acks', () => ({}))
 
 const displayCommentCount = computed(() => liveCommentCount.value ?? article.value?.commentCount ?? 0)
 const displayViewCount = computed(() => {
@@ -714,6 +715,12 @@ const displayTotalViewCount = computed(() => {
     unique,
     liveTotalViewCount.value ?? ack?.totalViewCount ?? article.value?.totalViewCount ?? unique,
   )
+})
+const hasViewedArticle = computed(() => {
+  if (article.value?.viewerHasViewed === true) return true
+  const id = article.value?.id
+  if (!id) return false
+  return articleViewAcks.value[id]?.uniqueCounted === true
 })
 
 const articlesCallback: import('~/composables/usePresence').ArticlesCallback = {

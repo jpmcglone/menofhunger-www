@@ -38,14 +38,26 @@
       <AppUserRow v-for="u in users" :key="u.id" :user="u" :show-follow-button="true" :platforms="u.platforms" />
     </TransitionGroup>
 
-    <!-- Recently / older online (verified viewers only) -->
+    <!-- Recently / older online (authenticated viewers only) -->
     <template v-if="viewerCanSeeLastOnline">
-      <div class="px-4 pt-8 pb-2">
+      <div
+        class="px-4"
+        :class="recentlyOnlineUsers.length ? 'pt-8 pb-2' : 'pt-5 pb-3'"
+      >
         <h2 class="text-base font-bold tracking-tight text-gray-900 dark:text-gray-50">
           Recently
         </h2>
-        <p class="mt-1 text-sm text-gray-600 dark:text-gray-300">
+        <p
+          v-if="recentlyOnlineUsers.length"
+          class="mt-1 text-sm text-gray-600 dark:text-gray-300"
+        >
           Men who were online within the last hour.
+        </p>
+        <p
+          v-else-if="!recentLoading && !recentError"
+          class="mt-0.5 text-sm text-gray-500 dark:text-gray-400"
+        >
+          {{ recentUsers.length === 0 ? 'No one recently around.' : 'No one in the last hour.' }}
         </p>
       </div>
 
@@ -57,15 +69,11 @@
         </AppInlineAlert>
       </div>
 
-      <div v-else-if="recentLoading && recentUsers.length === 0" class="px-4 py-8 flex justify-center">
+      <div v-else-if="recentLoading && recentUsers.length === 0" class="px-4 py-3 flex justify-center">
         <AppLogoLoader compact />
       </div>
 
-      <div v-else-if="recentUsers.length === 0" class="px-4 py-6 text-sm text-gray-500 dark:text-gray-400">
-        No one recently around.
-      </div>
-
-      <template v-else>
+      <template v-else-if="recentUsers.length > 0">
         <TransitionGroup
           v-if="recentlyOnlineUsers.length"
           name="online-users-list"
@@ -81,11 +89,11 @@
           />
         </TransitionGroup>
 
-        <div v-else class="px-4 py-6 text-sm text-gray-500 dark:text-gray-400">
-          No one in the last hour.
-        </div>
-
-        <div v-if="olderOnlineUsers.length" class="px-4 pt-8 pb-2">
+        <div
+          v-if="olderOnlineUsers.length"
+          class="px-4 pb-2"
+          :class="recentlyOnlineUsers.length ? 'pt-8' : 'pt-4'"
+        >
           <h2 class="text-base font-bold tracking-tight text-gray-900 dark:text-gray-50">
             Older
           </h2>

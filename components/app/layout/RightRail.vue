@@ -78,7 +78,7 @@
           <!-- Order matters here: Who-to-follow renders before Trending so the
                most actionable rail card (real people you can follow right now)
                is the first thing the eye lands on after the daily quote. -->
-          <div class="space-y-1">
+          <div class="space-y-1" :class="isPageAccount ? 'pt-8' : ''">
             <div class="flex justify-end px-2">
               <NuxtLink
                 to="/online"

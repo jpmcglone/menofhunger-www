@@ -16,6 +16,8 @@ export type NudgeActionInput = {
   viewerIsVerified: boolean
   inboundPending: boolean
   outboundPending: boolean
+  viewerIsPage?: boolean
+  targetIsPage?: boolean
 }
 
 export const NUDGE_REASON_VERIFY = 'Verify to nudge'
@@ -23,7 +25,7 @@ export const NUDGE_REASON_NOT_MUTUAL = 'Follow each other first'
 export const NUDGE_REASON_ALREADY = 'Already nudged'
 
 export function resolveNudgeAction(input: NudgeActionInput): NudgeAction {
-  if (!input.isAuthed || input.isSelf || !input.hasTarget) {
+  if (!input.isAuthed || input.isSelf || !input.hasTarget || input.viewerIsPage || input.targetIsPage) {
     return { kind: 'hidden', disabled: true, reason: null, label: 'Nudge' }
   }
 

@@ -53,6 +53,22 @@ describe('unique people + total views', () => {
     expect(chip).toContain('@click.stop.prevent="onViewerCountClick"')
   })
 
+  it('shows unique people and impression breakdowns on articles', () => {
+    const listCard = readFromRepo('components/app/article/ListCard.vue')
+    const articlePage = readFromRepo('pages/a/[id].vue')
+    const tracker = readFromRepo('composables/useArticleViewTracker.ts')
+
+    expect(listCard).toContain('AppPostRowViewerBreakdown')
+    expect(listCard).toContain('/views/breakdown?fresh=1')
+    expect(listCard).toContain('people-verb="read this"')
+    expect(listCard).toContain('isInteractiveTarget')
+    expect(articlePage).toContain('AppPostRowViewerBreakdown')
+    expect(articlePage).toContain('/views/breakdown?fresh=1')
+    expect(articlePage).toContain('people-verb="read this"')
+    expect(articlePage).toContain(':has-viewed="hasViewedArticle"')
+    expect(tracker).toContain('uniqueCounted')
+  })
+
   it('uses landing headline totals with unique available on hover', () => {
     const landing = readFromRepo('pages/index.vue')
     expect(landing).toContain('total views')

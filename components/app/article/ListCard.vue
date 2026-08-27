@@ -1,14 +1,27 @@
 <template>
   <div
-    :class="['group relative flex items-stretch border-t border-gray-200 dark:border-zinc-800 transition-colors', hoverClass]"
+    :class="['group relative flex items-stretch border-t border-gray-200 dark:border-zinc-800 transition-colors cursor-pointer', hoverClass]"
+    role="link"
+    tabindex="0"
+    @click="onRowClick(destination, $event)"
+    @auxclick="onRowAuxClick(destination, $event)"
+    @keydown.enter.prevent="navigateTo(destination)"
+    @keydown.space.prevent="navigateTo(destination)"
   >
     <!-- Visibility accent bar: flush right, full height -->
     <div :class="['absolute right-0 top-0 bottom-0 w-[3px]', visibilityBarClass]" aria-hidden="true" />
 
-    <!-- Main clickable area -->
+    <!-- Real <a> for right-click / middle-click. Content sits above it. -->
     <NuxtLink
       :to="destination"
-      class="flex flex-1 items-start gap-4 pl-4 py-5 min-w-0"
+      class="absolute inset-0 z-[1]"
+      tabindex="-1"
+      aria-hidden="true"
+    />
+
+    <!-- Main content -->
+    <div
+      class="relative z-[2] flex flex-1 items-start gap-4 pl-4 py-5 min-w-0"
       :class="article.isDraft ? 'pr-2' : 'pr-5'"
     >
       <!-- Content -->
@@ -37,7 +50,7 @@
             v-for="tag in article.tags.slice(0, 4)"
             :key="tag.tag"
             :to="`/topics/${encodeURIComponent(tag.tag)}`"
-            class="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-2 py-0.5 text-[10px] font-medium text-gray-500 hover:bg-gray-100 hover:text-gray-700 dark:border-zinc-700 dark:bg-zinc-800/60 dark:text-zinc-400 dark:hover:bg-zinc-700 dark:hover:text-zinc-200 transition-colors"
+            class="relative z-10 inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-2 py-0.5 text-[10px] font-medium text-gray-500 hover:bg-gray-100 hover:text-gray-700 dark:border-zinc-700 dark:bg-zinc-800/60 dark:text-zinc-400 dark:hover:bg-zinc-700 dark:hover:text-zinc-200 transition-colors"
             @click.stop
           >{{ tag.label }}</NuxtLink>
         </div>
@@ -53,7 +66,7 @@
             <NuxtLink
               v-if="article.author?.username"
               :to="`/u/${article.author.username}`"
-              class="font-medium hover:underline underline-offset-2 normal-case tracking-normal"
+              class="relative z-10 font-medium hover:underline underline-offset-2 normal-case tracking-normal"
               @click.stop
             >{{ article.author.name || article.author.username }}</NuxtLink>
             <span v-else class="font-medium">{{ article.author?.name || article.author?.username }}</span>
@@ -76,7 +89,7 @@
             <NuxtLink
               v-if="article.author?.username"
               :to="`/u/${article.author.username}`"
-              class="font-medium hover:underline underline-offset-2 normal-case tracking-normal"
+              class="relative z-10 font-medium hover:underline underline-offset-2 normal-case tracking-normal"
               @click.stop
             >{{ article.author.name || article.author.username }}</NuxtLink>
             <span v-else class="font-medium">{{ article.author?.name || article.author?.username }}</span>
@@ -84,7 +97,7 @@
               <span>·</span>
               <span>{{ readingTime }}</span>
             </template>
-            <template v-if="article.boostCount || article.commentCount || article.viewCount">
+            <template v-if="article.boostCount || article.commentCount || displayViewCount">
               <span>·</span>
               <span v-if="article.boostCount" class="flex items-center gap-0.5">
                 <Icon name="tabler:arrow-up" class="text-[10px]" aria-hidden="true" />
@@ -94,12 +107,19 @@
                 <Icon name="tabler:message-circle" class="text-[10px]" aria-hidden="true" />
                 {{ article.commentCount }}
               </span>
-              <span v-if="article.viewCount" class="flex items-center gap-0.5">
-                <Icon name="tabler:user" class="text-[10px]" aria-hidden="true" />
-                {{ article.viewCount }}
-                <span class="opacity-70">·</span>
-                <Icon name="tabler:eye" class="text-[10px]" aria-hidden="true" />
-                {{ Math.max(article.viewCount, article.totalViewCount ?? article.viewCount) }}
+              <span
+                v-if="displayViewCount > 0"
+                class="relative z-10 inline-flex normal-case tracking-normal"
+              >
+                <AppPostRowViewerBreakdown
+                  :entity-id="article.id"
+                  :breakdown-path="`/articles/${encodeURIComponent(article.id)}/views/breakdown?fresh=1`"
+                  :viewer-count="displayViewCount"
+                  :total-view-count="displayTotalViewCount"
+                  :has-viewed="hasViewed"
+                  people-verb="read this"
+                  @count-synced="onViewCountSynced"
+                />
               </span>
             </template>
           </template>
@@ -125,10 +145,10 @@
           <Icon name="tabler:lock" class="text-white text-xl drop-shadow" aria-hidden="true" />
         </div>
       </div>
-    </NuxtLink>
+    </div>
 
     <!-- Draft "more" button -->
-    <div v-if="article.isDraft" ref="moreWrapEl" class="flex items-center px-2">
+    <div v-if="article.isDraft" ref="moreWrapEl" class="relative z-10 flex items-center px-2" @click.stop.prevent>
       <div class="relative">
         <button
           type="button"
@@ -203,6 +223,63 @@ const readingTime = computed(() => {
   if (!mins) return null
   return `${mins} min read`
 })
+
+const articleViewAcks = useState<Record<string, { viewCount: number, totalViewCount: number, uniqueCounted?: boolean }>>('article-view-acks', () => ({}))
+
+const displayViewCount = computed(() => {
+  const ack = articleViewAcks.value[props.article.id]
+  return Math.max(0, Math.floor(Number(ack?.viewCount ?? props.article.viewCount ?? 0)))
+})
+
+const displayTotalViewCount = computed(() => {
+  const ack = articleViewAcks.value[props.article.id]
+  const unique = displayViewCount.value
+  return Math.max(unique, Math.floor(Number(ack?.totalViewCount ?? props.article.totalViewCount ?? unique)))
+})
+
+const hasViewed = computed(() =>
+  props.article.viewerHasViewed === true
+  || articleViewAcks.value[props.article.id]?.uniqueCounted === true,
+)
+
+function onViewCountSynced(payload: { viewerCount: number, totalViewCount: number }) {
+  const prev = articleViewAcks.value[props.article.id]
+  articleViewAcks.value = {
+    ...articleViewAcks.value,
+    [props.article.id]: {
+      viewCount: Math.max(prev?.viewCount ?? 0, payload.viewerCount),
+      totalViewCount: Math.max(prev?.totalViewCount ?? 0, payload.totalViewCount),
+      uniqueCounted: prev?.uniqueCounted,
+    },
+  }
+}
+
+function isInteractiveTarget(target: EventTarget | null): boolean {
+  const el = target as HTMLElement | null
+  if (!el) return false
+  return Boolean(
+    el.closest(
+      ['a', 'button', 'iframe', 'input', 'textarea', 'select',
+        '[role="menu"]', '[role="menuitem"]', '[data-pc-section]'].join(','),
+    ),
+  )
+}
+
+function onRowClick(href: string, e: MouseEvent) {
+  if (isInteractiveTarget(e.target)) return
+  if (e.metaKey || e.ctrlKey) {
+    window.open(href, '_blank')
+    return
+  }
+  void navigateTo(href)
+}
+
+function onRowAuxClick(href: string, e: MouseEvent) {
+  if (e.button !== 1) return
+  if (isInteractiveTarget(e.target)) return
+  e.preventDefault()
+  window.open(href, '_blank')
+}
 
 // ─── More menu ───────────────────────────────────────────────────────────────
 

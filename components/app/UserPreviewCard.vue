@@ -339,7 +339,7 @@ const { user } = useUserOverlay(computed(() => props.user))
 
 const avatarRoundClass = computed(() => getAvatarRoundClass(Boolean(user.value?.isOrganization)))
 
-const { user: authUser } = useAuth()
+const { user: authUser, isPageAccount } = useAuth()
 const isAuthed = computed(() => Boolean(authUser.value?.id))
 const isSelf = computed(() => Boolean(authUser.value?.id && user.value.id && authUser.value.id === user.value.id))
 const viewerIsPremium = computed(() => Boolean(authUser.value?.premium || authUser.value?.premiumPlus))
@@ -436,6 +436,8 @@ const nudgeAction = computed(() => resolveNudgeAction({
   viewerIsVerified: viewerIsVerified.value,
   inboundPending: Boolean(nudgeState.value?.inboundPending),
   outboundPending: Boolean(nudgeState.value?.outboundPending),
+  viewerIsPage: isPageAccount.value,
+  targetIsPage: user.value.accountKind === 'page',
 }))
 const showNudge = computed(() => nudgeAction.value.kind !== 'hidden')
 const nudgeDisabledTooltip = computed(() => (

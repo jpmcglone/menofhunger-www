@@ -111,7 +111,7 @@ describe('home feed refresh guardrails', () => {
 
   it('waits for the initial feed before fetching the groups onboarding count', () => {
     const src = readFromRepo('pages/home.vue')
-    expect(src).toContain('[isAuthed, initialFeedResolved, groupsNudgeDismissed]')
+    expect(src).toContain('[isAuthed, isPageAccount, initialFeedResolved, groupsNudgeDismissed]')
     expect(src).toContain('if (feedResolved && !dismissed && myGroupsCount.value === null)')
     expect(src).not.toMatch(/watch\(isAuthed,[\s\S]*refreshMyGroupsCount/)
   })

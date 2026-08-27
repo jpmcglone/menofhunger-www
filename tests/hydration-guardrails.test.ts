@@ -65,6 +65,12 @@ describe('hydration guardrails (structural)', () => {
     expect(rail).toMatch(/immediate:\s*false/)
   })
 
+  it('keeps padding above who-to-follow when the rail quote is hidden', () => {
+    const rail = readFromRepo('components/app/layout/RightRail.vue')
+    expect(rail).toMatch(/v-if="!isPageAccount"/)
+    expect(rail).toMatch(/class="space-y-1" :class="isPageAccount \? 'pt-8' : ''"/)
+  })
+
   it('shares the my-groups request across home surfaces', () => {
     const cache = readFromRepo('composables/useMyGroups.ts')
     expect(cache).toMatch(/inFlightByApp/)
@@ -204,6 +210,19 @@ describe('hydration guardrails (structural)', () => {
   it('hides the home daily quote for operated pages without hydrating it', () => {
     const home = readFromRepo('pages/home.vue')
     expect(home).toMatch(/<ClientOnly>[\s\S]*?<AppFeedDailyQuoteCard v-if="!isPageAccount"[\s\S]*?<\/ClientOnly>/)
+  })
+
+  it('hides home get-started and join-group cards for operated pages', () => {
+    const home = readFromRepo('pages/home.vue')
+    expect(home).toMatch(/<AppFeedHomeWelcomeCard[\s\S]*?v-if="isAuthed && !isPageAccount"/)
+    expect(home).toContain('if (!isAuthed.value || isPageAccount.value) return false')
+    expect(home).toMatch(/class="mx-3 my-3 sm:mx-4 sm:my-4 rounded-2xl border moh-border moh-surface/)
+  })
+
+  it('hides Check-ins notification chips for operated pages', () => {
+    const notifications = readFromRepo('pages/notifications.vue')
+    expect(notifications).toMatch(/isPageAccount\.value \? chips\.filter\(\(chip\) => chip\.kind !== 'checkin_post'\)/)
+    expect(notifications).toMatch(/isPageAccount\.value && q === 'checkin_post'/)
   })
 
   // ---- Chat performance guardrails ------------------------------------------

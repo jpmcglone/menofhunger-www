@@ -118,7 +118,7 @@
     <!-- Welcome card: shown to all new users who haven't dismissed it (localStorage) -->
     <ClientOnly>
       <AppFeedHomeWelcomeCard
-        v-if="isAuthed"
+        v-if="isAuthed && !isPageAccount"
         :show-checkin-cta="showCheckinPromptBar"
         :checkin-prompt="displayCheckinPromptText"
         @check-in="openCheckinComposer"
@@ -128,7 +128,7 @@
     <ClientOnly>
       <div
         v-if="showGroupsOnboardingNudge"
-        class="mx-3 mt-3 sm:mx-4 sm:mt-4 rounded-2xl border moh-border moh-surface p-4 sm:p-5"
+        class="mx-3 my-3 sm:mx-4 sm:my-4 rounded-2xl border moh-border moh-surface p-4 sm:p-5"
       >
         <div class="flex items-start gap-3">
           <div class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border moh-border bg-violet-500/10 text-violet-700 dark:text-violet-300">
@@ -354,13 +354,13 @@ const groupsNudgeDismissed = useCookie('moh.groups-nudge.dismissed', {
 const myGroupsCount = ref<number | null>(null)
 
 watch(myGroups, (groups) => {
-  if (isAuthed.value && !groupsNudgeDismissed.value) {
+  if (isAuthed.value && !isPageAccount.value && !groupsNudgeDismissed.value) {
     myGroupsCount.value = groups.length
   }
 })
 
 async function refreshMyGroupsCount() {
-  if (!isAuthed.value || groupsNudgeDismissed.value) {
+  if (!isAuthed.value || isPageAccount.value || groupsNudgeDismissed.value) {
     myGroupsCount.value = null
     return
   }
@@ -373,7 +373,7 @@ async function refreshMyGroupsCount() {
 }
 
 const showGroupsOnboardingNudge = computed(() => {
-  if (!isAuthed.value) return false
+  if (!isAuthed.value || isPageAccount.value) return false
   if (groupsNudgeDismissed.value) return false
   if (myGroupsCount.value === null) return false
   return myGroupsCount.value === 0
@@ -792,9 +792,9 @@ watchEffect(() => {
 })
 
 watch(
-  [isAuthed, initialFeedResolved, groupsNudgeDismissed],
-  ([authed, feedResolved, dismissed]) => {
-    if (!authed) {
+  [isAuthed, isPageAccount, initialFeedResolved, groupsNudgeDismissed],
+  ([authed, pageAccount, feedResolved, dismissed]) => {
+    if (!authed || pageAccount) {
       myGroupsCount.value = null
       return
     }

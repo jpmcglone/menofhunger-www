@@ -617,6 +617,7 @@ export type UserPreview = {
   premium: boolean
   premiumPlus: boolean
   isOrganization: boolean
+  accountKind?: AccountKind
   verifiedStatus: 'none' | 'identity' | 'manual'
   avatarUrl: string | null
   bannerUrl: string | null
@@ -2620,6 +2621,7 @@ export type Article = {
   tags: ArticleTag[]
   readingTimeMinutes?: number
   viewerHasBoosted?: boolean
+  viewerHasViewed?: boolean
   /** False when the viewer's tier does not grant access; body/excerpt are stripped in this case. */
   viewerCanAccess?: boolean
 }

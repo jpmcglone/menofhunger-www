@@ -48,13 +48,14 @@ export function useArticleViewTracker() {
       recentlySent.set(id, Date.now())
       const ack = Array.isArray(acks) ? acks.find((row) => row.id === id) : null
       if (ack && (ack.uniqueCounted || ack.totalCounted)) {
-        const counts = useState<Record<string, { viewCount: number, totalViewCount: number }>>('article-view-acks', () => ({}))
+        const counts = useState<Record<string, { viewCount: number, totalViewCount: number, uniqueCounted?: boolean }>>('article-view-acks', () => ({}))
         const prev = counts.value[id]
         counts.value = {
           ...counts.value,
           [id]: {
             viewCount: Math.max(prev?.viewCount ?? 0, ack.viewCount),
             totalViewCount: Math.max(prev?.totalViewCount ?? 0, ack.totalViewCount),
+            uniqueCounted: Boolean(prev?.uniqueCounted || ack.uniqueCounted),
           },
         }
       }

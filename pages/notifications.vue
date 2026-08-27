@@ -188,19 +188,23 @@ const {
   decrementUnreadKind,
   itemHref,
 } = useNotifications()
+const { isPageAccount } = useAuth()
 const notificationsTabReturnGate = useTabReturnRefreshGate('notifications')
 
-const kindChips: { label: string; kind: NotificationKind | 'other' | null }[] = [
-  { label: 'All', kind: null },
-  { label: 'Replies', kind: 'comment' },
-  { label: 'Mentions', kind: 'mention' },
-  { label: 'Posts', kind: 'followed_post' },
-  { label: 'Statuses', kind: 'status_update' },
-  { label: 'Check-ins', kind: 'checkin_post' },
-  { label: 'Follows', kind: 'follow' },
-  { label: 'Boosts', kind: 'boost' },
-  { label: 'Other', kind: 'other' },
-]
+const kindChips = computed(() => {
+  const chips: { label: string; kind: NotificationKind | 'other' | null }[] = [
+    { label: 'All', kind: null },
+    { label: 'Replies', kind: 'comment' },
+    { label: 'Mentions', kind: 'mention' },
+    { label: 'Posts', kind: 'followed_post' },
+    { label: 'Statuses', kind: 'status_update' },
+    { label: 'Check-ins', kind: 'checkin_post' },
+    { label: 'Follows', kind: 'follow' },
+    { label: 'Boosts', kind: 'boost' },
+    { label: 'Other', kind: 'other' },
+  ]
+  return isPageAccount.value ? chips.filter((chip) => chip.kind !== 'checkin_post') : chips
+})
 
 const router = useRouter()
 const route = useRoute()
@@ -564,6 +568,7 @@ function onNotificationKeydown(item: (typeof notifications.value)[number]) {
 function kindFromQuery(): NotificationKind | 'other' | null {
   const q = route.query.kind
   if (q === 'other') return 'other'
+  if (isPageAccount.value && q === 'checkin_post') return null
   const valid: NotificationKind[] = ['comment', 'boost', 'repost', 'follow', 'followed_post', 'followed_article', 'mention', 'nudge', 'coin_transfer', 'poll_results_ready', 'generic', 'status_update', 'checkin_post', 'account_verified', 'premium_started', 'premium_ended']
   return (typeof q === 'string' && valid.includes(q as NotificationKind)) ? (q as NotificationKind) : null
 }

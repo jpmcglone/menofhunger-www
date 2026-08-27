@@ -24,6 +24,15 @@ describe('online presence realtime wiring', () => {
     expect(page).toContain('recentUsers.value = [')
   })
 
+  it('keeps an empty Recently section compact', () => {
+    const page = readFileSync(resolve(root, 'pages/online.vue'), 'utf8')
+
+    expect(page).toContain("recentlyOnlineUsers.length ? 'pt-8 pb-2' : 'pt-5 pb-3'")
+    expect(page).toContain("{{ recentUsers.length === 0 ? 'No one recently around.' : 'No one in the last hour.' }}")
+    expect(page).toContain("recentlyOnlineUsers.length ? 'pt-8' : 'pt-4'")
+    expect(page).not.toMatch(/No one in the last hour\.\s*<\/div>\s*<div v-if="olderOnlineUsers\.length" class="px-4 pt-8/)
+  })
+
   it('sorts most-recently-connected first, matching iOS', () => {
     const page = readFileSync(resolve(root, 'pages/online.vue'), 'utf8')
 
