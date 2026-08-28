@@ -82,6 +82,10 @@ Sentry.init({
     // injected script crashes — at our URL, so Sentry blames us. Not our code; not actionable.
     /window\.webkit\.messageHandlers/,
     "undefined is not an object (evaluating 'window.webkit.messageHandlers')",
+    // API 5xx on fire-and-forget fetches (notifications, presence). Clients already
+    // recover; do not file them as frontend crashes.
+    /FetchError: \[GET\].*: 5\d\d/,
+    /FetchError: \[POST\].*: 5\d\d/,
     // Safari (26+) fires `window.unhandledrejection` with a CustomEvent or empty-object rejection
     // reason when a browser-internal script (extensions, Safari's own JS, CSS polyfills) rejects
     // a promise. No stack trace, no user-visible effect; not our code and not actionable.

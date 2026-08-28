@@ -25,9 +25,11 @@ describe('DM composer field scroll', () => {
 
   it('keeps the caret in the scrollport after each edit, except during IME', () => {
     expect(styled).toContain('keepCaretInScrollport')
+    expect(styled).toContain('isEditorAlive')
     expect(styled).toContain('ed.commands.scrollIntoView()')
     const keep = styled.slice(styled.indexOf('function keepCaretInScrollport'))
     expect(keep).toMatch(/ed\.view\.composing/)
+    expect(keep.indexOf('isEditorAlive')).toBeLessThan(keep.indexOf('scrollIntoView'))
     expect(keep.indexOf('composing')).toBeLessThan(keep.indexOf('scrollIntoView'))
   })
 })

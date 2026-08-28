@@ -29,6 +29,13 @@ describe('notification live list + view-as-read', () => {
     expect(page).toContain("if (route.path !== '/notifications') return")
   })
 
+  it('does not rethrow fetchList failures as unhandled rejections', () => {
+    const src = readFromRepo('composables/useNotifications.ts')
+    const run = src.slice(src.indexOf('const run = async'), src.indexOf('fetchPromise = run()'))
+    expect(run).toContain('return undefined')
+    expect(run).not.toMatch(/throw e/)
+  })
+
   it('marks post and reply notifications read when a view is recorded', () => {
     // www-only: Render deploys this repo without menofhunger-api on disk.
     // API mark-read-on-view is covered in menofhunger-api post-views / read-state specs.

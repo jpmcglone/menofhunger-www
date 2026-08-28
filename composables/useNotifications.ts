@@ -264,11 +264,15 @@ export function useNotifications() {
         nextCursor.value = pagination?.nextCursor ?? null
         return pagination
       } catch (e: unknown) {
-        // useApiClient handles 401 (clears auth state, redirects to login). Don't re-throw it
-        // here so it doesn't escape the `void fetchList()` call sites as an unhandled rejection.
-        const status = (e as any)?.status ?? (e as any)?.statusCode ?? (e as any)?.response?.status
-        if (status === 401) return undefined
-        throw e
+        // Fire-and-forget callers (`void fetchList()`) must not surface an unhandled
+        // rejection — Sentry was filing GET /notifications 500s as client crashes.
+        const status = (e as { status?: number; statusCode?: number; response?: { status?: number } })?.status
+          ?? (e as { statusCode?: number })?.statusCode
+          ?? (e as { response?: { status?: number } })?.response?.status
+        if (status !== 401 && import.meta.dev) {
+          console.warn('[notifications] fetchList failed', e)
+        }
+        return undefined
       } finally {
         loading.value = false
         hasFetched.value = true

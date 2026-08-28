@@ -681,7 +681,7 @@ const editor = useEditor({
 // transaction forces ProseMirror to recompute the decoration set).
 function refreshMentionDecorations() {
   const ed = editor.value
-  if (!ed) return
+  if (!isEditorAlive(ed)) return
   // Rebuilding inline decorations mid-composition replaces the DOM text nodes under the
   // composing range. Android IMEs edit those nodes directly and fire `selectionchange`
   // before ProseMirror syncs the mutation into its own state, so the forced re-render can
@@ -704,34 +704,49 @@ watch(
     if (incoming === lastEmittedText) return
     lastEmittedText = incoming
     if (!incoming) {
-      editor.value.commands.clearContent(true)
-    } else {
+      if (isEditorAlive(editor.value)) editor.value.commands.clearContent(true)
+    } else if (isEditorAlive(editor.value)) {
       editor.value.commands.setContent(`<p>${escapeHtml(incoming)}</p>`)
       validateMentionsInBody(incoming, validSet.value)
     }
   },
 )
 
-watch(() => props.disabled, (d) => { editor.value?.setEditable(!d) })
+watch(() => props.disabled, (d) => {
+  const ed = editor.value
+  if (!isEditorAlive(ed)) return
+  ed.setEditable(!d)
+})
+
+/** TipTap nulls `commandManager` on destroy; `.commands` then throws. */
+function isEditorAlive(ed: CoreEditor | null | undefined): ed is CoreEditor {
+  if (!ed || ed.isDestroyed) return false
+  return Boolean((ed as unknown as { commandManager?: unknown }).commandManager)
+}
 
 function keepCaretInScrollport(ed: CoreEditor) {
-  if (ed.view.composing) return
+  if (!isEditorAlive(ed) || ed.view.composing) return
   requestAnimationFrame(() => {
-    if (ed.view.composing) return
+    if (!isEditorAlive(ed) || ed.view.composing) return
     ed.commands.scrollIntoView()
   })
 }
 
-function focus() { editor.value?.commands.focus('end') }
+function focus() {
+  const ed = editor.value
+  if (!isEditorAlive(ed)) return
+  ed.commands.focus('end')
+}
 
 function insertAtCursor(text: string) {
-  if (!editor.value) return
-  editor.value.chain().focus().insertContent(text).run()
+  const ed = editor.value
+  if (!isEditorAlive(ed)) return
+  ed.chain().focus().insertContent(text).run()
 }
 
 function insertMention(username: string) {
   const ed = editor.value
-  if (!ed || props.disabled) return
+  if (!isEditorAlive(ed) || props.disabled) return
   const un = username.trim()
   if (!un) return
   const text = getPlainText(ed)
@@ -751,7 +766,9 @@ function insertMention(username: string) {
 }
 
 function clear() {
-  editor.value?.commands.clearContent(true)
+  const ed = editor.value
+  if (!isEditorAlive(ed)) return
+  ed.commands.clearContent(true)
 }
 
 onMounted(() => {
