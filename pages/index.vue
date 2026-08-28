@@ -120,7 +120,8 @@
                     v-for="man in recentlyActiveMen.slice(0, 7)"
                     :key="man.id"
                     :to="man.username ? `/u/${encodeURIComponent(man.username)}` : '/home'"
-                    class="relative inline-flex rounded-full ring-2 ring-white transition-transform duration-150 hover:z-10 hover:-translate-y-0.5 focus-visible:z-10 dark:ring-zinc-950"
+                    class="relative inline-flex ring-2 ring-white transition-transform duration-150 hover:z-10 hover:-translate-y-0.5 focus-visible:z-10 dark:ring-zinc-950"
+                    :class="avatarRoundClass(Boolean(man.isOrganization))"
                     :aria-label="`View ${man.name || man.username || 'member'} profile`"
                   >
                     <AppUserAvatar
@@ -719,6 +720,7 @@ import { userColorTier, userTierTextClass } from '~/utils/user-tier'
 import { siteConfig } from '~/config/site'
 import { VOICE } from '~/config/voice'
 import { formatDailyQuoteAttribution } from '~/utils/daily-quote'
+import { avatarRoundClass } from '~/utils/avatar-rounding'
 import type { BreakdownRow, BreakdownSection } from '~/components/app/LandingStatBreakdown.vue'
 import type { DailyContentToday, DailyQuote, LandingSnapshot, LandingTopPost } from '~/types/api'
 

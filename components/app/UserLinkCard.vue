@@ -19,7 +19,7 @@
     <!-- Avatar + status pill (overlapping banner bottom) -->
     <div class="relative px-3">
       <div class="absolute left-3 -top-5">
-        <div class="ring-2 ring-[color:var(--moh-surface-1)] rounded-full">
+        <div :class="['ring-2 ring-[color:var(--moh-surface-1)]', avatarRoundClass]">
           <AppUserAvatar
             :user="preview"
             size-class="h-10 w-10"
@@ -88,7 +88,7 @@
     <div class="aspect-[4/1] w-full bg-black/10 dark:bg-white/10" />
     <div class="px-3 pt-1 pb-3">
       <div class="flex items-center gap-3 mt-3">
-        <div class="h-10 w-10 shrink-0 rounded-full bg-black/10 dark:bg-white/10" />
+        <div class="h-10 w-10 shrink-0 bg-black/10 dark:bg-white/10" :class="avatarRoundClass" />
         <div class="flex-1 space-y-1.5">
           <div class="h-3 w-2/5 rounded bg-black/10 dark:bg-white/10" />
           <div class="h-2.5 w-1/4 rounded bg-black/10 dark:bg-white/10" />
@@ -111,6 +111,7 @@
 
 <script setup lang="ts">
 import type { UserPreview } from '~/types/api'
+import { avatarRoundClass as getAvatarRoundClass } from '~/utils/avatar-rounding'
 import { formatListTime } from '~/utils/time-format'
 
 const props = defineProps<{
@@ -124,6 +125,7 @@ const { isAuthed } = useAuth()
 
 const preview = ref<UserPreview | null>(null)
 const loading = ref(false)
+const avatarRoundClass = computed(() => getAvatarRoundClass(Boolean(preview.value?.isOrganization)))
 
 const DWELL_MS = 400
 

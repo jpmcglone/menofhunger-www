@@ -70,7 +70,10 @@
         </div>
 
         <div class="absolute left-4 bottom-0 z-10 translate-y-1/2">
-          <div class="relative h-28 w-28 overflow-hidden rounded-full bg-gray-200 ring-4 ring-white dark:bg-zinc-800 dark:ring-black">
+          <div
+            class="relative h-28 w-28 overflow-hidden bg-gray-200 ring-4 ring-white dark:bg-zinc-800 dark:ring-black"
+            :class="avatarRoundClass"
+          >
             <img
               v-if="editAvatarPreviewUrl"
               :src="editAvatarPreviewUrl"
@@ -152,6 +155,7 @@
         v-model="avatarCropOpen"
         :file="avatarCropFile"
         :disabled="saving"
+        :is-organization="isOrganization"
         @cancel="onAvatarCropCancelled"
         @cropped="onAvatarCropped"
       />
@@ -242,6 +246,7 @@
 <script setup lang="ts">
 import { useFormSubmit } from '~/composables/useFormSubmit'
 import { useSyncUserCaches } from '~/composables/settings/useSyncUserCaches'
+import { avatarRoundClass as getAvatarRoundClass } from '~/utils/avatar-rounding'
 import { putPresignedFile } from '~/utils/put-presigned-file'
 
 type PublicProfile = {
@@ -262,6 +267,7 @@ type PublicProfile = {
   birthdayMonthDay?: string | null
   premium: boolean
   verifiedStatus: 'none' | 'identity' | 'manual'
+  isOrganization?: boolean
   avatarUrl?: string | null
   bannerUrl?: string | null
 }
@@ -291,6 +297,8 @@ const syncUserCaches = useSyncUserCaches()
 const isSelf = computed(() => Boolean(props.isSelf))
 const isAdminMode = computed(() => Boolean(props.targetUserId))
 const canEdit = computed(() => isSelf.value || isAdminMode.value)
+const isOrganization = computed(() => Boolean(props.profile?.isOrganization))
+const avatarRoundClass = computed(() => getAvatarRoundClass(isOrganization.value))
 const profileAvatarUrl = computed(() => props.profileAvatarUrl ?? null)
 const profileBannerUrl = computed(() => props.profileBannerUrl ?? null)
 

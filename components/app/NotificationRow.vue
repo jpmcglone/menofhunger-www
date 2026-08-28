@@ -174,6 +174,7 @@
                 username: notification.actor.username,
                 name: notification.actor.name,
                 avatarUrl: notification.actor.avatarUrl,
+                isOrganization: notification.actor.isOrganization,
               }"
               size-class="h-9 w-9 sm:h-10 sm:w-10"
             />
@@ -185,6 +186,7 @@
               username: notification.actor.username,
               name: notification.actor.name,
               avatarUrl: notification.actor.avatarUrl,
+              isOrganization: notification.actor.isOrganization,
             }"
             size-class="h-9 w-9 sm:h-10 sm:w-10"
             :show-status="false"

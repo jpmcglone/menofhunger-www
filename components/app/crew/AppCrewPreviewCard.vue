@@ -50,7 +50,8 @@
         <div
           v-for="m in displayMembers"
           :key="m.user.id"
-          class="relative rounded-full ring-2 ring-[color:var(--moh-surface-3)]"
+          class="relative ring-2 ring-[color:var(--moh-surface-3)]"
+          :class="avatarRoundClass(Boolean(m.user.isOrganization))"
           :title="m.user.name ?? m.user.username ?? ''"
         >
           <AppUserAvatar
@@ -74,6 +75,7 @@
 <script setup lang="ts">
 import type { CrewPublic } from '~/types/api'
 import { crewDisplayName } from '~/composables/useCrew'
+import { avatarRoundClass } from '~/utils/avatar-rounding'
 
 const MAX_PREVIEW_MEMBERS = 5
 

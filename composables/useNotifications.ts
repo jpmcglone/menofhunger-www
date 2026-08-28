@@ -53,7 +53,7 @@ export function useNotifications() {
   }
 
   function prependNotification(n: Notification): boolean {
-    if (!n?.id || !notificationMatchesActiveKind(n)) return true
+    if (!n?.id || !notificationMatchesActiveKind(n)) return false
     if (groupedKinds.has(n.kind as NotificationGroupKind)) return false
     const causingPostId = n.post?.id ?? null
     const next = notifications.value.filter((item) => {
@@ -165,7 +165,6 @@ export function useNotifications() {
         onNew: (payload) => {
           const notification = payload?.notification
           if (!notification?.id) return
-          if (!isNotificationsPage.value) return
           // Silent events repaint a row the viewer has already seen. Patch it where it sits
           // and never refetch — moving it to the top would look like new activity.
           if (payload.silent) {
@@ -174,11 +173,12 @@ export function useNotifications() {
           }
           const patched = prependNotification(notification)
           if (patched) return
-          if (loading.value) {
-            pendingRefresh.value = true
-            return
-          }
-          // Grouped rows need the server's aggregation shape.
+          // Always remember the miss. If the viewer is on /home when this lands,
+          // the 30s tab-return gate used to skip the next /notifications fetch
+          // and All stayed stale until a hard refresh.
+          pendingRefresh.value = true
+          if (!isNotificationsPage.value) return
+          if (loading.value) return
           void fetchList({ forceRefresh: true })
         },
         onDeleted: (payload) => {
@@ -218,6 +218,7 @@ export function useNotifications() {
     const cursor = opts?.cursor ?? null
     const limit = opts?.limit ?? 30
     const forceRefresh = opts?.forceRefresh ?? false
+    if (forceRefresh) pendingRefresh.value = false
     if (!forceRefresh && !cursor && notifications.value.length > 0 && !opts) return
 
     const run = async (): Promise<GetNotificationsResponse['pagination'] | undefined> => {
@@ -924,6 +925,7 @@ export function useNotifications() {
     nextCursor,
     loading,
     hasFetched,
+    pendingRefresh,
     activeKind,
     unreadByKind,
     setKind,

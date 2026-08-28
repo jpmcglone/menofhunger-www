@@ -37,7 +37,7 @@
         >
           <img v-if="cropPreviewUrl" :src="cropPreviewUrl" alt="" class="h-full w-full object-cover">
         </div>
-        <template v-if="!isGroupVariant">
+        <template v-if="!isGroupVariant && !isOrgVariant">
           <AppInlineAlert severity="info" title="Tip">
             We recommend using <span class="font-semibold">Auto</span> to frame your face.
           </AppInlineAlert>
@@ -63,7 +63,7 @@
           v-if="!isGroupVariant"
           class="text-xs text-gray-500 dark:text-gray-400"
         >
-          This is how your avatar will appear. The saved image remains a square (best for future layouts), but it’s displayed as a circle.
+          This is how your avatar will appear. The saved image remains a square (best for future layouts), but it’s displayed as a {{ isOrgVariant ? 'rounded square' : 'circle' }}.
         </div>
         <AppInlineAlert v-if="cropApplyError" severity="warning">
           {{ cropApplyError }}
@@ -84,7 +84,7 @@
 
 <script setup lang="ts">
 import { Cropper, CircleStencil, RectangleStencil } from 'vue-advanced-cropper'
-import { groupAvatarRoundClass } from '~/utils/avatar-rounding'
+import { avatarRoundClass, groupAvatarRoundClass } from '~/utils/avatar-rounding'
 
 const props = withDefaults(
   defineProps<{
@@ -93,8 +93,10 @@ const props = withDefaults(
     disabled?: boolean
     /** `group`: square crop + group squircle preview; no face auto-crop. */
     variant?: 'user' | 'group'
+    /** Organization accounts crop and preview as a rounded square. */
+    isOrganization?: boolean
   }>(),
-  { variant: 'user' },
+  { variant: 'user', isOrganization: false },
 )
 
 const emit = defineEmits<{
@@ -106,17 +108,24 @@ const emit = defineEmits<{
 const modelValue = computed(() => Boolean(props.modelValue))
 const disabled = computed(() => Boolean(props.disabled))
 const isGroupVariant = computed(() => props.variant === 'group')
-const stencilComponent = computed(() => (isGroupVariant.value ? RectangleStencil : CircleStencil))
+const isOrgVariant = computed(() => Boolean(props.isOrganization) && !isGroupVariant.value)
+const usesSquareStencil = computed(() => isGroupVariant.value || isOrgVariant.value)
+const stencilComponent = computed(() => (usesSquareStencil.value ? RectangleStencil : CircleStencil))
 const stencilProps = computed(() => {
   if (isGroupVariant.value) {
     const cls = groupAvatarRoundClass()
     return { aspectRatio: 1, previewClass: cls, boundingBoxClass: cls }
   }
+  if (isOrgVariant.value) {
+    const cls = avatarRoundClass(true)
+    return { aspectRatio: 1, previewClass: cls, boundingBoxClass: cls }
+  }
   return { aspectRatio: 1 }
 })
-const previewRoundClass = computed(() =>
-  isGroupVariant.value ? groupAvatarRoundClass() : 'rounded-full',
-)
+const previewRoundClass = computed(() => {
+  if (isGroupVariant.value) return groupAvatarRoundClass()
+  return avatarRoundClass(isOrgVariant.value)
+})
 const dialogHeader = computed(() =>
   isGroupVariant.value ? 'Crop group avatar' : 'Crop avatar',
 )
@@ -246,14 +255,14 @@ function clamp(n: number, min: number, max: number) {
 
 async function onCropperReady() {
   cropperReady.value = true
-  if (isGroupVariant.value) return
+  if (isGroupVariant.value || isOrgVariant.value) return
   if (!autoFaceOnOpen.value) return
   autoFaceOnOpen.value = false
   await autoCropFace()
 }
 
 async function autoCropFace() {
-  if (isGroupVariant.value) return
+  if (isGroupVariant.value || isOrgVariant.value) return
   if (!modelValue.value) return
   if (!cropperRef.value?.setCoordinates) return
   const srcFile = props.file

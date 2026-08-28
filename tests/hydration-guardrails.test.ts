@@ -699,18 +699,19 @@ describe('hydration guardrails (structural)', () => {
   })
 
   it('does not light the viewed icon from local session state until after hydration', () => {
-    // markEngaged() writes a module-level Set during client setup. Using that
-    // Set for the person-icon class before app:mounted makes SSR (muted) and
-    // the first client paint (moh-text) disagree on every permalink.
+    // markEngaged() writes a module-level Set. Using that Set for the person-icon
+    // class before app:mounted makes SSR (muted) and the first client paint
+    // (moh-text) disagree on every permalink. The icon stays gated; the
+    // permalink view POST itself fires as soon as the client has a post id.
     const row = readFromRepo('components/app/PostRow.vue')
     expect(row).toMatch(/useState<boolean>\('moh-hydrated'/)
     expect(row).toMatch(/hydrated\.value && hasViewedLocally/)
     const permalink = readFromRepo('pages/p/[id].vue')
-    expect(permalink).toMatch(/useState<boolean>\('moh-hydrated'/)
-    expect(permalink).toMatch(/!isHydrated/)
     const watchBody = permalink.slice(permalink.indexOf('const { markEngaged }'), permalink.indexOf('function onDeleted'))
     expect(watchBody).toMatch(/markEngaged\(chainIds\)/)
-    expect(watchBody).not.toMatch(/immediate:\s*true/)
+    expect(watchBody).toMatch(/immediate:\s*true/)
+    expect(watchBody).toMatch(/onMounted\(\(\) => \{ reportPermalinkViews\(post\.value\) \}\)/)
+    expect(watchBody).toMatch(/onActivated\(\(\) => \{ reportPermalinkViews\(post\.value\) \}\)/)
   })
 
   it('shows a full-screen API-down overlay (not a thin banner) when apiUnreachable', () => {

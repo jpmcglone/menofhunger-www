@@ -45,21 +45,23 @@
               <NuxtLink
                 v-if="a.id && a.username"
                 :to="`/u/${a.username}`"
-                class="block rounded-full ring-2 ring-[var(--moh-bg)]"
+                class="block ring-2 ring-[var(--moh-bg)]"
+                :class="avatarRoundClass(Boolean(a.isOrganization))"
                 :style="{ zIndex: 2 - idx }"
                 @click.stop
               >
                 <AppUserAvatar
-                  :user="{ id: a.id, username: a.username, name: a.name, avatarUrl: a.avatarUrl }"
+                  :user="{ id: a.id, username: a.username, name: a.name, avatarUrl: a.avatarUrl, isOrganization: a.isOrganization }"
                   size-class="h-8 w-8"
                   :show-status="false"
                 />
               </NuxtLink>
               <AppUserAvatar
                 v-else-if="a.id"
-                class="rounded-full ring-2 ring-[var(--moh-bg)]"
+                class="ring-2 ring-[var(--moh-bg)]"
+                :class="avatarRoundClass(Boolean(a.isOrganization))"
                 :style="{ zIndex: 2 - idx }"
-                :user="{ id: a.id, username: a.username, name: a.name, avatarUrl: a.avatarUrl }"
+                :user="{ id: a.id, username: a.username, name: a.name, avatarUrl: a.avatarUrl, isOrganization: a.isOrganization }"
                 size-class="h-8 w-8"
                 :show-status="false"
               />
@@ -240,6 +242,7 @@ import { tinyTooltip } from '~/utils/tiny-tooltip'
 import type { MenuItem } from 'primevue/menuitem'
 import { userColorTier, userTierBgClass, userTierTextClass, type UserColorTier } from '~/utils/user-tier'
 import { stableListKey } from '~/utils/stable-list-key'
+import { avatarRoundClass } from '~/utils/avatar-rounding'
 
 const multiTrigger = useUserPreviewMultiTrigger()
 

@@ -112,7 +112,7 @@
                         :name="post.author.name ?? null"
                         :username="post.author.username ?? null"
                         size-class="h-7 w-7"
-                        :round-class="post.author.isOrganization ? 'rounded-lg' : 'rounded-full'"
+                        :round-class="avatarRoundClass(Boolean(post.author.isOrganization))"
                         bg-class="bg-gray-200 dark:bg-zinc-700"
                         class="mt-0.5 shrink-0"
                       />
@@ -357,6 +357,7 @@
 <script setup lang="ts">
 import { ClientOnly } from '#components'
 import type { MarvinModeDto } from '~/types/api'
+import { avatarRoundClass } from '~/utils/avatar-rounding'
 
 const { open, post, result, loading, peeking, errorMessage, errorReason, includeImages, hide, run, peek, reset, toggleIncludeImages } = useMarvCatchUp()
 const { me, isAvailable, preferredMode, credits, setPreferredMode, ensureLoaded, startRealtime } = useMarv()

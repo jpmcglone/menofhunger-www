@@ -41,14 +41,14 @@
                 @click.stop
               >
                 <AppUserAvatar
-                  :user="{ id: a.id, username: a.username, name: a.name, avatarUrl: a.avatarUrl }"
+                  :user="{ id: a.id, username: a.username, name: a.name, avatarUrl: a.avatarUrl, isOrganization: a.isOrganization }"
                   size-class="h-9 w-9 sm:h-10 sm:w-10"
                   :show-status="false"
                 />
               </NuxtLink>
               <AppUserAvatar
                 v-else
-                :user="{ id: a.id, username: a.username, name: a.name, avatarUrl: a.avatarUrl }"
+                :user="{ id: a.id, username: a.username, name: a.name, avatarUrl: a.avatarUrl, isOrganization: a.isOrganization }"
                 size-class="h-9 w-9 sm:h-10 sm:w-10"
                 :show-status="false"
               />

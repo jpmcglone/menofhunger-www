@@ -42,7 +42,10 @@
             hideAvatarDuringBanner ? 'opacity-0 pointer-events-none' : 'opacity-100',
           ]"
         >
-          <div ref="avatarWrapperRef" class="relative ring-4 ring-white dark:ring-black rounded-full">
+          <div
+            ref="avatarWrapperRef"
+            :class="['relative ring-4 ring-white dark:ring-black', avatarRoundClass]"
+          >
             <AppUserAvatar
               v-show="!hideAvatarThumb"
               :user="user"
@@ -406,6 +409,7 @@ import { getApiErrorMessage } from '~/utils/api-error'
 import { formatDateTime } from '~/utils/time-format'
 import { APP_FEATURE_TOGGLE_OPTIONS, type AppFeatureToggle } from '~/config/app-feature-toggles'
 import { articleVisibilityBarClass, articleVisibilityHoverClass } from '~/utils/article-visibility'
+import { avatarRoundClass as getAvatarRoundClass } from '~/utils/avatar-rounding'
 import type {
   AdminAdjustCoinsResult,
   AdminReferralInfo,
@@ -442,6 +446,7 @@ const { openFromEvent } = viewer
 const loading = ref(true)
 const loadError = ref<string | null>(null)
 const user = ref<AdminUserDetailData | null>(null)
+const avatarRoundClass = computed(() => getAvatarRoundClass(Boolean(user.value?.isOrganization)))
 
 const revealLoading = ref(false)
 const sensitiveRevealed = ref(false)

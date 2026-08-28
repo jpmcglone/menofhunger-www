@@ -177,6 +177,7 @@ const {
   nextCursor,
   loading,
   hasFetched,
+  pendingRefresh,
   activeKind,
   unreadByKind,
   setKind,
@@ -589,10 +590,11 @@ function syncNotificationsOnEntry() {
   entrySyncPromise = (async () => {
     const badgeCountAtEntry = notifBadge.count.value
     const kind = kindFromQuery()
+    const missedWhileAway = pendingRefresh.value
     if (kind !== activeKind.value || !hasFetched.value) {
       await setKind(kind)
       notificationsTabReturnGate.markSuccess()
-    } else if (notificationsTabReturnGate.shouldRefresh()) {
+    } else if (badgeCountAtEntry > 0 || missedWhileAway || notificationsTabReturnGate.shouldRefresh()) {
       await fetchList({ forceRefresh: true })
       notificationsTabReturnGate.markSuccess()
     }

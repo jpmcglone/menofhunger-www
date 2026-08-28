@@ -5,7 +5,8 @@
       <button
         v-if="viewerIsMember"
         type="button"
-        class="relative shrink-0 rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--moh-bg)]"
+        class="relative shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--moh-bg)]"
+        :class="avatarRoundClass(Boolean(member.user.isOrganization))"
         :title="member.user.name ?? member.user.username ?? ''"
         @click="onMemberClick($event, member)"
       >
@@ -53,7 +54,8 @@
         v-for="inv in displayPending"
         :key="`p-${inv.id}`"
         type="button"
-        class="relative shrink-0 rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--moh-bg)]"
+        class="relative shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--moh-bg)]"
+        :class="avatarRoundClass(Boolean(inv.invitee.isOrganization))"
         :title="`Invite pending — ${inv.invitee.name ?? inv.invitee.username ?? ''}`"
         @click="onPendingClick($event, inv)"
       >
@@ -100,6 +102,7 @@
 
 <script setup lang="ts">
 import type { CrewInvite, CrewMemberListItem } from '~/types/api'
+import { avatarRoundClass } from '~/utils/avatar-rounding'
 
 const MAX_SLOTS = 5
 

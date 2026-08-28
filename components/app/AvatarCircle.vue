@@ -5,7 +5,7 @@
     :style="effectiveWrapStyle"
     aria-hidden="true"
   >
-    <!-- Avatar (clipped to circle).
+    <!-- Avatar (clipped to `roundClass`: circle for people, rounded square for orgs).
          When spacesRing is active, the outer wrapper has a gradient background + padding.
          The inner div uses the page background to create the visible ring gap. -->
     <div

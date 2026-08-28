@@ -49,5 +49,6 @@ describe('tab-return refresh wiring', () => {
     expect(notifications).toContain("useTabReturnRefreshGate('notifications')")
     expect(notifications).toContain('notificationsTabReturnGate.shouldRefresh()')
     expect(notifications).toContain('markDeliveredInBackground(true)')
+    expect(notifications).toContain('badgeCountAtEntry > 0 || missedWhileAway')
   })
 })

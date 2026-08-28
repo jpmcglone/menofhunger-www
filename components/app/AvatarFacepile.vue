@@ -12,8 +12,11 @@
       :enable-preview="false"
       :show-status="false"
       :show-presence="false"
-      class="rounded-full ring-2 ring-[var(--moh-bg)]"
-      :class="index > 0 ? overlapClass : undefined"
+      :class="[
+        avatarRoundClass(Boolean(author.isOrganization)),
+        'ring-2 ring-[var(--moh-bg)]',
+        index > 0 ? overlapClass : undefined,
+      ]"
       :style="{ zIndex: authors.length - index }"
     />
   </div>
@@ -21,6 +24,7 @@
 
 <script setup lang="ts">
 import type { ReplyAuthorPreview } from '~/utils/thread-reply-authors'
+import { avatarRoundClass } from '~/utils/avatar-rounding'
 
 withDefaults(
   defineProps<{

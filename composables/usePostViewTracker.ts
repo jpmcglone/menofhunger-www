@@ -72,7 +72,10 @@ async function flushPending(
     source: string
   },
 ) {
+  if (!import.meta.client) return
   if (pendingPostIds.size === 0) return
+  // Guests must send anon_id. Logged-in viewers still send it when present so
+  // identities can merge, but they can flush on the session cookie alone.
   if (!opts.isAuthed && !opts.anonId) return
 
   const ids = [...pendingPostIds].slice(0, BATCH_MAX)
@@ -81,6 +84,8 @@ async function flushPending(
   try {
     const acks = await apiFetchData('/posts/views', {
       method: 'POST',
+      keepalive: true,
+      mohUnauthorized: 'ignore',
       body: {
         postIds: ids,
         source: opts.source,
@@ -89,7 +94,10 @@ async function flushPending(
     }) as import('~/types/api').PostViewAck[] | undefined
     if (Array.isArray(acks)) applyAcksFn?.(acks)
   } catch {
-    // Fire-and-forget: silently ignore errors (network hiccups, 204 etc.)
+    // Keep the batch queued so the 4s timer retries. sessionReportedAt already
+    // blocks a second enqueue, so losing pending here meant "scroll away and
+    // back" could never record the permalink target.
+    for (const id of ids) pendingPostIds.add(id)
   }
 }
 
@@ -191,6 +199,13 @@ export function usePostViewTracker() {
     if (ids.length === 0) return () => {}
 
     let dwellTimer: ReturnType<typeof setTimeout> | null = null
+    // Nested overflow panes must be the observer root. If that node is not an
+    // ancestor (layout ref not ready, teleported row), viewport-root still counts.
+    const requestedRoot = opts?.root ?? null
+    const root =
+      requestedRoot instanceof Element && requestedRoot.contains(el)
+        ? requestedRoot
+        : null
 
     const observer = new IntersectionObserver(
       (entries) => {
@@ -233,7 +248,7 @@ export function usePostViewTracker() {
           }
         }
       },
-      { threshold: OBSERVER_THRESHOLDS, root: opts?.root ?? null },
+      { threshold: OBSERVER_THRESHOLDS, root },
     )
 
     observer.observe(el)
@@ -253,6 +268,7 @@ export function usePostViewTracker() {
    * Pass multiple IDs when viewing a thread (e.g. /p/:id for a reply).
    */
   function markEngaged(postIds: string | string[], opts?: { canTrack?: boolean }): void {
+    if (!import.meta.client) return
     if (opts?.canTrack === false) return
     const ids = (Array.isArray(postIds) ? postIds : [postIds]).filter(Boolean)
     if (ids.length === 0) return

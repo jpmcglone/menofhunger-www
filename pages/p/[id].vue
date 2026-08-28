@@ -418,26 +418,28 @@ watch(
   { immediate: true },
 )
 
-// Direct permalink visit = user saw this post (and full thread if a reply).
-// Gated posts (viewerCanAccess === false) are excluded — viewer hasn't read the content.
-// Logged-out visitors are tracked via the anon_id cookie (handled inside usePostViewTracker).
+// Landing on /p/:id is itself a view of this post (and ancestors if it's a reply).
+// Do not wait for IntersectionObserver or moh-hydrated — feed rows above/below
+// have their own observers, but the permalink target used to miss entirely.
+// The API (and the tracker 30s window) collapse refresh-spam to one impression.
 const { markEngaged } = usePostViewTracker()
-// Wait for app:mounted. An immediate client watch writes locallyViewedPostIds
-// during setup and lights the person icon before hydration finishes.
-const viewTrackerHydrated = useState<boolean>('moh-hydrated', () => false)
+function reportPermalinkViews(p: FeedPost | null | undefined) {
+  if (!import.meta.client || !p?.id) return
+  const chainIds: string[] = []
+  let cur: FeedPost | undefined = p
+  while (cur?.id) {
+    if (cur.viewerCanAccess !== false) chainIds.push(cur.id)
+    cur = cur.parent
+  }
+  if (chainIds.length) markEngaged(chainIds)
+}
 watch(
-  () => [post.value, viewTrackerHydrated.value] as const,
-  ([p, isHydrated]) => {
-    if (!import.meta.client || !isHydrated || !p?.id) return
-    const chainIds: string[] = []
-    let cur: FeedPost | undefined = p
-    while (cur?.id) {
-      if (cur.viewerCanAccess !== false) chainIds.push(cur.id)
-      cur = cur.parent
-    }
-    if (chainIds.length) markEngaged(chainIds)
-  },
+  () => post.value,
+  (p) => { reportPermalinkViews(p) },
+  { immediate: true },
 )
+onMounted(() => { reportPermalinkViews(post.value) })
+onActivated(() => { reportPermalinkViews(post.value) })
 
 function onDeleted() {
   if (data.value) {
