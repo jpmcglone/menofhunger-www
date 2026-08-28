@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest'
 import {
   computeAlignDelta,
   findInnermostPostEl,
+  isUsableHighlightTarget,
 } from '../utils/align-highlighted-post-scroll'
 
 describe('computeAlignDelta', () => {
@@ -38,6 +39,35 @@ describe('findInnermostPostEl', () => {
     const el = findInnermostPostEl(root, 'leaf')
     expect(el?.textContent?.trim()).toBe('leaf row')
   })
+
+  it('rejects the chain wrapper that also carries the leaf id', () => {
+    const root = document.createElement('div')
+    root.innerHTML = `
+      <div data-post-id="leaf" data-thread-chain class="flex flex-col">
+        <div data-post-id="parent">parent</div>
+        <div data-post-id="leaf">leaf row</div>
+      </div>
+    `
+    const wrapper = root.querySelector('[data-post-id="leaf"]') as HTMLElement
+    const leaf = findInnermostPostEl(root, 'leaf')
+    expect(isUsableHighlightTarget(wrapper)).toBe(false)
+    expect(leaf && isUsableHighlightTarget(leaf)).toBe(true)
+  })
+
+  it('rejects a chain wrapper that has not painted the inner leaf yet', () => {
+    const wrapper = document.createElement('div')
+    wrapper.setAttribute('data-post-id', 'leaf')
+    wrapper.setAttribute('data-thread-chain', '')
+    wrapper.innerHTML = `<div data-post-id="parent">parent</div>`
+    expect(isUsableHighlightTarget(wrapper)).toBe(false)
+  })
+
+  it('still accepts a real row that embeds another post', () => {
+    const row = document.createElement('div')
+    row.setAttribute('data-post-id', 'leaf')
+    row.innerHTML = `<div data-post-id="quoted">quoted</div>`
+    expect(isUsableHighlightTarget(row)).toBe(true)
+  })
 })
 
 describe('permalink highlight align triggers (structural)', () => {
@@ -53,5 +83,10 @@ describe('permalink highlight align triggers (structural)', () => {
     expect(page).toMatch(/watch\(\s*\[postId,\s*\(\)\s*=>\s*post\.value\?\.parent\?\.id\s*\?\?\s*null\]/)
     expect(page).not.toMatch(/watch\(\s*\(\)\s*=>\s*\[\s*postId\.value/)
     expect(page).toMatch(/highlightAlignFinishedForId/)
+    expect(page).toContain('isUsableHighlightTarget')
+    expect(readFromRepo('components/app/FeedPostRow.vue')).toContain('data-thread-chain')
+    expect(page).toContain('neededStableFrames')
+    expect(page).not.toContain('const maxFrames = 45')
+    expect(page).toMatch(/watch\(\s*\[postId,[\s\S]*\{ immediate: true \}/)
   })
 })

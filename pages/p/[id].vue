@@ -342,6 +342,7 @@ import { useMiddleScroller } from '~/composables/useMiddleScroller'
 import {
   computeAlignDelta,
   findInnermostPostEl,
+  isUsableHighlightTarget,
   readTitleBarOffset,
 } from '~/utils/align-highlighted-post-scroll'
 
@@ -1089,26 +1090,38 @@ const feedPostRowRef = ref<FeedPostRowExposed | null>(null)
 const middleScrollerEl = useMiddleScroller()
 
 function findHighlightedRowEl(): HTMLElement | null {
+  const pid = post.value?.id
+  if (!pid) return null
+  // Dedicated highlight ref — trust it even though the inner AppPostRow also
+  // carries data-post-id (isUsableHighlightTarget would reject the wrapper).
   const fromExpose = feedPostRowRef.value?.getHighlightedEl?.() ?? null
   if (fromExpose) return fromExpose
-  const pid = post.value?.id
   const root = highlightedPostRef.value
-  if (!pid || !root) return null
-  return findInnermostPostEl(root, pid)
+  if (!root) return null
+  const el = findInnermostPostEl(root, pid)
+  if (!el || !isUsableHighlightTarget(el)) return null
+  return el
 }
 
-function alignHighlightedPost(): void {
-  if (!post.value?.parent) return
+/** `true` when the real highlighted row is sitting under the title bar. */
+function alignHighlightedPost(): boolean {
+  if (!post.value?.parent) return false
   const scroller = middleScrollerEl.value
   const el = findHighlightedRowEl()
-  if (!scroller || !el) return
+  if (!scroller || !el) return false
   const delta = computeAlignDelta({
     elTop: el.getBoundingClientRect().top,
     scrollerTop: scroller.getBoundingClientRect().top,
     titleBarOffset: readTitleBarOffset(scroller),
   })
-  if (Math.abs(delta) <= 1) return
+  if (Math.abs(delta) <= 1) return true
   scroller.scrollTop += delta
+  const after = computeAlignDelta({
+    elTop: el.getBoundingClientRect().top,
+    scrollerTop: scroller.getBoundingClientRect().top,
+    titleBarOffset: readTitleBarOffset(scroller),
+  })
+  return Math.abs(after) <= 1
 }
 
 let alignHighlightCleanup: (() => void) | null = null
@@ -1123,14 +1136,27 @@ function scheduleHighlightAlign() {
   if (!id || highlightAlignFinishedForId === id) return
 
   let cancelled = false
-  let frames = 0
-  const maxFrames = 45 // ~0.75s — covers scroll-restore reset + late layout (link cards, images)
+  let stableFrames = 0
+  const neededStableFrames = 10
+  const startedAt = Date.now()
+  // Client nav paints a long ancestor chain after fetch; images above the
+  // highlight keep shifting it. Direct loads are already in HTML so they
+  // settle fast. Keep trying until the real row is stable — not a fixed 2s.
+  const maxMs = 8_000
 
   const tick = () => {
     if (cancelled) return
-    alignHighlightedPost()
-    frames += 1
-    if (frames < maxFrames) requestAnimationFrame(tick)
+    if (alignHighlightedPost()) stableFrames += 1
+    else stableFrames = 0
+    if (stableFrames >= neededStableFrames) {
+      finishAlignPass()
+      return
+    }
+    if (Date.now() - startedAt > maxMs) {
+      finishAlignPass()
+      return
+    }
+    requestAnimationFrame(tick)
   }
 
   // middle-scroll-restore resets scrollTop at page:finish + 2 rAFs; start after that.
@@ -1162,19 +1188,16 @@ function scheduleHighlightAlign() {
   const root = highlightedPostRef.value
   if (root && typeof ResizeObserver !== 'undefined') {
     ro = new ResizeObserver(() => {
-      if (!cancelled) alignHighlightedPost()
+      if (cancelled) return
+      if (alignHighlightedPost()) stableFrames += 1
+      else stableFrames = 0
     })
     ro.observe(root)
   }
 
-  const stopTimer = window.setTimeout(() => {
-    finishAlignPass()
-  }, 2000)
-
   alignHighlightCleanup = () => {
     // Tear down without marking finished — caller may be rescheduling (e.g. page:finish).
     cancelled = true
-    window.clearTimeout(stopTimer)
     ro?.disconnect()
     scroller?.removeEventListener('wheel', cancelForUser)
     scroller?.removeEventListener('touchmove', cancelForUser)
@@ -1200,6 +1223,7 @@ if (import.meta.client) {
       if (id !== prevId) highlightAlignFinishedForId = null
       void nextTick(() => scheduleHighlightAlign())
     },
+    { immediate: true },
   )
 
   onBeforeUnmount(() => {

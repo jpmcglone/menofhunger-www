@@ -73,6 +73,7 @@
     :ref="(el) => captureWrapperEl(el)"
     class="flex flex-col"
     :data-post-id="post.id"
+    data-thread-chain
     :class="keyboardFocusClass"
     @mouseenter="onMouseEnter"
     @mouseleave="onMouseLeave"

@@ -42,3 +42,12 @@ export function findInnermostPostEl(root: ParentNode, postId: string): HTMLEleme
   if (!matches.length) return null
   return matches[matches.length - 1] ?? null
 }
+
+/**
+ * FeedPostRow's ancestor-chain wrapper also carries the leaf `data-post-id`.
+ * On client navigations that wrapper exists before the inner highlighted row
+ * is painted. Scrolling to it lands at the top of the thread.
+ */
+export function isUsableHighlightTarget(el: HTMLElement): boolean {
+  return !el.hasAttribute('data-thread-chain')
+}
