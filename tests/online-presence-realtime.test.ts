@@ -49,7 +49,8 @@ describe('online presence realtime wiring', () => {
 
     expect(page).toContain('onPlatformsChanged(payload)')
     expect(page).toContain('user.id === payload.userId ? { ...user, platforms: payload.platforms }')
-    expect(page).toContain('platforms: user.platforms ?? previousById.get(user.id)?.platforms')
+    expect(page).toContain('platforms: user.platforms ?? prev?.platforms')
+    expect(page).toContain('hydrateFollowRelationship(prev?.relationship, user.relationship)')
     expect(page).toContain('recentUsers.value = [')
   })
 

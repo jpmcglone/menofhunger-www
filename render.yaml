@@ -1,11 +1,17 @@
 # Nitro SSR in node mode. Standard plan: 2GB RAM / 1 CPU.
 # Pipeline minutes: use "npm ci" for reproducible installs. To reduce build time (use Render's
 # node_modules cache), you can switch to: buildCommand: npm install --prefer-offline --no-audit && npm run build
+#
+# Zero-downtime: Render boots the new instance beside the live one and only flips
+# traffic after GET /health returns 2xx. Do not attach a persistent disk — that
+# disables zero-downtime deploys. See DEPLOYMENT.md.
 services:
   - type: web
     name: menofhunger-www
     plan: standard
     runtime: node
+    healthCheckPath: /health
+    maxShutdownDelaySeconds: 120
     envVars:
       # Nitro 2.13.1 requires Node ^20.19.0 or >=22.12.0.
       - key: NODE_VERSION

@@ -1,4 +1,5 @@
 import type { FollowRelationship } from '~/types/api'
+import { hydrateFollowRelationship } from '~/utils/follow-relationship'
 import { getApiErrorMessage } from '~/utils/api-error'
 import { runOptimisticRequest } from '~/utils/optimistic-request'
 import type { FollowsCallback } from '~/composables/usePresence'
@@ -59,9 +60,12 @@ export function useFollowState() {
     set(userId, { ...prev, ...partial })
   }
 
-  function ingest(users: Array<{ id: string; relationship: FollowRelationship }>) {
+  function ingest(users: Array<{ id: string; relationship?: FollowRelationship | null }>) {
     const next = { ...state.value }
-    for (const u of users) next[u.id] = u.relationship
+    for (const u of users) {
+      const merged = hydrateFollowRelationship(next[u.id], u.relationship)
+      if (merged) next[u.id] = merged
+    }
     state.value = next
   }
 

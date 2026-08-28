@@ -4,6 +4,16 @@
 
 The www service runs Nitro SSR in Node mode. See [render.yaml](render.yaml) for the Blueprint.
 
+### Zero-downtime deploys
+
+Render already boots the new instance next to the live one. We gate the traffic flip on `GET /health` (`healthCheckPath` in `render.yaml`) so it does not switch until Nitro can actually serve. `maxShutdownDelaySeconds: 120` lets in-flight SSR finish after `SIGTERM`.
+
+- **Do not attach a persistent disk** to www (or the API). A disk disables zero-downtime and forces a hard cutover.
+- Stagger deploys when both repos change: API first, wait until it is live, then www.
+- Live sockets still reconnect when the old process exits; that is not HTTP downtime.
+
+If the service is not picking up Blueprint fields, set them once in the Render Dashboard (Settings): Health Check Path = `/health`, Max Shutdown Delay = `120`.
+
 ### Pipeline minutes
 
 Render’s free tier includes 500 pipeline minutes/month. To reduce usage:

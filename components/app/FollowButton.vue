@@ -56,6 +56,7 @@
 
 <script setup lang="ts">
 import type { FollowRelationship } from '~/types/api'
+import { hydrateFollowRelationship } from '~/utils/follow-relationship'
 import { isRecentTouch } from '~/utils/recent-touch'
 
 const props = defineProps<{
@@ -90,12 +91,14 @@ const route = useRoute()
 
 const followState = useFollowState()
 
-// Hydrate store if caller passed relationship.
+// Hydrate store if caller passed relationship. Do not let a broadcast
+// "not following" default wipe a follow we already know about.
 watch(
   () => props.initialRelationship,
   (rel) => {
-    if (!rel) return
-    followState.set(props.userId, rel)
+    const merged = hydrateFollowRelationship(followState.get(props.userId), rel)
+    if (!merged) return
+    followState.set(props.userId, merged)
   },
   { immediate: true }
 )

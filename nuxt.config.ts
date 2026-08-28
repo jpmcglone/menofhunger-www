@@ -437,6 +437,8 @@ export default defineNuxtConfig({
     '/admin': { ssr: false, headers: { 'X-Robots-Tag': 'noindex, nofollow' } },
     '/admin/**': { ssr: false, headers: { 'X-Robots-Tag': 'noindex, nofollow' } },
     '/status': { ssr: true, headers: { 'cache-control': 'no-store' } },
+    // Render readiness probe — never cache; must reflect the live process.
+    '/health': { headers: { 'cache-control': 'no-store, no-cache, must-revalidate' } },
     '/spaces': { ssr: false, headers: { 'X-Robots-Tag': 'noindex, nofollow' } },
     '/spaces/**': { ssr: false, headers: { 'X-Robots-Tag': 'noindex, nofollow' } },
 

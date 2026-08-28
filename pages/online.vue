@@ -157,6 +157,7 @@
 <script setup lang="ts">
 import type { GetPresenceOnlineData, GetPresenceOnlinePageData, GetPresenceRecentData, OnlineUser, RecentlyOnlineUser } from '~/types/api'
 import { getApiErrorMessage } from '~/utils/api-error'
+import { hydrateFollowRelationship } from '~/utils/follow-relationship'
 import { formatListTime } from '~/utils/time-format'
 
 definePageMeta({
@@ -247,6 +248,7 @@ const feedCallback: {
         ? {
             ...u,
             ...userData,
+            relationship: hydrateFollowRelationship(u.relationship, userData?.relationship) ?? u.relationship,
             lastConnectAt,
             platforms: platforms ?? userData?.platforms ?? u.platforms,
           }
@@ -271,7 +273,15 @@ const feedCallback: {
     users.value = users.value.filter((u) => u.id !== userId)
     if (typeof totalOnline.value === 'number') totalOnline.value = Math.max(0, totalOnline.value - 1)
     removeInterest([userId])
-    const recentUser = userData ?? existing
+    const recentUser = userData
+      ? {
+          ...existing,
+          ...userData,
+          relationship: hydrateFollowRelationship(existing?.relationship, userData.relationship)
+            ?? existing?.relationship
+            ?? userData.relationship,
+        }
+      : existing
     if (recentUser && !recentUser.isBot) {
       recentUsers.value = [
         { ...recentUser, lastOnlineAt: lastOnlineAt ?? new Date().toISOString() },
@@ -284,10 +294,15 @@ const feedCallback: {
     // Replace the online list with the authoritative snapshot (handles reconnect staleness).
     const previousById = new Map(users.value.map((user) => [user.id, user]))
     const snapOnline = (snap as OnlineUser[])
-      .map((user) => ({
-        ...user,
-        platforms: user.platforms ?? previousById.get(user.id)?.platforms,
-      }))
+      .map((user) => {
+        const prev = previousById.get(user.id)
+        return {
+          ...prev,
+          ...user,
+          relationship: hydrateFollowRelationship(prev?.relationship, user.relationship) ?? user.relationship,
+          platforms: user.platforms ?? prev?.platforms,
+        }
+      })
       .sort(sortOnlineUsers)
     users.value = snapOnline
     const ids = snapOnline.map((x) => x.id).filter(Boolean)
@@ -384,7 +399,16 @@ async function fetchOnlinePage() {
       },
     })
     const online = (res?.data?.online ?? []) as OnlineUser[]
-    users.value = online.sort(sortOnlineUsers)
+    const previousById = new Map(users.value.map((user) => [user.id, user]))
+    users.value = online
+      .map((user) => {
+        const prev = previousById.get(user.id)
+        return {
+          ...user,
+          relationship: hydrateFollowRelationship(prev?.relationship, user.relationship) ?? user.relationship,
+        }
+      })
+      .sort(sortOnlineUsers)
     totalOnline.value =
       typeof res?.pagination?.totalOnline === 'number' ? res.pagination.totalOnline : users.value.length
     anonymousOnline.value =
