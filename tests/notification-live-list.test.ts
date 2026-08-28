@@ -18,7 +18,8 @@ describe('notification live list + view-as-read', () => {
 
   it('refetches All when a badge arrived or a live row was missed off-page', () => {
     const page = readFromRepo('pages/notifications.vue')
-    const sync = page.slice(page.indexOf('function syncNotificationsOnEntry()'), page.indexOf('onMounted(() =>'))
+    const syncStart = page.indexOf('function syncNotificationsOnEntry()')
+    const sync = page.slice(syncStart, page.indexOf('onMounted(() =>', syncStart))
     expect(sync).toContain('badgeCountAtEntry > 0 || missedWhileAway')
     expect(sync).toContain('pendingRefresh.value')
   })
