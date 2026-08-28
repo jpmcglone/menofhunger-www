@@ -55,12 +55,14 @@ describe('StyledTextarea composition safety', () => {
     expect(handler).toContain('refreshMentionDecorations()')
   })
 
-  it('posts with Shift-Enter in composer mode and sends with Enter in chat', () => {
+  it('posts with Cmd-Enter in composer mode and sends with Enter in chat', () => {
     expect(source).toContain("submitTrigger === 'cmd-enter'")
     const cmd = source.slice(source.indexOf("if (props.submitTrigger === 'cmd-enter')"))
     const enterMode = source.slice(source.indexOf('// Default DM mode'))
-    expect(cmd).toContain("'Shift-Enter'")
-    expect(cmd).toContain("emit('send')")
+    expect(cmd).toContain("'Mod-Enter': send")
+    expect(cmd).toContain("'Shift-Enter': insertNewline")
+    expect(cmd).not.toContain("'Shift-Enter': send")
+    expect(cmd).toContain('Enter: insertNewline')
     expect(enterMode).toContain('Enter: () => {')
     expect(enterMode).toContain("'Shift-Enter': insertNewline")
   })

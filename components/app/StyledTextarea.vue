@@ -54,7 +54,7 @@ const props = withDefaults(
     /**
      * Keyboard submit mode.
      * - 'enter' (default, DM): Enter sends; Shift/Alt/Ctrl-Enter inserts newline.
-     * - 'cmd-enter' (post composer): Enter inserts newline; Shift-Enter (and Cmd/Ctrl-Enter) sends.
+     * - 'cmd-enter' (post composer): Cmd/Ctrl-Enter sends; Enter and Shift-Enter insert newline.
      */
     submitTrigger?: 'enter' | 'cmd-enter'
   }>(),
@@ -563,12 +563,12 @@ const SendOnEnter = Extension.create({
         emit('send')
         return true
       }
-      // Post-composer mode: Enter inserts newline; Shift-Enter sends.
-      // Cmd/Ctrl-Enter still sends so existing muscle memory keeps working.
+      // Post-composer mode (same as X): Cmd/Ctrl-Enter sends.
+      // Enter and Shift-Enter both insert a newline.
       return {
-        'Shift-Enter': send,
         'Mod-Enter': send,
         Enter: insertNewline,
+        'Shift-Enter': insertNewline,
         'Alt-Enter': insertNewline,
       }
     }

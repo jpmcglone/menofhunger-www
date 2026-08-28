@@ -13,6 +13,35 @@ describe('online presence realtime wiring', () => {
 
     expect(presence).toContain("socket.on('presence:platforms-changed'")
     expect(presence).toContain('cb.onPlatformsChanged?.(data)')
+    expect(presence).toContain("socket.on('presence:anonymous-count'")
+    expect(presence).toContain('cb.onAnonymousCount?.(data)')
+  })
+
+  it('sends a stable anon id on logged-out socket connect', () => {
+    const core = readFileSync(
+      resolve(root, 'composables/presence/usePresenceSocketCore.ts'),
+      'utf8',
+    )
+
+    expect(core).toContain('if (!didAttempt.value) return')
+    expect(core).toContain("window.location.pathname === '/login'")
+    expect(core).toContain('query.anon = anonViewId.value')
+    expect(core).toContain('if (!user.value && didAttempt.value && anonViewId.value)')
+  })
+
+  it('does not count the login wall as a guest', () => {
+    const presence = readFileSync(resolve(root, 'composables/usePresence.ts'), 'utf8')
+
+    expect(presence).toContain("curr.path === '/login'")
+    expect(presence).toContain('if (!curr.userId && curr.path === \'/login\')')
+  })
+
+  it('shows a muted guest count next to the online-now subtitle', () => {
+    const page = readFileSync(resolve(root, 'pages/online.vue'), 'utf8')
+
+    expect(page).toContain("anonymousOnline === 1 ? 'guest' : 'guests'")
+    expect(page).toContain('onAnonymousCount(payload)')
+    expect(page).toContain('anonymousOnline.value = Math.max(0, Math.floor(payload.anonymousOnline))')
   })
 
   it('patches existing online rows and preserves platform badges across snapshots', () => {

@@ -58,13 +58,28 @@ export function usePresence() {
     },
   })
 
-  const { user } = useAuth()
+  const { user, didAttempt } = useAuth()
   const route = useRoute()
 
   if (import.meta.client) {
     watch(
-      () => user.value?.id ?? null,
-      () => {
+      () => ({
+        attempted: didAttempt.value,
+        userId: user.value?.id ?? null,
+        path: route.path,
+      }),
+      (curr, prev) => {
+        if (!curr.attempted) return
+        // Login is an auth wall, not browsing. A redirect here (or a leftover
+        // preview tab) must not count as a guest.
+        if (!curr.userId && curr.path === '/login') {
+          if (socketRef.value) core.disconnect()
+          return
+        }
+        const identityChanged = Boolean(curr.userId) && curr.userId !== (prev?.userId ?? null)
+        if (identityChanged && socketRef.value) {
+          core.disconnect()
+        }
         core.connect()
       },
       { immediate: true },

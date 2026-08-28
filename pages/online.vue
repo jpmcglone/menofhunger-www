@@ -9,9 +9,13 @@
         </span>
         Online now
       </h1>
-      <p class="mt-1 text-sm text-gray-600 dark:text-gray-300">
+      <p class="mt-1 flex flex-wrap items-baseline text-sm text-gray-600 dark:text-gray-300">
         <span v-if="totalOnline !== null">{{ totalOnline }} {{ totalOnline === 1 ? 'person is' : 'people are' }} online now.</span>
         <span v-else>People currently active or recently around. Updates in real time.</span>
+        <span
+          v-if="anonymousOnline !== null && anonymousOnline > 0"
+          class="moh-text-soft"
+        > +{{ anonymousOnline }} {{ anonymousOnline === 1 ? 'guest' : 'guests' }}</span>
       </p>
     </div>
 
@@ -187,6 +191,7 @@ const {
 // Otherwise the client will re-initialize them during hydration and Vue will warn about mismatches.
 const users = useState<OnlineUser[]>('online-page-users', () => [])
 const totalOnline = useState<number | null>('online-page-total-online', () => null)
+const anonymousOnline = useState<number | null>('online-page-anonymous-online', () => null)
 const loading = useState<boolean>('online-page-loading', () => true)
 const error = useState<string | null>('online-page-error', () => null)
 
@@ -227,8 +232,9 @@ function recentLastOnlineLabel(lastOnlineAt: string | null) {
 const feedCallback: {
   onOnline?: (p: { userId: string; user?: OnlineUser; lastConnectAt?: number; platforms?: string[] }) => void
   onOffline?: (p: { userId: string; user?: OnlineUser; lastOnlineAt?: string }) => void
-  onSnapshot?: (p: { users: OnlineUser[]; totalOnline?: number }) => void
+  onSnapshot?: (p: { users: OnlineUser[]; totalOnline?: number; anonymousOnline?: number }) => void
   onPlatformsChanged?: (p: { userId: string; platforms: string[] }) => void
+  onAnonymousCount?: (p: { anonymousOnline: number }) => void
 } = {
   onOnline(payload) {
     const { userId, user: userData, lastConnectAt = Date.now(), platforms } = payload
@@ -298,6 +304,13 @@ const feedCallback: {
       recentUsers.value = recentUsers.value.filter((u) => !snapIds.has(u.id))
     }
     if (typeof payload?.totalOnline === 'number') totalOnline.value = payload.totalOnline
+    if (typeof payload?.anonymousOnline === 'number') {
+      anonymousOnline.value = Math.max(0, Math.floor(payload.anonymousOnline))
+    }
+  },
+  onAnonymousCount(payload) {
+    if (typeof payload?.anonymousOnline !== 'number') return
+    anonymousOnline.value = Math.max(0, Math.floor(payload.anonymousOnline))
   },
   onPlatformsChanged(payload) {
     users.value = users.value.map((user) =>
@@ -337,6 +350,9 @@ async function mergeUserFromRefetch(userId: string) {
       }
       addStatusesFromRest(fromApi.map((u) => u.status))
       if (typeof res?.pagination?.totalOnline === 'number') totalOnline.value = res.pagination.totalOnline
+      if (typeof res?.pagination?.anonymousOnline === 'number') {
+        anonymousOnline.value = Math.max(0, Math.floor(res.pagination.anonymousOnline))
+      }
       if (next.length !== users.value.length) {
         users.value = next.sort(sortOnlineUsers)
         const ids = next.map((u) => u.id).filter(Boolean)
@@ -371,6 +387,10 @@ async function fetchOnlinePage() {
     users.value = online.sort(sortOnlineUsers)
     totalOnline.value =
       typeof res?.pagination?.totalOnline === 'number' ? res.pagination.totalOnline : users.value.length
+    anonymousOnline.value =
+      typeof res?.pagination?.anonymousOnline === 'number'
+        ? Math.max(0, Math.floor(res.pagination.anonymousOnline))
+        : anonymousOnline.value
 
     if (users.value.length > 0) {
       const ids = users.value.map((u) => u.id).filter(Boolean)
@@ -392,6 +412,7 @@ async function fetchOnlinePage() {
     error.value = getApiErrorMessage(e) || 'Failed to load online users.'
     users.value = []
     totalOnline.value = null
+    anonymousOnline.value = null
     // Keep "recently online" from becoming stale if this call fails.
     if (viewerCanSeeLastOnline.value) {
       recentUsers.value = []

@@ -53,6 +53,8 @@ export type ApiPagination = {
    * Only populated by /presence/online.
    */
   recentlyOnlineCount?: number
+  /** Unique logged-out visitors with a live socket. Hidden in the UI when zero. */
+  anonymousOnline?: number
   /** Tier breakdown of currently-online users. Populated by /presence/online. */
   premiumPlus?: number
   premium?: number

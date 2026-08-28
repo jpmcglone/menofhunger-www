@@ -58,12 +58,18 @@ export type PresenceOfflinePayload = {
   user?: FollowListUser
   lastOnlineAt?: string
 }
-export type PresenceOnlineFeedSnapshotPayload = { users: OnlineUser[]; totalOnline?: number }
+export type PresenceAnonymousCountPayload = { anonymousOnline: number }
+export type PresenceOnlineFeedSnapshotPayload = {
+  users: OnlineUser[]
+  totalOnline?: number
+  anonymousOnline?: number
+}
 export type OnlineFeedCallback = {
   onOnline?: (payload: PresenceOnlinePayload) => void
   onOffline?: (payload: PresenceOfflinePayload) => void
   onSnapshot?: (payload: PresenceOnlineFeedSnapshotPayload) => void
   onPlatformsChanged?: (payload: WsPresencePlatformsChangedPayload) => void
+  onAnonymousCount?: (payload: PresenceAnonymousCountPayload) => void
 }
 
 export type RadioListenersPayload = { stationId: string; listeners: RadioListener[] }

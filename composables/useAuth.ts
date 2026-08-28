@@ -487,6 +487,6 @@ export function useAuth() {
   /** Daily check-in / streak loop. Pages cannot participate, so callers should hide the chrome. */
   const canAccessCheckins = computed(() => !isPageAccount.value && isVerifiedMember.value)
 
-  return { user, patchUser, me, ensureLoaded, initAuth, logout, logoutEverywhere, handleUnauthorized, isAuthed, isVerified, isPremium, isPremiumPlus, isVerifiedMember, isPageAccount, canAccessCheckins, apiUnreachable, impersonation, isImpersonating, startImpersonation, stopImpersonation, listSwitchableAccounts, switchAccount }
+  return { user, didAttempt, patchUser, me, ensureLoaded, initAuth, logout, logoutEverywhere, handleUnauthorized, isAuthed, isVerified, isPremium, isPremiumPlus, isVerifiedMember, isPageAccount, canAccessCheckins, apiUnreachable, impersonation, isImpersonating, startImpersonation, stopImpersonation, listSwitchableAccounts, switchAccount }
 }
 

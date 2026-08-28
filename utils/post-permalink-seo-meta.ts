@@ -98,6 +98,13 @@ function atAuthor(post: FeedPost | null): string {
   return u ? `@${u}` : ''
 }
 
+/** Social-card title: who / what kind — never the post body (that belongs in description). */
+function identityTitle(at: string, kind?: string): string {
+  if (kind && at) return `${kind} · ${at}`
+  if (kind) return kind
+  return at || 'Post'
+}
+
 function toAbs(pathOrUrl: string): string {
   if (/^https?:\/\//i.test(pathOrUrl)) return pathOrUrl
   return `${siteConfig.url}${pathOrUrl.startsWith('/') ? '' : '/'}${pathOrUrl}`
@@ -192,9 +199,9 @@ export function computePostPermalinkSeo(input: PostPermalinkSeoInput): PostPerma
     return restrictionSeoDescription
   })()
 
-  // Compose the final title from a "core" piece (existing logic) + an optional
-  // " · in <Group>" suffix. We trim the core so the suffix has room without
-  // blowing past TITLE_SNIP, but only when a group is actually present.
+  // Title is identity (and kind), not a body excerpt. Social cards show title
+  // and description stacked; putting the post in both makes X/Slack/iMessage
+  // repeat the same sentence. `usePageSeo` already suffixes ` | Men of Hunger`.
   const titleCoreBudget = groupRef ? Math.max(24, TITLE_SNIP - groupSuffix.length) : TITLE_SNIP
   let title: string
   if (!post) {
@@ -205,48 +212,29 @@ export function computePostPermalinkSeo(input: PostPermalinkSeoInput): PostPerma
     if (isOnlyMePost) {
       title = at ? `Private post — ${at}` : 'Private post'
     } else if (isCheckin && checkinPrompt) {
-      // For check-in posts, the prompt is always the primary title signal — it is
-      // public metadata regardless of tier gating and must never be truncated.
-      const bodyText = (bodyTextSansLinks ?? '').trim()
-      const answerSnip = !isTierGated && bodyText ? ` — ${excerpt(bodyText, 60)}` : ''
-      title = at ? `${checkinPrompt}${answerSnip} · ${at}` : `${checkinPrompt}${answerSnip}`
+      title = at ? `${checkinPrompt} · ${at}` : checkinPrompt
     } else if (isTierGated) {
-      const snip = tierShareSnippet(p)
-      if (snip) title = at ? `${excerpt(snip, 58)} — ${at}` : excerpt(snip, 72)
-      else title = at ? `Post by ${at}` : restrictionLabel
-    } else {
-      const bodyText = (bodyTextSansLinks ?? '').trim()
-      const hasBody = Boolean(bodyText)
-      if (pollMetaPublic) {
-        if (hasBody) {
-          const t = excerpt(bodyText, 58)
-          title = at ? `Poll: ${t} — shared by ${at}` : `Poll: ${t}`
-        } else title = at ? `Poll — shared by ${at}` : 'Poll'
-      } else if (primaryMedia) {
-        if (hasBody) {
-          const t = excerpt(bodyText, titleCoreBudget)
-          title = at ? `${t} — shared by ${at}` : t
-        } else {
-          const kind = primaryMedia.kind === 'gif' ? 'GIF' : primaryMedia.kind === 'video' ? 'Video' : 'Photo'
-          title = at ? `${kind} — shared by ${at}` : kind
-        }
+      title = at || restrictionLabel
+    } else if (pollMetaPublic) {
+      title = identityTitle(at, 'Poll')
+    } else if (primaryMedia) {
+      const hasBody = Boolean((bodyTextSansLinks ?? '').trim())
+      if (hasBody) {
+        title = identityTitle(at)
       } else {
-        const external = (previewLink ?? '').trim()
-        if (external) {
-          const isLinkOnly = !hasBody
-          if (isLinkOnly) {
-            const lt = (linkMeta?.title ?? '').trim()
-            const host = safeUrlHostname(external) ?? 'Link'
-            const t = lt || host
-            title = at ? `${t} — shared by ${at}` : t
-          } else {
-            const t = excerpt(bodyText, titleCoreBudget)
-            title = at ? `${t} — shared by ${at}` : t
-          }
-        } else if (hasBody) {
-          const t = excerpt(bodyText, titleCoreBudget)
-          title = at ? `${t} — shared by ${at}` : t
-        } else title = at ? `Post — shared by ${at}` : 'Post'
+        const kind = primaryMedia.kind === 'gif' ? 'GIF' : primaryMedia.kind === 'video' ? 'Video' : 'Photo'
+        title = identityTitle(at, kind)
+      }
+    } else {
+      const external = (previewLink ?? '').trim()
+      const hasBody = Boolean((bodyTextSansLinks ?? '').trim())
+      if (external && !hasBody) {
+        const lt = (linkMeta?.title ?? '').trim()
+        const host = safeUrlHostname(external) ?? 'Link'
+        const t = excerpt(lt || host, titleCoreBudget)
+        title = at ? `${t} · ${at}` : t
+      } else {
+        title = identityTitle(at)
       }
     }
   }
@@ -266,13 +254,16 @@ export function computePostPermalinkSeo(input: PostPermalinkSeoInput): PostPerma
     if (isOnlyMePost) {
       description = at ? `Private post by ${at} on ${siteConfig.name}.` : 'This post is private.'
     } else if (isCheckin && checkinPrompt) {
-      // Check-in prompt is always the leading line. The user's answer (body) follows
-      // for public posts; a tier hint follows for gated ones.
+      // Prompt is already the title — description is the answer (or the gate).
       const gate = isTierGated ? ` ${gateLine}` : ''
       const bodyText = (bodyTextSansLinks ?? '').trim()
       const snip = isTierGated ? tierShareSnippet(p) : bodyText
-      const answerPart = snip ? ` ${excerpt(snip, DESC_PUBLIC_MAX - checkinPrompt.length - gate.length - 4)}` : ''
-      description = excerpt(`${checkinPrompt}${answerPart}${gate}`, DESC_PUBLIC_MAX) || checkinPrompt
+      const answerPart = snip
+        ? excerpt(snip, DESC_PUBLIC_MAX - gate.length - 1)
+        : ''
+      description =
+        excerpt(`${answerPart}${gate}`.trim(), DESC_PUBLIC_MAX)
+        || (at ? `${at} on ${siteConfig.name}.` : checkinPrompt)
     } else if (isTierGated) {
       const snip = tierShareSnippet(p)
       const gate = gateLine

@@ -64,6 +64,8 @@ export function usePresenceSocketRef() {
  */
 export function usePresenceSocketCore(hooks: PresenceSocketHooks) {
   const socketRef = usePresenceSocketRef()
+  const { user, didAttempt } = useAuth()
+  const anonViewId = useAnonViewId()
   const isSocketConnected = useState(PRESENCE_SOCKET_CONNECTED_KEY, () => false)
   const isSocketConnecting = useState(PRESENCE_SOCKET_CONNECTING_KEY, () => false)
   const disconnectedDueToIdle = useState<boolean>(PRESENCE_DISCONNECTED_DUE_TO_IDLE_KEY, () => false)
@@ -100,6 +102,10 @@ export function usePresenceSocketCore(hooks: PresenceSocketHooks) {
   function connect() {
     if (!import.meta.client) return
     if (!apiBaseUrl) return
+    // Wait until /auth/me has settled so a signed-in handshake is not opened
+    // as a guest (query.anon is baked in at io() construction).
+    if (!didAttempt.value) return
+    if (!user.value && window.location.pathname === '/login') return
     // If a socket already exists, reuse it instead of creating another one.
     if (isSocketConnecting.value) return
     if (socketRef.value) {
@@ -116,10 +122,14 @@ export function usePresenceSocketCore(hooks: PresenceSocketHooks) {
     // for the WS host and hard-set (or pass) the engine path as '/socket.io'.
     // This is independent of whether clients point their REST base at /v1, /v2, etc.
     const wsUrl = apiBaseUrlToWsUrl(apiBaseUrl)
+    const query: Record<string, string> = { client: 'web' }
+    if (!user.value && didAttempt.value && anonViewId.value) {
+      query.anon = anonViewId.value
+    }
     const socket = io(wsUrl, {
       path: '/socket.io',
       withCredentials: true,
-      query: { client: 'web' },
+      query,
       transports: ['websocket', 'polling'],
       // Auto-reconnect on network/server drops (best practice)
       reconnection: true,

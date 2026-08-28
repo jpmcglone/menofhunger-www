@@ -89,7 +89,7 @@ function input(partial: Partial<PostPermalinkSeoInput> & { post: FeedPost | null
 }
 
 describe('computePostPermalinkSeo — public posts', () => {
-  it('titles with shared-by @username and uses substantial description', () => {
+  it('titles with @username and puts the post body only in the description', () => {
     const post = basePost({ body: LONG_PUBLIC_BODY })
     const r = computePostPermalinkSeo(
       input({
@@ -97,13 +97,24 @@ describe('computePostPermalinkSeo — public posts', () => {
         bodyTextSansLinks: LONG_PUBLIC_BODY,
       }),
     )
-    expect(r.title).toContain('shared by @alice')
-    expect(r.title).toContain('alice')
+    expect(r.title).toBe('@alice')
+    expect(r.title).not.toContain('public post')
     expect(r.description.length).toBeGreaterThan(80)
     expect(r.description).toContain('public post')
     expect(r.author).toBe('@alice')
     expect(r.noindex).toBe(false)
     expect(r.ogType).toBe('article')
+  })
+
+  it('does not repeat the opening of the post in both title and description', () => {
+    const body =
+      "And it's a little ironic since you're so offended that he wouldn't be charitable"
+    const r = computePostPermalinkSeo(
+      input({ post: basePost({ body }), bodyTextSansLinks: body }),
+    )
+    expect(r.title).toBe('@alice')
+    expect(r.description.startsWith("And it's a little ironic")).toBe(true)
+    expect(r.title).not.toContain('ironic')
   })
 
   it('og:image prefers media over avatar over logo', () => {
@@ -117,7 +128,7 @@ describe('computePostPermalinkSeo — public posts', () => {
       }),
     )
     expect(r.image).toBe(photoUrl)
-    expect(r.title).toMatch(/Photo — shared by @alice/)
+    expect(r.title).toBe('Photo · @alice')
     const person = r.jsonLdGraph.find((x: any) => x['@type'] === 'Person') as any
     expect(person.name).toBe('@alice')
     expect(person.url).toContain('/u/alice')
@@ -232,8 +243,7 @@ describe('computePostPermalinkSeo — verified-only', () => {
         bodyTextSansLinks: '',
       }),
     )
-    expect(r.title).toContain('@alice')
-    expect(r.title).toMatch(/— @alice$/)
+    expect(r.title).toBe('@alice')
     expect(r.description).toContain('verified members')
     expect(r.description).toContain('…')
     expect(r.image).toBe('https://cdn.example/avatars/alice.jpg')
@@ -259,8 +269,8 @@ describe('computePostPermalinkSeo — verified-only', () => {
     )
     expect(r.description).toContain('verified members')
     expect(r.description.length).toBeLessThan(120)
+    expect(r.title).toBe('@alice')
     expect(r.title).not.toContain('fifteen')
-    expect(r.title).toContain('@alice')
   })
 
   it('short post (<10 words): API empty body → Post by @user + gate', () => {
@@ -270,7 +280,7 @@ describe('computePostPermalinkSeo — verified-only', () => {
       viewerCanAccess: false,
     })
     const r = computePostPermalinkSeo(input({ post, bodyTextSansLinks: '' }))
-    expect(r.title).toBe('Post by @alice')
+    expect(r.title).toBe('@alice')
     expect(r.description).toContain('Post by @alice')
     expect(r.description).toContain('verified members')
   })
@@ -361,7 +371,7 @@ describe('computePostPermalinkSeo — group affiliation', () => {
       }),
     )
     expect(r.image).toBe('https://cdn.example/photo.jpg')
-    expect(r.title).toMatch(/Photo — shared by @alice · in Cool Group$/)
+    expect(r.title).toBe('Photo · @alice · in Cool Group')
   })
 
   it('public text post in a group with no group avatar and no user avatar: falls back to logo', () => {
