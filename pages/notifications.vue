@@ -634,6 +634,10 @@ onUnmounted(() => {
 const { notificationUndeliveredCount } = usePresence()
 watch(notificationUndeliveredCount, (newVal, oldVal) => {
   if (typeof newVal === 'number' && typeof oldVal === 'number' && newVal > oldVal) {
+    // KeepAlive leaves this page mounted on /home. Fetching + mark-delivered
+    // there cleared the badge and pendingRefresh, so All stayed stale until
+    // a hard refresh. Only treat arrivals as seen while this route is open.
+    if (route.path !== '/notifications') return
     if (import.meta.client && document.visibilityState !== 'visible') return
     const addedCount = newVal - oldVal
     void fetchList({ forceRefresh: true }).then(() => {

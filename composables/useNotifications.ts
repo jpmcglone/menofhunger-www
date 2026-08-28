@@ -1,4 +1,4 @@
-import type { GetNotificationsResponse, Notification, NotificationFeedItem, NotificationGroup, NotificationGroupKind, NotificationKind } from '~/types/api'
+import type { GetNotificationsResponse, Notification, NotificationFeedItem, NotificationGroup, NotificationKind } from '~/types/api'
 
 /** Mirrors PRIMARY_NOTIFICATION_KINDS on the API side. */
 const PRIMARY_KINDS = new Set<NotificationKind>(['comment', 'mention', 'followed_post', 'checkin_post', 'status_update', 'follow', 'boost', 'repost'])
@@ -44,22 +44,44 @@ export function useNotifications() {
   // "never fetched yet" (show loader) from "fetched and empty" (show empty state).
   const hasFetched = useState<boolean>(`${stateKey}:hasFetched`, () => false)
   const isNotificationsPage = computed(() => route.path === '/notifications')
-  const groupedKinds = new Set<NotificationGroupKind>(['comment', 'boost', 'repost', 'follow', 'followed_post', 'nudge'])
+
+  function notificationIsReply(n: Notification): boolean {
+    return Boolean((n.post?.parentId ?? '').trim())
+  }
 
   function notificationMatchesActiveKind(n: Notification): boolean {
     if (!activeKind.value) return true
     if (activeKind.value === 'other') return !PRIMARY_KINDS.has(n.kind) && n.kind !== 'message'
+    // Posts chip = top-level followed posts. Replies chip = comments + parented followed posts.
+    if (activeKind.value === 'followed_post') {
+      return n.kind === 'followed_post' && !notificationIsReply(n)
+    }
+    if (activeKind.value === 'comment') {
+      return n.kind === 'comment' || (n.kind === 'followed_post' && notificationIsReply(n))
+    }
     return n.kind === activeKind.value
+  }
+
+  function causingPostIdOf(n: Notification): string | null {
+    return (n.post?.id ?? n.actorPostId ?? n.subjectPostId ?? '').trim() || null
   }
 
   function prependNotification(n: Notification): boolean {
     if (!n?.id || !notificationMatchesActiveKind(n)) return false
-    if (groupedKinds.has(n.kind as NotificationGroupKind)) return false
-    const causingPostId = n.post?.id ?? null
+    const causingPostId = causingPostIdOf(n)
     const next = notifications.value.filter((item) => {
-      if (item.type !== 'single') return true
-      if (item.notification.id === n.id) return false
-      if (causingPostId && item.notification.post?.id === causingPostId) return false
+      if (item.type === 'single') {
+        if (item.notification.id === n.id) return false
+        if (causingPostId && item.notification.post?.id === causingPostId) return false
+        return true
+      }
+      if (item.type === 'group') {
+        if (item.group.kind !== n.kind) return true
+        if (causingPostId && item.group.subjectPostId === causingPostId) return false
+        if (!causingPostId && !item.group.subjectPostId) return false
+        return true
+      }
+      if (item.type === 'followed_posts_rollup' && n.kind === 'followed_post') return false
       return true
     })
     notifications.value = [{ type: 'single', notification: n }, ...next]

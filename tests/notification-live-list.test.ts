@@ -14,6 +14,10 @@ describe('notification live list + view-as-read', () => {
     expect(onNew).toContain('pendingRefresh.value = true')
     expect(onNew).toContain('if (!isNotificationsPage.value) return')
     expect(src).toContain('if (!n?.id || !notificationMatchesActiveKind(n)) return false')
+    expect(src).not.toContain('if (groupedKinds.has(n.kind')
+    expect(src).toContain("activeKind.value === 'followed_post'")
+    expect(src).toContain("activeKind.value === 'comment'")
+    expect(src).toContain('notificationIsReply')
   })
 
   it('refetches All when a badge arrived or a live row was missed off-page', () => {
@@ -22,6 +26,7 @@ describe('notification live list + view-as-read', () => {
     const sync = page.slice(syncStart, page.indexOf('onMounted(() =>', syncStart))
     expect(sync).toContain('badgeCountAtEntry > 0 || missedWhileAway')
     expect(sync).toContain('pendingRefresh.value')
+    expect(page).toContain("if (route.path !== '/notifications') return")
   })
 
   it('marks post and reply notifications read when a view is recorded', () => {
