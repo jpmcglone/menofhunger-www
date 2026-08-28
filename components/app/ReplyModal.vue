@@ -98,10 +98,13 @@ import { useKeyboardPinnedFixedStyle } from '~/composables/useKeyboardHeight'
 import { userColorTier, userTierTextClass } from '~/utils/user-tier'
 import { feedPostThreadGroupDisplayName } from '~/utils/community-group-preview'
 
+import { excludeMarvUsername, excludeMarvUsernameStrings } from '~/utils/exclude-marv-username'
+
 const replyModal = useReplyModal()
 const multiTrigger = useUserPreviewMultiTrigger()
 const { apiFetchData } = useApiClient()
 const { user } = useAuth()
+const { marvUsername } = useMarv()
 const middleScrollerRef = useMiddleScroller()
 // Same pin/shrink as the app shell — this overlay renders *outside* the shell.
 const { style: overlayStyle } = useKeyboardPinnedFixedStyle()
@@ -145,7 +148,7 @@ const replyingToDisplay = computed(() => {
     result.push(p)
   }
 
-  return result
+  return excludeMarvUsername(result, marvUsername.value)
 })
 
 function participantLinkClass(p: { id: string; username: string }): string {
@@ -234,7 +237,7 @@ const replyContext = computed(() => {
   return {
     parentId: post.id,
     visibility: post.visibility,
-    mentionUsernames: merged,
+    mentionUsernames: excludeMarvUsernameStrings(merged, marvUsername.value),
     groupDisplayName: feedPostThreadGroupDisplayName(post),
   }
 })

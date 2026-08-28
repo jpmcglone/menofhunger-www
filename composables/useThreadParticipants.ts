@@ -1,5 +1,6 @@
 import type { Ref } from 'vue'
 import type { GetThreadParticipantsData } from '~/types/api'
+import { excludeMarvUsername } from '~/utils/exclude-marv-username'
 
 export function useThreadParticipants(options: {
   post: Ref<{ id: string; visibility?: string } | null>
@@ -8,6 +9,7 @@ export function useThreadParticipants(options: {
 }) {
   const { post, isOnlyMe, currentUsername } = options
   const { apiFetchData } = useApiClient()
+  const { marvUsername } = useMarv()
 
   const threadParticipants = ref<GetThreadParticipantsData>([])
 
@@ -24,10 +26,15 @@ export function useThreadParticipants(options: {
     }
   }
 
+  const participantsWithoutMarv = computed(() =>
+    excludeMarvUsername(threadParticipants.value, marvUsername.value),
+  )
+
   const replyingToDisplay = computed(() => {
     const myUsername = currentUsername.value
-    if (!myUsername) return threadParticipants.value
-    return threadParticipants.value.filter((p) => p.username?.toLowerCase() !== myUsername.toLowerCase())
+    const people = participantsWithoutMarv.value
+    if (!myUsername) return people
+    return people.filter((p) => p.username?.toLowerCase() !== myUsername.toLowerCase())
   })
 
   watch(
@@ -43,7 +50,7 @@ export function useThreadParticipants(options: {
   )
 
   return {
-    threadParticipants,
+    threadParticipants: participantsWithoutMarv,
     replyingToDisplay,
     fetchThreadParticipants,
   }
