@@ -70,7 +70,7 @@
               </div>
 
               <!-- Recipient list -->
-              <div class="overflow-y-auto max-h-[55vh]">
+              <div class="overflow-y-auto no-scrollbar max-h-[55vh]">
                 <!-- Loading skeleton -->
                 <div v-if="defaultLoading && !query.trim()" class="px-4 py-2 space-y-1">
                   <div v-for="i in 5" :key="i" class="flex items-center gap-3 py-2">

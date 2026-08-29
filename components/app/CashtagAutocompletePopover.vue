@@ -11,7 +11,7 @@
         aria-label="Ticker suggestions"
         :data-placement="panelPlacement"
       >
-        <div ref="scrollEl" class="max-h-[min(18rem,46vh)] overflow-y-auto">
+        <div ref="scrollEl" class="max-h-[min(18rem,46vh)] overflow-y-auto no-scrollbar">
           <button
             v-for="(t, i) in items"
             :key="t.symbol"

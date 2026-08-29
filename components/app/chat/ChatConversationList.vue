@@ -1,7 +1,7 @@
 <template>
   <section
     :class="[
-      'h-full overflow-y-auto border-b border-gray-200 dark:border-zinc-800',
+      'h-full overflow-y-auto no-scrollbar border-b border-gray-200 dark:border-zinc-800',
       // When both panes are visible, add the divider between them.
       !isTinyViewport ? 'border-b-0 border-r' : ''
     ]"

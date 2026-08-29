@@ -31,7 +31,7 @@
 
         <!-- Composer sheet: max-height relative to keyboard-pinned overlay -->
         <div
-          class="absolute max-h-[calc(100%-0.75rem)] overflow-y-auto"
+          class="absolute max-h-[calc(100%-0.75rem)] overflow-y-auto no-scrollbar"
           :style="[composerSheetStyle, composerSheetPlacementStyle]"
         >
           <div

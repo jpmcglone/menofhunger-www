@@ -11,7 +11,7 @@
         aria-label="Hashtag suggestions"
         :data-placement="panelPlacement"
       >
-        <div ref="scrollEl" class="max-h-[min(18rem,46vh)] overflow-y-auto">
+        <div ref="scrollEl" class="max-h-[min(18rem,46vh)] overflow-y-auto no-scrollbar">
           <template v-for="(sec, sIdx) in renderSections" :key="sec.key">
             <div
               v-if="sec.label"

@@ -728,7 +728,11 @@ function keepCaretInScrollport(ed: CoreEditor) {
   if (!isEditorAlive(ed) || ed.view.composing) return
   requestAnimationFrame(() => {
     if (!isEditorAlive(ed) || ed.view.composing) return
-    ed.commands.scrollIntoView()
+    try {
+      ed.commands.scrollIntoView()
+    } catch {
+      // commandManager can still go null between the check and this frame.
+    }
   })
 }
 

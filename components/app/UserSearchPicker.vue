@@ -15,7 +15,7 @@
 
     <div
       v-if="sortedResults.length > 0"
-      class="max-h-56 overflow-y-auto rounded-lg border moh-border moh-divide"
+      class="max-h-56 overflow-y-auto no-scrollbar rounded-lg border moh-border moh-divide"
     >
       <button
         v-for="u in sortedResults"

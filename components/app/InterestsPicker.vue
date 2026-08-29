@@ -116,7 +116,7 @@
         </div>
 
         <!-- Scrollable tags area (Suggested + More) -->
-        <div class="flex-1 min-h-0 overflow-y-auto pt-1 space-y-4">
+        <div class="flex-1 min-h-0 overflow-y-auto no-scrollbar pt-1 space-y-4">
           <div v-if="filteredSuggestedGroups.length > 0" class="space-y-3">
             <div class="flex items-center gap-2">
               <div class="flex-1 border-t moh-border" />

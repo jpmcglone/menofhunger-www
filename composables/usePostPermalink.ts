@@ -4,6 +4,7 @@ import { getApiErrorMessage } from '~/utils/api-error'
 import { siteConfig } from '~/config/site'
 import { extractLinksFromText } from '~/utils/link-utils'
 import type { LinkMetadata } from '~/utils/link-metadata'
+import { peekPermalinkSeed, consumePermalinkSeed } from '~/utils/permalink-seed'
 import { normalizeForMeta } from '~/utils/text'
 
 export async function usePostPermalink(postId: Ref<string>) {
@@ -19,10 +20,20 @@ export async function usePostPermalink(postId: Ref<string>) {
     {
       watch: [postId],
       server: true,
-      // Reuse SSR payload during hydration to avoid a duplicate client fetch.
-      getCachedData: (key, nuxtApp) => nuxtApp.payload.data[key] ?? nuxtApp.static.data[key],
+      getCachedData: (key, nuxtApp) => {
+        const seeded = peekPermalinkSeed(postId.value)
+        if (seeded) return seeded
+        // Reuse SSR payload during hydration to avoid a duplicate client fetch.
+        return nuxtApp.payload.data[key] ?? nuxtApp.static.data[key]
+      },
     }
   )
+
+  if (import.meta.client) {
+    onMounted(() => {
+      if (consumePermalinkSeed(postId.value)) void refreshPost()
+    })
+  }
 
   // Whenever fresh server data arrives for this post, clear any optimistic
   // commentCount bumps we accumulated for it — the server's count is now authoritative.

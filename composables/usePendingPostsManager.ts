@@ -1,5 +1,6 @@
 import type { FeedPost } from '~/types/api'
 import { getApiErrorMessage } from '~/utils/api-error'
+import { seedPermalinkPost } from '~/utils/permalink-seed'
 import { buildPostedToastParams } from '~/utils/posted-toast'
 
 /**
@@ -114,8 +115,9 @@ export function usePendingPostsManager() {
       entry.callbacks.replace(entry.localId, real)
       entry.onSuccess?.(real)
       REGISTRY.delete(entry.localId)
+      const seeded = seedPermalinkPost(real, entry.optimisticPost.parent)
       // Success toast for every create path (post, reply, check-in, only-me, group).
-      toast.push(buildPostedToastParams(real))
+      toast.push(buildPostedToastParams(seeded))
     } catch (e: unknown) {
       const msg = getApiErrorMessage(e) || 'Failed to post.'
       entry.status = 'failed'

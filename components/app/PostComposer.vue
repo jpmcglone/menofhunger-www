@@ -609,6 +609,7 @@
 <script setup lang="ts">
 import { makeLocalId } from '~/composables/composer/types'
 import type { CreatePostData, PostStreakReward, PostVisibility, FeedPost, PostAuthor, ScheduledPost } from '~/types/api'
+import { seedPermalinkPost } from '~/utils/permalink-seed'
 import { buildPostedToastParams } from '~/utils/posted-toast'
 import { siteConfig } from '~/config/site'
 import { VOICE } from '~/config/voice'
@@ -1706,6 +1707,7 @@ const { submit: submitPost, submitting, submitError } = useFormSubmit(
 )
 
 function pushPostedToast(post: FeedPost) {
+  seedPermalinkPost(post)
   toast.push(buildPostedToastParams(post, { isReply: Boolean(props.replyTo) }))
 }
 
@@ -1751,6 +1753,7 @@ function submitOptimistic(): boolean {
     perform: async () => {
       const created = await performCreate(snapshot.body, snapshot.vis, snapshot.mediaPayload, snapshot.pollPayload)
       const { post } = unwrapCreated(created)
+      if (post) seedPermalinkPost(post)
       return post
     },
   })

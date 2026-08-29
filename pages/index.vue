@@ -684,7 +684,7 @@
               </button>
             </div>
 
-            <div class="max-h-[75vh] overflow-y-auto px-5 pb-6">
+            <div class="max-h-[75vh] overflow-y-auto no-scrollbar px-5 pb-6">
               <div class="space-y-4 pb-2">
                 <div class="space-y-2">
                   <p class="text-sm text-gray-800 dark:text-gray-100">

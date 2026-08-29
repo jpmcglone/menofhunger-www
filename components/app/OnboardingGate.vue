@@ -3,7 +3,7 @@
     v-if="show"
     class="fixed inset-0 z-[70] bg-white/95 dark:bg-black/90"
   >
-    <div class="h-full w-full overflow-y-auto">
+    <div class="h-full w-full overflow-y-auto no-scrollbar">
       <div class="min-h-full flex items-start sm:items-center justify-center p-4 sm:py-8">
         <div class="w-full max-w-xl">
           <div class="rounded-2xl border moh-border moh-bg p-5 shadow-sm flex flex-col max-h-[calc(100dvh-2rem)] sm:max-h-[calc(100dvh-4rem)]">
@@ -38,7 +38,7 @@
               />
             </div>
 
-            <div class="mt-5 space-y-4 overflow-y-auto min-h-0 pr-1 -mr-1 pb-[calc(1rem+env(safe-area-inset-bottom))]">
+            <div class="mt-5 space-y-4 overflow-y-auto no-scrollbar min-h-0 pb-[calc(1rem+env(safe-area-inset-bottom))]">
               <div v-show="page === 1" class="space-y-4">
                 <AppUsernameField
                   v-model="usernameInput"

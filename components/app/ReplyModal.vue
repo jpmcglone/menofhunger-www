@@ -36,7 +36,7 @@
           >
             <div class="relative z-10 flex flex-col max-h-[min(100%,40rem)]">
               <div
-                class="overflow-y-auto overflow-x-hidden flex flex-col moh-gutter-x pt-4 pb-4"
+                class="overflow-y-auto overflow-x-hidden no-scrollbar flex flex-col moh-gutter-x pt-4 pb-4"
                 @click.capture="onSheetClick"
               >
                 <!-- Parent post you're replying to (same padding as compose: pl-4 aligns with composer content) -->

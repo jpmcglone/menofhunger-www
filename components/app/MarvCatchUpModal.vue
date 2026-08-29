@@ -42,7 +42,7 @@
                 </button>
               </header>
 
-              <div class="min-h-0 flex-1 overflow-y-auto px-4 py-4">
+              <div class="min-h-0 flex-1 overflow-y-auto no-scrollbar px-4 py-4">
                 <!-- Mode picker (premium only) -->
                 <div v-if="isAvailable" class="mb-3 flex items-center gap-2">
                   <div class="flex min-w-0 flex-1 rounded-lg border moh-border p-0.5">

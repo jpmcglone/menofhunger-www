@@ -31,5 +31,6 @@ describe('DM composer field scroll', () => {
     expect(keep).toMatch(/ed\.view\.composing/)
     expect(keep.indexOf('isEditorAlive')).toBeLessThan(keep.indexOf('scrollIntoView'))
     expect(keep.indexOf('composing')).toBeLessThan(keep.indexOf('scrollIntoView'))
+    expect(keep).toMatch(/try\s*\{[\s\S]*scrollIntoView/)
   })
 })

@@ -11,7 +11,7 @@
         aria-label="Mention suggestions"
         :data-placement="panelPlacement"
       >
-        <div ref="scrollEl" class="max-h-[min(18rem,46vh)] overflow-y-auto">
+        <div ref="scrollEl" class="max-h-[min(18rem,46vh)] overflow-y-auto no-scrollbar">
           <template v-for="(u, i) in items" :key="u.id">
             <!-- Section header: shown at the start of each section when sections are active. -->
             <div
