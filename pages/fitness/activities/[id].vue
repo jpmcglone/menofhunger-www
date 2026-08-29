@@ -9,15 +9,23 @@
           <Icon name="tabler:arrow-left" size="16" />
           Back to Fitness
         </NuxtLink>
-        <button
-          v-if="activity"
-          type="button"
-          class="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium border moh-border hover:bg-gray-50 dark:hover:bg-zinc-900 transition-colors"
-          @click="downloadRaw"
-        >
-          <Icon name="tabler:download" size="16" />
-          Download raw data
-        </button>
+        <div v-if="activity" class="flex items-center gap-2">
+          <button
+            type="button"
+            class="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium border moh-border hover:bg-gray-50 dark:hover:bg-zinc-900 transition-colors"
+            @click="showShare = true"
+          >
+            Share
+          </button>
+          <button
+            type="button"
+            class="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium border moh-border hover:bg-gray-50 dark:hover:bg-zinc-900 transition-colors"
+            @click="downloadRaw"
+          >
+            <Icon name="tabler:download" size="16" />
+            Download raw data
+          </button>
+        </div>
       </div>
 
       <div v-if="loading" class="flex items-center justify-center py-20">
@@ -26,9 +34,12 @@
 
       <div
         v-else-if="error"
-        class="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-800/60 dark:bg-red-900/20 dark:text-red-300"
+        class="py-16 text-center space-y-3"
       >
-        {{ error }}
+        <p class="text-sm text-gray-500 dark:text-gray-400">{{ error }}</p>
+        <button type="button" class="text-sm font-medium text-orange-600 dark:text-orange-400" @click="load">
+          Try again
+        </button>
       </div>
 
       <template v-else-if="activity">
@@ -54,6 +65,38 @@
         </div>
       </template>
     </div>
+
+    <AppModal
+      v-model="showShare"
+      title="Share workout"
+      max-width-class="max-w-md"
+      max-height="min(90vh, 36rem)"
+      :disable-close="sharingPost"
+    >
+      <div class="p-4">
+        <textarea
+          v-model="shareBody"
+          placeholder="Add a caption… (optional)"
+          rows="3"
+          class="w-full rounded-lg border moh-border bg-transparent px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-orange-500"
+        />
+      </div>
+      <template #footer>
+        <div class="flex items-center justify-end gap-3">
+          <button type="button" class="text-sm moh-text-muted" :disabled="sharingPost" @click="showShare = false">
+            Cancel
+          </button>
+          <button
+            type="button"
+            class="px-4 py-2 rounded-xl bg-gray-600 text-white text-sm font-semibold disabled:opacity-50"
+            :disabled="sharingPost"
+            @click="submitShare"
+          >
+            {{ sharingPost ? 'Posting…' : 'Post' }}
+          </button>
+        </div>
+      </template>
+    </AppModal>
   </AppPageContent>
 </template>
 
@@ -82,6 +125,10 @@ const { apiFetchData } = useApiClient()
 const activity = ref<FitnessActivityDetail | null>(null)
 const loading = ref(true)
 const error = ref<string | null>(null)
+const showShare = ref(false)
+const shareBody = ref('')
+const sharingPost = ref(false)
+const toast = useAppToast()
 
 const activityId = computed(() => String(route.params.id ?? '').trim())
 
@@ -137,6 +184,25 @@ async function load() {
     error.value = getSafeUserErrorMessage(e, 'Could not load this activity.')
   } finally {
     loading.value = false
+  }
+}
+
+async function submitShare() {
+  const a = activity.value
+  if (!a) return
+  sharingPost.value = true
+  try {
+    const result = await apiFetchData<{ post: { id: string } }>('/fitness/share', {
+      method: 'POST',
+      body: { shareType: 'activity', activityId: a.id, body: shareBody.value, visibility: 'public' },
+    })
+    showShare.value = false
+    shareBody.value = ''
+    toast.push({ title: 'Posted!', to: `/p/${result.post.id}`, tone: 'success', durationMs: 6000 })
+  } catch (e) {
+    toast.pushError(e, 'Failed to share.')
+  } finally {
+    sharingPost.value = false
   }
 }
 

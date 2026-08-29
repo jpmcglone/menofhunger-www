@@ -1,26 +1,27 @@
 <template>
   <AppPageContent bottom="standard">
-    <div class="moh-gutter-x py-4 border-b moh-border">
-      <h1 class="text-xl font-bold">Fitness</h1>
-    </div>
-
-    <div v-if="loading" class="flex items-center justify-center py-20">
+    <div v-if="loading && !fitnessPage" class="flex items-center justify-center py-20">
       <AppLogoLoader />
     </div>
 
+    <div v-else-if="loadError && !fitnessPage" class="moh-gutter-x py-16 text-center space-y-3">
+      <p class="text-sm text-gray-500 dark:text-gray-400">{{ loadError }}</p>
+      <button type="button" class="text-sm font-medium text-orange-600 dark:text-orange-400" @click="loadPage">
+        Try again
+      </button>
+    </div>
+
     <template v-else-if="fitnessPage">
-      <!-- ─── Card 1: This Week + Recovery ───────────────────────────────── -->
+      <!-- ─── This week ─────────────────────────────────────────────────── -->
       <div class="moh-gutter-x py-3">
         <div class="rounded-xl border moh-border moh-surface-2 p-4 space-y-4">
-          <!-- Week summary header -->
           <div class="flex items-center">
-            <span class="text-xs font-semibold uppercase tracking-wide" :class="accentText">This week</span>
-            <span v-if="lastSyncedText" class="ml-auto text-[10px] text-gray-400 dark:text-gray-500">{{ lastSyncedText }}</span>
+            <span class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">This week</span>
             <button
               v-if="stravaConnection"
               :disabled="syncing || stravaCooldownRemaining > 0"
-              class="ml-2 p-1 rounded text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors disabled:opacity-40"
-              :title="stravaCooldownRemaining > 0 ? `Sync again in ${formatCooldown(stravaCooldownRemaining)}` : 'Sync Strava'"
+              class="ml-auto p-1 rounded text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors disabled:opacity-40"
+              :title="stravaCooldownRemaining > 0 ? `Sync again in ${formatCooldown(stravaCooldownRemaining)}` : 'Sync'"
               @click="syncStrava"
             >
               <svg
@@ -41,14 +42,20 @@
             </button>
           </div>
 
-          <!-- 4-stat row -->
-          <div class="grid grid-cols-4 gap-3">
+          <div class="grid grid-cols-3 gap-3">
             <div class="text-center">
               <div class="text-xl font-bold tabular-nums">
                 <span v-if="fitnessPage.weekSummary.totalSteps > 0">{{ formatSteps(fitnessPage.weekSummary.totalSteps) }}</span>
                 <span v-else class="text-gray-400 font-normal">—</span>
               </div>
-              <div class="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">steps</div>
+              <div
+                v-if="avgStepsPerDay != null"
+                class="text-[10px] tabular-nums mt-0.5 text-gray-400"
+              >{{ formatSteps(avgStepsPerDay) }} / day</div>
+              <div class="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5 flex items-center justify-center gap-0.5">
+                <Icon name="tabler:footprint" class="text-[11px]" aria-hidden="true" />
+                <span>steps</span>
+              </div>
             </div>
             <div class="text-center">
               <div class="text-xl font-bold tabular-nums">
@@ -64,93 +71,78 @@
               </div>
               <div class="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">{{ fitnessPage.units === 'us' ? 'miles' : 'km' }}</div>
             </div>
-            <div class="text-center">
-              <div class="text-xl font-bold tabular-nums">
-                <span v-if="fitnessPage.weekSummary.totalEffort > 0">{{ fitnessPage.weekSummary.totalEffort }}</span>
-                <span v-else class="text-gray-400 font-normal">—</span>
-              </div>
-              <div class="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">effort</div>
-            </div>
           </div>
 
-          <!-- Day bars (steps + active-day indicator) -->
-          <div class="flex items-end gap-1">
-            <div
-              v-for="day in fitnessPage.weekSummary.days"
-              :key="day.dayKey"
-              class="flex-1 flex flex-col items-center gap-1"
-            >
-              <div
-                class="w-full rounded-sm transition-all"
-                :class="dayBarClass(day)"
-                :style="{ height: dayBarHeight(day) }"
-              />
-              <!-- Day label — brighter for today -->
-              <span
-                class="text-[10px] transition-colors"
-                :class="isDayToday(day) ? 'text-white font-semibold' : 'text-gray-500 dark:text-gray-500'"
-              >{{ dayLabel(day.dayKey) }}</span>
-              <!-- Today dot — always rendered to keep column heights equal; hidden via opacity -->
-              <span
-                class="w-1 h-1 rounded-full -mt-0.5 transition-opacity"
-                :class="[accentBg, isDayToday(day) ? 'opacity-100' : 'opacity-0']"
-              />
+          <!-- Day bars (scrub to inspect a day's steps) -->
+          <div
+            class="select-none touch-none"
+            @pointerdown="onWeekPointerDown"
+            @pointermove="onWeekPointerMove"
+            @pointerup="onWeekPointerUp"
+            @pointercancel="clearInspectedDay"
+            @pointerleave="clearInspectedDay"
+          >
+            <div class="h-4 text-[10px] tabular-nums text-center text-gray-400">
+              {{ inspectedDayCaption || '\u00a0' }}
+            </div>
+            <div ref="weekBarsEl" class="flex items-end gap-1">
+              <button
+                v-for="day in fitnessPage.weekSummary.days"
+                :key="day.dayKey"
+                type="button"
+                class="flex-1 flex flex-col items-center gap-1 pointer-events-none"
+                :aria-label="dayAriaLabel(day)"
+                @focus="inspectedDayKey = day.dayKey"
+                @blur="clearInspectedDay"
+              >
+                <div
+                  class="w-full rounded-sm transition-all"
+                  :class="dayBarClass(day)"
+                  :style="{ height: dayBarHeight(day), opacity: dayBarOpacity(day) }"
+                />
+                <span
+                  class="text-[10px] transition-colors"
+                  :class="isDayToday(day) ? 'text-white font-semibold' : 'text-gray-500 dark:text-gray-500'"
+                >{{ dayLabel(day.dayKey) }}</span>
+                <span
+                  class="w-1 h-1 rounded-full -mt-0.5 transition-opacity"
+                  :class="[accentBg, isDayToday(day) ? 'opacity-100' : 'opacity-0']"
+                />
+              </button>
             </div>
           </div>
-          <!-- Legend -->
-          <div class="flex items-center gap-3 text-[10px] text-gray-400">
-            <span><span class="inline-block w-2 h-2 rounded-sm mr-1 align-middle" :class="accentBg" />active day</span>
-            <span><span class="inline-block w-2 h-2 rounded-sm mr-1 align-middle bg-gray-300 dark:bg-zinc-600" />no data</span>
-          </div>
-
-          <!-- Recovery strip (premium: sleep + HRV) — inside the same card -->
-          <div v-if="recoveryDays.length > 0" class="pt-1 border-t moh-border">
-            <div class="text-xs font-semibold uppercase tracking-wide mb-2" :class="accentText">
-              Recovery (7-day avg)
-            </div>
-            <div class="flex gap-6">
-              <div v-if="avgSleep !== null">
-                <span class="text-base font-bold tabular-nums">{{ avgSleep }}</span>
-                <span class="text-xs text-gray-500 dark:text-gray-400 ml-1">hrs sleep</span>
-              </div>
-              <div v-if="avgHrv !== null">
-                <span class="text-base font-bold tabular-nums">{{ avgHrv }}</span>
-                <span class="text-xs text-gray-500 dark:text-gray-400 ml-1">ms HRV</span>
-              </div>
-            </div>
-          </div>
+          <p v-if="recoveryLine" class="text-xs text-gray-400 tabular-nums">{{ recoveryLine }}</p>
         </div>
       </div>
 
-      <!-- ─── No connections CTA (nothing connected yet) ─────────────── -->
       <div
         v-if="fitnessPage.connections.length === 0"
-        class="moh-gutter-x py-8 text-center space-y-2 border-b moh-border"
+        class="moh-gutter-x py-8 text-center space-y-2"
       >
-        <Icon name="tabler:heart-rate-monitor" class="text-4xl text-gray-400" />
-        <p class="text-sm text-gray-600 dark:text-gray-300">
-          <template v-if="fitnessPage.stravaEnabled">
-            Connect Strava or Apple Health to see your activity here.
-          </template>
-          <template v-else>
-            Connect Apple Health to see your activity here.
-          </template>
-        </p>
+        <p class="text-sm text-gray-500 dark:text-gray-400">{{ connectEmptyCopy }}</p>
         <NuxtLink
           to="/settings/fitness"
-          class="inline-block mt-2 text-sm font-medium text-orange-600 dark:text-orange-400 hover:underline"
+          class="inline-block text-sm font-medium text-orange-600 dark:text-orange-400"
         >
           Connect in Settings
         </NuxtLink>
       </div>
+      <NuxtLink
+        v-else
+        to="/settings/fitness"
+        class="moh-gutter-x py-2 flex items-center text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
+      >
+        <span>{{ connectionLine }}</span>
+        <Icon name="tabler:chevron-right" class="ml-auto text-[14px]" />
+      </NuxtLink>
 
-      <!-- ─── Recent activity ───────────────────────────────────────────── -->
-      <div class="border-b moh-border">
+      <!-- ─── Recent ───────────────────────────────────────────────────── -->
+      <div>
         <div class="moh-gutter-x pt-4 pb-2 flex items-center justify-between">
-          <div class="text-xs font-semibold uppercase tracking-wide" :class="accentText">
-            Recent activity
+          <div class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+            Recent
             <span v-if="fitnessPage.weekSummary.activityCount > 0" class="normal-case font-normal text-gray-400 ml-1">
-              · {{ fitnessPage.weekSummary.activityCount }} session{{ fitnessPage.weekSummary.activityCount !== 1 ? 's' : '' }} this week
+              · {{ fitnessPage.weekSummary.activityCount }} this week
             </span>
           </div>
           <button
@@ -160,16 +152,12 @@
           >{{ showAllActivities ? 'Show less' : 'See all' }}</button>
         </div>
 
-        <div v-if="fitnessPage.recentActivities.length === 0" class="moh-gutter-x py-6 text-sm text-gray-500 dark:text-gray-400">
-          <template v-if="fitnessPage.stravaEnabled">
-            No activities yet. Sync Strava or open the iOS app to upload from Apple Health.
-          </template>
-          <template v-else>
-            No activities yet. Open the iOS app to upload from Apple Health.
-          </template>
+        <div v-if="fitnessPage.recentActivities.length === 0 && fitnessPage.connections.length > 0" class="moh-gutter-x py-6 text-center space-y-1">
+          <p class="text-sm text-gray-500 dark:text-gray-400">No recent activities</p>
+          <p class="text-xs text-gray-400">Sync to pull in your latest workouts.</p>
         </div>
 
-        <div v-else class="moh-divide">
+        <div v-else-if="fitnessPage.recentActivities.length > 0" class="moh-divide">
           <div
             v-for="activity in displayedActivities"
             :key="activity.id"
@@ -193,39 +181,11 @@
               <Icon :name="activityIcon(activity.activityType)" class="text-gray-600 dark:text-gray-200 text-base" />
             </div>
 
-            <!-- content -->
             <div class="flex-1 min-w-0">
-              <!-- Row 1: type + date + time + share -->
               <div class="flex items-start justify-between gap-2">
-                <div>
-                  <span class="text-sm font-semibold capitalize">{{ activity.name || activityLabel(activity.activityType) }}</span>
-                  <!-- provider badge -->
-                  <span
-                    class="ml-2 text-[10px] px-1.5 py-0.5 rounded font-medium"
-                    :class="activity.provider === 'strava'
-                      ? 'bg-orange-100 dark:bg-orange-900/40 text-orange-600 dark:text-orange-400'
-                      : 'bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400'"
-                  >
-                    {{ activity.provider === 'strava' ? 'Strava' : 'Health' }}
-                  </span>
-                </div>
-                <div class="flex items-center gap-3 flex-shrink-0 relative z-10">
-                  <span class="text-xs text-gray-400">{{ formatActivityDate(activity.startedAt) }}</span>
-                  <button
-                    class="inline-flex items-center justify-center w-7 h-7 rounded-full text-white/60 hover:text-white transition-colors"
-                    aria-label="Share activity"
-                    @click.stop.prevent="openShare('activity', activity.id)"
-                  >
-                    <svg viewBox="0 0 24 24" class="h-4 w-4" aria-hidden="true">
-                      <path d="M12 3v10" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" />
-                      <path d="M7.5 7.5L12 3l4.5 4.5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" />
-                      <path d="M5 11.5v7a1.5 1.5 0 0 0 1.5 1.5h11A1.5 1.5 0 0 0 19 18.5v-7" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" />
-                    </svg>
-                  </button>
-                </div>
+                <span class="text-sm font-semibold capitalize">{{ activity.name || activityLabel(activity.activityType) }}</span>
+                <span class="text-xs text-gray-400 flex-shrink-0">{{ formatActivityDate(activity.startedAt) }}</span>
               </div>
-
-              <!-- Row 2: duration · distance · pace · elevation -->
               <div class="text-xs text-gray-500 dark:text-gray-400 mt-1 flex items-center gap-2 flex-wrap">
                 <span class="font-medium text-gray-700 dark:text-gray-300">{{ formatDuration(activity.durationSec) }}</span>
                 <template v-if="activity.distanceM">
@@ -236,59 +196,16 @@
                   <span class="text-gray-300 dark:text-gray-600">·</span>
                   <span>{{ activityPace(activity) }}<span class="text-gray-400">/{{ fitnessPage.units === 'us' ? 'mi' : 'km' }}</span></span>
                 </template>
-                <template v-if="activity.totalElevationM != null && activity.totalElevationM > 0">
+                <template v-if="activity.stepsCount != null && activity.stepsCount > 0">
                   <span class="text-gray-300 dark:text-gray-600">·</span>
-                  <span class="flex items-center gap-0.5">
-                    <Icon name="tabler:trending-up" class="text-gray-400 text-[11px]" />
-                    {{ formatElevation(activity.totalElevationM) }}
+                  <span class="inline-flex items-center gap-0.5" :aria-label="`${activity.stepsCount} steps`">
+                    <Icon name="tabler:footprint" class="text-gray-400 text-[11px]" aria-hidden="true" />
+                    {{ formatSteps(activity.stepsCount) }}
                   </span>
                 </template>
               </div>
-
-              <!-- Row 3: steps · effort (if available) -->
-              <div v-if="(activity.stepsCount != null && activity.stepsCount > 0) || (activity.effortScore != null && activity.effortScore > 0)" class="mt-1.5 flex items-center gap-3 flex-wrap">
-                <div v-if="activity.stepsCount != null && activity.stepsCount > 0" class="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
-                  <Icon name="tabler:footprint" class="text-gray-400 text-[11px]" />
-                  <span>{{ formatSteps(activity.stepsCount) }} steps</span>
-                </div>
-                <div v-if="activity.effortScore != null && activity.effortScore > 0" class="flex items-center gap-1.5">
-                  <div class="flex gap-0.5">
-                    <span
-                      v-for="i in 5"
-                      :key="i"
-                      class="inline-block w-1.5 h-2.5 rounded-sm"
-                      :class="i <= effortLevel(activity.effortScore) ? effortDotColor(activity.effortScore) : 'bg-gray-200 dark:bg-zinc-700'"
-                    />
-                  </div>
-                  <span class="text-[10px] text-gray-400">{{ effortLabel(activity.effortScore) }}</span>
-                </div>
-              </div>
-
-              <!-- Row 4: calories · avg HR · max HR -->
-              <div v-if="activity.calories != null || activity.avgHeartrate != null || activity.maxHeartrate != null" class="mt-1.5 flex items-center gap-3 flex-wrap text-xs text-gray-500 dark:text-gray-400">
-                <div v-if="activity.calories != null" class="flex items-center gap-1">
-                  <Icon name="tabler:flame" class="text-orange-400 text-[11px]" />
-                  <span>{{ Math.round(activity.calories) }} kcal</span>
-                </div>
-                <template v-if="activity.avgHeartrate != null || activity.maxHeartrate != null">
-                  <div class="flex items-center gap-1">
-                    <Icon name="tabler:heart-rate-monitor" class="text-red-400 text-[11px]" />
-                    <span>avg <span class="font-medium text-gray-700 dark:text-gray-300">{{ activity.avgHeartrate != null ? Math.round(activity.avgHeartrate) : '--' }}</span></span>
-                    <span class="text-gray-300 dark:text-gray-600">/</span>
-                    <span>max <span class="font-medium text-gray-700 dark:text-gray-300">{{ activity.maxHeartrate != null ? Math.round(activity.maxHeartrate) : '--' }}</span></span>
-                    <span class="text-[10px] text-gray-400">bpm</span>
-                  </div>
-                </template>
-              </div>
             </div>
             </div>
-          </div>
-          <!-- Bottom "See all" / "Show less" button -->
-          <div v-if="hasMoreActivities" class="py-2 flex justify-center">
-            <button
-              class="text-xs text-gray-500 dark:text-gray-500 hover:text-gray-300 dark:hover:text-gray-300 px-3 py-1 rounded transition-colors"
-              @click="showAllActivities = !showAllActivities"
-            >{{ showAllActivities ? 'Show less' : 'See all activities' }}</button>
           </div>
         </div>
       </div>
@@ -300,20 +217,12 @@
       <!-- Weight -->
       <div class="p-4 space-y-3">
         <div class="flex items-center justify-between">
-          <div class="text-xs font-semibold uppercase tracking-wide" :class="accentText">Weight</div>
-          <div class="flex items-center gap-3">
-            <button
+          <div class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Weight</div>
+          <div class="flex items-center gap-2">
+            <AppFitnessOverflow
               v-if="fitnessPage.latestWeight"
-              class="inline-flex items-center justify-center w-7 h-7 rounded-full text-white/60 hover:text-white transition-colors"
-              aria-label="Share weight"
-              @click="openShare('weight', fitnessPage!.latestWeight!.id)"
-            >
-              <svg viewBox="0 0 24 24" class="h-4 w-4" aria-hidden="true">
-                <path d="M12 3v10" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" />
-                <path d="M7.5 7.5L12 3l4.5 4.5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" />
-                <path d="M5 11.5v7a1.5 1.5 0 0 0 1.5 1.5h11A1.5 1.5 0 0 0 19 18.5v-7" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" />
-              </svg>
-            </button>
+              @share="openShare('weight', fitnessPage.latestWeight.id)"
+            />
             <button
               class="text-xs font-medium text-blue-600 dark:text-blue-400 hover:underline"
               @click="showLogWeight = true"
@@ -323,10 +232,10 @@
           </div>
         </div>
 
-        <!-- Current weight + delta -->
-        <div v-if="fitnessPage.latestWeight" class="flex items-end justify-between">
+        <!-- Current weight + delta (updates while scrubbing the chart) -->
+        <div v-if="displayedWeight" class="flex items-end justify-between">
           <div class="flex items-baseline gap-2">
-            <span class="text-3xl font-bold tabular-nums">{{ formatWeight(fitnessPage.latestWeight.weightKg) }}</span>
+            <span class="text-3xl font-bold tabular-nums">{{ formatWeight(displayedWeight.weightKg) }}</span>
             <span class="text-sm text-gray-500 dark:text-gray-400">{{ fitnessPage.units === 'us' ? 'lbs' : 'kg' }}</span>
           </div>
           <div class="text-right">
@@ -334,7 +243,7 @@
               {{ weightDelta > 0 ? '+' : '' }}{{ formatWeight(weightDelta / (fitnessPage.units === 'us' ? 1 / 2.20462 : 1)) }}
               {{ fitnessPage.units === 'us' ? 'lbs' : 'kg' }}
             </div>
-            <div class="text-xs text-gray-400">{{ formatDate(fitnessPage.latestWeight.measuredAt) }}</div>
+            <div class="text-xs text-gray-400">{{ formatDate(displayedWeight.measuredAt) }}</div>
           </div>
         </div>
         <div v-else class="text-sm text-gray-500 dark:text-gray-400">
@@ -343,28 +252,42 @@
 
         <!-- Sparkline chart -->
         <div v-if="sparklinePoints.length >= 2" class="relative">
-          <svg
-            viewBox="0 0 300 60"
-            preserveAspectRatio="none"
-            class="w-full h-14"
-            aria-hidden="true"
-          >
-            <!-- gradient area fill -->
-            <defs>
-              <linearGradient id="wt-grad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" :stop-color="accentRgb" stop-opacity="0.25" />
-                <stop offset="100%" :stop-color="accentRgb" stop-opacity="0" />
-              </linearGradient>
-            </defs>
-            <path :d="sparklineAreaPath" fill="url(#wt-grad)" />
-            <path :d="sparklinePath" fill="none" :stroke="accentRgb" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-            <!-- latest dot -->
-            <circle v-if="sparklinePoints.length" :cx="sparklinePoints.at(-1)!.x" :cy="sparklinePoints.at(-1)!.y" r="3" :fill="accentRgb" />
-          </svg>
+          <AppFitnessSparkline
+            :points="sparklinePoints"
+            :line-path="sparklinePath"
+            :area-path="sparklineAreaPath"
+            :color="accentRgb"
+            gradient-id="wt-grad"
+            chart-label="Weight history. Drag to inspect a reading."
+            @hover="hoverWeightIndex = $event"
+          />
           <div class="flex justify-between text-[10px] text-gray-400 mt-0.5">
             <span>{{ formatDate(fitnessPage.weightHistory.at(-1)!.measuredAt) }}</span>
             <span>{{ fitnessPage.weightHistory.length }} entries</span>
             <span>{{ formatDate(fitnessPage.weightHistory.at(0)!.measuredAt) }}</span>
+          </div>
+        </div>
+
+        <div
+          v-if="fitnessPage.weightHistory.length > 1"
+          class="rounded-lg moh-surface-1 moh-divide overflow-hidden"
+        >
+          <div
+            v-for="(metric, idx) in fitnessPage.weightHistory.slice(0, 5)"
+            :key="metric.id"
+            class="flex items-center justify-between px-3 py-2"
+          >
+            <div>
+              <div class="text-sm font-medium tabular-nums">{{ formatWeight(metric.weightKg) }} {{ fitnessPage.units === 'us' ? 'lbs' : 'kg' }}</div>
+              <div class="text-[10px] text-gray-400">{{ formatDate(metric.measuredAt) }}</div>
+            </div>
+            <div
+              v-if="fitnessPage.weightHistory[idx + 1]"
+              class="text-xs tabular-nums"
+              :class="weightEntryDeltaClass(metric.weightKg, fitnessPage.weightHistory[idx + 1]!.weightKg)"
+            >
+              {{ weightEntryDelta(metric.weightKg, fitnessPage.weightHistory[idx + 1]!.weightKg) }}
+            </div>
           </div>
         </div>
 
@@ -400,20 +323,12 @@
       <!-- Goal -->
       <div class="p-4 space-y-3">
         <div class="flex items-center justify-between">
-          <div class="text-xs font-semibold uppercase tracking-wide" :class="accentText">Goal</div>
-          <div class="flex items-center gap-3">
-            <button
+          <div class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Goal</div>
+          <div class="flex items-center gap-2">
+            <AppFitnessOverflow
               v-if="fitnessPage.activeGoal"
-              class="inline-flex items-center justify-center w-7 h-7 rounded-full text-white/60 hover:text-white transition-colors"
-              aria-label="Share progress"
-              @click="openShare('progress', fitnessPage!.activeGoal!.id)"
-            >
-              <svg viewBox="0 0 24 24" class="h-4 w-4" aria-hidden="true">
-                <path d="M12 3v10" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" />
-                <path d="M7.5 7.5L12 3l4.5 4.5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" />
-                <path d="M5 11.5v7a1.5 1.5 0 0 0 1.5 1.5h11A1.5 1.5 0 0 0 19 18.5v-7" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" />
-              </svg>
-            </button>
+              @share="openShare('progress', fitnessPage.activeGoal.id)"
+            />
             <button
               class="text-xs font-medium text-blue-600 dark:text-blue-400 hover:underline"
               @click="showSetGoal = true"
@@ -424,10 +339,9 @@
         </div>
 
         <div v-if="fitnessPage.activeGoal">
-          <!-- Start → Current → Goal row -->
           <div class="flex items-center justify-between text-xs mb-2">
             <div class="text-center">
-              <div class="font-medium tabular-nums">{{ formatWeight(fitnessPage.activeGoal.startKg) }}</div>
+              <div class="font-medium tabular-nums">{{ formatWeight(goalStartKg) }}</div>
               <div class="text-gray-400">start</div>
             </div>
             <div class="text-center">
@@ -441,7 +355,6 @@
               <div class="text-gray-400">goal</div>
             </div>
           </div>
-          <!-- Progress bar -->
           <div class="w-full bg-gray-200 dark:bg-zinc-700 rounded-full h-2">
             <div
               class="h-2 rounded-full transition-all"
@@ -449,9 +362,8 @@
               :style="{ width: `${goalProgressPercent}%` }"
             />
           </div>
-          <div class="flex items-center justify-between text-[10px] text-gray-400 mt-1">
-            <span>{{ goalProgressPercent }}% complete</span>
-            <span>{{ goalRemainingLabel }}</span>
+          <div v-if="goalRemainingLabel" class="text-[10px] text-gray-400 mt-1">
+            {{ goalRemainingLabel }}
           </div>
         </div>
         <div v-else class="text-sm text-gray-500 dark:text-gray-400">
@@ -491,6 +403,70 @@
         </div><!-- /card inner -->
       </div><!-- /Card 2 outer -->
 
+      <!-- ─── Steps ──────────────────────────────────────────────────── -->
+      <div
+        v-if="fitnessPage.stepsHistory.length > 0"
+        class="moh-gutter-x py-3"
+      >
+        <div class="rounded-xl border moh-border moh-surface-2 p-4 space-y-3">
+          <div class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Steps</div>
+
+          <div v-if="displayedSteps" class="flex items-end justify-between">
+            <div class="flex items-baseline gap-2">
+              <span class="text-3xl font-bold tabular-nums">{{ formatSteps(displayedSteps.stepsCount) }}</span>
+              <span class="text-sm text-gray-500 dark:text-gray-400">steps</span>
+            </div>
+            <div class="text-right">
+              <div
+                v-if="stepsAvgPerDay != null && hoverStepsIndex == null"
+                class="text-sm tabular-nums text-gray-400"
+              >{{ formatSteps(stepsAvgPerDay) }} / day</div>
+              <div class="text-xs text-gray-400">{{ formatDayKey(displayedSteps.dayKey) }}</div>
+            </div>
+          </div>
+
+          <div v-if="stepsSparkline.points.length >= 2" class="relative">
+            <AppFitnessSparkline
+              :points="stepsSparkline.points"
+              :line-path="stepsSparkline.linePath"
+              :area-path="stepsSparkline.areaPath"
+              color="rgb(20,184,166)"
+              gradient-id="steps-grad"
+              chart-label="Steps history. Drag to inspect a day."
+              @hover="hoverStepsIndex = $event"
+            />
+            <div class="flex justify-between text-[10px] text-gray-400 mt-0.5">
+              <span>{{ formatDayKey(fitnessPage.stepsHistory.at(-1)!.dayKey) }}</span>
+              <span>{{ fitnessPage.stepsHistory.length }} days</span>
+              <span>{{ formatDayKey(fitnessPage.stepsHistory.at(0)!.dayKey) }}</span>
+            </div>
+          </div>
+
+          <div
+            v-if="fitnessPage.stepsHistory.length > 1"
+            class="rounded-lg moh-surface-1 moh-divide overflow-hidden"
+          >
+            <div
+              v-for="(day, idx) in fitnessPage.stepsHistory.slice(0, 5)"
+              :key="day.dayKey"
+              class="flex items-center justify-between px-3 py-2"
+            >
+              <div>
+                <div class="text-sm font-medium tabular-nums">{{ formatSteps(day.stepsCount) }} steps</div>
+                <div class="text-[10px] text-gray-400">{{ formatDayKey(day.dayKey) }}</div>
+              </div>
+              <div
+                v-if="fitnessPage.stepsHistory[idx + 1]"
+                class="text-xs tabular-nums"
+                :class="stepsEntryDeltaClass(day.stepsCount, fitnessPage.stepsHistory[idx + 1]!.stepsCount)"
+              >
+                {{ stepsEntryDelta(day.stepsCount, fitnessPage.stepsHistory[idx + 1]!.stepsCount) }}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- ─── VO2 Max (separate card) ─────────────────────────────────── -->
       <div
         v-if="fitnessPage.latestVo2Max || fitnessPage.vo2maxHistory.length > 0"
@@ -498,31 +474,23 @@
       >
         <div class="rounded-xl border moh-border moh-surface-2 p-4 space-y-3">
         <div class="flex items-center justify-between">
-          <div class="text-xs font-semibold uppercase tracking-wide" :class="accentText">VO2 Max</div>
-          <button
+          <div class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">VO2 max</div>
+          <AppFitnessOverflow
             v-if="fitnessPage.latestVo2Max"
-            class="inline-flex items-center justify-center w-7 h-7 rounded-full text-white/60 hover:text-white transition-colors"
-            aria-label="Share VO2 max"
-            @click="openShare('vo2max', fitnessPage.latestVo2Max.id)"
-          >
-            <svg viewBox="0 0 24 24" class="h-4 w-4" aria-hidden="true">
-              <path d="M12 3v10" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" />
-              <path d="M7.5 7.5L12 3l4.5 4.5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" />
-              <path d="M5 11.5v7a1.5 1.5 0 0 0 1.5 1.5h11A1.5 1.5 0 0 0 19 18.5v-7" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" />
-            </svg>
-          </button>
+            @share="openShare('vo2max', fitnessPage.latestVo2Max.id)"
+          />
         </div>
 
-        <div v-if="fitnessPage.latestVo2Max" class="flex items-end justify-between">
+        <div v-if="displayedVo2Max" class="flex items-end justify-between">
           <div class="flex items-baseline gap-2">
-            <span class="text-3xl font-bold tabular-nums">{{ fitnessPage.latestVo2Max.weightKg.toFixed(1) }}</span>
+            <span class="text-3xl font-bold tabular-nums">{{ displayedVo2Max.weightKg.toFixed(1) }}</span>
             <span class="text-sm text-gray-500 dark:text-gray-400">ml/kg/min</span>
           </div>
           <div class="text-right">
-            <div class="text-xs font-medium" :class="vo2maxCategory(fitnessPage.latestVo2Max.weightKg).color">
-              {{ vo2maxCategory(fitnessPage.latestVo2Max.weightKg).label }}
+            <div class="text-xs font-medium" :class="vo2maxCategory(displayedVo2Max.weightKg).color">
+              {{ vo2maxCategory(displayedVo2Max.weightKg).label }}
             </div>
-            <div class="text-xs text-gray-400">{{ formatDate(fitnessPage.latestVo2Max.measuredAt) }}</div>
+            <div class="text-xs text-gray-400">{{ formatDate(displayedVo2Max.measuredAt) }}</div>
           </div>
         </div>
         <div v-else class="text-sm text-gray-500 dark:text-gray-400">
@@ -531,22 +499,15 @@
 
         <!-- VO2 sparkline -->
         <div v-if="vo2maxPoints.length >= 2" class="relative">
-          <svg
-            viewBox="0 0 300 60"
-            preserveAspectRatio="none"
-            class="w-full h-14"
-            aria-hidden="true"
-          >
-            <defs>
-              <linearGradient id="vo2-grad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stop-color="rgb(99,102,241)" stop-opacity="0.25" />
-                <stop offset="100%" stop-color="rgb(99,102,241)" stop-opacity="0" />
-              </linearGradient>
-            </defs>
-            <path :d="vo2maxAreaPath" fill="url(#vo2-grad)" />
-            <path :d="vo2maxPath" fill="none" stroke="rgb(99,102,241)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-            <circle v-if="vo2maxPoints.length" :cx="vo2maxPoints.at(-1)!.x" :cy="vo2maxPoints.at(-1)!.y" r="3" fill="rgb(99,102,241)" />
-          </svg>
+          <AppFitnessSparkline
+            :points="vo2maxPoints"
+            :line-path="vo2maxPath"
+            :area-path="vo2maxAreaPath"
+            color="rgb(99,102,241)"
+            gradient-id="vo2-grad"
+            chart-label="VO2 max history. Drag to inspect a reading."
+            @hover="hoverVo2Index = $event"
+          />
           <div class="flex justify-between text-[10px] text-gray-400 mt-0.5">
             <span>{{ formatDate(fitnessPage.vo2maxHistory.at(-1)!.measuredAt) }}</span>
             <span>{{ fitnessPage.vo2maxHistory.length }} readings</span>
@@ -557,16 +518,6 @@
       </div>
 
 
-      <!-- ─── Apple Health compact nudge ───────────────────────────────── -->
-      <!-- Show only when something is connected but Apple Health is not -->
-      <div
-        v-if="fitnessPage.connections.length > 0 && !fitnessPage.connections.some(c => c.provider === 'apple_health')"
-        class="moh-gutter-x py-3 flex items-center gap-2 text-xs text-gray-400 dark:text-gray-500"
-      >
-        <Icon name="tabler:brand-apple" class="text-[13px] flex-shrink-0" />
-        <span>You can also connect Apple Health from the iOS app for richer data.</span>
-        <NuxtLink to="/settings/fitness" class="ml-auto text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 underline underline-offset-2 flex-shrink-0">Settings</NuxtLink>
-      </div>
     </template>
 
     <!-- Share post modal -->
@@ -624,8 +575,12 @@
 </template>
 
 <script setup lang="ts">
-import type { FitnessPage, FitnessActivityType, FitnessDailySummary, FitnessSharePreview, PostVisibility } from '~/types/api'
+import type { FitnessPage, FitnessActivityType, FitnessDailySummary, FitnessSharePreview, FitnessStepsDay, PostVisibility } from '~/types/api'
 import { easternDateKey } from '~/utils/eastern-time'
+import { indexAlongWidth, layoutSparkline } from '~/utils/fitness-chart'
+import { getSafeUserErrorMessage } from '~/utils/api-error'
+import { effectiveGoalStartKg, goalProgressPercent as computeGoalProgress } from '~/utils/fitness-goal'
+import { averageStepsPerDay } from '~/utils/fitness-week'
 
 definePageMeta({
   layout: 'app',
@@ -646,6 +601,7 @@ const toast = useAppToast()
 
 const fitnessPage = ref<FitnessPage | null>(null)
 const loading = ref(true)
+const loadError = ref<string | null>(null)
 
 const ACTIVITY_PREVIEW_COUNT = 5
 const showAllActivities = ref(false)
@@ -717,7 +673,6 @@ const { isVerified, isPremium } = useAuth()
 const accentRgb = computed(() => isPremium.value ? 'rgb(249,115,22)' : 'rgb(59,130,246)')
 const accentText = computed(() => isPremium.value ? 'text-amber-500 dark:text-amber-400' : 'text-blue-500 dark:text-blue-400')
 const accentBg = computed(() => isPremium.value ? 'bg-orange-500' : 'bg-blue-500')
-const accentBarRest = computed(() => isPremium.value ? 'bg-orange-300/60 dark:bg-orange-800/50' : 'bg-blue-300/60 dark:bg-blue-800/50')
 const accentRing = computed(() => isPremium.value ? 'focus:ring-orange-500' : 'focus:ring-blue-500')
 
 const allowedVisibilities = computed<PostVisibility[]>(() => [
@@ -767,17 +722,31 @@ function refreshStravaCooldown() {
   else stravaCooldownRemaining.value = 0
 }
 
-const lastSyncedText = computed(() => {
+const lastSyncedShort = computed(() => {
   const conns = fitnessPage.value?.connections ?? []
   const dates = conns.flatMap((c) => (c.lastSyncAt ? [new Date(c.lastSyncAt)] : []))
   if (dates.length === 0) return null
   const latest = new Date(Math.max(...dates.map((d) => d.getTime())))
   const elapsed = (Date.now() - latest.getTime()) / 1000
-  if (elapsed < 60) return 'Just now'
-  if (elapsed < 3600) return `Synced ${Math.floor(elapsed / 60)}m ago`
-  if (elapsed < 86400) return `Synced ${Math.floor(elapsed / 3600)}h ago`
-  return 'Synced yesterday'
+  if (elapsed < 60) return 'just now'
+  if (elapsed < 3600) return `${Math.floor(elapsed / 60)}m ago`
+  if (elapsed < 86400) return `${Math.floor(elapsed / 3600)}h ago`
+  return 'yesterday'
 })
+
+const connectionLine = computed(() => {
+  const conns = fitnessPage.value?.connections ?? []
+  const names = conns.map((c) => (c.provider === 'strava' ? 'Strava' : 'Apple Health'))
+  const unique = [...new Set(names)]
+  const synced = lastSyncedShort.value
+  return synced ? `${unique.join(' · ')} · synced ${synced}` : unique.join(' · ')
+})
+
+const connectEmptyCopy = computed(() =>
+  fitnessPage.value?.stravaEnabled
+    ? 'Connect Strava or Apple Health to see your activity.'
+    : 'Connect Apple Health to see your activity.',
+)
 
 async function syncStrava() {
   if (syncing.value || stravaCooldownRemaining.value > 0) return
@@ -798,11 +767,14 @@ async function syncStrava() {
 
 async function loadPage() {
   loading.value = true
+  loadError.value = null
   try {
     fitnessPage.value = await apiFetchData<FitnessPage>('/fitness/me')
     refreshStravaCooldown()
-  } catch {
-    // non-fatal
+  } catch (e) {
+    if (!fitnessPage.value) {
+      loadError.value = getSafeUserErrorMessage(e, "Couldn't load your fitness data.")
+    }
   } finally {
     loading.value = false
   }
@@ -846,7 +818,14 @@ function weightEntryDelta(current: number, previous: number): string {
   const diff = current - previous
   const display = page?.units === 'us' ? diff * 2.20462 : diff
   if (Math.abs(display) < 0.05) return '—'
-  return `${display > 0 ? '▲' : '▼'} ${Math.abs(display).toFixed(1)}`
+  const sign = display >= 0 ? '+' : ''
+  return `${sign}${display.toFixed(1)}`
+}
+
+function weightEntryDeltaClass(current: number, previous: number): string {
+  const diff = current - previous
+  if (Math.abs(diff) < 0.05) return 'text-gray-400'
+  return diff > 0 ? 'text-red-400' : 'text-green-500'
 }
 
 async function submitLogWeight() {
@@ -870,88 +849,72 @@ async function submitLogWeight() {
 
 // ─── Weight sparkline ─────────────────────────────────────────────────────────
 
-const W = 300
-const H = 60
-const PAD = 4
-
 /** weight history oldest→newest for the chart */
 const chartData = computed(() => {
   const history = fitnessPage.value?.weightHistory
   if (!history || history.length < 2) return []
-  return [...history].reverse() // oldest first
+  return [...history].reverse()
 })
 
-const sparklinePoints = computed((): { x: number; y: number }[] => {
-  const data = chartData.value
-  if (data.length < 2) return []
-  const weights = data.map((d) => d.weightKg)
-  const minW = Math.min(...weights)
-  const maxW = Math.max(...weights)
-  const range = maxW - minW || 1
-  const times = data.map((d) => new Date(d.measuredAt).getTime())
-  const minT = times[0] ?? 0
-  const maxT = times[times.length - 1] ?? 0
-  const timeRange = maxT - minT || 1
-  return data.map((d, i) => ({
-    x: PAD + (((times[i] ?? 0) - minT) / timeRange) * (W - PAD * 2),
-    y: (H - PAD) - ((d.weightKg - minW) / range) * (H - PAD * 2),
-  }))
-})
-
-const sparklinePath = computed((): string => {
-  const pts = sparklinePoints.value
-  if (pts.length < 2) return ''
-  return pts.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' ')
-})
-
-const sparklineAreaPath = computed((): string => {
-  const pts = sparklinePoints.value
-  if (pts.length < 2) return ''
-  const line = pts.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' ')
-  const last = pts[pts.length - 1]!
-  const first = pts[0]!
-  return `${line} L ${last.x.toFixed(1)} ${H} L ${first.x.toFixed(1)} ${H} Z`
-})
+const weightSparkline = computed(() =>
+  layoutSparkline(chartData.value.map((d) => ({
+    value: d.weightKg,
+    at: new Date(d.measuredAt).getTime(),
+  }))),
+)
+const sparklinePoints = computed(() => weightSparkline.value.points)
+const sparklinePath = computed(() => weightSparkline.value.linePath)
+const sparklineAreaPath = computed(() => weightSparkline.value.areaPath)
 
 // ─── VO2 Max sparkline ────────────────────────────────────────────────────────
 
 const vo2maxChartData = computed(() => {
   const history = fitnessPage.value?.vo2maxHistory
   if (!history || history.length < 2) return []
-  return [...history].reverse() // oldest first
+  return [...history].reverse()
 })
 
-const vo2maxPoints = computed((): { x: number; y: number }[] => {
-  const data = vo2maxChartData.value
-  if (data.length < 2) return []
-  const vals = data.map((d) => d.weightKg)
-  const minV = Math.min(...vals)
-  const maxV = Math.max(...vals)
-  const range = maxV - minV || 1
-  const times = data.map((d) => new Date(d.measuredAt).getTime())
-  const minT = times[0] ?? 0
-  const maxT = times[times.length - 1] ?? 0
-  const timeRange = maxT - minT || 1
-  return data.map((d, i) => ({
-    x: PAD + (((times[i] ?? 0) - minT) / timeRange) * (W - PAD * 2),
-    y: (H - PAD) - ((d.weightKg - minV) / range) * (H - PAD * 2),
-  }))
+const vo2Sparkline = computed(() =>
+  layoutSparkline(vo2maxChartData.value.map((d) => ({
+    value: d.weightKg,
+    at: new Date(d.measuredAt).getTime(),
+  }))),
+)
+const vo2maxPoints = computed(() => vo2Sparkline.value.points)
+const vo2maxPath = computed(() => vo2Sparkline.value.linePath)
+const vo2maxAreaPath = computed(() => vo2Sparkline.value.areaPath)
+
+// ─── Steps sparkline ──────────────────────────────────────────────────────────
+
+const stepsChartData = computed((): FitnessStepsDay[] => {
+  const history = fitnessPage.value?.stepsHistory
+  if (!history || history.length < 2) return []
+  return [...history].reverse()
 })
 
-const vo2maxPath = computed((): string => {
-  const pts = vo2maxPoints.value
-  if (pts.length < 2) return ''
-  return pts.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' ')
-})
+const stepsSparkline = computed(() =>
+  layoutSparkline(stepsChartData.value.map((d) => ({
+    value: d.stepsCount,
+    at: new Date(`${d.dayKey}T12:00:00Z`).getTime(),
+  }))),
+)
 
-const vo2maxAreaPath = computed((): string => {
-  const pts = vo2maxPoints.value
-  if (pts.length < 2) return ''
-  const line = pts.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' ')
-  const last = pts[pts.length - 1]!
-  const first = pts[0]!
-  return `${line} L ${last.x.toFixed(1)} ${H} L ${first.x.toFixed(1)} ${H} Z`
-})
+const stepsAvgPerDay = computed(() =>
+  fitnessPage.value ? averageStepsPerDay(fitnessPage.value.stepsHistory) : null,
+)
+
+function stepsEntryDelta(current: number, previous: number): string {
+  const diff = current - previous
+  if (Math.abs(diff) < 50) return '—'
+  const sign = diff >= 0 ? '+' : ''
+  return `${sign}${formatSteps(diff)}`
+}
+
+function stepsEntryDeltaClass(current: number, previous: number): string {
+  const diff = current - previous
+  if (Math.abs(diff) < 50) return 'text-gray-400'
+  return diff > 0 ? 'text-green-500' : 'text-red-400'
+}
 
 function vo2maxCategory(value: number): { label: string; color: string } {
   if (value >= 60) return { label: 'Superior', color: 'text-indigo-500' }
@@ -964,15 +927,20 @@ function vo2maxCategory(value: number): { label: string; color: string } {
 
 // ─── Goal ─────────────────────────────────────────────────────────────────────
 
+const goalStartKg = computed(() => {
+  const page = fitnessPage.value
+  if (!page?.activeGoal) return null
+  return effectiveGoalStartKg(page.activeGoal.startKg, page.weightHistory.at(-1)?.weightKg)
+})
+
 const goalProgressPercent = computed(() => {
   const page = fitnessPage.value
   if (!page?.activeGoal) return 0
-  const { startKg, targetKg } = page.activeGoal
-  const currentKg = page.latestWeight?.weightKg
-  if (!startKg || !currentKg || !targetKg) return 0
-  const total = Math.abs(targetKg - startKg)
-  if (total === 0) return 100
-  return Math.min(100, Math.round((Math.abs(currentKg - startKg) / total) * 100))
+  return computeGoalProgress({
+    startKg: goalStartKg.value,
+    targetKg: page.activeGoal.targetKg,
+    currentKg: page.latestWeight?.weightKg,
+  })
 })
 
 const goalRemainingLabel = computed(() => {
@@ -983,7 +951,7 @@ const goalRemainingLabel = computed(() => {
   const diff = Math.abs(page.latestWeight.weightKg - targetKg)
   const display = page.units === 'us' ? diff * 2.20462 : diff
   if (display < 0.1) return 'Goal reached!'
-  return `${display.toFixed(1)} ${page.units === 'us' ? 'lbs' : 'kg'} to go`
+  return `${display.toFixed(1)} ${page.units === 'us' ? 'lbs' : 'kg'} to go · ${goalProgressPercent.value}% complete`
 })
 
 async function submitSetGoal() {
@@ -991,7 +959,7 @@ async function submitSetGoal() {
   if (!raw || raw <= 0) return
   const page = fitnessPage.value
   const targetKg = page?.units === 'us' ? raw / 2.20462 : raw
-  const startKg = page?.latestWeight?.weightKg ?? undefined
+  const startKg = page?.activeGoal?.startKg ?? page?.latestWeight?.weightKg ?? page?.weightHistory.at(-1)?.weightKg
   savingGoal.value = true
   try {
     await apiFetchData<unknown>('/fitness/goals', { method: 'PUT', body: { kind: 'weight', targetKg, startKg } })
@@ -1164,30 +1132,92 @@ const avgHrv = computed(() => {
   return Math.round(withHrv.reduce((s, d) => s + (d.hrvMs ?? 0), 0) / withHrv.length)
 })
 
-// ─── Effort helpers ───────────────────────────────────────────────────────────
+const recoveryLine = computed(() => {
+  if (!isPremium.value) return ''
+  const parts: string[] = []
+  if (avgSleep.value != null) parts.push(`${avgSleep.value} hrs sleep`)
+  if (avgHrv.value != null) parts.push(`${avgHrv.value} ms HRV`)
+  return parts.length ? parts.join(' · ') : ''
+})
 
-/** Strava suffer score: 0–25 easy, 26–75 moderate, 76–150 hard, 150+ max */
-function effortLevel(score: number | null): number {
-  if (score == null) return 0
-  if (score < 25) return 1
-  if (score < 75) return 2
-  if (score < 150) return 3
-  if (score < 250) return 4
-  return 5
+const avgStepsPerDay = computed(() =>
+  fitnessPage.value ? averageStepsPerDay(fitnessPage.value.weekSummary.days) : null,
+)
+
+const weekBarsEl = ref<HTMLElement | null>(null)
+const inspectedDayKey = ref<string | null>(null)
+const hoverWeightIndex = ref<number | null>(null)
+const hoverVo2Index = ref<number | null>(null)
+const hoverStepsIndex = ref<number | null>(null)
+
+const inspectedDay = computed(() => {
+  const days = fitnessPage.value?.weekSummary.days
+  if (!days || !inspectedDayKey.value) return null
+  return days.find((day) => day.dayKey === inspectedDayKey.value) ?? null
+})
+
+const inspectedDayCaption = computed(() => {
+  const day = inspectedDay.value
+  if (!day) return ''
+  const steps = day.stepsCount != null && day.stepsCount > 0 ? formatSteps(day.stepsCount) : '—'
+  return `${dayLabel(day.dayKey)} · ${steps} steps`
+})
+
+const displayedWeight = computed(() => {
+  const idx = hoverWeightIndex.value
+  if (idx != null && chartData.value[idx]) return chartData.value[idx] ?? null
+  return fitnessPage.value?.latestWeight ?? null
+})
+
+const displayedVo2Max = computed(() => {
+  const idx = hoverVo2Index.value
+  if (idx != null && vo2maxChartData.value[idx]) return vo2maxChartData.value[idx] ?? null
+  return fitnessPage.value?.latestVo2Max ?? null
+})
+
+const displayedSteps = computed(() => {
+  const idx = hoverStepsIndex.value
+  if (idx != null && stepsChartData.value[idx]) return stepsChartData.value[idx] ?? null
+  return fitnessPage.value?.stepsHistory[0] ?? null
+})
+
+function inspectDayAtClientX(clientX: number) {
+  const el = weekBarsEl.value
+  const days = fitnessPage.value?.weekSummary.days
+  if (!el || !days?.length) return
+  const rect = el.getBoundingClientRect()
+  const idx = indexAlongWidth(days.length, clientX - rect.left, rect.width)
+  if (idx == null) return
+  inspectedDayKey.value = days[idx]?.dayKey ?? null
 }
 
-function effortLabel(score: number | null): string {
-  const lvl = effortLevel(score)
-  return ['', 'Easy', 'Moderate', 'Hard', 'Very hard', 'Max'][lvl] ?? ''
+function onWeekPointerDown(e: PointerEvent) {
+  ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
+  inspectDayAtClientX(e.clientX)
 }
 
-function effortDotColor(score: number | null): string {
-  const lvl = effortLevel(score)
-  if (lvl <= 1) return 'bg-green-400'
-  if (lvl === 2) return 'bg-yellow-400'
-  if (lvl === 3) return 'bg-orange-400'
-  if (lvl === 4) return 'bg-orange-600'
-  return 'bg-red-500'
+function onWeekPointerMove(e: PointerEvent) {
+  inspectDayAtClientX(e.clientX)
+}
+
+function onWeekPointerUp(e: PointerEvent) {
+  if (e.pointerType === 'touch' || e.pointerType === 'pen') inspectedDayKey.value = null
+}
+
+function clearInspectedDay() {
+  inspectedDayKey.value = null
+}
+
+function dayBarOpacity(day: FitnessDailySummary): number {
+  if (!inspectedDayKey.value) return 1
+  return day.dayKey === inspectedDayKey.value ? 1 : 0.4
+}
+
+function dayAriaLabel(day: FitnessDailySummary): string {
+  const name = dayLabel(day.dayKey)
+  if (isDayFuture(day)) return `${name}, upcoming`
+  if (day.stepsCount != null && day.stepsCount > 0) return `${name}, ${day.stepsCount} steps`
+  return `${name}, no step data`
 }
 
 // ─── Activity helpers ─────────────────────────────────────────────────────────
@@ -1221,12 +1251,6 @@ function formatSteps(n: number): string {
   return String(n)
 }
 
-function formatElevation(meters: number): string {
-  const page = fitnessPage.value
-  if (page?.units === 'us') return `${Math.round(meters * 3.28084)} ft`
-  return `${Math.round(meters)} m`
-}
-
 function formatDistance(meters: number | null): string {
   if (!meters) return '0'
   const page = fitnessPage.value
@@ -1243,6 +1267,10 @@ function formatDuration(seconds: number): string {
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+}
+
+function formatDayKey(dayKey: string): string {
+  return formatDate(`${dayKey}T12:00:00Z`)
 }
 
 function formatActivityDate(iso: string): string {

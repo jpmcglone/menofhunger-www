@@ -2690,6 +2690,11 @@ export type FitnessDailySummary = {
   hrvMs?: number | null
 }
 
+export type FitnessStepsDay = {
+  dayKey: string
+  stepsCount: number
+}
+
 export type FitnessBodyMetric = {
   id: string
   /** "weight" | "vo2max" */
@@ -2778,6 +2783,8 @@ export type FitnessPage = {
   weightHistory: FitnessBodyMetric[]
   latestVo2Max: FitnessBodyMetric | null
   vo2maxHistory: FitnessBodyMetric[]
+  /** Up to 60 days with steps, newest-first. */
+  stepsHistory: FitnessStepsDay[]
   activeGoal: FitnessGoal | null
 }
 
