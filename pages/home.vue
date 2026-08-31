@@ -83,7 +83,6 @@
         persist-key="home"
         :enable-avatar-status-editor="true"
         :register-unsaved-guard="false"
-        collapse-until-focus
         @pending="onComposerPending"
       />
       <div v-else-if="isAuthed" class="px-3 pt-3 sm:px-4 sm:pt-4">

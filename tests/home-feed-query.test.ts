@@ -93,14 +93,12 @@ describe('home feed query shape', () => {
 })
 
 describe('home feed refresh guardrails', () => {
-  it('collapses the home composer chrome without unmounting the editor', () => {
+  it('keeps the home composer expanded with no compact chrome', () => {
     const home = readFromRepo('pages/home.vue')
     const composer = readFromRepo('components/app/PostComposer.vue')
-    expect(home).toMatch(/<LazyAppPostComposer[\s\S]*?collapse-until-focus/)
-    expect(composer).toContain('collapseUntilFocus?: boolean')
-    expect(composer).toContain('v-show="!showCollapsedComposer"')
-    expect(composer).toContain('if (props.collapseUntilFocus) composerExpanded.value = true')
-    expect(composer).not.toMatch(/v-if="!showCollapsedComposer"/)
+    expect(home).not.toMatch(/collapse-until-focus/)
+    expect(composer).not.toContain('collapseUntilFocus')
+    expect(composer).not.toContain('showCollapsedComposer')
   })
 
   it('keeps signed-out home on the cacheable trending feed and pauses ad rows', () => {

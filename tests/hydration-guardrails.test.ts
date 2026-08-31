@@ -177,7 +177,7 @@ describe('hydration guardrails (structural)', () => {
     expect(home).toMatch(/<AppFeedDailyCheckinHero\s+v-if="heroResolved && !hasCheckedInToday"/)
     expect(home).toMatch(/<AppFeedDailyCheckinHero\s+v-if="heroResolved && hasCheckedInToday"[\s\S]*?compact/)
     expect(home).not.toMatch(/AppFeedWeeklyMissionCard/)
-    expect(home).toMatch(/collapse-until-focus/)
+    expect(home).not.toMatch(/collapse-until-focus/)
     const hero = readFromRepo('components/app/feed/DailyCheckinHero.vue')
     expect(hero).toMatch(/moh-checkin-row/)
     expect(hero).toMatch(/moh-checkin-row-accent/)
@@ -188,8 +188,8 @@ describe('hydration guardrails (structural)', () => {
     expect(leaderboard).toMatch(/Share this week's mission/)
     expect(leaderboard).toMatch(/weeklyMissionShareText/)
     const composerSource = readFromRepo('components/app/PostComposer.vue')
-    expect(composerSource).toMatch(/collapseUntilFocus/)
-    expect(composerSource).toMatch(/v-show="!showCollapsedComposer"/)
+    expect(composerSource).not.toMatch(/collapseUntilFocus/)
+    expect(composerSource).not.toMatch(/showCollapsedComposer/)
     // heroResolved itself must require both `hydrated` AND a known checkin state (or unauth viewer).
     expect(home).toMatch(/const heroResolved = computed\(\(\) => {[\s\S]*?if \(!hydrated\.value\) return false[\s\S]*?if \(!isAuthed\.value\) return true[\s\S]*?return checkinState\.value !== null/)
     // Check-in (answered or not) stays above the composer.

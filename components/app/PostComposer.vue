@@ -11,26 +11,7 @@
     ]"
   >
     <div v-if="isAuthed">
-      <button
-        v-if="showCollapsedComposer"
-        type="button"
-        class="flex min-h-11 w-full items-center gap-3 text-left moh-tap"
-        :aria-label="collapsedComposerLabel"
-        @click="expandCollapsedComposer"
-      >
-        <AppUserAvatar
-          :user="user"
-          size-class="h-8 w-8 sm:h-10 sm:w-10"
-          :show-empty-status="enableAvatarStatusEditor"
-          :status-behavior="enableAvatarStatusEditor ? 'custom' : 'view'"
-        />
-        <span class="min-w-0 flex-1 py-2 text-[16px] leading-6 moh-text-muted">
-          {{ collapsedComposerLabel }}
-        </span>
-      </button>
-      <!-- Full composer -->
       <div
-        v-show="!showCollapsedComposer"
         :class="omitAvatar ? 'flex flex-col gap-2' : 'grid grid-cols-[2.5rem_minmax(0,1fr)] gap-x-3 items-start'"
       >
       <!-- Row 1: visibility picker (left) + checkin prompt / scheduled time (right) -->
@@ -764,11 +745,6 @@ const props = defineProps<{
    * textarea placeholder.
    */
   checkinPrompt?: string
-  /**
-   * Home feed: start as avatar + "Say something." Expand on click/focus.
-   * Stays expanded while there is a draft, media, poll, or check-in prompt.
-   */
-  collapseUntilFocus?: boolean
 }>()
 
 const route = useRoute()
@@ -1395,30 +1371,9 @@ function clearComposer() {
   draft.value = ''
   clearAll()
   clearPoll()
-  if (props.collapseUntilFocus) composerExpanded.value = false
-}
-
-const composerExpanded = ref(false)
-const collapsedComposerLabel = VOICE.feed.postHeading
-const showCollapsedComposer = computed(() => {
-  if (!props.collapseUntilFocus) return false
-  if (composerExpanded.value) return false
-  if (props.checkinPrompt) return false
-  if (props.quotedPost) return false
-  if (props.mode === 'edit') return false
-  if (hasUnsavedContent.value) return false
-  return true
-})
-
-function expandCollapsedComposer() {
-  composerExpanded.value = true
-  nextTick(() => {
-    composerEditorEl.value?.focus()
-  })
 }
 
 function focus() {
-  if (props.collapseUntilFocus) composerExpanded.value = true
   nextTick(() => {
     composerEditorEl.value?.focus()
   })
