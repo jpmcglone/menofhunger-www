@@ -33,6 +33,8 @@ function messageItem(id: string, senderId: string, createdAt: string): ChatListI
       body: id,
       conversationId: 'c1',
       sender: sender(senderId),
+      kind: 'text',
+      call: null,
       reactions: [],
       deletedForMe: false,
       deletedForAll: false,

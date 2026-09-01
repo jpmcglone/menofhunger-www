@@ -12,6 +12,15 @@
     <div class="flex-1 border-t border-gray-200 dark:border-zinc-800" />
   </div>
 
+  <!-- Call history row: centered system chip, edited in place as the call progresses -->
+  <ChatMessageCallRow
+    v-else-if="callMessage"
+    :message="callMessage"
+    :me-id="meId"
+    :format-message-time="formatMessageTime"
+    :format-message-time-full="formatMessageTimeFull"
+  />
+
   <!-- Message row -->
   <div
     v-else-if="messageItem"
@@ -408,10 +417,11 @@
 
 <script setup lang="ts">
 import type { PropType } from 'vue'
-import type { Message, MessageMedia, MessageUser, MessageParticipant } from '~/types/api'
+import type { Message, MessageCall, MessageMedia, MessageUser, MessageParticipant } from '~/types/api'
 import type { ChatListItem } from '~/composables/chat/useChatTimeFormatting'
 import { ownMessageTintStyle, userColorTier } from '~/utils/user-tier'
 import { PILL_CLASS, RECT_CLASS, PILL_MAX_EMS_WITH_META, estimateTextEms, pickBubbleShape } from '~/composables/chat/useChatBubbleShape'
+import ChatMessageCallRow from './ChatMessageCallRow.vue'
 
 const props = defineProps({
   /** The flat list item — divider or message. */
@@ -468,6 +478,12 @@ const dividerItem = computed<ChatListDivider | null>(() =>
 const messageItem = computed<ChatListMessage | null>(() =>
   props.item.type === 'message' ? (props.item as ChatListMessage) : null,
 )
+
+const callMessage = computed<(Message & { call: MessageCall }) | null>(() => {
+  const m = messageItem.value?.message
+  if (!m || m.kind !== 'call' || !m.call || m.deletedForAll || m.deletedForMe) return null
+  return m as Message & { call: MessageCall }
+})
 
 const isMine = computed(() => messageItem.value?.message.sender.id === props.meId)
 const groupIncoming = computed(() => props.isGroupChat && !isMine.value)

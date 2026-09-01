@@ -60,6 +60,16 @@ type _Message = Satisfies<Www.Message, Api.MessageDto>
 type _MessageMedia = Satisfies<Www.MessageMedia, Api.MessageMediaDto>
 type _MessageReplySnippet = Satisfies<Www.MessageReplySnippet, Api.MessageReplySnippetDto>
 type _MessageConversation = Satisfies<Www.MessageConversation, Api.MessageConversationDto>
+type _MessageKind = Satisfies<Www.MessageKind, Api.MessageDto['kind']>
+
+// ─── Calls ───────────────────────────────────────────────────────────────────
+type _CallSession = Satisfies<Www.CallSession, Api.CallSessionDto>
+type _CallParticipant = Satisfies<Www.CallParticipant, Api.CallParticipantDto>
+type _MessageCall = Satisfies<Www.MessageCall, Api.MessageCallDto>
+type _CallsAck = Satisfies<Www.CallsAck, Api.CallsAckDto>
+type _WsCallsIncoming = Satisfies<Www.WsCallsIncomingPayload, Api.CallsIncomingPayloadDto>
+type _WsCallsUpdated = Satisfies<Www.WsCallsUpdatedPayload, Api.CallsUpdatedPayloadDto>
+type _WsRtcSignal = Satisfies<Www.WsRtcSignalPayload, Api.RtcSignalPayloadDto>
 
 // ─── Billing / referrals ─────────────────────────────────────────────────────
 type _BillingMe = Satisfies<Www.BillingMe, Api.BillingMeDto>

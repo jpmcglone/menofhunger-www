@@ -31,6 +31,8 @@ function makeMessage(override: Partial<Message> = {}): Message {
       premiumPlus: false,
       isOrganization: false,
     } as unknown as Message['sender'],
+    kind: 'text',
+    call: null,
     reactions: [],
     deletedForMe: false,
     deletedForAll: false,

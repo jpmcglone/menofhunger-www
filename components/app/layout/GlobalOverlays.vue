@@ -10,6 +10,7 @@
       <AppCrewPreviewPopover />
       <AppLinkPreviewPopover />
       <AppOnlineCountPopover />
+      <AppCallsCallHost v-if="isAuthed" />
       <AppSpaceLiveChatOverlay
         v-if="radioChatSheetOpen && radioHasStation && !showRadioChat"
         v-model="radioChatSheetOpen"
@@ -86,6 +87,7 @@ defineProps<{
   showRadioChat: boolean
 }>()
 
+const { isAuthed } = useAuth()
 const { selectedSpaceId, currentSpace, members } = useSpaceLobby()
 const radioHasStation = computed(() => Boolean(selectedSpaceId.value))
 const radioChatSheetOpen = useState<boolean>('space-chat-sheet-open', () => false)

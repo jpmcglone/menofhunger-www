@@ -1,8 +1,10 @@
 import type { Ref, ComputedRef } from 'vue'
-import type { Message } from '~/types/api'
-import type { MessagesCallback } from '~/composables/usePresence'
+import type { CallSession, Message } from '~/types/api'
+import type { CallsCallback, MessagesCallback } from '~/composables/usePresence'
 
 export interface ChatRealtimeHandlers {
+  /** `calls:updated` for any conversation; `call` is null once the session has ended. */
+  onCallUpdated?: (conversationId: string, call: CallSession | null) => void
   /**
    * Called when a new message arrives from the socket. Includes both
    * messages for the selected conversation and others (for updating the list).
@@ -22,6 +24,8 @@ export interface UseChatRealtimeOptions {
   handlers: ChatRealtimeHandlers
   addMessagesCallback: (cb: MessagesCallback) => void
   removeMessagesCallback: (cb: MessagesCallback) => void
+  addCallsCallback?: (cb: CallsCallback) => void
+  removeCallsCallback?: (cb: CallsCallback) => void
 }
 
 /**
@@ -29,7 +33,16 @@ export interface UseChatRealtimeOptions {
  * Register with `addMessagesCallback` and clean up with `teardown`.
  */
 export function useChatRealtime(opts: UseChatRealtimeOptions) {
-  const { selectedConversationId, meId, atBottom, handlers, addMessagesCallback, removeMessagesCallback } = opts
+  const { selectedConversationId, meId, atBottom, handlers, addMessagesCallback, removeMessagesCallback, addCallsCallback, removeCallsCallback } = opts
+
+  const callsCallback: CallsCallback = {
+    onUpdated(payload) {
+      const convoId = String(payload?.conversationId ?? '').trim()
+      if (!convoId) return
+      const call = payload.call && payload.call.status !== 'ended' ? payload.call : null
+      handlers.onCallUpdated?.(convoId, call)
+    },
+  }
 
   const callback: MessagesCallback = {
     onMessage(payload) {
@@ -78,11 +91,13 @@ export function useChatRealtime(opts: UseChatRealtimeOptions) {
 
   function register() {
     addMessagesCallback(callback)
+    addCallsCallback?.(callsCallback)
   }
 
   function teardown() {
     removeMessagesCallback(callback)
+    removeCallsCallback?.(callsCallback)
   }
 
-  return { register, teardown, callback }
+  return { register, teardown, callback, callsCallback }
 }

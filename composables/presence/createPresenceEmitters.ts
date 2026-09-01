@@ -1,5 +1,24 @@
 import type { Ref } from 'vue'
 import type { Socket } from 'socket.io-client'
+import type { CallsAck, CallType, RtcIceCandidate, RtcSessionDescription } from '~/types/api'
+
+const CALLS_ACK_TIMEOUT_MS = 10_000
+
+const OFFLINE_ACK: CallsAck = {
+  call: null,
+  error: { code: 'invalid_payload', message: "You're offline. Check your connection and try again." },
+}
+
+async function emitCallsWithAck(socket: Socket | null, event: string, payload: Record<string, unknown>): Promise<CallsAck> {
+  if (!socket?.connected) return OFFLINE_ACK
+  try {
+    const ack = (await socket.timeout(CALLS_ACK_TIMEOUT_MS).emitWithAck(event, payload)) as CallsAck | undefined
+    if (!ack || typeof ack !== 'object') return { call: null, error: { code: 'invalid_payload', message: 'Unexpected response.' } }
+    return ack
+  } catch {
+    return { call: null, error: { code: 'invalid_payload', message: 'The call server did not respond. Try again.' } }
+  }
+}
 
 /** Sticky room flags written by subscribe/leave emits and replayed on reconnect. */
 export const STICKY_ROOM_KEYS = {
@@ -202,6 +221,37 @@ export function createPresenceEmitters(socketRef: Ref<Socket | null>) {
       const socket = socketRef.value
       if (!socket?.connected) return
       socket.emit('presence:active')
+    },
+
+    // ── DM calling (acked) ────────────────────────────────────────────
+    emitCallsStart(conversationId: string, type: CallType): Promise<CallsAck> {
+      return emitCallsWithAck(socketRef.value, 'calls:start', { conversationId: String(conversationId ?? '').trim(), type })
+    },
+    emitCallsJoin(callId: string): Promise<CallsAck> {
+      return emitCallsWithAck(socketRef.value, 'calls:join', { callId: String(callId ?? '').trim() })
+    },
+    emitCallsLeave(callId: string): Promise<CallsAck> {
+      return emitCallsWithAck(socketRef.value, 'calls:leave', { callId: String(callId ?? '').trim() })
+    },
+    emitCallsDecline(callId: string): Promise<CallsAck> {
+      return emitCallsWithAck(socketRef.value, 'calls:decline', { callId: String(callId ?? '').trim() })
+    },
+    emitCallsState(callId: string, state: { micEnabled?: boolean; cameraEnabled?: boolean }) {
+      const socket = socketRef.value
+      const id = String(callId ?? '').trim()
+      if (!socket?.connected || !id) return
+      socket.emit('calls:state', { callId: id, ...state })
+    },
+    emitRtcSignal(
+      callId: string,
+      toUserId: string,
+      signal: { description?: RtcSessionDescription; candidate?: RtcIceCandidate },
+    ) {
+      const socket = socketRef.value
+      const id = String(callId ?? '').trim()
+      const to = String(toUserId ?? '').trim()
+      if (!socket?.connected || !id || !to) return
+      socket.emit('rtc:signal', { callId: id, toUserId: to, ...signal })
     },
   }
 }

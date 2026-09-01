@@ -33,6 +33,8 @@ function messageItem(id: string, senderId: string, createdAt = '2026-01-01T12:00
       body: 'hi',
       conversationId: 'c1',
       sender: sender(senderId),
+      kind: 'text',
+      call: null,
       reactions: [],
       deletedForMe: false,
       deletedForAll: false,

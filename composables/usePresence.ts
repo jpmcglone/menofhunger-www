@@ -259,6 +259,8 @@ export function usePresence() {
     removeScheduledCallback: domains.scheduled.remove,
     addDailyContentCallback: domains.dailyContent.add,
     removeDailyContentCallback: domains.dailyContent.remove,
+    addCallsCallback: domains.calls.add,
+    removeCallsCallback: domains.calls.remove,
     ...emitters,
     connect: core.connect,
     disconnect: core.disconnect,

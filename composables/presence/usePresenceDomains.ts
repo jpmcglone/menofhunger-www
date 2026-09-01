@@ -36,11 +36,15 @@ import type {
   WsCheckinAnsweredTodayPayload,
   MarvCreditsUpdatedPayloadDto,
   WsAccountsBadgeUpdatedPayload,
+  WsCallsIncomingPayload,
+  WsCallsUpdatedPayload,
+  WsRtcSignalPayload,
 } from '~/types/api'
 import type {
   AccountsCallback,
   AdminCallback,
   ArticlesCallback,
+  CallsCallback,
   CheckinsCallback,
   CrewCallback,
   DailyContentCallback,
@@ -123,6 +127,7 @@ export function usePresenceDomains() {
   const referralCallbacks = useState<Set<ReferralCallback>>('presence-referral-callbacks', () => new Set())
   const scheduledCallbacks = useState<Set<ScheduledCallback>>('presence-scheduled-callbacks', () => new Set())
   const dailyContentCallbacks = useState<Set<DailyContentCallback>>('presence-daily-content-callbacks', () => new Set())
+  const callsCallbacks = useState<Set<CallsCallback>>('presence-calls-callbacks', () => new Set())
 
   function makeRegistry<T>(set: Ref<Set<T>>) {
     return {
@@ -153,6 +158,7 @@ export function usePresenceDomains() {
   const referrals = makeRegistry(referralCallbacks)
   const scheduled = makeRegistry(scheduledCallbacks)
   const dailyContent = makeRegistry(dailyContentCallbacks)
+  const calls = makeRegistry(callsCallbacks)
 
   function registerSocketHandlers(socket: Socket) {
     // ── Notifications / Marv ──────────────────────────────────────────
@@ -620,6 +626,20 @@ export function usePresenceDomains() {
       for (const cb of scheduledCallbacks.value) cb.onFailed?.(data)
     })
 
+    // ── DM calling ────────────────────────────────────────────────────
+    socket.on('calls:incoming', (data: WsCallsIncomingPayload) => {
+      if (!data?.call?.id) return
+      for (const cb of callsCallbacks.value) cb.onIncoming?.(data)
+    })
+    socket.on('calls:updated', (data: WsCallsUpdatedPayload) => {
+      if (!data?.call?.id) return
+      for (const cb of callsCallbacks.value) cb.onUpdated?.(data)
+    })
+    socket.on('rtc:signal', (data: WsRtcSignalPayload) => {
+      if (!data?.callId || !data?.fromUserId) return
+      for (const cb of callsCallbacks.value) cb.onSignal?.(data)
+    })
+
     // ── Daily content ─────────────────────────────────────────────────
     socket.on('daily:content-published', (data: { item: 'word' | 'quote'; dayKey: string }) => {
       if (!dailyContentCallbacks.value.size) return
@@ -666,6 +686,7 @@ export function usePresenceDomains() {
     referrals,
     scheduled,
     dailyContent,
+    calls,
     registerSocketHandlers,
   }
 }

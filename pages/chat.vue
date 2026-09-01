@@ -74,6 +74,18 @@
                 :get-conversation-title="getConversationTitle"
                 @back="clearSelection({ replace: true })"
                 @toggle-mute="toggleMuteConversation"
+                @start-call="onStartCall"
+                @join-call="onJoinCall"
+                @show-call="callSession.minimized.value = false"
+              />
+
+              <ChatCallBanner
+                v-if="selectedConversation && selectedConversation.type !== 'crew_wall'"
+                :call="selectedConversation.activeCall ?? null"
+                :conversation="selectedConversation"
+                :me-id="me?.id ?? null"
+                @join="onJoinCall"
+                @show="callSession.minimized.value = false"
               />
 
               <ChatMarvChatStrip v-if="isSelectedConversationMarv && marv.isAvailable.value" />
@@ -220,6 +232,8 @@ usePageSeo({
 })
 
 import type {
+  CallSession,
+  CallType,
   FollowListUser,
   LookupMessageConversationResponse,
   Message,
@@ -238,6 +252,9 @@ import { useRefcountedInterest } from '~/composables/chat/useRefcountedInterest'
 import ChatConversationList from '~/components/app/chat/ChatConversationList.vue'
 import ChatThreadHeader from '~/components/app/chat/ChatThreadHeader.vue'
 import ChatThreadPane from '~/components/app/chat/ChatThreadPane.vue'
+import ChatCallBanner from '~/components/app/chat/ChatCallBanner.vue'
+import { useCallSession } from '~/composables/calls/useCallSession'
+import { provideChatActiveCall } from '~/composables/chat/useChatActiveCall'
 import ChatComposerBar from '~/components/app/chat/ChatComposerBar.vue'
 import ChatMessageInfoModal from '~/components/app/chat/ChatMessageInfoModal.vue'
 import ChatMarvPinnedRow from '~/components/app/chat/ChatMarvPinnedRow.vue'
@@ -289,6 +306,8 @@ const {
   removeInterest,
   addMessagesCallback,
   removeMessagesCallback,
+  addCallsCallback,
+  removeCallsCallback,
   emitMessagesTyping,
   emitMessagesScreen,
   suppressMessageUnreadBumpsForMs,
@@ -384,6 +403,24 @@ const {
   isSelectedConversationMarv,
   toggleMuteConversation,
 } = conversationsApi
+
+// ─── Calling ─────────────────────────────────────────────────────────────────
+
+const callSession = useCallSession()
+provideChatActiveCall(computed(() => selectedConversation.value?.activeCall ?? null))
+
+function onStartCall(type: CallType) {
+  const c = selectedConversation.value
+  if (!c) return
+  const participants = c.participants.map((p) => p.user)
+  const callee = c.type === 'direct' ? participants.find((u) => u.id !== me.value?.id) : null
+  void callSession.startCall(c.id, type, { participants, calleeId: callee?.id ?? null })
+}
+
+function onJoinCall(call: Pick<CallSession, 'id' | 'type'>) {
+  const participants = selectedConversation.value?.participants.map((p) => p.user) ?? []
+  void callSession.joinCall(call, { participants })
+}
 
 const isGroupChat = computed(() => {
   const type = selectedConversation.value?.type
@@ -763,7 +800,13 @@ const { register: registerRealtime, teardown: teardownRealtime } = useChatRealti
   atBottom,
   addMessagesCallback,
   removeMessagesCallback,
+  addCallsCallback,
+  removeCallsCallback,
   handlers: {
+    onCallUpdated(convoId, call) {
+      patchConversation(convoId, (c) => ({ ...c, activeCall: call }))
+    },
+
     onNewMessage(msg, isSelected, wasAtBottom) {
       updateConversationForMessage(msg)
       if (!isSelected) return
@@ -807,10 +850,10 @@ const { register: registerRealtime, teardown: teardownRealtime } = useChatRealti
       if (!isSelected) return
       const idx = messages.value.findIndex((m) => m.id === msg.id)
       if (idx !== -1) {
-        thread.mutateMessageAt(idx, { ...messages.value[idx]!, body: msg.body, editedAt: msg.editedAt ?? null })
+        thread.mutateMessageAt(idx, { ...messages.value[idx]!, body: msg.body, editedAt: msg.editedAt ?? null, kind: msg.kind ?? 'text', call: msg.call ?? null })
       }
       if (infoMessage.value?.id === msg.id) {
-        infoMessage.value = { ...infoMessage.value, body: msg.body, editedAt: msg.editedAt ?? null }
+        infoMessage.value = { ...infoMessage.value, body: msg.body, editedAt: msg.editedAt ?? null, kind: msg.kind ?? 'text', call: msg.call ?? null }
       }
     },
 

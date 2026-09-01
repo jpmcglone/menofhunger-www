@@ -132,6 +132,66 @@
         </div>
       </div>
       <div class="flex items-center gap-2">
+        <!-- Calling: two icons when idle, one "Join call" when a call is live in this thread. -->
+        <template v-if="showCallControls && conversation">
+          <template v-if="conversation.activeCall">
+            <Button
+              v-if="viewerInActiveCall"
+              size="small"
+              severity="secondary"
+              rounded
+              :label="engagedHere ? 'Show call' : 'In call'"
+              :disabled="!engagedHere"
+              @click="emit('showCall')"
+            >
+              <template #icon>
+                <Icon :name="conversation.activeCall.type === 'video' ? 'tabler:video' : 'tabler:phone'" aria-hidden="true" />
+              </template>
+            </Button>
+            <Button
+              v-else
+              v-tooltip.bottom="joinTooltip"
+              size="small"
+              rounded
+              :label="activeCallFull ? 'Call full' : 'Join call'"
+              :disabled="activeCallFull || !canJoinActive || callBusy"
+              :loading="callBusy"
+              @click="emit('joinCall', conversation.activeCall)"
+            >
+              <template #icon>
+                <Icon :name="conversation.activeCall.type === 'video' ? 'tabler:video' : 'tabler:phone'" aria-hidden="true" />
+              </template>
+            </Button>
+          </template>
+          <template v-else>
+            <span v-tooltip.bottom="startTooltip" class="inline-flex">
+              <Button
+                text
+                severity="secondary"
+                aria-label="Start voice call"
+                :disabled="Boolean(startDenialReason) || callBusy"
+                @click="emit('startCall', 'audio')"
+              >
+                <template #icon>
+                  <Icon name="tabler:phone" aria-hidden="true" />
+                </template>
+              </Button>
+            </span>
+            <span v-tooltip.bottom="startTooltip" class="inline-flex">
+              <Button
+                text
+                severity="secondary"
+                aria-label="Start video call"
+                :disabled="Boolean(startDenialReason) || callBusy"
+                @click="emit('startCall', 'video')"
+              >
+                <template #icon>
+                  <Icon name="tabler:video" aria-hidden="true" />
+                </template>
+              </Button>
+            </span>
+          </template>
+        </template>
         <Button
           v-if="conversation && !isMarvConversation"
           v-tooltip.bottom="muteButtonTooltip"
@@ -150,9 +210,11 @@
 </template>
 
 <script setup lang="ts">
-import type { FollowListUser, MessageConversation, MessageUser } from '~/types/api'
+import type { CallSession, CallType, FollowListUser, MessageConversation, MessageUser } from '~/types/api'
 import { userColorTier } from '~/utils/user-tier'
 import { tinyTooltip } from '~/utils/tiny-tooltip'
+import { useCallGating } from '~/composables/calls/useCallGating'
+import { useCallSession } from '~/composables/calls/useCallSession'
 
 const props = defineProps<{
   conversation: MessageConversation | null
@@ -166,9 +228,47 @@ const props = defineProps<{
 const emit = defineEmits<{
   back: []
   toggleMute: []
+  startCall: [type: CallType]
+  joinCall: [call: CallSession]
+  showCall: []
 }>()
 
 const { user: me } = useAuth()
+
+// ─── Calling ────────────────────────────────────────────────────────────────
+const gating = useCallGating()
+const callSession = useCallSession()
+
+/** Hidden for Marv, pending requests, and anything but direct/group threads. */
+const showCallControls = computed(() => {
+  const c = props.conversation
+  if (!c || props.isMarvConversation) return false
+  if (c.type !== 'direct' && c.type !== 'group') return false
+  return c.viewerStatus === 'accepted'
+})
+const startDenialReason = computed(() => gating.startDenial(props.conversation))
+const startTooltip = computed(() => {
+  const d = startDenialReason.value
+  return d ? tinyTooltip(gating.startDenialMessage(d)) : null
+})
+const viewerInActiveCall = computed(() => {
+  const c = props.conversation?.activeCall
+  return Boolean(c && me.value?.id && c.participants.some((p) => p.userId === me.value?.id))
+})
+const engagedHere = computed(() => {
+  const c = props.conversation?.activeCall
+  return Boolean(c && callSession.call.value?.id === c.id && callSession.phase.value === 'in_call')
+})
+const activeCallFull = computed(() => {
+  const c = props.conversation?.activeCall
+  return Boolean(c && c.participants.length >= c.capacity)
+})
+const canJoinActive = computed(() => {
+  const c = props.conversation?.activeCall
+  return Boolean(c && gating.canJoin(c))
+})
+const joinTooltip = computed(() => (canJoinActive.value ? null : tinyTooltip('Only verified members can join calls.')))
+const callBusy = computed(() => callSession.phase.value === 'requesting_media' || callSession.phase.value === 'joining')
 
 function getDirectUser(conversation: MessageConversation) {
   return conversation.participants.find((p) => p.user.id !== me.value?.id)?.user ?? null

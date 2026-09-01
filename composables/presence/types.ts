@@ -44,6 +44,9 @@ import type {
   OnlineUser,
   WsPresencePlatformsChangedPayload,
   WsAccountsBadgeUpdatedPayload,
+  WsCallsIncomingPayload,
+  WsCallsUpdatedPayload,
+  WsRtcSignalPayload,
 } from '~/types/api'
 
 export type PresenceOnlinePayload = {
@@ -119,6 +122,17 @@ export type MessagesCallback = {
   onMessageDeletedForAll?: (payload: { conversationId?: string; messageId?: string }) => void
   onTyping?: (payload: { conversationId?: string; userId?: string; typing?: boolean; status?: string }) => void
   onRead?: (payload: { conversationId?: string; userId?: string; lastReadAt?: string }) => void
+}
+
+/**
+ * DM calling realtime. `onIncoming` rings a direct callee; `onUpdated` is the single
+ * patch-shaped lifecycle event for every member of the conversation; `onSignal` carries
+ * relayed SDP/ICE for the tab that is actually in the call (others ignore by callId).
+ */
+export type CallsCallback = {
+  onIncoming?: (payload: WsCallsIncomingPayload) => void
+  onUpdated?: (payload: WsCallsUpdatedPayload) => void
+  onSignal?: (payload: WsRtcSignalPayload) => void
 }
 
 export type WsNotificationsUpdatedPayload = {

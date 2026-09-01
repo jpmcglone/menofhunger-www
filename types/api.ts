@@ -1617,12 +1617,36 @@ export type MessageReaction = {
 
 export type MessageMedia = Contracts.MessageMediaDto
 
+// ─── DM calling (browser-to-browser WebRTC; API only signals) ────────────────
+export type CallType = Contracts.CallType
+export type CallStatus = Contracts.CallStatus
+export type CallParticipantConnectionState = Contracts.CallParticipantConnectionState
+export type CallParticipant = Contracts.CallParticipantDto
+export type CallSession = Contracts.CallSessionDto
+export type MessageCallOutcome = Contracts.MessageCallOutcome
+export type MessageCall = Contracts.MessageCallDto
+export type RtcIceServer = Contracts.RtcIceServerDto
+export type RtcSessionDescription = Contracts.RtcSessionDescriptionDto
+export type RtcIceCandidate = Contracts.RtcIceCandidateDto
+export type CallsAckErrorCode = Contracts.CallsAckErrorCode
+export type CallsAckError = Contracts.CallsAckErrorDto
+export type CallsAck = Contracts.CallsAckDto
+export type WsCallsIncomingPayload = Contracts.CallsIncomingPayloadDto
+export type WsCallsUpdatedPayload = Contracts.CallsUpdatedPayloadDto
+export type WsRtcSignalPayload = Contracts.RtcSignalPayloadDto
+
+export type MessageKind = 'text' | 'call'
+
 export type Message = {
   id: string
   createdAt: string
   body: string
   conversationId: string
   sender: MessageUser
+  /** `text` for ordinary chat; `call` for the one-per-call timeline row. */
+  kind: MessageKind
+  /** Present only when `kind === 'call'`. */
+  call: MessageCall | null
   reactions: MessageReactionSummary[]
   deletedForMe: boolean
   /** True when the sender deleted this message for all participants. */
@@ -1655,6 +1679,11 @@ export type MessageConversation = {
    * crew avatar/name and link to the crew's public page.
    */
   crew?: MessageConversationCrewSummary | null
+  /**
+   * Live call session in this conversation, or null. On-load sync for the call UI;
+   * `calls:updated` keeps it fresh while the page is open.
+   */
+  activeCall?: CallSession | null
 }
 
 export type GetMessageConversationsData = MessageConversation[]
