@@ -1,8 +1,8 @@
 import { userColorTier } from '~/utils/user-tier'
 
 /**
- * Badge state for the Groups nav icon: total count of unseen group posts across
- * all the viewer's groups, plus a per-group breakdown for card badges.
+ * Badge state for the Groups nav icon: unseen group posts plus pending invites
+ * the viewer still needs to accept or decline. Per-group counts stay post-only.
  *
  * State is shared through `usePresence`; `useBadgeHydration` owns automatic
  * bootstrap/recovery while `refresh` remains available for explicit callers.
@@ -11,6 +11,7 @@ export function useGroupsBadge() {
   const { user } = useAuth()
   const { apiFetchData } = useApiClient()
   const { groupsUnread, setGroupsUnread } = usePresence()
+  const { count: pendingInviteCount } = useGroupInvitesBadge()
 
   const toneClass = computed(() => {
     const tier = userColorTier(user.value)
@@ -19,7 +20,8 @@ export function useGroupsBadge() {
     return 'moh-notif-badge-normal'
   })
 
-  const total = computed(() => groupsUnread.value.total)
+  const unreadPosts = computed(() => groupsUnread.value.total)
+  const total = computed(() => unreadPosts.value + pendingInviteCount.value)
   const show = computed(() => total.value > 0)
   const displayCount = computed(() => (total.value >= 99 ? '99+' : String(total.value)))
 

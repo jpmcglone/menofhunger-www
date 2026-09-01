@@ -31,16 +31,39 @@ export function useEmbeddedVideoManager() {
         lastSwitchMs: 0,
         pendingId: null as string | null,
         pendingSinceMs: 0,
+        followUpTimer: null as number | null,
+        layoutRetries: 0,
+        resizeObs: null as ResizeObserver | null,
       }
     }
-    return g.__mohEmbeddedVideoRuntime as {
+    const existing = g.__mohEmbeddedVideoRuntime as {
       listening: boolean
       rafPending: boolean
       lastSwitchMs: number
       pendingId: string | null
       pendingSinceMs: number
+      followUpTimer?: number | null
+      layoutRetries?: number
+      resizeObs?: ResizeObserver | null
+    }
+    if (existing.followUpTimer === undefined) existing.followUpTimer = null
+    if (existing.layoutRetries === undefined) existing.layoutRetries = 0
+    if (existing.resizeObs === undefined) existing.resizeObs = null
+    return existing as {
+      listening: boolean
+      rafPending: boolean
+      lastSwitchMs: number
+      pendingId: string | null
+      pendingSinceMs: number
+      followUpTimer: number | null
+      layoutRetries: number
+      resizeObs: ResizeObserver | null
     }
   })()
+
+  const FIRST_PICK_DELAY_MS = 140
+  const LAYOUT_RETRY_MS = 50
+  const LAYOUT_RETRY_MAX = 8
 
   function computeActiveFromViewport() {
     if (import.meta.server) return
@@ -97,21 +120,32 @@ export function useEmbeddedVideoManager() {
       if (runtime) {
         runtime.pendingId = null
         runtime.pendingSinceMs = 0
+        // First paint / content-visibility can leave boxes with height 0.
+        // Retry a few times so mount does not wait for a user scroll.
+        if (registry.size > 0 && !currentId && runtime.layoutRetries < LAYOUT_RETRY_MAX) {
+          runtime.layoutRetries += 1
+          scheduleFollowUpCompute(LAYOUT_RETRY_MS)
+        }
       }
       return
     }
 
+    if (runtime) runtime.layoutRetries = 0
+
     // If nothing is active yet, pick the best.
     if (!currentId) {
       // Small delay helps avoid flicker on first enter while scrolling fast.
-      const delayMs = 140
       if (runtime) {
         if (runtime.pendingId !== bestId) {
           runtime.pendingId = bestId
           runtime.pendingSinceMs = nowMs
+          scheduleFollowUpCompute(FIRST_PICK_DELAY_MS)
           return
         }
-        if (nowMs - runtime.pendingSinceMs < delayMs) return
+        if (nowMs - runtime.pendingSinceMs < FIRST_PICK_DELAY_MS) {
+          scheduleFollowUpCompute(FIRST_PICK_DELAY_MS - (nowMs - runtime.pendingSinceMs))
+          return
+        }
         runtime.pendingId = null
         runtime.pendingSinceMs = 0
         runtime.lastSwitchMs = nowMs
@@ -151,14 +185,17 @@ export function useEmbeddedVideoManager() {
     if (currentM.dist <= bestDist + deadbandPx) return
 
     // Debounce the actual switch slightly so we don't flicker while scrolling.
-    const delayMs = 140
     if (runtime) {
       if (runtime.pendingId !== bestId) {
         runtime.pendingId = bestId
         runtime.pendingSinceMs = nowMs
+        scheduleFollowUpCompute(FIRST_PICK_DELAY_MS)
         return
       }
-      if (nowMs - runtime.pendingSinceMs < delayMs) return
+      if (nowMs - runtime.pendingSinceMs < FIRST_PICK_DELAY_MS) {
+        scheduleFollowUpCompute(FIRST_PICK_DELAY_MS - (nowMs - runtime.pendingSinceMs))
+        return
+      }
       runtime.pendingId = null
       runtime.pendingSinceMs = 0
       runtime.lastSwitchMs = nowMs
@@ -175,6 +212,42 @@ export function useEmbeddedVideoManager() {
       runtime.rafPending = false
       computeActiveFromViewport()
     })
+  }
+
+  // content-visibility / first paint often settles one frame after mount.
+  function scheduleComputeAfterLayout() {
+    scheduleCompute()
+    if (import.meta.server) return
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        scheduleCompute()
+      })
+    })
+  }
+
+  function ensureResizeObserver() {
+    if (import.meta.server) return
+    if (!runtime) return
+    if (runtime.resizeObs) return
+    runtime.resizeObs = new ResizeObserver(() => {
+      scheduleCompute()
+    })
+  }
+
+  function scheduleFollowUpCompute(delayMs: number) {
+    if (import.meta.server) return
+    if (!runtime) return
+    if (runtime.followUpTimer != null) return
+    runtime.followUpTimer = window.setTimeout(() => {
+      runtime.followUpTimer = null
+      scheduleCompute()
+    }, Math.max(0, delayMs))
+  }
+
+  function clearFollowUpCompute() {
+    if (!runtime || runtime.followUpTimer == null) return
+    window.clearTimeout(runtime.followUpTimer)
+    runtime.followUpTimer = null
   }
 
   function ensureListeners() {
@@ -195,6 +268,10 @@ export function useEmbeddedVideoManager() {
     runtime.listening = false
     window.removeEventListener('scroll', scheduleCompute, true)
     window.removeEventListener('resize', scheduleCompute, true)
+    clearFollowUpCompute()
+    runtime.layoutRetries = 0
+    runtime.resizeObs?.disconnect()
+    runtime.resizeObs = null
   }
 
   function register(postId: string, el: HTMLElement) {
@@ -204,7 +281,11 @@ export function useEmbeddedVideoManager() {
     if (!registry) return
     if (!el) return
     ensureListeners()
+    ensureResizeObserver()
+    const prev = registry.get(id)
+    if (prev && prev !== el) runtime?.resizeObs?.unobserve(prev)
     registry.set(id, el)
+    runtime?.resizeObs?.observe(el)
 
     // Track PiP state (best-effort). Only available on HTMLVideoElement.
     if (el instanceof HTMLVideoElement) {
@@ -233,7 +314,9 @@ export function useEmbeddedVideoManager() {
       }
     }
 
-    scheduleCompute()
+    // This frame, the next paint, and the first-pick debounce — do not wait for scroll.
+    scheduleComputeAfterLayout()
+    scheduleFollowUpCompute(FIRST_PICK_DELAY_MS)
   }
 
   function unregister(postId: string) {
@@ -242,6 +325,7 @@ export function useEmbeddedVideoManager() {
     if (import.meta.server) return
     if (!registry) return
     const el = registry.get(id)
+    if (el) runtime?.resizeObs?.unobserve(el)
     if (el instanceof HTMLVideoElement) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const anyEl = el as any
@@ -264,7 +348,9 @@ export function useEmbeddedVideoManager() {
       if (runtime) {
         runtime.pendingId = null
         runtime.pendingSinceMs = 0
+        runtime.layoutRetries = 0
       }
+      clearFollowUpCompute()
       activePostId.value = null
     } else {
       scheduleCompute()

@@ -11,12 +11,14 @@
 export function useAppIconBadge() {
   const { user } = useAuth()
   const { notificationUndeliveredCount, messageUnreadCounts, groupsUnread } = usePresence()
+  const { count: pendingGroupInviteCount } = useGroupInvitesBadge()
   const { otherAccountsUnread } = useAccountSwitcher()
 
   const totalCount = computed(() => {
     if (!user.value?.id) return 0
     const notif = Math.max(0, Number(notificationUndeliveredCount.value) || 0)
     const groups = Math.max(0, Number(groupsUnread.value.total) || 0)
+      + Math.max(0, Number(pendingGroupInviteCount.value) || 0)
     const primary = Math.max(0, Number(messageUnreadCounts.value.primary) || 0)
     const requests = Math.max(0, Number(messageUnreadCounts.value.requests) || 0)
     const others = Math.max(0, Number(otherAccountsUnread.value) || 0)

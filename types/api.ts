@@ -1976,6 +1976,8 @@ export type UserDto = {
   }
   /** Included by /auth/me bootstrap response for fast badge hydration. */
   crewInviteInboxCount?: number
+  /** Pending group invites the viewer still needs to accept or decline. */
+  groupInviteInboxCount?: number
   /** Canonical authored-content totals returned by /auth/me. */
   postCount?: number | null
   articleCount?: number | null

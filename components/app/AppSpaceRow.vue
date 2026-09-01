@@ -91,9 +91,9 @@
         >{{ metaLine }}</div>
       </div>
 
-      <!-- Notify + share + play — hidden in feed preview and compact chat embeds -->
+      <!-- Notify stays on feed/chat embeds. Share + play stay lobby-only. -->
       <div
-        v-if="!preview && !compact"
+        v-if="showActionChrome"
         class="relative z-10 shrink-0 flex items-center gap-0.5"
         @click.stop.prevent
       >
@@ -119,13 +119,13 @@
           {{ space.viewerSubscribed ? (compact ? 'On' : 'Notifying') : (compact ? 'Notify' : 'Notify me') }}
         </button>
         <AppPostRowShareMenu
-          v-if="!compact"
+          v-if="!preview && !compact"
           :can-share="true"
           :tooltip="shareTooltip"
           :items="shareItems"
         />
         <button
-          v-if="space.mode === 'RADIO' && space.radioStreamUrl"
+          v-if="!preview && !compact && space.mode === 'RADIO' && space.radioStreamUrl"
           type="button"
           class="moh-tap moh-focus inline-flex items-center justify-center rounded-full transition-colors moh-surface-hover"
           :class="compact ? 'h-7 w-7' : 'h-9 w-9'"
@@ -229,11 +229,14 @@ const showHostReminders = computed(() => statusKind.value === 'scheduled' && isO
 const hostNotifyCount = computed(() => Math.max(0, Number(props.space.subscriberCount) || 0))
 
 const showNotifyMe = computed(() => {
-  if (!user.value?.id) return false
   if (statusKind.value !== 'scheduled') return false
   if (isOwnSpace.value) return false
   return true
 })
+
+const showActionChrome = computed(() =>
+  showHostReminders.value || showNotifyMe.value || (!props.preview && !props.compact),
+)
 
 const spaceHref = computed(() => {
   const username = String(props.space.owner?.username ?? '').trim()
@@ -241,7 +244,7 @@ const spaceHref = computed(() => {
   return `/s/${encodeURIComponent(username)}`
 })
 
-const clickable = computed(() => !props.preview && Boolean(spaceHref.value))
+const clickable = computed(() => Boolean(spaceHref.value))
 
 function isInteractiveTarget(target: EventTarget | null): boolean {
   const raw = target as Node | null
@@ -303,6 +306,11 @@ const shareItems = computed<MenuItemWithIcon[]>(() => [
 
 async function onToggleNotify() {
   if (notifyBusy.value) return
+  if (!user.value?.id) {
+    const dest = spaceHref.value ?? '/spaces'
+    await navigateTo(`/login?redirect=${encodeURIComponent(dest)}`)
+    return
+  }
   if (props.space.viewerSubscribed) {
     const ok = await confirm({
       header: 'Stop notifications?',

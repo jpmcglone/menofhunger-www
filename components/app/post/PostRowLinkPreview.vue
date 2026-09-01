@@ -3,15 +3,19 @@
     <!-- Video embeds (special cases) -->
     <div
       v-if="youtubeEmbedUrl || isPreviewLinkRumble"
+      :class="isPortraitVideoEmbed ? 'w-fit max-w-full' : ''"
+    >
+    <div
       class="overflow-hidden rounded-xl border moh-border bg-black/5 dark:bg-white/5"
       data-post-row-interactive
     >
-      <!-- YouTube: 16:9 landscape or 9:16 portrait for Shorts. Rumble: oEmbed dimensions (fallback 854x480). -->
+      <!-- YouTube: 16:9 landscape or 9:16 portrait for Shorts.
+           Rumble: encoded file size from API (fallback 854x480). Portrait is left-aligned. -->
       <div
         ref="videoBoxEl"
-        class="relative w-full"
-        :style="youtubeEmbedUrl ? undefined : { aspectRatio: rumbleAspectRatio }"
-        :class="youtubeVideoInfo?.isShort ? 'aspect-[9/16] max-h-[480px]' : (youtubeEmbedUrl ? 'aspect-video' : '')"
+        class="relative"
+        :class="videoBoxClass"
+        :style="videoBoxStyle"
         role="button"
         tabindex="0"
         :aria-label="youtubeOEmbed?.title ? `Play ${youtubeOEmbed.title}` : 'Play video'"
@@ -31,6 +35,7 @@
           @error="onPosterError"
         >
         <iframe
+          ref="videoIframeEl"
           :src="videoIframeSrc"
           class="relative z-10 h-full w-full transition-opacity duration-250"
           :class="desiredVideoSrc && videoIframeLoaded ? 'opacity-100' : 'opacity-0 pointer-events-none'"
@@ -40,6 +45,24 @@
           allowfullscreen
           @load="onVideoIframeLoad"
         />
+        <button
+          v-if="videoIsPlayable && videoIframeLoaded && !appWideSoundOn"
+          type="button"
+          class="absolute right-2 top-2 z-30 flex h-10 w-10 items-center justify-center rounded-full bg-black/50 text-white hover:bg-black/70"
+          aria-label="Tap for sound"
+          @click.stop="onTapUnmuteEmbed"
+        >
+          <Icon name="tabler:volume-off" class="text-base" aria-hidden="true" />
+        </button>
+        <button
+          v-else-if="videoIsPlayable && videoIframeLoaded && appWideSoundOn"
+          type="button"
+          class="absolute right-2 top-2 z-30 flex h-10 w-10 items-center justify-center rounded-full bg-black/50 text-white hover:bg-black/70"
+          aria-label="Mute"
+          @click.stop="onTapMuteEmbed"
+        >
+          <Icon name="tabler:volume" class="text-base" aria-hidden="true" />
+        </button>
         <!-- Play overlay — hidden once the video is active -->
         <div
           v-if="!videoIsPlayable"
@@ -66,6 +89,20 @@
           </div>
         </div>
       </div>
+    </div>
+    <div v-if="isPreviewLinkRumble && previewLink" class="mt-2 flex justify-end">
+      <a
+        :href="previewLink || undefined"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="text-[11px] font-semibold transition-colors"
+        style="color: #85c742;"
+        aria-label="Open on Rumble"
+        @click.stop
+      >
+        Open on Rumble
+      </a>
+    </div>
     </div>
 
     <!-- MoH internal link preview — branded card, navigates in-app -->
@@ -222,24 +259,11 @@
       <AppUserLinkCard :username="embeddedUsername" :enabled="rowInView" />
     </div>
 
-    <div v-if="isPreviewLinkRumble && previewLink" class="mt-2 flex justify-end">
-      <a
-        :href="previewLink || undefined"
-        target="_blank"
-        rel="noopener noreferrer"
-        class="text-[11px] font-semibold transition-colors"
-        style="color: #85c742;"
-        aria-label="Open on Rumble"
-        @click.stop
-      >
-        Open on Rumble
-      </a>
-    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { extractLinksFromText, getYouTubeEmbedUrl, getYouTubePosterUrls, parseYouTubeUrl, isRumbleShortsUrl, isRumbleUrl, withRumbleAutoplay, safeUrlDisplay, safeUrlHostname, isMohUrl, mohUrlPath, extractMohPostId, extractMohArticleId, extractMohSpaceId, extractMohSpaceUsername, isMohSpaceLink, extractMohUsername, isXPostUrl, isSubstackPostUrl } from '~/utils/link-utils'
+import { extractLinksFromText, getYouTubeEmbedUrl, getYouTubePosterUrls, parseYouTubeUrl, isRumbleShortsUrl, isRumbleUrl, withRumbleAutoplay, youtubeMuteCommand, safeUrlDisplay, safeUrlHostname, isMohUrl, mohUrlPath, extractMohPostId, extractMohArticleId, extractMohSpaceId, extractMohSpaceUsername, isMohSpaceLink, extractMohUsername, isXPostUrl, isSubstackPostUrl } from '~/utils/link-utils'
 import type { LinkMetadata } from '~/utils/link-metadata'
 import { getLinkMetadata } from '~/utils/link-metadata'
 import type { RumbleEmbedInfo } from '~/utils/rumble-embed'
@@ -435,6 +459,30 @@ const rumbleAspectRatio = computed(() => {
   const h = rumbleEmbedInfo.value?.height ?? 480
   return `${w} / ${h}`
 })
+const isRumblePortrait = computed(() => {
+  if (!isPreviewLinkRumble.value) return false
+  const w = rumbleEmbedInfo.value?.width ?? 854
+  const h = rumbleEmbedInfo.value?.height ?? 480
+  return h > w
+})
+const isPortraitVideoEmbed = computed(() => Boolean(youtubeVideoInfo.value?.isShort || isRumblePortrait.value))
+const videoBoxClass = computed(() => {
+  if (isPortraitVideoEmbed.value) return 'max-h-[480px] max-w-full'
+  if (youtubeEmbedUrl.value) return 'w-full aspect-video'
+  return 'w-full'
+})
+const videoBoxStyle = computed(() => {
+  if (youtubeVideoInfo.value?.isShort) {
+    return { aspectRatio: '9 / 16', width: 'min(100%, calc(480px * 9 / 16))' }
+  }
+  if (youtubeEmbedUrl.value) return undefined
+  if (isRumblePortrait.value) {
+    const w = rumbleEmbedInfo.value?.width ?? 854
+    const h = rumbleEmbedInfo.value?.height ?? 480
+    return { aspectRatio: rumbleAspectRatio.value, width: `min(100%, calc(480px * ${w} / ${h}))` }
+  }
+  return { aspectRatio: rumbleAspectRatio.value }
+})
 const rumblePosterUrl = computed(() => rumbleEmbedInfo.value?.thumbnailUrl ?? null)
 
 const youtubePosterUrls = computed(() => (previewLink.value ? getYouTubePosterUrls(previewLink.value) : null))
@@ -476,22 +524,29 @@ watch(
   { immediate: true },
 )
 
-const { activePostId, register: registerEmbeddedVideo, unregister: unregisterEmbeddedVideo, activate: activateEmbeddedVideoById } =
+const { activePostId, register: registerEmbeddedVideo, unregister: unregisterEmbeddedVideo, activate: activateEmbeddedVideoById, appWideSoundOn } =
   useEmbeddedVideoManager()
 const hasEmbeddedVideo = computed(() => Boolean(youtubeEmbedUrl.value || isPreviewLinkRumble.value))
 const videoIsPlayable = computed(() => hasEmbeddedVideo.value && rowInView.value && activePostId.value === postId.value)
 const videoBoxEl = ref<HTMLElement | null>(null)
+const videoIframeEl = ref<HTMLIFrameElement | null>(null)
 const videoIframeLoaded = ref(false)
 const desiredVideoSrc = computed(() => {
   if (!rowInView.value) return null
   if (!hasEmbeddedVideo.value) return null
   if (activePostId.value !== postId.value) return null
   if (previewLink.value && youtubeEmbedUrl.value) {
-    // Pass autoplay:true — the click is a user gesture, so the browser will honour it.
-    return getYouTubeEmbedUrl(previewLink.value, { autoplay: true })
+    return getYouTubeEmbedUrl(previewLink.value, {
+      autoplay: true,
+      muted: true,
+      origin: import.meta.client ? window.location.origin : undefined,
+    })
   }
   if (isPreviewLinkRumble.value && rumbleEmbedUrl.value) {
-    return withRumbleAutoplay(rumbleEmbedUrl.value, { autoplay: true })
+    return withRumbleAutoplay(rumbleEmbedUrl.value, {
+      autoplay: true,
+      muted: !appWideSoundOn.value,
+    })
   }
   return null
 })
@@ -509,9 +564,33 @@ function onVideoIframeLoad() {
       iframeLoadRaf = null
       if (!desiredVideoSrc.value) return
       videoIframeLoaded.value = true
+      applyEmbedMute(!appWideSoundOn.value)
     })
   })
 }
+
+function applyEmbedMute(muted: boolean) {
+  if (!import.meta.client) return
+  if (isPreviewLinkRumble.value) return
+  const win = videoIframeEl.value?.contentWindow
+  if (!win) return
+  win.postMessage(youtubeMuteCommand(muted), '*')
+}
+
+function onTapUnmuteEmbed() {
+  appWideSoundOn.value = true
+  applyEmbedMute(false)
+}
+
+function onTapMuteEmbed() {
+  appWideSoundOn.value = false
+  applyEmbedMute(true)
+}
+
+watch(appWideSoundOn, (soundOn) => {
+  if (!videoIsPlayable.value || !videoIframeLoaded.value) return
+  applyEmbedMute(!soundOn)
+})
 
 watch(
   desiredVideoSrc,

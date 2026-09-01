@@ -56,6 +56,7 @@ export type AuthUser = {
   notificationUnreadCommentCount?: number
   groupsUnread?: { total: number; byGroupId: Record<string, number> }
   crewInviteInboxCount?: number
+  groupInviteInboxCount?: number
   postCount?: number | null
   articleCount?: number | null
   /** Non-null only while a site admin is impersonating this user. */

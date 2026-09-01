@@ -12,10 +12,13 @@ export function useBadgeHydration() {
   const messages = useMessagesBadge()
   const groups = useGroupsBadge()
   const crewInvites = useCrewInvitesBadge()
+  const groupInvites = useGroupInvitesBadge()
   const {
     isSocketConnected,
     addCrewCallback,
     removeCrewCallback,
+    addGroupInviteCallback,
+    removeGroupInviteCallback,
     setNotificationUndeliveredCount,
     setNotificationUnreadCommentCount,
     setMessageUnreadCounts,
@@ -31,6 +34,7 @@ export function useBadgeHydration() {
     setMessageUnreadCounts({ primary: 0, requests: 0 })
     setGroupsUnread({ total: 0, byGroupId: {} })
     crewInvites.setCount(0)
+    groupInvites.setCount(0)
     hydratedUserId.value = null
     hydratedAt.value = 0
   }
@@ -57,6 +61,7 @@ export function useBadgeHydration() {
         isCount(authUser.groupsUnread?.total)
         && authUser.groupsUnread?.byGroupId != null
       const hasCrewInviteCount = isCount(authUser.crewInviteInboxCount)
+      const hasGroupInviteCount = isCount(authUser.groupInviteInboxCount)
 
       if (!force && hasNotificationCount) {
         setNotificationUndeliveredCount(authUser.notificationUndeliveredCount!)
@@ -73,6 +78,9 @@ export function useBadgeHydration() {
       if (!force && hasCrewInviteCount) {
         crewInvites.setCount(authUser.crewInviteInboxCount!)
       }
+      if (!force && hasGroupInviteCount) {
+        groupInvites.setCount(authUser.groupInviteInboxCount!)
+      }
 
       const fallbacks: Promise<unknown>[] = []
       if (force || !hasNotificationCount || !hasUnreadCommentCount) {
@@ -81,6 +89,7 @@ export function useBadgeHydration() {
       if (force || !hasMessageCounts) fallbacks.push(messages.fetchUnreadCounts())
       if (force || !hasGroupsUnread) fallbacks.push(groups.refresh())
       if (force || !hasCrewInviteCount) fallbacks.push(crewInvites.refresh())
+      if (force || !hasGroupInviteCount) fallbacks.push(groupInvites.refresh())
       await Promise.allSettled(fallbacks)
 
       if (user.value?.id === authUser.id) {
@@ -123,14 +132,20 @@ export function useBadgeHydration() {
     onInviteReceived: () => { void crewInvites.refresh() },
     onInviteUpdated: () => { void crewInvites.refresh() },
   }
+  const groupInviteCallback = {
+    onReceived: () => { void groupInvites.refresh() },
+    onUpdated: () => { void groupInvites.refresh() },
+  }
 
   if (getCurrentInstance()) {
     onMounted(() => {
       addCrewCallback(crewCallback)
+      addGroupInviteCallback(groupInviteCallback)
       document.addEventListener('visibilitychange', onVisibilityChange)
     })
     onBeforeUnmount(() => {
       removeCrewCallback(crewCallback)
+      removeGroupInviteCallback(groupInviteCallback)
       document.removeEventListener('visibilitychange', onVisibilityChange)
     })
   }

@@ -1,8 +1,10 @@
 /**
  * Guardrail tests for YouTube URL parsing in link-utils.
  */
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import { describe, it, expect } from 'vitest'
-import { parseYouTubeUrl, getYouTubeEmbedUrl, getYouTubePosterUrls, youtubeOEmbedRequestUrl, parseMediaPreviewUrl, vimeoOEmbedRequestUrl, withRumbleAutoplay } from '../utils/link-utils'
+import { parseYouTubeUrl, getYouTubeEmbedUrl, getYouTubePosterUrls, youtubeOEmbedRequestUrl, parseMediaPreviewUrl, vimeoOEmbedRequestUrl, withRumbleAutoplay, youtubeMuteCommand } from '../utils/link-utils'
 
 const VIDEO_ID = 'dQw4w9WgXcQ'
 
@@ -91,6 +93,13 @@ describe('getYouTubeEmbedUrl', () => {
   it('sets autoplay=1 when requested', () => {
     const url = getYouTubeEmbedUrl(`https://youtu.be/${VIDEO_ID}`, { autoplay: true })
     expect(url).toContain('autoplay=1')
+    expect(url).toContain('mute=1')
+    expect(url).toContain('enablejsapi=1')
+  })
+
+  it('can request unmuted autoplay', () => {
+    const url = getYouTubeEmbedUrl(`https://youtu.be/${VIDEO_ID}`, { autoplay: true, muted: false })
+    expect(url).toContain('mute=0')
   })
 
   it('appends start= when URL has a timestamp', () => {
@@ -165,6 +174,16 @@ describe('withRumbleAutoplay', () => {
     expect(url).toContain('pub=7a20')
   })
 
+  it('sets autoplay=1 when unmuted', () => {
+    const url = withRumbleAutoplay('https://rumble.com/embed/v123abc/', { autoplay: true, muted: false })
+    expect(url).toContain('autoplay=1')
+  })
+
+  it('builds a YouTube IFrame mute command', () => {
+    expect(JSON.parse(youtubeMuteCommand(true))).toMatchObject({ func: 'mute' })
+    expect(JSON.parse(youtubeMuteCommand(false))).toMatchObject({ func: 'unMute' })
+  })
+
   it('returns the original string when the URL is invalid', () => {
     expect(withRumbleAutoplay('not-a-url', { autoplay: true })).toBe('not-a-url')
   })
@@ -176,5 +195,14 @@ describe('vimeoOEmbedRequestUrl', () => {
       'https://vimeo.com/api/oembed.json?url=https%3A%2F%2Fvimeo.com%2F123456',
     )
     expect(vimeoOEmbedRequestUrl('https://youtube.com/watch?v=abc')).toBeNull()
+  })
+})
+
+describe('PostRowLinkPreview portrait video chrome', () => {
+  it('left-aligns portrait Rumble and Shorts instead of stretching them landscape', () => {
+    const src = readFileSync(resolve(process.cwd(), 'components/app/post/PostRowLinkPreview.vue'), 'utf8')
+    expect(src).toContain('isPortraitVideoEmbed')
+    expect(src).toContain('isRumblePortrait')
+    expect(src).toContain("isPortraitVideoEmbed ? 'w-fit max-w-full' : ''")
   })
 })

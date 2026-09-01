@@ -31,26 +31,28 @@ export function useInViewOnce(elRef: Ref<HTMLElement | null>, opts: InViewOnceOp
   const inView = ref(false)
   let obs: IntersectionObserver | null = null
 
-  onMounted(async () => {
-    if (!import.meta.client) return
-    await nextTick()
-    const el = elRef.value
-    if (!el) return
+  function disconnect() {
+    obs?.disconnect()
+    obs = null
+  }
 
+  function observe(el: HTMLElement) {
+    if (inView.value) return
     const marginPx = parseFirstPx(opts.rootMargin)
     if (isInViewport(el, marginPx)) {
       inView.value = true
+      disconnect()
       return
     }
 
+    disconnect()
     obs = new IntersectionObserver(
       (entries) => {
         const e = entries[0]
         if (!e) return
         if (e.isIntersecting) {
           inView.value = true
-          obs?.disconnect()
-          obs = null
+          disconnect()
         }
       },
       {
@@ -60,11 +62,24 @@ export function useInViewOnce(elRef: Ref<HTMLElement | null>, opts: InViewOnceOp
       },
     )
     obs.observe(el)
-  })
+  }
+
+  watch(
+    elRef,
+    (el) => {
+      if (!import.meta.client) return
+      if (inView.value) return
+      if (!el) {
+        disconnect()
+        return
+      }
+      observe(el)
+    },
+    { immediate: true, flush: 'post' },
+  )
 
   onBeforeUnmount(() => {
-    obs?.disconnect()
-    obs = null
+    disconnect()
   })
 
   return { inView }

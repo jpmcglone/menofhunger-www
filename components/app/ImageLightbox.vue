@@ -410,7 +410,7 @@ watch(
   () => [props.currentMediaItem?.kind, props.src] as const,
   () => {
     if (props.kind === 'media' && props.currentMediaItem?.kind === 'video') {
-      lightboxVideoMuted.value = true
+      lightboxVideoMuted.value = !appWideSoundOn.value
     }
     resetZoom()
   },

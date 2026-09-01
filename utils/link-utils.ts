@@ -227,16 +227,22 @@ export function youtubeOEmbedRequestUrl(url: string): string | null {
   return `https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${encodeURIComponent(info.id)}&format=json`
 }
 
-export function getYouTubeEmbedUrl(url: string, opts?: { autoplay?: boolean }): string | null {
+export function getYouTubeEmbedUrl(
+  url: string,
+  opts?: { autoplay?: boolean; muted?: boolean; origin?: string },
+): string | null {
   const info = parseYouTubeUrl(url)
   if (!info) return null
 
   const params = new URLSearchParams({
     autoplay: opts?.autoplay ? '1' : '0',
+    mute: opts?.autoplay && opts?.muted !== false ? '1' : '0',
     rel: '0',
     playsinline: '1',
+    enablejsapi: '1',
   })
   if (info.startSeconds != null) params.set('start', String(info.startSeconds))
+  if (opts?.origin) params.set('origin', opts.origin)
 
   return `https://www.youtube-nocookie.com/embed/${encodeURIComponent(info.id)}?${params.toString()}`
 }
@@ -355,15 +361,27 @@ export function isRumbleShortsUrl(url: string): boolean {
 }
 
 /** Rumble `autoplay=2` is muted autoplay (1 is with sound). */
-export function withRumbleAutoplay(embedUrl: string, opts?: { autoplay?: boolean }): string {
+export function withRumbleAutoplay(
+  embedUrl: string,
+  opts?: { autoplay?: boolean; muted?: boolean },
+): string {
   if (!opts?.autoplay) return embedUrl
   try {
     const u = new URL(embedUrl)
-    u.searchParams.set('autoplay', '2')
+    u.searchParams.set('autoplay', opts.muted === false ? '1' : '2')
     return u.toString()
   } catch {
     return embedUrl
   }
+}
+
+/** YouTube IFrame API mute command. Parent page → embed iframe. */
+export function youtubeMuteCommand(muted: boolean): string {
+  return JSON.stringify({
+    event: 'command',
+    func: muted ? 'mute' : 'unMute',
+    args: [],
+  })
 }
 
 /** True for Pickax post permalinks (`https://pickax.com/post/:id`). */

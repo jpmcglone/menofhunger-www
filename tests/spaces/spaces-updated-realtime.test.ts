@@ -48,11 +48,13 @@ describe('spaces updated realtime wiring (structural)', () => {
     expect(spacePage).not.toMatch(/unsubscribeLobbyCounts/)
   })
 
-  it('binds live listener badges and hides preview chrome', async () => {
+  it('binds live listener badges and keeps Notify me on feed embeds', async () => {
     const row = await read('components/app/AppSpaceRow.vue')
     expect(row).toMatch(/lobbyCountForSpace/)
-    expect(row).toMatch(/clickable = computed\(\(\) => !props\.preview/)
+    expect(row).toMatch(/clickable = computed\(\(\) => Boolean\(spaceHref\.value\)\)/)
+    expect(row).toMatch(/showActionChrome/)
     expect(row).toMatch(/v-if="!preview && !compact"/)
+    expect(row).toMatch(/login\?redirect=/)
   })
 
   it('renders lobby and preview spaces as cards with implied titles', async () => {

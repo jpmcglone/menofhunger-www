@@ -349,44 +349,42 @@ function toLightboxItems(): LightboxMediaItem[] {
   }))
 }
 
-onMounted(() => {
-  if (
-    import.meta.client &&
-    props.interactive &&
-    props.postId &&
-    items.value.length === 1 &&
-    items.value[0]?.kind === 'video'
-  ) {
-    const el = (singleVideoEl.value ?? singleVideoContainerRef.value) as HTMLElement | null
-    if (el) videoManager.register(props.postId, el)
-  }
-})
-
-onBeforeUnmount(() => {
-  if (props.postId) videoManager.unregister(props.postId)
-})
-
-watch(singleVideoActive, (active) => {
-  const el = singleVideoEl.value
+watchEffect((onCleanup) => {
+  if (!import.meta.client) return
+  if (!props.interactive || !props.postId) return
+  if (items.value.length !== 1 || items.value[0]?.kind !== 'video') return
+  const el = (singleVideoEl.value ?? singleVideoContainerRef.value) as HTMLElement | null
   if (!el) return
-  if (active) {
-    // Always start muted (Safari requires user gesture to unmute; tap overlay to unmute).
-    el.muted = true
-    singleVideoMuted.value = true
-    el.play().catch(() => {})
-  } else {
-    el.pause()
-  }
+  videoManager.register(props.postId, el)
+  onCleanup(() => {
+    if (props.postId) videoManager.unregister(props.postId)
+  })
 })
 
-// When user mutes one player, sync others to muted.
+watch(
+  [singleVideoActive, singleVideoEl],
+  ([active, el]) => {
+    if (!el) return
+    if (active) {
+      el.muted = !appWideSoundOn.value
+      singleVideoMuted.value = el.muted
+      el.play().catch(() => {
+        // Safari blocked unmuted autoplay — fall back to muted.
+        el.muted = true
+        singleVideoMuted.value = true
+        el.play().catch(() => {})
+      })
+    } else {
+      el.pause()
+    }
+  },
+)
+
 watch(appWideSoundOn, (soundOn) => {
   const el = singleVideoEl.value
   if (!el) return
-  if (!soundOn) {
-    el.muted = true
-    singleVideoMuted.value = true
-  }
+  el.muted = !soundOn
+  singleVideoMuted.value = !soundOn
 })
 
 const mediaFrameStyle = { borderRadius: 'var(--moh-media-radius)' }

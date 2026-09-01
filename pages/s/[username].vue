@@ -332,7 +332,7 @@ const showHostReminders = computed(() => isOwner.value && spaceStatusKind.value 
 const hostNotifyCount = computed(() => Math.max(0, Number(space.value?.subscriberCount) || 0))
 
 const showSpaceNotifyMe = computed(() => {
-  if (!user.value?.id || !space.value) return false
+  if (!space.value) return false
   if (isOwner.value) return false
   return spaceStatusKind.value === 'scheduled'
 })
@@ -439,6 +439,10 @@ async function onLeave() {
 
 async function onToggleSpaceNotify() {
   if (!space.value || spaceNotifyBusy.value) return
+  if (!user.value?.id) {
+    await navigateTo(`/login?redirect=${encodeURIComponent(route.fullPath)}`)
+    return
+  }
   if (space.value.viewerSubscribed) {
     const ok = await confirm({
       header: 'Stop notifications?',

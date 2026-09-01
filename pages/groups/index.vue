@@ -52,6 +52,30 @@
       </template>
 
       <template v-else-if="!metaLoading">
+        <section
+          v-if="inboxInvites.length > 0"
+          class="border-b moh-border py-3"
+          aria-labelledby="groups-invites-heading"
+        >
+          <div class="moh-gutter-x mb-1 flex items-baseline justify-between gap-3">
+            <h2 id="groups-invites-heading" class="text-sm font-semibold uppercase tracking-wide moh-text-muted">
+              Invites
+            </h2>
+            <span class="text-xs moh-text-muted tabular-nums">
+              {{ inboxInvites.length }}
+            </span>
+          </div>
+          <ul class="moh-divide">
+            <li v-for="inv in inboxInvites" :key="inv.id">
+              <AppGroupInviteInboxRow
+                :invite="inv"
+                @accepted="onInboxAccepted"
+                @declined="onInboxDeclined"
+              />
+            </li>
+          </ul>
+        </section>
+
         <!-- Your groups — horizontal carousel -->
         <section
           v-if="mine.length > 0"
@@ -300,7 +324,8 @@
 </template>
 
 <script setup lang="ts">
-import type { CommunityGroupShell, FeedPost } from '~/types/api'
+import type { CommunityGroupInvite, CommunityGroupShell, FeedPost } from '~/types/api'
+import AppGroupInviteInboxRow from '~/components/app/groups/AppGroupInviteInboxRow.vue'
 import { useLoadMoreObserver } from '~/composables/useLoadMoreObserver'
 import { useMiddleScroller } from '~/composables/useMiddleScroller'
 import { useGroupsHubMedia } from '~/composables/useGroupsHubMedia'
@@ -324,7 +349,7 @@ usePageSeo({
 const route = useRoute()
 const { apiFetchData } = useApiClient()
 const { user, isAuthed } = useAuth()
-const { groupsUnread } = usePresence()
+const { groupsUnread, addGroupInviteCallback, removeGroupInviteCallback } = usePresence()
 const { clearLockScreen } = useNotifications()
 
 const metaLoading = ref(true)
@@ -332,6 +357,44 @@ const error = ref<string | null>(null)
 const mine = ref<CommunityGroupShell[]>([])
 const spotlight = ref<CommunityGroupShell[]>([])
 const { groups: sharedMyGroups, load: loadMyGroups } = useMyGroups()
+const groupInvitesApi = useGroupInvites()
+const { setCount: setGroupInviteBadgeCount } = useGroupInvitesBadge()
+const inboxInvites = ref<CommunityGroupInvite[]>([])
+
+function removeInboxInvite(inviteId: string) {
+  inboxInvites.value = inboxInvites.value.filter((i) => i.id !== inviteId)
+  setGroupInviteBadgeCount(inboxInvites.value.length)
+}
+
+function onInboxAccepted(inv: CommunityGroupInvite) {
+  removeInboxInvite(inv.id)
+}
+
+function onInboxDeclined(inv: CommunityGroupInvite) {
+  removeInboxInvite(inv.id)
+}
+
+const inboxInviteCb = {
+  onReceived: () => { void loadInboxOnly() },
+  onUpdated: (payload: { invite: { id: string; status: string } }) => {
+    const status = payload?.invite?.status
+    const id = payload?.invite?.id
+    if (!id) return
+    if (status && status !== 'pending') removeInboxInvite(id)
+    else void loadInboxOnly()
+  },
+}
+
+async function loadInboxOnly() {
+  if (!isAuthed.value) return
+  try {
+    const inbox = await groupInvitesApi.listInbox()
+    inboxInvites.value = inbox.filter((i) => i.status === 'pending')
+    setGroupInviteBadgeCount(inboxInvites.value.length)
+  } catch {
+    // Keep the last list; badge hydration will recover.
+  }
+}
 
 // ─── URL-backed sort ───────────────────────────────────────────────────────────
 const { sort: hubSort } = useUrlFeedFilters({ historyBacked: true })
@@ -585,16 +648,20 @@ async function loadMeta() {
   metaLoading.value = true
   error.value = null
   try {
-    const [, e] = await Promise.all([
+    const [, e, inbox] = await Promise.all([
       loadMyGroups(),
       apiFetchData<CommunityGroupShell[]>('/groups/explore?excludeMine=1&limit=24'),
+      groupInvitesApi.listInbox(),
     ])
     applyMyGroups(sharedMyGroups.value)
     spotlight.value = Array.isArray(e) ? e : []
+    inboxInvites.value = inbox.filter((i) => i.status === 'pending')
+    setGroupInviteBadgeCount(inboxInvites.value.length)
   } catch (e: unknown) {
     error.value = getApiErrorMessage(e) || 'Failed to load your groups.'
     mine.value = []
     spotlight.value = []
+    inboxInvites.value = []
   } finally {
     metaLoading.value = false
   }
@@ -718,6 +785,7 @@ watch(
     if (!a) {
       mine.value = []
       spotlight.value = []
+      inboxInvites.value = []
       postsFeedPosts.value = []
       postsFeedNextCursor.value = null
       repliesFeedPosts.value = []
@@ -749,6 +817,7 @@ watch(
 
 onMounted(() => {
   if (!import.meta.client) return
+  addGroupInviteCallback(inboxInviteCb)
   registerReplyPostedHandler()
   startHubAutoRefresh()
   if (isAuthed.value) void clearLockScreen('groups')
@@ -764,6 +833,7 @@ onActivated(() => {
     void loadMyGroups({ force: true })
       .then(() => applyMyGroups(sharedMyGroups.value))
       .catch(() => undefined) // Keep the last successful membership list while offline.
+    void loadInboxOnly()
   }
   if (postsFeedPosts.value.length > 0) {
     setTimeout(() => void postsFeedSoftRefreshNewer(), 300)
@@ -779,6 +849,7 @@ onDeactivated(() => {
 })
 
 onBeforeUnmount(() => {
+  removeGroupInviteCallback(inboxInviteCb)
   unregisterReplyPostedHandler()
   stopHubAutoRefresh()
 })

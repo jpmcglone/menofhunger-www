@@ -18,6 +18,7 @@ describe('useAuth hydration guardrails (structural)', () => {
     expect(hydration).toMatch(/notificationUnreadCommentCount/)
     expect(hydration).toMatch(/groupsUnread/)
     expect(hydration).toMatch(/crewInviteInboxCount/)
+    expect(hydration).toMatch(/groupInviteInboxCount/)
   })
 
   it('keeps badge display composables free of automatic recovery side effects', () => {
@@ -26,6 +27,7 @@ describe('useAuth hydration guardrails (structural)', () => {
       'composables/useMessagesBadge.ts',
       'composables/useGroupsBadge.ts',
       'composables/useCrewInvitesBadge.ts',
+      'composables/useGroupInvitesBadge.ts',
     ]) {
       const src = readFromRepo(path)
       expect(src).not.toMatch(/\bwatch\(/)
