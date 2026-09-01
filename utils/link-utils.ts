@@ -360,6 +360,30 @@ export function isRumbleShortsUrl(url: string): boolean {
   }
 }
 
+/** Portrait embeds are capped at this height; width follows the encoded aspect. */
+export const PORTRAIT_EMBED_MAX_HEIGHT_PX = 480
+
+/**
+ * Explicit frame width for a portrait embed. Must NOT use a percentage inside a
+ * fit-content parent: `min(100%, …)` is a cyclic percentage there, so the frame
+ * shrank to the width of its sibling text until the iframe mounted, then grew.
+ */
+export function portraitEmbedFrameStyle(width: number, height: number): { width: string; maxWidth: string } {
+  const w = Number.isFinite(width) && width > 0 ? width : 9
+  const h = Number.isFinite(height) && height > 0 ? height : 16
+  return { width: `calc(${PORTRAIT_EMBED_MAX_HEIGHT_PX}px * ${w} / ${h})`, maxWidth: '100%' }
+}
+
+/** True when a body link and a server-resolved embed URL refer to the same page. */
+export function sameNormalizedUrl(a: string | null | undefined, b: string | null | undefined): boolean {
+  if (!a || !b) return false
+  try {
+    return new URL(a).toString() === new URL(b).toString()
+  } catch {
+    return false
+  }
+}
+
 /** Rumble `autoplay=2` is muted autoplay (1 is with sound). */
 export function withRumbleAutoplay(
   embedUrl: string,
@@ -395,6 +419,82 @@ export function youtubeMuteCommand(muted: boolean): string {
 export function postYouTubeIframeCommand(win: Window, commandJson: string): void {
   win.postMessage(youtubeListeningCommand(), '*')
   win.postMessage(commandJson, '*')
+}
+
+export function clampMediaVolume(n: number): number {
+  if (!Number.isFinite(n)) return 1
+  return Math.max(0, Math.min(1, n))
+}
+
+export function mediaVolumeToPercent(n: number): number {
+  return Math.round(clampMediaVolume(n) * 100)
+}
+
+/** YouTube IFrame API volume is 0–100. */
+export function youtubeVolumeCommand(volume01: number): string {
+  return JSON.stringify({
+    event: 'command',
+    func: 'setVolume',
+    args: [mediaVolumeToPercent(volume01)],
+  })
+}
+
+/** Rumble embed mute/unmute. Best-effort — their iframe has no public IFrame API. */
+export function rumbleMuteCommand(muted: boolean): { event: string; func: string; args: [] } {
+  return {
+    event: 'command',
+    func: muted ? 'mute' : 'unmute',
+    args: [],
+  }
+}
+
+export function rumbleVolumeCommand(volume01: number): { event: string; func: string; args: [number] } {
+  return {
+    event: 'command',
+    func: 'setVolume',
+    args: [mediaVolumeToPercent(volume01)],
+  }
+}
+
+/** Post a mute command into a Rumble embed without rewriting `iframe.src`. */
+export function postRumbleIframeCommand(win: Window, muted: boolean): void {
+  const cmd = rumbleMuteCommand(muted)
+  win.postMessage(JSON.stringify(cmd), '*')
+  win.postMessage(cmd, '*')
+}
+
+/** Post a volume command into a Rumble embed without rewriting `iframe.src`. */
+export function postRumbleIframeVolume(win: Window, volume01: number): void {
+  const cmd = rumbleVolumeCommand(volume01)
+  win.postMessage(JSON.stringify(cmd), '*')
+  win.postMessage(cmd, '*')
+}
+
+/**
+ * Best-effort parse of YouTube/Rumble iframe `postMessage` audio state.
+ * Iframe players report volume as 0–100; values ≤ 1 are treated as 0–1.
+ */
+export function parseEmbedPlayerAudio(data: unknown): { volume01?: number; muted?: boolean } | null {
+  let payload: unknown = data
+  if (typeof payload === 'string') {
+    try {
+      payload = JSON.parse(payload)
+    } catch {
+      return null
+    }
+  }
+  if (!payload || typeof payload !== 'object') return null
+  const rec = payload as Record<string, unknown>
+  const info = (rec.info && typeof rec.info === 'object' ? rec.info : rec) as Record<string, unknown>
+  const rawVol = info.volume ?? info.vol
+  const rawMuted = info.muted ?? info.isMuted
+  const out: { volume01?: number; muted?: boolean } = {}
+  if (typeof rawVol === 'number' && Number.isFinite(rawVol)) {
+    out.volume01 = rawVol > 1 ? rawVol / 100 : rawVol
+  }
+  if (typeof rawMuted === 'boolean') out.muted = rawMuted
+  if (out.volume01 == null && out.muted == null) return null
+  return out
 }
 
 /** True for Pickax post permalinks (`https://pickax.com/post/:id`). */

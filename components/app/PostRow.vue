@@ -272,6 +272,7 @@
           :activate-video-on-mount="activateVideoOnMount"
           :preloaded-article="postView.article ?? null"
           :quoted-post="postView.quotedPost ?? null"
+          :video-embed="postView.videoEmbed ?? null"
         />
 
         <!-- Article share card: rendered directly from API data (no fetch needed).

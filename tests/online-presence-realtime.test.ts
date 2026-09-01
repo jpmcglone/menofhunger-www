@@ -36,6 +36,19 @@ describe('online presence realtime wiring', () => {
     expect(presence).toContain('if (!curr.userId && curr.path === \'/login\')')
   })
 
+  it('starts the connect watcher once per tab, not once per usePresence() caller', () => {
+    const presence = readFileSync(resolve(root, 'composables/usePresence.ts'), 'utf8')
+    const core = readFileSync(resolve(root, 'composables/presence/usePresenceSocketCore.ts'), 'utf8')
+
+    expect(presence).toContain("const PRESENCE_LIFECYCLE_FLAG = '__mohPresenceLifecycleStarted'")
+    expect(presence).toContain('function claimPresenceLifecycle')
+    expect(presence).toContain('if (claimPresenceLifecycle())')
+    expect(presence).toContain('effectScope(true).run')
+    expect(core).toContain("const SOCKET_IDENTITY_PROP = '__mohIdentity'")
+    expect(core).toContain('function stampIdentity')
+    expect(core).toContain('existingKey === null || existingKey === key')
+  })
+
   it('shows a muted guest count next to the online-now subtitle', () => {
     const page = readFileSync(resolve(root, 'pages/online.vue'), 'utf8')
 

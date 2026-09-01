@@ -12,6 +12,27 @@ import { createPresenceEmitters, syncStickyRooms } from '~/composables/presence/
 export * from './presence/types'
 
 /**
+ * The connect watcher and the activity listeners are app-scoped, not
+ * component-scoped: dozens of components call usePresence() and they must all
+ * share one socket and one set of DOM listeners. Without this guard every
+ * caller registers its own `immediate: true` watcher, which on the first run
+ * fires a connect for a socket that is already connecting — that is what
+ * produced the "Insufficient resources" WebSocket storm.
+ *
+ * Stored on globalThis so a Vite HMR of this module cannot start a second
+ * detached effectScope (module-scope `let` resets; the old scope does not).
+ */
+const PRESENCE_LIFECYCLE_FLAG = '__mohPresenceLifecycleStarted'
+
+function claimPresenceLifecycle(): boolean {
+  if (!import.meta.client) return false
+  const g = globalThis as unknown as Record<string, boolean>
+  if (g[PRESENCE_LIFECYCLE_FLAG]) return false
+  g[PRESENCE_LIFECYCLE_FLAG] = true
+  return true
+}
+
+/**
  * Presence over WebSocket — facade over the composables in `composables/presence/`:
  *
  * - `usePresenceSocketCore` — socket lifecycle, connection flags, reconnect banner
@@ -61,88 +82,89 @@ export function usePresence() {
   const { user, didAttempt } = useAuth()
   const route = useRoute()
 
-  if (import.meta.client) {
-    watch(
-      () => ({
-        attempted: didAttempt.value,
-        userId: user.value?.id ?? null,
-        path: route.path,
-      }),
-      (curr, prev) => {
-        if (!curr.attempted) return
-        // Login is an auth wall, not browsing. A redirect here (or a leftover
-        // preview tab) must not count as a guest.
-        if (!curr.userId && curr.path === '/login') {
-          if (socketRef.value) core.disconnect()
+  if (claimPresenceLifecycle()) {
+    // Detached scope: these watchers outlive whichever component happened to
+    // call usePresence() first, so the socket survives that component unmounting.
+    effectScope(true).run(() => {
+      watch(
+        () => ({
+          attempted: didAttempt.value,
+          userId: user.value?.id ?? null,
+          path: route.path,
+        }),
+        (curr) => {
+          if (!curr.attempted) return
+          // Login is an auth wall, not browsing. A redirect here (or a leftover
+          // preview tab) must not count as a guest.
+          if (!curr.userId && curr.path === '/login') {
+            if (socketRef.value) core.disconnect()
+            return
+          }
+          // connect() compares the live socket's identity itself and replaces
+          // the socket only when the identity actually changed.
+          core.connect()
+        },
+        { immediate: true },
+      )
+
+      // Activity: send presence:active (fire-and-forget ping), throttled unless clearing idle. Idle is server-driven (3 min no pings).
+      let lastActivityPingAt = 0
+
+      function onActivity() {
+        const uid = user.value?.id
+        const socket = socketRef.value
+        if (!uid) return
+        if (!socket?.connected) {
+          if (socket && !core.isSocketConnecting.value) {
+            core.reconnect()
+          }
           return
         }
-        const identityChanged = Boolean(curr.userId) && curr.userId !== (prev?.userId ?? null)
-        if (identityChanged && socketRef.value) {
-          core.disconnect()
+        const now = Date.now()
+        const throttleMs = appConfig.presenceActivityThrottleMs ?? 30_000
+        const isIdle = online.idleUserIds.value.has(uid)
+        const shouldPing = isIdle || now - lastActivityPingAt >= throttleMs
+        if (shouldPing) {
+          lastActivityPingAt = now
+          socket.emit('presence:active')
+          if (isIdle) online.setUserActive(uid)
         }
-        core.connect()
-      },
-      { immediate: true },
-    )
-
-    // Activity: send presence:active (fire-and-forget ping), throttled unless clearing idle. Idle is server-driven (3 min no pings).
-    let lastActivityPingAt = 0
-
-    function onActivity() {
-      const uid = user.value?.id
-      const socket = socketRef.value
-      if (!uid) return
-      if (!socket?.connected) {
-        if (socket && !core.isSocketConnecting.value) {
-          core.reconnect()
-        }
-        return
       }
-      const now = Date.now()
-      const throttleMs = appConfig.presenceActivityThrottleMs ?? 30_000
-      const isIdle = online.idleUserIds.value.has(uid)
-      const shouldPing = isIdle || now - lastActivityPingAt >= throttleMs
-      if (shouldPing) {
-        lastActivityPingAt = now
-        socket.emit('presence:active')
-        if (isIdle) online.setUserActive(uid)
-      }
-    }
 
-    watch(
-      () => user.value?.id ?? null,
-      (userId) => {
-        if (!userId) return
-        const opts = { passive: true, capture: true }
-        document.addEventListener('mousemove', onActivity, opts)
-        document.addEventListener('mousedown', onActivity, opts)
-        document.addEventListener('keydown', onActivity, opts)
-        document.addEventListener('scroll', onActivity, opts)
-        document.addEventListener('touchstart', onActivity, opts)
+      watch(
+        () => user.value?.id ?? null,
+        (userId, _prev, onCleanup) => {
+          if (!userId) return
+          const opts = { passive: true, capture: true }
+          document.addEventListener('mousemove', onActivity, opts)
+          document.addEventListener('mousedown', onActivity, opts)
+          document.addEventListener('keydown', onActivity, opts)
+          document.addEventListener('scroll', onActivity, opts)
+          document.addEventListener('touchstart', onActivity, opts)
 
-        const onVisibilityChange = () => {
-          if (document.visibilityState === 'visible') onActivity()
-        }
-        document.addEventListener('visibilitychange', onVisibilityChange)
+          const onVisibilityChange = () => {
+            if (document.visibilityState === 'visible') onActivity()
+          }
+          document.addEventListener('visibilitychange', onVisibilityChange)
 
-        const stopRoute = watch(
-          () => route.path,
-          () => onActivity(),
-          { flush: 'sync' },
-        )
+          const stopRoute = watch(
+            () => route.path,
+            () => onActivity(),
+          )
 
-        return () => {
-          document.removeEventListener('mousemove', onActivity, opts)
-          document.removeEventListener('mousedown', onActivity, opts)
-          document.removeEventListener('keydown', onActivity, opts)
-          document.removeEventListener('scroll', onActivity, opts)
-          document.removeEventListener('touchstart', onActivity, opts)
-          document.removeEventListener('visibilitychange', onVisibilityChange)
-          stopRoute()
-        }
-      },
-      { immediate: true },
-    )
+          onCleanup(() => {
+            document.removeEventListener('mousemove', onActivity, opts)
+            document.removeEventListener('mousedown', onActivity, opts)
+            document.removeEventListener('keydown', onActivity, opts)
+            document.removeEventListener('scroll', onActivity, opts)
+            document.removeEventListener('touchstart', onActivity, opts)
+            document.removeEventListener('visibilitychange', onVisibilityChange)
+            stopRoute()
+          })
+        },
+        { immediate: true },
+      )
+    })
   }
 
   return {

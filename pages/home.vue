@@ -681,6 +681,9 @@ const feedTotalSize = computed(() => feedVirtualizer.value.getTotalSize())
 
 function measureFeedRow(el: Element | ComponentPublicInstance | null) {
   if (!el || !(el instanceof Element)) return
+  // TanStack Virtual reads `data-index` off the measured node. A ref can fire
+  // on a detached/replaced node during a mid-setup crash; skip those.
+  if (!el.hasAttribute('data-index')) return
   feedVirtualizer.value.measureElement(el)
 }
 

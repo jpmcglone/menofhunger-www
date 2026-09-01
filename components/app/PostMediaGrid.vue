@@ -271,7 +271,12 @@ const props = withDefaults(
 
 const viewer = useImageLightbox()
 const videoManager = useEmbeddedVideoManager()
-const { activePostId, appWideSoundOn } = videoManager
+const { activePostId, appWideSoundOn, appWideVolume, reportPlayerAudio, applySharedAudioToVideo } = videoManager
+
+// Declared before any watch/computed that reads it — a later `const items`
+// left watchEffect in the TDZ (`Cannot access 'items' before initialization`)
+// and aborted every media-grid setup, remounting feed rows and embeds.
+const items = computed(() => (props.media ?? []).filter((m) => Boolean(m?.url) || Boolean(m?.deletedAt)).slice(0, 4))
 
 const singleVideoContainerRef = ref<HTMLElement | null>(null)
 const singleVideoEl = ref<HTMLVideoElement | null>(null)
@@ -317,7 +322,7 @@ function onSingleVideoVolumeChange() {
   const el = singleVideoEl.value
   if (!el) return
   singleVideoMuted.value = el.muted
-  appWideSoundOn.value = !el.muted
+  reportPlayerAudio({ volume01: el.volume, muted: el.muted })
 }
 
 /** Unmute in response to user tap (required on Safari). */
@@ -326,7 +331,7 @@ function onTapUnmute() {
   if (!el) return
   el.muted = false
   singleVideoMuted.value = false
-  appWideSoundOn.value = true
+  reportPlayerAudio({ muted: false, volume01: el.volume })
   el.play().catch(() => {})
 }
 
@@ -335,7 +340,7 @@ function onTapMute() {
   if (!el) return
   el.muted = true
   singleVideoMuted.value = true
-  appWideSoundOn.value = false
+  reportPlayerAudio({ muted: true, volume01: el.volume })
 }
 
 function toLightboxItems(): LightboxMediaItem[] {
@@ -365,9 +370,9 @@ watch(
   [singleVideoActive, singleVideoEl],
   ([active, el]) => {
     if (!el) return
+    applySharedAudioToVideo(el)
+    singleVideoMuted.value = el.muted
     if (active) {
-      el.muted = !appWideSoundOn.value
-      singleVideoMuted.value = el.muted
       el.play().catch(() => {
         // Safari blocked unmuted autoplay — fall back to muted.
         el.muted = true
@@ -380,18 +385,17 @@ watch(
   },
 )
 
-watch(appWideSoundOn, (soundOn) => {
+watch([appWideSoundOn, appWideVolume], () => {
   const el = singleVideoEl.value
   if (!el) return
-  el.muted = !soundOn
-  singleVideoMuted.value = !soundOn
+  applySharedAudioToVideo(el)
+  singleVideoMuted.value = el.muted
 })
 
 const mediaFrameStyle = { borderRadius: 'var(--moh-media-radius)' }
 /** Seam color behind `gap-px` — matches post-row `moh-border`. */
 const multiGridChromeStyle = { backgroundColor: 'var(--moh-border)' }
 
-const items = computed(() => (props.media ?? []).filter((m) => Boolean(m?.url) || Boolean(m?.deletedAt)).slice(0, 4))
 const hideThumbs = computed(() => viewer.kind.value === 'media' && viewer.hideOrigin.value)
 const urls = computed(() => items.value.map((m) => m.url).filter(Boolean))
 

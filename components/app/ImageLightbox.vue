@@ -142,7 +142,7 @@ const props = defineProps<{
   onTransitionEnd: (e: TransitionEvent) => void
 }>()
 
-const { appWideSoundOn } = useEmbeddedVideoManager()
+const { appWideSoundOn, appWideVolume, reportPlayerAudio, applySharedAudioToVideo } = useEmbeddedVideoManager()
 const lightboxVideoEl = ref<HTMLVideoElement | null>(null)
 /** Lightbox video always starts muted; unmute only on user tap (Safari). */
 const lightboxVideoMuted = ref(true)
@@ -411,16 +411,29 @@ watch(
   () => {
     if (props.kind === 'media' && props.currentMediaItem?.kind === 'video') {
       lightboxVideoMuted.value = !appWideSoundOn.value
+      const el = lightboxVideoEl.value
+      if (el) applySharedAudioToVideo(el)
     }
     resetZoom()
   },
 )
 
+watch(lightboxVideoEl, (el) => {
+  if (el) applySharedAudioToVideo(el)
+})
+
+watch([appWideSoundOn, appWideVolume], () => {
+  const el = lightboxVideoEl.value
+  if (!el) return
+  applySharedAudioToVideo(el)
+  lightboxVideoMuted.value = el.muted
+})
+
 function onLightboxVideoVolumeChange(e: Event) {
   const el = e.target as HTMLVideoElement
   if (el) {
     lightboxVideoMuted.value = el.muted
-    appWideSoundOn.value = !el.muted
+    reportPlayerAudio({ volume01: el.volume, muted: el.muted })
   }
 }
 
@@ -429,7 +442,7 @@ function onLightboxTapUnmute() {
   if (el) {
     el.muted = false
     lightboxVideoMuted.value = false
-    appWideSoundOn.value = true
+    reportPlayerAudio({ muted: false, volume01: el.volume })
     el.play().catch(() => {})
   }
 }
@@ -439,7 +452,7 @@ function onLightboxTapMute() {
   if (el) {
     el.muted = true
     lightboxVideoMuted.value = true
-    appWideSoundOn.value = false
+    reportPlayerAudio({ muted: true, volume01: el.volume })
   }
 }
 </script>

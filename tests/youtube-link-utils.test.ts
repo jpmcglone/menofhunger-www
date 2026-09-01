@@ -4,7 +4,7 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, it, expect } from 'vitest'
-import { parseYouTubeUrl, getYouTubeEmbedUrl, getYouTubePosterUrls, youtubeOEmbedRequestUrl, parseMediaPreviewUrl, vimeoOEmbedRequestUrl, withRumbleAutoplay, youtubeMuteCommand, youtubeListeningCommand, postYouTubeIframeCommand } from '../utils/link-utils'
+import { parseYouTubeUrl, getYouTubeEmbedUrl, getYouTubePosterUrls, youtubeOEmbedRequestUrl, parseMediaPreviewUrl, vimeoOEmbedRequestUrl, withRumbleAutoplay, youtubeMuteCommand, youtubeListeningCommand, youtubeVolumeCommand, postYouTubeIframeCommand, rumbleMuteCommand, rumbleVolumeCommand, postRumbleIframeCommand, postRumbleIframeVolume, parseEmbedPlayerAudio, clampMediaVolume, mediaVolumeToPercent, portraitEmbedFrameStyle, sameNormalizedUrl } from '../utils/link-utils'
 
 const VIDEO_ID = 'dQw4w9WgXcQ'
 
@@ -201,6 +201,39 @@ describe('withRumbleAutoplay', () => {
   it('returns the original string when the URL is invalid', () => {
     expect(withRumbleAutoplay('not-a-url', { autoplay: true })).toBe('not-a-url')
   })
+
+  it('posts a Rumble mute command without touching src', () => {
+    expect(rumbleMuteCommand(true)).toEqual({ event: 'command', func: 'mute', args: [] })
+    expect(rumbleMuteCommand(false)).toEqual({ event: 'command', func: 'unmute', args: [] })
+    const posted: unknown[] = []
+    const win = { postMessage: (data: unknown) => { posted.push(data) } } as unknown as Window
+    postRumbleIframeCommand(win, false)
+    expect(posted).toEqual([JSON.stringify(rumbleMuteCommand(false)), rumbleMuteCommand(false)])
+  })
+
+  it('maps shared 0–1 volume to YouTube/Rumble 0–100 commands', () => {
+    expect(clampMediaVolume(1.4)).toBe(1)
+    expect(clampMediaVolume(-0.2)).toBe(0)
+    expect(mediaVolumeToPercent(0.42)).toBe(42)
+    expect(JSON.parse(youtubeVolumeCommand(0.4))).toMatchObject({ func: 'setVolume', args: [40] })
+    expect(rumbleVolumeCommand(0.4)).toEqual({ event: 'command', func: 'setVolume', args: [40] })
+    const posted: unknown[] = []
+    const win = { postMessage: (data: unknown) => { posted.push(data) } } as unknown as Window
+    postRumbleIframeVolume(win, 0.4)
+    expect(posted).toEqual([JSON.stringify(rumbleVolumeCommand(0.4)), rumbleVolumeCommand(0.4)])
+  })
+
+  it('parses iframe player audio messages', () => {
+    expect(parseEmbedPlayerAudio({ event: 'infoDelivery', info: { volume: 40, muted: false } })).toEqual({
+      volume01: 0.4,
+      muted: false,
+    })
+    expect(parseEmbedPlayerAudio(JSON.stringify({ volume: 0.25, muted: true }))).toEqual({
+      volume01: 0.25,
+      muted: true,
+    })
+    expect(parseEmbedPlayerAudio('not-json')).toBeNull()
+  })
 })
 
 describe('vimeoOEmbedRequestUrl', () => {
@@ -212,14 +245,52 @@ describe('vimeoOEmbedRequestUrl', () => {
   })
 })
 
+describe('portraitEmbedFrameStyle', () => {
+  it('sizes the frame from the encoded aspect with a px height cap, never a cyclic percentage', () => {
+    expect(portraitEmbedFrameStyle(1080, 1920)).toEqual({ width: 'calc(480px * 1080 / 1920)', maxWidth: '100%' })
+    expect(portraitEmbedFrameStyle(9, 16).width).toBe('calc(480px * 9 / 16)')
+    expect(portraitEmbedFrameStyle(0, -1)).toEqual(portraitEmbedFrameStyle(9, 16))
+    expect(portraitEmbedFrameStyle(1080, 1920).width).not.toContain('%')
+  })
+})
+
+describe('sameNormalizedUrl', () => {
+  it('matches body links against server-normalized URLs', () => {
+    expect(sameNormalizedUrl('https://rumble.com/v6abc12-run.html', 'https://rumble.com/v6abc12-run.html')).toBe(true)
+    expect(sameNormalizedUrl('HTTPS://Rumble.com/v6abc12-run.html', 'https://rumble.com/v6abc12-run.html')).toBe(true)
+    expect(sameNormalizedUrl('https://rumble.com/a.html', 'https://rumble.com/b.html')).toBe(false)
+    expect(sameNormalizedUrl(null, 'https://rumble.com/a.html')).toBe(false)
+    expect(sameNormalizedUrl('not a url', 'https://rumble.com/a.html')).toBe(false)
+  })
+})
+
 describe('PostRowLinkPreview portrait video chrome', () => {
-  it('left-aligns portrait Rumble and Shorts instead of stretching them landscape', () => {
+  it('sizes portrait Rumble and Shorts from the post payload at their final width', () => {
     const src = readFileSync(resolve(process.cwd(), 'components/app/post/PostRowLinkPreview.vue'), 'utf8')
-    expect(src).toContain('isPortraitVideoEmbed')
+    const postRow = readFileSync(resolve(process.cwd(), 'components/app/PostRow.vue'), 'utf8')
     expect(src).toContain('isRumblePortrait')
-    expect(src).toContain("isPortraitVideoEmbed ? 'w-fit max-w-full' : ''")
+    expect(src).toContain(':style="videoFrameStyle"')
+    expect(src).toContain('portraitEmbedFrameStyle')
+    // The old shrink-to-fit frame + percentage box made portrait Rumble start tiny and grow.
+    expect(src).not.toContain('w-fit max-w-full')
+    expect(src).not.toContain('min(100%, calc(480px')
+    // Server-cached embed seeds the size before any /link-metadata round trip.
+    expect(src).toContain('videoEmbed?: PostVideoEmbed | null')
+    expect(src).toContain('rumbleEmbedFromPost')
+    expect(src).toContain('peekLinkMetadata')
+    expect(src).not.toContain('rumbleEmbedInfo.value = null')
+    expect(postRow).toContain(':video-embed="postView.videoEmbed ?? null"')
     expect(src).toContain('v-if="desiredVideoSrc"')
+    expect(src).toContain(':key="embedPlayerKey"')
+    expect(src).not.toContain(':key="desiredVideoSrc"')
     expect(src).toContain('scheduleYoutubeMuteSync')
     expect(src).toContain('postYouTubeIframeCommand')
+    expect(src).toContain('postRumbleIframeCommand')
+    expect(src).toContain('postRumbleIframeVolume')
+    expect(src).toContain('youtubeVolumeCommand')
+    expect(src).toContain('appWideVolume')
+    expect(src).toContain('applyEmbedAudio')
+    expect(src).toContain('muted: true')
+    expect(src).not.toContain('muted: !appWideSoundOn.value')
   })
 })

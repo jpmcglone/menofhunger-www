@@ -1,3 +1,29 @@
+import { clampMediaVolume } from '~/utils/link-utils'
+
+const APPLYING_SHARED_AUDIO = '__mohApplyingSharedVideoAudio'
+
+function applyingSharedAudioCount(): number {
+  if (import.meta.server) return 0
+  const g = globalThis as unknown as Record<string, number>
+  return g[APPLYING_SHARED_AUDIO] ?? 0
+}
+
+function withApplyingSharedAudio(fn: () => void) {
+  if (import.meta.server) {
+    fn()
+    return
+  }
+  const g = globalThis as unknown as Record<string, number>
+  g[APPLYING_SHARED_AUDIO] = applyingSharedAudioCount() + 1
+  try {
+    fn()
+  } finally {
+    queueMicrotask(() => {
+      g[APPLYING_SHARED_AUDIO] = Math.max(0, applyingSharedAudioCount() - 1)
+    })
+  }
+}
+
 export function useEmbeddedVideoManager() {
   // Global (per-app) active embedded video. Only one at a time.
   const activePostId = useState<string | null>('moh.active-embedded-video-post-id', () => null)
@@ -6,6 +32,8 @@ export function useEmbeddedVideoManager() {
 
   /** When user unmutes a video (via tap), we set true so other players sync to unmuted. Mute sets false. Never set unmuted programmatically (Safari requires user gesture). */
   const appWideSoundOn = useState<boolean>('moh.app-video-sound-on', () => false)
+  /** Shared loudness 0–1. Default is full volume; mute is a separate flag. */
+  const appWideVolume = useState<number>('moh.app-video-volume', () => 1)
 
   // NOTE: We intentionally keep DOM elements out of `useState()` (SSR-safe).
   // This registry is client-only.
@@ -400,10 +428,34 @@ export function useEmbeddedVideoManager() {
     pipPostId.value = null
   }
 
+  function reportPlayerAudio(update: { volume01?: number; muted?: boolean }) {
+    if (applyingSharedAudioCount() > 0) return
+    if (typeof update.volume01 === 'number') {
+      const next = clampMediaVolume(update.volume01)
+      if (Math.abs(next - appWideVolume.value) >= 0.015) appWideVolume.value = next
+    }
+    if (typeof update.muted === 'boolean') {
+      const soundOn = !update.muted
+      if (appWideSoundOn.value !== soundOn) appWideSoundOn.value = soundOn
+    }
+  }
+
+  function applySharedAudioToVideo(el: HTMLVideoElement) {
+    withApplyingSharedAudio(() => {
+      const next = clampMediaVolume(appWideVolume.value)
+      if (Math.abs(el.volume - next) >= 0.005) el.volume = next
+      const muted = !appWideSoundOn.value
+      if (el.muted !== muted) el.muted = muted
+    })
+  }
+
   return {
     activePostId,
     pipPostId,
     appWideSoundOn,
+    appWideVolume,
+    reportPlayerAudio,
+    applySharedAudioToVideo,
     register,
     unregister,
     activate,

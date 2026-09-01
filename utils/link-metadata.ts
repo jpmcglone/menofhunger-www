@@ -157,6 +157,16 @@ function parsePickaxBodyFromJina(md: string): string | null {
   return normalizeText(body)
 }
 
+/**
+ * Synchronous read of the in-memory cache. Lets a row that re-enters the
+ * viewport lay out immediately instead of waiting a dwell + async round trip.
+ */
+export function peekLinkMetadata(url: string): LinkMetadata | null | undefined {
+  const key = (url ?? '').trim()
+  if (!key || !cache.has(key)) return undefined
+  return cache.get(key) ?? null
+}
+
 export async function getLinkMetadata(url: string, opts: GetLinkMetadataOptions = {}): Promise<LinkMetadata | null> {
   const key = (url ?? '').trim()
   if (!key) return null

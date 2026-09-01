@@ -10,6 +10,24 @@ const PRESENCE_CONNECTION_BAR_JUST_CONNECTED_KEY = 'presence-connection-bar-just
 let pendingLogout = false
 let serverDisconnectReconnectTimer: ReturnType<typeof setTimeout> | null = null
 let connectionBarJustConnectedTimer: ReturnType<typeof setTimeout> | null = null
+/**
+ * Identity the live socket was opened for. The handshake bakes in `query.anon`
+ * and the auth cookie, so a socket opened as one identity cannot be reused as
+ * another — but every other caller must be able to tell "same identity, reuse"
+ * from "different identity, replace". Stamped on the socket instance itself so
+ * a Vite HMR of this module (which resets module-scope `let`s) does not treat
+ * the surviving useState socket as a stranger and open a replacement storm.
+ */
+const SOCKET_IDENTITY_PROP = '__mohIdentity'
+type SocketWithIdentity = Socket & { [SOCKET_IDENTITY_PROP]?: string }
+
+function identityOf(socket: Socket | null): string | null {
+  return socket ? ((socket as SocketWithIdentity)[SOCKET_IDENTITY_PROP] ?? null) : null
+}
+
+function stampIdentity(socket: Socket, key: string) {
+  ;(socket as SocketWithIdentity)[SOCKET_IDENTITY_PROP] = key
+}
 
 export type PresenceSocketHooks = {
   /** Register all domain socket.on handlers. Called once per socket creation. */
@@ -99,6 +117,11 @@ export function usePresenceSocketCore(hooks: PresenceSocketHooks) {
     })
   }
 
+  /** Identity baked into the handshake: the auth cookie's user, else the anon view id. */
+  function identityKey(): string {
+    return user.value ? `user:${user.value.id}` : `anon:${anonViewId.value ?? ''}`
+  }
+
   function connect() {
     if (!import.meta.client) return
     if (!apiBaseUrl) return
@@ -106,13 +129,25 @@ export function usePresenceSocketCore(hooks: PresenceSocketHooks) {
     // as a guest (query.anon is baked in at io() construction).
     if (!didAttempt.value) return
     if (!user.value && window.location.pathname === '/login') return
-    // If a socket already exists, reuse it instead of creating another one.
-    if (isSocketConnecting.value) return
-    if (socketRef.value) {
-      if (!socketRef.value.connected) {
-        isSocketConnecting.value = true
-        socketRef.value.connect()
+
+    const key = identityKey()
+    const existing = socketRef.value
+    if (existing) {
+      const existingKey = identityOf(existing)
+      // Missing stamp = HMR/module reset of an already-open socket. Adopt it
+      // as the current identity instead of tearing it down.
+      if (existingKey === null || existingKey === key) {
+        stampIdentity(existing, key)
+        if (!existing.connected && !isSocketConnecting.value) {
+          isSocketConnecting.value = true
+          existing.connect()
+        }
+        return
       }
+      // The handshake baked in the previous identity, so this socket cannot be
+      // reused — tear it down before opening its replacement.
+      disconnect()
+    } else if (isSocketConnecting.value) {
       return
     }
 
@@ -138,6 +173,7 @@ export function usePresenceSocketCore(hooks: PresenceSocketHooks) {
       reconnectionDelayMax: 5000,
       timeout: 20000,
     })
+    stampIdentity(socket, key)
 
     socket.on('presence:idleDisconnected', () => {
       disconnectedDueToIdle.value = true

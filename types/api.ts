@@ -651,6 +651,20 @@ export type CommunityGroupPreview = {
   viewerPendingApproval: boolean
 }
 
+/**
+ * Server-cached video embed for the post's preview link. Lets the feed lay out
+ * the player at its final aspect ratio on first paint (no `/link-metadata` wait).
+ */
+export type PostVideoEmbed = {
+  /** Normalized body URL this embed was resolved from. */
+  url: string
+  platform: 'rumble'
+  embedUrl: string
+  thumbnailUrl: string | null
+  width: number
+  height: number
+}
+
 export type FeedPost = {
   id: string
   createdAt: string
@@ -716,6 +730,8 @@ export type FeedPost = {
   article?: ArticleSharePreview
   /** For kind='fitnessShare': the frozen fitness share snapshot. */
   fitnessShare?: FitnessSharePreview
+  /** Present when the preview link's video embed is already cached server-side. */
+  videoEmbed?: PostVideoEmbed
   /** When true, post body/media/mentions/poll are redacted and author is placeholder. */
   authorBanned?: boolean
   /** False when the viewer's tier does not grant access; body/media stripped. */

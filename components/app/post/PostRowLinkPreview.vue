@@ -1,20 +1,22 @@
 <template>
   <div v-if="showAny" class="mt-3">
     <!-- Video embeds (special cases) -->
+    <!-- Portrait frames get an explicit px width (left-aligned); landscape fills the row.
+         The frame width lives here, not on the inner box, so no percentage is resolved
+         against a shrink-to-fit parent — that made portrait Rumble start tiny and grow. -->
     <div
       v-if="youtubeEmbedUrl || isPreviewLinkRumble"
-      :class="isPortraitVideoEmbed ? 'w-fit max-w-full' : ''"
+      :style="videoFrameStyle"
     >
     <div
       class="overflow-hidden rounded-xl border moh-border bg-black/5 dark:bg-white/5"
       data-post-row-interactive
     >
       <!-- YouTube: 16:9 landscape or 9:16 portrait for Shorts.
-           Rumble: encoded file size from API (fallback 854x480). Portrait is left-aligned. -->
+           Rumble: encoded file size from the API (fallback 854x480). -->
       <div
         ref="videoBoxEl"
-        class="relative"
-        :class="videoBoxClass"
+        class="relative w-full"
         :style="videoBoxStyle"
         role="button"
         tabindex="0"
@@ -25,7 +27,7 @@
       >
         <iframe
           v-if="desiredVideoSrc"
-          :key="desiredVideoSrc"
+          :key="embedPlayerKey"
           ref="videoIframeEl"
           :src="desiredVideoSrc"
           class="relative z-10 h-full w-full"
@@ -263,13 +265,13 @@
 </template>
 
 <script setup lang="ts">
-import { extractLinksFromText, getYouTubeEmbedUrl, getYouTubePosterUrls, parseYouTubeUrl, isRumbleShortsUrl, isRumbleUrl, withRumbleAutoplay, youtubeMuteCommand, postYouTubeIframeCommand, safeUrlDisplay, safeUrlHostname, isMohUrl, mohUrlPath, extractMohPostId, extractMohArticleId, extractMohSpaceId, extractMohSpaceUsername, isMohSpaceLink, extractMohUsername, isXPostUrl, isSubstackPostUrl } from '~/utils/link-utils'
+import { extractLinksFromText, getYouTubeEmbedUrl, getYouTubePosterUrls, parseYouTubeUrl, isRumbleShortsUrl, isRumbleUrl, withRumbleAutoplay, youtubeMuteCommand, youtubeVolumeCommand, postYouTubeIframeCommand, postRumbleIframeCommand, postRumbleIframeVolume, parseEmbedPlayerAudio, portraitEmbedFrameStyle, sameNormalizedUrl, safeUrlDisplay, safeUrlHostname, isMohUrl, mohUrlPath, extractMohPostId, extractMohArticleId, extractMohSpaceId, extractMohSpaceUsername, isMohSpaceLink, extractMohUsername, isXPostUrl, isSubstackPostUrl } from '~/utils/link-utils'
 import type { LinkMetadata } from '~/utils/link-metadata'
-import { getLinkMetadata } from '~/utils/link-metadata'
+import { getLinkMetadata, peekLinkMetadata } from '~/utils/link-metadata'
 import type { RumbleEmbedInfo } from '~/utils/rumble-embed'
 import { useEmbeddedVideoManager } from '~/composables/useEmbeddedVideoManager'
 import { usePreviewFetchLimiter } from '~/composables/usePreviewFetchLimiter'
-import type { ArticleSharePreview } from '~/types/api'
+import type { ArticleSharePreview, PostVideoEmbed } from '~/types/api'
 import { splitTextByScriptureDisplay } from '~/utils/scripture-reference'
 
 // Stable public paths (not `~/assets` imports) so the URL is identical on
@@ -287,6 +289,8 @@ const props = defineProps<{
   preloadedArticle?: ArticleSharePreview | null
   /** When provided, used immediately as the embedded post preview — no fetch needed. */
   quotedPost?: import('~/types/api').FeedPost | null
+  /** Server-cached embed for the preview link — sizes the player before any fetch. */
+  videoEmbed?: PostVideoEmbed | null
 }>()
 
 const postId = computed(() => props.postId)
@@ -452,7 +456,27 @@ const isPreviewLinkRumble = computed(() => {
   return true
 })
 
-const rumbleEmbedInfo = ref<RumbleEmbedInfo | null>(null)
+function rumbleInfoFromMeta(meta: LinkMetadata | null | undefined): RumbleEmbedInfo | null {
+  const embed = meta?.videoEmbed
+  if (embed?.platform !== 'rumble' || !embed.embedUrl) return null
+  return { src: embed.embedUrl, width: embed.width, height: embed.height, thumbnailUrl: embed.thumbnailUrl }
+}
+
+/** Fetched embed info, pinned to the URL it was fetched for (survives scroll out/in). */
+const rumbleEmbedFetched = ref<{ url: string; info: RumbleEmbedInfo } | null>(null)
+/** Feed rows arrive with the embed already cached server-side — size on first paint. */
+const rumbleEmbedFromPost = computed<RumbleEmbedInfo | null>(() => {
+  const embed = props.videoEmbed
+  if (!embed || embed.platform !== 'rumble' || !embed.embedUrl) return null
+  if (!sameNormalizedUrl(embed.url, previewLink.value)) return null
+  return { src: embed.embedUrl, width: embed.width, height: embed.height, thumbnailUrl: embed.thumbnailUrl }
+})
+const rumbleEmbedInfo = computed<RumbleEmbedInfo | null>(() => {
+  if (!isPreviewLinkRumble.value) return null
+  if (rumbleEmbedFromPost.value) return rumbleEmbedFromPost.value
+  const fetched = rumbleEmbedFetched.value
+  return fetched && fetched.url === previewLink.value ? fetched.info : null
+})
 const rumbleEmbedUrl = computed(() => rumbleEmbedInfo.value?.src ?? null)
 const rumbleAspectRatio = computed(() => {
   const w = rumbleEmbedInfo.value?.width ?? 854
@@ -465,22 +489,18 @@ const isRumblePortrait = computed(() => {
   const h = rumbleEmbedInfo.value?.height ?? 480
   return h > w
 })
-const isPortraitVideoEmbed = computed(() => Boolean(youtubeVideoInfo.value?.isShort || isRumblePortrait.value))
-const videoBoxClass = computed(() => {
-  if (isPortraitVideoEmbed.value) return 'max-h-[480px] max-w-full'
-  if (youtubeEmbedUrl.value) return 'w-full aspect-video'
-  return 'w-full'
-})
-const videoBoxStyle = computed(() => {
-  if (youtubeVideoInfo.value?.isShort) {
-    return { aspectRatio: '9 / 16', width: 'min(100%, calc(480px * 9 / 16))' }
-  }
-  if (youtubeEmbedUrl.value) return undefined
+/** Outer frame: explicit px width for portrait (left-aligned), full row otherwise. */
+const videoFrameStyle = computed(() => {
+  if (youtubeVideoInfo.value?.isShort) return portraitEmbedFrameStyle(9, 16)
   if (isRumblePortrait.value) {
-    const w = rumbleEmbedInfo.value?.width ?? 854
-    const h = rumbleEmbedInfo.value?.height ?? 480
-    return { aspectRatio: rumbleAspectRatio.value, width: `min(100%, calc(480px * ${w} / ${h}))` }
+    return portraitEmbedFrameStyle(rumbleEmbedInfo.value?.width ?? 9, rumbleEmbedInfo.value?.height ?? 16)
   }
+  return undefined
+})
+/** Inner box fills the frame; only the aspect ratio varies. */
+const videoBoxStyle = computed(() => {
+  if (youtubeVideoInfo.value?.isShort) return { aspectRatio: '9 / 16' }
+  if (youtubeEmbedUrl.value) return { aspectRatio: '16 / 9' }
   return { aspectRatio: rumbleAspectRatio.value }
 })
 const rumblePosterUrl = computed(() => rumbleEmbedInfo.value?.thumbnailUrl ?? null)
@@ -524,7 +544,7 @@ watch(
   { immediate: true },
 )
 
-const { activePostId, register: registerEmbeddedVideo, unregister: unregisterEmbeddedVideo, activate: activateEmbeddedVideoById, appWideSoundOn } =
+const { activePostId, register: registerEmbeddedVideo, unregister: unregisterEmbeddedVideo, activate: activateEmbeddedVideoById, appWideSoundOn, appWideVolume, reportPlayerAudio } =
   useEmbeddedVideoManager()
 const hasEmbeddedVideo = computed(() => Boolean(youtubeEmbedUrl.value || isPreviewLinkRumble.value))
 const videoIsPlayable = computed(() => hasEmbeddedVideo.value && rowInView.value && activePostId.value === postId.value)
@@ -543,17 +563,37 @@ const desiredVideoSrc = computed(() => {
     })
   }
   if (isPreviewLinkRumble.value && rumbleEmbedUrl.value) {
+    // Always muted autoplay in the URL. Mute/unmute is postMessage-only —
+    // changing `autoplay=2` ↔ `1` reloads the embed and kills playback.
     return withRumbleAutoplay(rumbleEmbedUrl.value, {
       autoplay: true,
-      muted: !appWideSoundOn.value,
+      muted: true,
     })
   }
   return null
 })
 
+/** Stable across mute so Vue does not remount the iframe. */
+const embedPlayerKey = computed(() => {
+  const ytId = youtubeVideoInfo.value?.id
+  if (ytId) return `yt:${ytId}`
+  const rumbleSrc = rumbleEmbedUrl.value
+  if (rumbleSrc) {
+    try {
+      const u = new URL(rumbleSrc)
+      return `rumble:${u.origin}${u.pathname}`
+    } catch {
+      return `rumble:${rumbleSrc}`
+    }
+  }
+  return desiredVideoSrc.value ?? 'embed'
+})
+
 const YOUTUBE_MUTE_SYNC_MS = [0, 150, 400, 900, 1800]
 let iframeLoadRaf: number | null = null
 const youtubeMuteSyncTimers: number[] = []
+/** Ignore iframe echo until we have pushed the shared mute+volume at least once. */
+let embedAudioReady = false
 
 function clearYoutubeMuteSync() {
   for (const id of youtubeMuteSyncTimers) window.clearTimeout(id)
@@ -562,26 +602,54 @@ function clearYoutubeMuteSync() {
 
 function applyEmbedMute(muted: boolean) {
   if (!import.meta.client) return
-  if (isPreviewLinkRumble.value) return
   const win = videoIframeEl.value?.contentWindow
   if (!win) return
+  if (isPreviewLinkRumble.value) {
+    postRumbleIframeCommand(win, muted)
+    return
+  }
   postYouTubeIframeCommand(win, youtubeMuteCommand(muted))
 }
 
-function syncYoutubeMuteFromAppPref() {
+function applyEmbedVolume(volume01: number) {
+  if (!import.meta.client) return
+  const win = videoIframeEl.value?.contentWindow
+  if (!win) return
+  if (isPreviewLinkRumble.value) {
+    postRumbleIframeVolume(win, volume01)
+    return
+  }
+  postYouTubeIframeCommand(win, youtubeVolumeCommand(volume01))
+}
+
+function applyEmbedAudio() {
   applyEmbedMute(!appWideSoundOn.value)
+  applyEmbedVolume(appWideVolume.value)
+  embedAudioReady = true
+}
+
+function syncYoutubeMuteFromAppPref() {
+  applyEmbedAudio()
 }
 
 function scheduleYoutubeMuteSync() {
   clearYoutubeMuteSync()
   if (!import.meta.client) return
-  if (isPreviewLinkRumble.value) return
   for (const delay of YOUTUBE_MUTE_SYNC_MS) {
     youtubeMuteSyncTimers.push(window.setTimeout(() => {
       if (!desiredVideoSrc.value || !videoIframeLoaded.value) return
       syncYoutubeMuteFromAppPref()
     }, delay))
   }
+}
+
+function onEmbedPlayerMessage(e: MessageEvent) {
+  if (!import.meta.client) return
+  if (!embedAudioReady) return
+  if (e.source !== videoIframeEl.value?.contentWindow) return
+  const parsed = parseEmbedPlayerAudio(e.data)
+  if (!parsed) return
+  reportPlayerAudio(parsed)
 }
 
 function onVideoIframeLoad() {
@@ -600,18 +668,18 @@ function onVideoIframeLoad() {
 }
 
 function onTapUnmuteEmbed() {
-  appWideSoundOn.value = true
-  applyEmbedMute(false)
+  reportPlayerAudio({ muted: false, volume01: appWideVolume.value })
+  applyEmbedAudio()
 }
 
 function onTapMuteEmbed() {
-  appWideSoundOn.value = false
-  applyEmbedMute(true)
+  reportPlayerAudio({ muted: true, volume01: appWideVolume.value })
+  applyEmbedAudio()
 }
 
-watch(appWideSoundOn, (soundOn) => {
+watch([appWideSoundOn, appWideVolume], () => {
   if (!videoIsPlayable.value || !videoIframeLoaded.value) return
-  applyEmbedMute(!soundOn)
+  applyEmbedAudio()
 })
 
 watch(
@@ -619,13 +687,20 @@ watch(
   () => {
     // Activation/deactivation should show poster immediately.
     videoIframeLoaded.value = false
+    embedAudioReady = false
     clearYoutubeMuteSync()
   },
   { immediate: true },
 )
 
+onMounted(() => {
+  if (!import.meta.client) return
+  window.addEventListener('message', onEmbedPlayerMessage)
+})
+
 onBeforeUnmount(() => {
   if (!import.meta.client) return
+  window.removeEventListener('message', onEmbedPlayerMessage)
   if (iframeLoadRaf != null) cancelAnimationFrame(iframeLoadRaf)
   iframeLoadRaf = null
   clearYoutubeMuteSync()
@@ -656,11 +731,20 @@ watch(
   [previewLink, rowInView, showLinkPreview],
   ([url, inView, canPreview], _old, onCleanup) => {
     linkMeta.value = null
-    rumbleEmbedInfo.value = null
     if (!import.meta.client) return
     if (!canPreview) return
     if (!inView) return
     if (!url) return
+    // Rumble: already sized from the post payload or a previous fetch — nothing to do.
+    if (isRumbleUrl(url) && !isRumbleShortsUrl(url) && rumbleEmbedInfo.value) return
+    // Rumble: the shared client cache is synchronous — skip the dwell + round trip.
+    if (isRumbleUrl(url) && !isRumbleShortsUrl(url)) {
+      const cachedInfo = rumbleInfoFromMeta(peekLinkMetadata(url))
+      if (cachedInfo) {
+        rumbleEmbedFetched.value = { url, info: cachedInfo }
+        return
+      }
+    }
     let cancelled = false
     let timer: ReturnType<typeof setTimeout> | null = null
     const controller = new AbortController()
@@ -679,15 +763,8 @@ watch(
         void runLimited(() => getLinkMetadata(url, { signal: controller.signal }))
           .then((meta) => {
             if (cancelled) return
-            const embed = meta?.videoEmbed
-            if (embed?.platform === 'rumble' && embed.embedUrl) {
-              rumbleEmbedInfo.value = {
-                src: embed.embedUrl,
-                width: embed.width,
-                height: embed.height,
-                thumbnailUrl: embed.thumbnailUrl,
-              }
-            }
+            const info = rumbleInfoFromMeta(meta)
+            if (info) rumbleEmbedFetched.value = { url, info }
           })
         return
       }
