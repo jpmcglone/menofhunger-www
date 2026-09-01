@@ -354,6 +354,18 @@ export function isRumbleShortsUrl(url: string): boolean {
   }
 }
 
+/** Rumble `autoplay=2` is muted autoplay (1 is with sound). */
+export function withRumbleAutoplay(embedUrl: string, opts?: { autoplay?: boolean }): string {
+  if (!opts?.autoplay) return embedUrl
+  try {
+    const u = new URL(embedUrl)
+    u.searchParams.set('autoplay', '2')
+    return u.toString()
+  } catch {
+    return embedUrl
+  }
+}
+
 /** True for Pickax post permalinks (`https://pickax.com/post/:id`). */
 export function isPickaxPostUrl(url: string): boolean {
   try {

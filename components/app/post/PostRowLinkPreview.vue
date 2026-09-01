@@ -239,7 +239,7 @@
 </template>
 
 <script setup lang="ts">
-import { extractLinksFromText, getYouTubeEmbedUrl, getYouTubePosterUrls, parseYouTubeUrl, isRumbleShortsUrl, isRumbleUrl, safeUrlDisplay, safeUrlHostname, isMohUrl, mohUrlPath, extractMohPostId, extractMohArticleId, extractMohSpaceId, extractMohSpaceUsername, isMohSpaceLink, extractMohUsername, isXPostUrl, isSubstackPostUrl } from '~/utils/link-utils'
+import { extractLinksFromText, getYouTubeEmbedUrl, getYouTubePosterUrls, parseYouTubeUrl, isRumbleShortsUrl, isRumbleUrl, withRumbleAutoplay, safeUrlDisplay, safeUrlHostname, isMohUrl, mohUrlPath, extractMohPostId, extractMohArticleId, extractMohSpaceId, extractMohSpaceUsername, isMohSpaceLink, extractMohUsername, isXPostUrl, isSubstackPostUrl } from '~/utils/link-utils'
 import type { LinkMetadata } from '~/utils/link-metadata'
 import { getLinkMetadata } from '~/utils/link-metadata'
 import type { RumbleEmbedInfo } from '~/utils/rumble-embed'
@@ -490,7 +490,9 @@ const desiredVideoSrc = computed(() => {
     // Pass autoplay:true — the click is a user gesture, so the browser will honour it.
     return getYouTubeEmbedUrl(previewLink.value, { autoplay: true })
   }
-  if (isPreviewLinkRumble.value) return rumbleEmbedUrl.value
+  if (isPreviewLinkRumble.value && rumbleEmbedUrl.value) {
+    return withRumbleAutoplay(rumbleEmbedUrl.value, { autoplay: true })
+  }
   return null
 })
 const videoIframeSrc = computed(() => desiredVideoSrc.value ?? 'about:blank')

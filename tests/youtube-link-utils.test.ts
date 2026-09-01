@@ -2,7 +2,7 @@
  * Guardrail tests for YouTube URL parsing in link-utils.
  */
 import { describe, it, expect } from 'vitest'
-import { parseYouTubeUrl, getYouTubeEmbedUrl, getYouTubePosterUrls, youtubeOEmbedRequestUrl, parseMediaPreviewUrl, vimeoOEmbedRequestUrl } from '../utils/link-utils'
+import { parseYouTubeUrl, getYouTubeEmbedUrl, getYouTubePosterUrls, youtubeOEmbedRequestUrl, parseMediaPreviewUrl, vimeoOEmbedRequestUrl, withRumbleAutoplay } from '../utils/link-utils'
 
 const VIDEO_ID = 'dQw4w9WgXcQ'
 
@@ -149,6 +149,24 @@ describe('parseMediaPreviewUrl', () => {
     expect(parseMediaPreviewUrl('https://i.imgur.com/abc.jpg')).toEqual({ kind: 'image', provider: 'Imgur' })
     expect(parseMediaPreviewUrl('https://cdn.example.com/shot.webp')).toEqual({ kind: 'image', provider: 'cdn.example.com' })
     expect(parseMediaPreviewUrl('https://example.com/article')).toBeNull()
+  })
+})
+
+describe('withRumbleAutoplay', () => {
+  it('leaves the URL unchanged when autoplay is off', () => {
+    const src = 'https://rumble.com/embed/v123abc/'
+    expect(withRumbleAutoplay(src)).toBe(src)
+    expect(withRumbleAutoplay(src, { autoplay: false })).toBe(src)
+  })
+
+  it('sets muted autoplay=2 and keeps existing query params', () => {
+    const url = withRumbleAutoplay('https://rumble.com/embed/v123abc/?pub=7a20', { autoplay: true })
+    expect(url).toContain('autoplay=2')
+    expect(url).toContain('pub=7a20')
+  })
+
+  it('returns the original string when the URL is invalid', () => {
+    expect(withRumbleAutoplay('not-a-url', { autoplay: true })).toBe('not-a-url')
   })
 })
 
