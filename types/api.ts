@@ -263,6 +263,7 @@ export type NotificationPreferences = {
   emailInstantHighSignal: boolean
   emailStreakReminder: boolean
   emailFollowedArticle: boolean
+  emailNewsletter: boolean
 }
 
 /** Shared shape for Radio and Space lobby members (listeners/members). */
@@ -3314,3 +3315,12 @@ export type AnnouncementPlacement = Contracts.AnnouncementPlacement
 export type Announcement = Contracts.AnnouncementDto
 export type AnnouncementStats = Contracts.AnnouncementStatsDto
 export type AnnouncementAdmin = Contracts.AnnouncementAdminDto
+
+// ─── Admin newsletter ────────────────────────────────────────────────────────
+
+export type NewsletterStatus = Contracts.NewsletterStatusDto
+export type NewsletterDurationUnit = Contracts.NewsletterDurationUnit
+export type NewsletterAudienceFilter = Contracts.NewsletterAudienceFilter
+export type NewsletterAudienceCount = Contracts.NewsletterAudienceCountDto
+export type NewsletterAdmin = Contracts.NewsletterAdminDto
+export type NewsletterPreview = Contracts.NewsletterPreviewDto

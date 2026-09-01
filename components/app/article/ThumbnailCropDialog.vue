@@ -2,7 +2,7 @@
   <Dialog
     :visible="modelValue"
     modal
-    header="Crop thumbnail"
+    :header="header"
     :draggable="false"
     :style="{ width: 'min(72rem, 96vw)' }"
     @update:visible="(v) => emit('update:modelValue', Boolean(v))"
@@ -26,7 +26,7 @@
         </ClientOnly>
       </div>
       <div class="text-xs text-gray-500 dark:text-gray-400">
-        Thumbnails must be 16:9. We'll save a 1600×900 image.
+        Crop to 16:9. We'll save a 1600×900 image.
       </div>
     </div>
 
@@ -48,7 +48,10 @@ const props = defineProps<{
   modelValue: boolean
   file: File | null
   disabled?: boolean
+  header?: string
 }>()
+
+const header = computed(() => props.header?.trim() || 'Crop thumbnail')
 
 const emit = defineEmits<{
   (e: 'update:modelValue', v: boolean): void

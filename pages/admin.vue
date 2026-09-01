@@ -118,6 +118,7 @@ const adminSections: AdminSection[] = [
       { key: 'reports', to: '/admin/reports', icon: 'tabler:flag', label: 'Reports', description: 'Review reported posts and users' },
       { key: 'feedback', to: '/admin/feedback', icon: 'tabler:inbox', label: 'Feedback', description: 'Triaged feedback from users' },
       { key: 'announcements', to: '/admin/announcements', icon: 'tabler:speakerphone', label: 'Announcements', description: 'Lodge notices and ads' },
+      { key: 'newsletters', to: '/admin/newsletters', icon: 'tabler:mail', label: 'Newsletter', description: 'Write and send the lodge letter' },
     ],
   },
   {
@@ -149,6 +150,7 @@ function isActiveArea(item: AdminNavItem): boolean {
   if (item.key === 'media-review') return p === item.to || p.startsWith('/admin/media-review/')
   if (item.key === 'users') return p === item.to || p.startsWith('/admin/users/')
   if (item.key === 'announcements') return p === item.to || p.startsWith('/admin/announcements/')
+  if (item.key === 'newsletters') return p === item.to || p.startsWith('/admin/newsletters/')
   return p === item.to
 }
 

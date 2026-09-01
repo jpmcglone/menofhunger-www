@@ -151,6 +151,13 @@
             </div>
             <div class="flex items-start justify-between gap-4">
               <div>
+                <div class="font-medium">Newsletters</div>
+                <div class="text-xs moh-text-muted">Occasional notes from us.</div>
+              </div>
+              <Checkbox v-model="notifPrefs.emailNewsletter" binary :disabled="notifPrefsSaving || !emailIsVerified" />
+            </div>
+            <div class="flex items-start justify-between gap-4">
+              <div>
                 <div class="font-medium">New notifications</div>
                 <div class="text-xs moh-text-muted">A nudge when you have unread notifications.</div>
               </div>

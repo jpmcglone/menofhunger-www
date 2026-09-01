@@ -117,5 +117,10 @@ type _AnnouncementAdmin = Satisfies<Www.AnnouncementAdmin, Api.AnnouncementAdmin
 type _AnnouncementStatus = Satisfies<Www.AnnouncementStatus, Api.AnnouncementStatus>
 type _AnnouncementDismissMethod = Satisfies<Www.AnnouncementDismissMethod, Api.AnnouncementDismissMethod>
 type _AnnouncementPlacement = Satisfies<Www.AnnouncementPlacement, Api.AnnouncementPlacement>
+type _NewsletterAdmin = Satisfies<Www.NewsletterAdmin, Api.NewsletterAdminDto>
+type _NewsletterPreview = Satisfies<Www.NewsletterPreview, Api.NewsletterPreviewDto>
+type _NewsletterStatus = Satisfies<Www.NewsletterStatus, Api.NewsletterStatusDto>
+type _NewsletterAudienceFilter = Satisfies<Www.NewsletterAudienceFilter, Api.NewsletterAudienceFilter>
+type _NewsletterAudienceCount = Satisfies<Www.NewsletterAudienceCount, Api.NewsletterAudienceCountDto>
 
 export {}
