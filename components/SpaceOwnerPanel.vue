@@ -38,6 +38,18 @@
       class="absolute inset-x-0 top-full z-30 -mt-px space-y-3 rounded-b-xl border-x border-b moh-border px-4 pb-4 moh-bg shadow-lg"
     >
       <div class="space-y-1.5">
+        <label for="space-owner-title" class="text-xs font-semibold uppercase tracking-wider moh-meta">Title</label>
+        <input
+          id="space-owner-title"
+          v-model="titleInput"
+          type="text"
+          maxlength="100"
+          placeholder="What's this space about?"
+          class="w-full rounded-lg border moh-border-subtle bg-transparent px-3 py-1.5 text-sm moh-text placeholder:moh-meta focus:outline-none focus:ring-1 focus:ring-[var(--p-primary-color)]"
+        >
+      </div>
+
+      <div class="space-y-1.5">
         <label for="space-owner-type" class="text-xs font-semibold uppercase tracking-wider moh-meta">Type</label>
         <Select
           v-model="draftMode"
@@ -100,7 +112,7 @@
           {{ upcomingLabel }}
         </p>
         <p v-if="scheduleLocalInput || space.scheduledAt" class="text-[11px] moh-meta">
-          Reminder ~15 minutes before. Others who tap Notify me get day-of and soon alerts.
+          First save emails followers the title and time. Another ping ~30 minutes before. Cancel emails them too.
         </p>
         <div class="flex flex-wrap items-center gap-2">
           <input
@@ -168,7 +180,7 @@ onKeyStroke('Escape', () => {
   void requestClose()
 })
 
-const { setMode, activateSpace, deactivateSpace, setSchedule, clearSchedule } = useSpaceOwner()
+const { updateSpace, setMode, activateSpace, deactivateSpace, setSchedule, clearSchedule } = useSpaceOwner()
 const presence = usePresence()
 const openComposer = inject(MOH_OPEN_COMPOSER_KEY, null)
 const toast = useAppToast()
@@ -191,6 +203,7 @@ const radioPresets = [
 ]
 
 const draftMode = ref<SpaceMode>(props.space.mode ?? 'NONE')
+const titleInput = ref(props.space.title ?? '')
 const watchPartyUrlInput = ref(props.space.watchPartyUrl ?? '')
 const radioStreamUrlInput = ref(props.space.radioStreamUrl ?? '')
 const scheduleLocalInput = ref('')
@@ -206,6 +219,7 @@ function toDatetimeLocalValue(iso: string | null | undefined): string {
 
 function resetDraftFromSpace(s: Space) {
   draftMode.value = s.mode ?? 'NONE'
+  titleInput.value = s.title ?? ''
   watchPartyUrlInput.value = s.watchPartyUrl ?? ''
   radioStreamUrlInput.value = s.radioStreamUrl ?? ''
   scheduleLocalInput.value = toDatetimeLocalValue(s.scheduledAt)
@@ -227,7 +241,10 @@ const isScheduleDirty = computed(() => (
   scheduleLocalInput.value !== toDatetimeLocalValue(props.space.scheduledAt)
 ))
 
-const isDirty = computed(() => isModeDirty.value || isScheduleDirty.value)
+const normalizedTitleInput = computed(() => titleInput.value.trim())
+const isTitleDirty = computed(() => normalizedTitleInput.value !== (props.space.title ?? '').trim())
+
+const isDirty = computed(() => isTitleDirty.value || isModeDirty.value || isScheduleDirty.value)
 
 const scheduleError = computed(() => {
   const raw = scheduleLocalInput.value.trim()
@@ -241,6 +258,7 @@ const scheduleError = computed(() => {
 
 const canSave = computed(() => {
   if (!isDirty.value) return false
+  if (!normalizedTitleInput.value) return false
   if (draftMode.value === 'RADIO' && !normalizedRadioInput.value) return false
   if (scheduleError.value) return false
   return true
@@ -319,7 +337,9 @@ async function onSave() {
 async function applyAll(): Promise<boolean> {
   if (saveBusy.value) return false
   if (!canSave.value) {
-    if (draftMode.value === 'RADIO' && !normalizedRadioInput.value) {
+    if (!normalizedTitleInput.value) {
+      toast.push({ title: 'Add a title', tone: 'error', durationMs: 1800 })
+    } else if (draftMode.value === 'RADIO' && !normalizedRadioInput.value) {
       toast.push({ title: 'Add a stream URL', tone: 'error', durationMs: 1800 })
     } else if (scheduleError.value) {
       toast.push({ title: scheduleError.value, tone: 'error', durationMs: 1800 })
@@ -329,6 +349,15 @@ async function applyAll(): Promise<boolean> {
   saveBusy.value = true
   try {
     let latest = props.space
+    if (isTitleDirty.value) {
+      const updated = await updateSpace(props.space.id, { title: normalizedTitleInput.value })
+      if (!updated) {
+        toast.push({ title: 'Could not save title', tone: 'error', durationMs: 2000 })
+        return false
+      }
+      latest = updated
+      emit('spaceUpdated', updated)
+    }
     if (isModeDirty.value) {
       const updated = await setMode(props.space.id, {
         mode: draftMode.value,
@@ -381,9 +410,12 @@ function shareToFeed() {
         minute: '2-digit',
       }).format(d)
     : null
+  const eventName = /^.+'s space$/i.test((props.space.title ?? '').trim())
+    ? 'my Space'
+    : props.space.title.trim()
   const text = when
-    ? `Join me in my Space — ${when}\n${url}`
-    : `Join me in my Space\n${url}`
+    ? `Join me for ${eventName} — ${when}\n${url}`
+    : `Join me for ${eventName}\n${url}`
   openComposer({ initialText: text })
 }
 </script>

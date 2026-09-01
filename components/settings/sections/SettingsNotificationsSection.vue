@@ -85,7 +85,7 @@
             <div class="flex items-start justify-between gap-4">
               <div>
                 <div class="font-medium">Posts and bell activity</div>
-                <div class="text-xs moh-text-muted">Posts, articles, and status updates from people you follow, plus replies from profiles you bell.</div>
+                <div class="text-xs moh-text-muted">Posts, articles, spaces, and status updates from people you follow, plus replies from profiles you bell.</div>
               </div>
               <Checkbox v-model="notifPrefs.pushFollowedPost" binary :disabled="notifPrefsSaving" />
             </div>
@@ -183,9 +183,9 @@
             </div>
             <div class="flex items-start justify-between gap-4">
               <div>
-                <div class="font-medium">New articles from people you follow</div>
+                <div class="font-medium">Articles and spaces from people you follow</div>
                 <div class="text-xs moh-text-muted">
-                  Get an email when someone you follow publishes a new article.
+                  Get an email when someone you follow publishes an article or schedules a space.
                 </div>
               </div>
               <Checkbox v-model="notifPrefs.emailFollowedArticle" binary :disabled="notifPrefsSaving || !emailIsVerified" />

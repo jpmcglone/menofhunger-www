@@ -49,20 +49,40 @@ export function spaceStatusKind(
   return 'idle'
 }
 
-/** Visible title: what's on when live, otherwise the stored identity name. */
+/** Default identity name from create: `{username}'s Space`. */
+export function isDefaultSpaceTitle(title: string): boolean {
+  return /^.+'s space$/i.test(title.trim())
+}
+
+function playingTitle(
+  space: SpaceDisplayInput,
+  extras?: { playbackTitleOverride?: string | null },
+): string {
+  return (space.playbackTitle?.trim() || extras?.playbackTitleOverride?.trim() || '')
+}
+
+/** Visible title: owner name wins; YouTube/radio fills in when the title is still the default. */
 export function spaceDisplayTitle(
   space: SpaceDisplayInput,
   extras?: { playbackTitleOverride?: string | null },
 ): string {
-  if (space.isActive && space.mode === 'WATCH_PARTY') {
-    const playing = space.playbackTitle?.trim() || extras?.playbackTitleOverride?.trim()
-    return playing || 'Watch party'
-  }
-  if (space.isActive && space.mode === 'RADIO') {
-    const playing = space.playbackTitle?.trim() || extras?.playbackTitleOverride?.trim()
-    return playing || 'Radio'
-  }
-  return space.title
+  const stored = space.title.trim()
+  const playing = playingTitle(space, extras)
+  if (stored && !isDefaultSpaceTitle(stored)) return stored
+  if (playing) return playing
+  if (space.isActive && space.mode === 'WATCH_PARTY') return 'Watch party'
+  if (space.isActive && space.mode === 'RADIO') return 'Radio'
+  return stored
+}
+
+/** YouTube/radio name when the owner also set a different title. */
+export function spaceDisplaySubtitle(
+  space: SpaceDisplayInput,
+  extras?: { playbackTitleOverride?: string | null },
+): string | null {
+  const playing = playingTitle(space, extras)
+  if (!playing) return null
+  return playing !== spaceDisplayTitle(space, extras) ? playing : null
 }
 
 export function formatSpaceScheduleShort(iso: string | null | undefined): string | null {

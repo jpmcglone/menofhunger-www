@@ -21,6 +21,7 @@
               <h1 class="moh-h1">{{ displayTitle }}</h1>
               <AppSpaceStatusBadge :kind="spaceStatusKind" size="md" class="!text-[10px] !px-2" />
             </div>
+            <p v-if="displaySubtitle" class="mt-1 moh-meta">{{ displaySubtitle }}</p>
             <p v-if="space.description" class="mt-1 moh-meta">{{ space.description }}</p>
             <p v-if="spaceScheduleLabel && !space.isActive" class="mt-1 moh-meta">
               <template v-if="isOwner">Scheduled {{ spaceScheduleLabel }}</template>
@@ -268,6 +269,7 @@ const { reactions, loadReactions, addFloating, clearAllFloating } = useSpaceReac
 const spaceLoading = ref(true)
 const space = ref<Space | null>(null)
 const displayTitle = useSpaceDisplayTitle(space)
+const displaySubtitle = useSpaceDisplaySubtitle(space)
 const spaceNotifyBusy = ref(false)
 /** True after enterSpace() — the socket room join has been requested. */
 const spaceReady = ref(false)

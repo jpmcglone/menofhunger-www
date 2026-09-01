@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   formatSpaceScheduleShort,
   spaceCardMetaLine,
+  spaceDisplaySubtitle,
   spaceDisplayTitle,
   spaceLobbyRowKind,
   spacesNavGlyph,
@@ -74,7 +75,7 @@ describe('spaceDisplayTitle', () => {
     ).toBe('Radio')
   })
 
-  it('keeps the stored title when idle or scheduled', () => {
+  it('uses YouTube metadata when the stored title is still the default', () => {
     expect(spaceDisplayTitle(base)).toBe("john's Space")
     expect(
       spaceDisplayTitle({
@@ -83,7 +84,19 @@ describe('spaceDisplayTitle', () => {
         mode: 'WATCH_PARTY',
         playbackTitle: 'Conference talk',
       }),
-    ).toBe("john's Space")
+    ).toBe('Conference talk')
+  })
+
+  it('keeps a custom title and exposes YouTube as the subtitle', () => {
+    const space = {
+      ...base,
+      title: 'The Great Debate',
+      isActive: true,
+      mode: 'WATCH_PARTY' as const,
+      playbackTitle: 'Conference talk',
+    }
+    expect(spaceDisplayTitle(space)).toBe('The Great Debate')
+    expect(spaceDisplaySubtitle(space)).toBe('Conference talk')
   })
 })
 

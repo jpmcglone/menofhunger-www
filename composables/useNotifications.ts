@@ -637,6 +637,7 @@ export function useNotifications() {
       case 'space_live':
       case 'space_schedule_cancelled':
       case 'space_schedule_rescheduled':
+      case 'followed_space':
         return n.title ?? n.body ?? 'Space update'
       case 'marv_not_in_group':
         return n.title ?? '@marv is not in this group'
@@ -720,6 +721,7 @@ export function useNotifications() {
       case 'space_live':
       case 'space_schedule_cancelled':
       case 'space_schedule_rescheduled':
+      case 'followed_space':
         return 'tabler:broadcast'
       case 'marv_not_in_group':
         return 'tabler:sparkles'
@@ -796,6 +798,8 @@ export function useNotifications() {
         return 'Space cancelled'
       case 'space_schedule_rescheduled':
         return 'Space rescheduled'
+      case 'followed_space':
+        return 'Space scheduled'
       default:
         return ''
     }
@@ -860,7 +864,8 @@ export function useNotifications() {
       n.kind === 'space_reminder_soon' ||
       n.kind === 'space_live' ||
       n.kind === 'space_schedule_cancelled' ||
-      n.kind === 'space_schedule_rescheduled'
+      n.kind === 'space_schedule_rescheduled' ||
+      n.kind === 'followed_space'
     ) {
       const username = (n.subjectSpaceOwnerUsername ?? n.actor?.username ?? '').trim()
       if (username) return `/s/${encodeURIComponent(username)}`
