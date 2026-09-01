@@ -4,7 +4,7 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, it, expect } from 'vitest'
-import { parseYouTubeUrl, getYouTubeEmbedUrl, getYouTubePosterUrls, youtubeOEmbedRequestUrl, parseMediaPreviewUrl, vimeoOEmbedRequestUrl, withRumbleAutoplay, youtubeMuteCommand } from '../utils/link-utils'
+import { parseYouTubeUrl, getYouTubeEmbedUrl, getYouTubePosterUrls, youtubeOEmbedRequestUrl, parseMediaPreviewUrl, vimeoOEmbedRequestUrl, withRumbleAutoplay, youtubeMuteCommand, youtubeListeningCommand, postYouTubeIframeCommand } from '../utils/link-utils'
 
 const VIDEO_ID = 'dQw4w9WgXcQ'
 
@@ -174,6 +174,12 @@ describe('withRumbleAutoplay', () => {
     expect(url).toContain('pub=7a20')
   })
 
+  it('adds a pub id when missing so Rumble honors autoplay', () => {
+    const url = withRumbleAutoplay('https://rumble.com/embed/v123abc/', { autoplay: true })
+    expect(url).toContain('autoplay=2')
+    expect(url).toContain('pub=7a20')
+  })
+
   it('sets autoplay=1 when unmuted', () => {
     const url = withRumbleAutoplay('https://rumble.com/embed/v123abc/', { autoplay: true, muted: false })
     expect(url).toContain('autoplay=1')
@@ -182,6 +188,14 @@ describe('withRumbleAutoplay', () => {
   it('builds a YouTube IFrame mute command', () => {
     expect(JSON.parse(youtubeMuteCommand(true))).toMatchObject({ func: 'mute' })
     expect(JSON.parse(youtubeMuteCommand(false))).toMatchObject({ func: 'unMute' })
+  })
+
+  it('handshakes before sending a YouTube iframe command', () => {
+    const posted: string[] = []
+    const win = { postMessage: (data: string) => { posted.push(data) } } as unknown as Window
+    postYouTubeIframeCommand(win, youtubeMuteCommand(false))
+    expect(JSON.parse(youtubeListeningCommand())).toEqual({ event: 'listening' })
+    expect(posted).toEqual([youtubeListeningCommand(), youtubeMuteCommand(false)])
   })
 
   it('returns the original string when the URL is invalid', () => {
@@ -204,5 +218,8 @@ describe('PostRowLinkPreview portrait video chrome', () => {
     expect(src).toContain('isPortraitVideoEmbed')
     expect(src).toContain('isRumblePortrait')
     expect(src).toContain("isPortraitVideoEmbed ? 'w-fit max-w-full' : ''")
+    expect(src).toContain('v-if="desiredVideoSrc"')
+    expect(src).toContain('scheduleYoutubeMuteSync')
+    expect(src).toContain('postYouTubeIframeCommand')
   })
 })

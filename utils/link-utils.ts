@@ -369,10 +369,17 @@ export function withRumbleAutoplay(
   try {
     const u = new URL(embedUrl)
     u.searchParams.set('autoplay', opts.muted === false ? '1' : '2')
+    // Third-party embeds need a pub id or Rumble often ignores autoplay.
+    if (!u.searchParams.get('pub')) u.searchParams.set('pub', '7a20')
     return u.toString()
   } catch {
     return embedUrl
   }
+}
+
+/** Handshake so the YouTube iframe will accept subsequent `command` messages. */
+export function youtubeListeningCommand(): string {
+  return JSON.stringify({ event: 'listening' })
 }
 
 /** YouTube IFrame API mute command. Parent page → embed iframe. */
@@ -382,6 +389,12 @@ export function youtubeMuteCommand(muted: boolean): string {
     func: muted ? 'mute' : 'unMute',
     args: [],
   })
+}
+
+/** Send a YouTube iframe command after the required `listening` handshake. */
+export function postYouTubeIframeCommand(win: Window, commandJson: string): void {
+  win.postMessage(youtubeListeningCommand(), '*')
+  win.postMessage(commandJson, '*')
 }
 
 /** True for Pickax post permalinks (`https://pickax.com/post/:id`). */

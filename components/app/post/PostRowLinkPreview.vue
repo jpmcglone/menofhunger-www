@@ -23,28 +23,28 @@
         @keydown.enter.prevent="activateEmbeddedVideo"
         @keydown.space.prevent="activateEmbeddedVideo"
       >
-        <!-- Poster image: try maxres, fall back to hqdefault -->
+        <iframe
+          v-if="desiredVideoSrc"
+          :key="desiredVideoSrc"
+          ref="videoIframeEl"
+          :src="desiredVideoSrc"
+          class="relative z-10 h-full w-full"
+          :class="videoIframeLoaded ? '' : 'pointer-events-none'"
+          :title="youtubeOEmbed?.title ? youtubeOEmbed.title : 'Embedded video'"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+          allowfullscreen
+          @load="onVideoIframeLoad"
+        />
         <img
           v-if="youtubePosterSrc || rumblePosterUrl"
           :src="youtubePosterSrc || rumblePosterUrl || ''"
-          class="absolute inset-0 z-0 h-full w-full object-cover transition-opacity duration-250"
-          :class="desiredVideoSrc && videoIframeLoaded ? 'opacity-0' : 'opacity-90'"
+          class="absolute inset-0 z-20 h-full w-full object-cover transition-opacity duration-250"
+          :class="desiredVideoSrc && videoIframeLoaded ? 'opacity-0 pointer-events-none' : 'opacity-90'"
           alt=""
           loading="lazy"
           aria-hidden="true"
           @error="onPosterError"
         >
-        <iframe
-          ref="videoIframeEl"
-          :src="videoIframeSrc"
-          class="relative z-10 h-full w-full transition-opacity duration-250"
-          :class="desiredVideoSrc && videoIframeLoaded ? 'opacity-100' : 'opacity-0 pointer-events-none'"
-          :title="youtubeOEmbed?.title ? youtubeOEmbed.title : 'Embedded video'"
-          loading="lazy"
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-          allowfullscreen
-          @load="onVideoIframeLoad"
-        />
         <button
           v-if="videoIsPlayable && videoIframeLoaded && !appWideSoundOn"
           type="button"
@@ -66,7 +66,7 @@
         <!-- Play overlay — hidden once the video is active -->
         <div
           v-if="!videoIsPlayable"
-          class="absolute inset-0 z-20 flex flex-col justify-between pointer-events-none"
+          class="absolute inset-0 z-[25] flex flex-col justify-between pointer-events-none"
           aria-hidden="true"
         >
           <!-- Title / channel strip at the bottom (YouTube only) -->
@@ -263,7 +263,7 @@
 </template>
 
 <script setup lang="ts">
-import { extractLinksFromText, getYouTubeEmbedUrl, getYouTubePosterUrls, parseYouTubeUrl, isRumbleShortsUrl, isRumbleUrl, withRumbleAutoplay, youtubeMuteCommand, safeUrlDisplay, safeUrlHostname, isMohUrl, mohUrlPath, extractMohPostId, extractMohArticleId, extractMohSpaceId, extractMohSpaceUsername, isMohSpaceLink, extractMohUsername, isXPostUrl, isSubstackPostUrl } from '~/utils/link-utils'
+import { extractLinksFromText, getYouTubeEmbedUrl, getYouTubePosterUrls, parseYouTubeUrl, isRumbleShortsUrl, isRumbleUrl, withRumbleAutoplay, youtubeMuteCommand, postYouTubeIframeCommand, safeUrlDisplay, safeUrlHostname, isMohUrl, mohUrlPath, extractMohPostId, extractMohArticleId, extractMohSpaceId, extractMohSpaceUsername, isMohSpaceLink, extractMohUsername, isXPostUrl, isSubstackPostUrl } from '~/utils/link-utils'
 import type { LinkMetadata } from '~/utils/link-metadata'
 import { getLinkMetadata } from '~/utils/link-metadata'
 import type { RumbleEmbedInfo } from '~/utils/rumble-embed'
@@ -550,12 +550,42 @@ const desiredVideoSrc = computed(() => {
   }
   return null
 })
-const videoIframeSrc = computed(() => desiredVideoSrc.value ?? 'about:blank')
 
+const YOUTUBE_MUTE_SYNC_MS = [0, 150, 400, 900, 1800]
 let iframeLoadRaf: number | null = null
+const youtubeMuteSyncTimers: number[] = []
+
+function clearYoutubeMuteSync() {
+  for (const id of youtubeMuteSyncTimers) window.clearTimeout(id)
+  youtubeMuteSyncTimers.length = 0
+}
+
+function applyEmbedMute(muted: boolean) {
+  if (!import.meta.client) return
+  if (isPreviewLinkRumble.value) return
+  const win = videoIframeEl.value?.contentWindow
+  if (!win) return
+  postYouTubeIframeCommand(win, youtubeMuteCommand(muted))
+}
+
+function syncYoutubeMuteFromAppPref() {
+  applyEmbedMute(!appWideSoundOn.value)
+}
+
+function scheduleYoutubeMuteSync() {
+  clearYoutubeMuteSync()
+  if (!import.meta.client) return
+  if (isPreviewLinkRumble.value) return
+  for (const delay of YOUTUBE_MUTE_SYNC_MS) {
+    youtubeMuteSyncTimers.push(window.setTimeout(() => {
+      if (!desiredVideoSrc.value || !videoIframeLoaded.value) return
+      syncYoutubeMuteFromAppPref()
+    }, delay))
+  }
+}
+
 function onVideoIframeLoad() {
   if (!import.meta.client) return
-  // Ignore load events for about:blank
   if (!desiredVideoSrc.value) return
   if (iframeLoadRaf != null) cancelAnimationFrame(iframeLoadRaf)
   // Wait a beat so the iframe has a chance to paint before we fade the poster out.
@@ -564,17 +594,9 @@ function onVideoIframeLoad() {
       iframeLoadRaf = null
       if (!desiredVideoSrc.value) return
       videoIframeLoaded.value = true
-      applyEmbedMute(!appWideSoundOn.value)
+      scheduleYoutubeMuteSync()
     })
   })
-}
-
-function applyEmbedMute(muted: boolean) {
-  if (!import.meta.client) return
-  if (isPreviewLinkRumble.value) return
-  const win = videoIframeEl.value?.contentWindow
-  if (!win) return
-  win.postMessage(youtubeMuteCommand(muted), '*')
 }
 
 function onTapUnmuteEmbed() {
@@ -597,6 +619,7 @@ watch(
   () => {
     // Activation/deactivation should show poster immediately.
     videoIframeLoaded.value = false
+    clearYoutubeMuteSync()
   },
   { immediate: true },
 )
@@ -605,6 +628,7 @@ onBeforeUnmount(() => {
   if (!import.meta.client) return
   if (iframeLoadRaf != null) cancelAnimationFrame(iframeLoadRaf)
   iframeLoadRaf = null
+  clearYoutubeMuteSync()
 })
 
 watchEffect((onCleanup) => {
